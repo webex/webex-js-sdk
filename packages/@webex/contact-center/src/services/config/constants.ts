@@ -67,6 +67,7 @@ export const METHODS = {
   GET_TENANT_DATA: 'getTenantData',
   GET_URL_MAPPING: 'getURLMapping',
   GET_DIAL_PLAN_DATA: 'getDialPlanData',
+  GET_QUEUES: 'getQueues',
 
   // Util methods
   PARSE_AGENT_CONFIGS: 'parseAgentConfigs',

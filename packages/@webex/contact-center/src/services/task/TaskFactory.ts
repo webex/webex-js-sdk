@@ -5,7 +5,8 @@ import Voice from './voice/Voice';
 import WebRTC from './voice/WebRTC';
 import Digital from './digital/Digital';
 import {MEDIA_CHANNEL, TaskData} from './types';
-import {ConfigFlags} from '../../types';
+import {ConfigFlags, LoginOption} from '../../types';
+import {WrapupData} from '../config/types';
 
 export default class TaskFactory {
   /**
@@ -16,7 +17,9 @@ export default class TaskFactory {
     webCallingService: WebCallingService,
     data: TaskData,
     configFlags: ConfigFlags,
-    runtimeOptions: TaskRuntimeOptions = {}
+    runtimeOptions?: TaskRuntimeOptions,
+    wrapupData?: WrapupData,
+    agentId?: string
   ): Task {
     const mediaType = data.interaction.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
     const {isEndTaskEnabled, isEndConsultEnabled} = configFlags;
@@ -26,19 +29,28 @@ export default class TaskFactory {
       isEndConsultEnabled,
       isRecordingEnabled: recordingEnabled,
     };
+    const runtimeOverrides = runtimeOptions ?? {};
 
     switch (mediaType) {
       case MEDIA_CHANNEL.TELEPHONY:
-        if (webCallingService.loginOption === 'BROWSER') {
-          return new WebRTC(contact, webCallingService, data, voiceControlOptions, runtimeOptions);
+        if (webCallingService.loginOption === LoginOption.BROWSER) {
+          return new WebRTC(
+            contact,
+            webCallingService,
+            data,
+            voiceControlOptions,
+            runtimeOverrides,
+            wrapupData,
+            agentId
+          );
         }
 
-        return new Voice(contact, data, voiceControlOptions, runtimeOptions);
+        return new Voice(contact, data, voiceControlOptions, runtimeOverrides, wrapupData, agentId);
 
       case MEDIA_CHANNEL.CHAT:
       case MEDIA_CHANNEL.EMAIL:
       case MEDIA_CHANNEL.SOCIAL:
-        return new Digital(contact, data, runtimeOptions);
+        return new Digital(contact, data, runtimeOverrides, wrapupData, agentId);
 
       default:
         throw new Error(`Unknown media type: ${mediaType}`);

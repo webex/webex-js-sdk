@@ -22,25 +22,34 @@ import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 import {TaskState, TaskEvent, guards} from '../state-machine';
+import {WrapupData} from '../../config/types';
 
 export default class Voice extends Task implements IVoice {
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
-    callOptions: VoiceUIControlOptions = {},
-    runtimeOptions: TaskRuntimeOptions = {}
+    callOptions?: VoiceUIControlOptions,
+    runtimeOptions?: TaskRuntimeOptions,
+    wrapupData?: WrapupData,
+    agentId?: string
   ) {
+    const resolvedOptions = {
+      isEndTaskEnabled: callOptions?.isEndTaskEnabled ?? true,
+      isEndConsultEnabled: callOptions?.isEndConsultEnabled ?? true,
+      voiceVariant: callOptions?.voiceVariant ?? VOICE_VARIANT.PSTN,
+      isRecordingEnabled: callOptions?.isRecordingEnabled ?? true,
+    };
+
     super(
       contact,
       data,
       {
         channelType: TASK_CHANNEL_TYPE.VOICE,
-        isEndTaskEnabled: callOptions.isEndTaskEnabled ?? true,
-        isEndConsultEnabled: callOptions.isEndConsultEnabled ?? true,
-        voiceVariant: callOptions.voiceVariant ?? VOICE_VARIANT.PSTN,
-        isRecordingEnabled: callOptions.isRecordingEnabled ?? true,
+        ...resolvedOptions,
       },
-      runtimeOptions
+      runtimeOptions,
+      wrapupData,
+      agentId
     );
   }
 

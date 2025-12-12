@@ -34,6 +34,8 @@ export const PRESERVED_TASK_DATA_FIELDS = {
   WRAP_UP_REQUIRED: 'wrapUpRequired',
   /** Indicates if a conference is currently in progress (2+ active agents) */
   IS_CONFERENCE_IN_PROGRESS: 'isConferenceInProgress',
+  /** Indicates if auto-answer is in progress for this task */
+  IS_AUTO_ANSWERING: 'isAutoAnswering',
 };
 
 /**

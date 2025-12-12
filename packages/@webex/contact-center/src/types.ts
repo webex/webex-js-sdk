@@ -582,6 +582,7 @@ export type ConfigFlags = {
 };
 
 /**
+
  * Generic error structure for Contact Center SDK errors.
  * Contains detailed information about the error context.
  * @public

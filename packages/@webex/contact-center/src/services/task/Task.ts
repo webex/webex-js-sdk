@@ -11,9 +11,13 @@ import {
   DESTINATION_TYPE,
   TASK_EVENTS,
   TaskUIControls,
+  ConsultEndPayload,
+  ConsultPayload,
+  ConsultTransferPayLoad,
+  ResumeRecordingPayload,
 } from './types';
-import {CC_FILE} from '../../constants';
-import {TASK_FILE} from './constants';
+import {METHODS} from './constants';
+import {CC_FILE, TASK_FILE} from '../../constants';
 import {getErrorDetails} from '../core/Utils';
 import routingContact from './contact';
 import MetricsManager from '../../metrics/MetricsManager';
@@ -26,13 +30,14 @@ import type {
   UIControlConfig,
   TaskContext,
 } from './state-machine';
-import AutoWrapup from './AutoWrapup';
 import {
   computeUIControls,
   getDefaultUIControls,
   haveUIControlsChanged,
 } from './state-machine/uiControlsComputer';
 import type {TaskActionsMap} from './state-machine/actions';
+import AutoWrapup from './AutoWrapup';
+import {WrapupData} from '../config/types';
 
 export interface TaskRuntimeOptions {
   actionOverrides?: Partial<TaskActionsMap>;
@@ -51,26 +56,31 @@ export default abstract class Task extends EventEmitter implements ITask {
   protected currentUiControls: TaskUIControls;
   protected uiControlConfig: UIControlConfig;
   protected runtimeOptions: TaskRuntimeOptions;
+  protected wrapupData?: WrapupData;
+  public autoWrapup?: AutoWrapup;
+  protected agentId?: string;
 
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
     uiControlConfig: UIControlConfig,
-    runtimeOptions: TaskRuntimeOptions = {}
+    runtimeOptions?: TaskRuntimeOptions,
+    wrapupData?: WrapupData,
+    agentId?: string
   ) {
     super();
     this.contact = contact;
     this.data = data;
     this.uiControlConfig = uiControlConfig;
+    this.runtimeOptions = runtimeOptions ?? {};
+    this.wrapupData = wrapupData;
+    this.agentId = agentId;
     this.metricsManager = MetricsManager.getInstance();
     this.webCallMap = {};
     this.currentUiControls = getDefaultUIControls();
-    this.runtimeOptions = runtimeOptions;
     this.initializeStateMachine();
+    this.setupAutoWrapupTimer();
   }
-
-  // Properties from ITask interface
-  public autoWrapup?: AutoWrapup;
 
   // Abstract methods that all child classes must implement
   public abstract accept(): Promise<TaskResponse>;
@@ -85,19 +95,35 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.unsupportedMethodError('pauseRecording');
   }
 
-  public async resumeRecording(): Promise<TaskResponse> {
+  public async resumeRecording(
+    resumeRecordingPayload: ResumeRecordingPayload
+  ): Promise<TaskResponse> {
+    if (resumeRecordingPayload) {
+      // parameter intentionally unused
+    }
     this.unsupportedMethodError('resumeRecording');
   }
 
-  public async consult(): Promise<TaskResponse> {
+  public async consult(consultPayload: ConsultPayload): Promise<TaskResponse> {
+    if (consultPayload) {
+      // parameter intentionally unused
+    }
     this.unsupportedMethodError('consult');
   }
 
-  public async endConsult(): Promise<TaskResponse> {
+  public async endConsult(consultEndPayload: ConsultEndPayload): Promise<TaskResponse> {
+    if (consultEndPayload) {
+      // parameter intentionally unused
+    }
     this.unsupportedMethodError('endConsult');
   }
 
-  public async consultTransfer(): Promise<TaskResponse> {
+  public async consultTransfer(
+    consultTransferPayload?: ConsultTransferPayLoad
+  ): Promise<TaskResponse> {
+    if (consultTransferPayload) {
+      // parameter intentionally unused
+    }
     this.unsupportedMethodError('consultTransfer');
   }
 
@@ -364,6 +390,63 @@ export default abstract class Task extends EventEmitter implements ITask {
     };
   }
 
+  /**
+   * Sets up the automatic wrap-up timer if wrap-up is required
+   */
+  protected setupAutoWrapupTimer(): void {
+    if (
+      this.data.wrapUpRequired &&
+      !this.autoWrapup &&
+      this.wrapupData &&
+      this.wrapupData.wrapUpProps
+    ) {
+      const wrapUpProps = this.wrapupData.wrapUpProps;
+      if (!wrapUpProps || wrapUpProps.autoWrapup === false) {
+        LoggerProxy.info(`Auto wrap-up is not required for this task`, {
+          module: TASK_FILE,
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+          interactionId: this.data.interactionId,
+        });
+
+        return;
+      }
+      const defaultWrapupReason =
+        wrapUpProps.wrapUpReasonList?.find((r) => r.isDefault) ?? wrapUpProps.wrapUpReasonList?.[0];
+      if (!defaultWrapupReason) {
+        LoggerProxy.error('No wrap-up reason configured', {
+          module: TASK_FILE,
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+        });
+
+        return;
+      }
+      const intervalMs = wrapUpProps.autoWrapupInterval;
+      if (!intervalMs || intervalMs <= 0) {
+        LoggerProxy.error(`Invalid auto wrap-up interval: ${intervalMs}`, {
+          module: TASK_FILE,
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+        });
+
+        return;
+      }
+      this.autoWrapup = new AutoWrapup(intervalMs, wrapUpProps.allowCancelAutoWrapup);
+      this.autoWrapup.start(async () => {
+        LoggerProxy.info(`Auto wrap-up timer triggered`, {
+          module: TASK_FILE,
+          method: METHODS.SETUP_AUTO_WRAPUP_TIMER,
+          interactionId: this.data.interactionId,
+        });
+        await this.wrapup({
+          wrapUpReason: defaultWrapupReason.name,
+          auxCodeId: defaultWrapupReason.id,
+        });
+      });
+    }
+  }
+
+  /**
+   * Cancels the automatic wrap-up timer if it's running
+   */
   private reconcileData(oldData: TaskData, newData: TaskData): TaskData {
     Object.keys(newData).forEach((key) => {
       if (newData[key] && typeof newData[key] === 'object' && !Array.isArray(newData[key])) {
@@ -394,7 +477,6 @@ export default abstract class Task extends EventEmitter implements ITask {
    * This method is used to update the task data.
    * @param updatedData - TaskData
    * @param shouldOverwrite - boolean
-   * @returns Task
    * @example
    * ```typescript
    * task.updateTaskData(updatedData, true);
@@ -402,8 +484,8 @@ export default abstract class Task extends EventEmitter implements ITask {
    */
   public updateTaskData(updatedData: TaskData, shouldOverwrite = false): ITask {
     this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
-
     this.updateUiControls();
+    this.setupAutoWrapupTimer();
 
     return this;
   }
@@ -536,6 +618,7 @@ export default abstract class Task extends EventEmitter implements ITask {
    * ```
    */
   public async wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse> {
+    this.cancelAutoWrapupTimer();
     LoggerProxy.log(`Starting task wrapup for taskId:${this.data.interactionId}`, {
       module: 'Task',
       method: 'wrapup',

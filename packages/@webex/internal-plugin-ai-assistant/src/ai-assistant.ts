@@ -27,7 +27,13 @@ import {
   CONTEXT_RESOURCE_TYPES,
   RESPONSE_NAMES,
 } from './constants';
-import {decryptCitedAnswer, decryptMessage, decryptToolUse, decryptWorkspace} from './utils';
+import {
+  decryptCitedAnswer,
+  decryptMessage,
+  decryptScheduleMeeting,
+  decryptToolUse,
+  decryptWorkspace,
+} from './utils';
 
 const AIAssistant = WebexPlugin.extend({
   namespace: 'AIAssistant',
@@ -169,6 +175,10 @@ const AIAssistant = WebexPlugin.extend({
         await decryptCitedAnswer(responseContent, this.webex);
         break;
       }
+      case RESPONSE_NAMES.SCHEDULE_MEETING: {
+        await decryptScheduleMeeting(responseContent, this.webex);
+        break;
+      }
       case RESPONSE_NAMES.TOOL_RESULT: {
         // No encrypted content in tool_result
         break;
@@ -280,6 +290,7 @@ const AIAssistant = WebexPlugin.extend({
    * @param {Object} options.assistant optional parameter to specify the assistant to use
    * @param {Object} options.locale optional locale to use for the request, defaults to 'en_US'
    * @param {string} options.requestId optional request ID to use for this request, if not provided a new UUID will be generated
+   * @param {string} options.entryPoint optional entryPoint to use for this request
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    * @public
    * @memberof AIAssistant
@@ -313,6 +324,7 @@ const AIAssistant = WebexPlugin.extend({
         async: 'chunked',
         locale: options.locale || 'en_US',
         content,
+        ...(options.entryPoint ? {entryPoint: options.entryPoint} : {}),
         ...(options.assistant ? {assistant: options.assistant} : {}),
       },
       ...(options.requestId ? {requestId: options.requestId} : {}),

@@ -13,6 +13,7 @@ import {
 import Voice from './Voice';
 import type {TaskRuntimeOptions} from '../Task';
 import WebCallingService from '../../WebCallingService';
+import {WrapupData} from '../../config/types';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 import LoggerProxy from '../../../logger-proxy';
@@ -25,10 +26,17 @@ export default class WebRTC extends Voice implements IWebRTC {
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     data: TaskData,
-    callOptions: VoiceUIControlOptions = {},
-    runtimeOptions: TaskRuntimeOptions = {}
+    callOptions?: VoiceUIControlOptions,
+    runtimeOptions?: TaskRuntimeOptions,
+    wrapupData?: WrapupData,
+    agentId?: string
   ) {
-    super(contact, data, {...callOptions, voiceVariant: VOICE_VARIANT.WEBRTC}, runtimeOptions);
+    const mergedCallOptions: VoiceUIControlOptions = {
+      ...callOptions,
+      voiceVariant: VOICE_VARIANT.WEBRTC,
+    };
+
+    super(contact, data, mergedCallOptions, runtimeOptions, wrapupData, agentId);
     this.webCallingService = webCallingService;
     this.registerWebCallListeners();
   }

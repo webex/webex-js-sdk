@@ -42,7 +42,6 @@ export const METHODS = {
   HANDLE_DEVICE_TYPE: 'handleDeviceType',
   START_OUTDIAL: 'startOutdial',
   GET_QUEUES: 'getQueues',
-  GET_OUTDIAL_ANI_ENTRIES: 'getOutdialAniEntries',
   UPLOAD_LOGS: 'uploadLogs',
   UPDATE_AGENT_PROFILE: 'updateAgentProfile',
   GET_DEVICE_ID: 'getDeviceId',
@@ -60,4 +59,6 @@ export const METHODS = {
   EXIT_CONFERENCE: 'exitConference',
   TRANSFER_CONFERENCE: 'transferConference',
   TOGGLE_MUTE: 'toggleMute',
+  COMPLETE_TRANSFER: 'completeTransfer',
+  GET_OUTDIAL_ANI_ENTRIES: 'getOutdialAniEntries',
 };

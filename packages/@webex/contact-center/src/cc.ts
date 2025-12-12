@@ -318,7 +318,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * });
    * ```
    */
-  private queue: Queue;
+  public queue: Queue;
 
   /**
    * Logger utility for Contact Center plugin
@@ -398,6 +398,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   /**
+   * Handles task merged events when tasks are combined eg: EPDN merge/transfer
+   * @private
+   * @param {ITask} task The task object that has been merged
+   */
+  private handleTaskMerged = (task: ITask) => {
+    // @ts-ignore
+    this.trigger(TASK_EVENTS.TASK_MERGED, task);
+  };
+
+  /**
    * Sets up event listeners for incoming tasks and task hydration
    * Subscribes to task events from the task manager
    * @private
@@ -405,6 +415,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private incomingTaskListener() {
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
     this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+    this.taskManager.on(TASK_EVENTS.TASK_MERGED, this.handleTaskMerged);
   }
 
   /**
@@ -692,6 +703,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           const agentId = data.agentId;
           const orgId = this.$webex.credentials.getOrgId();
           this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
+          LoggerProxy.log(`Agent config is fetched successfully`, {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          });
+
           const configFlags: ConfigFlags = {
             isEndTaskEnabled: this.agentConfig.isEndTaskEnabled,
             isEndConsultEnabled: this.agentConfig.isEndConsultEnabled,
@@ -699,13 +715,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
           };
           this.taskManager.setConfigFlags(configFlags);
-          LoggerProxy.log(`Agent config is fetched successfully`, {
-            module: CC_FILE,
-            method: METHODS.CONNECT_WEBSOCKET,
-          });
           // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
           this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
           this.taskManager.setAgentId(this.agentConfig.agentId);
+          this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
 
           if (
             this.agentConfig.webRtcEnabled &&

@@ -1,6 +1,4 @@
 /* eslint-disable import/no-cycle */
-// eslint-disable-next-line import/no-unresolved
-import type {CallId as WebexCallId} from '@webex/calling/dist/types/common/types';
 import EventEmitter from 'events';
 import type {AnyActorRef} from 'xstate';
 import {Msg} from '../core/GlobalTypes';
@@ -11,6 +9,11 @@ import AutoWrapup from './AutoWrapup';
  * @public
  */
 export type TaskId = string;
+
+/**
+ * Unique identifier for a call in the Webex calling system
+ */
+export type CallId = string;
 
 /**
  * Helper type for creating enum-like objects with type safety
@@ -182,14 +185,12 @@ export enum TASK_EVENTS {
    * Triggered when a task is resumed from hold
    * @example
    * ```typescript
-   * task.on(TASK_EVENTS.TASK_UNHOLD, (task: ITask) => {
    * task.on(TASK_EVENTS.TASK_RESUME, (task: ITask) => {
    *   console.log('Task resumed from hold:', task.data.interactionId);
    *   // Update UI to show active state
    * });
    * ```
    */
-  TASK_UNHOLD = 'task:unhold',
   TASK_RESUME = 'task:resume',
 
   /**
@@ -389,6 +390,18 @@ export enum TASK_EVENTS {
   TASK_REJECT = 'task:rejected',
 
   /**
+   * Triggered when an outdial call fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_OUTDIAL_FAILED, (reason: string) => {
+   *   console.log('Outdial failed:', reason);
+   *   // Handle outdial failure
+   * });
+   * ```
+   */
+  TASK_OUTDIAL_FAILED = 'task:outdialFailed',
+
+  /**
    * Triggered when a task is populated with data
    * @example
    * ```typescript
@@ -411,6 +424,22 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_OFFER_CONTACT = 'task:offerContact',
+
+  /**
+   * Triggered when a task has been successfully auto-answered
+   * This event is emitted after the SDK automatically accepts a task due to:
+   * - WebRTC calls with auto-answer enabled
+   * - Agent-initiated outdial calls
+   * - Other auto-answer scenarios
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_AUTO_ANSWERED, (task: ITask) => {
+   *   console.log('Task auto-answered:', task.data.interactionId);
+   *   // Update UI - enable cancel button, etc.
+   * });
+   * ```
+   */
+  TASK_AUTO_ANSWERED = 'task:autoAnswered',
 
   /**
    * Triggered when a conference is being established
@@ -531,6 +560,30 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_PARTICIPANT_LEFT_FAILED = 'task:participantLeftFailed',
+
+  /**
+   * Triggered when a contact is merged
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_MERGED, (task: ITask) => {
+   *   console.log('Contact merged:', task.data.interactionId);
+   *   // Handle contact merge
+   * });
+   * ```
+   */
+  TASK_MERGED = 'task:merged',
+
+  /**
+   * Triggered when a participant enters post-call activity state
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, (task: ITask) => {
+   *   console.log('Participant in post-call activity:', task.data.interactionId);
+   *   // Handle post-call activity
+   * });
+   * ```
+   */
+  TASK_POST_CALL_ACTIVITY = 'task:postCallActivity',
 }
 
 /**
@@ -815,6 +868,8 @@ export type Interaction = {
     BLIND_TRANSFER_IN_PROGRESS?: boolean;
     /** Desktop view configuration for Flow Control */
     fcDesktopView?: string;
+    /** Agent ID who initiated the outdial call */
+    outdialAgentId?: string;
   };
   /** Main interaction identifier for related interactions */
   mainInteractionId?: string;
@@ -927,6 +982,8 @@ export type TaskData = {
   isWebCallMute?: boolean;
   /** Identifier for reservation interaction */
   reservationInteractionId?: string;
+  /** Identifier for the reserved agent channel (used for campaign tasks) */
+  reservedAgentChannelId?: string;
   /** Indicates if wrap-up is required for this task */
   wrapUpRequired?: boolean;
 
@@ -979,6 +1036,10 @@ export type TaskData = {
    * Maps participant consultState to task state
    */
   mpcState?: string;
+  /** Indicates if auto-answer is in progress for this task */
+  isAutoAnswering?: boolean;
+  /** Indicates if wrap-up is required for this task */
+  agentsPendingWrapUp?: string[];
 };
 
 export interface UIControls {
@@ -1284,19 +1345,6 @@ export type ConsultConferenceData = {
 };
 
 /**
- * Legacy consultation conference data type matching Agent Desktop
- * @public
- */
-export type consultConferencePayloadData = {
-  /** Identifier of the agent initiating consult/conference */
-  agentId: string;
-  /** Type of destination (e.g., 'agent', 'queue') */
-  destinationType: string;
-  /** Identifier of the destination agent */
-  destAgentId: string;
-};
-
-/**
  * Parameters required for cancelling a consult to queue operation
  * @public
  */
@@ -1426,6 +1474,15 @@ export type ParticipantBooleanKey =
 export type TaskResponse = AgentContact | Error | void;
 
 /**
+ * Payload shape used by consult conference helper utilities.
+ */
+export type consultConferencePayloadData = {
+  agentId?: string;
+  destinationType?: string;
+  destAgentId?: string;
+};
+
+/**
  * Interface for managing task-related operations in the contact center
  * Extends EventEmitter to support event-driven task updates
  */
@@ -1486,7 +1543,7 @@ export interface ITask extends EventEmitter {
    * @returns Updated task instance
    * @ignore
    */
-  updateTaskData(newData: TaskData): ITask;
+  updateTaskData(newData: TaskData): void;
 
   /**
    * Answers or accepts an incoming task.
@@ -1512,23 +1569,33 @@ export interface ITask extends EventEmitter {
 
   /**
    * Places the current task on hold.
+   * @param mediaResourceId - Optional media resource ID to use for the hold operation. If not provided, uses the task's current mediaResourceId
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
+   * // Hold with default mediaResourceId
    * await task.hold();
+   *
+   * // Hold with custom mediaResourceId
+   * await task.hold('custom-media-resource-id');
    * ```
    */
-  hold(): Promise<TaskResponse>;
+  hold(mediaResourceId?: string): Promise<TaskResponse>;
 
   /**
    * Resumes a task that was previously on hold.
+   * @param mediaResourceId - Optional media resource ID to use for the resume operation. If not provided, uses the task's current mediaResourceId from interaction media
    * @returns Promise<TaskResponse>
    * @example
    * ```typescript
+   * // Resume with default mediaResourceId
    * await task.resume();
+   *
+   * // Resume with custom mediaResourceId
+   * await task.resume('custom-media-resource-id');
    * ```
    */
-  resume(): Promise<TaskResponse>;
+  resume(mediaResourceId?: string): Promise<TaskResponse>;
 
   /**
    * Ends/terminates the current task.
@@ -1715,18 +1782,32 @@ export type Participant = {
  */
 export type TaskAccessorParticipant = Participant;
 
-/**
- * Legacy IOldTask interface for backward compatibility
- * @deprecated Use ITask, IVoice, or IDigital instead
- * @ignore
- */
-export type IOldTask = ITask;
-
-/**
- * Legacy IWebRTC interface - maintained for backward compatibility
- * @deprecated
- * @ignore
- */
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface IWebRTC {}
-export type CallId = WebexCallId;
+export interface IWebRTC extends IVoice {
+  /**
+   * This method is used to mute/unmute the call.
+   * @returns Promise<void>
+   * @example
+   * ```typescript
+   * task.toggleMute();
+   * ```
+   */
+  toggleMute(): Promise<void>;
+  /**
+   * Decline the incoming task for Browser Login
+   *
+   * @example
+   * ```
+   * task.decline();
+   * ```
+   */
+  decline(): Promise<TaskResponse>;
+  /**
+   * This method is used to unregister the web call listeners.
+   * @returns void
+   * @example
+   * ```typescript
+   * task.unregisterWebCallListeners();
+   * ```
+   */
+  unregisterWebCallListeners(): void;
+}

@@ -71,6 +71,7 @@ const initiateConsultDialog = document.querySelector('#initiate-consult-dialog')
 const agentMultiLoginAlert = document.querySelector('#agentMultiLoginAlert');
 const consultTransferBtn = document.querySelector('#consult-transfer');
 const transferElm = document.getElementById('transfer');
+const transferOptionsElm = document.querySelector('#transfer-options');
 const conferenceToggleBtn = document.querySelector('#conference-toggle');
 const timerElm = document.querySelector('#timerDisplay');
 const engageElm = document.querySelector('#engageWidget');
@@ -649,6 +650,16 @@ async function handleQueueConsult(consultPayload) {
 }
 
 
+// Function to toggle transfer options visibility
+function toggleTransferOptions() {
+  if (transferOptionsElm.style.display === 'none') {
+    transferOptionsElm.style.display = 'block';
+    onTransferTypeSelectionChanged(); // Refresh the destination options
+  } else {
+    transferOptionsElm.style.display = 'none';
+  }
+}
+
 // Function to initiate transfer
 async function initiateTransfer() {
   const destinationType = document.querySelector('#transfer-destination-type').value;
@@ -667,6 +678,7 @@ async function initiateTransfer() {
   try {
     await currentTask.transfer(transferPayload);
     console.log('Transfer initiated successfully');
+    transferOptionsElm.style.display = 'none';
   } catch (error) {
     console.error('Failed to initiate transfer', error);
     alert('Failed to initiate transfer');
@@ -929,13 +941,16 @@ async function startOutdial() {
   try {
     console.log('Making an outdial call');
     console.log('Destination:', destination);
-    console.log('Selected ANI:', selectedAni || 'None selected');
+    console.log('Selected ANI:', selectedAni || 'None selected, using default ANI');
     
     // Use selected ANI as the origin parameter
     if (selectedAni) {
       await webex.cc.startOutdial(destination, selectedAni);
       console.log('Outdial call initiated successfully with ANI:', selectedAni);
-    } 
+    } else {
+      await webex.cc.startOutdial(destination);
+      console.log('Outdial call initiated successfully with default ANI');
+    }
     
   } catch (error) {
     console.error('Failed to initiate outdial call', error);
@@ -1021,6 +1036,12 @@ function registerTaskListeners(task) {
     updateTaskList();
     console.info('Task is rejected with reason:', reason);
     showAgentStatePopup(reason);
+  });
+
+  task.on('task:outdialFailed', (reason) => {
+    updateTaskList();
+    console.info('Outdial failed with reason:', reason);
+    showOutdialFailedPopup(reason);
   });
 
   task.on('task:wrappedup', updateTaskList); // Update the task list UI to have latest tasks
@@ -1138,12 +1159,12 @@ function getConsultStatus(task) {
   const participant = Object.values(participants).find(p => p.pType === 'Agent' && p.id === agentId);
   
   if (state === 'consult') {
-    if (participant && participant.isConsulted) {
+    if ((participant && participant.isConsulted )|| isSecondaryEpDnAgent(task)) {
       return 'beingConsulted';
     }
     return 'consultInitiated';
   } else if (state === 'consulting') {
-    if (participant && participant.isConsulted) {
+    if ((participant && participant.isConsulted) || isSecondaryEpDnAgent(task)) {
       return 'beingConsultedAccepted';
     }
     return 'consultAccepted';
@@ -1829,6 +1850,31 @@ function showAgentStatePopup(reason) {
   popup.classList.remove('hidden');
 }
 
+function showOutdialFailedPopup(reason) {
+  const outdialFailedReasonText = document.getElementById('outdialFailedReasonText');
+  
+  // Set the reason text based on the reason
+  if (reason === 'CUSTOMER_BUSY') {
+    outdialFailedReasonText.innerText = 'Customer is busy';
+  } else if (reason === 'NO_ANSWER') {
+    outdialFailedReasonText.innerText = 'No answer from customer';
+  } else if (reason === 'CALL_FAILED') {
+    outdialFailedReasonText.innerText = 'Call failed';
+  } else if (reason === 'INVALID_NUMBER') {
+    outdialFailedReasonText.innerText = 'Invalid phone number';
+  } else {
+    outdialFailedReasonText.innerText = `Outdial failed: ${reason}`;
+  }
+
+  const outdialFailedPopup = document.getElementById('outdialFailedPopup');
+  outdialFailedPopup.classList.remove('hidden');
+}
+
+function closeOutdialFailedPopup() {
+  const outdialFailedPopup = document.getElementById('outdialFailedPopup');
+  outdialFailedPopup.classList.add('hidden');
+}
+
 async function renderBuddyAgents() {
   buddyAgentsDropdownElm.innerHTML = ''; // Clear previous options
   const buddyAgentsDropdownNodes = await fetchBuddyAgentsNodeList();
@@ -1965,14 +2011,14 @@ function expandAll() {
 function holdResumeCall() {
   if (holdResumeElm.innerText === 'Hold') {
     holdResumeElm.disabled = true;
-    currentTask.hold().then(() => {
+    currentTask.holdResume().then(() => {
       console.info('Call held successfully');
     }).catch((error) => {
       console.error('Failed to hold the call', error);
     });
   } else {
     holdResumeElm.disabled = true;
-    currentTask.resume().then(() => {
+    currentTask.holdResume().then(() => {
       console.info('Call resumed successfully');
     }).catch((error) => {
       console.error('Failed to resume the call', error);
@@ -2137,6 +2183,7 @@ function renderTaskList(taskList) {
     const isNew = isIncomingTask(task, agentId); 
     const isTelephony = task.data.interaction.mediaType === 'telephony';
     const isBrowserPhone = agentDeviceType === 'BROWSER';
+    const isAutoAnswering = task.data.isAutoAnswering || false;
 
     // Determine which buttons to show
     const showAcceptButton = isNew && (isBrowserPhone || !isTelephony);
@@ -2146,8 +2193,8 @@ function renderTaskList(taskList) {
     taskElement.innerHTML = `
         <div class="task-item-content">
             <p>${callerDisplay}</p>
-            ${showAcceptButton ? `<button class="accept-task" data-task-id="${taskId}">Accept</button>` : ''}
-            ${showDeclineButton ? `<button class="decline-task" data-task-id="${taskId}">Decline</button>` : ''}
+            ${showAcceptButton ? `<button class="accept-task" data-task-id="${taskId}" ${isAutoAnswering ? 'disabled' : ''}>Accept</button>` : ''}
+            ${showDeclineButton ? `<button class="decline-task" data-task-id="${taskId}" ${isAutoAnswering ? 'disabled' : ''}>Decline</button>` : ''}
         </div>
         <hr class="task-separator">
     `;
@@ -2218,24 +2265,40 @@ function renderTaskList(taskList) {
 function enableAnswerDeclineButtons(task) {
   const callerDisplay = task.data.interaction?.callAssociatedDetails?.ani;
   const isNew = isIncomingTask(task, agentId); 
-    const chatAndSocial = ['chat', 'social'];
+  const isAutoAnswering = task.data.isAutoAnswering || false;
+  const chatAndSocial = ['chat', 'social'];
+  
   if (task.data.interaction.mediaType === 'telephony') {
     if (agentDeviceType === 'BROWSER') {
-      answerElm.disabled = !isNew;
-      declineElm.disabled = !isNew;
+      // Disable buttons if auto-answering or not new
+      answerElm.disabled = !isNew || isAutoAnswering;
+      declineElm.disabled = !isNew || isAutoAnswering;
   
       incomingDetailsElm.innerText = `Call from ${callerDisplay}`;
+      
+      // Log auto-answer status for debugging
+      if (isAutoAnswering) {
+        console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
+      }
     } else {
       incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
     }
   } else if (chatAndSocial.includes(task.data.interaction.mediaType)) {
-    answerElm.disabled = !isNew;
+    answerElm.disabled = !isNew || isAutoAnswering;
     declineElm.disabled = true;
     incomingDetailsElm.innerText = `Chat from ${callerDisplay}`;
+    
+    if (isAutoAnswering) {
+      console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
+    }
   } else if (task.data.interaction.mediaType === 'email') {
-    answerElm.disabled = !isNew;
+    answerElm.disabled = !isNew || isAutoAnswering;
     declineElm.disabled = true;
     incomingDetailsElm.innerText = `Email from ${callerDisplay}`;
+    
+    if (isAutoAnswering) {
+      console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
+    }
   }
 }
 

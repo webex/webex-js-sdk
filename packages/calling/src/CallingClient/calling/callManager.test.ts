@@ -282,7 +282,7 @@ describe('Call Manager Tests with respect to calls', () => {
 
     expect(patchMock).toHaveBeenCalledWith(MobiusCallState.ALERTING);
     expect(errorSpy).toHaveBeenCalledWith(
-      Error(`Failed to signal call progression: ${dummyResponse}`),
+      `Failed to signal call progression: ${JSON.stringify(dummyResponse)}`,
       {
         file: 'call',
         method: 'handleOutgoingCallAlerting',

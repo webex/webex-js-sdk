@@ -64,6 +64,22 @@ export const CONNECTIVITY_CHECK_INTERVAL = 5000;
  */
 export const CLOSE_SOCKET_TIMEOUT = 16000;
 
+/**
+ * Constants for participant types, destination types, and interaction states
+ * @ignore
+ */
+export const PARTICIPANT_TYPES = {
+  /** Participant type for Entry Point Dial Number */
+  EP_DN: 'EpDn',
+  /** Participant type for dial number */
+  DN: 'dn',
+  /** Participant type for Agent */
+  AGENT: 'Agent',
+};
+
+/** Interaction state for consultation */
+export const STATE_CONSULT = 'consult';
+
 // Method names for core services
 export const METHODS = {
   // WebexRequest methods
