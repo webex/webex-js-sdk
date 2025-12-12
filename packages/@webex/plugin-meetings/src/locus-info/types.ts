@@ -1,18 +1,20 @@
 import {HtMeta} from '../hashTree/types';
 
+export type LocusFullState = {
+  active: boolean;
+  count: number;
+  lastActive: string;
+  locked: boolean;
+  sessionId: string;
+  seessionIds: string[];
+  startTime: number;
+  state: string;
+  type: string;
+};
+
 export type LocusDTO = {
   controls?: any;
-  fullState?: {
-    active: boolean;
-    count: number;
-    lastActive: string;
-    locked: boolean;
-    sessionId: string;
-    seessionIds: string[];
-    startTime: number;
-    state: string;
-    type: string;
-  };
+  fullState?: LocusFullState;
   host?: {
     id: string;
     incomingCallProtocols: any[];
