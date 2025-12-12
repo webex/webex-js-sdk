@@ -44,6 +44,20 @@ const Services = WebexPlugin.extend({
     initFailed: ['boolean', false, false],
   },
 
+  session: {
+    /**
+     * Becomes `true` once services initialization has completed.
+     * This blocks `webex.ready` until services are initialized.
+     * @instance
+     * @memberof Services
+     * @type {boolean}
+     */
+    ready: {
+      default: false,
+      type: 'boolean',
+    },
+  },
+
   _catalogs: new WeakMap(),
 
   _activeServices: {},
@@ -1334,7 +1348,7 @@ const Services = WebexPlugin.extend({
 
     // wait for webex instance to be ready before attempting
     // to update the service catalogs
-    this.listenToOnce(this.webex, 'ready', async () => {
+    this.listenToOnce(this.webex, 'loaded', async () => {
       const warmed = await this._loadCatalogFromCache();
       if (warmed) {
         catalog.isReady = true;
@@ -1353,16 +1367,25 @@ const Services = WebexPlugin.extend({
             this.logger.error(
               `services: failed to init initial services when credentials available, ${error?.message}`
             );
+          })
+          .finally(() => {
+            this.ready = true;
+            this.trigger('services:initialized');
           });
       } else {
         const {email} = this.webex.config;
 
-        this.collectPreauthCatalog(email ? {email} : undefined).catch((error) => {
-          this.initFailed = true;
-          this.logger.error(
-            `services: failed to init initial services when no credentials available, ${error?.message}`
-          );
-        });
+        this.collectPreauthCatalog(email ? {email} : undefined)
+          .catch((error) => {
+            this.initFailed = true;
+            this.logger.error(
+              `services: failed to init initial services when no credentials available, ${error?.message}`
+            );
+          })
+          .finally(() => {
+            this.ready = true;
+            this.trigger('services:initialized');
+          });
       }
     });
   },
