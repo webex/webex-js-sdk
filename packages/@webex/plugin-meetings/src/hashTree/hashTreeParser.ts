@@ -958,10 +958,6 @@ class HashTreeParser {
       );
 
       dataSet.timer = setTimeout(async () => {
-        LoggerProxy.logger.info(
-          `HashTreeParser#runSyncAlgorithm --> ${this.debugId} Sync timer fired for "${dataSet.name}" data set`
-        );
-
         dataSet.timer = undefined;
 
         if (!dataSet.hashTree) {
