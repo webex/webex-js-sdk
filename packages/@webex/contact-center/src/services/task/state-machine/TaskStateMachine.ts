@@ -9,6 +9,7 @@ import {setup} from 'xstate';
 import {TaskContext, TaskEventPayload, UIControlConfig} from './types';
 import {TaskState, TaskEvent} from './constants';
 import {actions, createInitialContext, TaskActionsMap} from './actions';
+import {TaskData} from '../types';
 
 type TaskActionConfigMap = {[K in keyof typeof actions]: undefined};
 
@@ -196,6 +197,14 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.HOLD_INITIATING,
             actions: ['setHoldInitiated'],
           },
+          // Backend may send hold success without a preceding HOLD_INITIATED (e.g. remote hold)
+          [TaskEvent.HOLD_SUCCESS]: {
+            target: TaskState.HELD,
+            actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
+          },
+          [TaskEvent.HOLD_FAILED]: {
+            actions: ['updateTaskData'],
+          },
           // Click of the consult button
           [TaskEvent.CONSULT]: {
             target: TaskState.CONSULT_INITIATING,
@@ -217,10 +226,18 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: ['handleTransferInit'],
           },
           // Back-end may still send transfer responses even if we did not enter the interim state
-          [TaskEvent.TRANSFER_SUCCESS]: {
-            target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
-          },
+          [TaskEvent.TRANSFER_SUCCESS]: [
+            {
+              guard: ({event}: {event: TaskEventPayload}) =>
+                Boolean((event as {taskData?: TaskData}).taskData?.wrapUpRequired),
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'clearConsultState', 'finalizeTransfer'],
+            },
+          ],
           [TaskEvent.TRANSFER_FAILED]: {
             actions: ['updateTaskData', 'finalizeTransfer'],
           },
@@ -265,6 +282,13 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           [TaskEvent.UNHOLD]: {
             target: TaskState.RESUME_INITIATING,
+          },
+          [TaskEvent.UNHOLD_SUCCESS]: {
+            target: TaskState.CONNECTED,
+            actions: ['updateTaskData', 'setHoldState', 'emitTaskResume'],
+          },
+          [TaskEvent.UNHOLD_FAILED]: {
+            actions: ['updateTaskData'],
           },
           // Click of the consult button
           [TaskEvent.CONSULT]: {
@@ -353,11 +377,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: ({context}: {context: TaskContext}) => Boolean(context.consultInitiator),
               target: TaskState.HELD,
-              actions: ['clearConsultState', 'emitTaskConsultEnd'],
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
             {
-              target: TaskState.IDLE,
-              actions: ['clearConsultState', 'emitTaskConsultEnd'],
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'clearConsultState', 'markEnded', 'emitTaskConsultEnd'],
             },
           ],
           // Transfer buttons while in consulting

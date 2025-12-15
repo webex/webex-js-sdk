@@ -143,7 +143,7 @@ export default class Voice extends Task implements IVoice {
 
     // Send initiating event to transition to intermediate state
     if (this.stateMachineService) {
-      const initiatingEvent = shouldHold ? TaskEvent.HOLD : TaskEvent.UNHOLD;
+      const initiatingEvent = shouldHold ? TaskEvent.HOLD_INITIATED : TaskEvent.UNHOLD_INITIATED;
       this.stateMachineService.send({
         type: initiatingEvent,
         mediaResourceId: this.data.mediaResourceId,

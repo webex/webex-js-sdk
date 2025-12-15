@@ -2013,15 +2013,21 @@ function holdResumeCall() {
     holdResumeElm.disabled = true;
     currentTask.holdResume().then(() => {
       console.info('Call held successfully');
+      holdResumeElm.innerText = 'Resume';
+      holdResumeElm.disabled = false;
     }).catch((error) => {
       console.error('Failed to hold the call', error);
+      holdResumeElm.disabled = false;
     });
   } else {
     holdResumeElm.disabled = true;
     currentTask.holdResume().then(() => {
       console.info('Call resumed successfully');
+      holdResumeElm.innerText = 'Hold';
+      holdResumeElm.disabled = false;
     }).catch((error) => {
       console.error('Failed to resume the call', error);
+      holdResumeElm.disabled = false;
     });
   }
 }
