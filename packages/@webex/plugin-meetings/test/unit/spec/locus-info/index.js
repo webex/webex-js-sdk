@@ -358,11 +358,65 @@ describe('plugin-meetings', () => {
           });
         });
 
+        it('should process locus update correctly when called with updated fullState', () => {
+          const newFullState = {
+            id: 'new-fullState',
+            visibleDataSets: ['dataset1', 'dataset2'],
+          };
+
+          // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
+          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+            updatedObjects: [{htMeta: {elementId: {type: 'fullState'}}, data: newFullState}],
+          });
+
+          // check onDeltaLocus() was called with correctly updated locus info
+          assert.calledOnceWithExactly(onDeltaLocusStub, {
+            ...expectedLocusInfo,
+            fullState: newFullState,
+          });
+        });
+
+        it('should process locus update correctly when called with updated info', () => {
+          const newInfo = {
+            id: 'new-info',
+            visibleDataSets: ['dataset1', 'dataset2'],
+          };
+
+          // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
+          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+            updatedObjects: [{htMeta: {elementId: {type: 'info'}}, data: newInfo}],
+          });
+
+          // check onDeltaLocus() was called with correctly updated locus info
+          assert.calledOnceWithExactly(onDeltaLocusStub, {
+            ...expectedLocusInfo,
+            info: newInfo,
+          });
+        });
+
+        it('should process locus update correctly when called with updated links', () => {
+          const newLinks = {
+            id: 'new-links',
+            visibleDataSets: ['dataset1', 'dataset2'],
+          };
+
+          // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
+          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+            updatedObjects: [{htMeta: {elementId: {type: 'links'}}, data: newLinks}],
+          });
+
+          // check onDeltaLocus() was called with correctly updated locus info
+          assert.calledOnceWithExactly(onDeltaLocusStub, {
+            ...expectedLocusInfo,
+            links: newLinks,
+          });
+        });
+
         it('should process locus update correctly when called with updated LOCUS object', () => {
           // setup new updated locus that has many things missing
           const newLocusHtMeta = {elementId: {type: 'locus', version: 42}};
           const newLocus = {
-            conntrols: 'new-controls',
+            controls: 'new-controls',
             host: 'new-host',
             htMeta: newLocusHtMeta,
           };
@@ -374,10 +428,62 @@ describe('plugin-meetings', () => {
 
           // check onDeltaLocus() was called with correctly updated locus info
           assert.calledOnceWithExactly(onDeltaLocusStub, {
+            // these fields are not part of Locus object, so should keep their old values:
+            info: {id: 'fake-info'},
+            fullState: {id: 'fake-full-state'},
+            self: {id: 'fake-self'},
+            links: { id: 'fake-links' },
+            mediaShares: expectedLocusInfo.mediaShares,
+            // and now the new fields
             ...newLocus,
             htMeta: newLocusHtMeta,
             participants: [], // empty means there were no participant updates
             jsSdkMeta: {removedParticipantIds: []}, // no participants were removed
+          });
+        });
+
+        // this test is checking that we cope with an edge case if Locus
+        // sends us something that they shouldn't
+        it('should process locus update correctly when called with updated LOCUS object that contains info/fullState/self/participants etc', () => {
+          // setup new updated locus that has many things missing
+          const newLocusHtMeta = {elementId: {type: 'locus', version: 42}};
+          const newLocus = {
+            controls: 'new-controls',
+            host: 'new-host',
+            htMeta: newLocusHtMeta,
+          };
+
+          // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
+          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+            updatedObjects: [
+              {
+                htMeta: newLocusHtMeta,
+                data: {
+                  ...newLocus,
+                  // all these fields below should be ignored and not override the existing ones in our "old" Locus
+                  info: 'new-info',
+                  fullState: 'new-fullState',
+                  self: 'new-self',
+                  participants: 'new-participants',
+                  mediaShares: 'new-mediaShares',
+                },
+              },
+            ],
+          });
+
+          // check onDeltaLocus() was called with correctly updated locus info
+          // with old values for the fields that should be ignored (like "info" or "fullState")
+          assert.calledOnceWithExactly(onDeltaLocusStub, {
+            // these fields have the "old" values:
+            info: {id: 'fake-info'},
+            fullState: {id: 'fake-full-state'},
+            self: {id: 'fake-self'},
+            links: { id: 'fake-links' },
+            mediaShares: expectedLocusInfo.mediaShares,
+            participants: [], // empty means there were no participant updates
+            jsSdkMeta: {removedParticipantIds: []}, // no participants were removed
+            ...newLocus,
+            htMeta: newLocusHtMeta,
           });
         });
 
@@ -402,6 +508,13 @@ describe('plugin-meetings', () => {
 
           // check onDeltaLocus() was called with correctly updated locus info
           assert.calledOnceWithExactly(onDeltaLocusStub, {
+            // these fields are not part of Locus object, so should keep their old values:
+            info: {id: 'fake-info'},
+            fullState: {id: 'fake-full-state'},
+            self: {id: 'fake-self'},
+            links: {id: 'fake-links'},
+            mediaShares: expectedLocusInfo.mediaShares,
+            // and now the new fields
             ...newLocus,
             htMeta: newLocusHtMeta,
             participants: [], // empty means there were no participant updates
@@ -2578,7 +2691,7 @@ describe('plugin-meetings', () => {
 
         assert.calledWith(locusInfo.handleLocusDelta, fakeLocus, mockMeeting);
       });
-      it('does nothing when we are using hash trees', () => {
+      it('calls hash tree parser when we are using hash trees', () => {
         const fakeLocus = {eventType: LOCUSEVENT.DIFFERENCE};
         const fakeDataSets = [{name: 'dataset1', url: 'http://test.com'}];
         const responseBody = {locus: fakeLocus, dataSets: fakeDataSets};
@@ -2593,8 +2706,7 @@ describe('plugin-meetings', () => {
 
         locusInfo.handleLocusAPIResponse(mockMeeting, responseBody);
 
-        assert.notCalled(mockHashTreeParser.handleLocusUpdate);
-        assert.notCalled(locusInfo.onDeltaLocus);
+        assert.calledOnceWithExactly(mockHashTreeParser.handleLocusUpdate, responseBody);
       });
     });
 
@@ -2680,7 +2792,7 @@ describe('plugin-meetings', () => {
         sinon.stub(locusInfo, "updateMemberShip");
         sinon.stub(locusInfo, "updateIdentifiers");
         sinon.stub(locusInfo, "updateEmbeddedApps");
-        sinon.stub(locusInfo, "updateResources");
+        sinon.stub(locusInfo, "updateLinks");
         sinon.stub(locusInfo, "compareAndUpdate");
 
         locusInfo.updateLocusInfo(locus);
@@ -2714,7 +2826,7 @@ describe('plugin-meetings', () => {
         locusInfo.updateMemberShip = sinon.stub();
         locusInfo.updateIdentifiers = sinon.stub();
         locusInfo.updateEmbeddedApps = sinon.stub();
-        locusInfo.updateResources = sinon.stub();
+        locusInfo.updateLinks = sinon.stub();
         locusInfo.compareAndUpdate = sinon.stub();
 
         locusInfo.updateLocusInfo(newLocus);
@@ -2736,11 +2848,42 @@ describe('plugin-meetings', () => {
         assert.notCalled(locusInfo.updateMemberShip);
         assert.notCalled(locusInfo.updateIdentifiers);
         assert.notCalled(locusInfo.updateEmbeddedApps);
-        assert.notCalled(locusInfo.updateResources);
+        assert.notCalled(locusInfo.updateLinks);
         assert.notCalled(locusInfo.compareAndUpdate);
       });
 
+      it('#updateLocusInfo puts the Locus DTO top level properties at the right place in LocusInfo class', () => {
+        // this test verifies that the top-level properties of Locus DTO are copied
+        // into LocusInfo class and set as top level properties too
+        // this is important, because the code handling Locus hass trees relies on it, see updateFromHashTree()
+        const info = {id: 'info id'};
+        const fullState = {id: 'fullState id'};
+        const links = {services: {id: 'service links'}, resources: {id: 'resource links'}};
+        const self = {id: 'self id'};
+        const mediaShares = [{id: 'fake media share'}];
 
+        sinon.stub(SelfUtils, 'getSelves').returns({
+          current: {},
+          previous: {},
+          updates: {},
+        });
+
+        const newLocus = {
+          info,
+          fullState,
+          links,
+          self,
+          mediaShares,
+        };
+
+        locusInfo.updateLocusInfo(newLocus);
+
+        assert.deepEqual(locusInfo.info, newLocus.info);
+        assert.deepEqual(locusInfo.fullState, newLocus.fullState);
+        assert.deepEqual(locusInfo.links, newLocus.links);
+        assert.deepEqual(locusInfo.self, newLocus.self);
+        assert.deepEqual(locusInfo.mediaShares, newLocus.mediaShares);
+      });
 
       it('onFullLocus() updates the working-copy of locus parser', () => {
         const eventType = 'fakeEvent';
