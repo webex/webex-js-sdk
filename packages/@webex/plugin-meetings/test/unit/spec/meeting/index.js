@@ -714,7 +714,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      describe.only('#joinWithMedia', () => {
+      describe('#joinWithMedia', () => {
         it('should have #joinWithMedia', () => {
           assert.exists(meeting.joinWithMedia);
         });
