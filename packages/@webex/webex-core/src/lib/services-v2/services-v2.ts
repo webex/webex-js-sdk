@@ -60,6 +60,34 @@ const Services = WebexPlugin.extend({
   },
 
   /**
+   * Determine the intended preauth selection based on the current context.
+   * @param {string} [currentOrgId]
+   * @returns {{selectionType: string, selectionValue: string}}
+   */
+  getIntendedPreauthSelection(currentOrgId?: string): {
+    selectionType: string;
+    selectionValue: string;
+  } {
+    if (this.webex.credentials?.canAuthorize) {
+      if (currentOrgId) {
+        return {selectionType: 'orgId', selectionValue: currentOrgId};
+      }
+    }
+
+    const emailConfig = this.webex.config && this.webex.config.email;
+
+    if (typeof emailConfig === 'string' && emailConfig.trim()) {
+      return {
+        selectionType: 'emailhash',
+        selectionValue: sha256(emailConfig.toLowerCase()).toString(),
+      };
+    }
+
+    // fall back to proximity mode when no orgId or email available
+    return {selectionType: 'mode', selectionValue: 'DEFAULT_BY_PROXIMITY'};
+  },
+
+  /**
    * Get a service url from the current services list by name
    * from the associated instance catalog.
    * @param {string} name
@@ -1081,29 +1109,8 @@ const Services = WebexPlugin.extend({
       const catalog = this._getCatalog();
       const groups: Array<ServiceGroup> = ['preauth', 'signin', 'postauth'];
 
-      // Helper: compute intended preauth selection based on current context
-      const getIntendedPreauthSelection = () => {
-        if (this.webex.credentials?.canAuthorize) {
-          if (currentOrgId) {
-            return {selectionType: 'orgId', selectionValue: currentOrgId};
-          }
-        }
-
-        const emailConfig = this.webex.config && this.webex.config.email;
-
-        if (typeof emailConfig === 'string' && emailConfig.trim()) {
-          return {
-            selectionType: 'emailhash',
-            selectionValue: sha256(emailConfig.toLowerCase()).toString(),
-          };
-        }
-
-        // fall back to proximity mode when no orgId or email available
-        return {selectionType: 'mode', selectionValue: 'DEFAULT_BY_PROXIMITY'};
-      };
-
-      groups.forEach((g) => {
-        const cachedGroup = cached[g];
+      groups.forEach((serviceGroup) => {
+        const cachedGroup = cached[serviceGroup];
         if (!cachedGroup) {
           return;
         }
@@ -1111,16 +1118,15 @@ const Services = WebexPlugin.extend({
         // Support legacy (hostMap) and new ({hostMap, meta}) shapes
         const hostMap: ServiceHostmap =
           cachedGroup && cachedGroup.hostMap ? cachedGroup.hostMap : cachedGroup;
-        const meta: {selectionType: string; selectionValue: string} | undefined =
-          cachedGroup && cachedGroup.meta ? cachedGroup.meta : undefined;
+        const meta: {selectionType: string; selectionValue: string} | undefined = cachedGroup?.meta;
 
-        if (g === 'preauth' && meta) {
+        if (serviceGroup === 'preauth' && meta) {
           // For proximity-based selection, always fetch fresh to respect IP/region changes
           if (meta.selectionType === 'mode') {
             return;
           }
 
-          const intended = getIntendedPreauthSelection();
+          const intended = this.getIntendedPreauthSelection(currentOrgId);
           const matches =
             intended &&
             intended.selectionType === meta.selectionType &&
@@ -1131,7 +1137,7 @@ const Services = WebexPlugin.extend({
         }
 
         if (hostMap) {
-          catalog.updateServiceGroups(g, hostMap?.services, hostMap?.timestamp);
+          catalog.updateServiceGroups(serviceGroup, hostMap?.services, hostMap?.timestamp);
         }
       });
 
