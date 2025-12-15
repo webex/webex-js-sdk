@@ -38,7 +38,7 @@ import HashTreeParser, {
   LocusInfoUpdateType,
 } from '../hashTree/hashTreeParser';
 import {ObjectType, ObjectTypeToLocusKeyMap} from '../hashTree/types';
-import {LocusDTO, LocusFullState} from './types';
+import {Links, LocusDTO, LocusFullState} from './types';
 
 export type LocusLLMEvent = {
   data: {
@@ -113,8 +113,7 @@ export default class LocusInfo extends EventsScope {
   mediaShares: any;
   replace: any;
   url: any;
-  services: any;
-  resources: any;
+  links?: Links;
   mainSessionLocusCache: any;
   self: any;
   hashTreeParser?: HashTreeParser;
@@ -360,8 +359,7 @@ export default class LocusInfo extends EventsScope {
     this.updateSelf(locus.self);
     this.updateHostInfo(locus.host);
     this.updateMediaShares(locus.mediaShares);
-    this.updateServices(locus.links?.services);
-    this.updateResources(locus.links?.resources);
+    this.updateLinks(locus.links);
   }
 
   /**
@@ -596,12 +594,13 @@ export default class LocusInfo extends EventsScope {
           this.hashTreeObjectId2ParticipantId.delete(object.htMeta.elementId.id);
         }
         break;
+      case ObjectType.links:
       case ObjectType.info:
       case ObjectType.fullState:
       case ObjectType.self:
         if (!object.data) {
           // self without data is handled inside HashTreeParser and results in LocusInfoUpdateType.MEETING_ENDED, so we should never get here
-          // other types like info or fullstate - Locus should never send them without data
+          // all other types info, fullstate, etc - Locus should never send them without data
           LoggerProxy.logger.warn(
             `Locus-info:index#updateLocusFromHashTreeObject --> received ${type} object without data, this is not expected! version=${object.htMeta.elementId.version}`
           );
@@ -1032,8 +1031,7 @@ export default class LocusInfo extends EventsScope {
     this.updateMemberShip(locus.membership);
     this.updateIdentifiers(locus.identities);
     this.updateEmbeddedApps(locus.embeddedApps);
-    this.updateServices(locus.links?.services);
-    this.updateResources(locus.links?.resources);
+    this.updateLinks(locus.links);
     this.compareAndUpdate();
     // update which required to compare different objects from locus
   }
@@ -1685,17 +1683,19 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
-   * @param {Object} services
+   * Updates links and emits appropriate events if services or resources have changed
+   * @param {Object} links
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  updateServices(services: Record<'breakout' | 'record', {url: string}>) {
-    if (services && !isEqual(this.services, services)) {
-      this.services = services;
+  updateLinks(links?: Links) {
+    const {services, resources} = links || {};
+
+    if (services && !isEqual(this.links?.services, services)) {
       this.emitScoped(
         {
           file: 'locus-info',
-          function: 'updateServices',
+          function: 'updateLinks',
         },
         LOCUSINFO.EVENTS.LINKS_SERVICES,
         {
@@ -1703,20 +1703,12 @@ export default class LocusInfo extends EventsScope {
         }
       );
     }
-  }
 
-  /**
-   * @param {Object} resources
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateResources(resources: Record<'webcastInstance', {url: string}>) {
-    if (resources && !isEqual(this.resources, resources)) {
-      this.resources = resources;
+    if (resources && !isEqual(this.links?.resources, resources)) {
       this.emitScoped(
         {
           file: 'locus-info',
-          function: 'updateResources',
+          function: 'updateLinks',
         },
         LOCUSINFO.EVENTS.LINKS_RESOURCES,
         {
@@ -1724,6 +1716,8 @@ export default class LocusInfo extends EventsScope {
         }
       );
     }
+
+    this.links = links;
   }
 
   /**
