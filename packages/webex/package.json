@@ -78,7 +78,7 @@
     "@webex/internal-plugin-mercury": "workspace:*",
     "@webex/internal-plugin-presence": "workspace:*",
     "@webex/internal-plugin-support": "workspace:*",
-    "@webex/internal-plugin-task": "workspace:^",
+    "@webex/internal-plugin-task": "workspace:*",
     "@webex/internal-plugin-voicea": "workspace:*",
     "@webex/plugin-attachment-actions": "workspace:*",
     "@webex/plugin-authorization": "workspace:*",
