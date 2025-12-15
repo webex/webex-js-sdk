@@ -247,7 +247,10 @@ export default class TaskManager extends EventEmitter {
         return {type: TaskEvent.CTQ_CANCEL_FAILED, taskData: payload};
 
       case CC_EVENTS.AGENT_CONSULT_TRANSFERRED:
-        return {type: TaskEvent.TRANSFER_SUCCESS, taskData: payload};
+        return {
+          type: TaskEvent.TRANSFER_SUCCESS,
+          taskData: payload,
+        };
 
       case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
       case CC_EVENTS.AGENT_WRAPUP:
@@ -409,7 +412,18 @@ export default class TaskManager extends EventEmitter {
     }
 
     const task = this.taskCollection[message.data.interactionId];
-    const stateMachineEvent = TaskManager.mapEventToTaskStateMachineEvent(eventType, message.data);
+    const wasConsultedTask = Boolean(task?.data?.isConsulted);
+    const adjustedPayload =
+      eventType === CC_EVENTS.AGENT_CONSULT_TRANSFERRED
+        ? {
+            ...message.data,
+            wrapUpRequired: !wasConsultedTask,
+          }
+        : message.data;
+    const stateMachineEvent = TaskManager.mapEventToTaskStateMachineEvent(
+      eventType,
+      adjustedPayload
+    );
 
     LoggerProxy.info(`Handling task event ${eventType}`, {
       module: TASK_MANAGER_FILE,
@@ -419,10 +433,10 @@ export default class TaskManager extends EventEmitter {
 
     return {
       eventType,
-      payload: message.data,
+      payload: adjustedPayload,
       task,
       stateMachineEvent,
-      wasConsultedTask: Boolean(task?.data?.isConsulted),
+      wasConsultedTask,
     };
   }
 

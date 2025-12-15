@@ -34,6 +34,10 @@ type RecordingStateUpdate = Partial<
 >;
 
 const determineConsultInitiator = (taskData?: TaskData): boolean | undefined => {
+  if (taskData?.isConsulted !== undefined) {
+    return !taskData.isConsulted;
+  }
+
   const participants = taskData?.interaction?.participants;
   const destAgentId = taskData?.destAgentId;
 
