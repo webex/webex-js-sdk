@@ -2780,7 +2780,6 @@ describe('plugin-meetings', () => {
           callOrder.push("updateMeetingInfo");
         });
         sinon.stub(locusInfo, "updateMediaShares");
-        sinon.stub(locusInfo, "updateParticipantsUrl");
         sinon.stub(locusInfo, "updateReplace");
         sinon.stub(locusInfo, "updateSelf");
         sinon.stub(locusInfo, "updateLocusUrl").callsFake(() => {
@@ -2789,8 +2788,6 @@ describe('plugin-meetings', () => {
         sinon.stub(locusInfo, "updateAclUrl");
         sinon.stub(locusInfo, "updateBasequence");
         sinon.stub(locusInfo, "updateSequence");
-        sinon.stub(locusInfo, "updateMemberShip");
-        sinon.stub(locusInfo, "updateIdentifiers");
         sinon.stub(locusInfo, "updateEmbeddedApps");
         sinon.stub(locusInfo, "updateLinks");
         sinon.stub(locusInfo, "compareAndUpdate");
@@ -2816,15 +2813,12 @@ describe('plugin-meetings', () => {
         locusInfo.updateHostInfo = sinon.stub();
         locusInfo.updateMeetingInfo = sinon.stub();
         locusInfo.updateMediaShares = sinon.stub();
-        locusInfo.updateParticipantsUrl = sinon.stub();
         locusInfo.updateReplace = sinon.stub();
         locusInfo.updateSelf = sinon.stub();
         locusInfo.updateLocusUrl = sinon.stub();
         locusInfo.updateAclUrl = sinon.stub();
         locusInfo.updateBasequence = sinon.stub();
         locusInfo.updateSequence = sinon.stub();
-        locusInfo.updateMemberShip = sinon.stub();
-        locusInfo.updateIdentifiers = sinon.stub();
         locusInfo.updateEmbeddedApps = sinon.stub();
         locusInfo.updateLinks = sinon.stub();
         locusInfo.compareAndUpdate = sinon.stub();
@@ -2838,15 +2832,12 @@ describe('plugin-meetings', () => {
         assert.notCalled(locusInfo.updateHostInfo);
         assert.notCalled(locusInfo.updateMeetingInfo);
         assert.notCalled(locusInfo.updateMediaShares);
-        assert.notCalled(locusInfo.updateParticipantsUrl);
         assert.notCalled(locusInfo.updateReplace);
         assert.notCalled(locusInfo.updateSelf);
         assert.notCalled(locusInfo.updateLocusUrl);
         assert.notCalled(locusInfo.updateAclUrl);
         assert.notCalled(locusInfo.updateBasequence);
         assert.notCalled(locusInfo.updateSequence);
-        assert.notCalled(locusInfo.updateMemberShip);
-        assert.notCalled(locusInfo.updateIdentifiers);
         assert.notCalled(locusInfo.updateEmbeddedApps);
         assert.notCalled(locusInfo.updateLinks);
         assert.notCalled(locusInfo.compareAndUpdate);
