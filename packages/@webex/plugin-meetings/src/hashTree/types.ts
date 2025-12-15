@@ -8,12 +8,14 @@ export const ObjectType = {
   mediaShare: 'mediashare',
   info: 'info',
   fullState: 'fullstate',
+  links: 'links',
 } as const;
 
 export type ObjectType = Enum<typeof ObjectType>;
 
 // mapping from ObjectType to top level LocusDTO keys
 export const ObjectTypeToLocusKeyMap = {
+  [ObjectType.links]: 'links',
   [ObjectType.info]: 'info',
   [ObjectType.fullState]: 'fullState',
   [ObjectType.self]: 'self',
