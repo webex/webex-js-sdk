@@ -1,5 +1,5 @@
 import uuid from 'uuid';
-import {cloneDeep, isEqual, isEmpty} from 'lodash';
+import {cloneDeep, isEqual, isEmpty, merge} from 'lodash';
 import jwtDecode from 'jwt-decode';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
@@ -50,6 +50,11 @@ import {
   type MeetingTranscriptPayload,
 } from '@webex/internal-plugin-voicea';
 
+import {
+  getBrowserMediaErrorCode,
+  isBrowserMediaError,
+  isBrowserMediaErrorName,
+} from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics.util';
 import {processNewCaptions} from './voicea-meeting';
 
 import {
@@ -5438,6 +5443,20 @@ export default class Meeting extends StatelessWebexPlugin {
         // errors related to offer creation (for example missing H264 codec) will happen again no matter how many times we try,
         // so there is no point doing a retry
         shouldRetry = false;
+      }
+
+      if (CallDiagnosticUtils.isBrowserMediaError(error)) {
+        shouldRetry = false;
+        // eslint-disable-next-line no-ex-assign
+        error = merge({
+          error: {
+            body: {
+              errorCode: CallDiagnosticUtils.getBrowserMediaErrorCode(error),
+              message: error?.message,
+              name: error?.name,
+            },
+          },
+        });
       }
 
       // we only want to call leave if join was successful and this was a retry or we won't be doing any more retries
