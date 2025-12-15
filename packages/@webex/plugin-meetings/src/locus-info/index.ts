@@ -108,7 +108,6 @@ export default class LocusInfo extends EventsScope {
   info: any;
   roles: any;
   mediaShares: any;
-  replace: any;
   url: any;
   links?: Links;
   mainSessionLocusCache: any;
@@ -1016,7 +1015,7 @@ export default class LocusInfo extends EventsScope {
     this.updateLocusUrl(locus.url, ControlsUtils.isMainSessionDTO(locus));
     this.updateMeetingInfo(locus.info, locus.self);
     this.updateMediaShares(locus.mediaShares);
-    this.updateReplace(locus.replace);
+    this.updateReplaces(locus.replaces);
     this.updateSelf(locus.self);
     this.updateAclUrl(locus.aclUrl);
     this.updateBasequence(locus.baseSequence);
@@ -1895,13 +1894,13 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
-   * @param {Object} replace
+   * @param {Object} replaces
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  updateReplace(replace: object) {
-    if (replace && !isEqual(this.replace, replace)) {
-      this.replace = replace;
+  updateReplaces(replaces: object) {
+    if (replaces && !isEqual(this.replaces, replaces)) {
+      this.replaces = replaces;
     }
   }
 

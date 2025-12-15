@@ -2780,7 +2780,7 @@ describe('plugin-meetings', () => {
           callOrder.push("updateMeetingInfo");
         });
         sinon.stub(locusInfo, "updateMediaShares");
-        sinon.stub(locusInfo, "updateReplace");
+        sinon.stub(locusInfo, "updateReplaces");
         sinon.stub(locusInfo, "updateSelf");
         sinon.stub(locusInfo, "updateLocusUrl").callsFake(() => {
           callOrder.push("updateLocusUrl");
@@ -2813,7 +2813,7 @@ describe('plugin-meetings', () => {
         locusInfo.updateHostInfo = sinon.stub();
         locusInfo.updateMeetingInfo = sinon.stub();
         locusInfo.updateMediaShares = sinon.stub();
-        locusInfo.updateReplace = sinon.stub();
+        locusInfo.updateReplaces = sinon.stub();
         locusInfo.updateSelf = sinon.stub();
         locusInfo.updateLocusUrl = sinon.stub();
         locusInfo.updateAclUrl = sinon.stub();
@@ -2832,7 +2832,7 @@ describe('plugin-meetings', () => {
         assert.notCalled(locusInfo.updateHostInfo);
         assert.notCalled(locusInfo.updateMeetingInfo);
         assert.notCalled(locusInfo.updateMediaShares);
-        assert.notCalled(locusInfo.updateReplace);
+        assert.notCalled(locusInfo.updateReplaces);
         assert.notCalled(locusInfo.updateSelf);
         assert.notCalled(locusInfo.updateLocusUrl);
         assert.notCalled(locusInfo.updateAclUrl);
