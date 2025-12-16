@@ -1072,7 +1072,6 @@ const Services = WebexPlugin.extend({
    */
   initServiceCatalogs() {
     this.logger.info('services: initializing initial service catalogs');
-
     // Destructure the credentials plugin.
     const {credentials} = this.webex;
 
