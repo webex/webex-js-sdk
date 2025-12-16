@@ -358,6 +358,76 @@ describe('plugin-meetings', () => {
           });
         });
 
+        it('should process locus update correctly when called with updated SELF (webinar non-attendee)', () => {
+          const newSelf = {
+            id: 'new-self',
+            visibleDataSets: ['dataset1', 'dataset2'],
+            controls: {
+              role: {
+                roles: [
+                  {type: 'PANELIST', hasRole: true},
+                  {type: 'ATTENDEE', hasRole: false},
+                ],
+              },
+            },
+          };
+          locusInfo.info.isWebinar = true;
+
+          // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
+          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+            updatedObjects: [{htMeta: {elementId: {type: 'self'}}, data: newSelf}],
+          });
+
+          // check onDeltaLocus() was called with correctly updated locus info
+          // without any participant generated
+          assert.calledOnceWithExactly(onDeltaLocusStub, {
+            ...expectedLocusInfo,
+            info: {
+              ...expectedLocusInfo.info,
+              isWebinar: true,
+            },
+            self: newSelf,
+          });
+        });
+
+        it('should generate a participant when called with updated SELF for webinar attendee', () => {
+          const newSelf = {
+            id: 'new-self',
+            visibleDataSets: ['dataset1', 'dataset2'],
+            controls: {
+              role: {
+                roles: [
+                  {type: 'something else - should be ignored', hasRole: true},
+                  {type: 'ATTENDEE', hasRole: true},
+                ],
+              },
+            },
+          };
+
+          locusInfo.info.isWebinar = true;
+
+          // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
+          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+            updatedObjects: [{htMeta: {elementId: {type: 'self'}}, data: newSelf}],
+          });
+
+          // check onDeltaLocus() was called with correctly updated locus info
+          // that contains a participant created from self
+          assert.calledOnceWithExactly(onDeltaLocusStub, {
+            ...expectedLocusInfo,
+            info: {
+              ...expectedLocusInfo.info,
+              isWebinar: true,
+            },
+            self: newSelf,
+            participants: [
+              {
+                ...newSelf,
+              },
+            ],
+          });
+        });
+
         it('should process locus update correctly when called with updated fullState', () => {
           const newFullState = {
             id: 'new-fullState',
