@@ -60,6 +60,18 @@ const Services = WebexPlugin.extend({
   },
 
   /**
+   * Safely access localStorage if available; returns the Storage or null.
+   * @returns {Storage | null}
+   */
+  _getLocalStorageSafe(): Storage | null {
+    if (typeof window !== 'undefined' && (window as any).localStorage) {
+      return (window as any).localStorage as Storage;
+    }
+
+    return null;
+  },
+
+  /**
    * Determine the intended preauth selection based on the current context.
    * @param {string} [currentOrgId]
    * @returns {{selectionType: string, selectionValue: string}}
@@ -284,16 +296,12 @@ const Services = WebexPlugin.extend({
         // Build selection metadata for caching discrimination (preauth/signin)
         let selectionMeta: {selectionType: string; selectionValue: string} | undefined;
         if (serviceGroup === 'preauth' || serviceGroup === 'signin') {
-          try {
-            const key = formattedQuery && Object.keys(formattedQuery || {})[0];
-            if (key) {
-              selectionMeta = {
-                selectionType: key,
-                selectionValue: formattedQuery[key],
-              };
-            }
-          } catch {
-            this.logger.warn('services: error building selection meta');
+          const key = formattedQuery && Object.keys(formattedQuery || {})[0];
+          if (key) {
+            selectionMeta = {
+              selectionType: key,
+              selectionValue: formattedQuery[key],
+            };
           }
         }
         this._cacheCatalog(serviceGroup, serviceHostMap, selectionMeta);
@@ -1006,10 +1014,8 @@ const Services = WebexPlugin.extend({
       }
 
       try {
-        const raw =
-          typeof window !== 'undefined' && (window as any).localStorage
-            ? (window as any).localStorage.getItem(CATALOG_CACHE_KEY_V2)
-            : null;
+        const ls = this._getLocalStorageSafe();
+        const raw = ls ? ls.getItem(CATALOG_CACHE_KEY_V2) : null;
         current = raw ? JSON.parse(raw) : {};
       } catch {
         current = {};
@@ -1037,8 +1043,9 @@ const Services = WebexPlugin.extend({
         cachedAt: Date.now(),
       };
 
-      if (typeof window !== 'undefined' && (window as any).localStorage) {
-        (window as any).localStorage.setItem(CATALOG_CACHE_KEY_V2, JSON.stringify(updated));
+      const ls = this._getLocalStorageSafe();
+      if (ls) {
+        ls.setItem(CATALOG_CACHE_KEY_V2, JSON.stringify(updated));
       }
     } catch (e) {
       this.logger.warn('services: error caching catalog', e);
@@ -1060,12 +1067,13 @@ const Services = WebexPlugin.extend({
         return false;
       }
 
-      if (typeof window === 'undefined' || !window.localStorage) {
+      const ls = this._getLocalStorageSafe();
+      if (!ls) {
         this.logger.info('services: skipping cache warm-up as no localStorage is available');
 
         return false;
       }
-      const raw = window.localStorage.getItem(CATALOG_CACHE_KEY_V2);
+      const raw = ls.getItem(CATALOG_CACHE_KEY_V2);
       const cached = raw ? JSON.parse(raw) : undefined;
       if (!cached) {
         return false;
@@ -1155,8 +1163,9 @@ const Services = WebexPlugin.extend({
    */
   clearCatalogCache(): Promise<void> {
     try {
-      if (typeof window !== 'undefined' && (window as any).localStorage) {
-        (window as any).localStorage.removeItem(CATALOG_CACHE_KEY_V2);
+      const ls = this._getLocalStorageSafe();
+      if (ls) {
+        ls.removeItem(CATALOG_CACHE_KEY_V2);
       }
     } catch (e) {
       this.logger.warn('services: error clearing catalog cache', e);
