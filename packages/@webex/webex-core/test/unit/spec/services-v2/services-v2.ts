@@ -827,15 +827,20 @@ describe('webex-core', () => {
           setItem: (k: string, v: string) => store.set(k, v),
           removeItem: (k: string) => store.delete(k),
           _store: store,
-        } as any;
+        };
       };
 
       beforeEach(() => {
         // Stub window.localStorage
-        windowBackup = (global as any).window;
-        if (!(global as any).window) (global as any).window = {};
-        localStorageBackup = (global as any).window.localStorage;
-        (global as any).window.localStorage = makeLocalStorageShim();
+        windowBackup = global.window;
+        if (!global.window) global.window = {} as Window & typeof globalThis;
+        localStorageBackup = global.window.localStorage;
+        global.window.localStorage = makeLocalStorageShim();
+        // Enable U2C caching feature flag for tests that depend on cache writes/reads
+        services.webex.config = services.webex.config || {};
+        services.webex.config.calling = {...(services.webex.config.calling || {}), cacheU2C: true};
+        // Ensure code under test uses our shim via util method
+        sinon.stub(services, '_getLocalStorageSafe').returns(global.window.localStorage);
         // default current env
         services.webex.config = services.webex.config || {};
         services.webex.config.services = services.webex.config.services || {discovery: {}};
@@ -848,11 +853,15 @@ describe('webex-core', () => {
       });
 
       afterEach(() => {
-        (global as any).window.localStorage = localStorageBackup || undefined;
+        global.window.localStorage = localStorageBackup || undefined;
         if (!windowBackup) {
-          delete (global as any).window;
+          delete global.window;
         } else {
-          (global as any).window = windowBackup;
+          global.window = windowBackup;
+        }
+        // Restore util stub if present
+        if (services._getLocalStorageSafe && services._getLocalStorageSafe.restore) {
+          services._getLocalStorageSafe.restore();
         }
       });
 
@@ -862,14 +871,14 @@ describe('webex-core', () => {
         services.webex.config.fedramp = false;
 
         // Act
-        await (services as any)._cacheCatalog(
+        await services._cacheCatalog(
           'preauth',
           {services: [], timestamp: Date.now().toString()},
           {selectionType: 'orgId', selectionValue: 'urn:EXAMPLE:org'}
         );
 
         // Assert
-        const raw = (window as any).localStorage.getItem(CATALOG_CACHE_KEY_V2);
+        const raw = window.localStorage.getItem(CATALOG_CACHE_KEY_V2);
         assert.isString(raw);
         const parsed = JSON.parse(raw as string);
         assert.deepEqual(parsed.env, {
@@ -892,7 +901,7 @@ describe('webex-core', () => {
           getOrgId: sinon.stub().returns('urn:EXAMPLE:org'),
         };
         // Seed cache
-        (window as any).localStorage.setItem(
+        window.localStorage.setItem(
           CATALOG_CACHE_KEY_V2,
           JSON.stringify({
             cachedAt: Date.now(),
@@ -922,7 +931,7 @@ describe('webex-core', () => {
         // Arrange env
         services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
         services.webex.config.fedramp = false;
-        (window as any).localStorage.setItem(
+        window.localStorage.setItem(
           CATALOG_CACHE_KEY_V2,
           JSON.stringify({
             cachedAt: Date.now(),
@@ -955,7 +964,7 @@ describe('webex-core', () => {
           canAuthorize: true,
           getOrgId: sinon.stub().returns('urn:EXAMPLE:org'),
         };
-        (window as any).localStorage.setItem(
+        window.localStorage.setItem(
           CATALOG_CACHE_KEY_V2,
           JSON.stringify({
             cachedAt: Date.now(),
@@ -982,7 +991,7 @@ describe('webex-core', () => {
         // Cached env differs from current env
         services.webex.config.services.discovery.u2c = 'https://u2c.current.com/u2c/api/v1';
         services.webex.config.fedramp = false;
-        (window as any).localStorage.setItem(
+        window.localStorage.setItem(
           CATALOG_CACHE_KEY_V2,
           JSON.stringify({
             cachedAt: Date.now(),

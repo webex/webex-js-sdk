@@ -945,11 +945,17 @@ describe('webex-core', () => {
         services = webex.internal.services;
         catalog = services._getCatalog();
   
+        // enable U2C caching feature flag in tests that rely on localStorage writes/reads
+        services.webex.config = services.webex.config || {};
+        services.webex.config.calling = {...(services.webex.config.calling || {}), cacheU2C: true};
+
         // stub window.localStorage
         windowBackup = global.window;
         if (!global.window) global.window = {};
         localStorageBackup = global.window.localStorage;
         global.window.localStorage = makeLocalStorageShim();
+        // Ensure code under test uses our shim via util method
+        sinon.stub(services, '_getLocalStorageSafe').returns(global.window.localStorage);
   
         // Stub the formatter so we don't need a full hostmap payload in tests
         sinon.stub(services, '_formatReceivedHostmap').callsFake(() => [
@@ -963,6 +969,10 @@ describe('webex-core', () => {
           delete global.window;
         } else {
           global.window = windowBackup;
+        }
+        // Restore util stub if present
+        if (services._getLocalStorageSafe && services._getLocalStorageSafe.restore) {
+          services._getLocalStorageSafe.restore();
         }
       });
   
@@ -1089,7 +1099,8 @@ describe('webex-core', () => {
         const fetchSpy = sinon.spy(services, '_fetchNewServiceHostmap');
   
         // with forceRefresh we should fetch despite ready=true
-        await services.updateServices({from: 'limited', query:{orgId:'urn:EXAMPLE:org'}, forceRefresh: true});
+        await services.updateServices({from: 'limited', query: {orgId: 'urn:EXAMPLE:org'}, forceRefresh: true});
+        // pass an empty query to avoid spreading undefined in qs construction
         await services.updateServices({forceRefresh: true});
   
         assert.isTrue(fetchSpy.called, 'forceRefresh should bypass cache short-circuit');
