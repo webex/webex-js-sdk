@@ -18,6 +18,7 @@ import {
   CALL_REMOVED_REASON,
   RECORDING_STATE,
   Enum,
+  SELF_ROLES,
 } from '../constants';
 
 import InfoUtils from './infoUtils';
@@ -512,6 +513,14 @@ export default class LocusInfo extends EventsScope {
   updateLocusFromHashTreeObject(object: HashTreeObject, locus: LocusDTO): LocusDTO {
     const type = object.htMeta.elementId.type.toLowerCase();
 
+    const addParticipantObject = (obj: HashTreeObject) => {
+      if (!locus.participants) {
+        locus.participants = [];
+      }
+      locus.participants.push(obj.data);
+      this.hashTreeObjectId2ParticipantId.set(obj.htMeta.elementId.id, obj.data.id);
+    };
+
     switch (type) {
       case ObjectType.locus: {
         if (!object.data) {
@@ -577,13 +586,7 @@ export default class LocusInfo extends EventsScope {
           } ${object.data ? 'updated' : 'removed'} version=${object.htMeta.elementId.version}`
         );
         if (object.data) {
-          if (!locus.participants) {
-            locus.participants = [];
-          }
-          const participantObject = object.data;
-          participantObject.htMeta = object.htMeta;
-          locus.participants.push(participantObject);
-          this.hashTreeObjectId2ParticipantId.set(object.htMeta.elementId.id, participantObject.id);
+          addParticipantObject(object);
         } else {
           const participantId = this.hashTreeObjectId2ParticipantId.get(object.htMeta.elementId.id);
 
@@ -610,6 +613,24 @@ export default class LocusInfo extends EventsScope {
           );
           const locusDtoKey = ObjectTypeToLocusKeyMap[type];
           locus[locusDtoKey] = object.data;
+
+          /* Hash tree based webinar attendees don't receive a Participant object for themselves from Locus,
+             but a lot of existing code in SDK and web app expects a member object for self to exist,
+             so whenever SELF changes for a webinar attendee, we copy it into a participant object.
+             We can do it, because SELF has always all the same properties as a participant object.
+          */
+          if (
+            type === ObjectType.self &&
+            locus.info?.isWebinar &&
+            object.data.controls?.role?.roles?.find(
+              (r) => r.type === SELF_ROLES.ATTENDEE && r.hasRole
+            )
+          ) {
+            LoggerProxy.logger.info(
+              `Locus-info:index#updateLocusFromHashTreeObject --> webinar attendee: creating participant object from self`
+            );
+            addParticipantObject(object);
+          }
         }
         break;
       default:
