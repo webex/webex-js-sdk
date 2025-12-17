@@ -764,5 +764,54 @@ describe('webex-core', () => {
         );
       });
     });
+    describe('#isValidHost', () => {
+      beforeEach(() => {
+        // Setting up a mock services list
+         services._services = [{
+            "id": "urn:IDENTITY:PC75:adminAudit",
+            "serviceName": "adminAudit",
+            "serviceUrls": [
+                {
+                    "baseUrl": "https://audit-ci-r.wbx2.com/audit-ci/api/v2",
+                    "priority": 5
+                },
+                 {
+                    "baseUrl": "https://audit-ci-t.wbx2.com/audit-ci/api/v2",
+                    "priority": 10
+                }
+            ]
+        },
+         {
+            "id": "urn:IDENTITY:PC75:cdf",
+            "serviceName": "cdf",
+            "serviceUrls": [
+                {
+                    "baseUrl": "https://wapdavis.webex.com/davis/api/v1",
+                    "priority": 5
+                }
+            ]
+        }];
+      });
+      afterAll(() => {
+        // Clean up the mock services list
+        services._services = [];
+      });
+      it('returns true if the host is in the services list', () => {
+        assert.isTrue(services.isValidHost('wapdavis.webex.com'));
+      });
+
+      it('returns false if the host is not in the services list', () => {
+        assert.isFalse(services.isValidHost('test.com'));
+        assert.isFalse(services.isValidHost(''));
+        assert.isFalse(services.isValidHost(null));
+        assert.isFalse(services.isValidHost(undefined));
+      });
+
+      it('returns false for non-string inputs', () => {
+        assert.isFalse(services.isValidHost(123));
+        assert.isFalse(services.isValidHost({}));
+        assert.isFalse(services.isValidHost([]));
+      });
+    });
   });
 });

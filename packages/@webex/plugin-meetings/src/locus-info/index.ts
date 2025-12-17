@@ -18,6 +18,7 @@ import {
   CALL_REMOVED_REASON,
   RECORDING_STATE,
   Enum,
+  SELF_ROLES,
 } from '../constants';
 
 import InfoUtils from './infoUtils';
@@ -37,8 +38,8 @@ import HashTreeParser, {
   isSelf,
   LocusInfoUpdateType,
 } from '../hashTree/hashTreeParser';
-import {ObjectType} from '../hashTree/types';
-import {LocusDTO} from './types';
+import {ObjectType, ObjectTypeToLocusKeyMap} from '../hashTree/types';
+import {Links, LocusDTO, LocusFullState} from './types';
 
 export type LocusLLMEvent = {
   data: {
@@ -47,6 +48,8 @@ export type LocusLLMEvent = {
   };
 };
 
+// list of top level keys in Locus DTO relevant for Hash Tree DTOs processing
+// it does not contain fields specific to classic Locus DTOs like sequence or baseSequence
 const LocusDtoTopLevelKeys = [
   'controls',
   'fullState',
@@ -94,10 +97,7 @@ export default class LocusInfo extends EventsScope {
   aclUrl: any;
   baseSequence: any;
   created: any;
-  identities: any;
-  membership: any;
   participants: any;
-  participantsUrl: any;
   replaces: any;
   scheduledMeeting: any;
   sequence: any;
@@ -109,10 +109,8 @@ export default class LocusInfo extends EventsScope {
   info: any;
   roles: any;
   mediaShares: any;
-  replace: any;
   url: any;
-  services: any;
-  resources: any;
+  links?: Links;
   mainSessionLocusCache: any;
   self: any;
   hashTreeParser?: HashTreeParser;
@@ -326,13 +324,10 @@ export default class LocusInfo extends EventsScope {
   init(locus: any = {}) {
     this.created = locus.created || null;
     this.scheduledMeeting = locus.meeting || null;
-    this.participantsUrl = locus.participantsUrl || null;
     this.replaces = locus.replaces || null;
     this.aclUrl = locus.aclUrl || null;
     this.baseSequence = locus.baseSequence || null;
     this.sequence = locus.sequence || null;
-    this.membership = locus.membership || null;
-    this.identities = locus.identities || null;
     this.participants = locus.participants || null;
 
     /**
@@ -358,8 +353,7 @@ export default class LocusInfo extends EventsScope {
     this.updateSelf(locus.self);
     this.updateHostInfo(locus.host);
     this.updateMediaShares(locus.mediaShares);
-    this.updateServices(locus.links?.services);
-    this.updateResources(locus.links?.resources);
+    this.updateLinks(locus.links);
   }
 
   /**
@@ -478,12 +472,19 @@ export default class LocusInfo extends EventsScope {
    */
   handleLocusAPIResponse(meeting, responseBody: LocusApiResponseBody): void {
     if (this.hashTreeParser) {
-      // API responses with hash tree are a bit problematic and not fully confirmed how they will look like
-      // we don't really need them, because all updates are guaranteed to come via Mercury or LLM messages anyway
-      // so it's OK to skip them for now
+      if (!responseBody.dataSets) {
+        this.sendClassicVsHashTreeMismatchMetric(
+          meeting,
+          `expected hash tree dataSets in API response but they are missing`
+        );
+        // continuing as we can still manage without responseBody.dataSets, but this is very suspicious
+      }
       LoggerProxy.logger.info(
-        'Locus-info:index#handleLocusAPIResponse: skipping handling of API http response with hashTreeParser'
+        'Locus-info:index#handleLocusAPIResponse --> passing Locus API response to HashTreeParser: ',
+        responseBody
       );
+      // update the data in our hash trees
+      this.hashTreeParser.handleLocusUpdate(responseBody);
     } else {
       if (responseBody.dataSets) {
         this.sendClassicVsHashTreeMismatchMetric(
@@ -505,29 +506,39 @@ export default class LocusInfo extends EventsScope {
   updateLocusFromHashTreeObject(object: HashTreeObject, locus: LocusDTO): LocusDTO {
     const type = object.htMeta.elementId.type.toLowerCase();
 
+    const addParticipantObject = (obj: HashTreeObject) => {
+      if (!locus.participants) {
+        locus.participants = [];
+      }
+      locus.participants.push(obj.data);
+      this.hashTreeObjectId2ParticipantId.set(obj.htMeta.elementId.id, obj.data.id);
+    };
+
     switch (type) {
       case ObjectType.locus: {
         if (!object.data) {
           // not doing anything here, as we need Locus to always be there (at least some fields)
           // and that's already taken care of in updateFromHashTree()
           LoggerProxy.logger.info(
-            `Locus-info:index#updateLocusFromHashTreeObject --> LOCUS object removed`
+            `Locus-info:index#updateLocusFromHashTreeObject --> LOCUS object removed, version=${object.htMeta.elementId.version}`
           );
 
           return locus;
         }
         // replace the main locus
 
-        // The Locus object we receive from backend has empty participants, so removing them to avoid it overriding the ones in our current locus object
-        // Also, other fields like mediaShares are managed by other ObjectType updates, so removing them too
-        // BTW, it also doesn't have "self". That's OK as it won't override existing locus.self and also existing SDK code can handle that missing self in Locus updates
+        // The Locus object we receive from backend has empty participants array,
+        // and may have (although it shouldn't) other fields that are managed by other ObjectTypes
+        // like "fullState" or "info", so we're making sure to delete them here
         const locusObjectFromData = object.data;
-        delete locusObjectFromData.participants;
-        delete locusObjectFromData.mediaShares;
+
+        Object.values(ObjectTypeToLocusKeyMap).forEach((locusDtoKey) => {
+          delete locusObjectFromData[locusDtoKey];
+        });
 
         locus = {...locus, ...locusObjectFromData};
         LoggerProxy.logger.info(
-          `Locus-info:index#updateLocusFromHashTreeObject --> LOCUS object updated`
+          `Locus-info:index#updateLocusFromHashTreeObject --> LOCUS object updated to version=${object.htMeta.elementId.version}`
         );
         break;
       }
@@ -540,7 +551,7 @@ export default class LocusInfo extends EventsScope {
               object.data.name === 'content'
                 ? `floor=${object.data.floor?.disposition}, ${object.data.floor?.beneficiary?.id}`
                 : ''
-            }`
+            } version=${object.htMeta.elementId.version}`
           );
           const existingMediaShare = locus.mediaShares?.find(
             (ms) => ms.htMeta.elementId.id === object.htMeta.elementId.id
@@ -554,7 +565,7 @@ export default class LocusInfo extends EventsScope {
           }
         } else {
           LoggerProxy.logger.info(
-            `Locus-info:index#updateLocusFromHashTreeObject --> mediaShare id=${object.htMeta.elementId.id} removed`
+            `Locus-info:index#updateLocusFromHashTreeObject --> mediaShare id=${object.htMeta.elementId.id} removed, version=${object.htMeta.elementId.version}`
           );
           locus.mediaShares = locus.mediaShares?.filter(
             (ms) => ms.htMeta.elementId.id !== object.htMeta.elementId.id
@@ -565,16 +576,10 @@ export default class LocusInfo extends EventsScope {
         LoggerProxy.logger.info(
           `Locus-info:index#updateLocusFromHashTreeObject --> participant id=${
             object.htMeta.elementId.id
-          } ${object.data ? 'updated' : 'removed'}`
+          } ${object.data ? 'updated' : 'removed'} version=${object.htMeta.elementId.version}`
         );
         if (object.data) {
-          if (!locus.participants) {
-            locus.participants = [];
-          }
-          const participantObject = object.data;
-          participantObject.htMeta = object.htMeta;
-          locus.participants.push(participantObject);
-          this.hashTreeObjectId2ParticipantId.set(object.htMeta.elementId.id, participantObject.id);
+          addParticipantObject(object);
         } else {
           const participantId = this.hashTreeObjectId2ParticipantId.get(object.htMeta.elementId.id);
 
@@ -585,19 +590,41 @@ export default class LocusInfo extends EventsScope {
           this.hashTreeObjectId2ParticipantId.delete(object.htMeta.elementId.id);
         }
         break;
+      case ObjectType.links:
+      case ObjectType.info:
+      case ObjectType.fullState:
       case ObjectType.self:
         if (!object.data) {
           // self without data is handled inside HashTreeParser and results in LocusInfoUpdateType.MEETING_ENDED, so we should never get here
+          // all other types info, fullstate, etc - Locus should never send them without data
           LoggerProxy.logger.warn(
-            `Locus-info:index#updateLocusFromHashTreeObject --> received SELF object without data, this is not expected!`
+            `Locus-info:index#updateLocusFromHashTreeObject --> received ${type} object without data, this is not expected! version=${object.htMeta.elementId.version}`
           );
+        } else {
+          LoggerProxy.logger.info(
+            `Locus-info:index#updateLocusFromHashTreeObject --> ${type} object updated to version ${object.htMeta.elementId.version}`
+          );
+          const locusDtoKey = ObjectTypeToLocusKeyMap[type];
+          locus[locusDtoKey] = object.data;
 
-          return locus;
+          /* Hash tree based webinar attendees don't receive a Participant object for themselves from Locus,
+             but a lot of existing code in SDK and web app expects a member object for self to exist,
+             so whenever SELF changes for a webinar attendee, we copy it into a participant object.
+             We can do it, because SELF has always all the same properties as a participant object.
+          */
+          if (
+            type === ObjectType.self &&
+            locus.info?.isWebinar &&
+            object.data.controls?.role?.roles?.find(
+              (r) => r.type === SELF_ROLES.ATTENDEE && r.hasRole
+            )
+          ) {
+            LoggerProxy.logger.info(
+              `Locus-info:index#updateLocusFromHashTreeObject --> webinar attendee: creating participant object from self`
+            );
+            addParticipantObject(object);
+          }
         }
-        LoggerProxy.logger.info(
-          `Locus-info:index#updateLocusFromHashTreeObject --> SELF object updated`
-        );
-        locus.self = object.data;
         break;
       default:
         LoggerProxy.logger.warn(
@@ -704,17 +731,25 @@ export default class LocusInfo extends EventsScope {
 
         // if Locus object is unchanged or removed, we need to keep using the existing locus
         // because the rest of the locusInfo code expects locus to always be present (with at least some of the fields)
-        // if it gets updated, we don't need to do anything and we start with an empty one
-        // so that when it gets updated, if the new one is missing some field, that field will
+        // if it gets updated, we only need to have the fields that are not part of "locus" object (like "info" or "mediaShares")
+        // so that when Locus object gets updated, if the new one is missing some field, that field will
         // be removed from our locusInfo
         if (
           locusObjectStateAfterUpdates === LocusObjectStateAfterUpdates.unchanged ||
           locusObjectStateAfterUpdates === LocusObjectStateAfterUpdates.removed
         ) {
-          // copy over existing locus
+          // copy over all of existing locus except participants
           LocusDtoTopLevelKeys.forEach((key) => {
             if (key !== 'participants') {
               locus[key] = cloneDeep(this[key]);
+            }
+          });
+        } else {
+          // initialize only the fields that are not part of main "Locus" object
+          // (except participants, which need to stay empty - that means "no participant changes")
+          Object.values(ObjectTypeToLocusKeyMap).forEach((locusDtoKey) => {
+            if (locusDtoKey !== 'participants') {
+              locus[locusDtoKey] = cloneDeep(this[locusDtoKey]);
             }
           });
         }
@@ -724,7 +759,7 @@ export default class LocusInfo extends EventsScope {
             data.updatedObjects.map((o) => ({
               type: o.htMeta.elementId.type,
               id: o.htMeta.elementId.id,
-              hasData: o.data !== undefined,
+              hasData: !!o.data,
             }))
           )}`
         );
@@ -1001,17 +1036,13 @@ export default class LocusInfo extends EventsScope {
     this.updateLocusUrl(locus.url, ControlsUtils.isMainSessionDTO(locus));
     this.updateMeetingInfo(locus.info, locus.self);
     this.updateMediaShares(locus.mediaShares);
-    this.updateParticipantsUrl(locus.participantsUrl);
-    this.updateReplace(locus.replace);
+    this.updateReplaces(locus.replaces);
     this.updateSelf(locus.self);
     this.updateAclUrl(locus.aclUrl);
     this.updateBasequence(locus.baseSequence);
     this.updateSequence(locus.sequence);
-    this.updateMemberShip(locus.membership);
-    this.updateIdentifiers(locus.identities);
     this.updateEmbeddedApps(locus.embeddedApps);
-    this.updateServices(locus.links?.services);
-    this.updateResources(locus.links?.resources);
+    this.updateLinks(locus.links);
     this.compareAndUpdate();
     // update which required to compare different objects from locus
   }
@@ -1663,17 +1694,19 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
-   * @param {Object} services
+   * Updates links and emits appropriate events if services or resources have changed
+   * @param {Object} links
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  updateServices(services: Record<'breakout' | 'record', {url: string}>) {
-    if (services && !isEqual(this.services, services)) {
-      this.services = services;
+  updateLinks(links?: Links) {
+    const {services, resources} = links || {};
+
+    if (services && !isEqual(this.links?.services, services)) {
       this.emitScoped(
         {
           file: 'locus-info',
-          function: 'updateServices',
+          function: 'updateLinks',
         },
         LOCUSINFO.EVENTS.LINKS_SERVICES,
         {
@@ -1681,20 +1714,12 @@ export default class LocusInfo extends EventsScope {
         }
       );
     }
-  }
 
-  /**
-   * @param {Object} resources
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateResources(resources: Record<'webcastInstance', {url: string}>) {
-    if (resources && !isEqual(this.resources, resources)) {
-      this.resources = resources;
+    if (resources && !isEqual(this.links?.resources, resources)) {
       this.emitScoped(
         {
           file: 'locus-info',
-          function: 'updateResources',
+          function: 'updateLinks',
         },
         LOCUSINFO.EVENTS.LINKS_RESOURCES,
         {
@@ -1702,6 +1727,8 @@ export default class LocusInfo extends EventsScope {
         }
       );
     }
+
+    this.links = links;
   }
 
   /**
@@ -1888,24 +1915,13 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
-   * @param {String} participantsUrl
+   * @param {Object} replaces
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  updateParticipantsUrl(participantsUrl: string) {
-    if (participantsUrl && !isEqual(this.participantsUrl, participantsUrl)) {
-      this.participantsUrl = participantsUrl;
-    }
-  }
-
-  /**
-   * @param {Object} replace
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateReplace(replace: object) {
-    if (replace && !isEqual(this.replace, replace)) {
-      this.replace = replace;
+  updateReplaces(replaces: object) {
+    if (replaces && !isEqual(this.replaces, replaces)) {
+      this.replaces = replaces;
     }
   }
 
@@ -2239,28 +2255,6 @@ export default class LocusInfo extends EventsScope {
   updateSequence(sequence: number) {
     if (sequence && !isEqual(this.sequence, sequence)) {
       this.sequence = sequence;
-    }
-  }
-
-  /**
-   * @param {Object} membership
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateMemberShip(membership: object) {
-    if (membership && !isEqual(this.membership, membership)) {
-      this.membership = membership;
-    }
-  }
-
-  /**
-   * @param {Array} identities
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateIdentifiers(identities: Array<any>) {
-    if (identities && !isEqual(this.identities, identities)) {
-      this.identities = identities;
     }
   }
 

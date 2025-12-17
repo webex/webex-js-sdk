@@ -138,6 +138,22 @@ const Services = WebexPlugin.extend({
   },
 
   /**
+   * Check is valid host from services list.
+   * @param {string} host
+   * @returns {Boolean}
+   */
+  isValidHost(host: string): boolean {
+    const services: Array<Service> = this._services || [];
+
+    return services.some((service) => {
+      return service.serviceUrls.some((serviceUrl) => {
+        const serviceHost = serviceUrl?.baseUrl && new URL(serviceUrl.baseUrl)?.host;
+
+        return serviceHost === host;
+      });
+    });
+  },
+  /**
    * saves all the services from the pre and post catalog service
    * @param {ActiveServices} activeServices
    * @returns {void}
@@ -509,10 +525,14 @@ const Services = WebexPlugin.extend({
             ({countryCode, timezone} = clientRegionInfo);
           }
 
-          // Send the user activation request to the **License** service.
+          // Send the user activation request.
+          // Use user-onboarding service if configured, otherwise use license service.
+          const useUserOnboarding =
+            this.webex.config.services?.useUserOnboardingServiceForActivations;
+
           return this.request({
-            service: 'license',
-            resource: 'users/activations',
+            service: useUserOnboarding ? 'user-onboarding' : 'license',
+            resource: useUserOnboarding ? 'api/v1/users/activations' : 'users/activations',
             method: 'POST',
             headers: {
               accept: 'application/json',

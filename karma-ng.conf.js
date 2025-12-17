@@ -42,12 +42,21 @@ function makeConfig(packageName, argv) {
     'integration',
     'spec',
     '**',
-    '*.js'
+    '*.{js,ts}'
   );
-  const unitTestPath = path.join('packages', packageName, 'test', 'unit', 'spec', '**', '*.js');
+  const unitTestPath = path.join(
+    'packages',
+    packageName,
+    'test',
+    'unit',
+    'spec',
+    '**',
+    '*.{js,ts}'
+  );
 
   const preprocessors = {
     'packages/**': ['browserify'],
+    'packages/**/*.ts': ['browserify'],
     // 'packages/**/*.ts': ['tsify', 'browserify']
   };
 
