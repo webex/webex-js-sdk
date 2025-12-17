@@ -358,6 +358,76 @@ describe('plugin-meetings', () => {
           });
         });
 
+        it('should process locus update correctly when called with updated SELF (webinar non-attendee)', () => {
+          const newSelf = {
+            id: 'new-self',
+            visibleDataSets: ['dataset1', 'dataset2'],
+            controls: {
+              role: {
+                roles: [
+                  {type: 'PANELIST', hasRole: true},
+                  {type: 'ATTENDEE', hasRole: false},
+                ],
+              },
+            },
+          };
+          locusInfo.info.isWebinar = true;
+
+          // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
+          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+            updatedObjects: [{htMeta: {elementId: {type: 'self'}}, data: newSelf}],
+          });
+
+          // check onDeltaLocus() was called with correctly updated locus info
+          // without any participant generated
+          assert.calledOnceWithExactly(onDeltaLocusStub, {
+            ...expectedLocusInfo,
+            info: {
+              ...expectedLocusInfo.info,
+              isWebinar: true,
+            },
+            self: newSelf,
+          });
+        });
+
+        it('should generate a participant when called with updated SELF for webinar attendee', () => {
+          const newSelf = {
+            id: 'new-self',
+            visibleDataSets: ['dataset1', 'dataset2'],
+            controls: {
+              role: {
+                roles: [
+                  {type: 'something else - should be ignored', hasRole: true},
+                  {type: 'ATTENDEE', hasRole: true},
+                ],
+              },
+            },
+          };
+
+          locusInfo.info.isWebinar = true;
+
+          // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
+          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+            updatedObjects: [{htMeta: {elementId: {type: 'self'}}, data: newSelf}],
+          });
+
+          // check onDeltaLocus() was called with correctly updated locus info
+          // that contains a participant created from self
+          assert.calledOnceWithExactly(onDeltaLocusStub, {
+            ...expectedLocusInfo,
+            info: {
+              ...expectedLocusInfo.info,
+              isWebinar: true,
+            },
+            self: newSelf,
+            participants: [
+              {
+                ...newSelf,
+              },
+            ],
+          });
+        });
+
         it('should process locus update correctly when called with updated fullState', () => {
           const newFullState = {
             id: 'new-fullState',
@@ -394,6 +464,24 @@ describe('plugin-meetings', () => {
           });
         });
 
+        it('should process locus update correctly when called with updated links', () => {
+          const newLinks = {
+            id: 'new-links',
+            visibleDataSets: ['dataset1', 'dataset2'],
+          };
+
+          // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
+          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+            updatedObjects: [{htMeta: {elementId: {type: 'links'}}, data: newLinks}],
+          });
+
+          // check onDeltaLocus() was called with correctly updated locus info
+          assert.calledOnceWithExactly(onDeltaLocusStub, {
+            ...expectedLocusInfo,
+            links: newLinks,
+          });
+        });
+
         it('should process locus update correctly when called with updated LOCUS object', () => {
           // setup new updated locus that has many things missing
           const newLocusHtMeta = {elementId: {type: 'locus', version: 42}};
@@ -414,6 +502,7 @@ describe('plugin-meetings', () => {
             info: {id: 'fake-info'},
             fullState: {id: 'fake-full-state'},
             self: {id: 'fake-self'},
+            links: { id: 'fake-links' },
             mediaShares: expectedLocusInfo.mediaShares,
             // and now the new fields
             ...newLocus,
@@ -459,6 +548,7 @@ describe('plugin-meetings', () => {
             info: {id: 'fake-info'},
             fullState: {id: 'fake-full-state'},
             self: {id: 'fake-self'},
+            links: { id: 'fake-links' },
             mediaShares: expectedLocusInfo.mediaShares,
             participants: [], // empty means there were no participant updates
             jsSdkMeta: {removedParticipantIds: []}, // no participants were removed
@@ -492,6 +582,7 @@ describe('plugin-meetings', () => {
             info: {id: 'fake-info'},
             fullState: {id: 'fake-full-state'},
             self: {id: 'fake-self'},
+            links: {id: 'fake-links'},
             mediaShares: expectedLocusInfo.mediaShares,
             // and now the new fields
             ...newLocus,
@@ -2759,8 +2850,7 @@ describe('plugin-meetings', () => {
           callOrder.push("updateMeetingInfo");
         });
         sinon.stub(locusInfo, "updateMediaShares");
-        sinon.stub(locusInfo, "updateParticipantsUrl");
-        sinon.stub(locusInfo, "updateReplace");
+        sinon.stub(locusInfo, "updateReplaces");
         sinon.stub(locusInfo, "updateSelf");
         sinon.stub(locusInfo, "updateLocusUrl").callsFake(() => {
           callOrder.push("updateLocusUrl");
@@ -2768,10 +2858,8 @@ describe('plugin-meetings', () => {
         sinon.stub(locusInfo, "updateAclUrl");
         sinon.stub(locusInfo, "updateBasequence");
         sinon.stub(locusInfo, "updateSequence");
-        sinon.stub(locusInfo, "updateMemberShip");
-        sinon.stub(locusInfo, "updateIdentifiers");
         sinon.stub(locusInfo, "updateEmbeddedApps");
-        sinon.stub(locusInfo, "updateResources");
+        sinon.stub(locusInfo, "updateLinks");
         sinon.stub(locusInfo, "compareAndUpdate");
 
         locusInfo.updateLocusInfo(locus);
@@ -2795,17 +2883,14 @@ describe('plugin-meetings', () => {
         locusInfo.updateHostInfo = sinon.stub();
         locusInfo.updateMeetingInfo = sinon.stub();
         locusInfo.updateMediaShares = sinon.stub();
-        locusInfo.updateParticipantsUrl = sinon.stub();
-        locusInfo.updateReplace = sinon.stub();
+        locusInfo.updateReplaces = sinon.stub();
         locusInfo.updateSelf = sinon.stub();
         locusInfo.updateLocusUrl = sinon.stub();
         locusInfo.updateAclUrl = sinon.stub();
         locusInfo.updateBasequence = sinon.stub();
         locusInfo.updateSequence = sinon.stub();
-        locusInfo.updateMemberShip = sinon.stub();
-        locusInfo.updateIdentifiers = sinon.stub();
         locusInfo.updateEmbeddedApps = sinon.stub();
-        locusInfo.updateResources = sinon.stub();
+        locusInfo.updateLinks = sinon.stub();
         locusInfo.compareAndUpdate = sinon.stub();
 
         locusInfo.updateLocusInfo(newLocus);
@@ -2817,21 +2902,49 @@ describe('plugin-meetings', () => {
         assert.notCalled(locusInfo.updateHostInfo);
         assert.notCalled(locusInfo.updateMeetingInfo);
         assert.notCalled(locusInfo.updateMediaShares);
-        assert.notCalled(locusInfo.updateParticipantsUrl);
-        assert.notCalled(locusInfo.updateReplace);
+        assert.notCalled(locusInfo.updateReplaces);
         assert.notCalled(locusInfo.updateSelf);
         assert.notCalled(locusInfo.updateLocusUrl);
         assert.notCalled(locusInfo.updateAclUrl);
         assert.notCalled(locusInfo.updateBasequence);
         assert.notCalled(locusInfo.updateSequence);
-        assert.notCalled(locusInfo.updateMemberShip);
-        assert.notCalled(locusInfo.updateIdentifiers);
         assert.notCalled(locusInfo.updateEmbeddedApps);
-        assert.notCalled(locusInfo.updateResources);
+        assert.notCalled(locusInfo.updateLinks);
         assert.notCalled(locusInfo.compareAndUpdate);
       });
 
+      it('#updateLocusInfo puts the Locus DTO top level properties at the right place in LocusInfo class', () => {
+        // this test verifies that the top-level properties of Locus DTO are copied
+        // into LocusInfo class and set as top level properties too
+        // this is important, because the code handling Locus hass trees relies on it, see updateFromHashTree()
+        const info = {id: 'info id'};
+        const fullState = {id: 'fullState id'};
+        const links = {services: {id: 'service links'}, resources: {id: 'resource links'}};
+        const self = {id: 'self id'};
+        const mediaShares = [{id: 'fake media share'}];
 
+        sinon.stub(SelfUtils, 'getSelves').returns({
+          current: {},
+          previous: {},
+          updates: {},
+        });
+
+        const newLocus = {
+          info,
+          fullState,
+          links,
+          self,
+          mediaShares,
+        };
+
+        locusInfo.updateLocusInfo(newLocus);
+
+        assert.deepEqual(locusInfo.info, newLocus.info);
+        assert.deepEqual(locusInfo.fullState, newLocus.fullState);
+        assert.deepEqual(locusInfo.links, newLocus.links);
+        assert.deepEqual(locusInfo.self, newLocus.self);
+        assert.deepEqual(locusInfo.mediaShares, newLocus.mediaShares);
+      });
 
       it('onFullLocus() updates the working-copy of locus parser', () => {
         const eventType = 'fakeEvent';
