@@ -224,11 +224,6 @@ export default class AqmReqs {
     }
 
     if (event.keepalive === 'true') {
-      LoggerProxy.info(`Keepalive from web socket`, {
-        module: AQM_REQS_FILE,
-        method: METHODS.ON_MESSAGE,
-      });
-
       return;
     }
 

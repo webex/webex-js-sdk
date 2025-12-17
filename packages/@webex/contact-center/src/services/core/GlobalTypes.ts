@@ -32,3 +32,30 @@ export type Failure = Msg<{
   /** Human-readable description of the failure reason */
   reason: string;
 }>;
+
+/**
+ * Represents task API error details in a structured format
+ * @public
+ */
+export interface TaskError {
+  /** Original error object for throwing */
+  error: Error;
+  /** Unique tracking identifier for correlation */
+  trackingId: string;
+  /** Detailed error message from the API */
+  errorMessage: string;
+  /** Type/category of the error (e.g., "Bad Request") */
+  errorType: string;
+  /** Additional error context data */
+  errorData: string;
+  /** Numeric reason code */
+  reasonCode: number;
+}
+
+/**
+ * An Error object augmented with a flexible data field for additional context.
+ * Use this to attach structured data to thrown errors without ts-ignore.
+ */
+export interface AugmentedError extends Error {
+  data?: Record<string, any>;
+}

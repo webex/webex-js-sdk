@@ -74,7 +74,11 @@ import {Invitee} from '../meeting/type';
  * @memberof Members
  */
 
-type UpdatedMembers = {added: Array<Member>; updated: Array<Member>};
+type UpdatedMembers = {
+  added: Array<Member>;
+  updated: Array<Member>;
+  removedIds?: Array<string>; // removed member ids
+};
 /**
  * @class Members
  */
@@ -384,12 +388,18 @@ export default class Members extends StatelessWebexPlugin {
    * when new participant updates come in, both delta and full participants, update them in members collection
    * delta object in the event will have {updated, added} and full will be the full membersCollection
    * @param {Object} payload
-   * @param {Object} payload.participants
+   * @param {Object} payload.participants new/updated participants
+   * @param {Boolean} payload.isReplace whether to replace the whole members collection
+   * @param {Object} payload.removedParticipantIds ids of the removed participants
    * @returns {undefined}
    * @private
    * @memberof Members
    */
-  locusParticipantsUpdate(payload: {participants: object; isReplace?: boolean}) {
+  locusParticipantsUpdate(payload: {
+    participants: object;
+    isReplace?: boolean;
+    removedParticipantIds?: Array<string>;
+  }) {
     if (payload) {
       if (payload.isReplace) {
         this.clearMembers();
@@ -547,8 +557,20 @@ export default class Members extends StatelessWebexPlugin {
   private handleMembersUpdate(membersUpdate: UpdatedMembers) {
     this.constructMembers(membersUpdate.updated, true);
     this.constructMembers(membersUpdate.added, false);
+    this.removeMembers(membersUpdate.removedIds);
 
     return this.membersCollection.getAll();
+  }
+
+  /**
+   * removes members from the collection
+   * @param {Array<string>} removedMembers removed members ids
+   * @returns {void}
+   */
+  private removeMembers(removedMembers: Array<string>) {
+    removedMembers.forEach((memberId) => {
+      this.membersCollection.remove(memberId);
+    });
   }
 
   /**
@@ -599,6 +621,10 @@ export default class Members extends StatelessWebexPlugin {
       );
     }
     const memberUpdate = this.update(payload.participants);
+
+    // this code depends on memberIds being the same as participantIds
+    // if MemberUtil.extractId() ever changes, this will need to be updated
+    memberUpdate.removedIds = payload.removedParticipantIds || [];
 
     return memberUpdate;
   }

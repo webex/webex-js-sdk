@@ -228,11 +228,11 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('updateLocusWithDelta', () => {
-      it('should call handleLocusDelta with the new delta locus', () => {
+    describe('updateLocusFromApiResponse', () => {
+      it('should call handleLocusAPIResponse with the response body', () => {
         const meeting = {
           locusInfo: {
-            handleLocusDelta: sinon.stub(),
+            handleLocusAPIResponse: sinon.stub(),
           },
         };
 
@@ -242,16 +242,16 @@ describe('plugin-meetings', () => {
           },
         };
 
-        const response = MeetingUtil.updateLocusWithDelta(meeting, originalResponse);
+        const response = MeetingUtil.updateLocusFromApiResponse(meeting, originalResponse);
 
         assert.deepEqual(response, originalResponse);
-        assert.calledOnceWithExactly(meeting.locusInfo.handleLocusDelta, 'locus', meeting);
+        assert.calledOnceWithExactly(meeting.locusInfo.handleLocusAPIResponse, meeting, originalResponse.body);
       });
 
       it('should handle locus being missing from the response', () => {
         const meeting = {
           locusInfo: {
-            handleLocusDelta: sinon.stub(),
+            handleLocusAPIResponse: sinon.stub(),
           },
         };
 
@@ -259,10 +259,10 @@ describe('plugin-meetings', () => {
           body: {},
         };
 
-        const response = MeetingUtil.updateLocusWithDelta(meeting, originalResponse);
+        const response = MeetingUtil.updateLocusFromApiResponse(meeting, originalResponse);
 
         assert.deepEqual(response, originalResponse);
-        assert.notCalled(meeting.locusInfo.handleLocusDelta);
+        assert.notCalled(meeting.locusInfo.handleLocusAPIResponse);
       });
 
       it('should work with an undefined meeting', () => {
@@ -272,14 +272,14 @@ describe('plugin-meetings', () => {
           },
         };
 
-        const response = MeetingUtil.updateLocusWithDelta(undefined, originalResponse);
+        const response = MeetingUtil.updateLocusFromApiResponse(undefined, originalResponse);
         assert.deepEqual(response, originalResponse);
       });
     });
 
     describe('generateLocusDeltaRequest', () => {
       it('generates the correct wrapper function', async () => {
-        const updateLocusWithDeltaSpy = sinon.spy(MeetingUtil, 'updateLocusWithDelta');
+        const updateLocusFromApiResponseSpy = sinon.spy(MeetingUtil, 'updateLocusFromApiResponse');
         const addSequenceSpy = sinon.spy(MeetingUtil, 'addSequence');
 
         const meeting = {
@@ -296,16 +296,16 @@ describe('plugin-meetings', () => {
         let result = await locusDeltaRequest(options);
 
         assert.equal(result, 'result');
-        assert.calledOnceWithExactly(updateLocusWithDeltaSpy, meeting, 'result');
+        assert.calledOnceWithExactly(updateLocusFromApiResponseSpy, meeting, 'result');
         assert.calledOnceWithExactly(addSequenceSpy, meeting, options.body);
 
-        updateLocusWithDeltaSpy.resetHistory();
+        updateLocusFromApiResponseSpy.resetHistory();
         addSequenceSpy.resetHistory();
 
         // body missing from options
         result = await locusDeltaRequest({});
         assert.equal(result, 'result');
-        assert.calledOnceWithExactly(updateLocusWithDeltaSpy, meeting, 'result');
+        assert.calledOnceWithExactly(updateLocusFromApiResponseSpy, meeting, 'result');
         assert.calledOnceWithExactly(addSequenceSpy, meeting, options.body);
 
         // meeting disappears so the WeakRef returns undefined
@@ -359,7 +359,11 @@ describe('plugin-meetings', () => {
     });
 
     describe('remoteUpdateAudioVideo', () => {
-      it('#Should call meetingRequest.locusMediaRequest with correct parameters', async () => {
+      it('#Should call meetingRequest.locusMediaRequest with correct parameters and return the full response', async () => {
+        const fakeResponse = {
+          body: { locus: { url: 'locusUrl'}},
+          headers: { },
+        };
         const meeting = {
           id: 'meeting-id',
           mediaId: '12345',
@@ -368,13 +372,14 @@ describe('plugin-meetings', () => {
             sequence: {},
           },
           locusMediaRequest: {
-            send: sinon.stub().resolves({body: {}, headers: {}}),
+            send: sinon.stub().resolves(fakeResponse),
           },
           getWebexObject: sinon.stub().returns(webex),
         };
 
-        await MeetingUtil.remoteUpdateAudioVideo(meeting, true, false);
+        const result = await MeetingUtil.remoteUpdateAudioVideo(meeting, true, false);
 
+        assert.deepEqual(result, fakeResponse);
         assert.calledOnceWithExactly(meeting.locusMediaRequest.send, {
           mediaId: '12345',
           muteOptions: {
@@ -970,13 +975,19 @@ describe('plugin-meetings', () => {
       {functionName: 'isLocalRecordingStarted',displayHint:'LOCAL_RECORDING_STATUS_STARTED'},
       {functionName: 'isLocalRecordingStopped', displayHint: 'LOCAL_RECORDING_STATUS_STOPPED'},
       {functionName: 'isLocalRecordingPaused', displayHint: 'LOCAL_RECORDING_STATUS_PAUSED'},
+      {functionName: 'isLocalStreamingStarted',displayHint:'STREAMING_STATUS_STARTED'},
+      {functionName: 'isLocalStreamingStopped', displayHint: 'STREAMING_STATUS_STOPPED'},
 
       {functionName: 'isManualCaptionActive', displayHint: 'MANUAL_CAPTION_STATUS_ACTIVE'},
+
+      {functionName: 'isSpokenLanguageAutoDetectionEnabled', displayHint: 'SPOKEN_LANGUAGE_AUTO_DETECTION_ENABLED'},
+
       {functionName: 'isWebexAssistantActive', displayHint: 'WEBEX_ASSISTANT_STATUS_ACTIVE'},
       {functionName: 'canViewCaptionPanel', displayHint: 'ENABLE_CAPTION_PANEL'},
       {functionName: 'isRealTimeTranslationEnabled', displayHint: 'DISPLAY_REAL_TIME_TRANSLATION'},
       {functionName: 'canSelectSpokenLanguages', displayHint: 'DISPLAY_NON_ENGLISH_ASR'},
       {functionName: 'waitingForOthersToJoin', displayHint: 'WAITING_FOR_OTHERS'},
+      {functionName: 'showAutoEndMeetingWarning', displayHint: 'SHOW_AUTO_END_MEETING_WARNING'},
     ].forEach(({functionName, displayHint}) => {
       describe(functionName, () => {
         it('works as expected', () => {
@@ -1310,6 +1321,27 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('getCaEventLabelsForIpVersion', () => {
+      [
+        {ipver: IP_VERSION.unknown, expectedLabels: undefined},
+        {ipver: IP_VERSION.only_ipv4, expectedLabels: ['hasIpv4_true']},
+        {ipver: IP_VERSION.only_ipv6, expectedLabels: ['hasIpv6_true']},
+        {
+          ipver: IP_VERSION.ipv4_and_ipv6,
+          expectedLabels: ['hasIpv4_true', 'hasIpv6_true'],
+        },
+      ].forEach(({ipver, expectedLabels}) => {
+        it(`returns expected labels when ipver=${ipver}`, () => {
+          sinon.stub(MeetingUtil, 'getIpVersion').returns(ipver);
+
+          const result = MeetingUtil.getCaEventLabelsForIpVersion(webex);
+
+          assert.calledOnceWithExactly(MeetingUtil.getIpVersion, webex);
+          assert.deepEqual(result, expectedLabels);
+        });
+      });
+    });
+
     describe('getChangeMeetingFloorErrorPayload', () => {
       [
         {
@@ -1399,6 +1431,83 @@ describe('plugin-meetings', () => {
           shownToUser: false,
           fatal: true,
         });
+      });
+    });
+
+    describe('#parseLocusJoin', () => {
+      let response;
+
+      beforeEach(() => {
+        response = {
+          body: {
+            locus: {
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/12345',
+              self: {
+                id: 'selfId123',
+              },
+            },
+            dataSets: [{name: 'dataset1', url: 'http://dataset.com'}],
+            mediaConnections: [
+              {mediaId: 'mediaId456'},
+              {someOtherField: 'value'},
+            ],
+          },
+        };
+      });
+
+      it('works as expected', () => {
+        const result = MeetingUtil.parseLocusJoin(response);
+
+        assert.deepEqual(result, {
+          locus: response.body.locus,
+          dataSets: response.body.dataSets,
+          mediaConnections: response.body.mediaConnections,
+          locusUrl: 'https://locus-a.wbx2.com/locus/api/v1/loci/12345',
+          locusId: '12345',
+          selfId: 'selfId123',
+          mediaId: 'mediaId456',
+        });
+      });
+
+      it('extracts mediaId from the last mediaConnection that has it', () => {
+        response.body.mediaConnections = [
+          {someField: 'noMediaId'},
+          {mediaId: 'firstMediaId'},
+          {mediaId: 'secondMediaId'},
+        ];
+
+        const result = MeetingUtil.parseLocusJoin(response);
+
+        // Note: the implementation uses forEach which doesn't break,
+        // so it will use the last mediaId found, not the first
+        assert.equal(result.mediaId, 'secondMediaId');
+      });
+
+      it('handles empty mediaConnections array', () => {
+        response.body.mediaConnections = [];
+
+        const result = MeetingUtil.parseLocusJoin(response);
+
+        assert.deepEqual(result, {
+          locus: response.body.locus,
+          dataSets: response.body.dataSets,
+          mediaConnections: [],
+          locusUrl: 'https://locus-a.wbx2.com/locus/api/v1/loci/12345',
+          locusId: '12345',
+          selfId: 'selfId123',
+        });
+        assert.isUndefined(result.mediaId);
+      });
+
+      it('handles mediaConnections without mediaId', () => {
+        response.body.mediaConnections = [
+          {someField: 'value1'},
+          {anotherField: 'value2'},
+        ];
+
+        const result = MeetingUtil.parseLocusJoin(response);
+
+        assert.isUndefined(result.mediaId);
       });
     });
   });

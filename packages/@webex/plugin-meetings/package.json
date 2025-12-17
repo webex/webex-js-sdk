@@ -19,7 +19,7 @@
     "directory": "packages/@webex/plugin-meetings"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "browserify": {
     "transform": [
@@ -61,8 +61,8 @@
   },
   "dependencies": {
     "@webex/common": "workspace:*",
-    "@webex/event-dictionary-ts": "^1.0.1819",
-    "@webex/internal-media-core": "2.18.5",
+    "@webex/event-dictionary-ts": "^1.0.1930",
+    "@webex/internal-media-core": "2.20.3",
     "@webex/internal-plugin-conversation": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-llm": "workspace:*",
@@ -75,7 +75,7 @@
     "@webex/plugin-people": "workspace:*",
     "@webex/plugin-rooms": "workspace:*",
     "@webex/ts-sdp": "^1.8.1",
-    "@webex/web-capabilities": "^1.6.0",
+    "@webex/web-capabilities": "^1.7.1",
     "@webex/webex-core": "workspace:*",
     "ampersand-collection": "^2.0.2",
     "bowser": "^2.11.0",
@@ -87,7 +87,8 @@
     "jwt-decode": "3.1.2",
     "lodash": "^4.17.21",
     "uuid": "^3.3.2",
-    "webrtc-adapter": "^8.1.2"
+    "webrtc-adapter": "^8.1.2",
+    "xxh3-ts": "^2.0.1"
   },
   "//": [
     "TODO: upgrade jwt-decode when moving to node 18"

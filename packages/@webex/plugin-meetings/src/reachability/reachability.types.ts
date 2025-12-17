@@ -1,4 +1,18 @@
-import {IP_VERSION} from '../constants';
+import {IP_VERSION, Enum} from '../constants';
+
+export type Protocol = 'udp' | 'tcp' | 'xtls';
+
+/**
+ * Events emitted by ReachabilityPeerConnection
+ */
+export const ReachabilityPeerConnectionEvents = {
+  resultReady: 'resultReady', // emitted when successfully reached over a protocol
+  clientMediaIpsUpdated: 'clientMediaIpsUpdated', // emitted when new public IPs are found
+  natTypeUpdated: 'natTypeUpdated', // emitted when NAT type is determined
+  reachedSubnets: 'reachedSubnets', // emitted when server IP (subnet) is discovered
+} as const;
+
+export type ReachabilityPeerConnectionEvents = Enum<typeof ReachabilityPeerConnectionEvents>;
 
 // result for a specific transport protocol (like udp or tcp)
 export type TransportResult = {

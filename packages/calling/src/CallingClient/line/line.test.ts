@@ -23,6 +23,8 @@ import {REGISTRATION_FILE} from '../constants';
 import {LOGGER} from '../../Logger/types';
 import * as regUtils from '../registration/register';
 
+jest.spyOn(utils, 'uploadLogs').mockResolvedValue(undefined);
+
 describe('Line Tests', () => {
   const mutex = new Mutex();
   const webex = getTestUtilsWebex();
@@ -110,6 +112,7 @@ describe('Line Tests', () => {
       expect(line.getActiveMobiusUrl()).toEqual(primaryUrl);
       expect(line.getLoggingLevel()).toEqual(LOGGER.INFO);
       expect(line.getDeviceId()).toEqual(mockRegistrationBody.device.deviceId);
+      expect(line.callManager.lineDict[mockRegistrationBody.device.deviceId]).toEqual(line);
 
       webex.request.mockClear();
 

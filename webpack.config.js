@@ -109,7 +109,7 @@ module.exports = (env = {NODE_ENV: process.env.NODE_ENV || 'production'}) => ({
     rules: [
       {
         test: /\.(js|tsx|ts)$/,
-        include: [/packages/],
+        include: [/packages/, path.resolve(__dirname, 'node_modules/xxh3-ts')],
         use: {
           loader: 'babel-loader',
         },

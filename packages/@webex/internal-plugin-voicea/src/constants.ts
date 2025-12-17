@@ -10,6 +10,8 @@ export const EVENT_TRIGGERS = {
   EVA_COMMAND: 'voicea:wxa',
   HIGHLIGHT_CREATED: 'voicea:highlightCreated',
   NEW_MANUAL_CAPTION: 'aibridge:newManualCaption',
+
+  LANGUAGE_DETECTED: 'voicea:languageDetected',
 };
 
 export const AIBRIDGE_RELAY_TYPES = {
@@ -37,6 +39,7 @@ export const TRANSCRIPTION_TYPE = {
   MANUAL_CAPTION_INTERIM_RESULTS: 'manual_caption_interim_results',
   MANUAL_CAPTION_INTERIM_RESULT: 'manual_caption_interim_result',
   MANUAL_CAPTION_FINAL_RESULT: 'manual_caption_final_result',
+  LANGUAGE_DETECTED: 'language_detected',
 };
 
 export const VOICEA = 'voicea';
@@ -57,4 +60,10 @@ export const TURN_ON_CAPTION_STATUS = {
 export const TOGGLE_MANUAL_CAPTION_STATUS = {
   IDLE: 'idle',
   SENDING: 'sending',
+};
+
+export const LANGUAGE_ASSIGNMENT = {
+  AUTO: 'AUTO',
+  MANUAL: 'MANUAL',
+  DEFAULT: 'DEFAULT',
 };

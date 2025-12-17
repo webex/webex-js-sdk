@@ -8,7 +8,7 @@ import {get, merge} from 'lodash';
 import {Timer} from '@webex/common-timers';
 
 import {
-  MakeMeetingRequestOptions,
+  AiAssistantRequestOptions,
   RequestOptions,
   RequestResponse,
   SummarizeMeetingOptions,
@@ -27,7 +27,13 @@ import {
   CONTEXT_RESOURCE_TYPES,
   RESPONSE_NAMES,
 } from './constants';
-import {decryptCitedAnswer, decryptMessage, decryptToolUse} from './utils';
+import {
+  decryptCitedAnswer,
+  decryptMessage,
+  decryptScheduleMeeting,
+  decryptToolUse,
+  decryptWorkspace,
+} from './utils';
 
 const AIAssistant = WebexPlugin.extend({
   namespace: 'AIAssistant',
@@ -169,12 +175,20 @@ const AIAssistant = WebexPlugin.extend({
         await decryptCitedAnswer(responseContent, this.webex);
         break;
       }
+      case RESPONSE_NAMES.SCHEDULE_MEETING: {
+        await decryptScheduleMeeting(responseContent, this.webex);
+        break;
+      }
       case RESPONSE_NAMES.TOOL_RESULT: {
         // No encrypted content in tool_result
         break;
       }
       case RESPONSE_NAMES.TOOL_USE: {
         await decryptToolUse(responseContent, this.webex);
+        break;
+      }
+      case RESPONSE_NAMES.WORKSPACE: {
+        await decryptWorkspace(responseContent, this.webex);
         break;
       }
       default:
@@ -195,7 +209,7 @@ const AIAssistant = WebexPlugin.extend({
     const {resource, params} = options;
 
     const timeout = this.config.requestTimeout;
-    const requestId = uuid.v4();
+    const requestId = options.requestId || uuid.v4();
     const eventName = this._getResultEventName(requestId);
     const streamEventName = this._getStreamEventName(requestId);
 
@@ -253,13 +267,14 @@ const AIAssistant = WebexPlugin.extend({
           contentType: 'application/json',
           body: {clientRequestId: requestId, ...params},
         })
-        .catch((error) => {
-          reject(error);
-        })
         .then(({body}) => {
           resolve({...body, requestId, streamEventName});
-          timer.start();
+        })
+        .catch((error) => {
+          reject(error);
         });
+
+      timer.start();
     });
   },
 
@@ -274,9 +289,13 @@ const AIAssistant = WebexPlugin.extend({
    * @param {Object} options.parameters optional parameters to include in the request (for action type only)
    * @param {Object} options.assistant optional parameter to specify the assistant to use
    * @param {Object} options.locale optional locale to use for the request, defaults to 'en_US'
+   * @param {string} options.requestId optional request ID to use for this request, if not provided a new UUID will be generated
+   * @param {string} options.entryPoint optional entryPoint to use for this request
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
+   * @public
+   * @memberof AIAssistant
    */
-  async _makeMeetingRequest(options: MakeMeetingRequestOptions): Promise<RequestResponse> {
+  async makeAiAssistantRequest(options: AiAssistantRequestOptions): Promise<RequestResponse> {
     let value = options.contentValue;
 
     if (options.contentType === 'message') {
@@ -305,8 +324,10 @@ const AIAssistant = WebexPlugin.extend({
         async: 'chunked',
         locale: options.locale || 'en_US',
         content,
+        ...(options.entryPoint ? {entryPoint: options.entryPoint} : {}),
         ...(options.assistant ? {assistant: options.assistant} : {}),
       },
+      ...(options.requestId ? {requestId: options.requestId} : {}),
     });
   },
 
@@ -318,10 +339,11 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
    * @param {number} options.lastMinutes Optional number of minutes to summarize from the end of the meeting. If not included, summarizes from the start.
+   * @param {string} options.requestId optional request ID to use for this request, if not provided a new UUID will be generated
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
   summarizeMeeting(options: SummarizeMeetingOptions): Promise<RequestResponse> {
-    return this._makeMeetingRequest({
+    return this.makeAiAssistantRequest({
       ...options,
       contentType: CONTENT_TYPES.ACTION,
       contentValue: ACTION_TYPES.SUMMARIZE_FOR_ME,
@@ -343,10 +365,11 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.meetingSite the name.webex.com site for the meeting
    * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
+   * @param {string} options.requestId optional request ID to use for this request, if not provided a new UUID will be generated
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
   wasMyNameMentioned(options: SummarizeMeetingOptions): Promise<RequestResponse> {
-    return this._makeMeetingRequest({
+    return this.makeAiAssistantRequest({
       ...options,
       contextResources: [
         {
@@ -367,10 +390,11 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.meetingSite the name.webex.com site for the meeting
    * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
+   * @param {string} options.requestId optional request ID to use for this request, if not provided a new UUID will be generated
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
   showAllActionItems(options: SummarizeMeetingOptions): Promise<RequestResponse> {
-    return this._makeMeetingRequest({
+    return this.makeAiAssistantRequest({
       ...options,
       contextResources: [
         {
@@ -405,10 +429,11 @@ const AIAssistant = WebexPlugin.extend({
    * @param {string} options.sessionId the session ID for subsequent requests, not required for the first request
    * @param {string} options.encryptionKeyUrl the encryption key URL for this meeting summary
    * @param {string} options.question the question to ask about the meeting content
+   * @param {string} options.requestId optional request ID to use for this request, if not provided a new UUID will be generated
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
   askMeAnything(options: SummarizeMeetingOptions & {question: string}): Promise<RequestResponse> {
-    return this._makeMeetingRequest({
+    return this.makeAiAssistantRequest({
       ...options,
       contextResources: [
         {

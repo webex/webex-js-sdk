@@ -366,6 +366,58 @@ const DSS = WebexPlugin.extend({
   },
 
   /**
+   * Retrieves basic information about entities by phone numbers within an organization.
+   * Supports up to 5 phone numbers per request. For larger batches, client should chunk
+   * requests into groups of 5.
+   * @param {string[]} phoneNumbers - Array of phone numbers to lookup in E.164 format (max 5)
+   * @returns {Promise<RequestResult>} Resolves with object containing:
+   *   - resultArray: Array of matched entities
+   *   - foundArray: Array of phone numbers that were found
+   *   - notFoundArray: Array of phone numbers that were not found
+   * @throws {Error} When more than 5 phone numbers provided
+   * @throws {DssTimeoutError} When server does not respond in the specified timeframe
+   * @example
+   * const result = await webex.internal.dss.lookupByPhoneNumbers(['+15551234567']);
+   * console.log('Found:', result.foundArray);
+   * console.log('Entities:', result.resultArray);
+   */
+  lookupByPhoneNumbers(phoneNumbers: string[]): Promise<RequestResult> {
+    if (!phoneNumbers || phoneNumbers.length === 0) {
+      return Promise.resolve({resultArray: [], foundArray: [], notFoundArray: []});
+    }
+
+    if (phoneNumbers.length > 5) {
+      this.logger.error(
+        `DSS->lookupByPhoneNumbers#ERROR, Maximum of 5 phone numbers allowed, received: ${phoneNumbers.length}`
+      );
+
+      return Promise.reject(
+        new Error(
+          `lookupByPhoneNumbers accepts a maximum of 5 phone numbers. Received: ${phoneNumbers.length}. Please batch requests on the client side if needed.`
+        )
+      );
+    }
+
+    const resource = `/lookup/orgid/${this.webex.internal.device.orgId}/phonenumbers`;
+
+    return this._request({
+      dataPath: LOOKUP_DATA_PATH,
+      foundPath: LOOKUP_FOUND_PATH,
+      notFoundPath: LOOKUP_NOT_FOUND_PATH,
+      resource,
+      params: {
+        [LOOKUP_REQUEST_KEY]: phoneNumbers,
+      },
+    }).catch((error) => {
+      this.logger.error(
+        `DSS->lookupByPhoneNumbers#ERROR, Phone number lookup failure, ${error.message}`
+      );
+
+      return Promise.reject(error);
+    });
+  },
+
+  /**
    * Search for information about entities
    * @param {Object} options
    * @param {SearchType[]} options.requestedTypes an array of search types from: PERSON, CALLING_SERVICE, EXTERNAL_CALLING, ROOM, ROBOT

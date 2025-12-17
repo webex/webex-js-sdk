@@ -1,6 +1,6 @@
 import * as Err from './Err';
 import {LoginOption, WebexRequestPayload} from '../../types';
-import {Failure} from './GlobalTypes';
+import {Failure, AugmentedError} from './GlobalTypes';
 import LoggerProxy from '../../logger-proxy';
 import WebexRequest from './WebexRequest';
 import {
@@ -9,6 +9,7 @@ import {
   CONSULT_TRANSFER_DESTINATION_TYPE,
   Interaction,
 } from '../task/types';
+import {PARTICIPANT_TYPES, STATE_CONSULT} from './constants';
 
 /**
  * Extracts common error details from a Webex request payload.
@@ -144,6 +145,62 @@ export const getErrorDetails = (error: any, methodName: string, moduleName: stri
 };
 
 /**
+ * Extracts error details from task API errors and logs them. Also uploads logs for the error.
+ * This handles the specific error format returned by task API calls.
+ *
+ * @param error - The error object from task API calls with structure: {id: string, details: {trackingId: string, msg: {...}}}
+ * @param methodName - The name of the method where the error occurred.
+ * @param moduleName - The name of the module where the error occurred.
+ * @returns AugmentedError containing structured error details on err.data for metrics and logging
+ * @public
+ * @example
+ * const taskError = generateTaskErrorObject(error, 'transfer', 'TaskModule');
+ * throw taskError.error;
+ * @ignore
+ */
+export const generateTaskErrorObject = (
+  error: any,
+  methodName: string,
+  moduleName: string
+): AugmentedError => {
+  const trackingId = error?.details?.trackingId || error?.trackingId || '';
+  const errorMsg = error?.details?.msg;
+
+  const fallbackMessage =
+    (error && typeof error.message === 'string' && error.message) ||
+    `Error while performing ${methodName}`;
+  const errorMessage = errorMsg?.errorMessage || fallbackMessage;
+  const errorType =
+    errorMsg?.errorType ||
+    (error && typeof error.name === 'string' && error.name) ||
+    'Unknown Error';
+  const errorData = errorMsg?.errorData || '';
+  const reasonCode = errorMsg?.reasonCode || 0;
+
+  // Log and upload for Task API formatted errors
+  LoggerProxy.error(`${methodName} failed: ${errorMessage} (${errorType})`, {
+    module: moduleName,
+    method: methodName,
+    trackingId,
+  });
+  WebexRequest.getInstance().uploadLogs({
+    correlationId: trackingId,
+  });
+
+  const reason = `${errorType}: ${errorMessage}${errorData ? ` (${errorData})` : ''}`;
+  const err: AugmentedError = new Error(reason);
+  err.data = {
+    message: errorMessage,
+    errorType,
+    errorData,
+    reasonCode,
+    trackingId,
+  };
+
+  return err;
+};
+
+/**
  * Creates an error details object suitable for use with the Err.Details class.
  *
  * @param errObj - The Webex request payload object.
@@ -160,59 +217,118 @@ export const createErrDetailsObject = (errObj: WebexRequestPayload) => {
 };
 
 /**
- * Derives the consult transfer destination type based on the provided task data.
+ * Gets the consulted agent ID from the media object by finding the agent
+ * in the consult media participants (excluding the current agent).
  *
- * Logic parity with desktop behavior:
- * - If agent action is dialing a number (DN/EPDN/ENTRYPOINT):
- *   - ENTRYPOINT/EPDN map to ENTRYPOINT
- *   - DN maps to DIALNUMBER
- * - Otherwise defaults to AGENT
- *
- * @param taskData - The task data used to infer the agent action and destination type
- * @returns The normalized destination type to be used for consult transfer
+ * @param media - The media object from the interaction
+ * @param agentId - The current agent's ID to exclude from the search
+ * @returns The consulted agent ID, or empty string if none found
  */
-/**
- * Checks if a participant type represents a non-customer participant.
- * Non-customer participants include agents, dial numbers, entry point dial numbers,
- * and entry points.
- */
-const isNonCustomerParticipant = (participantType: string): boolean => {
-  return (
-    participantType === 'Agent' ||
-    participantType === 'DN' ||
-    participantType === 'EpDn' ||
-    participantType === 'entryPoint'
-  );
+export const getConsultedAgentId = (media: Interaction['media'], agentId: string): string => {
+  let consultParticipants: string[] = [];
+  let consultedParticipantId = '';
+
+  Object.keys(media).forEach((key) => {
+    if (media[key].mType === STATE_CONSULT) {
+      consultParticipants = media[key].participants;
+    }
+  });
+
+  if (consultParticipants.includes(agentId)) {
+    const id = consultParticipants.find((participant) => participant !== agentId);
+    consultedParticipantId = id || consultedParticipantId;
+  }
+
+  return consultedParticipantId;
 };
 
 /**
- * Gets the destination agent ID from participants data by finding the first
- * non-customer participant that is not the current agent and is not in wrap-up state.
+ * Gets the destination agent ID for CBT (Capacity Based Team) scenarios.
+ * CBT refers to teams created in Control Hub with capacity-based routing
+ * (as opposed to agent-based routing). This handles cases where the consulted
+ * participant is not directly in participants but can be found by matching
+ * the dial number (dn).
  *
- * @param participants - The participants data from the interaction
- * @param agentId - The current agent's ID to exclude from the search
- * @returns The destination agent ID, or empty string if none found
+ * @param interaction - The interaction object
+ * @param consultingAgent - The consulting agent identifier
+ * @returns The destination agent ID for CBT scenarios, or empty string if none found
  */
-export const getDestinationAgentId = (
-  participants: Interaction['participants'],
-  agentId: string
-): string => {
-  let id = '';
+export const getDestAgentIdForCBT = (interaction: Interaction, consultingAgent: string): string => {
+  const participants = interaction.participants;
+  let destAgentIdForCBT = '';
 
-  if (participants) {
-    Object.keys(participants).forEach((participant) => {
-      const participantData = participants[participant];
-      if (
-        isNonCustomerParticipant(participantData.type) &&
-        participantData.id !== agentId &&
-        !participantData.isWrapUp
-      ) {
-        id = participantData.id;
+  // Check if this is a CBT scenario (consultingAgent exists but not directly in participants)
+  if (consultingAgent && !participants[consultingAgent]) {
+    const foundEntry = Object.entries(participants).find(
+      ([, participant]: [string, Interaction['participants'][string]]) => {
+        return (
+          participant.pType.toLowerCase() === PARTICIPANT_TYPES.DN &&
+          participant.type === PARTICIPANT_TYPES.AGENT &&
+          participant.dn === consultingAgent
+        );
       }
-    });
+    );
+
+    if (foundEntry) {
+      destAgentIdForCBT = foundEntry[0];
+    }
   }
 
-  return id;
+  return destAgentIdForCBT;
+};
+
+/**
+ * Calculates the destination agent ID for consult operations.
+ *
+ * @param interaction - The interaction object
+ * @param agentId - The current agent's ID
+ * @returns The destination agent ID
+ */
+export const calculateDestAgentId = (interaction: Interaction, agentId: string): string => {
+  const consultingAgent = getConsultedAgentId(interaction.media, agentId);
+
+  // Check if this is a CBT (Capacity Based Team) scenario
+  // If not CBT, the function will return empty string and we'll use the normal flow
+  const destAgentIdCBT = getDestAgentIdForCBT(interaction, consultingAgent);
+  if (destAgentIdCBT) {
+    return destAgentIdCBT;
+  }
+
+  return interaction.participants[consultingAgent]?.type === PARTICIPANT_TYPES.EP_DN
+    ? interaction.participants[consultingAgent]?.epId
+    : interaction.participants[consultingAgent]?.id;
+};
+
+/**
+ * Calculates the destination agent ID for fetching destination type.
+ *
+ * @param interaction - The interaction object
+ * @param agentId - The current agent's ID
+ * @returns The destination agent ID for determining destination type
+ */
+export const calculateDestType = (interaction: Interaction, agentId: string): string => {
+  const consultingAgent = getConsultedAgentId(interaction.media, agentId);
+
+  // Check if this is a CBT (Capacity Based Team) scenario, otherwise use consultingAgent
+  const destAgentIdCBT = getDestAgentIdForCBT(interaction, consultingAgent);
+  const destinationaegntId = destAgentIdCBT || consultingAgent;
+  const destAgentType = destinationaegntId
+    ? interaction.participants[destinationaegntId]?.pType
+    : undefined;
+  if (destAgentType) {
+    if (destAgentType === 'DN') {
+      return CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
+    }
+    if (destAgentType === 'EP-DN') {
+      return CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
+    }
+    // Keep the existing destinationType if it's something else (like "agent" or "Agent")
+    // Convert "Agent" to lowercase for consistency
+
+    return destAgentType.toLowerCase();
+  }
+
+  return CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
 };
 
 export const deriveConsultTransferDestinationType = (

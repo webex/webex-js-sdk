@@ -839,6 +839,86 @@ describe('webex-core', () => {
         assert.equal(webex.config.credentials.authorizeUrl, authUrl);
       });
     });
+    
+    describe('#getMobiusClusters', () => {
+      it('returns unique mobius host entries from hostCatalog', () => {
+        // Arrange: two hostCatalog keys, with duplicate mobius host across keys
+        services._hostCatalog = {
+          'mobius-a.webex.com': [
+            {host: 'mobius-a.webex.com', ttl: -1, priority: 5, id: 'urn:TEAM:xyz:mobius'},
+            {host: 'mobius-b.webex.com', ttl: -1, priority: 10, id: 'urn:TEAM:xyz:mobius'},
+            {host: 'ignore.webex.com', ttl: -1, priority: 1, id: 'urn:TEAM:abc:wdm'}, // not mobius
+          ],
+          'dup-entry-key': [
+            {host: 'mobius-a.webex.com', ttl: -1, priority: 7, id: 'urn:TEAM:xyz:mobius'}, // duplicate host
+          ],
+        };
+    
+        // Act
+        const clusters = services.getMobiusClusters();
+    
+        // Assert
+        // deduped; only mobius entries; keeps first seen mobius-a, then mobius-b
+        assert.deepEqual(
+          clusters.map(({host, id, ttl, priority}) => ({host, id, ttl, priority})),
+          [
+            {host: 'mobius-a.webex.com', id: 'urn:TEAM:xyz:mobius', ttl: -1, priority: 5},
+            {host: 'mobius-b.webex.com', id: 'urn:TEAM:xyz:mobius', ttl: -1, priority: 10},
+          ]
+        );
+      });
+    });
+    describe('#isValidHost', () => {
+      beforeEach(() => {
+        // Setting up a mock host catalog
+          services._hostCatalog = {
+            "audit-ci-m.wbx2.com": [
+              {
+                  "host": "audit-ci-m.wbx2.com",
+                  "ttl": -1,
+                  "priority": 5,
+                  "id": "urn:IDENTITY:PA61:adminAudit"
+              },
+              {
+                  "host": "audit-ci-m.wbx2.com",
+                  "ttl": -1,
+                  "priority": 5,
+                  "id": "urn:IDENTITY:PA61:adminAuditV2"
+              }
+            ],
+            "mercury-connection-partition0-r.wbx2.com": [
+                {
+                    "host": "mercury-connection-partition0-r.wbx2.com",
+                    "ttl": -1,
+                    "priority": 5,
+                    "id": "urn:TEAM:us-west-2_r:mercuryConnectionPartition0"
+                }
+            ],
+            "empty.com": []
+          };
+      });
+      afterAll(() => {
+        // Clean up the mock host catalog
+        services._hostCatalog = {};
+      });
+      it('returns true if the host is in the host catalog', () => {
+        assert.isTrue(services.isValidHost('mercury-connection-partition0-r.wbx2.com'));
+      });
+
+      it('returns false if the host is not in the host catalog or has an empty entry list', () => {
+        assert.isFalse(services.isValidHost('test.com'));
+        assert.isFalse(services.isValidHost(''));
+        assert.isFalse(services.isValidHost(null));
+        assert.isFalse(services.isValidHost(undefined));
+        assert.isFalse(services.isValidHost('empty.com'));
+      });
+
+      it('returns false for non-string inputs', () => {
+        assert.isFalse(services.isValidHost(123));
+        assert.isFalse(services.isValidHost({}));
+        assert.isFalse(services.isValidHost([]));
+      });
+    });
   });
 });
 /* eslint-enable no-underscore-dangle */

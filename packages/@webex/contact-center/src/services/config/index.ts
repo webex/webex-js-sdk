@@ -9,9 +9,9 @@ import {
   DesktopProfileResponse,
   ListAuxCodesResponse,
   AgentResponse,
+  TenantData,
   OrgInfo,
   OrgSettings,
-  TenantData,
   URLMapping,
   TeamList,
   DialPlanEntity,
@@ -20,11 +20,12 @@ import {
   AuxCode,
   MultimediaProfileResponse,
   SiteInfo,
-  ContactServiceQueue,
+  OutdialAniEntriesResponse,
+  OutdialAniParams,
 } from './types';
 import WebexRequest from '../core/WebexRequest';
 import {WCC_API_GATEWAY} from '../constants';
-import {CONFIG_FILE_NAME} from '../../constants';
+import {CONFIG_FILE_NAME, METHODS as MAIN_METHODS} from '../../constants';
 import {parseAgentConfigs} from './Util';
 import {
   DEFAULT_AUXCODE_ATTRIBUTES,
@@ -686,56 +687,55 @@ export default class AgentConfigService {
     }
   }
 
+  // getQueues removed - use Queue instead
+
   /**
-   * Fetches the list of queues for the given orgId.
+   * Fetches outdial ANI (Automatic Number Identification) entries for the given orgId and outdial ANI ID.
    * @ignore
-   * @param {string} orgId - organization ID for which the queues are to be fetched.
-   * @param {number} page - the page number to fetch.
-   * @param {number} pageSize - the number of queues to fetch per page.
-   * @param {string} search - optional search string
-   * @param {string} filter - optional filter string
-   * @returns Promise<ContactServiceQueue[]> - A promise that resolves to the list of contact service queues.
+   * @param {string} orgId - organization ID for which the outdial ANI entries are to be fetched.
+   * @param {OutdialAniParams} params - parameters object containing outdialANI and optional pagination/filtering options
+   * @returns {Promise<OutdialAniEntriesResponse>} - A promise that resolves to the outdial ANI entries response.
    * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
    * @private
    */
-  public async getQueues(
+  public async getOutdialAniEntries(
     orgId: string,
-    page: number,
-    pageSize: number,
-    search?: string,
-    filter?: string
-  ): Promise<ContactServiceQueue[]> {
-    LoggerProxy.info('Fetching queue list', {
+    params: OutdialAniParams
+  ): Promise<OutdialAniEntriesResponse> {
+    const {outdialANI, page, pageSize, search, filter, attributes} = params;
+
+    LoggerProxy.info('Fetching outdial ANI entries', {
       module: CONFIG_FILE_NAME,
-      method: METHODS.GET_QUEUES,
+      method: MAIN_METHODS.GET_OUTDIAL_ANI_ENTRIES,
     });
 
     try {
-      let queryParams = `page=${page}&pageSize=${pageSize}&desktopProfileFilter=true`;
-      if (search) queryParams += `&search=${search}`;
-      if (filter) queryParams += `&filter=${filter}`;
+      const queryParams = [];
+      if (page !== undefined) queryParams.push(`page=${page}`);
+      if (pageSize !== undefined) queryParams.push(`pageSize=${pageSize}`);
+      if (search) queryParams.push(`search=${search}`);
+      if (filter) queryParams.push(`filter=${filter}`);
+      if (attributes) queryParams.push(`attributes=${attributes}`);
 
-      const resource = endPointMap.queueList(orgId, queryParams);
+      const queryString = queryParams.length > 0 ? queryParams.join('&') : '';
+      const resource = endPointMap.outdialAniEntries(orgId, outdialANI, queryString);
+
       const response = await this.webexReq.request({
         service: WCC_API_GATEWAY,
         resource,
         method: HTTP_METHODS.GET,
       });
 
-      if (response.statusCode !== 200) {
-        throw new Error(`API call failed with ${response.statusCode}`);
-      }
-
-      LoggerProxy.log('getQueues API success.', {
+      LoggerProxy.log('getOutdialAniEntries API success.', {
         module: CONFIG_FILE_NAME,
-        method: METHODS.GET_QUEUES,
+        method: MAIN_METHODS.GET_OUTDIAL_ANI_ENTRIES,
       });
 
       return response.body?.data;
     } catch (error) {
-      LoggerProxy.error(`getQueues API call failed with ${error}`, {
+      LoggerProxy.error(`getOutdialAniEntries API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
-        method: METHODS.GET_QUEUES,
+        method: MAIN_METHODS.GET_OUTDIAL_ANI_ENTRIES,
       });
       throw error;
     }

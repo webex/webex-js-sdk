@@ -27,6 +27,7 @@
     "test:unit": "webex-legacy-tools test --unit --runner jest"
   },
   "devDependencies": {
+    "@babel/core": "^7.22.11",
     "@babel/plugin-transform-private-methods": "7.23.3",
     "@babel/preset-typescript": "7.16.7",
     "@commitlint/cli": "15.0.0",
@@ -37,7 +38,7 @@
     "@types/chai": "4.2.21",
     "@types/jest": "27.4.1",
     "@types/mocha": "9.0.0",
-    "@types/node": "16.11.9",
+    "@types/node": "22.9.3",
     "@types/uuid": "8.3.4",
     "@typescript-eslint/eslint-plugin": "5.38.1",
     "@typescript-eslint/parser": "5.38.1",

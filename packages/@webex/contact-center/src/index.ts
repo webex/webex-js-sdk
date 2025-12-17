@@ -26,6 +26,22 @@ export {default as Task} from './services/task';
  */
 export {default as routingAgent} from './services/agent';
 
+// API exports (AddressBook is public, EntryPoint and Queue are accessed via cc wrappers)
+export {default as AddressBook} from './services/AddressBook';
+
+/** EntryPoint API types */
+export type {
+  EntryPointRecord,
+  EntryPointListResponse,
+  EntryPointSearchParams,
+  AddressBookEntry,
+  AddressBookEntriesResponse,
+  AddressBookEntrySearchParams,
+  ContactServiceQueuesResponse,
+  ContactServiceQueueSearchParams,
+  ContactServiceQueue,
+} from './types';
+
 // Enums
 /**
  * Task Events for Contact Center operations
@@ -110,6 +126,7 @@ export type {
   AgentContact,
   /** Task interface */
   ITask,
+  Interaction,
   TaskData,
   /** Task response */
   TaskResponse,
@@ -157,8 +174,6 @@ export type {
 export type {
   /** Profile interface */
   Profile,
-  /** Contact service queue interface */
-  ContactServiceQueue,
   /** Response type from getUserUsingCI method */
   AgentResponse,
   /** Response from getDesktopProfileById */

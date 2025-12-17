@@ -3,7 +3,7 @@ import {registerPlugin} from '@webex/webex-core';
 
 import Meetings from './meetings';
 import config from './config';
-import {LocusRetryStatusInterceptor} from './interceptors';
+import {LocusRetryStatusInterceptor, LocusRouteTokenInterceptor} from './interceptors';
 import CaptchaError from './common/errors/captcha-error';
 import IntentToJoinError from './common/errors/intent-to-join';
 import PasswordError from './common/errors/password-error';
@@ -18,11 +18,13 @@ import {
 import Meeting from './meeting';
 import MeetingInfoUtil from './meeting-info/utilv2';
 import JoinMeetingError from './common/errors/join-meeting';
+import {SdpResponseTimeoutError} from './common/errors/webex-errors';
 
 registerPlugin('meetings', Meetings, {
   config,
   interceptors: {
     LocusRetryStatusInterceptor: LocusRetryStatusInterceptor.create,
+    LocusRouteTokenInterceptor: LocusRouteTokenInterceptor.create,
   },
 });
 
@@ -72,6 +74,7 @@ export {
   Meeting,
   MeetingInfoUtil,
   JoinWebinarError,
+  SdpResponseTimeoutError,
 };
 
 export {RemoteMedia} from './multistream/remoteMedia';

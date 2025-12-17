@@ -12,7 +12,7 @@ describe('plugin-meetings', () => {
   let video;
   let originalRemoteUpdateAudioVideo;
 
-  const fakeLocus = {info: 'this is a fake locus'};
+  const fakeLocusResponse = {body: {locus: {info: 'this is a fake locus'}}};
 
   const createFakeLocalStream = (id, userMuted, systemMuted) => {
     return {
@@ -38,9 +38,6 @@ describe('plugin-meetings', () => {
       unmuteAllowed: true,
       remoteVideoMuted: false,
       unmuteVideoAllowed: true,
-      locusInfo: {
-        handleLocusDelta: sinon.stub(),
-      },
       members: {
         selfId: 'fake self id',
         muteMember: sinon.stub().resolves(),
@@ -49,7 +46,8 @@ describe('plugin-meetings', () => {
 
     originalRemoteUpdateAudioVideo = MeetingUtil.remoteUpdateAudioVideo;
 
-    MeetingUtil.remoteUpdateAudioVideo = sinon.stub().resolves(fakeLocus);
+    MeetingUtil.remoteUpdateAudioVideo = sinon.stub().resolves(fakeLocusResponse);
+    MeetingUtil.updateLocusFromApiResponse = sinon.stub();
 
     audio = createMuteState(AUDIO, meeting, true);
     video = createMuteState(VIDEO, meeting, true);
@@ -141,6 +139,7 @@ describe('plugin-meetings', () => {
       // and local unmute was sent to server
       assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
       assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, false, undefined);
+      assert.calledWith(MeetingUtil.updateLocusFromApiResponse, meeting, fakeLocusResponse);
 
       assert.isFalse(audio.isMuted());
     });
@@ -173,6 +172,7 @@ describe('plugin-meetings', () => {
 
       // system was muted so local unmute was not sent to server
       assert.notCalled(MeetingUtil.remoteUpdateAudioVideo);
+      assert.notCalled(MeetingUtil.updateLocusFromApiResponse);
 
       assert.isTrue(audio.isMuted());
     });
@@ -207,6 +207,7 @@ describe('plugin-meetings', () => {
       // and local unmute was sent to server
       assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
       assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, undefined, false);
+      assert.calledWith(MeetingUtil.updateLocusFromApiResponse, meeting, fakeLocusResponse);
 
       assert.isFalse(video.isMuted());
     });
@@ -219,7 +220,9 @@ describe('plugin-meetings', () => {
 
       assert.isTrue(video.isMuted());
 
+      await testUtils.flushPromises();
       MeetingUtil.remoteUpdateAudioVideo.resetHistory();
+      MeetingUtil.updateLocusFromApiResponse.resetHistory();
 
       // now simulate server requiring us to locally unmute
       // assuming setServerMuted succeeds at updating userMuted
@@ -239,6 +242,7 @@ describe('plugin-meetings', () => {
 
       // system was muted so local unmute was not sent to server
       assert.notCalled(MeetingUtil.remoteUpdateAudioVideo);
+      assert.notCalled(MeetingUtil.updateLocusFromApiResponse);
 
       assert.isTrue(video.isMuted());
     });
@@ -443,6 +447,7 @@ describe('plugin-meetings', () => {
 
         assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
         assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, true, undefined);
+        assert.calledWith(MeetingUtil.updateLocusFromApiResponse, meeting, fakeLocusResponse);
 
         // now allow the first request to complete
         serverResponseResolve();
@@ -559,6 +564,7 @@ describe('plugin-meetings', () => {
         await testUtils.flushPromises();
 
         MeetingUtil.remoteUpdateAudioVideo.resetHistory();
+        MeetingUtil.updateLocusFromApiResponse.resetHistory();
       };
 
       const setupSpies = (mediaType) => {
@@ -605,13 +611,15 @@ describe('plugin-meetings', () => {
         {mediaType: VIDEO, title: 'video'},
       ];
 
+      const fakeLocusResponse = {body: {locus: {info: 'fake locus'}}};
+
       tests.forEach(({mediaType, title}) =>
         describe(title, () => {
           let originalRemoteUpdateAudioVideo;
 
           beforeEach(() => {
             originalRemoteUpdateAudioVideo = MeetingUtil.remoteUpdateAudioVideo;
-            MeetingUtil.remoteUpdateAudioVideo = sinon.stub().resolves({info: 'fake locus'});
+            MeetingUtil.remoteUpdateAudioVideo = sinon.stub().resolves(fakeLocusResponse);
           });
 
           afterEach(() => {
@@ -660,6 +668,7 @@ describe('plugin-meetings', () => {
               assert.calledWith(setUnmuteAllowedSpy, muteState.state.server.unmuteAllowed);
               assert.notCalled(setServerMutedSpy);
               assert.notCalled(MeetingUtil.remoteUpdateAudioVideo);
+              assert.notCalled(MeetingUtil.updateLocusFromApiResponse);
               assert.isTrue(muteState.state.client.localMute);
             });
 
@@ -672,6 +681,7 @@ describe('plugin-meetings', () => {
               assert.calledWith(setUnmuteAllowedSpy, muteState.state.server.unmuteAllowed);
               assert.notCalled(setServerMutedSpy);
               assert.notCalled(MeetingUtil.remoteUpdateAudioVideo);
+              assert.notCalled(MeetingUtil.updateLocusFromApiResponse);
               assert.isTrue(muteState.state.client.localMute);
             });
 
@@ -681,9 +691,12 @@ describe('plugin-meetings', () => {
 
               muteState.init(meeting);
 
+              await testUtils.flushPromises();
+
               assert.calledWith(setUnmuteAllowedSpy, muteState.state.server.unmuteAllowed);
               assert.notCalled(setServerMutedSpy);
               assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
+              assert.calledOnceWithExactly(MeetingUtil.updateLocusFromApiResponse, meeting, fakeLocusResponse);
               assert.isFalse(muteState.state.client.localMute);
             });
 
@@ -707,6 +720,7 @@ describe('plugin-meetings', () => {
               simulateUserMute(mediaType, true);
               muteState.handleLocalStreamMuteStateChange(meeting);
               assert.notCalled(MeetingUtil.remoteUpdateAudioVideo);
+              assert.notCalled(MeetingUtil.updateLocusFromApiResponse);
 
               assert.isFalse(muteState.state.client.localMute);
             });
@@ -716,8 +730,11 @@ describe('plugin-meetings', () => {
 
               simulateUserMute(mediaType, false);
               muteState.handleLocalStreamMuteStateChange(meeting);
+              await testUtils.flushPromises();
+
               assert.equal(muteState.state.client.localMute, false);
               assert.called(MeetingUtil.remoteUpdateAudioVideo);
+              assert.calledOnceWithExactly(MeetingUtil.updateLocusFromApiResponse, meeting, fakeLocusResponse);
             });
 
             it('tests localMute - user mute from false to true', async () => {
@@ -725,8 +742,11 @@ describe('plugin-meetings', () => {
 
               simulateUserMute(mediaType, true);
               muteState.handleLocalStreamMuteStateChange(meeting);
+              await testUtils.flushPromises();
+
               assert.equal(muteState.state.client.localMute, true);
               assert.called(MeetingUtil.remoteUpdateAudioVideo);
+              assert.calledOnceWithExactly(MeetingUtil.updateLocusFromApiResponse, meeting, fakeLocusResponse);
             });
 
             it('tests localMute - system mute from true to false', async () => {
@@ -734,8 +754,11 @@ describe('plugin-meetings', () => {
 
               simulateSystemMute(mediaType, false);
               muteState.handleLocalStreamMuteStateChange(meeting);
+              await testUtils.flushPromises();
+
               assert.equal(muteState.state.client.localMute, false);
               assert.called(MeetingUtil.remoteUpdateAudioVideo);
+              assert.calledOnceWithExactly(MeetingUtil.updateLocusFromApiResponse, meeting, fakeLocusResponse);
             });
 
             it('tests localMute - system mute from false to true', async () => {
@@ -743,8 +766,11 @@ describe('plugin-meetings', () => {
 
               simulateSystemMute(mediaType, true);
               muteState.handleLocalStreamMuteStateChange(meeting);
+              await testUtils.flushPromises();
+
               assert.equal(muteState.state.client.localMute, true);
               assert.called(MeetingUtil.remoteUpdateAudioVideo);
+              assert.calledOnceWithExactly(MeetingUtil.updateLocusFromApiResponse, meeting, fakeLocusResponse);
             });
           });
 

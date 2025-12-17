@@ -169,3 +169,22 @@ class AddMediaFailed extends WebexMeetingsError {
 }
 export {AddMediaFailed};
 WebExMeetingsErrors[AddMediaFailed.CODE] = AddMediaFailed;
+
+/**
+ * @class SdpResponseTimeoutError
+ * @classdesc Raised whenever we timeout waiting for remote SDP answer
+ * @extends WebexMeetingsError
+ * @property {number} code - 30204
+ * @property {string} message - 'Timed out waiting for REMOTE SDP ANSWER'
+ */
+class SdpResponseTimeoutError extends WebexMeetingsError {
+  static CODE = 30204;
+
+  // eslint-disable-next-line require-jsdoc
+  constructor() {
+    super(SdpResponseTimeoutError.CODE, 'Timed out waiting for REMOTE SDP ANSWER');
+  }
+}
+
+export {SdpResponseTimeoutError};
+WebExMeetingsErrors[SdpResponseTimeoutError.CODE] = SdpResponseTimeoutError;

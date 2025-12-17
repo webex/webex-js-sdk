@@ -23,6 +23,7 @@ import {
   formattedServiceHostmapEntryConv,
   formattedServiceHostmapEntryMercury,
   formattedServiceHostmapEntryTest,
+  serviceHostmapV2
 } from '../../../fixtures/host-catalog-v2';
 
 // /* eslint-disable no-underscore-dangle */
@@ -389,6 +390,32 @@ describe('webex-core', () => {
             .then(() => assert.calledTwice(services.updateServices))
         );
       });
+
+      it('should call services#collectPreauthCatalog with the OrgId and forceRefresh is true', () => {
+        services.collectPreauthCatalog = sinon.stub().resolves();
+
+        return services.initServiceCatalogs(true).then(() =>
+          assert.calledWith(
+            services.collectPreauthCatalog,
+            sinon.match({
+              orgId: webex.credentials.getOrgId(),
+            }),
+            sinon.match(true)
+          )
+        );
+      });
+
+      it('should call services#updateServices() with forceRefresh is true', () => {
+        services.updateServices = sinon.stub().resolves();
+
+        return (
+          services
+            .initServiceCatalogs(true)
+            // services#updateServices() gets called once by the limited catalog
+            // retrieval and should get called again when authorized.
+            .then(() => assert.calledTwice(services.updateServices) && assert.calledWith(services.updateServices, sinon.match({forceRefresh: true})))
+        );
+      });
     });
 
     describe('#isAllowedDomainUrl()', () => {
@@ -510,6 +537,54 @@ describe('webex-core', () => {
         const lastPriorityUrl = priorityServiceUrl._getPriorityHostUrl();
 
         assert.equal(firstPriorityUrl, lastPriorityUrl);
+      });
+    });
+
+    describe('#switchActiveClusterIds', () => {
+      let requestStub;
+
+      beforeEach(() => {
+        services._formatReceivedHostmap(serviceHostmapV2);
+      });
+
+      afterEach(() => {
+        requestStub.restore();
+      });
+
+      it('fetches new catalog when id does not exist', () => {
+        requestStub = sinon
+          .stub(webex.internal.newMetrics.callDiagnosticLatencies, 'measureLatency')
+          .returns(
+            Promise.resolve({
+              body: {
+                activeServices: {
+                  ...serviceHostmapV2.activeServices,
+                  conversation: 'urn:TEAM:me-central-1_asdf:conversation',
+                },
+                services: [
+                  ...serviceHostmapV2.services,
+                  {
+                    id: 'urn:TEAM:me-central-1_asdf:conversation',
+                    serviceName: 'conversation',
+                    serviceUrls: [{baseUrl: 'baseurl.com', priority: 1}],
+                  },
+                ],
+              },
+            })
+          );
+
+        services
+          .switchActiveClusterIds({
+            conversation: 'urn:TEAM:me-central-1_asdf:conversation',
+          })
+          .then(() => {
+            assert.equal(
+              !!services._services.find(
+                (service) => service.id === 'urn:TEAM:me-central-1_asdf:conversation'
+              ),
+              true
+            );
+          });
       });
     });
 
@@ -673,9 +748,11 @@ describe('webex-core', () => {
       const unauthServices = unauthWebex.internal.services;
       let sandbox = null;
 
-      const getActivationRequest = (requestStub) => {
+      const getActivationRequest = (requestStub, useUserOnboarding = false) => {
+        const expectedService = useUserOnboarding ? 'user-onboarding' : 'license';
+        const expectedResource = useUserOnboarding ? 'api/v1/users/activations' : 'users/activations';
         const requests = requestStub.args.filter(
-          ([request]) => request.service === 'license' && request.resource === 'users/activations'
+          ([request]) => request.service === expectedService && request.resource === expectedResource
         );
 
         assert.strictEqual(requests.length, 1);
@@ -818,6 +895,44 @@ describe('webex-core', () => {
               getActivationRequest(requestStub).headers['x-prelogin-userid'],
               preloginUserId
             );
+          });
+      });
+
+      it('uses the license service by default', () => {
+        const requestStub = sandbox.spy(unauthServices, 'request');
+
+        return unauthServices
+          .validateUser({
+            email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+            activationOptions: {suppressEmail: true},
+          })
+          .then(() => {
+            const request = getActivationRequest(requestStub, false);
+            assert.strictEqual(request.service, 'license');
+            assert.strictEqual(request.resource, 'users/activations');
+          });
+      });
+
+      it('uses the user-onboarding service when useUserOnboardingServiceForActivations config is true', () => {
+        const userOnboardingWebex = new WebexCore({
+          config: {
+            services: {
+              useUserOnboardingServiceForActivations: true,
+            },
+          },
+        });
+        const userOnboardingServices = userOnboardingWebex.internal.services;
+        const requestStub = sandbox.spy(userOnboardingServices, 'request');
+
+        return userOnboardingServices
+          .validateUser({
+            email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+            activationOptions: {suppressEmail: true},
+          })
+          .then(() => {
+            const request = getActivationRequest(requestStub, true);
+            assert.strictEqual(request.service, 'user-onboarding');
+            assert.strictEqual(request.resource, 'api/v1/users/activations');
           });
       });
     });
@@ -1034,13 +1149,13 @@ describe('webex-core', () => {
       );
 
       it('resolves to an authed u2c hostmap when no params specified', () => {
-        assert.typeOf(fullRemoteHM, 'array');
-        assert.isAbove(fullRemoteHM.length, 0);
+        assert.typeOf(fullRemoteHM.services, 'array');
+        assert.isAbove(fullRemoteHM.services.length, 0);
       });
 
       it('resolves to a limited u2c hostmap when params specified', () => {
-        assert.typeOf(limitedRemoteHM, 'array');
-        assert.isAbove(limitedRemoteHM.length, 0);
+        assert.typeOf(limitedRemoteHM.services, 'array');
+        assert.isAbove(limitedRemoteHM.services.length, 0);
       });
 
       it('rejects if the params provided are invalid', () =>
