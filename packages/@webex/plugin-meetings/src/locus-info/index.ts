@@ -97,10 +97,7 @@ export default class LocusInfo extends EventsScope {
   aclUrl: any;
   baseSequence: any;
   created: any;
-  identities: any;
-  membership: any;
   participants: any;
-  participantsUrl: any;
   replaces: any;
   scheduledMeeting: any;
   sequence: any;
@@ -112,7 +109,6 @@ export default class LocusInfo extends EventsScope {
   info: any;
   roles: any;
   mediaShares: any;
-  replace: any;
   url: any;
   links?: Links;
   mainSessionLocusCache: any;
@@ -328,13 +324,10 @@ export default class LocusInfo extends EventsScope {
   init(locus: any = {}) {
     this.created = locus.created || null;
     this.scheduledMeeting = locus.meeting || null;
-    this.participantsUrl = locus.participantsUrl || null;
     this.replaces = locus.replaces || null;
     this.aclUrl = locus.aclUrl || null;
     this.baseSequence = locus.baseSequence || null;
     this.sequence = locus.sequence || null;
-    this.membership = locus.membership || null;
-    this.identities = locus.identities || null;
     this.participants = locus.participants || null;
 
     /**
@@ -1043,14 +1036,11 @@ export default class LocusInfo extends EventsScope {
     this.updateLocusUrl(locus.url, ControlsUtils.isMainSessionDTO(locus));
     this.updateMeetingInfo(locus.info, locus.self);
     this.updateMediaShares(locus.mediaShares);
-    this.updateParticipantsUrl(locus.participantsUrl);
-    this.updateReplace(locus.replace);
+    this.updateReplaces(locus.replaces);
     this.updateSelf(locus.self);
     this.updateAclUrl(locus.aclUrl);
     this.updateBasequence(locus.baseSequence);
     this.updateSequence(locus.sequence);
-    this.updateMemberShip(locus.membership);
-    this.updateIdentifiers(locus.identities);
     this.updateEmbeddedApps(locus.embeddedApps);
     this.updateLinks(locus.links);
     this.compareAndUpdate();
@@ -1925,24 +1915,13 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
-   * @param {String} participantsUrl
+   * @param {Object} replaces
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  updateParticipantsUrl(participantsUrl: string) {
-    if (participantsUrl && !isEqual(this.participantsUrl, participantsUrl)) {
-      this.participantsUrl = participantsUrl;
-    }
-  }
-
-  /**
-   * @param {Object} replace
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateReplace(replace: object) {
-    if (replace && !isEqual(this.replace, replace)) {
-      this.replace = replace;
+  updateReplaces(replaces: object) {
+    if (replaces && !isEqual(this.replaces, replaces)) {
+      this.replaces = replaces;
     }
   }
 
@@ -2276,28 +2255,6 @@ export default class LocusInfo extends EventsScope {
   updateSequence(sequence: number) {
     if (sequence && !isEqual(this.sequence, sequence)) {
       this.sequence = sequence;
-    }
-  }
-
-  /**
-   * @param {Object} membership
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateMemberShip(membership: object) {
-    if (membership && !isEqual(this.membership, membership)) {
-      this.membership = membership;
-    }
-  }
-
-  /**
-   * @param {Array} identities
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateIdentifiers(identities: Array<any>) {
-    if (identities && !isEqual(this.identities, identities)) {
-      this.identities = identities;
     }
   }
 
