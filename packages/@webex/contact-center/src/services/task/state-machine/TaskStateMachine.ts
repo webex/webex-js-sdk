@@ -9,6 +9,7 @@ import {setup} from 'xstate';
 import {TaskContext, TaskEventPayload, UIControlConfig} from './types';
 import {TaskState, TaskEvent} from './constants';
 import {actions, createInitialContext, TaskActionsMap} from './actions';
+import {TaskData} from '../types';
 
 type TaskActionConfigMap = {[K in keyof typeof actions]: undefined};
 
@@ -227,7 +228,8 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // Back-end may still send transfer responses even if we did not enter the interim state
           [TaskEvent.TRANSFER_SUCCESS]: [
             {
-              guard: ({context}: {context: TaskContext}) => Boolean(context.consultInitiator),
+              guard: ({event}: {event: TaskEventPayload}) =>
+                Boolean((event as {taskData?: TaskData}).taskData?.wrapUpRequired),
               target: TaskState.WRAPPING_UP,
               actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
             },
@@ -375,11 +377,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: ({context}: {context: TaskContext}) => Boolean(context.consultInitiator),
               target: TaskState.HELD,
-              actions: ['clearConsultState', 'emitTaskConsultEnd'],
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
             {
-              target: TaskState.IDLE,
-              actions: ['clearConsultState', 'emitTaskConsultEnd'],
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'clearConsultState', 'markEnded', 'emitTaskConsultEnd'],
             },
           ],
           // Transfer buttons while in consulting

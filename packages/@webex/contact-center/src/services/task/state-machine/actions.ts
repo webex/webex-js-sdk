@@ -34,8 +34,13 @@ type RecordingStateUpdate = Partial<
 >;
 
 const determineConsultInitiator = (taskData?: TaskData): boolean | undefined => {
-  if (taskData?.isConsulted !== undefined) {
-    return !taskData.isConsulted;
+  if (taskData?.isConsulted === true) {
+    return false;
+  }
+
+  if (taskData?.isConsulted === false) {
+    // Avoid overriding initiator flag when backend simply repeats `false`
+    return undefined;
   }
 
   const participants = taskData?.interaction?.participants;
