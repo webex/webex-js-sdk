@@ -188,22 +188,23 @@ export default class TaskManager extends EventEmitter {
       payload.interaction?.media?.[payload.interactionId]?.mediaResourceId;
 
     switch (ccEvent) {
-      case CC_EVENTS.AGENT_CONTACT_RESERVED:
+      // CC -> TaskEvent mappings (see TaskStateMachine comment for quick reference)
+      case CC_EVENTS.AGENT_CONTACT_RESERVED: // AgentContactReserved -> TASK_INCOMING
         return {type: TaskEvent.TASK_INCOMING, taskData: payload};
 
-      case CC_EVENTS.AGENT_OFFER_CONTACT:
+      case CC_EVENTS.AGENT_OFFER_CONTACT: // AgentOfferContact -> TASK_OFFERED
         return {type: TaskEvent.TASK_OFFERED, taskData: payload};
 
-      case CC_EVENTS.AGENT_CONTACT:
+      case CC_EVENTS.AGENT_CONTACT: // AgentContact -> HYDRATE
         return {type: TaskEvent.HYDRATE, taskData: payload};
 
-      case CC_EVENTS.AGENT_OFFER_CONSULT:
+      case CC_EVENTS.AGENT_OFFER_CONSULT: // AgentOfferConsult -> OFFER_CONSULT
         return {
           type: TaskEvent.OFFER_CONSULT,
           taskData: {...payload, isConsulted: true},
         };
 
-      case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
+      case CC_EVENTS.AGENT_CONTACT_ASSIGNED: // AgentContactAssigned -> ASSIGN
         return {type: TaskEvent.ASSIGN, taskData: payload};
 
       case CC_EVENTS.AGENT_CONTACT_HELD:
@@ -226,7 +227,7 @@ export default class TaskManager extends EventEmitter {
           taskData: {...payload, isConsulted: false},
         };
 
-      case CC_EVENTS.AGENT_CONSULTING:
+      case CC_EVENTS.AGENT_CONSULTING: // AgentConsulting -> CONSULTING_ACTIVE
         // use context to figure out if its initatiore or the receiver using consultInitiator from context
         return {
           type: TaskEvent.CONSULTING_ACTIVE,
@@ -234,7 +235,7 @@ export default class TaskManager extends EventEmitter {
           taskData: payload,
         };
 
-      case CC_EVENTS.AGENT_CONSULT_ENDED:
+      case CC_EVENTS.AGENT_CONSULT_ENDED: // AgentConsultEnded -> CONSULT_END
         return {type: TaskEvent.CONSULT_END, taskData: payload};
 
       case CC_EVENTS.AGENT_CONSULT_FAILED:
@@ -246,7 +247,7 @@ export default class TaskManager extends EventEmitter {
       case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
         return {type: TaskEvent.CTQ_CANCEL_FAILED, taskData: payload};
 
-      case CC_EVENTS.AGENT_CONSULT_TRANSFERRED:
+      case CC_EVENTS.AGENT_CONSULT_TRANSFERRED: // AgentConsultTransferred -> TRANSFER_SUCCESS
         return {
           type: TaskEvent.TRANSFER_SUCCESS,
           taskData: payload,
@@ -413,11 +414,22 @@ export default class TaskManager extends EventEmitter {
 
     const task = this.taskCollection[message.data.interactionId];
     const wasConsultedTask = Boolean(task?.data?.isConsulted);
+    const computeWrapUpRequired = () => {
+      if (message.data.wrapUpRequired !== undefined) {
+        return message.data.wrapUpRequired;
+      }
+      if (message.data.isConsulted !== undefined) {
+        return !message.data.isConsulted;
+      }
+
+      return !wasConsultedTask;
+    };
+
     const adjustedPayload =
       eventType === CC_EVENTS.AGENT_CONSULT_TRANSFERRED
         ? {
             ...message.data,
-            wrapUpRequired: !wasConsultedTask,
+            wrapUpRequired: computeWrapUpRequired(),
           }
         : message.data;
     const stateMachineEvent = TaskManager.mapEventToTaskStateMachineEvent(

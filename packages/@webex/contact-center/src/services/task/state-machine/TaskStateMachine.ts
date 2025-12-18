@@ -35,6 +35,25 @@ const taskStateMachineSetup = setup<
  * @returns State machine configuration object
  */
 export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
+  /**
+   * Event mapping reference (CC WebSocket -> TaskEvent)
+   *
+   * AgentContactReserved      -> TaskEvent.TASK_INCOMING
+   * AgentOfferContact         -> TaskEvent.TASK_OFFERED
+   * AgentOfferConsult         -> TaskEvent.OFFER_CONSULT
+   * AgentConsulting           -> TaskEvent.CONSULTING_ACTIVE
+   * AgentConsultCreated       -> TaskEvent.CONSULT_CREATED
+   * AgentConsultAccepted      -> TaskEvent.CONSULT_ACCEPTED
+   * AgentConsultTransferred   -> TaskEvent.TRANSFER_SUCCESS
+   * AgentContactAssigned      -> TaskEvent.ASSIGN
+   * AgentContactHeld          -> TaskEvent.HOLD_SUCCESS
+   * AgentContactUnheld        -> TaskEvent.UNHOLD_SUCCESS
+   * AgentConsultEnded         -> TaskEvent.CONSULT_END
+   * AgentContactEnded         -> TaskEvent.CONTACT_ENDED
+   * AgentWrapup / AgentWrappedup -> TaskEvent.WRAPUP / WRAPUP_COMPLETE
+   *
+   * (See TaskManager.mapEventToTaskStateMachineEvent for the full mapping table.)
+   */
   return {
     id: 'taskStateMachine',
     initial: TaskState.IDLE,
@@ -192,6 +211,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.CONNECTED]: {
         on: {
+          // AgentContactAssigned can be resent after consult transfers; keep context in sync
+          [TaskEvent.ASSIGN]: {
+            target: TaskState.CONNECTED,
+            actions: ['updateTaskData', 'emitTaskAssigned'],
+          },
           // Click of hold button
           [TaskEvent.HOLD_INITIATED]: {
             target: TaskState.HOLD_INITIATING,
@@ -225,11 +249,18 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.TRANSFER_INITIATING,
             actions: ['handleTransferInit'],
           },
+          // AgentConsultTransferred / AgentVTeamTransferred / AgentBlindTransferred
           // Back-end may still send transfer responses even if we did not enter the interim state
+          // AgentConsultTransferred: initiator wraps (wrapUpRequired), receiver becomes active owner
           [TaskEvent.TRANSFER_SUCCESS]: [
             {
-              guard: ({event}: {event: TaskEventPayload}) =>
-                Boolean((event as {taskData?: TaskData}).taskData?.wrapUpRequired),
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+                const wrapFromPayload = Boolean(
+                  (event as {taskData?: TaskData}).taskData?.wrapUpRequired
+                );
+
+                return wrapFromPayload || Boolean(context.consultInitiator);
+              },
               target: TaskState.WRAPPING_UP,
               actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
             },
@@ -300,10 +331,22 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.TRANSFER_INITIATING,
             actions: ['handleTransferInit'],
           },
-          [TaskEvent.TRANSFER_SUCCESS]: {
-            target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
-          },
+          // AgentConsultTransferred / AgentVTeamTransferred / AgentBlindTransferred
+          [TaskEvent.TRANSFER_SUCCESS]: [
+            {
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+
+                return Boolean(taskData?.wrapUpRequired || context.consultInitiator);
+              },
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'clearConsultState', 'finalizeTransfer'],
+            },
+          ],
           [TaskEvent.TRANSFER_FAILED]: {
             actions: ['updateTaskData', 'finalizeTransfer'],
           },
@@ -380,8 +423,8 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
             {
-              target: TaskState.TERMINATED,
-              actions: ['updateTaskData', 'clearConsultState', 'markEnded', 'emitTaskConsultEnd'],
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskConsultEnd'],
             },
           ],
           // Transfer buttons while in consulting
@@ -393,17 +436,28 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.TRANSFER_INITIATING,
             actions: ['handleTransferInit'],
           },
-          [TaskEvent.TRANSFER_SUCCESS]: {
-            target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
-          },
+          [TaskEvent.TRANSFER_SUCCESS]: [
+            {
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+
+                return Boolean(taskData?.wrapUpRequired || context.consultInitiator);
+              },
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'clearConsultState', 'finalizeTransfer'],
+            },
+          ],
           [TaskEvent.TRANSFER_FAILED]: {
             actions: ['updateTaskData', 'finalizeTransfer'],
           },
           // AgentContactAssigned - receiver side becomes connected to customer
           [TaskEvent.ASSIGN]: {
             target: TaskState.CONNECTED,
-            actions: ['updateTaskData'],
+            actions: ['updateTaskData', 'emitTaskAssigned'],
           },
           // AgentContactEnded depending on initiator vs receiver
           [TaskEvent.CONTACT_ENDED]: [
@@ -413,7 +467,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
             },
             {
-              target: TaskState.TERMINATED,
+              target: TaskState.WRAPPING_UP,
               actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
             },
           ],

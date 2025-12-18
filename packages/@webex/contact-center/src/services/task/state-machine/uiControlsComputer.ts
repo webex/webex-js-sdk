@@ -65,6 +65,7 @@ function computeVoiceUIControls(
   const isConsulting = currentState === TaskState.CONSULTING || isConfInitiating;
   const isConferencing = currentState === TaskState.CONFERENCING;
   const isWrappingUp = currentState === TaskState.WRAPPING_UP || isTransferInitiating;
+  const isActiveCall = isConnected || isHeld || isConsulting || isConferencing || isWrappingUp;
   const taskData = context.taskData ?? fallbackTaskData ?? null;
   const isConsultedAgent = Boolean(taskData?.isConsulted);
   const isTerminated = taskData?.interaction?.isTerminated ?? false;
@@ -75,6 +76,13 @@ function computeVoiceUIControls(
   const shouldShowAcceptDecline = isWebrtc
     ? isOffered && !isTerminated && (!isConsulting || !isConsultedAgent)
     : isOffered;
+
+  const consultReceiverLimited =
+    isConsultedAgent && !context.consultInitiator && !isWrappingUp && !isConferencing;
+  const allowPrimaryControls = !consultReceiverLimited;
+
+  // For WebRTC: mute is visible in connected state OR when consulting as the consulted agent
+  // After transfer, consulted agent transitions to CONNECTED, so isConnected covers that case
   const muteVisible = isWebrtc
     ? isConnected || (isConsulting && isConsultedAgent)
     : isConnected || isHeld;
@@ -96,8 +104,8 @@ function computeVoiceUIControls(
     // Hold button: visible when connected or held
     // Enabled based on current state (hold when connected, resume when held)
     hold: {
-      isVisible: isConnected || isHeld,
-      isEnabled: isConnected || isHeld,
+      isVisible: allowPrimaryControls && (isConnected || isHeld),
+      isEnabled: allowPrimaryControls && (isConnected || isHeld),
     },
 
     // Mute button: visible when active call, disabled during wrapup
@@ -108,27 +116,27 @@ function computeVoiceUIControls(
 
     // End button: conditional based on config, disabled when held or wrapping up
     end: {
-      isVisible: config.isEndTaskEnabled,
-      isEnabled: !isHeld && !isWrappingUp,
+      isVisible: allowPrimaryControls && config.isEndTaskEnabled && isActiveCall,
+      isEnabled: allowPrimaryControls && isActiveCall && !isHeld && !isWrappingUp,
     },
 
     // Transfer button: visible in connected/held/consulting states
     transfer: {
-      isVisible: isConnected || isHeld || isConsulting,
-      isEnabled: true,
+      isVisible: allowPrimaryControls && (isConnected || isHeld || isConsulting),
+      isEnabled: allowPrimaryControls,
     },
 
     // Consult button: visible when connected or held
     // Enabled when in connected or held states (not consulting/conferencing)
     consult: {
-      isVisible: isConnected || isHeld,
-      isEnabled: isConnected || isHeld,
+      isVisible: allowPrimaryControls && (isConnected || isHeld),
+      isEnabled: allowPrimaryControls && (isConnected || isHeld),
     },
 
     // Consult transfer: visible during consulting
     consultTransfer: {
-      isVisible: isConsulting,
-      isEnabled: true,
+      isVisible: allowPrimaryControls && isConsulting,
+      isEnabled: allowPrimaryControls,
     },
 
     // End consult button: visible during consulting state
@@ -139,15 +147,23 @@ function computeVoiceUIControls(
 
     // Recording controls: based on recording state
     recording: {
-      isVisible: recordingAvailable && recordingFeatureEnabled && (isConnected || isHeld),
-      isEnabled: recordingAvailable && recordingFeatureEnabled && recordingInProgress,
+      isVisible:
+        allowPrimaryControls &&
+        recordingAvailable &&
+        recordingFeatureEnabled &&
+        (isConnected || isHeld),
+      isEnabled:
+        recordingAvailable &&
+        recordingFeatureEnabled &&
+        recordingInProgress &&
+        allowPrimaryControls,
     },
 
     // Conference button: visible during consulting
     // Enabled only if consulted agent has joined
     conference: {
-      isVisible: isConsulting,
-      isEnabled: context.consultDestinationAgentJoined,
+      isVisible: allowPrimaryControls && isConsulting,
+      isEnabled: allowPrimaryControls && context.consultDestinationAgentJoined,
     },
 
     // Wrapup button: visible during wrapup state

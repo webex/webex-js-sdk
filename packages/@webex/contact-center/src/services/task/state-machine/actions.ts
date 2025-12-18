@@ -335,6 +335,7 @@ export const actions: TaskActionsMap = {
     consultDestination: null,
     consultDestinationAgentJoined: false,
     conferenceInitiated: false,
+    consultInitiator: false,
   }),
 
   /**
