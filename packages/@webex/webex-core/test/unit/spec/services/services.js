@@ -34,53 +34,6 @@ describe('webex-core', () => {
     });
 
     describe('#initialize', () => {
-      it('listens for "loaded" event instead of "ready" to avoid deadlock', () => {
-        services.listenToOnce = sinon.stub();
-        services.initialize();
-
-        // Second listenToOnce call should be for 'loaded' event
-        assert.equal(services.listenToOnce.getCall(1).args[1], 'loaded');
-      });
-
-      it('services.ready starts as false', () => {
-        assert.isFalse(services.ready);
-      });
-
-      it('sets ready to true and triggers services:initialized when initialization succeeds with credentials', async () => {
-        services.listenToOnce = sinon.stub();
-        services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
-        services.trigger = sinon.stub();
-        services.webex.credentials = {
-          supertoken: {
-            access_token: 'token',
-          },
-        };
-
-        services.initialize();
-
-        // call the onLoaded callback
-        services.listenToOnce.getCall(1).args[2]();
-        await waitForAsync();
-
-        assert.isTrue(services.ready);
-        sinon.assert.calledWith(services.trigger, 'services:initialized');
-      });
-
-      it('sets ready to true and triggers services:initialized when initialization succeeds without credentials', async () => {
-        services.listenToOnce = sinon.stub();
-        services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
-        services.trigger = sinon.stub();
-
-        services.initialize();
-
-        // call the onLoaded callback
-        services.listenToOnce.getCall(1).args[2]();
-        await waitForAsync();
-
-        assert.isTrue(services.ready);
-        sinon.assert.calledWith(services.trigger, 'services:initialized');
-      });
-
       it('initFailed is false when initialization succeeds and credentials are available', async () => {
         services.listenToOnce = sinon.stub();
         services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
@@ -92,7 +45,7 @@ describe('webex-core', () => {
 
         services.initialize();
 
-        // call the onLoaded callback
+        // call the onReady callback
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
 
@@ -105,7 +58,7 @@ describe('webex-core', () => {
 
         services.initialize();
 
-        // call the onLoaded callback
+        // call the onReady callback
         services.listenToOnce.getCall(1).args[2]();
         await waitForAsync();
 
@@ -114,9 +67,9 @@ describe('webex-core', () => {
 
       it.each([
         {error: new Error('failed'), expectedMessage: 'failed'},
-        {error: undefined, expectedMessage: undefined},
+        {error: undefined, expectedMessage: undefined}
       ])(
-        'sets initFailed to true when collectPreauthCatalog errors but still sets ready to true',
+        'sets initFailed to true when collectPreauthCatalog errors',
         async ({error, expectedMessage}) => {
           services.collectPreauthCatalog = sinon.stub().callsFake(() => {
             return Promise.reject(error);
@@ -124,18 +77,15 @@ describe('webex-core', () => {
 
           services.listenToOnce = sinon.stub();
           services.logger.error = sinon.stub();
-          services.trigger = sinon.stub();
 
           services.initialize();
 
-          // call the onLoaded callback
+          // call the onReady callback
           services.listenToOnce.getCall(1).args[2]();
 
           await waitForAsync();
 
           assert.isTrue(services.initFailed);
-          assert.isTrue(services.ready);
-          sinon.assert.calledWith(services.trigger, 'services:initialized');
           sinon.assert.calledWith(
             services.logger.error,
             `services: failed to init initial services when no credentials available, ${expectedMessage}`
@@ -145,39 +95,33 @@ describe('webex-core', () => {
 
       it.each([
         {error: new Error('failed'), expectedMessage: 'failed'},
-        {error: undefined, expectedMessage: undefined},
-      ])(
-        'sets initFailed to true when initServiceCatalogs errors but still sets ready to true',
-        async ({error, expectedMessage}) => {
-          services.initServiceCatalogs = sinon.stub().callsFake(() => {
-            return Promise.reject(error);
-          });
-          services.webex.credentials = {
-            supertoken: {
-              access_token: 'token',
-            },
-          };
-
-          services.listenToOnce = sinon.stub();
-          services.logger.error = sinon.stub();
-          services.trigger = sinon.stub();
-
-          services.initialize();
-
-          // call the onLoaded callback
-          services.listenToOnce.getCall(1).args[2]();
-
-          await waitForAsync();
-
-          assert.isTrue(services.initFailed);
-          assert.isTrue(services.ready);
-          sinon.assert.calledWith(services.trigger, 'services:initialized');
-          sinon.assert.calledWith(
-            services.logger.error,
-            `services: failed to init initial services when credentials available, ${expectedMessage}`
-          );
+        {error: undefined, expectedMessage: undefined}
+      ])('sets initFailed to true when initServiceCatalogs errors', async ({error, expectedMessage}) => {
+        services.initServiceCatalogs = sinon.stub().callsFake(() => {
+          return Promise.reject(error);
+        });
+        services.webex.credentials = {
+          supertoken: {
+            access_token: 'token'
+          }
         }
-      );
+
+        services.listenToOnce = sinon.stub();
+        services.logger.error = sinon.stub();
+
+        services.initialize();
+
+        // call the onReady callback
+        services.listenToOnce.getCall(1).args[2]();
+
+        await waitForAsync();
+
+        assert.isTrue(services.initFailed);
+        sinon.assert.calledWith(
+          services.logger.error,
+          `services: failed to init initial services when credentials available, ${expectedMessage}`
+        );
+      });
     });
 
     describe('#initServiceCatalogs', () => {
@@ -215,7 +159,7 @@ describe('webex-core', () => {
 
         services.collectPreauthCatalog = sinon.stub().callsFake(() => {
           return Promise.resolve();
-        });
+        })
 
         services.updateServices = sinon.stub().callsFake(() => {
           return Promise.reject(error);
@@ -310,7 +254,7 @@ describe('webex-core', () => {
             discovery: {
               sqdiscovery: 'https://test.ciscospark.com/v1/region',
             },
-          },
+          }
         };
       });
 
@@ -330,8 +274,8 @@ describe('webex-core', () => {
           assert.calledWith(webex.request, {
             uri: 'https://test.ciscospark.com/v1/region',
             addAuthHeader: false,
-            headers: {'spark-user-agent': null},
-            timeout: 5000,
+            headers: { 'spark-user-agent': null },
+            timeout: 5000
           });
         });
       });
@@ -388,6 +332,7 @@ describe('webex-core', () => {
     });
 
     describe('#_fetchNewServiceHostmap()', () => {
+
       beforeEach(() => {
         sinon.spy(webex.internal.newMetrics.callDiagnosticLatencies, 'measureLatency');
       });
@@ -401,7 +346,7 @@ describe('webex-core', () => {
 
         sinon.stub(services, '_formatReceivedHostmap').resolves(mapResponse);
         sinon.stub(services, 'request').resolves({});
-
+        
         const mapResult = await services._fetchNewServiceHostmap({from: 'limited'});
 
         assert.deepEqual(mapResult, mapResponse);
@@ -410,13 +355,10 @@ describe('webex-core', () => {
           method: 'GET',
           service: 'u2c',
           resource: '/limited/catalog',
-          qs: {format: 'hostmap'},
-        });
-        assert.calledOnceWithExactly(
-          webex.internal.newMetrics.callDiagnosticLatencies.measureLatency,
-          sinon.match.func,
-          'internal.get.u2c.time'
+          qs: {format: 'hostmap'}
+        }
         );
+        assert.calledOnceWithExactly(webex.internal.newMetrics.callDiagnosticLatencies.measureLatency, sinon.match.func, 'internal.get.u2c.time');
       });
 
       it('checks service request rejects', async () => {
@@ -424,7 +366,7 @@ describe('webex-core', () => {
 
         sinon.spy(services, '_formatReceivedHostmap');
         sinon.stub(services, 'request').rejects(error);
-
+        
         const promise = services._fetchNewServiceHostmap({from: 'limited'});
         const rejectedValue = await assert.isRejected(promise);
 
@@ -436,13 +378,10 @@ describe('webex-core', () => {
           method: 'GET',
           service: 'u2c',
           resource: '/limited/catalog',
-          qs: {format: 'hostmap'},
-        });
-        assert.calledOnceWithExactly(
-          webex.internal.newMetrics.callDiagnosticLatencies.measureLatency,
-          sinon.match.func,
-          'internal.get.u2c.time'
+          qs: {format: 'hostmap'}
+        }
         );
+        assert.calledOnceWithExactly(webex.internal.newMetrics.callDiagnosticLatencies.measureLatency, sinon.match.func, 'internal.get.u2c.time');
       });
     });
 
@@ -473,6 +412,7 @@ describe('webex-core', () => {
       });
 
       it('returns the original uri if the hostmap has no hosts for the host', () => {
+
         services._hostCatalog = {
           'example.com': [],
         };
@@ -636,7 +576,8 @@ describe('webex-core', () => {
                 id: '0:0:0:different-e-x',
               },
             ],
-            'example-f.com': [],
+            'example-f.com': [
+            ],
           },
           format: 'hostmap',
         };
@@ -844,7 +785,7 @@ describe('webex-core', () => {
             defaultUrl: 'https://example-g.com/api/v1',
             hosts: [],
             name: 'example-g',
-          },
+          }
         ]);
       });
 
@@ -898,7 +839,7 @@ describe('webex-core', () => {
         assert.equal(webex.config.credentials.authorizeUrl, authUrl);
       });
     });
-
+    
     describe('#getMobiusClusters', () => {
       it('returns unique mobius host entries from hostCatalog', () => {
         // Arrange: two hostCatalog keys, with duplicate mobius host across keys
@@ -912,10 +853,10 @@ describe('webex-core', () => {
             {host: 'mobius-a.webex.com', ttl: -1, priority: 7, id: 'urn:TEAM:xyz:mobius'}, // duplicate host
           ],
         };
-
+    
         // Act
         const clusters = services.getMobiusClusters();
-
+    
         // Assert
         // deduped; only mobius entries; keeps first seen mobius-a, then mobius-b
         assert.deepEqual(
@@ -930,31 +871,31 @@ describe('webex-core', () => {
     describe('#isValidHost', () => {
       beforeEach(() => {
         // Setting up a mock host catalog
-        services._hostCatalog = {
-          'audit-ci-m.wbx2.com': [
-            {
-              host: 'audit-ci-m.wbx2.com',
-              ttl: -1,
-              priority: 5,
-              id: 'urn:IDENTITY:PA61:adminAudit',
-            },
-            {
-              host: 'audit-ci-m.wbx2.com',
-              ttl: -1,
-              priority: 5,
-              id: 'urn:IDENTITY:PA61:adminAuditV2',
-            },
-          ],
-          'mercury-connection-partition0-r.wbx2.com': [
-            {
-              host: 'mercury-connection-partition0-r.wbx2.com',
-              ttl: -1,
-              priority: 5,
-              id: 'urn:TEAM:us-west-2_r:mercuryConnectionPartition0',
-            },
-          ],
-          'empty.com': [],
-        };
+          services._hostCatalog = {
+            "audit-ci-m.wbx2.com": [
+              {
+                  "host": "audit-ci-m.wbx2.com",
+                  "ttl": -1,
+                  "priority": 5,
+                  "id": "urn:IDENTITY:PA61:adminAudit"
+              },
+              {
+                  "host": "audit-ci-m.wbx2.com",
+                  "ttl": -1,
+                  "priority": 5,
+                  "id": "urn:IDENTITY:PA61:adminAuditV2"
+              }
+            ],
+            "mercury-connection-partition0-r.wbx2.com": [
+                {
+                    "host": "mercury-connection-partition0-r.wbx2.com",
+                    "ttl": -1,
+                    "priority": 5,
+                    "id": "urn:TEAM:us-west-2_r:mercuryConnectionPartition0"
+                }
+            ],
+            "empty.com": []
+          };
       });
       afterAll(() => {
         // Clean up the mock host catalog

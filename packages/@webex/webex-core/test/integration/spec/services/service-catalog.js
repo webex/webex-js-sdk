@@ -23,12 +23,13 @@ describe('webex-core', () => {
         .then(
           ([user]) =>
             new Promise((resolve) => {
-              webexUser = user;
-              webex = new WebexCore({credentials: user.token});
-              services = webex.internal.services;
-              catalog = services._getCatalog();
-              // Wait for webex ready event before registering device to ensure newMetrics.callDiagnosticMetrics is initialized
-              webex.once('ready', resolve);
+              setTimeout(() => {
+                webexUser = user;
+                webex = new WebexCore({credentials: user.token});
+                services = webex.internal.services;
+                catalog = services._getCatalog();
+                resolve();
+              }, 1000);
             })
         )
         .then(() => webex.internal.device.register())
