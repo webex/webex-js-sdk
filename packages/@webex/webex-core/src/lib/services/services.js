@@ -1123,6 +1123,8 @@ const Services = WebexPlugin.extend({
 
     // wait for webex instance to be ready before attempting
     // to update the service catalogs
+    // this can cause a race condition because credentials may
+    // not be valid when services is initialized
     this.listenToOnce(this.webex, 'ready', () => {
       const {supertoken} = this.webex.credentials;
       // Validate if the supertoken exists.
