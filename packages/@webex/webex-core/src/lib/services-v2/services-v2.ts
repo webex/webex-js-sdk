@@ -40,6 +40,20 @@ const Services = WebexPlugin.extend({
     initFailed: ['boolean', false, false],
   },
 
+  session: {
+    /**
+     * Becomes `true` once services initialization has completed.
+     * This blocks `webex.ready` until services are initialized.
+     * @instance
+     * @memberof Services
+     * @type {boolean}
+     */
+    ready: {
+      default: false,
+      type: 'boolean',
+    },
+  },
+
   _catalogs: new WeakMap(),
 
   _activeServices: {},
@@ -1091,9 +1105,10 @@ const Services = WebexPlugin.extend({
       this.initConfig();
     });
 
-    // wait for webex instance to be ready before attempting
-    // to update the service catalogs
-    this.listenToOnce(this.webex, 'ready', () => {
+    // wait for webex instance storage to be loaded before attempting
+    // to update the service catalogs. Using 'loaded' instead of 'ready'
+    // to avoid deadlock since webex.ready depends on this plugin's ready.
+    this.listenToOnce(this.webex, 'loaded', () => {
       const {supertoken} = this.webex.credentials;
       // Validate if the supertoken exists.
       if (supertoken && supertoken.access_token) {
@@ -1106,16 +1121,25 @@ const Services = WebexPlugin.extend({
             this.logger.error(
               `services: failed to init initial services when credentials available, ${error?.message}`
             );
+          })
+          .finally(() => {
+            this.ready = true;
+            this.trigger('services:initialized');
           });
       } else {
         const {email} = this.webex.config;
 
-        this.collectPreauthCatalog(email ? {email} : undefined).catch((error) => {
-          this.initFailed = true;
-          this.logger.error(
-            `services: failed to init initial services when no credentials available, ${error?.message}`
-          );
-        });
+        this.collectPreauthCatalog(email ? {email} : undefined)
+          .catch((error) => {
+            this.initFailed = true;
+            this.logger.error(
+              `services: failed to init initial services when no credentials available, ${error?.message}`
+            );
+          })
+          .finally(() => {
+            this.ready = true;
+            this.trigger('services:initialized');
+          });
       }
     });
   },
