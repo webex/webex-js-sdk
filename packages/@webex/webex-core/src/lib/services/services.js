@@ -1092,8 +1092,8 @@ const Services = WebexPlugin.extend({
       // Persist to localStorage to survive browser refresh
       try {
         const ls = this._getLocalStorageSafe();
-        const raw = ls ? ls.getItem(CATALOG_CACHE_KEY_V1) : null;
-        current = raw ? JSON.parse(raw) : {};
+        const cachedJson = ls ? ls.getItem(CATALOG_CACHE_KEY_V1) : null;
+        current = cachedJson ? JSON.parse(cachedJson) : {};
       } catch (e) {
         current = {};
       }
@@ -1149,8 +1149,8 @@ const Services = WebexPlugin.extend({
 
         return false;
       }
-      const raw = ls.getItem(CATALOG_CACHE_KEY_V1);
-      const cached = raw ? JSON.parse(raw) : undefined;
+      const cachedJson = ls.getItem(CATALOG_CACHE_KEY_V1);
+      const cached = cachedJson ? JSON.parse(cachedJson) : undefined;
       if (!cached) {
         return false;
       }

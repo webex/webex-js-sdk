@@ -15,6 +15,7 @@ import {
   ServiceHostmap,
   ServiceGroup,
   ServiceHost,
+  SelectionMeta,
 } from './types';
 
 const trailingSlashes = /(?:^\/)|(?:\/$)/;
@@ -294,7 +295,7 @@ const Services = WebexPlugin.extend({
           serviceHostMap?.timestamp
         );
         // Build selection metadata for caching discrimination (preauth/signin)
-        let selectionMeta: {selectionType: string; selectionValue: string} | undefined;
+        let selectionMeta: SelectionMeta | undefined;
         if (serviceGroup === 'preauth' || serviceGroup === 'signin') {
           const key = formattedQuery && Object.keys(formattedQuery || {})[0];
           if (key) {
@@ -1001,7 +1002,7 @@ const Services = WebexPlugin.extend({
   async _cacheCatalog(
     serviceGroup: ServiceGroup,
     hostMap: ServiceHostmap,
-    meta?: {selectionType: string; selectionValue: string}
+    meta?: SelectionMeta
   ): Promise<void> {
     let current: {orgId?: string; env?: {fedramp?: boolean; u2cDiscoveryUrl?: string}} = {};
     let orgId: string | undefined;
@@ -1015,8 +1016,8 @@ const Services = WebexPlugin.extend({
 
       try {
         const ls = this._getLocalStorageSafe();
-        const raw = ls ? ls.getItem(CATALOG_CACHE_KEY_V2) : null;
-        current = raw ? JSON.parse(raw) : {};
+        const cachedJson = ls ? ls.getItem(CATALOG_CACHE_KEY_V2) : null;
+        current = cachedJson ? JSON.parse(cachedJson) : {};
       } catch {
         current = {};
       }
@@ -1073,8 +1074,8 @@ const Services = WebexPlugin.extend({
 
         return false;
       }
-      const raw = ls.getItem(CATALOG_CACHE_KEY_V2);
-      const cached = raw ? JSON.parse(raw) : undefined;
+      const cachedJson = ls.getItem(CATALOG_CACHE_KEY_V2);
+      const cached = cachedJson ? JSON.parse(cachedJson) : undefined;
       if (!cached) {
         return false;
       }
@@ -1126,7 +1127,7 @@ const Services = WebexPlugin.extend({
         // Support legacy (hostMap) and new ({hostMap, meta}) shapes
         const hostMap: ServiceHostmap =
           cachedGroup && cachedGroup.hostMap ? cachedGroup.hostMap : cachedGroup;
-        const meta: {selectionType: string; selectionValue: string} | undefined = cachedGroup?.meta;
+        const meta: SelectionMeta | undefined = cachedGroup?.meta;
 
         if (serviceGroup === 'preauth' && meta) {
           // For proximity-based selection, always fetch fresh to respect IP/region changes

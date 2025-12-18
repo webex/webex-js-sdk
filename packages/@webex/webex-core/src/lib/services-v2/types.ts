@@ -2,6 +2,11 @@ type ServiceName = string;
 type ClusterId = string;
 export type ServiceGroup = 'discovery' | 'override' | 'preauth' | 'postauth' | 'signin';
 
+export type SelectionMeta = {
+  selectionType: string;
+  selectionValue: string;
+};
+
 export type ServiceHost = {
   host: string;
   ttl: number;
