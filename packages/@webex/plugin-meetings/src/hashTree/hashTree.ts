@@ -1,4 +1,4 @@
-import {XXH3_128} from 'xxh3-ts';
+import {XXH3_128} from 'xxh3-ts/xxh3';
 import {EMPTY_HASH} from './constants';
 import {ObjectType} from './types';
 
