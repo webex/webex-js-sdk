@@ -397,6 +397,8 @@ describe('Webex', () => {
     return new Promise((resolve) => webex.once('loaded', resolve)).then(() => {
       assert.isFalse(webex.ready);
       assert.isFalse(webex.test.ready);
+      // Set services.ready to true since it now blocks webex.ready
+      webex.internal.services.ready = true;
       webex.test.ready = true;
       assert.isTrue(webex.test.ready);
       assert.isTrue(webex.ready);

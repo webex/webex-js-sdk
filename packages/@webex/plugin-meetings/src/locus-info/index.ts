@@ -18,6 +18,7 @@ import {
   CALL_REMOVED_REASON,
   RECORDING_STATE,
   Enum,
+  SELF_ROLES,
 } from '../constants';
 
 import InfoUtils from './infoUtils';
@@ -96,10 +97,7 @@ export default class LocusInfo extends EventsScope {
   aclUrl: any;
   baseSequence: any;
   created: any;
-  identities: any;
-  membership: any;
   participants: any;
-  participantsUrl: any;
   replaces: any;
   scheduledMeeting: any;
   sequence: any;
@@ -111,7 +109,6 @@ export default class LocusInfo extends EventsScope {
   info: any;
   roles: any;
   mediaShares: any;
-  replace: any;
   url: any;
   links?: Links;
   mainSessionLocusCache: any;
@@ -327,13 +324,10 @@ export default class LocusInfo extends EventsScope {
   init(locus: any = {}) {
     this.created = locus.created || null;
     this.scheduledMeeting = locus.meeting || null;
-    this.participantsUrl = locus.participantsUrl || null;
     this.replaces = locus.replaces || null;
     this.aclUrl = locus.aclUrl || null;
     this.baseSequence = locus.baseSequence || null;
     this.sequence = locus.sequence || null;
-    this.membership = locus.membership || null;
-    this.identities = locus.identities || null;
     this.participants = locus.participants || null;
 
     /**
@@ -512,6 +506,14 @@ export default class LocusInfo extends EventsScope {
   updateLocusFromHashTreeObject(object: HashTreeObject, locus: LocusDTO): LocusDTO {
     const type = object.htMeta.elementId.type.toLowerCase();
 
+    const addParticipantObject = (obj: HashTreeObject) => {
+      if (!locus.participants) {
+        locus.participants = [];
+      }
+      locus.participants.push(obj.data);
+      this.hashTreeObjectId2ParticipantId.set(obj.htMeta.elementId.id, obj.data.id);
+    };
+
     switch (type) {
       case ObjectType.locus: {
         if (!object.data) {
@@ -577,13 +579,7 @@ export default class LocusInfo extends EventsScope {
           } ${object.data ? 'updated' : 'removed'} version=${object.htMeta.elementId.version}`
         );
         if (object.data) {
-          if (!locus.participants) {
-            locus.participants = [];
-          }
-          const participantObject = object.data;
-          participantObject.htMeta = object.htMeta;
-          locus.participants.push(participantObject);
-          this.hashTreeObjectId2ParticipantId.set(object.htMeta.elementId.id, participantObject.id);
+          addParticipantObject(object);
         } else {
           const participantId = this.hashTreeObjectId2ParticipantId.get(object.htMeta.elementId.id);
 
@@ -610,6 +606,24 @@ export default class LocusInfo extends EventsScope {
           );
           const locusDtoKey = ObjectTypeToLocusKeyMap[type];
           locus[locusDtoKey] = object.data;
+
+          /* Hash tree based webinar attendees don't receive a Participant object for themselves from Locus,
+             but a lot of existing code in SDK and web app expects a member object for self to exist,
+             so whenever SELF changes for a webinar attendee, we copy it into a participant object.
+             We can do it, because SELF has always all the same properties as a participant object.
+          */
+          if (
+            type === ObjectType.self &&
+            locus.info?.isWebinar &&
+            object.data.controls?.role?.roles?.find(
+              (r) => r.type === SELF_ROLES.ATTENDEE && r.hasRole
+            )
+          ) {
+            LoggerProxy.logger.info(
+              `Locus-info:index#updateLocusFromHashTreeObject --> webinar attendee: creating participant object from self`
+            );
+            addParticipantObject(object);
+          }
         }
         break;
       default:
@@ -1022,14 +1036,11 @@ export default class LocusInfo extends EventsScope {
     this.updateLocusUrl(locus.url, ControlsUtils.isMainSessionDTO(locus));
     this.updateMeetingInfo(locus.info, locus.self);
     this.updateMediaShares(locus.mediaShares);
-    this.updateParticipantsUrl(locus.participantsUrl);
-    this.updateReplace(locus.replace);
+    this.updateReplaces(locus.replaces);
     this.updateSelf(locus.self);
     this.updateAclUrl(locus.aclUrl);
     this.updateBasequence(locus.baseSequence);
     this.updateSequence(locus.sequence);
-    this.updateMemberShip(locus.membership);
-    this.updateIdentifiers(locus.identities);
     this.updateEmbeddedApps(locus.embeddedApps);
     this.updateLinks(locus.links);
     this.compareAndUpdate();
@@ -1904,24 +1915,13 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
-   * @param {String} participantsUrl
+   * @param {Object} replaces
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  updateParticipantsUrl(participantsUrl: string) {
-    if (participantsUrl && !isEqual(this.participantsUrl, participantsUrl)) {
-      this.participantsUrl = participantsUrl;
-    }
-  }
-
-  /**
-   * @param {Object} replace
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateReplace(replace: object) {
-    if (replace && !isEqual(this.replace, replace)) {
-      this.replace = replace;
+  updateReplaces(replaces: object) {
+    if (replaces && !isEqual(this.replaces, replaces)) {
+      this.replaces = replaces;
     }
   }
 
@@ -2255,28 +2255,6 @@ export default class LocusInfo extends EventsScope {
   updateSequence(sequence: number) {
     if (sequence && !isEqual(this.sequence, sequence)) {
       this.sequence = sequence;
-    }
-  }
-
-  /**
-   * @param {Object} membership
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateMemberShip(membership: object) {
-    if (membership && !isEqual(this.membership, membership)) {
-      this.membership = membership;
-    }
-  }
-
-  /**
-   * @param {Array} identities
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateIdentifiers(identities: Array<any>) {
-    if (identities && !isEqual(this.identities, identities)) {
-      this.identities = identities;
     }
   }
 
