@@ -1049,7 +1049,7 @@ describe('webex-core', () => {
         sinon.stub(services, 'request').resolves({body: {services: [], activeServices: {}, timestamp: Date.now().toString(), orgId: 'urn:EXAMPLE:org', format: 'U2CV2'}});
         // Cause ready callback to run immediately
         services.listenToOnce = sinon.stub().callsFake((ctx, event, cb) => {
-          if (event === 'ready') cb();
+          if (event === 'loaded') cb();
         });
 
         // Act
@@ -1091,7 +1091,7 @@ describe('webex-core', () => {
         const cacheSpy = sinon.spy(services, '_cacheCatalog');
         // Cause ready callback to run immediately
         services.listenToOnce = sinon.stub().callsFake((ctx, event, cb) => {
-          if (event === 'ready') cb();
+          if (event === 'loaded') cb();
         });
 
         // Act
