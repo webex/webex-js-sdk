@@ -764,6 +764,7 @@ describe('webex-core', () => {
         );
       });
     });
+    
     describe('#isValidHost', () => {
       beforeEach(() => {
         // Setting up a mock services list
@@ -811,6 +812,203 @@ describe('webex-core', () => {
         assert.isFalse(services.isValidHost(123));
         assert.isFalse(services.isValidHost({}));
         assert.isFalse(services.isValidHost([]));
+      });
+    });
+
+    describe('U2C catalog cache behavior (v2)', () => {
+      const CATALOG_CACHE_KEY_V2 = 'services.v2.u2cHostMap';
+      let windowBackup;
+      let localStorageBackup;
+
+      const makeLocalStorageShim = () => {
+        const store = new Map<string, string>();
+        return {
+          getItem: (k: string) => (store.has(k) ? store.get(k) : null),
+          setItem: (k: string, v: string) => store.set(k, v),
+          removeItem: (k: string) => store.delete(k),
+          _store: store,
+        };
+      };
+
+      beforeEach(() => {
+        // Stub window.localStorage
+        windowBackup = global.window;
+        if (!global.window) global.window = {} as Window & typeof globalThis;
+        localStorageBackup = global.window.localStorage;
+        global.window.localStorage = makeLocalStorageShim();
+        // Enable U2C caching feature flag for tests that depend on cache writes/reads
+        services.webex.config = services.webex.config || {};
+        services.webex.config.calling = {...(services.webex.config.calling || {}), cacheU2C: true};
+        // Ensure code under test uses our shim via util method
+        sinon.stub(services, '_getLocalStorageSafe').returns(global.window.localStorage);
+        // default current env
+        services.webex.config = services.webex.config || {};
+        services.webex.config.services = services.webex.config.services || {discovery: {}};
+        services.webex.config.services.discovery.u2c =
+          services.webex.config.services.discovery.u2c || 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.fedramp =
+          typeof services.webex.config.fedramp === 'boolean'
+            ? services.webex.config.fedramp
+            : false;
+      });
+
+      afterEach(() => {
+        global.window.localStorage = localStorageBackup || undefined;
+        if (!windowBackup) {
+          delete global.window;
+        } else {
+          global.window = windowBackup;
+        }
+        // Restore util stub if present
+        if (services._getLocalStorageSafe && services._getLocalStorageSafe.restore) {
+          services._getLocalStorageSafe.restore();
+        }
+      });
+
+      it('stores selection metadata and env on cache write for preauth', async () => {
+        // Arrange env
+        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.fedramp = false;
+
+        // Act
+        await services._cacheCatalog(
+          'preauth',
+          {services: [], timestamp: Date.now().toString()},
+          {selectionType: 'orgId', selectionValue: 'urn:EXAMPLE:org'}
+        );
+
+        // Assert
+        const raw = window.localStorage.getItem(CATALOG_CACHE_KEY_V2);
+        assert.isString(raw);
+        const parsed = JSON.parse(raw as string);
+        assert.deepEqual(parsed.env, {
+          fedramp: false,
+          u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1',
+        });
+        assert.isObject(parsed.preauth);
+        assert.deepEqual(parsed.preauth.meta, {
+          selectionType: 'orgId',
+          selectionValue: 'urn:EXAMPLE:org',
+        });
+      });
+
+      it('warms preauth from cache when selection meta matches intended orgId', async () => {
+        // Arrange current env and credentials
+        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.fedramp = false;
+        services.webex.credentials = {
+          canAuthorize: true,
+          getOrgId: sinon.stub().returns('urn:EXAMPLE:org'),
+        };
+        // Seed cache
+        window.localStorage.setItem(
+          CATALOG_CACHE_KEY_V2,
+          JSON.stringify({
+            cachedAt: Date.now(),
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            preauth: {
+              hostMap: {services: [], timestamp: '1'},
+              meta: {selectionType: 'orgId', selectionValue: 'urn:EXAMPLE:org'},
+            },
+          })
+        );
+        // Spy updateServiceGroups
+        const spy = sinon.spy(services._getCatalog(), 'updateServiceGroups');
+
+        // Act
+        const warmed = await services._loadCatalogFromCache();
+
+        // Assert
+        assert.isTrue(warmed);
+        assert.isTrue(
+          spy.calledWith('preauth', [], '1'),
+          'expected preauth to be warmed when selection matches'
+        );
+        spy.restore && spy.restore();
+      });
+
+      it('does not warm preauth when selection meta is proximity mode', async () => {
+        // Arrange env
+        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.fedramp = false;
+        window.localStorage.setItem(
+          CATALOG_CACHE_KEY_V2,
+          JSON.stringify({
+            cachedAt: Date.now(),
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            preauth: {
+              hostMap: {services: [], timestamp: '1'},
+              meta: {selectionType: 'mode', selectionValue: 'DEFAULT_BY_PROXIMITY'},
+            },
+          })
+        );
+        const spy = sinon.spy(services._getCatalog(), 'updateServiceGroups');
+
+        // Act
+        const warmed = await services._loadCatalogFromCache();
+
+        // Assert: overall warm-up succeeds, but preauth is skipped
+        assert.isTrue(warmed);
+        assert.isFalse(
+          spy.calledWith('preauth', sinon.match.any, sinon.match.any),
+          'expected preauth not to be warmed for proximity mode'
+        );
+        spy.restore && spy.restore();
+      });
+
+      it('does not warm preauth when selection meta mismatches intended selection', async () => {
+        // Arrange env and credentials
+        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.fedramp = false;
+        services.webex.credentials = {
+          canAuthorize: true,
+          getOrgId: sinon.stub().returns('urn:EXAMPLE:org'),
+        };
+        window.localStorage.setItem(
+          CATALOG_CACHE_KEY_V2,
+          JSON.stringify({
+            cachedAt: Date.now(),
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            preauth: {
+              hostMap: {services: [], timestamp: '1'},
+              meta: {selectionType: 'orgId', selectionValue: 'urn:DIFF:org'},
+            },
+          })
+        );
+        const spy = sinon.spy(services._getCatalog(), 'updateServiceGroups');
+
+        const warmed = await services._loadCatalogFromCache();
+
+        assert.isTrue(warmed);
+        assert.isFalse(
+          spy.calledWith('preauth', sinon.match.any, sinon.match.any),
+          'expected preauth not to be warmed on selection mismatch'
+        );
+        spy.restore && spy.restore();
+      });
+
+      it('skips warm entirely when environment fingerprint mismatches', async () => {
+        // Cached env differs from current env
+        services.webex.config.services.discovery.u2c = 'https://u2c.current.com/u2c/api/v1';
+        services.webex.config.fedramp = false;
+        window.localStorage.setItem(
+          CATALOG_CACHE_KEY_V2,
+          JSON.stringify({
+            cachedAt: Date.now(),
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.cached.com/u2c/api/v1'},
+            preauth: {
+              hostMap: {services: [], timestamp: '1'},
+              meta: {selectionType: 'orgId', selectionValue: 'urn:EXAMPLE:org'},
+            },
+          })
+        );
+        const spy = sinon.spy(services._getCatalog(), 'updateServiceGroups');
+
+        const warmed = await services._loadCatalogFromCache();
+
+        assert.isFalse(warmed, 'env mismatch should skip warm and return false');
+        assert.isFalse(spy.called, 'no group should be warmed on env mismatch');
+        spy.restore && spy.restore();
       });
     });
   });
