@@ -6782,6 +6782,65 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#setMainVideoBitrate', () => {
+        let mediaDirection;
+
+        beforeEach(() => {
+          mediaDirection = {sendVideo: true, receiveVideo: true, sendAudio: true};
+          meeting.mediaProperties.mediaDirection = mediaDirection;
+          meeting.mediaProperties.webrtcMediaConnection = {
+            setPreferredMaxVideoBitrateKbps: sinon.stub().returns(Promise.resolve()),
+          };
+          meeting.mediaProperties.setMainVideoBitrate = sinon.stub();
+        });
+
+        it('should have #setMainVideoBitrate', () => {
+          assert.exists(meeting.setMainVideoBitrate);
+        });
+
+        it('should set mediaProperty with the proper bitrate', () =>
+          meeting.setMainVideoBitrate(1200).then(() => {
+            assert.calledWith(meeting.mediaProperties.setMainVideoBitrate, 1200);
+          }));
+
+        it('should call webrtcMediaConnection.setPreferredMaxVideoBitrateKbps()', () =>
+          meeting.setMainVideoBitrate(2500).then(() => {
+            assert.calledOnce(meeting.mediaProperties.webrtcMediaConnection.setPreferredMaxVideoBitrateKbps);
+          }));
+
+        it('should error if bitrateKbps is not a valid number', () => {
+          assert.isRejected(meeting.setMainVideoBitrate('invalid'));
+        });
+
+        it('should error if bitrateKbps is zero', () => {
+          assert.isRejected(meeting.setMainVideoBitrate(0));
+        });
+
+        it('should error if bitrateKbps is negative', () => {
+          assert.isRejected(meeting.setMainVideoBitrate(-100));
+        });
+
+        it('should error if bitrateKbps is NaN', () => {
+          assert.isRejected(meeting.setMainVideoBitrate(NaN));
+        });
+
+        it('should error if bitrateKbps is Infinity', () => {
+          assert.isRejected(meeting.setMainVideoBitrate(Infinity));
+        });
+
+        it('should error if sendVideo is set to false', () => {
+          meeting.mediaProperties.mediaDirection = {sendVideo: false};
+          assert.isRejected(meeting.setMainVideoBitrate(1200));
+        });
+
+        it('should resolve without calling webrtcMediaConnection if bitrate is already set to the same value', () => {
+          meeting.mediaProperties.mainVideoBitrateKbps = 1200;
+          return meeting.setMainVideoBitrate(1200).then(() => {
+            assert.notCalled(meeting.mediaProperties.webrtcMediaConnection.setPreferredMaxVideoBitrateKbps);
+          });
+        });
+      });
+
       describe('#usePhoneAudio', () => {
         beforeEach(() => {
           meeting.meetingRequest.dialIn = sinon

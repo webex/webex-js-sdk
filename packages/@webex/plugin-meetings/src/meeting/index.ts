@@ -9164,6 +9164,45 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Sets the max bitrate for the main (camera) video being sent
+   * @param {number} bitrateKbps - Desired max bitrate in kbps (e.g., 800, 1200, 2500)
+   * @returns {Promise<void>}
+   * @public
+   * @memberof Meeting
+   */
+  async setMainVideoBitrate(bitrateKbps: number): Promise<void> {
+    LoggerProxy.logger.log(
+      `Meeting:index#setMainVideoBitrate --> Setting main video max bitrate to ${bitrateKbps} kbps`
+    );
+
+    if (typeof bitrateKbps !== 'number' || !Number.isFinite(bitrateKbps) || bitrateKbps <= 0) {
+      return this.rejectWithErrorLog(
+        `Meeting:index#setMainVideoBitrate --> invalid bitrateKbps="${bitrateKbps}"`
+      );
+    }
+
+    if (!this.mediaProperties.mediaDirection.sendVideo) {
+      return this.rejectWithErrorLog(
+        'Meeting:index#setMainVideoBitrate --> unable to change main video bitrate, sendVideo is disabled'
+      );
+    }
+
+    if (bitrateKbps === this.mediaProperties.mainVideoBitrateKbps) {
+      LoggerProxy.logger.warn(
+        `Meeting:index#setMainVideoBitrate --> main video bitrate already set to ${bitrateKbps} kbps`
+      );
+
+      return Promise.resolve();
+    }
+
+    this.mediaProperties.setMainVideoBitrate(bitrateKbps);
+
+    return this.mediaProperties.webrtcMediaConnection.setPreferredMaxVideoBitrateKbps(
+      this.mediaProperties.mainVideoBitrateKbps
+    );
+  }
+
+  /**
    * Functionality for when a share audio is ended.
    * @private
    * @memberof Meeting

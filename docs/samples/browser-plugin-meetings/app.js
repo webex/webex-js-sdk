@@ -870,6 +870,7 @@ const localResolutionInp = document.getElementById('local-resolution');
 const remoteResolutionInp = document.getElementById('remote-resolution');
 const localVideoResElm = document.getElementById('local-video-resolution');
 const remoteVideoResElm = document.getElementById('remote-video-resolution');
+const mainVideoBitrateInp = document.getElementById('main-video-bitrate');
 
 
 const toggleSourcesMediaDirection = document.querySelectorAll('[name=ts-media-direction]');
@@ -2060,6 +2061,22 @@ function setRemoteMeetingQuality() {
     });
 }
 
+function setMainVideoBitrate() {
+  const meeting = getCurrentMeeting();
+  const bitrateKbps = Number(mainVideoBitrateInp.value);
+
+  meeting.setMainVideoBitrate(bitrateKbps)
+    .then(() => {
+      toggleSourcesQualityStatus.innerText = `Main video bitrate set to ${bitrateKbps} kbps!`;
+      console.log('MeetingControls#setMainVideoBitrate :: Bitrate set successfully to', bitrateKbps, 'kbps');
+    })
+    .catch((error) => {
+      toggleSourcesQualityStatus.innerText = 'MeetingControls#setMainVideoBitrate :: Error setting main video bitrate!';
+      console.log('MeetingControls#setMainVideoBitrate :: Error setting bitrate!');
+      console.error(error);
+    });
+}
+
 function clearMediaDeviceList() {
   sourceDevicesAudioInput.innerText = '';
   sourceDevicesAudioOutput.innerText = '';
@@ -2873,9 +2890,23 @@ function addMediaOptionsRemote(elementId) {
   element.innerHTML = optionElements;
 }
 
+function addMainVideoBitrateOptions(elementId) {
+  // Bitrate presets in kbps: 500, 800, 1200, 2000, 2500, 3000
+  const bitrateOptions = [500, 800, 1200, 2000, 2500, 3000];
+  const element = document.getElementById(elementId);
+  const optionElements = bitrateOptions.reduce((acc, bitrate) => {
+    acc += `<option value="${bitrate}" ${bitrate === 2500 && 'selected'}>${bitrate} kbps</option>`;
+
+    return acc;
+  }, '');
+
+  element.innerHTML = optionElements;
+}
+
 (() => {
   addMediaOptionsLocal('local-resolution');
   addMediaOptionsRemote('remote-resolution');
+  addMainVideoBitrateOptions('main-video-bitrate');
 })();
 
 function addMedia() {

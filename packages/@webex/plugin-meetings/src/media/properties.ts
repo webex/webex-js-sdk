@@ -46,6 +46,7 @@ export default class MediaProperties {
   namespace = MEETINGS;
   mediaIssueCounters: {[key: string]: number} = {};
   throttledSendMediaIssueMetric: ReturnType<typeof throttle>;
+  mainVideoBitrateKbps?: number;
 
   /**
    * @param {Object} [options] -- to auto construct
@@ -120,6 +121,15 @@ export default class MediaProperties {
 
   setRemoteQualityLevel(remoteQualityLevel) {
     this.remoteQualityLevel = remoteQualityLevel;
+  }
+
+  /**
+   * Sets the main video bitrate cap
+   * @param {number} bitrateKbps Bitrate in kbps
+   * @returns {void}
+   */
+  setMainVideoBitrate(bitrateKbps: number) {
+    this.mainVideoBitrateKbps = bitrateKbps;
   }
 
   setRemoteShareStream(remoteShareStream: RemoteStream) {
