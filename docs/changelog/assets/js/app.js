@@ -54,7 +54,8 @@ Handlebars.registerHelper('convertDate', function(timestamp) {
 
 Handlebars.registerHelper('gt', function(a, b) {
     return a > b;
-});
+});//Used for: Conditional rendering like {{#if (gt commits.length 0)}}
+//Purpose: Greater-than comparison in Handlebars templates.
 
 
 // Util Methods
@@ -72,7 +73,7 @@ const populateFormFieldsFromURL = async () => {
         version: queryParams.get('version'),
         commitMessage: queryParams.get('commitMessage'),
         commitHash: queryParams.get('commitHash')
-    };
+    };//Extract all search parameters from the URL
 
     let hasAtleastOneParam = false;
   
@@ -133,7 +134,7 @@ const populateVersions = async () => {
         console.error('Error fetching version data:', error);
     }
 };
-
+//fetchChangelog('logs/v3_10_0.json')
 const fetchChangelog = async (versionPath) => {
     try {
         const response = await fetch(versionPath);
@@ -219,6 +220,7 @@ const updateFormState = (formParams) => {
             commitHash: commitHashInput.value
         };
     }
+    //Create disable flags for all fields
     const disable = {
         package: false,
         version: false,
@@ -239,14 +241,15 @@ const updateFormState = (formParams) => {
         disable.commitMessage = false;
         disable.commitHash = false;
     }
-    
+    //If the package name is empty, disable the version input
     if(formParams.package === null || formParams.package.trim() === ''){
         disable.version = true;
     }
     else{
         disable.searchButton = false;
     }
-    
+//     If version filled → disable commit fields
+// If commit fields filled → disable version input
     if(formParams.version && formParams.version.trim() !== ''){
         disable.version = false;
         disable.commitMessage = true;
@@ -314,7 +317,7 @@ const updateFormState = (formParams) => {
         }
     }
 };
-
+//Search changelog by commit message or hash.(A single commit can appear in multiple package versions.)
 const doSearch_commit = (searchParams, drill_down) => {
     let resulting_versions = new Set(),
         resulting_commit_messages = new Set(),
@@ -371,13 +374,13 @@ const doSearch_commit = (searchParams, drill_down) => {
 const doSearch = (searchParams) => {
     const { package, version } = searchParams;
     let drill_down = {...currentChangelog}, shouldTransform = true, search_results = [];
-
+//If package selected → filter to that package
     if(package !== null && package?.trim() !== ""){
         drill_down = {
             [package]: drill_down[package]
         };
     }
-
+//If version selected → filter to that version
     if(version !== null && version?.trim() !== ""){
         drill_down = drill_down[package][version] ? {
             [package]: {
@@ -385,7 +388,7 @@ const doSearch = (searchParams) => {
             }
         } : {};
     }
-    else if(
+    else if(//If searching by commit → call doSearch_commit()
         searchParams.commitMessage !== null && searchParams.commitMessage?.trim() !== "" || 
         searchParams.commitHash !== null && searchParams.commitHash?.trim() !== ""
     ){
@@ -469,7 +472,7 @@ const copyToClipboard = (copyButton) => {
         copyText.textContent = 'Copy';
     },2000);
 }
-
+//Show/hide the commits section in version comparison.
 const toggleCommits = () => {
     const commitsList = document.getElementById('commits-list');
     const toggleText = document.getElementById('toggle-commits-text');
@@ -494,7 +497,7 @@ const copyComparisonLink = () => {
     const copyLinkBtn = document.getElementById('copy-comparison-link');
     
     console.log('Copying URL:', currentURL);
-    
+      
     // Try modern clipboard API first
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(currentURL)
@@ -533,7 +536,7 @@ const showCopySuccess = (button) => {
 }
 
 /**
- * Fallback copy method for browsers without Clipboard API
+ * Fallback copy method for browsers without Clipboard API (Older browsers don't support navigator.clipboard)
  */
 const fallbackCopyToClipboard = (text, button) => {
     // Create temporary input element
@@ -920,9 +923,10 @@ let comparisonMode = false;
 /**
  * Extract all packages from a version changelog
  * @param {Object} changelog - The changelog JSON for a version
- * @returns {Object} - Map of {packageName: latestVersion}
+ * @param {Object} specificVersions - Optional map of {packageName: specificVersion}
+ * @returns {Object} - Map of {packageName: version}
  */
-const extractPackagesFromVersion = (changelog) => {
+const extractPackagesFromVersion = (changelog, specificVersions = null) => {
     const packageMap = {};
     
     for (const packageName in changelog) {
@@ -933,19 +937,36 @@ const extractPackagesFromVersion = (changelog) => {
         
         if (versionKeys.length === 0) continue;
         
-        // Find the latest version by published_date
-        let latestVersion = versionKeys[0];
-        let latestDate = packageVersions[versionKeys[0]].published_date || 0;
+        let selectedVersion = null;
         
-        versionKeys.forEach(version => {
-            const publishedDate = packageVersions[version].published_date || 0;
-            if (publishedDate > latestDate) {
-                latestDate = publishedDate;
-                latestVersion = version;
+        // Check if user specified a specific version for this package
+        if (specificVersions && specificVersions[packageName]) {
+            const requestedVersion = specificVersions[packageName];
+            if (packageVersions[requestedVersion]) {
+                selectedVersion = requestedVersion;
+                console.log(`Using specific version for ${packageName}: ${requestedVersion}`);
+            } else {
+                console.warn(`Requested version ${requestedVersion} not found for ${packageName}, using latest`);
             }
-        });
+        }
         
-        packageMap[packageName] = latestVersion;
+        // If no specific version requested or not found, use latest
+        if (!selectedVersion) {
+            let latestVersion = versionKeys[0];
+            let latestDate = packageVersions[versionKeys[0]].published_date || 0;
+            
+            versionKeys.forEach(version => {
+                const publishedDate = packageVersions[version].published_date || 0;
+                if (publishedDate > latestDate) {
+                    latestDate = publishedDate;
+                    latestVersion = version;
+                }
+            });
+            
+            selectedVersion = latestVersion;
+        }
+        
+        packageMap[packageName] = selectedVersion;
     }
     
     return packageMap;
@@ -1061,6 +1082,225 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
 };
 
 /**
+ * Populate package dropdowns for comparison mode when version is selected
+ * @param {string} versionSelectId - ID of the version select element
+ * @param {string} packageSelectId - ID of the package select element
+ */
+const populateComparisonPackageDropdown = async (versionSelectId, packageSelectId) => {
+    const versionSelect = document.getElementById(versionSelectId);
+    const packageSelect = document.getElementById(packageSelectId);
+    
+    if (!versionSelect || !packageSelect) return;
+    
+    const selectedVersion = versionSelect.value;
+    
+    if (!selectedVersion) {
+        packageSelect.innerHTML = '<option value="" disabled>First select a version</option>';
+        packageSelect.disabled = true;
+        return;
+    }
+    
+    try {
+        // Show loading state
+        packageSelect.innerHTML = '<option value="" disabled>Loading packages...</option>';
+        packageSelect.disabled = true;
+        
+        // Fetch changelog for the selected version
+        const versionPath = versionPaths[selectedVersion];
+        if (!versionPath) {
+            throw new Error(`No path found for version ${selectedVersion}`);
+        }
+        
+        const response = await fetch(versionPath);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch changelog for ${selectedVersion}`);
+        }
+        
+        const changelog = await response.json();
+        
+        // Extract all package names
+        const packages = Object.keys(changelog).sort();
+        
+        // Populate dropdown
+        packageSelect.innerHTML = '<option value="">All packages (default)</option>';
+        packages.forEach(pkg => {
+            const option = document.createElement('option');
+            option.value = pkg;
+            option.textContent = pkg;
+            packageSelect.appendChild(option);
+        });
+        
+        packageSelect.disabled = false;
+        
+        console.log(`Populated ${packages.length} packages for ${selectedVersion}`);
+        
+    } catch (error) {
+        console.error('Error populating package dropdown:', error);
+        packageSelect.innerHTML = '<option value="" disabled>Error loading packages</option>';
+    }
+};
+
+/**
+ * Filter packages based on user selection
+ * @param {Object} packages - All packages map
+ * @param {Array} selectedPackages - Array of selected package names
+ * @returns {Object} - Filtered packages map
+ */
+const filterSelectedPackages = (packages, selectedPackages) => {
+    if (!selectedPackages || selectedPackages.length === 0) {
+        return packages; // Return all if none selected
+    }
+    
+    const filtered = {};
+    selectedPackages.forEach(pkgName => {
+        if (packages[pkgName]) {
+            filtered[pkgName] = packages[pkgName];
+        }
+    });
+    
+    return filtered;
+};
+
+/**
+ * Get selected packages from a multi-select dropdown
+ * @param {string} selectId - ID of the select element
+ * @returns {Array} - Array of selected package names
+ */
+const getSelectedPackages = (selectId) => {
+    const selectElement = document.getElementById(selectId);
+    if (!selectElement) return [];
+    
+    const selected = [];
+    for (let option of selectElement.options) {
+        if (option.selected && option.value) {
+            selected.push(option.value);
+        }
+    }
+    
+    return selected;
+};
+
+/**
+ * Populate package version dropdowns for selected packages
+ * @param {string} sdkVersion - SDK version to fetch changelog from
+ * @param {Array} selectedPackages - Array of selected package names
+ * @param {string} containerId - ID of the container to populate
+ * @param {string} prefix - Prefix for dropdown IDs ('a' or 'b')
+ */
+const populatePackageVersionDropdowns = async (sdkVersion, selectedPackages, containerId, prefix) => {
+    const container = document.getElementById(containerId);
+    const versionsContainer = document.getElementById('package-versions-container');
+    
+    if (!container || !sdkVersion || !selectedPackages || selectedPackages.length === 0) {
+        if (container) container.innerHTML = '';
+        if (versionsContainer && !document.getElementById('package-versions-a-container').innerHTML && 
+            !document.getElementById('package-versions-b-container').innerHTML) {
+            versionsContainer.classList.add('hide');
+        }
+        return;
+    }
+    
+    try {
+        // Show the versions container
+        if (versionsContainer) versionsContainer.classList.remove('hide');
+        
+        // Show loading state
+        container.innerHTML = '<p style="color: #666; font-size: 13px;">Loading package versions...</p>';
+        
+        // Fetch changelog for the selected SDK version
+        const versionPath = versionPaths[sdkVersion];
+        if (!versionPath) {
+            throw new Error(`No path found for version ${sdkVersion}`);
+        }
+        
+        const response = await fetch(versionPath);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch changelog for ${sdkVersion}`);
+        }
+        
+        const changelog = await response.json();
+        
+        // Clear container
+        container.innerHTML = '';
+        
+        // Create dropdown for each selected package
+        selectedPackages.forEach(packageName => {
+            if (!changelog[packageName]) {
+                console.warn(`Package ${packageName} not found in ${sdkVersion}`);
+                return;
+            }
+            
+            const packageVersions = Object.keys(changelog[packageName]).sort((a, b) => {
+                // Sort by published date (newest first)
+                const dateA = changelog[packageName][a].published_date || 0;
+                const dateB = changelog[packageName][b].published_date || 0;
+                return dateB - dateA;
+            });
+            
+            // Create package version item
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'package-version-item';
+            
+            const label = document.createElement('label');
+            label.textContent = packageName;
+            label.htmlFor = `pkg-version-${prefix}-${packageName.replace(/[@\/]/g, '-')}`;
+            
+            const select = document.createElement('select');
+            select.id = `pkg-version-${prefix}-${packageName.replace(/[@\/]/g, '-')}`;
+            select.className = 'package-version-select';
+            select.dataset.packageName = packageName;
+            
+            // Add "Latest" option
+            const latestOption = document.createElement('option');
+            latestOption.value = '';
+            latestOption.textContent = 'Latest version (default)';
+            select.appendChild(latestOption);
+            
+            // Add all versions
+            packageVersions.forEach(version => {
+                const option = document.createElement('option');
+                option.value = version;
+                option.textContent = version;
+                select.appendChild(option);
+            });
+            
+            itemDiv.appendChild(label);
+            itemDiv.appendChild(select);
+            container.appendChild(itemDiv);
+        });
+        
+        console.log(`Populated version dropdowns for ${selectedPackages.length} packages in ${sdkVersion}`);
+        
+    } catch (error) {
+        console.error('Error populating package version dropdowns:', error);
+        container.innerHTML = '<p style="color: red; font-size: 13px;">Error loading package versions</p>';
+    }
+};
+
+/**
+ * Get selected package versions from version dropdowns
+ * @param {string} containerId - ID of the container with version dropdowns
+ * @returns {Object} - Map of {packageName: selectedVersion}
+ */
+const getSelectedPackageVersions = (containerId) => {
+    const container = document.getElementById(containerId);
+    if (!container) return {};
+    
+    const versionMap = {};
+    const selects = container.querySelectorAll('.package-version-select');
+    
+    selects.forEach(select => {
+        const packageName = select.dataset.packageName;
+        const selectedVersion = select.value; // Empty string means use latest
+        if (packageName) {
+            versionMap[packageName] = selectedVersion || null; // null means use latest
+        }
+    });
+    
+    return versionMap;
+};
+
+/**
  * Perform version comparison
  * @param {string} versionA - Base version
  * @param {string} versionB - Target version
@@ -1090,9 +1330,35 @@ const performVersionComparison = async (versionA, versionB) => {
         console.log('Changelog A packages:', Object.keys(changelogA).length);
         console.log('Changelog B packages:', Object.keys(changelogB).length);
         
-        // Extract and compare packages
-        const packagesA = extractPackagesFromVersion(changelogA);
-        const packagesB = extractPackagesFromVersion(changelogB);
+        // Get user-selected specific package versions
+        const specificVersionsA = getSelectedPackageVersions('package-versions-a-container');
+        const specificVersionsB = getSelectedPackageVersions('package-versions-b-container');
+        
+        console.log('Specific versions A:', specificVersionsA);
+        console.log('Specific versions B:', specificVersionsB);
+        
+        // Extract and compare packages (with specific versions if selected)
+        let packagesA = extractPackagesFromVersion(changelogA, specificVersionsA);
+        let packagesB = extractPackagesFromVersion(changelogB, specificVersionsB);
+        
+        // Filter packages based on user selection
+        const selectedPackagesA = getSelectedPackages('packages-a-select');
+        const selectedPackagesB = getSelectedPackages('packages-b-select');
+        
+        if (selectedPackagesA.length > 0 || selectedPackagesB.length > 0) {
+            console.log('Filtering packages...');
+            console.log('Selected from A:', selectedPackagesA);
+            console.log('Selected from B:', selectedPackagesB);
+            
+            // Get union of selected packages from both versions
+            const allSelectedPackages = new Set([...selectedPackagesA, ...selectedPackagesB]);
+            const selectedArray = Array.from(allSelectedPackages);
+            
+            packagesA = filterSelectedPackages(packagesA, selectedArray);
+            packagesB = filterSelectedPackages(packagesB, selectedArray);
+            
+            console.log('Filtered to', selectedArray.length, 'packages');
+        }
         
         console.log('Extracted packages A:', Object.keys(packagesA).length);
         console.log('Extracted packages B:', Object.keys(packagesB).length);
@@ -1308,6 +1574,45 @@ const initializeComparisonMode = async () => {
         }
     };
     
+    // Add event listeners for version selection to populate package dropdowns
+    if (versionASelect) {
+        versionASelect.addEventListener('change', () => {
+            populateComparisonPackageDropdown('version-a-select', 'packages-a-select');
+            // Clear version dropdowns when SDK version changes
+            const containerA = document.getElementById('package-versions-a-container');
+            if (containerA) containerA.innerHTML = '';
+        });
+    }
+    
+    if (versionBSelect) {
+        versionBSelect.addEventListener('change', () => {
+            populateComparisonPackageDropdown('version-b-select', 'packages-b-select');
+            // Clear version dropdowns when SDK version changes
+            const containerB = document.getElementById('package-versions-b-container');
+            if (containerB) containerB.innerHTML = '';
+        });
+    }
+    
+    // Add event listeners for package selection to populate version dropdowns
+    const packagesASelect = document.getElementById('packages-a-select');
+    const packagesBSelect = document.getElementById('packages-b-select');
+    
+    if (packagesASelect) {
+        packagesASelect.addEventListener('change', () => {
+            const selectedPackages = getSelectedPackages('packages-a-select');
+            const sdkVersion = versionASelect ? versionASelect.value : null;
+            populatePackageVersionDropdowns(sdkVersion, selectedPackages, 'package-versions-a-container', 'a');
+        });
+    }
+    
+    if (packagesBSelect) {
+        packagesBSelect.addEventListener('change', () => {
+            const selectedPackages = getSelectedPackages('packages-b-select');
+            const sdkVersion = versionBSelect ? versionBSelect.value : null;
+            populatePackageVersionDropdowns(sdkVersion, selectedPackages, 'package-versions-b-container', 'b');
+        });
+    }
+    
     // Single view mode
     if (singleViewBtn) {
         singleViewBtn.addEventListener('click', () => {
@@ -1377,6 +1682,26 @@ const initializeComparisonMode = async () => {
             if (versionASelect) versionASelect.value = '';
             if (versionBSelect) versionBSelect.value = '';
             if (comparisonResults) comparisonResults.classList.add('hide');
+            
+            // Clear package dropdowns
+            const packagesASelect = document.getElementById('packages-a-select');
+            const packagesBSelect = document.getElementById('packages-b-select');
+            if (packagesASelect) {
+                packagesASelect.innerHTML = '<option value="" disabled>First select Version A</option>';
+                packagesASelect.disabled = true;
+            }
+            if (packagesBSelect) {
+                packagesBSelect.innerHTML = '<option value="" disabled>First select Version B</option>';
+                packagesBSelect.disabled = true;
+            }
+            
+            // Clear package version dropdowns
+            const versionContainerA = document.getElementById('package-versions-a-container');
+            const versionContainerB = document.getElementById('package-versions-b-container');
+            const versionsContainer = document.getElementById('package-versions-container');
+            if (versionContainerA) versionContainerA.innerHTML = '';
+            if (versionContainerB) versionContainerB.innerHTML = '';
+            if (versionsContainer) versionsContainer.classList.add('hide');
             
             // Hide copy link button and helper
             const copyLinkBtn = document.getElementById('copy-comparison-link');

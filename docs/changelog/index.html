@@ -92,6 +92,55 @@
                   </select>
                 </div>
               </div>
+              
+              <!-- Package Selection for filtering -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="packages-a-select">
+                    Packages to compare from Version A (optional):
+                    <small style="color: #666;">Leave empty to compare all packages</small>
+                  </label>
+                  <select id="packages-a-select" class="full-width" multiple size="5">
+                    <option value="" disabled>First select Version A</option>
+                  </select>
+                  <small style="color: #888;">Hold Ctrl/Cmd to select multiple packages</small>
+                </div>
+                <div class="form-group">
+                  <label for="packages-b-select">
+                    Packages to compare from Version B (optional):
+                    <small style="color: #666;">Leave empty to compare all packages</small>
+                  </label>
+                  <select id="packages-b-select" class="full-width" multiple size="5">
+                    <option value="" disabled>First select Version B</option>
+                  </select>
+                  <small style="color: #888;">Hold Ctrl/Cmd to select multiple packages</small>
+                </div>
+              </div>
+              
+              <!-- Package Version Dropdowns (dynamically populated) -->
+              <div id="package-versions-container" class="hide">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>
+                      Select specific package versions from Version A (optional):
+                      <small style="color: #666;">Leave default to use latest version</small>
+                    </label>
+                    <div id="package-versions-a-container" class="package-versions-grid">
+                      <!-- Dynamically populated -->
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>
+                      Select specific package versions from Version B (optional):
+                      <small style="color: #666;">Leave default to use latest version</small>
+                    </label>
+                    <div id="package-versions-b-container" class="package-versions-grid">
+                      <!-- Dynamically populated -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
               <div class="form-row">
                 <div class="form-group">
                   <button type="submit" id="compare-button" class="btn btn-primary">Compare Versions</button>
