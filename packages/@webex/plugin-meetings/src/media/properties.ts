@@ -46,7 +46,6 @@ export default class MediaProperties {
   namespace = MEETINGS;
   mediaIssueCounters: {[key: string]: number} = {};
   throttledSendMediaIssueMetric: ReturnType<typeof throttle>;
-  mainVideoBitrateKbps?: number;
 
   /**
    * @param {Object} [options] -- to auto construct

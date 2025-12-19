@@ -870,7 +870,6 @@ const localResolutionInp = document.getElementById('local-resolution');
 const remoteResolutionInp = document.getElementById('remote-resolution');
 const localVideoResElm = document.getElementById('local-video-resolution');
 const remoteVideoResElm = document.getElementById('remote-video-resolution');
-const mainVideoBitrateInp = document.getElementById('main-video-bitrate');
 
 
 const toggleSourcesMediaDirection = document.querySelectorAll('[name=ts-media-direction]');
