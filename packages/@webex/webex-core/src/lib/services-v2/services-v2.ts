@@ -1354,6 +1354,9 @@ const Services = WebexPlugin.extend({
       if (warmed) {
         catalog.isReady = true;
 
+        this.ready = true;
+        this.trigger('services:initialized');
+
         return;
       }
       const {supertoken} = this.webex.credentials;

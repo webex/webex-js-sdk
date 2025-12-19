@@ -1389,9 +1389,15 @@ const Services = WebexPlugin.extend({
     // We listen for 'loaded' instead of 'ready' because services.ready is a dependency
     // of webex.ready - listening to 'ready' would cause a deadlock.
     this.listenToOnce(this.webex, 'loaded', async () => {
+      // Ensure configuration is initialized before attempting cache warm-up
+      // so environment fingerprint and feature flags are available.
       const cachedCatalog = await this._loadCatalogFromCache();
       if (cachedCatalog) {
         catalog.isReady = true;
+        // When we successfully warm from cache, signal readiness and notify listeners
+        // to match the non-cached path behavior.
+        this.ready = true;
+        this.trigger('services:initialized');
 
         return; // skip initServiceCatalogs() on reload when cache exists
       }
