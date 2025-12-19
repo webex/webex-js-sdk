@@ -20,6 +20,8 @@ export const DEFAULT_CLUSTER_SERVICE = 'identityLookup';
 const CLUSTER_SERVICE = process.env.WEBEX_CONVERSATION_CLUSTER_SERVICE || DEFAULT_CLUSTER_SERVICE;
 const DEFAULT_CLUSTER_IDENTIFIER =
   process.env.WEBEX_CONVERSATION_DEFAULT_CLUSTER || `${DEFAULT_CLUSTER}:${CLUSTER_SERVICE}`;
+const CATALOG_CACHE_KEY_V1 = 'services.v1.u2cHostMap';
+const CATALOG_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 /* eslint-disable no-underscore-dangle */
 /**
@@ -97,6 +99,49 @@ const Services = WebexPlugin.extend({
   },
 
   /**
+   * Safely access localStorage if available; returns the Storage or null.
+   * @returns {Storage|null}
+   */
+  _getLocalStorageSafe() {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage;
+    }
+
+    return null;
+  },
+
+  /**
+   * Determine the intended preauth selection based on the current context.
+   * @param {string|undefined} currentOrgId
+   * @returns {{selectionType: string, selectionValue: string}}
+   */
+  getIntendedPreauthSelection(currentOrgId) {
+    if (this.webex.credentials?.canAuthorize) {
+      if (currentOrgId) {
+        return {
+          selectionType: 'orgId',
+          selectionValue: currentOrgId,
+        };
+      }
+    }
+
+    const emailConfig = this.webex.config && this.webex.config.email;
+
+    if (typeof emailConfig === 'string' && emailConfig.trim()) {
+      return {
+        selectionType: 'emailhash',
+        selectionValue: sha256(emailConfig.toLowerCase()).toString(),
+      };
+    }
+
+    // fall back to proximity mode when no orgId or email available
+    return {
+      selectionType: 'mode',
+      selectionValue: 'DEFAULT_BY_PROXIMITY',
+    };
+  },
+
+  /**
    * Get a service url from the current services list by name
    * from the associated instance catalog.
    * @param {string} name
@@ -165,9 +210,10 @@ const Services = WebexPlugin.extend({
 
   /**
    * Get all Mobius cluster host entries from the legacy host catalog.
-   * @returns {Array<Object>}
+   * @returns {Array<{host: string, id: string, ttl: number, priority: number}>}
    */
   getMobiusClusters() {
+    this.logger.info('services: fetching mobius clusters');
     const clusters = [];
     const hostCatalog = this._hostCatalog || {};
 
@@ -237,7 +283,7 @@ const Services = WebexPlugin.extend({
    * @param {string} [param.token] - used for signin catalog
    * @returns {Promise<object>}
    */
-  updateServices({from, query, token, forceRefresh} = {}) {
+  async updateServices({from, query, token, forceRefresh} = {}) {
     const catalog = this._getCatalog();
     let formattedQuery;
     let serviceGroup;
@@ -291,7 +337,20 @@ const Services = WebexPlugin.extend({
       forceRefresh,
     })
       .then((serviceHostMap) => {
-        catalog.updateServiceUrls(serviceGroup, serviceHostMap);
+        const formattedServiceHostMap = this._formatReceivedHostmap(serviceHostMap);
+        // Build selection metadata for caching discrimination
+        let selectionMeta;
+        if (serviceGroup === 'preauth' || serviceGroup === 'signin') {
+          const key = formattedQuery && Object.keys(formattedQuery || {})[0];
+          if (key) {
+            selectionMeta = {
+              selectionType: key,
+              selectionValue: formattedQuery[key],
+            };
+          }
+        }
+        this._cacheCatalog(serviceGroup, serviceHostMap, selectionMeta);
+        catalog.updateServiceUrls(serviceGroup, formattedServiceHostMap);
         this.updateCredentialsConfig();
         catalog.status[serviceGroup].collecting = false;
       })
@@ -1008,7 +1067,197 @@ const Services = WebexPlugin.extend({
 
     return this.webex.internal.newMetrics.callDiagnosticLatencies
       .measureLatency(() => this.request(requestObject), 'internal.get.u2c.time')
-      .then(({body}) => this._formatReceivedHostmap(body));
+      .then(({body}) => body);
+  },
+
+  /**
+   * Cache the catalog in the bounded storage.
+   * @param {string} serviceGroup - preauth, signin, postauth
+   * @param {object} hostMap - The hostmap to cache
+   * @param {object} [meta] - Optional selection metadata used to validate cache reuse
+   * @returns {Promise<void>}
+   *
+   */
+  async _cacheCatalog(serviceGroup, hostMap, meta) {
+    let current = {};
+    let orgId;
+    try {
+      // Respect calling.cacheU2C toggle; if disabled, skip writing cache
+      if (!this.webex.config?.calling?.cacheU2C) {
+        this.logger.info(`services: skipping cache write for ${serviceGroup} as per the config`);
+
+        return;
+      }
+
+      // Persist to localStorage to survive browser refresh
+      try {
+        const ls = this._getLocalStorageSafe();
+        const cachedJson = ls ? ls.getItem(CATALOG_CACHE_KEY_V1) : null;
+        current = cachedJson ? JSON.parse(cachedJson) : {};
+      } catch (e) {
+        current = {};
+      }
+
+      try {
+        const {credentials} = this.webex;
+        orgId = credentials.getOrgId();
+      } catch (e) {
+        orgId = current.orgId;
+      }
+
+      // Capture environment fingerprint to invalidate cache across env changes
+      let {env} = current;
+      const fedramp = !!this.webex?.config?.fedramp;
+      const u2cDiscoveryUrl = this.webex?.config?.services?.discovery?.u2c;
+      env = {fedramp, u2cDiscoveryUrl};
+
+      const updated = {
+        ...current,
+        orgId: orgId || current.orgId,
+        env: env || current.env,
+        // When selection meta is provided, store as an object; otherwise keep legacy shape
+        [serviceGroup]: meta ? {hostMap, meta} : hostMap,
+        cachedAt: Date.now(),
+      };
+
+      const ls = this._getLocalStorageSafe();
+      if (ls) {
+        ls.setItem(CATALOG_CACHE_KEY_V1, JSON.stringify(updated));
+      }
+    } catch (error) {
+      this.logger.warn('services: error caching catalog', error);
+    }
+  },
+
+  /**
+   * Load the catalog from cache and hydrate the in-memory ServiceCatalog.
+   * @returns {Promise<boolean>} true if cache was loaded, false otherwise
+   */
+  async _loadCatalogFromCache() {
+    let currentOrgId;
+    try {
+      // Respect calling.cacheU2C toggle; if disabled, skip using cache
+      if (!this.webex.config?.calling?.cacheU2C) {
+        this.logger.info('services: skipping cache warm-up as per the cache config');
+
+        return false;
+      }
+
+      const ls = this._getLocalStorageSafe();
+      if (!ls) {
+        this.logger.info('services: skipping cache warm-up as no localStorage is available');
+
+        return false;
+      }
+      const cachedJson = ls.getItem(CATALOG_CACHE_KEY_V1);
+      const cached = cachedJson ? JSON.parse(cachedJson) : undefined;
+      if (!cached) {
+        return false;
+      }
+      // TTL enforcement: clear if older than 24 hours
+      const cachedAt = Number(cached.cachedAt) || 0;
+      if (!cachedAt || Date.now() - cachedAt > CATALOG_TTL_MS) {
+        this.clearCatalogCache();
+
+        return false;
+      }
+
+      // If authorized, ensure cached org matches
+      try {
+        if (this.webex.credentials?.canAuthorize) {
+          const {credentials} = this.webex;
+          currentOrgId = credentials.getOrgId();
+          if (cached.orgId && cached.orgId !== currentOrgId) {
+            return false;
+          }
+        }
+      } catch (e) {
+        this.logger.warn('services: error checking orgId', e);
+      }
+
+      // Ensure cached environment matches current environment
+
+      const fedramp = !!this.webex.config?.fedramp;
+      const u2cDiscoveryUrl = this.webex.config?.services?.discovery?.u2c;
+      const currentEnv = {fedramp, u2cDiscoveryUrl};
+      if (cached.env) {
+        const sameEnv =
+          cached.env.fedramp === currentEnv.fedramp &&
+          cached.env.u2cDiscoveryUrl === currentEnv.u2cDiscoveryUrl;
+        if (!sameEnv) {
+          this.logger.info('services: skipping cache warm due to environment mismatch');
+
+          return false;
+        }
+      }
+
+      const catalog = this._getCatalog();
+
+      // Apply any cached groups (with preauth selection validation if available)
+      const groups = ['preauth', 'signin', 'postauth'];
+      groups.forEach((serviceGroup) => {
+        const cachedGroup = cached[serviceGroup];
+        if (!cachedGroup) {
+          return;
+        }
+
+        // Support legacy (hostMap) and new ({hostMap, meta}) shapes
+        const hostMap = cachedGroup && cachedGroup.hostMap ? cachedGroup.hostMap : cachedGroup;
+        const meta = cachedGroup?.meta;
+
+        if (serviceGroup === 'preauth' && meta) {
+          // For proximity-based selection, always fetch fresh to respect IP/region changes
+          if (meta.selectionType === 'mode') {
+            this.logger.info('services: skipping preauth cache warm for proximity mode');
+
+            return;
+          }
+
+          const intended = this.getIntendedPreauthSelection(currentOrgId);
+          const matches =
+            intended &&
+            intended.selectionType === meta.selectionType &&
+            intended.selectionValue === meta.selectionValue;
+
+          if (!matches) {
+            this.logger.info('services: skipping preauth cache warm due to selection mismatch');
+
+            return;
+          }
+        }
+
+        if (hostMap) {
+          const formatted = this._formatReceivedHostmap(hostMap);
+          catalog.updateServiceUrls(serviceGroup, formatted);
+        }
+      });
+
+      // Align credentials against warmed catalog
+      this.updateCredentialsConfig();
+
+      return true;
+    } catch (e) {
+      this.logger.warn('services: error loading catalog from cache', e);
+
+      return false;
+    }
+  },
+
+  /**
+   * Clear the catalog cache from the bounded storage.
+   * @returns {Promise<void>}
+   */
+  clearCatalogCache() {
+    try {
+      const ls = this._getLocalStorageSafe();
+      if (ls) {
+        ls.removeItem(CATALOG_CACHE_KEY_V1);
+      }
+    } catch (e) {
+      this.logger.warn('services: error clearing catalog cache', e);
+    }
+
+    return Promise.resolve();
   },
 
   /**
@@ -1088,6 +1337,7 @@ const Services = WebexPlugin.extend({
           // Validate if the token is authorized.
           if (credentials.canAuthorize) {
             // Attempt to collect the postauth catalog.
+
             return this.updateServices().catch(() => {
               this.initFailed = true;
               this.logger.warn('services: cannot retrieve postauth catalog');
@@ -1125,7 +1375,13 @@ const Services = WebexPlugin.extend({
     // to update the service catalogs
     // this can cause a race condition because credentials may
     // not be valid when services is initialized
-    this.listenToOnce(this.webex, 'ready', () => {
+    this.listenToOnce(this.webex, 'ready', async () => {
+      const cachedCatalog = await this._loadCatalogFromCache();
+      if (cachedCatalog) {
+        catalog.isReady = true;
+
+        return; // skip initServiceCatalogs() on reload when cache exists
+      }
       const {supertoken} = this.webex.credentials;
       // Validate if the supertoken exists.
       if (supertoken && supertoken.access_token) {
