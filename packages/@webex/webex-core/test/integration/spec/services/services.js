@@ -404,24 +404,12 @@ describe('webex-core', () => {
         assert.isTrue(catalog.isReady);
       });
 
-      it('should call services#initServiceCatalogs() on webex loaded', () => {
+      it('should call services#initServiceCatalogs() on webex ready', () => {
         services.initServiceCatalogs = sinon.stub().resolves();
         services.initialize();
-        webex.trigger('loaded');
+        webex.trigger('ready');
         assert.called(services.initServiceCatalogs);
-      });
-
-      it('should set services.ready to true after initialization completes', async () => {
-        // services.ready starts as false
-        const newWebex = new WebexCore({credentials: {supertoken: webexUser.token}});
-        const newServices = newWebex.internal.services;
-
-        // Wait for initialization to complete
-        await new Promise((resolve) => {
-          newServices.on('services:initialized', resolve);
-        });
-
-        assert.isTrue(newServices.ready);
+        assert.isTrue(catalog.isReady);
       });
 
       it('should collect different catalogs based on OrgId region', () =>
