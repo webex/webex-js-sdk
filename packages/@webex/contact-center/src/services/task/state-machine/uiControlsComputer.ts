@@ -7,7 +7,13 @@
  * - Configuration
  */
 
-import {TASK_CHANNEL_TYPE, TaskData, TaskUIControls, VOICE_VARIANT} from '../types';
+import {
+  DESTINATION_TYPE,
+  TASK_CHANNEL_TYPE,
+  TaskData,
+  TaskUIControls,
+  VOICE_VARIANT,
+} from '../types';
 import {RecordingControlState, TaskContext, UIControlConfig} from './types';
 import {TaskState} from './constants';
 
@@ -46,6 +52,18 @@ export function getDefaultUIControls(): TaskUIControls {
   };
 }
 
+const getPrimaryMediaEntry = (context: TaskContext, fallbackTaskData?: TaskData | null) => {
+  const primaryMediaId = context.taskData?.mediaResourceId ?? fallbackTaskData?.mediaResourceId;
+  if (!primaryMediaId) {
+    return undefined;
+  }
+
+  const interactionMedia =
+    context.taskData?.interaction?.media ?? fallbackTaskData?.interaction?.media;
+
+  return interactionMedia?.[primaryMediaId];
+};
+
 /**
  * Compute UI controls for voice channel
  */
@@ -58,14 +76,41 @@ function computeVoiceUIControls(
   const isWebrtc = config.voiceVariant === VOICE_VARIANT.WEBRTC;
   const isOffered =
     currentState === TaskState.OFFERED || currentState === TaskState.OFFERED_CONSULT;
-  const isConnected = currentState === TaskState.CONNECTED;
-  const isHeld = currentState === TaskState.HELD;
+  const stateConnected = currentState === TaskState.CONNECTED;
+  const stateHeld = currentState === TaskState.HELD;
+  const isHoldInitiating = currentState === TaskState.HOLD_INITIATING;
+  const isResumeInitiating = currentState === TaskState.RESUME_INITIATING;
   const isTransferInitiating = currentState === TaskState.TRANSFER_INITIATING;
   const isConfInitiating = currentState === TaskState.CONF_INITIATING;
-  const isConsulting = currentState === TaskState.CONSULTING || isConfInitiating;
+  const isConsultInitiating = currentState === TaskState.CONSULT_INITIATING;
+  const isConsulting =
+    currentState === TaskState.CONSULTING || isConfInitiating || isConsultInitiating;
   const isConferencing = currentState === TaskState.CONFERENCING;
   const isWrappingUp = currentState === TaskState.WRAPPING_UP || isTransferInitiating;
-  const isActiveCall = isConnected || isHeld || isConsulting || isConferencing || isWrappingUp;
+  const isHoldTransition = isHoldInitiating || isResumeInitiating;
+  const isInterimActive = isHoldTransition || isConsultInitiating;
+  const callCapableState =
+    stateConnected ||
+    stateHeld ||
+    isInterimActive ||
+    isConsultInitiating ||
+    isConsulting ||
+    isConferencing ||
+    isWrappingUp;
+
+  const primaryMediaEntry = getPrimaryMediaEntry(context, fallbackTaskData);
+  const serverHoldFlag = primaryMediaEntry?.isHold;
+
+  let isHeld = serverHoldFlag ?? stateHeld;
+  let isConnected = serverHoldFlag !== undefined ? !serverHoldFlag : stateConnected;
+
+  if (!callCapableState) {
+    isHeld = false;
+    isConnected = false;
+  }
+
+  const isActiveCall =
+    isConnected || isHeld || isConsulting || isConferencing || isWrappingUp || isInterimActive;
   const taskData = context.taskData ?? fallbackTaskData ?? null;
   const isConsultedAgent = Boolean(taskData?.isConsulted);
   const isTerminated = taskData?.interaction?.isTerminated ?? false;
@@ -80,12 +125,20 @@ function computeVoiceUIControls(
   const consultReceiverLimited =
     isConsultedAgent && !context.consultInitiator && !isWrappingUp && !isConferencing;
   const allowPrimaryControls = !consultReceiverLimited;
+  const isConsultQueuePending =
+    context.consultInitiator &&
+    context.consultDestinationType === DESTINATION_TYPE.QUEUE &&
+    !context.consultDestinationAgentJoined;
 
   // For WebRTC: mute is visible in connected state OR when consulting as the consulted agent
   // After transfer, consulted agent transitions to CONNECTED, so isConnected covers that case
   const muteVisible = isWebrtc
-    ? isConnected || (isConsulting && isConsultedAgent)
-    : isConnected || isHeld;
+    ? isConnected ||
+      (isConsulting && isConsultedAgent) ||
+      isHoldInitiating ||
+      isResumeInitiating ||
+      isConsultInitiating
+    : isConnected || isHeld || isHoldInitiating || isResumeInitiating;
   const muteEnabled = isWebrtc ? muteVisible && !isHeld && !isWrappingUp : !isWrappingUp;
 
   return {
@@ -104,7 +157,8 @@ function computeVoiceUIControls(
     // Hold button: visible when connected or held
     // Enabled based on current state (hold when connected, resume when held)
     hold: {
-      isVisible: allowPrimaryControls && (isConnected || isHeld),
+      isVisible:
+        allowPrimaryControls && (isConnected || isHeld || isHoldInitiating || isResumeInitiating),
       isEnabled: allowPrimaryControls && (isConnected || isHeld),
     },
 
@@ -117,26 +171,29 @@ function computeVoiceUIControls(
     // End button: conditional based on config, disabled when held or wrapping up
     end: {
       isVisible: allowPrimaryControls && config.isEndTaskEnabled && isActiveCall,
-      isEnabled: allowPrimaryControls && isActiveCall && !isHeld && !isWrappingUp,
+      isEnabled:
+        allowPrimaryControls && isActiveCall && !isHeld && !isWrappingUp && !isConsultQueuePending,
     },
 
     // Transfer button: visible in connected/held/consulting states
     transfer: {
-      isVisible: allowPrimaryControls && (isConnected || isHeld || isConsulting),
-      isEnabled: allowPrimaryControls,
+      isVisible:
+        allowPrimaryControls && (isConnected || isHeld || isConsulting || isHoldTransition),
+      isEnabled: allowPrimaryControls && !isConsultQueuePending,
     },
 
     // Consult button: visible when connected or held
     // Enabled when in connected or held states (not consulting/conferencing)
     consult: {
-      isVisible: allowPrimaryControls && (isConnected || isHeld),
-      isEnabled: allowPrimaryControls && (isConnected || isHeld),
+      isVisible:
+        allowPrimaryControls && (isConnected || isHeld || isConsultInitiating || isHoldTransition),
+      isEnabled: allowPrimaryControls && (isConnected || isHeld) && !isConsultQueuePending,
     },
 
     // Consult transfer: visible during consulting
     consultTransfer: {
       isVisible: allowPrimaryControls && isConsulting,
-      isEnabled: allowPrimaryControls,
+      isEnabled: allowPrimaryControls && !isConsultQueuePending,
     },
 
     // End consult button: visible during consulting state
@@ -163,7 +220,8 @@ function computeVoiceUIControls(
     // Enabled only if consulted agent has joined
     conference: {
       isVisible: allowPrimaryControls && isConsulting,
-      isEnabled: allowPrimaryControls && context.consultDestinationAgentJoined,
+      isEnabled:
+        allowPrimaryControls && context.consultDestinationAgentJoined && !isConsultQueuePending,
     },
 
     // Wrapup button: visible during wrapup state
@@ -187,7 +245,7 @@ function computeVoiceUIControls(
     // Merge to conference: visible during consulting (alias for conference)
     mergeToConference: {
       isVisible: isConsulting,
-      isEnabled: context.consultDestinationAgentJoined,
+      isEnabled: context.consultDestinationAgentJoined && !isConsultQueuePending,
     },
   };
 }

@@ -9,7 +9,7 @@ import {setup} from 'xstate';
 import {TaskContext, TaskEventPayload, UIControlConfig} from './types';
 import {TaskState, TaskEvent} from './constants';
 import {actions, createInitialContext, TaskActionsMap} from './actions';
-import {TaskData} from '../types';
+import {DESTINATION_TYPE, TaskData} from '../types';
 
 type TaskActionConfigMap = {[K in keyof typeof actions]: undefined};
 
@@ -35,6 +35,46 @@ const taskStateMachineSetup = setup<
  * @returns State machine configuration object
  */
 export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
+  const getTaskDataFromEvent = (event?: TaskEventPayload): TaskData | undefined =>
+    event && typeof event === 'object' && 'taskData' in event
+      ? (event as {taskData?: TaskData}).taskData
+      : undefined;
+
+  const getPrimaryMediaHoldFlag = (taskData?: TaskData | null): boolean | undefined => {
+    if (!taskData) {
+      return undefined;
+    }
+
+    const mediaId = taskData.mediaResourceId;
+    if (!mediaId) {
+      return undefined;
+    }
+
+    return taskData.interaction?.media?.[mediaId]?.isHold;
+  };
+
+  const serverReportsHeld = ({event}: {event: TaskEventPayload}) =>
+    getPrimaryMediaHoldFlag(getTaskDataFromEvent(event)) === true;
+
+  const serverReportsConsulting = ({
+    event,
+    context,
+  }: {
+    event: TaskEventPayload;
+    context: TaskContext;
+  }) => {
+    const taskData = getTaskDataFromEvent(event);
+    if (taskData?.isConsulted === true) {
+      return true;
+    }
+
+    // When backend hasn't flagged isConsulted yet, fall back to existing context flag
+    return Boolean(context.consultInitiator && !taskData?.wrapUpRequired);
+  };
+
+  const isConsultQueueFlow = ({context}: {context: TaskContext}) =>
+    context.consultDestinationType === DESTINATION_TYPE.QUEUE;
+
   /**
    * Event mapping reference (CC WebSocket -> TaskEvent)
    *
@@ -397,15 +437,49 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: ['handleConsultCompletion'],
           },
           // AgentConsultFailed, API Failures, AgentCtqFailed
-          [TaskEvent.CONSULT_FAILED]: {
-            target: TaskState.HELD,
-            actions: ['updateTaskData', 'handleConsultFailed'],
-          },
+          [TaskEvent.CONSULT_FAILED]: [
+            {
+              guard: isConsultQueueFlow,
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'handleConsultFailed'],
+            },
+            {
+              guard: serverReportsHeld,
+              target: TaskState.HELD,
+              actions: ['updateTaskData', 'handleConsultFailed'],
+            },
+            {
+              guard: serverReportsConsulting,
+              target: TaskState.CONSULTING,
+              actions: ['updateTaskData', 'handleConsultFailed'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'handleConsultFailed'],
+            },
+          ],
           // AgentCtqCancelled Event
-          [TaskEvent.CTQ_CANCEL]: {
-            target: TaskState.HELD,
-            actions: ['clearConsultState'],
-          },
+          [TaskEvent.CTQ_CANCEL]: [
+            {
+              guard: isConsultQueueFlow,
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'clearConsultState'],
+            },
+            {
+              guard: serverReportsHeld,
+              target: TaskState.HELD,
+              actions: ['updateTaskData', 'clearConsultState'],
+            },
+            {
+              guard: serverReportsConsulting,
+              target: TaskState.CONSULTING,
+              actions: ['updateTaskData', 'clearConsultState'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'clearConsultState'],
+            },
+          ],
         },
       },
 
@@ -423,8 +497,8 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
             {
-              target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskConsultEnd'],
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'clearResources'],
             },
           ],
           // Transfer buttons while in consulting

@@ -16,7 +16,7 @@ import {assign} from 'xstate';
 import type {ActionFunctionMap, EventObject} from 'xstate';
 import {TaskContext, TaskEventPayload, UIControlConfig} from './types';
 import {TaskEvent, TaskState} from './constants';
-import {TaskData} from '../types';
+import {DestinationType, TaskData} from '../types';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
 
 export type TaskActionsMap = ActionFunctionMap<
@@ -40,7 +40,7 @@ const determineConsultInitiator = (taskData?: TaskData): boolean | undefined => 
 
   if (taskData?.isConsulted === false) {
     // Avoid overriding initiator flag when backend simply repeats `false`
-    return undefined;
+    return true;
   }
 
   const participants = taskData?.interaction?.participants;
@@ -162,6 +162,7 @@ export function createInitialContext(
     conferenceInitiated: false,
     consultInitiator: false,
     consultDestination: null,
+    consultDestinationType: null,
     consultDestinationAgentJoined: false,
     recordingControlsAvailable: false,
     recordingInProgress: false,
@@ -202,6 +203,10 @@ export const actions: TaskActionsMap = {
       holdInitiated: false,
       transferInitiated: false,
       conferenceInitiated: false,
+      consultInitiator: false,
+      consultDestination: null,
+      consultDestinationType: null,
+      consultDestinationAgentJoined: false,
       ...deriveTaskDataUpdates(context, getTaskDataFromEvent(event)),
     };
   }),
@@ -281,8 +286,14 @@ export const actions: TaskActionsMap = {
       return {};
     }
 
+    const destinationType =
+      'destinationType' in event
+        ? (event as {destinationType?: DestinationType}).destinationType ?? null
+        : null;
+
     return {
       consultDestination: (event as {destination: string}).destination,
+      consultDestinationType: destinationType,
     };
   }),
 
@@ -333,6 +344,7 @@ export const actions: TaskActionsMap = {
    */
   clearConsultState: assign({
     consultDestination: null,
+    consultDestinationType: null,
     consultDestinationAgentJoined: false,
     conferenceInitiated: false,
     consultInitiator: false,

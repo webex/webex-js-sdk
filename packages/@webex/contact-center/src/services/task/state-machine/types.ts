@@ -76,6 +76,7 @@ export interface TaskContext {
   conferenceInitiated: boolean;
   consultInitiator: boolean;
   consultDestination: string | null;
+  consultDestinationType: DestinationType | null;
   consultDestinationAgentJoined: boolean;
 
   // Recording tracking derived from task data
