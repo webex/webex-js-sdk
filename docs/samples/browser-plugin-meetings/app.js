@@ -2874,23 +2874,9 @@ function addMediaOptionsRemote(elementId) {
   element.innerHTML = optionElements;
 }
 
-function addMainVideoBitrateOptions(elementId) {
-  // Bitrate presets in kbps: 500, 800, 1200, 2000, 2500, 3000
-  const bitrateOptions = [500, 800, 1200, 2000, 2500, 3000];
-  const element = document.getElementById(elementId);
-  const optionElements = bitrateOptions.reduce((acc, bitrate) => {
-    acc += `<option value="${bitrate}" ${bitrate === 2500 && 'selected'}>${bitrate} kbps</option>`;
-
-    return acc;
-  }, '');
-
-  element.innerHTML = optionElements;
-}
-
 (() => {
   addMediaOptionsLocal('local-resolution');
   addMediaOptionsRemote('remote-resolution');
-  addMainVideoBitrateOptions('main-video-bitrate');
 })();
 
 function addMedia() {
