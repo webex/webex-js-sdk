@@ -123,15 +123,6 @@ export default class MediaProperties {
     this.remoteQualityLevel = remoteQualityLevel;
   }
 
-  /**
-   * Sets the main video bitrate cap
-   * @param {number} bitrateKbps Bitrate in kbps
-   * @returns {void}
-   */
-  setMainVideoBitrate(bitrateKbps: number) {
-    this.mainVideoBitrateKbps = bitrateKbps;
-  }
-
   setRemoteShareStream(remoteShareStream: RemoteStream) {
     this.remoteShareStream = remoteShareStream;
   }

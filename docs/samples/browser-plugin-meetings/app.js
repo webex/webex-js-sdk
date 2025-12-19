@@ -2061,22 +2061,6 @@ function setRemoteMeetingQuality() {
     });
 }
 
-function setMainVideoBitrate() {
-  const meeting = getCurrentMeeting();
-  const bitrateKbps = Number(mainVideoBitrateInp.value);
-
-  meeting.setMainVideoBitrate(bitrateKbps)
-    .then(() => {
-      toggleSourcesQualityStatus.innerText = `Main video bitrate set to ${bitrateKbps} kbps!`;
-      console.log('MeetingControls#setMainVideoBitrate :: Bitrate set successfully to', bitrateKbps, 'kbps');
-    })
-    .catch((error) => {
-      toggleSourcesQualityStatus.innerText = 'MeetingControls#setMainVideoBitrate :: Error setting main video bitrate!';
-      console.log('MeetingControls#setMainVideoBitrate :: Error setting bitrate!');
-      console.error(error);
-    });
-}
-
 function clearMediaDeviceList() {
   sourceDevicesAudioInput.innerText = '';
   sourceDevicesAudioOutput.innerText = '';
