@@ -40,7 +40,7 @@ const determineConsultInitiator = (taskData?: TaskData): boolean | undefined => 
 
   if (taskData?.isConsulted === false) {
     // Avoid overriding initiator flag when backend simply repeats `false`
-    return undefined;
+    return true;
   }
 
   const participants = taskData?.interaction?.participants;

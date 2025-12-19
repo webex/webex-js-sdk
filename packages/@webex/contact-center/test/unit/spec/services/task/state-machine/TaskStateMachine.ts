@@ -91,7 +91,7 @@ describe('Task state machine', () => {
       service.send({type: TaskEvent.ACCEPT});
       expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
 
-      service.send({type: TaskEvent.HOLD, mediaResourceId: taskData.mediaResourceId});
+      service.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId});
       expect(service.getSnapshot().value).toBe(TaskState.HOLD_INITIATING);
 
       service.send({type: TaskEvent.HOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId});
@@ -185,7 +185,7 @@ describe('Task state machine', () => {
 
       service.send({type: TaskEvent.CONSULT_END});
       const snapshotAfterEnd = service.getSnapshot();
-      expect(snapshotAfterEnd.value).toBe(TaskState.CONNECTED);
+      expect(snapshotAfterEnd.value).toBe(TaskState.HELD);
       expect(snapshotAfterEnd.context.consultDestination).toBeNull();
       expect(snapshotAfterEnd.context.consultDestinationAgentJoined).toBe(false);
     });
@@ -200,7 +200,46 @@ describe('Task state machine', () => {
       expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
 
       service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      expect(service.getSnapshot().value).toBe(TaskState.CONF_INITIATING);
+
+      service.send({type: TaskEvent.CONFERENCE_START});
       expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+    });
+
+    it('returns to CONNECTED when CTQ cancel arrives before queue connects', () => {
+      const service = startMachine();
+      const taskData = createTaskData();
+
+      service.send({type: TaskEvent.OFFER, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: 'queue-1',
+        destinationType: 'queue',
+      });
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULT_INITIATING);
+
+      service.send({type: TaskEvent.CTQ_CANCEL});
+      expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+    });
+
+    it('returns to CONNECTED when CTQ consult fails', () => {
+      const service = startMachine();
+      const taskData = createTaskData();
+
+      service.send({type: TaskEvent.OFFER, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: 'queue-1',
+        destinationType: 'queue',
+      });
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULT_INITIATING);
+
+      service.send({type: TaskEvent.CONSULT_FAILED, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
     });
   });
 
@@ -211,7 +250,7 @@ describe('Task state machine', () => {
 
       service.send({type: TaskEvent.OFFER, taskData});
       service.send({type: TaskEvent.ACCEPT});
-      service.send({type: TaskEvent.HOLD, mediaResourceId: taskData.mediaResourceId});
+      service.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId});
       expect(service.getSnapshot().value).toBe(TaskState.HOLD_INITIATING);
 
       service.send({

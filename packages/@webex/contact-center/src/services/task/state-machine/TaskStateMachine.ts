@@ -497,8 +497,8 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
             {
-              target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskConsultEnd'],
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'clearResources'],
             },
           ],
           // Transfer buttons while in consulting

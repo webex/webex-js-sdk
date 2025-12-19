@@ -71,9 +71,9 @@ describe('Task (base class)', () => {
     expect(controls.decline.isVisible).toBe(false);
     expect(controls.decline.isEnabled).toBe(true);
 
-    // voice tasks always render end when enabled in config
-    expect(controls.end.isVisible).toBe(true);
-    expect(controls.end.isEnabled).toBe(true);
+    // voice tasks keep end hidden until a call is active
+    expect(controls.end.isVisible).toBe(false);
+    expect(controls.end.isEnabled).toBe(false);
 
     expect(controls.transfer.isVisible).toBe(false);
     expect(controls.transfer.isEnabled).toBe(true);

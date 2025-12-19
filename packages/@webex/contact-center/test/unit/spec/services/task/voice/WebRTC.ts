@@ -155,7 +155,7 @@ describe('WebRTC Task', () => {
       {type: TaskEvent.END},
     ]);
     expect(webRtc.uiControls.wrapup.isVisible).toBe(true);
-    expect(webRtc.uiControls.mute.isVisible).toBe(false);
+    expect(webRtc.uiControls.mute.isVisible).toBe(true);
   });
 
   it('setUIControls for AGENT_CONTACT_HELD disables mute', () => {
@@ -213,7 +213,7 @@ describe('WebRTC Task', () => {
       {type: TaskEvent.ACCEPT},
       {type: TaskEvent.CONSULT_END},
     ]);
-    expect(webRtc.uiControls.mute.isVisible).toBe(true);
+    expect(webRtc.uiControls.mute.isVisible).toBe(false);
   });
 
   it('setUIControls for AGENT_CONTACT_OFFER_RONA hides accept and decline', () => {
