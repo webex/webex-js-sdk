@@ -1246,7 +1246,26 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.agentConfig.lastStateChangeTimestamp = lastStateChangeTimestamp;
       this.agentConfig.lastIdleCodeChangeTimestamp = lastIdleCodeChangeTimestamp;
       this.agentConfig.currentTeamId = reLoginResponse.data.teamId;
-      await this.handleDeviceType(deviceType as LoginOption, dn);
+      try {
+        await this.handleDeviceType(deviceType as LoginOption, dn);
+      } catch (error) {
+        LoggerProxy.error(`Error handling device type: ${error}`, {
+          module: CC_FILE,
+          method: METHODS.SILENT_RELOGIN,
+        });
+        if (error.message.contains('Error registering web calling line')) {
+          LoggerProxy.log('Agent not configured for outbound calls, logging out and returning', {
+            module: CC_FILE,
+            method: METHODS.SILENT_RELOGIN,
+          });
+          await this.stationLogout({
+            logoutReason: 'User requested agent device change',
+          });
+
+          return;
+        }
+        throw error;
+      }
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
         LoggerProxy.info(
@@ -1327,7 +1346,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             module: CC_FILE,
             method: METHODS.HANDLE_DEVICE_TYPE,
           });
-          throw error;
+          try {
+            await this.webCallingService.deregisterWebCallingLine();
+            await this.webCallingService.registerWebCallingLine();
+          } catch (retryError) {
+            LoggerProxy.error(`Retry failed after deregister/register: ${retryError}`, {
+              module: CC_FILE,
+              method: METHODS.HANDLE_DEVICE_TYPE,
+            });
+            throw retryError;
+          }
         }
         break;
       case LoginOption.AGENT_DN:
