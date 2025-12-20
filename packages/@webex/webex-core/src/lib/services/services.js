@@ -1375,6 +1375,7 @@ const Services = WebexPlugin.extend({
     // to update the service catalogs
     // this can cause a race condition because credentials may
     // not be valid when services is initialized
+    // comment to trigger change
     this.listenToOnce(this.webex, 'ready', async () => {
       const cachedCatalog = await this._loadCatalogFromCache();
       if (cachedCatalog) {
