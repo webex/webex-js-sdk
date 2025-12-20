@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import sha256 from 'crypto-js/sha256';
 
 import {union, forEach} from 'lodash';
@@ -1415,11 +1416,28 @@ const Services = WebexPlugin.extend({
       } else {
         const {email} = this.webex.config;
 
+        this.collectPreauthCatalog(email ? {email} : undefined)
+          .catch((error) => {
+            this.initFailed = true;
+            this.logger.error(
+              `services: failed to init initial services when no credentials available, ${error?.message}`
+            );
+          })
+          .finally(() => {
+            this.ready = true;
+            this.trigger('services:initialized');
+          });
         // Listen for when credentials become available to fetch the full catalog.
         // This handles fresh login where 'loaded' fires before OAuth completes.
-        console.log('@@@ this.webex.canAuthorize', this.webex.canAuthorize);
+        console.log(
+          '@@@ services-plugin setting up listener this.webex.canAuthorize',
+          this.webex.canAuthorize
+        );
         this.listenToOnce(this.webex, 'change:canAuthorize', () => {
-          console.log('@@@ this.webex.canAuthorize', this.webex.canAuthorize);
+          console.log(
+            '@@@ services-plugin in listener this.webex.canAuthorize',
+            this.webex.canAuthorize
+          );
           if (this.webex.canAuthorize && !catalog.status.postauth.ready) {
             this.initServiceCatalogs()
               .then(() => {
@@ -1432,18 +1450,6 @@ const Services = WebexPlugin.extend({
               });
           }
         });
-
-        this.collectPreauthCatalog(email ? {email} : undefined)
-          .catch((error) => {
-            this.initFailed = true;
-            this.logger.error(
-              `services: failed to init initial services when no credentials available, ${error?.message}`
-            );
-          })
-          .finally(() => {
-            this.ready = true;
-            this.trigger('services:initialized');
-          });
       }
     });
   },
