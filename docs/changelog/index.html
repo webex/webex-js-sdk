@@ -80,64 +80,52 @@
             <form id="comparison-form" class="hide" method="GET">
               <div class="form-row">
                 <div class="form-group">
-                  <label for="version-a-select">Base Version (A):</label>
+                  <label for="version-a-select">Base Stable Version (A):</label>
                   <select id="version-a-select" class="full-width" required>
                     <option value="">Select base version</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label for="version-b-select">Target Version (B):</label>
+                  <label for="version-b-select">Target Stable Version (B):</label>
                   <select id="version-b-select" class="full-width" required>
                     <option value="">Select target version</option>
                   </select>
                 </div>
               </div>
               
-              <!-- Package Selection for filtering -->
-              <div class="form-row">
+              <!-- NEW: Package Selection Row -->
+              <div class="form-row" id="comparison-package-row" style="display: none;">
                 <div class="form-group">
-                  <label for="packages-a-select">
-                    Packages to compare from Version A (optional):
-                    <small style="color: #666;">Leave empty to compare all packages</small>
+                  <label for="comparison-package-select">
+                    Select Package (optional - for detailed comparison):
+                    <span class="help-text" style="font-weight: normal; font-size: 12px; color: #666;">
+                      - Shows all packages from both versions (union)
+                      - Leave empty for full version comparison
+                    </span>
                   </label>
-                  <select id="packages-a-select" class="full-width" multiple size="5">
-                    <option value="" disabled>First select Version A</option>
+                  <select id="comparison-package-select" class="full-width">
+                    <option value="">Select a package (optional)</option>
                   </select>
-                  <small style="color: #888;">Hold Ctrl/Cmd to select multiple packages</small>
-                </div>
-                <div class="form-group">
-                  <label for="packages-b-select">
-                    Packages to compare from Version B (optional):
-                    <small style="color: #666;">Leave empty to compare all packages</small>
-                  </label>
-                  <select id="packages-b-select" class="full-width" multiple size="5">
-                    <option value="" disabled>First select Version B</option>
-                  </select>
-                  <small style="color: #888;">Hold Ctrl/Cmd to select multiple packages</small>
                 </div>
               </div>
               
-              <!-- Package Version Dropdowns (dynamically populated) -->
-              <div id="package-versions-container" class="hide">
-                <div class="form-row">
-                  <div class="form-group">
-                    <label>
-                      Select specific package versions from Version A (optional):
-                      <small style="color: #666;">Leave default to use latest version</small>
-                    </label>
-                    <div id="package-versions-a-container" class="package-versions-grid">
-                      <!-- Dynamically populated -->
-                    </div>
-                  </div>
-                  <div class="form-group">
-                    <label>
-                      Select specific package versions from Version B (optional):
-                      <small style="color: #666;">Leave default to use latest version</small>
-                    </label>
-                    <div id="package-versions-b-container" class="package-versions-grid">
-                      <!-- Dynamically populated -->
-                    </div>
-                  </div>
+              <!-- NEW: Pre-release Version Selection Row -->
+              <div class="form-row" id="comparison-prerelease-row" style="display: none;">
+                <div class="form-group">
+                  <label for="version-a-prerelease-select">
+                    Pre-release Version for Base:
+                  </label>
+                  <select id="version-a-prerelease-select" class="full-width">
+                    <option value="">Select pre-release version</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="version-b-prerelease-select">
+                    Pre-release Version for Target:
+                  </label>
+                  <select id="version-b-prerelease-select" class="full-width">
+                    <option value="">Select pre-release version</option>
+                  </select>
                 </div>
               </div>
               
@@ -221,9 +209,9 @@
               <ul><li><a href="https://app.vidcast.io/share/072f82d1-3735-4a13-8c74-1ece59723ff3" target="_blank">Watch the vidcast here</a></li></ul>
           </div>
         </div>
-      </div>
+      </div> 
       <!-- Package-Level Comparison Section -->
-      <div class="container">
+      <div class="container" id="package-level-comparison-section">
         <div class="col-md-12">
           <div class="search-container">
             <h4 style="margin-top: 0; color: #00bceb;">📦 Compare Package Versions (Within Same Stable Release)</h4>
@@ -371,10 +359,35 @@
         </div>
       </div>
 
-      <!-- All Commits Section -->
+      <!-- Package Comparison Table (Now First) -->
+      <div class="table-wrapper">
+        <h4 style="margin-top: 20px; margin-bottom: 15px;">📦 Package Versions</h4>
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Package Name</th>
+              <th>Version {{versionA}}</th>
+              <th>Version {{versionB}}</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each packages}}
+            <tr class="{{this.changeClass}}">
+              <td><strong>{{this.packageName}}</strong></td>
+              <td>{{this.versionA}}</td>
+              <td>{{this.versionB}}</td>
+              <td>{{this.status}}</td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- All Commits Section (Now Below Table) -->
       {{#if commits}}
       {{#if (gt commits.length 0)}}
-      <div class="commits-section">
+      <div class="commits-section" style="margin-top: 30px;">
         <div class="commits-header">
           <h4>📝 All Commits Between {{versionA}} and {{versionB}}</h4>
           <button type="button" class="btn btn-sm btn-default" onclick="toggleCommits()">
@@ -406,31 +419,6 @@
       </div>
       {{/if}}
       {{/if}}
-
-      <!-- Package Comparison Table -->
-      <div class="table-wrapper">
-        <h4 style="margin-top: 30px; margin-bottom: 15px;">📦 Package Versions</h4>
-        <table class="comparison-table">
-          <thead>
-            <tr>
-              <th>Package Name</th>
-              <th>Version {{versionA}}</th>
-              <th>Version {{versionB}}</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each packages}}
-            <tr class="{{this.changeClass}}">
-              <td><strong>{{this.packageName}}</strong></td>
-              <td>{{this.versionA}}</td>
-              <td>{{this.versionB}}</td>
-              <td>{{this.status}}</td>
-            </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      </div>
     </script>
     <!-- Package Comparison Template -->
     <script id="package-comparison-template" type="text/x-handlebars-template">
