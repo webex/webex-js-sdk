@@ -779,6 +779,8 @@ export async function handleCallErrors(
 
     default: {
       log.warn(`Unknown Error`, loggerContext);
+
+      emitterCb(callError);
     }
   }
 
