@@ -995,7 +995,7 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
                         if (!allCommits.has(hash)) {
                             allCommits.set(hash, {
                                 message,
-                                packages: new Set()
+                                packages: new Set() 
                             });
                         }
                         allCommits.get(hash).packages.add(packageName);
@@ -1417,7 +1417,7 @@ const compareSpecificPackageVersions = (packageName, versionASpecific, versionBS
     const pkgDataB = changelogB[packageName]?.[versionBSpecific];
     
     if (!pkgDataA && !pkgDataB) {
-        alert('Could not find version data for comparison in either version');
+        alert('Could not find version data n 65for comparison in either version');
         return;
     }
     
@@ -1631,6 +1631,9 @@ const initializeComparisonMode = async () => {
         if (packageRow) packageRow.style.display = 'none';
         if (prereleaseRow) prereleaseRow.style.display = 'none';
         
+        // Update button state after clearing selections
+        updateCompareButtonState();
+        
         // If both stable versions selected, fetch changelogs and populate packages
         if (stableA && stableB && stableA !== stableB) {
             try {
@@ -1647,10 +1650,40 @@ const initializeComparisonMode = async () => {
                 
                 // Populate union of all packages
                 populateUnionPackages(changelogA, changelogB);
+                
+                // Update button state after loading changelogs
+                updateCompareButtonState();
             } catch (error) {
                 console.error('Error loading changelogs:', error);
                 alert('Error loading version data. Please try again.');
             }
+        }
+    };
+    
+    // Check and update comparison button state
+    const updateCompareButtonState = () => {
+        const compareBtn = document.getElementById('compare-button');
+        if (!compareBtn) return;
+        
+        const selectedPackage = packageSelect ? packageSelect.value : null;
+        const versionASpecific = versionAPrereleaseSelect ? versionAPrereleaseSelect.value : null;
+        const versionBSpecific = versionBPrereleaseSelect ? versionBPrereleaseSelect.value : null;
+        const prereleaseRowVisible = prereleaseRow && prereleaseRow.style.display !== 'none';
+        
+        // Disable button if:
+        // 1. Package is selected but pre-release row is hidden
+        // 2. Pre-release row is visible but both pre-release versions are not selected
+        if (selectedPackage) {
+            if (!prereleaseRowVisible) {
+                compareBtn.disabled = true;
+            } else if (!versionASpecific || !versionBSpecific) {
+                compareBtn.disabled = true;
+            } else {
+                compareBtn.disabled = false;
+            }
+        } else {
+            // No package selected - enable for full version comparison
+            compareBtn.disabled = false;
         }
     };
     
@@ -1689,6 +1722,9 @@ const initializeComparisonMode = async () => {
         } else {
             if (prereleaseRow) prereleaseRow.style.display = 'none';
         }
+        
+        // Update button state after package change
+        updateCompareButtonState();
     };
     
     // Single view mode
@@ -1747,6 +1783,10 @@ const initializeComparisonMode = async () => {
     // Event listener for package selection
     if (packageSelect) packageSelect.addEventListener('change', handlePackageChange);
     
+    // Event listeners for pre-release version selection to update button state
+    if (versionAPrereleaseSelect) versionAPrereleaseSelect.addEventListener('change', updateCompareButtonState);
+    if (versionBPrereleaseSelect) versionBPrereleaseSelect.addEventListener('change', updateCompareButtonState);
+    
     // Comparison form submit
     if (comparisonForm) {
         comparisonForm.addEventListener('submit', (event) => {
@@ -1777,9 +1817,17 @@ const initializeComparisonMode = async () => {
                     cachedChangelogA,
                     cachedChangelogB
                 );
+                
+                // Re-enable button after comparison
+                const compareBtn = document.getElementById('compare-button');
+                if (compareBtn) compareBtn.disabled = false;
             } else if (!selectedPackage) {
                 // If no package selected, do full version comparison (existing functionality)
                 performVersionComparison(stableA, stableB);
+                
+                // Re-enable button after comparison
+                const compareBtn = document.getElementById('compare-button');
+                if (compareBtn) compareBtn.disabled = false;
             } else {
                 alert('Please select package and both pre-release versions, or leave package empty for full version comparison');
             }
@@ -1809,6 +1857,10 @@ const initializeComparisonMode = async () => {
             const helperText = document.getElementById('comparison-helper');
             if (copyLinkBtn) copyLinkBtn.classList.add('hide');
             if (helperText) helperText.classList.add('hide');
+            
+            // Re-enable comparison button after clearing
+            const compareBtn = document.getElementById('compare-button');
+            if (compareBtn) compareBtn.disabled = false;
             
             // Clear URL
             const url = new URL(window.location);
