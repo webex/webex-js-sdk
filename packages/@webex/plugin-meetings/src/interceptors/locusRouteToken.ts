@@ -6,7 +6,7 @@ import {Interceptor} from '@webex/http-core';
 import {has} from 'lodash';
 
 const LOCUS_ID_REGEX = /\/locus\/api\/v1\/loci\/([a-f0-9-]{36})/i;
-const X_CISCO_PART_ROUTE_TOKEN = 'X-Cisco-Part-Route-Token';
+const X_CISCO_PART_ROUTE_TOKEN = 'x-cisco-part-route-token';
 const ROUTE_TOKEN = {};
 
 /**
@@ -66,7 +66,11 @@ export default class LocusRouteTokenInterceptor extends Interceptor {
    * @returns {void}
    */
   updateToken(locusId, token) {
-    ROUTE_TOKEN[locusId] = token;
+    if (token === 'null' || !token) {
+      delete ROUTE_TOKEN[locusId];
+    } else {
+      ROUTE_TOKEN[locusId] = token;
+    }
   }
 
   /**

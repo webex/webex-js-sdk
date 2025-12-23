@@ -9,7 +9,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import {LocusRouteTokenInterceptor} from '@webex/plugin-meetings/src/interceptors';
 import Meetings from '@webex/plugin-meetings';
 
-const X_CISCO_PART_ROUTE_TOKEN = 'X-Cisco-Part-Route-Token';
+const X_CISCO_PART_ROUTE_TOKEN = 'x-cisco-part-route-token';
 
 describe('LocusRouteTokenInterceptor', () => {
   let interceptor, webex;
@@ -83,5 +83,10 @@ describe('LocusRouteTokenInterceptor', () => {
   it('updateToken & getToken should work as pair', () => {
     interceptor.updateToken(TEST_LOCUS_ID, 'abc456');
     assert.equal(interceptor.getToken(TEST_LOCUS_ID), 'abc456');
+  });
+
+  it('should delete token when updateToken called with "null"', () => {
+    interceptor.updateToken(TEST_LOCUS_ID, 'null');
+    assert.isUndefined(interceptor.getToken(TEST_LOCUS_ID));
   });
 });
