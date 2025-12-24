@@ -1,17 +1,10 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-import { Yarn } from '../../utils';
+import {Yarn} from '../../utils';
 
 import CONSTANTS from './package.constants';
-import type {
-  Config,
-  Data,
-  Definition,
-  InspectOptions,
-  PackageInfo,
-  Version,
-} from './package.types';
+import type {Config, Data, Definition, InspectOptions, PackageInfo, Version} from './package.types';
 
 /**
  * The Package class.
@@ -67,6 +60,13 @@ class Package {
     return this.data.name;
   }
 
+  /**
+   * The package info from the npm registry for this package.
+   */
+  public get packageInfo(): PackageInfo {
+    return this.data.packageInfo;
+  }
+
   public get version(): string {
     return Package.parseVersionObjectToString(this.data.version);
   }
@@ -80,7 +80,7 @@ class Package {
   public apply(): Promise<this> {
     const packageDefinitionPath = path.join(this.data.location, CONSTANTS.PACKAGE_DEFINITION_FILE);
 
-    return Package.readDefinition({ definitionPath: packageDefinitionPath })
+    return Package.readDefinition({definitionPath: packageDefinitionPath})
       .then((definition) => ({
         ...definition,
         version: Package.parseVersionObjectToString(this.data.version),
@@ -102,14 +102,13 @@ class Package {
   public hasScript(scriptName: string): Promise<boolean> {
     const packageDefinitionPath = path.join(this.data.location, CONSTANTS.PACKAGE_DEFINITION_FILE);
 
-    return Package.readDefinition({ definitionPath: packageDefinitionPath })
-      .then((definition) => {
-        if (!definition.scripts || !definition.scripts[scriptName]) {
-          return false;
-        }
+    return Package.readDefinition({definitionPath: packageDefinitionPath}).then((definition) => {
+      if (!definition.scripts || !definition.scripts[scriptName]) {
+        return false;
+      }
 
-        return true;
-      });
+      return true;
+    });
   }
 
   /**
@@ -125,7 +124,7 @@ class Package {
    * @returns - This Package instance.
    */
   public incrementVersion(version: Partial<Version> = {}): this {
-    const processedVersion: Version = { ...this.data.version };
+    const processedVersion: Version = {...this.data.version};
 
     if (version.major) {
       processedVersion.major += version.major;
@@ -160,24 +159,23 @@ class Package {
    * @returns - Promise resolving with this Package instance.
    */
   public inspect(): Promise<this> {
-    const { tag } = this.data.version;
+    const {tag} = this.data.version;
 
-    return Package.inspect({ package: this.data.name })
-      .then((packageInfo) => {
-        this.data.packageInfo = packageInfo;
+    return Package.inspect({package: this.data.name}).then((packageInfo) => {
+      this.data.packageInfo = packageInfo;
 
-        const tagVersion = packageInfo['dist-tags'][tag];
+      const tagVersion = packageInfo['dist-tags'][tag];
 
-        if (tagVersion) {
-          this.data.version = Package.parseVersionStringToObject(tagVersion);
-
-          return this;
-        }
-
-        this.data.version = Package.parseVersionStringToObject(`${packageInfo.version}-${tag}.0`);
+      if (tagVersion) {
+        this.data.version = Package.parseVersionStringToObject(tagVersion);
 
         return this;
-      });
+      }
+
+      this.data.version = Package.parseVersionStringToObject(`${packageInfo.version}-${tag}.0`);
+
+      return this;
+    });
   }
 
   /**
@@ -188,10 +186,12 @@ class Package {
    */
   public setVersion(version: Partial<Version> = {}): this {
     this.data.version = {
-      major: Number.isInteger(version.major) ? version.major as number : this.data.version.major,
-      minor: Number.isInteger(version.minor) ? version.minor as number : this.data.version.minor,
-      patch: Number.isInteger(version.patch) ? version.patch as number : this.data.version.patch,
-      release: Number.isInteger(version.release) ? version.release as number : this.data.version.release,
+      major: Number.isInteger(version.major) ? (version.major as number) : this.data.version.major,
+      minor: Number.isInteger(version.minor) ? (version.minor as number) : this.data.version.minor,
+      patch: Number.isInteger(version.patch) ? (version.patch as number) : this.data.version.patch,
+      release: Number.isInteger(version.release)
+        ? (version.release as number)
+        : this.data.version.release,
       tag: version.tag || this.data.version.tag,
     };
 
@@ -203,18 +203,27 @@ class Package {
    *
    * @remarks
    * This method will skip any modifications if the current version tag is
-   * stable.
+   * stable. If the package has no proper stable version (0.0.0), it will use
+   * the provided reference version instead.
    *
+   * @param referenceVersion - Optional reference version to use when the package
+   *   has no proper stable version. This should be the parsed version object from
+   *   a reference package like 'webex'.
    * @returns - This Package instance.
    */
-  public syncVersion(): this {
-    const { version } = this.data;
+  public syncVersion(referenceVersion?: Version): this {
+    const {version} = this.data;
 
     if (version.tag === Package.CONSTANTS.STABLE_TAG) {
       return this;
     }
 
-    const stable = Package.parseVersionStringToObject(this.data.packageInfo['dist-tags'].latest);
+    let stable = Package.parseVersionStringToObject(this.data.packageInfo['dist-tags'].latest);
+
+    // If this package has no proper stable version (0.0.0), use the reference version
+    if (stable.major === 0 && stable.minor === 0 && stable.patch === 0 && referenceVersion) {
+      stable = referenceVersion;
+    }
 
     let hasVersionChanged = false;
 
@@ -254,13 +263,12 @@ class Package {
    * @returns - Package Info for the provided package.
    */
   public static inspect(options: InspectOptions): Promise<PackageInfo> {
-    return Yarn.view({ distTags: true, package: options.package, version: true })
-      .catch(() => ({
-        version: Package.CONSTANTS.DEFAULT_VERSION,
-        'dist-tags': {
-          [Package.CONSTANTS.STABLE_TAG]: Package.CONSTANTS.DEFAULT_VERSION,
-        },
-      }));
+    return Yarn.view({distTags: true, package: options.package, version: true}).catch(() => ({
+      version: Package.CONSTANTS.DEFAULT_VERSION,
+      'dist-tags': {
+        [Package.CONSTANTS.STABLE_TAG]: Package.CONSTANTS.DEFAULT_VERSION,
+      },
+    }));
   }
 
   /**
@@ -313,7 +321,9 @@ class Package {
 
     return [
       semanticVersion,
-      version.tag && version.tag !== CONSTANTS.STABLE_TAG ? `-${version.tag}.${version.release}` : '',
+      version.tag && version.tag !== CONSTANTS.STABLE_TAG
+        ? `-${version.tag}.${version.release}`
+        : '',
     ].join('');
   }
 
@@ -329,8 +339,9 @@ class Package {
    * @param options - Options to use when reading a file definition.
    * @returns - Promise resolving to the package definition.
    */
-  public static readDefinition({ definitionPath }: { definitionPath: string }): Promise<Definition> {
-    return fs.readFile(definitionPath)
+  public static readDefinition({definitionPath}: {definitionPath: string}): Promise<Definition> {
+    return fs
+      .readFile(definitionPath)
       .then((buffer) => buffer.toString())
       .then((data) => JSON.parse(data))
       .then((definition: Definition) => definition);

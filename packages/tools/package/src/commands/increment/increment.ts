@@ -1,13 +1,13 @@
 import path from 'path';
 
-import type { CommandsCommand } from '@webex/cli-tools';
+import type {CommandsCommand} from '@webex/cli-tools';
 
-import { Package } from '../../models';
-import { Yarn } from '../../utils';
-import type { PackageConfig, PackageVersion } from '../../models';
+import {Package} from '../../models';
+import {Yarn} from '../../utils';
+import type {PackageConfig, PackageVersion} from '../../models';
 
 import CONSTANTS from './increment.constants';
-import type { Options } from './increment.types';
+import type {Options} from './increment.types';
 
 /**
  * The increment Command configuration Object. This Command is used to increment
@@ -48,17 +48,38 @@ const increment: CommandsCommand<Options> = {
 
     const tag = options.tag?.split('/').pop();
 
-    return Yarn.list({ since: options.since })
-      .then((packageDetails) => packageDetails.map(({ location, name }: PackageConfig) => new Package({
-        location: path.join(rootDir, location),
-        name,
-        tag,
-      })))
-      .then((packs: Array<Package>) => packs.filter((pack) => (options.packages
-        ? options.packages.includes(pack.name)
-        : true)))
-      .then((packs) => Promise.all(packs.map((pack) => pack.inspect())))
-      .then((packs) => Promise.all(packs.map((pack) => pack.syncVersion())))
+    // First, get the reference version from the 'webex' package
+    // This is used for packages that don't have a proper stable version yet
+    const referencePackage = new Package({
+      location: path.join(rootDir, 'packages/webex'),
+      name: 'webex',
+      tag,
+    });
+
+    return referencePackage
+      .inspect()
+      .then(() => {
+        const referenceVersion = Package.parseVersionStringToObject(
+          referencePackage.packageInfo['dist-tags'].latest
+        );
+
+        return Yarn.list({since: options.since})
+          .then((packageDetails) =>
+            packageDetails.map(
+              ({location, name}: PackageConfig) =>
+                new Package({
+                  location: path.join(rootDir, location),
+                  name,
+                  tag,
+                })
+            )
+          )
+          .then((packs: Array<Package>) =>
+            packs.filter((pack) => (options.packages ? options.packages.includes(pack.name) : true))
+          )
+          .then((packs) => Promise.all(packs.map((pack) => pack.inspect())))
+          .then((packs) => Promise.all(packs.map((pack) => pack.syncVersion(referenceVersion))));
+      })
       .then((packs) => {
         const incrementBy: Partial<PackageVersion> = {
           major: options.major ? parseInt(options.major, 10) : undefined,
