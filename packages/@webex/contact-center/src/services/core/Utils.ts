@@ -4,10 +4,14 @@ import {Failure, AugmentedError} from './GlobalTypes';
 import LoggerProxy from '../../logger-proxy';
 import WebexRequest from './WebexRequest';
 import {
+  ConsultConferenceData,
+  consultConferencePayloadData,
+  ConsultTransferDestinationType,
   TaskData,
-  ConsultTransferPayLoad,
   CONSULT_TRANSFER_DESTINATION_TYPE,
+  DESTINATION_TYPE,
   Interaction,
+  InteractionParticipant,
 } from '../task/types';
 import {PARTICIPANT_TYPES, STATE_CONSULT} from './constants';
 
@@ -24,28 +28,6 @@ const getCommonErrorDetails = (errObj: WebexRequestPayload) => {
     trackingId: errObj?.headers?.trackingid || errObj?.headers?.TrackingID,
     msg: errObj?.body,
   };
-};
-
-/**
- * Checks if the destination type represents an entry point variant (EPDN or ENTRYPOINT).
- */
-const isEntryPointOrEpdn = (destAgentType?: string): boolean => {
-  return destAgentType === 'EPDN' || destAgentType === 'ENTRYPOINT';
-};
-
-/**
- * Determines if the task involves dialing a number based on the destination type.
- * Returns 'DIAL_NUMBER' for dial-related destinations, empty string otherwise.
- */
-const getAgentActionTypeFromTask = (taskData?: TaskData): 'DIAL_NUMBER' | '' => {
-  const destAgentType = taskData?.destinationType;
-
-  // Check if destination requires dialing: direct dial number or entry point variants
-  const isDialNumber = destAgentType === 'DN';
-  const isEntryPointVariant = isEntryPointOrEpdn(destAgentType);
-
-  // If the destination type is a dial number or an entry point variant, return 'DIAL_NUMBER'
-  return isDialNumber || isEntryPointVariant ? 'DIAL_NUMBER' : '';
 };
 
 export const isValidDialNumber = (input: string): boolean => {
@@ -216,7 +198,7 @@ export const createErrDetailsObject = (errObj: WebexRequestPayload) => {
   return new Err.Details('Service.reqs.generic.failure', details);
 };
 
-/**
+/*
  * Gets the consulted agent ID from the media object by finding the agent
  * in the consult media participants (excluding the current agent).
  *
@@ -294,9 +276,16 @@ export const calculateDestAgentId = (interaction: Interaction, agentId: string):
     return destAgentIdCBT;
   }
 
-  return interaction.participants[consultingAgent]?.type === PARTICIPANT_TYPES.EP_DN
-    ? interaction.participants[consultingAgent]?.epId
-    : interaction.participants[consultingAgent]?.id;
+  const participant = interaction.participants[consultingAgent];
+  if (!participant) {
+    return '';
+  }
+
+  if (participant.type === PARTICIPANT_TYPES.EP_DN) {
+    return (participant as InteractionParticipant & {epId?: string}).epId ?? '';
+  }
+
+  return participant.id ?? '';
 };
 
 /**
@@ -331,20 +320,6 @@ export const calculateDestType = (interaction: Interaction, agentId: string): st
   return CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
 };
 
-export const deriveConsultTransferDestinationType = (
-  taskData?: TaskData
-): ConsultTransferPayLoad['destinationType'] => {
-  const agentActionType = getAgentActionTypeFromTask(taskData);
-
-  if (agentActionType === 'DIAL_NUMBER') {
-    return isEntryPointOrEpdn(taskData?.destinationType)
-      ? CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT
-      : CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
-  }
-
-  return CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
-};
-
 /**
  * Gets the destination agent ID from participants.
  * Finds a participant who is not the current agent and is an agent type.
@@ -353,45 +328,59 @@ export const deriveConsultTransferDestinationType = (
  * @param agentId - The current agent's ID
  * @returns The destination agent ID, or undefined if none found
  */
-export const getDestinationAgentId = (
-  participants: Interaction['participants'] | undefined,
-  agentId: string
-): string | undefined => {
-  if (!participants) {
-    return undefined;
+export const buildConsultConferenceParamData = (
+  dataPassed: consultConferencePayloadData,
+  interactionIdPassed: string
+): {interactionId: string; data: ConsultConferenceData} => {
+  const data: ConsultConferenceData = {
+    ...('agentId' in dataPassed && {agentId: dataPassed.agentId}),
+    to: dataPassed.destAgentId,
+    destinationType: '',
+  };
+
+  if ('destinationType' in dataPassed) {
+    if (dataPassed.destinationType === 'DN') {
+      data.destinationType = DESTINATION_TYPE.DIALNUMBER;
+    } else if (dataPassed.destinationType === 'EP_DN') {
+      data.destinationType = DESTINATION_TYPE.ENTRYPOINT;
+    } else {
+      data.destinationType = dataPassed.destinationType.toLowerCase();
+    }
+  } else {
+    data.destinationType = DESTINATION_TYPE.AGENT;
   }
 
-  // Find a participant who is not the current agent and is an agent type
-  const destParticipantId = Object.keys(participants).find((participantId) => {
-    const participant = participants[participantId];
-
-    return (
-      participantId !== agentId &&
-      participant?.pType !== 'Customer' &&
-      participant?.pType !== 'Supervisor' &&
-      participant?.pType !== 'VVA' &&
-      !participant?.hasLeft
-    );
-  });
-
-  return destParticipantId;
+  return {
+    interactionId: interactionIdPassed,
+    data,
+  };
 };
 
 /**
- * Builds the parameter data for consult conference operations.
- * Used for conference-related API calls.
+ * Derives the consult transfer destination type based on task data.
+ * This function determines the appropriate destination type for a consult transfer
+ * by examining the destination type stored in the task data.
  *
- * @param taskData - The task data containing interaction details
- * @param agentId - The current agent's ID
- * @returns Object containing conference parameters
+ * @param taskData - The task data containing destination information
+ * @returns The derived consult transfer destination type
+ * @public
  */
-export const buildConsultConferenceParamData = (
-  taskData: TaskData,
-  agentId: string
-): {destAgentId: string | undefined} => {
-  const destAgentId = getDestinationAgentId(taskData.interaction?.participants, agentId);
+export const deriveConsultTransferDestinationType = (
+  taskData: TaskData
+): ConsultTransferDestinationType => {
+  const destType = taskData?.destinationType;
 
-  return {
-    destAgentId,
-  };
+  // Map destination types to consult transfer destination types
+  if (destType === 'DN' || destType === DESTINATION_TYPE.DIALNUMBER) {
+    return CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
+  }
+  if (destType === 'EP_DN' || destType === DESTINATION_TYPE.ENTRYPOINT) {
+    return CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
+  }
+  if (destType === DESTINATION_TYPE.QUEUE) {
+    return CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE;
+  }
+
+  // Default to agent if no specific type matches
+  return CONSULT_TRANSFER_DESTINATION_TYPE.AGENT;
 };

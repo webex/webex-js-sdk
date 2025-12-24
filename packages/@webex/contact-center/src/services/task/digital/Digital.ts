@@ -1,8 +1,8 @@
 import {CC_FILE, METHODS} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
-import {IDigital, TaskResponse, TaskData} from '../types';
-import {CC_EVENTS, WrapupData} from '../../config/types';
-import Task from '../Task';
+import {IDigital, TaskResponse, TaskData, TASK_CHANNEL_TYPE} from '../types';
+import {WrapupData} from '../../config/types';
+import Task, {TaskRuntimeOptions} from '../Task';
 import routingContact from '../contact';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
@@ -12,11 +12,32 @@ export default class Digital extends Task implements IDigital {
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
+    runtimeOptions?: TaskRuntimeOptions,
     wrapupData?: WrapupData,
     agentId?: string
   ) {
-    super(contact, data, wrapupData, agentId);
-    this.updateTaskUiControls({accept: [true, true]});
+    super(
+      contact,
+      data,
+      {
+        channelType: TASK_CHANNEL_TYPE.DIGITAL,
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: false,
+        isRecordingEnabled: false,
+      },
+      runtimeOptions,
+      wrapupData,
+      agentId
+    );
+  }
+
+  /**
+   * Refresh the digital task with the latest backend payload and recompute UI controls.
+   */
+  public updateTaskData(newData: TaskData, shouldOverwrite = false): IDigital {
+    super.updateTaskData(newData, shouldOverwrite);
+
+    return this;
   }
 
   /**
@@ -72,65 +93,6 @@ export default class Digital extends Task implements IDigital {
         ['operational', 'behavioral', 'business']
       );
       throw detailedError;
-    }
-  }
-
-  protected setUIControls(): void {
-    const eventType = this.data.type;
-
-    switch (eventType) {
-      case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-        // once accepted: enable transfer + end
-        this.updateTaskUiControls({
-          accept: [false, false],
-          transfer: [true, true],
-          end: [true, true],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
-      case CC_EVENTS.AGENT_BLIND_TRANSFERRED:
-      case CC_EVENTS.AGENT_WRAPUP:
-        // after transfer or end: enable wrapup
-        this.updateTaskUiControls({
-          transfer: [false, false],
-          end: [false, false],
-          wrapup: [true, true],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_CONTACT:
-        if (this.data.interaction.isTerminated) {
-          this.updateTaskUiControls({
-            transfer: [false, false],
-            end: [false, false],
-            wrapup: [true, true],
-          });
-        } else if (this.data.interaction.state === 'connected') {
-          this.updateTaskUiControls({
-            accept: [false, false],
-            transfer: [true, true],
-            end: [true, true],
-          });
-        } else if (this.data.interaction.state === 'new') {
-          this.updateTaskUiControls({
-            accept: [true, true],
-            transfer: [false, false],
-            end: [false, false],
-          });
-        }
-        break;
-
-      case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
-        this.updateTaskUiControls({
-          accept: [false, false],
-          transfer: [false, false],
-          end: [false, false],
-        });
-        break;
-
-      default:
-        break;
     }
   }
 }

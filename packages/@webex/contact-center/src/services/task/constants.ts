@@ -44,6 +44,29 @@ export const PRESERVED_TASK_DATA_FIELDS = {
  */
 export const KEYS_TO_NOT_DELETE: string[] = Object.values(PRESERVED_TASK_DATA_FIELDS);
 
+/**
+ * Consultation status constants derived from state machine
+ * These values are computed and available in task.data.consultStatus
+ */
+export const CONSULT_STATUS = {
+  /** No consultation is currently in progress */
+  NO_CONSULTATION_IN_PROGRESS: 'NO_CONSULTATION_IN_PROGRESS',
+  /** Consultation has been initiated but not yet accepted */
+  CONSULT_INITIATED: 'CONSULT_INITIATED',
+  /** Consultation has been accepted and is in progress */
+  CONSULT_ACCEPTED: 'CONSULT_ACCEPTED',
+  /** This agent is being consulted (has received consult request) */
+  BEING_CONSULTED: 'BEING_CONSULTED',
+  /** This agent is being consulted and has accepted */
+  BEING_CONSULTED_ACCEPTED: 'BEING_CONSULTED_ACCEPTED',
+  /** Task is in connected state */
+  CONNECTED: 'CONNECTED',
+  /** Task is in conference state */
+  CONFERENCE: 'CONFERENCE',
+  /** Consultation has been completed */
+  CONSULT_COMPLETED: 'CONSULT_COMPLETED',
+} as const;
+
 // METHOD NAMES
 export const METHODS = {
   // Task class methods

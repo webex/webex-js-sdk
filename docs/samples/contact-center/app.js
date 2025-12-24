@@ -705,10 +705,20 @@ async function initiateConsultTransfer() {
       await currentTask.transferConference();
     } else {
       await currentTask.transfer(consultTransferPayload);
-      console.log('Consult transfer initiated successfully');
+      console.log('Consult/regular transfer initiated successfully');
     }
   } catch (error) {
     console.error('Failed to initiate consult transfer', error);
+  }
+}
+
+function toggleTransferOptions() {
+  const transferOptions = document.getElementById('transfer-options');
+  if (transferOptions.style.display === 'none') {
+    transferOptions.style.display = 'block';
+    onTransferTypeSelectionChanged(); // To load the default destination type view
+  } else {
+    transferOptions.style.display = 'none';
   }
 }
 
@@ -1009,6 +1019,16 @@ function registerTaskListeners(task) {
   task.on('task:hold', updateTaskList);
 
   task.on('task:resume', updateTaskList);
+  task.on('task:ui-controls-updated', () => {
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      updateCallControlUI(task);
+    }
+  });
+  task.on('task:ui-controls-updated', () => {
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      updateCallControlUI(task);
+    }
+  });
 
   // Consult flows
   task.on('task:consultCreated', updateTaskList);
@@ -1163,8 +1183,10 @@ function getConsultStatus(task) {
   } else if (state === 'conference') {
     return 'conference';
   } else if (state === 'consultCompleted') {
-    return  taskState;
+    return taskState === 'connected' ? 'connected' : taskState;
   }
+
+  return 'connected';
 }
 
 function updateCallControlUI(task) {
@@ -1175,43 +1197,17 @@ function updateCallControlUI(task) {
   autoWrapupTimerElm.style.display = 'none';
   if (task.data.wrapUpRequired) {
     participantListElm.style.display = 'none';
-    updateButtonsPostEndCall();
     if (task.autoWrapup && task.autoWrapup.isRunning()) {
       startAutoWrapupTimer(task);
     }
-    return;
+  } else {
+    wrapupElm.disabled = true;
+    wrapupCodesDropdownElm.disabled = true;
   }
-
-  wrapupElm.disabled = true;
-  wrapupCodesDropdownElm.disabled = true;
   const hasParticipants = Object.keys(participants).length > 1;
   const isNew = isIncomingTask(task, agentId);
   const digitalChannels = ['chat', 'email', 'social'];
   const isBrowser = agentDeviceType === 'BROWSER';
-
-  // Element lookup map to avoid eval usage
-  const elementMap = {
-    'holdResumeElm': holdResumeElm,
-    'muteElm': muteElm,
-    'pauseResumeRecordingElm': pauseResumeRecordingElm,
-    'consultTabBtn': consultTabBtn,
-    'declineElm': declineElm,
-    'transferElm': transferElm,
-    'endElm': endElm,
-    'endConsultBtn': endConsultBtn,
-    'consultTransferBtn': consultTransferBtn,
-    'conferenceToggleBtn': conferenceToggleBtn
-  };
-
-  // Helper to set multiple controls at once
-  function setControls(configs) {
-    for (const [elmName, config] of Object.entries(configs)) {
-      const element = elementMap[elmName];
-      if (element) {
-        makeDisabledAndHide(element, config.hide, config.disable);
-      }
-    }
-  }
 
   if (isNew) {
     disableAllCallControls();
@@ -1234,107 +1230,49 @@ function updateCallControlUI(task) {
   if (task?.data?.interaction?.mediaType === 'telephony') {
     // hold/resume call
     const isHold = isInteractionOnHold(task);
-    holdResumeElm.disabled = isTerminated;
     holdResumeElm.innerText = isHold ? 'Resume' : 'Hold';
 
-    // MPC: Hide transfer button in conference mode (Exit Conference replaces transfer)
-    if (task.data.isConferenceInProgress) {
-      transferElm.disabled = true;
-      transferElm.style.display = 'none';
-    } else {
-      transferElm.disabled = false;
-      transferElm.style.display = 'inline-block';
-    }
+    const uiControls = task.uiControls || {};
+    const applyControlState = (element, control) => {
+      if (!element) {
+        return;
+      }
+      if (!control) {
+        element.style.display = 'inline-block';
+        element.disabled = false;
+        return;
+      }
+      makeDisabledAndHide(element, !control.isVisible, !control.isEnabled);
+    };
 
-    muteElm.disabled = false;
-    endElm.disabled = !hasParticipants;
+    applyControlState(holdResumeElm, uiControls.hold);
+    applyControlState(muteElm, uiControls.mute);
+    applyControlState(consultTabBtn, uiControls.consult);
+    applyControlState(transferElm, uiControls.transfer);
+    applyControlState(endElm, uiControls.end);
+    applyControlState(endConsultBtn, uiControls.endConsult);
+    applyControlState(consultTransferBtn, uiControls.consultTransfer);
+    applyControlState(conferenceToggleBtn, uiControls.conference);
+    applyControlState(wrapupElm, uiControls.wrapup);
+    wrapupCodesDropdownElm.disabled = !(uiControls.wrapup && uiControls.wrapup.isEnabled);
 
-    pauseResumeRecordingElm.disabled = false;
+    console.log('uiControls updated:', {
+      interactionId: task.data.interactionId,
+      controls: uiControls,
+    });
+
+    applyControlState(pauseResumeRecordingElm, uiControls.recording);
     pauseResumeRecordingElm.innerText = 'Pause Recording';
     if (callProcessingDetails) {
       const { isPaused } = callProcessingDetails;
       pauseResumeRecordingElm.innerText = isPaused === 'true' ? 'Resume Recording' : 'Pause Recording';
     }
 
-    const consultStatus = getConsultStatus(task, agentId);
-    console.log(`event {task.data.type} ${consultStatus}`);
-    
-    // Check if we've reached the 7 participant limit
     const activeAgentCount = getActiveAgentCount(task);
     const hasReachedParticipantLimit = activeAgentCount >= 7;
-    
-    // Update consult button tooltip if disabled due to participant limit
-    if (hasReachedParticipantLimit) {
-      consultTabBtn.title = 'Maximum 7 participants allowed in conference';
-    } else {
-      consultTabBtn.title = 'Initiate consultation with another agent';
-    }
-    
-    updateConferenceButtonState(task, consultStatus === 'beingConsultedAccepted' || consultStatus === 'consultAccepted');
-
-    // Map consultStatus to control configs
-    const controlMap = {
-      beingConsulted: () => {}, // No changes
-      beingConsultedAccepted: () => setControls({
-        'holdResumeElm': { hide: true, disable: false },
-        'muteElm': { hide: false || !isBrowser, disable: false },
-        'pauseResumeRecordingElm': { hide: false, disable: true },
-        'consultTabBtn': { hide: true, disable: true },
-        'transferElm': { hide: true, disable: true },
-        'endElm': { hide: true, disable: true },
-        'endConsultBtn': { hide: false, disable: false },
-        'consultTransferBtn': { hide: true, disable: true },
-        'conferenceToggleBtn': { hide: true, disable: true },
-      }),
-      consultInitiated: () => setControls({
-        'holdResumeElm': { hide: true, disable: false },
-        'muteElm': { hide: true, disable: false },
-        'pauseResumeRecordingElm': { hide: true, disable: false },
-        'consultTabBtn': { hide: true, disable: hasReachedParticipantLimit },
-        'transferElm': { hide: true, disable: false },
-        'endElm': { hide: false, disable: true }, // Disable end call during consultation
-        'endConsultBtn': { hide: false, disable: false },
-        'consultTransferBtn': { hide: true, disable: true },
-        'conferenceToggleBtn': { hide: true, disable: true },
-      }),
-      consultAccepted: () => setControls({
-        'holdResumeElm': { hide: true, disable: false },
-        'muteElm': { hide: false || !isBrowser, disable: false },
-        'pauseResumeRecordingElm': { hide: false, disable: true },
-        'consultTabBtn': { hide: true, disable: hasReachedParticipantLimit },
-        'transferElm': { hide: true, disable: false },
-        'endElm': { hide: true, disable: true }, // Disable end call during consultation
-        'endConsultBtn': { hide: false, disable: false },
-        'consultTransferBtn': { hide: false, disable: false },
-        'conferenceToggleBtn': { hide: false, disable: false },
-      }),
-      conference: () => setControls({
-        'consultTabBtn': { hide: false, disable: hasReachedParticipantLimit },
-        'transferElm': { hide: true, disable: false },
-        'endConsultBtn': { hide: true, disable: true },
-        'muteElm': { hide: false || !isBrowser, disable: false },
-        'pauseResumeRecordingElm': { hide: false, disable: false },
-        'holdResumeElm': { hide: false, disable: !isHold },
-        'endElm': { hide: false, disable: isHold || false }, // Allow end call in conference
-        'consultTransferBtn': { hide: true, disable: true },
-        'conferenceToggleBtn': { hide: false, disable: false },
-      }),
-      connected: () => setControls({
-        'consultTabBtn': { hide: false, disable: hasReachedParticipantLimit },
-        'transferElm': { hide: false, disable: false },
-        'endConsultBtn': { hide: true, disable: true },
-        'muteElm': { hide: false || !isBrowser, disable: false },
-        'pauseResumeRecordingElm': { hide: false, disable: false },
-        'holdResumeElm': { hide: false, disable: false },
-        'endElm': { hide: false, disable: isHold || false },
-        'consultTransferBtn': { hide: true, disable: true },
-        'conferenceToggleBtn': { hide: true, disable: true },
-      })
-    };
-
-    if (consultStatus && controlMap[consultStatus]) {
-      controlMap[consultStatus]();
-    }
+    consultTabBtn.title = hasReachedParticipantLimit
+      ? 'Maximum 7 participants allowed in conference'
+      : 'Initiate consultation with another agent';
 
     // MPC: Update participant list display
     updateParticipantList(task);
@@ -2003,15 +1941,21 @@ function holdResumeCall() {
     holdResumeElm.disabled = true;
     currentTask.holdResume().then(() => {
       console.info('Call held successfully');
+      holdResumeElm.innerText = 'Resume';
+      holdResumeElm.disabled = false;
     }).catch((error) => {
       console.error('Failed to hold the call', error);
+      holdResumeElm.disabled = false;
     });
   } else {
     holdResumeElm.disabled = true;
     currentTask.holdResume().then(() => {
       console.info('Call resumed successfully');
+      holdResumeElm.innerText = 'Hold';
+      holdResumeElm.disabled = false;
     }).catch((error) => {
       console.error('Failed to resume the call', error);
+      holdResumeElm.disabled = false;
     });
   }
 }
@@ -2369,4 +2313,3 @@ updateLoginOptionElm.addEventListener('change', updateApplyButtonState);
 updateDialNumberElm.addEventListener('input', updateApplyButtonState);
 
 updateApplyButtonState();
-

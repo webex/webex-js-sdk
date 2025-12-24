@@ -1,5 +1,6 @@
-import {CallId} from '@webex/calling/dist/types/common/types';
+/* eslint-disable import/no-cycle */
 import EventEmitter from 'events';
+import type {AnyActorRef} from 'xstate';
 import {Msg} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
 
@@ -8,6 +9,11 @@ import AutoWrapup from './AutoWrapup';
  * @public
  */
 export type TaskId = string;
+
+/**
+ * Unique identifier for a call in the Webex calling system
+ */
+export type CallId = string;
 
 /**
  * Helper type for creating enum-like objects with type safety
@@ -89,6 +95,26 @@ export const MEDIA_CHANNEL = {
  * @public
  */
 export type MEDIA_CHANNEL = Enum<typeof MEDIA_CHANNEL>;
+
+/**
+ * Supported task channel types for UI control configuration
+ */
+export const TASK_CHANNEL_TYPE = {
+  VOICE: 'voice',
+  DIGITAL: 'digital',
+} as const;
+
+export type TaskChannelType = Enum<typeof TASK_CHANNEL_TYPE>;
+
+/**
+ * Voice channel variants that toggle PSTN/WebRTC specific behaviors
+ */
+export const VOICE_VARIANT = {
+  PSTN: 'pstn',
+  WEBRTC: 'webrtc',
+} as const;
+
+export type VoiceVariant = Enum<typeof VOICE_VARIANT>;
 
 /**
  * Enumeration of all task-related events that can occur in the contact center system
@@ -204,6 +230,11 @@ export enum TASK_EVENTS {
   TASK_CONSULT_QUEUE_FAILED = 'task:consultQueueFailed',
 
   /**
+   * Triggered whenever task UI controls are recalculated
+   */
+  TASK_UI_CONTROLS_UPDATED = 'task:ui-controls-updated',
+
+  /**
    * Triggered when a consultation request is accepted
    * @example
    * ```typescript
@@ -286,6 +317,17 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_WRAPPEDUP = 'task:wrappedup',
+
+  /**
+   * Triggered when recording is started
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_RECORDING_STARTED, (task: ITask) => {
+   *   console.log('Recording started:', task.data.interactionId);
+   * });
+   * ```
+   */
+  TASK_RECORDING_STARTED = 'task:recordingStarted',
 
   /**
    * Triggered when recording is paused
@@ -549,6 +591,125 @@ export enum TASK_EVENTS {
  * Contains comprehensive details about an ongoing customer interaction
  * @public
  */
+export interface CallAssociatedDatum {
+  /** Whether the field can be edited by the agent */
+  agentEditable: boolean;
+  /** Whether the field is visible to the agent */
+  agentViewable: boolean;
+  /** Display name for the field */
+  displayName: string;
+  /** Whether the field is global */
+  global: boolean;
+  /** Whether the field is secure */
+  isSecure: boolean;
+  /** Internal field name */
+  name: string;
+  /** Whether the field is reportable */
+  reportable: boolean;
+  /** Secure key identifier */
+  secureKeyId: string;
+  /** Secure key version */
+  secureKeyVersion: number;
+  /** Data type of the field */
+  type: string;
+  /** Field value */
+  value: string;
+}
+
+export type CallAssociatedData = Record<string, CallAssociatedDatum>;
+
+export type CallAssociatedDetails = Record<string, string>;
+
+export interface FlowParameter {
+  /** Parameter name */
+  name?: string;
+  /** Additional qualifier */
+  qualifier?: string;
+  /** Description of the parameter */
+  description?: string;
+  /** Data type of the value */
+  valueDataType?: string;
+  /** Value associated with the parameter */
+  value?: string;
+}
+
+export interface InteractionParticipant {
+  /** Unique participant identifier */
+  id: string;
+  /** Participant type label used by backend */
+  pType: string;
+  /** Friendly participant type */
+  type: string;
+  /** Whether the participant has joined */
+  hasJoined: boolean;
+  /** Whether the participant has left */
+  hasLeft: boolean;
+  /** Whether the participant is still in pre-dial */
+  isInPredial: boolean;
+  /** Optional caller identifier */
+  callerId?: string | null;
+  /** Whether auto-answer is enabled */
+  autoAnswerEnabled?: boolean;
+  /** Backchannel/bnr details */
+  bnrDetails?: unknown;
+  /** Channel identifier for the participant */
+  channelId?: string;
+  /** Current consult state */
+  consultState?: string | null;
+  /** Timestamp when consult started */
+  consultTimestamp?: number | null;
+  /** Current participant state */
+  currentState?: string | null;
+  /** Timestamp of the current state */
+  currentStateTimestamp?: number | null;
+  /** Device call identifier */
+  deviceCallId?: string | null;
+  /** Device identifier */
+  deviceId?: string | null;
+  /** Device type (AGENT_DN, BROWSER, etc.) */
+  deviceType?: string | null;
+  /** Dial number associated with participant */
+  dn?: string | null;
+  /** Whether participant is currently consulted */
+  isConsulted?: boolean;
+  /** Whether participant offer is active */
+  isOffered?: boolean;
+  /** Whether participant is in wrap-up */
+  isWrapUp?: boolean;
+  /** Whether participant completed wrap-up */
+  isWrappedUp?: boolean;
+  /** Timestamp of when participant joined */
+  joinTimestamp?: number | null;
+  /** Last updated timestamp */
+  lastUpdated?: number | null;
+  /** Friendly name of participant */
+  name?: string | null;
+  /** Queue identifier associated with participant */
+  queueId?: string;
+  /** Queue manager identifier */
+  queueMgrId?: string;
+  /** Session identifier */
+  sessionId?: string;
+  /** Site identifier */
+  siteId?: string;
+  /** Skill identifier */
+  skillId?: string | null;
+  /** Skill name */
+  skillName?: string | null;
+  /** Skill list for participant */
+  skills?: string[];
+  /** Team identifier */
+  teamId?: string;
+  /** Team name */
+  teamName?: string;
+  /** Timestamp for wrap-up */
+  wrapUpTimestamp?: number | null;
+  /** Additional metadata */
+  [key: string]: unknown;
+}
+
+export type InteractionParticipants = Record<string, InteractionParticipant>;
+
 export type Interaction = {
   /** Indicates if the interaction is managed by Flow Control */
   isFcManaged: boolean;
@@ -563,7 +724,11 @@ export type Interaction = {
   /** Current virtual team handling the interaction */
   currentVTeam: string;
   /** List of participants in the interaction */
-  participants: any; // TODO: Define specific participant type
+  participants: InteractionParticipants;
+  /** Detailed call associated data */
+  callAssociatedData?: CallAssociatedData;
+  /** Simplified call associated key/value pairs */
+  callAssociatedDetails?: CallAssociatedDetails;
   /** Unique identifier for the interaction */
   interactionId: string;
   /** Organization identifier */
@@ -572,7 +737,18 @@ export type Interaction = {
   createdTimestamp?: number;
   /** Indicates if wrap-up assistance is enabled */
   isWrapUpAssist?: boolean;
-  /** Detailed call processing information and metadata */
+  /** Identifier of parent interaction if applicable */
+  parentInteractionId?: string;
+  /** Indicates if media is forked for this interaction */
+  isMediaForked?: boolean;
+  /** Retroactive flow properties returned by backend */
+  flowProperties?: Record<string, unknown> | null;
+  /** Media specific properties returned by backend */
+  mediaProperties?: Record<string, unknown> | null;
+  /**
+   * Detailed call processing information and metadata.
+   * Mirrors the callProcessingDetails section described in Webex Contact Center Agent Contact payloads.
+   */
   callProcessingDetails: {
     /** Name of the Queue Manager handling this interaction */
     QMgrName: string;
@@ -590,20 +766,24 @@ export type Interaction = {
     QueueId: string;
     /** Virtual team identifier */
     vteamId: string;
-    /** Indicates if pause/resume functionality is enabled */
-    pauseResumeEnabled?: string;
+    /** Agent capability for pause/resume on this interaction */
+    pauseResumeEnabled?: boolean;
     /** Duration of pause in seconds */
     pauseDuration?: string;
-    /** Indicates if the interaction is currently paused */
-    isPaused?: string;
-    /** Indicates if recording is in progress */
-    recordInProgress?: string;
-    /** Indicates if recording has started */
-    recordingStarted?: string;
+    /** Legacy pause indicator (recordInProgress=false is the active pause signal) */
+    isPaused?: boolean;
+    /** Recording is actively capturing audio right now */
+    recordInProgress?: boolean;
+    /** Recording was started for this interaction (may be paused) */
+    recordingStarted?: boolean;
+    /** Customer geographic region */
+    customerRegion?: string;
+    /** Flow tag identifier */
+    flowTagId?: string;
     /** Indicates if Consult to Queue is in progress */
-    ctqInProgress?: string;
+    ctqInProgress?: boolean;
     /** Indicates if outdial transfer to queue is enabled */
-    outdialTransferToQueueEnabled?: string;
+    outdialTransferToQueueEnabled?: boolean;
     /** IVR conversation transcript */
     convIvrTranscript?: string;
     /** Customer's name */
@@ -693,6 +873,8 @@ export type Interaction = {
   };
   /** Main interaction identifier for related interactions */
   mainInteractionId?: string;
+  /** Timestamp when interaction entered queue */
+  queuedTimestamp?: number | null;
   /** Media-specific information for the interaction */
   media: Record<
     string,
@@ -716,38 +898,27 @@ export type Interaction = {
   /** Owner of the interaction */
   owner: string;
   /** Primary media channel for the interaction */
-  mediaChannel: MEDIA_CHANNEL;
+  mediaChannel: string;
   /** Direction information for the contact */
   contactDirection: {type: string};
   /** Type of outbound interaction */
   outboundType?: string;
+  /** Optional workflow manager identifier */
+  workflowManager?: string | null;
   /** Parameters passed through the call flow */
-  callFlowParams: Record<
-    string,
-    {
-      /** Name of the parameter */
-      name: string;
-      /** Qualifier for the parameter */
-      qualifier: string;
-      /** Description of the parameter */
-      description: string;
-      /** Data type of the parameter value */
-      valueDataType: string;
-      /** Value of the parameter */
-      value: string;
-    }
-  >;
+  callFlowParams?: Record<string, FlowParameter>;
 };
 
 /**
- * Task payload containing detailed information about a contact center task
- * This structure encapsulates all relevant data for task management
+ * Task payload mirroring the Agent Contact event payload from Webex Contact Center
+ * (developer.webex.com). Arrives on AGENT_* websocket events and is the source of truth
+ * for UI/state machine updates.
  * @public
  */
 export type TaskData = {
-  /** Unique identifier for the media resource handling this task */
+  /** Primary media resource identifier for the active leg (matches interaction.media[].mediaResourceId) */
   mediaResourceId: string;
-  /** Type of event that triggered this task data */
+  /** Agent event name from the websocket stream (e.g., AGENT_CONTACT_ASSIGNED) */
   eventType: string;
   /** Timestamp when the event occurred */
   eventTime?: number;
@@ -757,7 +928,7 @@ export type TaskData = {
   destAgentId: string;
   /** Unique tracking identifier for the task */
   trackingId: string;
-  /** Media resource identifier for consultation operations */
+  /** Media resource identifier for consultation leg when present */
   consultMediaResourceId: string;
   /** Detailed interaction information */
   interaction: Interaction;
@@ -769,7 +940,7 @@ export type TaskData = {
   toOwner?: boolean;
   /** Identifier for child interaction in consult/transfer scenarios */
   childInteractionId?: string;
-  /** Unique identifier for the interaction */
+  /** Interaction/contact identifier from backend (same as interaction.interactionId) */
   interactionId: string;
   /** Organization identifier */
   orgId: string;
@@ -779,7 +950,7 @@ export type TaskData = {
   queueMgr: string;
   /** Name of the queue where task is queued */
   queueName?: string;
-  /** Type of the task */
+  /** Task/interaction type returned by the platform (routing/monitoring/etc.) */
   type: string;
   /** Timeout value for RONA (Redirection on No Answer) in seconds */
   ronaTimeout?: number;
@@ -815,12 +986,111 @@ export type TaskData = {
   reservedAgentChannelId?: string;
   /** Indicates if wrap-up is required for this task */
   wrapUpRequired?: boolean;
+
+  /**
+   * Current consultation status derived from state machine
+   * Values: CONSULT_INITIATED, CONSULT_ACCEPTED, BEING_CONSULTED,
+   *         BEING_CONSULTED_ACCEPTED, CONNECTED, CONFERENCE, CONSULT_COMPLETED
+   */
+  consultStatus?: string;
+
+  /**
+   * Indicates if consultation is in progress (state machine: CONSULTING)
+   */
+  isConsultInProgress?: boolean;
+
+  /**
+   * Indicates if the task is incoming for the active agent
+   */
+  isIncomingTask?: boolean;
+
+  /**
+   * Indicates if the task is on hold (state machine: HELD)
+   */
+  isOnHold?: boolean;
+
+  /**
+   * Indicates if customer is currently in the call
+   * Derived from participants in main media
+   */
+  isCustomerInCall?: boolean;
+
+  /**
+   * Count of conference participants (agents only)
+   * Used for determining if max participants reached
+   */
+  conferenceParticipantsCount?: number;
+
+  /**
+   * Indicates if this is a secondary agent (consulted party)
+   */
+  isSecondaryAgent?: boolean;
+
+  /**
+   * Indicates if this is a secondary EP-DN agent (telephony consult to external)
+   */
+  isSecondaryEpDnAgent?: boolean;
+
+  /**
+   * Task state for MPC (Multi-Party Conference) scenarios
+   * Maps participant consultState to task state
+   */
+  mpcState?: string;
   /** Indicates if auto-answer is in progress for this task */
   isAutoAnswering?: boolean;
   /** Indicates if wrap-up is required for this task */
   agentsPendingWrapUp?: string[];
 };
 
+export interface UIControls {
+  accept: {isVisible: boolean; isEnabled: boolean};
+  decline: {isVisible: boolean; isEnabled: boolean};
+  hold: {isVisible: boolean; isEnabled: boolean; label: 'Hold' | 'Resume'};
+  transfer: {isVisible: boolean; isEnabled: boolean};
+  consult: {isVisible: boolean; isEnabled: boolean};
+  end: {isVisible: boolean; isEnabled: boolean};
+  recording: {isVisible: boolean; isEnabled: boolean};
+  mute: {isVisible: boolean; isEnabled: boolean};
+  consultTransfer: {isVisible: boolean; isEnabled: boolean};
+  endConsult: {isVisible: boolean; isEnabled: boolean};
+  conference: {isVisible: boolean; isEnabled: boolean};
+  exitConference: {isVisible: boolean; isEnabled: boolean};
+  transferConference: {isVisible: boolean; isEnabled: boolean};
+  wrapup: {isVisible: boolean; isEnabled: boolean};
+}
+
+type TaskUIControlState = {
+  isVisible: boolean;
+  isEnabled: boolean;
+};
+
+/**
+ * UI control representation surfaced to task consumers.
+ * Mirrors the buttons available in Task.uiControls without extra metadata.
+ */
+export type TaskUIControls = {
+  accept: TaskUIControlState;
+  decline: TaskUIControlState;
+  hold: TaskUIControlState;
+  transfer: TaskUIControlState;
+  consult: TaskUIControlState;
+  end: TaskUIControlState;
+  recording: TaskUIControlState;
+  mute: TaskUIControlState;
+  consultTransfer: TaskUIControlState;
+  endConsult: TaskUIControlState;
+  conference: TaskUIControlState;
+  exitConference: TaskUIControlState;
+  transferConference: TaskUIControlState;
+  mergeToConference: TaskUIControlState;
+  wrapup: TaskUIControlState;
+};
+
+/**
+ * Helper class for managing task action control state
+ * Tracks visibility and enabled state for task actions that can be executed
+ * @public
+ */
 /**
  * Type representing an agent contact message within the contact center system
  * Contains comprehensive interaction and task related details for agent operations
@@ -1043,6 +1313,15 @@ export type TransferPayload = {
 };
 
 /**
+ * Options for configuring transfer behavior
+ * @public
+ */
+export type TransferOptions = {
+  /** Additional transfer configuration options */
+  [key: string]: unknown;
+};
+
+/**
  * API payload for ending a consultation
  * This is the actual payload that is sent to the developer API
  * @public
@@ -1152,12 +1431,56 @@ export type ContactCleanupData = {
 };
 
 /**
+ * Boolean-like fields in callProcessingDetails that may arrive as strings.
+ * Used by taskDataNormalizer to coerce payloads to actual booleans.
+ */
+export type CallProcessingBooleanKey =
+  | 'recordingStarted'
+  | 'recordInProgress'
+  | 'isPaused'
+  | 'pauseResumeEnabled'
+  | 'ctqInProgress'
+  | 'outdialTransferToQueueEnabled'
+  | 'taskToBeSelfServiced'
+  | 'CONTINUE_RECORDING_ON_TRANSFER'
+  | 'isParked'
+  | 'participantInviteTimeout'
+  | 'checkAgentAvailability';
+
+/**
+ * Interaction-level boolean fields that may arrive as strings from backend payloads.
+ */
+export type InteractionBooleanKey = 'isFcManaged' | 'isMediaForked' | 'isTerminated';
+
+/**
+ * Participant boolean fields that may arrive as strings and need normalization.
+ */
+export type ParticipantBooleanKey =
+  | 'autoAnswerEnabled'
+  | 'hasJoined'
+  | 'hasLeft'
+  | 'isConsulted'
+  | 'isInPredial'
+  | 'isOffered'
+  | 'isWrapUp'
+  | 'isWrappedUp';
+
+/**
  * Response type for task public methods
  * Can be an {@link AgentContact} object containing updated task state,
  * an Error in case of failure, or void for operations that don't return data
  * @public
  */
 export type TaskResponse = AgentContact | Error | void;
+
+/**
+ * Payload shape used by consult conference helper utilities.
+ */
+export type consultConferencePayloadData = {
+  agentId?: string;
+  destinationType?: string;
+  destAgentId?: string;
+};
 
 /**
  * Interface for managing task-related operations in the contact center
@@ -1182,6 +1505,22 @@ export interface ITask extends EventEmitter {
    * as defined in {@link AutoWrapup}
    */
   autoWrapup?: AutoWrapup;
+
+  /**
+   * State machine instance for managing task state transitions and derived properties.
+   * The state machine handles:
+   * - State transitions (IDLE → OFFERED → CONNECTED → HELD, etc.)
+   * - Derived properties (canHold, canResume, isConsulted, etc.)
+   * - Action availability based on current state
+   *
+   * This is part of the migration from manual state management to centralized state machine.
+   * During the transition period, both the old setUIControls() and state machine coexist.
+   *
+   * @see createTaskStateMachine
+   * @internal
+   */
+  stateMachineService?: AnyActorRef;
+  state?: any;
 
   /**
    * Cancels the auto-wrapup timer for the task.
@@ -1336,18 +1675,7 @@ export interface ITask extends EventEmitter {
    * await task.transfer({ to: "queueId", destinationType: "queue" });
    * ```
    */
-  transfer(transferPayload: TransferPayLoad): Promise<TaskResponse>;
-
-  /**
-   * Transfers the task after consultation.
-   * @param consultTransferPayload - Details for consult transfer (optional)
-   * @returns Promise<TaskResponse>
-   * @example
-   * ```typescript
-   * await task.consultTransfer({ to: "agentId", destinationType: "agent" });
-   * ```
-   */
-  consultTransfer(consultTransferPayload?: ConsultTransferPayLoad): Promise<TaskResponse>;
+  transfer(transferPayload: TransferPayLoad, options?: TransferOptions): Promise<TaskResponse>;
 
   /**
    * Initiates a consult conference (merge consult call with main call).
@@ -1391,202 +1719,69 @@ export interface ITask extends EventEmitter {
 }
 
 /**
- * Represents a button control with visibility and enabled states.
- * Used to manage UI button states in task controls.
+ * Interface for managing digital channel task operations in the contact center
+ * Digital channels (chat, email, social, SMS) have a simpler interface than voice
+ * Extends ITask but overrides updateTaskData to return IDigital
+ * @public
  */
-export class TaskButtonControl {
-  public visible: boolean;
-  public enabled: boolean;
-  constructor(visible = false, enabled = true) {
-    this.visible = visible;
-    this.enabled = enabled;
-  }
+export interface IDigital extends Omit<ITask, 'updateTaskData'> {
+  /**
+   * UI controls configuration
+   */
+  uiControls: TaskUIControls;
 
   /**
-   * Sets the visibility of the button control.
-   * @param visible - Indicates whether the button control is visible or not.
+   * Updates the task data
+   * @param newData - Updated task data
+   * @param shouldOverwrite - Whether to completely replace existing data
+   * @returns Updated Digital task instance
    */
-  setVisiblity(visible: boolean) {
-    this.visible = visible;
-  }
-
-  /**
-   * Sets the enabled state of the button control.
-   * @param enabled - Indicates whether the button control is enabled or not.
-   */
-  setEnabled(enabled: boolean) {
-    this.enabled = enabled;
-  }
+  updateTaskData(newData: TaskData, shouldOverwrite?: boolean): IDigital;
 }
 
 /**
- * Interface defining UI controls for a task.
- * Each property represents a button control for different task actions.
- */
-export interface TaskUIControls {
-  accept: TaskButtonControl;
-  decline: TaskButtonControl;
-  hold: TaskButtonControl;
-  mute: TaskButtonControl;
-  transfer: TaskButtonControl;
-  consult: TaskButtonControl;
-  consultTransfer: TaskButtonControl;
-  recording: TaskButtonControl;
-  end: TaskButtonControl;
-  conference: TaskButtonControl;
-  endConsult: TaskButtonControl;
-  wrapup: TaskButtonControl;
-}
-
-/**
- * Legacy task interface - maintained for backward compatibility.
- */
-export interface IOldTask extends EventEmitter {
-  /**
-   * Event data received in the Contact Center events.
-   * Contains detailed task information including interaction details, media resources,
-   * and participant data as defined in {@link TaskData}
-   */
-  data: TaskData;
-
-  /**
-   * Map associating tasks with their corresponding call identifiers.
-   */
-  webCallMap: Record<TaskId, CallId>;
-
-  /**
-   * Deregisters all web call event listeners
-   * Used when cleaning up task resources
-   * @ignore
-   */
-  unregisterWebCallListeners(): void;
-
-  /**
-   * Updates the task data with new information
-   * @param newData - Updated task data to apply, must conform to {@link TaskData} structure
-   * @returns Updated task instance
-   * @ignore
-   */
-  updateTaskData(newData: TaskData): IOldTask;
-  /**
-   * Answers or accepts an incoming task.
-   * Once accepted, the task will be assigned to the agent and trigger a {@link TASK_EVENTS.TASK_ASSIGNED} event.
-   * The response will contain updated agent contact information as defined in {@link AgentContact}.
-   * @returns Promise<TaskResponse>
-   * @example
-   * ```typescript
-   * task.accept();
-   * ```
-   */
-  accept(): Promise<TaskResponse>;
-
-  /**
-   * Declines an incoming task for Browser Login
-   * @returns Promise<TaskResponse>
-   * @example
-   * ```typescript
-   * task.decline();
-   * ```
-   */
-  decline(): Promise<TaskResponse>;
-
-  /**
-   * Places the current task on hold
-   * @returns Promise<TaskResponse>
-   * @example
-   * ```typescript
-   * task.hold();
-   * ```
-   */
-  hold(): Promise<TaskResponse>;
-
-  /**
-   * Resumes a task that was previously on hold
-   * @returns Promise<TaskResponse>
-   * @example
-   * ```typescript
-   * task.resume();
-   * ```
-   */
-  resume(): Promise<TaskResponse>;
-
-  /**
-   * Ends/terminates the current task
-   * @returns Promise<TaskResponse>
-   * @example
-   * ```typescript
-   * task.end();
-   * ```
-   */
-  end(): Promise<TaskResponse>;
-
-  /**
-   * Initiates wrap-up process for the task with specified details
-   * @param wrapupPayload - Wrap-up details including reason and auxiliary code
-   * @returns Promise<TaskResponse>
-   * @example
-   * ```typescript
-   * task.wrapup({
-   *   wrapUpReason: "Customer issue resolved",
-   *   auxCodeId: "RESOLVED"
-   * });
-   * ```
-   */
-  wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse>;
-
-  /**
-   * Pauses the recording for current task
-   * @returns Promise<TaskResponse>
-   * @example
-   * ```typescript
-   * task.pauseRecording();
-   * ```
-   */
-  pauseRecording(): Promise<TaskResponse>;
-
-  /**
-   * Resumes a previously paused recording
-   * @param resumeRecordingPayload - Parameters for resuming the recording
-   * @returns Promise<TaskResponse>
-   * @example
-   * ```typescript
-   * task.resumeRecording({
-   *   autoResumed: false
-   * });
-   * ```
-   */
-  resumeRecording(resumeRecordingPayload: ResumeRecordingPayload): Promise<TaskResponse>;
-}
-
-/**
- * Voice task interface extending ITask with voice-specific methods.
+ * Interface for managing voice/telephony task operations in the contact center
+ * Extends ITask with voice-specific functionality for hold/resume operations
+ * @public
  */
 export interface IVoice extends ITask {
   /**
-   * This is used to hold or resume the task.
+   * Toggles hold/resume state for a voice task.
+   * If the task is currently on hold, it will be resumed.
+   * If the task is active, it will be placed on hold.
    * @returns Promise<TaskResponse>
    * @example
-   * ```
-   * task.holdResume();
+   * ```typescript
+   * await voiceTask.holdResume();
    * ```
    */
   holdResume(): Promise<TaskResponse>;
-
-  /**
-   * This is used to consult the task.
-   * @param consultPayload
-   * @returns Promise<TaskResponse>
-   * @example
-   * ```
-   * task.consult(data);
-   * ```
-   */
-  consult(consultPayload: ConsultPayload): Promise<TaskResponse>;
 }
 
 /**
- * WebRTC task interface extending IVoice with WebRTC-specific methods.
+ * Configuration options for voice task UI controls
  */
+export type VoiceUIControlOptions = {
+  isEndTaskEnabled?: boolean;
+  isEndConsultEnabled?: boolean;
+  voiceVariant?: VoiceVariant;
+  isRecordingEnabled?: boolean;
+};
+
+/**
+ * Participant information for UI display
+ */
+export type Participant = {
+  id: string;
+  name?: string;
+  pType?: string;
+};
+
+/**
+ * @deprecated Use Participant instead
+ */
+export type TaskAccessorParticipant = Participant;
+
 export interface IWebRTC extends IVoice {
   /**
    * This method is used to mute/unmute the call.
@@ -1616,8 +1811,3 @@ export interface IWebRTC extends IVoice {
    */
   unregisterWebCallListeners(): void;
 }
-
-/**
- * Digital task type - alias for ITask.
- */
-export type IDigital = ITask;

@@ -6,21 +6,66 @@ import WebCallingService from '../WebCallingService';
 import {MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId, ITask} from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
 import {METHODS} from './constants';
-import {CC_EVENTS, CC_TASK_EVENTS, WrapupData} from '../config/types';
+import {CC_EVENTS, WrapupData} from '../config/types';
 import {ConfigFlags, LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
-import {
-  checkParticipantNotInInteraction,
-  getIsConferenceInProgress,
-  isParticipantInMainInteraction,
-  isPrimary,
-  isSecondaryEpDnAgent,
-  shouldAutoAnswerTask,
-} from './TaskUtils';
+import {getIsConferenceInProgress, isSecondaryEpDnAgent, shouldAutoAnswerTask} from './TaskUtils';
 import TaskFactory from './TaskFactory';
 import WebRTC from './voice/WebRTC';
+import {TaskEvent, type TaskEventPayload} from './state-machine';
+import {normalizeTaskData} from './taskDataNormalizer';
+import type {TaskRuntimeOptions} from './Task';
+
+type WebSocketPayload = TaskData & {
+  type: CC_EVENTS | string;
+  mediaResourceId?: string;
+  reason?: string;
+};
+
+type WebSocketMessage = {
+  keepalive?: 'true' | 'false' | boolean;
+  data: WebSocketPayload;
+};
+
+/**
+ * Actions to be performed after handling an event
+ *
+ * These actions represent TaskManager-level concerns (task collection lifecycle,
+ * resource cleanup) rather than task-level state machine concerns. The separation
+ * ensures proper responsibility:
+ * - TaskManager: Collection management, metrics, cleanup
+ * - State Machine: Task state transitions, event emissions, UI controls
+ */
+interface TaskEventActions {
+  task?: ITask;
+  shouldCleanupTask?: boolean;
+  shouldRemoveFromCollection?: boolean;
+  shouldCancelAutoWrapup?: boolean;
+  shouldEmitTaskIncoming?: boolean;
+}
+
+/**
+ * Context for processing an event
+ *
+ * Contains all information needed to process a WebSocket event:
+ * - Event type and payload from the backend
+ * - Task instance (if exists)
+ * - Pre-mapped state machine event (if applicable)
+ * - Task state flags (e.g., was this a consulted task)
+ */
+interface EventContext {
+  eventType: CC_EVENTS;
+  payload: WebSocketPayload;
+  task?: ITask;
+  stateMachineEvent?: TaskEventPayload | null;
+  wasConsultedTask: boolean;
+}
+
+const CC_EVENT_SET = new Set<CC_EVENTS>(Object.values(CC_EVENTS) as CC_EVENTS[]);
+
+const isCcEvent = (value: string): value is CC_EVENTS => CC_EVENT_SET.has(value as CC_EVENTS);
 /** @internal */
 export default class TaskManager extends EventEmitter {
   private call: ICall;
@@ -34,11 +79,13 @@ export default class TaskManager extends EventEmitter {
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
   private metricsManager: MetricsManager;
+  // eslint-disable-next-line no-use-before-define
   private static taskManager: TaskManager;
   private configFlags?: ConfigFlags;
   private wrapupData: WrapupData;
   private agentId: string;
   private webRtcEnabled: boolean;
+  private readonly defaultTaskRuntimeOptions: TaskRuntimeOptions = {};
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
    * @param webCallingService - Webrtc Service Layer
@@ -55,6 +102,7 @@ export default class TaskManager extends EventEmitter {
     this.webSocketManager = webSocketManager;
     this.taskCollection = {};
     this.metricsManager = MetricsManager.getInstance();
+    this.webRtcEnabled = false;
 
     this.registerTaskListeners();
     this.registerIncomingCallEvent();
@@ -106,7 +154,13 @@ export default class TaskManager extends EventEmitter {
         method: METHODS.HANDLE_INCOMING_WEB_CALL,
         interactionId: currentTask.data.interactionId,
       });
-      this.emit(TASK_EVENTS.TASK_INCOMING, currentTask);
+
+      // Send TASK_INCOMING to state machine - it will emit on the task object
+      TaskManager.sendEventToStateMachine(
+        CC_EVENTS.AGENT_CONTACT_RESERVED,
+        currentTask.data as WebSocketPayload,
+        currentTask
+      );
     }
     this.call = call;
   };
@@ -119,415 +173,683 @@ export default class TaskManager extends EventEmitter {
     this.webCallingService.off(LINE_EVENTS.INCOMING_CALL, this.handleIncomingWebCall);
   }
 
+  /**
+   * Map WebSocket CC_EVENTS to state machine TaskEvent
+   * @param ccEvent - The CC_EVENT type from WebSocket
+   * @param payload - The event payload
+   * @returns TaskEventPayload for state machine or null if no mapping
+   */
+  private static mapEventToTaskStateMachineEvent(
+    ccEvent: CC_EVENTS,
+    payload: WebSocketPayload
+  ): TaskEventPayload | null {
+    const mediaResourceId =
+      payload.mediaResourceId ||
+      payload.interaction?.media?.[payload.interactionId]?.mediaResourceId;
+
+    switch (ccEvent) {
+      // CC -> TaskEvent mappings (see TaskStateMachine comment for quick reference)
+      case CC_EVENTS.AGENT_CONTACT_RESERVED: // AgentContactReserved -> TASK_INCOMING
+        return {type: TaskEvent.TASK_INCOMING, taskData: payload};
+
+      case CC_EVENTS.AGENT_OFFER_CONTACT: // AgentOfferContact -> TASK_OFFERED
+        return {type: TaskEvent.TASK_OFFERED, taskData: payload};
+
+      case CC_EVENTS.AGENT_CONTACT: // AgentContact -> HYDRATE
+        return {type: TaskEvent.HYDRATE, taskData: payload};
+
+      case CC_EVENTS.AGENT_OFFER_CONSULT: // AgentOfferConsult -> OFFER_CONSULT
+        return {
+          type: TaskEvent.OFFER_CONSULT,
+          taskData: {...payload, isConsulted: true},
+        };
+
+      case CC_EVENTS.AGENT_CONTACT_ASSIGNED: // AgentContactAssigned -> ASSIGN
+        return {type: TaskEvent.ASSIGN, taskData: payload};
+
+      case CC_EVENTS.AGENT_CONTACT_HELD:
+        return {
+          type: TaskEvent.HOLD_SUCCESS,
+          mediaResourceId: mediaResourceId || '',
+          taskData: payload,
+        };
+
+      case CC_EVENTS.AGENT_CONTACT_UNHELD:
+        return {
+          type: TaskEvent.UNHOLD_SUCCESS,
+          mediaResourceId: mediaResourceId || '',
+          taskData: payload,
+        };
+
+      case CC_EVENTS.AGENT_CONSULT_CREATED:
+        return {
+          type: TaskEvent.CONSULT_CREATED,
+          taskData: {...payload, isConsulted: false},
+        };
+
+      case CC_EVENTS.AGENT_CONSULTING: // AgentConsulting -> CONSULTING_ACTIVE
+        // use context to figure out if its initatiore or the receiver using consultInitiator from context
+        return {
+          type: TaskEvent.CONSULTING_ACTIVE,
+          consultDestinationAgentJoined: true,
+          taskData: payload,
+        };
+
+      case CC_EVENTS.AGENT_CONSULT_ENDED: // AgentConsultEnded -> CONSULT_END
+        return {type: TaskEvent.CONSULT_END, taskData: payload};
+
+      case CC_EVENTS.AGENT_CONSULT_FAILED:
+        return {type: TaskEvent.CONSULT_FAILED, reason: payload.reason, taskData: payload};
+
+      case CC_EVENTS.AGENT_CTQ_CANCELLED:
+        return {type: TaskEvent.CTQ_CANCEL, taskData: payload};
+
+      case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
+        return {type: TaskEvent.CTQ_CANCEL_FAILED, taskData: payload};
+
+      case CC_EVENTS.AGENT_CONSULT_TRANSFERRED: // AgentConsultTransferred -> TRANSFER_SUCCESS
+        return {
+          type: TaskEvent.TRANSFER_SUCCESS,
+          taskData: payload,
+        };
+
+      case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
+      case CC_EVENTS.AGENT_WRAPUP:
+      case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
+        return {type: TaskEvent.END, taskData: {...payload, wrapUpRequired: true}};
+
+      case CC_EVENTS.AGENT_BLIND_TRANSFER_FAILED:
+      case CC_EVENTS.AGENT_VTEAM_TRANSFER_FAILED:
+      case CC_EVENTS.AGENT_CONSULT_TRANSFER_FAILED:
+      case CC_EVENTS.AGENT_CONFERENCE_TRANSFER_FAILED:
+        return {type: TaskEvent.TRANSFER_FAILED, taskData: payload};
+
+      case CC_EVENTS.CONTACT_ENDED:
+        return {
+          type: TaskEvent.CONTACT_ENDED,
+          taskData: {
+            ...payload,
+            wrapUpRequired: payload.interaction?.state !== 'new',
+          },
+        };
+
+      case CC_EVENTS.AGENT_INVITE_FAILED:
+        return {type: TaskEvent.INVITE_FAILED, reason: payload.reason};
+
+      case CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED:
+        return {type: TaskEvent.ASSIGN_FAILED, reason: payload.reason};
+
+      case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
+        return {type: TaskEvent.RONA, taskData: payload, reason: payload.reason};
+
+      case CC_EVENTS.AGENT_OUTBOUND_FAILED:
+        return {type: TaskEvent.OUTBOUND_FAILED, reason: payload.reason};
+
+      case CC_EVENTS.CONTACT_RECORDING_STARTED:
+        return {type: TaskEvent.RECORDING_STARTED, taskData: payload};
+
+      case CC_EVENTS.CONTACT_RECORDING_PAUSED:
+        return {type: TaskEvent.PAUSE_RECORDING, taskData: payload};
+
+      case CC_EVENTS.CONTACT_RECORDING_RESUMED:
+        return {type: TaskEvent.RESUME_RECORDING, taskData: payload};
+
+      case CC_EVENTS.AGENT_WRAPPEDUP:
+        return {type: TaskEvent.WRAPUP_COMPLETE, taskData: payload};
+
+      default:
+        // Not all events need state machine mapping
+        return null;
+    }
+  }
+
+  /**
+   * Send WebSocket event to state machine if task exists
+   * @param ccEvent - The CC_EVENT type
+   * @param payload - The event payload
+   * @param task - The task instance
+   */
+  private static sendEventToStateMachine(
+    ccEvent: CC_EVENTS,
+    payload: WebSocketPayload,
+    task?: ITask,
+    stateMachineEvent?: TaskEventPayload | null
+  ): void {
+    // Check if task has state machine
+    const taskWithStateMachine = task as any;
+    if (!taskWithStateMachine?.sendStateMachineEvent) {
+      return;
+    }
+
+    const eventPayload =
+      stateMachineEvent ?? TaskManager.mapEventToTaskStateMachineEvent(ccEvent, payload);
+
+    if (eventPayload) {
+      LoggerProxy.log(`Sending event to state machine: ${ccEvent} -> ${eventPayload.type}`, {
+        module: TASK_MANAGER_FILE,
+        method: 'sendEventToStateMachine',
+        interactionId: payload.interactionId,
+      });
+
+      // Send event to task's state machine using the protected method
+      taskWithStateMachine.sendStateMachineEvent(eventPayload);
+    }
+  }
+
+  /**
+   * Register WebSocket message listeners for task events
+   *
+   * Main entry point that orchestrates event processing through a clear pipeline:
+   * 1. Parse and validate incoming WebSocket messages
+   * 2. Prepare event context with task and state machine mappings
+   * 3. Handle task lifecycle (creation, updates, collection management)
+   * 4. Send events to state machine (which handles task-level emissions)
+   * 5. Execute cleanup actions (resource management, collection updates)
+   *
+   * This architecture separates concerns:
+   * - TaskManager: Manages task collection lifecycle and operational concerns
+   * - State Machine: Manages individual task state and event emissions
+   */
   private registerTaskListeners() {
-    this.webSocketManager.on('message', (event: string) => {
-      const payload = JSON.parse(event);
-      let task: ITask;
+    this.webSocketManager.on('message', (event) => {
+      // Step 1: Parse and validate the message
+      const message = TaskManager.parseWebSocketMessage(event);
+      if (!message) return;
 
-      if (payload.data?.type) {
-        // for events emitted on existing tasks
-        if (Object.values(CC_TASK_EVENTS).includes(payload.data.type)) {
-          task = this.taskCollection[payload.data.interactionId];
-        }
-        LoggerProxy.info(`Handling task event ${payload.data?.type}`, {
-          module: TASK_MANAGER_FILE,
-          method: METHODS.REGISTER_TASK_LISTENERS,
-          interactionId: payload.data?.interactionId,
-        });
-        switch (payload.data.type) {
-          case CC_EVENTS.AGENT_CONTACT:
-            // Case1 : Task is already present in taskCollection
-            if (this.taskCollection[payload.data.interactionId]) {
-              LoggerProxy.log(`Got AGENT_CONTACT: Task already exists in collection`, {
-                module: TASK_MANAGER_FILE,
-                method: METHODS.REGISTER_TASK_LISTENERS,
-                interactionId: payload.data.interactionId,
-              });
-              break;
-            } else if (!this.taskCollection[payload.data.interactionId]) {
-              // Case2 : Task is not present in taskCollection
-              LoggerProxy.log(`Got AGENT_CONTACT : Creating new task in taskManager`, {
-                module: TASK_MANAGER_FILE,
-                method: METHODS.REGISTER_TASK_LISTENERS,
-                interactionId: payload.data.interactionId,
-              });
+      // Step 2: Prepare event context
+      const context = this.prepareEventContext(message);
+      if (!context) return;
 
-              // Check if auto-answer should happen for this task
-              const shouldAutoAnswer = shouldAutoAnswerTask(
-                payload.data,
-                this.agentId,
-                this.webCallingService.loginOption,
-                this.webRtcEnabled
-              );
-              task = TaskFactory.createTask(
-                this.contact,
-                this.webCallingService,
-                {
-                  ...payload.data,
-                  isConsulted: false,
-                  wrapUpRequired:
-                    payload.data.interaction?.participants?.[this.agentId]?.isWrapUp || false,
-                  isConferenceInProgress: getIsConferenceInProgress(payload.data),
-                  isAutoAnswering: shouldAutoAnswer, // Set flag before emitting
-                },
-                this.configFlags,
-                this.wrapupData,
-                this.agentId
-              );
-              this.taskCollection[payload.data.interactionId] = task;
-              // Condition 1: The state is=new i.e it is a incoming task
-              if (payload.data.interaction.state === 'new') {
-                LoggerProxy.log(
-                  `Got AGENT_CONTACT for a task with state=new, sending TASK_INCOMING event`,
-                  {
-                    module: TASK_MANAGER_FILE,
-                    method: METHODS.REGISTER_TASK_LISTENERS,
-                    interactionId: payload.data.interactionId,
-                  }
-                );
-                this.emit(TASK_EVENTS.TASK_INCOMING, task);
-              } else {
-                // Condition 2: The state is anything else i.e the task was connected
-                LoggerProxy.log(
-                  `Got AGENT_CONTACT for a task with state=${payload.data.interaction.state}, sending TASK_HYDRATE event`,
-                  {
-                    module: TASK_MANAGER_FILE,
-                    method: METHODS.REGISTER_TASK_LISTENERS,
-                    interactionId: payload.data.interactionId,
-                  }
-                );
-                this.emit(TASK_EVENTS.TASK_HYDRATE, task);
-              }
-            }
-            break;
+      // Step 3: Handle event lifecycle and get actions to perform
+      const actions = this.handleTaskLifecycleEvent(context);
 
-          case CC_EVENTS.AGENT_CONTACT_RESERVED: {
-            // Check if auto-answer should happen for this task
-            const shouldAutoAnswerReserved = shouldAutoAnswerTask(
-              payload.data,
-              this.agentId,
-              this.webCallingService.loginOption,
-              this.webRtcEnabled
-            );
+      // Step 4: Process state machine events and emit legacy events
+      this.processEventAndEmissions(context, actions);
 
-            task = TaskFactory.createTask(
-              this.contact,
-              this.webCallingService,
-              {
-                ...payload.data,
-                isConsulted: false,
-                isAutoAnswering: shouldAutoAnswerReserved,
-              },
-              this.configFlags,
-              this.wrapupData,
-              this.agentId
-            );
-            this.taskCollection[payload.data.interactionId] = task;
-            // for telephony in-browser we wait for incoming call, else fire immediately
-            if (
-              this.webCallingService.loginOption !== LoginOption.BROWSER ||
-              task.data.interaction.mediaType !== MEDIA_CHANNEL.TELEPHONY ||
-              this.call
-            ) {
-              this.emit(TASK_EVENTS.TASK_INCOMING, task);
-            }
-            break;
-          }
-          case CC_EVENTS.AGENT_OFFER_CONTACT:
-            this.updateTaskData(task, payload.data);
-            LoggerProxy.log(`Agent offer contact received for task`, {
-              module: TASK_MANAGER_FILE,
-              method: METHODS.REGISTER_TASK_LISTENERS,
-              interactionId: payload.data?.interactionId,
-            });
-            this.emit(TASK_EVENTS.TASK_OFFER_CONTACT, task);
-
-            // Handle auto-answer for offer contact
-            this.handleAutoAnswer(task);
-            break;
-          case CC_EVENTS.AGENT_OUTBOUND_FAILED:
-            if (task?.data) {
-              this.updateTaskData(task, payload.data);
-              this.metricsManager.trackEvent(
-                METRIC_EVENT_NAMES.TASK_OUTDIAL_FAILED,
-                {
-                  ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload.data),
-                  taskId: payload.data.interactionId,
-                  reason: payload.data.reasonCode || payload.data.reason,
-                },
-                ['behavioral', 'operational']
-              );
-              LoggerProxy.log(`Agent outbound failed for task`, {
-                module: TASK_MANAGER_FILE,
-                method: METHODS.REGISTER_TASK_LISTENERS,
-                interactionId: payload.data.interactionId,
-              });
-              task.emit(TASK_EVENTS.TASK_OUTDIAL_FAILED, payload.data.reason ?? 'UNKNOWN_REASON');
-            }
-            break;
-          case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_ASSIGNED, task);
-            break;
-          case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
-            this.updateTaskData(task, {
-              ...payload.data,
-              wrapUpRequired: true,
-            });
-            task.emit(TASK_EVENTS.TASK_END, task);
-            break;
-          case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
-          case CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED:
-          case CC_EVENTS.AGENT_INVITE_FAILED: {
-            // Map event types to their corresponding metric names
-            const eventTypeToMetricMap: Record<string, keyof typeof METRIC_EVENT_NAMES> = {
-              [CC_EVENTS.AGENT_CONTACT_OFFER_RONA]: 'AGENT_RONA',
-              [CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED]: 'AGENT_CONTACT_ASSIGN_FAILED',
-              [CC_EVENTS.AGENT_INVITE_FAILED]: 'AGENT_INVITE_FAILED',
-            };
-            const metricEventName = eventTypeToMetricMap[payload.data.type] || 'AGENT_RONA';
-
-            // Only INVITE_FAILED needs wrapUpRequired logic
-            if (payload.data.type === CC_EVENTS.AGENT_INVITE_FAILED) {
-              this.updateTaskData(task, {
-                ...payload.data,
-                wrapUpRequired: payload.data.interaction?.state !== 'new',
-              });
-            } else {
-              this.updateTaskData(task, payload.data);
-            }
-
-            this.metricsManager.trackEvent(
-              METRIC_EVENT_NAMES[metricEventName],
-              {
-                ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload.data),
-                taskId: payload.data.interactionId,
-                reason: payload.data.reason,
-              },
-              ['behavioral', 'operational']
-            );
-            this.handleTaskCleanup(task);
-            task.emit(TASK_EVENTS.TASK_REJECT, payload.data.reason);
-            break;
-          }
-          case CC_EVENTS.CONTACT_ENDED:
-            // Update task data
-            if (task?.data) {
-              this.updateTaskData(task, {
-                ...payload.data,
-                wrapUpRequired:
-                  payload.data.interaction.state !== 'new' &&
-                  !isSecondaryEpDnAgent(payload.data.interaction),
-              });
-
-              // Handle cleanup based on whether task should be deleted
-              this.handleTaskCleanup(task);
-
-              task?.emit(TASK_EVENTS.TASK_END, task);
-            }
-            break;
-          case CC_EVENTS.CONTACT_MERGED:
-            task = this.handleContactMerged(task, payload.data);
-            break;
-          case CC_EVENTS.AGENT_CONTACT_HELD:
-            // As soon as the main interaction is held, we need to emit TASK_HOLD
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_HOLD, task);
-            break;
-          case CC_EVENTS.AGENT_CONTACT_UNHELD:
-            // As soon as the main interaction is unheld, we need to emit TASK_RESUME
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_RESUME, task);
-            break;
-          case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
-            this.updateTaskData(task, {
-              ...payload.data,
-              wrapUpRequired: true,
-            });
-            task.emit(TASK_EVENTS.TASK_END, task);
-            break;
-          case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONSULT_QUEUE_FAILED, task);
-            break;
-          case CC_EVENTS.AGENT_CONSULT_CREATED:
-            // Received when self agent initiates a consult
-            this.updateTaskData(task, {
-              ...payload.data,
-              isConsulted: false, // This ensures that the task consult status is always reset
-            });
-            task.emit(TASK_EVENTS.TASK_CONSULT_CREATED, task);
-            break;
-          case CC_EVENTS.AGENT_OFFER_CONSULT:
-            // Received when other agent sends us a consult offer
-            this.updateTaskData(task, {
-              ...payload.data,
-              isConsulted: true, // This ensures that the task is marked as us being requested for a consult
-            });
-            task.emit(TASK_EVENTS.TASK_OFFER_CONSULT, task);
-
-            // Handle auto-answer for consult offer
-            this.handleAutoAnswer(task);
-            break;
-          case CC_EVENTS.AGENT_CONSULTING:
-            // Received when agent is in an active consult state
-            // TODO: Check if we can use backend consult state instead of isConsulted
-            this.updateTaskData(task, payload.data);
-            if (task.data.isConsulted) {
-              // Fire only if you are the agent who received the consult request
-              task.emit(TASK_EVENTS.TASK_CONSULT_ACCEPTED, task);
-            } else {
-              // Fire only if you are the agent who initiated the consult
-              task.emit(TASK_EVENTS.TASK_CONSULTING, task);
-            }
-            break;
-          case CC_EVENTS.AGENT_CONSULT_FAILED:
-            // This can only be received by the agent who initiated the consult.
-            // We need not emit any event here since this will be result of promise
-            this.updateTaskData(task, payload.data);
-            break;
-          case CC_EVENTS.AGENT_CONSULT_ENDED:
-            this.updateTaskData(task, payload.data);
-            if (task.data.isConsulted) {
-              // This will be the end state of the task as soon as we end the consult in case of
-              // us being offered a consult
-              this.removeTaskFromCollection(task);
-            }
-            task.emit(TASK_EVENTS.TASK_CONSULT_END, task);
-            break;
-          case CC_EVENTS.AGENT_CTQ_CANCELLED:
-            // This event is received when the consult using queue is cancelled using API
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONSULT_QUEUE_CANCELLED, task);
-            break;
-          case CC_EVENTS.AGENT_WRAPUP:
-            this.updateTaskData(task, {...payload.data, wrapUpRequired: true});
-            task.emit(TASK_EVENTS.TASK_END, task);
-            break;
-          case CC_EVENTS.AGENT_WRAPPEDUP:
-            task.cancelAutoWrapupTimer?.();
-            this.removeTaskFromCollection(task);
-            task.emit(TASK_EVENTS.TASK_WRAPPEDUP, task);
-            break;
-          case CC_EVENTS.CONTACT_RECORDING_PAUSED:
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_RECORDING_PAUSED, task);
-            break;
-          case CC_EVENTS.CONTACT_RECORDING_PAUSE_FAILED:
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_RECORDING_PAUSE_FAILED, task);
-            break;
-          case CC_EVENTS.CONTACT_RECORDING_RESUMED:
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_RECORDING_RESUMED, task);
-            break;
-          case CC_EVENTS.CONTACT_RECORDING_RESUME_FAILED:
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_RECORDING_RESUME_FAILED, task);
-            break;
-          case CC_EVENTS.AGENT_CONSULT_CONFERENCING:
-            // Conference is being established - update task state and emit establishing event
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_ESTABLISHING, task);
-            break;
-          case CC_EVENTS.AGENT_CONSULT_CONFERENCED:
-            // Conference started successfully - update task state and emit event
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_STARTED, task);
-            break;
-          case CC_EVENTS.AGENT_CONSULT_CONFERENCE_FAILED:
-            // Conference failed - update task state and emit failure event
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_FAILED, task);
-            break;
-          case CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED:
-            // Conference ended - update task state and emit event
-            this.updateTaskData(task, payload.data);
-            if (
-              !task ||
-              isPrimary(task, this.agentId) ||
-              isParticipantInMainInteraction(task, this.agentId)
-            ) {
-              LoggerProxy.log('Primary or main interaction participant leaving conference');
-            } else {
-              this.removeTaskFromCollection(task);
-            }
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_ENDED, task);
-            break;
-          case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE: {
-            this.updateTaskData(task, {
-              ...payload.data,
-              isConferenceInProgress: getIsConferenceInProgress(payload.data),
-            });
-            task.emit(TASK_EVENTS.TASK_PARTICIPANT_JOINED, task);
-            break;
-          }
-          case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE: {
-            // Conference ended - update task state and emit event
-            this.updateTaskData(task, {
-              ...payload.data,
-              isConferenceInProgress: getIsConferenceInProgress(payload.data),
-            });
-            if (checkParticipantNotInInteraction(task, this.agentId)) {
-              if (
-                isParticipantInMainInteraction(task, this.agentId) ||
-                isPrimary(task, this.agentId)
-              ) {
-                LoggerProxy.log('Primary or main interaction participant leaving conference');
-              } else {
-                this.removeTaskFromCollection(task);
-              }
-            }
-            task.emit(TASK_EVENTS.TASK_PARTICIPANT_LEFT, task);
-            break;
-          }
-          case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE_FAILED:
-            // Conference exit failed - update task state and emit failure event
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_PARTICIPANT_LEFT_FAILED, task);
-            break;
-          case CC_EVENTS.AGENT_CONSULT_CONFERENCE_END_FAILED:
-            // Conference end failed - update task state with error details and emit failure event
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_END_FAILED, task);
-            break;
-          case CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED:
-            // Conference was transferred - update task state and emit transfer success event
-            // Note: Backend should provide hasLeft and wrapUpRequired status
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_TRANSFERRED, task);
-            break;
-          case CC_EVENTS.AGENT_CONFERENCE_TRANSFER_FAILED:
-            // Conference transfer failed - update task state with error details and emit failure event
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_CONFERENCE_TRANSFER_FAILED, task);
-            break;
-          case CC_EVENTS.CONSULTED_PARTICIPANT_MOVING:
-            // Participant is being moved/transferred - update task state with movement info
-            this.updateTaskData(task, payload.data);
-            break;
-          case CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY:
-            // Post-call activity for participant - update task state with activity details
-            this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, task);
-            break;
-          default:
-            break;
-        }
-        if (task) {
-          task.emit(payload.data.type, payload.data);
-        }
-      }
+      // Step 5: Execute post-processing actions
+      this.executeTaskActions(actions);
     });
   }
 
-  private updateTaskData(task: ITask, taskData: TaskData) {
+  /**
+   * Parse and validate WebSocket message
+   * @returns Parsed message or null if invalid/keepalive
+   */
+  private static parseWebSocketMessage(event: string): WebSocketMessage | null {
+    try {
+      const payload = JSON.parse(event) as WebSocketMessage;
+
+      // Filter out keepalive messages
+      if (payload?.keepalive === 'true' || payload?.keepalive === true) {
+        return null;
+      }
+
+      // Normalize task data if present
+      if (payload?.data?.interaction) {
+        payload.data = normalizeTaskData(payload.data);
+      }
+
+      return payload;
+    } catch (error) {
+      LoggerProxy.error('Failed to parse WebSocket message', {
+        module: TASK_MANAGER_FILE,
+        method: 'parseWebSocketMessage',
+        error,
+      });
+
+      return null;
+    }
+  }
+
+  /**
+   * Prepare context for event processing
+   * @returns Event context or null if event type is invalid
+   */
+  private prepareEventContext(message: WebSocketMessage): EventContext | null {
+    const eventType = message.data?.type;
+
+    if (!eventType || !isCcEvent(eventType)) {
+      return null;
+    }
+
+    const task = this.taskCollection[message.data.interactionId];
+    const wasConsultedTask = Boolean(task?.data?.isConsulted);
+    const computeWrapUpRequired = () => {
+      if (message.data.wrapUpRequired !== undefined) {
+        return message.data.wrapUpRequired;
+      }
+      if (message.data.isConsulted !== undefined) {
+        return !message.data.isConsulted;
+      }
+
+      return !wasConsultedTask;
+    };
+
+    const adjustedPayload =
+      eventType === CC_EVENTS.AGENT_CONSULT_TRANSFERRED
+        ? {
+            ...message.data,
+            wrapUpRequired: computeWrapUpRequired(),
+          }
+        : message.data;
+    const stateMachineEvent = TaskManager.mapEventToTaskStateMachineEvent(
+      eventType,
+      adjustedPayload
+    );
+
+    LoggerProxy.info(`Handling task event ${eventType}`, {
+      module: TASK_MANAGER_FILE,
+      method: 'prepareEventContext',
+      interactionId: message.data?.interactionId,
+    });
+
+    return {
+      eventType,
+      payload: adjustedPayload,
+      task,
+      stateMachineEvent,
+      wasConsultedTask,
+    };
+  }
+
+  /**
+   * Handle task lifecycle events and determine required actions
+   *
+   * Delegates to specific event handlers based on event type. Each handler
+   * is responsible for TaskManager-level concerns:
+   * - Task creation and collection management
+   * - Metrics tracking
+   * - Resource cleanup decisions
+   *
+   * Note: Task-level state transitions and event emissions are handled by
+   * the state machine via processEventAndEmissions()
+   */
+  private handleTaskLifecycleEvent(context: EventContext): TaskEventActions {
+    const {eventType} = context;
+
+    switch (eventType) {
+      case CC_EVENTS.AGENT_CONTACT_RESERVED:
+        return this.handleContactReserved(context);
+
+      case CC_EVENTS.AGENT_CONTACT:
+        return this.handleAgentContact(context);
+
+      case CC_EVENTS.AGENT_OUTBOUND_FAILED:
+        return TaskManager.handleOutboundFailed(context);
+
+      case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
+      case CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED:
+      case CC_EVENTS.AGENT_INVITE_FAILED:
+        return this.handleTaskFailure(context);
+
+      case CC_EVENTS.CONTACT_ENDED:
+        return TaskManager.handleContactEnded(context);
+
+      case CC_EVENTS.AGENT_CONSULT_ENDED:
+        return TaskManager.handleConsultEnded(context);
+
+      case CC_EVENTS.AGENT_WRAPPEDUP:
+        return TaskManager.handleWrapupComplete(context);
+
+      case CC_EVENTS.CONTACT_MERGED:
+        return this.handleContactMergedEvent(context);
+
+      case CC_EVENTS.CONSULTED_PARTICIPANT_MOVING:
+      case CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY:
+        return this.handleTaskDataUpdate(context);
+
+      default:
+        return this.handleDefaultEvent(context);
+    }
+  }
+
+  /**
+   * Handle AGENT_CONTACT_RESERVED event
+   * Creates a new task and sends TASK_INCOMING event to state machine
+   */
+  private handleContactReserved(context: EventContext): TaskEventActions {
+    const {payload} = context;
+    const shouldAutoAnswer = shouldAutoAnswerTask(
+      payload,
+      this.agentId,
+      this.webCallingService.loginOption,
+      this.webRtcEnabled
+    );
+
+    const taskData: TaskData = {
+      ...payload,
+      isConsulted: false,
+      isAutoAnswering: shouldAutoAnswer,
+    };
+
+    const task = TaskFactory.createTask(
+      this.contact,
+      this.webCallingService,
+      taskData,
+      this.configFlags,
+      this.getTaskRuntimeOptions(),
+      this.wrapupData,
+      this.agentId
+    );
+
+    this.setupTaskListeners(task);
+    this.taskCollection[payload.interactionId] = task;
+
+    // For telephony in-browser, we need to wait for the incoming call event
+    // before the state machine can properly emit TASK_INCOMING
+    // The state machine will handle emitting TASK_INCOMING via the callback
+    const shouldWaitForIncomingCall =
+      this.webCallingService.loginOption === LoginOption.BROWSER &&
+      task.data.interaction.mediaType === MEDIA_CHANNEL.TELEPHONY &&
+      !this.call;
+
+    if (shouldWaitForIncomingCall) {
+      // Don't send to state machine yet - wait for handleIncomingWebCall
+      return {task};
+    }
+
+    // For all other cases, let the state machine handle TASK_INCOMING emission
+    return {task};
+  }
+
+  /**
+   * Handle AGENT_CONTACT event
+   * Re-creates task if missing (multi-session scenario)
+   */
+  private handleAgentContact(context: EventContext): TaskEventActions {
+    let {task} = context;
+    const {payload} = context;
+
+    if (!task) {
+      const shouldAutoAnswer = shouldAutoAnswerTask(
+        payload,
+        this.agentId,
+        this.webCallingService.loginOption,
+        this.webRtcEnabled
+      );
+      const taskData: TaskData = {
+        ...payload,
+        isConsulted: false,
+        wrapUpRequired: payload.interaction?.participants?.[this.agentId]?.isWrapUp || false,
+        isConferenceInProgress: getIsConferenceInProgress(payload),
+        isAutoAnswering: shouldAutoAnswer,
+      };
+
+      task = TaskFactory.createTask(
+        this.contact,
+        this.webCallingService,
+        taskData,
+        this.configFlags,
+        this.getTaskRuntimeOptions(),
+        this.wrapupData,
+        this.agentId
+      );
+      this.setupTaskListeners(task);
+      this.taskCollection[payload.interactionId] = task;
+    }
+
+    return {task};
+  }
+
+  /**
+   * Handle AGENT_OUTBOUND_FAILED event
+   *
+   * TaskManager responsibility: Mark failed outbound tasks for removal from collection.
+   * The state machine handles the task-level OUTBOUND_FAILED event emission.
+   */
+  private static handleOutboundFailed(context: EventContext): TaskEventActions {
+    const {task, payload} = context;
+
+    if (task?.data) {
+      LoggerProxy.log('Agent outbound failed for task', {
+        module: TASK_MANAGER_FILE,
+        method: 'handleOutboundFailed',
+        interactionId: payload?.interactionId,
+      });
+
+      return {task, shouldRemoveFromCollection: true};
+    }
+
+    return {task};
+  }
+
+  /**
+   * Handle task failure events (RONA, ASSIGN_FAILED, INVITE_FAILED)
+   *
+   * TaskManager responsibilities:
+   * - Track operational metrics for failed tasks
+   * - Mark tasks for cleanup
+   *
+   * The state machine handles task-level state transitions and event emissions
+   * (RONA, ASSIGN_FAILED, INVITE_FAILED events).
+   */
+  private handleTaskFailure(context: EventContext): TaskEventActions {
+    const {task, eventType, payload} = context;
+
+    if (!task) {
+      return {};
+    }
+
+    // Map event type to metric name
+    const eventTypeToMetricMap: Record<string, keyof typeof METRIC_EVENT_NAMES> = {
+      [CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED]: 'AGENT_CONTACT_ASSIGN_FAILED',
+      [CC_EVENTS.AGENT_INVITE_FAILED]: 'AGENT_INVITE_FAILED',
+    };
+
+    const metricEventName: keyof typeof METRIC_EVENT_NAMES =
+      eventTypeToMetricMap[eventType] || 'AGENT_RONA';
+
+    // Track operational metrics (TaskManager-level concern)
+    this.metricsManager.trackEvent(
+      METRIC_EVENT_NAMES[metricEventName],
+      {
+        ...MetricsManager.getCommonTrackingFieldForAQMResponse(payload),
+        taskId: payload.interactionId,
+        reason: payload.reason,
+      },
+      ['behavioral', 'operational']
+    );
+
+    return {task, shouldCleanupTask: true};
+  }
+
+  /**
+   * Handle CONTACT_ENDED event
+   *
+   * TaskManager responsibility: Mark tasks for cleanup (WebRTC resources, timers).
+   * The state machine handles CONTACT_ENDED event emission and state transitions.
+   */
+  private static handleContactEnded(context: EventContext): TaskEventActions {
+    const {task} = context;
+
+    if (task) {
+      LoggerProxy.log('Contact ended event processed', {
+        module: TASK_MANAGER_FILE,
+        method: 'handleContactEnded',
+        interactionId: task.data?.interactionId,
+      });
+
+      return {task, shouldCleanupTask: true};
+    }
+
+    return {};
+  }
+
+  /**
+   * Handle AGENT_CONSULT_ENDED event
+   *
+   * TaskManager responsibility: Remove consulted tasks from collection when consult ends.
+   * The state machine handles CONSULT_END event emission and state transitions.
+   */
+  private static handleConsultEnded(context: EventContext): TaskEventActions {
+    const {task, wasConsultedTask} = context;
+
+    if (task && wasConsultedTask) {
+      LoggerProxy.log('Consult ended event processed', {
+        module: TASK_MANAGER_FILE,
+        method: 'handleConsultEnded',
+        interactionId: task.data?.interactionId,
+      });
+      // End state for task if we were offered the consult
+
+      return {task, shouldRemoveFromCollection: true};
+    }
+
+    return {task};
+  }
+
+  /**
+   * Handle AGENT_WRAPPEDUP event
+   *
+   * TaskManager responsibilities:
+   * - Cancel auto-wrapup timer (resource cleanup)
+   * - Remove completed tasks from collection
+   *
+   * The state machine handles WRAPUP_COMPLETE event emission and state transitions.
+   */
+  private static handleWrapupComplete(context: EventContext): TaskEventActions {
+    const {task} = context;
+
+    if (task) {
+      LoggerProxy.log('Wrap-up complete event processed', {
+        module: TASK_MANAGER_FILE,
+        method: 'handleWrapupComplete',
+        interactionId: task.data?.interactionId,
+      });
+
+      return {
+        task,
+        shouldCancelAutoWrapup: true,
+        shouldRemoveFromCollection: true,
+      };
+    }
+
+    return {};
+  }
+
+  /**
+   * Handle events that only need task data updates
+   */
+  private handleTaskDataUpdate(context: EventContext): TaskEventActions {
+    const {task, payload} = context;
+
+    if (task) {
+      this.updateTaskData(task, payload);
+    }
+
+    return {task};
+  }
+
+  /**
+   * Handle default/other events
+   */
+  private handleDefaultEvent(context: EventContext): TaskEventActions {
+    const {task, payload, stateMachineEvent} = context;
+
+    // For all other events, just update task data if needed
+    if (task && payload && !stateMachineEvent) {
+      this.updateTaskData(task, payload);
+    }
+
+    return {task};
+  }
+
+  /**
+   * Process state machine events and emit legacy events
+   *
+   * This method bridges TaskManager and the state machine:
+   * 1. Emits legacy CC_TASK_EVENTS for backward compatibility
+   * 2. Sends events to state machine for:
+   *    - Task state transitions
+   *    - TASK_EVENTS emissions (via callbacks)
+   *    - UI controls updates
+   *
+   * Note: TASK_EVENTS (like TASK_INCOMING, TASK_END, etc.) are now emitted
+   * by the state machine via callbacks, not directly by TaskManager. This ensures
+   * events are emitted in sync with state transitions.
+   */
+  private processEventAndEmissions(context: EventContext, actions: TaskEventActions): void {
+    const {task} = actions;
+    if (!task) return;
+
+    const {eventType, payload, stateMachineEvent} = context;
+
+    // Send event to state machine - this will trigger all TASK_EVENTS emissions
+    // including TASK_INCOMING which is now handled via the state machine callbacks
+    TaskManager.sendEventToStateMachine(eventType, payload, task, stateMachineEvent);
+
+    if (
+      eventType === CC_EVENTS.AGENT_OFFER_CONTACT ||
+      eventType === CC_EVENTS.AGENT_OFFER_CONSULT
+    ) {
+      this.handleAutoAnswer(task, Boolean(payload?.isAutoAnswering));
+    }
+  }
+
+  /**
+   * Execute post-processing actions on tasks
+   *
+   * Handles TaskManager-level lifecycle concerns:
+   * - Cancel timers (auto-wrapup)
+   * - Cleanup resources (WebRTC, call objects)
+   * - Manage task collection (remove completed/failed tasks)
+   *
+   * These are manager-level operations, distinct from task-level state
+   * changes handled by the state machine.
+   */
+  private executeTaskActions(actions: TaskEventActions): void {
+    const {task, shouldCancelAutoWrapup, shouldCleanupTask, shouldRemoveFromCollection} = actions;
+
+    if (!task) return;
+
+    if (shouldCancelAutoWrapup) {
+      task.cancelAutoWrapupTimer();
+    }
+
+    if (shouldCleanupTask) {
+      this.handleTaskCleanup(task);
+    }
+
+    if (shouldRemoveFromCollection) {
+      this.removeTaskFromCollection(task);
+    }
+  }
+
+  private updateTaskData(task: ITask, taskData: TaskData): ITask {
     if (!task) {
       throw new Error('Task not found for update');
     }
 
     task.updateTaskData(taskData);
     this.taskCollection[taskData.interactionId] = task;
+
+    return task;
+  }
+
+  private getTaskRuntimeOptions(): TaskRuntimeOptions {
+    return this.defaultTaskRuntimeOptions;
+  }
+
+  /**
+   * Setup listeners for task events that need to be bubbled up to TaskManager
+   * This replaces the previous callback injection pattern
+   */
+  private setupTaskListeners(task: ITask): void {
+    // Listen for TASK_INCOMING and re-emit so webex.cc can notify consumers
+    task.on(TASK_EVENTS.TASK_INCOMING, (t: ITask) => {
+      LoggerProxy.log(`Task incoming event received`, {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.REGISTER_TASK_LISTENERS,
+        interactionId: t.data?.interactionId,
+      });
+      this.emit(TASK_EVENTS.TASK_INCOMING, t);
+    });
+
+    // Listen for TASK_HYDRATE on the task and re-emit on TaskManager
+    task.on(TASK_EVENTS.TASK_HYDRATE, (t: ITask) => {
+      // Task data is already updated by the task itself before emitting
+      this.emit(TASK_EVENTS.TASK_HYDRATE, t);
+    });
   }
 
   private removeTaskFromCollection(task: ITask) {
@@ -551,47 +873,56 @@ export default class TaskManager extends EventEmitter {
    * @returns Updated or newly created task
    * @private
    */
-  private handleContactMerged(task: ITask, taskData: TaskData): ITask {
-    if (taskData.childInteractionId) {
+  private handleContactMergedEvent(context: EventContext): TaskEventActions {
+    const {payload} = context;
+    let task = context.task;
+
+    if (payload.childInteractionId) {
       // remove the child task from collection
-      this.removeTaskFromCollection(this.taskCollection[taskData.childInteractionId]);
+      this.removeTaskFromCollection(this.taskCollection[payload.childInteractionId]);
     }
 
-    if (this.taskCollection[taskData.interactionId]) {
+    if (task) {
       LoggerProxy.log(`Got CONTACT_MERGED: Task already exists in collection`, {
         module: TASK_MANAGER_FILE,
         method: METHODS.REGISTER_TASK_LISTENERS,
-        interactionId: taskData.interactionId,
+        interactionId: payload.interactionId,
       });
       // update the task data
-      this.updateTaskData(task, taskData);
+      this.updateTaskData(task, payload);
     } else {
       // Case2 : Task is not present in taskCollection
       LoggerProxy.log(`Got CONTACT_MERGED : Creating new task in taskManager`, {
         module: TASK_MANAGER_FILE,
         method: METHODS.REGISTER_TASK_LISTENERS,
-        interactionId: taskData.interactionId,
+        interactionId: payload.interactionId,
       });
+
+      const taskData: TaskData = {
+        ...payload,
+        wrapUpRequired: payload.interaction?.participants?.[this.agentId]?.isWrapUp || false,
+        isConferenceInProgress: getIsConferenceInProgress(payload),
+        isConsulted: false,
+      };
 
       task = TaskFactory.createTask(
         this.contact,
         this.webCallingService,
-        {
-          ...taskData,
-          wrapUpRequired: taskData.interaction?.participants?.[this.agentId]?.isWrapUp || false,
-          isConferenceInProgress: getIsConferenceInProgress(taskData),
-          isConsulted: false,
-        },
+        taskData,
         this.configFlags,
+        this.getTaskRuntimeOptions(),
         this.wrapupData,
         this.agentId
       );
-      this.taskCollection[taskData.interactionId] = task;
+      this.setupTaskListeners(task);
+      this.taskCollection[payload.interactionId] = task;
     }
 
-    this.emit(TASK_EVENTS.TASK_MERGED, task);
+    if (task) {
+      this.emit(TASK_EVENTS.TASK_MERGED, task);
+    }
 
-    return task;
+    return {task};
   }
 
   /**
@@ -605,8 +936,15 @@ export default class TaskManager extends EventEmitter {
    * @param task - The task to auto-answer
    * @private
    */
-  private async handleAutoAnswer(task: ITask): Promise<void> {
-    if (!task || !task.data || !task.data.isAutoAnswering) {
+  private async handleAutoAnswer(task: ITask, shouldAutoAnswerOverride?: boolean): Promise<void> {
+    if (!task || !task.data) {
+      return;
+    }
+
+    const shouldAutoAnswer =
+      shouldAutoAnswerOverride === true || Boolean(task.data.isAutoAnswering);
+
+    if (!shouldAutoAnswer) {
       return;
     }
 

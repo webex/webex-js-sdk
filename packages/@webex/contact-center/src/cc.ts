@@ -60,9 +60,9 @@ import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/t
 import MetricsManager from './metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from './metrics/constants';
 import {Failure} from './services/core/GlobalTypes';
-import EntryPoint from './services/EntryPoint';
-import AddressBook from './services/AddressBook';
-import Queue from './services/Queue';
+import {EntryPoint} from './services/EntryPoint';
+import {AddressBook} from './services/AddressBook';
+import {Queue} from './services/Queue';
 import type {
   EntryPointListResponse,
   EntryPointSearchParams,
@@ -709,7 +709,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           });
 
           const configFlags: ConfigFlags = {
-            isEndCallEnabled: this.agentConfig.isEndCallEnabled,
+            isEndTaskEnabled: this.agentConfig.isEndTaskEnabled,
             isEndConsultEnabled: this.agentConfig.isEndConsultEnabled,
             webRtcEnabled: this.agentConfig.webRtcEnabled,
             autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,

@@ -1,5 +1,5 @@
 import {CC_FILE, METHODS} from '../../../constants';
-import {getErrorDetails} from '../../core/Utils';
+import {buildConsultConferenceParamData, getErrorDetails} from '../../core/Utils';
 import routingContact from '../contact';
 import {
   ConsultPayload,
@@ -8,238 +8,49 @@ import {
   TaskData,
   TaskResponse,
   IVoice,
+  VoiceUIControlOptions,
   TransferPayLoad,
   ConsultTransferPayLoad,
+  consultConferencePayloadData,
   CONSULT_TRANSFER_DESTINATION_TYPE,
+  TASK_CHANNEL_TYPE,
+  TASK_EVENTS,
+  VOICE_VARIANT,
 } from '../types';
-import Task from '../Task';
-import {CC_EVENTS, WrapupData} from '../../config/types';
+import Task, {TaskRuntimeOptions} from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
+import {TaskState, TaskEvent, guards} from '../state-machine';
+import {WrapupData} from '../../config/types';
 
 export default class Voice extends Task implements IVoice {
-  private isEndCallEnabled: boolean;
-  private isEndConsultEnabled: boolean;
-
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
+    callOptions?: VoiceUIControlOptions,
+    runtimeOptions?: TaskRuntimeOptions,
     wrapupData?: WrapupData,
-    agentId?: string,
-    callOptions: {isEndCallEnabled?: boolean; isEndConsultEnabled?: boolean} = {}
+    agentId?: string
   ) {
-    super(contact, data, wrapupData, agentId);
-    // apply defaults when no explicit setting provided
-    this.isEndCallEnabled = callOptions.isEndCallEnabled ?? true;
-    this.isEndConsultEnabled = callOptions.isEndConsultEnabled ?? true;
-  }
+    const resolvedOptions = {
+      isEndTaskEnabled: callOptions?.isEndTaskEnabled ?? true,
+      isEndConsultEnabled: callOptions?.isEndConsultEnabled ?? true,
+      voiceVariant: callOptions?.voiceVariant ?? VOICE_VARIANT.PSTN,
+      isRecordingEnabled: callOptions?.isRecordingEnabled ?? true,
+    };
 
-  private applyConsultingControls(): void {
-    this.updateTaskUiControls({
-      hold: [false, false],
-      transfer: [false, false],
-      consult: [false, false],
-      recording: [true, false],
-    });
-
-    if (!this.data.isConsulted) {
-      this.updateTaskUiControls({
-        consultTransfer: [true, true],
-        endConsult: [true, true],
-        end: [this.isEndCallEnabled, false],
-      });
-    } else {
-      this.updateTaskUiControls({endConsult: [this.isEndConsultEnabled, this.isEndConsultEnabled]});
-    }
-  }
-
-  protected setUIControls(): void {
-    const eventType = this.data.type;
-
-    switch (eventType) {
-      case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-        this.updateTaskUiControls({
-          accept: [false, false],
-          decline: [false, false],
-          hold: [true, true],
-          transfer: [true, true],
-          consult: [true, true],
-          recording: [true, true],
-          end: [this.isEndCallEnabled, this.isEndCallEnabled],
-          endConsult: [false, false],
-          wrapup: [false, false],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_WRAPUP:
-      case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
-        this.updateTaskUiControls({
-          consultTransfer: [false, false],
-          recording: [false, false],
-          end: [false, false],
-          endConsult: [false, false],
-          hold: [false, false],
-          transfer: [false, false],
-          consult: [false, false],
-          wrapup: [true, true],
-        });
-        break;
-
-      case CC_EVENTS.CONTACT_ENDED:
-      case CC_EVENTS.AGENT_INVITE_FAILED:
-        this.updateTaskUiControls({
-          hold: [false, false],
-          transfer: [false, false],
-          consult: [false, false],
-          consultTransfer: [false, false],
-          recording: [false, false],
-          end: [false, false],
-          endConsult: [false, false],
-        });
-        if (this.data.interaction.state !== 'new') {
-          this.updateTaskUiControls({wrapup: [true, true]});
-        }
-        break;
-
-      case CC_EVENTS.AGENT_CONTACT_HELD:
-        this.updateTaskUiControls({
-          hold: [true, true],
-          transfer: [true, true],
-          consult: [true, true],
-          recording: [true, true],
-          end: [this.isEndCallEnabled, false],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_CONTACT_UNHELD:
-        this.updateTaskUiControls({
-          hold: [true, true],
-          transfer: [true, true],
-          consult: [true, true],
-          recording: [true, true],
-          end: [this.isEndCallEnabled, true],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
-        this.updateTaskUiControls({
-          hold: [false, false],
-          transfer: [false, false],
-          consult: [false, false],
-          consultTransfer: [false, false],
-          recording: [false, false],
-          end: [false, false],
-          wrapup: [true, true],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
-        this.updateTaskUiControls({
-          hold: [true, true],
-          transfer: [true, true],
-          consult: [true, true],
-          recording: [true, true],
-          end: [this.isEndCallEnabled, true],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_CONSULT_CREATED:
-        this.updateTaskUiControls({
-          hold: [false, false],
-          consult: [false, false],
-          transfer: [true, false],
-          end: [this.isEndCallEnabled, false],
-          consultTransfer: [true, false],
-          recording: [true, false],
-          endConsult: [true, true],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_OFFER_CONSULT:
-        this.updateTaskUiControls({
-          endConsult: [this.isEndConsultEnabled, this.isEndConsultEnabled],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_CONSULTING:
-        if (!this.data.isConsulted) {
-          this.updateTaskUiControls({
-            hold: [false, false],
-            transfer: [true, false],
-            consult: [false, false],
-            consultTransfer: [true, true],
-            recording: [true, false],
-            endConsult: [true, true],
-            end: [this.isEndCallEnabled, false],
-          });
-        } else {
-          this.updateTaskUiControls({
-            endConsult: [this.isEndConsultEnabled, this.isEndConsultEnabled],
-          });
-        }
-        break;
-
-      case CC_EVENTS.AGENT_CONSULT_FAILED:
-      case CC_EVENTS.AGENT_CONSULT_ENDED:
-        if (!this.data.isConsulted) {
-          this.updateTaskUiControls({
-            hold: [true, true],
-            transfer: [true, true],
-            consult: [true, true],
-            recording: [true, true],
-            end: [this.isEndCallEnabled, this.isEndCallEnabled],
-            consultTransfer: [false, false],
-            endConsult: [false, false],
-            wrapup: [false, false],
-          });
-        } else {
-          this.updateTaskUiControls({
-            endConsult: [false, false],
-          });
-        }
-        break;
-
-      case CC_EVENTS.AGENT_CTQ_CANCELLED:
-        this.updateTaskUiControls({
-          hold: [true, true],
-          transfer: [true, true],
-          consult: [true, true],
-          recording: [true, true],
-          end: [this.isEndCallEnabled, this.isEndCallEnabled],
-          consultTransfer: [false, false],
-          endConsult: [false, false],
-          wrapup: [false, false],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_CONTACT:
-        if (this.data.interaction.isTerminated) {
-          this.updateTaskUiControls({
-            hold: [false, false],
-            transfer: [false, false],
-            consult: [false, false],
-            consultTransfer: [false, false],
-            recording: [false, false],
-            end: [false, false],
-            wrapup: [true, true],
-          });
-        } else if (this.data.interaction.state === 'connected' && !this.data.isConsulted) {
-          this.updateTaskUiControls({
-            hold: [true, true],
-            transfer: [true, true],
-            consult: [true, true],
-            recording: [true, true],
-            end: [this.isEndCallEnabled, this.isEndCallEnabled],
-          });
-        } else if (this.data.interaction.state === 'consulting') {
-          this.applyConsultingControls();
-        }
-        break;
-
-      default:
-        break;
-    }
+    super(
+      contact,
+      data,
+      {
+        channelType: TASK_CHANNEL_TYPE.VOICE,
+        ...resolvedOptions,
+      },
+      runtimeOptions,
+      wrapupData,
+      agentId
+    );
   }
 
   /**
@@ -263,6 +74,32 @@ export default class Voice extends Task implements IVoice {
   }
 
   /**
+   * This is used to hold the task.
+   * @returns Promise<TaskResponse>
+   * @throws Error
+   * @example
+   * ```typescript
+   * task.hold().then(()=>{}).catch(()=>{})
+   * ```
+   * */
+  public async hold(): Promise<TaskResponse> {
+    return this.holdResume();
+  }
+
+  /**
+   * This is used to resume the task.
+   * @returns Promise<TaskResponse>
+   * @throws Error
+   * @example
+   * ```typescript
+   * task.resume().then(()=>{}).catch(()=>{})
+   * ```
+   * */
+  public async resume(): Promise<TaskResponse> {
+    return this.holdResume();
+  }
+
+  /**
    * This is used to hold or resume the task.
    * @param isHeld: boolean - true to hold the task, false to resume it
    * @returns Promise<TaskResponse>
@@ -278,6 +115,40 @@ export default class Voice extends Task implements IVoice {
     If the media resource is not found, default to resuming the task
     */
     const shouldHold = !this.data.interaction.media[this.data.mediaResourceId].isHold;
+
+    // Validate operation is allowed in current state
+    const state = this.stateMachineService?.getSnapshot?.();
+    if (state) {
+      const currentState = state.value as TaskState;
+      if (shouldHold) {
+        if (!state.matches(TaskState.CONNECTED)) {
+          const error = new Error(`Cannot hold call in current state: ${currentState}`);
+          LoggerProxy.error('Hold operation not allowed', {
+            module: CC_FILE,
+            method: METHODS.HOLD_RESUME,
+            interactionId: this.data.interactionId,
+          });
+          throw error;
+        }
+      } else if (!state.matches(TaskState.HELD)) {
+        const error = new Error(`Cannot resume call in current state: ${currentState}`);
+        LoggerProxy.error('Resume operation not allowed', {
+          module: CC_FILE,
+          method: METHODS.HOLD_RESUME,
+          interactionId: this.data.interactionId,
+        });
+        throw error;
+      }
+    }
+
+    // Send initiating event to transition to intermediate state
+    if (this.stateMachineService) {
+      const initiatingEvent = shouldHold ? TaskEvent.HOLD_INITIATED : TaskEvent.UNHOLD_INITIATED;
+      this.stateMachineService.send({
+        type: initiatingEvent,
+        mediaResourceId: this.data.mediaResourceId,
+      });
+    }
 
     LoggerProxy.info(`${shouldHold ? 'Holding' : 'Resuming'} task`, {
       module: CC_FILE,
@@ -297,6 +168,15 @@ export default class Voice extends Task implements IVoice {
           interactionId: this.data.interactionId,
           data: {mediaResourceId: this.data.mediaResourceId},
         });
+
+        // Send success event to complete the transition
+        if (this.stateMachineService) {
+          this.stateMachineService.send({
+            type: TaskEvent.HOLD_SUCCESS,
+            mediaResourceId: this.data.mediaResourceId,
+          });
+        }
+
         this.metricsManager.trackEvent(
           successEvt,
           {
@@ -313,11 +193,20 @@ export default class Voice extends Task implements IVoice {
           interactionId: this.data.interactionId,
         });
       } else {
-        const mainId = this.data.interaction.mainInteractionId!;
+        const mainId = this.data.interaction?.mainInteractionId;
         response = await this.contact.unHold({
           interactionId: this.data.interactionId,
           data: {mediaResourceId: this.data.mediaResourceId},
         });
+
+        // Send success event to complete the transition
+        if (this.stateMachineService) {
+          this.stateMachineService.send({
+            type: TaskEvent.UNHOLD_SUCCESS,
+            mediaResourceId: this.data.mediaResourceId,
+          });
+        }
+
         this.metricsManager.trackEvent(
           successEvt,
           {
@@ -338,6 +227,13 @@ export default class Voice extends Task implements IVoice {
 
       return response;
     } catch (error) {
+      const failureEvent = shouldHold ? TaskEvent.HOLD_FAILED : TaskEvent.UNHOLD_FAILED;
+      this.stateMachineService.send({
+        type: failureEvent,
+        reason: error.toString(),
+        mediaResourceId: this.data.mediaResourceId,
+      });
+
       const {error: detailedError} = getErrorDetails(error, 'holdResume', CC_FILE);
       this.metricsManager.trackEvent(
         failedEvt,
@@ -369,6 +265,18 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async pauseRecording(): Promise<TaskResponse> {
+    // Validate recording is active
+    const state = this.stateMachineService?.getSnapshot?.();
+    if (state && !guards.recordingActive({context: state.context})) {
+      const error = new Error('Recording is not active or already paused');
+      LoggerProxy.error('Pause recording operation not allowed', {
+        module: CC_FILE,
+        method: 'pauseRecording',
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
+
     try {
       LoggerProxy.info(`Pausing recording`, {
         module: CC_FILE,
@@ -422,8 +330,20 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async resumeRecording(
-    resumeRecordingPayload: ResumeRecordingPayload
+    resumeRecordingPayload?: ResumeRecordingPayload
   ): Promise<TaskResponse> {
+    // Validate recording is paused
+    const state = this.stateMachineService?.getSnapshot?.();
+    if (state && !guards.recordingPaused({context: state.context})) {
+      const error = new Error('Recording is not paused');
+      LoggerProxy.error('Resume recording operation not allowed', {
+        module: CC_FILE,
+        method: 'resumeRecording',
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
+
     try {
       LoggerProxy.info(`Resuming recording`, {
         module: CC_FILE,
@@ -485,7 +405,32 @@ export default class Voice extends Task implements IVoice {
    * task.consult(consultPayload).then(()=>{}).catch(()=>{});
    * ```
    * */
-  public async consult(consultPayload: ConsultPayload): Promise<TaskResponse> {
+  public async consult(consultPayload?: ConsultPayload): Promise<TaskResponse> {
+    // Validate consult is allowed
+    const state = this.stateMachineService?.getSnapshot?.();
+    const canConsult =
+      state && (state.matches(TaskState.CONNECTED) || state.matches(TaskState.HELD));
+
+    if (!canConsult) {
+      const currentState = state?.value as TaskState;
+      const error = new Error(`Cannot initiate consult in ${currentState} state`);
+      LoggerProxy.error('Consult operation not allowed', {
+        module: CC_FILE,
+        method: 'consult',
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
+
+    // Send initiating event to transition to CONSULT_INITIATING state
+    if (this.stateMachineService) {
+      this.stateMachineService.send({
+        type: TaskEvent.CONSULT,
+        destination: consultPayload.to,
+        destinationType: consultPayload.destinationType,
+      });
+    }
+
     try {
       LoggerProxy.info(`Starting consult`, {
         module: CC_FILE,
@@ -500,6 +445,15 @@ export default class Voice extends Task implements IVoice {
         interactionId: this.data.interactionId,
         data: consultPayload,
       });
+
+      // Send success event to transition to CONSULTING state
+      if (this.stateMachineService) {
+        this.stateMachineService.send({
+          type: TaskEvent.CONSULT_SUCCESS,
+          taskData: result.data,
+        });
+      }
+
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
         {
@@ -519,6 +473,11 @@ export default class Voice extends Task implements IVoice {
 
       return result;
     } catch (error) {
+      this.stateMachineService.send({
+        type: TaskEvent.CONSULT_FAILED,
+        reason: error.toString(),
+      });
+
       const {error: detailedError} = getErrorDetails(error, 'consult', CC_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
@@ -549,7 +508,7 @@ export default class Voice extends Task implements IVoice {
    * });
    * ```
    */
-  public async endConsult(consultEndPayload: ConsultEndPayload): Promise<TaskResponse> {
+  public async endConsult(consultEndPayload?: ConsultEndPayload): Promise<TaskResponse> {
     try {
       LoggerProxy.info(`Ending consult`, {
         module: CC_FILE,
@@ -684,5 +643,109 @@ export default class Voice extends Task implements IVoice {
       );
       throw detailedError;
     }
+  }
+
+  /**
+   * Start a consult conference, merging main and consult calls.
+   */
+  public async consultConference(): Promise<TaskResponse> {
+    const consultationData: consultConferencePayloadData = {
+      agentId: this.data.agentId,
+      destinationType: this.data.destinationType || 'agent',
+      destAgentId: this.data.destAgentId,
+    };
+
+    try {
+      LoggerProxy.info(`Initiating consult conference to ${consultationData.destAgentId}`, {
+        module: CC_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      const paramsDataForConferenceV2 = buildConsultConferenceParamData(
+        consultationData,
+        this.data.interactionId
+      );
+
+      const response = await this.contact.consultConference({
+        interactionId: paramsDataForConferenceV2.interactionId,
+        data: paramsDataForConferenceV2.data,
+      });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          destination: paramsDataForConferenceV2.data.to,
+          destinationType: paramsDataForConferenceV2.data.destinationType,
+          agentId: paramsDataForConferenceV2.data.agentId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log(`Consult conference started successfully`, {
+        module: CC_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      return response;
+    } catch (error) {
+      const {error: detailedError} = getErrorDetails(error, METHODS.CONSULT_CONFERENCE, CC_FILE);
+
+      const failedParamsData = buildConsultConferenceParamData(
+        consultationData,
+        this.data.interactionId
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_START_FAILED,
+        {
+          taskId: this.data.interactionId,
+          destination: failedParamsData.data.to,
+          destinationType: failedParamsData.data.destinationType,
+          agentId: failedParamsData.data.agentId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.error(`Failed to start consult conference`, {
+        module: CC_FILE,
+        method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      throw detailedError;
+    }
+  }
+
+  protected override getChannelSpecificActionOverrides() {
+    const baseOverrides = super.getChannelSpecificActionOverrides();
+
+    return {
+      ...baseOverrides,
+      emitTaskHold: this.createEmitSelfAction(TASK_EVENTS.TASK_HOLD, {updateTaskData: true}),
+      emitTaskResume: this.createEmitSelfAction(TASK_EVENTS.TASK_RESUME, {updateTaskData: true}),
+      emitTaskRecordingStarted: this.createEmitSelfAction(TASK_EVENTS.TASK_RECORDING_STARTED, {
+        updateTaskData: true,
+      }),
+      emitTaskRecordingPaused: this.createEmitSelfAction(TASK_EVENTS.TASK_RECORDING_PAUSED, {
+        updateTaskData: true,
+      }),
+      emitTaskRecordingPauseFailed: this.createEmitSelfAction(
+        TASK_EVENTS.TASK_RECORDING_PAUSE_FAILED,
+        {updateTaskData: true}
+      ),
+      emitTaskRecordingResumed: this.createEmitSelfAction(TASK_EVENTS.TASK_RECORDING_RESUMED, {
+        updateTaskData: true,
+      }),
+      emitTaskRecordingResumeFailed: this.createEmitSelfAction(
+        TASK_EVENTS.TASK_RECORDING_RESUME_FAILED,
+        {updateTaskData: true}
+      ),
+    };
   }
 }

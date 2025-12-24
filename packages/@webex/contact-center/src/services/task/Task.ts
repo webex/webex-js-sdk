@@ -1,5 +1,6 @@
 import {EventEmitter} from 'events';
-import {CallId} from '@webex/calling/dist/types/common/types';
+import {createActor} from 'xstate';
+import type {ActorRefFrom, SnapshotFrom} from 'xstate';
 import {
   ITask,
   TaskData,
@@ -7,9 +8,9 @@ import {
   WrapupPayLoad,
   TaskId,
   TransferPayLoad,
-  TaskButtonControl,
-  TaskUIControls,
   DESTINATION_TYPE,
+  TASK_EVENTS,
+  TaskUIControls,
   ConsultEndPayload,
   ConsultPayload,
   ConsultTransferPayLoad,
@@ -22,15 +23,39 @@ import routingContact from './contact';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import LoggerProxy from '../../logger-proxy';
+import {createTaskStateMachine, TaskState} from './state-machine';
+import type {
+  TaskEventPayload,
+  TaskStateMachine,
+  UIControlConfig,
+  TaskContext,
+} from './state-machine';
+import {
+  computeUIControls,
+  getDefaultUIControls,
+  haveUIControlsChanged,
+} from './state-machine/uiControlsComputer';
+import type {TaskActionsMap} from './state-machine/actions';
 import AutoWrapup from './AutoWrapup';
 import {WrapupData} from '../config/types';
+
+export interface TaskRuntimeOptions {
+  actionOverrides?: Partial<TaskActionsMap>;
+}
+
+type CallId = string;
 
 export default abstract class Task extends EventEmitter implements ITask {
   protected contact: ReturnType<typeof routingContact>;
   protected metricsManager: MetricsManager;
+  public stateMachineService?: ActorRefFrom<TaskStateMachine>;
   public data: TaskData;
   public webCallMap: Record<TaskId, CallId>;
-  public taskUiControls: TaskUIControls;
+  public state?: SnapshotFrom<TaskStateMachine>;
+  private lastState?: TaskState;
+  protected currentUiControls: TaskUIControls;
+  protected uiControlConfig: UIControlConfig;
+  protected runtimeOptions: TaskRuntimeOptions;
   protected wrapupData?: WrapupData;
   public autoWrapup?: AutoWrapup;
   protected agentId?: string;
@@ -38,76 +63,331 @@ export default abstract class Task extends EventEmitter implements ITask {
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
+    uiControlConfig: UIControlConfig,
+    runtimeOptions?: TaskRuntimeOptions,
     wrapupData?: WrapupData,
     agentId?: string
   ) {
     super();
     this.contact = contact;
     this.data = data;
+    this.uiControlConfig = uiControlConfig;
+    this.runtimeOptions = runtimeOptions ?? {};
     this.wrapupData = wrapupData;
     this.agentId = agentId;
     this.metricsManager = MetricsManager.getInstance();
     this.webCallMap = {};
-    this.initialiseUIControls();
+    this.currentUiControls = getDefaultUIControls();
+    this.initializeStateMachine();
     this.setupAutoWrapupTimer();
   }
 
-  unregisterWebCallListeners(): void {
-    throw new Error('Method not implemented.');
+  // Abstract methods that all child classes must implement
+  public abstract accept(): Promise<TaskResponse>;
+
+  // Voice-specific methods with default implementations that throw errors
+  // Voice class will override these with actual implementations
+  public async decline(): Promise<TaskResponse> {
+    this.unsupportedMethodError('decline');
   }
 
-  decline(): Promise<TaskResponse> {
-    throw new Error('Method not implemented.');
+  public async pauseRecording(): Promise<TaskResponse> {
+    this.unsupportedMethodError('pauseRecording');
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  hold(mediaResourceId?: string): Promise<TaskResponse> {
-    throw new Error('Method not implemented.');
+  public async resumeRecording(
+    resumeRecordingPayload: ResumeRecordingPayload
+  ): Promise<TaskResponse> {
+    if (resumeRecordingPayload) {
+      // parameter intentionally unused
+    }
+    this.unsupportedMethodError('resumeRecording');
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  resume(mediaResourceId?: string): Promise<TaskResponse> {
-    throw new Error('Method not implemented.');
+  public async consult(consultPayload: ConsultPayload): Promise<TaskResponse> {
+    if (consultPayload) {
+      // parameter intentionally unused
+    }
+    this.unsupportedMethodError('consult');
   }
 
-  pauseRecording(): Promise<TaskResponse> {
-    throw new Error('Method not implemented.');
+  public async endConsult(consultEndPayload: ConsultEndPayload): Promise<TaskResponse> {
+    if (consultEndPayload) {
+      // parameter intentionally unused
+    }
+    this.unsupportedMethodError('endConsult');
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  resumeRecording(resumeRecordingPayload: ResumeRecordingPayload): Promise<TaskResponse> {
-    throw new Error('Method not implemented.');
+  public async consultTransfer(
+    consultTransferPayload?: ConsultTransferPayLoad
+  ): Promise<TaskResponse> {
+    if (consultTransferPayload) {
+      // parameter intentionally unused
+    }
+    this.unsupportedMethodError('consultTransfer');
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  consult(consultPayload: ConsultPayload): Promise<TaskResponse> {
-    throw new Error('Method not implemented.');
+  public async consultConference(): Promise<TaskResponse> {
+    this.unsupportedMethodError('consultConference');
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  endConsult(consultEndPayload: ConsultEndPayload): Promise<TaskResponse> {
-    throw new Error('Method not implemented.');
+  public async exitConference(): Promise<TaskResponse> {
+    this.unsupportedMethodError('exitConference');
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  consultTransfer(consultTransferPayload?: ConsultTransferPayLoad): Promise<TaskResponse> {
-    throw new Error('Method not implemented.');
+  public async transferConference(): Promise<TaskResponse> {
+    this.unsupportedMethodError('transferConference');
   }
 
-  consultConference(): Promise<TaskResponse> {
-    throw new Error('Method not implemented.');
+  public async toggleMute(): Promise<void> {
+    this.unsupportedMethodError('toggleMute');
   }
 
-  exitConference(): Promise<TaskResponse> {
-    throw new Error('Method not implemented.');
+  public unregisterWebCallListeners(): void {
+    // Default implementation - child classes can override
+    LoggerProxy.log('unregisterWebCallListeners called', {
+      module: CC_FILE,
+      method: 'unregisterWebCallListeners',
+      interactionId: this.data?.interactionId,
+    });
   }
 
-  transferConference(): Promise<TaskResponse> {
-    throw new Error('Method not implemented.');
+  /**
+   * Cancel any in-progress auto wrap-up timer.
+   * Base implementation just clears the timer reference so subclasses inherit the behavior.
+   */
+  public cancelAutoWrapupTimer(): void {
+    if (this.autoWrapup) {
+      this.autoWrapup.clear();
+      this.autoWrapup = undefined;
+      LoggerProxy.log('Auto wrap-up timer cancelled', {
+        module: CC_FILE,
+        method: 'cancelAutoWrapupTimer',
+        interactionId: this.data?.interactionId,
+      });
+    }
   }
 
-  toggleMute(): Promise<void> {
-    throw new Error('Method not implemented.');
+  // Voice tasks use holdResume(), but provide separate methods for interface compliance
+  public async hold(): Promise<TaskResponse> {
+    this.unsupportedMethodError('hold');
+  }
+
+  public async resume(): Promise<TaskResponse> {
+    this.unsupportedMethodError('resume');
+  }
+
+  public async holdResume(): Promise<TaskResponse> {
+    this.unsupportedMethodError('holdResume');
+  }
+
+  /**
+   * Latest UI controls derived from state machine state and context.
+   */
+  public get uiControls(): TaskUIControls {
+    return this.currentUiControls;
+  }
+
+  protected updateUiControls(forceEmit = false): void {
+    const nextControls = this.computeUIControls();
+    const shouldEmit = forceEmit || haveUIControlsChanged(this.currentUiControls, nextControls);
+    this.currentUiControls = nextControls;
+
+    if (shouldEmit) {
+      this.emit(TASK_EVENTS.TASK_UI_CONTROLS_UPDATED, this.currentUiControls);
+    }
+  }
+
+  /**
+   * Initialize the state machine
+   */
+  private initializeStateMachine(): void {
+    const machine: TaskStateMachine = createTaskStateMachine(this.uiControlConfig, {
+      actions: this.getStateMachineActionOverrides(),
+    });
+
+    this.stateMachineService = createActor(machine);
+
+    this.stateMachineService.subscribe((snapshot) => {
+      const previousState = this.lastState;
+      const currentState = snapshot.value as TaskState;
+      LoggerProxy.log(`State machine transition: ${previousState || 'N/A'} -> ${currentState}`, {
+        module: CC_FILE,
+        method: 'onTransition',
+        // @ts-ignore - snapshot may include event detail depending on XState version
+        eventType: (snapshot as any)?.event?.type,
+      });
+      this.lastState = currentState;
+      this.state = snapshot;
+
+      // Update UI controls based on current state
+      this.updateUiControls();
+    });
+
+    this.stateMachineService.start();
+    this.updateUiControls(true);
+  }
+
+  /**
+   * Send an event to the state machine
+   */
+  protected sendStateMachineEvent(event: TaskEventPayload): void {
+    if (this.stateMachineService) {
+      LoggerProxy.log(`Sending state machine event: ${event?.type}`, {
+        module: CC_FILE,
+        method: 'sendStateMachineEvent',
+        interactionId: this.data?.interactionId,
+      });
+      this.stateMachineService.send(event);
+    }
+  }
+
+  /**
+   * Get the current state machine state
+   */
+  protected getCurrentState(): TaskState | undefined {
+    return this.stateMachineService?.getSnapshot()?.value as TaskState;
+  }
+
+  /**
+   * Compute UI controls based on current state machine state.
+   *
+   * @returns UI control states for all task actions
+   */
+  protected computeUIControls(): TaskUIControls {
+    const snapshot = this.stateMachineService?.getSnapshot?.();
+
+    if (!snapshot) {
+      return getDefaultUIControls();
+    }
+
+    const currentState = snapshot.value as TaskState;
+    const context = snapshot.context as TaskContext;
+
+    return computeUIControls(currentState, context, this.data);
+  }
+
+  /**
+   * Stop the state machine service
+   */
+  protected stopStateMachine(): void {
+    if (this.stateMachineService) {
+      this.stateMachineService.stop();
+      this.stateMachineService = undefined;
+    }
+  }
+
+  private static extractTaskDataFromEvent(event?: TaskEventPayload): TaskData | undefined {
+    if (!event || typeof event !== 'object') {
+      return undefined;
+    }
+
+    if ('taskData' in event) {
+      return (event as {taskData?: TaskData}).taskData;
+    }
+
+    return undefined;
+  }
+
+  private updateTaskFromEvent(event?: TaskEventPayload): void {
+    const taskData = Task.extractTaskDataFromEvent(event);
+    if (taskData) {
+      this.updateTaskData(taskData);
+    }
+  }
+
+  protected getStateMachineActionOverrides(): Partial<TaskActionsMap> {
+    return {
+      ...this.getCommonActionOverrides(),
+      ...this.getChannelSpecificActionOverrides(),
+    };
+  }
+
+  protected getChannelSpecificActionOverrides(): Partial<TaskActionsMap> {
+    return this.runtimeOptions.actionOverrides ?? {};
+  }
+
+  protected createEmitSelfAction(
+    taskEvent: TASK_EVENTS,
+    {updateTaskData = false}: {updateTaskData?: boolean} = {}
+  ) {
+    return ({event}: {event: TaskEventPayload}) => {
+      if (updateTaskData) {
+        this.updateTaskFromEvent(event);
+      }
+      LoggerProxy.info(`Emitting task event ${taskEvent}`, {
+        module: TASK_FILE,
+        method: 'emitTaskEvent',
+        interactionId: this.data?.interactionId,
+      });
+      this.emit(taskEvent, this);
+    };
+  }
+
+  private getCommonActionOverrides(): Partial<TaskActionsMap> {
+    return {
+      emitTaskIncoming: this.createEmitSelfAction(TASK_EVENTS.TASK_INCOMING, {
+        updateTaskData: true,
+      }),
+      emitTaskHydrate: this.createEmitSelfAction(TASK_EVENTS.TASK_HYDRATE, {
+        updateTaskData: true,
+      }),
+      emitTaskOfferContact: this.createEmitSelfAction(TASK_EVENTS.TASK_OFFER_CONTACT, {
+        updateTaskData: true,
+      }),
+      emitTaskAssigned: this.createEmitSelfAction(TASK_EVENTS.TASK_ASSIGNED, {
+        updateTaskData: true,
+      }),
+      emitTaskEnd: this.createEmitSelfAction(TASK_EVENTS.TASK_END, {updateTaskData: true}),
+      emitTaskOfferConsult: this.createEmitSelfAction(TASK_EVENTS.TASK_OFFER_CONSULT, {
+        updateTaskData: true,
+      }),
+      emitTaskConsultCreated: this.createEmitSelfAction(TASK_EVENTS.TASK_CONSULT_CREATED, {
+        updateTaskData: true,
+      }),
+      emitTaskConsulting: ({event}: {event: TaskEventPayload}) => {
+        this.updateTaskFromEvent(event);
+        if (this.data.isConsulted) {
+          this.emit(TASK_EVENTS.TASK_CONSULT_ACCEPTED, this);
+        } else {
+          this.emit(TASK_EVENTS.TASK_CONSULTING, this);
+        }
+      },
+      emitTaskConsultAccepted: this.createEmitSelfAction(TASK_EVENTS.TASK_CONSULT_ACCEPTED),
+      emitTaskConsultEnd: this.createEmitSelfAction(TASK_EVENTS.TASK_CONSULT_END, {
+        updateTaskData: true,
+      }),
+      emitTaskConsultQueueCancelled: this.createEmitSelfAction(
+        TASK_EVENTS.TASK_CONSULT_QUEUE_CANCELLED,
+        {
+          updateTaskData: true,
+        }
+      ),
+      emitTaskConsultQueueFailed: this.createEmitSelfAction(TASK_EVENTS.TASK_CONSULT_QUEUE_FAILED, {
+        updateTaskData: true,
+      }),
+      emitTaskReject: ({event}: {event: TaskEventPayload}) => {
+        this.updateTaskFromEvent(event);
+        const reason =
+          event && typeof event === 'object' && 'reason' in event
+            ? (event as {reason?: string}).reason
+            : undefined;
+        this.emit(TASK_EVENTS.TASK_REJECT, reason);
+      },
+      emitTaskWrapup: () => {
+        if (this.data?.wrapUpRequired) {
+          LoggerProxy.info(`Emitting task event ${TASK_EVENTS.TASK_WRAPUP}`, {
+            module: TASK_FILE,
+            method: 'emitTaskEvent',
+            interactionId: this.data?.interactionId,
+          });
+          this.emit(TASK_EVENTS.TASK_WRAPUP, this);
+        }
+      },
+      emitTaskWrappedup: this.createEmitSelfAction(TASK_EVENTS.TASK_WRAPPEDUP, {
+        updateTaskData: true,
+      }),
+    };
   }
 
   /**
@@ -167,16 +447,6 @@ export default abstract class Task extends EventEmitter implements ITask {
   /**
    * Cancels the automatic wrap-up timer if it's running
    */
-  public cancelAutoWrapupTimer(): void {
-    this.autoWrapup?.clear();
-    this.autoWrapup = undefined;
-    LoggerProxy.info(`Auto wrap-up timer cancelled`, {
-      module: TASK_FILE,
-      method: METHODS.CANCEL_AUTO_WRAPUP_TIMER,
-      interactionId: this.data?.interactionId,
-    });
-  }
-
   private reconcileData(oldData: TaskData, newData: TaskData): TaskData {
     Object.keys(newData).forEach((key) => {
       if (newData[key] && typeof newData[key] === 'object' && !Array.isArray(newData[key])) {
@@ -189,28 +459,6 @@ export default abstract class Task extends EventEmitter implements ITask {
     return oldData;
   }
 
-  private initialiseUIControls() {
-    this.taskUiControls = {
-      accept: new TaskButtonControl(false, false),
-      decline: new TaskButtonControl(false, false),
-      hold: new TaskButtonControl(false, false),
-      mute: new TaskButtonControl(false, false),
-      end: new TaskButtonControl(false, false),
-      transfer: new TaskButtonControl(false, false),
-      consult: new TaskButtonControl(false, false),
-      consultTransfer: new TaskButtonControl(false, false),
-      endConsult: new TaskButtonControl(false, false),
-      recording: new TaskButtonControl(false, false),
-      conference: new TaskButtonControl(false, false),
-      wrapup: new TaskButtonControl(false, false),
-    };
-  }
-
-  /**
-   * This method is used to set the UI controls data. Will be implemented in child classes.
-   */
-  protected setUIControls() {}
-
   /**
    *
    * @param methodName - The name of the method that is unsupported
@@ -220,24 +468,9 @@ export default abstract class Task extends EventEmitter implements ITask {
     LoggerProxy.error(`Unsupported operation`, {
       module: 'TASK',
       method: methodName,
+      interactionId: this.data?.interactionId,
     });
     throw new Error(`Unsupported operation: ${methodName}`);
-  }
-
-  /**
-   * Apply visibility & enabled flags in one go.
-   * Usage: updateTaskUiControls({ hold: [true,true], end: [false,true] })
-   */
-  protected updateTaskUiControls(
-    config: Partial<Record<keyof typeof this.taskUiControls, [boolean, boolean]>>
-  ): void {
-    Object.entries(config).forEach(([k, [vis, en]]) => {
-      const ctl = this.taskUiControls[k as keyof typeof this.taskUiControls];
-      if (ctl) {
-        ctl.setVisiblity(vis);
-        ctl.setEnabled(en);
-      }
-    });
   }
 
   /**
@@ -249,13 +482,13 @@ export default abstract class Task extends EventEmitter implements ITask {
    * task.updateTaskData(updatedData, true);
    * ```
    */
-  public updateTaskData(updatedData: TaskData, shouldOverwrite = false): void {
+  public updateTaskData(updatedData: TaskData, shouldOverwrite = false): ITask {
     this.data = shouldOverwrite ? updatedData : this.reconcileData(this.data, updatedData);
-    this.setUIControls();
+    this.updateUiControls();
     this.setupAutoWrapupTimer();
-  }
 
-  public abstract accept(): Promise<TaskResponse>;
+    return this;
+  }
 
   /**
    * This is used to blind transfer or vTeam transfer the task

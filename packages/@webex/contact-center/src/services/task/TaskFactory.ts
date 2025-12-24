@@ -1,10 +1,11 @@
 import routingContact from './contact';
 import WebCallingService from '../WebCallingService';
+import Task, {TaskRuntimeOptions} from './Task';
 import Voice from './voice/Voice';
 import WebRTC from './voice/WebRTC';
 import Digital from './digital/Digital';
-import {ITask, MEDIA_CHANNEL, TaskData} from './types';
-import {ConfigFlags} from '../../types';
+import {MEDIA_CHANNEL, TaskData} from './types';
+import {ConfigFlags, LoginOption} from '../../types';
 import {WrapupData} from '../config/types';
 
 export default class TaskFactory {
@@ -15,28 +16,41 @@ export default class TaskFactory {
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     data: TaskData,
-    configFlags?: ConfigFlags,
+    configFlags: ConfigFlags,
+    runtimeOptions?: TaskRuntimeOptions,
     wrapupData?: WrapupData,
     agentId?: string
-  ): ITask {
+  ): Task {
     const mediaType = data.interaction.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
-    const {isEndCallEnabled, isEndConsultEnabled} = configFlags || {};
+    const {isEndTaskEnabled, isEndConsultEnabled} = configFlags;
+    const recordingEnabled = data?.interaction?.callProcessingDetails?.pauseResumeEnabled ?? true;
+    const voiceControlOptions = {
+      isEndTaskEnabled,
+      isEndConsultEnabled,
+      isRecordingEnabled: recordingEnabled,
+    };
+    const runtimeOverrides = runtimeOptions ?? {};
 
     switch (mediaType) {
       case MEDIA_CHANNEL.TELEPHONY:
-        if (webCallingService.loginOption === 'BROWSER') {
-          return new WebRTC(contact, webCallingService, data, wrapupData, agentId);
+        if (webCallingService.loginOption === LoginOption.BROWSER) {
+          return new WebRTC(
+            contact,
+            webCallingService,
+            data,
+            voiceControlOptions,
+            runtimeOverrides,
+            wrapupData,
+            agentId
+          );
         }
 
-        return new Voice(contact, data, wrapupData, agentId, {
-          isEndCallEnabled,
-          isEndConsultEnabled,
-        });
+        return new Voice(contact, data, voiceControlOptions, runtimeOverrides, wrapupData, agentId);
 
       case MEDIA_CHANNEL.CHAT:
       case MEDIA_CHANNEL.EMAIL:
       case MEDIA_CHANNEL.SOCIAL:
-        return new Digital(contact, data, wrapupData, agentId);
+        return new Digital(contact, data, runtimeOverrides, wrapupData, agentId);
 
       default:
         throw new Error(`Unknown media type: ${mediaType}`);

@@ -1,8 +1,21 @@
 import Task from '../../../../../src/services/task/Task';
-import {TaskData, DESTINATION_TYPE} from '../../../../../src/services/task/types';
+import {TaskData, DESTINATION_TYPE, TASK_EVENTS} from '../../../../../src/services/task/types';
+import {TaskEvent} from '../../../../../src/services/task/state-machine';
+import LoggerProxy from '../../../../../src/logger-proxy';
+import {createTaskData} from './taskTestUtils';
 
 class DummyTask extends Task {
-  public accept() { return Promise.resolve({} as any); }
+  constructor(contact: any, data: TaskData) {
+    super(contact, data, {
+      channelType: 'voice',
+      isEndTaskEnabled: true,
+      isEndConsultEnabled: true,
+    });
+  }
+
+  public accept() {
+    return Promise.resolve({} as any);
+  }
 }
 
 jest.mock('../../../../../src/logger-proxy', () => ({
@@ -50,39 +63,84 @@ describe('Task (base class)', () => {
     expect((task.data as any).foo).toBeUndefined();
   });
 
-  it('getUIControls returns default controls shape', () => {
-    const controls = task.taskUiControls;
-    // all controls should be hidden/disabled
-    expect(controls.accept.visible).toBe(false);
-    expect(controls.accept.enabled).toBe(false);
-    expect(controls.decline.visible).toBe(false);
-    expect(controls.decline.enabled).toBe(false);
-    expect(controls.end.visible).toBe(false);
-    expect(controls.end.enabled).toBe(false);
-    expect(controls.transfer.visible).toBe(false);
-    expect(controls.transfer.enabled).toBe(false);
-    expect(controls.hold.visible).toBe(false);
-    expect(controls.hold.enabled).toBe(false);
-    expect(controls.mute.visible).toBe(false);
-    expect(controls.mute.enabled).toBe(false);
-    expect(controls.consult.visible).toBe(false);
-    expect(controls.consult.enabled).toBe(false);
-    expect(controls.consultTransfer.visible).toBe(false);
-    expect(controls.consultTransfer.enabled).toBe(false);
-    expect(controls.endConsult.visible).toBe(false);
-    expect(controls.endConsult.enabled).toBe(false);
-    expect(controls.recording.visible).toBe(false);
-    expect(controls.recording.enabled).toBe(false);
-    expect(controls.conference.visible).toBe(false);
-    expect(controls.conference.enabled).toBe(false);
-    expect(controls.wrapup.visible).toBe(false);
-    expect(controls.wrapup.enabled).toBe(false);
+  it('getUIControls returns default controls shape for idle voice task', () => {
+    const controls = task.uiControls;
+    // accept/decline hidden because not offered
+    expect(controls.accept.isVisible).toBe(false);
+    expect(controls.accept.isEnabled).toBe(true);
+    expect(controls.decline.isVisible).toBe(false);
+    expect(controls.decline.isEnabled).toBe(true);
+
+    // voice tasks keep end hidden until a call is active
+    expect(controls.end.isVisible).toBe(false);
+    expect(controls.end.isEnabled).toBe(false);
+
+    expect(controls.transfer.isVisible).toBe(false);
+    expect(controls.transfer.isEnabled).toBe(true);
+    expect(controls.hold.isVisible).toBe(false);
+    expect(controls.hold.isEnabled).toBe(false);
+    expect(controls.mute.isVisible).toBe(false);
+    expect(controls.mute.isEnabled).toBe(true);
+    expect(controls.consult.isVisible).toBe(false);
+    expect(controls.consult.isEnabled).toBe(false);
+    expect(controls.consultTransfer.isVisible).toBe(false);
+    expect(controls.consultTransfer.isEnabled).toBe(true);
+    expect(controls.endConsult.isVisible).toBe(false);
+    expect(controls.endConsult.isEnabled).toBe(true);
+    expect(controls.recording.isVisible).toBe(false);
+    expect(controls.recording.isEnabled).toBe(false);
+    expect(controls.conference.isVisible).toBe(false);
+    expect(controls.conference.isEnabled).toBe(false);
+    expect(controls.wrapup.isVisible).toBe(false);
+    expect(controls.wrapup.isEnabled).toBe(true);
   });
 
-  it('calls setUIControls when updateTaskData is invoked', () => {
-    const spy = jest.spyOn(task as any, 'setUIControls');
+  it('calls updateUiControls when updateTaskData is invoked', () => {
+    const spy = jest.spyOn(task as any, 'updateUiControls');
     task.updateTaskData({foo: 'new'} as TaskData);
     expect(spy).toHaveBeenCalled();
+  });
+
+  it('logs state transitions using locally tracked previous state', () => {
+    const logSpy = jest.spyOn(LoggerProxy, 'log');
+    const statefulData = createTaskData();
+    const transitionTask = new DummyTask(dummyContact, statefulData);
+
+    logSpy.mockClear();
+
+    transitionTask.stateMachineService?.send({type: TaskEvent.OFFER, taskData: statefulData});
+    transitionTask.stateMachineService?.send({type: TaskEvent.ACCEPT});
+
+    const transitionMessages = logSpy.mock.calls
+      .filter(([msg]) => typeof msg === 'string' && (msg as string).startsWith('State machine transition'))
+      .map(([msg]) => msg);
+
+    expect(transitionMessages).toEqual([
+      'State machine transition: IDLE -> OFFERED',
+      'State machine transition: OFFERED -> CONNECTED',
+    ]);
+
+    transitionTask.stateMachineService?.stop();
+  });
+
+  it('emits task:wrapup when wrap-up is required', () => {
+    const overrides = (task as any).getStateMachineActionOverrides();
+    const emitSpy = jest.spyOn(task, 'emit');
+
+    task.updateTaskData(createTaskData({wrapUpRequired: true}) as TaskData);
+    overrides.emitTaskWrapup({event: {type: TaskEvent.END}});
+
+    expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_WRAPUP, task);
+  });
+
+  it('does not emit task:wrapup when wrap-up is not required', () => {
+    const overrides = (task as any).getStateMachineActionOverrides();
+    const emitSpy = jest.spyOn(task, 'emit');
+
+    task.updateTaskData(createTaskData({wrapUpRequired: false}) as TaskData);
+    overrides.emitTaskWrapup({event: {type: TaskEvent.END}});
+
+    expect(emitSpy).not.toHaveBeenCalledWith(TASK_EVENTS.TASK_WRAPUP, task);
   });
 
 });
@@ -197,67 +255,5 @@ describe('Task failure scenarios', () => {
     contact.wrapup.mockRejectedValue(err);
 
     await expect(task.wrapup(payload)).rejects.toThrow('Error while performing wrapup');
-  });
-});
-
-describe('Task base class stub methods', () => {
-  let task: DummyTask;
-  const dummyContact = {} as any;
-  const initialData = {interactionId: '123'} as unknown as TaskData;
-
-  beforeEach(() => {
-    task = new DummyTask(dummyContact, initialData);
-  });
-
-  it('unregisterWebCallListeners throws not implemented error', () => {
-    expect(() => task.unregisterWebCallListeners()).toThrow('Method not implemented.');
-  });
-
-  it('decline throws not implemented error', () => {
-    expect(() => task.decline()).toThrow('Method not implemented.');
-  });
-
-  it('hold throws not implemented error', () => {
-    expect(() => task.hold()).toThrow('Method not implemented.');
-  });
-
-  it('resume throws not implemented error', () => {
-    expect(() => task.resume()).toThrow('Method not implemented.');
-  });
-
-  it('pauseRecording throws not implemented error', () => {
-    expect(() => task.pauseRecording()).toThrow('Method not implemented.');
-  });
-
-  it('resumeRecording throws not implemented error', () => {
-    expect(() => task.resumeRecording({} as any)).toThrow('Method not implemented.');
-  });
-
-  it('consult throws not implemented error', () => {
-    expect(() => task.consult({} as any)).toThrow('Method not implemented.');
-  });
-
-  it('endConsult throws not implemented error', () => {
-    expect(() => task.endConsult({} as any)).toThrow('Method not implemented.');
-  });
-
-  it('consultTransfer throws not implemented error', () => {
-    expect(() => task.consultTransfer()).toThrow('Method not implemented.');
-  });
-
-  it('consultConference throws not implemented error', () => {
-    expect(() => task.consultConference()).toThrow('Method not implemented.');
-  });
-
-  it('exitConference throws not implemented error', () => {
-    expect(() => task.exitConference()).toThrow('Method not implemented.');
-  });
-
-  it('transferConference throws not implemented error', () => {
-    expect(() => task.transferConference()).toThrow('Method not implemented.');
-  });
-
-  it('toggleMute throws not implemented error', () => {
-    expect(() => task.toggleMute()).toThrow('Method not implemented.');
   });
 });

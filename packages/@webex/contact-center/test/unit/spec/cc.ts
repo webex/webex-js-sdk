@@ -252,7 +252,7 @@ describe('webex.cc', () => {
       isAgentAvailableAfterOutdial: false,
       isCampaignManagementEnabled: false,
       outDialEp: '',
-      isEndCallEnabled: false,
+      isEndTaskEnabled: false,
       isEndConsultEnabled: false,
       agentDbId: '',
       allowConsultToQueue: false,
@@ -323,6 +323,18 @@ describe('webex.cc', () => {
       expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
         module: CC_FILE,
         method: 'connectWebsocket',
+      });
+      expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith({
+        isEndTaskEnabled: mockAgentProfile.isEndTaskEnabled,
+        isEndConsultEnabled: mockAgentProfile.isEndConsultEnabled,
+        webRtcEnabled: mockAgentProfile.webRtcEnabled,
+        autoWrapup: mockAgentProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
+      });
+      expect(mockTaskManager.setConfigFlags).toHaveBeenCalledWith({
+        isEndTaskEnabled: mockAgentProfile.isEndTaskEnabled,
+        isEndConsultEnabled: mockAgentProfile.isEndConsultEnabled,
+        webRtcEnabled: mockAgentProfile.webRtcEnabled,
+        autoWrapup: mockAgentProfile.wrapUpData.wrapUpProps.autoWrapup ?? false,
       });
       expect(reloadSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
@@ -1437,6 +1449,27 @@ describe('webex.cc', () => {
         {module: CC_FILE, method: `startOutdial`, trackingId: error.details.trackingId}
       );
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'startOutdial', CC_FILE);
+    });
+  });
+
+  describe('getQueues', () => {
+    it('delegates to the queue service when successful', async () => {
+      const mockQueuesResponse = [{queueId: 'queue1', queueName: 'Queue 1'}];
+      const queueSpy = jest
+        .spyOn(webex.cc.queue, 'getQueues')
+        .mockResolvedValue(mockQueuesResponse as any);
+
+      const result = await webex.cc.getQueues({page: 1});
+
+      expect(queueSpy).toHaveBeenCalledWith({page: 1});
+      expect(result).toBe(mockQueuesResponse);
+    });
+
+    it('propagates queue service errors', async () => {
+      const error = new Error('Test error.');
+      jest.spyOn(webex.cc.queue, 'getQueues').mockRejectedValue(error);
+
+      await expect(webex.cc.getQueues()).rejects.toThrow('Test error.');
     });
   });
 

@@ -1,8 +1,9 @@
 import Voice from '../../../../../../src/services/task/voice/Voice';
-import { TaskData } from '../../../../../../src/services/task/types';
-import { CC_EVENTS } from '../../../../../../src/services/config/types';
-import { CONSULT_TRANSFER_DESTINATION_TYPE } from '../../../../../../src/services/task/types';
-import e from 'express';
+import {TaskData, CONSULT_TRANSFER_DESTINATION_TYPE} from '../../../../../../src/services/task/types';
+import {CC_EVENTS} from '../../../../../../src/services/config/types';
+import {TaskEvent, TaskState} from '../../../../../../src/services/task/state-machine';
+import {computeUIControls} from '../../../../../../src/services/task/state-machine/uiControlsComputer';
+import {createTaskData} from '../taskTestUtils';
 
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
@@ -16,36 +17,63 @@ jest.mock('../../../../../../src/services/core/Utils', () => ({
   getErrorDetails: (err: any) => ({ error: err }),
 }));
 
-describe('Voice Task', () => {
-  const dummyContact = {
-    hold: jest.fn().mockResolvedValue('held'),
-    unHold: jest.fn().mockResolvedValue('resumed'),
-    pauseRecording: jest.fn().mockResolvedValue('paused'),
-    resumeRecording: jest.fn().mockResolvedValue('resumedRecording'),
-    consult: jest.fn().mockResolvedValue('consulted'),
-  } as any;
+const dummyContact = {
+  hold: jest.fn().mockResolvedValue('held'),
+  unHold: jest.fn().mockResolvedValue('resumed'),
+  pauseRecording: jest.fn().mockResolvedValue('paused'),
+  resumeRecording: jest.fn().mockResolvedValue('resumedRecording'),
+  consult: jest.fn().mockResolvedValue('consulted'),
+  consultTransfer: jest.fn().mockResolvedValue('consultTransferred'),
+} as any;
 
-  const baseData = {
+const createBaseData = (overrides: Partial<TaskData> = {}): TaskData =>
+  createTaskData({
     interactionId: 'int1',
     mediaResourceId: 'media1',
     interaction: {
-      mainInteractionId: 'main1',
-      media: { 'media1': { mediaResourceId: 'media1', isHold: false }},
+      ...(overrides.interaction || {}),
+      media: {
+        media1: {mediaResourceId: 'media1', isHold: false},
+        ...(overrides.interaction as any)?.media,
+      },
     },
-  } as unknown as TaskData;
+    ...overrides,
+  });
+
+const primeConnectedState = (voice: Voice, taskData: TaskData) => {
+  voice.stateMachineService?.send({type: TaskEvent.OFFER, taskData});
+  voice.stateMachineService?.send({type: TaskEvent.ASSIGN, taskData});
+};
+
+const primeHeldState = (voice: Voice, taskData: TaskData) => {
+  primeConnectedState(voice, taskData);
+  voice.stateMachineService?.send({type: TaskEvent.HOLD, mediaResourceId: taskData.mediaResourceId});
+  voice.stateMachineService?.send({
+    type: TaskEvent.HOLD_SUCCESS,
+    mediaResourceId: taskData.mediaResourceId,
+  });
+};
+
+describe('Voice Task', () => {
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
   it('hides end and endConsult when disabled', () => {
-    const voice = new Voice(dummyContact, baseData, undefined, undefined, {
-      isEndCallEnabled: false,
+    const voice = new Voice(dummyContact, createBaseData(), {
+      isEndTaskEnabled: false,
       isEndConsultEnabled: false,
     });
-    voice.updateTaskData(baseData);
-    expect(voice.taskUiControls.end.visible).toBe(false);
-    expect(voice.taskUiControls.endConsult.visible).toBe(false);
+    voice.updateTaskData(createBaseData());
+    expect(voice.uiControls.end.isVisible).toBe(false);
+    expect(voice.uiControls.endConsult.isVisible).toBe(false);
   });
 
   it('calls contact.hold when media is not held', async () => {
-    const voice = new Voice(dummyContact, baseData as any, undefined, undefined, {});
+    const taskData = createBaseData() as any;
+    const voice = new Voice(dummyContact, taskData, {});
+    primeConnectedState(voice, taskData);
     await voice.holdResume();
     expect(dummyContact.hold).toHaveBeenCalledWith({
       interactionId: 'int1',
@@ -54,14 +82,13 @@ describe('Voice Task', () => {
   });
 
   it('calls contact.unHold when media is held', async () => {
-    const heldData = {
-      ...baseData,
+    const heldData = createBaseData({
       interaction: {
-        ...baseData.interaction,
-        media: { 'media1': { mediaResourceId: 'media1', isHold: true }},
-      },
-    } as any;
-    const voice = new Voice(dummyContact, heldData, undefined, undefined, {});
+        media: {'media1': {mediaResourceId: 'media1', isHold: true}},
+      } as any,
+    }) as any;
+    const voice = new Voice(dummyContact, heldData, {});
+    primeHeldState(voice, heldData);
     await voice.holdResume();
     expect(dummyContact.unHold).toHaveBeenCalledWith({
       interactionId: 'int1',
@@ -70,19 +97,24 @@ describe('Voice Task', () => {
   });
 
   it('pauseRecording() calls contact.pauseRecording', async () => {
-    const voice = new Voice(dummyContact, baseData, undefined, undefined, {
-      isEndCallEnabled: true,
+    const taskData = createBaseData();
+    const voice = new Voice(dummyContact, taskData, {
+      isEndTaskEnabled: true,
       isEndConsultEnabled: true,
     });
+    primeConnectedState(voice, taskData);
     const res = await voice.pauseRecording();
     expect(dummyContact.pauseRecording).toHaveBeenCalledWith({ interactionId: 'int1' });
   });
 
   it('resumeRecording() with no payload defaults to autoResumed false', async () => {
-    const voice = new Voice(dummyContact, baseData, undefined, undefined, {
-      isEndCallEnabled: true,
+    const taskData = createBaseData();
+    const voice = new Voice(dummyContact, taskData, {
+      isEndTaskEnabled: true,
       isEndConsultEnabled: true,
     });
+    primeConnectedState(voice, taskData);
+    voice.stateMachineService?.send({type: TaskEvent.PAUSE_RECORDING});
     const res = await voice.resumeRecording();
     expect(dummyContact.resumeRecording).toHaveBeenCalledWith({
       interactionId: 'int1',
@@ -91,10 +123,12 @@ describe('Voice Task', () => {
   });
 
   it('consult() calls contact.consult with payload', async () => {
-    const voice = new Voice(dummyContact, baseData, undefined, undefined, {
-      isEndCallEnabled: true,
+    const taskData = createBaseData();
+    const voice = new Voice(dummyContact, taskData, {
+      isEndTaskEnabled: true,
       isEndConsultEnabled: true,
     });
+    primeConnectedState(voice, taskData);
     const payload = { destination: 'agent1', destinationType: 'agent' } as any;
     const res = await voice.consult(payload);
     expect(dummyContact.consult).toHaveBeenCalledWith({
@@ -106,14 +140,13 @@ describe('Voice Task', () => {
   describe('transfer()', () => {
     it('calls contact.consultTransfer for consult transfer to agent', async () => {
       const consultTransferMock = jest.fn().mockResolvedValue('consultedA');
-      const dataWithState = {
-        ...baseData,
-        interaction: { ...baseData.interaction, state: 'consulting' },
-      };
+      const dataWithState = createBaseData({
+        interaction: {state: 'consulting'} as any,
+      });
       const voice = new Voice(
         { ...dummyContact, consultTransfer: consultTransferMock },
         dataWithState as any,
-        { isEndCallEnabled: true, isEndConsultEnabled: true }
+        { isEndTaskEnabled: true, isEndConsultEnabled: true }
       );
 
       const result = await voice.transfer({
@@ -128,12 +161,12 @@ describe('Voice Task', () => {
     });
 
     it('throws if consult transfer to QUEUE but no destAgentId set', async () => {
-      const dataWithState = {
-        ...baseData,
-        interaction: { ...baseData.interaction, state: 'consulting' },
-      };
-      const voice = new Voice(dummyContact, dataWithState as any, undefined, undefined, {
-        isEndCallEnabled: true,
+      const dataWithState = createBaseData({
+        destAgentId: undefined,
+        interaction: {state: 'consulting'} as any,
+      });
+      const voice = new Voice(dummyContact, dataWithState as any, {
+        isEndTaskEnabled: true,
         isEndConsultEnabled: true,
       });
 
@@ -147,15 +180,14 @@ describe('Voice Task', () => {
 
     it('uses data.destAgentId for queue consult transfer', async () => {
       const consultTransferMock = jest.fn().mockResolvedValue('consultedQ');
-      const dataWithDest = {
-        ...baseData,
+      const dataWithDest = createBaseData({
         destAgentId: 'agentD',
-        interaction: { ...baseData.interaction, state: 'consulting' },
-      };
+        interaction: {state: 'consulting'} as any,
+      });
       const voice = new Voice(
         { ...dummyContact, consultTransfer: consultTransferMock },
         dataWithDest as any,
-        { isEndCallEnabled: true, isEndConsultEnabled: true }
+        { isEndTaskEnabled: true, isEndConsultEnabled: true }
       );
 
       const result = await voice.transfer({
@@ -178,8 +210,8 @@ describe('Voice Task', () => {
       const consultEndMock = jest.fn().mockResolvedValue('endedC');
       const voice = new Voice(
         { ...dummyContact, consultEnd: consultEndMock },
-        baseData,
-        { isEndCallEnabled: true, isEndConsultEnabled: true }
+        createBaseData(),
+        { isEndTaskEnabled: true, isEndConsultEnabled: true }
       );
       const payload = { isConsult: true, queueId: 'q1', taskId: 't1' };
       const result = await voice.endConsult(payload);
@@ -194,229 +226,95 @@ describe('Voice Task', () => {
 
   describe('UI controls for AGENT_CONTACT_ASSIGNED', () => {
     it('shows main controls and hides accept/decline on AGENT_CONTACT_ASSIGNED', () => {
-      const data: any = { ...baseData, type: CC_EVENTS.AGENT_CONTACT_ASSIGNED };
-      const voice = new Voice(dummyContact, data, undefined, undefined, {
-        isEndCallEnabled: true,
+      const data: any = { ...createBaseData(), type: CC_EVENTS.AGENT_CONTACT_ASSIGNED };
+      const voice = new Voice(dummyContact, data, {
+        isEndTaskEnabled: true,
         isEndConsultEnabled: false,
       });
 
       voice.updateTaskData(data);
+      primeConnectedState(voice, data);
 
-      expect(voice.taskUiControls.accept.visible).toBe(false);
-      expect(voice.taskUiControls.decline.visible).toBe(false);
-      expect(voice.taskUiControls.hold.visible).toBe(true);
-      expect(voice.taskUiControls.transfer.visible).toBe(true);
-      expect(voice.taskUiControls.consult.visible).toBe(true);
-      expect(voice.taskUiControls.recording.visible).toBe(true);
-      expect(voice.taskUiControls.end.visible).toBe(true);
-      expect(voice.taskUiControls.endConsult.visible).toBe(false);
+      expect(voice.uiControls.accept.isVisible).toBe(false);
+      expect(voice.uiControls.decline.isVisible).toBe(false);
+      expect(voice.uiControls.hold.isVisible).toBe(true);
+      expect(voice.uiControls.transfer.isVisible).toBe(true);
+      expect(voice.uiControls.consult.isVisible).toBe(true);
+      expect(voice.uiControls.recording.isVisible).toBe(true);
+      expect(voice.uiControls.end.isVisible).toBe(true);
+      expect(voice.uiControls.endConsult.isVisible).toBe(false);
     });
   });
 
-  describe('UI controls for various CC_EVENTS', () => {
-    const make = (evt: any, opts: any = {}) => {
-      const data: any = {
-        ...baseData,
-        type: evt,
-        interaction: { ...baseData.interaction, state: opts.state || 'active' },
-        isConsulted: opts.isConsulted,
-        destAgentId: opts.destAgentId,
-      };
-      const voice = new Voice(dummyContact, data, undefined, undefined, {
-        isEndCallEnabled: opts.endCall ?? true,
-        isEndConsultEnabled: opts.endConsult ?? true,
-      });
-      voice.updateTaskData(data);
-      return voice.taskUiControls;
-    };
-
-    it('AGENT_CONTACT_UNASSIGNED hides consultTransfer/recording/end and shows wrapup', () => {
-      const ctrl = make(CC_EVENTS.AGENT_CONTACT_UNASSIGNED);
-      expect(ctrl.consultTransfer.visible).toBe(false);
-      expect(ctrl.recording.visible).toBe(false);
-      expect(ctrl.end.visible).toBe(false);
-      expect(ctrl.wrapup.visible).toBe(true);
-      expect(ctrl.wrapup.enabled).toBe(true);
-    });
-
-    it('CONTACT_ENDED with state new hides all and no wrapup', () => {
-      const ctrl = make(CC_EVENTS.CONTACT_ENDED, { state: 'new' });
-      ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end', 'endConsult', 'wrapup'].forEach(
-        (k) => expect((ctrl as any)[k].visible).toBe(false)
+  describe('state machine derived controls', () => {
+    it('keeps uiControls in sync with state machine context', () => {
+      const taskData = createBaseData();
+      const voice = new Voice(dummyContact, taskData, {});
+      const initialSnapshot = voice.stateMachineService?.getSnapshot();
+      const initialExpected = computeUIControls(
+        initialSnapshot?.value as TaskState,
+        initialSnapshot?.context as any,
+        voice.data
       );
-    });
+      expect(voice.uiControls).toEqual(initialExpected);
 
-    it('CONTACT_ENDED with state active hides all except wrapup', () => {
-      const ctrl = make(CC_EVENTS.CONTACT_ENDED, { state: 'ended' });
-      ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end', 'endConsult'].forEach(
-        (k) => expect((ctrl as any)[k].visible).toBe(false)
+      voice.updateTaskData(taskData);
+      voice.stateMachineService?.send({type: TaskEvent.OFFER, taskData});
+      voice.stateMachineService?.send({type: TaskEvent.ASSIGN, taskData});
+
+      const snapshot = voice.stateMachineService?.getSnapshot();
+      const expected = computeUIControls(
+        snapshot?.value as TaskState,
+        snapshot?.context as any,
+        voice.data
       );
-      expect(ctrl.wrapup.visible).toBe(true);
-      expect(ctrl.wrapup.enabled).toBe(true);
-    });
-
-    it('AGENT_CONTACT_HELD shows main controls and end disabled', () => {
-      const ctrl = make(CC_EVENTS.AGENT_CONTACT_HELD);
-      ['hold', 'transfer', 'consult', 'recording'].forEach((k) =>
-        expect((ctrl as any)[k].visible).toBe(true)
-      );
-      expect(ctrl.end.visible).toBe(true);
-      expect(ctrl.end.enabled).toBe(false);
-    });
-
-    it('AGENT_CONTACT_UNHELD shows main controls and end enabled', () => {
-      const ctrl = make(CC_EVENTS.AGENT_CONTACT_UNHELD);
-      ['hold', 'transfer', 'consult', 'recording'].forEach((k) =>
-        expect((ctrl as any)[k].visible).toBe(true)
-      );
-      expect(ctrl.end.visible).toBe(true);
-      expect(ctrl.end.enabled).toBe(true);
-    });
-
-    it('AGENT_VTEAM_TRANSFERRED hides all except wrapup', () => {
-      const ctrl = make(CC_EVENTS.AGENT_VTEAM_TRANSFERRED);
-      ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end'].forEach((k) =>
-        expect((ctrl as any)[k].visible).toBe(false)
-      );
-      expect(ctrl.wrapup.visible).toBe(true);
-      expect(ctrl.wrapup.enabled).toBe(true);
-    });
-
-    it('AGENT_CTQ_CANCEL_FAILED shows main and end enabled', () => {
-      const ctrl = make(CC_EVENTS.AGENT_CTQ_CANCEL_FAILED);
-      ['hold', 'transfer', 'consult', 'recording'].forEach((k) =>
-        expect((ctrl as any)[k].visible).toBe(true)
-      );
-      expect(ctrl.end.visible).toBe(true);
-      expect(ctrl.end.enabled).toBe(true);
-    });
-
-    it('AGENT_CONSULT_CREATED when not consulted toggles correctly', () => {
-      const ctrl = make(CC_EVENTS.AGENT_CONSULT_CREATED, { isConsulted: false });
-      ['hold', 'consult'].forEach((k) =>
-        expect((ctrl as any)[k].visible).toBe(false)
-      );
-      expect(ctrl.end.visible).toBe(true);
-      expect(ctrl.end.enabled).toBe(false);
-      expect(ctrl.transfer.visible).toBe(true);
-      expect(ctrl.transfer.enabled).toBe(false);
-      expect(ctrl.consultTransfer.visible).toBe(true);
-      expect(ctrl.consultTransfer.enabled).toBe(false);
-      expect(ctrl.recording.visible).toBe(true);
-      expect(ctrl.recording.enabled).toBe(false);
-      expect(ctrl.endConsult.visible).toBe(true);
-      expect(ctrl.endConsult.enabled).toBe(true);
-    });
-
-    it('AGENT_OFFER_CONSULT respects endConsult flag', () => {
-      const ctrl1 = make(CC_EVENTS.AGENT_OFFER_CONSULT, { endConsult: true });
-      expect(ctrl1.endConsult.visible).toBe(true);
-      expect(ctrl1.endConsult.enabled).toBe(true);
-      const ctrl2 = make(CC_EVENTS.AGENT_OFFER_CONSULT, { endConsult: false });
-      expect(ctrl2.endConsult.visible).toBe(false);
-    });
-
-    it('AGENT_CONSULTING when starting hides main and shows consultTransfer etc.', () => {
-      const ctrl = make(CC_EVENTS.AGENT_CONSULTING, { isConsulted: false });
-      ['hold', 'consult'].forEach((k) =>
-        expect((ctrl as any)[k].visible).toBe(false)
-      );
-      expect(ctrl.transfer.visible).toBe(true);
-      expect(ctrl.transfer.enabled).toBe(false);
-      expect(ctrl.consultTransfer.visible).toBe(true);
-      expect(ctrl.consultTransfer.enabled).toBe(true);
-      expect(ctrl.recording.visible).toBe(true);
-      expect(ctrl.recording.enabled).toBe(false);
-      expect(ctrl.endConsult.visible).toBe(true);
-      expect(ctrl.endConsult.enabled).toBe(true);
-      expect(ctrl.end.visible).toBe(true);
-      expect(ctrl.end.enabled).toBe(false);
-    });
-
-    it('AGENT_CONSULTING when consulted only shows endConsult if allowed', () => {
-      const ctrl = make(CC_EVENTS.AGENT_CONSULTING, { isConsulted: true, endConsult: true });
-      expect(ctrl.endConsult.visible).toBe(true);
-      expect(ctrl.endConsult.enabled).toBe(true);
-    });
-
-    it('AGENT_CONSULT_FAILED resets to main and hides transfer/wrapup', () => {
-      const ctrl = make(CC_EVENTS.AGENT_CONSULT_FAILED, { isConsulted: false });
-      ['hold', 'transfer', 'consult', 'recording'].forEach((k) =>
-        expect((ctrl as any)[k].visible).toBe(true)
-      );
-      expect(ctrl.end.visible).toBe(true);
-      expect(ctrl.consultTransfer.visible).toBe(false);
-      expect(ctrl.wrapup.visible).toBe(false);
+      expect(voice.uiControls).toEqual(expected);
     });
   });
 
-  describe('UI controls for AGENT_CONTACT', () => {
-    const makeContact = (opts: {
-      state: string;
-      isConsulted?: boolean;
-      isTerminated?: boolean;
-      endCall?: boolean;
-      endConsult?: boolean;
-    }) => {
-      const data: any = {
-        ...baseData,
-        type: CC_EVENTS.AGENT_CONTACT,
+  describe('recording operations', () => {
+    const buildRecordingData = (recordingOverrides: Record<string, any>) =>
+      createBaseData({
         interaction: {
-          ...baseData.interaction,
-          state: opts.state,
-          isTerminated: opts.isTerminated || false,
-        },
-        isConsulted: opts.isConsulted || false,
-      };
-      const voice = new Voice(dummyContact, data, undefined, undefined, {
-        isEndCallEnabled: opts.endCall ?? true,
-        isEndConsultEnabled: opts.endConsult ?? true,
+          callProcessingDetails: recordingOverrides,
+        } as any,
       });
-      voice.updateTaskData(data);
-      return voice.taskUiControls;
-    };
 
-    it('hides all and shows wrapup when terminated', () => {
-      const ctrl = makeContact({ state: 'connected', isTerminated: true });
-      ['hold', 'transfer', 'consult', 'consultTransfer', 'recording', 'end'].forEach((k) =>
-        expect((ctrl as any)[k].visible).toBe(false)
-      );
-      expect(ctrl.wrapup.visible).toBe(true);
-      expect(ctrl.wrapup.enabled).toBe(true);
+    it('throws when pauseRecording is invoked without active recording', async () => {
+      const voice = new Voice(dummyContact, createBaseData(), {});
+      await expect(voice.pauseRecording()).rejects.toThrow('Recording is not active or already paused');
+      expect(dummyContact.pauseRecording).not.toHaveBeenCalled();
     });
 
-    it('shows main and end enabled when connected (not consulted)', () => {
-      const ctrl = makeContact({ state: 'connected', isConsulted: false });
-      ['hold', 'transfer', 'consult', 'recording'].forEach((k) =>
-        expect((ctrl as any)[k].visible).toBe(true)
-      );
-      expect(ctrl.end.visible).toBe(true);
-      expect(ctrl.end.enabled).toBe(true);
+    it('pauses recording when state machine context indicates active recording', async () => {
+      const taskData = buildRecordingData({recordInProgress: true});
+      const voice = new Voice(dummyContact, taskData, {});
+      primeConnectedState(voice, taskData);
+
+      await voice.pauseRecording();
+      expect(dummyContact.pauseRecording).toHaveBeenCalledWith({interactionId: 'int1'});
     });
 
-    it('consulting (not consulted) hides main, shows consultTransfer/endConsult, end disabled', () => {
-      const ctrl = makeContact({ state: 'consulting', isConsulted: false, endCall: true });
-      ['hold', 'transfer', 'consult'].forEach((k) =>
-        expect((ctrl as any)[k].visible).toBe(false)
-      );
-      expect(ctrl.consultTransfer.visible).toBe(true);
-      expect(ctrl.consultTransfer.enabled).toBe(true);
-      expect(ctrl.endConsult.visible).toBe(true);
-      expect(ctrl.endConsult.enabled).toBe(true);
-      expect(ctrl.end.visible).toBe(true);
-      expect(ctrl.end.enabled).toBe(false);
+    it('throws if resumeRecording is invoked while recording is not paused', async () => {
+      const taskData = buildRecordingData({recordInProgress: true});
+      const voice = new Voice(dummyContact, taskData, {});
+      primeConnectedState(voice, taskData);
+
+      await expect(voice.resumeRecording()).rejects.toThrow('Recording is not paused');
+      expect(dummyContact.resumeRecording).not.toHaveBeenCalled();
     });
 
-    it('consulting (consulted) hides main and shows only endConsult when allowed', () => {
-      const ctrl = makeContact({ state: 'consulting', isConsulted: true, endConsult: true });
-      ['hold', 'transfer', 'consult', 'consultTransfer'].forEach((k) =>
-        expect((ctrl as any)[k].visible).toBe(false)
-      );
-      expect(ctrl.recording.visible).toBe(true);
-      expect(ctrl.recording.enabled).toBe(false);
-      expect(ctrl.endConsult.visible).toBe(true);
-      expect(ctrl.endConsult.enabled).toBe(true);
-      expect(ctrl.end.visible).toBe(false);
+    it('resumes recording when context shows paused recording', async () => {
+      const taskData = buildRecordingData({recordInProgress: true});
+      const voice = new Voice(dummyContact, taskData, {});
+      primeConnectedState(voice, taskData);
+      voice.stateMachineService?.send({type: TaskEvent.PAUSE_RECORDING});
+
+      await voice.resumeRecording();
+      expect(dummyContact.resumeRecording).toHaveBeenCalledWith({
+        interactionId: 'int1',
+        data: {autoResumed: false},
+      });
     });
   });
 });

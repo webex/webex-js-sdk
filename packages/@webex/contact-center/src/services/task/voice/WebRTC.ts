@@ -2,10 +2,18 @@ import {LocalMicrophoneStream, CALL_EVENT_KEYS} from '@webex/calling';
 import {CC_FILE} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
 import routingContact from '../contact';
-import {TaskData, TaskResponse, TASK_EVENTS, IWebRTC} from '../types';
+import {
+  TaskData,
+  TaskResponse,
+  TASK_EVENTS,
+  IWebRTC,
+  VoiceUIControlOptions,
+  VOICE_VARIANT,
+} from '../types';
 import Voice from './Voice';
+import type {TaskRuntimeOptions} from '../Task';
 import WebCallingService from '../../WebCallingService';
-import {CC_EVENTS, WrapupData} from '../../config/types';
+import {WrapupData} from '../../config/types';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 import LoggerProxy from '../../../logger-proxy';
@@ -18,12 +26,17 @@ export default class WebRTC extends Voice implements IWebRTC {
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     data: TaskData,
+    callOptions?: VoiceUIControlOptions,
+    runtimeOptions?: TaskRuntimeOptions,
     wrapupData?: WrapupData,
     agentId?: string
   ) {
-    // WebRTC always has buttons enabled by default, so we don't need callOptions
-    super(contact, data, wrapupData, agentId, {isEndCallEnabled: true, isEndConsultEnabled: true});
-    this.updateTaskUiControls({accept: [true, true], decline: [true, true]});
+    const mergedCallOptions: VoiceUIControlOptions = {
+      ...callOptions,
+      voiceVariant: VOICE_VARIANT.WEBRTC,
+    };
+
+    super(contact, data, mergedCallOptions, runtimeOptions, wrapupData, agentId);
     this.webCallingService = webCallingService;
     this.registerWebCallListeners();
   }
@@ -35,91 +48,6 @@ export default class WebRTC extends Voice implements IWebRTC {
   private handleRemoteMedia = (track: MediaStreamTrack) => {
     this.emit(TASK_EVENTS.TASK_MEDIA, track);
   };
-
-  /**
-   * This method is used to set the UI controls for the specific type of task
-   */
-  protected setUIControls(): void {
-    super.setUIControls();
-    switch (this.data.type) {
-      // show accept/decline only on normal web call offers
-      case CC_EVENTS.AGENT_OFFER_CONTACT:
-      case CC_EVENTS.AGENT_OFFER_CONSULT:
-        this.updateTaskUiControls({
-          accept: [true, true],
-          decline: [true, true],
-        });
-        break;
-
-      // on consult accepted hide accept/decline and show mute
-      case CC_EVENTS.AGENT_CONSULTING:
-        if (this.data.isConsulted) {
-          this.updateTaskUiControls({
-            accept: [false, false],
-            decline: [false, false],
-          });
-        }
-        this.updateTaskUiControls({
-          mute: [true, true],
-        });
-        break;
-
-      // when consult ends (and we were the recipient) hide mute
-      case CC_EVENTS.AGENT_CONSULT_ENDED:
-        if (this.data.isConsulted) {
-          this.updateTaskUiControls({
-            mute: [false, false],
-            accept: [false, false],
-            decline: [false, false],
-          });
-        }
-        break;
-
-      // hide accept/decline when RONA occurs
-      case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
-        this.updateTaskUiControls({
-          accept: [false, false],
-          decline: [false, false],
-        });
-        break;
-
-      // hide accept/decline when contact is ended by the external user
-      case CC_EVENTS.CONTACT_ENDED:
-        if (this.data.interaction.state === 'new') {
-          this.updateTaskUiControls({accept: [false, false], decline: [false, false]});
-        }
-        break;
-
-      case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-        this.updateTaskUiControls({
-          mute: [true, true],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_CONTACT_HELD:
-        // disable mute when call is held
-        this.updateTaskUiControls({
-          mute: [true, false],
-        });
-        break;
-
-      case CC_EVENTS.AGENT_CONTACT_UNHELD:
-        // enable mute when call is resumed
-        this.updateTaskUiControls({
-          mute: [true, true],
-        });
-        break;
-
-      default:
-        // hide mute when wrapup is active
-        if (this.taskUiControls.wrapup.visible) {
-          this.updateTaskUiControls({
-            mute: [false, false],
-          });
-        }
-        break;
-    }
-  }
 
   /**
    * This method is used to unregister the web call listeners.

@@ -1,6 +1,5 @@
 import EventEmitter from 'events';
 import {CALL_EVENT_KEYS, LocalMicrophoneStream} from '@webex/calling';
-import {CallId} from '@webex/calling/dist/types/common/types';
 import {generateTaskErrorObject, calculateDestAgentId, calculateDestType} from '../core/Utils';
 import {Failure} from '../core/GlobalTypes';
 import {LoginOption} from '../../types';
@@ -9,8 +8,6 @@ import {METHODS, KEYS_TO_NOT_DELETE} from './constants';
 import routingContact from './contact';
 import LoggerProxy from '../../logger-proxy';
 import {
-  // eslint-disable-next-line import/named
-  IOldTask,
   TaskResponse,
   TaskData,
   TaskId,
@@ -20,9 +17,11 @@ import {
   ConsultPayload,
   ConsultEndPayload,
   TransferPayLoad,
-  DESTINATION_TYPE,
   ConsultTransferPayLoad,
+  CallId,
+  DESTINATION_TYPE,
   MEDIA_CHANNEL,
+  ITask,
 } from './types';
 import WebCallingService from '../WebCallingService';
 import MetricsManager from '../../metrics/MetricsManager';
@@ -127,7 +126,7 @@ import {WrapupData} from '../config/types';
  * ```
  */
 
-export default class Task extends EventEmitter implements IOldTask {
+export default class Task extends EventEmitter implements ITask {
   private contact: ReturnType<typeof routingContact>;
   private localAudioStream: LocalMicrophoneStream;
   private webCallingService: WebCallingService;
