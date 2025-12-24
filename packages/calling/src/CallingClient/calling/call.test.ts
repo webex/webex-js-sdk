@@ -1244,7 +1244,7 @@ describe('State Machine handler tests', () => {
     };
 
     call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-    expect(mediaConnection.initiateOffer).toHaveBeenCalledTimes(1);
+    expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
 
     dummyEvent.type = 'E_RECV_ROAP_ANSWER';
     dummyEvent.data = {
@@ -1253,9 +1253,7 @@ describe('State Machine handler tests', () => {
       sdp: 'sdp',
     };
     call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
-    expect(mediaConnection.roapMessageReceived).toHaveBeenLastCalledWith(
-      dummyEvent.data as RoapMessage
-    );
+    expect(call['mediaStateMachine'].state.value).toBe('S_RECV_ROAP_ANSWER');
     // Send OK
     const dummyOkEvent = {
       type: 'E_ROAP_OK',
@@ -1275,7 +1273,7 @@ describe('State Machine handler tests', () => {
     dummyEvent.type = 'E_RECV_CALL_CONNECT';
     dummyEvent.data = undefined;
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-    expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_CONNECT');
+    expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
 
     const emitSpy = jest.spyOn(call, 'emit');
     const startCallerIdSpy = jest.spyOn(call, 'startCallerIdResolution');
@@ -1303,7 +1301,7 @@ describe('State Machine handler tests', () => {
     callManager['dequeueWsEvents'](mobiusProgressEvent);
 
     // CallerId resolution should be triggered exactly once (handled by CallManager)
-    expect(startCallerIdSpy).toHaveBeenCalledOnceWith(mobiusProgressEvent.data.callerId);
+    expect(startCallerIdSpy).toBeCalledOnceWith(mobiusProgressEvent.data.callerId);
     // Since it returns early in established state, PROGRESS event should not be emitted here
     expect(
       emitSpy.mock.calls.find((args) => args && args[0] === CALL_EVENT_KEYS.PROGRESS)

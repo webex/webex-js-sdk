@@ -1906,6 +1906,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_ROAP_OFFER,
       });
+
       this.mediaConnection.initiateOffer();
 
       return;
@@ -1921,7 +1922,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: METHODS.HANDLE_OUTGOING_ROAP_OFFER,
       });
     } catch (err) {
-      log.warn('Failed to process MediaOk request', {
+      log.warn('Failed to send MediaOffer request', {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_ROAP_OFFER,
       });
