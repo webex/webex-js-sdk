@@ -422,11 +422,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
               },
             },
             on: {
-              // Need to handle progress event for caller id update
-              E_RECV_CALL_PROGRESS: {
-                target: 'S_RECV_CALL_PROGRESS',
-                actions: ['incomingCallProgress'],
-              },
               E_CALL_ESTABLISHED: {
                 target: 'S_CALL_ESTABLISHED',
                 actions: ['callEstablished'],
@@ -514,11 +509,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           /* CALL_ESTABLISHED */
           S_CALL_ESTABLISHED: {
             on: {
-              // Need to handle progress event for caller id update
-              E_RECV_CALL_PROGRESS: {
-                target: 'S_RECV_CALL_PROGRESS',
-                actions: ['incomingCallProgress'],
-              },
               E_CALL_HOLD: {
                 target: 'S_CALL_HOLD',
                 actions: ['initiateCallHold'],
@@ -1189,27 +1179,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     });
     const data = event.data as MobiusCallData;
 
-    if (data?.callerId) {
-      log.info('Processing Caller-Id data', {
-        file: CALL_FILE,
-        method: METHODS.HANDLE_INCOMING_CALL_PROGRESS,
-      });
-      this.startCallerIdResolution(data.callerId);
-
-      // Return after Caller-Id update if its in connected or established state
-      if (
-        this.callStateMachine.state.value === 'S_CALL_ESTABLISHED' ||
-        this.callStateMachine.state.value === 'S_CALL_CONNECTED'
-      ) {
-        log.info('Call is in established or connected state. Returning after Caller-Id update', {
-          file: CALL_FILE,
-          method: METHODS.HANDLE_INCOMING_CALL_PROGRESS,
-        });
-
-        return;
-      }
-    }
-
     if (data?.callProgressData?.inbandMedia) {
       log.log('Inband media present. Setting Early Media flag', {
         file: CALL_FILE,
@@ -1221,6 +1190,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: METHODS.HANDLE_INCOMING_CALL_PROGRESS,
       });
+    }
+
+    if (data?.callerId) {
+      log.info('Processing Caller-Id data', {
+        file: CALL_FILE,
+        method: METHODS.HANDLE_INCOMING_CALL_PROGRESS,
+      });
+      this.startCallerIdResolution(data.callerId);
     }
 
     this.emit(CALL_EVENT_KEYS.PROGRESS, this.correlationId);

@@ -779,6 +779,13 @@ export async function handleCallErrors(
 
     default: {
       log.warn(`Unknown Error`, loggerContext);
+      updateCallErrorContext(
+        loggerContext,
+        ERROR_TYPE.DEFAULT,
+        'An unknown error occurred in the call.',
+        correlationId,
+        callError
+      );
 
       emitterCb(callError);
     }
