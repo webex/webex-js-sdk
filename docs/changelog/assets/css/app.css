@@ -691,6 +691,22 @@ footer .copyright {
     white-space: nowrap;
 }
 
+/* Version badge variants for commit comparison */
+.version-badge.in-both {
+    background: #28a745;
+    color: white;
+}
+
+.version-badge.only-in-base {
+    background: #ffc107;
+    color: #333;
+}
+
+.version-badge.only-in-target {
+    background: #17a2b8;
+    color: white;
+}
+
 .package-meta {
     background: white;
     padding: 12px;

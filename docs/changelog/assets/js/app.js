@@ -1425,30 +1425,28 @@ const compareSpecificPackageVersions = (packageName, versionASpecific, versionBS
     const commitsA = pkgDataA?.commits || {};
     const commitsB = pkgDataB?.commits || {};
     
-    // Find commits that are in B but not in A (new commits)
+    // Collect ALL commits from both versions (not just differences)
     const allCommits = new Map();
     const commitsHashesA = new Set(Object.keys(commitsA));
     const commitsHashesB = new Set(Object.keys(commitsB));
     
-    // Add commits from version B (target) that are not in version A (base)
+    // Add ALL commits from version A (base)
+    Object.entries(commitsA).forEach(([hash, message]) => {
+        allCommits.set(hash, {
+            message,
+            inBase: true,
+            inTarget: commitsHashesB.has(hash),
+            packages: new Set([packageName])
+        });
+    });
+    
+    // Add commits from version B (target) that are not already in the map
     Object.entries(commitsB).forEach(([hash, message]) => {
-        if (!commitsHashesA.has(hash)) {
+        if (!allCommits.has(hash)) {
             allCommits.set(hash, {
                 message,
                 inBase: false,
                 inTarget: true,
-                packages: new Set([packageName])
-            });
-        }
-    });
-    
-    // Also track commits only in A (removed in B) if any
-    Object.entries(commitsA).forEach(([hash, message]) => {
-        if (!commitsHashesB.has(hash)) {
-            allCommits.set(hash, {
-                message,
-                inBase: true,
-                inTarget: false,
                 packages: new Set([packageName])
             });
         }
@@ -1460,6 +1458,11 @@ const compareSpecificPackageVersions = (packageName, versionASpecific, versionBS
         message: data.message,
         packageCount: data.packages.size,
         packages: Array.from(data.packages).sort(),
+        inBase: data.inBase,
+        inTarget: data.inTarget,
+        inBoth: data.inBase && data.inTarget,
+        onlyInBase: data.inBase && !data.inTarget,
+        onlyInTarget: data.inTarget && !data.inBase,
         newCommit: data.inTarget && !data.inBase
     }));
     
