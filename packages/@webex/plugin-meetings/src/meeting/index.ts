@@ -2842,7 +2842,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED, ({hesiodLlmId}) => {
       if (hesiodLlmId) {
         // @ts-ignore
-        this.webex.internal.voicea.onHesiodLLMIdUpdate(hesiodLlmId, this.id);
+        this.webex.internal.voicea.onCaptionServiceIdUpdate(hesiodLlmId, this.id);
 
         Trigger.trigger(
           this,

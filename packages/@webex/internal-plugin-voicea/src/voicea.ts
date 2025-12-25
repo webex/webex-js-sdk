@@ -35,9 +35,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private hasSubscribedToEvents = false;
 
-  private vmcDeviceId?: string;
-
-  private hesiodLLMId?: string;
+  private captionServiceId?: string;
 
   private announceStatus: string;
 
@@ -49,6 +47,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private spokenLanguages: string[] = [];
 
+  private currentCaptionLanguage?: string;
+
   /**
    * @param {Object} e
    * @returns {undefined}
@@ -58,7 +58,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.seqNum = e.sequenceNumber + 1;
     switch (e.data.relayType) {
       case AIBRIDGE_RELAY_TYPES.VOICEA.ANNOUNCEMENT:
-        this.vmcDeviceId = e.headers.from;
+        this.onCaptionServiceIdUpdate(e.headers.from);
         this.announceStatus = ANNOUNCE_STATUS.JOINED;
         this.processAnnouncementMessage(e.data.voiceaPayload);
         break;
@@ -99,8 +99,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   public deregisterEvents() {
     this.areCaptionsEnabled = false;
-    this.vmcDeviceId = undefined;
-    this.hesiodLLMId = undefined;
+    this.captionServiceId = undefined;
     // @ts-ignore
     this.webex.internal.llm.off('event:relay.event', this.eventProcessor);
     this.hasSubscribedToEvents = false;
@@ -108,6 +107,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
     this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
     this.currentSpokenLanguage = undefined;
+    this.currentCaptionLanguage = undefined;
   }
 
   /**
@@ -118,12 +118,12 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     super(...args);
     this.seqNum = 1;
     this.areCaptionsEnabled = false;
-    this.vmcDeviceId = undefined;
-    this.hesiodLLMId = undefined;
+    this.captionServiceId = undefined;
     this.announceStatus = ANNOUNCE_STATUS.IDLE;
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
     this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
     this.currentSpokenLanguage = DEFAULT_SPOKEN_LANGUAGE;
+    this.currentCaptionLanguage = undefined;
   }
 
   /**
@@ -267,8 +267,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         // @ts-ignore
         route: this.webex.internal.llm.getBinding(),
       },
-      // If hesiodLLMId exists, send it as the 'to' header; otherwise keep headers empty.
-      headers: this.hesiodLLMId ? {to: this.hesiodLLMId} : {},
+      // If captionServiceId exists, send it as the 'to' header; otherwise keep headers empty.
+      headers: this.captionServiceId ? {to: this.captionServiceId} : {},
       data: {
         clientPayload: {
           version: 'v2',
@@ -324,7 +324,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         route: this.webex.internal.llm.getBinding(),
       },
       headers: {
-        to: this.vmcDeviceId,
+        to: this.captionServiceId,
       },
       data: {
         clientPayload: {
@@ -336,6 +336,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       },
       trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
     });
+    this.currentCaptionLanguage = languageCode;
+
     this.seqNum += 1;
   };
 
@@ -543,11 +545,18 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   /**
    * In meeting Spoken Language changed event
-   * @param {string} hesiodLLMId
+   * @param {string} serviceId
    * @returns {void}
    */
-  public onHesiodLLMIdUpdate = (hesiodLLMId: string): void => {
-    this.hesiodLLMId = hesiodLLMId;
+  public onCaptionServiceIdUpdate = (serviceId: string): void => {
+    if (!serviceId) {
+      return;
+    }
+    if (this.captionServiceId !== serviceId && this.currentCaptionLanguage) {
+      // if service id value has changed and the translation language has been set, client needs to resend the translator language message to the LLM.
+      this.requestLanguage(serviceId);
+    }
+    this.captionServiceId = serviceId;
   };
 
   /**
