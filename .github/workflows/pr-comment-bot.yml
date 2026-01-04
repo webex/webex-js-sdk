@@ -1,0 +1,252 @@
+name: PR Changelog Comment Bot
+run-name: ${{ github.actor }} triggered PR comment bot
+
+on:
+  workflow_dispatch:  # ADD THIS - allows manual trigger
+    inputs:
+      test_version:
+        description: 'Test version number (e.g., 3.3.1)'
+        required: false
+        default: '3.3.1'
+  workflow_run:
+    workflows: ["Deploy CD"]
+    types:
+      - completed
+    branches:
+      - next
+
+jobs:
+  comment-on-prs:
+    name: Comment on Merged PRs
+    runs-on: ubuntu-latest
+    # Only run if the deploy workflow completed successfully OR if manually triggered
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history to find commits
+      
+      - name: Setup Node
+        uses: actions/setup-node@v3.7.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+      
+      - name: Install Dependencies
+        run: yarn install --frozen-lockfile
+      
+      - name: Build Tools
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        run: yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
+      
+      - name: Get Version Information
+        id: version-info
+        run: |
+          # For manual testing, use the input version
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.test_version }}"
+            echo "🧪 TEST MODE: Using manual version ${VERSION}"
+          else
+            # Production mode: get real version from package-tools
+            yarn ws:tools
+            VERSION=$(yarn package-tools sync --tag next --packages webex | awk '{print $3}' | tr -d '%')
+            echo "📦 PRODUCTION MODE: Detected version ${VERSION}"
+          fi
+          
+          echo "version=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "version_number=${VERSION}" >> $GITHUB_OUTPUT
+          
+          # Get the previous tag to compare
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+          echo "previous_tag=${PREVIOUS_TAG}" >> $GITHUB_OUTPUT
+          
+          echo "📦 Current version: v${VERSION}"
+          echo "📌 Previous tag: ${PREVIOUS_TAG}"
+      
+      - name: Get Merged PRs and Packages
+        id: get-prs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ steps.version-info.outputs.version }}';
+            const previousTag = '${{ steps.version-info.outputs.previous_tag }}';
+            const versionNumber = '${{ steps.version-info.outputs.version_number }}';
+            
+            console.log(`Looking for PRs between ${previousTag} and ${version}`);
+            
+            // Get commits since the last tag
+            let commits = [];
+            try {
+              if (previousTag) {
+                const compareResult = await github.rest.repos.compareCommitsWithBasehead({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  basehead: `${previousTag}...${context.sha}`
+                });
+                commits = compareResult.data.commits;
+              } else {
+                // If no previous tag, get recent commits
+                const commitsResult = await github.rest.repos.listCommits({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  sha: context.sha,
+                  per_page: 50
+                });
+                commits = commitsResult.data;
+              }
+            } catch (error) {
+              console.log('Error getting commits:', error.message);
+              return { prs: [], packages: [], commits: [] };
+            }
+            
+            console.log(`Found ${commits.length} commits`);
+            
+            // Extract PR numbers from commit messages
+            const prNumbers = new Set();
+            const commitData = [];
+            
+            for (const commit of commits) {
+              const message = commit.commit.message;
+              const prMatch = message.match(/#(\d+)/g);
+              
+              if (prMatch) {
+                prMatch.forEach(pr => {
+                  const prNum = pr.replace('#', '');
+                  prNumbers.add(prNum);
+                });
+              }
+              
+              // Store commit info for changelog
+              commitData.push({
+                sha: commit.sha.substring(0, 7),
+                message: message.split('\n')[0],
+                fullSha: commit.sha
+              });
+            }
+            
+            console.log(`Found ${prNumbers.size} unique PRs: ${Array.from(prNumbers).join(', ')}`);
+            
+            // Get list of published packages from the deploy workflow
+            const packages = ['webex', '@webex/plugin-meetings', '@webex/calling'];
+            
+            core.setOutput('pr_numbers', JSON.stringify(Array.from(prNumbers)));
+            core.setOutput('packages', JSON.stringify(packages));
+            core.setOutput('commits', JSON.stringify(commitData));
+            core.setOutput('commit_count', commits.length.toString());
+            
+            return { 
+              prs: Array.from(prNumbers), 
+              packages: packages,
+              commits: commitData 
+            };
+      
+      - name: Post Comments on PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ steps.version-info.outputs.version }}';
+            const versionNumber = '${{ steps.version-info.outputs.version_number }}';
+            const prNumbers = JSON.parse('${{ steps.get-prs.outputs.pr_numbers }}');
+            const packages = JSON.parse('${{ steps.get-prs.outputs.packages }}');
+            const commits = JSON.parse('${{ steps.get-prs.outputs.commits }}');
+            const commitCount = '${{ steps.get-prs.outputs.commit_count }}';
+            
+            console.log(`Posting comments to ${prNumbers.length} PRs`);
+            
+            if (prNumbers.length === 0) {
+              console.log('No PRs found to comment on');
+              return;
+            }
+            
+            // Get the first commit hash for the changelog link
+            const firstCommitHash = commits.length > 0 ? commits[0].fullSha : '';
+            
+            // Build the changelog URL
+            const changelogUrl = `https://webex.github.io/webex-js-sdk/changelog/?stable_version=${versionNumber}${firstCommitHash ? '&commitHash=' + firstCommitHash.substring(0, 7) : ''}`;
+            
+            // Build the package list markdown
+            const packageList = packages.slice(0, 5).map(p => `\`${p}\``).join(', ');
+            const morePackages = packages.length > 5 ? ` and ${packages.length - 5} more` : '';
+            
+            // Create the comment body
+            const commentBody = `## 🎉 Your changes are now available!
+
+**Released in:** [\`${version}\`](https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/${version})
+**Packages updated:** ${packageList}${morePackages}
+
+📖 **[View full changelog →](${changelogUrl})**
+
+This release includes **${commitCount} commit${commitCount !== '1' ? 's' : ''}** across the SDK. Thank you for your contribution!
+
+---
+<sub>🤖 This is an automated message. For questions, please refer to the [documentation](https://github.com/${context.repo.owner}/${context.repo.repo}#readme).</sub>`;
+            
+            // Post comment on each PR
+            for (const prNumber of prNumbers) {
+              try {
+                console.log(`Commenting on PR #${prNumber}`);
+                
+                // Check if PR exists and is merged
+                let pr;
+                try {
+                  pr = await github.rest.pulls.get({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: parseInt(prNumber)
+                  });
+                } catch (error) {
+                  console.log(`PR #${prNumber} not found or error: ${error.message}`);
+                  continue;
+                }
+                
+                if (!pr.data.merged_at) {
+                  console.log(`PR #${prNumber} is not merged, skipping`);
+                  continue;
+                }
+                
+                // Check if we've already commented (to avoid duplicates)
+                const existingComments = await github.rest.issues.listComments({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: parseInt(prNumber)
+                });
+                
+                const botCommentExists = existingComments.data.some(comment => 
+                  comment.user.type === 'Bot' && 
+                  comment.body.includes('Your changes are now available') &&
+                  comment.body.includes(version)
+                );
+                
+                if (botCommentExists) {
+                  console.log(`Already commented on PR #${prNumber} for version ${version}`);
+                  continue;
+                }
+                
+                // Post the comment
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: parseInt(prNumber),
+                  body: commentBody
+                });
+                
+                console.log(`✅ Successfully commented on PR #${prNumber}`);
+              } catch (error) {
+                console.error(`Failed to comment on PR #${prNumber}:`, error.message);
+              }
+            }
+            
+            console.log('✨ Finished posting comments!');
+      
+      - name: Summary
+        run: |
+          echo "### 📊 Bot Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.version-info.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**PRs Notified:** ${{ steps.get-prs.outputs.pr_numbers }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commits:** ${{ steps.get-prs.outputs.commit_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 [View Changelog](https://webex.github.io/webex-js-sdk/changelog/?stable_version=${{ steps.version-info.outputs.version_number }})" >> $GITHUB_STEP_SUMMARY
+
