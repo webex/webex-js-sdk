@@ -171,17 +171,19 @@ jobs:
             const morePackages = packages.length > 5 ? ` and ${packages.length - 5} more` : '';
             
             // Create the comment body
-            const commentBody = `## 🎉 Your changes are now available!
-
-**Released in:** [\`${version}\`](https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/${version})
-**Packages updated:** ${packageList}${morePackages}
-
-📖 **[View full changelog →](${changelogUrl})**
-
-This release includes **${commitCount} commit${commitCount !== '1' ? 's' : ''}** across the SDK. Thank you for your contribution!
-
----
-<sub>🤖 This is an automated message. For questions, please refer to the [documentation](https://github.com/${context.repo.owner}/${context.repo.repo}#readme).</sub>`;
+            const commentBody = [
+              '## 🎉 Your changes are now available!',
+              '',
+              `**Released in:** [\`${version}\`](https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/${version})`,
+              `**Packages updated:** ${packageList}${morePackages}`,
+              '',
+              `📖 **[View full changelog →](${changelogUrl})**`,
+              '',
+              `This release includes **${commitCount} commit${commitCount !== '1' ? 's' : ''}** across the SDK. Thank you for your contribution!`,
+              '',
+              '---',
+              `<sub>🤖 This is an automated message. For questions, please refer to the [documentation](https://github.com/${context.repo.owner}/${context.repo.repo}#readme).</sub>`
+            ].join('\n');
             
             // Post comment on each PR
             for (const prNumber of prNumbers) {
