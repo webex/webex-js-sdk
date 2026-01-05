@@ -89,4 +89,9 @@ describe('LocusRouteTokenInterceptor', () => {
     interceptor.updateToken(TEST_LOCUS_ID, 'null');
     assert.isUndefined(interceptor.getToken(TEST_LOCUS_ID));
   });
+
+  it('should delete token when updateToken called with null', () => {
+    interceptor.updateToken(TEST_LOCUS_ID, null);
+    assert.isUndefined(interceptor.getToken(TEST_LOCUS_ID));
+  });
 });

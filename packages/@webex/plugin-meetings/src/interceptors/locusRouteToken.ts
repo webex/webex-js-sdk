@@ -66,7 +66,7 @@ export default class LocusRouteTokenInterceptor extends Interceptor {
    * @returns {void}
    */
   updateToken(locusId, token) {
-    if (token === 'null' || !token) {
+    if (token === 'null' || token === null) {
       delete ROUTE_TOKEN[locusId];
     } else {
       ROUTE_TOKEN[locusId] = token;
