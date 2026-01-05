@@ -177,11 +177,13 @@ export default class TaskManager extends EventEmitter {
    * Map WebSocket CC_EVENTS to state machine TaskEvent
    * @param ccEvent - The CC_EVENT type from WebSocket
    * @param payload - The event payload
+   * @param agentId - Optional agent ID for state detection (needed for HYDRATE)
    * @returns TaskEventPayload for state machine or null if no mapping
    */
   private static mapEventToTaskStateMachineEvent(
     ccEvent: CC_EVENTS,
-    payload: WebSocketPayload
+    payload: WebSocketPayload,
+    agentId?: string
   ): TaskEventPayload | null {
     const mediaResourceId =
       payload.mediaResourceId ||
@@ -196,7 +198,8 @@ export default class TaskManager extends EventEmitter {
         return {type: TaskEvent.TASK_OFFERED, taskData: payload};
 
       case CC_EVENTS.AGENT_CONTACT: // AgentContact -> HYDRATE
-        return {type: TaskEvent.HYDRATE, taskData: payload};
+        // Include agentId for state detection (e.g., checking isWrapUp in participant data)
+        return {type: TaskEvent.HYDRATE, taskData: payload, agentId};
 
       case CC_EVENTS.AGENT_OFFER_CONSULT: // AgentOfferConsult -> OFFER_CONSULT
         return {
@@ -296,6 +299,25 @@ export default class TaskManager extends EventEmitter {
 
       case CC_EVENTS.AGENT_WRAPPEDUP:
         return {type: TaskEvent.WRAPUP_COMPLETE, taskData: payload};
+
+      // Conference events - these trigger state machine transition to CONFERENCING
+      case CC_EVENTS.AGENT_CONSULT_CONFERENCED:
+      case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE:
+        return {type: TaskEvent.CONFERENCE_START, taskData: payload};
+
+      case CC_EVENTS.AGENT_CONSULT_CONFERENCE_FAILED:
+        return {type: TaskEvent.CONFERENCE_FAILED, reason: payload.reason, taskData: payload};
+
+      case CC_EVENTS.AGENT_CONSULT_CONFERENCE_ENDED:
+        return {type: TaskEvent.CONFERENCE_END, taskData: payload};
+
+      case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE:
+        // Use PARTICIPANT_LEAVE instead of CONFERENCE_END
+        // The state machine will determine if conference should end based on agent count
+        return {type: TaskEvent.PARTICIPANT_LEAVE, taskData: payload};
+
+      case CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED:
+        return {type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS, taskData: payload};
 
       default:
         // Not all events need state machine mapping
@@ -434,7 +456,8 @@ export default class TaskManager extends EventEmitter {
         : message.data;
     const stateMachineEvent = TaskManager.mapEventToTaskStateMachineEvent(
       eventType,
-      adjustedPayload
+      adjustedPayload,
+      this.agentId
     );
 
     LoggerProxy.info(`Handling task event ${eventType}`, {

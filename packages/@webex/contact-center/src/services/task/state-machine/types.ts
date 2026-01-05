@@ -40,6 +40,8 @@ export interface UIControlConfig {
   voiceVariant?: VoiceVariant;
   /** Whether recording controls should be shown for this task */
   isRecordingEnabled: boolean;
+  /** Current agent ID for ownership checks (transfer conference) */
+  agentId?: string;
 }
 
 /**
@@ -75,9 +77,24 @@ export interface TaskContext {
   transferInitiated: boolean;
   conferenceInitiated: boolean;
   consultInitiator: boolean;
+  exitingConference: boolean;
   consultDestination: string | null;
   consultDestinationType: DestinationType | null;
   consultDestinationAgentJoined: boolean;
+
+  /**
+   * Indicates if the consult call leg is currently on hold.
+   * When true, the agent is talking on the main call and the consult is held.
+   * When false (during CONSULTING state), the agent is on the consult call and main call is held.
+   * This flag is derived from findHoldStatus() per widgets-util-logic.md
+   */
+  consultCallHeld: boolean;
+
+  /**
+   * Indicates if the consult has been fully established (both parties connected).
+   * Used to determine UI control state during consulting scenarios.
+   */
+  consultEstablished: boolean;
 
   // Recording tracking derived from task data
   recordingControlsAvailable: boolean;
@@ -104,7 +121,7 @@ interface TaskEventPayloadMap {
   [TaskEvent.OFFER]: BaseEvent<TaskEvent.OFFER> & {taskData: TaskData};
   [TaskEvent.OFFER_CONTACT]: BaseEvent<TaskEvent.OFFER_CONTACT> & {taskData: TaskData};
   [TaskEvent.OFFER_CONSULT]: BaseEvent<TaskEvent.OFFER_CONSULT> & {taskData: TaskData};
-  [TaskEvent.HYDRATE]: BaseEvent<TaskEvent.HYDRATE> & {taskData: TaskData};
+  [TaskEvent.HYDRATE]: BaseEvent<TaskEvent.HYDRATE> & {taskData: TaskData; agentId?: string};
   [TaskEvent.ACCEPT]: BaseEvent<TaskEvent.ACCEPT>;
   [TaskEvent.ACCEPT_INITIATED]: BaseEvent<TaskEvent.ACCEPT_INITIATED>;
   [TaskEvent.DECLINE]: BaseEvent<TaskEvent.DECLINE>;
@@ -150,17 +167,36 @@ interface TaskEventPayloadMap {
   [TaskEvent.MERGE_TO_CONFERENCE]: BaseEvent<TaskEvent.MERGE_TO_CONFERENCE>;
   [TaskEvent.CONFERENCE_START]: BaseEvent<TaskEvent.CONFERENCE_START> & {
     participants?: ConferenceParticipant[];
+    taskData?: TaskData;
   };
   [TaskEvent.CONFERENCE_FAILED]: BaseEvent<TaskEvent.CONFERENCE_FAILED> & {
     reason?: string;
+    taskData?: TaskData;
   };
-  [TaskEvent.CONFERENCE_END]: BaseEvent<TaskEvent.CONFERENCE_END>;
+  [TaskEvent.CONFERENCE_END]: BaseEvent<TaskEvent.CONFERENCE_END> & {taskData?: TaskData};
   [TaskEvent.TRANSFER_CONFERENCE]: BaseEvent<TaskEvent.TRANSFER_CONFERENCE> & {agentId?: string};
   [TaskEvent.PARTICIPANT_JOIN]: BaseEvent<TaskEvent.PARTICIPANT_JOIN> & {
     participant: ConferenceParticipant;
   };
-  [TaskEvent.PARTICIPANT_LEAVE]: BaseEvent<TaskEvent.PARTICIPANT_LEAVE> & {participantId: string};
+  [TaskEvent.PARTICIPANT_LEAVE]: BaseEvent<TaskEvent.PARTICIPANT_LEAVE> & {
+    participantId?: string;
+    taskData?: TaskData;
+  };
   [TaskEvent.EXIT_CONFERENCE]: BaseEvent<TaskEvent.EXIT_CONFERENCE> & {agentId?: string};
+  [TaskEvent.EXIT_CONFERENCE_SUCCESS]: BaseEvent<TaskEvent.EXIT_CONFERENCE_SUCCESS> & {
+    taskData?: TaskData;
+  };
+  [TaskEvent.EXIT_CONFERENCE_FAILED]: BaseEvent<TaskEvent.EXIT_CONFERENCE_FAILED> & {
+    reason?: string;
+  };
+  [TaskEvent.TRANSFER_CONFERENCE_SUCCESS]: BaseEvent<TaskEvent.TRANSFER_CONFERENCE_SUCCESS> & {
+    taskData?: TaskData;
+  };
+  [TaskEvent.TRANSFER_CONFERENCE_FAILED]: BaseEvent<TaskEvent.TRANSFER_CONFERENCE_FAILED> & {
+    reason?: string;
+  };
+  [TaskEvent.SWITCH_TO_MAIN_CALL]: BaseEvent<TaskEvent.SWITCH_TO_MAIN_CALL>;
+  [TaskEvent.SWITCH_TO_CONSULT]: BaseEvent<TaskEvent.SWITCH_TO_CONSULT>;
   [TaskEvent.RECORDING_STARTED]: BaseEvent<TaskEvent.RECORDING_STARTED> & {taskData: TaskData};
   [TaskEvent.PAUSE_RECORDING]: BaseEvent<TaskEvent.PAUSE_RECORDING> & {taskData: TaskData};
   [TaskEvent.RESUME_RECORDING]: BaseEvent<TaskEvent.RESUME_RECORDING> & {taskData: TaskData};

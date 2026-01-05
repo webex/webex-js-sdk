@@ -144,12 +144,14 @@ describe('Task state machine', () => {
 
     it('handles CONTACT_ENDED by entering wrapping up before completion', () => {
       const service = startMachine();
-      const taskData = createTaskData();
+      // Primary agent (isConsulted: false) should go to WRAPPING_UP
+      const taskData = createTaskData({isConsulted: false} as any);
 
       service.send({type: TaskEvent.OFFER, taskData});
       service.send({type: TaskEvent.ASSIGN, taskData});
 
-      service.send({type: TaskEvent.CONTACT_ENDED});
+      // CONTACT_ENDED event must include taskData for shouldWrapUpForThisAgent check
+      service.send({type: TaskEvent.CONTACT_ENDED, taskData});
       expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
 
       service.send({type: TaskEvent.AUTO_WRAPUP});

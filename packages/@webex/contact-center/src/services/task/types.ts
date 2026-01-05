@@ -562,6 +562,30 @@ export enum TASK_EVENTS {
   TASK_PARTICIPANT_LEFT_FAILED = 'task:participantLeftFailed',
 
   /**
+   * Triggered when agent initiates exit from conference
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_EXIT_CONFERENCE, (task: ITask) => {
+   *   console.log('Exiting conference:', task.data.interactionId);
+   *   // Handle conference exit initiation
+   * });
+   * ```
+   */
+  TASK_EXIT_CONFERENCE = 'task:exitConference',
+
+  /**
+   * Triggered when agent initiates conference transfer
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_TRANSFER_CONFERENCE, (task: ITask) => {
+   *   console.log('Transferring conference:', task.data.interactionId);
+   *   // Handle conference transfer initiation
+   * });
+   * ```
+   */
+  TASK_TRANSFER_CONFERENCE = 'task:transferConference',
+
+  /**
    * Triggered when a contact is merged
    * @example
    * ```typescript
@@ -1084,6 +1108,8 @@ export type TaskUIControls = {
   transferConference: TaskUIControlState;
   mergeToConference: TaskUIControlState;
   wrapup: TaskUIControlState;
+  switchToMainCall: TaskUIControlState;
+  switchToConsult: TaskUIControlState;
 };
 
 /**

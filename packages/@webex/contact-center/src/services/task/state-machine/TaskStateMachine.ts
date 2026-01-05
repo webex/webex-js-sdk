@@ -10,6 +10,7 @@ import {TaskContext, TaskEventPayload, UIControlConfig} from './types';
 import {TaskState, TaskEvent} from './constants';
 import {actions, createInitialContext, TaskActionsMap} from './actions';
 import {DESTINATION_TYPE, TaskData} from '../types';
+import {getIsConferenceInProgress, getIsCustomerInCall} from '../TaskUtils';
 
 type TaskActionConfigMap = {[K in keyof typeof actions]: undefined};
 
@@ -39,6 +40,45 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
     event && typeof event === 'object' && 'taskData' in event
       ? (event as {taskData?: TaskData}).taskData
       : undefined;
+
+  const getSelfAgentId = (context: TaskContext, taskData?: TaskData): string | undefined =>
+    context.uiControlConfig.agentId ?? context.taskData?.agentId ?? taskData?.agentId;
+
+  const isSelfConsultingAgent = (context: TaskContext, taskData?: TaskData): boolean => {
+    const selfAgentId = getSelfAgentId(context, taskData);
+    if (!selfAgentId) return false;
+
+    return taskData?.consultingAgentId === selfAgentId;
+  };
+
+  /**
+   * Determines if this agent should enter WRAPPING_UP state.
+   * Priority: agentsPendingWrapUp > interaction.owner > isConsulted flag
+   */
+  const shouldWrapUpForThisAgent = (context: TaskContext, taskData?: TaskData): boolean => {
+    const selfAgentId = getSelfAgentId(context, taskData);
+    if (!selfAgentId) return false;
+
+    // Priority 1: Backend-provided list (most reliable)
+    const pending = taskData?.agentsPendingWrapUp;
+    if (Array.isArray(pending) && pending.length > 0) {
+      return pending.includes(selfAgentId);
+    }
+
+    // Priority 2: Current interaction owner should wrap
+    const interactionOwner = taskData?.interaction?.owner ?? context.taskData?.interaction?.owner;
+    if (interactionOwner) {
+      return selfAgentId === interactionOwner;
+    }
+
+    // Priority 3: Fallback to isConsulted (primary = !isConsulted should wrap)
+    const isConsulted = context.taskData?.isConsulted ?? taskData?.isConsulted;
+    if (isConsulted === true) return false;
+    if (isConsulted === false) return true;
+
+    // Unknown - safer to not wrap
+    return false;
+  };
 
   const getPrimaryMediaHoldFlag = (taskData?: TaskData | null): boolean | undefined => {
     if (!taskData) {
@@ -102,6 +142,9 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
       [TaskEvent.RECORDING_STARTED]: {
         actions: ['updateTaskData', 'emitTaskRecordingStarted'],
       },
+      // HYDRATE: Update task data from AgentContact event
+      // Note: State restoration with transitions is handled in IDLE state.
+      // This root-level handler is for when task is already in another state (just updates data).
       [TaskEvent.HYDRATE]: {
         actions: ['updateTaskData', 'emitTaskHydrate'],
       },
@@ -115,6 +158,80 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
     states: {
       [TaskState.IDLE]: {
         on: {
+          // HYDRATE: Restore state machine to correct state based on hydrated task data
+          // This handles page refresh/reconnection scenarios where task needs to be restored
+          // IMPORTANT: This MUST be in IDLE state (not root) because root-level events cannot
+          // transition to child states in XState
+          [TaskEvent.HYDRATE]: [
+            {
+              // If interaction is terminated, transition to WRAPPING_UP
+              guard: ({event}: {event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+
+                return taskData?.interaction?.isTerminated === true;
+              },
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskHydrate'],
+            },
+            {
+              // If interaction state is consulting, transition to CONSULTING
+              guard: ({event}: {event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+
+                return taskData?.interaction?.state === 'consulting';
+              },
+              target: TaskState.CONSULTING,
+              actions: ['updateTaskData', 'emitTaskHydrate'],
+            },
+            {
+              // If interaction state is hold, transition to HELD
+              guard: ({event}: {event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+
+                return taskData?.interaction?.state === 'hold';
+              },
+              target: TaskState.HELD,
+              actions: ['updateTaskData', 'emitTaskHydrate'],
+            },
+            {
+              // If interaction state is connected, transition to CONNECTED
+              guard: ({event}: {event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+
+                return taskData?.interaction?.state === 'connected';
+              },
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'emitTaskHydrate'],
+            },
+            {
+              // If conferencing (check participants count >= 2)
+              guard: ({event}: {event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+                if (!taskData) return false;
+                // Use the same logic as getIsConferenceInProgress
+                const mainCallId =
+                  taskData.interaction?.mainInteractionId || taskData.interactionId;
+                const media = taskData.interaction?.media?.[mainCallId];
+                const participants = taskData.interaction?.participants;
+                if (!media?.participants || !participants) return false;
+                let agentCount = 0;
+                for (const pId of media.participants) {
+                  const p = participants[pId];
+                  if (p && p.pType !== 'Customer' && p.pType !== 'Supervisor' && !p.hasLeft) {
+                    agentCount += 1;
+                  }
+                }
+
+                return agentCount >= 2;
+              },
+              target: TaskState.CONFERENCING,
+              actions: ['updateTaskData', 'emitTaskHydrate'],
+            },
+            {
+              // Default: just update data, stay in IDLE (will get proper event later)
+              actions: ['updateTaskData', 'emitTaskHydrate'],
+            },
+          ],
           // AgentContactReserved (applicable for direct incoming/consult/transfer/outdial)
           [TaskEvent.TASK_INCOMING]: {
             target: TaskState.OFFERED,
@@ -275,15 +392,44 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: ['setConsultInitiator', 'setConsultDestination'],
           },
           // AgentConsultCreated event confirms the consult request
-          [TaskEvent.CONSULT_CREATED]: {
-            target: TaskState.CONSULTING,
-            actions: ['updateTaskData', 'setConsultInitiator', 'emitTaskConsultCreated'],
-          },
+          [TaskEvent.CONSULT_CREATED]: [
+            {
+              // Normal (non-conference) consult flow can proceed from CONNECTED.
+              // If conference is in progress, do not transition here (conference consult logic lives in CONFERENCING).
+              guard: ({event}: {event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+                if (!taskData) return false;
+
+                return !getIsConferenceInProgress(taskData);
+              },
+              target: TaskState.CONSULTING,
+              actions: ['updateTaskData', 'setConsultInitiator', 'emitTaskConsultCreated'],
+            },
+            {
+              actions: ['updateTaskData'],
+            },
+          ],
           // AgentConsultAccepted for instant consult scenarios (direct assign of receiver)
-          [TaskEvent.CONSULT_ACCEPTED]: {
-            target: TaskState.CONSULTING,
-            actions: ['updateTaskData', 'handleConsultAccept', 'emitTaskConsultAccepted'],
-          },
+          [TaskEvent.CONSULT_ACCEPTED]: [
+            {
+              guard: ({event}: {event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+                if (!taskData) return false;
+
+                return !getIsConferenceInProgress(taskData);
+              },
+              target: TaskState.CONSULTING,
+              actions: [
+                'updateTaskData',
+                'setConsultInitiator',
+                'handleConsultAccept',
+                'emitTaskConsultAccepted',
+              ],
+            },
+            {
+              actions: ['updateTaskData'],
+            },
+          ],
           // Click of the transfer button
           [TaskEvent.TRANSFER]: {
             target: TaskState.TRANSFER_INITIATING,
@@ -302,7 +448,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 return wrapFromPayload || Boolean(context.consultInitiator);
               },
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup', 'finalizeTransfer'],
             },
             {
               target: TaskState.CONNECTED,
@@ -313,13 +459,39 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: ['updateTaskData', 'finalizeTransfer'],
           },
           // AgentContactEnded Event
-          [TaskEvent.CONTACT_ENDED]: {
-            target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
-          },
+          // FIX: Add guards to prevent consulted agents from going to WRAPPING_UP
+          // Only primary agent (original call owner) should wrapup
+          // Consulted agents should terminate (no wrapup)
+          [TaskEvent.CONTACT_ENDED]: [
+            {
+              // If conference is still active (2+ agents remain), transition back to CONFERENCING
+              // This handles the race condition where agent goes to CONNECTED via CONFERENCE_END
+              // but conference actually still has participants
+              guard: ({event}: {event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+                if (!taskData?.interaction) return false;
+
+                return getIsConferenceInProgress(taskData);
+              },
+              target: TaskState.CONFERENCING,
+              actions: ['updateTaskData', 'emitTaskConferenceStart'],
+            },
+            {
+              // Only agents explicitly listed by backend should wrap.
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) =>
+                shouldWrapUpForThisAgent(context, (event as {taskData?: TaskData}).taskData),
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
+            },
+            {
+              // Consulted agent → TERMINATED (no wrapup)
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
+            },
+          ],
           [TaskEvent.END]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
+            actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
           },
           [TaskEvent.PAUSE_RECORDING]: {
             actions: ['updateTaskData', 'setRecordingState', 'emitTaskRecordingPaused'],
@@ -380,7 +552,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 return Boolean(taskData?.wrapUpRequired || context.consultInitiator);
               },
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup', 'finalizeTransfer'],
             },
             {
               target: TaskState.CONNECTED,
@@ -390,13 +562,32 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.TRANSFER_FAILED]: {
             actions: ['updateTaskData', 'finalizeTransfer'],
           },
-          [TaskEvent.CONTACT_ENDED]: {
-            target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
-          },
+          // FIX: Add guards to prevent consulted agents from going to WRAPPING_UP (same as CONNECTED)
+          [TaskEvent.CONTACT_ENDED]: [
+            {
+              guard: ({event}: {event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+                if (!taskData?.interaction) return false;
+
+                return getIsConferenceInProgress(taskData);
+              },
+              target: TaskState.CONFERENCING,
+              actions: ['updateTaskData', 'emitTaskConferenceStart'],
+            },
+            {
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) =>
+                shouldWrapUpForThisAgent(context, (event as {taskData?: TaskData}).taskData),
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
+            },
+          ],
           [TaskEvent.END]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
+            actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
           },
         },
       },
@@ -427,20 +618,53 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: ['updateTaskData', 'handleConsultFailed'],
           },
           // AgentConsultCreated
-          [TaskEvent.CONSULT_CREATED]: {
-            target: TaskState.CONSULTING,
-            actions: ['updateTaskData', 'setConsultInitiator', 'emitTaskConsultCreated'],
-          },
+          [TaskEvent.CONSULT_CREATED]: [
+            {
+              // Only transition if this agent is the consulting agent OR is being consulted.
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+                const selfAgentId = getSelfAgentId(context, taskData);
+                const isConsultingAgent =
+                  Boolean(selfAgentId) && taskData?.consultingAgentId === selfAgentId;
+                const isBeingConsulted = taskData?.isConsulted === true;
+
+                return isConsultingAgent || isBeingConsulted;
+              },
+              target: TaskState.CONSULTING,
+              actions: ['updateTaskData', 'setConsultInitiator', 'emitTaskConsultCreated'],
+            },
+            {
+              actions: ['updateTaskData'],
+            },
+          ],
           // AgentConsulting
+          // NOTE: Don't set consultDestinationAgentJoined here - wait for CONSULT_ACCEPTED
           [TaskEvent.CONSULT_SUCCESS]: {
             target: TaskState.CONSULTING,
-            actions: ['handleConsultCompletion'],
+            actions: ['updateTaskData', 'setConsultInitiator'],
           },
           // AgentConsultFailed, API Failures, AgentCtqFailed
+          // IMPORTANT: Must check conference state to return to correct state
           [TaskEvent.CONSULT_FAILED]: [
             {
               guard: isConsultQueueFlow,
               target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'handleConsultFailed'],
+            },
+            {
+              // If conference is still active, go back to CONFERENCING
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+                const eventTaskData = (event as {taskData?: TaskData}).taskData;
+                const conferenceActiveInEvent = eventTaskData
+                  ? getIsConferenceInProgress(eventTaskData)
+                  : false;
+                const conferenceActiveInContext = context.taskData
+                  ? getIsConferenceInProgress(context.taskData)
+                  : false;
+
+                return conferenceActiveInEvent || conferenceActiveInContext;
+              },
+              target: TaskState.CONFERENCING,
               actions: ['updateTaskData', 'handleConsultFailed'],
             },
             {
@@ -487,20 +711,68 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
         on: {
           // AgentConsultingActive updates consulted agent arrival
           [TaskEvent.CONSULTING_ACTIVE]: {
-            actions: ['updateTaskData', 'setConsultAgentJoined', 'emitTaskConsulting'],
+            actions: [
+              'updateTaskData',
+              'setConsultAgentJoined',
+              'setConsultEstablished',
+              'emitTaskConsulting',
+            ],
           },
+
+          // AgentConsultAccepted - consulted agent accepted the consult
+          // This sets consultDestinationAgentJoined to enable merge/transfer buttons
+          [TaskEvent.CONSULT_ACCEPTED]: {
+            actions: ['updateTaskData', 'handleConsultAccept', 'emitTaskConsultAccepted'],
+          },
+
           // AgentConsultEnded
+          // If consult initiator AND was in conference, go back to CONFERENCING
+          // Otherwise, initiator goes to HELD, consulted agent goes to TERMINATED
           [TaskEvent.CONSULT_END]: [
             {
+              // Initiator in conference → back to CONFERENCING
+              // Check both event and context taskData (event may not have conference info)
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+                if (!context.consultInitiator) return false;
+                const eventTaskData = (event as {taskData?: TaskData}).taskData;
+                const conferenceInEvent = eventTaskData && getIsConferenceInProgress(eventTaskData);
+                const conferenceInContext =
+                  context.taskData && getIsConferenceInProgress(context.taskData);
+
+                return conferenceInEvent || conferenceInContext;
+              },
+              target: TaskState.CONFERENCING,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+            {
+              // Initiator (no conference) → HELD
               guard: ({context}: {context: TaskContext}) => Boolean(context.consultInitiator),
               target: TaskState.HELD,
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
             {
+              // Consulted agent → TERMINATED
               target: TaskState.TERMINATED,
               actions: ['updateTaskData', 'clearResources'],
             },
           ],
+
+          // These allow toggling between consult and main call
+          [TaskEvent.SWITCH_TO_MAIN_CALL]: {
+            actions: ['handleSwitchToMainCall'],
+          },
+          [TaskEvent.SWITCH_TO_CONSULT]: {
+            actions: ['handleSwitchToConsult'],
+          },
+
+          // Hold/Unhold while consulting (switches between legs)
+          [TaskEvent.HOLD_SUCCESS]: {
+            actions: ['updateTaskData', 'setHoldState', 'setConsultCallHeld'],
+          },
+          [TaskEvent.UNHOLD_SUCCESS]: {
+            actions: ['updateTaskData', 'setHoldState', 'clearConsultCallHeld'],
+          },
+
           // Transfer buttons while in consulting
           [TaskEvent.TRANSFER]: {
             target: TaskState.TRANSFER_INITIATING,
@@ -518,7 +790,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 return Boolean(taskData?.wrapUpRequired || context.consultInitiator);
               },
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup', 'finalizeTransfer'],
             },
             {
               target: TaskState.CONNECTED,
@@ -528,6 +800,45 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.TRANSFER_FAILED]: {
             actions: ['updateTaskData', 'finalizeTransfer'],
           },
+
+          // Transfer conference while consulting (transfers ownership to consulted agent)
+          // This is allowed when consulting from an active conference
+          [TaskEvent.TRANSFER_CONFERENCE]: {
+            actions: ['handleTransferInit', 'emitTaskTransferConference'],
+          },
+          [TaskEvent.TRANSFER_CONFERENCE_SUCCESS]: [
+            {
+              // Transferring agent goes to WRAPPING_UP
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) =>
+                shouldWrapUpForThisAgent(context, (event as {taskData?: TaskData}).taskData),
+              target: TaskState.WRAPPING_UP,
+              actions: [
+                'updateTaskData',
+                'markEnded',
+                'clearConsultState',
+                'handleTransferConferenceSuccess',
+                'emitTaskWrapup',
+              ],
+            },
+            {
+              // Non-transferring agent stays in conference or goes to connected
+              guard: ({event}: {event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+
+                return taskData ? getIsConferenceInProgress(taskData) : false;
+              },
+              target: TaskState.CONFERENCING,
+              actions: ['updateTaskData', 'clearConsultState', 'handleTransferConferenceSuccess'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'clearConsultState', 'handleTransferConferenceSuccess'],
+            },
+          ],
+          [TaskEvent.TRANSFER_CONFERENCE_FAILED]: {
+            actions: ['handleTransferConferenceFailed'],
+          },
+
           // AgentContactAssigned - receiver side becomes connected to customer
           [TaskEvent.ASSIGN]: {
             target: TaskState.CONNECTED,
@@ -538,16 +849,16 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: ({context}: {context: TaskContext}) => Boolean(context.consultInitiator),
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
             },
             {
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
             },
           ],
           [TaskEvent.END]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
+            actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
           },
           // Local intermediate state for merge to conference button click
           [TaskEvent.START_CONFERENCE]: {
@@ -561,7 +872,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentConsultConferenced, ParticipantJoinedConference
           [TaskEvent.CONFERENCE_START]: {
             target: TaskState.CONFERENCING,
-            actions: ['handleConferenceStarted'],
+            actions: ['handleConferenceStarted', 'clearConsultState'],
           },
           // AgentConsultConferenceFailed
           [TaskEvent.CONFERENCE_FAILED]: {
@@ -577,12 +888,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentBlindTransferred, AgentVTeamTransferred, AgentConsultTransferred
           [TaskEvent.TRANSFER_SUCCESS]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
+            actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup', 'finalizeTransfer'],
           },
           // AgentBlindTransferFailed, AgentVTeamTransferFailed, AgentConsultTransferFailed
           [TaskEvent.TRANSFER_FAILED]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd', 'finalizeTransfer'],
+            actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup', 'finalizeTransfer'],
           },
         },
       },
@@ -604,59 +915,279 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.CONFERENCING]: {
         on: {
+          // Start a new consult from within an active conference
+          // Per task-refactor-state-machine-conference.md: CONFERENCING + CONSULTING composite
           [TaskEvent.CONSULT]: {
             target: TaskState.CONSULT_INITIATING,
             actions: ['setConsultInitiator', 'setConsultDestination'],
           },
-          // ParticpantLeftConference (host leaves ends conference)
-          [TaskEvent.EXIT_CONFERENCE]: [
+
+          // AgentConsultCreated - new consult started from conference
+          // IMPORTANT: The agent who INITIATED the consult transitions via CONSULT_INITIATING state,
+          // NOT through this handler. This handler is for OTHER agents in the conference.
+          // Flow for initiator: CONFERENCING -> CONSULT -> CONSULT_INITIATING -> (CONSULT_CREATED) -> CONSULTING
+          // Only the consult initiator transitions to CONSULTING; others stay in CONFERENCING
+          [TaskEvent.CONSULT_CREATED]: [
             {
-              guard: ({context}: {context: TaskContext}) => Boolean(context.consultInitiator),
-              target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
+              // Initiator: use consultingAgentId if available, else local flag
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+                if (taskData?.isConsulted === true) return false;
+                const didInitiate = taskData?.consultingAgentId
+                  ? isSelfConsultingAgent(context, taskData)
+                  : context.consultInitiator === true;
+
+                return didInitiate;
+              },
+              target: TaskState.CONSULTING,
+              actions: ['updateTaskData', 'emitTaskConsultCreated'],
             },
             {
-              target: TaskState.CONNECTED,
-              actions: ['clearConsultState'],
+              actions: ['updateTaskData'],
             },
           ],
-          // AgentConferenceTransferred
-          [TaskEvent.TRANSFER_CONFERENCE]: [
+
+          // Only the consult initiator transitions to CONSULTING on accept
+          [TaskEvent.CONSULT_ACCEPTED]: [
             {
-              guard: ({context}: {context: TaskContext}) => Boolean(context.consultInitiator),
-              target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+                if (taskData?.isConsulted === true) return false;
+                const didInitiate = taskData?.consultingAgentId
+                  ? isSelfConsultingAgent(context, taskData)
+                  : context.consultInitiator === true;
+
+                return didInitiate;
+              },
+              target: TaskState.CONSULTING,
+              actions: ['updateTaskData', 'handleConsultAccept', 'emitTaskConsultAccepted'],
             },
             {
-              target: TaskState.CONNECTED,
-              actions: ['clearConsultState'],
+              actions: ['updateTaskData'],
             },
           ],
-          // AgentConferenceEnded
-          [TaskEvent.CONFERENCE_END]: {
-            target: TaskState.CONNECTED,
-            actions: ['clearConsultState'],
+
+          [TaskEvent.PARTICIPANT_JOIN]: {
+            actions: ['handleParticipantJoined', 'emitTaskParticipantJoined'],
           },
+          // Participant leaves - downgrade to CONNECTED if < 2 agents remain
+          [TaskEvent.PARTICIPANT_LEAVE]: [
+            {
+              guard: ({event}: {event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+
+                return taskData ? !getIsConferenceInProgress(taskData) : false;
+              },
+              target: TaskState.CONNECTED,
+              actions: [
+                'updateTaskData',
+                'handleParticipantLeft',
+                'clearConsultState',
+                'emitTaskParticipantLeft',
+                'emitTaskConferenceEnded',
+              ],
+            },
+            {
+              actions: ['updateTaskData', 'handleParticipantLeft', 'emitTaskParticipantLeft'],
+            },
+          ],
+
+          // Exit conference - exitingConference flag distinguishes "I exited" vs broadcast
+          [TaskEvent.EXIT_CONFERENCE]: {
+            actions: ['setExitingConference', 'emitTaskExitConference'],
+          },
+          [TaskEvent.EXIT_CONFERENCE_SUCCESS]: [
+            {
+              // Other agents (not exiting, not wrapping) stay in CONFERENCING
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+                const conferenceActive = taskData ? getIsConferenceInProgress(taskData) : false;
+
+                return (
+                  conferenceActive &&
+                  !shouldWrapUpForThisAgent(context, taskData) &&
+                  !context.exitingConference
+                );
+              },
+              actions: ['updateTaskData', 'handleExitConferenceSuccess'],
+            },
+            {
+              // The agent who exited AND should wrap → WRAPPING_UP (primary agent)
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) =>
+                shouldWrapUpForThisAgent(context, (event as {taskData?: TaskData}).taskData),
+              target: TaskState.WRAPPING_UP,
+              actions: [
+                'updateTaskData',
+                'markEnded',
+                'clearConsultState',
+                'handleExitConferenceSuccess',
+                'emitTaskWrapup',
+              ],
+            },
+            {
+              // Non-primary agent who exited → TERMINATED (call cleared, no wrapup)
+              guard: ({context}: {context: TaskContext}) => context.exitingConference,
+              target: TaskState.TERMINATED,
+              actions: [
+                'updateTaskData',
+                'markEnded',
+                'clearConsultState',
+                'handleExitConferenceSuccess',
+                'emitTaskEnd',
+              ],
+            },
+            {
+              // Conference ended (< 2 agents) and agent shouldn't wrap → CONNECTED
+              // This is for when the last agent exits and conference downgrades
+              guard: ({event}: {event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+
+                return !getIsConferenceInProgress(taskData);
+              },
+              target: TaskState.CONNECTED,
+              actions: [
+                'updateTaskData',
+                'clearConsultState',
+                'handleExitConferenceSuccess',
+                'emitTaskConferenceEnded',
+              ],
+            },
+            {
+              // Fallback: Stay in CONFERENCING (safety net)
+              actions: ['updateTaskData', 'handleExitConferenceSuccess'],
+            },
+          ],
+          [TaskEvent.EXIT_CONFERENCE_FAILED]: {
+            actions: ['handleExitConferenceFailed'],
+          },
+
+          // Transfer conference - transfer ownership to another agent
+          // Per conference-spec.md: Only primary agent can transfer
+          // IMPORTANT: TRANSFER_CONFERENCE_SUCCESS may be broadcast to all agents.
+          // Remaining agents should STAY in CONFERENCING if conference is still active.
+          [TaskEvent.TRANSFER_CONFERENCE]: {
+            actions: ['handleTransferInit', 'emitTaskTransferConference'],
+          },
+          [TaskEvent.TRANSFER_CONFERENCE_SUCCESS]: [
+            {
+              // Non-transferring agents stay in CONFERENCING
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+                const conferenceActive = taskData ? getIsConferenceInProgress(taskData) : false;
+
+                return conferenceActive && !shouldWrapUpForThisAgent(context, taskData);
+              },
+              actions: ['updateTaskData', 'handleTransferConferenceSuccess'],
+            },
+            {
+              // The agent who transferred AND should wrap → WRAPPING_UP
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) =>
+                shouldWrapUpForThisAgent(context, (event as {taskData?: TaskData}).taskData),
+              target: TaskState.WRAPPING_UP,
+              actions: [
+                'updateTaskData',
+                'markEnded',
+                'clearConsultState',
+                'handleTransferConferenceSuccess',
+                'emitTaskWrapup',
+              ],
+            },
+            {
+              // Conference ended (< 2 agents) and agent shouldn't wrap → CONNECTED
+              guard: ({event}: {event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+
+                return !getIsConferenceInProgress(taskData);
+              },
+              target: TaskState.CONNECTED,
+              actions: [
+                'updateTaskData',
+                'clearConsultState',
+                'handleTransferConferenceSuccess',
+                'emitTaskConferenceEnded',
+              ],
+            },
+            {
+              // Fallback: Stay in CONFERENCING (safety net)
+              actions: ['updateTaskData', 'handleTransferConferenceSuccess'],
+            },
+          ],
+          [TaskEvent.TRANSFER_CONFERENCE_FAILED]: {
+            actions: ['handleTransferConferenceFailed'],
+          },
+
+          // Conference ends explicitly (AGENT_CONSULT_CONFERENCE_ENDED event)
+          // Per task-refactor-state-machine-conference.md: auto-downgrade when < 2 agents
+          // FIX: Add guard to stay in CONFERENCING if conference is still active (2+ agents)
+          [TaskEvent.CONFERENCE_END]: [
+            {
+              // If conference still has 2+ agents, stay in CONFERENCING (just update data)
+              guard: ({event}: {event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+                if (!taskData) return false;
+
+                return getIsConferenceInProgress(taskData);
+              },
+              actions: ['updateTaskData'],
+            },
+            {
+              // Conference truly ended (< 2 agents) - transition to CONNECTED
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConferenceEnded'],
+            },
+          ],
+
+          // CONTACT_ENDED in conference: stay if conference active + customer present
           [TaskEvent.CONTACT_ENDED]: [
             {
-              guard: ({context}: {context: TaskContext}) => Boolean(context.consultInitiator),
-              target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
+              // Stay if conference active AND customer still in call
+              guard: ({event}: {event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+                if (!taskData?.interaction) return false;
+                const mainCallId = taskData.interaction.mainInteractionId || taskData.interactionId;
+
+                return (
+                  getIsConferenceInProgress(taskData) &&
+                  getIsCustomerInCall(taskData.interaction, mainCallId)
+                );
+              },
+              actions: ['updateTaskData'],
             },
             {
+              // Stay if conference active and agent shouldn't wrap (edge case fallback)
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+                const taskData = (event as {taskData?: TaskData}).taskData;
+                const conferenceActive = taskData ? getIsConferenceInProgress(taskData) : false;
+
+                return conferenceActive && !shouldWrapUpForThisAgent(context, taskData);
+              },
+              actions: ['updateTaskData'],
+            },
+            {
+              // Owner should wrap
+              guard: ({context, event}: {context: TaskContext; event: TaskEventPayload}) =>
+                shouldWrapUpForThisAgent(context, (event as {taskData?: TaskData}).taskData),
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+            },
+            {
+              // Non-owner → CONNECTED (can continue call)
               target: TaskState.CONNECTED,
-              actions: ['clearConsultState'],
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConferenceEnded'],
             },
           ],
+
+          // End call - terminates entire conference for all participants
           [TaskEvent.END]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
+            actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
           },
         },
       },
 
       [TaskState.WRAPPING_UP]: {
-        entry: ['emitTaskEnd', 'emitTaskWrapup'],
+        // Only emit wrapup event on entry - task:end should only be emitted when COMPLETED
+        entry: ['emitTaskWrapup'],
         on: {
           // AgentWrapup Event
           [TaskEvent.WRAPUP]: {

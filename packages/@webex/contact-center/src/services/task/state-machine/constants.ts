@@ -3,6 +3,43 @@
  * These enums define the allowed states, events, and built-in action identifiers.
  */
 
+// ============================================
+// Conference Constants
+// ============================================
+
+/**
+ * Maximum number of participants allowed in a multi-party conference.
+ * Max 7 counted agents + 1 customer.
+ */
+export const MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE = 7;
+
+// ============================================
+// Participant Type Constants
+// ============================================
+
+/** Customer participant type */
+export const PARTICIPANT_TYPE_CUSTOMER = 'Customer';
+
+/** Supervisor participant type */
+export const PARTICIPANT_TYPE_SUPERVISOR = 'Supervisor';
+
+/** Virtual Voice Agent participant type */
+export const PARTICIPANT_TYPE_VVA = 'VVA';
+
+// ============================================
+// Media Type Constants
+// ============================================
+
+/** Media type for consult calls */
+export const MEDIA_TYPE_CONSULT = 'consult';
+
+/** Media type for main calls */
+export const MEDIA_TYPE_MAIN_CALL = 'mainCall';
+
+// ============================================
+// State Machine Enums
+// ============================================
+
 export enum TaskState {
   IDLE = 'IDLE',
   OFFERED = 'OFFERED',
@@ -77,9 +114,17 @@ export enum TaskEvent {
   CONFERENCE_FAILED = 'CONFERENCE_FAILED',
   CONFERENCE_END = 'CONFERENCE_END',
   TRANSFER_CONFERENCE = 'TRANSFER_CONFERENCE',
+  TRANSFER_CONFERENCE_SUCCESS = 'TRANSFER_CONFERENCE_SUCCESS',
+  TRANSFER_CONFERENCE_FAILED = 'TRANSFER_CONFERENCE_FAILED',
   PARTICIPANT_JOIN = 'PARTICIPANT_JOIN',
   PARTICIPANT_LEAVE = 'PARTICIPANT_LEAVE',
   EXIT_CONFERENCE = 'EXIT_CONFERENCE',
+  EXIT_CONFERENCE_SUCCESS = 'EXIT_CONFERENCE_SUCCESS',
+  EXIT_CONFERENCE_FAILED = 'EXIT_CONFERENCE_FAILED',
+
+  // Switch call events (for toggling between consult and main call)
+  SWITCH_TO_MAIN_CALL = 'SWITCH_TO_MAIN_CALL',
+  SWITCH_TO_CONSULT = 'SWITCH_TO_CONSULT',
 
   // Recording events
   RECORDING_STARTED = 'RECORDING_STARTED',

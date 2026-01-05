@@ -2111,58 +2111,93 @@ describe('TaskManager', () => {
   });  
 
   describe('Conference event handling', () => {
-    let task;
+    let task: any;
 
     beforeEach(() => {
       task = {
         data: {interactionId: taskId},
         emit: jest.fn(),
         updateTaskData: jest.fn(),
+        sendStateMachineEvent: jest.fn(),
       };
-      taskManager.taskCollection[taskId] = task as any;
+      taskManager.taskCollection[taskId] = task;
     });
 
-    const passThroughEvents = [
-      CC_EVENTS.AGENT_CONSULT_CONFERENCED,
-      CC_EVENTS.AGENT_CONSULT_CONFERENCING,
-      CC_EVENTS.AGENT_CONSULT_CONFERENCE_FAILED,
-      CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE,
-      CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE,
-      CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE_FAILED,
-    ];
+    it('sends AGENT_CONSULT_CONFERENCED to state machine as CONFERENCE_START', () => {
+      const payload = {
+        data: {type: CC_EVENTS.AGENT_CONSULT_CONFERENCED, interactionId: taskId},
+      };
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+      expect(task.sendStateMachineEvent).toHaveBeenCalled();
+      const call = task.sendStateMachineEvent.mock.calls[0][0];
+      expect(call.type).toBe(TaskEvent.CONFERENCE_START);
+    });
 
-    it.each(passThroughEvents)(
-      're-emits %s payload without additional task-specific events',
-      (eventType) => {
-        const payload = {
-          data: {
-            type: eventType,
-            interactionId: taskId,
-          },
-        };
+    it('sends PARTICIPANT_JOINED_CONFERENCE to state machine as CONFERENCE_START', () => {
+      const payload = {
+        data: {type: CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE, interactionId: taskId},
+      };
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+      expect(task.sendStateMachineEvent).toHaveBeenCalled();
+      const call = task.sendStateMachineEvent.mock.calls[0][0];
+      expect(call.type).toBe(TaskEvent.CONFERENCE_START);
+    });
 
+    it('sends AGENT_CONSULT_CONFERENCE_FAILED to state machine as CONFERENCE_FAILED', () => {
+      const payload = {
+        data: {type: CC_EVENTS.AGENT_CONSULT_CONFERENCE_FAILED, interactionId: taskId},
+      };
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+      expect(task.sendStateMachineEvent).toHaveBeenCalled();
+      const call = task.sendStateMachineEvent.mock.calls[0][0];
+      expect(call.type).toBe(TaskEvent.CONFERENCE_FAILED);
+    });
+
+    it('sends PARTICIPANT_LEFT_CONFERENCE to state machine as PARTICIPANT_LEAVE', () => {
+      const payload = {
+        data: {type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE, interactionId: taskId},
+      };
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+      expect(task.sendStateMachineEvent).toHaveBeenCalled();
+      const call = task.sendStateMachineEvent.mock.calls[0][0];
+      expect(call.type).toBe(TaskEvent.PARTICIPANT_LEAVE);
+    });
+
+    it('handles AGENT_CONSULT_CONFERENCING event without errors', () => {
+      const payload = {
+        data: {type: CC_EVENTS.AGENT_CONSULT_CONFERENCING, interactionId: taskId},
+      };
+      expect(() => {
         webSocketManagerMock.emit('message', JSON.stringify(payload));
+      }).not.toThrow();
+    });
 
-        expect(task.updateTaskData).toHaveBeenCalledWith(payload.data);
-      }
-    );
+    it('handles PARTICIPANT_LEFT_CONFERENCE_FAILED event without errors', () => {
+      const payload = {
+        data: {type: CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE_FAILED, interactionId: taskId},
+      };
+      expect(() => {
+        webSocketManagerMock.emit('message', JSON.stringify(payload));
+      }).not.toThrow();
+    });
 
-    it('only updates matching tasks for conference events', () => {
+    it('only routes conference events to matching tasks', () => {
       const otherTaskId = 'other-task-id';
-      const otherTask = {data: {interactionId: otherTaskId}, emit: jest.fn(), updateTaskData: jest.fn()};
-      taskManager.taskCollection[otherTaskId] = otherTask as any;
+      const otherTask: any = {
+        data: {interactionId: otherTaskId},
+        emit: jest.fn(),
+        updateTaskData: jest.fn(),
+        sendStateMachineEvent: jest.fn(),
+      };
+      taskManager.taskCollection[otherTaskId] = otherTask;
 
       const payload = {
-        data: {
-          type: CC_EVENTS.AGENT_CONSULT_CONFERENCED,
-          interactionId: taskId,
-        },
+        data: {type: CC_EVENTS.AGENT_CONSULT_CONFERENCED, interactionId: taskId},
       };
-
       webSocketManagerMock.emit('message', JSON.stringify(payload));
 
-      expect(task.updateTaskData).toHaveBeenCalledWith(payload.data);
-      expect(otherTask.updateTaskData).not.toHaveBeenCalled();
+      expect(task.sendStateMachineEvent).toHaveBeenCalled();
+      expect(otherTask.sendStateMachineEvent).not.toHaveBeenCalled();
     });
   });
 

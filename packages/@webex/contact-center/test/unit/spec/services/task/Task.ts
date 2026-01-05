@@ -65,34 +65,31 @@ describe('Task (base class)', () => {
 
   it('getUIControls returns default controls shape for idle voice task', () => {
     const controls = task.uiControls;
-    // accept/decline hidden because not offered
+    // IDLE state: no active call, ALL controls should be hidden AND disabled
     expect(controls.accept.isVisible).toBe(false);
-    expect(controls.accept.isEnabled).toBe(true);
+    expect(controls.accept.isEnabled).toBe(false);
     expect(controls.decline.isVisible).toBe(false);
-    expect(controls.decline.isEnabled).toBe(true);
-
-    // voice tasks keep end hidden until a call is active
+    expect(controls.decline.isEnabled).toBe(false);
     expect(controls.end.isVisible).toBe(false);
     expect(controls.end.isEnabled).toBe(false);
-
     expect(controls.transfer.isVisible).toBe(false);
-    expect(controls.transfer.isEnabled).toBe(true);
+    expect(controls.transfer.isEnabled).toBe(false);
     expect(controls.hold.isVisible).toBe(false);
     expect(controls.hold.isEnabled).toBe(false);
     expect(controls.mute.isVisible).toBe(false);
-    expect(controls.mute.isEnabled).toBe(true);
+    expect(controls.mute.isEnabled).toBe(false);
     expect(controls.consult.isVisible).toBe(false);
     expect(controls.consult.isEnabled).toBe(false);
     expect(controls.consultTransfer.isVisible).toBe(false);
-    expect(controls.consultTransfer.isEnabled).toBe(true);
+    expect(controls.consultTransfer.isEnabled).toBe(false);
     expect(controls.endConsult.isVisible).toBe(false);
-    expect(controls.endConsult.isEnabled).toBe(true);
+    expect(controls.endConsult.isEnabled).toBe(false);
     expect(controls.recording.isVisible).toBe(false);
     expect(controls.recording.isEnabled).toBe(false);
     expect(controls.conference.isVisible).toBe(false);
     expect(controls.conference.isEnabled).toBe(false);
     expect(controls.wrapup.isVisible).toBe(false);
-    expect(controls.wrapup.isEnabled).toBe(true);
+    expect(controls.wrapup.isEnabled).toBe(false);
   });
 
   it('calls updateUiControls when updateTaskData is invoked', () => {

@@ -33,29 +33,23 @@ type RecordingStateUpdate = Partial<
   Pick<TaskContext, 'recordingControlsAvailable' | 'recordingInProgress'>
 >;
 
-const determineConsultInitiator = (taskData?: TaskData): boolean | undefined => {
-  if (taskData?.isConsulted === true) {
-    return false;
+const determineConsultInitiator = (
+  taskData: TaskData | undefined,
+  selfAgentId: string | undefined
+): boolean | undefined => {
+  // If we don't know who "self" is, don't guess.
+  if (!selfAgentId) return undefined;
+
+  // If backend provides consultingAgentId, use it as the source of truth.
+  if (taskData?.consultingAgentId) {
+    return taskData.consultingAgentId === selfAgentId;
   }
 
-  if (taskData?.isConsulted === false) {
-    // Avoid overriding initiator flag when backend simply repeats `false`
-    return true;
-  }
+  // Fall back: if this agent is explicitly marked as consulted, they are not initiator.
+  if (taskData?.isConsulted === true) return false;
 
-  const participants = taskData?.interaction?.participants;
-  const destAgentId = taskData?.destAgentId;
-
-  if (!participants || !destAgentId) {
-    return undefined;
-  }
-
-  const participant = participants[destAgentId];
-  if (!participant || participant.isConsulted === undefined) {
-    return undefined;
-  }
-
-  return !participant.isConsulted;
+  // Otherwise, avoid guessing (prevents consult UI leakage).
+  return undefined;
 };
 
 const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate => {
@@ -112,7 +106,7 @@ const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate 
  * single source of truth, while derived values (like recording flags)
  * are recalculated here via deriveRecordingState.
  */
-const deriveTaskDataUpdates = (_context: TaskContext, taskData: TaskData | undefined) =>
+const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefined) =>
   taskData
     ? (() => {
         const updates: Partial<TaskContext> = {
@@ -120,9 +114,16 @@ const deriveTaskDataUpdates = (_context: TaskContext, taskData: TaskData | undef
           ...deriveRecordingState(taskData),
         };
 
-        const consultInitiator = determineConsultInitiator(taskData);
-        if (consultInitiator !== undefined) {
-          updates.consultInitiator = consultInitiator;
+        // IMPORTANT: Only derive consultInitiator if it's not already set to true.
+        // Once an agent is the consult initiator, they remain so for the duration
+        // of the consult flow. The setConsultInitiator action explicitly sets this
+        // to true, and we should not override it with backend-derived values.
+        // BUG FIX: Previously, every updateTaskData call would re-derive consultInitiator,
+        // potentially overwriting the true value set by setConsultInitiator with false.
+        if (!context.consultInitiator) {
+          const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
+          const consultInitiator = determineConsultInitiator(taskData, selfAgentId);
+          if (consultInitiator !== undefined) updates.consultInitiator = consultInitiator;
         }
 
         return updates;
@@ -161,9 +162,12 @@ export function createInitialContext(
     transferInitiated: false,
     conferenceInitiated: false,
     consultInitiator: false,
+    exitingConference: false,
     consultDestination: null,
     consultDestinationType: null,
     consultDestinationAgentJoined: false,
+    consultCallHeld: false,
+    consultEstablished: false,
     recordingControlsAvailable: false,
     recordingInProgress: false,
     uiControlConfig,
@@ -204,6 +208,7 @@ export const actions: TaskActionsMap = {
       transferInitiated: false,
       conferenceInitiated: false,
       consultInitiator: false,
+      exitingConference: false,
       consultDestination: null,
       consultDestinationType: null,
       consultDestinationAgentJoined: false,
@@ -220,9 +225,28 @@ export const actions: TaskActionsMap = {
 
   /**
    * Set consult initiator flag
+   *
+   * IMPORTANT: This action is called for CONSULT (user action) and CONSULT_CREATED (backend event).
+   * For CONSULT (user action): The user explicitly clicked Consult, so they ARE the initiator.
+   * For CONSULT_CREATED (backend event): Check taskData.isConsulted to determine if this agent
+   * is the initiator. If isConsulted === true, this is Agent B (the consulted party), NOT the initiator.
+   *
+   * This prevents all agents in a conference from becoming consultInitiator when one agent
+   * starts a new consult.
    */
-  setConsultInitiator: assign({
-    consultInitiator: true,
+  setConsultInitiator: assign(({event}: {event: TaskEventPayload}) => {
+    const taskData = getTaskDataFromEvent(event);
+
+    // User explicitly clicked Consult → initiator
+    if (event.type === TaskEvent.CONSULT) return {consultInitiator: true};
+
+    // Backend events: only the consultingAgentId should be the initiator.
+    const selfAgentId = taskData?.agentId;
+    const consultInitiator = determineConsultInitiator(taskData, selfAgentId);
+    if (consultInitiator === true) return {consultInitiator: true};
+    if (consultInitiator === false) return {consultInitiator: false};
+
+    return {};
   }),
 
   /**
@@ -264,6 +288,7 @@ export const actions: TaskActionsMap = {
   handleConsultFailed: assign({
     consultDestination: null,
     consultDestinationAgentJoined: false,
+    consultInitiator: false,
   }),
 
   handleConferenceInit: assign({
@@ -272,6 +297,9 @@ export const actions: TaskActionsMap = {
 
   handleConferenceStarted: assign({
     conferenceInitiated: false,
+    // - Primary who merged doesn't incorrectly get consult UI when secondary consults
+    // - Fresh consult from conference can set consultInitiator correctly for the actual initiator
+    consultInitiator: false,
   }),
 
   handleConferenceFailed: assign({
@@ -294,6 +322,8 @@ export const actions: TaskActionsMap = {
     return {
       consultDestination: (event as {destination: string}).destination,
       consultDestinationType: destinationType,
+      // Reset to false when starting new consult - will be set true when agent accepts
+      consultDestinationAgentJoined: false,
     };
   }),
 
@@ -348,6 +378,133 @@ export const actions: TaskActionsMap = {
     consultDestinationAgentJoined: false,
     conferenceInitiated: false,
     consultInitiator: false,
+    exitingConference: false,
+    consultCallHeld: false,
+    consultEstablished: false,
+  }),
+
+  // ============================================
+  // Conference/Consult Call State Actions
+  // ============================================
+
+  /**
+   * Set consultCallHeld flag to true
+   * Indicates agent has switched from consult to main call
+   */
+  setConsultCallHeld: assign({
+    consultCallHeld: true,
+  }),
+
+  /**
+   * Clear consultCallHeld flag
+   * Indicates agent has switched back to consult call
+   */
+  clearConsultCallHeld: assign({
+    consultCallHeld: false,
+  }),
+
+  /**
+   * Set consultEstablished flag to true
+   * Indicates consult has been fully established (both parties connected)
+   */
+  setConsultEstablished: assign({
+    consultEstablished: true,
+  }),
+
+  /**
+   * Clear consultEstablished flag
+   */
+  clearConsultEstablished: assign({
+    consultEstablished: false,
+  }),
+
+  /**
+   * Handle switch to main call event
+   * Sets consultCallHeld to true (consult is now held)
+   */
+  handleSwitchToMainCall: assign({
+    consultCallHeld: true,
+  }),
+
+  /**
+   * Handle switch to consult call event
+   * Sets consultCallHeld to false (consult is now active)
+   */
+  handleSwitchToConsult: assign({
+    consultCallHeld: false,
+  }),
+
+  /**
+   * Handle participant joining conference
+   */
+  handleParticipantJoined: assign(({event}: {event: TaskEventPayload}) => {
+    // Update taskData if provided in event
+    const taskData = getTaskDataFromEvent(event);
+    if (taskData) {
+      return {taskData};
+    }
+
+    return {};
+  }),
+
+  /**
+   * Handle participant leaving conference
+   */
+  handleParticipantLeft: assign(({event}: {event: TaskEventPayload}) => {
+    // Update taskData if provided in event
+    const taskData = getTaskDataFromEvent(event);
+    if (taskData) {
+      return {taskData};
+    }
+
+    return {};
+  }),
+
+  /**
+   * Set exitingConference flag when agent initiates exit
+   */
+  setExitingConference: assign({
+    exitingConference: true,
+  }),
+
+  /**
+   * Handle successful exit from conference
+   */
+  handleExitConferenceSuccess: assign(({event}: {event: TaskEventPayload}) => {
+    const taskData = getTaskDataFromEvent(event);
+
+    return {
+      ...(taskData ? {taskData} : {}),
+      conferenceInitiated: false,
+      exitingConference: false, // Clear the flag after handling
+    };
+  }),
+
+  /**
+   * Handle failed exit from conference
+   */
+  handleExitConferenceFailed: assign({
+    conferenceInitiated: false,
+    exitingConference: false, // Clear the flag on failure too
+  }),
+
+  /**
+   * Handle successful conference transfer
+   */
+  handleTransferConferenceSuccess: assign(({event}: {event: TaskEventPayload}) => {
+    const taskData = getTaskDataFromEvent(event);
+
+    return {
+      ...(taskData ? {taskData} : {}),
+      transferInitiated: false,
+    };
+  }),
+
+  /**
+   * Handle failed conference transfer
+   */
+  handleTransferConferenceFailed: assign({
+    transferInitiated: false,
   }),
 
   /**
@@ -438,6 +595,14 @@ export const actions: TaskActionsMap = {
   emitTaskRecordingResumed: () => undefined,
   emitTaskRecordingResumeFailed: () => undefined,
   emitTaskWrappedup: () => undefined,
+
+  // Conference event emitters (placeholders to be overridden by consumers)
+  emitTaskParticipantJoined: () => undefined,
+  emitTaskParticipantLeft: () => undefined,
+  emitTaskConferenceStarted: () => undefined,
+  emitTaskConferenceEnded: () => undefined,
+  emitTaskExitConference: () => undefined,
+  emitTaskTransferConference: () => undefined,
 };
 
 /**
