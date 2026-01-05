@@ -316,10 +316,13 @@ describe('webex-core', () => {
         assert.isTrue(catalog.isReady);
       });
 
-      it('should call services#initServiceCatalogs() on webex ready', () => {
+      it('should call services#initServiceCatalogs() on webex ready', async () => {
+        services._loadCatalogFromCache = sinon.stub().resolves(false);
         services.initServiceCatalogs = sinon.stub().resolves();
         services.initialize();
         webex.trigger('ready');
+        // Wait for the async 'ready' handler to complete
+        await new Promise((resolve) => setTimeout(resolve, 50));
         assert.called(services.initServiceCatalogs);
         assert.isTrue(catalog.isReady);
       });
