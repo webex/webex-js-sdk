@@ -2111,7 +2111,7 @@ describe('TaskManager', () => {
   });  
 
   describe('Conference event handling', () => {
-    let task: any;
+    let task;
 
     beforeEach(() => {
       task = {
@@ -2120,7 +2120,7 @@ describe('TaskManager', () => {
         updateTaskData: jest.fn(),
         sendStateMachineEvent: jest.fn(),
       };
-      taskManager.taskCollection[taskId] = task;
+      taskManager.taskCollection[taskId] = task as any;
     });
 
     it('sends AGENT_CONSULT_CONFERENCED to state machine as CONFERENCE_START', () => {
