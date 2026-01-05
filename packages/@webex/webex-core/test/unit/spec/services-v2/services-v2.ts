@@ -178,6 +178,100 @@ describe('webex-core', () => {
           );
         }
       );
+
+      describe('when change:canAuthorize fires', () => {
+        it('calls initServiceCatalogs when canAuthorize becomes true and postauth catalog is not ready', async () => {
+          services.listenToOnce = sinon.stub();
+          services._loadCatalogFromCache = sinon.stub().returns(Promise.resolve(false));
+          services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+          services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+          services.trigger = sinon.stub();
+          // Ensure no credentials so we go to the preauth path
+          services.webex.credentials = {};
+
+          services.initialize();
+
+          // Get the catalog after initialize creates it
+          const testCatalog = services._getCatalog();
+          testCatalog.status.postauth.ready = false;
+
+          // call the onLoaded callback (preauth path)
+          services.listenToOnce.getCall(1).args[2]();
+          await waitForAsync();
+
+          // Now set canAuthorize to true to simulate auth completing
+          services.webex.canAuthorize = true;
+
+          // call the change:canAuthorize callback (should be call 2)
+          services.listenToOnce.getCall(2).args[2]();
+          await waitForAsync();
+
+          sinon.assert.calledOnce(services.initServiceCatalogs);
+          assert.isTrue(testCatalog.isReady);
+        });
+
+        it('does not call initServiceCatalogs when postauth catalog is already ready', async () => {
+          services.listenToOnce = sinon.stub();
+          services._loadCatalogFromCache = sinon.stub().returns(Promise.resolve(false));
+          services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+          services.initServiceCatalogs = sinon.stub().returns(Promise.resolve());
+          services.trigger = sinon.stub();
+          // Ensure no credentials so we go to the preauth path
+          services.webex.credentials = {};
+
+          services.initialize();
+
+          // Get the catalog after initialize creates it
+          const testCatalog = services._getCatalog();
+
+          // call the onLoaded callback (preauth path)
+          services.listenToOnce.getCall(1).args[2]();
+          await waitForAsync();
+
+          // Set canAuthorize to true and postauth as ready BEFORE calling the callback
+          services.webex.canAuthorize = true;
+          testCatalog.status.postauth.ready = true;
+
+          // call the change:canAuthorize callback (should be call 2)
+          services.listenToOnce.getCall(2).args[2]();
+          await waitForAsync();
+
+          sinon.assert.notCalled(services.initServiceCatalogs);
+        });
+
+        it('logs an error when initServiceCatalogs fails after auth', async () => {
+          services.listenToOnce = sinon.stub();
+          services._loadCatalogFromCache = sinon.stub().returns(Promise.resolve(false));
+          services.collectPreauthCatalog = sinon.stub().returns(Promise.resolve());
+          services.initServiceCatalogs = sinon.stub().rejects(new Error('auth failed'));
+          services.logger.error = sinon.stub();
+          services.trigger = sinon.stub();
+          // Ensure no credentials so we go to the preauth path
+          services.webex.credentials = {};
+
+          services.initialize();
+
+          // Get the catalog after initialize creates it
+          const testCatalog = services._getCatalog();
+          testCatalog.status.postauth.ready = false;
+
+          // call the onLoaded callback (preauth path)
+          services.listenToOnce.getCall(1).args[2]();
+          await waitForAsync();
+
+          // Now set canAuthorize to true to simulate auth completing
+          services.webex.canAuthorize = true;
+
+          // call the change:canAuthorize callback (should be call 2)
+          services.listenToOnce.getCall(2).args[2]();
+          await waitForAsync();
+
+          sinon.assert.calledWith(
+            services.logger.error,
+            'services: failed to init service catalogs after auth, auth failed'
+          );
+        });
+      });
     });
 
     describe('#initServiceCatalogs', () => {
@@ -841,7 +935,7 @@ describe('webex-core', () => {
         );
       });
     });
-    
+
     describe('#isValidHost', () => {
       beforeEach(() => {
         // Setting up a mock services list

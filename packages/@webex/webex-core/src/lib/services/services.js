@@ -1429,15 +1429,7 @@ const Services = WebexPlugin.extend({
           });
         // Listen for when credentials become available to fetch the full catalog.
         // This handles fresh login where 'loaded' fires before OAuth completes.
-        console.log(
-          '@@@ services-plugin setting up listener this.webex.canAuthorize',
-          this.webex.canAuthorize
-        );
         this.listenToOnce(this.webex, 'change:canAuthorize', () => {
-          console.log(
-            '@@@ services-plugin in listener this.webex.canAuthorize',
-            this.webex.canAuthorize
-          );
           if (this.webex.canAuthorize && !catalog.status.postauth.ready) {
             this.initServiceCatalogs()
               .then(() => {

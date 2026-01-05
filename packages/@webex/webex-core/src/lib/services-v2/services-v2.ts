@@ -1386,6 +1386,21 @@ const Services = WebexPlugin.extend({
             this.ready = true;
             this.trigger('services:initialized');
           });
+        // Listen for when credentials become available to fetch the full catalog.
+        // This handles fresh login where 'loaded' fires before OAuth completes.
+        this.listenToOnce(this.webex, 'change:canAuthorize', () => {
+          if (this.webex.canAuthorize && !catalog.status.postauth.ready) {
+            this.initServiceCatalogs()
+              .then(() => {
+                catalog.isReady = true;
+              })
+              .catch((error) => {
+                this.logger.error(
+                  `services: failed to init service catalogs after auth, ${error?.message}`
+                );
+              });
+          }
+        });
       }
     });
   },
