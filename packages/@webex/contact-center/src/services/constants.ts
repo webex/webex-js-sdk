@@ -92,6 +92,16 @@ export const STATE_CHANGE_API = 'v1/agents/session/state';
 export const DEREGISTER_WEBCALLING_LINE_MSG =
   'Deregistering WebCalling line and cleaning up resources';
 
+/**
+ * Error codes for WebCallingService operations.
+ * @public
+ * @ignore
+ */
+export const WEB_CALLING_ERROR_CODES = {
+  /** Registration failed after retry attempts */
+  REGISTRATION_FAILED: 'WEB_CALLING_REGISTRATION_FAILED',
+};
+
 // WebCallingService method names
 export const METHODS = {
   SET_LOGIN_OPTION: 'setLoginOption',

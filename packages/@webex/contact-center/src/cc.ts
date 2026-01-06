@@ -39,7 +39,7 @@ import {
   METHODS,
 } from './constants';
 import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
-import {AGENT, WEB_RTC_PREFIX} from './services/constants';
+import {AGENT, WEB_RTC_PREFIX, WEB_CALLING_ERROR_CODES} from './services/constants';
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
@@ -1247,13 +1247,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.agentConfig.lastIdleCodeChangeTimestamp = lastIdleCodeChangeTimestamp;
       this.agentConfig.currentTeamId = reLoginResponse.data.teamId;
       try {
-        await this.handleDeviceType(deviceType as LoginOption, dn);
+        await this.setupAgentDevice(deviceType as LoginOption, dn);
       } catch (error) {
         LoggerProxy.error(`Error handling device type: ${error}`, {
           module: CC_FILE,
           method: METHODS.SILENT_RELOGIN,
         });
-        if (error.message.contains('Error registering web calling line')) {
+        // Check if this is a WebCalling registration failure for BROWSER device type
+        // This indicates the agent may not be configured for outbound calls
+        if (
+          deviceType === LoginOption.BROWSER &&
+          error.code === WEB_CALLING_ERROR_CODES.REGISTRATION_FAILED
+        ) {
           LoggerProxy.log('Agent not configured for outbound calls, logging out and returning', {
             module: CC_FILE,
             method: METHODS.SILENT_RELOGIN,
@@ -1327,49 +1332,77 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
-   * Handles device type specific configuration and setup
-   * Configures services and settings based on the login device type
+   * Sets up the agent device based on the login option.
+   * For BROWSER: Registers WebRTC calling line
+   * For AGENT_DN/EXTENSION: Configures the dial number for station login
    * @param {LoginOption} deviceType The type of device being used for login
    * @param {string} dn The dial number associated with the device
    * @returns {Promise<void>}
    * @private
    */
-  private async handleDeviceType(deviceType: LoginOption, dn: string): Promise<void> {
+  private async setupAgentDevice(deviceType: LoginOption, dn: string): Promise<void> {
     this.webCallingService.setLoginOption(deviceType);
     this.agentConfig.deviceType = deviceType;
+
     switch (deviceType) {
       case LoginOption.BROWSER:
-        try {
-          await this.webCallingService.registerWebCallingLine();
-        } catch (error) {
-          LoggerProxy.error(`Error registering web calling line: ${error}`, {
-            module: CC_FILE,
-            method: METHODS.HANDLE_DEVICE_TYPE,
-          });
-          try {
-            await this.webCallingService.deregisterWebCallingLine();
-            await this.webCallingService.registerWebCallingLine();
-          } catch (retryError) {
-            LoggerProxy.error(`Retry failed after deregister/register: ${retryError}`, {
-              module: CC_FILE,
-              method: METHODS.HANDLE_DEVICE_TYPE,
-            });
-            throw retryError;
-          }
-        }
+        await this.registerBrowserDevice();
         break;
       case LoginOption.AGENT_DN:
       case LoginOption.EXTENSION:
-        this.agentConfig.defaultDn = dn;
-        this.agentConfig.dn = dn;
+        this.configureDialNumber(dn);
         break;
       default:
         LoggerProxy.error(`Unsupported device type: ${deviceType}`, {
           module: CC_FILE,
-          method: METHODS.HANDLE_DEVICE_TYPE,
+          method: METHODS.SETUP_AGENT_DEVICE,
         });
         throw new Error(`Unsupported device type: ${deviceType}`);
     }
+  }
+
+  /**
+   * Registers the WebRTC calling line for browser-based calling.
+   * Includes retry logic: deregisters and re-registers on initial failure.
+   * @returns {Promise<void>}
+   * @throws {Error} With code REGISTRATION_FAILED if registration fails after retry
+   * @private
+   */
+  private async registerBrowserDevice(): Promise<void> {
+    try {
+      await this.webCallingService.registerWebCallingLine();
+    } catch (error) {
+      LoggerProxy.error(`Error registering web calling line: ${error}`, {
+        module: CC_FILE,
+        method: METHODS.REGISTER_BROWSER_DEVICE,
+      });
+      try {
+        await this.webCallingService.deregisterWebCallingLine();
+        await this.webCallingService.registerWebCallingLine();
+      } catch (retryError) {
+        // Error registering web calling line - agent may not be configured for outbound calls
+        LoggerProxy.error(`Retry failed after deregister/register: ${retryError}`, {
+          module: CC_FILE,
+          method: METHODS.REGISTER_BROWSER_DEVICE,
+        });
+        const registrationError = new Error('Error registering web calling line') as Error & {
+          code: string;
+        };
+        registrationError.code = WEB_CALLING_ERROR_CODES.REGISTRATION_FAILED;
+        throw registrationError;
+      }
+    }
+  }
+
+  /**
+   * Configures the dial number for AGENT_DN or EXTENSION device types.
+   * Sets the DN in agent config for subsequent station login.
+   * @param {string} dn The dial number to configure
+   * @private
+   */
+  private configureDialNumber(dn: string): void {
+    this.agentConfig.defaultDn = dn;
+    this.agentConfig.dn = dn;
   }
 
   /**

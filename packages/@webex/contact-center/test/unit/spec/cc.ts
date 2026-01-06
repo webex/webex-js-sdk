@@ -15,7 +15,7 @@ import type {ContactServiceQueuesResponse} from '../../../src/types';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess, AGENT_EVENTS} from '../../../src/services/agent/types';
 import {SetStateResponse} from '../../../src/types';
-import {AGENT, WEB_RTC_PREFIX} from '../../../src/services/constants';
+import {AGENT, WEB_RTC_PREFIX, WEB_CALLING_ERROR_CODES} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
 import {CC_EVENTS} from '../../../src/services/config/types';
@@ -1299,6 +1299,213 @@ describe('webex.cc', () => {
 
       expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.AGENT_DN);
       expect(webex.cc.agentConfig.dn).toBe('67890');
+    });
+
+    it('should handle WebCalling registration failure and logout when error code is REGISTRATION_FAILED', async () => {
+      const mockReLoginResponse = {
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
+          lastStateChangeReason: 'agent-wss-disconnect',
+          lastStateChangeTimestamp: 1738575135188,
+          lastIdleCodeChangeTimestamp: 1738575135189,
+          deviceType: LoginOption.BROWSER,
+          dn: '12345',
+          teamId: 'teamId',
+        },
+      };
+
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+        agentProfileID: 'test-agent-profile-id',
+        isAgentLoggedIn: false,
+      } as Profile;
+
+      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
+
+      // Create error with REGISTRATION_FAILED code
+      const registrationError = new Error('Error registering web calling line') as Error & {
+        code: string;
+      };
+      registrationError.code = WEB_CALLING_ERROR_CODES.REGISTRATION_FAILED;
+
+      jest
+        .spyOn(webex.cc.webCallingService, 'registerWebCallingLine')
+        .mockRejectedValue(new Error('Initial failure'));
+      jest
+        .spyOn(webex.cc.webCallingService, 'deregisterWebCallingLine')
+        .mockResolvedValue(undefined);
+
+      // Mock the second registration attempt to also fail (triggers the error with code)
+      webex.cc.webCallingService.registerWebCallingLine
+        .mockRejectedValueOnce(new Error('Initial failure'))
+        .mockRejectedValueOnce(new Error('Retry failure'));
+
+      const stationLogoutSpy = jest.spyOn(webex.cc, 'stationLogout').mockResolvedValue({});
+
+      await webex.cc['silentRelogin']();
+
+      expect(stationLogoutSpy).toHaveBeenCalledWith({
+        logoutReason: 'User requested agent device change',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        'Agent not configured for outbound calls, logging out and returning',
+        {module: CC_FILE, method: 'silentRelogin'}
+      );
+    });
+  });
+
+  describe('setupAgentDevice', () => {
+    beforeEach(() => {
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+      } as Profile;
+    });
+
+    it('should register browser device for LoginOption.BROWSER', async () => {
+      const registerWebCallingLineSpy = jest
+        .spyOn(webex.cc.webCallingService, 'registerWebCallingLine')
+        .mockResolvedValue(undefined);
+      const setLoginOptionSpy = jest.spyOn(webex.cc.webCallingService, 'setLoginOption');
+
+      await webex.cc['setupAgentDevice'](LoginOption.BROWSER, '');
+
+      expect(setLoginOptionSpy).toHaveBeenCalledWith(LoginOption.BROWSER);
+      expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.BROWSER);
+      expect(registerWebCallingLineSpy).toHaveBeenCalled();
+    });
+
+    it('should configure dial number for LoginOption.AGENT_DN', async () => {
+      const setLoginOptionSpy = jest.spyOn(webex.cc.webCallingService, 'setLoginOption');
+      const registerWebCallingLineSpy = jest.spyOn(
+        webex.cc.webCallingService,
+        'registerWebCallingLine'
+      );
+
+      await webex.cc['setupAgentDevice'](LoginOption.AGENT_DN, '12345');
+
+      expect(setLoginOptionSpy).toHaveBeenCalledWith(LoginOption.AGENT_DN);
+      expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.AGENT_DN);
+      expect(webex.cc.agentConfig.defaultDn).toBe('12345');
+      expect(webex.cc.agentConfig.dn).toBe('12345');
+      expect(registerWebCallingLineSpy).not.toHaveBeenCalled();
+    });
+
+    it('should configure dial number for LoginOption.EXTENSION', async () => {
+      const setLoginOptionSpy = jest.spyOn(webex.cc.webCallingService, 'setLoginOption');
+
+      await webex.cc['setupAgentDevice'](LoginOption.EXTENSION, '67890');
+
+      expect(setLoginOptionSpy).toHaveBeenCalledWith(LoginOption.EXTENSION);
+      expect(webex.cc.agentConfig.deviceType).toBe(LoginOption.EXTENSION);
+      expect(webex.cc.agentConfig.defaultDn).toBe('67890');
+      expect(webex.cc.agentConfig.dn).toBe('67890');
+    });
+
+    it('should throw error for unsupported device type', async () => {
+      const unsupportedDeviceType = 'UNSUPPORTED' as LoginOption;
+
+      await expect(
+        webex.cc['setupAgentDevice'](unsupportedDeviceType, '')
+      ).rejects.toThrow(`Unsupported device type: ${unsupportedDeviceType}`);
+
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `Unsupported device type: ${unsupportedDeviceType}`,
+        expect.objectContaining({
+          module: CC_FILE,
+          method: 'setupAgentDevice',
+        })
+      );
+    });
+  });
+
+  describe('registerBrowserDevice', () => {
+    beforeEach(() => {
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+      } as Profile;
+    });
+
+    it('should register web calling line successfully on first attempt', async () => {
+      const registerWebCallingLineSpy = jest
+        .spyOn(webex.cc.webCallingService, 'registerWebCallingLine')
+        .mockResolvedValue(undefined);
+
+      await webex.cc['registerBrowserDevice']();
+
+      expect(registerWebCallingLineSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should retry registration after deregister when first attempt fails', async () => {
+      const registerWebCallingLineSpy = jest
+        .spyOn(webex.cc.webCallingService, 'registerWebCallingLine')
+        .mockRejectedValueOnce(new Error('First attempt failed'))
+        .mockResolvedValueOnce(undefined);
+
+      const deregisterWebCallingLineSpy = jest
+        .spyOn(webex.cc.webCallingService, 'deregisterWebCallingLine')
+        .mockResolvedValue(undefined);
+
+      await webex.cc['registerBrowserDevice']();
+
+      expect(registerWebCallingLineSpy).toHaveBeenCalledTimes(2);
+      expect(deregisterWebCallingLineSpy).toHaveBeenCalledTimes(1);
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        expect.stringContaining('Error registering web calling line'),
+        expect.objectContaining({
+          module: CC_FILE,
+          method: 'registerBrowserDevice',
+        })
+      );
+    });
+
+    it('should throw error with REGISTRATION_FAILED code when retry also fails', async () => {
+      jest
+        .spyOn(webex.cc.webCallingService, 'registerWebCallingLine')
+        .mockRejectedValueOnce(new Error('First attempt failed'))
+        .mockRejectedValueOnce(new Error('Retry also failed'));
+
+      jest
+        .spyOn(webex.cc.webCallingService, 'deregisterWebCallingLine')
+        .mockResolvedValue(undefined);
+
+      try {
+        await webex.cc['registerBrowserDevice']();
+        fail('Expected error to be thrown');
+      } catch (error) {
+        expect(error.message).toBe('Error registering web calling line');
+        expect(error.code).toBe(WEB_CALLING_ERROR_CODES.REGISTRATION_FAILED);
+      }
+
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        expect.stringContaining('Retry failed after deregister/register'),
+        expect.objectContaining({
+          module: CC_FILE,
+          method: 'registerBrowserDevice',
+        })
+      );
+    });
+  });
+
+  describe('configureDialNumber', () => {
+    beforeEach(() => {
+      webex.cc.agentConfig = {
+        agentId: 'agentId',
+      } as Profile;
+    });
+
+    it('should set defaultDn and dn in agentConfig', () => {
+      webex.cc['configureDialNumber']('12345');
+
+      expect(webex.cc.agentConfig.defaultDn).toBe('12345');
+      expect(webex.cc.agentConfig.dn).toBe('12345');
+    });
+
+    it('should handle empty dial number', () => {
+      webex.cc['configureDialNumber']('');
+
+      expect(webex.cc.agentConfig.defaultDn).toBe('');
+      expect(webex.cc.agentConfig.dn).toBe('');
     });
   });
 
