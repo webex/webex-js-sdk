@@ -486,7 +486,6 @@ describe('plugin-meetings', () => {
           // setup new updated locus that has many things missing
           const newLocusHtMeta = {elementId: {type: 'locus', version: 42}};
           const newLocus = {
-            controls: 'new-controls',
             host: 'new-host',
             htMeta: newLocusHtMeta,
           };
@@ -499,10 +498,11 @@ describe('plugin-meetings', () => {
           // check onDeltaLocus() was called with correctly updated locus info
           assert.calledOnceWithExactly(onDeltaLocusStub, {
             // these fields are not part of Locus object, so should keep their old values:
+            controls: {id: 'fake-controls'},
             info: {id: 'fake-info'},
             fullState: {id: 'fake-full-state'},
             self: {id: 'fake-self'},
-            links: { id: 'fake-links' },
+            links: {id: 'fake-links'},
             mediaShares: expectedLocusInfo.mediaShares,
             // and now the new fields
             ...newLocus,
@@ -518,7 +518,6 @@ describe('plugin-meetings', () => {
           // setup new updated locus that has many things missing
           const newLocusHtMeta = {elementId: {type: 'locus', version: 42}};
           const newLocus = {
-            controls: 'new-controls',
             host: 'new-host',
             htMeta: newLocusHtMeta,
           };
@@ -531,6 +530,7 @@ describe('plugin-meetings', () => {
                 data: {
                   ...newLocus,
                   // all these fields below should be ignored and not override the existing ones in our "old" Locus
+                  controls: {id: 'new-controls'},
                   info: 'new-info',
                   fullState: 'new-fullState',
                   self: 'new-self',
@@ -545,10 +545,11 @@ describe('plugin-meetings', () => {
           // with old values for the fields that should be ignored (like "info" or "fullState")
           assert.calledOnceWithExactly(onDeltaLocusStub, {
             // these fields have the "old" values:
+            controls: {id: 'fake-controls'},
             info: {id: 'fake-info'},
             fullState: {id: 'fake-full-state'},
             self: {id: 'fake-self'},
-            links: { id: 'fake-links' },
+            links: {id: 'fake-links'},
             mediaShares: expectedLocusInfo.mediaShares,
             participants: [], // empty means there were no participant updates
             jsSdkMeta: {removedParticipantIds: []}, // no participants were removed
@@ -579,6 +580,7 @@ describe('plugin-meetings', () => {
           // check onDeltaLocus() was called with correctly updated locus info
           assert.calledOnceWithExactly(onDeltaLocusStub, {
             // these fields are not part of Locus object, so should keep their old values:
+            controls: {id: 'fake-controls'},
             info: {id: 'fake-info'},
             fullState: {id: 'fake-full-state'},
             self: {id: 'fake-self'},
@@ -765,6 +767,60 @@ describe('plugin-meetings', () => {
             ],
             participants: [updatedParticipant2],
             self: newSelf,
+          });
+        });
+
+        it('should process locus update correctly when called with multiple CONTROL object updates', () => {
+          const firstControl = {
+            muteOnEntry: {enabled: true},
+            lock: {locked: true, meta: {lastModified: 'YESTERDAY', modifiedBy: 'John Doe'}},
+          };
+          const secondControl = {
+            reactions: {enabled: true},
+          };
+
+          // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
+          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+            updatedObjects: [
+              {
+                htMeta: {elementId: {type: 'controlentry', id: 'control-1'}},
+                data: firstControl,
+              },
+              {
+                htMeta: {elementId: {type: 'controlentry', id: 'control-2'}},
+                data: secondControl,
+              },
+            ],
+          });
+
+          // check onDeltaLocus() was called with correctly updated locus info
+          // all keys from both controls should be merged into the controls object
+          assert.calledOnceWithExactly(onDeltaLocusStub, {
+            ...expectedLocusInfo,
+            controls: {
+              id: 'fake-controls',
+              muteOnEntry: {enabled: true},
+              lock: {locked: true, meta: {lastModified: 'YESTERDAY', modifiedBy: 'John Doe'}},
+              reactions: {enabled: true},
+            },
+          });
+        });
+
+        it('should process locus update correctly when CONTROL object is received with no data', () => {
+          // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
+          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+            updatedObjects: [
+              {
+                htMeta: {elementId: {type: 'controlentry', id: 'some-control-id'}},
+                data: null,
+              },
+            ],
+          });
+
+          // check onDeltaLocus() was called with correctly updated locus info
+          // when data is null, it should be ignored and not change the controls
+          assert.calledOnceWithExactly(onDeltaLocusStub, {
+            ...expectedLocusInfo,
           });
         });
 
