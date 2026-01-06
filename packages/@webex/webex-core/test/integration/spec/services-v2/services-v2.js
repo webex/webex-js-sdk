@@ -316,12 +316,24 @@ describe('webex-core', () => {
         assert.isTrue(catalog.isReady);
       });
 
-      it('should call services#initServiceCatalogs() on webex ready', () => {
+      it('should call services#initServiceCatalogs() on webex loaded', () => {
         services.initServiceCatalogs = sinon.stub().resolves();
         services.initialize();
-        webex.trigger('ready');
+        webex.trigger('loaded');
         assert.called(services.initServiceCatalogs);
-        assert.isTrue(catalog.isReady);
+      });
+
+      it('should set services.ready to true after initialization completes', async () => {
+        // services.ready starts as false
+        const newWebex = new WebexCore({credentials: {supertoken: webexUser.token}});
+        const newServices = newWebex.internal.services;
+
+        // Wait for initialization to complete
+        await new Promise((resolve) => {
+          newServices.on('services:initialized', resolve);
+        });
+
+        assert.isTrue(newServices.ready);
       });
 
       it('should collect different catalogs based on OrgId region', () =>
@@ -748,9 +760,11 @@ describe('webex-core', () => {
       const unauthServices = unauthWebex.internal.services;
       let sandbox = null;
 
-      const getActivationRequest = (requestStub) => {
+      const getActivationRequest = (requestStub, useUserOnboarding = false) => {
+        const expectedService = useUserOnboarding ? 'user-onboarding' : 'license';
+        const expectedResource = useUserOnboarding ? 'api/v1/users/activations' : 'users/activations';
         const requests = requestStub.args.filter(
-          ([request]) => request.service === 'license' && request.resource === 'users/activations'
+          ([request]) => request.service === expectedService && request.resource === expectedResource
         );
 
         assert.strictEqual(requests.length, 1);
@@ -893,6 +907,44 @@ describe('webex-core', () => {
               getActivationRequest(requestStub).headers['x-prelogin-userid'],
               preloginUserId
             );
+          });
+      });
+
+      it('uses the license service by default', () => {
+        const requestStub = sandbox.spy(unauthServices, 'request');
+
+        return unauthServices
+          .validateUser({
+            email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+            activationOptions: {suppressEmail: true},
+          })
+          .then(() => {
+            const request = getActivationRequest(requestStub, false);
+            assert.strictEqual(request.service, 'license');
+            assert.strictEqual(request.resource, 'users/activations');
+          });
+      });
+
+      it('uses the user-onboarding service when useUserOnboardingServiceForActivations config is true', () => {
+        const userOnboardingWebex = new WebexCore({
+          config: {
+            services: {
+              useUserOnboardingServiceForActivations: true,
+            },
+          },
+        });
+        const userOnboardingServices = userOnboardingWebex.internal.services;
+        const requestStub = sandbox.spy(userOnboardingServices, 'request');
+
+        return userOnboardingServices
+          .validateUser({
+            email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
+            activationOptions: {suppressEmail: true},
+          })
+          .then(() => {
+            const request = getActivationRequest(requestStub, true);
+            assert.strictEqual(request.service, 'user-onboarding');
+            assert.strictEqual(request.resource, 'api/v1/users/activations');
           });
       });
     });

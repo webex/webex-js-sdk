@@ -3,6 +3,7 @@
 [![license: Cisco](https://img.shields.io/badge/License-Cisco-blueviolet?style=flat-square)](https://github.com/webex/webex-js-sdk/blob/master/LICENSE)
 ![state: Stable](https://img.shields.io/badge/State-Stable-blue?style=flat-square)
 ![scope: Public](https://img.shields.io/badge/Scope-Public-darkgreen?style=flat-square)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/webex/webex-js-sdk)
 
 This project is designed as a mono-repository for all publicly-provided JavaScript packages from Cisco's Webex Developer Experience team. These packages consist of mostly API-related modules that allow for seamless integration with the collection of services that belong to the Webex platform.
 

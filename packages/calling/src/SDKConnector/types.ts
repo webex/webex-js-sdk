@@ -1,3 +1,4 @@
+import {FailoverCacheState} from 'CallingClient/registration/types';
 import {
   KmsKey,
   KmsResourceObject,
@@ -66,6 +67,11 @@ export type Logger = {
 // TODO: is there a way to import bindings from the Webex JS SDK without having to redefine expected methods and structure?
 // This defines the shape for the webex SDK, if a typing doesn't exist, it should be added here
 export interface WebexSDK {
+  boundedStorage: {
+    get: (namespace: string, key: string) => Promise<FailoverCacheState>;
+    put: (namespace: string, key: string, value: FailoverCacheState) => Promise<void>;
+    del: (namespace: string, key: string) => Promise<void>;
+  };
   // top level primitives/funcs
   config: {fedramp: boolean};
   version: string;

@@ -10,6 +10,8 @@ export const EVENT_TRIGGERS = {
   EVA_COMMAND: 'voicea:wxa',
   HIGHLIGHT_CREATED: 'voicea:highlightCreated',
   NEW_MANUAL_CAPTION: 'aibridge:newManualCaption',
+
+  LANGUAGE_DETECTED: 'voicea:languageDetected',
 };
 
 export const AIBRIDGE_RELAY_TYPES = {
