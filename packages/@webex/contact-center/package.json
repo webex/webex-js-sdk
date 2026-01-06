@@ -4,6 +4,7 @@
   "license": "Cisco's General Terms (https://www.cisco.com/site/us/en/about/legal/contract-experience/index.html)",
   "contributors": [
     "Adhwaith Menon <adhmenon@cisco.com>",
+    "Arun Ganeshan <arungan@cisco.com>",
     "Bharath Balan <bhabalan@cisco.com>",
     "Kesava Krishnan Madavan <kmadavan@cisco.com>",
     "Priya Kesari <pkesari@cisco.com>",
@@ -41,6 +42,17 @@
     "test": "yarn test:style && yarn test:unit",
     "test:style": "eslint 'src/**/*.ts'",
     "test:unit": "webex-legacy-tools test --unit --runner jest",
+    "fetch:e2e:tokens": "node ./scripts/fetch-e2e-access-tokens.js",
+    "pretest:e2e": "yarn run -T fetch:e2e:tokens",
+    "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test smoke",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:chromium": "playwright test --project=chromium",
+    "test:e2e:firefox": "playwright test --project=firefox",
+    "test:e2e:report": "playwright show-report test/e2e/playwright-report",
+    "test:e2e:codegen": "playwright codegen http://localhost:8080/contact-center/",
     "deploy:npm": "yarn npm publish"
   },
   "dependencies": {
@@ -58,6 +70,7 @@
   "devDependencies": {
     "@babel/core": "^7.22.11",
     "@babel/preset-typescript": "7.22.11",
+    "@playwright/test": "^1.57.0",
     "@types/jest": "27.4.1",
     "@typescript-eslint/eslint-plugin": "5.38.1",
     "@typescript-eslint/parser": "5.38.1",
@@ -66,6 +79,7 @@
     "@webex/jest-config-legacy": "workspace:*",
     "@webex/legacy-tools": "workspace:*",
     "@webex/test-helper-mock-webex": "workspace:*",
+    "dotenv": "^17.2.3",
     "eslint": "^8.24.0",
     "eslint-config-airbnb-base": "15.0.0",
     "eslint-config-prettier": "8.3.0",
@@ -76,6 +90,7 @@
     "eslint-plugin-tsdoc": "0.2.14",
     "jest": "27.5.1",
     "jest-junit": "13.0.0",
+    "nodemailer": "^6.9.13",
     "prettier": "2.5.1",
     "typedoc": "^0.25.0",
     "typescript": "4.9.5"

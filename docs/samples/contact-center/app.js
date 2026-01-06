@@ -98,17 +98,17 @@ function isIncomingTask(task, agentId) {
   );
 };
 
-// Store and Grab `access-token` from sessionStorage
-if (sessionStorage.getItem('date') > new Date().getTime()) {
-  tokenElm.value = sessionStorage.getItem('access-token');
+// Store and Grab `access-token` from localStorage
+if (localStorage.getItem('date') > new Date().getTime()) {
+  tokenElm.value = localStorage.getItem('access-token');
 }
 else {
-  sessionStorage.removeItem('access-token');
+  localStorage.removeItem('access-token');
 }
 
-tokenElm.addEventListener('change', (event) => {
-  sessionStorage.setItem('access-token', event.target.value);
-  sessionStorage.setItem('date', new Date().getTime() + (12 * 60 * 60 * 1000));
+tokenElm.addEventListener('input', (event) => {
+  localStorage.setItem('access-token', event.target.value);
+  localStorage.setItem('date', new Date().getTime() + (12 * 60 * 60 * 1000));
 });
 
 setAgentStateButton.addEventListener('click', () => {
@@ -135,6 +135,8 @@ async function uploadLogs() {
 function changeAuthType() {
   switch (authTypeElm.value) {
     case 'accessToken':
+      tokenElm.readOnly = false;
+      saveElm.disabled = false;
       toggleDisplay('credentials', true);
       toggleDisplay('oauth', false);
       break;
@@ -192,10 +194,15 @@ function initOauth() {
         .concat(additionalScopes))
       ).join(' ');
 
+  // Use environment variable if available (via build process) or global variable (via test injection), otherwise fallback to hardcoded
+  const clientId = (typeof process !== 'undefined' && process.env && process.env.CLIENT_ID) || 
+                   (window.WEBEX_CLIENT_ID) || 
+                   'C04ef08ffce356c3161bb66b15dbdd98d26b6c683c5ce1a1a89efad545fdadd74';
+
   webex = window.webex = Webex.init({
     config: generateWebexConfig({
       credentials: {
-        client_id: 'C04ef08ffce356c3161bb66b15dbdd98d26b6c683c5ce1a1a89efad545fdadd74',
+        client_id: clientId,
         redirect_uri: redirectUri,
         scope: requestedScopes,
       }
@@ -205,14 +212,51 @@ function initOauth() {
   localStorage.setItem('OAuth', true);
 
   webex.once('ready', () => {
+    const syncAccessTokenFromSupertoken = () => {
+      const accessToken = webex?.credentials?.supertoken?.access_token;
+      if (!accessToken) {
+        return;
+      }
+
+      tokenElm.value = accessToken;
+      localStorage.setItem('access-token', accessToken);
+      localStorage.setItem('date', new Date().getTime() + (12 * 60 * 60 * 1000));
+
+      tokenElm.readOnly = true;
+      saveElm.disabled = true;
+      authStatusElm.innerText = 'Saved access token!';
+      registerStatus.innerHTML = 'Not Subscribed';
+      registerBtn.disabled = false;
+      initializeEngageWidget();
+    };
+
+    webex.credentials.on('change:supertoken', syncAccessTokenFromSupertoken);
+
     oauthFormElm.addEventListener('submit', (event) => {
       event.preventDefault();
-      // initiate the login sequence if not authenticated.
-      webex.authorization.initiateLogin();
+      const isIframe = window !== window.parent;
+
+      // When loaded inside an iframe, pop OAuth in a new window so redirect works.
+      if (isIframe) {
+        webex.authorization.initiateLogin({
+          separateWindow: {
+            width: 800,
+            height: 600,
+            menubar: 'no',
+            toolbar: 'no',
+            location: 'yes'
+          }
+        });
+      }
+      else {
+        // initiate the login sequence if not authenticated.
+        webex.authorization.initiateLogin();
+      }
     });
 
     if (webex.canAuthorize) {
       oauthStatusElm.innerText = 'Authenticated';
+      syncAccessTokenFromSupertoken();
     }
   });
 }
@@ -1351,7 +1395,7 @@ function initWebex(e) {
   e.preventDefault();
   console.log('Authentication#initWebex()');
 
-  tokenElm.disabled = true;
+  tokenElm.readOnly = true;
   saveElm.disabled = true;
   authStatusElm.innerText = 'initializing...';
 
@@ -1947,9 +1991,9 @@ if (window.location.hash) {
   const expiresIn = urlParams.get('expires_in');
 
   if (accessToken) {
-    sessionStorage.setItem('access-token', accessToken);
-    sessionStorage.setItem('date', new Date().getTime() + parseInt(expiresIn, 10));
-    tokenElm.disabled = true;
+    localStorage.setItem('access-token', accessToken);
+    localStorage.setItem('date', new Date().getTime() + parseInt(expiresIn, 10));
+    tokenElm.readOnly = true;
     saveElm.disabled = true;
     authStatusElm.innerText = 'Saved access token!';
     registerStatus.innerHTML = 'Not Subscribed';
@@ -2354,4 +2398,3 @@ updateLoginOptionElm.addEventListener('change', updateApplyButtonState);
 updateDialNumberElm.addEventListener('input', updateApplyButtonState);
 
 updateApplyButtonState();
-

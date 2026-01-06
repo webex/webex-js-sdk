@@ -1,0 +1,7 @@
+import {test} from '@playwright/test';
+import createStationLoginTests from '../tests/station-login-test.spec';
+import createUserStateTests from '../tests/user-state-test.spec';
+
+test.describe('Station Login Tests', createStationLoginTests);
+// test.describe('User State Tests', createUserStateTests);
+

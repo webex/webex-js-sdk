@@ -4096,6 +4096,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@playwright/test@npm:^1.57.0":
+  version: 1.57.0
+  resolution: "@playwright/test@npm:1.57.0"
+  dependencies:
+    playwright: 1.57.0
+  bin:
+    playwright: cli.js
+  checksum: 1a84783a240d69c2c8081a127b446f812a8dc86fe6f60a9511dd501cc0e6229cbec7e7753972678f3f063ad2bebb2cedbe9caebc5faa41014aebed35773ea242
+  languageName: node
+  linkType: hard
+
 "@promptbook/utils@npm:0.69.5":
   version: 0.69.5
   resolution: "@promptbook/utils@npm:0.69.5"
@@ -7544,6 +7555,7 @@ __metadata:
   dependencies:
     "@babel/core": ^7.22.11
     "@babel/preset-typescript": 7.22.11
+    "@playwright/test": ^1.57.0
     "@types/jest": 27.4.1
     "@types/platform": 1.3.4
     "@typescript-eslint/eslint-plugin": 5.38.1
@@ -7560,6 +7572,7 @@ __metadata:
     "@webex/plugin-logger": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/webex-core": "workspace:*"
+    dotenv: ^17.2.3
     eslint: ^8.24.0
     eslint-config-airbnb-base: 15.0.0
     eslint-config-prettier: 8.3.0
@@ -7572,6 +7585,7 @@ __metadata:
     jest-html-reporters: 3.0.11
     jest-junit: 13.0.0
     lodash: ^4.17.21
+    nodemailer: ^6.9.13
     prettier: 2.5.1
     typedoc: ^0.25.0
     typescript: 4.9.5
@@ -15452,6 +15466,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"dotenv@npm:^17.2.3":
+  version: 17.2.3
+  resolution: "dotenv@npm:17.2.3"
+  checksum: fde23eb88649041ec7a0f6a47bbe59cac3c454fc2007cf2e40b9c984aaf0636347218c56cfbbf067034b0a73f530a2698a19b4058695787eb650ec69fe234624
+  languageName: node
+  linkType: hard
+
 "dotenv@npm:^4.0.0":
   version: 4.0.0
   resolution: "dotenv@npm:4.0.0"
@@ -18372,6 +18393,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fsevents@npm:2.3.2":
+  version: 2.3.2
+  resolution: "fsevents@npm:2.3.2"
+  dependencies:
+    node-gyp: latest
+  checksum: 97ade64e75091afee5265e6956cb72ba34db7819b4c3e94c431d4be2b19b8bb7a2d4116da417950c3425f17c8fe693d25e20212cac583ac1521ad066b77ae31f
+  conditions: os=darwin
+  languageName: node
+  linkType: hard
+
 "fsevents@npm:^1.2.7":
   version: 1.2.13
   resolution: "fsevents@npm:1.2.13"
@@ -18389,6 +18420,15 @@ __metadata:
   dependencies:
     node-gyp: latest
   checksum: 11e6ea6fea15e42461fc55b4b0e4a0a3c654faa567f1877dbd353f39156f69def97a69936d1746619d656c4b93de2238bf731f6085a03a50cabf287c9d024317
+  conditions: os=darwin
+  languageName: node
+  linkType: hard
+
+"fsevents@patch:fsevents@2.3.2#~builtin<compat/fsevents>":
+  version: 2.3.2
+  resolution: "fsevents@patch:fsevents@npm%3A2.3.2#~builtin<compat/fsevents>::version=2.3.2&hash=df0bf1"
+  dependencies:
+    node-gyp: latest
   conditions: os=darwin
   languageName: node
   linkType: hard
@@ -26139,6 +26179,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"nodemailer@npm:^6.9.13":
+  version: 6.10.1
+  resolution: "nodemailer@npm:6.10.1"
+  checksum: 39e9208e13c40b58c59242205bce855e74def25d953070ab6a5b1c23b0bf37df0725b3c6dea52d4220e2e60dd1fffcd486a697dece79afdf98842aae6395d393
+  languageName: node
+  linkType: hard
+
 "nodemon@npm:^3.1.7":
   version: 3.1.11
   resolution: "nodemon@npm:3.1.11"
@@ -27534,6 +27581,30 @@ __metadata:
   version: 1.3.6
   resolution: "platform@npm:1.3.6"
   checksum: 6f472a09c61d418c7e26c1c16d0bdc029549d512dbec6526216a1e59ec68100d07007d0097dcba69dddad883d6f2a83361b4bdfe0094a3d9a2af24158643d85e
+  languageName: node
+  linkType: hard
+
+"playwright-core@npm:1.57.0":
+  version: 1.57.0
+  resolution: "playwright-core@npm:1.57.0"
+  bin:
+    playwright-core: cli.js
+  checksum: 960e80d6ec06305b11a3ca9e78e8e4201cc17f37dd37279cb6fece4df43d74bf589833f4f94535fadd284b427f98c5f1cf09368e22f0f00b6a9477571ce6b03b
+  languageName: node
+  linkType: hard
+
+"playwright@npm:1.57.0":
+  version: 1.57.0
+  resolution: "playwright@npm:1.57.0"
+  dependencies:
+    fsevents: 2.3.2
+    playwright-core: 1.57.0
+  dependenciesMeta:
+    fsevents:
+      optional: true
+  bin:
+    playwright: cli.js
+  checksum: 176fd9fd890f390e0aa00d42697b70072d534243b15467d9430f3af329e77b3225b67a0afa12ea76fb440300dabd92d4cf040baf5edceee8eeff0ee1590ae5b7
   languageName: node
   linkType: hard
 

@@ -52,3 +52,6 @@ coverage
 patches.hash
 bundle.js.map
 junit.xml
+
+# Local Webex Contact Center E2E credentials
+packages/@webex/contact-center/test/e2e/.env.contact-center.e2e
