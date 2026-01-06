@@ -590,6 +590,24 @@ export default class LocusInfo extends EventsScope {
           this.hashTreeObjectId2ParticipantId.delete(object.htMeta.elementId.id);
         }
         break;
+      case ObjectType.control:
+        if (object.data) {
+          Object.keys(object.data).forEach((controlKey) => {
+            LoggerProxy.logger.info(
+              `Locus-info:index#updateLocusFromHashTreeObject --> control ${controlKey} updated:`,
+              object.data[controlKey]
+            );
+            if (!locus.controls) {
+              locus.controls = {};
+            }
+            locus.controls[controlKey] = object.data[controlKey];
+          });
+        } else {
+          LoggerProxy.logger.warn(
+            `Locus-info:index#updateLocusFromHashTreeObject --> control object update without data - this is not expected!`
+          );
+        }
+        break;
       case ObjectType.links:
       case ObjectType.info:
       case ObjectType.fullState:
