@@ -715,20 +715,18 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             this.agentConfig.webRtcEnabled &&
             this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
           ) {
-            this.$webex.internal.mercury
-              .connect()
-              .then(() => {
-                LoggerProxy.log('Authentication: webex.internal.mercury.connect successful', {
-                  module: CC_FILE,
-                  method: METHODS.CONNECT_WEBSOCKET,
-                });
-              })
-              .catch((error) => {
-                LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
-                  module: CC_FILE,
-                  method: METHODS.CONNECT_WEBSOCKET,
-                });
+            try {
+              await this.$webex.internal.mercury.connect();
+              LoggerProxy.log('Authentication: webex.internal.mercury.connect successful', {
+                module: CC_FILE,
+                method: METHODS.CONNECT_WEBSOCKET,
               });
+            } catch (error) {
+              LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
+                module: CC_FILE,
+                method: METHODS.CONNECT_WEBSOCKET,
+              });
+            }
           }
           if (this.$config && this.$config.allowAutomatedRelogin) {
             await this.silentRelogin();
