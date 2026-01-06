@@ -980,8 +980,8 @@ export default class LocusInfo extends EventsScope {
   // eslint-disable-next-line @typescript-eslint/no-shadow
   handleOneOnOneEvent(eventType: string) {
     if (
-      this.parsedLocus.fullState.type === _CALL_ ||
-      this.parsedLocus.fullState.type === _SIP_BRIDGE_
+      this.parsedLocus.fullState?.type === _CALL_ ||
+      this.parsedLocus.fullState?.type === _SIP_BRIDGE_
     ) {
       // for 1:1 bob calls alice and alice declines, notify the meeting state
       if (eventType === LOCUSEVENT.PARTICIPANT_DECLINED) {
@@ -1094,9 +1094,9 @@ export default class LocusInfo extends EventsScope {
    */
   isMeetingActive() {
     if (
-      this.parsedLocus.fullState.type === _CALL_ ||
-      this.parsedLocus.fullState.type === _SIP_BRIDGE_ ||
-      this.parsedLocus.fullState.type === _SPACE_SHARE_
+      this.parsedLocus.fullState?.type === _CALL_ ||
+      this.parsedLocus.fullState?.type === _SIP_BRIDGE_ ||
+      this.parsedLocus.fullState?.type === _SPACE_SHARE_
     ) {
       // @ts-ignore
       const partner = this.getLocusPartner(this.participants, this.self);
@@ -1189,7 +1189,7 @@ export default class LocusInfo extends EventsScope {
           }
         );
       }
-    } else if (this.parsedLocus.fullState.type === _MEETING_) {
+    } else if (this.parsedLocus.fullState?.type === _MEETING_) {
       if (
         this.fullState &&
         (this.fullState.state === LOCUS.STATE.INACTIVE ||
@@ -1286,6 +1286,7 @@ export default class LocusInfo extends EventsScope {
   compareSelfAndHost() {
     // In some cases the host info is not present but the moderator values changes from null to false so it triggers an update
     if (
+      this.parsedLocus.self &&
       this.parsedLocus.self.selfIdentity === this.parsedLocus.host?.hostId &&
       this.parsedLocus.self.moderator
     ) {
@@ -1970,14 +1971,14 @@ export default class LocusInfo extends EventsScope {
       }
 
       // TODO: check if we need to save the sipUri here as well
-      // this.emit(LOCUSINFO.EVENTS.MEETING_UPDATE, SelfUtils.getSipUrl(this.getLocusPartner(participants, self), this.parsedLocus.fullState.type, this.parsedLocus.info.sipUri));
+      // this.emit(LOCUSINFO.EVENTS.MEETING_UPDATE, SelfUtils.getSipUrl(this.getLocusPartner(participants, self), this.parsedLocus.fullState?.type, this.parsedLocus.info?.sipUri));
       const result = SelfUtils.getSipUrl(
         this.getLocusPartner(this.participants, self),
-        this.parsedLocus.fullState.type,
-        this.parsedLocus.info.sipUri
+        this.parsedLocus.fullState?.type,
+        this.parsedLocus.info?.sipUri
       );
 
-      if (result.sipUri) {
+      if (result?.sipUri) {
         this.updateMeeting(result);
       }
 
