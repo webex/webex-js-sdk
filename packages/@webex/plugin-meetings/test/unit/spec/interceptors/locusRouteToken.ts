@@ -9,7 +9,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import {LocusRouteTokenInterceptor} from '@webex/plugin-meetings/src/interceptors';
 import Meetings from '@webex/plugin-meetings';
 
-const X_CISCO_PART_ROUTE_TOKEN = 'x-cisco-part-route-token';
+const X_CISCO_PART_ROUTE_TOKEN = 'X-Cisco-Part-Route-Token';
 
 describe('LocusRouteTokenInterceptor', () => {
   let interceptor, webex;
@@ -41,6 +41,23 @@ describe('LocusRouteTokenInterceptor', () => {
     const response = {
       headers: {
         [X_CISCO_PART_ROUTE_TOKEN]: 'test-token',
+      },
+    };
+
+    const result = await interceptor.onResponse(
+      {
+        uri: `https://locus-test.webex.com/locus/api/v1/loci/${TEST_LOCUS_ID}/foo`,
+      },
+      response
+    );
+    assert.equal(result, response);
+    assert.equal(interceptor.getToken(TEST_LOCUS_ID), 'test-token');
+  });
+
+  it('get route token case insensitively ', async () => {
+    const response = {
+      headers: {
+        ['x-cisco-part-route-token']: 'test-token',
       },
     };
 
