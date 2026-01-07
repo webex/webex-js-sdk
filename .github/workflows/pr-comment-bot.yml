@@ -160,11 +160,8 @@ jobs:
               return;
             }
             
-            // Get the first commit hash for the changelog link
-            const firstCommitHash = commits.length > 0 ? commits[0].fullSha : '';
-            
-            // Build the changelog URL
-            const changelogUrl = `https://webex.github.io/webex-js-sdk/changelog/?stable_version=${versionNumber}${firstCommitHash ? '&commitHash=' + firstCommitHash.substring(0, 7) : ''}`;
+            // Build the changelog URL - only use stable_version to show all commits in that release
+            const changelogUrl = `https://webex.github.io/webex-js-sdk/changelog/?stable_version=${versionNumber}`;
             
             // Build the package list markdown
             const packageList = packages.slice(0, 5).map(p => `\`${p}\``).join(', ');
