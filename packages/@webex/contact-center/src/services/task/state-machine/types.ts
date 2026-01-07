@@ -51,59 +51,25 @@ export interface UIControlConfig {
 export type UIControls = TaskUIControls;
 
 /**
- * Context data maintained by the state machine
- *
- * IMPORTANT: This context should only store data that CANNOT be derived from the state machine's current state.
- *
- * STATE-DERIVED PROPERTIES (NOT stored in context, derived from state machine state):
- * - isHold: Derived from state === TaskState.HELD
- * - isConsulted: Derived from state === TaskState.CONSULTING or state === TaskState.OFFERED_CONSULT
- * - isConferencing: Derived from state === TaskState.CONFERENCING
- * - isConnected: Derived from state === TaskState.CONNECTED
- * - isWrappingUp: Derived from state === TaskState.WRAPPING_UP
- * - isOffered: Derived from state === TaskState.OFFERED or state === TaskState.OFFERED_CONSULT
- *
- * These boolean flags were removed because they duplicate information already available
- * in the state machine's current state, violating the single source of truth principle.
- * Use state.matches(TaskState.XXX) instead to check these conditions.
+ * Task state machine context.
+ * Only stores data that cannot be derived from state machine state.
  */
 export interface TaskContext {
-  // Task data
   taskData: TaskData | null;
 
   // Consult tracking
-  acceptInitiated: boolean;
-  holdInitiated: boolean;
-  transferInitiated: boolean;
-  conferenceInitiated: boolean;
   consultInitiator: boolean;
   exitingConference: boolean;
-  consultDestination: string | null;
   consultDestinationType: DestinationType | null;
   consultDestinationAgentJoined: boolean;
-
-  /**
-   * Indicates if the consult call leg is currently on hold.
-   * When true, the agent is talking on the main call and the consult is held.
-   * When false (during CONSULTING state), the agent is on the consult call and main call is held.
-   * This flag is derived from findHoldStatus() per widgets-util-logic.md
-   */
   consultCallHeld: boolean;
 
-  /**
-   * Indicates if the consult has been fully established (both parties connected).
-   * Used to determine UI control state during consulting scenarios.
-   */
-  consultEstablished: boolean;
-
-  // Recording tracking derived from task data
+  // Recording
   recordingControlsAvailable: boolean;
   recordingInProgress: boolean;
 
-  // UI Control configuration (set at task creation)
+  // UI
   uiControlConfig: UIControlConfig;
-
-  // Computed UI controls (derived from state + context + config)
   uiControls: UIControls;
 }
 

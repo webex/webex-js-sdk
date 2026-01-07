@@ -157,17 +157,11 @@ export function createInitialContext(
 ): TaskContext {
   const baseContext: TaskContext = {
     taskData: null,
-    acceptInitiated: false,
-    holdInitiated: false,
-    transferInitiated: false,
-    conferenceInitiated: false,
     consultInitiator: false,
     exitingConference: false,
-    consultDestination: null,
     consultDestinationType: null,
     consultDestinationAgentJoined: false,
     consultCallHeld: false,
-    consultEstablished: false,
     recordingControlsAvailable: false,
     recordingInProgress: false,
     uiControlConfig,
@@ -203,13 +197,8 @@ export const actions: TaskActionsMap = {
    */
   initializeTask: assign(({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
     return {
-      acceptInitiated: false,
-      holdInitiated: false,
-      transferInitiated: false,
-      conferenceInitiated: false,
       consultInitiator: false,
       exitingConference: false,
-      consultDestination: null,
       consultDestinationType: null,
       consultDestinationAgentJoined: false,
       ...deriveTaskDataUpdates(context, getTaskDataFromEvent(event)),
@@ -249,68 +238,22 @@ export const actions: TaskActionsMap = {
     return {};
   }),
 
-  /**
-   * Track accept flow state
-   */
-  setAcceptInitiated: assign({
-    acceptInitiated: true,
-  }),
+  // No-op actions - state machine uses intermediate states instead
+  setHoldInitiated: assign({}),
+  handleTransferInit: assign({}),
+  finalizeTransfer: assign({}),
+  handleConferenceInit: assign({}),
+  handleConferenceFailed: assign({}),
 
-  /**
-   * Track hold flow state
-   */
-  setHoldInitiated: assign({
-    holdInitiated: true,
-  }),
+  handleConsultAccept: assign({consultDestinationAgentJoined: true}),
+  handleConsultCompletion: assign({consultDestinationAgentJoined: true}),
+  handleConsultFailed: assign({consultDestinationAgentJoined: false, consultInitiator: false}),
 
-  /**
-   * Track transfer flow state
-   */
-  handleTransferInit: assign({
-    transferInitiated: true,
-  }),
+  // Clear consultInitiator so fresh consults from conference work correctly
+  handleConferenceStarted: assign({consultInitiator: false}),
 
-  finalizeTransfer: assign({
-    transferInitiated: false,
-  }),
-
-  /**
-   * Handle consult-phase callbacks
-   */
-  handleConsultAccept: assign({
-    consultDestinationAgentJoined: true,
-  }),
-
-  handleConsultCompletion: assign({
-    consultDestinationAgentJoined: true,
-  }),
-
-  handleConsultFailed: assign({
-    consultDestination: null,
-    consultDestinationAgentJoined: false,
-    consultInitiator: false,
-  }),
-
-  handleConferenceInit: assign({
-    conferenceInitiated: true,
-  }),
-
-  handleConferenceStarted: assign({
-    conferenceInitiated: false,
-    // - Primary who merged doesn't incorrectly get consult UI when secondary consults
-    // - Fresh consult from conference can set consultInitiator correctly for the actual initiator
-    consultInitiator: false,
-  }),
-
-  handleConferenceFailed: assign({
-    conferenceInitiated: false,
-  }),
-
-  /**
-   * Set consult destination details
-   */
   setConsultDestination: assign(({event}: {event: TaskEventPayload}) => {
-    if (!event || event.type !== TaskEvent.CONSULT || !('destination' in event)) {
+    if (!event || event.type !== TaskEvent.CONSULT) {
       return {};
     }
 
@@ -320,16 +263,11 @@ export const actions: TaskActionsMap = {
         : null;
 
     return {
-      consultDestination: (event as {destination: string}).destination,
       consultDestinationType: destinationType,
-      // Reset to false when starting new consult - will be set true when agent accepts
       consultDestinationAgentJoined: false,
     };
   }),
 
-  /**
-   * Mark that consult destination agent has joined
-   */
   setConsultAgentJoined: assign(({event}: {event: TaskEventPayload}) => {
     if (
       !event ||
@@ -345,9 +283,6 @@ export const actions: TaskActionsMap = {
     };
   }),
 
-  /**
-   * Set recording state
-   */
   setRecordingState: assign(({event}: {event: TaskEventPayload}) => {
     if (!event || !('type' in event)) {
       return {};
@@ -369,147 +304,52 @@ export const actions: TaskActionsMap = {
     return {};
   }),
 
-  /**
-   * Clear consult state
-   */
   clearConsultState: assign({
-    consultDestination: null,
     consultDestinationType: null,
     consultDestinationAgentJoined: false,
-    conferenceInitiated: false,
     consultInitiator: false,
     exitingConference: false,
     consultCallHeld: false,
-    consultEstablished: false,
   }),
 
-  // ============================================
-  // Conference/Consult Call State Actions
-  // ============================================
+  setConsultCallHeld: assign({consultCallHeld: true}),
+  clearConsultCallHeld: assign({consultCallHeld: false}),
+  handleSwitchToMainCall: assign({consultCallHeld: true}),
+  handleSwitchToConsult: assign({consultCallHeld: false}),
 
-  /**
-   * Set consultCallHeld flag to true
-   * Indicates agent has switched from consult to main call
-   */
-  setConsultCallHeld: assign({
-    consultCallHeld: true,
-  }),
-
-  /**
-   * Clear consultCallHeld flag
-   * Indicates agent has switched back to consult call
-   */
-  clearConsultCallHeld: assign({
-    consultCallHeld: false,
-  }),
-
-  /**
-   * Set consultEstablished flag to true
-   * Indicates consult has been fully established (both parties connected)
-   */
-  setConsultEstablished: assign({
-    consultEstablished: true,
-  }),
-
-  /**
-   * Clear consultEstablished flag
-   */
-  clearConsultEstablished: assign({
-    consultEstablished: false,
-  }),
-
-  /**
-   * Handle switch to main call event
-   * Sets consultCallHeld to true (consult is now held)
-   */
-  handleSwitchToMainCall: assign({
-    consultCallHeld: true,
-  }),
-
-  /**
-   * Handle switch to consult call event
-   * Sets consultCallHeld to false (consult is now active)
-   */
-  handleSwitchToConsult: assign({
-    consultCallHeld: false,
-  }),
-
-  /**
-   * Handle participant joining conference
-   */
   handleParticipantJoined: assign(({event}: {event: TaskEventPayload}) => {
-    // Update taskData if provided in event
     const taskData = getTaskDataFromEvent(event);
-    if (taskData) {
-      return {taskData};
-    }
 
-    return {};
+    return taskData ? {taskData} : {};
   }),
 
-  /**
-   * Handle participant leaving conference
-   */
   handleParticipantLeft: assign(({event}: {event: TaskEventPayload}) => {
-    // Update taskData if provided in event
     const taskData = getTaskDataFromEvent(event);
-    if (taskData) {
-      return {taskData};
-    }
 
-    return {};
+    return taskData ? {taskData} : {};
   }),
 
-  /**
-   * Set exitingConference flag when agent initiates exit
-   */
-  setExitingConference: assign({
-    exitingConference: true,
-  }),
+  setExitingConference: assign({exitingConference: true}),
 
-  /**
-   * Handle successful exit from conference
-   */
   handleExitConferenceSuccess: assign(({event}: {event: TaskEventPayload}) => {
     const taskData = getTaskDataFromEvent(event);
 
     return {
       ...(taskData ? {taskData} : {}),
-      conferenceInitiated: false,
-      exitingConference: false, // Clear the flag after handling
+      exitingConference: false,
     };
   }),
 
-  /**
-   * Handle failed exit from conference
-   */
-  handleExitConferenceFailed: assign({
-    conferenceInitiated: false,
-    exitingConference: false, // Clear the flag on failure too
-  }),
+  handleExitConferenceFailed: assign({exitingConference: false}),
 
-  /**
-   * Handle successful conference transfer
-   */
   handleTransferConferenceSuccess: assign(({event}: {event: TaskEventPayload}) => {
     const taskData = getTaskDataFromEvent(event);
 
-    return {
-      ...(taskData ? {taskData} : {}),
-      transferInitiated: false,
-    };
+    return taskData ? {taskData} : {};
   }),
 
-  /**
-   * Handle failed conference transfer
-   */
-  handleTransferConferenceFailed: assign({
-    transferInitiated: false,
-  }),
+  handleTransferConferenceFailed: assign({}),
 
-  /**
-   * Track hold state updates (currently no-op placeholder)
-   */
   setHoldState: assign(({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
     if (
       !event ||
@@ -550,29 +390,17 @@ export const actions: TaskActionsMap = {
           media: updatedMedia,
         },
       },
-      holdInitiated: false,
     };
   }),
 
-  /**
-   * Mark task as ended (currently no-op placeholder)
-   */
   markEnded: assign(() => ({
     recordingControlsAvailable: false,
     recordingInProgress: false,
   })),
 
-  /**
-   * Cleanup resources on task completion (placeholder)
-   */
-  cleanupResources: () => {
-    return undefined;
-  },
+  cleanupResources: () => undefined,
 
-  /**
-   * Placeholder emitters that get overridden by consumers when needed
-   * These are invoked by the state machine to trigger task events
-   */
+  // Event emitters - placeholders overridden by consumers
   emitTaskIncoming: () => undefined,
   emitTaskHydrate: () => undefined,
   emitTaskOfferContact: () => undefined,
@@ -595,8 +423,6 @@ export const actions: TaskActionsMap = {
   emitTaskRecordingResumed: () => undefined,
   emitTaskRecordingResumeFailed: () => undefined,
   emitTaskWrappedup: () => undefined,
-
-  // Conference event emitters (placeholders to be overridden by consumers)
   emitTaskParticipantJoined: () => undefined,
   emitTaskParticipantLeft: () => undefined,
   emitTaskConferenceStarted: () => undefined,

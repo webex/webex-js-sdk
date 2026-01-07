@@ -10,7 +10,6 @@ describe('State Machine Guards', () => {
       recordingInProgress: false,
       consultDestinationAgentJoined: false,
       consultCallHeld: false,
-      consultEstablished: false,
       consultInitiator: false,
       taskData: {
         interactionId: 'interaction-123',
@@ -192,10 +191,6 @@ describe('State Machine Guards', () => {
     it('consultCallHeld returns context value', () => {
       expect(guards.consultCallHeld(createParams(createContext({consultCallHeld: true})))).toBe(true);
       expect(guards.consultCallNotHeld(createParams(createContext({consultCallHeld: false})))).toBe(true);
-    });
-
-    it('consultEstablished returns context value', () => {
-      expect(guards.consultEstablished(createParams(createContext({consultEstablished: true})))).toBe(true);
     });
 
     it('isConsultInitiator/isConsultedAgent returns context value', () => {

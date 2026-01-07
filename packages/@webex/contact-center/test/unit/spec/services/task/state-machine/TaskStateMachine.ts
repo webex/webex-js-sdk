@@ -174,7 +174,6 @@ describe('Task state machine', () => {
       });
       expect(service.getSnapshot().value).toBe(TaskState.CONSULT_INITIATING);
       expect(service.getSnapshot().context.consultInitiator).toBe(true);
-      expect(service.getSnapshot().context.consultDestination).toBe('agent-42');
 
       service.send({type: TaskEvent.CONSULT_SUCCESS});
       expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
@@ -188,7 +187,6 @@ describe('Task state machine', () => {
       service.send({type: TaskEvent.CONSULT_END});
       const snapshotAfterEnd = service.getSnapshot();
       expect(snapshotAfterEnd.value).toBe(TaskState.HELD);
-      expect(snapshotAfterEnd.context.consultDestination).toBeNull();
       expect(snapshotAfterEnd.context.consultDestinationAgentJoined).toBe(false);
     });
 
