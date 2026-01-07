@@ -8,6 +8,10 @@ on:
         description: 'Test version number (e.g., 3.4.0)'
         required: false
         default: '3.4.0'
+      test_pr_number:
+        description: 'Test PR number (e.g., 2) - leave empty to auto-detect'
+        required: false
+        default: ''
   workflow_run:
     workflows: ["Deploy CD"]
     types:
@@ -127,6 +131,14 @@ jobs:
             }
             
             console.log(`Found ${prNumbers.size} unique PRs: ${Array.from(prNumbers).join(', ')}`);
+            
+            // For manual testing, allow override with specific PR number
+            const testPrNumber = '${{ github.event.inputs.test_pr_number }}';
+            if (testPrNumber && testPrNumber.trim() !== '') {
+              console.log(`🧪 TEST MODE: Using manual PR number #${testPrNumber}`);
+              prNumbers.clear();
+              prNumbers.add(testPrNumber.trim());
+            }
             
             // Get list of published packages from the deploy workflow
             const packages = ['webex', '@webex/plugin-meetings', '@webex/calling'];
