@@ -13,11 +13,10 @@ import {
   ConsultTransferPayLoad,
   consultConferencePayloadData,
   CONSULT_TRANSFER_DESTINATION_TYPE,
-  TASK_CHANNEL_TYPE,
   TASK_EVENTS,
   VOICE_VARIANT,
 } from '../types';
-import Task, {TaskRuntimeOptions} from '../Task';
+import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
@@ -29,7 +28,6 @@ export default class Voice extends Task implements IVoice {
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
     callOptions?: VoiceUIControlOptions,
-    runtimeOptions?: TaskRuntimeOptions,
     wrapupData?: WrapupData,
     agentId?: string
   ) {
@@ -44,10 +42,8 @@ export default class Voice extends Task implements IVoice {
       contact,
       data,
       {
-        channelType: TASK_CHANNEL_TYPE.VOICE,
         ...resolvedOptions,
       },
-      runtimeOptions,
       wrapupData,
       agentId
     );

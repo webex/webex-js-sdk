@@ -13,18 +13,17 @@
  * 1. Helper Functions - Extract data from events/context
  * 2. Hydrate Guards - For state restoration on page refresh
  * 3. Conference Guards - Conference state checks
- * 4. Consult Guards - Consult flow checks
- * 5. Wrapup Guards - End-of-call flow checks
- * 6. Server State Guards - Check backend-reported state
- * 7. Composite Guards - Combine multiple conditions
+ * 4. Customer Guards - Customer presence checks
+ * 5. Consult Guards - Consult flow checks
+ * 6. Wrapup Guards - End-of-call flow checks
+ * 7. Server State Guards - Check backend-reported state
+ * 8. Recording Guards - Recording state checks
  */
 
 import {TaskContext, TaskEventPayload} from './types';
-import {MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE} from './constants';
 import {TaskData} from '../types';
 import {
   getIsCustomerInCall,
-  getIsConsultInProgress,
   getConferenceParticipantsCount,
   getIsConferenceInProgress,
 } from '../TaskUtils';
@@ -228,45 +227,6 @@ export const guards = {
   },
 
   /**
-   * Check if maximum participants in conference has been reached
-   */
-  maxParticipantsReached: ({context}: GuardParams): boolean => {
-    if (!context.taskData?.interaction || !context.taskData?.interactionId) return false;
-    const count = getConferenceParticipantsCount(
-      context.taskData.interaction,
-      context.taskData.interactionId
-    );
-
-    return count >= MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE;
-  },
-
-  /**
-   * Check if there's room for more participants
-   */
-  canAddParticipant: ({context}: GuardParams): boolean => {
-    if (!context.taskData?.interaction || !context.taskData?.interactionId) return true;
-    const count = getConferenceParticipantsCount(
-      context.taskData.interaction,
-      context.taskData.interactionId
-    );
-
-    return count < MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE;
-  },
-
-  /**
-   * Check if this is the last WxCC agent in the conference
-   */
-  isLastWxCCAgent: ({context}: GuardParams): boolean => {
-    if (!context.taskData?.interaction || !context.taskData?.interactionId) return true;
-    const count = getConferenceParticipantsCount(
-      context.taskData.interaction,
-      context.taskData.interactionId
-    );
-
-    return count <= 1;
-  },
-
-  /**
    * Check if conference should auto-downgrade (< 2 agents)
    */
   shouldDowngradeConference: ({context}: GuardParams): boolean => {
@@ -282,24 +242,6 @@ export const guards = {
   // ============================================
   // Customer Guards
   // ============================================
-
-  /**
-   * Check if customer is currently in the call
-   */
-  customerInCall: ({context}: GuardParams): boolean => {
-    if (!context.taskData?.interaction || !context.taskData?.interactionId) return false;
-
-    return getIsCustomerInCall(context.taskData.interaction, context.taskData.interactionId);
-  },
-
-  /**
-   * Check if customer has left the call
-   */
-  customerNotInCall: ({context}: GuardParams): boolean => {
-    if (!context.taskData?.interaction || !context.taskData?.interactionId) return true;
-
-    return !getIsCustomerInCall(context.taskData.interaction, context.taskData.interactionId);
-  },
 
   /**
    * Check if conference active AND customer still in call (from event)
@@ -319,45 +261,6 @@ export const guards = {
   // ============================================
 
   /**
-   * Check if a consult is currently in progress
-   */
-  consultInProgress: ({context}: GuardParams): boolean => {
-    if (!context.taskData?.interaction) return false;
-
-    return getIsConsultInProgress(context.taskData.interaction);
-  },
-
-  /**
-   * Check if no consult is currently in progress
-   */
-  noConsultInProgress: ({context}: GuardParams): boolean => {
-    if (!context.taskData?.interaction) return true;
-
-    return !getIsConsultInProgress(context.taskData.interaction);
-  },
-
-  /**
-   * Check if the consulted destination agent has joined
-   */
-  consultDestinationAgentJoined: ({context}: GuardParams): boolean => {
-    return context.consultDestinationAgentJoined === true;
-  },
-
-  /**
-   * Check if the consult call is currently held
-   */
-  consultCallHeld: ({context}: GuardParams): boolean => {
-    return context.consultCallHeld === true;
-  },
-
-  /**
-   * Check if the consult call is not held
-   */
-  consultCallNotHeld: ({context}: GuardParams): boolean => {
-    return context.consultCallHeld !== true;
-  },
-
-  /**
    * Check if the current agent initiated the consult
    */
   isConsultInitiator: ({context}: GuardParams): boolean => {
@@ -369,13 +272,6 @@ export const guards = {
    */
   isNotConsultInitiator: ({context}: GuardParams): boolean => {
     return !context.consultInitiator;
-  },
-
-  /**
-   * Check if the current agent was consulted (not the initiator)
-   */
-  isConsultedAgent: ({context}: GuardParams): boolean => {
-    return context.consultInitiator === false;
   },
 
   /**
@@ -439,15 +335,6 @@ export const guards = {
   },
 
   /**
-   * Check if should NOT wrap up (from event)
-   */
-  shouldNotWrapUp: ({context, event}: GuardParams): boolean => {
-    const taskData = getTaskDataFromEvent(event);
-
-    return !shouldWrapUpForThisAgent(context, taskData);
-  },
-
-  /**
    * Check if wrapUpRequired in payload OR is consult initiator
    */
   shouldWrapUpOrIsInitiator: ({context, event}: GuardParams): boolean => {
@@ -508,65 +395,6 @@ export const guards = {
     if (taskData?.isConsulted === true) return true;
 
     return Boolean(context.consultInitiator && !taskData?.wrapUpRequired);
-  },
-
-  // ============================================
-  // Composite Guards
-  // ============================================
-
-  /**
-   * Composite: Can agent initiate a consult
-   */
-  canConsult: ({context}: GuardParams): boolean => {
-    if (!context.taskData?.interaction || !context.taskData?.interactionId) return false;
-    const interaction = context.taskData.interaction;
-    const interactionId = context.taskData.interactionId;
-    const count = getConferenceParticipantsCount(interaction, interactionId);
-    if (count >= MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE) return false;
-    if (getIsConsultInProgress(interaction)) return false;
-    if (!getIsCustomerInCall(interaction, interactionId)) return false;
-
-    return true;
-  },
-
-  /**
-   * Composite: Can merge to conference
-   */
-  canMergeToConference: ({context}: GuardParams): boolean => {
-    if (!context.taskData?.interaction || !context.taskData?.interactionId) return false;
-    if (!context.consultDestinationAgentJoined) return false;
-    const count = getConferenceParticipantsCount(
-      context.taskData.interaction,
-      context.taskData.interactionId
-    );
-
-    return count < MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE;
-  },
-
-  /**
-   * Composite: Can exit conference
-   */
-  canExitConference: ({context}: GuardParams): boolean => {
-    if (!context.taskData?.interaction) return false;
-    const isConference = getIsConferenceInProgress(context.taskData);
-    if (!isConference) return false;
-    const isConsulting = getIsConsultInProgress(context.taskData.interaction);
-    if (isConsulting) return false;
-
-    return true;
-  },
-
-  /**
-   * Composite: Can transfer conference
-   */
-  canTransferConference: ({context}: GuardParams): boolean => {
-    if (!context.taskData?.interaction) return false;
-    const isConference = getIsConferenceInProgress(context.taskData);
-    if (!isConference) return false;
-    const isConsulting = getIsConsultInProgress(context.taskData.interaction);
-    if (isConsulting) return false;
-
-    return true;
   },
 
   // ============================================

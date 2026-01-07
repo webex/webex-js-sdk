@@ -13,11 +13,13 @@
  */
 
 import {assign} from 'xstate';
-import type {ActionFunctionMap, EventObject} from 'xstate';
+import type {ActionArgs, ActionFunctionMap, EventObject} from 'xstate';
 import {TaskContext, TaskEventPayload, UIControlConfig} from './types';
 import {TaskEvent, TaskState} from './constants';
 import {DestinationType, TaskData} from '../types';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
+
+type TaskActionArgs = ActionArgs<TaskContext, TaskEventPayload, TaskEventPayload>;
 
 export type TaskActionsMap = ActionFunctionMap<
   TaskContext,
@@ -182,7 +184,7 @@ export function createInitialContext(
  * @returns Assign action that updates UI controls
  */
 export function updateUIControls(currentState: TaskState) {
-  return assign(({context}: {context: TaskContext}) => ({
+  return assign(({context}: TaskActionArgs) => ({
     uiControls: computeUIControls(currentState, context),
   }));
 }
@@ -195,7 +197,7 @@ export const actions: TaskActionsMap = {
   /**
    * Initialize task with offer data
    */
-  initializeTask: assign(({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+  initializeTask: assign(({context, event}: TaskActionArgs) => {
     return {
       consultInitiator: false,
       exitingConference: false,
@@ -208,7 +210,7 @@ export const actions: TaskActionsMap = {
   /**
    * Update task data from ASSIGN event
    */
-  updateTaskData: assign(({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+  updateTaskData: assign(({context, event}: TaskActionArgs) => {
     return deriveTaskDataUpdates(context, getTaskDataFromEvent(event));
   }),
 
@@ -223,7 +225,7 @@ export const actions: TaskActionsMap = {
    * This prevents all agents in a conference from becoming consultInitiator when one agent
    * starts a new consult.
    */
-  setConsultInitiator: assign(({event}: {event: TaskEventPayload}) => {
+  setConsultInitiator: assign(({event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event);
 
     // User explicitly clicked Consult → initiator
@@ -252,7 +254,7 @@ export const actions: TaskActionsMap = {
   // Clear consultInitiator so fresh consults from conference work correctly
   handleConferenceStarted: assign({consultInitiator: false}),
 
-  setConsultDestination: assign(({event}: {event: TaskEventPayload}) => {
+  setConsultDestination: assign(({event}: TaskActionArgs) => {
     if (!event || event.type !== TaskEvent.CONSULT) {
       return {};
     }
@@ -268,7 +270,7 @@ export const actions: TaskActionsMap = {
     };
   }),
 
-  setConsultAgentJoined: assign(({event}: {event: TaskEventPayload}) => {
+  setConsultAgentJoined: assign(({event}: TaskActionArgs) => {
     if (
       !event ||
       event.type !== TaskEvent.CONSULTING_ACTIVE ||
@@ -283,7 +285,7 @@ export const actions: TaskActionsMap = {
     };
   }),
 
-  setRecordingState: assign(({event}: {event: TaskEventPayload}) => {
+  setRecordingState: assign(({event}: TaskActionArgs) => {
     if (!event || !('type' in event)) {
       return {};
     }
@@ -317,13 +319,13 @@ export const actions: TaskActionsMap = {
   handleSwitchToMainCall: assign({consultCallHeld: true}),
   handleSwitchToConsult: assign({consultCallHeld: false}),
 
-  handleParticipantJoined: assign(({event}: {event: TaskEventPayload}) => {
+  handleParticipantJoined: assign(({event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event);
 
     return taskData ? {taskData} : {};
   }),
 
-  handleParticipantLeft: assign(({event}: {event: TaskEventPayload}) => {
+  handleParticipantLeft: assign(({event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event);
 
     return taskData ? {taskData} : {};
@@ -331,7 +333,7 @@ export const actions: TaskActionsMap = {
 
   setExitingConference: assign({exitingConference: true}),
 
-  handleExitConferenceSuccess: assign(({event}: {event: TaskEventPayload}) => {
+  handleExitConferenceSuccess: assign(({event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event);
 
     return {
@@ -342,7 +344,7 @@ export const actions: TaskActionsMap = {
 
   handleExitConferenceFailed: assign({exitingConference: false}),
 
-  handleTransferConferenceSuccess: assign(({event}: {event: TaskEventPayload}) => {
+  handleTransferConferenceSuccess: assign(({event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event);
 
     return taskData ? {taskData} : {};
@@ -350,7 +352,7 @@ export const actions: TaskActionsMap = {
 
   handleTransferConferenceFailed: assign({}),
 
-  setHoldState: assign(({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+  setHoldState: assign(({context, event}: TaskActionArgs) => {
     if (
       !event ||
       (event.type !== TaskEvent.HOLD_SUCCESS && event.type !== TaskEvent.UNHOLD_SUCCESS)

@@ -105,8 +105,8 @@ describe('Task (base class)', () => {
 
     logSpy.mockClear();
 
-    transitionTask.stateMachineService?.send({type: TaskEvent.OFFER, taskData: statefulData});
-    transitionTask.stateMachineService?.send({type: TaskEvent.ACCEPT});
+    transitionTask.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData: statefulData});
+    transitionTask.stateMachineService?.send({type: TaskEvent.ASSIGN, taskData: statefulData});
 
     const transitionMessages = logSpy.mock.calls
       .filter(([msg]) => typeof msg === 'string' && (msg as string).startsWith('State machine transition'))
@@ -125,7 +125,7 @@ describe('Task (base class)', () => {
     const emitSpy = jest.spyOn(task, 'emit');
 
     task.updateTaskData(createTaskData({wrapUpRequired: true}) as TaskData);
-    overrides.emitTaskWrapup({event: {type: TaskEvent.END}});
+    overrides.emitTaskWrapup({event: {type: TaskEvent.TASK_WRAPUP}});
 
     expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_WRAPUP, task);
   });
@@ -135,7 +135,7 @@ describe('Task (base class)', () => {
     const emitSpy = jest.spyOn(task, 'emit');
 
     task.updateTaskData(createTaskData({wrapUpRequired: false}) as TaskData);
-    overrides.emitTaskWrapup({event: {type: TaskEvent.END}});
+    overrides.emitTaskWrapup({event: {type: TaskEvent.TASK_WRAPUP}});
 
     expect(emitSpy).not.toHaveBeenCalledWith(TASK_EVENTS.TASK_WRAPUP, task);
   });

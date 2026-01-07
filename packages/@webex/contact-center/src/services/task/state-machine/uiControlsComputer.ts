@@ -94,7 +94,6 @@ function computeVoiceUIControls(
   // Base state machine states
   const stateConnected = currentState === TaskState.CONNECTED;
   const stateHeld = currentState === TaskState.HELD;
-  const isTransferInitiating = currentState === TaskState.TRANSFER_INITIATING;
   const isConfInitiating = currentState === TaskState.CONF_INITIATING;
   const isConsultInitiating = currentState === TaskState.CONSULT_INITIATING;
   const isHoldInitiating = currentState === TaskState.HOLD_INITIATING;
@@ -102,7 +101,7 @@ function computeVoiceUIControls(
   const isConsulting =
     currentState === TaskState.CONSULTING || isConfInitiating || isConsultInitiating;
   const isConferencing = currentState === TaskState.CONFERENCING;
-  const isWrappingUp = currentState === TaskState.WRAPPING_UP || isTransferInitiating;
+  const isWrappingUp = currentState === TaskState.WRAPPING_UP;
 
   // Interim states for hold transitions
   const isHoldTransition = isHoldInitiating || isResumeInitiating;
@@ -519,10 +518,10 @@ function computeDigitalUIControls(
   context: TaskContext,
   fallbackTaskData?: TaskData
 ): TaskUIControls {
-  const isOffered = currentState === TaskState.OFFERED;
+  const isOffered =
+    currentState === TaskState.OFFERED || currentState === TaskState.OFFERED_CONSULT;
   const isConnected = currentState === TaskState.CONNECTED;
-  const isWrappingUp =
-    currentState === TaskState.WRAPPING_UP || currentState === TaskState.TRANSFER_INITIATING;
+  const isWrappingUp = currentState === TaskState.WRAPPING_UP;
   const taskData = context.taskData ?? fallbackTaskData ?? null;
   const isTerminated = taskData?.interaction?.isTerminated ?? false;
 

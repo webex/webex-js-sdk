@@ -1066,23 +1066,6 @@ export type TaskData = {
   agentsPendingWrapUp?: string[];
 };
 
-export interface UIControls {
-  accept: {isVisible: boolean; isEnabled: boolean};
-  decline: {isVisible: boolean; isEnabled: boolean};
-  hold: {isVisible: boolean; isEnabled: boolean; label: 'Hold' | 'Resume'};
-  transfer: {isVisible: boolean; isEnabled: boolean};
-  consult: {isVisible: boolean; isEnabled: boolean};
-  end: {isVisible: boolean; isEnabled: boolean};
-  recording: {isVisible: boolean; isEnabled: boolean};
-  mute: {isVisible: boolean; isEnabled: boolean};
-  consultTransfer: {isVisible: boolean; isEnabled: boolean};
-  endConsult: {isVisible: boolean; isEnabled: boolean};
-  conference: {isVisible: boolean; isEnabled: boolean};
-  exitConference: {isVisible: boolean; isEnabled: boolean};
-  transferConference: {isVisible: boolean; isEnabled: boolean};
-  wrapup: {isVisible: boolean; isEnabled: boolean};
-}
-
 type TaskUIControlState = {
   isVisible: boolean;
   isEnabled: boolean;

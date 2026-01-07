@@ -41,13 +41,16 @@ const createBaseData = (overrides: Partial<TaskData> = {}): TaskData =>
   });
 
 const primeConnectedState = (voice: Voice, taskData: TaskData) => {
-  voice.stateMachineService?.send({type: TaskEvent.OFFER, taskData});
+  voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
   voice.stateMachineService?.send({type: TaskEvent.ASSIGN, taskData});
 };
 
 const primeHeldState = (voice: Voice, taskData: TaskData) => {
   primeConnectedState(voice, taskData);
-  voice.stateMachineService?.send({type: TaskEvent.HOLD, mediaResourceId: taskData.mediaResourceId});
+  voice.stateMachineService?.send({
+    type: TaskEvent.HOLD_INITIATED,
+    mediaResourceId: taskData.mediaResourceId,
+  });
   voice.stateMachineService?.send({
     type: TaskEvent.HOLD_SUCCESS,
     mediaResourceId: taskData.mediaResourceId,
@@ -259,7 +262,7 @@ describe('Voice Task', () => {
       expect(voice.uiControls).toEqual(initialExpected);
 
       voice.updateTaskData(taskData);
-      voice.stateMachineService?.send({type: TaskEvent.OFFER, taskData});
+      voice.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData});
       voice.stateMachineService?.send({type: TaskEvent.ASSIGN, taskData});
 
       const snapshot = voice.stateMachineService?.getSnapshot();

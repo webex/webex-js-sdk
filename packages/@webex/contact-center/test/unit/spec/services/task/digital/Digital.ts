@@ -47,7 +47,7 @@ describe('Digital Task', () => {
 
   it('constructor shows accept when offered', () => {
     const task = new Digital(dummyContact, dummyData);
-    sendStateEvents(task, [{type: TaskEvent.OFFER, taskData: dummyData}]);
+    sendStateEvents(task, [{type: TaskEvent.TASK_INCOMING, taskData: dummyData}]);
     expect(task.uiControls.accept.isVisible).toBe(true);
     expect(task.uiControls.accept.isEnabled).toBe(true);
   });
@@ -56,7 +56,7 @@ describe('Digital Task', () => {
     it('connected state shows transfer and end', () => {
       const task = new Digital(dummyContact, dummyData);
       sendStateEvents(task, [
-        {type: TaskEvent.OFFER, taskData: dummyData},
+        {type: TaskEvent.TASK_INCOMING, taskData: dummyData},
         {type: TaskEvent.ASSIGN, taskData: dummyData},
       ]);
       expect(task.uiControls.accept.isVisible).toBe(false);
@@ -68,9 +68,9 @@ describe('Digital Task', () => {
     it('wrapup state hides transfer/end and shows wrapup button', () => {
       const task = new Digital(dummyContact, dummyData);
       sendStateEvents(task, [
-        {type: TaskEvent.OFFER, taskData: dummyData},
+        {type: TaskEvent.TASK_INCOMING, taskData: dummyData},
         {type: TaskEvent.ASSIGN, taskData: dummyData},
-        {type: TaskEvent.END},
+        {type: TaskEvent.TASK_WRAPUP},
       ]);
       expect(task.uiControls.transfer.isVisible).toBe(false);
       expect(task.uiControls.end.isVisible).toBe(false);
@@ -85,7 +85,7 @@ describe('Digital Task', () => {
       } as TaskData;
       task.updateTaskData(terminatedData);
       sendStateEvents(task, [
-        {type: TaskEvent.OFFER, taskData: dummyData},
+        {type: TaskEvent.TASK_INCOMING, taskData: dummyData},
         {type: TaskEvent.ASSIGN, taskData: terminatedData},
       ]);
       expect(task.uiControls.wrapup.isVisible).toBe(true);
@@ -94,7 +94,7 @@ describe('Digital Task', () => {
     it('rona hides accept controls', () => {
       const task = new Digital(dummyContact, dummyData);
       sendStateEvents(task, [
-        {type: TaskEvent.OFFER, taskData: dummyData},
+        {type: TaskEvent.TASK_INCOMING, taskData: dummyData},
         {type: TaskEvent.RONA},
       ]);
       expect(task.uiControls.accept.isVisible).toBe(false);

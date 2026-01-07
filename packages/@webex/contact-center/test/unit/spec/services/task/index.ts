@@ -2,7 +2,7 @@ import 'jsdom-global/register';
 import {CALL_EVENT_KEYS, CallingClientConfig, LocalMicrophoneStream} from '@webex/calling';
 import {LoginOption, WebexSDK} from '../../../../../src/types';
 import {TASK_FILE} from '../../../../../src/constants';
-import Task from '../../../../../src/services/task';
+import Task from '../../../../../src/services/task/Task';
 import * as Utils from '../../../../../src/services/core/Utils';
 import {CC_EVENTS} from '../../../../../src/services/config/types';
 import config from '../../../../../src/config';

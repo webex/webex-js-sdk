@@ -1,6 +1,6 @@
 import {EventEmitter} from 'events';
 import {createActor} from 'xstate';
-import type {ActorRefFrom, SnapshotFrom} from 'xstate';
+import type {ActionArgs, ActorRefFrom, SnapshotFrom} from 'xstate';
 import {
   ITask,
   TaskData,
@@ -15,6 +15,8 @@ import {
   ConsultPayload,
   ConsultTransferPayLoad,
   ResumeRecordingPayload,
+  MEDIA_CHANNEL,
+  TASK_CHANNEL_TYPE,
 } from './types';
 import {METHODS} from './constants';
 import {CC_FILE, TASK_FILE} from '../../constants';
@@ -39,11 +41,11 @@ import type {TaskActionsMap} from './state-machine/actions';
 import AutoWrapup from './AutoWrapup';
 import {WrapupData} from '../config/types';
 
-export interface TaskRuntimeOptions {
-  actionOverrides?: Partial<TaskActionsMap>;
-}
-
 type CallId = string;
+type TaskActionArgs = ActionArgs<TaskContext, TaskEventPayload, TaskEventPayload>;
+type UIControlConfigInput = Omit<UIControlConfig, 'channelType'> & {
+  channelType?: UIControlConfig['channelType'];
+};
 
 export default abstract class Task extends EventEmitter implements ITask {
   protected contact: ReturnType<typeof routingContact>;
@@ -55,7 +57,6 @@ export default abstract class Task extends EventEmitter implements ITask {
   private lastState?: TaskState;
   protected currentUiControls: TaskUIControls;
   protected uiControlConfig: UIControlConfig;
-  protected runtimeOptions: TaskRuntimeOptions;
   protected wrapupData?: WrapupData;
   public autoWrapup?: AutoWrapup;
   protected agentId?: string;
@@ -63,17 +64,16 @@ export default abstract class Task extends EventEmitter implements ITask {
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
-    uiControlConfig: UIControlConfig,
-    runtimeOptions?: TaskRuntimeOptions,
+    uiControlConfig: UIControlConfigInput,
     wrapupData?: WrapupData,
     agentId?: string
   ) {
     super();
     this.contact = contact;
     this.data = data;
+    const channelType = uiControlConfig.channelType ?? Task.resolveChannelType(data);
     // Include agentId in the config for ownership checks (transfer conference)
-    this.uiControlConfig = {...uiControlConfig, agentId};
-    this.runtimeOptions = runtimeOptions ?? {};
+    this.uiControlConfig = {...uiControlConfig, channelType, agentId};
     this.wrapupData = wrapupData;
     this.agentId = agentId;
     this.metricsManager = MetricsManager.getInstance();
@@ -81,6 +81,14 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.currentUiControls = getDefaultUIControls();
     this.initializeStateMachine();
     this.setupAutoWrapupTimer();
+  }
+
+  private static resolveChannelType(data: TaskData): UIControlConfig['channelType'] {
+    const mediaType = data?.interaction?.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
+
+    return mediaType === MEDIA_CHANNEL.TELEPHONY
+      ? TASK_CHANNEL_TYPE.VOICE
+      : TASK_CHANNEL_TYPE.DIGITAL;
   }
 
   // Abstract methods that all child classes must implement
@@ -305,14 +313,14 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   protected getChannelSpecificActionOverrides(): Partial<TaskActionsMap> {
-    return this.runtimeOptions.actionOverrides ?? {};
+    return {};
   }
 
   protected createEmitSelfAction(
     taskEvent: TASK_EVENTS,
     {updateTaskData = false}: {updateTaskData?: boolean} = {}
   ) {
-    return ({event}: {event: TaskEventPayload}) => {
+    return ({event}: TaskActionArgs) => {
       if (updateTaskData) {
         this.updateTaskFromEvent(event);
       }
@@ -346,7 +354,7 @@ export default abstract class Task extends EventEmitter implements ITask {
       emitTaskConsultCreated: this.createEmitSelfAction(TASK_EVENTS.TASK_CONSULT_CREATED, {
         updateTaskData: true,
       }),
-      emitTaskConsulting: ({event}: {event: TaskEventPayload}) => {
+      emitTaskConsulting: ({event}: TaskActionArgs) => {
         this.updateTaskFromEvent(event);
         if (this.data.isConsulted) {
           this.emit(TASK_EVENTS.TASK_CONSULT_ACCEPTED, this);
@@ -367,7 +375,7 @@ export default abstract class Task extends EventEmitter implements ITask {
       emitTaskConsultQueueFailed: this.createEmitSelfAction(TASK_EVENTS.TASK_CONSULT_QUEUE_FAILED, {
         updateTaskData: true,
       }),
-      emitTaskReject: ({event}: {event: TaskEventPayload}) => {
+      emitTaskReject: ({event}: TaskActionArgs) => {
         this.updateTaskFromEvent(event);
         const reason =
           event && typeof event === 'object' && 'reason' in event

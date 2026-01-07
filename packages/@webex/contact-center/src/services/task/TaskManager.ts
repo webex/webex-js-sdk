@@ -16,7 +16,6 @@ import TaskFactory from './TaskFactory';
 import WebRTC from './voice/WebRTC';
 import {TaskEvent, type TaskEventPayload} from './state-machine';
 import {normalizeTaskData} from './taskDataNormalizer';
-import type {TaskRuntimeOptions} from './Task';
 
 type WebSocketPayload = TaskData & {
   type: CC_EVENTS | string;
@@ -43,7 +42,6 @@ interface TaskEventActions {
   shouldCleanupTask?: boolean;
   shouldRemoveFromCollection?: boolean;
   shouldCancelAutoWrapup?: boolean;
-  shouldEmitTaskIncoming?: boolean;
 }
 
 /**
@@ -85,7 +83,6 @@ export default class TaskManager extends EventEmitter {
   private wrapupData: WrapupData;
   private agentId: string;
   private webRtcEnabled: boolean;
-  private readonly defaultTaskRuntimeOptions: TaskRuntimeOptions = {};
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
    * @param webCallingService - Webrtc Service Layer
@@ -156,11 +153,14 @@ export default class TaskManager extends EventEmitter {
       });
 
       // Send TASK_INCOMING to state machine - it will emit on the task object
-      TaskManager.sendEventToStateMachine(
+      const eventPayload = TaskManager.mapEventToTaskStateMachineEvent(
         CC_EVENTS.AGENT_CONTACT_RESERVED,
-        currentTask.data as WebSocketPayload,
-        currentTask
+        currentTask.data as WebSocketPayload
       );
+      const taskWithStateMachine = currentTask as any;
+      if (eventPayload && taskWithStateMachine?.sendStateMachineEvent) {
+        taskWithStateMachine.sendStateMachineEvent(eventPayload);
+      }
     }
     this.call = call;
   };
@@ -231,7 +231,7 @@ export default class TaskManager extends EventEmitter {
         };
 
       case CC_EVENTS.AGENT_CONSULTING: // AgentConsulting -> CONSULTING_ACTIVE
-        // use context to figure out if its initatiore or the receiver using consultInitiator from context
+        // use context to figure out if it's the initiator or receiver using consultInitiator from context
         return {
           type: TaskEvent.CONSULTING_ACTIVE,
           consultDestinationAgentJoined: true,
@@ -242,6 +242,7 @@ export default class TaskManager extends EventEmitter {
         return {type: TaskEvent.CONSULT_END, taskData: payload};
 
       case CC_EVENTS.AGENT_CONSULT_FAILED:
+      case CC_EVENTS.AGENT_CTQ_FAILED:
         return {type: TaskEvent.CONSULT_FAILED, reason: payload.reason, taskData: payload};
 
       case CC_EVENTS.AGENT_CTQ_CANCELLED:
@@ -250,16 +251,18 @@ export default class TaskManager extends EventEmitter {
       case CC_EVENTS.AGENT_CTQ_CANCEL_FAILED:
         return {type: TaskEvent.CTQ_CANCEL_FAILED, taskData: payload};
 
+      case CC_EVENTS.AGENT_BLIND_TRANSFERRED: // AgentBlindTransferred -> TRANSFER_SUCCESS
       case CC_EVENTS.AGENT_CONSULT_TRANSFERRED: // AgentConsultTransferred -> TRANSFER_SUCCESS
+      case CC_EVENTS.AGENT_VTEAM_TRANSFERRED: // AgentVTeamTransferred -> TRANSFER_SUCCESS
         return {
           type: TaskEvent.TRANSFER_SUCCESS,
           taskData: payload,
         };
 
-      case CC_EVENTS.AGENT_VTEAM_TRANSFERRED:
       case CC_EVENTS.AGENT_WRAPUP:
+        return {type: TaskEvent.TASK_WRAPUP, taskData: {...payload, wrapUpRequired: true}};
       case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
-        return {type: TaskEvent.END, taskData: {...payload, wrapUpRequired: true}};
+        return null; // Add WRAPUP if needed
 
       case CC_EVENTS.AGENT_BLIND_TRANSFER_FAILED:
       case CC_EVENTS.AGENT_VTEAM_TRANSFER_FAILED:
@@ -326,46 +329,13 @@ export default class TaskManager extends EventEmitter {
   }
 
   /**
-   * Send WebSocket event to state machine if task exists
-   * @param ccEvent - The CC_EVENT type
-   * @param payload - The event payload
-   * @param task - The task instance
-   */
-  private static sendEventToStateMachine(
-    ccEvent: CC_EVENTS,
-    payload: WebSocketPayload,
-    task?: ITask,
-    stateMachineEvent?: TaskEventPayload | null
-  ): void {
-    // Check if task has state machine
-    const taskWithStateMachine = task as any;
-    if (!taskWithStateMachine?.sendStateMachineEvent) {
-      return;
-    }
-
-    const eventPayload =
-      stateMachineEvent ?? TaskManager.mapEventToTaskStateMachineEvent(ccEvent, payload);
-
-    if (eventPayload) {
-      LoggerProxy.log(`Sending event to state machine: ${ccEvent} -> ${eventPayload.type}`, {
-        module: TASK_MANAGER_FILE,
-        method: 'sendEventToStateMachine',
-        interactionId: payload.interactionId,
-      });
-
-      // Send event to task's state machine using the protected method
-      taskWithStateMachine.sendStateMachineEvent(eventPayload);
-    }
-  }
-
-  /**
    * Register WebSocket message listeners for task events
    *
    * Main entry point that orchestrates event processing through a clear pipeline:
    * 1. Parse and validate incoming WebSocket messages
    * 2. Prepare event context with task and state machine mappings
    * 3. Handle task lifecycle (creation, updates, collection management)
-   * 4. Send events to state machine (which handles task-level emissions)
+   * 4. Send events to state machine (task-level transitions/emissions)
    * 5. Execute cleanup actions (resource management, collection updates)
    *
    * This architecture separates concerns:
@@ -385,7 +355,7 @@ export default class TaskManager extends EventEmitter {
       // Step 3: Handle event lifecycle and get actions to perform
       const actions = this.handleTaskLifecycleEvent(context);
 
-      // Step 4: Process state machine events and emit legacy events
+      // Step 4: Process state machine events (task-level transitions/emissions)
       this.processEventAndEmissions(context, actions);
 
       // Step 5: Execute post-processing actions
@@ -448,7 +418,9 @@ export default class TaskManager extends EventEmitter {
     };
 
     const adjustedPayload =
-      eventType === CC_EVENTS.AGENT_CONSULT_TRANSFERRED
+      eventType === CC_EVENTS.AGENT_CONSULT_TRANSFERRED ||
+      eventType === CC_EVENTS.AGENT_BLIND_TRANSFERRED ||
+      eventType === CC_EVENTS.AGENT_VTEAM_TRANSFERRED
         ? {
             ...message.data,
             wrapUpRequired: computeWrapUpRequired(),
@@ -517,10 +489,6 @@ export default class TaskManager extends EventEmitter {
       case CC_EVENTS.CONTACT_MERGED:
         return this.handleContactMergedEvent(context);
 
-      case CC_EVENTS.CONSULTED_PARTICIPANT_MOVING:
-      case CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY:
-        return this.handleTaskDataUpdate(context);
-
       default:
         return this.handleDefaultEvent(context);
     }
@@ -528,7 +496,7 @@ export default class TaskManager extends EventEmitter {
 
   /**
    * Handle AGENT_CONTACT_RESERVED event
-   * Creates a new task and sends TASK_INCOMING event to state machine
+   * Creates a new task; state machine event is sent during processing
    */
   private handleContactReserved(context: EventContext): TaskEventActions {
     const {payload} = context;
@@ -550,7 +518,6 @@ export default class TaskManager extends EventEmitter {
       this.webCallingService,
       taskData,
       this.configFlags,
-      this.getTaskRuntimeOptions(),
       this.wrapupData,
       this.agentId
     );
@@ -558,20 +525,6 @@ export default class TaskManager extends EventEmitter {
     this.setupTaskListeners(task);
     this.taskCollection[payload.interactionId] = task;
 
-    // For telephony in-browser, we need to wait for the incoming call event
-    // before the state machine can properly emit TASK_INCOMING
-    // The state machine will handle emitting TASK_INCOMING via the callback
-    const shouldWaitForIncomingCall =
-      this.webCallingService.loginOption === LoginOption.BROWSER &&
-      task.data.interaction.mediaType === MEDIA_CHANNEL.TELEPHONY &&
-      !this.call;
-
-    if (shouldWaitForIncomingCall) {
-      // Don't send to state machine yet - wait for handleIncomingWebCall
-      return {task};
-    }
-
-    // For all other cases, let the state machine handle TASK_INCOMING emission
     return {task};
   }
 
@@ -603,7 +556,6 @@ export default class TaskManager extends EventEmitter {
         this.webCallingService,
         taskData,
         this.configFlags,
-        this.getTaskRuntimeOptions(),
         this.wrapupData,
         this.agentId
       );
@@ -757,6 +709,7 @@ export default class TaskManager extends EventEmitter {
     const {task, payload} = context;
 
     if (task) {
+      // These events don't drive state transitions; keep task snapshot in sync.
       this.updateTaskData(task, payload);
     }
 
@@ -769,7 +722,8 @@ export default class TaskManager extends EventEmitter {
   private handleDefaultEvent(context: EventContext): TaskEventActions {
     const {task, payload, stateMachineEvent} = context;
 
-    // For all other events, just update task data if needed
+    // For unmapped events, just update task data if needed.
+    // Mapped events are handled by the state machine in processEventAndEmissions().
     if (task && payload && !stateMachineEvent) {
       this.updateTaskData(task, payload);
     }
@@ -778,14 +732,11 @@ export default class TaskManager extends EventEmitter {
   }
 
   /**
-   * Process state machine events and emit legacy events
+   * Process state machine events and trigger task-level emissions
    *
    * This method bridges TaskManager and the state machine:
-   * 1. Emits legacy CC_TASK_EVENTS for backward compatibility
-   * 2. Sends events to state machine for:
-   *    - Task state transitions
-   *    - TASK_EVENTS emissions (via callbacks)
-   *    - UI controls updates
+   * 1. Sends mapped events to the state machine for transitions/emissions
+   * 2. Triggers auto-answer for offer events
    *
    * Note: TASK_EVENTS (like TASK_INCOMING, TASK_END, etc.) are now emitted
    * by the state machine via callbacks, not directly by TaskManager. This ensures
@@ -799,7 +750,10 @@ export default class TaskManager extends EventEmitter {
 
     // Send event to state machine - this will trigger all TASK_EVENTS emissions
     // including TASK_INCOMING which is now handled via the state machine callbacks
-    TaskManager.sendEventToStateMachine(eventType, payload, task, stateMachineEvent);
+    const taskWithStateMachine = task as any;
+    if (stateMachineEvent && taskWithStateMachine?.sendStateMachineEvent) {
+      taskWithStateMachine.sendStateMachineEvent(stateMachineEvent);
+    }
 
     if (
       eventType === CC_EVENTS.AGENT_OFFER_CONTACT ||
@@ -849,10 +803,6 @@ export default class TaskManager extends EventEmitter {
     return task;
   }
 
-  private getTaskRuntimeOptions(): TaskRuntimeOptions {
-    return this.defaultTaskRuntimeOptions;
-  }
-
   /**
    * Setup listeners for task events that need to be bubbled up to TaskManager
    * This replaces the previous callback injection pattern
@@ -865,6 +815,7 @@ export default class TaskManager extends EventEmitter {
         method: METHODS.REGISTER_TASK_LISTENERS,
         interactionId: t.data?.interactionId,
       });
+
       this.emit(TASK_EVENTS.TASK_INCOMING, t);
     });
 
@@ -933,7 +884,6 @@ export default class TaskManager extends EventEmitter {
         this.webCallingService,
         taskData,
         this.configFlags,
-        this.getTaskRuntimeOptions(),
         this.wrapupData,
         this.agentId
       );

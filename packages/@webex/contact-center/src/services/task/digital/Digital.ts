@@ -1,8 +1,8 @@
 import {CC_FILE, METHODS} from '../../../constants';
 import {getErrorDetails} from '../../core/Utils';
-import {IDigital, TaskResponse, TaskData, TASK_CHANNEL_TYPE} from '../types';
+import {IDigital, TaskResponse, TaskData} from '../types';
 import {WrapupData} from '../../config/types';
-import Task, {TaskRuntimeOptions} from '../Task';
+import Task from '../Task';
 import routingContact from '../contact';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
@@ -12,7 +12,6 @@ export default class Digital extends Task implements IDigital {
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
-    runtimeOptions?: TaskRuntimeOptions,
     wrapupData?: WrapupData,
     agentId?: string
   ) {
@@ -20,12 +19,10 @@ export default class Digital extends Task implements IDigital {
       contact,
       data,
       {
-        channelType: TASK_CHANNEL_TYPE.DIGITAL,
         isEndTaskEnabled: true,
         isEndConsultEnabled: false,
         isRecordingEnabled: false,
       },
-      runtimeOptions,
       wrapupData,
       agentId
     );
