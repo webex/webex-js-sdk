@@ -184,6 +184,8 @@ import {LocusDTO} from '../locus-info/types';
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
 
+const LLM_HEALTHCHECK_TIMER_MS = 3 * 60 * 1000;
+
 const logRequest = (request: any, {logText = ''}) => {
   LoggerProxy.logger.info(`${logText} - sending request`);
 
@@ -756,6 +758,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private uploadLogsTimer?: ReturnType<typeof setTimeout>;
   private logUploadIntervalIndex: number;
   private mediaServerIp: string;
+  private llmHealthCheckTimer?: ReturnType<typeof setTimeout>;
 
   /**
    * @param {Object} attrs
@@ -6111,6 +6114,46 @@ export default class Meeting extends StatelessWebexPlugin {
       });
   }
 
+  /** starts a timer that after a few minutes checks if
+   * the LLM connection is connected, if not it sends a metric
+   * @private
+   * @returns {void}
+   */
+  private startLLMHealthCheckTimer() {
+    // first cancel any existing timer
+    this.clearLLMHealthCheckTimer();
+
+    this.llmHealthCheckTimer = setTimeout(() => {
+      // @ts-ignore
+      const isConnected = this.webex.internal.llm.isConnected();
+
+      if (!isConnected) {
+        // @ts-ignore
+        const {hasEverConnected} = this.webex.internal.llm;
+
+        // only send metric if not connected - to avoid too many metrics
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_HEALTHCHECK_FAILURE, {
+          correlation_id: this.correlationId,
+          hasEverConnected,
+        });
+      }
+
+      this.llmHealthCheckTimer = undefined;
+    }, LLM_HEALTHCHECK_TIMER_MS);
+  }
+
+  /**
+   * Clears the LLM health check timer
+   * @private
+   * @returns {void}
+   */
+  private clearLLMHealthCheckTimer() {
+    if (this.llmHealthCheckTimer) {
+      clearTimeout(this.llmHealthCheckTimer);
+      this.llmHealthCheckTimer = undefined;
+    }
+  }
+
   /**
    * Connects to low latency mercury and reconnects if the address has changed
    * It will also disconnect if called when the meeting has ended
@@ -6153,6 +6196,8 @@ export default class Meeting extends StatelessWebexPlugin {
       this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
       // @ts-ignore - Fix type
       this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+
+      this.clearLLMHealthCheckTimer();
     }
 
     if (!isJoined) {
@@ -6174,6 +6219,8 @@ export default class Meeting extends StatelessWebexPlugin {
         LoggerProxy.logger.info(
           'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
         );
+
+        this.startLLMHealthCheckTimer();
 
         return Promise.resolve(registerAndConnectResult);
       });
@@ -9424,6 +9471,8 @@ export default class Meeting extends StatelessWebexPlugin {
     this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
     // @ts-ignore - Fix type
     this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+
+    this.clearLLMHealthCheckTimer();
   };
 
   /**
