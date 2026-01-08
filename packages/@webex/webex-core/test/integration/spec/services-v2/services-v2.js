@@ -23,7 +23,7 @@ import {
   formattedServiceHostmapEntryConv,
   formattedServiceHostmapEntryMercury,
   formattedServiceHostmapEntryTest,
-  serviceHostmapV2
+  serviceHostmapV2,
 } from '../../../fixtures/host-catalog-v2';
 
 // /* eslint-disable no-underscore-dangle */
@@ -416,7 +416,11 @@ describe('webex-core', () => {
             .initServiceCatalogs(true)
             // services#updateServices() gets called once by the limited catalog
             // retrieval and should get called again when authorized.
-            .then(() => assert.calledTwice(services.updateServices) && assert.calledWith(services.updateServices, sinon.match({forceRefresh: true})))
+            .then(
+              () =>
+                assert.calledTwice(services.updateServices) &&
+                assert.calledWith(services.updateServices, sinon.match({forceRefresh: true}))
+            )
         );
       });
     });
@@ -753,9 +757,12 @@ describe('webex-core', () => {
 
       const getActivationRequest = (requestStub, useUserOnboarding = false) => {
         const expectedService = useUserOnboarding ? 'user-onboarding' : 'license';
-        const expectedResource = useUserOnboarding ? 'api/v1/users/activations' : 'users/activations';
+        const expectedResource = useUserOnboarding
+          ? 'api/v1/users/activations'
+          : 'users/activations';
         const requests = requestStub.args.filter(
-          ([request]) => request.service === expectedService && request.resource === expectedResource
+          ([request]) =>
+            request.service === expectedService && request.resource === expectedResource
         );
 
         assert.strictEqual(requests.length, 1);
@@ -828,7 +835,7 @@ describe('webex-core', () => {
             assert.equal(r.user.verificationEmailTriggered, true);
           }));
 
-      it.skip('validates new user with activationOptions suppressEmail true', () =>
+      it('validates new user with activationOptions suppressEmail true', () =>
         unauthServices
           .validateUser({
             email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
