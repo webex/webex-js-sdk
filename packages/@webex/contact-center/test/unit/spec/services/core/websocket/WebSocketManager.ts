@@ -126,6 +126,26 @@ describe('WebSocketManager', () => {
     });
   });
 
+  it('should log error and throw when register API fails in initWebSocket', async () => {
+    const error = new Error('Register API failed');
+
+    (mockWebex.request as jest.Mock).mockRejectedValueOnce(error);
+
+    await expect(
+      webSocketManager.initWebSocket({ body: fakeSubscribeRequest })
+    ).rejects.toThrow(error);
+
+    expect(LoggerProxy.error).toHaveBeenCalledWith(
+      `Register API Failed, Request to RoutingNotifs websocket registration API failed ${error}`,
+      { module: WEB_SOCKET_MANAGER_FILE, method: 'register' }
+    );
+
+    expect(LoggerProxy.error).toHaveBeenCalledWith(
+      `[WebSocketStatus] | Error in registering Websocket ${error}`,
+      { module: WEB_SOCKET_MANAGER_FILE, method: 'initWebSocket' }
+    );
+  });
+
   it('should close WebSocket connection', async () => {
     const subscribeResponse = {
       body: {
