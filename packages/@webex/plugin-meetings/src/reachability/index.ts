@@ -961,7 +961,12 @@ export default class Reachability extends EventsScope {
     Object.keys(clusterList).forEach((key) => {
       const cluster = clusterList[key];
 
-      this.clusterReachability[key] = new ClusterReachability(key, cluster);
+      this.clusterReachability[key] = new ClusterReachability(
+        key,
+        cluster,
+        // @ts-ignore
+        this.webex.config.meetings.enablePerUdpUrlReachability
+      );
       this.clusterReachability[key].on(Events.resultReady, async (data: ResultEventData) => {
         const {protocol, result, clientMediaIPs, latencyInMilliseconds} = data;
 
