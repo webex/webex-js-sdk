@@ -54,6 +54,23 @@ describe('LocusRouteTokenInterceptor', () => {
     assert.equal(interceptor.getToken(TEST_LOCUS_ID), 'test-token');
   });
 
+  it('get route token case insensitively ', async () => {
+    const response = {
+      headers: {
+        ['x-cisco-part-route-token']: 'test-token',
+      },
+    };
+
+    const result = await interceptor.onResponse(
+      {
+        uri: `https://locus-test.webex.com/locus/api/v1/loci/${TEST_LOCUS_ID}/foo`,
+      },
+      response
+    );
+    assert.equal(result, response);
+    assert.equal(interceptor.getToken(TEST_LOCUS_ID), 'test-token');
+  });
+
   it('onResponse should not store token when header missing', async () => {
     interceptor.updateToken(TEST_LOCUS_ID);
     const response = {headers: {}};
@@ -83,5 +100,15 @@ describe('LocusRouteTokenInterceptor', () => {
   it('updateToken & getToken should work as pair', () => {
     interceptor.updateToken(TEST_LOCUS_ID, 'abc456');
     assert.equal(interceptor.getToken(TEST_LOCUS_ID), 'abc456');
+  });
+
+  it('should delete token when updateToken called with "null"', () => {
+    interceptor.updateToken(TEST_LOCUS_ID, 'null');
+    assert.isUndefined(interceptor.getToken(TEST_LOCUS_ID));
+  });
+
+  it('should delete token when updateToken called with null', () => {
+    interceptor.updateToken(TEST_LOCUS_ID, null);
+    assert.isUndefined(interceptor.getToken(TEST_LOCUS_ID));
   });
 });
