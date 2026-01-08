@@ -223,6 +223,10 @@ async function initCalling(e) {
       logger: {
         level: 'debug', // set the desired log level
       },
+      calling: {
+        // Enable U2C catalog caching for calling sample app
+        cacheU2C: true,
+      },
       meetings: {
         reconnection: {
           enabled: true,

@@ -45,6 +45,7 @@ import {
   HOLD_ENDPOINT,
   ICE_CANDIDATES_TIMEOUT,
   INITIAL_SEQ_NUMBER,
+  MAX_CALL_KEEPALIVE_RETRY_COUNT,
   MEDIA_ENDPOINT_RESOURCE,
   METHODS,
   NOISE_REDUCTION_EFFECT,
@@ -168,6 +169,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private localAudioStream?: LocalMicrophoneStream;
 
   private rtcMetrics: RtcMetrics;
+
+  private callKeepaliveRetryCount = 0;
 
   /**
    * Getter to check if the call is muted or not.
@@ -1196,6 +1199,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       });
       this.startCallerIdResolution(data.callerId);
     }
+
     this.emit(CALL_EVENT_KEYS.PROGRESS, this.correlationId);
   }
 
@@ -1382,8 +1386,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private async handleIncomingCallDisconnect(event: CallEvent) {
     log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
-      method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
+      method: METHODS.HANDLE_INCOMING_CALL_DISCONNECT,
     });
+
+    this.emit(CALL_EVENT_KEYS.DISCONNECT, this.correlationId);
 
     this.setDisconnectReason();
 
@@ -1392,12 +1398,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
       log.log(`Response code: ${response.statusCode}`, {
         file: CALL_FILE,
-        method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
+        method: METHODS.HANDLE_INCOMING_CALL_DISCONNECT,
       });
     } catch (e) {
       log.warn(`Failed to delete the call: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
-        method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
+        method: METHODS.HANDLE_INCOMING_CALL_DISCONNECT,
       });
 
       uploadLogs({
@@ -1428,8 +1434,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.sendMediaStateMachineEvt({type: 'E_ROAP_TEARDOWN'});
     this.sendCallStateMachineEvt({type: 'E_CALL_CLEARED'});
-
-    this.emit(CALL_EVENT_KEYS.DISCONNECT, this.correlationId);
   }
 
   /**
@@ -1494,6 +1498,88 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.sendCallStateMachineEvt({type: 'E_CALL_CLEARED'});
   }
 
+  private callKeepaliveRetryCallback = (interval: number) => {
+    if (this.callKeepaliveRetryCount === MAX_CALL_KEEPALIVE_RETRY_COUNT) {
+      log.warn(
+        `Max keepalive retry attempts reached. Aborting call keepalive for callId: ${this.callId}`,
+        {
+          file: CALL_FILE,
+          method: 'keepaliveRetryCallback',
+        }
+      );
+
+      return;
+    }
+
+    this.callKeepaliveRetryCount += 1;
+
+    setTimeout(async () => {
+      try {
+        await this.postStatus();
+        this.scheduleCallKeepaliveInterval();
+      } catch (err: unknown) {
+        await this.handleCallKeepaliveError(err);
+      }
+    }, interval * 1000);
+  };
+
+  private handleCallKeepaliveError = async (err: unknown) => {
+    const error = <WebexRequestPayload>err;
+
+    /* We are clearing the timer here as all are error scenarios. Only scenario where
+     * timer reset won't be required is 503 with retry after. But that case will
+     * be handled automatically as Mobius will also reset timer when we post status
+     * in retry-after scenario.
+     */
+    /* istanbul ignore next */
+    if (this.sessionTimer) {
+      clearInterval(this.sessionTimer);
+    }
+
+    const abort = await handleCallErrors(
+      (callError: CallError) => {
+        this.emit(CALL_EVENT_KEYS.CALL_ERROR, callError);
+        this.submitCallErrorMetric(callError);
+      },
+      ERROR_LAYER.CALL_CONTROL,
+      this.callKeepaliveRetryCallback,
+      this.getCorrelationId(),
+      error,
+      'handleCallEstablished',
+      CALL_FILE
+    );
+
+    if (abort) {
+      this.sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'});
+      this.emit(CALL_EVENT_KEYS.DISCONNECT, this.getCorrelationId());
+      this.callKeepaliveRetryCount = 0;
+    }
+
+    await uploadLogs({
+      correlationId: this.correlationId,
+      callId: this.callId,
+      broadworksCorrelationInfo: this.broadworksCorrelationInfo,
+    });
+  };
+
+  private scheduleCallKeepaliveInterval = () => {
+    const loggerContext = {
+      file: CALL_FILE,
+      method: 'scheduleCallKeepaliveInterval',
+    };
+
+    this.sessionTimer = setInterval(async () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const res = await this.postStatus();
+
+        log.info(`Session refresh successful`, loggerContext);
+      } catch (err: unknown) {
+        await this.handleCallKeepaliveError(err);
+      }
+    }, DEFAULT_SESSION_TIMER);
+  };
+
   /**
    * Handle Call Established - Roap related negotiations.
    *
@@ -1501,10 +1587,12 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private handleCallEstablished(event: CallEvent) {
-    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
+    const loggerContext = {
       file: CALL_FILE,
       method: METHODS.HANDLE_CALL_ESTABLISHED,
-    });
+    };
+
+    log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, loggerContext);
 
     this.emit(CALL_EVENT_KEYS.ESTABLISHED, this.correlationId);
 
@@ -1513,65 +1601,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.connected = true;
 
-    /* Session timers need to be reset at all offer/answer exchanges */
-    if (this.sessionTimer) {
-      log.log('Resetting session timer', {
-        file: CALL_FILE,
-        method: METHODS.HANDLE_CALL_ESTABLISHED,
-      });
-      clearInterval(this.sessionTimer);
-    }
-
-    this.sessionTimer = setInterval(async () => {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const res = await this.postStatus();
-
-        log.info(`Session refresh successful`, {
-          file: CALL_FILE,
-          method: METHODS.HANDLE_CALL_ESTABLISHED,
-        });
-      } catch (err: unknown) {
-        const error = <WebexRequestPayload>err;
-
-        /* We are clearing the timer here as all are error scenarios. Only scenario where
-         * timer reset won't be required is 503 with retry after. But that case will
-         * be handled automatically as Mobius will also reset timer when we post status
-         * in retry-after scenario.
-         */
-        /* istanbul ignore next */
-        if (this.sessionTimer) {
-          clearInterval(this.sessionTimer);
-        }
-
-        handleCallErrors(
-          (callError: CallError) => {
-            this.emit(CALL_EVENT_KEYS.CALL_ERROR, callError);
-            this.submitCallErrorMetric(callError);
-          },
-          ERROR_LAYER.CALL_CONTROL,
-          (interval: number) => {
-            setTimeout(() => {
-              /* We first post the status and then recursively call the handler which
-               * starts the timer again
-               */
-              this.postStatus();
-              this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
-            }, interval * 1000);
-          },
-          this.getCorrelationId(),
-          error,
-          this.handleCallEstablished.name,
-          CALL_FILE
-        );
-
-        await uploadLogs({
-          correlationId: this.correlationId,
-          callId: this.callId,
-          broadworksCorrelationInfo: this.broadworksCorrelationInfo,
-        });
-      }
-    }, DEFAULT_SESSION_TIMER);
+    this.scheduleCallKeepaliveInterval();
   }
 
   /**
@@ -1876,6 +1906,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_ROAP_OFFER,
       });
+
       this.mediaConnection.initiateOffer();
 
       return;
@@ -1891,7 +1922,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: METHODS.HANDLE_OUTGOING_ROAP_OFFER,
       });
     } catch (err) {
-      log.warn('Failed to process MediaOk request', {
+      log.warn('Failed to send MediaOffer request', {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_ROAP_OFFER,
       });

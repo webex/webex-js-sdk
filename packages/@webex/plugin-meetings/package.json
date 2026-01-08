@@ -62,7 +62,7 @@
   "dependencies": {
     "@webex/common": "workspace:*",
     "@webex/event-dictionary-ts": "^1.0.1930",
-    "@webex/internal-media-core": "2.20.1",
+    "@webex/internal-media-core": "2.20.3",
     "@webex/internal-plugin-conversation": "workspace:*",
     "@webex/internal-plugin-device": "workspace:*",
     "@webex/internal-plugin-llm": "workspace:*",
@@ -87,7 +87,8 @@
     "jwt-decode": "3.1.2",
     "lodash": "^4.17.21",
     "uuid": "^3.3.2",
-    "webrtc-adapter": "^8.1.2"
+    "webrtc-adapter": "^8.1.2",
+    "xxh3-ts": "^2.0.1"
   },
   "//": [
     "TODO: upgrade jwt-decode when moving to node 18"

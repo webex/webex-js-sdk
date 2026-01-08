@@ -1,5 +1,5 @@
 import uuid from 'uuid';
-import {cloneDeep, isEqual, isEmpty} from 'lodash';
+import {cloneDeep, isEqual, isEmpty, merge} from 'lodash';
 import jwtDecode from 'jwt-decode';
 // @ts-ignore - Fix this
 import {StatelessWebexPlugin} from '@webex/webex-core';
@@ -50,6 +50,11 @@ import {
   type MeetingTranscriptPayload,
 } from '@webex/internal-plugin-voicea';
 
+import {
+  getBrowserMediaErrorCode,
+  isBrowserMediaError,
+  isBrowserMediaErrorName,
+} from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics.util';
 import {processNewCaptions} from './voicea-meeting';
 
 import {
@@ -70,7 +75,7 @@ import Media, {type BundlePolicy} from '../media';
 import MediaProperties from '../media/properties';
 import MeetingStateMachine from './state';
 import {createMuteState} from './muteState';
-import LocusInfo from '../locus-info';
+import LocusInfo, {LocusLLMEvent} from '../locus-info';
 import Metrics from '../metrics';
 import ReconnectionManager from '../reconnection-manager';
 import ReconnectionNotStartedError from '../common/errors/reconnection-not-started';
@@ -126,6 +131,8 @@ import {
   JOIN_BEFORE_HOST,
   REGISTRATION_ID_STATUS,
   STAGE_MANAGER_TYPE,
+  LOCUSEVENT,
+  LOCUS_LLM_EVENT,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -171,6 +178,8 @@ import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {ReachabilityMetrics} from '../reachability/reachability.types';
 import {SetStageOptions, SetStageVideoLayout, UnsetStageVideoLayout} from './request.type';
 import {Invitee} from './type';
+import {DataSet} from '../hashTree/hashTreeParser';
+import {LocusDTO} from '../locus-info/types';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -4551,40 +4560,45 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Set the locus info the class instance
-   * @param {Object} locus
-   * @param {Array} locus.mediaConnections
-   * @param {String} locus.locusUrl
-   * @param {String} locus.locusId
-   * @param {String} locus.mediaId
-   * @param {Object} locus.host
+   * Set the locus info the class instance. Should be called with the parsed locus
+   * we got in the join response.
+   *
+   * @param {Object} data
+   * @param {Array} data.mediaConnections
+   * @param {String} data.locusUrl
+   * @param {String} data.locusId
+   * @param {String} data.mediaId
+   * @param {Object} data.host
    * @todo change name to genertic parser
    * @returns {undefined}
    * @private
    * @memberof Meeting
    */
-  setLocus(
-    locus:
-      | {
-          mediaConnections: Array<any>;
-          locusUrl: string;
-          locusId: string;
-          mediaId: string;
-          host: object;
-        }
-      | any
-  ) {
-    const mtgLocus: any = locus.locus || locus;
+  setLocus(data: {
+    locus: LocusDTO;
+    mediaConnections: Array<any>;
+    locusUrl: string;
+    locusId: string;
+    mediaId: string;
+    host: object;
+    selfId: string;
+    dataSets: DataSet[];
+  }) {
+    const mtgLocus: any = data.locus;
 
     // LocusInfo object saves the locus object
     // this.locus = mtgLocus;
-    this.mediaConnections = locus.mediaConnections;
-    this.locusUrl = locus.locusUrl || locus.url;
-    this.locusId = locus.locusId;
-    this.selfId = locus.selfId;
-    this.mediaId = locus.mediaId;
+    this.mediaConnections = data.mediaConnections;
+    this.locusUrl = data.locusUrl;
+    this.locusId = data.locusId;
+    this.selfId = data.selfId;
+    this.mediaId = data.mediaId;
     this.hostId = mtgLocus.host ? mtgLocus.host.id : this.hostId;
-    this.locusInfo.initialSetup(mtgLocus);
+    this.locusInfo.initialSetup({
+      trigger: 'join-response',
+      locus: mtgLocus,
+      dataSets: data.dataSets,
+    });
   }
 
   /**
@@ -5431,6 +5445,20 @@ export default class Meeting extends StatelessWebexPlugin {
         shouldRetry = false;
       }
 
+      if (CallDiagnosticUtils.isBrowserMediaError(error)) {
+        shouldRetry = false;
+        // eslint-disable-next-line no-ex-assign
+        error = merge({
+          error: {
+            body: {
+              errorCode: CallDiagnosticUtils.getBrowserMediaErrorCode(error),
+              message: error?.message,
+              name: error?.name,
+            },
+          },
+        });
+      }
+
       // we only want to call leave if join was successful and this was a retry or we won't be doing any more retries
       if (joined && (isRetry || !shouldRetry)) {
         try {
@@ -5696,6 +5724,21 @@ export default class Meeting extends StatelessWebexPlugin {
       throw new Error('Meeting is not joined');
     }
   }
+
+  /** Handles Locus LLM events
+   *
+   * @param {LocusLLMEvent} event - The Locus LLM event to process
+   * @returns {void}
+   */
+  private processLocusLLMEvent = (event: LocusLLMEvent): void => {
+    if (event.data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
+      this.locusInfo.parse(this, event.data);
+    } else {
+      LoggerProxy.logger.warn(
+        `Meeting:index#processLocusLLMEvent --> Unknown event type: ${event.data.eventType}`
+      );
+    }
+  };
 
   /**
    * Callback called when a relay event is received from meeting LLM Connection
@@ -6108,6 +6151,8 @@ export default class Meeting extends StatelessWebexPlugin {
       );
       // @ts-ignore - Fix type
       this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
     }
 
     if (!isJoined) {
@@ -6122,6 +6167,10 @@ export default class Meeting extends StatelessWebexPlugin {
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
         // @ts-ignore - Fix type
         this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.on(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
         LoggerProxy.logger.info(
           'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
         );
@@ -9373,6 +9422,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - fix types
     this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
+    // @ts-ignore - Fix type
+    this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
   };
 
   /**
