@@ -14,6 +14,7 @@ import {
   MobiusCallState,
   DisconnectCause,
   DisconnectCode,
+  MobiusEventType,
   ICallManager,
   MediaContext,
   MidCallEvent,
@@ -1210,6 +1211,104 @@ describe('State Machine handler tests', () => {
 
     call.sendCallStateMachineEvt({type: 'E_RECV_CALL_DISCONNECT'});
     expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_DISCONNECT');
+  });
+
+  it('processes callerId on received progress event in established state without emitting PROGRESS', async () => {
+    const callManager = getCallManager(webex, defaultServiceIndicator);
+    const statusPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: mockStatusBody,
+    });
+    const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
+    webex.request.mockReturnValue(statusPayload);
+
+    // Move to S_SEND_CALL_SETUP
+    const dummyEvent = {
+      type: 'E_SEND_CALL_SETUP',
+      data: {
+        seq: 1,
+        message: {} as RoapMessage,
+        type: 'OFFER',
+      } as any,
+    };
+    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
+
+    // Complete media negotiation to allow connect -> established
+    // Ask media SDK to initiate offer
+    dummyEvent.type = 'E_SEND_ROAP_OFFER';
+    dummyEvent.data = {
+      seq: 1,
+      messageType: 'OFFER',
+      sdp: 'sdp',
+    };
+
+    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
+
+    dummyEvent.type = 'E_RECV_ROAP_ANSWER';
+    dummyEvent.data = {
+      seq: 1,
+      messageType: 'ANSWER',
+      sdp: 'sdp',
+    };
+    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(call['mediaStateMachine'].state.value).toBe('S_RECV_ROAP_ANSWER');
+    // Send OK
+    const dummyOkEvent = {
+      type: 'E_ROAP_OK',
+      data: {
+        received: false,
+        message: {
+          seq: 1,
+          messageType: 'OK',
+        },
+      },
+    };
+    call.sendMediaStateMachineEvt(dummyOkEvent as unknown as RoapEvent);
+    expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_OK');
+    expect(call['mediaNegotiationCompleted']).toBe(true);
+
+    // Move call to established
+    dummyEvent.type = 'E_RECV_CALL_CONNECT';
+    dummyEvent.data = undefined;
+    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
+
+    const emitSpy = jest.spyOn(call, 'emit');
+    const startCallerIdSpy = jest.spyOn(call, 'startCallerIdResolution');
+
+    // Now send progress with callerId while established via CallManager (Mobius event)
+    const mobiusProgressEvent = {
+      id: 'evt1',
+      timestamp: Date.now(),
+      trackingId: 'track-1',
+      data: {
+        eventType: MobiusEventType.CALL_PROGRESS,
+        callerId: {
+          from: '"Bob Marley" <sip:5010@207.182.171.130;user=phone>;tag=888068389-1654853820619-',
+        },
+        callProgressData: {
+          inbandMedia: true,
+          alerting: false,
+        },
+        callId: call.getCallId(),
+        callUrl: 'https://mobius.example/call',
+        deviceId,
+        correlationId: call.getCorrelationId(),
+      },
+    };
+    callManager['dequeueWsEvents'](mobiusProgressEvent);
+
+    // CallerId resolution should be triggered exactly once (handled by CallManager)
+    expect(startCallerIdSpy).toBeCalledOnceWith(mobiusProgressEvent.data.callerId);
+    // Since it returns early in established state, PROGRESS event should not be emitted here
+    expect(
+      emitSpy.mock.calls.find((args) => args && args[0] === CALL_EVENT_KEYS.PROGRESS)
+    ).toBeUndefined();
+    expect(call['callStateMachine'].state.value).not.toBe('S_RECV_CALL_PROGRESS');
+    // Early media flag should not be set due to early return
+    expect((call as any).earlyMedia).not.toBe(true);
   });
 
   it('state changes during unsuccessful incoming call due error in call connect', async () => {
