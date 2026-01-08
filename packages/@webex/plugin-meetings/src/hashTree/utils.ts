@@ -1,5 +1,16 @@
 /* eslint-disable import/prefer-default-export */
 
+import {ObjectType, HashTreeObject} from './types';
+
+/**
+ * Checks if the given hash tree object is of type "self"
+ * @param {HashTreeObject} object object to check
+ * @returns {boolean} True if the object is of type "self", false otherwise
+ */
+export function isSelf(object: HashTreeObject) {
+  return object.htMeta.elementId.type.toLowerCase() === ObjectType.self;
+}
+
 /**
  * Analyzes given part of Locus DTO recursively and delete any nested objects that have their own htMeta
  *
