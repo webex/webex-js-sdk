@@ -179,6 +179,14 @@ export const isSdpOfferCreationError = (rawError: any) => {
   return false;
 };
 
+export const isWebrtcApiNotAvailableError = (rawError: any) => {
+  if (rawError.name === ERROR_DESCRIPTIONS.WEBRTC_API_NOT_AVAILABLE) {
+    return true;
+  }
+
+  return false;
+};
+
 /**
  * Checks if the given error is a browser media error by its name.
  * Returns true if the error name matches any known browser media error name in the mapping.
