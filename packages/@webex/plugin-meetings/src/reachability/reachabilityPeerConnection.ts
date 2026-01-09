@@ -243,7 +243,9 @@ export class ReachabilityPeerConnection extends EventsScope {
     if (result.latencyInMilliseconds === undefined) {
       LoggerProxy.logger.log(
         // @ts-ignore
-        `Reachability:ReachabilityPeerConnection#saveResult --> Successfully reached ${this.clusterName} over ${protocol}: ${latency}ms`
+        `Reachability:ReachabilityPeerConnection#saveResult --> Successfully reached ${
+          this.clusterName
+        } over ${protocol}: ${latency}ms, serverIp=${serverIp || 'unknown'}`
       );
       result.latencyInMilliseconds = latency;
       result.result = 'reachable';

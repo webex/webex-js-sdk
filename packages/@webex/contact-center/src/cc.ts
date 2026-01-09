@@ -693,52 +693,49 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       module: CC_FILE,
       method: METHODS.CONNECT_WEBSOCKET,
     });
+
     try {
-      return this.services.webSocketManager
-        .initWebSocket({
-          body: this.getConnectionConfig(),
-        })
-        .then(async (data: WelcomeEvent) => {
-          const agentId = data.agentId;
-          const orgId = this.$webex.credentials.getOrgId();
-          this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
-          LoggerProxy.log(`Agent config is fetched successfully`, {
+      const data = (await this.services.webSocketManager.initWebSocket({
+        body: this.getConnectionConfig(),
+      })) as WelcomeEvent;
+
+      const agentId = data.agentId;
+      const orgId = this.$webex.credentials.getOrgId();
+      this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
+
+      LoggerProxy.log(`Agent config is fetched successfully`, {
+        module: CC_FILE,
+        method: METHODS.CONNECT_WEBSOCKET,
+      });
+
+      // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
+      this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
+      this.taskManager.setAgentId(this.agentConfig.agentId);
+      this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
+
+      if (
+        this.agentConfig.webRtcEnabled &&
+        this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
+      ) {
+        try {
+          await this.$webex.internal.mercury.connect();
+          LoggerProxy.log('Authentication: webex.internal.mercury.connect successful', {
             module: CC_FILE,
             method: METHODS.CONNECT_WEBSOCKET,
           });
-          // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
-          this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
-          this.taskManager.setAgentId(this.agentConfig.agentId);
-          this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
+        } catch (error) {
+          LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          });
+        }
+      }
 
-          if (
-            this.agentConfig.webRtcEnabled &&
-            this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
-          ) {
-            this.$webex.internal.mercury
-              .connect()
-              .then(() => {
-                LoggerProxy.log('Authentication: webex.internal.mercury.connect successful', {
-                  module: CC_FILE,
-                  method: METHODS.CONNECT_WEBSOCKET,
-                });
-              })
-              .catch((error) => {
-                LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
-                  module: CC_FILE,
-                  method: METHODS.CONNECT_WEBSOCKET,
-                });
-              });
-          }
-          if (this.$config && this.$config.allowAutomatedRelogin) {
-            await this.silentRelogin();
-          }
+      if (this.$config && this.$config.allowAutomatedRelogin) {
+        await this.silentRelogin();
+      }
 
-          return this.agentConfig;
-        })
-        .catch((error) => {
-          throw error;
-        });
+      return this.agentConfig;
     } catch (error) {
       LoggerProxy.error(`Error during register: ${error}`, {
         module: CC_FILE,
