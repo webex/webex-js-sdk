@@ -2,7 +2,7 @@ name: PR Changelog Comment Bot
 run-name: ${{ github.actor }} triggered PR comment bot
 
 on:
-  workflow_dispatch:  # ADD THIS - allows manual trigger
+  workflow_dispatch:
     inputs:
       test_version:
         description: 'Test version number (e.g., 3.4.0)'
