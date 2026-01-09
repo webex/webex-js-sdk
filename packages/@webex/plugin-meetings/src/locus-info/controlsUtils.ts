@@ -41,6 +41,7 @@ ControlsUtils.parse = (controls: any) => {
       transcribing: controls.transcribe.transcribing,
       caption: controls.transcribe.caption,
       spokenLanguage: controls.transcribe.spokenLanguage,
+      hesiodLlmId: controls.transcribe.hesiodLlmId,
     };
   }
 
@@ -202,6 +203,11 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
         !isEqual(previous?.transcribe?.transcribing, current?.transcribe?.transcribing) && // upon first join, previous?.record?.recording = undefined; thus, never going to be equal and will always return true
         (previous?.transcribe?.transcribing || current?.transcribe?.transcribing), // therefore, condition added to prevent false firings of #meeting:recording:stopped upon first joining a meeting
 
+      hasHesiodLLMIdChanged:
+        current?.transcribe &&
+        !isEqual(previous?.transcribe?.hesiodLlmId, current?.transcribe?.hesiodLlmId) &&
+        !!(previous?.transcribe?.hesiodLlmId || current?.transcribe?.hesiodLlmId),
+
       hasTranscribeSpokenLanguageChanged:
         current?.transcribe &&
         !isEqual(previous?.transcribe?.spokenLanguage, current?.transcribe?.spokenLanguage) &&
@@ -211,11 +217,6 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
         current?.manualCaptionControl &&
         !isEqual(previous?.manualCaptionControl?.enabled, current?.manualCaptionControl?.enabled) &&
         (previous?.manualCaptionControl?.enabled || current?.manualCaptionControl?.enabled),
-
-      hasHesiodLLMIdChanged:
-        current?.transcribe &&
-        !isEqual(previous?.transcribe?.hesiodLlmId, current?.transcribe?.hesiodLlmId) &&
-        !!(previous?.transcribe?.hesiodLlmId || current?.transcribe?.hesiodLlmId),
 
       hasEntryExitToneChanged: !!(
         newControls.entryExitTone &&

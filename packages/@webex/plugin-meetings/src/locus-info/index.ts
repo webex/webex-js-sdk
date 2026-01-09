@@ -1372,9 +1372,9 @@ export default class LocusInfo extends EventsScope {
           hasRecordingPausedChanged,
           hasMeetingContainerChanged,
           hasTranscribeChanged,
+          hasHesiodLLMIdChanged,
           hasTranscribeSpokenLanguageChanged,
           hasManualCaptionChanged,
-          hasHesiodLLMIdChanged,
           hasEntryExitToneChanged,
           hasBreakoutChanged,
           hasVideoEnabledChanged,
@@ -1514,6 +1514,21 @@ export default class LocusInfo extends EventsScope {
         );
       }
 
+      if (hasHesiodLLMIdChanged) {
+        const {hesiodLlmId} = current.transcribe;
+
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED,
+          {
+            hesiodLlmId,
+          }
+        );
+      }
+
       if (hasTranscribeSpokenLanguageChanged) {
         const {spokenLanguage} = current.transcribe;
 
@@ -1540,21 +1555,6 @@ export default class LocusInfo extends EventsScope {
           LOCUSINFO.EVENTS.CONTROLS_MEETING_MANUAL_CAPTION_UPDATED,
           {
             enabled,
-          }
-        );
-      }
-
-      if (hasHesiodLLMIdChanged) {
-        const {hesiodLlmId} = current.transcribe;
-
-        this.emitScoped(
-          {
-            file: 'locus-info',
-            function: 'updateControls',
-          },
-          LOCUSINFO.EVENTS.CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED,
-          {
-            hesiodLlmId,
           }
         );
       }
