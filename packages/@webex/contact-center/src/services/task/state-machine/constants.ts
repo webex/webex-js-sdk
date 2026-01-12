@@ -17,14 +17,14 @@ export const MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE = 7;
 // Participant Type Constants
 // ============================================
 
-/** Customer participant type */
-export const PARTICIPANT_TYPE_CUSTOMER = 'Customer';
+/** Participant types for conference filtering */
+export const PARTICIPANT_TYPE = {
+  CUSTOMER: 'Customer',
+  SUPERVISOR: 'Supervisor',
+  VVA: 'VVA',
+} as const;
 
-/** Supervisor participant type */
-export const PARTICIPANT_TYPE_SUPERVISOR = 'Supervisor';
-
-/** Virtual Voice Agent participant type */
-export const PARTICIPANT_TYPE_VVA = 'VVA';
+export type ParticipantType = (typeof PARTICIPANT_TYPE)[keyof typeof PARTICIPANT_TYPE];
 
 // ============================================
 // Media Type Constants

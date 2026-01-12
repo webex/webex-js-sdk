@@ -801,40 +801,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.TRANSFER_CONFERENCE]: {
             actions: ['handleTransferInit', 'emitTaskTransferConference'],
           },
-          [TaskEvent.TRANSFER_CONFERENCE_SUCCESS]: [
-            {
-              // Non-transferring agents stay in CONFERENCING
-              guard: guards.conferenceActiveAndNotWrapping,
-              actions: ['updateTaskData', 'handleTransferConferenceSuccess'],
-            },
-            {
-              // Transferring agent → WRAPPING_UP
-              guard: guards.shouldWrapUp,
-              target: TaskState.WRAPPING_UP,
-              actions: [
-                'updateTaskData',
-                'markEnded',
-                'clearConsultState',
-                'handleTransferConferenceSuccess',
-                'emitTaskWrapup',
-              ],
-            },
-            {
-              // Conference downgraded → CONNECTED
-              guard: guards.shouldDowngradeConference,
-              target: TaskState.CONNECTED,
-              actions: [
-                'updateTaskData',
-                'clearConsultState',
-                'handleTransferConferenceSuccess',
-                'emitTaskConferenceEnded',
-              ],
-            },
-            {
-              // Fallback
-              actions: ['updateTaskData', 'handleTransferConferenceSuccess'],
-            },
-          ],
+          [TaskEvent.TRANSFER_CONFERENCE_SUCCESS]: {
+            // Agents already in CONFERENCING should STAY in CONFERENCING after transfer
+            // They are not the initiator (who is in CONSULTING state)
+            // Just update data, don't change state
+            actions: ['updateTaskData', 'handleTransferConferenceSuccess'],
+          },
           [TaskEvent.TRANSFER_CONFERENCE_FAILED]: {
             actions: ['handleTransferConferenceFailed'],
           },
@@ -842,37 +814,33 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // Conference ends explicitly
           [TaskEvent.CONFERENCE_END]: [
             {
-              guard: guards.conferenceInProgressFromEvent,
-              actions: ['updateTaskData'],
-            },
-            {
+              // Conference downgraded (< 2 agents) → CONNECTED
+              guard: guards.shouldDowngradeConference,
               target: TaskState.CONNECTED,
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConferenceEnded'],
+            },
+            {
+              // Default: stay in CONFERENCING (conference still active)
+              actions: ['updateTaskData'],
             },
           ],
 
           // CONTACT_ENDED in conference
           [TaskEvent.CONTACT_ENDED]: [
             {
-              // Stay if conference active AND customer in call
-              guard: guards.conferenceActiveAndCustomerInCall,
-              actions: ['updateTaskData'],
-            },
-            {
-              // Stay if conference active and shouldn't wrap
-              guard: guards.conferenceActiveAndNotWrapping,
-              actions: ['updateTaskData'],
-            },
-            {
-              // Owner should wrap
+              // Owner should wrap up
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
               actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
             },
             {
-              // Non-owner → CONNECTED
+              guard: guards.shouldDowngradeConference,
               target: TaskState.CONNECTED,
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConferenceEnded'],
+            },
+            {
+              // Agent is not owner and conference still has 2+ agents
+              actions: ['updateTaskData'],
             },
           ],
 

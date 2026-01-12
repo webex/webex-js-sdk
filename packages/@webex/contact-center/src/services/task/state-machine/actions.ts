@@ -268,20 +268,28 @@ export const actions: TaskActionsMap = {
     };
   }),
 
-  setConsultAgentJoined: assign(({event}: {event: TaskEventPayload}) => {
-    if (
-      !event ||
-      event.type !== TaskEvent.CONSULTING_ACTIVE ||
-      !('consultDestinationAgentJoined' in event)
-    ) {
-      return {};
-    }
+  setConsultAgentJoined: assign(
+    ({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+      // If already true (from handleConsultAccept), don't overwrite with false from event
+      if (context.consultDestinationAgentJoined) {
+        return {};
+      }
 
-    return {
-      consultDestinationAgentJoined: (event as {consultDestinationAgentJoined: boolean})
-        .consultDestinationAgentJoined,
-    };
-  }),
+      if (
+        !event ||
+        event.type !== TaskEvent.CONSULTING_ACTIVE ||
+        !('consultDestinationAgentJoined' in event)
+      ) {
+        return {};
+      }
+
+      const eventValue = (event as {consultDestinationAgentJoined: boolean})
+        .consultDestinationAgentJoined;
+
+      // Only set to true, never back to false
+      return eventValue ? {consultDestinationAgentJoined: true} : {};
+    }
+  ),
 
   setRecordingState: assign(({event}: {event: TaskEventPayload}) => {
     if (!event || !('type' in event)) {

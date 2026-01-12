@@ -139,24 +139,24 @@ interface TaskEventPayloadMap {
     reason?: string;
     taskData?: TaskData;
   };
-  [TaskEvent.CONFERENCE_END]: BaseEvent<TaskEvent.CONFERENCE_END> & {taskData?: TaskData};
+  [TaskEvent.CONFERENCE_END]: BaseEvent<TaskEvent.CONFERENCE_END> & {taskData: TaskData};
   [TaskEvent.TRANSFER_CONFERENCE]: BaseEvent<TaskEvent.TRANSFER_CONFERENCE> & {agentId?: string};
   [TaskEvent.PARTICIPANT_JOIN]: BaseEvent<TaskEvent.PARTICIPANT_JOIN> & {
     participant: ConferenceParticipant;
   };
   [TaskEvent.PARTICIPANT_LEAVE]: BaseEvent<TaskEvent.PARTICIPANT_LEAVE> & {
     participantId?: string;
-    taskData?: TaskData;
+    taskData: TaskData;
   };
   [TaskEvent.EXIT_CONFERENCE]: BaseEvent<TaskEvent.EXIT_CONFERENCE> & {agentId?: string};
   [TaskEvent.EXIT_CONFERENCE_SUCCESS]: BaseEvent<TaskEvent.EXIT_CONFERENCE_SUCCESS> & {
-    taskData?: TaskData;
+    taskData: TaskData;
   };
   [TaskEvent.EXIT_CONFERENCE_FAILED]: BaseEvent<TaskEvent.EXIT_CONFERENCE_FAILED> & {
     reason?: string;
   };
   [TaskEvent.TRANSFER_CONFERENCE_SUCCESS]: BaseEvent<TaskEvent.TRANSFER_CONFERENCE_SUCCESS> & {
-    taskData?: TaskData;
+    taskData: TaskData;
   };
   [TaskEvent.TRANSFER_CONFERENCE_FAILED]: BaseEvent<TaskEvent.TRANSFER_CONFERENCE_FAILED> & {
     reason?: string;

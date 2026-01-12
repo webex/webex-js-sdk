@@ -71,7 +71,6 @@ export default abstract class Task extends EventEmitter implements ITask {
     super();
     this.contact = contact;
     this.data = data;
-    // Include agentId in the config for ownership checks (transfer conference)
     this.uiControlConfig = {...uiControlConfig, agentId};
     this.runtimeOptions = runtimeOptions ?? {};
     this.wrapupData = wrapupData;
