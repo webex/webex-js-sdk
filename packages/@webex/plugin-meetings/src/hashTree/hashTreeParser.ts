@@ -3,9 +3,9 @@ import HashTree, {LeafDataItem} from './hashTree';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {Enum, HTTP_VERBS} from '../constants';
 import {DataSetNames, EMPTY_HASH} from './constants';
-import {ObjectType, HtMeta} from './types';
+import {ObjectType, HtMeta, HashTreeObject} from './types';
 import {LocusDTO} from '../locus-info/types';
-import {deleteNestedObjectsWithHtMeta} from './utils';
+import {deleteNestedObjectsWithHtMeta, isSelf} from './utils';
 
 export interface DataSet {
   url: string;
@@ -18,11 +18,6 @@ export interface DataSet {
     maxMs: number;
     exponent: number;
   };
-}
-
-export interface HashTreeObject {
-  htMeta: HtMeta;
-  data: Record<string, any>;
 }
 
 export interface RootHashMessage {
@@ -59,15 +54,6 @@ export type LocusInfoUpdateCallback = (
  * It's handled internally by HashTreeParser and results in MEETING_ENDED being sent up.
  */
 class MeetingEndedError extends Error {}
-
-/**
- * Checks if the given hash tree object is of type "self"
- * @param {HashTreeObject} object object to check
- * @returns {boolean} True if the object is of type "self", false otherwise
- */
-export function isSelf(object: HashTreeObject) {
-  return object.htMeta.elementId.type.toLowerCase() === ObjectType.self;
-}
 
 /**
  * Parses hash tree eventing locus data

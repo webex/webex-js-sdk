@@ -299,5 +299,55 @@ describe('plugin-meetings', () => {
       const sdp2 = 'v=0\r\no=HOMER 0 1 IN IP4 23.89.67.81\r\ns=-\r\nc=IN IP4 23.89.67.81\r\nb=TIAS:128000\r\nt=0 0\r\na=ice-lite\r\n'
       assert.equal(MeetingsUtil.getMediaServer(sdp2), 'homer');
     });
-  })
+  });
+
+  describe('#getCorrelationIdForDevice', () => {
+    it('should return correlationId if device with matching url is found', () => {
+      const locusSelf = {
+        devices: [
+          {url: 'deviceUrl1', correlationId: 'correlationId1'},
+          {url: 'deviceUrl2', correlationId: 'correlationId2'},
+        ],
+      };
+
+      const correlationId = MeetingsUtil.getCorrelationIdForDevice('deviceUrl1', locusSelf);
+      assert.equal(correlationId, 'correlationId1');
+    });
+
+    it('should return false if no device with matching url is found', () => {
+      const locusSelf = {
+        devices: [
+          {url: 'deviceUrl1', correlationId: 'correlationId1'},
+          {url: 'deviceUrl2', correlationId: 'correlationId2'},
+        ],
+      };
+
+      const correlationId = MeetingsUtil.getCorrelationIdForDevice('deviceUrl3', locusSelf);
+      assert.equal(correlationId, false);
+    });
+
+    it('should return false if device with matching url has no correlationId', () => {
+      const locusSelf = {
+        devices: [{url: 'deviceUrl1'}, {url: 'deviceUrl2', correlationId: 'correlationId2'}],
+      };
+
+      const correlationId = MeetingsUtil.getCorrelationIdForDevice('deviceUrl1', locusSelf);
+      assert.equal(correlationId, false);
+    });
+
+    it('should return false if locusSelf has no devices', () => {
+      const locusSelf = {};
+
+      const correlationId = MeetingsUtil.getCorrelationIdForDevice('deviceUrl1', locusSelf);
+      assert.equal(correlationId, false);
+    });
+
+    it('should return false if locusSelf is null or undefined', () => {
+      let correlationId = MeetingsUtil.getCorrelationIdForDevice('deviceUrl1', null);
+      assert.equal(correlationId, false);
+
+      correlationId = MeetingsUtil.getCorrelationIdForDevice('deviceUrl1', undefined);
+      assert.equal(correlationId, false);
+    });
+  });
 });
