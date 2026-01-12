@@ -324,10 +324,20 @@ footer .copyright {
 }
 
 /* Comparison Results Table */
+#comparison-results .table-wrapper {
+    max-height: 500px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 10px;
+    position: relative;
+}
+
 .comparison-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
+    margin-top: 0;
     font-size: 14px;
 }
 
@@ -588,11 +598,12 @@ footer .copyright {
     }
 }
 
-/* ============================================
+/*============================================
    PACKAGE-LEVEL COMPARISON STYLES
-   ============================================ */
+   ============================================
 
-/* Compare boxes styling */
+Compare boxes styling
+---------------------*/
 .compare-box {
     border: 2px solid #e0e0e0;
     padding: 20px;
@@ -626,7 +637,9 @@ footer .copyright {
     padding: 0 10px;
 }
 
-/* Version badge variants for commit comparison */
+
+/*Version badge variants for commit comparison
+-------------------------------------------*/
 .version-badge {
     background: #00bceb;
     color: white;

@@ -175,10 +175,6 @@ const doStableVersionChange = async ({stable_version}) => {
         await fetchChangelog(versionPaths[stable_version]);
         populatePackageNames(currentChangelog);
         
-        // Populate package comparison dropdowns
-        populatePackageDropdownForComparison('pkg1-select');
-        populatePackageDropdownForComparison('pkg2-select');
-        
         updateFormState();
         if(versionInput.value.trim() !== ''){
             validateVersionInput({version: versionInput.value});
@@ -595,10 +591,6 @@ window.onhashchange = () => {
 
 populateVersions();
 
-/* ============================================
-   PACKAGE-LEVEL COMPARISON FUNCTIONALITY
-   ============================================ */
-
 /**
  * Populate package dropdown for comparison
  * @param {string} selectId - ID of the select element
@@ -623,7 +615,13 @@ const extractPackagesFromVersion = (changelog, specificVersions = null) => {
         if (!changelog.hasOwnProperty(packageName)) continue;
         
         const packageVersions = changelog[packageName];
+        console.log('packageVersions', packageVersions);
+        
+        // Safety check: ensure packageVersions is an object
+        if (!packageVersions || typeof packageVersions !== 'object') continue;
+        
         const versionKeys = Object.keys(packageVersions);
+        console.log('versionKeys', versionKeys);
         
         if (versionKeys.length === 0) continue;
         
@@ -637,25 +635,25 @@ const extractPackagesFromVersion = (changelog, specificVersions = null) => {
             }
         }
         
-        // If no specific version requested or not found, use latest
+        // If no specific version requested or not found, use earliest (first) version
         if (!selectedVersion) {
-            let latestVersion = versionKeys[0];
-            let latestDate = packageVersions[versionKeys[0]].published_date || 0;
+            let earliestVersion = versionKeys[0];
+            let earliestDate = packageVersions[earliestVersion]?.published_date || Infinity;
             
-            versionKeys.forEach(version => {
-                const publishedDate = packageVersions[version].published_date || 0;
-                if (publishedDate > latestDate) {
-                    latestDate = publishedDate;
-                    latestVersion = version;
+            for (const version of versionKeys) {
+                const publishedDate = packageVersions[version]?.published_date || Infinity;
+                if (publishedDate < earliestDate) {
+                    earliestDate = publishedDate;
+                    earliestVersion = version;
                 }
-            });
+            }
             
-            selectedVersion = latestVersion;
+            selectedVersion = earliestVersion;
         }
         
         packageMap[packageName] = selectedVersion;
     }
-    
+
     return packageMap;
 };
 
@@ -668,10 +666,13 @@ const extractPackagesFromVersion = (changelog, specificVersions = null) => {
  * @returns {Object} - Comparison results with statistics
  */
 const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
+    // Get ALL package names from both changelogs (entire changelog, not just specific versions)
     const allPackageNames = new Set([
-        ...Object.keys(packagesA),//ALL packages in version A
-        ...Object.keys(packagesB)//ALL packages in version B
+        ...Object.keys(changelogA),//ALL packages in changelog A
+        ...Object.keys(changelogB)//ALL packages in changelog B
     ]);
+    console.log('allPackageNames', allPackageNames);
+    console.log('Total packages to compare:', allPackageNames.size);
     
     const packages = [];
     const allCommits = new Map(); // hash -> {message, packages: Set()}
@@ -680,13 +681,36 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
     let onlyInACount = 0;
     let onlyInBCount = 0;
     
+    // Helper function to find earliest (first) version of a package in changelog
+    const findEarliestPackageVersion = (changelog, packageName) => {
+        if (!changelog[packageName]) return null;
+        
+        const versions = Object.keys(changelog[packageName]);
+        if (versions.length === 0) return null;
+        
+        // Find the earliest version by published date
+        let earliestVersion = versions[0];
+        let earliestDate = changelog[packageName][versions[0]].published_date || Infinity;
+        
+        versions.forEach(ver => {
+            const publishedDate = changelog[packageName][ver].published_date || Infinity;
+            if (publishedDate < earliestDate) {
+                earliestDate = publishedDate;
+                earliestVersion = ver;
+            }
+        });
+        
+        return earliestVersion;
+    };
+    
     allPackageNames.forEach(packageName => {
-        const versionA = packagesA[packageName];
-        const versionB = packagesB[packageName];//start iterating through all unique packages names
+        // Find the earliest (first) version for this package in each changelog
+        const versionA = findEarliestPackageVersion(changelogA, packageName);
+        const versionB = findEarliestPackageVersion(changelogB, packageName);
         
         let status, changeClass;//Declare variables for status label and CSS class
         
-        if (versionA && versionB) {//checks if package is in both versions
+        if (versionA && versionB) {//checks if package is in both changelogs
             if (versionA === versionB) {//if versionA is the same as versionB, then it is unchanged
                 status = 'Unchanged';
                 changeClass = 'unchanged';
@@ -777,10 +801,10 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
     };
 };
 
-/**
- * Populate package dropdowns for comparison mode when version is selected
- * @param {string} versionSelectId - ID of the version select element
- * @param {string} packageSelectId - ID of the package select element
+/*
+ Populate package dropdowns for comparison mode when version is selected
+ @param {string} versionSelectId - ID of the version select element
+ @param {string} packageSelectId - ID of the package select element
  */
 
 /**
@@ -809,10 +833,12 @@ const performVersionComparison = async (versionA, versionB) => {
         // Extract packages from both versions
         const packagesA = extractPackagesFromVersion(changelogA);
         const packagesB = extractPackagesFromVersion(changelogB);
+        console.log('packagesA', packagesA);
+        console.log('packagesB', packagesB);
         
         // Compare packages
         const comparisonData = comparePackages(packagesA, packagesB, changelogA, changelogB);
-        
+        console.log('comparisonData', comparisonData);
         // Render results
         displayComparison(versionA, versionB, comparisonData);
         
@@ -974,6 +1000,10 @@ const switchToComparisonMode = (versionA = null, versionB = null) => {
     if (searchForm) searchForm.classList.add('hide');
     if (comparisonForm) comparisonForm.classList.remove('hide');
     if (searchResults) searchResults.classList.add('hide');
+    
+    // Hide helper section (search examples) in comparison mode
+    const helperSection = document.getElementById('helper-section');
+    if (helperSection) helperSection.classList.add('hide');
     
     // Hide package-level comparison section in version comparison mode
     const packageLevelSection = document.getElementById('package-level-comparison-section');
@@ -1187,24 +1217,106 @@ const compareSpecificPackageVersions = (packageName, versionASpecific, versionBS
         changeClass = 'version-changed';
     }
     
+    // Helper function to find latest version of a package in changelog
+    const findLatestPackageVersion = (changelog, pkgName) => {
+        if (!changelog[pkgName]) return null;
+        
+        const versions = Object.keys(changelog[pkgName]);
+        if (versions.length === 0) return null;
+        
+        // Find the latest version by published date
+        let latestVersion = versions[0];
+        let latestDate = changelog[pkgName][versions[0]].published_date || 0;
+        
+        versions.forEach(ver => {
+            const publishedDate = changelog[pkgName][ver].published_date || 0;
+            if (publishedDate > latestDate) {
+                latestDate = publishedDate;
+                latestVersion = ver;
+            }
+        });
+        
+        return latestVersion;
+    };
+    
+    // Create packages array with main package and ALL packages from both changelogs
+    const packagesArray = [];
+    
+    // Add main package row
+    packagesArray.push({
+        packageName: packageName,
+        versionA: pkgDataA ? versionASpecific : 'N/A',
+        versionB: pkgDataB ? versionBSpecific : 'N/A',
+        status: status,
+        changeClass: changeClass
+    });
+    
+    // Get ALL packages from both changelogs (not just alongWith)
+    const allPackagesInChangelogs = new Set([
+        ...Object.keys(changelogA),
+        ...Object.keys(changelogB)
+    ]);
+    
+    // Remove the main package from the set (already added above)
+    allPackagesInChangelogs.delete(packageName);
+    
+    // Track counts for stats
+    let changedCount = status === 'Version Changed' ? 1 : 0;
+    let unchangedCount = status === 'Unchanged' ? 1 : 0;
+    let onlyInACount = status === 'Removed' ? 1 : 0;
+    let onlyInBCount = status === 'Added' ? 1 : 0;
+    
+    // Add each package from both changelogs as a separate row
+    allPackagesInChangelogs.forEach(pkg => {
+        // Find latest version in both changelogs
+        const pkgVerA = findLatestPackageVersion(changelogA, pkg);
+        const pkgVerB = findLatestPackageVersion(changelogB, pkg);
+        
+        let pkgStatus, pkgChangeClass;
+        if (pkgVerA && pkgVerB) {
+            if (pkgVerA === pkgVerB) {
+                pkgStatus = 'Unchanged';
+                pkgChangeClass = 'unchanged';
+                unchangedCount++;
+            } else {
+                pkgStatus = 'Version Changed';
+                pkgChangeClass = 'version-changed';
+                changedCount++;
+            }
+        } else if (pkgVerA && !pkgVerB) {
+            pkgStatus = 'Removed';
+            pkgChangeClass = 'only-in-a';
+            onlyInACount++;
+        } else if (!pkgVerA && pkgVerB) {
+            pkgStatus = 'Added';
+            pkgChangeClass = 'only-in-b';
+            onlyInBCount++;
+        }
+        
+        packagesArray.push({
+            packageName: pkg,
+            versionA: pkgVerA || 'N/A',
+            versionB: pkgVerB || 'N/A',
+            status: pkgStatus,
+            changeClass: pkgChangeClass
+        });
+    });
+    
+    // Sort packages alphabetically
+    packagesArray.sort((a, b) => a.packageName.localeCompare(b.packageName));
+    
     // Create comparison data in the same format as full version comparison
     const comparisonData = {
         versionA: versionASpecific,
         versionB: versionBSpecific,
-        packages: [{
-            packageName: packageName,
-            versionA: pkgDataA ? versionASpecific : 'N/A',
-            versionB: pkgDataB ? versionBSpecific : 'N/A',
-            status: status,
-            changeClass: changeClass
-        }],
+        packages: packagesArray,
         commits: commitsList,
-        totalPackages: 1,
+        totalPackages: packagesArray.length,
         totalCommits: commitsList.length,
-        changedCount: status === 'Version Changed' ? 1 : 0,
-        unchangedCount: status === 'Unchanged' ? 1 : 0,
-        onlyInACount: status === 'Removed' ? 1 : 0,
-        onlyInBCount: status === 'Added' ? 1 : 0
+        changedCount: changedCount,
+        unchangedCount: unchangedCount,
+        onlyInACount: onlyInACount,
+        onlyInBCount: onlyInBCount
     };
     
     // Display using the comparison template (same as full version comparison)
@@ -1333,8 +1445,7 @@ const initializeComparisonMode = async () => {
     const handleStableVersionChange = async () => {
         const stableA = versionASelect.value;
         const stableB = versionBSelect.value;
-        
-        // Reset package and pre-release selections
+         // Reset package and pre-release selections
         if (packageSelect) packageSelect.value = '';
         if (versionAPrereleaseSelect) versionAPrereleaseSelect.value = '';
         if (versionBPrereleaseSelect) versionBPrereleaseSelect.value = '';
@@ -1450,6 +1561,10 @@ const initializeComparisonMode = async () => {
             if (comparisonForm) comparisonForm.classList.add('hide');
             if (comparisonResults) comparisonResults.classList.add('hide');
             if (searchResults) searchResults.classList.remove('hide');
+            
+            // Show helper section (search examples)
+            const helperSection = document.getElementById('helper-section');
+            if (helperSection) helperSection.classList.remove('hide');
            
             // Clear URL
             const url = new URL(window.location);
@@ -1474,9 +1589,9 @@ const initializeComparisonMode = async () => {
             if (comparisonForm) comparisonForm.classList.remove('hide');
             if (searchResults) searchResults.classList.add('hide');
             
-            // Hide package-level comparison section in version comparison mode
-            const packageLevelSection = document.getElementById('package-level-comparison-section');
-            if (packageLevelSection) packageLevelSection.classList.add('hide');
+            // Hide helper section (search examples) in comparison mode
+            const helperSection = document.getElementById('helper-section');
+            if (helperSection) helperSection.classList.add('hide');
             
             populateComparisonVersions();
         });
