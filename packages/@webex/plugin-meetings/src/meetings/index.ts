@@ -67,6 +67,8 @@ import {SpaceIDDeprecatedError} from '../common/errors/webex-errors';
 import NoMeetingInfoError from '../common/errors/no-meeting-info';
 import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {HashTreeMessage} from '../hashTree/hashTreeParser';
+import {HashTreeObject} from '../hashTree/types';
+import {isSelf} from '../hashTree/utils';
 
 let mediaLogger;
 
@@ -420,31 +422,36 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   getCorrespondingMeetingByLocus(data: LocusEvent) {
-    if (
-      data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED &&
-      data.stateElementsMessage?.locusUrl
-    ) {
-      return this.meetingCollection.getByKey(
-        MEETING_KEY.LOCUS_URL,
-        data.stateElementsMessage.locusUrl
-      );
+    const locusUrl =
+      data.stateElementsMessage?.locusUrl || // hash tree event
+      data.locusUrl; // classic event
+
+    // first try to find by locusUrl - that's the simplest and quickest way
+    const existingMeeting = this.meetingCollection.getByKey(MEETING_KEY.LOCUS_URL, locusUrl);
+
+    if (existingMeeting) {
+      return existingMeeting;
     }
 
-    // getting meeting by correlationId. This will happen for the new event
-    // Either the locus
-    // TODO : Add check for the callBack Address
+    // if that didn't work, fallback to other fields like correlationId, sipUri, etc
+
+    // If the event is a hash tree event, we need to extract "self" object from it
+    // We don't care about the version, just need to find the meeting this event is for,
+    // so any hash tree object of type "self" will do
+    const hashTreeEventSelf = data.stateElementsMessage?.locusStateElements?.find(
+      (obj: HashTreeObject) => isSelf(obj)
+    )?.data;
+
+    const self = hashTreeEventSelf || data.locus?.self;
+
     return (
-      this.meetingCollection.getByKey(MEETING_KEY.LOCUS_URL, data.locusUrl) ||
       // @ts-ignore
       this.meetingCollection.getByKey(
         MEETING_KEY.CORRELATION_ID,
         // @ts-ignore
-        MeetingsUtil.checkForCorrelationId(this.webex.internal.device.url, data.locus)
+        MeetingsUtil.getCorrelationIdForDevice(this.webex.internal.device.url, self)
       ) ||
-      this.meetingCollection.getByKey(
-        MEETING_KEY.SIP_URI,
-        data.locus?.self?.callbackInfo?.callbackAddress
-      ) ||
+      this.meetingCollection.getByKey(MEETING_KEY.SIP_URI, self?.callbackInfo?.callbackAddress) ||
       (data.locus?.info?.isUnifiedSpaceMeeting
         ? undefined
         : this.meetingCollection.getByKey(
