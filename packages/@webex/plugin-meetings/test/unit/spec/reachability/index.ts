@@ -1693,7 +1693,7 @@ describe('gatherReachability', () => {
       udp: ['testUDP1', 'testUDP2'],
       tcp: [], // empty list because TCP is disabled in config
       xtls: ['testXTLS1', 'testXTLS2'],
-    });
+    }, undefined);
   });
 
   it('does not do TLS reachability if it is disabled in config', async () => {
@@ -1728,7 +1728,7 @@ describe('gatherReachability', () => {
       udp: ['testUDP1', 'testUDP2'],
       tcp: ['testTCP1', 'testTCP2'],
       xtls: [], // empty list because TLS is disabled in config
-    });
+    }, undefined);
   });
 
   it('does not do TCP or TLS reachability if it is disabled in config', async () => {
@@ -1763,7 +1763,7 @@ describe('gatherReachability', () => {
       udp: ['testUDP1', 'testUDP2'],
       tcp: [], // empty list because TCP is disabled in config
       xtls: [], // empty list because TLS is disabled in config
-    });
+    }, undefined);
   });
 
   it('retry of getClusters is succesfull', async () => {
