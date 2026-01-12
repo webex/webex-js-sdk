@@ -100,5 +100,6 @@ export default {
     logUploadIntervalMultiplicationFactor: 0, // if set to 0 or undefined, logs won't be uploaded periodically, if you want periodic logs, recommended value is 1
     stopIceGatheringAfterFirstRelayCandidate: false,
     enableAudioTwccForMultistream: false,
+    enablePerUdpUrlReachability: false, // true: separate peer connection per each UDP URL; false: single peer connection for all URLs
   },
 };

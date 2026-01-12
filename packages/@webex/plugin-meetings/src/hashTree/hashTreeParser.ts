@@ -1113,11 +1113,7 @@ class HashTreeParser {
 
     const url = `${dataSet.url}/sync`;
     const body = {
-      dataSet: {
-        name: dataSet.name,
-        leafCount: dataSet.leafCount,
-        root: dataSet.hashTree?.getRootHash(),
-      },
+      leafCount: dataSet.leafCount,
       leafDataEntries: [],
     };
 

@@ -18,6 +18,7 @@ import {
   CALL_REMOVED_REASON,
   RECORDING_STATE,
   Enum,
+  SELF_ROLES,
 } from '../constants';
 
 import InfoUtils from './infoUtils';
@@ -38,7 +39,7 @@ import HashTreeParser, {
   LocusInfoUpdateType,
 } from '../hashTree/hashTreeParser';
 import {ObjectType, ObjectTypeToLocusKeyMap} from '../hashTree/types';
-import {LocusDTO, LocusFullState} from './types';
+import {Links, LocusDTO, LocusFullState} from './types';
 
 export type LocusLLMEvent = {
   data: {
@@ -96,10 +97,7 @@ export default class LocusInfo extends EventsScope {
   aclUrl: any;
   baseSequence: any;
   created: any;
-  identities: any;
-  membership: any;
   participants: any;
-  participantsUrl: any;
   replaces: any;
   scheduledMeeting: any;
   sequence: any;
@@ -111,10 +109,8 @@ export default class LocusInfo extends EventsScope {
   info: any;
   roles: any;
   mediaShares: any;
-  replace: any;
   url: any;
-  services: any;
-  resources: any;
+  links?: Links;
   mainSessionLocusCache: any;
   self: any;
   hashTreeParser?: HashTreeParser;
@@ -328,13 +324,10 @@ export default class LocusInfo extends EventsScope {
   init(locus: any = {}) {
     this.created = locus.created || null;
     this.scheduledMeeting = locus.meeting || null;
-    this.participantsUrl = locus.participantsUrl || null;
     this.replaces = locus.replaces || null;
     this.aclUrl = locus.aclUrl || null;
     this.baseSequence = locus.baseSequence || null;
     this.sequence = locus.sequence || null;
-    this.membership = locus.membership || null;
-    this.identities = locus.identities || null;
     this.participants = locus.participants || null;
 
     /**
@@ -360,8 +353,7 @@ export default class LocusInfo extends EventsScope {
     this.updateSelf(locus.self);
     this.updateHostInfo(locus.host);
     this.updateMediaShares(locus.mediaShares);
-    this.updateServices(locus.links?.services);
-    this.updateResources(locus.links?.resources);
+    this.updateLinks(locus.links);
   }
 
   /**
@@ -514,6 +506,14 @@ export default class LocusInfo extends EventsScope {
   updateLocusFromHashTreeObject(object: HashTreeObject, locus: LocusDTO): LocusDTO {
     const type = object.htMeta.elementId.type.toLowerCase();
 
+    const addParticipantObject = (obj: HashTreeObject) => {
+      if (!locus.participants) {
+        locus.participants = [];
+      }
+      locus.participants.push(obj.data);
+      this.hashTreeObjectId2ParticipantId.set(obj.htMeta.elementId.id, obj.data.id);
+    };
+
     switch (type) {
       case ObjectType.locus: {
         if (!object.data) {
@@ -579,13 +579,7 @@ export default class LocusInfo extends EventsScope {
           } ${object.data ? 'updated' : 'removed'} version=${object.htMeta.elementId.version}`
         );
         if (object.data) {
-          if (!locus.participants) {
-            locus.participants = [];
-          }
-          const participantObject = object.data;
-          participantObject.htMeta = object.htMeta;
-          locus.participants.push(participantObject);
-          this.hashTreeObjectId2ParticipantId.set(object.htMeta.elementId.id, participantObject.id);
+          addParticipantObject(object);
         } else {
           const participantId = this.hashTreeObjectId2ParticipantId.get(object.htMeta.elementId.id);
 
@@ -596,12 +590,31 @@ export default class LocusInfo extends EventsScope {
           this.hashTreeObjectId2ParticipantId.delete(object.htMeta.elementId.id);
         }
         break;
+      case ObjectType.control:
+        if (object.data) {
+          Object.keys(object.data).forEach((controlKey) => {
+            LoggerProxy.logger.info(
+              `Locus-info:index#updateLocusFromHashTreeObject --> control ${controlKey} updated:`,
+              object.data[controlKey]
+            );
+            if (!locus.controls) {
+              locus.controls = {};
+            }
+            locus.controls[controlKey] = object.data[controlKey];
+          });
+        } else {
+          LoggerProxy.logger.warn(
+            `Locus-info:index#updateLocusFromHashTreeObject --> control object update without data - this is not expected!`
+          );
+        }
+        break;
+      case ObjectType.links:
       case ObjectType.info:
       case ObjectType.fullState:
       case ObjectType.self:
         if (!object.data) {
           // self without data is handled inside HashTreeParser and results in LocusInfoUpdateType.MEETING_ENDED, so we should never get here
-          // other types like info or fullstate - Locus should never send them without data
+          // all other types info, fullstate, etc - Locus should never send them without data
           LoggerProxy.logger.warn(
             `Locus-info:index#updateLocusFromHashTreeObject --> received ${type} object without data, this is not expected! version=${object.htMeta.elementId.version}`
           );
@@ -611,6 +624,24 @@ export default class LocusInfo extends EventsScope {
           );
           const locusDtoKey = ObjectTypeToLocusKeyMap[type];
           locus[locusDtoKey] = object.data;
+
+          /* Hash tree based webinar attendees don't receive a Participant object for themselves from Locus,
+             but a lot of existing code in SDK and web app expects a member object for self to exist,
+             so whenever SELF changes for a webinar attendee, we copy it into a participant object.
+             We can do it, because SELF has always all the same properties as a participant object.
+          */
+          if (
+            type === ObjectType.self &&
+            locus.info?.isWebinar &&
+            object.data.controls?.role?.roles?.find(
+              (r) => r.type === SELF_ROLES.ATTENDEE && r.hasRole
+            )
+          ) {
+            LoggerProxy.logger.info(
+              `Locus-info:index#updateLocusFromHashTreeObject --> webinar attendee: creating participant object from self`
+            );
+            addParticipantObject(object);
+          }
         }
         break;
       default:
@@ -949,8 +980,8 @@ export default class LocusInfo extends EventsScope {
   // eslint-disable-next-line @typescript-eslint/no-shadow
   handleOneOnOneEvent(eventType: string) {
     if (
-      this.parsedLocus.fullState.type === _CALL_ ||
-      this.parsedLocus.fullState.type === _SIP_BRIDGE_
+      this.parsedLocus.fullState?.type === _CALL_ ||
+      this.parsedLocus.fullState?.type === _SIP_BRIDGE_
     ) {
       // for 1:1 bob calls alice and alice declines, notify the meeting state
       if (eventType === LOCUSEVENT.PARTICIPANT_DECLINED) {
@@ -1023,17 +1054,13 @@ export default class LocusInfo extends EventsScope {
     this.updateLocusUrl(locus.url, ControlsUtils.isMainSessionDTO(locus));
     this.updateMeetingInfo(locus.info, locus.self);
     this.updateMediaShares(locus.mediaShares);
-    this.updateParticipantsUrl(locus.participantsUrl);
-    this.updateReplace(locus.replace);
+    this.updateReplaces(locus.replaces);
     this.updateSelf(locus.self);
     this.updateAclUrl(locus.aclUrl);
     this.updateBasequence(locus.baseSequence);
     this.updateSequence(locus.sequence);
-    this.updateMemberShip(locus.membership);
-    this.updateIdentifiers(locus.identities);
     this.updateEmbeddedApps(locus.embeddedApps);
-    this.updateServices(locus.links?.services);
-    this.updateResources(locus.links?.resources);
+    this.updateLinks(locus.links);
     this.compareAndUpdate();
     // update which required to compare different objects from locus
   }
@@ -1067,9 +1094,9 @@ export default class LocusInfo extends EventsScope {
    */
   isMeetingActive() {
     if (
-      this.parsedLocus.fullState.type === _CALL_ ||
-      this.parsedLocus.fullState.type === _SIP_BRIDGE_ ||
-      this.parsedLocus.fullState.type === _SPACE_SHARE_
+      this.parsedLocus.fullState?.type === _CALL_ ||
+      this.parsedLocus.fullState?.type === _SIP_BRIDGE_ ||
+      this.parsedLocus.fullState?.type === _SPACE_SHARE_
     ) {
       // @ts-ignore
       const partner = this.getLocusPartner(this.participants, this.self);
@@ -1162,7 +1189,7 @@ export default class LocusInfo extends EventsScope {
           }
         );
       }
-    } else if (this.parsedLocus.fullState.type === _MEETING_) {
+    } else if (this.parsedLocus.fullState?.type === _MEETING_) {
       if (
         this.fullState &&
         (this.fullState.state === LOCUS.STATE.INACTIVE ||
@@ -1259,6 +1286,7 @@ export default class LocusInfo extends EventsScope {
   compareSelfAndHost() {
     // In some cases the host info is not present but the moderator values changes from null to false so it triggers an update
     if (
+      this.parsedLocus.self &&
       this.parsedLocus.self.selfIdentity === this.parsedLocus.host?.hostId &&
       this.parsedLocus.self.moderator
     ) {
@@ -1685,17 +1713,19 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
-   * @param {Object} services
+   * Updates links and emits appropriate events if services or resources have changed
+   * @param {Object} links
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  updateServices(services: Record<'breakout' | 'record', {url: string}>) {
-    if (services && !isEqual(this.services, services)) {
-      this.services = services;
+  updateLinks(links?: Links) {
+    const {services, resources} = links || {};
+
+    if (services && !isEqual(this.links?.services, services)) {
       this.emitScoped(
         {
           file: 'locus-info',
-          function: 'updateServices',
+          function: 'updateLinks',
         },
         LOCUSINFO.EVENTS.LINKS_SERVICES,
         {
@@ -1703,20 +1733,12 @@ export default class LocusInfo extends EventsScope {
         }
       );
     }
-  }
 
-  /**
-   * @param {Object} resources
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateResources(resources: Record<'webcastInstance', {url: string}>) {
-    if (resources && !isEqual(this.resources, resources)) {
-      this.resources = resources;
+    if (resources && !isEqual(this.links?.resources, resources)) {
       this.emitScoped(
         {
           file: 'locus-info',
-          function: 'updateResources',
+          function: 'updateLinks',
         },
         LOCUSINFO.EVENTS.LINKS_RESOURCES,
         {
@@ -1724,6 +1746,8 @@ export default class LocusInfo extends EventsScope {
         }
       );
     }
+
+    this.links = links;
   }
 
   /**
@@ -1910,24 +1934,13 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
-   * @param {String} participantsUrl
+   * @param {Object} replaces
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  updateParticipantsUrl(participantsUrl: string) {
-    if (participantsUrl && !isEqual(this.participantsUrl, participantsUrl)) {
-      this.participantsUrl = participantsUrl;
-    }
-  }
-
-  /**
-   * @param {Object} replace
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateReplace(replace: object) {
-    if (replace && !isEqual(this.replace, replace)) {
-      this.replace = replace;
+  updateReplaces(replaces: object) {
+    if (replaces && !isEqual(this.replaces, replaces)) {
+      this.replaces = replaces;
     }
   }
 
@@ -1958,14 +1971,14 @@ export default class LocusInfo extends EventsScope {
       }
 
       // TODO: check if we need to save the sipUri here as well
-      // this.emit(LOCUSINFO.EVENTS.MEETING_UPDATE, SelfUtils.getSipUrl(this.getLocusPartner(participants, self), this.parsedLocus.fullState.type, this.parsedLocus.info.sipUri));
+      // this.emit(LOCUSINFO.EVENTS.MEETING_UPDATE, SelfUtils.getSipUrl(this.getLocusPartner(participants, self), this.parsedLocus.fullState?.type, this.parsedLocus.info?.sipUri));
       const result = SelfUtils.getSipUrl(
         this.getLocusPartner(this.participants, self),
-        this.parsedLocus.fullState.type,
-        this.parsedLocus.info.sipUri
+        this.parsedLocus.fullState?.type,
+        this.parsedLocus.info?.sipUri
       );
 
-      if (result.sipUri) {
+      if (result?.sipUri) {
         this.updateMeeting(result);
       }
 
@@ -2261,28 +2274,6 @@ export default class LocusInfo extends EventsScope {
   updateSequence(sequence: number) {
     if (sequence && !isEqual(this.sequence, sequence)) {
       this.sequence = sequence;
-    }
-  }
-
-  /**
-   * @param {Object} membership
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateMemberShip(membership: object) {
-    if (membership && !isEqual(this.membership, membership)) {
-      this.membership = membership;
-    }
-  }
-
-  /**
-   * @param {Array} identities
-   * @returns {undefined}
-   * @memberof LocusInfo
-   */
-  updateIdentifiers(identities: Array<any>) {
-    if (identities && !isEqual(this.identities, identities)) {
-      this.identities = identities;
     }
   }
 
