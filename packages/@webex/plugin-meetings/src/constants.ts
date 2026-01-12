@@ -385,6 +385,7 @@ export const EVENT_TRIGGERS = {
   MEETING_STOPPED_RECEIVING_TRANSCRIPTION: 'meeting:receiveTranscription:stopped',
   MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED: 'meeting:transcription:spokenLanguageUpdate',
   MEETING_MANUAL_CAPTION_UPDATED: 'meeting:manualCaptionControl:updated',
+  MEETING_HESIOD_LLM_ID_UPDATED: 'meeting:hesiod:llmId:updated',
   MEETING_CAPTION_RECEIVED: 'meeting:caption-received',
   MEETING_PARTICIPANT_REASON_CHANGED: 'meeting:participant-reason-changed',
 };
