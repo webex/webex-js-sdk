@@ -9,6 +9,9 @@ import {
   getIsCustomerInCall,
   getConferenceParticipantsCount,
   getIsConferenceInProgress,
+  getIsConsultInProgressForConferenceControls,
+  getIsConsultedAgentForControls,
+  getServerHoldStateForControls,
 } from '../TaskUtils';
 
 const DISABLED = {isVisible: false, isEnabled: false} as const;
@@ -37,75 +40,6 @@ export function getDefaultUIControls(): TaskUIControls {
   };
 }
 
-/**
- * Check if agent is the consulted party (not the initiator)
- * Must pass isConsulting state since this is called before state categories are computed
- */
-function checkIsConsultedAgent(
-  taskData: TaskData | null,
-  context: TaskContext,
-  isConsultingState: boolean
-): boolean {
-  return Boolean(taskData?.isConsulted) || (isConsultingState && !context.consultInitiator);
-}
-
-/**
- * Get hold state from server media entry (more accurate than state machine during transitions)
- */
-function getServerHoldState(
-  context: TaskContext,
-  mainCallId?: string,
-  fallbackTaskData?: TaskData | null
-): boolean | undefined {
-  const media = context.taskData?.interaction?.media ?? fallbackTaskData?.interaction?.media;
-  if (!media) return undefined;
-
-  if (mainCallId && media[mainCallId]) {
-    return media[mainCallId].isHold ?? false;
-  }
-
-  const mediaId = context.taskData?.mediaResourceId ?? fallbackTaskData?.mediaResourceId;
-  if (!mediaId) return undefined;
-
-  return media[mediaId]?.isHold;
-}
-
-function isConsultInProgressForConferenceControls(
-  interaction: TaskData['interaction'] | undefined,
-  mainCallId: string | undefined,
-  selfAgentId: string | undefined
-): boolean {
-  if (!interaction || !mainCallId) return false;
-
-  const mainParticipants = interaction.media?.[mainCallId]?.participants;
-  if (!Array.isArray(mainParticipants) || mainParticipants.length === 0) return false;
-
-  const mainSet = new Set(mainParticipants);
-
-  const media = interaction.media;
-  if (!media) return false;
-
-  return Object.values(media).some((m: any) => {
-    if (!m || m.mType !== 'consult') return false;
-    if (!Array.isArray(m.participants) || m.participants.length === 0) return false;
-
-    return m.participants.some((participantId: string) => {
-      const p: any = interaction.participants?.[participantId];
-      if (!p || p.hasLeft) return false;
-      if (selfAgentId && participantId === selfAgentId) return false;
-
-      // A consult is "in progress" if there is an active consult-leg participant that is not yet
-      // in the main call *and* the backend still marks them as being consulted/consulting.
-      const consultLegActive =
-        p.consultState === 'consulting' ||
-        p.isConsulted === true ||
-        p.currentState === 'consulting';
-
-      return consultLegActive && !mainSet.has(participantId);
-    });
-  });
-}
-
 function computeVoiceUIControls(
   state: TaskState,
   context: TaskContext,
@@ -122,7 +56,7 @@ function computeVoiceUIControls(
   const interaction = taskData?.interaction;
   const mainCallId = interaction?.mainInteractionId || taskData?.interactionId;
   const isWebrtc = config.voiceVariant === VOICE_VARIANT.WEBRTC;
-  const serverHold = getServerHoldState(context, mainCallId, fallbackTaskData);
+  const serverHold = getServerHoldStateForControls(context, mainCallId, fallbackTaskData);
 
   // Backend-derived checks
   const customerInCall =
@@ -131,7 +65,7 @@ function computeVoiceUIControls(
     interaction && mainCallId ? getConferenceParticipantsCount(interaction, mainCallId) : 0;
   const maxParticipants = participantCount >= MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE;
   const selfAgentId = config.agentId ?? taskData?.agentId;
-  const consultInProgress = isConsultInProgressForConferenceControls(
+  const consultInProgress = getIsConsultInProgressForConferenceControls(
     interaction,
     mainCallId,
     selfAgentId
@@ -165,7 +99,9 @@ function computeVoiceUIControls(
 
   // Check if this is a consulted agent (must be after isConsulting is computed).
   // IMPORTANT: once a conference is active, consulted-role restrictions should not apply.
-  const isConsulted = inConference ? false : checkIsConsultedAgent(taskData, context, isConsulting);
+  const isConsulted = inConference
+    ? false
+    : getIsConsultedAgentForControls(taskData, context, isConsulting);
 
   // Active call = can perform call operations
   const isActive =

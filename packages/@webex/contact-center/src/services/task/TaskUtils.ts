@@ -7,6 +7,7 @@ import {
   PARTICIPANT_TYPE,
   MEDIA_TYPE_MAIN_CALL,
 } from './state-machine/constants';
+import {TaskContext} from './state-machine/types';
 
 // Re-export for backward compatibility
 export {MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE};
@@ -63,6 +64,70 @@ export const getConferenceParticipantsCount = (
   }
 
   return count;
+};
+
+/**
+ * Determines if a consult is actively in-progress for conference control gating.
+ * This is used to disable conference controls (End/Consult) only when a consult leg
+ * still exists outside the main call participants.
+ */
+export const getIsConsultInProgressForConferenceControls = (
+  interaction: Interaction | undefined,
+  mainCallId: string | undefined,
+  selfAgentId: string | undefined
+): boolean => {
+  if (!interaction || !mainCallId) return false;
+
+  const mainParticipants = interaction.media?.[mainCallId]?.participants;
+  if (!Array.isArray(mainParticipants) || mainParticipants.length === 0) return false;
+
+  const mainSet = new Set(mainParticipants);
+  const media = interaction.media;
+  if (!media) return false;
+
+  return Object.values(media).some((m: any) => {
+    if (!m || m.mType !== 'consult') return false;
+    if (!Array.isArray(m.participants) || m.participants.length === 0) return false;
+
+    return m.participants.some((participantId: string) => {
+      const p: any = interaction.participants?.[participantId];
+      if (!p || p.hasLeft) return false;
+      if (selfAgentId && participantId === selfAgentId) return false;
+
+      const consultLegActive =
+        p.consultState === 'consulting' ||
+        p.isConsulted === true ||
+        p.currentState === 'consulting';
+
+      return consultLegActive && !mainSet.has(participantId);
+    });
+  });
+};
+
+export const getIsConsultedAgentForControls = (
+  taskData: TaskData | null,
+  context: TaskContext,
+  isConsultingState: boolean
+): boolean => {
+  return Boolean(taskData?.isConsulted) || (isConsultingState && !context.consultInitiator);
+};
+
+export const getServerHoldStateForControls = (
+  context: TaskContext,
+  mainCallId?: string,
+  fallbackTaskData?: TaskData | null
+): boolean | undefined => {
+  const media = context.taskData?.interaction?.media ?? fallbackTaskData?.interaction?.media;
+  if (!media) return undefined;
+
+  if (mainCallId && media[mainCallId]) {
+    return media[mainCallId].isHold ?? false;
+  }
+
+  const mediaId = context.taskData?.mediaResourceId ?? fallbackTaskData?.mediaResourceId;
+  if (!mediaId) return undefined;
+
+  return media[mediaId]?.isHold;
 };
 
 /**
