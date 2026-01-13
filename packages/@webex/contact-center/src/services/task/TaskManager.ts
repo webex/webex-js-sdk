@@ -14,7 +14,7 @@ import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import {getIsConferenceInProgress, isSecondaryEpDnAgent, shouldAutoAnswerTask} from './TaskUtils';
 import TaskFactory from './TaskFactory';
 import WebRTC from './voice/WebRTC';
-import {TaskEvent, type TaskEventPayload} from './state-machine';
+import {TaskEvent, TaskState, type TaskEventPayload} from './state-machine';
 import {normalizeTaskData} from './taskDataNormalizer';
 
 type WebSocketPayload = TaskData & {
@@ -200,6 +200,11 @@ export default class TaskManager extends EventEmitter {
       case CC_EVENTS.AGENT_CONTACT: // AgentContact -> HYDRATE
         // Include agentId for state detection (e.g., checking isWrapUp in participant data)
         return {type: TaskEvent.HYDRATE, taskData: payload, agentId};
+
+      case CC_EVENTS.CONTACT_UPDATED:
+        return {type: TaskEvent.CONTACT_UPDATED, taskData: payload};
+      case CC_EVENTS.CONTACT_OWNER_CHANGED:
+        return {type: TaskEvent.CONTACT_OWNER_CHANGED, taskData: payload};
 
       case CC_EVENTS.AGENT_OFFER_CONSULT: // AgentOfferConsult -> OFFER_CONSULT
         return {
@@ -404,7 +409,40 @@ export default class TaskManager extends EventEmitter {
       return null;
     }
 
-    const task = this.taskCollection[message.data.interactionId];
+    // Some consult/conference events can arrive on a child interactionId while the task we track
+    // is keyed by the main/parent interactionId. Resolve to an existing task when possible.
+    const interactionId = message.data.interactionId;
+    const mainInteractionId = message.data.interaction?.mainInteractionId;
+    const parentInteractionId = message.data.interaction?.parentInteractionId;
+    const directTask = this.taskCollection[interactionId];
+    const mainTask = mainInteractionId ? this.taskCollection[mainInteractionId] : undefined;
+    const parentTask = parentInteractionId ? this.taskCollection[parentInteractionId] : undefined;
+
+    // Fallback: if the task isn't keyed by any of these IDs (e.g. due to legacy keying or
+    // interactionId changes), scan existing tasks by their data fields.
+    const scannedTask =
+      directTask || mainTask || parentTask
+        ? undefined
+        : Object.values(this.taskCollection).find((t) => {
+            const tInteractionId = t?.data?.interactionId;
+            const tMainInteractionId = t?.data?.interaction?.mainInteractionId;
+            const tParentInteractionId = t?.data?.interaction?.parentInteractionId;
+
+            return (
+              tInteractionId === interactionId ||
+              (mainInteractionId && tInteractionId === mainInteractionId) ||
+              (parentInteractionId && tInteractionId === parentInteractionId) ||
+              (tMainInteractionId &&
+                (tMainInteractionId === interactionId ||
+                  tMainInteractionId === mainInteractionId)) ||
+              (tParentInteractionId &&
+                (tParentInteractionId === interactionId ||
+                  tParentInteractionId === parentInteractionId))
+            );
+          });
+
+    const task = directTask || mainTask || parentTask || scannedTask;
+
     const wasConsultedTask = Boolean(task?.data?.isConsulted);
     const computeWrapUpRequired = () => {
       if (message.data.wrapUpRequired !== undefined) {
@@ -659,13 +697,21 @@ export default class TaskManager extends EventEmitter {
   private static handleConsultEnded(context: EventContext): TaskEventActions {
     const {task, wasConsultedTask} = context;
 
-    if (task && wasConsultedTask) {
+    // Remove consulted agent's task when consult ends (they were offered a consult, not the main call)
+    if (
+      task &&
+      wasConsultedTask &&
+      // Defensive: if backend already reports this interaction as a conference, do not remove it.
+      // We have seen transient/stale isConsulted values on conference participants; removing here
+      // breaks subsequent WS event routing.
+      task.data?.interaction?.state !== 'conference' &&
+      !getIsConferenceInProgress(task.data)
+    ) {
       LoggerProxy.log('Consult ended event processed', {
         module: TASK_MANAGER_FILE,
         method: 'handleConsultEnded',
         interactionId: task.data?.interactionId,
       });
-      // End state for task if we were offered the consult
 
       return {task, shouldRemoveFromCollection: true};
     }
@@ -753,6 +799,11 @@ export default class TaskManager extends EventEmitter {
     const taskWithStateMachine = task as any;
     if (stateMachineEvent && taskWithStateMachine?.sendStateMachineEvent) {
       taskWithStateMachine.sendStateMachineEvent(stateMachineEvent);
+    }
+
+    // If task is now in TERMINATED state, mark for removal (like wrapup flow)
+    if (task.state?.value === TaskState.TERMINATED) {
+      actions.shouldRemoveFromCollection = true;
     }
 
     if (

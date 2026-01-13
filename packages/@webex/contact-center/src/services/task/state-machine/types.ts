@@ -55,6 +55,8 @@ export interface TaskContext {
   // Consult tracking
   consultInitiator: boolean;
   exitingConference: boolean;
+  consultFromConference: boolean;
+  transferConferenceRequested: boolean;
   consultDestinationType: DestinationType | null;
   consultDestinationAgentJoined: boolean;
   consultCallHeld: boolean;
@@ -81,6 +83,10 @@ interface TaskEventPayloadMap {
   [TaskEvent.TASK_OFFERED]: BaseEvent<TaskEvent.TASK_OFFERED> & {taskData: TaskData};
   [TaskEvent.OFFER_CONSULT]: BaseEvent<TaskEvent.OFFER_CONSULT> & {taskData: TaskData};
   [TaskEvent.HYDRATE]: BaseEvent<TaskEvent.HYDRATE> & {taskData: TaskData; agentId?: string};
+  [TaskEvent.CONTACT_UPDATED]: BaseEvent<TaskEvent.CONTACT_UPDATED> & {taskData: TaskData};
+  [TaskEvent.CONTACT_OWNER_CHANGED]: BaseEvent<TaskEvent.CONTACT_OWNER_CHANGED> & {
+    taskData: TaskData;
+  };
   [TaskEvent.ASSIGN]: BaseEvent<TaskEvent.ASSIGN> & {taskData: TaskData};
   [TaskEvent.HOLD_INITIATED]: BaseEvent<TaskEvent.HOLD_INITIATED> & {mediaResourceId: string};
   [TaskEvent.HOLD_SUCCESS]: BaseEvent<TaskEvent.HOLD_SUCCESS> & {
@@ -124,21 +130,21 @@ interface TaskEventPayloadMap {
     reason?: string;
     taskData?: TaskData;
   };
-  [TaskEvent.CONFERENCE_END]: BaseEvent<TaskEvent.CONFERENCE_END> & {taskData?: TaskData};
+  [TaskEvent.CONFERENCE_END]: BaseEvent<TaskEvent.CONFERENCE_END> & {taskData: TaskData};
   [TaskEvent.TRANSFER_CONFERENCE]: BaseEvent<TaskEvent.TRANSFER_CONFERENCE> & {agentId?: string};
   [TaskEvent.PARTICIPANT_LEAVE]: BaseEvent<TaskEvent.PARTICIPANT_LEAVE> & {
     participantId?: string;
-    taskData?: TaskData;
+    taskData: TaskData;
   };
   [TaskEvent.EXIT_CONFERENCE]: BaseEvent<TaskEvent.EXIT_CONFERENCE> & {agentId?: string};
   [TaskEvent.EXIT_CONFERENCE_SUCCESS]: BaseEvent<TaskEvent.EXIT_CONFERENCE_SUCCESS> & {
-    taskData?: TaskData;
+    taskData: TaskData;
   };
   [TaskEvent.EXIT_CONFERENCE_FAILED]: BaseEvent<TaskEvent.EXIT_CONFERENCE_FAILED> & {
     reason?: string;
   };
   [TaskEvent.TRANSFER_CONFERENCE_SUCCESS]: BaseEvent<TaskEvent.TRANSFER_CONFERENCE_SUCCESS> & {
-    taskData?: TaskData;
+    taskData: TaskData;
   };
   [TaskEvent.TRANSFER_CONFERENCE_FAILED]: BaseEvent<TaskEvent.TRANSFER_CONFERENCE_FAILED> & {
     reason?: string;

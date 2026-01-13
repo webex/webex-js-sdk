@@ -27,29 +27,16 @@ import {
   getConferenceParticipantsCount,
   getIsConferenceInProgress,
 } from '../TaskUtils';
+import {TaskEvent} from './constants';
 
-// ============================================
-// Helper Functions
-// ============================================
-
-/**
- * Extract taskData from event payload
- */
 export const getTaskDataFromEvent = (event?: TaskEventPayload): TaskData | undefined =>
   event && typeof event === 'object' && 'taskData' in event
     ? (event as {taskData?: TaskData}).taskData
     : undefined;
 
-/**
- * Get the current agent's ID from context or taskData
- */
 export const getSelfAgentId = (context: TaskContext, taskData?: TaskData): string | undefined =>
   context.uiControlConfig?.agentId ?? context.taskData?.agentId ?? taskData?.agentId;
 
-/**
- * Check if the current agent is the one who initiated the consult
- * Uses consultingAgentId from backend as source of truth
- */
 export const isSelfConsultingAgent = (context: TaskContext, taskData?: TaskData): boolean => {
   const selfAgentId = getSelfAgentId(context, taskData);
   if (!selfAgentId) return false;
@@ -57,9 +44,6 @@ export const isSelfConsultingAgent = (context: TaskContext, taskData?: TaskData)
   return taskData?.consultingAgentId === selfAgentId;
 };
 
-/**
- * Get hold flag from primary media entry
- */
 export const getPrimaryMediaHoldFlag = (taskData?: TaskData | null): boolean | undefined => {
   if (!taskData) return undefined;
   const mediaId = taskData.mediaResourceId;
@@ -70,41 +54,35 @@ export const getPrimaryMediaHoldFlag = (taskData?: TaskData | null): boolean | u
 
 /**
  * Determines if this agent should enter WRAPPING_UP state.
- * Priority: agentsPendingWrapUp > interaction.owner > isConsulted flag
+ * Priority: agentsPendingWrapUp > wrapUpRequired / participant.isWrapUp > ownership > !isConsulted
  */
-export const shouldWrapUpForThisAgent = (context: TaskContext, taskData?: TaskData): boolean => {
+export const shouldWrapUpForThisAgent = (context: TaskContext, taskData: TaskData): boolean => {
   const selfAgentId = getSelfAgentId(context, taskData);
   if (!selfAgentId) return false;
 
-  // Priority 1: Backend-provided list (most reliable)
   const pending = taskData?.agentsPendingWrapUp;
   if (Array.isArray(pending) && pending.length > 0) {
     return pending.includes(selfAgentId);
   }
 
-  // Priority 2: Current interaction owner should wrap
-  const interactionOwner = taskData?.interaction?.owner ?? context.taskData?.interaction?.owner;
-  if (interactionOwner) {
-    return selfAgentId === interactionOwner;
+  const participantWrapUp = taskData?.interaction?.participants?.[selfAgentId]?.isWrapUp === true;
+  const wrapUpRequired = taskData?.wrapUpRequired === true;
+  if (wrapUpRequired || participantWrapUp) {
+    return true;
   }
 
-  // Priority 3: Fallback to isConsulted (primary = !isConsulted should wrap)
-  const isConsulted = context.taskData?.isConsulted ?? taskData?.isConsulted;
-  if (isConsulted === true) return false;
-  if (isConsulted === false) return true;
+  const owner = taskData?.interaction?.owner;
+  if (owner && owner === selfAgentId) {
+    return true;
+  }
 
-  // Unknown - safer to not wrap
+  if (taskData?.isConsulted === false) {
+    return true;
+  }
+
   return false;
 };
 
-// ============================================
-// Guard Parameters Type
-// ============================================
-
-/**
- * Parameters passed to all guard functions
- * Compatible with XState's guard signature
- */
 export interface GuardParams {
   context: TaskContext;
   event?: TaskEventPayload;
@@ -112,54 +90,39 @@ export interface GuardParams {
 
 export type GuardFunction = (params: GuardParams) => boolean;
 
-// ============================================
-// Guards Object - All guards in one place
-// ============================================
-
 export const guards = {
-  // ============================================
-  // Hydrate Guards (for state restoration)
-  // ============================================
+  backendReportsConference: ({context, event}: GuardParams): boolean => {
+    const eventTaskData = getTaskDataFromEvent(event);
+    const taskData = eventTaskData ?? context.taskData;
 
-  /**
-   * Check if interaction is terminated (for hydrate → WRAPPING_UP)
-   */
+    return taskData?.interaction?.state === 'conference';
+  },
+
+  // Hydrate Guards
   isInteractionTerminated: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
     return taskData?.interaction?.isTerminated === true;
   },
 
-  /**
-   * Check if interaction state is consulting (for hydrate → CONSULTING)
-   */
   isInteractionConsulting: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
     return taskData?.interaction?.state === 'consulting';
   },
 
-  /**
-   * Check if interaction state is hold (for hydrate → HELD)
-   */
   isInteractionHeld: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
     return taskData?.interaction?.state === 'hold';
   },
 
-  /**
-   * Check if interaction state is connected (for hydrate → CONNECTED)
-   */
   isInteractionConnected: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
     return taskData?.interaction?.state === 'connected';
   },
 
-  /**
-   * Check if conferencing by participant count (for hydrate → CONFERENCING)
-   */
   isConferencingByParticipants: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
     if (!taskData) return false;
@@ -178,22 +141,7 @@ export const guards = {
     return agentCount >= 2;
   },
 
-  // ============================================
-  // Conference Guards (from context)
-  // ============================================
-
-  /**
-   * Check if a conference is currently in progress (from context)
-   */
-  isConferenceInProgress: ({context}: GuardParams): boolean => {
-    if (!context.taskData?.interaction) return false;
-
-    return getIsConferenceInProgress(context.taskData);
-  },
-
-  /**
-   * Check if conference is in progress (from event taskData)
-   */
+  // Conference Guards
   conferenceInProgressFromEvent: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
     if (!taskData?.interaction) return false;
@@ -201,10 +149,6 @@ export const guards = {
     return getIsConferenceInProgress(taskData);
   },
 
-  /**
-   * Check if NOT in conference (from event taskData)
-   * Used to guard consult transitions that shouldn't happen during conference
-   */
   notInConferenceFromEvent: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
     if (!taskData) return false;
@@ -212,10 +156,6 @@ export const guards = {
     return !getIsConferenceInProgress(taskData);
   },
 
-  /**
-   * Check if conference is active in either event or context
-   * Used for consult failed fallback to CONFERENCING
-   */
   conferenceActiveInEventOrContext: ({context, event}: GuardParams): boolean => {
     const eventTaskData = getTaskDataFromEvent(event);
     const conferenceInEvent = eventTaskData ? getIsConferenceInProgress(eventTaskData) : false;
@@ -226,26 +166,37 @@ export const guards = {
     return conferenceInEvent || conferenceInContext;
   },
 
-  /**
-   * Check if conference should auto-downgrade (< 2 agents)
-   */
-  shouldDowngradeConference: ({context}: GuardParams): boolean => {
-    if (!context.taskData?.interaction || !context.taskData?.interactionId) return false;
-    const count = getConferenceParticipantsCount(
-      context.taskData.interaction,
-      context.taskData.interactionId
-    );
+  shouldDowngradeConference: ({context, event}: GuardParams): boolean => {
+    const eventTaskData = getTaskDataFromEvent(event);
+    const taskData = eventTaskData ?? context.taskData;
+    if (!taskData?.interaction || !taskData?.interactionId) return false;
+
+    if (taskData.interaction.state === 'conference') return false;
+
+    const count = getConferenceParticipantsCount(taskData.interaction, taskData.interactionId);
 
     return count < 2;
   },
 
-  // ============================================
-  // Customer Guards
-  // ============================================
+  customerInCallFromEventOrContext: ({context, event}: GuardParams): boolean => {
+    const eventTaskData = getTaskDataFromEvent(event);
+    const taskData = eventTaskData ?? context.taskData;
+    if (!taskData?.interaction) return false;
+    const mainCallId = taskData.interaction.mainInteractionId || taskData.interactionId;
+    if (!mainCallId) return false;
 
-  /**
-   * Check if conference active AND customer still in call (from event)
-   */
+    return getIsCustomerInCall(taskData.interaction, mainCallId);
+  },
+  isOwner: ({context, event}: GuardParams): boolean => {
+    const eventTaskData = getTaskDataFromEvent(event);
+    const taskData = eventTaskData ?? context.taskData;
+    const selfAgentId = getSelfAgentId(context, taskData);
+    if (!selfAgentId) return false;
+    const owner = taskData?.interaction?.owner;
+
+    return owner === selfAgentId;
+  },
+
   conferenceActiveAndCustomerInCall: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
     if (!taskData?.interaction) return false;
@@ -256,20 +207,11 @@ export const guards = {
     );
   },
 
-  // ============================================
   // Consult Guards
-  // ============================================
-
-  /**
-   * Check if the current agent initiated the consult
-   */
   isConsultInitiator: ({context}: GuardParams): boolean => {
     return context.consultInitiator === true;
   },
 
-  /**
-   * Check if the current agent is NOT the consult initiator
-   */
   isNotConsultInitiator: ({context}: GuardParams): boolean => {
     return !context.consultInitiator;
   },
@@ -281,17 +223,12 @@ export const guards = {
   didInitiateConsult: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
     if (taskData?.isConsulted === true) return false;
-    const didInitiate = taskData?.consultingAgentId
+
+    return taskData?.consultingAgentId
       ? isSelfConsultingAgent(context, taskData)
       : context.consultInitiator === true;
-
-    return didInitiate;
   },
 
-  /**
-   * Check if this is the consulting agent OR being consulted
-   * Used for CONSULT_CREATED transition in CONSULT_INITIATING
-   */
   isConsultingAgentOrBeingConsulted: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
     const selfAgentId = getSelfAgentId(context, taskData);
@@ -301,10 +238,6 @@ export const guards = {
     return isConsultingAgent || isBeingConsulted;
   },
 
-  /**
-   * Check if consult initiator AND conference is active
-   * Used for CONSULT_END → CONFERENCING transition
-   */
   isInitiatorAndConferenceActive: ({context, event}: GuardParams): boolean => {
     if (!context.consultInitiator) return false;
     const eventTaskData = getTaskDataFromEvent(event);
@@ -314,22 +247,30 @@ export const guards = {
     return conferenceInEvent || conferenceInContext;
   },
 
-  /**
-   * Check if consult destination type is queue
-   */
   isConsultQueueFlow: ({context}: GuardParams): boolean => {
     return context.consultDestinationType === 'queue';
   },
 
-  // ============================================
   // Wrapup Guards
-  // ============================================
-
-  /**
-   * Check if this agent should wrap up (from event)
-   */
   shouldWrapUp: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
+    if (!taskData) return false;
+
+    if (event?.type === TaskEvent.CONFERENCE_END) {
+      const selfAgentId = getSelfAgentId(context, taskData);
+      if (!selfAgentId) return false;
+
+      const pending = taskData?.agentsPendingWrapUp;
+      if (Array.isArray(pending) && pending.length > 0) {
+        return pending.includes(selfAgentId);
+      }
+
+      const participantWrapUp =
+        taskData?.interaction?.participants?.[selfAgentId]?.isWrapUp === true;
+      const wrapUpRequired = taskData?.wrapUpRequired === true;
+
+      return wrapUpRequired || participantWrapUp;
+    }
 
     return shouldWrapUpForThisAgent(context, taskData);
   },
@@ -343,53 +284,35 @@ export const guards = {
     return Boolean(taskData?.wrapUpRequired || context.consultInitiator);
   },
 
-  /**
-   * Check if conference active AND should not wrap up AND not exiting
-   * Used for EXIT_CONFERENCE_SUCCESS to keep other agents in CONFERENCING
-   */
   conferenceActiveAndNotWrappingAndNotExiting: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
-    const conferenceActive = taskData ? getIsConferenceInProgress(taskData) : false;
+    if (!taskData) return false;
+
+    const conferenceActive = getIsConferenceInProgress(taskData);
 
     return (
       conferenceActive && !shouldWrapUpForThisAgent(context, taskData) && !context.exitingConference
     );
   },
 
-  /**
-   * Check if agent is exiting conference
-   */
   isExitingConference: ({context}: GuardParams): boolean => {
     return context.exitingConference === true;
   },
 
-  /**
-   * Check if conference active AND should not wrap up
-   * Used for TRANSFER_CONFERENCE_SUCCESS to keep other agents in CONFERENCING
-   */
   conferenceActiveAndNotWrapping: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
-    const conferenceActive = taskData ? getIsConferenceInProgress(taskData) : false;
+    if (!taskData) return false;
 
-    return conferenceActive && !shouldWrapUpForThisAgent(context, taskData);
+    return getIsConferenceInProgress(taskData) && !shouldWrapUpForThisAgent(context, taskData);
   },
 
-  // ============================================
   // Server State Guards
-  // ============================================
-
-  /**
-   * Check if server reports call is held
-   */
   serverReportsHeld: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
     return getPrimaryMediaHoldFlag(taskData) === true;
   },
 
-  /**
-   * Check if server reports consulting state
-   */
   serverReportsConsulting: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
     if (taskData?.isConsulted === true) return true;
@@ -399,22 +322,13 @@ export const guards = {
 
   // ============================================
   // Recording Guards
-  // ============================================
-
-  /**
-   * Check if recording is active
-   */
   recordingActive: ({context}: GuardParams): boolean => {
     return context.recordingControlsAvailable && context.recordingInProgress;
   },
 
-  /**
-   * Check if recording is paused
-   */
   recordingPaused: ({context}: GuardParams): boolean => {
     return context.recordingControlsAvailable && !context.recordingInProgress;
   },
 };
 
-// Type for guard names (for state machine string references)
 export type GuardName = keyof typeof guards;

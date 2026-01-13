@@ -1791,6 +1791,20 @@ export type Participant = {
  */
 export type TaskAccessorParticipant = Participant;
 
+/**
+ * Media entry type from interaction.media
+ * Used for media state tracking in consult and conference scenarios
+ */
+export type MediaEntry = {
+  mediaResourceId: string;
+  mediaType: MEDIA_CHANNEL;
+  mediaMgr: string;
+  participants: string[];
+  mType: string;
+  isHold: boolean;
+  holdTimestamp: number | null;
+};
+
 export interface IWebRTC extends IVoice {
   /**
    * This method is used to mute/unmute the call.
