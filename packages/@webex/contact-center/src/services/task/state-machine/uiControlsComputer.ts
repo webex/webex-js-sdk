@@ -70,7 +70,7 @@ function getServerHoldState(
   return media[mediaId]?.isHold;
 }
 
-function isOtherAgentConsultingInMainCall(
+function isConsultInProgressForConferenceControls(
   interaction: TaskData['interaction'] | undefined,
   mainCallId: string | undefined,
   selfAgentId: string | undefined
@@ -80,22 +80,30 @@ function isOtherAgentConsultingInMainCall(
   const mainParticipants = interaction.media?.[mainCallId]?.participants;
   if (!Array.isArray(mainParticipants) || mainParticipants.length === 0) return false;
 
-  for (const participantId of mainParticipants) {
-    const p: any = interaction.participants?.[participantId];
-    const isActiveNonSelfAgent =
-      Boolean(p) &&
-      !p.hasLeft &&
-      p.pType !== 'Customer' &&
-      p.pType !== 'Supervisor' &&
-      p.pType !== 'VVA' &&
-      (!selfAgentId || participantId !== selfAgentId);
+  const mainSet = new Set(mainParticipants);
 
-    if (isActiveNonSelfAgent && p.consultState === 'consulting') {
-      return true;
-    }
-  }
+  const media = interaction.media;
+  if (!media) return false;
 
-  return false;
+  return Object.values(media).some((m: any) => {
+    if (!m || m.mType !== 'consult') return false;
+    if (!Array.isArray(m.participants) || m.participants.length === 0) return false;
+
+    return m.participants.some((participantId: string) => {
+      const p: any = interaction.participants?.[participantId];
+      if (!p || p.hasLeft) return false;
+      if (selfAgentId && participantId === selfAgentId) return false;
+
+      // A consult is "in progress" if there is an active consult-leg participant that is not yet
+      // in the main call *and* the backend still marks them as being consulted/consulting.
+      const consultLegActive =
+        p.consultState === 'consulting' ||
+        p.isConsulted === true ||
+        p.currentState === 'consulting';
+
+      return consultLegActive && !mainSet.has(participantId);
+    });
+  });
 }
 
 function computeVoiceUIControls(
@@ -123,7 +131,11 @@ function computeVoiceUIControls(
     interaction && mainCallId ? getConferenceParticipantsCount(interaction, mainCallId) : 0;
   const maxParticipants = participantCount >= MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE;
   const selfAgentId = config.agentId ?? taskData?.agentId;
-  const consultInProgress = isOtherAgentConsultingInMainCall(interaction, mainCallId, selfAgentId);
+  const consultInProgress = isConsultInProgressForConferenceControls(
+    interaction,
+    mainCallId,
+    selfAgentId
+  );
   const conferenceFromBackend = taskData ? getIsConferenceInProgress(taskData) : false;
   // Note: ownership is used by some controls; keep computations local to those controls
 

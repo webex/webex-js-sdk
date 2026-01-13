@@ -61,6 +61,7 @@ export interface TaskContext {
   consultInitiator: boolean;
   exitingConference: boolean;
   consultFromConference: boolean;
+  transferConferenceRequested: boolean;
   consultDestinationType: DestinationType | null;
   consultDestinationAgentJoined: boolean;
   consultCallHeld: boolean;

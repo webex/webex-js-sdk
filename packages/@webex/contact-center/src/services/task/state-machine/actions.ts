@@ -111,6 +111,7 @@ export function createInitialContext(
     consultInitiator: false,
     exitingConference: false,
     consultFromConference: false,
+    transferConferenceRequested: false,
     consultDestinationType: null,
     consultDestinationAgentJoined: false,
     consultCallHeld: false,
@@ -240,7 +241,11 @@ export const actions: TaskActionsMap = {
     exitingConference: false,
     consultCallHeld: false,
     consultFromConference: false,
+    transferConferenceRequested: false,
   }),
+
+  setTransferConferenceRequested: assign({transferConferenceRequested: true}),
+  clearTransferConferenceRequested: assign({transferConferenceRequested: false}),
 
   setConsultCallHeld: assign({consultCallHeld: true}),
   clearConsultCallHeld: assign({consultCallHeld: false}),

@@ -9,6 +9,7 @@ import {
   getConferenceParticipantsCount,
   getIsConferenceInProgress,
 } from '../TaskUtils';
+import {TaskEvent} from './constants';
 
 export const getTaskDataFromEvent = (event?: TaskEventPayload): TaskData | undefined =>
   event && typeof event === 'object' && 'taskData' in event
@@ -232,6 +233,22 @@ export const guards = {
   shouldWrapUp: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
     if (!taskData) return false;
+
+    if (event?.type === TaskEvent.CONFERENCE_END) {
+      const selfAgentId = getSelfAgentId(context, taskData);
+      if (!selfAgentId) return false;
+
+      const pending = taskData?.agentsPendingWrapUp;
+      if (Array.isArray(pending) && pending.length > 0) {
+        return pending.includes(selfAgentId);
+      }
+
+      const participantWrapUp =
+        taskData?.interaction?.participants?.[selfAgentId]?.isWrapUp === true;
+      const wrapUpRequired = taskData?.wrapUpRequired === true;
+
+      return wrapUpRequired || participantWrapUp;
+    }
 
     return shouldWrapUpForThisAgent(context, taskData);
   },

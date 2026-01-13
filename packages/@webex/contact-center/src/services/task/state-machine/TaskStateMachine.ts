@@ -624,9 +624,17 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
           // Transfer conference while consulting
           [TaskEvent.TRANSFER_CONFERENCE]: {
-            actions: ['handleTransferInit', 'emitTaskTransferConference'],
+            actions: [
+              'setTransferConferenceRequested',
+              'handleTransferInit',
+              'emitTaskTransferConference',
+            ],
           },
           [TaskEvent.TRANSFER_CONFERENCE_SUCCESS]: [
+            {
+              guard: ({context}) => context.transferConferenceRequested !== true,
+              actions: ['updateTaskData', 'handleTransferConferenceSuccess'],
+            },
             {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
@@ -655,7 +663,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             },
           ],
           [TaskEvent.TRANSFER_CONFERENCE_FAILED]: {
-            actions: ['handleTransferConferenceFailed'],
+            actions: ['clearTransferConferenceRequested', 'handleTransferConferenceFailed'],
           },
 
           // AgentContactAssigned - receiver side becomes connected to customer
@@ -736,6 +744,10 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
         on: {
           [TaskEvent.CONFERENCE_START]: {
             actions: ['updateTaskData', 'clearConsultState', 'emitTaskConferenceStarted'],
+          },
+
+          [TaskEvent.CONSULT_END]: {
+            actions: ['updateTaskData', 'clearConsultState'],
           },
 
           [TaskEvent.HOLD_SUCCESS]: {
@@ -863,16 +875,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
             },
             {
-              // Conference downgraded + customer present → CONNECTED (remaining agent continues)
-              guard: (params) =>
-                guards.shouldDowngradeConference(params) &&
-                guards.customerInCallFromEventOrContext(params),
+              guard: guards.customerInCallFromEventOrContext,
               target: TaskState.CONNECTED,
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConferenceEnded'],
             },
             {
-              // Conference downgraded + no customer → TERMINATED
-              guard: guards.shouldDowngradeConference,
               target: TaskState.TERMINATED,
               actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
             },
