@@ -746,7 +746,15 @@ export default class TaskManager extends EventEmitter {
     const {task, wasConsultedTask} = context;
 
     // Remove consulted agent's task when consult ends (they were offered a consult, not the main call)
-    if (task && wasConsultedTask) {
+    if (
+      task &&
+      wasConsultedTask &&
+      // Defensive: if backend already reports this interaction as a conference, do not remove it.
+      // We have seen transient/stale isConsulted values on conference participants; removing here
+      // breaks subsequent WS event routing.
+      task.data?.interaction?.state !== 'conference' &&
+      !getIsConferenceInProgress(task.data)
+    ) {
       LoggerProxy.log('Consult ended event processed', {
         module: TASK_MANAGER_FILE,
         method: 'handleConsultEnded',
