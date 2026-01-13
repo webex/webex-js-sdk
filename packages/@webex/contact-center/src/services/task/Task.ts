@@ -220,8 +220,7 @@ export default abstract class Task extends EventEmitter implements ITask {
       this.lastState = currentState;
       this.state = snapshot;
 
-      // Update UI controls based on current state
-      this.updateUiControls();
+      this.updateUiControls(previousState !== currentState);
     });
 
     this.stateMachineService.start();
@@ -238,6 +237,7 @@ export default abstract class Task extends EventEmitter implements ITask {
         method: 'sendStateMachineEvent',
         interactionId: this.data?.interactionId,
       });
+
       this.stateMachineService.send(event);
     }
   }
@@ -326,6 +326,9 @@ export default abstract class Task extends EventEmitter implements ITask {
 
   private getCommonActionOverrides(): Partial<TaskActionsMap> {
     return {
+      syncTaskDataFromEvent: ({event}: {event: TaskEventPayload}) => {
+        this.updateTaskFromEvent(event);
+      },
       emitTaskIncoming: this.createEmitSelfAction(TASK_EVENTS.TASK_INCOMING, {
         updateTaskData: true,
       }),
@@ -375,14 +378,21 @@ export default abstract class Task extends EventEmitter implements ITask {
         this.emit(TASK_EVENTS.TASK_REJECT, reason);
       },
       emitTaskWrapup: () => {
-        if (this.data?.wrapUpRequired) {
-          LoggerProxy.info(`Emitting task event ${TASK_EVENTS.TASK_WRAPUP}`, {
+        if (!this.data.wrapUpRequired) {
+          LoggerProxy.info(`Skipping task:wrapup event - wrapUpRequired is false`, {
             module: TASK_FILE,
             method: 'emitTaskEvent',
             interactionId: this.data?.interactionId,
           });
-          this.emit(TASK_EVENTS.TASK_WRAPUP, this);
+
+          return;
         }
+        LoggerProxy.info(`Emitting task event ${TASK_EVENTS.TASK_WRAPUP}`, {
+          module: TASK_FILE,
+          method: 'emitTaskEvent',
+          interactionId: this.data?.interactionId,
+        });
+        this.emit(TASK_EVENTS.TASK_WRAPUP, this);
       },
       emitTaskWrappedup: this.createEmitSelfAction(TASK_EVENTS.TASK_WRAPPEDUP, {
         updateTaskData: true,

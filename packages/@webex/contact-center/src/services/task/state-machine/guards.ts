@@ -1,17 +1,5 @@
 /**
- * Task State Machine Guards
- *
- * Guard functions that determine if a state transition is allowed.
- * These functions validate the current context before allowing transitions.
- *
- * Guards are organized by category:
- * 1. Helper Functions - Extract data from events/context
- * 2. Hydrate Guards - For state restoration on page refresh
- * 3. Conference Guards - Conference state checks
- * 4. Consult Guards - Consult flow checks
- * 5. Wrapup Guards - End-of-call flow checks
- * 6. Server State Guards - Check backend-reported state
- * 7. Recording Guards - Recording state checks
+ * Task State Machine Guards - Functions that determine if state transitions are allowed
  */
 
 import {TaskContext, TaskEventPayload} from './types';
@@ -22,27 +10,14 @@ import {
   getIsConferenceInProgress,
 } from '../TaskUtils';
 
-// ============================================
-// Helper Functions
-// ============================================
-
-/**
- * Extract taskData from event payload
- */
 export const getTaskDataFromEvent = (event?: TaskEventPayload): TaskData | undefined =>
   event && typeof event === 'object' && 'taskData' in event
     ? (event as {taskData?: TaskData}).taskData
     : undefined;
 
-/**
- * Get the current agent's ID from context or taskData
- */
 export const getSelfAgentId = (context: TaskContext, taskData?: TaskData): string | undefined =>
   context.uiControlConfig?.agentId ?? context.taskData?.agentId ?? taskData?.agentId;
 
-/**
- * Check if the current agent is the one who initiated the consult
- */
 export const isSelfConsultingAgent = (context: TaskContext, taskData?: TaskData): boolean => {
   const selfAgentId = getSelfAgentId(context, taskData);
   if (!selfAgentId) return false;
@@ -50,9 +25,6 @@ export const isSelfConsultingAgent = (context: TaskContext, taskData?: TaskData)
   return taskData?.consultingAgentId === selfAgentId;
 };
 
-/**
- * Get hold flag from primary media entry
- */
 export const getPrimaryMediaHoldFlag = (taskData?: TaskData | null): boolean | undefined => {
   if (!taskData) return undefined;
   const mediaId = taskData.mediaResourceId;
@@ -63,40 +35,34 @@ export const getPrimaryMediaHoldFlag = (taskData?: TaskData | null): boolean | u
 
 /**
  * Determines if this agent should enter WRAPPING_UP state.
- * Priority: agentsPendingWrapUp > interaction.owner > isConsulted flag
- *
- * For simple calls (no ownership data): uses isConsulted flag
- * For conferences (has ownership data): uses owner check
+ * Priority: agentsPendingWrapUp > wrapUpRequired / participant.isWrapUp > ownership > !isConsulted
  */
 export const shouldWrapUpForThisAgent = (context: TaskContext, taskData: TaskData): boolean => {
   const selfAgentId = getSelfAgentId(context, taskData);
   if (!selfAgentId) return false;
 
-  // Priority 1: Backend-provided explicit list (most reliable)
   const pending = taskData?.agentsPendingWrapUp;
   if (Array.isArray(pending) && pending.length > 0) {
     return pending.includes(selfAgentId);
   }
 
-  const contextOwner = context.taskData?.interaction?.owner;
-  const eventOwner = taskData?.interaction?.owner;
-
-  if (context.exitingConference && contextOwner === selfAgentId) {
+  const participantWrapUp = taskData?.interaction?.participants?.[selfAgentId]?.isWrapUp === true;
+  const wrapUpRequired = taskData?.wrapUpRequired === true;
+  if (wrapUpRequired || participantWrapUp) {
     return true;
   }
 
-  // If there's ownership data, use it
-  const interactionOwner = eventOwner ?? contextOwner;
-  if (interactionOwner) {
-    return selfAgentId === interactionOwner;
+  const owner = taskData?.interaction?.owner;
+  if (owner && owner === selfAgentId) {
+    return true;
   }
 
-  return !(context.taskData?.isConsulted ?? taskData?.isConsulted);
-};
+  if (taskData?.isConsulted === false) {
+    return true;
+  }
 
-// ============================================
-// Guard Parameters Type
-// ============================================
+  return false;
+};
 
 export interface GuardParams {
   context: TaskContext;
@@ -105,15 +71,15 @@ export interface GuardParams {
 
 export type GuardFunction = (params: GuardParams) => boolean;
 
-// ============================================
-// Guards Object
-// ============================================
-
 export const guards = {
-  // ============================================
-  // Hydrate Guards (for state restoration)
-  // ============================================
+  backendReportsConference: ({context, event}: GuardParams): boolean => {
+    const eventTaskData = getTaskDataFromEvent(event);
+    const taskData = eventTaskData ?? context.taskData;
 
+    return taskData?.interaction?.state === 'conference';
+  },
+
+  // Hydrate Guards
   isInteractionTerminated: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
@@ -156,10 +122,7 @@ export const guards = {
     return agentCount >= 2;
   },
 
-  // ============================================
   // Conference Guards
-  // ============================================
-
   conferenceInProgressFromEvent: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
     if (!taskData?.interaction) return false;
@@ -185,15 +148,34 @@ export const guards = {
   },
 
   shouldDowngradeConference: ({context, event}: GuardParams): boolean => {
-    // Use EVENT data (new state) to determine if conference should downgrade
-    // Context has old data at guard evaluation time
     const eventTaskData = getTaskDataFromEvent(event);
     const taskData = eventTaskData ?? context.taskData;
-
     if (!taskData?.interaction || !taskData?.interactionId) return false;
+
+    if (taskData.interaction.state === 'conference') return false;
+
     const count = getConferenceParticipantsCount(taskData.interaction, taskData.interactionId);
 
     return count < 2;
+  },
+
+  customerInCallFromEventOrContext: ({context, event}: GuardParams): boolean => {
+    const eventTaskData = getTaskDataFromEvent(event);
+    const taskData = eventTaskData ?? context.taskData;
+    if (!taskData?.interaction) return false;
+    const mainCallId = taskData.interaction.mainInteractionId || taskData.interactionId;
+    if (!mainCallId) return false;
+
+    return getIsCustomerInCall(taskData.interaction, mainCallId);
+  },
+  isOwner: ({context, event}: GuardParams): boolean => {
+    const eventTaskData = getTaskDataFromEvent(event);
+    const taskData = eventTaskData ?? context.taskData;
+    const selfAgentId = getSelfAgentId(context, taskData);
+    if (!selfAgentId) return false;
+    const owner = taskData?.interaction?.owner;
+
+    return owner === selfAgentId;
   },
 
   conferenceActiveAndCustomerInCall: ({event}: GuardParams): boolean => {
@@ -206,10 +188,7 @@ export const guards = {
     );
   },
 
-  // ============================================
   // Consult Guards
-  // ============================================
-
   isConsultInitiator: ({context}: GuardParams): boolean => {
     return context.consultInitiator === true;
   },
@@ -249,10 +228,7 @@ export const guards = {
     return context.consultDestinationType === 'queue';
   },
 
-  // ============================================
   // Wrapup Guards
-  // ============================================
-
   shouldWrapUp: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
     if (!taskData) return false;
@@ -285,15 +261,10 @@ export const guards = {
     const taskData = getTaskDataFromEvent(event);
     if (!taskData) return false;
 
-    const conferenceActive = getIsConferenceInProgress(taskData);
-
-    return conferenceActive && !shouldWrapUpForThisAgent(context, taskData);
+    return getIsConferenceInProgress(taskData) && !shouldWrapUpForThisAgent(context, taskData);
   },
 
-  // ============================================
   // Server State Guards
-  // ============================================
-
   serverReportsHeld: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
@@ -307,10 +278,7 @@ export const guards = {
     return Boolean(context.consultInitiator && !taskData?.wrapUpRequired);
   },
 
-  // ============================================
   // Recording Guards
-  // ============================================
-
   recordingActive: ({context}: GuardParams): boolean => {
     return context.recordingControlsAvailable && context.recordingInProgress;
   },

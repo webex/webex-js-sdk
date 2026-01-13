@@ -60,6 +60,7 @@ export interface TaskContext {
   // Consult tracking
   consultInitiator: boolean;
   exitingConference: boolean;
+  consultFromConference: boolean;
   consultDestinationType: DestinationType | null;
   consultDestinationAgentJoined: boolean;
   consultCallHeld: boolean;
@@ -88,6 +89,10 @@ interface TaskEventPayloadMap {
   [TaskEvent.OFFER_CONTACT]: BaseEvent<TaskEvent.OFFER_CONTACT> & {taskData: TaskData};
   [TaskEvent.OFFER_CONSULT]: BaseEvent<TaskEvent.OFFER_CONSULT> & {taskData: TaskData};
   [TaskEvent.HYDRATE]: BaseEvent<TaskEvent.HYDRATE> & {taskData: TaskData; agentId?: string};
+  [TaskEvent.CONTACT_UPDATED]: BaseEvent<TaskEvent.CONTACT_UPDATED> & {taskData: TaskData};
+  [TaskEvent.CONTACT_OWNER_CHANGED]: BaseEvent<TaskEvent.CONTACT_OWNER_CHANGED> & {
+    taskData: TaskData;
+  };
   [TaskEvent.ACCEPT]: BaseEvent<TaskEvent.ACCEPT>;
   [TaskEvent.ACCEPT_INITIATED]: BaseEvent<TaskEvent.ACCEPT_INITIATED>;
   [TaskEvent.DECLINE]: BaseEvent<TaskEvent.DECLINE>;

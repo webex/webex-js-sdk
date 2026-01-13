@@ -50,11 +50,11 @@ describe('State Machine Guards', () => {
   } as TaskData);
 
   const createContext = (overrides: Partial<TaskContext> = {}): TaskContext => ({
-    recordingControlsAvailable: false,
-    recordingInProgress: false,
-    consultDestinationAgentJoined: false,
-    consultCallHeld: false,
-    consultInitiator: false,
+      recordingControlsAvailable: false,
+      recordingInProgress: false,
+      consultDestinationAgentJoined: false,
+      consultCallHeld: false,
+      consultInitiator: false,
     exitingConference: false,
     consultDestinationType: null,
     taskData: createTaskData(),
@@ -76,8 +76,8 @@ describe('State Machine Guards', () => {
       mergeToConference: {isVisible: false, isEnabled: false},
       switchToMainCall: {isVisible: false, isEnabled: false},
       switchToConsult: {isVisible: false, isEnabled: false},
-    },
-    ...overrides,
+      },
+      ...overrides,
   } as TaskContext);
 
   const createParams = (context: TaskContext, event?: TaskEventPayload): GuardParams => ({
@@ -109,12 +109,12 @@ describe('State Machine Guards', () => {
     it('conferenceInProgressFromEvent returns true with 2+ agents in event', () => {
       const ctx = createContext();
       const taskData = createTaskData({
-        interaction: {
+          interaction: {
           ...createTaskData().interaction,
-          participants: {
+            participants: {
             a1: createParticipant('a1', 'Agent'),
             a2: createParticipant('a2', 'Agent'),
-          },
+            },
           media: {
             [INTERACTION_ID]: {
               mediaResourceId: INTERACTION_ID,
@@ -134,7 +134,7 @@ describe('State Machine Guards', () => {
     it('conferenceInProgressFromEvent returns false with 1 agent', () => {
       const ctx = createContext();
       const taskData = createTaskData({
-        interaction: {
+          interaction: {
           ...createTaskData().interaction,
           participants: {
             a1: createParticipant('a1', 'Agent'),
@@ -158,7 +158,7 @@ describe('State Machine Guards', () => {
     it('notInConferenceFromEvent returns true with <2 agents', () => {
       const ctx = createContext();
       const taskData = createTaskData({
-        interaction: {
+          interaction: {
           ...createTaskData().interaction,
           participants: {
             a1: createParticipant('a1', 'Agent'),
@@ -182,7 +182,7 @@ describe('State Machine Guards', () => {
     it('shouldDowngradeConference returns true with <2 agents in event', () => {
       const ctx = createContext();
       const taskData = createTaskData({
-        interaction: {
+          interaction: {
           ...createTaskData().interaction,
           participants: {
             a1: createParticipant('a1', 'Agent'),
@@ -205,7 +205,7 @@ describe('State Machine Guards', () => {
 
     it('conferenceActiveAndNotWrappingAndNotExiting returns true when in conference and not exiting', () => {
       const taskData = createTaskData({
-        interaction: {
+          interaction: {
           ...createTaskData().interaction,
           owner: 'other-agent', // Not the owner, so shouldn't wrap up
           participants: {
@@ -266,10 +266,10 @@ describe('State Machine Guards', () => {
     it('shouldWrapUp returns true for owner', () => {
       const ctx = createContext();
       const taskData = createTaskData({
-        interaction: {
+          interaction: {
           ...createTaskData().interaction,
           owner: 'agent-123',
-        },
+          },
       });
       expect(guards.shouldWrapUp(createParams(ctx, createEventWithTaskData(taskData)))).toBe(true);
     });
@@ -277,7 +277,7 @@ describe('State Machine Guards', () => {
     it('shouldWrapUp returns false for non-owner', () => {
       const ctx = createContext();
       const taskData = createTaskData({
-        interaction: {
+          interaction: {
           ...createTaskData().interaction,
           owner: 'other-agent',
         },
@@ -299,7 +299,7 @@ describe('State Machine Guards', () => {
         interaction: {
           ...createTaskData().interaction,
           owner: undefined as unknown as string, // No owner
-        },
+          },
       });
       const ctx = createContext({taskData});
       expect(guards.shouldWrapUp(createParams(ctx, createEventWithTaskData(taskData)))).toBe(true);
@@ -310,7 +310,7 @@ describe('State Machine Guards', () => {
     it('serverReportsHeld returns true when media isHold is true', () => {
       const ctx = createContext();
       const taskData = createTaskData({
-        interaction: {
+          interaction: {
           ...createTaskData().interaction,
           media: {
             [INTERACTION_ID]: {
@@ -331,7 +331,7 @@ describe('State Machine Guards', () => {
     it('serverReportsHeld returns false when media isHold is false', () => {
       const ctx = createContext();
       const taskData = createTaskData({
-        interaction: {
+          interaction: {
           ...createTaskData().interaction,
           media: {
             [INTERACTION_ID]: {

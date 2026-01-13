@@ -95,6 +95,10 @@ export const CC_TASK_EVENTS = {
   CONTACT_ENDED: 'ContactEnded',
   /** Event emitted when contact is merged */
   CONTACT_MERGED: 'ContactMerged',
+  /** Event emitted when contact payload is updated (routing updates) */
+  CONTACT_UPDATED: 'ContactUpdated',
+  /** Event emitted when contact owner changes */
+  CONTACT_OWNER_CHANGED: 'ContactOwnerChanged',
   /** Event emitted when ending contact fails */
   AGENT_CONTACT_END_FAILED: 'AgentContactEndFailed',
   /** Event emitted when agent enters wrap-up state */

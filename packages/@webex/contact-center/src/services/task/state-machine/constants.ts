@@ -81,6 +81,10 @@ export enum TaskEvent {
   OFFER_CONSULT = 'OFFER_CONSULT',
   HYDRATE = 'HYDRATE',
 
+  // Internal "data refresh" events
+  CONTACT_UPDATED = 'CONTACT_UPDATED',
+  CONTACT_OWNER_CHANGED = 'CONTACT_OWNER_CHANGED',
+
   // Assignment events
   ACCEPT = 'ACCEPT',
   ACCEPT_INITIATED = 'ACCEPT_INITIATED',

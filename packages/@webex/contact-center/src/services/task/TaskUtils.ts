@@ -1,11 +1,10 @@
 /* eslint-disable import/prefer-default-export */
-import {Interaction, ITask, TaskData, MediaEntry, MEDIA_CHANNEL} from './types';
+import {Interaction, ITask, TaskData, MEDIA_CHANNEL} from './types';
 import {OUTDIAL_DIRECTION, OUTDIAL_MEDIA_TYPE, OUTBOUND_TYPE} from '../../constants';
 import {LoginOption} from '../../types';
 import {
   MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE,
   PARTICIPANT_TYPE,
-  MEDIA_TYPE_CONSULT,
   MEDIA_TYPE_MAIN_CALL,
 } from './state-machine/constants';
 
@@ -30,18 +29,6 @@ export const getIsCustomerInCall = (interaction: Interaction, interactionId: str
 
     return participant?.pType === PARTICIPANT_TYPE.CUSTOMER && !participant.hasLeft;
   });
-};
-
-/**
- * Checks if a consult is currently in progress
- *
- * @param interaction - The interaction object
- * @returns true if consult is in progress
- */
-export const getIsConsultInProgress = (interaction: Interaction): boolean => {
-  return Object.values(interaction.media).some(
-    (media: MediaEntry) => media && media.mType === MEDIA_TYPE_CONSULT
-  );
 };
 
 /**
@@ -76,35 +63,6 @@ export const getConferenceParticipantsCount = (
   }
 
   return count;
-};
-
-/**
- * Determines if consult button should be visible/enabled based on all conditions
- *
- * @param interaction - The interaction object
- * @param interactionId - The main interaction ID
- * @param isHeld - Whether the call is currently held
- * @param isConferenceInProgress - Whether conference is in progress
- * @param isConsultCompleted - Whether a previous consult was completed
- * @returns true if consult button should be enabled
- */
-export const canInitiateConsult = (
-  interaction: Interaction,
-  interactionId: string,
-  isHeld: boolean,
-  isConferenceInProgress: boolean,
-  isConsultCompleted: boolean
-): boolean => {
-  const isUnderParticipantLimit =
-    getConferenceParticipantsCount(interaction, interactionId) <
-    MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE;
-  const hasNoActiveConsult = !getIsConsultInProgress(interaction);
-  const customerPresent = getIsCustomerInCall(interaction, interactionId);
-  const notBlockedByHeldConference = !(isHeld && isConferenceInProgress && !isConsultCompleted);
-
-  return (
-    isUnderParticipantLimit && hasNoActiveConsult && customerPresent && notBlockedByHeldConference
-  );
 };
 
 /**
@@ -168,9 +126,7 @@ export const checkParticipantNotInInteraction = (task: ITask, agentId: string): 
  * We use mainInteractionId from the interaction if available, otherwise fallback to interactionId.
  */
 export const getIsConferenceInProgress = (data: TaskData): boolean => {
-  if (!data.interaction) {
-    return false;
-  }
+  if (!data.interaction) return false;
 
   const mainCallId = data.interaction.mainInteractionId || data.interactionId;
   const mediaMainCall = data.interaction.media?.[mainCallId];

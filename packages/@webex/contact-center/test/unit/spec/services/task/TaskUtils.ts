@@ -9,9 +9,7 @@ import {
   hasAgentInitiatedOutdial,
   shouldAutoAnswerTask,
   getIsCustomerInCall,
-  getIsConsultInProgress,
   getConferenceParticipantsCount,
-  canInitiateConsult,
   isSecondaryAgent,
   isSecondaryEpDnAgent,
 } from '../../../../../src/services/task/TaskUtils';
@@ -451,25 +449,12 @@ describe('TaskUtils', () => {
       expect(getIsCustomerInCall(interaction, interactionId)).toBe(true);
     });
 
-    it('getIsConsultInProgress returns true with consult media', () => {
-      const interaction = createInteraction({'consult-1': {mType: 'consult'}});
-      expect(getIsConsultInProgress(interaction)).toBe(true);
-    });
-
     it('getConferenceParticipantsCount counts active agents only', () => {
       const interaction = createInteraction(
         {[interactionId]: {mType: 'mainCall', participants: ['a1', 'a2', 'c1']}},
         {'a1': {pType: 'Agent', hasLeft: false}, 'a2': {pType: 'Agent', hasLeft: false}, 'c1': {pType: 'Customer', hasLeft: false}}
       );
       expect(getConferenceParticipantsCount(interaction, interactionId)).toBe(2);
-    });
-
-    it('canInitiateConsult returns true when allowed', () => {
-      const interaction = createInteraction(
-        {[interactionId]: {mType: 'mainCall', participants: ['a1', 'c1']}},
-        {'a1': {pType: 'Agent', hasLeft: false}, 'c1': {pType: 'Customer', hasLeft: false}}
-      );
-      expect(canInitiateConsult(interaction, interactionId)).toBe(true);
     });
 
     it('isSecondaryAgent returns true for consult with parentInteractionId', () => {
