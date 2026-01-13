@@ -62,99 +62,74 @@ jobs:
           echo "version=v${VERSION}" >> $GITHUB_OUTPUT
           echo "version_number=${VERSION}" >> $GITHUB_OUTPUT
           
-          # Get the previous tag to compare
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
-          echo "previous_tag=${PREVIOUS_TAG}" >> $GITHUB_OUTPUT
-          
           echo "📦 Current version: v${VERSION}"
-          echo "📌 Previous tag: ${PREVIOUS_TAG}"
       
-      - name: Get Merged PRs and Packages
+      - name: Get Merged PR
         id: get-prs
         uses: actions/github-script@v7
         with:
           script: |
             const version = '${{ steps.version-info.outputs.version }}';
-            const previousTag = '${{ steps.version-info.outputs.previous_tag }}';
             const versionNumber = '${{ steps.version-info.outputs.version_number }}';
-            
-            console.log(`Looking for PRs between ${previousTag} and ${version}`);
-            
-            // Get commits since the last tag
-            let commits = [];
-            try {
-              if (previousTag) {
-                const compareResult = await github.rest.repos.compareCommitsWithBasehead({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  basehead: `${previousTag}...${context.sha}`
-                });
-                commits = compareResult.data.commits;
-              } else {
-                // If no previous tag, get recent commits
-                const commitsResult = await github.rest.repos.listCommits({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  sha: context.sha,
-                  per_page: 50
-                });
-                commits = commitsResult.data;
-              }
-            } catch (error) {
-              console.log('Error getting commits:', error.message);
-              return { prs: [], packages: [], commits: [] };
-            }
-            
-            console.log(`Found ${commits.length} commits`);
-            
-            // Extract PR numbers from commit messages
-            const prNumbers = new Set();
-            const commitData = [];
-            
-            for (const commit of commits) {
-              const message = commit.commit.message;
-              const prMatch = message.match(/#(\d+)/g);
-              
-              if (prMatch) {
-                prMatch.forEach(pr => {
-                  const prNum = pr.replace('#', '');
-                  prNumbers.add(prNum);
-                });
-              }
-              
-              // Store commit info for changelog
-              commitData.push({
-                sha: commit.sha.substring(0, 7),
-                message: message.split('\n')[0],
-                fullSha: commit.sha
-              });
-            }
-            
-            console.log(`Found ${prNumbers.size} unique PRs: ${Array.from(prNumbers).join(', ')}`);
             
             // For manual testing, allow override with specific PR number
             const testPrNumber = '${{ github.event.inputs.test_pr_number }}';
             if (testPrNumber && testPrNumber.trim() !== '') {
               console.log(`🧪 TEST MODE: Using manual PR number #${testPrNumber}`);
-              prNumbers.clear();
-              prNumbers.add(testPrNumber.trim());
+              const packages = ['webex', '@webex/plugin-meetings', '@webex/calling'];
+              core.setOutput('pr_numbers', JSON.stringify([testPrNumber.trim()]));
+              core.setOutput('packages', JSON.stringify(packages));
+              core.setOutput('commit_count', '1');
+              return { prs: [testPrNumber.trim()], packages: packages };
             }
+            
+            console.log(`Looking for PR in the most recent merge commit`);
+            
+            // Get the HEAD commit (the merge commit that triggered this deployment)
+            let commit;
+            try {
+              const commitResult = await github.rest.repos.getCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: context.sha
+              });
+              commit = commitResult.data;
+            } catch (error) {
+              console.log('Error getting commit:', error.message);
+              return { prs: [], packages: [] };
+            }
+            
+            console.log(`Commit SHA: ${commit.sha.substring(0, 7)}`);
+            console.log(`Commit message: ${commit.commit.message}`);
+            
+            // Extract PR number from commit message
+            // GitHub merge commits typically have format: "Merge pull request #1234 from..."
+            // Or squash commits have: "feat: description (#1234)"
+            const message = commit.commit.message;
+            const prMatch = message.match(/#(\d+)/);
+            
+            if (!prMatch) {
+              console.log('⚠️ No PR number found in commit message');
+              console.log('This might be a direct commit or the commit message format is unexpected');
+              return { prs: [], packages: [] };
+            }
+            
+            const prNumber = prMatch[1];
+            console.log(`✅ Found PR #${prNumber} in merge commit`);
             
             // Get list of published packages from the deploy workflow
             const packages = ['webex', '@webex/plugin-meetings', '@webex/calling'];
             
-            core.setOutput('pr_numbers', JSON.stringify(Array.from(prNumbers)));
+            core.setOutput('pr_numbers', JSON.stringify([prNumber]));
             core.setOutput('packages', JSON.stringify(packages));
-            core.setOutput('commits', JSON.stringify(commitData));
-            core.setOutput('commit_count', commits.length.toString());
+            core.setOutput('commit_count', '1');
             
             return { 
-              prs: Array.from(prNumbers), 
-              packages: packages,
-              commits: commitData 
+              prs: [prNumber], 
+              packages: packages
             };
       
-      - name: Post Comments on PRs
+      - name: Post Comment on Merged PR
         uses: actions/github-script@v7
         with:
           script: |
@@ -162,10 +137,8 @@ jobs:
             const versionNumber = '${{ steps.version-info.outputs.version_number }}';
             const prNumbers = JSON.parse('${{ steps.get-prs.outputs.pr_numbers }}');
             const packages = JSON.parse('${{ steps.get-prs.outputs.packages }}');
-            const commits = JSON.parse('${{ steps.get-prs.outputs.commits }}');
-            const commitCount = '${{ steps.get-prs.outputs.commit_count }}';
             
-            console.log(`Posting comments to ${prNumbers.length} PRs`);
+            console.log(`Posting comment to PR #${prNumbers[0]}`);
             
             if (prNumbers.length === 0) {
               console.log('No PRs found to comment on');
@@ -188,7 +161,7 @@ jobs:
               '',
               `📖 **[View full changelog →](${changelogUrl})**`,
               '',
-              `This release includes **${commitCount} commit${commitCount !== '1' ? 's' : ''}** across the SDK. Thank you for your contribution!`,
+              `Thank you for your contribution!`,
               '',
               '---',
               `<sub>🤖 This is an automated message. For questions, please refer to the [documentation](https://github.com/${context.repo.owner}/${context.repo.repo}#readme).</sub>`
@@ -249,15 +222,16 @@ jobs:
               }
             }
             
-            console.log('✨ Finished posting comments!');
+            console.log('✨ Comment posted successfully!');
       
       - name: Summary
         run: |
           echo "### 📊 Bot Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ steps.version-info.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "**PRs Notified:** ${{ steps.get-prs.outputs.pr_numbers }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Commits:** ${{ steps.get-prs.outputs.commit_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "**PR Notified:** ${{ steps.get-prs.outputs.pr_numbers }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Comment posted on the merged PR" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🔗 [View Changelog](https://webex.github.io/webex-js-sdk/changelog/?stable_version=${{ steps.version-info.outputs.version_number }})" >> $GITHUB_STEP_SUMMARY
 
