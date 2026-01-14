@@ -2852,16 +2852,6 @@ export default class Meeting extends StatelessWebexPlugin {
       if (hesiodLlmId) {
         // @ts-ignore
         this.webex.internal.voicea.onCaptionServiceIdUpdate(hesiodLlmId);
-
-        Trigger.trigger(
-          this,
-          {
-            file: 'meeting/index',
-            function: 'setupLocusControlsListener',
-          },
-          EVENT_TRIGGERS.MEETING_HESIOD_LLM_ID_UPDATED,
-          {hesiodLlmId, meetingId: this.id}
-        );
       }
     });
 

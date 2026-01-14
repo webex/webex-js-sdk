@@ -557,11 +557,13 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     if (!serviceId) {
       return;
     }
-    if (this.captionServiceId !== serviceId && this.currentCaptionLanguage) {
+    if (this.captionServiceId !== serviceId) {
+      this.captionServiceId = serviceId;
       // if service id value has changed and the translation language has been set, client needs to resend the translator language message to the LLM.
-      this.requestLanguage(serviceId);
+      if (this.currentCaptionLanguage) {
+        this.requestLanguage(this.currentCaptionLanguage);
+      }
     }
-    this.captionServiceId = serviceId;
   };
 
   /**

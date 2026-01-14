@@ -1150,9 +1150,16 @@ describe('plugin-voicea', () => {
     });
 
     describe('#onCaptionServiceIdUpdate', () => {
-      it('does nothing when serviceId is falsy', () => {
-        const requestLanguageSpy = sinon.spy(voiceaService, 'requestLanguage');
+      let mockWebSocket;
 
+      beforeEach(() => {
+        mockWebSocket = new MockWebSocket();
+        voiceaService.webex.internal.llm.socket = mockWebSocket;
+        voiceaService.webex.internal.llm.isConnected.returns(true);
+        voiceaService.seqNum = 1;
+      });
+
+      it('does nothing when serviceId is falsy', () => {
         voiceaService.captionServiceId = 'existing-id';
         voiceaService.currentCaptionLanguage = 'en';
 
@@ -1160,43 +1167,41 @@ describe('plugin-voicea', () => {
         voiceaService.onCaptionServiceIdUpdate('');
 
         assert.equal(voiceaService.captionServiceId, 'existing-id');
-        assert.notCalled(requestLanguageSpy);
+        assert.notCalled(voiceaService.webex.internal.llm.socket.send);
       });
 
       it('sets captionServiceId when no currentCaptionLanguage', () => {
-        const requestLanguageSpy = sinon.spy(voiceaService, 'requestLanguage');
-
         voiceaService.captionServiceId = undefined;
         voiceaService.currentCaptionLanguage = undefined;
 
         voiceaService.onCaptionServiceIdUpdate('svc-new');
 
         assert.equal(voiceaService.captionServiceId, 'svc-new');
-        assert.notCalled(requestLanguageSpy);
+        assert.notCalled(voiceaService.webex.internal.llm.socket.send);
       });
 
       it('re-sends language when serviceId changes and currentCaptionLanguage is set', () => {
-        const requestLanguageStub = sinon.stub(voiceaService, 'requestLanguage');
-
         voiceaService.captionServiceId = 'old-svc';
         voiceaService.currentCaptionLanguage = 'es';
 
         voiceaService.onCaptionServiceIdUpdate('new-svc');
 
         assert.equal(voiceaService.captionServiceId, 'new-svc');
-        assert.calledOnceWithExactly(requestLanguageStub, 'new-svc');
+        assert.calledOnce(voiceaService.webex.internal.llm.socket.send);
+
+        const callArgs = voiceaService.webex.internal.llm.socket.send.getCall(0).args[0];
+        expect(callArgs).to.have.nested.property('headers.to', 'new-svc');
+        expect(callArgs).to.have.nested.property('data.clientPayload.translationLanguage', 'es');
       });
 
       it('does not re-send language when serviceId is unchanged', () => {
-        const requestLanguageSpy = sinon.spy(voiceaService, 'requestLanguage');
-
         voiceaService.captionServiceId = 'same-svc';
         voiceaService.currentCaptionLanguage = 'de';
 
         voiceaService.onCaptionServiceIdUpdate('same-svc');
 
         assert.equal(voiceaService.captionServiceId, 'same-svc');
-        assert.notCalled(requestLanguageSpy);
+        assert.notCalled(voiceaService.webex.internal.llm.socket.send);
       });
     });
 

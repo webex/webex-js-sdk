@@ -1375,12 +1375,6 @@ describe('plugin-meetings', () => {
             {hesiodLlmId: '123a-456b-789c'}
           );
           assert.calledWith(webex.internal.voicea.onCaptionServiceIdUpdate, '123a-456b-789c');
-          assert.calledWith(
-            TriggerProxy.trigger,
-            meeting,
-            {file: 'meeting/index', function: 'setupLocusControlsListener'},
-            EVENT_TRIGGERS.MEETING_HESIOD_LLM_ID_UPDATED
-          );
         });
       });
 
