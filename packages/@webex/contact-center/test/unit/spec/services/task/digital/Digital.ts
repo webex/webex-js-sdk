@@ -1,5 +1,5 @@
 import Digital from '../../../../../../src/services/task/digital/Digital';
-import {TaskData, TaskResponse} from '../../../../../../src/services/task/types';
+import {MEDIA_CHANNEL, TaskData, TaskResponse} from '../../../../../../src/services/task/types';
 import {TaskEvent, TaskEventPayload} from '../../../../../../src/services/task/state-machine';
 
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
@@ -21,7 +21,7 @@ const sendStateEvents = (task: Digital, events: TaskEventPayload[]) => {
 describe('Digital Task', () => {
   const dummyData = {
     interactionId: 'dig1',
-    interaction: {isTerminated: false},
+    interaction: {isTerminated: false, mediaType: MEDIA_CHANNEL.CHAT},
   } as TaskData;
   let dummyContact: { accept: jest.Mock<Promise<TaskResponse>> };
 

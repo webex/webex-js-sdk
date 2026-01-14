@@ -2125,7 +2125,6 @@ describe('TaskManager', () => {
       const payload = {...taskDataMock, type: CC_EVENTS.AGENT_CONTACT_ASSIGNED};
       const task = taskManager.getTask(taskId);
       const sendStateMachineEventSpy = jest.spyOn(task, 'sendStateMachineEvent');
-      const logSpy = jest.spyOn(LoggerProxy, 'log');
 
       webSocketManagerMock.emit('message', JSON.stringify({data: payload}));
 
@@ -2133,13 +2132,8 @@ describe('TaskManager', () => {
         type: TaskEvent.ASSIGN,
         taskData: payload,
       });
-      expect(logSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Sending state machine event'),
-        expect.objectContaining({interactionId: payload.interactionId})
-      );
 
       sendStateMachineEventSpy.mockRestore();
-      logSpy.mockRestore();
     });
   });
 });

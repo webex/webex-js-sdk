@@ -192,10 +192,16 @@ describe('Task state machine', () => {
 
     it('transitions to conferencing when merge event is received', () => {
       const service = startMachine();
-      const taskData = createTaskData();
+      const taskData = createTaskData({consultingAgentId: 'agent-1'});
 
       service.send({type: TaskEvent.TASK_INCOMING, taskData});
       service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: 'agent-42',
+        destinationType: 'agent',
+      });
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULT_INITIATING);
       service.send({type: TaskEvent.CONSULT_CREATED, taskData});
       expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
 
