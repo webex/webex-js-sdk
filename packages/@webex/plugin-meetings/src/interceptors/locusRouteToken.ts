@@ -24,6 +24,10 @@ export default class LocusRouteTokenInterceptor extends Interceptor {
     return url?.match(LOCUS_ID_REGEX)?.[1];
   }
 
+  getLocusIdByResponseBody(body: any) {
+    return body?.locus?.url?.match(LOCUS_ID_REGEX)?.[1];
+  }
+
   // Helper function to get header value case insensitively
   getHeader(headers: Record<string, string>, name: string) {
     const key = Object.keys(headers).find((k) => k.toLowerCase() === name.toLowerCase());
@@ -37,7 +41,8 @@ export default class LocusRouteTokenInterceptor extends Interceptor {
    * @returns {Promise<HttpResponse>}
    */
   onResponse(options, response) {
-    const locusId = this.getLocusIdByRequestUrl(options.uri);
+    const locusId =
+      this.getLocusIdByResponseBody(response.body) || this.getLocusIdByRequestUrl(options.uri);
     if (locusId) {
       const hasRouteToken = Object.keys(response.headers).some(
         (key) => key.toLowerCase() === X_CISCO_PART_ROUTE_TOKEN.toLowerCase()
