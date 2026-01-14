@@ -23,6 +23,7 @@ import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 import {TaskState, TaskEvent, guards} from '../state-machine';
 import {WrapupData} from '../../config/types';
+import {getIsConferenceInProgress} from '../TaskUtils';
 
 export default class Voice extends Task implements IVoice {
   constructor(
@@ -769,9 +770,7 @@ export default class Voice extends Task implements IVoice {
     const state = this.stateMachineService?.getSnapshot?.();
     const isConferencingState = state?.matches(TaskState.CONFERENCING);
 
-    // Check if conference is in progress from task data (2+ agents in main call)
-    // Use the same logic as guards.isConferenceInProgress but directly on task data
-    const isConferenceInProgressFromData = this.checkIsConferenceInProgress();
+    const isConferenceInProgressFromData = this.data ? getIsConferenceInProgress(this.data) : false;
 
     if (!state || (!isConferencingState && !isConferenceInProgressFromData)) {
       const currentState = state?.value as TaskState;
@@ -974,41 +973,6 @@ export default class Voice extends Task implements IVoice {
 
       throw detailedError;
     }
-  }
-
-  /**
-   * Check if conference is in progress from task data
-   * Uses same logic as guards.isConferenceInProgress but directly on instance data
-   * @returns true if 2+ agents are in the main call
-   */
-  private checkIsConferenceInProgress(): boolean {
-    const interaction = this.data?.interaction;
-    if (!interaction) {
-      return false;
-    }
-
-    const mainCallId = interaction.mainInteractionId || this.data?.interactionId;
-    const mediaMainCall = interaction.media?.[mainCallId];
-    const participantsInMainCall = new Set(mediaMainCall?.participants);
-    const participants = interaction.participants;
-
-    let agentCount = 0;
-    if (participantsInMainCall.size > 0) {
-      participantsInMainCall.forEach((participantId: string) => {
-        const participant = participants?.[participantId];
-        if (
-          participant &&
-          participant.pType !== 'Customer' &&
-          participant.pType !== 'Supervisor' &&
-          participant.pType !== 'VVA' &&
-          !participant.hasLeft
-        ) {
-          agentCount += 1;
-        }
-      });
-    }
-
-    return agentCount >= 2;
   }
 
   protected override getChannelSpecificActionOverrides() {

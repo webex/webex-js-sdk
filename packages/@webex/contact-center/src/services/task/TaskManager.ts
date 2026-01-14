@@ -317,8 +317,6 @@ export default class TaskManager extends EventEmitter {
         return {type: TaskEvent.CONFERENCE_END, taskData: payload};
 
       case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE:
-        // Use PARTICIPANT_LEAVE instead of CONFERENCE_END
-        // The state machine will determine if conference should end based on agent count
         return {type: TaskEvent.PARTICIPANT_LEAVE, taskData: payload};
 
       case CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED:
@@ -439,39 +437,8 @@ export default class TaskManager extends EventEmitter {
       return null;
     }
 
-    // Some consult/conference events can arrive on a child interactionId while the task we track
-    // is keyed by the main/parent interactionId. Resolve to an existing task when possible.
     const interactionId = message.data.interactionId;
-    const mainInteractionId = message.data.interaction?.mainInteractionId;
-    const parentInteractionId = message.data.interaction?.parentInteractionId;
-    const directTask = this.taskCollection[interactionId];
-    const mainTask = mainInteractionId ? this.taskCollection[mainInteractionId] : undefined;
-    const parentTask = parentInteractionId ? this.taskCollection[parentInteractionId] : undefined;
-
-    // Fallback: if the task isn't keyed by any of these IDs (e.g. due to legacy keying or
-    // interactionId changes), scan existing tasks by their data fields.
-    const scannedTask =
-      directTask || mainTask || parentTask
-        ? undefined
-        : Object.values(this.taskCollection).find((t) => {
-            const tInteractionId = t?.data?.interactionId;
-            const tMainInteractionId = t?.data?.interaction?.mainInteractionId;
-            const tParentInteractionId = t?.data?.interaction?.parentInteractionId;
-
-            return (
-              tInteractionId === interactionId ||
-              (mainInteractionId && tInteractionId === mainInteractionId) ||
-              (parentInteractionId && tInteractionId === parentInteractionId) ||
-              (tMainInteractionId &&
-                (tMainInteractionId === interactionId ||
-                  tMainInteractionId === mainInteractionId)) ||
-              (tParentInteractionId &&
-                (tParentInteractionId === interactionId ||
-                  tParentInteractionId === parentInteractionId))
-            );
-          });
-
-    const task = directTask || mainTask || parentTask || scannedTask;
+    const task = this.taskCollection[interactionId];
 
     const wasConsultedTask = Boolean(task?.data?.isConsulted);
     const computeWrapUpRequired = () => {
@@ -749,9 +716,6 @@ export default class TaskManager extends EventEmitter {
     if (
       task &&
       wasConsultedTask &&
-      // Defensive: if backend already reports this interaction as a conference, do not remove it.
-      // We have seen transient/stale isConsulted values on conference participants; removing here
-      // breaks subsequent WS event routing.
       task.data?.interaction?.state !== 'conference' &&
       !getIsConferenceInProgress(task.data)
     ) {

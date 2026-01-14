@@ -73,6 +73,22 @@ export interface GuardParams {
 export type GuardFunction = (params: GuardParams) => boolean;
 
 export const guards = {
+  selfInMainCallFromEventOrContext: ({context, event}: GuardParams): boolean => {
+    const eventTaskData = getTaskDataFromEvent(event);
+    const taskData = eventTaskData ?? context.taskData;
+    if (!taskData?.interaction) return false;
+
+    const selfAgentId = getSelfAgentId(context, taskData);
+    if (!selfAgentId) return false;
+
+    const mainCallId = taskData.interaction.mainInteractionId || taskData.interactionId;
+    if (!mainCallId) return false;
+
+    const mainCall = taskData.interaction.media?.[mainCallId];
+
+    return Boolean(mainCall?.participants?.includes(selfAgentId));
+  },
+
   backendReportsConference: ({context, event}: GuardParams): boolean => {
     const eventTaskData = getTaskDataFromEvent(event);
     const taskData = eventTaskData ?? context.taskData;
