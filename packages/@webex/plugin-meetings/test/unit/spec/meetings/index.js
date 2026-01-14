@@ -2911,7 +2911,7 @@ describe('plugin-meetings', () => {
           conversationUrl: 'conversationUrl1',
         };
 
-        sinon.stub(MeetingsUtil, 'checkForCorrelationId').returns('correlationId1');
+        sinon.stub(MeetingsUtil, 'getCorrelationIdForDevice').returns('correlationId1');
       });
       afterEach(() => {
         sinon.restore();
@@ -3016,6 +3016,197 @@ describe('plugin-meetings', () => {
           'conversationUrl1'
         );
         assert.calledWith(webex.meetings.meetingCollection.getByKey, 'meetingNumber', '123456');
+      });
+
+      describe('when receiving hash tree events', () => {
+        let hashTreeEvent;
+
+        beforeEach(() => {
+          MeetingsUtil.getCorrelationIdForDevice.restore();
+          sinon.spy(MeetingsUtil, 'getCorrelationIdForDevice');
+
+          hashTreeEvent = {
+            eventType: 'locus.state_message',
+            stateElementsMessage: {
+              locusUrl: url1,
+              locusStateElements: [
+                {
+                  htMeta: {
+                    elementId: {
+                      type: 'participant',
+                      id: 2,
+                      version: 1,
+                    },
+                    dataSetNames: ['main'],
+                  },
+                  data: {
+                    id: 'participant1',
+                  },
+                },
+                {
+                  htMeta: {
+                    elementId: {
+                      type: 'Self',
+                      id: 1,
+                      version: 1,
+                    },
+                    dataSetNames: ['self'],
+                  },
+                  data: {
+                    callbackInfo: {
+                      callbackAddress: 'address1',
+                    },
+                    devices: [
+                      {
+                        url: 'deviceUrl',
+                        correlationId: 'correlationId1',
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          };
+
+          webex.internal.device.url = 'deviceUrl';
+        });
+
+        it('should find meeting by locusUrl from stateElementsMessage', () => {
+          mockGetByKey('locusUrl');
+          const result = webex.meetings.getCorrespondingMeetingByLocus(hashTreeEvent);
+          assert.deepEqual(result, mockReturnMeeting);
+          assert.calledOnceWithExactly(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+        });
+
+        it('should extract self data from locusStateElements and try correlationId when locusUrl not found', () => {
+          mockGetByKey('correlationId');
+          const result = webex.meetings.getCorrespondingMeetingByLocus(hashTreeEvent);
+          assert.deepEqual(result, mockReturnMeeting);
+          assert.callCount(webex.meetings.meetingCollection.getByKey, 2);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+          assert.calledWith(
+            webex.meetings.meetingCollection.getByKey,
+            'correlationId',
+            'correlationId1'
+          );
+          assert.calledOnceWithExactly(
+            MeetingsUtil.getCorrelationIdForDevice,
+            'deviceUrl',
+            hashTreeEvent.stateElementsMessage.locusStateElements[1].data
+          );
+        });
+
+        it('should extract self data from locusStateElements and try sipUri when locusUrl and correlationId not found', () => {
+          mockGetByKey('sipUri');
+          const result = webex.meetings.getCorrespondingMeetingByLocus(hashTreeEvent);
+          assert.deepEqual(result, mockReturnMeeting);
+          assert.callCount(webex.meetings.meetingCollection.getByKey, 3);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+          assert.calledWith(
+            webex.meetings.meetingCollection.getByKey,
+            'correlationId',
+            'correlationId1'
+          );
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'sipUri', 'address1');
+        });
+
+        it('should try all keys when no meeting found', () => {
+          mockGetByKey();
+          const result = webex.meetings.getCorrespondingMeetingByLocus(hashTreeEvent);
+          assert.isNull(result);
+          assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+          assert.calledWith(
+            webex.meetings.meetingCollection.getByKey,
+            'correlationId',
+            'correlationId1'
+          );
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'sipUri', 'address1');
+          // these remaining 2 will never work for hash trees, but just checking that
+          // the calls are made and we don't crash
+          assert.calledWith(
+            webex.meetings.meetingCollection.getByKey,
+            'conversationUrl',
+            undefined
+          );
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'meetingNumber', undefined);
+        });
+
+        it('should handle hash tree event with no self object', () => {
+          mockGetByKey();
+          hashTreeEvent.stateElementsMessage.locusStateElements = [
+            {
+              htMeta: {
+                elementId: {
+                  type: 'participant',
+                  id: 2,
+                  version: 1,
+                },
+                dataSetNames: ['dataset1'],
+              },
+              data: {
+                id: 'participant1',
+              },
+            },
+          ];
+
+          const result = webex.meetings.getCorrespondingMeetingByLocus(hashTreeEvent);
+          assert.isNull(result);
+          assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'correlationId', false);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'sipUri', undefined);
+          // these remaining 2 will never work for hash trees, but just checking that
+          // the calls are made and we don't crash
+          assert.calledWith(
+            webex.meetings.meetingCollection.getByKey,
+            'conversationUrl',
+            undefined
+          );
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'meetingNumber', undefined);
+        });
+
+        it('should handle hash tree event with empty locusStateElements', () => {
+          mockGetByKey();
+          hashTreeEvent.stateElementsMessage.locusStateElements = [];
+          const result = webex.meetings.getCorrespondingMeetingByLocus(hashTreeEvent);
+          assert.isNull(result);
+          assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'correlationId', false);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'sipUri', undefined);
+          // these remaining 2 will never work for hash trees, but just checking that
+          // the calls are made and we don't crash
+          assert.calledWith(
+            webex.meetings.meetingCollection.getByKey,
+            'conversationUrl',
+            undefined
+          );
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'meetingNumber', undefined);
+        });
+
+        it('should handle hash tree event with self object but no callbackAddress', () => {
+          mockGetByKey('meetingNumber');
+          delete hashTreeEvent.stateElementsMessage.locusStateElements[1].data.callbackInfo;
+          const result = webex.meetings.getCorrespondingMeetingByLocus(hashTreeEvent);
+          assert.deepEqual(result, mockReturnMeeting);
+          assert.callCount(webex.meetings.meetingCollection.getByKey, 5);
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+          assert.calledWith(
+            webex.meetings.meetingCollection.getByKey,
+            'correlationId',
+            'correlationId1'
+          );
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'sipUri', undefined);
+          // these remaining 2 will never work for hash trees, but just checking that
+          // the calls are made and we don't crash
+          assert.calledWith(
+            webex.meetings.meetingCollection.getByKey,
+            'conversationUrl',
+            undefined
+          );
+          assert.calledWith(webex.meetings.meetingCollection.getByKey, 'meetingNumber', undefined);
+        });
       });
     });
 

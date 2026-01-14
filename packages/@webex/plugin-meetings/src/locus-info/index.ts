@@ -34,11 +34,10 @@ import BEHAVIORAL_METRICS from '../metrics/constants';
 import HashTreeParser, {
   DataSet,
   HashTreeMessage,
-  HashTreeObject,
-  isSelf,
   LocusInfoUpdateType,
 } from '../hashTree/hashTreeParser';
-import {ObjectType, ObjectTypeToLocusKeyMap} from '../hashTree/types';
+import {HashTreeObject, ObjectType, ObjectTypeToLocusKeyMap} from '../hashTree/types';
+import {isSelf} from '../hashTree/utils';
 import {Links, LocusDTO, LocusFullState} from './types';
 
 export type LocusLLMEvent = {
