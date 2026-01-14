@@ -28,6 +28,10 @@ type WebSocketMessage = {
   data: WebSocketPayload;
 };
 
+type TaskWithStateMachine = ITask & {
+  sendStateMachineEvent?: (event: TaskEventPayload) => void;
+};
+
 /**
  * Actions to be performed after handling an event
  *
@@ -157,7 +161,7 @@ export default class TaskManager extends EventEmitter {
         CC_EVENTS.AGENT_CONTACT_RESERVED,
         currentTask.data as WebSocketPayload
       );
-      const taskWithStateMachine = currentTask as any;
+      const taskWithStateMachine = currentTask as TaskWithStateMachine;
       if (eventPayload && taskWithStateMachine?.sendStateMachineEvent) {
         taskWithStateMachine.sendStateMachineEvent(eventPayload);
       }
@@ -749,20 +753,6 @@ export default class TaskManager extends EventEmitter {
   }
 
   /**
-   * Handle events that only need task data updates
-   */
-  private handleTaskDataUpdate(context: EventContext): TaskEventActions {
-    const {task, payload} = context;
-
-    if (task) {
-      // These events don't drive state transitions; keep task snapshot in sync.
-      this.updateTaskData(task, payload);
-    }
-
-    return {task};
-  }
-
-  /**
    * Handle default/other events
    */
   private handleDefaultEvent(context: EventContext): TaskEventActions {
@@ -796,7 +786,7 @@ export default class TaskManager extends EventEmitter {
 
     // Send event to state machine - this will trigger all TASK_EVENTS emissions
     // including TASK_INCOMING which is now handled via the state machine callbacks
-    const taskWithStateMachine = task as any;
+    const taskWithStateMachine = task as TaskWithStateMachine;
     if (stateMachineEvent && taskWithStateMachine?.sendStateMachineEvent) {
       taskWithStateMachine.sendStateMachineEvent(stateMachineEvent);
     }

@@ -191,15 +191,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.HOLD_INITIATING,
             actions: ['setHoldInitiated'],
           },
-          // Backend may send hold success without a preceding HOLD_INITIATED (e.g. remote hold) for consult cases
-          // TODO:  check if we need this state as we already have consulting and intermediate state
-          [TaskEvent.HOLD_SUCCESS]: {
-            target: TaskState.HELD,
-            actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
-          },
-          [TaskEvent.HOLD_FAILED]: {
-            actions: ['updateTaskData'],
-          },
           // Click of the consult button
           [TaskEvent.CONSULT]: {
             target: TaskState.CONSULT_INITIATING,
