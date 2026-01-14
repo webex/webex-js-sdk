@@ -38,9 +38,6 @@ const taskStateMachineSetup = setup<
  * @returns State machine configuration object
  */
 export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
-  // All guard helper functions are imported from guards.ts
-  // This keeps the state machine config focused on structure, not logic
-
   /**
    * Event mapping reference (CC WebSocket -> TaskEvent)
    *

@@ -2,15 +2,8 @@
 import {Interaction, ITask, TaskData, MEDIA_CHANNEL} from './types';
 import {OUTDIAL_DIRECTION, OUTDIAL_MEDIA_TYPE, OUTBOUND_TYPE} from '../../constants';
 import {LoginOption} from '../../types';
-import {
-  MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE,
-  PARTICIPANT_TYPE,
-  MEDIA_TYPE_MAIN_CALL,
-} from './state-machine/constants';
+import {PARTICIPANT_TYPE, MEDIA_TYPE_MAIN_CALL} from './state-machine/constants';
 import {TaskContext} from './state-machine/types';
-
-// Re-export for backward compatibility
-export {MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE};
 
 /**
  * Checks if the customer is still in the call (not left)
