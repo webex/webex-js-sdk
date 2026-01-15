@@ -32,3 +32,8 @@ export interface HtMeta {
   };
   dataSetNames: string[];
 }
+
+export interface HashTreeObject {
+  htMeta: HtMeta;
+  data: Record<string, any>;
+}
