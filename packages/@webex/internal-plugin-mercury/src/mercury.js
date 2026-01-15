@@ -137,6 +137,8 @@ const Mercury = WebexPlugin.extend({
     const oldSocket = this.sockets.get(sessionId);
 
     try {
+      // Idempotent: if we already have a switchover backoff call for this session,
+      // a switchover is in progress – do nothing.
       if (this._shutdownSwitchoverBackoffCalls.get(sessionId)) {
         this.logger.info(
           `${this.namespace}: [shutdown] switchover already in progress for ${sessionId}`
@@ -144,6 +146,7 @@ const Mercury = WebexPlugin.extend({
 
         return;
       }
+
       this._shutdownSwitchoverId = `${Date.now()}`;
       this.logger.info(
         `${this.namespace}: [shutdown] switchover start, id=${this._shutdownSwitchoverId} for ${sessionId}`
@@ -552,21 +555,21 @@ const Mercury = WebexPlugin.extend({
         // Normal connection error handling (existing complex logic)
         this.lastError = reason; // remember the last error
 
-        const backoffCall = this.backoffCalls.get(sessionId);
+        const backoffCallNormal = this.backoffCalls.get(sessionId);
         // Suppress connection errors that appear to be network related. This
         // may end up suppressing metrics during outages, but we might not care
         // (especially since many of our outages happen in a way that client
         // metrics can't be trusted).
-        if (reason.code !== 1006 && backoffCall && backoffCall?.getNumRetries() > 0) {
+        if (reason.code !== 1006 && backoffCallNormal && backoffCallNormal?.getNumRetries() > 0) {
           this._emit(sessionId, 'connection_failed', reason, {
             sessionId,
-            retries: backoffCall?.getNumRetries(),
+            retries: backoffCallNormal?.getNumRetries(),
           });
         }
         this.logger.info(
           `${this.namespace}: connection attempt failed for ${sessionId}`,
           reason,
-          backoffCall?.getNumRetries() === 0 ? reason.stack : ''
+          backoffCallNormal?.getNumRetries() === 0 ? reason.stack : ''
         );
         // UnknownResponse is produced by IE for any 4XXX; treated it like a bad
         // web socket url and let WDM handle the token checking
@@ -597,7 +600,7 @@ const Mercury = WebexPlugin.extend({
           this.logger.warn(
             `${this.namespace}: received unrecoverable response from mercury for ${sessionId}`
           );
-          backoffCall?.abort();
+          backoffCallNormal?.abort();
 
           return callback(reason);
         }
