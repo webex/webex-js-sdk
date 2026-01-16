@@ -778,15 +778,23 @@ describe('plugin-mercury', () => {
           let reason;
 
           mercury.backoffCalls.clear();
-          mercury._attemptConnection('ws://example.com', 'mercury-default-session',(_reason) => {
-            reason = _reason;
-          });
+
+          const promise = mercury._attemptConnection(
+            'ws://example.com',
+            'mercury-default-session',
+            (_reason) => {
+              reason = _reason;
+            }
+          );
 
           return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
             assert.equal(
               reason.message,
               `Mercury: prevent socket open when backoffCall no longer defined for ${mercury.defaultSessionId}`
             );
+
+            // Ensure the promise was actually rejected (short-circuited)
+            return assert.isRejected(promise);
           });
         });
 
@@ -1059,14 +1067,12 @@ describe('plugin-mercury', () => {
         });
 
         it('should set switchover flags when called', () => {
-          const promise = mercury._handleImminentShutdown(sessionId);
+          mercury._handleImminentShutdown(sessionId);
 
-          return promise.then(() => {
-            // Now we expect an entry in the switchover backoff map, not a boolean flag
-            const switchoverCall = mercury._shutdownSwitchoverBackoffCalls.get(sessionId);
-            assert.isOk(switchoverCall);
-            assert.isDefined(mercury._shutdownSwitchoverId);
-          });
+          // Now we expect an entry in the switchover backoff map, not a boolean flag
+          const switchoverBackoffCall = mercury._shutdownSwitchoverBackoffCalls.get(sessionId);
+          assert.isOk(switchoverBackoffCall);
+          assert.isDefined(mercury._shutdownSwitchoverId);
         });
 
         it('should call _connectWithBackoff with correct parameters', (done) => {
@@ -1146,8 +1152,8 @@ describe('plugin-mercury', () => {
 
           mercury._handleImminentShutdown(sessionId);
 
-          const switchoverCall = mercury._shutdownSwitchoverBackoffCalls.get(sessionId);
-          assert.isOk(switchoverCall);
+          const switchoverBackoffCall = mercury._shutdownSwitchoverBackoffCalls.get(sessionId);
+          assert.isOk(switchoverBackoffCall);
         });
 
         it('should emit success event when switchover completes', async () => {
