@@ -404,24 +404,15 @@ describe('webex-core', () => {
         assert.isTrue(catalog.isReady);
       });
 
-      it('should call services#initServiceCatalogs() on webex loaded', () => {
+      it('should call services#initServiceCatalogs() on webex ready', async () => {
+        services._loadCatalogFromCache = sinon.stub().resolves(false);
         services.initServiceCatalogs = sinon.stub().resolves();
         services.initialize();
-        webex.trigger('loaded');
+        webex.trigger('ready');
+        // Wait for the async 'ready' handler to complete
+        await new Promise((resolve) => setTimeout(resolve, 50));
         assert.called(services.initServiceCatalogs);
-      });
-
-      it('should set services.ready to true after initialization completes', async () => {
-        // services.ready starts as false
-        const newWebex = new WebexCore({credentials: {supertoken: webexUser.token}});
-        const newServices = newWebex.internal.services;
-
-        // Wait for initialization to complete
-        await new Promise((resolve) => {
-          newServices.on('services:initialized', resolve);
-        });
-
-        assert.isTrue(newServices.ready);
+        assert.isTrue(catalog.isReady);
       });
 
       it('should collect different catalogs based on OrgId region', () =>
@@ -709,7 +700,11 @@ describe('webex-core', () => {
 
       it('updates query.email to be emailhash-ed using SHA256', (done) => {
         catalog.updateServiceUrls = sinon.stub().returns({}); // returns `this`
-        services._fetchNewServiceHostmap = sinon.stub().resolves();
+        services._fetchNewServiceHostmap = sinon.stub().resolves({
+          serviceLinks: {},
+          hostCatalog: {},
+          format: 'hostmap',
+        });
 
         services
           .updateServices({
@@ -839,9 +834,12 @@ describe('webex-core', () => {
 
       const getActivationRequest = (requestStub, useUserOnboarding = false) => {
         const expectedService = useUserOnboarding ? 'user-onboarding' : 'license';
-        const expectedResource = useUserOnboarding ? 'api/v1/users/activations' : 'users/activations';
+        const expectedResource = useUserOnboarding
+          ? 'api/v1/users/activations'
+          : 'users/activations';
         const requests = requestStub.args.filter(
-          ([request]) => request.service === expectedService && request.resource === expectedResource
+          ([request]) =>
+            request.service === expectedService && request.resource === expectedResource
         );
 
         assert.strictEqual(requests.length, 1);
@@ -920,7 +918,7 @@ describe('webex-core', () => {
             assert.equal(Object.keys(unauthServices.list(false, 'postauth')).length, 0);
           }));
 
-      it.skip('validates new user with activationOptions suppressEmail true', () =>
+      it('validates new user with activationOptions suppressEmail true', () =>
         unauthServices
           .validateUser({
             email: `Collabctg+webex-js-sdk-${uuid.v4()}@gmail.com`,
@@ -1266,13 +1264,19 @@ describe('webex-core', () => {
       );
 
       it('resolves to an authed u2c hostmap when no params specified', () => {
-        assert.typeOf(fullRemoteHM, 'array');
-        assert.isAbove(fullRemoteHM.length, 0);
+        assert.typeOf(fullRemoteHM, 'object');
+        assert.property(fullRemoteHM, 'serviceLinks');
+        assert.property(fullRemoteHM, 'hostCatalog');
+        assert.equal(fullRemoteHM.format, 'hostmap');
+        assert.isAbove(Object.keys(fullRemoteHM.serviceLinks).length, 0);
       });
 
       it('resolves to a limited u2c hostmap when params specified', () => {
-        assert.typeOf(limitedRemoteHM, 'array');
-        assert.isAbove(limitedRemoteHM.length, 0);
+        assert.typeOf(limitedRemoteHM, 'object');
+        assert.property(limitedRemoteHM, 'serviceLinks');
+        assert.property(limitedRemoteHM, 'hostCatalog');
+        assert.equal(limitedRemoteHM.format, 'hostmap');
+        assert.isAbove(Object.keys(limitedRemoteHM.serviceLinks).length, 0);
       });
 
       it('rejects if the params provided are invalid', () =>

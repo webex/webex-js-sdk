@@ -223,6 +223,10 @@ async function initCalling(e) {
       logger: {
         level: 'debug', // set the desired log level
       },
+      calling: {
+        // Enable U2C catalog caching for calling sample app
+        cacheU2C: true,
+      },
       meetings: {
         reconnection: {
           enabled: true,
@@ -387,6 +391,7 @@ const callNotifyEvent = new CustomEvent('line:incoming_call', {
 callListener.addEventListener('line:incoming_call', (myEvent) => {
   console.log('Received incoming call');
   answerElm.disabled = false;
+  endElm.disabled = false;
   const callerDisplay = myEvent.detail.callObject.getCallerInfo();
 
   incomingDetailsElm.innerText = `Call from ${callerDisplay.name}, Ph: ${callerDisplay.num}`;
@@ -463,6 +468,7 @@ function endCall() {
   outboundEndElm.disabled = true;
   makeCallBtn.disabled = false;
   endElm.disabled = true;
+  answerElm.disabled = true;
   muteElm.value = 'Mute';
   holdResumeElm.value = 'Hold'
   imageElm.removeChild(img);

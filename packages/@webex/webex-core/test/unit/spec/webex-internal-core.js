@@ -82,8 +82,6 @@ describe('Webex', () => {
         assert.isFalse(webex.internal.test.ready);
         assert.isFalse(webex.internal.ready);
         assert.isFalse(webex.ready);
-        // Set services.ready to true since it now blocks webex.ready
-        webex.internal.services.ready = true;
         webex.internal.test.ready = true;
         assert.isTrue(webex.internal.ready);
         assert.isTrue(webex.ready);
