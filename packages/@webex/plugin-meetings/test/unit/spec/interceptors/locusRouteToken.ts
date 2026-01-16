@@ -54,6 +54,23 @@ describe('LocusRouteTokenInterceptor', () => {
     assert.equal(interceptor.getToken(TEST_LOCUS_ID), 'test-token');
   });
 
+  it('onResponse should store route token when body exists', async () => {
+    const response = {
+      headers: {
+        [X_CISCO_PART_ROUTE_TOKEN]: 'test-token',
+      },
+      body: {
+        locus: {
+          url: `https://locus-test.webex.com/locus/api/v1/loci/${TEST_LOCUS_ID}`,
+        },
+      },
+    };
+
+    const result = await interceptor.onResponse({},response);
+    assert.equal(result, response);
+    assert.equal(interceptor.getToken(TEST_LOCUS_ID), 'test-token');
+  });
+
   it('get route token case insensitively ', async () => {
     const response = {
       headers: {

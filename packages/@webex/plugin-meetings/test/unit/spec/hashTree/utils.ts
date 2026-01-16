@@ -1,4 +1,5 @@
-import {deleteNestedObjectsWithHtMeta} from '../../../../src/hashTree/utils';
+import {HashTreeObject, ObjectType} from '../../../../src/hashTree/types';
+import {deleteNestedObjectsWithHtMeta, isSelf} from '../../../../src/hashTree/utils';
 
 import {assert} from '@webex/test-helper-chai';
 
@@ -98,6 +99,42 @@ describe('Hash Tree Utils', () => {
         },
         participants: [],
       });
+    });
+  });
+
+  describe('#isSelf', () => {
+    ['self', 'SELF', 'Self'].forEach((type) => {
+      it(`should return true for object with type="${type}"`, () => {
+        const selfObject = {
+          htMeta: {
+            elementId: {
+              type,
+              id: 1,
+              version: 1,
+            },
+            dataSetNames: [],
+          },
+          data: {},
+        };
+
+        assert.isTrue(isSelf(selfObject as HashTreeObject));
+      });
+    });
+
+    it('should return false for non-self object', () => {
+      const participantObject = {
+        htMeta: {
+          elementId: {
+            type: ObjectType.participant,
+            id: 2,
+            version: 1,
+          },
+          dataSetNames: [],
+        },
+        data: {},
+      };
+
+      assert.isFalse(isSelf(participantObject));
     });
   });
 });

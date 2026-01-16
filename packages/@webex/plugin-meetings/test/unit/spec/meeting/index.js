@@ -133,11 +133,15 @@ describe('plugin-meetings', () => {
     debug: () => {},
   };
 
+  let fakeClock;
+
   beforeEach(() => {
     sinon.stub(Metrics, 'sendBehavioralMetric');
+    fakeClock = sinon.useFakeTimers();
   });
   afterEach(() => {
     sinon.restore();
+    fakeClock.restore();
   });
 
   before(() => {
@@ -2159,6 +2163,75 @@ describe('plugin-meetings', () => {
               locusLLMEventListener({data: eventData});
 
               assert.calledOnceWithExactly(locusInfoParseStub, meeting, eventData);
+            });
+
+            it('UpdateLLMConnection sends a metric if not connected after timeout', async () => {
+              sinon.stub(meeting, 'isJoined').returns(true);
+              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
+              sinon.stub(meeting.webex.internal.llm, 'hasEverConnected').value(true);
+              sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves({});
+
+              // Restore the real updateLLMConnection
+              meeting.updateLLMConnection.restore();
+
+              // Call updateLLMConnection to start the timer
+              await meeting.updateLLMConnection();
+
+              // Fast forward time by 3 minutes
+              fakeClock.tick(3 * 60 * 1000);
+
+              assert.calledWith(
+                Metrics.sendBehavioralMetric,
+                BEHAVIORAL_METRICS.LLM_HEALTHCHECK_FAILURE,
+                {
+                  correlation_id: meeting.correlationId,
+                  hasEverConnected: true,
+                }
+              );
+            });
+
+            it('clears the LLM health check timer when disconnecting LLM', async () => {
+              const isJoinedStub = sinon.stub(meeting, 'isJoined');
+              sinon.stub(meeting.webex.internal.llm, 'isConnected');
+              sinon.stub(meeting.webex.internal.llm, 'disconnectLLM').resolves();
+              sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves({});
+              sinon
+                .stub(meeting.webex.internal.llm, 'getLocusUrl')
+                .returns('https://locus1.example.com');
+              sinon
+                .stub(meeting.webex.internal.llm, 'getDatachannelUrl')
+                .returns('https://datachannel1.example.com');
+
+              // Restore the real updateLLMConnection
+              meeting.updateLLMConnection.restore();
+
+              // First, connect LLM and start the timer
+              isJoinedStub.returns(true);
+              meeting.webex.internal.llm.isConnected.returns(false);
+              await meeting.updateLLMConnection();
+
+              // Verify timer was started
+              assert.exists(meeting.llmHealthCheckTimer);
+
+              // Now simulate that we're no longer joined
+              isJoinedStub.returns(false);
+              meeting.webex.internal.llm.isConnected.returns(true);
+
+              await meeting.updateLLMConnection();
+
+              assert.calledOnce(meeting.webex.internal.llm.disconnectLLM);
+
+              // Verify the timer was cleared (should be undefined)
+              assert.isUndefined(meeting.llmHealthCheckTimer);
+
+              // Fast forward time to ensure no metric is sent
+              Metrics.sendBehavioralMetric.resetHistory();
+              fakeClock.tick(3 * 60 * 1000);
+
+              assert.neverCalledWith(
+                Metrics.sendBehavioralMetric,
+                BEHAVIORAL_METRICS.LLM_HEALTHCHECK_FAILURE
+              );
             });
           });
 
