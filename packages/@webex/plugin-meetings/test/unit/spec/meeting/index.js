@@ -1363,6 +1363,25 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#update hesiod llm id', () => {
+        beforeEach(() => {
+          webex.internal.voicea.onCaptionServiceIdUpdate = sinon.stub();
+        });
+        afterEach(() => {
+          // Restore the original methods after each test
+          sinon.restore();
+        });
+        it('should call voicea.onCaptionServiceIdUpdate when joined', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED,
+            {hesiodLlmId: '123a-456b-789c'}
+          );
+          assert.calledWith(webex.internal.voicea.onCaptionServiceIdUpdate, '123a-456b-789c');
+        });
+      });
+
       describe('#update spoken language', () => {
         beforeEach(() => {
           webex.internal.voicea.onSpokenLanguageUpdate = sinon.stub();

@@ -2851,6 +2851,13 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     });
 
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED, ({hesiodLlmId}) => {
+      if (hesiodLlmId) {
+        // @ts-ignore
+        this.webex.internal.voicea.onCaptionServiceIdUpdate(hesiodLlmId);
+      }
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_BREAKOUT_UPDATED, ({breakout}) => {
       this.breakouts.updateBreakout(breakout);
       Trigger.trigger(
