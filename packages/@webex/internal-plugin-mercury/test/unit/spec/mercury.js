@@ -1059,12 +1059,14 @@ describe('plugin-mercury', () => {
         });
 
         it('should set switchover flags when called', () => {
-          mercury._handleImminentShutdown(sessionId);
+          const promise = mercury._handleImminentShutdown(sessionId);
 
-          // Now we expect an entry in the switchover backoff map, not a boolean flag
-          const switchoverCall = mercury._shutdownSwitchoverBackoffCalls.get(sessionId);
-          assert.isOk(switchoverCall);
-          assert.isDefined(mercury._shutdownSwitchoverId);
+          return promise.then(() => {
+            // Now we expect an entry in the switchover backoff map, not a boolean flag
+            const switchoverCall = mercury._shutdownSwitchoverBackoffCalls.get(sessionId);
+            assert.isOk(switchoverCall);
+            assert.isDefined(mercury._shutdownSwitchoverId);
+          });
         });
 
         it('should call _connectWithBackoff with correct parameters', (done) => {
@@ -1347,7 +1349,7 @@ describe('plugin-mercury', () => {
         it('should set and clear state flags appropriately', () => {
           sinon.stub(mercury, '_attemptConnection').callsFake((url, sid, cb) => cb());
 
-          mercury._shutdownSwitchoverInProgress = true;
+          mercury._shutdownSwitchoverBackoffCalls.set(sessionId, {placeholder: true});
 
           const promise = mercury._connectWithBackoff(undefined, sessionId, {
             isShutdownSwitchover: true,
@@ -1355,7 +1357,7 @@ describe('plugin-mercury', () => {
           });
 
           return promise.then(() => {
-            assert.isTrue(mercury._shutdownSwitchoverInProgress);
+            assert.isUndefined(mercury._shutdownSwitchoverBackoffCalls.get(sessionId));
             mercury._attemptConnection.restore();
           });
         });
@@ -1366,10 +1368,11 @@ describe('plugin-mercury', () => {
         const sessionId = 'mercury-default-session';
 
         beforeEach(() => {
-          mercury.socket = {
+          mercury.sockets.clear();
+          mercury.sockets.set(sessionId, {
             close: sinon.stub().returns(Promise.resolve()),
             removeAllListeners: sinon.stub(),
-          };
+          });
           abortStub = sinon.stub();
           mercury._shutdownSwitchoverBackoffCalls.set(sessionId, {abort: abortStub});
         });
@@ -1385,7 +1388,7 @@ describe('plugin-mercury', () => {
 
           await mercury.disconnect(undefined, sessionId);
 
-          assert.calledOnce(mercury.socket.close);
+          assert.calledOnce(mercury.sockets.get(sessionId).close);
         });
       });
     });
