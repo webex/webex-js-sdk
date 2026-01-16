@@ -179,8 +179,10 @@ export const isSdpOfferCreationError = (rawError: any) => {
   return false;
 };
 
-export const isWebrtcApiNotAvailableError = (rawError: any) => {
-  if (rawError.name === ERROR_DESCRIPTIONS.WEBRTC_API_NOT_AVAILABLE) {
+export const isWebrtcApiNotAvailableError = (
+  rawError: {code: number; message: string; name: string} | unknown
+) => {
+  if ((rawError as {name: string}).name === ERROR_DESCRIPTIONS.WEBRTC_API_NOT_AVAILABLE) {
     return true;
   }
 
