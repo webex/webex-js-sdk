@@ -198,7 +198,7 @@ export default class Reachability extends EventsScope {
       throw new Error('enableReachabilityChecks is disabled in config');
     }
 
-    if (WebCapabilities.supportsRTCPeerConnection() === CapabilityState.NOT_CAPABLE) {
+    if (WebCapabilities.supportsRTCPeerConnection() !== CapabilityState.CAPABLE) {
       LoggerProxy.logger.warn(
         'Reachability:index#gatherReachability --> WebRTC API is not available, skipping reachability checks'
       );

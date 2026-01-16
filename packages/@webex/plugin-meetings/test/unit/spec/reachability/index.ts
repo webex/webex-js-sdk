@@ -549,25 +549,24 @@ describe('gatherReachability', () => {
     await assert.isRejected(reachability.gatherReachability('test'), 'enableReachabilityChecks is disabled in config');
   });
 
-  it('returns empty object if WebRTC API is not available', async () => {
-    supportsRTCPeerConnectionStub.returns(CapabilityState.NOT_CAPABLE);
+  [CapabilityState.NOT_CAPABLE, CapabilityState.UNKNOWN].forEach((capabilityState) =>
+    it(`returns empty object if WebRTC API is not available (capabilityState=${capabilityState}`, async () => {
+      supportsRTCPeerConnectionStub.returns(capabilityState);
 
-    const reachability = new Reachability(webex);
+      const reachability = new Reachability(webex);
 
-    const result = await reachability.gatherReachability('test');
+      const result = await reachability.gatherReachability('test');
 
-    assert.deepEqual(result, {});
+      assert.deepEqual(result, {});
 
-    // Verify that no new reachability result was stored - old results should remain unchanged
-    // This check is mainly to ensure that we don't put any "unreachable" results into storage
-    const storedResults = await webex.boundedStorage.get(
-      'Reachability',
-      'reachability.result'
-    );
-    assert.equal(storedResults, JSON.stringify({old: 'results'}));
+      // Verify that no new reachability result was stored - old results should remain unchanged
+      // This check is mainly to ensure that we don't put any "unreachable" results into storage
+      const storedResults = await webex.boundedStorage.get('Reachability', 'reachability.result');
+      assert.equal(storedResults, JSON.stringify({old: 'results'}));
 
-    assert.equal(await reachability.isWebexMediaBackendUnreachable(), false);
-  });
+      assert.equal(await reachability.isWebexMediaBackendUnreachable(), false);
+    })
+  );
 
   [
     // ========================================================================

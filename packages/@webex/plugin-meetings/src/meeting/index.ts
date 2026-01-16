@@ -5378,7 +5378,7 @@ export default class Meeting extends StatelessWebexPlugin {
        is a convenience method that does both join() and addMedia(), we want to fail fast here
        in case WebRTC is not available at all.
      */
-    if (WebCapabilities.supportsRTCPeerConnection() !== CapabilityState.CAPABLE) {
+    if (WebCapabilities.supportsRTCPeerConnection() === CapabilityState.NOT_CAPABLE) {
       // throw the same error that would be thrown by addMediaInternal()
       throw new Errors.WebrtcApiNotAvailableError(
         'RTCPeerConnection API is not available in this environment'
