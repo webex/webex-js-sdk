@@ -235,7 +235,7 @@ jobs:
           VERSION="${{ steps.version-info.outputs.version }}"
           VERSION_NUMBER="${{ steps.version-info.outputs.version_number }}"
           CHANGELOG_URL="https://web-sdk.webex.com/changelog/?stable_version=${VERSION_NUMBER}"
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${VERSION}"
+          RELEASE_URL="https://github.com/webex/webex-js-sdk/releases/tag/${VERSION}"
 
           MESSAGE="✅ Current stable SDK version: ${VERSION}\n\nRelease: ${RELEASE_URL}\nChangelog: ${CHANGELOG_URL}\n\nThis changelog lists all commits included in this release."
 
