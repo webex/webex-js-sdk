@@ -1,5 +1,5 @@
-name: PR Changelog Comment Bot
-run-name: ${{ github.actor }} triggered PR comment bot
+name: PR Release Comment Bot
+run-name: ${{ github.actor }} triggered release comment bot
 
 on:
   workflow_dispatch:
@@ -21,18 +21,18 @@ on:
 
 jobs:
   comment-on-prs:
-    name: Comment on Merged PRs
+    name: Comment on Released PRs
     runs-on: ubuntu-latest
     # Only run if the deploy workflow completed successfully OR if manually triggered
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     
     steps:
-      - name: Checkout Project
+      - name: Checkout Repository
         uses: actions/checkout@v3
         with:
           fetch-depth: 0  # Fetch all history to find commits
       
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v3.7.0
         with:
           node-version-file: '.nvmrc'
@@ -41,11 +41,11 @@ jobs:
       - name: Install Dependencies
         run: yarn install --frozen-lockfile
       
-      - name: Build Tools
+      - name: Build Tooling
         if: ${{ github.event_name != 'workflow_dispatch' }}
         run: yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
       
-      - name: Get Version Information
+      - name: Resolve Release Version
         id: version-info
         run: |
           # For manual testing, use the input version
@@ -64,7 +64,7 @@ jobs:
           
           echo "📦 Current version: v${VERSION}"
       
-      - name: Get Merged PR
+      - name: Find Merged PR From Release Commit
         id: get-prs
         uses: actions/github-script@v7
         with:
@@ -129,14 +129,16 @@ jobs:
               packages: packages
             };
       
-      - name: Post Comment on Merged PR
+      - name: Post Release Comment on PR
         uses: actions/github-script@v7
         with:
           script: |
             const version = '${{ steps.version-info.outputs.version }}';
             const versionNumber = '${{ steps.version-info.outputs.version_number }}';
-            const prNumbers = JSON.parse('${{ steps.get-prs.outputs.pr_numbers }}');
-            const packages = JSON.parse('${{ steps.get-prs.outputs.packages }}');
+            const prNumbersRaw = '${{ steps.get-prs.outputs.pr_numbers }}';
+            const packagesRaw = '${{ steps.get-prs.outputs.packages }}';
+            const prNumbers = prNumbersRaw ? JSON.parse(prNumbersRaw) : [];
+            const packages = packagesRaw ? JSON.parse(packagesRaw) : [];
             
             console.log(`Posting comment to PR #${prNumbers[0]}`);
             
@@ -223,8 +225,27 @@ jobs:
             }
             
             console.log('✨ Comment posted successfully!');
+
+      - name: Post Webex Space Message
+        if: ${{ steps.get-prs.outputs.pr_numbers != '[]' }}
+        env:
+          WEBEX_BOT_TOKEN: ${{ secrets.WEBEX_BOT_TOKEN }}
+          WEBEX_ROOM_ID: ${{ secrets.WEBEX_ROOM_ID }}
+        run: |
+          VERSION="${{ steps.version-info.outputs.version }}"
+          VERSION_NUMBER="${{ steps.version-info.outputs.version_number }}"
+          CHANGELOG_URL="https://webex.github.io/webex-js-sdk/changelog/?stable_version=${VERSION_NUMBER}"
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${VERSION}"
+
+          MESSAGE="🎉 SDK release ${VERSION} is live!\n\nRelease: ${RELEASE_URL}\nChangelog: ${CHANGELOG_URL}\n\nThis version contains the changes from the latest merged PR."
+
+          curl -sSf \
+            -H "Authorization: Bearer ${WEBEX_BOT_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"roomId\":\"${WEBEX_ROOM_ID}\",\"markdown\":\"${MESSAGE}\"}" \
+            https://webexapis.com/v1/messages
       
-      - name: Summary
+      - name: Release Summary
         run: |
           echo "### 📊 Bot Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
