@@ -234,10 +234,10 @@ jobs:
         run: |
           VERSION="${{ steps.version-info.outputs.version }}"
           VERSION_NUMBER="${{ steps.version-info.outputs.version_number }}"
-          CHANGELOG_URL="https://webex.github.io/webex-js-sdk/changelog/?stable_version=${VERSION_NUMBER}"
+          CHANGELOG_URL="https://web-sdk.webex.com/changelog/?stable_version=${VERSION_NUMBER}"
           RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${VERSION}"
 
-          MESSAGE="🎉 SDK release ${VERSION} is live!\n\nRelease: ${RELEASE_URL}\nChangelog: ${CHANGELOG_URL}\n\nThis version contains the changes from the latest merged PR."
+          MESSAGE="✅ Current stable SDK version: ${VERSION}\n\nRelease: ${RELEASE_URL}\nChangelog: ${CHANGELOG_URL}\n\nThis changelog lists all commits included in this release."
 
           curl -sSf \
             -H "Authorization: Bearer ${WEBEX_BOT_TOKEN}" \
