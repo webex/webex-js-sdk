@@ -148,7 +148,7 @@ jobs:
             }
             
             // Build the changelog URL - only use stable_version to show all commits in that release
-            const changelogUrl = `https://webex.github.io/webex-js-sdk/changelog/?stable_version=${versionNumber}`;
+            const changelogUrl = `https://web-sdk.webex.com/changelog/?stable_version=${versionNumber}`;
             
             // Build the package list markdown
             const packageList = packages.slice(0, 5).map(p => `\`${p}\``).join(', ');
@@ -236,7 +236,7 @@ jobs:
           VERSION_NUMBER="${{ steps.version-info.outputs.version_number }}"
           CHANGELOG_URL="https://web-sdk.webex.com/changelog/?stable_version=${VERSION_NUMBER}"
 
-          MESSAGE="✅ Current stable SDK version: ${VERSION}\n\nChangelog: ${CHANGELOG_URL}\n\nThis changelog lists all commits included in this release."
+          MESSAGE="Current stable SDK version: ${VERSION}\n\nChangelog: ${CHANGELOG_URL}\n\nThis changelog lists all commits included in this release."
 
           curl -sSf \
             -H "Authorization: Bearer ${WEBEX_BOT_TOKEN}" \
