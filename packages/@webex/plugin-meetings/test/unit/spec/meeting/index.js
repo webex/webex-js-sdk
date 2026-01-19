@@ -46,6 +46,7 @@ import {
   MediaType,
 } from '@webex/internal-media-core';
 import {LocalStreamEventNames} from '@webex/media-helpers';
+import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 import EventsScope from '@webex/plugin-meetings/src/common/events/events-scope';
 import Meetings, {CONSTANTS} from '@webex/plugin-meetings';
 import Meeting from '@webex/plugin-meetings/src/meeting';
@@ -734,8 +735,11 @@ describe('plugin-meetings', () => {
         let handleTurnDiscoveryHttpResponseStub;
         let abortTurnDiscoveryStub;
         let addMediaInternalStub;
+        let supportsRTCPeerConnectionStub;
 
         beforeEach(() => {
+          supportsRTCPeerConnectionStub = sinon.stub(WebCapabilities, 'supportsRTCPeerConnection').returns(CapabilityState.CAPABLE);
+
           meeting.join = sinon.stub().callsFake((joinOptions) => {
             meeting.isMultistream = joinOptions.enableMultistream;
             return Promise.resolve(fakeJoinResult);
@@ -1244,44 +1248,49 @@ describe('plugin-meetings', () => {
           await assert.isRejected(result);
         });
 
-        it('should not attempt a retry if we fail to create the offer on first atttempt', async () => {
-          const addMediaError = new Error('fake addMedia error');
-          addMediaError.name = 'SdpOfferCreationError';
+        [
+          {errorName: 'SdpOfferCreationError', description: 'if we fail to create the offer on first attempt'}, 
+          {errorName: 'WebrtcApiNotAvailableError', description: 'if RTCPeerConnection is not available'},
+        ].forEach(({errorName, description}) => {
+          it(`should not attempt a retry ${description}`, async () => {
+            const addMediaError = new Error('fake addMedia error');
+            addMediaError.name = errorName;
 
-          meeting.addMediaInternal.rejects(addMediaError);
-          sinon.stub(meeting, 'leave').resolves();
+            meeting.addMediaInternal.rejects(addMediaError);
+            sinon.stub(meeting, 'leave').resolves();
 
-          await assert.isRejected(
-            meeting.joinWithMedia({
-              joinOptions,
-              mediaOptions,
-            }),
-            addMediaError
-          );
+            await assert.isRejected(
+              meeting.joinWithMedia({
+                joinOptions,
+                mediaOptions,
+              }),
+              addMediaError
+            );
 
-          // check that only 1 attempt was done
-          assert.calledOnce(meeting.join);
-          assert.calledOnce(meeting.addMediaInternal);
-          assert.calledOnce(Metrics.sendBehavioralMetric);
-          assert.calledWith(
-            Metrics.sendBehavioralMetric.firstCall,
-            BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
-            {
-              correlation_id: meeting.correlationId,
-              locus_id: meeting.locusUrl.split('/').pop(),
-              reason: addMediaError.message,
-              stack: addMediaError.stack,
-              leaveErrorReason: undefined,
-              isRetry: false,
-            },
-            {
-              type: addMediaError.name,
-            }
-          );
-          assert.calledOnceWithExactly(meeting.leave, {
-            resourceId: undefined,
-            reason: 'joinWithMedia failure',
-          });
+            // check that only 1 attempt was done
+            assert.calledOnce(meeting.join);
+            assert.calledOnce(meeting.addMediaInternal);
+            assert.calledOnce(Metrics.sendBehavioralMetric);
+            assert.calledWith(
+              Metrics.sendBehavioralMetric.firstCall,
+              BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
+              {
+                correlation_id: meeting.correlationId,
+                locus_id: meeting.locusUrl.split('/').pop(),
+                reason: addMediaError.message,
+                stack: addMediaError.stack,
+                leaveErrorReason: undefined,
+                isRetry: false,
+              },
+              {
+                type: addMediaError.name,
+              }
+            );
+            assert.calledOnceWithExactly(meeting.leave, {
+              resourceId: undefined,
+              reason: 'joinWithMedia failure',
+            });
+          })
         });
 
         it('should ignore sendVideo/receiveVideo when videoEnabled is false', async () => {
@@ -1349,6 +1358,21 @@ describe('plugin-meetings', () => {
             })
           );
         });
+
+        it('should throw immediately if RTCPeerConnection is not available', async () => {
+          supportsRTCPeerConnectionStub.returns(CapabilityState.NOT_CAPABLE);
+
+          await assert.isRejected(
+            meeting.joinWithMedia({
+              joinOptions,
+              mediaOptions,
+            }),
+            Errors.WebrtcApiNotAvailableError
+          );
+
+          assert.notCalled(meeting.join);
+          assert.notCalled(meeting.addMediaInternal);
+        });
       });
       describe('#isTranscriptionSupported', () => {
         it('should return false if the feature is not supported for the meeting', () => {
@@ -1360,6 +1384,25 @@ describe('plugin-meetings', () => {
           meeting.locusInfo.controls = {transcribe: {caption: true}};
 
           assert.equal(meeting.isTranscriptionSupported(), true);
+        });
+      });
+
+      describe('#update hesiod llm id', () => {
+        beforeEach(() => {
+          webex.internal.voicea.onCaptionServiceIdUpdate = sinon.stub();
+        });
+        afterEach(() => {
+          // Restore the original methods after each test
+          sinon.restore();
+        });
+        it('should call voicea.onCaptionServiceIdUpdate when joined', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED,
+            {hesiodLlmId: '123a-456b-789c'}
+          );
+          assert.calledWith(webex.internal.voicea.onCaptionServiceIdUpdate, '123a-456b-789c');
         });
       });
 

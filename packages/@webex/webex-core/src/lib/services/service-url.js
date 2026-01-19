@@ -60,6 +60,14 @@ const ServiceUrl = AmpState.extend({
       ? this.hosts.filter((host) => host.id === clusterId)
       : this.hosts.filter((host) => host.homeCluster);
 
+    // Filter out hosts with non-positive priorities (including -1)
+    filteredHosts = filteredHosts.filter((host) => host.priority > 0);
+
+    // If no valid hosts remain after filtering, return the default URL
+    if (filteredHosts.length === 0) {
+      return this.defaultUrl;
+    }
+
     const aliveHosts = filteredHosts.filter((host) => !host.failed);
 
     filteredHosts =
@@ -76,7 +84,7 @@ const ServiceUrl = AmpState.extend({
       filteredHosts.reduce(
         (previous, current) =>
           previous.priority > current.priority || !previous.homeCluster ? current : previous,
-        {}
+        filteredHosts[0]
       ).host
     );
   },
