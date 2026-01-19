@@ -470,21 +470,6 @@ const copyToClipboard = (copyButton) => {
         copyText.textContent = 'Copy';
     },2000);
 }
-//Show/hide the commits section in version comparison.
-const toggleCommits = () => {
-    const commitsList = document.getElementById('commits-list');
-    const toggleText = document.getElementById('toggle-commits-text');
-    
-    if (commitsList && toggleText) {
-        if (commitsList.classList.contains('hide')) {
-            commitsList.classList.remove('hide');
-            toggleText.textContent = 'Hide Commits';
-        } else {
-            commitsList.classList.add('hide');
-            toggleText.textContent = 'Show Commits';
-        }
-    }
-}
 
 /**
  * Copy comparison link to clipboard
@@ -675,7 +660,6 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
     console.log('Total packages to compare:', allPackageNames.size);
     
     const packages = [];
-    const allCommits = new Map(); // hash -> {message, packages: Set()}
     let changedCount = 0;
     let unchangedCount = 0;
     let onlyInACount = 0;
@@ -719,31 +703,6 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
                 status = 'Version Changed';
                 changeClass = 'version-changed';
                 changedCount++;
-                
-                if (changelogA[packageName] && changelogA[packageName][versionA]) {
-                    const commitsA = changelogA[packageName][versionA].commits || {};
-                    Object.entries(commitsA).forEach(([hash, message]) => {
-                        if (!allCommits.has(hash)) {
-                            allCommits.set(hash, {
-                                message,
-                                packages: new Set() 
-                            });
-                        }
-                        allCommits.get(hash).packages.add(packageName);
-                    });
-                }
-                if (changelogB[packageName] && changelogB[packageName][versionB]) {
-                    const commitsB = changelogB[packageName][versionB].commits || {};
-                    Object.entries(commitsB).forEach(([hash, message]) => {
-                        if (!allCommits.has(hash)) {
-                            allCommits.set(hash, {
-                                message,
-                                packages: new Set()
-                            });
-                        }
-                        allCommits.get(hash).packages.add(packageName);
-                    });
-                }
             }
         } else if (versionA && !versionB) {
             status = 'Removed';
@@ -753,20 +712,6 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
             status = 'Added';
             changeClass = 'only-in-b';
             onlyInBCount++;
-            
-            // Collect commits from newly added packages
-            if (changelogB[packageName] && changelogB[packageName][versionB]) {
-                const commits = changelogB[packageName][versionB].commits || {};
-                Object.entries(commits).forEach(([hash, message]) => {
-                    if (!allCommits.has(hash)) {
-                        allCommits.set(hash, {
-                            message,
-                            packages: new Set()
-                        });
-                    }
-                    allCommits.get(hash).packages.add(packageName);
-                });
-            }
         }
         
         packages.push({
@@ -781,19 +726,9 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
     // Sort packages alphabetically
     packages.sort((a, b) => a.packageName.localeCompare(b.packageName));
     
-    // Convert commits Map to array for template
-    const commitsList = Array.from(allCommits.entries()).map(([hash, data]) => ({
-        hash,
-        message: data.message,
-        packageCount: data.packages.size,
-        packages: Array.from(data.packages).sort()
-    }));
-    
     return {
         packages,
-        commits: commitsList,
         totalPackages: allPackageNames.size,
-        totalCommits: commitsList.length,
         changedCount,
         unchangedCount,
         onlyInACount,
@@ -1151,57 +1086,13 @@ const populatePrereleaseVersions = (packageName, changelog, selectId, stableVers
  */
 const compareSpecificPackageVersions = (packageName, versionASpecific, versionBSpecific, changelogA, changelogB) => {
     const pkgDataA = changelogA[packageName]?.[versionASpecific];
-    const pkgDataB = changelogB[packageName]?.[versionBSpecific];
-    
+    const pkgDataB = changelogB[packageName]?.[versionBSpecific];   
+    console.log('pkgDataA', pkgDataA);
+    console.log('pkgDataB', pkgDataB);
     if (!pkgDataA && !pkgDataB) {
         alert('Could not find version data n 65for comparison in either version');
         return;
     }
-    
-    // Get commits from both versions
-    const commitsA = pkgDataA?.commits || {};
-    const commitsB = pkgDataB?.commits || {};
-    
-    // Collect ALL commits from both versions (not just differences)
-    const allCommits = new Map();
-    const commitsHashesA = new Set(Object.keys(commitsA));
-    const commitsHashesB = new Set(Object.keys(commitsB));
-    
-    // Add ALL commits from version A (base)
-    Object.entries(commitsA).forEach(([hash, message]) => {
-        allCommits.set(hash, {
-            message,
-            inBase: true,
-            inTarget: commitsHashesB.has(hash),
-            packages: new Set([packageName])
-        });
-    });
-    
-    // Add commits from version B (target) that are not already in the map
-    Object.entries(commitsB).forEach(([hash, message]) => {
-        if (!allCommits.has(hash)) {
-            allCommits.set(hash, {
-                message,
-                inBase: false,
-                inTarget: true,
-                packages: new Set([packageName])
-            });
-        }
-    });
-    
-    // Convert to array for template
-    const commitsList = Array.from(allCommits.entries()).map(([hash, data]) => ({
-        hash,
-        message: data.message,
-        packageCount: data.packages.size,
-        packages: Array.from(data.packages).sort(),
-        inBase: data.inBase,
-        inTarget: data.inTarget,
-        inBoth: data.inBase && data.inTarget,
-        onlyInBase: data.inBase && !data.inTarget,
-        onlyInTarget: data.inTarget && !data.inBase,
-        newCommit: data.inTarget && !data.inBase
-    }));
     
     // Determine status
     let status = 'Unchanged';
@@ -1223,11 +1114,13 @@ const compareSpecificPackageVersions = (packageName, versionASpecific, versionBS
         
         const versions = Object.keys(changelog[pkgName]);
         if (versions.length === 0) return null;
+        console.log('versions', versions);
         
         // Find the latest version by published date
         let latestVersion = versions[0];
         let latestDate = changelog[pkgName][versions[0]].published_date || 0;
-        
+        //console.log('latestVersion', latestVersion);
+        //console.log('latestDate', latestDate);
         versions.forEach(ver => {
             const publishedDate = changelog[pkgName][ver].published_date || 0;
             if (publishedDate > latestDate) {
@@ -1251,6 +1144,10 @@ const compareSpecificPackageVersions = (packageName, versionASpecific, versionBS
         changeClass: changeClass
     });
     
+    // Get alongWith data from the specific versions being compared
+    const alongWithA = pkgDataA?.alongWith || {};
+    const alongWithB = pkgDataB?.alongWith || {};
+    
     // Get ALL packages from both changelogs (not just alongWith)
     const allPackagesInChangelogs = new Set([
         ...Object.keys(changelogA),
@@ -1268,10 +1165,21 @@ const compareSpecificPackageVersions = (packageName, versionASpecific, versionBS
     
     // Add each package from both changelogs as a separate row
     allPackagesInChangelogs.forEach(pkg => {
-        // Find latest version in both changelogs
-        const pkgVerA = findLatestPackageVersion(changelogA, pkg);
-        const pkgVerB = findLatestPackageVersion(changelogB, pkg);
+        // PRIORITY 1: Check alongWith data first
+        let pkgVerA = alongWithA[pkg];
         
+        // PRIORITY 2: If not in alongWith, search through changelog
+        if (!pkgVerA) {
+            pkgVerA = findLatestPackageVersion(changelogA, pkg);
+        }
+        
+        // PRIORITY 1: Check alongWith data first
+        let pkgVerB = alongWithB[pkg];
+        
+        // PRIORITY 2: If not in alongWith, search through changelog
+        if (!pkgVerB) {
+            pkgVerB = findLatestPackageVersion(changelogB, pkg);
+        }
         let pkgStatus, pkgChangeClass;
         if (pkgVerA && pkgVerB) {
             if (pkgVerA === pkgVerB) {
@@ -1310,15 +1218,13 @@ const compareSpecificPackageVersions = (packageName, versionASpecific, versionBS
         versionA: versionASpecific,
         versionB: versionBSpecific,
         packages: packagesArray,
-        commits: commitsList,
         totalPackages: packagesArray.length,
-        totalCommits: commitsList.length,
         changedCount: changedCount,
         unchangedCount: unchangedCount,
         onlyInACount: onlyInACount,
         onlyInBCount: onlyInBCount
     };
-    
+    console.log('comparisonData', comparisonData);
     // Display using the comparison template (same as full version comparison)
     const resultsDiv = document.getElementById('comparison-results');
     if (!resultsDiv) {
@@ -1333,6 +1239,7 @@ const compareSpecificPackageVersions = (packageName, versionASpecific, versionBS
     }
     
     const template = Handlebars.compile(templateElement.innerHTML);
+    console.log('template', template);
     
     try {
         const html = template(comparisonData);
@@ -1493,11 +1400,11 @@ const initializeComparisonMode = async () => {
         
         // Disable button if:
         // 1. Package is selected but pre-release row is hidden
-        // 2. Pre-release row is visible but both pre-release versions are not selected
+        // 2. Pre-release row is visible but NEITHER pre-release version is selected (at least one required)
         if (selectedPackage) {
             if (!prereleaseRowVisible) {
                 compareBtn.disabled = true;
-            } else if (!versionASpecific || !versionBSpecific) {
+            } else if (!versionASpecific && !versionBSpecific) {
                 compareBtn.disabled = true;
             } else {
                 compareBtn.disabled = false;
@@ -1629,8 +1536,13 @@ const initializeComparisonMode = async () => {
                 return;
             }
             
-            // If package and specific versions are selected, do enhanced comparison
-            if (selectedPackage && versionASpecific && versionBSpecific) {
+            // If package and at least one specific version is selected, do enhanced comparison
+            if (selectedPackage && (versionASpecific || versionBSpecific)) {
+                // Fallback to stable version if pre-release not selected
+                const finalVersionA = versionASpecific || stableA;
+                const finalVersionB = versionBSpecific || stableB;
+                console.log('Comparing:', finalVersionA, 'vs', finalVersionB);
+                
                 compareSpecificPackageVersions(
                     selectedPackage,
                     versionASpecific,
@@ -1650,7 +1562,7 @@ const initializeComparisonMode = async () => {
                 const compareBtn = document.getElementById('compare-button');
                 if (compareBtn) compareBtn.disabled = false;
             } else {
-                alert('Please select package and both pre-release versions, or leave package empty for full version comparison');
+                alert('Please select at least one pre-release version, or leave package empty for full version comparison');
             }
         });
     }

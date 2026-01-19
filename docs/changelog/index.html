@@ -291,7 +291,6 @@
           <span class="stat-item unchanged">Unchanged: <strong>{{unchangedCount}}</strong></span>
           <span class="stat-item added">Added in {{versionB}}: <strong>{{onlyInBCount}}</strong></span>
           <span class="stat-item removed">Removed in {{versionB}}: <strong>{{onlyInACount}}</strong></span>
-          <span class="stat-item commits">Total Commits: <strong>{{totalCommits}}</strong></span>
         </div>
       </div>
 
@@ -319,55 +318,6 @@
           </tbody>
         </table>
       </div>
-
-      <!-- All Commits Section (Now Below Table) -->
-      {{#if commits}}
-      {{#if (gt commits.length 0)}}
-      <div class="commits-section" style="margin-top: 30px;">
-        <div class="commits-header">
-          <h4>📝 All Commits Between {{versionA}} and {{versionB}}</h4>
-          <button type="button" class="btn btn-sm btn-default" onclick="toggleCommits()">
-            <span id="toggle-commits-text">Show Commits</span>
-          </button>
-        </div>
-        <div class="commits-list hide" id="commits-list">
-          <div class="commits-count-info">
-            Found {{commits.length}} commits across both versions (including commits in base, target, and both)
-          </div>
-          <div class="version-legend" style="margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 5px; font-size: 0.9em;">
-            <strong>Legend:</strong>
-            <span class="version-badge in-both" style="margin: 0 5px;">In Both Versions</span>
-            <span class="version-badge only-in-base" style="margin: 0 5px;">Only in Base ({{versionA}})</span>
-            <span class="version-badge only-in-target" style="margin: 0 5px;">Only in Target ({{versionB}})</span>
-          </div>
-          <ul class="commits-ul">
-            {{#each commits}}
-            <li class="commit-item">
-              <div class="commit-message">{{{github_linking this.message 'message'}}}</div>
-              <div class="commit-meta">
-                <span class="commit-hash">{{{github_linking this.hash 'hash'}}}</span>
-                {{#if this.inBoth}}
-                  <span class="version-badge in-both">In Both Versions</span>
-                {{else if this.onlyInBase}}
-                  <span class="version-badge only-in-base">Only in Base</span>
-                {{else if this.onlyInTarget}}
-                  <span class="version-badge only-in-target">Only in Target</span>
-                {{/if}}
-                <span class="commit-packages">
-                  {{#if (gt this.packageCount 1)}}
-                    <span class="package-badge">{{this.packageCount}} packages</span>
-                  {{else}}
-                    <span class="package-badge">{{this.packages.[0]}}</span>
-                  {{/if}}
-                </span>
-              </div>
-            </li>
-            {{/each}}
-          </ul>
-        </div>
-      </div>
-      {{/if}}
-      {{/if}}
     </script>
     <script type="text/javascript" src="assets/js/app.js"></script>
   </body>
