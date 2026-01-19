@@ -69,6 +69,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require('fs');
+            const path = require('path');
             const version = '${{ steps.version-info.outputs.version }}';
             const versionNumber = '${{ steps.version-info.outputs.version_number }}';
             
@@ -76,11 +78,16 @@ jobs:
             const testPrNumber = '${{ github.event.inputs.test_pr_number }}';
             if (testPrNumber && testPrNumber.trim() !== '') {
               console.log(`🧪 TEST MODE: Using manual PR number #${testPrNumber}`);
-              const packages = ['webex', '@webex/plugin-meetings', '@webex/calling'];
-              core.setOutput('pr_numbers', JSON.stringify([testPrNumber.trim()]));
+              const prNumber = testPrNumber.trim();
+              const { packages, packageVersions, primaryPackage, primaryPackageVersion } =
+                await getPackagesForPr(prNumber);
+              core.setOutput('pr_numbers', JSON.stringify([prNumber]));
               core.setOutput('packages', JSON.stringify(packages));
+              core.setOutput('package_versions', JSON.stringify(packageVersions));
+              core.setOutput('primary_package', primaryPackage);
+              core.setOutput('primary_package_version', primaryPackageVersion);
               core.setOutput('commit_count', '1');
-              return { prs: [testPrNumber.trim()], packages: packages };
+              return { prs: [prNumber], packages: packages };
             }
             
             console.log(`Looking for PR in the most recent merge commit`);
@@ -117,17 +124,75 @@ jobs:
             const prNumber = prMatch[1];
             console.log(`✅ Found PR #${prNumber} in merge commit`);
             
-            // Get list of published packages from the deploy workflow
-            const packages = ['webex', '@webex/plugin-meetings', '@webex/calling'];
+            const { packages, packageVersions, primaryPackage, primaryPackageVersion } =
+              await getPackagesForPr(prNumber);
             
             core.setOutput('pr_numbers', JSON.stringify([prNumber]));
             core.setOutput('packages', JSON.stringify(packages));
+            core.setOutput('package_versions', JSON.stringify(packageVersions));
+            core.setOutput('primary_package', primaryPackage);
+            core.setOutput('primary_package_version', primaryPackageVersion);
             core.setOutput('commit_count', '1');
             
             return { 
               prs: [prNumber], 
               packages: packages
             };
+
+            async function getPackagesForPr(prNumber) {
+              const packageSet = new Set();
+              try {
+                const files = await github.paginate(github.rest.pulls.listFiles, {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: parseInt(prNumber, 10),
+                  per_page: 100
+                });
+                
+                for (const file of files) {
+                  const filename = file.filename;
+                  if (!filename.startsWith('packages/')) {
+                    continue;
+                  }
+                  
+                  const parts = filename.split('/');
+                  if (parts[1] === '@webex' && parts.length >= 3) {
+                    packageSet.add(`@webex/${parts[2]}`);
+                  } else if (parts.length >= 2) {
+                    packageSet.add(parts[1]);
+                  }
+                }
+              } catch (error) {
+                console.log(`Error listing PR files: ${error.message}`);
+              }
+              
+              if (packageSet.size === 0) {
+                packageSet.add('webex');
+              }
+              
+              const packages = Array.from(packageSet);
+              const packageVersions = {};
+              
+              for (const packageName of packages) {
+                const packageJsonPath = packageName.startsWith('@webex/')
+                  ? path.join(process.env.GITHUB_WORKSPACE, 'packages', '@webex', packageName.split('/')[1], 'package.json')
+                  : path.join(process.env.GITHUB_WORKSPACE, 'packages', packageName, 'package.json');
+                
+                try {
+                  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+                  if (packageJson.version) {
+                    packageVersions[packageName] = packageJson.version;
+                  }
+                } catch (error) {
+                  console.log(`Error reading ${packageJsonPath}: ${error.message}`);
+                }
+              }
+              
+              const primaryPackage = packages[0] || '';
+              const primaryPackageVersion = primaryPackage ? (packageVersions[primaryPackage] || '') : '';
+              
+              return { packages, packageVersions, primaryPackage, primaryPackageVersion };
+            }
       
       - name: Post Release Comment on PR
         uses: actions/github-script@v7
@@ -137,8 +202,12 @@ jobs:
             const versionNumber = '${{ steps.version-info.outputs.version_number }}';
             const prNumbersRaw = '${{ steps.get-prs.outputs.pr_numbers }}';
             const packagesRaw = '${{ steps.get-prs.outputs.packages }}';
+            const packageVersionsRaw = '${{ steps.get-prs.outputs.package_versions }}';
+            const primaryPackage = '${{ steps.get-prs.outputs.primary_package }}';
+            const primaryPackageVersion = '${{ steps.get-prs.outputs.primary_package_version }}';
             const prNumbers = prNumbersRaw ? JSON.parse(prNumbersRaw) : [];
             const packages = packagesRaw ? JSON.parse(packagesRaw) : [];
+            const packageVersions = packageVersionsRaw ? JSON.parse(packageVersionsRaw) : {};
             
             console.log(`Posting comment to PR #${prNumbers[0]}`);
             
@@ -147,8 +216,15 @@ jobs:
               return;
             }
             
-            // Build the changelog URL - only use stable_version to show all commits in that release
-            const changelogUrl = `https://web-sdk.webex.com/changelog/?stable_version=${versionNumber}`;
+            // Build the changelog URL with the primary package and version when available
+            const changelogUrl = new URL('https://web-sdk.webex.com/changelog/');
+            changelogUrl.searchParams.set('stable_version', versionNumber);
+            if (primaryPackage) {
+              changelogUrl.searchParams.set('package', primaryPackage);
+            }
+            if (primaryPackageVersion) {
+              changelogUrl.searchParams.set('version', primaryPackageVersion);
+            }
             
             // Build the package list markdown
             const packageList = packages.slice(0, 5).map(p => `\`${p}\``).join(', ');
@@ -234,7 +310,25 @@ jobs:
         run: |
           VERSION="${{ steps.version-info.outputs.version }}"
           VERSION_NUMBER="${{ steps.version-info.outputs.version_number }}"
-          CHANGELOG_URL="https://web-sdk.webex.com/changelog/?stable_version=${VERSION_NUMBER}"
+          PRIMARY_PACKAGE="${{ steps.get-prs.outputs.primary_package }}"
+          PRIMARY_PACKAGE_VERSION="${{ steps.get-prs.outputs.primary_package_version }}"
+          
+          PACKAGE_PARAM=""
+          if [ -n "${PRIMARY_PACKAGE}" ]; then
+            ENCODED_PACKAGE=$(python3 - <<'PY'
+import urllib.parse
+print(urllib.parse.quote("${PRIMARY_PACKAGE}"))
+PY
+)
+            PACKAGE_PARAM="&package=${ENCODED_PACKAGE}"
+          fi
+          
+          VERSION_PARAM=""
+          if [ -n "${PRIMARY_PACKAGE_VERSION}" ]; then
+            VERSION_PARAM="&version=${PRIMARY_PACKAGE_VERSION}"
+          fi
+          
+          CHANGELOG_URL="https://web-sdk.webex.com/changelog/?stable_version=${VERSION_NUMBER}${PACKAGE_PARAM}${VERSION_PARAM}"
 
           MESSAGE="Current stable SDK version: ${VERSION}\n\nChangelog: ${CHANGELOG_URL}\n\nThis changelog lists all commits included in this release."
 
