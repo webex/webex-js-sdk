@@ -6188,7 +6188,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const {
       url = undefined,
       info: {datachannelUrl = undefined, practiceSessionDatachannelUrl = undefined} = {},
-      self: {datachannelToken = undefined} = {},
+      self: {datachannelToken = undefined, practiceSessionDatachannelToken = undefined} = {},
     } = this.locusInfo || {};
 
     const isJoined = this.isJoined();
@@ -6198,7 +6198,10 @@ export default class Meeting extends StatelessWebexPlugin {
       this.webinar.isJoinPracticeSessionDataChannel() && practiceSessionDatachannelUrl
         ? practiceSessionDatachannelUrl
         : datachannelUrl;
-    const dataChannelToken = datachannelToken;
+    const dataChannelToken =
+      this.webinar.isJoinPracticeSessionDataChannel() && practiceSessionDatachannelToken
+        ? practiceSessionDatachannelToken
+        : datachannelToken;
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
       if (
