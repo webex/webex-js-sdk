@@ -315,11 +315,7 @@ jobs:
           
           PACKAGE_PARAM=""
           if [ -n "${PRIMARY_PACKAGE}" ]; then
-            ENCODED_PACKAGE=$(python3 - <<'PY'
-import urllib.parse
-print(urllib.parse.quote("${PRIMARY_PACKAGE}"))
-PY
-)
+            ENCODED_PACKAGE=$(node -e "console.log(encodeURIComponent(process.argv[1]))" "${PRIMARY_PACKAGE}")
             PACKAGE_PARAM="&package=${ENCODED_PACKAGE}"
           fi
           
