@@ -55,6 +55,7 @@ import {
   isBrowserMediaError,
   isBrowserMediaErrorName,
 } from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics.util';
+import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 import {processNewCaptions} from './voicea-meeting';
 
 import {
@@ -5379,6 +5380,18 @@ export default class Meeting extends StatelessWebexPlugin {
     let joined = false;
     let joinResponse = prevJoinResponse;
 
+    /* Before we do anything, check if RTCPeerConnection is available. Normally this is checked
+       by addMediaInternal() itself when creating the media connection, but since joinWithMedia()
+       is a convenience method that does both join() and addMedia(), we want to fail fast here
+       in case WebRTC is not available at all.
+     */
+    if (WebCapabilities.supportsRTCPeerConnection() === CapabilityState.NOT_CAPABLE) {
+      // throw the same error that would be thrown by addMediaInternal()
+      throw new Errors.WebrtcApiNotAvailableError(
+        'RTCPeerConnection API is not available in this environment'
+      );
+    }
+
     try {
       let turnServerInfo;
       let turnDiscoverySkippedReason;
@@ -5449,7 +5462,10 @@ export default class Meeting extends StatelessWebexPlugin {
       // if this was the first attempt, let's do a retry
       let shouldRetry = !isRetry;
 
-      if (CallDiagnosticUtils.isSdpOfferCreationError(error)) {
+      if (
+        CallDiagnosticUtils.isSdpOfferCreationError(error) ||
+        CallDiagnosticUtils.isWebrtcApiNotAvailableError(error)
+      ) {
         // errors related to offer creation (for example missing H264 codec) will happen again no matter how many times we try,
         // so there is no point doing a retry
         shouldRetry = false;
