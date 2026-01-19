@@ -192,6 +192,12 @@ const Services = WebexPlugin.extend({
         serviceGroup = 'postauth';
         break;
     }
+
+    // check if update is needed
+    if (catalog.status?.[serviceGroup]?.ready && !forceRefresh) {
+      return Promise.resolve({});
+    }
+
     // confirm catalog update for group is not in progress.
     if (catalog.status?.[serviceGroup]?.collecting) {
       return this.waitForCatalog(serviceGroup);
