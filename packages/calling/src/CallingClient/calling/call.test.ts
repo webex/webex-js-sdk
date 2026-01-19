@@ -14,6 +14,7 @@ import {
   MobiusCallState,
   DisconnectCause,
   DisconnectCode,
+  MobiusEventType,
   ICallManager,
   MediaContext,
   MidCallEvent,
@@ -963,10 +964,11 @@ describe('State Machine handler tests', () => {
     await flushPromises(3);
 
     expect(setInterval).toHaveBeenCalledTimes(1);
+    expect(setInterval).toHaveBeenCalledWith(expect.any(Function), DEFAULT_SESSION_TIMER);
     expect(funcSpy).toBeCalledTimes(1);
     expect(logSpy).toBeCalledWith('Session refresh successful', {
       file: 'call',
-      method: 'handleCallEstablished',
+      method: 'scheduleCallKeepaliveInterval',
     });
     expect(logSpy).toHaveBeenCalledWith(
       `${METHOD_START_MESSAGE} with: ${call.getCorrelationId()}`,
@@ -1023,11 +1025,6 @@ describe('State Machine handler tests', () => {
 
     const funcSpy = jest.spyOn(call, 'postStatus').mockRejectedValue(statusPayload);
 
-    if (call['sessionTimer'] === undefined) {
-      /* In cases where this test is run independently/alone, there is no sessionTimer initiated
-      Thus we will check and initialize the timer when not present by calling handleCallEstablish() */
-      call['handleCallEstablished']({} as CallEvent);
-    }
     call['handleCallEstablished']({} as CallEvent);
 
     jest.advanceTimersByTime(DEFAULT_SESSION_TIMER);
@@ -1035,11 +1032,9 @@ describe('State Machine handler tests', () => {
     /* This is to flush all the promises from the Promise queue so that
      * Jest.fakeTimers can advance time and also clear the promise Queue
      */
+    await flushPromises(2);
 
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(clearInterval).toHaveBeenCalledTimes(2); // check this
+    expect(clearInterval).toHaveBeenCalledTimes(1);
     expect(funcSpy).toBeCalledTimes(1);
   });
 
@@ -1053,7 +1048,7 @@ describe('State Machine handler tests', () => {
 
     const okPayload = <WebexRequestPayload>(<unknown>{statusCode: 200, body: {}});
 
-    const sendEvtSpy = jest.spyOn(call as any, 'sendCallStateMachineEvt');
+    const scheduleKeepaliveSpy = jest.spyOn(call as any, 'scheduleCallKeepaliveInterval');
     const postStatusSpy = jest
       .spyOn(call as any, 'postStatus')
       .mockRejectedValueOnce(errorPayload)
@@ -1064,19 +1059,19 @@ describe('State Machine handler tests', () => {
     }
 
     jest.advanceTimersByTime(DEFAULT_SESSION_TIMER);
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises(2);
 
     expect(postStatusSpy).toHaveBeenCalledTimes(1);
-    expect(sendEvtSpy).toHaveBeenCalledWith({type: 'E_CALL_ESTABLISHED'});
+
+    // Now advance by 1 second for the retry-after interval
+    jest.advanceTimersByTime(1000);
+    await flushPromises(2);
+
+    expect(postStatusSpy).toHaveBeenCalledTimes(2);
+    expect(scheduleKeepaliveSpy).toHaveBeenCalledTimes(2);
   });
 
   it('keepalive ends after reaching max retry count', async () => {
-    const resolvePromise = async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    };
-
     const errorPayload = <WebexRequestPayload>(<unknown>{
       statusCode: 500,
       headers: {
@@ -1097,30 +1092,32 @@ describe('State Machine handler tests', () => {
 
     // Advance timer to trigger the first failure (uses DEFAULT_SESSION_TIMER)
     jest.advanceTimersByTime(DEFAULT_SESSION_TIMER);
-    await resolvePromise();
+    await flushPromises(2);
 
-    // Now advance by 1 second for each of the 3 more retry attempts (retry-after: 1 second each)
+    // Now advance by 1 second for each of the 4 retry attempts (retry-after: 1 second each)
     // Need to do this separately to allow state machine to process and create new intervals
     jest.advanceTimersByTime(1000);
-    await resolvePromise();
+    await flushPromises(2);
 
     jest.advanceTimersByTime(1000);
-    await resolvePromise();
+    await flushPromises(2);
 
     jest.advanceTimersByTime(1000);
-    await resolvePromise();
+    await flushPromises(2);
+
+    jest.advanceTimersByTime(1000);
+    await flushPromises(2);
 
     // The error handler should detect we're at max retry count and stop
     expect(warnSpy).toHaveBeenCalledWith(
-      `Max call keepalive retry attempts reached for call: ${call.getCorrelationId()}`,
+      `Max keepalive retry attempts reached. Aborting call keepalive for callId: ${call.getCallId()}`,
       {
         file: 'call',
-        method: 'handleCallEstablished',
+        method: 'keepaliveRetryCallback',
       }
     );
-    expect(postStatusSpy).toHaveBeenCalledTimes(4);
-    expect(call['callKeepaliveRetryCount']).toBe(0);
-    expect(call['sessionTimer']).toBeUndefined();
+    expect(postStatusSpy).toHaveBeenCalledTimes(5);
+    expect(call['callKeepaliveRetryCount']).toBe(4);
   });
 
   it('state changes during successful incoming call', async () => {
@@ -1214,6 +1211,104 @@ describe('State Machine handler tests', () => {
 
     call.sendCallStateMachineEvt({type: 'E_RECV_CALL_DISCONNECT'});
     expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_DISCONNECT');
+  });
+
+  it('processes callerId on received progress event in established state without emitting PROGRESS', async () => {
+    const callManager = getCallManager(webex, defaultServiceIndicator);
+    const statusPayload = <WebexRequestPayload>(<unknown>{
+      statusCode: 200,
+      body: mockStatusBody,
+    });
+    const call = callManager.createCall(CallDirection.OUTBOUND, deviceId, mockLineId, dest);
+    webex.request.mockReturnValue(statusPayload);
+
+    // Move to S_SEND_CALL_SETUP
+    const dummyEvent = {
+      type: 'E_SEND_CALL_SETUP',
+      data: {
+        seq: 1,
+        message: {} as RoapMessage,
+        type: 'OFFER',
+      } as any,
+    };
+    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_SETUP');
+
+    // Complete media negotiation to allow connect -> established
+    // Ask media SDK to initiate offer
+    dummyEvent.type = 'E_SEND_ROAP_OFFER';
+    dummyEvent.data = {
+      seq: 1,
+      messageType: 'OFFER',
+      sdp: 'sdp',
+    };
+
+    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(call['mediaStateMachine'].state.value).toBe('S_SEND_ROAP_OFFER');
+
+    dummyEvent.type = 'E_RECV_ROAP_ANSWER';
+    dummyEvent.data = {
+      seq: 1,
+      messageType: 'ANSWER',
+      sdp: 'sdp',
+    };
+    call.sendMediaStateMachineEvt(dummyEvent as RoapEvent);
+    expect(call['mediaStateMachine'].state.value).toBe('S_RECV_ROAP_ANSWER');
+    // Send OK
+    const dummyOkEvent = {
+      type: 'E_ROAP_OK',
+      data: {
+        received: false,
+        message: {
+          seq: 1,
+          messageType: 'OK',
+        },
+      },
+    };
+    call.sendMediaStateMachineEvt(dummyOkEvent as unknown as RoapEvent);
+    expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_OK');
+    expect(call['mediaNegotiationCompleted']).toBe(true);
+
+    // Move call to established
+    dummyEvent.type = 'E_RECV_CALL_CONNECT';
+    dummyEvent.data = undefined;
+    call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_CALL_ESTABLISHED');
+
+    const emitSpy = jest.spyOn(call, 'emit');
+    const startCallerIdSpy = jest.spyOn(call, 'startCallerIdResolution');
+
+    // Now send progress with callerId while established via CallManager (Mobius event)
+    const mobiusProgressEvent = {
+      id: 'evt1',
+      timestamp: Date.now(),
+      trackingId: 'track-1',
+      data: {
+        eventType: MobiusEventType.CALL_PROGRESS,
+        callerId: {
+          from: '"Bob Marley" <sip:5010@207.182.171.130;user=phone>;tag=888068389-1654853820619-',
+        },
+        callProgressData: {
+          inbandMedia: true,
+          alerting: false,
+        },
+        callId: call.getCallId(),
+        callUrl: 'https://mobius.example/call',
+        deviceId,
+        correlationId: call.getCorrelationId(),
+      },
+    };
+    callManager['dequeueWsEvents'](mobiusProgressEvent);
+
+    // CallerId resolution should be triggered exactly once (handled by CallManager)
+    expect(startCallerIdSpy).toBeCalledOnceWith(mobiusProgressEvent.data.callerId);
+    // Since it returns early in established state, PROGRESS event should not be emitted here
+    expect(
+      emitSpy.mock.calls.find((args) => args && args[0] === CALL_EVENT_KEYS.PROGRESS)
+    ).toBeUndefined();
+    expect(call['callStateMachine'].state.value).not.toBe('S_RECV_CALL_PROGRESS');
+    // Early media flag should not be set due to early return
+    expect((call as any).earlyMedia).not.toBe(true);
   });
 
   it('state changes during unsuccessful incoming call due error in call connect', async () => {
