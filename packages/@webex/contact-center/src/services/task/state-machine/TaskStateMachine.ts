@@ -9,9 +9,9 @@
  */
 
 import {setup} from 'xstate';
-import {TaskContext, TaskEventPayload, UIControlConfig} from './types';
+import {TaskContext, TaskEventPayload, UIControlConfig, TaskActionsMap} from './types';
 import {TaskState, TaskEvent} from './constants';
-import {actions, createInitialContext, TaskActionsMap} from './actions';
+import {actions, createInitialContext} from './actions';
 import {guards} from './guards';
 
 type TaskActionConfigMap = {[K in keyof typeof actions]: undefined};
@@ -128,7 +128,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
         on: {
           // AgentContactOffer
           [TaskEvent.TASK_OFFERED]: {
-            actions: ['updateTaskData', 'emitTaskOfferContact'],
+            actions: ['updateTaskData', 'emitTaskOfferContact', 'requestAutoAnswer'],
           },
           // AgentContactAssigned
           [TaskEvent.ASSIGN]: {
@@ -174,7 +174,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           ],
           // agentOfferConsult happens only on the receiver side of consult
           [TaskEvent.OFFER_CONSULT]: {
-            actions: ['updateTaskData', 'emitTaskOfferConsult'],
+            actions: ['updateTaskData', 'emitTaskOfferConsult', 'requestAutoAnswer'],
           },
         },
       },
@@ -189,7 +189,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // Click of hold button
           [TaskEvent.HOLD_INITIATED]: {
             target: TaskState.HOLD_INITIATING,
-            actions: ['setHoldInitiated'],
           },
           // Click of the consult button
           [TaskEvent.CONSULT]: {
@@ -217,13 +216,13 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               // Conference still active → CONFERENCING
               guard: guards.conferenceInProgressFromEvent,
               target: TaskState.CONFERENCING,
-              actions: ['updateTaskData', 'emitTaskConferenceStarted'],
+              actions: ['updateTaskData', 'emitTaskConferenceStarted', 'requestCleanup'],
             },
             {
               // Agent should wrap up → WRAPPING_UP
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup', 'requestCleanup'],
             },
             {
               // Consulted agent → TERMINATED
@@ -289,12 +288,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.conferenceInProgressFromEvent,
               target: TaskState.CONFERENCING,
-              actions: ['updateTaskData', 'emitTaskConferenceStarted'],
+              actions: ['updateTaskData', 'emitTaskConferenceStarted', 'requestCleanup'],
             },
             {
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup', 'requestCleanup'],
             },
             {
               target: TaskState.TERMINATED,
@@ -439,7 +438,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               // Consulted agent → TERMINATED
               target: TaskState.TERMINATED,
-              actions: ['updateTaskData', 'clearResources'],
+              actions: ['updateTaskData'],
             },
           ],
 
@@ -518,7 +517,13 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentContactEnded
           [TaskEvent.CONTACT_ENDED]: {
             target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+            actions: [
+              'updateTaskData',
+              'markEnded',
+              'clearConsultState',
+              'emitTaskWrapup',
+              'requestCleanup',
+            ],
           },
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.WRAPPING_UP,
@@ -582,6 +587,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentConsultCreated - only initiator transitions to CONSULTING
           [TaskEvent.CONSULT_CREATED]: [
             {
+              // TODO : @adhmenon Verify if this guard is necessary with conference
               guard: guards.didInitiateConsult,
               target: TaskState.CONSULTING,
               actions: ['updateTaskData', 'setConsultInitiator', 'emitTaskConsultCreated'],
@@ -704,7 +710,13 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               // Owner/primary who should wrap up → WRAPPING_UP (must be first!)
               guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+              actions: [
+                'updateTaskData',
+                'markEnded',
+                'clearConsultState',
+                'emitTaskWrapup',
+                'requestCleanup',
+              ],
             },
             {
               // Non-owner who triggered exit → TERMINATED
@@ -718,7 +730,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 guards.shouldDowngradeConference(params) &&
                 guards.customerInCallFromEventOrContext(params),
               target: TaskState.CONNECTED,
-              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConferenceEnded'],
+              actions: [
+                'updateTaskData',
+                'clearConsultState',
+                'emitTaskConferenceEnded',
+                'requestCleanup',
+              ],
             },
             {
               // Conference downgraded + no customer → TERMINATED
@@ -728,7 +745,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             },
             {
               // Conference still active → stay
-              actions: ['updateTaskData'],
+              actions: ['updateTaskData', 'requestCleanup'],
             },
           ],
 
@@ -754,7 +771,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.COMPLETED]: {
         type: 'final' as const,
-        entry: ['cleanupResources', 'emitTaskWrappedup'],
+        entry: ['emitTaskWrappedup', 'cleanupResources'],
       },
 
       [TaskState.TERMINATED]: {

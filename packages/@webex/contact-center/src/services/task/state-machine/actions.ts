@@ -3,23 +3,16 @@
  */
 
 import {assign} from 'xstate';
-import type {ActionArgs, ActionFunctionMap, EventObject} from 'xstate';
-import {TaskContext, TaskEventPayload, UIControlConfig} from './types';
+import {
+  TaskContext,
+  TaskEventPayload,
+  UIControlConfig,
+  TaskActionsMap,
+  TaskActionArgs,
+} from './types';
 import {TaskEvent, TaskState} from './constants';
 import {DestinationType, TaskData} from '../types';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
-
-type TaskActionArgs = ActionArgs<TaskContext, TaskEventPayload, TaskEventPayload>;
-
-export type TaskActionsMap = ActionFunctionMap<
-  TaskContext,
-  TaskEventPayload,
-  never,
-  {type: string; params: undefined},
-  never,
-  never,
-  EventObject
->;
 
 type RecordingStateUpdate = Partial<
   Pick<TaskContext, 'recordingControlsAvailable' | 'recordingInProgress'>
@@ -176,14 +169,11 @@ export const actions: TaskActionsMap = {
     return {};
   }),
 
-  setHoldInitiated: assign({}),
   handleTransferInit: assign({}),
   finalizeTransfer: assign({}),
   handleConferenceInit: assign({}),
   handleConferenceFailed: assign({}),
 
-  handleConsultAccept: assign({consultDestinationAgentJoined: true}),
-  handleConsultCompletion: assign({consultDestinationAgentJoined: true}),
   handleConsultFailed: assign({consultDestinationAgentJoined: false, consultInitiator: false}),
   handleConferenceStarted: assign({consultInitiator: false}),
 
@@ -263,15 +253,6 @@ export const actions: TaskActionsMap = {
 
   setConsultCallHeld: assign({consultCallHeld: true}),
   clearConsultCallHeld: assign({consultCallHeld: false}),
-  handleSwitchToMainCall: assign({consultCallHeld: true}),
-  handleSwitchToConsult: assign({consultCallHeld: false}),
-
-  handleParticipantJoined: assign(({event}: TaskActionArgs) => {
-    const taskData = getTaskDataFromEvent(event);
-
-    return taskData ? {taskData} : {};
-  }),
-
   handleParticipantLeft: assign(({event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event);
 
@@ -347,6 +328,8 @@ export const actions: TaskActionsMap = {
     recordingInProgress: false,
   })),
 
+  requestAutoAnswer: () => undefined,
+  requestCleanup: () => undefined,
   cleanupResources: () => undefined,
 
   // Event emitters - placeholders overridden by consumers
@@ -362,17 +345,12 @@ export const actions: TaskActionsMap = {
   emitTaskConsulting: () => undefined,
   emitTaskConsultAccepted: () => undefined,
   emitTaskConsultEnd: () => undefined,
-  emitTaskConsultQueueCancelled: () => undefined,
-  emitTaskConsultQueueFailed: () => undefined,
   emitTaskReject: () => undefined,
   emitTaskWrapup: () => undefined,
   emitTaskRecordingStarted: () => undefined,
   emitTaskRecordingPaused: () => undefined,
-  emitTaskRecordingPauseFailed: () => undefined,
   emitTaskRecordingResumed: () => undefined,
-  emitTaskRecordingResumeFailed: () => undefined,
   emitTaskWrappedup: () => undefined,
-  emitTaskParticipantJoined: () => undefined,
   emitTaskParticipantLeft: () => undefined,
   emitTaskConferenceStarted: () => undefined,
   emitTaskConferenceEnded: () => undefined,

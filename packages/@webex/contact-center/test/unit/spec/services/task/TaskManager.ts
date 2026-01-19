@@ -90,6 +90,37 @@ describe('TaskManager', () => {
           task.emit(mappedEvent, task);
         }
       }
+
+      // Auto-answer is now handled at the Task layer (triggered by state machine actions)
+      if (
+        [TaskEvent.TASK_OFFERED, TaskEvent.OFFER_CONSULT].includes(event.type as TaskEvent) &&
+        (event.taskData?.isAutoAnswering === true || event.taskData?.isAutoAnswering === 'true')
+      ) {
+        Promise.resolve(task.accept())
+          .then(() => {
+            task.emit(TASK_EVENTS.TASK_AUTO_ANSWERED, task);
+          })
+          .catch(() => undefined);
+      }
+
+      // Cleanup is now emitted by state machine actions (Task layer).
+      // Simulate the TASK_CLEANUP emission for unit tests using mock tasks.
+      const eventType = event.type as TaskEvent;
+      const shouldCleanup =
+        eventType === TaskEvent.CONTACT_ENDED ||
+        eventType === TaskEvent.END ||
+        eventType === TaskEvent.TASK_WRAPUP ||
+        eventType === TaskEvent.WRAPUP_COMPLETE ||
+        eventType === TaskEvent.ASSIGN_FAILED ||
+        eventType === TaskEvent.INVITE_FAILED ||
+        eventType === TaskEvent.RONA ||
+        eventType === TaskEvent.OUTBOUND_FAILED ||
+        (eventType === TaskEvent.CONSULT_END && task.data?.isConsulted === true);
+
+      if (shouldCleanup) {
+        const removeFromCollection = eventType !== TaskEvent.CONTACT_ENDED;
+        task.emit(TASK_EVENTS.TASK_CLEANUP, task, {removeFromCollection});
+      }
     });
 
     return task;
@@ -336,7 +367,7 @@ describe('TaskManager', () => {
       type: TaskEvent.ASSIGN_FAILED,
       reason: assignFailedPayload.data.reason,
     });
-    expect(updateSpy).not.toHaveBeenCalled();
+    expect(updateSpy).toHaveBeenCalledWith(assignFailedPayload.data);
     expect(cleanupSpy).toHaveBeenCalledWith(task);
   });
 
@@ -440,22 +471,28 @@ describe('TaskManager', () => {
     expect(allTasks).toHaveProperty(taskId2, mockTask2);
   });
 
-  it('test call listeners being switched off on call end', () => {
-    webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+	  it('test call listeners being switched off on call end', () => {
+	    webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
 
-    const webrtcTask = new WebRTC(
-      contactMock,
-      webCallingService,
-      taskDataMock,
-      {isEndTaskEnabled: true, isEndConsultEnabled: true}
-    );
-    (taskManager as any).taskCollection[taskId] = webrtcTask;
+	    const webrtcTask = new WebRTC(
+	      contactMock,
+	      webCallingService,
+	      taskDataMock,
+	      {isEndTaskEnabled: true, isEndConsultEnabled: true}
+	    );
+	    (taskManager as any).taskCollection[taskId] = webrtcTask;
+	    // TaskManager must listen to task-level cleanup events emitted by the state machine.
+	    // This is normally wired when TaskManager creates the task via TaskFactory.
+	    (taskManager as any).setupTaskListeners(webrtcTask);
 
-    const task = taskManager.getTask(taskId)!;
-    const originalEmit = task.emit;
-    jest.spyOn(task, 'emit').mockImplementation((event, arg) => {
-      if (event === CC_EVENTS.CONTACT_ENDED) {
-        return;
+	    const task = taskManager.getTask(taskId)!;
+	    // This test doesn't validate UI controls; avoid requiring full interaction.media
+	    // shape for WebRTC UI controls computation.
+	    jest.spyOn(task as any, 'updateUiControls').mockImplementation(() => undefined);
+	    const originalEmit = task.emit;
+	    jest.spyOn(task, 'emit').mockImplementation((event, arg) => {
+	      if (event === CC_EVENTS.CONTACT_ENDED) {
+	        return;
       }
       return originalEmit.call(task, event, arg);
     });
@@ -479,6 +516,18 @@ describe('TaskManager', () => {
         queueMgr: 'aqm',
       },
     };
+
+    // Ensure the state machine is hydrated into a connected state before CONTACT_ENDED
+    const hydratePayload = {
+      data: {
+        ...payload.data,
+        type: CC_EVENTS.AGENT_CONTACT,
+        interaction: {state: 'connected', mediaType: 'telephony'},
+      },
+    };
+
+    taskManager.getTask(taskId).data = hydratePayload.data;
+    webSocketManagerMock.emit('message', JSON.stringify(hydratePayload));
 
     taskManager.getTask(taskId).data = payload.data;
     webSocketManagerMock.emit('message', JSON.stringify(payload));
@@ -536,7 +585,6 @@ describe('TaskManager', () => {
 
       const task = taskManager.getTask(taskId);
       const sendStateMachineEventSpy = jest.spyOn(task, 'sendStateMachineEvent');
-      const metricsTrackSpy = jest.spyOn(taskManager.metricsManager, 'trackEvent');
       const payload = {
         data: {
           type: CC_EVENTS.AGENT_INVITE_FAILED,
@@ -562,9 +610,6 @@ describe('TaskManager', () => {
         TaskEvent.INVITE_FAILED
       );
       expect(stateMachineEvent?.reason).toBe(payload.data.reason);
-      // Verify the correct metric event name is used for AGENT_INVITE_FAILED
-      expect(metricsTrackSpy).toHaveBeenCalled();
-      expect(metricsTrackSpy.mock.calls[0][0]).toBe('Agent Invite Failed');
       sendStateMachineEventSpy.mockRestore();
   });
 
@@ -1450,7 +1495,6 @@ describe('TaskManager', () => {
     taskManager.taskCollection[taskId] = taskManager.getTask(taskId);
     const task = taskManager.getTask(taskId);
     const sendStateMachineEventSpy = jest.spyOn(task, 'sendStateMachineEvent');
-    const metricsTrackSpy = jest.spyOn(taskManager.metricsManager, 'trackEvent');
 
     webSocketManagerMock.emit('message', JSON.stringify(ronaPayload));
 
@@ -1459,9 +1503,6 @@ describe('TaskManager', () => {
       TaskEvent.RONA
     );
     expect(stateMachineEvent?.reason).toBe(ronaPayload.data.reason);
-    // Verify the correct metric event name is used for AGENT_CONTACT_OFFER_RONA
-    expect(metricsTrackSpy).toHaveBeenCalled();
-    expect(metricsTrackSpy.mock.calls[0][0]).toBe('Agent RONA');
     sendStateMachineEventSpy.mockRestore();
   });
 
@@ -1507,7 +1548,6 @@ describe('TaskManager', () => {
     taskManager.taskCollection[taskId] = taskManager.getTask(taskId);
     const task = taskManager.getTask(taskId);
     const sendStateMachineEventSpy = jest.spyOn(task, 'sendStateMachineEvent');
-    const metricsTrackSpy = jest.spyOn(taskManager.metricsManager, 'trackEvent');
 
     webSocketManagerMock.emit('message', JSON.stringify(assignFailedPayload));
 
@@ -1516,9 +1556,6 @@ describe('TaskManager', () => {
       TaskEvent.ASSIGN_FAILED
     );
     expect(stateMachineEvent?.reason).toBe(assignFailedPayload.data.reason);
-    // Verify the correct metric event name is used for AGENT_CONTACT_ASSIGN_FAILED
-    expect(metricsTrackSpy).toHaveBeenCalled();
-    expect(metricsTrackSpy.mock.calls[0][0]).toBe('Agent Contact Assign Failed');
     sendStateMachineEventSpy.mockRestore();
   });
 

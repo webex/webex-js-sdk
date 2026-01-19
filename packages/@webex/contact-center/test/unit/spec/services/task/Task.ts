@@ -1,5 +1,11 @@
 import Task from '../../../../../src/services/task/Task';
-import {TaskData, DESTINATION_TYPE, TASK_EVENTS} from '../../../../../src/services/task/types';
+import {
+  TaskData,
+  DESTINATION_TYPE,
+  TASK_EVENTS,
+  TASK_CHANNEL_TYPE,
+  VOICE_VARIANT,
+} from '../../../../../src/services/task/types';
 import {TaskEvent} from '../../../../../src/services/task/state-machine';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import {createTaskData} from './taskTestUtils';
@@ -17,6 +23,26 @@ class DummyTask extends Task {
     return Promise.resolve({} as any);
   }
 }
+
+class SpyAcceptTask extends Task {
+  public acceptMock: jest.Mock;
+
+  constructor(contact: any, data: TaskData, configOverrides: any = {}) {
+    super(contact, data, {
+      channelType: TASK_CHANNEL_TYPE.VOICE,
+      isEndTaskEnabled: true,
+      isEndConsultEnabled: true,
+      ...configOverrides,
+    });
+    this.acceptMock = jest.fn().mockResolvedValue({} as any);
+  }
+
+  public accept() {
+    return this.acceptMock();
+  }
+}
+
+const flushPromises = () => new Promise((resolve) => setImmediate(resolve));
 
 jest.mock('../../../../../src/logger-proxy', () => ({
   __esModule: true,
@@ -138,6 +164,134 @@ describe('Task (base class)', () => {
     overrides.emitTaskWrapup({event: {type: TaskEvent.TASK_WRAPUP}});
 
     expect(emitSpy).not.toHaveBeenCalledWith(TASK_EVENTS.TASK_WRAPUP, task);
+  });
+
+  it('throws for unsupported voice operations in the base class', async () => {
+    const fullData = createTaskData();
+    const voiceTask = new DummyTask(dummyContact, fullData);
+
+    const cases: Array<() => Promise<unknown>> = [
+      () => voiceTask.decline(),
+      () => voiceTask.pauseRecording(),
+      () => voiceTask.resumeRecording({} as any),
+      () => voiceTask.consult({} as any),
+      () => voiceTask.endConsult({} as any),
+      () => voiceTask.consultTransfer({} as any),
+      () => voiceTask.consultConference(),
+      () => voiceTask.exitConference(),
+      () => voiceTask.transferConference(),
+      () => voiceTask.toggleMute(),
+      () => voiceTask.hold(),
+      () => voiceTask.resume(),
+      () => voiceTask.holdResume(),
+    ];
+
+    for (const fn of cases) {
+      await expect(fn()).rejects.toThrow('Unsupported operation');
+    }
+
+    expect(() => voiceTask.unregisterWebCallListeners()).not.toThrow();
+  });
+
+  it('syncs task.data from CONTACT_UPDATED', () => {
+    const fullData = createTaskData({foo: 'old'} as any);
+    const voiceTask = new DummyTask(dummyContact, fullData);
+
+    voiceTask.sendStateMachineEvent({
+      type: TaskEvent.CONTACT_UPDATED,
+      taskData: {...fullData, foo: 'new'} as any,
+    });
+
+    expect((voiceTask.data as any).foo).toBe('new');
+  });
+
+  it('stopStateMachine clears state snapshot access', () => {
+    const fullData = createTaskData();
+    const voiceTask = new DummyTask(dummyContact, fullData);
+
+    expect((voiceTask as any).getCurrentState()).toBeDefined();
+    (voiceTask as any).stopStateMachine();
+    expect((voiceTask as any).getCurrentState()).toBeUndefined();
+  });
+
+  it('auto-answers on offer when supported and flagged', async () => {
+    const data = createTaskData({isAutoAnswering: true});
+    const webrtcTask = new SpyAcceptTask(dummyContact, data, {voiceVariant: VOICE_VARIANT.WEBRTC});
+    const autoAnsweredSpy = jest.fn();
+    webrtcTask.on(TASK_EVENTS.TASK_AUTO_ANSWERED, autoAnsweredSpy);
+
+    webrtcTask.sendStateMachineEvent({type: TaskEvent.TASK_INCOMING, taskData: data});
+    webrtcTask.sendStateMachineEvent({
+      type: TaskEvent.TASK_OFFERED,
+      taskData: {...data, isAutoAnswering: 'true'} as any,
+    });
+
+    await flushPromises();
+    expect(webrtcTask.acceptMock).toHaveBeenCalled();
+    expect(autoAnsweredSpy).toHaveBeenCalledWith(webrtcTask);
+  });
+
+  it('does not auto-answer when isAutoAnswering is false', async () => {
+    const data = createTaskData({isAutoAnswering: false});
+    const webrtcTask = new SpyAcceptTask(dummyContact, data, {voiceVariant: VOICE_VARIANT.WEBRTC});
+
+    webrtcTask.sendStateMachineEvent({type: TaskEvent.TASK_INCOMING, taskData: data});
+    webrtcTask.sendStateMachineEvent({type: TaskEvent.TASK_OFFERED, taskData: data});
+
+    await flushPromises();
+    expect(webrtcTask.acceptMock).not.toHaveBeenCalled();
+  });
+
+  it('does not auto-answer for voice tasks when variant is not WebRTC', async () => {
+    const data = createTaskData({isAutoAnswering: true});
+    const pstnTask = new SpyAcceptTask(dummyContact, data, {voiceVariant: VOICE_VARIANT.PSTN});
+
+    pstnTask.sendStateMachineEvent({type: TaskEvent.TASK_INCOMING, taskData: data});
+    pstnTask.sendStateMachineEvent({type: TaskEvent.TASK_OFFERED, taskData: data});
+
+    await flushPromises();
+    expect(pstnTask.acceptMock).not.toHaveBeenCalled();
+  });
+
+  it('clears isAutoAnswering when auto-answer fails', async () => {
+    const data = createTaskData({isAutoAnswering: true});
+    const webrtcTask = new SpyAcceptTask(dummyContact, data, {voiceVariant: VOICE_VARIANT.WEBRTC});
+    webrtcTask.acceptMock.mockRejectedValue(new Error('fail'));
+
+    webrtcTask.sendStateMachineEvent({type: TaskEvent.TASK_INCOMING, taskData: data});
+    webrtcTask.sendStateMachineEvent({type: TaskEvent.TASK_OFFERED, taskData: data});
+
+    await flushPromises();
+    expect(webrtcTask.data.isAutoAnswering).toBe(false);
+  });
+
+  it('emits task:cleanup (non-removal) on CONTACT_ENDED when wrap-up is required', () => {
+    const cleanupSpy = jest.fn();
+    const base = createTaskData({
+      wrapUpRequired: true,
+      interaction: {state: 'connected'},
+    } as any);
+    const webrtcTask = new SpyAcceptTask(dummyContact, base, {voiceVariant: VOICE_VARIANT.WEBRTC});
+    webrtcTask.on(TASK_EVENTS.TASK_CLEANUP, cleanupSpy);
+
+    webrtcTask.sendStateMachineEvent({type: TaskEvent.TASK_INCOMING, taskData: base});
+    webrtcTask.sendStateMachineEvent({type: TaskEvent.TASK_OFFERED, taskData: base});
+    webrtcTask.sendStateMachineEvent({type: TaskEvent.ASSIGN, taskData: base});
+    webrtcTask.sendStateMachineEvent({type: TaskEvent.CONTACT_ENDED, taskData: base});
+
+    expect(cleanupSpy).toHaveBeenCalledWith(webrtcTask, {removeFromCollection: false});
+  });
+
+  it('emits task:cleanup (removal) when entering a final state', () => {
+    const cleanupSpy = jest.fn();
+    const base = createTaskData({wrapUpRequired: false});
+    const webrtcTask = new SpyAcceptTask(dummyContact, base, {voiceVariant: VOICE_VARIANT.WEBRTC});
+    webrtcTask.on(TASK_EVENTS.TASK_CLEANUP, cleanupSpy);
+
+    webrtcTask.sendStateMachineEvent({type: TaskEvent.TASK_INCOMING, taskData: base});
+    webrtcTask.sendStateMachineEvent({type: TaskEvent.RONA, taskData: base, reason: 'RONA'} as any);
+
+    expect(cleanupSpy).toHaveBeenCalledWith(webrtcTask, {removeFromCollection: true});
   });
 
 });

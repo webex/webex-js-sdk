@@ -43,7 +43,6 @@ export const MEDIA_TYPE_MAIN_CALL = 'mainCall';
 export enum TaskState {
   IDLE = 'IDLE',
   OFFERED = 'OFFERED',
-  OFFERED_CONSULT = 'OFFERED_CONSULT',
   CONNECTED = 'CONNECTED',
 
   // Intermediate states for async operations

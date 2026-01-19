@@ -82,7 +82,7 @@ function computeVoiceUIControls(
   const isConnected = serverHold !== undefined ? !serverHold : state === TaskState.CONNECTED;
 
   // State categories for cleaner logic
-  const isOffered = state === TaskState.OFFERED || state === TaskState.OFFERED_CONSULT;
+  const isOffered = state === TaskState.OFFERED;
   const isConsulting =
     state === TaskState.CONSULTING ||
     state === TaskState.CONSULT_INITIATING ||

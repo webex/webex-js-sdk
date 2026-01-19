@@ -11,7 +11,14 @@ export type {TaskStateMachine} from './TaskStateMachine';
 // Types & enums
 export {TaskState, TaskEvent} from './constants';
 export {isEventOfType} from './types';
-export type {TaskContext, TaskEventPayload, TaskStateMachineConfig, UIControlConfig} from './types';
+export type {
+  TaskContext,
+  TaskEventPayload,
+  TaskStateMachineConfig,
+  UIControlConfig,
+  TaskActionsMap,
+  TaskActionArgs,
+} from './types';
 
 // Guards
 export {guards} from './guards';

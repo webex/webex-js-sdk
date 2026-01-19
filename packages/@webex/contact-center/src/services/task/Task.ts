@@ -1,6 +1,6 @@
 import {EventEmitter} from 'events';
 import {createActor} from 'xstate';
-import type {ActionArgs, ActorRefFrom, SnapshotFrom} from 'xstate';
+import type {ActorRefFrom, SnapshotFrom} from 'xstate';
 import {
   ITask,
   TaskData,
@@ -17,6 +17,8 @@ import {
   ResumeRecordingPayload,
   MEDIA_CHANNEL,
   TASK_CHANNEL_TYPE,
+  VOICE_VARIANT,
+  CallId,
 } from './types';
 import {METHODS} from './constants';
 import {CC_FILE, TASK_FILE} from '../../constants';
@@ -31,18 +33,17 @@ import type {
   TaskStateMachine,
   UIControlConfig,
   TaskContext,
+  TaskActionsMap,
+  TaskActionArgs,
 } from './state-machine';
 import {
   computeUIControls,
   getDefaultUIControls,
   haveUIControlsChanged,
 } from './state-machine/uiControlsComputer';
-import type {TaskActionsMap} from './state-machine/actions';
 import AutoWrapup from './AutoWrapup';
 import {WrapupData} from '../config/types';
 
-type CallId = string;
-type TaskActionArgs = ActionArgs<TaskContext, TaskEventPayload, TaskEventPayload>;
 type UIControlConfigInput = Omit<UIControlConfig, 'channelType'> & {
   channelType?: UIControlConfig['channelType'];
 };
@@ -239,7 +240,7 @@ export default abstract class Task extends EventEmitter implements ITask {
   /**
    * Send an event to the state machine
    */
-  protected sendStateMachineEvent(event: TaskEventPayload): void {
+  public sendStateMachineEvent(event: TaskEventPayload): void {
     if (this.stateMachineService) {
       LoggerProxy.log(`Sending state machine event: ${event?.type}`, {
         module: CC_FILE,
@@ -296,6 +297,79 @@ export default abstract class Task extends EventEmitter implements ITask {
     }
 
     return undefined;
+  }
+
+  private async autoAnswerIfNeeded(event?: TaskEventPayload): Promise<void> {
+    if (!this.data) {
+      return;
+    }
+
+    const eventTaskData = Task.extractTaskDataFromEvent(event) as any;
+    const autoAnswerSupported =
+      this.uiControlConfig.channelType === TASK_CHANNEL_TYPE.DIGITAL ||
+      this.uiControlConfig.voiceVariant === VOICE_VARIANT.WEBRTC;
+
+    if (!autoAnswerSupported) {
+      return;
+    }
+
+    const isAutoAnsweringFromEvent = eventTaskData?.isAutoAnswering;
+    const isAutoAnsweringFromTask = (this.data as any)?.isAutoAnswering;
+    const shouldAutoAnswer =
+      isAutoAnsweringFromEvent === true ||
+      isAutoAnsweringFromEvent === 'true' ||
+      isAutoAnsweringFromTask === true ||
+      isAutoAnsweringFromTask === 'true';
+
+    if (!shouldAutoAnswer) {
+      return;
+    }
+
+    LoggerProxy.info(`Auto-answering task`, {
+      module: TASK_FILE,
+      method: 'autoAnswerIfNeeded',
+      interactionId: this.data.interactionId,
+    });
+
+    try {
+      await this.accept();
+      LoggerProxy.info(`Task auto-answered successfully`, {
+        module: TASK_FILE,
+        method: 'autoAnswerIfNeeded',
+        interactionId: this.data.interactionId,
+      });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_AUTO_ANSWER_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          mediaType: this.data.interaction.mediaType,
+          isAutoAnswered: true,
+        },
+        ['behavioral', 'operational']
+      );
+
+      this.emit(TASK_EVENTS.TASK_AUTO_ANSWERED, this);
+    } catch (error) {
+      this.updateTaskData({...this.data, isAutoAnswering: false});
+      LoggerProxy.error(`Failed to auto-answer task`, {
+        module: TASK_FILE,
+        method: 'autoAnswerIfNeeded',
+        interactionId: this.data.interactionId,
+        error,
+      });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_AUTO_ANSWER_FAILED,
+        {
+          taskId: this.data.interactionId,
+          mediaType: this.data.interaction.mediaType,
+          error: error?.message || 'Unknown error',
+          isAutoAnswered: false,
+        },
+        ['behavioral', 'operational']
+      );
+    }
   }
 
   private updateTaskFromEvent(event?: TaskEventPayload): void {
@@ -411,6 +485,15 @@ export default abstract class Task extends EventEmitter implements ITask {
       emitTaskWrappedup: this.createEmitSelfAction(TASK_EVENTS.TASK_WRAPPEDUP, {
         updateTaskData: true,
       }),
+      requestAutoAnswer: ({event}: TaskActionArgs) => {
+        this.autoAnswerIfNeeded(event);
+      },
+      requestCleanup: () => {
+        this.emit(TASK_EVENTS.TASK_CLEANUP, this, {removeFromCollection: false});
+      },
+      cleanupResources: () => {
+        this.emit(TASK_EVENTS.TASK_CLEANUP, this, {removeFromCollection: true});
+      },
     };
   }
 

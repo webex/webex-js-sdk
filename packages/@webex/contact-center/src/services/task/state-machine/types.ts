@@ -5,7 +5,7 @@
  * These types define states, events, context, and schemas for task lifecycle management.
  */
 
-import type {AnyStateNodeConfig} from 'xstate';
+import type {AnyStateNodeConfig, ActionFunctionMap, EventObject, ActionArgs} from 'xstate';
 import {DestinationType, TaskChannelType, TaskData, TaskUIControls, VoiceVariant} from '../types';
 import {TaskEvent, TaskState} from './constants';
 
@@ -200,3 +200,15 @@ export interface TaskStateMachineConfig {
   context: TaskContext;
   states: Record<string, AnyStateNodeConfig>;
 }
+
+export type TaskActionsMap = ActionFunctionMap<
+  TaskContext,
+  TaskEventPayload,
+  never,
+  {type: string; params: undefined},
+  never,
+  never,
+  EventObject
+>;
+
+export type TaskActionArgs = ActionArgs<TaskContext, TaskEventPayload, TaskEventPayload>;

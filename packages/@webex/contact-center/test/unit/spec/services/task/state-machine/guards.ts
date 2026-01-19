@@ -88,23 +88,6 @@ describe('State Machine Guards', () => {
   const createEventWithTaskData = (taskData: TaskData): TaskEventPayload =>
     ({taskData} as TaskEventPayload);
 
-  describe('Recording Guards', () => {
-    it('recordingActive returns true when controls available and recording', () => {
-      const ctx = createContext({recordingControlsAvailable: true, recordingInProgress: true});
-      expect(guards.recordingActive(createParams(ctx))).toBe(true);
-    });
-
-    it('recordingActive returns false when not recording', () => {
-      const ctx = createContext({recordingControlsAvailable: true, recordingInProgress: false});
-      expect(guards.recordingActive(createParams(ctx))).toBe(false);
-    });
-
-    it('recordingPaused returns true when controls available but not recording', () => {
-      const ctx = createContext({recordingControlsAvailable: true, recordingInProgress: false});
-      expect(guards.recordingPaused(createParams(ctx))).toBe(true);
-    });
-  });
-
   describe('Conference Guards', () => {
     it('conferenceInProgressFromEvent returns true with 2+ agents in event', () => {
       const ctx = createContext();

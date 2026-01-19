@@ -187,25 +187,6 @@ export const guards = {
 
     return getIsCustomerInCall(taskData.interaction, mainCallId);
   },
-  isOwner: ({context, event}: GuardParams): boolean => {
-    const eventTaskData = getTaskDataFromEvent(event);
-    const taskData = eventTaskData ?? context.taskData;
-    const selfAgentId = getSelfAgentId(context, taskData);
-    if (!selfAgentId) return false;
-    const owner = taskData?.interaction?.owner;
-
-    return owner === selfAgentId;
-  },
-
-  conferenceActiveAndCustomerInCall: ({event}: GuardParams): boolean => {
-    const taskData = getTaskDataFromEvent(event);
-    if (!taskData?.interaction) return false;
-    const mainCallId = taskData.interaction.mainInteractionId || taskData.interactionId;
-
-    return (
-      getIsConferenceInProgress(taskData) && getIsCustomerInCall(taskData.interaction, mainCallId)
-    );
-  },
 
   // Consult Guards
   isConsultInitiator: ({context}: GuardParams): boolean => {
@@ -299,13 +280,6 @@ export const guards = {
     return context.exitingConference === true;
   },
 
-  conferenceActiveAndNotWrapping: ({context, event}: GuardParams): boolean => {
-    const taskData = getTaskDataFromEvent(event);
-    if (!taskData) return false;
-
-    return getIsConferenceInProgress(taskData) && !shouldWrapUpForThisAgent(context, taskData);
-  },
-
   // Server State Guards
   serverReportsHeld: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
@@ -318,16 +292,6 @@ export const guards = {
     if (taskData?.isConsulted === true) return true;
 
     return Boolean(context.consultInitiator && !taskData?.wrapUpRequired);
-  },
-
-  // ============================================
-  // Recording Guards
-  recordingActive: ({context}: GuardParams): boolean => {
-    return context.recordingControlsAvailable && context.recordingInProgress;
-  },
-
-  recordingPaused: ({context}: GuardParams): boolean => {
-    return context.recordingControlsAvailable && !context.recordingInProgress;
   },
 };
 

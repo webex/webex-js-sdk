@@ -20,7 +20,7 @@ import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
-import {TaskState, TaskEvent, guards} from '../state-machine';
+import {TaskState, TaskEvent} from '../state-machine';
 import {WrapupData} from '../../config/types';
 
 export default class Voice extends Task implements IVoice {
@@ -263,14 +263,21 @@ export default class Voice extends Task implements IVoice {
   public async pauseRecording(): Promise<TaskResponse> {
     // Validate recording is active
     const state = this.stateMachineService?.getSnapshot?.();
-    if (state && !guards.recordingActive({context: state.context})) {
-      const error = new Error('Recording is not active or already paused');
-      LoggerProxy.error('Pause recording operation not allowed', {
-        module: CC_FILE,
-        method: 'pauseRecording',
-        interactionId: this.data.interactionId,
-      });
-      throw error;
+    if (state) {
+      const {recordingControlsAvailable, recordingInProgress} = state.context as {
+        recordingControlsAvailable?: boolean;
+        recordingInProgress?: boolean;
+      };
+      const recordingActive = Boolean(recordingControlsAvailable && recordingInProgress);
+      if (!recordingActive) {
+        const error = new Error('Recording is not active or already paused');
+        LoggerProxy.error('Pause recording operation not allowed', {
+          module: CC_FILE,
+          method: 'pauseRecording',
+          interactionId: this.data.interactionId,
+        });
+        throw error;
+      }
     }
 
     try {
@@ -330,14 +337,21 @@ export default class Voice extends Task implements IVoice {
   ): Promise<TaskResponse> {
     // Validate recording is paused
     const state = this.stateMachineService?.getSnapshot?.();
-    if (state && !guards.recordingPaused({context: state.context})) {
-      const error = new Error('Recording is not paused');
-      LoggerProxy.error('Resume recording operation not allowed', {
-        module: CC_FILE,
-        method: 'resumeRecording',
-        interactionId: this.data.interactionId,
-      });
-      throw error;
+    if (state) {
+      const {recordingControlsAvailable, recordingInProgress} = state.context as {
+        recordingControlsAvailable?: boolean;
+        recordingInProgress?: boolean;
+      };
+      const recordingPaused = Boolean(recordingControlsAvailable && !recordingInProgress);
+      if (!recordingPaused) {
+        const error = new Error('Recording is not paused');
+        LoggerProxy.error('Resume recording operation not allowed', {
+          module: CC_FILE,
+          method: 'resumeRecording',
+          interactionId: this.data.interactionId,
+        });
+        throw error;
+      }
     }
 
     try {

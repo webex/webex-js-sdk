@@ -1,6 +1,7 @@
 /* eslint-disable import/no-cycle */
 import EventEmitter from 'events';
 import type {AnyActorRef} from 'xstate';
+import {TaskEventPayload} from './state-machine';
 import {Msg} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
 
@@ -317,6 +318,13 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_WRAPPEDUP = 'task:wrappedup',
+
+  /**
+   * Triggered when the task state machine reaches a final state and resources should be cleaned up.
+   * Used internally by TaskManager to perform collection/call cleanup.
+   * @internal
+   */
+  TASK_CLEANUP = 'task:cleanup',
 
   /**
    * Triggered when recording is started
@@ -1532,6 +1540,13 @@ export interface ITask extends EventEmitter {
   state?: any;
 
   /**
+   * Helper method to send events to the state machine.
+   * This is part of the migration to XState.
+   * @internal
+   */
+  sendStateMachineEvent: (event: TaskEventPayload) => void;
+
+  /**
    * Cancels the auto-wrapup timer for the task.
    * This method stops the auto-wrapup process if it is currently active.
    * Note: This is supported only in single session mode. Not supported in multi-session mode.
@@ -1833,4 +1848,45 @@ export interface IWebRTC extends IVoice {
    * ```
    */
   unregisterWebCallListeners(): void;
+}
+
+export type WebSocketPayload = TaskData & {
+  type: string;
+  mediaResourceId?: string;
+  reason?: string;
+};
+
+export type WebSocketMessage = {
+  keepalive?: 'true' | 'false' | boolean;
+  data: WebSocketPayload;
+};
+
+/**
+ * Actions to be performed after handling an event
+ *
+ * These actions represent TaskManager-level concerns (task collection lifecycle,
+ * resource cleanup) rather than task-level state machine concerns. The separation
+ * ensures proper responsibility:
+ * - TaskManager: Collection management, metrics, cleanup
+ * - State Machine: Task state transitions, event emissions, UI controls
+ */
+export interface TaskEventActions {
+  task?: ITask;
+}
+
+/**
+ * Context for processing an event
+ *
+ * Contains all information needed to process a WebSocket event:
+ * - Event type and payload from the backend
+ * - Task instance (if exists)
+ * - Pre-mapped state machine event (if applicable)
+ * - Task state flags (e.g., was this a consulted task)
+ */
+export interface EventContext {
+  eventType: string;
+  payload: WebSocketPayload;
+  task?: ITask;
+  stateMachineEvent?: TaskEventPayload | null;
+  wasConsultedTask: boolean;
 }
