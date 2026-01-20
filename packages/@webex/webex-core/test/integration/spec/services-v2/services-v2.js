@@ -596,6 +596,15 @@ describe('webex-core', () => {
     });
 
     describe('#updateServices()', () => {
+      let fetchStub;
+
+      afterEach(() => {
+        if (fetchStub && fetchStub.restore) {
+          fetchStub.restore();
+        }
+        fetchStub = null;
+      });
+
       it('returns a Promise that and resolves on success', (done) => {
         const servicesPromise = services.updateServices();
 
@@ -613,15 +622,17 @@ describe('webex-core', () => {
       });
 
       it('does not update the services list when not needed', (done) => {
-        const fetchStub = sinon.stub(services, '_fetchNewServiceHostmap').resolves();
+        fetchStub = sinon.stub(services, '_fetchNewServiceHostmap').resolves();
         catalog.serviceGroups.preauth = [];
         catalog.status.preauth.ready = true;
 
-        services.updateServices().then(() => {
+        services.updateServices({
+          from: 'limited',
+          query: {orgId: webexUser.orgId},
+        }).then(() => {
             assert.notCalled(services._fetchNewServiceHostmap);
+            assert.isAbove(catalog.serviceGroups.preauth.length, 0);
             done();
-        }).finally(() => {
-          fetchStub.restore();
         });
       });
 
@@ -637,7 +648,7 @@ describe('webex-core', () => {
 
       it('updates query.email to be emailhash-ed using SHA256', (done) => {
         const updateStub = sinon.stub(catalog, 'updateServiceGroups').returnsThis();
-        const fetchStub = sinon.stub(services, '_fetchNewServiceHostmap').resolves();
+        fetchStub = sinon.stub(services, '_fetchNewServiceHostmap').resolves();
         catalog.status.preauth.ready = false;
 
         services
@@ -654,7 +665,6 @@ describe('webex-core', () => {
           })
           .finally(() => {
             updateStub.restore();
-            fetchStub.restore();
           });
       });
 
