@@ -623,7 +623,7 @@ describe('webex-core', () => {
 
       it('does not update the services list when not needed', (done) => {
         fetchStub = sinon.stub(services, '_fetchNewServiceHostmap').resolves();
-        catalog.serviceGroups.preauth = [];
+        catalog.serviceGroups.preauth = [1, 2];
         catalog.status.preauth.ready = true;
 
         services.updateServices({
