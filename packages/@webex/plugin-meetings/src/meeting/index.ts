@@ -55,6 +55,7 @@ import {
   isBrowserMediaError,
   isBrowserMediaErrorName,
 } from '@webex/internal-plugin-metrics/src/call-diagnostic/call-diagnostic-metrics.util';
+import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 import {processNewCaptions} from './voicea-meeting';
 
 import {
@@ -183,6 +184,8 @@ import {LocusDTO} from '../locus-info/types';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
+
+const LLM_HEALTHCHECK_TIMER_MS = 3 * 60 * 1000;
 
 const logRequest = (request: any, {logText = ''}) => {
   LoggerProxy.logger.info(`${logText} - sending request`);
@@ -756,6 +759,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private uploadLogsTimer?: ReturnType<typeof setTimeout>;
   private logUploadIntervalIndex: number;
   private mediaServerIp: string;
+  private llmHealthCheckTimer?: ReturnType<typeof setTimeout>;
 
   /**
    * @param {Object} attrs
@@ -2846,6 +2850,13 @@ export default class Meeting extends StatelessWebexPlugin {
         EVENT_TRIGGERS.MEETING_MANUAL_CAPTION_UPDATED,
         {enable}
       );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED, ({hesiodLlmId}) => {
+      if (hesiodLlmId) {
+        // @ts-ignore
+        this.webex.internal.voicea.onCaptionServiceIdUpdate(hesiodLlmId);
+      }
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_MEETING_BREAKOUT_UPDATED, ({breakout}) => {
@@ -5369,6 +5380,18 @@ export default class Meeting extends StatelessWebexPlugin {
     let joined = false;
     let joinResponse = prevJoinResponse;
 
+    /* Before we do anything, check if RTCPeerConnection is available. Normally this is checked
+       by addMediaInternal() itself when creating the media connection, but since joinWithMedia()
+       is a convenience method that does both join() and addMedia(), we want to fail fast here
+       in case WebRTC is not available at all.
+     */
+    if (WebCapabilities.supportsRTCPeerConnection() === CapabilityState.NOT_CAPABLE) {
+      // throw the same error that would be thrown by addMediaInternal()
+      throw new Errors.WebrtcApiNotAvailableError(
+        'RTCPeerConnection API is not available in this environment'
+      );
+    }
+
     try {
       let turnServerInfo;
       let turnDiscoverySkippedReason;
@@ -5439,7 +5462,10 @@ export default class Meeting extends StatelessWebexPlugin {
       // if this was the first attempt, let's do a retry
       let shouldRetry = !isRetry;
 
-      if (CallDiagnosticUtils.isSdpOfferCreationError(error)) {
+      if (
+        CallDiagnosticUtils.isSdpOfferCreationError(error) ||
+        CallDiagnosticUtils.isWebrtcApiNotAvailableError(error)
+      ) {
         // errors related to offer creation (for example missing H264 codec) will happen again no matter how many times we try,
         // so there is no point doing a retry
         shouldRetry = false;
@@ -6111,6 +6137,46 @@ export default class Meeting extends StatelessWebexPlugin {
       });
   }
 
+  /** starts a timer that after a few minutes checks if
+   * the LLM connection is connected, if not it sends a metric
+   * @private
+   * @returns {void}
+   */
+  private startLLMHealthCheckTimer() {
+    // first cancel any existing timer
+    this.clearLLMHealthCheckTimer();
+
+    this.llmHealthCheckTimer = setTimeout(() => {
+      // @ts-ignore
+      const isConnected = this.webex.internal.llm.isConnected();
+
+      if (!isConnected) {
+        // @ts-ignore
+        const {hasEverConnected} = this.webex.internal.llm;
+
+        // only send metric if not connected - to avoid too many metrics
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_HEALTHCHECK_FAILURE, {
+          correlation_id: this.correlationId,
+          hasEverConnected,
+        });
+      }
+
+      this.llmHealthCheckTimer = undefined;
+    }, LLM_HEALTHCHECK_TIMER_MS);
+  }
+
+  /**
+   * Clears the LLM health check timer
+   * @private
+   * @returns {void}
+   */
+  private clearLLMHealthCheckTimer() {
+    if (this.llmHealthCheckTimer) {
+      clearTimeout(this.llmHealthCheckTimer);
+      this.llmHealthCheckTimer = undefined;
+    }
+  }
+
   /**
    * Connects to low latency mercury and reconnects if the address has changed
    * It will also disconnect if called when the meeting has ended
@@ -6153,6 +6219,8 @@ export default class Meeting extends StatelessWebexPlugin {
       this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
       // @ts-ignore - Fix type
       this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+
+      this.clearLLMHealthCheckTimer();
     }
 
     if (!isJoined) {
@@ -6174,6 +6242,8 @@ export default class Meeting extends StatelessWebexPlugin {
         LoggerProxy.logger.info(
           'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
         );
+
+        this.startLLMHealthCheckTimer();
 
         return Promise.resolve(registerAndConnectResult);
       });
@@ -9424,6 +9494,8 @@ export default class Meeting extends StatelessWebexPlugin {
     this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
     // @ts-ignore - Fix type
     this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+
+    this.clearLLMHealthCheckTimer();
   };
 
   /**
