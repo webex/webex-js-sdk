@@ -188,7 +188,7 @@ const IpNetworkDetector = WebexPlugin.extend({
 
       results = await this.gatherLocalCandidates(pc);
     } finally {
-      pc.close();
+      pc?.close();
       this.state = STATE.IDLE;
     }
 

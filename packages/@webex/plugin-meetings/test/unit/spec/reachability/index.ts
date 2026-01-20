@@ -1,5 +1,6 @@
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
+import { CapabilityState, WebCapabilities } from '@webex/web-capabilities';
 import sinon from 'sinon';
 import EventEmitter from 'events';
 import testUtils from '../../../utils/testUtils';
@@ -8,6 +9,7 @@ import {ClusterNode} from '../../../../src/reachability/request';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import * as ClusterReachabilityModule from '@webex/plugin-meetings/src/reachability/clusterReachability';
 import Metrics from '@webex/plugin-meetings/src/metrics';
+import * as InternalMediaCore from '@webex/internal-media-core';
 
 import {IP_VERSION} from '@webex/plugin-meetings/src/constants';
 import { ReachabilityResultsForBackend } from '@webex/plugin-meetings/src/reachability/reachability.types';
@@ -466,11 +468,13 @@ describe('gatherReachability', () => {
   let clock;
   let clusterReachabilityCtorStub;
   let mockClusterReachabilityInstances: Record<string, MockClusterReachability>;
+  let supportsRTCPeerConnectionStub;
 
   beforeEach(async () => {
     webex = new MockWebex();
 
     sinon.stub(Metrics, 'sendBehavioralMetric');
+    supportsRTCPeerConnectionStub = sinon.stub(WebCapabilities, 'supportsRTCPeerConnection').returns(CapabilityState.CAPABLE);
 
     await webex.boundedStorage.put(
       'Reachability',
@@ -544,6 +548,25 @@ describe('gatherReachability', () => {
 
     await assert.isRejected(reachability.gatherReachability('test'), 'enableReachabilityChecks is disabled in config');
   });
+
+  [CapabilityState.NOT_CAPABLE, CapabilityState.UNKNOWN].forEach((capabilityState) =>
+    it(`returns empty object if WebRTC API is not available (capabilityState=${capabilityState}`, async () => {
+      supportsRTCPeerConnectionStub.returns(capabilityState);
+
+      const reachability = new Reachability(webex);
+
+      const result = await reachability.gatherReachability('test');
+
+      assert.deepEqual(result, {});
+
+      // Verify that no new reachability result was stored - old results should remain unchanged
+      // This check is mainly to ensure that we don't put any "unreachable" results into storage
+      const storedResults = await webex.boundedStorage.get('Reachability', 'reachability.result');
+      assert.equal(storedResults, JSON.stringify({old: 'results'}));
+
+      assert.equal(await reachability.isWebexMediaBackendUnreachable(), false);
+    })
+  );
 
   [
     // ========================================================================
