@@ -302,38 +302,6 @@ jobs:
             
             console.log('✨ Comment posted successfully!');
 
-      - name: Post Webex Space Message
-        if: ${{ steps.get-prs.outputs.pr_numbers != '[]' }}
-        env:
-          WEBEX_BOT_TOKEN: ${{ secrets.WEBEX_BOT_TOKEN }}
-          WEBEX_ROOM_ID: ${{ secrets.WEBEX_ROOM_ID }}
-        run: |
-          VERSION="${{ steps.version-info.outputs.version }}"
-          VERSION_NUMBER="${{ steps.version-info.outputs.version_number }}"
-          PRIMARY_PACKAGE="${{ steps.get-prs.outputs.primary_package }}"
-          PRIMARY_PACKAGE_VERSION="${{ steps.get-prs.outputs.primary_package_version }}"
-          
-          PACKAGE_PARAM=""
-          if [ -n "${PRIMARY_PACKAGE}" ]; then
-            ENCODED_PACKAGE=$(node -e "console.log(encodeURIComponent(process.argv[1]))" "${PRIMARY_PACKAGE}")
-            PACKAGE_PARAM="&package=${ENCODED_PACKAGE}"
-          fi
-          
-          VERSION_PARAM=""
-          if [ -n "${PRIMARY_PACKAGE_VERSION}" ]; then
-            VERSION_PARAM="&version=${PRIMARY_PACKAGE_VERSION}"
-          fi
-          
-          CHANGELOG_URL="https://web-sdk.webex.com/changelog/?stable_version=${VERSION_NUMBER}${PACKAGE_PARAM}${VERSION_PARAM}"
-
-          MESSAGE="Current stable SDK version: ${VERSION}\n\nChangelog: ${CHANGELOG_URL}\n\nThis changelog lists all commits included in this release."
-
-          curl -sSf \
-            -H "Authorization: Bearer ${WEBEX_BOT_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d "{\"roomId\":\"${WEBEX_ROOM_ID}\",\"markdown\":\"${MESSAGE}\"}" \
-            https://webexapis.com/v1/messages
-      
       - name: Release Summary
         run: |
           echo "### 📊 Bot Summary" >> $GITHUB_STEP_SUMMARY
