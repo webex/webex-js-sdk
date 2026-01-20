@@ -1,0 +1,68 @@
+name: Codex review (selected base branches)
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+
+env:
+  # Space-separated list of PR base branches that should receive Codex reviews.
+  # Example: "next task-refactor"
+  CODEX_REVIEW_BASE_BRANCHES: "next task-refactor"
+
+jobs:
+  request_codex_review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Decide whether to request Codex review
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          IS_DRAFT="${{ github.event.pull_request.draft }}"
+
+          echo "base_ref=$BASE_REF" >> "$GITHUB_OUTPUT"
+
+          if [[ "$IS_DRAFT" == "true" ]]; then
+            echo "should_request=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          SHOULD=false
+          for b in $CODEX_REVIEW_BASE_BRANCHES; do
+            if [[ "$BASE_REF" == "$b" ]]; then
+              SHOULD=true
+              break
+            fi
+          done
+
+          echo "should_request=$SHOULD" >> "$GITHUB_OUTPUT"
+
+      - name: Comment "@codex review" (idempotent)
+        if: ${{ steps.gate.outputs.should_request == 'true' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            const body = "@codex review";
+
+            // Check if we've already posted this exact request comment (any bot/user)
+            const { data: comments } = await github.rest.issues.listComments({
+              owner, repo, issue_number, per_page: 100
+            });
+
+            const already = comments.some(c => (c.body || "").trim() === body);
+
+            if (!already) {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
