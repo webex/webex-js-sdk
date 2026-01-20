@@ -99,6 +99,13 @@ describe('webex-core', () => {
       catalogEU = servicesEU._getCatalog();
     });
 
+    after('delete test users', () =>
+      Promise.all([
+        testUsers.remove([webexUser]),
+        testUsers.remove([webexUserEU]),
+      ])
+    );
+
     describe('#_getCatalog()', () => {
       it('returns a catalog', () => {
         const localCatalog = services._getCatalog();
