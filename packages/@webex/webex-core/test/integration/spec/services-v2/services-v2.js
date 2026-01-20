@@ -615,7 +615,7 @@ describe('webex-core', () => {
       it('does not update the services list when not needed', (done) => {
         const fetchStub = sinon.stub(services, '_fetchNewServiceHostmap').resolves();
         catalog.serviceGroups.preauth = [];
-        catalog.status.preauth?.ready = true;
+        catalog.status.preauth.ready = true;
 
         services.updateServices().then(() => {
           services._fetchNewServiceHostmap.to.be.notCalled();
@@ -626,7 +626,7 @@ describe('webex-core', () => {
 
       it('updates the services list', (done) => {
         catalog.serviceGroups.postauth = [];
-        catalog.status.postauth?.ready = false;
+        catalog.status.postauth.ready = false;
 
         services.updateServices().then(() => {
           assert.isAbove(catalog.serviceGroups.postauth.length, 0);
@@ -637,7 +637,7 @@ describe('webex-core', () => {
       it('updates query.email to be emailhash-ed using SHA256', (done) => {
         const updateStub = sinon.stub(catalog, 'updateServiceGroups').returnsThis();
         const fetchStub = sinon.stub(services, '_fetchNewServiceHostmap').resolves();
-        catalog.status.preauth?.ready = false;
+        catalog.status.preauth.ready = false;
 
         services
           .updateServices({
@@ -659,7 +659,7 @@ describe('webex-core', () => {
 
       it('updates the limited catalog when email is provided', (done) => {
         catalog.serviceGroups.preauth = [];
-        catalog.status.preauth?.ready = false;
+        catalog.status.preauth.ready = false;
 
         services
           .updateServices({
@@ -674,7 +674,7 @@ describe('webex-core', () => {
 
       it('updates the limited catalog when userId is provided', (done) => {
         catalog.serviceGroups.preauth = [];
-        catalog.status.preauth?.ready = false;
+        catalog.status.preauth.ready = false;
 
         services
           .updateServices({
@@ -689,7 +689,7 @@ describe('webex-core', () => {
 
       it('updates the limited catalog when orgId is provided', (done) => {
         catalog.serviceGroups.preauth = [];
-        catalog.status.preauth?.ready = false;
+        catalog.status.preauth.ready = false;
 
         services
           .updateServices({
@@ -703,7 +703,7 @@ describe('webex-core', () => {
       });
       it('updates the limited catalog when query param mode is provided', (done) => {
         catalog.serviceGroups.preauth = [];
-        catalog.status.preauth?.ready = false;
+        catalog.status.preauth.ready = false;
         
         services
           .updateServices({
@@ -717,7 +717,7 @@ describe('webex-core', () => {
       });
       it('does not update the limited catalog when nothing is provided', () => {
         catalog.serviceGroups.preauth = [];
-        catalog.status.preauth?.ready = false;
+        catalog.status.preauth.ready = false;
 
         return services
           .updateServices({from: 'limited'})
