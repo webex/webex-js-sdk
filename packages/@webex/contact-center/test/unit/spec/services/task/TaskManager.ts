@@ -381,6 +381,50 @@ describe('TaskManager', () => {
     );
   });
 
+  it('should clear wrapUpRequired and remove task on CONTACT_ENDED when interaction is in wrapUp state', () => {
+    webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
+
+    const task = taskManager.getTask(taskId);
+    const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+    task.updateTaskData = jest.fn().mockImplementation((newData) => {
+      task.data = {
+        ...(task.data || {}),
+        ...(newData || {}),
+        interaction: {
+          ...(task.data?.interaction || {}),
+          ...(newData?.interaction || {}),
+        },
+      };
+
+      return task;
+    });
+
+    const payload = {
+      data: {
+        type: CC_EVENTS.CONTACT_ENDED,
+        interactionId: taskId,
+        interaction: {
+          state: 'wrapUp',
+          mediaType: 'telephony',
+        },
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+    // updateTaskData should ultimately be called with wrapUpRequired set to false
+    const lastCallArgs = (task.updateTaskData as jest.Mock).mock.calls.slice(-1)[0][0];
+    expect(lastCallArgs.wrapUpRequired).toBe(false);
+
+    // Final task data should also reflect wrapUpRequired cleared
+    expect(task.data.wrapUpRequired).toBe(false);
+
+    // Task should be removed from the collection when in wrapUp state
+    expect(removeTaskSpy).toHaveBeenCalledWith(task);
+    expect(taskManager.getTask(taskId)).toBeUndefined();
+  });
+
   it('should emit TASK_REJECT event on AGENT_INVITE_FAILED event', () => {
     webSocketManagerMock.emit('message', JSON.stringify(initalPayload));
 
