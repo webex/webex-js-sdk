@@ -618,7 +618,8 @@ describe('webex-core', () => {
         catalog.status.preauth.ready = true;
 
         services.updateServices().then(() => {
-          services._fetchNewServiceHostmap.to.be.notCalled();
+            assert.notCalled(services._fetchNewServiceHostmap);
+            done();
         }).finally(() => {
           fetchStub.restore();
         });
