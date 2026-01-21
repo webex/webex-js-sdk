@@ -180,6 +180,8 @@ export class ReachabilityPeerConnection extends EventsScope {
     const {CLOSED} = CONNECTION_STATE;
 
     if (this.pc && this.pc.connectionState !== CLOSED) {
+      // Emit results for all protocols before closing (important for timeout scenarios)
+      this.emitResultsForAllProtocols();
       this.closePeerConnection();
       this.finishReachabilityCheck();
     }
