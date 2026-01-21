@@ -7,6 +7,7 @@ import {
   ClusterReachabilityResult,
   NatType,
   ReachabilityPeerConnectionEvents,
+  SubnetDetail,
 } from './reachability.types';
 import {ReachabilityPeerConnection} from './reachabilityPeerConnection';
 
@@ -16,6 +17,8 @@ export type ResultEventData = {
   result: 'reachable' | 'unreachable' | 'untested';
   latencyInMilliseconds: number; // amount of time it took to get the ICE candidate
   clientMediaIPs?: string[];
+  details?: SubnetDetail[];
+  minLatency?: number;
 };
 
 // data for the Events.clientMediaIpsUpdated event
@@ -147,6 +150,26 @@ export class ClusterReachability extends EventsScope {
         if (data.result === 'reachable') {
           this.udpResultEmitted = true;
         }
+
+        // Get aggregated UDP result with details from ALL per-URL instances
+        const aggregatedUdpResult = this.aggregateUdpResults();
+        this.emit(
+          {
+            file: 'clusterReachability',
+            function: 'setupReachabilityPeerConnectionEventListeners',
+          },
+          Events.resultReady,
+          {
+            protocol: 'udp',
+            result: aggregatedUdpResult.result,
+            latencyInMilliseconds: aggregatedUdpResult.latencyInMilliseconds,
+            clientMediaIPs: aggregatedUdpResult.clientMediaIPs,
+            details: aggregatedUdpResult.details,
+            minLatency: aggregatedUdpResult.minLatency,
+          }
+        );
+
+        return;
       }
 
       this.emit(
@@ -209,17 +232,8 @@ export class ClusterReachability extends EventsScope {
       xtls: {result: 'untested'},
     };
 
-    // Get the first reachable UDP result from per-URL instances
-    for (const rpc of this.reachabilityPeerConnectionsForUdp) {
-      const rpcResult = rpc.getResult();
-      if (rpcResult.udp.result === 'reachable') {
-        result.udp = rpcResult.udp;
-        break;
-      }
-      if (rpcResult.udp.result === 'unreachable' && result.udp.result === 'untested') {
-        result.udp = rpcResult.udp;
-      }
-    }
+    // Aggregate UDP results from all per-URL instances
+    result.udp = this.aggregateUdpResults();
 
     // Get TCP and TLS results from the main peer connection
     if (this.reachabilityPeerConnection) {
@@ -229,6 +243,61 @@ export class ClusterReachability extends EventsScope {
     }
 
     return result;
+  }
+
+  /**
+   * Aggregates UDP results from all per-URL instances.
+   * Combines details from each instance and calculates overall result.
+   * @returns {TransportResult} aggregated UDP result with details from all instances
+   */
+  private aggregateUdpResults(): ClusterReachabilityResult['udp'] {
+    const allDetails: SubnetDetail[] = [];
+    let firstReachableResult: ClusterReachabilityResult['udp'] | null = null;
+    let hasUnreachable = false;
+
+    for (const rpc of this.reachabilityPeerConnectionsForUdp) {
+      const rpcResult = rpc.getResult();
+
+      // Collect details from each instance
+      if (rpcResult.udp.details) {
+        allDetails.push(...rpcResult.udp.details);
+      }
+
+      // Track first reachable result for latency and clientMediaIPs
+      if (!firstReachableResult && rpcResult.udp.result === 'reachable') {
+        firstReachableResult = rpcResult.udp;
+      }
+
+      if (rpcResult.udp.result === 'unreachable') {
+        hasUnreachable = true;
+      }
+    }
+
+    // Calculate minLatency from all reachable details
+    const reachableLatencies = allDetails
+      .filter((d) => d.answeredTx === 1 && d.latencies.length > 0)
+      .map((d) => Math.min(...d.latencies));
+    const minLatency = reachableLatencies.length > 0 ? Math.min(...reachableLatencies) : undefined;
+
+    // Determine overall result
+    if (firstReachableResult) {
+      return {
+        result: 'reachable',
+        latencyInMilliseconds: firstReachableResult.latencyInMilliseconds,
+        clientMediaIPs: firstReachableResult.clientMediaIPs,
+        details: allDetails,
+        minLatency,
+      };
+    }
+
+    if (hasUnreachable) {
+      return {
+        result: 'unreachable',
+        details: allDetails,
+      };
+    }
+
+    return {result: 'untested', details: allDetails};
   }
 
   /**

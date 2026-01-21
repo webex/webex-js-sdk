@@ -25,6 +25,8 @@ import {
   TransportResultForBackend,
   GetClustersTrigger,
   NatType,
+  SubnetDetailForBackend,
+  ClusterUrls,
 } from './reachability.types';
 import {
   ClientMediaIpsUpdatedEventData,
@@ -33,6 +35,7 @@ import {
   NatTypeUpdatedEventData,
   ResultEventData,
 } from './clusterReachability';
+import {prepopulateSubnetDetails} from './util';
 import EventsScope from '../common/events/events-scope';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import Metrics from '../metrics';
@@ -435,6 +438,24 @@ export default class Reachability extends EventsScope {
           break;
         case 'latencyInMilliseconds':
           output.latencyInMilliseconds = value.toString();
+          break;
+        case 'minLatency':
+          if (typeof value === 'number') {
+            output.minLatency = value;
+          }
+          break;
+        case 'details':
+          if (Array.isArray(value) && value.length > 0) {
+            output.details = value.map(
+              (detail): SubnetDetailForBackend => ({
+                serverIps: detail.serverIp,
+                port: detail.port.toString(),
+                'answered-tx': detail.answeredTx.toString(),
+                'lost-tx': detail.lostTx.toString(),
+                latencies: detail.latencies.map((l: number) => l.toString()),
+              })
+            );
+          }
           break;
         default:
           output[key] = value;
@@ -922,11 +943,27 @@ export default class Reachability extends EventsScope {
         cluster.xtls = [];
       }
 
+      // Pre-populate subnet details from each protocol's own URLs (marked as unreachable initially)
+      // Each protocol only shows subnets from its own input URLs
+      // Only URLs with IP addresses are pre-populated
+      const udpDetails = prepopulateSubnetDetails(cluster.udp);
+      const tcpDetails = prepopulateSubnetDetails(cluster.tcp);
+      const xtlsDetails = prepopulateSubnetDetails(cluster.xtls);
+
       // initialize the result for this cluster
       results[key] = {
-        udp: {result: cluster.udp.length > 0 ? 'unreachable' : 'untested'},
-        tcp: {result: cluster.tcp.length > 0 ? 'unreachable' : 'untested'},
-        xtls: {result: cluster.xtls.length > 0 ? 'unreachable' : 'untested'},
+        udp: {
+          result: cluster.udp.length > 0 ? 'unreachable' : 'untested',
+          details: udpDetails,
+        },
+        tcp: {
+          result: cluster.tcp.length > 0 ? 'unreachable' : 'untested',
+          details: tcpDetails,
+        },
+        xtls: {
+          result: cluster.xtls.length > 0 ? 'unreachable' : 'untested',
+          details: cluster.xtls.length > 0 ? xtlsDetails : [],
+        },
         isVideoMesh: cluster.isVideoMesh,
       };
 
@@ -977,7 +1014,7 @@ export default class Reachability extends EventsScope {
         this.webex.config.meetings.enablePerUdpUrlReachability
       );
       this.clusterReachability[key].on(Events.resultReady, async (data: ResultEventData) => {
-        const {protocol, result, clientMediaIPs, latencyInMilliseconds} = data;
+        const {protocol, result, clientMediaIPs, latencyInMilliseconds, details, minLatency} = data;
 
         if (isFirstResult[protocol]) {
           this.emit(
@@ -999,6 +1036,12 @@ export default class Reachability extends EventsScope {
         results[key][protocol].result = result;
         results[key][protocol].clientMediaIPs = clientMediaIPs;
         results[key][protocol].latencyInMilliseconds = latencyInMilliseconds;
+        if (details) {
+          results[key][protocol].details = details;
+        }
+        if (minLatency !== undefined) {
+          results[key][protocol].minLatency = minLatency;
+        }
 
         await this.storeResults(results);
 
@@ -1095,5 +1138,37 @@ export default class Reachability extends EventsScope {
 
     // for version 1 we don't attach anything to Roap messages, reachability report is sent inside clientMediaPreferences
     return undefined;
+  }
+
+  /**
+   * Gets the list of all cluster URLs used during the reachability checks (IP addresses or domain names with ports)
+   * grouped by cluster and protocol.
+   *
+   * @returns {ClusterUrls} An object containing clusters as keys,
+   * protocols as nested keys, and arrays of "ip:port" or "domain:port" strings.
+   * @public
+   * @memberof Reachability
+   */
+  public getAllClustersInfo(): ClusterUrls {
+    const extractUrlsFromDetails = (details?: {serverIp: string; port: number}[]): string[] => {
+      if (!details || details.length === 0) {
+        return [];
+      }
+
+      return details.map((d) => `${d.serverIp}:${d.port}`);
+    };
+
+    const result: ClusterUrls = {};
+
+    Object.entries(this.clusterReachability).forEach(([clusterName, clusterReachability]) => {
+      const clusterResult = clusterReachability.getResult();
+      result[clusterName] = {
+        udp: extractUrlsFromDetails(clusterResult.udp.details),
+        tcp: extractUrlsFromDetails(clusterResult.tcp.details),
+        xtls: extractUrlsFromDetails(clusterResult.xtls.details),
+      };
+    });
+
+    return result;
   }
 }
