@@ -598,7 +598,39 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // Participant leaves - downgrade to CONNECTED if < 2 agents remain
           [TaskEvent.PARTICIPANT_LEAVE]: [
             {
-              guard: guards.shouldDowngradeConference,
+              guard: (params) =>
+                guards.shouldDowngradeConference(params) &&
+                !guards.selfInMainCallFromEventOrContext(params) &&
+                guards.shouldWrapUp(params),
+              target: TaskState.WRAPPING_UP,
+              actions: [
+                'updateTaskData',
+                'handleParticipantLeft',
+                'markEnded',
+                'clearConsultState',
+                'emitTaskParticipantLeft',
+                'emitTaskWrapup',
+              ],
+            },
+            {
+              guard: (params) =>
+                guards.shouldDowngradeConference(params) &&
+                !guards.selfInMainCallFromEventOrContext(params),
+              target: TaskState.TERMINATED,
+              actions: [
+                'updateTaskData',
+                'handleParticipantLeft',
+                'markEnded',
+                'clearConsultState',
+                'emitTaskParticipantLeft',
+                'emitTaskEnd',
+              ],
+            },
+            {
+              guard: (params) =>
+                guards.shouldDowngradeConference(params) &&
+                guards.customerInCallFromEventOrContext(params) &&
+                guards.selfInMainCallFromEventOrContext(params),
               target: TaskState.CONNECTED,
               actions: [
                 'updateTaskData',
