@@ -631,5 +631,70 @@ describe('plugin-meetings', () => {
           }
         });
       });
+
+       describe("#searchLargeScaleWebinarAttendees", () => {
+        const params = {
+          queryString: 'queryString',
+          limit: 50,
+          next: null,
+        };
+
+        it('sends a GET request to search the large scale webinar attendees', async () => {
+          const result = await webinar.searchLargeScaleWebinarAttendees(params);
+          assert.calledOnce(webex.request);
+          assert.calledWith(webex.request, {
+            method: 'GET',
+            uri: `${webinar.locusUrl}/attendees/search?search_text=${encodeURIComponent(params.queryString)}&limit=50`,
+            headers: {
+              authorization: 'test-token',
+              trackingId: 'webex-js-sdk_test-uuid',
+            },
+          });
+          assert.equal(
+            result,
+            'REQUEST_RETURN_VALUE',
+            'should return the resolved value from the request'
+          );
+        });
+
+        it('queryString is empty string', async () => {
+          params.queryString = '';
+          const result = await webinar.searchLargeScaleWebinarAttendees(params);
+          assert.calledOnce(webex.request);
+          assert.calledWith(webex.request, {
+            method: 'GET',
+            uri: `${webinar.locusUrl}/attendees/search?limit=50`,
+            headers: {
+              authorization: 'test-token',
+              trackingId: 'webex-js-sdk_test-uuid',
+            },
+          });
+          assert.equal(
+            result,
+            'REQUEST_RETURN_VALUE',
+            'should return the resolved value from the request'
+          );
+        });
+
+        it('handles API call failures gracefully', async () => {
+          webex.request.rejects(new Error('API_ERROR'));
+          const errorLogger = sinon.stub(LoggerProxy.logger, 'error');
+
+          try {
+            await webinar.searchLargeScaleWebinarAttendees(params);
+            assert.fail('searchLargeScaleWebinarAttendees should throw an error');
+          } catch (error) {
+            assert.equal(error.message, 'API_ERROR', 'should throw the correct error');
+            assert.calledOnce(errorLogger);
+            assert.calledWith(
+              errorLogger,
+              'Meeting:webinar#searchLargeScaleWebinarAttendees failed',
+              sinon.match.instanceOf(Error)
+            );
+          } finally {
+            errorLogger.restore();
+          }
+        });
+      });
     })
 })
