@@ -8579,7 +8579,7 @@ __metadata:
     "@webex/test-helper-chai": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/ts-events": ^1.1.0
-    "@webex/web-media-effects": 2.32.1
+    "@webex/web-media-effects": "link:../../../../web-media-effects"
     eslint: ^8.24.0
     jsdom-global: 3.0.2
     prettier: ^2.7.1
@@ -9578,6 +9578,12 @@ __metadata:
   checksum: e4e5c82de552b3cce5ac2a237cc0e067837c5106e08026b60552de856c1f8312b1f1901c7fb799b75b571b399eada3332794eef00276b364654344f25d007228
   languageName: node
   linkType: hard
+
+"@webex/web-media-effects@link:../../../../web-media-effects::locator=%40webex%2Fmedia-helpers%40workspace%3Apackages%2F%40webex%2Fmedia-helpers":
+  version: 0.0.0-use.local
+  resolution: "@webex/web-media-effects@link:../../../../web-media-effects::locator=%40webex%2Fmedia-helpers%40workspace%3Apackages%2F%40webex%2Fmedia-helpers"
+  languageName: node
+  linkType: soft
 
 "@webex/web-media-effects@npm:2.32.1":
   version: 2.32.1

@@ -1304,10 +1304,10 @@ function validateSipCalloutFields() {
   const displayName = document.getElementById('gc-sip-display-name').value.trim();
   const button = document.getElementById('gc-sip-callout');
   const statusElm = document.getElementById('gc-sip-callout-status');
-  
+
   const shouldEnable = sipAddress && displayName;
   button.disabled = !shouldEnable;
-  
+
   // Update status message
   if (statusElm) {
     if (!sipAddress || !displayName) {
@@ -1342,7 +1342,7 @@ function clearSipCalloutFields() {
 
 function callOutSipParticipant() {
   const meeting = getCurrentMeeting();
-  
+
   if (!meeting) {
     const statusElm = document.getElementById('gc-sip-callout-status');
     statusElm.innerText = 'Error: No active meeting. Please join a meeting first.';
@@ -1379,12 +1379,12 @@ function cancelSipCallOut() {
   const participantId = document.getElementById('gc-sip-participant-id').value.trim();
   const statusElm = document.getElementById('gc-sip-cancel-status');
   const button = document.getElementById('gc-sip-cancel-callout');
-  
+
   if (!participantId) {
     statusElm.innerText = 'Please enter a participant ID.';
     statusElm.style.color = 'red';
     return;
-  }  
+  }
   button.disabled = true;
   statusElm.innerText = 'Cancelling...';
   statusElm.style.color = 'blue';
@@ -1618,34 +1618,71 @@ async function loadMicrophone(constraints) {
 
 async function handleBNR() {
   let effect;
+  const modelSelect = document.getElementById('ts-model-select');
+  const selectedModel = modelSelect ? modelSelect.value : 'bnr';
+
   try {
     effect = await localMedia.microphoneStream.getEffectByKind('noise-reduction-effect');
     if (!effect?.isEnabled) {
-      console.log('MeetingControls#handleBNR() :: applying BNR to local microphone stream');
+      console.log(`MeetingControls#handleBNR() :: applying noise reduction (${selectedModel}) to local microphone stream`);
 
       if (!effect) {
-        effect = await webex.meetings.createNoiseReductionEffect({env: integrationEnv.checked ? 'int' : 'prod'});
+        effect = await webex.meetings.createNoiseReductionEffect({
+          env: integrationEnv.checked ? 'int' : 'prod',
+          model: selectedModel,
+          workletProcessorUrl: 'http://localhost:58587/esm/noise-reduction-processor.worklet.simd.js'
+        });
         handleEffectsButton(toggleBNRBtn, BNR, effect);
         await localMedia.microphoneStream.addEffect(effect);
       }
 
       await effect.enable();
       handleEffectsButton(toggleBNRBtn, BNR, effect);
-      console.log('MeetingControls#handleBNR() :: successfully applied BNR to local microphone stream');
+      updateModelWarning(selectedModel);
+      console.log(`MeetingControls#handleBNR() :: successfully applied noise reduction (${selectedModel}) to local microphone stream`);
 
     }
     else {
-      console.log('MeetingControls#handleBNR() :: disabling BNR from local microphone stream');
+      console.log('MeetingControls#handleBNR() :: disabling noise reduction from local microphone stream');
 
       await effect.disable();
       handleEffectsButton(toggleBNRBtn, BNR, effect);
-      console.log('MeetingControls#handleBNR() :: successfully disabled BNR from local microphone stream');
+      console.log('MeetingControls#handleBNR() :: successfully disabled noise reduction from local microphone stream');
     }
   }
   catch (e) {
-    console.log('MeetingControls#handleVbg() :: Error applying noise reduction effect!');
+    console.log('MeetingControls#handleBNR() :: Error applying noise reduction effect!');
     handleEffectsButton(toggleBNRBtn, BNR, effect);
     throw e;
+  }
+}
+
+async function handleModelChange() {
+  const modelSelect = document.getElementById('ts-model-select');
+  const selectedModel = modelSelect ? modelSelect.value : 'bnr';
+
+  try {
+    const effect = await localMedia.microphoneStream?.getEffectByKind('noise-reduction-effect');
+
+    if (effect && effect.isEnabled) {
+      console.log(`MeetingControls#handleModelChange() :: switching model to ${selectedModel}`);
+      await effect.setModel(selectedModel);
+      updateModelWarning(selectedModel);
+      console.log(`MeetingControls#handleModelChange() :: successfully switched to ${selectedModel} model`);
+    } else {
+      console.log('MeetingControls#handleModelChange() :: effect not enabled, model will be used when enabled');
+      updateModelWarning(selectedModel);
+    }
+  } catch (e) {
+    console.log('MeetingControls#handleModelChange() :: Error switching model!');
+    console.error(e);
+  }
+}
+
+function updateModelWarning(model) {
+  const warningElement = document.getElementById('ts-model-warning');
+  if (warningElement) {
+    warningElement.style.display = model === 'st' ? 'inline' : 'none';
   }
 }
 
@@ -4194,7 +4231,7 @@ function enableMeetingDependentButtons(enable) {
   meetingDependentButtons.forEach((button) => {
     button.disabled = !enable;
   });
-  
+
   // Update SIP call-out button states when meeting state changes
   validateSipCalloutFields();
   validateCancelSipFields();

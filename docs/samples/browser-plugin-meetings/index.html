@@ -210,6 +210,11 @@
                   <!--enable noise reduction -->
                   <button id="ts-load-mic" type="button" onclick="loadMicrophone()" class="btn-code">Load Microphone</button>
                   <button id="ts-enable-BNR" type="button" onclick="handleBNR()" class="btn-code">Enable BNR</button>
+                  <select id="ts-model-select" onchange="handleModelChange()" class="btn-code" style="margin-left: 5px;">
+                    <option value="bnr" selected>BNR (Noise Reduction)</option>
+                    <option value="st">ST (Optimize for My Voice)</option>
+                  </select>
+                  <span id="ts-model-warning" class="webex-warning" style="display: none;">⚠️ AGC disabled for ST</span>
                   <!--mute-unmute audio -->
                   <button id="ts-toggle-audio" type="button" onclick="toggleSendAudio()" class="btn-code">Mute Audio</button>
                   <button id="ts-stop-audio" type="button" disabled onclick="stopStartAudio()" class="btn-code">Stop Audio</button>

@@ -757,7 +757,14 @@ async function getMediaStreams() {
 }
 
 async function toggleNoiseReductionEffect() {
-  const options =  {authToken: tokenElm.value, env: enableProd ? 'prod': 'int'}
+  const modelSelect = document.getElementById('model-select');
+  const selectedModel = modelSelect ? modelSelect.value : 'bnr';
+  const options = {
+    authToken: tokenElm.value,
+    env: enableProd ? 'prod': 'int',
+    model: selectedModel
+  };
+
   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
 
   if (!effect) {
@@ -772,6 +779,36 @@ async function toggleNoiseReductionEffect() {
   } else {
     await effect.enable();
     bnrButton.innerText = 'Disable BNR';
+    updateCallingModelWarning(selectedModel);
+  }
+}
+
+async function handleCallingModelChange() {
+  const modelSelect = document.getElementById('model-select');
+  const selectedModel = modelSelect ? modelSelect.value : 'bnr';
+
+  try {
+    effect = await localAudioStream?.getEffectByKind('noise-reduction-effect');
+
+    if (effect && effect.isEnabled) {
+      console.log(`Calling#handleModelChange() :: switching model to ${selectedModel}`);
+      await effect.setModel(selectedModel);
+      updateCallingModelWarning(selectedModel);
+      console.log(`Calling#handleModelChange() :: successfully switched to ${selectedModel} model`);
+    } else {
+      console.log('Calling#handleModelChange() :: effect not enabled, model will be used when enabled');
+      updateCallingModelWarning(selectedModel);
+    }
+  } catch (e) {
+    console.log('Calling#handleModelChange() :: Error switching model!');
+    console.error(e);
+  }
+}
+
+function updateCallingModelWarning(model) {
+  const warningElement = document.getElementById('model-warning');
+  if (warningElement) {
+    warningElement.style.display = model === 'st' ? 'inline' : 'none';
   }
 }
 

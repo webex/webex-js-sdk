@@ -22,9 +22,16 @@ export {
   type StreamState,
 } from './webrtc-core';
 
-export {NoiseReductionEffect, VirtualBackgroundEffect} from '@webex/web-media-effects';
+export {
+  NoiseReductionEffect,
+  VirtualBackgroundEffect,
+  NoiseReductionModels,
+  DEFAULT_NOISE_REDUCTION_MODEL,
+  EffectEvent,
+} from '@webex/web-media-effects';
 export type {
   NoiseReductionEffectOptions,
+  NoiseReductionModel,
   VirtualBackgroundEffectOptions,
 } from '@webex/web-media-effects';
 
