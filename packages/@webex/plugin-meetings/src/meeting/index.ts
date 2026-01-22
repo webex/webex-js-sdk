@@ -6234,6 +6234,8 @@ export default class Meeting extends StatelessWebexPlugin {
       return undefined;
     }
 
+    // await this.refreshDataChannelToken();
+
     // @ts-ignore - Fix type
     return this.webex.internal.llm
       .registerAndConnect(url, dataChannelUrl, dataChannelToken)
@@ -10201,5 +10203,17 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   cancelSipCallOut(participantId: string) {
     return this.meetingRequest.cancelSipCallOut(participantId);
+  }
+
+  /**
+   * Method to get new data
+   * @returns {Promise}
+   */
+  public refreshDataChannelToken() {
+    return this.meetingRequest.fetchDatachannelToken({
+      locusUrl: this.locusUrl,
+      requestingParticipantId: this.members.selfId,
+      isPracticeSession: this.webinar.isJoinPracticeSessionDataChannel(),
+    });
   }
 }
