@@ -47,7 +47,7 @@ node docs/dependency/audit-unmaintained.js
 What the script does (quick scan):
 
 - Reads direct `dependencies` and `devDependencies` from `package.json`
-- Reads `dependencies` and `devDependencies` from `packages/@webex/*/package.json`
+- Reads `dependencies` and `devDependencies` from `packages/*/*/package.json`
 - Reads `dependencies` and `devDependencies` from `packages/*/package.json`
 - Queries the npm registry for each package's metadata
 - Flags packages that are deprecated or older than `STALE_YEARS`
@@ -134,7 +134,7 @@ When implementing `REPLACE` or `FORK_MAINTAIN`, open a PR that includes:
 
 ## 5. Script details
 
-- Location: `docs/dependency/audit-unmaintained.js` (quick mode)
+- Location: `docs/dependency/audit-unmaintained.js`
 - Optional environment variables:
   - `STALE_YEARS` (default `2`)
   - `CONCURRENCY` (concurrent npm requests, default `20`)
@@ -148,8 +148,8 @@ The script writes immutable snapshots to `docs/dependency/snapshots/` and update
 ```
 docs/
   dependency/
-    audit-process.md                # this file (English)
-    audit-unmaintained.js           # audit script (quick mode)
+    audit-process.md                # this file
+    audit-unmaintained.js           # audit script
     unmaintained-catalog.md         # catalog for manual triage
     snapshots/                      # per-run immutable snapshots
 ```

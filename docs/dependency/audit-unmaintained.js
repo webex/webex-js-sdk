@@ -63,8 +63,6 @@ function fetchJSON(url, headers = {}) {
   });
 }
 
-// (No GitHub API usage in quick scan)
-
 function yearsSince(dateStr) {
   if (!dateStr) {
     return Infinity;
@@ -224,12 +222,16 @@ function readDirSafe(dir) {
   return fs.readdirSync(dir, { withFileTypes: true });
 }
 
+function hasPackageJson(dir) {
+  return fs.existsSync(path.join(dir, 'package.json'));
+}
+
 async function main() {
   log('Running dependency audit (manual)...');
   ensureCatalogHeader();
   const existing = readExistingPackages();
 
-  log('Scan mode: QUICK (package.json, packages/@webex/*/package.json, packages/*/package.json, dependencies including devDependencies)');
+  log('Scan start: scan range (package.json, packages/*/*/package.json, packages/*/package.json, dependencies including devDependencies)');
 
   const ROOT_DIR = process.cwd();
   const PACKAGES_DIR = path.join(ROOT_DIR, 'packages');
@@ -237,7 +239,9 @@ async function main() {
 
   function mergeDeps(source, deps) {
     for (const [name, version] of Object.entries(deps)) {
-      // ignore “@webex/*/”
+      // Dependencies prefixed with '@webex' are excluded. 
+      // Only truly external third-party dependencies are retained, 
+      // since '@webex' packages are internal submodules that reference each other within the repository.
       if (name.startsWith('@webex')) {
         continue;
       }
@@ -256,7 +260,7 @@ async function main() {
       errorLog('package.json not found; cannot build dependency list in quick mode.');
       process.exit(1);
     }
-
+    // case 1: root-level package.json
     mergeDeps('root', readPackageDeps(rootPkgPath));
 
     // packages/*
@@ -265,27 +269,27 @@ async function main() {
 
       const entryPath = path.join(PACKAGES_DIR, entry.name);
 
-      // packages/@webex/*
-      if (entry.name.startsWith('@')) {
-        for (const scopedPkg of readDirSafe(entryPath)) {
-          if (!scopedPkg.isDirectory()) continue;
-
-          const pkgJsonPath = path.join(
-            entryPath,
-            scopedPkg.name,
-            'package.json'
-          );
-
-          mergeDeps(
-            `packages/${entry.name}/${scopedPkg.name}`,
-            readPackageDeps(pkgJsonPath)
-          );
-        }
-      } else {
-        // packages/* (non-scoped)
+      // case 2: package-level package.json (packages/*)
+      if (hasPackageJson(entryPath)) {
         const pkgJsonPath = path.join(entryPath, 'package.json');
         mergeDeps(
           `packages/${entry.name}`,
+          readPackageDeps(pkgJsonPath)
+        );
+        continue;
+      }
+
+      // case 3: nested package.json (packages/*/*)
+      for (const subEntry of readDirSafe(entryPath)) {
+        if (!subEntry.isDirectory()) continue;
+
+        const subPath = path.join(entryPath, subEntry.name);
+        const pkgJsonPath = path.join(subPath, 'package.json');
+
+        if (!fs.existsSync(pkgJsonPath)) continue;
+
+        mergeDeps(
+          `packages/${entry.name}/${subEntry.name}`,
           readPackageDeps(pkgJsonPath)
         );
       }
@@ -302,7 +306,7 @@ async function main() {
   const tableHeader = '| Date | Package | Version | Source | Reason | Evidence | Severity | Decision | Notes |';
   const tableSep = '| ---- | ------ | ------- | ------ | ------ | -------- | -------- | -------- | ----- |';
 
-  // process packages with concurrency (QUICK-only: npm registry checks)
+  // process packages with concurrency
   await asyncPool(CONCURRENCY, flatDeps, async ({name, version, source}) => {
     try {
       const npmUrl = `https://registry.npmjs.org/${encodeURIComponent(name)}`;
