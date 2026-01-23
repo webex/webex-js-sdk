@@ -6,7 +6,7 @@ import {
 } from '@webex/internal-media-core';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
-import {EffectEvent, TrackEffect} from '@webex/media-helpers';
+import {EffectEvent, TrackEffect} from '@webex/web-media-effects';
 import {RtcMetrics} from '@webex/internal-plugin-metrics';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
 import {
@@ -2787,7 +2787,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     localAudioStream.on(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
 
-    const effect = localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
+    const effect = localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT) as any;
 
     if (effect) {
       effect.on(EffectEvent.Enabled, this.onEffectEnabled);
