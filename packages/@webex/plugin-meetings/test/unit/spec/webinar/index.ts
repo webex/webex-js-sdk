@@ -632,19 +632,60 @@ describe('plugin-meetings', () => {
         });
       });
 
-       describe("#searchLargeScaleWebinarAttendees", () => {
+      describe("#searchLargeScaleWebinarAttendees", () => {
+        const attendeeSearchUrl = 'https://locusUrl/attendees/search';
         const params = {
           queryString: 'queryString',
           limit: 50,
           next: null,
         };
+        beforeEach(() => {
+          // @ts-ignore
+          webinar.webex.meetings = {
+            getMeetingByType: sinon.stub().returns({
+              id: 'meeting-id',
+              locusInfo: {
+                links:{
+                  resources: {
+                    attendeeSearch: {
+                      url: attendeeSearchUrl
+                    }
+                  }
+                }
+              }
+            })
+          };
+        });
+
+        it('throws an error if attendeeSearchUrl is not available', async () => {
+          webinar.webex.meetings = {
+            getMeetingByType: sinon.stub().returns({
+              id: 'meeting-id',
+              locusInfo: {
+                links:{
+                  resources: {
+                    attendeeSearch: {
+                      url: null
+                    }
+                  }
+                }
+              }
+            })
+          };
+          try {
+            await webinar.searchLargeScaleWebinarAttendees(params);
+            assert.fail('searchLargeScaleWebinarAttendees should throw an error');
+          } catch (error) {
+            assert.equal(error.message,'Meeting:webinar5k#Attendee search url is not available', 'should throw the correct error');
+          }
+        });
 
         it('sends a GET request to search the large scale webinar attendees', async () => {
           const result = await webinar.searchLargeScaleWebinarAttendees(params);
           assert.calledOnce(webex.request);
           assert.calledWith(webex.request, {
             method: 'GET',
-            uri: `${webinar.locusUrl}/attendees/search?search_text=${encodeURIComponent(params.queryString)}&limit=50`,
+            uri: `${attendeeSearchUrl}?search_text=${encodeURIComponent(params.queryString)}&limit=50`,
             headers: {
               authorization: 'test-token',
               trackingId: 'webex-js-sdk_test-uuid',
@@ -663,7 +704,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(webex.request);
           assert.calledWith(webex.request, {
             method: 'GET',
-            uri: `${webinar.locusUrl}/attendees/search?limit=50`,
+            uri: `${attendeeSearchUrl}?limit=50`,
             headers: {
               authorization: 'test-token',
               trackingId: 'webex-js-sdk_test-uuid',
@@ -688,7 +729,7 @@ describe('plugin-meetings', () => {
             assert.calledOnce(errorLogger);
             assert.calledWith(
               errorLogger,
-              'Meeting:webinar#searchLargeScaleWebinarAttendees failed',
+              'Meeting:webinar5k#searchLargeScaleWebinarAttendees failed',
               sinon.match.instanceOf(Error)
             );
           } finally {

@@ -316,23 +316,27 @@ const Webinar = WebexPlugin.extend({
    * @returns {Promise}
    */
   async searchLargeScaleWebinarAttendees(payload) {
+    const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
     const rawParams = {
       search_text: payload?.queryString,
       limit: payload?.limit ?? DEFAULT_LARGE_SCALE_WEBINAR_ATTENDEE_SEARCH_LIMIT,
       next: payload?.next,
     };
+    const attendeeSearchUrl = meeting?.locusInfo?.links?.resources?.attendeeSearch?.url;
+    if (!attendeeSearchUrl) {
+      LoggerProxy.logger.error(`Meeting:webinar5k#searchLargeScaleWebinarAttendees failed`);
+      throw new Error('Meeting:webinar5k#Attendee search url is not available');
+    }
 
     return this.request({
       method: HTTP_VERBS.GET,
-      uri: `${this.locusUrl}/attendees/search?${new URLSearchParams(
-        sanitizeParams(rawParams)
-      ).toString()}`,
+      uri: `${attendeeSearchUrl}?${new URLSearchParams(sanitizeParams(rawParams)).toString()}`,
       headers: {
         authorization: await this.webex.credentials.getUserToken(),
         trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
       },
     }).catch((error) => {
-      LoggerProxy.logger.error('Meeting:webinar#searchLargeScaleWebinarAttendees failed', error);
+      LoggerProxy.logger.error('Meeting:webinar5k#searchLargeScaleWebinarAttendees failed', error);
       throw error;
     });
   },
