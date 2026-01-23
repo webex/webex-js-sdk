@@ -10,8 +10,6 @@ export enum METRIC_TYPE {
 export enum METRIC_EVENT {
   BNR_ENABLED = 'web-calling-sdk-bnr-enabled',
   BNR_DISABLED = 'web-calling-sdk-bnr-disabled',
-  ST_ENABLED = 'web-calling-sdk-st-enabled',
-  MODEL_CHANGED = 'web-calling-sdk-model-changed',
   CALL = 'web-calling-sdk-callcontrol',
   CALL_ERROR = 'web-calling-sdk-callcontrol-error',
   CONNECTION_ERROR = 'web-calling-sdk-connection',
@@ -82,22 +80,6 @@ export interface IMetricManager {
     type: METRIC_TYPE,
     callId: CallId,
     correlationId: CorrelationId
-  ) => void;
-
-  submitSTMetric: (
-    name: METRIC_EVENT,
-    type: METRIC_TYPE,
-    callId: CallId,
-    correlationId: CorrelationId
-  ) => void;
-
-  submitModelChangedMetric: (
-    name: METRIC_EVENT,
-    type: METRIC_TYPE,
-    callId: CallId,
-    correlationId: CorrelationId,
-    fromModel: string,
-    toModel: string
   ) => void;
 
   submitCallMetric: (

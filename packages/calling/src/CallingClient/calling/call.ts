@@ -6,12 +6,7 @@ import {
 } from '@webex/internal-media-core';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
-import {
-  EffectEvent,
-  TrackEffect,
-  NoiseReductionModels,
-  type NoiseReductionModel,
-} from '@webex/media-helpers';
+import {EffectEvent, TrackEffect} from '@webex/media-helpers';
 import {RtcMetrics} from '@webex/internal-plugin-metrics';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
 import {
@@ -2740,49 +2735,21 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     });
   }
 
-  private currentEffectModel: NoiseReductionModel = NoiseReductionModels.BNR;
-
   private onEffectEnabled = () => {
-    // Submit metric based on current model
-    if (this.currentEffectModel === NoiseReductionModels.ST) {
-      this.metricManager.submitSTMetric(
-        METRIC_EVENT.ST_ENABLED,
-        METRIC_TYPE.BEHAVIORAL,
-        this.callId,
-        this.correlationId
-      );
-    } else {
-      this.metricManager.submitBNRMetric(
-        METRIC_EVENT.BNR_ENABLED,
-        METRIC_TYPE.BEHAVIORAL,
-        this.callId,
-        this.correlationId
-      );
-    }
+    this.metricManager.submitBNRMetric(
+      METRIC_EVENT.BNR_ENABLED,
+      METRIC_TYPE.BEHAVIORAL,
+      this.callId,
+      this.correlationId
+    );
   };
 
   private onEffectDisabled = () => {
-    if (this.currentEffectModel === NoiseReductionModels.BNR) {
-      this.metricManager.submitBNRMetric(
-        METRIC_EVENT.BNR_DISABLED,
-        METRIC_TYPE.BEHAVIORAL,
-        this.callId,
-        this.correlationId
-      );
-    }
-  };
-
-  private onModelChanged = (newModel: NoiseReductionModel) => {
-    const previousModel = this.currentEffectModel;
-    this.currentEffectModel = newModel;
-
-    this.metricManager.submitModelChangedMetric(
-      METRIC_EVENT.MODEL_CHANGED,
+    this.metricManager.submitBNRMetric(
+      METRIC_EVENT.BNR_DISABLED,
       METRIC_TYPE.BEHAVIORAL,
       this.callId,
-      this.correlationId,
-      previousModel,
-      newModel
+      this.correlationId
     );
   };
 
@@ -2797,12 +2764,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       if (effect === addedEffect) {
         effect.on(EffectEvent.Enabled, this.onEffectEnabled);
         effect.on(EffectEvent.Disabled, this.onEffectDisabled);
-        effect.on(EffectEvent.ModelChanged, this.onModelChanged);
-
-        // Initialize current model from effect if available
-        if ((effect as any).model) {
-          this.currentEffectModel = (effect as any).model;
-        }
       }
     }
   };
@@ -2814,7 +2775,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       if (effect) {
         effect.off(EffectEvent.Enabled, this.onEffectEnabled);
         effect.off(EffectEvent.Disabled, this.onEffectDisabled);
-        effect.off(EffectEvent.ModelChanged, this.onModelChanged);
       }
 
       this.localAudioStream.off(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
@@ -2827,17 +2787,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     localAudioStream.on(LocalStreamEventNames.EffectAdded, this.registerEffectListener);
 
-    const effect = localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT) as any;
+    const effect = localAudioStream.getEffectByKind(NOISE_REDUCTION_EFFECT);
 
     if (effect) {
       effect.on(EffectEvent.Enabled, this.onEffectEnabled);
       effect.on(EffectEvent.Disabled, this.onEffectDisabled);
-      effect.on(EffectEvent.ModelChanged, this.onModelChanged);
-
-      // Initialize current model from effect if available
-      if (effect.model) {
-        this.currentEffectModel = effect.model;
-      }
 
       if (effect.isEnabled) {
         this.onEffectEnabled();

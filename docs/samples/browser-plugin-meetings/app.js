@@ -1664,14 +1664,16 @@ async function handleModelChange() {
   try {
     const effect = await localMedia.microphoneStream?.getEffectByKind('noise-reduction-effect');
 
+    // Update button text to reflect new model
+    handleEffectsButton(toggleBNRBtn, BNR, effect);
+    updateModelWarning(selectedModel);
+
     if (effect && effect.isEnabled) {
       console.log(`MeetingControls#handleModelChange() :: switching model to ${selectedModel}`);
       await effect.setModel(selectedModel);
-      updateModelWarning(selectedModel);
       console.log(`MeetingControls#handleModelChange() :: successfully switched to ${selectedModel} model`);
     } else {
       console.log('MeetingControls#handleModelChange() :: effect not enabled, model will be used when enabled');
-      updateModelWarning(selectedModel);
     }
   } catch (e) {
     console.log('MeetingControls#handleModelChange() :: Error switching model!');
@@ -1689,16 +1691,24 @@ function updateModelWarning(model) {
 function handleEffectsButton(btn, type, effect) {
   let disabled = false;
   let title;
+  
+  // For noise reduction, use the selected model name
+  let displayName = type;
+  if (type === BNR) {
+    const modelSelect = document.getElementById('ts-model-select');
+    const selectedModel = modelSelect ? modelSelect.value : 'bnr';
+    displayName = selectedModel.toUpperCase();
+  }
 
   if(!effect) {
-    title = `Enable ${type}`;
+    title = `Enable ${displayName}`;
   } else if(!effect.isLoaded) {
     disabled = true;
     title = "Applying Effect...";
   } else if(effect.isEnabled) {
-    title = `Disable ${type}`
+    title = `Disable ${displayName}`
   } else {
-    title = `Enable ${type}`
+    title = `Enable ${displayName}`
   }
 
   btn.disabled = disabled;
