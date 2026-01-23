@@ -289,9 +289,7 @@ export default class TaskManager extends EventEmitter {
             if (task) {
               task = this.updateTaskData(task, {
                 ...payload.data,
-                wrapUpRequired:
-                  payload.data.interaction.state !== 'new' &&
-                  !isSecondaryEpDnAgent(payload.data.interaction),
+                wrapUpRequired: payload.data.agentsPendingWrapUp?.includes(this.agentId) || false,
               });
 
               // Handle cleanup based on whether task should be deleted
