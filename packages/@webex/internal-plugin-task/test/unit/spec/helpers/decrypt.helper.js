@@ -90,154 +90,96 @@ describe("internal-plugin-task", () => {
       });
     });
 
-    describe("#decryptTaskResponse - should decrypt actionItem fields", () => {
-      let encryptedTaskWithActionItem;
+    describe("#decryptTaskResponse - should decrypt extendedProperties fields", () => {
+      let encryptedTaskWithExtendedProperties;
 
       beforeEach(() => {
-        encryptedTaskWithActionItem = {
+        encryptedTaskWithExtendedProperties = {
           "id": "abcdabcd-abcd-abcd-abcd-00000000",
           "title": "Encrypted Task Title",
           "notes": "Encrypted Task Notes",
           "encryptionKeyUrl": "/keys/e5d3f747-6adf-432d-999c-6578e33953e3",
-          "actionItem": {
-            "editedContent": "Encrypted edited content",
-            "aiGeneratedContent": "Encrypted AI generated content",
-            "snippetUUID": "676d5dd3-3d23-450d-a687-0966e06a278a",
-            "editor": null,
-            "deleted": 0,
-            "relatedContext": "",
-            "resourceUrl": "https://aibridge-sa1.dmz.webex.com/wbxaibridge/actionitems/snippets/676d5dd3-3d23-450d-a687-0966e06a278a",
-            "entities": [
-              {
-                "text": "Encrypted assignee name",
-                "type": "ASSIGNEE",
-                "startPos": 0,
-                "endPos": 8,
-                "metadata": {
-                  "email": "encrypted@email.com",
-                  "ciUserId": "224c0d39-fda3-4271-9f70-12491b6588bc",
-                  "type": null,
-                  "instruction": "Encrypted instruction"
-                }
-              },
-              {
-                "text": "Encrypted action text",
-                "type": "ACTION",
-                "startPos": 14,
-                "endPos": 55,
-                "metadata": {
-                  "email": "encrypted@action.com",
-                  "ciUserId": null,
-                  "type": "create_update_salesforce",
-                  "instruction": "Encrypted action instruction"
-                }
-              }
-            ],
-            "editedEntities": null
-          }
+          "extendedProperties": JSON.stringify({
+            "aiAction": {
+              "actionType": "SCHEDULE_MEETING",
+              "instruction": "Encrypted instruction"
+            }
+          })
         };
       });
 
-      it("should decrypt actionItem editedContent and aiGeneratedContent", async () => {
+      it("should decrypt extendedProperties instruction field", async () => {
         const expectedCiphertext = "decrypted text";
         ctx.webex.internal.encryption.decryptText.mockResolvedValue(expectedCiphertext);
 
-        await DecryptHelper.decryptTaskResponse(ctx, encryptedTaskWithActionItem);
+        await DecryptHelper.decryptTaskResponse(ctx, encryptedTaskWithExtendedProperties);
 
-        expect(encryptedTaskWithActionItem.actionItem.editedContent).toBe(expectedCiphertext);
-        expect(encryptedTaskWithActionItem.actionItem.aiGeneratedContent).toBe(expectedCiphertext);
+        const extendedProps = JSON.parse(encryptedTaskWithExtendedProperties.extendedProperties);
+        expect(extendedProps.aiAction.instruction).toBe(expectedCiphertext);
+        expect(extendedProps.aiAction.actionType).toBe("SCHEDULE_MEETING");
       });
 
-      it("should decrypt entities text fields", async () => {
+      it("should handle extendedProperties without aiAction", async () => {
+        encryptedTaskWithExtendedProperties.extendedProperties = JSON.stringify({
+          "otherProp": "value"
+        });
+
         const expectedCiphertext = "decrypted text";
         ctx.webex.internal.encryption.decryptText.mockResolvedValue(expectedCiphertext);
 
-        await DecryptHelper.decryptTaskResponse(ctx, encryptedTaskWithActionItem);
+        await DecryptHelper.decryptTaskResponse(ctx, encryptedTaskWithExtendedProperties);
 
-        expect(encryptedTaskWithActionItem.actionItem.entities[0].text).toBe(expectedCiphertext);
-        expect(encryptedTaskWithActionItem.actionItem.entities[1].text).toBe(expectedCiphertext);
+        const extendedProps = JSON.parse(encryptedTaskWithExtendedProperties.extendedProperties);
+        expect(extendedProps.otherProp).toBe("value");
       });
 
-      it("should decrypt entities metadata email and instruction fields", async () => {
-        const expectedCiphertext = "decrypted text";
-        ctx.webex.internal.encryption.decryptText.mockResolvedValue(expectedCiphertext);
-
-        await DecryptHelper.decryptTaskResponse(ctx, encryptedTaskWithActionItem);
-
-        expect(encryptedTaskWithActionItem.actionItem.entities[0].metadata.email).toBe(expectedCiphertext);
-        expect(encryptedTaskWithActionItem.actionItem.entities[0].metadata.instruction).toBe(expectedCiphertext);
-        expect(encryptedTaskWithActionItem.actionItem.entities[1].metadata.email).toBe(expectedCiphertext);
-        expect(encryptedTaskWithActionItem.actionItem.entities[1].metadata.instruction).toBe(expectedCiphertext);
-      });
-
-      it("should decrypt editedEntities when present", async () => {
-        encryptedTaskWithActionItem.actionItem.editedEntities = [
-          {
-            "text": "Encrypted edited entity",
-            "type": "ASSIGNEE",
-            "metadata": {
-              "email": "encrypted@edited.com",
-              "instruction": "Encrypted edited instruction"
-            }
+      it("should handle extendedProperties with aiAction but no instruction", async () => {
+        encryptedTaskWithExtendedProperties.extendedProperties = JSON.stringify({
+          "aiAction": {
+            "actionType": "SCHEDULE_MEETING"
           }
-        ];
+        });
 
         const expectedCiphertext = "decrypted text";
         ctx.webex.internal.encryption.decryptText.mockResolvedValue(expectedCiphertext);
 
-        await DecryptHelper.decryptTaskResponse(ctx, encryptedTaskWithActionItem);
+        await DecryptHelper.decryptTaskResponse(ctx, encryptedTaskWithExtendedProperties);
 
-        expect(encryptedTaskWithActionItem.actionItem.editedEntities[0].text).toBe(expectedCiphertext);
-        expect(encryptedTaskWithActionItem.actionItem.editedEntities[0].metadata.email).toBe(expectedCiphertext);
-        expect(encryptedTaskWithActionItem.actionItem.editedEntities[0].metadata.instruction).toBe(expectedCiphertext);
+        const extendedProps = JSON.parse(encryptedTaskWithExtendedProperties.extendedProperties);
+        expect(extendedProps.aiAction.actionType).toBe("SCHEDULE_MEETING");
+        expect(extendedProps.aiAction.instruction).toBeUndefined();
       });
 
-      it("should handle actionItem without entities", async () => {
-        delete encryptedTaskWithActionItem.actionItem.entities;
-        const expectedCiphertext = "decrypted text";
-        ctx.webex.internal.encryption.decryptText.mockResolvedValue(expectedCiphertext);
-
-        await DecryptHelper.decryptTaskResponse(ctx, encryptedTaskWithActionItem);
-
-        expect(encryptedTaskWithActionItem.actionItem.editedContent).toBe(expectedCiphertext);
-        expect(encryptedTaskWithActionItem.actionItem.aiGeneratedContent).toBe(expectedCiphertext);
-      });
-
-      it("should handle actionItem with null metadata fields", async () => {
-        encryptedTaskWithActionItem.actionItem.entities[0].metadata.email = null;
-        encryptedTaskWithActionItem.actionItem.entities[0].metadata.instruction = null;
+      it("should handle invalid JSON in extendedProperties", async () => {
+        encryptedTaskWithExtendedProperties.extendedProperties = "invalid-json";
 
         const expectedCiphertext = "decrypted text";
         ctx.webex.internal.encryption.decryptText.mockResolvedValue(expectedCiphertext);
 
-        await DecryptHelper.decryptTaskResponse(ctx, encryptedTaskWithActionItem);
+        await DecryptHelper.decryptTaskResponse(ctx, encryptedTaskWithExtendedProperties);
 
-        expect(encryptedTaskWithActionItem.actionItem.entities[0].text).toBe(expectedCiphertext);
+        expect(encryptedTaskWithExtendedProperties.extendedProperties).toBe("invalid-json");
       });
 
-      it("should handle task without actionItem", async () => {
-        delete encryptedTaskWithActionItem.actionItem;
+      it("should handle task without extendedProperties", async () => {
+        delete encryptedTaskWithExtendedProperties.extendedProperties;
         const expectedCiphertext = "decrypted text";
         ctx.webex.internal.encryption.decryptText.mockResolvedValue(expectedCiphertext);
 
-        await DecryptHelper.decryptTaskResponse(ctx, encryptedTaskWithActionItem);
+        await DecryptHelper.decryptTaskResponse(ctx, encryptedTaskWithExtendedProperties);
 
-        expect(encryptedTaskWithActionItem.title).toBe(expectedCiphertext);
-        expect(encryptedTaskWithActionItem.notes).toBe(expectedCiphertext);
+        expect(encryptedTaskWithExtendedProperties.title).toBe(expectedCiphertext);
+        expect(encryptedTaskWithExtendedProperties.notes).toBe(expectedCiphertext);
       });
 
-      it("should call decryptText with correct parameters for actionItem fields", async () => {
+      it("should call decryptText with correct parameters for extendedProperties instruction", async () => {
         ctx.webex.internal.encryption.decryptText.mockResolvedValue("decrypted");
 
-        await DecryptHelper.decryptTaskResponse(ctx, encryptedTaskWithActionItem);
+        await DecryptHelper.decryptTaskResponse(ctx, encryptedTaskWithExtendedProperties);
 
         expect(ctx.webex.internal.encryption.decryptText).toHaveBeenCalledWith(
-          encryptedTaskWithActionItem.encryptionKeyUrl,
-          "Encrypted edited content"
-        );
-        expect(ctx.webex.internal.encryption.decryptText).toHaveBeenCalledWith(
-          encryptedTaskWithActionItem.encryptionKeyUrl,
-          "Encrypted AI generated content"
+          encryptedTaskWithExtendedProperties.encryptionKeyUrl,
+          "Encrypted instruction"
         );
       });
     });
