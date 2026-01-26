@@ -12,10 +12,8 @@ on:
         description: 'Test PR number (e.g., 2) - leave empty to auto-detect'
         required: false
         default: ''
-  workflow_run:
-    workflows: ["Deploy CD"]
-    types:
-      - completed
+  pull_request:
+    types: [closed]
     branches:
       - next
 
@@ -23,8 +21,8 @@ jobs:
   comment-on-prs:
     name: Comment on Released PRs
     runs-on: ubuntu-latest
-    # Only run if the deploy workflow completed successfully OR if manually triggered
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    # Only run if manually triggered or PR was merged
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true }}
     
     steps:
       - name: Checkout Repository
@@ -32,97 +30,50 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history to find commits
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v3.7.0
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'yarn'
-      
-      - name: Install Dependencies
-        run: yarn install --frozen-lockfile
-      
-      - name: Build Tooling
-        if: ${{ github.event_name != 'workflow_dispatch' }}
-        run: yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
-      
-      - name: Resolve Release Version
-        id: version-info
+      - name: Get Version and PR from Tag
+        id: tag-info
         run: |
-          # For manual testing, use the input version
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="${{ github.event.inputs.test_version }}"
-            echo "🧪 TEST MODE: Using manual version ${VERSION}"
+            PR_NUMBER="${{ github.event.inputs.test_pr_number }}"
+            echo "🧪 TEST MODE: version=${VERSION}, pr=${PR_NUMBER}"
           else
-            # Production mode: get real version from package-tools
-            yarn ws:tools
-            VERSION=$(yarn package-tools sync --tag next --packages webex | awk '{print $3}' | tr -d '%')
-            echo "📦 PRODUCTION MODE: Detected version ${VERSION}"
+            git fetch --tags
+            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            if [ -z "$VERSION" ]; then
+              echo "❌ No tags found"
+              exit 1
+            fi
+            TAG_MESSAGE=$(git tag -l --format='%(contents:subject)' "$VERSION")
+            PR_NUMBER=$(echo "$TAG_MESSAGE" | grep -oE '#[0-9]+' | head -1 | tr -d '#')
+            echo "📦 Tag: ${VERSION}, PR: #${PR_NUMBER}"
           fi
           
-          echo "version=v${VERSION}" >> $GITHUB_OUTPUT
-          echo "version_number=${VERSION}" >> $GITHUB_OUTPUT
-          
-          echo "📦 Current version: v${VERSION}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "version_number=${VERSION#v}" >> $GITHUB_OUTPUT
+          echo "pr_number=${PR_NUMBER}" >> $GITHUB_OUTPUT
       
-      - name: Find Merged PR From Release Commit
+      - name: Get Packages from PR
         id: get-prs
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const path = require('path');
-            const version = '${{ steps.version-info.outputs.version }}';
-            const versionNumber = '${{ steps.version-info.outputs.version_number }}';
+            const prNumber = '${{ steps.tag-info.outputs.pr_number }}';
             
-            // For manual testing, allow override with specific PR number
-            const testPrNumber = '${{ github.event.inputs.test_pr_number }}';
-            if (testPrNumber && testPrNumber.trim() !== '') {
-              console.log(`🧪 TEST MODE: Using manual PR number #${testPrNumber}`);
-              const prNumber = testPrNumber.trim();
-              const { packages, packageVersions, primaryPackage, primaryPackageVersion } =
-                await getPackagesForPr(prNumber);
-              core.setOutput('pr_numbers', JSON.stringify([prNumber]));
-              core.setOutput('packages', JSON.stringify(packages));
-              core.setOutput('package_versions', JSON.stringify(packageVersions));
-              core.setOutput('primary_package', primaryPackage);
-              core.setOutput('primary_package_version', primaryPackageVersion);
-              core.setOutput('commit_count', '1');
-              return { prs: [prNumber], packages: packages };
-            }
-            
-            console.log(`Looking for PR in the most recent merge commit`);
-            
-            // Get the HEAD commit (the merge commit that triggered this deployment)
-            let commit;
-            try {
-              const commitResult = await github.rest.repos.getCommit({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: context.sha
-              });
-              commit = commitResult.data;
-            } catch (error) {
-              console.log('Error getting commit:', error.message);
+            if (!prNumber) {
+              console.log('❌ No PR number found from tag, skipping');
+              core.setOutput('pr_numbers', JSON.stringify([]));
+              core.setOutput('packages', JSON.stringify([]));
+              core.setOutput('package_versions', JSON.stringify({}));
+              core.setOutput('primary_package', '');
+              core.setOutput('primary_package_version', '');
+              core.setOutput('commit_count', '0');
               return { prs: [], packages: [] };
             }
             
-            console.log(`Commit SHA: ${commit.sha.substring(0, 7)}`);
-            console.log(`Commit message: ${commit.commit.message}`);
-            
-            // Extract PR number from commit message
-            // GitHub merge commits typically have format: "Merge pull request #1234 from..."
-            // Or squash commits have: "feat: description (#1234)"
-            const message = commit.commit.message;
-            const prMatch = message.match(/#(\d+)/);
-            
-            if (!prMatch) {
-              console.log('⚠️ No PR number found in commit message');
-              console.log('This might be a direct commit or the commit message format is unexpected');
-              return { prs: [], packages: [] };
-            }
-            
-            const prNumber = prMatch[1];
-            console.log(`✅ Found PR #${prNumber} in merge commit`);
+            console.log(`✅ Using PR #${prNumber} from tag`);
             
             const { packages, packageVersions, primaryPackage, primaryPackageVersion } =
               await getPackagesForPr(prNumber);
@@ -134,10 +85,7 @@ jobs:
             core.setOutput('primary_package_version', primaryPackageVersion);
             core.setOutput('commit_count', '1');
             
-            return { 
-              prs: [prNumber], 
-              packages: packages
-            };
+            return { prs: [prNumber], packages: packages };
 
             async function getPackagesForPr(prNumber) {
               const packageSet = new Set();
@@ -198,8 +146,9 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const version = '${{ steps.version-info.outputs.version }}';
-            const versionNumber = '${{ steps.version-info.outputs.version_number }}';
+            const version = '${{ steps.tag-info.outputs.version }}';
+            const versionNumber = '${{ steps.tag-info.outputs.version_number }}';
+            const stableVersion = versionNumber.replace(/-next\..*$/, '');
             const prNumbersRaw = '${{ steps.get-prs.outputs.pr_numbers }}';
             const packagesRaw = '${{ steps.get-prs.outputs.packages }}';
             const packageVersionsRaw = '${{ steps.get-prs.outputs.package_versions }}';
@@ -209,16 +158,17 @@ jobs:
             const packages = packagesRaw ? JSON.parse(packagesRaw) : [];
             const packageVersions = packageVersionsRaw ? JSON.parse(packageVersionsRaw) : {};
             
-            console.log(`Posting comment to PR #${prNumbers[0]}`);
+            const prNumber = prNumbers[0];
+            console.log(`Posting comment to PR #${prNumber}`);
             
             if (prNumbers.length === 0) {
               console.log('No PRs found to comment on');
               return;
             }
             
-            // Build the changelog URL with the primary package and version when available
+            // Build the changelog URL filtered by PR number (auto-selects commits)
             const changelogUrl = new URL('https://web-sdk.webex.com/changelog/');
-            changelogUrl.searchParams.set('stable_version', versionNumber);
+            changelogUrl.searchParams.set('stable_version', stableVersion);
             if (primaryPackage) {
               changelogUrl.searchParams.set('package', primaryPackage);
             }
@@ -245,59 +195,57 @@ jobs:
               `<sub>🤖 This is an automated message. For questions, please refer to the [documentation](https://github.com/${context.repo.owner}/${context.repo.repo}#readme).</sub>`
             ].join('\n');
             
-            // Post comment on each PR
-            for (const prNumber of prNumbers) {
+            try {
+              console.log(`Commenting on PR #${prNumber}`);
+              
+              // Check if PR exists and is merged
+              let pr;
               try {
-                console.log(`Commenting on PR #${prNumber}`);
-                
-                // Check if PR exists and is merged
-                let pr;
-                try {
-                  pr = await github.rest.pulls.get({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    pull_number: parseInt(prNumber)
-                  });
-                } catch (error) {
-                  console.log(`PR #${prNumber} not found or error: ${error.message}`);
-                  continue;
-                }
-                
-                if (!pr.data.merged_at) {
-                  console.log(`PR #${prNumber} is not merged, skipping`);
-                  continue;
-                }
-                
-                // Check if we've already commented (to avoid duplicates)
-                const existingComments = await github.rest.issues.listComments({
+                pr = await github.rest.pulls.get({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  issue_number: parseInt(prNumber)
+                  pull_number: parseInt(prNumber)
                 });
-                
-                const botCommentExists = existingComments.data.some(comment => 
-                  comment.user.type === 'Bot' && 
-                  comment.body.includes('Your changes are now available') &&
-                  comment.body.includes(version)
-                );
-                
-                if (botCommentExists) {
-                  console.log(`Already commented on PR #${prNumber} for version ${version}`);
-                  continue;
-                }
-                
-                // Post the comment
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: parseInt(prNumber),
-                  body: commentBody
-                });
-                
-                console.log(`✅ Successfully commented on PR #${prNumber}`);
               } catch (error) {
-                console.error(`Failed to comment on PR #${prNumber}:`, error.message);
+                console.log(`PR #${prNumber} not found or error: ${error.message}`);
+                return;
               }
+              
+              if (!pr.data.merged_at) {
+                console.log(`PR #${prNumber} is not merged, skipping`);
+                return;
+              }
+              
+              // Check if we've already commented (to avoid duplicates)
+              const existingComments = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: parseInt(prNumber)
+              });
+              
+              const botCommentExists = existingComments.data.some(comment => 
+                comment.user.type === 'Bot' && 
+                comment.body.includes('Your changes are now available') &&
+                comment.body.includes(version)
+              );
+              
+              if (botCommentExists) {
+                console.log(`Already commented on PR #${prNumber} for version ${version}`);
+                return;
+              }
+              
+              // Post the comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: parseInt(prNumber),
+                body: commentBody
+              });
+              
+              console.log(`✅ Successfully commented on PR #${prNumber}`);
+            } catch (error) {
+              console.error(`Failed to comment on PR #${prNumber}:`, error.message);
             }
             
             console.log('✨ Comment posted successfully!');
+      
