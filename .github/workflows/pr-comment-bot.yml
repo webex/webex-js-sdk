@@ -301,15 +301,3 @@ jobs:
             }
             
             console.log('✨ Comment posted successfully!');
-
-      - name: Release Summary
-        run: |
-          echo "### 📊 Bot Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ steps.version-info.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "**PR Notified:** ${{ steps.get-prs.outputs.pr_numbers }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Comment posted on the merged PR" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "🔗 [View Changelog](https://webex.github.io/webex-js-sdk/changelog/?stable_version=${{ steps.version-info.outputs.version_number }})" >> $GITHUB_STEP_SUMMARY
-
