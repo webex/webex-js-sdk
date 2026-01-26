@@ -1,5 +1,5 @@
 /**
- * Remove null/undefined/empty string values from an object.
+ * Remove null/undefined/empty string values from an object
  * @param {object} params
  * @returns {object}
  */
