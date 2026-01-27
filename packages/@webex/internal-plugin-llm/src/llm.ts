@@ -69,9 +69,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       method: 'POST',
       url: llmSocketUrl,
       body: {deviceUrl: this.webex.internal.device.url},
-      headers: {
-        'Data-Channel-Auth-Token': datachannelToken,
-      },
+      headers: datachannelToken ? {'Data-Channel-Auth-Token': datachannelToken} : {},
     })
       .then((res: {body: {webSocketUrl: string; binding: string}}) => {
         this.webSocketUrl = res.body.webSocketUrl;
