@@ -896,6 +896,9 @@ describe('TaskManager', () => {
   });
 
   it('should NOT remove OUTDIAL task on CONTACT_ENDED when agentsPendingWrapUp exists', () => {
+    const agentId = '723a8ffb-a26e-496d-b14a-ff44fb83b64f';
+    taskManager.setAgentId(agentId);
+
     const task = taskManager.getTask(taskId);
     task.updateTaskData = jest.fn().mockImplementation((newData) => {
       task.data = {
@@ -907,7 +910,7 @@ describe('TaskManager', () => {
           state: 'new',
           mediaType: 'telephony',
         },
-        agentsPendingWrapUp: ['agent-123'],
+        agentsPendingWrapUp: [agentId],
       };
       return task;
     });
@@ -923,7 +926,7 @@ describe('TaskManager', () => {
           state: 'new',
           mediaType: 'telephony',
         },
-        agentsPendingWrapUp: ['agent-123'],
+        agentsPendingWrapUp: [agentId],
       },
     };
 
@@ -2527,6 +2530,318 @@ describe('TaskManager', () => {
       // Other task should not be affected
       expect(otherTask.data.isConferencing).toBeUndefined();
       expect(otherTask.emit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleTaskCleanup - stage changes', () => {
+    const agentId = '723a8ffb-a26e-496d-b14a-ff44fb83b64f';
+
+    beforeEach(() => {
+      taskManager.setAgentId(agentId);
+    });
+
+    it('should remove OUTDIAL task on CONTACT_ENDED when current agent is NOT in agentsPendingWrapUp', () => {
+      const task = taskManager.getTask(taskId);
+      task.updateTaskData = jest.fn().mockImplementation((newData) => {
+        task.data = {
+          ...task.data,
+          ...newData,
+          interaction: {
+            ...task.data.interaction,
+            outboundType: 'OUTDIAL',
+            state: 'new',
+            mediaType: 'telephony',
+          },
+          agentsPendingWrapUp: ['different-agent-123'], // Current agent not in the list
+        };
+        return task;
+      });
+      task.unregisterWebCallListeners = jest.fn();
+      const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+      const payload = {
+        data: {
+          type: CC_EVENTS.CONTACT_ENDED,
+          interactionId: taskId,
+          interaction: {
+            outboundType: 'OUTDIAL',
+            state: 'new',
+            mediaType: 'telephony',
+          },
+          agentsPendingWrapUp: ['different-agent-123'], // Current agent not in the list
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(removeTaskSpy).toHaveBeenCalled();
+      expect(taskManager.getTask(taskId)).toBeUndefined();
+    });
+
+    it('should NOT remove OUTDIAL task on CONTACT_ENDED when current agent IS in agentsPendingWrapUp', () => {
+      const task = taskManager.getTask(taskId);
+      task.updateTaskData = jest.fn().mockImplementation((newData) => {
+        task.data = {
+          ...task.data,
+          ...newData,
+          interaction: {
+            ...task.data.interaction,
+            outboundType: 'OUTDIAL',
+            state: 'new',
+            mediaType: 'telephony',
+          },
+          agentsPendingWrapUp: [agentId, 'other-agent-456'], // Current agent IS in the list
+        };
+        return task;
+      });
+      task.unregisterWebCallListeners = jest.fn();
+      const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+      const payload = {
+        data: {
+          type: CC_EVENTS.CONTACT_ENDED,
+          interactionId: taskId,
+          interaction: {
+            outboundType: 'OUTDIAL',
+            state: 'new',
+            mediaType: 'telephony',
+          },
+          agentsPendingWrapUp: [agentId, 'other-agent-456'], // Current agent IS in the list
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(removeTaskSpy).not.toHaveBeenCalled();
+      expect(taskManager.getTask(taskId)).toBeDefined();
+    });
+
+    it('should remove OUTDIAL task when needsWrapUp is false and task is outdial', () => {
+      const task = taskManager.getTask(taskId);
+      task.updateTaskData = jest.fn().mockImplementation((newData) => {
+        task.data = {
+          ...task.data,
+          ...newData,
+          interaction: {
+            ...task.data.interaction,
+            outboundType: 'OUTDIAL',
+            state: 'WRAPUP', // Not 'new' state
+            mediaType: 'telephony',
+          },
+          agentsPendingWrapUp: [], // No agents pending wrap-up
+        };
+        return task;
+      });
+      task.unregisterWebCallListeners = jest.fn();
+      const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+      const payload = {
+        data: {
+          type: CC_EVENTS.CONTACT_ENDED,
+          interactionId: taskId,
+          interaction: {
+            outboundType: 'OUTDIAL',
+            state: 'WRAPUP', // Not 'new' state
+            mediaType: 'telephony',
+          },
+          agentsPendingWrapUp: [], // No agents pending wrap-up
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(removeTaskSpy).toHaveBeenCalled();
+      expect(taskManager.getTask(taskId)).toBeUndefined();
+    });
+
+    it('should remove OUTDIAL task when needsWrapUp is false (agentsPendingWrapUp is undefined)', () => {
+      const task = taskManager.getTask(taskId);
+      task.updateTaskData = jest.fn().mockImplementation((newData) => {
+        task.data = {
+          ...task.data,
+          ...newData,
+          interaction: {
+            ...task.data.interaction,
+            outboundType: 'OUTDIAL',
+            state: 'WRAPUP',
+            mediaType: 'telephony',
+          },
+          agentsPendingWrapUp: undefined, // No agentsPendingWrapUp field
+        };
+        return task;
+      });
+      task.unregisterWebCallListeners = jest.fn();
+      const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+      const payload = {
+        data: {
+          type: CC_EVENTS.CONTACT_ENDED,
+          interactionId: taskId,
+          interaction: {
+            outboundType: 'OUTDIAL',
+            state: 'WRAPUP',
+            mediaType: 'telephony',
+          },
+          // agentsPendingWrapUp not included
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(removeTaskSpy).toHaveBeenCalled();
+      expect(taskManager.getTask(taskId)).toBeUndefined();
+    });
+
+    it('should NOT remove OUTDIAL task when needsWrapUp is true (current agent in agentsPendingWrapUp) even if state is WRAPUP', () => {
+      const task = taskManager.getTask(taskId);
+      task.updateTaskData = jest.fn().mockImplementation((newData) => {
+        task.data = {
+          ...task.data,
+          ...newData,
+          interaction: {
+            ...task.data.interaction,
+            outboundType: 'OUTDIAL',
+            state: 'WRAPUP',
+            mediaType: 'telephony',
+          },
+          agentsPendingWrapUp: [agentId], // Current agent needs wrap-up
+        };
+        return task;
+      });
+      task.unregisterWebCallListeners = jest.fn();
+      const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+      const payload = {
+        data: {
+          type: CC_EVENTS.CONTACT_ENDED,
+          interactionId: taskId,
+          interaction: {
+            outboundType: 'OUTDIAL',
+            state: 'WRAPUP',
+            mediaType: 'telephony',
+          },
+          agentsPendingWrapUp: [agentId], // Current agent needs wrap-up
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(removeTaskSpy).not.toHaveBeenCalled();
+      expect(taskManager.getTask(taskId)).toBeDefined();
+    });
+
+    it('should remove non-OUTDIAL task when state is new regardless of agentsPendingWrapUp', () => {
+      const task = taskManager.getTask(taskId);
+      task.updateTaskData = jest.fn().mockImplementation((newData) => {
+        task.data = {
+          ...task.data,
+          ...newData,
+          interaction: {
+            ...task.data.interaction,
+            outboundType: 'PREVIEW', // Not OUTDIAL
+            state: 'new',
+            mediaType: 'telephony',
+          },
+          agentsPendingWrapUp: [agentId],
+        };
+        return task;
+      });
+      task.unregisterWebCallListeners = jest.fn();
+      const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+      const payload = {
+        data: {
+          type: CC_EVENTS.CONTACT_ENDED,
+          interactionId: taskId,
+          interaction: {
+            outboundType: 'PREVIEW',
+            state: 'new',
+            mediaType: 'telephony',
+          },
+          agentsPendingWrapUp: [agentId],
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(removeTaskSpy).toHaveBeenCalled();
+      expect(taskManager.getTask(taskId)).toBeUndefined();
+    });
+
+    it('should handle agentsPendingWrapUp with multiple agents correctly - remove if current agent not in list', () => {
+      const task = taskManager.getTask(taskId);
+      task.updateTaskData = jest.fn().mockImplementation((newData) => {
+        task.data = {
+          ...task.data,
+          ...newData,
+          interaction: {
+            ...task.data.interaction,
+            outboundType: 'OUTDIAL',
+            state: 'new',
+            mediaType: 'telephony',
+          },
+          agentsPendingWrapUp: ['agent-1', 'agent-2', 'agent-3'], // Current agent not in the list
+        };
+        return task;
+      });
+      task.unregisterWebCallListeners = jest.fn();
+      const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+      const payload = {
+        data: {
+          type: CC_EVENTS.CONTACT_ENDED,
+          interactionId: taskId,
+          interaction: {
+            outboundType: 'OUTDIAL',
+            state: 'new',
+            mediaType: 'telephony',
+          },
+          agentsPendingWrapUp: ['agent-1', 'agent-2', 'agent-3'],
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(removeTaskSpy).toHaveBeenCalled();
+      expect(taskManager.getTask(taskId)).toBeUndefined();
+    });
+
+    it('should handle agentsPendingWrapUp with multiple agents correctly - keep if current agent is in list', () => {
+      const task = taskManager.getTask(taskId);
+      task.updateTaskData = jest.fn().mockImplementation((newData) => {
+        task.data = {
+          ...task.data,
+          ...newData,
+          interaction: {
+            ...task.data.interaction,
+            outboundType: 'OUTDIAL',
+            state: 'new',
+            mediaType: 'telephony',
+          },
+          agentsPendingWrapUp: ['agent-1', agentId, 'agent-3'], // Current agent IS in the list
+        };
+        return task;
+      });
+      task.unregisterWebCallListeners = jest.fn();
+      const removeTaskSpy = jest.spyOn(taskManager, 'removeTaskFromCollection');
+
+      const payload = {
+        data: {
+          type: CC_EVENTS.CONTACT_ENDED,
+          interactionId: taskId,
+          interaction: {
+            outboundType: 'OUTDIAL',
+            state: 'new',
+            mediaType: 'telephony',
+          },
+          agentsPendingWrapUp: ['agent-1', agentId, 'agent-3'],
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(removeTaskSpy).not.toHaveBeenCalled();
+      expect(taskManager.getTask(taskId)).toBeDefined();
     });
   });
 
