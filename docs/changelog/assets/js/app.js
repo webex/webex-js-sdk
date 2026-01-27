@@ -1545,8 +1545,8 @@ const initializeComparisonMode = async () => {
                 
                 compareSpecificPackageVersions(
                     selectedPackage,
-                    versionASpecific,
-                    versionBSpecific,
+                    finalVersionA,
+                    finalVersionB,
                     cachedChangelogA,
                     cachedChangelogB
                 );
