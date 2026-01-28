@@ -289,14 +289,8 @@ export default class TaskManager extends EventEmitter {
             if (task) {
               task = this.updateTaskData(task, {
                 ...payload.data,
-                wrapUpRequired:
-                  payload.data.interaction.state !== 'new' &&
-                  !isSecondaryEpDnAgent(payload.data.interaction),
+                wrapUpRequired: payload.data.agentsPendingWrapUp?.includes(this.agentId) || false,
               });
-
-              if (task.data.interaction.state === 'wrapUp') {
-                task = this.updateTaskData(task, {...payload.data, wrapUpRequired: false});
-              }
 
               // Handle cleanup based on whether task should be deleted
               this.handleTaskCleanup(task);
@@ -666,17 +660,16 @@ export default class TaskManager extends EventEmitter {
 
     const isOutdial = task.data.interaction.outboundType === 'OUTDIAL';
     const isNew = task.data.interaction.state === 'new';
-    const needsWrapUp = task.data.agentsPendingWrapUp?.length > 0;
+    const needsWrapUp = task.data.agentsPendingWrapUp?.includes(this.agentId) ?? false;
 
     // For OUTDIAL: only remove if NOT terminated (user-declined, no wrap-up follows)
-    // If terminated, keep task for wrap-up flow (CONTACT_ENDED → AGENT_WRAPUP)
     // For non-OUTDIAL: remove if state is 'new'
     // Always remove if secondary EpDn agent
-    if ((isNew && !(isOutdial && needsWrapUp)) || isSecondaryEpDnAgent(task.data.interaction)) {
-      this.removeTaskFromCollection(task);
-    }
-
-    if (task.data.interaction.state === 'wrapUp') {
+    if (
+      (isNew && !(isOutdial && needsWrapUp)) ||
+      isSecondaryEpDnAgent(task.data.interaction) ||
+      (!needsWrapUp && isOutdial) // For outdial tasks, needs wrap-up is false and state is "WRAPUP". We need to just remove the task.
+    ) {
       this.removeTaskFromCollection(task);
     }
   }
