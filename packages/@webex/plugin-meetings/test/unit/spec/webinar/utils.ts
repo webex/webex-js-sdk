@@ -1,13 +1,7 @@
-import sinon from 'sinon';
 import chai from 'chai';
-import chaiAsPromised from 'chai-as-promised';
-
 import {sanitizeParams} from '@webex/plugin-meetings/src/webinar/utils';
 
 const {assert} = chai;
-
-chai.use(chaiAsPromised);
-sinon.assert.expose(chai.assert, {prefix: ''});
 
 describe('plugin-meetings', () => {
   describe('webinar utils', () => {
@@ -26,6 +20,17 @@ describe('plugin-meetings', () => {
           d: 'test',
           e: false,
         };
+        const result = sanitizeParams(input);
+        assert.deepEqual(result, expectedOutput);
+      });
+
+      it('returns an empty object when all values are invalid', () => {
+        const input = {
+          a: undefined,
+          b: null,
+          c: '',
+        };
+        const expectedOutput = {};
         const result = sanitizeParams(input);
         assert.deepEqual(result, expectedOutput);
       });
