@@ -167,12 +167,19 @@ jobs:
             }
             
             // Build the changelog URL with auto-selected package + version
+            // Use the format that the changelog portal expects
             const changelogUrl = new URL('https://web-sdk.webex.com/changelog/');
             changelogUrl.searchParams.set('stable_version', stableVersion);
             const resolvedPackage = primaryPackage || 'webex';
             const resolvedPackageVersion = primaryPackageVersion || versionNumber;
+            // Try both param variants for package selection
             changelogUrl.searchParams.set('package', resolvedPackage);
+            changelogUrl.searchParams.set('packageName', resolvedPackage);
             changelogUrl.searchParams.set('version', resolvedPackageVersion);
+            
+            console.log(`📦 Changelog URL package: ${resolvedPackage}`);
+            console.log(`📦 Changelog URL version: ${resolvedPackageVersion}`);
+            console.log(`🔗 Full URL: ${changelogUrl.toString()}`);
             
             // Build the package list markdown
             const packageList = packages.slice(0, 5).map(p => `\`${p}\``).join(', ');
