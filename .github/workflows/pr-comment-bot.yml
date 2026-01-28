@@ -166,15 +166,13 @@ jobs:
               return;
             }
             
-            // Build the changelog URL filtered by PR number (auto-selects commits)
+            // Build the changelog URL with auto-selected package + version
             const changelogUrl = new URL('https://web-sdk.webex.com/changelog/');
             changelogUrl.searchParams.set('stable_version', stableVersion);
-            if (primaryPackage) {
-              changelogUrl.searchParams.set('package', primaryPackage);
-            }
-            if (primaryPackageVersion) {
-              changelogUrl.searchParams.set('version', primaryPackageVersion);
-            }
+            const encodedPackage = encodeURIComponent(primaryPackage || 'webex');
+            const resolvedPackageVersion = primaryPackageVersion || versionNumber;
+            changelogUrl.searchParams.set('package', encodedPackage);
+            changelogUrl.searchParams.set('version', resolvedPackageVersion);
             
             // Build the package list markdown
             const packageList = packages.slice(0, 5).map(p => `\`${p}\``).join(', ');
