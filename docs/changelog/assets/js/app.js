@@ -1671,5 +1671,5 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeApplication);
 } else {
     // DOM is already ready
-    initializeComparisonMode();
+    initializeApplication();
 }
