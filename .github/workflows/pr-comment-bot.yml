@@ -169,9 +169,9 @@ jobs:
             // Build the changelog URL with auto-selected package + version
             const changelogUrl = new URL('https://web-sdk.webex.com/changelog/');
             changelogUrl.searchParams.set('stable_version', stableVersion);
-            const encodedPackage = encodeURIComponent(primaryPackage || 'webex');
+            const resolvedPackage = primaryPackage || 'webex';
             const resolvedPackageVersion = primaryPackageVersion || versionNumber;
-            changelogUrl.searchParams.set('package', encodedPackage);
+            changelogUrl.searchParams.set('package', resolvedPackage);
             changelogUrl.searchParams.set('version', resolvedPackageVersion);
             
             // Build the package list markdown
