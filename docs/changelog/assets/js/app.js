@@ -1085,42 +1085,17 @@ const populatePrereleaseVersions = (packageName, changelog, selectId, stableVers
  * @param {Object} changelogB - Changelog for target stable version
  */
 const compareSpecificPackageVersions = (packageName, versionASpecific, versionBSpecific, changelogA, changelogB) => {
-    const pkgDataA = changelogA[packageName]?.[versionASpecific];
-    const pkgDataB = changelogB[packageName]?.[versionBSpecific];   
-    console.log('pkgDataA', pkgDataA);
-    console.log('pkgDataB', pkgDataB);
-    if (!pkgDataA && !pkgDataB) {
-        alert('Could not find version data n 65for comparison in either version');
-        return;
-    }
-    
-    // Determine status
-    let status = 'Unchanged';
-    let changeClass = 'unchanged';
-    if (!pkgDataA && pkgDataB) {
-        status = 'Added';
-        changeClass = 'only-in-b';
-    } else if (pkgDataA && !pkgDataB) {
-        status = 'Removed';
-        changeClass = 'only-in-a';
-    } else if (versionASpecific !== versionBSpecific) {
-        status = 'Version Changed';
-        changeClass = 'version-changed';
-    }
-    
     // Helper function to find latest version of a package in changelog
+    // Must be defined BEFORE use for fallback logic
     const findLatestPackageVersion = (changelog, pkgName) => {
         if (!changelog[pkgName]) return null;
         
         const versions = Object.keys(changelog[pkgName]);
         if (versions.length === 0) return null;
-        console.log('versions', versions);
         
         // Find the latest version by published date
         let latestVersion = versions[0];
         let latestDate = changelog[pkgName][versions[0]].published_date || 0;
-        //console.log('latestVersion', latestVersion);
-        //console.log('latestDate', latestDate);
         versions.forEach(ver => {
             const publishedDate = changelog[pkgName][ver].published_date || 0;
             if (publishedDate > latestDate) {
@@ -1132,14 +1107,51 @@ const compareSpecificPackageVersions = (packageName, versionASpecific, versionBS
         return latestVersion;
     };
     
+    // Apply fallback BEFORE lookup - if passed version doesn't exist in changelog,
+    // find the latest pre-release version for that package
+    const effectiveVersionA = changelogA[packageName]?.[versionASpecific] 
+        ? versionASpecific 
+        : findLatestPackageVersion(changelogA, packageName);
+    const effectiveVersionB = changelogB[packageName]?.[versionBSpecific] 
+        ? versionBSpecific 
+        : findLatestPackageVersion(changelogB, packageName);
+    
+    console.log('effectiveVersionA:', effectiveVersionA, '(passed:', versionASpecific, ')');
+    console.log('effectiveVersionB:', effectiveVersionB, '(passed:', versionBSpecific, ')');
+    
+    // NOW do the lookup with effective versions
+    const pkgDataA = changelogA[packageName]?.[effectiveVersionA];
+    const pkgDataB = changelogB[packageName]?.[effectiveVersionB];   
+    console.log('pkgDataA', pkgDataA);
+    console.log('pkgDataB', pkgDataB);
+    
+    if (!pkgDataA && !pkgDataB) {
+        alert('Could not find version data for comparison in either version');
+        return;
+    }
+    
+    // Determine status using effective versions
+    let status = 'Unchanged';
+    let changeClass = 'unchanged';
+    if (!pkgDataA && pkgDataB) {
+        status = 'Added';
+        changeClass = 'only-in-b';
+    } else if (pkgDataA && !pkgDataB) {
+        status = 'Removed';
+        changeClass = 'only-in-a';
+    } else if (effectiveVersionA !== effectiveVersionB) {
+        status = 'Version Changed';
+        changeClass = 'version-changed';
+    }
+    
     // Create packages array with main package and ALL packages from both changelogs
     const packagesArray = [];
     
     // Add main package row
     packagesArray.push({
         packageName: packageName,
-        versionA: pkgDataA ? versionASpecific : 'N/A',
-        versionB: pkgDataB ? versionBSpecific : 'N/A',
+        versionA: pkgDataA ? effectiveVersionA : 'N/A',
+        versionB: pkgDataB ? effectiveVersionB : 'N/A',
         status: status,
         changeClass: changeClass
     });
@@ -1215,8 +1227,8 @@ const compareSpecificPackageVersions = (packageName, versionASpecific, versionBS
     
     // Create comparison data in the same format as full version comparison
     const comparisonData = {
-        versionA: versionASpecific,
-        versionB: versionBSpecific,
+        versionA: effectiveVersionA,
+        versionB: effectiveVersionB,
         packages: packagesArray,
         totalPackages: packagesArray.length,
         changedCount: changedCount,
@@ -1246,13 +1258,13 @@ const compareSpecificPackageVersions = (packageName, versionASpecific, versionBS
         resultsDiv.innerHTML = html;
         resultsDiv.classList.remove('hide');
         
-        // Update URL for sharing
+        // Update URL for sharing - use effective versions for valid permalink
         updateEnhancedComparisonURL(
             document.getElementById('version-a-select').value,
             document.getElementById('version-b-select').value,
             packageName,
-            versionASpecific,
-            versionBSpecific
+            effectiveVersionA,
+            effectiveVersionB
         );
         
         // Show copy link button
