@@ -34,11 +34,10 @@ import BEHAVIORAL_METRICS from '../metrics/constants';
 import HashTreeParser, {
   DataSet,
   HashTreeMessage,
-  HashTreeObject,
-  isSelf,
   LocusInfoUpdateType,
 } from '../hashTree/hashTreeParser';
-import {ObjectType, ObjectTypeToLocusKeyMap} from '../hashTree/types';
+import {HashTreeObject, ObjectType, ObjectTypeToLocusKeyMap} from '../hashTree/types';
+import {isSelf} from '../hashTree/utils';
 import {Links, LocusDTO, LocusFullState} from './types';
 
 export type LocusLLMEvent = {
@@ -1373,6 +1372,7 @@ export default class LocusInfo extends EventsScope {
           hasRecordingPausedChanged,
           hasMeetingContainerChanged,
           hasTranscribeChanged,
+          hasHesiodLLMIdChanged,
           hasTranscribeSpokenLanguageChanged,
           hasManualCaptionChanged,
           hasEntryExitToneChanged,
@@ -1510,6 +1510,21 @@ export default class LocusInfo extends EventsScope {
           {
             transcribing,
             caption,
+          }
+        );
+      }
+
+      if (hasHesiodLLMIdChanged) {
+        const {hesiodLlmId} = current.transcribe;
+
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED,
+          {
+            hesiodLlmId,
           }
         );
       }

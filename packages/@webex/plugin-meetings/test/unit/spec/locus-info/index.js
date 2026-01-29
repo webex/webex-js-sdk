@@ -1338,6 +1338,34 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('should update the hesiod llm id', () => {
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.controls = {
+          transcribe: {
+            transcribing: false,
+            caption: true,
+            hesiodLlmId: '123a-456b-789c',
+          },
+        };
+        newControls.transcribe.transcribing = false;
+        newControls.transcribe.caption = true;
+        newControls.transcribe.hesiodLlmId = '789d-456e-123f';
+
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED,
+          {
+            hesiodLlmId: '789d-456e-123f',
+          }
+        );
+      });
+
       it('should update the transcribe spoken language', () => {
         locusInfo.emitScoped = sinon.stub();
         locusInfo.controls = {

@@ -117,15 +117,16 @@ MeetingsUtil.getMediaServerIp = (sdp) => {
   return mediaServerIp;
 };
 
-MeetingsUtil.checkForCorrelationId = (deviceUrl, locus) => {
-  let devices = [];
-
-  if (locus) {
-    if (locus && locus.self && locus.self.devices) {
-      devices = locus.self.devices;
-    }
-
-    const foundDevice = devices.find((device) => device.url === deviceUrl);
+/**
+ * Finds correlationId of a device from locus self devices array
+ * that matches the given deviceUrl
+ * @param {string} deviceUrl
+ * @param {object} locusSelf
+ * @returns {string|false} correlationId or false if not found
+ */
+MeetingsUtil.getCorrelationIdForDevice = (deviceUrl: string, locusSelf: any) => {
+  if (locusSelf?.devices) {
+    const foundDevice = locusSelf?.devices.find((device) => device.url === deviceUrl);
 
     if (foundDevice && foundDevice.correlationId) {
       return foundDevice.correlationId;
