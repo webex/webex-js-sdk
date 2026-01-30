@@ -179,7 +179,7 @@ import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {ReachabilityMetrics} from '../reachability/reachability.types';
 import {SetStageOptions, SetStageVideoLayout, UnsetStageVideoLayout} from './request.type';
 import {Invitee} from './type';
-import {DataSet} from '../hashTree/hashTreeParser';
+import {DataSet, Metadata} from '../hashTree/hashTreeParser';
 import {LocusDTO} from '../locus-info/types';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
@@ -4598,7 +4598,8 @@ export default class Meeting extends StatelessWebexPlugin {
     mediaId: string;
     host: object;
     selfId: string;
-    dataSets: DataSet[];
+    dataSets: DataSet[]; // only sent by Locus when hash trees are used
+    metadata: Metadata; // only sent by Locus when hash trees are used
   }) {
     const mtgLocus: any = data.locus;
 
@@ -4614,6 +4615,7 @@ export default class Meeting extends StatelessWebexPlugin {
       trigger: 'join-response',
       locus: mtgLocus,
       dataSets: data.dataSets,
+      metadata: data.metadata,
     });
   }
 
