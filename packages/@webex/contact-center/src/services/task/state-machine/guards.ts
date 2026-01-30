@@ -1,5 +1,23 @@
 /**
- * Task State Machine Guards - Functions that determine if state transitions are allowed
+ * Task State Machine Guards
+ *
+ * Guard functions that determine if a state transition is allowed.
+ * These functions validate the current context before allowing transitions.
+ *
+ * All guards are consolidated here for:
+ * - Single source of truth
+ * - Easy testing
+ * - Reusability across state machine transitions
+ *
+ * Guards are organized by category:
+ * 1. Helper Functions - Extract data from events/context
+ * 2. Hydrate Guards - For state restoration on page refresh
+ * 3. Conference Guards - Conference state checks
+ * 4. Customer Guards - Customer presence checks
+ * 5. Consult Guards - Consult flow checks
+ * 6. Wrapup Guards - End-of-call flow checks
+ * 7. Server State Guards - Check backend-reported state
+ * 8. Recording Guards - Recording state checks
  */
 
 import {TaskContext, TaskEventPayload} from './types';
@@ -185,25 +203,6 @@ export const guards = {
 
     return getIsCustomerInCall(taskData.interaction, mainCallId);
   },
-  isOwner: ({context, event}: GuardParams): boolean => {
-    const eventTaskData = getTaskDataFromEvent(event);
-    const taskData = eventTaskData ?? context.taskData;
-    const selfAgentId = getSelfAgentId(context, taskData);
-    if (!selfAgentId) return false;
-    const owner = taskData?.interaction?.owner;
-
-    return owner === selfAgentId;
-  },
-
-  conferenceActiveAndCustomerInCall: ({event}: GuardParams): boolean => {
-    const taskData = getTaskDataFromEvent(event);
-    if (!taskData?.interaction) return false;
-    const mainCallId = taskData.interaction.mainInteractionId || taskData.interactionId;
-
-    return (
-      getIsConferenceInProgress(taskData) && getIsCustomerInCall(taskData.interaction, mainCallId)
-    );
-  },
 
   // Consult Guards
   isConsultInitiator: ({context}: GuardParams): boolean => {
@@ -214,6 +213,10 @@ export const guards = {
     return !context.consultInitiator;
   },
 
+  /**
+   * Check if this agent initiated the consult (using event data)
+   * Handles both consultingAgentId and fallback to context flag
+   */
   didInitiateConsult: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
     if (taskData?.isConsulted === true) return false;
@@ -269,6 +272,9 @@ export const guards = {
     return shouldWrapUpForThisAgent(context, taskData);
   },
 
+  /**
+   * Check if wrapUpRequired in payload OR is consult initiator
+   */
   shouldWrapUpOrIsInitiator: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
@@ -290,13 +296,6 @@ export const guards = {
     return context.exitingConference === true;
   },
 
-  conferenceActiveAndNotWrapping: ({context, event}: GuardParams): boolean => {
-    const taskData = getTaskDataFromEvent(event);
-    if (!taskData) return false;
-
-    return getIsConferenceInProgress(taskData) && !shouldWrapUpForThisAgent(context, taskData);
-  },
-
   // Server State Guards
   serverReportsHeld: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
@@ -309,15 +308,6 @@ export const guards = {
     if (taskData?.isConsulted === true) return true;
 
     return Boolean(context.consultInitiator && !taskData?.wrapUpRequired);
-  },
-
-  // Recording Guards
-  recordingActive: ({context}: GuardParams): boolean => {
-    return context.recordingControlsAvailable && context.recordingInProgress;
-  },
-
-  recordingPaused: ({context}: GuardParams): boolean => {
-    return context.recordingControlsAvailable && !context.recordingInProgress;
   },
 };
 

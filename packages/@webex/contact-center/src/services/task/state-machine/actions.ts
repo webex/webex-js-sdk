@@ -3,25 +3,17 @@
  */
 
 import {assign} from 'xstate';
-import type {ActionFunctionMap, EventObject} from 'xstate';
-import {TaskContext, TaskEventPayload, UIControlConfig} from './types';
+import {
+  TaskContext,
+  TaskEventPayload,
+  UIControlConfig,
+  TaskActionsMap,
+  TaskActionArgs,
+  RecordingStateUpdate,
+} from './types';
 import {TaskEvent, TaskState} from './constants';
 import {DestinationType, TaskData} from '../types';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
-
-export type TaskActionsMap = ActionFunctionMap<
-  TaskContext,
-  TaskEventPayload,
-  never,
-  {type: string; params: undefined},
-  never,
-  never,
-  EventObject
->;
-
-type RecordingStateUpdate = Partial<
-  Pick<TaskContext, 'recordingControlsAvailable' | 'recordingInProgress'>
->;
 
 const determineConsultInitiator = (
   taskData: TaskData | undefined,
@@ -127,7 +119,7 @@ export function createInitialContext(
 }
 
 export function updateUIControls(currentState: TaskState) {
-  return assign(({context}: {context: TaskContext}) => ({
+  return assign(({context}: TaskActionArgs) => ({
     uiControls: computeUIControls(currentState, context),
   }));
 }
@@ -143,13 +135,25 @@ export const actions: TaskActionsMap = {
     };
   }),
 
-  updateTaskData: assign(({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+  /**
+   * Update task data from ASSIGN event
+   */
+  updateTaskData: assign(({context, event}: TaskActionArgs) => {
     return deriveTaskDataUpdates(context, getTaskDataFromEvent(event));
   }),
 
-  syncTaskDataFromEvent: () => undefined,
-
-  setConsultInitiator: assign(({event}: {event: TaskEventPayload}) => {
+  /**
+   * Set consult initiator flag
+   *
+   * IMPORTANT: This action is called for CONSULT (user action) and CONSULT_CREATED (backend event).
+   * For CONSULT (user action): The user explicitly clicked Consult, so they ARE the initiator.
+   * For CONSULT_CREATED (backend event): Check taskData.isConsulted to determine if this agent
+   * is the initiator. If isConsulted === true, this is Agent B (the consulted party), NOT the initiator.
+   *
+   * This prevents all agents in a conference from becoming consultInitiator when one agent
+   * starts a new consult.
+   */
+  setConsultInitiator: assign(({event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event);
 
     if (event.type === TaskEvent.CONSULT) return {consultInitiator: true};
@@ -162,18 +166,10 @@ export const actions: TaskActionsMap = {
     return {};
   }),
 
-  setHoldInitiated: assign({}),
-  handleTransferInit: assign({}),
-  finalizeTransfer: assign({}),
-  handleConferenceInit: assign({}),
-  handleConferenceFailed: assign({}),
-
-  handleConsultAccept: assign({consultDestinationAgentJoined: true}),
-  handleConsultCompletion: assign({consultDestinationAgentJoined: true}),
   handleConsultFailed: assign({consultDestinationAgentJoined: false, consultInitiator: false}),
   handleConferenceStarted: assign({consultInitiator: false}),
 
-  setConsultDestination: assign(({event}: {event: TaskEventPayload}) => {
+  setConsultDestination: assign(({event}: TaskActionArgs) => {
     if (!event || event.type !== TaskEvent.CONSULT) {
       return {};
     }
@@ -213,7 +209,7 @@ export const actions: TaskActionsMap = {
     }
   ),
 
-  setRecordingState: assign(({event}: {event: TaskEventPayload}) => {
+  setRecordingState: assign(({event}: TaskActionArgs) => {
     if (!event || !('type' in event)) {
       return {};
     }
@@ -249,16 +245,7 @@ export const actions: TaskActionsMap = {
 
   setConsultCallHeld: assign({consultCallHeld: true}),
   clearConsultCallHeld: assign({consultCallHeld: false}),
-  handleSwitchToMainCall: assign({consultCallHeld: true}),
-  handleSwitchToConsult: assign({consultCallHeld: false}),
-
-  handleParticipantJoined: assign(({event}: {event: TaskEventPayload}) => {
-    const taskData = getTaskDataFromEvent(event);
-
-    return taskData ? {taskData} : {};
-  }),
-
-  handleParticipantLeft: assign(({event}: {event: TaskEventPayload}) => {
+  handleParticipantLeft: assign(({event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event);
 
     return taskData ? {taskData} : {};
@@ -266,7 +253,7 @@ export const actions: TaskActionsMap = {
 
   setExitingConference: assign({exitingConference: true}),
 
-  handleExitConferenceSuccess: assign(({event}: {event: TaskEventPayload}) => {
+  handleExitConferenceSuccess: assign(({event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event);
 
     return {
@@ -277,15 +264,13 @@ export const actions: TaskActionsMap = {
 
   handleExitConferenceFailed: assign({exitingConference: false}),
 
-  handleTransferConferenceSuccess: assign(({event}: {event: TaskEventPayload}) => {
+  handleTransferConferenceSuccess: assign(({event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event);
 
     return taskData ? {taskData} : {};
   }),
 
-  handleTransferConferenceFailed: assign({}),
-
-  setHoldState: assign(({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
+  setHoldState: assign(({context, event}: TaskActionArgs) => {
     if (
       !event ||
       (event.type !== TaskEvent.HOLD_SUCCESS && event.type !== TaskEvent.UNHOLD_SUCCESS)
@@ -333,6 +318,8 @@ export const actions: TaskActionsMap = {
     recordingInProgress: false,
   })),
 
+  requestAutoAnswer: () => undefined,
+  requestCleanup: () => undefined,
   cleanupResources: () => undefined,
 
   // Event emitters - placeholders overridden by consumers
@@ -348,17 +335,12 @@ export const actions: TaskActionsMap = {
   emitTaskConsulting: () => undefined,
   emitTaskConsultAccepted: () => undefined,
   emitTaskConsultEnd: () => undefined,
-  emitTaskConsultQueueCancelled: () => undefined,
-  emitTaskConsultQueueFailed: () => undefined,
   emitTaskReject: () => undefined,
   emitTaskWrapup: () => undefined,
   emitTaskRecordingStarted: () => undefined,
   emitTaskRecordingPaused: () => undefined,
-  emitTaskRecordingPauseFailed: () => undefined,
   emitTaskRecordingResumed: () => undefined,
-  emitTaskRecordingResumeFailed: () => undefined,
   emitTaskWrappedup: () => undefined,
-  emitTaskParticipantJoined: () => undefined,
   emitTaskParticipantLeft: () => undefined,
   emitTaskConferenceStarted: () => undefined,
   emitTaskConferenceEnded: () => undefined,

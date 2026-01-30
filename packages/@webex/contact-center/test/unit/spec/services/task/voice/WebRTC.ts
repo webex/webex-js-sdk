@@ -134,14 +134,14 @@ describe('WebRTC Task', () => {
     });
 
     it('initialiseUIControls sets accept and decline visible', () => {
-      sendStateEvents(webRtc, [{type: TaskEvent.OFFER, taskData}]);
+      sendStateEvents(webRtc, [{type: TaskEvent.TASK_INCOMING, taskData}]);
       expect(webRtc.uiControls.accept.isVisible).toBe(true);
       expect(webRtc.uiControls.decline.isVisible).toBe(true);
     });
 
     it('setUIControls for AGENT_CONTACT_ASSIGNED shows mute enabled', () => {
     sendStateEvents(webRtc, [
-      {type: TaskEvent.OFFER, taskData},
+      {type: TaskEvent.TASK_INCOMING, taskData},
       {type: TaskEvent.ASSIGN, taskData},
     ]);
     expect(webRtc.uiControls.mute.isVisible).toBe(true);
@@ -150,9 +150,9 @@ describe('WebRTC Task', () => {
 
   it('default setUIControls hides mute when wrapup visible', () => {
     sendStateEvents(webRtc, [
-      {type: TaskEvent.OFFER, taskData},
+      {type: TaskEvent.TASK_INCOMING, taskData},
       {type: TaskEvent.ASSIGN, taskData},
-      {type: TaskEvent.END},
+      {type: TaskEvent.TASK_WRAPUP},
     ]);
     expect(webRtc.uiControls.wrapup.isVisible).toBe(true);
     expect(webRtc.uiControls.mute.isVisible).toBe(true);
@@ -160,9 +160,9 @@ describe('WebRTC Task', () => {
 
   it('setUIControls for AGENT_CONTACT_HELD disables mute', () => {
     sendStateEvents(webRtc, [
-      {type: TaskEvent.OFFER, taskData},
+      {type: TaskEvent.TASK_INCOMING, taskData},
       {type: TaskEvent.ASSIGN, taskData},
-      {type: TaskEvent.HOLD, mediaResourceId: taskData.mediaResourceId},
+      {type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId},
       {type: TaskEvent.HOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId},
     ]);
     expect(webRtc.uiControls.mute.isVisible).toBe(false);
@@ -171,11 +171,11 @@ describe('WebRTC Task', () => {
 
   it('setUIControls for AGENT_CONTACT_UNHELD re-enables mute', () => {
     sendStateEvents(webRtc, [
-      {type: TaskEvent.OFFER, taskData},
+      {type: TaskEvent.TASK_INCOMING, taskData},
       {type: TaskEvent.ASSIGN, taskData},
-      {type: TaskEvent.HOLD, mediaResourceId: taskData.mediaResourceId},
+      {type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId},
       {type: TaskEvent.HOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId},
-      {type: TaskEvent.UNHOLD, mediaResourceId: taskData.mediaResourceId},
+      {type: TaskEvent.UNHOLD_INITIATED, mediaResourceId: taskData.mediaResourceId},
       {type: TaskEvent.UNHOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId},
     ]);
     expect(webRtc.uiControls.mute.isVisible).toBe(true);
@@ -183,22 +183,31 @@ describe('WebRTC Task', () => {
   });
 
   it('setUIControls for AGENT_OFFER_CONTACT shows accept and decline', () => {
-    sendStateEvents(webRtc, [{type: TaskEvent.OFFER, taskData}]);
+    sendStateEvents(webRtc, [{type: TaskEvent.TASK_INCOMING, taskData}]);
     expect(webRtc.uiControls.accept.isVisible).toBe(true);
     expect(webRtc.uiControls.decline.isVisible).toBe(true);
   });
 
   it('setUIControls for AGENT_OFFER_CONSULT shows accept and decline', () => {
-    sendStateEvents(webRtc, [{type: TaskEvent.OFFER_CONSULT, taskData}]);
+    const consultedTaskData = {...taskData, isConsulted: true};
+    sendStateEvents(webRtc, [
+      {type: TaskEvent.TASK_INCOMING, taskData},
+      {type: TaskEvent.OFFER_CONSULT, taskData: consultedTaskData},
+    ]);
     expect(webRtc.uiControls.accept.isVisible).toBe(true);
     expect(webRtc.uiControls.decline.isVisible).toBe(true);
   });
 
   it('setUIControls for AGENT_CONSULTING hides accept/decline and shows mute when consulted', () => {
-    webRtc.updateTaskData({...taskData, isConsulted: true});
+    const consultedTaskData = {...taskData, isConsulted: true};
     sendStateEvents(webRtc, [
-      {type: TaskEvent.OFFER_CONSULT, taskData},
-      {type: TaskEvent.ACCEPT},
+      {type: TaskEvent.TASK_INCOMING, taskData},
+      {type: TaskEvent.OFFER_CONSULT, taskData: consultedTaskData},
+      {
+        type: TaskEvent.CONSULTING_ACTIVE,
+        consultDestinationAgentJoined: true,
+        taskData: consultedTaskData,
+      },
     ]);
     expect(webRtc.uiControls.accept.isVisible).toBe(false);
     expect(webRtc.uiControls.decline.isVisible).toBe(false);
@@ -207,10 +216,15 @@ describe('WebRTC Task', () => {
   });
 
   it('setUIControls for AGENT_CONSULT_ENDED returns mute to connected state behavior', () => {
-    webRtc.updateTaskData({...taskData, isConsulted: true});
+    const consultedTaskData = {...taskData, isConsulted: true};
     sendStateEvents(webRtc, [
-      {type: TaskEvent.OFFER_CONSULT, taskData},
-      {type: TaskEvent.ACCEPT},
+      {type: TaskEvent.TASK_INCOMING, taskData},
+      {type: TaskEvent.OFFER_CONSULT, taskData: consultedTaskData},
+      {
+        type: TaskEvent.CONSULTING_ACTIVE,
+        consultDestinationAgentJoined: true,
+        taskData: consultedTaskData,
+      },
       {type: TaskEvent.CONSULT_END},
     ]);
     expect(webRtc.uiControls.mute.isVisible).toBe(false);
@@ -218,7 +232,7 @@ describe('WebRTC Task', () => {
 
   it('setUIControls for AGENT_CONTACT_OFFER_RONA hides accept and decline', () => {
     sendStateEvents(webRtc, [
-      {type: TaskEvent.OFFER, taskData},
+      {type: TaskEvent.TASK_INCOMING, taskData},
       {type: TaskEvent.RONA},
     ]);
     expect(webRtc.uiControls.accept.isVisible).toBe(false);
