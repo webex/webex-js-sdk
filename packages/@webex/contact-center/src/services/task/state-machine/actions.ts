@@ -9,14 +9,11 @@ import {
   UIControlConfig,
   TaskActionsMap,
   TaskActionArgs,
+  RecordingStateUpdate,
 } from './types';
 import {TaskEvent, TaskState} from './constants';
 import {DestinationType, TaskData} from '../types';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
-
-type RecordingStateUpdate = Partial<
-  Pick<TaskContext, 'recordingControlsAvailable' | 'recordingInProgress'>
->;
 
 const determineConsultInitiator = (
   taskData: TaskData | undefined,
@@ -169,11 +166,6 @@ export const actions: TaskActionsMap = {
     return {};
   }),
 
-  handleTransferInit: assign({}),
-  finalizeTransfer: assign({}),
-  handleConferenceInit: assign({}),
-  handleConferenceFailed: assign({}),
-
   handleConsultFailed: assign({consultDestinationAgentJoined: false, consultInitiator: false}),
   handleConferenceStarted: assign({consultInitiator: false}),
 
@@ -277,8 +269,6 @@ export const actions: TaskActionsMap = {
 
     return taskData ? {taskData} : {};
   }),
-
-  handleTransferConferenceFailed: assign({}),
 
   setHoldState: assign(({context, event}: TaskActionArgs) => {
     if (

@@ -82,7 +82,6 @@ function computeVoiceUIControls(
   const isConnected = serverHold !== undefined ? !serverHold : state === TaskState.CONNECTED;
 
   // State categories for cleaner logic
-  const isOffered = state === TaskState.OFFERED;
   const isConsulting =
     state === TaskState.CONSULTING ||
     state === TaskState.CONSULT_INITIATING ||
@@ -118,8 +117,14 @@ function computeVoiceUIControls(
 
   return {
     // Accept/Decline: WebRTC offered state only
-    accept: isWebrtc && isOffered && !interaction?.isTerminated ? VISIBLE_ENABLED : DISABLED,
-    decline: isWebrtc && isOffered && !interaction?.isTerminated ? VISIBLE_ENABLED : DISABLED,
+    accept:
+      isWebrtc && state === TaskState.OFFERED && !interaction?.isTerminated
+        ? VISIBLE_ENABLED
+        : DISABLED,
+    decline:
+      isWebrtc && state === TaskState.OFFERED && !interaction?.isTerminated
+        ? VISIBLE_ENABLED
+        : DISABLED,
 
     // Hold: visible in connected/held/conference, disabled in conference/consulting
     hold: (() => {
@@ -284,12 +289,11 @@ function computeDigitalUIControls(
   const taskData = context.taskData ?? fallbackTaskData ?? null;
   const isTerminated = taskData?.interaction?.isTerminated ?? false;
 
-  const isOffered = state === TaskState.OFFERED;
   const isConnected = state === TaskState.CONNECTED;
   const isWrappingUp = state === TaskState.WRAPPING_UP;
 
   return {
-    accept: isOffered ? VISIBLE_ENABLED : DISABLED,
+    accept: state === TaskState.OFFERED ? VISIBLE_ENABLED : DISABLED,
     decline: DISABLED,
     hold: DISABLED,
     mute: DISABLED,

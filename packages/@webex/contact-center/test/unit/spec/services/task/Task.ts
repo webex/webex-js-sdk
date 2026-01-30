@@ -223,7 +223,7 @@ describe('Task (base class)', () => {
     webrtcTask.sendStateMachineEvent({type: TaskEvent.TASK_INCOMING, taskData: data});
     webrtcTask.sendStateMachineEvent({
       type: TaskEvent.TASK_OFFERED,
-      taskData: {...data, isAutoAnswering: 'true'} as any,
+      taskData: {...data, isAutoAnswering: true} as any,
     });
 
     await flushPromises();

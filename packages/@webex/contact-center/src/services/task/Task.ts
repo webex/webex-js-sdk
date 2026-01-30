@@ -299,12 +299,11 @@ export default abstract class Task extends EventEmitter implements ITask {
     return undefined;
   }
 
-  private async autoAnswerIfNeeded(event?: TaskEventPayload): Promise<void> {
+  private async autoAnswerIfNeeded(): Promise<void> {
     if (!this.data) {
       return;
     }
 
-    const eventTaskData = Task.extractTaskDataFromEvent(event) as any;
     const autoAnswerSupported =
       this.uiControlConfig.channelType === TASK_CHANNEL_TYPE.DIGITAL ||
       this.uiControlConfig.voiceVariant === VOICE_VARIANT.WEBRTC;
@@ -313,13 +312,7 @@ export default abstract class Task extends EventEmitter implements ITask {
       return;
     }
 
-    const isAutoAnsweringFromEvent = eventTaskData?.isAutoAnswering;
-    const isAutoAnsweringFromTask = (this.data as any)?.isAutoAnswering;
-    const shouldAutoAnswer =
-      isAutoAnsweringFromEvent === true ||
-      isAutoAnsweringFromEvent === 'true' ||
-      isAutoAnsweringFromTask === true ||
-      isAutoAnsweringFromTask === 'true';
+    const shouldAutoAnswer = this.data.isAutoAnswering === true;
 
     if (!shouldAutoAnswer) {
       return;
@@ -486,7 +479,10 @@ export default abstract class Task extends EventEmitter implements ITask {
         updateTaskData: true,
       }),
       requestAutoAnswer: ({event}: TaskActionArgs) => {
-        this.autoAnswerIfNeeded(event);
+        if (event) {
+          // parameter intentionally unused
+        }
+        this.autoAnswerIfNeeded();
       },
       requestCleanup: () => {
         this.emit(TASK_EVENTS.TASK_CLEANUP, this, {removeFromCollection: false});

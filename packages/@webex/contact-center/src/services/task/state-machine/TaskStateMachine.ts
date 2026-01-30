@@ -200,15 +200,15 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUpOrIsInitiator,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup', 'finalizeTransfer'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
             },
             {
               // Receiver goes to connected as he receives transferSuccess event
-              actions: ['updateTaskData', 'clearConsultState', 'finalizeTransfer'],
+              actions: ['updateTaskData', 'clearConsultState'],
             },
           ],
           [TaskEvent.TRANSFER_FAILED]: {
-            actions: ['updateTaskData', 'finalizeTransfer'],
+            actions: ['updateTaskData'],
           },
           // AgentContactEnded Event
           [TaskEvent.CONTACT_ENDED]: [
@@ -274,15 +274,15 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUpOrIsInitiator,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup', 'finalizeTransfer'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
             },
             {
               target: TaskState.CONNECTED,
-              actions: ['updateTaskData', 'clearConsultState', 'finalizeTransfer'],
+              actions: ['updateTaskData', 'clearConsultState'],
             },
           ],
           [TaskEvent.TRANSFER_FAILED]: {
-            actions: ['updateTaskData', 'finalizeTransfer'],
+            actions: ['updateTaskData'],
           },
           [TaskEvent.CONTACT_ENDED]: [
             {
@@ -454,24 +454,20 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUpOrIsInitiator,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup', 'finalizeTransfer'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
             },
             {
               target: TaskState.CONNECTED,
-              actions: ['updateTaskData', 'clearConsultState', 'finalizeTransfer'],
+              actions: ['updateTaskData', 'clearConsultState'],
             },
           ],
           [TaskEvent.TRANSFER_FAILED]: {
-            actions: ['updateTaskData', 'finalizeTransfer'],
+            actions: ['updateTaskData'],
           },
 
           // Transfer conference while consulting
           [TaskEvent.TRANSFER_CONFERENCE]: {
-            actions: [
-              'setTransferConferenceRequested',
-              'handleTransferInit',
-              'emitTaskTransferConference',
-            ],
+            actions: ['setTransferConferenceRequested', 'emitTaskTransferConference'],
           },
           [TaskEvent.TRANSFER_CONFERENCE_SUCCESS]: [
             {
@@ -506,7 +502,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             },
           ],
           [TaskEvent.TRANSFER_CONFERENCE_FAILED]: {
-            actions: ['clearTransferConferenceRequested', 'handleTransferConferenceFailed'],
+            actions: ['clearTransferConferenceRequested'],
           },
 
           // AgentContactAssigned - receiver side becomes connected to customer
@@ -531,7 +527,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
           [TaskEvent.MERGE_TO_CONFERENCE]: {
             target: TaskState.CONF_INITIATING,
-            actions: ['handleConferenceInit'],
           },
           // AgentConsultConferenced, ParticipantJoinedConference
           [TaskEvent.CONFERENCE_START]: {
@@ -541,7 +536,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentConsultConferenceFailed
           [TaskEvent.CONFERENCE_FAILED]: {
             target: TaskState.CONSULTING,
-            actions: ['handleConferenceFailed'],
           },
         },
       },
@@ -556,7 +550,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentConsultConferenceFailed
           [TaskEvent.CONFERENCE_FAILED]: {
             target: TaskState.CONSULTING,
-            actions: ['handleConferenceFailed'],
           },
         },
       },
@@ -696,15 +689,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
 
           [TaskEvent.TRANSFER_CONFERENCE]: {
-            actions: ['handleTransferInit', 'emitTaskTransferConference'],
+            actions: ['emitTaskTransferConference'],
           },
           [TaskEvent.TRANSFER_CONFERENCE_SUCCESS]: {
             // For agents already in CONFERENCING, a conference transfer does not change their
             // lifecycle state. They remain in conference; only backend taskData is refreshed.
             actions: ['updateTaskData', 'handleTransferConferenceSuccess'],
-          },
-          [TaskEvent.TRANSFER_CONFERENCE_FAILED]: {
-            actions: ['handleTransferConferenceFailed'],
           },
 
           // Conference ends explicitly

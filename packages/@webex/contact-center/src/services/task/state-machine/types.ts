@@ -70,6 +70,10 @@ export interface TaskContext {
   uiControls: TaskUIControls;
 }
 
+export type RecordingStateUpdate = Partial<
+  Pick<TaskContext, 'recordingControlsAvailable' | 'recordingInProgress'>
+>;
+
 /**
  * Base event type - all events have a type property
  */
