@@ -204,6 +204,7 @@ const Mercury = WebexPlugin.extend({
   },
 
   logout() {
+    this.logger.info('log statement to force tests to run');
     this.logger.info(`${this.namespace}: logout() called`);
     this.logger.info(
       `${this.namespace}: debug_mercury_logging stack: `,
