@@ -1629,24 +1629,30 @@ async function handleBNR() {
       if (!effect) {
         effect = await webex.meetings.createNoiseReductionEffect({
           env: integrationEnv.checked ? 'int' : 'prod',
-          model: selectedModel,
-          workletProcessorUrl: 'http://localhost:58587/esm/noise-reduction-processor.worklet.simd.js'
+          model: selectedModel
         });
         handleEffectsButton(toggleBNRBtn, BNR, effect);
         await localMedia.microphoneStream.addEffect(effect);
       }
 
       await effect.enable();
+      // Use effect.model to get actual model (in case effect was created with different model)
+      const activeModel = effect.model || selectedModel;
       handleEffectsButton(toggleBNRBtn, BNR, effect);
-      updateModelWarning(selectedModel);
-      console.log(`MeetingControls#handleBNR() :: successfully applied noise reduction (${selectedModel}) to local microphone stream`);
+      updateModelInfo(activeModel);
+      updateModelSelectState(true, activeModel); // Disable and sync dropdown
+      console.log(`MeetingControls#handleBNR() :: successfully applied noise reduction (${activeModel}) to local microphone stream`);
 
     }
     else {
       console.log('MeetingControls#handleBNR() :: disabling noise reduction from local microphone stream');
 
+      const effectModel = effect.model;
       await effect.disable();
       handleEffectsButton(toggleBNRBtn, BNR, effect);
+      updateModelInfo(null); // Hide info when disabled
+      // Keep dropdown disabled - model is locked once effect is created
+      updateModelSelectState(true, effectModel);
       console.log('MeetingControls#handleBNR() :: successfully disabled noise reduction from local microphone stream');
     }
   }
@@ -1657,47 +1663,66 @@ async function handleBNR() {
   }
 }
 
-async function handleModelChange() {
+function handleModelChange() {
   const modelSelect = document.getElementById('ts-model-select');
   const selectedModel = modelSelect ? modelSelect.value : 'bnr';
 
-  try {
-    const effect = await localMedia.microphoneStream?.getEffectByKind('noise-reduction-effect');
+  // Check if effect already exists - if so, model can't be changed
+  const effect = localMedia?.microphoneStream?.getEffectByKind?.('noise-reduction-effect');
+  if (effect) {
+    console.log('MeetingControls#handleModelChange() :: effect already exists, model cannot be changed');
+    modelSelect.value = effect.model || 'bnr';
+    return;
+  }
 
-    // Update button text to reflect new model
-    handleEffectsButton(toggleBNRBtn, BNR, effect);
-    updateModelWarning(selectedModel);
+  updateModelInfo(selectedModel);
+  handleEffectsButton(toggleBNRBtn, BNR, null);
 
-    if (effect && effect.isEnabled) {
-      console.log(`MeetingControls#handleModelChange() :: switching model to ${selectedModel}`);
-      await effect.setModel(selectedModel);
-      console.log(`MeetingControls#handleModelChange() :: successfully switched to ${selectedModel} model`);
-    } else {
-      console.log('MeetingControls#handleModelChange() :: effect not enabled, model will be used when enabled');
-    }
-  } catch (e) {
-    console.log('MeetingControls#handleModelChange() :: Error switching model!');
-    console.error(e);
+  console.log(`MeetingControls#handleModelChange() :: selected model ${selectedModel} (will be applied on enable)`);
+}
+
+function updateModelInfo(model) {
+  const infoElement = document.getElementById('ts-model-info');
+  if (infoElement) {
+    infoElement.style.display = model === 'st' ? 'inline' : 'none';
   }
 }
 
-function updateModelWarning(model) {
-  const warningElement = document.getElementById('ts-model-warning');
-  if (warningElement) {
-    warningElement.style.display = model === 'st' ? 'inline' : 'none';
+function updateModelSelectState(disabled, effectModel) {
+  const modelSelect = document.getElementById('ts-model-select');
+  const lockedMessage = document.getElementById('ts-model-locked');
+
+  if (modelSelect) {
+    modelSelect.disabled = disabled;
+    modelSelect.title = disabled
+      ? 'Model cannot be changed after effect is created. Reload page to change model.'
+      : 'Select audio processing model';
+
+    if (effectModel && modelSelect.value !== effectModel) {
+      modelSelect.value = effectModel;
+    }
+  }
+
+  if (lockedMessage) {
+    lockedMessage.style.display = disabled ? 'inline' : 'none';
   }
 }
 
 function handleEffectsButton(btn, type, effect) {
   let disabled = false;
   let title;
-  
-  // For noise reduction, use the selected model name
+
+  // For noise reduction, use effect.model if available, otherwise use selected model from dropdown
   let displayName = type;
   if (type === BNR) {
-    const modelSelect = document.getElementById('ts-model-select');
-    const selectedModel = modelSelect ? modelSelect.value : 'bnr';
-    displayName = selectedModel.toUpperCase();
+    let modelName;
+    if (effect && effect.model) {
+      modelName = effect.model;
+    } else {
+      const modelSelect = document.getElementById('ts-model-select');
+      modelName = modelSelect ? modelSelect.value : 'bnr';
+    }
+    displayName = modelName.toUpperCase();
   }
 
   if(!effect) {

@@ -212,9 +212,10 @@
                   <button id="ts-enable-BNR" type="button" onclick="handleBNR()" class="btn-code">Enable BNR</button>
                   <select id="ts-model-select" onchange="handleModelChange()" class="btn-code" style="margin-left: 5px;">
                     <option value="bnr" selected>BNR (Noise Reduction)</option>
-                    <option value="st">ST (Optimize for My Voice)</option>
+                    <option value="st">ST (Single Talker)</option>
                   </select>
-                  <span id="ts-model-warning" class="webex-warning" style="display: none;">⚠️ AGC disabled for ST</span>
+                  <small id="ts-model-info" class="webex-info" style="display: none; margin-left: 5px;">AGC is disabled for ST model</small>
+                  <small id="ts-model-locked" class="webex-info" style="display: none; margin-left: 5px;">Model can only be set on first enable</small>
                   <!--mute-unmute audio -->
                   <button id="ts-toggle-audio" type="button" onclick="toggleSendAudio()" class="btn-code">Mute Audio</button>
                   <button id="ts-stop-audio" type="button" disabled onclick="stopStartAudio()" class="btn-code">Stop Audio</button>

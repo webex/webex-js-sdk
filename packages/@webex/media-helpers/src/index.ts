@@ -33,6 +33,7 @@ export type {
   NoiseReductionEffectOptions,
   NoiseReductionModel,
   VirtualBackgroundEffectOptions,
+  TrackEffect,
 } from '@webex/web-media-effects';
 
 export {FacingMode, DisplaySurface, PresetCameraConstraints} from './constants';
