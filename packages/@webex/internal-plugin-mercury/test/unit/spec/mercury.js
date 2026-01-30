@@ -338,6 +338,91 @@ describe('plugin-mercury', () => {
         });
       });
 
+      describe('when already connected', () => {
+        it('does not reconnect if URL matches (same protocol, host, pathname)', () => {
+          const promise = mercury.connect();
+
+          mockWebSocket.open();
+
+          return promise.then(() => {
+            assert.isTrue(mercury.connected, 'Mercury is connected');
+            webex.internal.device.webSocketUrl = 'ws://example.com?clientTimestamp=12345';
+
+            return mercury.connect();
+          }).then(() => {
+            assert.calledOnce(Socket.prototype.open);
+          });
+        });
+
+        it('disconnects and reconnects if host differs', () => {
+          const promise = mercury.connect();
+
+          mockWebSocket.open();
+
+          return promise.then(() => {
+            assert.isTrue(mercury.connected, 'Mercury is connected');
+            assert.calledOnce(Socket.prototype.open);
+
+            webex.internal.device.webSocketUrl = 'ws://different-host.com';
+
+            const reconnectPromise = mercury.connect();
+
+            mockWebSocket.emit('close', {code: 1000, reason: 'Done'});
+
+            process.nextTick(() => mockWebSocket.open());
+
+            return reconnectPromise;
+          }).then(() => {
+            assert.calledTwice(Socket.prototype.open);
+          });
+        });
+
+        it('emits event:mercury_url_mismatch_reconnect when URL mismatch detected', () => {
+          const eventSpy = sinon.spy();
+
+          mercury.on('event:mercury_url_mismatch_reconnect', eventSpy);
+
+          const promise = mercury.connect();
+
+          mockWebSocket.open();
+
+          return promise.then(() => {
+            assert.isTrue(mercury.connected, 'Mercury is connected');
+
+            webex.internal.device.webSocketUrl = 'ws://different-host.com';
+
+            const reconnectPromise = mercury.connect();
+
+            mockWebSocket.emit('close', {code: 1000, reason: 'Done'});
+
+            process.nextTick(() => mockWebSocket.open());
+
+            return reconnectPromise;
+          }).then(() => {
+            assert.calledOnce(eventSpy);
+            assert.deepEqual(eventSpy.firstCall.args[0], {
+              currentUrl: 'ws://example.com/',
+              targetUrl: 'ws://different-host.com',
+            });
+          });
+        });
+
+        it('does not reconnect if only query params differ', () => {
+          const promise = mercury.connect();
+
+          mockWebSocket.open();
+
+          return promise.then(() => {
+            assert.isTrue(mercury.connected, 'Mercury is connected');
+            webex.internal.device.webSocketUrl = 'ws://example.com?foo=bar&baz=qux';
+
+            return mercury.connect();
+          }).then(() => {
+            assert.calledOnce(Socket.prototype.open);
+          });
+        });
+      });
+
       // skipping due to apparent bug with lolex in all browsers but Chrome.
       skipInBrowser(describe)('when the connection fails', () => {
         it('backs off exponentially', () => {

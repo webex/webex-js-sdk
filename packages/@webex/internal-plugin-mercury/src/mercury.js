@@ -178,12 +178,77 @@ const Mercury = WebexPlugin.extend({
     return this.lastError;
   },
 
+  /**
+   * Compare two WebSocket URLs to determine if they point to the same endpoint.
+   * Only compares protocol, host, and pathname - ignores query parameters like
+   * clientTimestamp that change on each connection.
+   * @param {string} url1 - First URL to compare
+   * @param {string} url2 - Second URL to compare
+   * @returns {boolean} - True if URLs match (same protocol, host, and pathname)
+   */
+  _urlsMatch(url1, url2) {
+    if (!url1 || !url2) {
+      return false;
+    }
+    try {
+      const parsed1 = url.parse(url1);
+      const parsed2 = url.parse(url2);
+
+      return (
+        parsed1.protocol === parsed2.protocol &&
+        parsed1.host === parsed2.host &&
+        parsed1.pathname === parsed2.pathname
+      );
+    } catch (e) {
+      this.logger.warn(`${this.namespace}: error comparing URLs`, e);
+
+      return false;
+    }
+  },
+
+  /**
+   * Connect to Mercury WebSocket. If already connected to a different URL than
+   * the current device.webSocketUrl, will disconnect and reconnect to the new URL.
+   * @param {string} [webSocketUrl] - Optional WebSocket URL. If not provided, uses device.webSocketUrl.
+   * @returns {Promise} - Resolves when connected
+   */
   @oneFlight
   connect(webSocketUrl) {
-    if (this.connected) {
-      this.logger.info(`${this.namespace}: already connected, will not connect again`);
+    const targetUrl = webSocketUrl || this.webex.internal.device.webSocketUrl;
 
-      return Promise.resolve();
+    if (this.connected) {
+      const currentSocketUrl = this.socket?.url;
+
+      if (this._urlsMatch(currentSocketUrl, targetUrl)) {
+        this.logger.info(
+          `${this.namespace}: already connected to the correct URL, will not connect again`
+        );
+
+        return Promise.resolve();
+      }
+
+      this.logger.info(
+        `${this.namespace}: URL mismatch detected - current: ${currentSocketUrl}, target: ${targetUrl}. Disconnecting and reconnecting.`
+      );
+
+      this._emit('event:mercury_url_mismatch_reconnect', {
+        currentUrl: currentSocketUrl,
+        targetUrl,
+      });
+
+      return this.disconnect({code: 3050, reason: 'URL mismatch detected'})
+        .catch((err) => {
+          this.logger.warn(
+            `${this.namespace}: error during disconnect before URL mismatch reconnect`,
+            err
+          );
+        })
+        .then(() => {
+          this.connecting = true;
+          this.logger.info(`${this.namespace}: reconnecting to new URL after URL mismatch`);
+
+          return this._connectWithBackoff(webSocketUrl);
+        });
     }
 
     this.connecting = true;
