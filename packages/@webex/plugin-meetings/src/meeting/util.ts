@@ -1,4 +1,5 @@
 import {LocalCameraStream, LocalMicrophoneStream} from '@webex/media-helpers';
+import url from 'url';
 
 import {cloneDeep} from 'lodash';
 import {MeetingNotActiveError, UserNotJoinedError} from '../common/errors/webex-errors';
@@ -45,6 +46,98 @@ const MeetingUtil = {
     });
 
     return parsed;
+  },
+
+  /**
+   * Sanitizes a WebSocket URL by extracting only protocol, host, and pathname
+   * Returns concatenated protocol + host + pathname for safe logging
+   * @param {string} urlString - The URL to sanitize
+   * @returns {string} Sanitized URL or empty string if parsing fails
+   */
+  sanitizeWebSocketUrl: (urlString: string): string => {
+    if (!urlString || typeof urlString !== 'string') {
+      return '';
+    }
+
+    try {
+      const parsedUrl = url.parse(urlString);
+      const protocol = parsedUrl.protocol || '';
+      const host = parsedUrl.host || '';
+      const pathname = parsedUrl.pathname || '';
+
+      return `${protocol}//${host}${pathname}`;
+    } catch (error) {
+      LoggerProxy.logger.warn(
+        `Meeting:util#sanitizeWebSocketUrl --> unable to parse URL: ${error}`
+      );
+
+      return '';
+    }
+  },
+
+  /**
+   * Compares two URLs by protocol, host, and pathname (ignoring query params and hash)
+   * Uses sanitizeWebSocketUrl to ensure comparison matches what gets reported
+   * @param {string} url1 - First URL to compare
+   * @param {string} url2 - Second URL to compare
+   * @returns {boolean} True if URLs match, false otherwise
+   */
+  _urlsMatch: (url1: string, url2: string): boolean => {
+    if (!url1 || !url2) {
+      return false;
+    }
+
+    try {
+      const sanitized1 = MeetingUtil.sanitizeWebSocketUrl(url1);
+      const sanitized2 = MeetingUtil.sanitizeWebSocketUrl(url2);
+
+      // If either failed to parse (empty string), they don't match
+      if (!sanitized1 || !sanitized2) {
+        return false;
+      }
+
+      return sanitized1 === sanitized2;
+    } catch (e) {
+      LoggerProxy.logger.warn('Meeting:util#_urlsMatch --> error comparing URLs', e);
+
+      return false;
+    }
+  },
+
+  /**
+   * Gets socket URL information for metrics, including whether the socket is stale
+   * @param {Object} webex - The webex instance
+   * @returns {Object} Object with isStaleSocket, oldSocketUrl, and newSocketUrl properties
+   */
+  getSocketUrlInfo: (
+    webex: any
+  ): {isStaleSocket: boolean; oldSocketUrl: string; newSocketUrl: string} => {
+    try {
+      const oldSocketUrl = webex?.internal?.mercury?.socket?.url;
+      const newSocketUrl = webex?.internal?.device?.webSocketUrl;
+
+      const sanitizedOldUrl = MeetingUtil.sanitizeWebSocketUrl(oldSocketUrl);
+      const sanitizedNewUrl = MeetingUtil.sanitizeWebSocketUrl(newSocketUrl);
+
+      // Compare URLs by protocol, host, and pathname only
+      const isStaleSocket = !MeetingUtil._urlsMatch(oldSocketUrl, newSocketUrl);
+
+      return {
+        isStaleSocket,
+        oldSocketUrl: sanitizedOldUrl,
+        newSocketUrl: sanitizedNewUrl,
+      };
+    } catch (error) {
+      LoggerProxy.logger.warn(
+        `Meeting:util#getSocketUrlInfo --> error getting socket URL info: ${error}`
+      );
+
+      return {
+        isStaleSocket: false,
+        oldSocketUrl: '',
+        newSocketUrl: '',
+      };
+    }
   },
 
   remoteUpdateAudioVideo: (meeting, audioMuted?: boolean, videoMuted?: boolean) => {
@@ -203,12 +296,16 @@ const MeetingUtil = {
         const parsed = MeetingUtil.parseLocusJoin(res);
         meeting.setLocus(parsed);
         meeting.isoLocalClientMeetingJoinTime = res?.headers?.date; // read from header if exist, else fall back to system clock : https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-555657
+        const socketUrlInfo = MeetingUtil.getSocketUrlInfo(webex);
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.locus.join.response',
           payload: {
             trigger: 'loci-update',
             identifiers: {
               trackingId: res.headers.trackingid,
+            },
+            eventData: {
+              ...socketUrlInfo,
             },
           },
           options: {
@@ -220,12 +317,19 @@ const MeetingUtil = {
         return parsed;
       })
       .catch((err) => {
+        const socketUrlInfo = MeetingUtil.getSocketUrlInfo(webex);
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.locus.join.response',
           payload: {
             identifiers: {meetingLookupUrl: meeting.meetingInfo?.meetingLookupUrl},
+            eventData: {
+              ...socketUrlInfo,
+            },
           },
-          options: {meetingId: meeting.id, rawError: err},
+          options: {
+            meetingId: meeting.id,
+            rawError: err,
+          },
         });
 
         throw err;
