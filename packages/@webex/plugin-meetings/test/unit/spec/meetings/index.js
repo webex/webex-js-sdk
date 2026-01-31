@@ -815,6 +815,18 @@ describe('plugin-meetings', () => {
           });
         });
 
+        it('calls mercury.disconnect with code 3050 and reason to prevent auto-reconnect', (done) => {
+          webex.meetings.registered = true;
+          webex.meetings.unregister().then(() => {
+            assert.calledOnce(webex.internal.mercury.disconnect);
+            assert.calledWith(webex.internal.mercury.disconnect, {
+              code: 3050,
+              reason: 'meetings unregister',
+            });
+            done();
+          });
+        });
+
         it('rejects when device.unregister fails', async () => {
           webex.meetings.registered = true;
           webex.internal.device.unregister = sinon.stub().returns(Promise.reject());
