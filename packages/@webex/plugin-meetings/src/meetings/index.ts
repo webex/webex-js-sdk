@@ -962,15 +962,17 @@ export default class Meetings extends WebexPlugin {
         'Meetings:index#register --> INFO, Meetings plugin unregistration in progress, waiting to register'
       );
 
-      this.registrationPromise = this.unregistrationPromise.finally(() => {
-        LoggerProxy.logger.info(
-          'Meetings:index#register --> INFO, Meetings plugin unregistration completed, proceeding to register'
-        );
+      this.registrationPromise = this.unregistrationPromise
+        .catch(() => {}) // It doesn't matter what happened during unregistration
+        .finally(() => {
+          LoggerProxy.logger.info(
+            'Meetings:index#register --> INFO, Meetings plugin unregistration completed, proceeding to register'
+          );
 
-        this.registrationPromise = null;
+          this.registrationPromise = null;
 
-        return this.register(deviceRegistrationOptions);
-      });
+          return this.register(deviceRegistrationOptions);
+        });
 
       return this.registrationPromise;
     }
@@ -1094,15 +1096,17 @@ export default class Meetings extends WebexPlugin {
       );
 
       // Wait for registration to complete (success or failure), then call unregister again
-      this.unregistrationPromise = this.registrationPromise.finally(() => {
-        LoggerProxy.logger.info(
-          'Meetings:index#unregister --> INFO, Meetings plugin registration completed, proceeding to unregister'
-        );
+      this.unregistrationPromise = this.registrationPromise
+        .catch(() => {}) // It doesn't matter what happened during registration
+        .finally(() => {
+          LoggerProxy.logger.info(
+            'Meetings:index#unregister --> INFO, Meetings plugin registration completed, proceeding to unregister'
+          );
 
-        this.unregistrationPromise = null;
+          this.unregistrationPromise = null;
 
-        return this.unregister();
-      });
+          return this.unregister();
+        });
 
       return this.unregistrationPromise;
     }
