@@ -63,9 +63,18 @@ const MeetingUtil = {
       const parsedUrl = url.parse(urlString);
       const protocol = parsedUrl.protocol || '';
       const host = parsedUrl.host || '';
+
+      // If we don't have at least protocol and host, it's not a valid URL
+      if (!protocol || !host) {
+        return '';
+      }
+
       const pathname = parsedUrl.pathname || '';
 
-      return `${protocol}//${host}${pathname}`;
+      // Strip trailing slash if pathname is just '/'
+      const normalizedPathname = pathname === '/' ? '' : pathname;
+
+      return `${protocol}//${host}${normalizedPathname}`;
     } catch (error) {
       LoggerProxy.logger.warn(
         `Meeting:util#sanitizeWebSocketUrl --> unable to parse URL: ${error}`
@@ -105,27 +114,31 @@ const MeetingUtil = {
   },
 
   /**
-   * Gets socket URL information for metrics, including whether the socket is stale
+   * Gets socket URL information for metrics, including whether the socket URLs match
    * @param {Object} webex - The webex instance
-   * @returns {Object} Object with isStaleSocket, oldSocketUrl, and newSocketUrl properties
+   * @returns {Object} Object with hasMismatchedSocket, mercurySocketUrl, and deviceSocketUrl properties
    */
   getSocketUrlInfo: (
     webex: any
-  ): {isStaleSocket: boolean; oldSocketUrl: string; newSocketUrl: string} => {
+  ): {hasMismatchedSocket: boolean; mercurySocketUrl: string; deviceSocketUrl: string} => {
     try {
-      const oldSocketUrl = webex?.internal?.mercury?.socket?.url;
-      const newSocketUrl = webex?.internal?.device?.webSocketUrl;
+      const mercuryUrl = webex?.internal?.mercury?.socket?.url;
+      const deviceUrl = webex?.internal?.device?.webSocketUrl;
 
-      const sanitizedOldUrl = MeetingUtil.sanitizeWebSocketUrl(oldSocketUrl);
-      const sanitizedNewUrl = MeetingUtil.sanitizeWebSocketUrl(newSocketUrl);
+      const sanitizedMercuryUrl = MeetingUtil.sanitizeWebSocketUrl(mercuryUrl);
+      const sanitizedDeviceUrl = MeetingUtil.sanitizeWebSocketUrl(deviceUrl);
 
-      // Compare URLs by protocol, host, and pathname only
-      const isStaleSocket = !MeetingUtil._urlsMatch(oldSocketUrl, newSocketUrl);
+      // Only report a mismatch if both URLs are present and they don't match
+      // If either URL is missing, we can't determine if there's a mismatch, so return false
+      let hasMismatchedSocket = false;
+      if (sanitizedMercuryUrl && sanitizedDeviceUrl) {
+        hasMismatchedSocket = !MeetingUtil._urlsMatch(mercuryUrl, deviceUrl);
+      }
 
       return {
-        isStaleSocket,
-        oldSocketUrl: sanitizedOldUrl,
-        newSocketUrl: sanitizedNewUrl,
+        hasMismatchedSocket,
+        mercurySocketUrl: sanitizedMercuryUrl,
+        deviceSocketUrl: sanitizedDeviceUrl,
       };
     } catch (error) {
       LoggerProxy.logger.warn(
@@ -133,9 +146,9 @@ const MeetingUtil = {
       );
 
       return {
-        isStaleSocket: false,
-        oldSocketUrl: '',
-        newSocketUrl: '',
+        hasMismatchedSocket: false,
+        mercurySocketUrl: '',
+        deviceSocketUrl: '',
       };
     }
   },
