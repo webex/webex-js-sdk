@@ -12,8 +12,10 @@ on:
         description: 'Test PR number (e.g., 2) - leave empty to auto-detect'
         required: false
         default: ''
-  pull_request:
-    types: [closed]
+  workflow_run:
+    workflows: ["Deploy CD"]
+    types:
+      - completed
     branches:
       - next
 
@@ -21,8 +23,8 @@ jobs:
   comment-on-prs:
     name: Comment on Released PRs
     runs-on: ubuntu-latest
-    # Only run if manually triggered or PR was merged
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true }}
+    # Only run if manually triggered or Deploy CD succeeded
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     
     steps:
       - name: Checkout Repository
@@ -253,4 +255,4 @@ jobs:
             }
             
             console.log('✨ Comment posted successfully!');
-      
+
