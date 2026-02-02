@@ -30,6 +30,8 @@ import {
   WebexRequestPayload,
   RegistrationStatus,
   UploadLogsResponse,
+  DeviceType,
+  DevicesResponse,
 } from '../common/types';
 import {ICallingClient, CallingClientConfig} from './types';
 import {ICall, ICallManager} from './calling/types';
@@ -47,6 +49,7 @@ import {
   API_V1,
   METHODS,
   NETWORK_FLAP_TIMEOUT,
+  DEVICES_ENDPOINT_RESOURCE,
 } from './constants';
 import Line from './line';
 import {ILine} from './line/types';
@@ -716,6 +719,69 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    */
   public getLines(): Record<string, ILine> {
     return this.lineDict;
+  }
+
+  /**
+   * Resolve the base Mobius URL for device APIs.
+   */
+  private getMobiusUrl(): string {
+    const activeMobiusUrl = Object.values(this.lineDict)[0]?.getActiveMobiusUrl?.();
+
+    if (activeMobiusUrl) {
+      return activeMobiusUrl;
+    }
+
+    if (this.primaryMobiusUris.length) {
+      return this.primaryMobiusUris[0];
+    }
+
+    if (this.backupMobiusUris.length) {
+      return this.backupMobiusUris[0];
+    }
+
+    if (this.mobiusHost) {
+      return `${this.mobiusHost}${URL_ENDPOINT}`;
+    }
+
+    throw new Error('Mobius URL is not available to fetch devices');
+  }
+
+  /**
+   * Fetches the list of devices for a given user from Mobius.
+   */
+  public async getDevices(userId: string): Promise<DeviceType[]> {
+    if (!userId) {
+      throw new Error('userId is required to fetch devices');
+    }
+
+    log.info(METHOD_START_MESSAGE, {file: CALLING_CLIENT_FILE, method: METHODS.GET_DEVICES});
+
+    const uri = `${this.getMobiusUrl()}${DEVICES_ENDPOINT_RESOURCE}?userid=${encodeURIComponent(
+      userId
+    )}`;
+
+    try {
+      const response = <DevicesResponse>await this.webex.request({
+        uri,
+        method: HTTP_METHODS.GET,
+        service: ALLOWED_SERVICES.MOBIUS,
+        headers: {
+          [CISCO_DEVICE_URL]: this.webex.internal.device.url,
+          [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+        },
+      });
+
+      const deviceInfo = response.body;
+
+      return deviceInfo?.devices ?? [];
+    } catch (error) {
+      log.error(`Failed to fetch devices for userId ${userId}: ${JSON.stringify(error)}`, {
+        file: CALLING_CLIENT_FILE,
+        method: METHODS.GET_DEVICES,
+      });
+
+      throw error;
+    }
   }
 
   /**

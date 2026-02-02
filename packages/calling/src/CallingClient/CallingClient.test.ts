@@ -6,7 +6,14 @@ import {
   getMockRequestTemplate,
   getMobiusDiscoveryResponse,
 } from '../common/testUtil';
-import {CallType, RegistrationStatus, ServiceIndicator} from '../common/types';
+import {
+  CallType,
+  RegistrationStatus,
+  ServiceIndicator,
+  ALLOWED_SERVICES,
+  HTTP_METHODS,
+  WebexRequestPayload,
+} from '../common/types';
 /* eslint-disable dot-notation */
 import {CALLING_CLIENT_EVENT_KEYS, CallSessionEvent, MOBIUS_EVENT_KEYS} from '../Events/types';
 import log from '../Logger';
@@ -19,6 +26,8 @@ import {
   DISCOVERY_URL,
   NETWORK_FLAP_TIMEOUT,
   REGISTRATION_FILE,
+  CALLING_USER_AGENT,
+  CISCO_DEVICE_URL,
   SPARK_USER_AGENT,
   URL_ENDPOINT,
 } from './constants';
@@ -808,6 +817,59 @@ describe('CallingClient Tests', () => {
       const callSessionCallback = mockOn.mock.calls[0][1];
 
       callSessionCallback(MOCK_MULTIPLE_SESSIONS_EVENT);
+    });
+  });
+
+  describe('getDevices', () => {
+    let mockWebex: ReturnType<typeof getTestUtilsWebex>;
+    let callingClient: ICallingClient;
+
+    beforeEach(async () => {
+      mockWebex = getTestUtilsWebex();
+      callingClient = await createClient(mockWebex, {logger: {level: LOGGER.INFO}});
+      callingClient['primaryMobiusUris'] = ['https://mobius.test/api/v1/calling/web/'];
+    });
+
+    afterEach(() => {
+      callingClient.removeAllListeners();
+    });
+
+    it('fetches devices for the provided userId', async () => {
+      const devices = [
+        {
+          deviceId: 'device-1',
+          uri: 'https://mobius.test/api/v1/calling/web/devices/device-1',
+          status: 'ACTIVE',
+          lastSeen: '2024-01-01T00:00:00Z',
+          addresses: [],
+          clientDeviceUri: 'client-device-uri',
+        },
+      ];
+
+      const responsePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {userId: 'user-123', devices},
+      });
+
+      mockWebex.request.mockResolvedValue(responsePayload);
+
+      const response = await callingClient.getDevices('user-123');
+
+      expect(mockWebex.request).toHaveBeenCalledWith({
+        uri: 'https://mobius.test/api/v1/calling/web/devices?userid=user-123',
+        method: HTTP_METHODS.GET,
+        service: ALLOWED_SERVICES.MOBIUS,
+        headers: {
+          [CISCO_DEVICE_URL]: mockWebex.internal.device.url,
+          [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+        },
+      });
+
+      expect(response).toEqual(devices);
+    });
+
+    it('throws when userId is missing', async () => {
+      await expect(callingClient.getDevices('')).rejects.toThrow('userId');
     });
   });
 

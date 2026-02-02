@@ -96,6 +96,13 @@ export type DeviceType = {
   clientDeviceUri: string;
 };
 
+export interface DevicesResponse extends WebexRequestPayload {
+  body: {
+    userId: string;
+    devices: DeviceType[];
+  };
+}
+
 export type RegionInfo = {
   countryCode: string;
   clientRegion: string;
@@ -104,7 +111,6 @@ export type RegionInfo = {
 export interface IDeviceInfo {
   userId?: string;
   errorCode?: number;
-
   device?: DeviceType;
   devices?: DeviceType[];
   keepaliveInterval?: number;

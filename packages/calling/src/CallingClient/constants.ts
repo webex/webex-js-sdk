@@ -226,6 +226,7 @@ export const METHODS = {
   REGISTER_SESSIONS_LISTENER: 'registerSessionsListener',
   CREATE_LINE: 'createLine',
   GET_LINES: 'getLines',
+  GET_DEVICES: 'getDevices',
   UPLOAD_LOGS: 'uploadLogs',
   GET_SDK_CONNECTOR: 'getSDKConnector',
   GET_CONNECTED_CALL: 'getConnectedCall',
