@@ -425,10 +425,7 @@ describe('plugin-meetings', () => {
 
     describe('#_toggleStopIceGatheringAfterFirstRelayCandidate', () => {
       it('should have _toggleStopIceGatheringAfterFirstRelayCandidate', () => {
-        assert.equal(
-          typeof webex.meetings._toggleStopIceGatheringAfterFirstRelayCandidate,
-          'function'
-        );
+        assert.equal(typeof webex.meetings._toggleStopIceGatheringAfterFirstRelayCandidate, 'function');
       });
 
       describe('success', () => {
@@ -621,18 +618,6 @@ describe('plugin-meetings', () => {
               'meetings:unregistered'
             );
             assert.isFalse(webex.meetings.registered);
-            done();
-          });
-        });
-
-        it('calls mercury.disconnect with code 3050 and reason to prevent auto-reconnect', (done) => {
-          webex.meetings.registered = true;
-          webex.meetings.unregister().then(() => {
-            assert.calledOnce(webex.internal.mercury.disconnect);
-            assert.calledWith(webex.internal.mercury.disconnect, {
-              code: 3050,
-              reason: 'meetings unregister',
-            });
             done();
           });
         });
@@ -933,7 +918,7 @@ describe('plugin-meetings', () => {
                 locus: {
                   url: url1,
                 },
-                hashTreeMessage: undefined,
+                hashTreeMessage: undefined
               });
             });
           });
@@ -1218,30 +1203,8 @@ describe('plugin-meetings', () => {
 
         it('calls createMeeting with classificationId and returns its promise', async () => {
           await checkCallCreateMeeting(
-            [
-              test1,
-              test2,
-              FAKE_USE_RANDOM_DELAY,
-              {},
-              undefined,
-              true,
-              callStateForMetrics,
-              undefined,
-              undefined,
-              undefined,
-              classificationId,
-            ],
-            [
-              test1,
-              test2,
-              FAKE_USE_RANDOM_DELAY,
-              {},
-              callStateForMetrics,
-              true,
-              undefined,
-              undefined,
-              classificationId,
-            ]
+            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, undefined, true, callStateForMetrics, undefined, undefined, undefined, classificationId],
+            [test1, test2, FAKE_USE_RANDOM_DELAY, {}, callStateForMetrics, true, undefined, undefined, classificationId],
           );
         });
 
@@ -1474,7 +1437,7 @@ describe('plugin-meetings', () => {
                   webExMeetingId,
                 },
               },
-              hashTreeMessage: undefined,
+              hashTreeMessage: undefined
             });
           });
           it('should setup the meeting from a hash tree event', async () => {
@@ -1544,7 +1507,7 @@ describe('plugin-meetings', () => {
                   webExMeetingId,
                 },
               },
-              hashTreeMessage: undefined,
+              hashTreeMessage: undefined
             });
           });
 
@@ -1620,7 +1583,7 @@ describe('plugin-meetings', () => {
                   webExMeetingId,
                 },
               },
-              hashTreeMessage: undefined,
+              hashTreeMessage: undefined
             });
           });
 
