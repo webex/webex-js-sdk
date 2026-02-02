@@ -1047,7 +1047,11 @@ export default class Meetings extends WebexPlugin {
     return (
       // @ts-ignore
       this.webex.internal.mercury
-        .disconnect()
+        // Use code 3050 with a non-reconnecting reason to prevent Mercury auto-reconnect
+        // during unregister. Without this, disconnect() defaults to code 1000/"Done" which
+        // force-closes as "Done (forced)" - a normalReconnectReason that triggers auto-reconnect,
+        // causing a race condition with device.unregister().
+        .disconnect({code: 3050, reason: 'meetings unregister'})
         // @ts-ignore
         .then(() => this.webex.internal.device.unregister())
         .catch((error) => {
