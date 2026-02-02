@@ -21,7 +21,8 @@ describe('plugin-llm', () => {
 
       llmService = webex.internal.llm;
       llmService.connect = sinon.stub().callsFake(() => {
-        llmService.connected = true;
+        // Simulate a successful connection by stubbing getSocket to return connected: true
+        llmService.getSocket = sinon.stub().returns({connected: true});
       });
       llmService.disconnect = sinon.stub().resolves(true);
       llmService.request = sinon.stub().resolves({

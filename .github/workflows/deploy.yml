@@ -5,6 +5,7 @@ on:
   push:
     branches: # White-list of deployable tags and branches. Note that all white-listed branches cannot include any `/` characters
       - next
+      - multiple-llm
 
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
@@ -258,7 +259,7 @@ jobs:
           git config user.name "${GIT_AUTHOR_NAME}"
 
       - name: Get existing changelog from documentation Branch
-        run: | 
+        run: |
           git fetch origin documentation
           git checkout origin/documentation -- docs/changelog/logs
 
