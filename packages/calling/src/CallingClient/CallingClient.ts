@@ -31,7 +31,7 @@ import {
   RegistrationStatus,
   UploadLogsResponse,
   DeviceType,
-  DevicesResponse,
+  Devices,
 } from '../common/types';
 import {ICallingClient, CallingClientConfig} from './types';
 import {ICall, ICallManager} from './calling/types';
@@ -761,7 +761,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     )}`;
 
     try {
-      const response = <DevicesResponse>await this.webex.request({
+      const response = <WebexRequestPayload>await this.webex.request({
         uri,
         method: HTTP_METHODS.GET,
         service: ALLOWED_SERVICES.MOBIUS,
@@ -771,9 +771,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         },
       });
 
-      const deviceInfo = response.body;
-
-      return deviceInfo?.devices ?? [];
+      return (response.body as Devices).devices ?? [];
     } catch (error) {
       log.error(`Failed to fetch devices for userId ${userId}: ${JSON.stringify(error)}`, {
         file: CALLING_CLIENT_FILE,

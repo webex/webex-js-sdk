@@ -821,12 +821,10 @@ describe('CallingClient Tests', () => {
   });
 
   describe('getDevices', () => {
-    let mockWebex: ReturnType<typeof getTestUtilsWebex>;
     let callingClient: ICallingClient;
 
     beforeEach(async () => {
-      mockWebex = getTestUtilsWebex();
-      callingClient = await createClient(mockWebex, {logger: {level: LOGGER.INFO}});
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
       callingClient['primaryMobiusUris'] = ['https://mobius.test/api/v1/calling/web/'];
     });
 
@@ -851,16 +849,16 @@ describe('CallingClient Tests', () => {
         body: {userId: 'user-123', devices},
       });
 
-      mockWebex.request.mockResolvedValue(responsePayload);
+      (webex.request as jest.Mock).mockResolvedValue(responsePayload);
 
       const response = await callingClient.getDevices('user-123');
 
-      expect(mockWebex.request).toHaveBeenCalledWith({
+      expect(webex.request).toHaveBeenCalledWith({
         uri: 'https://mobius.test/api/v1/calling/web/devices?userid=user-123',
         method: HTTP_METHODS.GET,
         service: ALLOWED_SERVICES.MOBIUS,
         headers: {
-          [CISCO_DEVICE_URL]: mockWebex.internal.device.url,
+          [CISCO_DEVICE_URL]: webex.internal.device.url,
           [SPARK_USER_AGENT]: CALLING_USER_AGENT,
         },
       });
