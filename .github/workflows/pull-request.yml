@@ -45,7 +45,6 @@ jobs:
             exit 1
           fi
 
-
   initialize:
     name: Initialize Project
     needs: validate
@@ -63,9 +62,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
         with:
-          node-version-file: '.nvmrc'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'yarn'
+          node-version-file: ".nvmrc"
+          registry-url: "https://registry.npmjs.org"
+          cache: "yarn"
 
       - name: Write Environment Variables
         run: |
@@ -79,14 +78,14 @@ jobs:
       - name: Cache Environment Variables
         uses: actions/cache@v3
         with:
-          path: './.env'
+          path: "./.env"
           key: env-${{ env.rid }}
 
       - id: validate-dependencies
         name: Validate Dependencies
         uses: actions/cache@v3
         with:
-          path: '**/node_modules'
+          path: "**/node_modules"
           key: node-modules-${{ hashFiles('./yarn.lock') }}
 
       - id: lock-hash
@@ -117,7 +116,7 @@ jobs:
         uses: actions/cache@v3
         if: steps.validate-dependencies.outputs.cache-hit != 'true'
         with:
-          path: '**/node_modules'
+          path: "**/node_modules"
           key: node-modules-${{ hashFiles('./yarn.lock') }}
 
   build:
@@ -134,20 +133,20 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
         with:
-          node-version-file: '.nvmrc'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'yarn'
+          node-version-file: ".nvmrc"
+          registry-url: "https://registry.npmjs.org"
+          cache: "yarn"
 
       - name: Uncache Environment Variables
         uses: actions/cache@v3
         with:
-          path: './.env'
+          path: "./.env"
           key: env-${{ env.rid }}
 
       - name: Uncache Dependencies
         uses: actions/cache@v3
         with:
-          path: '**/node_modules'
+          path: "**/node_modules"
           key: node-modules-${{ hashFiles('./yarn.lock') }}
 
       - name: Synchronize Packages
@@ -165,9 +164,8 @@ jobs:
       - name: Cache Distributables
         uses: actions/cache@v3
         with:
-          path: '**/dist'
+          path: "**/dist"
           key: dist-${{ env.rid }}
-
 
   generate-package-matrix:
     name: Determine Changed Packages
@@ -187,30 +185,33 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
         with:
-          node-version-file: '.nvmrc'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'yarn'
+          node-version-file: ".nvmrc"
+          registry-url: "https://registry.npmjs.org"
+          cache: "yarn"
 
       - name: Uncache Environment Variables
         uses: actions/cache@v3
         with:
-          path: './.env'
+          path: "./.env"
           key: env-${{ env.rid }}
 
       - name: Uncache Dependencies
         uses: actions/cache@v3
         with:
-          path: '**/node_modules'
+          path: "**/node_modules"
           key: node-modules-${{ hashFiles('./yarn.lock') }}
 
       - name: Uncache Distributables
         uses: actions/cache@v3
         with:
-          path: '**/dist'
+          path: "**/dist"
           key: dist-${{ env.rid }}
 
       - name: Synchronize Packages
         run: yarn
+
+      - name: Build Tools (fallback if cache missed)
+        run: yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
 
       - name: Update Main Branch
         run: git fetch origin ${{ github.event.pull_request.base.ref }} --unshallow
@@ -228,7 +229,6 @@ jobs:
           echo "changed packages - ${{ steps.generate-package-matrix-changed.outputs.changed}}"
           echo "changed packages and dependents - ${{ steps.generate-package-matrix-recursive.outputs.recursive }}"
 
-
   test-browser:
     name: Test - Browser
     needs: generate-package-matrix
@@ -244,26 +244,26 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
         with:
-          node-version-file: '.nvmrc'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'yarn'
+          node-version-file: ".nvmrc"
+          registry-url: "https://registry.npmjs.org"
+          cache: "yarn"
 
       - name: Uncache Environment Variables
         uses: actions/cache@v3
         with:
-          path: './.env'
+          path: "./.env"
           key: env-${{ env.rid }}
 
       - name: Uncache Dependencies
         uses: actions/cache@v3
         with:
-          path: '**/node_modules'
+          path: "**/node_modules"
           key: node-modules-${{ hashFiles('./yarn.lock') }}
 
       - name: Uncache Distributables
         uses: actions/cache@v3
         with:
-          path: '**/dist'
+          path: "**/dist"
           key: dist-${{ env.rid }}
 
       - name: Synchronize Packages
@@ -271,7 +271,6 @@ jobs:
 
       - name: Test - Browser
         run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.changed }}' run test:browser
-
 
   test-coverage:
     name: Test - Coverage
@@ -287,26 +286,26 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
         with:
-          node-version-file: '.nvmrc'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'yarn'
+          node-version-file: ".nvmrc"
+          registry-url: "https://registry.npmjs.org"
+          cache: "yarn"
 
       - name: Uncache Environment Variables
         uses: actions/cache@v3
         with:
-          path: './.env'
+          path: "./.env"
           key: env-${{ env.rid }}
 
       - name: Uncache Dependencies
         uses: actions/cache@v3
         with:
-          path: '**/node_modules'
+          path: "**/node_modules"
           key: node-modules-${{ hashFiles('./yarn.lock') }}
 
       - name: Uncache Distributables
         uses: actions/cache@v3
         with:
-          path: '**/dist'
+          path: "**/dist"
           key: dist-${{ env.rid }}
 
       - name: Synchronize Packages
@@ -314,7 +313,6 @@ jobs:
 
       - name: Test - Coverage
         run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.recursive }}' run test:coverage
-
 
   test-integration:
     name: Test - Integration
@@ -331,26 +329,26 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
         with:
-          node-version-file: '.nvmrc'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'yarn'
+          node-version-file: ".nvmrc"
+          registry-url: "https://registry.npmjs.org"
+          cache: "yarn"
 
       - name: Uncache Environment Variables
         uses: actions/cache@v3
         with:
-          path: './.env'
+          path: "./.env"
           key: env-${{ env.rid }}
 
       - name: Uncache Dependencies
         uses: actions/cache@v3
         with:
-          path: '**/node_modules'
+          path: "**/node_modules"
           key: node-modules-${{ hashFiles('./yarn.lock') }}
 
       - name: Uncache Distributables
         uses: actions/cache@v3
         with:
-          path: '**/dist'
+          path: "**/dist"
           key: dist-${{ env.rid }}
 
       - name: Synchronize Packages
@@ -361,7 +359,6 @@ jobs:
 
       - name: Test - Integration
         run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.changed }}' run test:integration
-
 
   test-style:
     name: Test - Style
@@ -377,26 +374,26 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
         with:
-          node-version-file: '.nvmrc'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'yarn'
+          node-version-file: ".nvmrc"
+          registry-url: "https://registry.npmjs.org"
+          cache: "yarn"
 
       - name: Uncache Environment Variables
         uses: actions/cache@v3
         with:
-          path: './.env'
+          path: "./.env"
           key: env-${{ env.rid }}
 
       - name: Uncache Dependencies
         uses: actions/cache@v3
         with:
-          path: '**/node_modules'
+          path: "**/node_modules"
           key: node-modules-${{ hashFiles('./yarn.lock') }}
 
       - name: Uncache Distributables
         uses: actions/cache@v3
         with:
-          path: '**/dist'
+          path: "**/dist"
           key: dist-${{ env.rid }}
 
       - name: Synchronize Packages
@@ -419,26 +416,26 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
         with:
-          node-version-file: '.nvmrc'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'yarn'
+          node-version-file: ".nvmrc"
+          registry-url: "https://registry.npmjs.org"
+          cache: "yarn"
 
       - name: Uncache Environment Variables
         uses: actions/cache@v3
         with:
-          path: './.env'
+          path: "./.env"
           key: env-${{ env.rid }}
 
       - name: Uncache Dependencies
         uses: actions/cache@v3
         with:
-          path: '**/node_modules'
+          path: "**/node_modules"
           key: node-modules-${{ hashFiles('./yarn.lock') }}
 
       - name: Uncache Distributables
         uses: actions/cache@v3
         with:
-          path: '**/dist'
+          path: "**/dist"
           key: dist-${{ env.rid }}
 
       - name: Synchronize Packages
@@ -446,7 +443,6 @@ jobs:
 
       - name: Test - Syntax
         run: yarn workspaces foreach --verbose --exclude webex-js-sdk --include '${{ needs.generate-package-matrix.outputs.recursive }}'  run test:syntax
-
 
   test-unit:
     name: Test - Unit
@@ -463,26 +459,26 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
         with:
-          node-version-file: '.nvmrc'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'yarn'
+          node-version-file: ".nvmrc"
+          registry-url: "https://registry.npmjs.org"
+          cache: "yarn"
 
       - name: Uncache Environment Variables
         uses: actions/cache@v3
         with:
-          path: './.env'
+          path: "./.env"
           key: env-${{ env.rid }}
 
       - name: Uncache Dependencies
         uses: actions/cache@v3
         with:
-          path: '**/node_modules'
+          path: "**/node_modules"
           key: node-modules-${{ hashFiles('./yarn.lock') }}
 
       - name: Uncache Distributables
         uses: actions/cache@v3
         with:
-          path: '**/dist'
+          path: "**/dist"
           key: dist-${{ env.rid }}
 
       - name: Synchronize Packages
