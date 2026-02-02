@@ -61,8 +61,9 @@ describe('plugin-meetings', () => {
       meeting.trigger = sinon.stub();
       meeting.webex = webex;
       meeting.webex.internal.newMetrics.callDiagnosticMetrics =
-      meeting.webex.internal.newMetrics.callDiagnosticMetrics || {};
-      meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId = sinon.stub();
+        meeting.webex.internal.newMetrics.callDiagnosticMetrics || {};
+      meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId =
+        sinon.stub();
     });
 
     afterEach(() => {
@@ -245,7 +246,11 @@ describe('plugin-meetings', () => {
         const response = MeetingUtil.updateLocusFromApiResponse(meeting, originalResponse);
 
         assert.deepEqual(response, originalResponse);
-        assert.calledOnceWithExactly(meeting.locusInfo.handleLocusAPIResponse, meeting, originalResponse.body);
+        assert.calledOnceWithExactly(
+          meeting.locusInfo.handleLocusAPIResponse,
+          meeting,
+          originalResponse.body
+        );
       });
 
       it('should handle locus being missing from the response', () => {
@@ -361,8 +366,8 @@ describe('plugin-meetings', () => {
     describe('remoteUpdateAudioVideo', () => {
       it('#Should call meetingRequest.locusMediaRequest with correct parameters and return the full response', async () => {
         const fakeResponse = {
-          body: { locus: { url: 'locusUrl'}},
-          headers: { },
+          body: {locus: {url: 'locusUrl'}},
+          headers: {},
         };
         const meeting = {
           id: 'meeting-id',
@@ -479,6 +484,11 @@ describe('plugin-meetings', () => {
             trigger: 'loci-update',
             identifiers: {
               trackingId: 'trackingId',
+            },
+            eventData: {
+              hasMismatchedSocket: false,
+              mercurySocketUrl: '',
+              deviceSocketUrl: 'ws://example.com',
             },
           },
           options: {
@@ -649,21 +659,26 @@ describe('plugin-meetings', () => {
       it('should post client event with error when join fails', async () => {
         const joinError = new Error('Join failed');
         meeting.meetingRequest.joinMeeting.rejects(joinError);
-        meeting.meetingInfo = { meetingLookupUrl: 'test-lookup-url' };
+        meeting.meetingInfo = {meetingLookupUrl: 'test-lookup-url'};
 
         try {
           await MeetingUtil.joinMeeting(meeting, {});
           assert.fail('Expected joinMeeting to throw an error');
         } catch (error) {
           assert.equal(error, joinError);
-          
+
           // Verify error client event was submitted
           assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.locus.join.response',
             payload: {
-              identifiers: { meetingLookupUrl: 'test-lookup-url' },
+              identifiers: {meetingLookupUrl: 'test-lookup-url'},
+              eventData: {
+                hasMismatchedSocket: false,
+                mercurySocketUrl: '',
+                deviceSocketUrl: 'ws://example.com',
+              },
             },
-            options: { meetingId: meeting.id, rawError: joinError },
+            options: {meetingId: meeting.id, rawError: joinError},
           });
         }
       });
@@ -721,7 +736,7 @@ describe('plugin-meetings', () => {
           assert.fail('Expected joinMeetingOptions to throw PasswordError');
         } catch (error) {
           assert.instanceOf(error, PasswordError);
-          
+
           // Verify client event was submitted with error details
           assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.meetinginfo.response',
@@ -759,7 +774,7 @@ describe('plugin-meetings', () => {
           assert.fail('Expected joinMeetingOptions to throw CaptchaError');
         } catch (error) {
           assert.instanceOf(error, CaptchaError);
-          
+
           // Verify client event was submitted with error details
           assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.meetinginfo.response',
@@ -972,15 +987,18 @@ describe('plugin-meetings', () => {
       {functionName: 'canStartManualCaption', displayHint: 'MANUAL_CAPTION_START'},
       {functionName: 'canStopManualCaption', displayHint: 'MANUAL_CAPTION_STOP'},
 
-      {functionName: 'isLocalRecordingStarted',displayHint:'LOCAL_RECORDING_STATUS_STARTED'},
+      {functionName: 'isLocalRecordingStarted', displayHint: 'LOCAL_RECORDING_STATUS_STARTED'},
       {functionName: 'isLocalRecordingStopped', displayHint: 'LOCAL_RECORDING_STATUS_STOPPED'},
       {functionName: 'isLocalRecordingPaused', displayHint: 'LOCAL_RECORDING_STATUS_PAUSED'},
-      {functionName: 'isLocalStreamingStarted',displayHint:'STREAMING_STATUS_STARTED'},
+      {functionName: 'isLocalStreamingStarted', displayHint: 'STREAMING_STATUS_STARTED'},
       {functionName: 'isLocalStreamingStopped', displayHint: 'STREAMING_STATUS_STOPPED'},
 
       {functionName: 'isManualCaptionActive', displayHint: 'MANUAL_CAPTION_STATUS_ACTIVE'},
 
-      {functionName: 'isSpokenLanguageAutoDetectionEnabled', displayHint: 'SPOKEN_LANGUAGE_AUTO_DETECTION_ENABLED'},
+      {
+        functionName: 'isSpokenLanguageAutoDetectionEnabled',
+        displayHint: 'SPOKEN_LANGUAGE_AUTO_DETECTION_ENABLED',
+      },
 
       {functionName: 'isWebexAssistantActive', displayHint: 'WEBEX_ASSISTANT_STATUS_ACTIVE'},
       {functionName: 'canViewCaptionPanel', displayHint: 'ENABLE_CAPTION_PANEL'},
@@ -1447,10 +1465,7 @@ describe('plugin-meetings', () => {
               },
             },
             dataSets: [{name: 'dataset1', url: 'http://dataset.com'}],
-            mediaConnections: [
-              {mediaId: 'mediaId456'},
-              {someOtherField: 'value'},
-            ],
+            mediaConnections: [{mediaId: 'mediaId456'}, {someOtherField: 'value'}],
           },
         };
       });
@@ -1500,14 +1515,248 @@ describe('plugin-meetings', () => {
       });
 
       it('handles mediaConnections without mediaId', () => {
-        response.body.mediaConnections = [
-          {someField: 'value1'},
-          {anotherField: 'value2'},
-        ];
+        response.body.mediaConnections = [{someField: 'value1'}, {anotherField: 'value2'}];
 
         const result = MeetingUtil.parseLocusJoin(response);
 
         assert.isUndefined(result.mediaId);
+      });
+    });
+
+    describe('#sanitizeWebSocketUrl', () => {
+      it('extracts protocol, host, and pathname from URL', () => {
+        const url = 'wss://example.com:443/mercury/path?token=secret&key=value#fragment';
+        const result = MeetingUtil.sanitizeWebSocketUrl(url);
+
+        assert.equal(result, 'wss://example.com:443/mercury/path');
+      });
+
+      it('handles URL without query string or hash', () => {
+        const url = 'wss://example.com/path';
+        const result = MeetingUtil.sanitizeWebSocketUrl(url);
+
+        assert.equal(result, 'wss://example.com/path');
+      });
+
+      it('removes authentication from URL', () => {
+        const url = 'wss://user:password@example.com/path?token=secret';
+        const result = MeetingUtil.sanitizeWebSocketUrl(url);
+
+        assert.equal(result, 'wss://example.com/path');
+      });
+
+      it('returns empty string for null or undefined', () => {
+        assert.equal(MeetingUtil.sanitizeWebSocketUrl(null), '');
+        assert.equal(MeetingUtil.sanitizeWebSocketUrl(undefined), '');
+      });
+
+      it('returns empty string for non-string input', () => {
+        assert.equal(MeetingUtil.sanitizeWebSocketUrl(123), '');
+        assert.equal(MeetingUtil.sanitizeWebSocketUrl({}), '');
+      });
+
+      it('returns empty string for invalid URL', () => {
+        const result = MeetingUtil.sanitizeWebSocketUrl('not a valid url');
+
+        assert.equal(result, '');
+      });
+
+      it('handles URL without pathname', () => {
+        const url = 'wss://example.com?query=value';
+        const result = MeetingUtil.sanitizeWebSocketUrl(url);
+
+        assert.equal(result, 'wss://example.com');
+      });
+    });
+
+    describe('#_urlsMatch', () => {
+      it('returns true when URLs match (ignoring query and hash)', () => {
+        const url1 = 'wss://example.com:443/path?token=abc#fragment1';
+        const url2 = 'wss://example.com:443/path?token=xyz#fragment2';
+
+        assert.isTrue(MeetingUtil._urlsMatch(url1, url2));
+      });
+
+      it('returns false when protocols differ', () => {
+        const url1 = 'wss://example.com/path';
+        const url2 = 'ws://example.com/path';
+
+        assert.isFalse(MeetingUtil._urlsMatch(url1, url2));
+      });
+
+      it('returns false when hosts differ', () => {
+        const url1 = 'wss://example1.com/path';
+        const url2 = 'wss://example2.com/path';
+
+        assert.isFalse(MeetingUtil._urlsMatch(url1, url2));
+      });
+
+      it('returns false when ports differ', () => {
+        const url1 = 'wss://example.com:443/path';
+        const url2 = 'wss://example.com:8443/path';
+
+        assert.isFalse(MeetingUtil._urlsMatch(url1, url2));
+      });
+
+      it('returns false when pathnames differ', () => {
+        const url1 = 'wss://example.com/path1';
+        const url2 = 'wss://example.com/path2';
+
+        assert.isFalse(MeetingUtil._urlsMatch(url1, url2));
+      });
+
+      it('returns false when either URL is null or undefined', () => {
+        const url = 'wss://example.com/path';
+
+        assert.isFalse(MeetingUtil._urlsMatch(null, url));
+        assert.isFalse(MeetingUtil._urlsMatch(url, null));
+        assert.isFalse(MeetingUtil._urlsMatch(undefined, url));
+        assert.isFalse(MeetingUtil._urlsMatch(url, undefined));
+      });
+
+      it('returns false when both URLs are null', () => {
+        assert.isFalse(MeetingUtil._urlsMatch(null, null));
+      });
+
+      it('returns false when URL parsing fails', () => {
+        const url1 = 'invalid url';
+        const url2 = 'wss://example.com/path';
+
+        assert.isFalse(MeetingUtil._urlsMatch(url1, url2));
+      });
+
+      it('compares URLs case-sensitively', () => {
+        const url1 = 'wss://Example.com/path';
+        const url2 = 'wss://example.com/path';
+
+        // URL parsing should handle host case-sensitivity
+        assert.isTrue(MeetingUtil._urlsMatch(url1, url2));
+      });
+    });
+
+    describe('#getSocketUrlInfo', () => {
+      it('returns socket URL info when URLs differ', () => {
+        const testWebex = {
+          internal: {
+            mercury: {
+              socket: {
+                url: 'wss://mercury.example.com:443/path?token=abc',
+              },
+            },
+            device: {
+              webSocketUrl: 'wss://device.example.com:443/path?token=xyz',
+            },
+          },
+        };
+
+        const result = MeetingUtil.getSocketUrlInfo(testWebex);
+
+        assert.isTrue(result.hasMismatchedSocket);
+        assert.equal(result.mercurySocketUrl, 'wss://mercury.example.com:443/path');
+        assert.equal(result.deviceSocketUrl, 'wss://device.example.com:443/path');
+      });
+
+      it('returns socket URL info when URLs match', () => {
+        const testWebex = {
+          internal: {
+            mercury: {
+              socket: {
+                url: 'wss://example.com:443/path?token=abc',
+              },
+            },
+            device: {
+              webSocketUrl: 'wss://example.com:443/path?token=xyz',
+            },
+          },
+        };
+
+        const result = MeetingUtil.getSocketUrlInfo(testWebex);
+
+        assert.isFalse(result.hasMismatchedSocket);
+        assert.equal(result.mercurySocketUrl, 'wss://example.com:443/path');
+        assert.equal(result.deviceSocketUrl, 'wss://example.com:443/path');
+      });
+
+      it('returns false for hasMismatchedSocket when mercury socket URL is missing', () => {
+        const testWebex = {
+          internal: {
+            mercury: {
+              socket: {},
+            },
+            device: {
+              webSocketUrl: 'wss://device.example.com:443/path',
+            },
+          },
+        };
+
+        const result = MeetingUtil.getSocketUrlInfo(testWebex);
+
+        assert.isFalse(result.hasMismatchedSocket);
+        assert.equal(result.mercurySocketUrl, '');
+        assert.equal(result.deviceSocketUrl, 'wss://device.example.com:443/path');
+      });
+
+      it('returns false for hasMismatchedSocket when device socket URL is missing', () => {
+        const testWebex = {
+          internal: {
+            mercury: {
+              socket: {
+                url: 'wss://mercury.example.com:443/path',
+              },
+            },
+            device: {},
+          },
+        };
+
+        const result = MeetingUtil.getSocketUrlInfo(testWebex);
+
+        assert.isFalse(result.hasMismatchedSocket);
+        assert.equal(result.mercurySocketUrl, 'wss://mercury.example.com:443/path');
+        assert.equal(result.deviceSocketUrl, '');
+      });
+
+      it('returns default values when webex object is missing properties', () => {
+        const testWebex = {
+          internal: {},
+        };
+
+        const result = MeetingUtil.getSocketUrlInfo(testWebex);
+
+        assert.isFalse(result.hasMismatchedSocket);
+        assert.equal(result.mercurySocketUrl, '');
+        assert.equal(result.deviceSocketUrl, '');
+      });
+
+      it('handles error gracefully and returns default values', () => {
+        const testWebex = null;
+
+        const result = MeetingUtil.getSocketUrlInfo(testWebex);
+
+        assert.isFalse(result.hasMismatchedSocket);
+        assert.equal(result.mercurySocketUrl, '');
+        assert.equal(result.deviceSocketUrl, '');
+      });
+
+      it('sanitizes URLs by removing query parameters', () => {
+        const testWebex = {
+          internal: {
+            mercury: {
+              socket: {
+                url: 'wss://mercury.example.com/path?secret=token123&key=value',
+              },
+            },
+            device: {
+              webSocketUrl: 'wss://device.example.com/path?secret=differenttoken&key=value',
+            },
+          },
+        };
+
+        const result = MeetingUtil.getSocketUrlInfo(testWebex);
+
+        assert.notInclude(result.mercurySocketUrl, 'secret');
+        assert.notInclude(result.mercurySocketUrl, 'token123');
+        assert.notInclude(result.deviceSocketUrl, 'secret');
+        assert.notInclude(result.deviceSocketUrl, 'differenttoken');
       });
     });
   });
