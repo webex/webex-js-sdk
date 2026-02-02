@@ -1662,6 +1662,17 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.mediaServerIp = undefined;
+
+    /**
+     * Register the meeting‑scoped token refresh function with the LLM layer.
+     *
+     * This allows the LLM interceptor to refresh the DataChannel token by
+     * calling back into the current meeting instance.
+     *
+     * @returns {void}
+     */
+    // @ts-ignore
+    this.webex.internal.llm.setRefreshHandler(() => this.refreshDataChannelToken());
   }
 
   /**
@@ -6185,7 +6196,11 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   async updateLLMConnection() {
     // @ts-ignore - Fix type
-    const {url, info: {datachannelUrl, practiceSessionDatachannelUrl} = {}} = this.locusInfo;
+    const {
+      url = undefined,
+      info: {datachannelUrl = undefined, practiceSessionDatachannelUrl = undefined} = {},
+      self: {datachannelToken = undefined, practiceSessionDatachannelToken = undefined} = {},
+    } = this.locusInfo || {};
 
     const isJoined = this.isJoined();
 
@@ -6194,7 +6209,10 @@ export default class Meeting extends StatelessWebexPlugin {
       this.webinar.isJoinPracticeSessionDataChannel() && practiceSessionDatachannelUrl
         ? practiceSessionDatachannelUrl
         : datachannelUrl;
-
+    const dataChannelToken =
+      this.webinar.isJoinPracticeSessionDataChannel() && practiceSessionDatachannelToken
+        ? practiceSessionDatachannelToken
+        : datachannelToken;
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
       if (
@@ -6229,7 +6247,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - Fix type
     return this.webex.internal.llm
-      .registerAndConnect(url, dataChannelUrl)
+      .registerAndConnect(url, dataChannelUrl, dataChannelToken)
       .then((registerAndConnectResult) => {
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
@@ -10194,5 +10212,19 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   cancelSipCallOut(participantId: string) {
     return this.meetingRequest.cancelSipCallOut(participantId);
+  }
+
+  /**
+   * Method to get new data
+   * @returns {Promise}
+   */
+  public refreshDataChannelToken() {
+    const res = this.meetingRequest.fetchDatachannelToken({
+      locusUrl: this.locusUrl,
+      requestingParticipantId: this.members.selfId,
+      isPracticeSession: this.webinar.isJoinPracticeSessionDataChannel(),
+    });
+
+    return res;
   }
 }
