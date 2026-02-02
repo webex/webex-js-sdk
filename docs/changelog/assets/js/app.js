@@ -665,7 +665,7 @@ const extractPackagesFromVersion = (changelog, specificVersions = null) => {
  * @param {Object} changelogB - Full changelog data for version B
  * @returns {Object} - Comparison results with statistics
  */
-const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
+const comparePackages = (packagesA, packagesB, changelogA, changelogB, stableVersionA, stableVersionB) => {
     // Get ALL package names from both changelogs (entire changelog, not just specific versions)
     const allPackageNames = new Set([
         ...Object.keys(changelogA),//ALL packages in changelog A
@@ -681,31 +681,48 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB) => {
     let onlyInBCount = 0;
     
     // Helper function to find earliest (first) version of a package in changelog
-    const findEarliestPackageVersion = (changelog, packageName) => {
-        if (!changelog[packageName]) return null;
-        
-        const versions = Object.keys(changelog[packageName]);
-        if (versions.length === 0) return null;
-        
-        // Find the earliest version by published date
-        let earliestVersion = versions[0];
-        let earliestDate = changelog[packageName][versions[0]].published_date || Infinity;
-        
-        versions.forEach(ver => {
-            const publishedDate = changelog[packageName][ver].published_date || Infinity;
-            if (publishedDate < earliestDate) {
-                earliestDate = publishedDate;
-                earliestVersion = ver;
-            }
+ // Helper function to find stable version first, then highest pre-release version
+const findStableVersion = (changelog, packageName, stableVersion) => {
+    if (!changelog[packageName]) return null;
+    
+    const versions = Object.keys(changelog[packageName]);
+    if (versions.length === 0) return null;
+    
+    // Escape dots in version string for regex (3.4.0 -> 3\.4\.0)
+    const escapedVersion = stableVersion.replace(/\./g, '\\.');
+    
+    // Priority 1: Find exact stable version (e.g., "3.4.0" only, no suffixes)
+    const exactStablePattern = new RegExp(`^${escapedVersion}$`);
+    const exactStableVersion = versions.find(ver => exactStablePattern.test(ver));
+    
+    if (exactStableVersion) {
+        return exactStableVersion;
+    }
+    
+    // Priority 2: Find highest pre-release version (any tag: next, alpha, beta, rc, etc.)
+    // Pattern: 3.4.0-{tag}.{number} -> captures tag and number
+    const prereleasePattern = new RegExp(`^${escapedVersion}-([a-z]+)\\.(\\d+)$`, 'i');
+    
+    const prereleaseVersions = versions
+        .filter(ver => prereleasePattern.test(ver))
+        .sort((a, b) => {
+            const matchA = a.match(prereleasePattern);
+            const matchB = b.match(prereleasePattern);
+            if (!matchA || !matchB) return 0;
+            
+            const numA = parseInt(matchA[2], 10);
+            const numB = parseInt(matchB[2], 10);
+            return numB - numA; // Sort descending (highest first)
         });
-        
-        return earliestVersion;
-    };
+    
+    // Return highest pre-release version, or fallback to first available
+    return prereleaseVersions[0] || versions[0];
+};
     
     allPackageNames.forEach(packageName => {
         // Find the earliest (first) version for this package in each changelog
-        const versionA = findEarliestPackageVersion(changelogA, packageName);
-        const versionB = findEarliestPackageVersion(changelogB, packageName);
+        const versionA = findStableVersion(changelogA, packageName, stableVersionA);
+        const versionB = findStableVersion(changelogB, packageName, stableVersionB);
         
         let status, changeClass;//Declare variables for status label and CSS class
         
@@ -816,7 +833,7 @@ const fetchAndCompareVersions = async (versionA, versionB) => {
     const packagesB = extractPackagesFromVersion(changelogB);
     
     // Compare packages
-    const comparisonData = comparePackages(packagesA, packagesB, changelogA, changelogB);
+    const comparisonData = comparePackages(packagesA, packagesB, changelogA, changelogB,versionA, versionB);
     
     return {
         versionA,
@@ -1353,13 +1370,38 @@ const generatePackageComparisonData = (packageName, versionASpecific, versionBSp
     // Step 5: Calculate statistics
     const stats = calculateComparisonStats(packages);
     
-    // Step 6: Return complete comparison data
+    // Step 6: Extract commits from both versions
+    const commitsA = pkgDataA?.commits || {};
+    const commitsB = pkgDataB?.commits || {};
+    
+    // Convert commits to arrays for easier template rendering
+    const commitsArrayA = Object.entries(commitsA).map(([hash, message]) => ({
+        hash: hash,
+        shortHash: hash.substring(0, 7),
+        message: message,
+        url: `${github_base_url}commit/${hash}`
+    }));
+    
+    const commitsArrayB = Object.entries(commitsB).map(([hash, message]) => ({
+        hash: hash,
+        shortHash: hash.substring(0, 7),
+        message: message,
+        url: `${github_base_url}commit/${hash}`
+    }));
+    
+    // Step 7: Return complete comparison data with commits
     return {
         versionA: effectiveVersionA,
         versionB: effectiveVersionB,
         packages: packages,
         totalPackages: packages.length,
         packageName: packageName,
+        commitsA: commitsArrayA,
+        commitsB: commitsArrayB,
+        hasCommitsA: commitsArrayA.length > 0,
+        hasCommitsB: commitsArrayB.length > 0,
+        commitsCountA: commitsArrayA.length,
+        commitsCountB: commitsArrayB.length,
         ...stats
     };
 };
