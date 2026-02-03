@@ -605,6 +605,196 @@ describe('plugin-meetings', () => {
 
           clock.restore();
         });
+
+        it('returns the same promise when register is called multiple times concurrently', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          // Make registration take some time
+          let resolveRegistration;
+          const registrationDelay = new Promise((resolve) => {
+            resolveRegistration = resolve;
+          });
+
+          webex.internal.device.register.returns(registrationDelay);
+          webex.internal.mercury.connect.returns(Promise.resolve());
+
+          // Start first registration
+          const firstRegisterPromise = webex.meetings.register();
+
+          // Immediately start second registration while first is in progress
+          const secondRegisterPromise = webex.meetings.register();
+
+          // Start third registration
+          const thirdRegisterPromise = webex.meetings.register();
+
+          // All should return the same promise
+          assert.strictEqual(firstRegisterPromise, secondRegisterPromise);
+          assert.strictEqual(secondRegisterPromise, thirdRegisterPromise);
+
+          // Complete the registration
+          resolveRegistration();
+
+          await firstRegisterPromise;
+          await secondRegisterPromise;
+          await thirdRegisterPromise;
+
+          // Device registration and mercury connect should only be called once
+          assert.calledOnce(webex.internal.device.register);
+          assert.calledOnce(webex.internal.mercury.connect);
+          assert.isTrue(webex.meetings.registered);
+        });
+
+        it('prevents duplicate registrations when register is called during in-flight registration', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          let deviceRegisterCallCount = 0;
+          let mercuryConnectCallCount = 0;
+
+          // Track actual calls
+          webex.internal.device.register = sinon.stub().callsFake(() => {
+            deviceRegisterCallCount++;
+            return Promise.resolve();
+          });
+          webex.internal.mercury.connect = sinon.stub().callsFake(() => {
+            mercuryConnectCallCount++;
+            return Promise.resolve();
+          });
+
+          // Start registration without awaiting
+          const promise1 = webex.meetings.register();
+
+          // Call register again while first is in progress
+          const promise2 = webex.meetings.register();
+
+          // Wait for both
+          await Promise.all([promise1, promise2]);
+
+          // Should only register once
+          assert.equal(deviceRegisterCallCount, 1, 'device.register should only be called once');
+          assert.equal(mercuryConnectCallCount, 1, 'mercury.connect should only be called once');
+          assert.isTrue(webex.meetings.registered);
+        });
+
+        it('handles concurrent register calls when first registration fails', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          const registrationError = new Error('registration failed');
+          webex.internal.device.register.rejects(registrationError);
+
+          // Start first registration
+          const firstRegisterPromise = webex.meetings.register();
+
+          // Start second registration while first is in progress
+          const secondRegisterPromise = webex.meetings.register();
+
+          // Both should reject with the same error
+          await assert.isRejected(firstRegisterPromise, 'registration failed');
+          await assert.isRejected(secondRegisterPromise, 'registration failed');
+
+          // Should still only attempt registration once
+          assert.calledOnce(webex.internal.device.register);
+          assert.isFalse(webex.meetings.registered);
+        });
+
+        it('allows new registration after previous registration completes', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          // First registration
+          await webex.meetings.register();
+          assert.isTrue(webex.meetings.registered);
+
+          // Reset for second registration
+          webex.meetings.registered = false;
+          webex.internal.device.register.resetHistory();
+          webex.internal.mercury.connect.resetHistory();
+
+          // Second registration should work normally
+          await webex.meetings.register();
+          assert.calledOnce(webex.internal.device.register);
+          assert.calledOnce(webex.internal.mercury.connect);
+          assert.isTrue(webex.meetings.registered);
+        });
+
+        it('clears registrationPromise after successful registration', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          await webex.meetings.register();
+
+          assert.isTrue(webex.meetings.registered);
+          assert.isNull(webex.meetings.registrationPromise);
+        });
+
+        it('clears registrationPromise after failed registration', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          webex.internal.device.register.rejects(new Error('registration failed'));
+
+          await assert.isRejected(webex.meetings.register());
+
+          assert.isFalse(webex.meetings.registered);
+          assert.isNull(webex.meetings.registrationPromise);
+        });
+
+        it('waits for unregistration to complete before registering', async () => {
+          webex.canAuthorize = true;
+
+          assert.isFalse(webex.meetings.registered);
+
+          // First, register successfully
+          await webex.meetings.register();
+          assert.isTrue(webex.meetings.registered);
+
+          // Start unregistration (but don't await it)
+          const unregisterPromise = webex.meetings.unregister();
+          assert.isDefined(webex.meetings.unregistrationPromise);
+
+          // Immediately try to register while unregister is in progress
+          const registerPromise = webex.meetings.register();
+
+          // Wait for register to complete
+          await registerPromise;
+
+          // Should have completed registration
+          assert.isTrue(webex.meetings.registered);
+
+          // Now await the original unregister promise - this should have already completed
+          // and should NOT affect the registered state since register() took over
+          await unregisterPromise;
+
+          // Should STILL be registered because register() took over
+          assert.isTrue(webex.meetings.registered);
+        });
+
+        it('handles multiple register calls during unregistration', async () => {
+          webex.canAuthorize = true;
+
+          // First, register successfully
+          await webex.meetings.register();
+          assert.isTrue(webex.meetings.registered);
+
+          // Start unregistration
+          const unregistrationPromise = webex.meetings.unregister();
+
+          // Try to register once while unregister is in progress
+          await webex.meetings.register();
+
+          // Should be registered again
+          assert.isTrue(
+            webex.meetings.registered,
+            'Expected meetings to be registered after unregister and register cycle'
+          );
+
+          await unregistrationPromise;
+
+          // Should STILL be registered because register() took over
+          assert.isTrue(webex.meetings.registered);
+        });
       });
 
       describe('#unregister', () => {
@@ -684,6 +874,335 @@ describe('plugin-meetings', () => {
             assert.deepEqual(webex.meetings.registrationStatus, INITIAL_REGISTRATION_STATUS);
             done();
           });
+        });
+
+        it('waits for registration to complete before unregistering when called during registration', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          let resolveRegistration;
+          const registrationDelay = new Promise((resolve) => {
+            resolveRegistration = resolve;
+          });
+
+          webex.internal.device.register.returns(registrationDelay);
+          webex.internal.mercury.connect.returns(Promise.resolve());
+
+          // Start registration (don't await)
+          const registerPromise = webex.meetings.register();
+
+          // Verify registration is in progress
+          assert.exists(webex.meetings.registrationPromise);
+          assert.isFalse(webex.meetings.registered);
+
+          // Call unregister while registration is in progress
+          const unregisterPromise = webex.meetings.unregister();
+
+          // Registration should still be in progress
+          assert.exists(webex.meetings.registrationPromise);
+
+          // Complete the registration
+          resolveRegistration();
+          await registerPromise;
+
+          // Now unregister should proceed
+          await unregisterPromise;
+
+          // Verify final state
+          assert.isFalse(webex.meetings.registered);
+          assert.isNull(webex.meetings.registrationPromise);
+          assert.calledOnce(webex.internal.device.unregister);
+          assert.calledOnce(webex.internal.mercury.disconnect);
+        });
+
+        it('handles unregister called during registration that fails', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          const registrationError = new Error('registration failed');
+          let rejectRegistration;
+          const registrationDelay = new Promise((resolve, reject) => {
+            rejectRegistration = reject;
+          });
+
+          webex.internal.device.register.returns(registrationDelay);
+
+          // Start registration (don't await)
+          const registerPromise = webex.meetings.register();
+
+          // Call unregister while registration is in progress
+          const unregisterPromise = webex.meetings.unregister();
+
+          // Fail the registration
+          rejectRegistration(registrationError);
+
+          // Registration should fail
+          await assert.isRejected(registerPromise, 'registration failed');
+
+          // // Unregister should resolve immediately since registration failed
+          await unregisterPromise;
+
+          // Verify final state - not registered
+          assert.isFalse(webex.meetings.registered);
+          assert.isNull(webex.meetings.registrationPromise);
+          // Device unregister should not be called because registration never completed
+          assert.notCalled(webex.internal.device.unregister);
+        });
+
+        it('handles multiple unregister calls during registration', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          let resolveRegistration;
+          const registrationDelay = new Promise((resolve) => {
+            resolveRegistration = resolve;
+          });
+
+          webex.internal.device.register.returns(registrationDelay);
+          webex.internal.mercury.connect.returns(Promise.resolve());
+
+          // Start registration
+          const registerPromise = webex.meetings.register();
+
+          // Call unregister multiple times while registration is in progress
+          const unregisterPromise1 = webex.meetings.unregister();
+          const unregisterPromise2 = webex.meetings.unregister();
+          const unregisterPromise3 = webex.meetings.unregister();
+
+          // Complete registration
+          resolveRegistration();
+          await registerPromise;
+
+          // All unregister calls should complete
+          await Promise.all([unregisterPromise1, unregisterPromise2, unregisterPromise3]);
+
+          // Verify final state
+          assert.isFalse(webex.meetings.registered);
+          // Disconnect and unregister should be called, but not multiple times
+          assert.calledOnce(webex.internal.mercury.disconnect);
+          assert.calledOnce(webex.internal.device.unregister);
+        });
+
+        it('completes unregister correctly after waiting for registration', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          const stopListeningForEventsSpy = sinon.spy(webex.meetings, 'stopListeningForEvents');
+
+          let resolveRegistration;
+          const registrationDelay = new Promise((resolve) => {
+            resolveRegistration = resolve;
+          });
+
+          webex.internal.device.register.returns(registrationDelay);
+          webex.internal.mercury.connect.returns(Promise.resolve());
+
+          // Start registration
+          const registerPromise = webex.meetings.register();
+
+          // Call unregister during registration
+          const unregisterPromise = webex.meetings.unregister();
+
+          // stopListeningForEvents should not be called yet
+          assert.notCalled(stopListeningForEventsSpy);
+
+          // Complete registration
+          resolveRegistration();
+          await registerPromise;
+
+          // After registration completes, the meetings plugin should be registered
+          assert.isTrue(webex.meetings.registered);
+
+          // Now unregister should proceed
+          await unregisterPromise;
+
+          // Verify unregister completed properly
+          assert.calledOnce(stopListeningForEventsSpy);
+          assert.calledOnce(webex.internal.mercury.disconnect);
+          assert.calledOnce(webex.internal.device.unregister);
+          assert.isFalse(webex.meetings.registered);
+          assert.deepEqual(webex.meetings.registrationStatus, INITIAL_REGISTRATION_STATUS);
+        });
+
+        it('logs appropriate message when unregister is called during registration', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = false;
+
+          const loggerSpy = sinon.spy(LoggerProxy.logger, 'info');
+
+          let resolveRegistration;
+          const registrationDelay = new Promise((resolve) => {
+            resolveRegistration = resolve;
+          });
+
+          webex.internal.device.register.returns(registrationDelay);
+          webex.internal.mercury.connect.returns(Promise.resolve());
+
+          // Start registration
+          const registerPromise = webex.meetings.register();
+
+          // Call unregister during registration
+          const unregisterPromise = webex.meetings.unregister();
+
+          // Should log that it's waiting
+          assert.calledWith(
+            loggerSpy,
+            'Meetings:index#unregister --> INFO, Meetings plugin registration in progress, waiting to unregister'
+          );
+
+          // Complete registration and unregistration
+          resolveRegistration();
+          await registerPromise;
+          await unregisterPromise;
+
+          loggerSpy.restore();
+        });
+
+        it('returns the same promise when unregister is called multiple times concurrently', async () => {
+          webex.meetings.registered = true;
+
+          // Make unregistration take some time
+          let resolveUnregistration;
+          const unregistrationDelay = new Promise((resolve) => {
+            resolveUnregistration = resolve;
+          });
+
+          webex.internal.mercury.disconnect.returns(unregistrationDelay);
+          webex.internal.device.unregister.returns(Promise.resolve());
+
+          // Start first unregistration
+          const firstUnregisterPromise = webex.meetings.unregister();
+
+          // Immediately start second unregistration while first is in progress
+          const secondUnregisterPromise = webex.meetings.unregister();
+
+          // Start third unregistration
+          const thirdUnregisterPromise = webex.meetings.unregister();
+
+          // All should return the same promise
+          assert.strictEqual(firstUnregisterPromise, secondUnregisterPromise);
+          assert.strictEqual(secondUnregisterPromise, thirdUnregisterPromise);
+
+          // Complete the unregistration
+          resolveUnregistration();
+
+          await firstUnregisterPromise;
+          await secondUnregisterPromise;
+          await thirdUnregisterPromise;
+
+          // Mercury disconnect and device unregister should only be called once
+          assert.calledOnce(webex.internal.mercury.disconnect);
+          assert.calledOnce(webex.internal.device.unregister);
+          assert.isFalse(webex.meetings.registered);
+        });
+
+        it('clears unregistrationPromise after successful unregistration', async () => {
+          webex.meetings.registered = true;
+
+          await webex.meetings.unregister();
+
+          assert.isFalse(webex.meetings.registered);
+          assert.isNull(webex.meetings.unregistrationPromise);
+        });
+
+        it('clears unregistrationPromise after failed unregistration', async () => {
+          webex.meetings.registered = true;
+
+          webex.internal.mercury.disconnect.rejects(new Error('disconnect failed'));
+
+          await assert.isRejected(webex.meetings.unregister());
+
+          assert.isTrue(webex.meetings.registered);
+          assert.isNull(webex.meetings.unregistrationPromise);
+        });
+
+        it('allows new unregistration after previous unregistration completes', async () => {
+          webex.meetings.registered = true;
+
+          // First unregistration
+          await webex.meetings.unregister();
+          assert.isFalse(webex.meetings.registered);
+
+          // Register again
+          webex.canAuthorize = true;
+          await webex.meetings.register();
+          assert.isTrue(webex.meetings.registered);
+
+          // Reset history
+          webex.internal.mercury.disconnect.resetHistory();
+          webex.internal.device.unregister.resetHistory();
+
+          // Second unregistration should work normally
+          await webex.meetings.unregister();
+          assert.calledOnce(webex.internal.mercury.disconnect);
+          assert.calledOnce(webex.internal.device.unregister);
+          assert.isFalse(webex.meetings.registered);
+        });
+
+        it('handles register called during unregistration that fails', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = true;
+
+          const unregistrationError = new Error('unregistration failed');
+          let rejectUnregistration;
+          const unregistrationDelay = new Promise((resolve, reject) => {
+            rejectUnregistration = reject;
+          });
+
+          webex.internal.mercury.disconnect.returns(unregistrationDelay);
+
+          // Start unregistration (don't await)
+          const unregisterPromise = webex.meetings.unregister();
+
+          // Call register while unregistration is in progress
+          const registerPromise = webex.meetings.register();
+
+          // Fail the unregistration
+          rejectUnregistration(unregistrationError);
+
+          // Unregistration should fail
+          await assert.isRejected(unregisterPromise, 'unregistration failed');
+
+          // Register should still succeed (retry after unregister failure)
+          await registerPromise;
+
+          // Verify final state - should be registered
+          assert.isTrue(webex.meetings.registered);
+          assert.isNull(webex.meetings.unregistrationPromise);
+        });
+
+        it('logs appropriate message when register is called during unregistration', async () => {
+          webex.canAuthorize = true;
+          webex.meetings.registered = true;
+
+          const loggerSpy = sinon.spy(LoggerProxy.logger, 'info');
+
+          let resolveUnregistration;
+          const unregistrationDelay = new Promise((resolve) => {
+            resolveUnregistration = resolve;
+          });
+
+          webex.internal.mercury.disconnect.returns(unregistrationDelay);
+          webex.internal.device.unregister.returns(Promise.resolve());
+
+          // Start unregistration
+          const unregisterPromise = webex.meetings.unregister();
+
+          // Call register during unregistration
+          const registerPromise = webex.meetings.register();
+
+          // Should log that it's waiting
+          assert.calledWith(
+            loggerSpy,
+            'Meetings:index#register --> INFO, Meetings plugin unregistration in progress, waiting to register'
+          );
+
+          // Complete unregistration and registration
+          resolveUnregistration();
+          await unregisterPromise;
+          await registerPromise;
+
+          loggerSpy.restore();
         });
       });
 
