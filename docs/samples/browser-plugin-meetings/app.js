@@ -320,8 +320,6 @@ const verifyPasswordElm = document.querySelector('#btn-verify-password');
 const displayMeetingStatusElm = document.querySelector('#display-meeting-status');
 const notes=document.querySelector('#notes');
 const spaceIDError = `Using the space ID as a destination is no longer supported. Please refer to the <a href="https://github.com/webex/webex-js-sdk/wiki/Migration-to-Unified-Space-Meetings" target="_blank">migration guide</a> to migrate to use the meeting ID or SIP address.`;
-const BNR = 'BNR';
-const VBG = 'VBG';
 const blurVBGImageUrl = './assets/vbg_image.jpg'
 const blurVBGVideoUrl = './assets/clouds.5b57454a.mp4'
 
@@ -880,7 +878,7 @@ const toggleSourcesMeetingLevel = document.querySelector('#ts-sending-qualities-
 const loadCameraBtn = document.querySelector('#ts-load-camera');
 const toggleVbgBtn = document.querySelector('#ts-enable-VBG');
 const loadMicrophoneBtn = document.querySelector('#ts-load-mic');
-const toggleBNRBtn = document.querySelector('#ts-enable-audio-effects');
+const toggleAudioEffectsBtn = document.querySelector('#ts-enable-audio-effects');
 const startShareBtn = document.querySelector('#ts-start-screenshare');
 const publishShareBtn = document.querySelector('#ts-publish-screenshare');
 const unpublishShareBtn = document.querySelector('#ts-unpublish-screenshare');
@@ -1522,7 +1520,7 @@ async function loadCamera(constraints) {
     });
 
     handleMuteVideoMessage();
-    handleEffectsButton(toggleVbgBtn, VBG);
+    handleVbgButton();
     loadCameraBtn.disabled = true;
     stopVideoButton.disabled = false;
     console.log('MeetingControls#loadCamera() :: Successfully got camera stream:', localMedia.cameraStream);
@@ -1549,27 +1547,27 @@ async function handleVbg() {
           env: integrationEnv.checked ? 'int' : 'prod',
           preventBackgroundThrottling: true,
         });
-        handleEffectsButton(toggleVbgBtn, VBG, effect);
+        handleVbgButton(effect);
         await localMedia.cameraStream.addEffect(effect);
       }
 
       await effect.enable();
       modeBtn.disabled = true;
 
-      handleEffectsButton(toggleVbgBtn, VBG, effect);
+      handleVbgButton(effect);
       console.log('MeetingControls#handleVbg() :: successfully applied virtual background to local camera stream');
     }
     else {
       console.log('MeetingControls#handleVbg() :: disabling virtual background from local camera stream');
 
       await effect.disable();
-      handleEffectsButton(toggleVbgBtn, VBG, effect);
+      handleVbgButton(effect);
       console.log('MeetingControls#handleVbg() :: successfully disabled virtual background from local camera stream');
     }
   }
   catch (e) {
     console.log('MeetingControls#handleVbg() :: Error applying background effect!');
-    handleEffectsButton(toggleVbgBtn, VBG, effect);
+    handleVbgButton(effect);
     throw e;
   }
 }
@@ -1605,7 +1603,7 @@ async function loadMicrophone(constraints) {
     });
 
     handleMuteAudioMessage();
-    handleEffectsButton(toggleBNRBtn, BNR);
+    handleAudioEffectsButton();
     loadMicrophoneBtn.disabled = true;
     stopAudioButton.disabled = false;
     console.log('MeetingControls#loadMicrophone() :: Successfully got microphone stream:', localMedia.microphoneStream);
@@ -1631,14 +1629,14 @@ async function handleAudioEffects() {
           env: integrationEnv.checked ? 'int' : 'prod',
           model: selectedModel
         });
-        handleEffectsButton(toggleBNRBtn, BNR, effect);
+        handleAudioEffectsButton(effect);
         await localMedia.microphoneStream.addEffect(effect);
       }
 
       await effect.enable();
       // Use effect.model to get actual model (in case effect was created with different model)
       const activeModel = effect.model || selectedModel;
-      handleEffectsButton(toggleBNRBtn, BNR, effect);
+      handleAudioEffectsButton(effect);
       updateModelSelectState(true, activeModel);
       console.log(`MeetingControls#handleAudioEffects() :: successfully applied noise reduction (${activeModel}) to local microphone stream`);
 
@@ -1648,7 +1646,7 @@ async function handleAudioEffects() {
 
       const effectModel = effect.model;
       await effect.disable();
-      handleEffectsButton(toggleBNRBtn, BNR, effect);
+      handleAudioEffectsButton(effect);
       // Keep dropdown disabled - model is locked once effect is created
       updateModelSelectState(true, effectModel);
       console.log('MeetingControls#handleAudioEffects() :: successfully disabled noise reduction from local microphone stream');
@@ -1656,7 +1654,7 @@ async function handleAudioEffects() {
   }
   catch (e) {
     console.log('MeetingControls#handleAudioEffects() :: Error applying noise reduction effect!');
-    handleEffectsButton(toggleBNRBtn, BNR, effect);
+    handleAudioEffectsButton(effect);
     throw e;
   }
 }
@@ -1672,7 +1670,7 @@ function handleModelChange() {
     return;
   }
 
-  handleEffectsButton(toggleBNRBtn, BNR, null);
+  handleAudioEffectsButton();
 
   console.log(`MeetingControls#handleModelChange() :: selected model ${selectedModel} (will be applied on enable)`);
 }
@@ -1697,35 +1695,52 @@ function updateModelSelectState(disabled, effectModel) {
   }
 }
 
-function handleEffectsButton(btn, type, effect) {
+function handleVbgButton(effect) {
   let disabled = false;
   let title;
 
-  let displayName = type;
-  if (type === BNR) {
-    let modelName;
-    if (effect?.model) {
-      modelName = effect.model;
-    } else {
-      const modelSelect = document.getElementById('ts-model-select');
-      modelName = modelSelect?.value || 'bnr';
-    }
-    displayName = modelName.toUpperCase();
-  }
-
-  if(!effect) {
-    title = `Enable ${displayName}`;
-  } else if(!effect.isLoaded) {
+  if (!effect) {
+    title = 'Enable VBG';
+  } else if (!effect.isLoaded) {
     disabled = true;
-    title = "Applying Effect...";
-  } else if(effect.isEnabled) {
-    title = `Disable ${displayName}`
+    title = 'Applying Effect...';
+  } else if (effect.isEnabled) {
+    title = 'Disable VBG';
   } else {
-    title = `Enable ${displayName}`
+    title = 'Enable VBG';
   }
 
-  btn.disabled = disabled;
-  btn.innerText = title;
+  toggleVbgBtn.disabled = disabled;
+  toggleVbgBtn.innerText = title;
+}
+
+function handleAudioEffectsButton(effect) {
+  let disabled = false;
+  let title;
+
+  // Get model name from effect or dropdown
+  let modelName;
+  if (effect?.model) {
+    modelName = effect.model;
+  } else {
+    const modelSelect = document.getElementById('ts-model-select');
+    modelName = modelSelect?.value || 'bnr';
+  }
+  const displayName = modelName.toUpperCase();
+
+  if (!effect) {
+    title = `Enable ${displayName}`;
+  } else if (!effect.isLoaded) {
+    disabled = true;
+    title = 'Applying Effect...';
+  } else if (effect.isEnabled) {
+    title = `Disable ${displayName}`;
+  } else {
+    title = `Enable ${displayName}`;
+  }
+
+  toggleAudioEffectsBtn.disabled = disabled;
+  toggleAudioEffectsBtn.innerText = title;
 }
 
 async function stopStartVideo() {
