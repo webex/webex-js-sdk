@@ -346,7 +346,6 @@ const doSearch_commit = (searchParams, drill_down) => {
                 if(discontinueSearch){
                     resulting_versions.add(`${package}-${version}`);
                     resulting_commit_messages.add(thisCommit);
-                    // Fix: Add each hash individually from allHashes Set
                     allHashes.forEach(h => resulting_commit_hash.add(h));
                 }
                 else{
@@ -366,7 +365,6 @@ const doSearch_commit = (searchParams, drill_down) => {
                         ){
                             resulting_versions.add(`${package}-${version}`);
                             resulting_commit_messages.add(thisCommit);
-                            // Fix: Merge allHashes into resulting_commit_hash using forEach
                             allHashes.forEach(h => resulting_commit_hash.add(h));
                             allHashes = new Set();
                             discontinueSearch = true;
@@ -671,8 +669,6 @@ const comparePackages = (packagesA, packagesB, changelogA, changelogB, stableVer
         ...Object.keys(changelogA),//ALL packages in changelog A
         ...Object.keys(changelogB)//ALL packages in changelog B
     ]);
-    console.log('allPackageNames', allPackageNames);
-    console.log('Total packages to compare:', allPackageNames.size);
     
     const packages = [];
     let changedCount = 0;
