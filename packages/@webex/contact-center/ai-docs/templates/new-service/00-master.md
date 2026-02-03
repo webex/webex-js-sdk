@@ -1,0 +1,93 @@
+# New Service Creation - Master Template
+
+> **Purpose**: Orchestrator for creating new services (like AddressBook, EntryPoint, Queue).
+
+---
+
+## Prerequisites
+
+Before starting, ensure you have:
+- Clear understanding of what the service will do
+- API endpoint documentation (if calling external APIs)
+- Understanding of data structures involved
+
+---
+
+## Workflow Overview
+
+```
+Step 1: Requirements → Step 2: Code Generation → Step 3: Integration → Step 4: Tests → Step 5: Validation
+```
+
+---
+
+## Step-by-Step Process
+
+### Step 1: Gather Requirements
+**Template**: [`01-pre-questions.md`](01-pre-questions.md)
+
+Answer these questions:
+- What is the service name?
+- What API endpoints will it call?
+- What data will it manage?
+- Will it be exposed on `cc.serviceName`?
+
+### Step 2: Generate Code
+**Template**: [`02-code-generation.md`](02-code-generation.md)
+
+Create:
+- Service class file (`src/services/ServiceName.ts`)
+- Type definitions (in service file or `types.ts`)
+- Constants if needed
+
+### Step 3: Integration
+**Template**: [`03-integration.md`](03-integration.md)
+
+Integrate:
+- Initialize in `cc.ts` constructor
+- Expose via `cc.serviceName` if public
+- Export types from `src/types.ts`
+
+### Step 4: Generate Tests
+**Template**: [`04-test-generation.md`](04-test-generation.md)
+
+Create:
+- Unit test file
+- Mock service methods
+- Test success and error cases
+
+### Step 5: Validation
+**Template**: [`05-validation.md`](05-validation.md)
+
+Verify:
+- All patterns followed
+- Tests pass
+- Types exported
+- Documentation updated
+
+---
+
+## Patterns to Load
+
+Before generating code, read:
+1. [`../patterns/typescript-patterns.md`](../patterns/typescript-patterns.md) - Type conventions
+2. [`../patterns/sdk-plugin-patterns.md`](../patterns/sdk-plugin-patterns.md) - Plugin patterns
+3. [`../patterns/testing-patterns.md`](../patterns/testing-patterns.md) - Test patterns
+
+---
+
+## Reference Implementation
+
+Study existing service: `src/services/AddressBook.ts` or `src/services/EntryPoint.ts`
+
+---
+
+## Quick Checklist
+
+- [ ] Service class created with WebexSDK injection
+- [ ] LoggerProxy used for all logging
+- [ ] Error handling follows pattern
+- [ ] Types defined and exported
+- [ ] Initialized in cc.ts
+- [ ] Unit tests created
+- [ ] JSDoc added for public methods
