@@ -880,7 +880,7 @@ const toggleSourcesMeetingLevel = document.querySelector('#ts-sending-qualities-
 const loadCameraBtn = document.querySelector('#ts-load-camera');
 const toggleVbgBtn = document.querySelector('#ts-enable-VBG');
 const loadMicrophoneBtn = document.querySelector('#ts-load-mic');
-const toggleBNRBtn = document.querySelector('#ts-enable-BNR');
+const toggleBNRBtn = document.querySelector('#ts-enable-audio-effects');
 const startShareBtn = document.querySelector('#ts-start-screenshare');
 const publishShareBtn = document.querySelector('#ts-publish-screenshare');
 const unpublishShareBtn = document.querySelector('#ts-unpublish-screenshare');
@@ -1616,7 +1616,7 @@ async function loadMicrophone(constraints) {
   }
 }
 
-async function handleBNR() {
+async function handleAudioEffects() {
   let effect;
   const modelSelect = document.getElementById('ts-model-select');
   const selectedModel = modelSelect ? modelSelect.value : 'bnr';
@@ -1624,7 +1624,7 @@ async function handleBNR() {
   try {
     effect = await localMedia.microphoneStream.getEffectByKind('noise-reduction-effect');
     if (!effect?.isEnabled) {
-      console.log(`MeetingControls#handleBNR() :: applying noise reduction (${selectedModel}) to local microphone stream`);
+      console.log(`MeetingControls#handleAudioEffects() :: applying noise reduction (${selectedModel}) to local microphone stream`);
 
       if (!effect) {
         effect = await webex.meetings.createNoiseReductionEffect({
@@ -1639,23 +1639,23 @@ async function handleBNR() {
       // Use effect.model to get actual model (in case effect was created with different model)
       const activeModel = effect.model || selectedModel;
       handleEffectsButton(toggleBNRBtn, BNR, effect);
-      updateModelSelectState(true, activeModel); // Disable and sync dropdown
-      console.log(`MeetingControls#handleBNR() :: successfully applied noise reduction (${activeModel}) to local microphone stream`);
+      updateModelSelectState(true, activeModel);
+      console.log(`MeetingControls#handleAudioEffects() :: successfully applied noise reduction (${activeModel}) to local microphone stream`);
 
     }
     else {
-      console.log('MeetingControls#handleBNR() :: disabling noise reduction from local microphone stream');
+      console.log('MeetingControls#handleAudioEffects() :: disabling noise reduction from local microphone stream');
 
       const effectModel = effect.model;
       await effect.disable();
       handleEffectsButton(toggleBNRBtn, BNR, effect);
       // Keep dropdown disabled - model is locked once effect is created
       updateModelSelectState(true, effectModel);
-      console.log('MeetingControls#handleBNR() :: successfully disabled noise reduction from local microphone stream');
+      console.log('MeetingControls#handleAudioEffects() :: successfully disabled noise reduction from local microphone stream');
     }
   }
   catch (e) {
-    console.log('MeetingControls#handleBNR() :: Error applying noise reduction effect!');
+    console.log('MeetingControls#handleAudioEffects() :: Error applying noise reduction effect!');
     handleEffectsButton(toggleBNRBtn, BNR, effect);
     throw e;
   }
@@ -1665,7 +1665,6 @@ function handleModelChange() {
   const modelSelect = document.getElementById('ts-model-select');
   const selectedModel = modelSelect ? modelSelect.value : 'bnr';
 
-  // Check if effect already exists - if so, model can't be changed
   const effect = localMedia?.microphoneStream?.getEffectByKind?.('noise-reduction-effect');
   if (effect) {
     console.log('MeetingControls#handleModelChange() :: effect already exists, model cannot be changed');
@@ -1702,15 +1701,14 @@ function handleEffectsButton(btn, type, effect) {
   let disabled = false;
   let title;
 
-  // For noise reduction, use effect.model if available, otherwise use selected model from dropdown
   let displayName = type;
   if (type === BNR) {
     let modelName;
-    if (effect && effect.model) {
+    if (effect?.model) {
       modelName = effect.model;
     } else {
       const modelSelect = document.getElementById('ts-model-select');
-      modelName = modelSelect ? modelSelect.value : 'bnr';
+      modelName = modelSelect?.value || 'bnr';
     }
     displayName = modelName.toUpperCase();
   }
