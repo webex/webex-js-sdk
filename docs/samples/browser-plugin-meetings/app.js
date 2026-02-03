@@ -1639,7 +1639,6 @@ async function handleBNR() {
       // Use effect.model to get actual model (in case effect was created with different model)
       const activeModel = effect.model || selectedModel;
       handleEffectsButton(toggleBNRBtn, BNR, effect);
-      updateModelInfo(activeModel);
       updateModelSelectState(true, activeModel); // Disable and sync dropdown
       console.log(`MeetingControls#handleBNR() :: successfully applied noise reduction (${activeModel}) to local microphone stream`);
 
@@ -1650,7 +1649,6 @@ async function handleBNR() {
       const effectModel = effect.model;
       await effect.disable();
       handleEffectsButton(toggleBNRBtn, BNR, effect);
-      updateModelInfo(null); // Hide info when disabled
       // Keep dropdown disabled - model is locked once effect is created
       updateModelSelectState(true, effectModel);
       console.log('MeetingControls#handleBNR() :: successfully disabled noise reduction from local microphone stream');
@@ -1675,17 +1673,9 @@ function handleModelChange() {
     return;
   }
 
-  updateModelInfo(selectedModel);
   handleEffectsButton(toggleBNRBtn, BNR, null);
 
   console.log(`MeetingControls#handleModelChange() :: selected model ${selectedModel} (will be applied on enable)`);
-}
-
-function updateModelInfo(model) {
-  const infoElement = document.getElementById('ts-model-info');
-  if (infoElement) {
-    infoElement.style.display = model === 'st' ? 'inline' : 'none';
-  }
 }
 
 function updateModelSelectState(disabled, effectModel) {
@@ -1704,7 +1694,7 @@ function updateModelSelectState(disabled, effectModel) {
   }
 
   if (lockedMessage) {
-    lockedMessage.style.display = disabled ? 'inline' : 'none';
+    lockedMessage.style.display = disabled ? 'block' : 'none';
   }
 }
 
