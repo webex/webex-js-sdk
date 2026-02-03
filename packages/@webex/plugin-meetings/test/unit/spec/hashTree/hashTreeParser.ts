@@ -1187,11 +1187,7 @@ describe('HashTreeParser', () => {
           method: 'POST',
           uri: `${mainDataSetUrl}/sync`,
           body: {
-            dataSet: {
-              name: 'main',
-              leafCount: 16,
-              root: '472801612a448c4e0ab74975ed9d7a2e'
-            },
+            leafCount: 16,
             leafDataEntries: [
               {leafIndex: 0, elementIds: [{type: 'locus', id: 0, version: 201}]},
               {leafIndex: 4, elementIds: [{type: 'participant', id: 4, version: 301}]},
@@ -1244,11 +1240,7 @@ describe('HashTreeParser', () => {
           method: 'POST',
           uri: `${parser.dataSets.self.url}/sync`,
           body: {
-            dataSet: {
-              name: 'self',
-              leafCount: 1,
-              root: '483ba32a5db954720b4c43ed528d8075'
-            },
+            leafCount: 1,
             leafDataEntries: [
               {leafIndex: 0, elementIds: [{type: 'self', id: 4, version: 102}]},
             ],

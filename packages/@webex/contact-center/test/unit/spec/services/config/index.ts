@@ -718,6 +718,7 @@ describe('AgentConfigService', () => {
       const mockOrgInfo = {
         tenantId: 'tenant123',
         timezone: 'GMT',
+        environment: 'produs1',
       };
 
       const mockOrgSettings = {
@@ -857,6 +858,7 @@ describe('AgentConfigService', () => {
       const mockOrgInfo = {
         tenantId: 'tenant123',
         timezone: 'GMT',
+        environment: 'produs1',
       };
 
       const mockOrgSettings = {

@@ -21,6 +21,7 @@ const BEHAVIORAL_METRICS = {
   GET_DISPLAY_MEDIA_FAILURE: 'js_sdk_get_display_media_failures',
   JOIN_WITH_MEDIA_FAILURE: 'js_sdk_join_with_media_failures',
   LLM_CONNECTION_AFTER_JOIN_FAILURE: 'js_sdk_llm_connection_after_join_failure',
+  LLM_HEALTHCHECK_FAILURE: 'js_sdk_llm_healthcheck_failure',
   RECEIVE_TRANSCRIPTION_AFTER_JOIN_FAILURE: 'js_sdk_receive_transcription_after_join_failure',
 
   DISCONNECT_DUE_TO_INACTIVITY: 'js_sdk_disconnect_due_to_inactivity',

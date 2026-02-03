@@ -6,6 +6,7 @@
 import {isEqual, mapValues, mean} from 'lodash';
 
 import {Defer} from '@webex/common';
+import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 import LoggerProxy from '../common/logs/logger-proxy';
 import MeetingUtil from '../meeting/util';
 
@@ -195,6 +196,14 @@ export default class Reachability extends EventsScope {
     // @ts-ignore
     if (!this.webex.config.meetings.enableReachabilityChecks) {
       throw new Error('enableReachabilityChecks is disabled in config');
+    }
+
+    if (WebCapabilities.supportsRTCPeerConnection() !== CapabilityState.CAPABLE) {
+      LoggerProxy.logger.warn(
+        'Reachability:index#gatherReachability --> WebRTC API is not available, skipping reachability checks'
+      );
+
+      return {};
     }
     // Fetch clusters and measure latency
     try {
@@ -961,7 +970,12 @@ export default class Reachability extends EventsScope {
     Object.keys(clusterList).forEach((key) => {
       const cluster = clusterList[key];
 
-      this.clusterReachability[key] = new ClusterReachability(key, cluster);
+      this.clusterReachability[key] = new ClusterReachability(
+        key,
+        cluster,
+        // @ts-ignore
+        this.webex.config.meetings.enablePerUdpUrlReachability
+      );
       this.clusterReachability[key].on(Events.resultReady, async (data: ResultEventData) => {
         const {protocol, result, clientMediaIPs, latencyInMilliseconds} = data;
 

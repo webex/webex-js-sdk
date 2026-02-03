@@ -1677,7 +1677,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/runtime-corejs2@npm:^7.14.8, @babel/runtime-corejs2@npm:^7.25.0":
+"@babel/runtime-corejs2@npm:^7.14.8":
   version: 7.28.4
   resolution: "@babel/runtime-corejs2@npm:7.28.4"
   dependencies:
@@ -1686,7 +1686,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/runtime@npm:^7.18.9, @babel/runtime@npm:^7.28.4":
+"@babel/runtime-corejs2@npm:^7.25.0":
+  version: 7.28.6
+  resolution: "@babel/runtime-corejs2@npm:7.28.6"
+  dependencies:
+    core-js: ^2.6.12
+  checksum: 2e9fbf3ee49157c65f960e0b7095943c37c9f6008fedc142c9b299cfaf3070c630772ef856e568af877d87a8bd264fb908a139c814fe5fd0317afe1b1cb7d22c
+  languageName: node
+  linkType: hard
+
+"@babel/runtime@npm:^7.18.9":
+  version: 7.28.6
+  resolution: "@babel/runtime@npm:7.28.6"
+  checksum: 42d8a868c2fc2e9a77927945a6daa7ec03c7ea49e611e0d15442933cdabb12f20e3a6849c729259076c10a4247adec229331d1f94c2d0073ea0979d7853e29fd
+  languageName: node
+  linkType: hard
+
+"@babel/runtime@npm:^7.28.4":
   version: 7.28.4
   resolution: "@babel/runtime@npm:7.28.4"
   checksum: 934b0a0460f7d06637d93fcd1a44ac49adc33518d17253b5a0b55ff4cb90a45d8fe78bf034b448911dbec7aff2a90b918697559f78d21c99ff8dbadae9565b55
@@ -7399,7 +7415,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": 5.38.1
     "@typescript-eslint/parser": 5.38.1
     "@web/dev-server": 0.4.5
-    "@webex/internal-media-core": 2.20.3
+    "@webex/internal-media-core": 2.22.0
     "@webex/internal-plugin-metrics": "workspace:*"
     "@webex/media-helpers": "workspace:*"
     async-mutex: 0.4.0
@@ -7728,15 +7744,15 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:2.20.3":
-  version: 2.20.3
-  resolution: "@webex/internal-media-core@npm:2.20.3"
+"@webex/internal-media-core@npm:2.22.0":
+  version: 2.22.0
+  resolution: "@webex/internal-media-core@npm:2.22.0"
   dependencies:
     "@babel/runtime": ^7.18.9
     "@babel/runtime-corejs2": ^7.25.0
     "@webex/rtcstats": ^1.5.5
     "@webex/ts-sdp": 1.8.2
-    "@webex/web-capabilities": ^1.7.1
+    "@webex/web-capabilities": ^1.9.0
     "@webex/web-client-media-engine": 3.35.2
     events: ^3.3.0
     ip-anonymize: ^0.1.0
@@ -7744,7 +7760,7 @@ __metadata:
     uuid: ^8.3.2
     webrtc-adapter: ^8.1.2
     xstate: ^4.30.6
-  checksum: a851c6e364273c26b65aacd98e8ef606cf631a0ae5641131a6675daf96d53ff730b646988d06f076f8fa013d7100ee1eaaca550f07de0832dde558cec7e4f030
+  checksum: cd46e6152f056e2caa38d0bbadb574ecc8d6371501158012d5c6cc8c15faff84eaeec7be8e4cf1f0b05f546a681cd7815ad002b864d2be51b8698f884442a25a
   languageName: node
   linkType: hard
 
@@ -8557,7 +8573,7 @@ __metadata:
     "@babel/preset-typescript": 7.22.11
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-media-core": 2.20.3
+    "@webex/internal-media-core": 2.22.0
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -8825,7 +8841,7 @@ __metadata:
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/event-dictionary-ts": ^1.0.1930
-    "@webex/internal-media-core": 2.20.3
+    "@webex/internal-media-core": 2.22.0
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-llm": "workspace:*"
@@ -8845,7 +8861,7 @@ __metadata:
     "@webex/test-helper-retry": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
     "@webex/ts-sdp": ^1.8.1
-    "@webex/web-capabilities": ^1.7.1
+    "@webex/web-capabilities": ^1.9.0
     "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
     bowser: ^2.11.0
@@ -9535,12 +9551,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/web-capabilities@npm:^1.6.1, @webex/web-capabilities@npm:^1.7.1":
-  version: 1.8.0
-  resolution: "@webex/web-capabilities@npm:1.8.0"
+"@webex/web-capabilities@npm:^1.6.1, @webex/web-capabilities@npm:^1.7.1, @webex/web-capabilities@npm:^1.9.0":
+  version: 1.9.0
+  resolution: "@webex/web-capabilities@npm:1.9.0"
   dependencies:
     bowser: ^2.11.0
-  checksum: 234e62f3a49f84d9a70962dfce0485caab7b18f50270545f2e1cbf04c367b7693e53000b6440ff9a08812e7036d63b1cf93d735c709b29da81592a2c625e52ad
+  checksum: eccb543f2dce90fbbd41a6996bd6c39fe954e4ee2c488b5ac504b7459a9886a6402b796ecbb3af40432ad890de3e3d5ffdc9bbb34365ac1e3f0abbd442773a1e
   languageName: node
   linkType: hard
 

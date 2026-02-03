@@ -1134,10 +1134,10 @@ describe('Call Tests', () => {
       bodyPresent: true,
       subErrorCode: 0,
       retryAfter: 0,
-      message: 'An unknown error occurred in the call. Wait a moment and try again.',
+      message: 'An unknown error occurred in the call.',
       type: ERROR_TYPE.DEFAULT,
       errorLayer: ERROR_LAYER.CALL_CONTROL,
-      cbExpected: false,
+      cbExpected: true,
       logMsg: 'Unknown Error',
     },
   ].map((stat) =>

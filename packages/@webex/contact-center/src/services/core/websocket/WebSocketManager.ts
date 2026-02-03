@@ -46,7 +46,15 @@ export class WebSocketManager extends EventEmitter {
 
   async initWebSocket(options: {body: SubscribeRequest}): Promise<WelcomeResponse> {
     const connectionConfig = options.body;
-    await this.register(connectionConfig);
+    try {
+      await this.register(connectionConfig);
+    } catch (error) {
+      LoggerProxy.error(`[WebSocketStatus] | Error in registering Websocket ${error}`, {
+        module: WEB_SOCKET_MANAGER_FILE,
+        method: METHODS.INIT_WEB_SOCKET,
+      });
+      throw error;
+    }
 
     return new Promise((resolve, reject) => {
       this.welcomePromiseResolve = resolve;
@@ -90,6 +98,7 @@ export class WebSocketManager extends EventEmitter {
         `Register API Failed, Request to RoutingNotifs websocket registration API failed ${e}`,
         {module: WEB_SOCKET_MANAGER_FILE, method: METHODS.REGISTER}
       );
+      throw e;
     }
   }
 
