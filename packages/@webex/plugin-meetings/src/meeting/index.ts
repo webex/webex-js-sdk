@@ -1677,7 +1677,6 @@ export default class Meeting extends StatelessWebexPlugin {
      * @returns {void}
      */
     // @ts-ignore
-    this.webex.internal.llm.setRefreshHandler(() => this.refreshDataChannelToken());
   }
 
   /**
@@ -3419,6 +3418,8 @@ export default class Meeting extends StatelessWebexPlugin {
         this.recordingController.setLocusUrl(this.locusUrl);
         this.controlsOptionsManager.setLocusUrl(this.locusUrl, !!isMainLocus);
         this.webinar.locusUrlUpdate(url);
+        // @ts-ignore
+        this.webex.internal.llm.setRefreshHandler(() => this.refreshDataChannelToken());
 
         Trigger.trigger(
           this,

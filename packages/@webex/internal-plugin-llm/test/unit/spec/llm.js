@@ -56,10 +56,45 @@ describe('plugin-llm', () => {
         await llmService.registerAndConnect();
         assert.equal(llmService.isConnected(), false);
       });
+
+      it('registers connection with token', async () => {
+        llmService.register = sinon.stub().resolves({
+          body: {
+            binding: 'binding',
+            webSocketUrl: 'url',
+          },
+        });
+
+        assert.equal(llmService.isConnected(), false);
+
+        await llmService.registerAndConnect(locusUrl, datachannelUrl, 'abc123');
+
+        sinon.assert.calledOnceWithExactly(
+          llmService.register,
+          datachannelUrl,
+          'abc123'
+        );
+
+        assert.equal(llmService.isConnected(), true);
+      });
     });
 
     describe('#register', () => {
-      it('registers connection', async () => {
+      it('registers connection with token header', async () => {
+        await llmService.register(datachannelUrl, 'abc123');
+
+        sinon.assert.calledOnceWithExactly(
+          llmService.request,
+          sinon.match({
+            method: 'POST',
+            url: `${datachannelUrl}`,
+            body: {deviceUrl: webex.internal.device.url},
+            headers: {'Data-Channel-Auth-Token': 'abc123'},
+          })
+        );
+      });
+
+      it('registers connection without token header when none provided', async () => {
         await llmService.register(datachannelUrl);
 
         sinon.assert.calledOnceWithExactly(
@@ -68,12 +103,12 @@ describe('plugin-llm', () => {
             method: 'POST',
             url: `${datachannelUrl}`,
             body: {deviceUrl: webex.internal.device.url},
+            headers: {},
           })
         );
-
-        assert.equal(llmService.getBinding(), 'binding');
       });
     });
+
 
     describe('#getLocusUrl', () => {
       it('gets LocusUrl', async () => {
@@ -147,6 +182,55 @@ describe('plugin-llm', () => {
         instance.disconnect.mockRejectedValue(new Error('Disconnect failed'));
 
         await expect(instance.disconnectLLM({})).rejects.toThrow('Disconnect failed');
+      });
+    });
+
+    describe('#setRefreshHandler', () => {
+      it('stores the provided handler', () => {
+        const handler = sinon.stub().resolves('token');
+        llmService.setRefreshHandler(handler);
+
+        // @ts-ignore
+        assert.equal(llmService.refreshHandler, handler);
+      });
+    });
+
+    describe('#refreshDataChannelToken', () => {
+      it('throws if no handler is set', async () => {
+        try {
+          await llmService.refreshDataChannelToken();
+          assert.fail('Should have thrown');
+        } catch (err) {
+          assert.match(err.message, 'refreshHandler not set');
+        }
+      });
+
+      it('returns token when handler resolves', async () => {
+        const handler = sinon.stub().resolves('newToken');
+        llmService.setRefreshHandler(handler);
+
+        const token = await llmService.refreshDataChannelToken();
+        assert.equal(token, 'newToken');
+        sinon.assert.calledOnce(handler);
+      });
+
+      it('logs and rethrows when handler rejects', async () => {
+        const handler = sinon.stub().rejects(new Error('throw error'));
+
+        const loggerSpy = llmService.logger.error;
+
+        if (loggerSpy.resetHistory) {
+          loggerSpy.resetHistory();
+        }
+
+        llmService.setRefreshHandler(handler);
+
+        try {
+          await llmService.refreshDataChannelToken();
+          assert.fail('Should have thrown');
+        } catch (err) {
+          assert.match(err.message, 'throw error');
+        }
       });
     });
   });

@@ -123,7 +123,6 @@ import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
 import {createBrbState} from '@webex/plugin-meetings/src/meeting/brbState';
 import JoinForbiddenError from '../../../../src/common/errors/join-forbidden-error';
 import {EventEmitter} from 'stream';
-
 describe('plugin-meetings', () => {
   const logger = {
     info: () => {},
@@ -12576,7 +12575,7 @@ describe('plugin-meetings', () => {
           const result = await meeting.updateLLMConnection();
 
           assert.notCalled(webex.internal.llm.disconnectLLM);
-          assert.calledWith(webex.internal.llm.registerAndConnect, 'a url', 'a datachannel url');
+          assert.calledWith(webex.internal.llm.registerAndConnect, 'a url', 'a datachannel url', undefined);
           assert.equal(result, 'something');
           assert.calledWithExactly(
             meeting.webex.internal.llm.off,
@@ -12617,7 +12616,8 @@ describe('plugin-meetings', () => {
           assert.calledWith(
             webex.internal.llm.registerAndConnect,
             'a different url',
-            'a datachannel url'
+            'a datachannel url',
+            undefined
           );
           assert.equal(result, 'something');
           assert.calledWithExactly(
@@ -12660,7 +12660,8 @@ describe('plugin-meetings', () => {
           assert.calledWith(
             webex.internal.llm.registerAndConnect,
             'a url',
-            'a different datachannel url'
+            'a different datachannel url',
+            undefined,
           );
           assert.equal(result, 'something');
           assert.calledWithExactly(
@@ -12722,7 +12723,25 @@ describe('plugin-meetings', () => {
           await meeting.updateLLMConnection();
 
           assert.notCalled(webex.internal.llm.disconnectLLM);
-          assert.calledWith(webex.internal.llm.registerAndConnect, 'a url', 'a ps datachannel url');
+          assert.calledWith(webex.internal.llm.registerAndConnect, 'a url', 'a ps datachannel url',undefined);
+        });
+
+        it('passes dataChannelToken to registerAndConnect', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+            self: {datachannelToken: 'token-123'}
+          };
+
+          await meeting.updateLLMConnection();
+
+          assert.calledWith(
+            webex.internal.llm.registerAndConnect,
+            'a url',
+            'a datachannel url',
+            'token-123'
+          );
         });
       });
 
@@ -14289,6 +14308,55 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.meetingRequest.keepAlive);
         });
       });
+describe('#refreshDataChannelToken()', () => {
+  let meeting;
+
+  beforeEach(() => {
+    // ⭐ 不调用构造函数
+    meeting = Object.create(Meeting.prototype);
+
+    // mock locusUrl
+    meeting.locusUrl = 'https://locus.example.com';
+
+    // mock meetingRequest
+    meeting.meetingRequest = {
+      fetchDatachannelToken: sinon.stub().resolves('mock-token'),
+    };
+
+    // mock members
+    meeting.members = {
+      selfId: 'self-123',
+    };
+
+    // mock webinar
+    meeting.webinar = {
+      isJoinPracticeSessionDataChannel: sinon.stub().returns(true),
+    };
+  });
+
+  it('calls fetchDatachannelToken with correct parameters', async () => {
+    await meeting.refreshDataChannelToken();
+
+    sinon.assert.calledOnce(meeting.meetingRequest.fetchDatachannelToken);
+
+    sinon.assert.calledWith(
+      meeting.meetingRequest.fetchDatachannelToken,
+      {
+        locusUrl: 'https://locus.example.com',
+        requestingParticipantId: 'self-123',
+        isPracticeSession: true,
+      }
+    );
+  });
+
+  it('returns the fetchDatachannelToken result', async () => {
+    const result = await meeting.refreshDataChannelToken();
+
+    expect(result).to.equal('mock-token');
+  });
+});
+
+
       describe('#stopKeepAlive', () => {
         let clock;
         const defaultKeepAliveUrl = 'keep.alive.url';
