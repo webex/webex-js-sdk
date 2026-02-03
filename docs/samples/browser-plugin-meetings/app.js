@@ -878,7 +878,7 @@ const toggleSourcesMeetingLevel = document.querySelector('#ts-sending-qualities-
 const loadCameraBtn = document.querySelector('#ts-load-camera');
 const toggleVbgBtn = document.querySelector('#ts-enable-VBG');
 const loadMicrophoneBtn = document.querySelector('#ts-load-mic');
-const toggleAudioEffectsBtn = document.querySelector('#ts-enable-audio-effects');
+const noiseReductionBtn = document.querySelector('#ts-noise-reduction-btn');
 const startShareBtn = document.querySelector('#ts-start-screenshare');
 const publishShareBtn = document.querySelector('#ts-publish-screenshare');
 const unpublishShareBtn = document.querySelector('#ts-unpublish-screenshare');
@@ -1603,7 +1603,7 @@ async function loadMicrophone(constraints) {
     });
 
     handleMuteAudioMessage();
-    handleAudioEffectsButton();
+    updateNoiseReductionButton();
     loadMicrophoneBtn.disabled = true;
     stopAudioButton.disabled = false;
     console.log('MeetingControls#loadMicrophone() :: Successfully got microphone stream:', localMedia.microphoneStream);
@@ -1614,7 +1614,7 @@ async function loadMicrophone(constraints) {
   }
 }
 
-async function handleAudioEffects() {
+async function handleNoiseReduction() {
   let effect;
   const modelSelect = document.getElementById('ts-model-select');
   const selectedModel = modelSelect ? modelSelect.value : 'bnr';
@@ -1622,39 +1622,34 @@ async function handleAudioEffects() {
   try {
     effect = await localMedia.microphoneStream.getEffectByKind('noise-reduction-effect');
     if (!effect?.isEnabled) {
-      console.log(`MeetingControls#handleAudioEffects() :: applying noise reduction (${selectedModel}) to local microphone stream`);
+      console.log(`MeetingControls#handleNoiseReduction() :: applying noise reduction (${selectedModel}) to local microphone stream`);
 
       if (!effect) {
         effect = await webex.meetings.createNoiseReductionEffect({
           env: integrationEnv.checked ? 'int' : 'prod',
           model: selectedModel
         });
-        handleAudioEffectsButton(effect);
         await localMedia.microphoneStream.addEffect(effect);
+        // Lock model selection once effect is created (cannot change model after this)
+        lockModelSelect(effect.model);
       }
 
       await effect.enable();
-      // Use effect.model to get actual model (in case effect was created with different model)
-      const activeModel = effect.model || selectedModel;
-      handleAudioEffectsButton(effect);
-      updateModelSelectState(true, activeModel);
-      console.log(`MeetingControls#handleAudioEffects() :: successfully applied noise reduction (${activeModel}) to local microphone stream`);
+      updateNoiseReductionButton(effect);
+      console.log(`MeetingControls#handleNoiseReduction() :: successfully applied noise reduction (${effect.model}) to local microphone stream`);
 
     }
     else {
-      console.log('MeetingControls#handleAudioEffects() :: disabling noise reduction from local microphone stream');
+      console.log('MeetingControls#handleNoiseReduction() :: disabling noise reduction from local microphone stream');
 
-      const effectModel = effect.model;
       await effect.disable();
-      handleAudioEffectsButton(effect);
-      // Keep dropdown disabled - model is locked once effect is created
-      updateModelSelectState(true, effectModel);
-      console.log('MeetingControls#handleAudioEffects() :: successfully disabled noise reduction from local microphone stream');
+      updateNoiseReductionButton(effect);
+      console.log('MeetingControls#handleNoiseReduction() :: successfully disabled noise reduction from local microphone stream');
     }
   }
   catch (e) {
-    console.log('MeetingControls#handleAudioEffects() :: Error applying noise reduction effect!');
-    handleAudioEffectsButton(effect);
+    console.log('MeetingControls#handleNoiseReduction() :: Error applying noise reduction effect');
+    updateNoiseReductionButton(effect);
     throw e;
   }
 }
@@ -1670,20 +1665,18 @@ function handleModelChange() {
     return;
   }
 
-  handleAudioEffectsButton();
+  updateNoiseReductionButton();
 
   console.log(`MeetingControls#handleModelChange() :: selected model ${selectedModel} (will be applied on enable)`);
 }
 
-function updateModelSelectState(disabled, effectModel) {
+function lockModelSelect(effectModel) {
   const modelSelect = document.getElementById('ts-model-select');
   const lockedMessage = document.getElementById('ts-model-locked');
 
   if (modelSelect) {
-    modelSelect.disabled = disabled;
-    modelSelect.title = disabled
-      ? 'Model cannot be changed after effect is created. Reload page to change model.'
-      : 'Select audio processing model';
+    modelSelect.disabled = true;
+    modelSelect.title = 'Model cannot be changed after effect is created. Reload page to change model.';
 
     if (effectModel && modelSelect.value !== effectModel) {
       modelSelect.value = effectModel;
@@ -1691,7 +1684,7 @@ function updateModelSelectState(disabled, effectModel) {
   }
 
   if (lockedMessage) {
-    lockedMessage.style.display = disabled ? 'block' : 'none';
+    lockedMessage.style.display = 'block';
   }
 }
 
@@ -1714,7 +1707,7 @@ function handleVbgButton(effect) {
   toggleVbgBtn.innerText = title;
 }
 
-function handleAudioEffectsButton(effect) {
+function updateNoiseReductionButton(effect) {
   let disabled = false;
   let title;
 
@@ -1739,8 +1732,8 @@ function handleAudioEffectsButton(effect) {
     title = `Enable ${displayName}`;
   }
 
-  toggleAudioEffectsBtn.disabled = disabled;
-  toggleAudioEffectsBtn.innerText = title;
+  noiseReductionBtn.disabled = disabled;
+  noiseReductionBtn.innerText = title;
 }
 
 async function stopStartVideo() {
