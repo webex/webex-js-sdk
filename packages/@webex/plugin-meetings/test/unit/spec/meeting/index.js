@@ -3028,6 +3028,111 @@ describe('plugin-meetings', () => {
           checkWorking({allowMediaInLobby: true});
         });
 
+        const setupLobbyTest = () => {
+          meeting.roap.doTurnDiscovery = sinon
+            .stub()
+            .resolves({turnServerInfo: undefined, turnDiscoverySkippedReason: undefined});
+
+          meeting.meetingState = 'ACTIVE';
+          meeting.locusInfo.parsedLocus = {self: {state: 'IDLE'}};
+          meeting.isUserUnadmitted = true;
+
+          // Mock locusMediaRequest
+          meeting.locusMediaRequest = {
+            send: sinon.stub().resolves(),
+            isConfluenceCreated: sinon.stub().returns(false),
+          };
+
+          sinon.stub(RemoteMediaManagerModule, 'RemoteMediaManager').returns({
+            start: sinon.stub().resolves(),
+            on: sinon.stub(),
+            logAllReceiveSlots: sinon.stub(),
+          });
+
+          meeting.isMultistream = true;
+
+          const createFakeStream = (id) => ({
+            on: sinon.stub(),
+            off: sinon.stub(),
+            userMuted: false,
+            systemMuted: false,
+            get muted() {
+              return this.userMuted || this.systemMuted;
+            },
+            setUnmuteAllowed: sinon.stub(),
+            setUserMuted: sinon.stub(),
+            outputStream: {
+              getTracks: () => [{id}],
+            },
+            getSettings: sinon.stub().returns({}),
+          });
+
+          return {
+            fakeMicrophoneStream: createFakeStream('fake mic'),
+            fakeCameraStream: createFakeStream('fake camera'),
+          };
+        };
+
+        it('should not publish any local streams when in the lobby and allowPublishMediaInLobby is false', async () => {
+          const {fakeMicrophoneStream, fakeCameraStream} = setupLobbyTest();
+
+          const publishStreamStub = sinon.stub();
+          fakeMediaConnection.createSendSlot = sinon.stub().returns({
+            publishStream: publishStreamStub,
+            unpublishStream: sinon.stub(),
+            setNamedMediaGroups: sinon.stub(),
+          });
+
+          await meeting.addMedia({
+            allowMediaInLobby: true,
+            allowPublishMediaInLobby: false,
+            audioEnabled: true,
+            videoEnabled: true,
+            localStreams: {
+              microphone: fakeMicrophoneStream,
+              camera: fakeCameraStream,
+            },
+          });
+
+          assert.notCalled(publishStreamStub);
+        });
+
+        it('should publish local streams when in the lobby and allowPublishMediaInLobby is true', async () => {
+          const {fakeMicrophoneStream, fakeCameraStream} = setupLobbyTest();
+
+          const audioSlot = {
+            publishStream: sinon.stub(),
+            unpublishStream: sinon.stub(),
+            setNamedMediaGroups: sinon.stub(),
+          };
+          const videoSlot = {
+            publishStream: sinon.stub(),
+            unpublishStream: sinon.stub(),
+            setNamedMediaGroups: sinon.stub(),
+          };
+
+          fakeMediaConnection.createSendSlot = sinon.stub().callsFake((mediaType) => {
+            if (mediaType === 'AUDIO-MAIN') {
+              return audioSlot;
+            }
+            return videoSlot;
+          });
+
+          await meeting.addMedia({
+            allowMediaInLobby: true,
+            allowPublishMediaInLobby: true,
+            audioEnabled: true,
+            videoEnabled: true,
+            localStreams: {
+              microphone: fakeMicrophoneStream,
+              camera: fakeCameraStream,
+            },
+          });
+
+          assert.calledOnceWithExactly(audioSlot.publishStream, fakeMicrophoneStream);
+          assert.calledOnceWithExactly(videoSlot.publishStream, fakeCameraStream);
+        });
+
         it('should create rtcMetrics and pass them to Media.createMediaConnection()', async () => {
           const setIntervalOriginal = window.setInterval;
           window.setInterval = sinon.stub().returns(1);
