@@ -1701,7 +1701,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         data.teamId === this.agentConfig.currentTeamId
       ) {
         const message =
-          'Will not proceed with device update as new Device type is same as current device type and teamId is same as current teamId';
+          'Profile update requires a change to either the login type or team. Please select a different login type or team to proceed with the update';
         const err = new Error(message) as GenericError;
         err.details = {
           type: 'Identical Device Change Failure',
