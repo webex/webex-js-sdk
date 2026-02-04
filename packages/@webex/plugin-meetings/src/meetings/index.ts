@@ -195,6 +195,8 @@ export default class Meetings extends WebexPlugin {
   preferredWebexSite: any;
   reachability: Reachability;
   registered: any;
+  registrationPromise: Promise<void>;
+  unregistrationPromise: Promise<void>;
   request: any;
   geoHintInfo: any;
   meetingInfo: any;
@@ -929,9 +931,20 @@ export default class Meetings extends WebexPlugin {
    * @returns {Promise} A promise that resolves when the step is completed.
    */
   executeRegistrationStep(step: () => Promise<any>, stepName: string) {
-    return step().then(() => {
-      this.registrationStatus[stepName] = true;
-    });
+    return step()
+      .then(() => {
+        LoggerProxy.logger.info(
+          `Meetings:index#executeRegistrationStep --> INFO, ${stepName} completed`
+        );
+        this.registrationStatus[stepName] = true;
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error(
+          `Meetings:index#executeRegistrationStep --> ERROR, ${stepName} failed: ${error.message}`
+        );
+
+        return Promise.reject(error);
+      });
   }
 
   /**
@@ -944,7 +957,33 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   public register(deviceRegistrationOptions?: DeviceRegistrationOptions): Promise<any> {
-    this.registrationStatus = clone(INITIAL_REGISTRATION_STATUS);
+    if (this.unregistrationPromise) {
+      LoggerProxy.logger.info(
+        'Meetings:index#register --> INFO, Meetings plugin unregistration in progress, waiting to register'
+      );
+
+      this.registrationPromise = this.unregistrationPromise
+        .catch(() => {}) // It doesn't matter what happened during unregistration
+        .finally(() => {
+          LoggerProxy.logger.info(
+            'Meetings:index#register --> INFO, Meetings plugin unregistration completed, proceeding to register'
+          );
+
+          this.registrationPromise = null;
+
+          return this.register(deviceRegistrationOptions);
+        });
+
+      return this.registrationPromise;
+    }
+
+    if (this.registrationPromise) {
+      LoggerProxy.logger.info(
+        'Meetings:index#register --> INFO, Meetings plugin registration in progress, returning existing promise'
+      );
+
+      return this.registrationPromise;
+    }
 
     // @ts-ignore
     if (!this.webex.canAuthorize) {
@@ -963,7 +1002,11 @@ export default class Meetings extends WebexPlugin {
       return Promise.resolve();
     }
 
-    return Promise.all([
+    LoggerProxy.logger.info('Meetings:index#register --> INFO, Registering Meetings plugin');
+
+    this.registrationStatus = clone(INITIAL_REGISTRATION_STATUS);
+
+    this.registrationPromise = Promise.all([
       this.executeRegistrationStep(() => this.fetchUserPreferredWebexSite(), 'fetchWebexSite'),
       this.executeRegistrationStep(() => this.getGeoHint(), 'getGeoHint'),
       this.executeRegistrationStep(
@@ -1022,7 +1065,12 @@ export default class Meetings extends WebexPlugin {
         });
 
         return Promise.reject(error);
+      })
+      .finally(() => {
+        this.registrationPromise = null;
       });
+
+    return this.registrationPromise;
   }
 
   /**
@@ -1034,6 +1082,35 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   unregister() {
+    if (this.unregistrationPromise) {
+      LoggerProxy.logger.info(
+        'Meetings:index#unregister --> INFO, Meetings plugin unregistration in progress, returning existing promise'
+      );
+
+      return this.unregistrationPromise;
+    }
+
+    if (this.registrationPromise) {
+      LoggerProxy.logger.info(
+        'Meetings:index#unregister --> INFO, Meetings plugin registration in progress, waiting to unregister'
+      );
+
+      // Wait for registration to complete (success or failure), then call unregister again
+      this.unregistrationPromise = this.registrationPromise
+        .catch(() => {}) // It doesn't matter what happened during registration
+        .finally(() => {
+          LoggerProxy.logger.info(
+            'Meetings:index#unregister --> INFO, Meetings plugin registration completed, proceeding to unregister'
+          );
+
+          this.unregistrationPromise = null;
+
+          return this.unregister();
+        });
+
+      return this.unregistrationPromise;
+    }
+
     if (!this.registered) {
       LoggerProxy.logger.info(
         'Meetings:index#unregister --> INFO, Meetings plugin already unregistered'
@@ -1044,7 +1121,7 @@ export default class Meetings extends WebexPlugin {
 
     this.stopListeningForEvents();
 
-    return (
+    this.unregistrationPromise =
       // @ts-ignore
       this.webex.internal.mercury
         // Use code 3050 with a non-reconnecting reason to prevent Mercury auto-reconnect
@@ -1081,7 +1158,11 @@ export default class Meetings extends WebexPlugin {
           this.registered = false;
           this.registrationStatus = clone(INITIAL_REGISTRATION_STATUS);
         })
-    );
+        .finally(() => {
+          this.unregistrationPromise = null;
+        });
+
+    return this.unregistrationPromise;
   }
 
   /**

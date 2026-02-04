@@ -7438,7 +7438,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private async waitForMediaConnectionConnected(): Promise<void> {
     try {
-      await this.mediaProperties.waitForMediaConnectionConnected();
+      await this.mediaProperties.waitForMediaConnectionConnected(this.correlationId);
     } catch (error) {
       const {iceConnected} = error;
 
