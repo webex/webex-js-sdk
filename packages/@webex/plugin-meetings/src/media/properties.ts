@@ -196,11 +196,13 @@ export default class MediaProperties {
   /**
    * Waits for the webrtc media connection to be connected.
    *
+   * @param {string} correlationId
    * @returns {Promise<void>}
    */
-  waitForMediaConnectionConnected(): Promise<void> {
+  waitForMediaConnectionConnected(correlationId: string): Promise<void> {
     const mediaConnectionAwaiter = new MediaConnectionAwaiter({
       webrtcMediaConnection: this.webrtcMediaConnection,
+      correlationId,
     });
 
     return mediaConnectionAwaiter.waitForMediaConnectionConnected();
