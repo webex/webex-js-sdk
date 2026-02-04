@@ -1266,7 +1266,7 @@ describe('plugin-meetings', () => {
           };
         });
 
-        it('creates noise reduction effect', async () => {
+        it('creates noise reduction effect with BNR model', async () => {
           const result = await webex.meetings.createNoiseReductionEffect({audioContext: {}});
 
           assert.exists(result);
@@ -1278,29 +1278,50 @@ describe('plugin-meetings', () => {
             authToken: 'fake_token',
             mode: 'WORKLET',
             avoidSimd: false,
+            model: 'bnr',
           });
           assert.exists(result.enable);
           assert.exists(result.disable);
           assert.exists(result.dispose);
         });
 
-        it('creates noise reduction effect with custom options passed', async () => {
-          const effectOptions = {
+        it('creates noise reduction effect with ST model', async () => {
+          const result = await webex.meetings.createNoiseReductionEffect({
             audioContext: {},
-            mode: 'LEGACY',
-            env: 'int',
-            avoidSimd: true,
-          };
-
-          const result = await webex.meetings.createNoiseReductionEffect(effectOptions);
+            model: 'st',
+          });
 
           assert.exists(result);
           assert.instanceOf(result, NoiseReductionEffect);
           assert.containsAllKeys(result, ['audioContext', 'isEnabled', 'isReady', 'options']);
-          assert.deepEqual(result.options, {...effectOptions, authToken: 'fake_token'});
+          assert.equal(result.options.authToken, 'fake_token');
+          assert.deepEqual(result.options, {
+            audioContext: {},
+            authToken: 'fake_token',
+            mode: 'WORKLET',
+            avoidSimd: false,
+            model: 'st',
+          });
           assert.exists(result.enable);
           assert.exists(result.disable);
           assert.exists(result.dispose);
+        });
+
+        it('passes custom options to noise reduction effect', async () => {
+          const result = await webex.meetings.createNoiseReductionEffect({
+            audioContext: {},
+            mode: 'LEGACY',
+            env: 'int',
+            avoidSimd: true,
+          });
+
+          assert.exists(result);
+          assert.instanceOf(result, NoiseReductionEffect);
+          assert.equal(result.options.mode, 'LEGACY');
+          assert.equal(result.options.env, 'int');
+          assert.equal(result.options.avoidSimd, true);
+          assert.equal(result.options.authToken, 'fake_token');
+          assert.equal(result.options.model, 'bnr');
         });
       });
 

@@ -78,7 +78,7 @@
     "package-tools": "webex-package-tools"
   },
   "resolutions": {
-    "@webex/json-multistream": "2.3.1"
+    "@webex/json-multistream": "2.4.3"
   },
   "devDependencies": {
     "@babel/cli": "^7.17.10",

@@ -390,6 +390,16 @@ legend {
   color: #7d4705;
 }
 
+.webex-info {
+  color: #555;
+  font-size: 0.85em;
+}
+
+select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .webex-error {
   color: #de3434;
 }
