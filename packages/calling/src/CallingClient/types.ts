@@ -90,7 +90,7 @@ export interface ICallingClient extends Eventing<CallingClientEventTypes> {
    * @param userId - The user identifier whose devices should be fetched.
    * @returns List of devices associated with the user.
    */
-  getDevices(userId: string): Promise<DeviceType[]>;
+  getDevices(userId?: string): Promise<DeviceType[]>;
 
   /**
    * Retrieves a dictionary of active calls grouped by `lineId`.

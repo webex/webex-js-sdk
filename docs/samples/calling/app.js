@@ -710,7 +710,6 @@ function renderDevicesTable(devices = []) {
       <th>Last Seen</th>
       <th>URI</th>
       <th>Client Device URI</th>
-      <th>Addresses</th>
     </tr>
   `;
 
@@ -724,7 +723,6 @@ function renderDevicesTable(devices = []) {
           <td>${device.lastSeen}</td>
           <td>${device.uri}</td>
           <td>${device.clientDeviceUri || ''}</td>
-          <td>${Array.isArray(device.addresses) ? device.addresses.join(', ') : ''}</td>
         </tr>`
     )
     .join('');
@@ -737,11 +735,10 @@ async function fetchDevicesList() {
   }
 
   const enteredUserId = devicesUserIdInput?.value?.trim();
-  const defaultUserId = callingClient.getSDKConnector().getWebex().internal.device.userId;
-  const userId = enteredUserId || defaultUserId;
+  const userId = enteredUserId;
 
   try {
-    const devices = await callingClient.getDevices(userId);
+    const devices = await callingClient.getDevices();
     renderDevicesTable(devices);
   } catch (error) {
     console.error('Failed to fetch devices', error);

@@ -30,6 +30,7 @@ import {
   CISCO_DEVICE_URL,
   SPARK_USER_AGENT,
   URL_ENDPOINT,
+  ACTIVE_MOBIUS_STORAGE_KEY,
 } from './constants';
 import {MOCK_MULTIPLE_SESSIONS_EVENT, MOCK_SESSION_EVENT} from './callRecordFixtures';
 import {ILine} from './line/types';
@@ -822,10 +823,15 @@ describe('CallingClient Tests', () => {
 
   describe('getDevices', () => {
     let callingClient: ICallingClient;
+    const activeMobius = 'https://mobius.test/api/v1/calling/web/';
 
     beforeEach(async () => {
+      (global as any).localStorage = {
+        getItem: jest.fn().mockReturnValue(activeMobius),
+        setItem: jest.fn(),
+      };
+      (global as any).localStorage.setItem(ACTIVE_MOBIUS_STORAGE_KEY, activeMobius);
       callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
-      callingClient['primaryMobiusUris'] = ['https://mobius.test/api/v1/calling/web/'];
     });
 
     afterEach(() => {
@@ -864,10 +870,6 @@ describe('CallingClient Tests', () => {
       });
 
       expect(response).toEqual(devices);
-    });
-
-    it('throws when userId is missing', async () => {
-      await expect(callingClient.getDevices('')).rejects.toThrow('userId');
     });
   });
 
