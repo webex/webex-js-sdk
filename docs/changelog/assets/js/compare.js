@@ -11,6 +11,19 @@
  * UI Workflow: Package → Version1 → Version2 → PreRelease1 → PreRelease2
  */
 
+import {
+  github_base_url,
+  getUnionPackages,
+  generatePackageComparisonData,
+  findLatestPackageVersion,
+  getEffectiveVersion,
+  determinePackageStatus,
+  createPackageComparisonRow,
+  getPackageVersion,
+  calculateComparisonStats,
+  buildPackagesList
+} from './app.js';
+
 // DOM Elements - Will be initialized after DOM loads
 let packageNameSelect;
 let version1Select;
@@ -39,9 +52,6 @@ let selectedVersion1 = null;
 let selectedVersion2 = null;
 let comparisonData = null;
 let localVersionPaths = {}; // Local copy of version paths
-
-// GitHub base URL - use from app.js if available, otherwise define it
-const compareGithubBaseUrl = typeof github_base_url !== 'undefined' ? github_base_url : "https://github.com/webex/webex-js-sdk/";
 
 /**
  * Initialize DOM element references
@@ -443,7 +453,7 @@ async function collectAllCommitsBetweenStableVersions(packageName, stableVersion
                 message: message,
                 version: pkgVersion,
                 stableVersion: version,
-                url: `${compareGithubBaseUrl}commit/${hash}`
+                url: `${github_base_url}commit/${hash}`
               });
             });
           }
@@ -601,15 +611,13 @@ function displayCommitHistory(comparison) {
   allCommits.forEach(commit => {
     const row = document.createElement('tr');
     
-    const baseUrl = typeof github_base_url !== 'undefined' ? github_base_url : compareGithubBaseUrl;
-    
     const commitLink = commit.hash ? 
-      `<a href="${baseUrl}commit/${commit.hash}" target="_blank">${commit.shortHash}</a>` : 
+      `<a href="${github_base_url}commit/${commit.hash}" target="_blank">${commit.shortHash}</a>` : 
       commit.shortHash || 'N/A';
     
     const messageWithLinks = (commit.message || 'No message').replace(
       /#(\d+)/g, 
-      `<a href="${baseUrl}pull/$1" target="_blank">#$1</a>`
+      `<a href="${github_base_url}pull/$1" target="_blank">#$1</a>`
     );
     
     // Show the specific version this commit was in
