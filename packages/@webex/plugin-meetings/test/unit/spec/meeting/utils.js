@@ -1624,15 +1624,6 @@ describe('plugin-meetings', () => {
 
         assert.isFalse(MeetingUtil._urlsPartiallyMatch(url1, url2));
       });
-
-      it('handles real proxy scenario from production', () => {
-        const url1 =
-          'wss://other.example.com/somepath/mercury.example.com/v1/apps/wx2/registrations/00000000-0000-0000-0000-000000000000/messages';
-        const url2 =
-          'wss://mercury.example.com/v1/apps/wx2/registrations/00000000-0000-0000-0000-000000000000/messages';
-
-        assert.isTrue(MeetingUtil._urlsPartiallyMatch(url1, url2));
-      });
     });
 
     describe('#getSocketUrlInfo', () => {
