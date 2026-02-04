@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDK Version Comparison Tool</title>
+  <link rel="stylesheet" href="compare.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>SDK Version Comparison</h1>
+      <p class="subtitle">Compare package versions between two SDK releases</p>
+    </header>
+
+    <div class="comparison-form" id="comparisonForm">
+      <!-- Package Name Selection -->
+      <div class="form-section">
+        <label for="packageName">Package Name: <span class="required">*</span></label>
+        <select id="packageName" class="form-select">
+          <option value="">Select a package</option>
+        </select>
+      </div>
+
+      <div class="version-row">
+        <!-- Version 1 -->
+        <div class="form-section half-width">
+          <label for="version1">Version 1: <span class="required">*</span></label>
+          <div class="input-with-clear">
+            <select id="version1" class="form-select" disabled>
+              <option value="">Select version</option>
+            </select>
+            <button id="clearVersion1" class="clear-btn hidden" title="Clear selection">✕</button>
+          </div>
+        </div>
+
+        <!-- Version 2 -->
+        <div class="form-section half-width">
+          <label for="version2">Version 2: <span class="required">*</span></label>
+          <div class="input-with-clear">
+            <select id="version2" class="form-select" disabled>
+              <option value="">Select version</option>
+            </select>
+            <button id="clearVersion2" class="clear-btn hidden" title="Clear selection">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="version-row">
+        <!-- Pre-Release Version 1 -->
+        <div class="form-section half-width">
+          <label for="preRelease1">Pre-Release Version 1: <span class="required">*</span></label>
+          <select id="preRelease1" class="form-select" disabled>
+            <option value="">Select a version first to load</option>
+          </select>
+        </div>
+
+        <!-- Pre-Release Version 2 -->
+        <div class="form-section half-width">
+          <label for="preRelease2">Pre-Release Version 2: <span class="required">*</span></label>
+          <select id="preRelease2" class="form-select" disabled>
+            <option value="">First select Version 2</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button id="submitBtn" class="btn btn-primary" disabled>Submit</button>
+        <button id="resetBtn" class="btn btn-secondary">Reset</button>
+      </div>
+    </div>
+
+    <!-- Results Section -->
+    <div id="resultsSection" class="results-section hidden">
+      <!-- Changed Package List -->
+      <div class="result-card">
+        <h2> Changed Package List with Version</h2>
+
+        <div class="stats-row">
+          <div class="stat-card total">
+            <div class="stat-number" id="totalPackages">0</div>
+            <div class="stat-label">Total Packages</div>
+          </div>
+          <div class="stat-card changed">
+            <div class="stat-number" id="changedPackages">0</div>
+            <div class="stat-label">Changed</div>
+          </div>
+          <div class="stat-card added">
+            <div class="stat-number" id="addedPackages">0</div>
+            <div class="stat-label">Added</div>
+          </div>
+          <div class="stat-card removed">
+            <div class="stat-number" id="removedPackages">0</div>
+            <div class="stat-label">Removed</div>
+          </div>
+          <div class="stat-card unchanged">
+            <div class="stat-number" id="unchangedPackages">0</div>
+            <div class="stat-label">Unchanged</div>
+          </div>
+        </div>
+
+        <div class="filter-buttons">
+          <button class="filter-btn active" data-filter="all">All Packages</button>
+          <button class="filter-btn" data-filter="changed">Changed Only</button>
+          <button class="filter-btn" data-filter="added">Added Only</button>
+          <button class="filter-btn" data-filter="removed">Removed Only</button>
+        </div>
+
+        <div class="table-wrapper">
+          <table id="packageTable">
+            <thead>
+              <tr>
+                <th>Package Name</th>
+                <th id="version1Header">Version 1</th>
+                <th id="version2Header">Version 2</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="packageTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Commit History -->
+      <div class="result-card">
+        <h2> Commit History</h2>
+        <div class="table-wrapper">
+          <table id="commitHistoryTable">
+            <thead>
+              <tr>
+                <th>Commit Hash</th>
+                <th>Commit Message</th>
+                <th>Package</th>
+                <th>Version</th>
+              </tr>
+            </thead>
+            <tbody id="commitHistoryBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/compare.js"></script>
+</body>
+</html>

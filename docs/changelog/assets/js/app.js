@@ -40,27 +40,29 @@ const comparisonHelper = document.getElementById('comparison-helper');
 const helperSection = document.getElementById('helper-section');
 const packageLevelSection = document.getElementById('package-level-comparison-section');
 
-// Initialize UI state
-searchResults.classList.add('hide');
+// Initialize UI state - only if elements exist (for compare.html compatibility)
+if (searchResults) searchResults.classList.add('hide');
 
-// Templates and Helpers - Handlebar
+// Templates and Helpers - Handlebar (only if template exists)
 const changelogItemTemplate = document.getElementById('changelog-item-template');
-var changelogUI = Handlebars.compile(changelogItemTemplate.innerHTML);
-Handlebars.registerHelper("forIn", function(object) {
-    let returnArray = [];
-    for(let prop in object){
-      returnArray.push({key: prop, value: object[prop]});
-    }
-    return returnArray;
-});
+var changelogUI = changelogItemTemplate ? Handlebars.compile(changelogItemTemplate.innerHTML) : null;
+if (Handlebars && changelogItemTemplate) {
+  Handlebars.registerHelper("forIn", function(object) {
+      let returnArray = [];
+      for(let prop in object){
+        returnArray.push({key: prop, value: object[prop]});
+      }
+      return returnArray;
+  });
 
-Handlebars.registerHelper('json', function(context, package, version) {
-    const copyElem = {
-        ...context,
+  Handlebars.registerHelper('json', function(context, package, version) {
+      const copyElem = {
+          ...context,
         [package]: version
     }
     return JSON.stringify(copyElem);
-});
+  });
+}
 
 Handlebars.registerHelper('github_linking', function(string, type) {
     switch(type){
@@ -435,22 +437,22 @@ const doSearch = (searchParams) => {
     searchResults.classList.remove('hide');
 };
 
-// Event listeners
-versionSelectDropdown.addEventListener('change', (event) => doStableVersionChange({stable_version: event.target.value}));
+// Event listeners (only if elements exist - for compare.html compatibility)
+if (versionSelectDropdown) versionSelectDropdown.addEventListener('change', (event) => doStableVersionChange({stable_version: event.target.value}));
 
 [
     versionInput,
     commitHashInput,
     commitMessageInput
 ].forEach((element) => {
-    element.addEventListener('keyup', () => updateFormState());
+    if (element) element.addEventListener('keyup', () => updateFormState());
 });
 
-packageNameInputDropdown.addEventListener('change', () => updateFormState());
+if (packageNameInputDropdown) packageNameInputDropdown.addEventListener('change', () => updateFormState());
 
-versionInput.addEventListener('keyup', (event) => validateVersionInput({version: event.target.value}));
+if (versionInput) versionInput.addEventListener('keyup', (event) => validateVersionInput({version: event.target.value}));
 
-searchForm.addEventListener('submit', (event) => {
+if (searchForm) searchForm.addEventListener('submit', (event) => {
     // Prevent the default form submission
     event.preventDefault();
 
