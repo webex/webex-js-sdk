@@ -253,17 +253,6 @@ export const actions: TaskActionsMap = {
 
   setExitingConference: assign({exitingConference: true}),
 
-  handleExitConferenceSuccess: assign(({event}: TaskActionArgs) => {
-    const taskData = getTaskDataFromEvent(event);
-
-    return {
-      ...(taskData ? {taskData} : {}),
-      exitingConference: false,
-    };
-  }),
-
-  handleExitConferenceFailed: assign({exitingConference: false}),
-
   handleTransferConferenceSuccess: assign(({event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event);
 

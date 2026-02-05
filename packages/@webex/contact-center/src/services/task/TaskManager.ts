@@ -281,7 +281,11 @@ export default class TaskManager extends EventEmitter {
         return {type: TaskEvent.CONFERENCE_END, taskData: payload};
 
       case CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE:
-        return {type: TaskEvent.PARTICIPANT_LEAVE, taskData: payload};
+        return {
+          type: TaskEvent.PARTICIPANT_LEAVE,
+          taskData: payload,
+          participantId: payload?.participantId,
+        };
 
       case CC_EVENTS.AGENT_CONFERENCE_TRANSFERRED:
         return {type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS, taskData: payload};
@@ -420,7 +424,6 @@ export default class TaskManager extends EventEmitter {
       payload: adjustedPayload,
       task,
       stateMachineEvent,
-      wasConsultedTask,
     };
   }
 

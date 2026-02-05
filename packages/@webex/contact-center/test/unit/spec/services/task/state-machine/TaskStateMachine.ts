@@ -202,7 +202,7 @@ describe('Task state machine', () => {
         destinationType: 'agent',
       });
       expect(service.getSnapshot().value).toBe(TaskState.CONSULT_INITIATING);
-      service.send({type: TaskEvent.CONSULT_CREATED, taskData});
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
       expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
 
       service.send({type: TaskEvent.MERGE_TO_CONFERENCE});

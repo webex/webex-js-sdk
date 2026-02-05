@@ -44,14 +44,6 @@ export const isSelfConsultingAgent = (context: TaskContext, taskData?: TaskData)
   return taskData?.consultingAgentId === selfAgentId;
 };
 
-export const getPrimaryMediaHoldFlag = (taskData?: TaskData | null): boolean | undefined => {
-  if (!taskData) return undefined;
-  const mediaId = taskData.mediaResourceId;
-  if (!mediaId) return undefined;
-
-  return taskData.interaction?.media?.[mediaId]?.isHold;
-};
-
 /**
  * Determines if this agent should enter WRAPPING_UP state.
  * Priority: agentsPendingWrapUp > wrapUpRequired / participant.isWrapUp > ownership > !isConsulted
@@ -91,29 +83,6 @@ export interface GuardParams {
 export type GuardFunction = (params: GuardParams) => boolean;
 
 export const guards = {
-  selfInMainCallFromEventOrContext: ({context, event}: GuardParams): boolean => {
-    const eventTaskData = getTaskDataFromEvent(event);
-    const taskData = eventTaskData ?? context.taskData;
-    if (!taskData?.interaction) return false;
-
-    const selfAgentId = getSelfAgentId(context, taskData);
-    if (!selfAgentId) return false;
-
-    const mainCallId = taskData.interaction.mainInteractionId || taskData.interactionId;
-    if (!mainCallId) return false;
-
-    const mainCall = taskData.interaction.media?.[mainCallId];
-
-    return Boolean(mainCall?.participants?.includes(selfAgentId));
-  },
-
-  backendReportsConference: ({context, event}: GuardParams): boolean => {
-    const eventTaskData = getTaskDataFromEvent(event);
-    const taskData = eventTaskData ?? context.taskData;
-
-    return taskData?.interaction?.state === 'conference';
-  },
-
   // Hydrate Guards
   isInteractionTerminated: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
@@ -165,54 +134,42 @@ export const guards = {
     return getIsConferenceInProgress(taskData);
   },
 
-  notInConferenceFromEvent: ({event}: GuardParams): boolean => {
-    const taskData = getTaskDataFromEvent(event);
-    if (!taskData) return false;
-
-    return !getIsConferenceInProgress(taskData);
-  },
-
-  conferenceActiveInEventOrContext: ({context, event}: GuardParams): boolean => {
-    const eventTaskData = getTaskDataFromEvent(event);
-    const conferenceInEvent = eventTaskData ? getIsConferenceInProgress(eventTaskData) : false;
-    const conferenceInContext = context.taskData
-      ? getIsConferenceInProgress(context.taskData)
-      : false;
-
-    return conferenceInEvent || conferenceInContext;
-  },
-
-  shouldDowngradeConference: ({context, event}: GuardParams): boolean => {
-    const eventTaskData = getTaskDataFromEvent(event);
-    const taskData = eventTaskData ?? context.taskData;
-    if (!taskData?.interaction || !taskData?.interactionId) return false;
-
-    if (taskData.interaction.state === 'conference') return false;
-
-    const count = getConferenceParticipantsCount(taskData.interaction, taskData.interactionId);
-
-    return count < 2;
-  },
-
-  customerInCallFromEventOrContext: ({context, event}: GuardParams): boolean => {
+  /**
+   * Conference downgrade check specifically for transitioning back to CONNECTED.
+   *
+   * Returns true only when:
+   * - conference has downgraded (fewer than 2 active agent participants in main call)
+   * - customer is still in the call
+   * - current agent is still in the main call
+   */
+  shouldDowngradeConferenceToConnected: ({context, event}: GuardParams): boolean => {
     const eventTaskData = getTaskDataFromEvent(event);
     const taskData = eventTaskData ?? context.taskData;
     if (!taskData?.interaction) return false;
+
+    const selfAgentId = getSelfAgentId(context, taskData);
+    if (!selfAgentId) return false;
+
     const mainCallId = taskData.interaction.mainInteractionId || taskData.interactionId;
     if (!mainCallId) return false;
 
-    return getIsCustomerInCall(taskData.interaction, mainCallId);
+    // Don't downgrade while backend still reports conference.
+    if (taskData.interaction.state === 'conference') return false;
+
+    const agentParticipantsCount = getConferenceParticipantsCount(taskData.interaction, mainCallId);
+    if (agentParticipantsCount >= 2) return false;
+
+    const customerInCall = getIsCustomerInCall(taskData.interaction, mainCallId);
+    if (!customerInCall) return false;
+
+    const selfInMainCall = Boolean(
+      taskData.interaction.media?.[mainCallId]?.participants?.includes(selfAgentId)
+    );
+
+    return selfInMainCall;
   },
 
   // Consult Guards
-  isConsultInitiator: ({context}: GuardParams): boolean => {
-    return context.consultInitiator === true;
-  },
-
-  isNotConsultInitiator: ({context}: GuardParams): boolean => {
-    return !context.consultInitiator;
-  },
-
   /**
    * Check if this agent initiated the consult (using event data)
    * Handles both consultingAgentId and fallback to context flag
@@ -224,28 +181,6 @@ export const guards = {
     return taskData?.consultingAgentId
       ? isSelfConsultingAgent(context, taskData)
       : context.consultInitiator === true;
-  },
-
-  isConsultingAgentOrBeingConsulted: ({context, event}: GuardParams): boolean => {
-    const taskData = getTaskDataFromEvent(event);
-    const selfAgentId = getSelfAgentId(context, taskData);
-    const isConsultingAgent = Boolean(selfAgentId) && taskData?.consultingAgentId === selfAgentId;
-    const isBeingConsulted = taskData?.isConsulted === true;
-
-    return isConsultingAgent || isBeingConsulted;
-  },
-
-  isInitiatorAndConferenceActive: ({context, event}: GuardParams): boolean => {
-    if (!context.consultInitiator) return false;
-    const eventTaskData = getTaskDataFromEvent(event);
-    const conferenceInEvent = eventTaskData && getIsConferenceInProgress(eventTaskData);
-    const conferenceInContext = context.taskData && getIsConferenceInProgress(context.taskData);
-
-    return conferenceInEvent || conferenceInContext;
-  },
-
-  isConsultQueueFlow: ({context}: GuardParams): boolean => {
-    return context.consultDestinationType === 'queue';
   },
 
   // Wrapup Guards
@@ -281,33 +216,35 @@ export const guards = {
     return Boolean(taskData?.wrapUpRequired || context.consultInitiator);
   },
 
-  conferenceActiveAndNotWrappingAndNotExiting: ({context, event}: GuardParams): boolean => {
+  /**
+   * True if PARTICIPANT_LEAVE indicates that *this* agent left the conference.
+   *
+   * Important: PARTICIPANT_LEAVE is broadcast to all agents in the conference.
+   * Only the agent whose id matches the leaving participant should transition to
+   * TERMINATED / WRAPPING_UP based on wrapup rules.
+   */
+  didCurrentAgentLeaveConference: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
-    if (!taskData) return false;
+    const selfAgentId = getSelfAgentId(context, taskData);
+    if (!selfAgentId) return false;
 
-    const conferenceActive = getIsConferenceInProgress(taskData);
+    const participantIdFromEvent =
+      event && typeof event === 'object' && 'participantId' in event
+        ? (event as {participantId?: string}).participantId
+        : undefined;
+    const participantId = participantIdFromEvent ?? taskData?.participantId;
 
-    return (
-      conferenceActive && !shouldWrapUpForThisAgent(context, taskData) && !context.exitingConference
-    );
-  },
-
-  isExitingConference: ({context}: GuardParams): boolean => {
-    return context.exitingConference === true;
+    return Boolean(participantId) && participantId === selfAgentId;
   },
 
   // Server State Guards
-  serverReportsHeld: ({event}: GuardParams): boolean => {
+  isPrimaryMediaOnHold: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
+    if (!taskData) return false;
+    const mediaId = taskData.mediaResourceId;
+    if (!mediaId) return false;
 
-    return getPrimaryMediaHoldFlag(taskData) === true;
-  },
-
-  serverReportsConsulting: ({context, event}: GuardParams): boolean => {
-    const taskData = getTaskDataFromEvent(event);
-    if (taskData?.isConsulted === true) return true;
-
-    return Boolean(context.consultInitiator && !taskData?.wrapUpRequired);
+    return taskData.interaction?.media?.[mediaId]?.isHold === true;
   },
 };
 

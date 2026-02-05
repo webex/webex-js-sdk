@@ -742,6 +742,27 @@ export interface InteractionParticipant {
 
 export type InteractionParticipants = Record<string, InteractionParticipant>;
 
+/**
+ * Media entry type from interaction.media
+ * Used for media state tracking in consult and conference scenarios
+ */
+export type MediaEntry = {
+  /** Unique identifier for the media resource */
+  mediaResourceId: string;
+  /** Type of media channel */
+  mediaType: MEDIA_CHANNEL;
+  /** Media manager handling this media */
+  mediaMgr: string;
+  /** List of participant identifiers */
+  participants: string[];
+  /** Type of media (e.g., 'mainCall', 'consult') */
+  mType: string;
+  /** Indicates if media is on hold */
+  isHold: boolean;
+  /** Timestamp when media was put on hold */
+  holdTimestamp: number | null;
+};
+
 export type Interaction = {
   /** Indicates if the interaction is managed by Flow Control */
   isFcManaged: boolean;
@@ -908,25 +929,7 @@ export type Interaction = {
   /** Timestamp when interaction entered queue */
   queuedTimestamp?: number | null;
   /** Media-specific information for the interaction */
-  media: Record<
-    string,
-    {
-      /** Unique identifier for the media resource */
-      mediaResourceId: string;
-      /** Type of media channel */
-      mediaType: MEDIA_CHANNEL;
-      /** Media manager handling this media */
-      mediaMgr: string;
-      /** List of participant identifiers */
-      participants: string[];
-      /** Type of media */
-      mType: string;
-      /** Indicates if media is on hold */
-      isHold: boolean;
-      /** Timestamp when media was put on hold */
-      holdTimestamp: number | null;
-    }
-  >;
+  media: Record<string, MediaEntry>;
   /** Owner of the interaction */
   owner: string;
   /** Primary media channel for the interaction */
@@ -1806,20 +1809,6 @@ export type Participant = {
  */
 export type TaskAccessorParticipant = Participant;
 
-/**
- * Media entry type from interaction.media
- * Used for media state tracking in consult and conference scenarios
- */
-export type MediaEntry = {
-  mediaResourceId: string;
-  mediaType: MEDIA_CHANNEL;
-  mediaMgr: string;
-  participants: string[];
-  mType: string;
-  isHold: boolean;
-  holdTimestamp: number | null;
-};
-
 export interface IWebRTC extends IVoice {
   /**
    * This method is used to mute/unmute the call.
@@ -1881,12 +1870,10 @@ export interface TaskEventActions {
  * - Event type and payload from the backend
  * - Task instance (if exists)
  * - Pre-mapped state machine event (if applicable)
- * - Task state flags (e.g., was this a consulted task)
  */
 export interface EventContext {
   eventType: string;
   payload: WebSocketPayload;
   task?: ITask;
   stateMachineEvent?: TaskEventPayload | null;
-  wasConsultedTask: boolean;
 }
