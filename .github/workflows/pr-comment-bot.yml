@@ -169,14 +169,19 @@ jobs:
             }
             
             // Build the changelog URL
-            // Always use 'webex' as the package since it's the main SDK package users install
-            // and it encompasses all sub-packages (@webex/plugin-meetings, etc.)
+            // Scenario 1: If webex-related packages (@webex/* or webex) → use 'webex'
+            // Scenario 2: If non-webex packages (byods, etc.) → use detected package
+            const isWebexRelated = packages.some(p => 
+              p.startsWith('@webex/') || p === 'webex'
+            );
+            const changelogPackage = isWebexRelated ? 'webex' : primaryPackage;
+            
             const changelogUrl = new URL('https://web-sdk.webex.com/changelog/');
             changelogUrl.searchParams.set('stable_version', stableVersion);
-            changelogUrl.searchParams.set('package', 'webex');
+            changelogUrl.searchParams.set('package', changelogPackage);
             changelogUrl.searchParams.set('version', versionNumber);
             
-            console.log(`📦 Changelog URL package: webex`);
+            console.log(`📦 Changelog URL package: ${changelogPackage}`);
             console.log(`📦 Changelog URL version: ${versionNumber}`);
             console.log(`🔗 Full URL: ${changelogUrl.toString()}`);
             
