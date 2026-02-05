@@ -40,6 +40,7 @@ export enum SkinToneType {
 }
 
 export type Sender = {
+  displayName: string;
   participantId: string;
 };
 

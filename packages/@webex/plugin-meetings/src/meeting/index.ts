@@ -5798,7 +5798,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.isReactionsSupported()
         ) {
           const member = this.members.membersCollection.get(e.data.sender.participantId);
-          if (!member) {
+          if (!member && !this.locusInfo?.info?.isWebinar) {
             // @ts-ignore -- fix type
             LoggerProxy.logger.warn(
               `Meeting:index#processRelayEvent --> Skipping handling of ${REACTION_RELAY_TYPES.REACTION} for ${this.id}. participantId ${e.data.sender.participantId} does not exist in membersCollection.`
@@ -5806,7 +5806,7 @@ export default class Meeting extends StatelessWebexPlugin {
             break;
           }
 
-          const {name} = member;
+          const name = (member && member.name) || e.data.sender.displayName;
           const processedReaction: ProcessedReaction = {
             reaction: e.data.reaction,
             sender: {

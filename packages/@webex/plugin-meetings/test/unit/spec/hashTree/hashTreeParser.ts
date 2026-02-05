@@ -5,6 +5,7 @@ import HashTree from '@webex/plugin-meetings/src/hashTree/hashTree';
 import {expect} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
+import {EMPTY_HASH} from '@webex/plugin-meetings/src/hashTree/constants';
 
 const exampleInitialLocus = {
   dataSets: [
@@ -1518,6 +1519,498 @@ describe('HashTreeParser', () => {
 
         // Verify callback was NOT called (no updates for non-visible datasets)
         assert.notCalled(callback);
+      });
+    });
+  });
+
+  describe('#callLocusInfoUpdateCallback filtering', () => {
+    // Helper to setup parser with initial objects and reset callback history
+    async function setupParserWithObjects(locusStateElements: any[]) {
+      const parser = createHashTreeParser();
+
+      if (locusStateElements.length > 0) {
+        // Determine which datasets to include based on the objects' dataSetNames
+        const dataSetNames = new Set<string>();
+        locusStateElements.forEach((element) => {
+          element.htMeta?.dataSetNames?.forEach((name) => dataSetNames.add(name));
+        });
+
+        const dataSets = [];
+        if (dataSetNames.has('main')) dataSets.push(createDataSet('main', 16, 1100));
+        if (dataSetNames.has('self')) dataSets.push(createDataSet('self', 1, 2100));
+        if (dataSetNames.has('atd-unmuted')) dataSets.push(createDataSet('atd-unmuted', 16, 3100));
+
+        const setupMessage = {
+          dataSets,
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements,
+        };
+
+        await parser.handleMessage(setupMessage, 'setup');
+      }
+
+      callback.resetHistory();
+      return parser;
+    }
+
+    it('filters out updates when a dataset has a higher version', async () => {
+      const parser = await setupParserWithObjects([
+        {
+          htMeta: {
+            elementId: {type: 'locus' as const, id: 5, version: 100},
+            dataSetNames: ['main'],
+          },
+          data: {existingField: 'existing'},
+        },
+      ]);
+
+      // Try to update with an older version (90)
+      const updateMessage = {
+        dataSets: [createDataSet('main', 16, 1101)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 5, version: 90},
+              dataSetNames: ['main'],
+            },
+            data: {someField: 'value'},
+          },
+        ],
+      };
+
+      await parser.handleMessage(updateMessage, 'update with older version');
+
+      // Callback should not be called because the update was filtered out
+      assert.notCalled(callback);
+    });
+
+    it('allows updates when version is newer than existing', async () => {
+      const parser = await setupParserWithObjects([
+        {
+          htMeta: {
+            elementId: {type: 'locus' as const, id: 5, version: 100},
+            dataSetNames: ['main'],
+          },
+          data: {existingField: 'existing'},
+        },
+      ]);
+
+      // Try to update with a newer version (110)
+      const updateMessage = {
+        dataSets: [createDataSet('main', 16, 1101)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 5, version: 110},
+              dataSetNames: ['main'],
+            },
+            data: {someField: 'new value'},
+          },
+        ],
+      };
+
+      await parser.handleMessage(updateMessage, 'update with newer version');
+
+      // Callback should be called with the update
+      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+        updatedObjects: [
+          {
+            htMeta: {
+              elementId: {type: 'locus', id: 5, version: 110},
+              dataSetNames: ['main'],
+            },
+            data: {someField: 'new value'},
+          },
+        ],
+      });
+    });
+
+    it('filters out removal when object still exists in any dataset', async () => {
+      const parser = await setupParserWithObjects([
+        {
+          htMeta: {
+            elementId: {type: 'participant' as const, id: 10, version: 50},
+            dataSetNames: ['main', 'atd-unmuted'],
+          },
+          data: {name: 'participant'},
+        },
+      ]);
+
+      // Try to remove the object from main only (it still exists in atd-unmuted)
+      const removalMessage = {
+        dataSets: [createDataSet('main', 16, 1101)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 10, version: 50},
+              dataSetNames: ['main'],
+            },
+            data: null, // removal
+          },
+        ],
+      };
+
+      await parser.handleMessage(removalMessage, 'removal from one dataset');
+
+      // Callback should not be called because object still exists in atd-unmuted
+      assert.notCalled(callback);
+    });
+
+    it('allows removal when object does not exist in any dataset', async () => {
+      const parser = await setupParserWithObjects([]);
+
+      // Stub updateItems to return true (simulating that the removal was "applied")
+      sinon.stub(parser.dataSets.main.hashTree, 'updateItems').returns([true]);
+
+      // Try to remove an object that doesn't exist anywhere
+      const removalMessage = {
+        dataSets: [createDataSet('main', 16, 1100)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 99, version: 10},
+              dataSetNames: ['main'],
+            },
+            data: null, // removal
+          },
+        ],
+      };
+
+      await parser.handleMessage(removalMessage, 'removal of non-existent object');
+
+      // Callback should be called with the removal
+      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+        updatedObjects: [
+          {
+            htMeta: {
+              elementId: {type: 'participant', id: 99, version: 10},
+              dataSetNames: ['main'],
+            },
+            data: null,
+          },
+        ],
+      });
+    });
+
+    it('filters out removal when object exists in another dataset with newer version', async () => {
+      const parser = createHashTreeParser();
+
+      // Setup: Add object to main with version 40
+      await parser.handleMessage(
+        {
+          dataSets: [createDataSet('main', 16, 1100)],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {type: 'participant' as const, id: 10, version: 40},
+                dataSetNames: ['main'],
+              },
+              data: {name: 'participant v40'},
+            },
+          ],
+        },
+        'setup main'
+      );
+
+      // Add object to atd-unmuted with version 50
+      await parser.handleMessage(
+        {
+          dataSets: [createDataSet('atd-unmuted', 16, 3100)],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {type: 'participant' as const, id: 10, version: 50},
+                dataSetNames: ['atd-unmuted'],
+              },
+              data: {name: 'participant v50'},
+            },
+          ],
+        },
+        'setup atd-unmuted'
+      );
+      callback.resetHistory();
+
+      // Try to remove with version 40 from main
+      const removalMessage = {
+        dataSets: [createDataSet('main', 16, 1101)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 10, version: 40},
+              dataSetNames: ['main'],
+            },
+            data: null, // removal
+          },
+        ],
+      };
+
+      await parser.handleMessage(removalMessage, 'removal with older version');
+
+      // Callback should not be called because object still exists with newer version
+      assert.notCalled(callback);
+    });
+
+    it('filters mixed updates correctly - some pass, some filtered', async () => {
+      const parser = await setupParserWithObjects([
+        {
+          htMeta: {
+            elementId: {type: 'participant' as const, id: 1, version: 100},
+            dataSetNames: ['main'],
+          },
+          data: {name: 'participant 1'},
+        },
+        {
+          htMeta: {
+            elementId: {type: 'participant' as const, id: 2, version: 50},
+            dataSetNames: ['atd-unmuted'],
+          },
+          data: {name: 'participant 2'},
+        },
+      ]);
+
+      // Send mixed updates
+      const mixedMessage = {
+        dataSets: [createDataSet('main', 16, 1101)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 1, version: 110}, // newer version - should pass
+              dataSetNames: ['main'],
+            },
+            data: {name: 'updated'},
+          },
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 1, version: 90}, // older version - should be filtered
+              dataSetNames: ['main'],
+            },
+            data: {name: 'old'},
+          },
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 3, version: 10}, // new object - should pass
+              dataSetNames: ['main'],
+            },
+            data: {name: 'new'},
+          },
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 2, version: 50}, // removal but exists in atd-unmuted - should be filtered
+              dataSetNames: ['main'],
+            },
+            data: null,
+          },
+        ],
+      };
+
+      await parser.handleMessage(mixedMessage, 'mixed updates');
+
+      // Callback should be called with only the valid updates (participant 1 v110 and participant 3 v10)
+      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+        updatedObjects: [
+          {
+            htMeta: {
+              elementId: {type: 'participant', id: 1, version: 110},
+              dataSetNames: ['main'],
+            },
+            data: {name: 'updated'},
+          },
+          {
+            htMeta: {
+              elementId: {type: 'participant', id: 3, version: 10},
+              dataSetNames: ['main'],
+            },
+            data: {name: 'new'},
+          },
+        ],
+      });
+    });
+
+    it('does not call callback when all updates are filtered out', async () => {
+      const parser = await setupParserWithObjects([
+        {
+          htMeta: {
+            elementId: {type: 'locus' as const, id: 5, version: 100},
+            dataSetNames: ['main'],
+          },
+          data: {existingField: 'existing'},
+        },
+      ]);
+
+      // Try to update with older versions (all should be filtered)
+      const updateMessage = {
+        dataSets: [createDataSet('main', 16, 1101)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 5, version: 80},
+              dataSetNames: ['main'],
+            },
+            data: {someField: 'value'},
+          },
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 5, version: 90},
+              dataSetNames: ['main'],
+            },
+            data: {someField: 'another value'},
+          },
+        ],
+      };
+
+      await parser.handleMessage(updateMessage, 'all filtered updates');
+
+      // Callback should not be called at all
+      assert.notCalled(callback);
+    });
+
+    it('checks all visible datasets when filtering', async () => {
+      const parser = createHashTreeParser();
+
+      // Setup: Add same object to multiple datasets with different versions
+      await parser.handleMessage(
+        {
+          dataSets: [createDataSet('main', 16, 1100)],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {type: 'participant' as const, id: 10, version: 100},
+                dataSetNames: ['main'],
+              },
+              data: {name: 'v100'},
+            },
+          ],
+        },
+        'setup main'
+      );
+
+      await parser.handleMessage(
+        {
+          dataSets: [createDataSet('self', 1, 2100)],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {type: 'participant' as const, id: 10, version: 120}, // highest
+                dataSetNames: ['self'],
+              },
+              data: {name: 'v120'},
+            },
+          ],
+        },
+        'setup self'
+      );
+
+      await parser.handleMessage(
+        {
+          dataSets: [createDataSet('atd-unmuted', 16, 3100)],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {type: 'participant' as const, id: 10, version: 110},
+                dataSetNames: ['atd-unmuted'],
+              },
+              data: {name: 'v110'},
+            },
+          ],
+        },
+        'setup atd-unmuted'
+      );
+      callback.resetHistory();
+
+      // Try to update with version 115 (newer than main and atd-unmuted, but older than self)
+      const updateMessage = {
+        dataSets: [createDataSet('main', 16, 1101)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 10, version: 115},
+              dataSetNames: ['main'],
+            },
+            data: {name: 'update'},
+          },
+        ],
+      };
+
+      await parser.handleMessage(updateMessage, 'update with v115');
+
+      // Should be filtered out because self dataset has version 120
+      assert.notCalled(callback);
+    });
+
+    it('does not call callback for empty locusStateElements', async () => {
+      const parser = await setupParserWithObjects([]);
+
+      const emptyMessage = {
+        dataSets: [createDataSet('main', 16, 1100)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      };
+
+      await parser.handleMessage(emptyMessage, 'empty elements');
+
+      assert.notCalled(callback);
+    });
+
+    it('always calls callback for MEETING_ENDED regardless of filtering', async () => {
+      const parser = await setupParserWithObjects([
+        {
+          htMeta: {
+            elementId: {type: 'locus' as const, id: 0, version: 100},
+            dataSetNames: ['main'],
+          },
+          data: {info: 'data'},
+        },
+      ]);
+
+      // Send roster drop message (SELF object with no data) to trigger MEETING_ENDED
+      const rosterDropMessage = {
+        dataSets: [createDataSet('self', 1, 2101)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'self' as const, id: 4, version: 102},
+              dataSetNames: ['self'],
+            },
+            data: undefined, // roster drop triggers MEETING_ENDED
+          },
+        ],
+      };
+
+      await parser.handleMessage(rosterDropMessage, 'roster drop message');
+
+      // Callback should be called with MEETING_ENDED
+      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
+        updatedObjects: undefined,
       });
     });
   });
