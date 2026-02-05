@@ -6,7 +6,7 @@ import {
 } from '@webex/internal-media-core';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
-import {EffectEvent, TrackEffect} from '@webex/web-media-effects';
+import {EffectEvent, TrackEffect} from '@webex/media-helpers';
 import {RtcMetrics} from '@webex/internal-plugin-metrics';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
 import {
@@ -2792,6 +2792,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     if (effect) {
       effect.on(EffectEvent.Enabled, this.onEffectEnabled);
       effect.on(EffectEvent.Disabled, this.onEffectDisabled);
+
       if (effect.isEnabled) {
         this.onEffectEnabled();
       }

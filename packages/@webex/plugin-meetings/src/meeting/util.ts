@@ -51,6 +51,7 @@ const MeetingUtil = {
   /**
    * Sanitizes a WebSocket URL by extracting only protocol, host, and pathname
    * Returns concatenated protocol + host + pathname for safe logging
+   * Note: This is used for logging only; URL matching uses partial matching via _urlsPartiallyMatch
    * @param {string} urlString - The URL to sanitize
    * @returns {string} Sanitized URL or empty string if parsing fails
    */
@@ -85,29 +86,40 @@ const MeetingUtil = {
   },
 
   /**
-   * Compares two URLs by protocol, host, and pathname (ignoring query params and hash)
-   * Uses sanitizeWebSocketUrl to ensure comparison matches what gets reported
+   * Checks if two URLs partially match using an endsWith approach
+   * Combines host and pathname, then checks if one ends with the other
+   * This handles cases where one URL goes through a proxy (e.g., /webproxy/) while the other is direct
    * @param {string} url1 - First URL to compare
    * @param {string} url2 - Second URL to compare
-   * @returns {boolean} True if URLs match, false otherwise
+   * @returns {boolean} True if one URL path ends with the other (partial match), false otherwise
    */
-  _urlsMatch: (url1: string, url2: string): boolean => {
+  _urlsPartiallyMatch: (url1: string, url2: string): boolean => {
     if (!url1 || !url2) {
       return false;
     }
 
     try {
-      const sanitized1 = MeetingUtil.sanitizeWebSocketUrl(url1);
-      const sanitized2 = MeetingUtil.sanitizeWebSocketUrl(url2);
+      const parsedUrl1 = url.parse(url1);
+      const parsedUrl2 = url.parse(url2);
 
-      // If either failed to parse (empty string), they don't match
-      if (!sanitized1 || !sanitized2) {
+      const host1 = parsedUrl1.host || '';
+      const host2 = parsedUrl2.host || '';
+      const pathname1 = parsedUrl1.pathname || '';
+      const pathname2 = parsedUrl2.pathname || '';
+
+      // If either failed to parse, they don't match
+      if (!host1 || !host2 || !pathname1 || !pathname2) {
         return false;
       }
 
-      return sanitized1 === sanitized2;
+      // Combine host and pathname for comparison
+      const combined1 = host1 + pathname1;
+      const combined2 = host2 + pathname2;
+
+      // Check if one combined path ends with the other (handles proxy URLs)
+      return combined1.endsWith(combined2) || combined2.endsWith(combined1);
     } catch (e) {
-      LoggerProxy.logger.warn('Meeting:util#_urlsMatch --> error comparing URLs', e);
+      LoggerProxy.logger.warn('Meeting:util#_urlsPartiallyMatch --> error comparing URLs', e);
 
       return false;
     }
@@ -115,6 +127,7 @@ const MeetingUtil = {
 
   /**
    * Gets socket URL information for metrics, including whether the socket URLs match
+   * Uses partial matching to handle proxy URLs (e.g., URLs with /webproxy/ prefix)
    * @param {Object} webex - The webex instance
    * @returns {Object} Object with hasMismatchedSocket, mercurySocketUrl, and deviceSocketUrl properties
    */
@@ -132,7 +145,7 @@ const MeetingUtil = {
       // If either URL is missing, we can't determine if there's a mismatch, so return false
       let hasMismatchedSocket = false;
       if (sanitizedMercuryUrl && sanitizedDeviceUrl) {
-        hasMismatchedSocket = !MeetingUtil._urlsMatch(mercuryUrl, deviceUrl);
+        hasMismatchedSocket = !MeetingUtil._urlsPartiallyMatch(mercuryUrl, deviceUrl);
       }
 
       return {
