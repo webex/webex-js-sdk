@@ -2,7 +2,7 @@
 /* eslint-disable dot-notation */
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
-import {EffectEvent} from '@webex/web-media-effects';
+import {EffectEvent} from '@webex/media-helpers';
 import {ERROR_TYPE, ERROR_LAYER} from '../../Errors/types';
 import * as Utils from '../../common/Utils';
 import {CALL_EVENT_KEYS, CallEvent, RoapEvent, RoapMessage} from '../../Events/types';

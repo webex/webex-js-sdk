@@ -815,8 +815,19 @@ export default class LocusInfo extends EventsScope {
         data.stateElementsMessage as HashTreeMessage
       );
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-shadow
       const {eventType} = data;
+
+      if (eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
+        // this can happen when we get an event before join http response
+        // it's OK to just ignore it
+        LoggerProxy.logger.info(
+          `Locus-info:index#parse --> received locus hash tree event before hashTreeParser is created`
+        );
+
+        return;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-shadow
       const locus = this.getTheLocusToUpdate(data.locus);
       LoggerProxy.logger.info(`Locus-info:index#parse --> received locus data: ${eventType}`);
 
@@ -841,12 +852,6 @@ export default class LocusInfo extends EventsScope {
           break;
         case LOCUSEVENT.DIFFERENCE:
           this.handleLocusDelta(locus, meeting);
-          break;
-        case LOCUSEVENT.HASH_TREE_DATA_UPDATED:
-          this.sendClassicVsHashTreeMismatchMetric(
-            meeting,
-            `got ${eventType}, expected classic events`
-          );
           break;
 
         default:
