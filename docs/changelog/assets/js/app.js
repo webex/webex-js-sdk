@@ -18,27 +18,8 @@ const searchForm = document.getElementById('search-form');
 const searchButton = document.getElementById('search-button');
 const searchResults = document.getElementById('search-results');
 
-// DOM elements - Comparison Mode
-const comparisonResults = document.getElementById('comparison-results');
-const comparisonTemplateElement = document.getElementById('comparison-template');
-const comparisonForm = document.getElementById('comparison-form');
-const singleViewBtn = document.getElementById('single-view-btn');
-const comparisonViewBtn = document.getElementById('comparison-view-btn');
-const versionASelect = document.getElementById('version-a-select');
-const versionBSelect = document.getElementById('version-b-select');
-const comparisonPackageSelect = document.getElementById('comparison-package-select');
-const comparisonPackageRow = document.getElementById('comparison-package-row');
-const versionAPrereleaseSelect = document.getElementById('version-a-prerelease-select');
-const versionBPrereleaseSelect = document.getElementById('version-b-prerelease-select');
-const prereleaseRow = document.getElementById('comparison-prerelease-row');
-const compareButton = document.getElementById('compare-button');
-const clearComparisonButton = document.getElementById('clear-comparison-button');
-const copyComparisonLinkBtn = document.getElementById('copy-comparison-link');
-const comparisonHelper = document.getElementById('comparison-helper');
-
 // DOM elements - Shared
 const helperSection = document.getElementById('helper-section');
-const packageLevelSection = document.getElementById('package-level-comparison-section');
 
 // Initialize UI state - only if elements exist (for compare.html compatibility)
 if (searchResults) searchResults.classList.add('hide');
@@ -81,11 +62,6 @@ Handlebars.registerHelper('convertDate', function(timestamp) {
 // Util Methods
 const populateFormFieldsFromURL = async () => {
     const queryParams = new URLSearchParams(window.location.search);
-    
-    // Skip single-view URL handling if comparison parameters are present
-    if (queryParams.has('compare') || (queryParams.has('versionA') && queryParams.has('versionB'))) {
-        return; // Comparison mode will handle these parameters
-    }
     
     const searchParams = {
         stable_version: queryParams.get('stable_version'),
@@ -338,21 +314,21 @@ const doSearch_commit = (searchParams, drill_down) => {
         resulting_commit_messages = new Set(),
         resulting_commit_hash = new Set(),
         search_results = [];
-    for(let packageName in drill_down){
-        const thisPackage = drill_down[packageName];
+    for(let pkgName in drill_down){
+        const thisPackage = drill_down[pkgName];
         for(let version in thisPackage){
             const thisVersion = thisPackage[version];
             let allHashes = new Set(), discontinueSearch = false;
             for(let hash in thisVersion.commits){
                 const thisCommit = thisVersion.commits[hash];
                 if(discontinueSearch){
-                    resulting_versions.add(`${packageName}-${version}`);
+                    resulting_versions.add(`${pkgName}-${version}`);
                     resulting_commit_messages.add(thisCommit);
                     allHashes.forEach(h => resulting_commit_hash.add(h));
                 }
                 else{
                     allHashes.add(hash);
-                    if(!resulting_versions.has(`${packageName}-${version}`) && 
+                    if(!resulting_versions.has(`${pkgName}-${version}`) && 
                         !resulting_commit_messages.has(thisCommit) &&
                         !resulting_commit_hash.has(hash)
                     ){
@@ -365,13 +341,13 @@ const doSearch_commit = (searchParams, drill_down) => {
                                 searchParams.commitHash && (hash.includes(searchParams.commitHash) || searchParams.commitHash.startsWith(hash))
                             )
                         ){
-                            resulting_versions.add(`${packageName}-${version}`);
+                            resulting_versions.add(`${pkgName}-${version}`);
                             resulting_commit_messages.add(thisCommit);
                             allHashes.forEach(h => resulting_commit_hash.add(h));
                             allHashes = new Set();
                             discontinueSearch = true;
                             search_results.push({
-                                package: packageName,
+                                package: pkgName,
                                 version,
                                 published_date: thisVersion.published_date,
                                 commits: thisVersion.commits,
@@ -387,19 +363,19 @@ const doSearch_commit = (searchParams, drill_down) => {
 }
 
 const doSearch = (searchParams) => {
-    const { package: packageName, version } = searchParams;
+    const { package: pkgName, version } = searchParams;
     let drill_down = {...currentChangelog}, shouldTransform = true, search_results = [];
 // If package selected → filter to that package
-    if(packageName !== null && packageName?.trim() !== ""){
+    if(pkgName !== null && pkgName?.trim() !== ""){
         drill_down = {
-            [packageName]: drill_down[packageName]
+            [pkgName]: drill_down[pkgName]
         };
     }
 // If version selected → filter to that version
     if(version !== null && version?.trim() !== ""){
-        drill_down = drill_down[packageName][version] ? {
-            [packageName]: {
-                [version]: drill_down[packageName][version]
+        drill_down = drill_down[pkgName][version] ? {
+            [pkgName]: {
+                [version]: drill_down[pkgName][version]
             }
         } : {};
     }
@@ -412,14 +388,14 @@ const doSearch = (searchParams) => {
     }
 
     if(shouldTransform){
-        Object.keys(drill_down).forEach((packageName) => {
-            Object.keys(drill_down[packageName]).forEach((version) => {
+        Object.keys(drill_down).forEach((pkgName) => {
+            Object.keys(drill_down[pkgName]).forEach((version) => {
                 search_results.push({
-                    package: packageName,
+                    package: pkgName,
                     version,
-                    published_date: drill_down[packageName][version].published_date,
-                    commits: drill_down[packageName][version].commits,
-                    alongWith: drill_down[packageName][version].alongWith,
+                    published_date: drill_down[pkgName][version].published_date,
+                    commits: drill_down[pkgName][version].commits,
+                    alongWith: drill_down[pkgName][version].alongWith,
                 });
             });
         });
@@ -488,103 +464,6 @@ const copyToClipboard = (copyButton) => {
     },2000);
 }
 
-/**
- * Copy comparison link to clipboard
- * Global function that can be called from HTML or JS
- */
-const copyComparisonLink = () => {
-    const currentURL = window.location.href;
-      
-    // Try modern clipboard API first
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(currentURL)
-            .then(() => {
-                showCopySuccess(copyComparisonLinkBtn);
-            })
-            .catch(err => {
-                console.error('Clipboard API failed:', err);
-                fallbackCopyToClipboard(currentURL, copyComparisonLinkBtn);
-            });
-    } else {
-        fallbackCopyToClipboard(currentURL, copyComparisonLinkBtn);
-    }
-}
-
-/**
- * Show success feedback on copy button
- */
-const showCopySuccess = (button) => {
-    if (!button) return;
-    
-    const originalText = button.innerHTML;
-    button.innerHTML = '✓ Link Copied!';
-    button.style.backgroundColor = 'var(--color-success)';
-    button.style.borderColor = 'var(--color-success)';
-    
-    setTimeout(() => {
-        button.innerHTML = originalText;
-        button.style.backgroundColor = '';
-        button.style.borderColor = '';
-    }, 2000);
-}
-
-/**
- * Fallback copy method for browsers without Clipboard API (Older browsers don't support navigator.clipboard)
- */
-const fallbackCopyToClipboard = (text, button) => {
-    // Create temporary input element
-    const tempInput = document.createElement('input');
-    tempInput.style.position = 'fixed';
-    tempInput.style.opacity = '0';
-    tempInput.value = text;
-    document.body.appendChild(tempInput);
-    
-    // Select and copy
-    tempInput.select();
-    tempInput.setSelectionRange(0, 99999); // For mobile devices
-    
-    try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-            showCopySuccess(button);
-        } else {
-            console.error('execCommand copy failed');
-            showCopyError(button);
-        }
-    } catch (err) {
-        console.error('Fallback copy failed:', err);
-        showCopyError(button);
-    }
-    
-    // Remove temporary input
-    document.body.removeChild(tempInput);
-}
-
-/**
- * Show error feedback
- */
-const showCopyError = (button) => {
-    if (!button) {
-        alert('Could not copy link. Please copy manually from the address bar.');
-        return;
-    }
-    
-    const originalText = button.innerHTML;
-    button.innerHTML = '❌ Copy Failed';
-    button.style.backgroundColor = 'var(--color-danger)';
-    button.style.borderColor = 'var(--color-danger)';
-    
-    setTimeout(() => {
-        button.innerHTML = originalText;
-        button.style.backgroundColor = '';
-        button.style.borderColor = '';
-    }, 2000);
-    
-    // Also show alert with instructions
-    setTimeout(() => {
-        alert('Could not copy link automatically.\n\nPlease copy manually from the address bar:\n' + window.location.href);
-    }, 100);
-}
 
 window.onhashchange = () => {
     populateVersions();
@@ -592,420 +471,6 @@ window.onhashchange = () => {
 
 populateVersions();
 
-/* ============================================
-   ENHANCED VERSION COMPARISON HELPERS
-   ============================================ */
-
-/**
- * Get union of packages from both versions (all packages that exist in either version)
- * @param {Object} changelog - The changelog JSON for a version
- * @param {Object} specificVersions - Optional map of {packageName: specificVersion}
- * @returns {Object} - Map of {packageName: version}
- */
-const extractPackagesFromVersion = (changelog, specificVersions = null) => {
-    const packageMap = {};
-    
-    for (const packageName of Object.keys(changelog)) {
-        
-        const packageVersions = changelog[packageName];
-        console.log('packageVersions', packageVersions);
-        
-        // Safety check: ensure packageVersions is an object
-        if (!packageVersions || typeof packageVersions !== 'object') continue;
-        
-        const versionKeys = Object.keys(packageVersions);
-        console.log('versionKeys', versionKeys);
-        
-        if (versionKeys.length === 0) continue;
-        
-        let selectedVersion = null;
-        
-        // Check if user specified a specific version for this package
-        if (specificVersions && specificVersions[packageName]) {
-            const requestedVersion = specificVersions[packageName];
-            if (packageVersions[requestedVersion]) {
-                selectedVersion = requestedVersion;
-            }
-        }
-        
-        // If no specific version requested or not found, use earliest (first) version
-        if (!selectedVersion) {
-            let earliestVersion = versionKeys[0];
-            let earliestDate = packageVersions[earliestVersion]?.published_date || Infinity;
-            
-            for (const version of versionKeys) {
-                const publishedDate = packageVersions[version]?.published_date || Infinity;
-                if (publishedDate < earliestDate) {
-                    earliestDate = publishedDate;
-                    earliestVersion = version;
-                }
-            }
-            
-            selectedVersion = earliestVersion;
-        }
-        
-        packageMap[packageName] = selectedVersion;
-    }
-
-    return packageMap;
-};
-
-/**
- * Compare packages between two versions
- * @param {Object} packagesA - {packageName: version} for version A
- * @param {Object} packagesB - {packageName: version} for version B
- * @param {Object} changelogA - Full changelog data for version A
- * @param {Object} changelogB - Full changelog data for version B
- * @returns {Object} - Comparison results with statistics
- */
-const comparePackages = (packagesA, packagesB, changelogA, changelogB, stableVersionA, stableVersionB) => {
-    // Get ALL package names from both changelogs (entire changelog, not just specific versions)
-    const allPackageNames = new Set([
-        ...Object.keys(changelogA),//ALL packages in changelog A
-        ...Object.keys(changelogB)//ALL packages in changelog B
-    ]);
-    
-    const packages = [];
-    let changedCount = 0;
-    let unchangedCount = 0;
-    let onlyInACount = 0;
-    let onlyInBCount = 0;
-    
-    // Helper function to find earliest (first) version of a package in changelog
- // Helper function to find stable version first, then highest pre-release version
-const findStableVersion = (changelog, packageName, stableVersion) => {
-    if (!changelog[packageName]) return null;
-    
-    const versions = Object.keys(changelog[packageName]);
-    if (versions.length === 0) return null;
-    
-    // Escape dots in version string for regex (3.4.0 -> 3\.4\.0)
-    const escapedVersion = stableVersion.replace(/\./g, '\\.');
-    
-    // Priority 1: Find exact stable version (e.g., "3.4.0" only, no suffixes)
-    const exactStablePattern = new RegExp(`^${escapedVersion}$`);
-    const exactStableVersion = versions.find(ver => exactStablePattern.test(ver));
-    
-    if (exactStableVersion) {
-        return exactStableVersion;
-    }
-    
-    // Priority 2: Find highest pre-release version (any tag: next, alpha, beta, rc, etc.)
-    // Pattern: 3.4.0-{tag}.{number} -> captures tag and number
-    const prereleasePattern = new RegExp(`^${escapedVersion}-([a-z]+)\\.(\\d+)$`, 'i');
-    
-    const prereleaseVersions = versions
-        .filter(ver => prereleasePattern.test(ver))
-        .sort((a, b) => {
-            const matchA = a.match(prereleasePattern);
-            const matchB = b.match(prereleasePattern);
-            if (!matchA || !matchB) return 0;
-            
-            const numA = parseInt(matchA[2], 10);
-            const numB = parseInt(matchB[2], 10);
-            return numB - numA; // Sort descending (highest first)
-        });
-    
-    // Return highest pre-release version, or fallback to first available
-    return prereleaseVersions[0] || versions[0];
-};
-    
-    allPackageNames.forEach(packageName => {
-        // Find the earliest (first) version for this package in each changelog
-        const versionA = findStableVersion(changelogA, packageName, stableVersionA);
-        const versionB = findStableVersion(changelogB, packageName, stableVersionB);
-        
-        let status, changeClass;//Declare variables for status label and CSS class
-        
-        if (versionA && versionB) {//checks if package is in both changelogs
-            if (versionA === versionB) {//if versionA is the same as versionB, then it is unchanged
-                status = 'Unchanged';
-                changeClass = 'unchanged';
-                unchangedCount++;
-            } else {
-                status = 'Version Changed';
-                changeClass = 'version-changed';
-                changedCount++;
-            }
-        } else if (versionA && !versionB) {
-            status = 'Removed';
-            changeClass = 'only-in-a';
-            onlyInACount++;
-        } else if (!versionA && versionB) {
-            status = 'Added';
-            changeClass = 'only-in-b';
-            onlyInBCount++;
-        }
-        
-        packages.push({
-            packageName,
-            versionA: versionA || 'N/A',
-            versionB: versionB || 'N/A',
-            status,
-            changeClass
-        });
-    });
-    
-    // Sort packages alphabetically
-    packages.sort((a, b) => a.packageName.localeCompare(b.packageName));
-    
-    return {
-        packages,
-        totalPackages: allPackageNames.size,
-        changedCount,
-        unchangedCount,
-        onlyInACount,
-        onlyInBCount
-    };
-};
-
-/*
- Populate package dropdowns for comparison mode when version is selected
- @param {string} versionSelectId - ID of the version select element
- @param {string} packageSelectId - ID of the package select element
- */
-
-/* ============================================
-   UI HELPER FUNCTIONS
-   ============================================ */
-
-/**
- * Show loading state for comparison
- */
-const showComparisonLoading = () => {
-    if (!comparisonResults) return;
-    comparisonResults.innerHTML = '<p style="text-align: center; padding: 20px;">Loading comparison...</p>';
-    comparisonResults.classList.remove('hide');
-};
-
-/**
- * Show error state for comparison
- * @param {Error} error - The error object
- */
-const showComparisonError = (error) => {
-    if (!comparisonResults) return;
-    
-    console.error('Error performing version comparison:', error);
-    console.error('Error stack:', error.stack);
-    
-    comparisonResults.innerHTML = 
-        `<div style="color: var(--color-error-text); padding: 20px; background: var(--color-error-bg); border-radius: 5px;">
-            <strong>Error:</strong> Failed to compare versions. ${error.message}
-            <br><br><small>Check browser console for details (F12)</small>
-        </div>`;
-};
-
-/* ============================================
-   DATA LAYER FUNCTIONS
-   ============================================ */
-
-/**
- * DATA LAYER: Fetch and compare versions (Pure data logic, no DOM manipulation)
- * @param {string} versionA - Base version
- * @param {string} versionB - Target version
- * @returns {Promise<Object>} Comparison data with versionA, versionB, and comparisonData
- * @throws {Error} If fetch fails or comparison fails
- */
-const fetchAndCompareVersions = async (versionA, versionB) => {
-    // Fetch both changelogs in parallel
-    const [changelogA, changelogB] = await Promise.all([
-        fetch(versionPaths[versionA]).then(res => {
-            if (!res.ok) throw new Error(`Failed to fetch ${versionA}`);
-            return res.json();
-        }),
-        fetch(versionPaths[versionB]).then(res => {
-            if (!res.ok) throw new Error(`Failed to fetch ${versionB}`);
-            return res.json();
-        })
-    ]);
-    
-    // Extract packages from both versions
-    const packagesA = extractPackagesFromVersion(changelogA);
-    const packagesB = extractPackagesFromVersion(changelogB);
-    
-    // Compare packages
-    const comparisonData = comparePackages(packagesA, packagesB, changelogA, changelogB,versionA, versionB);
-    
-    return {
-        versionA,
-        versionB,
-        comparisonData
-    };
-};
-
-/**
- * UI LAYER: Handle version comparison UI updates
- * @param {string} versionA - Base version
- * @param {string} versionB - Target version
- */
-const performVersionComparison = async (versionA, versionB) => {
-    // Show loading state
-    showComparisonLoading();
-    
-    try {
-        // Fetch and compare data (pure data logic)
-        const result = await fetchAndCompareVersions(versionA, versionB);
-        
-        // Display results (UI logic)
-        displayComparison(result.versionA, result.versionB, result.comparisonData);
-        
-    } catch (error) {
-        // Handle error display (UI logic)
-        showComparisonError(error);
-    }
-};
-
-/**
- * Display comparison results
- * @param {string} versionA - Base version
- * @param {string} versionB - Target version
- * @param {Object} comparisonData - Comparison results
- */
-const displayComparison = (versionA, versionB, comparisonData) => {
-    if (!comparisonResults) {
-        console.error('comparison-results element not found!');
-        return;
-    }
-    
-    if (!comparisonTemplateElement) {
-        console.error('comparison-template element not found!');
-        return;
-    }
-    
-    const comparisonTemplate = Handlebars.compile(comparisonTemplateElement.innerHTML);
-    
-    const templateData = {
-        versionA,
-        versionB,
-        ...comparisonData
-    };
-    
-    console.log('Template data:', templateData);
-    
-    try {
-        const html = comparisonTemplate(templateData);
-        console.log('Generated HTML length:', html.length);
-        
-        comparisonResults.innerHTML = html;
-        comparisonResults.classList.remove('hide');
-        
-        // Update URL with comparison parameters for permalinks
-        updateComparisonURL(versionA, versionB);
-        
-        // Show the copy link button and helper text
-        if (copyComparisonLinkBtn) {
-            copyComparisonLinkBtn.classList.remove('hide');
-            console.log('Copy link button shown');
-        } else {
-            console.warn('Copy link button not found in DOM');
-        }
-        if (comparisonHelper) {
-            comparisonHelper.classList.remove('hide');
-        }
-        
-        // Scroll to results smoothly
-        setTimeout(() => {
-            comparisonResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
-        
-        console.log('Comparison displayed successfully');
-    } catch (error) {
-        console.error('Error rendering template:', error);
-        comparisonResults.innerHTML = `<div style="color: var(--color-error-text); padding: 20px; background: var(--color-error-bg); border-radius: 5px;">Error rendering comparison: ${error.message}</div>`;
-    }
-};
-
-/**
- * Update URL with comparison parameters for sharing/bookmarking
- * @param {string} versionA - Base version
- * @param {string} versionB - Target version
- */
-const updateComparisonURL = (versionA, versionB) => {
-    const url = new URL(window.location);
-    
-    // Clear any single-view parameters
-    url.searchParams.delete('stable_version');
-    url.searchParams.delete('package');
-    url.searchParams.delete('version');
-    url.searchParams.delete('commitMessage');
-    url.searchParams.delete('commitHash');
-    
-    // Set comparison parameters
-    url.searchParams.set('compare', `${versionA}vs${versionB}`);
-    
-    // Update URL without reloading the page
-    window.history.pushState({}, '', url);
-};
-
-/**
- * Parse and handle comparison URL parameters
- * Supports formats: ?compare=3.9.0vs3.10.0 or ?versionA=3.9.0&versionB=3.10.0
- */
-const handleComparisonURLParams = async () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    let versionA = null;
-    let versionB = null;
-    
-    // Check for ?compare=AvB format
-    const compareParam = urlParams.get('compare');
-    if (compareParam && compareParam.includes('vs')) {
-        const versions = compareParam.split('vs');
-        versionA = versions[0]?.trim();
-        versionB = versions[1]?.trim();
-    }
-    
-    // Also support ?versionA=X&versionB=Y format
-    if (!versionA) versionA = urlParams.get('versionA');
-    if (!versionB) versionB = urlParams.get('versionB');
-    
-    // If comparison parameters are found, switch to comparison mode
-    if (versionA && versionB && versionA !== versionB) {
-        return { versionA, versionB, shouldCompare: true };
-    }
-    
-    return { shouldCompare: false };
-};
-
-/**
- * Switch to comparison mode programmatically
- * @param {string} versionA - Base version (optional)
- * @param {string} versionB - Target version (optional)
- */
-const switchToComparisonMode = (versionA = null, versionB = null) => {
-    // Update mode
-    comparisonMode = true;
-    
-    // Update button states
-    if (comparisonViewBtn && singleViewBtn) {
-        comparisonViewBtn.classList.add('active', 'btn-primary');
-        comparisonViewBtn.classList.remove('btn-default');
-        singleViewBtn.classList.remove('active', 'btn-primary');
-        singleViewBtn.classList.add('btn-default');
-    }
-    
-    // Update form visibility
-    if (searchForm) searchForm.classList.add('hide');
-    if (comparisonForm) comparisonForm.classList.remove('hide');
-    if (searchResults) searchResults.classList.add('hide');
-    
-    // Hide helper section (search examples) in comparison mode
-    if (helperSection) helperSection.classList.add('hide');
-    
-    // Hide package-level comparison section in version comparison mode
-    if (packageLevelSection) packageLevelSection.classList.add('hide');
-    
-    // Populate version dropdowns
-    if (versionSelectDropdown && versionSelectDropdown.innerHTML) {
-        const options = versionSelectDropdown.innerHTML;
-        if (versionASelect) versionASelect.innerHTML = options;
-        if (versionBSelect) versionBSelect.innerHTML = options;
-    }
-    
-    // Set selected versions if provided
-    if (versionA && versionASelect) versionASelect.value = versionA;
-    if (versionB && versionBSelect) versionBSelect.value = versionB;
-};
 
 /* ============================================
    ENHANCED VERSION COMPARISON HELPERS
@@ -1031,6 +496,7 @@ export const getUnionPackages = (changelogA, changelogB) => {
     
     return [...specialPackages.filter(pkg => allPackages.has(pkg)), ...filtered];
 };
+
 
 /* ============================================
    MODULAR DATA HELPER FUNCTIONS (Pure Functions)
@@ -1303,4 +769,4 @@ export const generatePackageComparisonData = (packageName, versionASpecific, ver
         commitsCountB: commitsArrayB.length,
         ...stats
     };
-}; 
+};

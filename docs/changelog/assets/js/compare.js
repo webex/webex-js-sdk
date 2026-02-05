@@ -53,6 +53,7 @@ let selectedVersion2 = null;
 let comparisonData = null;
 let localVersionPaths = {}; // Local copy of version paths
 
+
 /**
  * Initialize DOM element references
  */
@@ -611,13 +612,15 @@ function displayCommitHistory(comparison) {
   allCommits.forEach(commit => {
     const row = document.createElement('tr');
     
+    const baseUrl = github_base_url;
+    
     const commitLink = commit.hash ? 
-      `<a href="${github_base_url}commit/${commit.hash}" target="_blank">${commit.shortHash}</a>` : 
+      `<a href="${baseUrl}commit/${commit.hash}" target="_blank">${commit.shortHash}</a>` : 
       commit.shortHash || 'N/A';
     
     const messageWithLinks = (commit.message || 'No message').replace(
       /#(\d+)/g, 
-      `<a href="${github_base_url}pull/$1" target="_blank">#$1</a>`
+      `<a href="${baseUrl}pull/$1" target="_blank">#$1</a>`
     );
     
     // Show the specific version this commit was in
