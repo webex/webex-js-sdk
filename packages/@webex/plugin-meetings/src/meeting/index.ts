@@ -250,6 +250,7 @@ export type AddMediaOptions = {
   remoteMediaManagerConfig?: RemoteMediaManagerConfiguration; // applies only to multistream meetings
   bundlePolicy?: BundlePolicy; // applies only to multistream meetings
   allowMediaInLobby?: boolean; // allows adding media when in the lobby
+  allowPublishMediaInLobby?: boolean; // allows publishing media when in the lobby, if not specified, default value false is used
   additionalMediaOptions?: AdditionalMediaOptions; // allows adding additional options like send/receive audio/video
 };
 
@@ -623,6 +624,13 @@ export default class Meeting extends StatelessWebexPlugin {
   keepAliveTimerId: NodeJS.Timeout;
   lastVideoLayoutInfo: any;
   locusInfo: any;
+  // this group of properties is populated via updateMeetingObject() that's registered as a callback with LocusInfo
+  isUserUnadmitted?: boolean;
+  joinedWith?: any;
+  selfId?: string;
+  roles: any[];
+  // ... there is more ... see SelfUtils.parse()
+  // end of the group
   locusMediaRequest?: LocusMediaRequest;
   mediaProperties: MediaProperties;
   mediaRequestManagers: {
@@ -657,7 +665,6 @@ export default class Meeting extends StatelessWebexPlugin {
   endCallInitJoinReq: any;
   endJoinReqResp: any;
   endLocalSDPGenRemoteSDPRecvDelay: any;
-  joinedWith: any;
   locusId: any;
   startCallInitJoinReq: any;
   startJoinReqResp: any;
@@ -672,12 +679,10 @@ export default class Meeting extends StatelessWebexPlugin {
   permissionTokenReceivedLocalTime: number;
   resourceId: any;
   resourceUrl: string;
-  selfId: string;
   state: any;
   localAudioStreamMuteStateHandler: () => void;
   localVideoStreamMuteStateHandler: () => void;
   localOutputTrackChangeHandler: () => void;
-  roles: any[];
   environment: string;
   namespace = MEETINGS;
   allowMediaInLobby: boolean;
@@ -5781,7 +5786,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.isReactionsSupported()
         ) {
           const member = this.members.membersCollection.get(e.data.sender.participantId);
-          if (!member) {
+          if (!member && !this.locusInfo?.info?.isWebinar) {
             // @ts-ignore -- fix type
             LoggerProxy.logger.warn(
               `Meeting:index#processRelayEvent --> Skipping handling of ${REACTION_RELAY_TYPES.REACTION} for ${this.id}. participantId ${e.data.sender.participantId} does not exist in membersCollection.`
@@ -5789,7 +5794,7 @@ export default class Meeting extends StatelessWebexPlugin {
             break;
           }
 
-          const {name} = member;
+          const name = (member && member.name) || e.data.sender.displayName;
           const processedReaction: ProcessedReaction = {
             reaction: e.data.reaction,
             sender: {
@@ -7433,7 +7438,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private async waitForMediaConnectionConnected(): Promise<void> {
     try {
-      await this.mediaProperties.waitForMediaConnectionConnected();
+      await this.mediaProperties.waitForMediaConnectionConnected(this.correlationId);
     } catch (error) {
       const {iceConnected} = error;
 
@@ -8026,6 +8031,7 @@ export default class Meeting extends StatelessWebexPlugin {
       remoteMediaManagerConfig,
       bundlePolicy = 'max-bundle',
       additionalMediaOptions = {},
+      allowPublishMediaInLobby = false,
     } = options;
 
     const {
@@ -8046,7 +8052,6 @@ export default class Meeting extends StatelessWebexPlugin {
     const ipver = MeetingUtil.getIpVersion(this.webex); // used just for metrics
 
     // If the user is unjoined or guest waiting in lobby dont allow the user to addMedia
-    // @ts-ignore - isUserUnadmitted coming from SelfUtil
     if (this.isUserUnadmitted && !this.wirelessShare && !this.allowMediaInLobby) {
       throw new UserInLobbyError();
     }
@@ -8091,7 +8096,13 @@ export default class Meeting extends StatelessWebexPlugin {
     this.brbState = createBrbState(this, false);
 
     try {
-      await this.setUpLocalStreamReferences(localStreams);
+      // if we're in a lobby and allowPublishMediaInLobby==false, we don't want to
+      // setup local streams for publishing, because if we ever end up admitted to the meeting
+      // but Locus event about it for us is delayed or missed, others could see/hear our user's video/audio
+      // while the user would still think they're in the lobby
+      if (allowPublishMediaInLobby || !this.isUserUnadmitted) {
+        await this.setUpLocalStreamReferences(localStreams);
+      }
 
       this.setMercuryListener();
 

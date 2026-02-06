@@ -1249,7 +1249,7 @@ describe('plugin-meetings', () => {
         });
 
         [
-          {errorName: 'SdpOfferCreationError', description: 'if we fail to create the offer on first attempt'}, 
+          {errorName: 'SdpOfferCreationError', description: 'if we fail to create the offer on first attempt'},
           {errorName: 'WebrtcApiNotAvailableError', description: 'if RTCPeerConnection is not available'},
         ].forEach(({errorName, description}) => {
           it(`should not attempt a retry ${description}`, async () => {
@@ -1872,6 +1872,53 @@ describe('plugin-meetings', () => {
             `Meeting:index#processRelayEvent --> Skipping handling of react for ${meeting.id}. participantId fake_participant_id does not exist in membersCollection.`
           );
           assert.neverCalledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'join',
+            },
+            EVENT_TRIGGERS.MEETING_RECEIVE_REACTIONS,
+            fakeProcessedReaction
+          );
+        });
+
+        it('should process if participantId does not exist in membersCollection but has displayName in Webinar', () => {
+          LoggerProxy.logger.warn = sinon.stub();
+          meeting.isReactionsSupported = sinon.stub().returns(true);
+          meeting.config.receiveReactions = true;
+          meeting.locusInfo.info = {isWebinar: true};
+          const fakeSendersName = 'Fake reactors name';
+          const fakeReactionPayload = {
+            type: 'fake_type',
+            codepoints: 'fake_codepoints',
+            shortcodes: 'fake_shortcodes',
+            tone: {
+              type: 'fake_tone_type',
+              codepoints: 'fake_tone_codepoints',
+              shortcodes: 'fake_tone_shortcodes',
+            },
+          };
+          const fakeSenderPayload = {
+            displayName: 'Fake reactors name',
+            participantId: 'fake_participant_id',
+          };
+          const fakeProcessedReaction = {
+            reaction: fakeReactionPayload,
+            sender: {
+              id: fakeSenderPayload.participantId,
+              name: fakeSendersName,
+            },
+          };
+          const fakeRelayEvent = {
+            data: {
+              relayType: REACTION_RELAY_TYPES.REACTION,
+              reaction: fakeReactionPayload,
+              sender: fakeSenderPayload,
+            },
+          };
+          meeting.processRelayEvent(fakeRelayEvent);
+          assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
             {
@@ -3026,6 +3073,111 @@ describe('plugin-meetings', () => {
           await media;
 
           checkWorking({allowMediaInLobby: true});
+        });
+
+        const setupLobbyTest = () => {
+          meeting.roap.doTurnDiscovery = sinon
+            .stub()
+            .resolves({turnServerInfo: undefined, turnDiscoverySkippedReason: undefined});
+
+          meeting.meetingState = 'ACTIVE';
+          meeting.locusInfo.parsedLocus = {self: {state: 'IDLE'}};
+          meeting.isUserUnadmitted = true;
+
+          // Mock locusMediaRequest
+          meeting.locusMediaRequest = {
+            send: sinon.stub().resolves(),
+            isConfluenceCreated: sinon.stub().returns(false),
+          };
+
+          sinon.stub(RemoteMediaManagerModule, 'RemoteMediaManager').returns({
+            start: sinon.stub().resolves(),
+            on: sinon.stub(),
+            logAllReceiveSlots: sinon.stub(),
+          });
+
+          meeting.isMultistream = true;
+
+          const createFakeStream = (id) => ({
+            on: sinon.stub(),
+            off: sinon.stub(),
+            userMuted: false,
+            systemMuted: false,
+            get muted() {
+              return this.userMuted || this.systemMuted;
+            },
+            setUnmuteAllowed: sinon.stub(),
+            setUserMuted: sinon.stub(),
+            outputStream: {
+              getTracks: () => [{id}],
+            },
+            getSettings: sinon.stub().returns({}),
+          });
+
+          return {
+            fakeMicrophoneStream: createFakeStream('fake mic'),
+            fakeCameraStream: createFakeStream('fake camera'),
+          };
+        };
+
+        it('should not publish any local streams when in the lobby and allowPublishMediaInLobby is false', async () => {
+          const {fakeMicrophoneStream, fakeCameraStream} = setupLobbyTest();
+
+          const publishStreamStub = sinon.stub();
+          fakeMediaConnection.createSendSlot = sinon.stub().returns({
+            publishStream: publishStreamStub,
+            unpublishStream: sinon.stub(),
+            setNamedMediaGroups: sinon.stub(),
+          });
+
+          await meeting.addMedia({
+            allowMediaInLobby: true,
+            allowPublishMediaInLobby: false,
+            audioEnabled: true,
+            videoEnabled: true,
+            localStreams: {
+              microphone: fakeMicrophoneStream,
+              camera: fakeCameraStream,
+            },
+          });
+
+          assert.notCalled(publishStreamStub);
+        });
+
+        it('should publish local streams when in the lobby and allowPublishMediaInLobby is true', async () => {
+          const {fakeMicrophoneStream, fakeCameraStream} = setupLobbyTest();
+
+          const audioSlot = {
+            publishStream: sinon.stub(),
+            unpublishStream: sinon.stub(),
+            setNamedMediaGroups: sinon.stub(),
+          };
+          const videoSlot = {
+            publishStream: sinon.stub(),
+            unpublishStream: sinon.stub(),
+            setNamedMediaGroups: sinon.stub(),
+          };
+
+          fakeMediaConnection.createSendSlot = sinon.stub().callsFake((mediaType) => {
+            if (mediaType === 'AUDIO-MAIN') {
+              return audioSlot;
+            }
+            return videoSlot;
+          });
+
+          await meeting.addMedia({
+            allowMediaInLobby: true,
+            allowPublishMediaInLobby: true,
+            audioEnabled: true,
+            videoEnabled: true,
+            localStreams: {
+              microphone: fakeMicrophoneStream,
+              camera: fakeCameraStream,
+            },
+          });
+
+          assert.calledOnceWithExactly(audioSlot.publishStream, fakeMicrophoneStream);
+          assert.calledOnceWithExactly(videoSlot.publishStream, fakeCameraStream);
         });
 
         it('should create rtcMetrics and pass them to Media.createMediaConnection()', async () => {
@@ -9149,7 +9301,10 @@ describe('plugin-meetings', () => {
 
             // check that the right things were called by the callback
             assert.calledOnceWithExactly(meeting.waitForRemoteSDPAnswer);
-            assert.calledOnceWithExactly(meeting.mediaProperties.waitForMediaConnectionConnected);
+            assert.calledOnceWithExactly(
+              meeting.mediaProperties.waitForMediaConnectionConnected,
+              meeting.correlationId
+            );
           });
         });
 

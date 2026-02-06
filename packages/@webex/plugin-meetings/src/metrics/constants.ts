@@ -90,6 +90,7 @@ const BEHAVIORAL_METRICS = {
   MEDIA_ISSUE_DETECTED: 'js_sdk_media_issue_detected',
   LOCUS_CLASSIC_VS_HASH_TREE_MISMATCH: 'js_sdk_locus_classic_vs_hash_tree_mismatch',
   LOCUS_HASH_TREE_UNSUPPORTED_OPERATION: 'js_sdk_locus_hash_tree_unsupported_operation',
+  MEDIA_STILL_NOT_CONNECTED: 'js_sdk_media_still_not_connected',
 };
 
 export {BEHAVIORAL_METRICS as default};

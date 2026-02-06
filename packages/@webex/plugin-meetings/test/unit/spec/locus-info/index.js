@@ -29,7 +29,8 @@ import {
 } from '../../../../src/constants';
 
 import {self, selfWithInactivity} from './selfConstant';
-import { MEETING_REMOVED_REASON } from '@webex/plugin-meetings/src/constants';
+import {MEETING_REMOVED_REASON} from '@webex/plugin-meetings/src/constants';
+import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 
 describe('plugin-meetings', () => {
   describe('LocusInfo index', () => {
@@ -4212,6 +4213,30 @@ describe('plugin-meetings', () => {
         locusInfo.parse(mockMeeting, data);
 
         assert.calledOnceWithExactly(mockHashTreeParser.handleMessage, fakeHashTreeMessage);
+      });
+
+      it('ignores hash tree event when hashTreeParser is not created yet', () => {
+        const data = {
+          eventType: LOCUSEVENT.HASH_TREE_DATA_UPDATED,
+          stateElementsMessage: {
+            locusStateElements: [],
+            dataSets: [],
+          },
+        };
+
+        const loggerSpy = sinon.spy(LoggerProxy.logger, 'info');
+        const getTheLocusToUpdateStub = sinon.stub(locusInfo, 'getTheLocusToUpdate');
+
+        // Ensure we're not using hash trees
+        assert.isUndefined(locusInfo.hashTreeParser);
+
+        locusInfo.parse(mockMeeting, data);
+
+        assert.calledWith(
+          loggerSpy,
+          'Locus-info:index#parse --> received locus hash tree event before hashTreeParser is created'
+        );
+        assert.notCalled(getTheLocusToUpdateStub);
       });
     });
   });
