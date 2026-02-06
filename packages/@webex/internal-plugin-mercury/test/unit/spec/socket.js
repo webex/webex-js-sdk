@@ -654,94 +654,65 @@ describe('plugin-mercury', () => {
         assert.calledOnce(socket._ping);
       });
 
-      it('manually triggers close handler when socket is still connecting', async () => {
-        const s = new Socket();
-        let socketInstance;
+      [
+        {
+          description: 'manually triggers close handler when socket is still connecting',
+          closeOptions: {code: 3001, reason: 'Custom close while connecting'},
+          expectedCode: 3001,
+          expectedReason: 'Custom close while connecting',
+        },
+        {
+          description:
+            'manually triggers close handler with default code when socket is connecting',
+          closeOptions: undefined,
+          expectedCode: 1000,
+          expectedReason: 'Done',
+        },
+      ].forEach(({description, closeOptions, expectedCode, expectedReason}) => {
+        it(description, async () => {
+          const s = new Socket();
+          let socketInstance;
 
-        // Save the current stub and replace it
-        const previousStub = Socket.getWebSocketConstructor;
-        Socket.getWebSocketConstructor = sinon.stub().callsFake(
-          () =>
-            function (...args) {
-              socketInstance = new MockWebSocket(...args);
-              return socketInstance;
-            }
-        );
+          // Save the current stub and replace it
+          const previousStub = Socket.getWebSocketConstructor;
+          Socket.getWebSocketConstructor = sinon.stub().callsFake(
+            () =>
+              function (...args) {
+                socketInstance = new MockWebSocket(...args);
+                return socketInstance;
+              }
+          );
 
-        // open the socket
-        s.open('ws://example.com', mockoptions);
+          // open the socket
+          s.open('ws://example.com', mockoptions);
 
-        // Keep socket in CONNECTING state (readyState 0)
-        socketInstance.readyState = 0;
+          // Keep socket in CONNECTING state (readyState 0)
+          socketInstance.readyState = 0;
 
-        const onCloseHandler = sinon.spy();
-        s.on('close', onCloseHandler);
+          const closeSpy = sinon.spy();
+          s.on('close', closeSpy);
 
-        // Call close and await the result
-        const result = await s.close({code: 3001, reason: 'Custom close while connecting'});
+          // Call close and await the result
+          const result = await s.close(closeOptions);
 
-        // Verify the promise resolved with the correct close event
-        assert.equal(result.code, 3001);
-        assert.equal(result.reason, 'Custom close while connecting');
+          // Verify the promise resolved with the correct close event
+          assert.equal(result.code, expectedCode);
+          assert.equal(result.reason, expectedReason);
 
-        // Verify close handler was called with custom code/reason
-        assert.calledOnce(onCloseHandler);
-        assert.calledWith(onCloseHandler, {
-          code: 3001,
-          reason: 'Custom close while connecting',
+          // Verify close handler was called with expected code/reason
+          assert.calledOnce(closeSpy);
+          assert.calledWith(closeSpy, {
+            code: expectedCode,
+            reason: expectedReason,
+          });
+
+          // Verify the underlying socket.close was called with the correct params
+          assert.calledOnce(socketInstance.close);
+          assert.calledWith(socketInstance.close, expectedCode, expectedReason);
+
+          // Restore the previous stub
+          Socket.getWebSocketConstructor = previousStub;
         });
-
-        // Verify the underlying socket.close was called with the correct params
-        assert.calledOnce(socketInstance.close);
-        assert.calledWith(socketInstance.close, 3001, 'Custom close while connecting');
-
-        // Restore the previous stub
-        Socket.getWebSocketConstructor = previousStub;
-      });
-
-      it('manually triggers close handler with default code when socket is connecting', async () => {
-        const s = new Socket();
-        let socketInstance;
-
-        // Save the current stub and replace it
-        const previousStub = Socket.getWebSocketConstructor;
-        Socket.getWebSocketConstructor = sinon.stub().callsFake(
-          () =>
-            function (...args) {
-              socketInstance = new MockWebSocket(...args);
-              return socketInstance;
-            }
-        );
-
-        // open the socket
-        s.open('ws://example.com', mockoptions);
-
-        // Keep socket in CONNECTING state (readyState 0)
-        socketInstance.readyState = 0;
-
-        const closeSpy = sinon.spy();
-        s.on('close', closeSpy);
-
-        // Call close and await the result
-        const result = await s.close();
-
-        // Verify the promise resolved with the default close event
-        assert.equal(result.code, 1000);
-        assert.equal(result.reason, 'Done');
-
-        // Verify close handler was called with default code/reason
-        assert.calledOnce(closeSpy);
-        assert.calledWith(closeSpy, {
-          code: 1000,
-          reason: 'Done',
-        });
-
-        // Verify the underlying socket.close was called with the correct params
-        assert.calledOnce(socketInstance.close);
-        assert.calledWith(socketInstance.close, 1000, 'Done');
-
-        // Restore the previous stub
-        Socket.getWebSocketConstructor = previousStub;
       });
     });
 

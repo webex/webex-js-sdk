@@ -223,7 +223,7 @@ const Mercury = WebexPlugin.extend({
     this.logger.info(
       `${this.namespace}#disconnect: connecting state: ${this.connecting}, connected state: ${
         this.connected
-      }, sockert exists: ${!!this.socket}, options: ${JSON.stringify(options)}`
+      }, socket exists: ${!!this.socket}, options: ${JSON.stringify(options)}`
     );
 
     return new Promise((resolve) => {
