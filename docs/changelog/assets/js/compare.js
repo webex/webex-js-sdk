@@ -1,28 +1,34 @@
 /**
- * Compare.js - UI layer for package comparison tool
- * 
- * ARCHITECTURE:
- * - This file provides the UI layer for the comparison tool (compare.html)
- * - Business logic is provided by Vivek's functions in app.js:
- *   * getUnionPackages() - Gets all packages from both versions
- *   * generatePackageComparisonData() - Core comparison logic
- *   * Other helper functions for data processing
- * 
- * UI Workflow: Package → Version1 → Version2 → PreRelease1 → PreRelease2
+ * Compare.js - UI/controller layer. All DOM, event listeners, fetching, rendering.
+ * app.js contains only pure business logic (data in → data out).
+ * This file loads on both index.html (changelog search) and compare.html (version comparison).
  */
 
 import {
   github_base_url,
   getUnionPackages,
   generatePackageComparisonData,
-  findLatestPackageVersion,
-  getEffectiveVersion,
-  determinePackageStatus,
-  createPackageComparisonRow,
-  getPackageVersion,
-  calculateComparisonStats,
-  buildPackagesList
+  getVersionRange,
+  collectAllCommitsBetweenStableVersions,
+  getPrereleaseOptionsForStableVersion,
+  getSortedVersionKeys,
+  getSearchResults,
+  validateVersionInputResult,
+  getPackageListForChangelog,
+  computeFormState
 } from './app.js';
+
+// UI-layer fetch (app.js has no document/window/fetch)
+async function fetchChangelogData(path) {
+  const response = await fetch(path);
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
+}
+async function fetchVersionPaths() {
+  const response = await fetch('logs/main.json');
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  return response.json();
+}
 
 // DOM Elements - Will be initialized after DOM loads
 let packageNameSelect;
@@ -91,10 +97,8 @@ async function initComparisonTool() {
     // Initialize DOM elements first
     initDOMElements();
     
-    // Load main.json to get available versions
-    const response = await fetch('logs/main.json');
-    const mainData = await response.json();
-    localVersionPaths = mainData;
+    // Load version paths via business logic layer
+    localVersionPaths = await fetchVersionPaths();
     console.log('✓ Loaded', Object.keys(localVersionPaths).length, 'versions');
     
     // Populate package names
@@ -114,40 +118,21 @@ async function initComparisonTool() {
 }
 
 /**
- * Fetch changelog JSON file - Uses same logic as app.js
- */
-async function fetchChangelogData(path) {
-  const response = await fetch(path);
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  return await response.json();
-}
-
-/**
- * Populate package dropdown - Load from one recent changelog
+ * Populate package dropdown - Load from one recent changelog, use app.js for package list
  */
 async function populatePackageDropdown() {
   console.log('Loading packages...');
-  
-  // Load from v3.10.0 or fallback to v3.4.0
-  const version = localVersionPaths['v3.10.0'] ? 'v3.10.0' : 'v3.4.0';
-  const path = localVersionPaths[version];
-  
-  const changelog = await fetchChangelogData(path);
-  
-  // Use the business logic method from app.js to get sorted packages
-  let packages;
-  if (typeof getUnionPackages === 'function') {
-    packages = getUnionPackages(changelog, changelog); // Get packages from one changelog
-  } else {
-    // Fallback if getUnionPackages is not available
-    const specialPackages = ['webex', '@webex/calling'];
-    let filteredPackages = Object.keys(changelog).filter(pkg => !specialPackages.includes(pkg));
-    filteredPackages.sort();
-    packages = [...specialPackages.filter(pkg => changelog[pkg]), ...filteredPackages];
+  const versionKeys = getSortedVersionKeys(localVersionPaths);
+  const version = localVersionPaths['v3.10.0'] ? 'v3.10.0' : (localVersionPaths['v3.4.0'] ? 'v3.4.0' : versionKeys[versionKeys.length - 1]);
+  const path = version ? localVersionPaths[version] : null;
+  if (!path) {
+    console.warn('No version data in logs/main.json — add version mappings for local testing.');
+    packageNameSelect.innerHTML = '<option value="">No version data (fill logs/main.json for testing)</option>';
+    return;
   }
-  
+  const changelog = await fetchChangelogData(path);
+  const packages = getUnionPackages(changelog, changelog);
+
   packageNameSelect.innerHTML = '<option value="">Select a package</option>';
   packages.forEach(pkg => {
     const option = document.createElement('option');
@@ -155,7 +140,6 @@ async function populatePackageDropdown() {
     option.textContent = pkg;
     packageNameSelect.appendChild(option);
   });
-  
   console.log('✓ Loaded', packages.length, 'packages');
 }
 
@@ -198,19 +182,15 @@ async function compareHandlePackageChange(event) {
 
 /**
  * Populate version dropdowns (without 'v' prefix for display)
- * Sorted from oldest (0.0.0) to newest (3.10.0)
+ * Uses app.js for sorted version list
  */
-async function populateVersionDropdowns() {
-  const versions = Object.keys(localVersionPaths).sort((a, b) => {
-    return a.localeCompare(b, undefined, { numeric: true }); // Changed to ascending order
-  });
-  
-  const optionsHTML = '<option value="">Select version</option>' + 
+function populateVersionDropdowns() {
+  const versions = getSortedVersionKeys(localVersionPaths);
+  const optionsHTML = '<option value="">Select version</option>' +
     versions.map(v => {
-      const displayVersion = v.replace(/^v/, ''); // Remove 'v' prefix for display
+      const displayVersion = v.replace(/^v/, '');
       return `<option value="${v}">${displayVersion}</option>`;
     }).join('');
-  
   version1Select.innerHTML = optionsHTML;
   version2Select.innerHTML = optionsHTML;
 }
@@ -288,72 +268,15 @@ async function compareHandleVersion2Change(event) {
 }
 
 /**
- * Populate pre-release versions - Compare tool version
- * Uses Vivek's exact business logic from app.js
- * Filters for pre-release versions matching the stable version
- * Auto-selects the first version by default
+ * Populate pre-release dropdown - UI only: get data from app.js, render options
  */
 function comparePopulatePrereleaseVersions(packageName, changelog, selectElement, stableVersion) {
-  const stableVersionKey = stableVersion.replace(/^v/, ''); // Remove 'v' prefix
-  
-  // If package doesn't exist in this version's changelog
-  if (!changelog[packageName]) {
-    // Show stable version as fallback so comparison can still work
-    selectElement.innerHTML = `<option value="${stableVersionKey}">${stableVersionKey} (default)</option>`;
-    selectElement.value = stableVersionKey;
-    selectElement.disabled = false;
-    validateForm();
-    return;
-  }
-  
-  // Get all versions for this package
-  const allVersions = Object.keys(changelog[packageName]);
-  
-  // Filter for pre-release versions matching the stable version
-  // e.g., for stable version 3.7.0, get 3.7.0-next.1, 3.7.0-next.12, etc.
-  const prereleaseVersions = allVersions.filter(v => 
-    v.startsWith(stableVersionKey + '-') && v !== stableVersionKey
-  );
-  
-  // Sort by version (newest first based on published date) - Vivek's logic
-  prereleaseVersions.sort((a, b) => {
-    const dateA = changelog[packageName][a]?.published_date || 0;
-    const dateB = changelog[packageName][b]?.published_date || 0;
-    return dateB - dateA;
-  });
-  
-  let versionsToShow = [];
-  let isStableVersionDefault = false;
-  
-  // Add the stable version itself as an option if it exists
-  if (changelog[packageName][stableVersionKey]) {
-    versionsToShow.push(stableVersionKey);
-    // Check if stable version is the only option (no pre-releases)
-    isStableVersionDefault = prereleaseVersions.length === 0;
-  }
-  
-  // Add pre-release versions
-  versionsToShow = [...versionsToShow, ...prereleaseVersions];
-  
-  // If no versions found at all, use stable version as fallback
-  if (versionsToShow.length === 0) {
-    versionsToShow = [stableVersionKey];
-    isStableVersionDefault = true;
-  }
-  
-  selectElement.innerHTML = versionsToShow.map((version, index) => {
-    // Show (default) for stable version when it's the only/first option and there are no pre-releases
-    const isStable = version === stableVersionKey;
-    const showDefault = isStable && isStableVersionDefault;
-    const displayText = showDefault ? `${version} (default)` : version;
-    return `<option value="${version}">${displayText}</option>`;
-  }).join('');
-  
-  // Auto-select the first version (newest)
-  selectElement.value = versionsToShow[0];
+  const { options, defaultValue } = getPrereleaseOptionsForStableVersion(packageName, changelog, stableVersion);
+  selectElement.innerHTML = options
+    .map((opt) => `<option value="${opt.value}">${opt.displayText}</option>`)
+    .join('');
+  selectElement.value = defaultValue;
   selectElement.disabled = false;
-  
-  // Trigger validation after auto-selection
   validateForm();
 }
 
@@ -406,98 +329,22 @@ function validateForm() {
 }
 
 /**
- * Collect ALL commits between two stable versions (across all intermediate versions)
- * This provides a complete commit history between the stable versions
- */
-async function collectAllCommitsBetweenStableVersions(packageName, stableVersion1, stableVersion2) {
-  try {
-    // Get all stable versions from localVersionPaths
-    const allVersions = Object.keys(localVersionPaths)
-      .map(v => v.replace(/^v/, ''))
-      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-    
-    // Find the range of versions to check
-    const v1 = stableVersion1.replace(/^v/, '');
-    const v2 = stableVersion2.replace(/^v/, '');
-    
-    const startIdx = allVersions.indexOf(v1);
-    const endIdx = allVersions.indexOf(v2);
-    
-    if (startIdx === -1 || endIdx === -1) {
-      console.error('Could not find version indices');
-      return { commitsA: [], commitsB: [] };
-    }
-    
-    // Get all versions in the range (inclusive)
-    const [minIdx, maxIdx] = startIdx < endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
-    const versionsInRange = allVersions.slice(minIdx, maxIdx + 1);
-    
-    console.log('Collecting commits from versions:', versionsInRange);
-    
-    // Fetch all changelogs in the range
-    const allCommits = [];
-    
-    for (const version of versionsInRange) {
-      const versionKey = `v${version}`;
-      const changelog = await fetch(localVersionPaths[versionKey]).then(res => res.json());
-      
-      if (changelog[packageName]) {
-        const packageVersions = changelog[packageName];
-        
-        // Collect commits from all versions of this package in this changelog
-        Object.entries(packageVersions).forEach(([pkgVersion, pkgData]) => {
-          if (pkgData.commits) {
-            Object.entries(pkgData.commits).forEach(([hash, message]) => {
-              allCommits.push({
-                hash: hash,
-                shortHash: hash.substring(0, 7),
-                message: message,
-                version: pkgVersion,
-                stableVersion: version,
-                url: `${github_base_url}commit/${hash}`
-              });
-            });
-          }
-        });
-      }
-    }
-    
-    // Remove duplicate commits (same hash might appear in multiple versions)
-    const uniqueCommits = Array.from(
-      new Map(allCommits.map(c => [c.hash, c])).values()
-    );
-    
-    console.log(`Found ${uniqueCommits.length} unique commits across ${versionsInRange.length} versions`);
-    
-    return {
-      commitsA: uniqueCommits,
-      commitsB: [],
-      totalCommits: uniqueCommits.length
-    };
-  } catch (error) {
-    console.error('Error collecting commits:', error);
-    return { commitsA: [], commitsB: [] };
-  }
-}
-
-/**
- * Handle submit
+ * Handle submit - orchestrate: get user input, call app.js APIs, render results
  */
 async function compareHandleSubmit() {
   const preRelease1Version = preRelease1Select.value;
   const preRelease2Version = preRelease2Select.value;
-  
-  if (!selectedPackage || !selectedVersion1 || !selectedVersion2 || 
+
+  if (!selectedPackage || !selectedVersion1 || !selectedVersion2 ||
       !preRelease1Version || !preRelease2Version) {
     alert('Please select all required fields');
     return;
   }
-  
+
   submitBtn.disabled = true;
   submitBtn.textContent = 'Comparing...';
-  
+
   try {
-    // Use business logic from app.js for package comparison
     const comparison = generatePackageComparisonData(
       selectedPackage,
       preRelease1Version,
@@ -505,26 +352,32 @@ async function compareHandleSubmit() {
       changelogData[selectedVersion1],
       changelogData[selectedVersion2]
     );
-    
-    // Collect ALL commits between the stable versions (not just from pre-release versions)
-    const allCommits = await collectAllCommitsBetweenStableVersions(
+
+    const versionRange = getVersionRange(localVersionPaths, selectedVersion1, selectedVersion2);
+    const changelogsByVersion = { ...changelogData };
+    for (const versionKey of versionRange) {
+      if (!changelogsByVersion[versionKey]) {
+        changelogsByVersion[versionKey] = await fetchChangelogData(localVersionPaths[versionKey]);
+      }
+    }
+    const { commits } = collectAllCommitsBetweenStableVersions(
       selectedPackage,
       selectedVersion1,
-      selectedVersion2
+      selectedVersion2,
+      localVersionPaths,
+      changelogsByVersion
     );
-    
-    // Merge the commit data - replace with complete history
-    comparison.commitsA = allCommits.commitsA;
-    comparison.commitsB = allCommits.commitsB;
-    comparison.commitsCountA = allCommits.commitsA.length;
-    comparison.commitsCountB = allCommits.commitsB.length;
-    comparison.hasCommitsA = allCommits.commitsA.length > 0;
-    comparison.hasCommitsB = allCommits.commitsB.length > 0;
-    
+
+    comparison.commitsA = commits;
+    comparison.commitsB = [];
+    comparison.commitsCountA = commits.length;
+    comparison.commitsCountB = 0;
+    comparison.hasCommitsA = commits.length > 0;
+    comparison.hasCommitsB = false;
+
     comparisonData = comparison;
     displayComparisonResults(comparison);
     compareUpdateURL();
-    
   } catch (error) {
     console.error('Comparison error:', error);
     alert('Failed to compare versions. Check console for details.');
@@ -735,9 +588,240 @@ function compareHandleURLParameters() {
   }
 }
 
-// Initialize when DOM is ready
+/* ============================================
+   INDEX PAGE (changelog search) - UI only
+   ============================================ */
+let indexVersionPaths = {};
+let indexCurrentChangelog = null;
+
+function initIndexPage() {
+  if (!document.getElementById('version-select')) return;
+  registerIndexHandlebarsHelpers();
+  const versionSelectDropdown = document.getElementById('version-select');
+  const searchResults = document.getElementById('search-results');
+  if (searchResults) searchResults.classList.add('hide');
+  indexSetupEventListeners();
+  indexPopulateVersions();
+}
+
+function registerIndexHandlebarsHelpers() {
+  if (typeof Handlebars === 'undefined') return;
+  Handlebars.registerHelper('forIn', function (object) {
+    const arr = [];
+    for (const prop in object) arr.push({ key: prop, value: object[prop] });
+    return arr;
+  });
+  Handlebars.registerHelper('json', function (context, pkgName, version) {
+    return JSON.stringify({ ...context, [pkgName]: version });
+  });
+  Handlebars.registerHelper('github_linking', function (string, type) {
+    if (type === 'hash') return `<a href='${github_base_url}commit/${string}' target='_blank'>${string}</a>`;
+    if (type === 'message') return string.replace(/#(\d+)/g, `<a href="${github_base_url}pull/$1" target="_blank">#$1</a>`);
+    return string;
+  });
+  Handlebars.registerHelper('convertDate', function (timestamp) {
+    return `${new Date(timestamp).toDateString()} ${new Date(timestamp).toTimeString()}`;
+  });
+}
+
+async function indexPopulateVersions() {
+  const versionSelectDropdown = document.getElementById('version-select');
+  if (!versionSelectDropdown) return;
+  try {
+    const data = await fetchVersionPaths();
+    indexVersionPaths = data;
+    const versions = getSortedVersionKeys(data);
+    versionSelectDropdown.innerHTML = '<option value="">Select a version</option>' +
+      versions.map(v => `<option value="${v}">${v}</option>`).join('');
+    indexPopulateFormFieldsFromURL();
+  } catch (e) {
+    console.error('Error fetching version data:', e);
+  }
+}
+
+function indexSetupEventListeners() {
+  const versionSelectDropdown = document.getElementById('version-select');
+  const packageNameInputDropdown = document.getElementById('package-name-input');
+  const versionInput = document.getElementById('version-input');
+  const commitMessageInput = document.getElementById('commit-message-input');
+  const commitHashInput = document.getElementById('commit-hash-input');
+  const searchForm = document.getElementById('search-form');
+  if (versionSelectDropdown) versionSelectDropdown.addEventListener('change', (e) => indexDoStableVersionChange(e.target.value));
+  [versionInput, commitHashInput, commitMessageInput].forEach(el => { if (el) el.addEventListener('keyup', () => indexUpdateFormState()); });
+  if (packageNameInputDropdown) packageNameInputDropdown.addEventListener('change', () => indexUpdateFormState());
+  if (versionInput) versionInput.addEventListener('keyup', (e) => indexValidateVersionInput(e.target.value));
+  if (searchForm) searchForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const q = new URLSearchParams();
+    if (versionSelectDropdown.value) q.set('stable_version', versionSelectDropdown.value);
+    if (packageNameInputDropdown.value) q.set('package', packageNameInputDropdown.value);
+    if (versionInput.value) q.set('version', versionInput.value);
+    if (commitMessageInput.value) q.set('commitMessage', commitMessageInput.value);
+    if (commitHashInput.value) q.set('commitHash', commitHashInput.value);
+    window.history.pushState({}, 'Cisco Webex JS SDK', `${window.location.pathname}?${q}`);
+    indexPopulateVersions();
+  });
+  window.onhashchange = () => indexPopulateVersions();
+}
+
+async function indexDoStableVersionChange(stable_version) {
+  const packageNameInputDropdown = document.getElementById('package-name-input');
+  const versionInput = document.getElementById('version-input');
+  if (!stable_version || !indexVersionPaths[stable_version]) {
+    indexUpdateFormState();
+    return;
+  }
+  packageNameInputDropdown.disabled = false;
+  try {
+    indexCurrentChangelog = await fetchChangelogData(indexVersionPaths[stable_version]);
+    indexPopulatePackageNames(indexCurrentChangelog);
+  } catch (e) {
+    console.error('Error fetching changelog:', e);
+  }
+  indexUpdateFormState();
+  if (versionInput && versionInput.value.trim() !== '') indexValidateVersionInput(versionInput.value);
+}
+
+function indexPopulatePackageNames(changelog) {
+  const packageNameInputDropdown = document.getElementById('package-name-input');
+  if (!packageNameInputDropdown) return;
+  const list = getPackageListForChangelog(changelog);
+  let html = '<option value="">Select a package</option>';
+  list.forEach(name => {
+    if (name === 'separator') html += '<option disabled>──────────</option>';
+    else html += `<option value="${name}">${name}</option>`;
+  });
+  packageNameInputDropdown.value = 'webex';
+  packageNameInputDropdown.innerHTML = html;
+}
+
+function indexUpdateFormState() {
+  const versionSelectDropdown = document.getElementById('version-select');
+  const packageNameInputDropdown = document.getElementById('package-name-input');
+  const versionInput = document.getElementById('version-input');
+  const versionInputGroup = document.getElementById('version-input-group');
+  const commitMessageInput = document.getElementById('commit-message-input');
+  const commitMessageGroup = document.getElementById('commit-message-group');
+  const commitHashInput = document.getElementById('commit-hash-input');
+  const commitHashGroup = document.getElementById('commit-hash-group');
+  const packageInputGroup = document.getElementById('package-input-group');
+  const searchButton = document.getElementById('search-button');
+  const formParams = {
+    stable_version: versionSelectDropdown?.value ?? '',
+    package: packageNameInputDropdown?.value ?? '',
+    version: versionInput?.value ?? '',
+    commitMessage: commitMessageInput?.value ?? '',
+    commitHash: commitHashInput?.value ?? ''
+  };
+  const { disable } = computeFormState(formParams);
+  if (disable.package) {
+    if (packageNameInputDropdown) { packageNameInputDropdown.disabled = true; packageNameInputDropdown.value = ''; }
+    if (packageInputGroup) packageInputGroup.classList.add('hide');
+  } else {
+    if (packageNameInputDropdown) packageNameInputDropdown.disabled = false;
+    if (packageInputGroup) packageInputGroup.classList.remove('hide');
+  }
+  if (disable.version) {
+    if (versionInput) { versionInput.disabled = true; versionInput.value = ''; }
+    if (versionInputGroup) versionInputGroup.classList.add('hide');
+  } else {
+    if (versionInput) versionInput.disabled = false;
+    if (versionInputGroup) versionInputGroup.classList.remove('hide');
+  }
+  if (disable.commitMessage) {
+    if (commitMessageInput) { commitMessageInput.disabled = true; commitMessageInput.value = ''; }
+    if (commitMessageGroup) commitMessageGroup.classList.add('hide');
+  } else {
+    if (commitMessageInput) commitMessageInput.disabled = false;
+    if (commitMessageGroup) commitMessageGroup.classList.remove('hide');
+  }
+  if (disable.commitHash) {
+    if (commitHashInput) { commitHashInput.disabled = true; commitHashInput.value = ''; }
+    if (commitHashGroup) commitHashGroup.classList.add('hide');
+  } else {
+    if (commitHashInput) commitHashInput.disabled = false;
+    if (commitHashGroup) commitHashGroup.classList.remove('hide');
+  }
+  if (searchButton) searchButton.disabled = disable.searchButton;
+}
+
+function indexValidateVersionInput(version) {
+  const versionSelectDropdown = document.getElementById('version-select');
+  const versionInputError = document.getElementById('version-input-error');
+  const versionInput = document.getElementById('version-input');
+  const searchButton = document.getElementById('search-button');
+  const stableVersion = versionSelectDropdown?.value ?? '';
+  const { valid, errorMessage } = validateVersionInputResult(version, stableVersion);
+  if (versionInputError) versionInputError.innerText = errorMessage;
+  if (versionInput && !valid) versionInput.focus();
+  if (searchButton) searchButton.disabled = !valid;
+}
+
+function indexDoSearch(searchParams) {
+  const searchResults = document.getElementById('search-results');
+  const template = document.getElementById('changelog-item-template');
+  if (!searchResults || !template || typeof Handlebars === 'undefined') return;
+  const { search_results, stable_version } = getSearchResults(indexCurrentChangelog, searchParams);
+  const changelogUI = Handlebars.compile(template.innerHTML);
+  const html = changelogUI({ data: { search_results, stable_version } });
+  searchResults.innerHTML = html;
+  searchResults.classList.remove('hide');
+}
+
+function indexCopyToClipboard(copyButton) {
+  navigator.clipboard.writeText(JSON.stringify(JSON.parse(copyButton.dataset.alongWith), null, 4));
+  const span = copyButton.querySelector('span');
+  if (span) { span.textContent = 'Copied!'; setTimeout(() => { span.textContent = 'Copy'; }, 2000); }
+}
+
+async function indexPopulateFormFieldsFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const searchParams = {
+    stable_version: params.get('stable_version'),
+    package: params.get('package'),
+    version: params.get('version'),
+    commitMessage: params.get('commitMessage'),
+    commitHash: params.get('commitHash')
+  };
+  const versionSelectDropdown = document.getElementById('version-select');
+  const packageNameInputDropdown = document.getElementById('package-name-input');
+  const versionInput = document.getElementById('version-input');
+  const commitMessageInput = document.getElementById('commit-message-input');
+  const commitHashInput = document.getElementById('commit-hash-input');
+  let hasParam = false;
+  if (searchParams.stable_version) {
+    if (versionSelectDropdown) versionSelectDropdown.value = searchParams.stable_version;
+    await indexDoStableVersionChange(searchParams.stable_version);
+  }
+  if (searchParams.package && packageNameInputDropdown && !packageNameInputDropdown.disabled) {
+    packageNameInputDropdown.value = searchParams.package;
+    packageNameInputDropdown.dispatchEvent(new Event('change'));
+    hasParam = true;
+  }
+  if (searchParams.version && versionInput) {
+    versionInput.value = searchParams.version;
+    indexValidateVersionInput(searchParams.version);
+    hasParam = true;
+  }
+  if (searchParams.commitMessage && commitMessageInput) { commitMessageInput.value = searchParams.commitMessage; hasParam = true; }
+  if (searchParams.commitHash && commitHashInput) { commitHashInput.value = searchParams.commitHash; hasParam = true; }
+  indexUpdateFormState();
+  if (hasParam) indexDoSearch(searchParams);
+}
+
+// Expose copy for index template onclick
+window.copyToClipboard = indexCopyToClipboard;
+
+// Initialize: index page (changelog search) vs compare page
+function init() {
+  if (document.getElementById('version-select')) {
+    initIndexPage();
+  } else {
+    initComparisonTool();
+  }
+}
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initComparisonTool);
+  document.addEventListener('DOMContentLoaded', init);
 } else {
-  initComparisonTool();
+  init();
 }
