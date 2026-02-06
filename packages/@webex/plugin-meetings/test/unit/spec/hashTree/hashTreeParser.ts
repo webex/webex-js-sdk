@@ -1180,6 +1180,9 @@ describe('HashTreeParser', () => {
           sinon.match({
             method: 'GET',
             uri: `${mainDataSetUrl}/hashtree`,
+            qs: {
+              rootHash: hashTree.getRootHash(),
+            },
           })
         );
 
@@ -1187,6 +1190,7 @@ describe('HashTreeParser', () => {
         assert.calledWith(webexRequest, {
           method: 'POST',
           uri: `${mainDataSetUrl}/sync`,
+          qs: {rootHash: hashTree.getRootHash()},
           body: {
             leafCount: 16,
             leafDataEntries: [
@@ -1240,6 +1244,7 @@ describe('HashTreeParser', () => {
         assert.calledWith(webexRequest, {
           method: 'POST',
           uri: `${parser.dataSets.self.url}/sync`,
+          qs: {rootHash: parser.dataSets.self.hashTree.getRootHash()},
           body: {
             leafCount: 1,
             leafDataEntries: [

@@ -1011,7 +1011,8 @@ class HashTreeParser {
             try {
               // request hashes from sender
               const {hashes, dataSet: latestDataSetInfo} = await this.getHashesFromLocus(
-                dataSet.name
+                dataSet.name,
+                rootHash
               );
 
               receivedHashes = hashes;
@@ -1077,9 +1078,10 @@ class HashTreeParser {
   /**
    * Gets the current hashes from the locus for a specific data set.
    * @param {string} dataSetName
+   * @param {string} currentRootHash
    * @returns {string[]}
    */
-  private getHashesFromLocus(dataSetName: string) {
+  private getHashesFromLocus(dataSetName: string, currentRootHash: string) {
     LoggerProxy.logger.info(
       `HashTreeParser#getHashesFromLocus --> ${this.debugId} Requesting hashes for data set "${dataSetName}"`
     );
@@ -1091,6 +1093,9 @@ class HashTreeParser {
     return this.webexRequest({
       method: HTTP_VERBS.GET,
       uri: url,
+      qs: {
+        rootHash: currentRootHash,
+      },
     })
       .then((response) => {
         const hashes = response.body?.hashes as string[] | undefined;
@@ -1152,9 +1157,14 @@ class HashTreeParser {
       });
     });
 
+    const ourCurrentRootHash = dataSet.hashTree ? dataSet.hashTree.getRootHash() : EMPTY_HASH;
+
     return this.webexRequest({
       method: HTTP_VERBS.POST,
       uri: url,
+      qs: {
+        rootHash: ourCurrentRootHash,
+      },
       body,
     })
       .then((resp) => {
