@@ -169,12 +169,9 @@ jobs:
             }
             
             // Build the changelog URL
-            // Scenario 1: If webex-related packages (@webex/* or webex) → use 'webex'
-            // Scenario 2: If non-webex packages (byods, etc.) → use detected package
-            const isWebexRelated = packages.some(p => 
-              p.startsWith('@webex/') || p === 'webex'
-            );
-            const changelogPackage = isWebexRelated ? 'webex' : primaryPackage;
+            // If 'webex' package is in the list, use it. Otherwise use the first detected package.
+            const hasWebexPackage = packages.includes('webex');
+            const changelogPackage = hasWebexPackage ? 'webex' : packages[0];
             
             const changelogUrl = new URL('https://web-sdk.webex.com/changelog/');
             changelogUrl.searchParams.set('stable_version', stableVersion);
