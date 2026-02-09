@@ -107,7 +107,7 @@ describe('plugin-meetings', () => {
       const createHashTreeMessage = (visibleDataSets) => ({
         locusStateElements: [
           {
-            htMeta: {elementId: {type: 'self'}},
+            htMeta: {elementId: {type: 'metadata'}},
             data: {visibleDataSets},
           },
         ],
@@ -137,8 +137,12 @@ describe('plugin-meetings', () => {
           HashTreeParserStub,
           sinon.match({
             initialLocus: {
-              locus: {self: {visibleDataSets}},
+              locus: null,
               dataSets: [],
+            },
+            metadata: {
+              htMeta: hashTreeMessage.locusStateElements[0].htMeta,
+              visibleDataSets,
             },
             webexRequest: sinon.match.func,
             locusInfoUpdateCallback: sinon.match.func,
@@ -170,11 +174,16 @@ describe('plugin-meetings', () => {
         const visibleDataSets = ['dataset1', 'dataset2'];
         const locus = createLocusWithVisibleDataSets(visibleDataSets);
         const dataSets = [{name: 'dataset1', url: 'http://dataset-url.com'}];
+        const metadata = {
+          htMeta: {elementId: {type: 'metadata'}},
+          visibleDataSets,
+        };
 
         await locusInfo.initialSetup({
           trigger: 'join-response',
           locus,
           dataSets,
+          metadata,
         });
 
         assert.calledOnceWithExactly(
@@ -184,6 +193,7 @@ describe('plugin-meetings', () => {
               locus,
               dataSets,
             },
+            metadata,
             webexRequest: sinon.match.func,
             locusInfoUpdateCallback: sinon.match.func,
             debugId: sinon.match.string,
@@ -221,12 +231,13 @@ describe('plugin-meetings', () => {
           HashTreeParserStub,
           sinon.match({
             initialLocus: {
-              locus: {self: {visibleDataSets}},
+              locus: null,
               dataSets: [],
             },
             webexRequest: sinon.match.func,
             locusInfoUpdateCallback: sinon.match.func,
             debugId: sinon.match.string,
+            metadata: null,
           })
         );
         assert.calledOnceWithExactly(mockHashTreeParser.initializeFromGetLociResponse, locus);
@@ -250,6 +261,30 @@ describe('plugin-meetings', () => {
         assert.isTrue(locusInfo.emitChange);
       });
 
+      it('throws if called with "locus-message" and Metadata object without visibleDataSets', async () => {
+        const hashTreeMessage = {
+          locusStateElements: [
+            {
+              htMeta: {elementId: {type: 'Metadata'}},
+              data: {},
+            },
+          ],
+          dataSets: [{name: 'dataset1', url: 'test-url'}],
+        };
+        try {
+          await locusInfo.initialSetup({
+            trigger: 'locus-message',
+            hashTreeMessage,
+          });
+          assert.fail('should have thrown an error');
+        } catch (error) {
+          assert.equal(
+            error.message,
+            'Metadata object with visibleDataSets is missing in the message'
+          );
+        }
+      });
+
       describe('should setup correct locusInfoUpdateCallback when creating HashTreeParser', () => {
         const OBJECTS_UPDATED = HashTreeParserModule.LocusInfoUpdateType.OBJECTS_UPDATED;
         const MEETING_ENDED = HashTreeParserModule.LocusInfoUpdateType.MEETING_ENDED;
@@ -266,8 +301,8 @@ describe('plugin-meetings', () => {
             hashTreeMessage: {
               locusStateElements: [
                 {
-                  htMeta: {elementId: {type: 'self'}},
-                  data: {visibleDataSets: ['dataset1']},
+                  htMeta: {elementId: {type: 'Metadata'}},
+                  data: {visibleDataSets: [{name: 'dataset1', url: 'test-url'}]},
                 },
               ],
               dataSets: [{name: 'dataset1', url: 'test-url'}],
@@ -1077,7 +1112,7 @@ describe('plugin-meetings', () => {
       it('should trigger the CONTROLS_POLLING_QA_CHANGED event when necessary', () => {
         locusInfo.controls = {};
         locusInfo.emitScoped = sinon.stub();
-        newControls.pollingQAControl = { enabled: true };
+        newControls.pollingQAControl = {enabled: true};
         locusInfo.updateControls(newControls);
 
         assert.calledWith(
@@ -1632,7 +1667,6 @@ describe('plugin-meetings', () => {
         );
       });
 
-
       it('should call with participant display name', () => {
         const failureParticipant = [
           {
@@ -1657,7 +1691,7 @@ describe('plugin-meetings', () => {
             displayName: 'Test User',
           }
         );
-      })
+      });
     });
 
     describe('#updateSelf', () => {
@@ -2458,8 +2492,8 @@ describe('plugin-meetings', () => {
           {
             isInitializing: !self,
           }
-          );
-        });
+        );
+      });
 
       const checkMeetingInfoUpdatedCalled = (expected, payload) => {
         const expectedArgs = [
@@ -3040,7 +3074,7 @@ describe('plugin-meetings', () => {
         sandbox.stub(locusInfo, 'handleOneOnOneEvent');
         sandbox.stub(locusParser, 'isNewFullLocus').returns(true);
 
-        locusInfo.onFullLocus(fakeLocus, eventType);
+        locusInfo.onFullLocus('test', fakeLocus, eventType);
 
         assert.equal(fakeLocus, locusParser.workingCopy);
       });
@@ -3061,7 +3095,7 @@ describe('plugin-meetings', () => {
 
         sandbox.stub(locusParser, 'isNewFullLocus').returns(false);
 
-        locusInfo.onFullLocus(fakeLocus, eventType);
+        locusInfo.onFullLocus('test', fakeLocus, eventType);
 
         spies.forEach((spy) => {
           assert.notCalled(spy);
@@ -3211,7 +3245,11 @@ describe('plugin-meetings', () => {
         }).then(() => {
           assert.calledOnceWithExactly(meeting.meetingRequest.getLocusDTO, {url: 'oldLocusUrl'});
 
-          assert.calledOnceWithExactly(meeting.locusInfo.onFullLocus, fakeFullLocusDto);
+          assert.calledOnceWithExactly(
+            meeting.locusInfo.onFullLocus,
+            'classic Locus sync',
+            fakeFullLocusDto
+          );
           assert.calledOnce(locusInfo.locusParser.resume);
         });
       });
@@ -3309,7 +3347,11 @@ describe('plugin-meetings', () => {
             });
 
             assert.notCalled(meeting.locusInfo.handleLocusDelta);
-            assert.calledOnceWithExactly(meeting.locusInfo.onFullLocus, fakeFullLocusDto);
+            assert.calledOnceWithExactly(
+              meeting.locusInfo.onFullLocus,
+              'classic Locus sync',
+              fakeFullLocusDto
+            );
             assert.calledOnce(locusInfo.locusParser.resume);
           });
         });
@@ -3485,7 +3527,11 @@ describe('plugin-meetings', () => {
           url: 'fake locus DELTA url',
         });
         assert.notCalled(meeting.locusInfo.handleLocusDelta);
-        assert.calledOnceWithExactly(meeting.locusInfo.onFullLocus, fakeFullLocusDto);
+        assert.calledOnceWithExactly(
+          meeting.locusInfo.onFullLocus,
+          'classic Locus sync',
+          fakeFullLocusDto
+        );
         assert.calledOnce(locusInfo.locusParser.resume);
       });
     });
@@ -3951,7 +3997,7 @@ describe('plugin-meetings', () => {
           getLocusDTO: syncRequestStub,
         };
 
-        locusInfo.onFullLocus({
+        locusInfo.onFullLocus('test', {
           sequence: {
             rangeStart: 0,
             rangeEnd: 0,

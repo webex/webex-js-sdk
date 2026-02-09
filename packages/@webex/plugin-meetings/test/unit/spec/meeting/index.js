@@ -12783,6 +12783,7 @@ describe('plugin-meetings', () => {
 
         it('should read the locus object, set on the meeting and return null', () => {
           const dataSets = {someFakeStuff: 'dataSet'};
+          const metadata = {some: 'metadata'};
 
           meeting.setLocus({
             mediaConnections: [test1],
@@ -12792,12 +12793,14 @@ describe('plugin-meetings', () => {
             mediaId: uuid3,
             locus: {host: {id: uuid4}},
             dataSets,
+            metadata,
           });
           assert.calledOnce(meeting.locusInfo.initialSetup);
           assert.calledWith(meeting.locusInfo.initialSetup, {
             trigger: 'join-response',
             locus: {host: {id: uuid4}},
             dataSets,
+            metadata,
           });
           assert.equal(meeting.mediaConnections, test1);
           assert.equal(meeting.locusUrl, url1);
