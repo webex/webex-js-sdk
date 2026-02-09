@@ -1026,7 +1026,49 @@ class HashTreeParser {
   }) {
     const {updateType, updatedObjects} = updates;
 
-    if (updateType !== LocusInfoUpdateType.OBJECTS_UPDATED || updatedObjects?.length > 0) {
+    if (updateType === LocusInfoUpdateType.OBJECTS_UPDATED && updatedObjects?.length > 0) {
+      // Filter out updates for objects that already have a higher version in their datasets,
+      // or removals for objects that still exist in any of their datasets
+      const filteredUpdates = updatedObjects.filter((object) => {
+        const {elementId} = object.htMeta;
+        const {type, id, version} = elementId;
+
+        // Check all datasets
+        for (const dataSetName of Object.keys(this.dataSets)) {
+          const dataSet = this.dataSets[dataSetName];
+
+          // only visible datasets have hash trees set
+          if (dataSet?.hashTree) {
+            const existingVersion = dataSet.hashTree.getItemVersion(id, type);
+            if (existingVersion !== undefined) {
+              if (object.data) {
+                // For updates: filter out if any dataset has a higher version
+                if (existingVersion > version) {
+                  LoggerProxy.logger.info(
+                    `HashTreeParser#callLocusInfoUpdateCallback --> ${this.debugId} Filtering out update for ${type}:${id} v${version} because dataset "${dataSetName}" has v${existingVersion}`
+                  );
+
+                  return false;
+                }
+              } else if (existingVersion >= version) {
+                // For removals: filter out if the object still exists in any dataset
+                LoggerProxy.logger.info(
+                  `HashTreeParser#callLocusInfoUpdateCallback --> ${this.debugId} Filtering out removal for ${type}:${id} v${version} because dataset "${dataSetName}" still has v${existingVersion}`
+                );
+
+                return false;
+              }
+            }
+          }
+        }
+
+        return true;
+      });
+
+      if (filteredUpdates.length > 0) {
+        this.locusInfoUpdateCallback(updateType, {updatedObjects: filteredUpdates});
+      }
+    } else if (updateType !== LocusInfoUpdateType.OBJECTS_UPDATED) {
       this.locusInfoUpdateCallback(updateType, {updatedObjects});
     }
   }
@@ -1115,7 +1157,8 @@ class HashTreeParser {
             try {
               // request hashes from sender
               const {hashes, dataSet: latestDataSetInfo} = await this.getHashesFromLocus(
-                dataSet.name
+                dataSet.name,
+                rootHash
               );
 
               receivedHashes = hashes;
@@ -1181,9 +1224,10 @@ class HashTreeParser {
   /**
    * Gets the current hashes from the locus for a specific data set.
    * @param {string} dataSetName
+   * @param {string} currentRootHash
    * @returns {string[]}
    */
-  private getHashesFromLocus(dataSetName: string) {
+  private getHashesFromLocus(dataSetName: string, currentRootHash: string) {
     LoggerProxy.logger.info(
       `HashTreeParser#getHashesFromLocus --> ${this.debugId} Requesting hashes for data set "${dataSetName}"`
     );
@@ -1195,6 +1239,9 @@ class HashTreeParser {
     return this.webexRequest({
       method: HTTP_VERBS.GET,
       uri: url,
+      qs: {
+        rootHash: currentRootHash,
+      },
     })
       .then((response) => {
         const hashes = response.body?.hashes as string[] | undefined;
@@ -1256,9 +1303,14 @@ class HashTreeParser {
       });
     });
 
+    const ourCurrentRootHash = dataSet.hashTree ? dataSet.hashTree.getRootHash() : EMPTY_HASH;
+
     return this.webexRequest({
       method: HTTP_VERBS.POST,
       uri: url,
+      qs: {
+        rootHash: ourCurrentRootHash,
+      },
       body,
     })
       .then((resp) => {
