@@ -8,6 +8,10 @@ import {
   isDigitalOutbound,
   hasAgentInitiatedOutdial,
   shouldAutoAnswerTask,
+  getIsCustomerInCall,
+  getConferenceParticipantsCount,
+  isSecondaryAgent,
+  isSecondaryEpDnAgent,
 } from '../../../../../src/services/task/TaskUtils';
 import {ITask, Interaction, TaskData} from '../../../../../src/services/task/types';
 import {LoginOption} from '../../../../../src/types';
@@ -428,6 +432,42 @@ describe('TaskUtils', () => {
           expect(shouldAutoAnswerTask(mockTaskData, '', LoginOption.BROWSER, true)).toBe(false);
         });
       });
+    });
+  });
+
+  // Additional coverage for conference/consult utility functions
+  describe('Conference Utility Functions', () => {
+    const interactionId = 'interaction-123';
+    const createInteraction = (media: any = {}, participants: any = {}) =>
+      ({interactionId, mainInteractionId: interactionId, media, participants}) as any;
+
+    it('getIsCustomerInCall returns true when customer active', () => {
+      const interaction = createInteraction(
+        {[interactionId]: {mType: 'mainCall', participants: ['c1']}},
+        {'c1': {pType: 'Customer', hasLeft: false}}
+      );
+      expect(getIsCustomerInCall(interaction, interactionId)).toBe(true);
+    });
+
+    it('getConferenceParticipantsCount counts active agents only', () => {
+      const interaction = createInteraction(
+        {[interactionId]: {mType: 'mainCall', participants: ['a1', 'a2', 'c1']}},
+        {'a1': {pType: 'Agent', hasLeft: false}, 'a2': {pType: 'Agent', hasLeft: false}, 'c1': {pType: 'Customer', hasLeft: false}}
+      );
+      expect(getConferenceParticipantsCount(interaction, interactionId)).toBe(2);
+    });
+
+    it('isSecondaryAgent returns true for consult with parentInteractionId', () => {
+      const interaction = createInteraction();
+      interaction.callProcessingDetails = {relationshipType: 'consult', parentInteractionId: 'parent-456'};
+      expect(isSecondaryAgent(interaction)).toBe(true);
+    });
+
+    it('isSecondaryEpDnAgent returns true for telephony secondary agent', () => {
+      const interaction = createInteraction();
+      interaction.mediaType = 'telephony';
+      interaction.callProcessingDetails = {relationshipType: 'consult', parentInteractionId: 'parent-456'};
+      expect(isSecondaryEpDnAgent(interaction)).toBe(true);
     });
   });
 });

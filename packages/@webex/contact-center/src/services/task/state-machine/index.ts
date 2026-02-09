@@ -5,18 +5,19 @@
  */
 
 // Main state machine
-export {getTaskStateMachineConfig, createTaskStateMachine} from './TaskStateMachine';
+export {createTaskStateMachine} from './TaskStateMachine';
 export type {TaskStateMachine} from './TaskStateMachine';
 
 // Types & enums
-export {TaskState, TaskEvent, TaskAction} from './constants';
+export {TaskState, TaskEvent} from './constants';
 export {isEventOfType} from './types';
 export type {
   TaskContext,
   TaskEventPayload,
   TaskStateMachineConfig,
-  UIControls,
   UIControlConfig,
+  TaskActionsMap,
+  TaskActionArgs,
 } from './types';
 
 // Guards

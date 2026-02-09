@@ -13,23 +13,22 @@ import {
   ConsultTransferPayLoad,
   consultConferencePayloadData,
   CONSULT_TRANSFER_DESTINATION_TYPE,
-  TASK_CHANNEL_TYPE,
   TASK_EVENTS,
   VOICE_VARIANT,
 } from '../types';
-import Task, {TaskRuntimeOptions} from '../Task';
+import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
-import {TaskState, TaskEvent, guards} from '../state-machine';
+import {TaskState, TaskEvent} from '../state-machine';
 import {WrapupData} from '../../config/types';
+import {getIsConferenceInProgress} from '../TaskUtils';
 
 export default class Voice extends Task implements IVoice {
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
     callOptions?: VoiceUIControlOptions,
-    runtimeOptions?: TaskRuntimeOptions,
     wrapupData?: WrapupData,
     agentId?: string
   ) {
@@ -44,10 +43,8 @@ export default class Voice extends Task implements IVoice {
       contact,
       data,
       {
-        channelType: TASK_CHANNEL_TYPE.VOICE,
         ...resolvedOptions,
       },
-      runtimeOptions,
       wrapupData,
       agentId
     );
@@ -267,14 +264,21 @@ export default class Voice extends Task implements IVoice {
   public async pauseRecording(): Promise<TaskResponse> {
     // Validate recording is active
     const state = this.stateMachineService?.getSnapshot?.();
-    if (state && !guards.recordingActive({context: state.context})) {
-      const error = new Error('Recording is not active or already paused');
-      LoggerProxy.error('Pause recording operation not allowed', {
-        module: CC_FILE,
-        method: 'pauseRecording',
-        interactionId: this.data.interactionId,
-      });
-      throw error;
+    if (state) {
+      const {recordingControlsAvailable, recordingInProgress} = state.context as {
+        recordingControlsAvailable?: boolean;
+        recordingInProgress?: boolean;
+      };
+      const recordingActive = Boolean(recordingControlsAvailable && recordingInProgress);
+      if (!recordingActive) {
+        const error = new Error('Recording is not active or already paused');
+        LoggerProxy.error('Pause recording operation not allowed', {
+          module: CC_FILE,
+          method: 'pauseRecording',
+          interactionId: this.data.interactionId,
+        });
+        throw error;
+      }
     }
 
     try {
@@ -334,14 +338,21 @@ export default class Voice extends Task implements IVoice {
   ): Promise<TaskResponse> {
     // Validate recording is paused
     const state = this.stateMachineService?.getSnapshot?.();
-    if (state && !guards.recordingPaused({context: state.context})) {
-      const error = new Error('Recording is not paused');
-      LoggerProxy.error('Resume recording operation not allowed', {
-        module: CC_FILE,
-        method: 'resumeRecording',
-        interactionId: this.data.interactionId,
-      });
-      throw error;
+    if (state) {
+      const {recordingControlsAvailable, recordingInProgress} = state.context as {
+        recordingControlsAvailable?: boolean;
+        recordingInProgress?: boolean;
+      };
+      const recordingPaused = Boolean(recordingControlsAvailable && !recordingInProgress);
+      if (!recordingPaused) {
+        const error = new Error('Recording is not paused');
+        LoggerProxy.error('Resume recording operation not allowed', {
+          module: CC_FILE,
+          method: 'resumeRecording',
+          interactionId: this.data.interactionId,
+        });
+        throw error;
+      }
     }
 
     try {
@@ -409,7 +420,10 @@ export default class Voice extends Task implements IVoice {
     // Validate consult is allowed
     const state = this.stateMachineService?.getSnapshot?.();
     const canConsult =
-      state && (state.matches(TaskState.CONNECTED) || state.matches(TaskState.HELD));
+      state &&
+      (state.matches(TaskState.CONNECTED) ||
+        state.matches(TaskState.HELD) ||
+        state.matches(TaskState.CONFERENCING));
 
     if (!canConsult) {
       const currentState = state?.value as TaskState;
@@ -655,6 +669,13 @@ export default class Voice extends Task implements IVoice {
       destAgentId: this.data.destAgentId,
     };
 
+    // Send state machine event to transition to CONF_INITIATING
+    if (this.stateMachineService) {
+      this.stateMachineService.send({
+        type: TaskEvent.MERGE_TO_CONFERENCE,
+      });
+    }
+
     try {
       LoggerProxy.info(`Initiating consult conference to ${consultationData.destAgentId}`, {
         module: CC_FILE,
@@ -671,6 +692,13 @@ export default class Voice extends Task implements IVoice {
         interactionId: paramsDataForConferenceV2.interactionId,
         data: paramsDataForConferenceV2.data,
       });
+
+      // Send success event to transition to CONFERENCING
+      if (this.stateMachineService) {
+        this.stateMachineService.send({
+          type: TaskEvent.CONFERENCE_START,
+        });
+      }
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONFERENCE_START_SUCCESS,
@@ -692,6 +720,14 @@ export default class Voice extends Task implements IVoice {
 
       return response;
     } catch (error) {
+      // Send failure event to revert state
+      if (this.stateMachineService) {
+        this.stateMachineService.send({
+          type: TaskEvent.CONFERENCE_FAILED,
+          reason: error.toString(),
+        });
+      }
+
       const {error: detailedError} = getErrorDetails(error, METHODS.CONSULT_CONFERENCE, CC_FILE);
 
       const failedParamsData = buildConsultConferenceParamData(
@@ -715,6 +751,233 @@ export default class Voice extends Task implements IVoice {
       LoggerProxy.error(`Failed to start consult conference`, {
         module: CC_FILE,
         method: METHODS.CONSULT_CONFERENCE,
+        interactionId: this.data.interactionId,
+      });
+
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Exit from a conference call.
+   * Per conference-spec.md:
+   * - Primary agent exits to wrapup
+   * - Non-primary agent exits to available/connected
+   * - Other participants continue the call
+   *
+   * @returns Promise<TaskResponse>
+   * @throws Error if not in conference or exit fails
+   * @example
+   * ```typescript
+   * task.exitConference().then(() => {}).catch(() => {});
+   * ```
+   */
+  public async exitConference(): Promise<TaskResponse> {
+    // Validate we're in conference state OR conference is in progress per task data
+    // This handles cases where:
+    // 1. State machine is in CONFERENCING state
+    // 2. State machine is in CONNECTED but conference is active (e.g., ownership transferred)
+    const state = this.stateMachineService?.getSnapshot?.();
+    const isConferencingState = state?.matches(TaskState.CONFERENCING);
+
+    const isConferenceInProgressFromData = this.data ? getIsConferenceInProgress(this.data) : false;
+
+    if (!state || (!isConferencingState && !isConferenceInProgressFromData)) {
+      const currentState = state?.value as TaskState;
+      const error = new Error(`Cannot exit conference in ${currentState} state`);
+      LoggerProxy.error('Exit conference operation not allowed', {
+        module: CC_FILE,
+        method: 'exitConference',
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
+
+    // Send state machine event
+    if (this.stateMachineService) {
+      this.stateMachineService.send({
+        type: TaskEvent.EXIT_CONFERENCE,
+        agentId: this.data.agentId,
+      });
+    }
+
+    try {
+      LoggerProxy.info(`Exiting conference`, {
+        module: CC_FILE,
+        method: 'exitConference',
+        interactionId: this.data.interactionId,
+      });
+
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_FAILED,
+      ]);
+
+      const response = await this.contact.exitConference({
+        interactionId: this.data.interactionId,
+      });
+
+      // Send success event to transition state
+      if (this.stateMachineService) {
+        this.stateMachineService.send({
+          type: TaskEvent.EXIT_CONFERENCE_SUCCESS,
+          taskData: response.data,
+        });
+      }
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          agentId: this.data.agentId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log(`Successfully exited conference`, {
+        module: CC_FILE,
+        method: 'exitConference',
+        trackingId: response.trackingId,
+        interactionId: this.data.interactionId,
+      });
+
+      return response;
+    } catch (error) {
+      // Send failure event
+      if (this.stateMachineService) {
+        this.stateMachineService.send({
+          type: TaskEvent.EXIT_CONFERENCE_FAILED,
+          reason: error.toString(),
+        });
+      }
+
+      const {error: detailedError} = getErrorDetails(error, 'exitConference', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_FAILED,
+        {
+          taskId: this.data.interactionId,
+          agentId: this.data.agentId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.error(`Failed to exit conference`, {
+        module: CC_FILE,
+        method: 'exitConference',
+        interactionId: this.data.interactionId,
+      });
+
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Transfer the conference to another participant.
+   * Per conference-spec.md: Only primary agent can transfer conference.
+   * After transfer, the transferring agent exits to wrapup.
+   *
+   * @returns Promise<TaskResponse>
+   * @throws Error if not in conference or transfer fails
+   * @example
+   * ```typescript
+   * task.transferConference().then(() => {}).catch(() => {});
+   * ```
+   */
+  public async transferConference(): Promise<TaskResponse> {
+    // Validate we're in conference or consulting state
+    // CONSULTING is allowed because agent can transfer conference while consulting
+    // (transfers ownership to the consulted agent)
+    const state = this.stateMachineService?.getSnapshot?.();
+    const isValidState =
+      state && (state.matches(TaskState.CONFERENCING) || state.matches(TaskState.CONSULTING));
+    if (!isValidState) {
+      const currentState = state?.value as TaskState;
+      const error = new Error(`Cannot transfer conference in ${currentState} state`);
+      LoggerProxy.error('Transfer conference operation not allowed', {
+        module: CC_FILE,
+        method: 'transferConference',
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
+
+    // Send state machine event
+    if (this.stateMachineService) {
+      this.stateMachineService.send({
+        type: TaskEvent.TRANSFER_CONFERENCE,
+        agentId: this.data.agentId,
+      });
+    }
+
+    try {
+      LoggerProxy.info(`Transferring conference`, {
+        module: CC_FILE,
+        method: 'transferConference',
+        interactionId: this.data.interactionId,
+      });
+
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS,
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED,
+      ]);
+
+      const response = await this.contact.conferenceTransfer({
+        interactionId: this.data.interactionId,
+      });
+
+      // Send success event to transition state
+      if (this.stateMachineService) {
+        this.stateMachineService.send({
+          type: TaskEvent.TRANSFER_CONFERENCE_SUCCESS,
+          taskData: response.data,
+        });
+      }
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          agentId: this.data.agentId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.log(`Successfully transferred conference`, {
+        module: CC_FILE,
+        method: 'transferConference',
+        trackingId: response.trackingId,
+        interactionId: this.data.interactionId,
+      });
+
+      return response;
+    } catch (error) {
+      // Send failure event
+      if (this.stateMachineService) {
+        this.stateMachineService.send({
+          type: TaskEvent.TRANSFER_CONFERENCE_FAILED,
+          reason: error.toString(),
+        });
+      }
+
+      const {error: detailedError} = getErrorDetails(error, 'transferConference', CC_FILE);
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED,
+        {
+          taskId: this.data.interactionId,
+          agentId: this.data.agentId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral', 'business']
+      );
+
+      LoggerProxy.error(`Failed to transfer conference`, {
+        module: CC_FILE,
+        method: 'transferConference',
         interactionId: this.data.interactionId,
       });
 
@@ -746,6 +1009,25 @@ export default class Voice extends Task implements IVoice {
         TASK_EVENTS.TASK_RECORDING_RESUME_FAILED,
         {updateTaskData: true}
       ),
+      // Conference event emitters
+      emitTaskParticipantJoined: this.createEmitSelfAction(TASK_EVENTS.TASK_PARTICIPANT_JOINED, {
+        updateTaskData: true,
+      }),
+      emitTaskParticipantLeft: this.createEmitSelfAction(TASK_EVENTS.TASK_PARTICIPANT_LEFT, {
+        updateTaskData: true,
+      }),
+      emitTaskConferenceStarted: this.createEmitSelfAction(TASK_EVENTS.TASK_CONFERENCE_STARTED, {
+        updateTaskData: true,
+      }),
+      emitTaskConferenceEnded: this.createEmitSelfAction(TASK_EVENTS.TASK_CONFERENCE_ENDED, {
+        updateTaskData: true,
+      }),
+      emitTaskExitConference: this.createEmitSelfAction(TASK_EVENTS.TASK_EXIT_CONFERENCE, {
+        updateTaskData: false,
+      }),
+      emitTaskTransferConference: this.createEmitSelfAction(TASK_EVENTS.TASK_TRANSFER_CONFERENCE, {
+        updateTaskData: false,
+      }),
     };
   }
 }

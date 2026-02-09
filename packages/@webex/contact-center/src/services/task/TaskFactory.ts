@@ -1,6 +1,6 @@
 import routingContact from './contact';
 import WebCallingService from '../WebCallingService';
-import Task, {TaskRuntimeOptions} from './Task';
+import Task from './Task';
 import Voice from './voice/Voice';
 import WebRTC from './voice/WebRTC';
 import Digital from './digital/Digital';
@@ -17,7 +17,6 @@ export default class TaskFactory {
     webCallingService: WebCallingService,
     data: TaskData,
     configFlags: ConfigFlags,
-    runtimeOptions?: TaskRuntimeOptions,
     wrapupData?: WrapupData,
     agentId?: string
   ): Task {
@@ -29,8 +28,6 @@ export default class TaskFactory {
       isEndConsultEnabled,
       isRecordingEnabled: recordingEnabled,
     };
-    const runtimeOverrides = runtimeOptions ?? {};
-
     switch (mediaType) {
       case MEDIA_CHANNEL.TELEPHONY:
         if (webCallingService.loginOption === LoginOption.BROWSER) {
@@ -39,18 +36,17 @@ export default class TaskFactory {
             webCallingService,
             data,
             voiceControlOptions,
-            runtimeOverrides,
             wrapupData,
             agentId
           );
         }
 
-        return new Voice(contact, data, voiceControlOptions, runtimeOverrides, wrapupData, agentId);
+        return new Voice(contact, data, voiceControlOptions, wrapupData, agentId);
 
       case MEDIA_CHANNEL.CHAT:
       case MEDIA_CHANNEL.EMAIL:
       case MEDIA_CHANNEL.SOCIAL:
-        return new Digital(contact, data, runtimeOverrides, wrapupData, agentId);
+        return new Digital(contact, data, wrapupData, agentId);
 
       default:
         throw new Error(`Unknown media type: ${mediaType}`);

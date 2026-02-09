@@ -201,9 +201,17 @@
             <button onclick="showInitiateConsultDialog()" id="consult" class="btn--blue" disabled>Consult</button>
             <button onclick="toggleTransferOptions()" id="transfer" class="btn--blue" disabled>Transfer</button>
             <button onclick="endConsult()" id="end-consult" class="btn--red" style="display: none;">End Consult</button>
-            <button onclick="initiateConsultTransfer()" id="consult-transfer" style="display: none;">Consult
-              Transfer</button>
-                <button onclick="toggleConference()" id="conference-toggle" class="btn--blue" style="display: none;" title="Start/End Conference">Conference</button>
+            <button onclick="initiateConsultTransfer()" id="consult-transfer" style="display: none;">Consult Transfer</button>
+            
+            <!-- Conference Controls -->
+            <button onclick="mergeToConference()" id="merge-conference" class="btn--green" style="display: none;" title="Merge consultation into conference">Merge</button>
+            <button onclick="exitConference()" id="exit-conference" class="btn--red" style="display: none;" title="Exit conference (other agents continue)">Exit Conference</button>
+            <button onclick="transferConference()" id="transfer-conference" class="btn--blue" style="display: none;" title="Transfer conference ownership">Transfer Conference</button>
+            
+            <!-- Switch Call Controls (during consult) -->
+            <button onclick="switchToMainCall()" id="switch-to-main" class="btn--yellow" style="display: none;" title="Switch to main call (puts consult on hold)">Switch to Main</button>
+            <button onclick="switchToConsult()" id="switch-to-consult" class="btn--yellow" style="display: none;" title="Switch to consult call (puts main on hold)">Switch to Consult</button>
+            
             <button onclick="endCall()" id="end" class="btn--red" disabled>End</button>
             <dialog id="initiate-consult-dialog">
               <header>Consult</header>

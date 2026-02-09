@@ -72,6 +72,11 @@ const agentMultiLoginAlert = document.querySelector('#agentMultiLoginAlert');
 const consultTransferBtn = document.querySelector('#consult-transfer');
 const transferElm = document.getElementById('transfer');
 const transferOptionsElm = document.querySelector('#transfer-options');
+const mergeConferenceBtn = document.querySelector('#merge-conference');
+const exitConferenceBtn = document.querySelector('#exit-conference');
+const transferConferenceBtn = document.querySelector('#transfer-conference');
+const switchToMainBtn = document.querySelector('#switch-to-main');
+const switchToConsultBtn = document.querySelector('#switch-to-consult');
 const conferenceToggleBtn = document.querySelector('#conference-toggle');
 const timerElm = document.querySelector('#timerDisplay');
 const engageElm = document.querySelector('#engageWidget');
@@ -232,13 +237,12 @@ const taskEvents = new CustomEvent('task:incoming', {
 });
 
 function updateButtonsPostEndCall() {
-  disableAllCallControls();
-  if(currentTask) {
-    wrapupElm.disabled = false;
-    wrapupCodesDropdownElm.disabled = false;
+  // Button states come from task.uiControls - just update the UI
+  if (currentTask) {
+    updateCallControlUI(currentTask);
   } else {
-    wrapupElm.disabled = true;
-    wrapupCodesDropdownElm.disabled = true;
+    // No task - apply default (all disabled) controls
+    applyAllControlsFromUIControls(null);
   }
 }
 
@@ -650,16 +654,6 @@ async function handleQueueConsult(consultPayload) {
 }
 
 
-// Function to toggle transfer options visibility
-function toggleTransferOptions() {
-  if (transferOptionsElm.style.display === 'none') {
-    transferOptionsElm.style.display = 'block';
-    onTransferTypeSelectionChanged(); // Refresh the destination options
-  } else {
-    transferOptionsElm.style.display = 'none';
-  }
-}
-
 // Function to initiate transfer
 async function initiateTransfer() {
   const destinationType = document.querySelector('#transfer-destination-type').value;
@@ -747,19 +741,19 @@ async function endConsult() {
 
 /**
  * Gets the count of active agent participants in the conference
+ * Iterates over ALL participants in interaction.participants (not just media participants)
+ * to ensure we count all agents regardless of which media entry they appear in.
+ * 
  * @param {Object} task - The task object containing interaction details
  * @returns {number} Number of active agent participants
  */
 function getActiveAgentCount(task) {
   if (!task?.data?.interaction) return 0;
   
-  const mediaMainCall = task.data.interaction.media?.[task.data.interactionId];
-  const participantsInMainCall = new Set(mediaMainCall?.participants || []);
   const participants = task.data.interaction.participants || {};
 
   let agentCount = 0;
-  participantsInMainCall.forEach((participantId) => {
-    const participant = participants[participantId];
+  Object.values(participants).forEach((participant) => {
     if (
       participant &&
       participant.pType !== 'Customer' &&
@@ -775,35 +769,86 @@ function getActiveAgentCount(task) {
 }
 
 // MPC: Update participant list display
+// Shows ALL other agents in the conference by iterating over interaction.participants
+// This ensures we display all agents regardless of which media entry they appear in
 function updateParticipantList(task) {
   if (!task || !task.data || !task.data.interaction) {
     participantListElm.style.display = 'none';
     return;
   }
   
-  const { participants } = task.data.interaction;
-  const mediaMainCall = task.data.interaction.media?.[task.data.interactionId];
-  const participantsInMainCall = new Set(mediaMainCall?.participants || []);
+  const { participants, owner } = task.data.interaction;
   
+  // Count all active agents (not just from media participants)
+  const activeAgentCount = getActiveAgentCount(task);
+  
+  // Debug logging to help troubleshoot participant list issues
+  console.log('[updateParticipantList] Debug:', {
+    interactionId: task.data.interactionId,
+    mainInteractionId: task.data.interaction.mainInteractionId,
+    activeAgentCount,
+    allParticipants: Object.keys(participants || {}),
+    allParticipantsDetails: Object.entries(participants || {}).map(([id, p]) => ({
+      id: id.substring(0, 8),
+      pType: p.pType,
+      name: p.name,
+      hasLeft: p.hasLeft,
+      hasJoined: p.hasJoined
+    })),
+    mediaKeys: Object.keys(task.data.interaction.media || {})
+  });
+  
+  // Determine if conference is in progress by checking:
+  // 1. uiControls.exitConference.isVisible (SDK computed flag), OR
+  // 2. activeAgentCount >= 2 (fallback calculation)
+  const isConferenceActive = 
+    task.uiControls?.exitConference?.isVisible || 
+    task.uiControls?.exitConference?.isEnabled ||
+    activeAgentCount >= 2;
     
-  if (task.data.isConferenceInProgress) {
-    let participantHtml = '<strong>📋 Active Participants:</strong><br/>';
+  if (isConferenceActive) {
+    let participantHtml = '<strong>📋 Conference Participants:</strong><br/>';
     
-    // Only show participants who are actually in the main call
-    participantsInMainCall.forEach((participantId) => {
-      const participant = participants[participantId];
+    // Show conference info
+    participantHtml += `<small>Agents: ${activeAgentCount}/7`;
+    if (owner) {
+      const ownerParticipant = participants[owner];
+      const ownerName = ownerParticipant?.name || owner.substring(0, 8);
+      participantHtml += ` | Owner: ${ownerName}`;
+      
+      // Show if current agent is the primary owner
+      if (owner === agentId) {
+        participantHtml += ' (You)';
+      }
+    }
+    participantHtml += '</small><br/><br/>';
+    
+    // Iterate over ALL participants in interaction.participants
+    // This ensures we show all agents regardless of media entry
+    Object.entries(participants).forEach(([participantId, participant]) => {
       if (!participant) return;
       
-      const role = participant.pType || 'Unknown';
-      const name = participant.name || participantId.substring(0, 8);
+      // Don't show the current agent in the list (they know they're in the call)
+      if (participantId === agentId) return;
+      
+      // Only show agents (exclude Customer, Supervisor, VVA)
+      if (
+        participant.pType === 'Customer' ||
+        participant.pType === 'Supervisor' ||
+        participant.pType === 'VVA'
+      ) {
+        return;
+      }
       
       // Don't show participants who have left
       if (participant.hasLeft) return;
       
+      const role = participant.pType || 'Agent';
+      const name = participant.name || participantId.substring(0, 8);
       const status = participant.hasJoined !== false ? '✅' : '⏳';
+      const isOwner = participantId === owner ? ' 👑' : '';
   
-      
-      participantHtml += `${status} ${role}: ${name}<br/>`;
+      participantHtml += `${status} ${role}: ${name}${isOwner}<br/>`;
     });
     
     participantListElm.innerHTML = participantHtml;
@@ -813,7 +858,65 @@ function updateParticipantList(task) {
   }
 }
 
-// Function to handle conference actions
+/**
+ * Gets the count of active agent participants in the conference
+ * Iterates over ALL participants in interaction.participants (not just media participants)
+ * to ensure we count all agents regardless of which media entry they appear in.
+ * 
+ * Note: mainCallId parameter is kept for backward compatibility but is no longer used.
+ * 
+ * @param {Object} task - The task object containing interaction details
+ * @param {string} mainCallId - (deprecated) The main call interaction ID - no longer used
+ * @returns {number} Number of active agent participants
+ */
+function getActiveAgentCountFromMainCall(task, mainCallId) {
+  // Delegate to the unified getActiveAgentCount function
+  return getActiveAgentCount(task);
+}
+
+/**
+ * Merge consultation into conference
+ * Called when the Merge button is clicked during CONSULTING state
+ */
+async function mergeToConference() {
+  if (!currentTask) {
+    alert('No active task');
+    return;
+  }
+
+  try {
+    console.log('Merging consultation into conference...');
+    await currentTask.consultConference();
+    console.log('Conference merge operation completed successfully');
+  } catch (error) {
+    console.error('Failed to merge to conference:', error);
+    alert(`Failed to merge to conference. ${error.message || 'Please try again.'}`);
+  }
+}
+
+/**
+ * Exit from an active conference
+ * Called when the Exit Conference button is clicked during CONFERENCING state
+ */
+async function exitConference() {
+  if (!currentTask) {
+    alert('No active task');
+    return;
+  }
+
+  try {
+    console.log('Exiting conference...');
+    await currentTask.exitConference();
+    console.log('Conference exited successfully');
+  } catch (error) {
+    console.error('Failed to exit conference:', error);
+    alert(`Failed to exit conference. ${error.message || 'Please try again.'}`);
+  }
+}
+
+/**
+ * Legacy: Toggle conference action (kept for backward compatibility)
+ */
 async function toggleConference() {
   if (!currentTask) {
     alert('No active task');
@@ -824,53 +927,119 @@ async function toggleConference() {
     console.log('Conference action:', {
       hasConsultationData: consultationData !== null,
       participants: Object.keys(currentTask.data?.interaction?.participants || {}),
-      buttonText: conferenceToggleBtn.textContent
+      buttonText: conferenceToggleBtn?.textContent
     });
 
-    if (conferenceToggleBtn.textContent === 'Merge') {
-      // Handle Ctrl+Click or Shift+Click for Exit Conference when in conference + consulting
-      if (event && (event.ctrlKey || event.shiftKey)) {
-        if (confirm('Exit the conference? (Ctrl/Shift+Click detected)')) {
-          console.log('Exiting conference via Ctrl/Shift+Click...');
-          await currentTask.exitConference();
-          console.log('Conference exited successfully');
-          return;
-        }
-      }
-      await currentTask.consultConference();
-      console.log('Conference merge operation completed successfully');
-      
-    } else if (conferenceToggleBtn.textContent === 'Exit Conference') {
-      // Exit conference when no active consultation
-      console.log('Exiting conference (no active consultation)...');
-      await currentTask.exitConference();
-      console.log('Conference exited successfully');
+    if (conferenceToggleBtn?.textContent === 'Merge') {
+      await mergeToConference();
+    } else if (conferenceToggleBtn?.textContent === 'Exit Conference') {
+      await exitConference();
     }
-    
-    // The event listeners will handle UI updates with fresh task data
   } catch (error) {
     console.error(`Failed to perform conference action:`, error);
     alert(`Failed to perform conference action. ${error.message || 'Please try again.'}`);
   }
 }
 
-// Update conference button visibility and text
-function updateConferenceButtonState(task, isConsultationInProgress) {
-  // Use passed task parameter instead of global currentTask for consistency
-  const taskToUse = task || currentTask;
-  if (!conferenceToggleBtn || !taskToUse) return;
-  // MPC Logic: Simplified conference button management
-  if (!task.data.isConferenceInProgress || isConsultationInProgress) {
-    // Show "Start Conference" button for ACTIVE consultation
-    //conferenceToggleBtn.style.display = 'inline-block';
-    conferenceToggleBtn.textContent = 'Merge';
-    conferenceToggleBtn.className = 'btn--green';
-    conferenceToggleBtn.title = 'Merge consultation into conference with all participants';
-  } else  {
-    // MPC: In conference - show EXIT CONFERENCE (not "End Conference")
-    conferenceToggleBtn.textContent = 'Exit Conference';
-    conferenceToggleBtn.className = 'btn--red';
-    conferenceToggleBtn.title = 'Exit from conference (other agents continue, you enter wrap-up)';
+// Function to transfer conference ownership
+async function transferConference() {
+  if (!currentTask) {
+    alert('No active task');
+    return;
+  }
+
+  try {
+    console.log('Transferring conference...');
+    await currentTask.transferConference();
+    console.log('Conference transferred successfully');
+  } catch (error) {
+    console.error('Failed to transfer conference:', error);
+    alert(`Failed to transfer conference. ${error.message || 'Please try again.'}`);
+  }
+}
+
+/**
+ * Switch to main call - puts consult leg on hold
+ */
+async function switchToMainCall() {
+  if (!currentTask) {
+    alert('No active task');
+    return;
+  }
+
+  try {
+    console.log('Switching to main call...');
+    // The SDK should have a method to switch calls - this sends SWITCH_TO_MAIN_CALL event
+    if (typeof currentTask.switchToMainCall === 'function') {
+      await currentTask.switchToMainCall();
+    } else {
+      // Fallback: use hold/resume on consult leg
+      console.warn('switchToMainCall not implemented on Task, falling back to hold');
+      await currentTask.hold();
+    }
+    console.log('Switched to main call successfully');
+  } catch (error) {
+    console.error('Failed to switch to main call:', error);
+    alert(`Failed to switch to main call. ${error.message || 'Please try again.'}`);
+  }
+}
+
+/**
+ * Switch to consult call - puts main call leg on hold
+ */
+async function switchToConsult() {
+  if (!currentTask) {
+    alert('No active task');
+    return;
+  }
+
+  try {
+    console.log('Switching to consult call...');
+    // The SDK should have a method to switch calls - this sends SWITCH_TO_CONSULT event
+    if (typeof currentTask.switchToConsult === 'function') {
+      await currentTask.switchToConsult();
+    } else {
+      // Fallback: use resume to switch back
+      console.warn('switchToConsult not implemented on Task, falling back to resume');
+      await currentTask.resume();
+    }
+    console.log('Switched to consult call successfully');
+  } catch (error) {
+    console.error('Failed to switch to consult call:', error);
+    alert(`Failed to switch to consult call. ${error.message || 'Please try again.'}`);
+  }
+}
+
+// Update task state display in the UI
+function updateTaskStateDisplay(task) {
+  if (!task || !task.data) return;
+  
+  const interaction = task.data.interaction;
+  const interactionState = interaction?.state || 'unknown';
+  const isConference = task.data.isConferenceInProgress;
+  const consultStatus = getConsultStatus(task);
+  const owner = interaction?.owner;
+  const isPrimary = owner === agentId;
+  
+  let stateText = `State: ${interactionState}`;
+  
+  if (isConference) {
+    stateText += ' | 🎤 Conference Active';
+  }
+  
+  if (consultStatus && consultStatus !== 'connected') {
+    stateText += ` | Consult: ${consultStatus}`;
+  }
+  
+  if (isPrimary) {
+    stateText += ' | 👑 Primary';
+  }
+  
+  // Update the incoming details element with state info when not incoming
+  const isNew = isIncomingTask(task, agentId);
+  if (!isNew && incomingDetailsElm) {
+    const callerDisplay = task.data.interaction?.callAssociatedDetails?.ani || 'Unknown';
+    incomingDetailsElm.innerText = `${callerDisplay} - ${stateText}`;
   }
 }
 
@@ -969,30 +1138,6 @@ function pressKey(value) {
 }
 
 
-// Enable transfer button after task is accepted
-function enableTransferControls() {
-  transferElm.disabled = false;
-}
-
-// Disable transfer button after task is accepted
-function disableTransferControls() {
-  transferElm.disabled = true;
-}
-
-// Disable all buttons post consulting
-function disableCallControlPostConsult() {
-  holdResumeElm.disabled = true;
-  pauseResumeRecordingElm.disabled = true;
-  endElm.disabled = true;
-}
-
-// Enable all buttons post consulting
-function enableCallControlPostConsult() {
-  holdResumeElm.disabled = false;
-  pauseResumeRecordingElm.disabled = false;
-  endElm.disabled = false;
-}
-
 function isInteractionOnHold(task) {
   if (!task || !task.data || !task.data.interaction) {
     return false;
@@ -1016,32 +1161,108 @@ function registerTaskListeners(task) {
   });
   task.on('task:end', updateTaskList); // Update the task list UI to have latest tasks
 
-  task.on('task:hold', updateTaskList);
-
-  task.on('task:resume', updateTaskList);
-  task.on('task:ui-controls-updated', () => {
+  task.on('task:hold', (updatedTask) => {
+    console.info('[task:hold] Task held - updating UI');
     if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
-      updateCallControlUI(task);
+      currentTask = updatedTask || task;
+      updateCallControlUI(currentTask);
+      updateParticipantList(currentTask);
     }
+    updateTaskList();
+  });
+
+  task.on('task:resume', (updatedTask) => {
+    console.info('[task:resume] Task resumed - updating UI');
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      currentTask = updatedTask || task;
+      updateCallControlUI(currentTask);
+      updateParticipantList(currentTask);
+    }
+    updateTaskList();
   });
   task.on('task:ui-controls-updated', () => {
     if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      console.info('[task:ui-controls-updated] UI controls changed, updating UI');
+      // Always apply the uiControls from SDK - the SDK handles terminal state detection
+      // and returns all controls hidden when task is truly terminated
       updateCallControlUI(task);
+      updateParticipantList(task);
     }
   });
 
-  // Consult flows
-  task.on('task:consultCreated', updateTaskList);
+  // Consult flows - update both task list AND call controls UI
+  // Each handler receives the updated task and explicitly updates the UI
+  task.on('task:consultCreated', (updatedTask) => {
+    console.info('[task:consultCreated] Consult created - updating UI');
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      currentTask = updatedTask || task;
+      updateCallControlUI(currentTask);
+      updateParticipantList(currentTask);
+    }
+    updateTaskList();
+  });
 
-  task.on('task:offerConsult', updateTaskList);
+  task.on('task:offerConsult', (updatedTask) => {
+    console.info('[task:offerConsult] Consult offer received - updating UI');
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      currentTask = updatedTask || task;
+      updateCallControlUI(currentTask);
+      updateParticipantList(currentTask);
+    }
+    updateTaskList();
+  });
 
-  task.on('task:consultAccepted', updateTaskList);
+  task.on('task:consultAccepted', (updatedTask) => {
+    console.info('[task:consultAccepted] Consult accepted - updating UI');
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      currentTask = updatedTask || task;
+      updateCallControlUI(currentTask);
+      updateParticipantList(currentTask);
+    }
+    updateTaskList();
+  });
 
-  task.on('task:consulting', updateTaskList);
+  task.on('task:consulting', (updatedTask) => {
+    console.info('[task:consulting] Consulting state - updating UI');
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      currentTask = updatedTask || task;
+      updateCallControlUI(currentTask);
+      updateParticipantList(currentTask);
+    }
+    updateTaskList();
+  });
 
-  task.on('task:consultQueueCancelled', updateTaskList);
+  task.on('task:consultQueueCancelled', (updatedTask) => {
+    console.info('[task:consultQueueCancelled] Consult queue cancelled - updating UI');
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      currentTask = updatedTask || task;
+      updateCallControlUI(currentTask);
+      updateParticipantList(currentTask);
+    }
+    updateTaskList();
+  });
 
-  task.on('task:consultEnd', updateTaskList);
+  task.on('task:consultEnd', (updatedTask) => {
+    console.info('[task:consultEnd] Consult ended - updating UI');
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      const taskToUse = updatedTask || task;
+      currentTask = taskToUse;
+      
+      // Apply uiControls - SDK handles what to show based on new state
+      // (HELD for initiator, TERMINATED for consulted agent)
+      if (taskToUse && taskToUse.uiControls) {
+        updateCallControlUI(taskToUse);
+        updateParticipantList(taskToUse);
+      } else {
+        // If no uiControls available, clear all (task likely terminated)
+        applyAllControlsFromUIControls(null);
+        participantListElm.style.display = 'none';
+        incomingDetailsElm.innerText = '';
+        currentTask = undefined;
+      }
+    }
+    updateTaskList();
+  });
   task.on('task:rejected', (reason) => {
     updateTaskList();
     console.info('Task is rejected with reason:', reason);
@@ -1054,37 +1275,117 @@ function registerTaskListeners(task) {
     showOutdialFailedPopup(reason);
   });
 
-  task.on('task:wrappedup', updateTaskList); // Update the task list UI to have latest tasks
+  // task:wrapup - Task has entered WRAPPING_UP state (call ended, awaiting wrapup)
+  // This is when the agent should see wrapup controls
+  // NOTE: At this point, uiControls may not be updated yet (race condition with state machine)
+  // The actual UI update happens via task:ui-controls-updated which fires after state settles
+  task.on('task:wrapup', (updatedTask) => {
+    console.info('📝 [task:wrapup] Task entering wrapup state - UI will update via task:ui-controls-updated');
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      currentTask = updatedTask || task;
+      // Hide participant list since call has ended
+      participantListElm.style.display = 'none';
+      // Use setTimeout to let state machine settle, then update UI
+      // This ensures uiControls reflects the WRAPPING_UP state
+      setTimeout(() => {
+        console.info('📝 [task:wrapup] Delayed UI update for wrapup controls');
+        updateCallControlUI(currentTask);
+      }, 0);
+    }
+    updateTaskList();
+  });
+
+  // task:wrappedup - Agent has completed wrapup, task is now COMPLETED
+  task.on('task:wrappedup', (updatedTask) => {
+    console.info('[task:wrappedup] Task wrapped up (COMPLETED) - updating UI');
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      currentTask = updatedTask || task;
+      updateCallControlUI(currentTask);
+      updateParticipantList(currentTask);
+    }
+    updateTaskList();
+  });
+
+  // Task termination - clean up UI controls
+  // When task:end fires, the task is TERMINATED - ALWAYS clear all controls
+  task.on('task:end', () => {
+    console.info('🔚 Task ended (TERMINATED) - clearing ALL UI controls');
+    // If this is the current task, clear all controls
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      // Task ended - ALWAYS clear all controls (don't rely on uiControls)
+      applyAllControlsFromUIControls(null);
+      participantListElm.style.display = 'none';
+      incomingDetailsElm.innerText = '';
+      
+      // Clear currentTask since task has ended
+      currentTask = undefined;
+    }
+    updateTaskList();
+  });
 
   // Conference event listeners - Simplified approach
-  task.on('task:participantJoined', (task) => {
-    console.info('🚀 Conference started event - updating task list');
-    updateTaskList(); // This will refresh currentTask and call updateCallControlUI with latest data
+  task.on('task:participantJoined', (updatedTask) => {
+    console.info('🚀 Participant joined conference - updating UI');
+    // Update current task reference with latest data
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      currentTask = updatedTask;
+      updateCallControlUI(currentTask);
+      updateParticipantList(currentTask);
+    }
+    updateTaskList();
   });
 
-  task.on('task:participantLeft', (task) => {
-    console.info('🔚 Conference ended event - updating task list');
-    updateTaskList(); // This will refresh currentTask and call updateCallControlUI with latest data
+  task.on('task:participantLeft', (updatedTask) => {
+    console.info('🔚 Participant left conference - updating UI');
+    // Update current task reference with latest data
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      currentTask = updatedTask;
+      updateCallControlUI(currentTask);
+      updateParticipantList(currentTask);
+      
+      // Check if conference has ended (only 1 agent left)
+      const mainCallId = updatedTask.data.interaction?.mainInteractionId || updatedTask.data.interactionId;
+      const activeAgentCount = getActiveAgentCountFromMainCall(updatedTask, mainCallId);
+      console.info(`[task:participantLeft] Active agents remaining: ${activeAgentCount}`);
+      
+      // If only 1 agent remains, update UI to regular call state
+      if (activeAgentCount <= 1) {
+        console.info('📞 Conference ended - only 1 agent remaining, switching to regular call UI');
+        participantListElm.style.display = 'none';
+      }
+    }
+    updateTaskList();
   });
-}
 
-function disableAllCallControls() {
-  holdResumeElm.disabled = true;
-  muteElm.disabled = true;
-  pauseResumeRecordingElm.disabled = true;
-  consultTabBtn.disabled = true;
-  transferElm.disabled = true;
-  endElm.disabled = true;
-  pauseResumeRecordingElm.disabled = true;
-  conferenceToggleBtn.style.display = 'none';
-  endConsultBtn.style.display = 'none';
-  consultTransferBtn.style.display = 'none';
-}
+  // Conference ended event - conference is over, but call may continue as regular call
+  // This happens when agents leave and <2 agents remain, downgrading to CONNECTED state
+  task.on('task:conferenceEnded', (updatedTask) => {
+    console.info('🔚 Conference ended event - updating UI (call may continue as regular call)');
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      const taskToUse = updatedTask || task;
+      
+      // Update task reference and UI - call may still be active!
+      currentTask = taskToUse || currentTask;
+      if (currentTask.uiControls) {
+        updateCallControlUI(currentTask);
+      }
+      
+      // Hide participant list since conference ended
+      participantListElm.style.display = 'none';
+    }
+    updateTaskList();
+  });
 
-function makeDisabledAndHide(element, hide, disable)
-{
-  element.style.display = hide ? 'none' : 'inline-block';
-  element.disabled = disable;
+  // Exit conference event - THIS agent is INITIATING exit from conference
+  // This fires BEFORE the state transition completes (at EXIT_CONFERENCE event, not EXIT_CONFERENCE_SUCCESS)
+  // Don't clear UI here - let task:wrapup or task:end handle the final UI state
+  task.on('task:exitConference', (updatedTask) => {
+    console.info('👋 [task:exitConference] Agent initiating conference exit - waiting for result...');
+    // Just log and update task list - the actual UI update happens on:
+    // - task:wrapup (if wrapUpRequired=true → WRAPPING_UP state)
+    // - task:end (if wrapUpRequired=false → TERMINATED state)
+    updateTaskList();
+  });
 }
 
 /**
@@ -1189,94 +1490,193 @@ function getConsultStatus(task) {
   return 'connected';
 }
 
+/**
+ * Update call control UI based ONLY on task.uiControls
+ * 
+ * IMPORTANT: This is the SINGLE source of truth for all call control button states.
+ * All button visibility and enabled states come from task.uiControls.
+ * DO NOT manually set .disabled or .style.display anywhere else!
+ */
 function updateCallControlUI(task) {
+  if (!task) {
+    // No task - hide all call controls
+    applyAllControlsFromUIControls(null);
+    return;
+  }
+
   const { data } = task;
-  const { interaction, mediaResourceId } = data;
-  const { isTerminated, media, participants, callProcessingDetails } = interaction;
+  const { interaction } = data;
+  const { callProcessingDetails } = interaction || {};
 
-  autoWrapupTimerElm.style.display = 'none';
-  if (task.data.wrapUpRequired) {
-    participantListElm.style.display = 'none';
-    if (task.autoWrapup && task.autoWrapup.isRunning()) {
-      startAutoWrapupTimer(task);
-    }
-  } else {
-    wrapupElm.disabled = true;
-    wrapupCodesDropdownElm.disabled = true;
+  // Get uiControls from task - this is the SINGLE SOURCE OF TRUTH
+  const uiControls = task.uiControls || {};
+
+  // Apply ALL button states from uiControls
+  applyAllControlsFromUIControls(uiControls);
+
+  // Update button text based on state (text only, not visibility/enabled)
+  updateButtonLabels(task, callProcessingDetails);
+
+  // Handle auto-wrapup timer display
+  handleAutoWrapupDisplay(task);
+
+  // Update task state display
+  updateTaskStateDisplay(task);
+
+  // Update incoming call display for new tasks
+  updateIncomingCallDisplay(task);
+
+  // Update participant list display
+  updateParticipantList(task);
+
+  // Debug logging
+  console.log('uiControls applied:', {
+    interactionId: task.data?.interactionId,
+    accept: uiControls.accept,
+    decline: uiControls.decline,
+    hold: uiControls.hold,
+    mute: uiControls.mute,
+    consult: uiControls.consult,
+    transfer: uiControls.transfer,
+    end: uiControls.end,
+    mergeToConference: uiControls.mergeToConference,
+    exitConference: uiControls.exitConference,
+    wrapup: uiControls.wrapup,
+  });
+}
+
+/**
+ * Apply control state to a single element from uiControls
+ * This is the ONLY function that should set .style.display and .disabled
+ */
+function applyControlState(element, control) {
+  if (!element) return;
+  
+  // Default to hidden and disabled if no control provided
+  const isVisible = control?.isVisible ?? false;
+  const isEnabled = control?.isEnabled ?? false;
+  
+  element.style.display = isVisible ? 'inline-block' : 'none';
+  element.disabled = !isEnabled;
+}
+
+/**
+ * Apply ALL call control button states from uiControls
+ * This is the SINGLE place where button visibility/enabled is set
+ */
+function applyAllControlsFromUIControls(uiControls) {
+  const controls = uiControls || {};
+  
+  // Accept/Decline buttons
+  applyControlState(answerElm, controls.accept);
+  applyControlState(declineElm, controls.decline);
+  
+  // Core call controls
+  applyControlState(holdResumeElm, controls.hold);
+  applyControlState(muteElm, controls.mute);
+  applyControlState(consultTabBtn, controls.consult);
+  applyControlState(transferElm, controls.transfer);
+  applyControlState(endElm, controls.end);
+  applyControlState(pauseResumeRecordingElm, controls.recording);
+  
+  // Consult controls
+  applyControlState(endConsultBtn, controls.endConsult);
+  applyControlState(consultTransferBtn, controls.consultTransfer);
+  
+  // Conference controls
+  applyControlState(mergeConferenceBtn, controls.mergeToConference);
+  applyControlState(exitConferenceBtn, controls.exitConference);
+  applyControlState(transferConferenceBtn, controls.transferConference);
+  applyControlState(switchToMainBtn, controls.switchToMainCall);
+  applyControlState(switchToConsultBtn, controls.switchToConsult);
+  
+  // Wrapup controls
+  applyControlState(wrapupElm, controls.wrapup);
+  if (wrapupCodesDropdownElm) {
+    wrapupCodesDropdownElm.disabled = !(controls.wrapup?.isEnabled);
   }
-  const hasParticipants = Object.keys(participants).length > 1;
-  const isNew = isIncomingTask(task, agentId);
-  const digitalChannels = ['chat', 'email', 'social'];
-  const isBrowser = agentDeviceType === 'BROWSER';
-
-  if (isNew) {
-    disableAllCallControls();
-    enableAnswerDeclineButtons(currentTask);
-    return;
+  
+  // Legacy button - always hidden (replaced by separate buttons)
+  if (conferenceToggleBtn) {
+    conferenceToggleBtn.style.display = 'none';
   }
+}
 
-  if (digitalChannels.includes(task.data.interaction.mediaType)) {
-    holdResumeElm.disabled = true;
-    muteElm.disabled = true;
-    pauseResumeRecordingElm.disabled = true;
-    consultTabBtn.disabled = true;
-    declineElm.disabled = true;
-    transferElm.disabled = false;
-    endElm.disabled = !hasParticipants;
-    pauseResumeRecordingElm.disabled = true;
-    return;
-  }
-
-  if (task?.data?.interaction?.mediaType === 'telephony') {
-    // hold/resume call
-    const isHold = isInteractionOnHold(task);
+/**
+ * Update button labels/text based on task state
+ * Only updates text, NOT visibility or enabled state
+ */
+function updateButtonLabels(task, callProcessingDetails) {
+  if (!task) return;
+  
+  // Hold/Resume button text
+  const isHold = isInteractionOnHold(task);
+  if (holdResumeElm) {
     holdResumeElm.innerText = isHold ? 'Resume' : 'Hold';
-
-    const uiControls = task.uiControls || {};
-    const applyControlState = (element, control) => {
-      if (!element) {
-        return;
-      }
-      if (!control) {
-        element.style.display = 'inline-block';
-        element.disabled = false;
-        return;
-      }
-      makeDisabledAndHide(element, !control.isVisible, !control.isEnabled);
-    };
-
-    applyControlState(holdResumeElm, uiControls.hold);
-    applyControlState(muteElm, uiControls.mute);
-    applyControlState(consultTabBtn, uiControls.consult);
-    applyControlState(transferElm, uiControls.transfer);
-    applyControlState(endElm, uiControls.end);
-    applyControlState(endConsultBtn, uiControls.endConsult);
-    applyControlState(consultTransferBtn, uiControls.consultTransfer);
-    applyControlState(conferenceToggleBtn, uiControls.conference);
-    applyControlState(wrapupElm, uiControls.wrapup);
-    wrapupCodesDropdownElm.disabled = !(uiControls.wrapup && uiControls.wrapup.isEnabled);
-
-    console.log('uiControls updated:', {
-      interactionId: task.data.interactionId,
-      controls: uiControls,
-    });
-
-    applyControlState(pauseResumeRecordingElm, uiControls.recording);
-    pauseResumeRecordingElm.innerText = 'Pause Recording';
-    if (callProcessingDetails) {
-      const { isPaused } = callProcessingDetails;
-      pauseResumeRecordingElm.innerText = isPaused === 'true' ? 'Resume Recording' : 'Pause Recording';
-    }
-
+  }
+  
+  // Recording button text
+  if (pauseResumeRecordingElm && callProcessingDetails) {
+    const { isPaused } = callProcessingDetails;
+    pauseResumeRecordingElm.innerText = isPaused === 'true' ? 'Resume Recording' : 'Pause Recording';
+  }
+  
+  // Consult button tooltip - shows participant limit info
+  if (consultTabBtn) {
     const activeAgentCount = getActiveAgentCount(task);
     const hasReachedParticipantLimit = activeAgentCount >= 7;
     consultTabBtn.title = hasReachedParticipantLimit
       ? 'Maximum 7 participants allowed in conference'
       : 'Initiate consultation with another agent';
-
-    // MPC: Update participant list display
-    updateParticipantList(task);
   }
+}
+
+/**
+ * Handle auto-wrapup timer display
+ */
+function handleAutoWrapupDisplay(task) {
+  if (!task) {
+    if (autoWrapupTimerElm) autoWrapupTimerElm.style.display = 'none';
+    return;
+  }
+  
+  if (task.data?.wrapUpRequired && task.autoWrapup?.isRunning()) {
+    startAutoWrapupTimer(task);
+    if (autoWrapupTimerElm) autoWrapupTimerElm.style.display = 'block';
+  } else {
+    if (autoWrapupTimerElm) autoWrapupTimerElm.style.display = 'none';
+  }
+}
+
+/**
+ * Update incoming call display info
+ */
+function updateIncomingCallDisplay(task) {
+  if (!task || !incomingDetailsElm) return;
+  
+  const isNew = isIncomingTask(task, agentId);
+  if (!isNew) return;
+  
+  const callerDisplay = task.data.interaction?.callAssociatedDetails?.ani;
+  const mediaType = task.data.interaction?.mediaType;
+  
+  if (mediaType === 'telephony') {
+    if (agentDeviceType === 'BROWSER') {
+      incomingDetailsElm.innerText = `Call from ${callerDisplay}`;
+      if (task.data.isAutoAnswering) {
+        console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
+      }
+    } else {
+      incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
+    }
+  }
+}
+
+// Legacy function kept for compatibility
+function makeDisabledAndHide(element, hide, disable) {
+  if (!element) return;
+  element.style.display = hide ? 'none' : 'inline-block';
+  element.disabled = disable;
 }
 
 function generateWebexConfig({credentials}) {
@@ -1853,20 +2253,20 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
   taskId = event.detail.task.data.interactionId;
 
   registerTaskListeners(currentTask);
-  enableAnswerDeclineButtons(currentTask);
+  // Update UI based on task.uiControls
+  updateIncomingTaskDisplay(currentTask);
+  updateCallControlUI(currentTask);
 });
 
  async function answer() {
-  answerElm.disabled = true;
-  declineElm.disabled = true;
+  // Button states will be updated by task.uiControls after accept() completes
   await currentTask.accept();
   updateTaskList();
   incomingDetailsElm.innerText = 'Task Accepted';
 }
 
 function decline() {
-  answerElm.disabled = true;
-  declineElm.disabled = true;
+  // Button states will be updated by task.uiControls after decline() completes
   currentTask.decline(taskId);
   incomingDetailsElm.innerText = 'No incoming Tasks';
   updateTaskList();
@@ -1937,27 +2337,16 @@ function expandAll() {
 }
 
 function holdResumeCall() {
-  if (holdResumeElm.innerText === 'Hold') {
-    holdResumeElm.disabled = true;
-    currentTask.holdResume().then(() => {
-      console.info('Call held successfully');
-      holdResumeElm.innerText = 'Resume';
-      holdResumeElm.disabled = false;
-    }).catch((error) => {
-      console.error('Failed to hold the call', error);
-      holdResumeElm.disabled = false;
-    });
-  } else {
-    holdResumeElm.disabled = true;
-    currentTask.holdResume().then(() => {
-      console.info('Call resumed successfully');
-      holdResumeElm.innerText = 'Hold';
-      holdResumeElm.disabled = false;
-    }).catch((error) => {
-      console.error('Failed to resume the call', error);
-      holdResumeElm.disabled = false;
-    });
-  }
+  // Button states will be updated by task.uiControls after operation completes
+  const isHold = holdResumeElm.innerText === 'Hold';
+  currentTask.holdResume().then(() => {
+    console.info(isHold ? 'Call held successfully' : 'Call resumed successfully');
+    // UI will update via updateTaskList -> updateCallControlUI -> uiControls
+    updateTaskList();
+  }).catch((error) => {
+    console.error('Failed to hold/resume the call', error);
+    updateTaskList();
+  });
 }
 
 function muteUnmute() {
@@ -1972,59 +2361,45 @@ function muteUnmute() {
 }
 
 function togglePauseResumeRecording() {
+  // Button states will be updated by task.uiControls after operation completes
   const autoResumed = autoResumeCheckboxElm.checked;
-  if (pauseResumeRecordingElm.innerText === 'Pause Recording') {
-    pauseResumeRecordingElm.disabled = true;
-    currentTask.pauseRecording().then(() => {
-      console.info('Recording paused successfully');
-      pauseResumeRecordingElm.innerText = 'Resume Recording';
-      pauseResumeRecordingElm.disabled = false;
-      autoResumeCheckboxElm.disabled = false;
-    }).catch((error) => {
-      console.error('Failed to pause recording', error);
-      pauseResumeRecordingElm.disabled = false;
-    });
-  } else {
-    pauseResumeRecordingElm.disabled = true;
-    const resumeParams = autoResumed ? { autoResumed: autoResumed } : undefined;
-    currentTask.resumeRecording(resumeParams).then(() => {
-      console.info('Recording resumed successfully');
-      pauseResumeRecordingElm.innerText = 'Pause Recording';
-      pauseResumeRecordingElm.disabled = false;
-      autoResumeCheckboxElm.disabled = true;
-    }).catch((error) => {
-      console.error('Failed to resume recording', error);
-      pauseResumeRecordingElm.disabled = false;
-    });
-  }
+  const isPausing = pauseResumeRecordingElm.innerText === 'Pause Recording';
+  
+  const operation = isPausing 
+    ? currentTask.pauseRecording()
+    : currentTask.resumeRecording(autoResumed ? { autoResumed } : undefined);
+    
+  operation.then(() => {
+    console.info(isPausing ? 'Recording paused successfully' : 'Recording resumed successfully');
+    updateTaskList();
+  }).catch((error) => {
+    console.error(isPausing ? 'Failed to pause recording' : 'Failed to resume recording', error);
+    updateTaskList();
+  });
 }
 
 function endCall() {
-  endElm.disabled = true;
+  // Button states will be updated by task.uiControls after operation completes
   currentTask.end().then(() => {
     console.log('task ended successfully by agent');
     updateTaskList();
     updateUnregisterButtonState();
   }).catch((error) => {
     console.error('Failed to end the call', error);
-    endElm.disabled = false;
+    updateTaskList();
   });
 }
 
 function wrapupCall() {
-  wrapupElm.disabled = true;
+  // Button states will be updated by task.uiControls after operation completes
   const wrapupReason = wrapupCodesDropdownElm.options[wrapupCodesDropdownElm.selectedIndex].text;
   const auxCodeId = wrapupCodesDropdownElm.options[wrapupCodesDropdownElm.selectedIndex].value;
   currentTask.wrapup({wrapUpReason: wrapupReason, auxCodeId: auxCodeId}).then(() => {
     console.info('Call wrapped up successfully');
-    holdResumeElm.innerText = 'Hold';
-    holdResumeElm.disabled = true;
-    endElm.disabled = true;
-    wrapupCodesDropdownElm.disabled = true;
     updateTaskList();
   }).catch((error) => {
     console.error('Failed to wrap up the call', error);
-    wrapupElm.disabled = false;
+    updateTaskList();
   });
 }
 
@@ -2070,11 +2445,9 @@ function renderTaskList(taskList) {
   taskListContainer.innerHTML = ''; // Clear existing tasks
 
   if (!taskList || Object.keys(taskList).length === 0) {
-    disableAnswerDeclineButtons();
+    // No tasks - apply default (all disabled) controls
+    applyAllControlsFromUIControls(null);
     incomingDetailsElm.innerText = '';
-    disableAllCallControls();
-    wrapupElm.disabled = true;
-    wrapupCodesDropdownElm.disabled = true;
     autoWrapupTimerElm.style.display = 'none';
     taskListContainer.innerHTML = '<p>No tasks available</p>';
     engageElm.innerHTML = ``;
@@ -2092,7 +2465,11 @@ function renderTaskList(taskList) {
   if (currentTask) {
     const currentTaskStillExists = taskList[currentTask.data.interactionId];
     if (!currentTaskStillExists) {
-      // Current task was removed, we'll need to select another one
+      // Current task was removed - clear UI controls immediately
+      console.info('📋 Current task removed from list - clearing UI controls');
+      applyAllControlsFromUIControls(null);
+      participantListElm.style.display = 'none';
+      incomingDetailsElm.innerText = '';
       currentTask = undefined;
     }
   }
@@ -2196,55 +2573,39 @@ function renderTaskList(taskList) {
   });
 }
 
-function enableAnswerDeclineButtons(task) {
-  const callerDisplay = task.data.interaction?.callAssociatedDetails?.ani;
-  const isNew = isIncomingTask(task, agentId); 
-  const isAutoAnswering = task.data.isAutoAnswering || false;
+// REFACTORED: Button states now come from task.uiControls
+// This function only updates display text, NOT button visibility/enabled state
+function updateIncomingTaskDisplay(task) {
+  if (!task || !incomingDetailsElm) return;
+  
+  const callerDisplay = task.data.interaction?.callAssociatedDetails?.ani || 'Unknown';
+  const mediaType = task.data.interaction?.mediaType;
   const chatAndSocial = ['chat', 'social'];
   
-  if (task.data.interaction.mediaType === 'telephony') {
+  if (mediaType === 'telephony') {
     if (agentDeviceType === 'BROWSER') {
-      // Disable buttons if auto-answering or not new
-      answerElm.disabled = !isNew || isAutoAnswering;
-      declineElm.disabled = !isNew || isAutoAnswering;
-  
       incomingDetailsElm.innerText = `Call from ${callerDisplay}`;
-      
-      // Log auto-answer status for debugging
-      if (isAutoAnswering) {
-        console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
-      }
     } else {
       incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
     }
-  } else if (chatAndSocial.includes(task.data.interaction.mediaType)) {
-    answerElm.disabled = !isNew || isAutoAnswering;
-    declineElm.disabled = true;
+  } else if (chatAndSocial.includes(mediaType)) {
     incomingDetailsElm.innerText = `Chat from ${callerDisplay}`;
-    
-    if (isAutoAnswering) {
-      console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
-    }
-  } else if (task.data.interaction.mediaType === 'email') {
-    answerElm.disabled = !isNew || isAutoAnswering;
-    declineElm.disabled = true;
+  } else if (mediaType === 'email') {
     incomingDetailsElm.innerText = `Email from ${callerDisplay}`;
-    
-    if (isAutoAnswering) {
-      console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
-    }
   }
-}
-
-function disableAnswerDeclineButtons() {
-  answerElm.disabled = true;
-  declineElm.disabled = true;
+  
+  // Log auto-answer if in progress
+  if (task.data.isAutoAnswering) {
+    console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
+  }
 }
 
 function handleTaskSelect(task) {
   // Handle the task click event
   console.log('Task clicked:', task);
-  enableAnswerDeclineButtons(task);
+  // Update incoming task display text and apply all button states from uiControls
+  updateIncomingTaskDisplay(task);
+  updateCallControlUI(task);
   engageElm.innerHTML = ``;
   engageElm.style.height = "100px"
   const chatAndSocial = ['chat', 'social'];

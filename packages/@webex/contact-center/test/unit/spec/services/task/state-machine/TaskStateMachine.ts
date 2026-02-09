@@ -33,7 +33,7 @@ describe('Task state machine', () => {
         } as any,
       });
 
-      service.send({type: TaskEvent.OFFER, taskData});
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
 
       const snapshot = service.getSnapshot();
       expect(snapshot.context.recordingControlsAvailable).toBe(true);
@@ -51,7 +51,7 @@ describe('Task state machine', () => {
         } as any,
       });
 
-      service.send({type: TaskEvent.OFFER, taskData: initialTaskData});
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: initialTaskData});
       service.send({type: TaskEvent.ASSIGN, taskData: pausedTaskData});
 
       const snapshot = service.getSnapshot();
@@ -71,7 +71,7 @@ describe('Task state machine', () => {
         } as any,
       });
 
-      service.send({type: TaskEvent.OFFER, taskData: initialTaskData});
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: initialTaskData});
       service.send({type: TaskEvent.ASSIGN, taskData: initialTaskData});
       service.send({type: TaskEvent.RECORDING_STARTED, taskData: recordingTaskData});
 
@@ -87,8 +87,8 @@ describe('Task state machine', () => {
       const service = startMachine();
       const taskData = createTaskData();
 
-      service.send({type: TaskEvent.OFFER, taskData});
-      service.send({type: TaskEvent.ACCEPT});
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
       expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
 
       service.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId});
@@ -97,7 +97,7 @@ describe('Task state machine', () => {
       service.send({type: TaskEvent.HOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId});
       expect(service.getSnapshot().value).toBe(TaskState.HELD);
 
-      service.send({type: TaskEvent.UNHOLD, mediaResourceId: taskData.mediaResourceId});
+      service.send({type: TaskEvent.UNHOLD_INITIATED, mediaResourceId: taskData.mediaResourceId});
       expect(service.getSnapshot().value).toBe(TaskState.RESUME_INITIATING);
 
       service.send({type: TaskEvent.UNHOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId});
@@ -114,7 +114,7 @@ describe('Task state machine', () => {
         } as any,
       });
 
-      service.send({type: TaskEvent.OFFER, taskData});
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
       service.send({type: TaskEvent.ASSIGN, taskData});
       expect(service.getSnapshot().context.recordingInProgress).toBe(true);
 
@@ -127,32 +127,34 @@ describe('Task state machine', () => {
   });
 
   describe('wrap-up and completion flow', () => {
-    it('moves from CONNECTED -> WRAPPING_UP -> COMPLETED on END/WRAPUP', () => {
+    it('moves from CONNECTED -> WRAPPING_UP -> COMPLETED on END/WRAPUP_COMPLETE', () => {
       const service = startMachine();
       const taskData = createTaskData();
 
-      service.send({type: TaskEvent.OFFER, taskData});
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
       service.send({type: TaskEvent.ASSIGN, taskData});
       expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
 
-      service.send({type: TaskEvent.END});
+      service.send({type: TaskEvent.TASK_WRAPUP});
       expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
 
-      service.send({type: TaskEvent.WRAPUP});
+      service.send({type: TaskEvent.WRAPUP_COMPLETE});
       expect(service.getSnapshot().value).toBe(TaskState.COMPLETED);
     });
 
     it('handles CONTACT_ENDED by entering wrapping up before completion', () => {
       const service = startMachine();
-      const taskData = createTaskData();
+      // Primary agent (isConsulted: false) should go to WRAPPING_UP
+      const taskData = createTaskData({isConsulted: false} as any);
 
-      service.send({type: TaskEvent.OFFER, taskData});
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
       service.send({type: TaskEvent.ASSIGN, taskData});
 
-      service.send({type: TaskEvent.CONTACT_ENDED});
+      // CONTACT_ENDED event must include taskData for shouldWrapUpForThisAgent check
+      service.send({type: TaskEvent.CONTACT_ENDED, taskData});
       expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
 
-      service.send({type: TaskEvent.AUTO_WRAPUP});
+      service.send({type: TaskEvent.WRAPUP_COMPLETE});
       expect(service.getSnapshot().value).toBe(TaskState.COMPLETED);
     });
   });
@@ -162,7 +164,7 @@ describe('Task state machine', () => {
       const service = startMachine();
       const taskData = createTaskData();
 
-      service.send({type: TaskEvent.OFFER, taskData});
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
       service.send({type: TaskEvent.ASSIGN, taskData});
 
       service.send({
@@ -172,7 +174,6 @@ describe('Task state machine', () => {
       });
       expect(service.getSnapshot().value).toBe(TaskState.CONSULT_INITIATING);
       expect(service.getSnapshot().context.consultInitiator).toBe(true);
-      expect(service.getSnapshot().context.consultDestination).toBe('agent-42');
 
       service.send({type: TaskEvent.CONSULT_SUCCESS});
       expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
@@ -186,17 +187,22 @@ describe('Task state machine', () => {
       service.send({type: TaskEvent.CONSULT_END});
       const snapshotAfterEnd = service.getSnapshot();
       expect(snapshotAfterEnd.value).toBe(TaskState.HELD);
-      expect(snapshotAfterEnd.context.consultDestination).toBeNull();
       expect(snapshotAfterEnd.context.consultDestinationAgentJoined).toBe(false);
     });
 
     it('transitions to conferencing when merge event is received', () => {
       const service = startMachine();
-      const taskData = createTaskData();
+      const taskData = createTaskData({consultingAgentId: 'agent-1'});
 
-      service.send({type: TaskEvent.OFFER, taskData});
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
       service.send({type: TaskEvent.ASSIGN, taskData});
-      service.send({type: TaskEvent.CONSULT_CREATED, taskData});
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: 'agent-42',
+        destinationType: 'agent',
+      });
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULT_INITIATING);
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
       expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
 
       service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
@@ -210,7 +216,7 @@ describe('Task state machine', () => {
       const service = startMachine();
       const taskData = createTaskData();
 
-      service.send({type: TaskEvent.OFFER, taskData});
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
       service.send({type: TaskEvent.ASSIGN, taskData});
 
       service.send({
@@ -228,7 +234,7 @@ describe('Task state machine', () => {
       const service = startMachine();
       const taskData = createTaskData();
 
-      service.send({type: TaskEvent.OFFER, taskData});
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
       service.send({type: TaskEvent.ASSIGN, taskData});
 
       service.send({
@@ -248,8 +254,8 @@ describe('Task state machine', () => {
       const service = startMachine();
       const taskData = createTaskData();
 
-      service.send({type: TaskEvent.OFFER, taskData});
-      service.send({type: TaskEvent.ACCEPT});
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
       service.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId});
       expect(service.getSnapshot().value).toBe(TaskState.HOLD_INITIATING);
 
@@ -264,13 +270,13 @@ describe('Task state machine', () => {
       const service = startMachine();
       const taskData = createTaskData();
 
-      service.send({type: TaskEvent.OFFER, taskData});
-      service.send({type: TaskEvent.ACCEPT});
-      service.send({type: TaskEvent.HOLD, mediaResourceId: taskData.mediaResourceId});
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId});
       service.send({type: TaskEvent.HOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId});
       expect(service.getSnapshot().value).toBe(TaskState.HELD);
 
-      service.send({type: TaskEvent.UNHOLD, mediaResourceId: taskData.mediaResourceId});
+      service.send({type: TaskEvent.UNHOLD_INITIATED, mediaResourceId: taskData.mediaResourceId});
       expect(service.getSnapshot().value).toBe(TaskState.RESUME_INITIATING);
 
       service.send({type: TaskEvent.UNHOLD_FAILED, mediaResourceId: taskData.mediaResourceId});

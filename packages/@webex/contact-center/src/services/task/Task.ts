@@ -15,6 +15,10 @@ import {
   ConsultPayload,
   ConsultTransferPayLoad,
   ResumeRecordingPayload,
+  MEDIA_CHANNEL,
+  TASK_CHANNEL_TYPE,
+  VOICE_VARIANT,
+  CallId,
 } from './types';
 import {METHODS} from './constants';
 import {CC_FILE, TASK_FILE} from '../../constants';
@@ -29,21 +33,20 @@ import type {
   TaskStateMachine,
   UIControlConfig,
   TaskContext,
+  TaskActionsMap,
+  TaskActionArgs,
 } from './state-machine';
 import {
   computeUIControls,
   getDefaultUIControls,
   haveUIControlsChanged,
 } from './state-machine/uiControlsComputer';
-import type {TaskActionsMap} from './state-machine/actions';
 import AutoWrapup from './AutoWrapup';
 import {WrapupData} from '../config/types';
 
-export interface TaskRuntimeOptions {
-  actionOverrides?: Partial<TaskActionsMap>;
-}
-
-type CallId = string;
+type UIControlConfigInput = Omit<UIControlConfig, 'channelType'> & {
+  channelType?: UIControlConfig['channelType'];
+};
 
 export default abstract class Task extends EventEmitter implements ITask {
   protected contact: ReturnType<typeof routingContact>;
@@ -55,7 +58,6 @@ export default abstract class Task extends EventEmitter implements ITask {
   private lastState?: TaskState;
   protected currentUiControls: TaskUIControls;
   protected uiControlConfig: UIControlConfig;
-  protected runtimeOptions: TaskRuntimeOptions;
   protected wrapupData?: WrapupData;
   public autoWrapup?: AutoWrapup;
   protected agentId?: string;
@@ -63,16 +65,16 @@ export default abstract class Task extends EventEmitter implements ITask {
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
-    uiControlConfig: UIControlConfig,
-    runtimeOptions?: TaskRuntimeOptions,
+    uiControlConfig: UIControlConfigInput,
     wrapupData?: WrapupData,
     agentId?: string
   ) {
     super();
     this.contact = contact;
     this.data = data;
-    this.uiControlConfig = uiControlConfig;
-    this.runtimeOptions = runtimeOptions ?? {};
+    const channelType = uiControlConfig.channelType ?? Task.resolveChannelType(data);
+    // Include agentId in the config for ownership checks (transfer conference)
+    this.uiControlConfig = {...uiControlConfig, channelType, agentId};
     this.wrapupData = wrapupData;
     this.agentId = agentId;
     this.metricsManager = MetricsManager.getInstance();
@@ -80,6 +82,14 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.currentUiControls = getDefaultUIControls();
     this.initializeStateMachine();
     this.setupAutoWrapupTimer();
+  }
+
+  private static resolveChannelType(data: TaskData): UIControlConfig['channelType'] {
+    const mediaType = data?.interaction?.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
+
+    return mediaType === MEDIA_CHANNEL.TELEPHONY
+      ? TASK_CHANNEL_TYPE.VOICE
+      : TASK_CHANNEL_TYPE.DIGITAL;
   }
 
   // Abstract methods that all child classes must implement
@@ -220,8 +230,7 @@ export default abstract class Task extends EventEmitter implements ITask {
       this.lastState = currentState;
       this.state = snapshot;
 
-      // Update UI controls based on current state
-      this.updateUiControls();
+      this.updateUiControls(previousState !== currentState);
     });
 
     this.stateMachineService.start();
@@ -231,13 +240,14 @@ export default abstract class Task extends EventEmitter implements ITask {
   /**
    * Send an event to the state machine
    */
-  protected sendStateMachineEvent(event: TaskEventPayload): void {
+  public sendStateMachineEvent(event: TaskEventPayload): void {
     if (this.stateMachineService) {
       LoggerProxy.log(`Sending state machine event: ${event?.type}`, {
         module: CC_FILE,
         method: 'sendStateMachineEvent',
         interactionId: this.data?.interactionId,
       });
+
       this.stateMachineService.send(event);
     }
   }
@@ -289,6 +299,72 @@ export default abstract class Task extends EventEmitter implements ITask {
     return undefined;
   }
 
+  private async autoAnswerIfNeeded(): Promise<void> {
+    if (!this.data) {
+      return;
+    }
+
+    const autoAnswerSupported =
+      this.uiControlConfig.channelType === TASK_CHANNEL_TYPE.DIGITAL ||
+      this.uiControlConfig.voiceVariant === VOICE_VARIANT.WEBRTC;
+
+    if (!autoAnswerSupported) {
+      return;
+    }
+
+    const shouldAutoAnswer = this.data.isAutoAnswering === true;
+
+    if (!shouldAutoAnswer) {
+      return;
+    }
+
+    LoggerProxy.info(`Auto-answering task`, {
+      module: TASK_FILE,
+      method: 'autoAnswerIfNeeded',
+      interactionId: this.data.interactionId,
+    });
+
+    try {
+      await this.accept();
+      LoggerProxy.info(`Task auto-answered successfully`, {
+        module: TASK_FILE,
+        method: 'autoAnswerIfNeeded',
+        interactionId: this.data.interactionId,
+      });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_AUTO_ANSWER_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          mediaType: this.data.interaction.mediaType,
+          isAutoAnswered: true,
+        },
+        ['behavioral', 'operational']
+      );
+
+      this.emit(TASK_EVENTS.TASK_AUTO_ANSWERED, this);
+    } catch (error) {
+      this.updateTaskData({...this.data, isAutoAnswering: false});
+      LoggerProxy.error(`Failed to auto-answer task`, {
+        module: TASK_FILE,
+        method: 'autoAnswerIfNeeded',
+        interactionId: this.data.interactionId,
+        error,
+      });
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_AUTO_ANSWER_FAILED,
+        {
+          taskId: this.data.interactionId,
+          mediaType: this.data.interaction.mediaType,
+          error: error?.message || 'Unknown error',
+          isAutoAnswered: false,
+        },
+        ['behavioral', 'operational']
+      );
+    }
+  }
+
   private updateTaskFromEvent(event?: TaskEventPayload): void {
     const taskData = Task.extractTaskDataFromEvent(event);
     if (taskData) {
@@ -304,14 +380,14 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   protected getChannelSpecificActionOverrides(): Partial<TaskActionsMap> {
-    return this.runtimeOptions.actionOverrides ?? {};
+    return {};
   }
 
   protected createEmitSelfAction(
     taskEvent: TASK_EVENTS,
     {updateTaskData = false}: {updateTaskData?: boolean} = {}
   ) {
-    return ({event}: {event: TaskEventPayload}) => {
+    return ({event}: TaskActionArgs) => {
       if (updateTaskData) {
         this.updateTaskFromEvent(event);
       }
@@ -326,6 +402,9 @@ export default abstract class Task extends EventEmitter implements ITask {
 
   private getCommonActionOverrides(): Partial<TaskActionsMap> {
     return {
+      syncTaskDataFromEvent: ({event}: {event: TaskEventPayload}) => {
+        this.updateTaskFromEvent(event);
+      },
       emitTaskIncoming: this.createEmitSelfAction(TASK_EVENTS.TASK_INCOMING, {
         updateTaskData: true,
       }),
@@ -345,7 +424,7 @@ export default abstract class Task extends EventEmitter implements ITask {
       emitTaskConsultCreated: this.createEmitSelfAction(TASK_EVENTS.TASK_CONSULT_CREATED, {
         updateTaskData: true,
       }),
-      emitTaskConsulting: ({event}: {event: TaskEventPayload}) => {
+      emitTaskConsulting: ({event}: TaskActionArgs) => {
         this.updateTaskFromEvent(event);
         if (this.data.isConsulted) {
           this.emit(TASK_EVENTS.TASK_CONSULT_ACCEPTED, this);
@@ -366,7 +445,7 @@ export default abstract class Task extends EventEmitter implements ITask {
       emitTaskConsultQueueFailed: this.createEmitSelfAction(TASK_EVENTS.TASK_CONSULT_QUEUE_FAILED, {
         updateTaskData: true,
       }),
-      emitTaskReject: ({event}: {event: TaskEventPayload}) => {
+      emitTaskReject: ({event}: TaskActionArgs) => {
         this.updateTaskFromEvent(event);
         const reason =
           event && typeof event === 'object' && 'reason' in event
@@ -374,19 +453,43 @@ export default abstract class Task extends EventEmitter implements ITask {
             : undefined;
         this.emit(TASK_EVENTS.TASK_REJECT, reason);
       },
-      emitTaskWrapup: () => {
-        if (this.data?.wrapUpRequired) {
-          LoggerProxy.info(`Emitting task event ${TASK_EVENTS.TASK_WRAPUP}`, {
+      emitTaskWrapup: ({event}: {event?: TaskEventPayload}) => {
+        const wrapUpRequiredFromEvent =
+          event && typeof event === 'object' && 'taskData' in event
+            ? (event as {taskData?: TaskData}).taskData?.wrapUpRequired
+            : undefined;
+        const shouldEmitWrapup = Boolean(wrapUpRequiredFromEvent ?? this.data.wrapUpRequired);
+        if (!shouldEmitWrapup) {
+          LoggerProxy.info(`Skipping task:wrapup event - wrapUpRequired is false`, {
             module: TASK_FILE,
             method: 'emitTaskEvent',
             interactionId: this.data?.interactionId,
           });
-          this.emit(TASK_EVENTS.TASK_WRAPUP, this);
+
+          return;
         }
+        LoggerProxy.info(`Emitting task event ${TASK_EVENTS.TASK_WRAPUP}`, {
+          module: TASK_FILE,
+          method: 'emitTaskEvent',
+          interactionId: this.data?.interactionId,
+        });
+        this.emit(TASK_EVENTS.TASK_WRAPUP, this);
       },
       emitTaskWrappedup: this.createEmitSelfAction(TASK_EVENTS.TASK_WRAPPEDUP, {
         updateTaskData: true,
       }),
+      requestAutoAnswer: ({event}: TaskActionArgs) => {
+        if (event) {
+          // parameter intentionally unused
+        }
+        this.autoAnswerIfNeeded();
+      },
+      requestCleanup: () => {
+        this.emit(TASK_EVENTS.TASK_CLEANUP, this, {removeFromCollection: false});
+      },
+      cleanupResources: () => {
+        this.emit(TASK_EVENTS.TASK_CLEANUP, this, {removeFromCollection: true});
+      },
     };
   }
 
