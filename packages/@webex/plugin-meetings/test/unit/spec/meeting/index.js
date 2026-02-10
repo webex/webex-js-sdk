@@ -264,6 +264,7 @@ describe('plugin-meetings', () => {
       stopReachability: sinon.stub(),
       isSubnetReachable: sinon.stub().returns(true),
     };
+    webex.internal.voicea.isHesiodEnabled = sinon.stub().resolves(false)
     webex.internal.llm.on = sinon.stub();
     webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
       {},
@@ -12734,13 +12735,85 @@ describe('plugin-meetings', () => {
             self: {datachannelToken: 'token-123'}
           };
 
+          webex.internal.voicea.isHesiodEnabled = sinon.stub().resolves(true);
+
           await meeting.updateLLMConnection();
 
-          assert.calledWith(
+          assert.calledWithExactly(
             webex.internal.llm.registerAndConnect,
             'a url',
             'a datachannel url',
             'token-123'
+          );
+        });
+
+        it('prefers refreshed token over locus self token', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+            self: {datachannelToken: 'locus-token'}
+          };
+
+          webex.internal.llm.getDatachannelToken = sinon.stub().returns('refreshed-token');
+          webex.internal.voicea.isHesiodEnabled = sinon.stub().resolves(true);
+
+          await meeting.updateLLMConnection();
+
+          assert.calledWithExactly(
+            webex.internal.llm.registerAndConnect,
+            'a url',
+            'a datachannel url',
+            'refreshed-token'
+          );
+        });
+
+        it('uses practice session token when in practice session even if refreshed token exists', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            url: 'a url',
+            info: {
+              datachannelUrl: 'a datachannel url',
+              practiceSessionDatachannelUrl: 'ps-url'
+            },
+            self: {
+              datachannelToken: 'locus-token',
+              practiceSessionDatachannelToken: 'ps-token'
+            }
+          };
+
+          meeting.webinar.isJoinPracticeSessionDataChannel = sinon.stub().returns(true);
+          webex.internal.llm.getDatachannelToken = sinon.stub().returns('refreshed-token');
+          webex.internal.voicea.isHesiodEnabled = sinon.stub().resolves(true);
+
+          await meeting.updateLLMConnection();
+
+          assert.calledWithExactly(
+            webex.internal.llm.registerAndConnect,
+            'a url',
+            'ps-url',
+            'ps-token'
+          );
+        });
+
+        it('does not pass token to registerAndConnect when Hesiod is disabled', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+            self: {datachannelToken: 'token-123'}
+          };
+
+          webex.internal.llm.getDatachannelToken = sinon.stub().returns(undefined);
+          webex.internal.voicea.isHesiodEnabled = sinon.stub().resolves(false);
+
+          await meeting.updateLLMConnection();
+
+          assert.calledWithExactly(
+            webex.internal.llm.registerAndConnect,
+            'a url',
+            'a datachannel url',
+            undefined
           );
         });
       });

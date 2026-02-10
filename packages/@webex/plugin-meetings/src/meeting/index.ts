@@ -1667,16 +1667,6 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.mediaServerIp = undefined;
-
-    /**
-     * Register the meeting‑scoped token refresh function with the LLM layer.
-     *
-     * This allows the LLM interceptor to refresh the DataChannel token by
-     * calling back into the current meeting instance.
-     *
-     * @returns {void}
-     */
-    // @ts-ignore
   }
 
   /**
@@ -6209,16 +6199,31 @@ export default class Meeting extends StatelessWebexPlugin {
     } = this.locusInfo || {};
 
     const isJoined = this.isJoined();
+    // @ts-ignore
+    const refershedDatachannelToken = this.webex.internal.llm.getDatachannelToken();
+    // @ts-ignore
+    const isHesiodEnabled = await this.webex.internal.voicea.isHesiodEnabled();
+
+    let paramToken;
+
+    if (datachannelToken) {
+      paramToken = refershedDatachannelToken ?? datachannelToken;
+    }
 
     // webinar panelist should use new data channel in practice session
     const dataChannelUrl =
       this.webinar.isJoinPracticeSessionDataChannel() && practiceSessionDatachannelUrl
         ? practiceSessionDatachannelUrl
         : datachannelUrl;
-    const dataChannelToken =
+    let dataChannelToken =
       this.webinar.isJoinPracticeSessionDataChannel() && practiceSessionDatachannelToken
         ? practiceSessionDatachannelToken
-        : datachannelToken;
+        : paramToken;
+
+    if (!isHesiodEnabled) {
+      dataChannelToken = undefined;
+    }
+
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
       if (
@@ -10231,12 +10236,10 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise}
    */
   public refreshDataChannelToken() {
-    const res = this.meetingRequest.fetchDatachannelToken({
+    return this.meetingRequest.fetchDatachannelToken({
       locusUrl: this.locusUrl,
       requestingParticipantId: this.members.selfId,
       isPracticeSession: this.webinar.isJoinPracticeSessionDataChannel(),
     });
-
-    return res;
   }
 }

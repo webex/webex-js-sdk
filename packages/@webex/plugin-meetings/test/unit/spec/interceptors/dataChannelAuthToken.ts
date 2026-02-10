@@ -15,19 +15,16 @@ describe('plugin-meetings', () => {
       beforeEach(() => {
         clock = sinon.useFakeTimers();
 
-        webex = new MockWebex({
-          children: {},
-        });
-
-        webex.internal = {
-          llm: {
-            refreshDataChannelToken: sinon.stub(),
-          },
-        };
+        webex = new MockWebex({children: {}});
 
         webex.request = sinon.stub();
 
         interceptor = Reflect.apply(DataChannelAuthTokenInterceptor.create, webex, []);
+
+        interceptor.webex.internal.llm = {
+          refreshDataChannelToken: sinon.stub(),
+          setDatachannelToken: sinon.stub(),
+        };
       });
 
       afterEach(() => {
@@ -88,10 +85,7 @@ describe('plugin-meetings', () => {
         };
 
         it('refreshes token and retries request successfully', async () => {
-          webex.internal.llm.refreshDataChannelToken.resolves({
-            body: {datachannelToken: 'new-token'},
-          });
-
+          webex.internal.llm.refreshDataChannelToken.resolves('new-token');
           webex.request.resolves('mock-response');
 
           const promise = interceptor.refreshTokenAndRetryWithDelay(options);
@@ -101,6 +95,9 @@ describe('plugin-meetings', () => {
           const result = await promise;
 
           expect(webex.internal.llm.refreshDataChannelToken.calledOnce).to.be.true;
+
+          expect(webex.internal.llm.setDatachannelToken.calledOnceWith('new-token')).to.be.true;
+
           expect(options.headers[DATA_CHANNEL_AUTH_HEADER]).to.equal('new-token');
           expect(webex.request.calledOnceWith(options)).to.be.true;
           expect(result).to.equal('mock-response');
@@ -115,12 +112,12 @@ describe('plugin-meetings', () => {
           clock.tick(2000);
 
           await assert.isRejected(promise, error);
+
+          expect(webex.internal.llm.setDatachannelToken.called).to.be.false;
         });
 
         it('rejects when retry request fails', async () => {
-          webex.internal.llm.refreshDataChannelToken.resolves({
-            body: {datachannelToken: 'new-token'},
-          });
+          webex.internal.llm.refreshDataChannelToken.resolves('new-token');
 
           const error = new Error('request failed');
           webex.request.rejects(error);
@@ -130,6 +127,8 @@ describe('plugin-meetings', () => {
           clock.tick(2000);
 
           await assert.isRejected(promise, error);
+
+          expect(webex.internal.llm.setDatachannelToken.calledOnceWith('new-token')).to.be.true;
         });
       });
     });

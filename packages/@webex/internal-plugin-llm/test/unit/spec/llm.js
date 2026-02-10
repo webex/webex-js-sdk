@@ -3,7 +3,7 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import Mercury from '@webex/internal-plugin-mercury';
 import LLMService from '@webex/internal-plugin-llm';
-
+//
 describe('plugin-llm', () => {
   const locusUrl = 'locusUrl';
   const datachannelUrl = 'datachannelUrl';
@@ -187,7 +187,7 @@ describe('plugin-llm', () => {
 
     describe('#setRefreshHandler', () => {
       it('stores the provided handler', () => {
-        const handler = sinon.stub().resolves('token');
+        const handler = sinon.stub().resolves({ body: { datachannelToken: 'newToken' } });
         llmService.setRefreshHandler(handler);
 
         // @ts-ignore
@@ -201,12 +201,12 @@ describe('plugin-llm', () => {
           await llmService.refreshDataChannelToken();
           assert.fail('Should have thrown');
         } catch (err) {
-          assert.match(err.message, 'refreshHandler not set');
+          assert.match(err.message, 'LLM refreshHandler is not set');
         }
       });
 
       it('returns token when handler resolves', async () => {
-        const handler = sinon.stub().resolves('newToken');
+        const handler = sinon.stub().resolves({ body: { datachannelToken: 'newToken' } });
         llmService.setRefreshHandler(handler);
 
         const token = await llmService.refreshDataChannelToken();
@@ -231,6 +231,12 @@ describe('plugin-llm', () => {
         } catch (err) {
           assert.match(err.message, 'throw error');
         }
+      });
+    });
+    describe('#getDatachannelToken / #setDatachannelToken', () => {
+      it('sets and gets datachannel token', () => {
+        llmService.setDatachannelToken('abc123');
+        assert.equal(llmService.getDatachannelToken(), 'abc123');
       });
     });
   });

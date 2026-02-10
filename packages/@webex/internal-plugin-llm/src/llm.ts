@@ -58,7 +58,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   private datachannelUrl?: string;
 
-  private refreshHandler?: () => Promise<string>;
+  private datachannelToken?: string;
+
+  private refreshHandler?: () => Promise<{body: {datachannelToken: string}}>;
 
   /**
    * Register to the websocket
@@ -126,12 +128,27 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   public getDatachannelUrl = (): string => this.datachannelUrl;
 
   /**
+   * Get data channel token for the connection
+   * @returns {string} data channel token
+   */
+  public getDatachannelToken = (): string => this.datachannelToken;
+
+  /**
+   * Set data channel token for the connection
+   * @param {string} datachannelToken - data channel token
+   * @returns {void}
+   */
+  public setDatachannelToken = (datachannelToken: string): void => {
+    this.datachannelToken = datachannelToken;
+  };
+
+  /**
    * Set the handler used to refresh the DataChannel token
    *
    * @param {function} handler - Function that returns a refreshed token
    * @returns {void}
    */
-  public setRefreshHandler(handler: () => Promise<string>) {
+  public setRefreshHandler(handler: () => Promise<{body: {datachannelToken: string}}>) {
     this.refreshHandler = handler;
   }
 
@@ -162,7 +179,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     }
 
     try {
-      return await this.refreshHandler();
+      const res = await this.refreshHandler();
+
+      return res.body.datachannelToken;
     } catch (error: any) {
       this.logger.error(`Error refreshing DataChannel token: ${error}`);
       throw error;

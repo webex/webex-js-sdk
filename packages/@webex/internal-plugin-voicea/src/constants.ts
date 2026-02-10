@@ -43,6 +43,8 @@ export const TRANSCRIPTION_TYPE = {
 };
 
 export const VOICEA = 'voicea';
+export const VOICEA_HESIOD_ENABLED = 'voicea-hesiod-enabled';
+
 export const DEFAULT_SPOKEN_LANGUAGE = 'en';
 
 export const ANNOUNCE_STATUS = {

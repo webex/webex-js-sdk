@@ -72,7 +72,9 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
           // @ts-ignore
           const newToken = await this.webex.internal.llm.refreshDataChannelToken();
 
-          options.headers[DATA_CHANNEL_AUTH_HEADER] = newToken.body.datachannelToken;
+          options.headers[DATA_CHANNEL_AUTH_HEADER] = newToken;
+          // @ts-ignore
+          this.webex.internal.llm.setDatachannelToken(newToken);
 
           // @ts-ignore
           const res = await this.webex.request(options);
