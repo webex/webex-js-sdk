@@ -320,8 +320,6 @@ const verifyPasswordElm = document.querySelector('#btn-verify-password');
 const displayMeetingStatusElm = document.querySelector('#display-meeting-status');
 const notes=document.querySelector('#notes');
 const spaceIDError = `Using the space ID as a destination is no longer supported. Please refer to the <a href="https://github.com/webex/webex-js-sdk/wiki/Migration-to-Unified-Space-Meetings" target="_blank">migration guide</a> to migrate to use the meeting ID or SIP address.`;
-const BNR = 'BNR';
-const VBG = 'VBG';
 const blurVBGImageUrl = './assets/vbg_image.jpg'
 const blurVBGVideoUrl = './assets/clouds.5b57454a.mp4'
 
@@ -880,7 +878,7 @@ const toggleSourcesMeetingLevel = document.querySelector('#ts-sending-qualities-
 const loadCameraBtn = document.querySelector('#ts-load-camera');
 const toggleVbgBtn = document.querySelector('#ts-enable-VBG');
 const loadMicrophoneBtn = document.querySelector('#ts-load-mic');
-const toggleBNRBtn = document.querySelector('#ts-enable-BNR');
+const noiseReductionBtn = document.querySelector('#ts-noise-reduction-btn');
 const startShareBtn = document.querySelector('#ts-start-screenshare');
 const publishShareBtn = document.querySelector('#ts-publish-screenshare');
 const unpublishShareBtn = document.querySelector('#ts-unpublish-screenshare');
@@ -1304,10 +1302,10 @@ function validateSipCalloutFields() {
   const displayName = document.getElementById('gc-sip-display-name').value.trim();
   const button = document.getElementById('gc-sip-callout');
   const statusElm = document.getElementById('gc-sip-callout-status');
-  
+
   const shouldEnable = sipAddress && displayName;
   button.disabled = !shouldEnable;
-  
+
   // Update status message
   if (statusElm) {
     if (!sipAddress || !displayName) {
@@ -1342,7 +1340,7 @@ function clearSipCalloutFields() {
 
 function callOutSipParticipant() {
   const meeting = getCurrentMeeting();
-  
+
   if (!meeting) {
     const statusElm = document.getElementById('gc-sip-callout-status');
     statusElm.innerText = 'Error: No active meeting. Please join a meeting first.';
@@ -1379,12 +1377,12 @@ function cancelSipCallOut() {
   const participantId = document.getElementById('gc-sip-participant-id').value.trim();
   const statusElm = document.getElementById('gc-sip-cancel-status');
   const button = document.getElementById('gc-sip-cancel-callout');
-  
+
   if (!participantId) {
     statusElm.innerText = 'Please enter a participant ID.';
     statusElm.style.color = 'red';
     return;
-  }  
+  }
   button.disabled = true;
   statusElm.innerText = 'Cancelling...';
   statusElm.style.color = 'blue';
@@ -1522,7 +1520,7 @@ async function loadCamera(constraints) {
     });
 
     handleMuteVideoMessage();
-    handleEffectsButton(toggleVbgBtn, VBG);
+    handleVbgButton();
     loadCameraBtn.disabled = true;
     stopVideoButton.disabled = false;
     console.log('MeetingControls#loadCamera() :: Successfully got camera stream:', localMedia.cameraStream);
@@ -1549,27 +1547,27 @@ async function handleVbg() {
           env: integrationEnv.checked ? 'int' : 'prod',
           preventBackgroundThrottling: true,
         });
-        handleEffectsButton(toggleVbgBtn, VBG, effect);
+        handleVbgButton(effect);
         await localMedia.cameraStream.addEffect(effect);
       }
 
       await effect.enable();
       modeBtn.disabled = true;
 
-      handleEffectsButton(toggleVbgBtn, VBG, effect);
+      handleVbgButton(effect);
       console.log('MeetingControls#handleVbg() :: successfully applied virtual background to local camera stream');
     }
     else {
       console.log('MeetingControls#handleVbg() :: disabling virtual background from local camera stream');
 
       await effect.disable();
-      handleEffectsButton(toggleVbgBtn, VBG, effect);
+      handleVbgButton(effect);
       console.log('MeetingControls#handleVbg() :: successfully disabled virtual background from local camera stream');
     }
   }
   catch (e) {
     console.log('MeetingControls#handleVbg() :: Error applying background effect!');
-    handleEffectsButton(toggleVbgBtn, VBG, effect);
+    handleVbgButton(effect);
     throw e;
   }
 }
@@ -1605,7 +1603,7 @@ async function loadMicrophone(constraints) {
     });
 
     handleMuteAudioMessage();
-    handleEffectsButton(toggleBNRBtn, BNR);
+    updateNoiseReductionButton();
     loadMicrophoneBtn.disabled = true;
     stopAudioButton.disabled = false;
     console.log('MeetingControls#loadMicrophone() :: Successfully got microphone stream:', localMedia.microphoneStream);
@@ -1616,56 +1614,126 @@ async function loadMicrophone(constraints) {
   }
 }
 
-async function handleBNR() {
+async function handleNoiseReduction() {
   let effect;
+  const modelSelect = document.getElementById('ts-model-select');
+  const selectedModel = modelSelect ? modelSelect.value : 'bnr';
+
   try {
     effect = await localMedia.microphoneStream.getEffectByKind('noise-reduction-effect');
     if (!effect?.isEnabled) {
-      console.log('MeetingControls#handleBNR() :: applying BNR to local microphone stream');
+      console.log(`MeetingControls#handleNoiseReduction() :: applying noise reduction (${selectedModel}) to local microphone stream`);
 
       if (!effect) {
-        effect = await webex.meetings.createNoiseReductionEffect({env: integrationEnv.checked ? 'int' : 'prod'});
-        handleEffectsButton(toggleBNRBtn, BNR, effect);
+        effect = await webex.meetings.createNoiseReductionEffect({
+          env: integrationEnv.checked ? 'int' : 'prod',
+          model: selectedModel
+        });
         await localMedia.microphoneStream.addEffect(effect);
+        // Lock model selection once effect is created (cannot change model after this)
+        lockModelSelect(effect.model);
       }
 
       await effect.enable();
-      handleEffectsButton(toggleBNRBtn, BNR, effect);
-      console.log('MeetingControls#handleBNR() :: successfully applied BNR to local microphone stream');
+      updateNoiseReductionButton(effect);
+      console.log(`MeetingControls#handleNoiseReduction() :: successfully applied noise reduction (${effect.model}) to local microphone stream`);
 
     }
     else {
-      console.log('MeetingControls#handleBNR() :: disabling BNR from local microphone stream');
+      console.log('MeetingControls#handleNoiseReduction() :: disabling noise reduction from local microphone stream');
 
       await effect.disable();
-      handleEffectsButton(toggleBNRBtn, BNR, effect);
-      console.log('MeetingControls#handleBNR() :: successfully disabled BNR from local microphone stream');
+      updateNoiseReductionButton(effect);
+      console.log('MeetingControls#handleNoiseReduction() :: successfully disabled noise reduction from local microphone stream');
     }
   }
   catch (e) {
-    console.log('MeetingControls#handleVbg() :: Error applying noise reduction effect!');
-    handleEffectsButton(toggleBNRBtn, BNR, effect);
+    console.log('MeetingControls#handleNoiseReduction() :: Error applying noise reduction effect');
+    updateNoiseReductionButton(effect);
     throw e;
   }
 }
 
-function handleEffectsButton(btn, type, effect) {
+function handleModelChange() {
+  const modelSelect = document.getElementById('ts-model-select');
+  const selectedModel = modelSelect ? modelSelect.value : 'bnr';
+
+  const effect = localMedia?.microphoneStream?.getEffectByKind?.('noise-reduction-effect');
+  if (effect) {
+    console.log('MeetingControls#handleModelChange() :: effect already exists, model cannot be changed');
+    modelSelect.value = effect.model || 'bnr';
+    return;
+  }
+
+  updateNoiseReductionButton();
+
+  console.log(`MeetingControls#handleModelChange() :: selected model ${selectedModel} (will be applied on enable)`);
+}
+
+function lockModelSelect(effectModel) {
+  const modelSelect = document.getElementById('ts-model-select');
+  const lockedMessage = document.getElementById('ts-model-locked');
+
+  if (modelSelect) {
+    modelSelect.disabled = true;
+    modelSelect.title = 'Model cannot be changed after effect is created. Reload page to change model.';
+
+    if (effectModel && modelSelect.value !== effectModel) {
+      modelSelect.value = effectModel;
+    }
+  }
+
+  if (lockedMessage) {
+    lockedMessage.style.display = 'block';
+  }
+}
+
+function handleVbgButton(effect) {
   let disabled = false;
   let title;
 
-  if(!effect) {
-    title = `Enable ${type}`;
-  } else if(!effect.isLoaded) {
+  if (!effect) {
+    title = 'Enable VBG';
+  } else if (!effect.isLoaded) {
     disabled = true;
-    title = "Applying Effect...";
-  } else if(effect.isEnabled) {
-    title = `Disable ${type}`
+    title = 'Applying Effect...';
+  } else if (effect.isEnabled) {
+    title = 'Disable VBG';
   } else {
-    title = `Enable ${type}`
+    title = 'Enable VBG';
   }
 
-  btn.disabled = disabled;
-  btn.innerText = title;
+  toggleVbgBtn.disabled = disabled;
+  toggleVbgBtn.innerText = title;
+}
+
+function updateNoiseReductionButton(effect) {
+  let disabled = false;
+  let title;
+
+  // Get model name from effect or dropdown
+  let modelName;
+  if (effect?.model) {
+    modelName = effect.model;
+  } else {
+    const modelSelect = document.getElementById('ts-model-select');
+    modelName = modelSelect?.value || 'bnr';
+  }
+  const displayName = modelName.toUpperCase();
+
+  if (!effect) {
+    title = `Enable ${displayName}`;
+  } else if (!effect.isLoaded) {
+    disabled = true;
+    title = 'Applying Effect...';
+  } else if (effect.isEnabled) {
+    title = `Disable ${displayName}`;
+  } else {
+    title = `Enable ${displayName}`;
+  }
+
+  noiseReductionBtn.disabled = disabled;
+  noiseReductionBtn.innerText = title;
 }
 
 async function stopStartVideo() {
@@ -4194,7 +4262,7 @@ function enableMeetingDependentButtons(enable) {
   meetingDependentButtons.forEach((button) => {
     button.disabled = !enable;
   });
-  
+
   // Update SIP call-out button states when meeting state changes
   validateSipCalloutFields();
   validateCancelSipFields();

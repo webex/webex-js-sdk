@@ -372,6 +372,23 @@ class HashTree {
   }
 
   /**
+   * Retrieves the version of a specific item by its id and type.
+   * @param {number} id The ID of the item.
+   * @param {ObjectType} type The type of the item.
+   * @returns {number | undefined} The version of the item if found, undefined otherwise.
+   */
+  getItemVersion(id: number, type: ObjectType): number | undefined {
+    if (this.numLeaves === 0) {
+      return undefined;
+    }
+
+    const index = id % this.numLeaves;
+    const item = this.leaves[index]?.[type]?.[id];
+
+    return item?.version;
+  }
+
+  /**
    * Resizes the HashTree to have a new number of leaf nodes, redistributing all existing items.
    * @param {number} newNumLeaves The new number of leaf nodes (must be 0 or a power of 2).
    * @returns {boolean} true if the tree was resized, false if the size didn't change.

@@ -652,4 +652,70 @@ describe('HashTree', () => {
       expect(() => hashTree.computeLeafHash(2)).to.not.throw();
     });
   });
+
+  describe('getItemVersion', () => {
+    it('should return version when item exists', () => {
+      const items: LeafDataItem[] = [
+        {type: 'participant', id: 1, version: 5},
+        {type: 'self', id: 2, version: 10},
+      ];
+      const hashTree = new HashTree(items, 4);
+
+      expect(hashTree.getItemVersion(1, 'participant')).to.equal(5);
+      expect(hashTree.getItemVersion(2, 'self')).to.equal(10);
+    });
+
+    it('should return undefined when item does not exist', () => {
+      const items: LeafDataItem[] = [{type: 'participant', id: 1, version: 5}];
+      const hashTree = new HashTree(items, 4);
+
+      expect(hashTree.getItemVersion(999, 'participant')).to.be.undefined;
+    });
+
+    it('should return undefined when type does not match', () => {
+      const items: LeafDataItem[] = [{type: 'participant', id: 1, version: 5}];
+      const hashTree = new HashTree(items, 4);
+
+      expect(hashTree.getItemVersion(1, 'self')).to.be.undefined;
+    });
+
+    it('should return undefined for tree with 0 leaves', () => {
+      const hashTree = new HashTree([], 0);
+
+      expect(hashTree.getItemVersion(1, 'participant')).to.be.undefined;
+    });
+
+    it('should return correct version when multiple items exist in same leaf', () => {
+      const items: LeafDataItem[] = [
+        {type: 'participant', id: 1, version: 3}, // leaf 1 (1 % 2 = 1)
+        {type: 'self', id: 3, version: 7}, // leaf 1 (3 % 2 = 1)
+        {type: 'locus', id: 5, version: 12}, // leaf 1 (5 % 2 = 1)
+      ];
+      const hashTree = new HashTree(items, 2);
+
+      expect(hashTree.getItemVersion(1, 'participant')).to.equal(3);
+      expect(hashTree.getItemVersion(3, 'self')).to.equal(7);
+      expect(hashTree.getItemVersion(5, 'locus')).to.equal(12);
+    });
+
+    it('should return updated version after item is updated', () => {
+      const hashTree = new HashTree([{type: 'participant', id: 1, version: 5}], 4);
+
+      expect(hashTree.getItemVersion(1, 'participant')).to.equal(5);
+
+      hashTree.putItem({type: 'participant', id: 1, version: 10});
+
+      expect(hashTree.getItemVersion(1, 'participant')).to.equal(10);
+    });
+
+    it('should return undefined after item is removed', () => {
+      const hashTree = new HashTree([{type: 'participant', id: 1, version: 5}], 4);
+
+      expect(hashTree.getItemVersion(1, 'participant')).to.equal(5);
+
+      hashTree.removeItem({type: 'participant', id: 1, version: 5});
+
+      expect(hashTree.getItemVersion(1, 'participant')).to.be.undefined;
+    });
+  });
 });
