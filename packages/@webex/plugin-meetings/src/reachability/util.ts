@@ -4,61 +4,42 @@ import {STUN_TURN_URL_REGEX} from '../constants';
 import {SubnetDetail} from './reachability.types';
 
 /**
- * Checks if the given string is a valid IP address (IPv4 or IPv6)
- * Uses Address4 and Address6 from ip-address library for robust validation
- * @param {string} str - String to check
- * @returns {boolean} true if it's a valid IP address
+ * Parses a STUN/TURN URL to extract host and port information.
+ * Returns host with brackets removed for IPv6, and isIp flag.
+ * @param {string} url - The STUN/TURN URL to parse (e.g., 'stun:server.com:3478', 'stun:[2402:2500::1]:5004')
+ * @returns {object} Object containing host, port, and isIp flag
  */
-export function isIpAddress(str: string): boolean {
-  if (!str) {
-    return false;
+export function parseIceServerUrl(url: string): {
+  host?: string;
+  port?: number;
+  isIp: boolean;
+} {
+  const match = url.match(STUN_TURN_URL_REGEX);
+
+  if (!match) {
+    return {isIp: false};
   }
 
-  // Handle IPv6 addresses with brackets
-  const cleanStr = str.startsWith('[') && str.endsWith(']') ? str.slice(1, -1) : str;
+  const [, ipv6, hostOrIpv4, portStr] = match;
+  const port = portStr ? parseInt(portStr, 10) : undefined;
 
-  try {
-    // Check IPv4 first (most common)
-    if (Address4.isValid(str) || Address4.isValid(cleanStr)) {
-      return true;
+  // IPv6 in brackets - validate and return without brackets
+  if (ipv6) {
+    if (!Address6.isValid(ipv6)) {
+      return {isIp: false};
     }
 
-    // Check IPv6
-    if (Address6.isValid(str) || Address6.isValid(cleanStr)) {
-      return true;
-    }
-
-    return false; // It's a domain name
-  } catch {
-    return false; // Error in validation, assume it's a domain name
+    return port ? {host: ipv6, port, isIp: true} : {host: ipv6, isIp: true};
   }
-}
 
-/**
- * Parses a STUN/TURN URL to extract host and port information
- * @param {string} url - The STUN/TURN URL to parse (e.g., 'stun:server.com:3478' or 'turn:server.com:5004')
- * @returns {object} Object containing host and port, or empty object if parsing fails
- */
-export function parseIceServerUrl(url: string): {host?: string; port?: number} {
-  try {
-    const match = url.match(STUN_TURN_URL_REGEX);
-    if (match) {
-      const [, , hostname, urlPort] = match;
-      if (hostname && urlPort) {
-        return {
-          host: hostname,
-          port: parseInt(urlPort, 10),
-        };
-      }
-      if (hostname) {
-        return {host: hostname};
-      }
-    }
+  // IPv4 or domain name
+  if (hostOrIpv4) {
+    const isIp = Address4.isValid(hostOrIpv4);
 
-    return {};
-  } catch (error) {
-    return {};
+    return port ? {host: hostOrIpv4, port, isIp} : {host: hostOrIpv4, isIp};
   }
+
+  return {isIp: false};
 }
 
 /**
@@ -107,24 +88,32 @@ export function convertStunUrlToTurnTls(stunUrl: string) {
 }
 
 /**
- * Pre-populates subnet details from STUN URLs, marked as unreachable initially
- * @param {string[]} urls - STUN URLs to extract IPs from
+ * Pre-populates subnet details from STUN URLs.
+ * By default, only includes IP addresses (IPv4 or IPv6), skips domain names.
+ * When includeDomains is true, also includes domain names (used for UDP per-URL mode).
+ * @param {string[]} urls - STUN URLs to extract hosts from
+ * @param {boolean} [includeDomains=false] - Whether to include domain names in details
  * @returns {SubnetDetail[]} subnet details marked as unreachable
  */
-export function prepopulateSubnetDetails(urls: string[]): SubnetDetail[] {
+export function prepopulateSubnetDetails(urls: string[], includeDomains = false): SubnetDetail[] {
   const details: SubnetDetail[] = [];
-  const seenIpPorts = new Set<string>();
+  const seenHostPorts = new Set<string>();
 
   urls.forEach((url) => {
-    const parsed = parseIceServerUrl(url);
-    if (parsed.host && parsed.port && isIpAddress(parsed.host)) {
-      const key = `${parsed.host}:${parsed.port}`;
-      if (!seenIpPorts.has(key)) {
-        seenIpPorts.add(key);
+    const {host, port, isIp} = parseIceServerUrl(url);
+    if (host && port) {
+      // Skip domain names unless includeDomains is true
+      if (!isIp && !includeDomains) {
+        return;
+      }
+
+      const key = `${host}:${port}`;
+      if (!seenHostPorts.has(key)) {
+        seenHostPorts.add(key);
         details.push({
-          serverIp: parsed.host,
-          port: parsed.port,
-          answeredTx: 0, // unreachable initially
+          serverIp: host,
+          port,
+          answeredTx: 0,
           lostTx: 1,
           latencies: [],
         });

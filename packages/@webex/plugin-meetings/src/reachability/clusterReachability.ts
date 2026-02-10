@@ -10,6 +10,7 @@ import {
   SubnetDetail,
 } from './reachability.types';
 import {ReachabilityPeerConnection} from './reachabilityPeerConnection';
+import {parseIceServerUrl} from './util';
 
 // data for the Events.resultReady event
 export type ResultEventData = {
@@ -18,7 +19,6 @@ export type ResultEventData = {
   latencyInMilliseconds: number; // amount of time it took to get the ICE candidate
   clientMediaIPs?: string[];
   details?: SubnetDetail[];
-  minLatency?: number;
 };
 
 // data for the Events.clientMediaIpsUpdated event
@@ -32,7 +32,7 @@ export type NatTypeUpdatedEventData = {
 };
 
 export const Events = {
-  resultReady: 'resultReady', // emitted when a cluster is reached successfully using specific protocol
+  resultReady: 'resultReady', // emitted when a reachability result is available for a specific protocol (reachable or unreachable)
   clientMediaIpsUpdated: 'clientMediaIpsUpdated', // emitted when more public IPs are found after resultReady was already sent for a given protocol
   natTypeUpdated: 'natTypeUpdated', // emitted when NAT type is determined
 } as const;
@@ -58,8 +58,12 @@ export class ClusterReachability extends EventsScope {
   public readonly name;
   public readonly reachedSubnets: Set<string> = new Set();
 
+  // Store original cluster URLs for getAllClustersInfo()
+  private readonly clusterUrls: {udp: string[]; tcp: string[]; xtls: string[]};
+
   private enablePerUdpUrlReachability: boolean;
   private udpResultEmitted = false;
+  private udpResultsReceived = 0;
 
   /**
    * Constructor for ClusterReachability
@@ -72,6 +76,13 @@ export class ClusterReachability extends EventsScope {
     this.name = name;
     this.isVideoMesh = clusterInfo.isVideoMesh;
     this.enablePerUdpUrlReachability = enablePerUdpUrlReachability;
+
+    // Store original URLs for later retrieval
+    this.clusterUrls = {
+      udp: clusterInfo.udp || [],
+      tcp: clusterInfo.tcp || [],
+      xtls: clusterInfo.xtls || [],
+    };
 
     if (this.enablePerUdpUrlReachability) {
       this.initializePerUdpUrlReachabilityCheck(clusterInfo);
@@ -103,6 +114,7 @@ export class ClusterReachability extends EventsScope {
     );
 
     // Create one ReachabilityPeerConnection for each UDP URL
+    // enablePerUdpUrlReachability=true enables subnet details tracking
     clusterInfo.udp.forEach((udpUrl) => {
       const singleUdpClusterInfo: ClusterNode = {
         isVideoMesh: clusterInfo.isVideoMesh,
@@ -110,7 +122,7 @@ export class ClusterReachability extends EventsScope {
         tcp: [],
         xtls: [],
       };
-      const rpc = new ReachabilityPeerConnection(this.name, singleUdpClusterInfo);
+      const rpc = new ReachabilityPeerConnection(this.name, singleUdpClusterInfo, true);
       this.setupReachabilityPeerConnectionEventListeners(rpc, true);
       this.reachabilityPeerConnectionsForUdp.push(rpc);
     });
@@ -125,7 +137,8 @@ export class ClusterReachability extends EventsScope {
       };
       this.reachabilityPeerConnection = new ReachabilityPeerConnection(
         this.name,
-        tcpTlsClusterInfo
+        tcpTlsClusterInfo,
+        true
       );
       this.setupReachabilityPeerConnectionEventListeners(this.reachabilityPeerConnection);
     }
@@ -142,32 +155,34 @@ export class ClusterReachability extends EventsScope {
     isUdpPerUrl = false
   ) {
     rpc.on(ReachabilityPeerConnectionEvents.resultReady, (data) => {
-      // For per-URL UDP checks, only emit the first successful UDP result
-      if (isUdpPerUrl && data.protocol === 'udp') {
-        if (this.udpResultEmitted) {
-          return;
-        }
-        if (data.result === 'reachable') {
-          this.udpResultEmitted = true;
-        }
+      // For per-URL UDP instances, only handle UDP events
+      if (isUdpPerUrl) {
+        if (data.protocol !== 'udp') return;
 
-        // Get aggregated UDP result with details from ALL per-URL instances
-        const aggregatedUdpResult = this.aggregateUdpResults();
-        this.emit(
-          {
-            file: 'clusterReachability',
-            function: 'setupReachabilityPeerConnectionEventListeners',
-          },
-          Events.resultReady,
-          {
-            protocol: 'udp',
-            result: aggregatedUdpResult.result,
-            latencyInMilliseconds: aggregatedUdpResult.latencyInMilliseconds,
-            clientMediaIPs: aggregatedUdpResult.clientMediaIPs,
-            details: aggregatedUdpResult.details,
-            minLatency: aggregatedUdpResult.minLatency,
-          }
-        );
+        // Track completion of per-URL instances
+        this.udpResultsReceived += 1;
+
+        // Emit aggregated result on first reachable OR when all instances complete
+        const allInstancesComplete =
+          this.udpResultsReceived === this.reachabilityPeerConnectionsForUdp.length;
+
+        if (!this.udpResultEmitted && (data.result === 'reachable' || allInstancesComplete)) {
+          this.udpResultEmitted = true;
+
+          const aggregated = this.aggregateUdpResults();
+
+          this.emit(
+            {
+              file: 'clusterReachability',
+              function: 'setupReachabilityPeerConnectionEventListeners',
+            },
+            Events.resultReady,
+            {
+              protocol: 'udp',
+              ...aggregated,
+            }
+          );
+        }
 
         return;
       }
@@ -247,57 +262,37 @@ export class ClusterReachability extends EventsScope {
 
   /**
    * Aggregates UDP results from all per-URL instances.
-   * Combines details from each instance and calculates overall result.
    * @returns {TransportResult} aggregated UDP result with details from all instances
    */
   private aggregateUdpResults(): ClusterReachabilityResult['udp'] {
     const allDetails: SubnetDetail[] = [];
-    let firstReachableResult: ClusterReachabilityResult['udp'] | null = null;
+    let bestResult: ClusterReachabilityResult['udp'] | null = null;
     let hasUnreachable = false;
 
     for (const rpc of this.reachabilityPeerConnectionsForUdp) {
-      const rpcResult = rpc.getResult();
+      const {udp} = rpc.getResult();
 
-      // Collect details from each instance
-      if (rpcResult.udp.details) {
-        allDetails.push(...rpcResult.udp.details);
+      if (udp.details) {
+        allDetails.push(...udp.details);
       }
 
-      // Track first reachable result for latency and clientMediaIPs
-      if (!firstReachableResult && rpcResult.udp.result === 'reachable') {
-        firstReachableResult = rpcResult.udp;
-      }
-
-      if (rpcResult.udp.result === 'unreachable') {
+      if (udp.result === 'reachable') {
+        if (!bestResult || udp.latencyInMilliseconds < bestResult.latencyInMilliseconds) {
+          bestResult = udp;
+        }
+      } else if (udp.result === 'unreachable') {
         hasUnreachable = true;
       }
     }
 
-    // Calculate minLatency from all reachable details
-    const reachableLatencies = allDetails
-      .filter((d) => d.answeredTx === 1 && d.latencies.length > 0)
-      .map((d) => Math.min(...d.latencies));
-    const minLatency = reachableLatencies.length > 0 ? Math.min(...reachableLatencies) : undefined;
-
-    // Determine overall result
-    if (firstReachableResult) {
-      return {
-        result: 'reachable',
-        latencyInMilliseconds: firstReachableResult.latencyInMilliseconds,
-        clientMediaIPs: firstReachableResult.clientMediaIPs,
-        details: allDetails,
-        minLatency,
-      };
+    if (bestResult) {
+      return {...bestResult, details: allDetails};
     }
 
-    if (hasUnreachable) {
-      return {
-        result: 'unreachable',
-        details: allDetails,
-      };
-    }
-
-    return {result: 'untested', details: allDetails};
+    return {
+      result: hasUnreachable ? 'unreachable' : 'untested',
+      details: allDetails,
+    };
   }
 
   /**
@@ -327,5 +322,36 @@ export class ClusterReachability extends EventsScope {
   public abort() {
     this.reachabilityPeerConnectionsForUdp.forEach((rpc) => rpc.abort());
     this.reachabilityPeerConnection?.abort();
+  }
+
+  /**
+   * Gets the parsed cluster URLs as "host:port" strings.
+   * This always returns the URLs regardless of enablePerUdpUrlReachability flag.
+   * @returns {Object} Object with udp, tcp, xtls arrays of "host:port" strings
+   */
+  public getClusterUrls(): {udp: string[]; tcp: string[]; xtls: string[]} {
+    const parseUrls = (urls: string[]): string[] => {
+      const result: string[] = [];
+      const seen = new Set<string>();
+
+      urls.forEach((url) => {
+        const {host, port} = parseIceServerUrl(url);
+        if (host && port) {
+          const hostPort = `${host}:${port}`;
+          if (!seen.has(hostPort)) {
+            seen.add(hostPort);
+            result.push(hostPort);
+          }
+        }
+      });
+
+      return result;
+    };
+
+    return {
+      udp: parseUrls(this.clusterUrls.udp),
+      tcp: parseUrls(this.clusterUrls.tcp),
+      xtls: parseUrls(this.clusterUrls.xtls),
+    };
   }
 }

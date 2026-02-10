@@ -438,21 +438,17 @@ export default class Reachability extends EventsScope {
           break;
         case 'latencyInMilliseconds':
           output.latencyInMilliseconds = value.toString();
-          break;
-        case 'minLatency':
-          if (typeof value === 'number') {
-            output.minLatency = value;
-          }
+          output.minLatency = value as number;
           break;
         case 'details':
           if (Array.isArray(value) && value.length > 0) {
             output.details = value.map(
               (detail): SubnetDetailForBackend => ({
-                serverIps: detail.serverIp,
-                port: detail.port.toString(),
-                'answered-tx': detail.answeredTx.toString(),
-                'lost-tx': detail.lostTx.toString(),
-                latencies: detail.latencies.map((l: number) => l.toString()),
+                serverIPs: detail.serverIp,
+                port: detail.port,
+                'answered-tx': detail.answeredTx,
+                'lost-tx': detail.lostTx,
+                latencies: detail.latencies,
               })
             );
           }
@@ -624,7 +620,7 @@ export default class Reachability extends EventsScope {
   private getNumberOfReachableClusters(): number {
     let count = 0;
 
-    Object.entries(this.clusterReachability).forEach(([key, clusterReachability]) => {
+    Object.entries(this.clusterReachability).forEach(([, clusterReachability]) => {
       const result = clusterReachability.getResult();
 
       if (
@@ -943,26 +939,25 @@ export default class Reachability extends EventsScope {
         cluster.xtls = [];
       }
 
-      // Pre-populate subnet details from each protocol's own URLs (marked as unreachable initially)
-      // Each protocol only shows subnets from its own input URLs
-      // Only URLs with IP addresses are pre-populated
-      const udpDetails = prepopulateSubnetDetails(cluster.udp);
-      const tcpDetails = prepopulateSubnetDetails(cluster.tcp);
-      const xtlsDetails = prepopulateSubnetDetails(cluster.xtls);
+      // Initialize the result for this cluster
+      // Details are only tracked when enablePerUdpUrlReachability=true
+      // @ts-ignore
+      const {enablePerUdpUrlReachability} = this.webex.config.meetings;
 
-      // initialize the result for this cluster
       results[key] = {
         udp: {
           result: cluster.udp.length > 0 ? 'unreachable' : 'untested',
-          details: udpDetails,
+          ...(enablePerUdpUrlReachability && {
+            details: prepopulateSubnetDetails(cluster.udp, true),
+          }),
         },
         tcp: {
           result: cluster.tcp.length > 0 ? 'unreachable' : 'untested',
-          details: tcpDetails,
+          ...(enablePerUdpUrlReachability && {details: prepopulateSubnetDetails(cluster.tcp)}),
         },
         xtls: {
           result: cluster.xtls.length > 0 ? 'unreachable' : 'untested',
-          details: cluster.xtls.length > 0 ? xtlsDetails : [],
+          ...(enablePerUdpUrlReachability && {details: prepopulateSubnetDetails(cluster.xtls)}),
         },
         isVideoMesh: cluster.isVideoMesh,
       };
@@ -1014,9 +1009,9 @@ export default class Reachability extends EventsScope {
         this.webex.config.meetings.enablePerUdpUrlReachability
       );
       this.clusterReachability[key].on(Events.resultReady, async (data: ResultEventData) => {
-        const {protocol, result, clientMediaIPs, latencyInMilliseconds, details, minLatency} = data;
+        const {protocol, result, clientMediaIPs, latencyInMilliseconds, details} = data;
 
-        if (isFirstResult[protocol]) {
+        if (isFirstResult[protocol] && result === 'reachable') {
           this.emit(
             {
               file: 'reachability',
@@ -1038,9 +1033,6 @@ export default class Reachability extends EventsScope {
         results[key][protocol].latencyInMilliseconds = latencyInMilliseconds;
         if (details) {
           results[key][protocol].details = details;
-        }
-        if (minLatency !== undefined) {
-          results[key][protocol].minLatency = minLatency;
         }
 
         await this.storeResults(results);
@@ -1150,23 +1142,10 @@ export default class Reachability extends EventsScope {
    * @memberof Reachability
    */
   public getAllClustersInfo(): ClusterUrls {
-    const extractUrlsFromDetails = (details?: {serverIp: string; port: number}[]): string[] => {
-      if (!details || details.length === 0) {
-        return [];
-      }
-
-      return details.map((d) => `${d.serverIp}:${d.port}`);
-    };
-
     const result: ClusterUrls = {};
 
     Object.entries(this.clusterReachability).forEach(([clusterName, clusterReachability]) => {
-      const clusterResult = clusterReachability.getResult();
-      result[clusterName] = {
-        udp: extractUrlsFromDetails(clusterResult.udp.details),
-        tcp: extractUrlsFromDetails(clusterResult.tcp.details),
-        xtls: extractUrlsFromDetails(clusterResult.xtls.details),
-      };
+      result[clusterName] = clusterReachability.getClusterUrls();
     });
 
     return result;

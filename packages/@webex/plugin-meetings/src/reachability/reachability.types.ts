@@ -25,11 +25,11 @@ export type SubnetDetail = {
 
 // Subnet detail format expected by backend
 export type SubnetDetailForBackend = {
-  serverIps: string;
-  port: string;
-  'answered-tx': string;
-  'lost-tx': string;
-  latencies: string[];
+  serverIPs: string;
+  port: number;
+  'answered-tx': number;
+  'lost-tx': number;
+  latencies: number[];
 };
 
 // result for a specific transport protocol (like udp or tcp)
@@ -38,7 +38,6 @@ export type TransportResult = {
   latencyInMilliseconds?: number; // amount of time it took to get the first ICE candidate
   clientMediaIPs?: string[];
   details?: SubnetDetail[]; // per-subnet reachability details
-  minLatency?: number; // minimum latency across all reachable subnets
 };
 
 export enum NatType {

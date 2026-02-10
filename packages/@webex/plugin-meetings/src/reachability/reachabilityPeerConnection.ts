@@ -5,9 +5,8 @@ import {ClusterNode} from './request';
 import {
   convertStunUrlToTurn,
   convertStunUrlToTurnTls,
-  parseIceServerUrl,
-  isIpAddress,
   prepopulateSubnetDetails,
+  parseIceServerUrl,
 } from './util';
 import EventsScope from '../common/events/events-scope';
 
@@ -17,7 +16,6 @@ import {
   NatType,
   Protocol,
   ReachabilityPeerConnectionEvents,
-  SubnetDetail,
 } from './reachability.types';
 
 /**
@@ -35,14 +33,16 @@ export class ReachabilityPeerConnection extends EventsScope {
   private clusterName: string;
   private result: ClusterReachabilityResult;
   private emittedSubnets: Set<string> = new Set();
-  private udpFirstCandidateProcessed = false; // Track if first UDP candidate processed in standard mode
 
   /**
    * Constructor for ReachabilityPeerConnection
    * @param {string} clusterName name of the cluster
    * @param {ClusterNode} clusterInfo information about the media cluster
+   * @param {boolean} [enablePerUdpUrlReachability=false] whether per-URL reachability mode is enabled.
+   *        When true, subnet details are tracked for all protocols.
+   *        When false, no details are tracked (only reachability result).
    */
-  constructor(clusterName: string, clusterInfo: ClusterNode) {
+  constructor(clusterName: string, clusterInfo: ClusterNode, enablePerUdpUrlReachability = false) {
     super();
     this.clusterName = clusterName;
     this.numUdpUrls = clusterInfo.udp.length;
@@ -53,24 +53,26 @@ export class ReachabilityPeerConnection extends EventsScope {
 
     this.defer = new Defer();
 
-    // Pre-populate subnet details from each protocol's own URLs (which have IP addresses)
-    // Each protocol only shows subnets from its own input URLs
-    const udpSubnetDetails = prepopulateSubnetDetails(clusterInfo.udp);
-    const tcpSubnetDetails = prepopulateSubnetDetails(clusterInfo.tcp);
-    const xtlsSubnetDetails = prepopulateSubnetDetails(clusterInfo.xtls);
-
+    // Pre-populate subnet details only when enablePerUdpUrlReachability is true
+    // Always include domain names for UDP to ensure we have entries even when unreachable
     this.result = {
       udp: {
         result: 'untested',
-        details: udpSubnetDetails,
+        details: enablePerUdpUrlReachability
+          ? prepopulateSubnetDetails(clusterInfo.udp, true)
+          : undefined,
       },
       tcp: {
         result: 'untested',
-        details: tcpSubnetDetails,
+        details: enablePerUdpUrlReachability
+          ? prepopulateSubnetDetails(clusterInfo.tcp)
+          : undefined,
       },
       xtls: {
         result: 'untested',
-        details: xtlsSubnetDetails,
+        details: enablePerUdpUrlReachability
+          ? prepopulateSubnetDetails(clusterInfo.xtls)
+          : undefined,
       },
     };
   }
@@ -234,8 +236,6 @@ export class ReachabilityPeerConnection extends EventsScope {
   private registerIceGatheringStateChangeListener() {
     this.pc.onicegatheringstatechange = () => {
       if (this.pc.iceGatheringState === ICE_GATHERING_STATE.COMPLETE) {
-        // Emit resultReady for all protocols when ICE gathering completes
-        // This ensures all subnet details are populated before emitting
         this.emitResultsForAllProtocols();
         this.closePeerConnection();
         this.defer.resolve();
@@ -244,42 +244,37 @@ export class ReachabilityPeerConnection extends EventsScope {
   }
 
   /**
-   * Emits resultReady events for all protocols that have results
-   * Called when ICE gathering completes to ensure all subnet details are included
+   * Emits resultReady events for all protocols that have URLs.
    * @returns {void}
    */
   private emitResultsForAllProtocols(): void {
     const protocols: Protocol[] = ['udp', 'tcp', 'xtls'];
     protocols.forEach((protocol) => {
       const result = this.result[protocol];
-      // Only emit if we haven't already emitted for this protocol
-      // (result will be 'reachable' or 'unreachable', not 'untested')
-      if (result.result !== 'untested') {
-        this.emit(
-          {
-            file: 'reachabilityPeerConnection',
-            function: 'emitResultsForAllProtocols',
-          },
-          ReachabilityPeerConnectionEvents.resultReady,
-          {
-            protocol,
-            ...result,
-          }
-        );
+      if (result.result === 'untested') {
+        return;
       }
+      this.emit(
+        {
+          file: 'reachabilityPeerConnection',
+          function: 'emitResultsForAllProtocols',
+        },
+        ReachabilityPeerConnectionEvents.resultReady,
+        {
+          protocol,
+          ...result,
+        }
+      );
     });
   }
 
   /**
-   * Saves the latency in the result for the given protocol and marks it as reachable,
-   * updates subnet details, and adds public IPs.
-   * Note: resultReady event is emitted when ICE gathering completes, not here.
-   *
-   * @param {string} protocol
-   * @param {number} latency
-   * @param {string|null} [publicIp]
-   * @param {string|null} [serverIp]
-   * @param {number} [serverPort]
+   * Saves the latency in the result for the given protocol and marks it as reachable.
+   * @param {Protocol} protocol - the protocol
+   * @param {number} latency - the latency
+   * @param {string} [publicIp] - the public IP
+   * @param {string} [serverIp] - the server IP
+   * @param {number} [serverPort] - the server port
    * @returns {void}
    */
   private saveResult(
@@ -308,7 +303,6 @@ export class ReachabilityPeerConnection extends EventsScope {
       if (publicIp) {
         result.clientMediaIPs = [publicIp];
       }
-      // Note: resultReady event is emitted when ICE gathering completes in emitResultsForAllProtocols()
     } else {
       this.addPublicIp(protocol, publicIp);
     }
@@ -331,12 +325,11 @@ export class ReachabilityPeerConnection extends EventsScope {
   }
 
   /**
-   * Updates subnet detail for a specific server IP and port
-   * Marks it as reachable (answeredTx=1, lostTx=0) and adds latency
-   * @param {Protocol} protocol - the protocol (udp, tcp, xtls)
-   * @param {string} serverIp - the server IP address
-   * @param {number} port - the server port
-   * @param {number} latency - the latency in milliseconds
+   * Updates subnet detail for a specific server IP and port.
+   * @param {Protocol} protocol - the protocol
+   * @param {string} serverIp - the server IP
+   * @param {number} port - the port
+   * @param {number} latency - the latency
    * @returns {void}
    */
   private updateSubnetDetail(
@@ -350,7 +343,18 @@ export class ReachabilityPeerConnection extends EventsScope {
       return;
     }
 
-    const existingDetail = details.find((d) => d.serverIp === serverIp && d.port === port);
+    // Find existing detail entry matching this server IP and port
+    let existingDetail = details.find((d) => d.serverIp === serverIp && d.port === port);
+
+    // If not found and this is per-URL mode with a single URL,
+    // match the only entry (could be a domain name entry)
+    if (!existingDetail && details.length === 1) {
+      const onlyDetail = details[0];
+      if (onlyDetail.port === port && onlyDetail.answeredTx === 0) {
+        existingDetail = onlyDetail;
+      }
+    }
+
     if (existingDetail) {
       // Only update if this is still marked as unreachable (first response wins)
       if (existingDetail.answeredTx === 0) {
@@ -359,7 +363,7 @@ export class ReachabilityPeerConnection extends EventsScope {
         existingDetail.latencies = [latency];
       }
     } else {
-      // Add new entry for servers that weren't pre-populated (e.g., resolved domain names)
+      // Add new entry for resolved IPs (for cases where we couldn't match)
       details.push({
         serverIp,
         port,
@@ -368,34 +372,11 @@ export class ReachabilityPeerConnection extends EventsScope {
         latencies: [latency],
       });
     }
-
-    // Update minLatency
-    this.updateMinLatency(protocol);
   }
 
   /**
-   * Calculates and updates minLatency for a protocol based on reachable subnets
-   * @param {Protocol} protocol - the protocol to update
-   * @returns {void}
-   */
-  private updateMinLatency(protocol: Protocol): void {
-    const {details} = this.result[protocol];
-    if (!details || details.length === 0) {
-      return;
-    }
-
-    const reachableLatencies = details
-      .filter((d) => d.answeredTx === 1 && d.latencies.length > 0)
-      .map((d) => Math.min(...d.latencies));
-
-    if (reachableLatencies.length > 0) {
-      this.result[protocol].minLatency = Math.min(...reachableLatencies);
-    }
-  }
-
-  /**
-   * Determines NAT type by analyzing server reflexive candidate patterns
-   * @param {RTCIceCandidate} candidate server reflexive candidate
+   * Determines NAT type by analyzing server reflexive candidate patterns.
+   * @param {RTCIceCandidate} candidate - the ICE candidate
    * @returns {void}
    */
   private determineNatTypeForSrflxCandidate(candidate: RTCIceCandidate) {
@@ -431,222 +412,47 @@ export class ReachabilityPeerConnection extends EventsScope {
   }
 
   /**
-   * Extracts port from a STUN/TURN URL
-   * @param {string} url - the URL to extract port from
-   * @returns {number | null} the port or null
-   */
-  private extractPortFromUrl(url: string): number | null {
-    try {
-      const parsedUrl = new URL(url);
-      const port = parseInt(parsedUrl.port, 10);
-
-      return Number.isNaN(port) ? null : port;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Registers a listener for the icecandidate event
-   *
+   * Registers a listener for the icecandidate event.
    * @returns {void}
    */
   private registerIceCandidateListener() {
     this.pc.onicecandidate = (e) => {
+      const TURN_TLS_PORT = 443;
       const CANDIDATE_TYPES = {
         SERVER_REFLEXIVE: 'srflx',
         RELAY: 'relay',
       };
+      if (!e.candidate) {
+        return;
+      }
 
       const latencyInMilliseconds = this.getElapsedTime();
 
-      if (e.candidate) {
-        if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
-          // In standard WebRTC mode (not per-URL), we may receive multiple srflx candidates
-          // but we only need to mark ONE pre-populated entry as reachable (the first one)
-          // For subsequent candidates, just collect public IPs for NAT detection
-          if (this.udpFirstCandidateProcessed) {
-            this.addPublicIp('udp', e.candidate.address);
-            this.determineNatTypeForSrflxCandidate(e.candidate);
+      if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
+        // Extract server info from candidate URL (if available)
+        const candidateWithUrl = e.candidate as RTCIceCandidate & {url?: string};
+        const {host: serverIp, port: serverPort} = candidateWithUrl.url
+          ? parseIceServerUrl(candidateWithUrl.url)
+          : {host: undefined, port: undefined};
 
-            return;
-          }
-
-          let serverIp: string | null = null;
-          let serverPort: number | null = null;
-
-          if ('url' in e.candidate) {
-            const candidateUrl = (e.candidate as any).url;
-            const parsed = parseIceServerUrl(candidateUrl);
-            if (parsed.host && parsed.port && isIpAddress(parsed.host)) {
-              serverIp = parsed.host;
-              serverPort = parsed.port;
-            }
-          }
-
-          // Fallback: Use first pre-populated entry if URL extraction failed
-          // In standard mode (not per-URL), we don't know which server responded,
-          // so we mark the first one as reachable
-          if (!serverIp && this.result.udp.details && this.result.udp.details.length > 0) {
-            const firstDetail = this.result.udp.details[0];
-            serverIp = firstDetail.serverIp;
-            serverPort = firstDetail.port;
-          }
-
+        const isPerUrlMode = this.numUdpUrls === 1;
+        if (isPerUrlMode || this.result.udp.result !== 'reachable') {
           this.saveResult('udp', latencyInMilliseconds, e.candidate.address, serverIp, serverPort);
-
-          // Mark that we've processed the first candidate
-          this.udpFirstCandidateProcessed = true;
-
-          this.determineNatTypeForSrflxCandidate(e.candidate);
+        } else {
+          this.addPublicIp('udp', e.candidate.address);
         }
 
-        if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
-          const TURN_TLS_PORT = 443;
+        this.determineNatTypeForSrflxCandidate(e.candidate);
+      } else if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
+        const protocol: Protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
 
-          // For relay candidates, extract server info from the URL if available
-          let serverIp: string | null = null;
-          let serverPort: number | null = null;
-          let isIpAddressFromUrl = false;
-          let urlParsed = false;
-
-          if ('url' in e.candidate) {
-            const candidateUrl = (e.candidate as any).url;
-            const parsed = parseIceServerUrl(candidateUrl);
-            if (parsed.host && parsed.port) {
-              serverIp = parsed.host;
-              serverPort = parsed.port;
-              isIpAddressFromUrl = isIpAddress(parsed.host);
-              urlParsed = true;
-            }
-          }
-
-          // Determine protocol first, before fallback handling
-          let protocol: Protocol = 'tcp';
-          if ('relayProtocol' in e.candidate) {
-            const relayProto = (e.candidate as any).relayProtocol;
-            if (relayProto === 'tls') {
-              protocol = 'xtls';
-            }
-          } else if ('url' in e.candidate) {
-            // Fallback: check URL scheme (turns: indicates TLS)
-            const candidateUrl = (e.candidate as any).url;
-            if (candidateUrl && candidateUrl.startsWith('turns:')) {
-              protocol = 'xtls';
-            }
-          } else if (e.candidate.port === TURN_TLS_PORT) {
-            // Legacy fallback: use port 443 to detect TLS (for browsers without url property)
-            protocol = 'xtls';
-          }
-
-          // For XTLS, always use port 443 regardless of the relay candidate's ephemeral port
-          if (protocol === 'xtls') {
-            serverPort = TURN_TLS_PORT;
-          }
-
-          // Fallback for TCP only: use relatedAddress/address if URL parsing didn't work
-          // For XTLS, we don't use these fallbacks because they're not the server's IP
-          // (relatedAddress is client's srflx address, address is allocated relay address)
-          if (protocol === 'tcp' && !urlParsed) {
-            if (e.candidate.relatedAddress) {
-              serverIp = e.candidate.relatedAddress;
-            } else if (e.candidate.address) {
-              serverIp = e.candidate.address;
-            }
-            if (!serverPort && e.candidate.relatedPort) {
-              serverPort = e.candidate.relatedPort;
-            }
-          }
-
-          // For XTLS, if URL gives a domain name (not IP), use e.candidate.address as serverIp
-          // This is the relay address allocated by the TURN server, which is typically the server's public IP
-          if (protocol === 'xtls' && !isIpAddressFromUrl) {
-            if (e.candidate.address) {
-              serverIp = e.candidate.address;
-            }
-          }
-
-          // For XTLS, mark all pre-populated entries as reachable since we can't determine
-          // which specific server responded (URLs use domain names, not IPs)
-          // Only process if we have unreachable entries to avoid adding duplicate entries
-          if (protocol === 'xtls') {
-            const unreachableXtlsDetails = this.result.xtls.details.filter(
-              (d: SubnetDetail) => d.answeredTx === 0
-            );
-
-            if (unreachableXtlsDetails.length > 0) {
-              unreachableXtlsDetails.forEach((detail: SubnetDetail) => {
-                this.saveResult(
-                  protocol,
-                  latencyInMilliseconds,
-                  null,
-                  detail.serverIp,
-                  detail.port
-                );
-              });
-
-              // Skip adding new entries - we only use pre-populated entries for XTLS
-              return;
-            }
-
-            // No pre-populated entries - add new entry with the relay address
-            // (XTLS URLs use domain names, so we use the relay address as serverIp)
-          }
-
-          // For TCP, mark all pre-populated entries as reachable (conservative approach)
-          // since we can't reliably determine which specific server responded from the relay candidate
-          if (protocol === 'tcp') {
-            const unreachableTcpDetails = this.result.tcp.details.filter(
-              (d: SubnetDetail) => d.answeredTx === 0
-            );
-
-            if (unreachableTcpDetails.length > 0) {
-              unreachableTcpDetails.forEach((detail: SubnetDetail) => {
-                this.saveResult(
-                  protocol,
-                  latencyInMilliseconds,
-                  null,
-                  detail.serverIp,
-                  detail.port
-                );
-              });
-
-              // Skip adding new entries - we only use pre-populated entries for TCP
-              return;
-            }
-
-            // If no pre-populated entries exist, but we have already processed a TCP candidate, skip
-            if (this.result.tcp.result === 'reachable') {
-              return;
-            }
-
-            // For TCP without pre-populated entries and no IP from URL, use relay address as fallback
-            // (TCP URLs normally have IPs, but this handles edge cases)
-            if (!isIpAddressFromUrl) {
-              if (e.candidate.relatedAddress) {
-                serverIp = e.candidate.relatedAddress;
-              } else if (e.candidate.address) {
-                serverIp = e.candidate.address;
-              }
-            }
-          }
-
-          // Only add subnet detail if we have a valid server IP
-          if (serverIp && isIpAddress(serverIp)) {
-            this.saveResult(protocol, latencyInMilliseconds, null, serverIp, serverPort);
-          } else {
-            // Mark as reachable without adding subnet details
-            const result = this.result[protocol];
-            if (result.latencyInMilliseconds === undefined) {
-              LoggerProxy.logger.log(
-                // @ts-ignore
-                `Reachability:ReachabilityPeerConnection#saveResult --> Successfully reached ${this.clusterName} over ${protocol}: ${latencyInMilliseconds}ms, serverIp=unavailable`
-              );
-              result.latencyInMilliseconds = latencyInMilliseconds;
-              result.result = 'reachable';
-            }
-          }
-        }
+        this.saveResult(
+          protocol,
+          latencyInMilliseconds,
+          null,
+          e.candidate.address,
+          e.candidate.port
+        );
       }
     };
   }
@@ -666,18 +472,18 @@ export class ReachabilityPeerConnection extends EventsScope {
 
     // Initialize this.result as saying that nothing is reachable.
     // It will get updated as we go along and successfully gather ICE candidates.
-    // Preserve the pre-populated details array.
+    // Preserve existing details (pre-populated or undefined based on enableSubnetDetails flag).
     this.result.udp = {
       result: this.numUdpUrls > 0 ? 'unreachable' : 'untested',
-      details: this.result.udp.details || [],
+      details: this.result.udp.details,
     };
     this.result.tcp = {
       result: this.numTcpUrls > 0 ? 'unreachable' : 'untested',
-      details: this.result.tcp.details || [],
+      details: this.result.tcp.details,
     };
     this.result.xtls = {
       result: this.numXTlsUrls > 0 ? 'unreachable' : 'untested',
-      details: this.result.xtls.details || [],
+      details: this.result.xtls.details,
     };
 
     try {
