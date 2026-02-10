@@ -155,7 +155,7 @@ describe('WebRTC Task', () => {
       {type: TaskEvent.TASK_WRAPUP},
     ]);
     expect(webRtc.uiControls.wrapup.isVisible).toBe(true);
-    expect(webRtc.uiControls.mute.isVisible).toBe(true);
+    expect(webRtc.uiControls.mute.isVisible).toBe(false);
   });
 
   it('setUIControls for AGENT_CONTACT_HELD disables mute', () => {

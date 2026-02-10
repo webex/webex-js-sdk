@@ -245,6 +245,13 @@ export const actions: TaskActionsMap = {
 
   setConsultCallHeld: assign({consultCallHeld: true}),
   clearConsultCallHeld: assign({consultCallHeld: false}),
+  handleSwitchToMainCall: assign({consultCallHeld: true}),
+  handleSwitchToConsult: assign({consultCallHeld: false}),
+  handleConferenceFailed: assign(({event}: TaskActionArgs) => {
+    const taskData = getTaskDataFromEvent(event);
+
+    return taskData ? {taskData} : {};
+  }),
   handleParticipantLeft: assign(({event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event);
 
@@ -335,4 +342,8 @@ export const actions: TaskActionsMap = {
   emitTaskConferenceEnded: () => undefined,
   emitTaskExitConference: () => undefined,
   emitTaskTransferConference: () => undefined,
+  emitTaskSwitchCall: () => undefined,
+  emitTaskConferenceFailed: () => undefined,
+  emitTaskTransferConferenceFailed: () => undefined,
+  emitTaskOutdialFailed: () => undefined,
 };

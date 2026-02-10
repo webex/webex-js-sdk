@@ -1,5 +1,8 @@
 import Voice from '../../../../../../src/services/task/voice/Voice';
-import {TaskData, CONSULT_TRANSFER_DESTINATION_TYPE} from '../../../../../../src/services/task/types';
+import {
+  TaskData,
+  CONSULT_TRANSFER_DESTINATION_TYPE,
+} from '../../../../../../src/services/task/types';
 import {CC_EVENTS} from '../../../../../../src/services/config/types';
 import {TaskEvent, TaskState} from '../../../../../../src/services/task/state-machine';
 import {computeUIControls} from '../../../../../../src/services/task/state-machine/uiControlsComputer';
@@ -8,13 +11,23 @@ import {createTaskData} from '../taskTestUtils';
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
   default: {
-    getInstance: () => ({ uploadLogs: jest.fn() }),
+    getInstance: () => ({uploadLogs: jest.fn()}),
   },
 }));
 
 jest.mock('../../../../../../src/services/core/Utils', () => ({
   __esModule: true,
-  getErrorDetails: (err: any) => ({ error: err }),
+  getErrorDetails: (err: any) => ({error: err}),
+  buildConsultConferenceParamData: (dataPassed: any, interactionIdPassed: string) => ({
+    interactionId: interactionIdPassed,
+    data: {
+      agentId: dataPassed.agentId,
+      to: dataPassed.destAgentId,
+      destinationType: dataPassed.destinationType || 'agent',
+    },
+  }),
+  calculateDestAgentId: jest.fn(() => ''),
+  calculateDestType: jest.fn(() => 'agent'),
 }));
 
 const dummyContact = {
@@ -23,6 +36,7 @@ const dummyContact = {
   pauseRecording: jest.fn().mockResolvedValue('paused'),
   resumeRecording: jest.fn().mockResolvedValue('resumedRecording'),
   consult: jest.fn().mockResolvedValue('consulted'),
+  consultConference: jest.fn().mockResolvedValue('conferenceStarted'),
   consultTransfer: jest.fn().mockResolvedValue('consultTransferred'),
 } as any;
 
@@ -58,7 +72,6 @@ const primeHeldState = (voice: Voice, taskData: TaskData) => {
 };
 
 describe('Voice Task', () => {
-
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -80,14 +93,14 @@ describe('Voice Task', () => {
     await voice.holdResume();
     expect(dummyContact.hold).toHaveBeenCalledWith({
       interactionId: 'int1',
-      data: { mediaResourceId: 'media1' },
+      data: {mediaResourceId: 'media1'},
     });
   });
 
   it('calls contact.unHold when media is held', async () => {
     const heldData = createBaseData({
       interaction: {
-        media: {'media1': {mediaResourceId: 'media1', isHold: true}},
+        media: {media1: {mediaResourceId: 'media1', isHold: true}},
       } as any,
     }) as any;
     const voice = new Voice(dummyContact, heldData, {});
@@ -95,7 +108,7 @@ describe('Voice Task', () => {
     await voice.holdResume();
     expect(dummyContact.unHold).toHaveBeenCalledWith({
       interactionId: 'int1',
-      data: { mediaResourceId: 'media1' },
+      data: {mediaResourceId: 'media1'},
     });
   });
 
@@ -107,7 +120,7 @@ describe('Voice Task', () => {
     });
     primeConnectedState(voice, taskData);
     const res = await voice.pauseRecording();
-    expect(dummyContact.pauseRecording).toHaveBeenCalledWith({ interactionId: 'int1' });
+    expect(dummyContact.pauseRecording).toHaveBeenCalledWith({interactionId: 'int1'});
   });
 
   it('resumeRecording() with no payload defaults to autoResumed false', async () => {
@@ -121,7 +134,7 @@ describe('Voice Task', () => {
     const res = await voice.resumeRecording();
     expect(dummyContact.resumeRecording).toHaveBeenCalledWith({
       interactionId: 'int1',
-      data: { autoResumed: false },
+      data: {autoResumed: false},
     });
   });
 
@@ -132,7 +145,7 @@ describe('Voice Task', () => {
       isEndConsultEnabled: true,
     });
     primeConnectedState(voice, taskData);
-    const payload = { destination: 'agent1', destinationType: 'agent' } as any;
+    const payload = {destination: 'agent1', destinationType: 'agent'} as any;
     const res = await voice.consult(payload);
     expect(dummyContact.consult).toHaveBeenCalledWith({
       interactionId: 'int1',
@@ -147,9 +160,9 @@ describe('Voice Task', () => {
         interaction: {state: 'consulting'} as any,
       });
       const voice = new Voice(
-        { ...dummyContact, consultTransfer: consultTransferMock },
+        {...dummyContact, consultTransfer: consultTransferMock},
         dataWithState as any,
-        { isEndTaskEnabled: true, isEndConsultEnabled: true }
+        {isEndTaskEnabled: true, isEndConsultEnabled: true}
       );
 
       const result = await voice.transfer({
@@ -159,7 +172,7 @@ describe('Voice Task', () => {
 
       expect(consultTransferMock).toHaveBeenCalledWith({
         interactionId: 'int1',
-        data: { to: 'destB', destinationType: 'agent' },
+        data: {to: 'destB', destinationType: 'agent'},
       });
     });
 
@@ -188,9 +201,9 @@ describe('Voice Task', () => {
         interaction: {state: 'consulting'} as any,
       });
       const voice = new Voice(
-        { ...dummyContact, consultTransfer: consultTransferMock },
+        {...dummyContact, consultTransfer: consultTransferMock},
         dataWithDest as any,
-        { isEndTaskEnabled: true, isEndConsultEnabled: true }
+        {isEndTaskEnabled: true, isEndConsultEnabled: true}
       );
 
       const result = await voice.transfer({
@@ -211,12 +224,11 @@ describe('Voice Task', () => {
   describe('endConsult()', () => {
     it('calls contact.consultEnd with correct payload', async () => {
       const consultEndMock = jest.fn().mockResolvedValue('endedC');
-      const voice = new Voice(
-        { ...dummyContact, consultEnd: consultEndMock },
-        createBaseData(),
-        { isEndTaskEnabled: true, isEndConsultEnabled: true }
-      );
-      const payload = { isConsult: true, queueId: 'q1', taskId: 't1' };
+      const voice = new Voice({...dummyContact, consultEnd: consultEndMock}, createBaseData(), {
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+      });
+      const payload = {isConsult: true, queueId: 'q1', taskId: 't1'};
       const result = await voice.endConsult(payload);
 
       expect(consultEndMock).toHaveBeenCalledWith({
@@ -229,7 +241,7 @@ describe('Voice Task', () => {
 
   describe('UI controls for AGENT_CONTACT_ASSIGNED', () => {
     it('shows main controls and hides accept/decline on AGENT_CONTACT_ASSIGNED', () => {
-      const data: any = { ...createBaseData(), type: CC_EVENTS.AGENT_CONTACT_ASSIGNED };
+      const data: any = {...createBaseData(), type: CC_EVENTS.AGENT_CONTACT_ASSIGNED};
       const voice = new Voice(dummyContact, data, {
         isEndTaskEnabled: true,
         isEndConsultEnabled: false,
@@ -285,7 +297,9 @@ describe('Voice Task', () => {
 
     it('throws when pauseRecording is invoked without active recording', async () => {
       const voice = new Voice(dummyContact, createBaseData(), {});
-      await expect(voice.pauseRecording()).rejects.toThrow('Recording is not active or already paused');
+      await expect(voice.pauseRecording()).rejects.toThrow(
+        'Recording is not active or already paused'
+      );
       expect(dummyContact.pauseRecording).not.toHaveBeenCalled();
     });
 
@@ -317,6 +331,144 @@ describe('Voice Task', () => {
       expect(dummyContact.resumeRecording).toHaveBeenCalledWith({
         interactionId: 'int1',
         data: {autoResumed: false},
+      });
+    });
+  });
+
+  describe('switchCall()', () => {
+    const buildConsultingTaskData = () =>
+      createBaseData({
+        agentId: 'agent1',
+        consultMediaResourceId: 'consultMedia1',
+        interaction: {
+          media: {
+            media1: {
+              mediaResourceId: 'media1',
+              isHold: true,
+              mType: 'mainCall',
+              participants: ['agent1', 'customer1'],
+            },
+            consultMedia1: {
+              mediaResourceId: 'consultMedia1',
+              isHold: false,
+              mType: 'consult',
+              participants: ['agent1', 'agent2'],
+            },
+          },
+          participants: {
+            agent1: {id: 'agent1', pType: 'Agent', type: 'Agent', hasLeft: false},
+            agent2: {id: 'agent2', pType: 'Agent', type: 'Agent', hasLeft: false},
+            customer1: {id: 'customer1', pType: 'Customer', type: 'Customer', hasLeft: false},
+          },
+        } as any,
+      });
+
+    const primeConsultingState = (voice: Voice, taskData: TaskData) => {
+      primeConnectedState(voice, taskData);
+      voice.stateMachineService?.send({
+        type: TaskEvent.CONSULT,
+        destination: 'agent2',
+        destinationType: 'agent' as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+    };
+
+    it('switches from consult leg to main leg by holding consult media', async () => {
+      const taskData = buildConsultingTaskData();
+      const voice = new Voice(dummyContact, taskData, {});
+      primeConsultingState(voice, taskData);
+
+      await voice.switchCall();
+
+      expect(dummyContact.hold).toHaveBeenCalledWith({
+        interactionId: 'int1',
+        data: {mediaResourceId: 'consultMedia1'},
+      });
+    });
+
+    it('switches from main leg to consult leg by unholding consult media', async () => {
+      const taskData = buildConsultingTaskData();
+      const voice = new Voice(dummyContact, taskData, {});
+      primeConsultingState(voice, taskData);
+      voice.stateMachineService?.send({type: TaskEvent.SWITCH_TO_MAIN_CALL});
+
+      await voice.switchCall();
+
+      expect(dummyContact.unHold).toHaveBeenCalledWith({
+        interactionId: 'int1',
+        data: {mediaResourceId: 'consultMedia1'},
+      });
+    });
+  });
+
+  describe('consultConference()', () => {
+    it('uses cached consult destination when task data destination is cleared', async () => {
+      const taskData = createBaseData({
+        agentId: 'agent1',
+        destAgentId: undefined,
+        destinationType: undefined,
+        interaction: {
+          media: {
+            media1: {mediaResourceId: 'media1', isHold: true},
+          },
+          participants: {
+            agent1: {id: 'agent1', pType: 'Agent', type: 'Agent', hasLeft: false},
+          },
+        } as any,
+      });
+
+      const voice = new Voice(dummyContact, taskData, {});
+      primeConnectedState(voice, taskData);
+      await voice.consult({to: 'agent2', destinationType: 'agent'} as any);
+
+      await voice.consultConference();
+
+      expect(dummyContact.consultConference).toHaveBeenCalledWith({
+        interactionId: 'int1',
+        data: expect.objectContaining({
+          to: 'agent2',
+          destinationType: 'agent',
+        }),
+      });
+    });
+
+    it('falls back to derived destination when cached and task destination are unavailable', async () => {
+      const utils = jest.requireMock('../../../../../../src/services/core/Utils');
+      (utils.calculateDestAgentId as jest.Mock).mockReturnValueOnce('derivedAgent');
+      (utils.calculateDestType as jest.Mock).mockReturnValueOnce('agent');
+
+      const taskData = createBaseData({
+        agentId: 'agent1',
+        destAgentId: undefined,
+        destinationType: undefined,
+        interaction: {
+          media: {
+            media1: {mediaResourceId: 'media1', isHold: true},
+          },
+          participants: {
+            agent1: {id: 'agent1', pType: 'Agent', type: 'Agent', hasLeft: false},
+          },
+        } as any,
+      });
+
+      const voice = new Voice(dummyContact, taskData, {});
+      primeConnectedState(voice, taskData);
+      voice.stateMachineService?.send({
+        type: TaskEvent.CONSULT,
+        destination: '',
+        destinationType: 'agent' as any,
+      });
+      voice.stateMachineService?.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+      (voice as any).consultDestAgentId = null;
+      (voice as any).consultDestType = null;
+
+      await voice.consultConference();
+
+      expect(dummyContact.consultConference).toHaveBeenCalledWith({
+        interactionId: 'int1',
+        data: expect.objectContaining({
+          to: 'derivedAgent',
+        }),
       });
     });
   });

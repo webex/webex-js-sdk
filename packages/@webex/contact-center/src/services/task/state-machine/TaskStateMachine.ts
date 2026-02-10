@@ -157,10 +157,17 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
           },
-          [TaskEvent.OUTBOUND_FAILED]: {
-            target: TaskState.TERMINATED,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
-          },
+          [TaskEvent.OUTBOUND_FAILED]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskReject'],
+            },
+          ],
           // AgentConsulting comes for received after the initial consult is accepted
           [TaskEvent.CONSULTING_ACTIVE]: [
             {
@@ -399,12 +406,18 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             },
           ],
 
-          // Hold/Unhold while consulting (switches between legs)
+          // Switch between consult and main call (UI-driven toggle)
+          [TaskEvent.SWITCH_TO_MAIN_CALL]: {
+            actions: ['handleSwitchToMainCall', 'emitTaskSwitchCall'],
+          },
+          [TaskEvent.SWITCH_TO_CONSULT]: {
+            actions: ['handleSwitchToConsult', 'emitTaskSwitchCall'],
+          },
           [TaskEvent.HOLD_SUCCESS]: {
-            actions: ['updateTaskData', 'setHoldState', 'setConsultCallHeld'],
+            actions: ['updateTaskData', 'setHoldState'],
           },
           [TaskEvent.UNHOLD_SUCCESS]: {
-            actions: ['updateTaskData', 'setHoldState', 'clearConsultCallHeld'],
+            actions: ['updateTaskData', 'setHoldState'],
           },
 
           [TaskEvent.TRANSFER_SUCCESS]: [
@@ -471,7 +484,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             },
           ],
           [TaskEvent.TRANSFER_CONFERENCE_FAILED]: {
-            actions: ['clearTransferConferenceRequested'],
+            actions: ['clearTransferConferenceRequested', 'emitTaskTransferConferenceFailed'],
           },
 
           // AgentContactAssigned - receiver side becomes connected to customer
@@ -515,6 +528,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentConsultConferenceFailed
           [TaskEvent.CONFERENCE_FAILED]: {
             target: TaskState.CONSULTING,
+            actions: ['handleConferenceFailed', 'emitTaskConferenceFailed'],
           },
         },
       },
@@ -604,7 +618,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             },
           ],
           [TaskEvent.TRANSFER_CONFERENCE_FAILED]: {
-            actions: ['clearTransferConferenceRequested'],
+            actions: ['clearTransferConferenceRequested', 'emitTaskTransferConferenceFailed'],
           },
 
           // Conference ends explicitly

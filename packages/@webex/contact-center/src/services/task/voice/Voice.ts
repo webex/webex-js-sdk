@@ -1,5 +1,10 @@
 import {CC_FILE, METHODS} from '../../../constants';
-import {buildConsultConferenceParamData, getErrorDetails} from '../../core/Utils';
+import {
+  buildConsultConferenceParamData,
+  calculateDestAgentId,
+  calculateDestType,
+  getErrorDetails,
+} from '../../core/Utils';
 import routingContact from '../contact';
 import {
   ConsultPayload,
@@ -22,9 +27,13 @@ import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
 import {TaskState, TaskEvent} from '../state-machine';
 import {WrapupData} from '../../config/types';
-import {getIsConferenceInProgress} from '../TaskUtils';
+import {getConsultMediaResourceId, getIsConferenceInProgress} from '../TaskUtils';
 
 export default class Voice extends Task implements IVoice {
+  // Cached consult destination — backend hold/unhold event payloads can clear
+  private consultDestAgentId: string | null = null;
+  private consultDestType: string | null = null;
+
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
@@ -436,6 +445,10 @@ export default class Voice extends Task implements IVoice {
       throw error;
     }
 
+    // Cache consult destination — hold/unhold events during switchCall can clear this.data.destAgentId
+    this.consultDestAgentId = consultPayload.to;
+    this.consultDestType = consultPayload.destinationType;
+
     // Send initiating event to transition to CONSULT_INITIATING state
     if (this.stateMachineService) {
       this.stateMachineService.send({
@@ -602,11 +615,12 @@ export default class Voice extends Task implements IVoice {
         };
 
         if (payload.destinationType === CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE) {
-          if (!this.data.destAgentId) {
+          const destAgent = this.consultDestAgentId || this.data.destAgentId;
+          if (!destAgent) {
             throw new Error('No agent has accepted this queue consult yet');
           }
           consultPayload = {
-            to: this.data.destAgentId,
+            to: destAgent,
             destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
           };
         }
@@ -663,10 +677,20 @@ export default class Voice extends Task implements IVoice {
    * Start a consult conference, merging main and consult calls.
    */
   public async consultConference(): Promise<TaskResponse> {
+    const derivedDestAgentId =
+      this.data.interaction && this.data.agentId
+        ? calculateDestAgentId(this.data.interaction, this.data.agentId)
+        : '';
+    const derivedDestType =
+      this.data.interaction && this.data.agentId
+        ? calculateDestType(this.data.interaction, this.data.agentId)
+        : '';
+
     const consultationData: consultConferencePayloadData = {
       agentId: this.data.agentId,
-      destinationType: this.data.destinationType || 'agent',
-      destAgentId: this.data.destAgentId,
+      destinationType:
+        this.consultDestType || this.data.destinationType || derivedDestType || 'agent',
+      destAgentId: this.consultDestAgentId || this.data.destAgentId || derivedDestAgentId,
     };
 
     // Send state machine event to transition to CONF_INITIATING
@@ -677,6 +701,10 @@ export default class Voice extends Task implements IVoice {
     }
 
     try {
+      if (!consultationData.destAgentId) {
+        throw new Error('Unable to determine consult destination for conference');
+      }
+
       LoggerProxy.info(`Initiating consult conference to ${consultationData.destAgentId}`, {
         module: CC_FILE,
         method: METHODS.CONSULT_CONFERENCE,
@@ -985,6 +1013,108 @@ export default class Voice extends Task implements IVoice {
     }
   }
 
+  /**
+   * Toggle between consult call and main call during consulting.
+   * If on consult leg (consultCallHeld = false), switches to main call by holding consult.
+   * If on main call (consultCallHeld = true), switches to consult by resuming consult.
+   *
+   * @returns Promise<TaskResponse>
+   * @throws Error if not in CONSULTING state or no consult media resource
+   * @example
+   * ```typescript
+   * await task.switchCall();
+   * ```
+   */
+  public async switchCall(): Promise<TaskResponse> {
+    // Validate we're in CONSULTING state
+    const state = this.stateMachineService?.getSnapshot?.();
+    if (!state?.matches(TaskState.CONSULTING)) {
+      const currentState = state?.value as TaskState;
+      const error = new Error(`Cannot switch call in ${currentState} state`);
+      LoggerProxy.error('Switch call operation not allowed', {
+        module: CC_FILE,
+        method: 'switchCall',
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
+
+    // Validate we have a consult media resource
+    const consultMediaResourceId = getConsultMediaResourceId(
+      this.data.interaction,
+      this.data.consultMediaResourceId,
+      this.data.agentId
+    );
+    if (!consultMediaResourceId) {
+      const error = new Error('No consult media resource available');
+      LoggerProxy.error('Switch call failed - no consult media resource', {
+        module: CC_FILE,
+        method: 'switchCall',
+        interactionId: this.data.interactionId,
+      });
+      throw error;
+    }
+
+    const context = state.context;
+    const isOnConsultLeg = !context.consultCallHeld;
+
+    // Determine direction and send appropriate state machine event
+    const targetEvent = isOnConsultLeg
+      ? TaskEvent.SWITCH_TO_MAIN_CALL
+      : TaskEvent.SWITCH_TO_CONSULT;
+    const revertEvent = isOnConsultLeg
+      ? TaskEvent.SWITCH_TO_CONSULT
+      : TaskEvent.SWITCH_TO_MAIN_CALL;
+
+    if (this.stateMachineService) {
+      this.stateMachineService.send({type: targetEvent});
+    }
+
+    try {
+      if (isOnConsultLeg) {
+        const response = await this.contact.hold({
+          interactionId: this.data.interactionId,
+          data: {mediaResourceId: consultMediaResourceId},
+        });
+
+        LoggerProxy.log(`Switched to main call successfully`, {
+          module: CC_FILE,
+          method: 'switchCall',
+          trackingId: response.trackingId,
+          interactionId: this.data.interactionId,
+        });
+
+        return response;
+      }
+
+      const response = await this.contact.unHold({
+        interactionId: this.data.interactionId,
+        data: {mediaResourceId: consultMediaResourceId},
+      });
+
+      LoggerProxy.log(`Switched to consult call successfully`, {
+        module: CC_FILE,
+        method: 'switchCall',
+        trackingId: response.trackingId,
+        interactionId: this.data.interactionId,
+      });
+
+      return response;
+    } catch (error) {
+      if (this.stateMachineService) {
+        this.stateMachineService.send({type: revertEvent});
+      }
+
+      const {error: detailedError} = getErrorDetails(error, 'switchCall', CC_FILE);
+      LoggerProxy.error(`Failed to switch call`, {
+        module: CC_FILE,
+        method: 'switchCall',
+        interactionId: this.data.interactionId,
+      });
+      throw detailedError;
+    }
+  }
+
   protected override getChannelSpecificActionOverrides() {
     const baseOverrides = super.getChannelSpecificActionOverrides();
 
@@ -1022,11 +1152,24 @@ export default class Voice extends Task implements IVoice {
       emitTaskConferenceEnded: this.createEmitSelfAction(TASK_EVENTS.TASK_CONFERENCE_ENDED, {
         updateTaskData: true,
       }),
+      emitTaskConferenceFailed: this.createEmitSelfAction(TASK_EVENTS.TASK_CONFERENCE_FAILED, {
+        updateTaskData: true,
+      }),
       emitTaskExitConference: this.createEmitSelfAction(TASK_EVENTS.TASK_EXIT_CONFERENCE, {
         updateTaskData: false,
       }),
       emitTaskTransferConference: this.createEmitSelfAction(TASK_EVENTS.TASK_TRANSFER_CONFERENCE, {
         updateTaskData: false,
+      }),
+      emitTaskSwitchCall: this.createEmitSelfAction(TASK_EVENTS.TASK_SWITCH_CALL, {
+        updateTaskData: false,
+      }),
+      emitTaskTransferConferenceFailed: this.createEmitSelfAction(
+        TASK_EVENTS.TASK_CONFERENCE_TRANSFER_FAILED,
+        {updateTaskData: true}
+      ),
+      emitTaskOutdialFailed: this.createEmitSelfAction(TASK_EVENTS.TASK_OUTDIAL_FAILED, {
+        updateTaskData: true,
       }),
     };
   }

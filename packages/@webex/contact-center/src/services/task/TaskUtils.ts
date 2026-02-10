@@ -341,3 +341,37 @@ export const shouldAutoAnswerTask = (
 
   return false;
 };
+
+/**
+ * Gets the consult media resource ID for switch-call operations.
+ * Searches for the consult media leg in the interaction.
+ *
+ * @param interaction - The interaction object
+ * @param consultMediaResourceId - The consult media resource ID from task data
+ * @param agentId - Current agent ID
+ * @returns The consult media resource ID or undefined
+ */
+export const getConsultMediaResourceId = (
+  interaction: Interaction | undefined,
+  consultMediaResourceId: string | undefined,
+  agentId: string | undefined
+): string | undefined => {
+  // First priority: use consultMediaResourceId from task data if available
+  if (consultMediaResourceId) {
+    return consultMediaResourceId;
+  }
+
+  // Second priority: search for consult media leg in interaction.media
+  if (!interaction?.media || !agentId) {
+    return undefined;
+  }
+
+  // Find the consult media leg where this agent is a participant
+  for (const [mediaId, media] of Object.entries(interaction.media)) {
+    if (media.mType === 'consult' && media.participants?.includes(agentId)) {
+      return mediaId;
+    }
+  }
+
+  return undefined;
+};

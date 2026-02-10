@@ -149,6 +149,10 @@ export default abstract class Task extends EventEmitter implements ITask {
     this.unsupportedMethodError('transferConference');
   }
 
+  public async switchCall(): Promise<TaskResponse> {
+    this.unsupportedMethodError('switchCall');
+  }
+
   public async toggleMute(): Promise<void> {
     this.unsupportedMethodError('toggleMute');
   }
