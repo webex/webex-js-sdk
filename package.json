@@ -222,9 +222,6 @@
     "yakbak": "^5.0.1",
     "yargs": "^16.2.0"
   },
-  "optionalDependencies": {
-    "@ciscospark/test-users-legacy": "^1.2.0"
-  },
   "browser": {
     "./src/client/client/client.js": "./src/client/client/client.shim.js",
     "./src/client/client/processors/request/request.js": "./src/client/client/processors/request/request.shim.js",

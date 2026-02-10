@@ -1464,6 +1464,7 @@ describe('plugin-meetings', () => {
                 id: 'selfId123',
               },
             },
+            metaData: {id: 'some hash tree metadata'},
             dataSets: [{name: 'dataset1', url: 'http://dataset.com'}],
             mediaConnections: [{mediaId: 'mediaId456'}, {someOtherField: 'value'}],
           },
@@ -1481,6 +1482,7 @@ describe('plugin-meetings', () => {
           locusId: '12345',
           selfId: 'selfId123',
           mediaId: 'mediaId456',
+          metadata: {id: 'some hash tree metadata'},
         });
       });
 
@@ -1510,6 +1512,7 @@ describe('plugin-meetings', () => {
           locusUrl: 'https://locus-a.wbx2.com/locus/api/v1/loci/12345',
           locusId: '12345',
           selfId: 'selfId123',
+          metadata: {id: 'some hash tree metadata'},
         });
         assert.isUndefined(result.mediaId);
       });
