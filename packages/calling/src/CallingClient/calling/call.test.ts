@@ -1002,7 +1002,9 @@ describe('State Machine handler tests', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(clearInterval).toHaveBeenCalledTimes(1);
+    // clearInterval is called twice: once in scheduleCallKeepaliveInterval (at start)
+    // and once in handleCallKeepaliveError when clearing timer due to error
+    expect(clearInterval).toHaveBeenCalledTimes(2);
     expect(funcSpy).toBeCalledTimes(1);
     expect(emitSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.DISCONNECT, call.getCorrelationId());
   });
@@ -1034,7 +1036,9 @@ describe('State Machine handler tests', () => {
      */
     await flushPromises(2);
 
-    expect(clearInterval).toHaveBeenCalledTimes(1);
+    // clearInterval is called twice: once in scheduleCallKeepaliveInterval (at start)
+    // and once in handleCallKeepaliveError when clearing timer due to error
+    expect(clearInterval).toHaveBeenCalledTimes(2);
     expect(funcSpy).toBeCalledTimes(1);
   });
 
@@ -1069,6 +1073,34 @@ describe('State Machine handler tests', () => {
 
     expect(postStatusSpy).toHaveBeenCalledTimes(2);
     expect(scheduleKeepaliveSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('scheduleCallKeepaliveInterval clears existing interval before creating new one', async () => {
+    jest.spyOn(global, 'setInterval');
+    jest.spyOn(global, 'clearInterval');
+
+    // Setup the first keepalive interval
+    call['handleCallEstablished']({} as CallEvent);
+
+    // At this point, scheduleCallKeepaliveInterval was called once
+    // It should have called clearInterval once (at the start) and setInterval once
+    expect(clearInterval).toHaveBeenCalledTimes(1);
+    expect(setInterval).toHaveBeenCalledTimes(1);
+
+    const firstTimer = call['sessionTimer'];
+    expect(firstTimer).toBeDefined();
+
+    // Manually call scheduleCallKeepaliveInterval again to simulate a retry scenario
+    call['scheduleCallKeepaliveInterval']();
+
+    // clearInterval should have been called again to clear the previous timer
+    expect(clearInterval).toHaveBeenCalledTimes(2);
+    // A new interval should have been created
+    expect(setInterval).toHaveBeenCalledTimes(2);
+
+    // The sessionTimer should be different (new timer)
+    const secondTimer = call['sessionTimer'];
+    expect(secondTimer).toBeDefined();
   });
 
   it('keepalive ends after reaching max retry count', async () => {
