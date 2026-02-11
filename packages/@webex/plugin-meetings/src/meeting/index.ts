@@ -179,7 +179,7 @@ import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {ReachabilityMetrics} from '../reachability/reachability.types';
 import {SetStageOptions, SetStageVideoLayout, UnsetStageVideoLayout} from './request.type';
 import {Invitee} from './type';
-import {DataSet} from '../hashTree/hashTreeParser';
+import {DataSet, Metadata} from '../hashTree/hashTreeParser';
 import {LocusDTO} from '../locus-info/types';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
@@ -4598,7 +4598,8 @@ export default class Meeting extends StatelessWebexPlugin {
     mediaId: string;
     host: object;
     selfId: string;
-    dataSets: DataSet[];
+    dataSets: DataSet[]; // only sent by Locus when hash trees are used
+    metadata: Metadata; // only sent by Locus when hash trees are used
   }) {
     const mtgLocus: any = data.locus;
 
@@ -4614,6 +4615,7 @@ export default class Meeting extends StatelessWebexPlugin {
       trigger: 'join-response',
       locus: mtgLocus,
       dataSets: data.dataSets,
+      metadata: data.metadata,
     });
   }
 
@@ -5786,7 +5788,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.isReactionsSupported()
         ) {
           const member = this.members.membersCollection.get(e.data.sender.participantId);
-          if (!member) {
+          if (!member && !this.locusInfo?.info?.isWebinar) {
             // @ts-ignore -- fix type
             LoggerProxy.logger.warn(
               `Meeting:index#processRelayEvent --> Skipping handling of ${REACTION_RELAY_TYPES.REACTION} for ${this.id}. participantId ${e.data.sender.participantId} does not exist in membersCollection.`
@@ -5794,7 +5796,7 @@ export default class Meeting extends StatelessWebexPlugin {
             break;
           }
 
-          const {name} = member;
+          const name = (member && member.name) || e.data.sender.displayName;
           const processedReaction: ProcessedReaction = {
             reaction: e.data.reaction,
             sender: {
@@ -7438,7 +7440,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private async waitForMediaConnectionConnected(): Promise<void> {
     try {
-      await this.mediaProperties.waitForMediaConnectionConnected();
+      await this.mediaProperties.waitForMediaConnectionConnected(this.correlationId);
     } catch (error) {
       const {iceConnected} = error;
 

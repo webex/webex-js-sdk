@@ -41,14 +41,23 @@ describe('MediaProperties', () => {
   describe('waitForMediaConnectionConnected', () => {
     it('resolves if media connection is connected', async () => {
       const waitForMediaConnectionConnectedResult = new Defer();
+      const correlationId = 'aaaa-bbbb-cccc-dddd';
 
-      sinon
+      let capturedInstance;
+      const stub = sinon
         .stub(MediaConnectionAwaiter.prototype, 'waitForMediaConnectionConnected')
-        .returns(waitForMediaConnectionConnectedResult.promise);
+        .callsFake(function () {
+          capturedInstance = this;
+          return waitForMediaConnectionConnectedResult.promise;
+        });
 
       waitForMediaConnectionConnectedResult.resolve();
 
-      await mediaProperties.waitForMediaConnectionConnected();
+      await mediaProperties.waitForMediaConnectionConnected(correlationId);
+
+      assert.calledOnce(stub);
+      assert.equal(capturedInstance.correlationId, correlationId);
+      assert.equal(capturedInstance.webrtcMediaConnection, mockMC);
     });
     it('rejects if media connection is not connected', async () => {
       const waitForMediaConnectionConnectedResult = new Defer();

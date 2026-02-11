@@ -812,7 +812,7 @@ async function getMediaStreams() {
 }
 
 async function toggleNoiseReductionEffect() {
-  const options =  {authToken: tokenElm.value, env: enableProd ? 'prod': 'int'}
+  const options = {authToken: tokenElm.value, env: enableProd ? 'prod': 'int'};
   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
 
   if (!effect) {
@@ -1247,7 +1247,7 @@ async function createVoiceMail() {
         }
       } else {
         console.log('Voicemail is empty');
-      } 
+      }
 
       voicemailElm.disabled = false;
 
