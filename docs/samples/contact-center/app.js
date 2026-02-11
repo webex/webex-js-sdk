@@ -185,7 +185,7 @@ function initOauth() {
   const webexConfig = generateWebexConfig({
     credentials: {
       ...(!enableProd && {authorizeUrl: 'https://idbrokerbts.webex.com/idb/oauth2/v1/authorize'}),
-      client_id: enableProd ? 'C70599433db154842e919ad9e18273d835945ff198251c82204b236b157b3a213' : 'Cd0dd53db1f470a5a9941e5eee31575bd0889d7006e3a80a1443ad12a42049da1',
+      client_id: enableProd ? 'C04ef08ffce356c3161bb66b15dbdd98d26b6c683c5ce1a1a89efad545fdadd74' : 'Cd0dd53db1f470a5a9941e5eee31575bd0889d7006e3a80a1443ad12a42049da1',
       redirect_uri: redirectUri,
       scope: requestedScopes,
     }
