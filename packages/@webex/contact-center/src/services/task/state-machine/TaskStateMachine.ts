@@ -122,6 +122,20 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.OFFERED,
             actions: ['initializeTask', 'emitTaskIncoming'],
           },
+
+          // EP-DN split-leg ordering can deliver AgentConsulting before HYDRATE/TASK_INCOMING.
+          // Do not drop it in IDLE; bootstrap to CONSULTING using event taskData.
+          [TaskEvent.CONSULTING_ACTIVE]: {
+            target: TaskState.CONSULTING,
+            actions: [
+              'updateTaskData',
+              'setConsultInitiator',
+              'setConsultFromConference',
+              'setConsultAgentJoined',
+              'emitTaskConsultAccepted',
+              'emitTaskConsulting',
+            ],
+          },
         },
       },
 
@@ -132,10 +146,17 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: ['updateTaskData', 'emitTaskOfferContact', 'requestAutoAnswer'],
           },
           // AgentContactAssigned
-          [TaskEvent.ASSIGN]: {
-            target: TaskState.CONNECTED,
-            actions: ['updateTaskData', 'emitTaskAssigned'],
-          },
+          [TaskEvent.ASSIGN]: [
+            {
+              guard: guards.isConsultingAssignment,
+              target: TaskState.CONSULTING,
+              actions: ['updateTaskData', 'emitTaskConsultAccepted', 'emitTaskConsulting'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'emitTaskAssigned'],
+            },
+          ],
           // AgentOfferContactRONA
           [TaskEvent.RONA]: {
             target: TaskState.TERMINATED,
@@ -189,6 +210,18 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.CONNECTED]: {
         on: {
+          // AgentConsulting may arrive while machine is CONNECTED (EP-DN/event ordering).
+          // Derive consultInitiator from payload so controls are set correctly.
+          [TaskEvent.CONSULTING_ACTIVE]: {
+            target: TaskState.CONSULTING,
+            actions: [
+              'updateTaskData',
+              'setConsultInitiator',
+              'setConsultAgentJoined',
+              'emitTaskConsultAccepted',
+              'emitTaskConsulting',
+            ],
+          },
           // AgentContactAssigned can be resent after consult transfers; keep context in sync
           [TaskEvent.ASSIGN]: {
             target: TaskState.CONNECTED,
@@ -383,13 +416,13 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           },
 
           // AgentConsultEnded
-          // If consult initiator AND was in conference, go back to CONFERENCING
-          // Otherwise, initiator goes to HELD, consulted agent goes to TERMINATED
           [TaskEvent.CONSULT_END]: [
             {
-              // Initiator who started consult from conference → back to CONFERENCING
-              guard: ({context}) =>
-                context.consultInitiator === true && context.consultFromConference === true,
+              // Initiator returning to conference (flag set OR backend still shows conference)
+              guard: ({context, event}) =>
+                context.consultInitiator === true &&
+                (context.consultFromConference === true ||
+                  guards.conferenceInProgressFromEvent({context, event})),
               target: TaskState.CONFERENCING,
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
@@ -538,6 +571,17 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.CONFERENCE_START]: {
             actions: ['updateTaskData', 'clearConsultState', 'emitTaskConferenceStarted'],
           },
+          [TaskEvent.EXIT_CONFERENCE_SUCCESS]: [
+            {
+              guard: guards.shouldWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.TERMINATED,
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskEnd'],
+            },
+          ],
 
           // Needed as all agents in conference get this event, hence we need to clear the consult state
           [TaskEvent.CONSULT_END]: {

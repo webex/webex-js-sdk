@@ -269,8 +269,11 @@ async function getQueueListForTelephonyChannel() {
 
 async function getEntryPoints() {
   try {
-    const entryPoints = await webex.cc.getEntryPoints();
-    return entryPoints.data || [];
+    const entryPoints = await webex.cc.getEntryPoints({page: 0, pageSize: 100});
+    if (Array.isArray(entryPoints?.data)) return entryPoints.data;
+    if (Array.isArray(entryPoints)) return entryPoints;
+
+    return [];
   } catch (error) {
     console.log('Failed to fetch entry points', error);
     return [];
@@ -389,27 +392,24 @@ async function onConsultTypeSelectionChanged(){
   } else if (destinationTypeDropdown.value === 'entryPoint') {
     async function refreshEntryPointsForConsult() {
       const entryPoints = await getEntryPoints();
-
-      consultDestinationInput = document.createElement('input');
-      consultDestinationInput.type = 'text';
+      consultDestinationInput = document.createElement('select');
       consultDestinationInput.id = 'consultDestination';
-      consultDestinationInput.placeholder = 'Enter Entry Point ID';
+      consultDestinationInput.innerHTML = '';
 
-      const dataListId = 'consult-entrypoint-datalist';
-      let dataList = consultDestinationHolderElm.querySelector(`#${dataListId}`);
-      if (!dataList) {
-        dataList = document.createElement('datalist');
-        dataList.id = dataListId;
-        consultDestinationHolderElm.appendChild(dataList);
-      }
-      dataList.innerHTML = '';
-      entryPoints.forEach((ep) => {
+      if (entryPoints.length > 0) {
+        entryPoints.forEach((ep) => {
+          const option = document.createElement('option');
+          option.value = ep.id;
+          option.text = `${ep.name} (${ep.id})`;
+          consultDestinationInput.appendChild(option);
+        });
+      } else {
+        consultDestinationInput.disabled = true;
         const option = document.createElement('option');
-        option.value = ep.id;
-        option.label = ep.name;
-        dataList.appendChild(option);
-      });
-      consultDestinationInput.setAttribute('list', dataListId);
+        option.value = '';
+        option.text = 'No entry points available';
+        consultDestinationInput.appendChild(option);
+      }
     }
 
     await refreshEntryPointsForConsult();

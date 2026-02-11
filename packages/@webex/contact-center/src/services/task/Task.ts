@@ -681,17 +681,21 @@ export default abstract class Task extends EventEmitter implements ITask {
       module: 'Task',
       method: 'end',
     });
+    const requestInteractionId =
+      this.data.interaction?.mainInteractionId || this.data.interactionId;
+
     try {
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_END_SUCCESS,
         METRIC_EVENT_NAMES.TASK_END_FAILED,
       ]);
-      const response = await this.contact.end({interactionId: this.data.interactionId});
+      const response = await this.contact.end({interactionId: requestInteractionId});
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_END_SUCCESS,
         {
           taskId: this.data.interactionId,
+          requestInteractionId,
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
         },
         ['operational', 'behavioral', 'business']
@@ -704,6 +708,7 @@ export default abstract class Task extends EventEmitter implements ITask {
         METRIC_EVENT_NAMES.TASK_END_FAILED,
         {
           taskId: this.data.interactionId,
+          requestInteractionId,
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(
             (error as any).details || {}
           ),

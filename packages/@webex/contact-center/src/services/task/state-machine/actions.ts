@@ -188,6 +188,8 @@ export const actions: TaskActionsMap = {
 
   setConsultFromConference: assign({consultFromConference: true}),
 
+  forceConsultInitiator: assign({consultInitiator: true}),
+
   setConsultAgentJoined: assign(
     ({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
       if (context.consultDestinationAgentJoined) {

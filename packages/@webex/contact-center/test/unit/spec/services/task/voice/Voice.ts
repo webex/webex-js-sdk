@@ -6,6 +6,7 @@ import {
 import {CC_EVENTS} from '../../../../../../src/services/config/types';
 import {TaskEvent, TaskState} from '../../../../../../src/services/task/state-machine';
 import {computeUIControls} from '../../../../../../src/services/task/state-machine/uiControlsComputer';
+import * as Utils from '../../../../../../src/services/core/Utils';
 import {createTaskData} from '../taskTestUtils';
 
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
@@ -15,20 +16,15 @@ jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   },
 }));
 
-jest.mock('../../../../../../src/services/core/Utils', () => ({
-  __esModule: true,
-  getErrorDetails: (err: any) => ({error: err}),
-  buildConsultConferenceParamData: (dataPassed: any, interactionIdPassed: string) => ({
-    interactionId: interactionIdPassed,
-    data: {
-      agentId: dataPassed.agentId,
-      to: dataPassed.destAgentId,
-      destinationType: dataPassed.destinationType || 'agent',
-    },
-  }),
-  calculateDestAgentId: jest.fn(() => ''),
-  calculateDestType: jest.fn(() => 'agent'),
-}));
+jest.mock('../../../../../../src/services/core/Utils', () => {
+  const actual = jest.requireActual('../../../../../../src/services/core/Utils');
+  return {
+    __esModule: true,
+    ...actual,
+    // keep tests deterministic; avoid log upload side-effects on failures
+    getErrorDetails: (err: any) => ({error: err}),
+  };
+});
 
 const dummyContact = {
   hold: jest.fn().mockResolvedValue('held'),
@@ -237,6 +233,27 @@ describe('Voice Task', () => {
       });
       expect(result).toBe('endedC');
     });
+
+    it('uses mainInteractionId when present for consultEnd request', async () => {
+      const consultEndMock = jest.fn().mockResolvedValue('endedC');
+      const taskData = createBaseData({
+        interactionId: 'child-int',
+        interaction: {
+          mainInteractionId: 'main-int',
+        } as any,
+      });
+      const voice = new Voice({...dummyContact, consultEnd: consultEndMock}, taskData, {
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+      });
+
+      await voice.endConsult({isConsult: true} as any);
+
+      expect(consultEndMock).toHaveBeenCalledWith({
+        interactionId: 'main-int',
+        data: {isConsult: true},
+      });
+    });
   });
 
   describe('UI controls for AGENT_CONTACT_ASSIGNED', () => {
@@ -402,6 +419,10 @@ describe('Voice Task', () => {
   });
 
   describe('consultConference()', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     it('uses cached consult destination when task data destination is cleared', async () => {
       const taskData = createBaseData({
         agentId: 'agent1',
@@ -433,9 +454,8 @@ describe('Voice Task', () => {
     });
 
     it('falls back to derived destination when cached and task destination are unavailable', async () => {
-      const utils = jest.requireMock('../../../../../../src/services/core/Utils');
-      (utils.calculateDestAgentId as jest.Mock).mockReturnValueOnce('derivedAgent');
-      (utils.calculateDestType as jest.Mock).mockReturnValueOnce('agent');
+      jest.spyOn(Utils, 'calculateDestAgentId').mockReturnValueOnce('derivedAgent');
+      jest.spyOn(Utils, 'calculateDestType').mockReturnValueOnce('agent');
 
       const taskData = createBaseData({
         agentId: 'agent1',

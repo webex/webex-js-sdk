@@ -458,18 +458,21 @@ export default class Voice extends Task implements IVoice {
       });
     }
 
+    const requestInteractionId =
+      this.data.interaction?.mainInteractionId || this.data.interactionId;
+
     try {
       LoggerProxy.info(`Starting consult`, {
         module: CC_FILE,
         method: 'consult',
-        interactionId: this.data.interactionId,
+        interactionId: requestInteractionId,
       });
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
         METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
       ]);
       const result = await this.contact.consult({
-        interactionId: this.data.interactionId,
+        interactionId: requestInteractionId,
         data: consultPayload,
       });
 
@@ -485,6 +488,7 @@ export default class Voice extends Task implements IVoice {
         METRIC_EVENT_NAMES.TASK_CONSULT_START_SUCCESS,
         {
           taskId: this.data.interactionId,
+          requestInteractionId,
           destination: consultPayload.to,
           destinationType: consultPayload.destinationType,
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
@@ -495,7 +499,7 @@ export default class Voice extends Task implements IVoice {
         module: CC_FILE,
         method: 'consult',
         trackingId: result.trackingId,
-        interactionId: this.data.interactionId,
+        interactionId: requestInteractionId,
       });
 
       return result;
@@ -510,6 +514,7 @@ export default class Voice extends Task implements IVoice {
         METRIC_EVENT_NAMES.TASK_CONSULT_START_FAILED,
         {
           taskId: this.data.interactionId,
+          requestInteractionId,
           destination: consultPayload.to,
           destinationType: consultPayload.destinationType,
           error: error.toString(),
@@ -536,24 +541,28 @@ export default class Voice extends Task implements IVoice {
    * ```
    */
   public async endConsult(consultEndPayload?: ConsultEndPayload): Promise<TaskResponse> {
+    const requestInteractionId =
+      this.data.interaction?.mainInteractionId || this.data.interactionId;
+
     try {
       LoggerProxy.info(`Ending consult`, {
         module: CC_FILE,
         method: 'endConsult',
-        interactionId: this.data.interactionId,
+        interactionId: requestInteractionId,
       });
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.TASK_CONSULT_END_SUCCESS,
         METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
       ]);
       const result = await this.contact.consultEnd({
-        interactionId: this.data.interactionId,
+        interactionId: requestInteractionId,
         data: consultEndPayload,
       });
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONSULT_END_SUCCESS,
         {
           taskId: this.data.interactionId,
+          requestInteractionId,
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
         },
         ['operational', 'behavioral', 'business']
@@ -572,6 +581,7 @@ export default class Voice extends Task implements IVoice {
         METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
         {
           taskId: this.data.interactionId,
+          requestInteractionId,
           error: error.toString(),
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
         },
@@ -829,11 +839,14 @@ export default class Voice extends Task implements IVoice {
       });
     }
 
+    const requestInteractionId =
+      this.data.interaction?.mainInteractionId || this.data.interactionId;
+
     try {
       LoggerProxy.info(`Exiting conference`, {
         module: CC_FILE,
         method: 'exitConference',
-        interactionId: this.data.interactionId,
+        interactionId: requestInteractionId,
       });
 
       this.metricsManager.timeEvent([
@@ -842,7 +855,7 @@ export default class Voice extends Task implements IVoice {
       ]);
 
       const response = await this.contact.exitConference({
-        interactionId: this.data.interactionId,
+        interactionId: requestInteractionId,
       });
 
       // Send success event to transition state
@@ -857,6 +870,7 @@ export default class Voice extends Task implements IVoice {
         METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_SUCCESS,
         {
           taskId: this.data.interactionId,
+          requestInteractionId,
           agentId: this.data.agentId,
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
         },
@@ -867,7 +881,7 @@ export default class Voice extends Task implements IVoice {
         module: CC_FILE,
         method: 'exitConference',
         trackingId: response.trackingId,
-        interactionId: this.data.interactionId,
+        interactionId: requestInteractionId,
       });
 
       return response;
@@ -885,6 +899,7 @@ export default class Voice extends Task implements IVoice {
         METRIC_EVENT_NAMES.TASK_CONFERENCE_EXIT_FAILED,
         {
           taskId: this.data.interactionId,
+          requestInteractionId,
           agentId: this.data.agentId,
           error: error.toString(),
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
@@ -895,7 +910,7 @@ export default class Voice extends Task implements IVoice {
       LoggerProxy.error(`Failed to exit conference`, {
         module: CC_FILE,
         method: 'exitConference',
-        interactionId: this.data.interactionId,
+        interactionId: requestInteractionId,
       });
 
       throw detailedError;
@@ -940,11 +955,14 @@ export default class Voice extends Task implements IVoice {
       });
     }
 
+    const requestInteractionId =
+      this.data.interaction?.mainInteractionId || this.data.interactionId;
+
     try {
       LoggerProxy.info(`Transferring conference`, {
         module: CC_FILE,
         method: 'transferConference',
-        interactionId: this.data.interactionId,
+        interactionId: requestInteractionId,
       });
 
       this.metricsManager.timeEvent([
@@ -953,7 +971,7 @@ export default class Voice extends Task implements IVoice {
       ]);
 
       const response = await this.contact.conferenceTransfer({
-        interactionId: this.data.interactionId,
+        interactionId: requestInteractionId,
       });
 
       // Send success event to transition state
@@ -968,6 +986,7 @@ export default class Voice extends Task implements IVoice {
         METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_SUCCESS,
         {
           taskId: this.data.interactionId,
+          requestInteractionId,
           agentId: this.data.agentId,
           ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
         },
@@ -978,7 +997,7 @@ export default class Voice extends Task implements IVoice {
         module: CC_FILE,
         method: 'transferConference',
         trackingId: response.trackingId,
-        interactionId: this.data.interactionId,
+        interactionId: requestInteractionId,
       });
 
       return response;
@@ -996,6 +1015,7 @@ export default class Voice extends Task implements IVoice {
         METRIC_EVENT_NAMES.TASK_CONFERENCE_TRANSFER_FAILED,
         {
           taskId: this.data.interactionId,
+          requestInteractionId,
           agentId: this.data.agentId,
           error: error.toString(),
           ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
@@ -1006,7 +1026,7 @@ export default class Voice extends Task implements IVoice {
       LoggerProxy.error(`Failed to transfer conference`, {
         module: CC_FILE,
         method: 'transferConference',
-        interactionId: this.data.interactionId,
+        interactionId: requestInteractionId,
       });
 
       throw detailedError;
@@ -1070,12 +1090,28 @@ export default class Voice extends Task implements IVoice {
       this.stateMachineService.send({type: targetEvent});
     }
 
+    this.metricsManager.timeEvent([
+      METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS,
+      METRIC_EVENT_NAMES.TASK_SWITCH_CALL_FAILED,
+    ]);
+
     try {
       if (isOnConsultLeg) {
         const response = await this.contact.hold({
           interactionId: this.data.interactionId,
           data: {mediaResourceId: consultMediaResourceId},
         });
+
+        this.metricsManager.trackEvent(
+          METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS,
+          {
+            taskId: this.data.interactionId,
+            direction: 'toMainCall',
+            mediaResourceId: consultMediaResourceId,
+            ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+          },
+          ['operational', 'behavioral']
+        );
 
         LoggerProxy.log(`Switched to main call successfully`, {
           module: CC_FILE,
@@ -1092,6 +1128,17 @@ export default class Voice extends Task implements IVoice {
         data: {mediaResourceId: consultMediaResourceId},
       });
 
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_SWITCH_CALL_SUCCESS,
+        {
+          taskId: this.data.interactionId,
+          direction: 'toConsultCall',
+          mediaResourceId: consultMediaResourceId,
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
+        },
+        ['operational', 'behavioral']
+      );
+
       LoggerProxy.log(`Switched to consult call successfully`, {
         module: CC_FILE,
         method: 'switchCall',
@@ -1104,6 +1151,18 @@ export default class Voice extends Task implements IVoice {
       if (this.stateMachineService) {
         this.stateMachineService.send({type: revertEvent});
       }
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.TASK_SWITCH_CALL_FAILED,
+        {
+          taskId: this.data.interactionId,
+          direction: isOnConsultLeg ? 'toMainCall' : 'toConsultCall',
+          mediaResourceId: consultMediaResourceId,
+          error: error.toString(),
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
+        },
+        ['operational', 'behavioral']
+      );
 
       const {error: detailedError} = getErrorDetails(error, 'switchCall', CC_FILE);
       LoggerProxy.error(`Failed to switch call`, {

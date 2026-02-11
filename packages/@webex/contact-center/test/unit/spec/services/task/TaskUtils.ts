@@ -12,6 +12,7 @@ import {
   getConferenceParticipantsCount,
   isSecondaryAgent,
   isSecondaryEpDnAgent,
+  getConsultMediaResourceId,
 } from '../../../../../src/services/task/TaskUtils';
 import {ITask, Interaction, TaskData} from '../../../../../src/services/task/types';
 import {LoginOption} from '../../../../../src/types';
@@ -468,6 +469,90 @@ describe('TaskUtils', () => {
       interaction.mediaType = 'telephony';
       interaction.callProcessingDetails = {relationshipType: 'consult', parentInteractionId: 'parent-456'};
       expect(isSecondaryEpDnAgent(interaction)).toBe(true);
+    });
+  });
+
+  describe('getConsultMediaResourceId', () => {
+    it('returns consultMediaResourceId directly when provided', () => {
+      const result = getConsultMediaResourceId(undefined, 'consult-media-1', 'agent1');
+      expect(result).toBe('consult-media-1');
+    });
+
+    it('returns undefined when no interaction and no consultMediaResourceId', () => {
+      const result = getConsultMediaResourceId(undefined, undefined, 'agent1');
+      expect(result).toBeUndefined();
+    });
+
+    it('returns undefined when no agentId and no consultMediaResourceId', () => {
+      const interaction = {media: {}} as any;
+      const result = getConsultMediaResourceId(interaction, undefined, undefined);
+      expect(result).toBeUndefined();
+    });
+
+    it('finds consult media leg by mType and agent participation', () => {
+      const interaction = {
+        media: {
+          'main-media': {
+            mediaResourceId: 'main-media',
+            mType: 'mainCall',
+            participants: ['agent1', 'customer1'],
+          },
+          'consult-media': {
+            mediaResourceId: 'consult-media',
+            mType: 'consult',
+            participants: ['agent1', 'agent2'],
+          },
+        },
+      } as any;
+      const result = getConsultMediaResourceId(interaction, undefined, 'agent1');
+      expect(result).toBe('consult-media');
+    });
+
+    it('returns undefined when no consult media leg matches the agent', () => {
+      const interaction = {
+        media: {
+          'main-media': {
+            mediaResourceId: 'main-media',
+            mType: 'mainCall',
+            participants: ['agent1', 'customer1'],
+          },
+          'consult-media': {
+            mediaResourceId: 'consult-media',
+            mType: 'consult',
+            participants: ['agent2', 'agent3'],
+          },
+        },
+      } as any;
+      const result = getConsultMediaResourceId(interaction, undefined, 'agent1');
+      expect(result).toBeUndefined();
+    });
+
+    it('returns undefined when media has no consult type entries', () => {
+      const interaction = {
+        media: {
+          'main-media': {
+            mediaResourceId: 'main-media',
+            mType: 'mainCall',
+            participants: ['agent1', 'customer1'],
+          },
+        },
+      } as any;
+      const result = getConsultMediaResourceId(interaction, undefined, 'agent1');
+      expect(result).toBeUndefined();
+    });
+
+    it('prioritizes direct consultMediaResourceId over interaction search', () => {
+      const interaction = {
+        media: {
+          'consult-media': {
+            mediaResourceId: 'consult-media',
+            mType: 'consult',
+            participants: ['agent1', 'agent2'],
+          },
+        },
+      } as any;
+      const result = getConsultMediaResourceId(interaction, 'direct-id', 'agent1');
+      expect(result).toBe('direct-id');
     });
   });
 });

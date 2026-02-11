@@ -62,6 +62,16 @@ function computeVoiceUIControls(
   // Backend-derived checks
   const customerInCall =
     interaction && mainCallId ? getIsCustomerInCall(interaction, mainCallId) : false;
+  // EP-DN/secondary legs can have incomplete media participant lists; fall back to participants map.
+  const customerPresent =
+    customerInCall ||
+    Boolean(
+      interaction &&
+        interaction.participants &&
+        Object.values(interaction.participants).some(
+          (p: any) => p?.pType === 'Customer' && !p?.hasLeft
+        )
+    );
   const participantCount =
     interaction && mainCallId ? getConferenceParticipantsCount(interaction, mainCallId) : 0;
   const maxParticipants = participantCount >= MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE;
@@ -199,9 +209,9 @@ function computeVoiceUIControls(
 
       // Enabled conditions differ by state
       const canFromConnected =
-        !maxParticipants && customerInCall && !consultInProgress && !isConsulted;
+        !maxParticipants && customerPresent && !consultInProgress && !isConsulted;
       const canFromConference =
-        !maxParticipants && customerInCall && !consultInProgress && !isConsulting;
+        !maxParticipants && customerPresent && !consultInProgress && !isConsulting;
 
       const isEnabled = inConference ? canFromConference : canFromConnected;
 

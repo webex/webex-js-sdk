@@ -150,7 +150,6 @@ describe('State Machine Guards', () => {
         guards.conferenceInProgressFromEvent(createParams(ctx, createEventWithTaskData(taskData)))
       ).toBe(false);
     });
-
   });
 
   describe('Consult Guards', () => {
@@ -237,9 +236,9 @@ describe('State Machine Guards', () => {
           },
         },
       });
-      expect(guards.isPrimaryMediaOnHold(createParams(ctx, createEventWithTaskData(taskData)))).toBe(
-        true
-      );
+      expect(
+        guards.isPrimaryMediaOnHold(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(true);
     });
 
     it('isPrimaryMediaOnHold returns false when media isHold is false', () => {
@@ -260,9 +259,9 @@ describe('State Machine Guards', () => {
           },
         },
       });
-      expect(guards.isPrimaryMediaOnHold(createParams(ctx, createEventWithTaskData(taskData)))).toBe(
-        false
-      );
+      expect(
+        guards.isPrimaryMediaOnHold(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
     });
   });
 });
