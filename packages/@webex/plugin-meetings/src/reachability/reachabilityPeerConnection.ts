@@ -10,7 +10,7 @@ import {
 } from './util';
 import EventsScope from '../common/events/events-scope';
 
-import {CONNECTION_STATE, ICE_GATHERING_STATE} from '../constants';
+import {CONNECTION_STATE, ICE_GATHERING_STATE, PROTOCOLS_LIST} from '../constants';
 import {
   ClusterReachabilityResult,
   NatType,
@@ -248,8 +248,7 @@ export class ReachabilityPeerConnection extends EventsScope {
    * @returns {void}
    */
   private emitResultsForAllProtocols(): void {
-    const protocols: Protocol[] = ['udp', 'tcp', 'xtls'];
-    protocols.forEach((protocol) => {
+    PROTOCOLS_LIST.forEach((protocol) => {
       const result = this.result[protocol];
       if (result.result === 'untested') {
         return;
