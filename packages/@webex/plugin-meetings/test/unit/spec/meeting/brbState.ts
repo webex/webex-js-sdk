@@ -146,9 +146,7 @@ describe('plugin-meetings', () => {
       await expect(enablePromise).to.be.rejectedWith(error);
 
       assert.isFalse(brbState.state.syncToServerInProgress);
-      assert.isTrue(
-        meeting.sendSlotManager.setSourceStateOverride.calledWith(MediaType.VideoMain, 'away')
-      );
+      expect(meeting.sendSlotManager.setSourceStateOverride.called).to.be.false;
     });
   });
 });

@@ -11,7 +11,7 @@
     "directory": "packages/@webex/internal-plugin-lyra"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "browserify": {
     "transform": [
@@ -21,7 +21,6 @@
   },
   "devDependencies": {
     "@babel/core": "^7.17.10",
-    "@ciscospark/test-users-legacy": "^1.2.0",
     "@types/randomstring": "^1",
     "@webex/babel-config-legacy": "workspace:*",
     "@webex/eslint-config-legacy": "workspace:*",

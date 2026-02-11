@@ -12,6 +12,7 @@ export const DEFAULT_LOCAL_CALL_ID = 'DefaultLocalId';
 export const DEFAULT_REHOMING_INTERVAL_MAX = 120;
 export const DEFAULT_REHOMING_INTERVAL_MIN = 60;
 export const DEFAULT_SESSION_TIMER = 1000 * 60 * 10;
+export const MAX_CALL_KEEPALIVE_RETRY_COUNT = 4;
 export const DEVICES_ENDPOINT_RESOURCE = 'devices';
 export const DISCOVERY_URL = 'https://ds.ciscospark.com/v1/region';
 export const DUMMY_METRICS = {
@@ -45,7 +46,7 @@ export const DUMMY_MOBIUS_URL = 'https://mobius.aintgen-a-1.int.infra.webex.com/
 export const IP_ENDPOINT = 'myip';
 export const INITIAL_SEQ_NUMBER = 1;
 export const MEDIA_ENDPOINT_RESOURCE = 'media';
-export const NETWORK_FLAP_TIMEOUT = 2000;
+export const NETWORK_FLAP_TIMEOUT = 5000;
 export const CALL_HOLD_SERVICE = 'callhold';
 export const CALL_TRANSFER_SERVICE = 'calltransfer';
 export const HOLD_ENDPOINT = 'hold';
@@ -61,7 +62,7 @@ export const WEB_AGENT = '(web)';
 export const WEBEX = 'webex';
 export const WEBEX_WEB_CLIENT = 'webex-web-client';
 export const CALLER_ID_FILE = 'CallerId';
-export const UTILS_FILE = 'utils';
+export const UTILS_FILE = 'src/common/Utils.ts';
 export const CALLING_CLIENT_FILE = 'CallingClient';
 export const LINE_FILE = 'line';
 export const CALL_FILE = 'call';
@@ -105,18 +106,17 @@ export const BASE_REG_RETRY_TIMER_VAL_IN_SEC = 30;
 export const SEC_TO_MSEC_MFACTOR = 1000;
 export const MINUTES_TO_SEC_MFACTOR = 60;
 export const REG_RANDOM_T_FACTOR_UPPER_LIMIT = 10000;
-export const REG_TRY_BACKUP_TIMER_VAL_IN_SEC = 1200;
-export const REG_TRY_BACKUP_TIMER_VAL_FOR_CC_IN_SEC = 114;
+export const REG_TRY_BACKUP_TIMER_VAL_IN_SEC = 114;
 export const REG_FAILBACK_429_MAX_RETRIES = 5;
 export const RETRY_TIMER_UPPER_LIMIT = 60;
 export const REGISTRATION_UTIL = 'triggerRegistration';
 export const REGISTER_UTIL = 'attemptRegistrationWithServers';
 export const GET_MOBIUS_SERVERS_UTIL = 'getMobiusServers';
 export const KEEPALIVE_UTIL = 'startKeepaliveTimer';
+export const RECONNECT_ON_FAILURE_UTIL = 'reconnectOnFailure';
 export const FAILBACK_UTIL = 'executeFailback';
 export const REG_429_RETRY_UTIL = 'handle429Retry';
 export const FAILOVER_UTIL = 'startFailoverTimer';
-export const NETWORK_CHANGE_DETECTION_UTIL = 'detectNetworkChange';
 export const CALLS_CLEARED_HANDLER_UTIL = 'callsClearedHandler';
 export const RECONNECT_UTIL = 'reconnectOnFailure';
 export const NOISE_REDUCTION_EFFECT = 'noise-reduction-effect';
@@ -124,6 +124,7 @@ export const MOBIUS_US_PROD = 'mobius-us-east-1.prod.infra.webex.com';
 export const MOBIUS_EU_PROD = 'mobius-eu-central-1.prod.infra.webex.com';
 export const MOBIUS_US_INT = 'mobius-us-east-1.int.infra.webex.com';
 export const MOBIUS_EU_INT = 'mobius-eu-central-1.int.infra.webex.com';
+export const FAILOVER_CACHE_PREFIX = 'wxc-failover-state';
 export const ICE_CANDIDATES_TIMEOUT = 3000;
 // Define constants for method names
 export const METHODS = {
@@ -150,6 +151,7 @@ export const METHODS = {
   HANDLE_OUTGOING_ROAP_ANSWER: 'handleOutgoingRoapAnswer',
   HANDLE_INCOMING_ROAP_OFFER: 'handleIncomingRoapOffer',
   HANDLE_INCOMING_ROAP_ANSWER: 'handleIncomingRoapAnswer',
+  INIT: 'init',
   FORCE_SEND_STATS_REPORT: 'forceSendStatsReport',
   UPDATE_ACTIVE_MOBIUS: 'updateActiveMobius',
   DEQUEUE_WS_EVENTS: 'dequeueWsEvents',
@@ -201,6 +203,7 @@ export const METHODS = {
   GET_CALL_RTP_STATS: 'getCallRtpStats',
   REGISTER: 'register',
   DEREGISTER: 'deregister',
+  DELETE_REGISTRATION: 'deleteRegistration',
   NORMALIZE_LINE: 'normalizeLine',
   LINE_EMITTER: 'lineEmitter',
   GET_LOGGING_LEVEL: 'getLoggingLevel',
@@ -212,7 +215,10 @@ export const METHODS = {
   SET_MOBIUS_SERVERS: 'setMobiusServers',
   HANDLE_CONNECTION_RESTORATION: 'handleConnectionRestoration',
   RECONNECT_ON_FAILURE: 'reconnectOnFailure',
-  DETECT_NETWORK_CHANGE: 'detectNetworkChange',
+  MERCURY_OFFLINE: 'handleMercuryOffline',
+  MERCURY_ONLINE: 'handleMercuryOnline',
+  NETWORK_OFFLINE: 'handleNetworkOffline',
+  NETWORK_ONLINE: 'handleNetworkOnline',
   GET_CLIENT_REGION_INFO: 'getClientRegionInfo',
   GET_MOBIUS_SERVERS: 'getMobiusServers',
   REGISTER_CALLS_CLEARED_LISTENER: 'registerCallsClearedListener',

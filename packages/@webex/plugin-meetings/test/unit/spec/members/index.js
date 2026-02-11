@@ -177,6 +177,26 @@ describe('plugin-meetings', () => {
         assert.isFalse(MembersUtil.isInvalidInvitee({email: 'sip:test@cisco.com'}), 'SIP email should be valid');
       });
 
+      it('should skip email validation if skipEmailValidation is true', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        await members.addMember({email: '8618578675309', skipEmailValidation: true});
+        
+        assert.notCalled(MembersUtil.isInvalidInvitee);
+      });
+
+      it('should not skip email validation if skipEmailValidation is not equal true', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        await members.addMember({email: '86185786@ds.com'});
+        
+        assert.called(MembersUtil.isInvalidInvitee);
+      });
+
       it('should accept valid phone with isInternalNumber', async () => {
         sandbox.spy(MembersUtil, 'isInvalidInvitee');
 
@@ -189,6 +209,22 @@ describe('plugin-meetings', () => {
         assert.isTrue(MembersUtil.isInvalidInvitee({ phoneNumber: '18578675309', isInternalNumber: false }));
         assert.isFalse(MembersUtil.isInvalidInvitee({phoneNumber: '18578675309', isInternalNumber: true}));
         assert.isTrue(MembersUtil.isInvalidInvitee({phoneNumber: '+8618578675309', isInternalNumber: true}));
+      });
+
+      it('should not crash if params is undefined', async () => {
+        sandbox.spy(MembersUtil, 'isInvalidInvitee');
+
+        const members = createMembers({url: true});
+        
+        try {
+          await members.addMember(undefined);
+        } catch (err) {
+          assert.instanceOf(err, ParameterError);
+
+          assert.equal(err.message, 'The invitee must be defined with either a valid email, emailAddress or phoneNumber property.');
+        }
+              
+        assert.called(MembersUtil.isInvalidInvitee);
       });
     });
 
@@ -284,9 +320,18 @@ describe('plugin-meetings', () => {
           EVENT_TRIGGERS.MEMBERS_CLEAR,
           {}
         );
+        sinon.restore();
       });
     });
     describe('#locusParticipantsUpdate', () => {
+      beforeEach(() => {
+        sinon.stub(Trigger, 'trigger');
+      });
+
+      afterEach(() => {
+        sinon.restore();
+      });
+
       it('should send member update event with session info', () => {
         const members = createMembers({url: url1});
         const fakePayload = {
@@ -307,9 +352,41 @@ describe('plugin-meetings', () => {
           },
           EVENT_TRIGGERS.MEMBERS_UPDATE,
           {
-            delta: {added: [], updated: []},
+            delta: {added: [], updated: [], removedIds: []},
             full: {},
             isReplace: true,
+          }
+        );
+      });
+
+      it('should handle participants being removed', () => {
+        const members = createMembers({url: url1});
+
+        // setup the collection with a fake member
+        members.membersCollection.setAll(fakeMembersCollection);
+        assert.equal(Object.keys(members.membersCollection.getAll()).length, 1);
+
+        // remove the member
+        members.locusParticipantsUpdate({
+          participants: [],
+          removedParticipantIds: ['test1'],
+        });
+
+        assert.equal(Object.keys(members.membersCollection.getAll()).length, 0);
+
+        // check that the event was emitted
+        assert.calledWith(
+          Trigger.trigger,
+          members,
+          {
+            file: 'members',
+            function: 'locusParticipantsUpdate',
+          },
+          EVENT_TRIGGERS.MEMBERS_UPDATE,
+          {
+            delta: {added: [], updated: [], removedIds: ['test1']},
+            full: {},
+            isReplace: false,
           }
         );
       });
@@ -937,7 +1014,8 @@ describe('plugin-meetings', () => {
         expectedMemberId,
         expectedRequestingParticipantId,
         expectedAlias,
-        expectedLocusUrl
+        expectedLocusUrl,
+        expectedSuffix
       ) => {
         await assert.isFulfilled(resultPromise);
         assert.calledOnceWithExactly(
@@ -945,13 +1023,15 @@ describe('plugin-meetings', () => {
           expectedMemberId,
           expectedRequestingParticipantId,
           expectedAlias,
-          expectedLocusUrl
+          expectedLocusUrl,
+          expectedSuffix
         );
         assert.calledOnceWithExactly(spies.editDisplayNameMember, {
           memberId: expectedMemberId,
           requestingParticipantId: expectedRequestingParticipantId,
           alias: expectedAlias,
           locusUrl: expectedLocusUrl,
+          suffix: expectedSuffix,
         });
         assert.strictEqual(resultPromise, spies.editDisplayNameMember.getCall(0).returnValue);
       };
@@ -981,6 +1061,31 @@ describe('plugin-meetings', () => {
       });
 
       it('should make the correct request when called with respective parameters', async () => {
+        const requestingParticipantId = uuid.v4();
+        const memberId = uuid.v4();
+        const alias = 'aliasName';
+        const suffix = 'suffixName';
+        const {members, spies} = setup(url1);
+
+        const resultPromise = members.editDisplayName(
+          memberId,
+          requestingParticipantId,
+          alias,
+          suffix
+        );
+
+        await checkValid(
+          resultPromise,
+          spies,
+          memberId,
+          requestingParticipantId,
+          alias,
+          url1,
+          suffix
+        );
+      });
+
+      it('should make the correct request when called with respective parameters - no suffix', async () => {
         const requestingParticipantId = uuid.v4();
         const memberId = uuid.v4();
         const alias = 'aliasName';

@@ -109,4 +109,5 @@ export interface Participant {
   status: ParticipantMediaStatus;
   type: string;
   url: ParticipantUrl;
+  isRemoved: boolean; // JS-SDK internal field to indicate in updates when the participant is removed
 }

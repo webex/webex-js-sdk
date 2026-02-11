@@ -141,9 +141,6 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
       this.registration.setMobiusServers(this.#primaryMobiusUris, this.#backupMobiusUris);
       await this.registration.triggerRegistration();
     });
-    if (this.mobiusDeviceId) {
-      this.callManager.updateLine(this.mobiusDeviceId, this);
-    }
   }
 
   /**
@@ -182,6 +179,9 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     this.rehomingIntervalMax = rehomingIntervalMax;
     this.voicePortalNumber = voicePortalNumber;
     this.voicePortalExtension = voicePortalExtension;
+    if (this.mobiusDeviceId) {
+      this.callManager.updateLine(this.mobiusDeviceId, this);
+    }
   }
 
   /**

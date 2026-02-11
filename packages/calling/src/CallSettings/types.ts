@@ -122,7 +122,7 @@ export type VoicemailSetting = {
    * Object to configure properties for enabling/disabling the forwarding of all the incoming calls to voicemail.
    * Please note that this setting can only be adjusted when voicemail is enabled.
    */
-  sendAllCalls: {
+  sendAllCalls?: {
     /**
      * This indicates if the voicemail is enabled/disabled for all the incoming calls.
      */

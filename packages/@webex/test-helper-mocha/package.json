@@ -9,7 +9,7 @@
     "directory": "packages/@webex/test-helper-mocha"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "dependencies": {
     "bowser": "^2.11.0"

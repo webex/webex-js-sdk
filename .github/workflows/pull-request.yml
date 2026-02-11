@@ -160,7 +160,7 @@ jobs:
         run: yarn workspace @webex/webex-core run build:src
 
       - name: Build Other Packages
-        run: yarn workspaces foreach --parallel --verbose run build:src
+        run: yarn workspaces foreach --parallel --topological --verbose run build:src
 
       - name: Cache Distributables
         uses: actions/cache@v3

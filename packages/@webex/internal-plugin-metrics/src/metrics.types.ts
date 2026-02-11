@@ -138,6 +138,7 @@ export type SubmitClientEventOptions = {
   triggeredTime?: string;
   emailInput?: ClientEmailInput;
   userNameInput?: ClientUserNameInput;
+  vendorId?: string;
 };
 
 export type SubmitMQEOptions = {
@@ -160,7 +161,9 @@ export type InternalEvent = {
     | 'internal.client.meeting.interstitial-window.showed'
     | 'internal.client.interstitial-window.click.joinbutton'
     | 'internal.client.add-media.turn-discovery.start'
-    | 'internal.client.add-media.turn-discovery.end';
+    | 'internal.client.add-media.turn-discovery.end'
+    | 'internal.client.share.initiated'
+    | 'internal.client.share.stopped';
 
   payload?: never;
   options?: never;

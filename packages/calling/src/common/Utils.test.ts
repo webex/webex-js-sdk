@@ -1,4 +1,5 @@
 /* eslint-disable no-underscore-dangle */
+import {v4 as uuid} from 'uuid';
 import {CallingPartyInfo, MessageInfo} from '../Voicemail/types';
 import {Call} from '../CallingClient/calling';
 import {CallError, CallingClientError} from '../Errors';
@@ -21,7 +22,13 @@ import {
   RegistrationStatus,
 } from './types';
 import log from '../Logger';
-import {CALL_FILE, DUMMY_METRICS, UTILS_FILE, REGISTER_UTIL} from '../CallingClient/constants';
+import {
+  CALL_FILE,
+  DUMMY_METRICS,
+  UTILS_FILE,
+  REGISTER_UTIL,
+  DEFAULT_KEEPALIVE_INTERVAL,
+} from '../CallingClient/constants';
 import {
   CALL_ERROR_CODE,
   ERROR_CODE,
@@ -43,6 +50,7 @@ import {
   filterMobiusUris,
   modifySdpForIPv4,
   uploadLogs,
+  handleCallingClientErrors,
 } from './Utils';
 import {
   getVoicemailListJsonWXC,
@@ -58,6 +66,13 @@ import {
 } from './constants';
 import {CALL_EVENT_KEYS} from '../Events/types';
 import SDKConnector from '../SDKConnector';
+
+// Mock uuid
+jest.mock('uuid', () => ({
+  v4: jest.fn(),
+}));
+
+const mockUuid = uuid as jest.MockedFunction<typeof uuid>;
 
 const mockSubmitRegistrationMetric = jest.fn();
 const mockEmitterCb = jest.fn();
@@ -94,6 +109,210 @@ describe('Mobius service discovery tests', () => {
     expect(filteredUris.primary[0]).toBe(defaultMobiusUrl + callingContext);
 
     expect(filteredUris.backup.length).toBe(0);
+  });
+});
+
+describe('Call Tests - keepalive (handleCallEstablished) cases', () => {
+  const logObj = {
+    file: CALL_FILE,
+    method: 'handleCallErrors',
+  };
+
+  const dummyCorrelationId = '8a67806f-fc4d-446b-a131-31e71ea5b010';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('401 during keepalive emits token error and ends call', async () => {
+    let emitted = false;
+    const retrySpy = jest.fn();
+
+    const payload = <WebexRequestPayload>(<unknown>{
+      statusCode: 401,
+      headers: {trackingid: 't'},
+      body: {device: {deviceId: 'd'}, errorCode: 0},
+    });
+
+    const abort = await handleCallErrors(
+      () => {
+        emitted = true;
+      },
+      ERROR_LAYER.CALL_CONTROL,
+      retrySpy,
+      dummyCorrelationId,
+      payload,
+      'handleCallEstablished',
+      logObj.file
+    );
+
+    expect(emitted).toBe(true);
+    expect(abort).toBe(true);
+    expect(retrySpy).not.toHaveBeenCalled();
+  });
+
+  it('403 during keepalive emits error and ends call', async () => {
+    let emitted = false;
+    const retrySpy = jest.fn();
+
+    const payload = <WebexRequestPayload>(<unknown>{
+      statusCode: 403,
+      headers: {trackingid: 't'},
+      body: {device: {deviceId: 'd'}, errorCode: 0},
+    });
+
+    const abort = await handleCallErrors(
+      () => {
+        emitted = true;
+      },
+      ERROR_LAYER.CALL_CONTROL,
+      retrySpy,
+      dummyCorrelationId,
+      payload,
+      'handleCallEstablished',
+      logObj.file
+    );
+
+    expect(emitted).toBe(true);
+    expect(abort).toBe(true);
+    expect(retrySpy).not.toHaveBeenCalled();
+  });
+
+  it('500 during keepalive with retry-after triggers retryCb with interval', async () => {
+    let emitted = false;
+    const endSpy = jest.fn();
+    const retrySpy = jest.fn();
+
+    const payload = <WebexRequestPayload>(<unknown>{
+      statusCode: 500,
+      headers: {trackingid: 't', 'retry-after': 2},
+      body: {device: {deviceId: 'd'}, errorCode: 0},
+    });
+
+    await handleCallErrors(
+      () => {
+        emitted = true;
+      },
+      ERROR_LAYER.CALL_CONTROL,
+      retrySpy,
+      dummyCorrelationId,
+      payload,
+      'handleCallEstablished',
+      logObj.file,
+      endSpy
+    );
+
+    expect(emitted).toBe(true);
+    expect(endSpy).not.toHaveBeenCalled();
+    expect(retrySpy).toHaveBeenCalledWith(2);
+  });
+
+  it('500 during keepalive without retry-after triggers retryCb without args', async () => {
+    let emitted = false;
+    const retrySpy = jest.fn();
+
+    const payload = <WebexRequestPayload>(<unknown>{
+      statusCode: 500,
+      headers: {trackingid: 't'},
+      body: {device: {deviceId: 'd'}, errorCode: 0},
+    });
+
+    const abort = await handleCallErrors(
+      () => {
+        emitted = true;
+      },
+      ERROR_LAYER.CALL_CONTROL,
+      retrySpy,
+      dummyCorrelationId,
+      payload,
+      'handleCallEstablished',
+      logObj.file
+    );
+
+    expect(abort).toBe(false);
+    expect(emitted).toBe(true);
+    expect(retrySpy).toHaveBeenCalledWith(DEFAULT_KEEPALIVE_INTERVAL);
+  });
+
+  it('404 during keepalive emits not found and ends call (no retry)', async () => {
+    let emitted = false;
+    const retrySpy = jest.fn();
+
+    const payload = <WebexRequestPayload>(<unknown>{
+      statusCode: 404,
+      headers: {trackingid: 't'},
+      body: {device: {deviceId: 'd'}},
+    });
+
+    const abort = await handleCallErrors(
+      () => {
+        emitted = true;
+      },
+      ERROR_LAYER.CALL_CONTROL,
+      retrySpy,
+      dummyCorrelationId,
+      payload,
+      'handleCallEstablished',
+      logObj.file
+    );
+
+    expect(emitted).toBe(true);
+    expect(abort).toBe(true);
+    expect(retrySpy).not.toHaveBeenCalled();
+  });
+
+  it('503 during keepalive with retry-after does not invoke emitterCb and retries with interval', async () => {
+    let emitted = false;
+    const retrySpy = jest.fn();
+
+    const payload = <WebexRequestPayload>(<unknown>{
+      statusCode: 503,
+      headers: {trackingid: 't', 'retry-after': 7},
+      body: {device: {deviceId: 'd'}, errorCode: 0},
+    });
+
+    const abort = await handleCallErrors(
+      () => {
+        emitted = true;
+      },
+      ERROR_LAYER.CALL_CONTROL,
+      retrySpy,
+      dummyCorrelationId,
+      payload,
+      'handleCallEstablished',
+      logObj.file
+    );
+
+    expect(abort).toBe(false);
+    expect(emitted).toBe(false);
+    expect(retrySpy).toHaveBeenCalledWith(7);
+  });
+
+  it('503 during keepalive without retry-after invokes emitterCb and triggers retryCb without args', async () => {
+    let emitted = false;
+    const retrySpy = jest.fn();
+
+    const payload = <WebexRequestPayload>(<unknown>{
+      statusCode: 503,
+      headers: {trackingid: 't'},
+      body: {device: {deviceId: 'd'}, errorCode: 111},
+    });
+
+    const abort = await handleCallErrors(
+      () => {
+        emitted = true;
+      },
+      ERROR_LAYER.CALL_CONTROL,
+      retrySpy,
+      dummyCorrelationId,
+      payload,
+      'handleCallEstablished',
+      logObj.file
+    );
+
+    expect(abort).toBe(false);
+    expect(emitted).toBe(true);
+    expect(retrySpy).toHaveBeenCalledWith(DEFAULT_KEEPALIVE_INTERVAL);
   });
 });
 
@@ -350,6 +569,142 @@ describe('Registration Tests', () => {
 
     expect(logSpy).toHaveBeenCalledWith(`Status code: -> ${codeObj.statusCode}`, logObj);
     expect(logSpy).toHaveBeenCalledWith(codeObj.logMsg, logObj);
+  });
+});
+
+describe('CallingClient Error Tests', () => {
+  const logSpy = jest.spyOn(log, 'warn');
+  const logObj = {
+    file: 'CallingClient',
+    method: 'handleCallingClientErrors',
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('verify 401 error response for calling client', async () => {
+    const statusCode = ERROR_CODE.UNAUTHORIZED;
+    const message = 'User is unauthorized due to an expired token.';
+    const errorType = ERROR_TYPE.TOKEN_ERROR;
+    const finalError = true;
+
+    const webexPayload = <WebexRequestPayload>(<unknown>{
+      statusCode,
+      headers: {
+        trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
+      },
+      body: {
+        device: {
+          deviceId: '8a67806f-fc4d-446b-a131-31e71ea5b010',
+        },
+        userId: '8a67806f-fc4d-446b-a131-31e71ea5b0e9',
+        errorCode: 0,
+      },
+    });
+
+    const mockErrorEvent = {
+      type: errorType,
+      message,
+      context: logObj,
+    };
+
+    const callClientError = new CallingClientError(
+      mockErrorEvent.message,
+      mockErrorEvent.context,
+      mockErrorEvent.type,
+      RegistrationStatus.ACTIVE
+    );
+
+    const result = await handleCallingClientErrors(webexPayload, mockEmitterCb, logObj);
+
+    expect(mockEmitterCb).toHaveBeenCalledWith(callClientError, finalError);
+    expect(result).toBe(finalError);
+    expect(logSpy).toHaveBeenCalledWith(`Status code: -> ${statusCode}`, logObj);
+    expect(logSpy).toHaveBeenCalledWith('401 Unauthorized', logObj);
+  });
+
+  it('verify 500 error response for calling client', async () => {
+    const statusCode = ERROR_CODE.INTERNAL_SERVER_ERROR;
+    const message =
+      'An unknown error occurred while placing the request. Wait a moment and try again.';
+    const errorType = ERROR_TYPE.SERVICE_UNAVAILABLE;
+    const finalError = false;
+
+    const webexPayload = <WebexRequestPayload>(<unknown>{
+      statusCode,
+      headers: {
+        trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
+      },
+      body: {
+        device: {
+          deviceId: '8a67806f-fc4d-446b-a131-31e71ea5b010',
+        },
+        userId: '8a67806f-fc4d-446b-a131-31e71ea5b0e9',
+        errorCode: 0,
+      },
+    });
+
+    const mockErrorEvent = {
+      type: errorType,
+      message,
+      context: logObj,
+    };
+
+    const callClientError = new CallingClientError(
+      mockErrorEvent.message,
+      mockErrorEvent.context,
+      mockErrorEvent.type,
+      RegistrationStatus.ACTIVE
+    );
+
+    const result = await handleCallingClientErrors(webexPayload, mockEmitterCb, logObj);
+
+    expect(mockEmitterCb).toHaveBeenCalledWith(callClientError, finalError);
+    expect(result).toBe(finalError);
+    expect(logSpy).toHaveBeenCalledWith(`Status code: -> ${statusCode}`, logObj);
+    expect(logSpy).toHaveBeenCalledWith('500 Internal Server Error', logObj);
+  });
+
+  it('verify unknown error response for calling client', async () => {
+    const statusCode = 206;
+    const message = 'Unknown error';
+    const errorType = ERROR_TYPE.DEFAULT;
+    const finalError = false;
+
+    const webexPayload = <WebexRequestPayload>(<unknown>{
+      statusCode,
+      headers: {
+        trackingid: 'webex-js-sdk_b5812e58-7246-4a9b-bf64-831bdf13b0cd_31',
+      },
+      body: {
+        device: {
+          deviceId: '8a67806f-fc4d-446b-a131-31e71ea5b010',
+        },
+        userId: '8a67806f-fc4d-446b-a131-31e71ea5b0e9',
+        errorCode: 0,
+      },
+    });
+
+    const mockErrorEvent = {
+      type: errorType,
+      message,
+      context: logObj,
+    };
+
+    const callClientError = new CallingClientError(
+      mockErrorEvent.message,
+      mockErrorEvent.context,
+      mockErrorEvent.type,
+      RegistrationStatus.ACTIVE
+    );
+
+    const result = await handleCallingClientErrors(webexPayload, mockEmitterCb, logObj);
+
+    expect(mockEmitterCb).toHaveBeenCalledWith(callClientError, finalError);
+    expect(result).toBe(finalError);
+    expect(logSpy).toHaveBeenCalledWith(`Status code: -> ${statusCode}`, logObj);
+    expect(logSpy).toHaveBeenCalledWith('Unknown Error', logObj);
   });
 });
 
@@ -779,10 +1134,10 @@ describe('Call Tests', () => {
       bodyPresent: true,
       subErrorCode: 0,
       retryAfter: 0,
-      message: 'An unknown error occurred in the call. Wait a moment and try again.',
+      message: 'An unknown error occurred in the call.',
       type: ERROR_TYPE.DEFAULT,
       errorLayer: ERROR_LAYER.CALL_CONTROL,
-      cbExpected: false,
+      cbExpected: true,
       logMsg: 'Unknown Error',
     },
   ].map((stat) =>
@@ -993,7 +1348,7 @@ describe('resolveContact tests', () => {
 
     expect(displayInfo?.name).toBeUndefined();
     expect(warnSpy).toHaveBeenCalledWith('Error response: - 500', {
-      file: 'utils',
+      file: UTILS_FILE,
       method: 'resolveCallerIdDisplay',
     });
 
@@ -1375,11 +1730,11 @@ describe('Infer id from  UUID Tests', () => {
   /* Tests conversion of UUID to hydra Id */
 
   it('verify encoding of userId to personId', () => {
-    const uuid = '14533573-f6aa-429d-b4fe-58aa04a2b631';
-    const hydraId: string = inferIdFromUuid(uuid, DecodeType.PEOPLE);
+    const uuidVal = '14533573-f6aa-429d-b4fe-58aa04a2b631';
+    const hydraId: string = inferIdFromUuid(uuidVal, DecodeType.PEOPLE);
     const uuidAgain = Buffer.from(hydraId, 'base64').toString('binary');
 
-    expect(`${INFER_ID_CONSTANT}/${DecodeType.PEOPLE}/${uuid}`).toStrictEqual(uuidAgain);
+    expect(`${INFER_ID_CONSTANT}/${DecodeType.PEOPLE}/${uuidVal}`).toStrictEqual(uuidAgain);
   });
 
   it('verify encoding of orgId', () => {
@@ -1591,16 +1946,11 @@ describe('modifySdpForIPv4', () => {
 });
 
 describe('uploadLogs', () => {
-  let originalCrypto;
   let submitLogsMock;
 
   beforeEach(() => {
-    // Save original crypto and mock it
-    originalCrypto = global.crypto;
-    global.crypto = {
-      randomUUID: jest.fn().mockReturnValue('mocked-uuid-12345'),
-    } as unknown as Crypto;
-
+    // Mock uuid to return a consistent value
+    mockUuid.mockReturnValue('mocked-uuid-12345');
     // Mock the metrics manager submit function directly
     mockSubmitRegistrationMetric.mockClear();
 
@@ -1612,8 +1962,6 @@ describe('uploadLogs', () => {
   });
 
   afterEach(() => {
-    // Restore original crypto
-    global.crypto = originalCrypto;
     jest.clearAllMocks();
   });
 
@@ -1669,27 +2017,23 @@ describe('uploadLogs', () => {
       expect(true).toBe(false); // This will fail the test if no exception is thrown
     } catch (error) {
       expect(error).toBe(mockError);
-      expect(logSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('Failed to upload Logs'),
-        }),
-        {
-          file: UTILS_FILE,
-          method: 'uploadLogs',
-        }
-      );
+      expect(logSpy).toHaveBeenCalledWith(`Failed to upload Logs ${JSON.stringify(error)}`, {
+        file: UTILS_FILE,
+        method: 'uploadLogs',
+      });
       expect(mockSubmitRegistrationMetric).toHaveBeenCalledWith(
         'web-calling-sdk-upload-logs-failed',
         {
           fields: {
-            call_id: undefined,
-            calling_sdk_version: 'unknown',
-            correlation_id: 'Failed to upload Logs Error: Upload failed',
             device_url: undefined,
-            error: undefined,
-            feedback_id: 'test-correlation',
             mobius_url: undefined,
-            tracking_id: 'mocked-uuid-12345',
+            calling_sdk_version: 'unknown',
+            correlation_id: 'test-correlation',
+            broadworksCorrelationInfo: undefined,
+            tracking_id: undefined,
+            feedback_id: 'mocked-uuid-12345',
+            call_id: undefined,
+            error: `Failed to upload Logs ${JSON.stringify(error)}`,
           },
           tags: {action: 'upload_logs', device_id: undefined, service_indicator: 'calling'},
           type: 'behavioral',
@@ -1699,7 +2043,10 @@ describe('uploadLogs', () => {
   });
 
   it('should log error and not throw an error if the upload fails with throw exception false', async () => {
-    const mockMetaData = {correlationId: 'test-correlation'};
+    const mockMetaData = {
+      correlationId: 'test-correlation',
+      broadworksCorrelationInfo: 'test-broadworks-correlation',
+    };
     const mockError = new Error('Upload failed');
 
     // Mock the submitLogs to fail
@@ -1710,27 +2057,23 @@ describe('uploadLogs', () => {
     const result = await uploadLogs(mockMetaData, false);
     expect(result).toBeUndefined();
 
-    expect(logSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: expect.stringContaining('Failed to upload Logs'),
-      }),
-      {
-        file: UTILS_FILE,
-        method: 'uploadLogs',
-      }
-    );
+    expect(logSpy).toHaveBeenCalledWith(`Failed to upload Logs ${JSON.stringify(mockError)}`, {
+      file: UTILS_FILE,
+      method: 'uploadLogs',
+    });
     expect(mockSubmitRegistrationMetric).toHaveBeenCalledWith(
       'web-calling-sdk-upload-logs-failed',
       {
         fields: {
-          call_id: undefined,
-          calling_sdk_version: 'unknown',
-          correlation_id: 'Failed to upload Logs Error: Upload failed',
           device_url: undefined,
-          error: undefined,
-          feedback_id: 'test-correlation',
           mobius_url: undefined,
-          tracking_id: 'mocked-uuid-12345',
+          calling_sdk_version: 'unknown',
+          correlation_id: 'test-correlation',
+          broadworksCorrelationInfo: 'test-broadworks-correlation',
+          tracking_id: undefined,
+          feedback_id: 'mocked-uuid-12345',
+          call_id: undefined,
+          error: `Failed to upload Logs ${JSON.stringify(mockError)}`,
         },
         tags: {action: 'upload_logs', device_id: undefined, service_indicator: 'calling'},
         type: 'behavioral',

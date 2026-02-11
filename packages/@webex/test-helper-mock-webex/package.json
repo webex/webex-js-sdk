@@ -9,7 +9,7 @@
     "directory": "packages/@webex/test-helper-mock-webex"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "devDependencies": {
     "@babel/core": "^7.17.10",

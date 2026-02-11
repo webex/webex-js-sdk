@@ -223,6 +223,10 @@ async function initCalling(e) {
       logger: {
         level: 'debug', // set the desired log level
       },
+      calling: {
+        // Enable U2C catalog caching for calling sample app
+        cacheU2C: true,
+      },
       meetings: {
         reconnection: {
           enabled: true,
@@ -263,7 +267,7 @@ async function initCalling(e) {
     calling: !fedrampBox.checked,
     contact: !fedrampBox.checked,
     callHistory: true,
-    callSettings: !fedrampBox.checked,
+    callSettings: true,
     voicemail: true,
   }
 
@@ -387,6 +391,7 @@ const callNotifyEvent = new CustomEvent('line:incoming_call', {
 callListener.addEventListener('line:incoming_call', (myEvent) => {
   console.log('Received incoming call');
   answerElm.disabled = false;
+  endElm.disabled = false;
   const callerDisplay = myEvent.detail.callObject.getCallerInfo();
 
   incomingDetailsElm.innerText = `Call from ${callerDisplay.name}, Ph: ${callerDisplay.num}`;
@@ -415,6 +420,10 @@ function createDevice() {
     unregisterElm.disabled = false;
   });
 
+  line.on('error', (error) => {
+    console.log('Error: ', error);
+  });
+
   // Start listening for incoming calls
   line.on('line:incoming_call', (callObj) => {
     call = callObj;
@@ -428,6 +437,7 @@ function createDevice() {
         imageElm.appendChild(img);
       }
     });
+
 
     call.on('disconnect', () => {
       callDetailsElm.innerText = `${correlationId}: Call Disconnected`;
@@ -458,6 +468,7 @@ function endCall() {
   outboundEndElm.disabled = true;
   makeCallBtn.disabled = false;
   endElm.disabled = true;
+  answerElm.disabled = true;
   muteElm.value = 'Mute';
   holdResumeElm.value = 'Hold'
   imageElm.removeChild(img);
@@ -746,7 +757,7 @@ async function getMediaStreams() {
 }
 
 async function toggleNoiseReductionEffect() {
-  const options =  {authToken: tokenElm.value, env: enableProd ? 'prod': 'int'}
+  const options = {authToken: tokenElm.value, env: enableProd ? 'prod': 'int'};
   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
 
   if (!effect) {
@@ -1177,7 +1188,7 @@ async function createVoiceMail() {
         }
       } else {
         console.log('Voicemail is empty');
-      } 
+      }
 
       voicemailElm.disabled = false;
 
@@ -1633,31 +1644,31 @@ async function fetchVoicemailSetting() {
     visibility = vmCheckbox.checked ? 'initial' : 'none';
     vmDiv.style.display = visibility;
 
-    form.alwaysCb.checked = voicemail.sendAllCalls.enabled;
+    form.alwaysCb.checked = voicemail.sendAllCalls?.enabled;
     form.alwaysCb.disabled = false;
 
-    form.busyCb.checked = voicemail.sendBusyCalls.enabled;
+    form.busyCb.checked = voicemail.sendBusyCalls?.enabled;
     form.busyCb.disabled = false;
 
-    form.vmNotAnsweredCb.checked = voicemail.sendUnansweredCalls.enabled;
-    form.vmNotAnsweredRings.value = voicemail.sendUnansweredCalls.numberOfRings;
+    form.vmNotAnsweredCb.checked = voicemail.sendUnansweredCalls?.enabled;
+    form.vmNotAnsweredRings.value = voicemail.sendUnansweredCalls?.numberOfRings;
     visibility = form.vmNotAnsweredCb.checked ? 'initial' : 'none';
     form.vmNotAnsweredRings.style.display = visibility;
     form.vmNotAnsweredCb.disabled = false;
     form.vmNotAnsweredRings.disabled = false;
 
-    form.notifCb.checked = voicemail.messageStorage.mwiEnabled;
+    form.notifCb.checked = voicemail.messageStorage?.mwiEnabled;
     form.notifCb.disabled = false;
 
-    form.notifEmailCb.checked = voicemail.notifications.enabled;
-    form.notifEmailId.value = voicemail.notifications.destination;
+    form.notifEmailCb.checked = voicemail.notifications?.enabled;
+    form.notifEmailId.value = voicemail.notifications?.destination;
     visibility = form.notifEmailCb.checked ? 'initial' : 'none';
     form.notifEmailId.style.display = visibility;
     form.notifEmailCb.disabled = false;
     form.notifEmailId.disabled = false;
 
-    form.vmEmailCb.checked = voicemail.emailCopyOfMessage.enabled;
-    form.vmEmailId.value = voicemail.emailCopyOfMessage.emailId;
+    form.vmEmailCb.checked = voicemail.emailCopyOfMessage?.enabled;
+    form.vmEmailId.value = voicemail.emailCopyOfMessage?.emailId;
     visibility = form.vmEmailCb.checked ? 'initial' : 'none';
     form.vmEmailId.style.display = visibility;
     form.vmEmailCb.disabled = false;

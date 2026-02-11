@@ -10,6 +10,14 @@ export type restoreRegistrationCallBack = (
 ) => Promise<boolean>;
 
 export type retry429CallBack = (retryAfter: number, caller: string) => void;
+
+export type FailoverCacheState = {
+  attempt: number;
+  timeElapsed: number;
+  retryScheduledTime: number;
+  serverType: 'primary' | 'backup';
+};
+
 /**
  * Represents an interface for managing registration-related operations.
  */

@@ -66,10 +66,16 @@ await webex.internal.voicea.toggleManualCaption(false);
 Set Spoken Language
 
 - Host can set the spoken language of the meeting
+- initial language: DEFAULT
+- auto detect spoken language: AUTO
+- host change language by manual and stop auto detect: MANUAL
 - Triggers voicea:spokenLanguageSet
 
 ```js
-webex.internal.voicea.setSpokenLanguage('en');
+webex.internal.voicea.setSpokenLanguage('en', 'DEFAULT');
+webex.internal.voicea.setSpokenLanguage('en', 'AUTO');
+webex.internal.voicea.setSpokenLanguage('en', 'MANUAL');
+
 ```
 
 Set Caption Language

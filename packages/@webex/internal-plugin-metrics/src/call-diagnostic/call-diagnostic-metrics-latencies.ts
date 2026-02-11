@@ -1,6 +1,7 @@
 /* eslint-disable class-methods-use-this */
 /* eslint-disable valid-jsdoc */
 import {WebexPlugin} from '@webex/webex-core';
+import {clamp} from 'lodash';
 
 import {MetricEventNames, PreComputedLatencies} from '../metrics.types';
 
@@ -16,6 +17,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   precomputedLatencies: Map<PreComputedLatencies, number>;
   // meetingId that the current latencies are for
   private meetingId?: string;
+  private MAX_INTEGER = 2147483647;
 
   /**
    * @constructor
@@ -148,15 +150,23 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @param b end
    * @returns latency
    */
-  public getDiffBetweenTimestamps(a: MetricEventNames, b: MetricEventNames) {
+  public getDiffBetweenTimestamps(
+    a: MetricEventNames,
+    b: MetricEventNames,
+    clampValues?: {minimum?: number; maximum?: number}
+  ) {
     const start = this.latencyTimestamps.get(a);
     const end = this.latencyTimestamps.get(b);
 
-    if (typeof start === 'number' && typeof end === 'number') {
-      return end - start;
+    if (typeof start !== 'number' || typeof end !== 'number') {
+      return undefined;
     }
 
-    return undefined;
+    const diff = end - start;
+
+    const {minimum = 0, maximum = this.MAX_INTEGER} = clampValues || {};
+
+    return clamp(diff, minimum, maximum);
   }
 
   /**
@@ -172,7 +182,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   public getMeetingInfoReqResp() {
     return this.getDiffBetweenTimestamps(
       'internal.client.meetinginfo.request',
-      'internal.client.meetinginfo.response'
+      'internal.client.meetinginfo.response',
+      {maximum: 1200000}
     );
   }
 
@@ -215,7 +226,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   public getCallInitJoinReq() {
     return this.getDiffBetweenTimestamps(
       'internal.client.interstitial-window.click.joinbutton',
-      'client.locus.join.request'
+      'client.locus.join.request',
+      {maximum: 1200000}
     );
   }
 
@@ -224,7 +236,11 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getJoinReqResp() {
-    return this.getDiffBetweenTimestamps('client.locus.join.request', 'client.locus.join.response');
+    return this.getDiffBetweenTimestamps(
+      'client.locus.join.request',
+      'client.locus.join.response',
+      {maximum: 1200000}
+    );
   }
 
   /**
@@ -245,7 +261,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   public getLocalSDPGenRemoteSDPRecv() {
     return this.getDiffBetweenTimestamps(
       'client.media-engine.local-sdp-generated',
-      'client.media-engine.remote-sdp-received'
+      'client.media-engine.remote-sdp-received',
+      {maximum: 1200000}
     );
   }
 
@@ -254,7 +271,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getICESetupTime() {
-    return this.getDiffBetweenTimestamps('client.ice.start', 'client.ice.end');
+    return this.getDiffBetweenTimestamps('client.ice.start', 'client.ice.end', {maximum: 1200000});
   }
 
   /**
@@ -299,7 +316,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   public getPageJMT() {
     const latency = this.precomputedLatencies.get('internal.client.pageJMT');
 
-    return typeof latency === 'number' ? latency : undefined;
+    return typeof latency === 'number' ? clamp(latency, 0, this.MAX_INTEGER) : undefined;
   }
 
   /**
@@ -309,7 +326,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   public getDownloadTimeJMT() {
     const latency = this.precomputedLatencies.get('internal.download.time');
 
-    return typeof latency === 'number' ? latency : undefined;
+    return typeof latency === 'number' ? clamp(latency, 0, this.MAX_INTEGER) : undefined;
   }
 
   /**
@@ -330,7 +347,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     );
 
     if (typeof clickToInterstitialLatency === 'number') {
-      return clickToInterstitialLatency;
+      return clamp(clickToInterstitialLatency, 0, this.MAX_INTEGER);
     }
 
     return undefined;
@@ -354,7 +371,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     );
 
     if (typeof clickToInterstitialWithUserDelayLatency === 'number') {
-      return clickToInterstitialWithUserDelayLatency;
+      return clamp(clickToInterstitialWithUserDelayLatency, 0, this.MAX_INTEGER);
     }
 
     return undefined;
@@ -378,7 +395,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   public getCallInitMediaEngineReady() {
     return this.getDiffBetweenTimestamps(
       'internal.client.interstitial-window.click.joinbutton',
-      'client.media-engine.ready'
+      'client.media-engine.ready',
+      {maximum: 1200000}
     );
   }
 
@@ -398,7 +416,9 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const lobbyTime = typeof lobbyTimeLatency === 'number' ? lobbyTimeLatency : 0;
 
     if (interstitialJoinClickTimestamp && connectedMedia) {
-      return connectedMedia - interstitialJoinClickTimestamp - lobbyTime;
+      const interstitialToMediaOKJmt = connectedMedia - interstitialJoinClickTimestamp - lobbyTime;
+
+      return clamp(interstitialToMediaOKJmt, 0, this.MAX_INTEGER);
     }
 
     return undefined;
@@ -413,7 +433,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const interstitialToJoinOk = this.getInterstitialToJoinOK();
 
     if (typeof clickToInterstitial === 'number' && typeof interstitialToJoinOk === 'number') {
-      return clickToInterstitial + interstitialToJoinOk;
+      return clamp(clickToInterstitial + interstitialToJoinOk, 0, this.MAX_INTEGER);
     }
 
     return undefined;
@@ -431,7 +451,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       typeof clickToInterstitialWithUserDelay === 'number' &&
       typeof interstitialToJoinOk === 'number'
     ) {
-      return clickToInterstitialWithUserDelay + interstitialToJoinOk;
+      return clamp(clickToInterstitialWithUserDelay + interstitialToJoinOk, 0, this.MAX_INTEGER);
     }
 
     return undefined;
@@ -446,7 +466,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const ICESetupTime = this.getICESetupTime();
 
     if (joinReqResp && ICESetupTime) {
-      return joinReqResp + ICESetupTime;
+      return clamp(joinReqResp + ICESetupTime, 0, this.MAX_INTEGER);
     }
 
     return undefined;
@@ -463,12 +483,16 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const lobbyTime = this.getStayLobbyTime();
 
     if (clickToInterstitial && interstitialToJoinOk && joinConfJMT) {
-      const totalMediaJMT = clickToInterstitial + interstitialToJoinOk + joinConfJMT;
+      const totalMediaJMT = clamp(
+        clickToInterstitial + interstitialToJoinOk + joinConfJMT,
+        0,
+        Infinity
+      );
       if (this.getMeeting()?.allowMediaInLobby) {
-        return totalMediaJMT;
+        return clamp(totalMediaJMT, 0, this.MAX_INTEGER);
       }
 
-      return totalMediaJMT - lobbyTime;
+      return clamp(totalMediaJMT - lobbyTime, 0, this.MAX_INTEGER);
     }
 
     return undefined;
@@ -484,7 +508,11 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const joinConfJMT = this.getJoinConfJMT();
 
     if (clickToInterstitialWithUserDelay && interstitialToJoinOk && joinConfJMT) {
-      return clickToInterstitialWithUserDelay + interstitialToJoinOk + joinConfJMT;
+      return clamp(
+        clickToInterstitialWithUserDelay + interstitialToJoinOk + joinConfJMT,
+        0,
+        this.MAX_INTEGER
+      );
     }
 
     return undefined;
@@ -499,7 +527,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const joinConfJMT = this.getJoinConfJMT();
 
     if (typeof interstitialToJoinOk === 'number' && typeof joinConfJMT === 'number') {
-      return interstitialToJoinOk - joinConfJMT;
+      return clamp(interstitialToJoinOk - joinConfJMT, 0, this.MAX_INTEGER);
     }
 
     return undefined;
@@ -526,7 +554,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const reachablityClusterReqResp = this.precomputedLatencies.get('internal.get.cluster.time');
 
     return typeof reachablityClusterReqResp === 'number'
-      ? Math.floor(reachablityClusterReqResp)
+      ? clamp(Math.floor(reachablityClusterReqResp), 0, this.MAX_INTEGER)
       : undefined;
   }
 
@@ -545,12 +573,24 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * Time from share initiation to share stop (ms).
+   */
+  public getShareDuration() {
+    return this.getDiffBetweenTimestamps(
+      'internal.client.share.initiated',
+      'internal.client.share.stopped'
+    );
+  }
+
+  /**
    * Total latency for all exchange ci token.
    */
   public getExchangeCITokenJMT() {
     const exchangeCITokenJMT = this.precomputedLatencies.get('internal.exchange.ci.token.time');
 
-    return typeof exchangeCITokenJMT === 'number' ? Math.floor(exchangeCITokenJMT) : undefined;
+    return typeof exchangeCITokenJMT === 'number'
+      ? clamp(Math.floor(exchangeCITokenJMT), 0, this.MAX_INTEGER)
+      : undefined;
   }
 
   /**
@@ -560,7 +600,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const refreshCaptchaReqResp = this.precomputedLatencies.get('internal.refresh.captcha.time');
 
     return typeof refreshCaptchaReqResp === 'number'
-      ? Math.floor(refreshCaptchaReqResp)
+      ? clamp(Math.floor(refreshCaptchaReqResp), 0, this.MAX_INTEGER)
       : undefined;
   }
 
@@ -574,7 +614,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     );
 
     return typeof downloadIntelligenceModelsReqResp === 'number'
-      ? Math.floor(downloadIntelligenceModelsReqResp)
+      ? clamp(Math.floor(downloadIntelligenceModelsReqResp), 0, this.MAX_INTEGER)
       : undefined;
   }
 
@@ -586,6 +626,6 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   public getOtherAppApiReqResp() {
     const otherAppApiJMT = this.precomputedLatencies.get('internal.other.app.api.time');
 
-    return otherAppApiJMT > 0 ? Math.floor(otherAppApiJMT) : undefined;
+    return otherAppApiJMT > 0 ? clamp(Math.floor(otherAppApiJMT), 0, this.MAX_INTEGER) : undefined;
   }
 }

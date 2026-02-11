@@ -6,6 +6,7 @@
 import {isEqual, mapValues, mean} from 'lodash';
 
 import {Defer} from '@webex/common';
+import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 import LoggerProxy from '../common/logs/logger-proxy';
 import MeetingUtil from '../meeting/util';
 
@@ -195,6 +196,14 @@ export default class Reachability extends EventsScope {
     // @ts-ignore
     if (!this.webex.config.meetings.enableReachabilityChecks) {
       throw new Error('enableReachabilityChecks is disabled in config');
+    }
+
+    if (WebCapabilities.supportsRTCPeerConnection() !== CapabilityState.CAPABLE) {
+      LoggerProxy.logger.warn(
+        'Reachability:index#gatherReachability --> WebRTC API is not available, skipping reachability checks'
+      );
+
+      return {};
     }
     // Fetch clusters and measure latency
     try {
@@ -923,10 +932,10 @@ export default class Reachability extends EventsScope {
 
       // update expected results counters to include this cluster
       this.expectedResultsCount[cluster.isVideoMesh ? 'videoMesh' : 'public'].udp +=
-        cluster.udp.length;
+        cluster.udp.length > 0 ? 1 : 0;
       if (!cluster.isVideoMesh) {
-        this.expectedResultsCount.public.tcp += cluster.tcp.length;
-        this.expectedResultsCount.public.xtls += cluster.xtls.length;
+        this.expectedResultsCount.public.tcp += cluster.tcp.length > 0 ? 1 : 0;
+        this.expectedResultsCount.public.xtls += cluster.xtls.length > 0 ? 1 : 0;
       }
     });
 
@@ -961,7 +970,12 @@ export default class Reachability extends EventsScope {
     Object.keys(clusterList).forEach((key) => {
       const cluster = clusterList[key];
 
-      this.clusterReachability[key] = new ClusterReachability(key, cluster);
+      this.clusterReachability[key] = new ClusterReachability(
+        key,
+        cluster,
+        // @ts-ignore
+        this.webex.config.meetings.enablePerUdpUrlReachability
+      );
       this.clusterReachability[key].on(Events.resultReady, async (data: ResultEventData) => {
         const {protocol, result, clientMediaIPs, latencyInMilliseconds} = data;
 

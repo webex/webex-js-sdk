@@ -16,6 +16,7 @@ const packages = [
   '@webex/internal-plugin-encryption',
   '@webex/internal-plugin-feature',
   '@webex/internal-plugin-flag',
+  '@webex/internal-plugin-task',
   '@webex/internal-plugin-scheduler',
   '@webex/internal-plugin-llm',
   '@webex/internal-plugin-locus',

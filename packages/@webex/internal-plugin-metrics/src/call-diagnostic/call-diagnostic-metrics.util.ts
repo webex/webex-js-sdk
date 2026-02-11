@@ -179,6 +179,43 @@ export const isSdpOfferCreationError = (rawError: any) => {
   return false;
 };
 
+export const isWebrtcApiNotAvailableError = (
+  rawError: {code: number; message: string; name: string} | unknown
+) => {
+  if ((rawError as {name: string}).name === ERROR_DESCRIPTIONS.WEBRTC_API_NOT_AVAILABLE) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * Checks if the given error is a browser media error by its name.
+ * Returns true if the error name matches any known browser media error name in the mapping.
+ *
+ * @param {Object} rawError - The error object to check.
+ * @returns {boolean} True if the error is a browser media error, false otherwise.
+ */
+export const isBrowserMediaError = (rawError) => {
+  // eslint-disable-next-line no-use-before-define
+  if (isBrowserMediaErrorName(rawError.name)) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * Returns the client error code mapped to the given browser media error name.
+ * If the error name is not found in the mapping, returns undefined.
+ *
+ * @param {Object} rawError - The error object containing the error name.
+ * @returns {string|undefined} The mapped client error code, or undefined if not found.
+ */
+export const getBrowserMediaErrorCode = (rawError) => {
+  return BROWSER_MEDIA_ERROR_NAME_TO_CLIENT_ERROR_CODES_MAP[rawError.name];
+};
+
 /**
  * MDN Media Devices getUserMedia() method returns a name if it errs
  * Documentation can be found here: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
@@ -239,6 +276,20 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
 
   // Set upgradeChannel to 'gold' if buildType is 'prod', otherwise to the buildType value
   const upgradeChannel = buildType === 'prod' ? 'gold' : buildType;
+  if (webex.devicemanager) {
+    const pairedDevice = webex.devicemanager.getPairedDevice();
+    if (pairedDevice) {
+      const devicePayload = {
+        deviceId: pairedDevice.deviceInfo?.id,
+        devicePairingType: webex.devicemanager.getPairedMethod(),
+        deviceURL: pairedDevice.url,
+        isPersonalDevice: pairedDevice.mode === 'personal',
+        productName: pairedDevice.devices[0]?.productName,
+      };
+      item.eventPayload.event.pairingState = 'paired';
+      item.eventPayload.event.pairedDevice = devicePayload;
+    }
+  }
 
   const origin: Partial<Event['origin']> = {
     buildType,
