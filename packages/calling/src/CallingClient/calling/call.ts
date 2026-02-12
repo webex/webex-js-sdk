@@ -1428,7 +1428,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.mediaConnection.close();
       log.info('Closing media channel', {
         file: CALL_FILE,
-        method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
+        method: METHODS.HANDLE_INCOMING_CALL_DISCONNECT,
       });
     }
 
@@ -1567,6 +1567,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       file: CALL_FILE,
       method: 'scheduleCallKeepaliveInterval',
     };
+
+    clearInterval(this.sessionTimer);
 
     this.sessionTimer = setInterval(async () => {
       try {
