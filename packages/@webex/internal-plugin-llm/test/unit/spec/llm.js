@@ -209,7 +209,7 @@ describe('plugin-llm', () => {
         assert.calledOnceWithExactly(
           webex.internal.feature.setFeature,
           'developer',
-          'voicea-channel-with-enabled',
+          'data-channel-with-token',
           true
         );
         assert.equal(result, true);
@@ -225,7 +225,7 @@ describe('plugin-llm', () => {
         assert.calledOnceWithExactly(
           webex.internal.feature.setFeature,
           'developer',
-          'voicea-channel-with-enabled',
+          'data-channel-with-token',
           false
         );
         assert.equal(result, false);
@@ -241,7 +241,7 @@ describe('plugin-llm', () => {
         assert.calledOnceWithExactly(
           webex.internal.feature.getFeature,
           'developer',
-          'voicea-channel-with-enabled'
+          'data-channel-with-token'
         );
         assert.equal(result, true);
       });
