@@ -3,7 +3,7 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import Mercury from '@webex/internal-plugin-mercury';
 import LLMService from '@webex/internal-plugin-llm';
-//
+
 describe('plugin-llm', () => {
   const locusUrl = 'locusUrl';
   const datachannelUrl = 'datachannelUrl';
