@@ -288,6 +288,17 @@ export class ReachabilityPeerConnection extends EventsScope {
     // Update subnet details if we have server info
     if (serverIp && serverPort) {
       this.updateSubnetDetail(protocol, serverIp, serverPort, latency);
+    } else {
+      // Fallback for browsers that don't provide candidate.url (e.g., Firefox):
+      // In per-URL mode, each PeerConnection has a single detail entry,
+      // so we can update it without needing server info from the candidate.
+      const {details} = result;
+
+      if (details?.length === 1 && details[0].answeredTx === 0) {
+        details[0].answeredTx = 1;
+        details[0].lostTx = 0;
+        details[0].latencies = [latency];
+      }
     }
 
     if (result.latencyInMilliseconds === undefined) {

@@ -35,7 +35,6 @@ import {
   NatTypeUpdatedEventData,
   ResultEventData,
 } from './clusterReachability';
-import {prepopulateSubnetDetails} from './util';
 import EventsScope from '../common/events/events-scope';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import Metrics from '../metrics';
@@ -940,24 +939,15 @@ export default class Reachability extends EventsScope {
       }
 
       // Initialize the result for this cluster
-      // Details are only tracked when enablePerUdpUrlReachability=true
-      // @ts-ignore
-      const {enablePerUdpUrlReachability} = this.webex.config.meetings;
-
       results[key] = {
         udp: {
           result: cluster.udp.length > 0 ? 'unreachable' : 'untested',
-          ...(enablePerUdpUrlReachability && {
-            details: prepopulateSubnetDetails(cluster.udp, true),
-          }),
         },
         tcp: {
           result: cluster.tcp.length > 0 ? 'unreachable' : 'untested',
-          ...(enablePerUdpUrlReachability && {details: prepopulateSubnetDetails(cluster.tcp)}),
         },
         xtls: {
           result: cluster.xtls.length > 0 ? 'unreachable' : 'untested',
-          ...(enablePerUdpUrlReachability && {details: prepopulateSubnetDetails(cluster.xtls)}),
         },
         isVideoMesh: cluster.isVideoMesh,
       };
