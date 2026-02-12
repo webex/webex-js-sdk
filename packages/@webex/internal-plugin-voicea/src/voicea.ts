@@ -11,7 +11,6 @@ import {
   TOGGLE_MANUAL_CAPTION_STATUS,
   DEFAULT_SPOKEN_LANGUAGE,
   LANGUAGE_ASSIGNMENT,
-  VOICEA_HESIOD_ENABLED,
 } from './constants';
 // eslint-disable-next-line no-unused-vars
 import {
@@ -578,37 +577,6 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {string}
    */
   public getAnnounceStatus = () => this.announceStatus;
-
-  /**
-   * Enables hesiod feature
-   * @returns {Promise<boolean>} resolves with true, if successful
-   */
-  public enableHesiod(): Promise<boolean> {
-    // @ts-ignore
-    return this.webex.internal.feature
-      .setFeature('developer', VOICEA_HESIOD_ENABLED, true)
-      .then((response) => response.value);
-  }
-
-  /**
-   * Disables hesiod feature
-   * @returns {Promise<boolean>} resolves with false, if successful
-   */
-  disableHesiod(): Promise<boolean> {
-    // @ts-ignore
-    return this.webex.internal.feature
-      .setFeature('developer', VOICEA_HESIOD_ENABLED, false)
-      .then((response) => response.value);
-  }
-
-  /**
-   * Returns true if hesiod is enabled, false otherwise
-   * @returns {Promise<boolean>} resolves with true if hesiod is enabled
-   */
-  isHesiodEnabled(): Promise<boolean> {
-    // @ts-ignore
-    return this.webex.internal.feature.getFeature('developer', VOICEA_HESIOD_ENABLED);
-  }
 }
 
 export default VoiceaChannel;

@@ -10,7 +10,6 @@ import {merge} from 'lodash';
 import {IP_VERSION} from '@webex/plugin-meetings/src/constants';
 import {CallDiagnosticUtils} from '@webex/internal-plugin-metrics';
 
-// mark
 describe('plugin-meetings', () => {
   let meetingsRequest;
   let locusDeltaRequestSpy;
@@ -116,6 +115,7 @@ describe('plugin-meetings', () => {
     });
 
     describe('#changeVideoLayout', () => {
+
       const locusUrl = 'locusURL';
       const deviceUrl = 'deviceUrl';
       const layoutType = 'Equal';

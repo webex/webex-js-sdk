@@ -19,6 +19,11 @@ describe('plugin-llm', () => {
         },
       });
 
+      webex.internal.feature = {
+        setFeature: sinon.stub().resolves({value: true}),
+        getFeature: sinon.stub().resolves(true),
+      };
+
       llmService = webex.internal.llm;
       llmService.connect = sinon.stub().callsFake(() => {
         llmService.connected = true;
@@ -195,6 +200,53 @@ describe('plugin-llm', () => {
       });
     });
 
+    describe('enables hesiod feature', () => {
+      it('works correctly', async () => {
+        webex.internal.feature.setFeature.resolves({value: true});
+
+        const result = await llmService.enableDataChannelToken();
+
+        assert.calledOnceWithExactly(
+          webex.internal.feature.setFeature,
+          'developer',
+          'voicea-channel-with-enabled',
+          true
+        );
+        assert.equal(result, true);
+      });
+    });
+
+    describe('disables hesiod feature', () => {
+      it('works correctly', async () => {
+        webex.internal.feature.setFeature.resolves({value: false});
+
+        const result = await llmService.disableDataChannelToken();
+
+        assert.calledOnceWithExactly(
+          webex.internal.feature.setFeature,
+          'developer',
+          'voicea-channel-with-enabled',
+          false
+        );
+        assert.equal(result, false);
+      });
+    });
+
+    describe('returns hesiod enabled state', () => {
+      it('works correctly', async () => {
+        webex.internal.feature.getFeature.resolves(true);
+
+        const result = await llmService.isDataChannelTokenEnabled();
+
+        assert.calledOnceWithExactly(
+          webex.internal.feature.getFeature,
+          'developer',
+          'voicea-channel-with-enabled'
+        );
+        assert.equal(result, true);
+      });
+    });
+
     describe('#refreshDataChannelToken', () => {
       it('throws if no handler is set', async () => {
         try {
@@ -234,6 +286,7 @@ describe('plugin-llm', () => {
       });
     });
     describe('#getDatachannelToken / #setDatachannelToken', () => {
+
       it('sets and gets datachannel token', () => {
         llmService.setDatachannelToken('abc123');
         assert.equal(llmService.getDatachannelToken(), 'abc123');

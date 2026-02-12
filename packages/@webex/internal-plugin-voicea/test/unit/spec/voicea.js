@@ -8,7 +8,6 @@ import LLMChannel from '@webex/internal-plugin-llm';
 
 import VoiceaService from '../../../src/index';
 import {EVENT_TRIGGERS, TOGGLE_MANUAL_CAPTION_STATUS} from '../../../src/constants';
-// mark
 
 describe('plugin-voicea', () => {
   const locusUrl = 'locusUrl';
@@ -35,10 +34,6 @@ describe('plugin-voicea', () => {
         headers: {},
         body: '',
       });
-      webex.internal.feature = {
-        setFeature: sinon.stub().resolves({value: true}),
-        getFeature: sinon.stub().resolves(true),
-      };
       voiceaService.register = sinon.stub().resolves({
         body: {
           binding: 'binding',
@@ -1139,53 +1134,6 @@ describe('plugin-voicea', () => {
       it('works correctly', () => {
         voiceaService.announceStatus = "joined"
         assert.equal(voiceaService.getAnnounceStatus(), "joined");
-      });
-    });
-
-    describe('enables hesiod feature', () => {
-      it('works correctly', async () => {
-        webex.internal.feature.setFeature.resolves({value: true});
-
-        const result = await voiceaService.enableHesiod();
-
-        assert.calledOnceWithExactly(
-          webex.internal.feature.setFeature,
-          'developer',
-          'voicea-hesiod-enabled',
-          true
-        );
-        assert.equal(result, true);
-      });
-    });
-
-    describe('disables hesiod feature', () => {
-      it('works correctly', async () => {
-        webex.internal.feature.setFeature.resolves({value: false});
-
-        const result = await voiceaService.disableHesiod();
-
-        assert.calledOnceWithExactly(
-          webex.internal.feature.setFeature,
-          'developer',
-          'voicea-hesiod-enabled',
-          false
-        );
-        assert.equal(result, false);
-      });
-    });
-
-    describe('returns hesiod enabled state', () => {
-      it('works correctly', async () => {
-        webex.internal.feature.getFeature.resolves(true);
-
-        const result = await voiceaService.isHesiodEnabled();
-
-        assert.calledOnceWithExactly(
-          webex.internal.feature.getFeature,
-          'developer',
-          'voicea-hesiod-enabled'
-        );
-        assert.equal(result, true);
       });
     });
 

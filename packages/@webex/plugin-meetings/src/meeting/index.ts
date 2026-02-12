@@ -6204,7 +6204,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore
     const refershedDatachannelToken = this.webex.internal.llm.getDatachannelToken();
     // @ts-ignore
-    const isHesiodEnabled = await this.webex.internal.voicea.isHesiodEnabled();
+    const isDataChannelTokenEnabled = await this.webex.internal.llm.isDataChannelTokenEnabled();
 
     let paramToken;
 
@@ -6222,7 +6222,7 @@ export default class Meeting extends StatelessWebexPlugin {
         ? practiceSessionDatachannelToken
         : paramToken;
 
-    if (!isHesiodEnabled) {
+    if (!isDataChannelTokenEnabled) {
       dataChannelToken = undefined;
     }
 

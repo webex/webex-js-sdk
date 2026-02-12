@@ -2,7 +2,7 @@
 
 import Mercury from '@webex/internal-plugin-mercury';
 
-import {LLM} from './constants';
+import {LLM, DATA_CHANNEL_WITH_TOKEN} from './constants';
 // eslint-disable-next-line no-unused-vars
 import {ILLMChannel} from './llm.types';
 
@@ -186,5 +186,36 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       this.logger.error(`Error refreshing DataChannel token: ${error}`);
       throw error;
     }
+  }
+
+  /**
+   * Enables datachannel token
+   * @returns {Promise<boolean>} resolves with true, if successful
+   */
+  public enableDataChannelToken(): Promise<boolean> {
+    // @ts-ignore
+    return this.webex.internal.feature
+      .setFeature('developer', DATA_CHANNEL_WITH_TOKEN, true)
+      .then((response) => response.value);
+  }
+
+  /**
+   * Disables  datachannel token
+   * @returns {Promise<boolean>} resolves with false, if successful
+   */
+  public disableDataChannelToken(): Promise<boolean> {
+    // @ts-ignore
+    return this.webex.internal.feature
+      .setFeature('developer', DATA_CHANNEL_WITH_TOKEN, false)
+      .then((response) => response.value);
+  }
+
+  /**
+   * Returns true if  datachannel token is enabled, false otherwise
+   * @returns {Promise<boolean>} resolves with true if hesiod is enabled
+   */
+  public isDataChannelTokenEnabled(): Promise<boolean> {
+    // @ts-ignore
+    return this.webex.internal.feature.getFeature('developer', DATA_CHANNEL_WITH_TOKEN);
   }
 }

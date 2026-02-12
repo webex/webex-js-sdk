@@ -264,7 +264,7 @@ describe('plugin-meetings', () => {
       stopReachability: sinon.stub(),
       isSubnetReachable: sinon.stub().returns(true),
     };
-    webex.internal.voicea.isHesiodEnabled = sinon.stub().resolves(false)
+    webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(false)
     webex.internal.llm.on = sinon.stub();
     webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
       {},
@@ -12785,7 +12785,7 @@ describe('plugin-meetings', () => {
             self: {datachannelToken: 'token-123'}
           };
 
-          webex.internal.voicea.isHesiodEnabled = sinon.stub().resolves(true);
+          webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(true);
 
           await meeting.updateLLMConnection();
 
@@ -12806,7 +12806,7 @@ describe('plugin-meetings', () => {
           };
 
           webex.internal.llm.getDatachannelToken = sinon.stub().returns('refreshed-token');
-          webex.internal.voicea.isHesiodEnabled = sinon.stub().resolves(true);
+          webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(true);
 
           await meeting.updateLLMConnection();
 
@@ -12834,7 +12834,7 @@ describe('plugin-meetings', () => {
 
           meeting.webinar.isJoinPracticeSessionDataChannel = sinon.stub().returns(true);
           webex.internal.llm.getDatachannelToken = sinon.stub().returns('refreshed-token');
-          webex.internal.voicea.isHesiodEnabled = sinon.stub().resolves(true);
+          webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(true);
 
           await meeting.updateLLMConnection();
 
@@ -12855,7 +12855,7 @@ describe('plugin-meetings', () => {
           };
 
           webex.internal.llm.getDatachannelToken = sinon.stub().returns(undefined);
-          webex.internal.voicea.isHesiodEnabled = sinon.stub().resolves(false);
+          webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(false);
 
           await meeting.updateLLMConnection();
 
