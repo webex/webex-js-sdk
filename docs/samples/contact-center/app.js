@@ -80,10 +80,17 @@ const uploadLogsResultElm = document.getElementById('upload-logs-result');
 const agentLoginGenericError = document.getElementById('agent-login-generic-error');
 const agentLoginInputError = document.getElementById('agent-login-input-error');
 const applyupdateAgentProfileBtn = document.querySelector('#applyupdateAgentProfile');
+const changeEnvBtn = document.querySelector('#changeEnv');
 const autoWrapupTimerElm = document.getElementById('autoWrapupTimer');
 const timerValueElm = autoWrapupTimerElm.querySelector('.timer-value');
 const outdialAniSelectElm = document.querySelector('#outdialAniSelect');
 deregisterBtn.style.backgroundColor = 'red';
+let enableProd = true;
+
+function changeEnv() {
+  enableProd = !enableProd;
+  changeEnvBtn.innerHTML = enableProd ? 'In Production' : 'In Integration';
+}
 
 function isIncomingTask(task, agentId) {
   const taskData = task?.data;
@@ -192,14 +199,25 @@ function initOauth() {
         .concat(additionalScopes))
       ).join(' ');
 
+  const webexConfig = generateWebexConfig({
+    credentials: {
+      ...(!enableProd && {authorizeUrl: 'https://idbrokerbts.webex.com/idb/oauth2/v1/authorize'}),
+      client_id: enableProd ? 'C04ef08ffce356c3161bb66b15dbdd98d26b6c683c5ce1a1a89efad545fdadd74' : 'Cd0dd53db1f470a5a9941e5eee31575bd0889d7006e3a80a1443ad12a42049da1',
+      redirect_uri: redirectUri,
+      scope: requestedScopes,
+    }
+  });
+
+  if (!enableProd) {
+    webexConfig.services = {
+      discovery: {
+        u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
+      },
+    };
+  }
+
   webex = window.webex = Webex.init({
-    config: generateWebexConfig({
-      credentials: {
-        client_id: 'C04ef08ffce356c3161bb66b15dbdd98d26b6c683c5ce1a1a89efad545fdadd74',
-        redirect_uri: redirectUri,
-        scope: requestedScopes,
-      }
-    })
+    config: webexConfig
   });
 
   localStorage.setItem('OAuth', true);
@@ -1356,6 +1374,14 @@ function initWebex(e) {
   authStatusElm.innerText = 'initializing...';
 
   const webexConfig = generateWebexConfig({})
+
+  if (!enableProd) {
+     webexConfig.services = {
+      discovery: {
+        u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
+      },
+    };
+  }
 
   webex = window.webex = Webex.init({
     config: webexConfig,

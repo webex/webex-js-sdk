@@ -12,6 +12,15 @@ export function isSelf(object: HashTreeObject) {
 }
 
 /**
+ * Checks if the given hash tree object is of type "Metadata"
+ * @param {HashTreeObject} object object to check
+ * @returns {boolean} True if the object is of type "Metadata", false otherwise
+ */
+export function isMetadata(object: HashTreeObject) {
+  return object.htMeta.elementId.type.toLowerCase() === ObjectType.metadata;
+}
+
+/**
  * Analyzes given part of Locus DTO recursively and delete any nested objects that have their own htMeta
  *
  * @param {Object} currentLocusPart part of locus DTO to analyze

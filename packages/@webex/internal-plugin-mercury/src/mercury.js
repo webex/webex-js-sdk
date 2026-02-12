@@ -315,6 +315,12 @@ const Mercury = WebexPlugin.extend({
 
   // @oneFlight
   disconnect(options, sessionId = this.defaultSessionId) {
+    this.logger.info(
+      `${this.namespace}#disconnect: connecting state: ${this.connecting}, connected state: ${
+        this.connected
+      }, socket exists: ${!!this.socket}, options: ${JSON.stringify(options)}`
+    );
+
     return new Promise((resolve) => {
       const backoffCall = this.backoffCalls.get(sessionId);
       if (backoffCall) {
