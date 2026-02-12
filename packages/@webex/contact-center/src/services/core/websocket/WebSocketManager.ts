@@ -86,11 +86,15 @@ export class WebSocketManager extends EventEmitter {
 
   private async register(connectionConfig: SubscribeRequest) {
     try {
+      // Get orgId for the X-ORGANIZATION-ID header (matches Agent Desktop behavior)
+      const orgId = this.webex.credentials?.getOrgId?.();
+
       const subscribeResponse: SubscribeResponse = await this.webex.request({
         service: WCC_API_GATEWAY,
         resource: SUBSCRIBE_API,
         method: HTTP_METHODS.POST,
         body: connectionConfig,
+        headers: orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,
       });
       this.url = subscribeResponse.body.webSocketUrl;
     } catch (e) {

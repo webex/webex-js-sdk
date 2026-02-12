@@ -74,6 +74,9 @@ describe('WebSocketManager', () => {
 
     mockWebex = {
       request: jest.fn(),
+      credentials: {
+        getOrgId: jest.fn().mockReturnValue('test-org-id'),
+      },
     } as unknown as WebexSDK;
 
     mockWorker = {
@@ -123,6 +126,7 @@ describe('WebSocketManager', () => {
       resource: SUBSCRIBE_API,
       method: 'POST',
       body: fakeSubscribeRequest,
+      headers: {'X-ORGANIZATION-ID': 'test-org-id'},
     });
   });
 
