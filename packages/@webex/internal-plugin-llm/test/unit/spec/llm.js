@@ -200,7 +200,7 @@ describe('plugin-llm', () => {
       });
     });
 
-    describe('enables hesiod feature', () => {
+    describe('#enableDataChannelToken', () => {
       it('works correctly', async () => {
         webex.internal.feature.setFeature.resolves({value: true});
 
@@ -216,7 +216,7 @@ describe('plugin-llm', () => {
       });
     });
 
-    describe('disables hesiod feature', () => {
+    describe('#disableDataChannelToken', () => {
       it('works correctly', async () => {
         webex.internal.feature.setFeature.resolves({value: false});
 
@@ -232,7 +232,7 @@ describe('plugin-llm', () => {
       });
     });
 
-    describe('returns hesiod enabled state', () => {
+    describe('#isDataChannelTokenEnabled', () => {
       it('works correctly', async () => {
         webex.internal.feature.getFeature.resolves(true);
 
@@ -286,7 +286,6 @@ describe('plugin-llm', () => {
       });
     });
     describe('#getDatachannelToken / #setDatachannelToken', () => {
-
       it('sets and gets datachannel token', () => {
         llmService.setDatachannelToken('abc123');
         assert.equal(llmService.getDatachannelToken(), 'abc123');
