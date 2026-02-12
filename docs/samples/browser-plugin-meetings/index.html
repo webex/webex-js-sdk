@@ -208,8 +208,17 @@
                 <div>
                   <!-- Audio settings -->
                   <!--enable noise reduction -->
-                  <button id="ts-load-mic" type="button" onclick="loadMicrophone()" class="btn-code">Load Microphone</button>
-                  <button id="ts-enable-BNR" type="button" onclick="handleBNR()" class="btn-code">Enable BNR</button>
+                  <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 8px;">
+                    <button id="ts-load-mic" type="button" onclick="loadMicrophone()" class="btn-code">Load Microphone</button>
+                    <select id="ts-model-select" onchange="handleModelChange()" class="btn-code">
+                      <option value="bnr" selected>BNR (Noise Reduction)</option>
+                      <option value="st">ST (Single Talker)</option>
+                    </select>
+                    <button id="ts-noise-reduction-btn" type="button" onclick="handleNoiseReduction()" class="btn-code">Enable BNR</button>
+                  </div>
+                  <div id="ts-model-locked" class="webex-info" style="display: none; margin-bottom: 8px;">
+                    NOTE: Model can only be set on first enable
+                  </div>
                   <!--mute-unmute audio -->
                   <button id="ts-toggle-audio" type="button" onclick="toggleSendAudio()" class="btn-code">Mute Audio</button>
                   <button id="ts-stop-audio" type="button" disabled onclick="stopStartAudio()" class="btn-code">Stop Audio</button>
@@ -710,7 +719,7 @@
               <div id="participant-btn"></div>
             </div>
             <p class="note multistream" id="remote-sources-info"></p>
-            
+
             <!-- SIP Call-Out Section -->
             <div style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 15px;">
               <h4>SIP Call-Out</h4>
@@ -718,21 +727,21 @@
               <div class="u-mv">
                 <label for="gc-sip-address">SIP Address *</label>
                 <input id="gc-sip-address" name="sipAddress" placeholder="SIP:123456789@webex.com" value="" type="text" oninput="validateSipCalloutFields()">
-                                
+
                 <label for="gc-sip-display-name">Display Name *</label>
                 <input id="gc-sip-display-name" name="sipDisplayName" placeholder="Brenda DX80" value="" type="text" oninput="validateSipCalloutFields()">
-                
+
                 <button id="gc-sip-callout" type="button" onclick="callOutSipParticipant()" disabled
                   class="btn-code">Call Out SIP Participant</button>
                 <label id="gc-sip-callout-status"></label>
               </div>
-              
+
               <div class="u-mv" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
                 <h4>Cancel SIP Call-Out</h4>
                 <p class="note">NOTE: Cancel an active SIP call-out using the participant ID.</p>
                 <label for="gc-sip-participant-id">Participant ID *</label>
                 <input id="gc-sip-participant-id" name="sipParticipantId" placeholder="Enter participant ID to cancel" value="" type="text" oninput="validateCancelSipFields()">
-                
+
                 <button id="gc-sip-cancel-callout" type="button" onclick="cancelSipCallOut()" disabled
                   class="btn-code">Cancel SIP Call-Out</button>
                 <label id="gc-sip-cancel-status"></label>

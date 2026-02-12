@@ -105,10 +105,10 @@ const AIAssistant = WebexPlugin.extend({
 
     this.stopListeningForEvents();
 
-    return this.webex.internal.mercury.disconnect().then(() => {
-      this.trigger(AI_ASSISTANT_UNREGISTERED);
-      this.registered = false;
-    });
+    this.trigger(AI_ASSISTANT_UNREGISTERED);
+    this.registered = false;
+
+    return Promise.resolve();
   },
 
   /**

@@ -10,6 +10,7 @@ export const ObjectType = {
   fullState: 'fullstate',
   links: 'links',
   control: 'controlentry',
+  metadata: 'metadata',
 } as const;
 
 export type ObjectType = Enum<typeof ObjectType>;
