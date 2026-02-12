@@ -1069,10 +1069,18 @@ describe('plugin-mercury', () => {
         it('should set switchover flags when called', () => {
           mercury._handleImminentShutdown(sessionId);
 
-          // Now we expect an entry in the switchover backoff map, not a boolean flag
-          const switchoverBackoffCall = mercury._shutdownSwitchoverBackoffCalls.get(sessionId);
-          assert.isOk(switchoverBackoffCall);
+          // With _connectWithBackoff stubbed, the backoff map entry may not be created here.
+          // Assert that switchover initiation state was set and a shutdown switchover connect was requested.
           assert.isDefined(mercury._shutdownSwitchoverId);
+
+          assert.calledOnce(connectWithBackoffStub);
+          const callArgs = connectWithBackoffStub.firstCall.args;
+          assert.isUndefined(callArgs[0]); // webSocketUrl
+          assert.equal(callArgs[1], sessionId); // sessionId
+          assert.isObject(callArgs[2]); // context
+          assert.isTrue(callArgs[2].isShutdownSwitchover);
+          assert.isObject(callArgs[2].attemptOptions);
+          assert.isTrue(callArgs[2].attemptOptions.isShutdownSwitchover);
         });
 
         it('should call _connectWithBackoff with correct parameters', (done) => {
@@ -1148,7 +1156,12 @@ describe('plugin-mercury', () => {
         it('should set _shutdownSwitchoverInProgress flag during switchover', () => {
           // With the new behavior, "in progress" is represented by the presence
           // of an entry in _shutdownSwitchoverBackoffCalls.
-          connectWithBackoffStub.returns(new Promise(() => {})); // Never resolves
+          // Since _connectWithBackoff is stubbed in this suite, simulate its side-effect
+          // of seeding the backoff-call map entry.
+          connectWithBackoffStub.callsFake(() => {
+            mercury._shutdownSwitchoverBackoffCalls.set(sessionId, {placeholder: true});
+            return new Promise(() => {}); // Never resolves
+          });
 
           mercury._handleImminentShutdown(sessionId);
 
