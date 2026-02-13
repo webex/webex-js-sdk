@@ -38,7 +38,9 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
    */
   async onResponseError(options, reason) {
     const token = this.getHeader(options.headers, DATA_CHANNEL_AUTH_HEADER);
-    if (!token) return Promise.reject(reason);
+    // @ts-ignore
+    const isDataChannelTokenEnabled = await this.webex.internal.llm.isDataChannelTokenEnabled();
+    if (!token || !isDataChannelTokenEnabled) return Promise.reject(reason);
 
     if (reason.statusCode !== 401 && reason.statusCode !== 403) {
       return Promise.reject(reason);
@@ -71,10 +73,11 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
         try {
           // @ts-ignore
           const newToken = await this.webex.internal.llm.refreshDataChannelToken();
+          const {datachannelToken, isPracticeSession} = newToken.body;
 
-          options.headers[DATA_CHANNEL_AUTH_HEADER] = newToken;
+          options.headers[DATA_CHANNEL_AUTH_HEADER] = datachannelToken;
           // @ts-ignore
-          this.webex.internal.llm.setDatachannelToken(newToken);
+          this.webex.internal.llm.setDatachannelToken(datachannelToken, isPracticeSession);
 
           // @ts-ignore
           const res = await this.webex.request(options);

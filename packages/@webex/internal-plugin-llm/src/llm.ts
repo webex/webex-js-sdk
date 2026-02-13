@@ -2,7 +2,7 @@
 
 import Mercury from '@webex/internal-plugin-mercury';
 
-import {LLM, DATA_CHANNEL_WITH_TOKEN} from './constants';
+import {LLM, DATA_CHANNEL_WITH_JWT_TOKEN} from './constants';
 // eslint-disable-next-line no-unused-vars
 import {ILLMChannel} from './llm.types';
 
@@ -60,7 +60,11 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   private datachannelToken?: string;
 
-  private refreshHandler?: () => Promise<{body: {datachannelToken: string}}>;
+  private practiceSessionDatachannelToken?: string;
+
+  private refreshHandler?: () => Promise<{
+    body: {datachannelToken: string; isPracticeSession: boolean};
+  }>;
 
   /**
    * Register to the websocket
@@ -68,12 +72,17 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @param {string} datachannelToken
    * @returns {Promise<void>}
    */
-  private register = (llmSocketUrl: string, datachannelToken: string): Promise<void> =>
-    this.request({
+  private register = async (llmSocketUrl: string, datachannelToken: string): Promise<void> => {
+    const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
+
+    return this.request({
       method: 'POST',
       url: llmSocketUrl,
       body: {deviceUrl: this.webex.internal.device.url},
-      headers: datachannelToken ? {'Data-Channel-Auth-Token': datachannelToken} : {},
+      headers:
+        isDataChannelTokenEnabled && datachannelToken
+          ? {'Data-Channel-Auth-Token': datachannelToken}
+          : {},
     })
       .then((res: {body: {webSocketUrl: string; binding: string}}) => {
         this.webSocketUrl = res.body.webSocketUrl;
@@ -83,6 +92,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
         this.logger.error(`Error connecting to websocket: ${error}`);
         throw error;
       });
+  };
 
   /**
    * Register and connect to the websocket
@@ -129,17 +139,25 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   /**
    * Get data channel token for the connection
+   * @param {boolean} isPracticeSession - is practice session or not
    * @returns {string} data channel token
    */
-  public getDatachannelToken = (): string => this.datachannelToken;
+  public getDatachannelToken = (isPracticeSession?: boolean): string =>
+    isPracticeSession ? this.practiceSessionDatachannelToken : this.datachannelToken;
 
   /**
    * Set data channel token for the connection
    * @param {string} datachannelToken - data channel token
+   * @param {boolean} isPracticeSession - is practice session or not
    * @returns {void}
    */
-  public setDatachannelToken = (datachannelToken: string): void => {
-    this.datachannelToken = datachannelToken;
+  public setDatachannelToken = (datachannelToken: string, isPracticeSession?: boolean): void => {
+    // If it gets more complicated, map is more recommended.
+    if (isPracticeSession) {
+      this.practiceSessionDatachannelToken = datachannelToken;
+    } else {
+      this.datachannelToken = datachannelToken;
+    }
   };
 
   /**
@@ -148,7 +166,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @param {function} handler - Function that returns a refreshed token
    * @returns {void}
    */
-  public setRefreshHandler(handler: () => Promise<{body: {datachannelToken: string}}>) {
+  public setRefreshHandler(
+    handler: () => Promise<{body: {datachannelToken: string; isPracticeSession: boolean}}>
+  ) {
     this.refreshHandler = handler;
   }
 
@@ -181,33 +201,11 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     try {
       const res = await this.refreshHandler();
 
-      return res.body.datachannelToken;
+      return res;
     } catch (error: any) {
       this.logger.error(`Error refreshing DataChannel token: ${error}`);
       throw error;
     }
-  }
-
-  /**
-   * Enables datachannel token
-   * @returns {Promise<boolean>} resolves with true, if successful
-   */
-  public enableDataChannelToken(): Promise<boolean> {
-    // @ts-ignore
-    return this.webex.internal.feature
-      .setFeature('developer', DATA_CHANNEL_WITH_TOKEN, true)
-      .then((response) => response.value);
-  }
-
-  /**
-   * Disables  datachannel token
-   * @returns {Promise<boolean>} resolves with false, if successful
-   */
-  public disableDataChannelToken(): Promise<boolean> {
-    // @ts-ignore
-    return this.webex.internal.feature
-      .setFeature('developer', DATA_CHANNEL_WITH_TOKEN, false)
-      .then((response) => response.value);
   }
 
   /**
@@ -216,6 +214,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    */
   public isDataChannelTokenEnabled(): Promise<boolean> {
     // @ts-ignore
-    return this.webex.internal.feature.getFeature('developer', DATA_CHANNEL_WITH_TOKEN);
+    return this.webex.internal.feature.getFeature('developer', DATA_CHANNEL_WITH_JWT_TOKEN);
   }
 }

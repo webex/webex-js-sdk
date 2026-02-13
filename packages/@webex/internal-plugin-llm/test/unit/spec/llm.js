@@ -85,7 +85,12 @@ describe('plugin-llm', () => {
     });
 
     describe('#register', () => {
+      beforeEach(() => {
+        llmService.isDataChannelTokenEnabled = sinon.stub();
+      });
+
       it('registers connection with token header', async () => {
+        llmService.isDataChannelTokenEnabled.resolves(true);
         await llmService.register(datachannelUrl, 'abc123');
 
         sinon.assert.calledOnceWithExactly(
@@ -102,6 +107,21 @@ describe('plugin-llm', () => {
       it('registers connection without token header when none provided', async () => {
         await llmService.register(datachannelUrl);
 
+        sinon.assert.calledOnceWithExactly(
+          llmService.request,
+          sinon.match({
+            method: 'POST',
+            url: `${datachannelUrl}`,
+            body: {deviceUrl: webex.internal.device.url},
+            headers: {},
+          })
+        );
+      });
+
+      it('registers connection without token header when toggle disabled', async () => {
+        llmService.isDataChannelTokenEnabled.resolves(false);
+
+        await llmService.register(datachannelUrl,'abc123');
         sinon.assert.calledOnceWithExactly(
           llmService.request,
           sinon.match({
@@ -200,49 +220,20 @@ describe('plugin-llm', () => {
       });
     });
 
-    describe('#enableDataChannelToken', () => {
-      it('works correctly', async () => {
-        webex.internal.feature.setFeature.resolves({value: true});
-
-        const result = await llmService.enableDataChannelToken();
-
-        assert.calledOnceWithExactly(
-          webex.internal.feature.setFeature,
-          'developer',
-          'data-channel-with-token',
-          true
-        );
-        assert.equal(result, true);
-      });
-    });
-
-    describe('#disableDataChannelToken', () => {
-      it('works correctly', async () => {
-        webex.internal.feature.setFeature.resolves({value: false});
-
-        const result = await llmService.disableDataChannelToken();
-
-        assert.calledOnceWithExactly(
-          webex.internal.feature.setFeature,
-          'developer',
-          'data-channel-with-token',
-          false
-        );
-        assert.equal(result, false);
-      });
-    });
-
     describe('#isDataChannelTokenEnabled', () => {
       it('works correctly', async () => {
-        webex.internal.feature.getFeature.resolves(true);
+        webex.internal.feature.getFeature.returns(true);
 
         const result = await llmService.isDataChannelTokenEnabled();
 
-        assert.calledOnceWithExactly(
+        console.log(webex.internal.feature.getFeature.getCalls());
+
+        sinon.assert.calledOnceWithExactly(
           webex.internal.feature.getFeature,
           'developer',
-          'data-channel-with-token'
+          'data-channel-with-jwt-token'
         );
+
         assert.equal(result, true);
       });
     });
@@ -258,11 +249,12 @@ describe('plugin-llm', () => {
       });
 
       it('returns token when handler resolves', async () => {
-        const handler = sinon.stub().resolves({ body: { datachannelToken: 'newToken' } });
+        const mockToken = { body: { datachannelToken: 'newToken' ,isPracticeSession: false} }
+        const handler = sinon.stub().resolves(mockToken);
         llmService.setRefreshHandler(handler);
 
         const token = await llmService.refreshDataChannelToken();
-        assert.equal(token, 'newToken');
+        assert.equal(token, mockToken);
         sinon.assert.calledOnce(handler);
       });
 
@@ -289,6 +281,8 @@ describe('plugin-llm', () => {
       it('sets and gets datachannel token', () => {
         llmService.setDatachannelToken('abc123');
         assert.equal(llmService.getDatachannelToken(), 'abc123');
+        llmService.setDatachannelToken('123abc',true);
+        assert.equal(llmService.getDatachannelToken(true), '123abc');
       });
     });
   });

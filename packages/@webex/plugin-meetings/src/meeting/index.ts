@@ -6201,30 +6201,30 @@ export default class Meeting extends StatelessWebexPlugin {
     } = this.locusInfo || {};
 
     const isJoined = this.isJoined();
-    // @ts-ignore
-    const refershedDatachannelToken = this.webex.internal.llm.getDatachannelToken();
-    // @ts-ignore
-    const isDataChannelTokenEnabled = await this.webex.internal.llm.isDataChannelTokenEnabled();
 
-    let paramToken;
+    const isPracticeSession = this.webinar.isJoinPracticeSessionDataChannel();
+    // @ts-ignore
+    const refreshedPracticeToken = this.webex.internal.llm.getDatachannelToken(true);
+    // @ts-ignore
+    const refreshedNormalToken = this.webex.internal.llm.getDatachannelToken(false);
 
-    if (datachannelToken) {
-      paramToken = refershedDatachannelToken ?? datachannelToken;
+    let finalToken;
+
+    if (isPracticeSession) {
+      finalToken =
+        refreshedPracticeToken ??
+        practiceSessionDatachannelToken ??
+        refreshedNormalToken ??
+        datachannelToken;
+    } else {
+      finalToken = refreshedNormalToken ?? datachannelToken;
     }
 
     // webinar panelist should use new data channel in practice session
     const dataChannelUrl =
-      this.webinar.isJoinPracticeSessionDataChannel() && practiceSessionDatachannelUrl
+      isPracticeSession && practiceSessionDatachannelUrl
         ? practiceSessionDatachannelUrl
         : datachannelUrl;
-    let dataChannelToken =
-      this.webinar.isJoinPracticeSessionDataChannel() && practiceSessionDatachannelToken
-        ? practiceSessionDatachannelToken
-        : paramToken;
-
-    if (!isDataChannelTokenEnabled) {
-      dataChannelToken = undefined;
-    }
 
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
@@ -6260,7 +6260,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - Fix type
     return this.webex.internal.llm
-      .registerAndConnect(url, dataChannelUrl, dataChannelToken)
+      .registerAndConnect(url, dataChannelUrl, finalToken)
       .then((registerAndConnectResult) => {
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
@@ -10237,11 +10237,20 @@ export default class Meeting extends StatelessWebexPlugin {
    * Method to get new data
    * @returns {Promise}
    */
-  public refreshDataChannelToken() {
-    return this.meetingRequest.fetchDatachannelToken({
+  public async refreshDataChannelToken() {
+    const isPracticeSession = this.webinar.isJoinPracticeSessionDataChannel();
+
+    const res = await this.meetingRequest.fetchDatachannelToken({
       locusUrl: this.locusUrl,
       requestingParticipantId: this.members.selfId,
-      isPracticeSession: this.webinar.isJoinPracticeSessionDataChannel(),
+      isPracticeSession,
     });
+
+    return {
+      body: {
+        datachannelToken: res.body.datachannelToken,
+        isPracticeSession,
+      },
+    };
   }
 }
