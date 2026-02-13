@@ -186,7 +186,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     });
 
   /**
-   * Refresh the DataChannel token using the injected handler.
+   * Refresh the data channel token using the injected handler.
    * Logs a descriptive error if the handler is missing or fails.
    *
    * @returns {Promise<string>} The refreshed token.
@@ -209,8 +209,8 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   }
 
   /**
-   * Returns true if  datachannel token is enabled, false otherwise
-   * @returns {Promise<boolean>} resolves with true if hesiod is enabled
+   * Returns true if  data channel token is enabled, false otherwise
+   * @returns {Promise<boolean>} resolves with true if data channel token  is enabled
    */
   public isDataChannelTokenEnabled(): Promise<boolean> {
     // @ts-ignore
