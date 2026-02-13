@@ -197,7 +197,7 @@ export interface BusinessEventPayload {
   metricName: string;
   timestamp: number;
   context: DeviceContext;
-  browserDetails: EventPayload;
+  browserDetails: object;
   value: EventPayload;
 }
 
