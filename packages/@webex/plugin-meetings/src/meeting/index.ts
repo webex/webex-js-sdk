@@ -6206,8 +6206,14 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore
     const refreshedToken = this.webex.internal.llm.getDatachannelToken(isPracticeSession);
 
-    const finalToken =
-      refreshedToken ?? (isPracticeSession ? practiceSessionDatachannelToken : datachannelToken);
+    const locusToken = isPracticeSession ? practiceSessionDatachannelToken : datachannelToken;
+
+    const finalToken = refreshedToken ?? locusToken;
+
+    if (!refreshedToken && locusToken) {
+      // @ts-ignore
+      this.webex.internal.llm.setDatachannelToken(locusToken, isPracticeSession);
+    }
 
     // webinar panelist should use new data channel in practice session
     const dataChannelUrl =
