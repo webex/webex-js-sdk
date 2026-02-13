@@ -12829,7 +12829,7 @@ describe('plugin-meetings', () => {
             'ps-token'
           );
         });
-        it('does not pass token when Hesiod is disabled', async () => {
+        it('does not pass token when data channel with jwt token is disabled', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {
             url: 'a url',
@@ -12839,18 +12839,17 @@ describe('plugin-meetings', () => {
 
           webex.internal.llm.getDatachannelToken = sinon.stub().returns(undefined);
           webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(false);
-
           await meeting.updateLLMConnection();
 
           assert.calledWithExactly(
             webex.internal.llm.registerAndConnect,
             'a url',
             'a datachannel url',
-            'token-123',
+            'token-123'
           );
         });
       });
-      
+
       describe('#setLocus', () => {
         beforeEach(() => {
           meeting.locusInfo.initialSetup = sinon.stub().returns(true);
