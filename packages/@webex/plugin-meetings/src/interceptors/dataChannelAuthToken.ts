@@ -49,7 +49,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
     const currentRetry = retryCountMap.get(this) || 0;
 
     if (currentRetry >= MAX_RETRY) {
-      console.warn(`DataChannel token refresh exceeded max retry (${MAX_RETRY})`);
+      console.warn(`data channel token refresh exceeded max retry (${MAX_RETRY})`);
       retryCountMap.set(this, 0);
 
       return Promise.reject(reason);
@@ -61,7 +61,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
   }
 
   /**
-   * Retry the failed DataChannel request after a delay.
+   * Retry the failed data channel request after a delay.
    * Refreshes the Data-Channel-Auth-Token and re-sends the original request.
    *
    * @param {Object} options - Original request options.
