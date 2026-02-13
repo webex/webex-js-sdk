@@ -594,6 +594,19 @@ export enum TASK_EVENTS {
   TASK_TRANSFER_CONFERENCE = 'task:transferConference',
 
   /**
+   * Triggered when agent switches between consult call and main call.
+   * Use task.uiControls to determine current state and button visibility.
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_SWITCH_CALL, (task: ITask) => {
+   *   console.log('Call switched:', task.data.interactionId);
+   *   // Update UI based on task.uiControls.switchToMainCall / switchToConsult
+   * });
+   * ```
+   */
+  TASK_SWITCH_CALL = 'task:switchCall',
+
+  /**
    * Triggered when a contact is merged
    * @example
    * ```typescript
@@ -1733,6 +1746,19 @@ export interface ITask extends EventEmitter {
    * ```
    */
   transferConference(): Promise<TaskResponse>;
+
+  /**
+   * Toggles between consult call and main call during consulting.
+   * If on consult leg, switches to main call (holds consult).
+   * If on main call, switches to consult (resumes consult).
+   * Only available when in CONSULTING state.
+   * @returns Promise<TaskResponse>
+   * @example
+   * ```typescript
+   * await task.switchCall();
+   * ```
+   */
+  switchCall(): Promise<TaskResponse>;
 
   /**
    * Toggles mute/unmute for the local audio stream during a WebRTC task.

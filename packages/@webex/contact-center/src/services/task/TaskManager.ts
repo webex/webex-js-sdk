@@ -463,6 +463,8 @@ export default class TaskManager extends EventEmitter {
    */
   private handleContactReserved(context: EventContext): TaskEventActions {
     const {payload} = context;
+    const isConsultedTask =
+      payload.isConsulted === true || isSecondaryEpDnAgent(payload.interaction);
     const shouldAutoAnswer = shouldAutoAnswerTask(
       payload,
       this.agentId,
@@ -472,7 +474,7 @@ export default class TaskManager extends EventEmitter {
 
     const taskData: TaskData = {
       ...payload,
-      isConsulted: false,
+      isConsulted: isConsultedTask,
       isAutoAnswering: shouldAutoAnswer,
     };
 
@@ -500,6 +502,8 @@ export default class TaskManager extends EventEmitter {
     const {payload} = context;
 
     if (!task) {
+      const isConsultedTask =
+        payload.isConsulted === true || isSecondaryEpDnAgent(payload.interaction);
       const shouldAutoAnswer = shouldAutoAnswerTask(
         payload,
         this.agentId,
@@ -508,7 +512,7 @@ export default class TaskManager extends EventEmitter {
       );
       const taskData: TaskData = {
         ...payload,
-        isConsulted: false,
+        isConsulted: isConsultedTask,
         wrapUpRequired: payload.interaction?.participants?.[this.agentId]?.isWrapUp || false,
         isConferenceInProgress: getIsConferenceInProgress(payload),
         isAutoAnswering: shouldAutoAnswer,

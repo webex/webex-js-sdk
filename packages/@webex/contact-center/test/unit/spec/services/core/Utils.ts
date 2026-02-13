@@ -569,8 +569,8 @@ describe('Utils', () => {
           },
         },
         participants: {
-          [currentAgentId]: { type: 'Agent', pType: 'Agent' },
-          'dest-agent-456': { type: 'Agent', pType: 'DN', id: 'dest-agent-456' },
+          [currentAgentId]: {type: 'Agent', pType: 'Agent'},
+          'dest-agent-456': {type: 'Agent', pType: 'DN', id: 'dest-agent-456'},
         },
       };
 
@@ -587,8 +587,8 @@ describe('Utils', () => {
           },
         },
         participants: {
-          [currentAgentId]: { type: 'Agent', pType: 'Agent' },
-          'dest-agent-456': { type: 'Agent', pType: 'EP-DN', id: 'dest-agent-456' },
+          [currentAgentId]: {type: 'Agent', pType: 'Agent'},
+          'dest-agent-456': {type: 'Agent', pType: 'EP-DN', id: 'dest-agent-456'},
         },
       };
 
@@ -605,8 +605,8 @@ describe('Utils', () => {
           },
         },
         participants: {
-          [currentAgentId]: { type: 'Agent', pType: 'Agent' },
-          'dest-agent-456': { type: 'Agent', pType: 'Agent', id: 'dest-agent-456' },
+          [currentAgentId]: {type: 'Agent', pType: 'Agent'},
+          'dest-agent-456': {type: 'Agent', pType: 'Agent', id: 'dest-agent-456'},
         },
       };
 
@@ -618,12 +618,56 @@ describe('Utils', () => {
       const interaction: any = {
         media: {},
         participants: {
-          [currentAgentId]: { type: 'Agent', pType: 'Agent' },
+          [currentAgentId]: {type: 'Agent', pType: 'Agent'},
         },
       };
 
       const result = Utils.calculateDestType(interaction, currentAgentId);
       expect(result).toBe('agent');
+    });
+  });
+
+  describe('buildConsultConferenceParamData', () => {
+    it('maps entryPoint destinationType correctly', () => {
+      const result = Utils.buildConsultConferenceParamData(
+        {
+          agentId: 'agent1',
+          destinationType: 'entryPoint',
+          destAgentId: 'ep123',
+        },
+        'interaction123'
+      );
+
+      expect(result).toEqual({
+        interactionId: 'interaction123',
+        data: {
+          agentId: 'agent1',
+          to: 'ep123',
+          destinationType: 'entryPoint',
+        },
+      });
+    });
+
+    it('maps EP-DN/EP_DN destinationType variants to entryPoint', () => {
+      const hyphenResult = Utils.buildConsultConferenceParamData(
+        {
+          agentId: 'agent1',
+          destinationType: 'EP-DN',
+          destAgentId: 'ep123',
+        },
+        'interaction123'
+      );
+      const underscoreResult = Utils.buildConsultConferenceParamData(
+        {
+          agentId: 'agent1',
+          destinationType: 'EP_DN',
+          destAgentId: 'ep123',
+        },
+        'interaction123'
+      );
+
+      expect(hyphenResult.data.destinationType).toBe('entryPoint');
+      expect(underscoreResult.data.destinationType).toBe('entryPoint');
     });
   });
 });

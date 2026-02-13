@@ -56,11 +56,22 @@ function computeVoiceUIControls(
   const interaction = taskData?.interaction;
   const mainCallId = interaction?.mainInteractionId || taskData?.interactionId;
   const isWebrtc = config.voiceVariant === VOICE_VARIANT.WEBRTC;
+  const isOutdial = interaction?.outboundType === 'OUTDIAL';
   const serverHold = getServerHoldStateForControls(context, mainCallId, fallbackTaskData);
 
   // Backend-derived checks
   const customerInCall =
     interaction && mainCallId ? getIsCustomerInCall(interaction, mainCallId) : false;
+  // EP-DN/secondary legs can have incomplete media participant lists; fall back to participants map.
+  const customerPresent =
+    customerInCall ||
+    Boolean(
+      interaction &&
+        interaction.participants &&
+        Object.values(interaction.participants).some(
+          (p: any) => p?.pType === 'Customer' && !p?.hasLeft
+        )
+    );
   const participantCount =
     interaction && mainCallId ? getConferenceParticipantsCount(interaction, mainCallId) : 0;
   const maxParticipants = participantCount >= MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE;
@@ -97,10 +108,11 @@ function computeVoiceUIControls(
   const inConference = conferenceActive && (isConferencing || selfInMainCall || consultInitiator);
 
   // Check if this is a consulted agent (must be after isConsulting is computed).
-  // IMPORTANT: once a conference is active, consulted-role restrictions should not apply.
-  const isConsulted = inConference
-    ? false
-    : getIsConsultedAgentForControls(taskData, context, isConsulting);
+  const isSoleAgentOnCall = participantCount <= 1 && !isConsulting && !inConference;
+  const isConsulted =
+    inConference || isSoleAgentOnCall
+      ? false
+      : getIsConsultedAgentForControls(taskData, context, isConsulting);
 
   // Active call = can perform call operations
   const isActive =
@@ -117,9 +129,10 @@ function computeVoiceUIControls(
 
   return {
     // Accept/Decline: WebRTC offered state only
+    // For outdial, accept is disabled (auto-answer handles it), decline remains enabled
     accept:
       isWebrtc && state === TaskState.OFFERED && !interaction?.isTerminated
-        ? VISIBLE_ENABLED
+        ? {isVisible: true, isEnabled: !isOutdial}
         : DISABLED,
     decline:
       isWebrtc && state === TaskState.OFFERED && !interaction?.isTerminated
@@ -129,6 +142,8 @@ function computeVoiceUIControls(
     // Hold: visible in connected/held/conference, disabled in conference/consulting
     hold: (() => {
       if (!hasFullControls) return DISABLED;
+      if (state === TaskState.OFFERED) return DISABLED;
+      if (isWrappingUp) return DISABLED;
       // Visibility: connected || held || inConference
       if (!(isConnected || isHeld || inConference)) return DISABLED;
       // Enabled: (connected || held) && !inConference && !isConsulting
@@ -137,25 +152,22 @@ function computeVoiceUIControls(
       return canHold ? VISIBLE_ENABLED : VISIBLE_DISABLED;
     })(),
 
-    // Mute: WebRTC only, active calls (visible but disabled during wrapup)
+    // Mute: WebRTC only, active calls; hidden entirely during wrapup
     mute: (() => {
       if (!isWebrtc) return DISABLED;
-      if (isConsulting) {
-        return isWrappingUp ? VISIBLE_DISABLED : VISIBLE_ENABLED;
-      }
+      if (isWrappingUp) return DISABLED;
+      if (isConsulting) return VISIBLE_ENABLED;
 
-      if (state === TaskState.CONNECTED || isConferencing || isWrappingUp) {
-        if (inConference) {
-          return isWrappingUp ? VISIBLE_DISABLED : VISIBLE_ENABLED;
-        }
+      if (state === TaskState.CONNECTED || isConferencing) {
+        if (inConference) return VISIBLE_ENABLED;
 
-        return isHeld || isWrappingUp ? VISIBLE_DISABLED : VISIBLE_ENABLED;
+        return isHeld ? VISIBLE_DISABLED : VISIBLE_ENABLED;
       }
 
       return DISABLED;
     })(),
 
-    // End: varies by state
+    // End: varies by state; during consulting only on main leg (consult held)
     end: (() => {
       if (!config.isEndTaskEnabled) return DISABLED;
 
@@ -197,9 +209,9 @@ function computeVoiceUIControls(
 
       // Enabled conditions differ by state
       const canFromConnected =
-        !maxParticipants && customerInCall && !consultInProgress && !isConsulted;
+        !maxParticipants && customerPresent && !consultInProgress && !isConsulted;
       const canFromConference =
-        !maxParticipants && customerInCall && !consultInProgress && !isConsulting;
+        !maxParticipants && customerPresent && !consultInProgress && !isConsulting;
 
       const isEnabled = inConference ? canFromConference : canFromConnected;
 
@@ -231,11 +243,13 @@ function computeVoiceUIControls(
       return DISABLED;
     })(),
 
-    // Conference/Merge: during consulting when agent joined
+    // Conference: during consulting, enabled on both legs when agent joined
+    // Label changes based on leg: "Conference" on main leg, "Merge" on consult leg
     conference: (() => {
       if (!hasFullControls || !isConsulting) return DISABLED;
+      if (!consultInitiator) return DISABLED;
 
-      return consultDestinationAgentJoined ? VISIBLE_ENABLED : VISIBLE_DISABLED;
+      return consultDestinationAgentJoined && !maxParticipants ? VISIBLE_ENABLED : VISIBLE_DISABLED;
     })(),
 
     // Wrapup: wrapping up state
@@ -258,7 +272,7 @@ function computeVoiceUIControls(
       return consultDestinationAgentJoined ? VISIBLE_ENABLED : VISIBLE_DISABLED;
     })(),
 
-    // MergeToConference: during consulting when agent joined
+    // MergeToConference: mirrors conference control, enabled on both legs
     mergeToConference: (() => {
       if (!isConsulting || !consultInitiator) return DISABLED;
 

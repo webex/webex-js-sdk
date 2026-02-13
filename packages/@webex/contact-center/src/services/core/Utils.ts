@@ -339,12 +339,19 @@ export const buildConsultConferenceParamData = (
   };
 
   if ('destinationType' in dataPassed) {
-    if (dataPassed.destinationType === 'DN') {
+    const destinationType = String(dataPassed.destinationType || '').trim();
+    const normalizedDestinationType = destinationType.toUpperCase().replace(/[-_\s]/g, '');
+
+    if (normalizedDestinationType === 'DN' || normalizedDestinationType === 'DIALNUMBER') {
       data.destinationType = DESTINATION_TYPE.DIALNUMBER;
-    } else if (dataPassed.destinationType === 'EP_DN') {
+    } else if (normalizedDestinationType === 'EPDN' || normalizedDestinationType === 'ENTRYPOINT') {
       data.destinationType = DESTINATION_TYPE.ENTRYPOINT;
+    } else if (normalizedDestinationType === 'QUEUE') {
+      data.destinationType = DESTINATION_TYPE.QUEUE;
+    } else if (normalizedDestinationType === 'AGENT') {
+      data.destinationType = DESTINATION_TYPE.AGENT;
     } else {
-      data.destinationType = dataPassed.destinationType.toLowerCase();
+      data.destinationType = destinationType as ConsultConferenceData['destinationType'];
     }
   } else {
     data.destinationType = DESTINATION_TYPE.AGENT;
@@ -369,15 +376,18 @@ export const deriveConsultTransferDestinationType = (
   taskData: TaskData
 ): ConsultTransferDestinationType => {
   const destType = taskData?.destinationType;
+  const normalizedDestType = String(destType || '')
+    .toUpperCase()
+    .replace(/[-_\s]/g, '');
 
   // Map destination types to consult transfer destination types
-  if (destType === 'DN' || destType === DESTINATION_TYPE.DIALNUMBER) {
+  if (normalizedDestType === 'DN' || normalizedDestType === 'DIALNUMBER') {
     return CONSULT_TRANSFER_DESTINATION_TYPE.DIALNUMBER;
   }
-  if (destType === 'EP_DN' || destType === DESTINATION_TYPE.ENTRYPOINT) {
+  if (normalizedDestType === 'EPDN' || normalizedDestType === 'ENTRYPOINT') {
     return CONSULT_TRANSFER_DESTINATION_TYPE.ENTRYPOINT;
   }
-  if (destType === DESTINATION_TYPE.QUEUE) {
+  if (normalizedDestType === 'QUEUE') {
     return CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE;
   }
 

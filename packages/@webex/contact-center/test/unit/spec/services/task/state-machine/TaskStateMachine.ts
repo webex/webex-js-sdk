@@ -160,6 +160,27 @@ describe('Task state machine', () => {
   });
 
   describe('consult and conference flows', () => {
+    it('boots from IDLE to CONSULTING on CONSULTING_ACTIVE for split-leg ordering', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        consultingAgentId: 'agent-1',
+        isConsulted: false,
+        interaction: {
+          state: 'consulting',
+        } as any,
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.IDLE);
+      service.send({
+        type: TaskEvent.CONSULTING_ACTIVE,
+        consultDestinationAgentJoined: true,
+        taskData,
+      });
+
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
+      expect(service.getSnapshot().context.consultDestinationAgentJoined).toBe(true);
+    });
+
     it('tracks consult destination, agent join, and clears on consult end', () => {
       const service = startMachine();
       const taskData = createTaskData();
@@ -210,6 +231,122 @@ describe('Task state machine', () => {
 
       service.send({type: TaskEvent.CONFERENCE_START});
       expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+    });
+
+    it('terminates via wrapup when EXIT_CONFERENCE_SUCCESS is received in conferencing', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        // shouldWrapUpForThisAgent will return true when owner matches self agent
+        interaction: {
+          owner: 'agent-1',
+          state: 'conference',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              type: 'Agent',
+              hasJoined: true,
+              hasLeft: false,
+              isInPredial: false,
+            },
+            c1: {
+              id: 'c1',
+              pType: 'Customer',
+              type: 'Customer',
+              hasJoined: true,
+              hasLeft: false,
+              isInPredial: false,
+            },
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mediaType: 'telephony',
+              mediaMgr: 'mm',
+              participants: ['agent-1', 'c1'],
+              mType: 'mainCall',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: 'agent-42',
+        destinationType: 'agent',
+      });
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+      service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      service.send({type: TaskEvent.EXIT_CONFERENCE_SUCCESS, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
+    it('terminates when EXIT_CONFERENCE_SUCCESS is received in conferencing and wrapup is not required', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        isConsulted: true,
+        wrapUpRequired: false,
+        interaction: {
+          owner: 'other-agent',
+          state: 'conference',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              type: 'Agent',
+              hasJoined: true,
+              hasLeft: false,
+              isInPredial: false,
+              isWrapUp: false,
+            },
+            c1: {
+              id: 'c1',
+              pType: 'Customer',
+              type: 'Customer',
+              hasJoined: true,
+              hasLeft: false,
+              isInPredial: false,
+            },
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mediaType: 'telephony',
+              mediaMgr: 'mm',
+              participants: ['agent-1', 'c1'],
+              mType: 'mainCall',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: 'agent-42',
+        destinationType: 'agent',
+      });
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+      service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      service.send({type: TaskEvent.EXIT_CONFERENCE_SUCCESS, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
     });
 
     it('returns to CONNECTED when CTQ cancel arrives before queue connects', () => {

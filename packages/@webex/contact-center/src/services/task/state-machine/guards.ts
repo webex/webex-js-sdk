@@ -183,6 +183,23 @@ export const guards = {
       : context.consultInitiator === true;
   },
 
+  /**
+   * EP-DN / consulted consult legs can arrive as AGENT_CONTACT_ASSIGNED without a preceding
+   * AgentConsulting event. When that happens, we should enter CONSULTING (not CONNECTED).
+   */
+  isConsultingAssignment: ({event}: GuardParams): boolean => {
+    const taskData = getTaskDataFromEvent(event);
+    if (!taskData) return false;
+
+    const relationshipType = taskData.interaction?.callProcessingDetails?.relationshipType;
+
+    return (
+      taskData.isConsulted === true ||
+      relationshipType === 'consult' ||
+      taskData.interaction?.state === 'consulting'
+    );
+  },
+
   // Wrapup Guards
   shouldWrapUp: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
@@ -234,7 +251,20 @@ export const guards = {
         : undefined;
     const participantId = participantIdFromEvent ?? taskData?.participantId;
 
-    return Boolean(participantId) && participantId === selfAgentId;
+    if (Boolean(participantId) && participantId === selfAgentId) {
+      return true;
+    }
+
+    //    For EP-DN agents the backend removes the leaving participant entirely
+    //    from the participants map (rather than setting hasLeft). If this task
+    //    is in CONFERENCING (implied by the guard being evaluated here) but the
+    //    agent is absent from the updated participants, they have left.
+    const participants = taskData?.interaction?.participants;
+    if (participants && !(selfAgentId in participants)) {
+      return true;
+    }
+
+    return false;
   },
 
   // Server State Guards

@@ -135,6 +135,15 @@ export enum TaskEvent {
   INVITE_FAILED = 'INVITE_FAILED',
   OUTBOUND_FAILED = 'OUTBOUND_FAILED',
 
+  // Switch events (toggle between consult and main call)
+  SWITCH_TO_MAIN_CALL = 'SWITCH_TO_MAIN_CALL',
+  SWITCH_TO_CONSULT = 'SWITCH_TO_CONSULT',
+
+  // Accept/Decline (WebRTC)
+  ACCEPT = 'ACCEPT',
+  DECLINE = 'DECLINE',
+  END = 'END',
+
   // Queue events
   CTQ_CANCEL = 'CTQ_CANCEL', // Cancel To Queue
   CTQ_CANCEL_FAILED = 'CTQ_CANCEL_FAILED',

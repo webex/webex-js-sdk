@@ -167,7 +167,15 @@ interface TaskEventPayloadMap {
   [TaskEvent.CONTACT_ENDED]: BaseEvent<TaskEvent.CONTACT_ENDED> & {taskData: TaskData};
   [TaskEvent.ASSIGN_FAILED]: BaseEvent<TaskEvent.ASSIGN_FAILED> & {reason?: string};
   [TaskEvent.INVITE_FAILED]: BaseEvent<TaskEvent.INVITE_FAILED> & {reason?: string};
-  [TaskEvent.OUTBOUND_FAILED]: BaseEvent<TaskEvent.OUTBOUND_FAILED> & {reason?: string};
+  [TaskEvent.OUTBOUND_FAILED]: BaseEvent<TaskEvent.OUTBOUND_FAILED> & {
+    reason?: string;
+    taskData?: TaskData;
+  };
+  [TaskEvent.SWITCH_TO_MAIN_CALL]: BaseEvent<TaskEvent.SWITCH_TO_MAIN_CALL>;
+  [TaskEvent.SWITCH_TO_CONSULT]: BaseEvent<TaskEvent.SWITCH_TO_CONSULT>;
+  [TaskEvent.ACCEPT]: BaseEvent<TaskEvent.ACCEPT>;
+  [TaskEvent.DECLINE]: BaseEvent<TaskEvent.DECLINE>;
+  [TaskEvent.END]: BaseEvent<TaskEvent.END> & {taskData?: TaskData};
   [TaskEvent.CTQ_CANCEL]: BaseEvent<TaskEvent.CTQ_CANCEL> & {taskData: TaskData};
   [TaskEvent.CTQ_CANCEL_FAILED]: BaseEvent<TaskEvent.CTQ_CANCEL_FAILED> & {taskData: TaskData};
 }

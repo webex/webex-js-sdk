@@ -269,8 +269,11 @@ async function getQueueListForTelephonyChannel() {
 
 async function getEntryPoints() {
   try {
-    const entryPoints = await webex.cc.getEntryPoints();
-    return entryPoints.data || [];
+    const entryPoints = await webex.cc.getEntryPoints({page: 0, pageSize: 100});
+    if (Array.isArray(entryPoints?.data)) return entryPoints.data;
+    if (Array.isArray(entryPoints)) return entryPoints;
+
+    return [];
   } catch (error) {
     console.log('Failed to fetch entry points', error);
     return [];
@@ -389,27 +392,24 @@ async function onConsultTypeSelectionChanged(){
   } else if (destinationTypeDropdown.value === 'entryPoint') {
     async function refreshEntryPointsForConsult() {
       const entryPoints = await getEntryPoints();
-
-      consultDestinationInput = document.createElement('input');
-      consultDestinationInput.type = 'text';
+      consultDestinationInput = document.createElement('select');
       consultDestinationInput.id = 'consultDestination';
-      consultDestinationInput.placeholder = 'Enter Entry Point ID';
+      consultDestinationInput.innerHTML = '';
 
-      const dataListId = 'consult-entrypoint-datalist';
-      let dataList = consultDestinationHolderElm.querySelector(`#${dataListId}`);
-      if (!dataList) {
-        dataList = document.createElement('datalist');
-        dataList.id = dataListId;
-        consultDestinationHolderElm.appendChild(dataList);
-      }
-      dataList.innerHTML = '';
-      entryPoints.forEach((ep) => {
+      if (entryPoints.length > 0) {
+        entryPoints.forEach((ep) => {
+          const option = document.createElement('option');
+          option.value = ep.id;
+          option.text = `${ep.name} (${ep.id})`;
+          consultDestinationInput.appendChild(option);
+        });
+      } else {
+        consultDestinationInput.disabled = true;
         const option = document.createElement('option');
-        option.value = ep.id;
-        option.label = ep.name;
-        dataList.appendChild(option);
-      });
-      consultDestinationInput.setAttribute('list', dataListId);
+        option.value = '';
+        option.text = 'No entry points available';
+        consultDestinationInput.appendChild(option);
+      }
     }
 
     await refreshEntryPointsForConsult();
@@ -706,11 +706,59 @@ async function initiateConsultTransfer() {
   }
 }
 
-function toggleTransferOptions() {
+async function toggleTransferOptions() {
+  if (!currentTask) return;
+
+  const interactionState = currentTask.data?.interaction?.state;
+  const controls = currentTask.uiControls || {};
+  const inConferenceFlow =
+    interactionState === 'conference' || currentTask.data?.isConferenceInProgress === true;
+  const inConsultFlow =
+    interactionState === 'consulting' ||
+    controls.endConsult?.isVisible ||
+    controls.switchToMainCall?.isVisible ||
+    controls.switchToConsult?.isVisible ||
+    controls.conference?.isVisible;
+
+  // In consult/conference/switched flows, transfer button should execute transfer API directly.
+  if (inConferenceFlow || inConsultFlow) {
+    try {
+      if (inConferenceFlow && typeof currentTask.transferConference === 'function') {
+        await currentTask.transferConference();
+        console.log('Conference transfer initiated successfully');
+
+        return;
+      }
+
+      const transferTo = currentTask.data?.destAgentId || currentTask.data?.consultingAgentId;
+      const transferDestinationType = currentTask.data?.destinationType || 'agent';
+
+      if (!transferTo) {
+        alert('Consult transfer is not ready yet. Wait for consult agent to join.');
+
+        return;
+      }
+
+      await currentTask.transfer({
+        to: transferTo,
+        destinationType: transferDestinationType,
+      });
+      console.log('Consult transfer initiated successfully');
+
+      return;
+    } catch (error) {
+      console.error('Direct transfer failed:', error);
+      alert(`Transfer failed. ${error.message || 'Please try again.'}`);
+
+      return;
+    }
+  }
+
+  // Regular flow (normal consulted/general transfer): show transfer popover
   const transferOptions = document.getElementById('transfer-options');
   if (transferOptions.style.display === 'none') {
     transferOptions.style.display = 'block';
-    onTransferTypeSelectionChanged(); // To load the default destination type view
+    onTransferTypeSelectionChanged();
   } else {
     transferOptions.style.display = 'none';
   }
@@ -798,13 +846,11 @@ function updateParticipantList(task) {
     mediaKeys: Object.keys(task.data.interaction.media || {})
   });
   
-  // Determine if conference is in progress by checking:
-  // 1. uiControls.exitConference.isVisible (SDK computed flag), OR
-  // 2. activeAgentCount >= 2 (fallback calculation)
+  // Only show participant list during actual conference (not consulting)
+  // exitConference is only visible in CONFERENCING state
   const isConferenceActive = 
     task.uiControls?.exitConference?.isVisible || 
-    task.uiControls?.exitConference?.isEnabled ||
-    activeAgentCount >= 2;
+    task.uiControls?.exitConference?.isEnabled;
     
   if (isConferenceActive) {
     let participantHtml = '<strong>📋 Conference Participants:</strong><br/>';
@@ -915,30 +961,11 @@ async function exitConference() {
 }
 
 /**
- * Legacy: Toggle conference action (kept for backward compatibility)
+ * Legacy: Toggle conference action (kept for backward compatibility with conferenceToggleBtn)
+ * Note: #conference-toggle does not exist in the HTML. The merge-conference button is used instead.
  */
 async function toggleConference() {
-  if (!currentTask) {
-    alert('No active task');
-    return;
-  }
-
-  try {
-    console.log('Conference action:', {
-      hasConsultationData: consultationData !== null,
-      participants: Object.keys(currentTask.data?.interaction?.participants || {}),
-      buttonText: conferenceToggleBtn?.textContent
-    });
-
-    if (conferenceToggleBtn?.textContent === 'Merge') {
-      await mergeToConference();
-    } else if (conferenceToggleBtn?.textContent === 'Exit Conference') {
-      await exitConference();
-    }
-  } catch (error) {
-    console.error(`Failed to perform conference action:`, error);
-    alert(`Failed to perform conference action. ${error.message || 'Please try again.'}`);
-  }
+  await mergeToConference();
 }
 
 // Function to transfer conference ownership
@@ -969,14 +996,7 @@ async function switchToMainCall() {
 
   try {
     console.log('Switching to main call...');
-    // The SDK should have a method to switch calls - this sends SWITCH_TO_MAIN_CALL event
-    if (typeof currentTask.switchToMainCall === 'function') {
-      await currentTask.switchToMainCall();
-    } else {
-      // Fallback: use hold/resume on consult leg
-      console.warn('switchToMainCall not implemented on Task, falling back to hold');
-      await currentTask.hold();
-    }
+    await currentTask.switchCall();
     console.log('Switched to main call successfully');
   } catch (error) {
     console.error('Failed to switch to main call:', error);
@@ -995,14 +1015,7 @@ async function switchToConsult() {
 
   try {
     console.log('Switching to consult call...');
-    // The SDK should have a method to switch calls - this sends SWITCH_TO_CONSULT event
-    if (typeof currentTask.switchToConsult === 'function') {
-      await currentTask.switchToConsult();
-    } else {
-      // Fallback: use resume to switch back
-      console.warn('switchToConsult not implemented on Task, falling back to resume');
-      await currentTask.resume();
-    }
+    await currentTask.switchCall();
     console.log('Switched to consult call successfully');
   } catch (error) {
     console.error('Failed to switch to consult call:', error);
@@ -1275,6 +1288,15 @@ function registerTaskListeners(task) {
     showOutdialFailedPopup(reason);
   });
 
+  task.on('task:switchCall', (updatedTask) => {
+    console.info('[task:switchCall] Call switched - updating UI');
+    if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
+      currentTask = updatedTask || task;
+      updateCallControlUI(currentTask);
+    }
+    updateTaskList();
+  });
+
   // task:wrapup - Task has entered WRAPPING_UP state (call ended, awaiting wrapup)
   // This is when the agent should see wrapup controls
   // NOTE: At this point, uiControls may not be updated yet (race condition with state machine)
@@ -1539,8 +1561,11 @@ function updateCallControlUI(task) {
     consult: uiControls.consult,
     transfer: uiControls.transfer,
     end: uiControls.end,
+    conference: uiControls.conference,
     mergeToConference: uiControls.mergeToConference,
     exitConference: uiControls.exitConference,
+    switchToMainCall: uiControls.switchToMainCall,
+    switchToConsult: uiControls.switchToConsult,
     wrapup: uiControls.wrapup,
   });
 }
@@ -1584,7 +1609,8 @@ function applyAllControlsFromUIControls(uiControls) {
   applyControlState(consultTransferBtn, controls.consultTransfer);
   
   // Conference controls
-  applyControlState(mergeConferenceBtn, controls.mergeToConference);
+  // Use mergeConferenceBtn for the unified conference control
+  applyControlState(mergeConferenceBtn, controls.conference);
   applyControlState(exitConferenceBtn, controls.exitConference);
   applyControlState(transferConferenceBtn, controls.transferConference);
   applyControlState(switchToMainBtn, controls.switchToMainCall);
@@ -1594,11 +1620,6 @@ function applyAllControlsFromUIControls(uiControls) {
   applyControlState(wrapupElm, controls.wrapup);
   if (wrapupCodesDropdownElm) {
     wrapupCodesDropdownElm.disabled = !(controls.wrapup?.isEnabled);
-  }
-  
-  // Legacy button - always hidden (replaced by separate buttons)
-  if (conferenceToggleBtn) {
-    conferenceToggleBtn.style.display = 'none';
   }
 }
 
@@ -1628,6 +1649,18 @@ function updateButtonLabels(task, callProcessingDetails) {
     consultTabBtn.title = hasReachedParticipantLimit
       ? 'Maximum 7 participants allowed in conference'
       : 'Initiate consultation with another agent';
+  }
+
+  // Conference/Merge button label based on which leg is active
+  // switchToConsult visible → agent is on main leg → label "Conference"
+  // switchToMainCall visible → agent is on consult leg → label "Merge"
+  if (mergeConferenceBtn) {
+    const controls = task.uiControls;
+    if (controls?.conference?.isVisible) {
+      const onMainLeg = controls?.switchToConsult?.isVisible;
+
+      mergeConferenceBtn.innerText = onMainLeg ? 'Conference' : 'Merge';
+    }
   }
 }
 
@@ -2265,9 +2298,12 @@ incomingCallListener.addEventListener('task:incoming', (event) => {
   incomingDetailsElm.innerText = 'Task Accepted';
 }
 
-function decline() {
-  // Button states will be updated by task.uiControls after decline() completes
-  currentTask.decline(taskId);
+async function decline() {
+  try {
+    await currentTask.decline();
+  } catch (e) {
+    console.error('Decline failed', e);
+  }
   incomingDetailsElm.innerText = 'No incoming Tasks';
   updateTaskList();
 }
