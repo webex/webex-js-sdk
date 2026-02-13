@@ -1,4 +1,4 @@
-import {
+import type {
   ClientEvent as RawClientEvent,
   Event as RawEvent,
   MediaQualityEvent as RawMediaQualityEvent,
