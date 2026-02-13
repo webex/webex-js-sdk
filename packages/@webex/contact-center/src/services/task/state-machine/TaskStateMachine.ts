@@ -310,6 +310,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.CONSULT_INITIATING,
             actions: ['setConsultInitiator', 'setConsultDestination'],
           },
+          // TODO: This may not be a valid transition, need to be removed
           // AgentConsultTransferred / AgentVTeamTransferred / AgentBlindTransferred
           [TaskEvent.TRANSFER_SUCCESS]: [
             {
@@ -341,6 +342,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
             },
           ],
+          // TODO: This may not be a valid transition, this needs to be checked as well
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.WRAPPING_UP,
             actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
