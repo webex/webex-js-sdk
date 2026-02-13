@@ -387,6 +387,7 @@ export const EVENT_TRIGGERS = {
   MEETING_MANUAL_CAPTION_UPDATED: 'meeting:manualCaptionControl:updated',
   MEETING_CAPTION_RECEIVED: 'meeting:caption-received',
   MEETING_PARTICIPANT_REASON_CHANGED: 'meeting:participant-reason-changed',
+  MEETING_SRTP_CIPHER_UPDATED: 'meeting:srtpCipher:updated',
 };
 
 export const EVENT_TYPES = {
