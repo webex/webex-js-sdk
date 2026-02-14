@@ -6,7 +6,7 @@ import json from '@rollup/plugin-json';
 export default {
   input: 'src/index.ts',
   output: {
-    dir: 'dist/esm',
+    dir: 'dist/module',
     format: 'esm',
     preserveModules: true,
     preserveModulesRoot: 'src',
@@ -36,7 +36,7 @@ export default {
         compilerOptions: {
           declaration: true,
           declarationDir: 'dist/types',
-          outDir: 'dist/esm',
+          outDir: 'dist/module',
         },
         exclude: ['**/*.test.ts', 'node_modules'],
       },
