@@ -10,8 +10,8 @@
     "Shreyas Sharma (shreysh2@cisco.com)",
     "Sreekanth Narayanan (sreenara@cisco.com)"
   ],
-  "main": "dist/module/index.js",
-  "module": "dist/module/index.js",
+  "main": "dist/esm/index.js",
+  "module": "dist/esm/index.js",
   "types": "dist/types/index.d.ts",
   "license": "MIT",
   "author": "devsupport@webex.com",
@@ -25,8 +25,8 @@
   },
   "scripts": {
     "prebuild": "rimraf dist",
-    "build": "tsc",
-    "build:src": "tsc",
+    "build": "rollup -c rollup.config.mjs",
+    "build:src": "rollup -c rollup.config.mjs",
     "test:unit": "jest --config=jest.config.js --runInBand",
     "test:style": "eslint 'src/**/*.ts'",
     "fix:lint": "eslint 'src/**/*.ts' --fix",
