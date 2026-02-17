@@ -259,7 +259,7 @@ export type Logout = {
   logoutReason?:
     | 'User requested logout'
     | 'Inactivity Logout'
-    | 'User requested agent device change';
+    | 'User requested agent profile update';
 };
 
 /**
