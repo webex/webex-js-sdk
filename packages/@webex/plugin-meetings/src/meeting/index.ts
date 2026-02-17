@@ -4527,6 +4527,10 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredHints: [DISPLAY_HINTS.DISABLE_ATTENDEE_START_POLLING_QA],
             displayHints: this.userDisplayHints,
           }),
+          canAttendeeRequestAiAssistantEnabled: MeetingUtil.canAttendeeRequestAiAssistantEnabled(
+            this.userDisplayHints,
+            this.roles
+          ),
         }) || changed;
     }
     if (changed) {

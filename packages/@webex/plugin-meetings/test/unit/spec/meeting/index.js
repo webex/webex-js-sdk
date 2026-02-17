@@ -738,7 +738,9 @@ describe('plugin-meetings', () => {
         let supportsRTCPeerConnectionStub;
 
         beforeEach(() => {
-          supportsRTCPeerConnectionStub = sinon.stub(WebCapabilities, 'supportsRTCPeerConnection').returns(CapabilityState.CAPABLE);
+          supportsRTCPeerConnectionStub = sinon
+            .stub(WebCapabilities, 'supportsRTCPeerConnection')
+            .returns(CapabilityState.CAPABLE);
 
           meeting.join = sinon.stub().callsFake((joinOptions) => {
             meeting.isMultistream = joinOptions.enableMultistream;
@@ -1011,33 +1013,53 @@ describe('plugin-meetings', () => {
           );
         });
 
-        it('should call leave() if addMediaInternal() fails ', async () => {
+        it('should call leave() if addMediaInternal() fails with a browser media error (TypeError)', async () => {
           const addMediaError = new Error('fake addMedia error');
-          addMediaError.name = 'TypeError';
+          addMediaError.name = 'TypeError'; // This makes it a browser media error
 
-          const rejectError = {
-            error: {
-              body: {
-                errorCode: 2729,
-                message: 'fake addMedia error',
-                name: 'TypeError'
-              }
-            }
-          };
-          meeting.addMediaInternal.rejects(addMediaError);
-          sinon.stub(meeting, 'leave').resolves();
+          const leaveStub = sinon.stub(meeting, 'leave').resolves();
+          meeting.addMediaInternal = sinon.stub().rejects(addMediaError);
 
-          await assert.isRejected(
+          // When a browser media error occurs, it gets transformed into a special structure
+          const rejectedError = await assert.isRejected(
             meeting.joinWithMedia({
               joinOptions,
               mediaOptions,
-            }),
-            rejectError
+            })
           );
+
+          // Verify the error was transformed with errorCode 2729
+          assert.equal(rejectedError.error.body.errorCode, 2729);
+          assert.equal(rejectedError.error.body.message, 'fake addMedia error');
+          assert.equal(rejectedError.error.body.name, 'TypeError');
 
           assert.calledOnce(meeting.join);
           assert.calledOnce(meeting.addMediaInternal);
+          assert.calledOnce(leaveStub);
+          assert.calledOnceWithExactly(leaveStub, {
+            resourceId: undefined,
+            reason: 'joinWithMedia failure',
+          });
+
+          // Browser media errors don't retry, so behavioral metric is sent only once
+          // NOTE: The error gets transformed, so the metric receives undefined for message/stack/name
+          // because they're now nested in error.body instead of at the top level
           assert.calledOnce(Metrics.sendBehavioralMetric);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: undefined, // transformed error doesn't have .message at top level
+              stack: undefined, // transformed error doesn't have .stack at top level
+              leaveErrorReason: undefined,
+              isRetry: false,
+            },
+            {
+              type: undefined, // transformed error doesn't have .name at top level
+            }
+          );
         });
 
         it('should not call leave() if addMediaInternal() fails the first time and succeeds the second time and should only call join() once', async () => {
@@ -1249,8 +1271,14 @@ describe('plugin-meetings', () => {
         });
 
         [
-          {errorName: 'SdpOfferCreationError', description: 'if we fail to create the offer on first attempt'},
-          {errorName: 'WebrtcApiNotAvailableError', description: 'if RTCPeerConnection is not available'},
+          {
+            errorName: 'SdpOfferCreationError',
+            description: 'if we fail to create the offer on first attempt',
+          },
+          {
+            errorName: 'WebrtcApiNotAvailableError',
+            description: 'if RTCPeerConnection is not available',
+          },
         ].forEach(({errorName, description}) => {
           it(`should not attempt a retry ${description}`, async () => {
             const addMediaError = new Error('fake addMedia error');
@@ -1290,7 +1318,7 @@ describe('plugin-meetings', () => {
               resourceId: undefined,
               reason: 'joinWithMedia failure',
             });
-          })
+          });
         });
 
         it('should ignore sendVideo/receiveVideo when videoEnabled is false', async () => {
@@ -11811,6 +11839,7 @@ describe('plugin-meetings', () => {
         let canMoveToLobbySpy;
         let isSpokenLanguageAutoDetectionEnabledSpy;
         let showAutoEndMeetingWarningSpy;
+        let canAttendeeRequestAiAssistantEnabledSpy;
         // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
         beforeEach(() => {
@@ -11847,12 +11876,17 @@ describe('plugin-meetings', () => {
             MeetingUtil,
             'isSpokenLanguageAutoDetectionEnabled'
           );
+          canAttendeeRequestAiAssistantEnabledSpy = sinon.spy(
+            MeetingUtil,
+            'canAttendeeRequestAiAssistantEnabled'
+          );
         });
 
         afterEach(() => {
           inMeetingActionsSetSpy.restore();
           waitingForOthersToJoinSpy.restore();
           showAutoEndMeetingWarningSpy.restore();
+          canAttendeeRequestAiAssistantEnabledSpy.restore();
         });
 
         forEach(
@@ -12376,6 +12410,7 @@ describe('plugin-meetings', () => {
           const userDisplayHints = ['LOCK_CONTROL_UNLOCK'];
           meeting.userDisplayHints = ['LOCK_CONTROL_UNLOCK'];
           meeting.meetingInfo.supportVoIP = true;
+          meeting.roles = [];
 
           meeting.updateMeetingActions();
 
@@ -12402,6 +12437,11 @@ describe('plugin-meetings', () => {
           assert.calledWith(canMoveToLobbySpy, userDisplayHints);
           assert.calledWith(showAutoEndMeetingWarningSpy, userDisplayHints);
           assert.calledWith(isSpokenLanguageAutoDetectionEnabledSpy, userDisplayHints);
+          assert.calledWith(
+            canAttendeeRequestAiAssistantEnabledSpy,
+            userDisplayHints,
+            meeting.roles
+          );
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],
