@@ -1,27 +1,62 @@
 # Contact Center SDK - AI Agent Guide
 
-> **Purpose**: Main orchestrator for AI assistants working with the `@webex/contact-center` package.
-> Routes to correct templates and provides critical rules for code generation.
+## Purpose
+
+This is the main orchestrator for AI assistants working with the package `@webex/contact-center` in this repository. It routes you to the correct templates and documentation based on the developer's task and provides critical rules for code generation.
+
+**For every developer request:**  
+(1) Identify task type (A-E below) under Task Type Routing.  
+(2) If the work is in an existing service/module, load that scope's ai-docs and follow its `AGENTS.md` + `ARCHITECTURE.md`.  
+(3) Open the template for that type and complete its mandatory pre-steps before code changes (unless explicitly waived by the developer).  
+(4) If the prompt mixes multiple task types, split into scoped subtasks and execute sequentially.  
+(5) Then follow the rest of this guide and the selected template.
 
 ---
 
 ## Quick Start Workflow
 
-```
-1. Identify Task Type → 2. Load Context → 3. Route to Template → 4. Generate/Fix Code → 5. Validate → 6. Update Docs
-```
+When a developer provides a task, follow this workflow:
+
+1. **Understand the task** - Identify what type of work is needed.
+2. **Break down large or multi-part tasks** - If the prompt mixes multiple tasks (for example, "add a method" and "fix a bug"), split into smaller scoped subtasks and execute them one by one.
+3. **Route to the appropriate template** - Use task-type routing below.
+4. **Load service ai-docs for the target scope** - Read that scope's `ai-docs/AGENTS.md` and `ai-docs/ARCHITECTURE.md`.
+5. **Complete mandatory template pre-steps** - Do not generate code until pre-steps are done unless explicitly waived.
+6. **Generate/fix code** - Follow established package patterns.
+7. **Validate functionality and quality** - Verify behavior, tests, lint, and type checks.
+8. **Update documentation** - Keep ai-docs aligned with code changes.
+9. **Ask for review** - Confirm completion and offer adjustments.
 
 ---
 
 ## Task Type Routing
 
-| Task Type | Template | When to Use |
-|-----------|----------|-------------|
-| **A. Create New Service** | [`templates/new-service/00-master.md`](templates/new-service/00-master.md) | Adding services like AddressBook, Queue, EntryPoint |
-| **B. Add New Method** | [`templates/new-method/00-master.md`](templates/new-method/00-master.md) | Adding methods to existing services |
-| **C. Fix Bug** | [`templates/existing-service/bug-fix.md`](templates/existing-service/bug-fix.md) | Fixing issues in existing code |
-| **D. Add Feature** | [`templates/existing-service/feature-enhancement.md`](templates/existing-service/feature-enhancement.md) | Enhancing existing functionality |
-| **E. Understand Architecture** | Service-level `ai-docs/` | Deep dive into specific service |
+**A. Create New Service**
+- Use when adding a new service module (for example AddressBook/Queue/EntryPoint style additions).
+- **Route to:** [`templates/new-service/00-master.md`](templates/new-service/00-master.md)
+- **Follow:** Full new-service workflow including validation and docs updates.
+
+**B. Add New Method**
+- Use when extending an existing service with a new method/API.
+- **Route to:** [`templates/new-method/00-master.md`](templates/new-method/00-master.md)
+- **Follow:** Method signature, implementation, tests, and validation checklist.
+
+**C. Fix Bug**
+- Use when behavior is incorrect or regressions are reported.
+- **Route to:** [`templates/existing-service/bug-fix.md`](templates/existing-service/bug-fix.md)
+- **Follow:** Reproduce -> root cause -> fix -> regression validation.
+
+**D. Add Feature**
+- Use when enhancing existing capabilities without creating a new service.
+- **Route to:** [`templates/existing-service/feature-enhancement.md`](templates/existing-service/feature-enhancement.md)
+- **Follow:** Requirement clarification, compatibility checks, tests, docs.
+
+**E. Understand Architecture**
+- Use when the task is analysis/explanation and no immediate code generation is required.
+- **Route to:** Relevant service-level `ai-docs/AGENTS.md` and `ai-docs/ARCHITECTURE.md`.
+- **Follow:** Read-only architecture exploration with clear explanation.
+
+If a developer request includes multiple task types, split into ordered subtasks and execute sequentially.
 
 ---
 
@@ -235,6 +270,30 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
 ---
 
+### 6. Scope ai-docs Are Authoritative (MANDATORY)
+
+When working inside a service scope (`agent`, `task`, `config`, `core`), treat that scope's `ai-docs/AGENTS.md` and `ai-docs/ARCHITECTURE.md` as implementation authority for that scope.
+
+- Root `AGENTS.md` is the orchestrator.
+- Service `ai-docs` define scope-specific behavior and architecture.
+- If there is any conflict, prefer scope docs for that scope.
+
+---
+
+### 7. Complete Pre-Steps Before Code (MANDATORY)
+
+Do not implement code until template pre-steps are complete or the developer explicitly asks to skip.
+
+| Task Type | Template | Mandatory Pre-Step |
+|---|---|---|
+| A. Create New Service | `templates/new-service/00-master.md` | Confirm service contract, dependencies, API surface, and tests |
+| B. Add New Method | `templates/new-method/00-master.md` | Confirm method signature, return type, call path, success/failure behavior |
+| C. Fix Bug | `templates/existing-service/bug-fix.md` | Confirm repro steps, root-cause scope, expected behavior |
+| D. Add Feature | `templates/existing-service/feature-enhancement.md` | Confirm feature requirements, backward compatibility, impacted APIs |
+| E. Understand Architecture | Service `ai-docs` | No pre-step gate (read-only) |
+
+---
+
 ## Context Loading by Task Type
 
 ### For New Service/Method:
@@ -356,6 +415,55 @@ const failure = error.details as Failure;
 - [ ] **Tests**: Added/updated unit tests with MockWebex
 - [ ] **Exports**: New types exported from `types.ts`
 - [ ] **No console.log**: Zero instances of console.log/warn/error
+
+---
+
+## Functionality Validation Gate (CRITICAL)
+
+Before marking any coding task complete, verify:
+
+1. **API/Type correctness**
+   - method signatures and payload types align with existing contracts
+   - no accidental breaking API changes
+2. **Pattern compliance**
+   - `LoggerProxy`, `MetricsManager`, `getErrorDetails`, event constants
+3. **Behavior correctness**
+   - success/failure paths covered
+   - state/event flow is correct for affected service
+4. **Quality checks**
+   - relevant unit tests pass
+   - lint/type checks pass
+
+If any gate fails, fix before completion.
+
+---
+
+## Documentation Update Gate
+
+After code changes, verify whether docs must be updated:
+
+- service `ai-docs/AGENTS.md` (usage/workflow changes)
+- service `ai-docs/ARCHITECTURE.md` (flow/architecture changes)
+- root templates/pattern docs (if a new reusable pattern is introduced)
+
+---
+
+## Common Questions to Ask
+
+- Is this a new method, bug fix, feature enhancement, or architecture question?
+- Which service scope is affected (`agent`, `task`, `config`, `core`)?
+- Are there compatibility constraints with existing API behavior?
+- Should tests and docs be updated in this change?
+
+---
+
+## Success Criteria
+
+- Follows required coding patterns (`LoggerProxy`, metrics, error handling, event constants)
+- Implements intended behavior without regressions
+- Includes/updates tests where needed
+- Passes lint/type/test checks
+- Updates docs when behavior or architecture changes
 
 ---
 
