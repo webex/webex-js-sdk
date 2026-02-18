@@ -1,7 +1,8 @@
 name: Codex review (selected base branches)
+run-name: ${{ github.actor }} is running Codex review (selected base branches)
 on:
   pull_request_target:
-    types: [opened, reopened, synchronize, ready_for_review]
+    types: [opened, reopened, labeled, synchronize, ready_for_review]
   workflow_dispatch:
 
 concurrency:
