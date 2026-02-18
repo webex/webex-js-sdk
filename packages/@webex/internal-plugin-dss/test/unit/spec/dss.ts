@@ -764,12 +764,18 @@ describe('plugin-dss', () => {
       const PHONE_1 = '+15551234567';
       const PHONE_2 = '+442012345678';
       const PHONE_3 = '+33123456789';
-      const PHONE_BATCH = ['+15551111111', '+15552222222', '+15553333333', '+15554444444', '+15555555555'];
-      
+      const PHONE_BATCH = [
+        '+15551111111',
+        '+15552222222',
+        '+15553333333',
+        '+15554444444',
+        '+15555555555',
+      ];
+
       const ENTITY_1 = {id: 'user1', displayName: 'John Doe', phoneNumbers: [PHONE_1]};
       const ENTITY_2 = {id: 'user2', displayName: 'Jane Smith', phoneNumbers: [PHONE_2]};
       const ENTITY_3 = {id: 'user3', phoneNumbers: [PHONE_3]};
-      
+
       const EMPTY_RESULT = {
         resultArray: [],
         foundArray: [],
@@ -818,7 +824,7 @@ describe('plugin-dss', () => {
 
       it('works correctly with multiple phone numbers, some found', async () => {
         const phoneNumbers = [PHONE_1, PHONE_2, PHONE_3];
-        
+
         const {requestId, promise} = await testMakeRequest({
           method: 'lookupByPhoneNumbers',
           resource: '/lookup/orgid/userOrgId/phonenumbers',
@@ -844,7 +850,7 @@ describe('plugin-dss', () => {
 
       it('works correctly with all phone numbers not found', async () => {
         const phoneNumbers = [PHONE_1, PHONE_2];
-        
+
         const {requestId, promise} = await testMakeRequest({
           method: 'lookupByPhoneNumbers',
           resource: '/lookup/orgid/userOrgId/phonenumbers',
@@ -977,7 +983,7 @@ describe('plugin-dss', () => {
 
       it('fails with timeout when request only partially resolved', async () => {
         const phoneNumbers = [PHONE_1, PHONE_2];
-        
+
         const {requestId, promise} = await testMakeRequest({
           method: 'lookupByPhoneNumbers',
           resource: '/lookup/orgid/userOrgId/phonenumbers',
