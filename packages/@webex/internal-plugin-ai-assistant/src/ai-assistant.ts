@@ -206,7 +206,7 @@ const AIAssistant = WebexPlugin.extend({
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
   _request(options: RequestOptions): Promise<RequestResponse> {
-    const {resource, params} = options;
+    const {resource, params, headers} = options;
 
     const timeout = this.config.requestTimeout;
     const requestId = options.requestId || uuid.v4();
@@ -266,6 +266,7 @@ const AIAssistant = WebexPlugin.extend({
           method: 'POST',
           contentType: 'application/json',
           body: {clientRequestId: requestId, ...params},
+          headers,
         })
         .then(({body}) => {
           resolve({...body, requestId, streamEventName});
@@ -291,6 +292,7 @@ const AIAssistant = WebexPlugin.extend({
    * @param {Object} options.locale optional locale to use for the request, defaults to 'en_US'
    * @param {string} options.requestId optional request ID to use for this request, if not provided a new UUID will be generated
    * @param {string} options.entryPoint optional entryPoint to use for this request
+   * @param {string} options.renderProtocolVersion optional render protocol version to use for this request
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    * @public
    * @memberof AIAssistant
@@ -318,6 +320,12 @@ const AIAssistant = WebexPlugin.extend({
       content.parameters = options.parameters;
     }
 
+    const headers = {};
+
+    if (options.renderProtocolVersion) {
+      headers['AI-Assistant-Render-Protocol'] = options.renderProtocolVersion;
+    }
+
     return this._request({
       resource: options.sessionId ? `sessions/${options.sessionId}/messages` : 'sessions/messages',
       params: {
@@ -328,6 +336,7 @@ const AIAssistant = WebexPlugin.extend({
         ...(options.assistant ? {assistant: options.assistant} : {}),
       },
       ...(options.requestId ? {requestId: options.requestId} : {}),
+      headers,
     });
   },
 
