@@ -36,7 +36,6 @@ import {
   DEVICES_ENDPOINT_RESOURCE,
   SPARK_USER_AGENT,
   WEBEX_WEB_CLIENT,
-  ACTIVE_MOBIUS_STORAGE_KEY,
   BASE_REG_RETRY_TIMER_VAL_IN_SEC,
   BASE_REG_TIMER_MFACTOR,
   SEC_TO_MSEC_MFACTOR,
@@ -194,7 +193,6 @@ export class Registration implements IRegistration {
       file: REGISTRATION_FILE,
     });
     this.activeMobiusUrl = url;
-    localStorage.setItem(ACTIVE_MOBIUS_STORAGE_KEY, url.replace(/\/+$/, '/'));
     this.callManager.updateActiveMobius(url);
   }
 

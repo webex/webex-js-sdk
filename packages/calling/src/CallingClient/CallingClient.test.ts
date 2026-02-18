@@ -30,7 +30,6 @@ import {
   CISCO_DEVICE_URL,
   SPARK_USER_AGENT,
   URL_ENDPOINT,
-  ACTIVE_MOBIUS_STORAGE_KEY,
 } from './constants';
 import {MOCK_MULTIPLE_SESSIONS_EVENT, MOCK_SESSION_EVENT} from './callRecordFixtures';
 import {ILine} from './line/types';
@@ -823,15 +822,14 @@ describe('CallingClient Tests', () => {
 
   describe('getDevices', () => {
     let callingClient: ICallingClient;
-    const activeMobius = 'https://mobius.test/api/v1/calling/web/';
+    const primaryMobius = 'https://mobius.primary/api/v1/calling/web/';
+    const backupMobius = 'https://mobius.backup/api/v1/calling/web/';
 
     beforeEach(async () => {
-      (global as any).localStorage = {
-        getItem: jest.fn().mockReturnValue(activeMobius),
-        setItem: jest.fn(),
-      };
-      (global as any).localStorage.setItem(ACTIVE_MOBIUS_STORAGE_KEY, activeMobius);
       callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+      callingClient.primaryMobiusUris = [primaryMobius];
+      callingClient.backupMobiusUris = [backupMobius];
+      (webex.request as jest.Mock).mockClear();
     });
 
     afterEach(() => {
@@ -860,7 +858,58 @@ describe('CallingClient Tests', () => {
       const response = await callingClient.getDevices('user-123');
 
       expect(webex.request).toHaveBeenCalledWith({
-        uri: 'https://mobius.test/api/v1/calling/web/devices?userid=user-123',
+        uri: 'https://mobius.primary/api/v1/calling/web/devices?userid=user-123',
+        method: HTTP_METHODS.GET,
+        service: ALLOWED_SERVICES.MOBIUS,
+        headers: {
+          [CISCO_DEVICE_URL]: webex.internal.device.url,
+          [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+        },
+      });
+
+      expect(response).toEqual(devices);
+    });
+
+    it('falls back to backup Mobius when primary fails', async () => {
+      const devices = [
+        {
+          deviceId: 'device-2',
+          uri: 'https://mobius.backup/api/v1/calling/web/devices/device-2',
+          status: 'ACTIVE',
+          lastSeen: '2024-01-01T00:00:00Z',
+          addresses: [],
+          clientDeviceUri: 'client-device-uri',
+        },
+      ];
+
+      const failurePayload = {
+        statusCode: 404,
+      };
+
+      const responsePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {userId: 'user-123', devices},
+      });
+
+      (webex.request as jest.Mock)
+        .mockRejectedValueOnce(failurePayload)
+        .mockResolvedValueOnce(responsePayload);
+
+      const response = await callingClient.getDevices('user-123');
+
+      const requestCalls = (webex.request as jest.Mock).mock.calls;
+      expect(requestCalls[0][0]).toEqual({
+        uri: 'https://mobius.primary/api/v1/calling/web/devices?userid=user-123',
+        method: HTTP_METHODS.GET,
+        service: ALLOWED_SERVICES.MOBIUS,
+        headers: {
+          [CISCO_DEVICE_URL]: webex.internal.device.url,
+          [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+        },
+      });
+
+      expect(requestCalls[1][0]).toEqual({
+        uri: 'https://mobius.backup/api/v1/calling/web/devices?userid=user-123',
         method: HTTP_METHODS.GET,
         service: ALLOWED_SERVICES.MOBIUS,
         headers: {
