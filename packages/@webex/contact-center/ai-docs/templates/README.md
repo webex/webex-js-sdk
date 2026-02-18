@@ -55,7 +55,11 @@ Start with: [`new-method/00-master.md`](new-method/00-master.md)
 Use: [`existing-service/bug-fix.md`](existing-service/bug-fix.md)
 
 ### Adding a Feature
-Use: [`existing-service/feature-enhancement.md`](existing-service/feature-enhancement.md)
+Start with: [`existing-service/feature-enhancement.md`](existing-service/feature-enhancement.md)
+
+**Important:** Feature template now includes a mandatory placement triage:
+- if feature fits existing service -> continue feature-enhancement flow
+- if feature needs standalone ownership -> reroute to [`new-service/00-master.md`](new-service/00-master.md)
 
 ### Creating Service Documentation
 Use: [`documentation/create-agents-md.md`](documentation/create-agents-md.md)
@@ -71,17 +75,20 @@ Use: [`documentation/create-agents-md.md`](documentation/create-agents-md.md)
 2. Route to appropriate template
        │
        ▼
-3. Follow template step-by-step
+3. If task is "Add Feature", run feature placement triage (existing service vs new service)
        │
        ▼
-4. Load relevant patterns as specified
+4. Follow template step-by-step
        │
        ▼
-5. Generate/modify code
+5. Load relevant patterns as specified
        │
        ▼
-6. Run validation checklist
+6. Generate/modify code
        │
        ▼
-7. Update documentation if needed
+7. Run validation checklist
+       │
+       ▼
+8. Update documentation if needed
 ```

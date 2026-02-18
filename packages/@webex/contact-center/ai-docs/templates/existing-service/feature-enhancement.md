@@ -4,6 +4,54 @@
 
 ---
 
+## Step 0: Feature Placement Triage (MANDATORY)
+
+Before implementation, determine where the feature should live:
+
+- **Path A:** Add to an existing service/module
+- **Path B:** Create a new service/module and then add methods there
+
+Use this triage first.
+
+### Triage Signals
+
+Prefer **existing service** when:
+- feature naturally extends current service responsibility
+- only 1-2 methods are needed in the same domain
+- existing service already owns required events/state/API integration
+
+Prefer **new service** when:
+- feature introduces a distinct domain boundary/responsibility
+- it needs its own lifecycle/dependencies/state orchestration
+- it is expected to grow into multiple related methods/classes
+- adding it to an existing service would create low cohesion or cross-domain coupling
+
+### Decision Matrix
+
+| Question | Yes -> |
+|---|---|
+| Does this feature fit the existing service responsibility? | Existing service path |
+| Does it require isolated lifecycle/state/dependency ownership? | New service path |
+| Is this likely to become a standalone API surface (3+ related methods)? | New service path |
+| Would adding to existing service reduce cohesion significantly? | New service path |
+
+### If Decision Is Unclear, Ask These Questions
+
+1. Should this feature be consumed as part of an existing service API, or as a separate API group?
+2. Do you expect this to grow into multiple related methods in upcoming iterations?
+3. Should the feature have independent ownership (state, events, dependencies) from current services?
+4. Are there existing services you explicitly want to avoid coupling this into?
+5. Is there a preferred service/module name if this becomes a new service?
+6. Any backward compatibility constraints if we add this to an existing service?
+
+### Routing Rule
+
+- If triage => **existing service**: continue with this template.
+- If triage => **new service**: switch to `../new-service/00-master.md`.
+- If still unclear: pause implementation and collect answers to the 6 questions above.
+
+---
+
 ## Pre-Enhancement Questions
 
 ### 1. Feature Definition
@@ -14,7 +62,13 @@
 
 **Use Case**: When would a developer use this?
 
-### 2. Scope
+### 2. Scope and Placement
+
+**Placement Decision**:
+- [ ] Existing service/module
+- [ ] New service/module (reroute to `../new-service/00-master.md`)
+
+**Placement Rationale**: ___
 
 **Affected Files**:
 - [ ] cc.ts (main plugin)
@@ -30,11 +84,42 @@
 **Requires New API Endpoints?**: Yes/No
 - Endpoint: ___
 
+### 4. API Contract (MANDATORY)
+
+For each new/updated API call, capture complete signature:
+
+| Field | Value |
+|---|---|
+| HTTP Method | `GET` / `POST` / `PUT` / `PATCH` / `DELETE` |
+| Endpoint | Full resource path |
+| Request Payload Type | Type name |
+| Request Payload Shape | Required/optional fields |
+| Response Type Name | Type name |
+| Response Shape | Full structure (`data`, `trackingId`, metadata) |
+| Error Shape | Expected failure payload/reason codes |
+
+If any field is unknown, ask the developer before implementation.
+
 **Requires New Events?**: Yes/No
 - Event names: ___
 
 **Requires New Types?**: Yes/No
 - Type names: ___
+
+### 5. Event Contract (MANDATORY when events are involved)
+
+If the feature listens to or emits events, capture:
+
+| Event | Direction | Listen/Emit Object | Payload Type/Shape | Emitted From | Emission Trigger |
+|---|---|---|---|---|---|
+| ExampleEvent | Incoming/Outgoing | `cc` / `task` / `taskManager` / service | `FeatureEventPayload` | `TaskManager` / `Task` / `cc.ts` | Backend event / method success |
+
+Mandatory clarifications:
+- Which object should consumers subscribe to?
+- What payload will subscribers receive?
+- If SDK emits it, from which class/file and with what data source?
+
+If unknown, stop and ask for details.
 
 ---
 

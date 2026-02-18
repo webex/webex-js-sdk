@@ -4,11 +4,25 @@
 
 ---
 
+## Entry Paths
+
+You can land on this template from:
+- direct "create new service" requests
+- "add feature" requests after placement triage determines the feature should be a standalone service/module
+
+If coming from feature triage, include:
+- feature placement rationale
+- desired service/module name
+- expected public API surface
+
+---
+
 ## Prerequisites
 
 Before starting, ensure you have:
 - Clear understanding of what the service will do
-- API endpoint documentation (if calling external APIs)
+- Complete API signature details (payload, response, HTTP method, endpoint)
+- Event contract details when feature uses events (listener object, payload shape, emission source)
 - Understanding of data structures involved
 
 ---

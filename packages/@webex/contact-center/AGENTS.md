@@ -19,7 +19,7 @@ When a developer provides a task, follow this workflow:
 
 1. **Understand the task** - Identify what type of work is needed.
 2. **Break down large or multi-part tasks** - If the prompt mixes multiple tasks (for example, "add a method" and "fix a bug"), split into smaller scoped subtasks and execute them one by one.
-3. **Route to the appropriate template** - Use task-type routing below.
+3. **Route to the appropriate template** - Use task-type routing below; for "Add Feature", run placement triage (existing service vs new service).
 4. **Load service ai-docs for the target scope** - Read that scope's `ai-docs/AGENTS.md` and `ai-docs/ARCHITECTURE.md`.
 5. **Complete mandatory template pre-steps** - Do not generate code until pre-steps are done unless explicitly waived.
 6. **Generate/fix code** - Follow established package patterns.
@@ -47,9 +47,11 @@ When a developer provides a task, follow this workflow:
 - **Follow:** Reproduce -> root cause -> fix -> regression validation.
 
 **D. Add Feature**
-- Use when enhancing existing capabilities without creating a new service.
+- Use when enhancing capabilities, then decide placement via triage:
+  - existing service/module enhancement, or
+  - new standalone service/module creation.
 - **Route to:** [`templates/existing-service/feature-enhancement.md`](templates/existing-service/feature-enhancement.md)
-- **Follow:** Requirement clarification, compatibility checks, tests, docs.
+- **Follow:** Run mandatory feature placement triage. If triage indicates a new service/module, reroute to [`templates/new-service/00-master.md`](templates/new-service/00-master.md).
 
 **E. Understand Architecture**
 - Use when the task is analysis/explanation and no immediate code generation is required.
@@ -289,8 +291,25 @@ Do not implement code until template pre-steps are complete or the developer exp
 | A. Create New Service | `templates/new-service/00-master.md` | Confirm service contract, dependencies, API surface, and tests |
 | B. Add New Method | `templates/new-method/00-master.md` | Confirm method signature, return type, call path, success/failure behavior |
 | C. Fix Bug | `templates/existing-service/bug-fix.md` | Confirm repro steps, root-cause scope, expected behavior |
-| D. Add Feature | `templates/existing-service/feature-enhancement.md` | Confirm feature requirements, backward compatibility, impacted APIs |
+| D. Add Feature | `templates/existing-service/feature-enhancement.md` | Run placement triage (existing service vs new service), then confirm requirements, compatibility, and impacted APIs; reroute to `templates/new-service/00-master.md` if needed |
 | E. Understand Architecture | Service `ai-docs` | No pre-step gate (read-only) |
+
+---
+
+### 8. Context Guardrail (APPLIES EVERYWHERE)
+
+For **every** task type (new service, new method, bug fix, feature enhancement, architecture), gather context in this order:
+
+1. Same package code under `@webex/contact-center`
+2. Same package ai-docs (`AGENTS.md`, `ARCHITECTURE.md`, templates, patterns)
+3. Same package tests
+
+Only use references from other plugins/modules/packages when the developer explicitly requests it.
+
+Mandatory behavior:
+- Prefer local package implementations/patterns before external references.
+- If required context is missing, ask targeted clarification questions instead of guessing.
+- Document what local references were used before implementation.
 
 ---
 

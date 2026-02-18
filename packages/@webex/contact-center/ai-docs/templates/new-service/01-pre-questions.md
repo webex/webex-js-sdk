@@ -16,37 +16,48 @@
 - What problem does this service solve?
 - What data does it manage?
 
-### 2. API Integration
+### 2. API Contract (MANDATORY)
+
+Capture the complete API signature for **each** API used by the new service:
+
+| API Name | HTTP Method | Endpoint | Request Payload (type + required fields) | Response (type + structure) | Error Shape |
+|---|---|---|---|---|---|
+| `getXxx` | `GET` | `/v1/...` | `GetXxxParams` (`fieldA`, `fieldB?`) | `GetXxxResponse` (`data`, `trackingId`, `meta?`) | `reason`, `reasonCode`, `trackingId` |
 
 **API Endpoint Base**: (e.g., `/v1/address-books`)
-
 **HTTP Methods Needed**:
 - [ ] GET (fetch data)
 - [ ] POST (create/search)
 - [ ] PUT (update)
 - [ ] DELETE (remove)
 
-**API Response Structure**:
-```typescript
-// Describe expected response shape
-type ExpectedResponse = {
-  data: [];
-  meta?: {
-    page: number;
-    pageSize: number;
-    totalRecords: number;
-  };
-};
-```
+Rules:
+- Use exact endpoint path and method.
+- Include payload/response type names and field structure.
+- If any entry is unknown, stop and ask the developer before coding.
 
-### 3. Dependencies
+### 3. Event Contract (MANDATORY if feature uses events)
 
-**Requires Agent Profile Data?** (e.g., `addressBookId`, `teamIds`)
-- [ ] Yes - specify which fields
+Fill only if the service listens to or emits events.
+
+| Event | Direction | Listen/Emit Object | Payload (type + structure) | SDK Emits? | Emitted From (class/file/method) | Trigger |
+|---|---|---|---|---|---|---|
+| `AgentContactReserved` | Incoming | `TaskManager` | `TaskData` | N/A | N/A | WebSocket event |
+| `task:incoming` | Outgoing | `task` | `ITask` | Yes | `Task` / state-machine action override | Transition on incoming task |
+
+Must clarify:
+- where consumers subscribe (`cc`, `task`, `taskManager`, service)
+- exact payload shape subscribers receive
+- source + trigger for every SDK-emitted event
+
+### 4. Dependencies
+
+**Requires Agent Profile Data?**
+- [ ] Yes - list exact fields (e.g., `addressBookId`, `teamIds`)
 - [ ] No
 
-**Requires WebSocket Events?**
-- [ ] Yes - specify event types
+**Requires WebSocket Event Processing?**
+- [ ] Yes - list event names and how they map to service behavior
 - [ ] No
 
 ### 4. Exposure
