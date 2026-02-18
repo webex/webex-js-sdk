@@ -349,6 +349,7 @@ describe('plugin-ai-assistant', () => {
           'decrypted-with-kms://kms-cisco.wbx2.com/keys/9b838423-f31b-49d5-a7c7-182572340a37-message_encrypted_value_for_activity'
         );
 
+        expect(triggerSpy.getCall(0).args[0]).to.deep.equal('aiassistant:activityReceived');
         expect(triggerSpy.getCall(0).args[1]).to.deep.equal(expectedResult);
       });
 

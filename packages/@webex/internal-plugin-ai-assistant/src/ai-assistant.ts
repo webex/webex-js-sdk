@@ -27,7 +27,7 @@ import {
   CONTENT_TYPES,
   CONTEXT_RESOURCE_TYPES,
   RESPONSE_NAMES,
-  AI_ASSISTANT_ACTIVITY,
+  AI_ASSISTANT_ACTIVITY_RECEIVED,
 } from './constants';
 import {
   decryptAssistantActivity,
@@ -150,16 +150,6 @@ const AIAssistant = WebexPlugin.extend({
   },
 
   /**
-   * constructs the event name based on activity id
-   * This is used by the plugin to trigger a particular activity
-   * @param {UUID} activityId the id of the response
-   * @returns {string}
-   */
-  _getActivityEventName(activityId: string) {
-    return `${AI_ASSISTANT_ACTIVITY}:${activityId}`;
-  },
-
-  /**
    * constructs the stream event name based on request id
    * This is used by the consumer to listen for the stream (i.e. the data) of a particular request
    * @param {UUID} requestId the id of the request
@@ -186,7 +176,7 @@ const AIAssistant = WebexPlugin.extend({
   async _handleAssistantActivity(data) {
     await decryptAssistantActivity(data.activity, this.webex);
 
-    this.trigger(this._getActivityEventName(data.responseId), data);
+    this.trigger(AI_ASSISTANT_ACTIVITY_RECEIVED, data);
   },
 
   /**

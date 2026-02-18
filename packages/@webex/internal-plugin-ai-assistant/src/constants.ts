@@ -4,7 +4,7 @@ export const ASSISTANT_API_RESPONSE_EVENT = 'event:assistant-api.response';
 export const ASSISTANT_API_ACTIVITY = 'assistant-api.activity';
 export const AI_ASSISTANT_SERVICE_NAME = 'assistant-api';
 export const AI_ASSISTANT_RESULT = 'aiassistant:result';
-export const AI_ASSISTANT_ACTIVITY = 'aiassistant:activity';
+export const AI_ASSISTANT_ACTIVITY_RECEIVED = 'aiassistant:activityReceived';
 export const AI_ASSISTANT_STREAM = 'aiassistant:stream';
 
 export enum AI_ASSISTANT_ERRORS {
