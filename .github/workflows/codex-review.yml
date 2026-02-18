@@ -1,8 +1,13 @@
 name: Codex review (selected base branches)
-
 on:
   pull_request_target:
     types: [opened, reopened, synchronize, ready_for_review]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 
 permissions:
   pull-requests: write
