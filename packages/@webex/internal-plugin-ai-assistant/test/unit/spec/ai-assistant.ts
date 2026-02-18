@@ -84,7 +84,7 @@ describe('plugin-ai-assistant', () => {
       it('registers correctly', async () => {
         await webex.internal.aiAssistant.register();
 
-        assert.callCount(webex.internal.mercury.on, 1);
+        assert.callCount(webex.internal.mercury.on, 2);
 
         const firstCallArgs = webex.internal.mercury.on.getCall(0).args;
         expect(firstCallArgs[0]).to.equal('event:assistant-api.response');
