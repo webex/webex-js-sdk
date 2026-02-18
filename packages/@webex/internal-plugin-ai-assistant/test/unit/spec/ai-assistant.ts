@@ -86,11 +86,13 @@ describe('plugin-ai-assistant', () => {
 
         assert.callCount(webex.internal.mercury.on, 1);
 
-        const callArgs = webex.internal.mercury.on.getCall(0).args;
+        const firstCallArgs = webex.internal.mercury.on.getCall(0).args;
+        expect(firstCallArgs[0]).to.equal('event:assistant-api.response');
+        expect(firstCallArgs[1]).to.be.a('function');
 
-        expect(callArgs[0]).to.equal('event:assistant-api.response');
-        expect(callArgs[1]).to.equal('assistant-api.activity');
-        expect(callArgs[2]).to.be.a('function');
+        const secondCallArgs = webex.internal.mercury.on.getCall(1).args;
+        expect(secondCallArgs[0]).to.equal('assistant-api.activity');
+        expect(secondCallArgs[1]).to.be.a('function');
 
         assert.equal(webex.internal.aiAssistant.registered, true);
       });
