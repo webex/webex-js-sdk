@@ -161,7 +161,27 @@ export default class Socket extends EventEmitter {
         resolve(event);
       };
 
-      socket.close(options.code, options.reason);
+      // If socket is still connecting, manually trigger close handler with desired code
+      // because calling close() on a CONNECTING socket may not preserve custom codes
+      if (socket.readyState === 0) {
+        this.logger.info(
+          `socket,${this._domain}: socket still connecting, triggering close manually`
+        );
+        clearTimeout(closeTimer);
+        const closeEvent = {code: options.code, reason: options.reason};
+        this.onclose(closeEvent);
+        resolve(closeEvent);
+        try {
+          socket.close(options.code, options.reason);
+        } catch (error) {
+          this.logger.info(
+            `socket,${this._domain}: error while closing CONNECTING socket, likely due to browser incompatibility with custom close codes`,
+            error
+          );
+        }
+      } else {
+        socket.close(options.code, options.reason);
+      }
     });
   }
 

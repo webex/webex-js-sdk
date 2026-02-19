@@ -4,10 +4,19 @@
 import {WebexPlugin, config} from '@webex/webex-core';
 import uuid from 'uuid';
 import {get} from 'lodash';
-import {_ID_, HEADERS, HTTP_VERBS, MEETINGS, SELF_ROLES, SHARE_STATUS} from '../constants';
+import {
+  _ID_,
+  HEADERS,
+  HTTP_VERBS,
+  MEETINGS,
+  SELF_ROLES,
+  SHARE_STATUS,
+  DEFAULT_LARGE_SCALE_WEBINAR_ATTENDEE_SEARCH_LIMIT,
+} from '../constants';
 
 import WebinarCollection from './collection';
 import LoggerProxy from '../common/logs/logger-proxy';
+import {sanitizeParams} from './utils';
 
 /**
  * @class Webinar
@@ -294,6 +303,40 @@ const Webinar = WebexPlugin.extend({
       },
     }).catch((error) => {
       LoggerProxy.logger.error('Meeting:webinar#expelWebcastAttendee failed', error);
+      throw error;
+    });
+  },
+
+  /**
+   * search large scale webinar attendees
+   * @param {object} payload
+   * @param {string} payload.queryString
+   * @param {number} payload.limit
+   * @param {string} payload.next
+   * @returns {Promise}
+   */
+  async searchLargeScaleWebinarAttendees(payload) {
+    const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
+    const rawParams = {
+      search_text: payload?.queryString,
+      limit: payload?.limit ?? DEFAULT_LARGE_SCALE_WEBINAR_ATTENDEE_SEARCH_LIMIT,
+      next: payload?.next,
+    };
+    const attendeeSearchUrl = meeting?.locusInfo?.links?.resources?.attendeeSearch?.url;
+    if (!attendeeSearchUrl) {
+      LoggerProxy.logger.error(`Meeting:webinar5k#searchLargeScaleWebinarAttendees failed`);
+      throw new Error('Meeting:webinar5k#Attendee search url is not available');
+    }
+
+    return this.request({
+      method: HTTP_VERBS.GET,
+      uri: `${attendeeSearchUrl}?${new URLSearchParams(sanitizeParams(rawParams)).toString()}`,
+      headers: {
+        authorization: await this.webex.credentials.getUserToken(),
+        trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
+      },
+    }).catch((error) => {
+      LoggerProxy.logger.error('Meeting:webinar5k#searchLargeScaleWebinarAttendees failed', error);
       throw error;
     });
   },
