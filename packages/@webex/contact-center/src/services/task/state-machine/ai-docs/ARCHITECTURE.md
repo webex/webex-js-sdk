@@ -1,6 +1,7 @@
 # Task State Machine - Architecture
 
-> **Purpose**: Technical reference for the XState task state machine used by `Task` to drive lifecycle transitions and UI control behavior.
+## Purpose
+Technical reference for the XState task state machine used by `Task` to drive state transitions and UI control behavior. It orchestrates state transitions, guards, and actions for task lifecycle management.
 
 ---
 
@@ -14,24 +15,6 @@ The task state machine is built with `xstate` and organized into:
 - **Event/context contracts** (`types.ts`)
 
 It is instantiated by `Task` and receives mapped backend/user events through `sendStateMachineEvent(...)`.
-
----
-
-## Directory Structure
-
-```text
-state-machine/
-├── TaskStateMachine.ts      # State graph and transition configuration
-├── actions.ts               # Assign actions and emitter placeholders
-├── guards.ts                # Pure guard predicates
-├── uiControlsComputer.ts    # Voice/Digital UI control computation
-├── constants.ts             # TaskState, TaskEvent, machine constants
-├── types.ts                 # Context and typed event payload map
-├── index.ts                 # Public exports
-└── ai-docs/
-    ├── AGENTS.md            # AI coding guide
-    └── ARCHITECTURE.md      # This file
-```
 
 ---
 
@@ -78,53 +61,115 @@ Events are strongly typed via `TaskEventPayloadMap` and include:
 
 ---
 
-## Guard Design
+## Task State Machine States
 
-`guards.ts` centralizes transition predicates:
-- hydrate restoration guards (`isInteractionHeld`, `isInteractionConnected`, etc.)
-- ownership and wrap-up decisions (`shouldWrapUpForThisAgent`)
-- conference downgrade checks (`shouldDowngradeConferenceToConnected`)
-- consult and participant-leave ownership checks
+| State | Meaning |
+|---|---|
+| `IDLE` | No active task in the machine. |
+| `OFFERED` | Task offered to agent; awaiting assignment or response. |
+| `CONNECTED` | Task is active and connected. |
+| `HOLD_INITIATING` | Hold requested; awaiting backend confirmation. |
+| `HELD` | Task is on hold. Success events from contact center backend received |
+| `RESUME_INITIATING` | Resume requested; awaiting backend confirmation. |
+| `CONSULT_INITIATING` | Consult requested; awaiting backend confirmation. |
+| `CONSULTING` | Consult leg is active. |
+| `CONF_INITIATING` | Conference merge requested; awaiting confirmation. |
+| `CONFERENCING` | Conference is active. |
+| `WRAPPING_UP` | Task wrapup in progress for this agent. |
+| `COMPLETED` | Wrapup complete. |
+| `TERMINATED` | Task ended without wrapup. |
 
-Design constraints:
-- guards are pure
-- no context mutation
-- resilient to partial/missing `taskData`
+## Task State Machine Events
+
+| Event | Meaning |
+|---|---|
+| `TASK_INCOMING` | New task reserved for agent (entry into `OFFERED`). |
+| `TASK_OFFERED` | Offer payload refresh for an already offered task. |
+| `OFFER_CONSULT` | Consult offer received for this agent. |
+| `HYDRATE` | Restore task state from backend snapshot. |
+| `ASSIGN` | Task assigned to agent (enters `CONNECTED`). |
+| `HOLD_INITIATED` | Agent requested hold (API action). |
+| `HOLD_SUCCESS` | Backend confirmed hold. |
+| `HOLD_FAILED` | Backend rejected hold. |
+| `UNHOLD_INITIATED` | Agent requested resume (API action). |
+| `UNHOLD_SUCCESS` | Backend confirmed resume. |
+| `UNHOLD_FAILED` | Backend rejected resume. |
+| `CONSULT` | Agent requested consult (API action). |
+| `CONSULT_SUCCESS` | Backend confirmed consult start. |
+| `CONSULT_CREATED` | Consult leg created; context update only. |
+| `CONSULTING_ACTIVE` | Consult leg is active (joined). |
+| `CONSULT_END` | Consult ended. |
+| `CONSULT_FAILED` | Consult request failed. |
+| `MERGE_TO_CONFERENCE` | Request to merge consult into conference. |
+| `CONFERENCE_START` | Conference established. |
+| `CONFERENCE_FAILED` | Conference merge failed. |
+| `CONFERENCE_END` | Conference ended. |
+| `TRANSFER_CONFERENCE` | Request to transfer conference. |
+| `TRANSFER_CONFERENCE_SUCCESS` | Conference transfer succeeded. |
+| `TRANSFER_CONFERENCE_FAILED` | Conference transfer failed. |
+| `PARTICIPANT_LEAVE` | Conference participant left. |
+| `EXIT_CONFERENCE` | Agent requested to exit conference. |
+| `EXIT_CONFERENCE_SUCCESS` | Exit conference succeeded. |
+| `EXIT_CONFERENCE_FAILED` | Exit conference failed. |
+| `RECORDING_STARTED` | Recording started (state update only). |
+| `PAUSE_RECORDING` | Recording paused (state update only). |
+| `RESUME_RECORDING` | Recording resumed (state update only). |
+| `TRANSFER_SUCCESS` | Transfer succeeded. |
+| `TRANSFER_FAILED` | Transfer failed. |
+| `TASK_WRAPUP` | Wrapup required for this task. |
+| `WRAPUP_COMPLETE` | Wrapup completed. |
+| `CONTACT_ENDED` | Contact ended; may wrap or terminate by guard. |
+| `RONA` | Offer timed out (ring-no-answer). |
+| `ASSIGN_FAILED` | Assign attempt failed. |
+| `INVITE_FAILED` | Invite to task failed. |
+| `OUTBOUND_FAILED` | Outbound initiation failed. |
+| `SWITCH_TO_MAIN_CALL` | Switch focus to main call. |
+| `SWITCH_TO_CONSULT` | Switch focus to consult call. |
+| `ACCEPT` | Accept incoming WebRTC task. |
+| `DECLINE` | Decline incoming WebRTC task. |
+| `END` | End task (WebRTC). |
+| `CTQ_CANCEL` | Cancel consult-to-queue request. |
+| `CTQ_CANCEL_FAILED` | Consult-to-queue cancel failed. |
 
 ---
 
-## Action Design
+## Single Transition Flow
+The flow below shows a single transition in the requested form:
 
-`actions.ts` contains:
-- context synchronization (`updateTaskData`, `setHoldState`, consult flags)
-- lifecycle mutations (`clearConsultState`, `markEnded`)
-- integration hooks (`requestAutoAnswer`, `requestCleanup`, emitter placeholders)
+```mermaid
+flowchart LR
+  A[User Action/CC Event Mapping] --> B[State Machine Event Trigger]
+  B --> C{Check against Current State: Valid Transition?}
+  C -- No --> X[Ignore/No-op]
+  C -- Yes --> D[StateMachine evaluates guards]
+  D -- No --> Y[Blocked by Guard]
+  D -- Yes --> E[Execute Associated Actions]
+  E --> F[Context updated]
+  F --> G[UI Controls Recomputed]
+  G --> H[Transition to Target State]
+```
 
-Emitter actions are intentionally no-op defaults and overridden by `Task` to bridge machine transitions to SDK events.
-
----
-
-## UI Controls Computation
-
-`uiControlsComputer.ts` computes `TaskUIControls` from:
-- current machine state
-- current context
-- channel type (voice vs digital)
-- call/participant metadata from `taskData`
-- config flags (`isEndTaskEnabled`, recording toggles, voice variant)
-
-This keeps all control enablement/visibility logic centralized and testable.
-
----
-
-## Extension Guidelines
-
-When adding behavior:
-1. Add constants (`TaskEvent`/`TaskState`) only when needed
-2. Extend payload type map before wiring transitions
-3. Keep transition conditions in guards, not inline
-4. Keep context mutations in assign actions
-5. Update machine-level tests and Task integration tests
+### Example: Hold Flow (Concrete)
+```mermaid
+flowchart LR
+  A[User invoked hold API] --> B[Event Trigger: HOLD_INITIATED]
+  B --> C{State = CONNECTED?}
+  C -- No --> X[Ignore/No-op]
+  C -- Yes --> D[Guards: none]
+  D -- Yes --> E[Actions: setHoldInitiated + updateTaskData]
+  E --> F[Context updated]
+  F --> G[UI controls recomputed]
+  G --> H[Transition: CONNECTED -> HOLD_INITIATING]
+  H --> I[CC Event: AGENT_CONTACT_HELD]
+  I --> J[Mapped: HOLD_SUCCESS]
+  J --> K{State = HOLD_INITIATING?}
+  K -- No --> X
+  K -- Yes --> L[Guards: none]
+  L -- Yes --> M[Actions: setHoldSuccess + updateTaskData]
+  M --> N[Context updated]
+  N --> O[UI controls recomputed]
+  O --> P[Transition: HOLD_INITIATING -> HELD]
+```
 
 ---
 

@@ -1,18 +1,18 @@
 # Task State Machine - AI Agent Guide
 
-> **Purpose**: Guide AI agents working on task lifecycle transitions, guard logic, and UI control computation in the XState-based task state machine.
+## Purpose
+Guide AI agents working on task lifecycle transitions, guard logic, executable actions and UI control computation in the XState-based task state machine.
 
 ---
 
 ## Scope
 
 This guide is for internal state management for the task lifecycle in:
-- `TaskStateMachine.ts`
-- `actions.ts`
-- `guards.ts`
-- `uiControlsComputer.ts`
-- `types.ts`
-- `constants.ts`
+- State machine configuration: `TaskStateMachine.ts`
+- Actions and context mutation: `actions.ts`
+- Guard logic: `guards.ts`
+- UI control computation: `uiControlsComputer.ts`
+- Event types and payloads: `constants.ts`, `types.ts`
 
 Use this doc when implementing:
 - new state transitions
@@ -22,51 +22,153 @@ Use this doc when implementing:
 
 ---
 
-## Quick Start (Internal)
+## File Structure
 
-```typescript
-import {createTaskStateMachine, TaskEvent} from '../state-machine';
-import {createActor} from 'xstate';
-
-const machine = createTaskStateMachine(uiControlConfig, {
-  actions: {
-    emitTaskIncoming: ({event}) => {
-      // Bridge state-machine event to Task emitter
-      if (event.type === TaskEvent.TASK_INCOMING) {
-        task.emit('task:incoming', task);
-      }
-    },
-  },
-});
-
-const actor = createActor(machine);
-actor.start();
-actor.send({type: TaskEvent.TASK_INCOMING, taskData});
+```text
+state-machine/
+├── TaskStateMachine.ts      # State graph and transition configuration
+├── actions.ts               # Assign actions and emitter placeholders
+├── guards.ts                # Pure guard predicates
+├── uiControlsComputer.ts    # Voice/Digital UI control computation
+├── constants.ts             # TaskState, TaskEvent, machine constants
+├── types.ts                 # Context and typed event payload map
+├── index.ts                 # Public exports
+└── ai-docs/
+    ├── AGENTS.md            # AI coding guide
+    └── ARCHITECTURE.md      # This file
 ```
 
 ---
 
-## Key Concepts
-
-- **State source of truth**: `TaskState` enum in `constants.ts`
-- **Event contract**: `TaskEvent` + `TaskEventPayload` in `constants.ts` and `types.ts`
-- **Transition graph**: `getTaskStateMachineConfig()` in `TaskStateMachine.ts`
-- **Pure transition checks**: all reusable guards in `guards.ts`
-- **Context mutation logic**: deterministic actions in `actions.ts`
-- **UI behavior**: computed from `(TaskState, TaskContext)` in `uiControlsComputer.ts`
+## Source of Truth
+- Task lifecycle state machine: `TaskStateMachine.ts`
+- State machine types/events: `constants.ts`, `types.ts`
+- Guard logic: `guards.ts`
+- Actions and context mutation: `actions.ts`
+- UI control computation: `uiControlsComputer.ts`
 
 ---
 
-## File Responsibilities
+## Key Capabilities
 
-| File | Responsibility |
-|------|----------------|
-| `TaskStateMachine.ts` | States, transitions, root event handlers |
-| `actions.ts` | Context updates + emitter placeholders |
-| `guards.ts` | Transition eligibility logic |
-| `uiControlsComputer.ts` | Dynamic task control availability |
-| `types.ts` | Typed event payload map + context schema |
-| `constants.ts` | States/events/constants for state machine |
+- **State Graph and Transition Rules**: `TaskStateMachine.ts` defines all states, transition tables, and event handlers that drive the task lifecycle.
+- **Deterministic Context Updates**: `actions.ts` implements XState actions for task context mutation and provides emitter placeholders that `Task` overrides to surface SDK events.
+- **Transition Eligibility**: `guards.ts` contains pure predicates that gate transitions based on current context, task data, and backend state.
+- **UI Controls Computation**: `uiControlsComputer.ts` derives `TaskUIControls` from state and context for voice/digital channels, keeping UI enablement centralized.
+- **Typed Event Contracts**: `constants.ts` and `types.ts` define `TaskState`, `TaskEvent`, and the `TaskEventPayloadMap` so transitions and payloads stay type-safe.
+- **Public Exports**: `index.ts` exposes the state machine factory, event enums, and types for consumption by the task layer.
+
+---
+
+## State Machine Overview
+**Transition Source**: `getTaskStateMachineConfig()` in `TaskStateMachine.ts`
+
+API-driven transition from `voice/Voice.ts`:
+```typescript
+// task.hold() / task.resume() -> holdResume()
+stateMachineService.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId});
+// ... backend call succeeds
+stateMachineService.send({type: TaskEvent.HOLD_SUCCESS, mediaResourceId});
+```
+
+Backend-driven transition from `TaskManager.ts`:
+```typescript
+const eventPayload = TaskManager.mapEventToTaskStateMachineEvent(
+  CC_EVENTS.AGENT_CONTACT_RESERVED,
+  taskData
+);
+if (eventPayload) {
+  task.sendStateMachineEvent(eventPayload);
+}
+```
+---
+
+### Transition Contract
+Backend CC events from WebSocket are mapped to `TaskEvent` in `TaskManager.mapEventToTaskStateMachineEvent`.
+The state machine consumes only `TaskEvent` and never raw CC events.
+
+
+### Payload Contract
+Source of truth: `TaskEventPayloadMap` in `types.ts`.
+All new events must add a typed payload entry in `TaskEventPayloadMap`.
+
+---
+
+## Non-goals
+- API contracts for external services.
+- Mercury or CC WebSocket protocols (see `TaskManager.ts` mapping).
+
+
+## Task State Machine Guards
+Guard functions determine if a state transition is allowed within the state machine. These functions validate the current context before allowing transitions.
+
+Guards are organized by category:
+ - Helper Functions - Extract data from events/context
+ - Hydrate Guards - For state restoration on page refresh
+ - Conference Guards - Conference state checks
+ - Customer Guards - Customer presence checks
+ - Consult Guards - Consult flow checks
+ - Wrapup Guards - End-of-call flow checks
+ - Server State Guards - Check backend-reported state
+ - Recording Guards - Recording state checks
+ 
+### Principles
+- Guards must be pure and must return boolean only
+- No mutation or side-effects.
+- Reuse helper accessors (e.g., `getTaskDataFromEvent`).
+
+### Key Guards (source: `guards.ts`)
+- `isInteractionTerminated`
+- `isInteractionConsulting`
+- `isInteractionHeld`
+- `isInteractionConnected`
+- `isConferencingByParticipants`
+- `shouldWrapUpForThisAgent`
+- `getIsCustomerInCall` / `getIsConferenceInProgress` (via `TaskUtils`)
+
+---
+
+## Task State Machine Actions
+Action implementations to be executed during state transitions. 
+Actions contain:
+- Context synchronization (`updateTaskData`, `setHoldState`, consult flags)
+- Lifecycle mutations (`clearConsultState`, `markEnded`)
+- Integration hooks (`requestAutoAnswer`, `requestCleanup`, emitter placeholders)
+
+### Principles
+- Context mutations should be centralized in `assign(...)` actions
+- Emitter actions intentionally no-op defaults and overridden by `Task` to bridge machine transitions to SDK events.
+- Deterministic updates from `taskData`.
+
+### Key Actions (source: `actions.ts`)
+- `updateTaskData`
+- `syncTaskDataFromEvent`
+- `markEnded`
+- `updateRecordingState`
+- `emitTaskIncoming`, `emitTaskHydrate`, etc.
+
+---
+
+## UI Controls
+`uiControlsComputer.ts` computes `TaskUIControls` from:
+- current machine state
+- current context
+- channel type (voice vs digital)
+- call/participant metadata from `taskData`
+- config flags (`isEndTaskEnabled`, recording toggles, voice variant)
+
+This keeps all control enablement/visibility logic centralized and testable.
+
+### Source of truth
+`computeUIControls()` in `uiControlsComputer.ts`.
+
+### Inputs
+- `TaskState`
+- `TaskContext` (including `taskData`)
+- `UIControlConfig` (channel type, agentId, voice variant, recording flags)
+
+### Output
+- `TaskUIControls` with per-control visibility and enabled state.
 
 ---
 
@@ -97,39 +199,17 @@ actor.send({type: TaskEvent.TASK_INCOMING, taskData});
 
 ---
 
-## Mandatory Patterns
-
-### Keep Guards Pure
-
-- Guards must return boolean only
-- Do not mutate context in guards
-- Reuse helpers (`getTaskDataFromEvent`, ownership checks, conference checks)
-
-### Keep Actions Deterministic
-
-- Context mutations should be centralized in `assign(...)` actions
-- Event emitter actions remain pluggable placeholders and are overridden by `Task`
-
-### Keep Event Types Strict
-
-- Never use untyped payload shapes
-- Every new event needs a `TaskEventPayloadMap` entry
-
-### Keep State/Backend Consistency
-
-- Respect hydrated backend state (`HYDRATE`) for reconnect/refresh recovery
-- Prefer event `taskData` when available; fall back to context only when necessary
-
----
-
 ## Testing Checklist
 
 - [ ] Added event is defined in `TaskEvent`
 - [ ] Added payload is typed in `TaskEventPayloadMap`
-- [ ] Transition paths validated for success and failure
-- [ ] Guard edge cases covered (missing taskData, ownership mismatch, consult/conference race)
-- [ ] UI controls validated for voice and digital where applicable
+- [ ] Add transition(s) in `TaskStateMachine.ts` and validate it for success and failure
+- [ ] Update mapping in `TaskManager.mapEventToTaskStateMachineEvent`
+- [ ] Add/update guards and actions
+- [ ] Update UI controls if state impacts UX and validate them for voice and digital where applicable
 - [ ] Reconnect/hydrate behavior validated
+- [ ] Add/adjust unit tests.
+- [ ] Update diagrams + mapping tables in `ARCHITECTURE.md`.
 
 ---
 

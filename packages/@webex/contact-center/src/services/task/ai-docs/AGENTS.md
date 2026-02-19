@@ -1,17 +1,150 @@
 # Task Service - AI Agent Guide
 
-> **Purpose**: Manage task lifecycle including inbound/outbound calls, hold/resume, consult, transfer, conference, and wrapup.
+## Purpose
+Manage task lifecycle including inbound/outbound calls, hold/resume, consult, transfer, conference, and wrapup.
+
+---
+
+## File Structure
+
+```
+services/task/
+├── Task.ts                # Task class (ITask implementation)
+├── TaskManager.ts         # Singleton task manager
+├── contact.ts             # Contact operations (AQM)
+├── dialer.ts              # Outbound dialing (AQM)
+├── AutoWrapup.ts          # Auto wrapup handler
+├── TaskUtils.ts           # Helper functions
+├── types.ts               # Task types and events
+├── constants.ts           # Task constants
+├── TaskFactory.ts         # Task factory
+├── digital/               # Digital task implementations
+│   └── Digital.ts
+├── voice/                 # Voice task implementations
+│   ├── Voice.ts
+│   └── WebRTC.ts
+├── state-machine/         # XState task lifecycle engine
+│   ├── TaskStateMachine.ts
+│   ├── actions.ts
+│   ├── guards.ts
+│   ├── uiControlsComputer.ts
+│   ├── constants.ts
+│   ├── types.ts
+│   └── ai-docs/
+│       ├── AGENTS.md
+│       └── ARCHITECTURE.md
+└── ai-docs/
+    ├── AGENTS.md          # Usage documentation
+    ├── ARCHITECTURE.md    # Task service architecture
+    └── SPEC.md            # Task service specification
+```
+
+## Source of Truth
+- Task creation: `TaskFactory.ts`
+- Task APIs and behavior: `Task.ts`, `voice/Voice.ts`, `voice/WebRTC.ts`, `digital/Digital.ts`
+- Task management: `TaskManager.ts`
+- Shared task types: `types.ts`, `constants.ts`
+- Task lifecycle state machine: `state-machine/TaskStateMachine.ts`
+- State machine types/events: `state-machine/constants.ts`, `state-machine/types.ts`
+
+## Public Types and Constants
+- `TASK_EVENTS` enum (`types.ts`)
+- `TaskData`, `TaskId`, `TaskResponse`, `TaskUIControls` (`types.ts`)
+- `ITask`, `IVoice`, `IWebRTC`, `IDigital` (`types.ts`)
+- `MEDIA_CHANNEL`, `TASK_CHANNEL_TYPE`, `VOICE_VARIANT` (`types.ts`)
+- State machine: `TaskState`, `TaskEvent` (`state-machine/constants.ts`)
+
+## Key Capabilities
+- **Task Creation by Channel**: `TaskFactory.ts` chooses `WebRTC`, `Voice`, or `Digital` based on `MEDIA_CHANNEL` and `webCallingService.loginOption`, so each task class exposes the correct capabilities for the media type.
+- **Task Orchestration**: `TaskManager.ts` owns task lifecycle wiring—initializes listeners, receives task events, creates/updates tasks, emits SDK events, and exposes task collections for consumers.
+- **Event Emission and Public APIs**: Task objects register listeners, update context, emit SDK events (e.g., `task:*`), and expose public methods that delegate to `contact.ts` for call control and to the state machine for transition validation.
+- **AQM Contact Operations**: `contact.ts` builds the AQM request surface for call control (accept, hold, consult, transfer, wrapup, end) and is the primary bridge from `Task`/`Voice`/`WebRTC`/`Digital` methods to WCC task APIs.
+- **Outbound Dialing**: `dialer.ts` exposes the AQM dialer request (`startOutdial`) used by `cc.startOutdial()` to create outbound voice tasks with success/failure event mapping.
+- **State Machine Driven UI Controls**: The `state-machine/` folder provides the XState engine (`TaskStateMachine.ts`) plus `actions.ts`, `guards.ts`, `uiControlsComputer.ts`, `constants.ts`, and `types.ts` to compute valid transitions and UI control state. Capability-level details live in `state-machine/ai-docs/AGENTS.md`.
+
+---
+
+## Task Layer Overview
+
+This section describes how the task layer constructs tasks, initializes the state machine, and wires AQM calls to task methods. It provides context for how the state machine fits into the end-to-end flow.
+
+### Task Class Hierarchy
+- **Hierarchy**: `Task` (base) → `Voice` → `WebRTC`; `Digital` extends `Task`.
+- **`Task` (base)**: Holds task data, emits SDK events, and provides default (unsupported) implementations for call control APIs.
+- **`Voice`**: Adds hold/resume and consult-related capabilities for telephony tasks.
+- **`WebRTC`**: Overrides `accept/decline` for WebRTC calls and hooks media events.
+- **`Digital`**: Implements `accept` and refreshes digital task data/UI controls.
+
+### Task Creation and State Machine Initialization
+- **Factory**: `TaskFactory.ts` selects `WebRTC`, `Voice`, or `Digital` based on `MEDIA_CHANNEL` and `webCallingService.loginOption`.
+- **Initialization**: `Task.ts` creates a state machine actor using `createTaskStateMachine(...)`, wires action overrides (emitters), and starts the actor.
+- **Task State**: The task holds `stateMachineService` and uses it to send `TaskEvent` payloads.
+
+Example (state machine init inside a task object):
+```typescript
+const machine = createTaskStateMachine(uiControlConfig, {
+  actions: {
+    emitTaskIncoming: ({event}) => task.emit('task:incoming', task),
+  },
+});
+const actor = createActor(machine);
+actor.start();
+```
+
+### TaskManager Lifecycle Orchestration
+- **Listener Setup**: Registers WebSocket listeners to receive CC events and map them to `TaskEvent` payloads.
+- **Task Registry**: Creates tasks via `TaskFactory`, stores them in the task collection, and updates task data on incoming events.
+- **Event Emission**: Re-emits `task:*` events on the task or `cc` object for SDK consumers.
+- **Hydration/Recovery**: Handles state updates and transitions during reconnect/hydrate flows.
+
+Example (backend event to state machine):
+```typescript
+const payload = TaskManager.mapEventToTaskStateMachineEvent(event, taskData);
+if (payload) {
+  task.sendStateMachineEvent(payload);
+}
+```
+
+### AQM Call Control Integration
+- **`contact.ts`**: Builds the AQM request surface for call control (hold, consult, transfer, wrapup, end). Task methods delegate to these calls, then drive state transitions based on success/failure events.
+- **`dialer.ts`**: Exposes the `startOutdial` AQM request used by `cc.startOutdial()` to create outbound tasks.
+
+Example (task method delegating to AQM):
+```typescript
+// task.hold() -> contact.hold(...) -> stateMachine events on response
+await contact.hold({interactionId});
+stateMachineService.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId});
+```
+
+### Sequential Flow (End-to-End)
+1. **WebSocket event arrives** → `TaskManager` maps CC event to `TaskEvent`.
+2. **Task creation** (if new) → `TaskFactory` builds `Voice`/`WebRTC`/`Digital`.
+3. **State machine actor starts** → `Task` wires emitters + UI control updates.
+4. **Task method called** (e.g., hold/transfer) → delegates to `contact.ts` or `dialer.ts`.
+5. **State transitions** → guards/actions update context and emit `task:*` events.
+6. **SDK consumers update UI** → `TaskUIControls` reflect the latest state.
+
+```mermaid
+flowchart TD
+  A[WebSocket event arrives] --> B[TaskManager maps CC event to TaskEvent]
+  B --> C{Task exists?}
+  C -- No --> D[TaskFactory creates Voice/WebRTC/Digital]
+  C -- Yes --> E[Use existing task]
+  D --> F[Task initializes state machine actor]
+  E --> F
+  F --> G[Task method called (hold/transfer/etc)]
+  G --> H[contact.ts or dialer.ts API call]
+  H --> I[State machine transition]
+  I --> J[Actions + guards update context]
+  J --> K[Emit task:* events]
+  K --> L[TaskUIControls updated for SDK UI]
+```
 
 ---
 
 ## Quick Start
 
 ```typescript
-const cc = webex.cc;
-await cc.register();
-await cc.stationLogin({ teamId: 'team-123', loginOption: 'BROWSER' });
-await cc.setAgentState({ state: 'Available', auxCodeId: '0' });
-
 // Listen for incoming tasks
 cc.on('task:incoming', async (task) => {
   console.log('Incoming task:', task.data.interactionId);
@@ -29,51 +162,9 @@ cc.on('task:incoming', async (task) => {
 
 ---
 
-## Key Capabilities
-
-- **Inbound Tasks**: Handle incoming calls/chats via events
-- **Outbound Calls**: Initiate outbound calls via `cc.startOutdial()`
-- **Hold/Resume**: Put tasks on hold and resume
-- **Transfer**: Blind transfer, consult transfer, vteam transfer
-- **Conference**: Multi-party conferencing
-- **Wrapup**: Complete tasks with wrapup codes
-- **State Machine Driven UI Controls**: Task controls and transitions are governed by the XState state machine
-
----
-
-## Task Object
-
-When a task arrives, you receive an `ITask` object with:
-
-### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `data.interactionId` | string | Unique task identifier |
-| `data.mediaType` | string | 'telephony', 'chat', 'email' |
-| `data.state` | string | Current task state |
-| `data.isOnHold` | boolean | Whether task is on hold |
-| `data.wrapUpRequired` | boolean | Whether wrapup is needed |
-
-### Methods
-
-| Method | Description |
-|--------|-------------|
-| `accept()` | Accept incoming task |
-| `hold()` | Put task on hold |
-| `unHold()` | Resume from hold |
-| `end()` | End the task |
-| `wrapup(params)` | Complete task with wrapup code |
-| `consult(params)` | Start consultation |
-| `blindTransfer(params)` | Transfer without consultation |
-| `consultTransfer(params)` | Transfer after consultation |
-| `cancelTask()` | Cancel/decline the task |
-
----
-
 ## Task Events
 
-### Emitted on `cc` (ContactCenter)
+### Emitted on `cc` object(ContactCenter)
 
 | Event | When Emitted |
 |-------|--------------|
@@ -81,7 +172,7 @@ When a task arrives, you receive an `ITask` object with:
 | `task:hydrate` | Task data updated |
 | `task:merged` | Tasks merged (EPDN transfer) |
 
-### Emitted on `task` (ITask object)
+### Emitted on `task` object(ITask)
 
 | Event | When Emitted |
 |-------|--------------|
@@ -267,18 +358,6 @@ End consultation without transfer.
 | `sms` | SMS messages |
 | `facebook` | Facebook Messenger |
 | `whatsapp` | WhatsApp messages |
-
----
-
-## Task States
-
-| State | Description |
-|-------|-------------|
-| `new` | Task offered, not yet accepted |
-| `connected` | Task active with agent |
-| `hold` | Task on hold |
-| `wrapup` | Task in wrapup phase |
-| `ended` | Task completed |
 
 ---
 

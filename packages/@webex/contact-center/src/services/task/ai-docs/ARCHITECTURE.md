@@ -18,36 +18,81 @@
 
 ---
 
-## File Structure
+## Task Module Design Overview
 
-```
-services/task/
-├── index.ts              # Task class (ITask implementation)
-├── TaskManager.ts        # Singleton task manager
-├── contact.ts            # Contact operations (AQM)
-├── dialer.ts             # Outbound dialing (AQM)
-├── AutoWrapup.ts         # Auto wrapup handler
-├── TaskUtils.ts          # Helper functions
-├── types.ts              # Task types and events
-├── constants.ts          # Task constants
-├── state-machine/        # XState task lifecycle engine
-│   ├── TaskStateMachine.ts
-│   ├── actions.ts
-│   ├── guards.ts
-│   ├── uiControlsComputer.ts
-│   ├── constants.ts
-│   ├── types.ts
-│   └── ai-docs/
-│       ├── AGENTS.md
-│       └── ARCHITECTURE.md
-└── ai-docs/
-    ├── AGENTS.md         # Usage documentation
-    └── ARCHITECTURE.md   # This file
-```
+### `Task` (abstract)
+**File:** `Task.ts`
 
----
+**Properties**
+- `data: TaskData`
+- `webCallMap: Record<TaskId, CallId>`
+- `stateMachineService?: ActorRefFrom<TaskStateMachine>`
+- `state?: SnapshotFrom<TaskStateMachine>`
+- `autoWrapup?: AutoWrapup`
+- `uiControls: TaskUIControls` (getter)
 
-## Task Class Hierarchy Diagram
+**Methods**
+- `accept(): Promise<TaskResponse>` (abstract)
+- `decline(): Promise<TaskResponse>` (default: unsupportedMethodError)
+- `pauseRecording(): Promise<TaskResponse>` (default: unsupportedMethodError)
+- `resumeRecording(resumeRecordingPayload: ResumeRecordingPayload): Promise<TaskResponse>` (default: unsupportedMethodError)
+- `consult(consultPayload: ConsultPayload): Promise<TaskResponse>` (default: unsupportedMethodError)
+- `endConsult(consultEndPayload: ConsultEndPayload): Promise<TaskResponse>` (default: unsupportedMethodError)
+- `consultTransfer(consultTransferPayload?: ConsultTransferPayLoad): Promise<TaskResponse>` (default: unsupportedMethodError)
+- `consultConference(): Promise<TaskResponse>` (default: unsupportedMethodError)
+- `exitConference(): Promise<TaskResponse>` (default: unsupportedMethodError)
+- `transferConference(): Promise<TaskResponse>` (default: unsupportedMethodError)
+- `switchCall(): Promise<TaskResponse>` (default: unsupportedMethodError)
+- `toggleMute(): Promise<void>` (default: unsupportedMethodError)
+- `unregisterWebCallListeners(): void` (default: no-op + log)
+- `cancelAutoWrapupTimer(): void`
+- `hold(): Promise<TaskResponse>` (default: unsupportedMethodError)
+- `resume(): Promise<TaskResponse>` (default: unsupportedMethodError)
+- `holdResume(): Promise<TaskResponse>` (default: unsupportedMethodError)
+- `sendStateMachineEvent(event: TaskEventPayload): void`
+- `updateTaskData(updatedData: TaskData, shouldOverwrite = false): ITask`
+- `transfer(transferPayload: TransferPayLoad): Promise<TaskResponse>`
+- `end(): Promise<TaskResponse>`
+- `wrapup(wrapupPayload: WrapupPayLoad): Promise<TaskResponse>`
+
+### `Voice`
+**File:** `voice/Voice.ts`
+
+**Notes**
+- Extends `Task`.
+- Provides `hold()` and `resume()` that delegate to `holdResume()`.
+- `accept()` and `decline()` remain unsupported in `Voice` (overridden in `WebRTC`).
+
+### `WebRTC`
+**File:** `voice/WebRTC.ts`
+
+**Notes**
+- Extends `Voice`.
+- Overrides `accept()` and `decline()` for WebRTC calls.
+- Emits `TASK_EVENTS.TASK_MEDIA` on remote media (`CALL_EVENT_KEYS.REMOTE_MEDIA`).
+- Overrides `unregisterWebCallListeners()`.
+
+### `Digital`
+**File:** `digital/Digital.ts`
+
+**Notes**
+- Extends `Task`.
+- Implements `accept()`.
+- Overrides `updateTaskData()` to refresh digital task data and UI controls.
+
+### `TaskFactory`
+**File:** `TaskFactory.ts`
+
+**API**
+- `createTask(contact, webCallingService, data, configFlags, wrapupData?, agentId?): Task`
+
+**Behavior**
+- Chooses `WebRTC` vs `Voice` for `MEDIA_CHANNEL.TELEPHONY` based on `webCallingService.loginOption`.
+- Chooses `Digital` for `MEDIA_CHANNEL.CHAT`, `MEDIA_CHANNEL.EMAIL`, `MEDIA_CHANNEL.SOCIAL`.
+- Throws `Error` for unknown media types.
+
+
+### Task Class Hierarchy Diagram
 
 ```mermaid
 classDiagram
@@ -142,6 +187,64 @@ TaskManager is a singleton that:
 // Singleton access
 const taskManager = TaskManager.getTaskManager(contact, webCallingService, webSocketManager);
 ```
+
+---
+
+## AQM Request Modules
+
+### `routingContact(aqm: AqmReqs)` (`contact.ts`)
+Returns an object of AQM request methods wired to `TASK_API` and `TASK_MESSAGE_TYPE`.
+
+**Methods**
+- `accept`
+- `hold`
+- `unHold`
+- `pauseRecording`
+- `resumeRecording`
+- `consult`
+- `consultEnd`
+- `consultAccept`
+- `blindTransfer`
+- `vteamTransfer`
+- `consultTransfer`
+- `end`
+- `wrapup`
+- `cancelTask`
+- `cancelCtq`
+- `consultConference`
+- `exitConference`
+- `conferenceTransfer`
+
+**Notes**
+- Uses `WCC_API_GATEWAY`.
+- Consult with `DESTINATION_TYPE.QUEUE` uses `TIMEOUT_REQ` = `'disabled'` for the request timeout.
+
+### `aqmDialer(aqm: AqmReqs)` (`dialer.ts`)
+Returns an object of AQM request methods for outbound dialing.
+
+**Methods**
+- `startOutdial` (success: `CC_EVENTS.AGENT_OFFER_CONTACT`, failure: `CC_EVENTS.AGENT_OUTBOUND_FAILED`)
+
+---
+
+## Usage in Task Classes
+
+### `Task` (`Task.ts`)
+- Constructor accepts `contact: ReturnType<typeof routingContact>`.
+- Uses:
+  - `contact.vteamTransfer` / `contact.blindTransfer` in `transfer(...)`.
+  - `contact.end` in `end()`.
+  - `contact.wrapup` in `wrapup(...)`.
+
+### `Voice` (`voice/Voice.ts`)
+Uses `contact` for:
+- `hold`, `unHold`
+- `pauseRecording`, `resumeRecording`
+- `consult`, `consultEnd`, `consultTransfer`
+- `consultConference`, `exitConference`, `conferenceTransfer`
+
+### `Digital` (`digital/Digital.ts`)
+Uses `contact.accept` in `accept()`.
 
 ---
 
