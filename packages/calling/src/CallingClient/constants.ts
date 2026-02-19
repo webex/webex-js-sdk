@@ -125,6 +125,7 @@ export const MOBIUS_EU_PROD = 'mobius-eu-central-1.prod.infra.webex.com';
 export const MOBIUS_US_INT = 'mobius-us-east-1.int.infra.webex.com';
 export const MOBIUS_EU_INT = 'mobius-eu-central-1.int.infra.webex.com';
 export const FAILOVER_CACHE_PREFIX = 'wxc-failover-state';
+export const ACTIVE_MOBIUS_STORAGE_KEY = 'wxc-active-mobius';
 export const ICE_CANDIDATES_TIMEOUT = 3000;
 // Define constants for method names
 export const METHODS = {
@@ -226,6 +227,7 @@ export const METHODS = {
   REGISTER_SESSIONS_LISTENER: 'registerSessionsListener',
   CREATE_LINE: 'createLine',
   GET_LINES: 'getLines',
+  GET_DEVICES: 'getDevices',
   UPLOAD_LOGS: 'uploadLogs',
   GET_SDK_CONNECTOR: 'getSDKConnector',
   GET_CONNECTED_CALL: 'getConnectedCall',
