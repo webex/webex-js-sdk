@@ -738,7 +738,9 @@ describe('plugin-meetings', () => {
         let supportsRTCPeerConnectionStub;
 
         beforeEach(() => {
-          supportsRTCPeerConnectionStub = sinon.stub(WebCapabilities, 'supportsRTCPeerConnection').returns(CapabilityState.CAPABLE);
+          supportsRTCPeerConnectionStub = sinon
+            .stub(WebCapabilities, 'supportsRTCPeerConnection')
+            .returns(CapabilityState.CAPABLE);
 
           meeting.join = sinon.stub().callsFake((joinOptions) => {
             meeting.isMultistream = joinOptions.enableMultistream;
@@ -1020,9 +1022,9 @@ describe('plugin-meetings', () => {
               body: {
                 errorCode: 2729,
                 message: 'fake addMedia error',
-                name: 'TypeError'
-              }
-            }
+                name: 'TypeError',
+              },
+            },
           };
           meeting.addMediaInternal.rejects(addMediaError);
           sinon.stub(meeting, 'leave').resolves();
@@ -1249,8 +1251,14 @@ describe('plugin-meetings', () => {
         });
 
         [
-          {errorName: 'SdpOfferCreationError', description: 'if we fail to create the offer on first attempt'},
-          {errorName: 'WebrtcApiNotAvailableError', description: 'if RTCPeerConnection is not available'},
+          {
+            errorName: 'SdpOfferCreationError',
+            description: 'if we fail to create the offer on first attempt',
+          },
+          {
+            errorName: 'WebrtcApiNotAvailableError',
+            description: 'if RTCPeerConnection is not available',
+          },
         ].forEach(({errorName, description}) => {
           it(`should not attempt a retry ${description}`, async () => {
             const addMediaError = new Error('fake addMedia error');
@@ -1290,7 +1298,7 @@ describe('plugin-meetings', () => {
               resourceId: undefined,
               reason: 'joinWithMedia failure',
             });
-          })
+          });
         });
 
         it('should ignore sendVideo/receiveVideo when videoEnabled is false', async () => {
@@ -11810,6 +11818,7 @@ describe('plugin-meetings', () => {
         let canShareWhiteBoardSpy;
         let canMoveToLobbySpy;
         let isSpokenLanguageAutoDetectionEnabledSpy;
+        let isAISlidoPollsEnabled;
         let showAutoEndMeetingWarningSpy;
         // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
@@ -11847,6 +11856,7 @@ describe('plugin-meetings', () => {
             MeetingUtil,
             'isSpokenLanguageAutoDetectionEnabled'
           );
+          isAISlidoPollsEnabled = sinon.spy(MeetingUtil, 'isAISlidoPollsEnabled');
         });
 
         afterEach(() => {
@@ -12402,6 +12412,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(canMoveToLobbySpy, userDisplayHints);
           assert.calledWith(showAutoEndMeetingWarningSpy, userDisplayHints);
           assert.calledWith(isSpokenLanguageAutoDetectionEnabledSpy, userDisplayHints);
+          assert.calledWith(isAISlidoPollsEnabled, userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],

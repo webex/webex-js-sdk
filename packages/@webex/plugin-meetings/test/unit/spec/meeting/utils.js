@@ -999,6 +999,7 @@ describe('plugin-meetings', () => {
         functionName: 'isSpokenLanguageAutoDetectionEnabled',
         displayHint: 'SPOKEN_LANGUAGE_AUTO_DETECTION_ENABLED',
       },
+      {functionName: 'isAISlidoPollsEnabled', displayHint: 'AI_SLIDO_POLLS_ENABLED'},
 
       {functionName: 'isWebexAssistantActive', displayHint: 'WEBEX_ASSISTANT_STATUS_ACTIVE'},
       {functionName: 'canViewCaptionPanel', displayHint: 'ENABLE_CAPTION_PANEL'},

@@ -47,6 +47,7 @@ interface IInMeetingActions {
   isManualCaptionActive?: boolean;
   isSaveTranscriptsEnabled?: boolean;
   isSpokenLanguageAutoDetectionEnabled?: boolean;
+  isAISlidoPollsEnabled?: boolean;
   isWebexAssistantActive?: boolean;
   canViewCaptionPanel?: boolean;
   isRealTimeTranslationEnabled?: boolean;
@@ -196,6 +197,8 @@ export default class InMeetingActions implements IInMeetingActions {
   isSaveTranscriptsEnabled = null;
 
   isSpokenLanguageAutoDetectionEnabled = null;
+
+  isAISlidoPollsEnabled = null;
 
   isWebexAssistantActive = null;
 
@@ -378,6 +381,7 @@ export default class InMeetingActions implements IInMeetingActions {
     isManualCaptionActive: this.isManualCaptionActive,
     isSaveTranscriptsEnabled: this.isSaveTranscriptsEnabled,
     isSpokenLanguageAutoDetectionEnabled: this.isSpokenLanguageAutoDetectionEnabled,
+    isAISlidoPollsEnabled: this.isAISlidoPollsEnabled,
     isWebexAssistantActive: this.isWebexAssistantActive,
     canViewCaptionPanel: this.canViewCaptionPanel,
     isRealTimeTranslationEnabled: this.isRealTimeTranslationEnabled,
