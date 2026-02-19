@@ -9,6 +9,8 @@ import CallDiagnosticMetrics from './call-diagnostic/call-diagnostic-metrics';
 import BehavioralMetrics from './behavioral-metrics';
 import OperationalMetrics from './operational-metrics';
 import BusinessMetrics from './business-metrics';
+import PreLoginMetrics from './prelogin-metrics';
+import PreLoginMetricsBatcher from './prelogin-metrics-batcher';
 import {
   RecursivePartial,
   MetricEventProduct,
@@ -45,6 +47,7 @@ class Metrics extends WebexPlugin {
   behavioralMetrics: BehavioralMetrics;
   operationalMetrics: OperationalMetrics;
   businessMetrics: BusinessMetrics;
+  preLoginMetrics: PreLoginMetrics;
   isReady = false;
 
   /**
@@ -87,6 +90,13 @@ class Metrics extends WebexPlugin {
     this.webex.once('ready', () => {
       // @ts-ignore
       this.callDiagnosticMetrics = new CallDiagnosticMetrics({}, {parent: this.webex});
+      this.preLoginMetrics = new PreLoginMetrics(
+        // @ts-ignore
+        new PreLoginMetricsBatcher({}, {parent: this.webex}),
+        {},
+        // @ts-ignore
+        {parent: this.webex}
+      );
       this.isReady = true;
       this.setDelaySubmitClientEvents({
         shouldDelay: this.delaySubmitClientEvents,
@@ -249,6 +259,38 @@ class Metrics extends WebexPlugin {
     this.lazyBuildBusinessMetrics();
 
     return this.businessMetrics.submitBusinessEvent({name, payload, table, metadata});
+  }
+
+  /**
+   * Call Analyzer: Pre-Login Event
+   * @param args
+   */
+  submitPreLoginEvent({
+    name,
+    preLoginId,
+    payload,
+    metadata,
+  }: {
+    name: string;
+    preLoginId: string;
+    payload: EventPayload;
+    metadata?: EventPayload;
+  }): Promise<void> {
+    if (!this.isReady) {
+      // @ts-ignore
+      this.webex.logger.log(
+        `NewMetrics: @submitPreLoginEvent. Attempted to submit before webex.ready: ${name}`
+      );
+
+      return Promise.resolve();
+    }
+
+    return this.preLoginMetrics.submitPreLoginEvent({
+      name,
+      preLoginId,
+      payload,
+      metadata,
+    });
   }
 
   /**

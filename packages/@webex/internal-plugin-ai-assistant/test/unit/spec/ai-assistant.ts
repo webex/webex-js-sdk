@@ -229,6 +229,47 @@ describe('plugin-ai-assistant', () => {
             clientRequestId: 'test-request-id',
             param1: 'value1',
           },
+          headers: undefined,
+        });
+
+        const result = await requestPromise;
+
+        expect(result).to.deep.equal({
+          id: 'test-message-id',
+          url: 'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/test-session-id/messages/test-message-id',
+          sessionId: 'test-session-id',
+          sessionUrl:
+            'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/test-session-id',
+          creatorId: 'test-creator-id',
+          createdAt: '2025-08-05T02:11:12.361Z',
+          requestId: 'test-request-id',
+          streamEventName: 'aiassistant:stream:test-request-id',
+        });
+      });
+
+      it('makes a request with additional headers', async () => {
+        const requestPromise = webex.internal.aiAssistant._request({
+          resource: 'test-resource',
+          params: {param1: 'value1'},
+          headers: {
+            'X-Custom-Header': 'foo',
+            'X-Another-Header': 'bar',
+          },
+        });
+
+        expect(webex.request.getCall(0).args[0]).to.deep.equal({
+          service: 'assistant-api',
+          resource: 'test-resource',
+          method: 'POST',
+          contentType: 'application/json',
+          body: {
+            clientRequestId: 'test-request-id',
+            param1: 'value1',
+          },
+          headers: {
+            'X-Custom-Header': 'foo',
+            'X-Another-Header': 'bar',
+          },
         });
 
         const result = await requestPromise;
@@ -1053,6 +1094,24 @@ describe('plugin-ai-assistant', () => {
 
         const requestArgs = webex.request.getCall(0).args[0];
         expect(requestArgs.body.entryPoint).to.be.undefined;
+      });
+
+      it('includes AI-Assistant-Render-Protocol in the request header when renderProtocolVersion is provided', async () => {
+        const options = {
+          sessionId: 'test-session-id',
+          encryptionKeyUrl: 'test-key-url',
+          contextResources: [],
+          contentType: 'action' as const,
+          contentValue: 'test_action',
+          renderProtocolVersion: '1.0',
+        };
+
+        await webex.internal.aiAssistant.makeAiAssistantRequest(options);
+
+        const requestArgs = webex.request.getCall(0).args[0];
+        expect(requestArgs.headers).to.deep.equal({
+          'AI-Assistant-Render-Protocol': '1.0',
+        });
       });
 
       it('handles request rejection', async () => {
