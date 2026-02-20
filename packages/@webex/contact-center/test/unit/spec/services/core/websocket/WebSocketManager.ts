@@ -77,6 +77,11 @@ describe('WebSocketManager', () => {
       credentials: {
         getOrgId: jest.fn().mockReturnValue('test-org-id'),
       },
+      internal: {
+        services: {
+          get: jest.fn().mockReturnValue('https://api.intgus1.ciscoccservice.com'),
+        },
+      },
     } as unknown as WebexSDK;
 
     mockWorker = {
@@ -110,13 +115,15 @@ describe('WebSocketManager', () => {
     expect(webSocketManager).toBeDefined();
   });
 
-  it('should register and connect to WebSocket', async () => {
+  it('should register and connect to WebSocket with X-ORGANIZATION-ID header for INT environment', async () => {
     const subscribeResponse = {
       body: {
         webSocketUrl: 'wss://fake-url',
       },
     };
 
+    // Mock INT environment URL
+    (mockWebex.internal.services.get as jest.Mock).mockReturnValue('https://api.intgus1.ciscoccservice.com');
     (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
 
     await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
@@ -128,6 +135,214 @@ describe('WebSocketManager', () => {
       body: fakeSubscribeRequest,
       headers: {'X-ORGANIZATION-ID': 'test-org-id'},
     });
+  });
+
+  it('should register and connect to WebSocket without X-ORGANIZATION-ID header for production environment', async () => {
+    const subscribeResponse = {
+      body: {
+        webSocketUrl: 'wss://fake-url',
+      },
+    };
+
+    // Mock production environment URL
+    (mockWebex.internal.services.get as jest.Mock).mockReturnValue('https://api.wxcc-us1.cisco.com');
+    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+    // Create new WebSocketManager instance with production mock
+    webSocketManager = new WebSocketManager({ webex: mockWebex });
+
+    setTimeout(() => {
+      MockWebSocket.inst.onopen();
+      MockWebSocket.inst.onmessage({ data: JSON.stringify({ type: "Welcome" }) });
+    }, 1);
+
+    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
+
+    expect(mockWebex.request).toHaveBeenCalledWith({
+      service: WCC_API_GATEWAY,
+      resource: SUBSCRIBE_API,
+      method: 'POST',
+      body: fakeSubscribeRequest,
+      headers: undefined,
+    });
+  });
+
+  it('should send X-ORGANIZATION-ID header for qaus1 environment', async () => {
+    const subscribeResponse = {
+      body: {
+        webSocketUrl: 'wss://fake-url',
+      },
+    };
+
+    // Mock qaus1 environment URL
+    (mockWebex.internal.services.get as jest.Mock).mockReturnValue('https://api.qaus1.ciscoccservice.com');
+    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+    webSocketManager = new WebSocketManager({ webex: mockWebex });
+
+    setTimeout(() => {
+      MockWebSocket.inst.onopen();
+      MockWebSocket.inst.onmessage({ data: JSON.stringify({ type: "Welcome" }) });
+    }, 1);
+
+    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
+
+    expect(mockWebex.request).toHaveBeenCalledWith({
+      service: WCC_API_GATEWAY,
+      resource: SUBSCRIBE_API,
+      method: 'POST',
+      body: fakeSubscribeRequest,
+      headers: {'X-ORGANIZATION-ID': 'test-org-id'},
+    });
+  });
+
+  it('should send X-ORGANIZATION-ID header for loadus1 environment', async () => {
+    const subscribeResponse = {
+      body: {
+        webSocketUrl: 'wss://fake-url',
+      },
+    };
+
+    // Mock loadus1 environment URL
+    (mockWebex.internal.services.get as jest.Mock).mockReturnValue('https://api.loadus1.ciscoccservice.com');
+    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+    webSocketManager = new WebSocketManager({ webex: mockWebex });
+
+    setTimeout(() => {
+      MockWebSocket.inst.onopen();
+      MockWebSocket.inst.onmessage({ data: JSON.stringify({ type: "Welcome" }) });
+    }, 1);
+
+    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
+
+    expect(mockWebex.request).toHaveBeenCalledWith({
+      service: WCC_API_GATEWAY,
+      resource: SUBSCRIBE_API,
+      method: 'POST',
+      body: fakeSubscribeRequest,
+      headers: {'X-ORGANIZATION-ID': 'test-org-id'},
+    });
+  });
+
+  it('should not send X-ORGANIZATION-ID header for produs1 environment', async () => {
+    const subscribeResponse = {
+      body: {
+        webSocketUrl: 'wss://fake-url',
+      },
+    };
+
+    // Mock produs1 environment URL (production)
+    (mockWebex.internal.services.get as jest.Mock).mockReturnValue('https://api.produs1.ciscoccservice.com');
+    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+    webSocketManager = new WebSocketManager({ webex: mockWebex });
+
+    setTimeout(() => {
+      MockWebSocket.inst.onopen();
+      MockWebSocket.inst.onmessage({ data: JSON.stringify({ type: "Welcome" }) });
+    }, 1);
+
+    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
+
+    expect(mockWebex.request).toHaveBeenCalledWith({
+      service: WCC_API_GATEWAY,
+      resource: SUBSCRIBE_API,
+      method: 'POST',
+      body: fakeSubscribeRequest,
+      headers: undefined,
+    });
+  });
+
+  it('should not send X-ORGANIZATION-ID header when service URL is unavailable', async () => {
+    const subscribeResponse = {
+      body: {
+        webSocketUrl: 'wss://fake-url',
+      },
+    };
+
+    // Mock unavailable service URL
+    (mockWebex.internal.services.get as jest.Mock).mockReturnValue(undefined);
+    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+    webSocketManager = new WebSocketManager({ webex: mockWebex });
+
+    setTimeout(() => {
+      MockWebSocket.inst.onopen();
+      MockWebSocket.inst.onmessage({ data: JSON.stringify({ type: "Welcome" }) });
+    }, 1);
+
+    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
+
+    expect(mockWebex.request).toHaveBeenCalledWith({
+      service: WCC_API_GATEWAY,
+      resource: SUBSCRIBE_API,
+      method: 'POST',
+      body: fakeSubscribeRequest,
+      headers: undefined,
+    });
+  });
+
+  it('should not send X-ORGANIZATION-ID header when services.get throws an error', async () => {
+    const subscribeResponse = {
+      body: {
+        webSocketUrl: 'wss://fake-url',
+      },
+    };
+
+    // Mock services.get throwing an error
+    (mockWebex.internal.services.get as jest.Mock).mockImplementation(() => {
+      throw new Error('Service lookup failed');
+    });
+    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+    webSocketManager = new WebSocketManager({ webex: mockWebex });
+
+    setTimeout(() => {
+      MockWebSocket.inst.onopen();
+      MockWebSocket.inst.onmessage({ data: JSON.stringify({ type: "Welcome" }) });
+    }, 1);
+
+    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
+
+    // Should fall back to not sending header and log the error
+    expect(mockWebex.request).toHaveBeenCalledWith({
+      service: WCC_API_GATEWAY,
+      resource: SUBSCRIBE_API,
+      method: 'POST',
+      body: fakeSubscribeRequest,
+      headers: undefined,
+    });
+    expect(LoggerProxy.error).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to determine environment'),
+      expect.objectContaining({ module: WEB_SOCKET_MANAGER_FILE, method: 'isIntegrationEnvironment' })
+    );
+  });
+
+  it('should log environment check details', async () => {
+    const subscribeResponse = {
+      body: {
+        webSocketUrl: 'wss://fake-url',
+      },
+    };
+
+    // Mock INT environment URL
+    (mockWebex.internal.services.get as jest.Mock).mockReturnValue('https://api.intgus1.ciscoccservice.com');
+    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+    webSocketManager = new WebSocketManager({ webex: mockWebex });
+
+    setTimeout(() => {
+      MockWebSocket.inst.onopen();
+      MockWebSocket.inst.onmessage({ data: JSON.stringify({ type: "Welcome" }) });
+    }, 1);
+
+    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
+
+    expect(LoggerProxy.log).toHaveBeenCalledWith(
+      expect.stringContaining('[WebSocketManager] Environment check'),
+      expect.objectContaining({ module: WEB_SOCKET_MANAGER_FILE, method: 'isIntegrationEnvironment' })
+    );
   });
 
   it('should log error and throw when register API fails in initWebSocket', async () => {

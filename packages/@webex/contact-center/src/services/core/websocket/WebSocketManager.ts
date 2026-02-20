@@ -84,10 +84,52 @@ export class WebSocketManager extends EventEmitter {
     this.isConnectionLost = event.isConnectionLost;
   }
 
+  /**
+   * Checks if the current environment is an integration (INT) environment
+   * by examining the service URL for known INT patterns.
+   * INT environments include: intgus1, qaus1, loadus1, etc.
+   * @returns {boolean} True if INT environment, false otherwise
+   * @private
+   */
+  private isIntegrationEnvironment(): boolean {
+    try {
+      const serviceUrl = this.webex.internal?.services?.get?.(WCC_API_GATEWAY) || '';
+      // INT environments have patterns like: intgus1, qaus1, loadus1
+      // Production environments have patterns like: produs1, prodeu1, wxcc-us1, wxcc-eu1
+      const intPatterns = /(intg|qaus|loadus)\d*/i;
+      const isInt = intPatterns.test(serviceUrl);
+
+      LoggerProxy.log(
+        `[WebSocketManager] Environment check - URL: ${serviceUrl}, isINT: ${isInt}`,
+        {
+          module: WEB_SOCKET_MANAGER_FILE,
+          method: 'isIntegrationEnvironment',
+        }
+      );
+
+      return isInt;
+    } catch (error) {
+      LoggerProxy.error(`Failed to determine environment: ${error}`, {
+        module: WEB_SOCKET_MANAGER_FILE,
+        method: 'isIntegrationEnvironment',
+      });
+
+      return false;
+    }
+  }
+
   private async register(connectionConfig: SubscribeRequest) {
     try {
-      // Get orgId for the X-ORGANIZATION-ID header (matches Agent Desktop behavior)
-      const orgId = this.webex.credentials?.getOrgId?.();
+      // X-ORGANIZATION-ID header is only required for INT environments
+      const isIntEnv = this.isIntegrationEnvironment();
+      const orgId = isIntEnv ? this.webex.credentials?.getOrgId?.() : undefined;
+
+      if (isIntEnv && orgId) {
+        LoggerProxy.log(`[WebSocketManager] Adding X-ORGANIZATION-ID header for INT environment`, {
+          module: WEB_SOCKET_MANAGER_FILE,
+          method: METHODS.REGISTER,
+        });
+      }
 
       const subscribeResponse: SubscribeResponse = await this.webex.request({
         service: WCC_API_GATEWAY,
