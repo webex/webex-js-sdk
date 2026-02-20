@@ -4,13 +4,7 @@
 
 This is the main orchestrator for AI assistants working with the package `@webex/contact-center` in this repository. It routes you to the correct templates and documentation based on the developer's task and provides critical rules for code generation.
 
-**For every developer request, follow this exact sequence:**
-
-1. **Classify the task** using the Task Classification Decision Tree below.
-2. **STOP and ask the developer questions** from the routed template's pre-questions/requirements file. Do NOT read code, load patterns, or generate any code until the developer has answered all MANDATORY questions.
-3. **Present a Spec Summary** to the developer for approval before writing any code.
-4. If the work is in an existing service/module, use the [Service Routing Table](#service-routing-table) to load that scope's `AGENTS.md` and `ARCHITECTURE.md`.
-5. If the prompt mixes multiple task types, split into scoped subtasks and execute each one through this full sequence independently.
+**For every developer request, follow the Quick Start Workflow below.**
 
 ---
 
@@ -89,7 +83,7 @@ Use these keyword patterns to help confirm your classification:
 ## Task Type Routing
 
 **A. Create New Service**
-- Use when adding a new service module (for example AddressBook/Queue/EntryPoint style additions).
+- Use when adding a new service module (for example, a new service to support real-time transcripts, similar to existing services like AddressBook, Queue, or EntryPoint).
 - **Route to:** [`ai-docs/templates/new-service/00-master.md`](ai-docs/templates/new-service/00-master.md)
 - **Pre-questions:** [`ai-docs/templates/new-service/01-pre-questions.md`](ai-docs/templates/new-service/01-pre-questions.md) — STOP and ask these first.
 - **Follow:** Full new-service workflow including validation and docs updates.
@@ -159,8 +153,10 @@ After gathering answers from the developer, and **before writing any code**, pre
 - Response payload: [structure]
 
 ### Events (if applicable):
-- Emits: [event names and payload]
-- Listens to: [event names]
+| Event | Direction | Object | Payload | Trigger |
+|---|---|---|---|---|
+| [event name] | [emitted / listened] | [cc, task, taskManager, or service] | [payload type] | [what causes it] |
+(or "No events")
 
 ### Metrics (if applicable):
 - Success: [metric name]
@@ -207,222 +203,37 @@ The only exception is **Type E (Understand Architecture)** which is read-only.
 
 ### 2. LoggerProxy Usage (MANDATORY)
 
-**NEVER use `console.log()`.** Always use `LoggerProxy` with proper context:
-
-```typescript
-import LoggerProxy from '../../logger-proxy';
-
-// CORRECT - Always include module and method
-LoggerProxy.info('Starting operation', {
-  module: 'MyService',      // File/class name
-  method: 'myMethod',       // Method name
-});
-
-LoggerProxy.log('Operation successful', {
-  module: 'MyService',
-  method: 'myMethod',
-  trackingId: response.trackingId,  // Optional: for request correlation
-});
-
-LoggerProxy.error(`Operation failed: ${error}`, {
-  module: 'MyService',
-  method: 'myMethod',
-  trackingId: failure?.trackingId,
-});
-
-// WRONG - Never do this
-console.log('something happened');
-LoggerProxy.log('message');  // Missing context
-```
-
-**Available methods**: `log`, `info`, `warn`, `trace`, `error`
-
-**Context properties**:
-- `module` (required): File or class name
-- `method` (required): Method name
-- `trackingId` (optional): Request correlation ID
-- `interactionId` (optional): Task/interaction ID
-- `data` (optional): Additional data object
-- `error` (optional): Error object
+**NEVER use `console.log()`.** Always use `LoggerProxy` with `module` and `method` context. See full patterns and examples in [`ai-docs/RULES.md`](ai-docs/RULES.md) and [`ai-docs/patterns/typescript-patterns.md`](ai-docs/patterns/typescript-patterns.md).
 
 ---
 
 ### 3. MetricsManager Usage (MANDATORY)
 
-All operations must track metrics. Pattern:
-
-```typescript
-import MetricsManager from '../metrics/MetricsManager';
-import {METRIC_EVENT_NAMES} from '../metrics/constants';
-
-// Step 1: Start timing at method start
-this.metricsManager.timeEvent([
-  METRIC_EVENT_NAMES.OPERATION_SUCCESS,
-  METRIC_EVENT_NAMES.OPERATION_FAILED,
-]);
-
-try {
-  const result = await this.performOperation();
-
-  // Step 2: Track success
-  this.metricsManager.trackEvent(
-    METRIC_EVENT_NAMES.OPERATION_SUCCESS,
-    {
-      ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
-      customField: 'value',
-    },
-    ['behavioral', 'operational']  // or ['behavioral', 'business', 'operational']
-  );
-
-  return result;
-} catch (error) {
-  const failure = error.details as Failure;
-
-  // Step 3: Track failure
-  this.metricsManager.trackEvent(
-    METRIC_EVENT_NAMES.OPERATION_FAILED,
-    {
-      ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
-      customField: 'value',
-    },
-    ['behavioral', 'operational']
-  );
-
-  throw error;
-}
-```
-
-**Metric types**:
-- `behavioral`: User actions (login, state change)
-- `operational`: System operations (websocket connect, API calls)
-- `business`: Business outcomes (call completed, transfer success)
+All operations must track metrics using `timeEvent` + `trackEvent`. See full pattern in [`ai-docs/RULES.md`](ai-docs/RULES.md) and [`ai-docs/patterns/sdk-plugin-patterns.md`](ai-docs/patterns/sdk-plugin-patterns.md).
 
 ---
 
 ### 4. Error Handling Pattern (MANDATORY)
 
-Always use `getErrorDetails` for consistent error handling:
-
-```typescript
-import {getErrorDetails} from './services/core/Utils';
-import {Failure} from './services/core/GlobalTypes';
-
-try {
-  // ... operation
-} catch (error) {
-  const failure = error.details as Failure;
-
-  // Track failure metrics
-  this.metricsManager.trackEvent(
-    METRIC_EVENT_NAMES.OPERATION_FAILED,
-    MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
-    ['operational']
-  );
-
-  // Get detailed error (also logs and uploads logs automatically)
-  const {error: detailedError, reason} = getErrorDetails(
-    error,
-    'methodName',   // Method where error occurred
-    'ModuleName'    // Module/file name
-  );
-
-  throw detailedError;
-}
-```
+Always use `getErrorDetails` from `services/core/Utils` for consistent error handling. See full pattern in [`ai-docs/RULES.md`](ai-docs/RULES.md) and [`ai-docs/patterns/typescript-patterns.md`](ai-docs/patterns/typescript-patterns.md).
 
 ---
 
-### 5. Event Emission Pattern
+### 5. Event Emission Pattern (MANDATORY)
 
-Use defined event constants, never raw strings:
-
-```typescript
-import {CC_EVENTS} from './services/config/types';
-import {AGENT_EVENTS} from './services/agent/types';
-import {TASK_EVENTS} from './services/task/types';
-
-// CORRECT - Use event constants
-this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, eventData);
-this.emit(TASK_EVENTS.TASK_INCOMING, task);
-
-// WRONG - Never use raw strings
-this.emit('stateChange', eventData);
-```
+Use defined event constants (`CC_EVENTS`, `AGENT_EVENTS`, `TASK_EVENTS`), never raw strings. See full pattern in [`ai-docs/RULES.md`](ai-docs/RULES.md) and [`ai-docs/patterns/event-driven-patterns.md`](ai-docs/patterns/event-driven-patterns.md).
 
 ---
 
-### 6. WebexPlugin Extension Pattern
+### 6. WebexPlugin Extension Pattern (MANDATORY)
 
-When creating new plugin methods:
-
-```typescript
-// cc.ts - Main plugin class pattern
-export default class ContactCenter extends WebexPlugin implements IContactCenter {
-  namespace = 'cc';
-
-  private $webex: WebexSDK;
-  private $config: CCPluginConfig;
-
-  constructor(...args) {
-    super(...args);
-    this.$webex = this.webex;
-
-    this.$webex.once(READY, () => {
-      this.$config = this.config;
-      // Initialize services here
-    });
-  }
-
-  /**
-   * Method description with @public tag for public API
-   * @param {ParamType} param - Description
-   * @returns {Promise<ReturnType>} Description
-   * @throws {Error} When something fails
-   * @public
-   * @example
-   * ```typescript
-   * const result = await cc.methodName({ param: 'value' });
-   * ```
-   */
-  public async methodName(data: ParamType): Promise<ReturnType> {
-    LoggerProxy.info('Starting operation', {
-      module: CC_FILE,
-      method: 'methodName',
-    });
-
-    try {
-      this.metricsManager.timeEvent([SUCCESS_EVENT, FAILED_EVENT]);
-
-      const result = await this.services.someService.method({data});
-
-      this.metricsManager.trackEvent(SUCCESS_EVENT, {...}, ['operational']);
-
-      LoggerProxy.log('Operation completed successfully', {
-        module: CC_FILE,
-        method: 'methodName',
-        trackingId: result.trackingId,
-      });
-
-      return result;
-    } catch (error) {
-      // ... error handling pattern
-    }
-  }
-}
-```
+Follow the established `cc.ts` plugin class pattern with JSDoc (`@public`, `@param`, `@returns`, `@example`). See full pattern in [`ai-docs/patterns/sdk-plugin-patterns.md`](ai-docs/patterns/sdk-plugin-patterns.md).
 
 ---
 
 ### 7. Scope ai-docs Are Authoritative (MANDATORY)
 
-When working inside a service scope, use the [Service Routing Table](#service-routing-table) to locate and load that service's docs. Treat them as implementation authority for that scope.
-
-| Scope | Authoritative Docs |
-|-------|-------------------|
-| Agent | [`src/services/agent/ai-docs/AGENTS.md`](src/services/agent/ai-docs/AGENTS.md), [`ARCHITECTURE.md`](src/services/agent/ai-docs/ARCHITECTURE.md) |
-| Task | [`src/services/task/ai-docs/AGENTS.md`](src/services/task/ai-docs/AGENTS.md), [`ARCHITECTURE.md`](src/services/task/ai-docs/ARCHITECTURE.md) |
-| Config | [`src/services/config/ai-docs/AGENTS.md`](src/services/config/ai-docs/AGENTS.md), [`ARCHITECTURE.md`](src/services/config/ai-docs/ARCHITECTURE.md) |
-| Core | [`src/services/core/ai-docs/AGENTS.md`](src/services/core/ai-docs/AGENTS.md), [`ARCHITECTURE.md`](src/services/core/ai-docs/ARCHITECTURE.md) |
+When working inside a service scope, use the [Service Routing Table](#service-routing-table) to locate and load that service's `AGENTS.md` and `ARCHITECTURE.md`. Treat them as implementation authority for that scope.
 
 - This root `AGENTS.md` is the orchestrator — it routes tasks and enforces rules.
 - Service-level `ai-docs` define scope-specific behavior, architecture, and patterns.
@@ -527,10 +338,9 @@ packages/@webex/contact-center/
 │   └── unit/
 │       └── spec/
 │           └── cc.ts                  # Main test file (reference)
-└── ai-docs/                           # This documentation
-    ├── AGENTS.md                      # You are here
+└── ai-docs/                           # AI documentation
+    ├── README.md                      # AI-docs overview
     ├── RULES.md                       # Coding standards
-    ├── README.md                      # Package overview
     ├── patterns/                      # Pattern documentation
     └── templates/                     # Code generation templates
 ```
@@ -539,37 +349,7 @@ packages/@webex/contact-center/
 
 ## Key Type Patterns
 
-### Enum Pattern (const object + type)
-```typescript
-// Define const object
-export const CC_EVENTS = {
-  AGENT_LOGIN: 'AgentLogin',
-  AGENT_LOGOUT: 'AgentLogout',
-} as const;
-
-// Extract union type
-type Enum<T extends Record<string, unknown>> = T[keyof T];
-export type CC_EVENTS = Enum<typeof CC_EVENTS>;
-```
-
-### Response Type Pattern
-```typescript
-export type SomeResponse = {
-  data: {
-    // Response payload
-  };
-  trackingId: string;
-};
-```
-
-### Failure Type Pattern
-```typescript
-import {Failure} from './services/core/GlobalTypes';
-
-// In catch blocks:
-const failure = error.details as Failure;
-// Access: failure.trackingId, failure.data.reason, failure.data.reasonCode
-```
+For enum patterns (const object + type), response type patterns, and failure type patterns, see [`ai-docs/patterns/typescript-patterns.md`](ai-docs/patterns/typescript-patterns.md).
 
 ---
 

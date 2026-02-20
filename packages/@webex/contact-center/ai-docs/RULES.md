@@ -329,63 +329,7 @@ this.emit('stateChange', eventData);
 
 ## Testing Standards
 
-### Test File Location
-
-```
-test/unit/spec/
-├── cc.ts                    # Main plugin tests
-├── services/
-│   ├── agent/
-│   └── task/
-└── ...
-```
-
-### MockWebex Usage
-
-```typescript
-import MockWebex from '@webex/test-helper-mock-webex';
-
-beforeEach(() => {
-  webex = MockWebex({
-    children: {
-      cc: ContactCenter,
-    },
-    logger: {
-      log: jest.fn(),
-      error: jest.fn(),
-      info: jest.fn(),
-    },
-    credentials: {
-      getOrgId: jest.fn(() => 'mockOrgId'),
-    },
-  }) as unknown as WebexSDK;
-});
-```
-
-### Mocking Singletons
-
-```typescript
-// Mock singleton services
-jest.spyOn(Services, 'getInstance').mockReturnValue(mockServicesInstance as any);
-jest.spyOn(TaskManager, 'getTaskManager').mockReturnValue(mockTaskManager);
-jest.spyOn(MetricsManager, 'getInstance').mockReturnValue(mockMetricsManager);
-```
-
-### Mocking LoggerProxy
-
-```typescript
-jest.mock('../../../src/logger-proxy', () => ({
-  __esModule: true,
-  default: {
-    log: jest.fn(),
-    error: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    trace: jest.fn(),
-    initialize: jest.fn(),
-  },
-}));
-```
+For full testing patterns including test file location, MockWebex setup, singleton mocking, LoggerProxy mocking, and test structure, see [`patterns/testing-patterns.md`](patterns/testing-patterns.md).
 
 ---
 

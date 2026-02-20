@@ -33,7 +33,7 @@ The `@webex/contact-center` package is a Webex SDK plugin that provides a TypeSc
 
 | Document | Purpose |
 |----------|---------|
-| [AGENTS.md](AGENTS.md) | **Start here** - Main AI agent orchestrator |
+| [AGENTS.md](../AGENTS.md) | **Start here** - Main AI agent orchestrator (at package root) |
 | [RULES.md](RULES.md) | Coding standards and conventions |
 | [patterns/](patterns/) | Pattern documentation |
 | [templates/](templates/) | Code generation templates |
@@ -44,41 +44,30 @@ The `@webex/contact-center` package is a Webex SDK plugin that provides a TypeSc
 
 ### Starting a Task
 
-1. **Read [AGENTS.md](AGENTS.md)** - Identify your task type
-2. **Route to template** - Follow the template for your task
-3. **Load patterns** - Read relevant pattern documentation
-4. **Generate/fix code** - Follow the established patterns
-5. **Validate** - Use the checklist in AGENTS.md
-
-### Key Rules (Always Follow)
-
-1. **Always use LoggerProxy** - Never `console.log`
-2. **Always track metrics** - `timeEvent` + `trackEvent`
-3. **Always handle errors** - Use `getErrorDetails` pattern
-4. **Always use event constants** - Never raw strings
-5. **Always add JSDoc** - With `@public` for APIs
+Start with the root [`AGENTS.md`](../AGENTS.md) — it contains the full Quick Start Workflow, task classification decision tree, and critical rules.
 
 ---
 
 ## Directory Structure
 
 ```
-ai-docs/
-├── AGENTS.md              # Main orchestrator (start here)
-├── RULES.md               # Coding standards
-├── README.md              # This file
-├── patterns/              # Pattern documentation
-│   ├── typescript-patterns.md
-│   ├── testing-patterns.md
-│   ├── event-driven-patterns.md
-│   ├── websocket-patterns.md
-│   └── sdk-plugin-patterns.md
-└── templates/             # Code generation templates
-    ├── README.md
-    ├── new-service/       # Creating new services
-    ├── new-method/        # Adding methods
-    ├── existing-service/  # Bug fixes, features
-    └── documentation/     # Doc generation
+packages/@webex/contact-center/
+├── AGENTS.md                  # Main orchestrator (start here — at package root)
+└── ai-docs/
+    ├── README.md              # This file
+    ├── RULES.md               # Coding standards
+    ├── patterns/              # Pattern documentation
+    │   ├── typescript-patterns.md
+    │   ├── testing-patterns.md
+    │   ├── event-driven-patterns.md
+    │   ├── websocket-patterns.md
+    │   └── sdk-plugin-patterns.md
+    └── templates/             # Code generation templates
+        ├── README.md
+        ├── new-service/       # Creating new services
+        ├── new-method/        # Adding methods
+        ├── existing-service/  # Bug fixes, features
+        └── documentation/     # Doc generation
 ```
 
 ---
@@ -87,16 +76,16 @@ ai-docs/
 
 ```bash
 # Build
-yarn workspace @webex/contact-center build
+yarn workspace @webex/contact-center build:src
 
-# Test
-yarn workspace @webex/contact-center test
+# Test unit tests
+yarn workspace @webex/contact-center test:unit
+
+# Test specific file
+yarn workspace @webex/contact-center test:unit -- <path_of_test_file>
 
 # Lint
-yarn workspace @webex/contact-center lint
-
-# Type check
-yarn workspace @webex/contact-center typecheck
+yarn workspace @webex/contact-center test:styles
 ```
 
 ---
