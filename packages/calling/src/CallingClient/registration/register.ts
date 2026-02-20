@@ -20,6 +20,7 @@ import {FailoverCacheState, IRegistration} from './types';
 import SDKConnector from '../../SDKConnector';
 import {
   ALLOWED_SERVICES,
+  Devices,
   HTTP_METHODS,
   IDeviceInfo,
   RegistrationStatus,
@@ -193,6 +194,19 @@ export class Registration implements IRegistration {
     });
     this.activeMobiusUrl = url;
     this.callManager.updateActiveMobius(url);
+  }
+
+  /**
+   * Populate deviceInfo using a devices response body.
+   */
+  public setDeviceInfo(devicesInfo: Devices): void {
+    const [device] = devicesInfo.devices;
+
+    this.deviceInfo = {
+      userId: devicesInfo.userId,
+      device,
+      devices: devicesInfo.devices,
+    };
   }
 
   public setMobiusServers(primaryMobiusUris: string[], backupMobiusUris: string[]) {

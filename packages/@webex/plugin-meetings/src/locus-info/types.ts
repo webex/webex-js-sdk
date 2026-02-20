@@ -19,6 +19,7 @@ export type Links = {
 
 export type LocusDTO = {
   controls?: any;
+  embeddedApps?: any[];
   fullState?: LocusFullState;
   host?: {
     id: string;
