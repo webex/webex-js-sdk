@@ -1,7 +1,7 @@
 # Task State Machine - Architecture
 
 ## Purpose
-Technical reference for the XState task state machine used by `Task` to drive state transitions and UI control behavior. It orchestrates state transitions, guards, and actions for task lifecycle management.
+Technical reference for the complete state machine using XState to drive state transitions and UI control behavior. It orchestrates state transitions, guards, and actions for task lifecycle management.
 
 ---
 
@@ -30,108 +30,271 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 
 ---
 
-## State Model
+## States
 
-Primary states:
-- `IDLE`
-- `OFFERED`
-- `CONNECTED`
-- `HELD`
-- `CONSULTING`
-- `CONFERENCING`
-- `WRAPPING_UP`
-- terminal: `COMPLETED`, `TERMINATED`
+### IDLE
+**Description**: Initial state before any interaction.
 
-Intermediate async states:
-- `HOLD_INITIATING`
-- `RESUME_INITIATING`
-- `CONSULT_INITIATING`
-- `CONF_INITIATING`
+**Entry Actions**: None
+
+**Valid Transitions**:
+- `TASK_INCOMING` → OFFERED
+- `CONSULTING_ACTIVE` → CONSULTING (early consult case)
+- `HYDRATE` → Various (state restoration on reconnect)
+
+**Context**: Empty
 
 ---
 
-## Event Model
+### OFFERED
+**Description**: Task offered to agent, awaiting acceptance.
 
-Events are strongly typed via `TaskEventPayloadMap` and include:
-- Offer/assign/hydrate: `TASK_INCOMING`, `TASK_OFFERED`, `ASSIGN`, `HYDRATE`
-- Hold/resume: `HOLD_*`, `UNHOLD_*`
-- Consult/conference: `CONSULT_*`, `CONFERENCE_*`, `MERGE_TO_CONFERENCE`, `PARTICIPANT_LEAVE`
-- Recording: `RECORDING_STARTED`, `PAUSE_RECORDING`, `RESUME_RECORDING`
-- Transfer/wrap/end: `TRANSFER_*`, `TASK_WRAPUP`, `WRAPUP_COMPLETE`, `CONTACT_ENDED`
+**Entry Actions**:
+- `initializeTask`
+- `emitTaskIncoming`
+
+**Valid Transitions**:
+- `TASK_OFFERED` → Stay in OFFERED (updates data)
+- `ASSIGN` → CONNECTED or CONSULTING (based on guard)
+- `RONA` → TERMINATED
+- `INVITE_FAILED` → TERMINATED
+- `ASSIGN_FAILED` → TERMINATED
+- `OUTBOUND_FAILED` → WRAPPING_UP or TERMINATED (based on shouldWrapUp guard)
+- `CONSULTING_ACTIVE` → CONSULTING
+
+**Guards**:
+- `isConsultingAssignment`: Check if this is a consult acceptance
+
+**Context Updates**:
+- Task data initialization
+- Auto-answer flag
+
+---
+
+### CONNECTED
+**Description**: Active interaction with customer.
+
+**Entry Actions**:
+- `updateTaskData`
+- `emitTaskAssigned`
+
+**Valid Transitions**:
+- `HOLD_INITIATED` → HELD
+- `CONSULT_INITIATED` → CONSULTING
+- `CONFERENCE_START` → CONFERENCING
+- `CONTACT_ENDED` → WRAPPING_UP or TERMINATED (based on wrapUpRequired)
+- `TRANSFER_SUCCESS` → WRAPPING_UP or TERMINATED
+
+**Guards**:
+- `shouldWrapUp`: Check if wrapup is required
+- `canHold`: Check if hold is allowed
+- `canConsult`: Check if consult is allowed
+
+**Context Updates**:
+- Hold state
+- Media resource tracking
 
 ---
 
-## Task State Machine States
+### HELD
+**Description**: Task on hold.
 
-| State | Meaning |
-|---|---|
-| `IDLE` | No active task in the machine. |
-| `OFFERED` | Task offered to agent; awaiting assignment or response. |
-| `CONNECTED` | Task is active and connected. |
-| `HOLD_INITIATING` | Hold requested; awaiting backend confirmation. |
-| `HELD` | Task is on hold. Success events from contact center backend received |
-| `RESUME_INITIATING` | Resume requested; awaiting backend confirmation. |
-| `CONSULT_INITIATING` | Consult requested; awaiting backend confirmation. |
-| `CONSULTING` | Consult leg is active. |
-| `CONF_INITIATING` | Conference merge requested; awaiting confirmation. |
-| `CONFERENCING` | Conference is active. |
-| `WRAPPING_UP` | Task wrapup in progress for this agent. |
-| `COMPLETED` | Wrapup complete. |
-| `TERMINATED` | Task ended without wrapup. |
+**Entry Actions**:
+- `markHeld`
+- `emitTaskHold`
 
-## Task State Machine Events
+**Valid Transitions**:
+- `UNHOLD_INITIATED` → CONNECTED
+- `CONSULT_INITIATED` → CONSULTING
+- `CONTACT_ENDED` → WRAPPING_UP or TERMINATED
 
-| Event | Meaning |
-|---|---|
-| `TASK_INCOMING` | New task reserved for agent (entry into `OFFERED`). |
-| `TASK_OFFERED` | Offer payload refresh for an already offered task. |
-| `OFFER_CONSULT` | Consult offer received for this agent. |
-| `HYDRATE` | Restore task state from backend snapshot. |
-| `ASSIGN` | Task assigned to agent (enters `CONNECTED`). |
-| `HOLD_INITIATED` | Agent requested hold (API action). |
-| `HOLD_SUCCESS` | Backend confirmed hold. |
-| `HOLD_FAILED` | Backend rejected hold. |
-| `UNHOLD_INITIATED` | Agent requested resume (API action). |
-| `UNHOLD_SUCCESS` | Backend confirmed resume. |
-| `UNHOLD_FAILED` | Backend rejected resume. |
-| `CONSULT` | Agent requested consult (API action). |
-| `CONSULT_SUCCESS` | Backend confirmed consult start. |
-| `CONSULT_CREATED` | Consult leg created; context update only. |
-| `CONSULTING_ACTIVE` | Consult leg is active (joined). |
-| `CONSULT_END` | Consult ended. |
-| `CONSULT_FAILED` | Consult request failed. |
-| `MERGE_TO_CONFERENCE` | Request to merge consult into conference. |
-| `CONFERENCE_START` | Conference established. |
-| `CONFERENCE_FAILED` | Conference merge failed. |
-| `CONFERENCE_END` | Conference ended. |
-| `TRANSFER_CONFERENCE` | Request to transfer conference. |
-| `TRANSFER_CONFERENCE_SUCCESS` | Conference transfer succeeded. |
-| `TRANSFER_CONFERENCE_FAILED` | Conference transfer failed. |
-| `PARTICIPANT_LEAVE` | Conference participant left. |
-| `EXIT_CONFERENCE` | Agent requested to exit conference. |
-| `EXIT_CONFERENCE_SUCCESS` | Exit conference succeeded. |
-| `EXIT_CONFERENCE_FAILED` | Exit conference failed. |
-| `RECORDING_STARTED` | Recording started (state update only). |
-| `PAUSE_RECORDING` | Recording paused (state update only). |
-| `RESUME_RECORDING` | Recording resumed (state update only). |
-| `TRANSFER_SUCCESS` | Transfer succeeded. |
-| `TRANSFER_FAILED` | Transfer failed. |
-| `TASK_WRAPUP` | Wrapup required for this task. |
-| `WRAPUP_COMPLETE` | Wrapup completed. |
-| `CONTACT_ENDED` | Contact ended; may wrap or terminate by guard. |
-| `RONA` | Offer timed out (ring-no-answer). |
-| `ASSIGN_FAILED` | Assign attempt failed. |
-| `INVITE_FAILED` | Invite to task failed. |
-| `OUTBOUND_FAILED` | Outbound initiation failed. |
-| `SWITCH_TO_MAIN_CALL` | Switch focus to main call. |
-| `SWITCH_TO_CONSULT` | Switch focus to consult call. |
-| `ACCEPT` | Accept incoming WebRTC task. |
-| `DECLINE` | Decline incoming WebRTC task. |
-| `END` | End task (WebRTC). |
-| `CTQ_CANCEL` | Cancel consult-to-queue request. |
-| `CTQ_CANCEL_FAILED` | Consult-to-queue cancel failed. |
+**Guards**:
+- `canUnhold`: Check if resume is allowed
+
+**Context Updates**:
+- Hold timestamp
+- Media resource state
 
 ---
+
+### CONSULTING
+**Description**: In consultation with another agent/queue.
+
+**Entry Actions**:
+- `setConsultInitiator`
+- `setConsultFromConference`
+- `emitTaskConsulting`
+
+**Valid Transitions**:
+- `CONSULT_END` → CONNECTED or HELD (return to previous state)
+- `CONFERENCE_START` → CONFERENCING
+- `TRANSFER_SUCCESS` → WRAPPING_UP or TERMINATED (based on isConsulted flag)
+- `CONSULTING_ACTIVE` → Stay (update agent joined state)
+- `CONSULT_FAILED` → CONNECTED
+- `CTQ_CANCEL` → CONNECTED
+
+**Guards**:
+- `isConsultInitiator`: Check if current agent started consult
+- `isConsultedAgent`: Check if current agent received consult
+- `canEndConsult`: Check if consult can be ended
+- `canTransferConsult`: Check if consult transfer is allowed
+
+**Context Updates**:
+- `consultInitiator`: Agent who initiated
+- `consultDestinationAgentJoined`: Whether destination agent joined
+- `consultFromConference`: If consult came from conference
+
+---
+
+### CONFERENCING
+**Description**: Multi-party conference call.
+
+**Entry Actions**:
+- `markConferenceStarted`
+- `emitTaskConferenceStart`
+
+**Valid Transitions**:
+- `CONFERENCE_END` → CONNECTED
+- `PARTICIPANT_LEAVE` → Stay (track participants) or CONNECTED (if last participant)
+- `CONTACT_ENDED` → WRAPPING_UP
+- `TRANSFER_CONFERENCE_SUCCESS` → TERMINATED
+
+**Guards**:
+- `isLastParticipant`: Check if only one participant remains
+- `canExitConference`: Check if agent can exit
+- `canTransferConference`: Check if conference can be transferred
+
+**Context Updates**:
+- `activeParticipants`: List of participant IDs
+- `conferenceStartTime`: Timestamp
+
+---
+
+### WRAPPING_UP
+**Description**: Post-interaction work (After Call Work / ACW).
+
+**Entry Actions**:
+- `markEnded`
+- `emitTaskWrapup`
+
+**Valid Transitions**:
+- `WRAPUP_COMPLETE` → WRAPPED_UP
+
+**Guards**: None
+
+**Context Updates**:
+- End timestamp
+- Wrapup start time
+
+---
+
+### WRAPPED_UP
+**Description**: Wrapup completed, ready for cleanup.
+
+**Entry Actions**:
+- `emitTaskWrappedup`
+- `cleanupResources`
+
+**Valid Transitions**:
+- Auto-transition → TERMINATED
+
+**Guards**: None
+
+**Context**: Cleanup flags
+
+---
+
+### TERMINATED
+**Description**: Final state, task ended.
+
+**Entry Actions**:
+- `requestCleanup`
+
+**Valid Transitions**: None (terminal state)
+
+**Guards**: None
+
+**Context**: Preserved for historical reference
+
+---
+
+## Events
+
+### Task Lifecycle Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `TASK_INCOMING` | `{taskData}` | New task offered to agent |
+| `TASK_OFFERED` | `{taskData}` | Backend confirmed offer |
+| `ASSIGN` | `{taskData}` | Task assigned to agent |
+| `CONTACT_ENDED` | `{taskData}` | Interaction terminated |
+| `HYDRATE` | `{taskData, agentId}` | State restoration from backend |
+
+### Hold/Resume Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `HOLD_INITIATED` | `{mediaResourceId}` | User initiated hold |
+| `HOLD_SUCCESS` | `{mediaResourceId, taskData}` | Hold confirmed |
+| `UNHOLD_INITIATED` | `{mediaResourceId}` | User initiated resume |
+| `UNHOLD_SUCCESS` | `{mediaResourceId, taskData}` | Resume confirmed |
+
+### Consult Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `OFFER_CONSULT` | `{taskData}` | Consult offered to agent |
+| `CONSULT_INITIATED` | `{destination, destinationType}` | User started consult |
+| `CONSULT_CREATED` | `{taskData}` | Consult created on backend |
+| `CONSULTING_ACTIVE` | `{consultDestinationAgentJoined, taskData}` | Consult agent joined |
+| `CONSULT_END` | `{taskData}` | Consult ended |
+| `CONSULT_FAILED` | `{reason, taskData}` | Consult failed |
+| `CTQ_CANCEL` | `{taskData}` | Consult to queue cancelled |
+
+### Conference Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `CONFERENCE_START` | `{taskData}` | Conference began |
+| `CONFERENCE_END` | `{taskData}` | Conference ended |
+| `PARTICIPANT_LEAVE` | `{participantId, taskData}` | Participant left |
+| `CONFERENCE_FAILED` | `{reason, taskData}` | Conference failed |
+
+### Transfer Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `TRANSFER_INITIATED` | `{destination, destinationType}` | User initiated transfer |
+| `TRANSFER_SUCCESS` | `{taskData}` | Transfer completed |
+| `TRANSFER_FAILED` | `{taskData}` | Transfer failed |
+| `TRANSFER_CONFERENCE_SUCCESS` | `{taskData}` | Conference transfer completed |
+
+### Recording Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `RECORDING_STARTED` | `{taskData}` | Recording began |
+| `PAUSE_RECORDING` | `{taskData}` | Recording paused |
+| `RESUME_RECORDING` | `{taskData}` | Recording resumed |
+
+### Wrapup Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `TASK_WRAPUP` | `{taskData}` | Entering wrapup state |
+| `WRAPUP_COMPLETE` | `{taskData}` | Wrapup finished |
+
+### Error Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `RONA` | `{reason, taskData}` | Redirection on no answer |
+| `INVITE_FAILED` | `{reason}` | Invite failed |
+| `ASSIGN_FAILED` | `{reason}` | Assignment failed |
+| `OUTBOUND_FAILED` | `{reason}` | Outbound call failed |
+
+---
+
 
 ## Single Transition Flow
 The flow below shows a single transition in the requested form:
@@ -173,7 +336,85 @@ flowchart LR
 
 ---
 
-## Backend Event Mapping Reference (CC_EVENTS -> TaskEvent -> Transition)
+## State Pattern (via XState)
+
+### Purpose
+Manage complex task lifecycle with clear states, transitions, guards, and actions.
+
+### Implementation
+
+```typescript
+// Task.ts
+export default abstract class Task extends EventEmitter {
+  public stateMachineService?: ActorRefFrom<TaskStateMachine>;
+
+  private initializeStateMachine(): void {
+    const machine: TaskStateMachine = createTaskStateMachine(
+      this.uiControlConfig,
+      {
+        actions: this.getStateMachineActionOverrides()
+      }
+    );
+
+    this.stateMachineService = createActor(machine);
+
+    // Subscribe to state changes
+    this.stateMachineService.subscribe((snapshot) => {
+      const currentState = snapshot.value as TaskState;
+      this.state = snapshot;
+      this.updateUiControls(previousState !== currentState);
+    });
+
+    this.stateMachineService.start();
+  }
+
+  public sendStateMachineEvent(event: TaskEventPayload): void {
+    this.stateMachineService?.send(event);
+  }
+}
+```
+
+### State Machine Architecture
+
+```typescript
+// state-machine/TaskStateMachine.ts
+export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
+  return {
+    id: 'taskStateMachine',
+    initial: TaskState.IDLE,
+    context: createInitialContext(uiControlConfig, TaskState.IDLE),
+    states: {
+      [TaskState.IDLE]: {
+        on: {
+          [TaskEvent.TASK_INCOMING]: {
+            target: TaskState.OFFERED,
+            actions: ['initializeTask', 'emitTaskIncoming']
+          }
+        }
+      },
+      [TaskState.OFFERED]: {
+        on: {
+          [TaskEvent.ASSIGN]: [
+            {
+              guard: 'isConsultingAssignment',
+              target: TaskState.CONSULTING,
+              actions: ['updateTaskData', 'emitTaskConsulting']
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'emitTaskAssigned']
+            }
+          ]
+        }
+      },
+      // ... more states
+    }
+  };
+}
+```
+
+## Backend CC Event Mapping Reference (CC_EVENTS -> TaskEvent -> Transition)
+Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 
 | Backend CC Event | TaskEvent | Typical From State(s) | Target State | Notes / Guards |
 |---|---|---|---|---|
@@ -221,9 +462,90 @@ flowchart LR
 
 - `AGENT_CONTACT_UNASSIGNED` -> returns `null` in mapper (`TaskManager.mapEventToTaskStateMachineEvent`)
 
+
+### Contact Lifecycle Mappings
+
+| Backend Event | TaskEvent | State Transition | Notes |
+|--------------|-----------|------------------|-------|
+| `AgentContactReserved` | `TASK_INCOMING` | IDLE → OFFERED | New task offered |
+| `AgentOfferContact` | `TASK_OFFERED` | Stay in OFFERED | Offer confirmation |
+| `AgentContact` | `HYDRATE` | Various | State restoration |
+| `AgentContactAssigned` | `ASSIGN` | OFFERED → CONNECTED/CONSULTING | Task accepted |
+| `ContactUpdated` | `CONTACT_UPDATED` | No change | Data update only |
+| `ContactOwnerChanged` | `CONTACT_OWNER_CHANGED` | No change | Owner update only |
+| `ContactEnded` | `CONTACT_ENDED` | → WRAPPING_UP/TERMINATED | Interaction ended |
+| `AgentContactUnassigned` | None | N/A | Handled by other events |
+
+### Hold/Resume Mappings
+
+| Backend Event | TaskEvent | State Transition | Context Update |
+|--------------|-----------|------------------|----------------|
+| `AgentContactHeld` | `HOLD_SUCCESS` | CONNECTED → HELD | `isHeld = true`, store mediaResourceId |
+| `AgentContactUnheld` | `UNHOLD_SUCCESS` | HELD → CONNECTED | `isHeld = false`, clear mediaResourceId |
+
+### Consult Mappings
+
+| Backend Event | TaskEvent | State Transition | Context Update |
+|--------------|-----------|------------------|----------------|
+| `AgentOfferConsult` | `OFFER_CONSULT` | → CONSULTING | Mark as consulted task |
+| `AgentConsultCreated` | `CONSULT_CREATED` | CONNECTED → CONSULTING | Store consult interaction ID |
+| `AgentConsulting` | `CONSULTING_ACTIVE` | OFFERED/CONNECTED → CONSULTING | Set `consultDestinationAgentJoined = true` |
+| `AgentConsultEnded` | `CONSULT_END` | CONSULTING → CONNECTED/HELD | Clear consult context |
+| `AgentConsultFailed` | `CONSULT_FAILED` | CONSULTING → CONNECTED | Emit failure event |
+| `AgentCtqCancelled` | `CTQ_CANCEL` | CONSULTING → CONNECTED | Queue consult cancelled |
+| `AgentCtqFailed` | `CONSULT_FAILED` | CONSULTING → CONNECTED | Queue consult failed |
+
+### Transfer Mappings
+
+| Backend Event | TaskEvent | State Transition | Wrapup Logic |
+|--------------|-----------|------------------|--------------|
+| `AgentBlindTransferred` | `TRANSFER_SUCCESS` | → WRAPPING_UP/TERMINATED | Based on wrapUpRequired |
+| `AgentVTeamTransferred` | `TRANSFER_SUCCESS` | → WRAPPING_UP/TERMINATED | Queue transfer success |
+| `AgentConsultTransferred` | `TRANSFER_SUCCESS` | CONSULTING → WRAPPING_UP/TERMINATED | Initiator wraps up, consulted gets task |
+| `AgentBlindTransferFailed` | `TRANSFER_FAILED` | No change | Emit failure, stay in current state |
+| `AgentVTeamTransferFailed` | `TRANSFER_FAILED` | No change | Queue transfer failed |
+| `AgentConsultTransferFailed` | `TRANSFER_FAILED` | No change | Consult transfer failed |
+
+### Conference Mappings
+
+| Backend Event | TaskEvent | State Transition | Context Update |
+|--------------|-----------|------------------|----------------|
+| `AgentConsultConferenced` | `CONFERENCE_START` | CONSULTING → CONFERENCING | Mark conference active |
+| `ParticipantJoinedConference` | `CONFERENCE_START` | → CONFERENCING | Add participant to list |
+| `ParticipantLeftConference` | `PARTICIPANT_LEAVE` | Check if last → CONNECTED | Remove participant from list |
+| `AgentConsultConferenceEnded` | `CONFERENCE_END` | CONFERENCING → CONNECTED | Clear conference context |
+| `AgentConsultConferenceFailed` | `CONFERENCE_FAILED` | CONFERENCING → CONNECTED | Emit failure |
+| `AgentConferenceTransferred` | `TRANSFER_CONFERENCE_SUCCESS` | CONFERENCING → TERMINATED | Transfer entire conference |
+| `AgentConferenceTransferFailed` | `TRANSFER_FAILED` | No change | Stay in CONFERENCING |
+
+### Recording Mappings
+
+| Backend Event | TaskEvent | State Transition | Context Update |
+|--------------|-----------|------------------|----------------|
+| `ContactRecordingStarted` | `RECORDING_STARTED` | No change | Update recording state |
+| `ContactRecordingPaused` | `PAUSE_RECORDING` | No change | Mark recording paused |
+| `ContactRecordingResumed` | `RESUME_RECORDING` | No change | Mark recording active |
+
+### Wrapup Mappings
+
+| Backend Event | TaskEvent | State Transition | Notes |
+|--------------|-----------|------------------|-------|
+| `AgentWrapup` | `TASK_WRAPUP` | → WRAPPING_UP | Enter ACW |
+| `AgentWrappedup` | `WRAPUP_COMPLETE` | WRAPPING_UP → WRAPPED_UP → TERMINATED | Complete wrapup |
+
+### Error Mappings
+
+| Backend Event | TaskEvent | State Transition | Notes |
+|--------------|-----------|------------------|-------|
+| `AgentContactOfferRona` | `RONA` | OFFERED → TERMINATED | Redirection on no answer |
+| `AgentInviteFailed` | `INVITE_FAILED` | OFFERED → TERMINATED | Invite failed |
+| `AgentContactAssignFailed` | `ASSIGN_FAILED` | OFFERED → TERMINATED | Assignment failed |
+| `AgentOutboundFailed` | `OUTBOUND_FAILED` | OFFERED → WRAPPING_UP/TERMINATED | Outdial failed |
+
+
 ---
 
-## State Transition Diagram
+## State Transition Diagrams
 
 This diagram represents state-to-state lifecycle transitions for the task state machine.
 
@@ -435,9 +757,101 @@ stateDiagram-v2
 
 ---
 
+## State Machine Configuration Example
+
+```typescript
+import {setup, assign} from 'xstate';
+
+const taskStateMachine = setup({
+  types: {
+    context: {} as TaskContext,
+    events: {} as TaskEventPayload,
+  },
+  guards: {
+    isInteractionTerminated,
+    isConsultingAssignment,
+    shouldWrapUp,
+    // ... all guards
+  },
+  actions: {
+    updateTaskData: assign({
+      taskData: ({event}) => event.taskData,
+    }),
+    markHeld: assign({
+      isHeld: true,
+      mediaResourceId: ({event}) => event.mediaResourceId,
+    }),
+    // ... all actions
+  },
+}).createMachine({
+  id: 'taskStateMachine',
+  initial: TaskState.IDLE,
+  context: createInitialContext(uiControlConfig, TaskState.IDLE),
+  states: {
+    [TaskState.IDLE]: {
+      on: {
+        [TaskEvent.TASK_INCOMING]: {
+          target: TaskState.OFFERED,
+          actions: ['initializeTask', 'emitTaskIncoming'],
+        },
+        [TaskEvent.HYDRATE]: [
+          {
+            guard: 'isInteractionTerminated',
+            target: TaskState.WRAPPING_UP,
+            actions: ['updateTaskData', 'markEnded', 'emitTaskHydrate'],
+          },
+          // ... more hydrate cases
+        ],
+      },
+    },
+    [TaskState.OFFERED]: {
+      on: {
+        [TaskEvent.ASSIGN]: [
+          {
+            guard: 'isConsultingAssignment',
+            target: TaskState.CONSULTING,
+            actions: ['updateTaskData', 'emitTaskConsulting'],
+          },
+          {
+            target: TaskState.CONNECTED,
+            actions: ['updateTaskData', 'emitTaskAssigned'],
+          },
+        ],
+        // ... more transitions
+      },
+    },
+    // ... more states
+  },
+});
+```
+
+---
+
+## State Restoration (HYDRATE)
+
+The HYDRATE event restores state machine state after page refresh or reconnection.
+
+**Algorithm**:
+1. Receive HYDRATE event with full task data
+2. Check interaction state and flags in order of precedence:
+   - If `state === 'terminated'` → WRAPPING_UP
+   - If consulting flags set → CONSULTING
+   - If `isOnHold === true` → HELD
+   - If `state === 'connected'` → CONNECTED
+   - If conference participants > 2 → CONFERENCING
+   - Default → Stay in IDLE
+3. Update context with hydrated data
+4. Emit TASK_HYDRATE event
+
+---
+
 ## Related Files
 
 - `../Task.ts` - actor lifecycle, action overrides, event emission
 - `../TaskManager.ts` - maps backend events to state-machine events
 - `../types.ts` - shared task data structures
 - `../../ai-docs/ARCHITECTURE.md` - broader task service architecture
+- [TaskStateMachine.ts](../state-machine/TaskStateMachine.ts) - Implementation
+- [guards.ts](../state-machine/guards.ts) - Guard functions
+- [actions.ts](../state-machine/actions.ts) - Action functions
+- [constants.ts](../state-machine/constants.ts) - State and event enums

@@ -99,37 +99,85 @@ All new events must add a typed payload entry in `TaskEventPayloadMap`.
 - Mercury or CC WebSocket protocols (see `TaskManager.ts` mapping).
 
 
-## Task State Machine Guards
-Guard functions determine if a state transition is allowed within the state machine. These functions validate the current context before allowing transitions.
-
-Guards are organized by category:
- - Helper Functions - Extract data from events/context
- - Hydrate Guards - For state restoration on page refresh
- - Conference Guards - Conference state checks
- - Customer Guards - Customer presence checks
- - Consult Guards - Consult flow checks
- - Wrapup Guards - End-of-call flow checks
- - Server State Guards - Check backend-reported state
- - Recording Guards - Recording state checks
+## Guards
+Guards are boolean conditions that determine determine if a state transition is allowed. These functions validate the current context before allowing transitions.
  
 ### Principles
 - Guards must be pure and must return boolean only
 - No mutation or side-effects.
 - Reuse helper accessors (e.g., `getTaskDataFromEvent`).
 
-### Key Guards (source: `guards.ts`)
-- `isInteractionTerminated`
-- `isInteractionConsulting`
-- `isInteractionHeld`
-- `isInteractionConnected`
-- `isConferencingByParticipants`
-- `shouldWrapUpForThisAgent`
-- `getIsCustomerInCall` / `getIsConferenceInProgress` (via `TaskUtils`)
+### State-Based Guards
+
+```typescript
+// Check if interaction is in terminated state
+isInteractionTerminated(context, event) {
+  return event.taskData?.interaction?.state === 'terminated';
+}
+
+// Check if interaction is consulting
+isInteractionConsulting(context, event) {
+  return event.taskData?.interaction?.state === 'consulting';
+}
+
+// Check if interaction is held
+isInteractionHeld(context, event) {
+  return event.taskData?.isOnHold === true;
+}
+
+// Check if interaction is connected
+isInteractionConnected(context, event) {
+  return event.taskData?.interaction?.state === 'connected';
+}
+```
+
+### Consult Guards
+
+```typescript
+// Check if this is a consulting assignment
+isConsultingAssignment(context, event) {
+  return event.taskData?.isConsulted === true;
+}
+
+// Check if current agent initiated consult
+isConsultInitiator(context, event) {
+  return context.consultInitiator === context.agentId;
+}
+
+// Check if current agent received consult
+isConsultedAgent(context, event) {
+  return context.consultDestinationAgentId === context.agentId;
+}
+```
+
+### Conference Guards
+
+```typescript
+// Check if conference is in progress by participants
+isConferencingByParticipants(context, event) {
+  const participants = event.taskData?.interaction?.participants;
+  return Object.keys(participants || {}).length > 2;
+}
+
+// Check if last participant in conference
+isLastParticipant(context, event) {
+  return context.activeParticipants?.length <= 2;
+}
+```
+
+### Wrapup Guards
+
+```typescript
+// Check if wrapup is required
+shouldWrapUp(context, event) {
+  return event.taskData?.wrapUpRequired === true;
+}
+```
 
 ---
 
-## Task State Machine Actions
-Action implementations to be executed during state transitions. 
+## Actions
+Actions are side effects executed during state machine transitions from current state to target state(next state).
 Actions contain:
 - Context synchronization (`updateTaskData`, `setHoldState`, consult flags)
 - Lifecycle mutations (`clearConsultState`, `markEnded`)
@@ -140,12 +188,97 @@ Actions contain:
 - Emitter actions intentionally no-op defaults and overridden by `Task` to bridge machine transitions to SDK events.
 - Deterministic updates from `taskData`.
 
-### Key Actions (source: `actions.ts`)
-- `updateTaskData`
-- `syncTaskDataFromEvent`
-- `markEnded`
-- `updateRecordingState`
-- `emitTaskIncoming`, `emitTaskHydrate`, etc.
+
+### Context Update Actions
+
+```typescript
+// Update task data from event
+updateTaskData(context, event) {
+  context.taskData = event.taskData;
+}
+
+// Mark task as held
+markHeld(context, event) {
+  context.isHeld = true;
+  context.mediaResourceId = event.mediaResourceId;
+}
+
+// Mark task as ended
+markEnded(context, event) {
+  context.hasEnded = true;
+  context.endTime = Date.now();
+}
+
+// Set consult initiator
+setConsultInitiator(context, event) {
+  context.consultInitiator = determineConsultInitiator(event.taskData);
+}
+
+// Set consult agent joined flag
+setConsultAgentJoined(context, event) {
+  context.consultDestinationAgentJoined = true;
+}
+
+// Mark conference started
+markConferenceStarted(context, event) {
+  context.isConferenceInProgress = true;
+  context.activeParticipants = getActiveParticipants(event.taskData);
+}
+```
+
+### Event Emission Actions
+
+```typescript
+// Emit task incoming
+emitTaskIncoming(context, event) {
+  task.emit(TASK_EVENTS.TASK_INCOMING, task);
+}
+
+// Emit task assigned
+emitTaskAssigned(context, event) {
+  task.emit(TASK_EVENTS.TASK_ASSIGNED, task);
+}
+
+// Emit task hold
+emitTaskHold(context, event) {
+  task.emit(TASK_EVENTS.TASK_HOLD, task);
+}
+
+// Emit task wrapup
+emitTaskWrapup(context, event) {
+  if (context.taskData.wrapUpRequired) {
+    task.emit(TASK_EVENTS.TASK_WRAPUP, task);
+  }
+}
+
+// ... more emission actions for each event type
+```
+
+### Cleanup Actions
+
+```typescript
+// Request cleanup (remove from collection, keep task object)
+requestCleanup(context, event) {
+  task.emit(TASK_EVENTS.TASK_CLEANUP, task, {removeFromCollection: false});
+}
+
+// Cleanup resources (remove from collection)
+cleanupResources(context, event) {
+  task.emit(TASK_EVENTS.TASK_CLEANUP, task, {removeFromCollection: true});
+}
+```
+
+### Auto-Answer Actions
+
+```typescript
+// Request auto-answer
+requestAutoAnswer(context, event) {
+  if (event.taskData?.isAutoAnswering) {
+    // Trigger accept() method
+    autoAnswerIfNeeded();
+  }
+}
+```
 
 ---
 
