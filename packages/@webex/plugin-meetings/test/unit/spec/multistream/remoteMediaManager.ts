@@ -965,6 +965,36 @@ describe('RemoteMediaManager', () => {
       );
     });
 
+    it('allocates 25 video slots for AllEqual25 layout', async () => {
+      const config = cloneDeep(DefaultTestConfiguration);
+      config.video.layouts['AllEqual25'] = {
+        activeSpeakerVideoPaneGroups: [
+          {id: 'main', numPanes: 25, size: 'best', priority: 255},
+        ],
+      };
+      config.video.initialLayoutId = 'AllEqual25';
+
+      let slotCount = 0;
+      fakeReceiveSlotManager.allocateSlot.callsFake((mediaType: MediaType) => {
+        if (mediaType === MediaType.VideoMain) {
+          slotCount += 1;
+          return Promise.resolve(new FakeSlot(mediaType, `fake video ${slotCount}`));
+        }
+        return Promise.resolve(fakeAudioSlot);
+      });
+
+      remoteMediaManager = new RemoteMediaManager(
+        fakeReceiveSlotManager,
+        fakeMediaRequestManagers,
+        config
+      );
+
+      await remoteMediaManager.start();
+
+      assert.strictEqual(remoteMediaManager.getLayoutId(), 'AllEqual25');
+      assert.strictEqual(remoteMediaManager.slots.video.activeSpeaker.length, 25);
+    });
+
     it('releases slots when switching to layout that requires less active speaker slots', async () => {
       // start with "AllEqual" layout that needs just 9 video slots
       const config = cloneDeep(DefaultTestConfiguration);
