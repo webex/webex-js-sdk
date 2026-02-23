@@ -447,3 +447,11 @@ Before submitting code:
 - [ ] Types exported appropriately
 - [ ] Unit tests added/updated
 - [ ] No `any` types without justification
+
+## Need More Context?
+
+- **TypeScript patterns**: [`patterns/typescript-patterns.md`](patterns/typescript-patterns.md)
+- **Testing patterns**: [`patterns/testing-patterns.md`](patterns/testing-patterns.md)
+- **Event patterns**: [`patterns/event-driven-patterns.md`](patterns/event-driven-patterns.md)
+- **WebSocket patterns**: [`patterns/websocket-patterns.md`](patterns/websocket-patterns.md)
+- **Plugin patterns**: [`patterns/sdk-plugin-patterns.md`](patterns/sdk-plugin-patterns.md)
