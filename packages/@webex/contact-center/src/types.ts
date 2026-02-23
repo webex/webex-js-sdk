@@ -373,6 +373,19 @@ export interface WebexSDK {
   internal: IWebexInternal;
   /** Logger instance */
   logger: Logger;
+  /** SDK configuration */
+  config?: {
+    /** Services configuration */
+    services?: {
+      /** Discovery URLs for service endpoints */
+      discovery?: {
+        /** U2C service URL - INT environments use u2c-intb.ciscospark.com */
+        u2c?: string;
+        /** Hydra service URL */
+        hydra?: string;
+      };
+    };
+  };
 }
 
 /**

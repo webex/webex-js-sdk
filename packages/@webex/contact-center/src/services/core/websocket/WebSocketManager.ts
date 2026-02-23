@@ -86,26 +86,23 @@ export class WebSocketManager extends EventEmitter {
 
   /**
    * Checks if the current environment is an integration (INT) environment
-   * by examining the service URL for known INT patterns.
-   * INT environments include: intgus1, qaus1, loadus1, etc.
+   * by examining the configured discovery URL from webex config.
+   * INT environments use discovery URLs containing 'intb' (e.g., u2c-intb.ciscospark.com).
    * @returns {boolean} True if INT environment, false otherwise
    * @private
    */
   private isIntegrationEnvironment(): boolean {
     try {
-      const serviceUrl = this.webex.internal?.services?.get?.(WCC_API_GATEWAY) || '';
-      // INT environments have patterns like: intgus1, qaus1, loadus1
-      // Production environments have patterns like: produs1, prodeu1, wxcc-us1, wxcc-eu1
-      const intPatterns = /(intg|qaus|loadus)\d*/i;
-      const isInt = intPatterns.test(serviceUrl);
+      // Check the u2c discovery URL from the webex config
+      // INT environments use: https://u2c-intb.ciscospark.com/u2c/api/v1
+      // Production environments use: https://u2c.wbx2.com/u2c/api/v1 (or similar)
+      const u2cUrl = this.webex.config?.services?.discovery?.u2c || '';
+      const isInt = u2cUrl.includes('intb');
 
-      LoggerProxy.log(
-        `[WebSocketManager] Environment check - URL: ${serviceUrl}, isINT: ${isInt}`,
-        {
-          module: WEB_SOCKET_MANAGER_FILE,
-          method: 'isIntegrationEnvironment',
-        }
-      );
+      LoggerProxy.log(`[WebSocketManager] isIntegrationEnvironment: ${isInt}`, {
+        module: WEB_SOCKET_MANAGER_FILE,
+        method: 'isIntegrationEnvironment',
+      });
 
       return isInt;
     } catch (error) {
