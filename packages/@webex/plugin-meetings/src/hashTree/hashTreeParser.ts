@@ -928,48 +928,50 @@ class HashTreeParser {
       }
     }
 
-    // by this point we now have this.dataSets setup for data sets from this message
-    // and hash trees created for the new visible data sets,
-    // so we can now process all the updates from the message
-    dataSets.forEach((dataSet) => {
-      if (this.dataSets[dataSet.name]) {
-        const {hashTree} = this.dataSets[dataSet.name];
+    if (message.locusStateElements?.length > 0) {
+      // by this point we now have this.dataSets setup for data sets from this message
+      // and hash trees created for the new visible data sets,
+      // so we can now process all the updates from the message
+      dataSets.forEach((dataSet) => {
+        if (this.dataSets[dataSet.name]) {
+          const {hashTree} = this.dataSets[dataSet.name];
 
-        if (hashTree) {
-          const locusStateElementsForThisSet = message.locusStateElements.filter((object) =>
-            object.htMeta.dataSetNames.includes(dataSet.name)
-          );
+          if (hashTree) {
+            const locusStateElementsForThisSet = message.locusStateElements.filter((object) =>
+              object.htMeta.dataSetNames.includes(dataSet.name)
+            );
 
-          const appliedChangesList = hashTree.updateItems(
-            locusStateElementsForThisSet.map((object) =>
-              object.data
-                ? {operation: 'update', item: object.htMeta.elementId}
-                : {operation: 'remove', item: object.htMeta.elementId}
-            )
-          );
+            const appliedChangesList = hashTree.updateItems(
+              locusStateElementsForThisSet.map((object) =>
+                object.data
+                  ? {operation: 'update', item: object.htMeta.elementId}
+                  : {operation: 'remove', item: object.htMeta.elementId}
+              )
+            );
 
-          zip(appliedChangesList, locusStateElementsForThisSet).forEach(
-            ([changeApplied, object]) => {
-              if (changeApplied) {
-                if (isSelf(object) && !object.data) {
-                  isRosterDropped = true;
+            zip(appliedChangesList, locusStateElementsForThisSet).forEach(
+              ([changeApplied, object]) => {
+                if (changeApplied) {
+                  if (isSelf(object) && !object.data) {
+                    isRosterDropped = true;
+                  }
+                  // add to updatedObjects so that our locus DTO will get updated with the new object
+                  updatedObjects.push(object);
                 }
-                // add to updatedObjects so that our locus DTO will get updated with the new object
-                updatedObjects.push(object);
               }
-            }
-          );
-        } else {
-          LoggerProxy.logger.info(
-            `Locus-info:index#parseMessage --> ${this.debugId} unexpected (not visible) dataSet ${dataSet.name} received in hash tree message`
-          );
+            );
+          } else {
+            LoggerProxy.logger.info(
+              `Locus-info:index#parseMessage --> ${this.debugId} unexpected (not visible) dataSet ${dataSet.name} received in hash tree message`
+            );
+          }
         }
-      }
 
-      if (!isRosterDropped) {
-        this.runSyncAlgorithm(dataSet);
-      }
-    });
+        if (!isRosterDropped) {
+          this.runSyncAlgorithm(dataSet);
+        }
+      });
+    }
 
     if (isRosterDropped) {
       LoggerProxy.logger.info(
