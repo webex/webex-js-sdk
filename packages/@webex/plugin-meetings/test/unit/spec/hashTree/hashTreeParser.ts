@@ -532,6 +532,46 @@ describe('HashTreeParser', () => {
         });
       });
     });
+
+    it('handles sync response that has locusStateElements undefined', async () => {
+      const minimalInitialLocus = {
+        dataSets: [],
+        locus: null,
+      };
+
+      const parser = createHashTreeParser(minimalInitialLocus, null);
+
+      const mainDataSet = createDataSet('main', 16, 1100);
+
+      // Mock getAllVisibleDataSetsFromLocus to return the main dataset
+      mockGetAllDataSetsMetadata(webexRequest, visibleDataSetsUrl, [mainDataSet]);
+
+      // Mock the sync response to have locusStateElements: undefined
+      // This is what sendInitializationSyncRequestToLocus will receive and pass to parseMessage
+      mockSyncRequest(webexRequest, mainDataSet.url, {
+        dataSets: [mainDataSet],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: undefined,
+      });
+
+      // Trigger sendInitializationSyncRequestToLocus via initializeFromMessage
+      await parser.initializeFromMessage({
+        dataSets: [],
+        visibleDataSetsUrl,
+        locusUrl,
+      });
+
+      // Verify the hash tree was created for main dataset
+      expect(parser.dataSets.main.hashTree).to.be.instanceOf(HashTree);
+
+      // updateItems should NOT have been called because locusStateElements is undefined
+      const mainUpdateItemsStub = sinon.spy(parser.dataSets.main.hashTree, 'updateItems');
+      assert.notCalled(mainUpdateItemsStub);
+
+      // callback should not be called, because there are no updates
+      assert.notCalled(callback);
+    });
   });
 
   describe('#initializeFromGetLociResponse', () => {
@@ -855,10 +895,6 @@ describe('HashTreeParser', () => {
       // Verify putItem was called on self hash tree with metadata
       assert.calledOnceWithExactly(selfPutItemSpy, {type: 'metadata', id: 5, version: 51});
 
-      console.log(
-        'callback calls',
-        callback.getCalls().map((call) => JSON.stringify(call.args, null, 2))
-      );
       // Verify callback was called with metadata object and removed dataset objects
       assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
         updatedObjects: [
