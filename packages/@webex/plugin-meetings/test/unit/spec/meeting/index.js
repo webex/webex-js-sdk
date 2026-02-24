@@ -82,6 +82,7 @@ import Mercury from '@webex/internal-plugin-mercury';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
 import SimultaneousInterpretation from '@webex/plugin-meetings/src/interpretation';
 import Webinar from '@webex/plugin-meetings/src/webinar';
+import AIEnableRequest from '@webex/plugin-meetings/src/aiEnableRequest';
 import {REACTION_RELAY_TYPES} from '../../../../src/reactions/constants';
 import locus from '../fixture/locus';
 import {
@@ -376,6 +377,7 @@ describe('plugin-meetings', () => {
           assert.instanceOf(meeting.breakouts, Breakouts);
           assert.instanceOf(meeting.simultaneousInterpretation, SimultaneousInterpretation);
           assert.instanceOf(meeting.webinar, Webinar);
+          assert.instanceOf(meeting.aiEnableRequest, AIEnableRequest);
         });
 
         it('should call the callback with the meeting that has id already set', () => {
@@ -11025,6 +11027,9 @@ describe('plugin-meetings', () => {
           meeting.simultaneousInterpretation = {
             approvalUrlUpdate: sinon.stub().returns(undefined),
           };
+          meeting.aiEnableRequest = {
+            approvalUrlUpdate: sinon.stub().returns(undefined),
+          };
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -11042,6 +11047,10 @@ describe('plugin-meetings', () => {
           );
           assert.calledWith(
             meeting.simultaneousInterpretation.approvalUrlUpdate,
+            newLocusServices.services.approval.url
+          );
+          assert.calledWith(
+            meeting.aiEnableRequest.approvalUrlUpdate,
             newLocusServices.services.approval.url
           );
           assert.calledOnce(meeting.recordingController.setSessionId);

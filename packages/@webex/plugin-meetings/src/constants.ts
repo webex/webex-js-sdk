@@ -387,6 +387,7 @@ export const EVENT_TRIGGERS = {
   MEETING_MANUAL_CAPTION_UPDATED: 'meeting:manualCaptionControl:updated',
   MEETING_CAPTION_RECEIVED: 'meeting:caption-received',
   MEETING_PARTICIPANT_REASON_CHANGED: 'meeting:participant-reason-changed',
+  MEETING_AI_ENABLE_REQUEST: 'meeting:aiEnableRequest',
 };
 
 export const EVENT_TYPES = {
@@ -1406,3 +1407,14 @@ export const STAGE_MANAGER_TYPE = {
 };
 
 export const DEFAULT_LARGE_SCALE_WEBINAR_ATTENDEE_SEARCH_LIMIT = 50;
+
+export const AI_ENABLE_REQUEST = {
+  EVENTS: {},
+  ACTION_TYPE: {
+    REQUESTED: 'REQUESTED',
+    ACCEPTED: 'ACCEPTED',
+    DECLINED: 'DECLINED',
+    DECLINED_ALL: 'DECLINED_ALL',
+  },
+  RESOURCE_TYPE: 'AiAssistant',
+};
