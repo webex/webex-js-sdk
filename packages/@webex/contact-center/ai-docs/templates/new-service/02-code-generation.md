@@ -106,7 +106,40 @@ Add types to the parent service's types file (e.g., `task/types.ts`).
 
 ## Step 2: Constants (if needed)
 
-### For folder-based services → create `constants.ts` in the service folder
+### STOP — Validate Before Creating Any Constants
+
+**Before defining any new constant, search the existing constants hierarchy to check if it already exists or belongs at a shared level.** Constants are defined at multiple levels — adding duplicates or placing them at the wrong level creates drift.
+
+#### Constants Hierarchy (search in this order)
+
+| Level | File | What lives here | Examples |
+|---|---|---|---|
+| **Root** | `src/constants.ts` | SDK-wide file names, method names, global settings | `CC_FILE`, `TASK_FILE`, `READY`, `METHODS`, `TIMEOUT_DURATION` |
+| **Services shared** | `src/services/constants.ts` | API gateways, auth, network constants shared across services | `WCC_API_GATEWAY`, `POST_AUTH`, `WEBSOCKET_EVENT_TIMEOUT` |
+| **Metrics** | `src/metrics/constants.ts` | All metric event names | `METRIC_EVENT_NAMES` (single object with all events) |
+| **Config** | `src/services/config/constants.ts` | Endpoint maps, pagination defaults, agent states | `endPointMap`, `DEFAULT_PAGE_SIZE`, `AGENT_STATE_AVAILABLE` |
+| **Service-specific** | `src/services/{ServiceName}/constants.ts` | Constants used only within that service | `TASK_API`, `HOLD`, `KEEPALIVE_WORKER_INTERVAL` |
+
+#### Validation Steps
+
+For **each** constant the new service needs:
+
+1. **Search existing files**: Grep for the constant name or value across all `constants.ts` files
+2. **If found** → import from that file. Do NOT redefine it.
+3. **If not found** → determine the correct level:
+   - Is it SDK-wide (file names, method names)? → add to `src/constants.ts`
+   - Is it shared across multiple services (API paths, auth)? → add to `src/services/constants.ts`
+   - Is it a metric event? → add to `src/metrics/constants.ts` inside `METRIC_EVENT_NAMES`
+   - Is it specific to this service only? → add to service-level `constants.ts` (see below)
+
+4. **Only create a new `constants.ts` file** if:
+   - The service is folder-based AND
+   - The service folder does not already have a `constants.ts` AND
+   - There are service-specific constants that don't belong at any shared level
+
+### For folder-based services
+
+If service-specific constants are needed after the validation above, add them to the service folder's `constants.ts`:
 
 ```typescript
 // src/services/ServiceName/constants.ts
@@ -133,16 +166,20 @@ export const METHODS = {
 // } as const;
 ```
 
-> **Note**: Not all folder-based services have `constants.ts` — `agent/` has only `index.ts` + `types.ts`. Only create it if there are constants to define.
+> **Note**: Not all folder-based services have `constants.ts` — `agent/` has only `index.ts` + `types.ts`. Only create it if there are constants that don't belong at a shared level.
 
-### For single-file services → use existing shared constants files
+### For single-file services → add to existing shared constants files
 
-- Shared API constants: `src/services/constants.ts` (where `WCC_API_GATEWAY`, `SUBSCRIBE_API`, etc. live)
-- METHODS constants: `src/constants.ts` (where `METHODS` for `WebCallingService` etc. live)
+Do NOT create a new file. Add constants to the appropriate shared file based on the hierarchy above:
+
+- File/method names: `src/constants.ts`
+- API/network constants: `src/services/constants.ts`
 - Metric event names: `src/metrics/constants.ts`
-- Endpoint maps: `src/services/config/constants.ts` (where `endPointMap` lives)
+- Endpoint maps: `src/services/config/constants.ts`
 
 ### For sub-modules → add to parent's `constants.ts`
+
+Check the parent service's `constants.ts` first. Only add if the constant doesn't already exist there.
 
 ---
 

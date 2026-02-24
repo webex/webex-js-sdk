@@ -20,10 +20,14 @@
   - Folder-based service: service folder's `types.ts`
   - Single-file service: root `src/types.ts`
   - Sub-module: parent service's `types.ts`
-- [ ] Constants placed in the correct location:
-  - Folder-based service: service folder's `constants.ts` (if needed)
-  - Single-file service: `src/services/constants.ts` or `src/constants.ts`
-  - Sub-module: parent service's `constants.ts`
+- [ ] Constants: no duplicates — every constant was searched across the hierarchy before adding:
+  - `src/constants.ts` (SDK-wide: file names, method names, global settings)
+  - `src/services/constants.ts` (shared: API gateways, auth, network)
+  - `src/metrics/constants.ts` (all metric event names)
+  - `src/services/config/constants.ts` (endpoint maps, pagination, agent states)
+  - `src/services/{ServiceName}/constants.ts` (service-specific only)
+- [ ] Constants placed at the correct level (not duplicated at a lower level when shared exists)
+- [ ] New `constants.ts` file created ONLY if service is folder-based AND no existing file AND constants are service-specific
 - [ ] All public types have JSDoc
 - [ ] Response types match actual API response
 - [ ] Parameter types define all optional/required fields
