@@ -1,34 +1,43 @@
 # Config Service - AI Agent Guide
 
-> **Purpose**: Fetch and aggregate agent configuration data from multiple API endpoints to build the agent Profile.
+> **Purpose**: Fetch and aggregate agent configuration data from multiple API endpoints to build the Agent Profile.
+>
+> **Scope Authority**: This is the authoritative documentation for the **Config** service scope. See [Root AGENTS.md](../../../../AGENTS.md) for the orchestrator and cross-scope rules.
 
 ---
 
 ## Overview
 
-The Config Service is an **internal service** that builds the comprehensive `Profile` object by:
+The Config Service is an **internal service** that builds the comprehensive Agent Profile (`Profile` type) by:
 1. Fetching user data
 2. Fetching desktop profile
 3. Fetching teams
 4. Fetching aux codes (idle/wrapup codes)
 5. Fetching organization settings
-6. Aggregating all data into a single Profile
+6. Aggregating all data into a single Agent Profile
+
+The Agent Profile is the central configuration object required for an agent to operate within the contact center. It is built during the registration flow (`cc.register()`) and contains all the data an agent needs: identity, team assignments, dial plans, aux codes, login options, and feature flags. Once constructed, the Agent Profile is stored on the `ContactCenter` plugin instance as `this.agentConfig` and is used by other services (Agent, Task) throughout the session.
 
 ---
 
 ## Quick Usage
 
 ```typescript
-// Config service is used internally during registration
-const profile = await cc.register();
+// Config service is used internally during the registration flow.
+// Inside cc.ts → connectWebsocket(), after WebSocket connection is established:
+const agentId = data.agentId;
+const orgId = this.$webex.credentials.getOrgId();
+this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
 
-// Profile contains all agent configuration
-console.log('Agent ID:', profile.agentId);
-console.log('Teams:', profile.teams);
-console.log('Idle Codes:', profile.idleCodes);
-console.log('Wrapup Codes:', profile.wrapupCodes);
-console.log('WebRTC Enabled:', profile.webRtcEnabled);
-console.log('Login Options:', profile.loginVoiceOptions);
+// The returned Agent Profile contains all agent configuration:
+LoggerProxy.info(`Agent ID: ${this.agentConfig.agentId}`, {
+  module: 'cc',
+  method: 'connectWebsocket',
+});
+LoggerProxy.info(`Teams: ${this.agentConfig.teams}`, {
+  module: 'cc',
+  method: 'connectWebsocket',
+});
 ```
 
 ---
@@ -43,22 +52,48 @@ console.log('Login Options:', profile.loginVoiceOptions);
 
 ---
 
-## Profile Object (Key Fields)
+## Agent Profile Object (Key Fields)
+
+The Agent Profile is defined as the [`Profile`](../types.ts) type. Key fields:
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `agentId` | string | Unique agent identifier |
 | `agentName` | string | Display name |
 | `agentMailId` | string | Email address |
-| `teams` | Team[] | Assigned teams |
+| `teams` | [`Team[]`](../types.ts) | Assigned teams |
 | `defaultDn` | string | Default dial number |
-| `idleCodes` | Entity[] | Available idle codes |
-| `wrapupCodes` | Entity[] | Available wrapup codes |
+| `idleCodes` | [`Entity[]`](../types.ts) | Available idle codes |
+| `wrapupCodes` | [`Entity[]`](../types.ts) | Available wrapup codes |
 | `webRtcEnabled` | boolean | WebRTC calling enabled |
-| `loginVoiceOptions` | LoginOption[] | Available login types |
-| `dialPlan` | DialPlan | Number transformation rules |
+| `loginVoiceOptions` | [`LoginOption[]`](../types.ts) | Available login types |
+| `dialPlan` | [`DialPlan`](../types.ts) | Number transformation rules |
 | `isOutboundEnabledForAgent` | boolean | Outbound calling allowed |
 | `outDialEp` | string | Outbound entry point ID |
+
+---
+
+## Data Aggregation Flow
+
+The following diagram shows how `getAgentConfig` orchestrates multiple API calls and combines their results into the Agent Profile via `parseAgentConfigs()`:
+
+```
+getUserUsingCI ────┐
+                   │
+getOrgInfo ────────┤
+                   │
+getOrganizationSetting ────┤
+                   │
+getTenantData ─────┼──► parseAgentConfigs() ──► Agent Profile
+                   │
+getAllAuxCodes ─────┤
+                   │
+getDesktopProfileById ─┤
+                   │
+getAllTeams ────────┤
+                   │
+getDialPlanData ───┘
+```
 
 ---
 
@@ -66,18 +101,18 @@ console.log('Login Options:', profile.loginVoiceOptions);
 
 ### `getAgentConfig(orgId, agentId)`
 
-Main method that aggregates all configuration data.
+Main method that aggregates all configuration data into the Agent Profile.
 
 **Returns**: `Promise<Profile>`
 
 **Flow**:
 1. Fetch user data (`getUserUsingCI`)
-2. Fetch org info, settings, tenant data in parallel
-3. Fetch aux codes with pagination
-4. Fetch desktop profile, site info
-5. Fetch dial plan (if enabled)
-6. Fetch teams
-7. Parse and combine all data
+2. Fetch org info (`getOrgInfo`), settings (`getOrganizationSetting`), tenant data (`getTenantData`) in parallel
+3. Fetch aux codes with pagination (`getAllAuxCodes`)
+4. Fetch desktop profile (`getDesktopProfileById`), site info (`getSiteInfo`)
+5. Fetch dial plan if enabled (`getDialPlanData`)
+6. Fetch teams (`getAllTeams`)
+7. Parse and combine all data (`parseAgentConfigs`)
 
 ---
 
@@ -87,34 +122,12 @@ Fetch outbound ANI entries for caller ID selection.
 
 **Parameters**:
 - `orgId` (string): Organization ID
-- `params.outdialANI` (string): Outdial ANI ID from profile
+- `params.outdialANI` (string): Outdial ANI ID from Agent Profile
 - `params.page` (number, optional): Page number
 - `params.pageSize` (number, optional): Items per page
 - `params.search` (string, optional): Search term
 
 **Returns**: `Promise<OutdialAniEntriesResponse>`
-
----
-
-## Data Aggregation Flow
-
-```
-getUserUsingCI ────┐
-                   │
-getOrgInfo ────────┤
-                   │
-getOrgSettings ────┤
-                   │
-getTenantData ─────┼──► parseAgentConfigs() ──► Profile
-                   │
-getAuxCodes ───────┤
-                   │
-getDesktopProfile ─┤
-                   │
-getTeams ──────────┤
-                   │
-getDialPlan ───────┘
-```
 
 ---
 
@@ -138,7 +151,7 @@ Key types in `services/config/types.ts`:
 
 | Type | Description |
 |------|-------------|
-| `Profile` | Complete agent profile |
+| `Profile` | Complete Agent Profile |
 | `CC_EVENTS` | All event constants |
 | `CC_AGENT_EVENTS` | Agent-specific events |
 | `CC_TASK_EVENTS` | Task-specific events |
@@ -151,7 +164,7 @@ Key types in `services/config/types.ts`:
 
 ## Error Handling
 
-Config service methods throw errors on API failures:
+All API methods within the config service throw errors on failure. Since `getAgentConfig` calls multiple sub-APIs (`getUserUsingCI`, `getOrgInfo`, `getOrganizationSetting`, `getTenantData`, `getAllAuxCodes`, `getDesktopProfileById`, `getAllTeams`, `getDialPlanData`, etc.) and awaits them via `Promise.all`, **a failure in any single sub-API will cause the entire Agent Profile fetch to fail**. There is no partial profile — either all data is successfully fetched and aggregated, or the operation throws.
 
 ```typescript
 try {
@@ -180,7 +193,7 @@ this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
 
 ## Related
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Technical deep-dive
+- [Root AGENTS.md](../../../../AGENTS.md) - Orchestrator and cross-scope rules
 - [types.ts](../types.ts) - Type definitions
-- [Util.ts](../Util.ts) - Profile parsing utilities
+- [Util.ts](../Util.ts) - Agent Profile parsing utilities
 - [constants.ts](../constants.ts) - API endpoints
