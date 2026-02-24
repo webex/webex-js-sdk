@@ -77,11 +77,9 @@ describe('WebSocketManager', () => {
       credentials: {
         getOrgId: jest.fn().mockReturnValue('test-org-id'),
       },
-      config: {
+      internal: {
         services: {
-          discovery: {
-            u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1', // INT environment by default
-          },
+          isIntegrationEnvironment: jest.fn().mockReturnValue(true), // INT environment by default
         },
       },
     } as unknown as WebexSDK;
@@ -124,8 +122,8 @@ describe('WebSocketManager', () => {
       },
     };
 
-    // Mock INT environment URL (u2c-intb indicates integration)
-    (mockWebex as any).config.services.discovery.u2c = 'https://u2c-intb.ciscospark.com/u2c/api/v1';
+    // Mock INT environment (services.isIntegrationEnvironment returns true)
+    (mockWebex.internal.services.isIntegrationEnvironment as jest.Mock).mockReturnValue(true);
     (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
 
     await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
@@ -146,8 +144,8 @@ describe('WebSocketManager', () => {
       },
     };
 
-    // Mock production environment URL (no 'intb' in URL)
-    (mockWebex as any).config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+    // Mock production environment (services.isIntegrationEnvironment returns false)
+    (mockWebex.internal.services.isIntegrationEnvironment as jest.Mock).mockReturnValue(false);
     (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
 
     // Create new WebSocketManager instance with production mock
@@ -169,15 +167,15 @@ describe('WebSocketManager', () => {
     });
   });
 
-  it('should not send X-ORGANIZATION-ID header for fedramp environment', async () => {
+  it('should not send X-ORGANIZATION-ID header when services.isIntegrationEnvironment is not available', async () => {
     const subscribeResponse = {
       body: {
         webSocketUrl: 'wss://fake-url',
       },
     };
 
-    // Mock fedramp environment URL (production, no 'intb')
-    (mockWebex as any).config.services.discovery.u2c = 'https://u2c.gov.ciscospark.com/u2c/api/v1';
+    // Mock services not available (defaults to production behavior)
+    (mockWebex as any).internal = undefined;
     (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
 
     webSocketManager = new WebSocketManager({ webex: mockWebex });
@@ -196,91 +194,6 @@ describe('WebSocketManager', () => {
       body: fakeSubscribeRequest,
       headers: undefined,
     });
-  });
-
-  it('should not send X-ORGANIZATION-ID header when config.services.discovery.u2c is undefined', async () => {
-    const subscribeResponse = {
-      body: {
-        webSocketUrl: 'wss://fake-url',
-      },
-    };
-
-    // Mock undefined discovery URL
-    (mockWebex as any).config.services.discovery.u2c = undefined;
-    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
-
-    webSocketManager = new WebSocketManager({ webex: mockWebex });
-
-    setTimeout(() => {
-      MockWebSocket.inst.onopen();
-      MockWebSocket.inst.onmessage({ data: JSON.stringify({ type: "Welcome" }) });
-    }, 1);
-
-    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
-
-    expect(mockWebex.request).toHaveBeenCalledWith({
-      service: WCC_API_GATEWAY,
-      resource: SUBSCRIBE_API,
-      method: 'POST',
-      body: fakeSubscribeRequest,
-      headers: undefined,
-    });
-  });
-
-  it('should not send X-ORGANIZATION-ID header when config is not available', async () => {
-    const subscribeResponse = {
-      body: {
-        webSocketUrl: 'wss://fake-url',
-      },
-    };
-
-    // Mock config not available
-    (mockWebex as any).config = undefined;
-    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
-
-    webSocketManager = new WebSocketManager({ webex: mockWebex });
-
-    setTimeout(() => {
-      MockWebSocket.inst.onopen();
-      MockWebSocket.inst.onmessage({ data: JSON.stringify({ type: "Welcome" }) });
-    }, 1);
-
-    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
-
-    // Should fall back to not sending header
-    expect(mockWebex.request).toHaveBeenCalledWith({
-      service: WCC_API_GATEWAY,
-      resource: SUBSCRIBE_API,
-      method: 'POST',
-      body: fakeSubscribeRequest,
-      headers: undefined,
-    });
-  });
-
-  it('should log environment check result', async () => {
-    const subscribeResponse = {
-      body: {
-        webSocketUrl: 'wss://fake-url',
-      },
-    };
-
-    // Mock INT environment URL
-    (mockWebex as any).config.services.discovery.u2c = 'https://u2c-intb.ciscospark.com/u2c/api/v1';
-    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
-
-    webSocketManager = new WebSocketManager({ webex: mockWebex });
-
-    setTimeout(() => {
-      MockWebSocket.inst.onopen();
-      MockWebSocket.inst.onmessage({ data: JSON.stringify({ type: "Welcome" }) });
-    }, 1);
-
-    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest });
-
-    expect(LoggerProxy.log).toHaveBeenCalledWith(
-      '[WebSocketManager] isIntegrationEnvironment: true',
-      expect.objectContaining({ module: WEB_SOCKET_MANAGER_FILE, method: 'isIntegrationEnvironment' })
-    );
   });
 
   it('should log error and throw when register API fails in initWebSocket', async () => {

@@ -295,6 +295,8 @@ interface IWebexInternal {
     get: (service: string) => string;
     /** Wait for service catalog to be loaded */
     waitForCatalog: (service: string) => Promise<void>;
+    /** Check if current environment is INT (integration) */
+    isIntegrationEnvironment: () => boolean;
     /** Host catalog for service discovery */
     _hostCatalog: Record<string, ServiceHost[]>;
     /** Service URLs cache */
@@ -373,19 +375,6 @@ export interface WebexSDK {
   internal: IWebexInternal;
   /** Logger instance */
   logger: Logger;
-  /** SDK configuration */
-  config?: {
-    /** Services configuration */
-    services?: {
-      /** Discovery URLs for service endpoints */
-      discovery?: {
-        /** U2C service URL - INT environments use u2c-intb.ciscospark.com */
-        u2c?: string;
-        /** Hydra service URL */
-        hydra?: string;
-      };
-    };
-  };
 }
 
 /**

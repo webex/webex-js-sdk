@@ -84,42 +84,11 @@ export class WebSocketManager extends EventEmitter {
     this.isConnectionLost = event.isConnectionLost;
   }
 
-  /**
-   * Checks if the current environment is an integration (INT) environment
-   * by examining the configured discovery URL from webex config.
-   * INT environments use discovery URLs containing 'intb' (e.g., u2c-intb.ciscospark.com).
-   * @returns {boolean} True if INT environment, false otherwise
-   * @private
-   */
-  private isIntegrationEnvironment(): boolean {
-    try {
-      // Check the u2c discovery URL from the webex config
-      // INT environments use: https://u2c-intb.ciscospark.com/u2c/api/v1
-      // Production environments use: https://u2c.wbx2.com/u2c/api/v1 (or similar)
-      const u2cUrl = this.webex.config?.services?.discovery?.u2c || '';
-      const isInt = u2cUrl.includes('intb');
-
-      LoggerProxy.log(`[WebSocketManager] isIntegrationEnvironment: ${isInt}`, {
-        module: WEB_SOCKET_MANAGER_FILE,
-        method: 'isIntegrationEnvironment',
-      });
-
-      return isInt;
-    } catch (error) {
-      LoggerProxy.error(`Failed to determine environment: ${error}`, {
-        module: WEB_SOCKET_MANAGER_FILE,
-        method: 'isIntegrationEnvironment',
-      });
-
-      return false;
-    }
-  }
-
   private async register(connectionConfig: SubscribeRequest) {
     try {
       // X-ORGANIZATION-ID header is only required for INT environments
-      const isIntEnv = this.isIntegrationEnvironment();
-      const orgId = this.webex.credentials?.getOrgId();
+      const isIntEnv = this.webex.internal?.services?.isIntegrationEnvironment() || false;
+      const orgId = this.webex.credentials.getOrgId();
 
       if (isIntEnv && orgId) {
         LoggerProxy.log(`[WebSocketManager] Adding X-ORGANIZATION-ID header for INT environment`, {
