@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 import {WebexPlugin} from '@webex/webex-core';
-import {AI_ENABLE_REQUEST, HTTP_VERBS, MEETINGS} from '../constants';
+import {AI_ENABLE_REQUEST, HTTP_VERBS, LOCUSEVENT, MEETINGS} from '../constants';
 
 /**
  * @class AIEnableRequest
@@ -12,6 +12,8 @@ const AIEnableRequest = WebexPlugin.extend({
 
   props: {
     approvalUrl: 'string',
+    selfParticipantId: 'string',
+    hasSubscribedToEvents: 'boolean',
   },
 
   /**
@@ -21,6 +23,47 @@ const AIEnableRequest = WebexPlugin.extend({
    */
   approvalUrlUpdate(approvalUrl) {
     this.set('approvalUrl', approvalUrl);
+  },
+
+  /**
+   * Update the self participant id
+   * @param {string} selfParticipantId
+   * @returns {void}
+   */
+  selfParticipantIdUpdate(selfParticipantId) {
+    this.set('selfParticipantId', selfParticipantId);
+
+    if (!this.hasSubscribedToEvents) {
+      this.listenToApprovalRequests();
+      this.set('hasSubscribedToEvents', true);
+    }
+  },
+
+  /**
+   * Listen to locus approval request events and trigger a new event with necessary details when an AI enablement approval request is received
+   * @returns {void}
+   */
+  listenToApprovalRequests() {
+    this.listenTo(this.webex.internal.mercury, `event:${LOCUSEVENT.APPROVAL_REQUEST}`, (event) => {
+      if (event?.data?.approval?.resourceType === AI_ENABLE_REQUEST.RESOURCE_TYPE) {
+        const {receivers, initiator, actionType, url} = event.data.approval;
+        const receiverId = receivers?.[0]?.participantId;
+        const isReceiver = !!receiverId && receiverId === this.selfParticipantId;
+        const senderId = initiator?.participantId;
+        const isSender = !!senderId && senderId === this.selfParticipantId;
+        if (!isReceiver && !isSender) {
+          return;
+        }
+        this.trigger(AI_ENABLE_REQUEST.EVENTS.APPROVAL_REQUEST_ARRIVED, {
+          actionType,
+          isReceiver,
+          isSender,
+          senderId,
+          receiverId,
+          url,
+        });
+      }
+    });
   },
 
   /**
@@ -50,15 +93,14 @@ const AIEnableRequest = WebexPlugin.extend({
 
   /**
    * Sends a request to enable the AI assistant
-   * @param {string} selfParticipantId
    * @param {string} approverId
    * @returns {Promise}
    */
-  requestEnableAIAssistant(selfParticipantId, approverId) {
+  requestEnableAIAssistant(approverId) {
     return this.sendApprovalRequest(
       this.approvalUrl,
       AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
-      selfParticipantId,
+      this.selfParticipantId,
       approverId
     );
   },

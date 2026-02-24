@@ -3774,6 +3774,10 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     });
 
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ID_CHANGED, (payload) => {
+      this.aiEnableRequest.selfParticipantIdUpdate(payload.selfId);
+    });
+
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_INTERPRETATION_CHANGED, (payload) => {
       const targetChanged = this.simultaneousInterpretation.updateSelfInterpretation(payload);
       Trigger.trigger(

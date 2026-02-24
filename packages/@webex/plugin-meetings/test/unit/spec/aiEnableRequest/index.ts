@@ -6,7 +6,7 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 
 import AIEnableRequest from '../../../../src/aiEnableRequest/index';
-import {AI_ENABLE_REQUEST, HTTP_VERBS, MEETINGS} from '../../../../src/constants';
+import {AI_ENABLE_REQUEST, HTTP_VERBS, LOCUSEVENT, MEETINGS} from '../../../../src/constants';
 
 describe('plugin-meetings', () => {
   describe('AIEnableRequest', () => {
@@ -51,6 +51,304 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#selfParticipantIdUpdate', () => {
+      it('should update the selfParticipantId property', () => {
+        const testSelfParticipantId = 'participant-123';
+
+        aiEnableRequest.selfParticipantIdUpdate(testSelfParticipantId);
+
+        assert.equal(aiEnableRequest.selfParticipantId, testSelfParticipantId);
+      });
+
+      it('should handle updating selfParticipantId multiple times', () => {
+        const firstId = 'participant-111';
+        const secondId = 'participant-222';
+
+        aiEnableRequest.selfParticipantIdUpdate(firstId);
+        assert.equal(aiEnableRequest.selfParticipantId, firstId);
+
+        aiEnableRequest.selfParticipantIdUpdate(secondId);
+        assert.equal(aiEnableRequest.selfParticipantId, secondId);
+      });
+
+      it('should call listenToApprovalRequests on first update', () => {
+        const listenToApprovalRequestsSpy = sinon.spy(aiEnableRequest, 'listenToApprovalRequests');
+        const testSelfParticipantId = 'participant-123';
+
+        aiEnableRequest.selfParticipantIdUpdate(testSelfParticipantId);
+
+        sinon.assert.calledOnce(listenToApprovalRequestsSpy);
+        assert.isTrue(aiEnableRequest.hasSubscribedToEvents);
+      });
+
+      it('should not call listenToApprovalRequests on subsequent updates', () => {
+        const testSelfParticipantId = 'participant-123';
+
+        // First update
+        aiEnableRequest.selfParticipantIdUpdate(testSelfParticipantId);
+
+        const listenToApprovalRequestsSpy = sinon.spy(aiEnableRequest, 'listenToApprovalRequests');
+
+        // Second update
+        aiEnableRequest.selfParticipantIdUpdate('participant-456');
+
+        sinon.assert.notCalled(listenToApprovalRequestsSpy);
+        assert.isTrue(aiEnableRequest.hasSubscribedToEvents);
+      });
+    });
+
+    describe('#listenToApprovalRequests', () => {
+      let listenToSpy;
+      let triggerSpy;
+      const testSelfParticipantId = 'self-participant-123';
+      const testSenderId = 'sender-participant-456';
+      const testReceiverId = 'receiver-participant-789';
+      const testUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/test-id/approval';
+
+      beforeEach(() => {
+        aiEnableRequest.selfParticipantId = testSelfParticipantId;
+        listenToSpy = sinon.spy(aiEnableRequest, 'listenTo');
+        triggerSpy = sinon.spy(aiEnableRequest, 'trigger');
+      });
+
+      afterEach(() => {
+        sinon.restore();
+      });
+
+      it('should listen to mercury approval request events', () => {
+        aiEnableRequest.listenToApprovalRequests();
+
+        sinon.assert.calledOnce(listenToSpy);
+        sinon.assert.calledWith(
+          listenToSpy,
+          webex.internal.mercury,
+          `event:${LOCUSEVENT.APPROVAL_REQUEST}`
+        );
+      });
+
+      it('should trigger event when user is the receiver', () => {
+        aiEnableRequest.listenToApprovalRequests();
+
+        const event = {
+          data: {
+            approval: {
+              resourceType: AI_ENABLE_REQUEST.RESOURCE_TYPE,
+              receivers: [{participantId: testSelfParticipantId}],
+              initiator: {participantId: testSenderId},
+              actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+              url: testUrl,
+            },
+          },
+        };
+
+        webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+
+        sinon.assert.calledOnce(triggerSpy);
+        sinon.assert.calledWith(triggerSpy, AI_ENABLE_REQUEST.EVENTS.APPROVAL_REQUEST_ARRIVED, {
+          actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+          isReceiver: true,
+          isSender: false,
+          senderId: testSenderId,
+          receiverId: testSelfParticipantId,
+          url: testUrl,
+        });
+      });
+
+      it('should trigger event when user is the sender', () => {
+        aiEnableRequest.listenToApprovalRequests();
+
+        const event = {
+          data: {
+            approval: {
+              resourceType: AI_ENABLE_REQUEST.RESOURCE_TYPE,
+              receivers: [{participantId: testReceiverId}],
+              initiator: {participantId: testSelfParticipantId},
+              actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+              url: testUrl,
+            },
+          },
+        };
+
+        webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+
+        sinon.assert.calledOnce(triggerSpy);
+        sinon.assert.calledWith(triggerSpy, AI_ENABLE_REQUEST.EVENTS.APPROVAL_REQUEST_ARRIVED, {
+          actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+          isReceiver: false,
+          isSender: true,
+          senderId: testSelfParticipantId,
+          receiverId: testReceiverId,
+          url: testUrl,
+        });
+      });
+
+      it('should not trigger event when user is neither receiver nor sender', () => {
+        aiEnableRequest.listenToApprovalRequests();
+
+        const event = {
+          data: {
+            approval: {
+              resourceType: AI_ENABLE_REQUEST.RESOURCE_TYPE,
+              receivers: [{participantId: testReceiverId}],
+              initiator: {participantId: testSenderId},
+              actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+              url: testUrl,
+            },
+          },
+        };
+
+        webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+
+        sinon.assert.notCalled(triggerSpy);
+      });
+
+      it('should not trigger event when resourceType does not match', () => {
+        aiEnableRequest.listenToApprovalRequests();
+
+        const event = {
+          data: {
+            approval: {
+              resourceType: 'SomeOtherResourceType',
+              receivers: [{participantId: testSelfParticipantId}],
+              initiator: {participantId: testSenderId},
+              actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+              url: testUrl,
+            },
+          },
+        };
+
+        webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+
+        sinon.assert.notCalled(triggerSpy);
+      });
+
+      it('should handle events with different action types', () => {
+        aiEnableRequest.listenToApprovalRequests();
+
+        const actionTypes = [
+          AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+          AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED,
+          AI_ENABLE_REQUEST.ACTION_TYPE.DECLINED,
+          AI_ENABLE_REQUEST.ACTION_TYPE.DECLINED_ALL,
+        ];
+
+        actionTypes.forEach((actionType) => {
+          const event = {
+            data: {
+              approval: {
+                resourceType: AI_ENABLE_REQUEST.RESOURCE_TYPE,
+                receivers: [{participantId: testSelfParticipantId}],
+                initiator: {participantId: testSenderId},
+                actionType,
+                url: testUrl,
+              },
+            },
+          };
+
+          webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+        });
+
+        sinon.assert.callCount(triggerSpy, actionTypes.length);
+      });
+
+      it('should handle missing receiver participantId', () => {
+        aiEnableRequest.listenToApprovalRequests();
+
+        const event = {
+          data: {
+            approval: {
+              resourceType: AI_ENABLE_REQUEST.RESOURCE_TYPE,
+              receivers: [{}],
+              initiator: {participantId: testSelfParticipantId},
+              actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+              url: testUrl,
+            },
+          },
+        };
+
+        webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+
+        sinon.assert.calledOnce(triggerSpy);
+        const callArgs = triggerSpy.getCall(0).args[1];
+        assert.isFalse(callArgs.isReceiver);
+        assert.isTrue(callArgs.isSender);
+      });
+
+      it('should handle missing initiator participantId', () => {
+        aiEnableRequest.listenToApprovalRequests();
+
+        const event = {
+          data: {
+            approval: {
+              resourceType: AI_ENABLE_REQUEST.RESOURCE_TYPE,
+              receivers: [{participantId: testSelfParticipantId}],
+              initiator: {},
+              actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+              url: testUrl,
+            },
+          },
+        };
+
+        webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+
+        sinon.assert.calledOnce(triggerSpy);
+        const callArgs = triggerSpy.getCall(0).args[1];
+        assert.isTrue(callArgs.isReceiver);
+        assert.isFalse(callArgs.isSender);
+      });
+
+      it('should handle empty receivers array', () => {
+        aiEnableRequest.listenToApprovalRequests();
+
+        const event = {
+          data: {
+            approval: {
+              resourceType: AI_ENABLE_REQUEST.RESOURCE_TYPE,
+              receivers: [],
+              initiator: {participantId: testSelfParticipantId},
+              actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+              url: testUrl,
+            },
+          },
+        };
+
+        webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+
+        sinon.assert.calledOnce(triggerSpy);
+        const callArgs = triggerSpy.getCall(0).args[1];
+        assert.isFalse(callArgs.isReceiver);
+        assert.isTrue(callArgs.isSender);
+      });
+
+      it('should include all relevant data in triggered event', () => {
+        aiEnableRequest.listenToApprovalRequests();
+
+        const customUrl = 'https://custom.url/approval';
+        const event = {
+          data: {
+            approval: {
+              resourceType: AI_ENABLE_REQUEST.RESOURCE_TYPE,
+              receivers: [{participantId: testSelfParticipantId}],
+              initiator: {participantId: testSenderId},
+              actionType: AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED,
+              url: customUrl,
+            },
+          },
+        };
+
+        webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+
+        sinon.assert.calledOnce(triggerSpy);
+        const triggeredEvent = triggerSpy.getCall(0).args[1];
+        assert.equal(triggeredEvent.actionType, AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED);
+        assert.equal(triggeredEvent.url, customUrl);
+        assert.equal(triggeredEvent.senderId, testSenderId);
+        assert.equal(triggeredEvent.receiverId, testSelfParticipantId);
+        assert.isTrue(triggeredEvent.isReceiver);
+        assert.isFalse(triggeredEvent.isSender);
+      });
+    });
+
     describe('#requestEnableAIAssistant', () => {
       let requestStub;
       const testApprovalUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/test-id/approval';
@@ -59,6 +357,7 @@ describe('plugin-meetings', () => {
 
       beforeEach(() => {
         aiEnableRequest.approvalUrl = testApprovalUrl;
+        aiEnableRequest.selfParticipantId = testSelfParticipantId;
         requestStub = sinon.stub(aiEnableRequest, 'request').resolves({
           statusCode: 200,
           body: {},
@@ -70,7 +369,7 @@ describe('plugin-meetings', () => {
       });
 
       it('should make a POST request to the approval URL', async () => {
-        await aiEnableRequest.requestEnableAIAssistant(testSelfParticipantId, testApproverId);
+        await aiEnableRequest.requestEnableAIAssistant(testApproverId);
 
         sinon.assert.calledOnce(requestStub);
         sinon.assert.calledWith(requestStub, {
@@ -90,21 +389,21 @@ describe('plugin-meetings', () => {
       });
 
       it('should use the correct action type REQUESTED', async () => {
-        await aiEnableRequest.requestEnableAIAssistant(testSelfParticipantId, testApproverId);
+        await aiEnableRequest.requestEnableAIAssistant(testApproverId);
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.equal(callArgs.body.actionType, AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED);
       });
 
       it('should use the correct resource type AiAssistant', async () => {
-        await aiEnableRequest.requestEnableAIAssistant(testSelfParticipantId, testApproverId);
+        await aiEnableRequest.requestEnableAIAssistant(testApproverId);
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.equal(callArgs.body.resourceType, AI_ENABLE_REQUEST.RESOURCE_TYPE);
       });
 
       it('should include the initiator participant ID', async () => {
-        await aiEnableRequest.requestEnableAIAssistant(testSelfParticipantId, testApproverId);
+        await aiEnableRequest.requestEnableAIAssistant(testApproverId);
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.deepEqual(callArgs.body.initiator, {
@@ -113,7 +412,7 @@ describe('plugin-meetings', () => {
       });
 
       it('should include the approver participant ID', async () => {
-        await aiEnableRequest.requestEnableAIAssistant(testSelfParticipantId, testApproverId);
+        await aiEnableRequest.requestEnableAIAssistant(testApproverId);
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.deepEqual(callArgs.body.approver, {
@@ -122,10 +421,7 @@ describe('plugin-meetings', () => {
       });
 
       it('should return a Promise', () => {
-        const result = aiEnableRequest.requestEnableAIAssistant(
-          testSelfParticipantId,
-          testApproverId
-        );
+        const result = aiEnableRequest.requestEnableAIAssistant(testApproverId);
 
         assert.instanceOf(result, Promise);
       });
@@ -140,10 +436,7 @@ describe('plugin-meetings', () => {
 
         requestStub.resolves(mockResponse);
 
-        const result = await aiEnableRequest.requestEnableAIAssistant(
-          testSelfParticipantId,
-          testApproverId
-        );
+        const result = await aiEnableRequest.requestEnableAIAssistant(testApproverId);
 
         assert.deepEqual(result, mockResponse);
       });
@@ -153,7 +446,7 @@ describe('plugin-meetings', () => {
         requestStub.rejects(mockError);
 
         try {
-          await aiEnableRequest.requestEnableAIAssistant(testSelfParticipantId, testApproverId);
+          await aiEnableRequest.requestEnableAIAssistant(testApproverId);
           assert.fail('Should have thrown an error');
         } catch (error) {
           assert.equal(error.message, 'Request failed');
@@ -164,7 +457,8 @@ describe('plugin-meetings', () => {
         const differentSelfId = 'different-self-999';
         const differentApproverId = 'different-approver-888';
 
-        await aiEnableRequest.requestEnableAIAssistant(differentSelfId, differentApproverId);
+        aiEnableRequest.selfParticipantId = differentSelfId;
+        await aiEnableRequest.requestEnableAIAssistant(differentApproverId);
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.equal(callArgs.body.initiator.participantId, differentSelfId);

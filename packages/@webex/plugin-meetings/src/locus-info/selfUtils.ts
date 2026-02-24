@@ -138,6 +138,7 @@ const SelfUtils = {
     updates.breakoutsChanged = SelfUtils.breakoutsChanged(previous, current);
     updates.interpretationChanged = SelfUtils.interpretationChanged(previous, current);
     updates.brbChanged = SelfUtils.brbChanged(previous, current);
+    updates.selfIdChanged = previous?.selfId !== current.selfId;
 
     return {
       previous,

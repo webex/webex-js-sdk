@@ -10508,6 +10508,21 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
           );
         });
+
+        it('listens to the self id changed event and updates aiEnableRequest', () => {
+          meeting.aiEnableRequest = {
+            selfParticipantIdUpdate: sinon.stub(),
+          };
+
+          const payload = {selfId: 'participant-test-123'};
+
+          meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_ID_CHANGED', payload);
+
+          assert.calledOnceWithExactly(
+            meeting.aiEnableRequest.selfParticipantIdUpdate,
+            payload.selfId
+          );
+        });
       });
 
       describe('#setUpBreakoutsListener', () => {
