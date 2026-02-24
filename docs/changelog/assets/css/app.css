@@ -113,7 +113,7 @@ select {
 }
 
 
-select {
+.search-container select {
     -webkit-appearance: none;
     appearance: none;
     padding-right: 2.5em;
@@ -186,10 +186,12 @@ th {
     gap: 8px;
     align-items: center;
 }
+
 .select-with-clear .full-width {
     flex: 1;
     min-width: 0;
 }
+
 .select-with-clear .btn-clear-select {
     flex-shrink: 0;
 }
@@ -199,6 +201,7 @@ th {
     min-width: auto;
     line-height: 0;
 }
+
 .btn-clear-icon svg {
     display: block;
     vertical-align: middle;
@@ -380,6 +383,43 @@ footer .copyright {
     display: none !important;
 }
 
+/* Required field asterisk */
+.required-asterisk {
+    color: var(--color-danger);
+}
+
+/* Form help text */
+.help-text {
+    font-weight: normal;
+    font-size: 12px;
+    color: #666;
+}
+
+/* Pre-release row: hidden by default; JS toggles visibility */
+#comparison-prerelease-row {
+    display: none;
+}
+
+/* Comparison helper tip paragraph */
+.comparison-helper-tip {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #e7f3ff;
+    border-radius: 5px;
+    font-size: 13px;
+}
+
+/* Inline error message */
+.error-text {
+    color: var(--color-danger);
+}
+
+/* Package versions table heading (in comparison template) */
+.comparison-package-versions-heading {
+    margin-top: 20px;
+    margin-bottom: 15px;
+}
+
 /* Comparison Form */
 #comparison-form {
     margin-top: 20px;
@@ -498,3 +538,42 @@ footer .copyright {
     font-size: 1.2em;
     color: #333;
 }
+/*/ INSERT_YOUR_CODE */
+
+/* Scroll to Top Button Styles */
+#scrollTop {
+    position: fixed;
+    right: 30px;
+    bottom: 30px;
+    width: 44px;
+    height: 44px;
+    background: var(--color-webex-blue, #0080ff);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 1.6em;
+    text-align: center;
+    line-height: 44px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    transition: background 0.2s, color 0.2s, opacity 0.3s, visibility 0.3s;
+    opacity: 0.75;
+    z-index: 1200;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#scrollTop:hover,
+#scrollTop:focus {
+    background: #005fa3;
+    color: #fff;
+    opacity: 1;
+    outline: none;
+}
+
+#scrollTop.hide {
+    display: none !important;
+}
+
+

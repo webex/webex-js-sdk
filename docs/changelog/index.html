@@ -81,11 +81,11 @@
               <!-- Package Selection Row (first, required) -->
               <div class="form-row" id="comparison-package-row">
                 <div class="form-group">
-                  <label for="comparison-package-select">Select Package <span style="color: #c00;">*</span></label>
+                  <label for="comparison-package-select">Select Package <span class="required-asterisk">*</span></label>
                   <select id="comparison-package-select" class="full-width" required>
                     <option value="">Select a package (required)</option>
                   </select>
-                  <span class="help-text" style="font-weight: normal; font-size: 12px; color: #666;">Choose a package first; then Base and Target versions will be enabled.</span>
+                  <span class="help-text">Choose a package first; then Base and Target versions will be enabled.</span>
                 </div>
               </div>
 
@@ -111,7 +111,7 @@
               </div>
               
               <!-- NEW: Pre-release Version Selection Row -->
-              <div class="form-row" id="comparison-prerelease-row" style="display: none;">
+              <div class="form-row" id="comparison-prerelease-row">
                 <div class="form-group">
                   <label for="version-a-prerelease-select">
                     Pre-release Version for Base:
@@ -141,7 +141,7 @@
               </div>
               <!-- Comparison Helper Text -->
               <div class="comparison-helper hide" id="comparison-helper">
-                <p style="margin-top: 15px; padding: 10px; background-color: #e7f3ff; border-radius: 5px; font-size: 13px;">
+                <p class="comparison-helper-tip">
                   <strong>💡 Tip:</strong> After comparing, you can share the URL from your browser's address bar, or use the "Copy Permalink & share link" button above. 
                   Anyone with the link will see the same comparison!
                 </p>
@@ -175,7 +175,7 @@
                       <div class="form-group" id="version-input-group">
                           <label for="version-input">Version number:</label>
                           <input type="text" id="version-input" class="full-width">
-                          <span style="color:red" id="version-input-error"></span>
+                          <span class="error-text" id="version-input-error"></span>
                       </div>
                       <div class="form-group" id="commit-message-group">
                           <label for="commit-message-input">Commit Message:</label>
@@ -226,7 +226,6 @@
           </div>
         </div>
       </div>
-      <div id="scrollTop">^</div>
     </main>
     <footer>
       <div class="container">
@@ -297,7 +296,7 @@
 
       <!-- Package Comparison Table (Now First) -->
       <div class="table-wrapper">
-        <h4 style="margin-top: 20px; margin-bottom: 15px;">📦 Package Versions</h4>
+        <h4 class="comparison-package-versions-heading">📦 Package Versions</h4>
         <table class="comparison-table">
           <thead>
             <tr>
