@@ -165,7 +165,8 @@ describe('HashTreeParser', () => {
   // Helper to create a HashTreeParser instance with common defaults
   function createHashTreeParser(
     initialLocus: any = exampleInitialLocus,
-    metadata: any = exampleMetadata
+    metadata: any = exampleMetadata,
+    excludedDataSets?: string[]
   ) {
     return new HashTreeParser({
       initialLocus,
@@ -173,6 +174,7 @@ describe('HashTreeParser', () => {
       webexRequest,
       locusInfoUpdateCallback: callback,
       debugId: 'test',
+      excludedDataSets,
     });
   }
 
@@ -351,6 +353,66 @@ describe('HashTreeParser', () => {
     // so an entry for it should exist, but hashTree shouldn't be created
     const emptySet = parser.dataSets['empty-set'];
     expect(emptySet.hashTree).to.be.undefined;
+  });
+
+  it('should exclude datasets listed in excludedDataSets during initialization', () => {
+    const parser = createHashTreeParser(exampleInitialLocus, exampleMetadata, ['atd-unmuted']);
+
+    // 'atd-unmuted' should be excluded from visibleDataSets
+    expect(parser.visibleDataSets.some((vds) => vds.name === 'atd-unmuted')).to.be.false;
+
+    // 'main' and 'self' should still be visible
+    expect(parser.visibleDataSets.some((vds) => vds.name === 'main')).to.be.true;
+    expect(parser.visibleDataSets.some((vds) => vds.name === 'self')).to.be.true;
+
+    // 'atd-unmuted' dataset entry should exist but without a hash tree (because it's not visible)
+    expect(parser.dataSets['atd-unmuted']).to.exist;
+    expect(parser.dataSets['atd-unmuted'].hashTree).to.be.undefined;
+
+    // 'main' and 'self' should have hash trees
+    expect(parser.dataSets.main.hashTree).to.be.instanceOf(HashTree);
+    expect(parser.dataSets.self.hashTree).to.be.instanceOf(HashTree);
+  });
+
+  it('should exclude datasets listed in excludedDataSets when adding new visible datasets', async () => {
+    // Create parser without 'atd-unmuted' in initial metadata visibleDataSets
+    const metadataWithoutAtdUnmuted = {
+      ...exampleMetadata,
+      visibleDataSets: exampleMetadata.visibleDataSets.filter((vds) => vds.name !== 'atd-unmuted'),
+    };
+    const parser = createHashTreeParser(exampleInitialLocus, metadataWithoutAtdUnmuted, [
+      'atd-unmuted',
+    ]);
+
+    // 'atd-unmuted' should not be in visibleDataSets initially
+    expect(parser.visibleDataSets.some((vds) => vds.name === 'atd-unmuted')).to.be.false;
+
+    // Now simulate initializeDataSets which calls addToVisibleDataSetsList
+    const atdUnmutedDataSet = createDataSet('atd-unmuted', 16, 3000);
+
+    mockGetAllDataSetsMetadata(webexRequest, visibleDataSetsUrl, [
+      createDataSet('main', 16, 1000),
+      createDataSet('self', 1, 2000),
+      atdUnmutedDataSet,
+    ]);
+
+    mockSyncRequest(
+      webexRequest,
+      'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/atd-unmuted'
+    );
+
+    const message = {
+      dataSets: [createDataSet('main', 16, 1000)],
+      visibleDataSetsUrl,
+      locusUrl,
+    };
+    await parser.initializeFromMessage(message);
+
+    // 'atd-unmuted' should still not be in visibleDataSets because it is excluded
+    expect(parser.visibleDataSets.some((vds) => vds.name === 'atd-unmuted')).to.be.false;
+    // but 'main' and 'self' should be there
+    expect(parser.visibleDataSets.some((vds) => vds.name === 'main')).to.be.true;
+    expect(parser.visibleDataSets.some((vds) => vds.name === 'self')).to.be.true;
   });
 
   // helper method, needed because both initializeFromMessage and initializeFromGetLociResponse
