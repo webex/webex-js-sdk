@@ -4,6 +4,7 @@
 import MockWebex from '@webex/test-helper-mock-webex';
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
+import {EventEmitter} from 'stream';
 
 import AIEnableRequest from '../../../../src/aiEnableRequest/index';
 import {AI_ENABLE_REQUEST, HTTP_VERBS, LOCUSEVENT, MEETINGS} from '../../../../src/constants';
@@ -22,6 +23,9 @@ describe('plugin-meetings', () => {
       });
 
       aiEnableRequest = webex.internal.aiEnableRequest;
+
+      // Set up mercury as an EventEmitter
+      webex.internal.mercury = new EventEmitter();
     });
 
     describe('#namespace', () => {
@@ -141,7 +145,7 @@ describe('plugin-meetings', () => {
           },
         };
 
-        webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+        webex.internal.mercury.emit(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
 
         sinon.assert.calledOnce(triggerSpy);
         sinon.assert.calledWith(triggerSpy, AI_ENABLE_REQUEST.EVENTS.APPROVAL_REQUEST_ARRIVED, {
@@ -169,7 +173,7 @@ describe('plugin-meetings', () => {
           },
         };
 
-        webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+        webex.internal.mercury.emit(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
 
         sinon.assert.calledOnce(triggerSpy);
         sinon.assert.calledWith(triggerSpy, AI_ENABLE_REQUEST.EVENTS.APPROVAL_REQUEST_ARRIVED, {
@@ -197,7 +201,7 @@ describe('plugin-meetings', () => {
           },
         };
 
-        webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+        webex.internal.mercury.emit(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
 
         sinon.assert.notCalled(triggerSpy);
       });
@@ -217,7 +221,7 @@ describe('plugin-meetings', () => {
           },
         };
 
-        webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+        webex.internal.mercury.emit(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
 
         sinon.assert.notCalled(triggerSpy);
       });
@@ -245,7 +249,7 @@ describe('plugin-meetings', () => {
             },
           };
 
-          webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+          webex.internal.mercury.emit(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
         });
 
         sinon.assert.callCount(triggerSpy, actionTypes.length);
@@ -266,7 +270,7 @@ describe('plugin-meetings', () => {
           },
         };
 
-        webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+        webex.internal.mercury.emit(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
 
         sinon.assert.calledOnce(triggerSpy);
         const callArgs = triggerSpy.getCall(0).args[1];
@@ -289,7 +293,7 @@ describe('plugin-meetings', () => {
           },
         };
 
-        webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+        webex.internal.mercury.emit(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
 
         sinon.assert.calledOnce(triggerSpy);
         const callArgs = triggerSpy.getCall(0).args[1];
@@ -312,7 +316,7 @@ describe('plugin-meetings', () => {
           },
         };
 
-        webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+        webex.internal.mercury.emit(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
 
         sinon.assert.calledOnce(triggerSpy);
         const callArgs = triggerSpy.getCall(0).args[1];
@@ -336,7 +340,7 @@ describe('plugin-meetings', () => {
           },
         };
 
-        webex.internal.mercury.trigger(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+        webex.internal.mercury.emit(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
 
         sinon.assert.calledOnce(triggerSpy);
         const triggeredEvent = triggerSpy.getCall(0).args[1];
