@@ -213,7 +213,7 @@ const mockTaskManager = {
   registerIncomingCallEvent: jest.fn(),
   registerTaskListeners: jest.fn(),
   getTask: jest.fn(),
-  getActiveTasks: jest.fn(),
+  getAllTasks: jest.fn(),
   on: jest.fn(),
   off: jest.fn(),
   emit: jest.fn(),

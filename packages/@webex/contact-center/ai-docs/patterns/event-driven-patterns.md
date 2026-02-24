@@ -18,6 +18,7 @@ export const CC_AGENT_EVENTS = {
   WELCOME: 'Welcome',
   AGENT_RELOGIN_SUCCESS: 'AgentReloginSuccess',
   AGENT_RELOGIN_FAILED: 'AgentReloginFailed',
+  AGENT_DN_REGISTERED: 'AgentDNRegistered',
   AGENT_LOGOUT: 'Logout',
   AGENT_LOGOUT_SUCCESS: 'AgentLogoutSuccess',
   AGENT_LOGOUT_FAILED: 'AgentLogoutFailed',
@@ -25,9 +26,13 @@ export const CC_AGENT_EVENTS = {
   AGENT_STATION_LOGIN_SUCCESS: 'AgentStationLoginSuccess',
   AGENT_STATION_LOGIN_FAILED: 'AgentStationLoginFailed',
   AGENT_STATE_CHANGE: 'AgentStateChange',
+  AGENT_MULTI_LOGIN: 'AGENT_MULTI_LOGIN',
   AGENT_STATE_CHANGE_SUCCESS: 'AgentStateChangeSuccess',
   AGENT_STATE_CHANGE_FAILED: 'AgentStateChangeFailed',
-  AGENT_MULTI_LOGIN: 'AGENT_MULTI_LOGIN',
+  AGENT_BUDDY_AGENTS: 'BuddyAgents',
+  AGENT_BUDDY_AGENTS_SUCCESS: 'BuddyAgents',
+  AGENT_BUDDY_AGENTS_RETRIEVE_FAILED: 'BuddyAgentsRetrieveFailed',
+  AGENT_CONTACT_RESERVED: 'AgentContactReserved',
 } as const;
 
 // Task-related events
@@ -111,9 +116,10 @@ Handler receives raw event
     └── Emit to subscribers
 ```
 
-The handler is always an **arrow function property** to preserve `this` binding:
+Handlers use one of two patterns to preserve `this` binding: **arrow function properties** (e.g., `handleWebsocketMessage`) or **regular methods with `.bind(this)`** (e.g., `handleConnectionLost`):
 
 ```typescript
+// Pattern 1: Arrow function property (used by handleWebsocketMessage)
 private handleEvent = (event: string) => {
   const eventData = JSON.parse(event);
 
@@ -196,10 +202,10 @@ source.on(EVENT_CONSTANT, handler);
 source.off(EVENT_CONSTANT, handler);
 ```
 
-Always store handler references as **arrow function properties** so you can remove them later:
+Store handler references so you can remove them later. Use **arrow function properties** or **`.bind(this)`** depending on the pattern:
 
 ```typescript
-// Define as class property (arrow function preserves `this`)
+// Pattern 1: Arrow function property (preserves `this` automatically)
 private handleIncomingTask = (task: ITask) => {
   // @ts-ignore
   this.trigger(TASK_EVENTS.TASK_INCOMING, task);
@@ -210,6 +216,14 @@ this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
 
 // Cleanup
 this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+
+// Pattern 2: Regular method with .bind(this) (used by handleConnectionLost in cc.ts)
+private async handleConnectionLost(msg: ConnectionLostDetails): Promise<void> {
+  // handle connection lost
+}
+
+// Register with .bind(this)
+this.services.connectionService.on('connectionLost', this.handleConnectionLost.bind(this));
 ```
 
 ### Internal Event Listening (between services)
