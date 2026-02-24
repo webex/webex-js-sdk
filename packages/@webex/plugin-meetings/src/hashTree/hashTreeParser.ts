@@ -29,6 +29,7 @@ export interface HashTreeMessage {
   locusStateElements?: Array<HashTreeObject>;
   locusSessionId?: string;
   locusUrl: string;
+  heartbeatIntervalMs?: number;
 }
 
 export interface VisibleDataSetInfo {
@@ -45,6 +46,7 @@ export interface Metadata {
 interface InternalDataSet extends DataSet {
   hashTree?: HashTree; // set only for visible data sets
   timer?: ReturnType<typeof setTimeout>;
+  heartbeatWatchdogTimer?: ReturnType<typeof setTimeout>;
 }
 
 type WebexRequestMethod = (options: Record<string, any>) => Promise<any>;
@@ -88,6 +90,7 @@ class HashTreeParser {
   locusInfoUpdateCallback: LocusInfoUpdateCallback;
   visibleDataSets: VisibleDataSetInfo[];
   debugId: string;
+  heartbeatIntervalMs?: number;
 
   /**
    * Constructor for HashTreeParser
@@ -726,10 +729,14 @@ class HashTreeParser {
   private deleteHashTree(dataSetName: string) {
     this.dataSets[dataSetName].hashTree = undefined;
 
-    // we also need to stop the timer as there is no hash tree anymore to sync
+    // we also need to stop the timers as there is no hash tree anymore to sync
     if (this.dataSets[dataSetName].timer) {
       clearTimeout(this.dataSets[dataSetName].timer);
       this.dataSets[dataSetName].timer = undefined;
+    }
+    if (this.dataSets[dataSetName].heartbeatWatchdogTimer) {
+      clearTimeout(this.dataSets[dataSetName].heartbeatWatchdogTimer);
+      this.dataSets[dataSetName].heartbeatWatchdogTimer = undefined;
     }
   }
 
@@ -1007,10 +1014,19 @@ class HashTreeParser {
    * @returns {void}
    */
   async handleMessage(message: HashTreeMessage, debugText?: string): Promise<void> {
+    if (message.heartbeatIntervalMs) {
+      this.heartbeatIntervalMs = message.heartbeatIntervalMs;
+    }
     if (message.locusStateElements === undefined) {
       this.handleRootHashHeartBeatMessage(message);
+      this.resetHeartbeatWatchdogs(message.dataSets);
     } else {
       const updates = await this.parseMessage(message, debugText);
+
+      // Only reset watchdogs if the meeting hasn't ended
+      if (updates.updateType !== LocusInfoUpdateType.MEETING_ENDED) {
+        this.resetHeartbeatWatchdogs(message.dataSets);
+      }
 
       this.callLocusInfoUpdateCallback(updates);
     }
@@ -1090,6 +1106,75 @@ class HashTreeParser {
   }
 
   /**
+   * Performs a sync for the given data set.
+   *
+   * @param {InternalDataSet} dataSet - The data set to sync
+   * @param {string} rootHash - Our current root hash for this data set
+   * @param {string} reason - The reason for the sync (used for logging)
+   * @returns {Promise<void>}
+   */
+  private async performSync(
+    dataSet: InternalDataSet,
+    rootHash: string,
+    reason: string
+  ): Promise<void> {
+    if (!dataSet.hashTree) {
+      return;
+    }
+
+    LoggerProxy.logger.info(
+      `HashTreeParser#performSync --> ${this.debugId} ${reason}, syncing data set "${dataSet.name}"`
+    );
+
+    const mismatchedLeavesData: Record<number, LeafDataItem[]> = {};
+
+    if (dataSet.leafCount !== 1) {
+      let receivedHashes;
+
+      try {
+        // request hashes from sender
+        const {hashes, dataSet: latestDataSetInfo} = await this.getHashesFromLocus(
+          dataSet.name,
+          rootHash
+        );
+
+        receivedHashes = hashes;
+
+        dataSet.hashTree.resize(latestDataSetInfo.leafCount);
+      } catch (error) {
+        if (error.statusCode === 409) {
+          // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
+          LoggerProxy.logger.info(
+            `HashTreeParser#getHashesFromLocus --> ${this.debugId} Got 409 when fetching hashes for data set "${dataSet.name}": ${error.message}`
+          );
+
+          return;
+        }
+        throw error;
+      }
+
+      // identify mismatched leaves
+      const mismatchedLeaveIndexes = dataSet.hashTree.diffHashes(receivedHashes);
+
+      mismatchedLeaveIndexes.forEach((index) => {
+        mismatchedLeavesData[index] = dataSet.hashTree.getLeafData(index);
+      });
+    } else {
+      mismatchedLeavesData[0] = dataSet.hashTree.getLeafData(0);
+    }
+    // request sync for mismatched leaves
+    if (Object.keys(mismatchedLeavesData).length > 0) {
+      const syncResponse = await this.sendSyncRequestToLocus(dataSet, mismatchedLeavesData);
+
+      // sync API may return nothing (in that case data will arrive via messages)
+      // or it may return a response in the same format as messages
+      if (syncResponse) {
+        this.handleMessage(syncResponse, 'via sync API');
+      }
+    }
+  }
+
+  /**
    * Runs the sync algorithm for the given data set.
    *
    * @param {DataSet} receivedDataSet - The data set to run the sync algorithm for.
@@ -1147,56 +1232,11 @@ class HashTreeParser {
         const rootHash = dataSet.hashTree.getRootHash();
 
         if (dataSet.root !== rootHash) {
-          LoggerProxy.logger.info(
-            `HashTreeParser#runSyncAlgorithm --> ${this.debugId} Root hash mismatch: received=${dataSet.root}, ours=${rootHash}, syncing data set "${dataSet.name}"`
+          await this.performSync(
+            dataSet,
+            rootHash,
+            `Root hash mismatch: received=${dataSet.root}, ours=${rootHash}`
           );
-
-          const mismatchedLeavesData: Record<number, LeafDataItem[]> = {};
-
-          if (dataSet.leafCount !== 1) {
-            let receivedHashes;
-
-            try {
-              // request hashes from sender
-              const {hashes, dataSet: latestDataSetInfo} = await this.getHashesFromLocus(
-                dataSet.name,
-                rootHash
-              );
-
-              receivedHashes = hashes;
-
-              dataSet.hashTree.resize(latestDataSetInfo.leafCount);
-            } catch (error) {
-              if (error.statusCode === 409) {
-                // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
-                LoggerProxy.logger.info(
-                  `HashTreeParser#getHashesFromLocus --> ${this.debugId} Got 409 when fetching hashes for data set "${dataSet.name}": ${error.message}`
-                );
-
-                return;
-              }
-              throw error;
-            }
-
-            // identify mismatched leaves
-            const mismatchedLeaveIndexes = dataSet.hashTree.diffHashes(receivedHashes);
-
-            mismatchedLeaveIndexes.forEach((index) => {
-              mismatchedLeavesData[index] = dataSet.hashTree.getLeafData(index);
-            });
-          } else {
-            mismatchedLeavesData[0] = dataSet.hashTree.getLeafData(0);
-          }
-          // request sync for mismatched leaves
-          if (Object.keys(mismatchedLeavesData).length > 0) {
-            const syncResponse = await this.sendSyncRequestToLocus(dataSet, mismatchedLeavesData);
-
-            // sync API may return nothing (in that case data will arrive via messages)
-            // or it may return a response in the same format as messages
-            if (syncResponse) {
-              this.handleMessage(syncResponse, 'via sync API');
-            }
-          }
         } else {
           LoggerProxy.logger.info(
             `HashTreeParser#runSyncAlgorithm --> ${this.debugId} "${dataSet.name}" root hash matching: ${rootHash}, version=${dataSet.version}`
@@ -1211,6 +1251,52 @@ class HashTreeParser {
   }
 
   /**
+   * Resets the heartbeat watchdog timers for the specified data sets. Each data set has its own
+   * watchdog timer that monitors whether heartbeats are being received within the expected interval.
+   * If a heartbeat is not received for a specific data set within heartbeatIntervalMs plus
+   * a backoff-calculated time, the sync algorithm is initiated for that data set
+   *
+   * @param {Array<DataSet>} receivedDataSets - The data sets from the received message for which watchdog timers should be reset
+   * @returns {void}
+   */
+  private resetHeartbeatWatchdogs(receivedDataSets: Array<DataSet>): void {
+    if (!this.heartbeatIntervalMs) {
+      return;
+    }
+
+    for (const receivedDataSet of receivedDataSets) {
+      const dataSet = this.dataSets[receivedDataSet.name];
+
+      if (!dataSet?.hashTree) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      if (dataSet.heartbeatWatchdogTimer) {
+        clearTimeout(dataSet.heartbeatWatchdogTimer);
+        dataSet.heartbeatWatchdogTimer = undefined;
+      }
+
+      const backoffTime = this.getWeightedBackoffTime(dataSet.backoff);
+      const delay = this.heartbeatIntervalMs + backoffTime;
+
+      dataSet.heartbeatWatchdogTimer = setTimeout(async () => {
+        dataSet.heartbeatWatchdogTimer = undefined;
+
+        LoggerProxy.logger.warn(
+          `HashTreeParser#resetHeartbeatWatchdogs --> ${this.debugId} Heartbeat watchdog fired for data set "${dataSet.name}" - no heartbeat received within expected interval, initiating sync`
+        );
+
+        await this.performSync(
+          dataSet,
+          dataSet.hashTree.getRootHash(),
+          `heartbeat watchdog expired`
+        );
+      }, delay);
+    }
+  }
+
+  /**
    * Stops all timers for the data sets to prevent any further sync attempts.
    * @returns {void}
    */
@@ -1219,6 +1305,10 @@ class HashTreeParser {
       if (dataSet.timer) {
         clearTimeout(dataSet.timer);
         dataSet.timer = undefined;
+      }
+      if (dataSet.heartbeatWatchdogTimer) {
+        clearTimeout(dataSet.heartbeatWatchdogTimer);
+        dataSet.heartbeatWatchdogTimer = undefined;
       }
     });
   }
