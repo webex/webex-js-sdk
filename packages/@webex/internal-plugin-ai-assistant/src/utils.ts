@@ -68,3 +68,7 @@ export const decryptMessage = async (data, webex) => {
 export const decryptWorkspace = async (data, webex) => {
   await decryptInPlace(data, 'value.value', 'encryptionKeyUrl', webex);
 };
+
+export const decryptAssistantActivity = async (data, webex) => {
+  await decryptInPlace(data, 'content.value.message', 'encryptionKeyUrl', webex);
+};

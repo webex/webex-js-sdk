@@ -22,12 +22,15 @@ import {
   AI_ASSISTANT_UNREGISTERED,
   AI_ASSISTANT_SERVICE_NAME,
   ASSISTANT_API_RESPONSE_EVENT,
+  ASSISTANT_API_ACTIVITY,
   ACTION_TYPES,
   CONTENT_TYPES,
   CONTEXT_RESOURCE_TYPES,
   RESPONSE_NAMES,
+  AI_ASSISTANT_ACTIVITY_RECEIVED,
 } from './constants';
 import {
+  decryptAssistantActivity,
   decryptCitedAnswer,
   decryptMessage,
   decryptScheduleMeeting,
@@ -120,6 +123,10 @@ const AIAssistant = WebexPlugin.extend({
     this.webex.internal.mercury.on(ASSISTANT_API_RESPONSE_EVENT, (envelope) => {
       this._handleEvent(envelope.data);
     });
+
+    this.webex.internal.mercury.on(ASSISTANT_API_ACTIVITY, (envelope) => {
+      this._handleAssistantActivity(envelope.data);
+    });
   },
 
   /**
@@ -129,6 +136,7 @@ const AIAssistant = WebexPlugin.extend({
    */
   stopListeningForEvents() {
     this.webex.internal.mercury.off(ASSISTANT_API_RESPONSE_EVENT);
+    this.webex.internal.mercury.off(ASSISTANT_API_ACTIVITY);
   },
 
   /**
@@ -158,6 +166,17 @@ const AIAssistant = WebexPlugin.extend({
    */
   _handleEvent(data) {
     this.trigger(this._getResultEventName(data.clientRequestId), data);
+  },
+
+  /**
+   * Handles an incoming activity event from the assistant API and triggers the correct event for consumers to listen to
+   * @param {Object} data the event data
+   * @returns {undefined}
+   */
+  async _handleAssistantActivity(data) {
+    await decryptAssistantActivity(data.activity, this.webex);
+
+    this.trigger(AI_ASSISTANT_ACTIVITY_RECEIVED, data);
   },
 
   /**
