@@ -57,92 +57,83 @@ export type CC_EVENTS = Enum<typeof CC_EVENTS>;
 
 ```typescript
 // services/agent/types.ts
-export const AGENT_EVENTS = {
-  AGENT_STATE_CHANGE: 'agent:stateChange',
-  AGENT_STATE_CHANGE_SUCCESS: 'agent:stateChangeSuccess',
-  AGENT_STATE_CHANGE_FAILED: 'agent:stateChangeFailed',
-  AGENT_STATION_LOGIN_SUCCESS: 'agent:stationLoginSuccess',
-  AGENT_STATION_LOGIN_FAILED: 'agent:stationLoginFailed',
-  AGENT_LOGOUT_SUCCESS: 'agent:logoutSuccess',
-  AGENT_LOGOUT_FAILED: 'agent:logoutFailed',
-  AGENT_RELOGIN_SUCCESS: 'agent:reloginSuccess',
-  AGENT_DN_REGISTERED: 'agent:dnRegistered',
-  AGENT_MULTI_LOGIN: 'agent:multiLogin',
-} as const;
+export enum AGENT_EVENTS {
+  AGENT_STATE_CHANGE = 'agent:stateChange',
+  AGENT_MULTI_LOGIN = 'agent:multiLogin',
+  AGENT_STATION_LOGIN_SUCCESS = 'agent:stationLoginSuccess',
+  AGENT_STATION_LOGIN_FAILED = 'agent:stationLoginFailed',
+  AGENT_LOGOUT_SUCCESS = 'agent:logoutSuccess',
+  AGENT_LOGOUT_FAILED = 'agent:logoutFailed',
+  AGENT_DN_REGISTERED = 'agent:dnRegistered',
+  AGENT_RELOGIN_SUCCESS = 'agent:reloginSuccess',
+  AGENT_STATE_CHANGE_SUCCESS = 'agent:stateChangeSuccess',
+  AGENT_STATE_CHANGE_FAILED = 'agent:stateChangeFailed',
+}
 ```
 
 ### Task Events (TASK_EVENTS)
 
 ```typescript
 // services/task/types.ts
-export const TASK_EVENTS = {
-  TASK_INCOMING: 'task:incoming',
-  TASK_HYDRATE: 'task:hydrate',
-  TASK_MERGED: 'task:merged',
-  TASK_ESTABLISHED: 'task:established',
-  TASK_ENDED: 'task:ended',
-  TASK_ERROR: 'task:error',
-} as const;
+export enum TASK_EVENTS {
+  TASK_INCOMING = 'task:incoming',
+  TASK_ASSIGNED = 'task:assigned',
+  TASK_MEDIA = 'task:media',
+  TASK_UNASSIGNED = 'task:unassigned',
+  TASK_HOLD = 'task:hold',
+  TASK_RESUME = 'task:resume',
+  TASK_HYDRATE = 'task:hydrate',
+  TASK_MERGED = 'task:merged',
+  TASK_END = 'task:end',
+  TASK_WRAPUP = 'task:wrapup',
+  TASK_CLEANUP = 'task:cleanup',
+  // ... more events (consult, recording, etc.)
+}
 ```
 
 ---
 
-## WebSocket Event Flow
+## Event Flow
 
-### Message Reception
+### Generic Event Reception
+
+Events flow through a standard pipeline: receive from transport, parse, log, route, and emit to listeners.
 
 ```
-WebSocket → WebSocketManager → cc.handleWebsocketMessage → Event Emission
+Transport (WebSocket/EventEmitter)
+    │
+    ▼
+Handler receives raw event
+    │
+    ├── Parse / validate
+    ├── Log reception
+    ├── Route by event type
+    └── Emit to subscribers
 ```
 
-### Handling Pattern
+The handler is always an **arrow function property** to preserve `this` binding:
 
 ```typescript
-// cc.ts
-private handleWebsocketMessage = (event: string) => {
+private handleEvent = (event: string) => {
   const eventData = JSON.parse(event);
-  
-  // Skip keepalives
+
+  // Skip non-actionable events (e.g., keepalives)
   if (eventData.keepalive) {
     return;
   }
-  
-  // Log received event
+
+  // Log reception
   LoggerProxy.log(`Received event: ${eventData?.data?.type ?? eventData.type}`, {
     module: CC_FILE,
-    method: 'handleWebsocketMessage',
+    method: 'handleEvent',
   });
-  
-  // Track metrics for non-welcome events
-  if (eventData.type !== CC_EVENTS.WELCOME && eventData.keepalive !== 'true') {
-    this.metricsManager.trackEvent(
-      METRIC_EVENT_NAMES.WEBSOCKET_EVENT_RECEIVED,
-      { ws_event_type: eventData?.data?.type || eventData.type },
-      ['operational']
-    );
-  }
-  
-  // Route based on event type
+
+  // Route by type and emit to subscribers
   switch (eventData.type) {
     case CC_EVENTS.AGENT_STATE_CHANGE:
       this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, eventData.data);
       break;
-    case CC_EVENTS.AGENT_MULTI_LOGIN:
-      this.emit(AGENT_EVENTS.AGENT_MULTI_LOGIN, eventData.data);
-      break;
-  }
-  
-  // Handle nested data.type events
-  if (eventData.data && eventData.data.type) {
-    switch (eventData.data.type) {
-      case CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS:
-        this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, eventData.data);
-        break;
-      case CC_EVENTS.AGENT_LOGOUT_SUCCESS:
-        this.emit(AGENT_EVENTS.AGENT_LOGOUT_SUCCESS, eventData.data);
-        break;
-      // ... more cases
-    }
+    // ... more cases
   }
 };
 ```
@@ -151,25 +142,30 @@ private handleWebsocketMessage = (event: string) => {
 
 ## Event Emission
 
-### From Plugin Class
+There are **two methods** for emitting events: `trigger` and `emit`. Both work on the `cc` object (which extends `WebexPlugin`), but they should be used in different contexts.
+
+### `trigger` — WebexPlugin method
+
+`trigger` comes from the Ampersand event system that `WebexPlugin` is built on. **For new code, use `trigger` when emitting events from the `cc` object to application consumers.**
 
 ```typescript
-// Using WebexPlugin's emit method
-this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, eventData);
-
-// Using trigger for some events (alternative method)
+// cc.ts — ContactCenter extends WebexPlugin
+// @ts-ignore
 this.trigger(TASK_EVENTS.TASK_INCOMING, task);
+
+// @ts-ignore
+this.trigger(TASK_EVENTS.TASK_HYDRATE, task);
 ```
 
-### From TaskManager
+> **Note**: `trigger` requires `// @ts-ignore` because WebexPlugin's type definitions don't expose it.
+
+### `emit` — EventEmitter method
+
+`emit` is the standard Node.js `EventEmitter` method. Use it in internal service classes that extend `EventEmitter` (TaskManager, Task, WebSocketManager, ConnectionService, etc.).
 
 ```typescript
 // TaskManager extends EventEmitter
 export default class TaskManager extends EventEmitter {
-  private emitTaskEvent(eventType: string, task: ITask) {
-    this.emit(eventType, task);
-  }
-  
   public handleIncomingTask(taskData: TaskData) {
     const task = this.createTask(taskData);
     this.emit(TASK_EVENTS.TASK_INCOMING, task);
@@ -177,49 +173,92 @@ export default class TaskManager extends EventEmitter {
 }
 ```
 
+> **Note on existing code**: The `cc` object currently uses `emit` in `handleWebsocketMessage` for agent events (e.g., `this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, ...)`). Both `trigger` and `emit` work on WebexPlugin because it inherits from both event systems. For new code on the `cc` object, prefer `trigger`.
+
+### When to Use Which
+
+| Class extends | Method | Use for | `// @ts-ignore` needed? |
+|---------------|--------|---------|------------------------|
+| `WebexPlugin` | `trigger` | Events from `cc` to application consumers | Yes |
+| `EventEmitter` | `emit` | Internal events between services (TaskManager, Task, WebSocketManager, etc.) | No |
+
 ---
 
 ## Event Subscription
 
-### In Application Code
+### How to Add / Remove a Listener
 
 ```typescript
-// Subscribe to events
-const cc = webex.cc;
+// Add a listener
+source.on(EVENT_CONSTANT, handler);
 
-cc.on('agent:stateChange', (event) => {
-  console.log('Agent state changed:', event.state);
+// Remove a listener (must pass the same function reference)
+source.off(EVENT_CONSTANT, handler);
+```
+
+Always store handler references as **arrow function properties** so you can remove them later:
+
+```typescript
+// Define as class property (arrow function preserves `this`)
+private handleIncomingTask = (task: ITask) => {
+  // @ts-ignore
+  this.trigger(TASK_EVENTS.TASK_INCOMING, task);
+};
+
+// Register
+this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+
+// Cleanup
+this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+```
+
+### Internal Event Listening (between services)
+
+Internal services listen to each other during initialization, and clean up during deregistration:
+
+```typescript
+// Register listeners after SDK is ready
+this.$webex.once(READY, () => {
+  this.services.webSocketManager.on('message', this.handleWebsocketMessage);
+  this.services.connectionService.on('connectionLost', this.handleConnectionLost);
+  this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+  this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
 });
 
-cc.on('task:incoming', (task) => {
-  console.log('New task:', task.interactionId);
+// Remove all listeners on deregister
+public async deregister() {
+  this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
+  this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+  this.services.webSocketManager.off('message', this.handleWebsocketMessage);
+  this.services.connectionService.off('connectionLost', this.handleConnectionLost);
+}
+```
+
+### Events Sent to Application (from cc, task)
+
+Application consumers subscribe to events on the `cc` object or on task instances:
+
+```typescript
+const cc = webex.cc;
+
+// Agent events (from cc)
+cc.on(AGENT_EVENTS.AGENT_STATE_CHANGE, (event) => {
+  // handle agent state change
+});
+
+cc.on(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, (event) => {
+  // handle login success
+});
+
+// Task events (from cc)
+cc.on(TASK_EVENTS.TASK_INCOMING, (task) => {
+  // handle incoming task
 });
 
 // Unsubscribe
 const handler = (event) => { /* handle */ };
-cc.on('agent:stateChange', handler);
-cc.off('agent:stateChange', handler);
-```
-
-### Internal Subscription
-
-```typescript
-// In constructor
-constructor() {
-  this.$webex.once(READY, () => {
-    this.services.webSocketManager.on('message', this.handleWebsocketMessage);
-    this.services.connectionService.on('connectionLost', this.handleConnectionLost);
-    
-    this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
-    this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
-  });
-}
-
-// Cleanup in deregister
-public async deregister() {
-  this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
-  this.services.webSocketManager.off('message', this.handleWebsocketMessage);
-}
+cc.on(AGENT_EVENTS.AGENT_STATE_CHANGE, handler);
+cc.off(AGENT_EVENTS.AGENT_STATE_CHANGE, handler);
 ```
 
 ---
@@ -273,22 +312,24 @@ export const CC_EVENTS = {
 ### Step 2: Define External Event Name
 
 ```typescript
-export const AGENT_EVENTS = {
+export enum AGENT_EVENTS {
   // ... existing
-  MY_NEW_EVENT: 'agent:myNewEvent',
-  MY_NEW_EVENT_SUCCESS: 'agent:myNewEventSuccess',
-  MY_NEW_EVENT_FAILED: 'agent:myNewEventFailed',
-} as const;
+  MY_NEW_EVENT = 'agent:myNewEvent',
+  MY_NEW_EVENT_SUCCESS = 'agent:myNewEventSuccess',
+  MY_NEW_EVENT_FAILED = 'agent:myNewEventFailed',
+}
 ```
 
 ### Step 3: Handle in WebSocket Handler
 
 ```typescript
 case CC_EVENTS.MY_NEW_EVENT_SUCCESS:
-  this.emit(AGENT_EVENTS.MY_NEW_EVENT_SUCCESS, eventData.data);
+  // @ts-ignore
+  this.trigger(AGENT_EVENTS.MY_NEW_EVENT_SUCCESS, eventData.data);
   break;
 case CC_EVENTS.MY_NEW_EVENT_FAILED:
-  this.emit(AGENT_EVENTS.MY_NEW_EVENT_FAILED, eventData.data);
+  // @ts-ignore
+  this.trigger(AGENT_EVENTS.MY_NEW_EVENT_FAILED, eventData.data);
   break;
 ```
 
@@ -331,34 +372,51 @@ function onAgentStateChange(handler: (event: AgentStateChangeEvent) => void) {
 
 ---
 
-## Connection Events
+## WebSocket Lifecycle
 
-### Connection Lost/Reconnected
+### Registration (subscribing to messages)
 
 ```typescript
-// services/core/websocket/types.ts
-export type ConnectionLostDetails = {
-  isConnectionLost: boolean;
-  isSocketReconnected: boolean;
-};
+// Subscribe to WebSocket messages during initialization
+this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
-// Handling in cc.ts
-private async handleConnectionLost(msg: ConnectionLostDetails): Promise<void> {
-  if (msg.isConnectionLost) {
-    LoggerProxy.info('Connection lost', {
-      module: CC_FILE,
-      method: 'handleConnectionLost',
-    });
-  } else if (msg.isSocketReconnected) {
-    LoggerProxy.info('Connection reconnected', {
-      module: CC_FILE,
-      method: 'handleConnectionLost',
-    });
-    
-    if (this.$config?.allowAutomatedRelogin) {
-      await this.silentRelogin();
-    }
-  }
+// Subscribe to connection state changes
+this.services.connectionService.on('connectionLost', this.handleConnectionLost);
+```
+
+### Connection
+
+```typescript
+// Establish WebSocket connection via initWebSocket
+const welcomeData = await this.services.webSocketManager.initWebSocket({
+  body: this.getConnectionConfig(),
+});
+// welcomeData contains the Welcome event with agentId
+```
+
+### Reconnection
+
+```typescript
+// ConnectionService emits 'connectionLost' with connection state details
+// The handler checks whether the socket was lost or reconnected
+this.services.connectionService.on('connectionLost', this.handleConnectionLost);
+
+// On reconnection, perform a silent relogin to restore agent state
+private async silentRelogin(): Promise<void> {
+  await this.services.agent.reload();
+}
+```
+
+### Disconnection
+
+```typescript
+// 1. Remove all listeners first
+this.services.webSocketManager.off('message', this.handleWebsocketMessage);
+this.services.connectionService.off('connectionLost', this.handleConnectionLost);
+
+// 2. Check socket state before closing
+if (!this.services.webSocketManager.isSocketClosed) {
+  this.services.webSocketManager.close(false, 'Unregistering the SDK');
 }
 ```
 
@@ -369,35 +427,24 @@ private async handleConnectionLost(msg: ConnectionLostDetails): Promise<void> {
 ### Always Use Constants
 
 ```typescript
-// ✅ CORRECT
+// CORRECT
 this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, data);
 cc.on(TASK_EVENTS.TASK_INCOMING, handler);
 
-// ❌ WRONG
+// WRONG — never use raw string event names
 this.emit('stateChange', data);
 cc.on('task:incoming', handler);
 ```
 
 ### Always Clean Up Listeners
 
-```typescript
-// Store handler reference for cleanup
-private handleIncomingTask = (task: ITask) => {
-  this.trigger(TASK_EVENTS.TASK_INCOMING, task);
-};
-
-// Register
-this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
-
-// Cleanup
-this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
-```
+Every `on()` must have a corresponding `off()` in the deregister/cleanup path. See the [Event Subscription](#event-subscription) section for the full pattern.
 
 ### Log Event Reception
 
 ```typescript
 LoggerProxy.log(`Received event: ${eventType}`, {
-  module: 'ModuleName',
+  module: CC_FILE,
   method: 'handleEvent',
 });
 ```

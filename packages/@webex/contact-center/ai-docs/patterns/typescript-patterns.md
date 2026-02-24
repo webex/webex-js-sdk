@@ -27,50 +27,35 @@ const event: CC_EVENTS = CC_EVENTS.AGENT_LOGIN; // ✅ Type-safe
 const event2: CC_EVENTS = 'InvalidEvent';        // ❌ Compile error
 ```
 
-### Response Type Pattern
-
-All API responses follow a consistent structure:
-
-```typescript
-// Standard response wrapper
-export type SomeResponse = {
-  data: {
-    // Response payload fields
-    agentId: string;
-    status: string;
-  };
-  trackingId: string;
-};
-
-// With type parameter for flexibility
-export type ApiResponse<T> = {
-  data: T;
-  trackingId: string;
-};
-```
-
 ### Failure Type Pattern
 
 Error responses use the `Failure` type:
 
 ```typescript
 // From services/core/GlobalTypes.ts
-export type Failure = {
+
+// Base message type — all WebSocket messages extend this
+export type Msg<T = any> = {
   type: string;
-  orgId?: string;
-  trackingId?: string;
-  data?: {
-    agentId?: string;
-    reason?: string;
-    reasonCode?: string | number;
-  };
+  orgId: string;
+  trackingId: string;
+  data: T;
 };
+
+// Failure wraps error details inside Msg
+export type Failure = Msg<{
+  agentId: string;
+  trackingId: string;
+  reasonCode: number;
+  orgId: string;
+  reason: string;
+}>;
 
 // Usage in catch blocks:
 const failure = error.details as Failure;
-// Access: failure.trackingId, failure.data?.reason, failure.data?.reasonCode
+// Access: failure.trackingId, failure.data.reason, failure.data.reasonCode
 LoggerProxy.error(`Operation failed`, {
-  module: 'ModuleName',
+  module: CC_FILE,
   method: 'methodName',
   trackingId: failure.trackingId,
 });
@@ -97,7 +82,9 @@ LoggerProxy.error(`Operation failed`, {
 class ContactCenter { }
 class TaskManager { }
 
-// Interfaces/Types: PascalCase (no I prefix)
+// Interfaces: PascalCase with I prefix for contracts
+// (e.g., IContactCenter, ITask, IVoice, IDigital)
+// Types: PascalCase without prefix
 type AgentLogin = { };
 type Profile = { };
 

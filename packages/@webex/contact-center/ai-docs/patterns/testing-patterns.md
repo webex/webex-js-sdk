@@ -10,15 +10,36 @@
 
 ```
 packages/@webex/contact-center/
+├── src/
+│   ├── cc.ts
+│   └── services/
+│       ├── agent/
+│       │   └── index.ts
+│       ├── task/
+│       │   └── TaskManager.ts
+│       └── core/
+│           └── Utils.ts
 ├── test/
 │   └── unit/
 │       └── spec/
-│           ├── cc.ts                    # Main plugin tests
+│           ├── cc.ts                    # Tests for src/cc.ts
 │           └── services/
 │               ├── agent/
+│               │   └── index.ts          # Tests for src/services/agent/index.ts
 │               ├── task/
+│               │   └── TaskManager.ts   # Tests for src/services/task/TaskManager.ts
 │               └── core/
+│                   └── Utils.ts         # Tests for src/services/core/Utils.ts
 ```
+
+### Test File Rule
+
+**Every new source file MUST have a corresponding test file.** The test file location mirrors the source file path:
+
+- Source: `src/services/{service}/{FileName}.ts`
+- Test: `test/unit/spec/services/{service}/{FileName}.ts`
+
+When creating a new source file, always create the corresponding test file in the matching directory structure under `test/unit/spec/`.
 
 ### Test File Template
 
@@ -59,7 +80,7 @@ describe('FeatureName', () => {
         getOrgId: jest.fn(() => 'mockOrgId'),
       },
       config: config,
-    }) as unknown as WebexSDK;
+    }) as unknown as WebexSDK; // MockWebex requires double-cast — do NOT use this pattern elsewhere
   });
 
   afterEach(() => {
@@ -210,44 +231,9 @@ import MetricsManager from '../../../src/metrics/MetricsManager';
 const mockMetricsManager = {
   trackEvent: jest.fn(),
   timeEvent: jest.fn(),
-  trackBehavioralEvent: jest.fn(),
-  trackOperationalEvent: jest.fn(),
 };
 
 jest.spyOn(MetricsManager, 'getInstance').mockReturnValue(mockMetricsManager);
-```
-
----
-
-## Mocking LoggerProxy
-
-```typescript
-jest.mock('../../../src/logger-proxy', () => ({
-  __esModule: true,
-  default: {
-    log: jest.fn(),
-    error: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    trace: jest.fn(),
-    initialize: jest.fn(),
-  },
-}));
-
-// In tests, verify logging
-import LoggerProxy from '../../../src/logger-proxy';
-
-it('should log on success', async () => {
-  await webex.cc.someMethod();
-  
-  expect(LoggerProxy.log).toHaveBeenCalledWith(
-    expect.stringContaining('success'),
-    expect.objectContaining({
-      module: expect.any(String),
-      method: expect.any(String),
-    })
-  );
-});
 ```
 
 ---
@@ -270,10 +256,12 @@ it('should resolve with data on success', async () => {
     loginOption: 'BROWSER',
   });
 
-  // Assert
-  expect(result).toEqual(expect.objectContaining({
+  // Assert — always use exact matches, avoid expect.objectContaining
+  expect(result).toEqual({
     agentId: '123',
-  }));
+    status: 'LoggedIn',
+    trackingId: 'track-123',
+  });
 });
 ```
 
@@ -300,40 +288,64 @@ it('should throw error on failure', async () => {
 
 ## Event Testing
 
-### Event Emission
+Event listeners and their callbacks are tested by spying on the registration, extracting the callback via `mock.calls`, and invoking it directly.
 
-```typescript
-it('should emit event on state change', async () => {
-  // Arrange
-  const eventSpy = jest.fn();
-  webex.cc.on('agent:stateChange', eventSpy);
-
-  // Act - simulate websocket message
-  const wsHandler = mockServicesInstance.webSocketManager.on.mock.calls
-    .find(([event]) => event === 'message')[1];
-  
-  wsHandler(JSON.stringify({
-    type: 'AgentStateChange',
-    data: { type: 'AgentStateChangeSuccess', state: 'Available' },
-  }));
-
-  // Assert
-  expect(eventSpy).toHaveBeenCalledWith(
-    expect.objectContaining({ state: 'Available' })
-  );
-});
-```
-
-### Event Listener Setup
+### Testing Event Listener Registration
 
 ```typescript
 it('should register event listeners on init', () => {
-  webex.cc = new ContactCenter({ parent: webex });
-
+  // Verify the listener was registered
   expect(mockTaskManager.on).toHaveBeenCalledWith(
     'task:incoming',
     expect.any(Function)
   );
+});
+```
+
+### Testing Event Callbacks via mock.calls
+
+```typescript
+it('should handle websocket message and emit event', () => {
+  // Step 1: Find the registered callback via mock.calls
+  const onCalls = mockServicesInstance.webSocketManager.on.mock.calls;
+  const messageCall = onCalls.find(([event]) => event === 'message');
+  const wsHandler = messageCall[1];
+
+  // Step 2: Spy on the emit
+  const emitSpy = jest.spyOn(webex.cc, 'emit');
+
+  // Step 3: Invoke the callback directly with test data
+  wsHandler(JSON.stringify({
+    type: 'AgentStateChange',
+    data: { type: 'AgentStateChangeSuccess', agentId: 'agent-123', state: 'Available' },
+  }));
+
+  // Step 4: Assert exact emit arguments
+  expect(emitSpy).toHaveBeenCalledWith('agent:stateChange', {
+    type: 'AgentStateChangeSuccess',
+    agentId: 'agent-123',
+    state: 'Available',
+  });
+});
+```
+
+### Testing TaskManager Event Callbacks
+
+```typescript
+it('should trigger task:incoming when TaskManager emits', () => {
+  // Extract the registered callback
+  const taskIncomingCall = mockTaskManager.on.mock.calls
+    .find(([event]) => event === 'task:incoming');
+  const taskHandler = taskIncomingCall[1];
+
+  const triggerSpy = jest.spyOn(webex.cc, 'trigger');
+
+  // Invoke the callback
+  const mockTask = { interactionId: 'int-123', taskId: 'task-456' };
+  taskHandler(mockTask);
+
+  // Assert
+  expect(triggerSpy).toHaveBeenCalledWith('task:incoming', mockTask);
 });
 ```
 
@@ -406,39 +418,43 @@ it('should call getErrorDetails on failure', async () => {
 
 ## Common Assertions
 
+**Prefer exact matches over `expect.objectContaining` in new tests.** Exact matches catch unexpected field changes and keep tests rigorous. Existing tests may use `expect.objectContaining` for complex objects — this is acceptable but not preferred for new code.
+
 ### Structure Assertions
 
 ```typescript
-// Check object structure
-expect(result).toEqual(expect.objectContaining({
-  agentId: expect.any(String),
+// Exact match on result — preferred
+expect(result).toEqual({
+  agentId: 'agent-123',
   status: 'LoggedIn',
-}));
+  trackingId: 'track-456',
+});
 
-// Check array contains
-expect(result.teams).toContainEqual(
-  expect.objectContaining({ teamId: 'team-1' })
-);
+// Array exact match
+expect(result.teams).toEqual([
+  { teamId: 'team-1', teamName: 'Support' },
+  { teamId: 'team-2', teamName: 'Sales' },
+]);
 ```
 
 ### Call Assertions
 
 ```typescript
-// Check mock was called with specific args
+// Check mock was called with exact args
 expect(mockServicesInstance.agent.stationLogin).toHaveBeenCalledWith({
-  data: expect.objectContaining({
+  data: {
     teamId: 'team-1',
     deviceType: 'BROWSER',
-  }),
+  },
 });
 
 // Check call count
 expect(mockMetricsManager.trackEvent).toHaveBeenCalledTimes(1);
 
-// Check specific call
+// Check specific call with exact values
 expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
-  expect.stringContaining('SUCCESS'),
-  expect.stringContaining('FAILED'),
+  'STATION_LOGIN_SUCCESS',
+  'STATION_LOGIN_FAILED',
 ]);
 ```
 
@@ -449,8 +465,8 @@ expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
 Target: **85% coverage**
 
 ```bash
-# Run tests with coverage
-yarn workspace @webex/contact-center test --coverage
+# Run tests (coverage is collected automatically via jest.config.js)
+yarn workspace @webex/contact-center test:unit
 
 # Coverage thresholds (jest.config.js)
 coverageThreshold: {
