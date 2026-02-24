@@ -1808,7 +1808,7 @@ const switchToComparisonViewMode = async () => {
  */
 const validateComparisonInputs = (stableA, stableB, selectedPackage, versionASpecific, versionBSpecific) => {
     if (!selectedPackage) {
-        alert('Please select a package');
+        alert('Please select a package.');
         return false;
     }
     

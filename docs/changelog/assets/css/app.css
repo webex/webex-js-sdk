@@ -538,42 +538,4 @@ footer .copyright {
     font-size: 1.2em;
     color: #333;
 }
-/*/ INSERT_YOUR_CODE */
-
-/* Scroll to Top Button Styles */
-#scrollTop {
-    position: fixed;
-    right: 30px;
-    bottom: 30px;
-    width: 44px;
-    height: 44px;
-    background: var(--color-webex-blue, #0080ff);
-    color: #fff;
-    border-radius: 50%;
-    font-size: 1.6em;
-    text-align: center;
-    line-height: 44px;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    transition: background 0.2s, color 0.2s, opacity 0.3s, visibility 0.3s;
-    opacity: 0.75;
-    z-index: 1200;
-    user-select: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-#scrollTop:hover,
-#scrollTop:focus {
-    background: #005fa3;
-    color: #fff;
-    opacity: 1;
-    outline: none;
-}
-
-#scrollTop.hide {
-    display: none !important;
-}
-
 
