@@ -1,12 +1,14 @@
-import {Defer} from '@webex/common';
-
-import LoggerProxy from '../common/logs/logger-proxy';
 import {ClusterNode} from './request';
-import {convertStunUrlToTurn, convertStunUrlToTurnTls} from './util';
 import EventsScope from '../common/events/events-scope';
+import LoggerProxy from '../common/logs/logger-proxy';
 
-import {CONNECTION_STATE, Enum, ICE_GATHERING_STATE} from '../constants';
-import {ClusterReachabilityResult, NatType} from './reachability.types';
+import {Enum} from '../constants';
+import {
+  ClusterReachabilityResult,
+  NatType,
+  ReachabilityPeerConnectionEvents,
+} from './reachability.types';
+import {ReachabilityPeerConnection} from './reachabilityPeerConnection';
 
 // data for the Events.resultReady event
 export type ResultEventData = {
@@ -36,398 +38,225 @@ export type Events = Enum<typeof Events>;
 
 /**
  * A class that handles reachability checks for a single cluster.
- * It emits events from Events enum
+ * Creates and orchestrates ReachabilityPeerConnection instance(s).
+ * Listens to events and emits them to consumers.
+ *
+ * When enablePerUdpUrlReachability is true:
+ *   - Creates one ReachabilityPeerConnection for each UDP URL
+ *   - Creates one ReachabilityPeerConnection for all TCP and TLS URLs together
+ * Otherwise:
+ *   - Creates a single ReachabilityPeerConnection for all URLs
  */
 export class ClusterReachability extends EventsScope {
-  private numUdpUrls: number;
-  private numTcpUrls: number;
-  private numXTlsUrls: number;
-  private result: ClusterReachabilityResult;
-  private pc?: RTCPeerConnection;
-  private defer: Defer; // this defer is resolved once reachability checks for this cluster are completed
-  private startTimestamp: number;
-  private srflxIceCandidates: RTCIceCandidate[] = [];
+  private reachabilityPeerConnection: ReachabilityPeerConnection | null = null;
+  private reachabilityPeerConnectionsForUdp: ReachabilityPeerConnection[] = [];
+
   public readonly isVideoMesh: boolean;
   public readonly name;
   public readonly reachedSubnets: Set<string> = new Set();
+
+  private enablePerUdpUrlReachability: boolean;
+  private udpResultEmitted = false;
 
   /**
    * Constructor for ClusterReachability
    * @param {string} name cluster name
    * @param {ClusterNode} clusterInfo information about the media cluster
+   * @param {boolean} enablePerUdpUrlReachability whether to create separate peer connections per UDP URL
    */
-  constructor(name: string, clusterInfo: ClusterNode) {
+  constructor(name: string, clusterInfo: ClusterNode, enablePerUdpUrlReachability = false) {
     super();
     this.name = name;
     this.isVideoMesh = clusterInfo.isVideoMesh;
-    this.numUdpUrls = clusterInfo.udp.length;
-    this.numTcpUrls = clusterInfo.tcp.length;
-    this.numXTlsUrls = clusterInfo.xtls.length;
+    this.enablePerUdpUrlReachability = enablePerUdpUrlReachability;
 
-    this.pc = this.createPeerConnection(clusterInfo);
-
-    this.defer = new Defer();
-    this.result = {
-      udp: {
-        result: 'untested',
-      },
-      tcp: {
-        result: 'untested',
-      },
-      xtls: {
-        result: 'untested',
-      },
-    };
+    if (this.enablePerUdpUrlReachability) {
+      this.initializePerUdpUrlReachabilityCheck(clusterInfo);
+    } else {
+      this.initializeSingleReachabilityPeerConnection(clusterInfo);
+    }
   }
 
   /**
-   * Gets total elapsed time, can be called only after start() is called
-   * @returns {Number} Milliseconds
-   */
-  private getElapsedTime() {
-    return Math.round(performance.now() - this.startTimestamp);
-  }
-
-  /**
-   * Generate peerConnection config settings
-   * @param {ClusterNode} cluster
-   * @returns {RTCConfiguration} peerConnectionConfig
-   */
-  private buildPeerConnectionConfig(cluster: ClusterNode): RTCConfiguration {
-    const udpIceServers = cluster.udp.map((url) => ({
-      username: '',
-      credential: '',
-      urls: [url],
-    }));
-
-    // STUN servers are contacted only using UDP, so in order to test TCP reachability
-    // we pretend that Linus is a TURN server, because we can explicitly say "transport=tcp" in TURN urls.
-    // We then check for relay candidates to know if TURN-TCP worked (see registerIceCandidateListener()).
-    const tcpIceServers = cluster.tcp.map((urlString: string) => {
-      return {
-        username: 'webexturnreachuser',
-        credential: 'webexturnreachpwd',
-        urls: [convertStunUrlToTurn(urlString, 'tcp')],
-      };
-    });
-
-    const turnTlsIceServers = cluster.xtls.map((urlString: string) => {
-      return {
-        username: 'webexturnreachuser',
-        credential: 'webexturnreachpwd',
-        urls: [convertStunUrlToTurnTls(urlString)],
-      };
-    });
-
-    return {
-      iceServers: [...udpIceServers, ...tcpIceServers, ...turnTlsIceServers],
-      iceCandidatePoolSize: 0,
-      iceTransportPolicy: 'all',
-    };
-  }
-
-  /**
-   * Creates an RTCPeerConnection
+   * Initializes a single ReachabilityPeerConnection for all protocols
    * @param {ClusterNode} clusterInfo information about the media cluster
-   * @returns {RTCPeerConnection} peerConnection
+   * @returns {void}
    */
-  private createPeerConnection(clusterInfo: ClusterNode) {
-    try {
-      const config = this.buildPeerConnectionConfig(clusterInfo);
+  private initializeSingleReachabilityPeerConnection(clusterInfo: ClusterNode) {
+    this.reachabilityPeerConnection = new ReachabilityPeerConnection(this.name, clusterInfo);
+    this.setupReachabilityPeerConnectionEventListeners(this.reachabilityPeerConnection);
+  }
 
-      const peerConnection = new RTCPeerConnection(config);
+  /**
+   * Initializes per-URL UDP reachability checks:
+   * - One ReachabilityPeerConnection per UDP URL
+   * - One ReachabilityPeerConnection for all TCP and TLS URLs together
+   * @param {ClusterNode} clusterInfo information about the media cluster
+   * @returns {void}
+   */
+  private initializePerUdpUrlReachabilityCheck(clusterInfo: ClusterNode) {
+    LoggerProxy.logger.log(
+      `ClusterReachability#initializePerUdpUrlReachabilityCheck --> cluster: ${this.name}, performing per-URL UDP reachability for ${clusterInfo.udp.length} URLs`
+    );
 
-      return peerConnection;
-    } catch (peerConnectionError) {
-      LoggerProxy.logger.warn(
-        `Reachability:index#createPeerConnection --> Error creating peerConnection:`,
-        peerConnectionError
+    // Create one ReachabilityPeerConnection for each UDP URL
+    clusterInfo.udp.forEach((udpUrl) => {
+      const singleUdpClusterInfo: ClusterNode = {
+        isVideoMesh: clusterInfo.isVideoMesh,
+        udp: [udpUrl],
+        tcp: [],
+        xtls: [],
+      };
+      const rpc = new ReachabilityPeerConnection(this.name, singleUdpClusterInfo);
+      this.setupReachabilityPeerConnectionEventListeners(rpc, true);
+      this.reachabilityPeerConnectionsForUdp.push(rpc);
+    });
+
+    // Create one ReachabilityPeerConnection for all TCP and TLS URLs together
+    if (clusterInfo.tcp.length > 0 || clusterInfo.xtls.length > 0) {
+      const tcpTlsClusterInfo: ClusterNode = {
+        isVideoMesh: clusterInfo.isVideoMesh,
+        udp: [],
+        tcp: clusterInfo.tcp,
+        xtls: clusterInfo.xtls,
+      };
+      this.reachabilityPeerConnection = new ReachabilityPeerConnection(
+        this.name,
+        tcpTlsClusterInfo
       );
-
-      return undefined;
+      this.setupReachabilityPeerConnectionEventListeners(this.reachabilityPeerConnection);
     }
   }
 
   /**
-   * @returns {ClusterReachabilityResult} reachability result for this cluster
-   */
-  getResult() {
-    return this.result;
-  }
-
-  /**
-   * Closes the peerConnection
-   *
+   * Sets up event listeners for a ReachabilityPeerConnection instance
+   * @param {ReachabilityPeerConnection} rpc the ReachabilityPeerConnection instance
+   * @param {boolean} isUdpPerUrl whether this is a per-URL UDP instance
    * @returns {void}
    */
-  private closePeerConnection() {
-    if (this.pc) {
-      this.pc.onicecandidate = null;
-      this.pc.onicegatheringstatechange = null;
-      this.pc.close();
-    }
-  }
-
-  /**
-   * Resolves the defer, indicating that reachability checks for this cluster are completed
-   *
-   * @returns {void}
-   */
-  private finishReachabilityCheck() {
-    this.defer.resolve();
-  }
-
-  /**
-   * Aborts the cluster reachability checks by closing the peer connection
-   *
-   * @returns {void}
-   */
-  public abort() {
-    const {CLOSED} = CONNECTION_STATE;
-
-    if (this.pc.connectionState !== CLOSED) {
-      this.closePeerConnection();
-      this.finishReachabilityCheck();
-    }
-  }
-
-  /**
-   * Adds public IP (client media IPs)
-   * @param {string} protocol
-   * @param {string} publicIP
-   * @returns {void}
-   */
-  private addPublicIP(protocol: 'udp' | 'tcp' | 'xtls', publicIP?: string | null) {
-    const result = this.result[protocol];
-
-    if (publicIP) {
-      let ipAdded = false;
-
-      if (result.clientMediaIPs) {
-        if (!result.clientMediaIPs.includes(publicIP)) {
-          result.clientMediaIPs.push(publicIP);
-          ipAdded = true;
-        }
-      } else {
-        result.clientMediaIPs = [publicIP];
-        ipAdded = true;
-      }
-
-      if (ipAdded)
-        this.emit(
-          {
-            file: 'clusterReachability',
-            function: 'addPublicIP',
-          },
-          Events.clientMediaIpsUpdated,
-          {
-            protocol,
-            clientMediaIPs: result.clientMediaIPs,
-          }
-        );
-    }
-  }
-
-  /**
-   * Registers a listener for the iceGatheringStateChange event
-   *
-   * @returns {void}
-   */
-  private registerIceGatheringStateChangeListener() {
-    this.pc.onicegatheringstatechange = () => {
-      if (this.pc.iceGatheringState === ICE_GATHERING_STATE.COMPLETE) {
-        this.closePeerConnection();
-        this.finishReachabilityCheck();
-      }
-    };
-  }
-
-  /**
-   * Saves the latency in the result for the given protocol and marks it as reachable,
-   * emits the "resultReady" event if this is the first result for that protocol,
-   * emits the "clientMediaIpsUpdated" event if we already had a result and only found
-   * a new client IP
-   *
-   * @param {string} protocol
-   * @param {number} latency
-   * @param {string|null} [publicIp]
-   * @param {string|null} [serverIp]
-   * @returns {void}
-   */
-  private saveResult(
-    protocol: 'udp' | 'tcp' | 'xtls',
-    latency: number,
-    publicIp?: string | null,
-    serverIp?: string | null
+  private setupReachabilityPeerConnectionEventListeners(
+    rpc: ReachabilityPeerConnection,
+    isUdpPerUrl = false
   ) {
-    const result = this.result[protocol];
-
-    if (result.latencyInMilliseconds === undefined) {
-      LoggerProxy.logger.log(
-        // @ts-ignore
-        `Reachability:index#saveResult --> Successfully reached ${this.name} over ${protocol}: ${latency}ms`
-      );
-      result.latencyInMilliseconds = latency;
-      result.result = 'reachable';
-      if (publicIp) {
-        result.clientMediaIPs = [publicIp];
+    rpc.on(ReachabilityPeerConnectionEvents.resultReady, (data) => {
+      // For per-URL UDP checks, only emit the first successful UDP result
+      if (isUdpPerUrl && data.protocol === 'udp') {
+        if (this.udpResultEmitted) {
+          return;
+        }
+        if (data.result === 'reachable') {
+          this.udpResultEmitted = true;
+        }
       }
 
       this.emit(
         {
           file: 'clusterReachability',
-          function: 'saveResult',
+          function: 'setupReachabilityPeerConnectionEventListeners',
         },
         Events.resultReady,
+        data
+      );
+    });
+
+    rpc.on(ReachabilityPeerConnectionEvents.clientMediaIpsUpdated, (data) => {
+      this.emit(
         {
-          protocol,
-          ...result,
+          file: 'clusterReachability',
+          function: 'setupReachabilityPeerConnectionEventListeners',
+        },
+        Events.clientMediaIpsUpdated,
+        data
+      );
+    });
+
+    rpc.on(ReachabilityPeerConnectionEvents.natTypeUpdated, (data) => {
+      this.emit(
+        {
+          file: 'clusterReachability',
+          function: 'setupReachabilityPeerConnectionEventListeners',
+        },
+        Events.natTypeUpdated,
+        data
+      );
+    });
+
+    rpc.on(ReachabilityPeerConnectionEvents.reachedSubnets, (data) => {
+      data.subnets.forEach((subnet: string) => {
+        this.reachedSubnets.add(subnet);
+      });
+    });
+  }
+
+  /**
+   * Gets the aggregated reachability result for this cluster.
+   * @returns {ClusterReachabilityResult} reachability result for this cluster
+   */
+  getResult(): ClusterReachabilityResult {
+    if (!this.enablePerUdpUrlReachability) {
+      return (
+        this.reachabilityPeerConnection?.getResult() ?? {
+          udp: {result: 'untested'},
+          tcp: {result: 'untested'},
+          xtls: {result: 'untested'},
         }
       );
-    } else {
-      this.addPublicIP(protocol, publicIp);
     }
 
-    if (serverIp) {
-      this.reachedSubnets.add(serverIp);
-    }
-  }
-
-  /**
-   * Determines NAT Type.
-   *
-   * @param {RTCIceCandidate} candidate
-   * @returns {void}
-   */
-  private determineNatType(candidate: RTCIceCandidate) {
-    this.srflxIceCandidates.push(candidate);
-
-    if (this.srflxIceCandidates.length > 1) {
-      const portsFound: Record<string, Set<number>> = {};
-
-      this.srflxIceCandidates.forEach((c) => {
-        const key = `${c.address}:${c.relatedPort}`;
-        if (!portsFound[key]) {
-          portsFound[key] = new Set();
-        }
-        portsFound[key].add(c.port);
-      });
-
-      Object.entries(portsFound).forEach(([, ports]) => {
-        if (ports.size > 1) {
-          // Found candidates with the same address and relatedPort, but different ports
-          this.emit(
-            {
-              file: 'clusterReachability',
-              function: 'determineNatType',
-            },
-            Events.natTypeUpdated,
-            {
-              natType: NatType.SymmetricNat,
-            }
-          );
-        }
-      });
-    }
-  }
-
-  /**
-   * Registers a listener for the icecandidate event
-   *
-   * @returns {void}
-   */
-  private registerIceCandidateListener() {
-    this.pc.onicecandidate = (e) => {
-      const TURN_TLS_PORT = 443;
-      const CANDIDATE_TYPES = {
-        SERVER_REFLEXIVE: 'srflx',
-        RELAY: 'relay',
-      };
-
-      const latencyInMilliseconds = this.getElapsedTime();
-
-      if (e.candidate) {
-        if (e.candidate.type === CANDIDATE_TYPES.SERVER_REFLEXIVE) {
-          let serverIp = null;
-          if ('url' in e.candidate) {
-            const stunServerUrlRegex = /stun:([\d.]+):\d+/;
-
-            const match = (e.candidate as any).url.match(stunServerUrlRegex);
-            if (match) {
-              // eslint-disable-next-line prefer-destructuring
-              serverIp = match[1];
-            }
-          }
-
-          this.saveResult('udp', latencyInMilliseconds, e.candidate.address, serverIp);
-
-          this.determineNatType(e.candidate);
-        }
-
-        if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
-          const protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
-          this.saveResult(protocol, latencyInMilliseconds, null, e.candidate.address);
-        }
-      }
+    const result: ClusterReachabilityResult = {
+      udp: {result: 'untested'},
+      tcp: {result: 'untested'},
+      xtls: {result: 'untested'},
     };
+
+    // Get the first reachable UDP result from per-URL instances
+    for (const rpc of this.reachabilityPeerConnectionsForUdp) {
+      const rpcResult = rpc.getResult();
+      if (rpcResult.udp.result === 'reachable') {
+        result.udp = rpcResult.udp;
+        break;
+      }
+      if (rpcResult.udp.result === 'unreachable' && result.udp.result === 'untested') {
+        result.udp = rpcResult.udp;
+      }
+    }
+
+    // Get TCP and TLS results from the main peer connection
+    if (this.reachabilityPeerConnection) {
+      const mainResult = this.reachabilityPeerConnection.getResult();
+      result.tcp = mainResult.tcp;
+      result.xtls = mainResult.xtls;
+    }
+
+    return result;
   }
 
   /**
-   * Starts the process of doing UDP and TCP reachability checks on the media cluster.
-   * XTLS reachability checking is not supported.
-   *
-   * @returns {Promise}
+   * Starts the process of doing UDP, TCP, and XTLS reachability checks on the media cluster.
+   * @returns {Promise<ClusterReachabilityResult>}
    */
   async start(): Promise<ClusterReachabilityResult> {
-    if (!this.pc) {
-      LoggerProxy.logger.warn(
-        `Reachability:ClusterReachability#start --> Error: peerConnection is undefined`
-      );
+    const startPromises: Promise<ClusterReachabilityResult>[] = [];
 
-      return this.result;
+    this.reachabilityPeerConnectionsForUdp.forEach((rpc) => {
+      startPromises.push(rpc.start());
+    });
+
+    if (this.reachabilityPeerConnection) {
+      startPromises.push(this.reachabilityPeerConnection.start());
     }
 
-    // Initialize this.result as saying that nothing is reachable.
-    // It will get updated as we go along and successfully gather ICE candidates.
-    this.result.udp = {
-      result: this.numUdpUrls > 0 ? 'unreachable' : 'untested',
-    };
-    this.result.tcp = {
-      result: this.numTcpUrls > 0 ? 'unreachable' : 'untested',
-    };
-    this.result.xtls = {
-      result: this.numXTlsUrls > 0 ? 'unreachable' : 'untested',
-    };
+    await Promise.all(startPromises);
 
-    try {
-      const offer = await this.pc.createOffer({offerToReceiveAudio: true});
-
-      this.startTimestamp = performance.now();
-
-      // Set up the state change listeners before triggering the ICE gathering
-      const gatherIceCandidatePromise = this.gatherIceCandidates();
-
-      // not awaiting the next call on purpose, because we're not sending the offer anywhere and there won't be any answer
-      // we just need to make this call to trigger the ICE gathering process
-      this.pc.setLocalDescription(offer);
-
-      await gatherIceCandidatePromise;
-    } catch (error) {
-      LoggerProxy.logger.warn(`Reachability:ClusterReachability#start --> Error: `, error);
-    }
-
-    return this.result;
+    return this.getResult();
   }
 
   /**
-   * Starts the process of gathering ICE candidates
-   *
-   * @returns {Promise} promise that's resolved once reachability checks for this cluster are completed or timeout is reached
+   * Aborts the cluster reachability checks
+   * @returns {void}
    */
-  private gatherIceCandidates() {
-    this.registerIceGatheringStateChangeListener();
-    this.registerIceCandidateListener();
-
-    return this.defer.promise;
+  public abort() {
+    this.reachabilityPeerConnectionsForUdp.forEach((rpc) => rpc.abort());
+    this.reachabilityPeerConnection?.abort();
   }
 }

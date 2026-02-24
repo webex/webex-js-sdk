@@ -1,4 +1,4 @@
-import {IDeviceInfo, RegistrationStatus} from '../../common/types';
+import {Devices, IDeviceInfo, RegistrationStatus} from '../../common/types';
 
 export type Header = {
   [key: string]: string;
@@ -10,6 +10,13 @@ export type restoreRegistrationCallBack = (
 ) => Promise<boolean>;
 
 export type retry429CallBack = (retryAfter: number, caller: string) => void;
+
+export type FailoverCacheState = {
+  attempt: number;
+  timeElapsed: number;
+  retryScheduledTime: number;
+  serverType: 'primary' | 'backup';
+};
 
 /**
  * Represents an interface for managing registration-related operations.
@@ -97,4 +104,9 @@ export interface IRegistration {
    * @param retry - Set to `true` to trigger a retry after restoration.
    */
   handleConnectionRestoration(retry: boolean): Promise<boolean>;
+
+  /**
+   * Populate deviceInfo from a devices response (e.g., getDevices API).
+   */
+  setDeviceInfo(body: Devices): void;
 }

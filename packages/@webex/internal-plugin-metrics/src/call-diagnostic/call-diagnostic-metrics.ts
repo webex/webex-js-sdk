@@ -366,6 +366,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
     if (meeting?.locusInfo?.fullState) {
       identifiers.locusUrl = meeting.locusUrl;
       identifiers.locusId = meeting.locusUrl && meeting.locusUrl.split('/').pop();
+      identifiers.locusSessionId = meeting.locusInfo.fullState.sessionId;
       identifiers.locusStartTime =
         meeting.locusInfo.fullState && meeting.locusInfo.fullState.lastActive;
     }
@@ -1415,8 +1416,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
    */
   public setDeviceInfo(device: any): void {
     // This was created to fix the circular dependency between internal-plugin-device and internal-plugin-metrics
-    this.logger.log('CallDiagnosticMetrics: @setDeviceInfo called', device);
-
+    this.logger.log('CallDiagnosticMetrics: @setDeviceInfo called', {
+      userId: device?.userId,
+      deviceId: device?.url,
+      orgId: device?.orgId,
+    });
     this.device = device;
   }
 }

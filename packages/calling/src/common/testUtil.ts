@@ -81,6 +81,7 @@ export function getTestUtilsWebex() {
           contactsService: 'https://contacts-service-a.wbx2.com/contact/api/v1',
         },
         fetchClientRegionInfo: jest.fn(),
+        getMobiusClusters: jest.fn(),
       },
     },
     // public plugins

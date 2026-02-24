@@ -35,7 +35,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private hasSubscribedToEvents = false;
 
-  private vmcDeviceId?: string;
+  private captionServiceId?: string;
 
   private announceStatus: string;
 
@@ -44,6 +44,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   private toggleManualCaptionStatus: string;
 
   private currentSpokenLanguage?: string;
+
+  private spokenLanguages: string[] = [];
+
+  private currentCaptionLanguage?: string;
 
   /**
    * @param {Object} e
@@ -54,7 +58,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.seqNum = e.sequenceNumber + 1;
     switch (e.data.relayType) {
       case AIBRIDGE_RELAY_TYPES.VOICEA.ANNOUNCEMENT:
-        this.vmcDeviceId = e.headers.from;
+        this.onCaptionServiceIdUpdate(e.headers.from);
         this.announceStatus = ANNOUNCE_STATUS.JOINED;
         this.processAnnouncementMessage(e.data.voiceaPayload);
         break;
@@ -95,7 +99,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   public deregisterEvents() {
     this.areCaptionsEnabled = false;
-    this.vmcDeviceId = undefined;
+    this.captionServiceId = undefined;
     // @ts-ignore
     this.webex.internal.llm.off('event:relay.event', this.eventProcessor);
     this.hasSubscribedToEvents = false;
@@ -103,6 +107,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
     this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
     this.currentSpokenLanguage = undefined;
+    this.currentCaptionLanguage = undefined;
   }
 
   /**
@@ -113,11 +118,12 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     super(...args);
     this.seqNum = 1;
     this.areCaptionsEnabled = false;
-    this.vmcDeviceId = undefined;
+    this.captionServiceId = undefined;
     this.announceStatus = ANNOUNCE_STATUS.IDLE;
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
     this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
     this.currentSpokenLanguage = DEFAULT_SPOKEN_LANGUAGE;
+    this.currentCaptionLanguage = undefined;
   }
 
   /**
@@ -198,11 +204,18 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         });
         break;
 
-      case TRANSCRIPTION_TYPE.LANGUAGE_DETECTED:
-        // @ts-ignore
-        this.setSpokenLanguage(voiceaPayload.language, LANGUAGE_ASSIGNMENT.AUTO);
-        break;
+      case TRANSCRIPTION_TYPE.LANGUAGE_DETECTED: {
+        const isInSpokenLanguages = this.spokenLanguages.includes(voiceaPayload.language);
 
+        if (isInSpokenLanguages) {
+          // @ts-ignore
+          this.trigger(EVENT_TRIGGERS.LANGUAGE_DETECTED, {
+            languageCode: voiceaPayload.language,
+          });
+        }
+
+        break;
+      }
       default:
         break;
     }
@@ -239,6 +252,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       currentSpokenLanguage: this.currentSpokenLanguage,
     };
 
+    this.spokenLanguages = voiceaPayload?.ASR?.spoken_languages ?? [];
     // @ts-ignore
     this.trigger(EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT, voiceaLanguageOptions);
   };
@@ -258,7 +272,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         // @ts-ignore
         route: this.webex.internal.llm.getBinding(),
       },
-      headers: {},
+      // If captionServiceId exists, send it as the 'to' header; otherwise keep headers empty.
+      headers: this.captionServiceId ? {to: this.captionServiceId} : {},
       data: {
         clientPayload: {
           version: 'v2',
@@ -279,7 +294,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   public setSpokenLanguage = (
     languageCode: string,
-    languageAssignment = LANGUAGE_ASSIGNMENT.DEFAULT
+    languageAssignment?: 'DEFAULT' | 'AUTO' | 'MANUAL'
   ): Promise<void> =>
     // @ts-ignore
     this.request({
@@ -289,7 +304,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       body: {
         transcribe: {
           spokenLanguage: languageCode,
-          languageAssignment,
+          ...(languageAssignment && {languageAssignment}),
         },
       },
     }).then(() => {
@@ -314,7 +329,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         route: this.webex.internal.llm.getBinding(),
       },
       headers: {
-        to: this.vmcDeviceId,
+        to: this.captionServiceId,
       },
       data: {
         clientPayload: {
@@ -326,6 +341,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       },
       trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
     });
+    this.currentCaptionLanguage = languageCode;
+
     this.seqNum += 1;
   };
 
@@ -529,6 +546,24 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     // @ts-ignore
     this.trigger(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode, meetingId});
     this.currentSpokenLanguage = languageCode;
+  };
+
+  /**
+   * In meeting Spoken Language changed event
+   * @param {string} serviceId
+   * @returns {void}
+   */
+  public onCaptionServiceIdUpdate = (serviceId: string): void => {
+    if (!serviceId) {
+      return;
+    }
+    if (this.captionServiceId !== serviceId) {
+      this.captionServiceId = serviceId;
+      // if service id value has changed and the translation language has been set, client needs to resend the translator language message to the LLM.
+      if (this.currentCaptionLanguage) {
+        this.requestLanguage(this.currentCaptionLanguage);
+      }
+    }
   };
 
   /**

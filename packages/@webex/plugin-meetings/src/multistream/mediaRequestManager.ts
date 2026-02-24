@@ -356,7 +356,7 @@ export class MediaRequestManager {
             mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot),
             this.getMaxPayloadBitsPerSecond(mr),
             mr.codecInfo && [
-              new WcmeCodecInfo(
+              WcmeCodecInfo.fromH264(
                 0x80,
                 new H264Codec(
                   mr.codecInfo.maxFs,

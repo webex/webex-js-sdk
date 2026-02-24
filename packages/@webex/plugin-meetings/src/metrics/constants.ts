@@ -21,6 +21,7 @@ const BEHAVIORAL_METRICS = {
   GET_DISPLAY_MEDIA_FAILURE: 'js_sdk_get_display_media_failures',
   JOIN_WITH_MEDIA_FAILURE: 'js_sdk_join_with_media_failures',
   LLM_CONNECTION_AFTER_JOIN_FAILURE: 'js_sdk_llm_connection_after_join_failure',
+  LLM_HEALTHCHECK_FAILURE: 'js_sdk_llm_healthcheck_failure',
   RECEIVE_TRANSCRIPTION_AFTER_JOIN_FAILURE: 'js_sdk_receive_transcription_after_join_failure',
 
   DISCONNECT_DUE_TO_INACTIVITY: 'js_sdk_disconnect_due_to_inactivity',
@@ -87,6 +88,9 @@ const BEHAVIORAL_METRICS = {
   VERIFY_REGISTRATION_ID_ERROR: 'js_sdk_verify_registrationId_error',
   JOIN_FORBIDDEN_ERROR: 'js_sdk_join_forbidden_error',
   MEDIA_ISSUE_DETECTED: 'js_sdk_media_issue_detected',
+  LOCUS_CLASSIC_VS_HASH_TREE_MISMATCH: 'js_sdk_locus_classic_vs_hash_tree_mismatch',
+  LOCUS_HASH_TREE_UNSUPPORTED_OPERATION: 'js_sdk_locus_hash_tree_unsupported_operation',
+  MEDIA_STILL_NOT_CONNECTED: 'js_sdk_media_still_not_connected',
 };
 
 export {BEHAVIORAL_METRICS as default};

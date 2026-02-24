@@ -1,5 +1,5 @@
 /* eslint no-shadow: ["error", { "allow": ["eventType"] }] */
-import {cloneDeep, clone} from 'lodash';
+import {cloneDeep, clone, set} from 'lodash';
 import '@webex/internal-plugin-mercury';
 import '@webex/internal-plugin-conversation';
 import '@webex/internal-plugin-metrics';
@@ -66,6 +66,9 @@ import JoinWebinarError from '../common/errors/join-webinar-error';
 import {SpaceIDDeprecatedError} from '../common/errors/webex-errors';
 import NoMeetingInfoError from '../common/errors/no-meeting-info';
 import JoinForbiddenError from '../common/errors/join-forbidden-error';
+import {HashTreeMessage} from '../hashTree/hashTreeParser';
+import {HashTreeObject} from '../hashTree/types';
+import {isSelf} from '../hashTree/utils';
 
 let mediaLogger;
 
@@ -94,6 +97,18 @@ class MediaLogger {
     LoggerProxy.logger.debug(...args);
   }
 }
+
+export type LocusEvent = {
+  eventType: LOCUSEVENT;
+
+  // fields populated for "classic" locus events (eventType = 'locus.difference' and others, see LOCUSEVENT)
+  locusUrl?: string;
+  locus?: any;
+
+  // fields populated for "hash tree" locus events (eventType = 'locus.state_message' - see LOCUSEVENT.HASH_TREE_DATA_UPDATED)
+  stateElementsMessage?: HashTreeMessage;
+};
+
 /**
  * Meetings Ready Event
  * Emitted when the meetings instance on webex is ready
@@ -180,6 +195,8 @@ export default class Meetings extends WebexPlugin {
   preferredWebexSite: any;
   reachability: Reachability;
   registered: any;
+  registrationPromise: Promise<void>;
+  unregistrationPromise: Promise<void>;
   request: any;
   geoHintInfo: any;
   meetingInfo: any;
@@ -406,29 +423,42 @@ export default class Meetings extends WebexPlugin {
    * @private
    * @memberof Meetings
    */
-  getCorrespondingMeetingByLocus(data) {
-    // getting meeting by correlationId. This will happen for the new event
-    // Either the locus
-    // TODO : Add check for the callBack Address
+  getCorrespondingMeetingByLocus(data: LocusEvent) {
+    const locusUrl =
+      data.stateElementsMessage?.locusUrl || // hash tree event
+      data.locusUrl; // classic event
+
+    // first try to find by locusUrl - that's the simplest and quickest way
+    const existingMeeting = this.meetingCollection.getByKey(MEETING_KEY.LOCUS_URL, locusUrl);
+
+    if (existingMeeting) {
+      return existingMeeting;
+    }
+
+    // if that didn't work, fallback to other fields like correlationId, sipUri, etc
+
+    // If the event is a hash tree event, we need to extract "self" object from it
+    // We don't care about the version, just need to find the meeting this event is for,
+    // so any hash tree object of type "self" will do
+    const hashTreeEventSelf = data.stateElementsMessage?.locusStateElements?.find(
+      (obj: HashTreeObject) => isSelf(obj)
+    )?.data;
+
+    const self = hashTreeEventSelf || data.locus?.self;
+
     return (
-      this.meetingCollection.getByKey(MEETING_KEY.LOCUS_URL, data.locusUrl) ||
       // @ts-ignore
       this.meetingCollection.getByKey(
         MEETING_KEY.CORRELATION_ID,
         // @ts-ignore
-        MeetingsUtil.checkForCorrelationId(this.webex.internal.device.url, data.locus)
+        MeetingsUtil.getCorrelationIdForDevice(this.webex.internal.device.url, self)
       ) ||
-      this.meetingCollection.getByKey(
-        MEETING_KEY.SIP_URI,
-        data.locus.self &&
-          data.locus.self.callbackInfo &&
-          data.locus.self.callbackInfo.callbackAddress
-      ) ||
-      (data.locus.info?.isUnifiedSpaceMeeting
+      this.meetingCollection.getByKey(MEETING_KEY.SIP_URI, self?.callbackInfo?.callbackAddress) ||
+      (data.locus?.info?.isUnifiedSpaceMeeting
         ? undefined
         : this.meetingCollection.getByKey(
             MEETING_KEY.CONVERSATION_URL,
-            data.locus.conversationUrl
+            data.locus?.conversationUrl
           )) ||
       this.meetingCollection.getByKey(MEETING_KEY.MEETINGNUMBER, data.locus?.info?.webExMeetingId)
     );
@@ -445,30 +475,33 @@ export default class Meetings extends WebexPlugin {
    * @private
    * @memberof Meetings
    */
-  private handleLocusEvent(data: {locusUrl: string; locus: any}, useRandomDelayForInfo = false) {
+  private handleLocusEvent(data: LocusEvent, useRandomDelayForInfo = false) {
     let meeting = this.getCorrespondingMeetingByLocus(data);
 
     // Special case when locus has got replaced, This only happend once if a replace locus exists
     // https://sqbu-github.cisco.com/WebExSquared/locus/wiki/Locus-changing-mid-call
 
-    if (!meeting && data.locus?.replaces?.length > 0) {
-      // Always the last element in the replace is the active one
-      meeting = this.meetingCollection.getByKey(
-        MEETING_KEY.LOCUS_URL,
-        data.locus.replaces[data.locus.replaces.length - 1].locusUrl
-      );
+    if (data.eventType !== LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
+      if (!meeting && data.locus?.replaces?.length > 0) {
+        // Always the last element in the replace is the active one
+        meeting = this.meetingCollection.getByKey(
+          MEETING_KEY.LOCUS_URL,
+          data.locus.replaces[data.locus.replaces.length - 1].locusUrl
+        );
+      }
+
+      if (meeting && !MeetingsUtil.isBreakoutLocusDTO(data.locus)) {
+        meeting.locusInfo.updateMainSessionLocusCache(data.locus);
+      }
+      if (!this.isNeedHandleLocusDTO(meeting, data.locus)) {
+        LoggerProxy.logger.log(
+          `Meetings:index#handleLocusEvent --> doesn't need to process locus event`
+        );
+
+        return;
+      }
     }
 
-    if (meeting && !MeetingsUtil.isBreakoutLocusDTO(data.locus)) {
-      meeting.locusInfo.updateMainSessionLocusCache(data.locus);
-    }
-    if (!this.isNeedHandleLocusDTO(meeting, data.locus)) {
-      LoggerProxy.logger.log(
-        `Meetings:index#handleLocusEvent --> doesn't need to process locus event`
-      );
-
-      return;
-    }
     if (!meeting) {
       // TODO: create meeting when we get a meeting object
       // const checkForEnded = (locus) => {
@@ -489,42 +522,65 @@ export default class Meetings extends WebexPlugin {
       // };
       // rather then locus object change to locus url
 
-      if (
-        data.locus &&
-        data.locus.fullState &&
-        data.locus.fullState.state === LOCUS.STATE.INACTIVE
-      ) {
-        // just ignore the event as its already ended and not active
-        LoggerProxy.logger.warn(
-          'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
-        );
+      if (data.eventType !== LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
+        if (
+          data.locus &&
+          data.locus.fullState &&
+          data.locus.fullState.state === LOCUS.STATE.INACTIVE
+        ) {
+          // just ignore the event as its already ended and not active
+          LoggerProxy.logger.warn(
+            'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
+          );
 
-        return;
+          return;
+        }
+
+        // When its wireless share or guest and user leaves the meeting we dont have to keep the meeting object
+        // Any future events will be neglected
+
+        if (
+          data.locus &&
+          data.locus.self &&
+          data.locus.self.state === _LEFT_ &&
+          data.locus.self.removed === true
+        ) {
+          // just ignore the event as its already ended and not active
+          LoggerProxy.logger.warn(
+            'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
+          );
+
+          return;
+        }
       }
 
-      // When its wireless share or guest and user leaves the meeting we dont have to keep the meeting object
-      // Any future events will be neglected
-
-      if (
-        data.locus &&
-        data.locus.self &&
-        data.locus.self.state === _LEFT_ &&
-        data.locus.self.removed === true
-      ) {
-        // just ignore the event as its already ended and not active
-        LoggerProxy.logger.warn(
-          'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
-        );
-
-        return;
+      if (data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
+        // in hash tree messages we don't ge the locus object, but the meeting constructor needs at least locus.url
+        set(data, 'locus.url', data.stateElementsMessage.locusUrl);
       }
 
       this.create(data.locus, DESTINATION_TYPE.LOCUS_ID, useRandomDelayForInfo)
-        .then((newMeeting) => {
+        .then(async (newMeeting) => {
           meeting = newMeeting;
 
-          // It's a new meeting so initialize the locus data
-          meeting.locusInfo.initialSetup(data.locus);
+          try {
+            // It's a new meeting so initialize the locus data
+            await meeting.locusInfo.initialSetup({
+              trigger:
+                data.eventType === LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS
+                  ? 'get-loci-response'
+                  : 'locus-message',
+              locus: data.locus,
+              hashTreeMessage: data.stateElementsMessage,
+            });
+          } catch (error) {
+            LoggerProxy.logger.warn(
+              `Meetings:index#handleLocusEvent --> Error initializing locus data: ${error.message}`
+            );
+            // @ts-ignore
+            this.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
+          }
+
           this.checkHandleBreakoutLocus(data.locus);
         })
         .catch((e) => {
@@ -875,9 +931,20 @@ export default class Meetings extends WebexPlugin {
    * @returns {Promise} A promise that resolves when the step is completed.
    */
   executeRegistrationStep(step: () => Promise<any>, stepName: string) {
-    return step().then(() => {
-      this.registrationStatus[stepName] = true;
-    });
+    return step()
+      .then(() => {
+        LoggerProxy.logger.info(
+          `Meetings:index#executeRegistrationStep --> INFO, ${stepName} completed`
+        );
+        this.registrationStatus[stepName] = true;
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error(
+          `Meetings:index#executeRegistrationStep --> ERROR, ${stepName} failed: ${error.message}`
+        );
+
+        return Promise.reject(error);
+      });
   }
 
   /**
@@ -890,7 +957,33 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   public register(deviceRegistrationOptions?: DeviceRegistrationOptions): Promise<any> {
-    this.registrationStatus = clone(INITIAL_REGISTRATION_STATUS);
+    if (this.unregistrationPromise) {
+      LoggerProxy.logger.info(
+        'Meetings:index#register --> INFO, Meetings plugin unregistration in progress, waiting to register'
+      );
+
+      this.registrationPromise = this.unregistrationPromise
+        .catch(() => {}) // It doesn't matter what happened during unregistration
+        .finally(() => {
+          LoggerProxy.logger.info(
+            'Meetings:index#register --> INFO, Meetings plugin unregistration completed, proceeding to register'
+          );
+
+          this.registrationPromise = null;
+
+          return this.register(deviceRegistrationOptions);
+        });
+
+      return this.registrationPromise;
+    }
+
+    if (this.registrationPromise) {
+      LoggerProxy.logger.info(
+        'Meetings:index#register --> INFO, Meetings plugin registration in progress, returning existing promise'
+      );
+
+      return this.registrationPromise;
+    }
 
     // @ts-ignore
     if (!this.webex.canAuthorize) {
@@ -909,7 +1002,11 @@ export default class Meetings extends WebexPlugin {
       return Promise.resolve();
     }
 
-    return Promise.all([
+    LoggerProxy.logger.info('Meetings:index#register --> INFO, Registering Meetings plugin');
+
+    this.registrationStatus = clone(INITIAL_REGISTRATION_STATUS);
+
+    this.registrationPromise = Promise.all([
       this.executeRegistrationStep(() => this.fetchUserPreferredWebexSite(), 'fetchWebexSite'),
       this.executeRegistrationStep(() => this.getGeoHint(), 'getGeoHint'),
       this.executeRegistrationStep(
@@ -968,7 +1065,12 @@ export default class Meetings extends WebexPlugin {
         });
 
         return Promise.reject(error);
+      })
+      .finally(() => {
+        this.registrationPromise = null;
       });
+
+    return this.registrationPromise;
   }
 
   /**
@@ -980,6 +1082,35 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    */
   unregister() {
+    if (this.unregistrationPromise) {
+      LoggerProxy.logger.info(
+        'Meetings:index#unregister --> INFO, Meetings plugin unregistration in progress, returning existing promise'
+      );
+
+      return this.unregistrationPromise;
+    }
+
+    if (this.registrationPromise) {
+      LoggerProxy.logger.info(
+        'Meetings:index#unregister --> INFO, Meetings plugin registration in progress, waiting to unregister'
+      );
+
+      // Wait for registration to complete (success or failure), then call unregister again
+      this.unregistrationPromise = this.registrationPromise
+        .catch(() => {}) // It doesn't matter what happened during registration
+        .finally(() => {
+          LoggerProxy.logger.info(
+            'Meetings:index#unregister --> INFO, Meetings plugin registration completed, proceeding to unregister'
+          );
+
+          this.unregistrationPromise = null;
+
+          return this.unregister();
+        });
+
+      return this.unregistrationPromise;
+    }
+
     if (!this.registered) {
       LoggerProxy.logger.info(
         'Meetings:index#unregister --> INFO, Meetings plugin already unregistered'
@@ -990,10 +1121,14 @@ export default class Meetings extends WebexPlugin {
 
     this.stopListeningForEvents();
 
-    return (
+    this.unregistrationPromise =
       // @ts-ignore
       this.webex.internal.mercury
-        .disconnect()
+        // Use code 3050 with a non-reconnecting reason to prevent Mercury auto-reconnect
+        // during unregister. Without this, disconnect() defaults to code 1000/"Done" which
+        // force-closes as "Done (forced)" - a normalReconnectReason that triggers auto-reconnect,
+        // causing a race condition with device.unregister().
+        .disconnect({code: 3050, reason: 'meetings unregister'})
         // @ts-ignore
         .then(() => this.webex.internal.device.unregister())
         .catch((error) => {
@@ -1023,7 +1158,11 @@ export default class Meetings extends WebexPlugin {
           this.registered = false;
           this.registrationStatus = clone(INITIAL_REGISTRATION_STATUS);
         })
-    );
+        .finally(() => {
+          this.unregistrationPromise = null;
+        });
+
+    return this.unregistrationPromise;
   }
 
   /**
@@ -1739,6 +1878,7 @@ export default class Meetings extends WebexPlugin {
           lociToUpdate.forEach((locus) => {
             activeLocusUrl.push(locus.url);
             this.handleLocusEvent({
+              eventType: LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS,
               locus,
               locusUrl: locus.url,
             });
@@ -1786,6 +1926,7 @@ export default class Meetings extends WebexPlugin {
         (mainLocus) => mainLocus.controls?.breakout?.url === breakoutLocus.controls?.breakout?.url
       );
       const existCorrespondingMeeting = this.getCorrespondingMeetingByLocus({
+        eventType: LOCUSEVENT.SDK_NO_EVENT,
         locus: breakoutLocus,
         locusUrl: breakoutLocus.url,
       });
@@ -1831,7 +1972,11 @@ export default class Meetings extends WebexPlugin {
     }
 
     const associateBreakoutLocus = this.breakoutLocusForHandleLater[existIndex];
-    this.handleLocusEvent({locus: associateBreakoutLocus, locusUrl: associateBreakoutLocus.url});
+    this.handleLocusEvent({
+      eventType: LOCUSEVENT.SDK_NO_EVENT,
+      locus: associateBreakoutLocus,
+      locusUrl: associateBreakoutLocus.url,
+    });
     this.breakoutLocusForHandleLater.splice(existIndex, 1);
   }
 

@@ -204,6 +204,7 @@ function parseAgentConfigs(profileData: {
     siteId: userData.siteId,
     enterpriseId: orgInfoData.tenantId,
     tenantTimezone: orgInfoData.timezone,
+    environment: orgInfoData.environment,
     privacyShieldVisible: tenantData.privacyShieldVisible,
     organizationIdleCodes: [], // TODO: for supervisor, getOrgFilteredIdleCodes(auxCodes, false),
     idleCodesAccess: agentProfileData.accessIdleCode as 'ALL' | 'SPECIFIC',

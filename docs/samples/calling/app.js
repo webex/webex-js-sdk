@@ -90,6 +90,10 @@ const makeCallBtn = document.querySelector('#create-call-action');
 const muteElm = document.getElementById('mute_button');
 const bnrButton = document.getElementById('bnr-button');
 const uploadLogsResultElm = document.getElementById('upload-logs-result');
+const devicesUserIdInput = document.getElementById('devices-user-id');
+const fetchDevicesButton = document.getElementById('fetch-devices');
+const devicesHeader = document.getElementById('devicesHeaderId');
+const devicesTableBody = document.getElementById('devicesTableBody');
 
 let base64;
 let audio64;
@@ -222,6 +226,10 @@ async function initCalling(e) {
       fedramp: fedrampBox.checked,
       logger: {
         level: 'debug', // set the desired log level
+      },
+      calling: {
+        // Enable U2C catalog caching for calling sample app
+        cacheU2C: true,
       },
       meetings: {
         reconnection: {
@@ -387,6 +395,7 @@ const callNotifyEvent = new CustomEvent('line:incoming_call', {
 callListener.addEventListener('line:incoming_call', (myEvent) => {
   console.log('Received incoming call');
   answerElm.disabled = false;
+  endElm.disabled = false;
   const callerDisplay = myEvent.detail.callObject.getCallerInfo();
 
   incomingDetailsElm.innerText = `Call from ${callerDisplay.name}, Ph: ${callerDisplay.num}`;
@@ -415,6 +424,10 @@ function createDevice() {
     unregisterElm.disabled = false;
   });
 
+  line.on('error', (error) => {
+    console.log('Error: ', error);
+  });
+
   // Start listening for incoming calls
   line.on('line:incoming_call', (callObj) => {
     call = callObj;
@@ -428,6 +441,7 @@ function createDevice() {
         imageElm.appendChild(img);
       }
     });
+
 
     call.on('disconnect', () => {
       callDetailsElm.innerText = `${correlationId}: Call Disconnected`;
@@ -458,6 +472,7 @@ function endCall() {
   outboundEndElm.disabled = true;
   makeCallBtn.disabled = false;
   endElm.disabled = true;
+  answerElm.disabled = true;
   muteElm.value = 'Mute';
   holdResumeElm.value = 'Hold'
   imageElm.removeChild(img);
@@ -682,6 +697,57 @@ async function getCallQuality() {
   }
 }
 
+function renderDevicesTable(devices = []) {
+  if (!devicesHeader || !devicesTableBody) {
+    return;
+  }
+
+  devicesHeader.innerHTML = `
+    <tr>
+      <th>#</th>
+      <th>Device ID</th>
+      <th>Status</th>
+      <th>Last Seen</th>
+      <th>URI</th>
+      <th>Client Device URI</th>
+    </tr>
+  `;
+
+  devicesTableBody.innerHTML = devices
+    .map(
+      (device, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${device.deviceId}</td>
+          <td>${device.status}</td>
+          <td>${device.lastSeen}</td>
+          <td>${device.uri}</td>
+          <td>${device.clientDeviceUri || ''}</td>
+        </tr>`
+    )
+    .join('');
+}
+
+async function fetchDevicesList() {
+  if (!callingClient) {
+    console.error('Calling client not initialized');
+    return;
+  }
+
+  const enteredUserId = devicesUserIdInput?.value?.trim();
+  const userId = enteredUserId;
+
+  try {
+    const devices = await callingClient.getDevices();
+    renderDevicesTable(devices);
+  } catch (error) {
+    console.error('Failed to fetch devices', error);
+    if (devicesTableBody) {
+      devicesTableBody.innerHTML = `<tr><td colspan="7">Failed to fetch devices</td></tr>`;
+    }
+  }
+}
+
 function commitTransfer() {
 
   const digit = transferTarget.value;
@@ -746,7 +812,7 @@ async function getMediaStreams() {
 }
 
 async function toggleNoiseReductionEffect() {
-  const options =  {authToken: tokenElm.value, env: enableProd ? 'prod': 'int'}
+  const options = {authToken: tokenElm.value, env: enableProd ? 'prod': 'int'};
   effect = await localAudioStream.getEffectByKind('noise-reduction-effect');
 
   if (!effect) {
@@ -766,6 +832,10 @@ async function toggleNoiseReductionEffect() {
 
 // Listen for submit on create meeting
 createCallForm.addEventListener('submit', createCall);
+
+if (fetchDevicesButton) {
+  fetchDevicesButton.addEventListener('click', fetchDevicesList);
+}
 
 function addPlayIfPausedEvents(mediaElements) {
   mediaElements.forEach((elem) => {
@@ -1177,7 +1247,7 @@ async function createVoiceMail() {
         }
       } else {
         console.log('Voicemail is empty');
-      } 
+      }
 
       voicemailElm.disabled = false;
 

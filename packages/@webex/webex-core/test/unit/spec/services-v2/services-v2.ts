@@ -331,6 +331,20 @@ describe('webex-core', () => {
 
         assert.deepEqual(result, [{some: 'value'}]);
       });
+      it('updates the catalog with empty hostmap', async () => {
+        const serviceGroup = 'postauth';
+        const hostmap = {};
+
+        services._formatReceivedHostmap = sinon.stub().returns({services : undefined});
+
+        catalog.updateServiceGroups = sinon.stub().returns(Promise.resolve([{some: 'value'}]));
+
+        const result = await services.updateCatalog(serviceGroup, hostmap);
+
+        assert.calledWith(services._formatReceivedHostmap, hostmap);
+
+        assert.calledWith(catalog.updateServiceGroups, serviceGroup, undefined);
+      });
     });
 
     describe('#_fetchNewServiceHostmap()', () => {
@@ -693,6 +707,308 @@ describe('webex-core', () => {
         const result = await services.invalidateCache(timestamp);
 
         assert.isUndefined(result);
+      });
+    });
+
+    describe('#getMobiusClusters', () => {
+      it('returns unique mobius entries derived from serviceUrls baseUrl', () => {
+        // Arrange: seed internal _services with mobius (including duplicate baseUrl)
+        services._services = [
+          {
+            "id": "urn:TEAM:us-east-2_a:mobius",
+            "serviceName": 'mobius',
+            "serviceUrls": [
+              {"baseUrl": 'https://mobius-us-east-2.prod.infra.webex.com/api/v1', "priority": 5},
+              {"baseUrl": 'https://mobius-eu-central-1.prod.infra.webex.com/api/v1', "priority": 10},
+              {"baseUrl": 'https://mobius-ap-southeast-2.prod.infra.webex.com/api/v1', "priority": 15}, // duplicate
+            ],
+          },
+          {
+            "id": "urn:TEAM:ap-southeast-2_m:mobius",
+            "serviceName": "mobius",
+            "serviceUrls": [
+                {
+                    "baseUrl": "https://mobius-me-central-1.prod.infra.webex.com/api/v1",
+                    "priority": 5
+                },
+                {
+                    "baseUrl": "https://mobius-eu-central-1.prod.infra.webex.com/api/v1",
+                    "priority": 10
+                },
+                {
+                    "baseUrl": "https://mobius-ap-southeast-2.prod.infra.webex.com/api/v1",
+                    "priority": 15
+                },
+            ],
+          },
+          // Non-mobius service should be ignored by getMobiusClusters
+          {
+            id: 'urn:TEAM:us-east-2_a:wdm',
+            serviceName: 'wdm',
+            serviceUrls: [{baseUrl: 'https://wdm-a.webex.com/api/v1', priority: 5}],
+          },
+        ];
+
+        // Act
+        const clusters = services.getMobiusClusters();
+
+        // Assert (v2 currently pushes baseUrl into host field and dedups by baseUrl)
+        assert.deepEqual(
+          clusters.map(({host, id, ttl, priority}) => ({host, id, ttl, priority})),
+          [
+            {host: 'mobius-us-east-2.prod.infra.webex.com', id: 'urn:TEAM:us-east-2_a:mobius', ttl: 0, priority: 5},
+            {host: 'mobius-eu-central-1.prod.infra.webex.com', id: 'urn:TEAM:us-east-2_a:mobius', ttl: 0, priority: 10},
+            {host: 'mobius-ap-southeast-2.prod.infra.webex.com', id: 'urn:TEAM:us-east-2_a:mobius', ttl: 0, priority: 15},
+            {host: 'mobius-me-central-1.prod.infra.webex.com', id: 'urn:TEAM:ap-southeast-2_m:mobius', ttl: 0, priority: 5},
+          ]
+        );
+      });
+    });
+    
+    describe('#isValidHost', () => {
+      beforeEach(() => {
+        // Setting up a mock services list
+         services._services = [{
+            "id": "urn:IDENTITY:PC75:adminAudit",
+            "serviceName": "adminAudit",
+            "serviceUrls": [
+                {
+                    "baseUrl": "https://audit-ci-r.wbx2.com/audit-ci/api/v2",
+                    "priority": 5
+                },
+                 {
+                    "baseUrl": "https://audit-ci-t.wbx2.com/audit-ci/api/v2",
+                    "priority": 10
+                }
+            ]
+        },
+         {
+            "id": "urn:IDENTITY:PC75:cdf",
+            "serviceName": "cdf",
+            "serviceUrls": [
+                {
+                    "baseUrl": "https://wapdavis.webex.com/davis/api/v1",
+                    "priority": 5
+                }
+            ]
+        }];
+      });
+      afterAll(() => {
+        // Clean up the mock services list
+        services._services = [];
+      });
+      it('returns true if the host is in the services list', () => {
+        assert.isTrue(services.isValidHost('wapdavis.webex.com'));
+      });
+
+      it('returns false if the host is not in the services list', () => {
+        assert.isFalse(services.isValidHost('test.com'));
+        assert.isFalse(services.isValidHost(''));
+        assert.isFalse(services.isValidHost(null));
+        assert.isFalse(services.isValidHost(undefined));
+      });
+
+      it('returns false for non-string inputs', () => {
+        assert.isFalse(services.isValidHost(123));
+        assert.isFalse(services.isValidHost({}));
+        assert.isFalse(services.isValidHost([]));
+      });
+    });
+
+    describe('U2C catalog cache behavior (v2)', () => {
+      const CATALOG_CACHE_KEY_V2 = 'services.v2.u2cHostMap';
+      let windowBackup;
+      let localStorageBackup;
+
+      const makeLocalStorageShim = () => {
+        const store = new Map<string, string>();
+        return {
+          getItem: (k: string) => (store.has(k) ? store.get(k) : null),
+          setItem: (k: string, v: string) => store.set(k, v),
+          removeItem: (k: string) => store.delete(k),
+          _store: store,
+        };
+      };
+
+      beforeEach(() => {
+        // Stub window.localStorage
+        windowBackup = global.window;
+        if (!global.window) global.window = {} as Window & typeof globalThis;
+        localStorageBackup = global.window.localStorage;
+        global.window.localStorage = makeLocalStorageShim();
+        // Enable U2C caching feature flag for tests that depend on cache writes/reads
+        services.webex.config = services.webex.config || {};
+        services.webex.config.calling = {...(services.webex.config.calling || {}), cacheU2C: true};
+        // Ensure code under test uses our shim via util method
+        sinon.stub(services, '_getLocalStorageSafe').returns(global.window.localStorage);
+        // default current env
+        services.webex.config = services.webex.config || {};
+        services.webex.config.services = services.webex.config.services || {discovery: {}};
+        services.webex.config.services.discovery.u2c =
+          services.webex.config.services.discovery.u2c || 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.fedramp =
+          typeof services.webex.config.fedramp === 'boolean'
+            ? services.webex.config.fedramp
+            : false;
+      });
+
+      afterEach(() => {
+        global.window.localStorage = localStorageBackup || undefined;
+        if (!windowBackup) {
+          delete global.window;
+        } else {
+          global.window = windowBackup;
+        }
+        // Restore util stub if present
+        if (services._getLocalStorageSafe && services._getLocalStorageSafe.restore) {
+          services._getLocalStorageSafe.restore();
+        }
+      });
+
+      it('stores selection metadata and env on cache write for preauth', async () => {
+        // Arrange env
+        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.fedramp = false;
+
+        // Act
+        await services._cacheCatalog(
+          'preauth',
+          {services: [], timestamp: Date.now().toString()},
+          {selectionType: 'orgId', selectionValue: 'urn:EXAMPLE:org'}
+        );
+
+        // Assert
+        const raw = window.localStorage.getItem(CATALOG_CACHE_KEY_V2);
+        assert.isString(raw);
+        const parsed = JSON.parse(raw as string);
+        assert.deepEqual(parsed.env, {
+          fedramp: false,
+          u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1',
+        });
+        assert.isObject(parsed.preauth);
+        assert.deepEqual(parsed.preauth.meta, {
+          selectionType: 'orgId',
+          selectionValue: 'urn:EXAMPLE:org',
+        });
+      });
+
+      it('warms preauth from cache when selection meta matches intended orgId', async () => {
+        // Arrange current env and credentials
+        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.fedramp = false;
+        services.webex.credentials = {
+          canAuthorize: true,
+          getOrgId: sinon.stub().returns('urn:EXAMPLE:org'),
+        };
+        // Seed cache
+        window.localStorage.setItem(
+          CATALOG_CACHE_KEY_V2,
+          JSON.stringify({
+            cachedAt: Date.now(),
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            preauth: {
+              hostMap: {services: [], timestamp: '1'},
+              meta: {selectionType: 'orgId', selectionValue: 'urn:EXAMPLE:org'},
+            },
+          })
+        );
+        // Spy updateServiceGroups
+        const spy = sinon.spy(services._getCatalog(), 'updateServiceGroups');
+
+        // Act
+        const warmed = await services._loadCatalogFromCache();
+
+        // Assert
+        assert.isTrue(warmed);
+        assert.isTrue(
+          spy.calledWith('preauth', [], '1'),
+          'expected preauth to be warmed when selection matches'
+        );
+        spy.restore && spy.restore();
+      });
+
+      it('does not warm preauth when selection meta is proximity mode', async () => {
+        // Arrange env
+        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.fedramp = false;
+        window.localStorage.setItem(
+          CATALOG_CACHE_KEY_V2,
+          JSON.stringify({
+            cachedAt: Date.now(),
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            preauth: {
+              hostMap: {services: [], timestamp: '1'},
+              meta: {selectionType: 'mode', selectionValue: 'DEFAULT_BY_PROXIMITY'},
+            },
+          })
+        );
+        const spy = sinon.spy(services._getCatalog(), 'updateServiceGroups');
+
+        // Act
+        const warmed = await services._loadCatalogFromCache();
+
+        // Assert: overall warm-up succeeds, but preauth is skipped
+        assert.isTrue(warmed);
+        assert.isFalse(
+          spy.calledWith('preauth', sinon.match.any, sinon.match.any),
+          'expected preauth not to be warmed for proximity mode'
+        );
+        spy.restore && spy.restore();
+      });
+
+      it('does not warm preauth when selection meta mismatches intended selection', async () => {
+        // Arrange env and credentials
+        services.webex.config.services.discovery.u2c = 'https://u2c.wbx2.com/u2c/api/v1';
+        services.webex.config.fedramp = false;
+        services.webex.credentials = {
+          canAuthorize: true,
+          getOrgId: sinon.stub().returns('urn:EXAMPLE:org'),
+        };
+        window.localStorage.setItem(
+          CATALOG_CACHE_KEY_V2,
+          JSON.stringify({
+            cachedAt: Date.now(),
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.wbx2.com/u2c/api/v1'},
+            preauth: {
+              hostMap: {services: [], timestamp: '1'},
+              meta: {selectionType: 'orgId', selectionValue: 'urn:DIFF:org'},
+            },
+          })
+        );
+        const spy = sinon.spy(services._getCatalog(), 'updateServiceGroups');
+
+        const warmed = await services._loadCatalogFromCache();
+
+        assert.isTrue(warmed);
+        assert.isFalse(
+          spy.calledWith('preauth', sinon.match.any, sinon.match.any),
+          'expected preauth not to be warmed on selection mismatch'
+        );
+        spy.restore && spy.restore();
+      });
+
+      it('skips warm entirely when environment fingerprint mismatches', async () => {
+        // Cached env differs from current env
+        services.webex.config.services.discovery.u2c = 'https://u2c.current.com/u2c/api/v1';
+        services.webex.config.fedramp = false;
+        window.localStorage.setItem(
+          CATALOG_CACHE_KEY_V2,
+          JSON.stringify({
+            cachedAt: Date.now(),
+            env: {fedramp: false, u2cDiscoveryUrl: 'https://u2c.cached.com/u2c/api/v1'},
+            preauth: {
+              hostMap: {services: [], timestamp: '1'},
+              meta: {selectionType: 'orgId', selectionValue: 'urn:EXAMPLE:org'},
+            },
+          })
+        );
+        const spy = sinon.spy(services._getCatalog(), 'updateServiceGroups');
+
+        const warmed = await services._loadCatalogFromCache();
+
+        assert.isFalse(warmed, 'env mismatch should skip warm and return false');
+        assert.isFalse(spy.called, 'no group should be warmed on env mismatch');
+        spy.restore && spy.restore();
       });
     });
   });

@@ -1,10 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-
+    <link rel="icon" href="data:,">
     <title>Cisco Webex JS SDK</title>
     <meta name="description" content="JavaScript SDK for Webex" />
 
@@ -61,6 +62,94 @@
           </div>
         </div>
       </div>
+      <!-- VERSION COMPARISON MODE -->
+      <div class="container">
+        <div class="col-md-12">
+          <div class="search-container">
+            <!-- Mode Toggle Buttons -->
+            <div class="mode-toggle">
+              <button type="button" id="single-view-btn" class="btn btn-primary active">
+                Single Version View
+              </button>
+              <button type="button" id="comparison-view-btn" class="btn btn-default">
+                Version Comparison
+              </button>
+            </div>
+
+            <!-- Comparison Form (Hidden by default) -->
+            <form id="comparison-form" class="hide" method="GET">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="version-a-select">Base Stable Version (A):</label>
+                  <select id="version-a-select" class="full-width" required>
+                    <option value="">Select base version</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="version-b-select">Target Stable Version (B):</label>
+                  <select id="version-b-select" class="full-width" required>
+                    <option value="">Select target version</option>
+                  </select>
+                </div>
+              </div>
+              
+              <!-- NEW: Package Selection Row -->
+              <div class="form-row" id="comparison-package-row" style="display: none;">
+                <div class="form-group">
+                  <label for="comparison-package-select">
+                    Select Package (optional - for detailed comparison):
+                    <span class="help-text" style="font-weight: normal; font-size: 12px; color: #666;">
+                      - Shows all packages from both versions (union)
+                      - Leave empty for full version comparison
+                    </span>
+                  </label>
+                  <select id="comparison-package-select" class="full-width">
+                    <option value="">Select a package (optional)</option>
+                  </select>
+                </div>
+              </div>
+              
+              <!-- NEW: Pre-release Version Selection Row -->
+              <div class="form-row" id="comparison-prerelease-row" style="display: none;">
+                <div class="form-group">
+                  <label for="version-a-prerelease-select">
+                    Pre-release Version for Base:
+                  </label>
+                  <select id="version-a-prerelease-select" class="full-width">
+                    <option value="">Select pre-release version</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="version-b-prerelease-select">
+                    Pre-release Version for Target:
+                  </label>
+                  <select id="version-b-prerelease-select" class="full-width">
+                    <option value="">Select pre-release version</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <button type="submit" id="compare-button" class="btn btn-primary">Compare Versions</button>
+                  <button type="button" id="clear-comparison-button" class="btn btn-default">Clear</button>
+                  <button type="button" id="copy-comparison-link" class="btn btn-info hide" title="Copy shareable link to clipboard" onclick="copyComparisonLink()">
+                     📋 Copy Permalink & share link
+                  </button>
+                </div>
+              </div>
+              <!-- Comparison Helper Text -->
+              <div class="comparison-helper hide" id="comparison-helper">
+                <p style="margin-top: 15px; padding: 10px; background-color: #e7f3ff; border-radius: 5px; font-size: 13px;">
+                  <strong>💡 Tip:</strong> After comparing, you can share the URL from your browser's address bar, or use the "Copy Permalink & share link" button above. 
+                  Anyone with the link will see the same comparison!
+                </p>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <!-- END VERSION COMPARISON MODE -->
       <div class="container">
         <div class="col-md-6">
           <div class="search-container">
@@ -128,6 +217,14 @@
           </div>
         </div>
       </div>
+      <!-- Comparison Results Container -->
+      <div class="container">
+        <div class="col-md-12">
+          <div class="results-container hide" id="comparison-results">
+            <!-- Comparison results will be rendered here -->
+          </div>
+        </div>
+      </div>
       <div id="scrollTop">^</div>
     </main>
     <footer>
@@ -183,6 +280,44 @@
           </section>
         </div>
       {{/each}}
+    </script>
+    <!-- Comparison Template -->
+    <script id="comparison-template" type="text/x-handlebars-template">
+      <div class="comparison-summary">
+        <h3>Version Comparison: {{versionA}} vs {{versionB}}</h3>
+        <div class="summary-stats">
+          <span class="stat-item">Total Packages: <strong>{{totalPackages}}</strong></span>
+          <span class="stat-item changed">Changed: <strong>{{changedCount}}</strong></span>
+          <span class="stat-item unchanged">Unchanged: <strong>{{unchangedCount}}</strong></span>
+          <span class="stat-item added">Added in {{versionB}}: <strong>{{onlyInBCount}}</strong></span>
+          <span class="stat-item removed">Removed in {{versionB}}: <strong>{{onlyInACount}}</strong></span>
+        </div>
+      </div>
+
+      <!-- Package Comparison Table (Now First) -->
+      <div class="table-wrapper">
+        <h4 style="margin-top: 20px; margin-bottom: 15px;">📦 Package Versions</h4>
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Package Name</th>
+              <th>Version {{versionA}}</th>
+              <th>Version {{versionB}}</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each packages}}
+            <tr class="{{this.changeClass}}">
+              <td><strong>{{this.packageName}}</strong></td>
+              <td>{{this.versionA}}</td>
+              <td>{{this.versionB}}</td>
+              <td>{{this.status}}</td>
+            </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
     </script>
     <script type="text/javascript" src="assets/js/app.js"></script>
   </body>

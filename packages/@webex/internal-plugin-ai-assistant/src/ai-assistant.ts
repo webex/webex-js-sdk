@@ -22,12 +22,21 @@ import {
   AI_ASSISTANT_UNREGISTERED,
   AI_ASSISTANT_SERVICE_NAME,
   ASSISTANT_API_RESPONSE_EVENT,
+  ASSISTANT_API_ACTIVITY,
   ACTION_TYPES,
   CONTENT_TYPES,
   CONTEXT_RESOURCE_TYPES,
   RESPONSE_NAMES,
+  AI_ASSISTANT_ACTIVITY_RECEIVED,
 } from './constants';
-import {decryptCitedAnswer, decryptMessage, decryptToolUse, decryptWorkspace} from './utils';
+import {
+  decryptAssistantActivity,
+  decryptCitedAnswer,
+  decryptMessage,
+  decryptScheduleMeeting,
+  decryptToolUse,
+  decryptWorkspace,
+} from './utils';
 
 const AIAssistant = WebexPlugin.extend({
   namespace: 'AIAssistant',
@@ -99,10 +108,10 @@ const AIAssistant = WebexPlugin.extend({
 
     this.stopListeningForEvents();
 
-    return this.webex.internal.mercury.disconnect().then(() => {
-      this.trigger(AI_ASSISTANT_UNREGISTERED);
-      this.registered = false;
-    });
+    this.trigger(AI_ASSISTANT_UNREGISTERED);
+    this.registered = false;
+
+    return Promise.resolve();
   },
 
   /**
@@ -114,6 +123,10 @@ const AIAssistant = WebexPlugin.extend({
     this.webex.internal.mercury.on(ASSISTANT_API_RESPONSE_EVENT, (envelope) => {
       this._handleEvent(envelope.data);
     });
+
+    this.webex.internal.mercury.on(ASSISTANT_API_ACTIVITY, (envelope) => {
+      this._handleAssistantActivity(envelope.data);
+    });
   },
 
   /**
@@ -123,6 +136,7 @@ const AIAssistant = WebexPlugin.extend({
    */
   stopListeningForEvents() {
     this.webex.internal.mercury.off(ASSISTANT_API_RESPONSE_EVENT);
+    this.webex.internal.mercury.off(ASSISTANT_API_ACTIVITY);
   },
 
   /**
@@ -155,6 +169,17 @@ const AIAssistant = WebexPlugin.extend({
   },
 
   /**
+   * Handles an incoming activity event from the assistant API and triggers the correct event for consumers to listen to
+   * @param {Object} data the event data
+   * @returns {undefined}
+   */
+  async _handleAssistantActivity(data) {
+    await decryptAssistantActivity(data.activity, this.webex);
+
+    this.trigger(AI_ASSISTANT_ACTIVITY_RECEIVED, data);
+  },
+
+  /**
    * Decrypts the response content in place
    * @param {any} responseContent the content object from the assistant-api response
    * @returns {Promise} resolves once decryption is complete
@@ -167,6 +192,10 @@ const AIAssistant = WebexPlugin.extend({
       }
       case RESPONSE_NAMES.CITED_ANSWER: {
         await decryptCitedAnswer(responseContent, this.webex);
+        break;
+      }
+      case RESPONSE_NAMES.SCHEDULE_MEETING: {
+        await decryptScheduleMeeting(responseContent, this.webex);
         break;
       }
       case RESPONSE_NAMES.TOOL_RESULT: {
@@ -196,7 +225,7 @@ const AIAssistant = WebexPlugin.extend({
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    */
   _request(options: RequestOptions): Promise<RequestResponse> {
-    const {resource, params} = options;
+    const {resource, params, headers} = options;
 
     const timeout = this.config.requestTimeout;
     const requestId = options.requestId || uuid.v4();
@@ -256,6 +285,7 @@ const AIAssistant = WebexPlugin.extend({
           method: 'POST',
           contentType: 'application/json',
           body: {clientRequestId: requestId, ...params},
+          headers,
         })
         .then(({body}) => {
           resolve({...body, requestId, streamEventName});
@@ -280,6 +310,8 @@ const AIAssistant = WebexPlugin.extend({
    * @param {Object} options.assistant optional parameter to specify the assistant to use
    * @param {Object} options.locale optional locale to use for the request, defaults to 'en_US'
    * @param {string} options.requestId optional request ID to use for this request, if not provided a new UUID will be generated
+   * @param {string} options.entryPoint optional entryPoint to use for this request
+   * @param {string} options.renderProtocolVersion optional render protocol version to use for this request
    * @returns {Promise<Object>} Resolves with an object containing the requestId, sessionId and streamEventName
    * @public
    * @memberof AIAssistant
@@ -307,15 +339,23 @@ const AIAssistant = WebexPlugin.extend({
       content.parameters = options.parameters;
     }
 
+    const headers = {};
+
+    if (options.renderProtocolVersion) {
+      headers['AI-Assistant-Render-Protocol'] = options.renderProtocolVersion;
+    }
+
     return this._request({
       resource: options.sessionId ? `sessions/${options.sessionId}/messages` : 'sessions/messages',
       params: {
         async: 'chunked',
         locale: options.locale || 'en_US',
         content,
+        ...(options.entryPoint ? {entryPoint: options.entryPoint} : {}),
         ...(options.assistant ? {assistant: options.assistant} : {}),
       },
       ...(options.requestId ? {requestId: options.requestId} : {}),
+      headers,
     });
   },
 

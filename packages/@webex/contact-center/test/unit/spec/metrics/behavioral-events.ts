@@ -152,6 +152,20 @@ describe('metrics/behavioral-events', () => {
         verb: 'fail',
       });
 
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_AUTO_ANSWER_SUCCESS)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_auto_answer',
+        verb: 'complete',
+      });
+
+      expect(getEventTaxonomy(METRIC_EVENT_NAMES.TASK_AUTO_ANSWER_FAILED)).toEqual({
+        product,
+        agent: 'user',
+        target: 'task_auto_answer',
+        verb: 'fail',
+      });
+
       expect(getEventTaxonomy('' as METRIC_EVENT_NAMES)).toEqual(undefined);
     });
   });
