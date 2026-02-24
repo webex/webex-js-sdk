@@ -7,33 +7,46 @@
 ## Code Quality Checklist
 
 ### Service Class
-- [ ] File created at `src/services/ServiceName.ts`
+- [ ] File created at correct location (based on placement from pre-questions Q3)
 - [ ] Class has proper JSDoc with `@public` tag
 - [ ] Methods have JSDoc with `@param`, `@returns`, `@example`
 - [ ] Uses `LoggerProxy` for all logging (no `console.log`)
-- [ ] Error handling logs and re-throws errors
+- [ ] Error handling uses `getErrorDetails` pattern (logs and re-throws)
 - [ ] Module name constant defined (`SERVICE_FILE`)
 - [ ] Method name constants defined (`METHODS`)
 
-### Types
+### Types & Constants
+- [ ] Types placed in the correct location:
+  - Folder-based service: service folder's `types.ts`
+  - Single-file service: root `src/types.ts`
+  - Sub-module: parent service's `types.ts`
+- [ ] Constants placed in the correct location:
+  - Folder-based service: service folder's `constants.ts` (if needed)
+  - Single-file service: `src/services/constants.ts` or `src/constants.ts`
+  - Sub-module: parent service's `constants.ts`
 - [ ] All public types have JSDoc
 - [ ] Response types match actual API response
 - [ ] Parameter types define all optional/required fields
-- [ ] Types exported from service file
+
+### Metrics
+- [ ] `metricsManager.timeEvent` called at method entry with success + failure event names
+- [ ] `metricsManager.trackEvent` called on success path
+- [ ] `metricsManager.trackEvent` called on failure path (in catch block)
+- [ ] Metric event names added to `src/metrics/constants.ts` (`METRIC_EVENT_NAMES`)
 
 ### Integration
-- [ ] Service imported in `cc.ts`
-- [ ] Property added to ContactCenter class
-- [ ] Initialized in `$webex.once(READY, ...)` block
+- [ ] Service initialized at the correct integration point:
+  - Folder-based / single-file: in `cc.ts` or `Services` singleton (depends on AQM vs non-AQM)
+  - Sub-module: instantiated by parent service
 - [ ] Types re-exported from `src/types.ts` (if public)
 
 ### Tests
-- [ ] Test file created in `test/unit/spec/services/`
+- [ ] Test file created mirroring source path under `test/unit/spec/`
 - [ ] LoggerProxy mocked
 - [ ] Success cases tested
 - [ ] Error cases tested
-- [ ] Pagination/filtering tested (if applicable)
-- [ ] Tests pass: `yarn workspace @webex/contact-center test`
+- [ ] Metrics tracking verified (timeEvent and trackEvent calls asserted)
+- [ ] Tests pass: `yarn workspace @webex/contact-center test:unit`
 
 ---
 

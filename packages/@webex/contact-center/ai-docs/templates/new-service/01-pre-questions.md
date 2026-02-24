@@ -18,10 +18,16 @@ Ask the developer:
 
 1. **"What should the service be named?"**
    - Must be PascalCase (e.g., "AddressBook", "Queue", "EntryPoint")
-   - Will create `src/services/ServiceName.ts`
 
 2. **"What problem does this service solve? What data does it manage?"**
    - Need a one-sentence purpose description.
+
+3. **"Where should this service live?"**
+   - **Folder-based service**: `src/services/ServiceName/` — complex service with its own folder, `index.ts`, `types.ts`, and optionally `constants.ts` (e.g., `agent/`, `config/`, `task/`)
+   - **Single-file service**: `src/services/ServiceName.ts` — lightweight service as a single file; types go in `src/types.ts`, constants go in `src/services/constants.ts` (e.g., `AddressBook.ts`, `EntryPoint.ts`, `Queue.ts`)
+   - **Sub-module under existing service**: a file within an existing service folder (e.g., `task/Voice.ts`, `task/Digital.ts`)
+
+   This determines the file structure and where types/constants are placed.
 
 ---
 
@@ -29,7 +35,7 @@ Ask the developer:
 
 Ask the developer to provide the complete API signature for **each** API the service will use:
 
-3. **"What API endpoint(s) will this service call? For each, provide:"**
+4. **"What API endpoint(s) will this service call? For each, provide:"**
 
    | Field | What to Ask |
    |---|---|
@@ -48,19 +54,21 @@ Ask the developer to provide the complete API signature for **each** API the ser
 
 Ask the developer:
 
-4. **"Does this service listen to or emit any events?"**
+5. **"Does this service listen to or emit any events?"**
    - If YES, for each event ask:
 
    | Field | What to Ask |
    |---|---|
    | Event Name | "What is the event name?" |
    | Direction | "Is this incoming (received from WebSocket) or outgoing (emitted by SDK)?" |
+   | Source | "Is this a WebSocket event, or an internal EventEmitter event?" |
    | Listen/Emit Object | "Where do consumers subscribe to this event?" (`cc`, `task`, `taskManager`, service) |
    | Payload Type/Shape | "What data does the event carry? What are the field names and types?" |
    | Emitted From | "Which class/file/method emits this event?" |
    | Emission Trigger | "What causes this event to fire?" |
 
-   - If NO, skip to section 4.
+   - If any events come from WebSocket: "How should these WebSocket events map to service behavior?"
+   - If NO events at all, skip to section 4.
 
 ---
 
@@ -68,13 +76,9 @@ Ask the developer:
 
 Ask the developer:
 
-5. **"Does this service need any data from the agent profile?"**
+6. **"Does this service need any data from the agent profile?"**
    - If YES: "Which specific fields?" (e.g., `addressBookId`, `teamIds`)
    - If NO: note "No profile dependency"
-
-6. **"Does this service need to process WebSocket events?"**
-   - If YES: "Which event names, and how should they map to service behavior?"
-   - If NO: note "No WebSocket dependency"
 
 ---
 
@@ -83,6 +87,8 @@ Ask the developer:
 Ask the developer:
 
 7. **"Should this service be accessible as `cc.serviceName` (public API), or is it internal only?"**
+   - If public: it will be exposed on the `cc` object and types will be re-exported from `src/types.ts`
+   - If internal: it will only be used by other services within the SDK
 
 8. **"What methods should be exposed? For each method, what is the expected behavior?"**
    - e.g., `getEntries(params)` — Fetch paginated list
@@ -105,6 +111,7 @@ Ask the developer:
 
 - [ ] Service name provided by developer
 - [ ] Service purpose described by developer
+- [ ] Service placement decided (top-level, sub-module, or single file)
 - [ ] At least one API endpoint fully specified (method, path, request, response, errors)
 - [ ] Event contract captured (or developer confirmed no events)
 - [ ] Dependencies identified (or developer confirmed none)
@@ -124,7 +131,8 @@ Once all questions are answered, present this summary to the developer for appro
 
 **Service Name**: [from Q1]
 **Purpose**: [from Q2]
-**Target file**: src/services/[ServiceName].ts
+**Placement**: [from Q3 — folder-based / single-file / sub-module under {parent}]
+**Target location**: [derived from Q3, e.g., `src/services/ServiceName/` or `src/services/ServiceName.ts` or `src/services/{parent}/ServiceName.ts`]
 
 ### API Contract:
 | Method | HTTP | Endpoint | Request | Response |
@@ -136,7 +144,6 @@ Once all questions are answered, present this summary to the developer for appro
 
 ### Dependencies:
 - Profile fields: [list or "None"]
-- WebSocket events: [list or "None"]
 
 ### Exposure:
 - Public API: [Yes/No] — `cc.[serviceName]`

@@ -1,6 +1,6 @@
 # New Service Creation - Master Template
 
-> **Purpose**: Orchestrator for creating new services (like AddressBook, EntryPoint, Queue).
+> **Purpose**: Orchestrator for creating new services or modules within the Contact Center SDK — whether top-level (e.g., AddressBook, EntryPoint, Queue), a sub-module under an existing service (e.g., a new module under `task/`), or an internal-only utility service.
 
 ---
 
@@ -8,7 +8,7 @@
 
 You can land on this template from:
 - direct "create new service" requests
-- "add feature" requests after placement triage determines the feature should be a standalone service/module
+- "add feature" requests after feature triage determines the feature should be a standalone service/module
 
 If coming from feature triage, include:
 - feature placement rationale
@@ -50,17 +50,17 @@ Answer these questions:
 **Template**: [`02-code-generation.md`](02-code-generation.md)
 
 Create:
-- Service class file (`src/services/ServiceName.ts`)
-- Type definitions (in service file or `types.ts`)
-- Constants if needed
+- Service class file (placement determined by pre-questions — see Step 1)
+- Type definitions (location depends on placement — service folder's `types.ts` or root `src/types.ts`)
+- Constants if needed (service folder's `constants.ts` or shared `src/services/constants.ts`)
 
 ### Step 3: Integration
 **Template**: [`03-integration.md`](03-integration.md)
 
 Integrate:
-- Initialize in `cc.ts` constructor
-- Expose via `cc.serviceName` if public
-- Export types from `src/types.ts`
+- Initialize the service (location depends on placement — `cc.ts` for top-level, parent service for sub-modules)
+- Expose via `cc.serviceName` if developer confirmed public in pre-questions Q7
+- Export types from `src/types.ts` (for public services only)
 
 ### Step 4: Generate Tests
 **Template**: [`04-test-generation.md`](04-test-generation.md)
@@ -85,7 +85,7 @@ Verify:
 
 Before generating code, read:
 1. [`../../patterns/typescript-patterns.md`](../../patterns/typescript-patterns.md) - Type conventions
-2. [`../../patterns/sdk-plugin-patterns.md`](../../patterns/sdk-plugin-patterns.md) - Plugin patterns
+2. [`../../patterns/event-driven-patterns.md`](../../patterns/event-driven-patterns.md) - Event and WebSocket patterns
 3. [`../../patterns/testing-patterns.md`](../../patterns/testing-patterns.md) - Test patterns
 
 ---
@@ -100,8 +100,10 @@ Study existing service: `src/services/AddressBook.ts` or `src/services/EntryPoin
 
 - [ ] Service class created with WebexSDK injection
 - [ ] LoggerProxy used for all logging
-- [ ] Error handling follows pattern
-- [ ] Types defined and exported
-- [ ] Initialized in cc.ts
+- [ ] Metrics tracked for all operations (success + failure)
+- [ ] Error handling follows `getErrorDetails` pattern
+- [ ] Types defined and placed correctly (folder `types.ts` or root `src/types.ts`)
+- [ ] Constants placed correctly (folder `constants.ts` or shared `src/services/constants.ts`)
+- [ ] Initialized and integrated (in `cc.ts` for top-level, or parent service for sub-modules)
 - [ ] Unit tests created
 - [ ] JSDoc added for public methods
