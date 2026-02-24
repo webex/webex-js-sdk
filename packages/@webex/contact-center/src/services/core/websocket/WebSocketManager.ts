@@ -119,7 +119,7 @@ export class WebSocketManager extends EventEmitter {
     try {
       // X-ORGANIZATION-ID header is only required for INT environments
       const isIntEnv = this.isIntegrationEnvironment();
-      const orgId = isIntEnv ? this.webex.credentials?.getOrgId?.() : undefined;
+      const orgId = this.webex.credentials?.getOrgId();
 
       if (isIntEnv && orgId) {
         LoggerProxy.log(`[WebSocketManager] Adding X-ORGANIZATION-ID header for INT environment`, {
@@ -133,7 +133,7 @@ export class WebSocketManager extends EventEmitter {
         resource: SUBSCRIBE_API,
         method: HTTP_METHODS.POST,
         body: connectionConfig,
-        headers: orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,
+        headers: isIntEnv && orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,
       });
       this.url = subscribeResponse.body.webSocketUrl;
     } catch (e) {
