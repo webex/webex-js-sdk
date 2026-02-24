@@ -578,12 +578,13 @@ class HashTreeParser {
     const {dataSets, locus, metadata} = update;
 
     if (!dataSets) {
-      LoggerProxy.logger.warn(
+      LoggerProxy.logger.info(
         `HashTreeParser#handleLocusUpdate --> ${this.debugId} received hash tree update without dataSets`
       );
-    }
-    for (const dataSet of dataSets) {
-      this.updateDataSetInfo(dataSet);
+    } else {
+      for (const dataSet of dataSets) {
+        this.updateDataSetInfo(dataSet);
+      }
     }
     const updatedObjects: HashTreeObject[] = [];
 

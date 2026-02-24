@@ -1023,6 +1023,71 @@ describe('HashTreeParser', () => {
       // Verify callback was NOT called because version didn't change
       assert.notCalled(callback);
     });
+
+    it('handles updates with no dataSets and metadata fields gracefully', () => {
+      const parser = createHashTreeParser();
+
+      const mainPutItemsSpy = sinon.spy(parser.dataSets.main.hashTree, 'putItems');
+      const selfPutItemsSpy = sinon.spy(parser.dataSets.self.hashTree, 'putItems');
+      const atdUnmutedPutItemsSpy = sinon.spy(parser.dataSets['atd-unmuted'].hashTree, 'putItems');
+
+      // Create a locus update with no dataSets and no metadata
+      const locusUpdate = {
+        locus: {
+          htMeta: {
+            elementId: {
+              type: 'locus',
+              id: 0,
+              version: 201,
+            },
+            dataSetNames: ['main'],
+          },
+          someData: 'value',
+        },
+      };
+
+      // Call handleLocusUpdate - should not throw
+      parser.handleLocusUpdate(locusUpdate);
+
+      // Verify putItems was still called for the dataset referenced in locus
+      assert.calledOnceWithExactly(mainPutItemsSpy, [{type: 'locus', id: 0, version: 201}]);
+
+      // Verify putItems was not called on other hash trees
+      assert.notCalled(selfPutItemsSpy);
+      assert.notCalled(atdUnmutedPutItemsSpy);
+
+      // Verify callback was called with the updated object
+      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+        updatedObjects: [
+          {
+            htMeta: {
+              elementId: {
+                type: 'locus',
+                id: 0,
+                version: 201,
+              },
+              dataSetNames: ['main'],
+            },
+            data: {
+              someData: 'value',
+              htMeta: {
+                elementId: {
+                  type: 'locus',
+                  id: 0,
+                  version: 201,
+                },
+                dataSetNames: ['main'],
+              },
+            },
+          },
+        ],
+      });
+
+      // Verify that dataset versions were NOT updated (no dataSets in the update)
+      expect(parser.dataSets.main.version).to.equal(1000);
+      expect(parser.dataSets.self.version).to.equal(2000);
+      expect(parser.dataSets['atd-unmuted'].version).to.equal(3000);
+    });
   });
 
   describe('#handleMessage', () => {
