@@ -3,7 +3,7 @@ import {LOGGER} from '../Logger/types';
 import {ISDKConnector} from '../SDKConnector/types';
 import {Eventing} from '../Events/impl';
 import {CallingClientEventTypes} from '../Events/types';
-import {ServiceData} from '../common/types';
+import {DeviceType, ServiceData} from '../common/types';
 import {ICall} from './calling/types';
 import {CallingClientError} from '../Errors';
 import {ILine} from './line/types';
@@ -84,6 +84,13 @@ export interface ICallingClient extends Eventing<CallingClientEventTypes> {
    * ```
    */
   getLines(): Record<string, ILine>;
+
+  /**
+   * Retrieves the list of devices registered for the given userId from Mobius.
+   * @param userId - The user identifier whose devices should be fetched.
+   * @returns List of devices associated with the user.
+   */
+  getDevices(userId?: string): Promise<DeviceType[]>;
 
   /**
    * Retrieves a dictionary of active calls grouped by `lineId`.
