@@ -137,35 +137,56 @@ Defined in `constants.ts`:
 
 ```typescript
 export const endPointMap = {
-  userByCI: (orgId, agentId) => 
-    `/organization/${orgId}/user/by-ci-user-id/${agentId}`,
-  
-  desktopProfile: (orgId, profileId) => 
-    `/organization/${orgId}/agent-profile/${profileId}`,
-  
-  siteInfo: (orgId, siteId) => 
-    `/organization/${orgId}/site/${siteId}`,
-  
-  listTeams: (orgId, page, pageSize, filter) => 
-    `/organization/${orgId}/team?page=${page}&pageSize=${pageSize}&filter=${filter}`,
-  
+  userByCI: (orgId, agentId) =>
+    `organization/${orgId}/user/by-ci-user-id/${agentId}`,
+
+  desktopProfile: (orgId, desktopProfileId) =>
+    `organization/${orgId}/agent-profile/${desktopProfileId}`,
+
+  multimediaProfile: (orgId, multimediaProfileId) =>
+    `organization/${orgId}/multimedia-profile/${multimediaProfileId}`,
+
+  listTeams: (orgId, page, pageSize, filter) =>
+    `organization/${orgId}/v2/team?page=${page}&pageSize=${pageSize}${
+      filter && filter.length > 0 ? `&filter=id=in=(${filter})` : ''
+    }`,
+
   listAuxCodes: (orgId, page, pageSize, filter, attributes) =>
-    `/organization/${orgId}/auxiliary-code?page=${page}&pageSize=${pageSize}...`,
-  
-  orgInfo: (orgId) => 
-    `/organization/${orgId}`,
-  
-  orgSettings: (orgId) => 
-    `/organization/${orgId}/v2/organization-setting`,
-  
-  tenantData: (orgId) => 
-    `/organization/${orgId}/tenant-data`,
-  
-  dialPlan: (orgId) => 
-    `/organization/${orgId}/dial-plan`,
-  
-  outdialAniEntries: (orgId, aniId, query) =>
-    `/organization/${orgId}/outdial-ani/${aniId}/dial-number-entries?${query}`,
+    `organization/${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}${
+      filter && filter.length > 0 ? `&filter=id=in=(${filter})` : ''
+    }&attributes=${attributes}`,
+
+  orgInfo: (orgId) =>
+    `organization/${orgId}`,
+
+  orgSettings: (orgId) =>
+    `organization/${orgId}/v2/organization-setting?agentView=true`,
+
+  siteInfo: (orgId, siteId) =>
+    `organization/${orgId}/site/${siteId}`,
+
+  tenantData: (orgId) =>
+    `organization/${orgId}/v2/tenant-configuration?agentView=true`,
+
+  urlMapping: (orgId) =>
+    `organization/${orgId}/v2/org-url-mapping?sort=name,ASC`,
+
+  dialPlan: (orgId) =>
+    `organization/${orgId}/dial-plan?agentView=true`,
+
+  queueList: (orgId, queryParams) =>
+    `/organization/${orgId}/v2/contact-service-queue?${queryParams}`,
+
+  entryPointList: (orgId, queryParams) =>
+    `/organization/${orgId}/v2/entry-point?${queryParams}`,
+
+  addressBookEntries: (orgId, addressBookId, queryParams) =>
+    `/organization/${orgId}/v2/address-book/${addressBookId}/entry?${queryParams}`,
+
+  outdialAniEntries: (orgId, outdialANI, queryParams) =>
+    `organization/${orgId}/v2/outdial-ani/${outdialANI}/entry${
+      queryParams ? `?${queryParams}` : ''
+    }`,
 };
 ```
 
