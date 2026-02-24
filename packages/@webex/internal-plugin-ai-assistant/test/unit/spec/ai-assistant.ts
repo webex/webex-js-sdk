@@ -21,6 +21,7 @@ import {
   messageResponse,
   workspaceResponse,
   scheduleMeetingResponse,
+  assistantActivity,
 } from '../data/messages';
 
 const waitForAsync = () =>
@@ -83,12 +84,15 @@ describe('plugin-ai-assistant', () => {
       it('registers correctly', async () => {
         await webex.internal.aiAssistant.register();
 
-        assert.callCount(webex.internal.mercury.on, 1);
+        assert.callCount(webex.internal.mercury.on, 2);
 
-        const callArgs = webex.internal.mercury.on.getCall(0).args;
+        const firstCallArgs = webex.internal.mercury.on.getCall(0).args;
+        expect(firstCallArgs[0]).to.equal('event:assistant-api.response');
+        expect(firstCallArgs[1]).to.be.a('function');
 
-        expect(callArgs[0]).to.equal('event:assistant-api.response');
-        expect(callArgs[1]).to.be.a('function');
+        const secondCallArgs = webex.internal.mercury.on.getCall(1).args;
+        expect(secondCallArgs[0]).to.equal('assistant-api.activity');
+        expect(secondCallArgs[1]).to.be.a('function');
 
         assert.equal(webex.internal.aiAssistant.registered, true);
       });
@@ -120,11 +124,13 @@ describe('plugin-ai-assistant', () => {
 
         await webex.internal.aiAssistant.unregister();
 
-        assert.callCount(webex.internal.mercury.off, 1);
+        assert.callCount(webex.internal.mercury.off, 2);
 
-        const callArgs = webex.internal.mercury.off.getCall(0).args;
+        const firstCallOrg = webex.internal.mercury.off.getCall(0).args;
+        expect(firstCallOrg[0]).to.equal('event:assistant-api.response');
 
-        expect(callArgs[0]).to.equal('event:assistant-api.response');
+        const secondCallOrg = webex.internal.mercury.off.getCall(1).args;
+        expect(secondCallOrg[0]).to.equal('assistant-api.activity');
 
         assert.equal(webex.internal.aiAssistant.registered, false);
       });
@@ -325,6 +331,28 @@ describe('plugin-ai-assistant', () => {
         );
 
         expect(triggerSpy.getCall(2).args[1]).to.deep.equal(expectedResult);
+      });
+
+      it('handles an activity', async () => {
+        const triggerSpy = sinon.spy(webex.internal.aiAssistant, 'trigger');
+
+        webex.internal.encryption.decryptText.callsFake(async (keyUrl, value) => {
+          return `decrypted-with-${keyUrl}-${value}`;
+        });
+
+        // assume assistant event is received
+        await webex.internal.aiAssistant._handleAssistantActivity(cloneDeep(assistantActivity[0]));
+
+        await waitForAsync();
+
+        let expectedResult = set(
+          cloneDeep(assistantActivity[0]),
+          'activity.content.value.message',
+          'decrypted-with-kms://kms-cisco.wbx2.com/keys/9b838423-f31b-49d5-a7c7-182572340a37-message_encrypted_value_for_activity'
+        );
+
+        expect(triggerSpy.getCall(0).args[0]).to.deep.equal('aiassistant:activityReceived');
+        expect(triggerSpy.getCall(0).args[1]).to.deep.equal(expectedResult);
       });
 
       it('decrypts a chunked json response', async () => {
