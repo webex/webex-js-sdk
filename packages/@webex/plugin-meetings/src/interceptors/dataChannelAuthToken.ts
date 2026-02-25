@@ -78,16 +78,16 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
       return Promise.reject(reason);
     }
 
-    const currentRetry = retryCountMap.get(this) || 0;
+    const retryCount = retryCountMap.get(options) || 0;
 
-    if (currentRetry >= MAX_RETRY) {
+    if (retryCount >= MAX_RETRY) {
       LoggerProxy.logger.error(`data channel token refresh exceeded max retry (${MAX_RETRY})`);
-      retryCountMap.set(this, 0);
+      retryCountMap.delete(options);
 
       return Promise.reject(reason);
     }
 
-    retryCountMap.set(this, currentRetry + 1);
+    retryCountMap.set(options, retryCount + 1);
 
     return this.refreshTokenAndRetryWithDelay(options);
   }
@@ -110,11 +110,11 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
           // @ts-ignore
           const res = await this.webex.request(options);
 
-          retryCountMap.set(this, 0);
+          retryCountMap.delete(options);
 
           resolve(res);
         } catch (e) {
-          retryCountMap.set(this, 0);
+          retryCountMap.delete(options);
 
           reject(new Error(`DataChannel token refresh failed: ${e.message}`));
         }
