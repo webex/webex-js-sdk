@@ -303,10 +303,14 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getStayLobbyTime() {
-    return this.getDiffBetweenTimestamps(
-      'client.locus.join.response',
-      'internal.host.meeting.participant.admitted'
-    );
+    // stayLobbyTime is sent with client.lobby.exited event so we may not have time timestamp yet
+    if (!this.latencyTimestamps.get('client.lobby.exited')) {
+      this.saveTimestamp({
+        key: 'client.lobby.exited',
+      });
+    }
+
+    return this.getDiffBetweenTimestamps('client.locus.join.response', 'client.lobby.exited');
   }
 
   /**
