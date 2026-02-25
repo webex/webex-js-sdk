@@ -12606,20 +12606,42 @@ describe('plugin-meetings', () => {
           assert.equal(result, undefined);
           assert.notCalled(meeting.webex.internal.llm.on);
         });
-        it('returns undefined if already connected and locus unchanged', async () => {
+        it('returns undefined if llm is already connected and the locus url is unchanged', async () => {
           meeting.joinedWith = {state: 'JOINED'};
-          webex.internal.llm.isConnected.returns(true);
-          webex.internal.llm.getLocusUrl.returns('a url');
-          webex.internal.llm.getDatachannelUrl.returns('a datachannel url');
-
-          meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
+          meeting.locusInfo = {
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'}
+          };
 
           const result = await meeting.updateLLMConnection();
-
-          assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.notCalled(webex.internal.llm.disconnectLLM);
-          assert.equal(result, undefined);
-          assert.notCalled(meeting.webex.internal.llm.on);
+          assert.calledWithExactly(
+            webex.internal.llm.registerAndConnect,
+            'a url',
+            'a datachannel url',
+            undefined
+          );
+          assert.equal(result, 'something');
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
+          );
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.on,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.on,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
+          );
         });
         it('connects if not already connected', async () => {
           meeting.joinedWith = {state: 'JOINED'};
@@ -12636,49 +12658,105 @@ describe('plugin-meetings', () => {
           );
           assert.equal(result, 'something');
         });
-        it('disconnects first if the locus url has changed', async () => {
+       it('disconnects if the locus url has changed', async () => {
           meeting.joinedWith = {state: 'JOINED'};
+
           webex.internal.llm.isConnected.returns(true);
           webex.internal.llm.getLocusUrl.returns('a url');
-          webex.internal.llm.getDatachannelUrl.returns('a datachannel url');
 
-          meeting.locusInfo = {url: 'a different url', info: {datachannelUrl: 'a datachannel url'}};
+          meeting.locusInfo = {
+            url: 'a different url',
+            info: {datachannelUrl: 'a datachannel url'},
+            self: {}
+          };
 
           const result = await meeting.updateLLMConnection();
 
-          assert.calledWith(webex.internal.llm.disconnectLLM, {
-            code: 3050,
-            reason: 'done (permanent)',
-          });
+          assert.calledWithExactly(
+            webex.internal.llm.disconnectLLM,
+            {code: 3050, reason: 'done (permanent)'}
+          );
+
           assert.calledWithExactly(
             webex.internal.llm.registerAndConnect,
             'a different url',
             'a datachannel url',
             undefined
           );
+
           assert.equal(result, 'something');
+
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
+          );
+          assert.callCount(meeting.webex.internal.llm.off, 4);
+
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.on,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.on,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
+          );
         });
-        it('disconnects first if the data channel url has changed', async () => {
+        it('disconnects if the data channel url has changed', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           webex.internal.llm.isConnected.returns(true);
           webex.internal.llm.getLocusUrl.returns('a url');
-          webex.internal.llm.getDatachannelUrl.returns('a datachannel url');
 
-          meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a different datachannel url'}};
+          meeting.locusInfo = {
+            url: 'a url',
+            info: {datachannelUrl: 'a different datachannel url'},
+            self: {}
+          };
 
           const result = await meeting.updateLLMConnection();
 
-          assert.calledWith(webex.internal.llm.disconnectLLM, {
-            code: 3050,
-            reason: 'done (permanent)',
-          });
+          assert.calledWithExactly(
+            webex.internal.llm.disconnectLLM,
+            {code: 3050, reason: 'done (permanent)'}
+          );
+
           assert.calledWithExactly(
             webex.internal.llm.registerAndConnect,
             'a url',
             'a different datachannel url',
             undefined
           );
+
           assert.equal(result, 'something');
+
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
+          );
+
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.on,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.on,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
+          );
         });
         it('disconnects when the state is not JOINED', async () => {
           meeting.joinedWith = {state: 'any other state'};
@@ -12762,6 +12840,7 @@ describe('plugin-meetings', () => {
         });
         it('uses practice session token when in PS even if refreshed token exists', async () => {
           meeting.joinedWith = {state: 'JOINED'};
+
           meeting.locusInfo = {
             url: 'a url',
             info: {
@@ -12777,8 +12856,8 @@ describe('plugin-meetings', () => {
           meeting.webinar.isJoinPracticeSessionDataChannel.returns(true);
 
           webex.internal.llm.getDatachannelToken
-            .withArgs(true).returns(undefined)
-            .withArgs(false).returns('refreshed-token');
+            .withArgs(true).returns('refreshed-ps-token')      // refreshed practice token
+            .withArgs(false).returns('refreshed-normal-token'); // refreshed normal token
 
           await meeting.updateLLMConnection();
 
@@ -12794,6 +12873,7 @@ describe('plugin-meetings', () => {
             'practiceSession'
           );
         });
+
         it('does not pass token when data channel with jwt token is disabled', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {

@@ -39,9 +39,9 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
       },
 
       refreshDataChannelToken: async () => {
-        const {datachannelToken, dataChannelTokenType} =
-          // @ts-ignore
-          await this.internal.llm.refreshDataChannelToken();
+        // @ts-ignore
+        const {body} = await this.internal.llm.refreshDataChannelToken();
+        const {datachannelToken, dataChannelTokenType} = body ?? {};
 
         // @ts-ignore
         this.internal.llm.setDatachannelToken(datachannelToken, dataChannelTokenType);
