@@ -15,21 +15,6 @@
 
 ---
 
-## File Structure
-
-```
-services/config/
-├── index.ts          # AgentConfigService class
-├── types.ts          # Profile, CC_EVENTS, types
-├── constants.ts      # API endpoints, defaults
-├── Util.ts           # parseAgentConfigs helper
-└── ai-docs/
-    ├── AGENTS.md     # Usage documentation
-    └── ARCHITECTURE.md # This file
-```
-
----
-
 ## Data Flow
 
 ### Profile Aggregation
@@ -88,10 +73,10 @@ sequenceDiagram
     participant Cfg as AgentConfigService
     participant WR as WebexRequest
     participant API as Backend APIs
-    
+
     CC->>Cfg: getAgentConfig(orgId, agentId)
-    
-    par Parallel Initial Requests
+
+    par Wave 1 — fire immediately
         Cfg->>WR: getUserUsingCI
         Cfg->>WR: getOrgInfo
         Cfg->>WR: getOrgSettings
@@ -99,32 +84,24 @@ sequenceDiagram
         Cfg->>WR: getURLMapping
         Cfg->>WR: getAllAuxCodes
     end
-    
-    WR->>API: Multiple API calls
+
+    WR->>API: 6 parallel API calls
     API-->>WR: Responses
-    WR-->>Cfg: User data + metadata
-    
-    par Dependent Requests
-        Cfg->>WR: getDesktopProfileById
-        Cfg->>WR: getSiteInfo
+    Note over Cfg: await userConfigData (needed for wave 2)
+
+    par Wave 2 — depends on userConfigData
+        Cfg->>WR: getDesktopProfileById(agentProfileId)
+        Cfg->>WR: getSiteInfo(siteId)
+        Cfg->>WR: getAllTeams(teamIds)
     end
-    
-    WR->>API: Profile + Site APIs
+
+    Note over Cfg: getDialPlanData chained off agentProfile<br/>(fires only if dialPlanEnabled)
+
+    Note over Cfg: Single Promise.all() awaits all 9 promises<br/>(wave 1 + wave 2 + conditional dialPlan)
+
+    WR->>API: Remaining API calls
     API-->>WR: Responses
-    WR-->>Cfg: Profile data
-    
-    opt If dialPlanEnabled
-        Cfg->>WR: getDialPlanData
-        WR->>API: Dial plan API
-        API-->>WR: Dial plan
-        WR-->>Cfg: Dial plan data
-    end
-    
-    Cfg->>WR: getAllTeams
-    WR->>API: Teams API (paginated)
-    API-->>WR: Teams
-    WR-->>Cfg: Team list
-    
+
     Cfg->>Cfg: parseAgentConfigs(allData)
     Cfg-->>CC: Profile
 ```
@@ -197,9 +174,11 @@ export const endPointMap = {
 For endpoints with pagination (teams, aux codes):
 
 ```typescript
+import {DEFAULT_PAGE} from './constants'; // DEFAULT_PAGE = 0
+
 public async getAllTeams(orgId, pageSize, filter): Promise<TeamList[]> {
   let allTeams: TeamList[] = [];
-  let page = 0;
+  let page = DEFAULT_PAGE;
   
   // First request to get totalPages
   const firstResponse = await this.getListOfTeams(orgId, page, pageSize, filter);
@@ -228,30 +207,46 @@ public async getAllTeams(orgId, pageSize, filter): Promise<TeamList[]> {
 `parseAgentConfigs` in Util.ts combines all data:
 
 ```typescript
-export function parseAgentConfigs(data: ConfigData): Profile {
-  const {
-    userData,
-    teamData,
-    tenantData,
-    orgInfoData,
-    auxCodes,
-    orgSettingsData,
-    agentProfileData,
-    dialPlanData,
-    urlMapping,
-    multimediaProfileId,
-  } = data;
-  
-  // Build Profile object
+function parseAgentConfigs(profileData: {
+  userData: AgentResponse;
+  teamData: Team[];
+  tenantData: TenantData;
+  orgInfoData: OrgInfo;
+  auxCodes: AuxCode[];
+  orgSettingsData: OrgSettings;
+  agentProfileData: DesktopProfileResponse;
+  dialPlanData: DialPlanEntity[];
+  urlMapping: URLMapping[];
+  multimediaProfileId: string;
+}): Profile {
+  const { userData, teamData, tenantData, orgInfoData, auxCodes,
+          orgSettingsData, agentProfileData, dialPlanData, urlMapping } = profileData;
+
+  // Aux code filtering via getFilterAuxCodes():
+  //   - checks auxCode.active
+  //   - checks specificCodes access level (ALL → no filter, SPECIFIC → include list)
+  //   - maps to Entity {id, name, isSystem, isDefault}
+  const wrapupCodes = getFilterAuxCodes(auxCodes, WRAP_UP_CODE,
+    agentProfileData.accessWrapUpCode === 'ALL' ? [] : agentProfileData.wrapUpCodes);
+  const idleCodes = getFilterAuxCodes(auxCodes, IDLE_CODE,
+    agentProfileData.accessIdleCode === 'ALL' ? [] : agentProfileData.idleCodes);
+
+  // Hardcoded "Available" state always appended to idle codes
+  idleCodes.push({ id: '0', name: 'Available', isSystem: false, isDefault: false });
+
   return {
-    agentId: userData.id,
+    agentId: userData.ciUserId,          // NOTE: ciUserId, NOT userData.id
+    analyserUserId: userData.id,          // userData.id is used here instead
     agentName: `${userData.firstName} ${userData.lastName}`,
-    teams: teamData.map(t => ({ teamId: t.id, teamName: t.name })),
-    idleCodes: auxCodes.filter(c => c.workTypeCode === 'IDLE_CODE'),
-    wrapupCodes: auxCodes.filter(c => c.workTypeCode === 'WRAP_UP_CODE'),
+    teams: teamData,                      // raw TeamList[] passed directly, no mapping
+    idleCodes,
+    wrapupCodes,
     webRtcEnabled: orgSettingsData.webRtcEnabled,
-    loginVoiceOptions: agentProfileData.loginVoiceOptions,
-    // ... many more fields
+    loginVoiceOptions: agentProfileData.loginVoiceOptions ?? [],
+    enterpriseId: orgInfoData.tenantId,
+    tenantTimezone: orgInfoData.timezone,
+    multimediaProfileId: profileData.multimediaProfileId,
+    // ... 30+ more fields — see Util.ts for full implementation
   };
 }
 ```
@@ -298,34 +293,34 @@ export type CC_EVENTS = Enum<typeof CC_EVENTS>;
 Each method follows consistent error handling:
 
 ```typescript
-public async getSomeData(orgId: string): Promise<SomeType> {
-  LoggerProxy.info('Fetching data', {
+public async getUserUsingCI(orgId: string, agentId: string): Promise<AgentResponse> {
+  LoggerProxy.info('Fetching user data using CI', {
     module: CONFIG_FILE_NAME,
-    method: METHODS.GET_SOME_DATA,
+    method: METHODS.GET_USER_USING_CI,
   });
-  
+
   try {
-    const resource = endPointMap.someEndpoint(orgId);
+    const resource = endPointMap.userByCI(orgId, agentId);
     const response = await this.webexReq.request({
       service: WCC_API_GATEWAY,
       resource,
       method: HTTP_METHODS.GET,
     });
-    
+
     if (response.statusCode !== 200) {
       throw new Error(`API call failed with ${response.statusCode}`);
     }
-    
-    LoggerProxy.log('API success', {
+
+    LoggerProxy.log('getUserUsingCI api success.', {
       module: CONFIG_FILE_NAME,
-      method: METHODS.GET_SOME_DATA,
+      method: METHODS.GET_USER_USING_CI,
     });
-    
-    return response.body;
+
+    return Promise.resolve(response.body);
   } catch (error) {
-    LoggerProxy.error(`API call failed: ${error}`, {
+    LoggerProxy.error(`getUserUsingCI API call failed with ${error}`, {
       module: CONFIG_FILE_NAME,
-      method: METHODS.GET_SOME_DATA,
+      method: METHODS.GET_USER_USING_CI,
     });
     throw error;
   }
