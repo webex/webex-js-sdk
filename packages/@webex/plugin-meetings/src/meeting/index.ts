@@ -33,6 +33,8 @@ import {
   InboundAudioIssueSubTypes,
 } from '@webex/internal-media-core';
 
+import {DataChannelTokenType} from '@webex/internal-plugin-llm';
+
 import {
   LocalStream,
   LocalCameraStream,
@@ -6202,9 +6204,10 @@ export default class Meeting extends StatelessWebexPlugin {
 
     const isJoined = this.isJoined();
 
-    const isPracticeSession = this.webinar.isJoinPracticeSessionDataChannel();
+    const dataChannelTokenType = this.getDataChannelTokenType();
+    const isPracticeSession = dataChannelTokenType === DataChannelTokenType.PracticeSession;
     // @ts-ignore
-    const refreshedToken = this.webex.internal.llm.getDatachannelToken(isPracticeSession);
+    const refreshedToken = this.webex.internal.llm.getDatachannelToken(dataChannelTokenType);
 
     const locusToken = isPracticeSession ? practiceSessionDatachannelToken : datachannelToken;
 
@@ -6212,7 +6215,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (!refreshedToken && locusToken) {
       // @ts-ignore
-      this.webex.internal.llm.setDatachannelToken(locusToken, isPracticeSession);
+      this.webex.internal.llm.setDatachannelToken(locusToken, dataChannelTokenType);
     }
 
     // webinar panelist should use new data channel in practice session
@@ -10234,18 +10237,38 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   public async refreshDataChannelToken() {
     const isPracticeSession = this.webinar.isJoinPracticeSessionDataChannel();
+    const dataChannelTokenType = this.getDataChannelTokenType();
 
-    const res = await this.meetingRequest.fetchDatachannelToken({
-      locusUrl: this.locusUrl,
-      requestingParticipantId: this.members.selfId,
-      isPracticeSession,
-    });
-
-    return {
-      body: {
-        datachannelToken: res.body.datachannelToken,
+    try {
+      const res = await this.meetingRequest.fetchDatachannelToken({
+        locusUrl: this.locusUrl,
+        requestingParticipantId: this.members.selfId,
         isPracticeSession,
-      },
-    };
+      });
+
+      return {
+        body: {
+          datachannelToken: res.body.datachannelToken,
+          dataChannelTokenType,
+        },
+      };
+    } catch (e) {
+      throw new Error(`Failed to refresh data channel token: ${e.message}`);
+    }
+  }
+
+  /**
+   * Determines the current data channel token type based on the meeting state.
+   *
+   * variant should be used when connecting to the LLM data channel.
+   *
+   * @returns {DataChannelTokenType} The token type representing the current session mode.
+   */
+  public getDataChannelTokenType(): DataChannelTokenType {
+    if (this.webinar.isJoinPracticeSessionDataChannel()) {
+      return DataChannelTokenType.PracticeSession;
+    }
+
+    return DataChannelTokenType.Default;
   }
 }

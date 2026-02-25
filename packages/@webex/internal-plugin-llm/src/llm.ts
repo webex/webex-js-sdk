@@ -4,7 +4,7 @@ import Mercury from '@webex/internal-plugin-mercury';
 
 import {LLM, DATA_CHANNEL_WITH_JWT_TOKEN} from './constants';
 // eslint-disable-next-line no-unused-vars
-import {ILLMChannel} from './llm.types';
+import {ILLMChannel, DataChannelTokenType} from './llm.types';
 
 export const config = {
   llm: {
@@ -60,10 +60,13 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   private datachannelToken?: string;
 
-  private practiceSessionDatachannelToken?: string;
+  private datachannelTokens: Record<DataChannelTokenType, string> = {
+    [DataChannelTokenType.Default]: undefined,
+    [DataChannelTokenType.PracticeSession]: undefined,
+  };
 
   private refreshHandler?: () => Promise<{
-    body: {datachannelToken: string; isPracticeSession: boolean};
+    body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
   }>;
 
   /**
@@ -72,7 +75,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @param {string} datachannelToken
    * @returns {Promise<void>}
    */
-  private register = async (llmSocketUrl: string, datachannelToken: string): Promise<void> => {
+  private register = async (llmSocketUrl: string, datachannelToken?: string): Promise<void> => {
     const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
 
     return this.request({
@@ -104,7 +107,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   public registerAndConnect = (
     locusUrl: string,
     datachannelUrl: string,
-    datachannelToken: string
+    datachannelToken?: string
   ): Promise<void> =>
     this.register(datachannelUrl, datachannelToken).then(() => {
       if (!locusUrl || !datachannelUrl) return undefined;
@@ -139,25 +142,24 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   /**
    * Get data channel token for the connection
-   * @param {boolean} isPracticeSession - is practice session or not
+   * @param {DataChannelTokenType} dataChannelTokenType
    * @returns {string} data channel token
    */
-  public getDatachannelToken = (isPracticeSession?: boolean): string =>
-    isPracticeSession ? this.practiceSessionDatachannelToken : this.datachannelToken;
+  public getDatachannelToken = (dataChannelTokenType: DataChannelTokenType): string => {
+    return this.datachannelTokens[dataChannelTokenType];
+  };
 
   /**
    * Set data channel token for the connection
    * @param {string} datachannelToken - data channel token
-   * @param {boolean} isPracticeSession - is practice session or not
+   * @param {DataChannelTokenType} dataChannelTokenType
    * @returns {void}
    */
-  public setDatachannelToken = (datachannelToken: string, isPracticeSession?: boolean): void => {
-    // If it gets more complicated, map is more recommended.
-    if (isPracticeSession) {
-      this.practiceSessionDatachannelToken = datachannelToken;
-    } else {
-      this.datachannelToken = datachannelToken;
-    }
+  public setDatachannelToken = (
+    datachannelToken: string,
+    dataChannelTokenType: DataChannelTokenType
+  ): void => {
+    this.datachannelTokens[dataChannelTokenType] = datachannelToken;
   };
 
   /**
@@ -167,7 +169,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @returns {void}
    */
   public setRefreshHandler(
-    handler: () => Promise<{body: {datachannelToken: string; isPracticeSession: boolean}}>
+    handler: () => Promise<{
+      body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
+    }>
   ) {
     this.refreshHandler = handler;
   }

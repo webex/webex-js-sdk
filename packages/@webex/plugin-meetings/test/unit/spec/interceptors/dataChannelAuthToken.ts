@@ -4,13 +4,13 @@ import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {WebexHttpError} from '@webex/webex-core';
 import DataChannelAuthTokenInterceptor from '@webex/plugin-meetings/src/interceptors/dataChannelAuthToken';
+import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
+import {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY} from '@webex/plugin-meetings/src/interceptors/constant';
 
 describe('plugin-meetings', () => {
   describe('Interceptors', () => {
     describe('DataChannelAuthTokenInterceptor', () => {
       let interceptor, webex, clock;
-
-      const DATA_CHANNEL_AUTH_HEADER = 'Data-Channel-Auth-Token';
 
       beforeEach(() => {
         clock = sinon.useFakeTimers();
@@ -56,11 +56,13 @@ describe('plugin-meetings', () => {
           const options = {headers: {[DATA_CHANNEL_AUTH_HEADER]: 'abc'}};
           const reason = makeReason(401);
 
-          for (let i = 0; i < 5; i++) {
+          for (let i = 0; i < MAX_RETRY; i++) {
             interceptor.onResponseError(options, reason).catch(() => {});
           }
 
           await assert.isRejected(interceptor.onResponseError(options, reason), reason);
+
+          sinon.assert.calledOnce(LoggerProxy.logger.error);
         });
 
         it('calls refreshTokenAndRetryWithDelay when eligible', async () => {
@@ -97,7 +99,7 @@ describe('plugin-meetings', () => {
           interceptor.webex.internal.llm.refreshDataChannelToken.resolves({
             body: {
               datachannelToken: 'new-token',
-              isPracticeSession: false,
+              dataChannelTokenType: 'default',
             },
           });
 
@@ -110,7 +112,12 @@ describe('plugin-meetings', () => {
           const result = await promise;
 
           expect(interceptor.webex.internal.llm.refreshDataChannelToken.calledOnce).to.be.true;
-          expect(interceptor.webex.internal.llm.setDatachannelToken.calledOnceWith('new-token', false)).to.be.true;
+          expect(
+            interceptor.webex.internal.llm.setDatachannelToken.calledOnceWith(
+              'new-token',
+              'default'
+            )
+          ).to.be.true;
 
           expect(options.headers[DATA_CHANNEL_AUTH_HEADER]).to.equal('new-token');
           expect(webex.request.calledOnceWith(options)).to.be.true;
@@ -118,15 +125,16 @@ describe('plugin-meetings', () => {
         });
 
         it('rejects when refreshDataChannelToken fails', async () => {
-          const error = new Error('refresh failed');
-
-          interceptor.webex.internal.llm.refreshDataChannelToken.rejects(error);
+          interceptor.webex.internal.llm.refreshDataChannelToken.rejects(new Error('refresh failed'));
 
           const promise = interceptor.refreshTokenAndRetryWithDelay(options);
 
           clock.tick(2000);
 
-          await assert.isRejected(promise, error);
+          await assert.isRejected(
+            promise,
+            /DataChannel token refresh failed: refresh failed/
+          );
 
           expect(interceptor.webex.internal.llm.setDatachannelToken.called).to.be.false;
         });
@@ -135,20 +143,27 @@ describe('plugin-meetings', () => {
           interceptor.webex.internal.llm.refreshDataChannelToken.resolves({
             body: {
               datachannelToken: 'new-token',
-              isPracticeSession: false,
+              dataChannelTokenType: 'default',
             },
           });
 
-          const error = new Error('request failed');
-          webex.request.rejects(error);
+          webex.request.rejects(new Error('request failed'));
 
           const promise = interceptor.refreshTokenAndRetryWithDelay(options);
 
           clock.tick(2000);
 
-          await assert.isRejected(promise, error);
+          await assert.isRejected(
+            promise,
+            /DataChannel token refresh failed: request failed/
+          );
 
-          expect(interceptor.webex.internal.llm.setDatachannelToken.calledOnceWith('new-token', false)).to.be.true;
+          expect(
+            interceptor.webex.internal.llm.setDatachannelToken.calledOnceWith(
+              'new-token',
+              'default'
+            )
+          ).to.be.true;
         });
       });
     });

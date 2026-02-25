@@ -12734,7 +12734,7 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(
             webex.internal.llm.setDatachannelToken,
             'token-123',
-            false
+            'default'
           );
         });
         it('prefers refreshed token over locus self token', async () => {
@@ -12746,7 +12746,8 @@ describe('plugin-meetings', () => {
           };
 
           webex.internal.llm.getDatachannelToken
-            .withArgs(false).returns('refreshed-token');
+            .withArgs('default')
+            .returns('refreshed-token');
 
           await meeting.updateLLMConnection();
 
@@ -12756,9 +12757,9 @@ describe('plugin-meetings', () => {
             'a datachannel url',
             'refreshed-token'
           );
+
           assert.notCalled(webex.internal.llm.setDatachannelToken);
         });
-
         it('uses practice session token when in PS even if refreshed token exists', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {
@@ -12790,7 +12791,7 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(
             webex.internal.llm.setDatachannelToken,
             'ps-token',
-            true
+            'practiceSession'
           );
         });
         it('does not pass token when data channel with jwt token is disabled', async () => {
@@ -12815,7 +12816,7 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(
             webex.internal.llm.setDatachannelToken,
             'token-123',
-            false
+            'default'
           );
         });
       });
@@ -14426,9 +14427,30 @@ describe('plugin-meetings', () => {
           expect(result).to.deep.equal({
             body: {
               datachannelToken: 'mock-token',
-              isPracticeSession: true,
+              dataChannelTokenType: 'practiceSession',
             },
           });
+        });
+      });
+      describe('#getDataChannelTokenType', () => {
+        it('returns PracticeSession when webinar is in practice session mode', () => {
+          meeting.webinar = {
+            isJoinPracticeSessionDataChannel: sinon.stub().returns(true),
+          };
+
+          const result = meeting.getDataChannelTokenType();
+
+          expect(result).to.equal('practiceSession');
+        });
+
+        it('returns Default when not in practice session mode', () => {
+          meeting.webinar = {
+            isJoinPracticeSessionDataChannel: sinon.stub().returns(false),
+          };
+
+          const result = meeting.getDataChannelTokenType();
+
+          expect(result).to.equal('default');
         });
       });
       describe('#stopKeepAlive', () => {

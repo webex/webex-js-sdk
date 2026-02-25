@@ -226,8 +226,6 @@ describe('plugin-llm', () => {
 
         const result = await llmService.isDataChannelTokenEnabled();
 
-        console.log(webex.internal.feature.getFeature.getCalls());
-
         sinon.assert.calledOnceWithExactly(
           webex.internal.feature.getFeature,
           'developer',
@@ -263,26 +261,29 @@ describe('plugin-llm', () => {
 
         const loggerSpy = llmService.logger.error;
 
-        if (loggerSpy.resetHistory) {
-          loggerSpy.resetHistory();
-        }
-
         llmService.setRefreshHandler(handler);
 
         try {
           await llmService.refreshDataChannelToken();
           assert.fail('Should have thrown');
         } catch (err) {
-          assert.match(err.message, 'throw error');
+          assert.match(err.message, /throw error/);
         }
+
+        sinon.assert.calledOnce(loggerSpy);
+        sinon.assert.calledWithMatch(
+          loggerSpy,
+          sinon.match("Error refreshing DataChannel token: Error: throw error")
+        );
       });
     });
+
     describe('#getDatachannelToken / #setDatachannelToken', () => {
       it('sets and gets datachannel token', () => {
-        llmService.setDatachannelToken('abc123');
-        assert.equal(llmService.getDatachannelToken(), 'abc123');
-        llmService.setDatachannelToken('123abc',true);
-        assert.equal(llmService.getDatachannelToken(true), '123abc');
+        llmService.setDatachannelToken('abc123','default');
+        assert.equal(llmService.getDatachannelToken('default'), 'abc123');
+        llmService.setDatachannelToken('123abc','practiceSession');
+        assert.equal(llmService.getDatachannelToken('practiceSession'), '123abc');
       });
     });
   });

@@ -3,11 +3,10 @@
  */
 
 import {Interceptor} from '@webex/http-core';
+import LoggerProxy from '../common/logs/logger-proxy';
+import {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY, RETRY_INTERVAL} from './constant';
 
-const DATA_CHANNEL_AUTH_HEADER = 'Data-Channel-Auth-Token';
 const retryCountMap = new WeakMap();
-const MAX_RETRY = 5;
-const RETRY_INTERVAL = 2000;
 
 /**
  * @class
@@ -47,9 +46,8 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
     }
 
     const currentRetry = retryCountMap.get(this) || 0;
-
     if (currentRetry >= MAX_RETRY) {
-      console.warn(`data channel token refresh exceeded max retry (${MAX_RETRY})`);
+      LoggerProxy.logger.error(`data channel token refresh exceeded max retry (${MAX_RETRY})`);
       retryCountMap.set(this, 0);
 
       return Promise.reject(reason);
@@ -73,18 +71,18 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
         try {
           // @ts-ignore
           const newToken = await this.webex.internal.llm.refreshDataChannelToken();
-          const {datachannelToken, isPracticeSession} = newToken.body;
+          const {datachannelToken, dataChannelTokenType} = newToken.body;
 
           options.headers[DATA_CHANNEL_AUTH_HEADER] = datachannelToken;
           // @ts-ignore
-          this.webex.internal.llm.setDatachannelToken(datachannelToken, isPracticeSession);
+          this.webex.internal.llm.setDatachannelToken(datachannelToken, dataChannelTokenType);
 
           // @ts-ignore
           const res = await this.webex.request(options);
 
           resolve(res);
         } catch (e) {
-          reject(e);
+          reject(new Error(`DataChannel token refresh failed: ${e.message}`));
         }
       }, RETRY_INTERVAL);
     });
