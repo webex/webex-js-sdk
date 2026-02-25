@@ -161,12 +161,12 @@ For methods that go through `aqm-reqs` (agent service methods), the flow is:
 2. **aqm-reqs.ts** sends an HTTP request AND registers pending handlers for the expected WebSocket success/fail messages (via `notifSuccess`/`notifFail` bindings)
 3. **Backend** processes the request and sends the result back via **WebSocket**
 4. **aqm-reqs.onMessage()** receives the WS message, matches it to the pending request, and resolves/rejects the Promise
-5. **cc.ts `handleWebsocketMessage()`** also receives the same WS message and emits **EventEmitter** events for consumers
+5. **cc.ts `handleWebsocketMessage()`** also receives the same WS message and uses `trigger` to fire events for consumers
 
 ```
 HTTP request → Backend → WS message
                             ├─→ aqm-reqs.onMessage() → resolves/rejects Promise
-                            └─→ cc.ts handleWebsocketMessage() → this.emit(EVENT)
+                            └─→ cc.ts handleWebsocketMessage() → this.trigger(EVENT)
 ```
 
 ### Real example: `setAgentState` in cc.ts
@@ -189,29 +189,32 @@ stateChange: routing.req((p: {data: Agent.StateChange}) => ({
 })),
 ```
 
-**Step 2 — WS message triggers EventEmitter emit** (in `cc.ts handleWebsocketMessage()`):
+**Step 2 — WS message triggers event** (in `cc.ts handleWebsocketMessage()`):
 ```typescript
 case CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS:
-  // WS message received → emit via EventEmitter for consumers
-  this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, eventData.data);
+  // cc.ts extends WebexPlugin — use trigger, not emit
+  // @ts-ignore
+  this.trigger(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, eventData.data);
   break;
 case CC_EVENTS.AGENT_STATE_CHANGE_FAILED:
-  this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED, eventData.data);
+  // @ts-ignore
+  this.trigger(AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED, eventData.data);
   break;
 ```
 
-**Step 3 — Consumer listens** using EventEmitter `.on()`:
+**Step 3 — Consumer listens** using `.on()`:
 ```typescript
-cc.on(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, (data) => {
+const handleStateChangeSuccess = (data) => {
   // Handle state change success
-});
+};
+cc.on(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, handleStateChangeSuccess);
 ```
 
 ### Task-level events (method-level emit)
 
-For Task methods, events are emitted directly after an operation completes:
+For Task methods (which extend `EventEmitter`), events are emitted directly using `emit`:
 ```typescript
-// Task.ts — autoAnswerIfNeeded()
+// Task.ts extends EventEmitter — emit works natively
 // On success, emit directly:
 this.emit(TASK_EVENTS.TASK_AUTO_ANSWERED, this);
 ```
