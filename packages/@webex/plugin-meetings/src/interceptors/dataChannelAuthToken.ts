@@ -114,6 +114,8 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
 
           resolve(res);
         } catch (e) {
+          retryCountMap.set(this, 0);
+
           reject(new Error(`DataChannel token refresh failed: ${e.message}`));
         }
       }, RETRY_INTERVAL);
