@@ -137,7 +137,8 @@ private handleEvent = (event: string) => {
   // Route by type and emit to subscribers
   switch (eventData.type) {
     case CC_EVENTS.AGENT_STATE_CHANGE:
-      this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, eventData.data);
+      // @ts-ignore
+      this.trigger(AGENT_EVENTS.AGENT_STATE_CHANGE, eventData.data);
       break;
     // ... more cases
   }
@@ -148,11 +149,11 @@ private handleEvent = (event: string) => {
 
 ## Event Emission
 
-There are **two methods** for emitting events: `trigger` and `emit`. Both work on the `cc` object (which extends `WebexPlugin`), but they should be used in different contexts.
+There are **two methods** for emitting events: `trigger` and `emit`. They are **not interchangeable** — which one to use depends on what the class extends.
 
-### `trigger` — WebexPlugin method
+### `trigger` — for classes extending `WebexPlugin` (e.g., cc.ts)
 
-`trigger` comes from the Ampersand event system that `WebexPlugin` is built on. **For new code, use `trigger` when emitting events from the `cc` object to application consumers.**
+`cc.ts` (`ContactCenter`) extends `WebexPlugin`, **not** `EventEmitter`. The `emit` method does not exist on `WebexPlugin`. The correct method for emitting events from `cc` is `trigger`, which comes from the Ampersand event system that `WebexPlugin` is built on.
 
 ```typescript
 // cc.ts — ContactCenter extends WebexPlugin
@@ -163,30 +164,38 @@ this.trigger(TASK_EVENTS.TASK_INCOMING, task);
 this.trigger(TASK_EVENTS.TASK_HYDRATE, task);
 ```
 
-> **Note**: `trigger` requires `// @ts-ignore` because WebexPlugin's type definitions don't expose it.
+> **Note**: `trigger` requires `// @ts-ignore` because WebexPlugin's TypeScript type definitions don't expose it.
 
-### `emit` — EventEmitter method
+### `emit` — for classes extending `EventEmitter` (e.g., Task, TaskManager, WebCallingService)
 
-`emit` is the standard Node.js `EventEmitter` method. Use it in internal service classes that extend `EventEmitter` (TaskManager, Task, WebSocketManager, ConnectionService, etc.).
+`emit` is the standard Node.js `EventEmitter` method. It works natively on classes that extend `EventEmitter` — no `@ts-ignore` needed.
 
 ```typescript
-// TaskManager extends EventEmitter
+// Task extends EventEmitter — emit works natively
+export default abstract class Task extends EventEmitter implements ITask {
+  private autoAnswerIfNeeded() {
+    // ...
+    this.emit(TASK_EVENTS.TASK_AUTO_ANSWERED, this);
+  }
+}
+
+// TaskManager extends EventEmitter — emit works natively
 export default class TaskManager extends EventEmitter {
-  public handleIncomingTask(taskData: TaskData) {
+  private handleIncomingTask(taskData: TaskData) {
     const task = this.createTask(taskData);
     this.emit(TASK_EVENTS.TASK_INCOMING, task);
   }
 }
 ```
 
-> **Note on existing code**: The `cc` object currently uses `emit` in `handleWebsocketMessage` for agent events (e.g., `this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, ...)`). Both `trigger` and `emit` work on WebexPlugin because it inherits from both event systems. For new code on the `cc` object, prefer `trigger`.
+> **Note on existing code**: The `cc` object currently uses `this.emit()` in `handleWebsocketMessage` for agent events with `// @ts-ignore`. This works at runtime but is not type-safe. For new code on the `cc` object, always use `trigger`.
 
 ### When to Use Which
 
-| Class extends | Method | Use for | `// @ts-ignore` needed? |
-|---------------|--------|---------|------------------------|
-| `WebexPlugin` | `trigger` | Events from `cc` to application consumers | Yes |
-| `EventEmitter` | `emit` | Internal events between services (TaskManager, Task, WebSocketManager, etc.) | No |
+| Class extends | Method | `@ts-ignore` needed? | Example classes |
+|---------------|--------|----------------------|-----------------|
+| `WebexPlugin` | `trigger` | Yes | `cc.ts` (ContactCenter) |
+| `EventEmitter` | `emit` | No | Task, TaskManager, WebCallingService, WebSocketManager |
 
 ---
 
@@ -201,6 +210,10 @@ source.on(EVENT_CONSTANT, handler);
 // Remove a listener (must pass the same function reference)
 source.off(EVENT_CONSTANT, handler);
 ```
+
+> **Important**: Always store the callback as a named function reference. Using inline anonymous functions makes it impossible to call `.off()` because you can't pass the same reference back.
+
+#### Example
 
 Store handler references so you can remove them later. Use **arrow function properties** or **`.bind(this)`** depending on the pattern:
 
@@ -250,29 +263,35 @@ public async deregister() {
 
 ### Events Sent to Application (from cc, task)
 
-Application consumers subscribe to events on the `cc` object or on task instances:
+Application consumers subscribe to events on the `cc` object or on task instances. Always use named callbacks so `.off()` can reference the same function:
 
 ```typescript
 const cc = webex.cc;
 
-// Agent events (from cc)
-cc.on(AGENT_EVENTS.AGENT_STATE_CHANGE, (event) => {
+// Define named callbacks (required for .off() to work)
+const handleStateChange = (event) => {
   // handle agent state change
-});
+};
 
-cc.on(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, (event) => {
+const handleLoginSuccess = (event) => {
   // handle login success
-});
+};
 
-// Task events (from cc)
-cc.on(TASK_EVENTS.TASK_INCOMING, (task) => {
+const handleIncomingTask = (task) => {
   // handle incoming task
-});
+};
 
-// Unsubscribe
-const handler = (event) => { /* handle */ };
-cc.on(AGENT_EVENTS.AGENT_STATE_CHANGE, handler);
-cc.off(AGENT_EVENTS.AGENT_STATE_CHANGE, handler);
+// Subscribe — agent events (from cc)
+cc.on(AGENT_EVENTS.AGENT_STATE_CHANGE, handleStateChange);
+cc.on(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, handleLoginSuccess);
+
+// Subscribe — task events (from cc)
+cc.on(TASK_EVENTS.TASK_INCOMING, handleIncomingTask);
+
+// Unsubscribe — pass the same function reference
+cc.off(AGENT_EVENTS.AGENT_STATE_CHANGE, handleStateChange);
+cc.off(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, handleLoginSuccess);
+cc.off(TASK_EVENTS.TASK_INCOMING, handleIncomingTask);
 ```
 
 ---
@@ -296,7 +315,8 @@ case CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS: {
     notifsTrackingId: eventData.trackingId,
   };
   
-  this.emit(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, stationLoginData);
+  // @ts-ignore
+  this.trigger(AGENT_EVENTS.AGENT_STATION_LOGIN_SUCCESS, stationLoginData);
   break;
 }
 ```
@@ -441,12 +461,13 @@ if (!this.services.webSocketManager.isSocketClosed) {
 ### Always Use Constants
 
 ```typescript
-// CORRECT
-this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE, data);
+// CORRECT — use event constants, not raw strings
+this.trigger(AGENT_EVENTS.AGENT_STATE_CHANGE, data);  // WebexPlugin (cc.ts)
+this.emit(TASK_EVENTS.TASK_INCOMING, task);            // EventEmitter (Task, TaskManager)
 cc.on(TASK_EVENTS.TASK_INCOMING, handler);
 
 // WRONG — never use raw string event names
-this.emit('stateChange', data);
+this.trigger('stateChange', data);
 cc.on('task:incoming', handler);
 ```
 
