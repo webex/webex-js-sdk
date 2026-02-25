@@ -17,7 +17,7 @@
 | Element | Convention | Example |
 |---------|------------|---------|
 | Classes | PascalCase | `ContactCenter`, `TaskManager` |
-| Interfaces | PascalCase (no `I` prefix in this codebase) | `Profile`, `AgentLogin` |
+| Interfaces | PascalCase with `I` prefix for contracts | `IContactCenter`, `ITask`, `IVoice` |
 | Types | PascalCase | `SetStateResponse`, `BuddyAgentsResponse` |
 | Enums/Constants | SCREAMING_SNAKE_CASE | `CC_EVENTS`, `METRIC_EVENT_NAMES` |
 | Methods | camelCase | `stationLogin`, `setAgentState` |
@@ -453,5 +453,3 @@ Before submitting code:
 - **TypeScript patterns**: [`patterns/typescript-patterns.md`](patterns/typescript-patterns.md)
 - **Testing patterns**: [`patterns/testing-patterns.md`](patterns/testing-patterns.md)
 - **Event patterns**: [`patterns/event-driven-patterns.md`](patterns/event-driven-patterns.md)
-- **WebSocket patterns**: [`patterns/websocket-patterns.md`](patterns/websocket-patterns.md)
-- **Plugin patterns**: [`patterns/sdk-plugin-patterns.md`](patterns/sdk-plugin-patterns.md)

@@ -59,9 +59,7 @@ packages/@webex/contact-center/
     ├── patterns/              # Pattern documentation
     │   ├── typescript-patterns.md
     │   ├── testing-patterns.md
-    │   ├── event-driven-patterns.md
-    │   ├── websocket-patterns.md
-    │   └── sdk-plugin-patterns.md
+    │   └── event-driven-patterns.md
     └── templates/             # Code generation templates
         ├── README.md
         ├── new-service/       # Creating new services
