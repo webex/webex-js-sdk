@@ -6,18 +6,49 @@ import {Interceptor} from '@webex/http-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY, RETRY_INTERVAL} from './constant';
 
+/*!
+ * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
+ */
+
 const retryCountMap = new WeakMap();
 
 /**
  * @class
  */
 export default class DataChannelAuthTokenInterceptor extends Interceptor {
+  private _refreshDataChannelToken: () => Promise<string>;
+  private _isDataChannelTokenEnabled: () => boolean;
+  constructor(options) {
+    super(options);
+
+    this._refreshDataChannelToken = options.refreshDataChannelToken;
+    this._isDataChannelTokenEnabled = options.isDataChannelTokenEnabled;
+  }
+
   /**
    * @returns {DataChannelAuthTokenInterceptor}
    */
   static create() {
     // @ts-ignore
-    return new DataChannelAuthTokenInterceptor({webex: this});
+    return new DataChannelAuthTokenInterceptor({
+      webex: this,
+
+      isDataChannelTokenEnabled: () => {
+        // @ts-ignore
+        return this.internal.llm.isDataChannelTokenEnabled();
+      },
+
+      refreshDataChannelToken: async () => {
+        const {datachannelToken, dataChannelTokenType} =
+          // @ts-ignore
+          await this.internal.llm.refreshDataChannelToken();
+
+        // @ts-ignore
+        this.internal.llm.setDatachannelToken(datachannelToken, dataChannelTokenType);
+
+        return datachannelToken;
+      },
+    });
   }
 
   // Helper function to get header value case insensitively
@@ -37,15 +68,18 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
    */
   async onResponseError(options, reason) {
     const token = this.getHeader(options.headers, DATA_CHANNEL_AUTH_HEADER);
-    // @ts-ignore
-    const isDataChannelTokenEnabled = await this.webex.internal.llm.isDataChannelTokenEnabled();
-    if (!token || !isDataChannelTokenEnabled) return Promise.reject(reason);
+    const enabled = await this._isDataChannelTokenEnabled();
+
+    if (!token || !enabled) {
+      return Promise.reject(reason);
+    }
 
     if (reason.statusCode !== 401 && reason.statusCode !== 403) {
       return Promise.reject(reason);
     }
 
     const currentRetry = retryCountMap.get(this) || 0;
+
     if (currentRetry >= MAX_RETRY) {
       LoggerProxy.logger.error(`data channel token refresh exceeded max retry (${MAX_RETRY})`);
       retryCountMap.set(this, 0);
@@ -69,16 +103,14 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
     return new Promise((resolve, reject) => {
       setTimeout(async () => {
         try {
-          // @ts-ignore
-          const newToken = await this.webex.internal.llm.refreshDataChannelToken();
-          const {datachannelToken, dataChannelTokenType} = newToken.body;
+          const newToken = await this._refreshDataChannelToken();
 
-          options.headers[DATA_CHANNEL_AUTH_HEADER] = datachannelToken;
-          // @ts-ignore
-          this.webex.internal.llm.setDatachannelToken(datachannelToken, dataChannelTokenType);
+          options.headers[DATA_CHANNEL_AUTH_HEADER] = newToken;
 
           // @ts-ignore
           const res = await this.webex.request(options);
+
+          retryCountMap.set(this, 0);
 
           resolve(res);
         } catch (e) {
