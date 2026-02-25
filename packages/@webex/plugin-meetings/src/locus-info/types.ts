@@ -38,7 +38,21 @@ export type LocusDTO = {
   meetings?: any[];
   participants: any[];
   replaces?: any[];
-  self?: any;
+  self?: {
+    // this is not a complete type for self, but just a start (better than nothing), it will be updated once we manage to get this info out of the Locus team
+    identity: string;
+    url: string;
+    state: string;
+    type: string;
+    id: string;
+    guest: boolean;
+    panelist: boolean;
+    moderator: boolean;
+    removed?: boolean;
+    deviceUrl: string;
+    controls: any;
+    [key: string]: any;
+  };
   sequence?: {
     dirtyParticipants: number;
     entries: number[];

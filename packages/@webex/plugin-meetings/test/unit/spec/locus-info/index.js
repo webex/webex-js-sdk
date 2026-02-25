@@ -484,6 +484,38 @@ describe('plugin-meetings', () => {
           });
         });
 
+        it('should NOT generate a participant when called with updated SELF for webinar attendee that has removed=true', () => {
+          const newSelf = {
+            id: 'new-self',
+            removed: true,
+            visibleDataSets: ['dataset1', 'dataset2'],
+            controls: {
+              role: {
+                roles: [{type: 'ATTENDEE', hasRole: true}],
+              },
+            },
+          };
+
+          locusInfo.info.isWebinar = true;
+
+          // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
+          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+            updatedObjects: [{htMeta: {elementId: {type: 'self'}}, data: newSelf}],
+          });
+
+          // check onDeltaLocus() was called with correctly updated locus info
+          // without a participant created from self
+          assert.calledOnceWithExactly(onDeltaLocusStub, {
+            ...expectedLocusInfo,
+            info: {
+              ...expectedLocusInfo.info,
+              isWebinar: true,
+            },
+            self: newSelf,
+            participants: [],
+          });
+        });
+
         it('should process locus update correctly when called with updated fullState', () => {
           const newFullState = {
             id: 'new-fullState',

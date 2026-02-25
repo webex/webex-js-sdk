@@ -655,11 +655,12 @@ export default class LocusInfo extends EventsScope {
             `Locus-info:index#updateLocusFromHashTreeObject --> received ${type} object without data, this is not expected! version=${object.htMeta.elementId.version}`
           );
         } else {
+          const newSelf = object.data as LocusDTO['self'];
           LoggerProxy.logger.info(
             `Locus-info:index#updateLocusFromHashTreeObject --> ${type} object updated to version ${object.htMeta.elementId.version}`
           );
           const locusDtoKey = ObjectTypeToLocusKeyMap[type];
-          locus[locusDtoKey] = object.data;
+          locus[locusDtoKey] = newSelf;
 
           /* Hash tree based webinar attendees don't receive a Participant object for themselves from Locus,
              but a lot of existing code in SDK and web app expects a member object for self to exist,
@@ -669,9 +670,8 @@ export default class LocusInfo extends EventsScope {
           if (
             type === ObjectType.self &&
             locus.info?.isWebinar &&
-            object.data.controls?.role?.roles?.find(
-              (r) => r.type === SELF_ROLES.ATTENDEE && r.hasRole
-            )
+            newSelf.removed !== true &&
+            newSelf.controls?.role?.roles?.find((r) => r.type === SELF_ROLES.ATTENDEE && r.hasRole)
           ) {
             LoggerProxy.logger.info(
               `Locus-info:index#updateLocusFromHashTreeObject --> webinar attendee: creating participant object from self`
