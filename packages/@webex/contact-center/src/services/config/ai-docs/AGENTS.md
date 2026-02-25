@@ -18,6 +18,22 @@ The Config Service is an **internal service** that builds the comprehensive Agen
 
 The AgentProfile is the central configuration object required for an agent to operate within the contact center. It is built during the registration flow (`cc.register()`) and contains all the data an agent needs: identity, team assignments, dial plans, aux codes, login options, and feature flags. Once constructed, the AgentProfile is stored on the `ContactCenter` plugin instance as `this.agentConfig` and is used by other services (Agent, Task) throughout the session.
 
+
+---
+
+## File Structure
+
+```
+services/config/
+├── index.ts          # AgentConfigService class
+├── types.ts          # Profile, CC_EVENTS, types
+├── constants.ts      # API endpoints, defaults
+├── Util.ts           # parseAgentConfigs helper
+└── ai-docs/
+    ├── AGENTS.md     # Usage documentation
+    └── ARCHITECTURE.md # This file
+```
+
 ---
 
 ## Quick Usage
