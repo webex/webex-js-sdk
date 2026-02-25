@@ -428,7 +428,7 @@ If feature is significant, update the root [`AGENTS.md`](../../../AGENTS.md):
 - [ ] Documentation updated
 
 ```bash
-yarn workspace @webex/contact-center test:styles
+yarn workspace @webex/contact-center test:style
 yarn workspace @webex/contact-center test:unit
 yarn workspace @webex/contact-center build:src
 ```

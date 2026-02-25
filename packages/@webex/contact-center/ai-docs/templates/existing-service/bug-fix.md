@@ -63,7 +63,7 @@ Only proceed here after Section A questions are answered.
 
 ```bash
 # Run tests for the affected area
-yarn workspace @webex/contact-center test -- --testPathPattern=<filename>
+yarn workspace @webex/contact-center test:unit -- <path_to_specific_file>
 ```
 
 Are there tests that should have caught this? Do they pass incorrectly?
@@ -228,7 +228,7 @@ describe('methodName - Bug Fix', () => {
 #### Verification
 ```bash
 # Lint
-yarn workspace @webex/contact-center test:styles
+yarn workspace @webex/contact-center test:style
 
 # All tests
 yarn workspace @webex/contact-center test:unit
