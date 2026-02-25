@@ -27,6 +27,27 @@ The Core service provides the foundational infrastructure layer that all other s
 
 ---
 
+## File Structure
+
+```
+services/core/
+├── aqm-reqs.ts           # AQM request handler
+├── constants.ts          # Core constants
+├── Err.ts                # Error classes
+├── GlobalTypes.ts        # Failure, Msg<T>, etc.
+├── types.ts              # Request/response types
+├── Utils.ts              # Utility functions
+├── WebexRequest.ts       # HTTP client
+└── websocket/
+    ├── WebSocketManager.ts    # Main WS handler
+    ├── connection-service.ts  # Connection lifecycle
+    ├── keepalive.worker.js    # Keepalive worker
+    └── types.ts               # WS types
+```
+
+---
+
+
 ## WebSocketManager
 
 `WebSocketManager` handles the raw WebSocket connection to the contact center backend. It is instantiated by the `Services` layer and used internally — other services interact with it through `ConnectionService`.
