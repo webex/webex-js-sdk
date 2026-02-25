@@ -4,78 +4,26 @@
 
 ---
 
-## Component Overview
-
-| Component | File | Responsibility |
-|-----------|------|----------------|
-| `WebSocketManager` | `websocket/WebSocketManager.ts` | WebSocket lifecycle |
-| `ConnectionService` | `websocket/connection-service.ts` | Reconnection, keepalive |
-| `WebexRequest` | `WebexRequest.ts` | HTTP request wrapper |
-| `AqmReqs` | `aqm-reqs.ts` | Request-response pattern |
-| `Utils` | `Utils.ts` | Error handling utilities |
-| `Err` | `Err.ts` | Error class definitions |
-| `GlobalTypes` | `GlobalTypes.ts` | Shared type definitions |
-
----
-
-## File Structure
-
-```
-services/core/
-├── aqm-reqs.ts           # AQM request handler
-├── constants.ts          # Core constants
-├── Err.ts                # Error classes
-├── GlobalTypes.ts        # Failure, Msg<T>, etc.
-├── types.ts              # Request/response types
-├── Utils.ts              # Utility functions
-├── WebexRequest.ts       # HTTP client
-└── websocket/
-    ├── WebSocketManager.ts    # Main WS handler
-    ├── connection-service.ts  # Connection lifecycle
-    ├── keepalive.worker.js    # Keepalive worker
-    └── types.ts               # WS types
-```
-
----
-
 ## WebSocketManager
-
-### Class Structure
-
-```typescript
-export class WebSocketManager extends EventEmitter {
-  private webex: WebexSDK;
-  private websocket: WebSocket;
-  private keepaliveWorker: Worker;
-  
-  constructor(options: {webex: WebexSDK}) { }
-  
-  async initWebSocket(config: {body: SubscribeRequest}): Promise<WelcomeEvent>
-  close(reconnect: boolean, reason: string): void
-  
-  // Properties
-  isSocketClosed: boolean
-}
-```
 
 ### Connection Sequence
 
 ```mermaid
 sequenceDiagram
-    participant App
+    participant cc
     participant WSM as WebSocketManager
     participant WS as WebSocket
-    participant BE as Backend
-    
-    App->>WSM: initWebSocket(config)
+    participant BE as ccBackend
+
+    cc->>WSM: initWebSocket(config)
     WSM->>BE: POST /subscribe (get WS URL)
     BE-->>WSM: {webSocketUrl, subscriptionId}
     WSM->>WS: new WebSocket(url)
     WS->>BE: Connect
     BE-->>WS: Welcome event
     WS-->>WSM: onmessage(Welcome)
-    WSM-->>App: Resolve with WelcomeEvent
-    
+    WSM-->>cc: Resolve with WelcomeEvent
+
     loop Message handling
         BE-->>WS: Events
         WS-->>WSM: onmessage
@@ -87,12 +35,78 @@ sequenceDiagram
 
 ## ConnectionService
 
-### Responsibilities
+Monitors WebSocket health via keepalive messages, detects disconnections, triggers reconnection attempts, and emits connection state events to the application layer. Extends `EventEmitter`.
 
-1. Monitor connection state
-2. Detect disconnections
-3. Trigger reconnection
-4. Emit connection events
+### Constructor
+
+```typescript
+constructor(options: ConnectionServiceOptions)
+
+type ConnectionServiceOptions = {
+  webSocketManager: WebSocketManager;
+  subscribeRequest: SubscribeRequest;
+};
+```
+
+The constructor wires up two listeners on `WebSocketManager`:
+
+- `'message'` → `onPing` (resets disconnect/restore timers on every incoming message)
+- `'socketClose'` → `onSocketClose` (starts the reconnection interval)
+
+### Key Constants
+
+| Constant                           | Value     | Purpose                                      |
+| ---------------------------------- | --------- | -------------------------------------------- |
+| `LOST_CONNECTION_RECOVERY_TIMEOUT` | 50 000 ms | Max wait before declaring restore failed     |
+| `WS_DISCONNECT_ALLOWED`            | 8 000 ms  | Grace period before flagging connection lost |
+| `CONNECTIVITY_CHECK_INTERVAL`      | 5 000 ms  | Interval between reconnection attempts       |
+
+### Methods
+
+```typescript
+export class ConnectionService extends EventEmitter {
+  public setConnectionProp(prop: ConnectionProp): void;
+
+  private setupEventListeners(): void;
+  private onPing(event: any): void;
+  private onSocketClose(): void;
+  private handleSocketClose(): Promise<void>;
+  private handleConnectionLost(): void;
+  private handleRestoreFailed(): Promise<void>;
+  private clearTimerOnRestoreFailed(): Promise<void>;
+  private updateConnectionData(): void;
+  private dispatchConnectionEvent(socketReconnected?: boolean): void;
+}
+```
+
+### Reconnection Flow
+
+```mermaid
+sequenceDiagram
+    participant App as cc
+    participant CS as ConnectionService
+    participant WSM as WebSocketManager
+
+    Note over WSM: WebSocket closes
+    WSM->>CS: emit('socketClose')
+    CS->>CS: onSocketClose()
+    CS->>CS: Start reconnectInterval every 5 s
+
+    loop Every CONNECTIVITY_CHECK_INTERVAL
+        CS->>CS: handleSocketClose()
+        alt Browser online
+            CS->>WSM: initWebSocket({body: subscribeRequest})
+            CS->>CS: isSocketReconnected = true
+            CS->>CS: clearInterval
+        else Browser offline
+            CS->>CS: Throw error, retry next interval
+        end
+    end
+
+    Note over CS: Next keepalive ping arrives
+    CS->>CS: dispatchConnectionEvent(socketReconnected=true)
+    CS->>App: emit('connectionLost', details)
+```
 
 ### Events
 
@@ -106,9 +120,11 @@ type ConnectionLostDetails = {
 
 connectionService.on('connectionLost', (details: ConnectionLostDetails) => {
   if (details.isConnectionLost) {
-    // Handle disconnect
+    // Connection lost — waiting for recovery
+  } else if (details.isRestoreFailed) {
+    // Recovery timeout (50 s) exceeded
   } else if (details.isSocketReconnected) {
-    // Handle reconnect
+    // Socket successfully reconnected
   }
 });
 ```
@@ -130,34 +146,6 @@ flowchart TD
     F -->|No| H[Reject with error]
 ```
 
-### Configuration Structure
-
-```typescript
-{
-  url: '/v1/endpoint',      // API path
-  host: WCC_API_GATEWAY,    // Base service
-  data: payload,            // Request body
-  method: HTTP_METHODS.POST, // HTTP method
-  err: errorHandler,        // Error transformer
-  notifSuccess: {
-    bind: {
-      type: CC_EVENTS.SUCCESS,
-      data: {type: CC_EVENTS.SUCCESS},
-    },
-    msg: {} as ResponseType,
-  },
-  notifFail: {
-    bind: {
-      type: CC_EVENTS.FAIL,
-      data: {type: CC_EVENTS.FAIL},
-    },
-    errId: 'Service.aqm.operation',
-  },
-}
-```
-
----
-
 ## WebexRequest
 
 ### Singleton Pattern
@@ -166,18 +154,24 @@ flowchart TD
 export default class WebexRequest {
   private static instance: WebexRequest;
   private webex: WebexSDK;
-  
+
   private constructor(options: {webex: WebexSDK}) {}
-  
+
   public static getInstance(options?: {webex: WebexSDK}): WebexRequest {
-    if (!WebexRequest.instance && options?.webex) {
+    if (!WebexRequest.instance && options && options.webex) {
       WebexRequest.instance = new WebexRequest(options);
     }
     return WebexRequest.instance;
   }
-  
-  public async request(config: RequestConfig): Promise<Response>
-  public async uploadLogs(options?: {correlationId?: string}): Promise<UploadResponse>
+
+  public async request(options: {
+    service: string;
+    resource: string;
+    method: HTTP_METHODS;
+    body?: RequestBody;
+  }): Promise<IHttpResponse>;
+
+  public async uploadLogs(metaData: LogsMetaData = {}): Promise<UploadLogsResponse>;
 }
 ```
 
@@ -189,7 +183,7 @@ sequenceDiagram
     participant WR as WebexRequest
     participant WX as webex.request
     participant API as Backend
-    
+
     Svc->>WR: request(config)
     WR->>WR: Build request options
     WR->>WX: webex.request(options)
@@ -197,55 +191,6 @@ sequenceDiagram
     API-->>WX: Response
     WX-->>WR: {statusCode, body, headers}
     WR-->>Svc: Response
-```
-
----
-
-## Error Handling
-
-### getErrorDetails Flow
-
-```mermaid
-flowchart TD
-    A[Error caught] --> B[Cast error.details to Failure]
-    B --> C[Extract reason from failure.data.reason]
-    C --> D{Is silentRelogin + AGENT_NOT_FOUND?}
-    D -->|Yes| E[Skip logging/upload]
-    D -->|No| F[Log error with LoggerProxy]
-    F --> G[Upload logs via WebexRequest]
-    G --> H[Check if stationLogin]
-    H -->|Yes| I[Get field-specific error data]
-    H -->|No| J[Use generic error]
-    I --> K[Create Error with data property]
-    J --> K
-    K --> L[Return {error, reason}]
-```
-
-### Error Types
-
-```typescript
-// Failure - Backend error structure
-type Failure = {
-  type: string;
-  orgId?: string;
-  trackingId?: string;
-  data?: {
-    agentId?: string;
-    reason?: string;
-    reasonCode?: string | number;
-  };
-};
-
-// AugmentedError - Extended Error with data
-type AugmentedError = Error & {
-  data?: {
-    message?: string;
-    errorType?: string;
-    errorData?: string;
-    reasonCode?: number;
-    trackingId?: string;
-  };
-};
 ```
 
 ---
@@ -283,19 +228,54 @@ addEventListener('message', (event) => {
 
 ---
 
-## Utility Functions
+## Error Handling
+
+### Error Types
+
+```typescript
+// Failure - Backend error structure
+type Failure = {
+  type: string;
+  orgId?: string;
+  trackingId?: string;
+  data?: {
+    agentId?: string;
+    reason?: string;
+    reasonCode?: string | number;
+  };
+};
+
+// AugmentedError - Extended Error with flexible data field (GlobalTypes.ts:59-61)
+export interface AugmentedError extends Error {
+  data?: Record<string, any>;
+}
+```
+
+### getErrorDetails Flow
+
+```mermaid
+flowchart TD
+    A[Error caught] --> B[Cast error.details to Failure]
+    B --> C[Extract reason from failure.data.reason]
+    C --> D{Is silentRelogin + AGENT_NOT_FOUND?}
+    D -->|Yes| E[Skip logging/upload]
+    D -->|No| F[Log error with LoggerProxy]
+    F --> G[Upload logs via WebexRequest]
+    G --> H[Check if stationLogin]
+    H -->|Yes| I[Get field-specific error data]
+    H -->|No| J[Use generic error]
+    I --> K[Create Error with data property]
+    J --> K
+    K --> L["Return {error, reason}"]
+```
 
 ### getErrorDetails
 
 ```typescript
-export const getErrorDetails = (
-  error: any,
-  methodName: string,
-  moduleName: string
-) => {
+export const getErrorDetails = (error: any, methodName: string, moduleName: string) => {
   const failure = error.details as Failure;
   const reason = failure?.data?.reason ?? `Error while performing ${methodName}`;
-  
+
   // Log error (unless AGENT_NOT_FOUND in silentRelogin)
   if (!(reason === 'AGENT_NOT_FOUND' && methodName === 'silentRelogin')) {
     LoggerProxy.error(`${methodName} failed with reason: ${reason}`, {
@@ -303,16 +283,16 @@ export const getErrorDetails = (
       method: methodName,
       trackingId: failure?.trackingId,
     });
-    
+
     // Upload logs
     WebexRequest.getInstance().uploadLogs({
       correlationId: failure?.trackingId,
     });
   }
-  
+
   const err = new Error(reason);
-  err.data = errData;  // For stationLogin field-specific errors
-  
+  err.data = errData; // For stationLogin field-specific errors
+
   return {error: err, reason};
 };
 ```
@@ -327,13 +307,13 @@ export const generateTaskErrorObject = (
 ): AugmentedError => {
   const trackingId = error?.details?.trackingId || error?.trackingId || '';
   const errorMsg = error?.details?.msg;
-  
+
   const errorMessage = errorMsg?.errorMessage || error.message || 'Error';
   const errorType = errorMsg?.errorType || error.name || 'Unknown Error';
-  
+
   LoggerProxy.error(`${methodName} failed: ${errorMessage}`, {...});
   WebexRequest.getInstance().uploadLogs({correlationId: trackingId});
-  
+
   const err: AugmentedError = new Error(`${errorType}: ${errorMessage}`);
   err.data = {
     message: errorMessage,
@@ -341,7 +321,7 @@ export const generateTaskErrorObject = (
     reasonCode,
     trackingId,
   };
-  
+
   return err;
 };
 ```
@@ -372,6 +352,7 @@ export const generateTaskErrorObject = (
 
 ## Related Files
 
+- [Root Orchestrator AGENTS.md](../../../AGENTS.md) - Task routing, critical rules, cross-service patterns
 - [WebSocketManager.ts](../websocket/WebSocketManager.ts)
 - [WebexRequest.ts](../WebexRequest.ts)
 - [Utils.ts](../Utils.ts)
