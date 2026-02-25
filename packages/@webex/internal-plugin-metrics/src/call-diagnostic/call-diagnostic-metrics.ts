@@ -1004,6 +1004,9 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       webexSubServiceType: this.getSubServiceType(meeting),
       // @ts-ignore
       webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
+      isVIPMeeting:
+        // @ts-ignore
+        this.webex.meetings?.getMeetingByType?.('id', meetingId)?.meetingInfo?.vipMeeting || false,
     };
 
     const joinFlowVersion = options.joinFlowVersion ?? meeting.callStateForMetrics?.joinFlowVersion;
