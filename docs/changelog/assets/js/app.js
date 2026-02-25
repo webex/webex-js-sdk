@@ -1984,9 +1984,9 @@ const loadEnhancedComparisonFromURL = async (enhancedParams) => {
     
     await new Promise(resolve => setTimeout(resolve, 300));
     
+    handlePackageChange();
     if (versionAPrereleaseSelect) versionAPrereleaseSelect.value = enhancedParams.versionA;
     if (versionBPrereleaseSelect) versionBPrereleaseSelect.value = enhancedParams.versionB;
-    handlePackageChange();
     
     await new Promise(resolve => setTimeout(resolve, 100));
     
