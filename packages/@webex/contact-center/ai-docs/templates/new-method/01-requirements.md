@@ -53,8 +53,11 @@ Ask the developer:
    | HTTP Method | "Is this a GET, POST, PUT, or DELETE?" |
    | Endpoint | "What is the full endpoint path?" |
    | Request Payload | "What fields does the request body contain? Which are required vs optional?" |
+   | Response Channel | "Is the response received in the HTTP response itself, or via a WebSocket message?" |
    | Response Structure | "What does the response look like?" |
    | Error Shape | "What error reason codes can this return?" |
+
+   > **Note**: Some methods receive their response directly in the HTTP response (e.g., `getBuddyAgents` returns data in the API response). Others initiate an operation via HTTP and receive the result asynchronously through a WebSocket message (e.g., `stationLogin` sends HTTP request, then receives `AGENT_STATION_LOGIN_SUCCESS` or `AGENT_STATION_LOGIN_FAILED` via WebSocket). Clarify which pattern applies.
 
    **If any API field is unknown, STOP and ask the developer. Do not guess.**
 
@@ -186,13 +189,14 @@ Does this match your intent? (Yes / No / Adjust)
 ### Parameters:
 | Name | Type | Required | Description |
 |---|---|---|---|
-| state | string | Yes | Agent state filter |
-| mediaType | string | Yes | Media type filter |
+| mediaType | 'telephony' \| 'chat' \| 'social' \| 'email' | Yes | Media type channel filter |
+| state | 'Available' \| 'Idle' | No | Optional agent state filter |
 
 ### API Contract:
 - HTTP: POST /v1/agents/buddyList
-- Request: { state: string, mediaType: string }
-- Response: { data: { agentList: Agent[] }, trackingId: string }
+- Request: { agentProfileId: string, mediaType: string, state?: string }
+- Response channel: HTTP response (synchronous)
+- Response: { data: { agentList: BuddyDetails[] }, trackingId: string }
 - Errors: INVALID_STATE, UNAUTHORIZED
 
 ### Events: No events (promise-based only)
@@ -206,6 +210,17 @@ Does this match your intent? (Yes / No / Adjust)
 - On success: return response data
 - On failure: throw augmented error via getErrorDetails
 - Edge cases: empty agentList returns { data: { agentList: [] } }
+
+### Type Definitions:
+- **Input type `BuddyAgents`**: Defined in `src/types.ts` (public, consumer-facing)
+  and `src/services/agent/types.ts` (internal, includes `agentProfileId` added by cc.ts)
+- **Response type `BuddyAgentsResponse`**: Defined in `src/types.ts` as
+  `Agent.BuddyAgentsSuccess | Error`
+- **Internal types `BuddyAgentsSuccess`, `BuddyDetails`**: Defined in
+  `src/services/agent/types.ts`
+- **Pattern**: Public types (what consumers see) go in `src/types.ts`.
+  Internal/service types (with extra fields like `agentProfileId`) go in
+  `src/services/[service]/types.ts`.
 ```
 
 ---

@@ -1,14 +1,14 @@
 # New Method - Master Template
 
-> **Purpose**: Orchestrator for adding new methods to existing services.
+> **Purpose**: Orchestrator for adding new methods or features to existing services and utils.
 
 ---
 
 ## Use Case
 
 Use this template when:
-- Adding a new method to an existing service
-- Adding a new public API method to `cc.ts`
+- Adding a new method or feature to an existing service or util
+- Adding a new public API method to `cc` or `task` object
 - Extending service capabilities
 
 ---
@@ -62,9 +62,9 @@ Verify:
 ## Patterns to Load
 
 Before implementing, read:
-1. [`../../patterns/typescript-patterns.md`](../../patterns/typescript-patterns.md)
-2. [`../../patterns/sdk-plugin-patterns.md`](../../patterns/sdk-plugin-patterns.md) - For cc.ts methods
-3. [`../../patterns/testing-patterns.md`](../../patterns/testing-patterns.md)
+1. [`../../patterns/typescript-patterns.md`](../../patterns/typescript-patterns.md) — Types, interfaces, constants
+2. [`../../patterns/event-driven-patterns.md`](../../patterns/event-driven-patterns.md) — Event emission and handling
+3. [`../../patterns/testing-patterns.md`](../../patterns/testing-patterns.md) — Unit test conventions
 
 ---
 

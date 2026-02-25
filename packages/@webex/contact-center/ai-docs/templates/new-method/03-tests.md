@@ -6,9 +6,18 @@
 
 ## Test Location
 
-Add tests to existing test file or create new one:
+Add tests to the existing test file that corresponds to the source file:
 - For `cc.ts` methods: `test/unit/spec/cc.ts`
 - For service methods: `test/unit/spec/services/[service]/index.ts`
+- For non-service files: `test/unit/spec/[filename].ts`
+
+> **Convention**: The test file path mirrors the source file path under `test/unit/spec/`. For example:
+> - `src/cc.ts` → `test/unit/spec/cc.ts`
+> - `src/logger-proxy.ts` → `test/unit/spec/logger-proxy.ts`
+> - `src/metrics/MetricsManager.ts` → `test/unit/spec/metrics/MetricsManager.ts`
+> - `src/services/agent/index.ts` → `test/unit/spec/services/agent/index.ts`
+> - `src/services/task/Task.ts` → `test/unit/spec/services/task/Task.ts`
+> - `src/services/WebCallingService.ts` → `test/unit/spec/services/WebCallingService.ts`
 
 ---
 
@@ -51,9 +60,10 @@ describe('cc.methodName', () => {
       // Assert
       expect(result).toEqual(mockSuccessResponse);
       expect(mockServicesInstance.someService.method).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+        data: {
           requiredField: 'test-value',
-        }),
+          agentId: 'mock-agent-id',
+        },
       });
     });
 
@@ -63,13 +73,16 @@ describe('cc.methodName', () => {
 
       // Assert
       expect(mockMetricsManager.timeEvent).toHaveBeenCalledWith([
-        expect.stringContaining('SUCCESS'),
-        expect.stringContaining('FAILED'),
+        METRIC_EVENT_NAMES.OPERATION_SUCCESS,
+        METRIC_EVENT_NAMES.OPERATION_FAILED,
       ]);
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-        expect.stringContaining('SUCCESS'),
-        expect.any(Object),
-        expect.any(Array)
+        METRIC_EVENT_NAMES.OPERATION_SUCCESS,
+        {
+          ...mockCommonTrackingFields,
+          customField: 'test-value',
+        },
+        ['behavioral', 'operational']
       );
     });
 
@@ -79,15 +92,19 @@ describe('cc.methodName', () => {
 
       // Assert
       expect(LoggerProxy.info).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          module: expect.any(String),
-          method: expect.any(String),
-        })
+        'Starting operation',
+        {
+          module: CC_FILE,
+          method: METHODS.METHOD_NAME,
+        }
       );
       expect(LoggerProxy.log).toHaveBeenCalledWith(
-        expect.stringContaining('successfully'),
-        expect.any(Object)
+        'Operation completed successfully',
+        {
+          module: CC_FILE,
+          method: METHODS.METHOD_NAME,
+          trackingId: 'track-123',
+        }
       );
     });
   });
@@ -110,9 +127,12 @@ describe('cc.methodName', () => {
 
       // Assert
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
-        expect.stringContaining('FAILED'),
-        expect.any(Object),
-        expect.any(Array)
+        METRIC_EVENT_NAMES.OPERATION_FAILED,
+        {
+          ...mockCommonFailedTrackingFields,
+          customField: 'test-value',
+        },
+        ['behavioral', 'operational']
       );
     });
 
@@ -125,9 +145,9 @@ describe('cc.methodName', () => {
 
       // Assert
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(
-        expect.any(Error),
-        'methodName',
-        expect.any(String)
+        mockError,
+        METHODS.METHOD_NAME,
+        CC_FILE
       );
     });
   });
@@ -145,9 +165,11 @@ describe('cc.methodName', () => {
 
       // Assert
       expect(mockServicesInstance.someService.method).toHaveBeenCalledWith({
-        data: expect.objectContaining({
+        data: {
+          requiredField: 'test-value',
           optionalField: 42,
-        }),
+          agentId: 'mock-agent-id',
+        },
       });
     });
   });
@@ -159,11 +181,11 @@ describe('cc.methodName', () => {
 ## Running Tests
 
 ```bash
-# Run specific test
-yarn workspace @webex/contact-center test -- --testPathPattern=cc --testNamePattern="methodName"
+# Run specific test file
+yarn workspace @webex/contact-center test:unit -- <path_to_specific_file>
 
 # Run with coverage
-yarn workspace @webex/contact-center test -- --coverage
+yarn workspace @webex/contact-center test:unit --coverage
 ```
 
 ---

@@ -55,6 +55,36 @@ LoggerProxy.log('Operation completed successfully', {
 });
 ```
 
+### Error Logging — `error` vs `warn`
+
+| Level | When to Use | Stack Trace Included? |
+|---|---|---|
+| `LoggerProxy.error()` | Operation failures, API errors, exceptions in catch blocks | **Yes** — full stack trace is appended automatically |
+| `LoggerProxy.warn()` | Non-critical issues that don't break flow (e.g., deprecation notices, fallback behavior) | **No** — only the message is logged |
+
+> **Current codebase convention**: `LoggerProxy.error()` is used extensively across the SDK. `LoggerProxy.warn()` is not currently used in any source file. Default to `error` for catch blocks and failure paths.
+
+```typescript
+// ✅ Error — in catch blocks and failure paths (includes stack trace)
+LoggerProxy.error(`${methodName} failed with reason: ${reason}`, {
+  module: moduleName,
+  method: methodName,
+  trackingId: failure?.trackingId,
+});
+
+// ✅ Error — via getErrorDetails (logs error + uploads logs automatically)
+// Most methods use this pattern instead of calling LoggerProxy.error() directly
+const {error: detailedError} = getErrorDetails(error, METHODS.METHOD_NAME, CC_FILE);
+
+// ⚠️ Warn — for non-critical issues only (no stack trace)
+LoggerProxy.warn('Falling back to default configuration', {
+  module: CC_FILE,
+  method: METHODS.METHOD_NAME,
+});
+```
+
+> **Note**: `getErrorDetails()` (in `src/services/core/Utils.ts`) already calls `LoggerProxy.error()` internally and uploads logs via `WebexRequest.uploadLogs()`. Do not double-log errors when using `getErrorDetails`.
+
 ### Correct Metrics Pattern
 ```typescript
 // ✅ Start timing

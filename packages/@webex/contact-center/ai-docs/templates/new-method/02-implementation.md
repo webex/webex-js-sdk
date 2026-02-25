@@ -4,7 +4,32 @@
 
 ---
 
-## Method Template (for cc.ts)
+## Method Invocation Patterns
+
+There are two common patterns for where methods are implemented:
+
+1. **Public wrapper + internal service call**: The public method is defined on `cc` (in `cc.ts`) or `task` (in `Task.ts`), but the actual implementation lives in a service module. The public method calls the service internally.
+   ```typescript
+   // cc.ts — public method delegates to service
+   public async getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse> {
+     const resp = await this.services.agent.buddyAgents({
+       data: {agentProfileId: this.agentConfig.agentProfileID, ...data},
+     });
+     return resp;
+   }
+   ```
+
+2. **Direct service access**: Sometimes consumers call the service method directly via the `cc` object.
+   ```typescript
+   // Consumer code calling service directly
+   const queues = await cc.services.queue.getQueues();
+   ```
+
+Determine which pattern applies based on the requirements gathered in Step 1.
+
+---
+
+## Method Template
 
 ```typescript
 /**
@@ -121,6 +146,77 @@ public async methodName(data: ParamType): Promise<ReturnType> {
   }
 }
 ```
+
+---
+
+## Event Emission (if applicable)
+
+If the method needs to emit events, understand the two-step flow used in the SDK:
+
+### How it works: WebSocket trigger → EventEmitter emit
+
+For methods that go through `aqm-reqs` (agent service methods), the flow is:
+
+1. **cc.ts** public method calls a service method (e.g., `this.services.agent.stationLogin()`)
+2. **aqm-reqs.ts** sends an HTTP request AND registers pending handlers for the expected WebSocket success/fail messages (via `notifSuccess`/`notifFail` bindings)
+3. **Backend** processes the request and sends the result back via **WebSocket**
+4. **aqm-reqs.onMessage()** receives the WS message, matches it to the pending request, and resolves/rejects the Promise
+5. **cc.ts `handleWebsocketMessage()`** also receives the same WS message and emits **EventEmitter** events for consumers
+
+```
+HTTP request → Backend → WS message
+                            ├─→ aqm-reqs.onMessage() → resolves/rejects Promise
+                            └─→ cc.ts handleWebsocketMessage() → this.emit(EVENT)
+```
+
+### Real example: `setAgentState` in cc.ts
+
+**Step 1 — Service defines WS bindings** (in `services/agent/index.ts`):
+```typescript
+stateChange: routing.req((p: {data: Agent.StateChange}) => ({
+  url: '/v1/agents/state',
+  host: WCC_API_GATEWAY,
+  data: p.data,
+  err,
+  notifSuccess: {
+    bind: { type: CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS },
+    msg: {} as Agent.StateChangeSuccess,
+  },
+  notifFail: {
+    bind: { type: CC_EVENTS.AGENT_STATE_CHANGE_FAILED },
+    errId: 'Service.aqm.agent.stateChange',
+  },
+})),
+```
+
+**Step 2 — WS message triggers EventEmitter emit** (in `cc.ts handleWebsocketMessage()`):
+```typescript
+case CC_EVENTS.AGENT_STATE_CHANGE_SUCCESS:
+  // WS message received → emit via EventEmitter for consumers
+  this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, eventData.data);
+  break;
+case CC_EVENTS.AGENT_STATE_CHANGE_FAILED:
+  this.emit(AGENT_EVENTS.AGENT_STATE_CHANGE_FAILED, eventData.data);
+  break;
+```
+
+**Step 3 — Consumer listens** using EventEmitter `.on()`:
+```typescript
+cc.on(AGENT_EVENTS.AGENT_STATE_CHANGE_SUCCESS, (data) => {
+  // Handle state change success
+});
+```
+
+### Task-level events (method-level emit)
+
+For Task methods, events are emitted directly after an operation completes:
+```typescript
+// Task.ts — autoAnswerIfNeeded()
+// On success, emit directly:
+this.emit(TASK_EVENTS.TASK_AUTO_ANSWERED, this);
+```
+
+> **When to emit events**: Emit events when consumers need to react asynchronously to state changes (WS-driven methods like `stationLogin`, `setAgentState`). For simple request-response methods (like `getBuddyAgents`), the returned Promise is sufficient — no events needed.
 
 ---
 
