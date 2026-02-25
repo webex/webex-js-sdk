@@ -1896,6 +1896,443 @@ describe('HashTreeParser', () => {
         assert.notCalled(callback);
       });
     });
+
+    describe('heartbeat watchdog', () => {
+      it('initiates sync immediately only for the specific data set whose heartbeat watchdog fires', async () => {
+        const parser = createHashTreeParser();
+        const heartbeatIntervalMs = 5000;
+
+        // Send initial heartbeat message for 'main' only
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeatMessage, 'initial heartbeat');
+
+        // Verify only 'main' watchdog timer is set
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+        expect(parser.dataSets.self.heartbeatWatchdogTimer).to.be.undefined;
+        expect(parser.dataSets['atd-unmuted'].heartbeatWatchdogTimer).to.be.undefined;
+
+        // Mock responses for performSync (GET hashtree then POST sync for leafCount > 1)
+        const mainDataSetUrl = parser.dataSets.main.url;
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          createDataSet('main', 16, 1101)
+        );
+        mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+        // Advance time past heartbeatIntervalMs + backoff (Math.random returns 0, so backoff = 0)
+        // performSync is called immediately when the watchdog fires - no additional delay
+        await clock.tickAsync(heartbeatIntervalMs);
+
+        // Verify sync request was sent immediately for 'main' (GET hashtree + POST sync)
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'GET',
+            uri: `${mainDataSetUrl}/hashtree`,
+          })
+        );
+
+        // Verify no sync requests were sent for other datasets
+        assert.neverCalledWith(
+          webexRequest,
+          sinon.match({
+            method: 'POST',
+            uri: `${parser.dataSets.self.url}/sync`,
+          })
+        );
+        assert.neverCalledWith(
+          webexRequest,
+          sinon.match({
+            method: 'GET',
+            uri: `${parser.dataSets['atd-unmuted'].url}/hashtree`,
+          })
+        );
+      });
+
+      it('calls POST sync directly for leafCount === 1 data sets', async () => {
+        const parser = createHashTreeParser();
+        const heartbeatIntervalMs = 5000;
+
+        // Send heartbeat for 'self' (leafCount === 1)
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('self', 1, 2100),
+              url: parser.dataSets.self.url,
+              root: parser.dataSets.self.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeatMessage, 'self heartbeat');
+
+        // Mock sync response for self
+        mockSendSyncRequestResponse(parser.dataSets.self.url, null);
+
+        // Advance time past watchdog delay
+        await clock.tickAsync(heartbeatIntervalMs);
+
+        // For leafCount === 1, performSync skips GET hashtree and goes straight to POST sync
+        assert.neverCalledWith(
+          webexRequest,
+          sinon.match({
+            method: 'GET',
+            uri: `${parser.dataSets.self.url}/hashtree`,
+          })
+        );
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'POST',
+            uri: `${parser.dataSets.self.url}/sync`,
+          })
+        );
+      });
+
+      it('sets watchdog timers for each data set in the message', async () => {
+        const parser = createHashTreeParser();
+        const heartbeatIntervalMs = 5000;
+
+        // Send heartbeat with multiple datasets
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+            {
+              ...createDataSet('self', 1, 2100),
+              url: parser.dataSets.self.url,
+              root: parser.dataSets.self.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeatMessage, 'multi-dataset heartbeat');
+
+        // Watchdog timers should be set for both datasets in the message
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+        expect(parser.dataSets.self.heartbeatWatchdogTimer).to.not.be.undefined;
+        // But not for datasets not in the message
+        expect(parser.dataSets['atd-unmuted'].heartbeatWatchdogTimer).to.be.undefined;
+      });
+
+      it('resets the watchdog timer for a specific data set when a new heartbeat for it is received', async () => {
+        const parser = createHashTreeParser();
+        const heartbeatIntervalMs = 5000;
+
+        // Send first heartbeat for 'main'
+        const heartbeat1 = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeat1, 'first heartbeat');
+
+        const firstTimer = parser.dataSets.main.heartbeatWatchdogTimer;
+        expect(firstTimer).to.not.be.undefined;
+
+        // Advance time to just before the watchdog would fire
+        clock.tick(4000);
+
+        // Send second heartbeat for 'main' - this should reset the watchdog
+        const heartbeat2 = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1101),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeat2, 'second heartbeat');
+
+        const secondTimer = parser.dataSets.main.heartbeatWatchdogTimer;
+        expect(secondTimer).to.not.be.undefined;
+        expect(secondTimer).to.not.equal(firstTimer);
+
+        // Advance another 4000ms (total 8000ms from start, but only 4000ms since last heartbeat)
+        // The watchdog should NOT fire yet
+        await clock.tickAsync(4000);
+
+        // No sync requests should have been sent
+        assert.notCalled(webexRequest);
+      });
+
+      it('resets the watchdog timer when a normal message (with locusStateElements) is received', async () => {
+        const parser = createHashTreeParser();
+        const heartbeatIntervalMs = 5000;
+
+        // Send initial heartbeat to start the watchdog for 'main'
+        const heartbeat = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeat, 'initial heartbeat');
+
+        const firstTimer = parser.dataSets.main.heartbeatWatchdogTimer;
+        expect(firstTimer).to.not.be.undefined;
+
+        // Advance time partially
+        clock.tick(3000);
+
+        // Stub updateItems so the normal message is processed
+        sinon.stub(parser.dataSets.main.hashTree, 'updateItems').returns([true]);
+
+        // Send a normal message (with locusStateElements) for 'main' - should also reset watchdog
+        const normalMessage = {
+          dataSets: [createDataSet('main', 16, 1101)],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {type: 'locus' as const, id: 0, version: 201},
+                dataSetNames: ['main'],
+              },
+              data: {someData: 'value'},
+            },
+          ],
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(normalMessage, 'normal message');
+
+        const secondTimer = parser.dataSets.main.heartbeatWatchdogTimer;
+        expect(secondTimer).to.not.be.undefined;
+        expect(secondTimer).to.not.equal(firstTimer);
+      });
+
+      it('does not set the watchdog timer when heartbeatIntervalMs is not set', async () => {
+        const parser = createHashTreeParser();
+
+        // Send a heartbeat message without heartbeatIntervalMs
+        const heartbeatMessage = createHeartbeatMessage(
+          'main',
+          16,
+          1100,
+          parser.dataSets.main.hashTree.getRootHash()
+        );
+
+        await parser.handleMessage(heartbeatMessage, 'heartbeat without interval');
+
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.be.undefined;
+      });
+
+      it('stops all watchdog timers when meeting ends', async () => {
+        const parser = createHashTreeParser();
+        const heartbeatIntervalMs = 5000;
+
+        // Send heartbeat for multiple datasets
+        const heartbeat = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+            {
+              ...createDataSet('self', 1, 2100),
+              url: parser.dataSets.self.url,
+              root: parser.dataSets.self.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeat, 'initial heartbeat');
+
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+        expect(parser.dataSets.self.heartbeatWatchdogTimer).to.not.be.undefined;
+
+        // Stub updateItems to return true for the roster drop detection
+        sinon.stub(parser.dataSets.self.hashTree, 'updateItems').returns([true]);
+
+        // Send a roster drop message that triggers MEETING_ENDED
+        const rosterDropMessage = {
+          dataSets: [createDataSet('self', 1, 2101)],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {type: 'self' as const, id: 4, version: 102},
+                dataSetNames: ['self'],
+              },
+              data: undefined,
+            },
+          ],
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(rosterDropMessage, 'roster drop');
+
+        // All watchdog timers should have been stopped and NOT restarted
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.be.undefined;
+        expect(parser.dataSets.self.heartbeatWatchdogTimer).to.be.undefined;
+      });
+
+      it("uses each data set's own backoff for its watchdog delay", async () => {
+        // Create a parser where datasets have different backoff configs
+        const initialLocus = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1000),
+              backoff: {maxMs: 500, exponent: 2},
+            },
+            {
+              ...createDataSet('self', 1, 2000),
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+              backoff: {maxMs: 2000, exponent: 3},
+            },
+          ],
+          locus: {
+            ...exampleInitialLocus.locus,
+          },
+        };
+
+        const metadata = {
+          ...exampleMetadata,
+          visibleDataSets: [
+            {name: 'main', url: initialLocus.dataSets[0].url},
+            {name: 'self', url: initialLocus.dataSets[1].url},
+          ],
+        };
+
+        const parser = createHashTreeParser(initialLocus, metadata);
+        const heartbeatIntervalMs = 5000;
+
+        // Set Math.random to return 1 so that backoff = 1^exponent * maxMs = maxMs
+        mathRandomStub.returns(1);
+
+        // Send heartbeat for both datasets
+        const heartbeat = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              backoff: {maxMs: 500, exponent: 2},
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+            {
+              ...createDataSet('self', 1, 2100),
+              url: parser.dataSets.self.url,
+              backoff: {maxMs: 2000, exponent: 3},
+              root: parser.dataSets.self.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeat, 'heartbeat');
+
+        // 'main' watchdog delay = 5000 + 1^2 * 500 = 5500ms
+        // 'self' watchdog delay = 5000 + 1^3 * 2000 = 7000ms
+
+        // Mock sync responses
+        mockGetHashesFromLocusResponse(
+          parser.dataSets.main.url,
+          new Array(16).fill('00000000000000000000000000000000'),
+          createDataSet('main', 16, 1101)
+        );
+        mockSendSyncRequestResponse(parser.dataSets.main.url, null);
+        mockSendSyncRequestResponse(parser.dataSets.self.url, null);
+
+        // At 5499ms, neither watchdog should have fired
+        await clock.tickAsync(5499);
+        assert.notCalled(webexRequest);
+
+        // At 5500ms, 'main' watchdog fires and performSync runs immediately
+        await clock.tickAsync(1);
+
+        // main sync should have triggered immediately (GET hashtree + POST sync)
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'GET',
+            uri: `${parser.dataSets.main.url}/hashtree`,
+          })
+        );
+
+        webexRequest.resetHistory();
+
+        // At 7000ms, 'self' watchdog fires and performSync runs immediately
+        await clock.tickAsync(1500);
+
+        // self sync should have also triggered (POST sync only, leafCount === 1)
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'POST',
+            uri: `${parser.dataSets.self.url}/sync`,
+          })
+        );
+      });
+
+      it('does not set watchdog for data sets without a hash tree', async () => {
+        const parser = createHashTreeParser();
+        const heartbeatIntervalMs = 5000;
+
+        // 'atd-active' is in the initial locus but is not visible (no hash tree)
+        // Send heartbeat mentioning a non-visible dataset
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+            createDataSet('atd-active', 16, 4000),
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeatMessage, 'heartbeat with non-visible dataset');
+
+        // Watchdog set for main (visible) but not for atd-active (no hash tree)
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+        expect(parser.dataSets['atd-active']?.heartbeatWatchdogTimer).to.be.undefined;
+      });
+    });
   });
 
   describe('#callLocusInfoUpdateCallback filtering', () => {
