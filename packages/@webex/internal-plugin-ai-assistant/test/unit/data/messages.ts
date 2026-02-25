@@ -295,8 +295,7 @@ export const workspaceResponse = [
         type: 'json',
         encryptionKeyUrl: 'workspace_0_encryption_key_url',
         value: {
-          value:
-            'workspace_0_encrypted_value',
+          value: 'workspace_0_encrypted_value',
           type: 'markdown',
         },
       },
@@ -328,8 +327,7 @@ export const workspaceResponse = [
         type: 'json',
         encryptionKeyUrl: 'workspace_1_encryption_key_url',
         value: {
-          value:
-            'workspace_1_encrypted_value',
+          value: 'workspace_1_encrypted_value',
           type: 'markdown',
         },
       },
@@ -361,8 +359,7 @@ export const workspaceResponse = [
         type: 'json',
         encryptionKeyUrl: 'workspace_2_encryption_key_url',
         value: {
-          value:
-            'workspace_2_encrypted_value',
+          value: 'workspace_2_encrypted_value',
           type: 'markdown',
         },
       },
@@ -394,8 +391,7 @@ export const workspaceResponse = [
         type: 'json',
         encryptionKeyUrl: 'workspace_3_encryption_key_url',
         value: {
-          value:
-            'workspace_3_encrypted_value',
+          value: 'workspace_3_encrypted_value',
           type: 'markdown',
         },
       },
@@ -427,8 +423,7 @@ export const workspaceResponse = [
         type: 'json',
         encryptionKeyUrl: 'workspace_4_encryption_key_url',
         value: {
-          value:
-            'workspace_4_encrypted_value',
+          value: 'workspace_4_encrypted_value',
           type: 'markdown',
         },
       },
@@ -460,8 +455,7 @@ export const workspaceResponse = [
         type: 'json',
         encryptionKeyUrl: 'workspace_5_encryption_key_url',
         value: {
-          value:
-            'workspace_5_encrypted_value',
+          value: 'workspace_5_encrypted_value',
           type: 'markdown',
         },
       },
@@ -493,8 +487,7 @@ export const workspaceResponse = [
         type: 'json',
         encryptionKeyUrl: 'workspace_6_encryption_key_url',
         value: {
-          value:
-            'workspace_6_encrypted_value',
+          value: 'workspace_6_encrypted_value',
           type: 'markdown',
         },
       },
@@ -526,8 +519,7 @@ export const workspaceResponse = [
         type: 'json',
         encryptionKeyUrl: 'workspace_7_encryption_key_url',
         value: {
-          value:
-            'workspace_7_encrypted_value',
+          value: 'workspace_7_encrypted_value',
           type: 'markdown',
         },
       },
@@ -559,8 +551,7 @@ export const workspaceResponse = [
         type: 'json',
         encryptionKeyUrl: 'workspace_8_encryption_key_url',
         value: {
-          value:
-            'workspace_8_encrypted_value',
+          value: 'workspace_8_encrypted_value',
           type: 'markdown',
         },
       },
@@ -592,8 +583,7 @@ export const workspaceResponse = [
         type: 'json',
         encryptionKeyUrl: 'workspace_9_encryption_key_url',
         value: {
-          value:
-            'workspace_9_encrypted_value',
+          value: 'workspace_9_encrypted_value',
           type: 'markdown',
         },
       },
@@ -715,6 +705,41 @@ export const scheduleMeetingResponse = [
       },
       createdAt: '2025-11-21T11:25:01.670071069Z',
       creator: {role: 'assistant'},
+    },
+  },
+];
+
+export const assistantActivity = [
+  {
+    eventType: 'assistant-api.activity',
+    sequence: 1,
+    finished: true,
+    clientRequestId: '',
+    responseId: '267533f0-566b-11f0-88f7-9bd287b85bcb',
+    responseType: 'activity',
+    activity: {
+      sessionId: '05779da0-566b-11f0-913c-035e874e536f',
+      sessionUrl:
+        'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/05779da0-566b-11f0-913c-035e874e536f',
+      messageId: '2674e5d0-566b-11f0-88f7-9bd287b85bcb',
+      messageUrl:
+        'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/05779da0-566b-11f0-913c-035e874e536f/messages/2674e5d0-566b-11f0-88f7-9bd287b85bcb',
+      responseId: '267533f0-566b-11f0-88f7-9bd287b85bcb',
+      responseUrl:
+        'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/05779da0-566b-11f0-913c-035e874e536f/messages/267533f0-566b-11f0-88f7-9bd287b85bcb',
+      content: {
+        type: 'json',
+        name: 'alert_create_poll',
+        value: {
+          pollType: 'poll',
+          message: 'message_encrypted_value_for_activity',
+        },
+      },
+      encryptionKeyUrl: 'kms://kms-cisco.wbx2.com/keys/9b838423-f31b-49d5-a7c7-182572340a37',
+      createdAt: '2025-07-01T11:04:27.082430261Z',
+      creator: {
+        role: 'assistant',
+      },
     },
   },
 ];

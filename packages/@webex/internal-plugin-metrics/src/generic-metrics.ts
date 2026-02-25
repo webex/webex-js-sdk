@@ -79,7 +79,7 @@ export default abstract class GenericMetrics extends StatelessWebexPlugin {
       device: {
         id: this.getDeviceId(),
       },
-      locale: window.navigator.language,
+      locale: window?.navigator.language,
       os: {
         name: getOSNameInternal(),
         version: getOSVersion(),
@@ -94,12 +94,12 @@ export default abstract class GenericMetrics extends StatelessWebexPlugin {
   protected getBrowserDetails(): object {
     return {
       browser: getBrowserName(),
-      browserHeight: window.innerHeight,
+      browserHeight: window?.innerHeight,
       browserVersion: getBrowserVersion(),
-      browserWidth: window.innerWidth,
-      domain: window.location.hostname,
-      inIframe: window.self !== window.top,
-      locale: window.navigator.language,
+      browserWidth: window?.innerWidth,
+      domain: window?.location.hostname,
+      inIframe: window?.self !== window?.top,
+      locale: window?.navigator.language,
       os: getOSNameInternal(),
     };
   }

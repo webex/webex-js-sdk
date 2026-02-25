@@ -329,6 +329,16 @@ describe('plugin-meetings', () => {
               htMeta: {elementId: {type: 'mediashare', id: 'fake-ht-mediaShare-2', version: 1}},
             },
           ];
+          locusInfo.embeddedApps = [
+            {
+              id: 'fake-embedded-app-1',
+              htMeta: {elementId: {type: 'embeddedapp', id: 'fake-ht-embeddedApp-1', version: 1}},
+            },
+            {
+              id: 'fake-embedded-app-2',
+              htMeta: {elementId: {type: 'embeddedapp', id: 'fake-ht-embeddedApp-2', version: 1}},
+            },
+          ];
           locusInfo.meetings = {id: 'fake-meetings'};
           locusInfo.participants = [
             {id: 'fake-participant-1', name: 'Participant One'},
@@ -362,6 +372,16 @@ describe('plugin-meetings', () => {
               {
                 id: 'fake-media-share-2',
                 htMeta: {elementId: {type: 'mediashare', id: 'fake-ht-mediaShare-2', version: 1}},
+              },
+            ],
+            embeddedApps: [
+              {
+                id: 'fake-embedded-app-1',
+                htMeta: {elementId: {type: 'embeddedapp', id: 'fake-ht-embeddedApp-1', version: 1}},
+              },
+              {
+                id: 'fake-embedded-app-2',
+                htMeta: {elementId: {type: 'embeddedapp', id: 'fake-ht-embeddedApp-2', version: 1}},
               },
             ],
             meetings: {id: 'fake-meetings'},
@@ -540,6 +560,7 @@ describe('plugin-meetings', () => {
             self: {id: 'fake-self'},
             links: {id: 'fake-links'},
             mediaShares: expectedLocusInfo.mediaShares,
+            embeddedApps: expectedLocusInfo.embeddedApps,
             // and now the new fields
             ...newLocus,
             htMeta: newLocusHtMeta,
@@ -572,6 +593,7 @@ describe('plugin-meetings', () => {
                   self: 'new-self',
                   participants: 'new-participants',
                   mediaShares: 'new-mediaShares',
+                  embeddedApps: 'new-embeddedApps',
                 },
               },
             ],
@@ -587,6 +609,7 @@ describe('plugin-meetings', () => {
             self: {id: 'fake-self'},
             links: {id: 'fake-links'},
             mediaShares: expectedLocusInfo.mediaShares,
+            embeddedApps: expectedLocusInfo.embeddedApps,
             participants: [], // empty means there were no participant updates
             jsSdkMeta: {removedParticipantIds: []}, // no participants were removed
             ...newLocus,
@@ -622,6 +645,7 @@ describe('plugin-meetings', () => {
             self: {id: 'fake-self'},
             links: {id: 'fake-links'},
             mediaShares: expectedLocusInfo.mediaShares,
+            embeddedApps: expectedLocusInfo.embeddedApps,
             // and now the new fields
             ...newLocus,
             htMeta: newLocusHtMeta,
@@ -758,6 +782,39 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(onDeltaLocusStub, {
             ...expectedLocusInfo,
             mediaShares: [updatedMediaShare2, newMediaShare],
+          });
+        });
+
+        it('should process locus update correctly when called with updated EMBEDDEDAPP objects', () => {
+          const newEmbeddedApp = {
+            id: 'new-embedded-app-3',
+            htMeta: {elementId: {type: 'embeddedapp', id: 'fake-ht-embeddedApp-3', version: 100}},
+          };
+          const updatedEmbeddedApp2 = {
+            id: 'fake-embedded-app-2',
+            someNewProp: 'newValue',
+            htMeta: {elementId: {type: 'embeddedapp', id: 'fake-ht-embeddedApp-2', version: 100}},
+          };
+          // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
+          // with 1 embedded app added, 1 updated, and 1 removed
+          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+            updatedObjects: [
+              {htMeta: {elementId: {type: 'embeddedapp', id: 'fake-ht-embeddedApp-1'}}, data: null},
+              {
+                htMeta: {elementId: {type: 'embeddedapp', id: 'fake-ht-embeddedApp-2'}},
+                data: updatedEmbeddedApp2,
+              },
+              {
+                htMeta: {elementId: {type: 'embeddedapp', id: 'fake-ht-embeddedApp-3'}},
+                data: newEmbeddedApp,
+              },
+            ],
+          });
+
+          // check onDeltaLocus() was called with correctly updated locus info
+          assert.calledOnceWithExactly(onDeltaLocusStub, {
+            ...expectedLocusInfo,
+            embeddedApps: [updatedEmbeddedApp2, newEmbeddedApp],
           });
         });
 
@@ -2958,28 +3015,28 @@ describe('plugin-meetings', () => {
         assert.isFunction(locusParser.onDeltaAction);
       });
 
-      it("#updateLocusInfo invokes updateLocusUrl before updateMeetingInfo", () => {
+      it('#updateLocusInfo invokes updateLocusUrl before updateMeetingInfo', () => {
         const callOrder = [];
-        sinon.stub(locusInfo, "updateControls");
-        sinon.stub(locusInfo, "updateConversationUrl");
-        sinon.stub(locusInfo, "updateCreated");
-        sinon.stub(locusInfo, "updateFullState");
-        sinon.stub(locusInfo, "updateHostInfo");
-        sinon.stub(locusInfo, "updateMeetingInfo").callsFake(() => {
-          callOrder.push("updateMeetingInfo");
+        sinon.stub(locusInfo, 'updateControls');
+        sinon.stub(locusInfo, 'updateConversationUrl');
+        sinon.stub(locusInfo, 'updateCreated');
+        sinon.stub(locusInfo, 'updateFullState');
+        sinon.stub(locusInfo, 'updateHostInfo');
+        sinon.stub(locusInfo, 'updateMeetingInfo').callsFake(() => {
+          callOrder.push('updateMeetingInfo');
         });
-        sinon.stub(locusInfo, "updateMediaShares");
-        sinon.stub(locusInfo, "updateReplaces");
-        sinon.stub(locusInfo, "updateSelf");
-        sinon.stub(locusInfo, "updateLocusUrl").callsFake(() => {
-          callOrder.push("updateLocusUrl");
+        sinon.stub(locusInfo, 'updateMediaShares');
+        sinon.stub(locusInfo, 'updateReplaces');
+        sinon.stub(locusInfo, 'updateSelf');
+        sinon.stub(locusInfo, 'updateLocusUrl').callsFake(() => {
+          callOrder.push('updateLocusUrl');
         });
-        sinon.stub(locusInfo, "updateAclUrl");
-        sinon.stub(locusInfo, "updateBasequence");
-        sinon.stub(locusInfo, "updateSequence");
-        sinon.stub(locusInfo, "updateEmbeddedApps");
-        sinon.stub(locusInfo, "updateLinks");
-        sinon.stub(locusInfo, "compareAndUpdate");
+        sinon.stub(locusInfo, 'updateAclUrl');
+        sinon.stub(locusInfo, 'updateBasequence');
+        sinon.stub(locusInfo, 'updateSequence');
+        sinon.stub(locusInfo, 'updateEmbeddedApps');
+        sinon.stub(locusInfo, 'updateLinks');
+        sinon.stub(locusInfo, 'compareAndUpdate');
 
         locusInfo.updateLocusInfo(locus);
 
@@ -3035,7 +3092,7 @@ describe('plugin-meetings', () => {
       it('#updateLocusInfo puts the Locus DTO top level properties at the right place in LocusInfo class', () => {
         // this test verifies that the top-level properties of Locus DTO are copied
         // into LocusInfo class and set as top level properties too
-        // this is important, because the code handling Locus hass trees relies on it, see updateFromHashTree()
+        // this is important, because the code handling Locus hash trees relies on it, see updateFromHashTree()
         const info = {id: 'info id'};
         const fullState = {id: 'fullState id'};
         const links = {services: {id: 'service links'}, resources: {id: 'resource links'}};
@@ -3903,7 +3960,7 @@ describe('plugin-meetings', () => {
 
     describe('#updateLocusUrl', () => {
       it('trigger LOCUS_INFO_UPDATE_URL event with isMainLocus is true as default', () => {
-        const fakeUrl = "https://fake.com/locus";
+        const fakeUrl = 'https://fake.com/locus';
         locusInfo.emitScoped = sinon.stub();
         locusInfo.updateLocusUrl(fakeUrl);
 
@@ -3916,12 +3973,12 @@ describe('plugin-meetings', () => {
           EVENTS.LOCUS_INFO_UPDATE_URL,
           {
             url: fakeUrl,
-            isMainLocus: true
-          },
+            isMainLocus: true,
+          }
         );
       });
       it('trigger LOCUS_INFO_UPDATE_URL event with isMainLocus is false', () => {
-        const fakeUrl = "https://fake.com/locus";
+        const fakeUrl = 'https://fake.com/locus';
         locusInfo.emitScoped = sinon.stub();
         locusInfo.updateLocusUrl(fakeUrl, false);
 
@@ -3934,8 +3991,8 @@ describe('plugin-meetings', () => {
           EVENTS.LOCUS_INFO_UPDATE_URL,
           {
             url: fakeUrl,
-            isMainLocus: false
-          },
+            isMainLocus: false,
+          }
         );
       });
     });
@@ -3987,8 +4044,8 @@ describe('plugin-meetings', () => {
 
         sinon.stub(locusInfo, 'updateParticipants');
         sinon.stub(locusInfo, 'isMeetingActive');
-          sinon.stub(locusInfo, 'handleOneOnOneEvent');
-          (updateLocusInfoStub = sinon.stub(locusInfo, 'updateLocusInfo'));
+        sinon.stub(locusInfo, 'handleOneOnOneEvent');
+        updateLocusInfoStub = sinon.stub(locusInfo, 'updateLocusInfo');
         syncRequestStub = sinon.stub().resolves({body: {}});
 
         mockMeeting.locusInfo = locusInfo;
