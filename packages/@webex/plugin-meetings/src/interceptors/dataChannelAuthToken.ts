@@ -4,20 +4,23 @@
 
 import {Interceptor} from '@webex/http-core';
 import LoggerProxy from '../common/logs/logger-proxy';
-import {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY, RETRY_INTERVAL} from './constant';
+import {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY, RETRY_INTERVAL, RETRY_KEY} from './constant';
 
 /*!
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 
-const retryCountMap = new WeakMap();
-
+const retryCountMap = new Map();
+interface HttpLikeError extends Error {
+  statusCode?: number;
+  original?: any;
+}
 /**
  * @class
  */
 export default class DataChannelAuthTokenInterceptor extends Interceptor {
   private _refreshDataChannelToken: () => Promise<string>;
-  private _isDataChannelTokenEnabled: () => boolean;
+  private _isDataChannelTokenEnabled: () => Promise<boolean>;
   constructor(options) {
     super(options);
 
@@ -33,7 +36,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
     return new DataChannelAuthTokenInterceptor({
       webex: this,
 
-      isDataChannelTokenEnabled: () => {
+      isDataChannelTokenEnabled: async () => {
         // @ts-ignore
         return this.internal.llm.isDataChannelTokenEnabled();
       },
@@ -49,6 +52,14 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
         return datachannelToken;
       },
     });
+  }
+
+  private getRetryKey(options) {
+    if (!options[RETRY_KEY]) {
+      options[RETRY_KEY] = `${Date.now()}-${Math.random()}`;
+    }
+
+    return options[RETRY_KEY];
   }
 
   // Helper function to get header value case insensitively
@@ -78,16 +89,17 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
       return Promise.reject(reason);
     }
 
-    const retryCount = retryCountMap.get(options) || 0;
+    const key = this.getRetryKey(options);
+    const retryCount = retryCountMap.get(key) || 0;
 
     if (retryCount >= MAX_RETRY) {
       LoggerProxy.logger.error(`data channel token refresh exceeded max retry (${MAX_RETRY})`);
-      retryCountMap.delete(options);
+      retryCountMap.delete(key);
 
       return Promise.reject(reason);
     }
 
-    retryCountMap.set(options, retryCount + 1);
+    retryCountMap.set(key, retryCount + 1);
 
     return this.refreshTokenAndRetryWithDelay(options);
   }
@@ -102,6 +114,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
   refreshTokenAndRetryWithDelay(options) {
     return new Promise((resolve, reject) => {
       setTimeout(async () => {
+        const key = this.getRetryKey(options);
         try {
           const newToken = await this._refreshDataChannelToken();
 
@@ -109,14 +122,19 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
 
           // @ts-ignore
           const res = await this.webex.request(options);
-
-          retryCountMap.delete(options);
+          retryCountMap.delete(key);
 
           resolve(res);
         } catch (e) {
-          retryCountMap.delete(options);
+          retryCountMap.delete(key);
 
-          reject(new Error(`DataChannel token refresh failed: ${e.message}`));
+          const msg = e?.message || String(e);
+
+          const err: HttpLikeError = new Error(`DataChannel token refresh failed: ${msg}`);
+          err.statusCode = e?.statusCode;
+          err.original = e;
+
+          reject(err);
         }
       }, RETRY_INTERVAL);
     });
