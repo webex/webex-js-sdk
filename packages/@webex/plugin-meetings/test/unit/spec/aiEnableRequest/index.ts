@@ -487,12 +487,13 @@ describe('plugin-meetings', () => {
         sinon.restore();
       });
 
-      it('should make a POST request to the provided URL', async () => {
+      it('should make a request with the specified method', async () => {
         await aiEnableRequest.sendApprovalRequest(
           testUrl,
           AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
           testInitiatorId,
-          testApproverId
+          testApproverId,
+          HTTP_VERBS.POST
         );
 
         sinon.assert.calledOnce(requestStub);
@@ -517,7 +518,8 @@ describe('plugin-meetings', () => {
           testUrl,
           AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED,
           testInitiatorId,
-          testApproverId
+          testApproverId,
+          HTTP_VERBS.PUT
         );
 
         const callArgs = requestStub.getCall(0).args[0];
@@ -529,7 +531,8 @@ describe('plugin-meetings', () => {
           testUrl,
           AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
           testInitiatorId,
-          testApproverId
+          testApproverId,
+          HTTP_VERBS.POST
         );
 
         const callArgs = requestStub.getCall(0).args[0];
@@ -541,7 +544,8 @@ describe('plugin-meetings', () => {
           testUrl,
           AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
           testInitiatorId,
-          testApproverId
+          testApproverId,
+          HTTP_VERBS.POST
         );
 
         assert.instanceOf(result, Promise);
@@ -559,7 +563,8 @@ describe('plugin-meetings', () => {
           testUrl,
           AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
           testInitiatorId,
-          testApproverId
+          testApproverId,
+          HTTP_VERBS.POST
         );
 
         assert.deepEqual(result, mockResponse);
@@ -574,12 +579,26 @@ describe('plugin-meetings', () => {
             testUrl,
             AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
             testInitiatorId,
-            testApproverId
+            testApproverId,
+            HTTP_VERBS.POST
           );
           assert.fail('Should have thrown an error');
         } catch (error) {
           assert.equal(error.message, 'Request failed');
         }
+      });
+
+      it('should use the specified HTTP method', async () => {
+        await aiEnableRequest.sendApprovalRequest(
+          testUrl,
+          AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED,
+          testInitiatorId,
+          testApproverId,
+          HTTP_VERBS.PUT
+        );
+
+        const callArgs = requestStub.getCall(0).args[0];
+        assert.equal(callArgs.method, HTTP_VERBS.PUT);
       });
     });
 
@@ -587,9 +606,10 @@ describe('plugin-meetings', () => {
       let requestStub;
       const testUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/test-id/approval';
       const testInitiatorId = 'initiator-participant-123';
-      const testApproverId = 'approver-participant-456';
+      const testSelfParticipantId = 'self-participant-456';
 
       beforeEach(() => {
+        aiEnableRequest.selfParticipantId = testSelfParticipantId;
         requestStub = sinon.stub(aiEnableRequest, 'request').resolves({
           statusCode: 200,
           body: {},
@@ -600,16 +620,15 @@ describe('plugin-meetings', () => {
         sinon.restore();
       });
 
-      it('should make a POST request to the provided URL', async () => {
+      it('should make a PUT request to the provided URL', async () => {
         await aiEnableRequest.acceptEnableAIAssistantRequest(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         sinon.assert.calledOnce(requestStub);
         sinon.assert.calledWith(requestStub, {
-          method: HTTP_VERBS.POST,
+          method: HTTP_VERBS.PUT,
           uri: testUrl,
           body: {
             actionType: AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED,
@@ -618,7 +637,7 @@ describe('plugin-meetings', () => {
               participantId: testInitiatorId,
             },
             approver: {
-              participantId: testApproverId,
+              participantId: testSelfParticipantId,
             },
           },
         });
@@ -627,8 +646,7 @@ describe('plugin-meetings', () => {
       it('should use the correct action type ACCEPTED', async () => {
         await aiEnableRequest.acceptEnableAIAssistantRequest(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         const callArgs = requestStub.getCall(0).args[0];
@@ -638,8 +656,7 @@ describe('plugin-meetings', () => {
       it('should include the initiator participant ID', async () => {
         await aiEnableRequest.acceptEnableAIAssistantRequest(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         const callArgs = requestStub.getCall(0).args[0];
@@ -648,24 +665,22 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('should include the approver participant ID', async () => {
+      it('should include the approver participant ID as selfParticipantId', async () => {
         await aiEnableRequest.acceptEnableAIAssistantRequest(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.deepEqual(callArgs.body.approver, {
-          participantId: testApproverId,
+          participantId: testSelfParticipantId,
         });
       });
 
       it('should return a Promise', () => {
         const result = aiEnableRequest.acceptEnableAIAssistantRequest(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         assert.instanceOf(result, Promise);
@@ -681,8 +696,7 @@ describe('plugin-meetings', () => {
 
         const result = await aiEnableRequest.acceptEnableAIAssistantRequest(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         assert.deepEqual(result, mockResponse);
@@ -695,8 +709,7 @@ describe('plugin-meetings', () => {
         try {
           await aiEnableRequest.acceptEnableAIAssistantRequest(
             testUrl,
-            testInitiatorId,
-            testApproverId
+            testInitiatorId
           );
           assert.fail('Should have thrown an error');
         } catch (error) {
@@ -709,9 +722,10 @@ describe('plugin-meetings', () => {
       let requestStub;
       const testUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/test-id/approval';
       const testInitiatorId = 'initiator-participant-123';
-      const testApproverId = 'approver-participant-456';
+      const testSelfParticipantId = 'self-participant-456';
 
       beforeEach(() => {
+        aiEnableRequest.selfParticipantId = testSelfParticipantId;
         requestStub = sinon.stub(aiEnableRequest, 'request').resolves({
           statusCode: 200,
           body: {},
@@ -722,16 +736,15 @@ describe('plugin-meetings', () => {
         sinon.restore();
       });
 
-      it('should make a POST request to the provided URL', async () => {
+      it('should make a PUT request to the provided URL', async () => {
         await aiEnableRequest.declineEnableAIAssistantRequest(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         sinon.assert.calledOnce(requestStub);
         sinon.assert.calledWith(requestStub, {
-          method: HTTP_VERBS.POST,
+          method: HTTP_VERBS.PUT,
           uri: testUrl,
           body: {
             actionType: AI_ENABLE_REQUEST.ACTION_TYPE.DECLINED,
@@ -740,7 +753,7 @@ describe('plugin-meetings', () => {
               participantId: testInitiatorId,
             },
             approver: {
-              participantId: testApproverId,
+              participantId: testSelfParticipantId,
             },
           },
         });
@@ -749,8 +762,7 @@ describe('plugin-meetings', () => {
       it('should use the correct action type DECLINED', async () => {
         await aiEnableRequest.declineEnableAIAssistantRequest(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         const callArgs = requestStub.getCall(0).args[0];
@@ -760,8 +772,7 @@ describe('plugin-meetings', () => {
       it('should include the initiator participant ID', async () => {
         await aiEnableRequest.declineEnableAIAssistantRequest(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         const callArgs = requestStub.getCall(0).args[0];
@@ -770,24 +781,22 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('should include the approver participant ID', async () => {
+      it('should include the approver participant ID as selfParticipantId', async () => {
         await aiEnableRequest.declineEnableAIAssistantRequest(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.deepEqual(callArgs.body.approver, {
-          participantId: testApproverId,
+          participantId: testSelfParticipantId,
         });
       });
 
       it('should return a Promise', () => {
         const result = aiEnableRequest.declineEnableAIAssistantRequest(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         assert.instanceOf(result, Promise);
@@ -803,8 +812,7 @@ describe('plugin-meetings', () => {
 
         const result = await aiEnableRequest.declineEnableAIAssistantRequest(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         assert.deepEqual(result, mockResponse);
@@ -817,8 +825,7 @@ describe('plugin-meetings', () => {
         try {
           await aiEnableRequest.declineEnableAIAssistantRequest(
             testUrl,
-            testInitiatorId,
-            testApproverId
+            testInitiatorId
           );
           assert.fail('Should have thrown an error');
         } catch (error) {
@@ -831,9 +838,10 @@ describe('plugin-meetings', () => {
       let requestStub;
       const testUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/test-id/approval';
       const testInitiatorId = 'initiator-participant-123';
-      const testApproverId = 'approver-participant-456';
+      const testSelfParticipantId = 'self-participant-456';
 
       beforeEach(() => {
+        aiEnableRequest.selfParticipantId = testSelfParticipantId;
         requestStub = sinon.stub(aiEnableRequest, 'request').resolves({
           statusCode: 200,
           body: {},
@@ -844,16 +852,15 @@ describe('plugin-meetings', () => {
         sinon.restore();
       });
 
-      it('should make a POST request to the provided URL', async () => {
+      it('should make a PUT request to the provided URL', async () => {
         await aiEnableRequest.declineAllEnableAIAssistantRequests(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         sinon.assert.calledOnce(requestStub);
         sinon.assert.calledWith(requestStub, {
-          method: HTTP_VERBS.POST,
+          method: HTTP_VERBS.PUT,
           uri: testUrl,
           body: {
             actionType: AI_ENABLE_REQUEST.ACTION_TYPE.DECLINED_ALL,
@@ -862,7 +869,7 @@ describe('plugin-meetings', () => {
               participantId: testInitiatorId,
             },
             approver: {
-              participantId: testApproverId,
+              participantId: testSelfParticipantId,
             },
           },
         });
@@ -871,8 +878,7 @@ describe('plugin-meetings', () => {
       it('should use the correct action type DECLINED_ALL', async () => {
         await aiEnableRequest.declineAllEnableAIAssistantRequests(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         const callArgs = requestStub.getCall(0).args[0];
@@ -882,8 +888,7 @@ describe('plugin-meetings', () => {
       it('should include the initiator participant ID', async () => {
         await aiEnableRequest.declineAllEnableAIAssistantRequests(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         const callArgs = requestStub.getCall(0).args[0];
@@ -892,24 +897,22 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('should include the approver participant ID', async () => {
+      it('should include the approver participant ID as selfParticipantId', async () => {
         await aiEnableRequest.declineAllEnableAIAssistantRequests(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.deepEqual(callArgs.body.approver, {
-          participantId: testApproverId,
+          participantId: testSelfParticipantId,
         });
       });
 
       it('should return a Promise', () => {
         const result = aiEnableRequest.declineAllEnableAIAssistantRequests(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         assert.instanceOf(result, Promise);
@@ -925,8 +928,7 @@ describe('plugin-meetings', () => {
 
         const result = await aiEnableRequest.declineAllEnableAIAssistantRequests(
           testUrl,
-          testInitiatorId,
-          testApproverId
+          testInitiatorId
         );
 
         assert.deepEqual(result, mockResponse);
@@ -939,8 +941,7 @@ describe('plugin-meetings', () => {
         try {
           await aiEnableRequest.declineAllEnableAIAssistantRequests(
             testUrl,
-            testInitiatorId,
-            testApproverId
+            testInitiatorId
           );
           assert.fail('Should have thrown an error');
         } catch (error) {

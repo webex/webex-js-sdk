@@ -72,11 +72,12 @@ const AIEnableRequest = WebexPlugin.extend({
    * @param {string} actionType the type of action (REQUESTED, ACCEPTED, DECLINED, DECLINED_ALL)
    * @param {string} initiatorId
    * @param {string} approverId
+   * @param {string} method HTTP method to use for the request
    * @returns {Promise}
    */
-  sendApprovalRequest(url, actionType, initiatorId, approverId) {
+  sendApprovalRequest(url, actionType, initiatorId, approverId, method) {
     return this.request({
-      method: HTTP_VERBS.POST,
+      method,
       uri: url,
       body: {
         actionType,
@@ -101,7 +102,8 @@ const AIEnableRequest = WebexPlugin.extend({
       this.approvalUrl,
       AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
       this.selfParticipantId,
-      approverId
+      approverId,
+      HTTP_VERBS.POST
     );
   },
 
@@ -109,15 +111,15 @@ const AIEnableRequest = WebexPlugin.extend({
    * Sends a request to accept the AI assistant enablement
    * @param {string} url approval url
    * @param {string} initiatorId
-   * @param {string} approverId
    * @returns {Promise}
    */
-  acceptEnableAIAssistantRequest(url, initiatorId, approverId) {
+  acceptEnableAIAssistantRequest(url, initiatorId) {
     return this.sendApprovalRequest(
       url,
       AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED,
       initiatorId,
-      approverId
+      this.selfParticipantId,
+      HTTP_VERBS.PUT
     );
   },
 
@@ -125,15 +127,15 @@ const AIEnableRequest = WebexPlugin.extend({
    * Sends a request to decline the AI assistant enablement
    * @param {string} url approval url
    * @param {string} initiatorId
-   * @param {string} approverId
    * @returns {Promise}
    */
-  declineEnableAIAssistantRequest(url, initiatorId, approverId) {
+  declineEnableAIAssistantRequest(url, initiatorId) {
     return this.sendApprovalRequest(
       url,
       AI_ENABLE_REQUEST.ACTION_TYPE.DECLINED,
       initiatorId,
-      approverId
+      this.selfParticipantId,
+      HTTP_VERBS.PUT
     );
   },
 
@@ -141,15 +143,15 @@ const AIEnableRequest = WebexPlugin.extend({
    * Sends a request to decline all AI assistant enablement requests
    * @param {string} url approval url
    * @param {string} initiatorId
-   * @param {string} approverId
    * @returns {Promise}
    */
-  declineAllEnableAIAssistantRequests(url, initiatorId, approverId) {
+  declineAllEnableAIAssistantRequests(url, initiatorId) {
     return this.sendApprovalRequest(
       url,
       AI_ENABLE_REQUEST.ACTION_TYPE.DECLINED_ALL,
       initiatorId,
-      approverId
+      this.selfParticipantId,
+      HTTP_VERBS.PUT
     );
   },
 });
