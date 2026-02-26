@@ -10253,7 +10253,14 @@ export default class Meeting extends StatelessWebexPlugin {
         },
       };
     } catch (e) {
-      throw new Error(`Failed to refresh data channel token: ${e.message}`);
+      const msg = e?.message || String(e);
+
+      const err = Object.assign(new Error(`Failed to refresh data channel token: ${msg}`), {
+        statusCode: e?.statusCode,
+        original: e,
+      });
+
+      throw err;
     }
   }
 
