@@ -198,6 +198,27 @@ const Services = WebexPlugin.extend({
       });
     });
   },
+
+  /**
+   * Checks if the current environment is an integration (INT) environment
+   * by examining the u2c discovery URL from webex config.
+   * INT environments use discovery URLs containing 'intb' (e.g., u2c-intb.ciscospark.com).
+   * @returns {boolean} True if INT environment, false otherwise
+   */
+  isIntegrationEnvironment(): boolean {
+    try {
+      const u2cUrl = this.webex?.config?.services?.discovery?.u2c || '';
+      const isInt = u2cUrl.includes('intb');
+
+      this.logger.info(`services: isIntegrationEnvironment: ${isInt}`);
+
+      return isInt;
+    } catch (error) {
+      this.logger.error('services: failed to determine integration environment', error);
+
+      return false;
+    }
+  },
   /**
    * saves all the services from the pre and post catalog service
    * @param {ActiveServices} activeServices

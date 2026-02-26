@@ -11,6 +11,7 @@ export const ObjectType = {
   links: 'links',
   control: 'controlentry',
   metadata: 'metadata',
+  embeddedApp: 'embeddedapp',
 } as const;
 
 export type ObjectType = Enum<typeof ObjectType>;
@@ -24,7 +25,9 @@ export const ObjectTypeToLocusKeyMap = {
   [ObjectType.participant]: 'participants', // note: each object is a single participant in participants array
   [ObjectType.mediaShare]: 'mediaShares', // note: each object is a single mediaShare in mediaShares array
   [ObjectType.control]: 'controls', // note: each object is a single control entry in controls object
+  [ObjectType.embeddedApp]: 'embeddedApps', // note: each object is a single embedded app in embeddedApps array
 };
+
 export interface HtMeta {
   elementId: {
     type: ObjectType;
