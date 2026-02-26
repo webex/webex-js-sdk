@@ -371,7 +371,7 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
       break;
 
     case 'client.lobby.exited':
-      joinTimes.stayLobbyTime = cdl.getStayLobbyTime();
+      joinTimes.stayLobbyTime = cdl.getStayLobbyTime(true);
       break;
   }
 

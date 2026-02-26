@@ -524,7 +524,7 @@ describe('internal-plugin-metrics', () => {
         key: 'client.locus.join.response',
         value: now.getTime() - 10,
       });
-      assert.deepEqual(cdl.getStayLobbyTime(), 10);
+      assert.deepEqual(cdl.getStayLobbyTime(true), 10);
     });
 
     it('calculates getPageJMT correctly', () => {
