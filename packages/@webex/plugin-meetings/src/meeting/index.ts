@@ -6207,13 +6207,13 @@ export default class Meeting extends StatelessWebexPlugin {
     const dataChannelTokenType = this.getDataChannelTokenType();
     const isPracticeSession = dataChannelTokenType === DataChannelTokenType.PracticeSession;
     // @ts-ignore
-    const refreshedToken = this.webex.internal.llm.getDatachannelToken(dataChannelTokenType);
+    const currentToken = this.webex.internal.llm.getDatachannelToken(dataChannelTokenType);
 
     const locusToken = isPracticeSession ? practiceSessionDatachannelToken : datachannelToken;
 
-    const finalToken = refreshedToken ?? locusToken;
+    const finalToken = currentToken ?? locusToken;
 
-    if (!refreshedToken && locusToken) {
+    if (!currentToken && locusToken) {
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(locusToken, dataChannelTokenType);
     }
