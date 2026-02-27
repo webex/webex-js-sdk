@@ -18,7 +18,7 @@ const AIEnableRequest = WebexPlugin.extend({
 
   /**
    * Update the approval url for handoff
-   * @param {string} approvalUrl // approval url
+   * @param {string} approvalUrl
    * @returns {void}
    */
   approvalUrlUpdate(approvalUrl) {
@@ -68,14 +68,15 @@ const AIEnableRequest = WebexPlugin.extend({
 
   /**
    * Helper method to send AI assistant request
-   * @param {string} url approval url
-   * @param {string} actionType the type of action (REQUESTED, ACCEPTED, DECLINED, DECLINED_ALL)
-   * @param {string} initiatorId
-   * @param {string} approverId
-   * @param {string} method HTTP method to use for the request
+   * @param {Object} params
+   * @param {string} params.url approval url
+   * @param {string} params.actionType the type of action (REQUESTED, ACCEPTED, DECLINED, DECLINED_ALL)
+   * @param {string} params.initiatorId
+   * @param {string} params.approverId
+   * @param {string} params.method HTTP method to use for the request
    * @returns {Promise}
    */
-  sendApprovalRequest(url, actionType, initiatorId, approverId, method) {
+  sendApprovalRequest({url, actionType, initiatorId, approverId, method}) {
     return this.request({
       method,
       uri: url,
@@ -94,65 +95,69 @@ const AIEnableRequest = WebexPlugin.extend({
 
   /**
    * Sends a request to enable the AI assistant
-   * @param {string} approverId
+   * @param {Object} params
+   * @param {string} params.approverId
    * @returns {Promise}
    */
-  requestEnableAIAssistant(approverId) {
-    return this.sendApprovalRequest(
-      this.approvalUrl,
-      AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
-      this.selfParticipantId,
+  requestEnableAIAssistant({approverId}) {
+    return this.sendApprovalRequest({
+      url: this.approvalUrl,
+      actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+      initiatorId: this.selfParticipantId,
       approverId,
-      HTTP_VERBS.POST
-    );
+      method: HTTP_VERBS.POST,
+    });
   },
 
   /**
    * Sends a request to accept the AI assistant enablement
-   * @param {string} url approval url
-   * @param {string} initiatorId
+   * @param {Object} params
+   * @param {string} params.url approval url
+   * @param {string} params.initiatorId
    * @returns {Promise}
    */
-  acceptEnableAIAssistantRequest(url, initiatorId) {
-    return this.sendApprovalRequest(
+  acceptEnableAIAssistantRequest({url, initiatorId}) {
+    return this.sendApprovalRequest({
       url,
-      AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED,
+      actionType: AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED,
       initiatorId,
-      this.selfParticipantId,
-      HTTP_VERBS.PUT
-    );
+      approverId: this.selfParticipantId,
+      method: HTTP_VERBS.PUT,
+    });
   },
 
   /**
    * Sends a request to decline the AI assistant enablement
-   * @param {string} url approval url
-   * @param {string} initiatorId
+   * @param {Object} params
+   * @param {string} params.url approval url
+   * @param {string} params.initiatorId
    * @returns {Promise}
    */
-  declineEnableAIAssistantRequest(url, initiatorId) {
-    return this.sendApprovalRequest(
+  declineEnableAIAssistantRequest({url, initiatorId}) {
+    return this.sendApprovalRequest({
       url,
-      AI_ENABLE_REQUEST.ACTION_TYPE.DECLINED,
+      actionType: AI_ENABLE_REQUEST.ACTION_TYPE.DECLINED,
       initiatorId,
-      this.selfParticipantId,
-      HTTP_VERBS.PUT
-    );
+      approverId: this.selfParticipantId,
+      method: HTTP_VERBS.PUT,
+    });
   },
 
   /**
    * Sends a request to decline all AI assistant enablement requests
-   * @param {string} url approval url
-   * @param {string} initiatorId
+   * @param {Object} params
+   * @param {string} params.url approval url
+   * @param {string} params.initiatorId
    * @returns {Promise}
    */
-  declineAllEnableAIAssistantRequests(url, initiatorId) {
-    return this.sendApprovalRequest(
+  declineAllEnableAIAssistantRequests({url, initiatorId}) {
+    return this.sendApprovalRequest({
       url,
-      AI_ENABLE_REQUEST.ACTION_TYPE.DECLINED_ALL,
+      actionType: AI_ENABLE_REQUEST.ACTION_TYPE.DECLINED_ALL,
       initiatorId,
-      this.selfParticipantId,
-      HTTP_VERBS.PUT
-    );
+      approverId: this.selfParticipantId,
+      method: HTTP_VERBS.PUT,
+    });
   },
 });
 
