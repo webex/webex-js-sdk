@@ -1899,6 +1899,10 @@ const handleClearVersionAClick = () => {
         resetComparisonSelections();
         comparisonState.reset();
         syncClearVersionButtonsState();
+        if (comparisonResults) comparisonResults.classList.add('hide');
+        if (copyComparisonLinkBtn) copyComparisonLinkBtn.classList.add('hide');
+        if (comparisonHelper) comparisonHelper.classList.add('hide');
+        clearComparisonURLParams();
         updateCompareButtonState();
     }
 };
@@ -1914,6 +1918,10 @@ const handleClearVersionBClick = () => {
         resetComparisonSelections();
         comparisonState.reset();
         syncClearVersionButtonsState();
+        if (comparisonResults) comparisonResults.classList.add('hide');
+        if (copyComparisonLinkBtn) copyComparisonLinkBtn.classList.add('hide');
+        if (comparisonHelper) comparisonHelper.classList.add('hide');
+        clearComparisonURLParams();
         updateCompareButtonState();
     }
 };
@@ -2012,6 +2020,19 @@ const loadStandardComparisonFromURL = async (urlParams) => {
         if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Select a package (required)</option>';
         if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
         disableVersionSelectsAndSyncClear();
+    } else if (urlParams.versionA && urlParams.versionB && versionPaths[urlParams.versionA] && versionPaths[urlParams.versionB]) {
+        try {
+            const [changelogA, changelogB] = await Promise.all([
+                fetch(versionPaths[urlParams.versionA]).then(res => res.json()).catch(() => ({})),
+                fetch(versionPaths[urlParams.versionB]).then(res => res.json()).catch(() => ({}))
+            ]);
+            populateUnionPackages([changelogA, changelogB]);
+        } catch (e) {
+            if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
+            if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
+        }
+        disableVersionSelectsAndSyncClear();
+        await performVersionComparison(urlParams.versionA, urlParams.versionB);
     } else {
         try {
             const changelogs = await Promise.all(
