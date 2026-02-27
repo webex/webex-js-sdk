@@ -1585,20 +1585,30 @@ const resetComparisonSelections = () => {
 };
 
 /**
- * Clear all comparison form inputs and state.
+ * Clear all comparison form inputs and state; restore full package list so user can start a new comparison.
  */
-const clearComparisonForm = () => {
+const clearComparisonForm = async () => {
     if (comparisonPackageSelect) comparisonPackageSelect.value = '';
     if (versionASelect) versionASelect.value = '';
     if (versionBSelect) versionBSelect.value = '';
     disableVersionSelectsAndSyncClear();
     resetComparisonSelections();
     if (comparisonResults) comparisonResults.classList.add('hide');
-    
     comparisonState.reset();
-    
     if (copyComparisonLinkBtn) copyComparisonLinkBtn.classList.add('hide');
     if (comparisonHelper) comparisonHelper.classList.add('hide');
+    const versionKeys = Object.keys(versionPaths);
+    if (versionKeys.length > 0) {
+        try {
+            const changelogs = await Promise.all(
+                versionKeys.map(v => fetch(versionPaths[v]).then(res => res.json()).catch(() => ({})))
+            );
+            populateUnionPackages(changelogs);
+        } catch (e) {
+            if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
+        }
+        if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
+    }
     updateCompareButtonState();
 };
 
@@ -1739,6 +1749,10 @@ const handlePackageChange = () => {
         disableVersionSelectsAndSyncClear();
         if (prereleaseRow) prereleaseRow.style.display = 'none';
         comparisonState.reset();
+        if (comparisonResults) comparisonResults.classList.add('hide');
+        if (copyComparisonLinkBtn) copyComparisonLinkBtn.classList.add('hide');
+        if (comparisonHelper) comparisonHelper.classList.add('hide');
+        clearComparisonURLParams();
     }
     
     updateCompareButtonState();
@@ -1875,8 +1889,8 @@ const handleComparisonSubmit = (event) => {
 /**
  * Handle clear button click.
  */
-const handleClearClick = () => {
-    clearComparisonForm();
+const handleClearClick = async () => {
+    await clearComparisonForm();
     clearComparisonURLParams();
 };
 
