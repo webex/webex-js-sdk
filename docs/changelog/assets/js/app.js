@@ -1627,8 +1627,10 @@ const updateCompareButtonState = () => {
     const versionASpecific = versionAPrereleaseSelect ? versionAPrereleaseSelect.value : null;
     const versionBSpecific = versionBPrereleaseSelect ? versionBPrereleaseSelect.value : null;
     const prereleaseRowVisible = prereleaseRow && prereleaseRow.style.display !== 'none';
+    const prereleaseLoaded = comparisonState.cachedChangelogA && comparisonState.cachedChangelogB;
     
     const canCompare = selectedPackage && stableA && stableB && stableA !== stableB &&
+        prereleaseLoaded &&
         (!prereleaseRowVisible || versionASpecific || versionBSpecific);
     compareButton.disabled = !canCompare;
 };
@@ -2021,6 +2023,9 @@ const loadStandardComparisonFromURL = async (urlParams) => {
             if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
         }
         disableVersionSelectsAndSyncClear();
+        if (urlParams.versionA && urlParams.versionB) {
+            await performVersionComparison(urlParams.versionA, urlParams.versionB);
+        }
     }
     updateCompareButtonState();
 };
