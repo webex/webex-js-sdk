@@ -47,19 +47,19 @@ const AIEnableRequest = WebexPlugin.extend({
     this.listenTo(this.webex.internal.mercury, `event:${LOCUSEVENT.APPROVAL_REQUEST}`, (event) => {
       if (event?.data?.approval?.resourceType === AI_ENABLE_REQUEST.RESOURCE_TYPE) {
         const {receivers, initiator, actionType, url} = event.data.approval;
-        const receiverId = receivers?.[0]?.participantId;
-        const isReceiver = !!receiverId && receiverId === this.selfParticipantId;
-        const senderId = initiator?.participantId;
-        const isSender = !!senderId && senderId === this.selfParticipantId;
-        if (!isReceiver && !isSender) {
+        const approverId = receivers?.[0]?.participantId;
+        const isApprover = !!approverId && approverId === this.selfParticipantId;
+        const initiatorId = initiator?.participantId;
+        const isInitiator = !!initiatorId && initiatorId === this.selfParticipantId;
+        if (!isApprover && !isInitiator) {
           return;
         }
         this.trigger(AI_ENABLE_REQUEST.EVENTS.APPROVAL_REQUEST_ARRIVED, {
           actionType,
-          isReceiver,
-          isSender,
-          senderId,
-          receiverId,
+          isApprover,
+          isInitiator,
+          initiatorId,
+          approverId,
           url,
         });
       }

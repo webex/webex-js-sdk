@@ -13,21 +13,21 @@ The plugin emits events when approval requests are received:
 ```javascript
 // Listen for approval request events
 meeting.aiEnableRequest.on('approval-request-arrived', (event) => {
-  const {actionType, isReceiver, isSender, senderId, receiverId, url} = event;
+  const {actionType, isApprover, isInitiator, initiatorId, approverId, url} = event;
 
-  if (isReceiver) {
+  if (isApprover) {
     // This participant received a request
-    console.log(`Received ${actionType} from ${senderId}`);
+    console.log(`Received ${actionType} from ${initiatorId}`);
   }
 
-  if (isSender) {
+  if (isInitiator) {
     // This participant sent a request that was processed
     console.log(`Your ${actionType} request was processed`);
   }
 });
 ```
 
-### Requester functionality
+### Initiator (requester) functionality
 
 The following method is available to participants who want to request AI assistant enablement:
 
@@ -47,19 +47,19 @@ The following methods are available to participants who receive AI assistant ena
 // url and initiatorId come from the 'approval-request-arrived' event
 meeting.aiEnableRequest.acceptEnableAIAssistantRequest({
   url: approvalUrl,
-  initiatorId: requesterId,
+  initiatorId,
 });
 
 // Decline an AI assistant enable request
 meeting.aiEnableRequest.declineEnableAIAssistantRequest({
   url: approvalUrl,
-  initiatorId: requesterId,
+  initiatorId,
 });
 
 // Decline all pending AI assistant enable requests
 meeting.aiEnableRequest.declineAllEnableAIAssistantRequests({
   url: approvalUrl,
-  initiatorId: requesterId,
+  initiatorId,
 });
 ```
 
@@ -73,11 +73,11 @@ await meeting.aiEnableRequest.requestEnableAIAssistant({
 
 // Participant B receives the request via event
 meeting.aiEnableRequest.on('approval-request-arrived', async (event) => {
-  if (event.isReceiver && event.actionType === 'REQUESTED') {
+  if (event.isApprover && event.actionType === 'REQUESTED') {
     // User can now choose to accept or decline
     await meeting.aiEnableRequest.acceptEnableAIAssistantRequest({
       url: event.url,
-      initiatorId: event.senderId,
+      initiatorId: event.initiatorId,
     });
   }
 });

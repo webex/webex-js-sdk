@@ -105,8 +105,8 @@ describe('plugin-meetings', () => {
       let listenToSpy;
       let triggerSpy;
       const testSelfParticipantId = 'self-participant-123';
-      const testSenderId = 'sender-participant-456';
-      const testReceiverId = 'receiver-participant-789';
+      const testInitiatorId = 'initiator-participant-456';
+      const testApproverId = 'approver-participant-789';
       const testUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/test-id/approval';
 
       beforeEach(() => {
@@ -130,7 +130,7 @@ describe('plugin-meetings', () => {
         );
       });
 
-      it('should trigger event when user is the receiver', () => {
+      it('should trigger event when user is the approver', () => {
         aiEnableRequest.listenToApprovalRequests();
 
         const event = {
@@ -138,7 +138,7 @@ describe('plugin-meetings', () => {
             approval: {
               resourceType: AI_ENABLE_REQUEST.RESOURCE_TYPE,
               receivers: [{participantId: testSelfParticipantId}],
-              initiator: {participantId: testSenderId},
+              initiator: {participantId: testInitiatorId},
               actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
               url: testUrl,
             },
@@ -150,22 +150,22 @@ describe('plugin-meetings', () => {
         sinon.assert.calledOnce(triggerSpy);
         sinon.assert.calledWith(triggerSpy, AI_ENABLE_REQUEST.EVENTS.APPROVAL_REQUEST_ARRIVED, {
           actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
-          isReceiver: true,
-          isSender: false,
-          senderId: testSenderId,
-          receiverId: testSelfParticipantId,
+          isApprover: true,
+          isInitiator: false,
+          initiatorId: testInitiatorId,
+          approverId: testSelfParticipantId,
           url: testUrl,
         });
       });
 
-      it('should trigger event when user is the sender', () => {
+      it('should trigger event when user is the initiator', () => {
         aiEnableRequest.listenToApprovalRequests();
 
         const event = {
           data: {
             approval: {
               resourceType: AI_ENABLE_REQUEST.RESOURCE_TYPE,
-              receivers: [{participantId: testReceiverId}],
+              receivers: [{participantId: testApproverId}],
               initiator: {participantId: testSelfParticipantId},
               actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
               url: testUrl,
@@ -178,23 +178,23 @@ describe('plugin-meetings', () => {
         sinon.assert.calledOnce(triggerSpy);
         sinon.assert.calledWith(triggerSpy, AI_ENABLE_REQUEST.EVENTS.APPROVAL_REQUEST_ARRIVED, {
           actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
-          isReceiver: false,
-          isSender: true,
-          senderId: testSelfParticipantId,
-          receiverId: testReceiverId,
+          isApprover: false,
+          isInitiator: true,
+          initiatorId: testSelfParticipantId,
+          approverId: testApproverId,
           url: testUrl,
         });
       });
 
-      it('should not trigger event when user is neither receiver nor sender', () => {
+      it('should not trigger event when user is neither approver nor initiator', () => {
         aiEnableRequest.listenToApprovalRequests();
 
         const event = {
           data: {
             approval: {
               resourceType: AI_ENABLE_REQUEST.RESOURCE_TYPE,
-              receivers: [{participantId: testReceiverId}],
-              initiator: {participantId: testSenderId},
+              receivers: [{participantId: testApproverId}],
+              initiator: {participantId: testInitiatorId},
               actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
               url: testUrl,
             },
@@ -214,7 +214,7 @@ describe('plugin-meetings', () => {
             approval: {
               resourceType: 'SomeOtherResourceType',
               receivers: [{participantId: testSelfParticipantId}],
-              initiator: {participantId: testSenderId},
+              initiator: {participantId: testInitiatorId},
               actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
               url: testUrl,
             },
@@ -242,7 +242,7 @@ describe('plugin-meetings', () => {
               approval: {
                 resourceType: AI_ENABLE_REQUEST.RESOURCE_TYPE,
                 receivers: [{participantId: testSelfParticipantId}],
-                initiator: {participantId: testSenderId},
+                initiator: {participantId: testInitiatorId},
                 actionType,
                 url: testUrl,
               },
@@ -255,7 +255,7 @@ describe('plugin-meetings', () => {
         sinon.assert.callCount(triggerSpy, actionTypes.length);
       });
 
-      it('should handle missing receiver participantId', () => {
+      it('should handle missing approver participantId', () => {
         aiEnableRequest.listenToApprovalRequests();
 
         const event = {
@@ -274,8 +274,8 @@ describe('plugin-meetings', () => {
 
         sinon.assert.calledOnce(triggerSpy);
         const callArgs = triggerSpy.getCall(0).args[1];
-        assert.isFalse(callArgs.isReceiver);
-        assert.isTrue(callArgs.isSender);
+        assert.isFalse(callArgs.isApprover);
+        assert.isTrue(callArgs.isInitiator);
       });
 
       it('should handle missing initiator participantId', () => {
@@ -297,8 +297,8 @@ describe('plugin-meetings', () => {
 
         sinon.assert.calledOnce(triggerSpy);
         const callArgs = triggerSpy.getCall(0).args[1];
-        assert.isTrue(callArgs.isReceiver);
-        assert.isFalse(callArgs.isSender);
+        assert.isTrue(callArgs.isApprover);
+        assert.isFalse(callArgs.isInitiator);
       });
 
       it('should handle empty receivers array', () => {
@@ -320,8 +320,8 @@ describe('plugin-meetings', () => {
 
         sinon.assert.calledOnce(triggerSpy);
         const callArgs = triggerSpy.getCall(0).args[1];
-        assert.isFalse(callArgs.isReceiver);
-        assert.isTrue(callArgs.isSender);
+        assert.isFalse(callArgs.isApprover);
+        assert.isTrue(callArgs.isInitiator);
       });
 
       it('should include all relevant data in triggered event', () => {
@@ -333,7 +333,7 @@ describe('plugin-meetings', () => {
             approval: {
               resourceType: AI_ENABLE_REQUEST.RESOURCE_TYPE,
               receivers: [{participantId: testSelfParticipantId}],
-              initiator: {participantId: testSenderId},
+              initiator: {participantId: testInitiatorId},
               actionType: AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED,
               url: customUrl,
             },
@@ -346,10 +346,10 @@ describe('plugin-meetings', () => {
         const triggeredEvent = triggerSpy.getCall(0).args[1];
         assert.equal(triggeredEvent.actionType, AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED);
         assert.equal(triggeredEvent.url, customUrl);
-        assert.equal(triggeredEvent.senderId, testSenderId);
-        assert.equal(triggeredEvent.receiverId, testSelfParticipantId);
-        assert.isTrue(triggeredEvent.isReceiver);
-        assert.isFalse(triggeredEvent.isSender);
+        assert.equal(triggeredEvent.initiatorId, testInitiatorId);
+        assert.equal(triggeredEvent.approverId, testSelfParticipantId);
+        assert.isTrue(triggeredEvent.isApprover);
+        assert.isFalse(triggeredEvent.isInitiator);
       });
     });
 
@@ -373,7 +373,7 @@ describe('plugin-meetings', () => {
       });
 
       it('should make a POST request to the approval URL', async () => {
-        await aiEnableRequest.requestEnableAIAssistant(testApproverId);
+        await aiEnableRequest.requestEnableAIAssistant({approverId: testApproverId});
 
         sinon.assert.calledOnce(requestStub);
         sinon.assert.calledWith(requestStub, {
@@ -393,21 +393,21 @@ describe('plugin-meetings', () => {
       });
 
       it('should use the correct action type REQUESTED', async () => {
-        await aiEnableRequest.requestEnableAIAssistant(testApproverId);
+        await aiEnableRequest.requestEnableAIAssistant({approverId: testApproverId});
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.equal(callArgs.body.actionType, AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED);
       });
 
       it('should use the correct resource type AiAssistant', async () => {
-        await aiEnableRequest.requestEnableAIAssistant(testApproverId);
+        await aiEnableRequest.requestEnableAIAssistant({approverId: testApproverId});
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.equal(callArgs.body.resourceType, AI_ENABLE_REQUEST.RESOURCE_TYPE);
       });
 
       it('should include the initiator participant ID', async () => {
-        await aiEnableRequest.requestEnableAIAssistant(testApproverId);
+        await aiEnableRequest.requestEnableAIAssistant({approverId: testApproverId});
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.deepEqual(callArgs.body.initiator, {
@@ -416,7 +416,7 @@ describe('plugin-meetings', () => {
       });
 
       it('should include the approver participant ID', async () => {
-        await aiEnableRequest.requestEnableAIAssistant(testApproverId);
+        await aiEnableRequest.requestEnableAIAssistant({approverId: testApproverId});
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.deepEqual(callArgs.body.approver, {
@@ -425,7 +425,7 @@ describe('plugin-meetings', () => {
       });
 
       it('should return a Promise', () => {
-        const result = aiEnableRequest.requestEnableAIAssistant(testApproverId);
+        const result = aiEnableRequest.requestEnableAIAssistant({approverId: testApproverId});
 
         assert.instanceOf(result, Promise);
       });
@@ -440,7 +440,7 @@ describe('plugin-meetings', () => {
 
         requestStub.resolves(mockResponse);
 
-        const result = await aiEnableRequest.requestEnableAIAssistant(testApproverId);
+        const result = await aiEnableRequest.requestEnableAIAssistant({approverId: testApproverId});
 
         assert.deepEqual(result, mockResponse);
       });
@@ -450,7 +450,7 @@ describe('plugin-meetings', () => {
         requestStub.rejects(mockError);
 
         try {
-          await aiEnableRequest.requestEnableAIAssistant(testApproverId);
+          await aiEnableRequest.requestEnableAIAssistant({approverId: testApproverId});
           assert.fail('Should have thrown an error');
         } catch (error) {
           assert.equal(error.message, 'Request failed');
@@ -462,7 +462,7 @@ describe('plugin-meetings', () => {
         const differentApproverId = 'different-approver-888';
 
         aiEnableRequest.selfParticipantId = differentSelfId;
-        await aiEnableRequest.requestEnableAIAssistant(differentApproverId);
+        await aiEnableRequest.requestEnableAIAssistant({approverId: differentApproverId});
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.equal(callArgs.body.initiator.participantId, differentSelfId);
@@ -488,13 +488,13 @@ describe('plugin-meetings', () => {
       });
 
       it('should make a request with the specified method', async () => {
-        await aiEnableRequest.sendApprovalRequest(
-          testUrl,
-          AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
-          testInitiatorId,
-          testApproverId,
-          HTTP_VERBS.POST
-        );
+        await aiEnableRequest.sendApprovalRequest({
+          url: testUrl,
+          actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+          initiatorId: testInitiatorId,
+          approverId: testApproverId,
+          method: HTTP_VERBS.POST,
+        });
 
         sinon.assert.calledOnce(requestStub);
         sinon.assert.calledWith(requestStub, {
@@ -514,39 +514,39 @@ describe('plugin-meetings', () => {
       });
 
       it('should accept any action type', async () => {
-        await aiEnableRequest.sendApprovalRequest(
-          testUrl,
-          AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED,
-          testInitiatorId,
-          testApproverId,
-          HTTP_VERBS.PUT
-        );
+        await aiEnableRequest.sendApprovalRequest({
+          url: testUrl,
+          actionType: AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED,
+          initiatorId: testInitiatorId,
+          approverId: testApproverId,
+          method: HTTP_VERBS.PUT,
+        });
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.equal(callArgs.body.actionType, AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED);
       });
 
       it('should include the correct resource type', async () => {
-        await aiEnableRequest.sendApprovalRequest(
-          testUrl,
-          AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
-          testInitiatorId,
-          testApproverId,
-          HTTP_VERBS.POST
-        );
+        await aiEnableRequest.sendApprovalRequest({
+          url: testUrl,
+          actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+          initiatorId: testInitiatorId,
+          approverId: testApproverId,
+          method: HTTP_VERBS.POST,
+        });
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.equal(callArgs.body.resourceType, AI_ENABLE_REQUEST.RESOURCE_TYPE);
       });
 
       it('should return a Promise', () => {
-        const result = aiEnableRequest.sendApprovalRequest(
-          testUrl,
-          AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
-          testInitiatorId,
-          testApproverId,
-          HTTP_VERBS.POST
-        );
+        const result = aiEnableRequest.sendApprovalRequest({
+          url: testUrl,
+          actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+          initiatorId: testInitiatorId,
+          approverId: testApproverId,
+          method: HTTP_VERBS.POST,
+        });
 
         assert.instanceOf(result, Promise);
       });
@@ -559,13 +559,13 @@ describe('plugin-meetings', () => {
 
         requestStub.resolves(mockResponse);
 
-        const result = await aiEnableRequest.sendApprovalRequest(
-          testUrl,
-          AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
-          testInitiatorId,
-          testApproverId,
-          HTTP_VERBS.POST
-        );
+        const result = await aiEnableRequest.sendApprovalRequest({
+          url: testUrl,
+          actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+          initiatorId: testInitiatorId,
+          approverId: testApproverId,
+          method: HTTP_VERBS.POST,
+        });
 
         assert.deepEqual(result, mockResponse);
       });
@@ -575,13 +575,13 @@ describe('plugin-meetings', () => {
         requestStub.rejects(mockError);
 
         try {
-          await aiEnableRequest.sendApprovalRequest(
-            testUrl,
-            AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
-            testInitiatorId,
-            testApproverId,
-            HTTP_VERBS.POST
-          );
+          await aiEnableRequest.sendApprovalRequest({
+            url: testUrl,
+            actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+            initiatorId: testInitiatorId,
+            approverId: testApproverId,
+            method: HTTP_VERBS.POST,
+          });
           assert.fail('Should have thrown an error');
         } catch (error) {
           assert.equal(error.message, 'Request failed');
@@ -589,13 +589,13 @@ describe('plugin-meetings', () => {
       });
 
       it('should use the specified HTTP method', async () => {
-        await aiEnableRequest.sendApprovalRequest(
-          testUrl,
-          AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED,
-          testInitiatorId,
-          testApproverId,
-          HTTP_VERBS.PUT
-        );
+        await aiEnableRequest.sendApprovalRequest({
+          url: testUrl,
+          actionType: AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED,
+          initiatorId: testInitiatorId,
+          approverId: testApproverId,
+          method: HTTP_VERBS.PUT,
+        });
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.equal(callArgs.method, HTTP_VERBS.PUT);
@@ -621,10 +621,10 @@ describe('plugin-meetings', () => {
       });
 
       it('should make a PUT request to the provided URL', async () => {
-        await aiEnableRequest.acceptEnableAIAssistantRequest(
-          testUrl,
-          testInitiatorId
-        );
+        await aiEnableRequest.acceptEnableAIAssistantRequest({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         sinon.assert.calledOnce(requestStub);
         sinon.assert.calledWith(requestStub, {
@@ -644,20 +644,20 @@ describe('plugin-meetings', () => {
       });
 
       it('should use the correct action type ACCEPTED', async () => {
-        await aiEnableRequest.acceptEnableAIAssistantRequest(
-          testUrl,
-          testInitiatorId
-        );
+        await aiEnableRequest.acceptEnableAIAssistantRequest({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.equal(callArgs.body.actionType, AI_ENABLE_REQUEST.ACTION_TYPE.ACCEPTED);
       });
 
       it('should include the initiator participant ID', async () => {
-        await aiEnableRequest.acceptEnableAIAssistantRequest(
-          testUrl,
-          testInitiatorId
-        );
+        await aiEnableRequest.acceptEnableAIAssistantRequest({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.deepEqual(callArgs.body.initiator, {
@@ -666,10 +666,10 @@ describe('plugin-meetings', () => {
       });
 
       it('should include the approver participant ID as selfParticipantId', async () => {
-        await aiEnableRequest.acceptEnableAIAssistantRequest(
-          testUrl,
-          testInitiatorId
-        );
+        await aiEnableRequest.acceptEnableAIAssistantRequest({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.deepEqual(callArgs.body.approver, {
@@ -678,10 +678,10 @@ describe('plugin-meetings', () => {
       });
 
       it('should return a Promise', () => {
-        const result = aiEnableRequest.acceptEnableAIAssistantRequest(
-          testUrl,
-          testInitiatorId
-        );
+        const result = aiEnableRequest.acceptEnableAIAssistantRequest({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         assert.instanceOf(result, Promise);
       });
@@ -694,10 +694,10 @@ describe('plugin-meetings', () => {
 
         requestStub.resolves(mockResponse);
 
-        const result = await aiEnableRequest.acceptEnableAIAssistantRequest(
-          testUrl,
-          testInitiatorId
-        );
+        const result = await aiEnableRequest.acceptEnableAIAssistantRequest({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         assert.deepEqual(result, mockResponse);
       });
@@ -707,10 +707,10 @@ describe('plugin-meetings', () => {
         requestStub.rejects(mockError);
 
         try {
-          await aiEnableRequest.acceptEnableAIAssistantRequest(
-            testUrl,
-            testInitiatorId
-          );
+          await aiEnableRequest.acceptEnableAIAssistantRequest({
+            url: testUrl,
+            initiatorId: testInitiatorId,
+          });
           assert.fail('Should have thrown an error');
         } catch (error) {
           assert.equal(error.message, 'Request failed');
@@ -737,10 +737,10 @@ describe('plugin-meetings', () => {
       });
 
       it('should make a PUT request to the provided URL', async () => {
-        await aiEnableRequest.declineEnableAIAssistantRequest(
-          testUrl,
-          testInitiatorId
-        );
+        await aiEnableRequest.declineEnableAIAssistantRequest({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         sinon.assert.calledOnce(requestStub);
         sinon.assert.calledWith(requestStub, {
@@ -760,20 +760,20 @@ describe('plugin-meetings', () => {
       });
 
       it('should use the correct action type DECLINED', async () => {
-        await aiEnableRequest.declineEnableAIAssistantRequest(
-          testUrl,
-          testInitiatorId
-        );
+        await aiEnableRequest.declineEnableAIAssistantRequest({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.equal(callArgs.body.actionType, AI_ENABLE_REQUEST.ACTION_TYPE.DECLINED);
       });
 
       it('should include the initiator participant ID', async () => {
-        await aiEnableRequest.declineEnableAIAssistantRequest(
-          testUrl,
-          testInitiatorId
-        );
+        await aiEnableRequest.declineEnableAIAssistantRequest({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.deepEqual(callArgs.body.initiator, {
@@ -782,10 +782,10 @@ describe('plugin-meetings', () => {
       });
 
       it('should include the approver participant ID as selfParticipantId', async () => {
-        await aiEnableRequest.declineEnableAIAssistantRequest(
-          testUrl,
-          testInitiatorId
-        );
+        await aiEnableRequest.declineEnableAIAssistantRequest({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.deepEqual(callArgs.body.approver, {
@@ -794,10 +794,10 @@ describe('plugin-meetings', () => {
       });
 
       it('should return a Promise', () => {
-        const result = aiEnableRequest.declineEnableAIAssistantRequest(
-          testUrl,
-          testInitiatorId
-        );
+        const result = aiEnableRequest.declineEnableAIAssistantRequest({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         assert.instanceOf(result, Promise);
       });
@@ -810,10 +810,10 @@ describe('plugin-meetings', () => {
 
         requestStub.resolves(mockResponse);
 
-        const result = await aiEnableRequest.declineEnableAIAssistantRequest(
-          testUrl,
-          testInitiatorId
-        );
+        const result = await aiEnableRequest.declineEnableAIAssistantRequest({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         assert.deepEqual(result, mockResponse);
       });
@@ -823,10 +823,10 @@ describe('plugin-meetings', () => {
         requestStub.rejects(mockError);
 
         try {
-          await aiEnableRequest.declineEnableAIAssistantRequest(
-            testUrl,
-            testInitiatorId
-          );
+          await aiEnableRequest.declineEnableAIAssistantRequest({
+            url: testUrl,
+            initiatorId: testInitiatorId,
+          });
           assert.fail('Should have thrown an error');
         } catch (error) {
           assert.equal(error.message, 'Request failed');
@@ -853,10 +853,10 @@ describe('plugin-meetings', () => {
       });
 
       it('should make a PUT request to the provided URL', async () => {
-        await aiEnableRequest.declineAllEnableAIAssistantRequests(
-          testUrl,
-          testInitiatorId
-        );
+        await aiEnableRequest.declineAllEnableAIAssistantRequests({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         sinon.assert.calledOnce(requestStub);
         sinon.assert.calledWith(requestStub, {
@@ -876,20 +876,20 @@ describe('plugin-meetings', () => {
       });
 
       it('should use the correct action type DECLINED_ALL', async () => {
-        await aiEnableRequest.declineAllEnableAIAssistantRequests(
-          testUrl,
-          testInitiatorId
-        );
+        await aiEnableRequest.declineAllEnableAIAssistantRequests({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.equal(callArgs.body.actionType, AI_ENABLE_REQUEST.ACTION_TYPE.DECLINED_ALL);
       });
 
       it('should include the initiator participant ID', async () => {
-        await aiEnableRequest.declineAllEnableAIAssistantRequests(
-          testUrl,
-          testInitiatorId
-        );
+        await aiEnableRequest.declineAllEnableAIAssistantRequests({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.deepEqual(callArgs.body.initiator, {
@@ -898,10 +898,10 @@ describe('plugin-meetings', () => {
       });
 
       it('should include the approver participant ID as selfParticipantId', async () => {
-        await aiEnableRequest.declineAllEnableAIAssistantRequests(
-          testUrl,
-          testInitiatorId
-        );
+        await aiEnableRequest.declineAllEnableAIAssistantRequests({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         const callArgs = requestStub.getCall(0).args[0];
         assert.deepEqual(callArgs.body.approver, {
@@ -910,10 +910,10 @@ describe('plugin-meetings', () => {
       });
 
       it('should return a Promise', () => {
-        const result = aiEnableRequest.declineAllEnableAIAssistantRequests(
-          testUrl,
-          testInitiatorId
-        );
+        const result = aiEnableRequest.declineAllEnableAIAssistantRequests({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         assert.instanceOf(result, Promise);
       });
@@ -926,10 +926,10 @@ describe('plugin-meetings', () => {
 
         requestStub.resolves(mockResponse);
 
-        const result = await aiEnableRequest.declineAllEnableAIAssistantRequests(
-          testUrl,
-          testInitiatorId
-        );
+        const result = await aiEnableRequest.declineAllEnableAIAssistantRequests({
+          url: testUrl,
+          initiatorId: testInitiatorId,
+        });
 
         assert.deepEqual(result, mockResponse);
       });
@@ -939,10 +939,10 @@ describe('plugin-meetings', () => {
         requestStub.rejects(mockError);
 
         try {
-          await aiEnableRequest.declineAllEnableAIAssistantRequests(
-            testUrl,
-            testInitiatorId
-          );
+          await aiEnableRequest.declineAllEnableAIAssistantRequests({
+            url: testUrl,
+            initiatorId: testInitiatorId,
+          });
           assert.fail('Should have thrown an error');
         } catch (error) {
           assert.equal(error.message, 'Request failed');
