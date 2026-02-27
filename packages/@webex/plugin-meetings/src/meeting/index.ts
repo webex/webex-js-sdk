@@ -13,7 +13,7 @@ import {
   CALL_DIAGNOSTIC_CONFIG,
   RtcMetrics,
 } from '@webex/internal-plugin-metrics';
-import {ClientEvent as RawClientEvent} from '@webex/event-dictionary-ts';
+import type {ClientEvent as RawClientEvent} from '@webex/event-dictionary-ts';
 
 import {
   ConnectionState,
