@@ -2026,6 +2026,7 @@ const loadStandardComparisonFromURL = async (urlParams) => {
                 fetch(versionPaths[urlParams.versionA]).then(res => res.json()).catch(() => ({})),
                 fetch(versionPaths[urlParams.versionB]).then(res => res.json()).catch(() => ({}))
             ]);
+            comparisonState.update(changelogA, changelogB, urlParams.versionA, urlParams.versionB);
             populateUnionPackages([changelogA, changelogB]);
         } catch (e) {
             if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
