@@ -379,6 +379,7 @@ export default class LocusInfo extends EventsScope {
       webexRequest: this.webex.request.bind(this.webex),
       locusInfoUpdateCallback: this.updateFromHashTree.bind(this),
       debugId: `HT-${this.meetingId.substring(0, 4)}`,
+      excludedDataSets: this.webex.config.meetings.locus?.excludedDataSets,
     });
   }
 
