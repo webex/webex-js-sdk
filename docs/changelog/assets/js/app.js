@@ -2021,6 +2021,7 @@ const loadEnhancedComparisonFromURL = async (enhancedParams) => {
         comparisonState.cachedChangelogA,
         comparisonState.cachedChangelogB
     );
+    updateCompareButtonState();
 };
 
 /**
