@@ -799,11 +799,7 @@ const Mercury = WebexPlugin.extend({
       // treat the call as the old signature and forward directly to trigger(...)
       const [first, second, ...rest] = args;
 
-      if (
-        typeof first === 'string' &&
-        (this.sockets.has(first) || first === this.defaultSessionId) &&
-        typeof second === 'string'
-      ) {
+      if (typeof first === 'string' && typeof second === 'string') {
         const sessionId = first;
         const eventName = second;
         const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
