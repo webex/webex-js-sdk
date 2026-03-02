@@ -686,6 +686,7 @@ const Mercury = WebexPlugin.extend({
         } else {
           this.backoffCalls.delete(sid);
         }
+        const sessionSocket = this.sockets.get(sid);
         if (err) {
           const msg = isShutdownSwitchover
             ? `[shutdown] switchover failed after ${call.getNumRetries()} retries`
@@ -694,11 +695,15 @@ const Mercury = WebexPlugin.extend({
           this.logger.info(
             `${this.namespace}: ${msg}; log statement about next retry was inaccurate; ${err}`
           );
+          if (sessionSocket) {
+            sessionSocket.connecting = false;
+            sessionSocket.connected = false;
+          }
 
           return reject(err);
         }
+
         // Update overall connected status
-        const sessionSocket = this.sockets.get(sid);
         if (sessionSocket) {
           sessionSocket.connecting = false;
           sessionSocket.connected = true;
