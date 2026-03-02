@@ -64,7 +64,9 @@ LoggerProxy.info(`Teams: ${this.agentConfig.teams}`, {
 - **Aux Codes Fetching**: Gets all idle and wrapup codes with pagination
 - **Team Data**: Retrieves agent's team assignments
 - **Dial Plan**: Fetches number transformation rules
-- **Outdial ANI**: Retrieves outbound caller ID options
+- **Outdial ANI**: Retrieves outbound caller ID options (standalone, publicly exposed via `cc.ts`)
+- **Multimedia Profile**: Fetches channel capacity and blending config (standalone, not yet publicly exposed)
+- **Paginated Data Access**: `getListOfTeams` and `getListOfAuxCodes` support custom pagination independent of profile building
 
 ---
 
@@ -136,18 +138,24 @@ Main method that aggregates all configuration data into the AgentProfile.
 
 ---
 
-### `getOutdialAniEntries(orgId, params)`
+## Standalone APIs (Not Part of AgentProfile Building)
 
-Fetch outbound ANI entries for caller ID selection.
+These methods exist in `AgentConfigService` but are **not** part of the `getAgentConfig()` aggregation flow. They can be used independently by applications.
 
-**Parameters**:
-- `orgId` (string): Organization ID
-- `params.outdialANI` (string): Outdial ANI ID from AgentProfile
-- `params.page` (number, optional): Page number
-- `params.pageSize` (number, optional): Items per page
-- `params.search` (string, optional): Search term
+| Method | Status | Returns | Description |
+|--------|--------|---------|-------------|
+| `getOutdialAniEntries(orgId, params)` | **Publicly exposed** via `cc.getOutdialAniEntries()` | `OutdialAniEntriesResponse` | Fetch outbound ANI entries for caller ID selection. Supports pagination and search via [`OutdialAniParams`](../types.ts). |
+| `getMultimediaProfileById(orgId, multimediaProfileId)` | **Not exposed, never called** | `MultimediaProfileResponse` | Fetch channel capacities (chat, email, telephony, social) and blending config. Available but unused anywhere. |
+| `getListOfTeams(orgId, page, pageSize, filter)` | Used internally by `getAllTeams()` | `ListTeamsResponse` | Single-page team fetch with pagination metadata. Useful for custom pagination. |
+| `getListOfAuxCodes(orgId, page, pageSize, filter, attributes)` | Used internally by `getAllAuxCodes()` | `ListAuxCodesResponse` | Single-page aux code fetch with pagination metadata. Useful for custom pagination. |
 
-**Returns**: `Promise<OutdialAniEntriesResponse>`
+Additionally, the following endpoints are defined in `constants.ts` `endPointMap` but are consumed by separate service classes, not by `AgentConfigService`:
+
+| Endpoint | Used By | Description |
+|----------|---------|-------------|
+| `queueList` | [`Queue.ts`](../../Queue.ts) | Fetch contact service queues |
+| `entryPointList` | [`EntryPoint.ts`](../../EntryPoint.ts) | Fetch entry points |
+| `addressBookEntries` | [`AddressBook.ts`](../../AddressBook.ts) | Fetch address book entries |
 
 ---
 
