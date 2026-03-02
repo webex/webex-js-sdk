@@ -940,15 +940,9 @@ export default class Reachability extends EventsScope {
 
       // Initialize the result for this cluster
       results[key] = {
-        udp: {
-          result: cluster.udp.length > 0 ? 'unreachable' : 'untested',
-        },
-        tcp: {
-          result: cluster.tcp.length > 0 ? 'unreachable' : 'untested',
-        },
-        xtls: {
-          result: cluster.xtls.length > 0 ? 'unreachable' : 'untested',
-        },
+        udp: {result: cluster.udp.length > 0 ? 'unreachable' : 'untested'},
+        tcp: {result: cluster.tcp.length > 0 ? 'unreachable' : 'untested'},
+        xtls: {result: cluster.xtls.length > 0 ? 'unreachable' : 'untested'},
         isVideoMesh: cluster.isVideoMesh,
       };
 
@@ -998,18 +992,6 @@ export default class Reachability extends EventsScope {
         // @ts-ignore
         this.webex.config.meetings.enablePerUdpUrlReachability
       );
-
-      // Pre-populate initial details so unreachable clusters have details before publicCloudTimer fires.
-      const initialResult = this.clusterReachability[key].getResult();
-      if (initialResult.udp.details?.length) {
-        results[key].udp.details = initialResult.udp.details;
-      }
-      if (initialResult.tcp.details?.length) {
-        results[key].tcp.details = initialResult.tcp.details;
-      }
-      if (initialResult.xtls.details?.length) {
-        results[key].xtls.details = initialResult.xtls.details;
-      }
 
       this.clusterReachability[key].on(Events.resultReady, async (data: ResultEventData) => {
         const {protocol, result, clientMediaIPs, latencyInMilliseconds, details} = data;
@@ -1079,7 +1061,7 @@ export default class Reachability extends EventsScope {
       this.clusterReachability[key].start(); // not awaiting on purpose
     });
 
-    // Re-store results now that initial details have been pre-populated from ClusterReachability instances.
+    // Store results with pre-populated details.
     await this.storeResults(results);
   }
 
