@@ -1022,15 +1022,55 @@ const switchToComparisonMode = (versionA = null, versionB = null) => {
    ============================================ */
 
 /**
- * Get union of package names from one or more changelogs (all packages that exist in any version).
- * This is the single place for this business logic; call with [changelogA, changelogB] or any array of changelogs.
- * @param {Array<Object>} changelogs - Array of changelog objects (e.g. [changelogA, changelogB] or from fetch)
- * @returns {Array<string>} - Sorted list of all package names (union)
+ * Get union of packages from both versions (all packages that exist in either version).
+ * @param {Object} changelogA - Changelog data for version A
+ * @param {Object} changelogB - Changelog data for version B
+ * @returns {Array<string>} - Array of all package names (union)
  */
-const getUnionPackages = (changelogs) => {
-    const list = Array.isArray(changelogs) ? changelogs : [];
+const getUnionPackages = (changelogA, changelogB) => {
+    const packagesA = new Set(Object.keys(changelogA || {}));
+    const packagesB = new Set(Object.keys(changelogB || {}));
+    const allPackages = new Set([...packagesA, ...packagesB]);
+    const specialPackages = ['webex', '@webex/calling'];
+    const filtered = [...allPackages].filter(pkg => !specialPackages.includes(pkg));
+    filtered.sort();
+    return [...specialPackages.filter(pkg => allPackages.has(pkg)), ...filtered];
+};
+
+/**
+ * Populate the package dropdown with union of packages from both versions.
+ * @param {Object} changelogA - Changelog for base version
+ * @param {Object} changelogB - Changelog for target version
+ */
+const populateUnionPackages = (changelogA, changelogB) => {
+    if (!comparisonPackageSelect || !comparisonPackageRow) return;
+    const allPackages = getUnionPackages(changelogA, changelogB);
+    if (allPackages.length === 0) {
+        comparisonPackageSelect.innerHTML = '<option value="">No packages found</option>';
+        comparisonPackageRow.style.display = 'flex';
+        return;
+    }
+    const currentValue = comparisonPackageSelect.value;
+    let optionsHtml = '<option value="">Select a package (required)</option>';
+    allPackages.forEach(pkg => {
+        optionsHtml += `<option value="${pkg}">${pkg}</option>`;
+    });
+    comparisonPackageSelect.innerHTML = optionsHtml;
+    comparisonPackageRow.style.display = 'flex';
+    if (currentValue && allPackages.includes(currentValue)) {
+        comparisonPackageSelect.value = currentValue;
+    }
+};
+
+/**
+ * Get union of package names from multiple changelogs (same sort order as getUnionPackages).
+ * Used for initial load when we have an array of all-version changelogs.
+ * @param {Array<Object>} changelogs - Array of changelog objects
+ * @returns {Array<string>} - Sorted list of all package names
+ */
+const getAllPackagesFromChangelogs = (changelogs) => {
     const allPackages = new Set();
-    list.forEach(changelog => {
+    (changelogs || []).forEach(changelog => {
         if (changelog && typeof changelog === 'object') {
             Object.keys(changelog).forEach(pkg => allPackages.add(pkg));
         }
@@ -1042,19 +1082,11 @@ const getUnionPackages = (changelogs) => {
 };
 
 /**
- * Populate the package dropdown with union of packages from one or more changelogs.
- * Existing method; accepts either (changelogA, changelogB) or a single array of changelogs.
- * @param {Object|Array<Object>} changelogAOrChangelogs - Changelog A or array of changelogs
- * @param {Object} [changelogB] - Changelog B (when passing two changelogs)
+ * Populate package dropdown with full list (used when we already have the package array).
+ * Used for initial load flow; existing populateUnionPackages(changelogA, changelogB) is for two-version comparison.
  */
-const populateUnionPackages = (changelogAOrChangelogs, changelogB) => {
-    const changelogs = changelogB !== undefined
-        ? [changelogAOrChangelogs, changelogB]
-        : (Array.isArray(changelogAOrChangelogs) ? changelogAOrChangelogs : [changelogAOrChangelogs]);
-    const allPackages = getUnionPackages(changelogs);
-
+const populateComparisonPackageDropdown = (allPackages) => {
     if (!comparisonPackageSelect || !comparisonPackageRow) return;
-    const currentValue = comparisonPackageSelect ? comparisonPackageSelect.value : '';
     if (allPackages.length === 0) {
         comparisonPackageSelect.innerHTML = '<option value="">No packages found</option>';
     } else {
@@ -1065,19 +1097,38 @@ const populateUnionPackages = (changelogAOrChangelogs, changelogB) => {
         comparisonPackageSelect.innerHTML = optionsHtml;
     }
     comparisonPackageRow.style.display = 'flex';
-
-    if (currentValue && allPackages.includes(currentValue) && comparisonPackageSelect) {
-        comparisonPackageSelect.value = currentValue;
-    }
 };
 
-/** Disable Base/Target version dropdowns and sync Clear button state (avoids repeating same 3 lines).
- *  Usage: called when entering comparison mode (so user must pick package first) and after loading
- *  initial package list; also in handleStableVersionChange so after picking Base+Target the dropdowns
- *  lock and user picks pre-release options. */
+/**
+ * Load initial package list for comparison mode: fetch ALL versions and show union of ALL packages from the start.
+ * Uses getAllPackagesFromChangelogs + populateComparisonPackageDropdown (does not alter getUnionPackages/populateUnionPackages).
+ */
+const populateComparisonPackagesInitial = async () => {
+    const versionKeys = Object.keys(versionPaths);
+    if (versionKeys.length === 0) {
+        if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Select a package (required)</option>';
+        if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
+        disableVersionSelectsAndSyncClear();
+        return;
+    }
+    try {
+        const changelogs = await Promise.all(
+            versionKeys.map(v => fetch(versionPaths[v]).then(res => res.json()).catch(() => ({})))
+        );
+        const allPackages = getAllPackagesFromChangelogs(changelogs);
+        populateComparisonPackageDropdown(allPackages);
+    } catch (e) {
+        if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
+        if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
+    }
+    disableVersionSelectsAndSyncClear();
+};
+
+/** Disable Base and Target version dropdowns, then sync Clear button state.
+ *  Not repetitive: disables Base (version A) and Target (version B) — two separate controls.
+ *  Called when entering comparison mode, after loading package list, and in handleStableVersionChange. */
 const disableVersionSelectsAndSyncClear = () => {
-    if (versionASelect) versionASelect.disabled = true;
-    if (versionBSelect) versionBSelect.disabled = true;
+    [versionASelect, versionBSelect].forEach(el => { if (el) el.disabled = true; });
     syncClearVersionButtonsState();
 };
 
@@ -1603,7 +1654,8 @@ const clearComparisonForm = async () => {
             const changelogs = await Promise.all(
                 versionKeys.map(v => fetch(versionPaths[v]).then(res => res.json()).catch(() => ({})))
             );
-            populateUnionPackages(changelogs);
+            const allPackages = getAllPackagesFromChangelogs(changelogs);
+            populateComparisonPackageDropdown(allPackages);
         } catch (e) {
             if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
         }
@@ -1799,28 +1851,12 @@ const switchToComparisonViewMode = async () => {
     if (helperSection) helperSection.classList.add('hide');
     
     populateComparisonVersions();
-    const versionKeys = Object.keys(versionPaths);
-    if (versionKeys.length === 0) {
-        if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Select a package (required)</option>';
-        if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
-        disableVersionSelectsAndSyncClear();
-    } else {
-        try {
-            const changelogs = await Promise.all(
-                versionKeys.map(v => fetch(versionPaths[v]).then(res => res.json()).catch(() => ({})))
-            );
-            populateUnionPackages(changelogs);
-        } catch (e) {
-            if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
-            if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
-        }
-        disableVersionSelectsAndSyncClear();
-    }
+    await populateComparisonPackagesInitial();
     updateCompareButtonState();
 };
 
 /**
- * Validate comparison form inputs (package is required; then Base and Target versions).
+ * Validate comparison form inputs, If something is missing, it show an alert and return false; otherwise return true.
  */
 const validateComparisonInputs = (stableA, stableB, selectedPackage, versionASpecific, versionBSpecific) => {
     if (!selectedPackage) {
@@ -1978,23 +2014,7 @@ const setupComparisonEventListeners = () => {
  */
 const loadEnhancedComparisonFromURL = async (enhancedParams) => {
     switchToComparisonMode();
-    const versionKeys = Object.keys(versionPaths);
-    if (versionKeys.length === 0) {
-        if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Select a package (required)</option>';
-        if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
-        disableVersionSelectsAndSyncClear();
-    } else {
-        try {
-            const changelogs = await Promise.all(
-                versionKeys.map(v => fetch(versionPaths[v]).then(res => res.json()).catch(() => ({})))
-            );
-            populateUnionPackages(changelogs);
-        } catch (e) {
-            if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
-            if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
-        }
-        disableVersionSelectsAndSyncClear();
-    }
+    await populateComparisonPackagesInitial();
 
     await new Promise(resolve => setTimeout(resolve, 100));
     
@@ -2042,7 +2062,7 @@ const loadStandardComparisonFromURL = async (urlParams) => {
                 fetch(versionPaths[urlParams.versionB]).then(res => res.json()).catch(() => ({}))
             ]);
             comparisonState.update(changelogA, changelogB, urlParams.versionA, urlParams.versionB);
-            populateUnionPackages([changelogA, changelogB]);
+            populateUnionPackages(changelogA, changelogB);
         } catch (e) {
             if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
             if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
@@ -2054,7 +2074,8 @@ const loadStandardComparisonFromURL = async (urlParams) => {
             const changelogs = await Promise.all(
                 versionKeys.map(v => fetch(versionPaths[v]).then(res => res.json()).catch(() => ({})))
             );
-            populateUnionPackages(changelogs);
+            const allPackages = getAllPackagesFromChangelogs(changelogs);
+            populateComparisonPackageDropdown(allPackages);
         } catch (e) {
             if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
             if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
