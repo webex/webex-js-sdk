@@ -40,7 +40,9 @@ export const config = {
 /**
  * LLMChannel to provide socket connections
  */
-export default class LLMChannel extends (Mercury as any) implements ILLMChannel {
+export default // @ts-ignore
+// @ts-ignore
+class LLMChannel extends (Mercury as any) implements ILLMChannel {
   namespace = LLM;
   defaultSessionId = LLM_DEFAULT_SESSION;
   /**
@@ -56,16 +58,17 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       locusUrl?: string;
       datachannelUrl?: string;
       datachannelToken?: string;
-      datachannelTokens: Record<DataChannelTokenType, string> = {
-        [DataChannelTokenType.Default]: undefined,
-        [DataChannelTokenType.PracticeSession]: undefined,
-      };
-
-      refreshHandler?: () => Promise<{
-        body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
-      }>;
     }
   > = new Map();
+
+  private datachannelTokens: Record<DataChannelTokenType, string> = {
+    [DataChannelTokenType.Default]: undefined,
+    [DataChannelTokenType.PracticeSession]: undefined,
+  };
+
+  private refreshHandler?: () => Promise<{
+    body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
+  }>;
 
   /**
    * Register to the websocket
@@ -124,6 +127,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       const sessionData = this.connections.get(sessionId) || {};
       sessionData.locusUrl = locusUrl;
       sessionData.datachannelUrl = datachannelUrl;
+      sessionData.datachannelToken = datachannelToken;
       this.connections.set(sessionId, sessionData);
 
       return this.connect(sessionData.webSocketUrl, sessionId);
@@ -269,6 +273,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       binding?: string;
       locusUrl?: string;
       datachannelUrl?: string;
+      datachannelToken?: string;
     }
   > => new Map(this.connections);
 
