@@ -2,6 +2,7 @@ interface ILLMChannel {
   registerAndConnect: (
     locusUrl: string,
     datachannelUrl: string,
+    datachannelToken?: string,
     sessionId?: string
   ) => Promise<void>;
   isConnected: (sessionId?: string) => boolean;
@@ -17,8 +18,15 @@ interface ILLMChannel {
       binding?: string;
       locusUrl?: string;
       datachannelUrl?: string;
+      datachannelToken?: string;
     }
   >;
 }
+
+export enum DataChannelTokenType {
+  Default = 'default',
+  PracticeSession = 'practiceSession',
+}
+
 // eslint-disable-next-line import/prefer-default-export
 export type {ILLMChannel};

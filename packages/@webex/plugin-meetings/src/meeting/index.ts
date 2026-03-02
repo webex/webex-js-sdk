@@ -33,6 +33,8 @@ import {
   InboundAudioIssueSubTypes,
 } from '@webex/internal-media-core';
 
+import {DataChannelTokenType} from '@webex/internal-plugin-llm';
+
 import {
   LocalStream,
   LocalCameraStream,
@@ -3408,6 +3410,8 @@ export default class Meeting extends StatelessWebexPlugin {
         this.recordingController.setLocusUrl(this.locusUrl);
         this.controlsOptionsManager.setLocusUrl(this.locusUrl, !!isMainLocus);
         this.webinar.locusUrlUpdate(url);
+        // @ts-ignore
+        this.webex.internal.llm.setRefreshHandler(() => this.refreshDataChannelToken());
 
         Trigger.trigger(
           this,
@@ -6192,13 +6196,31 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   async updateLLMConnection() {
     // @ts-ignore - Fix type
-    const {url, info: {datachannelUrl, practiceSessionDatachannelUrl} = {}} = this.locusInfo;
+    const {
+      url = undefined,
+      info: {datachannelUrl = undefined, practiceSessionDatachannelUrl = undefined} = {},
+      self: {datachannelToken = undefined, practiceSessionDatachannelToken = undefined} = {},
+    } = this.locusInfo || {};
 
     const isJoined = this.isJoined();
 
+    const dataChannelTokenType = this.getDataChannelTokenType();
+    const isPracticeSession = dataChannelTokenType === DataChannelTokenType.PracticeSession;
+    // @ts-ignore
+    const currentToken = this.webex.internal.llm.getDatachannelToken(dataChannelTokenType);
+
+    const locusToken = isPracticeSession ? practiceSessionDatachannelToken : datachannelToken;
+
+    const finalToken = currentToken ?? locusToken;
+
+    if (!currentToken && locusToken) {
+      // @ts-ignore
+      this.webex.internal.llm.setDatachannelToken(locusToken, dataChannelTokenType);
+    }
+
     // webinar panelist should use new data channel in practice session
     const dataChannelUrl =
-      this.webinar.isJoinPracticeSessionDataChannel() && practiceSessionDatachannelUrl
+      isPracticeSession && practiceSessionDatachannelUrl
         ? practiceSessionDatachannelUrl
         : datachannelUrl;
 
@@ -6232,7 +6254,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - Fix type
     return this.webex.internal.llm
-      .registerAndConnect(url, dataChannelUrl)
+      .registerAndConnect(url, dataChannelUrl, finalToken)
       .then((registerAndConnectResult) => {
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
@@ -10203,5 +10225,53 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   cancelSipCallOut(participantId: string) {
     return this.meetingRequest.cancelSipCallOut(participantId);
+  }
+
+  /**
+   * Method to get new data
+   * @returns {Promise}
+   */
+  public async refreshDataChannelToken() {
+    const isPracticeSession = this.webinar.isJoinPracticeSessionDataChannel();
+    const dataChannelTokenType = this.getDataChannelTokenType();
+
+    try {
+      const res = await this.meetingRequest.fetchDatachannelToken({
+        locusUrl: this.locusUrl,
+        requestingParticipantId: this.members.selfId,
+        isPracticeSession,
+      });
+
+      return {
+        body: {
+          datachannelToken: res.body.datachannelToken,
+          dataChannelTokenType,
+        },
+      };
+    } catch (e) {
+      const msg = e?.message || String(e);
+
+      const err = Object.assign(new Error(`Failed to refresh data channel token: ${msg}`), {
+        statusCode: e?.statusCode,
+        original: e,
+      });
+
+      throw err;
+    }
+  }
+
+  /**
+   * Determines the current data channel token type based on the meeting state.
+   *
+   * variant should be used when connecting to the LLM data channel.
+   *
+   * @returns {DataChannelTokenType} The token type representing the current session mode.
+   */
+  public getDataChannelTokenType(): DataChannelTokenType {
+    if (this.webinar.isJoinPracticeSessionDataChannel()) {
+      return DataChannelTokenType.PracticeSession;
+    }
+
+    return DataChannelTokenType.Default;
   }
 }
