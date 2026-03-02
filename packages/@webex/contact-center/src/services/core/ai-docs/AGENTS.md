@@ -12,7 +12,6 @@ The Core service provides the foundational infrastructure layer that all other s
 - **HTTP Request Handling**: Authenticated REST API calls to WCC API Gateway with built-in error handling and log upload support
 - **AQM Request/Response Pattern**: A structured pattern used by the routing and contact layers to send HTTP requests to the contact center backend and correlate responses/failures via WebSocket notifications
 - **Error Handling & Logging**: Standardized error extraction, logging via `LoggerProxy`, and log upload utilities that all services use for consistent error reporting
-- **Type System**: Shared types (`Msg<T>`, `Failure`, `AugmentedError`, `TaskError`) that define the message and error contracts used across the SDK
 
 | Component | File | Description |
 |-----------|------|-------------|
@@ -22,7 +21,6 @@ The Core service provides the foundational infrastructure layer that all other s
 | `AqmReqs` | [`aqm-reqs.ts`](../aqm-reqs.ts) | Factory for creating request methods that send HTTP requests and wait for correlated WebSocket notifications (success or failure). Used by routing and task services to implement their API methods. |
 | `Utils` | [`Utils.ts`](../Utils.ts) | Shared utility functions including `getErrorDetails()` for standardized error handling, `generateTaskErrorObject()` for task-specific errors, and `createErrDetailsObject()` for constructing error detail objects. |
 | `Err` | [`Err.ts`](../Err.ts) | Error class definitions. `Err.Details` carries structured error metadata (status, type, trackingId) for consistent error propagation. |
-| `GlobalTypes` | [`GlobalTypes.ts`](../GlobalTypes.ts) | Shared type definitions: `Msg<T>` (message wrapper), `Failure` (failure message), `TaskError` (task API errors), and `AugmentedError` (error with data). |
 | `constants` | [`constants.ts`](../constants.ts) | Timeout values, interval durations, participant types, interaction states, and method name constants used throughout the core layer. Any new constants for core should be defined here. |
 
 ---
@@ -106,11 +104,32 @@ webSocketManager.close(false, 'Reason');
 6. On AGENT_NOT_FOUND: handle silently
 ```
 
+### Keepalive
+
+A Web Worker ([`keepalive.worker.js`](../websocket/keepalive.worker.js)) runs alongside the WebSocket to detect connection loss and keep the socket alive. It starts on `onopen` and sends `{keepalive: 'true'}` to the backend every **4 seconds** (`KEEPALIVE_WORKER_INTERVAL`). The worker also monitors `navigator.onLine` — if the network goes offline and the socket doesn't close within **16 seconds** (`CLOSE_SOCKET_TIMEOUT`), it force-closes the socket.
+
+On the receiving side, `ConnectionService.onPing()` listens for all WebSocket messages and resets two timers on each message:
+- **`reconnectingTimer`** (8s / `WS_DISCONNECT_ALLOWED`) — if no message arrives within 8s, marks connection as lost
+- **`restoreTimer`** (`lostConnectionRecoveryTimeout` from agent config) — if connection isn't restored within this window, marks restore as failed
+
+When a keepalive response arrives after a lost-connection state, `ConnectionService` resets its flags and dispatches a recovery event. If the socket fully closes, `ConnectionService` retries `initWebSocket()` every **5 seconds** (`CONNECTIVITY_CHECK_INTERVAL`).
+
 ---
 
 ## WebexRequest
 
 `WebexRequest` is a singleton HTTP client that all services use to make authenticated REST API calls to the contact center backend. It handles service URL resolution, request formatting, and response parsing.
+
+### The `service` Property
+
+The `service` field in request options is a **service identifier string** that the Webex SDK's internal service catalog (`this.webex.request()`) resolves to a base URL at runtime. All contact center API calls use:
+
+```typescript
+import {WCC_API_GATEWAY} from '../constants';
+// WCC_API_GATEWAY = 'wcc-api-gateway'
+```
+
+This constant is defined in [`services/constants.ts`](../../constants.ts). The Webex SDK maps `'wcc-api-gateway'` to the appropriate contact center API gateway URL based on the environment. The `resource` is then appended as the path.
 
 ### Reference Usage
 
@@ -120,9 +139,10 @@ const webexReq = WebexRequest.getInstance({webex});
 
 // Make request
 const response = await webexReq.request({
-  service: WCC_API_GATEWAY,
-  resource: '/v1/endpoint',
-  method: HTTP_METHODS.GET,
+  service: WCC_API_GATEWAY,  // resolved to base URL by Webex SDK
+  resource: '/v1/endpoint',  // appended as path
+  method: HTTP_METHODS.POST,
+  body: { key: 'value' },   // optional request payload
 });
 
 // Upload logs
