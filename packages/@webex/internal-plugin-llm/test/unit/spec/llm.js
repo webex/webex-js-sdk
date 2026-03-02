@@ -78,7 +78,8 @@ describe('plugin-llm', () => {
         sinon.assert.calledOnceWithExactly(
           llmService.register,
           datachannelUrl,
-          'abc123'
+          'abc123',
+          'llm-default-session'
         );
 
         assert.equal(llmService.isConnected(), true);
