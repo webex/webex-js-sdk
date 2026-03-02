@@ -4289,6 +4289,7 @@ export default class Meeting extends StatelessWebexPlugin {
           isSpokenLanguageAutoDetectionEnabled: MeetingUtil.isSpokenLanguageAutoDetectionEnabled(
             this.userDisplayHints
           ),
+          isAISlidoPollsEnabled: MeetingUtil.isAISlidoPollsEnabled(this.userDisplayHints),
           isWebexAssistantActive: MeetingUtil.isWebexAssistantActive(this.userDisplayHints),
           canViewCaptionPanel: MeetingUtil.canViewCaptionPanel(this.userDisplayHints),
           isRealTimeTranslationEnabled: MeetingUtil.isRealTimeTranslationEnabled(

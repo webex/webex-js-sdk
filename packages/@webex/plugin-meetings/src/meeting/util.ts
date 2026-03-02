@@ -779,6 +779,9 @@ const MeetingUtil = {
   isSpokenLanguageAutoDetectionEnabled: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.SPOKEN_LANGUAGE_AUTO_DETECTION_ENABLED),
 
+  isAISlidoPollsEnabled: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.AI_SLIDO_POLLS_ENABLED),
+
   isWebexAssistantActive: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.WEBEX_ASSISTANT_STATUS_ACTIVE),
 
