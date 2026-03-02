@@ -560,7 +560,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   }) {
     LoggerProxy.logger.info('Meeting:request#leaveMeeting --> Leaving a meeting', correlationId);
 
-    const uri = `${locusUrl}/${PARTICIPANT}/${selfId}/${LEAVE}?returnNullLocusResponse=true`;
+    const uri = `${locusUrl}/${PARTICIPANT}/${selfId}/${LEAVE}`;
     const body = {
       device: {
         // @ts-ignore
