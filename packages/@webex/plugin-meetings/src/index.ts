@@ -3,7 +3,11 @@ import {registerPlugin} from '@webex/webex-core';
 
 import Meetings from './meetings';
 import config from './config';
-import {LocusRetryStatusInterceptor, LocusRouteTokenInterceptor} from './interceptors';
+import {
+  LocusRetryStatusInterceptor,
+  LocusRouteTokenInterceptor,
+  DataChannelAuthTokenInterceptor,
+} from './interceptors';
 import CaptchaError from './common/errors/captcha-error';
 import IntentToJoinError from './common/errors/intent-to-join';
 import PasswordError from './common/errors/password-error';
@@ -25,6 +29,7 @@ registerPlugin('meetings', Meetings, {
   interceptors: {
     LocusRetryStatusInterceptor: LocusRetryStatusInterceptor.create,
     LocusRouteTokenInterceptor: LocusRouteTokenInterceptor.create,
+    DataChannelAuthTokenInterceptor: DataChannelAuthTokenInterceptor.create,
   },
 });
 
