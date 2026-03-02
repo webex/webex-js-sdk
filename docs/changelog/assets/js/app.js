@@ -1081,6 +1081,24 @@ const getAllPackagesFromChangelogs = (changelogs) => {
     return [...specialPackages.filter(pkg => allPackages.has(pkg)), ...filtered];
 };
 
+/** Session cache for full package list to avoid repeated O(n) changelog fetches in comparison mode. */
+let cachedFullPackageList = null;
+
+/**
+ * Return the union of all packages across versions. Fetches all changelogs once per session and caches the result.
+ * @returns {Promise<string[]>} - Sorted list of all package names
+ */
+const getFullPackageList = async () => {
+    const versionKeys = Object.keys(versionPaths);
+    if (versionKeys.length === 0) return [];
+    if (cachedFullPackageList !== null) return cachedFullPackageList;
+    const changelogs = await Promise.all(
+        versionKeys.map(v => fetch(versionPaths[v]).then(res => res.json()).catch(() => ({})))
+    );
+    cachedFullPackageList = getAllPackagesFromChangelogs(changelogs);
+    return cachedFullPackageList;
+};
+
 /**
  * Populate package dropdown with full list (used when we already have the package array).
  * Used for initial load flow; existing populateUnionPackages(changelogA, changelogB) is for two-version comparison.
@@ -1112,10 +1130,7 @@ const populateComparisonPackagesInitial = async () => {
         return;
     }
     try {
-        const changelogs = await Promise.all(
-            versionKeys.map(v => fetch(versionPaths[v]).then(res => res.json()).catch(() => ({})))
-        );
-        const allPackages = getAllPackagesFromChangelogs(changelogs);
+        const allPackages = await getFullPackageList();
         populateComparisonPackageDropdown(allPackages);
     } catch (e) {
         if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
@@ -1651,10 +1666,7 @@ const clearComparisonForm = async () => {
     const versionKeys = Object.keys(versionPaths);
     if (versionKeys.length > 0) {
         try {
-            const changelogs = await Promise.all(
-                versionKeys.map(v => fetch(versionPaths[v]).then(res => res.json()).catch(() => ({})))
-            );
-            const allPackages = getAllPackagesFromChangelogs(changelogs);
+            const allPackages = await getFullPackageList();
             populateComparisonPackageDropdown(allPackages);
         } catch (e) {
             if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
@@ -2071,10 +2083,7 @@ const loadStandardComparisonFromURL = async (urlParams) => {
         await performVersionComparison(urlParams.versionA, urlParams.versionB);
     } else {
         try {
-            const changelogs = await Promise.all(
-                versionKeys.map(v => fetch(versionPaths[v]).then(res => res.json()).catch(() => ({})))
-            );
-            const allPackages = getAllPackagesFromChangelogs(changelogs);
+            const allPackages = await getFullPackageList();
             populateComparisonPackageDropdown(allPackages);
         } catch (e) {
             if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
