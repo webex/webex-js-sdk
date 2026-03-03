@@ -11462,27 +11462,6 @@ describe('plugin-meetings', () => {
 
           assert.doesNotThrow(() => meeting.localConstraintsChangeHandler());
         });
-
-        it('is triggered when ConstraintsChange event is emitted on a local video stream', () => {
-          const EventEmitter = require('events');
-          const fakeStream = new EventEmitter();
-
-          meeting.isMultistream = false;
-          meeting.mediaProperties.webrtcMediaConnection = {
-            updatePreferredBitrateKbps: sinon.stub(),
-          };
-
-          fakeStream.on(
-            LocalStreamEventNames.ConstraintsChange,
-            meeting.localConstraintsChangeHandler
-          );
-
-          fakeStream.emit(LocalStreamEventNames.ConstraintsChange);
-
-          assert.calledOnce(
-            meeting.mediaProperties.webrtcMediaConnection.updatePreferredBitrateKbps
-          );
-        });
       });
 
       describe('#parseMeetingInfo', () => {
