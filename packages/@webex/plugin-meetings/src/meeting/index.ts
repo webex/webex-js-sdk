@@ -183,6 +183,7 @@ import {SetStageOptions, SetStageVideoLayout, UnsetStageVideoLayout} from './req
 import {Invitee} from './type';
 import {DataSet, Metadata} from '../hashTree/hashTreeParser';
 import {LocusDTO} from '../locus-info/types';
+import AIEnableRequest from '../aiEnableRequest';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -578,6 +579,7 @@ export default class Meeting extends StatelessWebexPlugin {
   breakouts: any;
   simultaneousInterpretation: any;
   annotation: any;
+  aiEnableRequest: any;
   webinar: any;
   conversationUrl: string;
   callStateForMetrics: CallStateForMetrics;
@@ -901,6 +903,10 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     // @ts-ignore
     this.simultaneousInterpretation = new SimultaneousInterpretation({}, {parent: this.webex});
+
+    // @ts-ignore
+    this.aiEnableRequest = new AIEnableRequest({}, {parent: this.webex});
+
     /**
      * @instance
      * @type {Annotation}
@@ -3442,6 +3448,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.breakouts.breakoutServiceUrlUpdate(payload?.services?.breakout?.url);
       this.annotation.approvalUrlUpdate(payload?.services?.approval?.url);
       this.simultaneousInterpretation.approvalUrlUpdate(payload?.services?.approval?.url);
+      this.aiEnableRequest.approvalUrlUpdate(payload?.services?.approval?.url);
     });
   }
 
@@ -3769,6 +3776,10 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
       );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ID_CHANGED, (payload) => {
+      this.aiEnableRequest.selfParticipantIdUpdate(payload.selfId);
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_INTERPRETATION_CHANGED, (payload) => {
@@ -4531,6 +4542,10 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredHints: [DISPLAY_HINTS.DISABLE_ATTENDEE_START_POLLING_QA],
             displayHints: this.userDisplayHints,
           }),
+          canAttendeeRequestAiAssistantEnabled: MeetingUtil.canAttendeeRequestAiAssistantEnabled(
+            this.userDisplayHints,
+            this.roles
+          ),
         }) || changed;
     }
     if (changed) {
