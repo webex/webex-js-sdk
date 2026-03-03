@@ -580,6 +580,8 @@ export type OrgInfo = {
   tenantId: string;
   /** Organization timezone */
   timezone: string;
+  /** Current environment (e.g., 'produs1', 'intgus1') */
+  environment: string;
 };
 
 /**
@@ -1031,6 +1033,8 @@ export type Profile = {
   isAnalyzerEnabled?: boolean;
   /** Tenant timezone */
   tenantTimezone?: string;
+  /** Current environment (e.g., 'produs1', 'intgus1') */
+  environment?: string;
   /** Available voice login options */
   loginVoiceOptions?: LoginOption[];
   /** Current login device type */

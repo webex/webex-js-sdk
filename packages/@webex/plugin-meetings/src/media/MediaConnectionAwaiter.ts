@@ -2,9 +2,12 @@ import {Defer} from '@webex/common';
 import {ConnectionState, MediaConnectionEventNames} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {ICE_AND_DTLS_CONNECTION_TIMEOUT} from '../constants';
+import BEHAVIORAL_METRICS from '../metrics/constants';
+import Metrics from '../metrics';
 
 export interface MediaConnectionAwaiterProps {
   webrtcMediaConnection: any;
+  correlationId: string;
 }
 
 /**
@@ -16,6 +19,7 @@ export default class MediaConnectionAwaiter {
   private defer: Defer;
   private retried: boolean;
   private iceConnected: boolean;
+  private correlationId: string;
   private onTimeoutCallback: () => void;
   private peerConnectionStateCallback: () => void;
   private iceConnectionStateCallback: () => void;
@@ -24,11 +28,12 @@ export default class MediaConnectionAwaiter {
   /**
    * @param {MediaConnectionAwaiterProps} mediaConnectionAwaiterProps
    */
-  constructor({webrtcMediaConnection}: MediaConnectionAwaiterProps) {
+  constructor({webrtcMediaConnection, correlationId}: MediaConnectionAwaiterProps) {
     this.webrtcMediaConnection = webrtcMediaConnection;
     this.defer = new Defer();
     this.retried = false;
     this.iceConnected = false;
+    this.correlationId = correlationId;
     this.onTimeoutCallback = this.onTimeout.bind(this);
     this.peerConnectionStateCallback = this.peerConnectionStateHandler.bind(this);
     this.iceConnectionStateCallback = this.iceConnectionStateHandler.bind(this);
@@ -176,6 +181,32 @@ export default class MediaConnectionAwaiter {
   }
 
   /**
+   * sends a metric with some additional info that might help debugging
+   * issues where browser doesn't update the RTCPeerConnection's iceConnectionState or connectionState
+   *
+   * @returns {void}
+   */
+  async sendMetric() {
+    const stats = await this.webrtcMediaConnection.getStats();
+
+    // in theory we can end up with more than one transport report in the stats,
+    // but for the purpose of this metric it's fine to just use the first one
+    const transportReports = Array.from(
+      stats.values().filter((report) => report.type === 'transport')
+    ) as Record<string, number | string>[];
+
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MEDIA_STILL_NOT_CONNECTED, {
+      correlation_id: this.correlationId,
+      numTransports: transportReports.length,
+      dtlsState: transportReports[0]?.dtlsState,
+      iceState: transportReports[0]?.iceState,
+      packetsSent: transportReports[0]?.packetsSent,
+      packetsReceived: transportReports[0]?.packetsReceived,
+      dataChannelState: this.webrtcMediaConnection.multistreamConnection?.dataChannel?.readyState,
+    });
+  }
+
+  /**
    * Function called when the timeout is reached.
    *
    * @returns {void}
@@ -188,6 +219,8 @@ export default class MediaConnectionAwaiter {
 
       return;
     }
+
+    this.sendMetric();
 
     if (!this.isIceGatheringCompleted()) {
       if (!this.retried) {
@@ -226,8 +259,15 @@ export default class MediaConnectionAwaiter {
    */
   waitForMediaConnectionConnected(): Promise<void> {
     if (this.isConnected()) {
+      LoggerProxy.logger.log(
+        'Media:MediaConnectionAwaiter#waitForMediaConnectionConnected --> Already connected'
+      );
+
       return Promise.resolve();
     }
+    LoggerProxy.logger.log(
+      'Media:MediaConnectionAwaiter#waitForMediaConnectionConnected --> Waiting for media connection to be connected'
+    );
 
     this.webrtcMediaConnection.on(
       MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,

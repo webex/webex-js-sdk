@@ -23,6 +23,7 @@ export interface RequestOptions {
   notFoundPath?: string;
   params?: Record<string, unknown>;
   requestId?: string;
+  headers?: Record<string, string>;
 }
 
 export interface ContextResource {
@@ -51,4 +52,6 @@ export interface AiAssistantRequestOptions {
   assistant?: string;
   locale?: string;
   requestId?: string;
+  entryPoint?: string;
+  renderProtocolVersion?: string;
 }

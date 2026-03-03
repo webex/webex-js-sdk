@@ -707,6 +707,7 @@ export const LOCUSINFO = {
     CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED:
       'CONTROLS_MEETING_TRANSCRIPTION_SPOKEN_LANGUAGE_UPDATED',
     CONTROLS_MEETING_MANUAL_CAPTION_UPDATED: 'CONTROLS_MEETING_MANUAL_CAPTION_UPDATED',
+    CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED: 'CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED',
     CONTROLS_MEETING_BREAKOUT_UPDATED: 'CONTROLS_MEETING_BREAKOUT_UPDATED',
     CONTROLS_MEETING_CONTAINER_UPDATED: 'CONTROLS_MEETING_CONTAINER_UPDATED',
     CONTROLS_MEETING_INTERPRETATION_UPDATED: 'CONTROLS_MEETING_INTERPRETATION_UPDATED',
@@ -793,7 +794,19 @@ export const LOCUSEVENT = {
   RECORDING_STOPPED: 'locus.recording_stopped',
 
   SELF_CHANGED: 'locus.self_changed',
-};
+
+  HASH_TREE_DATA_UPDATED: 'locus.state_message',
+
+  // events generated internally by SDK
+  SDK_LOCUS_FROM_SYNC_MEETINGS: 'jsSdk.locus_from_sync_meetings', // generated for each meeting from response to GET /loci Locus API call
+  SDK_NO_EVENT: 'jsSdk.no_event', // used in cases where eventType is irrelevant
+} as const;
+
+export type LOCUSEVENT = Enum<typeof LOCUSEVENT>;
+
+// HASH_TREE_DATA_UPDATED event can come over Mercury (so it's listed above with other Mercury events),
+// but also over LLM as an event like this:
+export const LOCUS_LLM_EVENT = `event:${LOCUSEVENT.HASH_TREE_DATA_UPDATED}`;
 
 export const MEDIA_TRACK_CONSTRAINT = {
   CURSOR: {
@@ -1388,3 +1401,5 @@ export const STAGE_MANAGER_TYPE = {
   BACKGROUND: 0b010,
   NAME_LABEL: 0b100,
 };
+
+export const DEFAULT_LARGE_SCALE_WEBINAR_ATTENDEE_SEARCH_LIMIT = 50;

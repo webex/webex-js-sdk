@@ -88,4 +88,10 @@ export type UnsetStageVideoLayout = {
   overrideDefault: false;
 };
 
+export type fetchDataChannelTokenOptions = {
+  locusUrl: string;
+  requestingParticipantId: string;
+  isPracticeSession: boolean;
+};
+
 export type SynchronizeVideoLayout = SetStageVideoLayout | UnsetStageVideoLayout;

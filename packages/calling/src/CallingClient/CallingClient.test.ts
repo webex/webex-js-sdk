@@ -6,7 +6,14 @@ import {
   getMockRequestTemplate,
   getMobiusDiscoveryResponse,
 } from '../common/testUtil';
-import {CallType, RegistrationStatus, ServiceIndicator} from '../common/types';
+import {
+  CallType,
+  RegistrationStatus,
+  ServiceIndicator,
+  ALLOWED_SERVICES,
+  HTTP_METHODS,
+  WebexRequestPayload,
+} from '../common/types';
 /* eslint-disable dot-notation */
 import {CALLING_CLIENT_EVENT_KEYS, CallSessionEvent, MOBIUS_EVENT_KEYS} from '../Events/types';
 import log from '../Logger';
@@ -17,22 +24,21 @@ import {getCallManager} from './calling/callManager';
 import {
   CALLING_CLIENT_FILE,
   DISCOVERY_URL,
-  IP_ENDPOINT,
   NETWORK_FLAP_TIMEOUT,
   REGISTRATION_FILE,
+  CALLING_USER_AGENT,
+  CISCO_DEVICE_URL,
   SPARK_USER_AGENT,
   URL_ENDPOINT,
 } from './constants';
 import {MOCK_MULTIPLE_SESSIONS_EVENT, MOCK_SESSION_EVENT} from './callRecordFixtures';
 import {ILine} from './line/types';
 import {
-  ipPayload,
   regionBody,
   regionPayload,
   primaryUrl,
   discoveryPayload,
   registrationPayload,
-  myIP,
   mockEUServiceHosts,
   mockIntServiceHosts,
   mockEUIntServiceHosts,
@@ -64,6 +70,7 @@ describe('CallingClient Tests', () => {
   const setLoggerSpy = jest.spyOn(Media, 'setLogger');
   const webex = getTestUtilsWebex();
   webex.internal.services['_hostCatalog'] = mockCatalogUS;
+  webex.internal.services.getMobiusClusters = jest.fn().mockReturnValue(mockUSServiceHosts);
   const defaultServiceIndicator = ServiceIndicator.CALLING;
   const callManager = getCallManager(webex, defaultServiceIndicator);
 
@@ -86,22 +93,6 @@ describe('CallingClient Tests', () => {
       webex.internal.services['_hostCatalog'] = mockCatalogUS;
     });
 
-    it('should set mobiusServiceHost correctly when URL is valid', async () => {
-      webex.internal.services._hostCatalog = mockCatalogEU;
-      webex.internal.services['_serviceUrls']['mobius'] =
-        'https://mobius-eu-central-1.prod.infra.webex.com/api/v1';
-      const urlSpy = jest.spyOn(window, 'URL').mockImplementation((url) => new window.URL(url));
-      const callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
-
-      expect(urlSpy).toHaveBeenCalledWith(
-        'https://mobius-eu-central-1.prod.infra.webex.com/api/v1'
-      );
-
-      expect(callingClient['mobiusClusters']).toStrictEqual(mockEUServiceHosts);
-
-      urlSpy.mockRestore();
-    });
-
     it('should use default mobius service host when Service URL is invalid', async () => {
       webex.internal.services._hostCatalog = mockCatalogUS;
       webex.internal.services._serviceUrls.mobius = 'invalid-url';
@@ -109,6 +100,20 @@ describe('CallingClient Tests', () => {
       const callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
       expect(setLoggerSpy).toHaveBeenCalledTimes(1);
       expect(callingClient['mobiusClusters']).toStrictEqual(mockUSServiceHosts);
+    });
+
+    it('should set mobiusServiceHost correctly when URL is valid', async () => {
+      webex.internal.services._hostCatalog = mockCatalogEU;
+      webex.internal.services.getMobiusClusters = jest.fn().mockReturnValue(mockEUServiceHosts);
+      webex.internal.services['_serviceUrls']['mobius'] =
+        'https://mobius-eu-central-1.prod.infra.webex.com/api/v1';
+
+      const callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+
+      expect(callingClient['mobiusHost']).toBe(
+        'https://mobius-eu-central-1.prod.infra.webex.com/api/v1'
+      );
+      expect(callingClient['mobiusClusters']).toStrictEqual(mockEUServiceHosts);
     });
   });
 
@@ -267,132 +272,36 @@ describe('CallingClient Tests', () => {
     });
 
     it('verify successful mobius server url discovery', async () => {
-      webex.request
-        .mockResolvedValueOnce(ipPayload)
-        .mockResolvedValueOnce(regionPayload)
-        .mockResolvedValueOnce(discoveryPayload);
+      webex.request.mockResolvedValueOnce(regionPayload).mockResolvedValueOnce(discoveryPayload);
 
       callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
 
-      expect(webex.request).toBeCalledTimes(3);
+      expect(webex.request).toBeCalledTimes(2);
       expect(callingClient.primaryMobiusUris).toEqual([primaryUrl]);
       expect(handleErrorSpy).not.toBeCalled();
 
       expect(webex.request).nthCalledWith(1, {
         method: 'GET',
-        ...getMockRequestTemplate(),
-        uri: `${callingClient['mobiusHost']}${URL_ENDPOINT}${IP_ENDPOINT}`,
-      });
-
-      expect(webex.request).nthCalledWith(2, {
-        method: 'GET',
-        uri: `${DISCOVERY_URL}/${myIP}`,
+        uri: `${DISCOVERY_URL}`,
         addAuthHeader: false,
         headers: {
           [SPARK_USER_AGENT]: null,
         },
       });
 
-      expect(webex.request).nthCalledWith(3, {
+      expect(webex.request).nthCalledWith(2, {
         method: 'GET',
         ...getMockRequestTemplate(),
         uri: `${callingClient['mobiusHost']}${URL_ENDPOINT}?regionCode=${regionBody.clientRegion}&countryCode=${regionBody.countryCode}`,
       });
     });
 
-    it('case when region discovery fails', async () => {
-      const failurePayload = {
-        statusCode: 500,
-      };
-
-      webex.request.mockRejectedValue(failurePayload);
-
-      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
-
-      expect(webex.request).nthCalledWith(1, {
-        ...getMockRequestTemplate(),
-        uri: 'https://mobius-us-east-1.prod.infra.webex.com/api/v1/calling/web/myip',
-        method: 'GET',
-      });
-
-      expect(webex.request).nthCalledWith(2, {
-        ...getMockRequestTemplate(),
-        uri: 'https://mobius-ca-central-1.prod.infra.webex.com/api/v1/calling/web/myip',
-        method: 'GET',
-      });
-
-      expect(webex.request).nthCalledWith(3, {
-        ...getMockRequestTemplate(),
-        uri: 'https://mobius-eu-central-1.prod.infra.webex.com/api/v1/calling/web/myip',
-        method: 'GET',
-      });
-
-      expect(webex.request).nthCalledWith(4, {
-        ...getMockRequestTemplate(),
-        uri: 'https://mobius-ap-southeast-2.prod.infra.webex.com/api/v1/calling/web/myip',
-        method: 'GET',
-      });
-
-      expect(handleErrorSpy).toBeCalledWith(failurePayload, expect.anything(), {
-        file: CALLING_CLIENT_FILE,
-        method: 'getMobiusServers',
-      });
-
-      expect(callingClient.primaryMobiusUris).toEqual([
-        `${callingClient['mobiusHost']}${URL_ENDPOINT}`,
-      ]);
-
-      expect(warnSpy).toBeCalledWith(
-        `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
-        expect.objectContaining({
-          file: CALLING_CLIENT_FILE,
-          method: 'getMobiusServers',
-        })
-      );
-    });
-
-    it('case when /myIP failed with 401', async () => {
+    it('when region discovery succeeds but region based mobius url discovery fails with final error', async () => {
       const failurePayload = {
         statusCode: 401,
       };
 
-      webex.request.mockRejectedValueOnce(failurePayload);
-
-      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
-
-      expect(webex.request).toBeCalledOnceWith({
-        ...getMockRequestTemplate(),
-        uri: 'https://mobius-us-east-1.prod.infra.webex.com/api/v1/calling/web/myip',
-        method: 'GET',
-      });
-
-      expect(handleErrorSpy).toBeCalledOnceWith(failurePayload, expect.anything(), {
-        file: CALLING_CLIENT_FILE,
-        method: 'getMobiusServers',
-      });
-
-      expect(callingClient.primaryMobiusUris).toEqual([
-        `${callingClient['mobiusHost']}${URL_ENDPOINT}`,
-      ]);
-
-      expect(warnSpy).toBeCalledWith(
-        `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
-        expect.objectContaining({
-          file: CALLING_CLIENT_FILE,
-          method: 'getMobiusServers',
-        })
-      );
-    });
-
-    it('when region discovery succeeds but region based mobius url discovery fails', async () => {
-      const failurePayload = {
-        statusCode: 500,
-      };
-
-      webex.request
-        .mockResolvedValueOnce(ipPayload)
-        .mockResolvedValueOnce(regionPayload)
-        .mockRejectedValueOnce(failurePayload);
+      webex.request.mockResolvedValueOnce(regionPayload).mockRejectedValueOnce(failurePayload);
 
       callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
 
@@ -400,69 +309,20 @@ describe('CallingClient Tests', () => {
         file: CALLING_CLIENT_FILE,
         method: 'getMobiusServers',
       });
-      expect(webex.request).toBeCalledTimes(3);
-
-      expect(callingClient.primaryMobiusUris).toEqual([
-        `${callingClient['mobiusHost']}${URL_ENDPOINT}`,
-      ]);
-
-      expect(webex.request).nthCalledWith(1, {
-        method: 'GET',
-        ...getMockRequestTemplate(),
-        uri: `${callingClient['mobiusHost']}${URL_ENDPOINT}${IP_ENDPOINT}`,
-      });
-
-      expect(webex.request).nthCalledWith(2, {
-        method: 'GET',
-        uri: `${DISCOVERY_URL}/${myIP}`,
-        addAuthHeader: false,
-        headers: {
-          [SPARK_USER_AGENT]: null,
-        },
-      });
-
-      expect(warnSpy).toBeCalledWith(
-        `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
-        expect.objectContaining({
-          file: CALLING_CLIENT_FILE,
-          method: 'getMobiusServers',
-        })
-      );
-    });
-
-    it('case when discovery failed with 401', async () => {
-      const failurePayload = {
-        statusCode: 401,
-      };
-
-      webex.request.mockResolvedValueOnce(ipPayload).mockRejectedValueOnce(failurePayload);
-
-      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
-
       expect(webex.request).toBeCalledTimes(2);
-      expect(webex.request).nthCalledWith(1, {
-        ...getMockRequestTemplate(),
-        uri: 'https://mobius-us-east-1.prod.infra.webex.com/api/v1/calling/web/myip',
-        method: 'GET',
-      });
 
-      expect(webex.request).nthCalledWith(2, {
+      expect(callingClient.primaryMobiusUris).toEqual([
+        `${callingClient['mobiusHost']}${URL_ENDPOINT}`,
+      ]);
+
+      expect(webex.request).nthCalledWith(1, {
         method: 'GET',
-        uri: `${DISCOVERY_URL}/${myIP}`,
+        uri: `${DISCOVERY_URL}`,
         addAuthHeader: false,
         headers: {
           [SPARK_USER_AGENT]: null,
         },
       });
-
-      expect(handleErrorSpy).toBeCalledOnceWith(failurePayload, expect.anything(), {
-        file: CALLING_CLIENT_FILE,
-        method: 'getMobiusServers',
-      });
-
-      expect(callingClient.primaryMobiusUris).toEqual([
-        `${callingClient['mobiusHost']}${URL_ENDPOINT}`,
-      ]);
 
       expect(warnSpy).toBeCalledWith(
         `Couldn't resolve the region and country code. Defaulting to the catalog entries to discover mobius servers`,
@@ -516,6 +376,7 @@ describe('CallingClient Tests', () => {
       mockCatalog: Record<string, ServiceHost[]>
     ) => {
       webex.internal.services._hostCatalog = mockCatalog;
+      webex.internal.services.getMobiusClusters = jest.fn().mockReturnValue(mockServiceHosts);
       const callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
 
       expect(callingClient['mobiusClusters']).toStrictEqual(mockServiceHosts);
@@ -582,7 +443,6 @@ describe('CallingClient Tests', () => {
     beforeEach(async () => {
       jest.useFakeTimers();
       webex.request
-        .mockResolvedValueOnce(ipPayload)
         .mockResolvedValueOnce(regionPayload)
         .mockResolvedValueOnce(discoveryPayload)
         .mockResolvedValueOnce(registrationPayload);
@@ -957,6 +817,108 @@ describe('CallingClient Tests', () => {
       const callSessionCallback = mockOn.mock.calls[0][1];
 
       callSessionCallback(MOCK_MULTIPLE_SESSIONS_EVENT);
+    });
+  });
+
+  describe('getDevices', () => {
+    let callingClient: ICallingClient;
+    const primaryMobius = 'https://mobius.primary/api/v1/calling/web/';
+    const backupMobius = 'https://mobius.backup/api/v1/calling/web/';
+
+    beforeEach(async () => {
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+      callingClient.primaryMobiusUris = [primaryMobius];
+      callingClient.backupMobiusUris = [backupMobius];
+      (webex.request as jest.Mock).mockClear();
+    });
+
+    afterEach(() => {
+      callingClient.removeAllListeners();
+    });
+
+    it('fetches devices for the provided userId', async () => {
+      const devices = [
+        {
+          deviceId: 'device-1',
+          uri: 'https://mobius.test/api/v1/calling/web/devices/device-1',
+          status: 'ACTIVE',
+          lastSeen: '2024-01-01T00:00:00Z',
+          addresses: [],
+          clientDeviceUri: 'client-device-uri',
+        },
+      ];
+
+      const responsePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {userId: 'user-123', devices},
+      });
+
+      (webex.request as jest.Mock).mockResolvedValue(responsePayload);
+
+      const response = await callingClient.getDevices('user-123');
+
+      expect(webex.request).toHaveBeenCalledWith({
+        uri: 'https://mobius.primary/api/v1/calling/web/devices?userid=user-123',
+        method: HTTP_METHODS.GET,
+        service: ALLOWED_SERVICES.MOBIUS,
+        headers: {
+          [CISCO_DEVICE_URL]: webex.internal.device.url,
+          [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+        },
+      });
+
+      expect(response).toEqual(devices);
+    });
+
+    it('falls back to backup Mobius when primary fails', async () => {
+      const devices = [
+        {
+          deviceId: 'device-2',
+          uri: 'https://mobius.backup/api/v1/calling/web/devices/device-2',
+          status: 'ACTIVE',
+          lastSeen: '2024-01-01T00:00:00Z',
+          addresses: [],
+          clientDeviceUri: 'client-device-uri',
+        },
+      ];
+
+      const failurePayload = {
+        statusCode: 404,
+      };
+
+      const responsePayload = <WebexRequestPayload>(<unknown>{
+        statusCode: 200,
+        body: {userId: 'user-123', devices},
+      });
+
+      (webex.request as jest.Mock)
+        .mockRejectedValueOnce(failurePayload)
+        .mockResolvedValueOnce(responsePayload);
+
+      const response = await callingClient.getDevices('user-123');
+
+      const requestCalls = (webex.request as jest.Mock).mock.calls;
+      expect(requestCalls[0][0]).toEqual({
+        uri: 'https://mobius.primary/api/v1/calling/web/devices?userid=user-123',
+        method: HTTP_METHODS.GET,
+        service: ALLOWED_SERVICES.MOBIUS,
+        headers: {
+          [CISCO_DEVICE_URL]: webex.internal.device.url,
+          [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+        },
+      });
+
+      expect(requestCalls[1][0]).toEqual({
+        uri: 'https://mobius.backup/api/v1/calling/web/devices?userid=user-123',
+        method: HTTP_METHODS.GET,
+        service: ALLOWED_SERVICES.MOBIUS,
+        headers: {
+          [CISCO_DEVICE_URL]: webex.internal.device.url,
+          [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+        },
+      });
+
+      expect(response).toEqual(devices);
     });
   });
 

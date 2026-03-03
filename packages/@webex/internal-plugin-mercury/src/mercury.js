@@ -6,7 +6,7 @@
 import url from 'url';
 
 import {WebexPlugin} from '@webex/webex-core';
-import {deprecated} from '@webex/common';
+import {deprecated, oneFlight} from '@webex/common';
 import {camelCase, get, set} from 'lodash';
 import backoff from 'backoff';
 
@@ -25,7 +25,6 @@ const normalReconnectReasons = ['idle', 'done (forced)', 'pong not received', 'p
 const Mercury = WebexPlugin.extend({
   namespace: 'Mercury',
   lastError: undefined,
-  defaultSessionId: 'mercury-default-session',
 
   session: {
     connected: {
@@ -40,18 +39,7 @@ const Mercury = WebexPlugin.extend({
       default: false,
       type: 'boolean',
     },
-    sockets: {
-      default: () => new Map(),
-      type: 'object',
-    },
-    backoffCalls: {
-      default: () => new Map(),
-      type: 'object',
-    },
-    _shutdownSwitchoverBackoffCalls: {
-      default: () => new Map(),
-      type: 'object',
-    },
+    socket: 'object',
     localClusterServiceUrls: 'object',
     mercuryTimeOffset: {
       default: undefined,
@@ -111,60 +99,50 @@ const Mercury = WebexPlugin.extend({
   /**
    * Attach event listeners to a socket.
    * @param {Socket} socket - The socket to attach listeners to
-   * @param {sessionId} sessionId - The socket related session ID
    * @returns {void}
    */
-  _attachSocketEventListeners(socket, sessionId) {
-    socket.on('close', (event) => this._onclose(sessionId, event, socket));
-    socket.on('message', (...args) => this._onmessage(sessionId, ...args));
-    socket.on('pong', (...args) => this._setTimeOffset(sessionId, ...args));
-    socket.on('sequence-mismatch', (...args) =>
-      this._emit(sessionId, 'sequence-mismatch', ...args)
-    );
-    socket.on('ping-pong-latency', (...args) =>
-      this._emit(sessionId, 'ping-pong-latency', ...args)
-    );
+  _attachSocketEventListeners(socket) {
+    socket.on('close', (event) => this._onclose(event, socket));
+    socket.on('message', (...args) => this._onmessage(...args));
+    socket.on('pong', (...args) => this._setTimeOffset(...args));
+    socket.on('sequence-mismatch', (...args) => this._emit('sequence-mismatch', ...args));
+    socket.on('ping-pong-latency', (...args) => this._emit('ping-pong-latency', ...args));
   },
 
   /**
    * Handle imminent shutdown by establishing a new connection while keeping
    * the current one alive (make-before-break).
    * Idempotent: will no-op if already in progress.
-   * @param {string} sessionId - The session ID for which the shutdown is imminent
    * @returns {void}
    */
-  _handleImminentShutdown(sessionId) {
-    const oldSocket = this.sockets.get(sessionId);
-
+  _handleImminentShutdown() {
     try {
-      if (this._shutdownSwitchoverBackoffCalls.get(sessionId)) {
-        this.logger.info(
-          `${this.namespace}: [shutdown] switchover already in progress for ${sessionId}`
-        );
+      if (this._shutdownSwitchoverInProgress) {
+        this.logger.info(`${this.namespace}: [shutdown] switchover already in progress`);
 
         return;
       }
+      this._shutdownSwitchoverInProgress = true;
       this._shutdownSwitchoverId = `${Date.now()}`;
       this.logger.info(
-        `${this.namespace}: [shutdown] switchover start, id=${this._shutdownSwitchoverId} for ${sessionId}`
+        `${this.namespace}: [shutdown] switchover start, id=${this._shutdownSwitchoverId}`
       );
 
-      this._connectWithBackoff(undefined, sessionId, {
+      this._connectWithBackoff(undefined, {
         isShutdownSwitchover: true,
         attemptOptions: {
           isShutdownSwitchover: true,
           onSuccess: (newSocket, webSocketUrl) => {
             this.logger.info(
-              `${this.namespace}: [shutdown] switchover connected, url: ${webSocketUrl} for ${sessionId}`
+              `${this.namespace}: [shutdown] switchover connected, url: ${webSocketUrl}`
             );
 
+            const oldSocket = this.socket;
             // Atomically switch active socket reference
-            this.socket = this.sockets.get(this.defaultSessionId);
-            this.connected = this.hasConnectedSockets(); // remain connected throughout
+            this.socket = newSocket;
+            this.connected = true; // remain connected throughout
 
-            this._emit(sessionId, 'event:mercury_shutdown_switchover_complete', {
-              url: webSocketUrl,
-            });
+            this._emit('event:mercury_shutdown_switchover_complete', {url: webSocketUrl});
 
             if (oldSocket) {
               this.logger.info(
@@ -175,25 +153,20 @@ const Mercury = WebexPlugin.extend({
         },
       })
         .then(() => {
-          this.logger.info(
-            `${this.namespace}: [shutdown] switchover completed successfully for ${sessionId}`
-          );
+          this.logger.info(`${this.namespace}: [shutdown] switchover completed successfully`);
         })
         .catch((err) => {
           this.logger.info(
-            `${this.namespace}: [shutdown] switchover exhausted retries; will fall back to normal reconnection for ${sessionId}: `,
+            `${this.namespace}: [shutdown] switchover exhausted retries; will fall back to normal reconnection`,
             err
           );
-          this._emit(sessionId, 'event:mercury_shutdown_switchover_failed', {reason: err});
+          this._emit('event:mercury_shutdown_switchover_failed', {reason: err});
           // Old socket will eventually close with 4001, triggering normal reconnection
         });
     } catch (e) {
-      this.logger.error(
-        `${this.namespace}: [shutdown] error during switchover for ${sessionId}`,
-        e
-      );
-      this._shutdownSwitchoverBackoffCalls.delete(sessionId);
-      this._emit(sessionId, 'event:mercury_shutdown_switchover_failed', {reason: e});
+      this.logger.error(`${this.namespace}: [shutdown] error during switchover`, e);
+      this._shutdownSwitchoverInProgress = false;
+      this._emit('event:mercury_shutdown_switchover_failed', {reason: e});
     }
   },
 
@@ -205,94 +178,29 @@ const Mercury = WebexPlugin.extend({
     return this.lastError;
   },
 
-  /**
-   * Get all active socket connections
-   * @returns {Map} Map of sessionId to socket instances
-   */
-  getSockets() {
-    return this.sockets;
-  },
-
-  /**
-   * Get a specific socket by connection ID
-   * @param {string} sessionId - The connection identifier
-   * @returns {Socket|undefined} The socket instance or undefined if not found
-   */
-  getSocket(sessionId = this.defaultSessionId) {
-    return this.sockets.get(sessionId);
-  },
-
-  /**
-   * Check if any sockets are connected
-   * @returns {boolean} True if at least one socket is connected
-   */
-  hasConnectedSockets() {
-    const socket = this.sockets.get(this.defaultSessionId);
-    if (socket && socket.connected) {
-      return true;
-    }
-
-    return false;
-  },
-
-  /**
-   * Check if any sockets are connecting
-   * @returns {boolean} True if at least one socket is connected
-   */
-  hasConnectingSockets() {
-    const socket = this.sockets.get(this.defaultSessionId);
-    if (socket && socket.connecting) {
-      return true;
-    }
-
-    return false;
-  },
-
-  // @oneFlight
-  connect(webSocketUrl, sessionId = this.defaultSessionId) {
-    if (!this._connectPromises) this._connectPromises = new Map();
-
-    // First check if there's already a connection promise for this session
-    if (this._connectPromises.has(sessionId)) {
-      this.logger.info(
-        `${this.namespace}: connection ${sessionId} already in progress, returning existing promise`
-      );
-
-      return this._connectPromises.get(sessionId);
-    }
-
-    const sessionSocket = this.sockets.get(sessionId);
-    if (sessionSocket?.connected || sessionSocket?.connecting) {
-      this.logger.info(
-        `${this.namespace}: connection ${sessionId} already connected, will not connect again`
-      );
+  @oneFlight
+  connect(webSocketUrl) {
+    if (this.connected) {
+      this.logger.info(`${this.namespace}: already connected, will not connect again`);
 
       return Promise.resolve();
     }
 
     this.connecting = true;
 
-    this.logger.info(`${this.namespace}: starting connection attempt for ${sessionId}`);
+    this.logger.info(`${this.namespace}: starting connection attempt`);
     this.logger.info(
       `${this.namespace}: debug_mercury_logging stack: `,
       new Error('debug_mercury_logging').stack
     );
 
-    const connectPromise = Promise.resolve(
+    return Promise.resolve(
       this.webex.internal.device.registered || this.webex.internal.device.register()
-    )
-      .then(() => {
-        this.logger.info(`${this.namespace}: connecting ${sessionId}`);
+    ).then(() => {
+      this.logger.info(`${this.namespace}: connecting`);
 
-        return this._connectWithBackoff(webSocketUrl, sessionId);
-      })
-      .finally(() => {
-        this._connectPromises.delete(sessionId);
-      });
-
-    this._connectPromises.set(sessionId, connectPromise);
-
-    return connectPromise;
+      return this._connectWithBackoff(webSocketUrl);
+    });
   },
 
   logout() {
@@ -302,7 +210,7 @@ const Mercury = WebexPlugin.extend({
       new Error('debug_mercury_logging').stack
     );
 
-    return this.disconnectAll(
+    return this.disconnect(
       this.config.beforeLogoutOptionsCloseReason &&
         !normalReconnectReasons.includes(this.config.beforeLogoutOptionsCloseReason)
         ? {code: 3050, reason: this.config.beforeLogoutOptionsCloseReason}
@@ -310,64 +218,32 @@ const Mercury = WebexPlugin.extend({
     );
   },
 
-  // @oneFlight
-  disconnect(options, sessionId = this.defaultSessionId) {
+  @oneFlight
+  disconnect(options) {
+    this.logger.info(
+      `${this.namespace}#disconnect: connecting state: ${this.connecting}, connected state: ${
+        this.connected
+      }, socket exists: ${!!this.socket}, options: ${JSON.stringify(options)}`
+    );
+
     return new Promise((resolve) => {
-      const backoffCall = this.backoffCalls.get(sessionId);
-      if (backoffCall) {
-        this.logger.info(`${this.namespace}: aborting connection ${sessionId}`);
-        backoffCall.abort();
-        this.backoffCalls.delete(sessionId);
-      }
-      const shutdownSwitchoverBackoffCall = this._shutdownSwitchoverBackoffCalls.get(sessionId);
-      if (shutdownSwitchoverBackoffCall) {
-        this.logger.info(`${this.namespace}: aborting shutdown switchover connection ${sessionId}`);
-        shutdownSwitchoverBackoffCall.abort();
-        this._shutdownSwitchoverBackoffCalls.delete(sessionId);
-      }
-      // Clean up any pending connection promises
-      if (this._connectPromises) {
-        this._connectPromises.delete(sessionId);
+      if (this.backoffCall) {
+        this.logger.info(`${this.namespace}: aborting connection`);
+        this.backoffCall.abort();
       }
 
-      const sessionSocket = this.sockets.get(sessionId);
-      const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
+      if (this._shutdownSwitchoverBackoffCall) {
+        this.logger.info(`${this.namespace}: aborting shutdown switchover`);
+        this._shutdownSwitchoverBackoffCall.abort();
+      }
 
-      if (sessionSocket) {
-        sessionSocket.removeAllListeners('message');
-        sessionSocket.connecting = false;
-        sessionSocket.connected = false;
-        this.once(sessionId === this.defaultSessionId ? 'offline' : `offline${suffix}`, resolve);
-        resolve(sessionSocket.close(options || undefined));
+      if (this.socket) {
+        this.socket.removeAllListeners('message');
+        this.once('offline', resolve);
+        resolve(this.socket.close(options || undefined));
       }
 
       resolve();
-
-      // Update overall connected status
-      this.connected = this.hasConnectedSockets();
-    });
-  },
-
-  /**
-   * Disconnect all socket connections
-   * @param {object} options - Close options
-   * @returns {Promise} Promise that resolves when all connections are closed
-   */
-  disconnectAll(options) {
-    const disconnectPromises = [];
-
-    for (const sessionId of this.sockets.keys()) {
-      disconnectPromises.push(this.disconnect(options, sessionId));
-    }
-
-    return Promise.all(disconnectPromises).then(() => {
-      this.connected = false;
-      this.sockets.clear();
-      this.backoffCalls.clear();
-      // Clear connection promises to prevent stale promises
-      if (this._connectPromises) {
-        this._connectPromises.clear();
-      }
     });
   },
 
@@ -407,7 +283,26 @@ const Mercury = WebexPlugin.extend({
       .getFeature('developer', 'web-high-availability')
       .then((haMessagingEnabled) => {
         if (haMessagingEnabled) {
-          return this.webex.internal.services.convertUrlToPriorityHostUrl(webSocketUrl);
+          let highPrioritySocketUrl;
+          try {
+            highPrioritySocketUrl =
+              this.webex.internal.services.convertUrlToPriorityHostUrl(webSocketUrl);
+          } catch (e) {
+            this.logger.warn(`${this.namespace}: error converting to high priority url`, e);
+          }
+          if (!highPrioritySocketUrl) {
+            const hostFromUrl = url.parse(webSocketUrl, true)?.host;
+            const isValidHost = this.webex.internal.services.isValidHost(hostFromUrl);
+            if (!isValidHost) {
+              this.logger.error(
+                `${this.namespace}: host ${hostFromUrl} is not a valid host from host catalog`
+              );
+
+              return '';
+            }
+          }
+
+          return highPrioritySocketUrl || webSocketUrl;
         }
 
         return webSocketUrl;
@@ -417,6 +312,9 @@ const Mercury = WebexPlugin.extend({
       })
       .then(() => this.webex.internal.feature.getFeature('developer', 'web-shared-mercury'))
       .then((webSharedMercury) => {
+        if (!webSocketUrl) {
+          return '';
+        }
         webSocketUrl = url.parse(webSocketUrl, true);
         Object.assign(webSocketUrl.query, {
           outboundWireFormat: 'text',
@@ -442,22 +340,17 @@ const Mercury = WebexPlugin.extend({
       });
   },
 
-  _attemptConnection(socketUrl, sessionId, callback, options = {}) {
+  _attemptConnection(socketUrl, callback, options = {}) {
     const {isShutdownSwitchover = false, onSuccess = null} = options;
 
     const socket = new Socket();
-    socket.connecting = true;
     let newWSUrl;
 
-    this._attachSocketEventListeners(socket, sessionId);
-
-    const backoffCall = isShutdownSwitchover
-      ? this._shutdownSwitchoverBackoffCalls.get(sessionId)
-      : this.backoffCalls.get(sessionId);
+    this._attachSocketEventListeners(socket);
 
     // Check appropriate backoff call based on connection type
-    if (isShutdownSwitchover && !backoffCall) {
-      const msg = `${this.namespace}: prevent socket open when switchover backoff call no longer defined for ${sessionId}`;
+    if (isShutdownSwitchover && !this._shutdownSwitchoverBackoffCall) {
+      const msg = `${this.namespace}: prevent socket open when switchover backoff call no longer defined`;
       const err = new Error(msg);
 
       this.logger.info(msg);
@@ -468,8 +361,8 @@ const Mercury = WebexPlugin.extend({
       return Promise.reject(err);
     }
 
-    if (!isShutdownSwitchover && !backoffCall) {
-      const msg = `${this.namespace}: prevent socket open when backoffCall no longer defined for ${sessionId}`;
+    if (!isShutdownSwitchover && !this.backoffCall) {
+      const msg = `${this.namespace}: prevent socket open when backoffCall no longer defined`;
       const err = new Error(msg);
 
       this.logger.info(msg);
@@ -483,16 +376,16 @@ const Mercury = WebexPlugin.extend({
     // For shutdown switchover, don't set socket yet (make-before-break)
     // For normal connection, set socket before opening to allow disconnect() to close it
     if (!isShutdownSwitchover) {
-      this.sockets.set(sessionId, socket);
+      this.socket = socket;
     }
 
-    return this._prepareAndOpenSocket(socket, socketUrl, sessionId, isShutdownSwitchover)
+    return this._prepareAndOpenSocket(socket, socketUrl, isShutdownSwitchover)
       .then((webSocketUrl) => {
         newWSUrl = webSocketUrl;
         this.logger.info(
           `${this.namespace}: ${
             isShutdownSwitchover ? '[shutdown] switchover' : ''
-          } connected to mercury, success, action: connected for ${sessionId}, url: ${newWSUrl}`
+          } connected to mercury, success, action: connected, url: ${newWSUrl}`
         );
 
         // Custom success handler for shutdown switchover
@@ -519,10 +412,7 @@ const Mercury = WebexPlugin.extend({
       .catch((reason) => {
         // For shutdown, simpler error handling - just callback for retry
         if (isShutdownSwitchover) {
-          this.logger.info(
-            `${this.namespace}: [shutdown] switchover attempt failed for ${sessionId}`,
-            reason
-          );
+          this.logger.info(`${this.namespace}: [shutdown] switchover attempt failed`, reason);
 
           return callback(reason);
         }
@@ -534,31 +424,26 @@ const Mercury = WebexPlugin.extend({
         // may end up suppressing metrics during outages, but we might not care
         // (especially since many of our outages happen in a way that client
         // metrics can't be trusted).
-        if (reason.code !== 1006 && backoffCall && backoffCall?.getNumRetries() > 0) {
-          this._emit(sessionId, 'connection_failed', reason, {
-            sessionId,
-            retries: backoffCall?.getNumRetries(),
-          });
+        if (reason.code !== 1006 && this.backoffCall && this.backoffCall?.getNumRetries() > 0) {
+          this._emit('connection_failed', reason, {retries: this.backoffCall?.getNumRetries()});
         }
         this.logger.info(
-          `${this.namespace}: connection attempt failed for ${sessionId}`,
+          `${this.namespace}: connection attempt failed`,
           reason,
-          backoffCall?.getNumRetries() === 0 ? reason.stack : ''
+          this.backoffCall?.getNumRetries() === 0 ? reason.stack : ''
         );
         // UnknownResponse is produced by IE for any 4XXX; treated it like a bad
         // web socket url and let WDM handle the token checking
         if (reason instanceof UnknownResponse) {
           this.logger.info(
-            `${this.namespace}: received unknown response code for ${sessionId}, refreshing device registration`
+            `${this.namespace}: received unknown response code, refreshing device registration`
           );
 
           return this.webex.internal.device.refresh().then(() => callback(reason));
         }
         // NotAuthorized implies expired token
         if (reason instanceof NotAuthorized) {
-          this.logger.info(
-            `${this.namespace}: received authorization error for ${sessionId}, reauthorizing`
-          );
+          this.logger.info(`${this.namespace}: received authorization error, reauthorizing`);
 
           return this.webex.credentials.refresh({force: true}).then(() => callback(reason));
         }
@@ -571,10 +456,8 @@ const Mercury = WebexPlugin.extend({
         // BadRequest implies current credentials are for a Service Account
         // Forbidden implies current user is not entitle for Webex
         if (reason instanceof BadRequest || reason instanceof Forbidden) {
-          this.logger.warn(
-            `${this.namespace}: received unrecoverable response from mercury for ${sessionId}`
-          );
-          backoffCall?.abort();
+          this.logger.warn(`${this.namespace}: received unrecoverable response from mercury`);
+          this.backoffCall.abort();
 
           return callback(reason);
         }
@@ -584,7 +467,7 @@ const Mercury = WebexPlugin.extend({
             .then((haMessagingEnabled) => {
               if (haMessagingEnabled) {
                 this.logger.info(
-                  `${this.namespace}: received a generic connection error for ${sessionId}, will try to connect to another datacenter. failed, action: 'failed', url: ${newWSUrl} error: ${reason.message}`
+                  `${this.namespace}: received a generic connection error, will try to connect to another datacenter. failed, action: 'failed', url: ${newWSUrl} error: ${reason.message}`
                 );
 
                 return this.webex.internal.services.markFailedUrl(newWSUrl);
@@ -598,15 +481,12 @@ const Mercury = WebexPlugin.extend({
         return callback(reason);
       })
       .catch((reason) => {
-        this.logger.error(
-          `${this.namespace}: failed to handle connection failure for ${sessionId}`,
-          reason
-        );
+        this.logger.error(`${this.namespace}: failed to handle connection failure`, reason);
         callback(reason);
       });
   },
 
-  _prepareAndOpenSocket(socket, socketUrl, sessionId, isShutdownSwitchover = false) {
+  _prepareAndOpenSocket(socket, socketUrl, isShutdownSwitchover = false) {
     const logPrefix = isShutdownSwitchover ? '[shutdown] switchover' : 'connection';
 
     return Promise.all([this._prepareUrl(socketUrl), this.webex.credentials.getUserToken()]).then(
@@ -629,30 +509,28 @@ const Mercury = WebexPlugin.extend({
           options = {...options, ...this.webex.config.defaultMercuryOptions};
         }
 
-        // Set the socket before opening it. This allows a disconnect() to close
-        // the socket if it is in the process of being opened.
-        this.sockets.set(sessionId, socket);
-        this.socket = this.sockets.get(this.defaultSessionId);
-
-        this.logger.info(`${this.namespace} ${logPrefix} url for ${sessionId}: ${webSocketUrl}`);
+        this.logger.info(`${this.namespace}: ${logPrefix} url: ${webSocketUrl}`);
 
         return socket.open(webSocketUrl, options).then(() => webSocketUrl);
       }
     );
   },
 
-  _connectWithBackoff(webSocketUrl, sessionId, context = {}) {
+  _connectWithBackoff(webSocketUrl, context = {}) {
     const {isShutdownSwitchover = false, attemptOptions = {}} = context;
 
     return new Promise((resolve, reject) => {
-      // eslint gets confused about whether call is actually used
+      // eslint gets confused about whether or not call is actually used
       // eslint-disable-next-line prefer-const
       let call;
-      const onComplete = (err, sid = sessionId) => {
+      const onComplete = (err) => {
+        // Clear state flags based on connection type
         if (isShutdownSwitchover) {
-          this._shutdownSwitchoverBackoffCalls.delete(sid);
+          this._shutdownSwitchoverInProgress = false;
+          this._shutdownSwitchoverBackoffCall = undefined;
         } else {
-          this.backoffCalls.delete(sid);
+          this.connecting = false;
+          this.backoffCall = undefined;
         }
 
         if (err) {
@@ -666,39 +544,26 @@ const Mercury = WebexPlugin.extend({
 
           return reject(err);
         }
-        // Update overall connected status
-        const sessionSocket = this.sockets.get(sid);
-        if (sessionSocket) {
-          sessionSocket.connecting = false;
-          sessionSocket.connected = true;
-        }
+
         // Default success handling for normal connections
         if (!isShutdownSwitchover) {
-          this.connecting = this.hasConnectingSockets();
-          this.connected = this.hasConnectedSockets();
+          this.connected = true;
           this.hasEverConnected = true;
-          this._emit(sid, 'online');
-          if (this.connected) {
-            this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(true);
-          }
+          this._emit('online');
+          this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(true);
         }
 
         return resolve();
       };
 
       // eslint-disable-next-line prefer-reflect
-      call = backoff.call(
-        (callback) => {
-          const attemptNum = call.getNumRetries();
-          const logPrefix = isShutdownSwitchover ? '[shutdown] switchover' : 'connection';
+      call = backoff.call((callback) => {
+        const attemptNum = call.getNumRetries();
+        const logPrefix = isShutdownSwitchover ? '[shutdown] switchover' : 'connection';
 
-          this.logger.info(
-            `${this.namespace}: executing ${logPrefix} attempt ${attemptNum} for ${sessionId}`
-          );
-          this._attemptConnection(webSocketUrl, sessionId, callback, attemptOptions);
-        },
-        (err) => onComplete(err, sessionId)
-      );
+        this.logger.info(`${this.namespace}: executing ${logPrefix} attempt ${attemptNum}`);
+        this._attemptConnection(webSocketUrl, callback, attemptOptions);
+      }, onComplete);
 
       call.setStrategy(
         new backoff.ExponentialStrategy({
@@ -717,19 +582,11 @@ const Mercury = WebexPlugin.extend({
         call.failAfter(this.config.maxRetries);
       }
 
-      // Store the call BEFORE setting up event handlers to prevent race conditions
-      // Store backoff call reference BEFORE starting (so it's available in _attemptConnection)
-      if (isShutdownSwitchover) {
-        this._shutdownSwitchoverBackoffCalls.set(sessionId, call);
-      } else {
-        this.backoffCalls.set(sessionId, call);
-      }
-
       call.on('abort', () => {
         const msg = isShutdownSwitchover ? 'Shutdown Switchover' : 'Connection';
 
-        this.logger.info(`${this.namespace}: ${msg} aborted for ${sessionId}`);
-        reject(new Error(`Mercury ${msg} Aborted for ${sessionId}`));
+        this.logger.info(`${this.namespace}: ${msg} aborted`);
+        reject(new Error(`Mercury ${msg} Aborted`));
       });
 
       call.on('callback', (err) => {
@@ -741,7 +598,7 @@ const Mercury = WebexPlugin.extend({
           this.logger.info(
             `${this.namespace}: ${logPrefix} failed to connect; attempting retry ${
               number + 1
-            } in ${delay} ms for ${sessionId}`
+            } in ${delay} ms`
           );
           /* istanbul ignore if */
           if (process.env.NODE_ENV === 'development') {
@@ -750,8 +607,15 @@ const Mercury = WebexPlugin.extend({
 
           return;
         }
-        this.logger.info(`${this.namespace}: connected ${sessionId}`);
+        this.logger.info(`${this.namespace}: connected`);
       });
+
+      // Store backoff call reference BEFORE starting (so it's available in _attemptConnection)
+      if (isShutdownSwitchover) {
+        this._shutdownSwitchoverBackoffCall = call;
+      } else {
+        this.backoffCall = call;
+      }
 
       call.start();
     });
@@ -759,43 +623,14 @@ const Mercury = WebexPlugin.extend({
 
   _emit(...args) {
     try {
-      if (!args || args.length === 0) {
-        return;
-      }
-
-      // New signature: _emit(sessionId, eventName, ...rest)
-      // Backwards compatibility: if the first arg isn't a known sessionId (or defaultSessionId),
-      // treat the call as the old signature and forward directly to trigger(...)
-      const [first, second, ...rest] = args;
-
-      if (
-        typeof first === 'string' &&
-        (this.sockets.has(first) || first === this.defaultSessionId) &&
-        typeof second === 'string'
-      ) {
-        const sessionId = first;
-        const eventName = second;
-        const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
-
-        this.trigger(`${eventName}${suffix}`, ...rest);
-      } else {
-        // Old usage: _emit(eventName, ...args)
-        this.trigger(...args);
-      }
+      this.trigger(...args);
     } catch (error) {
-      // Safely handle errors without causing additional issues during cleanup
-      try {
-        this.logger.error(
-          `${this.namespace}: error occurred in event handler:`,
-          error,
-          ' with args: ',
-          args
-        );
-      } catch (logError) {
-        // If even logging fails, just ignore to prevent cascading errors during cleanup
-        // eslint-disable-next-line no-console
-        console.error('Mercury _emit error handling failed:', logError);
-      }
+      this.logger.error(
+        `${this.namespace}: error occurred in event handler:`,
+        error,
+        ' with args: ',
+        args
+      );
     }
   },
 
@@ -819,40 +654,36 @@ const Mercury = WebexPlugin.extend({
     return handlers;
   },
 
-  _onclose(sessionId, event, sourceSocket) {
+  _onclose(event, sourceSocket) {
     // I don't see any way to avoid the complexity or statement count in here.
     /* eslint complexity: [0] */
 
     try {
+      const isActiveSocket = sourceSocket === this.socket;
       const reason = event.reason && event.reason.toLowerCase();
-      const sessionSocket = this.sockets.get(sessionId);
-      let socketUrl;
-      event.sessionId = sessionId;
 
-      const isActiveSocket = sourceSocket === sessionSocket;
-      if (sourceSocket) {
+      let socketUrl;
+      if (isActiveSocket && this.socket) {
+        // Active socket closed - get URL from current socket reference
+        socketUrl = this.socket.url;
+      } else if (sourceSocket) {
+        // Old socket closed - get URL from the closed socket
         socketUrl = sourceSocket.url;
       }
-      this.sockets.delete(sessionId);
 
       if (isActiveSocket) {
         // Only tear down state if the currently active socket closed
-        if (sessionSocket) {
-          sessionSocket.removeAllListeners();
-          if (sessionId === this.defaultSessionId) this.unset('socket');
-          this._emit(sessionId, 'offline', event);
+        if (this.socket) {
+          this.socket.removeAllListeners();
         }
-        // Update overall connected status
-        this.connecting = this.hasConnectingSockets();
-        this.connected = this.hasConnectedSockets();
-
-        if (!this.connected) {
-          this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(false);
-        }
+        this.unset('socket');
+        this.connected = false;
+        this._emit('offline', event);
+        this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(false);
       } else {
         // Old socket closed; do not flip connection state
         this.logger.info(
-          `${this.namespace}: [shutdown] non-active socket closed, code=${event.code} for ${sessionId}`
+          `${this.namespace}: [shutdown] non-active socket closed, code=${event.code}`
         );
         // Clean up listeners from old socket now that it's closed
         if (sourceSocket) {
@@ -864,14 +695,14 @@ const Mercury = WebexPlugin.extend({
         case 1003:
           // metric: disconnect
           this.logger.info(
-            `${this.namespace}: Mercury service rejected last message for ${sessionId}; will not reconnect: ${event.reason}`
+            `${this.namespace}: Mercury service rejected last message; will not reconnect: ${event.reason}`
           );
-          if (isActiveSocket) this._emit(sessionId, 'offline.permanent', event);
+          if (isActiveSocket) this._emit('offline.permanent', event);
           break;
         case 4000:
           // metric: disconnect
-          this.logger.info(`${this.namespace}: socket ${sessionId} replaced; will not reconnect`);
-          if (isActiveSocket) this._emit(sessionId, 'offline.replaced', event);
+          this.logger.info(`${this.namespace}: socket replaced; will not reconnect`);
+          if (isActiveSocket) this._emit('offline.replaced', event);
           // If not active, nothing to do
           break;
         case 4001:
@@ -881,28 +712,26 @@ const Mercury = WebexPlugin.extend({
             // to be replaced, but the switchover in _handleImminentShutdown failed.
             // This is a permanent failure - do not reconnect.
             this.logger.warn(
-              `${this.namespace}: active socket closed with 4001; shutdown switchover failed for ${sessionId}`
+              `${this.namespace}: active socket closed with 4001; shutdown switchover failed`
             );
-            this._emit(sessionId, 'offline.permanent', event);
+            this._emit('offline.permanent', event);
           } else {
             // Expected: old socket closed after successful switchover
             this.logger.info(
-              `${this.namespace}: old socket closed with 4001 (replaced during shutdown); no reconnect needed for ${sessionId}`
+              `${this.namespace}: old socket closed with 4001 (replaced during shutdown); no reconnect needed`
             );
-            this._emit(sessionId, 'offline.replaced', event);
+            this._emit('offline.replaced', event);
           }
           break;
         case 1001:
         case 1005:
         case 1006:
         case 1011:
-          this.logger.info(`${this.namespace}: socket ${sessionId} disconnected; reconnecting`);
+          this.logger.info(`${this.namespace}: socket disconnected; reconnecting`);
           if (isActiveSocket) {
-            this._emit(sessionId, 'offline.transient', event);
-            this.logger.info(
-              `${this.namespace}: [shutdown] reconnecting active socket to recover for ${sessionId}`
-            );
-            this._reconnect(socketUrl, sessionId);
+            this._emit('offline.transient', event);
+            this.logger.info(`${this.namespace}: [shutdown] reconnecting active socket to recover`);
+            this._reconnect(socketUrl);
           }
           // metric: disconnect
           // if (code == 1011 && reason !== ping error) metric: unexpected disconnect
@@ -910,56 +739,47 @@ const Mercury = WebexPlugin.extend({
         case 1000:
         case 3050: // 3050 indicates logout form of closure, default to old behavior, use config reason defined by consumer to proceed with the permanent block
           if (normalReconnectReasons.includes(reason)) {
-            this.logger.info(`${this.namespace}: socket ${sessionId} disconnected; reconnecting`);
+            this.logger.info(`${this.namespace}: socket disconnected; reconnecting`);
             if (isActiveSocket) {
-              this._emit(sessionId, 'offline.transient', event);
-              this.logger.info(
-                `${this.namespace}: [shutdown] reconnecting due to normal close for ${sessionId}`
-              );
-              this._reconnect(socketUrl, sessionId);
+              this._emit('offline.transient', event);
+              this.logger.info(`${this.namespace}: [shutdown] reconnecting due to normal close`);
+              this._reconnect(socketUrl);
             }
             // metric: disconnect
             // if (reason === done forced) metric: force closure
           } else {
             this.logger.info(
-              `${this.namespace}: socket ${sessionId} disconnected; will not reconnect: ${event.reason}`
+              `${this.namespace}: socket disconnected; will not reconnect: ${event.reason}`
             );
-            if (isActiveSocket) this._emit(sessionId, 'offline.permanent', event);
+            if (isActiveSocket) this._emit('offline.permanent', event);
           }
           break;
         default:
           this.logger.info(
-            `${this.namespace}: socket ${sessionId} disconnected unexpectedly; will not reconnect`
+            `${this.namespace}: socket disconnected unexpectedly; will not reconnect`
           );
           // unexpected disconnect
-          if (isActiveSocket) this._emit(sessionId, 'offline.permanent', event);
+          if (isActiveSocket) this._emit('offline.permanent', event);
       }
     } catch (error) {
-      this.logger.error(
-        `${this.namespace}: error occurred in close handler for ${sessionId}`,
-        error
-      );
+      this.logger.error(`${this.namespace}: error occurred in close handler`, error);
     }
   },
 
-  _onmessage(sessionId, event) {
-    this._setTimeOffset(sessionId, event);
+  _onmessage(event) {
+    this._setTimeOffset(event);
     const envelope = event.data;
 
     if (process.env.ENABLE_MERCURY_LOGGING) {
-      this.logger.debug(`${this.namespace}: message envelope from ${sessionId}: `, envelope);
+      this.logger.debug(`${this.namespace}: message envelope: `, envelope);
     }
-
-    envelope.sessionId = sessionId;
 
     // Handle shutdown message shape: { type: 'shutdown' }
     if (envelope && envelope.type === 'shutdown') {
-      this.logger.info(
-        `${this.namespace}: [shutdown] imminent shutdown message received for ${sessionId}`
-      );
-      this._emit(sessionId, 'event:mercury_shutdown_imminent', envelope);
+      this.logger.info(`${this.namespace}: [shutdown] imminent shutdown message received`);
+      this._emit('event:mercury_shutdown_imminent', envelope);
 
-      this._handleImminentShutdown(sessionId);
+      this._handleImminentShutdown();
 
       return Promise.resolve();
     }
@@ -978,7 +798,7 @@ const Mercury = WebexPlugin.extend({
               resolve((this.webex[namespace] || this.webex.internal[namespace])[name](data))
             ).catch((reason) =>
               this.logger.error(
-                `${this.namespace}: error occurred in autowired event handler for ${data.eventType} from ${sessionId}`,
+                `${this.namespace}: error occurred in autowired event handler for ${data.eventType}`,
                 reason
               )
             );
@@ -986,35 +806,32 @@ const Mercury = WebexPlugin.extend({
         Promise.resolve()
       )
       .then(() => {
-        this._emit(sessionId, 'event', envelope);
+        this._emit('event', event.data);
         const [namespace] = data.eventType.split('.');
 
         if (namespace === data.eventType) {
-          this._emit(sessionId, `event:${namespace}`, envelope);
+          this._emit(`event:${namespace}`, envelope);
         } else {
-          this._emit(sessionId, `event:${namespace}`, envelope);
-          this._emit(sessionId, `event:${data.eventType}`, envelope);
+          this._emit(`event:${namespace}`, envelope);
+          this._emit(`event:${data.eventType}`, envelope);
         }
       })
       .catch((reason) => {
-        this.logger.error(
-          `${this.namespace}: error occurred processing socket message from ${sessionId}`,
-          reason
-        );
+        this.logger.error(`${this.namespace}: error occurred processing socket message`, reason);
       });
   },
 
-  _setTimeOffset(sessionId, event) {
+  _setTimeOffset(event) {
     const {wsWriteTimestamp} = event.data;
     if (typeof wsWriteTimestamp === 'number' && wsWriteTimestamp > 0) {
       this.mercuryTimeOffset = Date.now() - wsWriteTimestamp;
     }
   },
 
-  _reconnect(webSocketUrl, sessionId = this.defaultSessionId) {
-    this.logger.info(`${this.namespace}: reconnecting ${sessionId}`);
+  _reconnect(webSocketUrl) {
+    this.logger.info(`${this.namespace}: reconnecting`);
 
-    return this.connect(webSocketUrl, sessionId);
+    return this.connect(webSocketUrl);
   },
 });
 

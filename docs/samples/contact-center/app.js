@@ -80,10 +80,17 @@ const uploadLogsResultElm = document.getElementById('upload-logs-result');
 const agentLoginGenericError = document.getElementById('agent-login-generic-error');
 const agentLoginInputError = document.getElementById('agent-login-input-error');
 const applyupdateAgentProfileBtn = document.querySelector('#applyupdateAgentProfile');
+const changeEnvBtn = document.querySelector('#changeEnv');
 const autoWrapupTimerElm = document.getElementById('autoWrapupTimer');
 const timerValueElm = autoWrapupTimerElm.querySelector('.timer-value');
 const outdialAniSelectElm = document.querySelector('#outdialAniSelect');
 deregisterBtn.style.backgroundColor = 'red';
+let enableProd = true;
+
+function changeEnv() {
+  enableProd = !enableProd;
+  changeEnvBtn.innerHTML = enableProd ? 'In Production' : 'In Integration';
+}
 
 function isIncomingTask(task, agentId) {
   const taskData = task?.data;
@@ -192,14 +199,25 @@ function initOauth() {
         .concat(additionalScopes))
       ).join(' ');
 
+  const webexConfig = generateWebexConfig({
+    credentials: {
+      ...(!enableProd && {authorizeUrl: 'https://idbrokerbts.webex.com/idb/oauth2/v1/authorize'}),
+      client_id: enableProd ? 'C04ef08ffce356c3161bb66b15dbdd98d26b6c683c5ce1a1a89efad545fdadd74' : 'Cd0dd53db1f470a5a9941e5eee31575bd0889d7006e3a80a1443ad12a42049da1',
+      redirect_uri: redirectUri,
+      scope: requestedScopes,
+    }
+  });
+
+  if (!enableProd) {
+    webexConfig.services = {
+      discovery: {
+        u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
+      },
+    };
+  }
+
   webex = window.webex = Webex.init({
-    config: generateWebexConfig({
-      credentials: {
-        client_id: 'C04ef08ffce356c3161bb66b15dbdd98d26b6c683c5ce1a1a89efad545fdadd74',
-        redirect_uri: redirectUri,
-        scope: requestedScopes,
-      }
-    })
+    config: webexConfig
   });
 
   localStorage.setItem('OAuth', true);
@@ -1013,6 +1031,12 @@ function registerTaskListeners(task) {
     showAgentStatePopup(reason);
   });
 
+  task.on('task:outdialFailed', (reason) => {
+    updateTaskList();
+    console.info('Outdial failed with reason:', reason);
+    showOutdialFailedPopup(reason);
+  });
+
   task.on('task:wrappedup', updateTaskList); // Update the task list UI to have latest tasks
 
   // Conference event listeners - Simplified approach
@@ -1350,6 +1374,14 @@ function initWebex(e) {
   authStatusElm.innerText = 'initializing...';
 
   const webexConfig = generateWebexConfig({})
+
+  if (!enableProd) {
+     webexConfig.services = {
+      discovery: {
+        u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
+      },
+    };
+  }
 
   webex = window.webex = Webex.init({
     config: webexConfig,
@@ -1819,6 +1851,31 @@ function showAgentStatePopup(reason) {
   popup.classList.remove('hidden');
 }
 
+function showOutdialFailedPopup(reason) {
+  const outdialFailedReasonText = document.getElementById('outdialFailedReasonText');
+  
+  // Set the reason text based on the reason
+  if (reason === 'CUSTOMER_BUSY') {
+    outdialFailedReasonText.innerText = 'Customer is busy';
+  } else if (reason === 'NO_ANSWER') {
+    outdialFailedReasonText.innerText = 'No answer from customer';
+  } else if (reason === 'CALL_FAILED') {
+    outdialFailedReasonText.innerText = 'Call failed';
+  } else if (reason === 'INVALID_NUMBER') {
+    outdialFailedReasonText.innerText = 'Invalid phone number';
+  } else {
+    outdialFailedReasonText.innerText = `Outdial failed: ${reason}`;
+  }
+
+  const outdialFailedPopup = document.getElementById('outdialFailedPopup');
+  outdialFailedPopup.classList.remove('hidden');
+}
+
+function closeOutdialFailedPopup() {
+  const outdialFailedPopup = document.getElementById('outdialFailedPopup');
+  outdialFailedPopup.classList.add('hidden');
+}
+
 async function renderBuddyAgents() {
   buddyAgentsDropdownElm.innerHTML = ''; // Clear previous options
   const buddyAgentsDropdownNodes = await fetchBuddyAgentsNodeList();
@@ -2127,6 +2184,7 @@ function renderTaskList(taskList) {
     const isNew = isIncomingTask(task, agentId); 
     const isTelephony = task.data.interaction.mediaType === 'telephony';
     const isBrowserPhone = agentDeviceType === 'BROWSER';
+    const isAutoAnswering = task.data.isAutoAnswering || false;
 
     // Determine which buttons to show
     const showAcceptButton = isNew && (isBrowserPhone || !isTelephony);
@@ -2136,8 +2194,8 @@ function renderTaskList(taskList) {
     taskElement.innerHTML = `
         <div class="task-item-content">
             <p>${callerDisplay}</p>
-            ${showAcceptButton ? `<button class="accept-task" data-task-id="${taskId}">Accept</button>` : ''}
-            ${showDeclineButton ? `<button class="decline-task" data-task-id="${taskId}">Decline</button>` : ''}
+            ${showAcceptButton ? `<button class="accept-task" data-task-id="${taskId}" ${isAutoAnswering ? 'disabled' : ''}>Accept</button>` : ''}
+            ${showDeclineButton ? `<button class="decline-task" data-task-id="${taskId}" ${isAutoAnswering ? 'disabled' : ''}>Decline</button>` : ''}
         </div>
         <hr class="task-separator">
     `;
@@ -2208,24 +2266,40 @@ function renderTaskList(taskList) {
 function enableAnswerDeclineButtons(task) {
   const callerDisplay = task.data.interaction?.callAssociatedDetails?.ani;
   const isNew = isIncomingTask(task, agentId); 
-    const chatAndSocial = ['chat', 'social'];
+  const isAutoAnswering = task.data.isAutoAnswering || false;
+  const chatAndSocial = ['chat', 'social'];
+  
   if (task.data.interaction.mediaType === 'telephony') {
     if (agentDeviceType === 'BROWSER') {
-      answerElm.disabled = !isNew;
-      declineElm.disabled = !isNew;
+      // Disable buttons if auto-answering or not new
+      answerElm.disabled = !isNew || isAutoAnswering;
+      declineElm.disabled = !isNew || isAutoAnswering;
   
       incomingDetailsElm.innerText = `Call from ${callerDisplay}`;
+      
+      // Log auto-answer status for debugging
+      if (isAutoAnswering) {
+        console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
+      }
     } else {
       incomingDetailsElm.innerText = `Call from ${callerDisplay}...please answer on the endpoint where the agent's extension is registered`;
     }
   } else if (chatAndSocial.includes(task.data.interaction.mediaType)) {
-    answerElm.disabled = !isNew;
+    answerElm.disabled = !isNew || isAutoAnswering;
     declineElm.disabled = true;
     incomingDetailsElm.innerText = `Chat from ${callerDisplay}`;
+    
+    if (isAutoAnswering) {
+      console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
+    }
   } else if (task.data.interaction.mediaType === 'email') {
-    answerElm.disabled = !isNew;
+    answerElm.disabled = !isNew || isAutoAnswering;
     declineElm.disabled = true;
     incomingDetailsElm.innerText = `Email from ${callerDisplay}`;
+    
+    if (isAutoAnswering) {
+      console.log('✅ Auto-answer in progress for task:', task.data.interactionId);
+    }
   }
 }
 

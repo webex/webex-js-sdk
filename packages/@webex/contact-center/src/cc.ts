@@ -693,51 +693,49 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       module: CC_FILE,
       method: METHODS.CONNECT_WEBSOCKET,
     });
+
     try {
-      return this.services.webSocketManager
-        .initWebSocket({
-          body: this.getConnectionConfig(),
-        })
-        .then(async (data: WelcomeEvent) => {
-          const agentId = data.agentId;
-          const orgId = this.$webex.credentials.getOrgId();
-          this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
-          LoggerProxy.log(`Agent config is fetched successfully`, {
+      const data = (await this.services.webSocketManager.initWebSocket({
+        body: this.getConnectionConfig(),
+      })) as WelcomeEvent;
+
+      const agentId = data.agentId;
+      const orgId = this.$webex.credentials.getOrgId();
+      this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
+
+      LoggerProxy.log(`Agent config is fetched successfully`, {
+        module: CC_FILE,
+        method: METHODS.CONNECT_WEBSOCKET,
+      });
+
+      // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
+      this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
+      this.taskManager.setAgentId(this.agentConfig.agentId);
+      this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
+
+      if (
+        this.agentConfig.webRtcEnabled &&
+        this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
+      ) {
+        try {
+          await this.$webex.internal.mercury.connect();
+          LoggerProxy.log('Authentication: webex.internal.mercury.connect successful', {
             module: CC_FILE,
             method: METHODS.CONNECT_WEBSOCKET,
           });
-          // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
-          this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
-          this.taskManager.setAgentId(this.agentConfig.agentId);
+        } catch (error) {
+          LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          });
+        }
+      }
 
-          if (
-            this.agentConfig.webRtcEnabled &&
-            this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
-          ) {
-            this.$webex.internal.mercury
-              .connect()
-              .then(() => {
-                LoggerProxy.log('Authentication: webex.internal.mercury.connect successful', {
-                  module: CC_FILE,
-                  method: METHODS.CONNECT_WEBSOCKET,
-                });
-              })
-              .catch((error) => {
-                LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
-                  module: CC_FILE,
-                  method: METHODS.CONNECT_WEBSOCKET,
-                });
-              });
-          }
-          if (this.$config && this.$config.allowAutomatedRelogin) {
-            await this.silentRelogin();
-          }
+      if (this.$config && this.$config.allowAutomatedRelogin) {
+        await this.silentRelogin();
+      }
 
-          return this.agentConfig;
-        })
-        .catch((error) => {
-          throw error;
-        });
+      return this.agentConfig;
     } catch (error) {
       LoggerProxy.error(`Error during register: ${error}`, {
         module: CC_FILE,
@@ -1658,6 +1656,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /**
    * Updates the agent device type and login configuration.
    * Use this method to change how an agent connects to the contact center system (e.g., switching from browser-based calling to a desk phone extension).
+   * Change to any field of the profile is allowed;
    *
    * @param {AgentDeviceUpdate} data Configuration containing:
    *   - loginOption: New device type ('BROWSER', 'EXTENSION', 'AGENT_DN')
@@ -1697,29 +1696,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
 
     try {
-      // Only block if both loginOption AND teamId remain unchanged
-      if (
-        this.webCallingService?.loginOption === data.loginOption &&
-        data.teamId === this.agentConfig.currentTeamId
-      ) {
-        const message =
-          'Will not proceed with device update as new Device type is same as current device type and teamId is same as current teamId';
-        const err = new Error(message) as GenericError;
-        err.details = {
-          type: 'Identical Device Change Failure',
-          orgId: this.$webex.credentials.getOrgId(),
-          trackingId,
-          data: {
-            agentId: this.agentConfig.agentId,
-            reasonCode: 'R002',
-            reason: message,
-          },
-        };
-        throw err;
-      }
-
       await this.stationLogout({
-        logoutReason: 'User requested agent device change',
+        logoutReason: 'User requested agent profile update',
       });
 
       const loginPayload: AgentLogin = {

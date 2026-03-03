@@ -2,9 +2,9 @@
 
 import Mercury from '@webex/internal-plugin-mercury';
 
-import {LLM, LLM_DEFAULT_SESSION} from './constants';
+import {LLM, DATA_CHANNEL_WITH_JWT_TOKEN} from './constants';
 // eslint-disable-next-line no-unused-vars
-import {ILLMChannel} from './llm.types';
+import {ILLMChannel, DataChannelTokenType} from './llm.types';
 
 export const config = {
   llm: {
@@ -42,158 +42,182 @@ export const config = {
  */
 export default class LLMChannel extends (Mercury as any) implements ILLMChannel {
   namespace = LLM;
-  defaultSessionId = LLM_DEFAULT_SESSION;
+
   /**
-   * Map to store connection-specific data for multiple LLM connections
-   * @private
-   * @type {Map<string, {webSocketUrl?: string; binding?: string; locusUrl?: string; datachannelUrl?: string}>}
+   * If the LLM plugin has been registered and listening
+   * @instance
+   * @type {Boolean}
+   * @public
    */
-  private connections: Map<
-    string,
-    {
-      webSocketUrl?: string;
-      binding?: string;
-      locusUrl?: string;
-      datachannelUrl?: string;
-    }
-  > = new Map();
+
+  private webSocketUrl?: string;
+
+  private binding?: string;
+
+  private locusUrl?: string;
+
+  private datachannelUrl?: string;
+
+  private datachannelToken?: string;
+
+  private datachannelTokens: Record<DataChannelTokenType, string> = {
+    [DataChannelTokenType.Default]: undefined,
+    [DataChannelTokenType.PracticeSession]: undefined,
+  };
+
+  private refreshHandler?: () => Promise<{
+    body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
+  }>;
 
   /**
    * Register to the websocket
    * @param {string} llmSocketUrl
-   * @param {string} sessionId - Connection identifier
+   * @param {string} datachannelToken
    * @returns {Promise<void>}
    */
-  private register = (
-    llmSocketUrl: string,
-    sessionId: string = LLM_DEFAULT_SESSION
-  ): Promise<void> =>
-    this.request({
+  private register = async (llmSocketUrl: string, datachannelToken?: string): Promise<void> => {
+    const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
+
+    return this.request({
       method: 'POST',
       url: llmSocketUrl,
       body: {deviceUrl: this.webex.internal.device.url},
+      headers:
+        isDataChannelTokenEnabled && datachannelToken
+          ? {'Data-Channel-Auth-Token': datachannelToken}
+          : {},
     })
       .then((res: {body: {webSocketUrl: string; binding: string}}) => {
-        // Get or create connection data
-        const sessionData = this.connections.get(sessionId) || {};
-        sessionData.webSocketUrl = res.body.webSocketUrl;
-        sessionData.binding = res.body.binding;
-        this.connections.set(sessionId, sessionData);
+        this.webSocketUrl = res.body.webSocketUrl;
+        this.binding = res.body.binding;
       })
       .catch((error: any) => {
-        this.logger.error(`Error connecting to websocket for ${sessionId}: ${error}`);
+        this.logger.error(`Error connecting to websocket: ${error}`);
         throw error;
       });
+  };
 
   /**
    * Register and connect to the websocket
    * @param {string} locusUrl
    * @param {string} datachannelUrl
-   * @param {string} sessionId - Connection identifier
+   * @param {string} datachannelToken
    * @returns {Promise<void>}
    */
   public registerAndConnect = (
     locusUrl: string,
     datachannelUrl: string,
-    sessionId: string = LLM_DEFAULT_SESSION
+    datachannelToken?: string
   ): Promise<void> =>
-    this.register(datachannelUrl, sessionId).then(() => {
+    this.register(datachannelUrl, datachannelToken).then(() => {
       if (!locusUrl || !datachannelUrl) return undefined;
-
-      // Get or create connection data
-      const sessionData = this.connections.get(sessionId) || {};
-      sessionData.locusUrl = locusUrl;
-      sessionData.datachannelUrl = datachannelUrl;
-      this.connections.set(sessionId, sessionData);
-      console.error(
-        `registerAndConnect(${sessionId}) -->  channel is ${datachannelUrl}! -->websocketurl is ${sessionData.webSocketUrl}`
-      );
-
-      return this.connect(sessionData.webSocketUrl, sessionId);
+      this.locusUrl = locusUrl;
+      this.datachannelUrl = datachannelUrl;
+      this.connect(this.webSocketUrl);
     });
 
   /**
    * Tells if LLM socket is connected
-   * @param {string} sessionId - Connection identifier
    * @returns {boolean} connected
    */
-  public isConnected = (sessionId = LLM_DEFAULT_SESSION): boolean => {
-    const socket = this.getSocket(sessionId);
-
-    return socket ? socket.connected : false;
-  };
+  public isConnected = (): boolean => this.connected;
 
   /**
    * Tells if LLM socket is binding
-   * @param {string} sessionId - Connection identifier
    * @returns {string} binding
    */
-  public getBinding = (sessionId = LLM_DEFAULT_SESSION): string => {
-    const sessionData = this.connections.get(sessionId);
-
-    return sessionData?.binding;
-  };
+  public getBinding = (): string => this.binding;
 
   /**
    * Get Locus URL for the connection
-   * @param {string} sessionId - Connection identifier
    * @returns {string} locus Url
    */
-  public getLocusUrl = (sessionId = LLM_DEFAULT_SESSION): string => {
-    const sessionData = this.connections.get(sessionId);
-
-    return sessionData?.locusUrl;
-  };
+  public getLocusUrl = (): string => this.locusUrl;
 
   /**
    * Get data channel URL for the connection
-   * @param {string} sessionId - Connection identifier
    * @returns {string} data channel Url
    */
-  public getDatachannelUrl = (sessionId = LLM_DEFAULT_SESSION): string => {
-    const sessionData = this.connections.get(sessionId);
+  public getDatachannelUrl = (): string => this.datachannelUrl;
 
-    return sessionData?.datachannelUrl;
+  /**
+   * Get data channel token for the connection
+   * @param {DataChannelTokenType} dataChannelTokenType
+   * @returns {string} data channel token
+   */
+  public getDatachannelToken = (dataChannelTokenType: DataChannelTokenType): string => {
+    return this.datachannelTokens[dataChannelTokenType];
   };
+
+  /**
+   * Set data channel token for the connection
+   * @param {string} datachannelToken - data channel token
+   * @param {DataChannelTokenType} dataChannelTokenType
+   * @returns {void}
+   */
+  public setDatachannelToken = (
+    datachannelToken: string,
+    dataChannelTokenType: DataChannelTokenType
+  ): void => {
+    this.datachannelTokens[dataChannelTokenType] = datachannelToken;
+  };
+
+  /**
+   * Set the handler used to refresh the DataChannel token
+   *
+   * @param {function} handler - Function that returns a refreshed token
+   * @returns {void}
+   */
+  public setRefreshHandler(
+    handler: () => Promise<{
+      body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
+    }>
+  ) {
+    this.refreshHandler = handler;
+  }
 
   /**
    * Disconnects websocket connection
    * @param {{code: number, reason: string}} options - The disconnect option object with code and reason
-   * @param {string} sessionId - Connection identifier
    * @returns {Promise<void>}
    */
-  public disconnectLLM = (
-    options: {code: number; reason: string},
-    sessionId: string = LLM_DEFAULT_SESSION
-  ): Promise<void> =>
-    this.disconnect(options, sessionId).then(() => {
-      // Clean up sessions data
-      console.error(`disconnectLLM(${sessionId})`);
-      this.connections.delete(sessionId);
+  public disconnectLLM = (options: object): Promise<void> =>
+    this.disconnect(options).then(() => {
+      this.locusUrl = undefined;
+      this.datachannelUrl = undefined;
+      this.binding = undefined;
+      this.webSocketUrl = undefined;
     });
 
   /**
-   * Disconnects all LLM websocket connections
-   * @param {{code: number, reason: string}} options - The disconnect option object with code and reason
-   * @returns {Promise<void>}
+   * Refresh the data channel token using the injected handler.
+   * Logs a descriptive error if the handler is missing or fails.
+   *
+   * @returns {Promise<string>} The refreshed token.
    */
-  public disconnectAllLLM = (options?: {code: number; reason: string}): Promise<void> =>
-    this.disconnectAll(options).then(() => {
-      // Clean up all connection data
-      this.connections.clear();
-    });
-
-  /**
-   * Get all active LLM connections
-   * @returns {Map} Map of sessionId to session data
-   */
-  public getAllConnections = (): Map<
-    string,
-    {
-      webSocketUrl?: string;
-      binding?: string;
-      locusUrl?: string;
-      datachannelUrl?: string;
+  public async refreshDataChannelToken() {
+    if (!this.refreshHandler) {
+      const error = new Error('LLM refreshHandler is not set');
+      this.logger.error(`Error refreshing DataChannel token: ${error.message}`);
+      throw error;
     }
-  > => new Map(this.connections);
+
+    try {
+      const res = await this.refreshHandler();
+
+      return res;
+    } catch (error: any) {
+      this.logger.error(`Error refreshing DataChannel token: ${error}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Returns true if  data channel token is enabled, false otherwise
+   * @returns {Promise<boolean>} resolves with true if data channel token  is enabled
+   */
+  public isDataChannelTokenEnabled(): Promise<boolean> {
+    // @ts-ignore
+    return this.webex.internal.feature.getFeature('developer', DATA_CHANNEL_WITH_JWT_TOKEN);
+  }
 }

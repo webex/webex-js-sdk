@@ -164,13 +164,21 @@ describe('plugin-meetings', () => {
 
         assert.equal(parsedControls.rdcControl.enabled, newControls.rdcControl.enabled);
       });
-      
+
       it('should parse the pollingQAControl control', () => {
         const newControls = {pollingQAControl: {enabled: true}};
 
         const parsedControls = ControlsUtils.parse(newControls);
 
         assert.equal(parsedControls.pollingQAControl.enabled, newControls.pollingQAControl.enabled);
+      });
+
+      it('should parse the hesiodLlmId in transcribe control', () => {
+        const newControls = {transcribe: {hesiodLlmId: 'llm-123', transcribing: true, caption: true, spokenLanguage: 'en-US'}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.transcribe.hesiodLlmId, newControls.transcribe.hesiodLlmId);
       });
 
       describe('videoEnabled', () => {
@@ -461,6 +469,24 @@ describe('plugin-meetings', () => {
         const {updates} = ControlsUtils.getControls(previous, current);
 
         assert.equal(updates.hasTranscribeSpokenLanguageChanged, true);
+      });
+
+      it('returns false when previous hesiodLlmId is undefined and current is a invalid value', () => {
+        const previous = { transcribe: undefined };
+        const current = { transcribe: { hesiodLlmId: null } };
+
+        const {updates} = ControlsUtils.getControls(previous, current);
+
+        assert.equal(updates.hasHesiodLLMIdChanged, false);
+      });
+
+      it('detects hesiodLlmId change when previous is undefined and current is a valid value', () => {
+        const previous = { transcribe: undefined };
+        const current = { transcribe: { hesiodLlmId: '123a-456b' } };
+
+        const {updates} = ControlsUtils.getControls(previous, current);
+
+        assert.equal(updates.hasHesiodLLMIdChanged, true);
       });
 
       describe('videoEnabled', () => {

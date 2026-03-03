@@ -102,7 +102,9 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       SDKConnector.setWebex(webex);
     }
     this.webex = this.sdkConnector.getWebex();
-    this.janusUrl = this.webex.internal.services._serviceUrls.janus;
+    this.janusUrl =
+      this.webex.internal.services._serviceUrls?.janus ||
+      this.webex.internal.services.get(this.webex.internal.services._activeServices.janus);
     this.registerSessionsListener();
     log.setLogger(logger.level, CALL_HISTORY_FILE);
   }
@@ -125,7 +127,7 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
       2. Calculating the fromDate by deducting the NUMBER_OF_DAYS with the current date
      */
     const date = new Date();
-
+    const callingBackend = getCallingBackEnd(this.webex);
     date.setDate(date.getDate() - days);
     this.fromDate = date.toISOString();
     const sortByParam = Object.values(SORT_BY).includes(sortBy) ? sortBy : SORT_BY.DEFAULT;
@@ -138,7 +140,17 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
 
     log.info(`Janus API URL: ${this.janusUrl}`, this.loggerContext);
     log.info(`Call history from date : ${this.fromDate}`, this.loggerContext);
-    const url = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}${FROM_DATE}=${this.fromDate}&limit=${limit}&includeNewSessionTypes=true&sort=${sortParam}`;
+
+    // Add includeSharedSessions=true parameter for WXC backend to fetch calls with sessionType "WEBEXCALLING_SHARED"
+    const sharedSessionsParam =
+      callingBackend === CALLING_BACKEND.WXC ? '&includeSharedSessions=true' : '';
+    log.info(
+      `Fetching call history for ${callingBackend} backend${
+        callingBackend === CALLING_BACKEND.WXC ? ' with shared sessions' : ''
+      }`,
+      this.loggerContext
+    );
+    const url = `${this.janusUrl}/${HISTORY}/${USER_SESSIONS}${FROM_DATE}=${this.fromDate}&limit=${limit}&includeNewSessionTypes=true&sort=${sortParam}${sharedSessionsParam}`;
 
     try {
       const janusResponse = <WebexRequestPayload>await this.webex.request({
@@ -166,7 +178,6 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         }
       }
       // Check the calling backend
-      const callingBackend = getCallingBackEnd(this.webex);
       if (callingBackend === CALLING_BACKEND.UCM) {
         // Check if userSessions exist and the length is greater than 0
         if (this.userSessions[USER_SESSIONS] && this.userSessions[USER_SESSIONS].length > 0) {
