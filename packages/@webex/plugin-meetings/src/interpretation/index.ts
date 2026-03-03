@@ -3,7 +3,7 @@
  */
 import {WebexPlugin} from '@webex/webex-core';
 import LoggerProxy from '../common/logs/logger-proxy';
-import {HTTP_VERBS, INTERPRETATION, MEETINGS} from '../constants';
+import {HTTP_VERBS, INTERPRETATION, LOCUSEVENT, MEETINGS} from '../constants';
 
 import SILanguageCollection from './collection';
 
@@ -230,7 +230,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    * @returns {void}
    */
   listenToHandoffRequests() {
-    this.listenTo(this.webex.internal.mercury, 'event:locus.approval_request', (event) => {
+    this.listenTo(this.webex.internal.mercury, `event:${LOCUSEVENT.APPROVAL_REQUEST}`, (event) => {
       if (event?.data?.approval?.resourceType === INTERPRETATION.RESOURCE_TYPE) {
         const {receivers, initiator, actionType, url} = event.data.approval;
         const receiverId = receivers?.[0]?.participantId;

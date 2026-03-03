@@ -82,6 +82,46 @@ describe('plugin-meetings', () => {
     });
   });
 
+  describe('MemberUtil.canApproveAIEnablement', () => {
+    it('returns false when there is no participant', () => {
+      assert.isFalse(MemberUtil.canApproveAIEnablement());
+    });
+
+    it('returns false when there is null participant', () => {
+      assert.isFalse(MemberUtil.canApproveAIEnablement(null));
+    });
+
+    it('returns true when attendeeRequestAiAssistantNotAllowed is false', () => {
+      const participant = {
+        attendeeRequestAiAssistantNotAllowed: false,
+      };
+
+      assert.isTrue(MemberUtil.canApproveAIEnablement(participant));
+    });
+
+    it('returns false when attendeeRequestAiAssistantNotAllowed is true', () => {
+      const participant = {
+        attendeeRequestAiAssistantNotAllowed: true,
+      };
+
+      assert.isFalse(MemberUtil.canApproveAIEnablement(participant));
+    });
+
+    it('returns true when attendeeRequestAiAssistantNotAllowed is undefined', () => {
+      const participant = {
+        attendeeRequestAiAssistantNotAllowed: undefined,
+      };
+
+      assert.isTrue(MemberUtil.canApproveAIEnablement(participant));
+    });
+
+    it('returns true when attendeeRequestAiAssistantNotAllowed is not present', () => {
+      const participant = {};
+
+      assert.isTrue(MemberUtil.canApproveAIEnablement(participant));
+    });
+  });
+
   describe('MemberUtil.extractControlRoles', () => {
     it('happy path extract control roles', () => {
       const participant = {
@@ -377,7 +417,6 @@ describe('plugin-meetings', () => {
       assert.isFalse(MemberUtil.isBrb(participant));
     });
 
-
     it('returns false when brb is not present', () => {
       const participant = {
         controls: {},
@@ -417,29 +456,28 @@ describe('plugin-meetings', () => {
     });
   });
 
-describe('MemberUtil.isSupportsSingleUserAutoEndMeeting', () => {
-  it('throws an error when there is no participant', () => {
-    assert.throws(() => {
-      MemberUtil.isSupportsSingleUserAutoEndMeeting();
-    }, 'Single user auto end meeting support could not be processed, participant is undefined.');
+  describe('MemberUtil.isSupportsSingleUserAutoEndMeeting', () => {
+    it('throws an error when there is no participant', () => {
+      assert.throws(() => {
+        MemberUtil.isSupportsSingleUserAutoEndMeeting();
+      }, 'Single user auto end meeting support could not be processed, participant is undefined.');
+    });
+
+    it('returns true when single user auto end meeting is supported', () => {
+      const participant = {
+        supportsSingleUserAutoEndMeeting: {},
+      };
+      assert.isTrue(MemberUtil.isSupportsSingleUserAutoEndMeeting(participant));
+    });
+
+    it('returns false when single user auto end meeting is not supported', () => {
+      const participant = {
+        doesNotSupportSingleUserAutoEndMeeting: {},
+      };
+
+      assert.isFalse(MemberUtil.isSupportsSingleUserAutoEndMeeting(participant));
+    });
   });
-
-  it('returns true when single user auto end meeting is supported', () => {
-    const participant = {
-      supportsSingleUserAutoEndMeeting: {},
-    };
-    assert.isTrue(MemberUtil.isSupportsSingleUserAutoEndMeeting(participant));
-  });
-
-  it('returns false when single user auto end meeting is not supported', () => {
-    const participant = {
-      doesNotSupportSingleUserAutoEndMeeting: {},
-    };
-
-    assert.isFalse(MemberUtil.isSupportsSingleUserAutoEndMeeting(participant));
-  });
-});
-
 
   describe('MemberUtil.isLiveAnnotationSupported', () => {
     it('throws an error when there is no participant', () => {
@@ -585,7 +623,7 @@ describe('MemberUtil.isSupportsSingleUserAutoEndMeeting', () => {
   describe('MemberUtil.isPresenterAssignmentProhibited', () => {
     it('returns true when isPresenterAssignmentProhibited is true', () => {
       const participant = {
-        presenterAssignmentNotAllowed: true
+        presenterAssignmentNotAllowed: true,
       };
 
       assert.isTrue(MemberUtil.isPresenterAssignmentProhibited(participant));
@@ -610,16 +648,16 @@ describe('MemberUtil.isSupportsSingleUserAutoEndMeeting', () => {
 describe('extractMediaStatus', () => {
   it('throws an error when there is no participant', () => {
     assert.throws(() => {
-      MemberUtil.extractMediaStatus()
+      MemberUtil.extractMediaStatus();
     }, 'Media status could not be extracted, participant is undefined.');
   });
 
   it('returns undefined media status when participant audio/video status is not present', () => {
     const participant = {
-      status: {}
+      status: {},
     };
 
-    const mediaStatus = MemberUtil.extractMediaStatus(participant)
+    const mediaStatus = MemberUtil.extractMediaStatus(participant);
 
     assert.deepEqual(mediaStatus, {audio: undefined, video: undefined});
   });
@@ -628,11 +666,11 @@ describe('extractMediaStatus', () => {
     const participant = {
       status: {
         audioStatus: 'RECVONLY',
-        videoStatus: 'SENDRECV'
-      }
+        videoStatus: 'SENDRECV',
+      },
     };
 
-    const mediaStatus = MemberUtil.extractMediaStatus(participant)
+    const mediaStatus = MemberUtil.extractMediaStatus(participant);
 
     assert.deepEqual(mediaStatus, {audio: 'RECVONLY', video: 'SENDRECV'});
   });

@@ -2113,6 +2113,19 @@ export default class LocusInfo extends EventsScope {
         );
       }
 
+      if (parsedSelves.updates.selfIdChanged) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_ID_CHANGED,
+          {
+            selfId: parsedSelves.current.selfId,
+          }
+        );
+      }
+
       if (parsedSelves.updates.interpretationChanged) {
         this.emitScoped(
           {

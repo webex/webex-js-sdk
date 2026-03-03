@@ -34,7 +34,7 @@ export default class Socket extends EventEmitter {
     this.onmessage = this.onmessage.bind(this);
     this.onclose = this.onclose.bind(this);
     // Increase max listeners to avoid memory leak warning in tests
-    this.setMaxListeners(50);
+    this.setMaxListeners(5);
   }
 
   /**
