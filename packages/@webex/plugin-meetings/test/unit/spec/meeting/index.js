@@ -738,7 +738,9 @@ describe('plugin-meetings', () => {
         let supportsRTCPeerConnectionStub;
 
         beforeEach(() => {
-          supportsRTCPeerConnectionStub = sinon.stub(WebCapabilities, 'supportsRTCPeerConnection').returns(CapabilityState.CAPABLE);
+          supportsRTCPeerConnectionStub = sinon
+            .stub(WebCapabilities, 'supportsRTCPeerConnection')
+            .returns(CapabilityState.CAPABLE);
 
           meeting.join = sinon.stub().callsFake((joinOptions) => {
             meeting.isMultistream = joinOptions.enableMultistream;
@@ -1020,9 +1022,9 @@ describe('plugin-meetings', () => {
               body: {
                 errorCode: 2729,
                 message: 'fake addMedia error',
-                name: 'TypeError'
-              }
-            }
+                name: 'TypeError',
+              },
+            },
           };
           meeting.addMediaInternal.rejects(addMediaError);
           sinon.stub(meeting, 'leave').resolves();
@@ -1249,8 +1251,14 @@ describe('plugin-meetings', () => {
         });
 
         [
-          {errorName: 'SdpOfferCreationError', description: 'if we fail to create the offer on first attempt'},
-          {errorName: 'WebrtcApiNotAvailableError', description: 'if RTCPeerConnection is not available'},
+          {
+            errorName: 'SdpOfferCreationError',
+            description: 'if we fail to create the offer on first attempt',
+          },
+          {
+            errorName: 'WebrtcApiNotAvailableError',
+            description: 'if RTCPeerConnection is not available',
+          },
         ].forEach(({errorName, description}) => {
           it(`should not attempt a retry ${description}`, async () => {
             const addMediaError = new Error('fake addMedia error');
@@ -1290,7 +1298,7 @@ describe('plugin-meetings', () => {
               resourceId: undefined,
               reason: 'joinWithMedia failure',
             });
-          })
+          });
         });
 
         it('should ignore sendVideo/receiveVideo when videoEnabled is false', async () => {
@@ -11418,6 +11426,62 @@ describe('plugin-meetings', () => {
           assert.calledTwice(meeting.webex.internal.mercury.off);
           assert.calledWith(meeting.webex.internal.mercury.off.firstCall, ONLINE);
           assert.calledWith(meeting.webex.internal.mercury.off.secondCall, OFFLINE);
+        });
+      });
+
+      describe('localConstraintsChangeHandler', () => {
+        it('calls updatePreferredBitrateKbps when not multistream', () => {
+          meeting.isMultistream = false;
+          meeting.mediaProperties.webrtcMediaConnection = {
+            updatePreferredBitrateKbps: sinon.stub(),
+          };
+
+          meeting.localConstraintsChangeHandler();
+
+          assert.calledOnce(
+            meeting.mediaProperties.webrtcMediaConnection.updatePreferredBitrateKbps
+          );
+        });
+
+        it('does not call updatePreferredBitrateKbps when multistream', () => {
+          meeting.isMultistream = true;
+          meeting.mediaProperties.webrtcMediaConnection = {
+            updatePreferredBitrateKbps: sinon.stub(),
+          };
+
+          meeting.localConstraintsChangeHandler();
+
+          assert.notCalled(
+            meeting.mediaProperties.webrtcMediaConnection.updatePreferredBitrateKbps
+          );
+        });
+
+        it('does not throw when webrtcMediaConnection is undefined', () => {
+          meeting.isMultistream = false;
+          meeting.mediaProperties.webrtcMediaConnection = undefined;
+
+          assert.doesNotThrow(() => meeting.localConstraintsChangeHandler());
+        });
+
+        it('is triggered when ConstraintsChange event is emitted on a local video stream', () => {
+          const EventEmitter = require('events');
+          const fakeStream = new EventEmitter();
+
+          meeting.isMultistream = false;
+          meeting.mediaProperties.webrtcMediaConnection = {
+            updatePreferredBitrateKbps: sinon.stub(),
+          };
+
+          fakeStream.on(
+            LocalStreamEventNames.ConstraintsChange,
+            meeting.localConstraintsChangeHandler
+          );
+
+          fakeStream.emit(LocalStreamEventNames.ConstraintsChange);
+
+          assert.calledOnce(
+            meeting.mediaProperties.webrtcMediaConnection.updatePreferredBitrateKbps
+          );
         });
       });
 
