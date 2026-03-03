@@ -85,3 +85,5 @@ export {
 export {RemoteMedia} from './multistream/remoteMedia';
 
 export {default as TriggerProxy} from './common/events/trigger-proxy';
+
+export {getAIEnablementApprover} from './aiEnableRequest/utils';
