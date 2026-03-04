@@ -90,14 +90,15 @@ sequenceDiagram
     Note over WSM: WebSocket closes
     WSM->>CS: emit('socketClose')
     CS->>CS: onSocketClose()
+    CS->>CS: clearTimerOnRestoreFailed()
     CS->>CS: Start reconnectInterval every 5 s
 
     loop Every CONNECTIVITY_CHECK_INTERVAL
         CS->>CS: handleSocketClose()
         alt Browser online
             CS->>WSM: initWebSocket({body: subscribeRequest})
+            CS->>CS: clearTimerOnRestoreFailed()
             CS->>CS: isSocketReconnected = true
-            CS->>CS: clearInterval
         else Browser offline
             CS->>CS: Throw error, retry next interval
         end
@@ -199,26 +200,86 @@ sequenceDiagram
 
 ### Purpose
 
-Maintains WebSocket connection with periodic pings.
+Maintains WebSocket connection with periodic pings and monitors network status. Has a dual role:
+1. **Keepalive**: Sends periodic messages to detect connection issues
+2. **Network Monitoring**: Tracks online/offline transitions and forces socket closure if offline too long
 
 ### Implementation
 
 ```javascript
 // keepalive.worker.js
-let intervalId;
+let intervalId, intervalDuration, timeOutId, isSocketClosed, closeSocketTimeout;
+let initialised = false;
+let initiateWebSocketClosure = false;
+
+const resetOfflineHandler = function () {
+  if (timeOutId) {
+    initialised = false;
+    clearTimeout(timeOutId);
+    timeOutId = null;
+  }
+};
+
+const checkOnlineStatus = function () {
+  return navigator.onLine;
+};
+
+// Checks network status and forces WebSocket closure if offline too long
+const checkNetworkStatus = function () {
+  const onlineStatus = checkOnlineStatus();
+  postMessage({type: 'keepalive', onlineStatus}); // Includes onlineStatus in every message
+
+  if (!onlineStatus && !initialised) {
+    initialised = true;
+    // Sets timeout - if socket doesn't close naturally, force it
+    timeOutId = setTimeout(() => {
+      if (!isSocketClosed) {
+        initiateWebSocketClosure = true;
+        postMessage({type: 'closeSocket'});
+      }
+    }, closeSocketTimeout);
+  }
+
+  if (onlineStatus && initialised) {
+    initialised = false;
+  }
+
+  if (initiateWebSocketClosure) {
+    initiateWebSocketClosure = false;
+    clearTimeout(timeOutId);
+    timeOutId = null;
+  }
+};
 
 addEventListener('message', (event) => {
   if (event.data?.type === 'start') {
-    intervalId = setInterval(() => {
-      self.postMessage({type: 'keepalive', onlineStatus: navigator.onLine});
-    }, event.data?.intervalDuration);
+    intervalDuration = event.data?.intervalDuration || 4000;
+    closeSocketTimeout = event.data?.closeSocketTimeout || 5000;
+    intervalId = setInterval(
+      (checkIfSocketClosed) => {
+        checkNetworkStatus();
+        isSocketClosed = checkIfSocketClosed;
+      },
+      intervalDuration,
+      event.data?.isSocketClosed
+    );
+    resetOfflineHandler();
   }
 
-  if (event.data?.type === 'terminate') {
+  if (event.data?.type === 'terminate' && intervalId) {
     clearInterval(intervalId);
-    // When offline timeout is reached and socket is still open:
-    // self.postMessage({type: 'closeSocket'});
+    intervalId = null;
+    resetOfflineHandler();
   }
+});
+
+// Listen for browser online/offline events
+self.addEventListener('online', () => {
+  checkNetworkStatus();
+});
+
+self.addEventListener('offline', () => {
+  checkNetworkStatus();
 });
 
 // Main thread contract:
@@ -233,17 +294,23 @@ addEventListener('message', (event) => {
 ### Error Types
 
 ```typescript
-// Failure - Backend error structure
-type Failure = {
+// Msg - Generic message interface (GlobalTypes.ts:7-16)
+export type Msg<T = any> = {
   type: string;
-  orgId?: string;
-  trackingId?: string;
-  data?: {
-    agentId?: string;
-    reason?: string;
-    reasonCode?: string | number;
-  };
+  orgId: string;
+  trackingId: string;
+  data: T;
 };
+
+// Failure - Backend error structure (GlobalTypes.ts:23-34)
+// Built on Msg<T> with specific error data fields
+export type Failure = Msg<{
+  agentId: string;
+  trackingId: string;
+  reasonCode: number;
+  orgId: string;
+  reason: string;
+}>;
 
 // AugmentedError - Extended Error with flexible data field (GlobalTypes.ts:59-61)
 export interface AugmentedError extends Error {
@@ -310,14 +377,22 @@ export const generateTaskErrorObject = (
 
   const errorMessage = errorMsg?.errorMessage || error.message || 'Error';
   const errorType = errorMsg?.errorType || error.name || 'Unknown Error';
+  const errorData = errorMsg?.errorData || '';
+  const reasonCode = errorMsg?.reasonCode || 0;
 
-  LoggerProxy.error(`${methodName} failed: ${errorMessage}`, {...});
+  LoggerProxy.error(`${methodName} failed: ${errorMessage} (${errorType})`, {
+    module: moduleName,
+    method: methodName,
+    trackingId,
+  });
   WebexRequest.getInstance().uploadLogs({correlationId: trackingId});
 
-  const err: AugmentedError = new Error(`${errorType}: ${errorMessage}`);
+  const reason = `${errorType}: ${errorMessage}${errorData ? ` (${errorData})` : ''}`;
+  const err: AugmentedError = new Error(reason);
   err.data = {
     message: errorMessage,
     errorType,
+    errorData,
     reasonCode,
     trackingId,
   };
@@ -352,8 +427,9 @@ export const generateTaskErrorObject = (
 
 ## Related Files
 
-- [Root Orchestrator AGENTS.md](../../../AGENTS.md) - Task routing, critical rules, cross-service patterns
+- [Root Orchestrator AGENTS.md](../../../../AGENTS.md) - Task routing, critical rules, cross-service patterns
 - [WebSocketManager.ts](../websocket/WebSocketManager.ts)
+- [ConnectionService.ts](../websocket/connection-service.ts)
 - [WebexRequest.ts](../WebexRequest.ts)
 - [Utils.ts](../Utils.ts)
 - [aqm-reqs.ts](../aqm-reqs.ts)
