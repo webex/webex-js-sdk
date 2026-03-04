@@ -5,7 +5,7 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 import Meetings from '@webex/plugin-meetings';
-import LocusInfo, {createLocusFromHashTreeMessage} from '@webex/plugin-meetings/src/locus-info';
+import LocusInfo, {createLocusFromHashTreeMessage, findMeetingForHashTreeMessage} from '@webex/plugin-meetings/src/locus-info';
 import SelfUtils from '@webex/plugin-meetings/src/locus-info/selfUtils';
 import InfoUtils from '@webex/plugin-meetings/src/locus-info/infoUtils';
 import EmbeddedAppsUtils from '@webex/plugin-meetings/src/locus-info/embeddedAppsUtils';
@@ -105,6 +105,7 @@ describe('plugin-meetings', () => {
       });
 
       const createHashTreeMessage = (visibleDataSets) => ({
+        locusUrl: 'http://locus-url.com',
         locusStateElements: [
           {
             htMeta: {elementId: {type: 'metadata'}},
@@ -115,6 +116,7 @@ describe('plugin-meetings', () => {
       });
 
       const createLocusWithVisibleDataSets = (visibleDataSets) => ({
+        url: 'http://locus-url.com',
         self: {visibleDataSets},
         participants: [],
         links: {
@@ -299,6 +301,7 @@ describe('plugin-meetings', () => {
           await locusInfo.initialSetup({
             trigger: 'locus-message',
             hashTreeMessage: {
+              locusUrl: 'http://locus-url.com',
               locusStateElements: [
                 {
                   htMeta: {elementId: {type: 'Metadata'}},
@@ -2980,7 +2983,7 @@ describe('plugin-meetings', () => {
         assert.calledWith(locusInfo.handleLocusDelta, fakeLocus, mockMeeting);
       });
       it('calls hash tree parser when we are using hash trees', () => {
-        const fakeLocus = {eventType: LOCUSEVENT.DIFFERENCE};
+        const fakeLocus = {eventType: LOCUSEVENT.DIFFERENCE, url: 'http://locus-url.com'};
         const fakeDataSets = [{name: 'dataset1', url: 'http://test.com'}];
         const responseBody = {locus: fakeLocus, dataSets: fakeDataSets};
 
@@ -2988,7 +2991,10 @@ describe('plugin-meetings', () => {
         const mockHashTreeParser = {
           handleLocusUpdate: sinon.stub(),
         };
-        locusInfo.hashTreeParser = mockHashTreeParser;
+        locusInfo.hashTreeParsers.set(fakeLocus.url, {
+          parser: mockHashTreeParser,
+          initializedFromHashTree: true,
+        });
 
         sinon.stub(locusInfo, 'onDeltaLocus');
 
@@ -4334,7 +4340,9 @@ describe('plugin-meetings', () => {
 
     describe('#parse', () => {
       it('handles hash tree messages correctly', () => {
+        const fakeLocusUrl = 'http://locus-url.com';
         const fakeHashTreeMessage = {
+          locusUrl: fakeLocusUrl,
           locusStateElements: [
             {
               htMeta: {elementId: {type: 'self'}},
@@ -4353,7 +4361,10 @@ describe('plugin-meetings', () => {
         const mockHashTreeParser = {
           handleMessage: sinon.stub(),
         };
-        locusInfo.hashTreeParser = mockHashTreeParser;
+        locusInfo.hashTreeParsers.set(fakeLocusUrl, {
+          parser: mockHashTreeParser,
+          initializedFromHashTree: true,
+        });
 
         locusInfo.parse(mockMeeting, data);
 
@@ -4373,7 +4384,7 @@ describe('plugin-meetings', () => {
         const getTheLocusToUpdateStub = sinon.stub(locusInfo, 'getTheLocusToUpdate');
 
         // Ensure we're not using hash trees
-        assert.isUndefined(locusInfo.hashTreeParser);
+        assert.equal(locusInfo.hashTreeParsers.size, 0);
 
         locusInfo.parse(mockMeeting, data);
 
@@ -4550,6 +4561,177 @@ describe('plugin-meetings', () => {
       });
 
       assert.deepEqual(result.locus, {participants: [], url: LOCUS_URL});
+    });
+  });
+
+  describe('findMeetingForHashTreeMessage', () => {
+    const deviceUrl = 'https://devices.example.com/device1';
+
+    function createMockMeetingCollection(meetings) {
+      return {
+        getAll: () => meetings,
+      };
+    }
+
+    function createMockMeeting(id, hashTreeParsersMap) {
+      return {
+        id,
+        locusInfo: {
+          hashTreeParsers: hashTreeParsersMap,
+        },
+      };
+    }
+
+    function createSelfElement(devices) {
+      return {
+        htMeta: {elementId: {type: 'Self'}},
+        data: {
+          devices,
+        },
+      };
+    }
+
+    it('returns the meeting when locusUrl matches a hashTreeParser directly', () => {
+      const locusUrl = 'https://locus.example.com/loci/abc123';
+      const parsersMap = new Map([[locusUrl, {state: 'active'}]]);
+      const meeting = createMockMeeting('meeting1', parsersMap);
+      const collection = createMockMeetingCollection({meeting1: meeting});
+
+      const message = {locusUrl, locusStateElements: []};
+
+      const result = findMeetingForHashTreeMessage(message, collection, deviceUrl);
+
+      assert.equal(result, meeting);
+    });
+
+    it('returns undefined when no meeting matches and message has no locusStateElements', () => {
+      const locusUrl = 'https://locus.example.com/loci/unknown';
+      const parsersMap = new Map([['https://locus.example.com/loci/other', {state: 'active'}]]);
+      const meeting = createMockMeeting('meeting1', parsersMap);
+      const collection = createMockMeetingCollection({meeting1: meeting});
+
+      const message = {locusUrl};
+
+      const result = findMeetingForHashTreeMessage(message, collection, deviceUrl);
+
+      assert.isUndefined(result);
+    });
+
+    it('returns undefined when no meeting matches and self element has no replaces', () => {
+      const locusUrl = 'https://locus.example.com/loci/unknown';
+      const parsersMap = new Map([['https://locus.example.com/loci/other', {state: 'active'}]]);
+      const meeting = createMockMeeting('meeting1', parsersMap);
+      const collection = createMockMeetingCollection({meeting1: meeting});
+
+      const selfElement = createSelfElement([{url: deviceUrl}]);
+      const message = {locusUrl, locusStateElements: [selfElement]};
+
+      const result = findMeetingForHashTreeMessage(message, collection, deviceUrl);
+
+      assert.isUndefined(result);
+    });
+
+    it('returns the meeting when locusUrl from replaces matches a hashTreeParser', () => {
+      const oldLocusUrl = 'https://locus.example.com/loci/old';
+      const newLocusUrl = 'https://locus.example.com/loci/new';
+      const parsersMap = new Map([[oldLocusUrl, {state: 'active'}]]);
+      const meeting = createMockMeeting('meeting1', parsersMap);
+      const collection = createMockMeetingCollection({meeting1: meeting});
+
+      const selfElement = createSelfElement([
+        {url: deviceUrl, replaces: [{locusUrl: oldLocusUrl}]},
+      ]);
+      const message = {locusUrl: newLocusUrl, locusStateElements: [selfElement]};
+
+      const result = findMeetingForHashTreeMessage(message, collection, deviceUrl);
+
+      assert.equal(result, meeting);
+    });
+
+    it('returns undefined when replaces locusUrl does not match any hashTreeParser', () => {
+      const oldLocusUrl = 'https://locus.example.com/loci/old';
+      const newLocusUrl = 'https://locus.example.com/loci/new';
+      const parsersMap = new Map([
+        ['https://locus.example.com/loci/something-else', {state: 'active'}],
+      ]);
+      const meeting = createMockMeeting('meeting1', parsersMap);
+      const collection = createMockMeetingCollection({meeting1: meeting});
+
+      const selfElement = createSelfElement([
+        {url: deviceUrl, replaces: [{locusUrl: oldLocusUrl}]},
+      ]);
+      const message = {locusUrl: newLocusUrl, locusStateElements: [selfElement]};
+
+      const result = findMeetingForHashTreeMessage(message, collection, deviceUrl);
+
+      assert.isUndefined(result);
+    });
+
+    it('returns undefined when meetingCollection is empty', () => {
+      const collection = createMockMeetingCollection({});
+      const message = {locusUrl: 'https://locus.example.com/loci/abc', locusStateElements: []};
+
+      const result = findMeetingForHashTreeMessage(message, collection, deviceUrl);
+
+      assert.isUndefined(result);
+    });
+
+    it('checks multiple meetings and returns the correct one', () => {
+      const targetLocusUrl = 'https://locus.example.com/loci/target';
+      const meeting1 = createMockMeeting(
+        'meeting1',
+        new Map([['https://locus.example.com/loci/other', {state: 'active'}]])
+      );
+      const meeting2 = createMockMeeting(
+        'meeting2',
+        new Map([[targetLocusUrl, {state: 'active'}]])
+      );
+      const collection = createMockMeetingCollection({meeting1, meeting2});
+
+      const message = {locusUrl: targetLocusUrl, locusStateElements: []};
+
+      const result = findMeetingForHashTreeMessage(message, collection, deviceUrl);
+
+      assert.equal(result, meeting2);
+    });
+
+    it('ignores devices that do not match deviceUrl when looking for replaces', () => {
+      const oldLocusUrl = 'https://locus.example.com/loci/old';
+      const newLocusUrl = 'https://locus.example.com/loci/new';
+      const parsersMap = new Map([[oldLocusUrl, {state: 'active'}]]);
+      const meeting = createMockMeeting('meeting1', parsersMap);
+      const collection = createMockMeetingCollection({meeting1: meeting});
+
+      // self element has replaces, but on a different device
+      const selfElement = createSelfElement([
+        {url: 'https://devices.example.com/other-device', replaces: [{locusUrl: oldLocusUrl}]},
+      ]);
+      const message = {locusUrl: newLocusUrl, locusStateElements: [selfElement]};
+
+      const result = findMeetingForHashTreeMessage(message, collection, deviceUrl);
+
+      assert.isUndefined(result);
+    });
+
+    it('does not use self element if it is not of type Self', () => {
+      const oldLocusUrl = 'https://locus.example.com/loci/old';
+      const newLocusUrl = 'https://locus.example.com/loci/new';
+      const parsersMap = new Map([[oldLocusUrl, {state: 'active'}]]);
+      const meeting = createMockMeeting('meeting1', parsersMap);
+      const collection = createMockMeetingCollection({meeting1: meeting});
+
+      // element has replaces data but is not of type Self
+      const nonSelfElement = {
+        htMeta: {elementId: {type: 'Participant'}},
+        data: {
+          devices: [{url: deviceUrl, replaces: [{locusUrl: oldLocusUrl}]}],
+        },
+      };
+      const message = {locusUrl: newLocusUrl, locusStateElements: [nonSelfElement]};
+
+      const result = findMeetingForHashTreeMessage(message, collection, deviceUrl);
+
+      assert.isUndefined(result);
     });
   });
 });

@@ -32,6 +32,7 @@ export type LocusDTO = {
   info?: any;
   jsSdkMeta?: {
     removedParticipantIds: string[]; // list of ids of participants that are removed in the last update
+    forceReplaceMembers?: boolean; // when true, forces a full replacement of meeting members (e.g. when switching to a new hash tree parser - when moving between breakouts)
   };
   links?: Links;
   mediaShares?: any[];
