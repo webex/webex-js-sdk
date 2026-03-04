@@ -33,6 +33,7 @@ import {
   ToggleReactionsOptions,
   PostMeetingDataConsentOptions,
   SynchronizeVideoLayout,
+  fetchDataChannelTokenOptions,
 } from './request.type';
 import MeetingUtil from './util';
 import {AnnotationInfo} from '../annotation/annotation.types';
@@ -1125,5 +1126,46 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       );
       throw err;
     }
+  }
+
+  /**
+   * Sends a request to retrieve the datachannel authorization token for a participant.
+   *
+   * For regular meeting data channel:
+   *   GET /locus/api/v1/loci/{uuid:lid}/participant/{uuid:pid}/datachannel/token
+   *
+   * For practice session data channel:
+   *   GET /locus/api/v1/loci/{uuid:lid}/participant/{uuid:pid}/practiceSession/datachannel/token
+   *
+   * @param {string} locusUrl - The locus url.
+   * @param {string} requestingParticipantId - The participant UUID.
+   * @param {boolean} [isPracticeSession=false] - Whether to get the practice session token.
+   * @returns {Promise<{datachannelToken: string}>}
+   */
+  public async fetchDatachannelToken({
+    locusUrl,
+    requestingParticipantId,
+    isPracticeSession = false,
+  }: fetchDataChannelTokenOptions) {
+    if (!locusUrl || !requestingParticipantId) {
+      return Promise.reject(new Error('locusUrl and participantId are required'));
+    }
+    const practicePrefix = isPracticeSession ? '/practiceSession' : '';
+
+    const uri = `${locusUrl}/${PARTICIPANT}/${requestingParticipantId}${practicePrefix}/datachannel/token`;
+
+    // @ts-ignore
+    return this.locusDeltaRequest({
+      method: HTTP_VERBS.GET,
+      uri,
+    }).catch((err) => {
+      LoggerProxy.logger.error(
+        `Meeting:request#fetchDatachannelToken --> Error retrieving ${
+          isPracticeSession ? 'practice session ' : ''
+        }datachannel token, error ${err}`
+      );
+
+      throw err;
+    });
   }
 }

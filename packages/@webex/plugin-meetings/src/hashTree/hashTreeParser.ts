@@ -97,6 +97,7 @@ class HashTreeParser {
   visibleDataSets: VisibleDataSetInfo[];
   debugId: string;
   heartbeatIntervalMs?: number;
+  private excludedDataSets: string[];
 
   /**
    * Constructor for HashTreeParser
@@ -112,14 +113,18 @@ class HashTreeParser {
     webexRequest: WebexRequestMethod;
     locusInfoUpdateCallback: LocusInfoUpdateCallback;
     debugId: string;
+    excludedDataSets?: string[];
   }) {
     const {dataSets, locus} = options.initialLocus; // extract dataSets from initialLocus
 
     this.debugId = options.debugId;
     this.webexRequest = options.webexRequest;
     this.locusInfoUpdateCallback = options.locusInfoUpdateCallback;
+    this.excludedDataSets = options.excludedDataSets || [];
     this.visibleDataSetsUrl = locus?.links?.resources?.visibleDataSets?.url;
-    this.visibleDataSets = cloneDeep(options.metadata?.visibleDataSets || []);
+    this.visibleDataSets = (
+      cloneDeep(options.metadata?.visibleDataSets || []) as VisibleDataSetInfo[]
+    ).filter((vds) => !this.isExcludedDataSet(vds.name));
 
     if (options.metadata?.visibleDataSets?.length === 0) {
       LoggerProxy.logger.warn(
@@ -162,6 +167,34 @@ class HashTreeParser {
   }
 
   /**
+   * Checks if the given data set name is in the excluded list
+   * @param {string} dataSetName data set name to check
+   * @returns {boolean} True if the data set is excluded, false otherwise
+   */
+  private isExcludedDataSet(dataSetName: string): boolean {
+    return this.excludedDataSets.some((name) => name === dataSetName);
+  }
+
+  /**
+   * Adds a data set to the visible data sets list, unless it is in the excluded list.
+   * @param {VisibleDataSetInfo} dataSetInfo data set info to add
+   * @returns {boolean} True if the data set was added, false if it was excluded
+   */
+  private addToVisibleDataSetsList(dataSetInfo: VisibleDataSetInfo): boolean {
+    if (this.isExcludedDataSet(dataSetInfo.name)) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#addToVisibleDataSetsList --> ${this.debugId} Data set "${dataSetInfo.name}" is in the excluded list, ignoring`
+      );
+
+      return false;
+    }
+
+    this.visibleDataSets.push(dataSetInfo);
+
+    return true;
+  }
+
+  /**
    * Initializes a new visible data set by creating a hash tree for it, adding it to all the internal structures,
    * and sending an initial sync request to Locus with empty leaf data - that will trigger Locus to gives us all the data
    * from that dataset (in the response or via messages).
@@ -186,7 +219,9 @@ class HashTreeParser {
       `HashTreeParser#initializeNewVisibleDataSet --> ${this.debugId} Adding visible data set "${dataSetInfo.name}"`
     );
 
-    this.visibleDataSets.push(visibleDataSetInfo);
+    if (!this.addToVisibleDataSetsList(visibleDataSetInfo)) {
+      return Promise.resolve({updateType: LocusInfoUpdateType.OBJECTS_UPDATED, updatedObjects: []});
+    }
 
     const hashTree = new HashTree([], dataSetInfo.leafCount);
 
@@ -340,10 +375,16 @@ class HashTreeParser {
       }
 
       if (!this.isVisibleDataSet(name)) {
-        this.visibleDataSets.push({
-          name,
-          url,
-        });
+        if (
+          !this.addToVisibleDataSetsList({
+            name,
+            url,
+          })
+        ) {
+          // dataset is excluded, skip it
+          // eslint-disable-next-line no-continue
+          continue;
+        }
       }
 
       if (!this.dataSets[name].hashTree) {
@@ -613,12 +654,13 @@ class HashTreeParser {
     const {dataSets, locus, metadata} = update;
 
     if (!dataSets) {
-      LoggerProxy.logger.warn(
+      LoggerProxy.logger.info(
         `HashTreeParser#handleLocusUpdate --> ${this.debugId} received hash tree update without dataSets`
       );
-    }
-    for (const dataSet of dataSets) {
-      this.updateDataSetInfo(dataSet);
+    } else {
+      for (const dataSet of dataSets) {
+        this.updateDataSetInfo(dataSet);
+      }
     }
     const updatedObjects: HashTreeObject[] = [];
 
@@ -727,7 +769,9 @@ class HashTreeParser {
     // visibleDataSets can only be changed by Metadata object updates
     updatedObjects.forEach((object) => {
       if (isMetadata(object) && object.data?.visibleDataSets) {
-        const newVisibleDataSets = object.data.visibleDataSets;
+        const newVisibleDataSets = object.data.visibleDataSets.filter(
+          (vds) => !this.isExcludedDataSet(vds.name)
+        );
 
         removedDataSets = this.visibleDataSets.filter(
           (ds) => !newVisibleDataSets.some((nvs) => nvs.name === ds.name)
@@ -839,7 +883,10 @@ class HashTreeParser {
           `HashTreeParser#processVisibleDataSetChanges --> ${this.debugId} Adding visible data set "${ds.name}"`
         );
 
-        this.visibleDataSets.push(ds);
+        if (!this.addToVisibleDataSetsList(ds)) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
 
         const hashTree = new HashTree([], dataSetInfo.leafCount);
 
