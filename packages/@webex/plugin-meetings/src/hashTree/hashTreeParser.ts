@@ -486,7 +486,7 @@ class HashTreeParser {
       if (
         dataSet.leafCount === 1 &&
         dataSet.root === EMPTY_HASH &&
-        this.dataSets[dataSet.name].version < dataSet.version &&
+        (!this.dataSets[dataSet.name] || this.dataSets[dataSet.name].version < dataSet.version) &&
         PossibleSentinelMessageDataSetNames.includes(dataSet.name.toLowerCase())
       ) {
         // this is a special way for Locus to indicate that this meeting has ended

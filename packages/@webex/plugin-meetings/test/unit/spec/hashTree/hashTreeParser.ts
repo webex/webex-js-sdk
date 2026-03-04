@@ -1376,6 +1376,29 @@ describe('HashTreeParser', () => {
           });
         });
       });
+
+      it('emits MEETING_ENDED for sentinel message with unknown dataset', async () => {
+        const parser = createHashTreeParser();
+
+        // 'unjoined' is a valid sentinel dataset name but is not tracked by the parser
+        assert.isUndefined(parser.dataSets['unjoined']);
+
+        // Create a sentinel message for 'unjoined' dataset which the parser has never seen
+        const sentinelMessage = createHeartbeatMessage('unjoined', 1, 10000, EMPTY_HASH);
+
+        await parser.handleMessage(sentinelMessage, 'sentinel message');
+
+        // Verify callback was called with MEETING_ENDED
+        assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
+          updatedObjects: undefined,
+        });
+
+        // Verify that all timers were stopped
+        Object.values(parser.dataSets).forEach((ds: any) => {
+          assert.isUndefined(ds.timer);
+          assert.isUndefined(ds.heartbeatWatchdogTimer);
+        });
+      });
     });
 
     describe('sync algorithm', () => {
