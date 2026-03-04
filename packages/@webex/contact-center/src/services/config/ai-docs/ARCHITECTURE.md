@@ -44,14 +44,16 @@ flowchart TD
     G1 --> H{dialPlanEnabled?}
     H -->|Yes| I[getDialPlanData]
     H -->|No| J[Skip dial plan]
-    
-    G1 --> K[Get teamIds]
-    K --> L[getAllTeams]
-    
+
+    E --> K{teamIds?}
+    K -->|Yes| L[getAllTeams]
+    K -->|No| N1[Skip teams]
+
     subgraph aggregate [Aggregation]
         I --> M[parseAgentConfigs]
         J --> M
         L --> M
+        N1 --> M
         C2 --> M
         C3 --> M
         C4 --> M
@@ -187,7 +189,7 @@ public async getAllTeams(orgId, pageSize, filter): Promise<TeamList[]> {
   
   // Parallel requests for remaining pages
   const requests = [];
-  for (page = 1; page < totalPages; page++) {
+  for (page = DEFAULT_PAGE + 1; page < totalPages; page += 1) {
     requests.push(this.getListOfTeams(orgId, page, pageSize, filter));
   }
   
@@ -209,7 +211,7 @@ public async getAllTeams(orgId, pageSize, filter): Promise<TeamList[]> {
 ```typescript
 function parseAgentConfigs(profileData: {
   userData: AgentResponse;
-  teamData: Team[];
+  teamData: Team[];          // NOTE: declared as Team[] but receives TeamList[] at runtime
   tenantData: TenantData;
   orgInfoData: OrgInfo;
   auxCodes: AuxCode[];
