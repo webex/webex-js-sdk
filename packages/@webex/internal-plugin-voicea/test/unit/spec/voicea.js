@@ -1205,5 +1205,75 @@ describe('plugin-voicea', () => {
       });
     });
 
+    describe('#updateSubchannelSubscriptions', () => {
+      beforeEach(() => {
+        const mockWebSocket = new MockWebSocket();
+        voiceaService.webex.internal.llm.socket = mockWebSocket;
+
+        // mock getDatachannelUrl
+        voiceaService.webex.internal.llm.getDatachannelUrl = sinon.stub().returns('mock-datachannel-uri');
+
+        // ensure seqNum starts from 1 (or whatever your default is)
+        voiceaService.seqNum = 1;
+
+        // ensure connected
+        voiceaService.webex.internal.llm.isConnected = sinon.stub().returns(true);
+      });
+
+      it('sends subchannelSubscriptionRequest with subscribe and unsubscribe lists', () => {
+        voiceaService.updateSubchannelSubscriptions({
+          subscribe: ['transcription'],
+          unsubscribe: ['polls'],
+        });
+
+        assert.calledOnceWithExactly(
+          voiceaService.webex.internal.llm.socket.send,
+          {
+            id: '1', // seqNum
+            type: 'subchannelSubscriptionRequest',
+            data: {
+              datachannelUri: 'mock-datachannel-uri',
+              subscribe: ['transcription'],
+              unsubscribe: ['polls'],
+            },
+            trackingId: sinon.match.string,
+          }
+        );
+
+        // seqNum increments
+        assert.equal(voiceaService.seqNum, 2);
+      });
+
+      it('sends empty arrays when no subscribe/unsubscribe provided', () => {
+        voiceaService.updateSubchannelSubscriptions({});
+
+        assert.calledOnceWithExactly(
+          voiceaService.webex.internal.llm.socket.send,
+          {
+            id: '1',
+            type: 'subchannelSubscriptionRequest',
+            data: {
+              datachannelUri: 'mock-datachannel-uri',
+              subscribe: [],
+              unsubscribe: [],
+            },
+            trackingId: sinon.match.string,
+          }
+        );
+
+        assert.equal(voiceaService.seqNum, 2);
+      });
+
+      it('does nothing when LLM is not connected', () => {
+        voiceaService.webex.internal.llm.isConnected = sinon.stub().returns(false);
+
+        voiceaService.updateSubchannelSubscriptions({
+          subscribe: ['transcription'],
+        });
+
+        assert.notCalled(voiceaService.webex.internal.llm.socket.send);
+        assert.equal(voiceaService.seqNum, 1); 
+      });
+    });
   });
 });

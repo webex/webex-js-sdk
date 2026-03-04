@@ -577,6 +577,41 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {string}
    */
   public getAnnounceStatus = () => this.announceStatus;
+  /**
+   * update LLM sub‑channel subscriptions.
+   *
+   * sends a single `subchannelSubscriptionRequest` to LLM,
+   * allowing subscribe and unsubscribe subchannel.
+   *
+   * @param {string[]} options.subscribe   Sub‑channels to subscribe to.
+   * @param {string[]} options.unsubscribe Sub‑channels to unsubscribe from.
+   * @returns {void}
+   */
+  public updateSubchannelSubscriptions = ({
+    subscribe = [],
+    unsubscribe = [],
+  }: {
+    subscribe?: string[];
+    unsubscribe?: string[];
+  }): void => {
+    // @ts-ignore
+    if (!this.webex.internal.llm.isConnected()) return;
+
+    // @ts-ignore
+    this.webex.internal.llm.socket.send({
+      id: `${this.seqNum}`,
+      type: 'subchannelSubscriptionRequest',
+      data: {
+        // @ts-ignore
+        datachannelUri: this.webex.internal.llm.getDatachannelUrl(),
+        subscribe,
+        unsubscribe,
+      },
+      trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
+    });
+
+    this.seqNum += 1;
+  };
 }
 
 export default VoiceaChannel;
