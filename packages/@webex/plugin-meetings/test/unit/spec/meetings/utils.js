@@ -1,7 +1,13 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
+import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 
+import Trigger from '@webex/plugin-meetings/src/common/events/trigger-proxy';
+import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
+import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
+
+const originalCheckH264Support = MeetingsUtil.checkH264Support;
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 
@@ -348,6 +354,80 @@ describe('plugin-meetings', () => {
 
       correlationId = MeetingsUtil.getCorrelationIdForDevice('deviceUrl1', undefined);
       assert.equal(correlationId, false);
+    });
+  });
+
+  describe('#checkH264Support', () => {
+    let isCapableOfReceivingVideoCodecStub;
+    let triggerStub;
+    let loggerErrorStub;
+
+    beforeEach(() => {
+      MeetingsUtil.checkH264Support = originalCheckH264Support;
+      isCapableOfReceivingVideoCodecStub = sinon.stub(
+        WebCapabilities,
+        'isCapableOfReceivingVideoCodec'
+      );
+      triggerStub = sinon.stub(Trigger, 'trigger');
+      loggerErrorStub = sinon.stub(LoggerProxy.logger, 'error');
+    });
+
+    it('returns immediately without codec check when disableNotifications is true', async () => {
+      await MeetingsUtil.checkH264Support.call({}, {disableNotifications: true});
+
+      assert.notCalled(isCapableOfReceivingVideoCodecStub);
+      assert.notCalled(triggerStub);
+    });
+
+    it('triggers MEDIA_CODEC_LOADED when H.264 is capable', async () => {
+      isCapableOfReceivingVideoCodecStub.returns(CapabilityState.CAPABLE);
+
+      await MeetingsUtil.checkH264Support.call({});
+
+      assert.calledWith(isCapableOfReceivingVideoCodecStub, 'video/H264');
+      assert.calledWith(
+        triggerStub,
+        {},
+        {file: 'meetings/util', function: 'checkH264Support'},
+        EVENT_TRIGGERS.MEDIA_CODEC_LOADED
+      );
+    });
+
+    it('triggers MEDIA_CODEC_MISSING and schedules retry when H.264 is not capable', async () => {
+      const clock = sinon.useFakeTimers();
+      isCapableOfReceivingVideoCodecStub.returns(CapabilityState.NOT_CAPABLE);
+
+      await MeetingsUtil.checkH264Support.call({});
+
+      assert.calledWith(
+        triggerStub,
+        {},
+        {file: 'meetings/util', function: 'checkH264Support'},
+        EVENT_TRIGGERS.MEDIA_CODEC_MISSING
+      );
+      triggerStub.resetHistory();
+      isCapableOfReceivingVideoCodecStub.resetHistory();
+
+      await clock.tick(5000);
+
+      assert.called(isCapableOfReceivingVideoCodecStub);
+      clock.restore();
+    });
+
+    it('logs error and stops retrying when past maxDuration', async () => {
+      const clock = sinon.useFakeTimers();
+      isCapableOfReceivingVideoCodecStub.returns(CapabilityState.NOT_CAPABLE);
+
+      const firstCheckTime = 1;
+      await clock.tick(firstCheckTime);
+      await MeetingsUtil.checkH264Support.call({}, {firstChecked: firstCheckTime});
+      await clock.tick(300000);
+
+      assert.calledWith(
+        loggerErrorStub,
+        'Meetings:util#checkH264Support --> Timed out waiting for H264 codec to load.'
+      );
+      clock.restore();
     });
   });
 });
