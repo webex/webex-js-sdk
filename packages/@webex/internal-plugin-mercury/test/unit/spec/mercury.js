@@ -1113,6 +1113,181 @@ describe('plugin-mercury', () => {
         });
       });
 
+
+      describe('#_onmessage() with shutdown message', () => {
+        beforeEach(() => {
+          sinon.stub(mercury, '_handleImminentShutdown');
+          sinon.stub(mercury, '_emit');
+          sinon.stub(mercury, '_setTimeOffset');
+        });
+
+        afterEach(() => {
+          mercury._handleImminentShutdown.restore();
+          mercury._emit.restore();
+          mercury._setTimeOffset.restore();
+        });
+
+        it('should trigger _handleImminentShutdown on shutdown message', () => {
+          const shutdownEvent = {
+            data: {
+              type: 'shutdown',
+            },
+          };
+
+          const result = mercury._onmessage(mercury.defaultSessionId, shutdownEvent);
+
+          assert.calledOnce(mercury._handleImminentShutdown);
+          assert.calledWith(
+            mercury._emit,
+            mercury.defaultSessionId,
+            'event:mercury_shutdown_imminent',
+            shutdownEvent.data
+          );
+          assert.instanceOf(result, Promise);
+        });
+
+        it('should handle shutdown message without additional data gracefully', () => {
+          const shutdownEvent = {
+            data: {
+              type: 'shutdown',
+            },
+          };
+
+          mercury._onmessage(mercury.defaultSessionId, shutdownEvent);
+
+          assert.calledOnce(mercury._handleImminentShutdown);
+        });
+
+        it('should not trigger shutdown handling for non-shutdown messages', () => {
+          const regularEvent = {
+            data: {
+              type: 'regular',
+              data: {
+                eventType: 'conversation.activity',
+              },
+            },
+          };
+
+          mercury._onmessage(mercury.defaultSessionId, regularEvent);
+
+          assert.notCalled(mercury._handleImminentShutdown);
+        });
+      });
+
+      describe('#_onclose() with code 4001 (shutdown replacement)', () => {
+        let mockSocket, anotherSocket;
+
+        beforeEach(() => {
+          mockSocket = {
+            url: 'ws://active-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          anotherSocket = {
+            url: 'ws://old-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          mercury.socket = mockSocket;
+          mercury.sockets.set(mercury.defaultSessionId, mockSocket);
+          mercury.connected = true;
+          sinon.stub(mercury, '_emit');
+          sinon.stub(mercury, '_reconnect');
+          sinon.stub(mercury, 'unset');
+        });
+
+        afterEach(() => {
+          mercury._emit.restore();
+          mercury._reconnect.restore();
+          mercury.unset.restore();
+        });
+
+        it('should handle active socket close with 4001 - permanent failure', () => {
+          const closeEvent = {
+            code: 4001,
+            reason: 'replaced during shutdown',
+          };
+
+          mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
+
+          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.permanent', closeEvent);
+          assert.notCalled(mercury._reconnect); // No reconnect for 4001 on active socket
+          assert.isFalse(mercury.connected);
+        });
+
+        it('should handle non-active socket close with 4001 - no reconnect needed', () => {
+          const closeEvent = {
+            code: 4001,
+            reason: 'replaced during shutdown',
+          };
+
+          mercury._onclose(mercury.defaultSessionId, closeEvent, anotherSocket);
+
+          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.replaced', closeEvent);
+          assert.notCalled(mercury._reconnect);
+          assert.isTrue(mercury.connected); // Should remain connected
+          assert.notCalled(mercury.unset);
+        });
+
+        it('should distinguish between active and non-active socket closes', () => {
+          const closeEvent = {
+            code: 4001,
+            reason: 'replaced during shutdown',
+          };
+
+          // Test non-active socket
+          mercury._onclose(mercury.defaultSessionId, closeEvent, anotherSocket);
+          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.replaced', closeEvent);
+
+          // Reset the spy call history
+          mercury._emit.resetHistory();
+
+          // Test active socket
+          mercury.sockets.set(mercury.defaultSessionId, mockSocket);
+          mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
+          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.permanent', closeEvent);
+        });
+
+        it('should handle missing sourceSocket parameter (treats as non-active)', () => {
+          const closeEvent = {
+            code: 4001,
+            reason: 'replaced during shutdown',
+          };
+
+          mercury._onclose(mercury.defaultSessionId, closeEvent); // No sourceSocket parameter
+
+          // With simplified logic, undefined !== this.socket, so isActiveSocket = false
+          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.replaced', closeEvent);
+          assert.notCalled(mercury._reconnect);
+        });
+
+        it('should clean up event listeners from non-active socket when it closes', () => {
+          const closeEvent = {
+            code: 4001,
+            reason: 'replaced during shutdown',
+          };
+
+          // Close non-active socket (not the active one)
+          mercury._onclose(mercury.defaultSessionId, closeEvent, anotherSocket);
+
+          // Verify listeners were removed from the old socket
+          // The _onclose method checks if sourceSocket !== this.socket (non-active)
+          // and then calls removeAllListeners in the else branch
+          assert.calledOnce(anotherSocket.removeAllListeners);
+        });
+
+        it('should not clean up listeners from active socket listeners until close handler runs', () => {
+          const closeEvent = {
+            code: 4001,
+            reason: 'replaced during shutdown',
+          };
+
+          // Close active socket
+          mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
+
+          // Verify listeners were removed from active socket
+          assert.calledOnce(mockSocket.removeAllListeners);
+        });
+      });
+
       describe('shutdown switchover with retry logic', () => {
         let connectWithBackoffStub;
         const sessionId = 'mercury-default-session';
