@@ -379,6 +379,7 @@ export default class LocusInfo extends EventsScope {
       webexRequest: this.webex.request.bind(this.webex),
       locusInfoUpdateCallback: this.updateFromHashTree.bind(this),
       debugId: `HT-${this.meetingId.substring(0, 4)}`,
+      excludedDataSets: this.webex.config.meetings.locus?.excludedDataSets,
     });
   }
 
@@ -2108,6 +2109,19 @@ export default class LocusInfo extends EventsScope {
           LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
           {
             brb: parsedSelves.current.brb,
+          }
+        );
+      }
+
+      if (parsedSelves.updates.selfIdChanged) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_ID_CHANGED,
+          {
+            selfId: parsedSelves.current.selfId,
           }
         );
       }

@@ -2451,6 +2451,10 @@ function createVideoElementsForLayout(layoutId) {
       createVideoGrid(3, 3);
       break;
 
+    case 'AllEqual25':
+      createVideoGrid(5, 5);
+      break;
+
     case 'OnePlusFive':
       createOnePlusFiveVideos();
       break;
@@ -2484,8 +2488,9 @@ function getDisplayNameForMemberId(meeting, memberId) {
 function updateVideoPaneTooltip(videoPane, meeting) {
   let titleText = videoPane.debugText;
 
-  // we only allow pinning on the grid layout
-  if (meeting.remoteMediaManager?.getLayoutId() === 'AllEqual') {
+  // we only allow pinning on the grid layouts (AllEqual and AllEqual25)
+  const currentLayoutId = meeting.remoteMediaManager?.getLayoutId();
+  if (currentLayoutId === 'AllEqual' || currentLayoutId === 'AllEqual25') {
     const isPinned = meeting.remoteMediaManager.isPinned(videoPane.remoteMedia);
 
     titleText = `Click to ${isPinned ? 'un' : ''}pin this pane (${videoPane.debugText})`;
@@ -2507,7 +2512,7 @@ function updateVideoPaneTooltip(videoPane, meeting) {
 function updateVideoGridPaneSizes() {
   const currentLayoutId = multistreamLayoutElm.value;
 
-  if (currentLayoutId === 'AllEqual') {
+  if (currentLayoutId === 'AllEqual' || currentLayoutId === 'AllEqual25') {
     const numOfActiveVideoPanes = allVideoPanes.main.filter((pane) => pane.isActive).length;
 
     setGridVideoPaneMaxWidth(numOfActiveVideoPanes);
