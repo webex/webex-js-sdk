@@ -1139,11 +1139,17 @@ const populateComparisonPackagesInitial = async () => {
     disableVersionSelectsAndSyncClear();
 };
 
-/** Disable Base and Target version dropdowns, then sync Clear button state.
- *  Not repetitive: disables Base (version A) and Target (version B) — two separate controls.
- *  Called when entering comparison mode, after loading package list, and in handleStableVersionChange. */
+/** Disable Base and Target version dropdowns, then sync Clear button state. Single place for this block. */
 const disableVersionSelectsAndSyncClear = () => {
-    [versionASelect, versionBSelect].forEach(el => { if (el) el.disabled = true; });
+    if (versionASelect) versionASelect.disabled = true;
+    if (versionBSelect) versionBSelect.disabled = true;
+    syncClearVersionButtonsState();
+};
+
+/** Enable Base and Target version dropdowns, then sync Clear button state. */
+const enableVersionSelectsAndSyncClear = () => {
+    if (versionASelect) versionASelect.disabled = false;
+    if (versionBSelect) versionBSelect.disabled = false;
     syncClearVersionButtonsState();
 };
 
@@ -1727,22 +1733,27 @@ const updatePrereleaseLabels = () => {
 const handleStableVersionChange = async () => {
     const stableA = versionASelect.value;
     const stableB = versionBSelect.value;
-    
+    const savedPackage = comparisonPackageSelect ? comparisonPackageSelect.value : null;
+
     resetComparisonSelections();
     updateCompareButtonState();
-    
+
     if (stableA && stableB && stableA !== stableB) {
         try {
             const [changelogA, changelogB] = await Promise.all([
                 fetch(versionPaths[stableA]).then(res => res.json()),
                 fetch(versionPaths[stableB]).then(res => res.json())
             ]);
-            
+
             comparisonState.update(changelogA, changelogB, stableA, stableB);
             populateUnionPackages(changelogA, changelogB);
 
-            // Show and populate pre-release row when a package is already selected
-            const selectedPackage = comparisonPackageSelect ? comparisonPackageSelect.value : null;
+            const allPackages = getUnionPackages(changelogA, changelogB);
+            if (savedPackage && allPackages.includes(savedPackage)) {
+                comparisonPackageSelect.value = savedPackage;
+            }
+
+            const selectedPackage = savedPackage || (comparisonPackageSelect ? comparisonPackageSelect.value : null);
             if (selectedPackage && comparisonState.cachedChangelogA && comparisonState.cachedChangelogB) {
                 populatePrereleaseVersions(
                     selectedPackage,
@@ -1762,7 +1773,6 @@ const handleStableVersionChange = async () => {
                 }
             }
 
-            // Disable Base and Target version dropdowns so user compares between pre-release options only
             disableVersionSelectsAndSyncClear();
 
             updateCompareButtonState();
@@ -1783,10 +1793,7 @@ const handlePackageChange = () => {
     if (versionBPrereleaseSelect) versionBPrereleaseSelect.value = '';
     
     if (selectedPackage) {
-        if (versionASelect) versionASelect.disabled = false;
-        if (versionBSelect) versionBSelect.disabled = false;
-        syncClearVersionButtonsState();
-        
+        enableVersionSelectsAndSyncClear();
         if (prereleaseRow) {
             if (comparisonState.cachedChangelogA && comparisonState.cachedChangelogB) {
                 prereleaseRow.style.display = 'flex';
@@ -1956,11 +1963,9 @@ const syncClearVersionButtonsState = () => {
 const handleClearVersionAClick = () => {
     if (versionASelect) {
         versionASelect.value = '';
-        versionASelect.disabled = false;
-        if (versionBSelect) versionBSelect.disabled = false;
+        enableVersionSelectsAndSyncClear();
         resetComparisonSelections();
         comparisonState.reset();
-        syncClearVersionButtonsState();
         if (comparisonResults) comparisonResults.classList.add('hide');
         if (copyComparisonLinkBtn) copyComparisonLinkBtn.classList.add('hide');
         if (comparisonHelper) comparisonHelper.classList.add('hide');
@@ -1975,11 +1980,9 @@ const handleClearVersionAClick = () => {
 const handleClearVersionBClick = () => {
     if (versionBSelect) {
         versionBSelect.value = '';
-        if (versionASelect) versionASelect.disabled = false;
-        versionBSelect.disabled = false;
+        enableVersionSelectsAndSyncClear();
         resetComparisonSelections();
         comparisonState.reset();
-        syncClearVersionButtonsState();
         if (comparisonResults) comparisonResults.classList.add('hide');
         if (copyComparisonLinkBtn) copyComparisonLinkBtn.classList.add('hide');
         if (comparisonHelper) comparisonHelper.classList.add('hide');
@@ -2031,9 +2034,7 @@ const loadEnhancedComparisonFromURL = async (enhancedParams) => {
     await new Promise(resolve => setTimeout(resolve, 100));
     
     comparisonPackageSelect.value = enhancedParams.packageName;
-    if (versionASelect) versionASelect.disabled = false;
-    if (versionBSelect) versionBSelect.disabled = false;
-    syncClearVersionButtonsState();
+    enableVersionSelectsAndSyncClear();
     versionASelect.value = enhancedParams.stableA;
     versionBSelect.value = enhancedParams.stableB;
     await handleStableVersionChange();
