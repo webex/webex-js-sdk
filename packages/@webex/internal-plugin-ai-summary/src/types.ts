@@ -71,12 +71,17 @@ export interface GetSummaryContentOptions {
 
 /**
  * Decrypted AI-generated summary content.
+ * Contains all three content types returned by the summary API.
  */
 export interface SummaryContent {
   /** Unique identifier */
   id: string;
-  /** Decrypted AI-generated content */
-  content: string;
+  /** Decrypted full note content */
+  note: string;
+  /** Decrypted short note content */
+  shortNote: string;
+  /** Decrypted action item snippets */
+  actionItems: ActionItemSnippet[];
   /** Feedback URL (if available) */
   feedbackUrl?: string;
 }

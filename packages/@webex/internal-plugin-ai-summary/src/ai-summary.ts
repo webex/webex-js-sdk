@@ -57,18 +57,40 @@ const AISummary = WebexPlugin.extend({
     try {
       const {body} = await this.webex.request({
         method: 'GET',
-        uri: containerInfo.summaryData.summaryUrl,
+        uri: `${containerInfo.summaryData.summaryUrl}?fields=note,shortnote,actionitems`,
       });
 
-      const decryptedContent = await this._decryptContent(
-        body.aiGeneratedContent,
+      const decryptedNote = await this._decryptContent(
+        body.note.aiGeneratedContent,
         containerInfo.encryptionKeyUrl
+      );
+
+      const decryptedShortNote = await this._decryptContent(
+        body.shortnote.aiGeneratedContent,
+        containerInfo.encryptionKeyUrl
+      );
+
+      const decryptedSnippets = await Promise.all(
+        (body.actionitems?.snippets || []).map(async (snippet: any) => {
+          const decryptedAiContent = await this._decryptContent(
+            snippet.aiGeneratedContent,
+            containerInfo.encryptionKeyUrl
+          );
+
+          return {
+            id: snippet.id,
+            editedContent: snippet.content || undefined,
+            aiGeneratedContent: decryptedAiContent,
+          };
+        })
       );
 
       return {
         id: body.id,
-        content: decryptedContent,
-        feedbackUrl: body.feedbackUrl,
+        note: decryptedNote,
+        shortNote: decryptedShortNote,
+        actionItems: decryptedSnippets,
+        feedbackUrl: body.note.feedbackUrl,
       };
     } catch (error) {
       this.logger.error('AISummary->getSummary failed', {error});
