@@ -369,13 +369,9 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         file: CALL_HISTORY_FILE,
         method: METHODS.FETCH_UCM_LINES_DATA,
       });
-      try {
-        await uploadLogs();
-      } catch (uploadErr: unknown) {
-        log.warn(`uploadLogs failed: ${JSON.stringify(uploadErr)}`, loggerContext);
-      }
+      await uploadLogs();
       const errorInfo = err as WebexRequestPayload;
-      const errorStatus = await serviceErrorCodeHandler(errorInfo, loggerContext);
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 
       return errorStatus;
     }
