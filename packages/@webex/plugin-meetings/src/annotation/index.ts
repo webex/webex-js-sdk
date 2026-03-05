@@ -141,7 +141,10 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
       // @ts-ignore
       this.webex.internal.llm.off('event:relay.event', this.eventDataProcessor);
       // @ts-ignore
-      this.webex.internal.llm.off(LLM_PRACTICE_SESSION_RELAY_EVENT, this.eventDataProcessor);
+      this.webex.internal.llm.off(
+        `event:relay.event:${LLM_PRACTICE_SESSION}`,
+        this.eventDataProcessor
+      );
       this.hasSubscribedToEvents = false;
     }
   }

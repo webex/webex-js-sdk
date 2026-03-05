@@ -12873,7 +12873,7 @@ describe('plugin-meetings', () => {
           assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.equal(result, undefined);
         });
-        it('connects practice session data channel when PS started', async () => {
+        it('still need connect main session data channel when PS started', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {
             url: 'a url',
@@ -12889,7 +12889,7 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(
             webex.internal.llm.registerAndConnect,
             'a url',
-            'ps-url',
+            'a datachannel url',
             undefined
           );
         });
@@ -12939,41 +12939,6 @@ describe('plugin-meetings', () => {
           );
 
           assert.notCalled(webex.internal.llm.setDatachannelToken);
-        });
-        it('uses practice session token when in PS even if refreshed token exists', async () => {
-          meeting.joinedWith = {state: 'JOINED'};
-
-          meeting.locusInfo = {
-            url: 'a url',
-            info: {
-              datachannelUrl: 'a datachannel url',
-              practiceSessionDatachannelUrl: 'ps-url',
-            },
-            self: {
-              datachannelToken: 'locus-token',
-              practiceSessionDatachannelToken: 'ps-token',
-            },
-          };
-
-          meeting.webinar.isJoinPracticeSessionDataChannel.returns(true);
-
-          webex.internal.llm.getDatachannelToken
-            .withArgs(true).returns('refreshed-ps-token')      // refreshed practice token
-            .withArgs(false).returns('refreshed-normal-token'); // refreshed normal token
-
-          await meeting.updateLLMConnection();
-
-          assert.calledWithExactly(
-            webex.internal.llm.registerAndConnect,
-            'a url',
-            'ps-url',
-            'ps-token'
-          );
-          assert.calledWithExactly(
-            webex.internal.llm.setDatachannelToken,
-            'ps-token',
-            'practiceSession'
-          );
         });
 
         it('does not pass token when data channel with jwt token is disabled', async () => {

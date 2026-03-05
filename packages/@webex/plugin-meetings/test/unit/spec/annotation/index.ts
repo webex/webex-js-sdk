@@ -7,6 +7,7 @@ import LLMChannel from '@webex/internal-plugin-llm';
 
 import AnnotationService from '../../../../src/annotation/index';
 import {ANNOTATION_RELAY_TYPES, ANNOTATION_REQUEST_TYPE, EVENT_TRIGGERS} from '../../../../src/annotation/constants';
+import {HTTP_VERBS, LOCUSEVENT, LLM_PRACTICE_SESSION} from '../../../../src/constants';
 
 
 describe('live-annotation', () => {
@@ -178,12 +179,17 @@ describe('live-annotation', () => {
       });
 
       it('listens to llm events once', () => {
-
         const spy = sinon.spy(webex.internal.llm, 'on');
 
         annotationService.listenToEvents();
 
-        assert.calledOnceWithExactly(spy, 'event:relay.event', sinon.match.func,sinon.match.object);
+        assert.calledWithExactly(spy.firstCall, 'event:relay.event', sinon.match.func, sinon.match.object);
+        assert.calledWithExactly(
+          spy.secondCall,
+          `event:relay.event:${LLM_PRACTICE_SESSION}`,
+          sinon.match.func,
+          sinon.match.object
+        );
       });
 
     });
@@ -441,10 +447,21 @@ describe('live-annotation', () => {
           annotationService.eventDataProcessor,
           annotationService
         );
+        assert.calledWith(
+          llmOn,
+          `event:relay.event:${LLM_PRACTICE_SESSION}`,
+          annotationService.eventDataProcessor,
+          annotationService
+        );
         assert.match(annotationService.hasSubscribedToEvents, true);
 
         annotationService.deregisterEvents();
         assert.calledWith(llmOff, 'event:relay.event', annotationService.eventDataProcessor);
+        assert.calledWith(
+          llmOff,
+          `event:relay.event:${LLM_PRACTICE_SESSION}`,
+          annotationService.eventDataProcessor
+        );
         assert.calledWith(
           mercuryOff,
           'event:locus.approval_request',
