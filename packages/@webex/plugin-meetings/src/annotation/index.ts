@@ -13,7 +13,7 @@ import {
 } from './constants';
 
 import {StrokeData, RequestData, IAnnotationChannel, CommandRequestBody} from './annotation.types';
-import {HTTP_VERBS, LOCUSEVENT} from '../constants';
+import {HTTP_VERBS, LOCUSEVENT, LLM_PRACTICE_SESSION} from '../constants';
 
 /**
  * @description Annotation to handle LLM and Mercury message and locus API
@@ -118,7 +118,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
       this.webex.internal.llm.on('event:relay.event', this.eventDataProcessor, this);
       // @ts-ignore
       this.webex.internal.llm.on(
-        'event:relay.event:llm-practice-session',
+        `event:relay.event:${LLM_PRACTICE_SESSION}`,
         this.eventDataProcessor,
         this
       );
@@ -141,10 +141,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
       // @ts-ignore
       this.webex.internal.llm.off('event:relay.event', this.eventDataProcessor);
       // @ts-ignore
-      this.webex.internal.llm.off(
-        'event:relay.event:llm-practice-session',
-        this.eventDataProcessor
-      );
+      this.webex.internal.llm.off(LLM_PRACTICE_SESSION_RELAY_EVENT, this.eventDataProcessor);
       this.hasSubscribedToEvents = false;
     }
   }
@@ -318,10 +315,10 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   private publishEncrypted(encryptedContent: string, strokeData: StrokeData) {
     const socket =
       // @ts-ignore
-      this.webex.internal.llm.getSocket('llm-practice-session') || this.webex.internal.llm.socket;
+      this.webex.internal.llm.getSocket(LLM_PRACTICE_SESSION) || this.webex.internal.llm.socket;
     const binding =
       // @ts-ignore
-      this.webex.internal.llm.getBinding('llm-practice-session') ||
+      this.webex.internal.llm.getBinding(LLM_PRACTICE_SESSION) ||
       // @ts-ignore
       this.webex.internal.llm.getBinding();
     const data = {
