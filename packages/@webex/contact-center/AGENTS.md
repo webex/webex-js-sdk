@@ -12,7 +12,7 @@ This is the main orchestrator for AI assistants working with the package `@webex
 
 When a developer provides a task, follow this workflow **in order**:
 
-1. **Classify the task** - Use the Task Classification Decision Tree below to identify the task type (A-F). If you cannot confidently classify, ask the developer.
+1. **Classify the task** - Use the Task Classification Decision Tree below to identify the task type (A-G). If you cannot confidently classify, ask the developer.
 2. **STOP — Ask the developer questions** - Open the routed template's pre-questions file. Present every MANDATORY question to the developer. Wait for their answers. **Do NOT proceed until all MANDATORY fields have explicit answers from the developer.** Do not infer, assume, or fill in answers yourself.
 3. **Present Spec Summary for approval** - After gathering answers, present a structured summary of what you will build (see Spec Summary Gate below). Wait for the developer to confirm.
 4. **Load context** - Use the [Service Routing Table](#service-routing-table) to find and read the target service's `AGENTS.md` and `ARCHITECTURE.md`, then load relevant patterns.
@@ -29,26 +29,29 @@ When a developer provides a task, follow this workflow **in order**:
 Use these questions **in order** to classify the developer's request. Follow the first matching path.
 
 ```
-Q1: Is the task read-only (understanding, explaining, or analyzing code)?
-├── YES → Type E: Understand Architecture
+Q0: Is this about Playwright E2E tests (add/update/fix/stabilize)?
+├── YES → Type G: E2E Test Work (Playwright)
 │
-└── NO → Q2: Is something broken or behaving incorrectly?
-    ├── YES → Type C: Fix Bug
+└── NO → Q1: Is the task read-only (understanding, explaining, or analyzing code)?
+    ├── YES → Type E: Understand Architecture
     │
-    └── NO → Q3: Does this involve creating a new file, class, or module?
-        ├── YES → Type A: Create New Service
+    └── NO → Q2: Is something broken or behaving incorrectly?
+        ├── YES → Type C: Fix Bug
         │
-        └── NO → Q4: Does this involve adding a brand-new method that does not exist yet?
-            │   NOTE: If the developer describes a "capability" or "feature" that
-            │   happens to require a new method, check signal keywords — if the
-            │   request matches Type D signals ("add capability", "enhance", "enable"),
-            │   use the Disambiguation Rule to confirm with the developer.
-            ├── YES → Type B: Add New Method
+        └── NO → Q3: Does this involve creating a new file, class, or module?
+            ├── YES → Type A: Create New Service
             │
-            └── NO → Q5: Does this involve changing an existing method's signature, behavior, parameters, or return type?
-                ├── YES → Type F: Modify Existing Method
+            └── NO → Q4: Does this involve adding a brand-new method that does not exist yet?
+                │   NOTE: If the developer describes a "capability" or "feature" that
+                │   happens to require a new method, check signal keywords — if the
+                │   request matches Type D signals ("add capability", "enhance", "enable"),
+                │   use the Disambiguation Rule to confirm with the developer.
+                ├── YES → Type B: Add New Method
                 │
-                └── NO → Type D: Add Feature / Enhance Existing Service
+                └── NO → Q5: Does this involve changing an existing method's signature, behavior, parameters, or return type?
+                    ├── YES → Type F: Modify Existing Method
+                    │
+                    └── NO → Type D: Add Feature / Enhance Existing Service
 ```
 
 ### Signal Keywords by Task Type
@@ -63,6 +66,7 @@ Use these keyword patterns to help confirm your classification:
 | **D. Add Feature** | "enhance", "add feature", "add capability", "improve", "extend", "support for", "enable" |
 | **E. Understand Architecture** | "explain", "how does", "understand", "architecture", "what is", "walk me through", "show me" |
 | **F. Modify Existing Method** | "change", "modify", "update", "add parameter to", "change return type", "rename", "refactor [methodName]" |
+| **G. E2E Test Work** | "e2e", "playwright", "end-to-end", "integration test", "flaky test", "test suite", "test set", "stabilize test" |
 
 ### Disambiguation Rule
 
@@ -75,6 +79,7 @@ Use these keyword patterns to help confirm your classification:
 > - D. Add a feature or enhance an existing service
 > - E. Understand/explain the architecture (no code changes)
 > - F. Modify an existing method (change signature, behavior, parameters)
+> - G. Add/update/fix/stabilize Playwright E2E tests
 
 **Do not guess. Do not default to the most common type. Ask.**
 
@@ -123,6 +128,13 @@ Use these keyword patterns to help confirm your classification:
 - **Route to:** [`ai-docs/templates/existing-service/feature-enhancement.md`](ai-docs/templates/existing-service/feature-enhancement.md) (follow the same workflow, but skip placement triage — the method already exists).
 - **Pre-questions:** Feature-enhancement template Pre-Enhancement Questions (skip Step 0 triage) — STOP and ask these first.
 - **Follow:** Gather requirements -> Design change -> Implement -> Test -> Validate backward compatibility.
+
+**G. E2E Test Work (Playwright)**
+- Use when adding, updating, fixing, or stabilizing Playwright end-to-end tests.
+- **Route to:** [`ai-docs/templates/e2e/00-master.md`](ai-docs/templates/e2e/00-master.md)
+- **Pre-questions:** [`ai-docs/templates/e2e/01-pre-questions.md`](ai-docs/templates/e2e/01-pre-questions.md) — STOP and ask these first.
+- **Follow:** Full E2E workflow including test factory pattern, console log verification, framework/doc updates, and validation.
+- **Context:** Load [`playwright/ai-docs/AGENTS.md`](playwright/ai-docs/AGENTS.md) and [`playwright/ai-docs/ARCHITECTURE.md`](playwright/ai-docs/ARCHITECTURE.md) for framework-specific guidance.
 
 If a developer request includes multiple task types, split into ordered subtasks and execute each through the full classify -> question -> spec-summary -> implement sequence.
 
@@ -279,6 +291,12 @@ Mandatory behavior:
 2. Read [`ai-docs/patterns/typescript-patterns.md`](ai-docs/patterns/typescript-patterns.md)
 3. Read related existing implementation
 
+### For E2E Test Work (Playwright):
+1. Load [`playwright/ai-docs/AGENTS.md`](playwright/ai-docs/AGENTS.md) — workflow and commands
+2. Load [`playwright/ai-docs/ARCHITECTURE.md`](playwright/ai-docs/ARCHITECTURE.md) — TestManager, Utils, Constants, Console Log Verification
+3. Read [`ai-docs/patterns/e2e-patterns.md`](ai-docs/patterns/e2e-patterns.md) — test factory, multi-agent coordination, timeout selection
+4. Read existing test files in the same SET for naming and structure conventions
+
 ---
 
 ## Repository Structure
@@ -338,11 +356,30 @@ packages/@webex/contact-center/
 │   └── unit/
 │       └── spec/
 │           └── cc.ts                  # Main test file (reference)
+├── playwright/                        # E2E test framework (Playwright)
+│   ├── ai-docs/                       # Playwright-specific AI documentation
+│   │   ├── AGENTS.md                  # Playwright usage guide & commands
+│   │   └── ARCHITECTURE.md            # TestManager, Utils, Constants, patterns
+│   ├── test-manager/                  # TestManager class (browser context orchestration)
+│   ├── utils/                         # Shared test utilities
+│   ├── constants/                     # Test constants, timeouts, enums
+│   ├── test-data/                     # Fixture data for tests
+│   ├── tests/                         # Test files organized by SET
+│   ├── suites/                        # Suite registries that compose tests
+│   ├── global-setup.ts                # One-time setup (auth tokens, env validation)
+│   └── playwright.config.ts           # Playwright config (projects from USER_SETS)
 └── ai-docs/                           # AI documentation
     ├── README.md                      # AI-docs overview
     ├── RULES.md                       # Coding standards
     ├── patterns/                      # Pattern documentation
+    │   └── e2e-patterns.md            # E2E test patterns (test factory, console log, etc.)
     └── templates/                     # Code generation templates
+        └── e2e/                       # E2E test templates (task type G)
+            ├── 00-master.md           # E2E orchestrator
+            ├── 01-pre-questions.md    # Mandatory questions before E2E work
+            ├── 02-test-implementation.md  # Implementation paths A-D
+            ├── 03-framework-and-doc-updates.md  # MANDATORY doc updates
+            └── 04-validation.md       # Validation & doc sync checklist
 ```
 
 ---
@@ -393,6 +430,9 @@ After code changes, verify whether docs must be updated:
 - Service-level docs (use [Service Routing Table](#service-routing-table) to locate):
   - Service `AGENTS.md` — if usage/workflow changed
   - Service `ARCHITECTURE.md` — if data flow/architecture changed
+- Playwright docs (use [Service Routing Table](#service-routing-table) to locate):
+  - [`playwright/ai-docs/AGENTS.md`](playwright/ai-docs/AGENTS.md) — if E2E workflow or commands changed
+  - [`playwright/ai-docs/ARCHITECTURE.md`](playwright/ai-docs/ARCHITECTURE.md) — if TestManager, Utils, Constants, or test topology changed
 - Root-level docs:
   - This file ([`AGENTS.md`](AGENTS.md)) — if task routing or rules changed
   - [`ai-docs/templates/`](ai-docs/templates/) — if a new reusable template is needed
@@ -424,6 +464,7 @@ Use this table to identify which service's ai-docs to load based on the develope
 | **Task** | task, hold, transfer, conference, wrapup, outdial, consult | [`src/services/task/ai-docs/AGENTS.md`](src/services/task/ai-docs/AGENTS.md) | [`src/services/task/ai-docs/ARCHITECTURE.md`](src/services/task/ai-docs/ARCHITECTURE.md) |
 | **Config** | profile, register, teams, aux codes, desktop profile, settings | [`src/services/config/ai-docs/AGENTS.md`](src/services/config/ai-docs/AGENTS.md) | [`src/services/config/ai-docs/ARCHITECTURE.md`](src/services/config/ai-docs/ARCHITECTURE.md) |
 | **Core** | websocket, HTTP, connection, reconnect, aqm, utils, errors | [`src/services/core/ai-docs/AGENTS.md`](src/services/core/ai-docs/AGENTS.md) | [`src/services/core/ai-docs/ARCHITECTURE.md`](src/services/core/ai-docs/ARCHITECTURE.md) |
+| **Playwright E2E** | e2e, playwright, end-to-end, test suite, test set, flaky test, stabilize | [`playwright/ai-docs/AGENTS.md`](playwright/ai-docs/AGENTS.md) | [`playwright/ai-docs/ARCHITECTURE.md`](playwright/ai-docs/ARCHITECTURE.md) |
 
 **Routing rule:** If the developer's task mentions keywords in the "Scope / Keywords" column, load that service's ai-docs. If multiple services are involved, load all relevant ones. If unsure which service is affected, ask the developer.
 
@@ -434,3 +475,4 @@ Use this table to identify which service's ai-docs to load based on the develope
 - **TypeScript patterns**: [`ai-docs/patterns/typescript-patterns.md`](ai-docs/patterns/typescript-patterns.md)
 - **Testing patterns**: [`ai-docs/patterns/testing-patterns.md`](ai-docs/patterns/testing-patterns.md)
 - **Event patterns**: [`ai-docs/patterns/event-driven-patterns.md`](ai-docs/patterns/event-driven-patterns.md)
+- **E2E test patterns**: [`ai-docs/patterns/e2e-patterns.md`](ai-docs/patterns/e2e-patterns.md)
