@@ -284,11 +284,16 @@ WEBEX_TOKEN='<token>' node src/manual-pragya-api-test.js
 ```
 
 ### `manual-integration-test.js`
-Tests the full end-to-end flow: container fetch, summary fetch with field selection, KMS decryption, and transcript fetch.
+Tests the full end-to-end flow using the SDK service catalog:
+1. Device registration (WDM) to populate the service catalog
+2. `getContainer` via plugin (resolves `service: 'pragya'` from the catalog)
+3. `getSummary` via plugin (fetches + decrypts note, short note, and action items via KMS)
+4. `getTranscriptUrl` via plugin
+5. Transcript content fetch
 
 ```bash
 cd packages/@webex/internal-plugin-ai-summary
-WEBEX_TOKEN='<token>' node src/manual-integration-test.js
+WEBEX_TOKEN='<token>' CONTAINER_ID='<id>' node src/manual-integration-test.js
 ```
 
-Both scripts require a valid Webex access token and container ID. Update the placeholder values in the scripts or set `WEBEX_TOKEN` as an environment variable.
+Both scripts require a valid Webex access token. Set `WEBEX_TOKEN` and optionally `CONTAINER_ID` as environment variables, or update the placeholder values in the scripts.
