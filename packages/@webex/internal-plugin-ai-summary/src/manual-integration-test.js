@@ -119,8 +119,48 @@ async function main() {
     console.log('No note.aiGeneratedContent to decrypt.');
   }
 
-  // Step 5: Fetch transcript URL
-  console.log('\n=== Step 5: Fetch transcript content ===\n');
+  // Step 5: Call getSummary via plugin and log the return structure
+  console.log('\n=== Step 5: getSummary via plugin ===\n');
+  try {
+    // Normalize summaryData.data nesting (same as getContainer does)
+    const normalizedContainer = {...container};
+    if (normalizedContainer.summaryData?.data) {
+      normalizedContainer.summaryData = normalizedContainer.summaryData.data;
+    }
+
+    const summaryResult = await webex.internal.aisummary.getSummary({
+      containerInfo: normalizedContainer,
+    });
+
+    console.log('=== getSummary return structure ===');
+    const noteStr = summaryResult.note || '';
+    const shortNoteStr = summaryResult.shortNote || '';
+    const truncNote = noteStr.length > 200 ? `${noteStr.substring(0, 200)}...` : noteStr;
+    const truncShort =
+      shortNoteStr.length > 200 ? `${shortNoteStr.substring(0, 200)}...` : shortNoteStr;
+    const truncated = {
+      id: summaryResult.id,
+      note: truncNote,
+      shortNote: truncShort,
+      actionItems: (summaryResult.actionItems || []).map((item) => {
+        const content = item.aiGeneratedContent || '';
+        const truncContent = content.length > 100 ? `${content.substring(0, 100)}...` : content;
+
+        return {
+          id: item.id,
+          aiGeneratedContent: truncContent,
+          editedContent: item.editedContent,
+        };
+      }),
+      feedbackUrl: summaryResult.feedbackUrl,
+    };
+    console.log(JSON.stringify(truncated, null, 2));
+  } catch (err) {
+    console.error('getSummary via plugin failed:', err.message);
+  }
+
+  // Step 6: Fetch transcript URL
+  console.log('\n=== Step 6: Fetch transcript content ===\n');
   try {
     const transcriptRequestOpts = {
       method: 'GET',
