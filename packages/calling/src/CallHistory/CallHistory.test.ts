@@ -16,6 +16,7 @@ import {
   janusSetReadStateUrl,
   ERROR_DETAILS_401,
   ERROR_DETAILS_400,
+  ERROR_DETAILS_404,
   MOCK_LINES_API_CALL_RESPONSE,
   MOCK_LINES_API_CALL_RESPONSE_WITH_NO_LINEDATA,
   MOCK_CALL_HISTORY_WITH_UCM_LINE_NUMBER,
@@ -413,6 +414,22 @@ describe('Call history tests', () => {
       expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
     });
 
+    it('fetchUCMLinesData returns error status when /lines 404 and uploadLogs rejects (does not throw)', async () => {
+      const serviceErrorSpy = jest
+        .spyOn(utils, 'serviceErrorCodeHandler')
+        .mockResolvedValueOnce(ERROR_DETAILS_404 as never);
+      webex.request.mockRejectedValue({statusCode: 404});
+      uploadLogsSpy.mockRejectedValueOnce(new Error('Failed to upload Logs'));
+
+      const response = await callHistory['fetchUCMLinesData']();
+
+      expect(response).toStrictEqual(ERROR_DETAILS_404);
+      expect(response.statusCode).toBe(404);
+      expect(response.message).toBe('FAILURE');
+      expect(uploadLogsSpy).toHaveBeenCalledTimes(1);
+      serviceErrorSpy.mockRestore();
+    });
+
     it('should call fetchUCMLinesData when calling backend is UCM and userSessions contain valid cucmDN', async () => {
       jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
       // Since fetchUCMLinesData is a private method, TypeScript restricts direct access to it.
@@ -489,6 +506,51 @@ describe('Call history tests', () => {
       webex.request.mockResolvedValue(callHistoryPayload);
       await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
       expect(fetchUCMLinesDataSpy).not.toHaveBeenCalled(); // Check that fetchUCMLinesData was not called
+    });
+
+    it('should return call history SUCCESS when fetchUCMLinesData throws (UCM block non-fatal)', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
+      const fetchUCMLinesDataSpy = jest
+        .spyOn(callHistory as any, 'fetchUCMLinesData')
+        .mockRejectedValue(new Error('404 or uploadLogs failed'));
+
+      const mockCallHistoryPayload = <WebexRequestPayload>(
+        (<unknown>MOCK_CALL_HISTORY_WITHOUT_UCM_LINE_NUMBER)
+      );
+      webex.request.mockResolvedValue(mockCallHistoryPayload);
+
+      const response = await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      expect(fetchUCMLinesDataSpy).toHaveBeenCalledTimes(1);
+      expect(response.statusCode).toBe(200);
+      expect(response.message).toBe('SUCCESS');
+      expect(response.data.userSessions).toBeDefined();
+      expect(response.data.userSessions?.length).toBeGreaterThan(0);
+    });
+
+    it('should return call history SUCCESS when Janus 200 but /lines 404 and uploadLogs throws (real flow)', async () => {
+      jest.spyOn(utils, 'getCallingBackEnd').mockReturnValue(CALLING_BACKEND.UCM);
+      const janusPayload = <WebexRequestPayload>(
+        (<unknown>MOCK_CALL_HISTORY_WITHOUT_UCM_LINE_NUMBER)
+      );
+      webex.request.mockResolvedValueOnce(janusPayload);
+      webex.request.mockRejectedValueOnce({statusCode: 404});
+      let uploadLogsCallCount = 0;
+      uploadLogsSpy.mockImplementation(() => {
+        uploadLogsCallCount += 1;
+        if (uploadLogsCallCount === 1) {
+          return Promise.reject(new Error('Failed to upload Logs'));
+        }
+
+        return Promise.resolve();
+      });
+
+      const response = await callHistory.getCallHistoryData(7, 10, SORT.DEFAULT, SORT_BY.DEFAULT);
+
+      expect(response.statusCode).toBe(200);
+      expect(response.message).toBe('SUCCESS');
+      expect(response.data.userSessions).toBeDefined();
+      expect(response.data.userSessions?.length).toBeGreaterThan(0);
     });
   });
 

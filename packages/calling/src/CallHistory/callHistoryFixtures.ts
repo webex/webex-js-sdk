@@ -670,6 +670,14 @@ export const ERROR_DETAILS_400 = {
   message: 'FAILURE',
 };
 
+export const ERROR_DETAILS_404 = {
+  statusCode: 404,
+  data: {
+    error: 'No device information found for the given userId',
+  },
+  message: 'FAILURE',
+};
+
 /*
  * MOCK_LINES_API_CALL_RESPONSE simulates a successful response from the UCM lines API.
  */
