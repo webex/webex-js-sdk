@@ -63,19 +63,21 @@ The constructor wires up two listeners on `WebSocketManager`:
 
 ### Methods
 
+The only public method is `setConnectionProp`. All other methods are private implementation details — listed here for architectural understanding, not as extension points.
+
 ```typescript
 export class ConnectionService extends EventEmitter {
   public setConnectionProp(prop: ConnectionProp): void;
 
-  private setupEventListeners(): void;
-  private onPing(event: any): void;
-  private onSocketClose(): void;
-  private handleSocketClose(): Promise<void>;
-  private handleConnectionLost(): void;
-  private handleRestoreFailed(): Promise<void>;
-  private clearTimerOnRestoreFailed(): Promise<void>;
-  private updateConnectionData(): void;
-  private dispatchConnectionEvent(socketReconnected?: boolean): void;
+  private setupEventListeners(): void;      // Wires 'message' and 'socketClose' listeners
+  private onPing(event: any): void;          // Resets timers on every message, dispatches recovery events
+  private onSocketClose(): void;             // Starts reconnect interval on socket close
+  private handleSocketClose(): Promise<void>;// Attempts reconnection if browser is online
+  private handleConnectionLost(): void;      // Flags connection as lost, dispatches event
+  private handleRestoreFailed(): Promise<void>;      // Flags restore failed after timeout
+  private clearTimerOnRestoreFailed(): Promise<void>;// Clears the reconnect interval
+  private updateConnectionData(): void;      // Resets connection flags to clean state
+  private dispatchConnectionEvent(socketReconnected?: boolean): void; // Emits 'connectionLost' event
 }
 ```
 
@@ -152,7 +154,7 @@ flowchart TD
 ### Singleton Pattern
 
 ```typescript
-export default class WebexRequest {
+class WebexRequest {
   private static instance: WebexRequest;
   private webex: WebexSDK;
 
@@ -174,6 +176,8 @@ export default class WebexRequest {
 
   public async uploadLogs(metaData: LogsMetaData = {}): Promise<UploadLogsResponse>;
 }
+
+export default WebexRequest;
 ```
 
 ### Request Flow
@@ -206,86 +210,29 @@ Maintains WebSocket connection with periodic pings and monitors network status. 
 
 ### Implementation
 
-```javascript
-// keepalive.worker.js
-let intervalId, intervalDuration, timeOutId, isSocketClosed, closeSocketTimeout;
-let initialised = false;
-let initiateWebSocketClosure = false;
+> **Source**: [`keepalive.worker.js`](../websocket/keepalive.worker.js) — a Web Worker script embedded as a string and loaded via `Blob` + `URL.createObjectURL` in `WebSocketManager`.
 
-const resetOfflineHandler = function () {
-  if (timeOutId) {
-    initialised = false;
-    clearTimeout(timeOutId);
-    timeOutId = null;
-  }
-};
+#### Worker Message Contract
 
-const checkOnlineStatus = function () {
-  return navigator.onLine;
-};
+**Inbound (main thread → worker):**
 
-// Checks network status and forces WebSocket closure if offline too long
-const checkNetworkStatus = function () {
-  const onlineStatus = checkOnlineStatus();
-  postMessage({type: 'keepalive', onlineStatus}); // Includes onlineStatus in every message
+| Message Type | Fields | Effect |
+|---|---|---|
+| `start` | `intervalDuration` (default 4000ms), `isSocketClosed`, `closeSocketTimeout` (default 5000ms) | Starts periodic keepalive interval and resets offline handler |
+| `terminate` | — | Clears the keepalive interval and resets offline handler |
 
-  if (!onlineStatus && !initialised) {
-    initialised = true;
-    // Sets timeout - if socket doesn't close naturally, force it
-    timeOutId = setTimeout(() => {
-      if (!isSocketClosed) {
-        initiateWebSocketClosure = true;
-        postMessage({type: 'closeSocket'});
-      }
-    }, closeSocketTimeout);
-  }
+**Outbound (worker → main thread):**
 
-  if (onlineStatus && initialised) {
-    initialised = false;
-  }
+| Message Type | Fields | Trigger |
+|---|---|---|
+| `keepalive` | `onlineStatus: boolean` | Every `intervalDuration` ms, and on browser online/offline events |
+| `closeSocket` | — | When offline for longer than `closeSocketTimeout` and socket hasn't closed naturally |
 
-  if (initiateWebSocketClosure) {
-    initiateWebSocketClosure = false;
-    clearTimeout(timeOutId);
-    timeOutId = null;
-  }
-};
+#### Key Behavior
 
-addEventListener('message', (event) => {
-  if (event.data?.type === 'start') {
-    intervalDuration = event.data?.intervalDuration || 4000;
-    closeSocketTimeout = event.data?.closeSocketTimeout || 5000;
-    intervalId = setInterval(
-      (checkIfSocketClosed) => {
-        checkNetworkStatus();
-        isSocketClosed = checkIfSocketClosed;
-      },
-      intervalDuration,
-      event.data?.isSocketClosed
-    );
-    resetOfflineHandler();
-  }
-
-  if (event.data?.type === 'terminate' && intervalId) {
-    clearInterval(intervalId);
-    intervalId = null;
-    resetOfflineHandler();
-  }
-});
-
-// Listen for browser online/offline events
-self.addEventListener('online', () => {
-  checkNetworkStatus();
-});
-
-self.addEventListener('offline', () => {
-  checkNetworkStatus();
-});
-
-// Main thread contract:
-// postMessage({type: 'start', intervalDuration, isSocketClosed, closeSocketTimeout})
-// postMessage({type: 'terminate'})
-```
+1. **Periodic ping**: Every `intervalDuration` ms, calls `checkNetworkStatus()` which posts a `keepalive` message with the current `navigator.onLine` status
+2. **Offline detection**: When network goes offline, starts a `closeSocketTimeout` timer. If the socket hasn't closed naturally by then, posts `closeSocket` to force closure
+3. **Online/offline listeners**: The worker also listens to browser `online`/`offline` events for immediate network change detection
 
 ---
 
@@ -340,6 +287,8 @@ flowchart TD
 
 ```typescript
 export const getErrorDetails = (error: any, methodName: string, moduleName: string) => {
+  let errData = {message: '', fieldName: ''};
+
   const failure = error.details as Failure;
   const reason = failure?.data?.reason ?? `Error while performing ${methodName}`;
 
@@ -357,8 +306,14 @@ export const getErrorDetails = (error: any, methodName: string, moduleName: stri
     });
   }
 
+  // For stationLogin, extract field-specific error data (message + fieldName)
+  if (methodName === 'stationLogin') {
+    errData = getStationLoginErrorData(failure, error.loginOption);
+  }
+
   const err = new Error(reason);
-  err.data = errData; // For stationLogin field-specific errors
+  // @ts-ignore - custom property for backward compatibility
+  err.data = errData;
 
   return {error: err, reason};
 };
@@ -427,10 +382,14 @@ export const generateTaskErrorObject = (
 
 ## Related Files
 
-- [Root Orchestrator AGENTS.md](../../../../AGENTS.md) - Task routing, critical rules, cross-service patterns
-- [WebSocketManager.ts](../websocket/WebSocketManager.ts)
-- [ConnectionService.ts](../websocket/connection-service.ts)
-- [WebexRequest.ts](../WebexRequest.ts)
-- [Utils.ts](../Utils.ts)
-- [aqm-reqs.ts](../aqm-reqs.ts)
-- [GlobalTypes.ts](../GlobalTypes.ts)
+- [Root Orchestrator AGENTS.md](../../../../AGENTS.md) — Task routing, critical rules, cross-service patterns
+- [Core AGENTS.md](./AGENTS.md) — Core service usage guide and modification patterns
+- [WebSocketManager.ts](../websocket/WebSocketManager.ts) — WebSocket lifecycle, keepalive worker integration
+- [ConnectionService.ts](../websocket/connection-service.ts) — Reconnection logic, connection state events
+- [keepalive.worker.js](../websocket/keepalive.worker.js) — Web Worker for periodic keepalive and offline detection
+- [WebexRequest.ts](../WebexRequest.ts) — Singleton HTTP request handler
+- [Utils.ts](../Utils.ts) — `getErrorDetails` (line 88), `generateTaskErrorObject` (line 143), consult utilities
+- [Err.ts](../Err.ts) — `Err.Message` and `Err.Details` error classes
+- [aqm-reqs.ts](../aqm-reqs.ts) — AQM request/response pattern, WebSocket notification binding
+- [GlobalTypes.ts](../GlobalTypes.ts) — `Msg`, `Failure`, `AugmentedError` type definitions
+- [types.ts](../types.ts) — `Pending`, `Req`, `Conf`, `Res` types for AqmReqs
