@@ -67,6 +67,18 @@ const AllEqualLayout: VideoLayout = {
   ],
 };
 
+// An "all equal" grid, with size up to 5 x 5 = 25:
+const AllEqual25Layout: VideoLayout = {
+  activeSpeakerVideoPaneGroups: [
+    {
+      id: 'main',
+      numPanes: 25,
+      size: 'best',
+      priority: 255,
+    },
+  ],
+};
+
 // A layout with just a single remote active speaker video pane:
 const SingleLayout: VideoLayout = {
   activeSpeakerVideoPaneGroups: [
@@ -164,6 +176,7 @@ export const DefaultConfiguration: Configuration = {
 
     layouts: {
       AllEqual: AllEqualLayout,
+      AllEqual25: AllEqual25Layout,
       OnePlusFive: OnePlusFiveLayout,
       Single: SingleLayout,
       Stage: Stage2x2With6ThumbnailsLayout,

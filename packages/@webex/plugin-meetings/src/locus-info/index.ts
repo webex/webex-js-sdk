@@ -53,6 +53,7 @@ export type LocusLLMEvent = {
 const LocusDtoTopLevelKeys = [
   'controls',
   'fullState',
+  'embeddedApps',
   'host',
   'info',
   'links',
@@ -378,6 +379,7 @@ export default class LocusInfo extends EventsScope {
       webexRequest: this.webex.request.bind(this.webex),
       locusInfoUpdateCallback: this.updateFromHashTree.bind(this),
       debugId: `HT-${this.meetingId.substring(0, 4)}`,
+      excludedDataSets: this.webex.config.meetings.locus?.excludedDataSets,
     });
   }
 
@@ -578,6 +580,31 @@ export default class LocusInfo extends EventsScope {
             `Locus-info:index#updateLocusFromHashTreeObject --> mediaShare id=${object.htMeta.elementId.id} removed, version=${object.htMeta.elementId.version}`
           );
           locus.mediaShares = locus.mediaShares?.filter(
+            (ms) => ms.htMeta.elementId.id !== object.htMeta.elementId.id
+          );
+        }
+        break;
+      case ObjectType.embeddedApp:
+        if (object.data) {
+          LoggerProxy.logger.info(
+            `Locus-info:index#updateLocusFromHashTreeObject --> embeddedApp id=${object.htMeta.elementId.id} url='${object.data.url}' updated version=${object.htMeta.elementId.version}:`,
+            object.data
+          );
+          const existingEmbeddedApp = locus.embeddedApps?.find(
+            (ms) => ms.htMeta.elementId.id === object.htMeta.elementId.id
+          );
+
+          if (existingEmbeddedApp) {
+            Object.assign(existingEmbeddedApp, object.data);
+          } else {
+            locus.embeddedApps = locus.embeddedApps || [];
+            locus.embeddedApps.push(object.data);
+          }
+        } else {
+          LoggerProxy.logger.info(
+            `Locus-info:index#updateLocusFromHashTreeObject --> embeddedApp id=${object.htMeta.elementId.id} removed, version=${object.htMeta.elementId.version}`
+          );
+          locus.embeddedApps = locus.embeddedApps?.filter(
             (ms) => ms.htMeta.elementId.id !== object.htMeta.elementId.id
           );
         }
@@ -2082,6 +2109,19 @@ export default class LocusInfo extends EventsScope {
           LOCUSINFO.EVENTS.SELF_MEETING_BRB_CHANGED,
           {
             brb: parsedSelves.current.brb,
+          }
+        );
+      }
+
+      if (parsedSelves.updates.selfIdChanged) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_ID_CHANGED,
+          {
+            selfId: parsedSelves.current.selfId,
           }
         );
       }

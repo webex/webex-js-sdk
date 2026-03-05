@@ -29,6 +29,14 @@ export const decryptCitedAnswer = async (data, webex) => {
     );
   }
 
+  if (data.value.sources) {
+    await Promise.all(
+      data.value.sources.map((source, index) => {
+        return decryptInPlace(data, `value.sources.${index}.name`, 'encryptionKeyUrl', webex);
+      })
+    );
+  }
+
   await decryptInPlace(data, 'value.value', 'encryptionKeyUrl', webex);
 };
 export const decryptScheduleMeeting = async (data, webex) => {
@@ -67,4 +75,8 @@ export const decryptMessage = async (data, webex) => {
 
 export const decryptWorkspace = async (data, webex) => {
   await decryptInPlace(data, 'value.value', 'encryptionKeyUrl', webex);
+};
+
+export const decryptAssistantActivity = async (data, webex) => {
+  await decryptInPlace(data, 'content.value.message', 'encryptionKeyUrl', webex);
 };
