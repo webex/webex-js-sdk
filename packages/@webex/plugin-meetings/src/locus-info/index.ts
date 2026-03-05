@@ -749,8 +749,9 @@ export default class LocusInfo extends EventsScope {
     } catch (error) {
       if (error instanceof MeetingEndedError) {
         this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.SELF_REMOVED);
+      } else {
+        throw error;
       }
-      throw error;
     }
   }
 
