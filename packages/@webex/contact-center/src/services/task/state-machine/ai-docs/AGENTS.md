@@ -1,6 +1,7 @@
 # Task State Machine - AI Agent Guide
 
 ## Purpose
+
 Guide AI agents working on task lifecycle transitions, guard logic, executable actions and UI control computation in the XState-based task state machine.
 
 ---
@@ -8,6 +9,7 @@ Guide AI agents working on task lifecycle transitions, guard logic, executable a
 ## Scope
 
 This guide is for internal state management for the task lifecycle in:
+
 - State machine configuration: `TaskStateMachine.ts`
 - Actions and context mutation: `actions.ts`
 - Guard logic: `guards.ts`
@@ -15,6 +17,7 @@ This guide is for internal state management for the task lifecycle in:
 - Event types and payloads: `constants.ts`, `types.ts`
 
 Use this doc when implementing:
+
 - new state transitions
 - event mapping and payload extensions
 - guard/action fixes
@@ -41,6 +44,7 @@ state-machine/
 ---
 
 ## Source of Truth
+
 - Task lifecycle state machine: `TaskStateMachine.ts`
 - State machine types/events: `constants.ts`, `types.ts`
 - Guard logic: `guards.ts`
@@ -61,9 +65,11 @@ state-machine/
 ---
 
 ## State Machine Overview
+
 **Transition Source**: `getTaskStateMachineConfig()` in `TaskStateMachine.ts`
 
 API-driven transition from `voice/Voice.ts`:
+
 ```typescript
 // task.hold() / task.resume() -> holdResume()
 stateMachineService.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId});
@@ -72,6 +78,7 @@ stateMachineService.send({type: TaskEvent.HOLD_SUCCESS, mediaResourceId});
 ```
 
 Backend-driven transition from `TaskManager.ts`:
+
 ```typescript
 const eventPayload = TaskManager.mapEventToTaskStateMachineEvent(
   CC_EVENTS.AGENT_CONTACT_RESERVED,
@@ -81,28 +88,32 @@ if (eventPayload) {
   task.sendStateMachineEvent(eventPayload);
 }
 ```
+
 ---
 
 ### Transition Contract
+
 Backend CC events from WebSocket are mapped to `TaskEvent` in `TaskManager.mapEventToTaskStateMachineEvent`.
 The state machine consumes only `TaskEvent` and never raw CC events.
 
-
 ### Payload Contract
+
 Source of truth: `TaskEventPayloadMap` in `types.ts`.
 All new events must add a typed payload entry in `TaskEventPayloadMap`.
 
 ---
 
 ## Non-goals
+
 - API contracts for external services.
 - Mercury or CC WebSocket protocols (see `TaskManager.ts` mapping).
 
-
 ## Guards
+
 Guards are boolean conditions that determine determine if a state transition is allowed. These functions validate the current context before allowing transitions.
- 
+
 ### Principles
+
 - Guards must be pure and must return boolean only
 - No mutation or side-effects.
 - Reuse helper accessors (e.g., `getTaskDataFromEvent`).
@@ -112,7 +123,7 @@ Guards are boolean conditions that determine determine if a state transition is 
 ```typescript
 // Check if interaction is in terminated state
 isInteractionTerminated(context, event) {
-  return event.taskData?.interaction?.state === 'terminated';
+  return event.taskData?.interaction?.isTerminated === true;
 }
 
 // Check if interaction is consulting
@@ -122,7 +133,7 @@ isInteractionConsulting(context, event) {
 
 // Check if interaction is held
 isInteractionHeld(context, event) {
-  return event.taskData?.isOnHold === true;
+  return event.taskData?.interaction?.state === 'hold';
 }
 
 // Check if interaction is connected
@@ -134,97 +145,208 @@ isInteractionConnected(context, event) {
 ### Consult Guards
 
 ```typescript
-// Check if this is a consulting assignment
-isConsultingAssignment(context, event) {
-  return event.taskData?.isConsulted === true;
-}
-
 // Check if current agent initiated consult
-isConsultInitiator(context, event) {
-  return context.consultInitiator === context.agentId;
-}
-
-// Check if current agent received consult
-isConsultedAgent(context, event) {
-  return context.consultDestinationAgentId === context.agentId;
+didInitiateConsult(context, event) {
+  if (event.taskData?.isConsulted === true) return false;
+  return event.taskData?.consultingAgentId
+    ? isSelfConsultingAgent(context, event.taskData)
+    : context.consultInitiator === true;
 }
 ```
 
 ### Conference Guards
 
 ```typescript
-// Check if conference is in progress by participants
-isConferencingByParticipants(context, event) {
-  const participants = event.taskData?.interaction?.participants;
-  return Object.keys(participants || {}).length > 2;
+// Check if conference is in progress from event taskData
+conferenceInProgressFromEvent(context, event) {
+  return Boolean(event.taskData?.interaction) && getIsConferenceInProgress(event.taskData);
 }
 
-// Check if last participant in conference
-isLastParticipant(context, event) {
-  return context.activeParticipants?.length <= 2;
+// Check if conference is in progress by participants
+isConferencingByParticipants(context, event) {
+  const taskData = event.taskData;
+  if (!taskData) return false;
+
+  const mainCallId = taskData.interaction?.mainInteractionId || taskData.interactionId;
+  const media = taskData.interaction?.media?.[mainCallId];
+  const participants = taskData.interaction?.participants;
+  if (!media?.participants || !participants) return false;
+
+  let agentCount = 0;
+  for (const pId of media.participants) {
+    const p = participants[pId];
+    if (p && p.pType !== 'Customer' && p.pType !== 'Supervisor' && !p.hasLeft) {
+      agentCount += 1;
+    }
+  }
+
+  return agentCount >= 2;
+}
+
+// Check if conference should downgrade to connected
+shouldDowngradeConferenceToConnected(context, event) {
+  const taskData = event.taskData ?? context.taskData;
+  const selfAgentId = getSelfAgentId(context, taskData);
+  const mainCallId = taskData?.interaction?.mainInteractionId || taskData?.interactionId;
+  const agentParticipantsCount = getConferenceParticipantsCount(taskData?.interaction, mainCallId);
+  const customerInCall = getIsCustomerInCall(taskData?.interaction, mainCallId);
+  const selfInMainCall = Boolean(
+    taskData?.interaction?.media?.[mainCallId]?.participants?.includes(selfAgentId)
+  );
+  return (
+    taskData?.interaction?.state !== 'conference' &&
+    agentParticipantsCount < 2 &&
+    customerInCall &&
+    selfInMainCall
+  );
 }
 ```
 
 ### Wrapup Guards
 
 ```typescript
-// Check if wrapup is required
+// Check if this agent should move to wrapup
 shouldWrapUp(context, event) {
-  return event.taskData?.wrapUpRequired === true;
+  const taskData = event.taskData;
+  if (!taskData) return false;
+
+  if (event.type === TaskEvent.CONFERENCE_END) {
+    const selfAgentId = getSelfAgentId(context, taskData);
+    if (!selfAgentId) return false;
+
+    const pending = taskData.agentsPendingWrapUp;
+    if (Array.isArray(pending) && pending.length > 0) {
+      return pending.includes(selfAgentId);
+    }
+
+    const participantWrapUp = taskData.interaction?.participants?.[selfAgentId]?.isWrapUp === true;
+    const wrapUpRequired = taskData.wrapUpRequired === true;
+    return wrapUpRequired || participantWrapUp;
+  }
+
+  return shouldWrapUpForThisAgent(context, taskData);
+}
+
+// Check if wrapup is required OR current agent is consult initiator
+shouldWrapUpOrIsInitiator(context, event) {
+  return Boolean(event.taskData?.wrapUpRequired || context.consultInitiator);
+}
+
+// Check whether the leaving participant is the current agent
+didCurrentAgentLeaveConference(context, event) {
+  const selfAgentId = getSelfAgentId(context, event.taskData);
+  if (!selfAgentId) return false;
+
+  const participantId = event.participantId ?? event.taskData?.participantId;
+  return Boolean(participantId) && participantId === selfAgentId;
+}
+```
+
+### Server State Guards
+
+```typescript
+// Check if primary media leg is on hold
+isPrimaryMediaOnHold(context, event) {
+  const taskData = event.taskData;
+  if (!taskData || !taskData.mediaResourceId) return false;
+
+  return taskData.interaction?.media?.[taskData.mediaResourceId]?.isHold === true;
 }
 ```
 
 ---
 
 ## Actions
+
 Actions are side effects executed during state machine transitions from current state to target state(next state).
 Actions contain:
-- Context synchronization (`updateTaskData`, `setHoldState`, consult flags)
-- Lifecycle mutations (`clearConsultState`, `markEnded`)
+
+- Context synchronization (`initializeTask`, `updateTaskData`, `syncTaskDataFromEvent`)
+- Lifecycle mutations (`clearConsultState`, `markEnded`, consult/conference flags)
 - Integration hooks (`requestAutoAnswer`, `requestCleanup`, emitter placeholders)
 
 ### Principles
+
 - Context mutations should be centralized in `assign(...)` actions
 - Emitter actions intentionally no-op defaults and overridden by `Task` to bridge machine transitions to SDK events.
 - Deterministic updates from `taskData`.
 
-
 ### Context Update Actions
 
 ```typescript
-// Update task data from event
+// Initialize context for incoming task
+initializeTask(context, event) {
+  return {
+    consultInitiator: false,
+    exitingConference: false,
+    consultDestinationType: null,
+    consultDestinationAgentJoined: false,
+    ...deriveTaskDataUpdates(context, event.taskData),
+  };
+}
+
+// Update taskData + derived recording/consult fields
 updateTaskData(context, event) {
-  context.taskData = event.taskData;
+  return deriveTaskDataUpdates(context, event.taskData);
 }
 
-// Mark task as held
-markHeld(context, event) {
-  context.isHeld = true;
-  context.mediaResourceId = event.mediaResourceId;
+// Keep Task instance data in sync (Task.ts action override)
+syncTaskDataFromEvent(event) {
+  this.updateTaskFromEvent(event);
 }
 
-// Mark task as ended
-markEnded(context, event) {
-  context.hasEnded = true;
-  context.endTime = Date.now();
+// Update hold flag on specific media leg in context.taskData.interaction.media
+setHoldState(context, event) {
+  // Handles HOLD_SUCCESS and UNHOLD_SUCCESS for event.mediaResourceId
 }
 
-// Set consult initiator
-setConsultInitiator(context, event) {
-  context.consultInitiator = determineConsultInitiator(event.taskData);
+// Conference/consult lifecycle mutators
+handleConferenceStarted() { return {consultInitiator: false}; }
+handleConsultFailed() { return {consultDestinationAgentJoined: false, consultInitiator: false}; }
+handleParticipantLeft(event) { return event.taskData ? {taskData: event.taskData} : {}; }
+handleTransferConferenceSuccess(event) { return event.taskData ? {taskData: event.taskData} : {}; }
+
+// Consult destination and mode flags
+setConsultDestination(event) { /* sets consultDestinationType and resets consult flags */ }
+setConsultFromConference() { return {consultFromConference: true}; }
+setConsultAgentJoined(event) { /* sets consultDestinationAgentJoined on CONSULTING_ACTIVE */ }
+setExitingConference() { return {exitingConference: true}; }
+
+// Conference transfer flags
+setTransferConferenceRequested() { return {transferConferenceRequested: true}; }
+clearTransferConferenceRequested() { return {transferConferenceRequested: false}; }
+
+// Consult call hold flags
+setConsultCallHeld() { return {consultCallHeld: true}; }
+clearConsultCallHeld() { return {consultCallHeld: false}; }
+
+// Recording state mutator for pause/resume events
+setRecordingState(event) {
+  // PAUSE_RECORDING => recordingInProgress false
+  // RESUME_RECORDING => recordingInProgress true
 }
 
-// Set consult agent joined flag
-setConsultAgentJoined(context, event) {
-  context.consultDestinationAgentJoined = true;
+// Reset consult/conference-related context
+clearConsultState() {
+  return {
+    consultDestinationType: null,
+    consultDestinationAgentJoined: false,
+    consultInitiator: false,
+    exitingConference: false,
+    consultCallHeld: false,
+    consultFromConference: false,
+    transferConferenceRequested: false,
+  };
 }
 
-// Mark conference started
-markConferenceStarted(context, event) {
-  context.isConferenceInProgress = true;
-  context.activeParticipants = getActiveParticipants(event.taskData);
+// End-of-task cleanup for recording flags
+markEnded() {
+  return {recordingControlsAvailable: false, recordingInProgress: false};
 }
 ```
+
+> Note: `forceConsultInitiator`, `handleConferenceFailed`, `handleSwitchToMainCall`, and
+> `handleSwitchToConsult` are not present in current `actions.ts`/`TaskStateMachine.ts`.
 
 ### Event Emission Actions
 
@@ -283,7 +405,9 @@ requestAutoAnswer(context, event) {
 ---
 
 ## UI Controls
+
 `uiControlsComputer.ts` computes `TaskUIControls` from:
+
 - current machine state
 - current context
 - channel type (voice vs digital)
@@ -293,14 +417,17 @@ requestAutoAnswer(context, event) {
 This keeps all control enablement/visibility logic centralized and testable.
 
 ### Source of truth
+
 `computeUIControls()` in `uiControlsComputer.ts`.
 
 ### Inputs
+
 - `TaskState`
 - `TaskContext` (including `taskData`)
 - `UIControlConfig` (channel type, agentId, voice variant, recording flags)
 
 ### Output
+
 - `TaskUIControls` with per-control visibility and enabled state.
 
 ---
