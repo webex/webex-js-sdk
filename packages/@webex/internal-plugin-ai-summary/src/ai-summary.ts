@@ -35,7 +35,15 @@ const AISummary = WebexPlugin.extend({
         service: AI_SUMMARY_SERVICE,
         resource: `${AI_SUMMARY_CONTAINERS_RESOURCE}/${containerId}`,
       })
-      .then(({body}) => body)
+      .then(({body}) => {
+        // Pragya API nests summary URLs under summaryData.data — flatten
+        // so consumers can access summaryData.summaryUrl directly.
+        if (body.summaryData?.data) {
+          body.summaryData = body.summaryData.data;
+        }
+
+        return body;
+      })
       .catch((error) => {
         this.logger.error('AISummary->getContainer failed', {error, containerId});
         throw this._handleError(error, 'getContainer');
@@ -85,12 +93,15 @@ const AISummary = WebexPlugin.extend({
         })
       );
 
+      // feedbackUrl may be in the links array as rel="feedback"
+      const feedbackLink = (body.links || []).find((link: any) => link.rel === 'feedback');
+
       return {
         id: body.id,
         note: decryptedNote,
         shortNote: decryptedShortNote,
         actionItems: decryptedSnippets,
-        feedbackUrl: body.note.feedbackUrl,
+        feedbackUrl: feedbackLink?.href,
       };
     } catch (error) {
       this.logger.error('AISummary->getSummary failed', {error});

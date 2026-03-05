@@ -10,16 +10,16 @@
 export interface PragyaSummaryData {
   /** Status of the summary (e.g., "Active") */
   status: string;
-  /** Full summary URL */
+  /** Full summary URL (AI Bridge) */
   summaryUrl: string;
-  /** Notes-specific URL */
-  notesUrl: string;
-  /** Action items URL */
-  actionItemsUrl: string;
-  /** Transcript URL */
+  /** Transcript URL (AI Bridge) */
   transcriptUrl: string;
   /** Whether summarization runs after call ends */
   summarizeAfterCall: boolean;
+  /** Notes-specific URL (may not be present in all API versions) */
+  notesUrl?: string;
+  /** Action items URL (may not be present in all API versions) */
+  actionItemsUrl?: string;
 }
 
 /**
