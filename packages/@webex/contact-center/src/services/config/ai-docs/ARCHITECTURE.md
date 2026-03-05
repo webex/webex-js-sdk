@@ -26,7 +26,7 @@ flowchart TD
     subgraph parallel [Parallel Requests]
         B --> C1[getUserUsingCI]
         B --> C2[getOrgInfo]
-        B --> C3[getOrgSettings]
+        B --> C3[getOrganizationSetting]
         B --> C4[getTenantData]
         B --> C5[getURLMapping]
         B --> C6[getAllAuxCodes]
@@ -81,7 +81,7 @@ sequenceDiagram
     par Wave 1 — fire immediately
         Cfg->>WR: getUserUsingCI
         Cfg->>WR: getOrgInfo
-        Cfg->>WR: getOrgSettings
+        Cfg->>WR: getOrganizationSetting
         Cfg->>WR: getTenantData
         Cfg->>WR: getURLMapping
         Cfg->>WR: getAllAuxCodes
@@ -116,53 +116,53 @@ Defined in `constants.ts`:
 
 ```typescript
 export const endPointMap = {
-  userByCI: (orgId, agentId) =>
+  userByCI: (orgId: string, agentId: string) =>
     `organization/${orgId}/user/by-ci-user-id/${agentId}`,
 
-  desktopProfile: (orgId, desktopProfileId) =>
+  desktopProfile: (orgId: string, desktopProfileId: string) =>
     `organization/${orgId}/agent-profile/${desktopProfileId}`,
 
-  multimediaProfile: (orgId, multimediaProfileId) =>
+  multimediaProfile: (orgId: string, multimediaProfileId: string) =>
     `organization/${orgId}/multimedia-profile/${multimediaProfileId}`,
 
-  listTeams: (orgId, page, pageSize, filter) =>
+  listTeams: (orgId: string, page: number, pageSize: number, filter: string[]) =>
     `organization/${orgId}/v2/team?page=${page}&pageSize=${pageSize}${
       filter && filter.length > 0 ? `&filter=id=in=(${filter})` : ''
     }`,
 
-  listAuxCodes: (orgId, page, pageSize, filter, attributes) =>
+  listAuxCodes: (orgId: string, page: number, pageSize: number, filter: string[], attributes: string[]) =>
     `organization/${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}${
       filter && filter.length > 0 ? `&filter=id=in=(${filter})` : ''
     }&attributes=${attributes}`,
 
-  orgInfo: (orgId) =>
+  orgInfo: (orgId: string) =>
     `organization/${orgId}`,
 
-  orgSettings: (orgId) =>
+  orgSettings: (orgId: string) =>
     `organization/${orgId}/v2/organization-setting?agentView=true`,
 
-  siteInfo: (orgId, siteId) =>
+  siteInfo: (orgId: string, siteId: string) =>
     `organization/${orgId}/site/${siteId}`,
 
-  tenantData: (orgId) =>
+  tenantData: (orgId: string) =>
     `organization/${orgId}/v2/tenant-configuration?agentView=true`,
 
-  urlMapping: (orgId) =>
+  urlMapping: (orgId: string) =>
     `organization/${orgId}/v2/org-url-mapping?sort=name,ASC`,
 
-  dialPlan: (orgId) =>
+  dialPlan: (orgId: string) =>
     `organization/${orgId}/dial-plan?agentView=true`,
 
-  queueList: (orgId, queryParams) =>
+  queueList: (orgId: string, queryParams: string) =>
     `/organization/${orgId}/v2/contact-service-queue?${queryParams}`,
 
-  entryPointList: (orgId, queryParams) =>
+  entryPointList: (orgId: string, queryParams: string) =>
     `/organization/${orgId}/v2/entry-point?${queryParams}`,
 
-  addressBookEntries: (orgId, addressBookId, queryParams) =>
+  addressBookEntries: (orgId: string, addressBookId: string, queryParams: string) =>
     `/organization/${orgId}/v2/address-book/${addressBookId}/entry?${queryParams}`,
 
-  outdialAniEntries: (orgId, outdialANI, queryParams) =>
+  outdialAniEntries: (orgId: string, outdialANI: string, queryParams: string) =>
     `organization/${orgId}/v2/outdial-ani/${outdialANI}/entry${
       queryParams ? `?${queryParams}` : ''
     }`,
@@ -211,7 +211,7 @@ public async getAllTeams(orgId, pageSize, filter): Promise<TeamList[]> {
 ```typescript
 function parseAgentConfigs(profileData: {
   userData: AgentResponse;
-  teamData: Team[];          // NOTE: declared as Team[] but receives TeamList[] at runtime
+  teamData: Team[];          // BUG: declared as Team[] (teamId, teamName, desktopLayoutId) but receives TeamList[] (id, name, + 12 more fields) at runtime — incompatible types
   tenantData: TenantData;
   orgInfoData: OrgInfo;
   auxCodes: AuxCode[];
@@ -240,7 +240,7 @@ function parseAgentConfigs(profileData: {
     agentId: userData.ciUserId,          // NOTE: ciUserId, NOT userData.id
     analyserUserId: userData.id,          // userData.id is used here instead
     agentName: `${userData.firstName} ${userData.lastName}`,
-    teams: teamData,                      // raw TeamList[] passed directly, no mapping
+    teams: teamData,                      // BUG: raw TeamList[] passed as Team[] — no mapping between incompatible types
     idleCodes,
     wrapupCodes,
     webRtcEnabled: orgSettingsData.webRtcEnabled,
@@ -251,41 +251,6 @@ function parseAgentConfigs(profileData: {
     // ... 30+ more fields — see Util.ts for full implementation
   };
 }
-```
-
----
-
-## Event Constants
-
-CC_EVENTS combines agent and task events:
-
-```typescript
-// CC_AGENT_EVENTS
-export const CC_AGENT_EVENTS = {
-  WELCOME: 'Welcome',
-  AGENT_LOGOUT: 'Logout',
-  AGENT_STATE_CHANGE: 'AgentStateChange',
-  AGENT_STATION_LOGIN_SUCCESS: 'AgentStationLoginSuccess',
-  // ... more
-} as const;
-
-// CC_TASK_EVENTS
-export const CC_TASK_EVENTS = {
-  AGENT_CONTACT: 'AgentContact',
-  AGENT_OFFER_CONTACT: 'AgentOfferContact',
-  CONTACT_ENDED: 'ContactEnded',
-  // ... more
-} as const;
-
-// Combined
-export const CC_EVENTS = {
-  ...CC_AGENT_EVENTS,
-  ...CC_TASK_EVENTS,
-} as const;
-
-// Type extraction
-type Enum<T extends Record<string, unknown>> = T[keyof T];
-export type CC_EVENTS = Enum<typeof CC_EVENTS>;
 ```
 
 ---
