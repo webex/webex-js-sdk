@@ -11473,6 +11473,41 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('localConstraintsChangeHandler', () => {
+        it('calls updatePreferredBitrateKbps when not multistream', () => {
+          meeting.isMultistream = false;
+          meeting.mediaProperties.webrtcMediaConnection = {
+            updatePreferredBitrateKbps: sinon.stub(),
+          };
+
+          meeting.localConstraintsChangeHandler();
+
+          assert.calledOnce(
+            meeting.mediaProperties.webrtcMediaConnection.updatePreferredBitrateKbps
+          );
+        });
+
+        it('does not call updatePreferredBitrateKbps when multistream', () => {
+          meeting.isMultistream = true;
+          meeting.mediaProperties.webrtcMediaConnection = {
+            updatePreferredBitrateKbps: sinon.stub(),
+          };
+
+          meeting.localConstraintsChangeHandler();
+
+          assert.notCalled(
+            meeting.mediaProperties.webrtcMediaConnection.updatePreferredBitrateKbps
+          );
+        });
+
+        it('does not throw when webrtcMediaConnection is undefined', () => {
+          meeting.isMultistream = false;
+          meeting.mediaProperties.webrtcMediaConnection = undefined;
+
+          assert.doesNotThrow(() => meeting.localConstraintsChangeHandler());
+        });
+      });
+
       describe('#parseMeetingInfo', () => {
         const checkParseMeetingInfo = (expectedInfoToParse) => {
           assert.equal(meeting.conversationUrl, expectedInfoToParse.conversationUrl);

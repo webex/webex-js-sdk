@@ -51,7 +51,13 @@ const AIEnableRequest = WebexPlugin.extend({
         const isApprover = !!approverId && approverId === this.selfParticipantId;
         const initiatorId = initiator?.participantId;
         const isInitiator = !!initiatorId && initiatorId === this.selfParticipantId;
-        if (!isApprover && !isInitiator) {
+        if (
+          !isApprover &&
+          !isInitiator &&
+          // Not just the initiator needs to know about declined all because
+          // all future requests will be rejected if the meeting is in the declined all state
+          actionType !== AI_ENABLE_REQUEST.ACTION_TYPE.DECLINED_ALL
+        ) {
           return;
         }
         this.trigger(AI_ENABLE_REQUEST.EVENTS.APPROVAL_REQUEST_ARRIVED, {
