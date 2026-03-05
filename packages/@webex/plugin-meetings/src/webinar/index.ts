@@ -114,10 +114,6 @@ const Webinar = WebexPlugin.extend({
       meeting?.locusInfo?.updateMediaShares(meeting?.locusInfo?.mediaShares, true);
     }
 
-    if (this.practiceSessionEnabled) {
-      // may need change data channel in practice session
-      // meeting?.updateLLMConnection();
-    }
     this.updatePSDataChannel(this.practiceSessionEnabled);
   },
 
