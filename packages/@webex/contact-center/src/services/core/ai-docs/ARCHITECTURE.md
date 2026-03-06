@@ -16,6 +16,8 @@ sequenceDiagram
     participant BE as ccBackend
 
     cc->>WSM: initWebSocket(config)
+    Note right of cc: config is SubscribeRequest passed as {body: config}
+
     WSM->>BE: POST /subscribe (get WS URL)
     BE-->>WSM: {webSocketUrl, subscriptionId}
     WSM->>WS: new WebSocket(url)
@@ -30,6 +32,10 @@ sequenceDiagram
         WSM->>WSM: emit('message', event)
     end
 ```
+
+Config reference:
+- `initWebSocket(options: {body: SubscribeRequest})`: [src/services/core/websocket/WebSocketManager.ts](../websocket/WebSocketManager.ts)
+- `SubscribeRequest` type: [src/types.ts](../../../types.ts)
 
 ### End-to-End Core Flow (Complete Picture)
 
