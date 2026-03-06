@@ -35,7 +35,6 @@ import HashTreeParser, {
   DataSet,
   HashTreeMessage,
   LocusInfoUpdateType,
-  MeetingEndedError,
   Metadata,
 } from '../hashTree/hashTreeParser';
 import {HashTreeObject, ObjectType, ObjectTypeToLocusKeyMap} from '../hashTree/types';
@@ -744,15 +743,8 @@ export default class LocusInfo extends EventsScope {
 
       return;
     }
-    try {
-      await this.hashTreeParser.handleMessage(message);
-    } catch (error) {
-      if (error instanceof MeetingEndedError) {
-        this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.SELF_REMOVED);
-      } else {
-        throw error;
-      }
-    }
+
+    this.hashTreeParser.handleMessage(message);
   }
 
   /**

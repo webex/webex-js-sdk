@@ -263,10 +263,13 @@ class HashTreeParser {
     return this.sendSyncRequestToLocus(this.dataSets[datasetName], emptyLeavesData).then(
       (syncResponse) => {
         if (syncResponse) {
-          return this.parseMessage(
-            syncResponse,
-            `via empty leaves /sync API call for ${debugText}`
-          );
+          return {
+            updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
+            updatedObjects: this.parseMessage(
+              syncResponse,
+              `via empty leaves /sync API call for ${debugText}`
+            ),
+          };
         }
 
         return {updateType: LocusInfoUpdateType.OBJECTS_UPDATED, updatedObjects: []};
@@ -395,15 +398,6 @@ class HashTreeParser {
 
         // eslint-disable-next-line no-await-in-loop
         const data = await this.sendInitializationSyncRequestToLocus(name, debugText);
-
-        if (data.updateType === LocusInfoUpdateType.MEETING_ENDED) {
-          LoggerProxy.logger.warn(
-            `HashTreeParser#initializeDataSets --> ${this.debugId} meeting ended while initializing new visible data set "${name}"`
-          );
-
-          // throw an error, it will be caught higher up and the meeting will be destroyed
-          throw new MeetingEndedError();
-        }
 
         if (data.updateType === LocusInfoUpdateType.OBJECTS_UPDATED) {
           updatedObjects.push(...(data.updatedObjects || []));
@@ -943,12 +937,9 @@ class HashTreeParser {
    *
    * @param {HashTreeMessage} message - The hash tree message containing data sets and objects to be processed
    * @param {string} [debugText] - Optional debug text to include in logs
-   * @returns {Promise}
+   * @returns {HashTreeObject[]} list of hash tree objects that were updated as a result of processing the message
    */
-  private async parseMessage(
-    message: HashTreeMessage,
-    debugText?: string
-  ): Promise<{updateType: LocusInfoUpdateType; updatedObjects?: HashTreeObject[]}> {
+  private parseMessage(message: HashTreeMessage, debugText?: string): HashTreeObject[] {
     const {dataSets, visibleDataSetsUrl} = message;
 
     LoggerProxy.logger.info(
@@ -966,7 +957,6 @@ class HashTreeParser {
     this.visibleDataSetsUrl = visibleDataSetsUrl;
     dataSets.forEach((dataSet) => this.updateDataSetInfo(dataSet));
 
-    let isRosterDropped = false;
     const updatedObjects: HashTreeObject[] = [];
 
     // when we detect new visible datasets, it may be that the metadata about them is not
@@ -1032,9 +1022,6 @@ class HashTreeParser {
             zip(appliedChangesList, locusStateElementsForThisSet).forEach(
               ([changeApplied, object]) => {
                 if (changeApplied) {
-                  if (isSelf(object) && !object.data) {
-                    isRosterDropped = true;
-                  }
                   // add to updatedObjects so that our locus DTO will get updated with the new object
                   updatedObjects.push(object);
                 }
@@ -1047,20 +1034,8 @@ class HashTreeParser {
           }
         }
 
-        if (!isRosterDropped) {
-          this.runSyncAlgorithm(dataSet);
-        }
+        this.runSyncAlgorithm(dataSet);
       });
-    }
-
-    if (isRosterDropped) {
-      LoggerProxy.logger.info(
-        `HashTreeParser#parseMessage --> ${this.debugId} detected roster drop`
-      );
-      this.stopAllTimers();
-
-      // in case of roster drop we don't care about other updates
-      return {updateType: LocusInfoUpdateType.MEETING_ENDED};
     }
 
     if (dataSetsRequiringInitialization.length > 0) {
@@ -1074,7 +1049,7 @@ class HashTreeParser {
       );
     }
 
-    return {updateType: LocusInfoUpdateType.OBJECTS_UPDATED, updatedObjects};
+    return updatedObjects;
   }
 
   /**
@@ -1084,7 +1059,7 @@ class HashTreeParser {
    * @param {string} [debugText] - Optional debug text to include in logs
    * @returns {void}
    */
-  async handleMessage(message: HashTreeMessage, debugText?: string): Promise<void> {
+  handleMessage(message: HashTreeMessage, debugText?: string) {
     if (message.heartbeatIntervalMs) {
       this.heartbeatIntervalMs = message.heartbeatIntervalMs;
     }
@@ -1099,14 +1074,13 @@ class HashTreeParser {
       this.handleRootHashHeartBeatMessage(message);
       this.resetHeartbeatWatchdogs(message.dataSets);
     } else {
-      const updates = await this.parseMessage(message, debugText);
+      const updatedObjects = this.parseMessage(message, debugText);
 
-      // Only reset watchdogs if the meeting hasn't ended
-      if (updates.updateType !== LocusInfoUpdateType.MEETING_ENDED) {
-        this.resetHeartbeatWatchdogs(message.dataSets);
-      }
-
-      this.callLocusInfoUpdateCallback(updates);
+      this.resetHeartbeatWatchdogs(message.dataSets);
+      this.callLocusInfoUpdateCallback({
+        updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
+        updatedObjects,
+      });
     }
   }
 
