@@ -114,7 +114,7 @@ const Webinar = WebexPlugin.extend({
       meeting?.locusInfo?.updateMediaShares(meeting?.locusInfo?.mediaShares, true);
     }
 
-    this.updatePSDataChannel(this.practiceSessionEnabled);
+    this.updatePSDataChannel(this.isJoinPracticeSessionDataChannel());
   },
 
   /**
@@ -246,7 +246,7 @@ const Webinar = WebexPlugin.extend({
    */
   updatePracticeSessionStatus(payload) {
     this.set('practiceSessionEnabled', !!payload?.enabled);
-    this.updatePSDataChannel(this.practiceSessionEnabled).then(() => {});
+    this.updatePSDataChannel(this.isJoinPracticeSessionDataChannel()).then(() => {});
   },
 
   /**
