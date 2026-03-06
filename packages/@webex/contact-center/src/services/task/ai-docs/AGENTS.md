@@ -1,6 +1,7 @@
 # Task Service - AI Agent Guide
 
 ## Purpose
+
 Manage task lifecycle including inbound/outbound calls, hold/resume, consult, transfer, conference, and wrapup.
 
 ---
@@ -18,6 +19,7 @@ services/task/
 ├── types.ts               # Task types and events
 ├── constants.ts           # Task constants
 ├── TaskFactory.ts         # Task factory
+├── taskDataNormalizer.ts  # Task data normalization helpers
 ├── digital/               # Digital task implementations
 │   └── Digital.ts
 ├── voice/                 # Voice task implementations
@@ -35,11 +37,11 @@ services/task/
 │       └── ARCHITECTURE.md
 └── ai-docs/
     ├── AGENTS.md          # Usage documentation
-    ├── ARCHITECTURE.md    # Task service architecture
-    └── SPEC.md            # Task service specification
+    └── ARCHITECTURE.md    # Task service architecture
 ```
 
 ## Source of Truth
+
 - Task creation: `TaskFactory.ts`
 - Task APIs and behavior: `Task.ts`, `voice/Voice.ts`, `voice/WebRTC.ts`, `digital/Digital.ts`
 - Task management: `TaskManager.ts`
@@ -48,6 +50,7 @@ services/task/
 - State machine types/events: `state-machine/constants.ts`, `state-machine/types.ts`
 
 ## Public Types and Constants
+
 - `TASK_EVENTS` enum (`types.ts`)
 - `TaskData`, `TaskId`, `TaskResponse`, `TaskUIControls` (`types.ts`)
 - `ITask`, `IVoice`, `IWebRTC`, `IDigital` (`types.ts`)
@@ -55,6 +58,7 @@ services/task/
 - State machine: `TaskState`, `TaskEvent` (`state-machine/constants.ts`)
 
 ## Key Capabilities
+
 - **Task Creation by Channel**: `TaskFactory.ts` chooses `WebRTC`, `Voice`, or `Digital` based on `MEDIA_CHANNEL` and `webCallingService.loginOption`, so each task class exposes the correct capabilities for the media type.
 - **Task Orchestration**: `TaskManager.ts` owns task lifecycle wiring—initializes listeners, receives task events, creates/updates tasks, emits SDK events, and exposes task collections for consumers.
 - **Event Emission and Public APIs**: Task objects register listeners, update context, emit SDK events (e.g., `task:*`), and expose public methods that delegate to `contact.ts` for call control and to the state machine for transition validation.
@@ -69,6 +73,7 @@ services/task/
 This section describes how the task layer constructs tasks, initializes the state machine, and wires AQM calls to task methods. It provides context for how the state machine fits into the end-to-end flow.
 
 ### Task Class Hierarchy
+
 - **Hierarchy**: `Task` (base) → `Voice` → `WebRTC`; `Digital` extends `Task`.
 - **`Task` (base)**: Holds task data, emits SDK events, and provides default (unsupported) implementations for call control APIs.
 - **`Voice`**: Adds hold/resume and consult-related capabilities for telephony tasks.
@@ -76,11 +81,13 @@ This section describes how the task layer constructs tasks, initializes the stat
 - **`Digital`**: Implements `accept` and refreshes digital task data/UI controls.
 
 ### Task Creation and State Machine Initialization
+
 - **Factory**: `TaskFactory.ts` selects `WebRTC`, `Voice`, or `Digital` based on `MEDIA_CHANNEL` and `webCallingService.loginOption`.
 - **Initialization**: `Task.ts` creates a state machine actor using `createTaskStateMachine(...)`, wires action overrides (emitters), and starts the actor.
 - **Task State**: The task holds `stateMachineService` and uses it to send `TaskEvent` payloads.
 
 Example (state machine init inside a task object):
+
 ```typescript
 const machine = createTaskStateMachine(uiControlConfig, {
   actions: {
@@ -92,12 +99,14 @@ actor.start();
 ```
 
 ### TaskManager Lifecycle Orchestration
+
 - **Listener Setup**: Registers WebSocket listeners to receive CC events and map them to `TaskEvent` payloads.
 - **Task Registry**: Creates tasks via `TaskFactory`, stores them in the task collection, and updates task data on incoming events.
 - **Event Emission**: Re-emits `task:*` events on the task or `cc` object for SDK consumers.
 - **Hydration/Recovery**: Handles state updates and transitions during reconnect/hydrate flows.
 
 Example (backend event to state machine):
+
 ```typescript
 const payload = TaskManager.mapEventToTaskStateMachineEvent(event, taskData);
 if (payload) {
@@ -106,10 +115,12 @@ if (payload) {
 ```
 
 ### AQM Call Control Integration
+
 - **`contact.ts`**: Builds the AQM request surface for call control (hold, consult, transfer, wrapup, end). Task methods delegate to these calls, then drive state transitions based on success/failure events.
 - **`dialer.ts`**: Exposes the `startOutdial` AQM request used by `cc.startOutdial()` to create outbound tasks.
 
 Example (task method delegating to AQM):
+
 ```typescript
 // task.hold() -> contact.hold(...) -> stateMachine events on response
 await contact.hold({interactionId});
@@ -117,6 +128,7 @@ stateMachineService.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId});
 ```
 
 ### Sequential Flow (End-to-End)
+
 1. **WebSocket event arrives** → `TaskManager` maps CC event to `TaskEvent`.
 2. **Task creation** (if new) → `TaskFactory` builds `Voice`/`WebRTC`/`Digital`.
 3. **State machine actor starts** → `Task` wires emitters + UI control updates.
@@ -148,15 +160,18 @@ flowchart TD
 // Listen for incoming tasks
 cc.on('task:incoming', async (task) => {
   console.log('Incoming task:', task.data.interactionId);
-  
+
   // Accept the task
   await task.accept();
-  
+
   // Task operations
   await task.hold();
-  await task.unHold();
+  await task.resume();
   await task.end();
-  await task.wrapup({ auxCodeId: 'wrapup-code' });
+  await task.wrapup({
+    wrapUpReason: 'Resolved',
+    auxCodeId: 'wrapup-code',
+  });
 });
 ```
 
@@ -166,26 +181,41 @@ cc.on('task:incoming', async (task) => {
 
 ### Emitted on `cc` object(ContactCenter)
 
-| Event | When Emitted |
-|-------|--------------|
-| `task:incoming` | New task offered to agent |
-| `task:hydrate` | Task data updated |
-| `task:merged` | Tasks merged (EPDN transfer) |
+| Event           | When Emitted                 |
+| --------------- | ---------------------------- |
+| `task:incoming` | New task offered to agent    |
+| `task:hydrate`  | Task data updated            |
+| `task:merged`   | Tasks merged (EPDN transfer) |
 
 ### Emitted on `task` object(ITask)
 
-| Event | When Emitted |
-|-------|--------------|
-| `task:assigned` | Task assigned to agent |
-| `task:hold` | Task placed on hold |
-| `task:resume` | Task resumed from hold |
-| `task:ended` | Task ended |
-| `task:wrapup` | Task entering wrapup |
-| `task:wrappedup` | Wrapup completed |
-| `task:consultCreated` | Consultation started |
-| `task:consultEnd` | Consultation ended |
-| `task:transferred` | Task transferred |
-| `task:uiControlsUpdated` | UI control states changed due to state transition |
+| Event                                                                       | When Emitted                                     |
+| --------------------------------------------------------------------------- | ------------------------------------------------ |
+| `task:assigned`                                                             | Task assigned to agent                           |
+| `task:media`                                                                | Media stream/track updates are available         |
+| `task:unassigned`                                                           | Task is unassigned from agent                    |
+| `task:offerContact`                                                         | Contact offer received/updated                   |
+| `task:offerConsult`                                                         | Consult offer received                           |
+| `task:hold`                                                                 | Task placed on hold                              |
+| `task:resume`                                                               | Task resumed from hold                           |
+| `task:end`                                                                  | Task ended                                       |
+| `task:rejected`                                                             | Task rejected / failure path emitted             |
+| `task:wrapup`                                                               | Task entering wrapup                             |
+| `task:wrappedup`                                                            | Wrapup completed                                 |
+| `task:consulting`                                                           | Consult is in progress                           |
+| `task:consultAccepted`                                                      | Consult accepted by destination party            |
+| `task:consultCreated`                                                       | Consultation started                             |
+| `task:consultEnd`                                                           | Consultation ended                               |
+| `task:autoAnswered`                                                         | Task was auto-answered                           |
+| `task:recordingStarted` / `task:recordingPaused` / `task:recordingResumed`  | Recording lifecycle updates                      |
+| `task:conferenceStarted` / `task:conferenceEnded` / `task:conferenceFailed` | Conference lifecycle updates                     |
+| `task:participantJoined` / `task:participantLeft`                           | Conference participant updates                   |
+| `task:switchCall`                                                           | Switched between consult and main call           |
+| `task:outdialFailed`                                                        | Outdial operation failed                         |
+| `task:ui-controls-updated`                                                  | UI controls changed due to state transition      |
+| `task:cleanup`                                                              | Internal cleanup signal emitted by state machine |
+
+> Full list is defined in `TASK_EVENTS` (`types.ts`).
 
 ---
 
@@ -196,21 +226,27 @@ cc.on('task:incoming', async (task) => {
 Initiate outbound call.
 
 **Parameters**:
+
 - `destination` (string): Phone number to call
 - `origin` (string): Outbound ANI/caller ID
 
-**Returns**: `Promise<TaskResponse>`
+**Returns**: `Promise<TaskResponse>` (AQM response, not a Task instance)
 
 **Example**:
+
 ```typescript
-const task = await cc.startOutdial('+14155551234', '+18005551000');
+const response = await cc.startOutdial('+14155551234', '+18005551000');
 
-task.on('task:established', () => {
-  console.log('Call connected');
-});
+// Outdial task object is created asynchronously via TaskManager.
+// Listen on cc/task events instead of treating startOutdial response as an ITask.
+cc.on('task:incoming', (task) => {
+  task.on('task:assigned', () => {
+    console.log('Call connected');
+  });
 
-task.on('task:ended', () => {
-  console.log('Call ended');
+  task.on('task:end', () => {
+    console.log('Call ended');
+  });
 });
 ```
 
@@ -220,9 +256,10 @@ task.on('task:ended', () => {
 
 Accept an incoming task.
 
-**Returns**: `Promise<void>`
+**Returns**: `Promise<TaskResponse>`
 
 **Example**:
+
 ```typescript
 cc.on('task:incoming', async (task) => {
   await task.accept();
@@ -231,19 +268,24 @@ cc.on('task:incoming', async (task) => {
 
 ---
 
-### `task.hold()` / `task.unHold()`
+### `task.hold(mediaResourceId?)` / `task.resume(mediaResourceId?)`
 
 Put task on hold or resume.
 
-**Returns**: `Promise<void>`
+**Parameters**:
+
+- `mediaResourceId` (optional `string`): Media resource ID for the hold/resume operation
+
+**Returns**: `Promise<TaskResponse>`
 
 **Example**:
+
 ```typescript
 // Put on hold
 await task.hold();
 
 // Resume
-await task.unHold();
+await task.resume();
 ```
 
 ---
@@ -252,9 +294,10 @@ await task.unHold();
 
 End the current task.
 
-**Returns**: `Promise<void>`
+**Returns**: `Promise<TaskResponse>`
 
 **Example**:
+
 ```typescript
 await task.end();
 ```
@@ -266,40 +309,46 @@ await task.end();
 Complete task with wrapup code.
 
 **Parameters**:
-- `auxCodeId` (string): Wrapup code ID
 
-**Returns**: `Promise<void>`
+- `wrapUpReason` (string, required): Wrapup reason text
+- `auxCodeId` (string, required): Wrapup code ID
+
+**Returns**: `Promise<TaskResponse>`
 
 **Example**:
+
 ```typescript
 await task.wrapup({
+  wrapUpReason: 'Customer issue resolved',
   auxCodeId: 'resolved-code',
 });
 ```
 
 ---
 
-### `task.blindTransfer(params)`
+### `task.transfer(params)`
 
-Transfer without consultation.
+Transfer task to another destination.
 
 **Parameters**:
-- `destination` (string): Agent ID, queue ID, or phone number
+
+- `to` (string): Agent ID, queue ID, or phone number
 - `destinationType` ('queue' | 'agent' | 'dialNumber'): Destination type
 
-**Returns**: `Promise<void>`
+**Returns**: `Promise<TaskResponse>`
 
 **Example**:
+
 ```typescript
 // Transfer to queue
-await task.blindTransfer({
-  destination: 'queue-123',
+await task.transfer({
+  to: 'queue-123',
   destinationType: 'queue',
 });
 
 // Transfer to agent
-await task.blindTransfer({
-  destination: 'agent-456',
+await task.transfer({
+  to: 'agent-456',
   destinationType: 'agent',
 });
 ```
@@ -311,53 +360,54 @@ await task.blindTransfer({
 Start consultation.
 
 **Parameters**:
-- `destination` (string): Agent/queue/phone to consult
+
+- `to` (string): Agent/queue/phone to consult
 - `destinationType` ('queue' | 'agent' | 'dialNumber' | 'entryPoint'): Type
 
-**Returns**: `Promise<void>`
+**Returns**: `Promise<TaskResponse>`
 
 **Example**:
+
 ```typescript
 await task.consult({
-  destination: 'agent-456',
+  to: 'agent-456',
   destinationType: 'agent',
 });
 
-// Later: complete transfer or end consult
-await task.consultTransfer();
-// or
-await task.consultEnd();
+// Later: complete transfer (consulting voice flow uses transfer())
+await task.transfer({
+  to: 'queue-123',
+  destinationType: 'queue',
+});
+// Or end consult
+await task.endConsult();
 ```
 
 ---
 
-### `task.consultTransfer()`
-
-Transfer to consulted party.
-
-**Returns**: `Promise<void>`
-
----
-
-### `task.consultEnd()`
+### `task.endConsult(consultEndPayload?)`
 
 End consultation without transfer.
 
-**Returns**: `Promise<void>`
+**Parameters**:
+
+- `consultEndPayload` (optional `ConsultEndPayload`)
+
+**Returns**: `Promise<TaskResponse>`
 
 ---
 
 ## Media Channels
 
-| Channel | Description |
-|---------|-------------|
-| `telephony` | Voice calls |
-| `chat` | Web chat |
-| `email` | Email interactions |
-| `social` | Social media |
-| `sms` | SMS messages |
-| `facebook` | Facebook Messenger |
-| `whatsapp` | WhatsApp messages |
+| Channel     | Description        |
+| ----------- | ------------------ |
+| `telephony` | Voice calls        |
+| `chat`      | Web chat           |
+| `email`     | Email interactions |
+| `social`    | Social media       |
+| `sms`       | SMS messages       |
+| `facebook`  | Facebook Messenger |
+| `whatsapp`  | WhatsApp messages  |
 
 ---
 
@@ -366,7 +416,7 @@ End consultation without transfer.
 ```typescript
 try {
   await task.transfer({
-    destination: 'queue-123',
+    to: 'queue-123',
     destinationType: 'queue',
   });
 } catch (error) {
