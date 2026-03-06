@@ -159,6 +159,18 @@ describe('plugin-meetings', () => {
         assert.equal(result.isPromoted, false, 'should not indicate promotion');
         assert.equal(result.isDemoted, false, 'should not indicate demotion');
       });
+
+      it('handles missing role payload safely', () => {
+        const updateStatusByRoleStub = sinon.stub(webinar, 'updateStatusByRole');
+
+        const result = webinar.updateRoleChanged(undefined);
+
+        assert.equal(webinar.selfIsPanelist, false);
+        assert.equal(webinar.selfIsAttendee, false);
+        assert.equal(webinar.canManageWebcast, false);
+        assert.deepEqual(result, {isPromoted: false, isDemoted: false});
+        assert.calledOnceWithExactly(updateStatusByRoleStub, {isPromoted: false, isDemoted: false});
+      });
     });
 
     describe('#updatePSDataChannel', () => {
@@ -258,6 +270,31 @@ describe('plugin-meetings', () => {
           LLM_PRACTICE_SESSION
         );
       });
+
+      it('no-ops disconnect when connect=false and currently disconnected', async () => {
+        webex.internal.llm.isConnected.returns(false);
+
+        const result = await webinar.updatePSDataChannel(false);
+
+        assert.isUndefined(result);
+        assert.notCalled(webex.internal.llm.disconnectLLM);
+        assert.notCalled(webex.internal.llm.off);
+      });
+
+      it('rebinds relay listener after successful connect', async () => {
+        await webinar.updatePSDataChannel(true);
+
+        assert.calledWith(
+          webex.internal.llm.off,
+          `event:relay.event:${LLM_PRACTICE_SESSION}`,
+          processRelayEvent
+        );
+        assert.calledWith(
+          webex.internal.llm.on,
+          `event:relay.event:${LLM_PRACTICE_SESSION}`,
+          processRelayEvent
+        );
+      });
     });
 
     describe('#updateStatusByRole', () => {
@@ -339,6 +376,18 @@ describe('plugin-meetings', () => {
 
         assert.notCalled(updateMediaShares);
       });
+
+      it('updates PS data channel based on join eligibility', () => {
+        const isJoinPracticeSessionDataChannelStub = sinon
+          .stub(webinar, 'isJoinPracticeSessionDataChannel')
+          .returns(true);
+        const updatePSDataChannelStub = sinon.stub(webinar, 'updatePSDataChannel').resolves();
+
+        webinar.updateStatusByRole({isPromoted: false, isDemoted: false});
+
+        assert.calledOnce(isJoinPracticeSessionDataChannelStub);
+        assert.calledOnceWithExactly(updatePSDataChannelStub, true);
+      });
     });
 
     describe("#setPracticeSessionState", () => {
@@ -413,6 +462,14 @@ describe('plugin-meetings', () => {
         webinar.updatePracticeSessionStatus(undefined);
 
         assert.equal(webinar.practiceSessionEnabled, false);
+      });
+      it('triggers PS data channel update using computed eligibility', () => {
+        webinar.selfIsPanelist = true;
+        const updatePSDataChannelStub = sinon.stub(webinar, 'updatePSDataChannel').resolves();
+
+        webinar.updatePracticeSessionStatus({enabled: true});
+
+        assert.calledOnceWithExactly(updatePSDataChannelStub, true);
       });
     });
 
