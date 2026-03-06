@@ -336,8 +336,8 @@ class WebexRequest {
   }
 
   public async request(options: {
-    service: string;
-    resource: string;
+    service: string;  // Service key used by `webex.request` to resolve the target host
+    resource: string; // API path within the service (for example: v1/notification/subscribe)
     method: HTTP_METHODS;
     body?: RequestBody;
   }): Promise<IHttpResponse>;
