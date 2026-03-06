@@ -1767,18 +1767,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ciscospark/test-users-legacy@npm:^1.0.2, @ciscospark/test-users-legacy@npm:^1.2.0":
-  version: 1.2.0
-  resolution: "@ciscospark/test-users-legacy@npm:1.2.0"
-  dependencies:
-    btoa: ^1.1.2
-    lodash: ^4.17.4
-    node-random-name: ^1.0.1
-    request: ^2.81.0
-  checksum: 63a74dc19338c26b54bc96694a4acf4947fc3c68e536d0738cc932f6dc962b1da1fc12008d8ce72f9462ec20bd9d3c121796e3220f3ef5980c1fe5fa0a7c146a
-  languageName: node
-  linkType: hard
-
 "@colors/colors@npm:1.5.0":
   version: 1.5.0
   resolution: "@colors/colors@npm:1.5.0"
@@ -7659,16 +7647,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/event-dictionary-ts@npm:^1.0.1930":
-  version: 1.0.1986
-  resolution: "@webex/event-dictionary-ts@npm:1.0.1986"
+"@webex/event-dictionary-ts@npm:^1.0.2073":
+  version: 1.0.2073
+  resolution: "@webex/event-dictionary-ts@npm:1.0.2073"
   dependencies:
     amf-client-js: ^5.2.6
     json-schema-to-typescript: ^12.0.0
     minimist: ^1.2.8
     shelljs: ^0.8.5
     webapi-parser: ^0.5.0
-  checksum: b0aa61fd41bfb24f62a05fd46a1068dbccc067e1837bc306798d83f89dd1d3bb70ce091624f966fcffa7037549f44a10a3ef4a5ca4ac711c2b755c1a200b7fc9
+  checksum: 5920c689c48d6ff7257cbdccbf5687a8a84dc2ac54ea334b4c982826e0bd1c535d8ad18bb8a7848eb86160bfa9bd5c89254731d5066caa3a06fff4ca71e5e0ae
   languageName: node
   linkType: hard
 
@@ -8121,7 +8109,6 @@ __metadata:
   resolution: "@webex/internal-plugin-lyra@workspace:packages/@webex/internal-plugin-lyra"
   dependencies:
     "@babel/core": ^7.17.10
-    "@ciscospark/test-users-legacy": ^1.2.0
     "@types/randomstring": ^1
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/common": "workspace:*"
@@ -8190,7 +8177,7 @@ __metadata:
     "@webex/common": "workspace:*"
     "@webex/common-timers": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/event-dictionary-ts": ^1.0.1930
+    "@webex/event-dictionary-ts": ^1.0.2073
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -8844,7 +8831,7 @@ __metadata:
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/event-dictionary-ts": ^1.0.1930
+    "@webex/event-dictionary-ts": ^1.0.2073
     "@webex/internal-media-core": 2.22.1
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
@@ -9479,7 +9466,6 @@ __metadata:
   resolution: "@webex/test-helper-test-users@workspace:packages/@webex/test-helper-test-users"
   dependencies:
     "@babel/core": ^7.17.10
-    "@ciscospark/test-users-legacy": ^1.0.2
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/jest-config-legacy": "workspace:*"
@@ -9492,9 +9478,6 @@ __metadata:
     eslint: ^8.24.0
     lodash: ^4.17.21
     prettier: ^2.7.1
-  dependenciesMeta:
-    "@ciscospark/test-users-legacy":
-      optional: true
   languageName: unknown
   linkType: soft
 
@@ -12091,7 +12074,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"btoa@npm:^1.1.2, btoa@npm:^1.2.1":
+"btoa@npm:^1.2.1":
   version: 1.2.1
   resolution: "btoa@npm:1.2.1"
   bin:
@@ -28850,7 +28833,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"request@npm:^2.81.0, request@npm:^2.88.0":
+"request@npm:^2.88.0":
   version: 2.88.2
   resolution: "request@npm:2.88.2"
   dependencies:
@@ -33962,7 +33945,6 @@ __metadata:
     "@babel/template": ^7.14.5
     "@babel/traverse": ^7.14.9
     "@babel/types": ^7.14.9
-    "@ciscospark/test-users-legacy": ^1.2.0
     "@commitlint/cli": ^17.1.2
     "@commitlint/config-conventional": ^17.1.0
     "@playwright/test": ^1.58.2
@@ -34081,9 +34063,6 @@ __metadata:
     webpack-dev-server: ^4.3.1
     yakbak: ^5.0.1
     yargs: ^16.2.0
-  dependenciesMeta:
-    "@ciscospark/test-users-legacy":
-      optional: true
   languageName: unknown
   linkType: soft
 

@@ -25,6 +25,7 @@ import PermissionError from '../common/errors/permission';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
 import Trigger from '../common/events/trigger-proxy';
+import {ServerRoles} from '../member/types';
 
 const MeetingUtil = {
   parseLocusJoin: (response) => {
@@ -33,6 +34,7 @@ const MeetingUtil = {
     // First todo: add check for existance
     parsed.locus = response.body.locus;
     parsed.dataSets = response.body.dataSets;
+    parsed.metadata = response.body.metaData;
     parsed.mediaConnections = response.body.mediaConnections;
     parsed.locusUrl = parsed.locus.url;
     parsed.locusId = parsed.locus.url.split('/').pop();
@@ -900,6 +902,21 @@ const MeetingUtil = {
     };
 
     return locusDeltaRequest;
+  },
+
+  canAttendeeRequestAiAssistantEnabled: (displayHints = [], roles: any[] = []) => {
+    const isHostOrCoHost =
+      roles.includes(ServerRoles.Cohost) || roles.includes(ServerRoles.Moderator);
+
+    if (isHostOrCoHost) {
+      return false;
+    }
+
+    if (displayHints.includes(DISPLAY_HINTS.ATTENDEE_REQUEST_AI_ASSISTANT_ENABLED)) {
+      return true;
+    }
+
+    return false;
   },
 
   selfSupportsFeature: (feature: SELF_POLICY, userPolicies: Record<SELF_POLICY, boolean>) => {

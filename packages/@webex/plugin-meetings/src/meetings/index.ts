@@ -626,7 +626,7 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * handles locus events through mercury that are not roap
+   * handles locus events through mercury that are not roap or approval request events
    * @param {Object} envelope
    * @param {Object} envelope.data
    * @param {String} envelope.data.eventType
@@ -639,7 +639,11 @@ export default class Meetings extends WebexPlugin {
     // eslint-disable-next-line @typescript-eslint/no-shadow
     const {eventType} = data;
 
-    if (eventType && eventType !== LOCUSEVENT.MESSAGE_ROAP) {
+    if (
+      eventType &&
+      eventType !== LOCUSEVENT.MESSAGE_ROAP &&
+      eventType !== LOCUSEVENT.APPROVAL_REQUEST
+    ) {
       this.handleLocusEvent(data, true);
     }
   }

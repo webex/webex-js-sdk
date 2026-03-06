@@ -11,6 +11,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import * as BrowserDetectionModule from '@webex/plugin-meetings/src/common/browser-detection';
 import PasswordError from '@webex/plugin-meetings/src/common/errors/password-error';
 import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error';
+import {ServerRoles} from '@webex/plugin-meetings/src/member/types';
 
 describe('plugin-meetings', () => {
   let webex;
@@ -936,6 +937,80 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('canAttendeeRequestAiAssistantEnabled', () => {
+      it('returns false when user is a cohost', () => {
+        assert.deepEqual(
+          MeetingUtil.canAttendeeRequestAiAssistantEnabled(
+            ['ATTENDEE_REQUEST_AI_ASSISTANT_ENABLED'],
+            [ServerRoles.Cohost]
+          ),
+          false
+        );
+      });
+
+      it('returns false when user is a moderator', () => {
+        assert.deepEqual(
+          MeetingUtil.canAttendeeRequestAiAssistantEnabled(
+            ['ATTENDEE_REQUEST_AI_ASSISTANT_ENABLED'],
+            [ServerRoles.Moderator]
+          ),
+          false
+        );
+      });
+
+      it('returns false when user is both cohost and moderator', () => {
+        assert.deepEqual(
+          MeetingUtil.canAttendeeRequestAiAssistantEnabled(
+            ['ATTENDEE_REQUEST_AI_ASSISTANT_ENABLED'],
+            [ServerRoles.Cohost, ServerRoles.Moderator]
+          ),
+          false
+        );
+      });
+
+      it('returns true when user is an attendee and display hint is present', () => {
+        assert.deepEqual(
+          MeetingUtil.canAttendeeRequestAiAssistantEnabled(
+            ['ATTENDEE_REQUEST_AI_ASSISTANT_ENABLED'],
+            []
+          ),
+          true
+        );
+      });
+
+      it('returns true when user has other roles (not host/cohost) and display hint is present', () => {
+        assert.deepEqual(
+          MeetingUtil.canAttendeeRequestAiAssistantEnabled(
+            ['ATTENDEE_REQUEST_AI_ASSISTANT_ENABLED'],
+            ['SomeOtherRole']
+          ),
+          true
+        );
+      });
+
+      it('returns false when user is an attendee but display hint is not present', () => {
+        assert.deepEqual(MeetingUtil.canAttendeeRequestAiAssistantEnabled([], []), false);
+      });
+
+      it('returns false when user is an attendee with other display hints but not the AI assistant one', () => {
+        assert.deepEqual(
+          MeetingUtil.canAttendeeRequestAiAssistantEnabled(['SOME_OTHER_HINT', 'ANOTHER_HINT'], []),
+          false
+        );
+      });
+
+      it('returns false when host/cohost even if display hint is not present', () => {
+        assert.deepEqual(
+          MeetingUtil.canAttendeeRequestAiAssistantEnabled([], [ServerRoles.Cohost]),
+          false
+        );
+        assert.deepEqual(
+          MeetingUtil.canAttendeeRequestAiAssistantEnabled([], [ServerRoles.Moderator]),
+          false
+        );
+      });
+    });
+
     describe('bothLeaveAndEndMeetingAvailable', () => {
       it('works as expected', () => {
         assert.deepEqual(
@@ -1464,6 +1539,7 @@ describe('plugin-meetings', () => {
                 id: 'selfId123',
               },
             },
+            metaData: {id: 'some hash tree metadata'},
             dataSets: [{name: 'dataset1', url: 'http://dataset.com'}],
             mediaConnections: [{mediaId: 'mediaId456'}, {someOtherField: 'value'}],
           },
@@ -1481,6 +1557,7 @@ describe('plugin-meetings', () => {
           locusId: '12345',
           selfId: 'selfId123',
           mediaId: 'mediaId456',
+          metadata: {id: 'some hash tree metadata'},
         });
       });
 
@@ -1510,6 +1587,7 @@ describe('plugin-meetings', () => {
           locusUrl: 'https://locus-a.wbx2.com/locus/api/v1/loci/12345',
           locusId: '12345',
           selfId: 'selfId123',
+          metadata: {id: 'some hash tree metadata'},
         });
         assert.isUndefined(result.mediaId);
       });
