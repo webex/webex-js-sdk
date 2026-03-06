@@ -31,6 +31,72 @@ sequenceDiagram
     end
 ```
 
+### End-to-End Core Flow (Complete Picture)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant App as Service/Plugin Method
+    participant AQM as AqmReqs.req()
+    participant WR as WebexRequest.request()
+    participant WSM as WebSocketManager
+    participant CS as ConnectionService
+    participant KW as Keepalive Worker
+    participant BE as Backend
+    participant UT as Utils.getErrorDetails()
+
+    Note over App,BE: Bootstrapping and listener wiring
+    App->>WSM: initWebSocket(subscribeRequest)
+    WSM->>BE: POST /subscribe
+    BE-->>WSM: {webSocketUrl, subscriptionId}
+    WSM->>WSM: open socket + register onmessage/onclose
+    WSM->>CS: emit('message', welcomeEvent)
+    App->>CS: new ConnectionService({webSocketManager, subscribeRequest})
+    CS->>WSM: on('message', onPing)
+    CS->>WSM: on('socketClose', onSocketClose)
+    WSM->>KW: postMessage({type: 'start'})
+
+    Note over App,BE: Normal API operation with bind-based response
+    App->>AQM: req(conf)
+    AQM->>WR: request({service, resource, method, body})
+    WR->>BE: HTTP request
+    BE-->>WR: HTTP response (ack/tracking)
+    WR-->>AQM: IHttpResponse
+    AQM->>WSM: wait for matching websocket bind
+    BE-->>WSM: async notification event
+    WSM->>CS: emit('message', event)
+    CS->>CS: onPing() reset timers
+    WSM-->>AQM: message event
+    AQM-->>App: resolve promise
+
+    Note over KW,CS: Keepalive and disconnect detection
+    KW-->>WSM: postMessage({type:'keepalive', onlineStatus})
+    alt Browser offline too long
+        KW-->>WSM: postMessage({type:'closeSocket'})
+        WSM->>CS: emit('socketClose')
+        CS->>CS: onSocketClose() -> start reconnect interval
+        loop Every CONNECTIVITY_CHECK_INTERVAL
+            CS->>CS: handleSocketClose()
+            alt navigator.onLine === true
+                CS->>WSM: initWebSocket({body: subscribeRequest})
+                CS->>CS: dispatchConnectionEvent(socketReconnected=true)
+                CS-->>App: emit('connectionLost', {isSocketReconnected:true})
+            else still offline
+                CS->>CS: handleConnectionLost()
+                CS-->>App: emit('connectionLost', {isConnectionLost:true})
+            end
+        end
+    end
+
+    Note over AQM,UT: Shared error handling path
+    alt HTTP error / bind timeout / backend failure
+        AQM-->>App: reject(error)
+        App->>UT: getErrorDetails(error, methodName, moduleName)
+        UT->>WR: uploadLogs({correlationId: trackingId})
+        UT-->>App: {error, reason}
+    end
+```
+
 ---
 
 ## ConnectionService
@@ -48,10 +114,26 @@ type ConnectionServiceOptions = {
 };
 ```
 
+### Type References
+
+- `SubscribeRequest`: [src/types.ts](../../../types.ts)
+- `ConnectionProp`: [src/services/core/websocket/types.ts](../websocket/types.ts)
+- `ConnectionServiceOptions`: [src/services/core/websocket/types.ts](../websocket/types.ts)
+- `ConnectionLostDetails`: [src/services/core/websocket/types.ts](../websocket/types.ts)
+
 The constructor wires up two listeners on `WebSocketManager`:
 
 - `'message'` → `onPing` (resets disconnect/restore timers on every incoming message)
 - `'socketClose'` → `onSocketClose` (starts the reconnection interval)
+
+Code reference (`src/services/core/websocket/connection-service.ts`):
+
+```typescript
+private setupEventListeners() {
+  this.webSocketManager.on('message', this.onPing.bind(this));
+  this.webSocketManager.on('socketClose', this.onSocketClose.bind(this));
+}
+```
 
 ### Key Constants
 
@@ -61,25 +143,85 @@ The constructor wires up two listeners on `WebSocketManager`:
 | `WS_DISCONNECT_ALLOWED`            | 8 000 ms  | Grace period before flagging connection lost |
 | `CONNECTIVITY_CHECK_INTERVAL`      | 5 000 ms  | Interval between reconnection attempts       |
 
+### Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `connectionProp` | `ConnectionProp` | Runtime configuration object (for example `lostConnectionRecoveryTimeout`) used by reconnect/restore timers. |
+| `wsDisconnectAllowed` | `number` | Timeout window before `handleConnectionLost` is triggered when no ping/message is received. |
+| `reconnectingTimer` | `ReturnType<typeof setTimeout>` | Per-message timeout that schedules lost-connection detection. |
+| `restoreTimer` | `ReturnType<typeof setTimeout>` | Timeout that marks restore failure if recovery does not complete in time. |
+| `reconnectInterval` | `ReturnType<typeof setInterval>` | Periodic retry loop started after socket close to attempt reconnection. |
+| `isConnectionLost` | `boolean` | Indicates that the connection has been marked as lost. |
+| `isRestoreFailed` | `boolean` | Indicates that recovery has exceeded the configured restore timeout. |
+| `isSocketReconnected` | `boolean` | Indicates that a reconnect attempt succeeded and socket is back. |
+| `isKeepAlive` | `boolean` | Tracks whether the latest incoming message is a keepalive signal. |
+| `webSocketManager` | `WebSocketManager` | Core WebSocket dependency used for event subscription and re-initialization. |
+| `subscribeRequest` | `SubscribeRequest` | Cached subscribe payload reused during reconnect (`initWebSocket`). |
+
 ### Methods
 
-The only public method is `setConnectionProp`. All other methods are private implementation details — listed here for architectural understanding, not as extension points.
+The only public method is `setConnectionProp`. All other methods are private implementation details and are documented for architectural understanding.
 
-```typescript
-export class ConnectionService extends EventEmitter {
-  public setConnectionProp(prop: ConnectionProp): void;
+1. `setConnectionProp(prop: ConnectionProp): void` (public)
+   - **Purpose**: Updates connection-level runtime settings used by timers (mainly recovery timeout behavior).
+   - **Params**: `prop` - new connection config object.
+   - **Returns**: `void`.
+   - **Usage**: Called by higher layers when timeout behavior must be tuned after initialization.
 
-  private setupEventListeners(): void;      // Wires 'message' and 'socketClose' listeners
-  private onPing(event: any): void;          // Resets timers on every message, dispatches recovery events
-  private onSocketClose(): void;             // Starts reconnect interval on socket close
-  private handleSocketClose(): Promise<void>;// Attempts reconnection if browser is online
-  private handleConnectionLost(): void;      // Flags connection as lost, dispatches event
-  private handleRestoreFailed(): Promise<void>;      // Flags restore failed after timeout
-  private clearTimerOnRestoreFailed(): Promise<void>;// Clears the reconnect interval
-  private updateConnectionData(): void;      // Resets connection flags to clean state
-  private dispatchConnectionEvent(socketReconnected?: boolean): void; // Emits 'connectionLost' event
-}
-```
+2. `setupEventListeners(): void` (private)
+   - **Purpose**: Wires `WebSocketManager` events to internal handlers (`'message' -> onPing`, `'socketClose' -> onSocketClose`).
+   - **Params**: none.
+   - **Returns**: `void`.
+   - **Usage**: Invoked from the constructor once, during `ConnectionService` setup.
+
+3. `onPing(event: any): void` (private)
+   - **Purpose**: Handles every incoming socket message, resets timers, updates keepalive/recovery flags, and emits recovery events when state changes.
+   - **Params**: `event` - raw message payload (JSON string) received from the socket event stream.
+   - **Returns**: `void`.
+   - **Usage**: Triggered automatically by the `'message'` listener.
+
+4. `onSocketClose(): void` (private)
+   - **Purpose**: Starts the reconnect interval when socket close is detected.
+   - **Params**: none.
+   - **Returns**: `void`.
+   - **Usage**: Triggered automatically by the `'socketClose'` listener.
+
+5. `handleSocketClose(): Promise<void>` (private)
+   - **Purpose**: Performs one reconnect attempt; if browser is online, reinitializes WebSocket and marks socket as reconnected.
+   - **Params**: none.
+   - **Returns**: `Promise<void>` (rejects when browser is offline).
+   - **Usage**: Called repeatedly from `onSocketClose` interval loop.
+
+6. `handleConnectionLost(): void` (private)
+   - **Purpose**: Marks the connection as lost and dispatches a connection status event.
+   - **Params**: none.
+   - **Returns**: `void`.
+   - **Usage**: Scheduled by `onPing` via `reconnectingTimer` after inactivity.
+
+7. `handleRestoreFailed(): Promise<void>` (private)
+   - **Purpose**: Marks restore as failed, disables reconnect, emits failure state, and clears reconnect interval.
+   - **Params**: none.
+   - **Returns**: `Promise<void>`.
+   - **Usage**: Scheduled by `onPing` via `restoreTimer`.
+
+8. `clearTimerOnRestoreFailed(): Promise<void>` (private)
+   - **Purpose**: Stops active reconnect interval to avoid duplicate retries.
+   - **Params**: none.
+   - **Returns**: `Promise<void>`.
+   - **Usage**: Called from reconnect/failure paths whenever interval cleanup is needed.
+
+9. `updateConnectionData(): void` (private)
+   - **Purpose**: Resets transient connection flags (`isConnectionLost`, `isRestoreFailed`, `isSocketReconnected`) after recovery.
+   - **Params**: none.
+   - **Returns**: `void`.
+   - **Usage**: Called inside `onPing` before dispatching recovered state.
+
+10. `dispatchConnectionEvent(socketReconnected = false): void` (private)
+    - **Purpose**: Builds `ConnectionLostDetails`, forwards it to `WebSocketManager.handleConnectionLost`, and emits `'connectionLost'`.
+    - **Params**: `socketReconnected` - optional override used when reconnect is explicitly detected.
+    - **Returns**: `void`.
+    - **Usage**: Used by lost/recovered/restore-failed paths to publish uniform connection state.
 
 ### Reconnection Flow
 
@@ -136,6 +278,26 @@ connectionService.on('connectionLost', (details: ConnectionLostDetails) => {
 
 ## AqmReqs Pattern
 
+`AqmReqs` coordinates the Contact Center request lifecycle by sending an HTTP request and then waiting for the matching WebSocket response bind. This gives service methods a single promise-based API that resolves only when the backend confirms completion.
+
+```typescript
+import AqmReqs from '../aqm-reqs';
+
+const aqmReqs = new AqmReqs();
+
+const response = await aqmReqs.req({
+  url: '/v1/agent/state',
+  method: 'POST',
+  body: {agentId: 'agent-123', state: 'AVAILABLE'},
+  bind: {
+    eventType: 'agent-state-change',
+    matcher: (event) => event.agentId === 'agent-123',
+  },
+});
+
+// `response` resolves after matching bind event arrives
+```
+
 ### Request/Response Flow
 
 ```mermaid
@@ -179,6 +341,15 @@ class WebexRequest {
 
 export default WebexRequest;
 ```
+
+Type references:
+
+- `WebexSDK`: [src/types.ts](../../../types.ts)
+- `HTTP_METHODS`: [src/types.ts](../../../types.ts)
+- `RequestBody`: [src/types.ts](../../../types.ts)
+- `IHttpResponse`: [src/types.ts](../../../types.ts)
+- `LogsMetaData`: [src/types.ts](../../../types.ts)
+- `UploadLogsResponse`: [src/types.ts](../../../types.ts)
 
 ### Request Flow
 
@@ -238,6 +409,8 @@ Maintains WebSocket connection with periodic pings and monitors network status. 
 
 ## Error Handling
 
+This section documents shared error helpers in `Utils.ts` that normalize errors, enrich them with context, and ensure consistent logging/upload behavior across services.
+
 ### Error Types
 
 ```typescript
@@ -285,6 +458,8 @@ flowchart TD
 
 ### getErrorDetails
 
+Use this helper for agent/config-style flows where backend failure payloads are transformed into a user-facing `Error` plus `reason`, with optional station-login field metadata.
+
 ```typescript
 export const getErrorDetails = (error: any, methodName: string, moduleName: string) => {
   let errData = {message: '', fieldName: ''};
@@ -321,6 +496,8 @@ export const getErrorDetails = (error: any, methodName: string, moduleName: stri
 
 ### generateTaskErrorObject
 
+Use this helper for task/interaction flows where richer task error metadata (`errorType`, `errorData`, `reasonCode`, `trackingId`) is required on the returned `AugmentedError`.
+
 ```typescript
 export const generateTaskErrorObject = (
   error: any,
@@ -354,6 +531,18 @@ export const generateTaskErrorObject = (
 
   return err;
 };
+```
+
+### Usage Guidance
+
+```typescript
+// Use getErrorDetails for:
+// - Agent service operations
+// - Station login/logout flows
+//
+// Use generateTaskErrorObject for:
+// - Task service operations
+// - Interaction-related errors
 ```
 
 ---
