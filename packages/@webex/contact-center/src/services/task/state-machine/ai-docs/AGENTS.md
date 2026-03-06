@@ -38,7 +38,7 @@ state-machine/
 ├── index.ts                 # Public exports
 └── ai-docs/
     ├── AGENTS.md            # AI coding guide
-    └── ARCHITECTURE.md      # This file
+    └── ARCHITECTURE.md      # State machine architecture guide
 ```
 
 ---
@@ -159,7 +159,9 @@ didInitiateConsult(context, event) {
 ```typescript
 // Check if conference is in progress from event taskData
 conferenceInProgressFromEvent(context, event) {
-  return Boolean(event.taskData?.interaction) && getIsConferenceInProgress(event.taskData);
+  const taskData = event.taskData;
+  if (!taskData?.interaction) return false;
+  return getIsConferenceInProgress(taskData);
 }
 
 // Check if conference is in progress by participants
@@ -186,19 +188,27 @@ isConferencingByParticipants(context, event) {
 // Check if conference should downgrade to connected
 shouldDowngradeConferenceToConnected(context, event) {
   const taskData = event.taskData ?? context.taskData;
+  if (!taskData?.interaction) return false;
+
   const selfAgentId = getSelfAgentId(context, taskData);
+  if (!selfAgentId) return false;
+
   const mainCallId = taskData?.interaction?.mainInteractionId || taskData?.interactionId;
+  if (!mainCallId) return false;
+
+  // Do not downgrade while backend still reports active conference state
+  if (taskData.interaction.state === 'conference') return false;
+
   const agentParticipantsCount = getConferenceParticipantsCount(taskData?.interaction, mainCallId);
+  if (agentParticipantsCount >= 2) return false;
+
   const customerInCall = getIsCustomerInCall(taskData?.interaction, mainCallId);
+  if (!customerInCall) return false;
+
   const selfInMainCall = Boolean(
     taskData?.interaction?.media?.[mainCallId]?.participants?.includes(selfAgentId)
   );
-  return (
-    taskData?.interaction?.state !== 'conference' &&
-    agentParticipantsCount < 2 &&
-    customerInCall &&
-    selfInMainCall
-  );
+  return selfInMainCall;
 }
 ```
 
@@ -237,7 +247,8 @@ didCurrentAgentLeaveConference(context, event) {
   const selfAgentId = getSelfAgentId(context, event.taskData);
   if (!selfAgentId) return false;
 
-  const participantId = event.participantId ?? event.taskData?.participantId;
+  const participantIdFromEvent = 'participantId' in event ? event.participantId : undefined;
+  const participantId = participantIdFromEvent ?? event.taskData?.participantId;
   return Boolean(participantId) && participantId === selfAgentId;
 }
 ```
@@ -379,6 +390,8 @@ emitTaskWrapup(context, event) {
 ### Cleanup Actions
 
 ```typescript
+// NOTE: These are no-op placeholders in actions.ts and are overridden in Task.ts.
+
 // Request cleanup (remove from collection, keep task object)
 requestCleanup(context, event) {
   task.emit(TASK_EVENTS.TASK_CLEANUP, task, {removeFromCollection: false});
@@ -393,6 +406,8 @@ cleanupResources(context, event) {
 ### Auto-Answer Actions
 
 ```typescript
+// NOTE: requestAutoAnswer is a placeholder in actions.ts and is overridden in Task.ts.
+
 // Request auto-answer
 requestAutoAnswer(context, event) {
   if (event.taskData?.isAutoAnswering) {

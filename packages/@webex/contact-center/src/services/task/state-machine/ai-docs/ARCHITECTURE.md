@@ -62,6 +62,9 @@ It is instantiated by `Task` and receives mapped backend/user events through `se
 - `HYDRATE` -> `CONFERENCING`
   - Guard: `guards.isConferencingByParticipants`
   - Actions: `updateTaskData`, `emitTaskHydrate`
+- `HYDRATE` -> stay `IDLE` (default hydrate branch)
+  - Guard: default
+  - Actions: `updateTaskData`, `emitTaskHydrate`
 
 ---
 
@@ -585,11 +588,6 @@ Event names below are from `TaskEvent` in `constants.ts`.
 
 - `RONA`, `INVITE_FAILED`, `ASSIGN_FAILED`, `OUTBOUND_FAILED`
 
-### Notes
-
-- `CONSULT_INITIATED` and `TRANSFER_INITIATED` are not `TaskEvent` enum values.
-- `SWITCH_TO_MAIN_CALL`, `SWITCH_TO_CONSULT`, `ACCEPT`, `DECLINE`, and `END` are not `TaskEvent` enum values in this state machine.
-
 ---
 
 ## Single Transition Flow
@@ -793,14 +791,14 @@ Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 
 ### Transfer Mappings
 
-| Backend Event                | TaskEvent          | State Transition                    | Wrapup Logic                            |
-| ---------------------------- | ------------------ | ----------------------------------- | --------------------------------------- |
-| `AgentBlindTransferred`      | `TRANSFER_SUCCESS` | → WRAPPING_UP/TERMINATED            | Based on wrapUpRequired                 |
-| `AgentVTeamTransferred`      | `TRANSFER_SUCCESS` | → WRAPPING_UP/TERMINATED            | Queue transfer success                  |
-| `AgentConsultTransferred`    | `TRANSFER_SUCCESS` | CONSULTING → WRAPPING_UP/TERMINATED | Initiator wraps up, consulted gets task |
-| `AgentBlindTransferFailed`   | `TRANSFER_FAILED`  | No change                           | Emit failure, stay in current state     |
-| `AgentVTeamTransferFailed`   | `TRANSFER_FAILED`  | No change                           | Queue transfer failed                   |
-| `AgentConsultTransferFailed` | `TRANSFER_FAILED`  | No change                           | Consult transfer failed                 |
+| Backend Event                | TaskEvent          | State Transition                   | Wrapup Logic                                                              |
+| ---------------------------- | ------------------ | ---------------------------------- | ------------------------------------------------------------------------- |
+| `AgentBlindTransferred`      | `TRANSFER_SUCCESS` | → WRAPPING_UP/CONNECTED            | Guard `shouldWrapUpOrIsInitiator` decides wrapup vs receiver/default path |
+| `AgentVTeamTransferred`      | `TRANSFER_SUCCESS` | → WRAPPING_UP/CONNECTED            | Same transition logic as blind transfer                                   |
+| `AgentConsultTransferred`    | `TRANSFER_SUCCESS` | CONSULTING → WRAPPING_UP/CONNECTED | Initiator/wrapup path vs receiver/default path                            |
+| `AgentBlindTransferFailed`   | `TRANSFER_FAILED`  | No change                          | Emit failure, stay in current state                                       |
+| `AgentVTeamTransferFailed`   | `TRANSFER_FAILED`  | No change                          | Queue transfer failed                                                     |
+| `AgentConsultTransferFailed` | `TRANSFER_FAILED`  | No change                          | Consult transfer failed                                                   |
 
 ### Conference Mappings
 
@@ -832,12 +830,12 @@ Complete mapping from backend CC_EVENTS to internal TaskEvent types.
 
 ### Error Mappings
 
-| Backend Event              | TaskEvent         | State Transition                 | Notes                    |
-| -------------------------- | ----------------- | -------------------------------- | ------------------------ |
-| `AgentContactOfferRona`    | `RONA`            | OFFERED → TERMINATED             | Redirection on no answer |
-| `AgentInviteFailed`        | `INVITE_FAILED`   | OFFERED → TERMINATED             | Invite failed            |
-| `AgentContactAssignFailed` | `ASSIGN_FAILED`   | OFFERED → TERMINATED             | Assignment failed        |
-| `AgentOutboundFailed`      | `OUTBOUND_FAILED` | OFFERED → WRAPPING_UP/TERMINATED | Outdial failed           |
+| Backend Event              | TaskEvent         | State Transition     | Notes                    |
+| -------------------------- | ----------------- | -------------------- | ------------------------ |
+| `AgentContactOfferRona`    | `RONA`            | OFFERED → TERMINATED | Redirection on no answer |
+| `AgentInviteFailed`        | `INVITE_FAILED`   | OFFERED → TERMINATED | Invite failed            |
+| `AgentContactAssignFailed` | `ASSIGN_FAILED`   | OFFERED → TERMINATED | Assignment failed        |
+| `AgentOutboundFailed`      | `OUTBOUND_FAILED` | OFFERED → TERMINATED | Outdial failed           |
 
 ---
 
@@ -947,7 +945,7 @@ The full diagram above is the source of truth. The diagrams below split above fl
 stateDiagram-v2
     [*] --> IDLE
     IDLE --> OFFERED: AGENT_CONTACT_RESERVED -> TASK_INCOMING
-    OFFERED --> OFFERED: AGENT_CONTACT_OFFER -> OFFER
+    OFFERED --> OFFERED: AGENT_CONTACT_OFFER -> TASK_OFFERED
     OFFERED --> OFFERED: AGENT_CONSULT_OFFER -> OFFER_CONSULT
     OFFERED --> CONNECTED: AGENT_CONTACT_ASSIGNED -> ASSIGN
     OFFERED --> TERMINATED: AGENT_CONTACT_OFFER_RONA/AGENT_CONTACT_ASSIGN_FAILED/AGENT_INVITE_FAILED/AGENT_OUTBOUND_FAILED/AGENT_WRAPUP -> RONA/ASSIGN_FAILED/INVITE_FAILED/OUTBOUND_FAILED/TASK_WRAPUP
@@ -1001,7 +999,7 @@ stateDiagram-v2
 
     CONSULT_INITIATING --> CONSULT_INITIATING: AGENT_CONTACT_HELD  -> HOLD_SUCCESS
     CONSULT_INITIATING --> CONNECTED: AGENT_CONTACT_HOLD_FAILED -> HOLD_FAILED
-    CONSULT_INITIATING --> CONSULTING: AGENT_CONSULTING -> CONSULT_SUCCESS
+    CONSULT_INITIATING --> CONSULTING: API consult success -> CONSULT_SUCCESS
     CONSULT_INITIATING --> HELD: AGENT_CONSULT_FAILED/AGENT_CTQ_FAILED -> CONSULT_FAILED [isPrimaryMediaOnHold]
     CONSULT_INITIATING --> CONNECTED: AGENT_CONSULT_FAILED/AGENT_CTQ_FAILED -> CONSULT_FAILED [default]
     CONSULT_INITIATING --> CONFERENCING: AGENT_CONSULT_FAILED -> CONSULT_FAILED [consultFromConference]
@@ -1044,9 +1042,6 @@ stateDiagram-v2
     CONFERENCING --> WRAPPING_UP: AGENT_CONSULT_CONFERENCE_ENDED -> CONFERENCE_END [shouldWrapUp]
     CONFERENCING --> CONNECTED: AGENT_CONSULT_CONFERENCE_ENDED -> CONFERENCE_END [customerInCall]
     CONFERENCING --> TERMINATED: AGENT_CONSULT_CONFERENCE_ENDED -> CONFERENCE_END [default]
-    CONFERENCING --> WRAPPING_UP: task.exitConference() ->  EXIT_CONFERENCE_SUCCESS [shouldWrapUp]
-    CONFERENCING --> TERMINATED: task.exitConference() -> EXIT_CONFERENCE_SUCCESS
-
     WRAPPING_UP --> COMPLETED: WRAPUP_COMPLETE
     COMPLETED --> [*]
     TERMINATED --> [*]
