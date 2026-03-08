@@ -29,6 +29,31 @@ const webex = new WebexCore();
 webex.internal.mercury.WHATEVER;
 ```
 
+### Multiple Connections
+
+Mercury now supports multiple simultaneous websocket connections scoped by `sessionId`.
+
+```js
+const mercury = webex.internal.mercury;
+
+// Default session
+await mercury.connect();
+
+// Additional session
+await mercury.connect(undefined, 'secondary-session');
+
+// Disconnect only one session
+await mercury.disconnect(undefined, 'secondary-session');
+
+// Disconnect everything
+await mercury.disconnectAll();
+```
+
+Notes:
+- `connect(webSocketUrl, sessionId)` and `disconnect(options, sessionId)` are session-aware.
+- Non-default sessions emit events with a `:<sessionId>` suffix (for example, `online:secondary-session`).
+- `getSocket(sessionId)` returns the socket for a specific session.
+
 ## Config Options
 
 ### Using A Proxy Agent To Open A Websocket Connection

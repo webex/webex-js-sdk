@@ -20,6 +20,13 @@ import {
 
 const sockets = new WeakMap();
 
+const SOCKET_READY_STATE = Object.freeze({
+  CONNECTING: 0,
+  OPEN: 1,
+  CLOSING: 2,
+  CLOSED: 3,
+});
+
 /**
  * Generalized socket abstraction
  */
@@ -116,7 +123,10 @@ export default class Socket extends EventEmitter {
       // logger is defined once open is called
       this.logger.info(`socket,${this._domain}: closing`);
 
-      if (socket.readyState === 2 || socket.readyState === 3) {
+      if (
+        socket.readyState === SOCKET_READY_STATE.CLOSING ||
+        socket.readyState === SOCKET_READY_STATE.CLOSED
+      ) {
         this.logger.info(`socket,${this._domain}: already closed`);
         resolve();
 
@@ -165,7 +175,7 @@ export default class Socket extends EventEmitter {
 
       // If socket is still connecting, manually trigger close handler with desired code
       // because calling close() on a CONNECTING socket may not preserve custom codes
-      if (socket.readyState === 0) {
+      if (socket.readyState === SOCKET_READY_STATE.CONNECTING) {
         this.logger.info(
           `socket,${this._domain}: socket still connecting, triggering close manually`
         );
@@ -350,7 +360,7 @@ export default class Socket extends EventEmitter {
    */
   send(data) {
     return new Promise((resolve, reject) => {
-      if (this.readyState !== 1) {
+      if (this.readyState !== SOCKET_READY_STATE.OPEN) {
         return reject(new Error('INVALID_STATE_ERROR'));
       }
 
@@ -381,7 +391,7 @@ export default class Socket extends EventEmitter {
     }
 
     // Don't try to acknowledge if socket is not in open state
-    if (this.readyState !== 1) {
+    if (this.readyState !== SOCKET_READY_STATE.OPEN) {
       return Promise.resolve(); // Silently ignore acknowledgment for closed sockets
     }
 
