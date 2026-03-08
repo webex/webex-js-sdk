@@ -206,6 +206,34 @@ describe('plugin-meetings', () => {
         sinon.assert.notCalled(triggerSpy);
       });
 
+      it('should trigger DECLINED_ALL event even when user is neither approver nor initiator', () => {
+        aiEnableRequest.listenToApprovalRequests();
+
+        const event = {
+          data: {
+            approval: {
+              resourceType: AI_ENABLE_REQUEST.RESOURCE_TYPE,
+              receivers: [{participantId: testApproverId}],
+              initiator: {participantId: testInitiatorId},
+              actionType: AI_ENABLE_REQUEST.ACTION_TYPE.DECLINED_ALL,
+              url: testUrl,
+            },
+          },
+        };
+
+        webex.internal.mercury.emit(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+
+        sinon.assert.calledOnce(triggerSpy);
+        sinon.assert.calledWith(triggerSpy, AI_ENABLE_REQUEST.EVENTS.APPROVAL_REQUEST_ARRIVED, {
+          actionType: AI_ENABLE_REQUEST.ACTION_TYPE.DECLINED_ALL,
+          isApprover: false,
+          isInitiator: false,
+          initiatorId: testInitiatorId,
+          approverId: testApproverId,
+          url: testUrl,
+        });
+      });
+
       it('should not trigger event when resourceType does not match', () => {
         aiEnableRequest.listenToApprovalRequests();
 
