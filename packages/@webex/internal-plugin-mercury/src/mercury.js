@@ -498,6 +498,8 @@ const Mercury = WebexPlugin.extend({
       const err = new Error(msg);
 
       this.logger.info(msg);
+
+      // Call the callback with the error before rejecting
       callback(err);
 
       return Promise.reject(err);
