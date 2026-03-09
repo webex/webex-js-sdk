@@ -738,7 +738,9 @@ describe('plugin-meetings', () => {
         let supportsRTCPeerConnectionStub;
 
         beforeEach(() => {
-          supportsRTCPeerConnectionStub = sinon.stub(WebCapabilities, 'supportsRTCPeerConnection').returns(CapabilityState.CAPABLE);
+          supportsRTCPeerConnectionStub = sinon
+            .stub(WebCapabilities, 'supportsRTCPeerConnection')
+            .returns(CapabilityState.CAPABLE);
 
           meeting.join = sinon.stub().callsFake((joinOptions) => {
             meeting.isMultistream = joinOptions.enableMultistream;
@@ -1020,9 +1022,9 @@ describe('plugin-meetings', () => {
               body: {
                 errorCode: 2729,
                 message: 'fake addMedia error',
-                name: 'TypeError'
-              }
-            }
+                name: 'TypeError',
+              },
+            },
           };
           meeting.addMediaInternal.rejects(addMediaError);
           sinon.stub(meeting, 'leave').resolves();
@@ -1249,8 +1251,14 @@ describe('plugin-meetings', () => {
         });
 
         [
-          {errorName: 'SdpOfferCreationError', description: 'if we fail to create the offer on first attempt'}, 
-          {errorName: 'WebrtcApiNotAvailableError', description: 'if RTCPeerConnection is not available'},
+          {
+            errorName: 'SdpOfferCreationError',
+            description: 'if we fail to create the offer on first attempt',
+          },
+          {
+            errorName: 'WebrtcApiNotAvailableError',
+            description: 'if RTCPeerConnection is not available',
+          },
         ].forEach(({errorName, description}) => {
           it(`should not attempt a retry ${description}`, async () => {
             const addMediaError = new Error('fake addMedia error');
@@ -1290,7 +1298,7 @@ describe('plugin-meetings', () => {
               resourceId: undefined,
               reason: 'joinWithMedia failure',
             });
-          })
+          });
         });
 
         it('should ignore sendVideo/receiveVideo when videoEnabled is false', async () => {
@@ -11645,6 +11653,7 @@ describe('plugin-meetings', () => {
         let canUnsetDisallowUnmuteSpy;
         let canUserRaiseHandSpy;
         let bothLeaveAndEndMeetingAvailableSpy;
+        let requireHostEndMeetingBeforeLeaveSpy;
         let canUserLowerAllHandsSpy;
         let canUserLowerSomeoneElsesHandSpy;
         let waitingForOthersToJoinSpy;
@@ -11675,6 +11684,10 @@ describe('plugin-meetings', () => {
           bothLeaveAndEndMeetingAvailableSpy = sinon.spy(
             MeetingUtil,
             'bothLeaveAndEndMeetingAvailable'
+          );
+          requireHostEndMeetingBeforeLeaveSpy = sinon.spy(
+            MeetingUtil,
+            'requireHostEndMeetingBeforeLeave'
           );
           canUserLowerSomeoneElsesHandSpy = sinon.spy(MeetingUtil, 'canUserLowerSomeoneElsesHand');
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
@@ -12236,6 +12249,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(canUnsetDisallowUnmuteSpy, userDisplayHints);
           assert.calledWith(canUserRaiseHandSpy, userDisplayHints);
           assert.calledWith(bothLeaveAndEndMeetingAvailableSpy, userDisplayHints);
+          assert.calledWith(requireHostEndMeetingBeforeLeaveSpy, userDisplayHints);
           assert.calledWith(canUserLowerAllHandsSpy, userDisplayHints);
           assert.calledWith(canUserLowerSomeoneElsesHandSpy, userDisplayHints);
           assert.calledWith(waitingForOthersToJoinSpy, userDisplayHints);

@@ -61,8 +61,9 @@ describe('plugin-meetings', () => {
       meeting.trigger = sinon.stub();
       meeting.webex = webex;
       meeting.webex.internal.newMetrics.callDiagnosticMetrics =
-      meeting.webex.internal.newMetrics.callDiagnosticMetrics || {};
-      meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId = sinon.stub();
+        meeting.webex.internal.newMetrics.callDiagnosticMetrics || {};
+      meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId =
+        sinon.stub();
     });
 
     afterEach(() => {
@@ -245,7 +246,11 @@ describe('plugin-meetings', () => {
         const response = MeetingUtil.updateLocusFromApiResponse(meeting, originalResponse);
 
         assert.deepEqual(response, originalResponse);
-        assert.calledOnceWithExactly(meeting.locusInfo.handleLocusAPIResponse, meeting, originalResponse.body);
+        assert.calledOnceWithExactly(
+          meeting.locusInfo.handleLocusAPIResponse,
+          meeting,
+          originalResponse.body
+        );
       });
 
       it('should handle locus being missing from the response', () => {
@@ -361,8 +366,8 @@ describe('plugin-meetings', () => {
     describe('remoteUpdateAudioVideo', () => {
       it('#Should call meetingRequest.locusMediaRequest with correct parameters and return the full response', async () => {
         const fakeResponse = {
-          body: { locus: { url: 'locusUrl'}},
-          headers: { },
+          body: {locus: {url: 'locusUrl'}},
+          headers: {},
         };
         const meeting = {
           id: 'meeting-id',
@@ -649,21 +654,21 @@ describe('plugin-meetings', () => {
       it('should post client event with error when join fails', async () => {
         const joinError = new Error('Join failed');
         meeting.meetingRequest.joinMeeting.rejects(joinError);
-        meeting.meetingInfo = { meetingLookupUrl: 'test-lookup-url' };
+        meeting.meetingInfo = {meetingLookupUrl: 'test-lookup-url'};
 
         try {
           await MeetingUtil.joinMeeting(meeting, {});
           assert.fail('Expected joinMeeting to throw an error');
         } catch (error) {
           assert.equal(error, joinError);
-          
+
           // Verify error client event was submitted
           assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.locus.join.response',
             payload: {
-              identifiers: { meetingLookupUrl: 'test-lookup-url' },
+              identifiers: {meetingLookupUrl: 'test-lookup-url'},
             },
-            options: { meetingId: meeting.id, rawError: joinError },
+            options: {meetingId: meeting.id, rawError: joinError},
           });
         }
       });
@@ -721,7 +726,7 @@ describe('plugin-meetings', () => {
           assert.fail('Expected joinMeetingOptions to throw PasswordError');
         } catch (error) {
           assert.instanceOf(error, PasswordError);
-          
+
           // Verify client event was submitted with error details
           assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.meetinginfo.response',
@@ -759,7 +764,7 @@ describe('plugin-meetings', () => {
           assert.fail('Expected joinMeetingOptions to throw CaptchaError');
         } catch (error) {
           assert.instanceOf(error, CaptchaError);
-          
+
           // Verify client event was submitted with error details
           assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.meetinginfo.response',
@@ -939,6 +944,46 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('requireHostEndMeetingBeforeLeave', () => {
+      it('works as expected', () => {
+        assert.deepEqual(
+          MeetingUtil.requireHostEndMeetingBeforeLeave(['REQUIRE_HOST_END_MEETING_BEFORE_LEAVE']),
+          true
+        );
+        assert.deepEqual(
+          MeetingUtil.requireHostEndMeetingBeforeLeave([
+            'LEAVE_TRANSFER_HOST_END_MEETING',
+            'END_MEETING',
+          ]),
+          false
+        );
+        assert.deepEqual(
+          MeetingUtil.requireHostEndMeetingBeforeLeave([
+            'REQUIRE_HOST_END_MEETING_BEFORE_LEAVE',
+            'END_MEETING',
+          ]),
+          true
+        );
+        assert.deepEqual(
+          MeetingUtil.requireHostEndMeetingBeforeLeave([
+            'REQUIRE_HOST_END_MEETING_BEFORE_LEAVE',
+            'LEAVE_MEETING',
+          ]),
+          true
+        );
+        assert.deepEqual(
+          MeetingUtil.requireHostEndMeetingBeforeLeave([
+            'REQUIRE_HOST_END_MEETING_BEFORE_LEAVE',
+            'LEAVE_MEETING',
+            'END_MEETING',
+          ]),
+          true
+        );
+        assert.deepEqual(MeetingUtil.requireHostEndMeetingBeforeLeave(['END_MEETING']), true);
+        assert.deepEqual(MeetingUtil.requireHostEndMeetingBeforeLeave([]), false);
+      });
+    });
+
     describe('canUserLock', () => {
       it('works as expected', () => {
         assert.deepEqual(
@@ -972,15 +1017,18 @@ describe('plugin-meetings', () => {
       {functionName: 'canStartManualCaption', displayHint: 'MANUAL_CAPTION_START'},
       {functionName: 'canStopManualCaption', displayHint: 'MANUAL_CAPTION_STOP'},
 
-      {functionName: 'isLocalRecordingStarted',displayHint:'LOCAL_RECORDING_STATUS_STARTED'},
+      {functionName: 'isLocalRecordingStarted', displayHint: 'LOCAL_RECORDING_STATUS_STARTED'},
       {functionName: 'isLocalRecordingStopped', displayHint: 'LOCAL_RECORDING_STATUS_STOPPED'},
       {functionName: 'isLocalRecordingPaused', displayHint: 'LOCAL_RECORDING_STATUS_PAUSED'},
-      {functionName: 'isLocalStreamingStarted',displayHint:'STREAMING_STATUS_STARTED'},
+      {functionName: 'isLocalStreamingStarted', displayHint: 'STREAMING_STATUS_STARTED'},
       {functionName: 'isLocalStreamingStopped', displayHint: 'STREAMING_STATUS_STOPPED'},
 
       {functionName: 'isManualCaptionActive', displayHint: 'MANUAL_CAPTION_STATUS_ACTIVE'},
 
-      {functionName: 'isSpokenLanguageAutoDetectionEnabled', displayHint: 'SPOKEN_LANGUAGE_AUTO_DETECTION_ENABLED'},
+      {
+        functionName: 'isSpokenLanguageAutoDetectionEnabled',
+        displayHint: 'SPOKEN_LANGUAGE_AUTO_DETECTION_ENABLED',
+      },
 
       {functionName: 'isWebexAssistantActive', displayHint: 'WEBEX_ASSISTANT_STATUS_ACTIVE'},
       {functionName: 'canViewCaptionPanel', displayHint: 'ENABLE_CAPTION_PANEL'},
@@ -1447,10 +1495,7 @@ describe('plugin-meetings', () => {
               },
             },
             dataSets: [{name: 'dataset1', url: 'http://dataset.com'}],
-            mediaConnections: [
-              {mediaId: 'mediaId456'},
-              {someOtherField: 'value'},
-            ],
+            mediaConnections: [{mediaId: 'mediaId456'}, {someOtherField: 'value'}],
           },
         };
       });
@@ -1500,10 +1545,7 @@ describe('plugin-meetings', () => {
       });
 
       it('handles mediaConnections without mediaId', () => {
-        response.body.mediaConnections = [
-          {someField: 'value1'},
-          {anotherField: 'value2'},
-        ];
+        response.body.mediaConnections = [{someField: 'value1'}, {anotherField: 'value2'}];
 
         const result = MeetingUtil.parseLocusJoin(response);
 
