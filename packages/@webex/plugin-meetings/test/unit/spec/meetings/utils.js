@@ -359,6 +359,7 @@ describe('plugin-meetings', () => {
     let isCapableOfReceivingVideoCodecStub;
     let triggerStub;
     let loggerErrorStub;
+    let loggerLogStub;
 
     beforeEach(() => {
       isCapableOfReceivingVideoCodecStub = sinon.stub(
@@ -367,6 +368,7 @@ describe('plugin-meetings', () => {
       );
       triggerStub = sinon.stub(Trigger, 'trigger');
       loggerErrorStub = sinon.stub(LoggerProxy.logger, 'error');
+      loggerLogStub = sinon.stub(LoggerProxy.logger, 'log');
     });
 
     it('returns immediately without codec check when disableNotifications is true', async () => {
@@ -423,6 +425,82 @@ describe('plugin-meetings', () => {
       assert.calledWith(
         loggerErrorStub,
         'Meetings:util#checkH264Support --> Timed out waiting for H264 codec to load.'
+      );
+      clock.restore();
+    });
+
+    it('does not re-trigger MEDIA_CODEC_MISSING on retries when codec remains not capable', async () => {
+      const clock = sinon.useFakeTimers();
+      isCapableOfReceivingVideoCodecStub.returns(CapabilityState.NOT_CAPABLE);
+
+      await MeetingsUtil.checkH264Support.call({});
+      const missingTriggerCount = triggerStub.getCalls().filter(
+        (call) => call.args[2] === EVENT_TRIGGERS.MEDIA_CODEC_MISSING
+      ).length;
+      assert.equal(missingTriggerCount, 1, 'MEDIA_CODEC_MISSING should be triggered only once');
+
+      triggerStub.resetHistory();
+      await clock.tick(5000);
+
+      const missingTriggerCountAfterRetry = triggerStub.getCalls().filter(
+        (call) => call.args[2] === EVENT_TRIGGERS.MEDIA_CODEC_MISSING
+      ).length;
+      assert.equal(
+        missingTriggerCountAfterRetry,
+        0,
+        'MEDIA_CODEC_MISSING should not be re-triggered on retry'
+      );
+      clock.restore();
+    });
+
+    it('triggers MEDIA_CODEC_LOADED when codec becomes available on retry', async () => {
+      const clock = sinon.useFakeTimers();
+      isCapableOfReceivingVideoCodecStub
+        .onFirstCall()
+        .returns(CapabilityState.NOT_CAPABLE)
+        .onSecondCall()
+        .returns(CapabilityState.CAPABLE);
+
+      await MeetingsUtil.checkH264Support.call({});
+      assert.calledWith(
+        triggerStub,
+        {},
+        {file: 'meetings/util', function: 'checkH264Support'},
+        EVENT_TRIGGERS.MEDIA_CODEC_MISSING
+      );
+
+      triggerStub.resetHistory();
+      await clock.tick(5000);
+
+      assert.calledWith(
+        triggerStub,
+        {},
+        {file: 'meetings/util', function: 'checkH264Support'},
+        EVENT_TRIGGERS.MEDIA_CODEC_LOADED
+      );
+      clock.restore();
+    });
+
+    it('logs loaded message when H.264 codec is capable', async () => {
+      isCapableOfReceivingVideoCodecStub.returns(CapabilityState.CAPABLE);
+
+      await MeetingsUtil.checkH264Support.call({});
+
+      assert.calledWith(
+        loggerLogStub,
+        'Meetings:util#checkH264Support --> H264 codec loaded successfully.'
+      );
+    });
+
+    it('logs missing message when H.264 codec is not capable on first check', async () => {
+      const clock = sinon.useFakeTimers();
+      isCapableOfReceivingVideoCodecStub.returns(CapabilityState.NOT_CAPABLE);
+
+      await MeetingsUtil.checkH264Support.call({});
+
+      assert.calledWith(
+        loggerLogStub,
+        'Meetings:util#checkH264Support --> H264 codec is missing.'
       );
       clock.restore();
     });
