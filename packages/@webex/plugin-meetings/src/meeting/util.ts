@@ -1,4 +1,5 @@
 import {LocalCameraStream, LocalMicrophoneStream} from '@webex/media-helpers';
+import url from 'url';
 
 import {cloneDeep} from 'lodash';
 import {MeetingNotActiveError, UserNotJoinedError} from '../common/errors/webex-errors';
@@ -24,6 +25,7 @@ import PermissionError from '../common/errors/permission';
 import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
 import Trigger from '../common/events/trigger-proxy';
+import {ServerRoles} from '../member/types';
 
 const MeetingUtil = {
   parseLocusJoin: (response) => {
@@ -32,6 +34,7 @@ const MeetingUtil = {
     // First todo: add check for existance
     parsed.locus = response.body.locus;
     parsed.dataSets = response.body.dataSets;
+    parsed.metadata = response.body.metaData;
     parsed.mediaConnections = response.body.mediaConnections;
     parsed.locusUrl = parsed.locus.url;
     parsed.locusId = parsed.locus.url.split('/').pop();
@@ -45,6 +48,124 @@ const MeetingUtil = {
     });
 
     return parsed;
+  },
+
+  /**
+   * Sanitizes a WebSocket URL by extracting only protocol, host, and pathname
+   * Returns concatenated protocol + host + pathname for safe logging
+   * Note: This is used for logging only; URL matching uses partial matching via _urlsPartiallyMatch
+   * @param {string} urlString - The URL to sanitize
+   * @returns {string} Sanitized URL or empty string if parsing fails
+   */
+  sanitizeWebSocketUrl: (urlString: string): string => {
+    if (!urlString || typeof urlString !== 'string') {
+      return '';
+    }
+
+    try {
+      const parsedUrl = url.parse(urlString);
+      const protocol = parsedUrl.protocol || '';
+      const host = parsedUrl.host || '';
+
+      // If we don't have at least protocol and host, it's not a valid URL
+      if (!protocol || !host) {
+        return '';
+      }
+
+      const pathname = parsedUrl.pathname || '';
+
+      // Strip trailing slash if pathname is just '/'
+      const normalizedPathname = pathname === '/' ? '' : pathname;
+
+      return `${protocol}//${host}${normalizedPathname}`;
+    } catch (error) {
+      LoggerProxy.logger.warn(
+        `Meeting:util#sanitizeWebSocketUrl --> unable to parse URL: ${error}`
+      );
+
+      return '';
+    }
+  },
+
+  /**
+   * Checks if two URLs partially match using an endsWith approach
+   * Combines host and pathname, then checks if one ends with the other
+   * This handles cases where one URL goes through a proxy (e.g., /webproxy/) while the other is direct
+   * @param {string} url1 - First URL to compare
+   * @param {string} url2 - Second URL to compare
+   * @returns {boolean} True if one URL path ends with the other (partial match), false otherwise
+   */
+  _urlsPartiallyMatch: (url1: string, url2: string): boolean => {
+    if (!url1 || !url2) {
+      return false;
+    }
+
+    try {
+      const parsedUrl1 = url.parse(url1);
+      const parsedUrl2 = url.parse(url2);
+
+      const host1 = parsedUrl1.host || '';
+      const host2 = parsedUrl2.host || '';
+      const pathname1 = parsedUrl1.pathname || '';
+      const pathname2 = parsedUrl2.pathname || '';
+
+      // If either failed to parse, they don't match
+      if (!host1 || !host2 || !pathname1 || !pathname2) {
+        return false;
+      }
+
+      // Combine host and pathname for comparison
+      const combined1 = host1 + pathname1;
+      const combined2 = host2 + pathname2;
+
+      // Check if one combined path ends with the other (handles proxy URLs)
+      return combined1.endsWith(combined2) || combined2.endsWith(combined1);
+    } catch (e) {
+      LoggerProxy.logger.warn('Meeting:util#_urlsPartiallyMatch --> error comparing URLs', e);
+
+      return false;
+    }
+  },
+
+  /**
+   * Gets socket URL information for metrics, including whether the socket URLs match
+   * Uses partial matching to handle proxy URLs (e.g., URLs with /webproxy/ prefix)
+   * @param {Object} webex - The webex instance
+   * @returns {Object} Object with hasMismatchedSocket, mercurySocketUrl, and deviceSocketUrl properties
+   */
+  getSocketUrlInfo: (
+    webex: any
+  ): {hasMismatchedSocket: boolean; mercurySocketUrl: string; deviceSocketUrl: string} => {
+    try {
+      const mercuryUrl = webex?.internal?.mercury?.socket?.url;
+      const deviceUrl = webex?.internal?.device?.webSocketUrl;
+
+      const sanitizedMercuryUrl = MeetingUtil.sanitizeWebSocketUrl(mercuryUrl);
+      const sanitizedDeviceUrl = MeetingUtil.sanitizeWebSocketUrl(deviceUrl);
+
+      // Only report a mismatch if both URLs are present and they don't match
+      // If either URL is missing, we can't determine if there's a mismatch, so return false
+      let hasMismatchedSocket = false;
+      if (sanitizedMercuryUrl && sanitizedDeviceUrl) {
+        hasMismatchedSocket = !MeetingUtil._urlsPartiallyMatch(mercuryUrl, deviceUrl);
+      }
+
+      return {
+        hasMismatchedSocket,
+        mercurySocketUrl: sanitizedMercuryUrl,
+        deviceSocketUrl: sanitizedDeviceUrl,
+      };
+    } catch (error) {
+      LoggerProxy.logger.warn(
+        `Meeting:util#getSocketUrlInfo --> error getting socket URL info: ${error}`
+      );
+
+      return {
+        hasMismatchedSocket: false,
+        mercurySocketUrl: '',
+        deviceSocketUrl: '',
+      };
+    }
   },
 
   remoteUpdateAudioVideo: (meeting, audioMuted?: boolean, videoMuted?: boolean) => {
@@ -203,12 +324,16 @@ const MeetingUtil = {
         const parsed = MeetingUtil.parseLocusJoin(res);
         meeting.setLocus(parsed);
         meeting.isoLocalClientMeetingJoinTime = res?.headers?.date; // read from header if exist, else fall back to system clock : https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-555657
+        const socketUrlInfo = MeetingUtil.getSocketUrlInfo(webex);
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.locus.join.response',
           payload: {
             trigger: 'loci-update',
             identifiers: {
               trackingId: res.headers.trackingid,
+            },
+            eventData: {
+              ...socketUrlInfo,
             },
           },
           options: {
@@ -220,12 +345,19 @@ const MeetingUtil = {
         return parsed;
       })
       .catch((err) => {
+        const socketUrlInfo = MeetingUtil.getSocketUrlInfo(webex);
         webex.internal.newMetrics.submitClientEvent({
           name: 'client.locus.join.response',
           payload: {
             identifiers: {meetingLookupUrl: meeting.meetingInfo?.meetingLookupUrl},
+            eventData: {
+              ...socketUrlInfo,
+            },
           },
-          options: {meetingId: meeting.id, rawError: err},
+          options: {
+            meetingId: meeting.id,
+            rawError: err,
+          },
         });
 
         throw err;
@@ -775,6 +907,21 @@ const MeetingUtil = {
     };
 
     return locusDeltaRequest;
+  },
+
+  canAttendeeRequestAiAssistantEnabled: (displayHints = [], roles: any[] = []) => {
+    const isHostOrCoHost =
+      roles.includes(ServerRoles.Cohost) || roles.includes(ServerRoles.Moderator);
+
+    if (isHostOrCoHost) {
+      return false;
+    }
+
+    if (displayHints.includes(DISPLAY_HINTS.ATTENDEE_REQUEST_AI_ASSISTANT_ENABLED)) {
+      return true;
+    }
+
+    return false;
   },
 
   selfSupportsFeature: (feature: SELF_POLICY, userPolicies: Record<SELF_POLICY, boolean>) => {

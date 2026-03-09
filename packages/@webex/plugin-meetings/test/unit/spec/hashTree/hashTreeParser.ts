@@ -1,10 +1,14 @@
 import HashTreeParser, {
   LocusInfoUpdateType,
+  MeetingEndedError,
 } from '@webex/plugin-meetings/src/hashTree/hashTreeParser';
 import HashTree from '@webex/plugin-meetings/src/hashTree/hashTree';
 import {expect} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
+import {EMPTY_HASH} from '@webex/plugin-meetings/src/hashTree/constants';
+
+const visibleDataSetsUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/visibleDataSets';
 
 const exampleInitialLocus = {
   dataSets: [
@@ -46,6 +50,7 @@ const exampleInitialLocus = {
       },
       dataSetNames: ['main'],
     },
+    links: {resources: {visibleDataSets: {url: visibleDataSetsUrl}}},
     participants: [
       {
         url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/11941033',
@@ -62,7 +67,6 @@ const exampleInitialLocus = {
     ],
     self: {
       url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/11941033',
-      visibleDataSets: ['main', 'self', 'atd-unmuted'],
       person: {},
       htMeta: {
         elementId: {
@@ -74,6 +78,28 @@ const exampleInitialLocus = {
       },
     },
   },
+};
+
+const exampleMetadata = {
+  htMeta: {
+    elementId: {
+      type: 'metadata',
+      id: 5,
+      version: 50,
+    },
+    dataSetNames: ['self'],
+  },
+  visibleDataSets: [
+    {name: 'main', url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main'},
+    {
+      name: 'self',
+      url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+    },
+    {
+      name: 'atd-unmuted',
+      url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/atd-unmuted',
+    },
+  ],
 };
 
 function createDataSet(name: string, leafCount: number, version = 1) {
@@ -119,7 +145,6 @@ function mockSyncRequest(webexRequest: sinon.SinonStub, datasetUrl: string, resp
 }
 
 describe('HashTreeParser', () => {
-  const visibleDataSetsUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/visibleDataSets';
   const locusUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f';
 
   let clock;
@@ -139,12 +164,18 @@ describe('HashTreeParser', () => {
   });
 
   // Helper to create a HashTreeParser instance with common defaults
-  function createHashTreeParser(initialLocus: any = exampleInitialLocus) {
+  function createHashTreeParser(
+    initialLocus: any = exampleInitialLocus,
+    metadata: any = exampleMetadata,
+    excludedDataSets?: string[]
+  ) {
     return new HashTreeParser({
       initialLocus,
+      metadata,
       webexRequest,
       locusInfoUpdateCallback: callback,
       debugId: 'test',
+      excludedDataSets,
     });
   }
 
@@ -197,8 +228,49 @@ describe('HashTreeParser', () => {
         body: response,
       });
   }
+
+  async function checkAsyncDatasetInitialization(
+    parser: HashTreeParser,
+    newDataSet: {name: string; leafCount: number; url: string}
+  ) {
+    // immediately we don't have the dataset yet, so it should not be in visibleDataSets
+    // and no hash tree should exist yet
+    expect(parser.visibleDataSets.some((vds) => vds.name === newDataSet.name)).to.be.false;
+    assert.isUndefined(parser.dataSets[newDataSet.name]);
+
+    // Wait for the async initialization to complete (queued as microtask)
+    await clock.tickAsync(0);
+
+    // The visibleDataSets is updated from the metadata object data
+    expect(parser.visibleDataSets.some((vds) => vds.name === newDataSet.name)).to.be.true;
+
+    // Verify that a hash tree was created for newDataSet
+    assert.exists(parser.dataSets[newDataSet.name].hashTree);
+    assert.equal(parser.dataSets[newDataSet.name].hashTree.numLeaves, newDataSet.leafCount);
+
+    // Verify getAllDataSetsMetadata was called for async initialization
+    assert.calledWith(
+      webexRequest,
+      sinon.match({
+        method: 'GET',
+        uri: visibleDataSetsUrl,
+      })
+    );
+
+    // Verify sync request was sent for the new dataset
+    assert.calledWith(
+      webexRequest,
+      sinon.match({
+        method: 'POST',
+        uri: `${newDataSet.url}/sync`,
+      })
+    );
+  }
   it('should correctly initialize trees from initialLocus data', () => {
     const parser = createHashTreeParser();
+
+    // verify that visibleDataSetsUrl is read out from inside locus
+    expect(parser.visibleDataSetsUrl).to.equal(visibleDataSetsUrl);
 
     // Check that the correct number of trees are created
     expect(Object.keys(parser.dataSets).length).to.equal(3);
@@ -215,7 +287,11 @@ describe('HashTreeParser', () => {
     const selfTree = parser.dataSets.self.hashTree;
     expect(selfTree).to.be.instanceOf(HashTree);
     const expectedSelfLeaves = new Array(1).fill(null).map(() => ({}));
-    expectedSelfLeaves[4 % 1] = {self: {4: {type: 'self', id: 4, version: 100}}};
+    // Both self (id=4) and metadata (id=5) map to the same leaf (4%1=0, 5%1=0)
+    expectedSelfLeaves[0] = {
+      self: {4: {type: 'self', id: 4, version: 100}},
+      metadata: {5: {type: 'metadata', id: 5, version: 50}},
+    };
     expect(selfTree.leaves).to.deep.equal(expectedSelfLeaves);
     expect(selfTree.numLeaves).to.equal(1);
 
@@ -247,7 +323,7 @@ describe('HashTreeParser', () => {
       name: 'empty-set',
     });
 
-    const parser = createHashTreeParser(modifiedLocus);
+    const parser = createHashTreeParser(modifiedLocus, exampleMetadata);
 
     expect(Object.keys(parser.dataSets).length).to.equal(4); // main, self, atd-unmuted (now empty), empty-set
 
@@ -260,7 +336,10 @@ describe('HashTreeParser', () => {
 
     const selfTree = parser.dataSets.self.hashTree;
     const expectedSelfLeaves = new Array(1).fill(null).map(() => ({}));
-    expectedSelfLeaves[4 % 1] = {self: {4: {type: 'self', id: 4, version: 100}}};
+    expectedSelfLeaves[4 % 1] = {
+      self: {4: {type: 'self', id: 4, version: 100}},
+      metadata: {5: exampleMetadata.htMeta.elementId},
+    };
     expect(selfTree.leaves).to.deep.equal(expectedSelfLeaves);
     expect(selfTree.numLeaves).to.equal(1);
 
@@ -277,31 +356,100 @@ describe('HashTreeParser', () => {
     expect(emptySet.hashTree).to.be.undefined;
   });
 
+  it('should exclude datasets listed in excludedDataSets during initialization', () => {
+    const parser = createHashTreeParser(exampleInitialLocus, exampleMetadata, ['atd-unmuted']);
+
+    // 'atd-unmuted' should be excluded from visibleDataSets
+    expect(parser.visibleDataSets.some((vds) => vds.name === 'atd-unmuted')).to.be.false;
+
+    // 'main' and 'self' should still be visible
+    expect(parser.visibleDataSets.some((vds) => vds.name === 'main')).to.be.true;
+    expect(parser.visibleDataSets.some((vds) => vds.name === 'self')).to.be.true;
+
+    // 'atd-unmuted' dataset entry should exist but without a hash tree (because it's not visible)
+    expect(parser.dataSets['atd-unmuted']).to.exist;
+    expect(parser.dataSets['atd-unmuted'].hashTree).to.be.undefined;
+
+    // 'main' and 'self' should have hash trees
+    expect(parser.dataSets.main.hashTree).to.be.instanceOf(HashTree);
+    expect(parser.dataSets.self.hashTree).to.be.instanceOf(HashTree);
+  });
+
+  it('should exclude datasets listed in excludedDataSets when adding new visible datasets', async () => {
+    // Create parser without 'atd-unmuted' in initial metadata visibleDataSets
+    const metadataWithoutAtdUnmuted = {
+      ...exampleMetadata,
+      visibleDataSets: exampleMetadata.visibleDataSets.filter((vds) => vds.name !== 'atd-unmuted'),
+    };
+    const parser = createHashTreeParser(exampleInitialLocus, metadataWithoutAtdUnmuted, [
+      'atd-unmuted',
+    ]);
+
+    // 'atd-unmuted' should not be in visibleDataSets initially
+    expect(parser.visibleDataSets.some((vds) => vds.name === 'atd-unmuted')).to.be.false;
+
+    // Now simulate initializeDataSets which calls addToVisibleDataSetsList
+    const atdUnmutedDataSet = createDataSet('atd-unmuted', 16, 3000);
+
+    mockGetAllDataSetsMetadata(webexRequest, visibleDataSetsUrl, [
+      createDataSet('main', 16, 1000),
+      createDataSet('self', 1, 2000),
+      atdUnmutedDataSet,
+    ]);
+
+    mockSyncRequest(
+      webexRequest,
+      'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/atd-unmuted'
+    );
+
+    const message = {
+      dataSets: [createDataSet('main', 16, 1000)],
+      visibleDataSetsUrl,
+      locusUrl,
+    };
+    await parser.initializeFromMessage(message);
+
+    // 'atd-unmuted' should still not be in visibleDataSets because it is excluded
+    expect(parser.visibleDataSets.some((vds) => vds.name === 'atd-unmuted')).to.be.false;
+    // but 'main' and 'self' should be there
+    expect(parser.visibleDataSets.some((vds) => vds.name === 'main')).to.be.true;
+    expect(parser.visibleDataSets.some((vds) => vds.name === 'self')).to.be.true;
+  });
+
   // helper method, needed because both initializeFromMessage and initializeFromGetLociResponse
   // do almost exactly the same thing
   const testInitializationOfDatasetsAndHashTrees = async (testCallback) => {
     // Create a parser with minimal initial data
     const minimalInitialLocus = {
       dataSets: [],
-      locus: {
-        self: {
-          visibleDataSets: ['main', 'self'],
-        },
-      },
+      locus: null,
     };
 
-    const hashTreeParser = createHashTreeParser(minimalInitialLocus);
+    const minimalMetadata = {
+      htMeta: {
+        elementId: {
+          type: 'metadata',
+          id: 5,
+          version: 50,
+        },
+        dataSetNames: ['self'],
+      },
+      visibleDataSets: [
+        {name: 'main', url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main'},
+        {
+          name: 'self',
+          url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+        },
+      ],
+    };
+
+    const hashTreeParser = createHashTreeParser(minimalInitialLocus, minimalMetadata);
 
     // Setup the datasets that will be returned from getAllDataSetsMetadata
     const mainDataSet = createDataSet('main', 16, 1100);
     const selfDataSet = createDataSet('self', 1, 2100);
-    const invisibleDataSet = createDataSet('invisible', 4, 4000);
 
-    mockGetAllDataSetsMetadata(webexRequest, visibleDataSetsUrl, [
-      mainDataSet,
-      selfDataSet,
-      invisibleDataSet,
-    ]);
+    mockGetAllDataSetsMetadata(webexRequest, visibleDataSetsUrl, [mainDataSet, selfDataSet]);
 
     // Mock sync requests for visible datasets with some updated objects
     const mainSyncResponse = {
@@ -357,15 +505,16 @@ describe('HashTreeParser', () => {
       })
     );
 
-    // Verify all datasets are added to dataSets
+    // verify that visibleDataSetsUrl is set on the parser
+    expect(hashTreeParser.visibleDataSetsUrl).to.equal(visibleDataSetsUrl);
+
+    // Verify all datasets returned from visibleDataSetsUrl are added to dataSets
     expect(hashTreeParser.dataSets.main).to.exist;
     expect(hashTreeParser.dataSets.self).to.exist;
-    expect(hashTreeParser.dataSets.invisible).to.exist;
 
     // Verify hash trees are created only for visible datasets
     expect(hashTreeParser.dataSets.main.hashTree).to.be.instanceOf(HashTree);
     expect(hashTreeParser.dataSets.self.hashTree).to.be.instanceOf(HashTree);
-    expect(hashTreeParser.dataSets.invisible.hashTree).to.be.undefined;
 
     // Verify hash trees have correct leaf counts
     expect(hashTreeParser.dataSets.main.hashTree.numLeaves).to.equal(16);
@@ -403,15 +552,6 @@ describe('HashTreeParser', () => {
       })
     );
 
-    // Verify sync request was NOT sent for invisible dataset
-    assert.neverCalledWith(
-      webexRequest,
-      sinon.match({
-        method: 'POST',
-        uri: `${invisibleDataSet.url}/sync`,
-      })
-    );
-
     // Verify callback was called with OBJECTS_UPDATED and correct updatedObjects list
     assert.calledWith(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
       updatedObjects: [
@@ -443,8 +583,6 @@ describe('HashTreeParser', () => {
     // verify that sync timers are set for visible datasets
     expect(hashTreeParser.dataSets.main.timer).to.not.be.undefined;
     expect(hashTreeParser.dataSets.self.timer).to.not.be.undefined;
-    // and not for invisible dataset
-    expect(hashTreeParser.dataSets.invisible.timer).to.be.undefined;
   };
 
   describe('#initializeFromMessage', () => {
@@ -457,11 +595,91 @@ describe('HashTreeParser', () => {
         });
       });
     });
+
+    it('handles sync response that has locusStateElements undefined', async () => {
+      const minimalInitialLocus = {
+        dataSets: [],
+        locus: null,
+      };
+
+      const parser = createHashTreeParser(minimalInitialLocus, null);
+
+      const mainDataSet = createDataSet('main', 16, 1100);
+
+      // Mock getAllVisibleDataSetsFromLocus to return the main dataset
+      mockGetAllDataSetsMetadata(webexRequest, visibleDataSetsUrl, [mainDataSet]);
+
+      // Mock the sync response to have locusStateElements: undefined
+      // This is what sendInitializationSyncRequestToLocus will receive and pass to parseMessage
+      mockSyncRequest(webexRequest, mainDataSet.url, {
+        dataSets: [mainDataSet],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: undefined,
+      });
+
+      // Trigger sendInitializationSyncRequestToLocus via initializeFromMessage
+      await parser.initializeFromMessage({
+        dataSets: [],
+        visibleDataSetsUrl,
+        locusUrl,
+      });
+
+      // Verify the hash tree was created for main dataset
+      expect(parser.dataSets.main.hashTree).to.be.instanceOf(HashTree);
+
+      // updateItems should NOT have been called because locusStateElements is undefined
+      const mainUpdateItemsStub = sinon.spy(parser.dataSets.main.hashTree, 'updateItems');
+      assert.notCalled(mainUpdateItemsStub);
+
+      // callback should not be called, because there are no updates
+      assert.notCalled(callback);
+    });
+
+    [404, 409].forEach((errorCode) => {
+      it(`emits MeetingEndedError if getting visible datasets returns ${errorCode}`, async () => {
+        const minimalInitialLocus = {
+          dataSets: [],
+          locus: null,
+        };
+
+        const parser = createHashTreeParser(minimalInitialLocus, null);
+
+        // Mock getAllVisibleDataSetsFromLocus to reject with the error code
+        const error: any = new Error(`Request failed with status ${errorCode}`);
+        error.statusCode = errorCode;
+        if (errorCode === 409) {
+          error.body = {errorCode: 2403004};
+        }
+        webexRequest
+          .withArgs(
+            sinon.match({
+              method: 'GET',
+              uri: visibleDataSetsUrl,
+            })
+          )
+          .rejects(error);
+
+        // initializeFromMessage should throw MeetingEndedError
+        let thrownError;
+        try {
+          await parser.initializeFromMessage({
+            dataSets: [],
+            visibleDataSetsUrl,
+            locusUrl,
+          });
+        } catch (e) {
+          thrownError = e;
+        }
+
+        expect(thrownError).to.be.instanceOf(MeetingEndedError);
+      });
+    });
   });
 
   describe('#initializeFromGetLociResponse', () => {
     it('does nothing if url for visibleDataSets is missing from locus', async () => {
-      const parser = createHashTreeParser({dataSets: [], locus: {}});
+      const parser = createHashTreeParser({dataSets: [], locus: {}}, null);
 
       await parser.initializeFromGetLociResponse({participants: []});
 
@@ -488,12 +706,9 @@ describe('HashTreeParser', () => {
     it('updates hash trees based on provided new locus', () => {
       const parser = createHashTreeParser();
 
-      const mainPutItemsSpy = sinon
-        .spy(parser.dataSets.main.hashTree, 'putItems');
-      const selfPutItemsSpy = sinon
-        .spy(parser.dataSets.self.hashTree, 'putItems');
-      const atdUnmutedPutItemsSpy = sinon
-        .spy(parser.dataSets['atd-unmuted'].hashTree, 'putItems');
+      const mainPutItemsSpy = sinon.spy(parser.dataSets.main.hashTree, 'putItems');
+      const selfPutItemsSpy = sinon.spy(parser.dataSets.self.hashTree, 'putItems');
+      const atdUnmutedPutItemsSpy = sinon.spy(parser.dataSets['atd-unmuted'].hashTree, 'putItems');
 
       // Create a locus update with new htMeta information for some things
       const locusUpdate = {
@@ -540,7 +755,6 @@ describe('HashTreeParser', () => {
           ],
           self: {
             url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/11941033',
-            visibleDataSets: ['main', 'self', 'atd-unmuted'],
             person: {},
             htMeta: {
               elementId: {
@@ -710,6 +924,272 @@ describe('HashTreeParser', () => {
           },
         ],
       });
+    });
+
+    it('handles metadata updates with new version', async () => {
+      const parser = createHashTreeParser();
+
+      const selfPutItemSpy = sinon.spy(parser.dataSets.self.hashTree, 'putItem');
+
+      // Create a locus update with updated metadata
+      const locusUpdate = {
+        dataSets: [createDataSet('self', 1, 2100), createDataSet('attendees', 8, 4000)],
+        locus: {
+          links: {resources: {visibleDataSets: {url: visibleDataSetsUrl}}},
+          participants: [
+            {
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/15',
+              person: {},
+              htMeta: {
+                elementId: {
+                  type: 'participant',
+                  id: 15, // new participant
+                  version: 999,
+                },
+                dataSetNames: ['attendees'],
+              },
+            },
+          ],
+        },
+        metadata: {
+          htMeta: {
+            elementId: {
+              type: 'metadata',
+              id: 5,
+              version: 51, // incremented version
+            },
+            dataSetNames: ['self'],
+          },
+          // new visibleDataSets: atd-unmuted removed, "attendees" and "new-dataset" added
+          visibleDataSets: [
+            {
+              name: 'main',
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main',
+            },
+            {
+              name: 'self',
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+            },
+            {
+              name: 'new-dataset', // this one is not in dataSets, so will require async initialization
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/new-dataset',
+            },
+            {
+              name: 'attendees', // this one is in dataSets, so should be processed immediately
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/attendees',
+            },
+          ],
+        },
+      };
+
+      // Mock the async initialization of the new dataset
+      const newDataSet = createDataSet('new-dataset', 4, 5000);
+      mockGetAllDataSetsMetadata(webexRequest, visibleDataSetsUrl, [newDataSet]);
+      mockSyncRequest(webexRequest, newDataSet.url, {
+        dataSets: [newDataSet],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      // Call handleLocusUpdate
+      parser.handleLocusUpdate(locusUpdate);
+
+      // Verify putItem was called on self hash tree with metadata
+      assert.calledOnceWithExactly(selfPutItemSpy, {type: 'metadata', id: 5, version: 51});
+
+      // Verify callback was called with metadata object and removed dataset objects
+      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+        updatedObjects: [
+          // updated metadata object:
+          {
+            htMeta: {
+              elementId: {
+                type: 'metadata',
+                id: 5,
+                version: 51,
+              },
+              dataSetNames: ['self'],
+            },
+            data: {
+              htMeta: {
+                elementId: {
+                  type: 'metadata',
+                  id: 5,
+                  version: 51,
+                },
+                dataSetNames: ['self'],
+              },
+              visibleDataSets: [
+                {
+                  name: 'main',
+                  url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main',
+                },
+                {
+                  name: 'self',
+                  url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+                },
+                {
+                  name: 'new-dataset',
+                  url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/new-dataset',
+                },
+                {
+                  name: 'attendees',
+                  url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/attendees',
+                },
+              ],
+            },
+          },
+          // removed participant from a removed dataset 'atd-unmuted':
+          {
+            htMeta: {
+              elementId: {
+                type: 'participant',
+                id: 14,
+                version: 300,
+              },
+              dataSetNames: ['atd-unmuted'],
+            },
+            data: null,
+          },
+          // new participant from a new data set 'attendees':
+          {
+            htMeta: {
+              elementId: {
+                type: 'participant',
+                id: 15,
+                version: 999,
+              },
+              dataSetNames: ['attendees'],
+            },
+            data: {
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/15',
+              person: {},
+              htMeta: {
+                elementId: {
+                  type: 'participant',
+                  id: 15,
+                  version: 999,
+                },
+                dataSetNames: ['attendees'],
+              },
+            },
+          },
+        ],
+      });
+
+      // verify also that an async initialization was done for
+      await checkAsyncDatasetInitialization(parser, newDataSet);
+    });
+
+    it('handles metadata updates with same version (no callback)', () => {
+      const parser = createHashTreeParser();
+
+      const selfPutItemSpy = sinon.spy(parser.dataSets.self.hashTree, 'putItem');
+
+      // Create a locus update with metadata that has the same version and same visibleDataSets
+      const locusUpdate = {
+        dataSets: [createDataSet('self', 1, 2100)],
+        locus: {},
+        metadata: {
+          htMeta: {
+            elementId: {
+              type: 'metadata',
+              id: 5,
+              version: 50, // same version as initial
+            },
+            dataSetNames: ['self'],
+          },
+          visibleDataSets: [
+            {
+              name: 'main',
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main',
+            },
+            {
+              name: 'self',
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+            },
+            {
+              name: 'atd-unmuted',
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/atd-unmuted',
+            },
+          ],
+        },
+      };
+
+      // Call handleLocusUpdate
+      parser.handleLocusUpdate(locusUpdate);
+
+      // Verify putItem was called on self hash tree
+      assert.calledOnceWithExactly(selfPutItemSpy, {type: 'metadata', id: 5, version: 50});
+
+      // Verify callback was NOT called because version didn't change
+      assert.notCalled(callback);
+    });
+
+    it('handles updates with no dataSets and metadata fields gracefully', () => {
+      const parser = createHashTreeParser();
+
+      const mainPutItemsSpy = sinon.spy(parser.dataSets.main.hashTree, 'putItems');
+      const selfPutItemsSpy = sinon.spy(parser.dataSets.self.hashTree, 'putItems');
+      const atdUnmutedPutItemsSpy = sinon.spy(parser.dataSets['atd-unmuted'].hashTree, 'putItems');
+
+      // Create a locus update with no dataSets and no metadata
+      const locusUpdate = {
+        locus: {
+          htMeta: {
+            elementId: {
+              type: 'locus',
+              id: 0,
+              version: 201,
+            },
+            dataSetNames: ['main'],
+          },
+          someData: 'value',
+        },
+      };
+
+      // Call handleLocusUpdate - should not throw
+      parser.handleLocusUpdate(locusUpdate);
+
+      // Verify putItems was still called for the dataset referenced in locus
+      assert.calledOnceWithExactly(mainPutItemsSpy, [{type: 'locus', id: 0, version: 201}]);
+
+      // Verify putItems was not called on other hash trees
+      assert.notCalled(selfPutItemsSpy);
+      assert.notCalled(atdUnmutedPutItemsSpy);
+
+      // Verify callback was called with the updated object
+      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+        updatedObjects: [
+          {
+            htMeta: {
+              elementId: {
+                type: 'locus',
+                id: 0,
+                version: 201,
+              },
+              dataSetNames: ['main'],
+            },
+            data: {
+              someData: 'value',
+              htMeta: {
+                elementId: {
+                  type: 'locus',
+                  id: 0,
+                  version: 201,
+                },
+                dataSetNames: ['main'],
+              },
+            },
+          },
+        ],
+      });
+
+      // Verify that dataset versions were NOT updated (no dataSets in the update)
+      expect(parser.dataSets.main.version).to.equal(1000);
+      expect(parser.dataSets.self.version).to.equal(2000);
+      expect(parser.dataSets['atd-unmuted'].version).to.equal(3000);
     });
   });
 
@@ -912,22 +1392,11 @@ describe('HashTreeParser', () => {
         updatedObjects: [
           {
             htMeta: {
-              elementId: {type: 'self', id: 4, version: 101},
-              dataSetNames: ['self'],
-            },
-            data: {person: {name: 'updated self name'}},
-          },
-          {
-            htMeta: {
               elementId: {type: 'locus', id: 0, version: 201},
               dataSetNames: ['main'],
             },
             data: {info: {id: 'updated-locus-info'}},
           },
-          // self updates appear twice, because they are processed twice in HashTreeParser.parseMessage()
-          // (first for checking for visibleDataSets changes and again with the rest of updates in the main part of parseMessage())
-          // this is only temporary until SPARK-744859 is done and having them twice here is not harmful
-          // so keeping it like this for now
           {
             htMeta: {
               elementId: {type: 'self', id: 4, version: 101},
@@ -990,6 +1459,73 @@ describe('HashTreeParser', () => {
       assert.equal(parser.dataSets.self.timer, undefined);
       assert.equal(parser.dataSets.main.timer, undefined);
       assert.equal(parser.dataSets['atd-unmuted'].timer, undefined);
+    });
+
+    describe('handles sentinel messages correctly', () => {
+      ['main', 'self', 'unjoined'].forEach((dataSetName) => {
+        it('emits MEETING_ENDED for sentinel message with dataset ' + dataSetName, async () => {
+          const parser = createHashTreeParser();
+
+          // Create a sentinel message: leafCount=1, root=EMPTY_HASH, version higher than current
+          const sentinelMessage = createHeartbeatMessage(
+            dataSetName,
+            1,
+            parser.dataSets[dataSetName]?.version
+              ? parser.dataSets[dataSetName].version + 1
+              : 10000,
+            EMPTY_HASH
+          );
+
+          // If the dataset doesn't exist yet (e.g. 'unjoined'), create it
+          if (!parser.dataSets[dataSetName]) {
+            parser.dataSets[dataSetName] = {
+              url: `https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/${dataSetName}`,
+              name: dataSetName,
+              version: 1,
+              leafCount: 16,
+              root: '0'.repeat(32),
+              idleMs: 1000,
+              backoff: {maxMs: 1000, exponent: 2},
+            } as any;
+          }
+
+          await parser.handleMessage(sentinelMessage, 'sentinel message');
+
+          // Verify callback was called with MEETING_ENDED
+          assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
+            updatedObjects: undefined,
+          });
+
+          // Verify that all timers were stopped
+          Object.values(parser.dataSets).forEach((ds: any) => {
+            assert.isUndefined(ds.timer);
+            assert.isUndefined(ds.heartbeatWatchdogTimer);
+          });
+        });
+      });
+
+      it('emits MEETING_ENDED for sentinel message with unknown dataset', async () => {
+        const parser = createHashTreeParser();
+
+        // 'unjoined' is a valid sentinel dataset name but is not tracked by the parser
+        assert.isUndefined(parser.dataSets['unjoined']);
+
+        // Create a sentinel message for 'unjoined' dataset which the parser has never seen
+        const sentinelMessage = createHeartbeatMessage('unjoined', 1, 10000, EMPTY_HASH);
+
+        await parser.handleMessage(sentinelMessage, 'sentinel message');
+
+        // Verify callback was called with MEETING_ENDED
+        assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
+          updatedObjects: undefined,
+        });
+
+        // Verify that all timers were stopped
+        Object.values(parser.dataSets).forEach((ds: any) => {
+          assert.isUndefined(ds.timer);
+          assert.isUndefined(ds.heartbeatWatchdogTimer);
+        });
+      });
     });
 
     describe('sync algorithm', () => {
@@ -1090,6 +1626,134 @@ describe('HashTreeParser', () => {
           ],
         });
       });
+
+      describe('emits MEETING_ENDED', () => {
+        [404, 409].forEach((statusCode) => {
+          it(`when /hashtree returns ${statusCode}`, async () => {
+            const parser = createHashTreeParser();
+
+            // Send a message to trigger sync algorithm
+            const message = {
+              dataSets: [createDataSet('main', 16, 1100)],
+              visibleDataSetsUrl,
+              locusUrl,
+              locusStateElements: [
+                {
+                  htMeta: {
+                    elementId: {
+                      type: 'locus' as const,
+                      id: 0,
+                      version: 201,
+                    },
+                    dataSetNames: ['main'],
+                  },
+                  data: {info: {id: 'initial-update'}},
+                },
+              ],
+            };
+
+            await parser.handleMessage(message, 'initial message');
+            callback.resetHistory();
+
+            const mainDataSetUrl = parser.dataSets.main.url;
+
+            // Mock getHashesFromLocus to reject with the sentinel error
+            const error: any = new Error(`Request failed with status ${statusCode}`);
+            error.statusCode = statusCode;
+            if (statusCode === 409) {
+              error.body = {errorCode: 2403004};
+            }
+            webexRequest
+              .withArgs(
+                sinon.match({
+                  method: 'GET',
+                  uri: `${mainDataSetUrl}/hashtree`,
+                })
+              )
+              .rejects(error);
+
+            // Trigger sync by advancing time
+            await clock.tickAsync(1000);
+
+            // Verify callback was called with MEETING_ENDED
+            assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
+              updatedObjects: undefined,
+            });
+
+            // Verify all timers are stopped
+            Object.values(parser.dataSets).forEach((ds: any) => {
+              assert.isUndefined(ds.timer);
+              assert.isUndefined(ds.heartbeatWatchdogTimer);
+            });
+          });
+
+          it(`when /sync returns ${statusCode}`, async () => {
+            const parser = createHashTreeParser();
+
+            // Send a message to trigger sync algorithm
+            const message = {
+              dataSets: [createDataSet('main', 16, 1100)],
+              visibleDataSetsUrl,
+              locusUrl,
+              locusStateElements: [
+                {
+                  htMeta: {
+                    elementId: {
+                      type: 'locus' as const,
+                      id: 0,
+                      version: 201,
+                    },
+                    dataSetNames: ['main'],
+                  },
+                  data: {info: {id: 'initial-update'}},
+                },
+              ],
+            };
+
+            await parser.handleMessage(message, 'initial message');
+            callback.resetHistory();
+
+            const mainDataSetUrl = parser.dataSets.main.url;
+
+            // Mock getHashesFromLocus to succeed
+            mockGetHashesFromLocusResponse(
+              mainDataSetUrl,
+              new Array(16).fill('00000000000000000000000000000000'),
+              createDataSet('main', 16, 1101)
+            );
+
+            // Mock sendSyncRequestToLocus to reject with the sentinel error
+            const error: any = new Error(`Request failed with status ${statusCode}`);
+            error.statusCode = statusCode;
+            if (statusCode === 409) {
+              error.body = {errorCode: 2403004};
+            }
+            webexRequest
+              .withArgs(
+                sinon.match({
+                  method: 'POST',
+                  uri: `${mainDataSetUrl}/sync`,
+                })
+              )
+              .rejects(error);
+
+            // Trigger sync by advancing time
+            await clock.tickAsync(1000);
+
+            // Verify callback was called with MEETING_ENDED
+            assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
+              updatedObjects: undefined,
+            });
+
+            // Verify all timers are stopped
+            Object.values(parser.dataSets).forEach((ds: any) => {
+              assert.isUndefined(ds.timer);
+              assert.isUndefined(ds.heartbeatWatchdogTimer);
+            });
+          });
+        });
+      });
+
       it('requests only mismatched hashes during sync', async () => {
         const parser = createHashTreeParser();
 
@@ -1179,6 +1843,9 @@ describe('HashTreeParser', () => {
           sinon.match({
             method: 'GET',
             uri: `${mainDataSetUrl}/hashtree`,
+            qs: {
+              rootHash: hashTree.getRootHash(),
+            },
           })
         );
 
@@ -1186,6 +1853,7 @@ describe('HashTreeParser', () => {
         assert.calledWith(webexRequest, {
           method: 'POST',
           uri: `${mainDataSetUrl}/sync`,
+          qs: {rootHash: hashTree.getRootHash()},
           body: {
             leafCount: 16,
             leafDataEntries: [
@@ -1239,10 +1907,17 @@ describe('HashTreeParser', () => {
         assert.calledWith(webexRequest, {
           method: 'POST',
           uri: `${parser.dataSets.self.url}/sync`,
+          qs: {rootHash: parser.dataSets.self.hashTree.getRootHash()},
           body: {
             leafCount: 1,
             leafDataEntries: [
-              {leafIndex: 0, elementIds: [{type: 'self', id: 4, version: 102}]},
+              {
+                leafIndex: 0,
+                elementIds: [
+                  {type: 'self', id: 4, version: 102},
+                  {type: 'metadata', id: 5, version: 50},
+                ],
+              },
             ],
           },
         });
@@ -1257,7 +1932,7 @@ describe('HashTreeParser', () => {
         // Stub updateItems on self hash tree to return true
         sinon.stub(parser.dataSets.self.hashTree, 'updateItems').returns([true]);
 
-        // Send a message with SELF object that has a new visibleDataSets list
+        // Send a message with Metadata object that has a new visibleDataSets list
         const message = {
           dataSets: [createDataSet('self', 1, 2100), createDataSet('attendees', 8, 4000)],
           visibleDataSetsUrl,
@@ -1266,14 +1941,31 @@ describe('HashTreeParser', () => {
             {
               htMeta: {
                 elementId: {
-                  type: 'self' as const,
-                  id: 4,
-                  version: 101,
+                  type: 'metadata' as const,
+                  id: 5,
+                  version: 51,
                 },
                 dataSetNames: ['self'],
               },
               data: {
-                visibleDataSets: ['main', 'self', 'atd-unmuted', 'attendees'], // added 'attendees'
+                visibleDataSets: [
+                  {
+                    name: 'main',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main',
+                  },
+                  {
+                    name: 'self',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+                  },
+                  {
+                    name: 'atd-unmuted',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/atd-unmuted',
+                  },
+                  {
+                    name: 'attendees',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/attendees',
+                  },
+                ], // added 'attendees'
               },
             },
           ],
@@ -1282,31 +1974,65 @@ describe('HashTreeParser', () => {
         await parser.handleMessage(message, 'add visible dataset');
 
         // Verify that 'attendees' was added to visibleDataSets
-        assert.include(parser.visibleDataSets, 'attendees');
+        expect(parser.visibleDataSets.some((vds) => vds.name === 'attendees')).to.be.true;
 
         // Verify that a hash tree was created for 'attendees'
         assert.exists(parser.dataSets.attendees.hashTree);
         assert.equal(parser.dataSets.attendees.hashTree.numLeaves, 8);
 
-        // Verify callback was called with the self update (appears twice due to SPARK-744859)
+        // Verify callback was called with the metadata update (appears twice - processed once for visible dataset changes, once in main loop)
         assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
           updatedObjects: [
             {
               htMeta: {
-                elementId: {type: 'self', id: 4, version: 101},
+                elementId: {type: 'metadata', id: 5, version: 51},
                 dataSetNames: ['self'],
               },
               data: {
-                visibleDataSets: ['main', 'self', 'atd-unmuted', 'attendees'],
+                visibleDataSets: [
+                  {
+                    name: 'main',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main',
+                  },
+                  {
+                    name: 'self',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+                  },
+                  {
+                    name: 'atd-unmuted',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/atd-unmuted',
+                  },
+                  {
+                    name: 'attendees',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/attendees',
+                  },
+                ],
               },
             },
             {
               htMeta: {
-                elementId: {type: 'self', id: 4, version: 101},
+                elementId: {type: 'metadata', id: 5, version: 51},
                 dataSetNames: ['self'],
               },
               data: {
-                visibleDataSets: ['main', 'self', 'atd-unmuted', 'attendees'],
+                visibleDataSets: [
+                  {
+                    name: 'main',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main',
+                  },
+                  {
+                    name: 'self',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+                  },
+                  {
+                    name: 'atd-unmuted',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/atd-unmuted',
+                  },
+                  {
+                    name: 'attendees',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/attendees',
+                  },
+                ],
               },
             },
           ],
@@ -1320,7 +2046,7 @@ describe('HashTreeParser', () => {
         // Stub updateItems on self hash tree to return true
         sinon.stub(parser.dataSets.self.hashTree, 'updateItems').returns([true]);
 
-        // Send a message with SELF object that has a new visibleDataSets list (adding 'new-dataset')
+        // Send a message with Metadata object that has a new visibleDataSets list (adding 'new-dataset')
         // but WITHOUT providing info about the new dataset in dataSets array
         const message = {
           dataSets: [createDataSet('self', 1, 2100)],
@@ -1330,14 +2056,31 @@ describe('HashTreeParser', () => {
             {
               htMeta: {
                 elementId: {
-                  type: 'self' as const,
-                  id: 4,
-                  version: 101,
+                  type: 'metadata' as const,
+                  id: 5,
+                  version: 51,
                 },
                 dataSetNames: ['self'],
               },
               data: {
-                visibleDataSets: ['main', 'self', 'atd-unmuted', 'new-dataset'],
+                visibleDataSets: [
+                  {
+                    name: 'main',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main',
+                  },
+                  {
+                    name: 'self',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+                  },
+                  {
+                    name: 'atd-unmuted',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/atd-unmuted',
+                  },
+                  {
+                    name: 'new-dataset',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/new-dataset',
+                  },
+                ],
               },
             },
           ],
@@ -1355,38 +2098,78 @@ describe('HashTreeParser', () => {
 
         await parser.handleMessage(message, 'add new dataset requiring async init');
 
-        // immediately we don't have the dataset yet, so it should not be in visibleDataSets
-        // and no hash tree should exist yet
-        assert.isFalse(parser.visibleDataSets.includes('new-dataset'));
-        assert.isUndefined(parser.dataSets['new-dataset']);
+        await checkAsyncDatasetInitialization(parser, newDataSet);
+      });
 
-        // Wait for the async initialization to complete (queued as microtask)
+      it('emits MEETING_ENDED if async init of a new visible dataset fails with 404', async () => {
+        const parser = createHashTreeParser();
+
+        // Stub updateItems on self hash tree to return true
+        sinon.stub(parser.dataSets.self.hashTree, 'updateItems').returns([true]);
+
+        // Send a message with Metadata object that adds a new visible dataset
+        const message = {
+          dataSets: [createDataSet('self', 1, 2100)],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {
+                  type: 'metadata' as const,
+                  id: 5,
+                  version: 51,
+                },
+                dataSetNames: ['self'],
+              },
+              data: {
+                visibleDataSets: [
+                  {
+                    name: 'main',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main',
+                  },
+                  {
+                    name: 'self',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+                  },
+                  {
+                    name: 'atd-unmuted',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/atd-unmuted',
+                  },
+                  {
+                    name: 'new-dataset',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/new-dataset',
+                  },
+                ],
+              },
+            },
+          ],
+        };
+
+        // Mock getAllDataSetsMetadata to reject with 404
+        const error: any = new Error('Request failed with status 404');
+        error.statusCode = 404;
+        webexRequest
+          .withArgs(
+            sinon.match({
+              method: 'GET',
+              uri: visibleDataSetsUrl,
+            })
+          )
+          .rejects(error);
+
+        await parser.handleMessage(message, 'add new dataset triggering 404');
+
+        // The first callback call is from parseMessage with the metadata update
+        callback.resetHistory();
+
+        // Wait for the async initialization (queueMicrotask) to complete
         await clock.tickAsync(0);
 
-        // The visibleDataSets is updated from the self object data
-        assert.include(parser.visibleDataSets, 'new-dataset');
-
-        // Verify that a hash tree was created for 'new-dataset'
-        assert.exists(parser.dataSets['new-dataset'].hashTree);
-        assert.equal(parser.dataSets['new-dataset'].hashTree.numLeaves, 4);
-
-        // Verify getAllDataSetsMetadata was called for async initialization
-        assert.calledWith(
-          webexRequest,
-          sinon.match({
-            method: 'GET',
-            uri: visibleDataSetsUrl,
-          })
-        );
-
-        // Verify sync request was sent for the new dataset
-        assert.calledWith(
-          webexRequest,
-          sinon.match({
-            method: 'POST',
-            uri: `${newDataSet.url}/sync`,
-          })
-        );
+        // Verify callback was called with MEETING_ENDED
+        assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
+          updatedObjects: undefined,
+        });
       });
 
       it('handles removal of visible data set', async () => {
@@ -1406,7 +2189,7 @@ describe('HashTreeParser', () => {
         // Stub updateItems on self hash tree to return true
         sinon.stub(parser.dataSets.self.hashTree, 'updateItems').returns([true]);
 
-        // Send a message with SELF object that has removed 'atd-unmuted' from visibleDataSets
+        // Send a message with Metadata object that has removed 'atd-unmuted' from visibleDataSets
         const message = {
           dataSets: [createDataSet('self', 1, 2100)],
           visibleDataSetsUrl,
@@ -1415,14 +2198,23 @@ describe('HashTreeParser', () => {
             {
               htMeta: {
                 elementId: {
-                  type: 'self' as const,
-                  id: 4,
-                  version: 101,
+                  type: 'metadata' as const,
+                  id: 5,
+                  version: 51,
                 },
                 dataSetNames: ['self'],
               },
               data: {
-                visibleDataSets: ['main', 'self'], // removed 'atd-unmuted'
+                visibleDataSets: [
+                  {
+                    name: 'main',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main',
+                  },
+                  {
+                    name: 'self',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+                  },
+                ], // removed 'atd-unmuted'
               },
             },
           ],
@@ -1431,7 +2223,7 @@ describe('HashTreeParser', () => {
         await parser.handleMessage(message, 'remove visible dataset');
 
         // Verify that 'atd-unmuted' was removed from visibleDataSets
-        assert.notInclude(parser.visibleDataSets, 'atd-unmuted');
+        expect(parser.visibleDataSets.some((vds) => vds.name === 'atd-unmuted')).to.be.false;
 
         // Verify that the hash tree for 'atd-unmuted' was deleted
         assert.isUndefined(parser.dataSets['atd-unmuted'].hashTree);
@@ -1439,16 +2231,25 @@ describe('HashTreeParser', () => {
         // Verify that the timer was cleared
         assert.isUndefined(parser.dataSets['atd-unmuted'].timer);
 
-        // Verify callback was called with both the self update and the removed objects
+        // Verify callback was called with the metadata update and the removed objects (metadata appears twice - processed once for dataset changes, once in main loop)
         assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
           updatedObjects: [
             {
               htMeta: {
-                elementId: {type: 'self', id: 4, version: 101},
+                elementId: {type: 'metadata', id: 5, version: 51},
                 dataSetNames: ['self'],
               },
               data: {
-                visibleDataSets: ['main', 'self'],
+                visibleDataSets: [
+                  {
+                    name: 'main',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main',
+                  },
+                  {
+                    name: 'self',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+                  },
+                ],
               },
             },
             {
@@ -1460,11 +2261,20 @@ describe('HashTreeParser', () => {
             },
             {
               htMeta: {
-                elementId: {type: 'self', id: 4, version: 101}, // 2nd self because of SPARK-744859
+                elementId: {type: 'metadata', id: 5, version: 51},
                 dataSetNames: ['self'],
               },
               data: {
-                visibleDataSets: ['main', 'self'],
+                visibleDataSets: [
+                  {
+                    name: 'main',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main',
+                  },
+                  {
+                    name: 'self',
+                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+                  },
+                ],
               },
             },
           ],
@@ -1489,7 +2299,7 @@ describe('HashTreeParser', () => {
         });
 
         // Verify attendees is NOT in visibleDataSets
-        assert.notInclude(parser.visibleDataSets, 'attendees');
+        expect(parser.visibleDataSets.some((vds) => vds.name === 'attendees')).to.be.false;
 
         // Send a message with attendees data
         const message = {
@@ -1518,6 +2328,935 @@ describe('HashTreeParser', () => {
 
         // Verify callback was NOT called (no updates for non-visible datasets)
         assert.notCalled(callback);
+      });
+    });
+
+    describe('heartbeat watchdog', () => {
+      it('initiates sync immediately only for the specific data set whose heartbeat watchdog fires', async () => {
+        const parser = createHashTreeParser();
+        const heartbeatIntervalMs = 5000;
+
+        // Send initial heartbeat message for 'main' only
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeatMessage, 'initial heartbeat');
+
+        // Verify only 'main' watchdog timer is set
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+        expect(parser.dataSets.self.heartbeatWatchdogTimer).to.be.undefined;
+        expect(parser.dataSets['atd-unmuted'].heartbeatWatchdogTimer).to.be.undefined;
+
+        // Mock responses for performSync (GET hashtree then POST sync for leafCount > 1)
+        const mainDataSetUrl = parser.dataSets.main.url;
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          createDataSet('main', 16, 1101)
+        );
+        mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+        // Advance time past heartbeatIntervalMs + backoff (Math.random returns 0, so backoff = 0)
+        // performSync is called immediately when the watchdog fires - no additional delay
+        await clock.tickAsync(heartbeatIntervalMs);
+
+        // Verify sync request was sent immediately for 'main' (GET hashtree + POST sync)
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'GET',
+            uri: `${mainDataSetUrl}/hashtree`,
+          })
+        );
+
+        // Verify no sync requests were sent for other datasets
+        assert.neverCalledWith(
+          webexRequest,
+          sinon.match({
+            method: 'POST',
+            uri: `${parser.dataSets.self.url}/sync`,
+          })
+        );
+        assert.neverCalledWith(
+          webexRequest,
+          sinon.match({
+            method: 'GET',
+            uri: `${parser.dataSets['atd-unmuted'].url}/hashtree`,
+          })
+        );
+      });
+
+      it('calls POST sync directly for leafCount === 1 data sets', async () => {
+        const parser = createHashTreeParser();
+        const heartbeatIntervalMs = 5000;
+
+        // Send heartbeat for 'self' (leafCount === 1)
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('self', 1, 2100),
+              url: parser.dataSets.self.url,
+              root: parser.dataSets.self.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeatMessage, 'self heartbeat');
+
+        // Mock sync response for self
+        mockSendSyncRequestResponse(parser.dataSets.self.url, null);
+
+        // Advance time past watchdog delay
+        await clock.tickAsync(heartbeatIntervalMs);
+
+        // For leafCount === 1, performSync skips GET hashtree and goes straight to POST sync
+        assert.neverCalledWith(
+          webexRequest,
+          sinon.match({
+            method: 'GET',
+            uri: `${parser.dataSets.self.url}/hashtree`,
+          })
+        );
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'POST',
+            uri: `${parser.dataSets.self.url}/sync`,
+          })
+        );
+      });
+
+      it('sets watchdog timers for each data set in the message', async () => {
+        const parser = createHashTreeParser();
+        const heartbeatIntervalMs = 5000;
+
+        // Send heartbeat with multiple datasets
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+            {
+              ...createDataSet('self', 1, 2100),
+              url: parser.dataSets.self.url,
+              root: parser.dataSets.self.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeatMessage, 'multi-dataset heartbeat');
+
+        // Watchdog timers should be set for both datasets in the message
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+        expect(parser.dataSets.self.heartbeatWatchdogTimer).to.not.be.undefined;
+        // But not for datasets not in the message
+        expect(parser.dataSets['atd-unmuted'].heartbeatWatchdogTimer).to.be.undefined;
+      });
+
+      it('resets the watchdog timer for a specific data set when a new heartbeat for it is received', async () => {
+        const parser = createHashTreeParser();
+        const heartbeatIntervalMs = 5000;
+
+        // Send first heartbeat for 'main'
+        const heartbeat1 = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeat1, 'first heartbeat');
+
+        const firstTimer = parser.dataSets.main.heartbeatWatchdogTimer;
+        expect(firstTimer).to.not.be.undefined;
+
+        // Advance time to just before the watchdog would fire
+        clock.tick(4000);
+
+        // Send second heartbeat for 'main' - this should reset the watchdog
+        const heartbeat2 = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1101),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeat2, 'second heartbeat');
+
+        const secondTimer = parser.dataSets.main.heartbeatWatchdogTimer;
+        expect(secondTimer).to.not.be.undefined;
+        expect(secondTimer).to.not.equal(firstTimer);
+
+        // Advance another 4000ms (total 8000ms from start, but only 4000ms since last heartbeat)
+        // The watchdog should NOT fire yet
+        await clock.tickAsync(4000);
+
+        // No sync requests should have been sent
+        assert.notCalled(webexRequest);
+      });
+
+      it('resets the watchdog timer when a normal message (with locusStateElements) is received', async () => {
+        const parser = createHashTreeParser();
+        const heartbeatIntervalMs = 5000;
+
+        // Send initial heartbeat to start the watchdog for 'main'
+        const heartbeat = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeat, 'initial heartbeat');
+
+        const firstTimer = parser.dataSets.main.heartbeatWatchdogTimer;
+        expect(firstTimer).to.not.be.undefined;
+
+        // Advance time partially
+        clock.tick(3000);
+
+        // Stub updateItems so the normal message is processed
+        sinon.stub(parser.dataSets.main.hashTree, 'updateItems').returns([true]);
+
+        // Send a normal message (with locusStateElements) for 'main' - should also reset watchdog
+        const normalMessage = {
+          dataSets: [createDataSet('main', 16, 1101)],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {type: 'locus' as const, id: 0, version: 201},
+                dataSetNames: ['main'],
+              },
+              data: {someData: 'value'},
+            },
+          ],
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(normalMessage, 'normal message');
+
+        const secondTimer = parser.dataSets.main.heartbeatWatchdogTimer;
+        expect(secondTimer).to.not.be.undefined;
+        expect(secondTimer).to.not.equal(firstTimer);
+      });
+
+      it('does not set the watchdog timer when heartbeatIntervalMs is not set', async () => {
+        const parser = createHashTreeParser();
+
+        // Send a heartbeat message without heartbeatIntervalMs
+        const heartbeatMessage = createHeartbeatMessage(
+          'main',
+          16,
+          1100,
+          parser.dataSets.main.hashTree.getRootHash()
+        );
+
+        await parser.handleMessage(heartbeatMessage, 'heartbeat without interval');
+
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.be.undefined;
+      });
+
+      it('stops all watchdog timers when meeting ends', async () => {
+        const parser = createHashTreeParser();
+        const heartbeatIntervalMs = 5000;
+
+        // Send heartbeat for multiple datasets
+        const heartbeat = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+            {
+              ...createDataSet('self', 1, 2100),
+              url: parser.dataSets.self.url,
+              root: parser.dataSets.self.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeat, 'initial heartbeat');
+
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+        expect(parser.dataSets.self.heartbeatWatchdogTimer).to.not.be.undefined;
+
+        // Stub updateItems to return true for the roster drop detection
+        sinon.stub(parser.dataSets.self.hashTree, 'updateItems').returns([true]);
+
+        // Send a roster drop message that triggers MEETING_ENDED
+        const rosterDropMessage = {
+          dataSets: [createDataSet('self', 1, 2101)],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {type: 'self' as const, id: 4, version: 102},
+                dataSetNames: ['self'],
+              },
+              data: undefined,
+            },
+          ],
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(rosterDropMessage, 'roster drop');
+
+        // All watchdog timers should have been stopped and NOT restarted
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.be.undefined;
+        expect(parser.dataSets.self.heartbeatWatchdogTimer).to.be.undefined;
+      });
+
+      it("uses each data set's own backoff for its watchdog delay", async () => {
+        // Create a parser where datasets have different backoff configs
+        const initialLocus = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1000),
+              backoff: {maxMs: 500, exponent: 2},
+            },
+            {
+              ...createDataSet('self', 1, 2000),
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+              backoff: {maxMs: 2000, exponent: 3},
+            },
+          ],
+          locus: {
+            ...exampleInitialLocus.locus,
+          },
+        };
+
+        const metadata = {
+          ...exampleMetadata,
+          visibleDataSets: [
+            {name: 'main', url: initialLocus.dataSets[0].url},
+            {name: 'self', url: initialLocus.dataSets[1].url},
+          ],
+        };
+
+        const parser = createHashTreeParser(initialLocus, metadata);
+        const heartbeatIntervalMs = 5000;
+
+        // Set Math.random to return 1 so that backoff = 1^exponent * maxMs = maxMs
+        mathRandomStub.returns(1);
+
+        // Send heartbeat for both datasets
+        const heartbeat = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              backoff: {maxMs: 500, exponent: 2},
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+            {
+              ...createDataSet('self', 1, 2100),
+              url: parser.dataSets.self.url,
+              backoff: {maxMs: 2000, exponent: 3},
+              root: parser.dataSets.self.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeat, 'heartbeat');
+
+        // 'main' watchdog delay = 5000 + 1^2 * 500 = 5500ms
+        // 'self' watchdog delay = 5000 + 1^3 * 2000 = 7000ms
+
+        // Mock sync responses
+        mockGetHashesFromLocusResponse(
+          parser.dataSets.main.url,
+          new Array(16).fill('00000000000000000000000000000000'),
+          createDataSet('main', 16, 1101)
+        );
+        mockSendSyncRequestResponse(parser.dataSets.main.url, null);
+        mockSendSyncRequestResponse(parser.dataSets.self.url, null);
+
+        // At 5499ms, neither watchdog should have fired
+        await clock.tickAsync(5499);
+        assert.notCalled(webexRequest);
+
+        // At 5500ms, 'main' watchdog fires and performSync runs immediately
+        await clock.tickAsync(1);
+
+        // main sync should have triggered immediately (GET hashtree + POST sync)
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'GET',
+            uri: `${parser.dataSets.main.url}/hashtree`,
+          })
+        );
+
+        webexRequest.resetHistory();
+
+        // At 7000ms, 'self' watchdog fires and performSync runs immediately
+        await clock.tickAsync(1500);
+
+        // self sync should have also triggered (POST sync only, leafCount === 1)
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'POST',
+            uri: `${parser.dataSets.self.url}/sync`,
+          })
+        );
+      });
+
+      it('does not set watchdog for data sets without a hash tree', async () => {
+        const parser = createHashTreeParser();
+        const heartbeatIntervalMs = 5000;
+
+        // 'atd-active' is in the initial locus but is not visible (no hash tree)
+        // Send heartbeat mentioning a non-visible dataset
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+            createDataSet('atd-active', 16, 4000),
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        await parser.handleMessage(heartbeatMessage, 'heartbeat with non-visible dataset');
+
+        // Watchdog set for main (visible) but not for atd-active (no hash tree)
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+        expect(parser.dataSets['atd-active']?.heartbeatWatchdogTimer).to.be.undefined;
+      });
+    });
+  });
+
+  describe('#callLocusInfoUpdateCallback filtering', () => {
+    // Helper to setup parser with initial objects and reset callback history
+    async function setupParserWithObjects(locusStateElements: any[]) {
+      const parser = createHashTreeParser();
+
+      if (locusStateElements.length > 0) {
+        // Determine which datasets to include based on the objects' dataSetNames
+        const dataSetNames = new Set<string>();
+        locusStateElements.forEach((element) => {
+          element.htMeta?.dataSetNames?.forEach((name) => dataSetNames.add(name));
+        });
+
+        const dataSets = [];
+        if (dataSetNames.has('main')) dataSets.push(createDataSet('main', 16, 1100));
+        if (dataSetNames.has('self')) dataSets.push(createDataSet('self', 1, 2100));
+        if (dataSetNames.has('atd-unmuted')) dataSets.push(createDataSet('atd-unmuted', 16, 3100));
+
+        const setupMessage = {
+          dataSets,
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements,
+        };
+
+        await parser.handleMessage(setupMessage, 'setup');
+      }
+
+      callback.resetHistory();
+      return parser;
+    }
+
+    it('filters out updates when a dataset has a higher version', async () => {
+      const parser = await setupParserWithObjects([
+        {
+          htMeta: {
+            elementId: {type: 'locus' as const, id: 5, version: 100},
+            dataSetNames: ['main'],
+          },
+          data: {existingField: 'existing'},
+        },
+      ]);
+
+      // Try to update with an older version (90)
+      const updateMessage = {
+        dataSets: [createDataSet('main', 16, 1101)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 5, version: 90},
+              dataSetNames: ['main'],
+            },
+            data: {someField: 'value'},
+          },
+        ],
+      };
+
+      await parser.handleMessage(updateMessage, 'update with older version');
+
+      // Callback should not be called because the update was filtered out
+      assert.notCalled(callback);
+    });
+
+    it('allows updates when version is newer than existing', async () => {
+      const parser = await setupParserWithObjects([
+        {
+          htMeta: {
+            elementId: {type: 'locus' as const, id: 5, version: 100},
+            dataSetNames: ['main'],
+          },
+          data: {existingField: 'existing'},
+        },
+      ]);
+
+      // Try to update with a newer version (110)
+      const updateMessage = {
+        dataSets: [createDataSet('main', 16, 1101)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 5, version: 110},
+              dataSetNames: ['main'],
+            },
+            data: {someField: 'new value'},
+          },
+        ],
+      };
+
+      await parser.handleMessage(updateMessage, 'update with newer version');
+
+      // Callback should be called with the update
+      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+        updatedObjects: [
+          {
+            htMeta: {
+              elementId: {type: 'locus', id: 5, version: 110},
+              dataSetNames: ['main'],
+            },
+            data: {someField: 'new value'},
+          },
+        ],
+      });
+    });
+
+    it('filters out removal when object still exists in any dataset', async () => {
+      const parser = await setupParserWithObjects([
+        {
+          htMeta: {
+            elementId: {type: 'participant' as const, id: 10, version: 50},
+            dataSetNames: ['main', 'atd-unmuted'],
+          },
+          data: {name: 'participant'},
+        },
+      ]);
+
+      // Try to remove the object from main only (it still exists in atd-unmuted)
+      const removalMessage = {
+        dataSets: [createDataSet('main', 16, 1101)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 10, version: 50},
+              dataSetNames: ['main'],
+            },
+            data: null, // removal
+          },
+        ],
+      };
+
+      await parser.handleMessage(removalMessage, 'removal from one dataset');
+
+      // Callback should not be called because object still exists in atd-unmuted
+      assert.notCalled(callback);
+    });
+
+    it('allows removal when object does not exist in any dataset', async () => {
+      const parser = await setupParserWithObjects([]);
+
+      // Stub updateItems to return true (simulating that the removal was "applied")
+      sinon.stub(parser.dataSets.main.hashTree, 'updateItems').returns([true]);
+
+      // Try to remove an object that doesn't exist anywhere
+      const removalMessage = {
+        dataSets: [createDataSet('main', 16, 1100)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 99, version: 10},
+              dataSetNames: ['main'],
+            },
+            data: null, // removal
+          },
+        ],
+      };
+
+      await parser.handleMessage(removalMessage, 'removal of non-existent object');
+
+      // Callback should be called with the removal
+      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+        updatedObjects: [
+          {
+            htMeta: {
+              elementId: {type: 'participant', id: 99, version: 10},
+              dataSetNames: ['main'],
+            },
+            data: null,
+          },
+        ],
+      });
+    });
+
+    it('filters out removal when object exists in another dataset with newer version', async () => {
+      const parser = createHashTreeParser();
+
+      // Setup: Add object to main with version 40
+      await parser.handleMessage(
+        {
+          dataSets: [createDataSet('main', 16, 1100)],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {type: 'participant' as const, id: 10, version: 40},
+                dataSetNames: ['main'],
+              },
+              data: {name: 'participant v40'},
+            },
+          ],
+        },
+        'setup main'
+      );
+
+      // Add object to atd-unmuted with version 50
+      await parser.handleMessage(
+        {
+          dataSets: [createDataSet('atd-unmuted', 16, 3100)],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {type: 'participant' as const, id: 10, version: 50},
+                dataSetNames: ['atd-unmuted'],
+              },
+              data: {name: 'participant v50'},
+            },
+          ],
+        },
+        'setup atd-unmuted'
+      );
+      callback.resetHistory();
+
+      // Try to remove with version 40 from main
+      const removalMessage = {
+        dataSets: [createDataSet('main', 16, 1101)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 10, version: 40},
+              dataSetNames: ['main'],
+            },
+            data: null, // removal
+          },
+        ],
+      };
+
+      await parser.handleMessage(removalMessage, 'removal with older version');
+
+      // Callback should not be called because object still exists with newer version
+      assert.notCalled(callback);
+    });
+
+    it('filters mixed updates correctly - some pass, some filtered', async () => {
+      const parser = await setupParserWithObjects([
+        {
+          htMeta: {
+            elementId: {type: 'participant' as const, id: 1, version: 100},
+            dataSetNames: ['main'],
+          },
+          data: {name: 'participant 1'},
+        },
+        {
+          htMeta: {
+            elementId: {type: 'participant' as const, id: 2, version: 50},
+            dataSetNames: ['atd-unmuted'],
+          },
+          data: {name: 'participant 2'},
+        },
+      ]);
+
+      // Send mixed updates
+      const mixedMessage = {
+        dataSets: [createDataSet('main', 16, 1101)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 1, version: 110}, // newer version - should pass
+              dataSetNames: ['main'],
+            },
+            data: {name: 'updated'},
+          },
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 1, version: 90}, // older version - should be filtered
+              dataSetNames: ['main'],
+            },
+            data: {name: 'old'},
+          },
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 3, version: 10}, // new object - should pass
+              dataSetNames: ['main'],
+            },
+            data: {name: 'new'},
+          },
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 2, version: 50}, // removal but exists in atd-unmuted - should be filtered
+              dataSetNames: ['main'],
+            },
+            data: null,
+          },
+        ],
+      };
+
+      await parser.handleMessage(mixedMessage, 'mixed updates');
+
+      // Callback should be called with only the valid updates (participant 1 v110 and participant 3 v10)
+      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+        updatedObjects: [
+          {
+            htMeta: {
+              elementId: {type: 'participant', id: 1, version: 110},
+              dataSetNames: ['main'],
+            },
+            data: {name: 'updated'},
+          },
+          {
+            htMeta: {
+              elementId: {type: 'participant', id: 3, version: 10},
+              dataSetNames: ['main'],
+            },
+            data: {name: 'new'},
+          },
+        ],
+      });
+    });
+
+    it('does not call callback when all updates are filtered out', async () => {
+      const parser = await setupParserWithObjects([
+        {
+          htMeta: {
+            elementId: {type: 'locus' as const, id: 5, version: 100},
+            dataSetNames: ['main'],
+          },
+          data: {existingField: 'existing'},
+        },
+      ]);
+
+      // Try to update with older versions (all should be filtered)
+      const updateMessage = {
+        dataSets: [createDataSet('main', 16, 1101)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 5, version: 80},
+              dataSetNames: ['main'],
+            },
+            data: {someField: 'value'},
+          },
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 5, version: 90},
+              dataSetNames: ['main'],
+            },
+            data: {someField: 'another value'},
+          },
+        ],
+      };
+
+      await parser.handleMessage(updateMessage, 'all filtered updates');
+
+      // Callback should not be called at all
+      assert.notCalled(callback);
+    });
+
+    it('checks all visible datasets when filtering', async () => {
+      const parser = createHashTreeParser();
+
+      // Setup: Add same object to multiple datasets with different versions
+      await parser.handleMessage(
+        {
+          dataSets: [createDataSet('main', 16, 1100)],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {type: 'participant' as const, id: 10, version: 100},
+                dataSetNames: ['main'],
+              },
+              data: {name: 'v100'},
+            },
+          ],
+        },
+        'setup main'
+      );
+
+      await parser.handleMessage(
+        {
+          dataSets: [createDataSet('self', 1, 2100)],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {type: 'participant' as const, id: 10, version: 120}, // highest
+                dataSetNames: ['self'],
+              },
+              data: {name: 'v120'},
+            },
+          ],
+        },
+        'setup self'
+      );
+
+      await parser.handleMessage(
+        {
+          dataSets: [createDataSet('atd-unmuted', 16, 3100)],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {type: 'participant' as const, id: 10, version: 110},
+                dataSetNames: ['atd-unmuted'],
+              },
+              data: {name: 'v110'},
+            },
+          ],
+        },
+        'setup atd-unmuted'
+      );
+      callback.resetHistory();
+
+      // Try to update with version 115 (newer than main and atd-unmuted, but older than self)
+      const updateMessage = {
+        dataSets: [createDataSet('main', 16, 1101)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 10, version: 115},
+              dataSetNames: ['main'],
+            },
+            data: {name: 'update'},
+          },
+        ],
+      };
+
+      await parser.handleMessage(updateMessage, 'update with v115');
+
+      // Should be filtered out because self dataset has version 120
+      assert.notCalled(callback);
+    });
+
+    it('does not call callback for empty locusStateElements', async () => {
+      const parser = await setupParserWithObjects([]);
+
+      const emptyMessage = {
+        dataSets: [createDataSet('main', 16, 1100)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      };
+
+      await parser.handleMessage(emptyMessage, 'empty elements');
+
+      assert.notCalled(callback);
+    });
+
+    it('always calls callback for MEETING_ENDED regardless of filtering', async () => {
+      const parser = await setupParserWithObjects([
+        {
+          htMeta: {
+            elementId: {type: 'locus' as const, id: 0, version: 100},
+            dataSetNames: ['main'],
+          },
+          data: {info: 'data'},
+        },
+      ]);
+
+      // Send roster drop message (SELF object with no data) to trigger MEETING_ENDED
+      const rosterDropMessage = {
+        dataSets: [createDataSet('self', 1, 2101)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'self' as const, id: 4, version: 102},
+              dataSetNames: ['self'],
+            },
+            data: undefined, // roster drop triggers MEETING_ENDED
+          },
+        ],
+      };
+
+      await parser.handleMessage(rosterDropMessage, 'roster drop message');
+
+      // Callback should be called with MEETING_ENDED
+      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
+        updatedObjects: undefined,
       });
     });
   });

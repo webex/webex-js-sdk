@@ -44,6 +44,18 @@ const MemberUtil = {
 
   /**
    * @param {Object} participant - The locus participant object.
+   * @returns {Boolean}
+   */
+  canApproveAIEnablement: (participant) => {
+    if (!participant) {
+      return false;
+    }
+
+    return !participant.attendeeRequestAiAssistantNotAllowed;
+  },
+
+  /**
+   * @param {Object} participant - The locus participant object.
    * @returns {[ServerRoleShape]}
    */
   getControlsRoles: (participant: Participant): Array<ServerRoleShape> =>
