@@ -226,32 +226,33 @@ const Mercury = WebexPlugin.extend({
   },
 
   /**
-   * Check if any sockets are connected
-   * @returns {boolean} True if at least one socket is connected
+   * Check if a socket is connected
+   * @param {string} [sessionId=this.defaultSessionId] - The session identifier
+   * @returns {boolean|undefined} True if the socket is connected
    */
-  hasConnectedSockets() {
-    const socket = this.sockets.get(this.defaultSessionId);
-    if (socket && socket.connected) {
-      return true;
-    }
+  hasConnectedSockets(sessionId = this.defaultSessionId) {
+    const socket = this.sockets.get(sessionId || this.defaultSessionId);
 
-    return false;
+    return socket?.connected;
   },
 
   /**
    * Check if any sockets are connecting
-   * @returns {boolean} True if at least one socket is connected
+   * @param {string} [sessionId=this.defaultSessionId] - The session identifier
+   * @returns {boolean|undefined} True if the socket is connecting
    */
-  hasConnectingSockets() {
-    const socket = this.sockets.get(this.defaultSessionId);
-    if (socket && socket.connecting) {
-      return true;
-    }
+  hasConnectingSockets(sessionId = this.defaultSessionId) {
+    const socket = this.sockets.get(sessionId || this.defaultSessionId);
 
-    return false;
+    return socket?.connecting;
   },
 
-  // @oneFlight
+  /**
+   * Connect to Mercury for a specific session.
+   * @param {string} [webSocketUrl] - Optional websocket URL override. Falls back to the device websocket URL.
+   * @param {string} [sessionId=this.defaultSessionId] - The session identifier for this connection.
+   * @returns {Promise<void>} Resolves when connection flow completes for the session.
+   */
   connect(webSocketUrl, sessionId = this.defaultSessionId) {
     if (!this._connectPromises) this._connectPromises = new Map();
 
@@ -313,7 +314,12 @@ const Mercury = WebexPlugin.extend({
     );
   },
 
-  // @oneFlight
+  /**
+   * Disconnect a Mercury socket for a specific session.
+   * @param {object} [options] - Optional websocket close options (for example: `{code, reason}`).
+   * @param {string} [sessionId=this.defaultSessionId] - The session identifier to disconnect.
+   * @returns {Promise<void>} Resolves after disconnect cleanup and close handling are initiated/completed.
+   */
   disconnect(options, sessionId = this.defaultSessionId) {
     this.logger.info(
       `${this.namespace}#disconnect: connecting state: ${this.connecting}, connected state: ${
@@ -486,20 +492,9 @@ const Mercury = WebexPlugin.extend({
       : this.backoffCalls.get(sessionId);
 
     // Check appropriate backoff call based on connection type
-    if (isShutdownSwitchover && !backoffCall) {
-      const msg = `${this.namespace}: prevent socket open when switchover backoff call no longer defined for ${sessionId}`;
-      const err = new Error(msg);
-
-      this.logger.info(msg);
-
-      // Call the callback with the error before rejecting
-      callback(err);
-
-      return Promise.reject(err);
-    }
-
-    if (!isShutdownSwitchover && !backoffCall) {
-      const msg = `${this.namespace}: prevent socket open when backoffCall no longer defined for ${sessionId}`;
+    if (!backoffCall) {
+      const mode = isShutdownSwitchover ? 'switchover backoff call' : 'backoffCall';
+      const msg = `${this.namespace}: prevent socket open when ${mode} no longer defined for ${sessionId}`;
       const err = new Error(msg);
 
       this.logger.info(msg);
