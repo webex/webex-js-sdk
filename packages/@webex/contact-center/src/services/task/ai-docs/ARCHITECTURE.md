@@ -341,12 +341,15 @@ sequenceDiagram
     T->>T: Update local state
     T->>C: contact.hold({data})
     C->>AQM: req(config)
-    AQM->>WS: Send request
-    WS->>BE: /v1/tasks/.../hold
+    AQM->>BE: POST /v1/tasks/{interactionId}/hold (HTTP via WebexRequest)
+    BE-->>AQM: HTTP response (TaskResponse payload)
+    AQM-->>C: resolve Promise<TaskResponse>
+    C-->>T: return TaskResponse
+    T-->>App: Promise resolves
+    Note over WS,TM: WebSocket is notification channel, not request transport
     BE-->>WS: AgentContactHeld
     WS-->>TM: message event
     TM-->>T: emit task:hold
-    T-->>App: Promise resolves
 ```
 
 ---
@@ -423,8 +426,7 @@ flowchart TD
 this.webCallingService.mapCallToTask(callId, interactionId);
 
 // Task uses call for media operations
-this.webCallingService.answer();
-this.webCallingService.hold();
+this.webCallingService.answerCall(localAudioStream: LocalMicrophoneStream, taskId: string);
 ```
 
 ---
