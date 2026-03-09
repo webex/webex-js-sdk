@@ -11,7 +11,7 @@
 | `ContactCenter` | `src/cc.ts` | Plugin class exposing agent methods |
 | `routingAgent` | `services/agent/index.ts` | AQM request definitions |
 | `Services` | `services/index.ts` | Service singleton with agent service |
-| `AqmReqs` | `services/core/aqm-reqs.ts` | Request/response over WebSocket |
+| `AqmReqs` | `services/core/aqm-reqs.ts` | HTTP requests to backend; responses via WebSocket notifications |  
 
 ---
 
@@ -66,7 +66,7 @@ flowchart TD
     A[cc.stationLogin] --> B[Validate input]
     B --> C[services.agent.stationLogin]
     C --> D[AqmReqs.req]
-    D --> E[WebSocket request]
+    D --> E[HTTP REST request to backend]  
     E --> F[Backend processes]
     F --> G{Success?}
     G -->|Yes| H[StationLoginSuccess event]
@@ -98,7 +98,7 @@ sequenceDiagram
     CC->>CC: timeEvent(LOGIN_SUCCESS, LOGIN_FAILED)
     CC->>Svc: stationLogin({data})
     Svc->>AQM: req(config)
-    AQM->>WS: Send login request
+    AQM->>BE: HTTP POST /v1/agents/login  
     WS->>BE: /v1/agents/login
     BE-->>WS: AgentStationLoginSuccess
     WS-->>AQM: Resolve with response
@@ -122,7 +122,7 @@ sequenceDiagram
     App->>CC: setAgentState(params)
     CC->>CC: timeEvent(STATE_SUCCESS, STATE_FAILED)
     CC->>Svc: stateChange({data})
-    Svc->>WS: PUT /v1/agents/session/state
+    Svc->>BE: HTTP PUT /v1/agents/session/state  
     WS->>BE: State change request
     BE-->>WS: AgentStateChangeSuccess
     WS-->>CC: Emit via handleWebsocketMessage

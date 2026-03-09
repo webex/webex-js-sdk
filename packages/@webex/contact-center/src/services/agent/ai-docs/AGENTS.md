@@ -87,7 +87,7 @@ const response = await cc.stationLogin({
 Logout agent from station.
 
 **Parameters**:
-- `logoutReason` (string, optional): 'User requested logout' | 'Inactivity Logout'
+- `logoutReason` (string, optional): 'User requested logout' | 'Inactivity Logout' | 'User requested agent profile update'
 
 **Returns**: `Promise<StationLogoutResponse>`
 
@@ -136,8 +136,7 @@ Get list of agents for consult/transfer.
 
 **Parameters**:
 - `state` (string, optional): Filter by state ('Available', 'Idle')
-- `mediaType` (string): Media type filter ('telephony', 'chat', 'email')
-
+- `mediaType` (string): Media type filter ('telephony', 'chat', 'social', 'email')  
 **Returns**: `Promise<BuddyAgentsResponse>`
 
 **Example**:
@@ -185,12 +184,17 @@ cc.on('agent:multiLogin', (event) => {
 
 ## Agent States
 
+The `AgentState` type (`'Available' | 'Idle' | 'RONA' | string`) is extensible -- the `string` union member allows backend-defined states beyond the known values listed below.
+
 | State | SubStatus | Description |
 |-------|-----------|-------------|
 | LoggedIn | Available | Ready to receive tasks |
-| LoggedIn | Idle | On break or not ready |
-| RONA | - | Rang but no answer |
+| LoggedIn | Idle | On break or not ready (uses aux code for sub-reason) |
+| RONA | - | Rang but no answer; agent failed to accept offered task |
 | LoggedOut | - | Not logged in |
+| LoggedIn | *(custom)* | Additional org-specific states defined via aux codes |
+
+> **Note**: `AgentState` is a union with `string`, so consumers should handle unknown state values gracefully rather than exhaustively matching only the known literals.
 
 ---
 
