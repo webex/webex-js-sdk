@@ -284,6 +284,8 @@ jobs:
       version: ${{ steps.versionextractor.outputs.version }}
       commit: ${{ steps.lastcommit.outputs.commit }}
       proceed: ${{ steps.skipcondition.outputs.proceed }}
+      package_name: ${{ steps.changedpackage.outputs.package_name }}
+      package_version: ${{ steps.changedpackage.outputs.package_version }}
 
     steps:
       - name: Checkout Project
@@ -317,6 +319,23 @@ jobs:
           yarn ws:tools
           echo "message=$(git log -1 --oneline --no-decorate)" >> $GITHUB_OUTPUT
           echo "version=v$(yarn package-tools sync --tag ${GITHUB_REF##*/} --packages webex | awk '{print $3}' | tr -d '%')" >> $GITHUB_OUTPUT
+
+      - name: Extract changed package version
+        id: changedpackage
+        run: |
+          PACKAGES="${{ needs.generate-package-matrix.outputs.node-recursive }}"
+          CLEAN=$(echo "$PACKAGES" | tr -d '{}')
+          if echo "$CLEAN" | tr ',' '\n' | grep -q "^webex$"; then
+            PKG="webex"
+          else
+            PKG=$(echo "$CLEAN" | tr ',' '\n' | head -1 | tr -d ' ')
+          fi
+          if [ -n "$PKG" ]; then
+            PKG_VERSION=$(yarn package-tools sync --tag ${GITHUB_REF##*/} --packages $PKG | awk '{print $3}' | tr -d '%')
+            echo "package_name=${PKG}" >> $GITHUB_OUTPUT
+            echo "package_version=v${PKG_VERSION}" >> $GITHUB_OUTPUT
+            echo "📦 Selected package: ${PKG} version: ${PKG_VERSION}"
+          fi
 
       - name: Conditions to skip tag publish
         id: skipcondition
@@ -365,3 +384,92 @@ jobs:
           else
             git push origin ${{ steps.versionextractor.outputs.version }}
           fi
+
+  comment-on-prs:
+    name: Comment on Merged PR
+    needs: [publish-tag, generate-package-matrix]
+    runs-on: ubuntu-latest
+    if: ${{ needs.generate-package-matrix.outputs.node-recursive != '' }}
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v3
+
+      - name: Get Pull Request Number
+        id: pr
+        run: echo "pull_request_number=$(gh pr view --json number -q .number || echo "")" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Post Comment on PR
+        if: ${{ steps.pr.outputs.pull_request_number != '' }}
+        uses: actions/github-script@v7
+        env:
+          INPUT_VERSION: ${{ needs.publish-tag.outputs.package_version }}
+          INPUT_PACKAGES: ${{ needs.generate-package-matrix.outputs.node-recursive }}
+          INPUT_PR_NUMBER: ${{ steps.pr.outputs.pull_request_number }}
+          INPUT_PACKAGE_NAME: ${{ needs.publish-tag.outputs.package_name }}
+        with:
+          script: |
+            const version = process.env.INPUT_VERSION || '';
+            const versionNumber = version.replace(/^v/, '');
+            const prNumber = parseInt(process.env.INPUT_PR_NUMBER);
+
+            if (!prNumber) {
+              console.log('No PR number found, skipping');
+              return;
+            }
+
+            console.log(`Posting comment on PR #${prNumber} for version ${version}`);
+
+            const existingComments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber
+            });
+
+            const alreadyCommented = existingComments.data.some(c =>
+              c.user.type === 'Bot' &&
+              c.body.includes('Your changes are now available') &&
+              c.body.includes(version)
+            );
+
+            if (alreadyCommented) {
+              console.log(`Already commented on PR #${prNumber} for ${version}`);
+              return;
+            }
+
+            const packagesRaw = process.env.INPUT_PACKAGES || '';
+            const packages = packagesRaw
+              .replace(/[{}]/g, '')
+              .split(',')
+              .map(p => p.trim())
+              .filter(Boolean);
+
+            const primaryPackage = process.env.INPUT_PACKAGE_NAME || 'webex';
+            const packageList = packages.slice(0, 5).map(p => `\`${p}\``).join(', ');
+            const morePackages = packages.length > 5 ? ` and ${packages.length - 5} more` : '';
+
+            const stableVersion = versionNumber.replace(/-next\..*$/, '');
+            const changelogUrl = `https://web-sdk.webex.com/changelog/?stable_version=${stableVersion}&package=${primaryPackage}&version=${versionNumber}`;
+
+            const commentBody = [
+              '## 🎉 Your changes are now available!',
+              '',
+              `**Released in:** [\`${version}\`](https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/${version})`,
+              `**Packages updated:** ${packageList}${morePackages}`,
+              '',
+              `📖 **[View full changelog →](${changelogUrl})**`,
+              '',
+              '---',
+              `<sub>🤖 This is an automated message.</sub>`
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: commentBody
+            });
+
+            console.log(`✅ Commented on PR #${prNumber}`);
