@@ -209,7 +209,7 @@ The only exception is **Type E (Understand Architecture)** which is read-only.
 
 ### 3. MetricsManager Usage (MANDATORY)
 
-All operations must track metrics using `timeEvent` + `trackEvent`. See full pattern in [`ai-docs/RULES.md`](ai-docs/RULES.md) and [`ai-docs/patterns/sdk-plugin-patterns.md`](ai-docs/patterns/sdk-plugin-patterns.md).
+All operations must track metrics using `timeEvent` + `trackEvent`. See full pattern in [`ai-docs/RULES.md`](ai-docs/RULES.md).
 
 ---
 
@@ -227,7 +227,7 @@ Use defined event constants (`CC_EVENTS`, `AGENT_EVENTS`, `TASK_EVENTS`), never 
 
 ### 6. WebexPlugin Extension Pattern (MANDATORY)
 
-Follow the established `cc.ts` plugin class pattern with JSDoc (`@public`, `@param`, `@returns`, `@example`). See full pattern in [`ai-docs/patterns/sdk-plugin-patterns.md`](ai-docs/patterns/sdk-plugin-patterns.md).
+Follow the established `cc.ts` plugin class pattern with JSDoc (`@public`, `@param`, `@returns`, `@example`). Refer to `src/cc.ts` directly for the canonical implementation.
 
 ---
 
@@ -265,7 +265,7 @@ Mandatory behavior:
 ### For New Service/Method:
 1. Load the affected service's docs via [Service Routing Table](#service-routing-table)
 2. Read [`ai-docs/patterns/typescript-patterns.md`](ai-docs/patterns/typescript-patterns.md)
-3. Read [`ai-docs/patterns/sdk-plugin-patterns.md`](ai-docs/patterns/sdk-plugin-patterns.md)
+3. Read [`ai-docs/patterns/event-driven-patterns.md`](ai-docs/patterns/event-driven-patterns.md)
 4. Read [`ai-docs/patterns/testing-patterns.md`](ai-docs/patterns/testing-patterns.md)
 5. Read existing service in same category (e.g., `AddressBook.ts` for new data service)
 
@@ -434,5 +434,3 @@ Use this table to identify which service's ai-docs to load based on the develope
 - **TypeScript patterns**: [`ai-docs/patterns/typescript-patterns.md`](ai-docs/patterns/typescript-patterns.md)
 - **Testing patterns**: [`ai-docs/patterns/testing-patterns.md`](ai-docs/patterns/testing-patterns.md)
 - **Event patterns**: [`ai-docs/patterns/event-driven-patterns.md`](ai-docs/patterns/event-driven-patterns.md)
-- **WebSocket patterns**: [`ai-docs/patterns/websocket-patterns.md`](ai-docs/patterns/websocket-patterns.md)
-- **Plugin patterns**: [`ai-docs/patterns/sdk-plugin-patterns.md`](ai-docs/patterns/sdk-plugin-patterns.md)
