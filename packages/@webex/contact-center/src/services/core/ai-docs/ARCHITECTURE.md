@@ -34,74 +34,170 @@ sequenceDiagram
 ```
 
 Config reference:
+
 - `initWebSocket(options: {body: SubscribeRequest})`: [src/services/core/websocket/WebSocketManager.ts](../websocket/WebSocketManager.ts)
 - `SubscribeRequest` type: [src/types.ts](../../../types.ts)
 
 ### End-to-End Core Flow (Complete Picture)
 
+This diagram shows the complete lifecycle from component instantiation through normal operation, including when and how each layer is created, engaged, and their method invocation sequences.
+
 ```mermaid
 sequenceDiagram
     autonumber
-    participant App as Service/Plugin Method
-    participant AQM as AqmReqs.req()
-    participant WR as WebexRequest.request()
+    participant CC as CC Plugin
+    participant Svc as Services
+    participant AQM as AqmReqs
     participant WSM as WebSocketManager
+    participant WS as WebSocket
     participant CS as ConnectionService
     participant KW as Keepalive Worker
-    participant BE as Backend
-    participant UT as Utils.getErrorDetails()
+    participant WR as WebexRequest
+    participant BE as CC Backend
 
-    Note over App,BE: Bootstrapping and listener wiring
-    App->>WSM: initWebSocket(subscribeRequest)
-    WSM->>BE: POST /subscribe
+    Note over CC,BE: INSTANTIATION: Services constructor (src/services/index.ts:39-51)
+    CC->>Svc: new Services({webex, connectionConfig})
+    Svc->>WSM: new WebSocketManager({webex})
+    Note right of WSM: Creates keepalive worker via Blob + URL.createObjectURL<br/>(Worker created but NOT started yet)
+    Svc->>AQM: new AqmReqs(webSocketManager)
+    Svc->>CS: new ConnectionService({webSocketManager, subscribeRequest})
+    CS->>CS: setupEventListeners()
+    CS->>WSM: webSocketManager.on('message', onPing)
+    CS->>WSM: webSocketManager.on('socketClose', onSocketClose)
+    CC->>WSM: webSocketManager.on('message', handleWebSocketMessage)
+
+    Note over CC,BE: REGISTRATION: cc.register() (src/cc.ts:457-486)
+    CC->>CC: setupEventListeners()
+    CC->>CS: connectionService.on('connectionLost', handleConnectionLost)
+    CC->>CC: connectWebsocket()
+    CC->>WSM: initWebSocket({body: subscribeRequest})
+
+    Note over WSM,BE: WebSocketManager.initWebSocket() (WebSocketManager.ts:47-61)
+    WSM->>BE: POST /v1/notification/subscribe
     BE-->>WSM: {webSocketUrl, subscriptionId}
-    WSM->>WSM: open socket + register onmessage/onclose
-    WSM->>CS: emit('message', welcomeEvent)
-    App->>CS: new ConnectionService({webSocketManager, subscribeRequest})
-    CS->>WSM: on('message', onPing)
-    CS->>WSM: on('socketClose', onSocketClose)
-    WSM->>KW: postMessage({type: 'start'})
+    WSM->>WSM: connect()
+    WSM->>WS: new WebSocket(url)
 
-    Note over App,BE: Normal API operation with bind-based response
-    App->>AQM: req(conf)
+    Note over WSM,KW: websocket.onopen handler (WebSocketManager.ts:107-133)
+    WSM->>WS: send({keepalive: 'true'}) - initial ping
+    WSM->>WSM: Setup keepaliveWorker.onmessage handler
+    WSM->>KW: postMessage({type: 'start', intervalDuration: 4000, closeSocketTimeout: 5000})
+    Note right of KW: ⚡ Worker starts periodic interval<br/>⚡ Begins monitoring navigator.onLine
+    WSM->>WS: Setup handlers such as websocket.onMessage, websocket.onClose
+
+    BE-->>WS: WELCOME event
+    WS-->>WSM: WELCOME event
+    WSM->>CS: emit('message', welcomeEvent)
+    CS->>CS: onPing(welcomeEvent)
+    Note right of CS: setTimeout(handleConnectionLost, 8000)<br/>setTimeout(handleRestoreFailed, 50000)
+    WSM-->>CC: Resolve with WelcomeResponse
+
+    Note over CC,BE: NORMAL OPERATION: API calls with websocket bind pattern
+    CC->>AQM: req({url, method, body, bind})
     AQM->>WR: request({service, resource, method, body})
     WR->>BE: HTTP request
     BE-->>WR: HTTP response (ack/tracking)
     WR-->>AQM: IHttpResponse
-    AQM->>WSM: wait for matching websocket bind
+    AQM->>AQM: wait for matching websocket bind event
     BE-->>WSM: async notification event
     WSM->>CS: emit('message', event)
-    CS->>CS: onPing() reset timers
-    WSM-->>AQM: message event
-    AQM-->>App: resolve promise
+    CS->>CS: onPing() - clearTimeout & reset timers
+    WSM->>AQM: message event matches bind
+    AQM-->>CC: resolve promise with result
 
-    Note over KW,CS: Keepalive and disconnect detection
-    KW-->>WSM: postMessage({type:'keepalive', onlineStatus})
-    alt Browser offline too long
-        KW-->>WSM: postMessage({type:'closeSocket'})
-        WSM->>CS: emit('socketClose')
-        CS->>CS: onSocketClose() -> start reconnect interval
-        loop Every CONNECTIVITY_CHECK_INTERVAL
-            CS->>CS: handleSocketClose()
-            alt navigator.onLine === true
+    Note over KW,BE: KEEPALIVE: Periodic pings every 4s (keepalive.worker.js)
+    loop Every 4 seconds
+        KW->>KW: checkNetworkStatus()
+        KW-->>WSM: postMessage({type: 'keepalive', onlineStatus})
+        WSM->>BE: send({keepalive: 'true'})
+        BE-->>WSM: {keepalive: 'true'}
+        WSM->>CS: emit('message', {keepalive: 'true'})
+        CS->>CS: onPing() - reset timers
+    end
+
+    Note over KW,CS: OFFLINE DETECTION: Network goes offline
+    alt Browser goes offline (navigator.onLine = false)
+        KW->>KW: Start closeSocketTimeout timer (5s)
+        alt Socket doesn't close within 5s
+            KW-->>WSM: postMessage({type: 'closeSocket'})
+            WSM->>WSM: websocket.close()
+            WSM->>KW: postMessage({type: 'terminate'})
+            WSM->>CS: emit('socketClose')
+        end
+
+        Note over CS: onSocketClose() (connection-service.ts:135-141)
+        CS->>CS: clearTimerOnRestoreFailed()
+        CS->>CS: setInterval(handleSocketClose, 5000)
+
+        loop Every 5s (CONNECTIVITY_CHECK_INTERVAL)
+            CS->>CS: handleSocketClose() - check navigator.onLine
+            alt Browser back online
                 CS->>WSM: initWebSocket({body: subscribeRequest})
+                WSM->>BE: POST /subscribe + WebSocket reconnect
+                WSM->>KW: postMessage({type: 'start', ...})
+                BE-->>WSM: WELCOME event
+                WSM->>CS: emit('message', welcomeEvent)
+                CS->>CS: onPing() detects isSocketReconnected=true
                 CS->>CS: dispatchConnectionEvent(socketReconnected=true)
-                CS-->>App: emit('connectionLost', {isSocketReconnected:true})
-            else still offline
-                CS->>CS: handleConnectionLost()
-                CS-->>App: emit('connectionLost', {isConnectionLost:true})
+                CS->>CC: emit('connectionLost', {isSocketReconnected: true})
+                CS->>CS: clearInterval(reconnectInterval)
+            else Still offline
+                CS->>CS: Wait for next interval
             end
         end
     end
 
-    Note over AQM,UT: Shared error handling path
-    alt HTTP error / bind timeout / backend failure
-        AQM-->>App: reject(error)
-        App->>UT: getErrorDetails(error, methodName, moduleName)
-        UT->>WR: uploadLogs({correlationId: trackingId})
-        UT-->>App: {error, reason}
+    Note over CS,CC: CONNECTION LOST: No messages received within 8s
+    alt reconnectingTimer fires (WS_DISCONNECT_ALLOWED = 8s)
+        CS->>CS: handleConnectionLost()
+        CS->>CS: isConnectionLost = true
+        CS->>CC: emit('connectionLost', {isConnectionLost: true})
+
+        alt restoreTimer fires (LOST_CONNECTION_RECOVERY_TIMEOUT = 50s)
+            CS->>CS: handleRestoreFailed()
+            CS->>CS: isRestoreFailed = true
+            CS->>WSM: shouldReconnect = false
+            CS->>CS: clearInterval(reconnectInterval)
+            CS->>CC: emit('connectionLost', {isRestoreFailed: true})
+        end
     end
 ```
+
+#### Component Instantiation Order
+
+1. **WebSocketManager** ([src/services/core/websocket/WebSocketManager.ts:32-45](../websocket/WebSocketManager.ts#L32-L45)) - Creates keepalive worker (not started)
+2. **AqmReqs** ([src/services/core/aqm-reqs.ts](../aqm-reqs.ts)) - Initialized with WebSocketManager reference
+3. **Service layers** (config, agent, contact, dialer) - Created with AqmReqs reference
+4. **ConnectionService** ([src/services/core/websocket/connection-service.ts:30-41](../websocket/connection-service.ts#L30-L41)) - Wires event listeners immediately
+
+#### Key Method Invocations
+
+**WebSocketManager.initWebSocket** (WebSocketManager.ts:47-61):
+
+- `register()` → POST /subscribe → get WebSocket URL
+- `connect()` → Create WebSocket → Setup handlers (onopen, onmessage, onclose, onerror)
+
+**websocket.onopen** (WebSocketManager.ts:107-133):
+
+- Send initial keepalive ping
+- Wire `keepaliveWorker.onmessage` handler
+- **Start keepalive worker** via `postMessage({type: 'start', intervalDuration: 4000, closeSocketTimeout: 5000})`
+
+**ConnectionService.onPing** (connection-service.ts:92-118) - Called on every message:
+
+- Clear existing timers (reconnectingTimer, restoreTimer)
+- Handle connection recovery state transitions
+- Schedule new timers: `setTimeout(handleConnectionLost, 8000)`, `setTimeout(handleRestoreFailed, 50000)`
+
+**ConnectionService.onSocketClose** (connection-service.ts:135-141):
+
+- Clear reconnect interval
+- Start periodic reconnection attempts: `setInterval(handleSocketClose, 5000)`
+
+**ConnectionService.handleSocketClose** (connection-service.ts:120-133):
+
+- Check `navigator.onLine`
+- If online: reinitialize WebSocket and set `isSocketReconnected = true`
 
 ---
 
@@ -151,73 +247,82 @@ private setupEventListeners() {
 
 ### Properties
 
-| Property | Type | Description |
-| --- | --- | --- |
-| `connectionProp` | `ConnectionProp` | Runtime configuration object (for example `lostConnectionRecoveryTimeout`) used by reconnect/restore timers. |
-| `wsDisconnectAllowed` | `number` | Timeout window before `handleConnectionLost` is triggered when no ping/message is received. |
-| `reconnectingTimer` | `ReturnType<typeof setTimeout>` | Per-message timeout that schedules lost-connection detection. |
-| `restoreTimer` | `ReturnType<typeof setTimeout>` | Timeout that marks restore failure if recovery does not complete in time. |
-| `reconnectInterval` | `ReturnType<typeof setInterval>` | Periodic retry loop started after socket close to attempt reconnection. |
-| `isConnectionLost` | `boolean` | Indicates that the connection has been marked as lost. |
-| `isRestoreFailed` | `boolean` | Indicates that recovery has exceeded the configured restore timeout. |
-| `isSocketReconnected` | `boolean` | Indicates that a reconnect attempt succeeded and socket is back. |
-| `isKeepAlive` | `boolean` | Tracks whether the latest incoming message is a keepalive signal. |
-| `webSocketManager` | `WebSocketManager` | Core WebSocket dependency used for event subscription and re-initialization. |
-| `subscribeRequest` | `SubscribeRequest` | Cached subscribe payload reused during reconnect (`initWebSocket`). |
+| Property              | Type                             | Description                                                                                                  |
+| --------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `connectionProp`      | `ConnectionProp`                 | Runtime configuration object (for example `lostConnectionRecoveryTimeout`) used by reconnect/restore timers. |
+| `wsDisconnectAllowed` | `number`                         | Timeout window before `handleConnectionLost` is triggered when no ping/message is received.                  |
+| `reconnectingTimer`   | `ReturnType<typeof setTimeout>`  | Per-message timeout that schedules lost-connection detection.                                                |
+| `restoreTimer`        | `ReturnType<typeof setTimeout>`  | Timeout that marks restore failure if recovery does not complete in time.                                    |
+| `reconnectInterval`   | `ReturnType<typeof setInterval>` | Periodic retry loop started after socket close to attempt reconnection.                                      |
+| `isConnectionLost`    | `boolean`                        | Indicates that the connection has been marked as lost.                                                       |
+| `isRestoreFailed`     | `boolean`                        | Indicates that recovery has exceeded the configured restore timeout.                                         |
+| `isSocketReconnected` | `boolean`                        | Indicates that a reconnect attempt succeeded and socket is back.                                             |
+| `isKeepAlive`         | `boolean`                        | Tracks whether the latest incoming message is a keepalive signal.                                            |
+| `webSocketManager`    | `WebSocketManager`               | Core WebSocket dependency used for event subscription and re-initialization.                                 |
+| `subscribeRequest`    | `SubscribeRequest`               | Cached subscribe payload reused during reconnect (`initWebSocket`).                                          |
 
 ### Methods
 
 The only public method is `setConnectionProp`. All other methods are private implementation details and are documented for architectural understanding.
 
 1. `setConnectionProp(prop: ConnectionProp): void` (public)
+
    - **Purpose**: Updates connection-level runtime settings used by timers (mainly recovery timeout behavior).
    - **Params**: `prop` - new connection config object.
    - **Returns**: `void`.
    - **Usage**: Called by higher layers when timeout behavior must be tuned after initialization.
 
 2. `setupEventListeners(): void` (private)
+
    - **Purpose**: Wires `WebSocketManager` events to internal handlers (`'message' -> onPing`, `'socketClose' -> onSocketClose`).
    - **Params**: none.
    - **Returns**: `void`.
    - **Usage**: Invoked from the constructor once, during `ConnectionService` setup.
 
 3. `onPing(event: any): void` (private)
+
    - **Purpose**: Handles every incoming socket message, resets timers, updates keepalive/recovery flags, and emits recovery events when state changes.
    - **Params**: `event` - raw message payload (JSON string) received from the socket event stream.
    - **Returns**: `void`.
    - **Usage**: Triggered automatically by the `'message'` listener.
 
 4. `onSocketClose(): void` (private)
+
    - **Purpose**: Starts the reconnect interval when socket close is detected.
    - **Params**: none.
    - **Returns**: `void`.
    - **Usage**: Triggered automatically by the `'socketClose'` listener.
 
 5. `handleSocketClose(): Promise<void>` (private)
+
    - **Purpose**: Performs one reconnect attempt; if browser is online, reinitializes WebSocket and marks socket as reconnected.
    - **Params**: none.
    - **Returns**: `Promise<void>` (rejects when browser is offline).
    - **Usage**: Called repeatedly from `onSocketClose` interval loop.
 
 6. `handleConnectionLost(): void` (private)
+
    - **Purpose**: Marks the connection as lost and dispatches a connection status event.
    - **Params**: none.
    - **Returns**: `void`.
    - **Usage**: Scheduled by `onPing` via `reconnectingTimer` after inactivity.
 
 7. `handleRestoreFailed(): Promise<void>` (private)
+
    - **Purpose**: Marks restore as failed, disables reconnect, emits failure state, and clears reconnect interval.
    - **Params**: none.
    - **Returns**: `Promise<void>`.
    - **Usage**: Scheduled by `onPing` via `restoreTimer`.
 
 8. `clearTimerOnRestoreFailed(): Promise<void>` (private)
+
    - **Purpose**: Stops active reconnect interval to avoid duplicate retries.
    - **Params**: none.
    - **Returns**: `Promise<void>`.
    - **Usage**: Called from reconnect/failure paths whenever interval cleanup is needed.
 
 9. `updateConnectionData(): void` (private)
+
    - **Purpose**: Resets transient connection flags (`isConnectionLost`, `isRestoreFailed`, `isSocketReconnected`) after recovery.
    - **Params**: none.
    - **Returns**: `void`.
@@ -336,7 +441,7 @@ class WebexRequest {
   }
 
   public async request(options: {
-    service: string;  // Service key used by `webex.request` to resolve the target host
+    service: string; // Service key used by `webex.request` to resolve the target host
     resource: string; // API path within the service (for example: v1/notification/subscribe)
     method: HTTP_METHODS;
     body?: RequestBody;
@@ -382,6 +487,7 @@ sequenceDiagram
 ### Purpose
 
 Maintains WebSocket connection with periodic pings and monitors network status. Has a dual role:
+
 1. **Keepalive**: Sends periodic messages to detect connection issues
 2. **Network Monitoring**: Tracks online/offline transitions and forces socket closure if offline too long
 
@@ -393,17 +499,17 @@ Maintains WebSocket connection with periodic pings and monitors network status. 
 
 **Inbound (main thread → worker):**
 
-| Message Type | Fields | Effect |
-|---|---|---|
-| `start` | `intervalDuration` (default 4000ms), `isSocketClosed`, `closeSocketTimeout` (default 5000ms) | Starts periodic keepalive interval and resets offline handler |
-| `terminate` | — | Clears the keepalive interval and resets offline handler |
+| Message Type | Fields                                                                                       | Effect                                                        |
+| ------------ | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `start`      | `intervalDuration` (default 4000ms), `isSocketClosed`, `closeSocketTimeout` (default 5000ms) | Starts periodic keepalive interval and resets offline handler |
+| `terminate`  | —                                                                                            | Clears the keepalive interval and resets offline handler      |
 
 **Outbound (worker → main thread):**
 
-| Message Type | Fields | Trigger |
-|---|---|---|
-| `keepalive` | `onlineStatus: boolean` | Every `intervalDuration` ms, and on browser online/offline events |
-| `closeSocket` | — | When offline for longer than `closeSocketTimeout` and socket hasn't closed naturally |
+| Message Type  | Fields                  | Trigger                                                                              |
+| ------------- | ----------------------- | ------------------------------------------------------------------------------------ |
+| `keepalive`   | `onlineStatus: boolean` | Every `intervalDuration` ms, and on browser online/offline events                    |
+| `closeSocket` | —                       | When offline for longer than `closeSocketTimeout` and socket hasn't closed naturally |
 
 #### Key Behavior
 
