@@ -945,6 +945,8 @@ export type Profile = {
   agentProfileID: string;
   /** Dial plan configuration for number handling */
   dialPlan: DialPlan;
+  /** Supported dial plan names for station login validation */
+  supportedDialPlanNames?: string[];
   /** Multimedia profile defining channel capabilities */
   multimediaProfileId: string;
   /** Skill profile defining agent competencies */

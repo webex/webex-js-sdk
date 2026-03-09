@@ -85,6 +85,26 @@ const getFilteredDialplanEntries = (dialPlanData: DialPlanEntity[], profileDialP
 };
 
 /**
+ * Get the supported dial plan names from filtered dial plan entries
+ * @param {Array<DialPlanEntity>} dialPlanData
+ * @param {Array<string>} profileDialPlans
+ * @returns {Array<string>}
+ */
+const getSupportedDialPlanNames = (
+  dialPlanData: DialPlanEntity[],
+  profileDialPlans: string[]
+): string[] => {
+  const supportedNames: string[] = [];
+  dialPlanData.forEach((dialPlan: DialPlanEntity) => {
+    if (profileDialPlans.includes(dialPlan.id)) {
+      supportedNames.push(dialPlan.name);
+    }
+  });
+
+  return supportedNames;
+};
+
+/**
  * Get the filtered aux codes
  * @param {Array<AuxCode>} auxCodes
  * @param {AuxCodeType} type
@@ -199,6 +219,9 @@ function parseAgentConfigs(profileData: {
           dialPlanEntity: getFilteredDialplanEntries(dialPlanData, agentProfileData.dialPlans),
         }
       : undefined,
+    supportedDialPlanNames: agentProfileData.dialPlanEnabled
+      ? getSupportedDialPlanNames(dialPlanData, agentProfileData.dialPlans)
+      : [],
     multimediaProfileId: profileData.multimediaProfileId,
     skillProfileId: userData.skillProfileId ? userData.skillProfileId : null,
     siteId: userData.siteId,

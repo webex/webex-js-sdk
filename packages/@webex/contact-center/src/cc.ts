@@ -44,7 +44,7 @@ import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
 import {StateChange, Logout, StateChangeSuccess, AGENT_EVENTS} from './services/agent/types';
-import {getErrorDetails, isValidDialNumber} from './services/core/Utils';
+import {getErrorDetails, isValidUSDialNumber, isValidOtherDialNumber} from './services/core/Utils';
 import {
   Profile,
   WelcomeEvent,
@@ -785,12 +785,29 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
       ]);
 
-      if (data.loginOption === LoginOption.AGENT_DN && !isValidDialNumber(data.dialNumber)) {
-        const error = new Error('INVALID_DIAL_NUMBER');
-        // @ts-ignore - adding custom key to the error object
-        error.details = {data: {reason: 'INVALID_DIAL_NUMBER'}} as Failure;
+      // Validate dial number based on supported dial plans
+      if (data.loginOption === LoginOption.AGENT_DN) {
+        const supportedDialPlans = this.agentConfig.supportedDialPlanNames || [];
+        let isValid = false;
 
-        throw error;
+        // Check if US dial plan is supported
+        if (supportedDialPlans.some((name) => name.toLowerCase().includes('us'))) {
+          isValid = isValidUSDialNumber(data.dialNumber);
+        } else if (supportedDialPlans.length > 0) {
+          // For other dial plans (non-US)
+          isValid = isValidOtherDialNumber(data.dialNumber);
+        } else {
+          // If no dial plans are configured, default to US validation
+          isValid = isValidUSDialNumber(data.dialNumber);
+        }
+
+        if (!isValid) {
+          const error = new Error('INVALID_DIAL_NUMBER');
+          // @ts-ignore - adding custom key to the error object
+          error.details = {data: {reason: 'INVALID_DIAL_NUMBER'}} as Failure;
+
+          throw error;
+        }
       }
 
       const loginResponse = await this.services.agent.stationLogin({

@@ -48,9 +48,17 @@ const getAgentActionTypeFromTask = (taskData?: TaskData): 'DIAL_NUMBER' | '' => 
   return isDialNumber || isEntryPointVariant ? 'DIAL_NUMBER' : '';
 };
 
-export const isValidDialNumber = (input: string): boolean => {
+export const isValidUSDialNumber = (input: string): boolean => {
   // This regex checks for a valid dial number format for only few countries such as US, Canada.
   const regexForDn = /1[0-9]{3}[2-9][0-9]{6}([,]{1,10}[0-9]+){0,1}/;
+
+  return regexForDn.test(input);
+};
+
+export const isValidOtherDialNumber = (input: string): boolean => {
+  // This regex checks for a valid dial number format for international numbers (non-US)
+  // Accepts numbers with optional + prefix, digits, and optional extensions with comma
+  const regexForDn = /^\+?[0-9]{7,15}([,]{1,10}[0-9]+){0,1}$/;
 
   return regexForDn.test(input);
 };
