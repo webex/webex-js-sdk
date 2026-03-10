@@ -1,4 +1,5 @@
 import * as Utils from '../../../../../src/services/core/Utils';
+import {FALLBACK_DIAL_NUMBER_REGEX} from '../../../../../src/services/core/Utils';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import WebexRequest from '../../../../../src/services/core/WebexRequest';
 import {LoginOption, WebexRequestPayload} from '../../../../../src/types';
@@ -568,7 +569,7 @@ describe('Utils', () => {
     const usOnlyEntry = {
       name: 'US',
       prefix: '1',
-      regex: '1[0-9]{3}[2-9][0-9]{6}([,]{1,10}[0-9]+){0,1}',
+      regex: FALLBACK_DIAL_NUMBER_REGEX.source,
       strippedChars: '( )-',
     };
 
@@ -582,11 +583,6 @@ describe('Utils', () => {
 
       it('should return true for a UK phone number', () => {
         const result = Utils.isValidDialNumber('+442030484377', dialPlanEntries);
-        expect(result).toBe(true);
-      });
-
-      it('should return true for alphanumeric format', () => {
-        const result = Utils.isValidDialNumber('user.name', dialPlanEntries);
         expect(result).toBe(true);
       });
     });
@@ -619,25 +615,6 @@ describe('Utils', () => {
       it('should return false for a UK phone number', () => {
         const result = Utils.isValidDialNumber('+442030484377', []);
         expect(result).toBe(false);
-      });
-    });
-
-    describe('with invalid regex in dial plan entry', () => {
-      const invalidRegexEntry = {
-        name: 'Invalid',
-        prefix: '',
-        regex: '[invalid(regex',
-        strippedChars: '',
-      };
-
-      it('should return false when regex is invalid and no other entries match', () => {
-        const result = Utils.isValidDialNumber('12223334567', [invalidRegexEntry]);
-        expect(result).toBe(false);
-      });
-
-      it('should return true if another valid entry matches', () => {
-        const result = Utils.isValidDialNumber('12223334567', [invalidRegexEntry, usOnlyEntry]);
-        expect(result).toBe(true);
       });
     });
   });

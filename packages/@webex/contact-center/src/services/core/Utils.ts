@@ -50,7 +50,7 @@ const getAgentActionTypeFromTask = (taskData?: TaskData): 'DIAL_NUMBER' | '' => 
 };
 
 // Fallback regex for US/Canada dial numbers when no dial plan entries are configured
-const FALLBACK_DIAL_NUMBER_REGEX = /1[0-9]{3}[2-9][0-9]{6}([,]{1,10}[0-9]+){0,1}/;
+export const FALLBACK_DIAL_NUMBER_REGEX = /1[0-9]{3}[2-9][0-9]{6}([,]{1,10}[0-9]+){0,1}/;
 
 /**
  * Validates a dial number against the provided dial plan regex patterns.
@@ -66,6 +66,8 @@ export const isValidDialNumber = (
   dialPlanEntries: DialPlan['dialPlanEntity']
 ): boolean => {
   if (!dialPlanEntries || dialPlanEntries.length === 0) {
+    LoggerProxy.info('No dial plan entries found. Falling back to US number validation.');
+
     return FALLBACK_DIAL_NUMBER_REGEX.test(input);
   }
 
