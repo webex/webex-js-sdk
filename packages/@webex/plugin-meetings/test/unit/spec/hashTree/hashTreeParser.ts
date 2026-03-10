@@ -1222,7 +1222,7 @@ describe('HashTreeParser', () => {
         ],
       };
 
-      await parser.handleMessage(normalMessage, 'initial message');
+      parser.handleMessage(normalMessage, 'initial message');
 
       // Verify the timer was set (the sync algorithm should have started)
       expect(parser.dataSets.main.timer).to.not.be.undefined;
@@ -1242,7 +1242,7 @@ describe('HashTreeParser', () => {
         'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' // still different from our hash
       );
 
-      await parser.handleMessage(heartbeatMessage, 'heartbeat message');
+      parser.handleMessage(heartbeatMessage, 'heartbeat message');
 
       // Verify the timer was restarted (should still exist)
       expect(parser.dataSets.main.timer).to.not.be.undefined;
@@ -1369,7 +1369,7 @@ describe('HashTreeParser', () => {
         ],
       };
 
-      await parser.handleMessage(message, 'normal update');
+      parser.handleMessage(message, 'normal update');
 
       // Verify updateItems was called on main hash tree
       assert.calledOnceWithExactly(mainUpdateItemsStub, [
@@ -1422,45 +1422,6 @@ describe('HashTreeParser', () => {
       });
     });
 
-    it('detects roster drop correctly', async () => {
-      const parser = createHashTreeParser();
-
-      // Stub updateItems to return true (indicating the change was applied)
-      sinon.stub(parser.dataSets.self.hashTree, 'updateItems').returns([true]);
-
-      // Send a roster drop message (SELF object with no data)
-      const rosterDropMessage = {
-        dataSets: [createDataSet('self', 1, 2101)],
-        visibleDataSetsUrl,
-        locusUrl,
-        locusStateElements: [
-          {
-            htMeta: {
-              elementId: {
-                type: 'self' as const,
-                id: 4,
-                version: 102,
-              },
-              dataSetNames: ['self'],
-            },
-            data: undefined, // No data - this indicates roster drop
-          },
-        ],
-      };
-
-      await parser.handleMessage(rosterDropMessage, 'roster drop message');
-
-      // Verify callback was called with MEETING_ENDED
-      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
-        updatedObjects: undefined,
-      });
-
-      // Verify that all timers were stopped (timer should be undefined after roster drop)
-      assert.equal(parser.dataSets.self.timer, undefined);
-      assert.equal(parser.dataSets.main.timer, undefined);
-      assert.equal(parser.dataSets['atd-unmuted'].timer, undefined);
-    });
-
     describe('handles sentinel messages correctly', () => {
       ['main', 'self', 'unjoined'].forEach((dataSetName) => {
         it('emits MEETING_ENDED for sentinel message with dataset ' + dataSetName, async () => {
@@ -1489,7 +1450,7 @@ describe('HashTreeParser', () => {
             } as any;
           }
 
-          await parser.handleMessage(sentinelMessage, 'sentinel message');
+          parser.handleMessage(sentinelMessage, 'sentinel message');
 
           // Verify callback was called with MEETING_ENDED
           assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
@@ -1513,7 +1474,7 @@ describe('HashTreeParser', () => {
         // Create a sentinel message for 'unjoined' dataset which the parser has never seen
         const sentinelMessage = createHeartbeatMessage('unjoined', 1, 10000, EMPTY_HASH);
 
-        await parser.handleMessage(sentinelMessage, 'sentinel message');
+        parser.handleMessage(sentinelMessage, 'sentinel message');
 
         // Verify callback was called with MEETING_ENDED
         assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
@@ -1556,7 +1517,7 @@ describe('HashTreeParser', () => {
           ],
         };
 
-        await parser.handleMessage(message, 'initial message');
+        parser.handleMessage(message, 'initial message');
 
         // Verify callback was called with initial updates
         assert.calledOnce(callback);
@@ -1652,7 +1613,7 @@ describe('HashTreeParser', () => {
               ],
             };
 
-            await parser.handleMessage(message, 'initial message');
+            parser.handleMessage(message, 'initial message');
             callback.resetHistory();
 
             const mainDataSetUrl = parser.dataSets.main.url;
@@ -1710,7 +1671,7 @@ describe('HashTreeParser', () => {
               ],
             };
 
-            await parser.handleMessage(message, 'initial message');
+            parser.handleMessage(message, 'initial message');
             callback.resetHistory();
 
             const mainDataSetUrl = parser.dataSets.main.url;
@@ -1799,7 +1760,7 @@ describe('HashTreeParser', () => {
           ],
         };
 
-        await parser.handleMessage(message, 'initial message');
+        parser.handleMessage(message, 'initial message');
 
         callback.resetHistory();
 
@@ -1887,7 +1848,7 @@ describe('HashTreeParser', () => {
           ],
         };
 
-        await parser.handleMessage(message, 'message with self update');
+        parser.handleMessage(message, 'message with self update');
 
         callback.resetHistory();
 
@@ -1971,7 +1932,7 @@ describe('HashTreeParser', () => {
           ],
         };
 
-        await parser.handleMessage(message, 'add visible dataset');
+        parser.handleMessage(message, 'add visible dataset');
 
         // Verify that 'attendees' was added to visibleDataSets
         expect(parser.visibleDataSets.some((vds) => vds.name === 'attendees')).to.be.true;
@@ -2096,7 +2057,7 @@ describe('HashTreeParser', () => {
           locusStateElements: [],
         });
 
-        await parser.handleMessage(message, 'add new dataset requiring async init');
+        parser.handleMessage(message, 'add new dataset requiring async init');
 
         await checkAsyncDatasetInitialization(parser, newDataSet);
       });
@@ -2158,7 +2119,7 @@ describe('HashTreeParser', () => {
           )
           .rejects(error);
 
-        await parser.handleMessage(message, 'add new dataset triggering 404');
+        parser.handleMessage(message, 'add new dataset triggering 404');
 
         // The first callback call is from parseMessage with the metadata update
         callback.resetHistory();
@@ -2220,7 +2181,7 @@ describe('HashTreeParser', () => {
           ],
         };
 
-        await parser.handleMessage(message, 'remove visible dataset');
+        parser.handleMessage(message, 'remove visible dataset');
 
         // Verify that 'atd-unmuted' was removed from visibleDataSets
         expect(parser.visibleDataSets.some((vds) => vds.name === 'atd-unmuted')).to.be.false;
@@ -2321,7 +2282,7 @@ describe('HashTreeParser', () => {
           ],
         };
 
-        await parser.handleMessage(message, 'message with non-visible dataset');
+        parser.handleMessage(message, 'message with non-visible dataset');
 
         // Verify that no hash tree was created for attendees
         assert.isUndefined(parser.dataSets.attendees.hashTree);
@@ -2349,7 +2310,7 @@ describe('HashTreeParser', () => {
           heartbeatIntervalMs,
         };
 
-        await parser.handleMessage(heartbeatMessage, 'initial heartbeat');
+        parser.handleMessage(heartbeatMessage, 'initial heartbeat');
 
         // Verify only 'main' watchdog timer is set
         expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
@@ -2413,7 +2374,7 @@ describe('HashTreeParser', () => {
           heartbeatIntervalMs,
         };
 
-        await parser.handleMessage(heartbeatMessage, 'self heartbeat');
+        parser.handleMessage(heartbeatMessage, 'self heartbeat');
 
         // Mock sync response for self
         mockSendSyncRequestResponse(parser.dataSets.self.url, null);
@@ -2460,7 +2421,7 @@ describe('HashTreeParser', () => {
           heartbeatIntervalMs,
         };
 
-        await parser.handleMessage(heartbeatMessage, 'multi-dataset heartbeat');
+        parser.handleMessage(heartbeatMessage, 'multi-dataset heartbeat');
 
         // Watchdog timers should be set for both datasets in the message
         expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
@@ -2486,7 +2447,7 @@ describe('HashTreeParser', () => {
           heartbeatIntervalMs,
         };
 
-        await parser.handleMessage(heartbeat1, 'first heartbeat');
+        parser.handleMessage(heartbeat1, 'first heartbeat');
 
         const firstTimer = parser.dataSets.main.heartbeatWatchdogTimer;
         expect(firstTimer).to.not.be.undefined;
@@ -2507,7 +2468,7 @@ describe('HashTreeParser', () => {
           heartbeatIntervalMs,
         };
 
-        await parser.handleMessage(heartbeat2, 'second heartbeat');
+        parser.handleMessage(heartbeat2, 'second heartbeat');
 
         const secondTimer = parser.dataSets.main.heartbeatWatchdogTimer;
         expect(secondTimer).to.not.be.undefined;
@@ -2538,7 +2499,7 @@ describe('HashTreeParser', () => {
           heartbeatIntervalMs,
         };
 
-        await parser.handleMessage(heartbeat, 'initial heartbeat');
+        parser.handleMessage(heartbeat, 'initial heartbeat');
 
         const firstTimer = parser.dataSets.main.heartbeatWatchdogTimer;
         expect(firstTimer).to.not.be.undefined;
@@ -2566,7 +2527,7 @@ describe('HashTreeParser', () => {
           heartbeatIntervalMs,
         };
 
-        await parser.handleMessage(normalMessage, 'normal message');
+        parser.handleMessage(normalMessage, 'normal message');
 
         const secondTimer = parser.dataSets.main.heartbeatWatchdogTimer;
         expect(secondTimer).to.not.be.undefined;
@@ -2584,12 +2545,12 @@ describe('HashTreeParser', () => {
           parser.dataSets.main.hashTree.getRootHash()
         );
 
-        await parser.handleMessage(heartbeatMessage, 'heartbeat without interval');
+        parser.handleMessage(heartbeatMessage, 'heartbeat without interval');
 
         expect(parser.dataSets.main.heartbeatWatchdogTimer).to.be.undefined;
       });
 
-      it('stops all watchdog timers when meeting ends', async () => {
+      it('stops all watchdog timers when meeting ends via sentinel message', async () => {
         const parser = createHashTreeParser();
         const heartbeatIntervalMs = 5000;
 
@@ -2611,34 +2572,22 @@ describe('HashTreeParser', () => {
           heartbeatIntervalMs,
         };
 
-        await parser.handleMessage(heartbeat, 'initial heartbeat');
+        parser.handleMessage(heartbeat, 'initial heartbeat');
 
         expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
         expect(parser.dataSets.self.heartbeatWatchdogTimer).to.not.be.undefined;
 
-        // Stub updateItems to return true for the roster drop detection
-        sinon.stub(parser.dataSets.self.hashTree, 'updateItems').returns([true]);
+        // Send a sentinel END MEETING message
+        const sentinelMessage = createHeartbeatMessage(
+          'main',
+          1,
+          parser.dataSets.main.version + 1,
+          EMPTY_HASH
+        );
 
-        // Send a roster drop message that triggers MEETING_ENDED
-        const rosterDropMessage = {
-          dataSets: [createDataSet('self', 1, 2101)],
-          visibleDataSetsUrl,
-          locusUrl,
-          locusStateElements: [
-            {
-              htMeta: {
-                elementId: {type: 'self' as const, id: 4, version: 102},
-                dataSetNames: ['self'],
-              },
-              data: undefined,
-            },
-          ],
-          heartbeatIntervalMs,
-        };
+        parser.handleMessage(sentinelMessage as any, 'sentinel message');
 
-        await parser.handleMessage(rosterDropMessage, 'roster drop');
-
-        // All watchdog timers should have been stopped and NOT restarted
+        // All watchdog timers should have been stopped
         expect(parser.dataSets.main.heartbeatWatchdogTimer).to.be.undefined;
         expect(parser.dataSets.self.heartbeatWatchdogTimer).to.be.undefined;
       });
@@ -2696,7 +2645,7 @@ describe('HashTreeParser', () => {
           heartbeatIntervalMs,
         };
 
-        await parser.handleMessage(heartbeat, 'heartbeat');
+        parser.handleMessage(heartbeat, 'heartbeat');
 
         // 'main' watchdog delay = 5000 + 1^2 * 500 = 5500ms
         // 'self' watchdog delay = 5000 + 1^3 * 2000 = 7000ms
@@ -2760,7 +2709,7 @@ describe('HashTreeParser', () => {
           heartbeatIntervalMs,
         };
 
-        await parser.handleMessage(heartbeatMessage, 'heartbeat with non-visible dataset');
+        parser.handleMessage(heartbeatMessage, 'heartbeat with non-visible dataset');
 
         // Watchdog set for main (visible) but not for atd-active (no hash tree)
         expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
@@ -2771,7 +2720,7 @@ describe('HashTreeParser', () => {
 
   describe('#callLocusInfoUpdateCallback filtering', () => {
     // Helper to setup parser with initial objects and reset callback history
-    async function setupParserWithObjects(locusStateElements: any[]) {
+    function setupParserWithObjects(locusStateElements: any[]) {
       const parser = createHashTreeParser();
 
       if (locusStateElements.length > 0) {
@@ -2793,15 +2742,15 @@ describe('HashTreeParser', () => {
           locusStateElements,
         };
 
-        await parser.handleMessage(setupMessage, 'setup');
+        parser.handleMessage(setupMessage, 'setup');
       }
 
       callback.resetHistory();
       return parser;
     }
 
-    it('filters out updates when a dataset has a higher version', async () => {
-      const parser = await setupParserWithObjects([
+    it('filters out updates when a dataset has a higher version', () => {
+      const parser = setupParserWithObjects([
         {
           htMeta: {
             elementId: {type: 'locus' as const, id: 5, version: 100},
@@ -2827,14 +2776,14 @@ describe('HashTreeParser', () => {
         ],
       };
 
-      await parser.handleMessage(updateMessage, 'update with older version');
+      parser.handleMessage(updateMessage, 'update with older version');
 
       // Callback should not be called because the update was filtered out
       assert.notCalled(callback);
     });
 
-    it('allows updates when version is newer than existing', async () => {
-      const parser = await setupParserWithObjects([
+    it('allows updates when version is newer than existing', () => {
+      const parser = setupParserWithObjects([
         {
           htMeta: {
             elementId: {type: 'locus' as const, id: 5, version: 100},
@@ -2860,7 +2809,7 @@ describe('HashTreeParser', () => {
         ],
       };
 
-      await parser.handleMessage(updateMessage, 'update with newer version');
+      parser.handleMessage(updateMessage, 'update with newer version');
 
       // Callback should be called with the update
       assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
@@ -2876,8 +2825,8 @@ describe('HashTreeParser', () => {
       });
     });
 
-    it('filters out removal when object still exists in any dataset', async () => {
-      const parser = await setupParserWithObjects([
+    it('filters out removal when object still exists in any dataset', () => {
+      const parser = setupParserWithObjects([
         {
           htMeta: {
             elementId: {type: 'participant' as const, id: 10, version: 50},
@@ -2903,14 +2852,14 @@ describe('HashTreeParser', () => {
         ],
       };
 
-      await parser.handleMessage(removalMessage, 'removal from one dataset');
+      parser.handleMessage(removalMessage, 'removal from one dataset');
 
       // Callback should not be called because object still exists in atd-unmuted
       assert.notCalled(callback);
     });
 
-    it('allows removal when object does not exist in any dataset', async () => {
-      const parser = await setupParserWithObjects([]);
+    it('allows removal when object does not exist in any dataset', () => {
+      const parser = setupParserWithObjects([]);
 
       // Stub updateItems to return true (simulating that the removal was "applied")
       sinon.stub(parser.dataSets.main.hashTree, 'updateItems').returns([true]);
@@ -2931,7 +2880,7 @@ describe('HashTreeParser', () => {
         ],
       };
 
-      await parser.handleMessage(removalMessage, 'removal of non-existent object');
+      parser.handleMessage(removalMessage, 'removal of non-existent object');
 
       // Callback should be called with the removal
       assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
@@ -2947,11 +2896,11 @@ describe('HashTreeParser', () => {
       });
     });
 
-    it('filters out removal when object exists in another dataset with newer version', async () => {
+    it('filters out removal when object exists in another dataset with newer version', () => {
       const parser = createHashTreeParser();
 
       // Setup: Add object to main with version 40
-      await parser.handleMessage(
+      parser.handleMessage(
         {
           dataSets: [createDataSet('main', 16, 1100)],
           visibleDataSetsUrl,
@@ -2970,7 +2919,7 @@ describe('HashTreeParser', () => {
       );
 
       // Add object to atd-unmuted with version 50
-      await parser.handleMessage(
+      parser.handleMessage(
         {
           dataSets: [createDataSet('atd-unmuted', 16, 3100)],
           visibleDataSetsUrl,
@@ -3005,14 +2954,14 @@ describe('HashTreeParser', () => {
         ],
       };
 
-      await parser.handleMessage(removalMessage, 'removal with older version');
+      parser.handleMessage(removalMessage, 'removal with older version');
 
       // Callback should not be called because object still exists with newer version
       assert.notCalled(callback);
     });
 
-    it('filters mixed updates correctly - some pass, some filtered', async () => {
-      const parser = await setupParserWithObjects([
+    it('filters mixed updates correctly - some pass, some filtered', () => {
+      const parser = setupParserWithObjects([
         {
           htMeta: {
             elementId: {type: 'participant' as const, id: 1, version: 100},
@@ -3066,7 +3015,7 @@ describe('HashTreeParser', () => {
         ],
       };
 
-      await parser.handleMessage(mixedMessage, 'mixed updates');
+      parser.handleMessage(mixedMessage, 'mixed updates');
 
       // Callback should be called with only the valid updates (participant 1 v110 and participant 3 v10)
       assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
@@ -3089,8 +3038,8 @@ describe('HashTreeParser', () => {
       });
     });
 
-    it('does not call callback when all updates are filtered out', async () => {
-      const parser = await setupParserWithObjects([
+    it('does not call callback when all updates are filtered out', () => {
+      const parser = setupParserWithObjects([
         {
           htMeta: {
             elementId: {type: 'locus' as const, id: 5, version: 100},
@@ -3123,17 +3072,17 @@ describe('HashTreeParser', () => {
         ],
       };
 
-      await parser.handleMessage(updateMessage, 'all filtered updates');
+      parser.handleMessage(updateMessage, 'all filtered updates');
 
       // Callback should not be called at all
       assert.notCalled(callback);
     });
 
-    it('checks all visible datasets when filtering', async () => {
+    it('checks all visible datasets when filtering', () => {
       const parser = createHashTreeParser();
 
       // Setup: Add same object to multiple datasets with different versions
-      await parser.handleMessage(
+      parser.handleMessage(
         {
           dataSets: [createDataSet('main', 16, 1100)],
           visibleDataSetsUrl,
@@ -3151,7 +3100,7 @@ describe('HashTreeParser', () => {
         'setup main'
       );
 
-      await parser.handleMessage(
+      parser.handleMessage(
         {
           dataSets: [createDataSet('self', 1, 2100)],
           visibleDataSetsUrl,
@@ -3169,7 +3118,7 @@ describe('HashTreeParser', () => {
         'setup self'
       );
 
-      await parser.handleMessage(
+      parser.handleMessage(
         {
           dataSets: [createDataSet('atd-unmuted', 16, 3100)],
           visibleDataSetsUrl,
@@ -3204,14 +3153,14 @@ describe('HashTreeParser', () => {
         ],
       };
 
-      await parser.handleMessage(updateMessage, 'update with v115');
+      parser.handleMessage(updateMessage, 'update with v115');
 
       // Should be filtered out because self dataset has version 120
       assert.notCalled(callback);
     });
 
-    it('does not call callback for empty locusStateElements', async () => {
-      const parser = await setupParserWithObjects([]);
+    it('does not call callback for empty locusStateElements', () => {
+      const parser = setupParserWithObjects([]);
 
       const emptyMessage = {
         dataSets: [createDataSet('main', 16, 1100)],
@@ -3220,13 +3169,13 @@ describe('HashTreeParser', () => {
         locusStateElements: [],
       };
 
-      await parser.handleMessage(emptyMessage, 'empty elements');
+      parser.handleMessage(emptyMessage, 'empty elements');
 
       assert.notCalled(callback);
     });
 
-    it('always calls callback for MEETING_ENDED regardless of filtering', async () => {
-      const parser = await setupParserWithObjects([
+    it('always calls callback for MEETING_ENDED regardless of filtering', () => {
+      const parser = setupParserWithObjects([
         {
           htMeta: {
             elementId: {type: 'locus' as const, id: 0, version: 100},
@@ -3236,23 +3185,15 @@ describe('HashTreeParser', () => {
         },
       ]);
 
-      // Send roster drop message (SELF object with no data) to trigger MEETING_ENDED
-      const rosterDropMessage = {
-        dataSets: [createDataSet('self', 1, 2101)],
-        visibleDataSetsUrl,
-        locusUrl,
-        locusStateElements: [
-          {
-            htMeta: {
-              elementId: {type: 'self' as const, id: 4, version: 102},
-              dataSetNames: ['self'],
-            },
-            data: undefined, // roster drop triggers MEETING_ENDED
-          },
-        ],
-      };
+      // Send a sentinel END MEETING message
+      const sentinelMessage = createHeartbeatMessage(
+        'main',
+        1,
+        parser.dataSets.main.version + 1,
+        EMPTY_HASH
+      );
 
-      await parser.handleMessage(rosterDropMessage, 'roster drop message');
+      parser.handleMessage(sentinelMessage as any, 'sentinel message');
 
       // Callback should be called with MEETING_ENDED
       assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
