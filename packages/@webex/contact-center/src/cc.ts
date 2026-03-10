@@ -1656,6 +1656,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /**
    * Updates the agent device type and login configuration.
    * Use this method to change how an agent connects to the contact center system (e.g., switching from browser-based calling to a desk phone extension).
+   * Change to any field of the profile is allowed;
    *
    * @param {AgentDeviceUpdate} data Configuration containing:
    *   - loginOption: New device type ('BROWSER', 'EXTENSION', 'AGENT_DN')
@@ -1695,29 +1696,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
 
     try {
-      // Only block if both loginOption AND teamId remain unchanged
-      if (
-        this.webCallingService?.loginOption === data.loginOption &&
-        data.teamId === this.agentConfig.currentTeamId
-      ) {
-        const message =
-          'Will not proceed with device update as new Device type is same as current device type and teamId is same as current teamId';
-        const err = new Error(message) as GenericError;
-        err.details = {
-          type: 'Identical Device Change Failure',
-          orgId: this.$webex.credentials.getOrgId(),
-          trackingId,
-          data: {
-            agentId: this.agentConfig.agentId,
-            reasonCode: 'R002',
-            reason: message,
-          },
-        };
-        throw err;
-      }
-
       await this.stationLogout({
-        logoutReason: 'User requested agent device change',
+        logoutReason: 'User requested agent profile update',
       });
 
       const loginPayload: AgentLogin = {

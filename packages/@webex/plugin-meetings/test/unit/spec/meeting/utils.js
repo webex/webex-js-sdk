@@ -11,6 +11,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import * as BrowserDetectionModule from '@webex/plugin-meetings/src/common/browser-detection';
 import PasswordError from '@webex/plugin-meetings/src/common/errors/password-error';
 import CaptchaError from '@webex/plugin-meetings/src/common/errors/captcha-error';
+import {ServerRoles} from '@webex/plugin-meetings/src/member/types';
 
 describe('plugin-meetings', () => {
   let webex;
@@ -936,6 +937,80 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('canAttendeeRequestAiAssistantEnabled', () => {
+      it('returns false when user is a cohost', () => {
+        assert.deepEqual(
+          MeetingUtil.canAttendeeRequestAiAssistantEnabled(
+            ['ATTENDEE_REQUEST_AI_ASSISTANT_ENABLED'],
+            [ServerRoles.Cohost]
+          ),
+          false
+        );
+      });
+
+      it('returns false when user is a moderator', () => {
+        assert.deepEqual(
+          MeetingUtil.canAttendeeRequestAiAssistantEnabled(
+            ['ATTENDEE_REQUEST_AI_ASSISTANT_ENABLED'],
+            [ServerRoles.Moderator]
+          ),
+          false
+        );
+      });
+
+      it('returns false when user is both cohost and moderator', () => {
+        assert.deepEqual(
+          MeetingUtil.canAttendeeRequestAiAssistantEnabled(
+            ['ATTENDEE_REQUEST_AI_ASSISTANT_ENABLED'],
+            [ServerRoles.Cohost, ServerRoles.Moderator]
+          ),
+          false
+        );
+      });
+
+      it('returns true when user is an attendee and display hint is present', () => {
+        assert.deepEqual(
+          MeetingUtil.canAttendeeRequestAiAssistantEnabled(
+            ['ATTENDEE_REQUEST_AI_ASSISTANT_ENABLED'],
+            []
+          ),
+          true
+        );
+      });
+
+      it('returns true when user has other roles (not host/cohost) and display hint is present', () => {
+        assert.deepEqual(
+          MeetingUtil.canAttendeeRequestAiAssistantEnabled(
+            ['ATTENDEE_REQUEST_AI_ASSISTANT_ENABLED'],
+            ['SomeOtherRole']
+          ),
+          true
+        );
+      });
+
+      it('returns false when user is an attendee but display hint is not present', () => {
+        assert.deepEqual(MeetingUtil.canAttendeeRequestAiAssistantEnabled([], []), false);
+      });
+
+      it('returns false when user is an attendee with other display hints but not the AI assistant one', () => {
+        assert.deepEqual(
+          MeetingUtil.canAttendeeRequestAiAssistantEnabled(['SOME_OTHER_HINT', 'ANOTHER_HINT'], []),
+          false
+        );
+      });
+
+      it('returns false when host/cohost even if display hint is not present', () => {
+        assert.deepEqual(
+          MeetingUtil.canAttendeeRequestAiAssistantEnabled([], [ServerRoles.Cohost]),
+          false
+        );
+        assert.deepEqual(
+          MeetingUtil.canAttendeeRequestAiAssistantEnabled([], [ServerRoles.Moderator]),
+          false
+        );
+      });
+    });
+
     describe('bothLeaveAndEndMeetingAvailable', () => {
       it('works as expected', () => {
         assert.deepEqual(
@@ -1464,6 +1539,7 @@ describe('plugin-meetings', () => {
                 id: 'selfId123',
               },
             },
+            metaData: {id: 'some hash tree metadata'},
             dataSets: [{name: 'dataset1', url: 'http://dataset.com'}],
             mediaConnections: [{mediaId: 'mediaId456'}, {someOtherField: 'value'}],
           },
@@ -1481,6 +1557,7 @@ describe('plugin-meetings', () => {
           locusId: '12345',
           selfId: 'selfId123',
           mediaId: 'mediaId456',
+          metadata: {id: 'some hash tree metadata'},
         });
       });
 
@@ -1510,6 +1587,7 @@ describe('plugin-meetings', () => {
           locusUrl: 'https://locus-a.wbx2.com/locus/api/v1/loci/12345',
           locusId: '12345',
           selfId: 'selfId123',
+          metadata: {id: 'some hash tree metadata'},
         });
         assert.isUndefined(result.mediaId);
       });
@@ -1569,68 +1647,60 @@ describe('plugin-meetings', () => {
       });
     });
 
-    describe('#_urlsMatch', () => {
-      it('returns true when URLs match (ignoring query and hash)', () => {
+    describe('#_urlsPartiallyMatch', () => {
+      it('returns true when URLs match exactly (ignoring query and hash)', () => {
         const url1 = 'wss://example.com:443/path?token=abc#fragment1';
         const url2 = 'wss://example.com:443/path?token=xyz#fragment2';
 
-        assert.isTrue(MeetingUtil._urlsMatch(url1, url2));
+        assert.isTrue(MeetingUtil._urlsPartiallyMatch(url1, url2));
       });
 
-      it('returns false when protocols differ', () => {
-        const url1 = 'wss://example.com/path';
-        const url2 = 'ws://example.com/path';
+      it('returns true when one URL is proxied and ends with the other', () => {
+        const url1 = 'wss://other.example.com/somepath/mercury.example.com/v1/path';
+        const url2 = 'wss://mercury.example.com/v1/path';
 
-        assert.isFalse(MeetingUtil._urlsMatch(url1, url2));
+        assert.isTrue(MeetingUtil._urlsPartiallyMatch(url1, url2));
       });
 
-      it('returns false when hosts differ', () => {
+      it('returns true when the second URL is proxied', () => {
+        const url1 = 'wss://mercury.example.com/v1/path';
+        const url2 = 'wss://other.example.com/somepath/mercury.example.com/v1/path';
+
+        assert.isTrue(MeetingUtil._urlsPartiallyMatch(url1, url2));
+      });
+
+      it('returns false when hosts differ and no partial match', () => {
         const url1 = 'wss://example1.com/path';
         const url2 = 'wss://example2.com/path';
 
-        assert.isFalse(MeetingUtil._urlsMatch(url1, url2));
+        assert.isFalse(MeetingUtil._urlsPartiallyMatch(url1, url2));
       });
 
-      it('returns false when ports differ', () => {
-        const url1 = 'wss://example.com:443/path';
-        const url2 = 'wss://example.com:8443/path';
-
-        assert.isFalse(MeetingUtil._urlsMatch(url1, url2));
-      });
-
-      it('returns false when pathnames differ', () => {
+      it('returns false when pathnames differ and no partial match', () => {
         const url1 = 'wss://example.com/path1';
         const url2 = 'wss://example.com/path2';
 
-        assert.isFalse(MeetingUtil._urlsMatch(url1, url2));
+        assert.isFalse(MeetingUtil._urlsPartiallyMatch(url1, url2));
       });
 
       it('returns false when either URL is null or undefined', () => {
         const url = 'wss://example.com/path';
 
-        assert.isFalse(MeetingUtil._urlsMatch(null, url));
-        assert.isFalse(MeetingUtil._urlsMatch(url, null));
-        assert.isFalse(MeetingUtil._urlsMatch(undefined, url));
-        assert.isFalse(MeetingUtil._urlsMatch(url, undefined));
+        assert.isFalse(MeetingUtil._urlsPartiallyMatch(null, url));
+        assert.isFalse(MeetingUtil._urlsPartiallyMatch(url, null));
+        assert.isFalse(MeetingUtil._urlsPartiallyMatch(undefined, url));
+        assert.isFalse(MeetingUtil._urlsPartiallyMatch(url, undefined));
       });
 
       it('returns false when both URLs are null', () => {
-        assert.isFalse(MeetingUtil._urlsMatch(null, null));
+        assert.isFalse(MeetingUtil._urlsPartiallyMatch(null, null));
       });
 
       it('returns false when URL parsing fails', () => {
         const url1 = 'invalid url';
         const url2 = 'wss://example.com/path';
 
-        assert.isFalse(MeetingUtil._urlsMatch(url1, url2));
-      });
-
-      it('compares URLs case-sensitively', () => {
-        const url1 = 'wss://Example.com/path';
-        const url2 = 'wss://example.com/path';
-
-        // URL parsing should handle host case-sensitivity
-        assert.isTrue(MeetingUtil._urlsMatch(url1, url2));
+        assert.isFalse(MeetingUtil._urlsPartiallyMatch(url1, url2));
       });
     });
 
@@ -1675,6 +1745,34 @@ describe('plugin-meetings', () => {
         assert.isFalse(result.hasMismatchedSocket);
         assert.equal(result.mercurySocketUrl, 'wss://example.com:443/path');
         assert.equal(result.deviceSocketUrl, 'wss://example.com:443/path');
+      });
+
+      it('returns hasMismatchedSocket as false when one URL is proxied (partial match)', () => {
+        const testWebex = {
+          internal: {
+            mercury: {
+              socket: {
+                url: 'wss://other.example.com/somepath/mercury.example.com/v1/apps/wx2/registrations/00000000-0000-0000-0000-000000000000/messages',
+              },
+            },
+            device: {
+              webSocketUrl:
+                'wss://mercury.example.com/v1/apps/wx2/registrations/00000000-0000-0000-0000-000000000000/messages',
+            },
+          },
+        };
+
+        const result = MeetingUtil.getSocketUrlInfo(testWebex);
+
+        assert.isFalse(result.hasMismatchedSocket);
+        assert.equal(
+          result.mercurySocketUrl,
+          'wss://other.example.com/somepath/mercury.example.com/v1/apps/wx2/registrations/00000000-0000-0000-0000-000000000000/messages'
+        );
+        assert.equal(
+          result.deviceSocketUrl,
+          'wss://mercury.example.com/v1/apps/wx2/registrations/00000000-0000-0000-0000-000000000000/messages'
+        );
       });
 
       it('returns false for hasMismatchedSocket when mercury socket URL is missing', () => {

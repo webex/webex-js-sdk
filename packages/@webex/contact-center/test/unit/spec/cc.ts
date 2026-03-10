@@ -1850,7 +1850,7 @@ describe('webex.cc', () => {
       );
 
       expect(webex.cc.stationLogout).toHaveBeenCalledWith({
-        logoutReason: 'User requested agent device change',
+        logoutReason: 'User requested agent profile update',
       });
       expect(webex.cc.stationLogin).toHaveBeenCalledWith({
         teamId: 'teamId',
@@ -1934,24 +1934,26 @@ describe('webex.cc', () => {
       });
     });
 
-    it('should throw with detailed error when loginOption equals current device type', async () => {
-      webex.cc.webCallingService.loginOption = LoginOption.BROWSER;
+    it('should allow update when loginOption and teamId are unchanged (e.g. dialNumber or profile refresh)', async () => {
+      webex.cc.webCallingService.loginOption = LoginOption.AGENT_DN;
       const data = {
         teamId: 'teamId',
-        loginOption: LoginOption.BROWSER,
-        dialNumber: '',
+        loginOption: LoginOption.AGENT_DN,
+        dialNumber: '1234',
       };
-      const expectedMessage =
-        'Will not proceed with device update as new Device type is same as current device type and teamId is same as current teamId';
+      const logoutSpy = jest.spyOn(webex.cc, 'stationLogout').mockResolvedValue({});
+      const loginSpy = jest.spyOn(webex.cc, 'stationLogin').mockResolvedValue({
+        type: 'AgentDeviceTypeUpdateSuccess',
+      } as any);
 
-      await expect(webex.cc.updateAgentProfile(data)).rejects.toMatchObject({
-        message: expectedMessage,
-        details: expect.objectContaining({
-          data: expect.objectContaining({
-            agentId: webex.cc.agentConfig.agentId,
-            reason: expectedMessage,
-          }),
-        }),
+      await expect(webex.cc.updateAgentProfile(data)).resolves.toBeDefined();
+      expect(logoutSpy).toHaveBeenCalledWith({
+        logoutReason: 'User requested agent profile update',
+      });
+      expect(loginSpy).toHaveBeenCalledWith({
+        teamId: data.teamId,
+        loginOption: data.loginOption,
+        dialNumber: data.dialNumber,
       });
     });
 
@@ -2104,7 +2106,9 @@ describe('webex.cc', () => {
       const detailedError = new Error('Detailed service error');
       getErrorDetailsSpy.mockReturnValue({error: detailedError});
 
-      await expect(webex.cc.getOutdialAniEntries(mockParams)).rejects.toThrow('Detailed service error');
+      await expect(webex.cc.getOutdialAniEntries(mockParams)).rejects.toThrow(
+        'Detailed service error'
+      );
 
       // Verify failure metrics are tracked
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
@@ -2128,11 +2132,7 @@ describe('webex.cc', () => {
       );
 
       // Verify getErrorDetails was called
-      expect(getErrorDetailsSpy).toHaveBeenCalledWith(
-        mockError,
-        'getOutdialAniEntries',
-        CC_FILE
-      );
+      expect(getErrorDetailsSpy).toHaveBeenCalledWith(mockError, 'getOutdialAniEntries', CC_FILE);
     });
 
     it('should throw error when orgId is not found', async () => {

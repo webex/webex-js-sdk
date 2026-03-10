@@ -5,6 +5,8 @@ import {ConnectionState, MediaConnectionEventNames} from '@webex/internal-media-
 import testUtils from '../../../utils/testUtils';
 import {ICE_AND_DTLS_CONNECTION_TIMEOUT} from '@webex/plugin-meetings/src/constants';
 import MediaConnectionAwaiter from '../../../../src/media/MediaConnectionAwaiter';
+import Metrics from '../../../../src/metrics';
+import BEHAVIORAL_METRICS from '../../../../src/metrics/constants';
 
 describe('MediaConnectionAwaiter', () => {
   let mediaConnectionAwaiter;
@@ -14,18 +16,34 @@ describe('MediaConnectionAwaiter', () => {
   beforeEach(() => {
     clock = sinon.useFakeTimers();
 
+    const mockTransportReport = {
+      type: 'transport',
+      dtlsState: 'connecting',
+      iceState: 'checking',
+      packetsSent: 10,
+      packetsReceived: 5,
+    };
+
     mockMC = {
-      getStats: sinon.stub().resolves([]),
+      getStats: sinon.stub().resolves({
+        values: () => [mockTransportReport],
+      }),
       on: sinon.stub(),
       off: sinon.stub(),
       getConnectionState: sinon.stub().returns(ConnectionState.New),
       getIceGatheringState: sinon.stub().returns('new'),
       getIceConnectionState: sinon.stub().returns('new'),
       getPeerConnectionState: sinon.stub().returns('new'),
+      multistreamConnection: {
+        dataChannel: {
+          readyState: 'open',
+        },
+      },
     };
 
     mediaConnectionAwaiter = new MediaConnectionAwaiter({
       webrtcMediaConnection: mockMC,
+      correlationId: 'test-correlation-id',
     });
   });
 
@@ -44,6 +62,8 @@ describe('MediaConnectionAwaiter', () => {
     });
 
     it('rejects after timeout if ice state is not connected', async () => {
+      const sendMetricSpy = sinon.spy(Metrics, 'sendBehavioralMetric');
+
       mockMC.getConnectionState.returns(ConnectionState.Connecting);
       mockMC.getIceGatheringState.returns('gathering');
 
@@ -83,6 +103,18 @@ describe('MediaConnectionAwaiter', () => {
       assert.equal(promiseRejected, true);
 
       assert.calledThrice(mockMC.off);
+
+      assert.calledOnceWithExactly(sendMetricSpy, BEHAVIORAL_METRICS.MEDIA_STILL_NOT_CONNECTED, {
+        correlation_id: 'test-correlation-id',
+        numTransports: 1,
+        dtlsState: 'connecting',
+        iceState: 'checking',
+        packetsSent: 10,
+        packetsReceived: 5,
+        dataChannelState: 'open',
+      });
+
+      sendMetricSpy.restore();
     });
 
     it('rejects immediately if ice state is FAILED', async () => {
@@ -351,6 +383,8 @@ describe('MediaConnectionAwaiter', () => {
     });
 
     it(`reject with restart timer once if gathering state is not complete`, async () => {
+      const sendMetricSpy = sinon.spy(Metrics, 'sendBehavioralMetric');
+
       mockMC.getConnectionState.returns(ConnectionState.Connecting);
       mockMC.getIceGatheringState.returns('new');
 
@@ -390,6 +424,12 @@ describe('MediaConnectionAwaiter', () => {
 
       assert.calledOnce(clearTimeoutSpy);
       assert.calledTwice(setTimeoutSpy);
+
+      // verify sendMetric was called twice (once for each timeout)
+      assert.calledTwice(sendMetricSpy);
+      assert.calledWith(sendMetricSpy, BEHAVIORAL_METRICS.MEDIA_STILL_NOT_CONNECTED);
+
+      sendMetricSpy.restore();
     });
 
     it(`resolves gathering and connection state complete right after`, async () => {

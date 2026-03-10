@@ -105,10 +105,10 @@ const DSS = WebexPlugin.extend({
 
     this.stopListeningForEvents();
 
-    return this.webex.internal.mercury.disconnect().then(() => {
-      this.trigger(DSS_UNREGISTERED);
-      this.registered = false;
-    });
+    this.trigger(DSS_UNREGISTERED);
+    this.registered = false;
+
+    return Promise.resolve();
   },
 
   /**

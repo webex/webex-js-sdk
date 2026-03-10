@@ -28,6 +28,7 @@ import BehavioralMetrics from './behavioral-metrics';
 import OperationalMetrics from './operational-metrics';
 import BusinessMetrics from './business-metrics';
 import RtcMetrics from './rtcMetrics';
+import PreLoginMetrics from './prelogin-metrics';
 
 registerInternalPlugin('metrics', Metrics, {
   config,
@@ -51,6 +52,7 @@ export {
   OperationalMetrics,
   BusinessMetrics,
   RtcMetrics,
+  PreLoginMetrics,
 };
 export type {
   ClientEvent,

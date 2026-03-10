@@ -13,7 +13,7 @@ import {
 } from './constants';
 
 import {StrokeData, RequestData, IAnnotationChannel, CommandRequestBody} from './annotation.types';
-import {HTTP_VERBS} from '../constants';
+import {HTTP_VERBS, LOCUSEVENT} from '../constants';
 
 /**
  * @description Annotation to handle LLM and Mercury message and locus API
@@ -69,7 +69,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    */
   private eventCommandProcessor(e) {
     if (
-      e?.data?.eventType === 'locus.approval_request' &&
+      e?.data?.eventType === LOCUSEVENT.APPROVAL_REQUEST &&
       e?.data?.approval?.resourceType === ANNOTATION_RESOURCE_TYPE &&
       e?.data?.approval?.actionType
     ) {
@@ -110,7 +110,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
     if (!this.hasSubscribedToEvents) {
       // @ts-ignore
       this.webex.internal.mercury.on(
-        'event:locus.approval_request',
+        `event:${LOCUSEVENT.APPROVAL_REQUEST}`,
         this.eventCommandProcessor,
         this
       );
@@ -127,7 +127,10 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
   public deregisterEvents() {
     if (this.hasSubscribedToEvents) {
       // @ts-ignore
-      this.webex.internal.mercury.off('event:locus.approval_request', this.eventCommandProcessor);
+      this.webex.internal.mercury.off(
+        `event:${LOCUSEVENT.APPROVAL_REQUEST}`,
+        this.eventCommandProcessor
+      );
 
       // @ts-ignore
       this.webex.internal.llm.off('event:relay.event', this.eventDataProcessor);

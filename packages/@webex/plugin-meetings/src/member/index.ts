@@ -13,6 +13,7 @@ export type MemberId = string;
 export default class Member {
   associatedUser: MemberId | null; // deprecated, use associatedUsers instead
   associatedUsers: Set<MemberId>; // users associated with this device, empty if this member is not a device
+  canApproveAIEnablement: boolean;
   canReclaimHost: boolean;
   id: MemberId;
   isAudioMuted: any;
@@ -297,6 +298,14 @@ export default class Member {
      * @public
      * @memberof Member
      */
+    this.canApproveAIEnablement = null;
+
+    /**
+     * @instance
+     * @type {Boolean}
+     * @public
+     * @memberof Member
+     */
     this.isPairedWithSelf = false;
 
     /**
@@ -360,6 +369,7 @@ export default class Member {
         MemberUtil.isModeratorAssignmentProhibited(participant);
       this.isPresenterAssignmentProhibited =
         MemberUtil.isPresenterAssignmentProhibited(participant);
+      this.canApproveAIEnablement = MemberUtil.canApproveAIEnablement(participant);
       this.processStatus(participant);
       this.processRoles(participant);
       // must be done last
