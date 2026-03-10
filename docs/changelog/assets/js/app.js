@@ -1718,8 +1718,8 @@ const clearComparisonURLParams = () => {
 };
 
 /**
- * Check and update comparison button state based on form selections
- * Package is required; Base and Target versions are required after package is selected.
+ * Check and update comparison button state based on form selections.
+ * Package is required for package-level comparison; full version comparison (no package) is allowed when Base and Target are set.
  */
 const updateCompareButtonState = () => {
     if (!compareButton) return;
@@ -1732,9 +1732,11 @@ const updateCompareButtonState = () => {
     const prereleaseRowVisible = prereleaseRow && prereleaseRow.style.display !== 'none';
     const prereleaseLoaded = comparisonState.cachedChangelogA && comparisonState.cachedChangelogB;
     
-    const canCompare = selectedPackage && stableA && stableB && stableA !== stableB &&
+    const packageCompareReady = selectedPackage && stableA && stableB && stableA !== stableB &&
         prereleaseLoaded &&
         (!prereleaseRowVisible || versionASpecific || versionBSpecific);
+    const fullVersionCompareReady = !selectedPackage && stableA && stableB && stableA !== stableB && prereleaseLoaded;
+    const canCompare = packageCompareReady || fullVersionCompareReady;
     compareButton.disabled = !canCompare;
 };
 
@@ -1897,32 +1899,26 @@ const switchToComparisonViewMode = async () => {
 };
 
 /**
- * Validate comparison form inputs, If something is missing, it show an alert and return false; otherwise return true.
+ * Validate comparison form inputs. Package is required for package-level comparison; full version comparison only needs Base and Target.
  */
 const validateComparisonInputs = (stableA, stableB, selectedPackage, versionASpecific, versionBSpecific) => {
-    if (!selectedPackage) {
-        alert('Please select a package.');
-        return false;
-    }
-    
     if (!stableA || !stableB) {
         alert('Please select both Base and Target stable versions');
         return false;
     }
-    
     if (stableA === stableB) {
         alert('Please select two different stable versions');
         return false;
     }
-    
-    if (selectedPackage && !versionASpecific && !versionBSpecific) {
-        const prereleaseRowVisible = prereleaseRow && prereleaseRow.style.display !== 'none';
-        if (prereleaseRowVisible) {
-            alert('Please select at least one pre-release version');
-            return false;
+    if (selectedPackage) {
+        if (!versionASpecific && !versionBSpecific) {
+            const prereleaseRowVisible = prereleaseRow && prereleaseRow.style.display !== 'none';
+            if (prereleaseRowVisible) {
+                alert('Please select at least one pre-release version');
+                return false;
+            }
         }
     }
-    
     return true;
 };
 
@@ -2046,19 +2042,16 @@ const setupComparisonEventListeners = () => {
 };
 
 /**
- * Set package dropdown to the given package. If the option is not in the list, add it so the selection is never lost.
- * Keeps the flow correct: package stays visible after dropdown is repopulated (e.g. in handleStableVersionChange).
+ * Set package dropdown to the given package only if it exists in the current options (union of both versions).
+ * Does not add options for packages absent from both versions, so we avoid stale selections that would
+ * later cause "Could not find version data for comparison in either version" on Compare.
  */
 const setPackageSelection = (packageName) => {
     if (!comparisonPackageSelect || !packageName) return;
     const options = [...comparisonPackageSelect.options].map(o => o.value);
-    if (!options.includes(packageName)) {
-        const opt = document.createElement('option');
-        opt.value = packageName;
-        opt.textContent = packageName;
-        comparisonPackageSelect.appendChild(opt);
+    if (options.includes(packageName)) {
+        comparisonPackageSelect.value = packageName;
     }
-    comparisonPackageSelect.value = packageName;
 };
 
 /**
@@ -2117,12 +2110,6 @@ const loadStandardComparisonFromURL = async (urlParams) => {
             ]);
             comparisonState.update(changelogA, changelogB, urlParams.versionA, urlParams.versionB);
             populateUnionPackages(changelogA, changelogB);
-            const unionPackages = getUnionPackages(changelogA, changelogB);
-            if (unionPackages.length > 0) {
-                setPackageSelection(unionPackages[0]);
-            }
-            enableVersionSelectsAndSyncClear();
-            handlePackageChange();
         } catch (e) {
             if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
             if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
@@ -2133,10 +2120,6 @@ const loadStandardComparisonFromURL = async (urlParams) => {
         try {
             const allPackages = await getFullPackageList();
             populateComparisonPackageDropdown(allPackages);
-            if (allPackages.length > 0) {
-                setPackageSelection(allPackages[0]);
-            }
-            enableVersionSelectsAndSyncClear();
         } catch (e) {
             if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
             if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
