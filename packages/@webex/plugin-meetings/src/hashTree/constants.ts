@@ -6,4 +6,5 @@ export const DataSetNames = {
   ATD_ACTIVE: 'atd-active', // only sent to panelists, over LLM; the attendees that have their hands raised or are allowed to unmute themselves
   ATD_UNMUTED: 'atd-unmuted', // sent to web client, over LLM, not sent to panelists; the attendees that are unmuted
   SELF: 'self', // sent to web client, over Mercury
+  UNJOINED: 'unjoined', // sent when you are not joined, but can still see some stuff from the meeting (mutually exclusive with "main")
 };
