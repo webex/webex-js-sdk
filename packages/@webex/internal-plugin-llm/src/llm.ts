@@ -1,9 +1,13 @@
 /* eslint-disable consistent-return */
 
 import Mercury from '@webex/internal-plugin-mercury';
-
-import {LLM, DATA_CHANNEL_WITH_JWT_TOKEN} from './constants';
 // eslint-disable-next-line no-unused-vars
+import {
+  LLM,
+  DATA_CHANNEL_WITH_JWT_TOKEN,
+  AWARE_DATA_CHANNEL,
+  SUBSCRIPTION_AWARE_SUBCHANNELS_PARAM,
+} from './constants';
 import {ILLMChannel, DataChannelTokenType} from './llm.types';
 
 export const config = {
@@ -113,7 +117,11 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       if (!locusUrl || !datachannelUrl) return undefined;
       this.locusUrl = locusUrl;
       this.datachannelUrl = datachannelUrl;
-      this.connect(this.webSocketUrl);
+      const connectUrl = this.isDataChannelTokenEnabled()
+        ? LLMChannel.buildUrlWithAwareSubchannels(this.webSocketUrl, AWARE_DATA_CHANNEL)
+        : this.webSocketUrl;
+
+      this.connect(connectUrl);
     });
 
   /**
@@ -220,4 +228,19 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     // @ts-ignore
     return this.webex.internal.feature.getFeature('developer', DATA_CHANNEL_WITH_JWT_TOKEN);
   }
+
+  /**
+   * Builds a WebSocket URL with the `subscriptionAwareSubchannels` query parameter.
+   *
+   * @param {string} baseUrl - The original WebSocket URL.
+   * @param {string[]} subchannels - List of subchannels to declare as subscription-aware.
+   * @returns {string} The final URL with updated query parameters.
+   */
+
+  public static buildUrlWithAwareSubchannels = (baseUrl: string, subchannels: string[]) => {
+    const urlObj = new URL(baseUrl);
+    urlObj.searchParams.set(SUBSCRIPTION_AWARE_SUBCHANNELS_PARAM, subchannels.join(','));
+
+    return urlObj.toString();
+  };
 }

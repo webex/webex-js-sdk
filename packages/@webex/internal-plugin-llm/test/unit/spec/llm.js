@@ -25,6 +25,7 @@ describe('plugin-llm', () => {
       };
 
       llmService = webex.internal.llm;
+      llmService.webSocketUrl = 'wss://example.com/socket';
       llmService.connect = sinon.stub().callsFake(() => {
         llmService.connected = true;
       });
@@ -33,41 +34,59 @@ describe('plugin-llm', () => {
         headers: {},
         body: {
           binding: 'binding',
-          webSocketUrl: 'url',
+          webSocketUrl: 'wss://example.com/socket',
         },
       });
     });
 
+    afterEach(() => {
+      sinon.restore();
+    });
+
     describe('#registerAndConnect', () => {
       it('registers connection', async () => {
-        llmService.register = sinon.stub().resolves({
-          body: {
-            binding: 'binding',
-            webSocketUrl: 'url',
-          },
+        llmService.register = sinon.stub().callsFake(async () => {
+          llmService.binding = 'binding';
+          llmService.webSocketUrl = 'wss://example.com/socket';
+          return {
+            body: {
+              binding: 'binding',
+              webSocketUrl: 'wss://example.com/socket',
+            },
+          };
         });
+
         assert.equal(llmService.isConnected(), false);
         await llmService.registerAndConnect(locusUrl, datachannelUrl);
         assert.equal(llmService.isConnected(), true);
       });
 
-      it("doesn't registers connection for invalid input", async () => {
-        llmService.register = sinon.stub().resolves({
-          body: {
-            binding: 'binding',
-            webSocketUrl: 'url',
-          },
+      it("doesn't register connection for invalid input", async () => {
+        llmService.register = sinon.stub().callsFake(async () => {
+          llmService.binding = 'binding';
+          llmService.webSocketUrl = 'wss://example.com/socket';
+          return {
+            body: {
+              binding: 'binding',
+              webSocketUrl: 'wss://example.com/socket',
+            },
+          };
         });
+
         await llmService.registerAndConnect();
         assert.equal(llmService.isConnected(), false);
       });
 
       it('registers connection with token', async () => {
-        llmService.register = sinon.stub().resolves({
-          body: {
-            binding: 'binding',
-            webSocketUrl: 'url',
-          },
+        llmService.register = sinon.stub().callsFake(async () => {
+          llmService.binding = 'binding';
+          llmService.webSocketUrl = 'wss://example.com/socket';
+          return {
+            body: {
+              binding: 'binding',
+              webSocketUrl: 'wss://example.com/socket',
+            },
+          };
         });
 
         assert.equal(llmService.isConnected(), false);
@@ -81,6 +100,56 @@ describe('plugin-llm', () => {
         );
 
         assert.equal(llmService.isConnected(), true);
+      });
+
+      it('connects with subscriptionAwareSubchannels when token enabled', async () => {
+        llmService.isDataChannelTokenEnabled = sinon.stub().returns(true);
+
+        llmService.register = sinon.stub().callsFake(async () => {
+          llmService.binding = 'binding';
+          llmService.webSocketUrl = 'wss://example.com/socket';
+          return {
+            body: {
+              binding: 'binding',
+              webSocketUrl: 'wss://example.com/socket',
+            },
+          };
+        });
+
+        const buildSpy = sinon.spy(LLMService, 'buildUrlWithAwareSubchannels');
+
+        await llmService.registerAndConnect(locusUrl, datachannelUrl);
+
+        sinon.assert.calledOnce(buildSpy);
+        sinon.assert.calledOnce(llmService.connect);
+
+        const calledUrl = llmService.connect.getCall(0).args[0];
+        assert.include(calledUrl, 'subscriptionAwareSubchannels=');
+      });
+
+      it('connects without subscriptionAwareSubchannels when token disabled', async () => {
+        llmService.isDataChannelTokenEnabled = sinon.stub().returns(false);
+
+        llmService.register = sinon.stub().callsFake(async () => {
+          llmService.binding = 'binding';
+          llmService.webSocketUrl = 'wss://example.com/socket';
+          return {
+            body: {
+              binding: 'binding',
+              webSocketUrl: 'wss://example.com/socket',
+            },
+          };
+        });
+
+        const buildSpy = sinon.spy(LLMService, 'buildUrlWithAwareSubchannels');
+
+        await llmService.registerAndConnect(locusUrl, datachannelUrl);
+
+        sinon.assert.notCalled(buildSpy);
+        sinon.assert.calledOnce(llmService.connect);
+
+        const calledUrl = llmService.connect.getCall(0).args[0];
+        assert.equal(calledUrl, llmService.webSocketUrl);
       });
     });
 
@@ -134,15 +203,19 @@ describe('plugin-llm', () => {
       });
     });
 
-
     describe('#getLocusUrl', () => {
       it('gets LocusUrl', async () => {
-        llmService.register = sinon.stub().resolves({
-          body: {
-            binding: 'binding',
-            webSocketUrl: 'url',
-          },
+        llmService.register = sinon.stub().callsFake(async () => {
+          llmService.binding = 'binding';
+          llmService.webSocketUrl = 'wss://example.com/socket';
+          return {
+            body: {
+              binding: 'binding',
+              webSocketUrl: 'wss://example.com/socket',
+            },
+          };
         });
+
         await llmService.registerAndConnect(locusUrl, datachannelUrl);
         assert.equal(llmService.getLocusUrl(), locusUrl);
       });
@@ -150,11 +223,15 @@ describe('plugin-llm', () => {
 
     describe('#getDatachannelUrl', () => {
       it('gets dataChannel Url', async () => {
-        llmService.register = sinon.stub().resolves({
-          body: {
-            binding: 'binding',
-            webSocketUrl: 'url',
-          },
+        llmService.register = sinon.stub().callsFake(async () => {
+          llmService.binding = 'binding';
+          llmService.webSocketUrl = 'wss://example.com/socket';
+          return {
+            body: {
+              binding: 'binding',
+              webSocketUrl: 'wss://example.com/socket',
+            },
+          };
         });
         await llmService.registerAndConnect(locusUrl, datachannelUrl);
         assert.equal(llmService.getDatachannelUrl(), datachannelUrl);
@@ -172,7 +249,7 @@ describe('plugin-llm', () => {
       });
     });
 
-    describe('disconnectLLM', () => {
+  describe('disconnectLLM', () => {
       let instance;
 
       beforeEach(() => {
