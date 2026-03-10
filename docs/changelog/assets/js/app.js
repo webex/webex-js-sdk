@@ -136,6 +136,10 @@ const populateFormFieldsFromURL = async () => {
 };
 
 const populateVersions = async () => {
+    if (versionSelectDropdown) {
+        versionSelectDropdown.innerHTML = '<option value="">Loading versions...</option>';
+        versionSelectDropdown.disabled = true;
+    }
     try {
         const response = await fetch('logs/main.json');
         const data = await response.json();
@@ -147,11 +151,16 @@ const populateVersions = async () => {
         });
 
         versionSelectDropdown.innerHTML = optionsHtml; // Set all options at once
+        if (versionSelectDropdown) versionSelectDropdown.disabled = false;
 
         // Call populateFormFieldsFromURL on page load to populate fields based on URL parameters
         populateFormFieldsFromURL();
     } catch (error) {
         console.error('Error fetching version data:', error);
+        if (versionSelectDropdown) {
+            versionSelectDropdown.innerHTML = '<option value="">Error loading versions</option>';
+            versionSelectDropdown.disabled = false;
+        }
     }
 };
 const fetchChangelog = async (versionPath) => {
@@ -1105,6 +1114,7 @@ const getFullPackageList = async () => {
  */
 const populateComparisonPackageDropdown = (allPackages) => {
     if (!comparisonPackageSelect || !comparisonPackageRow) return;
+    const currentValue = comparisonPackageSelect.value;
     if (allPackages.length === 0) {
         comparisonPackageSelect.innerHTML = '<option value="">No packages found</option>';
     } else {
@@ -1113,8 +1123,12 @@ const populateComparisonPackageDropdown = (allPackages) => {
             optionsHtml += `<option value="${pkg}">${pkg}</option>`;
         });
         comparisonPackageSelect.innerHTML = optionsHtml;
+        if (currentValue && allPackages.includes(currentValue)) {
+            comparisonPackageSelect.value = currentValue;
+        }
     }
     comparisonPackageRow.style.display = 'flex';
+    updateCompareButtonState();
 };
 
 /**
@@ -1129,11 +1143,20 @@ const populateComparisonPackagesInitial = async () => {
         disableVersionSelectsAndSyncClear();
         return;
     }
+    if (comparisonPackageSelect) {
+        comparisonPackageSelect.innerHTML = '<option value="">Loading packages...</option>';
+        comparisonPackageSelect.disabled = true;
+    }
+    if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
     try {
         const allPackages = await getFullPackageList();
+        if (comparisonPackageSelect) comparisonPackageSelect.disabled = false;
         populateComparisonPackageDropdown(allPackages);
     } catch (e) {
-        if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
+        if (comparisonPackageSelect) {
+            comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
+            comparisonPackageSelect.disabled = false;
+        }
         if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
     }
     disableVersionSelectsAndSyncClear();
@@ -1702,8 +1725,8 @@ const updateCompareButtonState = () => {
     if (!compareButton) return;
     
     const selectedPackage = comparisonPackageSelect ? comparisonPackageSelect.value : null;
-    const stableA = versionASelect ? versionASelect.value : null;
-    const stableB = versionBSelect ? versionBSelect.value : null;
+    const stableA = versionASelect?.value;
+    const stableB = versionBSelect?.value;
     const versionASpecific = versionAPrereleaseSelect ? versionAPrereleaseSelect.value : null;
     const versionBSpecific = versionBPrereleaseSelect ? versionBPrereleaseSelect.value : null;
     const prereleaseRowVisible = prereleaseRow && prereleaseRow.style.display !== 'none';
@@ -1731,8 +1754,8 @@ const updatePrereleaseLabels = () => {
  * Handle stable version changes - fetch changelogs and populate packages.
  */
 const handleStableVersionChange = async () => {
-    const stableA = versionASelect.value;
-    const stableB = versionBSelect.value;
+    const stableA = versionASelect?.value;
+    const stableB = versionBSelect?.value;
     const savedPackage = comparisonPackageSelect ? comparisonPackageSelect.value : null;
 
     resetComparisonSelections();
@@ -1748,9 +1771,8 @@ const handleStableVersionChange = async () => {
             comparisonState.update(changelogA, changelogB, stableA, stableB);
             populateUnionPackages(changelogA, changelogB);
 
-            const allPackages = getUnionPackages(changelogA, changelogB);
-            if (savedPackage && allPackages.includes(savedPackage)) {
-                comparisonPackageSelect.value = savedPackage;
+            if (savedPackage) {
+                setPackageSelection(savedPackage);
             }
 
             const selectedPackage = savedPackage || (comparisonPackageSelect ? comparisonPackageSelect.value : null);
@@ -1910,8 +1932,8 @@ const validateComparisonInputs = (stableA, stableB, selectedPackage, versionASpe
 const handleComparisonSubmit = (event) => {
     event.preventDefault();
     
-    const stableA = versionASelect.value;
-    const stableB = versionBSelect.value;
+    const stableA = versionASelect?.value;
+    const stableB = versionBSelect?.value;
     const selectedPackage = comparisonPackageSelect ? comparisonPackageSelect.value : null;
     const versionASpecific = versionAPrereleaseSelect ? versionAPrereleaseSelect.value : null;
     const versionBSpecific = versionBPrereleaseSelect ? versionBPrereleaseSelect.value : null;
@@ -2024,6 +2046,22 @@ const setupComparisonEventListeners = () => {
 };
 
 /**
+ * Set package dropdown to the given package. If the option is not in the list, add it so the selection is never lost.
+ * Keeps the flow correct: package stays visible after dropdown is repopulated (e.g. in handleStableVersionChange).
+ */
+const setPackageSelection = (packageName) => {
+    if (!comparisonPackageSelect || !packageName) return;
+    const options = [...comparisonPackageSelect.options].map(o => o.value);
+    if (!options.includes(packageName)) {
+        const opt = document.createElement('option');
+        opt.value = packageName;
+        opt.textContent = packageName;
+        comparisonPackageSelect.appendChild(opt);
+    }
+    comparisonPackageSelect.value = packageName;
+};
+
+/**
  * Handle enhanced comparison URL parameters on page load.
  * Order: package first, then enable and set Base/Target versions, then pre-release and run comparison.
  */
@@ -2032,21 +2070,23 @@ const loadEnhancedComparisonFromURL = async (enhancedParams) => {
     await populateComparisonPackagesInitial();
 
     await new Promise(resolve => setTimeout(resolve, 100));
-    
-    comparisonPackageSelect.value = enhancedParams.packageName;
+
+    setPackageSelection(enhancedParams.packageName);
     enableVersionSelectsAndSyncClear();
     versionASelect.value = enhancedParams.stableA;
     versionBSelect.value = enhancedParams.stableB;
     await handleStableVersionChange();
-    
+
     await new Promise(resolve => setTimeout(resolve, 300));
-    
+
+    setPackageSelection(enhancedParams.packageName);
     handlePackageChange();
+    setPackageSelection(enhancedParams.packageName);
     if (versionAPrereleaseSelect) versionAPrereleaseSelect.value = enhancedParams.versionA;
     if (versionBPrereleaseSelect) versionBPrereleaseSelect.value = enhancedParams.versionB;
-    
+
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     compareSpecificPackageVersions(
         enhancedParams.packageName,
         enhancedParams.versionA,
@@ -2055,6 +2095,7 @@ const loadEnhancedComparisonFromURL = async (enhancedParams) => {
         comparisonState.cachedChangelogB
     );
     updateCompareButtonState();
+    setPackageSelection(enhancedParams.packageName);
 };
 
 /**
@@ -2076,21 +2117,31 @@ const loadStandardComparisonFromURL = async (urlParams) => {
             ]);
             comparisonState.update(changelogA, changelogB, urlParams.versionA, urlParams.versionB);
             populateUnionPackages(changelogA, changelogB);
+            const unionPackages = getUnionPackages(changelogA, changelogB);
+            if (unionPackages.length > 0) {
+                setPackageSelection(unionPackages[0]);
+            }
+            enableVersionSelectsAndSyncClear();
+            handlePackageChange();
         } catch (e) {
             if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
             if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
+            disableVersionSelectsAndSyncClear();
         }
-        disableVersionSelectsAndSyncClear();
         await performVersionComparison(urlParams.versionA, urlParams.versionB);
     } else {
         try {
             const allPackages = await getFullPackageList();
             populateComparisonPackageDropdown(allPackages);
+            if (allPackages.length > 0) {
+                setPackageSelection(allPackages[0]);
+            }
+            enableVersionSelectsAndSyncClear();
         } catch (e) {
             if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
             if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
+            disableVersionSelectsAndSyncClear();
         }
-        disableVersionSelectsAndSyncClear();
         if (urlParams.versionA && urlParams.versionB) {
             await performVersionComparison(urlParams.versionA, urlParams.versionB);
         }
