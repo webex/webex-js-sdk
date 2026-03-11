@@ -700,7 +700,6 @@ export default class Meeting extends StatelessWebexPlugin {
     receiveStop: boolean;
   };
 
-  srtpCipher: string | undefined;
   turnDiscoverySkippedReason: TurnDiscoverySkipReason;
   turnServerUsed: boolean;
   areVoiceaEventsSetup = false;
@@ -7333,11 +7332,11 @@ export default class Meeting extends StatelessWebexPlugin {
       }
 
       // Only emit event if srtpCipher has changed
-      if (srtpCipher && srtpCipher !== this.srtpCipher) {
+      if (srtpCipher && srtpCipher !== this.mediaProperties.srtpCipher) {
         LoggerProxy.logger.info(
-          `Meeting:index#setupStatsAnalyzerEventHandlers --> SRTP cipher changed from ${this.srtpCipher} to ${srtpCipher}`
+          `Meeting:index#setupStatsAnalyzerEventHandlers --> SRTP cipher changed from ${this.mediaProperties.srtpCipher} to ${srtpCipher}`
         );
-        this.srtpCipher = srtpCipher;
+        this.mediaProperties.srtpCipher = srtpCipher;
         Trigger.trigger(
           this,
           {

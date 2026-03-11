@@ -4553,7 +4553,7 @@ describe('plugin-meetings', () => {
                 {srtpCipher: 'AES_CM_128_HMAC_SHA1_80'}
               );
 
-              assert.equal(meeting.srtpCipher, 'AES_CM_128_HMAC_SHA1_80');
+              assert.equal(meeting.mediaProperties.srtpCipher, 'AES_CM_128_HMAC_SHA1_80');
             });
 
             it('updates meeting.srtpCipher when cipher changes', async () => {
@@ -4573,7 +4573,7 @@ describe('plugin-meetings', () => {
                 {stats: firstStats}
               );
 
-              assert.equal(meeting.srtpCipher, 'AES_CM_128_HMAC_SHA1_80');
+              assert.equal(meeting.mediaProperties.srtpCipher, 'AES_CM_128_HMAC_SHA1_80');
 
               const secondStats = new Map([
                 [
@@ -4604,7 +4604,7 @@ describe('plugin-meetings', () => {
                 {srtpCipher: 'AEAD_AES_256_GCM'}
               );
 
-              assert.equal(meeting.srtpCipher, 'AEAD_AES_256_GCM');
+              assert.equal(meeting.mediaProperties.srtpCipher, 'AEAD_AES_256_GCM');
             });
 
             it('does not emit event when srtpCipher has not changed', async () => {
@@ -4624,7 +4624,7 @@ describe('plugin-meetings', () => {
                 {stats: firstStats}
               );
 
-              assert.equal(meeting.srtpCipher, 'AES_CM_128_HMAC_SHA1_80');
+              assert.equal(meeting.mediaProperties.srtpCipher, 'AES_CM_128_HMAC_SHA1_80');
 
               TriggerProxy.trigger.resetHistory();
 
@@ -4645,7 +4645,7 @@ describe('plugin-meetings', () => {
               );
 
               // Cipher should remain the same
-              assert.equal(meeting.srtpCipher, 'AES_CM_128_HMAC_SHA1_80');
+              assert.equal(meeting.mediaProperties.srtpCipher, 'AES_CM_128_HMAC_SHA1_80');
             });
 
             it('does not emit event when stats contain no transport with srtpCipher', async () => {
