@@ -113,11 +113,12 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     datachannelUrl: string,
     datachannelToken?: string
   ): Promise<void> =>
-    this.register(datachannelUrl, datachannelToken).then(() => {
+    this.register(datachannelUrl, datachannelToken).then(async () => {
       if (!locusUrl || !datachannelUrl) return undefined;
       this.locusUrl = locusUrl;
       this.datachannelUrl = datachannelUrl;
-      const connectUrl = this.isDataChannelTokenEnabled()
+      const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
+      const connectUrl = isDataChannelTokenEnabled
         ? LLMChannel.buildUrlWithAwareSubchannels(this.webSocketUrl, AWARE_DATA_CHANNEL)
         : this.webSocketUrl;
 

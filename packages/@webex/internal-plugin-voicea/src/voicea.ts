@@ -593,7 +593,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   }: {
     subscribe?: string[];
     unsubscribe?: string[];
-  }): void => {
+  } = {}): void => {
     // @ts-ignore
     if (!this.webex.internal.llm.isConnected()) return;
 
