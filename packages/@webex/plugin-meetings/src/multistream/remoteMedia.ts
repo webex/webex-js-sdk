@@ -1,32 +1,32 @@
 /* eslint-disable valid-jsdoc */
-import {MediaType, StreamState} from '@webex/internal-media-core';
+import {MediaType, StreamState, SupportedResolution} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
 
 import {MediaRequestId, MediaRequestManager} from './mediaRequestManager';
 import {CSI, ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
+import type {RemoteVideoResolution} from './types';
+import {H264_CODEC_PARAMETERS} from './codec/constants';
+
+export type {
+  /** @deprecated use RemoteVideoResolution from @webex/plugin-meetings/src/types instead */
+  RemoteVideoResolution,
+} from './types';
 
 export const RemoteMediaEvents = {
   SourceUpdate: ReceiveSlotEvents.SourceUpdate,
   Stopped: 'stopped',
 };
 
-export type RemoteVideoResolution =
-  | 'thumbnail' // the smallest possible resolution, 90p or less
-  | 'very small' // 180p or less
-  | 'small' // 360p or less
-  | 'medium' // 720p or less
-  | 'large' // 1080p or less
-  | 'best'; // highest possible resolution
-
+/** @deprecated use H264_CODEC_PARAMETERS from @webex/plugin-meetings/src/codec/constants instead */
 export const MAX_FS_VALUES = {
-  '90p': 60,
-  '180p': 240,
-  '360p': 920,
-  '540p': 2040,
-  '720p': 3600,
-  '1080p': 8192,
-};
+  '90p': H264_CODEC_PARAMETERS['90p'].maxFs,
+  '180p': H264_CODEC_PARAMETERS['180p'].maxFs,
+  '360p': H264_CODEC_PARAMETERS['360p'].maxFs,
+  '540p': H264_CODEC_PARAMETERS['540p'].maxFs,
+  '720p': H264_CODEC_PARAMETERS['720p'].maxFs,
+  '1080p': H264_CODEC_PARAMETERS['1080p'].maxFs,
+} satisfies Record<SupportedResolution, number>;
 
 /**
  * Converts pane size into h264 maxFs

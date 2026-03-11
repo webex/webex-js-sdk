@@ -8,59 +8,31 @@ import {
   H264Codec,
   getRecommendedMaxBitrateForFrameSize,
   RecommendedOpusBitrates,
-  NamedMediaGroup,
 } from '@webex/internal-media-core';
 import {cloneDeepWith, debounce, isEmpty} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import {ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
-import {MAX_FS_VALUES} from './remoteMedia';
+import {ReceiveSlotEvents} from './receiveSlot';
+import {MediaRequest, MediaRequestId} from './types';
+import {CODEC_DEFAULTS, H264_CODEC_PARAMETERS} from './codec/constants';
 
-export interface ActiveSpeakerPolicyInfo {
-  policy: 'active-speaker';
-  priority: number;
-  crossPriorityDuplication: boolean;
-  crossPolicyDuplication: boolean;
-  preferLiveVideo: boolean;
-  namedMediaGroups?: NamedMediaGroup[];
-}
-
-export interface ReceiverSelectedPolicyInfo {
-  policy: 'receiver-selected';
-  csi: number;
-}
-
-export type PolicyInfo = ActiveSpeakerPolicyInfo | ReceiverSelectedPolicyInfo;
-
-export interface H264CodecInfo {
-  codec: 'h264';
-  maxFs?: number;
-  maxFps?: number;
-  maxMbps?: number;
-  maxWidth?: number;
-  maxHeight?: number;
-}
-
-export type CodecInfo = H264CodecInfo; // we'll add AV1 here in the future when it's available
-
-export interface MediaRequest {
-  policyInfo: PolicyInfo;
-  receiveSlots: Array<ReceiveSlot>;
-  codecInfo?: CodecInfo;
-  preferredMaxFs?: number;
-  handleMaxFs?: ({maxFs}: {maxFs: number}) => void;
-}
-
-export type MediaRequestId = string;
-
-const CODEC_DEFAULTS = {
-  h264: {
-    maxFs: 8192,
-    maxFps: 3000,
-    maxMbps: 245760,
-  },
-};
+export type {
+  /** @deprecated use ActiveSpeakerPolicyInfo from @webex/plugin-meetings/src/types instead */
+  ActiveSpeakerPolicyInfo,
+  /** @deprecated use ReceiverSelectedPolicyInfo from @webex/plugin-meetings/src/types instead */
+  ReceiverSelectedPolicyInfo,
+  /** @deprecated use PolicyInfo from @webex/plugin-meetings/src/types instead */
+  PolicyInfo,
+  /** @deprecated use MediaRequest from @webex/plugin-meetings/src/types instead */
+  MediaRequest,
+  /** @deprecated use MediaRequestId from @webex/plugin-meetings/src/types instead */
+  MediaRequestId,
+} from './types';
+export type {
+  /** @deprecated use CodecInfo from @webex/plugin-meetings/src/codec/types instead */
+  CodecInfo,
+} from './codec/types';
 
 const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
 
@@ -123,19 +95,19 @@ export class MediaRequestManager {
 
   private getDegradedClientRequests(clientRequests: ClientRequestsMap) {
     const maxFsLimits = [
-      MAX_FS_VALUES['1080p'],
-      MAX_FS_VALUES['720p'],
-      MAX_FS_VALUES['540p'],
-      MAX_FS_VALUES['360p'],
-      MAX_FS_VALUES['180p'],
-      MAX_FS_VALUES['90p'],
+      H264_CODEC_PARAMETERS['1080p'].maxFs,
+      H264_CODEC_PARAMETERS['720p'].maxFs,
+      H264_CODEC_PARAMETERS['540p'].maxFs,
+      H264_CODEC_PARAMETERS['360p'].maxFs,
+      H264_CODEC_PARAMETERS['180p'].maxFs,
+      H264_CODEC_PARAMETERS['90p'].maxFs,
     ];
 
-    // reduce max-fs until total macroblocks is below limit
+    // reduce max-fs until total macroblocks is below limit (H264 only)
     for (let i = 0; i < maxFsLimits.length; i += 1) {
       let totalMacroblocksRequested = 0;
       Object.values(clientRequests).forEach((mr) => {
-        if (mr.codecInfo) {
+        if (mr.codecInfo && mr.codecInfo.codec === 'h264') {
           mr.codecInfo.maxFs = Math.min(
             mr.preferredMaxFs || CODEC_DEFAULTS.h264.maxFs,
             mr.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs,
@@ -207,9 +179,12 @@ export class MediaRequestManager {
       return RecommendedOpusBitrates.FB_MONO_MUSIC;
     }
 
-    return getRecommendedMaxBitrateForFrameSize(
-      mediaRequest.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs
-    );
+    const maxFs =
+      mediaRequest.codecInfo?.codec === 'h264'
+        ? mediaRequest.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs
+        : CODEC_DEFAULTS.h264.maxFs;
+
+    return getRecommendedMaxBitrateForFrameSize(maxFs);
   }
 
   /**
@@ -223,6 +198,9 @@ export class MediaRequestManager {
    */
   // eslint-disable-next-line class-methods-use-this
   private getH264MaxMbps(mediaRequest: MediaRequest): number {
+    if (!mediaRequest.codecInfo || mediaRequest.codecInfo.codec !== 'h264') {
+      return (CODEC_DEFAULTS.h264.maxFs * CODEC_DEFAULTS.h264.maxFps) / 100;
+    }
     // fallback for maxFps (not needed for maxFs, since there is a fallback already in getDegradedClientRequests)
     const maxFps = mediaRequest.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps;
 
@@ -355,18 +333,19 @@ export class MediaRequestManager {
               : new ReceiverSelectedInfo(mr.policyInfo.csi),
             mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot),
             this.getMaxPayloadBitsPerSecond(mr),
-            mr.codecInfo && [
-              WcmeCodecInfo.fromH264(
-                0x80,
-                new H264Codec(
-                  mr.codecInfo.maxFs,
-                  mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
-                  this.getH264MaxMbps(mr),
-                  mr.codecInfo.maxWidth,
-                  mr.codecInfo.maxHeight
-                )
-              ),
-            ]
+            mr.codecInfo &&
+              mr.codecInfo.codec === 'h264' && [
+                WcmeCodecInfo.fromH264(
+                  0x80,
+                  new H264Codec(
+                    mr.codecInfo.maxFs,
+                    mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
+                    this.getH264MaxMbps(mr),
+                    mr.codecInfo.maxWidth,
+                    mr.codecInfo.maxHeight
+                  )
+                ),
+              ]
           )
         );
       }
