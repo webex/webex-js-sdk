@@ -1434,6 +1434,7 @@ export default class LocusInfo extends EventsScope {
           hasMeetingContainerChanged,
           hasTranscribeChanged,
           hasHesiodLLMIdChanged,
+          hasAiSummaryNotificationChanged,
           hasTranscribeSpokenLanguageChanged,
           hasManualCaptionChanged,
           hasEntryExitToneChanged,
@@ -1586,6 +1587,19 @@ export default class LocusInfo extends EventsScope {
           LOCUSINFO.EVENTS.CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED,
           {
             hesiodLlmId,
+          }
+        );
+      }
+
+      if (hasAiSummaryNotificationChanged) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_AI_SUMMARY_NOTIFICATION_UPDATED,
+          {
+            aiSummaryNotification: current.transcribe.aiSummaryNotification,
           }
         );
       }

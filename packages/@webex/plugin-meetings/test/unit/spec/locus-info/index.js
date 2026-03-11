@@ -1459,6 +1459,34 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('should emit CONTROLS_AI_SUMMARY_NOTIFICATION_UPDATED when aiSummaryNotification changes', () => {
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.controls = {
+          transcribe: {
+            transcribing: false,
+            caption: false,
+            aiSummaryNotification: false,
+          },
+        };
+        newControls.transcribe.transcribing = false;
+        newControls.transcribe.caption = false;
+        newControls.transcribe.aiSummaryNotification = true;
+
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_AI_SUMMARY_NOTIFICATION_UPDATED,
+          {
+            aiSummaryNotification: true,
+          }
+        );
+      });
+
       it('should update the transcribe spoken language', () => {
         locusInfo.emitScoped = sinon.stub();
         locusInfo.controls = {
