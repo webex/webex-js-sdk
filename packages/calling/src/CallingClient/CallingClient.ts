@@ -30,6 +30,8 @@ import {
   WebexRequestPayload,
   RegistrationStatus,
   UploadLogsResponse,
+  DeviceType,
+  Devices,
 } from '../common/types';
 import {ICallingClient, CallingClientConfig} from './types';
 import {ICall, ICallManager} from './calling/types';
@@ -47,6 +49,7 @@ import {
   API_V1,
   METHODS,
   NETWORK_FLAP_TIMEOUT,
+  DEVICES_ENDPOINT_RESOURCE,
 } from './constants';
 import Line from './line';
 import {ILine} from './line/types';
@@ -716,6 +719,64 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    */
   public getLines(): Record<string, ILine> {
     return this.lineDict;
+  }
+
+  /**
+   * Fetches the list of devices for a given user from Mobius.
+   */
+  public async getDevices(userId?: string): Promise<DeviceType[]> {
+    const userid = userId || this.webex.internal.device.userId;
+    if (!userid) {
+      throw new Error('userId is required to fetch devices');
+    }
+
+    log.info(METHOD_START_MESSAGE, {file: CALLING_CLIENT_FILE, method: METHODS.GET_DEVICES});
+
+    const mobiusUrls = [...this.primaryMobiusUris, ...this.backupMobiusUris];
+    if (mobiusUrls.length === 0) {
+      throw new Error('Mobius URLs are not available');
+    }
+
+    let finalError;
+    for (const mobiusUrl of mobiusUrls) {
+      const normalizedMobiusUrl = mobiusUrl.replace(/\/+$/, '/');
+      const uri = `${normalizedMobiusUrl}${DEVICES_ENDPOINT_RESOURCE}?userid=${encodeURIComponent(
+        userid
+      )}`;
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const response = <WebexRequestPayload>await this.webex.request({
+          uri,
+          method: HTTP_METHODS.GET,
+          service: ALLOWED_SERVICES.MOBIUS,
+          headers: {
+            [CISCO_DEVICE_URL]: this.webex.internal.device.url,
+            [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+          },
+        });
+
+        if (response.statusCode !== 200) {
+          throw new Error(`API call failed with ${response.statusCode}`);
+        }
+
+        const body = response.body as Devices;
+
+        // Hydrate registration deviceInfo for deregister/restore flows
+        Object.values(this.lineDict)[0].registration.setDeviceInfo(body);
+        Object.values(this.lineDict)[0].registration.setActiveMobiusUrl(normalizedMobiusUrl);
+
+        return body.devices ?? [];
+      } catch (error) {
+        finalError = error;
+      }
+    }
+
+    log.error(`Failed to fetch devices for userId ${userId}: ${JSON.stringify(finalError)}`, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.GET_DEVICES,
+    });
+
+    throw finalError;
   }
 
   /**
