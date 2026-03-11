@@ -6,12 +6,12 @@
 
 ## Component Overview
 
-| Component | File | Responsibility |
-|-----------|------|----------------|
-| `ContactCenter` | `src/cc.ts` | Plugin class exposing agent methods |
-| `routingAgent` | `services/agent/index.ts` | AQM request definitions |
-| `Services` | `services/index.ts` | Service singleton with agent service |
-| `AqmReqs` | `services/core/aqm-reqs.ts` | HTTP requests to backend; responses via WebSocket notifications |  
+| Component       | File                        | Responsibility                                                  |
+| --------------- | --------------------------- | --------------------------------------------------------------- |
+| `ContactCenter` | `src/cc.ts`                 | Plugin class exposing agent methods                             |
+| `routingAgent`  | `services/agent/index.ts`   | AQM request definitions                                         |
+| `Services`      | `services/index.ts`         | Service singleton with agent service                            |
+| `AqmReqs`       | `services/core/aqm-reqs.ts` | HTTP requests to backend; responses via WebSocket notifications |
 
 ---
 
@@ -46,7 +46,7 @@ export default function routingAgent(routing: AqmReqs) {
       },
       notifFail: {...},
     })),
-    
+
     logout: routing.req((p: {data: Logout}) => ({...})),
     stateChange: routing.req((p: {data: StateChange}) => ({...})),
     buddyAgents: routing.req((p: {data: BuddyAgents}) => ({...})),
@@ -66,7 +66,7 @@ flowchart TD
     A[cc.stationLogin] --> B[Validate input]
     B --> C[services.agent.stationLogin]
     C --> D[AqmReqs.req]
-    D --> E[HTTP REST request to backend]  
+    D --> E[HTTP REST request to backend]
     E --> F[Backend processes]
     F --> G{Success?}
     G -->|Yes| H[StationLoginSuccess event]
@@ -92,14 +92,13 @@ sequenceDiagram
     participant AQM as AqmReqs
     participant WS as WebSocket
     participant BE as Backend
-    
+
     App->>CC: stationLogin(params)
     CC->>CC: Validate dial number
     CC->>CC: timeEvent(LOGIN_SUCCESS, LOGIN_FAILED)
     CC->>Svc: stationLogin({data})
     Svc->>AQM: req(config)
-    AQM->>BE: HTTP POST /v1/agents/login  
-    WS->>BE: /v1/agents/login
+    AQM->>BE: HTTP POST /v1/agents/login
     BE-->>WS: AgentStationLoginSuccess
     WS-->>AQM: Resolve with response
     AQM-->>Svc: Return response
@@ -118,12 +117,11 @@ sequenceDiagram
     participant Svc as Services.agent
     participant WS as WebSocket
     participant BE as Backend
-    
+
     App->>CC: setAgentState(params)
     CC->>CC: timeEvent(STATE_SUCCESS, STATE_FAILED)
     CC->>Svc: stateChange({data})
-    Svc->>BE: HTTP PUT /v1/agents/session/state  
-    WS->>BE: State change request
+    Svc->>BE: HTTP PUT /v1/agents/session/state
     BE-->>WS: AgentStateChangeSuccess
     WS-->>CC: Emit via handleWebsocketMessage
     CC->>CC: emit(agent:stateChange)
@@ -142,7 +140,7 @@ Each agent method defines:
   url: '/v1/agents/...',      // API endpoint
   host: WCC_API_GATEWAY,      // Base URL
   data: p.data,               // Request payload
-  method: HTTP_METHODS.POST,  // HTTP method (default POST)
+  method: HTTP_METHODS.POST,  // HTTP method (POST if data present, GET otherwise)
   err: errorHandler,          // Error transformer
   notifSuccess: {
     bind: {
@@ -247,16 +245,16 @@ const errorCodeMessageMap = {
 
 ## Metrics Tracking
 
-| Metric | Type | When Tracked |
-|--------|------|--------------|
-| `STATION_LOGIN_SUCCESS` | behavioral, business, operational | Login succeeds |
-| `STATION_LOGIN_FAILED` | behavioral, business, operational | Login fails |
-| `STATION_LOGOUT_SUCCESS` | behavioral, business, operational | Logout succeeds |
-| `STATION_LOGOUT_FAILED` | behavioral, business, operational | Logout fails |
-| `AGENT_STATE_CHANGE_SUCCESS` | behavioral, business, operational | State change succeeds |
-| `AGENT_STATE_CHANGE_FAILED` | behavioral, business, operational | State change fails |
-| `FETCH_BUDDY_AGENTS_SUCCESS` | operational | Buddy agents fetched |
-| `FETCH_BUDDY_AGENTS_FAILED` | operational | Buddy agents fetch fails |
+| Metric                       | Type                              | When Tracked             |
+| ---------------------------- | --------------------------------- | ------------------------ |
+| `STATION_LOGIN_SUCCESS`      | behavioral, business, operational | Login succeeds           |
+| `STATION_LOGIN_FAILED`       | behavioral, business, operational | Login fails              |
+| `STATION_LOGOUT_SUCCESS`     | behavioral, business, operational | Logout succeeds          |
+| `STATION_LOGOUT_FAILED`      | behavioral, business, operational | Logout fails             |
+| `AGENT_STATE_CHANGE_SUCCESS` | behavioral, business, operational | State change succeeds    |
+| `AGENT_STATE_CHANGE_FAILED`  | behavioral, business, operational | State change fails       |
+| `FETCH_BUDDY_AGENTS_SUCCESS` | operational                       | Buddy agents fetched     |
+| `FETCH_BUDDY_AGENTS_FAILED`  | operational                       | Buddy agents fetch fails |
 
 ---
 
@@ -266,7 +264,8 @@ const errorCodeMessageMap = {
 
 **Cause**: Extension/DN already in use by another session
 
-**Solution**: 
+**Solution**:
+
 1. Logout from other session
 2. Use different extension
 3. Contact admin if stuck
@@ -276,6 +275,7 @@ const errorCodeMessageMap = {
 **Cause**: Agent may be in a call or transitioning state
 
 **Solution**:
+
 1. Complete current interaction
 2. Wait for state to stabilize
 3. Retry state change
@@ -285,6 +285,7 @@ const errorCodeMessageMap = {
 **Cause**: `allowAutomatedRelogin` config not set
 
 **Solution**:
+
 ```typescript
 const webex = Webex.init({
   config: {
