@@ -1760,6 +1760,7 @@ const handleStableVersionChange = async () => {
     const stableB = versionBSelect?.value;
     const savedPackage = comparisonPackageSelect ? comparisonPackageSelect.value : null;
 
+    comparisonState.reset();
     resetComparisonSelections();
     updateCompareButtonState();
 
