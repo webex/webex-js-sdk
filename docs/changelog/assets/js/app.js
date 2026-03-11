@@ -1101,9 +1101,12 @@ const getFullPackageList = async () => {
     const versionKeys = Object.keys(versionPaths);
     if (versionKeys.length === 0) return [];
     if (cachedFullPackageList !== null) return cachedFullPackageList;
-    const changelogs = await Promise.all(
-        versionKeys.map(v => fetch(versionPaths[v]).then(res => res.json()).catch(() => ({})))
-    );
+    const fetchChangelog = (url) =>
+        fetch(url).then(res => {
+            if (!res.ok) throw new Error(`Changelog load failed: ${res.status}`);
+            return res.json();
+        });
+    const changelogs = await Promise.all(versionKeys.map(v => fetchChangelog(versionPaths[v])));
     cachedFullPackageList = getAllPackagesFromChangelogs(changelogs);
     return cachedFullPackageList;
 };
