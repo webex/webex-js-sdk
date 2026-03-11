@@ -715,6 +715,7 @@ export class Registration implements IRegistration {
          * as that'd mean initial registration itself is not finished yet, let
          * failover timer handle the registration in that case.
          */
+
         if (this.activeMobiusUrl) {
           /*
            * When restoring connectivity, register with same url first
