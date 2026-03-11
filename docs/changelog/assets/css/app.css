@@ -112,6 +112,16 @@ select {
     box-sizing: border-box;
 }
 
+
+.search-container select {
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 2.5em;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23555' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5em center;
+}
+
 button {
     background-color: var(--color-webex-blue);
     color: white;
@@ -169,6 +179,59 @@ th {
 
 .full-width {
     margin: 0 10px; /* Add margin to maintain spacing */
+}
+
+.select-with-clear {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.select-with-clear .full-width {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Match version select height so clear button can match */
+.select-with-clear select.full-width {
+    min-height: 42px;
+    margin-bottom: 0;
+}
+
+.select-with-clear .btn-clear-circle {
+    flex-shrink: 0;
+}
+
+/* Clear button: one circle only, light grey/white, red X inside (same height as version select) */
+.btn-clear-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    min-width: 42px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: #f5f5f5;
+    line-height: 0;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-clear-circle:hover {
+    background: #eee;
+    border-color: rgba(0, 0, 0, 0.2);
+}
+
+.btn-clear-circle:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-clear-circle svg {
+    display: block;
+    stroke: #e53935;  /* red X inside circle */
 }
 
 .results-container {
@@ -347,6 +410,43 @@ footer .copyright {
     display: none !important;
 }
 
+/* Required field asterisk */
+.required-asterisk {
+    color: var(--color-danger);
+}
+
+/* Form help text */
+.help-text {
+    font-weight: normal;
+    font-size: 12px;
+    color: #666;
+}
+
+/* Pre-release row: hidden by default; JS toggles visibility */
+#comparison-prerelease-row {
+    display: none;
+}
+
+/* Comparison helper tip paragraph */
+.comparison-helper-tip {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #e7f3ff;
+    border-radius: 5px;
+    font-size: 13px;
+}
+
+/* Inline error message */
+.error-text {
+    color: var(--color-danger);
+}
+
+/* Package versions table heading (in comparison template) */
+.comparison-package-versions-heading {
+    margin-top: 20px;
+    margin-bottom: 15px;
+}
+
 /* Comparison Form */
 #comparison-form {
     margin-top: 20px;
@@ -465,3 +565,4 @@ footer .copyright {
     font-size: 1.2em;
     color: #333;
 }
+
