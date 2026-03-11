@@ -1060,7 +1060,7 @@ const populateUnionPackages = (changelogA, changelogB) => {
         return;
     }
     const currentValue = comparisonPackageSelect.value;
-    let optionsHtml = '<option value="">Select a package (required)</option>';
+    let optionsHtml = '<option value="">Select a package</option>';
     allPackages.forEach(pkg => {
         optionsHtml += `<option value="${pkg}">${pkg}</option>`;
     });
@@ -1118,7 +1118,7 @@ const populateComparisonPackageDropdown = (allPackages) => {
     if (allPackages.length === 0) {
         comparisonPackageSelect.innerHTML = '<option value="">No packages found</option>';
     } else {
-        let optionsHtml = '<option value="">Select a package (required)</option>';
+        let optionsHtml = '<option value="">Select a package</option>';
         allPackages.forEach(pkg => {
             optionsHtml += `<option value="${pkg}">${pkg}</option>`;
         });
@@ -1138,7 +1138,7 @@ const populateComparisonPackageDropdown = (allPackages) => {
 const populateComparisonPackagesInitial = async () => {
     const versionKeys = Object.keys(versionPaths);
     if (versionKeys.length === 0) {
-        if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Select a package (required)</option>';
+        if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Select a package</option>';
         if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
         disableVersionSelectsAndSyncClear();
         return;
@@ -2100,7 +2100,7 @@ const loadStandardComparisonFromURL = async (urlParams) => {
     switchToComparisonMode(urlParams.versionA, urlParams.versionB);
     const versionKeys = Object.keys(versionPaths);
     if (versionKeys.length === 0) {
-        if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Select a package (required)</option>';
+        if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Select a package</option>';
         if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
         disableVersionSelectsAndSyncClear();
     } else if (urlParams.versionA && urlParams.versionB && versionPaths[urlParams.versionA] && versionPaths[urlParams.versionB]) {

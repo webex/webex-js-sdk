@@ -192,19 +192,46 @@ th {
     min-width: 0;
 }
 
-.select-with-clear .btn-clear-select {
+/* Match version select height so clear button can match */
+.select-with-clear select.full-width {
+    min-height: 42px;
+    margin-bottom: 0;
+}
+
+.select-with-clear .btn-clear-circle {
     flex-shrink: 0;
 }
 
-.btn-clear-icon {
-    padding: 8px;
-    min-width: auto;
+/* Clear button: one circle only, light grey/white, red X inside (same height as version select) */
+.btn-clear-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    min-width: 42px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: #f5f5f5;
     line-height: 0;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.btn-clear-icon svg {
+.btn-clear-circle:hover {
+    background: #eee;
+    border-color: rgba(0, 0, 0, 0.2);
+}
+
+.btn-clear-circle:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-clear-circle svg {
     display: block;
-    vertical-align: middle;
+    stroke: #e53935;  /* red X inside circle */
 }
 
 .results-container {
