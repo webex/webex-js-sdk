@@ -13,7 +13,7 @@ import {
   CALL_DIAGNOSTIC_CONFIG,
   RtcMetrics,
 } from '@webex/internal-plugin-metrics';
-import {ClientEvent as RawClientEvent} from '@webex/event-dictionary-ts';
+import type {ClientEvent as RawClientEvent} from '@webex/event-dictionary-ts';
 
 import {
   ConnectionState,
@@ -32,6 +32,8 @@ import {
   StatsMonitorEventNames,
   InboundAudioIssueSubTypes,
 } from '@webex/internal-media-core';
+
+import {DataChannelTokenType} from '@webex/internal-plugin-llm';
 
 import {
   LocalStream,
@@ -181,6 +183,7 @@ import {SetStageOptions, SetStageVideoLayout, UnsetStageVideoLayout} from './req
 import {Invitee} from './type';
 import {DataSet, Metadata} from '../hashTree/hashTreeParser';
 import {LocusDTO} from '../locus-info/types';
+import AIEnableRequest from '../aiEnableRequest';
 
 // default callback so we don't call an undefined function, but in practice it should never be used
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
@@ -576,6 +579,7 @@ export default class Meeting extends StatelessWebexPlugin {
   breakouts: any;
   simultaneousInterpretation: any;
   annotation: any;
+  aiEnableRequest: any;
   webinar: any;
   conversationUrl: string;
   callStateForMetrics: CallStateForMetrics;
@@ -683,6 +687,7 @@ export default class Meeting extends StatelessWebexPlugin {
   localAudioStreamMuteStateHandler: () => void;
   localVideoStreamMuteStateHandler: () => void;
   localOutputTrackChangeHandler: () => void;
+  localConstraintsChangeHandler: () => void;
   environment: string;
   namespace = MEETINGS;
   allowMediaInLobby: boolean;
@@ -900,6 +905,10 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     // @ts-ignore
     this.simultaneousInterpretation = new SimultaneousInterpretation({}, {parent: this.webex});
+
+    // @ts-ignore
+    this.aiEnableRequest = new AIEnableRequest({}, {parent: this.webex});
+
     /**
      * @instance
      * @type {Annotation}
@@ -1546,6 +1555,12 @@ export default class Meeting extends StatelessWebexPlugin {
     this.localOutputTrackChangeHandler = () => {
       if (!this.isMultistream) {
         this.updateTranscodedMediaConnection();
+      }
+    };
+
+    this.localConstraintsChangeHandler = () => {
+      if (!this.isMultistream) {
+        this.mediaProperties.webrtcMediaConnection?.updatePreferredBitrateKbps();
       }
     };
 
@@ -3409,6 +3424,8 @@ export default class Meeting extends StatelessWebexPlugin {
         this.recordingController.setLocusUrl(this.locusUrl);
         this.controlsOptionsManager.setLocusUrl(this.locusUrl, !!isMainLocus);
         this.webinar.locusUrlUpdate(url);
+        // @ts-ignore
+        this.webex.internal.llm.setRefreshHandler(() => this.refreshDataChannelToken());
 
         Trigger.trigger(
           this,
@@ -3439,6 +3456,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.breakouts.breakoutServiceUrlUpdate(payload?.services?.breakout?.url);
       this.annotation.approvalUrlUpdate(payload?.services?.approval?.url);
       this.simultaneousInterpretation.approvalUrlUpdate(payload?.services?.approval?.url);
+      this.aiEnableRequest.approvalUrlUpdate(payload?.services?.approval?.url);
     });
   }
 
@@ -3766,6 +3784,10 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         EVENT_TRIGGERS.MEETING_BREAKOUTS_UPDATE
       );
+    });
+
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ID_CHANGED, (payload) => {
+      this.aiEnableRequest.selfParticipantIdUpdate(payload.selfId);
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_MEETING_INTERPRETATION_CHANGED, (payload) => {
@@ -4528,6 +4550,10 @@ export default class Meeting extends StatelessWebexPlugin {
             requiredHints: [DISPLAY_HINTS.DISABLE_ATTENDEE_START_POLLING_QA],
             displayHints: this.userDisplayHints,
           }),
+          canAttendeeRequestAiAssistantEnabled: MeetingUtil.canAttendeeRequestAiAssistantEnabled(
+            this.userDisplayHints,
+            this.roles
+          ),
         }) || changed;
     }
     if (changed) {
@@ -4826,6 +4852,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.localVideoStreamMuteStateHandler
     );
     oldStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
+    oldStream?.off(LocalStreamEventNames.ConstraintsChange, this.localConstraintsChangeHandler);
 
     // we don't update this.mediaProperties.mediaDirection.sendVideo, because we always keep it as true to avoid extra SDP exchanges
     this.mediaProperties.setLocalVideoStream(localStream);
@@ -4841,6 +4868,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.localVideoStreamMuteStateHandler
     );
     localStream?.on(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
+    localStream?.on(LocalStreamEventNames.ConstraintsChange, this.localConstraintsChangeHandler);
 
     if (!this.isMultistream || !localStream) {
       // for multistream WCME automatically un-publishes the old stream when we publish a new one
@@ -4975,6 +5003,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.localVideoStreamMuteStateHandler
     );
     videoStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
+    videoStream?.off(LocalStreamEventNames.ConstraintsChange, this.localConstraintsChangeHandler);
 
     shareAudioStream?.off(StreamEventNames.Ended, this.handleShareAudioStreamEnded);
     shareAudioStream?.off(
@@ -6193,13 +6222,31 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   async updateLLMConnection() {
     // @ts-ignore - Fix type
-    const {url, info: {datachannelUrl, practiceSessionDatachannelUrl} = {}} = this.locusInfo;
+    const {
+      url = undefined,
+      info: {datachannelUrl = undefined, practiceSessionDatachannelUrl = undefined} = {},
+      self: {datachannelToken = undefined, practiceSessionDatachannelToken = undefined} = {},
+    } = this.locusInfo || {};
 
     const isJoined = this.isJoined();
 
+    const dataChannelTokenType = this.getDataChannelTokenType();
+    const isPracticeSession = dataChannelTokenType === DataChannelTokenType.PracticeSession;
+    // @ts-ignore
+    const currentToken = this.webex.internal.llm.getDatachannelToken(dataChannelTokenType);
+
+    const locusToken = isPracticeSession ? practiceSessionDatachannelToken : datachannelToken;
+
+    const finalToken = currentToken ?? locusToken;
+
+    if (!currentToken && locusToken) {
+      // @ts-ignore
+      this.webex.internal.llm.setDatachannelToken(locusToken, dataChannelTokenType);
+    }
+
     // webinar panelist should use new data channel in practice session
     const dataChannelUrl =
-      this.webinar.isJoinPracticeSessionDataChannel() && practiceSessionDatachannelUrl
+      isPracticeSession && practiceSessionDatachannelUrl
         ? practiceSessionDatachannelUrl
         : datachannelUrl;
 
@@ -6215,14 +6262,10 @@ export default class Meeting extends StatelessWebexPlugin {
         return undefined;
       }
       // @ts-ignore - Fix type
-      await this.webex.internal.llm.disconnectLLM(
-        isJoined
-          ? {
-              code: 3050,
-              reason: 'done (permanent)',
-            }
-          : undefined
-      );
+      await this.webex.internal.llm.disconnectLLM({
+        code: 3050,
+        reason: 'done (permanent)',
+      });
       // @ts-ignore - Fix type
       this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
       // @ts-ignore - Fix type
@@ -6237,7 +6280,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - Fix type
     return this.webex.internal.llm
-      .registerAndConnect(url, dataChannelUrl)
+      .registerAndConnect(url, dataChannelUrl, finalToken)
       .then((registerAndConnectResult) => {
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
@@ -10235,5 +10278,53 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   cancelSipCallOut(participantId: string) {
     return this.meetingRequest.cancelSipCallOut(participantId);
+  }
+
+  /**
+   * Method to get new data
+   * @returns {Promise}
+   */
+  public async refreshDataChannelToken() {
+    const isPracticeSession = this.webinar.isJoinPracticeSessionDataChannel();
+    const dataChannelTokenType = this.getDataChannelTokenType();
+
+    try {
+      const res = await this.meetingRequest.fetchDatachannelToken({
+        locusUrl: this.locusUrl,
+        requestingParticipantId: this.members.selfId,
+        isPracticeSession,
+      });
+
+      return {
+        body: {
+          datachannelToken: res.body.datachannelToken,
+          dataChannelTokenType,
+        },
+      };
+    } catch (e) {
+      const msg = e?.message || String(e);
+
+      const err = Object.assign(new Error(`Failed to refresh data channel token: ${msg}`), {
+        statusCode: e?.statusCode,
+        original: e,
+      });
+
+      throw err;
+    }
+  }
+
+  /**
+   * Determines the current data channel token type based on the meeting state.
+   *
+   * variant should be used when connecting to the LLM data channel.
+   *
+   * @returns {DataChannelTokenType} The token type representing the current session mode.
+   */
+  public getDataChannelTokenType(): DataChannelTokenType {
+    if (this.webinar.isJoinPracticeSessionDataChannel()) {
+      return DataChannelTokenType.PracticeSession;
+    }
+
+    return DataChannelTokenType.Default;
   }
 }
