@@ -2105,14 +2105,19 @@ const loadStandardComparisonFromURL = async (urlParams) => {
         disableVersionSelectsAndSyncClear();
     } else if (urlParams.versionA && urlParams.versionB && versionPaths[urlParams.versionA] && versionPaths[urlParams.versionB]) {
         try {
+            const fetchChangelog = (url) =>
+                fetch(url).then(res => {
+                    if (!res.ok) throw new Error(`Changelog load failed: ${res.status}`);
+                    return res.json();
+                });
             const [changelogA, changelogB] = await Promise.all([
-                fetch(versionPaths[urlParams.versionA]).then(res => res.json()).catch(() => ({})),
-                fetch(versionPaths[urlParams.versionB]).then(res => res.json()).catch(() => ({}))
+                fetchChangelog(versionPaths[urlParams.versionA]),
+                fetchChangelog(versionPaths[urlParams.versionB])
             ]);
             comparisonState.update(changelogA, changelogB, urlParams.versionA, urlParams.versionB);
             populateUnionPackages(changelogA, changelogB);
         } catch (e) {
-            if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading packages</option>';
+            if (comparisonPackageSelect) comparisonPackageSelect.innerHTML = '<option value="">Error loading changelog</option>';
             if (comparisonPackageRow) comparisonPackageRow.style.display = 'flex';
             disableVersionSelectsAndSyncClear();
         }
