@@ -6,12 +6,21 @@
 
 ## Component Overview
 
+<<<<<<< HEAD
 | Component       | File                        | Responsibility                                                  |
 | --------------- | --------------------------- | --------------------------------------------------------------- |
 | `ContactCenter` | `src/cc.ts`                 | Plugin class exposing agent methods                             |
 | `routingAgent`  | `services/agent/index.ts`   | AQM request definitions                                         |
 | `Services`      | `services/index.ts`         | Service singleton with agent service                            |
 | `AqmReqs`       | `services/core/aqm-reqs.ts` | HTTP requests to backend; responses via WebSocket notifications |
+=======
+| Component | File | Responsibility |
+|-----------|------|----------------|
+| `ContactCenter` | `src/cc.ts` | Plugin class exposing agent methods |
+| `routingAgent` | `services/agent/index.ts` | AQM request definitions |
+| `Services` | `services/index.ts` | Service singleton with agent service |
+| `AqmReqs` | `services/core/aqm-reqs.ts` | HTTP requests to backend; responses via WebSocket notifications |  
+>>>>>>> priya/cc-sdk-ai-docs-agent
 
 ---
 
@@ -46,7 +55,11 @@ export default function routingAgent(routing: AqmReqs) {
       },
       notifFail: {...},
     })),
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> priya/cc-sdk-ai-docs-agent
     logout: routing.req((p: {data: Logout}) => ({...})),
     stateChange: routing.req((p: {data: StateChange}) => ({...})),
     buddyAgents: routing.req((p: {data: BuddyAgents}) => ({...})),
@@ -66,7 +79,11 @@ flowchart TD
     A[cc.stationLogin] --> B[Validate input]
     B --> C[services.agent.stationLogin]
     C --> D[AqmReqs.req]
+<<<<<<< HEAD
     D --> E[HTTP REST request to backend]
+=======
+    D --> E[HTTP REST request to backend]  
+>>>>>>> priya/cc-sdk-ai-docs-agent
     E --> F[Backend processes]
     F --> G{Success?}
     G -->|Yes| H[StationLoginSuccess event]
@@ -92,13 +109,22 @@ sequenceDiagram
     participant AQM as AqmReqs
     participant WS as WebSocket
     participant BE as Backend
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> priya/cc-sdk-ai-docs-agent
     App->>CC: stationLogin(params)
     CC->>CC: Validate dial number
     CC->>CC: timeEvent(LOGIN_SUCCESS, LOGIN_FAILED)
     CC->>Svc: stationLogin({data})
     Svc->>AQM: req(config)
+<<<<<<< HEAD
     AQM->>BE: HTTP POST /v1/agents/login
+=======
+    AQM->>BE: HTTP POST /v1/agents/login  
+    WS->>BE: /v1/agents/login
+>>>>>>> priya/cc-sdk-ai-docs-agent
     BE-->>WS: AgentStationLoginSuccess
     WS-->>AQM: Resolve with response
     AQM-->>Svc: Return response
@@ -117,11 +143,20 @@ sequenceDiagram
     participant Svc as Services.agent
     participant WS as WebSocket
     participant BE as Backend
+<<<<<<< HEAD
 
     App->>CC: setAgentState(params)
     CC->>CC: timeEvent(STATE_SUCCESS, STATE_FAILED)
     CC->>Svc: stateChange({data})
     Svc->>BE: HTTP PUT /v1/agents/session/state
+=======
+    
+    App->>CC: setAgentState(params)
+    CC->>CC: timeEvent(STATE_SUCCESS, STATE_FAILED)
+    CC->>Svc: stateChange({data})
+    Svc->>BE: HTTP PUT /v1/agents/session/state  
+    WS->>BE: State change request
+>>>>>>> priya/cc-sdk-ai-docs-agent
     BE-->>WS: AgentStateChangeSuccess
     WS-->>CC: Emit via handleWebsocketMessage
     CC->>CC: emit(agent:stateChange)
@@ -140,7 +175,11 @@ Each agent method defines:
   url: '/v1/agents/...',      // API endpoint
   host: WCC_API_GATEWAY,      // Base URL
   data: p.data,               // Request payload
+<<<<<<< HEAD
   method: HTTP_METHODS.POST,  // HTTP method (POST if data present, GET otherwise)
+=======
+  method: HTTP_METHODS.POST,  // HTTP method (default POST)
+>>>>>>> priya/cc-sdk-ai-docs-agent
   err: errorHandler,          // Error transformer
   notifSuccess: {
     bind: {
@@ -245,6 +284,7 @@ const errorCodeMessageMap = {
 
 ## Metrics Tracking
 
+<<<<<<< HEAD
 | Metric                       | Type                              | When Tracked             |
 | ---------------------------- | --------------------------------- | ------------------------ |
 | `STATION_LOGIN_SUCCESS`      | behavioral, business, operational | Login succeeds           |
@@ -255,6 +295,18 @@ const errorCodeMessageMap = {
 | `AGENT_STATE_CHANGE_FAILED`  | behavioral, business, operational | State change fails       |
 | `FETCH_BUDDY_AGENTS_SUCCESS` | operational                       | Buddy agents fetched     |
 | `FETCH_BUDDY_AGENTS_FAILED`  | operational                       | Buddy agents fetch fails |
+=======
+| Metric | Type | When Tracked |
+|--------|------|--------------|
+| `STATION_LOGIN_SUCCESS` | behavioral, business, operational | Login succeeds |
+| `STATION_LOGIN_FAILED` | behavioral, business, operational | Login fails |
+| `STATION_LOGOUT_SUCCESS` | behavioral, business, operational | Logout succeeds |
+| `STATION_LOGOUT_FAILED` | behavioral, business, operational | Logout fails |
+| `AGENT_STATE_CHANGE_SUCCESS` | behavioral, business, operational | State change succeeds |
+| `AGENT_STATE_CHANGE_FAILED` | behavioral, business, operational | State change fails |
+| `FETCH_BUDDY_AGENTS_SUCCESS` | operational | Buddy agents fetched |
+| `FETCH_BUDDY_AGENTS_FAILED` | operational | Buddy agents fetch fails |
+>>>>>>> priya/cc-sdk-ai-docs-agent
 
 ---
 
@@ -264,8 +316,12 @@ const errorCodeMessageMap = {
 
 **Cause**: Extension/DN already in use by another session
 
+<<<<<<< HEAD
 **Solution**:
 
+=======
+**Solution**: 
+>>>>>>> priya/cc-sdk-ai-docs-agent
 1. Logout from other session
 2. Use different extension
 3. Contact admin if stuck
@@ -275,7 +331,10 @@ const errorCodeMessageMap = {
 **Cause**: Agent may be in a call or transitioning state
 
 **Solution**:
+<<<<<<< HEAD
 
+=======
+>>>>>>> priya/cc-sdk-ai-docs-agent
 1. Complete current interaction
 2. Wait for state to stabilize
 3. Retry state change
@@ -285,7 +344,10 @@ const errorCodeMessageMap = {
 **Cause**: `allowAutomatedRelogin` config not set
 
 **Solution**:
+<<<<<<< HEAD
 
+=======
+>>>>>>> priya/cc-sdk-ai-docs-agent
 ```typescript
 const webex = Webex.init({
   config: {
@@ -303,4 +365,8 @@ const webex = Webex.init({
 - [cc.ts](../../../cc.ts) - Main plugin
 - [agent/index.ts](../index.ts) - Service implementation
 - [agent/types.ts](../types.ts) - Type definitions
+<<<<<<< HEAD
 - [cc.ts test](../../../../test/unit/spec/cc.ts) - Test file
+=======
+- [cc.ts test](../../../../test/unit/spec/cc.ts) - Test file
+>>>>>>> priya/cc-sdk-ai-docs-agent
