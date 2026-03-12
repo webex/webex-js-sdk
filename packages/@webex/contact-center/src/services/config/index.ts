@@ -8,6 +8,7 @@ import LoggerProxy from '../../logger-proxy';
 import {
   DesktopProfileResponse,
   ListAuxCodesResponse,
+  ListAIFeatureResourcesResponse,
   AgentResponse,
   TenantData,
   OrgInfo,
@@ -61,6 +62,7 @@ export default class AgentConfigService {
       const orgSettingsPromise = this.getOrganizationSetting(orgId);
       const tenantDataPromise = this.getTenantData(orgId);
       const urlMappingPromise = this.getURLMapping(orgId);
+      const aiFeatureResourcesPromise = this.getAIFeatureResources(orgId);
       const auxCodesPromise = this.getAllAuxCodes(
         orgId,
         DEFAULT_PAGE_SIZE,
@@ -94,6 +96,7 @@ export default class AgentConfigService {
         orgSettingsData,
         tenantData,
         urlMappingData,
+        aiFeatureResources,
         auxCodesData,
       ] = await Promise.all([
         agentProfilePromise,
@@ -104,8 +107,10 @@ export default class AgentConfigService {
         orgSettingsPromise,
         tenantDataPromise,
         urlMappingPromise,
+        aiFeatureResourcesPromise,
         auxCodesPromise,
       ]);
+      const wccApiGatewayUrl = this.webexReq.getServiceUrl(WCC_API_GATEWAY);
 
       const multimediaProfileId =
         userConfigData.multimediaProfileId ||
@@ -128,6 +133,8 @@ export default class AgentConfigService {
         dialPlanData: userDialPlanData,
         urlMapping: urlMappingData,
         multimediaProfileId,
+        aiFeatureResources,
+        wccApiGatewayUrl,
       });
 
       LoggerProxy.info('Parsing completed for agent-config', {
@@ -646,6 +653,46 @@ export default class AgentConfigService {
       LoggerProxy.error(`getURLMapping API call failed with ${error}`, {
         module: CONFIG_FILE_NAME,
         method: METHODS.GET_URL_MAPPING,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches AI feature resources for the organization.
+   * @ignore
+   * @param {string} orgId - organization ID for which AI feature resources are to be fetched.
+   * @returns {Promise<ListAIFeatureResourcesResponse>} - AI feature resources response.
+   * @throws {Error} - Throws an error if the API call fails or if the response status is not 200.
+   * @private
+   */
+  public async getAIFeatureResources(orgId: string): Promise<ListAIFeatureResourcesResponse> {
+    LoggerProxy.info('Fetching AI feature resources', {
+      module: CONFIG_FILE_NAME,
+      method: METHODS.GET_AI_FEATURE_RESOURCES,
+    });
+    try {
+      const resource = endPointMap.aiFeatureResources(orgId);
+      const response = await this.webexReq.request({
+        service: WCC_API_GATEWAY,
+        resource,
+        method: HTTP_METHODS.GET,
+      });
+
+      if (response.statusCode !== 200) {
+        throw new Error(`API call failed with ${response.statusCode}`);
+      }
+
+      LoggerProxy.log('getAIFeatureResources api success.', {
+        module: CONFIG_FILE_NAME,
+        method: METHODS.GET_AI_FEATURE_RESOURCES,
+      });
+
+      return Promise.resolve(response.body);
+    } catch (error) {
+      LoggerProxy.error(`getAIFeatureResources API call failed with ${error}`, {
+        module: CONFIG_FILE_NAME,
+        method: METHODS.GET_AI_FEATURE_RESOURCES,
       });
       throw error;
     }

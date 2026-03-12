@@ -63,6 +63,7 @@ import {Failure} from './services/core/GlobalTypes';
 import {EntryPoint} from './services/EntryPoint';
 import {AddressBook} from './services/AddressBook';
 import {Queue} from './services/Queue';
+import {ApiAIAssistant} from './services/ApiAiAssistant';
 import type {
   EntryPointListResponse,
   EntryPointSearchParams,
@@ -321,6 +322,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   public queue: Queue;
 
   /**
+   * API instance for AI Assistant operations such as transcript controls.
+   * @type {ApiAIAssistant}
+   * @public
+   */
+  public apiAIAssistant: ApiAIAssistant;
+
+  /**
    * Logger utility for Contact Center plugin
    * Provides consistent logging across the plugin
    * @type {LoggerProxy}
@@ -371,6 +379,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.entryPoint = new EntryPoint(this.$webex);
       this.addressBook = new AddressBook(this.$webex, () => this.agentConfig?.addressBookId);
       this.queue = new Queue(this.$webex);
+      this.apiAIAssistant = new ApiAIAssistant(this.$webex, () => this.agentConfig);
 
       // Initialize logger
       LoggerProxy.initialize(this.$webex.logger);
@@ -1082,6 +1091,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     if (!eventData.type) {
       return;
+    }
+
+    if (eventData.type === CC_EVENTS.REAL_TIME_TRANSCRIPTION) {
+      const interactionId =
+        eventData?.data?.data?.interactionId || eventData?.data?.data?.conversationId;
+      if (interactionId) {
+        const task = this.taskManager.getTask(interactionId);
+        if (task) {
+          task.emit(CC_EVENTS.REAL_TIME_TRANSCRIPTION, eventData.data);
+        }
+      }
     }
 
     LoggerProxy.log(`Received event: ${eventData?.data?.type ?? eventData.type}`, {

@@ -1,6 +1,7 @@
 import {LOST_CONNECTION_RECOVERY_TIMEOUT} from '../core/constants';
 import {
   AgentResponse,
+  ListAIFeatureResourcesResponse,
   AuxCode,
   AuxCodeType,
   DesktopProfileResponse,
@@ -59,6 +60,44 @@ const getWebexConfig = (agentProfileData: DesktopProfileResponse) => {
  */
 const getDefaultAgentDN = (agentDNValidation: string) => {
   return agentDNValidation === 'PROVISIONED_VALUE';
+};
+
+/**
+ * Resolve AI Assistant base URL from discovered WCC API gateway URL.
+ * The AI Assistant service is not in U2C catalog yet, so we derive env manually.
+ *
+ * @param {string} wccApiGatewayUrl
+ * @returns {string}
+ */
+const getAIAssistantBaseUrl = (wccApiGatewayUrl: string) => {
+  if (!wccApiGatewayUrl) {
+    return '';
+  }
+
+  let hostname = '';
+  try {
+    hostname = new URL(wccApiGatewayUrl).hostname.toLowerCase();
+  } catch (_error) {
+    hostname = wccApiGatewayUrl.toLowerCase();
+  }
+
+  const envMap: Record<string, string> = {
+    'api.intgus1.ciscoccservice.com': 'intgus1',
+    'api.qaus1.ciscoccservice.com': 'qaus1',
+    'api.wxcc-us1.cisco.com': 'produs1',
+    'api.wxcc-eu1.cisco.com': 'prodeu1',
+    'api.wxcc-eu2.cisco.com': 'prodeu2',
+    'api.wxcc-anz1.cisco.com': 'prodanz1',
+    'api.wxcc-ca1.cisco.com': 'prodca1',
+    'api.wxcc-jp1.cisco.com': 'prodjp1',
+    'api.wxcc-sg1.cisco.com': 'prodsg1',
+    'api.wxcc-in1.cisco.com': 'prodin1',
+    'api.loadus1.cisco.com': 'loadus1',
+  };
+
+  const resolvedEnv = envMap[hostname];
+
+  return resolvedEnv ? `https://api-ai-assistant.${resolvedEnv}.ciscoccservice.com` : '';
 };
 
 /**
@@ -140,6 +179,8 @@ function parseAgentConfigs(profileData: {
   dialPlanData: DialPlanEntity[];
   urlMapping: URLMapping[];
   multimediaProfileId: string;
+  aiFeatureResources: ListAIFeatureResourcesResponse;
+  wccApiGatewayUrl: string;
 }): Profile {
   const {
     userData,
@@ -151,6 +192,8 @@ function parseAgentConfigs(profileData: {
     agentProfileData,
     dialPlanData,
     urlMapping,
+    aiFeatureResources,
+    wccApiGatewayUrl,
   } = profileData;
 
   const tenantDataTimeout = tenantData.timeoutDesktopInactivityEnabled
@@ -180,6 +223,10 @@ function parseAgentConfigs(profileData: {
   }); // pushing available state to idle codes
 
   const defaultWrapUpData = getDefaultWrapUpCode(wrapupCodes);
+  const realTimeTranscriptionEnabled = Boolean(
+    aiFeatureResources?.data?.[0]?.realtimeTranscripts?.enable
+  );
+  const aiAssistantBaseUrl = getAIAssistantBaseUrl(wccApiGatewayUrl);
 
   const finalData = {
     teams: teamData,
@@ -253,6 +300,13 @@ function parseAgentConfigs(profileData: {
     webexConfig: getWebexConfig(agentProfileData),
     lostConnectionRecoveryTimeout:
       tenantData.lostConnectionRecoveryTimeout || LOST_CONNECTION_RECOVERY_TIMEOUT,
+    aiFeature: {
+      realTimeTranscriptionEnabled,
+      aiAssistantBaseUrl,
+    },
+    'ai-feature': {
+      realTimeTranscriptionEnabled,
+    },
   };
 
   return finalData;

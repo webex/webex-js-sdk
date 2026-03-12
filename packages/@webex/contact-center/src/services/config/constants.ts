@@ -67,6 +67,7 @@ export const METHODS = {
   GET_TENANT_DATA: 'getTenantData',
   GET_URL_MAPPING: 'getURLMapping',
   GET_DIAL_PLAN_DATA: 'getDialPlanData',
+  GET_AI_FEATURE_RESOURCES: 'getAIFeatureResources',
   GET_QUEUES: 'getQueues',
 
   // Util methods
@@ -233,6 +234,16 @@ export const endPointMap = {
    * @ignore
    */
   dialPlan: (orgId: string) => `organization/${orgId}/dial-plan?agentView=true`,
+  /**
+   * Gets the endpoint for listing AI feature resources.
+   * @param orgId - Organization ID.
+   * @returns The endpoint URL string.
+   * @public
+   * @example
+   * const url = endPointMap.aiFeatureResources('org123');
+   * @ignore
+   */
+  aiFeatureResources: (orgId: string) => `organization/${orgId}/v2/ai-feature?page=0&pageSize=100`,
 
   /**
    * Gets the endpoint for the queue list with custom query parameters.
