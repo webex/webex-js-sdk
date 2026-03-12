@@ -9,7 +9,6 @@ describe('SendSlotsManager', () => {
     const LoggerProxy = {
         logger: {
             info: sinon.stub(),
-            warn: sinon.stub(),
         },
     };
 
