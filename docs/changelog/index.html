@@ -291,12 +291,85 @@
           <span class="stat-item unchanged">Unchanged: <strong>{{unchangedCount}}</strong></span>
           <span class="stat-item added">Added in {{versionB}}: <strong>{{onlyInBCount}}</strong></span>
           <span class="stat-item removed">Removed in {{versionB}}: <strong>{{onlyInACount}}</strong></span>
+          {{#if packageName}}<span class="stat-item commits">Commits: <strong>{{commitsBetweenCount}}</strong></span>{{/if}}
         </div>
       </div>
 
-      <!-- Package Comparison Table (Now First) -->
-      <div class="table-wrapper">
-        <h4 style="margin-top: 20px; margin-bottom: 15px;">📦 Package Versions</h4>
+      <!-- Commit History: package-level comparison -->
+      {{#if packageName}}
+      <div class="commit-history-section" style="margin-top: 24px;">
+        <h4>Commit History &mdash; <strong>{{packageName}}</strong> &nbsp;
+          <span style="font-weight:normal; font-size:0.9em;">({{versionA}} &rarr; {{versionB}})</span>
+        </h4>
+        <p style="font-size:0.88em; color:#666; margin:4px 0 12px;">
+          {{commitsBetweenCount}} commit(s) collected across
+          {{stableVersionsTraversed.length}} stable version log file(s):
+          <strong>{{#each stableVersionsTraversed}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}</strong>
+        </p>
+
+        {{#if hasCommitsBetween}}
+        <div class="table-wrapper">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th style="width:100px;">Hash</th>
+                <th>Commit Message</th>
+                <th style="width:155px;">Version</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each commitsBetween}}
+              <tr>
+                <td><code><a href="{{this.url}}" target="_blank">{{this.shortHash}}</a></code></td>
+                <td>{{{github_linking this.message 'message'}}}</td>
+                <td><small>{{this.version}}</small></td>
+              </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+        {{else}}
+        <p style="color:#888; font-style:italic;">No commits found between these versions.</p>
+        {{/if}}
+      </div>
+      {{/if}}
+
+      <!-- Commit History: full version comparison (Example 6) — webex package, target stable only -->
+      {{#unless packageName}}
+      {{#if hasWebexCommits}}
+      <div class="commit-history-section" style="margin-top: 24px;">
+        <h4>Commit History &mdash; <strong>webex</strong> &nbsp;
+          <span style="font-weight:normal; font-size:0.9em;">({{versionB}} stable only)</span>
+        </h4>
+        <p style="font-size:0.88em; color:#666; margin:4px 0 12px;">
+          {{webexCommitsCount}} commit(s) from <strong>{{versionB}}</strong> stable release.
+          (Base and intermediate stable entries are skipped.)
+        </p>
+        <div class="table-wrapper">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th style="width:100px;">Hash</th>
+                <th>Commit Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each webexCommits}}
+              <tr>
+                <td><code><a href="{{this.url}}" target="_blank">{{this.shortHash}}</a></code></td>
+                <td>{{{github_linking this.message 'message'}}}</td>
+              </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {{/if}}
+      {{/unless}}
+
+      <!-- Package Comparison Table -->
+      <div class="table-wrapper" style="margin-top:28px;">
+        <h4>📦 Package Versions</h4>
         <table class="comparison-table">
           <thead>
             <tr>

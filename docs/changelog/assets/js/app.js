@@ -823,18 +823,33 @@ const fetchAndCompareVersions = async (versionA, versionB) => {
             return res.json();
         })
     ]);
-    
+
     // Extract packages from both versions
     const packagesA = extractPackagesFromVersion(changelogA);
     const packagesB = extractPackagesFromVersion(changelogB);
-    
+
     // Compare packages
-    const comparisonData = comparePackages(packagesA, packagesB, changelogA, changelogB,versionA, versionB);
-    
+    const comparisonData = comparePackages(packagesA, packagesB, changelogA, changelogB, versionA, versionB);
+
+    // Example 6: collect commits ONLY from the "webex" package of the TARGET stable version.
+    // Base stable and all intermediates are skipped — only versionB's webex entry is used.
+    const webexRawCommits = changelogB['webex']?.[versionB]?.commits || {};
+    const webexCommits = Object.entries(webexRawCommits).map(([hash, message]) => ({
+        hash,
+        shortHash: hash.substring(0, 7),
+        message,
+        url: `${github_base_url}commit/${hash}`
+    }));
+
     return {
         versionA,
         versionB,
-        comparisonData
+        comparisonData: {
+            ...comparisonData,
+            webexCommits,
+            webexCommitsCount: webexCommits.length,
+            hasWebexCommits: webexCommits.length > 0
+        }
     };
 };
 
@@ -1322,102 +1337,280 @@ const buildPackagesList = (mainPackage, effectiveVersionA, effectiveVersionB, pk
 };
 
 /* ============================================
+   COMMIT HISTORY — CROSS-STABLE COLLECTION
+   Implements logic from normal-text.txt:
+   Walk every stable version between stableA and stableB,
+   open each log file, and collect commits per the rules below.
+   ============================================ */
+
+// Sort version strings like "3.6.0", "3.10.0", "3.8.1" by semver
+const sortStableVersions = (versions) =>
+    [...versions].sort((a, b) => {
+        const p = v => v.split('.').map(Number);
+        const [aMaj, aMin, aPatch] = p(a);
+        const [bMaj, bMin, bPatch] = p(b);
+        return aMaj !== bMaj ? aMaj - bMaj : aMin !== bMin ? aMin - bMin : aPatch - bPatch;
+    });
+
+// Get all stable versions (from versionPaths) that sit between stableA and stableB (inclusive)
+const getStableVersionsBetween = (stableA, stableB) => {
+    const all = sortStableVersions(Object.keys(versionPaths));
+    const iA = all.indexOf(stableA), iB = all.indexOf(stableB);
+    if (iA === -1 || iB === -1) return [];
+    return all.slice(Math.min(iA, iB), Math.max(iA, iB) + 1);
+};
+
+// --- Regex helpers for pre-release version identification ---
+
+// Is this version a pre-release of the given stable?
+// e.g. isPreRelease("3.5.0-next.1", "3.5.0") → true
+//      isPreRelease("3.5.0",         "3.5.0") → false
+const isPreRelease = (version, stableVersion) => {
+    const escaped = stableVersion.replace(/\./g, '\\.');
+    console.log('escaped', escaped);
+    return new RegExp(`^${escaped}-`).test(version);
+};
+
+// Is this an exact stable version (no pre-release suffix)?
+// e.g. isExactStable("3.6.0")        → true
+//      isExactStable("3.6.0-next.1") → false
+const isExactStable = (version) => /^\d+\.\d+\.\d+$/.test(version);//
+
+// Extract numeric suffix: "3.5.0-next.5" → 5,  "3.5.0-multipleLLM.3" → 3
+const getPreReleaseNum = (version) => {
+    const match = version.match(/\.(\d+)$/);
+    return match ? parseInt(match[1], 10) : 0;
+};
+
+// Extract tag name: "3.5.0-next.5" with stable "3.5.0" → "next"
+//                   "3.5.0-multipleLLM.3"               → "multipleLLM"
+const getPreReleaseTag = (version, stableVersion) => {
+    return version.slice(stableVersion.length + 1).replace(/\.\d+$/, '');
+};
+
+/**
+ * Collect commits from one stable version's package data — fully regex-based,
+ * no dependency on published_date for version identification.
+ *
+ * Rules (from normal-text.txt):
+ *  'start'  → from versionA (inclusive) through ALL remaining pre-releases
+ *             Special: if versionA === stableVersion → only stable entry
+ *  'middle' → skip exact stable entry; ALL pre-releases of this stable
+ *  'end'    → ALL pre-releases from next.1 up to versionB (inclusive)
+ *             Special: if versionB === stableVersion → only stable entry
+ *  'only'   → stableA === stableB; from versionA to versionB within same file
+ */
+const collectCommitsFromStable = (packageData, stableVersion, versionA, versionB, position) => {
+    if (!packageData) return [];
+    const all = Object.keys(packageData);
+    let versionsToUse = [];
+
+    if (position === 'start') {
+        if (versionA === stableVersion) {
+            // Example 5: both versionA and versionB are exact stables → skip base entirely
+            // Example 3: versionA is stable but versionB is a pre-release → pick stable commits
+            versionsToUse = isExactStable(versionB) ? [] : [stableVersion];
+        } else {
+            const tagA = getPreReleaseTag(versionA, stableVersion);
+            const numA = getPreReleaseNum(versionA);
+            versionsToUse = all.filter(v => {
+                if (!isPreRelease(v, stableVersion)) return false;
+                const tag = getPreReleaseTag(v, stableVersion);
+                const num = getPreReleaseNum(v);
+                // Same tag (e.g. "next"): include if num >= numA
+                // Different tag (e.g. "multipleLLM"): include all
+                return tag === tagA ? num >= numA : true;
+            });
+        }
+
+    } else if (position === 'middle') {
+        // Example 5: both versionA and versionB are exact stables → skip all intermediates
+        // All other examples: take ALL pre-releases of this stable, skip exact stable entry
+        versionsToUse = (isExactStable(versionA) && isExactStable(versionB))
+            ? []
+            : all.filter(v => isPreRelease(v, stableVersion));
+
+    } else if (position === 'end') {
+        if (versionB === stableVersion) {
+            versionsToUse = [stableVersion];
+        } else {
+            const tagB = getPreReleaseTag(versionB, stableVersion);
+            const numB = getPreReleaseNum(versionB);
+            versionsToUse = all.filter(v => {
+                if (!isPreRelease(v, stableVersion)) return false;
+                const tag = getPreReleaseTag(v, stableVersion);
+                const num = getPreReleaseNum(v);
+                // Same tag: include if num <= numB
+                // Different tag: include all
+                return tag === tagB ? num <= numB : true;
+            });
+        }
+
+    } else { // 'only' — stableA === stableB
+        if (versionA === stableVersion && versionB === stableVersion) {
+            versionsToUse = [stableVersion];
+        } else if (versionA === stableVersion) {
+            // from stable entry through pre-releases up to versionB
+            const tagB = getPreReleaseTag(versionB, stableVersion);
+            const numB = getPreReleaseNum(versionB);
+            versionsToUse = all.filter(v => {
+                if (v === stableVersion) return true;
+                if (!isPreRelease(v, stableVersion)) return false;
+                const tag = getPreReleaseTag(v, stableVersion);
+                const num = getPreReleaseNum(v);
+                return tag === tagB ? num <= numB : true;
+            });
+        } else {
+            // Both are pre-releases within the same stable
+            const tagA = getPreReleaseTag(versionA, stableVersion);
+            const numA = getPreReleaseNum(versionA);
+            const tagB = getPreReleaseTag(versionB, stableVersion);
+            const numB = getPreReleaseNum(versionB);
+            versionsToUse = all.filter(v => {
+                if (!isPreRelease(v, stableVersion)) return false;
+                const tag = getPreReleaseTag(v, stableVersion);
+                const num = getPreReleaseNum(v);
+                const afterStart = tag === tagA ? num >= numA : true;
+                const beforeEnd  = tag === tagB ? num <= numB : true;
+                return afterStart && beforeEnd;
+            });
+        }
+    }
+
+    const seen = new Map();
+    versionsToUse.forEach(ver => {
+        Object.entries(packageData[ver]?.commits || {}).forEach(([hash, message]) => {
+            if (!seen.has(hash)) {
+                seen.set(hash, { hash, shortHash: hash.substring(0, 7), message,
+                    url: `${github_base_url}commit/${hash}`, version: ver, stableGroup: stableVersion });
+            }
+        });
+    });
+    return Array.from(seen.values());
+};
+
+/**
+ * Walk every stable version between stableA and stableB, fetch its log file,
+ * and collect commits per the rules in normal-text.txt.
+ * Returns a flat, deduplicated array of commit objects.
+ */
+const collectCommitsAcrossStables = async (stableA, stableB, packageName, versionA, versionB, changelogA, changelogB) => {
+    const stables = getStableVersionsBetween(stableA, stableB);
+    if (stables.length === 0) return { commitsBetween: [], stableVersionsTraversed: [] };
+
+    const all = new Map();
+    const traversed = [];
+
+    for (let i = 0; i < stables.length; i++) {
+        const stable = stables[i];
+        let changelog;
+
+        if (stable === stableA) {
+            changelog = changelogA;
+        } else if (stable === stableB) {
+            changelog = changelogB;
+        } else {
+            try {
+                const res = await fetch(versionPaths[stable]);
+                if (!res.ok) continue;
+                changelog = await res.json();
+            } catch (e) {
+                console.warn(`Could not fetch changelog for ${stable}:`, e);
+                continue;
+            }
+        }
+
+        const pkgData = changelog[packageName];
+        if (!pkgData) continue;
+
+        let position;
+        if (stableA === stableB)       position = 'only';
+        else if (stable === stableA)   position = 'start';
+        else if (stable === stableB)   position = 'end';
+        else                           position = 'middle';
+
+        const commits = collectCommitsFromStable(pkgData, stable, versionA, versionB, position);
+        if (commits.length > 0) {
+            traversed.push(stable);
+            commits.forEach(c => { if (!all.has(c.hash)) all.set(c.hash, c); });
+        }
+    }
+
+    return { commitsBetween: Array.from(all.values()), stableVersionsTraversed: traversed };
+};
+
+/* ============================================
    MAIN DATA LAYER FUNCTION
    ============================================ */
 
 /**
- * DATA LAYER: Generate package comparison data (Orchestrates modular helpers)
- * @param {string} packageName - Package to compare
- * @param {string} versionASpecific - Specific version in base (e.g., 3.3.1-next.22)
- * @param {string} versionBSpecific - Specific version in target (e.g., 3.4.0-next.25)
- * @param {Object} changelogA - Changelog for base stable version
- * @param {Object} changelogB - Changelog for target stable version
- * @returns {Object} Comparison data object
- * @throws {Error} If no data found for comparison
+ * DATA LAYER: Generate package comparison data (async — fetches intermediate changelogs)
+ * @param {string} stableA        - Base stable version (e.g. "3.6.0")
+ * @param {string} stableB        - Target stable version (e.g. "3.10.0")
+ * @param {string} packageName    - Package to compare
+ * @param {string} versionASpecific - Specific pre-release in base (or stable)
+ * @param {string} versionBSpecific - Specific pre-release in target (or stable)
+ * @param {Object} changelogA     - Already-fetched changelog for stableA
+ * @param {Object} changelogB     - Already-fetched changelog for stableB
+ * @returns {Promise<Object>} Comparison data object
  */
-const generatePackageComparisonData = (packageName, versionASpecific, versionBSpecific, changelogA, changelogB) => {
+const generatePackageComparisonData = async (stableA, stableB, packageName, versionASpecific, versionBSpecific, changelogA, changelogB) => {
     // Step 1: Determine effective versions (with fallback to latest)
     const effectiveVersionA = getEffectiveVersion(changelogA, packageName, versionASpecific);
     const effectiveVersionB = getEffectiveVersion(changelogB, packageName, versionBSpecific);
-    
-    console.log('effectiveVersionA:', effectiveVersionA, '(requested:', versionASpecific, ')');
-    console.log('effectiveVersionB:', effectiveVersionB, '(requested:', versionBSpecific, ')');
-    
-    // Step 2: Get package data
+
+    // Step 2: Get package data for the table
     const pkgDataA = changelogA[packageName]?.[effectiveVersionA];
     const pkgDataB = changelogB[packageName]?.[effectiveVersionB];
-    
-    // Step 3: Validate data exists
+
     if (!pkgDataA && !pkgDataB) {
         throw new Error('Could not find version data for comparison in either version');
     }
-    
-    // Step 4: Build complete packages list (main + related packages)
-    const packages = buildPackagesList(
-        packageName,
-        effectiveVersionA,
-        effectiveVersionB,
-        pkgDataA,
-        pkgDataB,
-        changelogA,
-        changelogB
-    );
-    
-    // Step 5: Calculate statistics
+
+    // Step 3: Build package versions table
+    const packages = buildPackagesList(packageName, effectiveVersionA, effectiveVersionB, pkgDataA, pkgDataB, changelogA, changelogB);
     const stats = calculateComparisonStats(packages);
-    
-    // Step 6: Extract commits from both versions
-    const commitsA = pkgDataA?.commits || {};
-    const commitsB = pkgDataB?.commits || {};
-    
-    // Convert commits to arrays for easier template rendering
-    const commitsArrayA = Object.entries(commitsA).map(([hash, message]) => ({
-        hash: hash,
-        shortHash: hash.substring(0, 7),
-        message: message,
-        url: `${github_base_url}commit/${hash}`
-    }));
-    
-    const commitsArrayB = Object.entries(commitsB).map(([hash, message]) => ({
-        hash: hash,
-        shortHash: hash.substring(0, 7),
-        message: message,
-        url: `${github_base_url}commit/${hash}`
-    }));
-    
-    // Step 7: Return complete comparison data with commits
+
+    // Step 4: Collect commit history across all stable versions between stableA and stableB
+    const { commitsBetween, stableVersionsTraversed } = await collectCommitsAcrossStables(
+        stableA, stableB, packageName, effectiveVersionA, effectiveVersionB, changelogA, changelogB
+    );
+
     return {
         versionA: effectiveVersionA,
         versionB: effectiveVersionB,
-        packages: packages,
+        packages,
         totalPackages: packages.length,
-        packageName: packageName,
-        commitsA: commitsArrayA,
-        commitsB: commitsArrayB,
-        hasCommitsA: commitsArrayA.length > 0,
-        hasCommitsB: commitsArrayB.length > 0,
-        commitsCountA: commitsArrayA.length,
-        commitsCountB: commitsArrayB.length,
+        packageName,
+        commitsBetween,
+        commitsBetweenCount: commitsBetween.length,
+        hasCommitsBetween: commitsBetween.length > 0,
+        stableVersionsTraversed,
         ...stats
     };
 };
 
 /**
  * UI LAYER: Compare and display specific package versions
+ * @param {string} stableA - Base stable version
+ * @param {string} stableB - Target stable version
  * @param {string} packageName - Package to compare
  * @param {string} versionASpecific - Specific version in base
  * @param {string} versionBSpecific - Specific version in target
  * @param {Object} changelogA - Changelog for base stable version
  * @param {Object} changelogB - Changelog for target stable version
  */
-const compareSpecificPackageVersions = (packageName, versionASpecific, versionBSpecific, changelogA, changelogB) => {
+const compareSpecificPackageVersions = async (stableA, stableB, packageName, versionASpecific, versionBSpecific, changelogA, changelogB) => {
+    showComparisonLoading();
     try {
-        // Generate comparison data (pure data logic)
-        const comparisonData = generatePackageComparisonData(
-            packageName, 
-            versionASpecific, 
-            versionBSpecific, 
-            changelogA, 
+        // Generate comparison data (fetches intermediate changelogs as needed)
+        const comparisonData = await generatePackageComparisonData(
+            stableA,
+            stableB,
+            packageName,
+            versionASpecific,
+            versionBSpecific,
+            changelogA,
             changelogB
         );
         
@@ -1595,13 +1788,19 @@ const clearComparisonURLParams = () => {
 const updateCompareButtonState = () => {
     if (!compareButton) return;
     
+    const stableA = versionASelect ? versionASelect.value : null;
+    const stableB = versionBSelect ? versionBSelect.value : null;
     const selectedPackage = comparisonPackageSelect ? comparisonPackageSelect.value : null;
     const versionASpecific = versionAPrereleaseSelect ? versionAPrereleaseSelect.value : null;
     const versionBSpecific = versionBPrereleaseSelect ? versionBPrereleaseSelect.value : null;
     const prereleaseRowVisible = prereleaseRow && prereleaseRow.style.display !== 'none';
     
-    if (selectedPackage) {
-        // Package selected - require at least one pre-release version
+    if (stableA && stableB && stableA === stableB) {
+        // Same stable: must select a package and both pre-release versions (and they must differ)
+        const bothSelected = prereleaseRowVisible && versionASpecific && versionBSpecific;
+        compareButton.disabled = !(selectedPackage && bothSelected && versionASpecific !== versionBSpecific);
+    } else if (selectedPackage) {
+        // Different stables, package selected — require at least one pre-release version
         if (!prereleaseRowVisible || (!versionASpecific && !versionBSpecific)) {
             compareButton.disabled = true;
         } else {
@@ -1635,12 +1834,19 @@ const handleStableVersionChange = async () => {
     resetComparisonSelections();
     updateCompareButtonState();
     
-    if (stableA && stableB && stableA !== stableB) {
+    if (stableA && stableB) {
         try {
-            const [changelogA, changelogB] = await Promise.all([
-                fetch(versionPaths[stableA]).then(res => res.json()),
-                fetch(versionPaths[stableB]).then(res => res.json())
-            ]);
+            let changelogA, changelogB;
+            if (stableA === stableB) {
+                // Same stable — fetch once and reuse for both sides
+                changelogA = await fetch(versionPaths[stableA]).then(res => res.json());
+                changelogB = changelogA;
+            } else {
+                [changelogA, changelogB] = await Promise.all([
+                    fetch(versionPaths[stableA]).then(res => res.json()),
+                    fetch(versionPaths[stableB]).then(res => res.json())
+                ]);
+            }
             
             comparisonState.update(changelogA, changelogB, stableA, stableB);
             populateUnionPackages(changelogA, changelogB);
@@ -1737,17 +1943,45 @@ const validateComparisonInputs = (stableA, stableB, selectedPackage, versionASpe
         alert('Please select both stable versions');
         return false;
     }
-    
+
     if (stableA === stableB) {
-        alert('Please select two different stable versions');
-        return false;
+        // Same stable: must pick a package and two distinct pre-release versions
+        if (!selectedPackage) {
+            alert('When comparing within the same stable version, please select a package.');
+            return false;
+        }
+        if (!versionASpecific || !versionBSpecific) {
+            alert('When comparing within the same stable version, please select both pre-release versions.');
+            return false;
+        }
+        if (versionASpecific === versionBSpecific) {
+            alert('Please select two different versions to compare.');
+            return false;
+        }
+        return true;
     }
-    
+
+    // When both selected versions are exact stables (Example 5),
+    // base stable must be SMALLER than target stable in semver order.
+    // e.g. base=3.6.0 vs target=3.10.0 → OK
+    //      base=3.10.0 vs target=3.6.0  → blocked
+    const finalA = versionASpecific || stableA;
+    const finalB = versionBSpecific || stableB;
+    if (isExactStable(finalA) && isExactStable(finalB)) {
+        const stables = sortStableVersions(Object.keys(versionPaths));
+        const idxA = stables.indexOf(finalA);
+        const idxB = stables.indexOf(finalB);
+        if (idxA !== -1 && idxB !== -1 && idxA >= idxB) {
+            alert(`Base version (${finalA}) must be older than target version (${finalB}).\nPlease swap the selections.`);
+            return false;
+        }
+    }
+
     if (selectedPackage && !versionASpecific && !versionBSpecific) {
         alert('Please select at least one pre-release version, or leave package empty for full version comparison');
         return false;
     }
-    
+
     return true;
 };
 
@@ -1771,17 +2005,18 @@ const handleComparisonSubmit = (event) => {
         // Package-level comparison
         const finalVersionA = versionASpecific || stableA;
         const finalVersionB = versionBSpecific || stableB;
-        console.log('Comparing:', finalVersionA, 'vs', finalVersionB);
-        
+
         compareSpecificPackageVersions(
+            stableA,
+            stableB,
             selectedPackage,
             finalVersionA,
             finalVersionB,
             comparisonState.cachedChangelogA,
             comparisonState.cachedChangelogB
         );
-    } else {
-        // Full version comparison
+    } else if (stableA !== stableB) {
+        // Full version comparison (only valid when stables differ)
         performVersionComparison(stableA, stableB);
     }
     
@@ -1847,6 +2082,8 @@ const loadEnhancedComparisonFromURL = async (enhancedParams) => {
     versionBPrereleaseSelect.value = enhancedParams.versionB;
     
     compareSpecificPackageVersions(
+        enhancedParams.stableA,
+        enhancedParams.stableB,
         enhancedParams.packageName,
         enhancedParams.versionA,
         enhancedParams.versionB,

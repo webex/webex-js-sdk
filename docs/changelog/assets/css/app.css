@@ -461,6 +461,10 @@ footer .copyright {
     border-left: 4px solid #dc3545;
 }
 
+.stat-item.commits {
+    border-left: 4px solid #6f42c1;
+}
+
 .stat-item strong {
     font-size: 1.2em;
     color: #333;
