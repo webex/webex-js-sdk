@@ -114,10 +114,41 @@ export interface ActionItemSnippet {
  * Decrypted AI-generated action items.
  */
 export interface SummaryActionItems {
-  /** Unique identifier */
-  id: string;
+  /** Unique identifier (absent when no action items exist) */
+  id?: string;
   /** Array of action item snippets */
   snippets: ActionItemSnippet[];
   /** Feedback URL (if available) */
   feedbackUrl?: string;
+}
+
+/**
+ * Single decrypted transcript snippet.
+ */
+export interface TranscriptSnippet {
+  /** Start time in milliseconds */
+  startTime: string;
+  /** End time in milliseconds */
+  endTime: string;
+  /** Decrypted transcript content */
+  content: string;
+  /** Audio CSI identifier */
+  audioCSI?: string;
+  /** Speaker information */
+  speaker?: {
+    speakerName: string;
+    speakerId: string;
+  };
+}
+
+/**
+ * Decrypted transcript response.
+ */
+export interface TranscriptContent {
+  /** Unique identifier */
+  id: string;
+  /** Total number of snippets */
+  totalCount: number;
+  /** Decrypted transcript snippets */
+  snippets: TranscriptSnippet[];
 }

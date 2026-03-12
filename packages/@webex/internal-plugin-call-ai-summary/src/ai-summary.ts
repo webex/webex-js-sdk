@@ -12,6 +12,7 @@ import type {
   SummaryContent,
   SummaryNotes,
   SummaryActionItems,
+  TranscriptContent,
 } from './types';
 
 const AISummary = WebexPlugin.extend({
@@ -68,22 +69,18 @@ const AISummary = WebexPlugin.extend({
         uri: `${containerInfo.summaryData.summaryUrl}?fields=note,shortnote,actionitems`,
       });
 
-      const decryptedNote = await this._decryptContent(
-        body.note.aiGeneratedContent,
-        containerInfo.encryptionKeyUrl
-      );
+      const keyUrl = body.keyUrl || containerInfo.encryptionKeyUrl;
+
+      const decryptedNote = await this._decryptContent(body.note.aiGeneratedContent, keyUrl);
 
       const decryptedShortNote = await this._decryptContent(
         body.shortnote.aiGeneratedContent,
-        containerInfo.encryptionKeyUrl
+        keyUrl
       );
 
       const decryptedSnippets = await Promise.all(
         (body.actionitems?.snippets || []).map(async (snippet: any) => {
-          const decryptedAiContent = await this._decryptContent(
-            snippet.aiGeneratedContent,
-            containerInfo.encryptionKeyUrl
-          );
+          const decryptedAiContent = await this._decryptContent(snippet.aiGeneratedContent, keyUrl);
 
           return {
             id: snippet.id,
@@ -127,10 +124,9 @@ const AISummary = WebexPlugin.extend({
         uri: containerInfo.summaryData.notesUrl,
       });
 
-      const decryptedContent = await this._decryptContent(
-        body.aiGeneratedContent,
-        containerInfo.encryptionKeyUrl
-      );
+      const keyUrl = body.keyUrl || containerInfo.encryptionKeyUrl;
+
+      const decryptedContent = await this._decryptContent(body.aiGeneratedContent, keyUrl);
 
       return {
         id: body.id,
@@ -168,12 +164,11 @@ const AISummary = WebexPlugin.extend({
         return {id: undefined, snippets: []};
       }
 
+      const keyUrl = actionItemsData.keyUrl || containerInfo.encryptionKeyUrl;
+
       const decryptedSnippets = await Promise.all(
         (actionItemsData.snippets || []).map(async (snippet: any) => {
-          const decryptedAiContent = await this._decryptContent(
-            snippet.aiGeneratedContent,
-            containerInfo.encryptionKeyUrl
-          );
+          const decryptedAiContent = await this._decryptContent(snippet.aiGeneratedContent, keyUrl);
 
           return {
             id: snippet.id,
@@ -207,6 +202,51 @@ const AISummary = WebexPlugin.extend({
     this._validateContainerInfo(containerInfo, 'transcriptUrl');
 
     return containerInfo.summaryData.transcriptUrl;
+  },
+
+  /**
+   * Get decrypted transcript for a call.
+   * Fetches from containerInfo.summaryData.transcriptUrl and decrypts each snippet.
+   *
+   * @param {GetSummaryContentOptions} options
+   * @returns {Promise<TranscriptContent>}
+   */
+  async getTranscript(options: GetSummaryContentOptions): Promise<TranscriptContent> {
+    const {containerInfo} = options;
+
+    this._validateContainerInfo(containerInfo, 'transcriptUrl');
+
+    try {
+      const {body} = await this.webex.request({
+        method: 'GET',
+        uri: `${containerInfo.summaryData.transcriptUrl}?fields=id,content`,
+      });
+
+      const keyUrl = body.keyUrl || containerInfo.encryptionKeyUrl;
+
+      const decryptedSnippets = await Promise.all(
+        (body.transcriptSnippetList || []).map(async (snippet: any) => {
+          const decryptedContent = await this._decryptContent(snippet.content, keyUrl);
+
+          return {
+            startTime: snippet.startTime,
+            endTime: snippet.endTime,
+            content: decryptedContent,
+            audioCSI: snippet.audioCSI,
+            speaker: snippet.speaker,
+          };
+        })
+      );
+
+      return {
+        id: body.id,
+        totalCount: body.totalCount,
+        snippets: decryptedSnippets,
+      };
+    } catch (error) {
+      this.logger.error('AISummary->getTranscript failed', {error});
+      throw this._handleError(error, 'getTranscript');
+    }
   },
 
   /**
