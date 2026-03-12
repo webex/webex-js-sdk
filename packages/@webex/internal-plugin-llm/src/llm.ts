@@ -40,9 +40,7 @@ export const config = {
 /**
  * LLMChannel to provide socket connections
  */
-export default // @ts-ignore
-// @ts-ignore
-class LLMChannel extends (Mercury as any) implements ILLMChannel {
+export default class LLMChannel extends (Mercury as any) implements ILLMChannel {
   namespace = LLM;
   defaultSessionId = LLM_DEFAULT_SESSION;
   /**

@@ -17,15 +17,9 @@ import {
   UnknownResponse,
   // NotFound
 } from '../errors';
+import {SOCKET_READY_STATE} from './constants';
 
 const sockets = new WeakMap();
-
-const SOCKET_READY_STATE = Object.freeze({
-  CONNECTING: 0,
-  OPEN: 1,
-  CLOSING: 2,
-  CLOSED: 3,
-});
 
 /**
  * Generalized socket abstraction
