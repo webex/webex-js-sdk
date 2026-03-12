@@ -1,6 +1,6 @@
 import 'jsdom-global/register';
 import SendSlotManager from '@webex/plugin-meetings/src/multistream/sendSlotManager';
-import { LocalStream, MediaType, MultistreamRoapMediaConnection } from "@webex/internal-media-core";
+import { LocalStream, MediaType, MultistreamRoapMediaConnection, MediaCodecMimeType } from "@webex/internal-media-core";
 import {expect} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 
@@ -9,6 +9,7 @@ describe('SendSlotsManager', () => {
     const LoggerProxy = {
         logger: {
             info: sinon.stub(),
+            warn: sinon.stub(),
         },
     };
 
@@ -241,6 +242,70 @@ describe('SendSlotsManager', () => {
 
         it('should throw an error if a slot for the given mediaType does not exist', (done) => {
             sendSlotsManager.deleteCodecParameters(mediaType,[]).catch((error) => {
+                expect(error.message).to.equal(`Slot for ${mediaType} does not exist`);
+                done();
+            });
+        });
+    });
+
+    describe('setCustomCodecParameters', () => {
+        let mediaConnection;
+        const mediaType = MediaType.AudioMain;
+        const codecMimeType = MediaCodecMimeType.OPUS;
+        const codecParameters = { maxaveragebitrate: '64000' };
+
+        beforeEach(() => {
+            mediaConnection = {
+                createSendSlot: sinon.stub(),
+            } as MultistreamRoapMediaConnection;
+        });
+
+        it('should set custom codec parameters on the sendSlot for the given mediaType and codec', async () => {
+            const slot = {
+                setCustomCodecParameters: sinon.stub().resolves(),
+            };
+            mediaConnection.createSendSlot.returns(slot);
+            sendSlotsManager.createSlot(mediaConnection, mediaType);
+
+            await sendSlotsManager.setCustomCodecParameters(mediaType, codecMimeType, codecParameters);
+
+            expect(slot.setCustomCodecParameters.calledWith(codecMimeType, codecParameters)).to.be.true;
+        });
+
+        it('should throw an error if a slot for the given mediaType does not exist', (done) => {
+            sendSlotsManager.setCustomCodecParameters(mediaType, codecMimeType, codecParameters).catch((error) => {
+                expect(error.message).to.equal(`Slot for ${mediaType} does not exist`);
+                done();
+            });
+        });
+    });
+
+    describe('markCustomCodecParametersForDeletion', () => {
+        let mediaConnection;
+        const mediaType = MediaType.AudioMain;
+        const codecMimeType = MediaCodecMimeType.OPUS;
+        const parameters = ['maxaveragebitrate', 'maxplaybackrate'];
+
+        beforeEach(() => {
+            mediaConnection = {
+                createSendSlot: sinon.stub(),
+            } as MultistreamRoapMediaConnection;
+        });
+
+        it('should mark custom codec parameters for deletion on the sendSlot for the given mediaType and codec', async () => {
+            const slot = {
+                markCustomCodecParametersForDeletion: sinon.stub().resolves(),
+            };
+            mediaConnection.createSendSlot.returns(slot);
+            sendSlotsManager.createSlot(mediaConnection, mediaType);
+
+            await sendSlotsManager.markCustomCodecParametersForDeletion(mediaType, codecMimeType, parameters);
+
+            expect(slot.markCustomCodecParametersForDeletion.calledWith(codecMimeType, parameters)).to.be.true;
+        });
+
+        it('should throw an error if a slot for the given mediaType does not exist', (done) => {
+            sendSlotsManager.markCustomCodecParametersForDeletion(mediaType, codecMimeType, parameters).catch((error) => {
                 expect(error.message).to.equal(`Slot for ${mediaType} does not exist`);
                 done();
             });
