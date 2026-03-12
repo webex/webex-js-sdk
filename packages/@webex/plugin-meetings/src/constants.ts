@@ -414,7 +414,6 @@ export const HEADERS = {
 // Meeting actually ended
 export const MEETING_REMOVED_REASON = {
   SELF_REMOVED: 'SELF_REMOVED', // server or host removed you from the meeting
-  FULLSTATE_REMOVED: 'FULLSTATE_REMOVED', // meeting got dropped ? not sure
   MEETING_INACTIVE_TERMINATING: 'MEETING_INACTIVE_TERMINATING', // Meeting got ended or everyone left the meeting
   CLIENT_LEAVE_REQUEST: 'CLIENT_LEAVE_REQUEST', // You triggered leave meeting
   CLIENT_LEAVE_REQUEST_TAB_CLOSED: 'CLIENT_LEAVE_REQUEST_TAB_CLOSED', // You triggered leave meeting, such as closing the browser tab directly

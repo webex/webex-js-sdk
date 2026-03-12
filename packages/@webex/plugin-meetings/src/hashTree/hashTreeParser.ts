@@ -73,12 +73,18 @@ interface LeafInfo {
  * This error is thrown if we receive information that the meeting has ended while we're processing some hash messages.
  * It's handled internally by HashTreeParser and results in MEETING_ENDED being sent up.
  */
-class MeetingEndedError extends Error {}
+export class MeetingEndedError extends Error {}
 
 /* Currently Locus always sends Metadata objects only in the "self" dataset.
  * If this ever changes, update all the code that relies on this constant.
  */
 const MetadataDataSetName = DataSetNames.SELF;
+
+const PossibleSentinelMessageDataSetNames = [
+  DataSetNames.MAIN,
+  DataSetNames.SELF,
+  DataSetNames.UNJOINED,
+];
 
 /**
  * Parses hash tree eventing locus data
@@ -257,10 +263,13 @@ class HashTreeParser {
     return this.sendSyncRequestToLocus(this.dataSets[datasetName], emptyLeavesData).then(
       (syncResponse) => {
         if (syncResponse) {
-          return this.parseMessage(
-            syncResponse,
-            `via empty leaves /sync API call for ${debugText}`
-          );
+          return {
+            updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
+            updatedObjects: this.parseMessage(
+              syncResponse,
+              `via empty leaves /sync API call for ${debugText}`
+            ),
+          };
         }
 
         return {updateType: LocusInfoUpdateType.OBJECTS_UPDATED, updatedObjects: []};
@@ -285,9 +294,15 @@ class HashTreeParser {
     return this.webexRequest({
       method: HTTP_VERBS.GET,
       uri: this.visibleDataSetsUrl,
-    }).then((response) => {
-      return response.body.dataSets as Array<DataSet>;
-    });
+    })
+      .then((response) => {
+        return response.body.dataSets as Array<DataSet>;
+      })
+      .catch((error) => {
+        this.checkForSentinelHttpResponse(error);
+
+        throw error;
+      });
   }
 
   /**
@@ -383,15 +398,6 @@ class HashTreeParser {
 
         // eslint-disable-next-line no-await-in-loop
         const data = await this.sendInitializationSyncRequestToLocus(name, debugText);
-
-        if (data.updateType === LocusInfoUpdateType.MEETING_ENDED) {
-          LoggerProxy.logger.warn(
-            `HashTreeParser#initializeDataSets --> ${this.debugId} meeting ended while initializing new visible data set "${name}"`
-          );
-
-          // throw an error, it will be caught higher up and the meeting will be destroyed
-          throw new MeetingEndedError();
-        }
 
         if (data.updateType === LocusInfoUpdateType.OBJECTS_UPDATED) {
           updatedObjects.push(...(data.updatedObjects || []));
@@ -511,21 +517,19 @@ class HashTreeParser {
    * @returns {boolean} - Returns true if the message indicates the end of the meeting, false otherwise
    */
   private isEndMessage(message: HashTreeMessage) {
-    const mainDataSet = message.dataSets.find(
-      (dataSet) => dataSet.name.toLowerCase() === DataSetNames.MAIN
-    );
+    return message.dataSets.some((dataSet) => {
+      if (
+        dataSet.leafCount === 1 &&
+        dataSet.root === EMPTY_HASH &&
+        (!this.dataSets[dataSet.name] || this.dataSets[dataSet.name].version < dataSet.version) &&
+        PossibleSentinelMessageDataSetNames.includes(dataSet.name.toLowerCase())
+      ) {
+        // this is a special way for Locus to indicate that this meeting has ended
+        return true;
+      }
 
-    if (
-      mainDataSet &&
-      mainDataSet.leafCount === 1 &&
-      mainDataSet.root === EMPTY_HASH &&
-      this.dataSets[DataSetNames.MAIN].version < mainDataSet.version
-    ) {
-      // this is a special way for Locus to indicate that this meeting has ended
-      return true;
-    }
-
-    return false;
+      return false;
+    });
   }
 
   /**
@@ -553,6 +557,33 @@ class HashTreeParser {
     dataSets.forEach((dataSet) => {
       this.updateDataSetInfo(dataSet);
       this.runSyncAlgorithm(dataSet);
+    });
+  }
+
+  /**
+   * Asynchronously initializes new visible data sets
+   *
+   * @param {VisibleDataSetInfo[]} dataSetsRequiringInitialization list of datasets to initialize
+   * @returns {void}
+   */
+  private queueInitForNewVisibleDataSets(dataSetsRequiringInitialization: VisibleDataSetInfo[]) {
+    queueMicrotask(() => {
+      this.initializeNewVisibleDataSets(dataSetsRequiringInitialization).catch((error) => {
+        if (error instanceof MeetingEndedError) {
+          this.callLocusInfoUpdateCallback({
+            updateType: LocusInfoUpdateType.MEETING_ENDED,
+          });
+        } else {
+          LoggerProxy.logger.warn(
+            `HashTreeParser#queueInitForNewVisibleDataSets --> ${
+              this.debugId
+            } error while initializing new visible datasets: ${dataSetsRequiringInitialization
+              .map((ds) => ds.name)
+              .join(', ')}: `,
+            error
+          );
+        }
+      });
     });
   }
 
@@ -600,9 +631,7 @@ class HashTreeParser {
 
         if (dataSetsRequiringInitialization.length > 0) {
           // there are some data sets that we need to initialize asynchronously
-          queueMicrotask(() => {
-            this.initializeNewVisibleDataSets(dataSetsRequiringInitialization);
-          });
+          this.queueInitForNewVisibleDataSets(dataSetsRequiringInitialization);
         }
       }
     }
@@ -908,12 +937,9 @@ class HashTreeParser {
    *
    * @param {HashTreeMessage} message - The hash tree message containing data sets and objects to be processed
    * @param {string} [debugText] - Optional debug text to include in logs
-   * @returns {Promise}
+   * @returns {HashTreeObject[]} list of hash tree objects that were updated as a result of processing the message
    */
-  private async parseMessage(
-    message: HashTreeMessage,
-    debugText?: string
-  ): Promise<{updateType: LocusInfoUpdateType; updatedObjects?: HashTreeObject[]}> {
+  private parseMessage(message: HashTreeMessage, debugText?: string): HashTreeObject[] {
     const {dataSets, visibleDataSetsUrl} = message;
 
     LoggerProxy.logger.info(
@@ -931,16 +957,6 @@ class HashTreeParser {
     this.visibleDataSetsUrl = visibleDataSetsUrl;
     dataSets.forEach((dataSet) => this.updateDataSetInfo(dataSet));
 
-    if (this.isEndMessage(message)) {
-      LoggerProxy.logger.info(
-        `HashTreeParser#parseMessage --> ${this.debugId} received END message`
-      );
-      this.stopAllTimers();
-
-      return {updateType: LocusInfoUpdateType.MEETING_ENDED};
-    }
-
-    let isRosterDropped = false;
     const updatedObjects: HashTreeObject[] = [];
 
     // when we detect new visible datasets, it may be that the metadata about them is not
@@ -1006,9 +1022,6 @@ class HashTreeParser {
             zip(appliedChangesList, locusStateElementsForThisSet).forEach(
               ([changeApplied, object]) => {
                 if (changeApplied) {
-                  if (isSelf(object) && !object.data) {
-                    isRosterDropped = true;
-                  }
                   // add to updatedObjects so that our locus DTO will get updated with the new object
                   updatedObjects.push(object);
                 }
@@ -1021,27 +1034,13 @@ class HashTreeParser {
           }
         }
 
-        if (!isRosterDropped) {
-          this.runSyncAlgorithm(dataSet);
-        }
+        this.runSyncAlgorithm(dataSet);
       });
-    }
-
-    if (isRosterDropped) {
-      LoggerProxy.logger.info(
-        `HashTreeParser#parseMessage --> ${this.debugId} detected roster drop`
-      );
-      this.stopAllTimers();
-
-      // in case of roster drop we don't care about other updates
-      return {updateType: LocusInfoUpdateType.MEETING_ENDED};
     }
 
     if (dataSetsRequiringInitialization.length > 0) {
       // there are some data sets that we need to initialize asynchronously
-      queueMicrotask(() => {
-        this.initializeNewVisibleDataSets(dataSetsRequiringInitialization);
-      });
+      this.queueInitForNewVisibleDataSets(dataSetsRequiringInitialization);
     }
 
     if (updatedObjects.length === 0) {
@@ -1050,7 +1049,7 @@ class HashTreeParser {
       );
     }
 
-    return {updateType: LocusInfoUpdateType.OBJECTS_UPDATED, updatedObjects};
+    return updatedObjects;
   }
 
   /**
@@ -1060,22 +1059,28 @@ class HashTreeParser {
    * @param {string} [debugText] - Optional debug text to include in logs
    * @returns {void}
    */
-  async handleMessage(message: HashTreeMessage, debugText?: string): Promise<void> {
+  handleMessage(message: HashTreeMessage, debugText?: string) {
     if (message.heartbeatIntervalMs) {
       this.heartbeatIntervalMs = message.heartbeatIntervalMs;
     }
-    if (message.locusStateElements === undefined) {
+    if (this.isEndMessage(message)) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#parseMessage --> ${this.debugId} received sentinel END MEETING message`
+      );
+      this.stopAllTimers();
+
+      this.callLocusInfoUpdateCallback({updateType: LocusInfoUpdateType.MEETING_ENDED});
+    } else if (message.locusStateElements === undefined) {
       this.handleRootHashHeartBeatMessage(message);
       this.resetHeartbeatWatchdogs(message.dataSets);
     } else {
-      const updates = await this.parseMessage(message, debugText);
+      const updatedObjects = this.parseMessage(message, debugText);
 
-      // Only reset watchdogs if the meeting hasn't ended
-      if (updates.updateType !== LocusInfoUpdateType.MEETING_ENDED) {
-        this.resetHeartbeatWatchdogs(message.dataSets);
-      }
-
-      this.callLocusInfoUpdateCallback(updates);
+      this.resetHeartbeatWatchdogs(message.dataSets);
+      this.callLocusInfoUpdateCallback({
+        updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
+        updatedObjects,
+      });
     }
   }
 
@@ -1169,54 +1174,67 @@ class HashTreeParser {
       return;
     }
 
-    LoggerProxy.logger.info(
-      `HashTreeParser#performSync --> ${this.debugId} ${reason}, syncing data set "${dataSet.name}"`
-    );
+    try {
+      LoggerProxy.logger.info(
+        `HashTreeParser#performSync --> ${this.debugId} ${reason}, syncing data set "${dataSet.name}"`
+      );
 
-    const mismatchedLeavesData: Record<number, LeafDataItem[]> = {};
+      const mismatchedLeavesData: Record<number, LeafDataItem[]> = {};
 
-    if (dataSet.leafCount !== 1) {
-      let receivedHashes;
+      if (dataSet.leafCount !== 1) {
+        let receivedHashes;
 
-      try {
-        // request hashes from sender
-        const {hashes, dataSet: latestDataSetInfo} = await this.getHashesFromLocus(
-          dataSet.name,
-          rootHash
-        );
-
-        receivedHashes = hashes;
-
-        dataSet.hashTree.resize(latestDataSetInfo.leafCount);
-      } catch (error) {
-        if (error.statusCode === 409) {
-          // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
-          LoggerProxy.logger.info(
-            `HashTreeParser#getHashesFromLocus --> ${this.debugId} Got 409 when fetching hashes for data set "${dataSet.name}": ${error.message}`
+        try {
+          // request hashes from sender
+          const {hashes, dataSet: latestDataSetInfo} = await this.getHashesFromLocus(
+            dataSet.name,
+            rootHash
           );
 
-          return;
+          receivedHashes = hashes;
+
+          dataSet.hashTree.resize(latestDataSetInfo.leafCount);
+        } catch (error) {
+          if (error.statusCode === 409) {
+            // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
+            LoggerProxy.logger.info(
+              `HashTreeParser#getHashesFromLocus --> ${this.debugId} Got 409 when fetching hashes for data set "${dataSet.name}": ${error.message}`
+            );
+
+            return;
+          }
+          throw error;
         }
-        throw error;
+
+        // identify mismatched leaves
+        const mismatchedLeaveIndexes = dataSet.hashTree.diffHashes(receivedHashes);
+
+        mismatchedLeaveIndexes.forEach((index) => {
+          mismatchedLeavesData[index] = dataSet.hashTree.getLeafData(index);
+        });
+      } else {
+        mismatchedLeavesData[0] = dataSet.hashTree.getLeafData(0);
       }
+      // request sync for mismatched leaves
+      if (Object.keys(mismatchedLeavesData).length > 0) {
+        const syncResponse = await this.sendSyncRequestToLocus(dataSet, mismatchedLeavesData);
 
-      // identify mismatched leaves
-      const mismatchedLeaveIndexes = dataSet.hashTree.diffHashes(receivedHashes);
-
-      mismatchedLeaveIndexes.forEach((index) => {
-        mismatchedLeavesData[index] = dataSet.hashTree.getLeafData(index);
-      });
-    } else {
-      mismatchedLeavesData[0] = dataSet.hashTree.getLeafData(0);
-    }
-    // request sync for mismatched leaves
-    if (Object.keys(mismatchedLeavesData).length > 0) {
-      const syncResponse = await this.sendSyncRequestToLocus(dataSet, mismatchedLeavesData);
-
-      // sync API may return nothing (in that case data will arrive via messages)
-      // or it may return a response in the same format as messages
-      if (syncResponse) {
-        this.handleMessage(syncResponse, 'via sync API');
+        // sync API may return nothing (in that case data will arrive via messages)
+        // or it may return a response in the same format as messages
+        if (syncResponse) {
+          this.handleMessage(syncResponse, 'via sync API');
+        }
+      }
+    } catch (error) {
+      if (error instanceof MeetingEndedError) {
+        this.callLocusInfoUpdateCallback({
+          updateType: LocusInfoUpdateType.MEETING_ENDED,
+        });
+      } else {
+        LoggerProxy.logger.warn(
+          `HashTreeParser#performSync --> ${this.debugId} error during sync for data set "${dataSet.name}":`,
+          error
+        );
       }
     }
   }
@@ -1360,6 +1378,25 @@ class HashTreeParser {
     });
   }
 
+  private checkForSentinelHttpResponse(error: any, dataSetName?: string) {
+    const isValidDataSetForSentinel =
+      dataSetName === undefined ||
+      PossibleSentinelMessageDataSetNames.includes(dataSetName.toLowerCase());
+
+    if (
+      ((error.statusCode === 409 && error.body?.errorCode === 2403004) ||
+        error.statusCode === 404) &&
+      isValidDataSetForSentinel
+    ) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#checkForSentinelHttpResponse --> ${this.debugId} Received ${error.statusCode} for data set "${dataSetName}", indicating that the meeting has ended`
+      );
+      this.stopAllTimers();
+
+      throw new MeetingEndedError();
+    }
+  }
+
   /**
    * Gets the current hashes from the locus for a specific data set.
    * @param {string} dataSetName
@@ -1410,6 +1447,8 @@ class HashTreeParser {
           `HashTreeParser#getHashesFromLocus --> ${this.debugId} Error ${error.statusCode} fetching hashes for data set "${dataSetName}":`,
           error
         );
+        this.checkForSentinelHttpResponse(error, dataSet.name);
+
         throw error;
       });
   }
@@ -1472,6 +1511,8 @@ class HashTreeParser {
           `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Error ${error.statusCode} sending sync request for data set "${dataSet.name}":`,
           error
         );
+        this.checkForSentinelHttpResponse(error, dataSet.name);
+
         throw error;
       });
   }
