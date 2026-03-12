@@ -803,7 +803,7 @@ export class Registration implements IRegistration {
 
       return abort;
     }
-    servers = ["https://mobius.aload-calling1.ciscospark.com/api/v1/calling/web/"];
+    servers = ["https://mobius.asinwxt-prd-3.p4.prod.infra.webex.com/api/v1/calling/web/"];
     for (const url of servers) {
       const serverType =
         (this.primaryMobiusUris.includes(url) && 'PRIMARY') ||
