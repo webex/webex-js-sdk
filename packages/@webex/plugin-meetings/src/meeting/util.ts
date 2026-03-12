@@ -919,6 +919,9 @@ const MeetingUtil = {
     return false;
   },
 
+  attendeeRequestAiAssistantDeclinedAll: (displayHints = []) =>
+    displayHints.includes(DISPLAY_HINTS.ATTENDEE_REQUEST_AI_ASSISTANT_DECLINED_ALL),
+
   selfSupportsFeature: (feature: SELF_POLICY, userPolicies: Record<SELF_POLICY, boolean>) => {
     if (!userPolicies) {
       return true;

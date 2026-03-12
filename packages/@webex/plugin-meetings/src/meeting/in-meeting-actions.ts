@@ -118,6 +118,7 @@ interface IInMeetingActions {
   canEnablePollingQA?: boolean;
   canDisablePollingQA?: boolean;
   canAttendeeRequestAiAssistantEnabled?: boolean;
+  isAttendeeRequestAiAssistantDeclinedAll?: boolean;
 }
 
 /**
@@ -340,6 +341,8 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canAttendeeRequestAiAssistantEnabled = null;
 
+  isAttendeeRequestAiAssistantDeclinedAll = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -452,6 +455,7 @@ export default class InMeetingActions implements IInMeetingActions {
     canEnablePollingQA: this.canEnablePollingQA,
     canDisablePollingQA: this.canDisablePollingQA,
     canAttendeeRequestAiAssistantEnabled: this.canAttendeeRequestAiAssistantEnabled,
+    isAttendeeRequestAiAssistantDeclinedAll: this.isAttendeeRequestAiAssistantDeclinedAll,
   });
 
   /**
