@@ -1799,14 +1799,14 @@ const clearComparisonURLParams = () => {
  */
 const updateCompareButtonState = () => {
     if (!compareButton) return;
-
+    
     const stableA = versionASelect ? versionASelect.value : null;
     const stableB = versionBSelect ? versionBSelect.value : null;
     const selectedPackage = comparisonPackageSelect ? comparisonPackageSelect.value : null;
     const versionASpecific = versionAPrereleaseSelect ? versionAPrereleaseSelect.value : null;
     const versionBSpecific = versionBPrereleaseSelect ? versionBPrereleaseSelect.value : null;
     const prereleaseRowVisible = prereleaseRow && prereleaseRow.style.display !== 'none';
-
+    
     if (stableA && stableB && stableA === stableB) {
         // Same stable: must select a package and both pre-release versions (and they must differ)
         const bothSelected = prereleaseRowVisible && versionASpecific && versionBSpecific;
@@ -1845,7 +1845,7 @@ const handleStableVersionChange = async () => {
 
     resetComparisonSelections();
     updateCompareButtonState();
-
+    
     if (stableA && stableB) {
         try {
             let changelogA, changelogB;
@@ -1859,7 +1859,7 @@ const handleStableVersionChange = async () => {
                     fetch(versionPaths[stableB]).then(res => res.json())
                 ]);
             }
-
+            
             comparisonState.update(changelogA, changelogB, stableA, stableB);
             populateUnionPackages(changelogA, changelogB);
             updateCompareButtonState();
