@@ -215,8 +215,9 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
           previous?.transcribe?.aiSummaryNotification,
           current?.transcribe?.aiSummaryNotification
         ) &&
-        (previous?.transcribe?.aiSummaryNotification !== undefined ||
-          current?.transcribe?.aiSummaryNotification !== undefined),
+        !!(
+          previous?.transcribe?.aiSummaryNotification || current?.transcribe?.aiSummaryNotification
+        ),
 
       hasTranscribeSpokenLanguageChanged:
         current?.transcribe &&
