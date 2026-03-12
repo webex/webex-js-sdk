@@ -1,5 +1,6 @@
-# @webex/internal-plugin-ai-summary
+# @webex/internal-plugin-call-ai-summary
 
+This is an internal Cisco Webex plugin. As such, it does not strictly adhere to semantic versioning. Use at your own risk. If you're not working on one of our first party clients, please look at our developer api and stick to our public plugins.
 Internal Webex JS SDK plugin for retrieving AI-generated call summaries, notes, action items, and transcript URLs from the Pragya and AI Bridge services.
 
 ## Overview
@@ -40,7 +41,7 @@ Pragya Service                     AI Bridge Service
 The plugin registers itself as `aisummary` on the internal namespace:
 
 ```typescript
-import '@webex/internal-plugin-ai-summary';
+import '@webex/internal-plugin-call-ai-summary';
 
 // Accessed via:
 webex.internal.aisummary.getContainer({ containerId: '...' });
@@ -279,7 +280,7 @@ Two manual test scripts are provided in `src/`:
 Validates the Pragya container response structure (34 checks).
 
 ```bash
-cd packages/@webex/internal-plugin-ai-summary
+cd packages/@webex/internal-plugin-call-ai-summary
 WEBEX_TOKEN='<token>' node src/manual-pragya-api-test.js
 ```
 
@@ -292,7 +293,7 @@ Tests the full end-to-end flow using the SDK service catalog:
 5. Transcript content fetch
 
 ```bash
-cd packages/@webex/internal-plugin-ai-summary
+cd packages/@webex/internal-plugin-call-ai-summary
 WEBEX_TOKEN='<token>' CONTAINER_ID='<id>' node src/manual-integration-test.js
 ```
 

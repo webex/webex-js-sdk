@@ -1,7 +1,7 @@
 /*!
  * Copyright (c) 2015-2025 Cisco Systems, Inc. See LICENSE file.
  *
- * Manual integration test for internal-plugin-ai-summary
+ * Manual integration test for internal-plugin-call-ai-summary
  * Tests the full flow using the SDK service catalog (WDM):
  *   device.register() -> getContainer -> getSummary (with KMS decryption)
  *
@@ -14,7 +14,7 @@
 
 /* eslint-disable no-console, require-jsdoc */
 
-require('@webex/internal-plugin-ai-summary');
+require('@webex/internal-plugin-call-ai-summary');
 
 const WebexCore = require('@webex/webex-core').default;
 
@@ -54,11 +54,20 @@ async function main() {
   const container = await webex.internal.aisummary.getContainer({
     containerId: CONTAINER_ID,
   });
-  console.log('Container ID:', container.id);
-  console.log('objectType:', container.objectType);
-  console.log('encryptionKeyUrl:', container.encryptionKeyUrl);
-  console.log('summaryUrl:', container.summaryData.summaryUrl);
-  console.log('transcriptUrl:', container.summaryData.transcriptUrl);
+  console.log(
+    'Container Info:',
+    JSON.stringify(
+      {
+        id: container.id,
+        objectType: container.objectType,
+        encryptionKeyUrl: container.encryptionKeyUrl,
+        summaryUrl: container.summaryData?.summaryUrl,
+        transcriptUrl: container.summaryData?.transcriptUrl,
+      },
+      null,
+      2
+    )
+  );
 
   // Step 4: Call getSummary via plugin (fetches + decrypts all content)
   console.log('\n=== Step 4: getSummary via plugin ===\n');

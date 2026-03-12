@@ -164,6 +164,10 @@ const AISummary = WebexPlugin.extend({
       // Action items response is an array; take the first element
       const actionItemsData = Array.isArray(body) ? body[0] : body;
 
+      if (!actionItemsData) {
+        return {id: undefined, snippets: []};
+      }
+
       const decryptedSnippets = await Promise.all(
         (actionItemsData.snippets || []).map(async (snippet: any) => {
           const decryptedAiContent = await this._decryptContent(
@@ -251,7 +255,12 @@ const AISummary = WebexPlugin.extend({
    */
   _handleError(error: any, methodName: string): Error {
     if (error.statusCode === 404) {
-      return new Error(ERROR_MESSAGES.CONTAINER_NOT_FOUND);
+      const message =
+        methodName === 'getContainer'
+          ? ERROR_MESSAGES.CONTAINER_NOT_FOUND
+          : ERROR_MESSAGES.CONTENT_NOT_FOUND;
+
+      return new Error(message);
     }
 
     if (error.statusCode === 403) {

@@ -1,5 +1,5 @@
 {
-  "name": "@webex/internal-plugin-ai-summary",
+  "name": "@webex/internal-plugin-call-ai-summary",
   "description": "A Webex internal plugin for AI-generated call summary retrieval",
   "license": "MIT",
   "author": "Webex JS SDK Team",
@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/webex/webex-js-sdk.git",
-    "directory": "packages/@webex/internal-plugin-ai-summary"
+    "directory": "packages/@webex/internal-plugin-call-ai-summary"
   },
   "engines": {
     "node": ">=16"

@@ -1,7 +1,7 @@
 /*!
  * Copyright (c) 2015-2025 Cisco Systems, Inc. See LICENSE file.
  *
- * Manual test for internal-plugin-ai-summary
+ * Manual test for internal-plugin-call-ai-summary
  *
  * Usage:
  *   WEBEX_TOKEN='<your-token>' node manual-test.js
@@ -11,7 +11,7 @@
 
 /* eslint-disable no-console, require-jsdoc */
 
-require('@webex/internal-plugin-ai-summary');
+require('@webex/internal-plugin-call-ai-summary');
 
 const WebexCore = require('@webex/webex-core').default;
 

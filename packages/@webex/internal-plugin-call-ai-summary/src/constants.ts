@@ -13,6 +13,7 @@ export const ERROR_MESSAGES = {
   INVALID_CONTAINER_ID: 'containerId is required and must be a non-empty string',
   INVALID_CONTAINER_INFO: 'containerInfo with valid summaryData and encryptionKeyUrl is required',
   CONTAINER_NOT_FOUND: 'Container not found',
+  CONTENT_NOT_FOUND: 'Summary content not available or expired',
   ACCESS_DENIED: 'Access denied: User not authorized to view this summary',
   AUTHENTICATION_FAILED: 'Authentication failed: Invalid or expired token',
 } as const;
