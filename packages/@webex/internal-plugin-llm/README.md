@@ -51,6 +51,33 @@ await webex.internal.llm.registerAndConnect(
   'session-b'
 );
 
+// Listen across multiple connections
+const llm = webex.internal.llm;
+const sessionA = 'session-a';
+const sessionB = 'session-b';
+
+// Default session events use the base event name.
+llm.on('online', () => {
+  console.log('[default] connected');
+});
+
+llm.on('event', (envelope) => {
+  console.log('[default] event', envelope.data?.eventType, envelope.sessionId);
+});
+
+// Non-default sessions emit events with :<sessionId> suffix.
+llm.on(`online:${sessionA}`, () => {
+  console.log(`[${sessionA}] connected`);
+});
+
+llm.on(`event:${sessionA}`, (envelope) => {
+  console.log(`[${sessionA}] event`, envelope.data?.eventType, envelope.sessionId);
+});
+
+llm.on(`event:${sessionB}`, (envelope) => {
+  console.log(`[${sessionB}] event`, envelope.data?.eventType, envelope.sessionId);
+});
+
 // Optional: store/retrieve token by token type
 webex.internal.llm.setDatachannelToken(datachannelToken, 'DEFAULT');
 webex.internal.llm.getDatachannelToken('DEFAULT');
