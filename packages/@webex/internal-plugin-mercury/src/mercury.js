@@ -220,6 +220,12 @@ const Mercury = WebexPlugin.extend({
 
   @oneFlight
   disconnect(options) {
+    this.logger.info(
+      `${this.namespace}#disconnect: connecting state: ${this.connecting}, connected state: ${
+        this.connected
+      }, socket exists: ${!!this.socket}, options: ${JSON.stringify(options)}`
+    );
+
     return new Promise((resolve) => {
       if (this.backoffCall) {
         this.logger.info(`${this.namespace}: aborting connection`);

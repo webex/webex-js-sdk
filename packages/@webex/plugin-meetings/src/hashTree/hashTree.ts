@@ -1,4 +1,4 @@
-import {XXH3_128} from 'xxh3-ts';
+import {XXH3_128} from 'xxh3-ts/xxh3';
 import {EMPTY_HASH} from './constants';
 import {ObjectType} from './types';
 
@@ -369,6 +369,23 @@ class HashTree {
     items.sort((a, b) => a.id - b.id);
 
     return items;
+  }
+
+  /**
+   * Retrieves the version of a specific item by its id and type.
+   * @param {number} id The ID of the item.
+   * @param {ObjectType} type The type of the item.
+   * @returns {number | undefined} The version of the item if found, undefined otherwise.
+   */
+  getItemVersion(id: number, type: ObjectType): number | undefined {
+    if (this.numLeaves === 0) {
+      return undefined;
+    }
+
+    const index = id % this.numLeaves;
+    const item = this.leaves[index]?.[type]?.[id];
+
+    return item?.version;
   }
 
   /**

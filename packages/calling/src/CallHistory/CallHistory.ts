@@ -177,39 +177,56 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
           );
         }
       }
-      // Check the calling backend
+      // Check the calling backend (BEMS01958007: non-fatal so /lines or uploadLogs failure does not drop call history)
       if (callingBackend === CALLING_BACKEND.UCM) {
-        // Check if userSessions exist and the length is greater than 0
-        if (this.userSessions[USER_SESSIONS] && this.userSessions[USER_SESSIONS].length > 0) {
-          // Check if cucmDN exists and is valid in any of the userSessions
-          const hasCucmDN = this.userSessions[USER_SESSIONS].some(
-            (session: UserSession) => session.self.cucmDN && session.self.cucmDN.length > 0
-          );
-          // If any user session has cucmDN, proceed to fetch line data
-          if (hasCucmDN) {
-            // Fetch the Lines data
-            const ucmLinesResponse = await this.fetchUCMLinesData();
+        try {
+          // Check if userSessions exist and the length is greater than 0
+          if (this.userSessions[USER_SESSIONS] && this.userSessions[USER_SESSIONS].length > 0) {
+            // Check if cucmDN exists and is valid in any of the userSessions
+            const hasCucmDN = this.userSessions[USER_SESSIONS].some(
+              (session: UserSession) => session.self.cucmDN && session.self.cucmDN.length > 0
+            );
+            // If any user session has cucmDN, proceed to fetch line data
+            if (hasCucmDN) {
+              log.info('Fetching UCM lines data for call history enrichment', this.loggerContext);
+              const ucmLinesResponse = await this.fetchUCMLinesData();
 
-            // Check if the Lines API response was successful
-            if (ucmLinesResponse.statusCode === 200 && ucmLinesResponse.data.lines?.devices) {
-              const ucmLinesData = ucmLinesResponse.data.lines.devices;
+              // Check if the Lines API response was successful
+              if (ucmLinesResponse.statusCode === 200 && ucmLinesResponse.data.lines?.devices) {
+                const ucmLinesData = ucmLinesResponse.data.lines.devices;
 
-              // Iterate over user sessions and match with Lines data
-              this.userSessions[USER_SESSIONS].forEach((session: UserSession) => {
-                const cucmDN = session.self.cucmDN;
+                // Iterate over user sessions and match with Lines data
+                this.userSessions[USER_SESSIONS].forEach((session: UserSession) => {
+                  const cucmDN = session.self.cucmDN;
 
-                if (cucmDN) {
-                  ucmLinesData.forEach((device) => {
-                    device.lines.forEach((line) => {
-                      if (line.dnorpattern === cucmDN) {
-                        session.self.ucmLineNumber = line.index; // Assign the ucmLineNumber
-                      }
+                  if (cucmDN) {
+                    ucmLinesData.forEach((device) => {
+                      device.lines.forEach((line) => {
+                        if (line.dnorpattern === cucmDN) {
+                          session.self.ucmLineNumber = line.index; // Assign the ucmLineNumber
+                        }
+                      });
                     });
-                  });
-                }
-              });
+                  }
+                });
+                log.log(`UCM line number enrichment completed`, this.loggerContext);
+              } else {
+                log.info(
+                  `UCM lines API returned statusCode ${ucmLinesResponse?.statusCode} or no devices, ` +
+                    'returning call history without line number enrichment',
+                  this.loggerContext
+                );
+              }
             }
           }
+        } catch (ucmErr: unknown) {
+          log.warn(
+            `UCM lines fetch or enrich failed, returning call history without line numbers: ${JSON.stringify(
+              ucmErr
+            )}`,
+            {file: CALL_HISTORY_FILE, method: METHODS.GET_CALL_HISTORY_DATA}
+          );
+          // Continue and return userSessions without ucmLineNumber enrichment
         }
       }
 
@@ -353,7 +370,6 @@ export class CallHistory extends Eventing<CallHistoryEventTypes> implements ICal
         method: METHODS.FETCH_UCM_LINES_DATA,
       });
       await uploadLogs();
-
       const errorInfo = err as WebexRequestPayload;
       const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
 

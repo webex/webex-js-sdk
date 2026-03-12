@@ -27,6 +27,7 @@ const {
   isUnauthorizedError,
   generateClientErrorCodeForIceFailure,
   isSdpOfferCreationError,
+  isWebrtcApiNotAvailableError,
 } = CallDiagnosticUtils;
 
 describe('internal-plugin-metrics', () => {
@@ -202,6 +203,29 @@ describe('internal-plugin-metrics', () => {
     ].forEach(([errorType, rawError, expected]) => {
       it(`for ${errorType} rawError returns the correct result`, () => {
         assert.strictEqual(isSdpOfferCreationError(rawError), expected);
+      });
+    });
+  });
+
+  describe('isWebrtcApiNotAvailableError', () => {
+    type TestWebrtcApiNotAvailableError = {
+      code: number;
+      message: string;
+      name: string;
+    };
+
+    const error: TestWebrtcApiNotAvailableError = {
+      code: 30007,
+      name: 'WebrtcApiNotAvailableError',
+      message: 'RTCPeerConnection API is not available in this environment',
+    };
+
+    [
+      ['WebrtcApiNotAvailableError', error, true],
+      ['generic error', new Error('this is an error'), false],
+    ].forEach(([errorType, rawError, expected]) => {
+      it(`for ${errorType} rawError returns the correct result`, () => {
+        assert.strictEqual(isWebrtcApiNotAvailableError(rawError), expected);
       });
     });
   });
