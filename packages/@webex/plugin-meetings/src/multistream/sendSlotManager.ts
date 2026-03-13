@@ -221,14 +221,18 @@ export default class SendSlotManager {
       [key: string]: string | undefined; // As per ts-sdp undefined is considered as a valid value to be used for codec parameters
     }
   ): Promise<void> {
-    // These codec parameter changes underneath are SDP value changes that are taken care by WCME automatically. So no need for any change in streams from the web sdk side
     const slot = this.slots.get(mediaType);
 
     if (!slot) {
       throw new Error(`Slot for ${mediaType} does not exist`);
     }
 
-    await slot.setCodecParameters(codecParameters);
+    const codecMimeType =
+      mediaType === MediaType.AudioMain || mediaType === MediaType.AudioSlides
+        ? MediaCodecMimeType.OPUS
+        : MediaCodecMimeType.H264;
+
+    await slot.setCustomCodecParameters(codecMimeType, codecParameters);
 
     this.LoggerProxy.logger.info(
       `SendSlotsManager->setCodecParameters#Set codec parameters for ${mediaType} to ${codecParameters}`
@@ -250,7 +254,12 @@ export default class SendSlotManager {
       throw new Error(`Slot for ${mediaType} does not exist`);
     }
 
-    await slot.deleteCodecParameters(parameters);
+    const codecMimeType =
+      mediaType === MediaType.AudioMain || mediaType === MediaType.AudioSlides
+        ? MediaCodecMimeType.OPUS
+        : MediaCodecMimeType.H264;
+
+    await slot.markCustomCodecParametersForDeletion(codecMimeType, parameters);
 
     this.LoggerProxy.logger.info(
       `SendSlotsManager->deleteCodecParameters#Deleted the following codec parameters -> ${parameters} for ${mediaType}`

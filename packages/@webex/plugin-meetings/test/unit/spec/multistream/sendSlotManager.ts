@@ -29,13 +29,13 @@ describe('SendSlotsManager', () => {
         it('should create a slot for the given mediaType', () => {
             sendSlotsManager.createSlot(mediaConnection, mediaType);
 
-            expect(mediaConnection.createSendSlot.calledWith(mediaType, true));
+            expect(mediaConnection.createSendSlot.calledWith(mediaType, true)).to.be.true;
         });
 
         it('should create a slot for the given mediaType & active state', () => {
             sendSlotsManager.createSlot(mediaConnection, mediaType, false);
 
-            expect(mediaConnection.createSendSlot.calledWith(mediaType, false));
+            expect(mediaConnection.createSendSlot.calledWith(mediaType, false)).to.be.true;
         });
 
         it('should throw an error if a slot for the given mediaType already exists', () => {
@@ -86,7 +86,7 @@ describe('SendSlotsManager', () => {
 
             await sendSlotsManager.publishStream(mediaType, stream);
 
-            expect(slot.publishStream.calledWith(stream));
+            expect(slot.publishStream.calledWith(stream)).to.be.true;
         });
 
         it('should throw an error if a slot for the given mediaType does not exist', (done) => {
@@ -116,7 +116,7 @@ describe('SendSlotsManager', () => {
 
             await sendSlotsManager.unpublishStream(mediaType);
 
-            expect(slot.unpublishStream.called);
+            expect(slot.unpublishStream.called).to.be.true;
         });
 
         it('should throw an error if a slot for the given mediaType does not exist',(done) => {
@@ -147,7 +147,7 @@ describe('SendSlotsManager', () => {
 
       await sendSlotsManager.setNamedMediaGroups(mediaType, groups);
 
-      expect(slot.setNamedMediaGroups.calledWith(groups));
+      expect(slot.setNamedMediaGroups.calledWith(groups)).to.be.true;
     });
 
     it('should throw an error if the given mediaType is not audio', () => {
@@ -169,16 +169,16 @@ describe('SendSlotsManager', () => {
             } as MultistreamRoapMediaConnection;
         });
 
-        it('should set the active state of the sendSlot for the given mediaType', async () => {
+        it('should set the active state of the sendSlot for the given mediaType', () => {
             const slot = {
-                setActive: sinon.stub().resolves(),
+                active: false,
             };
             mediaConnection.createSendSlot.returns(slot);
             sendSlotsManager.createSlot(mediaConnection, mediaType);
 
-            await sendSlotsManager.setActive(mediaType,true);
+            sendSlotsManager.setActive(mediaType, true);
 
-            expect(slot.setActive.called);
+            expect(slot.active).to.be.true;
         });
 
         it('should throw an error if a slot for the given mediaType does not exist', () => {
@@ -197,16 +197,16 @@ describe('SendSlotsManager', () => {
             } as MultistreamRoapMediaConnection;
         });
 
-        it('should set the codec parameters of the sendSlot for the given mediaType', async () => {
+        it('should delegate to setCustomCodecParameters with default codec MIME type', async () => {
             const slot = {
-                setCodecParameters: sinon.stub().resolves(),
+                setCustomCodecParameters: sinon.stub().resolves(),
             };
             mediaConnection.createSendSlot.returns(slot);
             sendSlotsManager.createSlot(mediaConnection, mediaType);
 
             await sendSlotsManager.setCodecParameters(mediaType, codecParameters);
 
-            expect(slot.setCodecParameters.calledWith(codecParameters));
+            expect(slot.setCustomCodecParameters.calledWith(MediaCodecMimeType.OPUS, codecParameters)).to.be.true;
         });
 
         it('should throw an error if a slot for the given mediaType does not exist', (done) => {
@@ -227,20 +227,20 @@ describe('SendSlotsManager', () => {
             } as MultistreamRoapMediaConnection;
         });
 
-        it('should delete the codec parameters of the sendSlot for the given mediaType', async () => {
+        it('should delegate to markCustomCodecParametersForDeletion with default codec MIME type', async () => {
             const slot = {
-                deleteCodecParameters: sinon.stub().resolves(),
+                markCustomCodecParametersForDeletion: sinon.stub().resolves(),
             };
             mediaConnection.createSendSlot.returns(slot);
             sendSlotsManager.createSlot(mediaConnection, mediaType);
 
-            await sendSlotsManager.deleteCodecParameters(mediaType,[]);
+            await sendSlotsManager.deleteCodecParameters(mediaType, []);
 
-            expect(slot.deleteCodecParameters.called);
+            expect(slot.markCustomCodecParametersForDeletion.calledWith(MediaCodecMimeType.OPUS, [])).to.be.true;
         });
 
         it('should throw an error if a slot for the given mediaType does not exist', (done) => {
-            sendSlotsManager.deleteCodecParameters(mediaType,[]).catch((error) => {
+            sendSlotsManager.deleteCodecParameters(mediaType, []).catch((error) => {
                 expect(error.message).to.equal(`Slot for ${mediaType} does not exist`);
                 done();
             });

@@ -38,6 +38,7 @@ import {
 import {
   ConnectionState,
   MediaConnectionEventNames,
+  MediaCodecMimeType,
   StatsAnalyzerEventNames,
   StatsMonitorEventNames,
   Errors,
@@ -9224,7 +9225,7 @@ describe('plugin-meetings', () => {
         await meeting.enableMusicMode(true);
         assert.calledOnceWithExactly(
           meeting.sendSlotManager.getSlot(MediaType.AudioMain).setCustomCodecParameters,
-          'audio/opus',
+          MediaCodecMimeType.OPUS,
           {
             maxaveragebitrate: '64000',
             maxplaybackrate: '48000',
@@ -9239,7 +9240,7 @@ describe('plugin-meetings', () => {
         await meeting.enableMusicMode(false);
         assert.calledOnceWithExactly(
           meeting.sendSlotManager.getSlot(MediaType.AudioMain).markCustomCodecParametersForDeletion,
-          'audio/opus',
+          MediaCodecMimeType.OPUS,
           ['maxaveragebitrate', 'maxplaybackrate']
         );
         assert.notCalled(meeting.sendSlotManager.getSlot(MediaType.AudioMain).setCustomCodecParameters);
