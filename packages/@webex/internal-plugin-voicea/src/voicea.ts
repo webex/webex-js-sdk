@@ -6,6 +6,7 @@ import {
   AIBRIDGE_RELAY_TYPES,
   TRANSCRIPTION_TYPE,
   VOICEA,
+  LLM_PRACTICE_SESSION,
   ANNOUNCE_STATUS,
   TURN_ON_CAPTION_STATUS,
   TOGGLE_MANUAL_CAPTION_STATUS,
@@ -90,7 +91,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       // @ts-ignore
       this.webex.internal.llm.on('event:relay.event', this.eventProcessor);
       // @ts-ignore
-      this.webex.internal.llm.on('event:relay.event:llm-practice-session', this.eventProcessor);
+      this.webex.internal.llm.on(`event:relay.event:${LLM_PRACTICE_SESSION}`, this.eventProcessor);
       this.hasSubscribedToEvents = true;
     }
   }
@@ -105,7 +106,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     // @ts-ignore
     this.webex.internal.llm.off('event:relay.event', this.eventProcessor);
     // @ts-ignore
-    this.webex.internal.llm.off('event:relay.event:llm-practice-session', this.eventProcessor);
+    this.webex.internal.llm.off(`event:relay.event:${LLM_PRACTICE_SESSION}`, this.eventProcessor);
     this.hasSubscribedToEvents = false;
     this.announceStatus = ANNOUNCE_STATUS.IDLE;
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
@@ -270,10 +271,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.listenToEvents();
     const socket =
       // @ts-ignore
-      this.webex.internal.llm.getSocket('llm-practice-session') || this.webex.internal.llm.socket;
+      this.webex.internal.llm.getSocket(LLM_PRACTICE_SESSION) || this.webex.internal.llm.socket;
     const binding =
       // @ts-ignore
-      this.webex.internal.llm.getBinding('llm-practice-session') ||
+      this.webex.internal.llm.getBinding(LLM_PRACTICE_SESSION) ||
       // @ts-ignore
       this.webex.internal.llm.getBinding();
     socket.send({
@@ -333,10 +334,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     if (!this.webex.internal.llm.isConnected()) return;
     const socket =
       // @ts-ignore
-      this.webex.internal.llm.getSocket('llm-practice-session') || this.webex.internal.llm.socket;
+      this.webex.internal.llm.getSocket(LLM_PRACTICE_SESSION) || this.webex.internal.llm.socket;
     const binding =
       // @ts-ignore
-      this.webex.internal.llm.getBinding('llm-practice-session') ||
+      this.webex.internal.llm.getBinding(LLM_PRACTICE_SESSION) ||
       // @ts-ignore
       this.webex.internal.llm.getBinding();
     socket.send({
@@ -383,10 +384,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
     const socket =
       // @ts-ignore
-      this.webex.internal.llm.getSocket('llm-practice-session') || this.webex.internal.llm.socket;
+      this.webex.internal.llm.getSocket(LLM_PRACTICE_SESSION) || this.webex.internal.llm.socket;
     const binding =
       // @ts-ignore
-      this.webex.internal.llm.getBinding('llm-practice-session') ||
+      this.webex.internal.llm.getBinding(LLM_PRACTICE_SESSION) ||
       // @ts-ignore
       this.webex.internal.llm.getBinding();
 
