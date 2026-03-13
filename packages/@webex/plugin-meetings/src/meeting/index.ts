@@ -4292,6 +4292,9 @@ export default class Meeting extends StatelessWebexPlugin {
           bothLeaveAndEndMeetingAvailable: MeetingUtil.bothLeaveAndEndMeetingAvailable(
             this.userDisplayHints
           ),
+          requireHostEndMeetingBeforeLeave: MeetingUtil.requireHostEndMeetingBeforeLeave(
+            this.userDisplayHints
+          ),
           canEnableClosedCaption: MeetingUtil.canEnableClosedCaption(this.userDisplayHints),
           canStartTranscribing: MeetingUtil.canStartTranscribing(this.userDisplayHints),
           canStopTranscribing: MeetingUtil.canStopTranscribing(this.userDisplayHints),
@@ -4554,6 +4557,8 @@ export default class Meeting extends StatelessWebexPlugin {
             this.userDisplayHints,
             this.roles
           ),
+          isAttendeeRequestAiAssistantDeclinedAll:
+            MeetingUtil.attendeeRequestAiAssistantDeclinedAll(this.userDisplayHints),
         }) || changed;
     }
     if (changed) {

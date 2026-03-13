@@ -26,7 +26,8 @@ describe('plugin-llm', () => {
 
       llmService = webex.internal.llm;
       llmService.connect = sinon.stub().callsFake(() => {
-        llmService.connected = true;
+        // Simulate a successful connection by stubbing getSocket to return connected: true
+        llmService.getSocket = sinon.stub().returns({connected: true});
       });
       llmService.disconnect = sinon.stub().resolves(true);
       llmService.request = sinon.stub().resolves({
@@ -77,7 +78,8 @@ describe('plugin-llm', () => {
         sinon.assert.calledOnceWithExactly(
           llmService.register,
           datachannelUrl,
-          'abc123'
+          'abc123',
+          'llm-default-session'
         );
 
         assert.equal(llmService.isConnected(), true);
@@ -284,6 +286,65 @@ describe('plugin-llm', () => {
         assert.equal(llmService.getDatachannelToken('default'), 'abc123');
         llmService.setDatachannelToken('123abc','practiceSession');
         assert.equal(llmService.getDatachannelToken('practiceSession'), '123abc');
+      });
+    });
+
+    describe('multi-connection logic', () => {
+      const locusUrl2 = 'locusUrl2';
+      const datachannelUrl2 = 'datachannelUrl2';
+
+      beforeEach(() => {
+        const sockets = new Map();
+
+        llmService.connect = sinon.stub().callsFake((url, sessionId) => {
+          sockets.set(sessionId, {connected: true});
+          llmService.getSocket = sinon.stub().callsFake((sid) => sockets.get(sid));
+        });
+      });
+
+      it('tracks multiple sessions independently', async () => {
+        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
+        await llmService.registerAndConnect(locusUrl2, datachannelUrl2, undefined, 's2');
+
+        assert.equal(llmService.isConnected('s1'), true);
+        assert.equal(llmService.isConnected('s2'), true);
+        assert.equal(llmService.getLocusUrl('s1'), locusUrl);
+        assert.equal(llmService.getLocusUrl('s2'), locusUrl2);
+        assert.equal(llmService.getDatachannelUrl('s1'), datachannelUrl);
+        assert.equal(llmService.getDatachannelUrl('s2'), datachannelUrl2);
+
+        const all = llmService.getAllConnections();
+        assert.equal(all.size, 2);
+        assert.equal(all.has('s1'), true);
+        assert.equal(all.has('s2'), true);
+      });
+
+      it('disconnectLLM clears only the targeted session', async () => {
+        llmService.disconnect = sinon.stub().resolves(true);
+
+        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
+        await llmService.registerAndConnect(locusUrl2, datachannelUrl2, undefined, 's2');
+
+        const options = {code: 1000, reason: 'test'};
+        await llmService.disconnectLLM(options, 's1');
+
+        sinon.assert.calledOnceWithExactly(llmService.disconnect, options, 's1');
+
+        const all = llmService.getAllConnections();
+        assert.equal(all.has('s1'), false);
+        assert.equal(all.has('s2'), true);
+      });
+
+      it('disconnectAllLLM clears all sessions', async () => {
+        llmService.disconnectAll = sinon.stub().resolves(true);
+
+        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
+        await llmService.registerAndConnect(locusUrl2, datachannelUrl2, undefined, 's2');
+
+        await llmService.disconnectAllLLM({code: 1000, reason: 'all'});
+
+        sinon.assert.calledOnce(llmService.disconnectAll);
+        assert.equal(llmService.getAllConnections().size, 0);
       });
     });
   });
