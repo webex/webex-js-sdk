@@ -815,6 +815,57 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#isIntegrationEnvironment', () => {
+      it('returns true when u2c URL contains "intb"', () => {
+        services.webex.config = {
+          services: {
+            discovery: {
+              u2c: 'https://u2c-intb.ciscospark.com/u2c/api/v1',
+            },
+          },
+        };
+        assert.isTrue(services.isIntegrationEnvironment());
+      });
+
+      it('returns false when u2c URL does not contain "intb" (production)', () => {
+        services.webex.config = {
+          services: {
+            discovery: {
+              u2c: 'https://u2c.wbx2.com/u2c/api/v1',
+            },
+          },
+        };
+        assert.isFalse(services.isIntegrationEnvironment());
+      });
+
+      it('returns false when u2c URL is for FedRAMP', () => {
+        services.webex.config = {
+          services: {
+            discovery: {
+              u2c: 'https://u2c.gov.ciscospark.com/u2c/api/v1',
+            },
+          },
+        };
+        assert.isFalse(services.isIntegrationEnvironment());
+      });
+
+      it('returns false when u2c URL is undefined', () => {
+        services.webex.config = {
+          services: {
+            discovery: {
+              u2c: undefined,
+            },
+          },
+        };
+        assert.isFalse(services.isIntegrationEnvironment());
+      });
+
+      it('returns false when config is not available', () => {
+        services.webex.config = undefined;
+        assert.isFalse(services.isIntegrationEnvironment());
+      });
+    });
+
     describe('U2C catalog cache behavior (v2)', () => {
       const CATALOG_CACHE_KEY_V2 = 'services.v2.u2cHostMap';
       let windowBackup;
