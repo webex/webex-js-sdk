@@ -7,7 +7,11 @@ import Mercury from '@webex/internal-plugin-mercury';
 import LLMChannel from '@webex/internal-plugin-llm';
 
 import VoiceaService from '../../../src/index';
-import {EVENT_TRIGGERS, TOGGLE_MANUAL_CAPTION_STATUS} from '../../../src/constants';
+import {
+  EVENT_TRIGGERS,
+  LLM_PRACTICE_SESSION,
+  TOGGLE_MANUAL_CAPTION_STATUS,
+} from '../../../src/constants';
 
 describe('plugin-voicea', () => {
   const locusUrl = 'locusUrl';
@@ -85,11 +89,12 @@ describe('plugin-voicea', () => {
         const spy = sinon.spy(webex.internal.llm, 'on');
 
         voiceaService.sendAnnouncement();
+
         voiceaService.sendAnnouncement();
 
         assert.calledTwice(spy);
         assert.calledWith(spy, 'event:relay.event', sinon.match.func);
-        assert.calledWith(spy, 'event:relay.event:llm-practice-session', sinon.match.func);
+        assert.calledWith(spy, `event:relay.event:${LLM_PRACTICE_SESSION}`, sinon.match.func);
       });
 
       it('includes captionServiceId in headers when set', () => {
@@ -1217,15 +1222,15 @@ describe('plugin-voicea', () => {
 
         voiceaService.webex.internal.llm.socket = defaultSocket;
         voiceaService.webex.internal.llm.getSocket.callsFake((channel) =>
-          channel === 'llm-practice-session' ? practiceSocket : undefined
+          channel === LLM_PRACTICE_SESSION ? practiceSocket : undefined
         );
         voiceaService.webex.internal.llm.getBinding.callsFake((channel) =>
-          channel === 'llm-practice-session' ? 'practice-binding' : 'default-binding'
+          channel === LLM_PRACTICE_SESSION ? 'practice-binding' : 'default-binding'
         );
         voiceaService.seqNum = 1;
       });
 
-      it('sendAnnouncement uses llm-practice-session socket and binding when available', () => {
+      it('sendAnnouncement uses the practice session socket and binding when available', () => {
         voiceaService.announceStatus = 'idle';
 
         voiceaService.sendAnnouncement();
@@ -1237,7 +1242,7 @@ describe('plugin-voicea', () => {
         expect(sent).to.have.nested.property('recipients.route', 'practice-binding');
       });
 
-      it('requestLanguage uses llm-practice-session socket and binding when available', () => {
+      it('requestLanguage uses the practice session socket and binding when available', () => {
         voiceaService.requestLanguage('fr');
 
         assert.calledOnce(practiceSocket.send);
@@ -1248,13 +1253,13 @@ describe('plugin-voicea', () => {
         expect(sent).to.have.nested.property('data.clientPayload.translationLanguage', 'fr');
       });
 
-      it('processes relay events from llm-practice-session channel', async () => {
+      it('processes relay events from the practice session channel', async () => {
         const announcementSpy = sinon.spy(voiceaService, 'processAnnouncementMessage');
 
         voiceaService.listenToEvents();
 
         // eslint-disable-next-line no-underscore-dangle
-        await voiceaService.webex.internal.llm._emit('event:relay.event:llm-practice-session', {
+        await voiceaService.webex.internal.llm._emit(`event:relay.event:${LLM_PRACTICE_SESSION}`, {
           headers: {from: 'svc-practice'},
           data: {
             relayType: 'voicea.annc',
