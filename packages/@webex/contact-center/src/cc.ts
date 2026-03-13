@@ -785,7 +785,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
       ]);
 
-      if (data.loginOption === LoginOption.AGENT_DN && !isValidDialNumber(data.dialNumber)) {
+      const dialPlanEntries = this.agentConfig?.dialPlan?.dialPlanEntity ?? [];
+      if (
+        data.loginOption === LoginOption.AGENT_DN &&
+        !isValidDialNumber(data.dialNumber, dialPlanEntries)
+      ) {
         const error = new Error('INVALID_DIAL_NUMBER');
         // @ts-ignore - adding custom key to the error object
         error.details = {data: {reason: 'INVALID_DIAL_NUMBER'}} as Failure;
