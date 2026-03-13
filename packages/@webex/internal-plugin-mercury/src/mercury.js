@@ -473,6 +473,7 @@ const Mercury = WebexPlugin.extend({
         }
 
         webSocketUrl.query.clientTimestamp = Date.now();
+        delete webSocketUrl.search;
 
         return url.format(webSocketUrl);
       });
