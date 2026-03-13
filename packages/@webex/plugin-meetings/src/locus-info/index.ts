@@ -416,10 +416,13 @@ export default class LocusInfo extends EventsScope {
           );
 
           if (!metadataObject?.data?.visibleDataSets) {
-            LoggerProxy.logger.warn(
+            // this is a common case (not an error)
+            // it happens for example after we leave the meeting and still get some heartbeats or delayed messages
+            LoggerProxy.logger.info(
               `Locus-info:index#initialSetup --> cannot initialize HashTreeParser, Metadata object with visibleDataSets is missing in the message`
             );
 
+            // throw so that handleLocusEvent() catches it and destroys the partially created meeting object
             throw new Error('Metadata object with visibleDataSets is missing in the message');
           }
 
@@ -727,7 +730,11 @@ export default class LocusInfo extends EventsScope {
    * @param {HashTreeMessage} message incoming hash tree message
    * @returns {void}
    */
-  private handleHashTreeMessage(meeting: any, eventType: LOCUSEVENT, message: HashTreeMessage) {
+  private async handleHashTreeMessage(
+    meeting: any,
+    eventType: LOCUSEVENT,
+    message: HashTreeMessage
+  ) {
     if (eventType !== LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
       this.sendClassicVsHashTreeMismatchMetric(
         meeting,
@@ -1289,27 +1296,6 @@ export default class LocusInfo extends EventsScope {
           EVENTS.DESTROY_MEETING,
           {
             reason: MEETING_REMOVED_REASON.MEETING_INACTIVE_TERMINATING,
-            shouldLeave: false,
-          }
-        );
-      } else if (this.fullState && this.fullState.removed) {
-        // user has been dropped from a meeting
-
-        // @ts-ignore
-        this.webex.internal.newMetrics.submitClientEvent({
-          name: 'client.call.remote-ended',
-          options: {
-            meetingId: this.meetingId,
-          },
-        });
-        this.emitScoped(
-          {
-            file: 'locus-info',
-            function: 'isMeetingActive',
-          },
-          EVENTS.DESTROY_MEETING,
-          {
-            reason: MEETING_REMOVED_REASON.FULLSTATE_REMOVED,
             shouldLeave: false,
           }
         );

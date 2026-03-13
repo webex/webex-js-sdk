@@ -687,6 +687,7 @@ export default class Meeting extends StatelessWebexPlugin {
   localAudioStreamMuteStateHandler: () => void;
   localVideoStreamMuteStateHandler: () => void;
   localOutputTrackChangeHandler: () => void;
+  localConstraintsChangeHandler: () => void;
   environment: string;
   namespace = MEETINGS;
   allowMediaInLobby: boolean;
@@ -1553,6 +1554,12 @@ export default class Meeting extends StatelessWebexPlugin {
     this.localOutputTrackChangeHandler = () => {
       if (!this.isMultistream) {
         this.updateTranscodedMediaConnection();
+      }
+    };
+
+    this.localConstraintsChangeHandler = () => {
+      if (!this.isMultistream) {
+        this.mediaProperties.webrtcMediaConnection?.updatePreferredBitrateKbps();
       }
     };
 
@@ -4284,6 +4291,9 @@ export default class Meeting extends StatelessWebexPlugin {
           bothLeaveAndEndMeetingAvailable: MeetingUtil.bothLeaveAndEndMeetingAvailable(
             this.userDisplayHints
           ),
+          requireHostEndMeetingBeforeLeave: MeetingUtil.requireHostEndMeetingBeforeLeave(
+            this.userDisplayHints
+          ),
           canEnableClosedCaption: MeetingUtil.canEnableClosedCaption(this.userDisplayHints),
           canStartTranscribing: MeetingUtil.canStartTranscribing(this.userDisplayHints),
           canStopTranscribing: MeetingUtil.canStopTranscribing(this.userDisplayHints),
@@ -4546,6 +4556,8 @@ export default class Meeting extends StatelessWebexPlugin {
             this.userDisplayHints,
             this.roles
           ),
+          isAttendeeRequestAiAssistantDeclinedAll:
+            MeetingUtil.attendeeRequestAiAssistantDeclinedAll(this.userDisplayHints),
         }) || changed;
     }
     if (changed) {
@@ -4844,6 +4856,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.localVideoStreamMuteStateHandler
     );
     oldStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
+    oldStream?.off(LocalStreamEventNames.ConstraintsChange, this.localConstraintsChangeHandler);
 
     // we don't update this.mediaProperties.mediaDirection.sendVideo, because we always keep it as true to avoid extra SDP exchanges
     this.mediaProperties.setLocalVideoStream(localStream);
@@ -4859,6 +4872,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.localVideoStreamMuteStateHandler
     );
     localStream?.on(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
+    localStream?.on(LocalStreamEventNames.ConstraintsChange, this.localConstraintsChangeHandler);
 
     if (!this.isMultistream || !localStream) {
       // for multistream WCME automatically un-publishes the old stream when we publish a new one
@@ -4993,6 +5007,7 @@ export default class Meeting extends StatelessWebexPlugin {
       this.localVideoStreamMuteStateHandler
     );
     videoStream?.off(LocalStreamEventNames.OutputTrackChange, this.localOutputTrackChangeHandler);
+    videoStream?.off(LocalStreamEventNames.ConstraintsChange, this.localConstraintsChangeHandler);
 
     shareAudioStream?.off(StreamEventNames.Ended, this.handleShareAudioStreamEnded);
     shareAudioStream?.off(

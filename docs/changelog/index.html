@@ -36,7 +36,7 @@
         </div>
         <ul class="nav navbar-nav navbar-right">
           <li>
-            <a class="page-link" href="../changelog/">Changelog</a>
+            <a class="page-link" href="./">Changelog</a>
           </li>
           <li>
             <a class="page-link" href="../samples/">Samples</a>
@@ -78,39 +78,39 @@
 
             <!-- Comparison Form (Hidden by default) -->
             <form id="comparison-form" class="hide" method="GET">
-              <div class="form-row">
+              <!-- Package Selection Row (first, required) -->
+              <div class="form-row" id="comparison-package-row">
                 <div class="form-group">
-                  <label for="version-a-select">Base Stable Version (A):</label>
-                  <select id="version-a-select" class="full-width" required>
-                    <option value="">Select base version</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="version-b-select">Target Stable Version (B):</label>
-                  <select id="version-b-select" class="full-width" required>
-                    <option value="">Select target version</option>
+                  <label for="comparison-package-select">Select Package <span class="required-asterisk">*</span></label>
+                  <select id="comparison-package-select" class="full-width" required>
+                    <option value="">Select a Package</option>
                   </select>
                 </div>
               </div>
-              
-              <!-- NEW: Package Selection Row -->
-              <div class="form-row" id="comparison-package-row" style="display: none;">
+
+              <div class="form-row">
                 <div class="form-group">
-                  <label for="comparison-package-select">
-                    Select Package (optional - for detailed comparison):
-                    <span class="help-text" style="font-weight: normal; font-size: 12px; color: #666;">
-                      - Shows all packages from both versions (union)
-                      - Leave empty for full version comparison
-                    </span>
-                  </label>
-                  <select id="comparison-package-select" class="full-width">
-                    <option value="">Select a package (optional)</option>
-                  </select>
+                  <label for="version-a-select">Base Stable Version:</label>
+                  <div class="select-with-clear">
+                    <select id="version-a-select" class="full-width" required disabled>
+                      <option value="">Select base version</option>
+                    </select>
+                    <button type="button" id="clear-version-a-btn" class="btn btn-clear-circle" title="Clear base version" aria-label="Clear base version"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="version-b-select">Target Stable Version:</label>
+                  <div class="select-with-clear">
+                    <select id="version-b-select" class="full-width" required disabled>
+                      <option value="">Select target version</option>
+                    </select>
+                    <button type="button" id="clear-version-b-btn" class="btn btn-clear-circle" title="Clear target version" aria-label="Clear target version"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                  </div>
                 </div>
               </div>
               
               <!-- NEW: Pre-release Version Selection Row -->
-              <div class="form-row" id="comparison-prerelease-row" style="display: none;">
+              <div class="form-row" id="comparison-prerelease-row">
                 <div class="form-group">
                   <label for="version-a-prerelease-select">
                     Pre-release Version for Base:
@@ -140,7 +140,7 @@
               </div>
               <!-- Comparison Helper Text -->
               <div class="comparison-helper hide" id="comparison-helper">
-                <p style="margin-top: 15px; padding: 10px; background-color: #e7f3ff; border-radius: 5px; font-size: 13px;">
+                <p class="comparison-helper-tip">
                   <strong>💡 Tip:</strong> After comparing, you can share the URL from your browser's address bar, or use the "Copy Permalink & share link" button above. 
                   Anyone with the link will see the same comparison!
                 </p>
@@ -174,7 +174,7 @@
                       <div class="form-group" id="version-input-group">
                           <label for="version-input">Version number:</label>
                           <input type="text" id="version-input" class="full-width">
-                          <span style="color:red" id="version-input-error"></span>
+                          <span class="error-text" id="version-input-error"></span>
                       </div>
                       <div class="form-group" id="commit-message-group">
                           <label for="commit-message-input">Commit Message:</label>
@@ -225,7 +225,6 @@
           </div>
         </div>
       </div>
-      <div id="scrollTop">^</div>
     </main>
     <footer>
       <div class="container">
@@ -296,7 +295,7 @@
 
       <!-- Package Comparison Table (Now First) -->
       <div class="table-wrapper">
-        <h4 style="margin-top: 20px; margin-bottom: 15px;">📦 Package Versions</h4>
+        <h4 class="comparison-package-versions-heading">📦 Package Versions</h4>
         <table class="comparison-table">
           <thead>
             <tr>
