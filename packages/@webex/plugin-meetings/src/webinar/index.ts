@@ -157,7 +157,13 @@ const Webinar = WebexPlugin.extend({
    */
   async updatePSDataChannel() {
     const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
-    const isPracticeSession = this.isJoinPracticeSessionDataChannel();
+    const isPracticeSession = meeting?.isJoined() && this.isJoinPracticeSessionDataChannel();
+
+    if (!isPracticeSession) {
+      await this.cleanupPSDataChannel();
+
+      return undefined;
+    }
 
     // @ts-ignore - Fix type
     const {
@@ -181,10 +187,7 @@ const Webinar = WebexPlugin.extend({
       );
     }
 
-    // webinar panelist should use new data channel in practice session
-    const isJoined = meeting?.isJoined() && isPracticeSession;
-
-    if (!isJoined || !practiceSessionDatachannelUrl) {
+    if (!practiceSessionDatachannelUrl) {
       return undefined;
     }
     // @ts-ignore - Fix type

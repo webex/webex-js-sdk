@@ -4,7 +4,8 @@ import Webinar from '@webex/plugin-meetings/src/webinar';
 import MockWebex from '@webex/test-helper-mock-webex';
 import uuid from 'uuid';
 import sinon from 'sinon';
-import {LLM_PRACTICE_SESSION} from '@webex/plugin-meetings/src/constants';
+import {DataChannelTokenType} from '@webex/internal-plugin-llm';
+import {LLM_PRACTICE_SESSION, SHARE_STATUS} from '@webex/plugin-meetings/src/constants';
 
 describe('plugin-meetings', () => {
     describe('Webinar', () => {
@@ -246,19 +247,23 @@ describe('plugin-meetings', () => {
 
       it('no-ops when practice session join eligibility is false', async () => {
         webinar.practiceSessionEnabled = false;
+        const cleanupPSDataChannelStub = sinon.stub(webinar, 'cleanupPSDataChannel').resolves();
 
         const result = await webinar.updatePSDataChannel();
 
         assert.isUndefined(result);
+        assert.calledOnceWithExactly(cleanupPSDataChannelStub);
         assert.notCalled(webex.internal.llm.registerAndConnect);
       });
 
       it('no-ops when meeting is not joined', async () => {
         meeting.isJoined.returns(false);
+        const cleanupPSDataChannelStub = sinon.stub(webinar, 'cleanupPSDataChannel').resolves();
 
         const result = await webinar.updatePSDataChannel();
 
         assert.isUndefined(result);
+        assert.calledOnceWithExactly(cleanupPSDataChannelStub);
         assert.notCalled(webex.internal.llm.registerAndConnect);
       });
 
@@ -275,18 +280,23 @@ describe('plugin-meetings', () => {
         webex.internal.llm.isConnected.returns(true);
         webex.internal.llm.getLocusUrl.returns('locus-url');
         webex.internal.llm.getDatachannelUrl.returns('dc-url');
+        const cleanupPSDataChannelStub = sinon.stub(webinar, 'cleanupPSDataChannel').resolves();
 
         const result = await webinar.updatePSDataChannel();
 
         assert.isUndefined(result);
+        assert.notCalled(cleanupPSDataChannelStub);
         assert.notCalled(webex.internal.llm.registerAndConnect);
       });
 
       it('connects when eligible', async () => {
         const result = await webinar.updatePSDataChannel();
 
-        assert.calledOnce(webex.internal.llm.setDatachannelToken);
-        assert.calledWith(webex.internal.llm.setDatachannelToken, 'ps-token');
+        assert.calledOnceWithExactly(
+          webex.internal.llm.setDatachannelToken,
+          'ps-token',
+          DataChannelTokenType.PracticeSession
+        );
         assert.calledOnce(webex.internal.llm.registerAndConnect);
         assert.calledWith(
           webex.internal.llm.registerAndConnect,
@@ -303,6 +313,10 @@ describe('plugin-meetings', () => {
 
         await webinar.updatePSDataChannel();
 
+        assert.calledWithExactly(
+          webex.internal.llm.getDatachannelToken,
+          DataChannelTokenType.PracticeSession
+        );
         assert.notCalled(webex.internal.llm.setDatachannelToken);
         assert.calledWith(
           webex.internal.llm.registerAndConnect,
@@ -347,7 +361,7 @@ describe('plugin-meetings', () => {
             getMeetingByType: sinon.stub().returns({
               id: 'meeting-id',
               updateLLMConnection: sinon.stub(),
-              shareStatus: 'whiteboard_share_active',
+              shareStatus: SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE,
               locusInfo: {
                 mediaShares: 'mediaShares',
                 updateMediaShares: updateMediaShares
@@ -366,7 +380,7 @@ describe('plugin-meetings', () => {
 
           webinar.updateStatusByRole(roleChange);
 
-          assert.calledOnce(updateMediaShares);
+          assert.calledOnceWithExactly(updateMediaShares, 'mediaShares', true);
         });
 
         it('Not trigger updateMediaShares if no role change', () => {
@@ -383,7 +397,7 @@ describe('plugin-meetings', () => {
 
           webinar.updateStatusByRole(roleChange);
 
-          assert.calledOnce(updateMediaShares);
+          assert.calledOnceWithExactly(updateMediaShares, 'mediaShares', true);
         });
 
         it('trigger updateMediaShares if is attendee with whiteboard share', () => {
@@ -392,7 +406,7 @@ describe('plugin-meetings', () => {
 
           webinar.updateStatusByRole(roleChange);
 
-          assert.calledOnce(updateMediaShares);
+          assert.calledOnceWithExactly(updateMediaShares, 'mediaShares', true);
         });
 
         it('Not trigger updateMediaShares if is attendee with screen share', () => {
@@ -401,7 +415,7 @@ describe('plugin-meetings', () => {
             getMeetingByType: sinon.stub().returns({
               id: 'meeting-id',
               updateLLMConnection: sinon.stub(),
-              shareStatus: 'remote_share_active',
+              shareStatus: SHARE_STATUS.REMOTE_SHARE_ACTIVE,
               locusInfo: {
                 mediaShares: 'mediaShares',
                 updateMediaShares: updateMediaShares
