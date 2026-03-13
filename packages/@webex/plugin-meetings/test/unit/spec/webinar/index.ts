@@ -1,4 +1,4 @@
-import {assert, expect} from '@webex/test-helper-chai';
+import {assert} from '@webex/test-helper-chai';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import Webinar from '@webex/plugin-meetings/src/webinar';
 import MockWebex from '@webex/test-helper-mock-webex';
@@ -173,6 +173,54 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#cleanUp', () => {
+      it('delegates to cleanupPSDataChannel', () => {
+        const cleanupPSDataChannelStub = sinon.stub(webinar, 'cleanupPSDataChannel').resolves();
+
+        webinar.cleanUp();
+
+        assert.calledOnceWithExactly(cleanupPSDataChannelStub);
+      });
+    });
+
+    describe('#cleanupPSDataChannel', () => {
+      let meeting;
+
+      beforeEach(() => {
+        meeting = {
+          processRelayEvent: sinon.stub(),
+        };
+
+        webex.meetings.getMeetingByType = sinon.stub().returns(meeting);
+      });
+
+      it('disconnects the practice session channel when connected', async () => {
+        webex.internal.llm.isConnected.returns(true);
+
+        await webinar.cleanupPSDataChannel();
+
+        assert.calledOnceWithExactly(
+          webex.internal.llm.disconnectLLM,
+          {code: 3050, reason: 'done (permanent)'},
+          LLM_PRACTICE_SESSION
+        );
+        assert.calledOnceWithExactly(
+          webex.internal.llm.off,
+          `event:relay.event:${LLM_PRACTICE_SESSION}`,
+          meeting.processRelayEvent
+        );
+      });
+
+      it('does nothing when the practice session channel is not connected', async () => {
+        webex.internal.llm.isConnected.returns(false);
+
+        await webinar.cleanupPSDataChannel();
+
+        assert.notCalled(webex.internal.llm.disconnectLLM);
+        assert.notCalled(webex.internal.llm.off);
+      });
+    });
+
     describe('#updatePSDataChannel', () => {
       let meeting;
       let processRelayEvent;
@@ -196,25 +244,19 @@ describe('plugin-meetings', () => {
         webinar.practiceSessionEnabled = true;
       });
 
-      it('disconnects when connect=false and currently connected', async () => {
-        webex.internal.llm.isConnected.returns(true);
+      it('no-ops when practice session join eligibility is false', async () => {
+        webinar.practiceSessionEnabled = false;
 
-        await webinar.updatePSDataChannel(false);
+        const result = await webinar.updatePSDataChannel();
 
-        assert.calledOnce(webex.internal.llm.disconnectLLM);
-        assert.calledWith(
-          webex.internal.llm.disconnectLLM,
-          {code: 3050, reason: 'done (permanent)'},
-          LLM_PRACTICE_SESSION
-        );
-        assert.calledOnce(webex.internal.llm.off);
+        assert.isUndefined(result);
         assert.notCalled(webex.internal.llm.registerAndConnect);
       });
 
       it('no-ops when meeting is not joined', async () => {
         meeting.isJoined.returns(false);
 
-        const result = await webinar.updatePSDataChannel(true);
+        const result = await webinar.updatePSDataChannel();
 
         assert.isUndefined(result);
         assert.notCalled(webex.internal.llm.registerAndConnect);
@@ -223,7 +265,7 @@ describe('plugin-meetings', () => {
       it('no-ops when practiceSessionDatachannelUrl is missing', async () => {
         meeting.locusInfo.info.practiceSessionDatachannelUrl = undefined;
 
-        const result = await webinar.updatePSDataChannel(true);
+        const result = await webinar.updatePSDataChannel();
 
         assert.isUndefined(result);
         assert.notCalled(webex.internal.llm.registerAndConnect);
@@ -234,14 +276,14 @@ describe('plugin-meetings', () => {
         webex.internal.llm.getLocusUrl.returns('locus-url');
         webex.internal.llm.getDatachannelUrl.returns('dc-url');
 
-        const result = await webinar.updatePSDataChannel(true);
+        const result = await webinar.updatePSDataChannel();
 
         assert.isUndefined(result);
         assert.notCalled(webex.internal.llm.registerAndConnect);
       });
 
-      it('connects when connect=true', async () => {
-        const result = await webinar.updatePSDataChannel(true);
+      it('connects when eligible', async () => {
+        const result = await webinar.updatePSDataChannel();
 
         assert.calledOnce(webex.internal.llm.setDatachannelToken);
         assert.calledWith(webex.internal.llm.setDatachannelToken, 'ps-token');
@@ -259,7 +301,7 @@ describe('plugin-meetings', () => {
       it('uses cached token when available', async () => {
         webex.internal.llm.getDatachannelToken.returns('cached-token');
 
-        await webinar.updatePSDataChannel(true);
+        await webinar.updatePSDataChannel();
 
         assert.notCalled(webex.internal.llm.setDatachannelToken);
         assert.calledWith(
@@ -271,18 +313,18 @@ describe('plugin-meetings', () => {
         );
       });
 
-      it('no-ops disconnect when connect=false and currently disconnected', async () => {
-        webex.internal.llm.isConnected.returns(false);
+      it('cleans up the existing practice session channel before reconnecting to new endpoints', async () => {
+        webex.internal.llm.isConnected.returns(true);
+        const cleanupPSDataChannelStub = sinon.stub(webinar, 'cleanupPSDataChannel').resolves();
 
-        const result = await webinar.updatePSDataChannel(false);
+        await webinar.updatePSDataChannel();
 
-        assert.isUndefined(result);
-        assert.notCalled(webex.internal.llm.disconnectLLM);
-        assert.notCalled(webex.internal.llm.off);
+        assert.calledOnceWithExactly(cleanupPSDataChannelStub);
+        assert.calledOnce(webex.internal.llm.registerAndConnect);
       });
 
       it('rebinds relay listener after successful connect', async () => {
-        await webinar.updatePSDataChannel(true);
+        await webinar.updatePSDataChannel();
 
         assert.calledWith(
           webex.internal.llm.off,
@@ -298,16 +340,13 @@ describe('plugin-meetings', () => {
       });
 
       describe('#updateStatusByRole', () => {
-        let updateLLMConnection;
         let updateMediaShares;
         beforeEach(() => {
-          // @ts-ignore
-          updateLLMConnection = sinon.stub();
           updateMediaShares = sinon.stub()
           webinar.webex.meetings = {
             getMeetingByType: sinon.stub().returns({
               id: 'meeting-id',
-              updateLLMConnection: updateLLMConnection,
+              updateLLMConnection: sinon.stub(),
               shareStatus: 'whiteboard_share_active',
               locusInfo: {
                 mediaShares: 'mediaShares',
@@ -325,7 +364,7 @@ describe('plugin-meetings', () => {
 
           const roleChange = {isPromoted: true, isDemoted: false};
 
-          const result = webinar.updateStatusByRole(roleChange);
+          webinar.updateStatusByRole(roleChange);
 
           assert.calledOnce(updateMediaShares);
         });
@@ -334,7 +373,7 @@ describe('plugin-meetings', () => {
 
           const roleChange = {isPromoted: false, isDemoted: false};
 
-          const result = webinar.updateStatusByRole(roleChange);
+          webinar.updateStatusByRole(roleChange);
 
           assert.notCalled(updateMediaShares);
         });
@@ -342,7 +381,7 @@ describe('plugin-meetings', () => {
 
           const roleChange = {isPromoted: true, isDemoted: false};
 
-          const result = webinar.updateStatusByRole(roleChange);
+          webinar.updateStatusByRole(roleChange);
 
           assert.calledOnce(updateMediaShares);
         });
@@ -351,7 +390,7 @@ describe('plugin-meetings', () => {
 
           const roleChange = {isPromoted: false, isDemoted: true};
 
-          const result = webinar.updateStatusByRole(roleChange);
+          webinar.updateStatusByRole(roleChange);
 
           assert.calledOnce(updateMediaShares);
         });
@@ -361,7 +400,7 @@ describe('plugin-meetings', () => {
           webinar.webex.meetings = {
             getMeetingByType: sinon.stub().returns({
               id: 'meeting-id',
-              updateLLMConnection: updateLLMConnection,
+              updateLLMConnection: sinon.stub(),
               shareStatus: 'remote_share_active',
               locusInfo: {
                 mediaShares: 'mediaShares',
@@ -372,21 +411,17 @@ describe('plugin-meetings', () => {
 
           const roleChange = {isPromoted: false, isDemoted: true};
 
-          const result = webinar.updateStatusByRole(roleChange);
+          webinar.updateStatusByRole(roleChange);
 
           assert.notCalled(updateMediaShares);
         });
 
       it('updates PS data channel based on join eligibility', () => {
-        const isJoinPracticeSessionDataChannelStub = sinon
-          .stub(webinar, 'isJoinPracticeSessionDataChannel')
-          .returns(true);
         const updatePSDataChannelStub = sinon.stub(webinar, 'updatePSDataChannel').resolves();
 
         webinar.updateStatusByRole({isPromoted: false, isDemoted: false});
 
-        assert.calledOnce(isJoinPracticeSessionDataChannelStub);
-        assert.calledOnceWithExactly(updatePSDataChannelStub, true);
+        assert.calledOnceWithExactly(updatePSDataChannelStub);
       });
       });
 
@@ -469,7 +504,7 @@ describe('plugin-meetings', () => {
 
         webinar.updatePracticeSessionStatus({enabled: true});
 
-        assert.calledOnceWithExactly(updatePSDataChannelStub, true);
+        assert.calledOnceWithExactly(updatePSDataChannelStub);
       });
       });
 

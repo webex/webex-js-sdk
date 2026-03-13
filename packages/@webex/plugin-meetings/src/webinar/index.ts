@@ -44,7 +44,7 @@ const Webinar = WebexPlugin.extend({
    * @returns {void}
    */
   cleanUp() {
-    this.updatePSDataChannel(false);
+    this.cleanupPSDataChannel();
   },
 
   /**
@@ -115,7 +115,7 @@ const Webinar = WebexPlugin.extend({
       meeting?.locusInfo?.updateMediaShares(meeting?.locusInfo?.mediaShares, true);
     }
 
-    this.updatePSDataChannel(this.isJoinPracticeSessionDataChannel());
+    this.updatePSDataChannel();
   },
 
   /**
@@ -127,12 +127,35 @@ const Webinar = WebexPlugin.extend({
   },
 
   /**
+   * Disconnects the practice session data channel and removes its relay listener.
+   * @returns {Promise<void>}
+   */
+  async cleanupPSDataChannel() {
+    const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
+
+    if (this.webex.internal.llm.isConnected(LLM_PRACTICE_SESSION)) {
+      // @ts-ignore - Fix type
+      await this.webex.internal.llm.disconnectLLM(
+        {
+          code: 3050,
+          reason: 'done (permanent)',
+        },
+        LLM_PRACTICE_SESSION
+      );
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.off(
+        `event:relay.event:${LLM_PRACTICE_SESSION}`,
+        meeting?.processRelayEvent
+      );
+    }
+  },
+
+  /**
    * Connects to low latency mercury and reconnects if the address has changed
    * It will also disconnect if called when the meeting has ended
-   * @param {boolean} connect - whether to connect or disconnect
    * @returns {Promise}
    */
-  async updatePSDataChannel(connect) {
+  async updatePSDataChannel() {
     const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
     const isPracticeSession = this.isJoinPracticeSessionDataChannel();
 
@@ -161,27 +184,6 @@ const Webinar = WebexPlugin.extend({
     // webinar panelist should use new data channel in practice session
     const isJoined = meeting?.isJoined() && isPracticeSession;
 
-    if (!connect) {
-      // @ts-ignore - Fix type
-      if (this.webex.internal.llm.isConnected(LLM_PRACTICE_SESSION)) {
-        // @ts-ignore - Fix type
-        await this.webex.internal.llm.disconnectLLM(
-          {
-            code: 3050,
-            reason: 'done (permanent)',
-          },
-          LLM_PRACTICE_SESSION
-        );
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.off(
-          `event:relay.event:${LLM_PRACTICE_SESSION}`,
-          meeting?.processRelayEvent
-        );
-      }
-
-      return undefined;
-    }
-
     if (!isJoined || !practiceSessionDatachannelUrl) {
       return undefined;
     }
@@ -196,6 +198,8 @@ const Webinar = WebexPlugin.extend({
       ) {
         return undefined;
       }
+
+      await this.cleanupPSDataChannel();
     }
 
     // @ts-ignore - Fix type
@@ -247,7 +251,7 @@ const Webinar = WebexPlugin.extend({
    */
   updatePracticeSessionStatus(payload) {
     this.set('practiceSessionEnabled', !!payload?.enabled);
-    this.updatePSDataChannel(this.isJoinPracticeSessionDataChannel()).then(() => {});
+    this.updatePSDataChannel().then(() => {});
   },
 
   /**
