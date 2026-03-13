@@ -1,11 +1,7 @@
 import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
-import {CapabilityState, WebCapabilities} from '@webex/web-capabilities';
 
-import Trigger from '@webex/plugin-meetings/src/common/events/trigger-proxy';
-import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
-import {EVENT_TRIGGERS} from '@webex/plugin-meetings/src/constants';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 
