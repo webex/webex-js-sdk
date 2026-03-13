@@ -265,7 +265,7 @@ describe('plugin-meetings', () => {
       stopReachability: sinon.stub(),
       isSubnetReachable: sinon.stub().returns(true),
     };
-    webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(false)
+    webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(false);
     webex.internal.llm.on = sinon.stub();
     webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
       {},
@@ -11900,6 +11900,7 @@ describe('plugin-meetings', () => {
         let isSpokenLanguageAutoDetectionEnabledSpy;
         let showAutoEndMeetingWarningSpy;
         let canAttendeeRequestAiAssistantEnabledSpy;
+        let attendeeRequestAiAssistantDeclinedAllSpy;
         // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
         beforeEach(() => {
@@ -11944,6 +11945,10 @@ describe('plugin-meetings', () => {
             MeetingUtil,
             'canAttendeeRequestAiAssistantEnabled'
           );
+          attendeeRequestAiAssistantDeclinedAllSpy = sinon.spy(
+            MeetingUtil,
+            'attendeeRequestAiAssistantDeclinedAll'
+          );
         });
 
         afterEach(() => {
@@ -11951,6 +11956,7 @@ describe('plugin-meetings', () => {
           waitingForOthersToJoinSpy.restore();
           showAutoEndMeetingWarningSpy.restore();
           canAttendeeRequestAiAssistantEnabledSpy.restore();
+          attendeeRequestAiAssistantDeclinedAllSpy.restore();
         });
 
         forEach(
@@ -12507,6 +12513,7 @@ describe('plugin-meetings', () => {
             userDisplayHints,
             meeting.roles
           );
+          assert.calledWith(attendeeRequestAiAssistantDeclinedAllSpy, userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],
@@ -12715,7 +12722,7 @@ describe('plugin-meetings', () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {
             url: 'a url',
-            info: {datachannelUrl: 'a datachannel url'}
+            info: {datachannelUrl: 'a datachannel url'},
           };
 
           const result = await meeting.updateLLMConnection();
@@ -12763,7 +12770,7 @@ describe('plugin-meetings', () => {
           );
           assert.equal(result, 'something');
         });
-       it('disconnects if the locus url has changed', async () => {
+        it('disconnects if the locus url has changed', async () => {
           meeting.joinedWith = {state: 'JOINED'};
 
           webex.internal.llm.isConnected.returns(true);
@@ -12772,15 +12779,15 @@ describe('plugin-meetings', () => {
           meeting.locusInfo = {
             url: 'a different url',
             info: {datachannelUrl: 'a datachannel url'},
-            self: {}
+            self: {},
           };
 
           const result = await meeting.updateLLMConnection();
 
-          assert.calledWithExactly(
-            webex.internal.llm.disconnectLLM,
-            {code: 3050, reason: 'done (permanent)'}
-          );
+          assert.calledWithExactly(webex.internal.llm.disconnectLLM, {
+            code: 3050,
+            reason: 'done (permanent)',
+          });
 
           assert.calledWithExactly(
             webex.internal.llm.registerAndConnect,
@@ -12822,15 +12829,15 @@ describe('plugin-meetings', () => {
           meeting.locusInfo = {
             url: 'a url',
             info: {datachannelUrl: 'a different datachannel url'},
-            self: {}
+            self: {},
           };
 
           const result = await meeting.updateLLMConnection();
 
-          assert.calledWithExactly(
-            webex.internal.llm.disconnectLLM,
-            {code: 3050, reason: 'done (permanent)'}
-          );
+          assert.calledWithExactly(webex.internal.llm.disconnectLLM, {
+            code: 3050,
+            reason: 'done (permanent)',
+          });
 
           assert.calledWithExactly(
             webex.internal.llm.registerAndConnect,
@@ -12917,11 +12924,7 @@ describe('plugin-meetings', () => {
             'a datachannel url',
             'token-123'
           );
-          assert.calledWithExactly(
-            webex.internal.llm.setDatachannelToken,
-            'token-123',
-            'default'
-          );
+          assert.calledWithExactly(webex.internal.llm.setDatachannelToken, 'token-123', 'default');
         });
         it('prefers refreshed token over locus self token', async () => {
           meeting.joinedWith = {state: 'JOINED'};
@@ -12931,9 +12934,7 @@ describe('plugin-meetings', () => {
             self: {datachannelToken: 'locus-token'},
           };
 
-          webex.internal.llm.getDatachannelToken
-            .withArgs('default')
-            .returns('refreshed-token');
+          webex.internal.llm.getDatachannelToken.withArgs('default').returns('refreshed-token');
 
           await meeting.updateLLMConnection();
 
@@ -12964,8 +12965,10 @@ describe('plugin-meetings', () => {
           meeting.webinar.isJoinPracticeSessionDataChannel.returns(true);
 
           webex.internal.llm.getDatachannelToken
-            .withArgs(true).returns('refreshed-ps-token')      // refreshed practice token
-            .withArgs(false).returns('refreshed-normal-token'); // refreshed normal token
+            .withArgs(true)
+            .returns('refreshed-ps-token') // refreshed practice token
+            .withArgs(false)
+            .returns('refreshed-normal-token'); // refreshed normal token
 
           await meeting.updateLLMConnection();
 
@@ -12987,7 +12990,7 @@ describe('plugin-meetings', () => {
           meeting.locusInfo = {
             url: 'a url',
             info: {datachannelUrl: 'a datachannel url'},
-            self: {datachannelToken: 'token-123'}
+            self: {datachannelToken: 'token-123'},
           };
 
           webex.internal.llm.getDatachannelToken.returns(undefined);
@@ -13001,11 +13004,7 @@ describe('plugin-meetings', () => {
             'a datachannel url',
             'token-123'
           );
-          assert.calledWithExactly(
-            webex.internal.llm.setDatachannelToken,
-            'token-123',
-            'default'
-          );
+          assert.calledWithExactly(webex.internal.llm.setDatachannelToken, 'token-123', 'default');
         });
       });
 
@@ -14583,7 +14582,7 @@ describe('plugin-meetings', () => {
           meeting.locusUrl = 'https://locus.example.com';
           meeting.meetingRequest = {
             fetchDatachannelToken: sinon.stub().resolves({
-              body: { datachannelToken: 'mock-token' },
+              body: {datachannelToken: 'mock-token'},
             }),
           };
           meeting.members = {
@@ -14599,14 +14598,11 @@ describe('plugin-meetings', () => {
 
           sinon.assert.calledOnce(meeting.meetingRequest.fetchDatachannelToken);
 
-          sinon.assert.calledWith(
-            meeting.meetingRequest.fetchDatachannelToken,
-            {
-              locusUrl: 'https://locus.example.com',
-              requestingParticipantId: 'self-123',
-              isPracticeSession: true,
-            }
-          );
+          sinon.assert.calledWith(meeting.meetingRequest.fetchDatachannelToken, {
+            locusUrl: 'https://locus.example.com',
+            requestingParticipantId: 'self-123',
+            isPracticeSession: true,
+          });
         });
 
         it('returns the correct structured result', async () => {
