@@ -1215,12 +1215,17 @@ describe('plugin-voicea', () => {
     describe('#multiple llm connections', () => {
       let defaultSocket;
       let practiceSocket;
+      let isPracticeSessionConnected;
 
       beforeEach(() => {
         defaultSocket = new MockWebSocket();
         practiceSocket = new MockWebSocket();
+        isPracticeSessionConnected = true;
 
         voiceaService.webex.internal.llm.socket = defaultSocket;
+        voiceaService.webex.internal.llm.isConnected.callsFake((channel) =>
+          channel === LLM_PRACTICE_SESSION ? isPracticeSessionConnected : true
+        );
         voiceaService.webex.internal.llm.getSocket.callsFake((channel) =>
           channel === LLM_PRACTICE_SESSION ? practiceSocket : undefined
         );
@@ -1242,6 +1247,19 @@ describe('plugin-voicea', () => {
         expect(sent).to.have.nested.property('recipients.route', 'practice-binding');
       });
 
+      it('sendAnnouncement falls back to the default socket and binding when the practice session is not connected', () => {
+        voiceaService.announceStatus = 'idle';
+        isPracticeSessionConnected = false;
+
+        voiceaService.sendAnnouncement();
+
+        assert.calledOnce(defaultSocket.send);
+        assert.notCalled(practiceSocket.send);
+
+        const sent = defaultSocket.send.getCall(0).args[0];
+        expect(sent).to.have.nested.property('recipients.route', 'default-binding');
+      });
+
       it('requestLanguage uses the practice session socket and binding when available', () => {
         voiceaService.requestLanguage('fr');
 
@@ -1251,6 +1269,49 @@ describe('plugin-voicea', () => {
         const sent = practiceSocket.send.getCall(0).args[0];
         expect(sent).to.have.nested.property('recipients.route', 'practice-binding');
         expect(sent).to.have.nested.property('data.clientPayload.translationLanguage', 'fr');
+      });
+
+      it('requestLanguage falls back to the default socket and binding when the practice session is not connected', () => {
+        isPracticeSessionConnected = false;
+
+        voiceaService.requestLanguage('fr');
+
+        assert.calledOnce(defaultSocket.send);
+        assert.notCalled(practiceSocket.send);
+
+        const sent = defaultSocket.send.getCall(0).args[0];
+        expect(sent).to.have.nested.property('recipients.route', 'default-binding');
+        expect(sent).to.have.nested.property('data.clientPayload.translationLanguage', 'fr');
+      });
+
+      it('sendManualClosedCaption uses the practice session socket and binding when available', () => {
+        voiceaService.sendManualClosedCaption('caption', 123, [456], true);
+
+        assert.calledOnce(practiceSocket.send);
+        assert.notCalled(defaultSocket.send);
+
+        const sent = practiceSocket.send.getCall(0).args[0];
+        expect(sent).to.have.nested.property('recipients.route', 'practice-binding');
+        expect(sent).to.have.nested.property(
+          'data.transcriptPayload.type',
+          'manual_caption_final_result'
+        );
+      });
+
+      it('sendManualClosedCaption falls back to the default socket and binding when the practice session is not connected', () => {
+        isPracticeSessionConnected = false;
+
+        voiceaService.sendManualClosedCaption('caption', 123, [456], false);
+
+        assert.calledOnce(defaultSocket.send);
+        assert.notCalled(practiceSocket.send);
+
+        const sent = defaultSocket.send.getCall(0).args[0];
+        expect(sent).to.have.nested.property('recipients.route', 'default-binding');
+        expect(sent).to.have.nested.property(
+          'data.transcriptPayload.type',
+          'manual_caption_interim_result'
+        );
       });
 
       it('processes relay events from the practice session channel', async () => {

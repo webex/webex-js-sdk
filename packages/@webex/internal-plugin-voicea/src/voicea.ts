@@ -263,20 +263,30 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   };
 
   /**
+   * Resolves the active LLM publish transport, preferring the practice-session
+   * connection only when that session is fully connected.
+   * @returns {Object}
+   */
+  private getPublishTransport = () => {
+    // @ts-ignore
+    const {llm} = this.webex.internal;
+    const isPracticeSessionConnected = llm.isConnected(LLM_PRACTICE_SESSION);
+
+    return {
+      socket: (isPracticeSessionConnected && llm.getSocket(LLM_PRACTICE_SESSION)) || llm.socket,
+      binding:
+        (isPracticeSessionConnected && llm.getBinding(LLM_PRACTICE_SESSION)) || llm.getBinding(),
+    };
+  };
+
+  /**
    * Sends Announcement to add voicea to the meeting
    * @returns {void}
    */
   private sendAnnouncement = (): void => {
     this.announceStatus = ANNOUNCE_STATUS.JOINING;
     this.listenToEvents();
-    const socket =
-      // @ts-ignore
-      this.webex.internal.llm.getSocket(LLM_PRACTICE_SESSION) || this.webex.internal.llm.socket;
-    const binding =
-      // @ts-ignore
-      this.webex.internal.llm.getBinding(LLM_PRACTICE_SESSION) ||
-      // @ts-ignore
-      this.webex.internal.llm.getBinding();
+    const {socket, binding} = this.getPublishTransport();
     socket.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
@@ -332,14 +342,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   public requestLanguage = (languageCode: string): void => {
     // @ts-ignore
     if (!this.webex.internal.llm.isConnected()) return;
-    const socket =
-      // @ts-ignore
-      this.webex.internal.llm.getSocket(LLM_PRACTICE_SESSION) || this.webex.internal.llm.socket;
-    const binding =
-      // @ts-ignore
-      this.webex.internal.llm.getBinding(LLM_PRACTICE_SESSION) ||
-      // @ts-ignore
-      this.webex.internal.llm.getBinding();
+    const {socket, binding} = this.getPublishTransport();
     socket.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
@@ -382,21 +385,14 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     // @ts-ignore
     if (!this.webex.internal.llm.isConnected()) return;
 
-    const socket =
-      // @ts-ignore
-      this.webex.internal.llm.getSocket(LLM_PRACTICE_SESSION) || this.webex.internal.llm.socket;
-    const binding =
-      // @ts-ignore
-      this.webex.internal.llm.getBinding(LLM_PRACTICE_SESSION) ||
-      // @ts-ignore
-      this.webex.internal.llm.getBinding();
+    const {socket, binding} = this.getPublishTransport();
 
     socket?.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {
         // @ts-ignore
-        route: this.webex.internal.llm.getBinding(),
+        route: binding,
       },
       headers: {},
       data: {

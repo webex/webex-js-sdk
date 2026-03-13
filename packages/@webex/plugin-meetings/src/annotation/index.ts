@@ -316,14 +316,13 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @returns {void}
    */
   private publishEncrypted(encryptedContent: string, strokeData: StrokeData) {
+    // @ts-ignore
+    const {llm} = this.webex.internal;
+    const isPracticeSessionConnected = llm.isConnected(LLM_PRACTICE_SESSION);
     const socket =
-      // @ts-ignore
-      this.webex.internal.llm.getSocket(LLM_PRACTICE_SESSION) || this.webex.internal.llm.socket;
+      (isPracticeSessionConnected && llm.getSocket(LLM_PRACTICE_SESSION)) || llm.socket;
     const binding =
-      // @ts-ignore
-      this.webex.internal.llm.getBinding(LLM_PRACTICE_SESSION) ||
-      // @ts-ignore
-      this.webex.internal.llm.getBinding();
+      (isPracticeSessionConnected && llm.getBinding(LLM_PRACTICE_SESSION)) || llm.getBinding();
     const data = {
       id: `${this.seqNum}`,
       type: 'publishRequest',

@@ -133,21 +133,19 @@ const Webinar = WebexPlugin.extend({
   async cleanupPSDataChannel() {
     const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
 
-    if (this.webex.internal.llm.isConnected(LLM_PRACTICE_SESSION)) {
-      // @ts-ignore - Fix type
-      await this.webex.internal.llm.disconnectLLM(
-        {
-          code: 3050,
-          reason: 'done (permanent)',
-        },
-        LLM_PRACTICE_SESSION
-      );
-      // @ts-ignore - Fix type
-      this.webex.internal.llm.off(
-        `event:relay.event:${LLM_PRACTICE_SESSION}`,
-        meeting?.processRelayEvent
-      );
-    }
+    // @ts-ignore - Fix type
+    await this.webex.internal.llm.disconnectLLM(
+      {
+        code: 3050,
+        reason: 'done (permanent)',
+      },
+      LLM_PRACTICE_SESSION
+    );
+    // @ts-ignore - Fix type
+    this.webex.internal.llm.off(
+      `event:relay.event:${LLM_PRACTICE_SESSION}`,
+      meeting?.processRelayEvent
+    );
   },
 
   /**

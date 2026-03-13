@@ -195,9 +195,7 @@ describe('plugin-meetings', () => {
         webex.meetings.getMeetingByType = sinon.stub().returns(meeting);
       });
 
-      it('disconnects the practice session channel when connected', async () => {
-        webex.internal.llm.isConnected.returns(true);
-
+      it('disconnects the practice session channel and removes the relay listener', async () => {
         await webinar.cleanupPSDataChannel();
 
         assert.calledOnceWithExactly(
@@ -210,15 +208,6 @@ describe('plugin-meetings', () => {
           `event:relay.event:${LLM_PRACTICE_SESSION}`,
           meeting.processRelayEvent
         );
-      });
-
-      it('does nothing when the practice session channel is not connected', async () => {
-        webex.internal.llm.isConnected.returns(false);
-
-        await webinar.cleanupPSDataChannel();
-
-        assert.notCalled(webex.internal.llm.disconnectLLM);
-        assert.notCalled(webex.internal.llm.off);
       });
     });
 
