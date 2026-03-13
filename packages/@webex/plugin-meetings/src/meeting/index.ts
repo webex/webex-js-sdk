@@ -6228,31 +6228,24 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore - Fix type
     const {
       url = undefined,
-      info: {datachannelUrl = undefined, practiceSessionDatachannelUrl = undefined} = {},
-      self: {datachannelToken = undefined, practiceSessionDatachannelToken = undefined} = {},
+      info: {datachannelUrl = undefined} = {},
+      self: {datachannelToken = undefined} = {},
     } = this.locusInfo || {};
 
     const isJoined = this.isJoined();
 
-    const dataChannelTokenType = this.getDataChannelTokenType();
-    const isPracticeSession = dataChannelTokenType === DataChannelTokenType.PracticeSession;
     // @ts-ignore
-    const currentToken = this.webex.internal.llm.getDatachannelToken(dataChannelTokenType);
+    const currentToken = this.webex.internal.llm.getDatachannelToken(DataChannelTokenType.Default);
 
-    const locusToken = isPracticeSession ? practiceSessionDatachannelToken : datachannelToken;
+    const finalToken = currentToken ?? datachannelToken;
 
-    const finalToken = currentToken ?? locusToken;
-
-    if (!currentToken && locusToken) {
+    if (!currentToken && datachannelToken) {
       // @ts-ignore
-      this.webex.internal.llm.setDatachannelToken(locusToken, dataChannelTokenType);
+      this.webex.internal.llm.setDatachannelToken(datachannelToken, DataChannelTokenType.Default);
     }
 
     // webinar panelist should use new data channel in practice session
-    const dataChannelUrl =
-      isPracticeSession && practiceSessionDatachannelUrl
-        ? practiceSessionDatachannelUrl
-        : datachannelUrl;
+    const dataChannelUrl = datachannelUrl;
 
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
