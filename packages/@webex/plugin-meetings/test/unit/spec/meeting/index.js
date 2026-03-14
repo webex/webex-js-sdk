@@ -10770,6 +10770,24 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('listens to MEETING_CONTROLS_AI_SUMMARY_NOTIFICATION_UPDATED', async () => {
+          const aiSummaryNotification = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_AI_SUMMARY_NOTIFICATION_UPDATED,
+            {aiSummaryNotification}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_AI_SUMMARY_NOTIFICATION_UPDATED,
+            {aiSummaryNotification}
+          );
+        });
+
         it('listens to MEETING_CONTROLS_MEETING_FULL_UPDATED', async () => {
           const state = {example: 'value'};
 

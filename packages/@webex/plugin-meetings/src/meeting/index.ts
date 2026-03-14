@@ -2972,6 +2972,18 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     });
 
+    this.locusInfo.on(
+      LOCUSINFO.EVENTS.CONTROLS_AI_SUMMARY_NOTIFICATION_UPDATED,
+      ({aiSummaryNotification}) => {
+        Trigger.trigger(
+          this,
+          {file: 'meeting/index', function: 'setupLocusControlsListener'},
+          EVENT_TRIGGERS.MEETING_CONTROLS_AI_SUMMARY_NOTIFICATION_UPDATED,
+          {aiSummaryNotification}
+        );
+      }
+    );
+
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_WEBCAST_CHANGED, ({state}) => {
       Trigger.trigger(
         this,
