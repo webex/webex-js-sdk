@@ -79,14 +79,14 @@
             <!-- Comparison Form (Hidden by default) -->
             <form id="comparison-form" class="hide" method="GET">
               <!-- Package Selection Row (first, required) -->
-              <div class="form-row" id="comparison-package-row" style="display: none;">
+              <!-- <div class="form-row" id="comparison-package-row" style="display: none;">
                 <div class="form-group">
                   <label for="comparison-package-select">Select Package <span class="required-asterisk">*</span></label>
                   <select id="comparison-package-select" class="full-width" required>
                     <option value="">Select a Package</option>
                   </select>
                 </div>
-              </div>
+              </div> -->
 
               <div class="form-row">
                 <div class="form-group">
@@ -95,7 +95,7 @@
                     <select id="version-a-select" class="full-width" required disabled>
                       <option value="">Select base version</option>
                     </select>
-                    <button type="button" id="clear-version-a-btn" class="btn btn-clear-circle" title="Clear base version" aria-label="Clear base version"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                    <!-- <button type="button" id="clear-version-a-btn" class="btn btn-clear-circle" title="Clear base version" aria-label="Clear base version"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button> -->
                   </div>
                 </div>
                 <div class="form-group">
@@ -104,8 +104,16 @@
                     <select id="version-b-select" class="full-width" required disabled>
                       <option value="">Select target version</option>
                     </select>
-                    <button type="button" id="clear-version-b-btn" class="btn btn-clear-circle" title="Clear target version" aria-label="Clear target version"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+                    <!-- <button type="button" id="clear-version-b-btn" class="btn btn-clear-circle" title="Clear target version" aria-label="Clear target version"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button> -->
                   </div>
+                </div>
+              </div>
+               <div class="form-row" id="comparison-package-row" style="display: none;">
+                <div class="form-group">
+                  <label for="comparison-package-select">Select Package</label>
+                  <select id="comparison-package-select" class="full-width" >
+                    <option value="">Select a Package</option>
+                  </select>
                 </div>
               </div>
               

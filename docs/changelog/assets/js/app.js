@@ -214,7 +214,7 @@ const doStableVersionChange = async ({stable_version}) => {
 // Search Form Utils
 const validateVersionInput = ({version}) => {
     const stableVersion = versionSelectDropdown.value;
-    const expectedPattern = new RegExp(`^${stableVersion}-([a-z\-]*\\.)?\\d+$`, 'i');
+    const expectedPattern = new RegExp(`^${stableVersion}-([a-z\-]*\\.)?\\d+$`, 'i'); 
 
     if (version !== "" && !expectedPattern.test(version) && stableVersion !== version) {
         versionInputError.innerText = `Version can be empty or should start with ${stableVersion} and match ${stableVersion}-{tag}.patch_version. Eg: ${stableVersion}-next.1`;
@@ -1750,8 +1750,12 @@ const comparisonState = {
 const populateComparisonVersions = () => {
     if (versionSelectDropdown && versionSelectDropdown.innerHTML) {
         const options = versionSelectDropdown.innerHTML;
-        if (versionASelect) versionASelect.innerHTML = options;
-        if (versionBSelect) versionBSelect.innerHTML = options;
+        if (versionASelect) {
+            versionASelect.innerHTML = options; versionASelect.disabled = false; 
+        }
+        if (versionBSelect) { 
+            versionBSelect.innerHTML = options; versionBSelect.disabled = false;
+         }
     }
 };
 
@@ -1844,6 +1848,7 @@ const handleStableVersionChange = async () => {
     const stableB = versionBSelect.value;
 
     resetComparisonSelections();
+    clearComparisonURLParams();
     updateCompareButtonState();
     
     if (stableA && stableB) {
@@ -1971,6 +1976,10 @@ const validateComparisonInputs = (stableA, stableB, selectedPackage, versionASpe
             return false;
         }
         return true;
+    }
+    if (stableA > stableB) {
+        alert('Base version must be older than target version.');
+        return false;
     }
 
     // When both selected versions are exact stables (Example 5),
