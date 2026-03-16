@@ -1,0 +1,151 @@
+name: Test Comment Logic
+run-name: ${{ github.actor }} testing comment logic
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to comment on'
+        required: true
+
+jobs:
+  test-comment:
+    name: Test Comment on PR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Auto-detect Version from Tags
+        id: tag-version
+        run: |
+          echo "📋 Fetching tags from origin/next..."
+          git fetch --tags origin next
+          echo "📋 Latest 5 tags on origin/next:"
+          git tag --sort=-v:refname --merged origin/next | head -5
+
+          VERSION=$(git describe --tags --abbrev=0 origin/next 2>/dev/null || echo "")
+          echo "📋 Auto-detected version: ${VERSION}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Auto-detect Packages from PR
+        id: pr-packages
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = parseInt('${{ inputs.pr_number }}');
+            console.log(`📋 Detecting packages from PR #${prNumber} files...`);
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              per_page: 100
+            });
+
+            console.log(`📋 Total files changed in PR: ${files.length}`);
+
+            const packages = new Set();
+            for (const file of files) {
+              if (!file.filename.startsWith('packages/')) continue;
+              const parts = file.filename.split('/');
+              if (parts[1] === '@webex' && parts.length >= 3) {
+                packages.add(`@webex/${parts[2]}`);
+              } else if (parts.length >= 2) {
+                packages.add(parts[1]);
+              }
+            }
+            if (packages.size === 0) packages.add('webex');
+
+            const pkgList = Array.from(packages);
+            const primary = pkgList.includes('webex') ? 'webex' : pkgList[0];
+            console.log(`📋 Auto-detected packages: ${pkgList.join(', ')}`);
+            console.log(`📋 Primary package: ${primary}`);
+            core.setOutput('packages', `{${pkgList.join(',')}}`);
+            core.setOutput('primary_package', primary);
+
+      - name: Post Comment on PR
+        uses: actions/github-script@v7
+        env:
+          INPUT_VERSION: ${{ steps.tag-version.outputs.version }}
+          INPUT_PACKAGES: ${{ steps.pr-packages.outputs.packages }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+          INPUT_PACKAGE_NAME: ${{ steps.pr-packages.outputs.primary_package }}
+        with:
+          script: |
+            const version = process.env.INPUT_VERSION || '';
+            const versionNumber = version.replace(/^v/, '');
+            const prNumber = parseInt(process.env.INPUT_PR_NUMBER);
+
+            if (!prNumber) {
+              console.log('No PR number found, skipping');
+              return;
+            }
+
+            console.log(`Posting comment on PR #${prNumber} for version ${version}`);
+
+            const existingComments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber
+            });
+
+            const alreadyCommented = existingComments.data.some(c =>
+              c.user.type === 'Bot' &&
+              c.body.includes('Your changes are now available') &&
+              c.body.includes(version)
+            );
+
+            if (alreadyCommented) {
+              console.log(`Already commented on PR #${prNumber} for ${version}`);
+              return;
+            }
+
+            const packagesRaw = process.env.INPUT_PACKAGES || '';
+            const packages = packagesRaw
+              .replace(/[{}]/g, '')
+              .split(',')
+              .map(p => p.trim())
+              .filter(Boolean);
+
+            const primaryPackage = process.env.INPUT_PACKAGE_NAME || 'webex';
+            const packageList = packages.slice(0, 5).map(p => `\`${p}\``).join(', ');
+            const morePackages = packages.length > 5 ? ` and ${packages.length - 5} more` : '';
+
+            const stableVersion = versionNumber.replace(/-next\..*$/, '');
+            const changelogUrl = `https://web-sdk.webex.com/changelog/?stable_version=${stableVersion}&package=${primaryPackage}&version=${versionNumber}`;
+
+            console.log(`📋 Final values:`);
+            console.log(`  Version: ${version}`);
+            console.log(`  Version Number: ${versionNumber}`);
+            console.log(`  Stable Version: ${stableVersion}`);
+            console.log(`  Primary Package: ${primaryPackage}`);
+            console.log(`  Packages: ${packageList}`);
+            console.log(`  Changelog URL: ${changelogUrl}`);
+
+            const commentBody = [
+              '## 🎉 Your changes are now available!',
+              '',
+              `**Released in:** [\`${version}\`](https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/${version})`,
+              `**Packages updated:** ${packageList}${morePackages}`,
+              '',
+              `📖 **[View full changelog →](${changelogUrl})**`,
+              '',
+              '---',
+              `<sub>🤖 This is an automated message.</sub>`
+            ].join('\n');
+
+            console.log(`📋 Comment body preview:`);
+            console.log(commentBody);
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: commentBody
+            });
+
+            console.log(`✅ Commented on PR #${prNumber}`);
