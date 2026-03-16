@@ -2,13 +2,13 @@
 
 import Mercury from '@webex/internal-plugin-mercury';
 
-import {LLM, DATA_CHANNEL_WITH_JWT_TOKEN, LLM_DEFAULT_SESSION} from './constants';
 // eslint-disable-next-line no-unused-vars
 import {
   LLM,
   DATA_CHANNEL_WITH_JWT_TOKEN,
   AWARE_DATA_CHANNEL,
   SUBSCRIPTION_AWARE_SUBCHANNELS_PARAM,
+  LLM_DEFAULT_SESSION,
 } from './constants';
 import {ILLMChannel, DataChannelTokenType} from './llm.types';
 
@@ -124,8 +124,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     datachannelToken?: string,
     sessionId: string = LLM_DEFAULT_SESSION
   ): Promise<void> =>
-
-    this.register(datachannelUrl, datachannelToken, sessionId).then(() => {
+    this.register(datachannelUrl, datachannelToken, sessionId).then(async () => {
       if (!locusUrl || !datachannelUrl) return undefined;
 
       // Get or create connection data
@@ -134,10 +133,14 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       sessionData.datachannelUrl = datachannelUrl;
       sessionData.datachannelToken = datachannelToken;
       this.connections.set(sessionId, sessionData);
+
+      const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
+
       const connectUrl = isDataChannelTokenEnabled
-        ? LLMChannel.buildUrlWithAwareSubchannels(this.webSocketUrl, AWARE_DATA_CHANNEL)
-        : this.webSocketUrl;
-      return this.connect(sessionData.webSocketUrl, sessionId);
+        ? LLMChannel.buildUrlWithAwareSubchannels(sessionData.webSocketUrl, AWARE_DATA_CHANNEL)
+        : sessionData.webSocketUrl;
+
+      return this.connect(connectUrl, sessionId);
     });
 
   /**

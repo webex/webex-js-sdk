@@ -26,10 +26,6 @@ describe('plugin-llm', () => {
 
       llmService = webex.internal.llm;
       llmService.webSocketUrl = 'wss://example.com/socket';
-      llmService.connect = sinon.stub().callsFake(() => {
-        // Simulate a successful connection by stubbing getSocket to return connected: true
-        llmService.getSocket = sinon.stub().returns({connected: true});
-      });
       llmService.disconnect = sinon.stub().resolves(true);
       llmService.request = sinon.stub().resolves({
         headers: {},
@@ -38,11 +34,18 @@ describe('plugin-llm', () => {
           webSocketUrl: 'wss://example.com/socket',
         },
       });
+      const sockets = new Map();
+
+      llmService.connect = sinon.stub().callsFake((url, sessionId) => {
+        sockets.set(sessionId, {connected: true});
+        llmService.getSocket = sinon.stub().callsFake((sid) => sockets.get(sid));
+      });
+            llmService.connections.set('llm-default-session',{
+            webSocketUrl: 'wss://example.com/socket',
+        })
     });
 
-    afterEach(() => {
-      sinon.restore();
-    });
+    afterEach(() => sinon.restore());
 
     describe('#registerAndConnect', () => {
       it('registers connection', async () => {
@@ -57,9 +60,9 @@ describe('plugin-llm', () => {
           };
         });
 
-        assert.equal(llmService.isConnected(), false);
-        await llmService.registerAndConnect(locusUrl, datachannelUrl);
-        assert.equal(llmService.isConnected(), true);
+        assert.equal(llmService.isConnected('llm-default-session'), false);
+        await llmService.registerAndConnect(locusUrl, datachannelUrl,undefined);
+        assert.equal(llmService.isConnected('llm-default-session'), true);
       });
 
       it("doesn't register connection for invalid input", async () => {
@@ -92,7 +95,7 @@ describe('plugin-llm', () => {
 
         assert.equal(llmService.isConnected(), false);
 
-        await llmService.registerAndConnect(locusUrl, datachannelUrl, 'abc123');
+        await llmService.registerAndConnect(locusUrl, datachannelUrl,'abc123');
 
         sinon.assert.calledOnceWithExactly(
           llmService.register,
@@ -370,15 +373,6 @@ describe('plugin-llm', () => {
       const locusUrl2 = 'locusUrl2';
       const datachannelUrl2 = 'datachannelUrl2';
 
-      beforeEach(() => {
-        const sockets = new Map();
-
-        llmService.connect = sinon.stub().callsFake((url, sessionId) => {
-          sockets.set(sessionId, {connected: true});
-          llmService.getSocket = sinon.stub().callsFake((sid) => sockets.get(sid));
-        });
-      });
-
       it('tracks multiple sessions independently', async () => {
         await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
         await llmService.registerAndConnect(locusUrl2, datachannelUrl2, undefined, 's2');
@@ -391,7 +385,7 @@ describe('plugin-llm', () => {
         assert.equal(llmService.getDatachannelUrl('s2'), datachannelUrl2);
 
         const all = llmService.getAllConnections();
-        assert.equal(all.size, 2);
+        assert.equal(all.size, 3); // include default session
         assert.equal(all.has('s1'), true);
         assert.equal(all.has('s2'), true);
       });
