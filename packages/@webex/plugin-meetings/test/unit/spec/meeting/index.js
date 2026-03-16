@@ -12904,7 +12904,7 @@ describe('plugin-meetings', () => {
           assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.equal(result, undefined);
         });
-        it('connects practice session data channel when PS started', async () => {
+        it('still need connect main session data channel when PS started', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {
             url: 'a url',
@@ -12920,7 +12920,7 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(
             webex.internal.llm.registerAndConnect,
             'a url',
-            'ps-url',
+            'a datachannel url',
             undefined
           );
         });

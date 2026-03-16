@@ -56,6 +56,7 @@ describe('plugin-meetings', () => {
       meeting.stopKeepAlive = sinon.stub();
       meeting.updateLLMConnection = sinon.stub();
       meeting.breakouts = {cleanUp: sinon.stub()};
+      meeting.webinar = {cleanUp: sinon.stub()};
       meeting.annotaion = {cleanUp: sinon.stub()};
       meeting.getWebexObject = sinon.stub().returns(webex);
       meeting.simultaneousInterpretation = {cleanUp: sinon.stub()};

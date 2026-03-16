@@ -7,7 +7,11 @@ import Mercury from '@webex/internal-plugin-mercury';
 import LLMChannel from '@webex/internal-plugin-llm';
 
 import VoiceaService from '../../../src/index';
-import {EVENT_TRIGGERS, TOGGLE_MANUAL_CAPTION_STATUS} from '../../../src/constants';
+import {
+  EVENT_TRIGGERS,
+  LLM_PRACTICE_SESSION,
+  TOGGLE_MANUAL_CAPTION_STATUS,
+} from '../../../src/constants';
 
 describe('plugin-voicea', () => {
   const locusUrl = 'locusUrl';
@@ -28,6 +32,7 @@ describe('plugin-voicea', () => {
       voiceaService.connect = sinon.stub().resolves(true);
       voiceaService.webex.internal.llm.isConnected = sinon.stub().returns(true);
       voiceaService.webex.internal.llm.getBinding = sinon.stub().returns(undefined);
+      voiceaService.webex.internal.llm.getSocket = sinon.stub().returns(undefined);
       voiceaService.webex.internal.llm.getLocusUrl = sinon.stub().returns(locusUrl);
 
       voiceaService.request = sinon.stub().resolves({
@@ -87,7 +92,9 @@ describe('plugin-voicea', () => {
 
         voiceaService.sendAnnouncement();
 
-        assert.calledOnceWithExactly(spy, 'event:relay.event', sinon.match.func);
+        assert.calledTwice(spy);
+        assert.calledWith(spy, 'event:relay.event', sinon.match.func);
+        assert.calledWith(spy, `event:relay.event:${LLM_PRACTICE_SESSION}`, sinon.match.func);
       });
 
       it('includes captionServiceId in headers when set', () => {
@@ -1202,6 +1209,70 @@ describe('plugin-voicea', () => {
 
         assert.equal(voiceaService.captionServiceId, 'same-svc');
         assert.notCalled(voiceaService.webex.internal.llm.socket.send);
+      });
+    });
+
+    describe('#multiple llm connections', () => {
+      let defaultSocket;
+      let practiceSocket;
+
+      beforeEach(() => {
+        defaultSocket = new MockWebSocket();
+        practiceSocket = new MockWebSocket();
+
+        voiceaService.webex.internal.llm.socket = defaultSocket;
+        voiceaService.webex.internal.llm.getSocket.callsFake((channel) =>
+          channel === LLM_PRACTICE_SESSION ? practiceSocket : undefined
+        );
+        voiceaService.webex.internal.llm.getBinding.callsFake((channel) =>
+          channel === LLM_PRACTICE_SESSION ? 'practice-binding' : 'default-binding'
+        );
+        voiceaService.seqNum = 1;
+      });
+
+      it('sendAnnouncement uses the practice session socket and binding when available', () => {
+        voiceaService.announceStatus = 'idle';
+
+        voiceaService.sendAnnouncement();
+
+        assert.calledOnce(practiceSocket.send);
+        assert.notCalled(defaultSocket.send);
+
+        const sent = practiceSocket.send.getCall(0).args[0];
+        expect(sent).to.have.nested.property('recipients.route', 'practice-binding');
+      });
+
+      it('requestLanguage uses the practice session socket and binding when available', () => {
+        voiceaService.requestLanguage('fr');
+
+        assert.calledOnce(practiceSocket.send);
+        assert.notCalled(defaultSocket.send);
+
+        const sent = practiceSocket.send.getCall(0).args[0];
+        expect(sent).to.have.nested.property('recipients.route', 'practice-binding');
+        expect(sent).to.have.nested.property('data.clientPayload.translationLanguage', 'fr');
+      });
+
+      it('processes relay events from the practice session channel', async () => {
+        const announcementSpy = sinon.spy(voiceaService, 'processAnnouncementMessage');
+
+        voiceaService.listenToEvents();
+
+        // eslint-disable-next-line no-underscore-dangle
+        await voiceaService.webex.internal.llm._emit(`event:relay.event:${LLM_PRACTICE_SESSION}`, {
+          headers: {from: 'svc-practice'},
+          data: {
+            relayType: 'voicea.annc',
+            voiceaPayload: {
+              translation: {allowed_languages: ['en'], max_languages: 1},
+              ASR: {spoken_languages: ['en']},
+            },
+          },
+          sequenceNumber: 10,
+        });
+
+        assert.calledOnce(announcementSpy);
+        assert.equal(voiceaService.captionServiceId, 'svc-practice');
       });
     });
 
