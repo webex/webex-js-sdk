@@ -1053,6 +1053,46 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('requireHostEndMeetingBeforeLeave', () => {
+      it('works as expected', () => {
+        assert.deepEqual(
+          MeetingUtil.requireHostEndMeetingBeforeLeave(['REQUIRE_HOST_END_MEETING_BEFORE_LEAVE']),
+          true
+        );
+        assert.deepEqual(
+          MeetingUtil.requireHostEndMeetingBeforeLeave([
+            'LEAVE_TRANSFER_HOST_END_MEETING',
+            'END_MEETING',
+          ]),
+          false
+        );
+        assert.deepEqual(
+          MeetingUtil.requireHostEndMeetingBeforeLeave([
+            'REQUIRE_HOST_END_MEETING_BEFORE_LEAVE',
+            'END_MEETING',
+          ]),
+          true
+        );
+        assert.deepEqual(
+          MeetingUtil.requireHostEndMeetingBeforeLeave([
+            'REQUIRE_HOST_END_MEETING_BEFORE_LEAVE',
+            'LEAVE_MEETING',
+          ]),
+          true
+        );
+        assert.deepEqual(
+          MeetingUtil.requireHostEndMeetingBeforeLeave([
+            'REQUIRE_HOST_END_MEETING_BEFORE_LEAVE',
+            'LEAVE_MEETING',
+            'END_MEETING',
+          ]),
+          true
+        );
+        assert.deepEqual(MeetingUtil.requireHostEndMeetingBeforeLeave(['END_MEETING']), true);
+        assert.deepEqual(MeetingUtil.requireHostEndMeetingBeforeLeave([]), false);
+      });
+    });
+
     describe('canUserLock', () => {
       it('works as expected', () => {
         assert.deepEqual(

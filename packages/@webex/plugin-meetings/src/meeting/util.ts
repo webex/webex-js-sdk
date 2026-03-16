@@ -660,6 +660,11 @@ const MeetingUtil = {
     displayHints.includes(DISPLAY_HINTS.LEAVE_TRANSFER_HOST_END_MEETING) ||
     displayHints.includes(DISPLAY_HINTS.LEAVE_END_MEETING),
 
+  requireHostEndMeetingBeforeLeave: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.REQUIRE_HOST_END_MEETING_BEFORE_LEAVE) ||
+    (!displayHints.includes(DISPLAY_HINTS.LEAVE_TRANSFER_HOST_END_MEETING) &&
+      displayHints.includes(DISPLAY_HINTS.END_MEETING)),
+
   canManageBreakout: (displayHints) => displayHints.includes(DISPLAY_HINTS.BREAKOUT_MANAGEMENT),
 
   canStartBreakout: (displayHints) => !displayHints.includes(DISPLAY_HINTS.DISABLE_BREAKOUT_START),

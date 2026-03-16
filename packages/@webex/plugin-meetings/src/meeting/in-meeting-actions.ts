@@ -32,6 +32,7 @@ interface IInMeetingActions {
   canLowerAllHands?: boolean;
   canLowerSomeoneElsesHand?: boolean;
   bothLeaveAndEndMeetingAvailable?: boolean;
+  requireHostEndMeetingBeforeLeave?: boolean;
   canEnableClosedCaption?: boolean;
   canStartTranscribing?: boolean;
   canStopTranscribing?: boolean;
@@ -170,6 +171,8 @@ export default class InMeetingActions implements IInMeetingActions {
   canLowerSomeoneElsesHand = null;
 
   bothLeaveAndEndMeetingAvailable = null;
+
+  requireHostEndMeetingBeforeLeave = null;
 
   canEnableClosedCaption = null;
 
@@ -370,6 +373,7 @@ export default class InMeetingActions implements IInMeetingActions {
     canLowerAllHands: this.canLowerAllHands,
     canLowerSomeoneElsesHand: this.canLowerSomeoneElsesHand,
     bothLeaveAndEndMeetingAvailable: this.bothLeaveAndEndMeetingAvailable,
+    requireHostEndMeetingBeforeLeave: this.requireHostEndMeetingBeforeLeave,
     canEnableClosedCaption: this.canEnableClosedCaption,
     canStartTranscribing: this.canStartTranscribing,
     canStopTranscribing: this.canStopTranscribing,
