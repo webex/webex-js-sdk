@@ -20,6 +20,10 @@ export const END = '/end';
 export const CONSULT_CONFERENCE = '/consult/conference';
 export const CONFERENCE_EXIT = '/conference/exit';
 export const CONFERENCE_TRANSFER = '/conference/transfer';
+export const DIALER_API = '/v1/dialer';
+export const CAMPAIGN_PREVIEW_ACCEPT = '/accept';
+export const CAMPAIGN_PREVIEW_SKIP = '/skip';
+export const CAMPAIGN_PREVIEW_REMOVE = '/remove';
 export const TASK_MANAGER_FILE = 'taskManager';
 export const TASK_FILE = 'task';
 

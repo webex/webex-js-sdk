@@ -15,6 +15,7 @@ import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import {
   checkParticipantNotInInteraction,
   getIsConferenceInProgress,
+  isCampaignPreviewReservation,
   isParticipantInMainInteraction,
   isPrimary,
   isSecondaryEpDnAgent,
@@ -81,7 +82,8 @@ export default class TaskManager extends EventEmitter {
 
   private handleIncomingWebCall = (call: ICall) => {
     const currentTask = Object.values(this.taskCollection).find(
-      (task) => task.data.interaction.mediaType === 'telephony'
+      (task) =>
+        task.data.interaction.mediaType === 'telephony' && !isCampaignPreviewReservation(task)
     );
 
     if (currentTask) {
@@ -298,6 +300,14 @@ export default class TaskManager extends EventEmitter {
               task?.emit(TASK_EVENTS.TASK_END, task);
             }
             break;
+          case CC_EVENTS.CAMPAIGN_CONTACT_UPDATED:
+            // Campaign preview contact was skipped or removed — no wrapup needed, clean up task
+            if (task) {
+              task = this.updateTaskData(task, payload.data);
+              this.removeTaskFromCollection(task);
+              task.emit(TASK_EVENTS.TASK_END, task);
+            }
+            break;
           case CC_EVENTS.CONTACT_MERGED:
             task = this.handleContactMerged(task, payload.data);
             break;
@@ -480,6 +490,39 @@ export default class TaskManager extends EventEmitter {
             task = this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, task);
             break;
+          case CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION: {
+            // Campaign preview contact offered to agent
+            // Create a task in the collection so subsequent events (e.g. AGENT_CONTACT_ASSIGNED
+            // after acceptPreviewContact) can find and update it.
+            // Emit TASK_CAMPAIGN_PREVIEW_RESERVATION instead of TASK_INCOMING so the call
+            // does not ring before the agent explicitly accepts the preview contact.
+            LoggerProxy.log('Campaign preview reservation received', {
+              module: TASK_MANAGER_FILE,
+              method: METHODS.REGISTER_TASK_LISTENERS,
+              interactionId: payload.data.interactionId,
+            });
+
+            if (!this.taskCollection[payload.data.interactionId]) {
+              task = new Task(
+                this.contact,
+                this.webCallingService,
+                {
+                  ...payload.data,
+                  wrapUpRequired: false,
+                  isConferenceInProgress: false,
+                  isAutoAnswering: false,
+                },
+                this.wrapupData,
+                this.agentId
+              );
+              this.taskCollection[payload.data.interactionId] = task;
+            } else {
+              task = this.updateTaskData(task, payload.data);
+            }
+
+            this.emit(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, task);
+            break;
+          }
           default:
             break;
         }

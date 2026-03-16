@@ -49,4 +49,7 @@ export const METHODS = {
   HANDLE_INCOMING_TASK: 'handleIncomingTask',
   HANDLE_TASK_HYDRATE: 'handleTaskHydrate',
   INCOMING_TASK_LISTENER: 'incomingTaskListener',
+  ACCEPT_PREVIEW_CONTACT: 'acceptPreviewContact',
+  SKIP_PREVIEW_CONTACT: 'skipPreviewContact',
+  REMOVE_PREVIEW_CONTACT: 'removePreviewContact',
 };

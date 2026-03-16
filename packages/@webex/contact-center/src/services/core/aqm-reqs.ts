@@ -154,10 +154,21 @@ export default class AqmReqs {
             if (response?.headers) {
               response.headers.Authorization = '*';
             }
-            LoggerProxy.error(`Routing request timeout${keySuccess}${response!}${c.url}`, {
-              module: AQM_REQS_FILE,
-              method: METHODS.CREATE_PROMISE,
-            });
+            console.log(
+              'Routing request timeout - full response:',
+              response,
+              'url:',
+              c.url,
+              'key:',
+              keySuccess
+            );
+            LoggerProxy.error(
+              `Routing request timeout${keySuccess}${JSON.stringify(response)}${c.url}`,
+              {
+                module: AQM_REQS_FILE,
+                method: METHODS.CREATE_PROMISE,
+              }
+            );
             reject(
               new Err.Details('Service.aqm.reqs.Timeout', {
                 key: keySuccess,
@@ -175,6 +186,9 @@ export default class AqmReqs {
     let result = '';
     // eslint-disable-next-line no-restricted-syntax
     for (const k in bind) {
+      if (k === '__typeMap') {
+        continue;
+      }
       if (Array.isArray(bind[k])) {
         result += `${k}=[${bind[k].join(',')}],`;
       } else if (typeof bind[k] === 'object' && bind[k] !== null) {
@@ -187,9 +201,20 @@ export default class AqmReqs {
     return result ? result.slice(0, -1) : result;
   }
 
-  private bindCheck(bind: any, msg: any) {
+  private bindCheck(bind: any, msg: any): boolean {
+    // Handle type-dependent field matching if __typeMap is present
+    if (bind.__typeMap && typeof bind.__typeMap === 'object') {
+      if (!AqmReqs.typeMapCheck(bind.__typeMap, msg)) {
+        return false;
+      }
+    }
+
     // eslint-disable-next-line no-restricted-syntax
     for (const k in bind) {
+      if (k === '__typeMap') {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
       if (Array.isArray(bind[k])) {
         // Check if the message value matches any of the values in the array
         if (!bind[k].includes(msg[k])) {
@@ -209,6 +234,31 @@ export default class AqmReqs {
     }
 
     return true;
+  }
+
+  /**
+   * Checks type-dependent field conditions defined in __typeMap.
+   * The typeMap has the shape:
+   *   { typeField: "type", conditions: { EventA: { field: value }, EventB: { field: value } } }
+   * It reads msg[typeField] to determine which condition set to apply,
+   * then verifies all fields in that condition match the message.
+   */
+  private static typeMapCheck(typeMap: any, msg: any): boolean {
+    const typeField = typeMap.typeField || 'type';
+    const msgType = msg[typeField];
+
+    if (typeMap.conditions && typeMap.conditions[msgType]) {
+      const condition = typeMap.conditions[msgType];
+      for (const field of Object.keys(condition)) {
+        if (!msg[field] || msg[field] !== condition[field]) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    return false;
   }
 
   // must be lambda
