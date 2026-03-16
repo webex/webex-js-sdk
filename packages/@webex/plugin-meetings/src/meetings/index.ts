@@ -69,6 +69,7 @@ import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {HashTreeMessage} from '../hashTree/hashTreeParser';
 import {HashTreeObject} from '../hashTree/types';
 import {isSelf} from '../hashTree/utils';
+import {createLocusFromHashTreeMessage} from '../locus-info';
 
 let mediaLogger;
 
@@ -522,41 +523,45 @@ export default class Meetings extends WebexPlugin {
       // };
       // rather then locus object change to locus url
 
-      if (data.eventType !== LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
-        if (
-          data.locus &&
-          data.locus.fullState &&
-          data.locus.fullState.state === LOCUS.STATE.INACTIVE
-        ) {
-          // just ignore the event as its already ended and not active
-          LoggerProxy.logger.warn(
-            'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
-          );
+      if (data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
+        // We're about to create a new meeting object from this hash tree message.
+        // There is some existing (pre-hash trees) SDK logic here that requires a locus object
+        // (at the very minimum we need locus.url to be set)
+        // so we try to create locus from the received hash tree message
+        // it will not be complete, in most cases it will only have the self part, but that's still better than nothing
+        const {locus} = createLocusFromHashTreeMessage(data.stateElementsMessage);
 
-          return;
-        }
-
-        // When its wireless share or guest and user leaves the meeting we dont have to keep the meeting object
-        // Any future events will be neglected
-
-        if (
-          data.locus &&
-          data.locus.self &&
-          data.locus.self.state === _LEFT_ &&
-          data.locus.self.removed === true
-        ) {
-          // just ignore the event as its already ended and not active
-          LoggerProxy.logger.warn(
-            'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
-          );
-
-          return;
-        }
+        data.locus = locus;
       }
 
-      if (data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
-        // in hash tree messages we don't ge the locus object, but the meeting constructor needs at least locus.url
-        set(data, 'locus.url', data.stateElementsMessage.locusUrl);
+      if (
+        data.locus &&
+        data.locus.fullState &&
+        data.locus.fullState.state === LOCUS.STATE.INACTIVE
+      ) {
+        // just ignore the event as its already ended and not active
+        LoggerProxy.logger.warn(
+          'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
+        );
+
+        return;
+      }
+
+      // When its wireless share or guest and user leaves the meeting we dont have to keep the meeting object
+      // Any future events will be neglected
+
+      if (
+        data.locus &&
+        data.locus.self &&
+        data.locus.self.state === _LEFT_ &&
+        data.locus.self.removed === true
+      ) {
+        // just ignore the event as its already ended and not active
+        LoggerProxy.logger.warn(
+          'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
+        );
+
+        return;
       }
 
       this.create(data.locus, DESTINATION_TYPE.LOCUS_ID, useRandomDelayForInfo)
