@@ -22,12 +22,14 @@ jobs:
       - name: Auto-detect Version from Tags
         id: tag-version
         run: |
-          echo "📋 Fetching tags from origin/next..."
-          git fetch --tags origin next
-          echo "📋 Latest 5 tags on origin/next:"
-          git tag --sort=-v:refname --merged origin/next | head -5
+          echo "📋 Adding upstream remote..."
+          git remote add upstream https://github.com/webex/webex-js-sdk.git || true
+          echo "📋 Fetching tags from upstream/next..."
+          git fetch --tags upstream next
+          echo "📋 Latest 5 tags on upstream/next:"
+          git tag --sort=-v:refname --merged upstream/next | head -5
 
-          VERSION=$(git describe --tags --abbrev=0 origin/next 2>/dev/null || echo "")
+          VERSION=$(git describe --tags --abbrev=0 upstream/next 2>/dev/null || echo "")
           echo "📋 Auto-detected version: ${VERSION}"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
