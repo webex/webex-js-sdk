@@ -3565,6 +3565,9 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore - config coming from registerPlugin
     if (datachannelUrl && this.config.enableAutomaticLLM) {
       this.updateLLMConnection();
+      if (this.webinar.isJoinPracticeSessionDataChannel()) {
+        this.webinar.updatePSDataChannel();
+      }
     }
   }
 
@@ -6246,13 +6249,10 @@ export default class Meeting extends StatelessWebexPlugin {
   } = {}): Promise<void> => {
     try {
       // @ts-ignore - Fix type
-      if (this.webex.internal.llm.isConnected()) {
-        // @ts-ignore - Fix type
-        await this.webex.internal.llm.disconnectLLM({
-          code: 3050,
-          reason: 'done (permanent)',
-        });
-      }
+      await this.webex.internal.llm.disconnectLLM({
+        code: 3050,
+        reason: 'done (permanent)',
+      });
     } catch (error) {
       LoggerProxy.logger.error(
         'Meeting:index#cleanupLLMConneciton --> Failed to disconnect default LLM session',
