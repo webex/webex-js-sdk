@@ -1977,10 +1977,11 @@ const validateComparisonInputs = (stableA, stableB, selectedPackage, versionASpe
         }
         return true;
     }
-    if (stableA > stableB) {
-        alert('Base version must be older than target version.');
+    const allSorted = sortStableVersions([stableA, stableB]);
+    if (allSorted[0] !== stableA) {
+        alert(`Base version (${stableA}) must be older than target version (${stableB}). Please swap.`);
         return false;
-    }
+}
 
     // When both selected versions are exact stables (Example 5),
     // base stable must be SMALLER than target stable in semver order.
