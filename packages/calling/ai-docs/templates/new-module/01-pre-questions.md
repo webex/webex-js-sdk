@@ -1,121 +1,215 @@
-# New Module - Pre-Implementation Questionnaire
+# STOP -- Ask These Questions First
 
-> **Purpose**: Gather all required information before creating a new module.
+**Do NOT generate any code until every MANDATORY section below is answered.**
 
----
-
-## MANDATORY Questions (must have answers before coding)
-
-### A. Module Identity
-
-1. **Module name**: What should the module be called? (PascalCase, e.g., `CallRecording`, `PresenceManager`)
-2. **Purpose**: One-sentence description of what this module does.
-3. **Scope**: Is this a top-level module (like CallHistory) or a sub-module within an existing module?
-4. **Parent module**: If sub-module, which module does it belong to?
-
-### B. Public API
-
-5. **Factory function**: What factory function creates this module? (e.g., `createCallRecordingClient`)
-6. **Interface name**: What is the public interface? (e.g., `ICallRecording`)
-7. **Public methods**: List each method with:
-   - Name (camelCase)
-   - Parameters (name: type)
-   - Return type
-   - Brief description
-8. **Properties**: Any public properties exposed on the interface?
-9. **Publicly exposed**: Should the interface and factory function be exported from `src/api.ts`?
-
-### C. Configuration
-
-10. **Config interface**: Does this module need its own configuration interface?
-11. **Config parameters**: List each config parameter with name, type, and default.
-
-### D. API Integration
-
-12. **Backend service**: Which backend does this talk to? (Mobius, Janus, SCIM, etc.)
-13. **API endpoints**: List each endpoint with:
-    - HTTP method (GET, POST, PATCH, DELETE)
-    - URL path
-    - Request payload structure
-    - Response payload structure
-14. **Multi-backend**: Does this need backend connectors? (WXC, UCM, BroadWorks)
-    - If yes, which backends?
-    - What differs between backends?
-
-### E. Events
-
-15. **Event emission**: Does this module emit events?
-    - If yes, list each event with key, payload type, and trigger condition.
-    - Where should event keys be defined? (New enum or extend existing `COMMON_EVENT_KEYS`)
-16. **Event listening**: Does this module listen to Mercury/WebSocket events?
-    - If yes, which `MOBIUS_EVENT_KEYS`?
-
-### F. Dependencies
-
-17. **Webex SDK features used**: Which `webex.internal.*` features? (mercury, services, metrics, support, etc.)
-18. **Shared services**: Does it use MetricManager, Logger, SDKConnector?
-19. **External packages**: Any new npm dependencies needed?
-
-### G. Error Handling
-
-20. **Error class**: Does it need a new error class, or reuse existing? (CallingClientError, CallError, LineError)
-21. **Error scenarios**: List key error conditions.
+Present these questions to the user and collect their answers. If the user cannot answer a question, help them reason through it using the reference implementations listed in `00-master.md`.
 
 ---
 
-## OPTIONAL Questions
+## 1. Module Identity (MANDATORY)
 
-22. **Singleton**: Should this be a singleton (like MetricManager) or allow multiple instances?
-23. **State management**: Does it manage any state (in-memory data, caches)?
-24. **Polling/timers**: Does it need periodic operations (keepalive, polling)?
-25. **Reference module**: Which existing module is most similar in structure?
+Ask the user:
+
+> **a) What is the module name?**
+> Must be PascalCase (e.g., `CallRecording`, `Presence`, `MeetingControls`).
+> The interface will be `IModuleName`, the file constant will be `'ModuleNameFile'`, and the factory function will be `createModuleNameClient`.
+
+> **b) What is the module's purpose?**
+> One-sentence description (e.g., "Manages voicemail retrieval, playback, and deletion across calling backends").
+
+> **c) What is the placement type?**
+> Choose one:
+>
+> | Placement | When to Use | Example |
+> |-----------|-------------|---------|
+> | **Top-level** (`src/ModuleName/`) | Independent module with its own factory function | CallHistory, Voicemail, CallSettings, Contacts |
+> | **Sub-module** (`src/CallingClient/moduleName/`) | Tightly coupled to CallingClient lifecycle | Line, Call, Registration, CallerId |
+> | **Single-file** (`src/ModuleName.ts` or within existing module) | Very small utility, no subdirectory needed | Rare; most modules get a directory |
 
 ---
 
-## Output: Module Specification Summary
+## 2. API Contract (MANDATORY)
 
-After gathering answers, produce this summary before proceeding:
+Ask the user to define every backend API endpoint the module will call:
+
+> **For each endpoint, provide:**
+>
+> | Field | Description | Example |
+> |-------|-------------|---------|
+> | **HTTP Method** | GET, POST, PUT, PATCH, DELETE | `GET` |
+> | **Path** | URL path pattern | `/history/userSessions?from={date}&limit={limit}` |
+> | **Service** | Which Webex service (mobius, janus, hydra, identity, etc.) | `janus` |
+> | **Request Body** | TypeScript type or shape of request payload | `{ endTimeSessionIds: EndTimeSessionId[] }` |
+> | **Success Response** | TypeScript type or shape | `{ statusCode: number; data: { userSessions: UserSession[] }; message: string }` |
+> | **Error Responses** | Expected error codes and meanings | `400 Bad Request, 401 Unauthorized, 404 Not Found` |
+
+Example format:
 
 ```
-## Module Specification
-
-**Name**: [PascalCase name]
-**Interface**: [IModuleName]
-**Factory**: [createModuleNameClient(webex, config?)]
-**Scope**: [top-level / sub-module of X]
-**Export from api.ts**: [yes/no]
-
-### File Structure
-```
-src/ModuleName/
-├── ModuleName.ts          # Main class
-├── types.ts               # Interfaces, types, enums
-├── constants.ts           # Constants
-├── ModuleName.test.ts     # Unit tests
-├── fixtures.ts            # Test fixtures
-├── [BackendConnector.ts]  # If multi-backend
-└── ai-docs/               # If non-trivial
-    ├── AGENTS.md
-    └── ARCHITECTURE.md
+Endpoint 1: getRecordings
+  Method: GET
+  Path: /recordings?from={date}&limit={limit}
+  Service: janus
+  Request: query params only (date: string, limit: number)
+  Response: { statusCode: number; data: { recordings: Recording[] }; message: string }
+  Errors: 400, 401, 404, 500
 ```
 
-### Public API
-| Method | Parameters | Returns | Description |
-|---|---|---|---|
-| [method] | [params] | [type] | [desc] |
+---
 
-### API Endpoints
-| Method | Path | Description |
-|---|---|---|
-| [HTTP] | [path] | [desc] |
+## 3. Event Contract (MANDATORY if the module emits or listens to events)
 
-### Events
-| Event Key | Payload | Trigger |
-|---|---|---|
-| [key] | [type] | [when] |
+If the module does NOT use events, the user may write "None" and skip this section.
 
-### Dependencies
-- [list]
+> **a) Does the module emit events to consumers?**
+> If yes, list each event:
+>
+> | Event Key | Direction | Payload Type | Description |
+> |-----------|-----------|-------------|-------------|
+> | `moduleName:event_name` | Outbound (to consumer) | `EventPayloadType` | When this fires |
 
-Confirmed? (Yes / Adjust)
+> **b) Does the module listen to Mercury WebSocket events?**
+> If yes, list each Mercury event key:
+>
+> | Mercury Event Key | Handler Method | Description |
+> |-------------------|---------------|-------------|
+> | `event:janus.some_event` | `handleSomeEvent` | What triggers it |
+
+> **c) Does the module listen to internal events from other modules?**
+> (e.g., CallingClient events, Line events)
+
+**Reference -- Existing event key enums:**
+- `COMMON_EVENT_KEYS` -- Shared events (call history sessions, voicemail content)
+- `CALLING_CLIENT_EVENT_KEYS` -- CallingClient-level events (error, outgoing_call, all_calls_cleared)
+- `CALL_EVENT_KEYS` -- Per-call events (alerting, connect, disconnect, held, resumed)
+- `LINE_EVENT_KEYS` -- Per-line events (incoming_call)
+- `MOBIUS_EVENT_KEYS` -- Mercury WebSocket event filters (event:mobius, event:janus.*)
+
+---
+
+## 4. Dependencies (MANDATORY)
+
+> **a) Which SDK features does the module need?**
+>
+> | Feature | Import Path | Notes |
+> |---------|-------------|-------|
+> | SDKConnector | `../SDKConnector` | Always needed for webex.request() and Mercury listeners |
+> | Logger | `../Logger` | Always needed (`import log from '../Logger'`) |
+> | MetricManager | `../Metrics` | Needed if the module submits metrics (`getMetricManager()`) |
+> | Eventing | `../Events/impl` | Needed if the module emits events (`extends Eventing<T>`) |
+> | Error classes | `../Errors` | Needed if the module throws typed errors |
+> | Common utilities | `../common/Utils` | `serviceErrorCodeHandler`, `getCallingBackEnd`, `uploadLogs`, etc. |
+
+> **b) Does the module need multi-backend support?**
+> The calling package supports three backends:
+>
+> | Backend | Enum Value | When Used |
+> |---------|-----------|-----------|
+> | Webex Calling (WXC) | `CALLING_BACKEND.WXC` | User has WXC entitlement |
+> | Broadworks | `CALLING_BACKEND.BWRKS` | User has Broadworks connector entitlement |
+> | UCM (Unified CM) | `CALLING_BACKEND.UCM` | User's calling behavior is NATIVE_SIP_CALL_TO_UCM |
+>
+> If the module behaves identically across backends, answer "No -- single implementation."
+> If the module has different API endpoints or logic per backend, answer "Yes" and specify which backends.
+
+---
+
+## 5. Exposure (MANDATORY)
+
+> **a) Should the module be exported from `src/api.ts`?**
+> Top-level modules: almost always Yes.
+> Sub-modules of CallingClient: usually No (exposed through CallingClient interface instead).
+
+> **b) Which items should be exported?**
+>
+> | Export Category | Items | Example |
+> |----------------|-------|---------|
+> | Interface | `IModuleName` | `ICallHistory` |
+> | Class | `ModuleName` | `CallHistory` |
+> | Factory function | `createModuleNameClient` | `createCallHistoryClient` |
+> | Types | Response types, setting types | `JanusResponseEvent`, `VoicemailResponseEvent` |
+> | Event types (if applicable) | Event type maps | `CallHistoryEventTypes` |
+
+---
+
+## 6. Caching (OPTIONAL)
+
+> **Does the module need client-side caching?**
+> - If yes, describe what data is cached and the invalidation strategy
+> - Reference: Voicemail uses `storeVoicemailList` / `fetchVoicemailList` for caching
+
+---
+
+## Completion Gate
+
+All MANDATORY sections must be answered before proceeding. Verify:
+
+- [ ] Module name is PascalCase and unique within `src/`
+- [ ] Placement type is chosen (top-level, sub-module, or single-file)
+- [ ] At least one API endpoint is defined with method, path, request, response, and error codes
+- [ ] Event contract is defined (or explicitly marked "None")
+- [ ] Multi-backend decision is made (single or multi with specific backends listed)
+- [ ] Exposure model is defined (what gets exported from `src/api.ts`)
+
+---
+
+## Spec Summary Template
+
+Once all questions are answered, compile the specification into this format:
+
 ```
+MODULE SPECIFICATION
+====================
+Name:        {ModuleName}
+Placement:   {top-level | sub-module of X | single-file}
+Purpose:     {one-sentence description}
+
+API CONTRACT
+------------
+Endpoint 1: {methodName}
+  HTTP:     {GET|POST|PUT|DELETE}
+  Path:     {url pattern}
+  Service:  {mobius|janus|hydra|...}
+  Request:  {type shape}
+  Response: {type shape}
+  Errors:   {status codes}
+
+[...repeat for each endpoint]
+
+EVENT CONTRACT
+--------------
+Outbound Events:  {list or "None"}
+Mercury Listeners: {list or "None"}
+Internal Listeners: {list or "None"}
+
+DEPENDENCIES
+------------
+Multi-backend: {Yes (WXC, UCM, BWRKS) | No}
+MetricManager: {Yes | No}
+Eventing:      {Yes | No}
+
+EXPOSURE
+--------
+Exported from api.ts: {Yes | No}
+Exports: {list of interfaces, classes, types, factory functions}
+
+FILE STRUCTURE
+--------------
+src/
+  {ModuleName}/
+    {ModuleName}.ts          # Main service class + factory function
+    types.ts                 # Interface, response types, LoggerInterface
+    constants.ts             # File constant, METHODS, module constants
+    {ModuleName}.test.ts     # Co-located tests
+    {moduleName}Fixtures.ts  # Test fixtures
+    [WxCallBackendConnector.ts]        # If multi-backend
+    [BroadworksBackendConnector.ts]    # If multi-backend
+    [UcmBackendConnector.ts]           # If multi-backend
+    [WxCallBackendConnector.test.ts]   # If multi-backend
+    [BroadworksBackendConnector.test.ts] # If multi-backend
+    [UcmBackendConnector.test.ts]      # If multi-backend
+```
+
+---
+
+**Next Step:** [02-code-generation.md](./02-code-generation.md) -- Generate the module files based on the completed specification.

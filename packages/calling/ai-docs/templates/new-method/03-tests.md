@@ -1,257 +1,400 @@
-# New Method - Test Template
+# New Method -- Tests
 
-> **Purpose**: Generate unit tests for a new method following calling package conventions.
-
----
-
-## Prerequisites
-
-- Method implemented from [`02-implementation.md`](02-implementation.md)
-- Testing patterns loaded from [`../../patterns/testing-patterns.md`](../../patterns/testing-patterns.md)
+> **Prerequisites**: Complete [`02-implementation.md`](02-implementation.md) before writing tests.
 
 ---
 
-## Test File Location
+## Test Location Convention
 
-Tests are co-located with source. Add tests to the existing test file:
+Tests in the calling SDK are **co-located** with their source files. The test file lives next to the source file with a `.test.ts` extension.
 
+| Source File | Test File |
+|---|---|
+| `src/CallingClient/calling/call.ts` | `src/CallingClient/calling/call.test.ts` |
+| `src/CallingClient/CallingClient.ts` | `src/CallingClient/CallingClient.test.ts` |
+| `src/CallingClient/line/index.ts` | `src/CallingClient/line/line.test.ts` |
+| `src/CallingClient/registration/register.ts` | `src/CallingClient/registration/register.test.ts` |
+| `src/CallingClient/calling/callManager.ts` | `src/CallingClient/calling/callManager.test.ts` |
+| `src/CallHistory/CallHistory.ts` | `src/CallHistory/CallHistory.test.ts` |
+| `src/Voicemail/Voicemail.ts` | `src/Voicemail/Voicemail.test.ts` |
+| `src/common/Utils.ts` | `src/common/Utils.test.ts` |
+| `src/Metrics/index.ts` | `src/Metrics/index.test.ts` |
+
+---
+
+## Test Setup Pattern
+
+Every test file in the calling SDK follows this setup pattern:
+
+```typescript
+import {ERROR_TYPE, ERROR_LAYER} from '../../Errors/types';
+import * as Utils from '../../common/Utils';
+import {CALL_EVENT_KEYS, CallEvent} from '../../Events/types';
+import {METRIC_EVENT, METRIC_TYPE} from '../../Metrics/types';
+import {Call, createCall} from './call';
+import {getTestUtilsWebex, flushPromises} from '../../common/testUtil';
+import log from '../../Logger';
+import {CallError} from '../../Errors';
+
+const webex = getTestUtilsWebex();
 ```
-src/ModuleName/ModuleName.test.ts      # For top-level module methods
-src/CallingClient/calling/call.test.ts  # For Call methods
-src/CallingClient/line/line.test.ts     # For Line methods
-```
+
+Key points:
+- Use `getTestUtilsWebex()` from `src/common/testUtil.ts` to create a mock Webex instance
+- Use `flushPromises()` from the same file to flush async operations in tests
+- Import `log` from `../../Logger` for log spy assertions
+- Use `jest.spyOn()` to spy on utility functions, Logger methods, and metric submissions
+- Use `jest.fn()` for mock callbacks
 
 ---
 
 ## Test Template
 
+Add your test block within the existing `describe` block of the test file (do not create a new top-level describe). The structure should be:
+
 ```typescript
-import { getTestUtilsWebex } from '../common/testUtil';
-import log from '../Logger';
-import { WebexSDK } from '../SDKConnector/types';
-import { CALL_EVENT_KEYS, CALLING_CLIENT_EVENT_KEYS } from '../Events/types';
-import { METRIC_EVENT, METRIC_TYPE } from '../Metrics/types';
-
-// Mock Logger (if not already mocked in the test file)
-jest.mock('../Logger', () => ({
-  default: {
-    log: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    trace: jest.fn(),
-    setLogger: jest.fn(),
-    getLogLevel: jest.fn(),
-    setWebexLogger: jest.fn(),
-  },
-  __esModule: true,
-}));
-
-describe('ModuleName', () => {
-  let webex: WebexSDK;
-  // ... module setup
+describe('<MethodName> tests', () => {
+  // --- Setup specific to this method ---
+  let call: Call;
+  const logInfoSpy = jest.spyOn(log, 'info');
+  const logErrorSpy = jest.spyOn(log, 'error');
+  const logWarnSpy = jest.spyOn(log, 'warn');
 
   beforeEach(() => {
-    webex = getTestUtilsWebex();
+    // Reset mocks, create fresh call instance
     jest.clearAllMocks();
-    // ... module initialization
+
+    // Create a call instance (adapt parameters to your test context)
+    call = createCall(
+      activeUrl,
+      webex,
+      CallDirection.OUTBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator,
+      dest
+    );
+
+    // Set up call state as needed for the method under test
+    call['connected'] = true;
+    call['callId'] = 'test-call-id';
   });
 
-  // ============================================
-  // NEW METHOD TESTS
-  // ============================================
-  describe('newMethod()', () => {
+  afterEach(() => {
+    call.removeAllListeners();
+  });
 
-    // --- Success Cases ---
-
-    it('should [expected behavior] when [normal conditions]', async () => {
+  // --- Success Tests ---
+  describe('Success', () => {
+    it('should complete the operation successfully', async () => {
       // Arrange
-      const expectedResponse = { /* mock response */ };
-      webex.request = jest.fn().mockResolvedValue({
+      const mockResponse = {
         statusCode: 200,
-        body: expectedResponse,
-      });
+        body: {/* expected response body */},
+      };
+      webex.request.mockResolvedValueOnce(mockResponse);
 
       // Act
-      const result = await module.newMethod(param1, param2);
+      call.methodName(param1);
+      await flushPromises();
 
-      // Assert
-      expect(result).toEqual(expectedResponse);
+      // Assert — verify the API was called
       expect(webex.request).toHaveBeenCalledWith(
         expect.objectContaining({
+          uri: expect.stringContaining('/expected/endpoint'),
           method: 'POST',
-          uri: expect.stringContaining('expectedEndpoint'),
-        })
-      );
-    });
-
-    it('should log success with correct context', async () => {
-      // Arrange
-      webex.request = jest.fn().mockResolvedValue({ statusCode: 200, body: {} });
-
-      // Act
-      await module.newMethod(param1);
-
-      // Assert
-      expect(log.info).toHaveBeenCalledWith(
-        expect.stringContaining('newMethod'),
-        expect.objectContaining({
-          file: expect.any(String),
-          method: expect.any(String),
         })
       );
     });
 
     it('should submit success metric', async () => {
       // Arrange
-      webex.request = jest.fn().mockResolvedValue({ statusCode: 200, body: {} });
-      const metricSpy = jest.spyOn(metricManager, 'submitCallMetric');
+      const mockResponse = {statusCode: 200, body: {}};
+      webex.request.mockResolvedValueOnce(mockResponse);
+      const metricSpy = jest.spyOn(call['metricManager'], 'submitCallMetric');
 
       // Act
-      await module.newMethod(param1);
+      call.methodName(param1);
+      await flushPromises();
 
       // Assert
       expect(metricSpy).toHaveBeenCalledWith(
         METRIC_EVENT.CALL,
-        'newMethod',
+        expect.any(String),
         METRIC_TYPE.BEHAVIORAL,
-        expect.any(String), // callId
-        expect.any(String)  // correlationId
+        expect.any(String),  // callId
+        expect.any(String),  // correlationId
+        undefined
       );
     });
 
-    // --- Error Cases ---
-
-    it('should handle API failure', async () => {
+    it('should log method invocation', async () => {
       // Arrange
-      webex.request = jest.fn().mockRejectedValue(new Error('Service unavailable'));
-
-      // Act & Assert
-      await expect(module.newMethod(param1)).rejects.toThrow();
-    });
-
-    it('should log error with context on failure', async () => {
-      // Arrange
-      webex.request = jest.fn().mockRejectedValue(new Error('failure'));
+      const mockResponse = {statusCode: 200, body: {}};
+      webex.request.mockResolvedValueOnce(mockResponse);
 
       // Act
-      try {
-        await module.newMethod(param1);
-      } catch (e) {
-        // Expected
-      }
+      call.methodName(param1);
+      await flushPromises();
 
       // Assert
-      expect(log.error).toHaveBeenCalledWith(
-        expect.stringContaining('newMethod failed'),
+      expect(logInfoSpy).toHaveBeenCalledWith(
+        expect.stringContaining('invoking'),
         expect.objectContaining({
-          file: expect.any(String),
-          method: expect.any(String),
+          file: 'call',
+          method: 'methodName',
+        })
+      );
+    });
+  });
+
+  // --- Error Tests ---
+  describe('Error handling', () => {
+    it('should handle API failure', async () => {
+      // Arrange
+      const mockError = {
+        statusCode: 500,
+        body: {message: 'Internal Server Error'},
+      };
+      webex.request.mockRejectedValueOnce(mockError);
+
+      // Act
+      call.methodName(param1);
+      await flushPromises();
+
+      // Assert
+      expect(logErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed'),
+        expect.objectContaining({
+          file: 'call',
+          method: 'methodName',
         })
       );
     });
 
-    it('should submit error metric on failure', async () => {
+    it('should submit failure metric on error', async () => {
       // Arrange
-      webex.request = jest.fn().mockRejectedValue(new Error('failure'));
-      const metricSpy = jest.spyOn(metricManager, 'submitCallMetric');
+      const mockError = {statusCode: 500, body: {}};
+      webex.request.mockRejectedValueOnce(mockError);
+      const errorMetricSpy = jest.spyOn(call as any, 'submitCallErrorMetric');
 
       // Act
-      try {
-        await module.newMethod(param1);
-      } catch (e) {
-        // Expected
-      }
+      call.methodName(param1);
+      await flushPromises();
 
       // Assert
-      expect(metricSpy).toHaveBeenCalledWith(
-        METRIC_EVENT.CALL_ERROR,
-        'newMethod',
-        METRIC_TYPE.BEHAVIORAL,
-        expect.any(String),
-        expect.any(String),
-        expect.any(Object)  // CallError
+      expect(errorMetricSpy).toHaveBeenCalledWith(
+        expect.any(CallError)
       );
     });
 
     it('should emit error event on failure', async () => {
       // Arrange
-      webex.request = jest.fn().mockRejectedValue(new Error('failure'));
-      const emitSpy = jest.spyOn(module, 'emit');
+      const mockError = {statusCode: 500, body: {}};
+      webex.request.mockRejectedValueOnce(mockError);
+      const errorHandler = jest.fn();
+      call.on(CALL_EVENT_KEYS.METHOD_ERROR, errorHandler);
 
       // Act
-      try {
-        await module.newMethod(param1);
-      } catch (e) {
-        // Expected
-      }
+      call.methodName(param1);
+      await flushPromises();
 
       // Assert
-      expect(emitSpy).toHaveBeenCalledWith(
-        CALL_EVENT_KEYS.CALL_ERROR,
-        expect.any(Object)
+      expect(errorHandler).toHaveBeenCalledWith(
+        expect.any(CallError)
       );
     });
 
-    // --- Edge Cases ---
-
-    it('should handle optional parameters', async () => {
+    it('should log error on API failure', async () => {
       // Arrange
-      webex.request = jest.fn().mockResolvedValue({ statusCode: 200, body: {} });
+      const mockError = {statusCode: 404, body: {message: 'Call not found'}};
+      webex.request.mockRejectedValueOnce(mockError);
 
-      // Act - call without optional param
-      const result = await module.newMethod(param1);
+      // Act
+      call.methodName(param1);
+      await flushPromises();
 
       // Assert
-      expect(result).toBeDefined();
+      expect(logErrorSpy).toHaveBeenCalled();
+    });
+  });
+
+  // --- Input Validation Tests ---
+  describe('Input validation', () => {
+    it('should handle optional parameters being undefined', async () => {
+      // Arrange
+      const mockResponse = {statusCode: 200, body: {}};
+      webex.request.mockResolvedValueOnce(mockResponse);
+
+      // Act — call without optional parameter
+      call.methodName(param1);
+      await flushPromises();
+
+      // Assert — should succeed without error
+      expect(logErrorSpy).not.toHaveBeenCalled();
     });
 
-    // Add more edge cases based on requirements:
-    // - Invalid input handling
-    // - Precondition failures (e.g., not registered)
-    // - Concurrent call handling
-    // - Timeout scenarios
+    it('should handle precondition failure (e.g., call not connected)', () => {
+      // Arrange
+      call['connected'] = false;
+
+      // Act
+      call.methodName(param1);
+
+      // Assert — should warn and return early
+      expect(logWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Cannot'),
+        expect.objectContaining({
+          file: 'call',
+          method: 'methodName',
+        })
+      );
+      expect(webex.request).not.toHaveBeenCalled();
+    });
+  });
+
+  // --- Supplementary Services Timeout Tests (if applicable) ---
+  describe('Timeout handling', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should emit error event on supplementary services timeout', async () => {
+      // Arrange
+      const mockResponse = {statusCode: 200, body: {}};
+      webex.request.mockResolvedValueOnce(mockResponse);
+      const errorHandler = jest.fn();
+      call.on(CALL_EVENT_KEYS.METHOD_ERROR, errorHandler);
+
+      // Act
+      call.methodName(param1);
+      await flushPromises();
+
+      // Advance time past SUPPLEMENTARY_SERVICES_TIMEOUT (10000ms)
+      jest.advanceTimersByTime(10000);
+      await flushPromises();
+
+      // Assert
+      expect(errorHandler).toHaveBeenCalledWith(
+        expect.any(CallError)
+      );
+    });
   });
 });
 ```
 
 ---
 
-## Event Emission Test Pattern
+## Testing with handleCallErrors Utility
 
-If the method emits events:
+Many methods in the calling SDK delegate error handling to the `handleCallErrors` utility from `src/common/Utils.ts`. To test this pattern:
 
 ```typescript
-it('should emit [EVENT_NAME] when [condition]', async () => {
+import * as Utils from '../../common/Utils';
+
+const handleErrorSpy = jest.spyOn(Utils, 'handleCallErrors');
+
+it('should invoke handleCallErrors on API failure', async () => {
   // Arrange
-  const callback = jest.fn();
-  module.on(CALL_EVENT_KEYS.NEW_EVENT, callback);
-  webex.request = jest.fn().mockResolvedValue({ statusCode: 200, body: mockData });
+  const mockError = {statusCode: 500, body: {}};
+  webex.request.mockRejectedValueOnce(mockError);
 
   // Act
-  await module.newMethod(param1);
+  call.methodName(param1);
+  await flushPromises();
 
   // Assert
-  expect(callback).toHaveBeenCalledTimes(1);
-  expect(callback).toHaveBeenCalledWith(
-    expect.objectContaining({ /* expected payload */ })
+  expect(handleErrorSpy).toHaveBeenCalledWith(
+    expect.any(Function),        // error callback
+    ERROR_LAYER.CALL_CONTROL,    // error layer
+    expect.any(Function),        // retry callback
+    expect.any(String),          // correlationId
+    expect.objectContaining({    // error data
+      statusCode: 500,
+    }),
+    'methodName',                // method name (METHODS constant value)
+    'call'                       // file name (FILE constant value)
   );
-
-  // Cleanup
-  module.off(CALL_EVENT_KEYS.NEW_EVENT, callback);
 });
 ```
 
 ---
 
-## Test Checklist
+## Testing Event Emission
 
-- [ ] Success case tested
-- [ ] API call verified (endpoint, method, body)
-- [ ] Logger calls verified (info for success, error for failure)
-- [ ] Success metric submission verified
-- [ ] Error metric submission verified
-- [ ] Error event emission verified (if applicable)
-- [ ] Optional parameter handling tested
-- [ ] Edge cases covered
-- [ ] All tests pass with `yarn test:unit`
+```typescript
+it('should emit success event when WebSocket state change arrives', async () => {
+  // Arrange
+  const mockResponse = {statusCode: 200, body: {}};
+  webex.request.mockResolvedValueOnce(mockResponse);
+  const successHandler = jest.fn();
+  call.on(CALL_EVENT_KEYS.PARKED, successHandler);
+
+  // Act — trigger the method
+  call.parkCall();
+  await flushPromises();
+
+  // Simulate the Mercury WebSocket event arriving
+  const midCallEvent = {
+    eventType: 'callState',
+    eventData: {
+      callState: 'PARKED',
+    },
+  };
+  call['handleMidCallEvent'](midCallEvent as any);
+  await flushPromises();
+
+  // Assert
+  expect(successHandler).toHaveBeenCalledWith(call.getCorrelationId());
+});
+```
+
+---
+
+## Running Tests
+
+### Run all tests for the calling package
+
+```bash
+cd packages/calling
+yarn test:unit
+```
+
+### Run a specific test file
+
+```bash
+cd packages/calling
+yarn jest src/CallingClient/calling/call.test.ts
+```
+
+### Run tests matching a pattern
+
+```bash
+cd packages/calling
+yarn jest --testPathPattern="call.test" --verbose
+```
+
+### Run a specific describe block
+
+```bash
+cd packages/calling
+yarn jest src/CallingClient/calling/call.test.ts -t "parkCall tests"
+```
+
+### Run lint check
+
+```bash
+cd packages/calling
+yarn test:style
+```
+
+---
+
+## Next Step
+
+Once all tests pass, proceed to **[04-validation.md](04-validation.md)** for the final quality checklist.

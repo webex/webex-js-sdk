@@ -1,303 +1,565 @@
-# New Module - Code Generation Guide
+# Code Generation
 
-> **Purpose**: Step-by-step code generation for a new module.
-
----
-
-## Prerequisites
-
-- Module specification confirmed from [`01-pre-questions.md`](01-pre-questions.md)
-- Patterns loaded from [`../../patterns/`](../../patterns/)
-- Rules loaded from [`../../RULES.md`](../../RULES.md)
+Generate the module files based on the specification gathered in `01-pre-questions.md`. Follow the file structure for the chosen placement type, then proceed through each step in order.
 
 ---
 
-## Step 1: Create Module Directory
+## File Structure by Placement Type
+
+### Top-Level Module (`src/ModuleName/`)
 
 ```
 src/ModuleName/
-├── ModuleName.ts          # Main class
-├── types.ts               # Types and interfaces
-├── constants.ts           # Module constants
-├── ModuleName.test.ts     # Tests (created in step 3)
-└── fixtures.ts            # Test fixtures (created in step 3)
+  ModuleName.ts             # Main service class + factory function
+  types.ts                  # IModuleName interface, response types, LoggerInterface
+  constants.ts              # MODULE_NAME_FILE, METHODS, module-specific constants
+  ModuleName.test.ts        # Co-located unit tests
+  moduleNameFixtures.ts     # Test fixture data
+```
+
+### Sub-Module of CallingClient (`src/CallingClient/moduleName/`)
+
+```
+src/CallingClient/moduleName/
+  index.ts                  # Main class
+  types.ts                  # Interface and types
+  constants.ts              # Constants
+  moduleName.test.ts        # Co-located tests
+  moduleNameFixtures.ts     # Test fixtures
+```
+
+### Multi-Backend Module (`src/ModuleName/`)
+
+```
+src/ModuleName/
+  ModuleName.ts                        # Facade class (delegates to connectors)
+  types.ts                             # IModuleName, IWxCallBackendConnector, etc.
+  constants.ts                         # Shared constants
+  WxCallBackendConnector.ts            # WXC backend implementation
+  BroadworksBackendConnector.ts        # Broadworks backend implementation
+  UcmBackendConnector.ts               # UCM backend implementation
+  ModuleName.test.ts                   # Facade tests
+  WxCallBackendConnector.test.ts       # WXC connector tests
+  BroadworksBackendConnector.test.ts   # Broadworks connector tests
+  UcmBackendConnector.test.ts          # UCM connector tests
+  moduleNameFixture.ts                 # Shared test fixtures
 ```
 
 ---
 
-## Step 2: Define Types (`types.ts`)
+## Step 1: Types (`types.ts`)
+
+### STOP -- Validation Before Creating Types
+
+Before defining any new types, check if they already exist:
+
+1. **Check `src/common/types.ts`** for shared types: `CALLING_BACKEND`, `HTTP_METHODS`, `WebexRequestPayload`, `SORT`, `SORT_BY`, `ALLOWED_SERVICES`, `DisplayInformation`
+2. **Check `src/Events/types.ts`** for existing event enums and payload types: `COMMON_EVENT_KEYS`, `MOBIUS_EVENT_KEYS`, `CallSessionEvent`, `UserSession`, etc.
+3. **Check `src/Errors/types.ts`** for error types: `ERROR_TYPE`, `ERROR_LAYER`, `ErrorContext`, `ErrorMessage`
+4. **Check `src/SDKConnector/types.ts`** for `WebexSDK`, `ISDKConnector`
+5. **Check `src/Logger/types.ts`** for `LOGGER` enum
+6. **Check `src/Metrics/types.ts`** for `IMetricManager`, `METRIC_EVENT`, `METRIC_TYPE`
+
+Only create new types that do not already exist in these shared locations.
+
+### Types Template
 
 ```typescript
 // src/ModuleName/types.ts
 
-import { Eventing } from '../Events/impl';
+import {Eventing} from '../Events/impl';
+import {ModuleNameEventTypes} from '../Events/types';  // Only if module emits events
+import {LOGGER} from '../Logger/types';
 
-// Module-specific event types (if the module emits events)
-export type ModuleNameEventTypes = {
-  // Define typed callbacks for each event
-  // [EVENT_KEY]: (payload: PayloadType) => void;
-};
-
-/**
- * Configuration for the ModuleName module.
- */
-export interface ModuleNameConfig {
-  // Configuration parameters
+// ---------- Logger Interface ----------
+// Every module re-exports this for its constructor signature.
+export interface LoggerInterface {
+  level: LOGGER;
 }
 
-/**
- * An interface for the `ModuleName` module.
- * [Description of what this module does]
- *
- * @example
- * ```typescript
- * const client = createModuleNameClient(webex, config);
- * ```
- */
+// ---------- Response Types ----------
+// Follow the standard response shape: { statusCode, data, message }
+export type ModuleNameResponseEvent = {
+  statusCode: number;
+  data: {
+    // Module-specific data fields
+    items?: SomeItemType[];
+    error?: string;
+  };
+  message: string | null;
+};
+
+// Define additional response types as needed, one per distinct API response shape.
+// Example:
+// export type UpdateRecordResponse = {
+//   statusCode: number;
+//   data: {
+//     updateMessage?: string;
+//     error?: string;
+//   };
+//   message: string | null;
+// };
+
+// ---------- Data Types ----------
+// Define types for the domain objects this module manages.
+// Example:
+// export type RecordingItem = {
+//   id: string;
+//   duration: number;
+//   createdAt: string;
+// };
+
+// ---------- Module Interface ----------
+// The public contract for this module. Extends Eventing<T> if events are used.
 export interface IModuleName extends Eventing<ModuleNameEventTypes> {
   /**
-   * [Method description]
+   * Description of the method.
    *
-   * @param param - [Description]
-   * @returns [Description]
+   * @param paramName - Parameter description.
+   * @returns Promise resolving to the response type.
+   *
    * @example
-   * ```typescript
-   * const result = await client.methodName(param);
+   * ```javascript
+   * const response = await moduleName.methodName(param);
    * ```
    */
-  methodName(param: ParamType): Promise<ReturnType>;
+  methodName(paramName: ParamType): Promise<ModuleNameResponseEvent>;
+
+  // Add all public methods defined in the API contract.
 }
 
-// Additional types
-export type ResponseType = {
-  // Response structure
-};
+// ---------- Backend Connector Interfaces (Multi-Backend Only) ----------
+// If multi-backend, define per-connector interfaces that extend the main interface
+// or define a subset of methods.
+//
+// export interface IWxCallBackendConnector extends IModuleName {}
+// export interface IBroadworksBackendConnector extends IModuleName {}
+// export interface IUcmBackendConnector extends IModuleName {}
 ```
+
+### Types -- Validation Checklist
+
+- [ ] `LoggerInterface` is defined with `level: LOGGER`
+- [ ] Response types follow `{ statusCode: number; data: {...}; message: string | null }` shape
+- [ ] Interface `IModuleName` extends `Eventing<ModuleNameEventTypes>` (if events are used)
+- [ ] All public methods from the API contract are declared in the interface
+- [ ] JSDoc with `@param`, `@returns`, and `@example` on every interface method
+- [ ] No duplicate types -- checked shared type locations first
 
 ---
 
-## Step 3: Define Constants (`constants.ts`)
+## Step 2: Constants (`constants.ts`)
+
+### Constants Hierarchy
+
+Before adding a constant, determine the correct location using this priority table:
+
+| Priority | Location | What Goes Here | Examples |
+|----------|----------|---------------|----------|
+| 1 | `src/CallingClient/constants.ts` | CallingClient-specific constants | `REPO_NAME`, `VERSION`, `METRIC_FILE` |
+| 2 | `src/common/constants.ts` | Constants shared across 2+ modules | `SUCCESS_MESSAGE`, `FAILURE_MESSAGE`, `METHOD_START_MESSAGE`, `STATUS_CODE`, `USER_SESSIONS` |
+| 3 | `src/Events/types.ts` | Event key enums shared across modules | `COMMON_EVENT_KEYS`, `MOBIUS_EVENT_KEYS`, `CALL_EVENT_KEYS` |
+| 4 | `src/Metrics/types.ts` | Metric event names and action enums | `METRIC_EVENT`, `VOICEMAIL_ACTION` |
+| 5 | `src/ModuleName/constants.ts` | Module-specific constants | File name, endpoint paths, default values, METHODS |
+
+### Validation Steps
+
+1. **Check `src/common/constants.ts`** -- Do not re-declare: `SUCCESS_MESSAGE`, `FAILURE_MESSAGE`, `METHOD_START_MESSAGE`, `STATUS_CODE`, `USER_SESSIONS`
+2. **Check `src/Events/types.ts`** -- Do not re-declare event enums that already exist
+3. **Check `src/Metrics/types.ts`** -- If adding metric actions, extend the existing enums there
+
+### Constants Template
 
 ```typescript
 // src/ModuleName/constants.ts
 
-// File name for logging context
+// ---------- Module Identity ----------
+// Used as the `file` field in logger context objects.
 export const MODULE_NAME_FILE = 'ModuleName';
 
-// API endpoints
-export const ENDPOINT_RESOURCE = 'resource';
+// ---------- API Endpoints ----------
+// URL path segments and query parameter keys.
+// Example:
+// export const RECORDINGS = 'recordings';
+// export const FROM_DATE = '?from';
+// export const LIMIT = 50;
+// export const NUMBER_OF_DAYS = 10;
 
-// Timing constants (if needed)
-export const DEFAULT_TIMEOUT = 30000;
+// ---------- Response Constants ----------
+// Module-specific success/error messages (only if different from common ones).
+// Example:
+// export const NO_RECORDINGS_MSG = 'No recordings available';
+// export const NO_RECORDINGS_STATUS_CODE = 204;
+
+// ---------- Method Names ----------
+// Used for logger context. Every public and significant private method
+// should have an entry here.
+export const METHODS = {
+  GET_DATA: 'getData',
+  UPDATE_RECORD: 'updateRecord',
+  DELETE_RECORD: 'deleteRecord',
+  // Add one entry per method in the service class.
+  // Multi-backend modules also include:
+  // INIT: 'init',
+  // INITIALIZE_BACKEND_CONNECTOR: 'initializeBackendConnector',
+};
 ```
+
+### Constants -- Validation Checklist
+
+- [ ] `MODULE_NAME_FILE` is defined as a string matching the module directory name
+- [ ] `METHODS` object has an entry for every public and significant private method
+- [ ] No constants duplicate values already in `src/common/constants.ts`
+- [ ] Endpoint path segments are individual constants (not concatenated inline)
 
 ---
 
-## Step 4: Implement Main Class (`ModuleName.ts`)
+## Step 3: Service Class (`ModuleName.ts`)
 
-### Simple Module (no events)
+### Base Template (Top-Level, Event-Emitting Module)
+
+This template is based on the `CallHistory` pattern -- the most common module shape.
 
 ```typescript
 // src/ModuleName/ModuleName.ts
 
-import { WebexSDK } from '../SDKConnector/types';
 import SDKConnector from '../SDKConnector';
+import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
+import {CALLING_BACKEND, HTTP_METHODS, WebexRequestPayload} from '../common/types';
+import {IModuleName, ModuleNameResponseEvent, LoggerInterface} from './types';
 import log from '../Logger';
-import { getMetricManager } from '../Metrics';
-import { IMetricManager, METRIC_EVENT, METRIC_TYPE } from '../Metrics/types';
-import { HTTP_METHODS, ServiceIndicator } from '../common/types';
-import { MODULE_NAME_FILE, ENDPOINT_RESOURCE } from './constants';
-import { IModuleName, ModuleNameConfig } from './types';
+import {serviceErrorCodeHandler, uploadLogs} from '../common/Utils';
+import {MODULE_NAME_FILE, METHODS} from './constants';
+import {METHOD_START_MESSAGE, SUCCESS_MESSAGE} from '../common/constants';
+import {ModuleNameEventTypes} from '../Events/types';
+import {Eventing} from '../Events/impl';
 
 /**
- * ModuleName module implementation.
- * [Description]
+ * `ModuleName` module provides {one-sentence purpose}.
+ *
+ * This code snippet demonstrates how to create an instance of `ModuleName`:
+ *
+ * @example
+ * ```javascript
+ * const moduleNameClient = createModuleNameClient(webex, logger);
+ * ```
  */
-export class ModuleName implements IModuleName {
+export class ModuleName extends Eventing<ModuleNameEventTypes> implements IModuleName {
   private sdkConnector: ISDKConnector;
+
   private webex: WebexSDK;
-  private metricManager: IMetricManager;
+
+  private loggerContext = {
+    file: MODULE_NAME_FILE,
+    method: METHODS.GET_DATA,
+  };
 
   /**
-   * @param webex - Webex SDK instance.
-   * @param config - Optional configuration.
+   * @ignore
    */
-  constructor(webex: WebexSDK, config?: ModuleNameConfig) {
-    const logContext = { file: MODULE_NAME_FILE, method: 'constructor' };
-
+  constructor(webex: WebexSDK, logger: LoggerInterface) {
+    super();
     this.sdkConnector = SDKConnector;
     if (!this.sdkConnector.getWebex()) {
       SDKConnector.setWebex(webex);
     }
     this.webex = this.sdkConnector.getWebex();
-    this.metricManager = getMetricManager(this.webex, ServiceIndicator.CALLING);
 
-    if (config?.logger) {
-      log.setLogger(config.logger.level, MODULE_NAME_FILE);
-    }
+    // Register Mercury event listeners (if applicable)
+    // this.registerListeners();
 
-    log.info('ModuleName initialized', logContext);
+    log.setLogger(logger.level, MODULE_NAME_FILE);
   }
 
   /**
-   * [Method description]
+   * {Method description from API contract.}
    *
-   * @param param - [Description]
-   * @returns [Description]
+   * @param paramName - {description}
+   * @returns Promise resolving to {@link ModuleNameResponseEvent}.
    */
-  public async methodName(param: ParamType): Promise<ReturnType> {
-    const logContext = { file: MODULE_NAME_FILE, method: 'methodName' };
-    log.info(`methodName called with: ${param}`, logContext);
+  public async getData(paramName: ParamType): Promise<ModuleNameResponseEvent> {
+    const loggerContext = {
+      file: MODULE_NAME_FILE,
+      method: METHODS.GET_DATA,
+    };
+
+    log.info(
+      `${METHOD_START_MESSAGE} with paramName=${paramName}`,
+      loggerContext
+    );
 
     try {
-      const response = await this.webex.request<ResponseType>({
+      const response = <WebexRequestPayload>await this.webex.request({
+        uri: `${this.baseUrl}/endpoint`,
         method: HTTP_METHODS.GET,
-        uri: `${serviceUrl}/${ENDPOINT_RESOURCE}`,
-        addAuthHeader: true,
+        // service: ALLOWED_SERVICES.JANUS,  // if using service discovery
       });
 
-      log.info('methodName completed successfully', logContext);
-      return response.body;
-    } catch (error) {
-      log.error(`methodName failed: ${error}`, logContext);
-      throw error;
+      log.log(
+        `Response trackingId: ${response?.headers?.trackingid}`,
+        loggerContext
+      );
+
+      const responseDetails: ModuleNameResponseEvent = {
+        statusCode: Number(response.statusCode),
+        data: {
+          // Map response body to typed data
+        },
+        message: SUCCESS_MESSAGE,
+      };
+
+      log.log(
+        `Successfully retrieved data`,
+        loggerContext
+      );
+
+      return responseDetails;
+    } catch (err: unknown) {
+      log.error(
+        `Failed to get data: ${JSON.stringify(err)}`,
+        loggerContext
+      );
+      await uploadLogs();
+
+      const errorInfo = err as WebexRequestPayload;
+      const errorStatus = serviceErrorCodeHandler(errorInfo, loggerContext);
+
+      return errorStatus;
     }
   }
+
+  // ---------- Event Handlers (if applicable) ----------
+
+  // private registerListeners() {
+  //   this.sdkConnector.registerListener<EventPayloadType>(
+  //     MOBIUS_EVENT_KEYS.SOME_EVENT,
+  //     this.handleSomeEvent
+  //   );
+  // }
+  //
+  // handleSomeEvent = async (event?: EventPayloadType) => {
+  //   if (event && event.data) {
+  //     this.emit(COMMON_EVENT_KEYS.MODULE_EVENT_KEY, event);
+  //   }
+  // };
 }
 
 /**
- * Factory function to create a ModuleName instance.
+ * Creates a `ModuleName` client instance.
  *
  * @param webex - Webex SDK instance.
- * @param config - Optional configuration.
- * @returns ModuleName instance.
+ * @param logger - Logger interface with level property.
+ * @returns {IModuleName} An instance of the ModuleName client.
  */
 export const createModuleNameClient = (
   webex: WebexSDK,
-  config?: ModuleNameConfig
-): IModuleName => {
-  return new ModuleName(webex, config);
-};
+  logger: LoggerInterface
+): IModuleName => new ModuleName(webex, logger);
 ```
 
-### Event-Emitting Module
+---
+
+### Customization: Module WITHOUT Events
+
+If the module does not emit events, do not extend `Eventing<T>`:
 
 ```typescript
-// Add Eventing base class
-import { Eventing } from '../Events/impl';
-import { ModuleNameEventTypes } from './types';
+// Change the class declaration:
+export class ModuleName implements IModuleName {
+  // ... (remove super() call from constructor)
+
+// Change the interface in types.ts:
+export interface IModuleName {
+  // ... (do not extend Eventing<T>)
+```
+
+---
+
+### Customization: Multi-Backend Module
+
+If the module needs different behavior per calling backend, use the Voicemail pattern:
+
+```typescript
+// In the main class (ModuleName.ts):
+import {getCallingBackEnd} from '../common/Utils';
+import {WxCallBackendConnector} from './WxCallBackendConnector';
+import {BroadworksBackendConnector} from './BroadworksBackendConnector';
+import {UcmBackendConnector} from './UcmBackendConnector';
+import {IMetricManager, METRIC_EVENT, METRIC_TYPE} from '../Metrics/types';
+import {getMetricManager} from '../Metrics';
 
 export class ModuleName extends Eventing<ModuleNameEventTypes> implements IModuleName {
-  // ... same pattern but extends Eventing
+  private sdkConnector: ISDKConnector;
+  private webex: WebexSDK;
+  private callingBackend: CALLING_BACKEND;
+  private backendConnector!: IModuleName;
+  private metricManager: IMetricManager;
 
-  constructor(webex: WebexSDK, config?: ModuleNameConfig) {
-    super(); // Call Eventing constructor
-    // ... rest of constructor
+  constructor(webex: WebexSDK, public logger: LoggerInterface) {
+    super();
+    this.sdkConnector = SDKConnector;
+    if (!this.sdkConnector.getWebex()) {
+      SDKConnector.setWebex(webex);
+    }
+    this.webex = this.sdkConnector.getWebex();
+    this.metricManager = getMetricManager(this.webex, undefined);
+    this.callingBackend = getCallingBackEnd(this.webex);
+    this.initializeBackendConnector();
+    log.setLogger(logger.level, MODULE_NAME_FILE);
   }
-}
-```
 
-### Multi-Backend Module
+  /**
+   * Setup and initialize the backend connector based on calling backend.
+   */
+  private initializeBackendConnector() {
+    log.info(METHOD_START_MESSAGE, {
+      file: MODULE_NAME_FILE,
+      method: METHODS.INITIALIZE_BACKEND_CONNECTOR,
+    });
 
-```typescript
-// src/ModuleName/WxCallBackendConnector.ts
-export class WxCallBackendConnector {
-  constructor(private webex: WebexSDK) {}
-
-  async methodName(param: ParamType): Promise<ReturnType> {
-    // Webex Calling specific implementation
-  }
-}
-
-// src/ModuleName/UcmBackendConnector.ts
-export class UcmBackendConnector {
-  constructor(private webex: WebexSDK) {}
-
-  async methodName(param: ParamType): Promise<ReturnType> {
-    // UCM specific implementation
-  }
-}
-
-// Main class delegates to appropriate connector
-export class ModuleName implements IModuleName {
-  private connector: WxCallBackendConnector | UcmBackendConnector;
-
-  constructor(webex: WebexSDK, backend: CALLING_BACKEND) {
-    switch (backend) {
-      case CALLING_BACKEND.WXC:
-        this.connector = new WxCallBackendConnector(webex);
+    switch (this.callingBackend) {
+      case CALLING_BACKEND.WXC: {
+        this.backendConnector = new WxCallBackendConnector(this.webex, this.logger);
         break;
-      case CALLING_BACKEND.UCM:
-        this.connector = new UcmBackendConnector(webex);
+      }
+      case CALLING_BACKEND.BWRKS: {
+        this.backendConnector = new BroadworksBackendConnector(this.webex, this.logger);
         break;
+      }
+      case CALLING_BACKEND.UCM: {
+        this.backendConnector = new UcmBackendConnector(this.webex, this.logger);
+        break;
+      }
+      default: {
+        throw new Error('Calling backend is not identified, exiting....');
+      }
+    }
+  }
+
+  /**
+   * Delegate to the backend connector.
+   */
+  public async getData(param: ParamType): Promise<ModuleNameResponseEvent> {
+    const loggerContext = {
+      file: MODULE_NAME_FILE,
+      method: METHODS.GET_DATA,
+    };
+
+    try {
+      log.info(`${METHOD_START_MESSAGE} with param=${param}`, loggerContext);
+      const response = await this.backendConnector.getData(param);
+      log.log(`Successfully retrieved data: statusCode=${response.statusCode}`, loggerContext);
+      return response;
+    } catch (err: unknown) {
+      log.error(`Failed to get data: ${JSON.stringify(err)}`, loggerContext);
+      await uploadLogs();
+      throw err;
     }
   }
 }
 ```
 
----
-
-## Step 5: Export from `src/api.ts`
+Each backend connector file follows this pattern (based on `WxCallBackendConnector`):
 
 ```typescript
-// Add to src/api.ts
+// src/ModuleName/WxCallBackendConnector.ts
 
-// Import
-import { ModuleName, createModuleNameClient } from './ModuleName/ModuleName';
-import { IModuleName } from './ModuleName/types';
+import SDKConnector from '../SDKConnector';
+import {ISDKConnector, WebexSDK} from '../SDKConnector/types';
+import {HTTP_METHODS, WebexRequestPayload} from '../common/types';
+import {IModuleName, LoggerInterface, ModuleNameResponseEvent} from './types';
+import log from '../Logger';
+import {serviceErrorCodeHandler, uploadLogs} from '../common/Utils';
+import {METHOD_START_MESSAGE, SUCCESS_MESSAGE} from '../common/constants';
+import {MODULE_NAME_FILE, METHODS} from './constants';
+import {WEBEX_CALLING_CONNECTOR_FILE} from '../common/constants';
 
-// Export interface
-export { IModuleName };
+export class WxCallBackendConnector implements IModuleName {
+  private sdkConnector: ISDKConnector;
+  private webex: WebexSDK;
 
-// Export class
-export { ModuleName };
+  constructor(webex: WebexSDK, logger: LoggerInterface) {
+    this.sdkConnector = SDKConnector;
+    if (!this.sdkConnector.getWebex()) {
+      SDKConnector.setWebex(webex);
+    }
+    this.webex = this.sdkConnector.getWebex();
+    log.setLogger(logger.level, WEBEX_CALLING_CONNECTOR_FILE);
+  }
 
-// Export factory
-export { createModuleNameClient };
+  public async getData(param: ParamType): Promise<ModuleNameResponseEvent> {
+    const loggerContext = {
+      file: WEBEX_CALLING_CONNECTOR_FILE,
+      method: METHODS.GET_DATA,
+    };
 
-// Export types (if public)
-export { ResponseType } from './ModuleName/types';
-```
+    log.info(`${METHOD_START_MESSAGE} with param: ${param}`, loggerContext);
 
----
+    try {
+      const response = <WebexRequestPayload>await this.webex.request({
+        uri: `${this.endpointUrl}/path`,
+        method: HTTP_METHODS.GET,
+      });
 
-## Step 6: Add Event Keys (if applicable)
+      log.log(`Response trackingId: ${response?.headers?.trackingid}`, loggerContext);
 
-```typescript
-// In src/Events/types.ts
+      const responseDetails: ModuleNameResponseEvent = {
+        statusCode: Number(response.statusCode),
+        data: {
+          // Map response body
+        },
+        message: SUCCESS_MESSAGE,
+      };
 
-// Add new event key enum (or extend COMMON_EVENT_KEYS)
-export enum MODULE_NAME_EVENT_KEYS {
-  EVENT_ONE = 'moduleName:event_one',
-  EVENT_TWO = 'moduleName:event_two',
+      log.log('Successfully retrieved data', loggerContext);
+      return responseDetails;
+    } catch (err: unknown) {
+      log.error(`Failed to get data: ${JSON.stringify(err)}`, loggerContext);
+      await uploadLogs();
+      const errorStatus = serviceErrorCodeHandler(err as WebexRequestPayload, loggerContext);
+      return errorStatus;
+    }
+  }
+
+  // Implement remaining IModuleName methods...
 }
 ```
 
 ---
 
-## Step 7: Add Metric Events (if applicable)
+### Customization: Singleton Module
+
+If only one instance should exist (rare -- most modules are not singletons):
 
 ```typescript
-// In src/Metrics/types.ts
-export enum METRIC_EVENT {
-  // ... existing events
-  MODULE_NAME = 'web-calling-sdk-modulename',
-  MODULE_NAME_ERROR = 'web-calling-sdk-modulename-error',
-}
+let instance: IModuleName | null = null;
+
+export const createModuleNameClient = (
+  webex: WebexSDK,
+  logger: LoggerInterface
+): IModuleName => {
+  if (!instance) {
+    instance = new ModuleName(webex, logger);
+  }
+  return instance;
+};
 ```
 
 ---
 
-## Code Generation Checklist
+## Code Generation -- Validation Checklist
 
-- [ ] Module directory created
-- [ ] `types.ts` with interface (`IModuleName`), config, and types
-- [ ] `constants.ts` with file name, endpoints, timing constants
-- [ ] Main class implementing the interface
-- [ ] Factory function exported
-- [ ] Logger used in all methods
-- [ ] Error handling with appropriate error class
-- [ ] Metrics tracking (if applicable)
-- [ ] Events defined and emitted (if applicable)
-- [ ] Types exported from `src/api.ts`
-- [ ] Backend connectors created (if multi-backend)
+- [ ] `types.ts` is created with `LoggerInterface`, response types, and `IModuleName` interface
+- [ ] `constants.ts` is created with file name constant and `METHODS` object
+- [ ] Service class extends `Eventing<T>` (if events) and implements `IModuleName`
+- [ ] Constructor follows the pattern: SDKConnector setup, webex assignment, logger initialization
+- [ ] Every method has a `loggerContext` with `file` and `method` fields
+- [ ] Every method starts with `log.info(METHOD_START_MESSAGE, ...)` or similar
+- [ ] Success paths log with `log.log(...)` including tracking ID
+- [ ] Error paths use `log.error(...)`, call `uploadLogs()`, and return `serviceErrorCodeHandler` result
+- [ ] Factory function is exported: `createModuleNameClient(webex, logger)`
+- [ ] Multi-backend connectors (if applicable) follow the `WxCallBackendConnector` / `BroadworksBackendConnector` / `UcmBackendConnector` pattern
+
+---
+
+**Next Step:** [03-integration.md](./03-integration.md) -- Wire the new module into the package.
