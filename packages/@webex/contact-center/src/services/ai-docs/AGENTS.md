@@ -39,7 +39,7 @@ For implementation details within a specific service, follow the links in the [S
 ```
 src/services/
 ├── index.ts                    # Services singleton — composes all services
-├── constants.ts                # Shared constants (WCC_API_GATEWAY, API paths)
+├── constants.ts                # Shared constants (gateway id, API paths, WebRTC domains/prefixes, timeout, method-name constants)
 ├── ai-docs/
 │   └── AGENTS.md               # THIS FILE — services layer orchestrator
 │
@@ -68,6 +68,7 @@ src/services/
 │   │   └── Digital.ts          # Digital task operations
 │   ├── state-machine/          # XState-based task state machine
 │   │   ├── TaskStateMachine.ts # State machine definition
+│   │   ├── index.ts            # Barrel export for state machine public API
 │   │   ├── constants.ts        # TaskState, TaskEvent enums
 │   │   ├── types.ts            # TaskContext type
 │   │   ├── guards.ts           # State transition guards
@@ -113,6 +114,16 @@ src/services/
 
 Note: The `src/utils/` folder (sibling to `src/services/`) contains shared utilities like [`PageCache.ts`](../../utils/PageCache.ts) which provides generic pagination caching with `BaseSearchParams`, `PaginatedResponse`, and `PaginationMeta` types used by all data services.
 
+### Shared Constants (`src/services/constants.ts`)
+
+Use [`constants.ts`](../constants.ts) as the canonical source for service-level naming and routing constants:
+- `WCC_API_GATEWAY` — service identifier used by `WebexRequest` calls
+- `SUBSCRIBE_API`, `LOGIN_API`, `STATE_CHANGE_API` — common API path constants
+- `WEB_RTC_PREFIX` — path prefix for WebRTC-related endpoints
+- `WEBSOCKET_EVENT_TIMEOUT` — default notification correlation timeout (`20000` ms)
+- `DEFAULT_RTMS_DOMAIN`, `WCC_CALLING_RTMS_DOMAIN` — RTMS/WebRTC domain constants
+- `METHODS` — method name constants used by `WebCallingService`
+
 ---
 
 ## Key Capabilities
@@ -143,7 +154,9 @@ Each service folder contains its own `ai-docs/` with detailed documentation. **A
 
 > **Note**: The task state machine (`task/state-machine/`) is part of the Task service, not a separate service. Its dedicated docs live at [`task/state-machine/ai-docs/AGENTS.md`](../task/state-machine/ai-docs/AGENTS.md) and [`ARCHITECTURE.md`](../task/state-machine/ai-docs/ARCHITECTURE.md). Load these when working on state transitions, guards, or actions.
 
-**Data services** (AddressBook, Queue, EntryPoint) and **WebCallingService** do not have dedicated ai-docs. For these, read the source files directly — they follow the same patterns documented in [`ai-docs/patterns/typescript-patterns.md`](../../../ai-docs/patterns/typescript-patterns.md).
+**Data services** (AddressBook, Queue, EntryPoint) do not have dedicated ai-docs. Read their source files directly — they follow shared REST/pagination/caching patterns documented in [`ai-docs/patterns/typescript-patterns.md`](../../../ai-docs/patterns/typescript-patterns.md).
+
+**WebCallingService** also has no dedicated ai-docs, but it follows a different pattern: EventEmitter-based call lifecycle orchestration around `@webex/calling` (`createClient`, line registration/deregistration, `ICall` events), `callTaskMap` tracking, and async registration flows with timeout handling. Read [`WebCallingService.ts`](../WebCallingService.ts) directly when changing browser calling behavior.
 
 ---
 
@@ -157,7 +170,7 @@ The `ContactCenter` plugin class (`cc.ts`) is the **only public entry point**. I
 ContactCenter (cc.ts) — public API surface
 │
 ├── WebexRequest.getInstance({webex})     ← initialized FIRST (singleton)
-├── Services.getInstance({webex, config}) ← initialized SECOND (singleton)
+├── Services.getInstance({webex, connectionConfig}) ← initialized SECOND (singleton)
 │   │
 │   ├── WebSocketManager                  ← real-time message transport
 │   ├── AqmReqs                           ← HTTP request + WebSocket notification correlation
@@ -167,11 +180,11 @@ ContactCenter (cc.ts) — public API surface
 │   ├── routingContact (contact)          ← task/contact operations via AqmReqs factory
 │   └── aqmDialer (dialer)               ← outbound dialing via AqmReqs factory
 │
-├── TaskManager                           ← task lifecycle, created after login
-├── WebCallingService                     ← WebRTC calling, created on BROWSER login
-├── AddressBook                           ← REST data service, created after register
-├── EntryPoint                            ← REST data service, created after register
-├── Queue                                 ← REST data service, created after register
+├── TaskManager                           ← task lifecycle, created during register()
+├── WebCallingService                     ← WebRTC calling, created during register() (line registration is conditional)
+├── AddressBook                           ← REST data service, created during register()
+├── EntryPoint                            ← REST data service, created during register()
+├── Queue                                 ← REST data service, created during register()
 └── MetricsManager.getInstance({webex})   ← telemetry singleton
 ```
 
@@ -181,10 +194,10 @@ Understanding the instantiation order is essential — getting it wrong causes r
 
 1. **`WebexRequest.getInstance({webex})`** — Must be called first. The singleton HTTP client that all services depend on.
 2. **`Services.getInstance({webex, connectionConfig})`** — Creates `WebSocketManager`, `AqmReqs`, `ConnectionService`, `AgentConfigService`, `routingAgent`, `routingContact`, `aqmDialer`.
-3. **`MetricsManager.getInstance({webex})`** — Telemetry singleton.
-4. **Data services** (`AddressBook`, `EntryPoint`, `Queue`) — Created after `register()` succeeds and agent profile is available.
-5. **`TaskManager`** — Created after `stationLogin()` succeeds.
-6. **`WebCallingService`** — Created only when `loginOption === 'BROWSER'`.
+3. **`WebCallingService`** — Created during `register()` for calling lifecycle management. `registerWebCallingLine()` is later invoked conditionally for `loginOption === 'BROWSER'`.
+4. **`MetricsManager.getInstance({webex})`** — Telemetry singleton.
+5. **`TaskManager`** — Created during `register()` and wired to services/WebSocket.
+6. **Data services** (`AddressBook`, `EntryPoint`, `Queue`) — Created during `register()`.
 
 ### Request/Response Flow Pattern
 
@@ -247,9 +260,9 @@ const services = Services.getInstance({
 ### What Services does NOT create
 
 - `WebexRequest` — initialized by `cc.ts` before `Services.getInstance()`
-- `TaskManager` — created by `cc.ts` after successful station login
-- `WebCallingService` — created by `cc.ts` only for BROWSER login
-- `AddressBook`, `EntryPoint`, `Queue` — created by `cc.ts` after register
+- `TaskManager` — created by `cc.ts` during `register()`
+- `WebCallingService` — created by `cc.ts` during `register()` (line registration is conditional on `loginOption === 'BROWSER'`)
+- `AddressBook`, `EntryPoint`, `Queue` — created by `cc.ts` during `register()`
 - `MetricsManager` — independent singleton initialized by `cc.ts`
 
 ---
@@ -268,7 +281,7 @@ These three services share an identical pattern. Use any one as a reference when
 | **Caching** | `PageCache<T>` — caches pages for simple pagination, bypasses cache for search/filter |
 | **Metrics** | `timeEvent` on API call start, `trackEvent` on success/failure |
 | **Logging** | `LoggerProxy` with `{module: 'ClassName', method: 'methodName'}` context |
-| **Error handling** | try/catch with `LoggerProxy.error` + `metricsManager.trackEvent` for failures |
+| **Error handling** | try/catch with `LoggerProxy.error` + `metricsManager.trackEvent` for failures, then re-throw so callers receive the error |
 
 Reference files:
 - [`AddressBook.ts`](../AddressBook.ts) — includes `addressBookId` parameter
@@ -322,8 +335,8 @@ cc.ts
  ├─ uses → Services.webSocketManager  (message listener for event routing)
  ├─ uses → Services.connectionService (connection lifecycle events)
  ├─ uses → WebexRequest         (uploadLogs)
- ├─ uses → TaskManager          (task lifecycle, created post-login)
- ├─ uses → WebCallingService    (WebRTC, created for BROWSER login)
+ ├─ uses → TaskManager          (task lifecycle, created during register())
+ ├─ uses → WebCallingService    (WebRTC, created during register(); line registration is conditional on BROWSER login)
  ├─ uses → AddressBook          (address book queries)
  ├─ uses → EntryPoint           (entry point queries)
  └─ uses → Queue                (queue queries)
@@ -346,19 +359,18 @@ AqmReqs
 
 ## Event Flow Through Services
 
-Events flow from the backend through WebSocket to services and up to `cc.ts`:
+WebSocket messages are fanned out to multiple independent listeners on `WebSocketManager`:
 
 ```
 CC Backend
   → WebSocket message arrives at WebSocketManager
     → WebSocketManager emits 'message'
-      → AqmReqs.onMessage() — checks if message correlates to a pending request
-        → If match: resolves/rejects the pending Promise
-        → If no match: ignored by AqmReqs
-      → cc.ts webSocketManager.on('message') — routes to appropriate handler:
-        → Agent events → emitted on cc EventEmitter (AGENT_EVENTS)
-        → Task events → forwarded to TaskManager → Task state machine
-        → Connection events → handled by ConnectionService
+      → AqmReqs listener (`aqm-reqs.ts`) — correlates pending request notifications
+      → cc.ts listener (`cc.ts`) — handles plugin-level events:
+        → Agent events use `this.emit(...)` (EventEmitter API)
+        → Task notifications use `this.trigger(...)` (WebexPlugin API)
+      → TaskManager listener (`TaskManager.ts`) — processes task events for task lifecycle/state
+      → ConnectionService listener (`connection-service.ts`) — processes connection/keepalive events
 ```
 
 ---
