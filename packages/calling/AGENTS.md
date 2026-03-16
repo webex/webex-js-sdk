@@ -39,14 +39,65 @@ This is the main orchestrator for AI assistants working with the `@webex/calling
 
 When a developer provides a task, follow this workflow **in order**:
 
-1. **Classify the task** - Determine if it's a new module, new method, bug fix, feature enhancement, or architecture question.
-2. **Load context** - Use the [Module Routing Table](#module-routing-table) to find and read the target module's `ai-docs/AGENTS.md` and `ARCHITECTURE.md`.
-3. **Load rules** - Read [`ai-docs/RULES.md`](ai-docs/RULES.md) for coding standards.
-4. **Load patterns** - Read relevant patterns from [`ai-docs/patterns/`](ai-docs/patterns/).
-5. **Ask pre-questions** - Use the relevant template's pre-questions before generating code.
-6. **Generate/fix code** - Follow established package patterns.
-7. **Validate** - Verify tests, lint, and types.
+1. **Classify the task** - Use the [Task Classification Decision Tree](#task-classification-decision-tree) below to identify the task type (A-F). If you cannot confidently classify, ask the developer.
+2. **STOP — Ask the developer questions** - Open the routed template's pre-questions file. Present every MANDATORY question to the developer. Wait for their answers. **Do NOT proceed until all MANDATORY fields have explicit answers from the developer.** Do not infer, assume, or fill in answers yourself.
+3. **Present Spec Summary for approval** - After gathering answers, present a structured summary of what you will build (per the template's spec summary format). Wait for the developer to confirm.
+4. **Load context** - Use the [Module Routing Table](#module-routing-table) to find and read the target module's `ai-docs/AGENTS.md` and `ARCHITECTURE.md`, then load relevant patterns.
+5. **Break down large or multi-part tasks** - If the prompt mixes multiple tasks (for example, "add a method" and "fix a bug"), split into smaller scoped subtasks and execute them one by one — each subtask goes through steps 1-3 independently.
+6. **Generate/fix code** - Follow established package patterns and the routed template's implementation steps.
+7. **Validate** - Verify behavior, tests, lint, and type checks.
 8. **Update docs** - Keep ai-docs aligned with code changes.
+9. **Ask for review** - Confirm completion and offer adjustments.
+
+---
+
+## Task Classification Decision Tree
+
+Use these questions **in order** to classify the developer's request. Follow the first matching path.
+
+```
+Q1: Is the task read-only (understanding, explaining, or analyzing code)?
+├── YES → Type E: Understand Architecture
+│
+└── NO → Q2: Is something broken or behaving incorrectly?
+    ├── YES → Type C: Fix Bug
+    │
+    └── NO → Q3: Does this involve creating a new file, class, or module?
+        ├── YES → Type A: Create New Module
+        │
+        └── NO → Q4: Does this involve adding a brand-new method that does not exist yet?
+            ├── YES → Type B: Add New Method
+            │
+            └── NO → Q5: Does this involve changing an existing method's signature, behavior, parameters, or return type?
+                ├── YES → Type F: Modify Existing Method
+                │
+                └── NO → Type D: Add Feature / Enhance Existing Module
+```
+
+### Signal Keywords by Task Type
+
+| Task Type | Signal Keywords in Developer Request |
+|---|---|
+| **A. Create New Module** | "new module", "new class", "create a module for", "add a new service", "like CallHistory/Voicemail" |
+| **B. Add New Method** | "add a method", "add an API", "new method", "expose a new function", "add [methodName] to" |
+| **C. Fix Bug** | "bug", "broken", "not working", "regression", "incorrect", "error", "crash", "unexpected behavior", "fix" |
+| **D. Add Feature** | "enhance", "add feature", "add capability", "improve", "extend", "support for", "enable" |
+| **E. Understand Architecture** | "explain", "how does", "understand", "architecture", "what is", "walk me through", "show me" |
+| **F. Modify Existing Method** | "change", "modify", "update", "add parameter to", "change return type", "rename", "refactor [methodName]" |
+
+### Disambiguation Rule
+
+**If you cannot confidently classify the task after using the decision tree and signal keywords, ask the developer:**
+
+> "I want to make sure I follow the right workflow. Which of these best describes your task?"
+> - A. Create a new module (new file/class)
+> - B. Add a new method to an existing module
+> - C. Fix a bug or incorrect behavior
+> - D. Add a feature or enhance an existing module
+> - E. Understand/explain the architecture (no code changes)
+> - F. Modify an existing method (change signature, behavior, parameters)
+
+**Do not guess. Do not default to the most common type. Ask.**
 
 ---
 
@@ -55,19 +106,42 @@ When a developer provides a task, follow this workflow **in order**:
 **A. Create New Module**
 - Use when adding a new top-level module (similar to CallHistory, Voicemail, Contacts).
 - **Route to:** [`ai-docs/templates/new-module/00-master.md`](ai-docs/templates/new-module/00-master.md)
+- **Pre-questions:** [`ai-docs/templates/new-module/01-pre-questions.md`](ai-docs/templates/new-module/01-pre-questions.md) — STOP and ask these first.
+- **Follow:** Full new-module workflow including validation and docs updates.
 
 **B. Add New Method**
 - Use when extending an existing module with a new method/API.
 - **Route to:** [`ai-docs/templates/new-method/00-master.md`](ai-docs/templates/new-method/00-master.md)
+- **Pre-questions:** [`ai-docs/templates/new-method/01-requirements.md`](ai-docs/templates/new-method/01-requirements.md) — STOP and ask these first.
+- **Follow:** Method signature, implementation, tests, and validation checklist.
 
 **C. Fix Bug**
-- Load the affected module's `ARCHITECTURE.md` for technical context, then investigate.
+- Use when behavior is incorrect or regressions are reported.
+- **Route to:** [`ai-docs/templates/existing-module/bug-fix.md`](ai-docs/templates/existing-module/bug-fix.md)
+- **Pre-questions:** Bug-fix template Section A (Questions for the Developer) — STOP and ask these first.
+- **Follow:** Gather info from developer → Investigate → Root cause → Fix → Regression validation.
 
 **D. Add Feature / Enhance Existing Module**
-- Load the affected module's `AGENTS.md` for API surface, then implement.
+- Use when enhancing capabilities of an existing module, then decide placement via triage:
+  - Existing module enhancement, or
+  - New standalone module creation.
+- **Route to:** [`ai-docs/templates/existing-module/feature-enhancement.md`](ai-docs/templates/existing-module/feature-enhancement.md)
+- **Pre-questions:** Feature-enhancement template Step 0 (Placement Triage) + Pre-Enhancement Questions — STOP and ask these first.
+- **Follow:** Run mandatory feature placement triage. If triage indicates a new module, reroute to [`ai-docs/templates/new-module/00-master.md`](ai-docs/templates/new-module/00-master.md).
 
 **E. Understand Architecture**
-- Load the affected module's `AGENTS.md` and `ARCHITECTURE.md` via the [Module Routing Table](#module-routing-table).
+- Use when the task is analysis/explanation and no immediate code generation is required.
+- **Route to:** Use the [Module Routing Table](#module-routing-table) to identify the relevant module, then load its `AGENTS.md` and `ARCHITECTURE.md`.
+- **Follow:** Read-only architecture exploration with clear explanation.
+- No pre-questions required (read-only task).
+
+**F. Modify Existing Method**
+- Use when changing an existing method's signature, behavior, parameters, or return type.
+- **Route to:** [`ai-docs/templates/existing-module/feature-enhancement.md`](ai-docs/templates/existing-module/feature-enhancement.md) (follow the same workflow, but skip placement triage — the method already exists).
+- **Pre-questions:** Feature-enhancement template Section A: Pre-Enhancement Questions (skip Step 0 triage) — STOP and ask these first.
+- **Follow:** Gather requirements → Design change → Implement → Test → Validate backward compatibility.
+
+If a developer request includes multiple task types, split into ordered subtasks and execute each through the full classify → question → spec-summary → implement sequence.
 
 ---
 
@@ -238,3 +312,5 @@ Avoid `any`. Prefer `unknown` with type narrowing.
 - **Event patterns**: [`ai-docs/patterns/event-driven-patterns.md`](ai-docs/patterns/event-driven-patterns.md)
 - **New method template**: [`ai-docs/templates/new-method/00-master.md`](ai-docs/templates/new-method/00-master.md)
 - **New module template**: [`ai-docs/templates/new-module/00-master.md`](ai-docs/templates/new-module/00-master.md)
+- **Bug fix template**: [`ai-docs/templates/existing-module/bug-fix.md`](ai-docs/templates/existing-module/bug-fix.md)
+- **Feature enhancement template**: [`ai-docs/templates/existing-module/feature-enhancement.md`](ai-docs/templates/existing-module/feature-enhancement.md)

@@ -1,390 +1,380 @@
-# @webex/calling - Coding Standards & Rules
+# @webex/calling Coding Standards
 
-> All rules derived from actual calling package conventions. When in doubt, follow existing code patterns.
-
----
-
-## TypeScript Standards
-
-- **Strict mode** is enforced via `tsconfig.json`
-- **Avoid `any`** - prefer `unknown` with type narrowing. If `any` is truly necessary, add an ESLint disable comment with justification.
-- **Explicit return types** on all public API methods
-- **No implicit `any`** in function parameters
-- All source files use `.ts` extension
+This document defines the coding standards and conventions for the `@webex/calling` package. All contributions must follow these rules.
 
 ---
 
-## Naming Conventions
+## 1. TypeScript Standards
 
-| Element | Convention | Examples |
-|---|---|---|
-| Classes | PascalCase | `CallingClient`, `CallHistory`, `Registration`, `CallManager` |
-| Interfaces | `I` prefix + PascalCase | `ICall`, `ILine`, `ICallingClient`, `IRegistration`, `ICallManager`, `ICallerId` |
-| Type aliases | PascalCase | `CallId`, `CorrelationId`, `MobiusDeviceId`, `DisplayInformation`, `WebexRequestPayload` |
-| Enums | PascalCase name, SCREAMING_SNAKE_CASE values | `CALL_EVENT_KEYS.ALERTING`, `ERROR_TYPE.CALL_ERROR`, `METRIC_EVENT.CALL` |
-| Constants | SCREAMING_SNAKE_CASE | `DISCOVERY_URL`, `DEFAULT_KEEPALIVE_INTERVAL`, `NETWORK_FLAP_TIMEOUT` |
-| Methods | camelCase | `getLines()`, `makeCall()`, `doHoldResume()`, `triggerRegistration()` |
-| Private fields | `private` keyword | `private webex: WebexSDK`, `private metricManager: IMetricManager` |
-| Event keys | SCREAMING_SNAKE_CASE in enum | `CALL_EVENT_KEYS.ESTABLISHED`, `LINE_EVENT_KEYS.INCOMING_CALL` |
+- **Strict mode** is enabled. Do not bypass the compiler with `@ts-ignore` unless absolutely necessary.
+- **Never use `any`**. If a type cannot be determined, define a proper type or use `unknown`. Existing `eslint-disable` comments for `@typescript-eslint/no-explicit-any` are legacy and should not be copied into new code.
+- **Explicit return types** are required on all public methods and exported functions.
+- **Enums over union strings** -- prefer `enum` declarations for finite sets of values.
+- **Null checks** -- use optional chaining (`?.`) and nullish coalescing where appropriate, as seen throughout `Metrics/index.ts` (e.g., `this.deviceInfo?.device?.deviceId`).
 
 ---
 
-## File Naming
+## 2. Naming Conventions
 
-| File Type | Convention | Examples |
-|---|---|---|
-| Main class | PascalCase | `CallingClient.ts`, `CallHistory.ts`, `Voicemail.ts` |
-| Sub-module class | camelCase | `call.ts`, `callManager.ts`, `register.ts` |
-| Type definitions | `types.ts` | `CallingClient/types.ts`, `common/types.ts` |
-| Constants | `constants.ts` | `CallingClient/constants.ts`, `common/constants.ts` |
-| Test files | `*.test.ts` (co-located) | `CallingClient.test.ts`, `call.test.ts` |
-| Test fixtures | `*Fixtures.ts` or `*fixtures.ts` | `callingClientFixtures.ts`, `registerFixtures.ts` |
-| Index files | `index.ts` | `Logger/index.ts`, `SDKConnector/index.ts` |
+| Construct           | Convention                    | Example from codebase                                      |
+|---------------------|-------------------------------|------------------------------------------------------------|
+| Classes             | PascalCase                    | `CallingClient`, `CallManager`, `MetricManager`, `CallError` |
+| Interfaces          | `I` prefix + PascalCase       | `ICall`, `ILine`, `ICallingClient`, `IRegistration`, `ISDKConnector`, `IMetricManager`, `IDeviceInfo` |
+| Types               | PascalCase                    | `CallId`, `CorrelationId`, `MobiusServers`, `ServiceData`, `CallEventTypes`, `LineEventTypes` |
+| Enums               | PascalCase name, SCREAMING_SNAKE values | `enum CALL_EVENT_KEYS { ALERTING = 'alerting', DISCONNECT = 'disconnect' }` |
+| Constants           | SCREAMING_SNAKE_CASE          | `REPO_NAME`, `CALL_ENDPOINT_RESOURCE`, `DEFAULT_KEEPALIVE_INTERVAL`, `NETWORK_FLAP_TIMEOUT` |
+| Methods / functions | camelCase                     | `createClient`, `getMetricManager`, `submitCallMetric`, `triggerRegistration` |
+| Private members     | `private` keyword (no underscore prefix) | `private webex: WebexSDK`, `private correlationId: CorrelationId` |
+| File-level context constants | SCREAMING_SNAKE_CASE | `CALLING_CLIENT_FILE = 'CallingClient'`, `METRIC_FILE = 'metric'`, `CALL_MANAGER_FILE = 'callManager'` |
+| Method name constants | `METHODS` object with SCREAMING_SNAKE keys | `METHODS.CREATE_CALL = 'createCall'`, `METHODS.ANSWER = 'answer'` |
 
 ---
 
-## Logging Standards
+## 3. File Naming
 
-### Logger Module
+| File type          | Convention          | Example                                           |
+|--------------------|---------------------|---------------------------------------------------|
+| Main class module  | PascalCase          | `CallingClient.ts`, `CallHistory.ts`              |
+| Sub-module         | camelCase           | `callManager.ts`, `call.ts`, `register.ts`        |
+| Type definitions   | `types.ts`          | `CallingClient/types.ts`, `common/types.ts`, `Events/types.ts` |
+| Constants          | `constants.ts`      | `CallingClient/constants.ts`, `common/constants.ts` |
+| Test files         | Co-located, `*.test.ts` | `CallingClient.test.ts`, `callManager.test.ts`, `index.test.ts` |
+| Test fixtures      | `*Fixtures.ts`      | `callingClientFixtures.ts`, `registerFixtures.ts`, `callRecordFixtures.ts` |
+| Test utilities     | `testUtil.ts`       | `common/testUtil.ts`                              |
+| Barrel exports     | `index.ts`          | `Errors/index.ts`, `Events/impl/index.ts`        |
+| Public API         | `api.ts`            | `src/api.ts`                                      |
 
-Use the Logger module (`src/Logger/index.ts`), never `console.log`:
+---
+
+## 4. Logging Standards
+
+### Logger module
+
+All logging goes through the centralized `Logger` module at `src/Logger/index.ts`. **Never use `console.log` directly**.
 
 ```typescript
 import log from '../Logger';
 
 // Always provide file and method context
-log.info('Registration successful', { file: REGISTRATION_FILE, method: 'triggerRegistration' });
-log.error('Registration failed', { file: REGISTRATION_FILE, method: 'triggerRegistration' });
-log.warn('Retrying registration', { file: REGISTRATION_FILE, method: 'reconnectOnFailure' });
-log.trace('Detailed debug info', { file: CALL_FILE, method: 'dial' });
-log.log('General message', { file: LINE_FILE, method: 'register' });
+log.info('Registration successful', {
+  file: CALLING_CLIENT_FILE,
+  method: METHODS.REGISTER,
+});
 ```
 
-### Log Format
+### Log format
+
+The Logger formats messages as:
 
 ```
-CALLING_SDK: <timestamp>: [LEVEL]: file:<file> - method:<method> - message:<message>
+webex-calling: <timestamp>: [LEVEL]: file:<filename> - method:<methodName> - message:<actual message>
 ```
 
-Example output:
-```
-webex-calling: Thu, 15 Mar 2026 10:30:00 GMT: [INFO]: file:CallingClient - method:init - message:Initialization complete
-```
+This format is produced by `src/Logger/index.ts` using `REPO_NAME` from `CallingClient/constants.ts` and `LOG_PREFIX` from `Logger/types.ts`.
 
-### Log Levels (in order)
+### Log levels
 
-| Level | Numeric | Purpose |
-|---|---|---|
-| `error` | 1 | Errors only |
-| `warn` | 2 | Warnings + errors |
-| `log` | 3 | General messages + above |
-| `info` | 4 | Informational + above |
-| `trace` | 5 | Full stack trace + above |
+Defined in `src/Logger/types.ts`:
 
-### File Constants for Logging
+| Level   | Numeric | Enum value       | Logger method | Usage                                    |
+|---------|---------|------------------|---------------|------------------------------------------|
+| ERROR   | 1       | `LOGGING_LEVEL.error` | `log.error()` | Errors and failures only                 |
+| WARN    | 2       | `LOGGING_LEVEL.warn`  | `log.warn()`  | Warnings, degraded behavior              |
+| LOG     | 3       | `LOGGING_LEVEL.log`   | `log.log()`   | Useful operational information           |
+| INFO    | 4       | `LOGGING_LEVEL.info`  | `log.info()`  | Informational messages, method entry     |
+| TRACE   | 5       | `LOGGING_LEVEL.trace` | `log.trace()` | Full stack traces, detailed debugging    |
 
-Use predefined file constants from `CallingClient/constants.ts`:
+Setting log level N enables levels 1 through N. For example, `LOGGING_LEVEL.log` (3) enables error, warn, and log.
+
+### Context pattern
+
+Every log call must include a context object (`LogContext`) with `file` and `method` fields. Use the constants defined in `CallingClient/constants.ts`:
 
 ```typescript
-export const CALLING_CLIENT_FILE = 'CallingClient';
-export const LINE_FILE = 'line';
-export const CALL_FILE = 'call';
-export const CALL_MANAGER_FILE = 'callManager';
-export const REGISTRATION_FILE = 'register';
-export const METRIC_FILE = 'metric';
-export const CALLER_ID_FILE = 'CallerId';
+log.info(`${METHOD_START_MESSAGE} with ${direction}`, {
+  file: CALL_MANAGER_FILE,
+  method: METHODS.CREATE_CALL,
+});
 ```
 
 ---
 
-## Error Handling
+## 5. Error Handling
 
-### Error Class Hierarchy
+### Error class hierarchy
+
+All errors extend from `ExtendedError` (defined in `src/Errors/catalog/ExtendedError.ts`), which extends the native `Error` class:
 
 ```
-ExtendedError (base)
-├── CallError         - Call-level errors (with correlationId, errorLayer)
-├── LineError         - Line/registration errors (with RegistrationStatus)
-└── CallingClientError - Client-level errors (with RegistrationStatus)
+Error
+  +-- ExtendedError (msg, context, type)
+       +-- CallError (+ correlationId, errorLayer)
+       +-- LineError (+ status)
+       +-- CallingClientError (+ status)
 ```
 
-### Error Types (`ERROR_TYPE` enum)
+### Error enums
+
+Defined in `src/Errors/types.ts`:
+
+- `ERROR_TYPE` -- Categorizes the error: `CALL_ERROR`, `DEFAULT`, `BAD_REQUEST`, `FORBIDDEN_ERROR`, `NOT_FOUND`, `REGISTRATION_ERROR`, `SERVICE_UNAVAILABLE`, `TIMEOUT`, `TOKEN_ERROR`, `TOO_MANY_REQUESTS`, `SERVER_ERROR`
+- `ERROR_LAYER` -- Where the error occurred: `CALL_CONTROL`, `MEDIA`
+- `ERROR_CODE` -- HTTP status codes: `UNAUTHORIZED` (401), `FORBIDDEN` (403), `DEVICE_NOT_FOUND` (404), etc.
+- `CALL_ERROR_CODE` -- Domain-specific codes: `INVALID_STATUS_UPDATE` (111), `DEVICE_NOT_REGISTERED` (112), etc.
+
+### Factory functions
+
+Always use factory functions to create error instances:
 
 ```typescript
-enum ERROR_TYPE {
-  CALL_ERROR = 'call_error',
-  DEFAULT = 'default_error',
-  BAD_REQUEST = 'bad_request',
-  FORBIDDEN_ERROR = 'forbidden',
-  NOT_FOUND = 'not_found',
-  REGISTRATION_ERROR = 'registration_error',
-  SERVICE_UNAVAILABLE = 'service_unavailable',
-  TIMEOUT = 'timeout',
-  TOKEN_ERROR = 'token_error',
-  TOO_MANY_REQUESTS = 'too_many_requests',
-  SERVER_ERROR = 'server_error',
-}
-```
+import { createCallError } from '../Errors/catalog/CallError';
+import { createLineError } from '../Errors/catalog/LineError';
+import { createClientError } from '../Errors/catalog/CallingDeviceError';
 
-### Error Layers (`ERROR_LAYER` enum)
-
-```typescript
-enum ERROR_LAYER {
-  CALL_CONTROL = 'call_control',
-  MEDIA = 'media',
-}
-```
-
-### Usage Pattern
-
-```typescript
-import { CallError, createCallError } from '../Errors';
-import { ERROR_TYPE, ERROR_LAYER } from '../Errors/types';
-
-// Create a call error
 const error = createCallError(
-  'Call setup failed',
-  { file: CALL_FILE, method: 'dial' },
-  ERROR_TYPE.CALL_ERROR,
+  'Call failed due to timeout',
+  { file: CALL_FILE, method: METHODS.DIAL },
+  ERROR_TYPE.TIMEOUT,
   correlationId,
   ERROR_LAYER.CALL_CONTROL
 );
-
-// Always log errors with context
-log.error('Call setup failed', { file: CALL_FILE, method: 'dial' });
-
-// Emit error events with typed error objects
-this.emit(CALL_EVENT_KEYS.CALL_ERROR, error);
 ```
 
-### Rules
+### Error retrieval
 
-- Never swallow errors silently - always log with context
-- Always emit error events so consumers can react
-- Use the appropriate error class for the scope (CallError for calls, LineError for lines, CallingClientError for client-level)
-- Include `file` and `method` in error context
+Error objects expose `getCallError()`, `getError()` methods that return typed objects (`CallErrorObject`, `LineErrorObject`, `ErrorObject`).
 
 ---
 
-## Metrics Standards
+## 6. Metrics Standards
 
-### MetricManager
+### Singleton access
 
-Use the singleton `MetricManager` (`src/Metrics/index.ts`) via factory function:
+The `MetricManager` is accessed as a singleton via the `getMetricManager()` factory in `src/Metrics/index.ts`:
 
 ```typescript
 import { getMetricManager } from '../Metrics';
 
-const metricManager = getMetricManager(webex, serviceIndicator);
+const metricManager = getMetricManager(webex, ServiceIndicator.CALLING);
+metricManager.setDeviceInfo(deviceInfo);
 ```
 
-### Metric Types
+### Metric types
 
-```typescript
-enum METRIC_TYPE {
-  OPERATIONAL = 'operational',
-  BEHAVIORAL = 'behavioral',
-}
-```
+Defined in `src/Metrics/types.ts`:
 
-### Metric Events (`METRIC_EVENT` enum)
+| Enum           | Values                            |
+|----------------|-----------------------------------|
+| `METRIC_TYPE`  | `OPERATIONAL`, `BEHAVIORAL`       |
 
-| Event | Purpose |
-|---|---|
-| `REGISTRATION` | Successful registration |
-| `REGISTRATION_ERROR` | Registration failure |
-| `KEEPALIVE_ERROR` | Keepalive failure |
-| `CALL` | Call control event |
-| `CALL_ERROR` | Call control error |
-| `MEDIA` | Media event |
-| `MEDIA_ERROR` | Media error |
-| `CONNECTION_ERROR` | Connection event |
-| `VOICEMAIL` | Voicemail operation |
-| `VOICEMAIL_ERROR` | Voicemail error |
-| `UPLOAD_LOGS_SUCCESS` | Log upload success |
-| `UPLOAD_LOGS_FAILED` | Log upload failure |
-| `MOBIUS_DISCOVERY` | Mobius server discovery |
-| `BNR_ENABLED` | Background noise removal enabled |
-| `BNR_DISABLED` | Background noise removal disabled |
+### Metric events
 
-### IMetricManager Methods
+The `METRIC_EVENT` enum defines all metric event names:
 
-| Method | Purpose |
-|---|---|
-| `submitRegistrationMetric(...)` | Registration success/failure |
-| `submitCallMetric(...)` | Call control events |
-| `submitMediaMetric(...)` | Media events |
-| `submitConnectionMetrics(...)` | Network connection events |
-| `submitVoicemailMetric(...)` | Voicemail operations |
-| `submitUploadLogsMetric(...)` | Log upload events |
-| `submitBNRMetric(...)` | Background noise removal |
-| `submitRegionInfoMetric(...)` | Region discovery |
-| `submitMobiusServersMetric(...)` | Mobius server discovery |
+| Event                  | Value                                  |
+|------------------------|----------------------------------------|
+| `CALL`                 | `web-calling-sdk-callcontrol`          |
+| `CALL_ERROR`           | `web-calling-sdk-callcontrol-error`    |
+| `MEDIA`                | `web-calling-sdk-media`                |
+| `MEDIA_ERROR`          | `web-calling-sdk-media-error`          |
+| `REGISTRATION`         | `web-calling-sdk-registration`         |
+| `REGISTRATION_ERROR`   | `web-calling-sdk-registration-error`   |
+| `KEEPALIVE_ERROR`      | `web-calling-sdk-keepalive-error`      |
+| `VOICEMAIL`            | `web-calling-sdk-voicemail`            |
+| `VOICEMAIL_ERROR`      | `web-calling-sdk-voicemail-error`      |
+| `BNR_ENABLED`          | `web-calling-sdk-bnr-enabled`          |
+| `BNR_DISABLED`         | `web-calling-sdk-bnr-disabled`         |
+| `CONNECTION_ERROR`     | `web-calling-sdk-connection`           |
+| `UPLOAD_LOGS_SUCCESS`  | `web-calling-sdk-upload-logs-success`  |
+| `UPLOAD_LOGS_FAILED`   | `web-calling-sdk-upload-logs-failed`   |
+| `MOBIUS_DISCOVERY`     | `web-calling-sdk-mobius-discovery`     |
 
-### Rules
+### IMetricManager methods
 
-- Submit metrics for both success and failure paths
-- Include `callId` and `correlationId` for call-related metrics
-- Include `trackingId` for registration metrics
-- Set device info via `setDeviceInfo()` after registration
+| Method                      | Purpose                                |
+|-----------------------------|----------------------------------------|
+| `setDeviceInfo`             | Store device info for metric tags      |
+| `submitRegistrationMetric`  | Registration success/failure metrics   |
+| `submitCallMetric`          | Call control metrics                   |
+| `submitMediaMetric`         | Media layer metrics                    |
+| `submitVoicemailMetric`     | Voicemail operation metrics            |
+| `submitBNRMetric`           | Background noise reduction metrics     |
+| `submitConnectionMetrics`   | Network/Mercury connection metrics     |
+| `submitUploadLogsMetric`    | Log upload success/failure metrics     |
+| `submitRegionInfoMetric`    | Region discovery metrics               |
+| `submitMobiusServersMetric` | Mobius server discovery metrics         |
 
 ---
 
-## Event Standards
+## 7. Event Standards
 
-### Eventing Base Class
+### Eventing base class
 
-All event emitters extend `Eventing<T>` from `src/Events/impl/index.ts`, which wraps `typed-emitter`:
+All event-emitting classes extend `Eventing<T>` from `src/Events/impl/index.ts`. This class extends `TypedEmitter` and automatically logs every emitted event.
 
-```typescript
-import { Eventing } from '../Events/impl';
-import { CallEventTypes } from '../Events/types';
+### Event key enums
 
-class Call extends Eventing<CallEventTypes> implements ICall {
-  // ...
-}
-```
+Defined in `src/Events/types.ts` and `src/CallingClient/line/types.ts`:
 
-### Event Key Enums
+| Enum                         | Examples                                               |
+|------------------------------|--------------------------------------------------------|
+| `CALL_EVENT_KEYS`            | `ALERTING`, `CONNECT`, `DISCONNECT`, `ESTABLISHED`, `HELD`, `RESUMED`, `REMOTE_MEDIA`, `CALL_ERROR`, `CALLER_ID`, `HOLD_ERROR`, `RESUME_ERROR`, `TRANSFER_ERROR`, `PROGRESS` |
+| `LINE_EVENT_KEYS`            | `INCOMING_CALL`                                        |
+| `LINE_EVENTS`                | `CONNECTING`, `ERROR`, `RECONNECTED`, `RECONNECTING`, `REGISTERED`, `UNREGISTERED`, `INCOMING_CALL` |
+| `CALLING_CLIENT_EVENT_KEYS`  | `ERROR`, `OUTGOING_CALL`, `USER_SESSION_INFO`, `ALL_CALLS_CLEARED` |
+| `COMMON_EVENT_KEYS`          | `CB_VOICEMESSAGE_CONTENT_GET`, `CALL_HISTORY_USER_SESSION_INFO`, `CALL_HISTORY_USER_VIEWED_SESSIONS` |
+| `MOBIUS_EVENT_KEYS`          | `SERVER_EVENT_INCLUSIVE`, `CALL_SESSION_EVENT_INCLUSIVE`, `CALL_SESSION_EVENT_LEGACY`, `CALL_SESSION_EVENT_VIEWED`, `CALL_SESSION_EVENT_DELETED` |
 
-| Enum | Scope | Key Values |
-|---|---|---|
-| `CALL_EVENT_KEYS` | Call events | `ALERTING`, `CONNECT`, `ESTABLISHED`, `HELD`, `RESUMED`, `DISCONNECT`, `REMOTE_MEDIA`, `CALLER_ID`, `CALL_ERROR`, `HOLD_ERROR`, `RESUME_ERROR`, `TRANSFER_ERROR`, `PROGRESS` |
-| `LINE_EVENT_KEYS` | Line events | `INCOMING_CALL` |
-| `CALLING_CLIENT_EVENT_KEYS` | Client events | `ERROR`, `OUTGOING_CALL`, `USER_SESSION_INFO`, `ALL_CALLS_CLEARED` |
-| `COMMON_EVENT_KEYS` | Shared events | `CB_VOICEMESSAGE_CONTENT_GET`, `CALL_HISTORY_USER_SESSION_INFO`, `CALL_HISTORY_USER_VIEWED_SESSIONS`, `CALL_HISTORY_USER_SESSIONS_DELETED` |
-| `MOBIUS_EVENT_KEYS` | WebSocket events | `SERVER_EVENT_INCLUSIVE`, `CALL_SESSION_EVENT_INCLUSIVE`, `CALL_SESSION_EVENT_LEGACY`, `CALL_SESSION_EVENT_VIEWED`, `CALL_SESSION_EVENT_DELETED` |
+### Event type maps
 
-### Event Type Maps
+Event type maps define the callback signatures for each event:
 
 ```typescript
-// Each event key maps to a typed callback signature
-type CallEventTypes = {
+export type CallEventTypes = {
   [CALL_EVENT_KEYS.ALERTING]: (callId: CallId) => void;
   [CALL_EVENT_KEYS.CALL_ERROR]: (error: CallError) => void;
-  [CALL_EVENT_KEYS.CONNECT]: (callId: CallId) => void;
+  [CALL_EVENT_KEYS.DISCONNECT]: (callId: CallId) => void;
   // ...
 };
 ```
 
 ### Rules
 
-- **Always use enum constants** for event keys, never raw string literals
-- **Type all event payloads** via event type maps
-- **Use `on/off/emit`** from the `Eventing` base class
-- **Log all emitted events** (handled automatically by `Eventing.emit()`)
+- Always use enum constants for event names, never raw strings.
+- Define event type maps as `type` aliases with callback signatures for each key.
+- Event emitters must extend `Eventing<T>` where `T` is the event type map.
 
 ---
 
-## Import Standards
+## 8. Import Standards
 
-Follow this 3-tier import order:
+Imports must follow a three-tier ordering:
 
 ```typescript
 // 1. External packages
-import { Machine } from 'xstate';
 import { Mutex } from 'async-mutex';
-import { v4 as uuid } from 'uuid';
-
-// 2. Internal packages (within @webex)
 import * as Media from '@webex/internal-media-core';
 
-// 3. Relative imports (parent → sibling → child)
-import { METRIC_EVENT, METRIC_TYPE } from '../Metrics/types';
-import { CallError } from '../Errors';
-import log from '../Logger';
-import { CALL_FILE, METHODS } from './constants';
-import { ICall } from './types';
+// 2. Internal @webex packages
+import { ISDKConnector, WebexSDK } from '../../SDKConnector/types';
+
+// 3. Relative imports
+import { CallId, CorrelationId } from '../../common/types';
+import log from '../../Logger';
 ```
 
 ---
 
-## Module Organization
+## 9. Module Organization
 
-### Factory Functions
+### Factory functions
 
-Every top-level module exposes a factory function:
+Public modules expose factory functions as the primary creation mechanism:
 
 ```typescript
-// CallingClient
+// src/CallingClient/CallingClient.ts
 export const createClient = async (webex: WebexSDK, config?: CallingClientConfig): Promise<ICallingClient> => { ... };
 
-// CallHistory
-export const createCallHistoryClient = (webex: WebexSDK, config?): ICallHistory => { ... };
-
-// Singletons
+// src/Metrics/index.ts
 export const getMetricManager = (webex?: WebexSDK, indicator?: ServiceIndicator): IMetricManager => { ... };
-export const getCallManager = (webex?: WebexSDK, indicator?: ServiceIndicator): ICallManager => { ... };
 ```
 
-### Per-Module File Structure
+### Per-module file structure
 
-Each module should contain:
+Each module follows this structure:
 
-| File | Purpose |
-|---|---|
-| `ModuleName.ts` or `index.ts` | Main class implementation |
-| `types.ts` | Interfaces, type aliases, enums for this module |
-| `constants.ts` | Constants for this module |
-| `ModuleName.test.ts` | Co-located unit tests |
-| `*Fixtures.ts` | Test mock data (optional) |
+```
+ModuleName/
+  index.ts          -- Barrel exports or main implementation
+  types.ts          -- Interfaces, types, enums
+  constants.ts      -- Module-specific constants
+  ModuleName.ts     -- Primary class implementation
+  ModuleName.test.ts -- Co-located tests
+  *Fixtures.ts      -- Test fixture data
+```
 
-### Singleton Pattern
+### Singleton pattern
 
-Used by `SDKConnector`, `CallManager`, and `MetricManager`:
+Singletons use a module-level variable and a getter/factory function:
 
 ```typescript
-let instance: ISomeManager;
+// src/SDKConnector/index.ts
+let instance: ISDKConnector;
+class SDKConnector implements ISDKConnector { ... }
+export default Object.freeze(new SDKConnector());
 
-export const getSomeManager = (webex?: WebexSDK): ISomeManager => {
-  if (!instance && webex) {
-    instance = new SomeManager(webex);
+// src/Metrics/index.ts
+let metricManager: IMetricManager;
+export const getMetricManager = (webex?: WebexSDK, indicator?: ServiceIndicator): IMetricManager => {
+  if (!metricManager && webex) {
+    metricManager = new MetricManager(webex, indicator);
   }
-  return instance;
+  return metricManager;
 };
+
+// src/CallingClient/calling/callManager.ts
+let callManager: ICallManager;
+export const getCallManager = (webex: WebexSDK, indicator: ServiceIndicator): ICallManager => { ... };
 ```
 
 ---
 
-## JSDoc Standards
+## 10. JSDoc Standards
 
-All public APIs must have JSDoc:
+All public interfaces, methods, and exported functions require JSDoc comments with the following tags as applicable:
 
 ```typescript
 /**
- * Retrieves details of the line object(s) belonging to a user.
+ * Retrieves a dictionary of active calls grouped by lineId.
  *
  * @example
  * ```typescript
- * const lines = callingClient.getLines();
+ * const activeCalls = callingClient.getActiveCalls();
  * ```
  *
- * @returns Dictionary of line objects keyed by lineId.
+ * @param userId - The user identifier whose devices should be fetched.
+ * @returns List of devices associated with the user.
+ * @public
  */
-getLines(): Record<string, ILine>;
 ```
 
-Required tags for public methods:
-- `@example` with code snippet
-- `@param` for each parameter
-- `@returns` describing the return value
-- `@throws` if the method can throw (optional)
-- `@public` for explicitly public APIs
+Required tags:
+- `@example` with a code block for all public API methods
+- `@param` for every parameter
+- `@returns` when the function returns a value
+- `@public` for public API surface
+- `@ignore` for internal methods not intended for external consumers
 
 ---
 
-## Code Review Checklist
+## 11. Public API Surface
 
-Before submitting code changes, verify:
+The `src/api.ts` file is the barrel export for the entire package. It exports:
+- **Interfaces**: `ILine`, `ICall`, `ICallHistory`, `ICallSettings`, `ICallingClient`, `IContacts`, `IVoicemail`
+- **Classes**: `CallHistory`, `CallSettings`, `CallingClient`, `ContactsClient`, `Voicemail`
+- **Types**: `ContactGroup`, `Contact`, `CallForwardSetting`, etc.
+- **Factory methods**: `createCallHistoryClient`, `createCallSettingsClient`, `createClient`, `createContactsClient`, `createVoicemailClient`
 
-- [ ] No `any` types without ESLint disable + justification
-- [ ] JSDoc on all public APIs
-- [ ] Logger used with `{ file, method }` context
-- [ ] Metrics tracked for success and failure paths
-- [ ] Error hierarchy followed (CallError/LineError/CallingClientError)
-- [ ] Events typed and emitted with enum constants
-- [ ] Unit tests added/updated
-- [ ] No `console.log/warn/error`
-- [ ] Import order follows 3-tier convention
-- [ ] Constants defined in `constants.ts`, not inline
-- [ ] Types defined in `types.ts`, not inline
+Any new public API must be added to `src/api.ts`.
+
+---
+
+## 12. Code Review Checklist
+
+Before submitting a PR, verify:
+
+- [ ] No `any` types introduced (use proper types or `unknown`)
+- [ ] All public methods have JSDoc with `@example`, `@param`, `@returns`
+- [ ] Logging uses `log` module with `{file, method}` context -- no `console.log`
+- [ ] Errors use the `ExtendedError` hierarchy with factory functions
+- [ ] Metrics use `IMetricManager` methods with proper `METRIC_EVENT` and `METRIC_TYPE`
+- [ ] Events use enum constants, not raw strings
+- [ ] Event type maps are updated if new events are added
+- [ ] Imports follow the three-tier ordering
+- [ ] New modules follow the standard file structure (types.ts, constants.ts, etc.)
+- [ ] Factory/singleton patterns used for new services
+- [ ] Tests are co-located and follow `should [verb] [outcome] when [condition]` naming
+- [ ] Test fixtures are in separate `*Fixtures.ts` files
+- [ ] New public APIs are exported from `src/api.ts`
+- [ ] Constants use SCREAMING_SNAKE_CASE
+- [ ] Interface names start with `I` prefix

@@ -4,7 +4,7 @@
 
 This directory contains AI-optimized documentation for the `@webex/calling` package. It enables AI agents to understand, modify, and generate code that follows established patterns.
 
-**Start here:** Read the root [`AGENTS.md`](../AGENTS.md) for task routing and critical rules.
+**Start here:** Read the root [`AGENTS.md`](../AGENTS.md) for task classification, routing, and critical rules.
 
 ---
 
@@ -21,31 +21,19 @@ This directory contains AI-optimized documentation for the `@webex/calling` pack
 
 ---
 
-## Technology Stack
-
-| Technology | Purpose | Version |
-|---|---|---|
-| TypeScript | Language (strict mode) | 4.x |
-| xstate | Call & ROAP state machines | 4.30.6 |
-| Jest | Unit testing (co-located `.test.ts`) | 29.x |
-| async-mutex | Serialized registration/call operations | 0.4.0 |
-| @webex/internal-media-core | WebRTC media engine | 2.22.1 |
-| typed-emitter | Typed event emitters | - |
-| uuid | Unique ID generation | 8.3.2 |
-
----
-
 ## Quick Links
 
 | Resource | Path | Purpose |
 |---|---|---|
-| Root AGENTS.md | [`../AGENTS.md`](../AGENTS.md) | Task routing and critical rules |
+| Root AGENTS.md | [`../AGENTS.md`](../AGENTS.md) | Task classification, routing, critical rules |
 | RULES.md | [`RULES.md`](RULES.md) | Coding standards and conventions |
 | TypeScript Patterns | [`patterns/typescript-patterns.md`](patterns/typescript-patterns.md) | Type, interface, and code patterns |
 | Testing Patterns | [`patterns/testing-patterns.md`](patterns/testing-patterns.md) | Jest test conventions |
 | Event Patterns | [`patterns/event-driven-patterns.md`](patterns/event-driven-patterns.md) | Event-driven architecture patterns |
 | New Method Template | [`templates/new-method/00-master.md`](templates/new-method/00-master.md) | Add method to existing module |
 | New Module Template | [`templates/new-module/00-master.md`](templates/new-module/00-master.md) | Create new module |
+| Bug Fix Template | [`templates/existing-module/bug-fix.md`](templates/existing-module/bug-fix.md) | Fix bugs in existing code |
+| Feature Enhancement Template | [`templates/existing-module/feature-enhancement.md`](templates/existing-module/feature-enhancement.md) | Enhance existing modules |
 
 ---
 
@@ -62,31 +50,34 @@ ai-docs/
 └── templates/
     ├── new-method/                    # Adding methods to existing modules
     │   ├── 00-master.md               # Workflow orchestrator
-    │   ├── 01-requirements.md         # Requirements questionnaire
+    │   ├── 01-requirements.md         # Requirements questionnaire (STOP & ask)
     │   ├── 02-implementation.md       # Implementation guide
     │   ├── 03-tests.md               # Test template
     │   └── 04-validation.md          # Quality checklist
-    └── new-module/                    # Creating new modules
-        ├── 00-master.md               # Workflow orchestrator
-        ├── 01-pre-questions.md        # Pre-implementation questionnaire
-        ├── 02-code-generation.md      # Code generation guide
-        ├── 03-test-generation.md      # Test generation guide
-        └── 04-validation.md          # Quality checklist
+    ├── new-module/                    # Creating new modules
+    │   ├── 00-master.md               # Workflow orchestrator
+    │   ├── 01-pre-questions.md        # Pre-implementation questionnaire (STOP & ask)
+    │   ├── 02-code-generation.md      # Code generation guide
+    │   ├── 03-integration.md          # Integration guide
+    │   ├── 04-test-generation.md      # Test generation guide
+    │   └── 05-validation.md           # Quality checklist
+    └── existing-module/               # Bug fixes & feature enhancements
+        ├── bug-fix.md                 # Bug investigation & fix workflow
+        └── feature-enhancement.md     # Feature enhancement workflow
 ```
 
 ---
 
-## Package Commands
+## Template Selection Guide
 
-```bash
-yarn build           # TypeScript compilation
-yarn build:src       # Build source only
-yarn test:unit       # Run Jest tests (--runInBand)
-yarn test:style      # ESLint style check
-yarn fix:lint        # Auto-fix lint issues
-yarn fix:prettier    # Auto-fix formatting
-yarn build:docs      # Generate TypeDoc docs
-```
+| Task | Template | Pre-questions? |
+|---|---|---|
+| Create a new module (new class/folder) | [`templates/new-module/00-master.md`](templates/new-module/00-master.md) | Yes — 01-pre-questions.md |
+| Add a new method to existing module | [`templates/new-method/00-master.md`](templates/new-method/00-master.md) | Yes — 01-requirements.md |
+| Fix a bug in existing code | [`templates/existing-module/bug-fix.md`](templates/existing-module/bug-fix.md) | Yes — Section A |
+| Add feature to existing module | [`templates/existing-module/feature-enhancement.md`](templates/existing-module/feature-enhancement.md) | Yes — Step 0 + Section A |
+| Modify existing method | [`templates/existing-module/feature-enhancement.md`](templates/existing-module/feature-enhancement.md) | Yes — Section A (skip Step 0) |
+| Understand/explain architecture | Use [Module Routing Table](../AGENTS.md#module-routing-table) | No (read-only) |
 
 ---
 
@@ -104,33 +95,22 @@ yarn build:docs      # Generate TypeDoc docs
      ┌────────┴──────┐ ┌─────┴──────┐ ┌──────┴────────┐
      │     Line      │ │ CallManager│ │ MetricManager  │
      │   (ILine)     │ │(ICallManager)│ │(IMetricManager)│
-     │ Registration  │ │ Call routing│ │  Telemetry     │
      └───────┬───────┘ └─────┬──────┘ └───────────────┘
              │               │
     ┌────────┴──────┐  ┌─────┴──────┐
     │ Registration  │  │    Call     │
     │(IRegistration)│  │  (ICall)   │
-    │ Mobius device │  │ Call state  │
-    │  management   │  │  machine   │
     └───────────────┘  └─────┬──────┘
                              │
                       ┌──────┴──────┐
                       │  CallerId   │
                       │(ICallerId)  │
-                      │ SIP header  │
-                      │ resolution  │
                       └─────────────┘
 
   Other top-level modules (independent):
   ┌─────────────┐ ┌─────────────┐ ┌──────────┐ ┌───────────┐
   │ CallHistory │ │ CallSettings│ │ Contacts │ │ Voicemail │
-  │(ICallHistory)│ │(ICallSettings)│ │(IContacts)│ │(IVoicemail)│
   └─────────────┘ └─────────────┘ └──────────┘ └───────────┘
-
-  Shared infrastructure:
-  ┌────────┐ ┌────────┐ ┌──────────────┐ ┌────────┐
-  │ Logger │ │ Errors │ │ SDKConnector │ │ Events │
-  └────────┘ └────────┘ └──────────────┘ └────────┘
 ```
 
 ---
@@ -140,12 +120,8 @@ yarn build:docs      # Generate TypeDoc docs
 | Module | AGENTS.md | ARCHITECTURE.md | Description |
 |---|---|---|---|
 | **CallingClient** | [`src/CallingClient/ai-docs/AGENTS.md`](../src/CallingClient/ai-docs/AGENTS.md) | [`src/CallingClient/ai-docs/ARCHITECTURE.md`](../src/CallingClient/ai-docs/ARCHITECTURE.md) | Core calling - registration, call lifecycle, media |
-| CallHistory | - | - | Call history retrieval and management |
-| CallSettings | - | - | Call forwarding and voicemail settings |
-| Contacts | - | - | Contact resolution via SCIM/People |
-| Voicemail | - | - | Voicemail management with multi-backend |
 
-*Modules without ai-docs links are planned for future phases.*
+*Other modules (CallHistory, CallSettings, Contacts, Voicemail) are planned for future phases.*
 
 ---
 
@@ -153,10 +129,10 @@ yarn build:docs      # Generate TypeDoc docs
 
 When modifying the calling package:
 
-1. **New public API** - Update the relevant module's `AGENTS.md` with the new method signature, parameters, return type, and events.
-2. **Architecture change** - Update the relevant module's `ARCHITECTURE.md` with new flows, state changes, or component relationships.
-3. **New module** - Create `ai-docs/AGENTS.md` and `ARCHITECTURE.md` in the module directory.
-4. **New pattern** - Add to the appropriate file in `ai-docs/patterns/`.
-5. **New template** - Add to `ai-docs/templates/` if a reusable workflow is identified.
+1. **New public API** → Update the relevant module's `AGENTS.md`
+2. **Architecture change** → Update the relevant module's `ARCHITECTURE.md`
+3. **New module** → Create `ai-docs/AGENTS.md` and `ARCHITECTURE.md` in the module directory
+4. **New pattern** → Add to `ai-docs/patterns/`
+5. **New template** → Add to `ai-docs/templates/`
 
-Always ensure documentation references actual code - no fabricated details.
+Always ensure documentation references actual code — no fabricated details.
