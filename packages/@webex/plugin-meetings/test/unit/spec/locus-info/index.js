@@ -1459,6 +1459,34 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('should emit CONTROLS_AI_SUMMARY_NOTIFICATION_UPDATED when aiSummaryNotification changes', () => {
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.controls = {
+          transcribe: {
+            transcribing: false,
+            caption: false,
+            aiSummaryNotification: false,
+          },
+        };
+        newControls.transcribe.transcribing = false;
+        newControls.transcribe.caption = false;
+        newControls.transcribe.aiSummaryNotification = true;
+
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_AI_SUMMARY_NOTIFICATION_UPDATED,
+          {
+            aiSummaryNotification: true,
+          }
+        );
+      });
+
       it('should update the transcribe spoken language', () => {
         locusInfo.emitScoped = sinon.stub();
         locusInfo.controls = {
@@ -4316,37 +4344,6 @@ describe('plugin-meetings', () => {
         locusInfo.parse(mockMeeting, data);
 
         assert.calledOnceWithExactly(mockHashTreeParser.handleMessage, fakeHashTreeMessage);
-      });
-
-      it('destroys the meeting if HashTreeParser.handleMessage throws MeetingEndedError', async () => {
-        const fakeHashTreeMessage = {
-          locusStateElements: [],
-          dataSets: [{name: 'dataset1', url: 'http://test.com'}],
-        };
-
-        const data = {
-          eventType: LOCUSEVENT.HASH_TREE_DATA_UPDATED,
-          stateElementsMessage: fakeHashTreeMessage,
-        };
-
-        // Create a mock hash tree parser that rejects with MeetingEndedError
-        const mockHashTreeParser = {
-          handleMessage: sinon.stub().rejects(new HashTreeParserModule.MeetingEndedError()),
-        };
-        locusInfo.hashTreeParser = mockHashTreeParser;
-
-        sinon.stub(webex.meetings, 'destroy');
-
-        locusInfo.parse(mockMeeting, data);
-
-        await testUtils.flushPromises();
-
-        assert.calledOnceWithExactly(mockHashTreeParser.handleMessage, fakeHashTreeMessage);
-        assert.calledOnceWithExactly(
-          webex.meetings.destroy,
-          mockMeeting,
-          MEETING_REMOVED_REASON.SELF_REMOVED
-        );
       });
 
       it('ignores hash tree event when hashTreeParser is not created yet', () => {

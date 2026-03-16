@@ -35,7 +35,6 @@ import HashTreeParser, {
   DataSet,
   HashTreeMessage,
   LocusInfoUpdateType,
-  MeetingEndedError,
   Metadata,
 } from '../hashTree/hashTreeParser';
 import {HashTreeObject, ObjectType, ObjectTypeToLocusKeyMap} from '../hashTree/types';
@@ -744,15 +743,8 @@ export default class LocusInfo extends EventsScope {
 
       return;
     }
-    try {
-      await this.hashTreeParser.handleMessage(message);
-    } catch (error) {
-      if (error instanceof MeetingEndedError) {
-        this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.SELF_REMOVED);
-      } else {
-        throw error;
-      }
-    }
+
+    this.hashTreeParser.handleMessage(message);
   }
 
   /**
@@ -1442,6 +1434,7 @@ export default class LocusInfo extends EventsScope {
           hasMeetingContainerChanged,
           hasTranscribeChanged,
           hasHesiodLLMIdChanged,
+          hasAiSummaryNotificationChanged,
           hasTranscribeSpokenLanguageChanged,
           hasManualCaptionChanged,
           hasEntryExitToneChanged,
@@ -1594,6 +1587,19 @@ export default class LocusInfo extends EventsScope {
           LOCUSINFO.EVENTS.CONTROLS_MEETING_HESIOD_LLM_ID_UPDATED,
           {
             hesiodLlmId,
+          }
+        );
+      }
+
+      if (hasAiSummaryNotificationChanged) {
+        this.emitScoped(
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_AI_SUMMARY_NOTIFICATION_UPDATED,
+          {
+            aiSummaryNotification: current.transcribe.aiSummaryNotification,
           }
         );
       }
