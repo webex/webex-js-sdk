@@ -1,0 +1,298 @@
+# Call Management Sub-Module - Agent Specification
+
+## Overview
+
+The `calling/` sub-module within `CallingClient` contains the core call management logic for the Webex Calling SDK. It consists of two primary classes -- `Call` and `CallManager` -- along with the `CallerId` sub-module for caller identity resolution. Together, these classes handle the full lifecycle of voice calls: creation, signaling via Mobius, WebRTC media negotiation via ROAP, mid-call operations, and termination.
+
+## Files
+
+| File | Class | Interface | Description |
+|------|-------|-----------|-------------|
+| `call.ts` | `Call` | `ICall` | Individual call instance managing signaling and media state machines |
+| `callManager.ts` | `CallManager` | `ICallManager` | Singleton managing the collection of active calls and routing Mobius WebSocket events |
+| `types.ts` | - | - | All types, enums, and interfaces for call management |
+| `CallerId/index.ts` | `CallerId` | `ICallerId` | Caller identity resolution from SIP headers and SCIM |
+| `CallerId/types.ts` | - | - | CallerId types |
+
+---
+
+## CallManager
+
+### Purpose
+
+`CallManager` is a **singleton** that serves as the central hub for all call-related operations. It:
+- Maintains the collection of active `Call` objects keyed by `correlationId`
+- Listens for Mobius WebSocket events (`event:mobius`) via the `SDKConnector`
+- Routes incoming Mobius events to the correct `Call` instance
+- Creates new `Call` objects for incoming calls
+- Emits `ALL_CALLS_CLEARED` when the last call is removed from the collection
+- Emits `INCOMING_CALL` to signal the Line about new incoming calls
+
+### Singleton Pattern
+
+```typescript
+let callManager: ICallManager;
+
+export const getCallManager = (webex: WebexSDK, indicator: ServiceIndicator): ICallManager => {
+  if (!callManager) {
+    callManager = new CallManager(webex, indicator);
+  }
+  return callManager;
+};
+```
+
+### Key Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `callCollection` | `Record<CorrelationId, ICall>` | Active calls keyed by client-side correlation ID |
+| `activeMobiusUrl` | `string` | Current active Mobius server URL |
+| `serviceIndicator` | `ServiceIndicator` | Service type (`calling`, `contactcenter`, `guestcalling`) |
+| `lineDict` | `Record<string, ILine>` | Lines keyed by device ID, for resolving `lineId` from incoming events |
+
+### ICallManager Interface
+
+```typescript
+interface ICallManager extends Eventing<CallEventTypes> {
+  createCall(direction: CallDirection, deviceId: string, lineId: string, destination?: CallDetails): ICall;
+  getCall(correlationId: CorrelationId): ICall;
+  getActiveCalls(): Record<string, ICall>;
+  updateActiveMobius(url: string): void;
+  updateLine(deviceId: string, line: ILine): void;
+}
+```
+
+### Mobius Event Routing
+
+The `CallManager` registers a listener for `event:mobius` on the `SDKConnector`. When a Mobius event arrives, `dequeueWsEvents()` processes it based on `eventType`:
+
+| Mobius Event Type | Enum Value | Action |
+|-------------------|------------|--------|
+| `CALL_SETUP` | `mobius.call` | Create incoming call or handle mid-call event, resolve caller ID, emit `INCOMING_CALL`, send `E_RECV_CALL_SETUP` |
+| `CALL_PROGRESS` | `mobius.callprogress` | Resolve caller ID, send `E_RECV_CALL_PROGRESS` to call |
+| `CALL_CONNECTED` | `mobius.callconnected` | Send `E_RECV_CALL_CONNECT` to call |
+| `CALL_MEDIA` | `mobius.media` | Route ROAP message (`OFFER`, `ANSWER`, `OFFER_REQUEST`, `OK`, `ERROR`) to call's media state machine |
+| `CALL_DISCONNECTED` | `mobius.calldisconnected` | Send `E_RECV_CALL_DISCONNECT` to call |
+
+### Call Creation Logic (Incoming)
+
+When a `CALL_SETUP` event arrives, the CallManager:
+1. Checks if the event contains `midCallService` data -- if so, routes to existing call's `handleMidCallEvent()`
+2. Searches `callCollection` for a call matching the `callId` (handles case where `CALL_MEDIA` arrived before `CALL_SETUP`)
+3. If no match found, creates a new `INBOUND` call via `createCall()`
+4. Sets the Mobius `callId` and optional `broadworksCorrelationInfo` on the call
+5. Starts caller ID resolution
+6. Emits `LINE_EVENT_KEYS.INCOMING_CALL` with the call object
+7. Sends `E_RECV_CALL_SETUP` to the call's state machine
+
+### Call Deletion and Cleanup
+
+When a call is created, a `deleteCb` callback is passed that:
+1. Removes the call from `callCollection`
+2. If `callCollection` becomes empty, emits `CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED`
+
+This `ALL_CALLS_CLEARED` event is consumed by `CallingClient` to trigger deferred re-registration when connectivity was lost during an active call.
+
+---
+
+## Call
+
+### Purpose
+
+The `Call` class represents a single voice call instance. It manages:
+- Two XState state machines: **call signaling** and **media (ROAP) negotiation**
+- WebRTC media connection via `RoapMediaConnection` from `@webex/internal-media-core`
+- Mobius API calls for call setup, progress, hold/resume, transfer, and disconnect
+- Caller ID resolution via the `CallerId` sub-module
+- RTP statistics collection
+- Supplementary services (hold, resume, transfer)
+- Event emission for application-facing call lifecycle events
+
+### Factory Function
+
+```typescript
+export const createCall = (
+  activeUrl: string,
+  webex: WebexSDK,
+  direction: CallDirection,
+  deviceId: string,
+  lineId: string,
+  deleteCb: DeleteRecordCallBack,
+  indicator: ServiceIndicator,
+  destination?: CallDetails
+): ICall => new Call(activeUrl, webex, direction, deviceId, lineId, deleteCb, indicator, destination);
+```
+
+### Key Properties
+
+| Property | Type | Visibility | Description |
+|----------|------|-----------|-------------|
+| `direction` | `CallDirection` | private | `INBOUND` or `OUTBOUND` |
+| `callId` | `CallId` | private | Server-assigned Mobius call ID (initially `DefaultLocalId_{uuid}`) |
+| `correlationId` | `CorrelationId` | private | Client-generated UUID for this call |
+| `deviceId` | `string` | private | Mobius device ID |
+| `lineId` | `string` | public | Associated line ID |
+| `destination` | `CallDetails` | private | Target address for outgoing calls |
+| `connected` | `boolean` | private | Whether call is in connected/established state |
+| `held` | `boolean` | private | Whether call is currently on hold |
+| `muted` | `boolean` | private | Whether local audio is muted |
+| `earlyMedia` | `boolean` | private | Whether early media (inband ROAP) was detected |
+| `mediaNegotiationCompleted` | `boolean` | private | Whether ROAP negotiation finished |
+| `mediaConnection` | `RoapMediaConnection` | public | WebRTC media connection instance |
+| `localAudioStream` | `LocalMicrophoneStream` | private | Local microphone stream |
+| `callStateMachine` | XState interpreter | private | Call signaling state machine |
+| `mediaStateMachine` | XState interpreter | private | ROAP media state machine |
+| `seq` | `number` | private | ROAP sequence number (starts at 1) |
+| `localRoapMessage` | `RoapMessage` | private | Last local ROAP message |
+| `remoteRoapMessage` | `RoapMessage \| null` | private | Last remote ROAP message (buffered) |
+| `disconnectReason` | `DisconnectReason` | private | Reason for disconnect (code + cause) |
+| `callerInfo` | `DisplayInformation` | private | Resolved caller display info |
+| `callerId` | `ICallerId` | private | CallerId resolver instance |
+| `sessionTimer` | `NodeJS.Timeout` | private | 10-minute session inactivity timer |
+| `supplementaryServicesTimer` | `NodeJS.Timeout` | private | 10-second timeout for hold/resume responses |
+| `broadworksCorrelationInfo` | `string` | private | Broadworks correlation ID (used for WxCC) |
+| `metricManager` | `IMetricManager` | private | Metrics submission |
+| `rtcMetrics` | `RtcMetrics` | private | WebRTC metrics from `@webex/internal-plugin-metrics` |
+| `callKeepaliveRetryCount` | `number` | private | Keepalive retry counter (max 4) |
+
+### ICall Interface - Public Methods
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `dial` | `dial(localAudioStream: LocalMicrophoneStream): void` | Initiate an outgoing call |
+| `answer` | `answer(localAudioStream: LocalMicrophoneStream): void` | Answer an incoming call |
+| `end` | `end(): void` | Disconnect the call |
+| `mute` | `mute(localAudioStream: LocalMicrophoneStream, muteType?: MUTE_TYPE): void` | Toggle mute |
+| `isMuted` | `isMuted(): boolean` | Check mute state |
+| `isConnected` | `isConnected(): boolean` | Check connected state |
+| `isHeld` | `isHeld(): boolean` | Check hold state |
+| `doHoldResume` | `doHoldResume(): void` | Toggle hold/resume |
+| `sendDigit` | `sendDigit(tone: string): void` | Send DTMF tone |
+| `completeTransfer` | `completeTransfer(transferType: TransferType, transferCallId?: CallId, transferTarget?: string): void` | Complete blind or consult transfer |
+| `updateMedia` | `updateMedia(newAudioStream: LocalMicrophoneStream): void` | Change audio stream |
+| `getCallId` | `getCallId(): string` | Get Mobius call ID |
+| `getCorrelationId` | `getCorrelationId(): string` | Get client correlation ID |
+| `getDirection` | `getDirection(): CallDirection` | Get call direction |
+| `setCallId` | `setCallId(callId: CallId): void` | Set Mobius call ID |
+| `getCallerInfo` | `getCallerInfo(): DisplayInformation` | Get resolved caller display info |
+| `startCallerIdResolution` | `startCallerIdResolution(callerInfo: CallerIdInfo): void` | Trigger caller ID resolution |
+| `handleMidCallEvent` | `handleMidCallEvent(event: MidCallEvent): void` | Process mid-call events |
+| `getDisconnectReason` | `getDisconnectReason(): DisconnectReason` | Get disconnect reason |
+| `getBroadworksCorrelationInfo` | `getBroadworksCorrelationInfo(): string \| undefined` | Get Broadworks correlation info |
+| `setBroadworksCorrelationInfo` | `setBroadworksCorrelationInfo(info: string): void` | Set Broadworks correlation info |
+| `getCallRtpStats` | `getCallRtpStats(): Promise<CallRtpStats>` | Get RTP statistics |
+| `postStatus` | `postStatus(): Promise<WebexRequestPayload>` | Send call keepalive to Mobius |
+| `sendCallStateMachineEvt` | `sendCallStateMachineEvt(event: CallEvent): void` | Send event to call state machine |
+| `sendMediaStateMachineEvt` | `sendMediaStateMachineEvt(event: RoapEvent): void` | Send event to media state machine |
+
+### Call Events Emitted
+
+| Event | Enum Key | Payload | When Emitted |
+|-------|----------|---------|-------------|
+| `alerting` | `CALL_EVENT_KEYS.ALERTING` | `CallId` | Outgoing call alerting at remote |
+| `progress` | `CALL_EVENT_KEYS.PROGRESS` | `CallId` | Call progress received |
+| `connect` | `CALL_EVENT_KEYS.CONNECT` | `CallId` | Remote answered or call connected |
+| `established` | `CALL_EVENT_KEYS.ESTABLISHED` | `CallId` | Call fully established with media |
+| `held` | `CALL_EVENT_KEYS.HELD` | `CallId` | Call placed on hold |
+| `resumed` | `CALL_EVENT_KEYS.RESUMED` | `CallId` | Call resumed from hold |
+| `disconnect` | `CALL_EVENT_KEYS.DISCONNECT` | `CallId` | Call disconnected |
+| `remote_media` | `CALL_EVENT_KEYS.REMOTE_MEDIA` | `MediaStreamTrack` | Remote media track available |
+| `caller_id` | `CALL_EVENT_KEYS.CALLER_ID` | `CallerIdDisplay` | Caller ID resolved |
+| `call_error` | `CALL_EVENT_KEYS.CALL_ERROR` | `CallError` | Error in call signaling |
+| `hold_error` | `CALL_EVENT_KEYS.HOLD_ERROR` | `CallError` | Error placing call on hold |
+| `resume_error` | `CALL_EVENT_KEYS.RESUME_ERROR` | `CallError` | Error resuming call |
+| `transfer_error` | `CALL_EVENT_KEYS.TRANSFER_ERROR` | `CallError` | Error in call transfer |
+
+---
+
+## CallerId
+
+### Purpose
+
+The `CallerId` sub-module resolves caller identity from SIP headers present in Mobius call events.
+
+### Resolution Priority
+
+1. **P-Asserted-Identity** (`p-asserted-identity`) -- Highest priority, parsed as SIP URI
+2. **From header** (`from`) -- Secondary, parsed as SIP URI
+3. **x-broadworks-remote-party-info** -- Async resolution for external caller ID via SCIM query
+
+### Resolution Flow
+
+```
+CallerIdInfo received
+│
+├── Has p-asserted-identity? ──→ parseSipUri() ──→ DisplayInformation
+│
+├── Has from header? ──→ parseSipUri() ──→ DisplayInformation
+│
+└── Has x-broadworks-remote-party-info? ──→ parseRemotePartyInfo() ──→ resolveCallerId()
+                                                                            │
+                                                                     SCIM query to Webex
+                                                                            │
+                                                                     DisplayInformation
+                                                                            │
+                                                                     emit CALLER_ID event
+```
+
+### DisplayInformation Type
+
+```typescript
+type DisplayInformation = {
+  avatarSrc: AvatarId | undefined;
+  name: DisplayName | undefined;
+  num: string | undefined;
+  id: string | undefined;
+};
+```
+
+---
+
+## Mid-Call Events
+
+The `Call` class handles mid-call events delivered through `CALL_SETUP` messages with `midCallService` data.
+
+### Mid-Call Event Types
+
+| Type | Enum | Description |
+|------|------|-------------|
+| `callInfo` | `MidCallEventType.CALL_INFO` | Caller ID update during an active call |
+| `callState` | `MidCallEventType.CALL_STATE` | Call state change (hold/resume confirmation from server) |
+
+### Mid-Call State Values
+
+| State | Enum | Description |
+|-------|------|-------------|
+| `HELD` | `MOBIUS_MIDCALL_STATE.HELD` | Call confirmed as held by server |
+| `CONNECTED` | `MOBIUS_MIDCALL_STATE.CONNECTED` | Call confirmed as resumed/connected by server |
+
+When a `callState` mid-call event with `HELD` state is received, the Call emits `CALL_EVENT_KEYS.HELD` and sets `held = true`. When `CONNECTED` is received, it emits `CALL_EVENT_KEYS.RESUMED` and sets `held = false`. Both clear the `supplementaryServicesTimer`.
+
+---
+
+## Supplementary Services
+
+### Hold/Resume
+
+- `doHoldResume()` checks the `held` flag and sends either `E_CALL_HOLD` or `E_CALL_RESUME` to the call state machine
+- The state machine transitions to `S_CALL_HOLD` or `S_CALL_RESUME` and calls `handleCallHold()` or `handleCallResume()`
+- These handlers POST to the Mobius hold/resume endpoint
+- A `supplementaryServicesTimer` (10 seconds) is set to emit `HOLD_ERROR` or `RESUME_ERROR` if Mobius doesn't respond with a mid-call state event in time
+- On success, a mid-call event with `HELD` or `CONNECTED` state arrives and the timer is cleared
+
+### Transfer
+
+Two transfer types are supported:
+
+| Type | Enum | Required Parameters |
+|------|------|-------------------|
+| Blind | `TransferType.BLIND` | `transferTarget` (destination number) |
+| Consult | `TransferType.CONSULT` | `transferCallId` (call ID of second call) |
+
+Both are executed via `postSSRequest()` to the `/calltransfer/commit` endpoint.
+
+### Mute
+
+The `mute()` method handles two mute types:
+- `MUTE_TYPE.USER` -- User-initiated mute, toggles `localAudioStream.setUserMuted()`
+- `MUTE_TYPE.SYSTEM` -- System-initiated mute (e.g., noise reduction), respects user mute state
