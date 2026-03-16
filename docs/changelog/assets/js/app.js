@@ -79,12 +79,12 @@ Handlebars.registerHelper('convertDate', function(timestamp) {
 // Util Methods
 const populateFormFieldsFromURL = async () => {
     const queryParams = new URLSearchParams(window.location.search);
-    
+
     // Skip single-view URL handling if comparison parameters are present
     if (queryParams.has('compare') || (queryParams.has('versionA') && queryParams.has('versionB'))) {
         return; // Comparison mode will handle these parameters
     }
-    
+
     const searchParams = {
         stable_version: queryParams.get('stable_version'),
         package: queryParams.get('package'),
@@ -94,14 +94,14 @@ const populateFormFieldsFromURL = async () => {
     };
 
     let hasAtleastOneParam = false;
-  
+
     if (searchParams.stable_version) {
       versionSelectDropdown.value = searchParams.stable_version;
       await doStableVersionChange({
         stable_version: searchParams.stable_version
       });
     }
-  
+
     if (searchParams.package) {
         if (!packageNameInputDropdown.disabled) {
             packageNameInputDropdown.value = searchParams.package;
@@ -109,18 +109,18 @@ const populateFormFieldsFromURL = async () => {
             hasAtleastOneParam = true;
         }
     }
-  
+
     if (searchParams.version) {
       versionInput.value = searchParams.version;
       hasAtleastOneParam = true;
       validateVersionInput({version: searchParams.version});
     }
-  
+
     if (searchParams.commitMessage) {
       commitMessageInput.value = searchParams.commitMessage;
       hasAtleastOneParam = true;
     }
-  
+
     if (searchParams.commitHash) {
       commitHashInput.value = searchParams.commitHash;
       hasAtleastOneParam = true;
@@ -200,7 +200,7 @@ const doStableVersionChange = async ({stable_version}) => {
         // Fetch the changelog and populate package names
         await fetchChangelog(versionPaths[stable_version]);
         populatePackageNames(currentChangelog);
-        
+
         updateFormState();
         if(versionInput.value.trim() !== ''){
             validateVersionInput({version: versionInput.value});
@@ -214,7 +214,7 @@ const doStableVersionChange = async ({stable_version}) => {
 // Search Form Utils
 const validateVersionInput = ({version}) => {
     const stableVersion = versionSelectDropdown.value;
-    const expectedPattern = new RegExp(`^${stableVersion}-([a-z\-]*\\.)?\\d+$`, 'i'); 
+    const expectedPattern = new RegExp(`^${stableVersion}-([a-z\-]*\\.)?\\d+$`, 'i');
 
     if (version !== "" && !expectedPattern.test(version) && stableVersion !== version) {
         versionInputError.innerText = `Version can be empty or should start with ${stableVersion} and match ${stableVersion}-{tag}.patch_version. Eg: ${stableVersion}-next.1`;
@@ -359,13 +359,13 @@ const doSearch_commit = (searchParams, drill_down) => {
                 }
                 else{
                     allHashes.add(hash);
-                    if(!resulting_versions.has(`${package}-${version}`) && 
+                    if(!resulting_versions.has(`${package}-${version}`) &&
                         !resulting_commit_messages.has(thisCommit) &&
                         !resulting_commit_hash.has(hash)
                     ){
                         if(
                             (
-                                searchParams.commitMessage && searchParams.commitMessage.trim() !== "" && 
+                                searchParams.commitMessage && searchParams.commitMessage.trim() !== "" &&
                                 thisCommit.includes(searchParams.commitMessage.trim())
                             ) ||
                             (
@@ -411,7 +411,7 @@ const doSearch = (searchParams) => {
         } : {};
     }
     else if(// If searching by commit → call doSearch_commit()
-        searchParams.commitMessage !== null && searchParams.commitMessage?.trim() !== "" || 
+        searchParams.commitMessage !== null && searchParams.commitMessage?.trim() !== "" ||
         searchParams.commitHash !== null && searchParams.commitHash?.trim() !== ""
     ){
         search_results = doSearch_commit(searchParams, drill_down);
@@ -439,7 +439,7 @@ const doSearch = (searchParams) => {
         search_results,
         stable_version: searchParams.stable_version,
     }});
-    
+
     searchResults.innerHTML = searchResultsHtml;
     searchResults.classList.remove('hide');
 };
@@ -490,7 +490,7 @@ const copyToClipboard = (copyButton) => {
     navigator.clipboard.writeText(JSON.stringify(JSON.parse(copyButton.dataset.alongWith), null, 4));
     const copyText = copyButton.querySelector('span');
     copyText.textContent = 'Copied!';
-    setTimeout(() => { 
+    setTimeout(() => {
         copyText.textContent = 'Copy';
     },2000);
 }
@@ -501,7 +501,7 @@ const copyToClipboard = (copyButton) => {
  */
 const copyComparisonLink = () => {
     const currentURL = window.location.href;
-      
+
     // Try modern clipboard API first
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(currentURL)
@@ -522,12 +522,12 @@ const copyComparisonLink = () => {
  */
 const showCopySuccess = (button) => {
     if (!button) return;
-    
+
     const originalText = button.innerHTML;
     button.innerHTML = '✓ Link Copied!';
     button.style.backgroundColor = 'var(--color-success)';
     button.style.borderColor = 'var(--color-success)';
-    
+
     setTimeout(() => {
         button.innerHTML = originalText;
         button.style.backgroundColor = '';
@@ -545,11 +545,11 @@ const fallbackCopyToClipboard = (text, button) => {
     tempInput.style.opacity = '0';
     tempInput.value = text;
     document.body.appendChild(tempInput);
-    
+
     // Select and copy
     tempInput.select();
     tempInput.setSelectionRange(0, 99999); // For mobile devices
-    
+
     try {
         const successful = document.execCommand('copy');
         if (successful) {
@@ -562,7 +562,7 @@ const fallbackCopyToClipboard = (text, button) => {
         console.error('Fallback copy failed:', err);
         showCopyError(button);
     }
-    
+
     // Remove temporary input
     document.body.removeChild(tempInput);
 }
@@ -575,18 +575,18 @@ const showCopyError = (button) => {
         alert('Could not copy link. Please copy manually from the address bar.');
         return;
     }
-    
+
     const originalText = button.innerHTML;
     button.innerHTML = '❌ Copy Failed';
     button.style.backgroundColor = 'var(--color-danger)';
     button.style.borderColor = 'var(--color-danger)';
-    
+
     setTimeout(() => {
         button.innerHTML = originalText;
         button.style.backgroundColor = '';
         button.style.borderColor = '';
     }, 2000);
-    
+
     // Also show alert with instructions
     setTimeout(() => {
         alert('Could not copy link automatically.\n\nPlease copy manually from the address bar:\n' + window.location.href);
@@ -667,37 +667,37 @@ const extractPackagesFromVersion = (changelog, specificVersions = null) => {
  // Helper function to find stable version first, then highest pre-release version
 const findStableVersion = (changelog, packageName, stableVersion) => {
     if (!changelog[packageName]) return null;
-    
+
     const versions = Object.keys(changelog[packageName]);
     if (versions.length === 0) return null;
-    
+
     // Escape dots in version string for regex (3.4.0 -> 3\.4\.0)
     const escapedVersion = stableVersion.replace(/\./g, '\\.');
-    
+
     // Priority 1: Find exact stable version (e.g., "3.4.0" only, no suffixes)
     const exactStablePattern = new RegExp(`^${escapedVersion}$`);
     const exactStableVersion = versions.find(ver => exactStablePattern.test(ver));
-    
+
     if (exactStableVersion) {
         return exactStableVersion;
     }
-    
+
     // Priority 2: Find highest pre-release version (any tag: next, alpha, beta, rc, etc.)
     // Pattern: 3.4.0-{tag}.{number} -> captures tag and number
     const prereleasePattern = new RegExp(`^${escapedVersion}-([a-z]+)\\.(\\d+)$`, 'i');
-    
+
     const prereleaseVersions = versions
         .filter(ver => prereleasePattern.test(ver))
         .sort((a, b) => {
             const matchA = a.match(prereleasePattern);
             const matchB = b.match(prereleasePattern);
             if (!matchA || !matchB) return 0;
-            
+
             const numA = parseInt(matchA[2], 10);
             const numB = parseInt(matchB[2], 10);
             return numB - numA; // Sort descending (highest first)
         });
-    
+
     // Return highest pre-release version, or fallback to first available
     return prereleaseVersions[0] || versions[0];
 };
@@ -801,7 +801,7 @@ const showComparisonError = (error) => {
     console.error('Error performing version comparison:', error);
     console.error('Error stack:', error.stack);
 
-    comparisonResults.innerHTML = 
+    comparisonResults.innerHTML =
         `<div style="color: var(--color-error-text); padding: 20px; background: var(--color-error-bg); border-radius: 5px;">
             <strong>Error:</strong> Failed to compare versions. ${error.message}
             <br><br><small>Check browser console for details (F12)</small>
@@ -1751,9 +1751,9 @@ const populateComparisonVersions = () => {
     if (versionSelectDropdown && versionSelectDropdown.innerHTML) {
         const options = versionSelectDropdown.innerHTML;
         if (versionASelect) {
-            versionASelect.innerHTML = options; versionASelect.disabled = false; 
+            versionASelect.innerHTML = options; versionASelect.disabled = false;
         }
-        if (versionBSelect) { 
+        if (versionBSelect) {
             versionBSelect.innerHTML = options; versionBSelect.disabled = false;
          }
     }
@@ -1803,14 +1803,14 @@ const clearComparisonURLParams = () => {
  */
 const updateCompareButtonState = () => {
     if (!compareButton) return;
-    
+
     const stableA = versionASelect ? versionASelect.value : null;
     const stableB = versionBSelect ? versionBSelect.value : null;
     const selectedPackage = comparisonPackageSelect ? comparisonPackageSelect.value : null;
     const versionASpecific = versionAPrereleaseSelect ? versionAPrereleaseSelect.value : null;
     const versionBSpecific = versionBPrereleaseSelect ? versionBPrereleaseSelect.value : null;
     const prereleaseRowVisible = prereleaseRow && prereleaseRow.style.display !== 'none';
-    
+
     if (stableA && stableB && stableA === stableB) {
         // Same stable: must select a package and both pre-release versions (and they must differ)
         const bothSelected = prereleaseRowVisible && versionASpecific && versionBSpecific;
@@ -1850,7 +1850,7 @@ const handleStableVersionChange = async () => {
     resetComparisonSelections();
     clearComparisonURLParams();
     updateCompareButtonState();
-    
+
     if (stableA && stableB) {
         try {
             let changelogA, changelogB;
@@ -1864,7 +1864,7 @@ const handleStableVersionChange = async () => {
                     fetch(versionPaths[stableB]).then(res => res.json())
                 ]);
             }
-            
+
             comparisonState.update(changelogA, changelogB, stableA, stableB);
             populateUnionPackages(changelogA, changelogB);
             updateCompareButtonState();
