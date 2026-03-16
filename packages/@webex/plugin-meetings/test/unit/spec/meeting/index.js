@@ -6400,7 +6400,10 @@ describe('plugin-meetings', () => {
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
           meeting.unsetPeerConnections = sinon.stub().returns(true);
           meeting.logger.error = sinon.stub().returns(true);
-          meeting.updateLLMConnection = sinon.stub().returns(Promise.resolve());
+          meeting.clearMeetingData = sinon.stub().callsFake(async () => {
+            meeting.audio = null;
+            meeting.video = null;
+          });
           webex.internal.voicea.off = sinon.stub().returns(true);
           meeting.stopTranscription = sinon.stub();
           meeting.transcription = {};
@@ -6427,9 +6430,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.closePeerConnections);
           assert.calledOnce(meeting.unsetRemoteStreams);
           assert.calledOnce(meeting.unsetPeerConnections);
-          assert.calledOnce(meeting.stopTranscription);
-          assert.calledOnce(meeting.annotation.deregisterEvents);
-          assert.calledWith(webex.internal.llm.off, 'event:relay.event', meeting.processRelayEvent);
+          assert.calledOnce(meeting.clearMeetingData);
         });
 
         it('should reset call diagnostic latencies correctly', async () => {
@@ -8430,7 +8431,10 @@ describe('plugin-meetings', () => {
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
           meeting.unsetPeerConnections = sinon.stub().returns(true);
           meeting.logger.error = sinon.stub().returns(true);
-          meeting.updateLLMConnection = sinon.stub().returns(Promise.resolve());
+          meeting.clearMeetingData = sinon.stub().callsFake(async () => {
+            meeting.audio = null;
+            meeting.video = null;
+          });
           meeting.transcription = {};
           meeting.stopTranscription = sinon.stub();
 
@@ -8456,10 +8460,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting?.closePeerConnections);
           assert.calledOnce(meeting?.unsetRemoteStreams);
           assert.calledOnce(meeting?.unsetPeerConnections);
-          assert.calledOnce(meeting?.stopTranscription);
-
-          assert.called(meeting.annotation.deregisterEvents);
-          assert.calledWith(webex.internal.llm.off, 'event:relay.event', meeting.processRelayEvent);
+          assert.calledOnce(meeting?.clearMeetingData);
         });
       });
 
@@ -12820,6 +12821,9 @@ describe('plugin-meetings', () => {
             'event:locus.state_message',
             meeting.processLocusLLMEvent
           );
+          assert.isFalse(
+            meeting.webex.internal.llm.off.calledWithExactly('online', meeting.handleLLMOnline)
+          );
         });
         it('disconnects if the data channel url has changed', async () => {
           meeting.joinedWith = {state: 'JOINED'};
@@ -12869,6 +12873,9 @@ describe('plugin-meetings', () => {
             'event:locus.state_message',
             meeting.processLocusLLMEvent
           );
+          assert.isFalse(
+            meeting.webex.internal.llm.off.calledWithExactly('online', meeting.handleLLMOnline)
+          );
         });
         it('disconnects when the state is not JOINED', async () => {
           meeting.joinedWith = {state: 'any other state'};
@@ -12885,6 +12892,9 @@ describe('plugin-meetings', () => {
           });
           assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.equal(result, undefined);
+          assert.isFalse(
+            meeting.webex.internal.llm.off.calledWithExactly('online', meeting.handleLLMOnline)
+          );
         });
         it('still need connect main session data channel when PS started', async () => {
           meeting.joinedWith = {state: 'JOINED'};
@@ -12968,6 +12978,42 @@ describe('plugin-meetings', () => {
             'token-123'
           );
           assert.calledWithExactly(webex.internal.llm.setDatachannelToken, 'token-123', 'default');
+        });
+
+        describe('#clearMeetingData', () => {
+          beforeEach(() => {
+            webex.internal.llm.isConnected = sinon.stub().returns(true);
+            webex.internal.llm.disconnectLLM = sinon.stub().resolves();
+            webex.internal.llm.off = sinon.stub();
+            meeting.annotation.deregisterEvents = sinon.stub();
+            meeting.clearLLMHealthCheckTimer = sinon.stub();
+            meeting.stopTranscription = sinon.stub();
+            meeting.transcription = {};
+            meeting.shareStatus = 'no-share';
+          });
+
+          it('disconnects llm and removes online and relay listeners during meeting data cleanup', async () => {
+            await meeting.clearMeetingData();
+
+            assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
+              code: 3050,
+              reason: 'done (permanent)',
+            });
+            assert.calledWithExactly(webex.internal.llm.off, 'online', meeting.handleLLMOnline);
+            assert.calledWithExactly(
+              webex.internal.llm.off,
+              'event:relay.event',
+              meeting.processRelayEvent
+            );
+            assert.calledWithExactly(
+              webex.internal.llm.off,
+              'event:locus.state_message',
+              meeting.processLocusLLMEvent
+            );
+            assert.calledOnce(meeting.clearLLMHealthCheckTimer);
+            assert.calledOnce(meeting.stopTranscription);
+            assert.calledOnce(meeting.annotation.deregisterEvents);
+          });
         });
       });
 

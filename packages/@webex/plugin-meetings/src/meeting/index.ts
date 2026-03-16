@@ -6219,6 +6219,52 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Disconnects and cleans up the default LLM session listeners/timers.
+   * @param {Object} options
+   * @param {boolean} [options.removeOnlineListener=true] removes the one-time online listener
+   * @param {boolean} [options.throwOnError=true] rethrows disconnect errors when true
+   * @returns {Promise<void>}
+   */
+  private cleanupLLMConneciton = async ({
+    removeOnlineListener = true,
+    throwOnError = true,
+  }: {
+    removeOnlineListener?: boolean;
+    throwOnError?: boolean;
+  } = {}): Promise<void> => {
+    try {
+      // @ts-ignore - Fix type
+      if (this.webex.internal.llm.isConnected()) {
+        // @ts-ignore - Fix type
+        await this.webex.internal.llm.disconnectLLM({
+          code: 3050,
+          reason: 'done (permanent)',
+        });
+      }
+    } catch (error) {
+      LoggerProxy.logger.error(
+        'Meeting:index#cleanupLLMConneciton --> Failed to disconnect default LLM session',
+        error
+      );
+
+      if (throwOnError) {
+        throw error;
+      }
+    } finally {
+      if (removeOnlineListener) {
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.off('online', this.handleLLMOnline);
+      }
+      // @ts-ignore - fix types
+      this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+
+      this.clearLLMHealthCheckTimer();
+    }
+  };
+
+  /**
    * Connects to low latency mercury and reconnects if the address has changed
    * It will also disconnect if called when the meeting has ended
    * @param {String} datachannelUrl
@@ -6258,17 +6304,7 @@ export default class Meeting extends StatelessWebexPlugin {
       ) {
         return undefined;
       }
-      // @ts-ignore - Fix type
-      await this.webex.internal.llm.disconnectLLM({
-        code: 3050,
-        reason: 'done (permanent)',
-      });
-      // @ts-ignore - Fix type
-      this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
-      // @ts-ignore - Fix type
-      this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
-
-      this.clearLLMHealthCheckTimer();
+      await this.cleanupLLMConneciton({removeOnlineListener: false});
     }
 
     if (!isJoined) {
@@ -8613,12 +8649,12 @@ export default class Meeting extends StatelessWebexPlugin {
     LoggerProxy.logger.log('Meeting:index#leave --> Leaving a meeting');
 
     return MeetingUtil.leaveMeeting(this, options)
-      .then((leave) => {
+      .then(async (leave) => {
         // CA team recommends submitting this *after* locus /leave
         submitLeaveMetric();
 
         this.meetingFiniteStateMachine.leave();
-        this.clearMeetingData();
+        await this.clearMeetingData();
 
         // upload logs on leave irrespective of meeting delete
         Trigger.trigger(
@@ -9477,10 +9513,10 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     return MeetingUtil.endMeetingForAll(this)
-      .then((end) => {
+      .then(async (end) => {
         this.meetingFiniteStateMachine.end();
 
-        this.clearMeetingData();
+        await this.clearMeetingData();
         // upload logs on leave irrespective of meeting delete
         Trigger.trigger(
           this,
@@ -9528,7 +9564,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @public
    * @memberof Meeting
    */
-  clearMeetingData = () => {
+  clearMeetingData = async () => {
     this.audio = null;
     this.video = null;
     this.screenShareFloorState = ScreenShareFloorStatus.RELEASED;
@@ -9544,12 +9580,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.annotation.deregisterEvents();
 
-    // @ts-ignore - fix types
-    this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
-    // @ts-ignore - Fix type
-    this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
-
-    this.clearLLMHealthCheckTimer();
+    await this.cleanupLLMConneciton({throwOnError: false});
   };
 
   /**
