@@ -45,6 +45,12 @@ const Webinar = WebexPlugin.extend({
    */
   cleanUp() {
     this.cleanupPSDataChannel();
+    // @ts-ignore
+    this.webex.internal.llm.off(
+      `online:${LLM_PRACTICE_SESSION}`,
+      this.handlePSDataChannelOnline,
+      this
+    );
   },
 
   /**
@@ -146,6 +152,16 @@ const Webinar = WebexPlugin.extend({
       `event:relay.event:${LLM_PRACTICE_SESSION}`,
       meeting?.processRelayEvent
     );
+  },
+
+  /**
+   * Handles practice session LLM online events.
+   *
+   * @returns {void}
+   */
+  handlePSDataChannelOnline() {
+    // @ts-ignore
+    this.webex.internal.voicea.announce();
   },
 
   /**

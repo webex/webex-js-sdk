@@ -462,16 +462,38 @@ describe('plugin-voicea', () => {
       });
     });
 
+    describe('#isLLMConnected', () => {
+      it('returns true when the default llm connection is connected', () => {
+        voiceaService.webex.internal.llm.isConnected.callsFake((channel) =>
+          channel === LLM_PRACTICE_SESSION ? false : true
+        );
+
+        assert.equal(voiceaService.isLLMConnected(), true);
+      });
+
+      it('returns true when only the practice session llm connection is connected', () => {
+        voiceaService.webex.internal.llm.isConnected.callsFake((channel) =>
+          channel === LLM_PRACTICE_SESSION
+        );
+
+        assert.equal(voiceaService.isLLMConnected(), true);
+      });
+
+      it('returns false when neither llm connection is connected', () => {
+        voiceaService.webex.internal.llm.isConnected.returns(false);
+
+        assert.equal(voiceaService.isLLMConnected(), false);
+      });
+    });
+
     describe("#announce", () => {
       let isAnnounceProcessing, sendAnnouncement;
       beforeEach(() => {
-        voiceaService.webex.internal.llm.isConnected.returns(true);
         sendAnnouncement = sinon.stub(voiceaService, 'sendAnnouncement');
         isAnnounceProcessing = sinon.stub(voiceaService, 'isAnnounceProcessing').returns(false)
       });
 
       afterEach(() => {
-        voiceaService.webex.internal.llm.isConnected.returns(true);
         isAnnounceProcessing.restore();
         sendAnnouncement.restore();
       });
@@ -485,6 +507,16 @@ describe('plugin-voicea', () => {
         voiceaService.webex.internal.llm.isConnected.returns(false);
         assert.throws(() =>  voiceaService.announce(), "voicea can not announce before llm connected");
         assert.notCalled(sendAnnouncement);
+      });
+
+      it('announce to llm data channel when only practice session is connected', ()=> {
+        voiceaService.webex.internal.llm.isConnected.callsFake((channel) =>
+          channel === LLM_PRACTICE_SESSION
+        );
+
+        voiceaService.announce();
+
+        assert.calledOnce(sendAnnouncement);
       });
 
       it('should not announce duplicate', () => {
@@ -517,13 +549,11 @@ describe('plugin-voicea', () => {
       beforeEach(() => {
         requestTurnOnCaptions = sinon.stub(voiceaService, 'requestTurnOnCaptions');
         voiceaService.captionStatus = 'idle';
-        voiceaService.webex.internal.llm.isConnected.returns(true);
       });
 
       afterEach(() => {
         requestTurnOnCaptions.restore();
         voiceaService.captionStatus = 'idle';
-        voiceaService.webex.internal.llm.isConnected.returns(true);
       });
 
       it('call request turn on captions', () => {
@@ -532,11 +562,25 @@ describe('plugin-voicea', () => {
         assert.calledOnce(requestTurnOnCaptions);
       });
 
-      it("turns on captions before llm connected", () => {
+      it('throws before turning on captions when llm is not connected', async () => {
         voiceaService.captionStatus = 'idle';
-        voiceaService.webex.internal.llm.isConnected.returns(true);
-        // assert.throws(() => voiceaService.turnOnCaptions(), "can not turn on captions before llm connected");
+        voiceaService.webex.internal.llm.isConnected.returns(false);
+
+        await assert.isRejected(
+          voiceaService.turnOnCaptions(),
+          'can not turn on captions before llm connected'
+        );
         assert.notCalled(requestTurnOnCaptions);
+      });
+
+      it('turns on captions when only the practice session llm connection is connected', () => {
+        voiceaService.webex.internal.llm.isConnected.callsFake((channel) =>
+          channel === LLM_PRACTICE_SESSION
+        );
+
+        voiceaService.turnOnCaptions();
+
+        assert.calledOnce(requestTurnOnCaptions);
       });
 
       it('should not turn on duplicate when processing', () => {

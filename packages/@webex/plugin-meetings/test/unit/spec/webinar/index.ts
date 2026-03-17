@@ -28,6 +28,7 @@ describe('plugin-meetings', () => {
             webex.meetings = {};
             webex.credentials.getUserToken = getUserTokenStub;
             webex.meetings.getMeetingByType = sinon.stub();
+            webex.internal.voicea.announce = sinon.stub();
 
       webex.internal.llm = {
         getDatachannelToken: sinon.stub().returns(undefined),
@@ -208,6 +209,14 @@ describe('plugin-meetings', () => {
           `event:relay.event:${LLM_PRACTICE_SESSION}`,
           meeting.processRelayEvent
         );
+      });
+    });
+
+    describe('#handlePSDataChannelOnline', () => {
+      it('notifies voicea when the practice session data channel comes online', () => {
+        webinar.handlePSDataChannelOnline();
+
+        assert.calledOnceWithExactly(webex.internal.voicea.announce);
       });
     });
 

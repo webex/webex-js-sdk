@@ -136,6 +136,7 @@ import {
   STAGE_MANAGER_TYPE,
   LOCUSEVENT,
   LOCUS_LLM_EVENT,
+  LLM_PRACTICE_SESSION,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -6169,6 +6170,11 @@ export default class Meeting extends StatelessWebexPlugin {
         if (this.config.enableAutomaticLLM) {
           // @ts-ignore
           this.webex.internal.llm.on('online', this.handleLLMOnline);
+          // @ts-ignore
+          this.webex.internal.llm.on(
+            `online${LLM_PRACTICE_SESSION}`,
+            this.webinar?.handlePSDataChannelOnline()
+          );
           this.updateLLMConnection()
             .catch((error) => {
               LoggerProxy.logger.error(
