@@ -450,6 +450,20 @@ export class ReachabilityPeerConnection extends EventsScope {
           this.saveResult('udp', latencyInMilliseconds, e.candidate.address, serverIp, serverPort);
         } else {
           this.addPublicIp('udp', e.candidate.address);
+          // Tracking reached subnets for subsequent UDP responses
+          if (serverIp && !this.emittedSubnets.has(serverIp)) {
+            this.emittedSubnets.add(serverIp);
+            this.emit(
+              {
+                file: 'reachabilityPeerConnection',
+                function: 'registerIceCandidateListener',
+              },
+              ReachabilityPeerConnectionEvents.reachedSubnets,
+              {
+                subnets: [serverIp],
+              }
+            );
+          }
         }
 
         this.determineNatTypeForSrflxCandidate(e.candidate);

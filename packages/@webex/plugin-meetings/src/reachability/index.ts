@@ -1023,6 +1023,22 @@ export default class Reachability extends EventsScope {
         await this.storeResults(results);
 
         if (areAllResultsReady) {
+          // Re-read final details from all clusters to capture any late-arriving UDP results
+          // (in per-URL mode, early resultReady events may have incomplete details)
+          Object.keys(this.clusterReachability).forEach((clusterKey) => {
+            const finalResult = this.clusterReachability[clusterKey].getResult();
+            if (finalResult.udp.details) {
+              results[clusterKey].udp.details = finalResult.udp.details;
+            }
+            if (finalResult.tcp.details) {
+              results[clusterKey].tcp.details = finalResult.tcp.details;
+            }
+            if (finalResult.xtls.details) {
+              results[clusterKey].xtls.details = finalResult.xtls.details;
+            }
+          });
+          await this.storeResults(results);
+
           this.clearTimer('overallTimer');
           this.emit(
             {

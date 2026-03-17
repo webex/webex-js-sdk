@@ -260,10 +260,10 @@ describe('ClusterReachability', () => {
       clusterReachability.abort();
       await promise;
 
-      // Only 2 subnets: 1st srflx server IP and relay address
-      // (2nd srflx goes through addPublicIp since UDP is already reachable)
-      assert.equal(clusterReachability.reachedSubnets.size, 2);
+      // All 3 subnets should be tracked (both srflx server IPs and relay address)
+      assert.equal(clusterReachability.reachedSubnets.size, 3);
       assert.isTrue(clusterReachability.reachedSubnets.has('192.168.1.1'));
+      assert.isTrue(clusterReachability.reachedSubnets.has('10.0.0.1'));
       assert.isTrue(clusterReachability.reachedSubnets.has('relay.server.ip'));
     });
 
@@ -298,9 +298,9 @@ describe('ClusterReachability', () => {
       clusterReachability.abort();
       await promise;
 
-      // Only 2 subnets: 1st srflx server IP and relay address
-      assert.equal(clusterReachability.reachedSubnets.size, 2);
-      assert.deepEqual(Array.from(clusterReachability.reachedSubnets), ['192.168.1.1', '172.16.0.1']);
+      // All 3 subnets should be tracked (both srflx server IPs and relay address)
+      assert.equal(clusterReachability.reachedSubnets.size, 3);
+      assert.deepEqual(Array.from(clusterReachability.reachedSubnets), ['192.168.1.1', '10.0.0.1', '172.16.0.1']);
     });
 
     it('collects reached subnets from all peer connections when enablePerUdpUrlReachability is true', async () => {
@@ -760,9 +760,9 @@ describe('ClusterReachability', () => {
       // Override RTCPeerConnection stub to return separate objects per call,
       // because per-URL mode creates multiple PeerConnections and closing one
       // (which nulls onicecandidate) must not affect the others.
-      const allFakePcs: any[] = [];
+      const allFakePcs: Record<string, unknown>[] = [];
       (global.RTCPeerConnection as sinon.SinonStub).callsFake(() => {
-        const pc = {
+        const pc: Record<string, unknown> = {
           createOffer: sinon.stub().resolves(FAKE_OFFER),
           setLocalDescription: sinon.stub().resolves(),
           close: sinon.stub(),
