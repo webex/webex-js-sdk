@@ -993,6 +993,20 @@ export default class Reachability extends EventsScope {
         this.webex.config.meetings.enablePerUdpUrlReachability
       );
 
+      // Hydrate results with pre-populated subnet details from the ClusterReachability instance.
+      // This ensures that even if no resultReady events fire (e.g., RTCPeerConnection creation fails),
+      // the unreachable subnet entries are persisted to storage.
+      const initialResult = this.clusterReachability[key].getResult();
+      if (initialResult.udp.details?.length) {
+        results[key].udp.details = initialResult.udp.details;
+      }
+      if (initialResult.tcp.details?.length) {
+        results[key].tcp.details = initialResult.tcp.details;
+      }
+      if (initialResult.xtls.details?.length) {
+        results[key].xtls.details = initialResult.xtls.details;
+      }
+
       this.clusterReachability[key].on(Events.resultReady, async (data: ResultEventData) => {
         const {protocol, result, clientMediaIPs, latencyInMilliseconds, details} = data;
 

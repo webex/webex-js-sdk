@@ -337,7 +337,8 @@ export class ClusterReachability extends EventsScope {
       urls.forEach((url) => {
         const {host, port} = parseIceServerUrl(url);
         if (host && port) {
-          const hostPort = `${host}:${port}`;
+          const formattedHost = host.includes(':') ? `[${host}]` : host;
+          const hostPort = `${formattedHost}:${port}`;
           if (!seen.has(hostPort)) {
             seen.add(hostPort);
             result.push(hostPort);
