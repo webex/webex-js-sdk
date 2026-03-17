@@ -813,11 +813,7 @@ export default class LocusInfo extends EventsScope {
    * @param {HashTreeMessage} message incoming hash tree message
    * @returns {void}
    */
-  private async handleHashTreeMessage(
-    meeting: any,
-    eventType: LOCUSEVENT,
-    message: HashTreeMessage
-  ) {
+  private handleHashTreeMessage(meeting: any, eventType: LOCUSEVENT, message: HashTreeMessage) {
     if (eventType !== LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
       this.sendClassicVsHashTreeMismatchMetric(
         meeting,
@@ -926,11 +922,14 @@ export default class LocusInfo extends EventsScope {
       }
 
       case LocusInfoUpdateType.MEETING_ENDED: {
-        LoggerProxy.logger.info(
-          `Locus-info:index#updateFromHashTree --> received signal that meeting ended, destroying meeting ${this.meetingId}`
-        );
         const meeting = this.webex.meetings.meetingCollection.get(this.meetingId);
-        this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.SELF_REMOVED);
+
+        if (meeting) {
+          LoggerProxy.logger.info(
+            `Locus-info:index#updateFromHashTree --> received signal that meeting ended, destroying meeting ${this.meetingId}`
+          );
+          this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.SELF_REMOVED);
+        }
       }
     }
   }
