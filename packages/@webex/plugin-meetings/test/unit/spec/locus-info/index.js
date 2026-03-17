@@ -5,7 +5,7 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import testUtils from '../../../utils/testUtils';
 import Meetings from '@webex/plugin-meetings';
-import LocusInfo from '@webex/plugin-meetings/src/locus-info';
+import LocusInfo, {createLocusFromHashTreeMessage} from '@webex/plugin-meetings/src/locus-info';
 import SelfUtils from '@webex/plugin-meetings/src/locus-info/selfUtils';
 import InfoUtils from '@webex/plugin-meetings/src/locus-info/infoUtils';
 import EmbeddedAppsUtils from '@webex/plugin-meetings/src/locus-info/embeddedAppsUtils';
@@ -4369,6 +4369,173 @@ describe('plugin-meetings', () => {
         );
         assert.notCalled(getTheLocusToUpdateStub);
       });
+    });
+  });
+
+  describe('#createLocusFromHashTreeMessage', () => {
+    const LOCUS_URL = 'https://locus.example.com/loci/abc-123';
+
+    const createElement = (type, data) => ({
+      htMeta: {elementId: {type, id: 1, version: 1}},
+      data,
+    });
+
+    it('returns locus with url and empty participants when no locusStateElements', () => {
+      const result = createLocusFromHashTreeMessage({locusUrl: LOCUS_URL});
+
+      assert.deepEqual(result.locus, {participants: [], url: LOCUS_URL});
+      assert.isUndefined(result.metadata);
+    });
+
+    it('skips elements without data', () => {
+      const result = createLocusFromHashTreeMessage({
+        locusUrl: LOCUS_URL,
+        locusStateElements: [{htMeta: {elementId: {type: 'Self', id: 1, version: 1}}, data: null}],
+      });
+
+      assert.deepEqual(result.locus, {participants: [], url: LOCUS_URL});
+    });
+
+    [
+      {type: 'Self', locusKey: 'self', data: {id: 'self-1', state: 'JOINED'}},
+      {type: 'Info', locusKey: 'info', data: {webExMeetingId: '123'}},
+      {type: 'FullState', locusKey: 'fullState', data: {state: 'ACTIVE'}},
+      {type: 'Links', locusKey: 'links', data: {resources: {}}},
+    ].forEach(({type, locusKey, data}) => {
+      it(`maps ${type} element to locus.${locusKey}`, () => {
+        const result = createLocusFromHashTreeMessage({
+          locusUrl: LOCUS_URL,
+          locusStateElements: [createElement(type, data)],
+        });
+
+        assert.deepEqual(result.locus[locusKey], data);
+      });
+    });
+
+    it('pushes Participant elements to locus.participants', () => {
+      const p1 = {id: 'p1', state: 'JOINED'};
+      const p2 = {id: 'p2', state: 'LEFT'};
+
+      const result = createLocusFromHashTreeMessage({
+        locusUrl: LOCUS_URL,
+        locusStateElements: [createElement('Participant', p1), createElement('Participant', p2)],
+      });
+
+      assert.deepEqual(result.locus.participants, [p1, p2]);
+    });
+
+    it('pushes MediaShare elements to locus.mediaShares array', () => {
+      const share1 = {name: 'whiteboard'};
+      const share2 = {name: 'content'};
+
+      const result = createLocusFromHashTreeMessage({
+        locusUrl: LOCUS_URL,
+        locusStateElements: [
+          createElement('MediaShare', share1),
+          createElement('MediaShare', share2),
+        ],
+      });
+
+      assert.deepEqual(result.locus.mediaShares, [share1, share2]);
+    });
+
+    it('pushes EmbeddedApp elements to locus.embeddedApps array', () => {
+      const app = {appId: 'app-1', state: 'STARTED'};
+
+      const result = createLocusFromHashTreeMessage({
+        locusUrl: LOCUS_URL,
+        locusStateElements: [createElement('EmbeddedApp', app)],
+      });
+
+      assert.deepEqual(result.locus.embeddedApps, [app]);
+    });
+
+    it('merges ControlEntry elements into locus.controls', () => {
+      const control1 = {record: {recording: true}};
+      const control2 = {lock: {locked: false}};
+
+      const result = createLocusFromHashTreeMessage({
+        locusUrl: LOCUS_URL,
+        locusStateElements: [
+          createElement('ControlEntry', control1),
+          createElement('ControlEntry', control2),
+        ],
+      });
+
+      assert.deepEqual(result.locus.controls, {record: {recording: true}, lock: {locked: false}});
+    });
+
+    it('spreads Locus element data onto top level but removes managed keys', () => {
+      const locusData = {
+        url: 'should-be-overridden',
+        someTopLevelField: 'value',
+        // these are managed by other ObjectTypes and should be removed
+        links: {should: 'be removed'},
+        info: {should: 'be removed'},
+        fullState: {should: 'be removed'},
+        self: {should: 'be removed'},
+        participants: [{should: 'be removed'}],
+        mediaShares: [{should: 'be removed'}],
+        controls: {should: 'be removed'},
+        embeddedApps: [{should: 'be removed'}],
+      };
+
+      const result = createLocusFromHashTreeMessage({
+        locusUrl: LOCUS_URL,
+        locusStateElements: [createElement('Locus', locusData)],
+      });
+
+      assert.equal(result.locus.someTopLevelField, 'value');
+      assert.deepEqual(result.locus.participants, []);
+      assert.isUndefined(result.locus.links);
+      assert.isUndefined(result.locus.info);
+      assert.isUndefined(result.locus.fullState);
+      assert.isUndefined(result.locus.self);
+      assert.isUndefined(result.locus.mediaShares);
+      assert.isUndefined(result.locus.controls);
+      assert.isUndefined(result.locus.embeddedApps);
+    });
+
+    it('extracts Metadata element as metadata in the result', () => {
+      const metadataData = {visibleDataSets: [{name: 'ds1', url: 'http://ds1.url'}]};
+      const htMeta = {elementId: {type: 'Metadata', id: 99, version: 3}};
+
+      const result = createLocusFromHashTreeMessage({
+        locusUrl: LOCUS_URL,
+        locusStateElements: [{htMeta, data: metadataData}],
+      });
+
+      assert.deepEqual(result.metadata, {...metadataData, htMeta});
+      assert.isUndefined(result.locus.metadata);
+    });
+
+    it('handles a message with multiple element types', () => {
+      const selfData = {id: 'self-1'};
+      const participantData = {id: 'p1'};
+      const infoData = {webExMeetingId: '456'};
+
+      const result = createLocusFromHashTreeMessage({
+        locusUrl: LOCUS_URL,
+        locusStateElements: [
+          createElement('Self', selfData),
+          createElement('Participant', participantData),
+          createElement('Info', infoData),
+        ],
+      });
+
+      assert.deepEqual(result.locus.self, selfData);
+      assert.deepEqual(result.locus.participants, [participantData]);
+      assert.deepEqual(result.locus.info, infoData);
+      assert.equal(result.locus.url, LOCUS_URL);
+    });
+
+    it('ignores unknown element types', () => {
+      const result = createLocusFromHashTreeMessage({
+        locusUrl: LOCUS_URL,
+        locusStateElements: [createElement('UnknownType', {foo: 'bar'})],
+      });
+
+      assert.deepEqual(result.locus, {participants: [], url: LOCUS_URL});
     });
   });
 });
