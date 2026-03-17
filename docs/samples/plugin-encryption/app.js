@@ -171,3 +171,100 @@ async function decryptFile() {
     }
   }
 }
+
+// =====================================================
+// Upload and Encrypt File Section
+// =====================================================
+
+function addEncryptLog(message) {
+  const logElm = document.querySelector('#encrypt-log');
+  const timestamp = new Date().toLocaleTimeString();
+  logElm.textContent = `[${timestamp}] ${message}\n` + logElm.textContent;
+}
+
+async function encryptUploadedFile() {
+  const kmsKeyUri = document.querySelector('#encrypt-kms-key-uri').value;
+  const fileInput = document.querySelector('#encrypt-file-input');
+  const jweOutput = document.querySelector('#encrypt-jwe-output');
+
+  addEncryptLog('Starting encryption...');
+
+  if (!kmsKeyUri) {
+    addEncryptLog('ERROR: KMS Key URI is required');
+    return;
+  }
+
+  if (!fileInput.files || fileInput.files.length === 0) {
+    addEncryptLog('ERROR: Please select a file to encrypt');
+    return;
+  }
+
+  const file = fileInput.files[0];
+  addEncryptLog(`File selected: ${file.name} (${file.size} bytes, type: ${file.type})`);
+
+  try {
+    addEncryptLog('Reading file...');
+    const arrayBuffer = await file.arrayBuffer();
+    addEncryptLog(`File read successfully (${arrayBuffer.byteLength} bytes)`);
+
+    addEncryptLog('Encrypting with KMS key...');
+    const jweString = await webex.internal.encryption.encryptBinaryData(kmsKeyUri, arrayBuffer);
+    addEncryptLog('Encryption successful!');
+
+    jweOutput.value = jweString;
+    addEncryptLog(`JWE generated (${jweString.length} characters)`);
+  } catch (error) {
+    console.error('Error encrypting file:', error);
+    addEncryptLog(`ERROR: ${error.message || error}`);
+    jweOutput.value = '';
+  }
+}
+
+function copyJweToClipboard() {
+  const jweOutput = document.querySelector('#encrypt-jwe-output');
+  if (!jweOutput.value) {
+    addEncryptLog('No JWE to copy');
+    return;
+  }
+
+  navigator.clipboard.writeText(jweOutput.value).then(() => {
+    addEncryptLog('JWE copied to clipboard!');
+  }).catch((err) => {
+    addEncryptLog(`Failed to copy: ${err}`);
+  });
+}
+
+async function generateKeyAndKro() {
+  const resourceUriInput = document.querySelector('#new-kro-resource-uri');
+  const statusElm = document.querySelector('#generate-key-status');
+  const kmsKeyUriInput = document.querySelector('#encrypt-kms-key-uri');
+
+  statusElm.textContent = 'Generating key and KRO...';
+
+  try {
+    // Create a new unbound key
+    statusElm.textContent = 'Creating unbound key...';
+    const key = await webex.internal.encryption.kms.createUnboundKeys({count: 1});
+    const unboundKey = key[0];
+    statusElm.textContent = `Unbound key created: ${unboundKey.uri}`;
+
+    // If resource URI is provided, create a KRO and bind the key
+    if (resourceUriInput.value) {
+      statusElm.textContent = 'Creating KRO and binding key...';
+      const kro = await webex.internal.encryption.kms.createResource({
+        key: unboundKey,
+        userIds: []
+      });
+      statusElm.textContent = `KRO created!\nKey URI: ${unboundKey.uri}\nKRO URI: ${kro.uri}`;
+      kmsKeyUriInput.value = unboundKey.uri;
+    } else {
+      kmsKeyUriInput.value = unboundKey.uri;
+      statusElm.textContent = `Key created!\nKey URI: ${unboundKey.uri}\n(No KRO created - resource URI not provided)`;
+    }
+
+    addEncryptLog(`Key generated: ${unboundKey.uri}`);
+  } catch (error) {
+    console.error('Error generating key/KRO:', error);
+    statusElm.textContent = `Error: ${error.message || error}`;
+  }
+}
