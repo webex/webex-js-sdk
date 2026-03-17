@@ -835,3 +835,31 @@ export type BuddyAgentsResponse = Agent.BuddyAgentsSuccess | Error;
  * function handleUpdateDeviceType(resp: UpdateDeviceTypeResponse) { ... }
  */
 export type UpdateDeviceTypeResponse = Agent.DeviceTypeUpdateSuccess | Error;
+
+export type TranscriptAction = 'START' | 'STOP';
+
+export type AIAssistantEventType = 'CUSTOM_EVENT' | 'CTI_EVENT';
+
+export type AIAssistantEventName =
+  | 'GET_TRANSCRIPTS'
+  | 'GET_MID_CALL_SUMMARY'
+  | 'GET_POST_CALL_SUMMARY'
+  | 'MID_CALL_SUMMARY_RESPONSE'
+  | 'POST_CALL_SUMMARY_RESPONSE'
+  | 'SUGGESTED_RESPONSES_DIGITAL';
+
+export type TranscriptMessage = {
+  role: string;
+  content: string;
+  messageId: string;
+  publishTimestamp: number;
+};
+
+export type HistoricTranscriptsResponse = {
+  orgId: string;
+  agentId: string;
+  conversationId: string | null;
+  interactionId: string;
+  source: string;
+  data: TranscriptMessage[];
+};

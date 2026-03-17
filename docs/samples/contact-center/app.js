@@ -89,7 +89,33 @@ const applyupdateAgentProfileBtn = document.querySelector('#applyupdateAgentProf
 const autoWrapupTimerElm = document.getElementById('autoWrapupTimer');
 const timerValueElm = autoWrapupTimerElm.querySelector('.timer-value');
 const outdialAniSelectElm = document.querySelector('#outdialAniSelect');
+const realtimeTranscriptsElm = document.querySelector('#realtime-transcripts-content');
+const clearTranscriptsButton = document.querySelector('#clear-transcripts');
 deregisterBtn.style.backgroundColor = 'red';
+
+const transcriptLines = [];
+const MAX_TRANSCRIPT_LINES = 200;
+
+function appendRealtimeTranscript(payload) {
+  const transcriptContent = payload?.data?.data?.content || payload?.data?.content;
+  if (!transcriptContent || typeof transcriptContent !== 'string') {
+    return;
+  }
+
+  transcriptLines.push(transcriptContent.trim());
+  if (transcriptLines.length > MAX_TRANSCRIPT_LINES) {
+    transcriptLines.shift();
+  }
+
+  realtimeTranscriptsElm.textContent = transcriptLines.join('\n');
+}
+
+if (clearTranscriptsButton) {
+  clearTranscriptsButton.addEventListener('click', () => {
+    transcriptLines.length = 0;
+    realtimeTranscriptsElm.textContent = 'No transcripts received';
+  });
+}
 
 function isIncomingTask(task, agentId) {
   const taskData = task?.data;
@@ -1164,6 +1190,10 @@ function isInteractionOnHold(task) {
 
 // Register task listeners
 function registerTaskListeners(task) {
+  task.on('REAL_TIME_TRANSCRIPTION', (payload) => {
+    appendRealtimeTranscript(payload);
+  });
+
   task.on('task:assigned', (task) => {
     updateTaskList(); // Update the task list UI to have latest tasks
     console.info('Call has been accepted for task: ', task.data.interactionId);

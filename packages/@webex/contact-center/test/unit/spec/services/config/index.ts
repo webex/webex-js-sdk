@@ -750,6 +750,9 @@ describe('AgentConfigService', () => {
         {id: 'aux1', type: 'WRAP_UP_CODE', name: 'Wrap Up Code 1', isDefault: true},
         {id: 'aux2', type: 'IDLE_CODE', name: 'Idle Code 1', isDefault: true},
       ];
+      const mockAIFeatureFlags = {
+        data: [{realtimeTranscripts: {enable: true}}],
+      };
 
       const parseAgentConfigsSpy = jest.spyOn(util, 'parseAgentConfigs');
       agentConfigService.getUserUsingCI = jest.fn().mockResolvedValue(mockUserConfig);
@@ -758,6 +761,7 @@ describe('AgentConfigService', () => {
       agentConfigService.getSiteInfo = jest.fn().mockResolvedValue(mockSiteInfo);
       agentConfigService.getTenantData = jest.fn().mockResolvedValue(mockTenantData);
       agentConfigService.getURLMapping = jest.fn().mockResolvedValue(mockURLMapping);
+      agentConfigService.getAIFeatureFlags = jest.fn().mockResolvedValue(mockAIFeatureFlags);
       agentConfigService.getAllAuxCodes = jest.fn().mockResolvedValue(mockAuxCodes);
       agentConfigService.getDesktopProfileById = jest.fn().mockResolvedValue(mockAgentProfile);
       agentConfigService.getDialPlanData = jest.fn().mockResolvedValue(mockDialPlanData);
@@ -797,6 +801,7 @@ describe('AgentConfigService', () => {
         dialPlanData: mockDialPlanData,
         urlMapping: mockURLMapping,
         multimediaProfileId: mockSiteInfo.multimediaProfileId,
+        aiFeatureFlags: mockAIFeatureFlags,
       });
     });
 
@@ -890,6 +895,9 @@ describe('AgentConfigService', () => {
         {id: 'aux1', type: 'WRAP_UP_CODE', name: 'Wrap Up Code 1'},
         {id: 'aux2', type: 'IDLE_CODE', name: 'Idle Code 1'},
       ];
+      const mockAIFeatureFlags = {
+        data: [{realtimeTranscripts: {enable: true}}],
+      };
 
       const parseAgentConfigsSpy = jest.spyOn(util, 'parseAgentConfigs');
       agentConfigService.getUserUsingCI = jest.fn().mockResolvedValue(mockUserConfig);
@@ -898,6 +906,7 @@ describe('AgentConfigService', () => {
       agentConfigService.getSiteInfo = jest.fn().mockResolvedValue(mockSiteInfo);
       agentConfigService.getTenantData = jest.fn().mockResolvedValue(mockTenantData);
       agentConfigService.getURLMapping = jest.fn().mockResolvedValue(mockURLMapping);
+      agentConfigService.getAIFeatureFlags = jest.fn().mockResolvedValue(mockAIFeatureFlags);
       agentConfigService.getAllAuxCodes = jest.fn().mockResolvedValue(mockAuxCodes);
       agentConfigService.getDesktopProfileById = jest.fn().mockResolvedValue(mockAgentProfile);
       agentConfigService.getDialPlanData = jest.fn().mockResolvedValue(mockDialPlanData);
@@ -937,6 +946,7 @@ describe('AgentConfigService', () => {
         dialPlanData: mockDialPlanData,
         urlMapping: mockURLMapping,
         multimediaProfileId: mockSiteInfo.multimediaProfileId,
+        aiFeatureFlags: mockAIFeatureFlags,
       });
     });
 
@@ -948,6 +958,7 @@ describe('AgentConfigService', () => {
       agentConfigService.getOrganizationSetting = jest.fn().mockResolvedValue({});
       agentConfigService.getTenantData = jest.fn().mockResolvedValue({});
       agentConfigService.getURLMapping = jest.fn().mockResolvedValue({});
+      agentConfigService.getAIFeatureFlags = jest.fn().mockResolvedValue({data: []});
       agentConfigService.getAllAuxCodes = jest.fn().mockResolvedValue({});
       agentConfigService.getDesktopProfileById = jest.fn().mockResolvedValue({});
       agentConfigService.getDialPlanData = jest.fn().mockResolvedValue({});

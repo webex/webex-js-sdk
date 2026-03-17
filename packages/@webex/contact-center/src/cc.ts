@@ -366,8 +366,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       this.webCallingService = new WebCallingService(this.$webex);
+      this.apiAIAssistant = new ApiAIAssistant(this.$webex);
       this.metricsManager = MetricsManager.getInstance({webex: this.$webex});
       this.taskManager = TaskManager.getTaskManager(
+        this.apiAIAssistant,
         this.services.contact,
         this.webCallingService,
         this.services.webSocketManager
@@ -379,9 +381,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.entryPoint = new EntryPoint(this.$webex);
       this.addressBook = new AddressBook(this.$webex, () => this.agentConfig?.addressBookId);
       this.queue = new Queue(this.$webex);
-      this.apiAIAssistant = new ApiAIAssistant(this.$webex, () => this.agentConfig);
-
-      // Initialize logger
       LoggerProxy.initialize(this.$webex.logger);
     });
   }
@@ -728,6 +727,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
           this.taskManager.setAgentId(this.agentConfig.agentId);
           this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
+          this.apiAIAssistant.setAIFeatureFlags(this.agentConfig.aiFeature);
 
           if (
             this.agentConfig.webRtcEnabled &&
@@ -1091,17 +1091,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
     if (!eventData.type) {
       return;
-    }
-
-    if (eventData.type === CC_EVENTS.REAL_TIME_TRANSCRIPTION) {
-      const interactionId =
-        eventData?.data?.data?.interactionId || eventData?.data?.data?.conversationId;
-      if (interactionId) {
-        const task = this.taskManager.getTask(interactionId);
-        if (task) {
-          task.emit(CC_EVENTS.REAL_TIME_TRANSCRIPTION, eventData.data);
-        }
-      }
     }
 
     LoggerProxy.log(`Received event: ${eventData?.data?.type ?? eventData.type}`, {

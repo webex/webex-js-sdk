@@ -1,33 +1,19 @@
 import LoggerProxy from '../logger-proxy';
 import MetricsManager from '../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
-import {CC_FILE} from '../constants';
-import {HTTP_METHODS, WebexSDK, IHttpResponse} from '../types';
+import {CC_FILE, METHODS} from '../constants';
+import {
+  HTTP_METHODS,
+  WebexSDK,
+  IHttpResponse,
+  TranscriptAction,
+  AIAssistantEventType,
+  AIAssistantEventName,
+  HistoricTranscriptsResponse,
+} from '../types';
 import {getErrorDetails} from './core/Utils';
-import {Profile} from './config/types';
-
-const METHODS = {
-  SEND_TRANSCRIPT_EVENT: 'sendTranscriptEvent',
-  FETCH_HISTORIC_TRANSCRIPTS: 'fetchHistoricTranscripts',
-} as const;
-
-export type TranscriptAction = 'START' | 'STOP';
-
-export type TranscriptMessage = {
-  role: string;
-  content: string;
-  messageId: string;
-  publishTimestamp: number;
-};
-
-export type HistoricTranscriptsResponse = {
-  orgId: string;
-  agentId: string;
-  conversationId: string | null;
-  interactionId: string;
-  source: string;
-  data: TranscriptMessage[];
-};
+import {WCC_API_GATEWAY} from './constants';
+import {AIFeatureFlags} from './config/types';
 
 /**
  * ApiAIAssistant provides AI Assistant APIs for transcript controls.
@@ -36,58 +22,86 @@ export type HistoricTranscriptsResponse = {
 export class ApiAIAssistant {
   private webex: WebexSDK;
   private metricsManager: MetricsManager;
-  private getAgentConfig: () => Profile | undefined;
+  private aiFeature: AIFeatureFlags;
+  private orgId: string;
 
-  constructor(webex: WebexSDK, getAgentConfig: () => Profile | undefined) {
+  constructor(webex: WebexSDK) {
     this.webex = webex;
     this.metricsManager = MetricsManager.getInstance({webex});
-    this.getAgentConfig = getAgentConfig;
+    this.orgId = this.webex.credentials.getOrgId();
+  }
+
+  public setAIFeatureFlags(aiFeature: AIFeatureFlags): void {
+    this.aiFeature = aiFeature;
   }
 
   private getBaseUrl(): string {
-    const profile = this.getAgentConfig();
-    const aiAssistantBaseUrl = profile?.aiFeature?.aiAssistantBaseUrl;
-    if (!aiAssistantBaseUrl) {
+    let wccApiGatewayUrl = '';
+    try {
+      wccApiGatewayUrl = this.webex.internal.services.get(WCC_API_GATEWAY) || '';
+    } catch (_error) {
+      wccApiGatewayUrl = '';
+    }
+    if (!wccApiGatewayUrl) {
       throw new Error('AI_ASSISTANT_BASE_URL_NOT_AVAILABLE');
     }
 
-    return aiAssistantBaseUrl;
-  }
-
-  private getRequiredAgentContext(): {agentId: string; orgId: string} {
-    const profile = this.getAgentConfig();
-    const agentId = profile?.agentId;
-    const orgId = this.webex.credentials.getOrgId();
-
-    if (!agentId || !orgId) {
-      throw new Error('AGENT_CONTEXT_NOT_AVAILABLE');
+    let hostname = '';
+    try {
+      hostname = new URL(wccApiGatewayUrl).hostname.toLowerCase();
+    } catch (_error) {
+      hostname = wccApiGatewayUrl.toLowerCase();
     }
 
-    return {agentId, orgId};
+    const envMap: Record<string, string> = {
+      'api.intgus1.ciscoccservice.com': 'intgus1',
+      'api.qaus1.ciscoccservice.com': 'qaus1',
+      'api.wxcc-us1.cisco.com': 'produs1',
+      'api.wxcc-eu1.cisco.com': 'prodeu1',
+      'api.wxcc-eu2.cisco.com': 'prodeu2',
+      'api.wxcc-anz1.cisco.com': 'prodanz1',
+      'api.wxcc-ca1.cisco.com': 'prodca1',
+      'api.wxcc-jp1.cisco.com': 'prodjp1',
+      'api.wxcc-sg1.cisco.com': 'prodsg1',
+      'api.wxcc-in1.cisco.com': 'prodin1',
+      'api.loadus1.cisco.com': 'loadus1',
+    };
+
+    const resolvedEnv = envMap[hostname];
+    if (!resolvedEnv) {
+      throw new Error('AI_ASSISTANT_BASE_URL_NOT_AVAILABLE');
+    }
+
+    return `https://api-ai-assistant.${resolvedEnv}.ciscoccservice.com`;
   }
 
   /**
-   * Sends transcript start/stop event for an interaction.
+   * Sends an event to the AI Assistant service.
+   * @param agentId - agent identifier
    * @param interactionId - interaction/conversation identifier
-   * @param action - START or STOP
+   * @param eventType - the type of event (e.g. 'CUSTOM_EVENT')
+   * @param eventName - the name of the event (e.g. 'GET_TRANSCRIPTS')
+   * @param action - action within eventDetails (e.g. 'START' or 'STOP')
    */
-  public async sendTranscriptEvent(
+  public async sendEvent(
+    agentId: string,
     interactionId: string,
+    eventType: AIAssistantEventType,
+    eventName: AIAssistantEventName,
     action: TranscriptAction
   ): Promise<Record<string, unknown>> {
-    LoggerProxy.info('Sending transcript event', {
+    LoggerProxy.info('Sending event', {
       module: CC_FILE,
-      method: METHODS.SEND_TRANSCRIPT_EVENT,
+      method: METHODS.SEND_EVENT,
       interactionId,
-      data: {action},
+      data: {eventType, eventName, action},
     });
     this.metricsManager.timeEvent([
-      METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_TRANSCRIPT_EVENT_SUCCESS,
-      METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_TRANSCRIPT_EVENT_FAILED,
+      METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_SUCCESS,
+      METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_FAILED,
     ]);
 
     try {
-      const {agentId, orgId} = this.getRequiredAgentContext();
       const baseUrl = this.getBaseUrl();
       const response = (await this.webex.request({
         uri: `${baseUrl}/event`,
@@ -95,9 +109,9 @@ export class ApiAIAssistant {
         addAuthHeader: true,
         body: {
           agentId,
-          orgId,
-          eventType: 'CUSTOM_EVENT',
-          eventName: 'GET_TRANSCRIPTS',
+          orgId: this.orgId,
+          eventType,
+          eventName,
           eventDetails: {
             data: {
               interactionId,
@@ -109,23 +123,25 @@ export class ApiAIAssistant {
       })) as IHttpResponse;
 
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_TRANSCRIPT_EVENT_SUCCESS,
-        {agentId, orgId, interactionId, action},
+        METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_SUCCESS,
+        {agentId, orgId: this.orgId, interactionId, eventType, eventName, action},
         ['operational']
       );
 
       return response?.body || {};
     } catch (error) {
       this.metricsManager.trackEvent(
-        METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_TRANSCRIPT_EVENT_FAILED,
+        METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_FAILED,
         {
           interactionId,
+          eventType,
+          eventName,
           action,
           error: error instanceof Error ? error.message : String(error),
         },
         ['operational']
       );
-      const {error: detailedError} = getErrorDetails(error, METHODS.SEND_TRANSCRIPT_EVENT, CC_FILE);
+      const {error: detailedError} = getErrorDetails(error, METHODS.SEND_EVENT, CC_FILE);
       throw detailedError;
     }
   }
@@ -137,6 +153,7 @@ export class ApiAIAssistant {
    * @param interactionId - interaction/conversation identifier
    */
   public async fetchHistoricTranscripts(
+    agentId: string,
     interactionId: string
   ): Promise<HistoricTranscriptsResponse> {
     LoggerProxy.info('Fetching historic transcripts', {
@@ -150,16 +167,10 @@ export class ApiAIAssistant {
     ]);
 
     try {
-      const profile = this.getAgentConfig();
-      const featureEnabled = Boolean(
-        profile?.aiFeature?.realTimeTranscriptionEnabled ??
-          profile?.['ai-feature']?.realTimeTranscriptionEnabled
-      );
-      if (!featureEnabled) {
+      if (!this.aiFeature?.realtimeTranscripts?.enable) {
         throw new Error('REAL_TIME_TRANSCRIPTION_NOT_ENABLED');
       }
 
-      const {agentId, orgId} = this.getRequiredAgentContext();
       const baseUrl = this.getBaseUrl();
       const response = (await this.webex.request({
         uri: `${baseUrl}/transcripts/list`,
@@ -167,14 +178,14 @@ export class ApiAIAssistant {
         addAuthHeader: true,
         body: {
           agentId,
-          orgId,
+          orgId: this.orgId,
           interactionId,
         },
       })) as IHttpResponse;
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS,
-        {agentId, orgId, interactionId},
+        {agentId, orgId: this.orgId, interactionId},
         ['operational']
       );
 

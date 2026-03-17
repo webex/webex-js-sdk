@@ -1873,6 +1873,7 @@ export type WebSocketPayload = TaskData & {
 
 export type WebSocketMessage = {
   keepalive?: 'true' | 'false' | boolean;
+  type?: string;
   data: WebSocketPayload;
 };
 
