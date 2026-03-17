@@ -182,6 +182,12 @@ describe('plugin-meetings', () => {
         webinar.cleanUp();
 
         assert.calledOnceWithExactly(cleanupPSDataChannelStub);
+        assert.calledOnceWithExactly(
+          webex.internal.llm.off,
+          `online:${LLM_PRACTICE_SESSION}`,
+          webinar.handlePSDataChannelOnline,
+          webinar
+        );
       });
     });
 
@@ -217,6 +223,25 @@ describe('plugin-meetings', () => {
         webinar.handlePSDataChannelOnline();
 
         assert.calledOnceWithExactly(webex.internal.voicea.announce);
+      });
+    });
+
+    describe('#addOnlineListener', () => {
+      it('rebinds the practice session online listener to avoid duplicate registrations', () => {
+        webinar.addOnlineListener();
+
+        assert.calledOnceWithExactly(
+          webex.internal.llm.off,
+          `online:${LLM_PRACTICE_SESSION}`,
+          webinar.handlePSDataChannelOnline,
+          webinar
+        );
+        assert.calledOnceWithExactly(
+          webex.internal.llm.on,
+          `online:${LLM_PRACTICE_SESSION}`,
+          webinar.handlePSDataChannelOnline,
+          webinar
+        );
       });
     });
 

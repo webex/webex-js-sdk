@@ -165,6 +165,26 @@ const Webinar = WebexPlugin.extend({
   },
 
   /**
+   * Adds the online listener for the practice session data channel.
+   * Removes any existing registration first to avoid duplicate listeners.
+   * @returns {void}
+   */
+  addOnlineListener() {
+    // @ts-ignore
+    this.webex.internal.llm.off(
+      `online:${LLM_PRACTICE_SESSION}`,
+      this.handlePSDataChannelOnline,
+      this
+    );
+    // @ts-ignore
+    this.webex.internal.llm.on(
+      `online:${LLM_PRACTICE_SESSION}`,
+      this.handlePSDataChannelOnline,
+      this
+    );
+  },
+
+  /**
    * Connects to low latency mercury and reconnects if the address has changed
    * It will also disconnect if called when the meeting has ended
    * @returns {Promise}
