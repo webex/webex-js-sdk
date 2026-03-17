@@ -2018,32 +2018,76 @@ describe('plugin-meetings', () => {
             });
           });
           it('should setup the meeting from a hash tree event', async () => {
-            const locus = {
-              id: uuid1,
-              self: {},
-              info: {
-                webExMeetingId,
-              },
+            const selfData = {};
+            const infoData = {webExMeetingId};
+            const hashTreeMessage = {
+              locusUrl: url1,
+              locusStateElements: [
+                {
+                  htMeta: {elementId: {type: 'Self', id: 1, version: 1}},
+                  data: selfData,
+                },
+                {
+                  htMeta: {elementId: {type: 'Info', id: 2, version: 1}},
+                  data: infoData,
+                },
+              ],
             };
-            const hashTreeMessage = {something: 'hashTreeData'};
             await webex.meetings.handleLocusEvent({
-              locus,
               eventType: 'locus.state_message',
               locusUrl: url1,
               stateElementsMessage: hashTreeMessage,
             });
             assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
-            assert.calledWith(
-              webex.meetings.meetingCollection.getByKey,
-              'meetingNumber',
-              webExMeetingId
-            );
             assert.calledOnce(initialSetup);
             assert.calledWith(initialSetup, {
               trigger: 'locus-message',
-              locus,
+              locus: {
+                participants: [],
+                url: url1,
+                self: selfData,
+                info: infoData,
+              },
               hashTreeMessage,
             });
+          });
+
+          it('should ignore hash tree event when created locus has INACTIVE fullState', async () => {
+            const hashTreeMessage = {
+              locusUrl: url1,
+              locusStateElements: [
+                {
+                  htMeta: {elementId: {type: 'FullState', id: 1, version: 1}},
+                  data: {state: 'INACTIVE'},
+                },
+              ],
+            };
+            await webex.meetings.handleLocusEvent({
+              eventType: 'locus.state_message',
+              locusUrl: url1,
+              stateElementsMessage: hashTreeMessage,
+            });
+            assert.notCalled(webex.meetings.create);
+            assert.notCalled(initialSetup);
+          });
+
+          it('should ignore hash tree event when created locus has self LEFT and removed', async () => {
+            const hashTreeMessage = {
+              locusUrl: url1,
+              locusStateElements: [
+                {
+                  htMeta: {elementId: {type: 'Self', id: 1, version: 1}},
+                  data: {state: 'LEFT', removed: true},
+                },
+              ],
+            };
+            await webex.meetings.handleLocusEvent({
+              eventType: 'locus.state_message',
+              locusUrl: url1,
+              stateElementsMessage: hashTreeMessage,
+            });
+            assert.notCalled(webex.meetings.create);
+            assert.notCalled(initialSetup);
           });
           it('should setup the meeting by difference event without replaces', async () => {
             await webex.meetings.handleLocusEvent({

@@ -12,12 +12,13 @@ on:
         description: 'Test PR number (e.g., 2) - leave empty to auto-detect'
         required: false
         default: ''
-  workflow_run:
-    workflows: ["Deploy CD"]
-    types:
-      - completed
-    branches:
-      - next
+  # Disabled until we fix the versioning issue
+  # workflow_run:
+  #   workflows: ["Deploy CD"]
+  #   types:
+  #     - completed
+  #   branches:
+  #     - next
 
 jobs:
   comment-on-prs:
@@ -168,19 +169,18 @@ jobs:
               return;
             }
             
-            // Build the changelog URL with auto-selected package + version
-            // Use the format that the changelog portal expects
+            // Build the changelog URL
+            // If 'webex' package is in the list, use it. Otherwise use the first detected package.
+            const hasWebexPackage = packages.includes('webex');
+            const changelogPackage = hasWebexPackage ? 'webex' : packages[0];
+            
             const changelogUrl = new URL('https://web-sdk.webex.com/changelog/');
             changelogUrl.searchParams.set('stable_version', stableVersion);
-            const resolvedPackage = primaryPackage || 'webex';
-            const resolvedPackageVersion = primaryPackageVersion || versionNumber;
-            // Try both param variants for package selection
-            changelogUrl.searchParams.set('package', resolvedPackage);
-            changelogUrl.searchParams.set('packageName', resolvedPackage);
-            changelogUrl.searchParams.set('version', resolvedPackageVersion);
+            changelogUrl.searchParams.set('package', changelogPackage);
+            changelogUrl.searchParams.set('version', versionNumber);
             
-            console.log(`📦 Changelog URL package: ${resolvedPackage}`);
-            console.log(`📦 Changelog URL version: ${resolvedPackageVersion}`);
+            console.log(`📦 Changelog URL package: ${changelogPackage}`);
+            console.log(`📦 Changelog URL version: ${versionNumber}`);
             console.log(`🔗 Full URL: ${changelogUrl.toString()}`);
             
             // Build the package list markdown

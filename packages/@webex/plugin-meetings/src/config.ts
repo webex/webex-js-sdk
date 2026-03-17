@@ -101,5 +101,8 @@ export default {
     stopIceGatheringAfterFirstRelayCandidate: false,
     enableAudioTwccForMultistream: false,
     enablePerUdpUrlReachability: false, // true: separate peer connection per each UDP URL; false: single peer connection for all URLs
+    locus: {
+      excludedDataSets: ['attendees'], // attendees data set only applies to webinar attendees and we never really need that
+    },
   },
 };

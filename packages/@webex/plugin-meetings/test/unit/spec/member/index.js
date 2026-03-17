@@ -18,6 +18,7 @@ describe('member', () => {
     assert.exists(member.supportsBreakouts);
     assert.exists(member.supportLiveAnnotation);
     assert.exists(member.canReclaimHost);
+    assert.exists(member.canApproveAIEnablement);
   });
 
   describe('roles', () => {
@@ -47,17 +48,24 @@ describe('member', () => {
     it('checks that processParticipant calls canReclaimHost', () => {
       sinon.spy(MemberUtil, 'canReclaimHost');
       member.processParticipant(participant);
-  
+
       assert.calledOnceWithExactly(MemberUtil.canReclaimHost, participant);
     });
 
     it('checks that processParticipant calls isPresenterAssignmentProhibited', () => {
       sinon.spy(MemberUtil, 'isPresenterAssignmentProhibited');
       member.processParticipant(participant);
-  
+
       assert.calledOnceWithExactly(MemberUtil.isPresenterAssignmentProhibited, participant);
     });
-  })
+
+    it('checks that processParticipant calls canApproveAIEnablement', () => {
+      sinon.spy(MemberUtil, 'canApproveAIEnablement');
+      member.processParticipant(participant);
+
+      assert.calledOnceWithExactly(MemberUtil.canApproveAIEnablement, participant);
+    });
+  });
 
   describe('#processMember', () => {
     it('checks that processMember calls isRemovable', () => {
@@ -80,5 +88,21 @@ describe('member', () => {
 
       assert.calledOnceWithExactly(MemberUtil.extractMediaStatus, participant);
     });
-  })
+  });
+
+  describe('canApproveAIEnablement integration', () => {
+    it('sets canApproveAIEnablement to the value returned by MemberUtil.canApproveAIEnablement', () => {
+      const testParticipant = {controls: {}, status: {}};
+
+      sinon.stub(MemberUtil, 'canApproveAIEnablement').returns(true);
+      const memberWithTrue = new Member(testParticipant);
+      assert.isTrue(memberWithTrue.canApproveAIEnablement);
+
+      MemberUtil.canApproveAIEnablement.restore();
+
+      sinon.stub(MemberUtil, 'canApproveAIEnablement').returns(false);
+      const memberWithFalse = new Member(testParticipant);
+      assert.isFalse(memberWithFalse.canApproveAIEnablement);
+    });
+  });
 });
