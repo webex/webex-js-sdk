@@ -673,19 +673,16 @@ const findStableVersion = (changelog, packageName, stableVersion) => {
 
     // Escape dots in version string for regex (3.4.0 -> 3\.4\.0)
     const escapedVersion = stableVersion.replace(/\./g, '\\.');
-
     // Priority 1: Find exact stable version (e.g., "3.4.0" only, no suffixes)
     const exactStablePattern = new RegExp(`^${escapedVersion}$`);
     const exactStableVersion = versions.find(ver => exactStablePattern.test(ver));
-
     if (exactStableVersion) {
         return exactStableVersion;
     }
 
-    // Priority 2: Find highest pre-release version (any tag: next, alpha, beta, rc, etc.)
+    // Priority 2: Find lowest pre-release version (any tag: next, alpha, beta, rc, etc.)
     // Pattern: 3.4.0-{tag}.{number} -> captures tag and number
     const prereleasePattern = new RegExp(`^${escapedVersion}-([a-z]+)\\.(\\d+)$`, 'i');
-
     const prereleaseVersions = versions
         .filter(ver => prereleasePattern.test(ver))
         .sort((a, b) => {
@@ -695,10 +692,9 @@ const findStableVersion = (changelog, packageName, stableVersion) => {
 
             const numA = parseInt(matchA[2], 10);
             const numB = parseInt(matchB[2], 10);
-            return numB - numA; // Sort descending (highest first)
+            return numA - numB; // Sort ascending (lowest first)
         });
 
-    // Return highest pre-release version, or fallback to first available
     return prereleaseVersions[0] || versions[0];
 };
 
