@@ -3179,7 +3179,7 @@ describe('TaskManager', () => {
       );
     });
 
-    it('should remove task and emit TASK_END when CampaignContactUpdated is received (skip/remove)', () => {
+    it('should update task and emit TASK_CAMPAIGN_PREVIEW_RESERVATION when CampaignContactUpdated is received', () => {
       const campaignInteractionId = 'campaign-interaction-123';
 
       // First create a campaign preview task
@@ -3205,9 +3205,9 @@ describe('TaskManager', () => {
       const task = taskManager['taskCollection'][campaignInteractionId];
       expect(task).toBeDefined();
 
-      const taskEmitSpy = jest.spyOn(task, 'emit');
+      const managerEmitSpy = jest.spyOn(taskManager, 'emit');
 
-      // Now send CampaignContactUpdated (what happens after skip/remove)
+      // Now send CampaignContactUpdated (update event, not terminal)
       const campaignContactUpdatedPayload = {
         data: {
           type: CC_EVENTS.CAMPAIGN_CONTACT_UPDATED,
@@ -3216,18 +3216,82 @@ describe('TaskManager', () => {
           orgId: taskDataMock.orgId,
           interaction: {
             mediaType: 'telephony',
-            isTerminated: true,
+            state: 'new',
+            callProcessingDetails: {
+              campaignId: 'campaign-789',
+            },
           },
         },
       };
 
       webSocketManagerMock.emit('message', JSON.stringify(campaignContactUpdatedPayload));
 
-      // Task should be removed from collection
-      expect(taskManager['taskCollection'][campaignInteractionId]).toBeUndefined();
+      // Task should still exist in collection (not removed)
+      expect(taskManager['taskCollection'][campaignInteractionId]).toBeDefined();
 
-      // TASK_END should have been emitted on the task
-      expect(taskEmitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_END, expect.anything());
+      // TASK_CAMPAIGN_PREVIEW_RESERVATION should have been emitted on the manager
+      expect(managerEmitSpy).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+        expect.objectContaining({
+          data: expect.objectContaining({
+            interactionId: campaignInteractionId,
+          }),
+        })
+      );
+    });
+
+    it('should not clean up WebCalling resources on CampaignContactUpdated (not a terminal event)', () => {
+      const campaignInteractionId = 'campaign-interaction-ext';
+
+      // First create a campaign preview task
+      const reservationPayload = {
+        data: {
+          type: CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION,
+          interactionId: campaignInteractionId,
+          agentId: taskDataMock.agentId,
+          orgId: taskDataMock.orgId,
+          trackingId: 'campaign-tracking-ext',
+          interaction: {
+            mediaType: 'telephony',
+            callProcessingDetails: {
+              campaignId: 'campaign-ext',
+            },
+          },
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(reservationPayload));
+
+      const task = taskManager['taskCollection'][campaignInteractionId];
+      expect(task).toBeDefined();
+
+      const unregisterSpy = jest.spyOn(task, 'unregisterWebCallListeners');
+      const cleanUpCallSpy = jest.spyOn(webCallingService, 'cleanUpCall');
+
+      const campaignContactUpdatedPayload = {
+        data: {
+          type: CC_EVENTS.CAMPAIGN_CONTACT_UPDATED,
+          interactionId: campaignInteractionId,
+          agentId: taskDataMock.agentId,
+          orgId: taskDataMock.orgId,
+          interaction: {
+            mediaType: 'telephony',
+            state: 'new',
+            callProcessingDetails: {
+              campaignId: 'campaign-ext',
+            },
+          },
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(campaignContactUpdatedPayload));
+
+      // WebCalling cleanup should NOT happen — CampaignContactUpdated is not a terminal event
+      expect(unregisterSpy).not.toHaveBeenCalled();
+      expect(cleanUpCallSpy).not.toHaveBeenCalled();
+
+      // Task should still exist in collection (not removed)
+      expect(taskManager['taskCollection'][campaignInteractionId]).toBeDefined();
     });
   });
 });

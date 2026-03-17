@@ -124,7 +124,13 @@ export default function aqmDialer(aqm: AqmReqs) {
           type: TASK_MESSAGE_TYPE,
           data: {
             type: [CC_EVENTS.CAMPAIGN_CONTACT_UPDATED, CC_EVENTS.CONTACT_ENDED],
-            interactionId: p.data.interactionId,
+            __typeMap: {
+              typeField: 'type',
+              conditions: {
+                [CC_EVENTS.CAMPAIGN_CONTACT_UPDATED]: {},
+                [CC_EVENTS.CONTACT_ENDED]: {interactionId: p.data.interactionId},
+              },
+            },
           },
         },
         msg: {} as Contact.AgentContact,
@@ -161,7 +167,13 @@ export default function aqmDialer(aqm: AqmReqs) {
           type: TASK_MESSAGE_TYPE,
           data: {
             type: [CC_EVENTS.CAMPAIGN_CONTACT_UPDATED, CC_EVENTS.CONTACT_ENDED],
-            interactionId: p.data.interactionId,
+            __typeMap: {
+              typeField: 'type',
+              conditions: {
+                [CC_EVENTS.CAMPAIGN_CONTACT_UPDATED]: {},
+                [CC_EVENTS.CONTACT_ENDED]: {interactionId: p.data.interactionId},
+              },
+            },
           },
         },
         msg: {} as Contact.AgentContact,

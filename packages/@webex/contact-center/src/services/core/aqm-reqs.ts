@@ -20,18 +20,40 @@ export default class AqmReqs {
     this.webSocketManager.on('message', this.onMessage.bind(this));
   }
 
+  /**
+   * Creates a request function for an API call with parameters
+   * @param c - The configuration for the request
+   * @returns A function that makes the API request
+   */
   req<TRes, TErr, TReq>(c: Conf<TRes, TErr, TReq>): Res<TRes, TReq> {
     return (p: TReq, cbRes?: CbRes<TRes>) => this.makeAPIRequest(c(p), cbRes);
   }
 
+  /**
+   * Creates a request function for an API call with no parameters
+   * @param c - The configuration for the request
+   * @returns A function that makes the API request
+   */
   reqEmpty<TRes, TErr>(c: ConfEmpty<TRes, TErr>): ResEmpty<TRes> {
     return (cbRes?: CbRes<TRes>) => this.makeAPIRequest(c(), cbRes);
   }
 
+  /**
+   * Makes an API request
+   * @param c - The request configuration
+   * @param cbRes - The callback for the response
+   * @returns A promise that resolves with the response or rejects with an error
+   */
   private async makeAPIRequest<TRes, TErr>(c: Req<TRes, TErr>, cbRes?: CbRes<TRes>): Promise<TRes> {
     return this.createPromise(c, cbRes);
   }
 
+  /**
+   * Creates a promise for an API request
+   * @param c - The request configuration
+   * @param cbRes - The callback for the response
+   * @returns A promise that resolves with the response or rejects with an error
+   */
   private createPromise<TRes, TErr>(c: Req<TRes, TErr>, cbRes?: CbRes<TRes>) {
     return new Promise<TRes>((resolve, reject) => {
       const keySuccess = this.bindPrint(c.notifSuccess.bind);
@@ -154,14 +176,6 @@ export default class AqmReqs {
             if (response?.headers) {
               response.headers.Authorization = '*';
             }
-            console.log(
-              'Routing request timeout - full response:',
-              response,
-              'url:',
-              c.url,
-              'key:',
-              keySuccess
-            );
             LoggerProxy.error(
               `Routing request timeout${keySuccess}${JSON.stringify(response)}${c.url}`,
               {
@@ -182,25 +196,34 @@ export default class AqmReqs {
     });
   }
 
-  private bindPrint(bind: any) {
+  /**
+   * Converts a bind object to a string representation
+   * @param bind - The bind object to convert
+   * @returns A string representation of the bind object
+   */
+  private bindPrint(bind: any): string {
     let result = '';
-    // eslint-disable-next-line no-restricted-syntax
-    for (const k in bind) {
-      if (k === '__typeMap') {
-        continue;
-      }
-      if (Array.isArray(bind[k])) {
-        result += `${k}=[${bind[k].join(',')}],`;
-      } else if (typeof bind[k] === 'object' && bind[k] !== null) {
-        result += `${k}=(${this.bindPrint(bind[k])}),`;
+    for (const key of Object.keys(bind).filter((prop) => prop !== '__typeMap')) {
+      const value = bind[key];
+
+      if (Array.isArray(value)) {
+        result += `${key}=[${value.join(',')}],`;
+      } else if (typeof value === 'object' && value !== null) {
+        result += `${key}=(${this.bindPrint(value)}),`;
       } else {
-        result += `${k}=${bind[k]},`;
+        result += `${key}=${value},`;
       }
     }
 
     return result ? result.slice(0, -1) : result;
   }
 
+  /**
+   * Checks if a message matches a bind object
+   * @param bind - The bind object to check against
+   * @param msg - The message to check
+   * @returns True if the message matches the bind object, false otherwise
+   */
   private bindCheck(bind: any, msg: any): boolean {
     // Handle type-dependent field matching if __typeMap is present
     if (bind.__typeMap && typeof bind.__typeMap === 'object') {
@@ -209,26 +232,24 @@ export default class AqmReqs {
       }
     }
 
-    // eslint-disable-next-line no-restricted-syntax
-    for (const k in bind) {
-      if (k === '__typeMap') {
-        // eslint-disable-next-line no-continue
-        continue;
-      }
-      if (Array.isArray(bind[k])) {
+    for (const key of Object.keys(bind).filter((prop) => prop !== '__typeMap')) {
+      const bindValue = bind[key];
+      const msgValue = msg[key];
+
+      if (Array.isArray(bindValue)) {
         // Check if the message value matches any of the values in the array
-        if (!bind[k].includes(msg[k])) {
+        if (!bindValue.includes(msgValue)) {
           return false;
         }
-      } else if (typeof bind[k] === 'object' && bind[k] !== null) {
-        if (typeof msg[k] === 'object' && msg[k] !== null) {
-          if (!this.bindCheck(bind[k], msg[k])) {
+      } else if (typeof bindValue === 'object' && bindValue !== null) {
+        if (typeof msgValue === 'object' && msgValue !== null) {
+          if (!this.bindCheck(bindValue, msgValue)) {
             return false;
           }
         } else {
           return false;
         }
-      } else if (!msg[k] || msg[k] !== bind[k]) {
+      } else if (!msgValue || msgValue !== bindValue) {
         return false;
       }
     }
@@ -238,6 +259,9 @@ export default class AqmReqs {
 
   /**
    * Checks type-dependent field conditions defined in __typeMap.
+   * @param typeMap - The type map to check against
+   * @param msg - The message to check
+   * @returns True if the message matches the type map, false otherwise
    * The typeMap has the shape:
    *   { typeField: "type", conditions: { EventA: { field: value }, EventB: { field: value } } }
    * It reads msg[typeField] to determine which condition set to apply,
@@ -261,7 +285,11 @@ export default class AqmReqs {
     return false;
   }
 
-  // must be lambda
+  /**
+   * Handles incoming messages from the WebSocket (must be a lambda fn)
+   * @param msg - The message to handle
+   * @returns
+   */
   private readonly onMessage = (msg: any) => {
     const event = JSON.parse(msg);
     if (event.type === 'Welcome') {
