@@ -45,12 +45,6 @@ const Webinar = WebexPlugin.extend({
    */
   cleanUp() {
     this.cleanupPSDataChannel();
-    // @ts-ignore
-    this.webex.internal.llm.off(
-      `online:${LLM_PRACTICE_SESSION}`,
-      this.handlePSDataChannelOnline,
-      this
-    );
   },
 
   /**
@@ -155,36 +149,6 @@ const Webinar = WebexPlugin.extend({
   },
 
   /**
-   * Handles practice session LLM online events.
-   *
-   * @returns {void}
-   */
-  handlePSDataChannelOnline() {
-    // @ts-ignore
-    this.webex.internal.voicea.announce();
-  },
-
-  /**
-   * Adds the online listener for the practice session data channel.
-   * Removes any existing registration first to avoid duplicate listeners.
-   * @returns {void}
-   */
-  addOnlineListener() {
-    // @ts-ignore
-    this.webex.internal.llm.off(
-      `online:${LLM_PRACTICE_SESSION}`,
-      this.handlePSDataChannelOnline,
-      this
-    );
-    // @ts-ignore
-    this.webex.internal.llm.on(
-      `online:${LLM_PRACTICE_SESSION}`,
-      this.handlePSDataChannelOnline,
-      this
-    );
-  },
-
-  /**
    * Connects to low latency mercury and reconnects if the address has changed
    * It will also disconnect if called when the meeting has ended
    * @returns {Promise}
@@ -253,6 +217,8 @@ const Webinar = WebexPlugin.extend({
           `event:relay.event:${LLM_PRACTICE_SESSION}`,
           meeting?.processRelayEvent
         );
+        // @ts-ignore - Fix type
+        this.webex.internal.voicea?.announce?.();
         LoggerProxy.logger.info(
           `Webinar:index#updatePSDataChannel --> enabled to receive relay events for default session for ${LLM_PRACTICE_SESSION}!`
         );

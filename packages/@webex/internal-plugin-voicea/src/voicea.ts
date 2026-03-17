@@ -476,11 +476,19 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     [ANNOUNCE_STATUS.JOINING, ANNOUNCE_STATUS.JOINED].includes(this.announceStatus);
 
   /**
+   * is announce processed
+   * @returns {boolean}
+   */
+  private isAnnounceProcessed = () => this.announceStatus === ANNOUNCE_STATUS.JOINED;
+
+  /**
    * announce to voicea data chanel
    * @returns {void}
    */
   public announce = () => {
-    if (this.isAnnounceProcessing()) return;
+    if (this.isAnnounceProcessed()) {
+      return;
+    }
     if (!this.isLLMConnected()) {
       throw new Error('voicea can not announce before llm connected');
     }

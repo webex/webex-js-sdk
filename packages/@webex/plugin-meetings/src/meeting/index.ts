@@ -6187,8 +6187,6 @@ export default class Meeting extends StatelessWebexPlugin {
                 'Meeting:index#join --> Transcription Socket Connection Success'
               );
             });
-
-          this.webinar?.addOnlineListener();
         }
 
         return join;

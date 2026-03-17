@@ -182,12 +182,6 @@ describe('plugin-meetings', () => {
         webinar.cleanUp();
 
         assert.calledOnceWithExactly(cleanupPSDataChannelStub);
-        assert.calledOnceWithExactly(
-          webex.internal.llm.off,
-          `online:${LLM_PRACTICE_SESSION}`,
-          webinar.handlePSDataChannelOnline,
-          webinar
-        );
       });
     });
 
@@ -214,33 +208,6 @@ describe('plugin-meetings', () => {
           webex.internal.llm.off,
           `event:relay.event:${LLM_PRACTICE_SESSION}`,
           meeting.processRelayEvent
-        );
-      });
-    });
-
-    describe('#handlePSDataChannelOnline', () => {
-      it('notifies voicea when the practice session data channel comes online', () => {
-        webinar.handlePSDataChannelOnline();
-
-        assert.calledOnceWithExactly(webex.internal.voicea.announce);
-      });
-    });
-
-    describe('#addOnlineListener', () => {
-      it('rebinds the practice session online listener to avoid duplicate registrations', () => {
-        webinar.addOnlineListener();
-
-        assert.calledOnceWithExactly(
-          webex.internal.llm.off,
-          `online:${LLM_PRACTICE_SESSION}`,
-          webinar.handlePSDataChannelOnline,
-          webinar
-        );
-        assert.calledOnceWithExactly(
-          webex.internal.llm.on,
-          `online:${LLM_PRACTICE_SESSION}`,
-          webinar.handlePSDataChannelOnline,
-          webinar
         );
       });
     });
@@ -328,6 +295,7 @@ describe('plugin-meetings', () => {
           'ps-token',
           LLM_PRACTICE_SESSION
         );
+        assert.calledOnceWithExactly(webex.internal.voicea.announce);
         assert.equal(result, 'REGISTER_AND_CONNECT_RESULT');
       });
 

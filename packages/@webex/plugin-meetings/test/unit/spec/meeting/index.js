@@ -2004,7 +2004,6 @@ describe('plugin-meetings', () => {
           meeting.setLocus = sinon.stub().returns(true);
           webex.meetings.registered = true;
           sinon.stub(meeting, 'updateLLMConnection').returns(Promise.resolve());
-          sinon.stub(meeting.webinar, 'addOnlineListener');
         });
 
         describe('successful', () => {
@@ -2033,7 +2032,6 @@ describe('plugin-meetings', () => {
             assert.calledOnce(webex.internal.device.meetingStarted);
             assert.equal(result, joinMeetingResult);
             assert.calledWith(webex.internal.llm.on, 'online', meeting.handleLLMOnline);
-            assert.calledOnceWithExactly(meeting.webinar.addOnlineListener);
           });
 
           [true, false].forEach((enableMultistream) => {

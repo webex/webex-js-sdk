@@ -276,7 +276,7 @@ describe('plugin-voicea', () => {
         });
       });
 
-      it('works on non-empty payload', async () => {
+      it('works on empty payload', async () => {
         const spy = sinon.spy();
 
         voiceaService.on(EVENT_TRIGGERS.VOICEA_ANNOUNCEMENT, spy);
@@ -487,14 +487,14 @@ describe('plugin-voicea', () => {
     });
 
     describe("#announce", () => {
-      let isAnnounceProcessing, sendAnnouncement;
+      let isAnnounceProcessed, sendAnnouncement;
       beforeEach(() => {
         sendAnnouncement = sinon.stub(voiceaService, 'sendAnnouncement');
-        isAnnounceProcessing = sinon.stub(voiceaService, 'isAnnounceProcessing').returns(false)
+        isAnnounceProcessed = sinon.stub(voiceaService, 'isAnnounceProcessed').returns(false)
       });
 
       afterEach(() => {
-        isAnnounceProcessing.restore();
+        isAnnounceProcessed.restore();
         sendAnnouncement.restore();
       });
 
@@ -520,7 +520,7 @@ describe('plugin-voicea', () => {
       });
 
       it('should not announce duplicate', () => {
-        isAnnounceProcessing.returns(true);
+        isAnnounceProcessed.returns(true);
         voiceaService.announce();
         assert.notCalled(sendAnnouncement);
       })
