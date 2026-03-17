@@ -83,6 +83,89 @@ const LocusObjectStateAfterUpdates = {
 type LocusObjectStateAfterUpdates = Enum<typeof LocusObjectStateAfterUpdates>;
 
 /**
+ * Creates a locus object from the objects received in a hash tree message. It usually will be
+ * incomplete, because hash tree messages only contain the parts of locus that have changed,
+ * and some updates come separately over Mercury or LLM in separate messages.
+ *
+ * @param {HashTreeMessage} message hash tree message to created the locus from
+ * @returns {Object} the created locus object and metadata if present
+ */
+export function createLocusFromHashTreeMessage(message: HashTreeMessage): {
+  locus: LocusDTO;
+  metadata?: Metadata;
+} {
+  const locus: LocusDTO = {
+    participants: [],
+    url: message.locusUrl,
+  };
+  let metadata: Metadata | undefined;
+
+  if (!message.locusStateElements) {
+    return {locus, metadata};
+  }
+
+  for (const element of message.locusStateElements) {
+    if (!element.data) {
+      // eslint-disable-next-line no-continue
+      continue;
+    }
+
+    const type = element.htMeta.elementId.type.toLowerCase();
+
+    switch (type) {
+      case ObjectType.locus: {
+        // spread locus object data onto the top level, but remove keys managed by other ObjectTypes
+        const locusObjectData = {...element.data};
+
+        Object.values(ObjectTypeToLocusKeyMap).forEach((locusDtoKey) => {
+          delete locusObjectData[locusDtoKey];
+        });
+
+        Object.assign(locus, locusObjectData);
+        break;
+      }
+      case ObjectType.participant:
+        locus.participants.push(element.data);
+        break;
+      case ObjectType.mediaShare:
+        if (!locus.mediaShares) {
+          locus.mediaShares = [];
+        }
+        locus.mediaShares.push(element.data);
+        break;
+      case ObjectType.embeddedApp:
+        if (!locus.embeddedApps) {
+          locus.embeddedApps = [];
+        }
+        locus.embeddedApps.push(element.data);
+        break;
+      case ObjectType.control:
+        if (!locus.controls) {
+          locus.controls = {};
+        }
+        Object.assign(locus.controls, element.data);
+        break;
+      case ObjectType.links:
+      case ObjectType.info:
+      case ObjectType.fullState:
+      case ObjectType.self: {
+        const locusDtoKey = ObjectTypeToLocusKeyMap[type];
+        locus[locusDtoKey] = element.data;
+        break;
+      }
+      case ObjectType.metadata:
+        // metadata is not part of Locus DTO
+        metadata = {...element.data, htMeta: element.htMeta} as Metadata;
+        break;
+      default:
+        break;
+    }
+  }
+
+  return {locus, metadata};
+}
+
+/**
  * @description LocusInfo extends ChildEmitter to convert locusInfo info a private emitter to parent object
  * @export
  * @private
