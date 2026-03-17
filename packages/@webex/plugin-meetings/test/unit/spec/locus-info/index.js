@@ -934,6 +934,20 @@ describe('plugin-meetings', () => {
             MEETING_REMOVED_REASON.SELF_REMOVED
           );
         });
+
+        // this could happen if meeting gets destroyed while we're doing some async hash tree operation like a sync
+        it('should handle MEETING_ENDED correctly when meeting is not found in the collection', () => {
+          const collectionGetStub = sinon
+            .stub(locusInfo.webex.meetings.meetingCollection, 'get')
+            .returns(null);
+          const destroyStub = sinon.stub(locusInfo.webex.meetings, 'destroy');
+
+          // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
+          locusInfoUpdateCallback(MEETING_ENDED);
+
+          assert.calledOnceWithExactly(collectionGetStub, locusInfo.meetingId);
+          assert.notCalled(destroyStub);
+        });
       });
     });
 
