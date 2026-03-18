@@ -219,7 +219,7 @@ const AISummary = WebexPlugin.extend({
     try {
       const {body} = await this.webex.request({
         method: 'GET',
-        uri: `${containerInfo.summaryData.transcriptUrl}?fields=id,content`,
+        uri: containerInfo.summaryData.transcriptUrl,
       });
 
       const keyUrl = body.keyUrl || containerInfo.encryptionKeyUrl;
