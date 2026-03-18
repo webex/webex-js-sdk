@@ -4093,6 +4093,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@playwright/test@npm:^1.58.2":
+  version: 1.58.2
+  resolution: "@playwright/test@npm:1.58.2"
+  dependencies:
+    playwright: 1.58.2
+  bin:
+    playwright: cli.js
+  checksum: 4169d8484081d24de132d10e960bb83159a751dd81d00ed8b21ddf68266c024a51eaf5329c3943d5f023009d3af9c72649016d7a1919d634f787292e97a980f0
+  languageName: node
+  linkType: hard
+
 "@promptbook/utils@npm:0.69.5":
   version: 0.69.5
   resolution: "@promptbook/utils@npm:0.69.5"
@@ -11457,6 +11468,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"baseline-browser-mapping@npm:latest":
+  version: 2.10.8
+  resolution: "baseline-browser-mapping@npm:2.10.8"
+  bin:
+    baseline-browser-mapping: dist/cli.cjs
+  checksum: 5ccd712b8190b919e0873ee2d09e9c5d5b646c89db2e16337ab86379ba1a40deb71ada6f388282dd88c0f8a6ec167d02044587095a51cd18848bfea647123c4f
+  languageName: node
+  linkType: hard
+
 "basic-auth@npm:~2.0.1":
   version: 2.0.1
   resolution: "basic-auth@npm:2.0.1"
@@ -18384,6 +18404,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fsevents@npm:2.3.2":
+  version: 2.3.2
+  resolution: "fsevents@npm:2.3.2"
+  dependencies:
+    node-gyp: latest
+  checksum: 97ade64e75091afee5265e6956cb72ba34db7819b4c3e94c431d4be2b19b8bb7a2d4116da417950c3425f17c8fe693d25e20212cac583ac1521ad066b77ae31f
+  conditions: os=darwin
+  languageName: node
+  linkType: hard
+
 "fsevents@npm:^1.2.7":
   version: 1.2.13
   resolution: "fsevents@npm:1.2.13"
@@ -18401,6 +18431,15 @@ __metadata:
   dependencies:
     node-gyp: latest
   checksum: 11e6ea6fea15e42461fc55b4b0e4a0a3c654faa567f1877dbd353f39156f69def97a69936d1746619d656c4b93de2238bf731f6085a03a50cabf287c9d024317
+  conditions: os=darwin
+  languageName: node
+  linkType: hard
+
+"fsevents@patch:fsevents@2.3.2#~builtin<compat/fsevents>":
+  version: 2.3.2
+  resolution: "fsevents@patch:fsevents@npm%3A2.3.2#~builtin<compat/fsevents>::version=2.3.2&hash=df0bf1"
+  dependencies:
+    node-gyp: latest
   conditions: os=darwin
   languageName: node
   linkType: hard
@@ -27556,6 +27595,30 @@ __metadata:
   languageName: node
   linkType: hard
 
+"playwright-core@npm:1.58.2":
+  version: 1.58.2
+  resolution: "playwright-core@npm:1.58.2"
+  bin:
+    playwright-core: cli.js
+  checksum: fd8c4c6658b80f5db90af36db9f560e7bf461f704d0ffe706e8858570af0321312fff9c44a5ee49552df3e3cce981e1f8dd9e8b09e6d7bdd62e094639b68bddd
+  languageName: node
+  linkType: hard
+
+"playwright@npm:1.58.2":
+  version: 1.58.2
+  resolution: "playwright@npm:1.58.2"
+  dependencies:
+    fsevents: 2.3.2
+    playwright-core: 1.58.2
+  dependenciesMeta:
+    fsevents:
+      optional: true
+  bin:
+    playwright: cli.js
+  checksum: 3536138633135bdd62eb3aa63c653036b944fbb6fb2d57f4d936baaad9d706c11bde13ef11b307677fba061bad2f4ad68256f84978cc9280667437d1106d12e6
+  languageName: node
+  linkType: hard
+
 "plist@npm:3.1.0":
   version: 3.1.0
   resolution: "plist@npm:3.1.0"
@@ -33920,6 +33983,7 @@ __metadata:
     "@babel/types": ^7.14.9
     "@commitlint/cli": ^17.1.2
     "@commitlint/config-conventional": ^17.1.0
+    "@playwright/test": ^1.58.2
     "@sinonjs/fake-timers": ^6.0.1
     "@types/circular-dependency-plugin": ^5
     "@types/format-util": ^1
@@ -33944,6 +34008,7 @@ __metadata:
     babel-plugin-lodash: ^3.3.4
     babel-plugin-module-resolver: ^5.0.2
     babelify: ^10.0.0
+    baseline-browser-mapping: latest
     browserify: ^17.0.0
     browserify-middleware: ^8.1.1
     builtins: ^5.1.0
