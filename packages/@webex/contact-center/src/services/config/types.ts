@@ -117,10 +117,6 @@ export const CC_TASK_EVENTS = {
   CAMPAIGN_CONTACT_UPDATED: 'CampaignContactUpdated',
   /** Event emitted when accepting a campaign preview contact fails */
   CAMPAIGN_PREVIEW_ACCEPT_FAILED: 'CampaignPreviewAcceptFailed',
-  /** Event emitted when skipping a campaign preview contact fails */
-  CAMPAIGN_PREVIEW_SKIP_FAILED: 'CampaignPreviewSkipFailed',
-  /** Event emitted when removing a campaign preview contact fails */
-  CAMPAIGN_PREVIEW_REMOVE_FAILED: 'CampaignPreviewRemoveFailed',
 } as const;
 
 /**

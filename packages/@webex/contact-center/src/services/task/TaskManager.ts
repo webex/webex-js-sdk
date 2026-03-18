@@ -330,18 +330,11 @@ export default class TaskManager extends EventEmitter {
             }
             break;
           case CC_EVENTS.CAMPAIGN_CONTACT_UPDATED:
-            // CampaignContactUpdated is an update event, not a terminal event.
-            // Matching wxcc-desktop behavior: update the task data and re-emit
-            // TASK_CAMPAIGN_PREVIEW_RESERVATION so consumers can refresh the UI.
+            // CampaignContactUpdated is a non-terminal event (intermediate update during accept).
+            // Only update the task data — do NOT remove the task or emit TASK_END.
             // Task cleanup is handled by CONTACT_ENDED or other terminal events.
             if (task) {
-              LoggerProxy.info(`CampaignContactUpdated received, updating task data`, {
-                module: TASK_MANAGER_FILE,
-                method: METHODS.REGISTER_TASK_LISTENERS,
-                interactionId: payload.data.interactionId,
-              });
               task = this.updateTaskData(task, payload.data);
-              this.emit(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, task);
             }
             break;
           case CC_EVENTS.CONTACT_MERGED:
@@ -531,7 +524,7 @@ export default class TaskManager extends EventEmitter {
             // Create a task in the collection so subsequent events (e.g. AGENT_CONTACT_ASSIGNED
             // after acceptPreviewContact) can find and update it.
             // Emit TASK_CAMPAIGN_PREVIEW_RESERVATION instead of TASK_INCOMING so the call
-            // does not ring before the agent explicitly accepts the preview contact.
+            // does not ring out to the customer before the agent explicitly accepts the preview contact.
             LoggerProxy.log('Campaign preview reservation received', {
               module: TASK_MANAGER_FILE,
               method: METHODS.REGISTER_TASK_LISTENERS,

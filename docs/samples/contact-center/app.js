@@ -1001,54 +1001,6 @@ async function acceptPreviewContact() {
   }
 }
 
-async function skipPreviewContact() {
-  const payload = getCampaignPreviewPayload();
-  if (!payload) return;
-  console.log('[CampaignPreview] === SKIP PREVIEW CONTACT ===');
-  console.log('[CampaignPreview] Sending payload:', JSON.stringify(payload));
-  try {
-    document.getElementById('skipPreviewContact').disabled = true;
-    document.getElementById('campaign-preview-status').innerText = 'Skipping preview contact...';
-    const result = await webex.cc.skipPreviewContact(payload);
-    console.log('[CampaignPreview] Skip SUCCESS - result:', JSON.stringify(result, null, 2));
-    document.getElementById('campaign-preview-status').innerText = 'Preview contact skipped!';
-    document.getElementById('campaign-interaction-id').value = '';
-    document.getElementById('campaign-id').value = '';
-  } catch (error) {
-    console.error('[CampaignPreview] Skip FAILED - error:', error);
-    console.error('[CampaignPreview] Error message:', error.message);
-    console.error('[CampaignPreview] Error details:', error.details);
-    console.error('[CampaignPreview] Error stack:', error.stack);
-    document.getElementById('campaign-preview-status').innerText = 'Skip failed: ' + (error.message || error);
-  } finally {
-    document.getElementById('skipPreviewContact').disabled = false;
-  }
-}
-
-async function removePreviewContact() {
-  const payload = getCampaignPreviewPayload();
-  if (!payload) return;
-  console.log('[CampaignPreview] === REMOVE PREVIEW CONTACT ===');
-  console.log('[CampaignPreview] Sending payload:', JSON.stringify(payload));
-  try {
-    document.getElementById('removePreviewContact').disabled = true;
-    document.getElementById('campaign-preview-status').innerText = 'Removing preview contact...';
-    const result = await webex.cc.removePreviewContact(payload);
-    console.log('[CampaignPreview] Remove SUCCESS - result:', JSON.stringify(result, null, 2));
-    document.getElementById('campaign-preview-status').innerText = 'Preview contact removed!';
-    document.getElementById('campaign-interaction-id').value = '';
-    document.getElementById('campaign-id').value = '';
-  } catch (error) {
-    console.error('[CampaignPreview] Remove FAILED - error:', error);
-    console.error('[CampaignPreview] Error message:', error.message);
-    console.error('[CampaignPreview] Error details:', error.details);
-    console.error('[CampaignPreview] Error stack:', error.stack);
-    document.getElementById('campaign-preview-status').innerText = 'Remove failed: ' + (error.message || error);
-  } finally {
-    document.getElementById('removePreviewContact').disabled = false;
-  }
-}
-
 // Function to press a key during an active call
 function pressKey(value) {
     // Allow only digits, #, *, and +

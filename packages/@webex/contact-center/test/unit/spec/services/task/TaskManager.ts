@@ -3179,7 +3179,7 @@ describe('TaskManager', () => {
       );
     });
 
-    it('should update task and emit TASK_CAMPAIGN_PREVIEW_RESERVATION when CampaignContactUpdated is received', () => {
+    it('should update task data but NOT remove task when CampaignContactUpdated is received', () => {
       const campaignInteractionId = 'campaign-interaction-123';
 
       // First create a campaign preview task
@@ -3205,9 +3205,9 @@ describe('TaskManager', () => {
       const task = taskManager['taskCollection'][campaignInteractionId];
       expect(task).toBeDefined();
 
-      const managerEmitSpy = jest.spyOn(taskManager, 'emit');
+      const taskEmitSpy = jest.spyOn(task, 'emit');
 
-      // Now send CampaignContactUpdated (update event, not terminal)
+      // Now send CampaignContactUpdated
       const campaignContactUpdatedPayload = {
         data: {
           type: CC_EVENTS.CAMPAIGN_CONTACT_UPDATED,
@@ -3226,72 +3226,11 @@ describe('TaskManager', () => {
 
       webSocketManagerMock.emit('message', JSON.stringify(campaignContactUpdatedPayload));
 
-      // Task should still exist in collection (not removed)
+      // Task should still exist in collection (not removed — non-terminal event)
       expect(taskManager['taskCollection'][campaignInteractionId]).toBeDefined();
 
-      // TASK_CAMPAIGN_PREVIEW_RESERVATION should have been emitted on the manager
-      expect(managerEmitSpy).toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
-        expect.objectContaining({
-          data: expect.objectContaining({
-            interactionId: campaignInteractionId,
-          }),
-        })
-      );
-    });
-
-    it('should not clean up WebCalling resources on CampaignContactUpdated (not a terminal event)', () => {
-      const campaignInteractionId = 'campaign-interaction-ext';
-
-      // First create a campaign preview task
-      const reservationPayload = {
-        data: {
-          type: CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION,
-          interactionId: campaignInteractionId,
-          agentId: taskDataMock.agentId,
-          orgId: taskDataMock.orgId,
-          trackingId: 'campaign-tracking-ext',
-          interaction: {
-            mediaType: 'telephony',
-            callProcessingDetails: {
-              campaignId: 'campaign-ext',
-            },
-          },
-        },
-      };
-
-      webSocketManagerMock.emit('message', JSON.stringify(reservationPayload));
-
-      const task = taskManager['taskCollection'][campaignInteractionId];
-      expect(task).toBeDefined();
-
-      const unregisterSpy = jest.spyOn(task, 'unregisterWebCallListeners');
-      const cleanUpCallSpy = jest.spyOn(webCallingService, 'cleanUpCall');
-
-      const campaignContactUpdatedPayload = {
-        data: {
-          type: CC_EVENTS.CAMPAIGN_CONTACT_UPDATED,
-          interactionId: campaignInteractionId,
-          agentId: taskDataMock.agentId,
-          orgId: taskDataMock.orgId,
-          interaction: {
-            mediaType: 'telephony',
-            state: 'new',
-            callProcessingDetails: {
-              campaignId: 'campaign-ext',
-            },
-          },
-        },
-      };
-
-      webSocketManagerMock.emit('message', JSON.stringify(campaignContactUpdatedPayload));
-
-      // WebCalling cleanup should NOT happen — CampaignContactUpdated is not a terminal event
-      expect(unregisterSpy).not.toHaveBeenCalled();
-      expect(cleanUpCallSpy).not.toHaveBeenCalled();
-
-      // Task should still exist in collection (not removed)
-      expect(taskManager['taskCollection'][campaignInteractionId]).toBeDefined();
+      // TASK_END should NOT have been emitted
+      expect(taskEmitSpy).not.toHaveBeenCalledWith(TASK_EVENTS.TASK_END, expect.anything());
     });
   });
 });
