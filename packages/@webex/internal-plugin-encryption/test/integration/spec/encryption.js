@@ -390,6 +390,78 @@ describe('Encryption', function () {
     // browserOnly(it)(`accepts a Blob`);
   });
 
+    describe('#encryptBinaryData()', () => {
+    it('encrypts binary data', () =>
+      webex.internal.encryption
+        .encryptBinaryData(key, FILE)
+        .then((jwe) => {
+          assert.isString(jwe);
+          assert.notEqual(jwe, FILE.toString('base64'));
+          // JWE format starts with eyJ (base64 encoded header)
+          assert.match(jwe, /^eyJ/);
+        }));
+
+    it('encrypts binary data with Buffer input', () => {
+      const binaryData = Buffer.from('test binary data', 'utf8');
+
+      return webex.internal.encryption
+        .encryptBinaryData(key, binaryData)
+        .then((jwe) => {
+          assert.isString(jwe);
+          assert.notEqual(jwe, binaryData.toString());
+          assert.match(jwe, /^eyJ/);
+        });
+    });
+
+    it('encrypts binary data with options parameter', () => {
+      const binaryData = Buffer.from('test binary data with options', 'utf8');
+
+      return webex.internal.encryption
+        .encryptBinaryData(key, binaryData, {})
+        .then((jwe) => {
+          assert.isString(jwe);
+          assert.match(jwe, /^eyJ/);
+        });
+    });
+
+    it('encrypts binary data with dynamically generated 3000 character string', () => {
+      // Generate a 3000-character string dynamically using different character sets
+      const generateLargeString = (length) => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+        let result = '';
+        const charsLength = chars.length;
+        
+        for (let i = 0; i < length; i++) {
+          // Use modulo to cycle through different patterns for variety
+          const index = (i * 7 + Math.floor(i / 100) * 3) % charsLength;
+          result += chars.charAt(index);
+        }
+        
+        return result;
+      };
+
+      const largeString = generateLargeString(3000);
+      const binaryData = Buffer.from(largeString, 'utf8');
+
+      // Verify the string is exactly 3000 characters
+      assert.equal(largeString.length, 3000);
+
+      return webex.internal.encryption
+        .encryptBinaryData(key, binaryData)
+        .then((jwe) => {
+          assert.isString(jwe);
+          assert.notEqual(jwe, binaryData.toString('base64'));
+
+          return webex.internal.encryption.decryptBinaryData(key, jwe);
+        })
+        .then((decryptedData) => {
+          assert.isTrue(isBuffer(decryptedData));
+          assert.equal(decryptedData.toString('utf8'), largeString);
+          assert.equal(decryptedData.toString('utf8').length, 3000);
+        });
+    });
+  });
+
   describe('#encryptScr()', () => {
     it('encrypts an scr', () =>
       webex.internal.encryption
@@ -460,6 +532,35 @@ describe('Encryption', function () {
         .then((decryptedData) => {
           assert.isTrue(isBuffer(decryptedData));
           assert.equal(decryptedData.toString('utf8'), 'compliance test binary data');
+        });
+    });
+
+    it('encrypt binary data', () => {
+      const binaryData = Buffer.from('compliance encrypt binary data', 'utf8');
+
+      return complianceUser.webex.internal.encryption
+        .encryptBinaryData(key, binaryData, {onBehalfOf: user.id})
+        .then((jwe) => {
+          assert.isString(jwe);
+          assert.match(jwe, /^eyJ/);
+        });
+    });
+
+    it('encrypt and decrypt binary data', () => {
+      const binaryData = Buffer.from('compliance round-trip binary data', 'utf8');
+
+      return complianceUser.webex.internal.encryption
+        .encryptBinaryData(key, binaryData, {onBehalfOf: user.id})
+        .then((jwe) => {
+          assert.isString(jwe);
+
+          return complianceUser.webex.internal.encryption.decryptBinaryData(key, jwe, {
+            onBehalfOf: user.id,
+          });
+        })
+        .then((decryptedData) => {
+          assert.isTrue(isBuffer(decryptedData));
+          assert.equal(decryptedData.toString('utf8'), 'compliance round-trip binary data');
         });
     });
 
