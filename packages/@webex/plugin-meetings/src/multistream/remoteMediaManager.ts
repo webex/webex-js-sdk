@@ -6,11 +6,12 @@ import {MediaType, NamedMediaGroup} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
 
-import {RemoteMedia, RemoteVideoResolution} from './remoteMedia';
+import {RemoteMedia} from './remoteMedia';
+import type {RemoteVideoResolution} from './types';
 import {ReceiveSlot, CSI} from './receiveSlot';
 import {ReceiveSlotManager} from './receiveSlotManager';
 import {RemoteMediaGroup} from './remoteMediaGroup';
-import {MediaRequestManager} from './mediaRequestManager';
+import MediaRequestManager from './mediaRequestManager';
 import {NAMED_MEDIA_GROUP_TYPE_AUDIO} from '../constants';
 
 export type PaneSize = RemoteVideoResolution;

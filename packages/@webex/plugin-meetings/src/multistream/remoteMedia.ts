@@ -1,32 +1,17 @@
 /* eslint-disable valid-jsdoc */
-import {MediaType, StreamState, SupportedResolution} from '@webex/internal-media-core';
+import {MediaType, StreamState} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
 
-import {MediaRequestId, MediaRequestManager} from './mediaRequestManager';
+import MediaRequestManager from './mediaRequestManager';
 import {CSI, ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
-import type {RemoteVideoResolution} from './types';
+import type {MediaRequestId, RemoteVideoResolution} from './types';
 import {H264_CODEC_PARAMETERS} from './codec/constants';
-
-export type {
-  /** @deprecated use RemoteVideoResolution from @webex/plugin-meetings/src/types instead */
-  RemoteVideoResolution,
-} from './types';
 
 export const RemoteMediaEvents = {
   SourceUpdate: ReceiveSlotEvents.SourceUpdate,
   Stopped: 'stopped',
 };
-
-/** @deprecated use H264_CODEC_PARAMETERS from @webex/plugin-meetings/src/codec/constants instead */
-export const MAX_FS_VALUES = {
-  '90p': H264_CODEC_PARAMETERS['90p'].maxFs,
-  '180p': H264_CODEC_PARAMETERS['180p'].maxFs,
-  '360p': H264_CODEC_PARAMETERS['360p'].maxFs,
-  '540p': H264_CODEC_PARAMETERS['540p'].maxFs,
-  '720p': H264_CODEC_PARAMETERS['720p'].maxFs,
-  '1080p': H264_CODEC_PARAMETERS['1080p'].maxFs,
-} satisfies Record<SupportedResolution, number>;
 
 /**
  * Converts pane size into h264 maxFs
@@ -38,28 +23,28 @@ export function getMaxFs(paneSize: RemoteVideoResolution): number {
 
   switch (paneSize) {
     case 'thumbnail':
-      maxFs = MAX_FS_VALUES['90p'];
+      maxFs = H264_CODEC_PARAMETERS['90p'].maxFs;
       break;
     case 'very small':
-      maxFs = MAX_FS_VALUES['180p'];
+      maxFs = H264_CODEC_PARAMETERS['180p'].maxFs;
       break;
     case 'small':
-      maxFs = MAX_FS_VALUES['360p'];
+      maxFs = H264_CODEC_PARAMETERS['360p'].maxFs;
       break;
     case 'medium':
-      maxFs = MAX_FS_VALUES['720p'];
+      maxFs = H264_CODEC_PARAMETERS['720p'].maxFs;
       break;
     case 'large':
-      maxFs = MAX_FS_VALUES['1080p'];
+      maxFs = H264_CODEC_PARAMETERS['1080p'].maxFs;
       break;
     case 'best':
-      maxFs = MAX_FS_VALUES['1080p']; // for now 'best' is 1080p, so same as 'large'
+      maxFs = H264_CODEC_PARAMETERS['1080p'].maxFs; // for now 'best' is 1080p, so same as 'large'
       break;
     default:
       LoggerProxy.logger.warn(
         `RemoteMedia#getMaxFs --> unsupported paneSize: ${paneSize}, using "medium" instead`
       );
-      maxFs = MAX_FS_VALUES['720p'];
+      maxFs = H264_CODEC_PARAMETERS['720p'].maxFs;
   }
 
   return maxFs;
@@ -139,17 +124,17 @@ export class RemoteMedia extends EventsScope {
     const getThresholdHeight = (h: number) => Math.round(h * threshold);
 
     if (height < getThresholdHeight(90)) {
-      fs = MAX_FS_VALUES['90p'];
+      fs = H264_CODEC_PARAMETERS['90p'].maxFs;
     } else if (height < getThresholdHeight(180)) {
-      fs = MAX_FS_VALUES['180p'];
+      fs = H264_CODEC_PARAMETERS['180p'].maxFs;
     } else if (height < getThresholdHeight(360)) {
-      fs = MAX_FS_VALUES['360p'];
+      fs = H264_CODEC_PARAMETERS['360p'].maxFs;
     } else if (height < getThresholdHeight(540)) {
-      fs = MAX_FS_VALUES['540p'];
+      fs = H264_CODEC_PARAMETERS['540p'].maxFs;
     } else if (height <= 720) {
-      fs = MAX_FS_VALUES['720p'];
+      fs = H264_CODEC_PARAMETERS['720p'].maxFs;
     } else {
-      fs = MAX_FS_VALUES['1080p'];
+      fs = H264_CODEC_PARAMETERS['1080p'].maxFs;
     }
 
     this.maxFrameSize = fs;

@@ -5,8 +5,9 @@ import {forEach} from 'lodash';
 import {NamedMediaGroup} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import {getMaxFs, RemoteMedia, RemoteVideoResolution} from './remoteMedia';
-import {MediaRequestId, MediaRequestManager} from './mediaRequestManager';
+import {getMaxFs, RemoteMedia} from './remoteMedia';
+import MediaRequestManager from './mediaRequestManager';
+import type {MediaRequestId, RemoteVideoResolution} from './types';
 import {CSI, ReceiveSlot} from './receiveSlot';
 
 type Options = {

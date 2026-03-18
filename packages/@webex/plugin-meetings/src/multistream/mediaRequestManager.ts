@@ -17,23 +17,6 @@ import {ReceiveSlotEvents} from './receiveSlot';
 import {MediaRequest, MediaRequestId} from './types';
 import {CODEC_DEFAULTS, H264_CODEC_PARAMETERS} from './codec/constants';
 
-export type {
-  /** @deprecated use ActiveSpeakerPolicyInfo from @webex/plugin-meetings/src/types instead */
-  ActiveSpeakerPolicyInfo,
-  /** @deprecated use ReceiverSelectedPolicyInfo from @webex/plugin-meetings/src/types instead */
-  ReceiverSelectedPolicyInfo,
-  /** @deprecated use PolicyInfo from @webex/plugin-meetings/src/types instead */
-  PolicyInfo,
-  /** @deprecated use MediaRequest from @webex/plugin-meetings/src/types instead */
-  MediaRequest,
-  /** @deprecated use MediaRequestId from @webex/plugin-meetings/src/types instead */
-  MediaRequestId,
-} from './types';
-export type {
-  /** @deprecated use CodecInfo from @webex/plugin-meetings/src/codec/types instead */
-  CodecInfo,
-} from './codec/types';
-
 const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
 
 type DegradationPreferences = {
@@ -51,7 +34,7 @@ type Options = {
 
 type ClientRequestsMap = {[key: MediaRequestId]: MediaRequest};
 
-export class MediaRequestManager {
+export default class MediaRequestManager {
   private sendMediaRequestsCallback: SendMediaRequestsCallback;
 
   private kind: Kind;

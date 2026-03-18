@@ -13,7 +13,7 @@ import {RemoteMediaGroup} from '@webex/plugin-meetings/src/multistream/remoteMed
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {cloneDeep} from 'lodash';
-import {MediaRequest} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
+import {MediaRequest} from '@webex/plugin-meetings/src/multistream/types';
 import {CSI, ReceiveSlotId} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import testUtils from '../../../utils/testUtils';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';

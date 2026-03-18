@@ -1,12 +1,13 @@
 import 'jsdom-global/register';
-import {MediaRequestManager} from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
+import MediaRequestManager from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
 import {ReceiveSlot} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
-import {getMaxFs, MAX_FS_VALUES} from '@webex/plugin-meetings/src/multistream/remoteMedia';
+import {getMaxFs} from '@webex/plugin-meetings/src/multistream/remoteMedia';
 import FakeTimers from '@sinonjs/fake-timers';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import { expect } from 'chai';
+import { H264_CODEC_PARAMETERS } from '../../../../src/multistream/codec/constants';
 
 type ExpectedActiveSpeaker = {
   policy: 'active-speaker';
@@ -912,7 +913,7 @@ describe('MediaRequestManager', () => {
         priority: 255,
         receiveSlots: fakeWcmeSlots.slice(0, 10),
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_540p,
-        maxFs:  MAX_FS_VALUES['540p'],
+        maxFs:  H264_CODEC_PARAMETERS['540p'].maxFs,
         maxMbps: MAX_MBPS_540p,
       },
     ]);

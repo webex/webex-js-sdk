@@ -28,7 +28,7 @@ import MembersCollection from './collection';
 import MembersRequest from './request';
 import MembersUtil from './util';
 import {ReceiveSlotManager} from '../multistream/receiveSlotManager';
-import {MediaRequestManager} from '../multistream/mediaRequestManager';
+import MediaRequestManager from '../multistream/mediaRequestManager';
 import {ServerRoleShape} from './types';
 import {Invitee} from '../meeting/type';
 

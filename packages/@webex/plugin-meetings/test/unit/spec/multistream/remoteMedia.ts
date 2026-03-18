@@ -3,7 +3,8 @@ import 'jsdom-global/register';
 import EventEmitter from 'events';
 
 import {MediaType} from '@webex/internal-media-core';
-import {RemoteMedia, RemoteMediaEvents, RemoteVideoResolution} from '@webex/plugin-meetings/src/multistream/remoteMedia';
+import {RemoteMedia, RemoteMediaEvents} from '@webex/plugin-meetings/src/multistream/remoteMedia';
+import {RemoteVideoResolution} from '@webex/plugin-meetings/src/multistream/types';
 import {ReceiveSlotEvents} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
@@ -289,7 +290,7 @@ describe('RemoteMedia', () => {
       // remoteMedia was created with {resolution: 'medium'} in beforeEach
 
       const result = remoteMedia.getEffectiveMaxFs();
-      
+
       // 'medium' resolution should map to 720p which is 3600
       assert.strictEqual(result, 3600);
     });
@@ -299,9 +300,9 @@ describe('RemoteMedia', () => {
 
       // Create a new RemoteMedia without resolution option
       const remoteMediaWithoutResolution = new RemoteMedia(fakeReceiveSlot, fakeMediaRequestManager);
-      
+
       const result = remoteMediaWithoutResolution.getEffectiveMaxFs();
-      
+
       assert.strictEqual(result, undefined);
     });
 
@@ -310,7 +311,7 @@ describe('RemoteMedia', () => {
       // remoteMedia was created with {resolution: 'medium'} in beforeEach
 
       const result = remoteMedia.getEffectiveMaxFs();
-      
+
       // Should return maxFrameSize (500) instead of resolution-based value (3600)
       assert.strictEqual(result, 920);
     });
@@ -330,7 +331,7 @@ describe('RemoteMedia', () => {
         testRemoteMedia.setSizeHint(0, 0); // Ensure maxFrameSize doesn't interfere
 
         const result = testRemoteMedia.getEffectiveMaxFs();
-        
+
         assert.strictEqual(result, expected, `Failed for resolution: ${resolution}`);
       });
     });

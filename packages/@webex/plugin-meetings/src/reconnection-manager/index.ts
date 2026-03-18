@@ -21,7 +21,7 @@ import ReconnectionError from '../common/errors/reconnection';
 import ReconnectionNotStartedError from '../common/errors/reconnection-not-started';
 import Metrics from '../metrics';
 import Meeting from '../meeting';
-import {MediaRequestManager} from '../multistream/mediaRequestManager';
+import MediaRequestManager from '../multistream/mediaRequestManager';
 
 /**
  * Used to indicate that the reconnect logic needs to be retried.

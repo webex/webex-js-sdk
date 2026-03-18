@@ -148,7 +148,7 @@ import {
 } from '../meeting-info/meeting-info-v2';
 import {CSI, ReceiveSlotManager} from '../multistream/receiveSlotManager';
 import SendSlotManager from '../multistream/sendSlotManager';
-import {MediaRequestManager} from '../multistream/mediaRequestManager';
+import MediaRequestManager from '../multistream/mediaRequestManager';
 import {
   Configuration as RemoteMediaManagerConfiguration,
   RemoteMediaManager,
