@@ -155,6 +155,22 @@ describe('AQM routing dialer', () => {
         );
       });
 
+      it('should URL-encode campaignId when it contains reserved characters', () => {
+        const dialer = aqmDialer(fakeAqm as any);
+        const payloadWithSpecialChars = {
+          interactionId: 'interaction-456',
+          campaignId: 'My Campaign/Test #1',
+        };
+        const config = dialer.acceptPreviewContact({data: payloadWithSpecialChars}) as any;
+
+        expect(config.url).toBe(
+          `/v1/dialer/campaign/${encodeURIComponent(
+            payloadWithSpecialChars.campaignId
+          )}/preview-task/${payloadWithSpecialChars.interactionId}/accept`
+        );
+        expect(config.url).toContain('My%20Campaign%2FTest%20%231');
+      });
+
       it('should call the acceptPreviewContact api', () => {
         const fakeAqm = {
           req: () =>

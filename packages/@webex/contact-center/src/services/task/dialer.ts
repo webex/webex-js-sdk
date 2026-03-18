@@ -69,7 +69,9 @@ export default function aqmDialer(aqm: AqmReqs) {
      * @ignore
      */
     acceptPreviewContact: aqm.req((p: {data: Contact.PreviewContactPayload}) => ({
-      url: `${DIALER_API}/campaign/${p.data.campaignId}/preview-task/${p.data.interactionId}${CAMPAIGN_PREVIEW_ACCEPT}`,
+      url: `${DIALER_API}/campaign/${encodeURIComponent(p.data.campaignId)}/preview-task/${
+        p.data.interactionId
+      }${CAMPAIGN_PREVIEW_ACCEPT}`,
       host: WCC_API_GATEWAY,
       data: {},
       method: HTTP_METHODS.POST,
