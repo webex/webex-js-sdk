@@ -302,14 +302,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * Stay Lobby Time
    * @returns - latency
    */
-  public getStayLobbyTime(ignoreMissingEndEvent = false) {
-    // stayLobbyTime is sent with client.lobby.exited event so we may not have time timestamp yet
-    if (ignoreMissingEndEvent && !this.latencyTimestamps.get('client.lobby.exited')) {
-      this.saveTimestamp({
-        key: 'client.lobby.exited',
-      });
-    }
-
+  public getStayLobbyTime() {
     return this.getDiffBetweenTimestamps('client.locus.join.response', 'client.lobby.exited');
   }
 
@@ -484,7 +477,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const clickToInterstitial = this.getClickToInterstitial();
     const interstitialToJoinOk = this.getInterstitialToJoinOK();
     const joinConfJMT = this.getJoinConfJMT();
-    const lobbyTime = this.getStayLobbyTime();
+    const lobbyTimeLatency = this.getStayLobbyTime();
+    const lobbyTime = typeof lobbyTimeLatency === 'number' ? lobbyTimeLatency : 0;
 
     if (clickToInterstitial && interstitialToJoinOk && joinConfJMT) {
       const totalMediaJMT = clamp(

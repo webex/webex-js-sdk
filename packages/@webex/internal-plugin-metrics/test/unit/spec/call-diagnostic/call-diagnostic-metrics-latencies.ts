@@ -519,14 +519,6 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getStayLobbyTime(), 10);
     });
 
-    it('calculates getStayLobbyTime correctly when exited timestamp is missing', () => {
-      cdl.saveTimestamp({
-        key: 'client.locus.join.response',
-        value: now.getTime() - 10,
-      });
-      assert.deepEqual(cdl.getStayLobbyTime(true), 10);
-    });
-
     it('calculates getPageJMT correctly', () => {
       cdl.saveLatency('internal.client.pageJMT', 10);
       assert.deepEqual(cdl.getPageJMT(), 10);
