@@ -130,8 +130,8 @@
                 <div class="form-group">
                   <button type="submit" id="compare-button" class="btn btn-primary">Compare Versions</button>
                   <button type="button" id="clear-comparison-button" class="btn btn-default">Clear</button>
-                  <button type="button" id="copy-comparison-link" class="btn btn-info hide" title="Copy shareable link to clipboard" onclick="copyComparisonLink()">
-                     📋 Copy Permalink & share link
+                  <button type="button" id="copy-comparison-link" class="btn btn-info hide" title="Copy shareable link to clipboard" >
+                     📋 Copy Permalink
                   </button>
                 </div>
               </div>
@@ -329,40 +329,6 @@
         {{/if}}
       </div>
       {{/if}}
-
-      <!-- Commit History: full version comparison (Example 6) — webex package, target stable only -->
-      {{#unless packageName}}
-      {{#if hasWebexCommits}}
-      <div class="commit-history-section" style="margin-top: 24px;">
-        <h4>Commit History &mdash; <strong>webex</strong> &nbsp;
-          <span style="font-weight:normal; font-size:0.9em;">({{versionB}} stable only)</span>
-        </h4>
-        <p style="font-size:0.88em; color:#666; margin:4px 0 12px;">
-          {{webexCommitsCount}} commit(s) from <strong>{{versionB}}</strong> stable release.
-          (Base and intermediate stable entries are skipped.)
-        </p>
-        <div class="table-wrapper">
-          <table class="comparison-table">
-            <thead>
-              <tr>
-                <th style="width:100px;">Hash</th>
-                <th>Commit Message</th>
-              </tr>
-            </thead>
-            <tbody>
-              {{#each webexCommits}}
-              <tr>
-                <td><code><a href="{{this.url}}" target="_blank">{{this.shortHash}}</a></code></td>
-                <td>{{{github_linking this.message 'message'}}}</td>
-              </tr>
-              {{/each}}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      {{/if}}
-      {{/unless}}
-
       <!-- Package Comparison Table -->
       <div class="table-wrapper" style="margin-top:28px;">
         <h4>📦 Package Versions</h4>
