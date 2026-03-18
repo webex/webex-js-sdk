@@ -17,7 +17,13 @@ import {
 import {TASK_MANAGER_FILE} from '../../constants';
 import {METHODS} from './constants';
 import {CC_EVENTS, WrapupData} from '../config/types';
-import {ConfigFlags, LoginOption, TranscriptAction} from '../../types';
+import {
+  ConfigFlags,
+  LoginOption,
+  TranscriptAction,
+  AIAssistantEventType,
+  AIAssistantEventName,
+} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import {getIsConferenceInProgress, isSecondaryEpDnAgent, shouldAutoAnswerTask} from './TaskUtils';
 import TaskFactory from './TaskFactory';
@@ -327,27 +333,26 @@ export default class TaskManager extends EventEmitter {
     this.webSocketManager.on('message', (event) => {
       // Step 1: Parse and validate the message
       const message = TaskManager.parseWebSocketMessage(event);
+      // if (message.type === CC_EVENTS.REAL_TIME_TRANSCRIPTION) {
+      //   task.emit(CC_EVENTS.REAL_TIME_TRANSCRIPTION, message.data);
+      // }
       if (!message) return;
 
       // Step 2: Prepare event context
       const eventContext = this.prepareEventContext(message);
       if (!eventContext) return;
 
-      // Step 3: Handle event lifecycle and get actions to perform
+      if (eventContext.eventType === CC_EVENTS.REAL_TIME_TRANSCRIPTION) {
+        eventContext.task?.emit(CC_EVENTS.REAL_TIME_TRANSCRIPTION, eventContext.payload);
+
+        return;
+      }
       const actions = this.handleTaskLifecycleEvent(eventContext);
 
       const {task} = actions;
       if (!task) return;
 
       const {payload, stateMachineEvent} = eventContext;
-
-      if (eventContext.eventType === CC_EVENTS.REAL_TIME_TRANSCRIPTION) {
-        task.emit(CC_EVENTS.REAL_TIME_TRANSCRIPTION, payload);
-        // Backward-compatible alias consumed by existing sample apps.
-        task.emit(CC_EVENTS.REAL_TIME_TRANSCRIPTION, payload);
-
-        return;
-      }
 
       // Always keep task.data updated (even for mapped events) so consumers relying
       // on TaskManager-managed task instances see the latest payload.
@@ -401,13 +406,16 @@ export default class TaskManager extends EventEmitter {
    * @returns Event context or null if event type is invalid
    */
   private prepareEventContext(message: WebSocketMessage): EventContext | null {
-    const eventType = message.data?.type;
+    const eventType = message.data?.type || message.type;
 
     if (!eventType || !isCcEvent(eventType)) {
       return null;
     }
 
-    const interactionId = message.data.interactionId;
+    const interactionId =
+      eventType === CC_EVENTS.REAL_TIME_TRANSCRIPTION
+        ? message.data.data.conversationId
+        : message.data.interactionId;
     const task = this.taskCollection[interactionId];
 
     const wasConsultedTask = Boolean(task?.data?.isConsulted);
@@ -431,6 +439,7 @@ export default class TaskManager extends EventEmitter {
             wrapUpRequired: computeWrapUpRequired(),
           }
         : message.data;
+
     const stateMachineEvent = TaskManager.mapEventToTaskStateMachineEvent(
       eventType,
       adjustedPayload,
@@ -440,7 +449,7 @@ export default class TaskManager extends EventEmitter {
     LoggerProxy.info(`Handling task event ${eventType}`, {
       module: TASK_MANAGER_FILE,
       method: 'prepareEventContext',
-      interactionId: message.data?.interactionId,
+      interactionId,
     });
 
     return {
@@ -711,7 +720,13 @@ export default class TaskManager extends EventEmitter {
     if (!action || !this.apiAIAssistant) return;
 
     this.apiAIAssistant
-      .sendEvent(this.agentId, interactionId, 'CUSTOM_EVENT', 'GET_TRANSCRIPTS', action)
+      .sendEvent(
+        this.agentId,
+        interactionId,
+        AIAssistantEventType.CUSTOM_EVENT,
+        AIAssistantEventName.GET_TRANSCRIPTS,
+        action
+      )
       .catch((error) => {
         LoggerProxy.error(`Failed to send transcript ${action} event`, {
           module: TASK_MANAGER_FILE,

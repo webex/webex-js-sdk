@@ -303,7 +303,40 @@ describe('TaskManager', () => {
       CC_EVENTS.REAL_TIME_TRANSCRIPTION,
       realtimePayload.data
     );
-    expect(taskEmitSpy).toHaveBeenCalledWith('realtimeTranscription', realtimePayload.data);
+  });
+
+  it('should emit REAL_TIME_TRANSCRIPTION when eventType is in top-level payload', () => {
+    const task = taskManager.getTask(taskId);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const realtimePayload = {
+      data: {
+        agentId: 'test-agent-id',
+        data: {
+          content: 'Thank you. Okay.',
+          conversationId: taskId,
+          isFinal: true,
+          languageCode: 'en-US',
+          messageId: '1',
+          orgId: 'org-id',
+          publishTimestamp: 1773807297475,
+          role: 'AGENT',
+          trackingId: 'tracking-id',
+          utteranceId: 'utterance-id',
+        },
+        notifDetails: {
+          actionEvent: 'REAL_TIME_TRANSCRIPTION',
+        },
+        notifType: 'REAL_TIME_TRANSCRIPTION',
+        orgId: 'org-id',
+      },
+      orgId: 'org-id',
+      trackingId: 'notifs_tracking-id',
+      type: 'REAL_TIME_TRANSCRIPTION',
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(realtimePayload));
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(CC_EVENTS.REAL_TIME_TRANSCRIPTION, realtimePayload.data);
   });
 
   it('should not re-emit agent related events', () => {
