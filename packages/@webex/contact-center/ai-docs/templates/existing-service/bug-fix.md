@@ -253,6 +253,6 @@ If the bug affected documented behavior:
 Bug fix is complete when:
 1. Root cause identified and confirmed with developer
 2. Fix implemented after developer approval
-3. Regression test added
+3. Regression test added — a test that reproduces the original bug (fails before the fix, passes after) to prevent the same issue from recurring
 4. All tests pass
 5. Build succeeds

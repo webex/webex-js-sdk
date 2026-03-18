@@ -170,6 +170,8 @@ Does this match your intent? (Yes / No / Adjust)
 
 ## Step 1: Design the Feature
 
+Define the public API contract and data flow before writing any implementation code.
+
 ### API Design
 
 Define the public interface:
@@ -264,7 +266,9 @@ featureMethod: routing.req((p: {data: FeatureParams}) => ({
 })),
 ```
 
-### Plugin Layer (cc.ts)
+### Plugin Layer (cc.ts) — if the feature is exposed as a public API
+
+> **Note:** Not all features require a public method on `cc.ts`. If the feature is internal to a service or only consumed by other services, skip this step. Add a `cc.ts` wrapper only when the feature needs to be called directly by external consumers (e.g., `cc.featureName()`).
 
 Add public method:
 

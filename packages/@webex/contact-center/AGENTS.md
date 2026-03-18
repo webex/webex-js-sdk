@@ -33,7 +33,9 @@ Q1: Is the task read-only (understanding, explaining, or analyzing code)?
 ├── YES → Type E: Understand Architecture
 │
 └── NO → Q2: Is something broken or behaving incorrectly?
-    ├── YES → Type C: Fix Bug
+    ├── YES → Is this a UI/UX improvement or a code-level defect?
+    │   ├── UI/UX fix (visual, layout, interaction) → Type D: Add Feature / Enhance Existing Service
+    │   └── Code-level defect (wrong behavior, crash, data issue) → Type C: Fix Bug
     │
     └── NO → Q3: Does this involve creating a new file, class, or module?
         ├── YES → Type A: Create New Service

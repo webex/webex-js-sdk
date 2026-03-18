@@ -19,11 +19,13 @@ There are two common patterns for where methods are implemented:
    }
    ```
 
-2. **Direct service access**: Sometimes consumers call the service method directly via the `cc` object.
+2. **Direct service access**: Sometimes consumers call the service method directly via the `cc` object's public service accessors.
    ```typescript
-   // Consumer code calling service directly
-   const queues = await cc.services.queue.getQueues();
+   // Consumer code calling service directly via public accessor
+   const queues = await cc.queue.getQueues();
+   const addressBooks = await cc.addressBook.getAddressBooks();
    ```
+   > **Note:** Use `cc.<serviceName>` (e.g., `cc.queue`, `cc.addressBook`), NOT `cc.services.<serviceName>`. The `services` object is internal.
 
 Determine which pattern applies based on the requirements gathered in Step 1.
 

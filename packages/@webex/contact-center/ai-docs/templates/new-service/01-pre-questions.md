@@ -72,19 +72,13 @@ Ask the developer:
 
 ---
 
-## 4. Dependencies (MANDATORY)
+## 4. Dependencies & Exposure (MANDATORY)
 
 Ask the developer:
 
 6. **"Does this service need any data from the agent profile?"**
    - If YES: "Which specific fields?" (e.g., `addressBookId`, `teamIds`)
    - If NO: note "No profile dependency"
-
----
-
-## 5. Exposure (MANDATORY)
-
-Ask the developer:
 
 7. **"Should this service be accessible as `cc.serviceName` (public API), or is it internal only?"**
    - If public: it will be exposed on the `cc` object and types will be re-exported from `src/types.ts`

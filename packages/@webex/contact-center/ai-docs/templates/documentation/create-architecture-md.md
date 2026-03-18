@@ -37,13 +37,15 @@ Answer before writing:
 
 ## File Structure
 
+> **Note:** The file structure listing typically belongs in the service's `AGENTS.md` (usage documentation), not in `ARCHITECTURE.md`. Include it here only if you need to reference specific files in the architecture discussion. Otherwise, link to the AGENTS.md file structure section.
+
 ```
 services/[name]/
 ├── index.ts          # Main service export
 ├── types.ts          # Type definitions
 ├── constants.ts      # Constants
 └── ai-docs/
-    ├── AGENTS.md     # Usage documentation
+    ├── AGENTS.md     # Usage documentation (file structure lives here)
     └── ARCHITECTURE.md # This file
 ```
 
