@@ -136,9 +136,10 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
       const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
 
-      const connectUrl = isDataChannelTokenEnabled
-        ? LLMChannel.buildUrlWithAwareSubchannels(sessionData.webSocketUrl, AWARE_DATA_CHANNEL)
-        : sessionData.webSocketUrl;
+      const connectUrl =
+        isDataChannelTokenEnabled && datachannelToken
+          ? LLMChannel.buildUrlWithAwareSubchannels(sessionData.webSocketUrl, AWARE_DATA_CHANNEL)
+          : sessionData.webSocketUrl;
 
       return this.connect(connectUrl, sessionId);
     });

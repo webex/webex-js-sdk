@@ -123,7 +123,7 @@ describe('plugin-llm', () => {
 
         const buildSpy = sinon.spy(LLMService, 'buildUrlWithAwareSubchannels');
 
-        await llmService.registerAndConnect(locusUrl, datachannelUrl);
+        await llmService.registerAndConnect(locusUrl, datachannelUrl,'abc123');
 
         sinon.assert.calledOnce(buildSpy);
         sinon.assert.calledOnce(llmService.connect);
@@ -155,6 +155,22 @@ describe('plugin-llm', () => {
 
         const calledUrl = llmService.connect.getCall(0).args[0];
         assert.equal(calledUrl, llmService.webSocketUrl);
+      });
+
+      it('connects without subscriptionAwareSubchannels when token enabled BUT token missing', async () => {
+        llmService.isDataChannelTokenEnabled = sinon.stub().resolves(true);
+
+        const buildSpy = sinon.spy(LLMService, 'buildUrlWithAwareSubchannels');
+
+        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined);
+
+        sinon.assert.notCalled(buildSpy);
+        sinon.assert.calledOnce(llmService.connect);
+
+        const calledUrl = llmService.connect.getCall(0).args[0];
+        assert.equal(calledUrl, llmService.webSocketUrl);
+
+        buildSpy.restore();
       });
     });
 

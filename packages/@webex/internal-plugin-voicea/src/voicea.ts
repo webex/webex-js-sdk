@@ -424,6 +424,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
         this.areCaptionsEnabled = true;
         this.captionStatus = TURN_ON_CAPTION_STATUS.ENABLED;
+        this.updateSubchannelSubscriptions({subscribe: ['transcription']});
         this.announce();
       })
       .catch(() => {
@@ -585,17 +586,22 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    *
    * @param {string[]} options.subscribe   Sub‑channels to subscribe to.
    * @param {string[]} options.unsubscribe Sub‑channels to unsubscribe from.
-   * @returns {void}
+   * @returns {Promise}
    */
-  public updateSubchannelSubscriptions = ({
+  public updateSubchannelSubscriptions = async ({
     subscribe = [],
     unsubscribe = [],
   }: {
     subscribe?: string[];
     unsubscribe?: string[];
-  } = {}): void => {
+  } = {}): Promise<void> => {
     // @ts-ignore
-    if (!this.webex.internal.llm.isConnected()) return;
+    const isDataChannelTokenEnabled = await this.webex.internal.llm.isDataChannelTokenEnabled();
+    // @ts-ignore
+    const dataChannelToken = this.webex.internal.llm.getDatachannelToken('default');
+    // @ts-ignore
+    if (!this.webex.internal.llm.isConnected() || !isDataChannelTokenEnabled || !dataChannelToken)
+      return;
 
     // @ts-ignore
     this.webex.internal.llm.socket.send({
