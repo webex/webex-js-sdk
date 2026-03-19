@@ -129,10 +129,10 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(50);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp1'}});
 
-      // resultReady events are only emitted when ICE gathering completes
-      assert.equal(emittedEvents[Events.resultReady].length, 0);
+      // resultReady is emitted immediately for the first reachable protocol (UDP)
+      assert.equal(emittedEvents[Events.resultReady].length, 1);
 
-      // Complete ICE gathering to trigger resultReady emission for all protocols
+      // Complete ICE gathering to trigger resultReady emission for remaining protocols
       fakePeerConnection.iceGatheringState = 'complete';
       fakePeerConnection.onicegatheringstatechange();
 
@@ -151,8 +151,8 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp1'}});
 
-      // First IP found - resultReady is not emitted per-candidate anymore
-      assert.equal(emittedEvents[Events.resultReady].length, 0);
+      // First IP found - resultReady is emitted immediately for the first reachable protocol
+      assert.equal(emittedEvents[Events.resultReady].length, 1);
       assert.equal(emittedEvents[Events.clientMediaIpsUpdated].length, 0);
       resetEmittedEvents();
 
@@ -539,13 +539,13 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(100);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp'}});
 
-      // resultReady events are only emitted when ICE gathering completes or on abort
-      assert.equal(emittedEvents[Events.resultReady].length, 0);
+      // resultReady is emitted immediately for the first reachable protocol (UDP)
+      assert.equal(emittedEvents[Events.resultReady].length, 1);
 
       clusterReachability.abort();
       await promise;
 
-      // abort emits resultReady for all protocols
+      // abort emits resultReady for remaining unreachable protocols (TCP, XTLS)
       assert.equal(emittedEvents[Events.resultReady].length, 3);
 
       assert.deepEqual(clusterReachability.getResult(), {
@@ -648,22 +648,22 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp1'}});
 
-      // resultReady is not emitted per-candidate, only on ICE complete
-      assert.equal(emittedEvents[Events.resultReady].length, 0);
+      // resultReady is emitted immediately for the first reachable protocol (UDP)
+      assert.equal(emittedEvents[Events.resultReady].length, 1);
       assert.equal(emittedEvents[Events.clientMediaIpsUpdated].length, 0);
 
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp1'}});
 
       // no new event was emitted (duplicate IP)
-      assert.equal(emittedEvents[Events.resultReady].length, 0);
+      assert.equal(emittedEvents[Events.resultReady].length, 1);
       assert.equal(emittedEvents[Events.clientMediaIpsUpdated].length, 0);
 
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp2'}});
 
       // clientMediaIpsUpdated emitted for new IP
-      assert.equal(emittedEvents[Events.resultReady].length, 0);
+      assert.equal(emittedEvents[Events.resultReady].length, 1);
       assert.equal(emittedEvents[Events.clientMediaIpsUpdated].length, 1);
       assert.deepEqual(emittedEvents[Events.clientMediaIpsUpdated][0], {
         protocol: 'udp',

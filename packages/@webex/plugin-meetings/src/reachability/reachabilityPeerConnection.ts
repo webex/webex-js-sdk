@@ -33,6 +33,7 @@ export class ReachabilityPeerConnection extends EventsScope {
   private clusterName: string;
   private result: ClusterReachabilityResult;
   private emittedSubnets: Set<string> = new Set();
+  private emittedProtocols: Set<Protocol> = new Set();
 
   /**
    * Constructor for ReachabilityPeerConnection
@@ -250,9 +251,10 @@ export class ReachabilityPeerConnection extends EventsScope {
   private emitResultsForAllProtocols(): void {
     PROTOCOLS_LIST.forEach((protocol) => {
       const result = this.result[protocol];
-      if (result.result === 'untested') {
+      if (result.result === 'untested' || this.emittedProtocols.has(protocol)) {
         return;
       }
+      this.emittedProtocols.add(protocol);
       this.emit(
         {
           file: 'reachabilityPeerConnection',
@@ -313,6 +315,20 @@ export class ReachabilityPeerConnection extends EventsScope {
       if (publicIp) {
         result.clientMediaIPs = [publicIp];
       }
+
+      // Emit immediately on first reachable — preserves fast reachability:firstResultAvailable timing
+      this.emittedProtocols.add(protocol);
+      this.emit(
+        {
+          file: 'reachabilityPeerConnection',
+          function: 'saveResult',
+        },
+        ReachabilityPeerConnectionEvents.resultReady,
+        {
+          protocol,
+          ...result,
+        }
+      );
     } else {
       this.addPublicIp(protocol, publicIp);
     }
