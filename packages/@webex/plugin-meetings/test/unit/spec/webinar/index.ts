@@ -279,7 +279,10 @@ describe('plugin-meetings', () => {
         assert.notCalled(webex.internal.llm.registerAndConnect);
       });
 
-      it('connects when eligible', async () => {
+      it('connects when eligible and delays announce by three seconds', async () => {
+        const clock = sinon.useFakeTimers();
+
+        try {
         const result = await webinar.updatePSDataChannel();
 
         assert.calledOnceWithExactly(
@@ -295,8 +298,58 @@ describe('plugin-meetings', () => {
           'ps-token',
           LLM_PRACTICE_SESSION
         );
+          assert.notCalled(webex.internal.voicea.announce);
+
+          await clock.tickAsync(2999);
+          assert.notCalled(webex.internal.voicea.announce);
+
+          await clock.tickAsync(1);
         assert.calledOnceWithExactly(webex.internal.voicea.announce);
         assert.equal(result, 'REGISTER_AND_CONNECT_RESULT');
+        } finally {
+          clock.restore();
+        }
+      });
+
+      it('clears any pending delayed announce during cleanup', async () => {
+        const clock = sinon.useFakeTimers();
+
+        try {
+          await webinar.updatePSDataChannel();
+          await webinar.cleanupPSDataChannel();
+          await clock.tickAsync(3000);
+
+          assert.notCalled(webex.internal.voicea.announce);
+        } finally {
+          clock.restore();
+        }
+      });
+
+      it('replaces the pending delayed announce when reconnecting', async () => {
+        const clock = sinon.useFakeTimers();
+
+        try {
+          await webinar.updatePSDataChannel();
+
+          webex.internal.llm.isConnected.returns(true);
+          webex.internal.llm.getLocusUrl.returns('old-locus-url');
+          webex.internal.llm.getDatachannelUrl.returns('old-dc-url');
+
+          await clock.tickAsync(2999);
+          assert.notCalled(webex.internal.voicea.announce);
+
+          await webinar.updatePSDataChannel();
+
+          assert.calledTwice(webex.internal.llm.registerAndConnect);
+
+          await clock.tickAsync(1);
+          assert.notCalled(webex.internal.voicea.announce);
+
+          await clock.tickAsync(2999);
+          assert.calledOnceWithExactly(webex.internal.voicea.announce);
+        } finally {
+          clock.restore();
+        }
       });
 
       it('uses cached token when available', async () => {

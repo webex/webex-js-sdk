@@ -20,6 +20,9 @@ import WebinarCollection from './collection';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {sanitizeParams} from './utils';
 
+const PRACTICE_SESSION_ANNOUNCE_DELAY_MS = 3000;
+const practiceSessionAnnounceTimers = new WeakMap();
+
 /**
  * @class Webinar
  */
@@ -45,6 +48,19 @@ const Webinar = WebexPlugin.extend({
    */
   cleanUp() {
     this.cleanupPSDataChannel();
+  },
+
+  /**
+   * Clears any pending practice session announce timer.
+   * @returns {void}
+   */
+  clearPSDataChannelAnnounceTimer() {
+    const timer = practiceSessionAnnounceTimers.get(this);
+
+    if (practiceSessionAnnounceTimers.has(this)) {
+      clearTimeout(timer);
+      practiceSessionAnnounceTimers.delete(this);
+    }
   },
 
   /**
@@ -133,6 +149,8 @@ const Webinar = WebexPlugin.extend({
   async cleanupPSDataChannel() {
     const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
 
+    this.clearPSDataChannelAnnounceTimer();
+
     // @ts-ignore - Fix type
     await this.webex.internal.llm.disconnectLLM(
       {
@@ -217,8 +235,15 @@ const Webinar = WebexPlugin.extend({
           `event:relay.event:${LLM_PRACTICE_SESSION}`,
           meeting?.processRelayEvent
         );
-        // @ts-ignore - Fix type
-        this.webex.internal.voicea?.announce?.();
+        this.clearPSDataChannelAnnounceTimer();
+        practiceSessionAnnounceTimers.set(
+          this,
+          setTimeout(() => {
+            practiceSessionAnnounceTimers.delete(this);
+            // @ts-ignore - Fix type
+            this.webex.internal.voicea?.announce?.();
+          }, PRACTICE_SESSION_ANNOUNCE_DELAY_MS)
+        );
         LoggerProxy.logger.info(
           `Webinar:index#updatePSDataChannel --> enabled to receive relay events for default session for ${LLM_PRACTICE_SESSION}!`
         );

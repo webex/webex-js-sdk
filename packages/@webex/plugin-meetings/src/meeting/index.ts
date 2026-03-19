@@ -9591,8 +9591,13 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     this.annotation.deregisterEvents();
+    // @ts-ignore
+    this.webex.internal.voicea.deregisterEvents();
 
-    await this.cleanupLLMConneciton({throwOnError: false});
+    // @ts-ignore - config coming from registerPlugin
+    if (this.config?.enableAutomaticLLM) {
+      await this.cleanupLLMConneciton({throwOnError: false});
+    }
   };
 
   /**

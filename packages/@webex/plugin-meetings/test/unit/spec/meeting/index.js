@@ -12684,12 +12684,8 @@ describe('plugin-meetings', () => {
           meeting.webinar.isJoinPracticeSessionDataChannel = sinon.stub().returns(false);
         });
 
-        const check = (
-          url,
-          practiceSessionDatachannelUrl,
-          {expectedMainCalled, expectedPracticeCalled}
-        ) => {
-          meeting.handleDataChannelUrlChange(url, practiceSessionDatachannelUrl);
+        const check = (url, {expectedMainCalled, expectedPracticeCalled}) => {
+          meeting.handleDataChannelUrlChange(url);
 
           if (expectedMainCalled) {
             assert.calledWith(updateLLMConnectionSpy);
@@ -12706,19 +12702,19 @@ describe('plugin-meetings', () => {
 
         it('calls deferred updateLLMConnection if datachannelURL is set and the enableAutomaticLLM is true', () => {
           meeting.config.enableAutomaticLLM = true;
-          check('some url', undefined, {expectedMainCalled: true, expectedPracticeCalled: false});
+          check('some url', {expectedMainCalled: true, expectedPracticeCalled: false});
         });
 
         it('does not call updateLLMConnection if datachannelURL is undefined', () => {
           meeting.config.enableAutomaticLLM = true;
-          check(undefined, undefined, {
+          check(undefined, {
             expectedMainCalled: false,
             expectedPracticeCalled: false,
           });
         });
 
         it('does not call updateLLMConnection if enableAutomaticLLM is false', () => {
-          check('some url', 'some practice url', {
+          check('some url', {
             expectedMainCalled: false,
             expectedPracticeCalled: false,
           });
@@ -12728,7 +12724,7 @@ describe('plugin-meetings', () => {
           meeting.config.enableAutomaticLLM = true;
           meeting.webinar.isJoinPracticeSessionDataChannel.returns(true);
 
-          check('some url', 'some practice url', {
+          check('some url', {
             expectedMainCalled: true,
             expectedPracticeCalled: true,
           });
@@ -12738,7 +12734,7 @@ describe('plugin-meetings', () => {
           meeting.config.enableAutomaticLLM = true;
           meeting.webinar.isJoinPracticeSessionDataChannel.returns(true);
 
-          check(undefined, 'some practice url', {
+          check(undefined, {
             expectedMainCalled: false,
             expectedPracticeCalled: false,
           });
@@ -13077,9 +13073,11 @@ describe('plugin-meetings', () => {
 
         describe('#clearMeetingData', () => {
           beforeEach(() => {
+            meeting.config.enableAutomaticLLM = true;
             webex.internal.llm.isConnected = sinon.stub().returns(true);
             webex.internal.llm.disconnectLLM = sinon.stub().resolves();
             webex.internal.llm.off = sinon.stub();
+            webex.internal.voicea.deregisterEvents = sinon.stub();
             meeting.annotation.deregisterEvents = sinon.stub();
             meeting.clearLLMHealthCheckTimer = sinon.stub();
             meeting.stopTranscription = sinon.stub();
@@ -13108,6 +13106,7 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.clearLLMHealthCheckTimer);
             assert.calledOnce(meeting.stopTranscription);
             assert.calledOnce(meeting.annotation.deregisterEvents);
+            assert.calledOnce(webex.internal.voicea.deregisterEvents);
           });
           it('continues cleanup when disconnectLLM fails during meeting data cleanup', async () => {
             webex.internal.llm.disconnectLLM.rejects(new Error('disconnect failed'));
@@ -13128,6 +13127,7 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.clearLLMHealthCheckTimer);
             assert.calledOnce(meeting.stopTranscription);
             assert.calledOnce(meeting.annotation.deregisterEvents);
+            assert.calledOnce(webex.internal.voicea.deregisterEvents);
           });
         });
       });
