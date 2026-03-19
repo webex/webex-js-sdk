@@ -489,6 +489,35 @@ describe('plugin-meetings', () => {
         assert.equal(updates.hasHesiodLLMIdChanged, true);
       });
 
+      describe('hasAiSummaryNotificationChanged', () => {
+        it('returns false when aiSummaryNotification has not changed', () => {
+          const previous = {transcribe: {aiSummaryNotification: false}};
+          const current = {transcribe: {aiSummaryNotification: false}};
+          const {updates} = ControlsUtils.getControls(previous, current);
+          assert.equal(updates.hasAiSummaryNotificationChanged, false);
+        });
+
+        it('returns true when aiSummaryNotification changes from false to true', () => {
+          const previous = {transcribe: {aiSummaryNotification: false}};
+          const current = {transcribe: {aiSummaryNotification: true}};
+          const {updates} = ControlsUtils.getControls(previous, current);
+          assert.equal(updates.hasAiSummaryNotificationChanged, true);
+        });
+
+        it('returns true when aiSummaryNotification changes from undefined to true', () => {
+          const previous = {transcribe: undefined};
+          const current = {transcribe: {aiSummaryNotification: true}};
+          const {updates} = ControlsUtils.getControls(previous, current);
+          assert.equal(updates.hasAiSummaryNotificationChanged, true);
+        });
+
+        it('parses aiSummaryNotification into the transcribe block', () => {
+          const controls = {transcribe: {transcribing: false, caption: false, aiSummaryNotification: true}};
+          const parsed = ControlsUtils.parse(controls);
+          assert.equal(parsed.transcribe.aiSummaryNotification, true);
+        });
+      });
+
       describe('videoEnabled', () => {
         const testVideoEnabled = (oldControls, newControls, updatedProperty) => {
           const result = ControlsUtils.getControls(oldControls, newControls);
