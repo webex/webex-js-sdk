@@ -54,8 +54,9 @@ describe('plugin-meetings', () => {
       meeting.unsetPeerConnections = sinon.stub();
       meeting.reconnectionManager = {cleanUp: sinon.stub()};
       meeting.stopKeepAlive = sinon.stub();
-      meeting.updateLLMConnection = sinon.stub();
+      meeting.cleanupLLMConneciton = sinon.stub().resolves();
       meeting.breakouts = {cleanUp: sinon.stub()};
+      meeting.webinar = {cleanUp: sinon.stub()};
       meeting.annotaion = {cleanUp: sinon.stub()};
       meeting.getWebexObject = sinon.stub().returns(webex);
       meeting.simultaneousInterpretation = {cleanUp: sinon.stub()};
@@ -85,7 +86,7 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.unsetPeerConnections);
         assert.calledOnce(meeting.reconnectionManager.cleanUp);
         assert.calledOnce(meeting.stopKeepAlive);
-        assert.calledOnce(meeting.updateLLMConnection);
+        assert.calledOnceWithExactly(meeting.cleanupLLMConneciton, {throwOnError: false});
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
@@ -106,7 +107,7 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.unsetPeerConnections);
         assert.calledOnce(meeting.reconnectionManager.cleanUp);
         assert.calledOnce(meeting.stopKeepAlive);
-        assert.notCalled(meeting.updateLLMConnection);
+        assert.notCalled(meeting.cleanupLLMConneciton);
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
@@ -126,7 +127,7 @@ describe('plugin-meetings', () => {
         assert.calledOnce(meeting.unsetPeerConnections);
         assert.calledOnce(meeting.reconnectionManager.cleanUp);
         assert.calledOnce(meeting.stopKeepAlive);
-        assert.notCalled(meeting.updateLLMConnection);
+        assert.notCalled(meeting.cleanupLLMConneciton);
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
