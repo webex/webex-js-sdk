@@ -8,6 +8,8 @@ import {
   MediaCodecMimeType,
   CodecParameters,
 } from '@webex/internal-media-core';
+import Metrics from '../metrics';
+import BEHAVIORAL_METRICS from '../metrics/constants';
 
 /**
  * This class is used to manage the sendSlots for the given media types.
@@ -221,7 +223,14 @@ export default class SendSlotManager {
       [key: string]: string | undefined; // As per ts-sdp undefined is considered as a valid value to be used for codec parameters
     }
   ): Promise<void> {
-    // These codec parameter changes underneath are SDP value changes that are taken care by WCME automatically. So no need for any change in streams from the web sdk side
+    this.LoggerProxy.logger.warn(
+      'SendSlotsManager->setCodecParameters --> [DEPRECATION WARNING]: setCodecParameters has been deprecated, use setCustomCodecParameters instead'
+    );
+
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DEPRECATED_SET_CODEC_PARAMETERS_USED, {
+      mediaType,
+    });
+
     const slot = this.slots.get(mediaType);
 
     if (!slot) {
@@ -249,6 +258,14 @@ export default class SendSlotManager {
    * @returns {Promise<void>}
    */
   public async deleteCodecParameters(mediaType: MediaType, parameters: string[]): Promise<void> {
+    this.LoggerProxy.logger.warn(
+      'SendSlotsManager->deleteCodecParameters --> [DEPRECATION WARNING]: deleteCodecParameters has been deprecated, use markCustomCodecParametersForDeletion instead'
+    );
+
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DEPRECATED_DELETE_CODEC_PARAMETERS_USED, {
+      mediaType,
+    });
+
     const slot = this.slots.get(mediaType);
 
     if (!slot) {

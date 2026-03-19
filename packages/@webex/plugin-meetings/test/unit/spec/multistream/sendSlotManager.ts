@@ -3,17 +3,25 @@ import SendSlotManager from '@webex/plugin-meetings/src/multistream/sendSlotMana
 import { LocalStream, MediaType, MultistreamRoapMediaConnection, MediaCodecMimeType } from "@webex/internal-media-core";
 import {expect} from '@webex/test-helper-chai';
 import sinon from 'sinon';
+import Metrics from '@webex/plugin-meetings/src/metrics';
+import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 
 describe('SendSlotsManager', () => {
     let sendSlotsManager: SendSlotManager;
     const LoggerProxy = {
         logger: {
             info: sinon.stub(),
+            warn: sinon.stub(),
         },
     };
 
     beforeEach(() => {
         sendSlotsManager = new SendSlotManager(LoggerProxy);
+        sinon.stub(Metrics, 'sendBehavioralMetric');
+    });
+
+    afterEach(() => {
+        sinon.restore();
     });
 
     describe('createSlot', () => {
@@ -197,7 +205,7 @@ describe('SendSlotsManager', () => {
             } as MultistreamRoapMediaConnection;
         });
 
-        it('should delegate to setCustomCodecParameters with default codec MIME type', async () => {
+        it('should delegate to setCustomCodecParameters with default codec MIME type and send deprecation metric', async () => {
             const slot = {
                 setCustomCodecParameters: sinon.stub().resolves(),
             };
@@ -207,6 +215,10 @@ describe('SendSlotsManager', () => {
             await sendSlotsManager.setCodecParameters(mediaType, codecParameters);
 
             expect(slot.setCustomCodecParameters.calledWith(MediaCodecMimeType.OPUS, codecParameters)).to.be.true;
+            expect((Metrics.sendBehavioralMetric as sinon.SinonStub).calledWith(
+                BEHAVIORAL_METRICS.DEPRECATED_SET_CODEC_PARAMETERS_USED,
+                { mediaType }
+            )).to.be.true;
         });
 
         it('should throw an error if a slot for the given mediaType does not exist', (done) => {
@@ -227,7 +239,7 @@ describe('SendSlotsManager', () => {
             } as MultistreamRoapMediaConnection;
         });
 
-        it('should delegate to markCustomCodecParametersForDeletion with default codec MIME type', async () => {
+        it('should delegate to markCustomCodecParametersForDeletion with default codec MIME type and send deprecation metric', async () => {
             const slot = {
                 markCustomCodecParametersForDeletion: sinon.stub().resolves(),
             };
@@ -237,6 +249,10 @@ describe('SendSlotsManager', () => {
             await sendSlotsManager.deleteCodecParameters(mediaType, []);
 
             expect(slot.markCustomCodecParametersForDeletion.calledWith(MediaCodecMimeType.OPUS, [])).to.be.true;
+            expect((Metrics.sendBehavioralMetric as sinon.SinonStub).calledWith(
+                BEHAVIORAL_METRICS.DEPRECATED_DELETE_CODEC_PARAMETERS_USED,
+                { mediaType }
+            )).to.be.true;
         });
 
         it('should throw an error if a slot for the given mediaType does not exist', (done) => {
