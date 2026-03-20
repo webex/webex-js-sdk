@@ -188,7 +188,7 @@ export class Registration implements IRegistration {
   }
 
   public setActiveMobiusUrl(url: string) {
-    url = "https://mobius.asinwxt-prd-3.p4.prod.infra.webex.com/api/v1/calling/web/";
+    url = "https://mobius.int-second-calling1.ciscospark.com/api/v1/calling/web/";
     log.info(`${METHOD_START_MESSAGE} with ${url}`, {
       method: METHODS.UPDATE_ACTIVE_MOBIUS,
       file: REGISTRATION_FILE,
@@ -817,7 +817,7 @@ export class Registration implements IRegistration {
 
       return abort;
     }
-    servers = ["https://mobius.asinwxt-prd-3.p4.prod.infra.webex.com/api/v1/calling/web/"];
+    servers = ["https://mobius.int-second-calling1.ciscospark.com/api/v1/calling/web/"];
     for (const url of servers) {
       const serverType =
         (this.primaryMobiusUris.includes(url) && 'PRIMARY') ||
