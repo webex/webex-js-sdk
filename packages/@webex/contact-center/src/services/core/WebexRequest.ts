@@ -46,6 +46,20 @@ class WebexRequest {
   }
 
   /**
+   * Returns resolved service URL from Webex service catalog.
+   *
+   * @param service - service key from catalog
+   * @returns resolved service URL or empty string
+   */
+  public getServiceUrl(service: string): string {
+    try {
+      return this.webex.internal.services.get(service) || '';
+    } catch (_error) {
+      return '';
+    }
+  }
+
+  /**
    * This is used for uploading the logs to backend/mats.
    *
    * @param metaData - meta data to be uploaded.
