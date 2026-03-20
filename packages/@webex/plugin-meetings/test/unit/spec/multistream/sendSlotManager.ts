@@ -205,16 +205,16 @@ describe('SendSlotsManager', () => {
             } as MultistreamRoapMediaConnection;
         });
 
-        it('should delegate to setCustomCodecParameters with default codec MIME type, log deprecation warning and send deprecation metric', async () => {
+        it('should delegate to slot.setCodecParameters, log deprecation warning and send deprecation metric', async () => {
             const slot = {
-                setCustomCodecParameters: sinon.stub().resolves(),
+                setCodecParameters: sinon.stub().resolves(),
             };
             mediaConnection.createSendSlot.returns(slot);
             sendSlotsManager.createSlot(mediaConnection, mediaType);
 
             await sendSlotsManager.setCodecParameters(mediaType, parameters);
 
-            expect(slot.setCustomCodecParameters.calledWith(MediaCodecMimeType.OPUS, parameters)).to.be.true;
+            expect(slot.setCodecParameters.calledWith(parameters)).to.be.true;
             expect(LoggerProxy.logger.warn.called).to.be.true;
             expect((Metrics.sendBehavioralMetric as sinon.SinonStub).calledWith(
                 BEHAVIORAL_METRICS.DEPRECATED_SET_CODEC_PARAMETERS_USED,
@@ -240,16 +240,16 @@ describe('SendSlotsManager', () => {
             } as MultistreamRoapMediaConnection;
         });
 
-        it('should delegate to markCustomCodecParametersForDeletion with default codec MIME type, log deprecation warning and send deprecation metric', async () => {
+        it('should delegate to slot.deleteCodecParameters, log deprecation warning and send deprecation metric', async () => {
             const slot = {
-                markCustomCodecParametersForDeletion: sinon.stub().resolves(),
+                deleteCodecParameters: sinon.stub().resolves(),
             };
             mediaConnection.createSendSlot.returns(slot);
             sendSlotsManager.createSlot(mediaConnection, mediaType);
 
             await sendSlotsManager.deleteCodecParameters(mediaType, []);
 
-            expect(slot.markCustomCodecParametersForDeletion.calledWith(MediaCodecMimeType.OPUS, [])).to.be.true;
+            expect(slot.deleteCodecParameters.calledWith([])).to.be.true;
             expect(LoggerProxy.logger.warn.called).to.be.true;
             expect((Metrics.sendBehavioralMetric as sinon.SinonStub).calledWith(
                 BEHAVIORAL_METRICS.DEPRECATED_DELETE_CODEC_PARAMETERS_USED,

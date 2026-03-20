@@ -227,12 +227,7 @@ export default class SendSlotManager {
       throw new Error(`Slot for ${mediaType} does not exist`);
     }
 
-    const codecMimeType =
-      mediaType === MediaType.AudioMain || mediaType === MediaType.AudioSlides
-        ? MediaCodecMimeType.OPUS
-        : MediaCodecMimeType.H264;
-
-    await slot.setCustomCodecParameters(codecMimeType, parameters);
+    await slot.setCodecParameters(parameters);
 
     this.LoggerProxy.logger.warn(
       'SendSlotsManager->setCodecParameters --> [DEPRECATION WARNING]: setCodecParameters has been deprecated, use setCustomCodecParameters instead'
@@ -259,12 +254,7 @@ export default class SendSlotManager {
       throw new Error(`Slot for ${mediaType} does not exist`);
     }
 
-    const codecMimeType =
-      mediaType === MediaType.AudioMain || mediaType === MediaType.AudioSlides
-        ? MediaCodecMimeType.OPUS
-        : MediaCodecMimeType.H264;
-
-    await slot.markCustomCodecParametersForDeletion(codecMimeType, parameters);
+    await slot.deleteCodecParameters(parameters);
 
     this.LoggerProxy.logger.warn(
       'SendSlotsManager->deleteCodecParameters --> [DEPRECATION WARNING]: deleteCodecParameters has been deprecated, use markCustomCodecParametersForDeletion instead'
