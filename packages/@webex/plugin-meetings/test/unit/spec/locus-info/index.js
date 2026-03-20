@@ -140,7 +140,7 @@ describe('plugin-meetings', () => {
           sinon.match({
             initialLocus: {
               locus: null,
-              dataSets: [],
+              dataSets: hashTreeMessage.dataSets,
             },
             metadata: {
               htMeta: hashTreeMessage.locusStateElements[0].htMeta,
@@ -301,7 +301,7 @@ describe('plugin-meetings', () => {
           await locusInfo.initialSetup({
             trigger: 'locus-message',
             hashTreeMessage: {
-              locusUrl: 'http://locus-url.com',
+              locusUrl: 'fake-locus-url',
               locusStateElements: [
                 {
                   htMeta: {elementId: {type: 'Metadata'}},
@@ -360,6 +360,13 @@ describe('plugin-meetings', () => {
           locusInfo.url = 'fake-locus-url';
           locusInfo.htMeta = {elementId: {type: 'locus', id: 'fake-ht-locus-id', version: 1}};
 
+          const createdHashTreeParser = locusInfo.hashTreeParsers.get('fake-locus-url');
+
+          assert.isDefined(createdHashTreeParser);
+          // this flag would have been set to true on the first callback triggered by initialSetup() wa called earlier
+          // it's not because we're mocking HashTreeParser, so we have to set it manually here
+          createdHashTreeParser.initializedFromHashTree = true;
+
           // setup the default expected locus info state that each test builds upon
           expectedLocusInfo = {
             controls: {id: 'fake-controls'},
@@ -388,7 +395,7 @@ describe('plugin-meetings', () => {
               },
             ],
             meetings: {id: 'fake-meetings'},
-            jsSdkMeta: {removedParticipantIds: []},
+            jsSdkMeta: {removedParticipantIds: [], forceReplaceMembers: false},
             participants: [], // empty means there were no participant updates
             replaces: {id: 'fake-replaces'},
             self: {id: 'fake-self'},
@@ -568,7 +575,7 @@ describe('plugin-meetings', () => {
             ...newLocus,
             htMeta: newLocusHtMeta,
             participants: [], // empty means there were no participant updates
-            jsSdkMeta: {removedParticipantIds: []}, // no participants were removed
+            jsSdkMeta: {removedParticipantIds: [], forceReplaceMembers: false}, // no participants were removed
           });
         });
 
@@ -614,7 +621,7 @@ describe('plugin-meetings', () => {
             mediaShares: expectedLocusInfo.mediaShares,
             embeddedApps: expectedLocusInfo.embeddedApps,
             participants: [], // empty means there were no participant updates
-            jsSdkMeta: {removedParticipantIds: []}, // no participants were removed
+            jsSdkMeta: {removedParticipantIds: [], forceReplaceMembers: false}, // no participants were removed
             ...newLocus,
             htMeta: newLocusHtMeta,
           });
@@ -653,7 +660,7 @@ describe('plugin-meetings', () => {
             ...newLocus,
             htMeta: newLocusHtMeta,
             participants: [], // empty means there were no participant updates
-            jsSdkMeta: {removedParticipantIds: []}, // no participants were removed
+            jsSdkMeta: {removedParticipantIds: [], forceReplaceMembers: false}, // no participants were removed
           });
         });
 
@@ -741,7 +748,7 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(onDeltaLocusStub, {
             ...expectedLocusInfo,
             participants: [newParticipant, updatedParticipant2],
-            jsSdkMeta: {removedParticipantIds: ['fake-participant-1']},
+            jsSdkMeta: {removedParticipantIds: ['fake-participant-1'], forceReplaceMembers: false},
           });
           // and that the hashTreeObjectId2ParticipantId map was updated correctly
           assert.isUndefined(locusInfo.hashTreeObjectId2ParticipantId.get('fake-ht-participant-1'));
