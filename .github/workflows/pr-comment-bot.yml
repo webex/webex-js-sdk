@@ -5,11 +5,11 @@ on:
   workflow_dispatch:
     inputs:
       test_version:
-        description: 'Test version number'
-        required: false
+        description: 'Test version number (e.g., 3.4.0)'
+        required: true
       test_pr_number:
-        description: 'Test PR number - leave empty to auto-detect'
-        required: false
+        description: 'Test PR number (e.g., 2) - required for manual testing'
+        required: true
   workflow_run:
     workflows: ["Deploy CD"]
     types:
