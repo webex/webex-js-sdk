@@ -542,6 +542,18 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_POST_CALL_ACTIVITY = 'task:postCallActivity',
+
+  /**
+   * Triggered when a campaign preview contact is offered to the agent
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, (data: AgentContact) => {
+   *   console.log('Campaign preview contact received:', data.interactionId);
+   *   // Handle campaign preview reservation
+   * });
+   * ```
+   */
+  TASK_CAMPAIGN_PREVIEW_RESERVATION = 'task:campaignPreviewReservation',
 }
 
 /**
@@ -1115,6 +1127,18 @@ export type DialerPayload = {
   outboundType: 'OUTDIAL' | 'CALLBACK' | 'EXECUTE_FLOW';
   /** The Outdial ANI number that will be used while making a call to the customer.  */
   origin: string;
+};
+
+/**
+ * Payload for campaign preview contact operations (accept, skip, remove)
+ * @public
+ */
+export type PreviewContactPayload = {
+  /** The interaction ID from the campaign reservation */
+  interactionId: string;
+  /** The campaign name (not a UUID). Available from the reservation event at
+   *  `task.data.interaction.callProcessingDetails.campaignId` or `task.data.campaignId`. */
+  campaignId: string;
 };
 
 /**
