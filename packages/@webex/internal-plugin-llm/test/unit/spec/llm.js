@@ -434,5 +434,21 @@ describe('plugin-llm', () => {
         assert.equal(llmService.getAllConnections().size, 0);
       });
     });
+
+    describe('#isLLMWithDataChannelToken', () => {
+      it('returns true when any session has a token', () => {
+        llmService.connections.set('llm-default-session', {datachannelToken: 'abc'});
+        llmService.connections.set('llm-practice-session', {datachannelToken: null});
+
+        assert.equal(llmService.isLLMWithDataChannelToken(), true);
+      });
+
+      it('returns false when no session has a token', () => {
+        llmService.connections.set('llm-default-session', {datachannelToken: null});
+        llmService.connections.set('llm-practice-session', {datachannelToken: undefined});
+
+        assert.equal(llmService.isLLMWithDataChannelToken(), false);
+      });
+    });
   });
 });

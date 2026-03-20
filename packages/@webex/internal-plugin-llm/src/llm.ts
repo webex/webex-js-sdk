@@ -311,4 +311,18 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
     return urlObj.toString();
   };
+
+  /**
+   * Checks whether any LLM session has a valid data‑channel token.
+   *
+   * As long as one session contains a non‑empty `datachannelToken`,
+   * the meeting is considered data‑channel‑enabled.
+   *
+   * @returns {boolean} True if any session has a token; otherwise false.
+   */
+  public isLLMWithDataChannelToken = (): boolean => {
+    return [...this.webex.internal.llm.connections.values()].some(
+      (session) => !!session.datachannelToken
+    );
+  };
 }

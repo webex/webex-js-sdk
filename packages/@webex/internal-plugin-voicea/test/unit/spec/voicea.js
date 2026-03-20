@@ -1265,9 +1265,9 @@ describe('plugin-voicea', () => {
 
         voiceaService.seqNum = 1;
 
-        voiceaService.webex.internal.llm.isConnected = sinon.stub().returns(true);
+        voiceaService.isLLMConnected = sinon.stub().returns(true);
         voiceaService.webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(true);
-        voiceaService.webex.internal.llm.getDatachannelToken = sinon.stub().returns('mock-token');
+        voiceaService.webex.internal.llm.isLLMWithDataChannelToken = sinon.stub().returns(true);
       });
 
       it('sends subchannelSubscriptionRequest with subscribe and unsubscribe lists', async () => {
@@ -1314,7 +1314,7 @@ describe('plugin-voicea', () => {
       });
 
       it('does nothing when LLM is not connected', async () => {
-        voiceaService.webex.internal.llm.isConnected = sinon.stub().returns(false);
+        voiceaService.isLLMConnected = sinon.stub().returns(false);
 
         await voiceaService.updateSubchannelSubscriptions({
           subscribe: ['transcription'],
@@ -1335,8 +1335,8 @@ describe('plugin-voicea', () => {
         assert.equal(voiceaService.seqNum, 1);
       });
 
-      it('does nothing when dataChannelToken is missing', async () => {
-        voiceaService.webex.internal.llm.getDatachannelToken = sinon.stub().returns(null);
+      it('does nothing when no session has dataChannelToken', async () => {
+        voiceaService.webex.internal.llm.isLLMWithDataChannelToken = sinon.stub().returns(false);
 
         await voiceaService.updateSubchannelSubscriptions({
           subscribe: ['transcription'],

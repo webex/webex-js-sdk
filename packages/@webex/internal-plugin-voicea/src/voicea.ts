@@ -641,10 +641,9 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     // @ts-ignore
     const isDataChannelTokenEnabled = await this.webex.internal.llm.isDataChannelTokenEnabled();
     // @ts-ignore
-    const dataChannelToken = this.webex.internal.llm.getDatachannelToken('default');
+    const dataChannelToken = this.webex.internal.llm.isLLMWithDataChannelToken();
     // @ts-ignore
-    if (!this.webex.internal.llm.isConnected() || !isDataChannelTokenEnabled || !dataChannelToken)
-      return;
+    if (!this.isLLMConnected() || !isDataChannelTokenEnabled || !dataChannelToken) return;
 
     // @ts-ignore
     this.webex.internal.llm.socket.send({
