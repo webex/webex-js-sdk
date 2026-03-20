@@ -1,5 +1,12 @@
 import {Page, expect} from '@playwright/test';
-import {BASE_URL, SAMPLE_APP_PATH, SELECTORS, AWAIT_TIMEOUT, SDK_INIT_TIMEOUT} from '../constants';
+import {
+  BASE_URL,
+  SAMPLE_APP_PATH,
+  SELECTORS,
+  AWAIT_TIMEOUT,
+  SDK_INIT_TIMEOUT,
+  REGISTRATION_TIMEOUT,
+} from '../constants';
 
 /**
  * Navigate to the calling sample app
@@ -39,15 +46,17 @@ export const initializeCallingSDK = async (page: Page, accessToken: string): Pro
 /**
  * Verify the SDK initialized successfully:
  * - Auth status shows "Saved access token!"
- * - Register button is enabled (calling.register() completed)
- * - Token input is disabled
+ * - Register button is enabled
+ * - window.callingClient is set (Calling object exists)
  */
 export const verifySDKInitialized = async (page: Page): Promise<void> => {
   await expect(page.locator(SELECTORS.AUTH_STATUS)).toHaveText('Saved access token!', {
     timeout: SDK_INIT_TIMEOUT,
   });
-  // After calling.register() completes, the register button becomes enabled
   await expect(page.locator(SELECTORS.REGISTER_BTN)).toBeEnabled({timeout: SDK_INIT_TIMEOUT});
+
+  const hasCallingClient = await page.evaluate(() => !!(window as any).callingClient);
+  expect(hasCallingClient).toBe(true);
 };
 
 /**
@@ -67,11 +76,9 @@ export const setServiceDomain = async (page: Page, domain: string): Promise<void
   await page.locator(SELECTORS.SERVICE_DOMAIN).fill(domain, {timeout: AWAIT_TIMEOUT});
 };
 
-// TODO: Uncomment these utilities as tests are added for registration, calls, etc.
-/*
 export const registerLine = async (page: Page): Promise<void> => {
   await page.locator(SELECTORS.REGISTER_BTN).click({timeout: AWAIT_TIMEOUT});
-  await expect(page.locator(SELECTORS.REGISTRATION_STATUS)).toContainText('Registered', {
+  await expect(page.locator(SELECTORS.REGISTRATION_STATUS)).toContainText('Registered, deviceId:', {
     timeout: REGISTRATION_TIMEOUT,
   });
 };
@@ -108,6 +115,8 @@ export const fullSetup = async (
   }
 };
 
+// TODO: Uncomment these utilities as tests are added for calls, etc.
+/*
 export const getMediaStreams = async (page: Page): Promise<void> => {
   await page.locator(SELECTORS.GET_MEDIA_STREAMS_BTN).click({timeout: AWAIT_TIMEOUT});
   await expect(page.locator(SELECTORS.MAKE_CALL_BTN)).toBeEnabled({timeout: AWAIT_TIMEOUT});
