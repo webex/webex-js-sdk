@@ -907,8 +907,7 @@ async function loadOutdialAniEntries(outdialANIId) {
     console.log(`Loaded ${aniList.length} outdial ANI entries`);
 
   } catch (error) {
-    console.error('Failed to load outdial ANI entries:', error);
-    alert('Failed to load outdial ANI entries', error)
+    console.log('Failed to load outdial ANI entries:', error);
     // Add error option to select
     outdialAniSelectElm.innerHTML = '<option value="">Select Caller ID...</option>';
     const errorOption = document.createElement('option');
@@ -948,6 +947,57 @@ async function startOutdial() {
   } catch (error) {
     console.error('Failed to initiate outdial call', error);
     alert('Failed to initiate outdial call: ' + (error.message || error));
+  }
+}
+
+// Campaign Preview Contact Functions
+
+function getCampaignPreviewPayload() {
+  const interactionId = document.getElementById('campaign-interaction-id').value.trim();
+  const campaignId = document.getElementById('campaign-id').value.trim();
+  console.log('[CampaignPreview] getCampaignPreviewPayload:', { interactionId, campaignId });
+  if (!interactionId || !campaignId) {
+    console.warn('[CampaignPreview] Missing required fields - interactionId:', interactionId, 'campaignId:', campaignId);
+    alert('Interaction ID and Campaign ID are required');
+    return null;
+  }
+  return { interactionId, campaignId };
+}
+
+function onCampaignReservationReceived(task) {
+  console.log('[CampaignPreview] === RESERVATION EVENT RECEIVED ===');
+  console.log('[CampaignPreview] Task data:', JSON.stringify(task.data, null, 2));
+  const interactionId = task.data?.interactionId || '';
+  // campaignId is the campaign NAME (e.g. "MyCampaign"), not a UUID.
+  // It is available at the top level of the event data or in callProcessingDetails.
+  const campaignId = task.data?.campaignId || task.data?.interaction?.callProcessingDetails?.campaignId || '';
+  console.log('[CampaignPreview] Resolved interactionId:', interactionId, 'campaignId (name):', campaignId);
+  document.getElementById('campaign-interaction-id').value = interactionId;
+  document.getElementById('campaign-id').value = campaignId;
+  document.getElementById('campaign-preview-status').innerText = 'Campaign preview contact received!';
+}
+
+async function acceptPreviewContact() {
+  const payload = getCampaignPreviewPayload();
+  if (!payload) return;
+  console.log('[CampaignPreview] === ACCEPT PREVIEW CONTACT ===');
+  console.log('[CampaignPreview] Sending payload:', JSON.stringify(payload));
+  try {
+    document.getElementById('acceptPreviewContact').disabled = true;
+    document.getElementById('campaign-preview-status').innerText = 'Accepting preview contact...';
+    const result = await webex.cc.acceptPreviewContact(payload);
+    console.log('[CampaignPreview] Accept SUCCESS - result:', JSON.stringify(result, null, 2));
+    document.getElementById('campaign-preview-status').innerText = 'Preview contact accepted!';
+    document.getElementById('campaign-interaction-id').value = '';
+    document.getElementById('campaign-id').value = '';
+  } catch (error) {
+    console.error('[CampaignPreview] Accept FAILED - error:', error);
+    console.error('[CampaignPreview] Error message:', error.message);
+    console.error('[CampaignPreview] Error details:', error.details);
+    console.error('[CampaignPreview] Error stack:', error.stack);
+    document.getElementById('campaign-preview-status').innerText = 'Accept failed: ' + (error.message || error);
+  } finally {
+    document.getElementById('acceptPreviewContact').disabled = false;
   }
 }
 
@@ -1007,7 +1057,12 @@ function registerTaskListeners(task) {
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
-  task.on('task:end', updateTaskList); // Update the task list UI to have latest tasks
+  task.on('task:end', () => {
+    updateTaskList();
+    document.getElementById('campaign-interaction-id').value = '';
+    document.getElementById('campaign-id').value = '';
+    document.getElementById('campaign-preview-status').innerText = '';
+  });
 
   task.on('task:hold', updateTaskList);
 
@@ -1578,6 +1633,10 @@ function register() {
         idleCodesDropdown.value = data.auxCodeId?.trim() !== '' ? data.auxCodeId : DEFAULT_CODE;
         startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
       }
+    });
+
+    webex.cc.on('task:campaignPreviewReservation', (data) => {
+      onCampaignReservationReceived(data);
     });
 
     webex.cc.on('agent:multiLogin', (data) => {
