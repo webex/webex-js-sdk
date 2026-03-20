@@ -3,7 +3,7 @@ import {
   SupportedResolution,
   CodecInfo as WcmeCodecInfo,
 } from '@webex/internal-media-core';
-import {MediaRequest} from '../types';
+import {MediaRequest, SizeHint} from '../types';
 
 export type H264CodecInfo = H264EncodingParams & {
   codec: 'h264';
@@ -11,8 +11,10 @@ export type H264CodecInfo = H264EncodingParams & {
 
 export type CodecInfo = H264CodecInfo;
 
-export interface MediaCodecHelper<TCodecOptions, TCodecInfo extends CodecInfo> {
-  getCodecInfo(options: TCodecOptions): TCodecInfo | undefined;
+export type GetCodecInfoOptions = {sizeHint?: SizeHint};
+
+export interface MediaCodecHelper<TCodecInfo extends CodecInfo> {
+  getCodecInfo(options: GetCodecInfoOptions): TCodecInfo | undefined;
   getWCMECodecInfos(mediaRequest: MediaRequest): WcmeCodecInfo[];
   degradeMediaRequest(mediaRequest: MediaRequest, resolution: SupportedResolution): number;
   getMaxPayloadBitsPerSecond(mediaRequest: MediaRequest): number;

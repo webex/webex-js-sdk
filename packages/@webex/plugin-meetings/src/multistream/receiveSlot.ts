@@ -8,10 +8,12 @@ import {
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import EventsScope from '../common/events/events-scope';
+import {SizeHint} from './types';
 
 export const ReceiveSlotEvents = {
   SourceUpdate: 'sourceUpdate',
   MaxFsUpdate: 'maxFsUpdate',
+  SizeHintUpdate: 'sizeHintUpdate',
 };
 
 export type {StreamState} from '@webex/internal-media-core';
@@ -83,6 +85,23 @@ export class ReceiveSlot extends EventsScope {
   }
 
   /**
+   * Supply the width and height of the video element
+   * to restrict the requested resolution to this size
+   * @param width width of the video element
+   * @param height height of the video element
+   */
+  public setSizeHint(sizeHint: SizeHint) {
+    this.emit(
+      {
+        file: 'meeting/receiveSlot',
+        function: 'setSizeHint',
+      },
+      ReceiveSlotEvents.SizeHintUpdate,
+      sizeHint
+    );
+  }
+
+  /**
    * Set the max frame size for this slot
    * @param newFs frame size
    */
@@ -92,7 +111,7 @@ export class ReceiveSlot extends EventsScope {
     this.emit(
       {
         file: 'meeting/receiveSlot',
-        function: 'findMemberId',
+        function: 'setMaxFs',
       },
       ReceiveSlotEvents.MaxFsUpdate,
       {

@@ -5,10 +5,11 @@ import {forEach} from 'lodash';
 import {NamedMediaGroup} from '@webex/internal-media-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 
-import {getMaxFs, RemoteMedia} from './remoteMedia';
+import {RemoteMedia} from './remoteMedia';
 import MediaRequestManager from './mediaRequestManager';
-import type {MediaRequestId, RemoteVideoResolution} from './types';
+import type {MediaRequestId, RemoteVideoResolution, SizeHint} from './types';
 import {CSI, ReceiveSlot} from './receiveSlot';
+import MediaCodecHelper from './codec/mediaCodecHelper';
 
 type Options = {
   resolution?: RemoteVideoResolution; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
@@ -216,8 +217,7 @@ export class RemoteMediaGroup {
   private sendActiveSpeakerMediaRequest(commit: boolean) {
     this.cancelActiveSpeakerMediaRequest(false);
 
-    // Calculate the effective maxFs based on all unpinned RemoteMedia instances
-    const effectiveMaxFs = this.getEffectiveMaxFsForActiveSpeaker();
+    const sizeHint = this.getSizeHintForActiveSpeaker();
 
     this.mediaRequestId = this.mediaRequestManager.addRequest(
       {
@@ -234,10 +234,11 @@ export class RemoteMediaGroup {
         receiveSlots: this.unpinnedRemoteMedia.map((remoteMedia) =>
           remoteMedia.getUnderlyingReceiveSlot()
         ) as ReceiveSlot[],
-        codecInfo: effectiveMaxFs && {
-          codec: 'h264',
-          maxFs: effectiveMaxFs,
-        },
+        codecInfo: sizeHint
+          ? MediaCodecHelper.H264.getCodecInfo({
+              sizeHint,
+            })
+          : undefined,
       },
       commit
     );
@@ -305,10 +306,39 @@ export class RemoteMediaGroup {
     );
   }
 
+  private getSizeHintForActiveSpeaker(): SizeHint | undefined {
+    // Get all size hint values from unpinned RemoteMedia instances
+    const sizeHints = this.unpinnedRemoteMedia
+      .map((remoteMedia) => remoteMedia.getSizeHint())
+      .filter((sizeHint) => !!sizeHint);
+
+    // Use the highest sizeHint based on width*height value to ensure we don't under-request resolution for any instance
+    if (sizeHints.length > 0) {
+      return sizeHints.reduce((maxSizeHint, currentSizeHint) => {
+        const currentSize = currentSizeHint.width * currentSizeHint.height;
+        const maxSize = maxSizeHint.width * maxSizeHint.height;
+
+        return currentSize > maxSize ? currentSizeHint : maxSizeHint;
+      }, sizeHints[0]);
+    }
+
+    // Fall back to group's resolution option
+    if (this.options.resolution) {
+      return {
+        width: 0,
+        height: 0,
+        resolution: this.options.resolution,
+      };
+    }
+
+    return undefined;
+  }
+
   /**
    * Calculate the effective maxFs for the active speaker media request based on unpinned RemoteMedia instances
    * @returns {number | undefined} The calculated maxFs value, or undefined if no constraints
    * @private
+   * @deprecated
    */
   private getEffectiveMaxFsForActiveSpeaker(): number | undefined {
     // Get all effective maxFs values from unpinned RemoteMedia instances
@@ -323,7 +353,7 @@ export class RemoteMediaGroup {
 
     // Fall back to group's resolution option
     if (this.options.resolution) {
-      return getMaxFs(this.options.resolution);
+      return MediaCodecHelper.H264.getMaxFs(this.options.resolution);
     }
 
     return undefined;
@@ -332,6 +362,7 @@ export class RemoteMediaGroup {
   /**
    * Get the current effective maxFs that would be used for the active speaker media request
    * @returns {number | undefined} The effective maxFs value
+   * @deprecated
    */
   public getEffectiveMaxFs(): number | undefined {
     return this.getEffectiveMaxFsForActiveSpeaker();

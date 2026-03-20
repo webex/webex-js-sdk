@@ -4,10 +4,8 @@ import {
   Policy,
   ActiveSpeakerInfo,
   ReceiverSelectedInfo,
-  CodecInfo as WcmeCodecInfo,
-  H264Codec,
-  getRecommendedMaxBitrateForFrameSize,
   RecommendedOpusBitrates,
+  SupportedResolution,
 } from '@webex/internal-media-core';
 import {cloneDeepWith, debounce, isEmpty} from 'lodash';
 
@@ -15,7 +13,8 @@ import LoggerProxy from '../common/logs/logger-proxy';
 
 import {ReceiveSlotEvents} from './receiveSlot';
 import {MediaRequest, MediaRequestId} from './types';
-import {CODEC_DEFAULTS, H264_CODEC_PARAMETERS} from './codec/constants';
+import {CODEC_DEFAULTS} from './codec/constants';
+import MediaCodecHelper from './codec/mediaCodecHelper';
 
 const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
 
@@ -77,40 +76,26 @@ export default class MediaRequestManager {
   }
 
   private getDegradedClientRequests(clientRequests: ClientRequestsMap) {
-    const maxFsLimits = [
-      H264_CODEC_PARAMETERS['1080p'].maxFs,
-      H264_CODEC_PARAMETERS['720p'].maxFs,
-      H264_CODEC_PARAMETERS['540p'].maxFs,
-      H264_CODEC_PARAMETERS['360p'].maxFs,
-      H264_CODEC_PARAMETERS['180p'].maxFs,
-      H264_CODEC_PARAMETERS['90p'].maxFs,
-    ];
+    const resolutions: SupportedResolution[] = ['1080p', '720p', '540p', '360p', '180p', '90p'];
 
-    // reduce max-fs until total macroblocks is below limit
-    for (let i = 0; i < maxFsLimits.length; i += 1) {
+    for (const resolution of resolutions) {
       let totalMacroblocksRequested = 0;
+
       Object.values(clientRequests).forEach((mr) => {
-        if (mr.codecInfo) {
-          mr.codecInfo.maxFs = Math.min(
-            mr.preferredMaxFs || CODEC_DEFAULTS.h264.maxFs,
-            mr.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs,
-            maxFsLimits[i]
-          );
-          // we only consider sources with "live" state
-          const slotsWithLiveSource = mr.receiveSlots.filter((rs) => rs.sourceState === 'live');
-          totalMacroblocksRequested += mr.codecInfo.maxFs * slotsWithLiveSource.length;
-        }
+        const mediaCodecHelper = MediaCodecHelper.get(mr.codecInfo?.codec);
+        totalMacroblocksRequested += mediaCodecHelper.degradeMediaRequest(mr, resolution);
       });
+
       if (totalMacroblocksRequested <= this.degradationPreferences.maxMacroblocksLimit) {
-        if (i !== 0) {
+        if (resolution !== '1080p') {
           LoggerProxy.logger.warn(
-            `multistream:mediaRequestManager --> too many streams with high max-fs, frame size will be limited to ${maxFsLimits[i]}`
+            `multistream:mediaRequestManager --> too many streams with high macroblocks requested, resolution will be limited to ${resolution}`
           );
         }
         break;
-      } else if (i === maxFsLimits.length - 1) {
+      } else if (resolution === '90p') {
         LoggerProxy.logger.warn(
-          `multistream:mediaRequestManager --> even with frame size limited to ${maxFsLimits[i]} you are still requesting too many streams, consider reducing the number of requests`
+          `multistream:mediaRequestManager --> even with resolution limited to ${resolution} you are still requesting too many streams, consider reducing the number of requests`
         );
       }
     }
@@ -151,20 +136,28 @@ export default class MediaRequestManager {
    *
    * If MediaRequestManager kind is "audio", a constant bitrate will be returned.
    * If MediaRequestManager kind is "video", the bitrate will be calculated based
-   * on maxFs (default h264 maxFs as fallback if maxFs is not defined)
+   * on maxFs (default maxFs as fallback if maxFs is not defined)
    *
    * @param {MediaRequest} mediaRequest  - mediaRequest to take data from
    * @returns {number} maxPayloadBitsPerSecond
    */
   private getMaxPayloadBitsPerSecond(mediaRequest: MediaRequest): number {
     if (this.kind === 'audio') {
-      // return mono_music bitrate default if the kind of mediarequest manager is audio:
+      // return mono_music bitrate default if the kind of media request manager is audio:
       return RecommendedOpusBitrates.FB_MONO_MUSIC;
     }
 
-    return getRecommendedMaxBitrateForFrameSize(
-      mediaRequest.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs
+    if (mediaRequest.codecInfo?.codec) {
+      const mediaCodecHelper = MediaCodecHelper.get(mediaRequest.codecInfo.codec);
+
+      return mediaCodecHelper.getMaxPayloadBitsPerSecond(mediaRequest);
+    }
+
+    LoggerProxy.logger.warn(
+      'multistream:mediaRequestManager --> no codec info found for media request'
     );
+
+    return 0;
   }
 
   /**
@@ -293,51 +286,38 @@ export default class MediaRequestManager {
 
     // map all the client media requests to wcme stream requests
     Object.values(clientRequests).forEach((mr) => {
-      if (mr.receiveSlots.length > 0) {
-        streamRequests.push(
-          new StreamRequest(
-            mr.policyInfo.policy === 'active-speaker'
-              ? Policy.ActiveSpeaker
-              : Policy.ReceiverSelected,
-            mr.policyInfo.policy === 'active-speaker'
-              ? new ActiveSpeakerInfo(
-                  mr.policyInfo.priority,
-                  mr.policyInfo.crossPriorityDuplication,
-                  mr.policyInfo.crossPolicyDuplication,
-                  mr.policyInfo.preferLiveVideo,
-                  mr.policyInfo.namedMediaGroups
-                )
-              : new ReceiverSelectedInfo(mr.policyInfo.csi),
-            mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot),
-            this.getMaxPayloadBitsPerSecond(mr),
-            mr.codecInfo && [
-              WcmeCodecInfo.fromH264(
-                0x80,
-                new H264Codec(
-                  mr.codecInfo.maxFs,
-                  mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
-                  this.getH264MaxMbps(mr),
-                  mr.codecInfo.maxWidth,
-                  mr.codecInfo.maxHeight
-                )
-              ),
-            ]
-          )
-        );
+      if (mr.receiveSlots.length <= 0) {
+        return;
       }
+
+      const policy =
+        mr.policyInfo.policy === 'active-speaker' ? Policy.ActiveSpeaker : Policy.ReceiverSelected;
+      const policySpecificInfo =
+        mr.policyInfo.policy === 'active-speaker'
+          ? new ActiveSpeakerInfo(
+              mr.policyInfo.priority,
+              mr.policyInfo.crossPriorityDuplication,
+              mr.policyInfo.crossPolicyDuplication,
+              mr.policyInfo.preferLiveVideo,
+              mr.policyInfo.namedMediaGroups
+            )
+          : new ReceiverSelectedInfo(mr.policyInfo.csi);
+
+      const receiveSlots = mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot);
+      const maxPayloadBitsPerSecond = this.getMaxPayloadBitsPerSecond(mr);
+      const codecInfos = [...MediaCodecHelper.H264.getWCMECodecInfos(mr)];
+
+      const streamRequest = new StreamRequest(
+        policy,
+        policySpecificInfo,
+        receiveSlots,
+        maxPayloadBitsPerSecond,
+        codecInfos
+      );
+      streamRequests.push(streamRequest);
     });
 
-    //! IMPORTANT: this is only a temporary fix. This will soon be done in the jmp layer (@webex/json-multistream)
-    // https://jira-eng-gpk2.cisco.com/jira/browse/WEBEX-326713
-    if (!this.checkIsNewRequestsEqualToPrev(streamRequests)) {
-      this.sendMediaRequestsCallback(streamRequests);
-      this.previousStreamRequests = streamRequests;
-      LoggerProxy.logger.info(`multistream:sendRequests --> media requests sent. `);
-    } else {
-      LoggerProxy.logger.info(
-        `multistream:sendRequests --> detected duplicate WCME requests, skipping them... `
-      );
-    }
+    this.sendMediaRequestsCallback(streamRequests);
   }
 
   public addRequest(mediaRequest: MediaRequest, commit = true): MediaRequestId {
@@ -346,15 +326,20 @@ export default class MediaRequestManager {
 
     this.clientRequests[newId] = mediaRequest;
 
-    const eventHandler = ({maxFs}) => {
+    mediaRequest.handleMaxFs = ({maxFs}) => {
       mediaRequest.preferredMaxFs = maxFs;
       this.debouncedSourceUpdateListener();
     };
-    mediaRequest.handleMaxFs = eventHandler;
+
+    mediaRequest.handleSizeHint = (sizeHint) => {
+      mediaRequest.sizeHint = sizeHint;
+      this.debouncedSourceUpdateListener();
+    };
 
     mediaRequest.receiveSlots.forEach((rs) => {
       rs.on(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
       rs.on(ReceiveSlotEvents.MaxFsUpdate, mediaRequest.handleMaxFs);
+      rs.on(ReceiveSlotEvents.SizeHintUpdate, mediaRequest.handleSizeHint);
     });
 
     if (commit) {
@@ -370,6 +355,7 @@ export default class MediaRequestManager {
     mediaRequest?.receiveSlots.forEach((rs) => {
       rs.off(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
       rs.off(ReceiveSlotEvents.MaxFsUpdate, mediaRequest.handleMaxFs);
+      rs.off(ReceiveSlotEvents.SizeHintUpdate, mediaRequest.handleSizeHint);
     });
 
     delete this.clientRequests[requestId];

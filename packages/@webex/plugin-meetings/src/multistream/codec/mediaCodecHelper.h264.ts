@@ -6,35 +6,34 @@ import {
   CodecInfo as WcmeCodecInfo,
 } from '@webex/internal-media-core';
 import {CODEC_DEFAULTS, H264_CODEC_PARAMETERS, PANE_SIZE_TO_RESOLUTION} from './constants';
-import {MediaCodecHelper, H264CodecInfo} from './types';
+import {MediaCodecHelper, H264CodecInfo, GetCodecInfoOptions} from './types';
 import {MediaRequest, RemoteVideoResolution} from '../types';
 import LoggerProxy from '../../common/logs/logger-proxy';
-
-type H264CodecOptions = {
-  getMaxFs?: () => number;
-};
 
 /**
  * Class for H264 media codec info
  */
-export default class MediaCodecHelperH264
-  implements MediaCodecHelper<H264CodecOptions, H264CodecInfo>
-{
+export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecInfo> {
   /**
    * Gets the H264 codec info
    *
-   * @param {Object} options - The options for the H264 codec info
-   * @param {number} options.maxFs - The maximum frame size
+   * @param {GetCodecInfoOptions} options - The options for the H264 codec info
    * @returns {H264CodecInfo} The H264 codec info
    */
-  getCodecInfo(options: H264CodecOptions): H264CodecInfo | undefined {
-    if (!options.getMaxFs) {
+  getCodecInfo({sizeHint}: GetCodecInfoOptions): H264CodecInfo | undefined {
+    let maxFs: number;
+
+    if (sizeHint?.width > 0 && sizeHint?.height > 0) {
+      maxFs = this.getSizeHintMaxFs(sizeHint.width, sizeHint.height);
+    } else if (sizeHint?.resolution) {
+      maxFs = this.getMaxFs(sizeHint.resolution);
+    } else {
       return undefined;
     }
 
     return {
       codec: 'h264',
-      maxFs: options.getMaxFs(),
+      maxFs,
     };
   }
 

@@ -1,12 +1,13 @@
 /* eslint-disable valid-jsdoc */
 import {MediaType, StreamState} from '@webex/internal-media-core';
-import LoggerProxy from '../common/logs/logger-proxy';
+import Metrics from '@webex/internal-plugin-metrics';
 import EventsScope from '../common/events/events-scope';
 
 import MediaRequestManager from './mediaRequestManager';
 import {CSI, ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
-import type {MediaRequestId, RemoteVideoResolution} from './types';
-import {H264_CODEC_PARAMETERS} from './codec/constants';
+import type {MediaRequestId, RemoteVideoResolution, SizeHint} from './types';
+import BEHAVIORAL_METRICS from '../metrics/constants';
+import MediaCodecHelper from './codec/mediaCodecHelper';
 
 export const RemoteMediaEvents = {
   SourceUpdate: ReceiveSlotEvents.SourceUpdate,
@@ -17,37 +18,15 @@ export const RemoteMediaEvents = {
  * Converts pane size into h264 maxFs
  * @param {RemoteVideoResolution} paneSize
  * @returns {number}
+ * @deprecated use MediaCodecHelper from plugin-meetings/src/codec/mediaCodecHelper instead
  */
 export function getMaxFs(paneSize: RemoteVideoResolution): number {
-  let maxFs;
+  this.LoggerProxy.logger.warn(
+    'RemoteMedia->getMaxFs --> [DEPRECATION WARNING]: getMaxFs has been deprecated, use MediaCodecHelper instead'
+  );
+  Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DEPRECATED_SET_MAX_FS_USED, {paneSize});
 
-  switch (paneSize) {
-    case 'thumbnail':
-      maxFs = H264_CODEC_PARAMETERS['90p'].maxFs;
-      break;
-    case 'very small':
-      maxFs = H264_CODEC_PARAMETERS['180p'].maxFs;
-      break;
-    case 'small':
-      maxFs = H264_CODEC_PARAMETERS['360p'].maxFs;
-      break;
-    case 'medium':
-      maxFs = H264_CODEC_PARAMETERS['720p'].maxFs;
-      break;
-    case 'large':
-      maxFs = H264_CODEC_PARAMETERS['1080p'].maxFs;
-      break;
-    case 'best':
-      maxFs = H264_CODEC_PARAMETERS['1080p'].maxFs; // for now 'best' is 1080p, so same as 'large'
-      break;
-    default:
-      LoggerProxy.logger.warn(
-        `RemoteMedia#getMaxFs --> unsupported paneSize: ${paneSize}, using "medium" instead`
-      );
-      maxFs = H264_CODEC_PARAMETERS['720p'].maxFs;
-  }
-
-  return maxFs;
+  return MediaCodecHelper.H264.getMaxFs(paneSize);
 }
 
 type Options = {
@@ -76,11 +55,11 @@ export class RemoteMedia extends EventsScope {
   public readonly id: RemoteMediaId;
 
   /**
-   * The max frame size of the media request, used for logging and media requests.
+   * The size hint of the media request, used for logging and media requests.
    * Set by setSizeHint() based on video element dimensions.
-   * When > 0, this value takes precedence over options.resolution in sendMediaRequest().
+   * @todo remove this once deprecation of getEffectiveMaxFs() is complete
    */
-  private maxFrameSize = 0;
+  private sizeHint?: SizeHint;
 
   /**
    * Constructs RemoteMedia instance
@@ -110,48 +89,35 @@ export class RemoteMedia extends EventsScope {
    * @param height height of the video element
    * @note width/height of 0 will be ignored
    */
-  public setSizeHint(width, height) {
-    // only base on height for now
-    let fs: number;
-
+  public setSizeHint(width: number, height: number) {
     if (width === 0 || height === 0) {
       return;
     }
 
-    // we switch to the next resolution level when the height is 10% more than the current resolution height
-    // except for 1080p - we switch to it immediately when the height is more than 720p
-    const threshold = 1.1;
-    const getThresholdHeight = (h: number) => Math.round(h * threshold);
+    this.sizeHint = {width, height, resolution: this.options.resolution};
+    this.receiveSlot?.setSizeHint(this.sizeHint);
+  }
 
-    if (height < getThresholdHeight(90)) {
-      fs = H264_CODEC_PARAMETERS['90p'].maxFs;
-    } else if (height < getThresholdHeight(180)) {
-      fs = H264_CODEC_PARAMETERS['180p'].maxFs;
-    } else if (height < getThresholdHeight(360)) {
-      fs = H264_CODEC_PARAMETERS['360p'].maxFs;
-    } else if (height < getThresholdHeight(540)) {
-      fs = H264_CODEC_PARAMETERS['540p'].maxFs;
-    } else if (height <= 720) {
-      fs = H264_CODEC_PARAMETERS['720p'].maxFs;
-    } else {
-      fs = H264_CODEC_PARAMETERS['1080p'].maxFs;
-    }
-
-    this.maxFrameSize = fs;
-    this.receiveSlot?.setMaxFs(fs);
+  /**
+   * Get the current size hint that would be used in media requests
+   * @returns {SizeHint | undefined} The size hint, or undefined if no size hint has been set
+   */
+  public getSizeHint(): SizeHint | undefined {
+    return this.sizeHint;
   }
 
   /**
    * Get the current effective maxFs value that would be used in media requests
    * @returns {number | undefined} The maxFs value, or undefined if no constraints
+   * @deprecated use getSizeHint() instead
    */
   public getEffectiveMaxFs(): number | undefined {
-    if (this.maxFrameSize > 0) {
-      return this.maxFrameSize;
+    if (this.sizeHint) {
+      return MediaCodecHelper.H264.getSizeHintMaxFs(this.sizeHint.width, this.sizeHint.height);
     }
 
     if (this.options.resolution) {
-      return getMaxFs(this.options.resolution);
+      return MediaCodecHelper.H264.getMaxFs(this.options.resolution);
     }
 
     return undefined;
@@ -197,9 +163,6 @@ export class RemoteMedia extends EventsScope {
       throw new Error('sendMediaRequest() called on an invalidated RemoteMedia instance');
     }
 
-    // Use maxFrameSize from setSizeHint if available, otherwise fallback to options.resolution
-    const maxFs = this.getEffectiveMaxFs();
-
     this.mediaRequestId = this.mediaRequestManager.addRequest(
       {
         policyInfo: {
@@ -207,10 +170,9 @@ export class RemoteMedia extends EventsScope {
           csi,
         },
         receiveSlots: [this.receiveSlot],
-        codecInfo: maxFs && {
-          codec: 'h264',
-          maxFs,
-        },
+        codecInfo: MediaCodecHelper.H264.getCodecInfo({
+          sizeHint: this.sizeHint,
+        }),
       },
       commit
     );
