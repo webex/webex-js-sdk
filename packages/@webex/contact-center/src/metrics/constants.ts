@@ -159,6 +159,10 @@ export const METRIC_EVENT_NAMES = {
   // Outdial ANI Entries API Events
   OUTDIAL_ANI_EP_FETCH_SUCCESS: 'Outdial ANI Entries Fetch Success',
   OUTDIAL_ANI_EP_FETCH_FAILED: 'Outdial ANI Entries Fetch Failed',
+
+  // Campaign Preview API Events
+  CAMPAIGN_PREVIEW_ACCEPT_SUCCESS: 'Campaign Preview Accept Success',
+  CAMPAIGN_PREVIEW_ACCEPT_FAILED: 'Campaign Preview Accept Failed',
 } as const;
 
 /**
