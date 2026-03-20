@@ -7396,7 +7396,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": 5.38.1
     "@typescript-eslint/parser": 5.38.1
     "@web/dev-server": 0.4.5
-    "@webex/internal-media-core": 2.22.1
+    "@webex/internal-media-core": 2.23.1
     "@webex/internal-plugin-metrics": "workspace:*"
     "@webex/media-helpers": "workspace:*"
     async-mutex: 0.4.0
@@ -7725,23 +7725,23 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:2.22.1":
-  version: 2.22.1
-  resolution: "@webex/internal-media-core@npm:2.22.1"
+"@webex/internal-media-core@npm:2.23.1":
+  version: 2.23.1
+  resolution: "@webex/internal-media-core@npm:2.23.1"
   dependencies:
     "@babel/runtime": ^7.18.9
     "@babel/runtime-corejs2": ^7.25.0
     "@webex/rtcstats": ^1.5.5
     "@webex/ts-sdp": 1.8.2
-    "@webex/web-capabilities": ^1.9.0
-    "@webex/web-client-media-engine": 3.37.1
+    "@webex/web-capabilities": ^1.10.0
+    "@webex/web-client-media-engine": 3.39.1
     events: ^3.3.0
     ip-anonymize: ^0.1.0
     typed-emitter: ^2.1.0
     uuid: ^8.3.2
     webrtc-adapter: ^8.1.2
     xstate: ^4.30.6
-  checksum: 45f307ef7116dda3b56d906974c89d7d68164b87c1cf843377be568557a251d15386afd96d09636a115399b6e7153fe0052ffe640f7671b0d357d1b6f2492a3b
+  checksum: e1e577cf4de2f7219607f80ae4176c9e1c7d250e365b7ef84fc23c258f691db231fcff59086e71a54490a3e4f72a7bba835852e4135bc78f400b827da9114759
   languageName: node
   linkType: hard
 
@@ -8553,7 +8553,7 @@ __metadata:
     "@babel/preset-typescript": 7.22.11
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-media-core": 2.22.1
+    "@webex/internal-media-core": 2.23.1
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -8821,7 +8821,7 @@ __metadata:
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/event-dictionary-ts": ^1.0.2073
-    "@webex/internal-media-core": 2.22.1
+    "@webex/internal-media-core": 2.23.1
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-llm": "workspace:*"
@@ -8841,7 +8841,7 @@ __metadata:
     "@webex/test-helper-retry": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
     "@webex/ts-sdp": ^1.8.1
-    "@webex/web-capabilities": ^1.9.0
+    "@webex/web-capabilities": ^1.10.0
     "@webex/webex-core": "workspace:*"
     ampersand-collection: ^2.0.2
     bowser: ^2.11.0
@@ -9527,31 +9527,31 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/web-capabilities@npm:^1.6.1, @webex/web-capabilities@npm:^1.7.1, @webex/web-capabilities@npm:^1.9.0":
-  version: 1.9.0
-  resolution: "@webex/web-capabilities@npm:1.9.0"
+"@webex/web-capabilities@npm:^1.10.0, @webex/web-capabilities@npm:^1.6.1":
+  version: 1.10.0
+  resolution: "@webex/web-capabilities@npm:1.10.0"
   dependencies:
     bowser: ^2.11.0
-  checksum: eccb543f2dce90fbbd41a6996bd6c39fe954e4ee2c488b5ac504b7459a9886a6402b796ecbb3af40432ad890de3e3d5ffdc9bbb34365ac1e3f0abbd442773a1e
+  checksum: c6adda2b3cf4594e9977b710f6bc0244e26a21013bdd764a26317dee650d63d29369919f53ececd0b875e2bbb5e1c3d46c5326feea97cfada557bda6cd6664ac
   languageName: node
   linkType: hard
 
-"@webex/web-client-media-engine@npm:3.37.1":
-  version: 3.37.1
-  resolution: "@webex/web-client-media-engine@npm:3.37.1"
+"@webex/web-client-media-engine@npm:3.39.1":
+  version: 3.39.1
+  resolution: "@webex/web-client-media-engine@npm:3.39.1"
   dependencies:
     "@webex/json-multistream": ^2.4.3
     "@webex/rtcstats": ^1.5.5
     "@webex/ts-events": ^1.2.1
     "@webex/ts-sdp": 1.8.2
-    "@webex/web-capabilities": ^1.7.1
+    "@webex/web-capabilities": ^1.10.0
     "@webex/web-media-effects": 2.33.0
     "@webex/webrtc-core": 2.13.5
     async: ^3.2.4
     js-logger: ^1.6.1
     typed-emitter: ^2.1.0
     uuid: ^8.3.2
-  checksum: c88c3a58a21649221757ffbcbf5dff2fb7ae91c87b4d97be4d7d9afa313ce40c76d94beba8b0399f161972962c1aa622e5fa0646384a04282de3b0120618fa50
+  checksum: 485a292887d0f50969f5275e2cb325fe38b77364a102776c46806823b83a764ec598e1b56ff4392144c7d20c76769bb08f417b59725f04d983cbf52f995c4287
   languageName: node
   linkType: hard
 
