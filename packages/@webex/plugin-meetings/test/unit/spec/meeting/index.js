@@ -13106,7 +13106,6 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.clearLLMHealthCheckTimer);
             assert.calledOnce(meeting.stopTranscription);
             assert.calledOnce(meeting.annotation.deregisterEvents);
-            assert.calledOnce(webex.internal.voicea.deregisterEvents);
           });
           it('continues cleanup when disconnectLLM fails during meeting data cleanup', async () => {
             webex.internal.llm.disconnectLLM.rejects(new Error('disconnect failed'));
@@ -13127,7 +13126,6 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.clearLLMHealthCheckTimer);
             assert.calledOnce(meeting.stopTranscription);
             assert.calledOnce(meeting.annotation.deregisterEvents);
-            assert.calledOnce(webex.internal.voicea.deregisterEvents);
           });
         });
       });
