@@ -1,4 +1,5 @@
 import {H264EncodingParams, SupportedResolution} from '@webex/internal-media-core';
+import {RemoteVideoResolution} from '../types';
 
 export const H264_CODEC_PARAMETERS = {
   '90p': {
@@ -28,3 +29,12 @@ export const CODEC_DEFAULTS = {
     maxMbps: 245760,
   },
 };
+
+export const PANE_SIZE_TO_RESOLUTION = {
+  thumbnail: '90p',
+  'very small': '180p',
+  small: '360p',
+  medium: '720p',
+  large: '1080p',
+  best: '1080p',
+} satisfies Record<RemoteVideoResolution, SupportedResolution>;
