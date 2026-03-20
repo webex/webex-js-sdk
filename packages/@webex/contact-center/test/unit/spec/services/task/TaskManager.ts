@@ -13,6 +13,7 @@ import {CC_TASK_EVENTS} from '../../../../../src/services/config/types';
 
 describe('TaskManager', () => {
   let mockCall;
+  let mockApiAIAssistant;
   let webSocketManagerMock;
   let onSpy;
   let offSpy;
@@ -122,6 +123,63 @@ describe('TaskManager', () => {
     webSocketManagerMock.emit('message', JSON.stringify(dummyPayload));
 
     expect(taskEmitSpy).toHaveBeenCalledWith(dummyPayload.data.type, dummyPayload.data);
+  });
+
+  it('should invoke sendTranscriptEvent for configured start/stop backend events', () => {
+    const interactionId = 'interaction-transcript-1';
+    const message = (type: CC_EVENTS) =>
+      JSON.stringify({
+        data: {
+          ...taskDataMock,
+          interactionId,
+          type,
+        },
+      });
+
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONTACT_ASSIGNED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULTING));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULT_CONFERENCED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_WRAPUP));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULT_ENDED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE));
+
+    expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledTimes(6);
+    expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledWith(
+      'test-agent-id',
+      interactionId,
+      'CUSTOM_EVENT',
+      'GET_TRANSCRIPTS',
+      'START'
+    );
+    expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledWith(
+      'test-agent-id',
+      interactionId,
+      'CUSTOM_EVENT',
+      'GET_TRANSCRIPTS',
+      'STOP'
+    );
+  });
+
+  it('should emit REAL_TIME_TRANSCRIPTION from task object', () => {
+    const task = taskManager.getTask(taskId);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const realtimePayload = {
+      data: {
+        ...taskDataMock,
+        type: CC_EVENTS.REAL_TIME_TRANSCRIPTION,
+        data: {
+          content: 'hello from transcript',
+        },
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(realtimePayload));
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(
+      CC_EVENTS.REAL_TIME_TRANSCRIPTION,
+      realtimePayload.data
+    );
+    expect(taskEmitSpy).toHaveBeenCalledWith('realtimeTranscription', realtimePayload.data);
   });
 
   it('should not re-emit agent related events', () => {

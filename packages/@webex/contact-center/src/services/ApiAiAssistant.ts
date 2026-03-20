@@ -13,6 +13,7 @@ import {
 } from '../types';
 import {getErrorDetails} from './core/Utils';
 import {WCC_API_GATEWAY} from './constants';
+import {AIFeatureFlags} from './config/types';
 
 /**
  * ApiAIAssistant provides AI Assistant APIs for transcript controls.
@@ -21,13 +22,17 @@ import {WCC_API_GATEWAY} from './constants';
 export class ApiAIAssistant {
   private webex: WebexSDK;
   private metricsManager: MetricsManager;
-
+  private aiFeature: AIFeatureFlags;
   private orgId: string;
 
   constructor(webex: WebexSDK) {
     this.webex = webex;
     this.metricsManager = MetricsManager.getInstance({webex});
     this.orgId = this.webex.credentials.getOrgId();
+  }
+
+  public setAIFeatureFlags(aiFeature: AIFeatureFlags): void {
+    this.aiFeature = aiFeature;
   }
 
   private getBaseUrl(): string {

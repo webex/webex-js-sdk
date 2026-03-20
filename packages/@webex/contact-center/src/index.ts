@@ -42,11 +42,6 @@ export type {
   ContactServiceQueueSearchParams,
   ContactServiceQueue,
 } from './types';
-export type {
-  HistoricTranscriptsResponse,
-  TranscriptMessage,
-  TranscriptAction,
-} from './services/ApiAiAssistant';
 
 // Enums
 /**

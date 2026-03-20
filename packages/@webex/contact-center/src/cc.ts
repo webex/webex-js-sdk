@@ -372,8 +372,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       this.webCallingService = new WebCallingService(this.$webex);
+      this.apiAIAssistant = new ApiAIAssistant(this.$webex);
       this.metricsManager = MetricsManager.getInstance({webex: this.$webex});
       this.taskManager = TaskManager.getTaskManager(
+        this.apiAIAssistant,
         this.services.contact,
         this.webCallingService,
         this.services.webSocketManager
@@ -385,9 +387,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.entryPoint = new EntryPoint(this.$webex);
       this.addressBook = new AddressBook(this.$webex, () => this.agentConfig?.addressBookId);
       this.queue = new Queue(this.$webex);
-      this.apiAIAssistant = new ApiAIAssistant(this.$webex, () => this.agentConfig);
-
-      // Initialize logger
       LoggerProxy.initialize(this.$webex.logger);
     });
   }

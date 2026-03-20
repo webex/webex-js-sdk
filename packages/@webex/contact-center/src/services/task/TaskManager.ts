@@ -7,7 +7,7 @@ import {ITask, MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId} from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
 import {METHODS} from './constants';
 import {CC_EVENTS, CC_TASK_EVENTS, WrapupData} from '../config/types';
-import {LoginOption} from '../../types';
+import {LoginOption, TranscriptAction} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import Task from '.';
 import MetricsManager from '../../metrics/MetricsManager';
@@ -21,6 +21,16 @@ import {
   isSecondaryEpDnAgent,
   shouldAutoAnswerTask,
 } from './TaskUtils';
+import ApiAIAssistant from '../ApiAiAssistant';
+
+const TRANSCRIPT_EVENT_MAP: Record<string, TranscriptAction> = {
+  [CC_EVENTS.AGENT_CONTACT_ASSIGNED]: 'START',
+  [CC_EVENTS.AGENT_CONSULTING]: 'START',
+  [CC_EVENTS.AGENT_CONSULT_CONFERENCED]: 'START',
+  [CC_EVENTS.AGENT_WRAPUP]: 'STOP',
+  [CC_EVENTS.AGENT_CONSULT_ENDED]: 'STOP',
+  [CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE]: 'STOP',
+};
 
 /** @internal */
 export default class TaskManager extends EventEmitter {
@@ -39,17 +49,20 @@ export default class TaskManager extends EventEmitter {
   private wrapupData: WrapupData;
   private agentId: string;
   private webRtcEnabled: boolean;
+  private apiAIAssistant?: ApiAIAssistant;
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
    * @param webCallingService - Webrtc Service Layer
    * @param webSocketManager - Websocket Manager to maintain websocket connection and keepalives
    */
   constructor(
+    apiAIAssistant: ApiAIAssistant,
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     webSocketManager: WebSocketManager
   ) {
     super();
+    this.apiAIAssistant = apiAIAssistant;
     this.contact = contact;
     this.taskCollection = {};
     this.webCallingService = webCallingService;
@@ -747,11 +760,28 @@ export default class TaskManager extends EventEmitter {
   }
 
   /**
-   * @param taskId - Unique identifier for each task
+   * Sends transcript start/stop event based on the CC event type.
+   * Fire-and-forget; errors are logged but do not interrupt event processing.
    */
-  public getTask = (taskId: string) => {
+  private requestRealTimeTranscripts(eventType: string, interactionId: string): void {
+    const action = TRANSCRIPT_EVENT_MAP[eventType];
+    if (!action || !this.apiAIAssistant) return;
+
+    this.apiAIAssistant
+      .sendEvent(this.agentId, interactionId, 'CUSTOM_EVENT', 'GET_TRANSCRIPTS', action)
+      .catch((error) => {
+        LoggerProxy.error(`Failed to send transcript ${action} event`, {
+          module: TASK_MANAGER_FILE,
+          method: 'requestRealTimeTranscripts',
+          interactionId,
+          error,
+        });
+      });
+  }
+
+  public getTask(taskId: TaskId): ITask {
     return this.taskCollection[taskId];
-  };
+  }
 
   /**
    * @param taskId - Unique identifier for each task
@@ -760,20 +790,21 @@ export default class TaskManager extends EventEmitter {
     return this.taskCollection;
   };
 
-  /**
-   * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
-   * @param webCallingService - Webrtc Service Layer
-   * @param webSocketManager - Websocket Manager to maintain websocket connection and keepalives
-   */
-  public static getTaskManager = (
+  public static getTaskManager(
+    apiAIAssistant: ApiAIAssistant,
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     webSocketManager: WebSocketManager
-  ): TaskManager => {
-    if (!this.taskManager) {
-      this.taskManager = new TaskManager(contact, webCallingService, webSocketManager);
+  ): TaskManager {
+    if (!TaskManager.taskManager) {
+      TaskManager.taskManager = new TaskManager(
+        apiAIAssistant,
+        contact,
+        webCallingService,
+        webSocketManager
+      );
     }
 
     return this.taskManager;
-  };
+  }
 }

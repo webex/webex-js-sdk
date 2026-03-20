@@ -131,6 +131,10 @@ describe('webex.cc', () => {
         startOutdial: jest.fn(),
         acceptPreviewContact: jest.fn(),
       },
+      apiAIAssistant: {
+        sendTranscriptEvent: jest.fn(),
+        setAIFeatureFlags: jest.fn(),
+      },
     };
 
     mockTaskManager = {
@@ -143,6 +147,7 @@ describe('webex.cc', () => {
       setWrapupData: jest.fn(),
       setAgentId: jest.fn(),
       setWebRtcEnabled: jest.fn(),
+      setApiAIAssistant: jest.fn(),
       registerIncomingCallEvent: jest.fn(),
       registerTaskListeners: jest.fn(),
       getTask: jest.fn(),
@@ -183,6 +188,13 @@ describe('webex.cc', () => {
     });
 
     webex.emit('ready');
+  });
+
+  it('should initialize TaskManager with apiAIAssistant dependency', () => {
+    const calls = (TaskManager.getTaskManager as jest.Mock).mock.calls;
+
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls[0][0]).toBe(webex.cc.services.apiAIAssistant);
   });
 
   describe('cc.getDeviceId', () => {
