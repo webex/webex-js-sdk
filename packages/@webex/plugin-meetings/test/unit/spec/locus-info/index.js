@@ -958,6 +958,64 @@ describe('plugin-meetings', () => {
           assert.calledOnceWithExactly(collectionGetStub, locusInfo.meetingId);
           assert.notCalled(destroyStub);
         });
+
+        it('should set forceReplaceMembers to true on the first update for a locusUrl (initializedFromHashTree is false)', () => {
+          const createdHashTreeParser = locusInfo.hashTreeParsers.get('fake-locus-url');
+          createdHashTreeParser.initializedFromHashTree = false;
+
+          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+            updatedObjects: [
+              {
+                htMeta: {elementId: {type: 'self'}},
+                data: {id: 'new-self'},
+              },
+            ],
+          });
+
+          assert.calledOnce(onDeltaLocusStub);
+          assert.equal(onDeltaLocusStub.firstCall.args[0].jsSdkMeta.forceReplaceMembers, true);
+          assert.isTrue(createdHashTreeParser.initializedFromHashTree);
+        });
+
+        it('should set forceReplaceMembers to false on subsequent updates (initializedFromHashTree is true)', () => {
+          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+            updatedObjects: [
+              {
+                htMeta: {elementId: {type: 'self'}},
+                data: {id: 'new-self'},
+              },
+            ],
+          });
+
+          assert.calledOnce(onDeltaLocusStub);
+          assert.equal(onDeltaLocusStub.firstCall.args[0].jsSdkMeta.forceReplaceMembers, false);
+        });
+
+        it('should copy participant data to self when participant matches self identity and state is LEFT with reason MOVED', () => {
+          locusInfo.self = {id: 'fake-self', identity: 'user-123'};
+
+          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+            updatedObjects: [
+              {
+                htMeta: {elementId: {type: 'participant', id: 99}},
+                data: {
+                  id: 'participant-matching-self',
+                  identity: 'user-123',
+                  state: 'LEFT',
+                  reason: 'MOVED',
+                  roles: ['MODERATOR'],
+                },
+              },
+            ],
+          });
+
+          assert.calledOnce(onDeltaLocusStub);
+          const passedLocus = onDeltaLocusStub.firstCall.args[0];
+
+          assert.equal(passedLocus.self.identity, 'user-123');
+          assert.equal(passedLocus.self.state, 'LEFT');
+          assert.equal(passedLocus.self.reason, 'MOVED');
+        });
       });
     });
 
@@ -2979,6 +3037,333 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#createHashTreeParser', () => {
+      let HashTreeParserStub;
+
+      beforeEach(() => {
+        HashTreeParserStub = sinon
+          .stub(HashTreeParserModule, 'default')
+          .returns({
+            initializeFromMessage: sinon.stub().resolves(),
+            initializeFromGetLociResponse: sinon.stub().resolves(),
+            state: 'active',
+            stop: sinon.stub(),
+            handleMessage: sinon.stub(),
+          });
+      });
+
+      const setupParserViaInitialSetup = async (locusUrl = 'http://locus-url-A.com') => {
+        await locusInfo.initialSetup({
+          trigger: 'locus-message',
+          hashTreeMessage: {
+            locusUrl,
+            locusStateElements: [
+              {
+                htMeta: {elementId: {type: 'Metadata'}},
+                data: {visibleDataSets: [{name: 'dataset1', url: 'test-url'}]},
+              },
+            ],
+            dataSets: [{name: 'dataset1', url: 'test-url'}],
+          },
+        });
+      };
+
+      it('should stop existing active parsers when creating a new one', async () => {
+        await setupParserViaInitialSetup('http://locus-url-A.com');
+
+        const firstParser = locusInfo.hashTreeParsers.get('http://locus-url-A.com').parser;
+
+        await setupParserViaInitialSetup('http://locus-url-B.com');
+
+        assert.calledOnce(firstParser.stop);
+      });
+
+      it('should set replacedAt on existing entries when replacedAt is provided', async () => {
+        await setupParserViaInitialSetup('http://locus-url-A.com');
+
+        // Call createHashTreeParser with replacedAt via parse -> handleHashTreeParserSwitch
+        // which calls createHashTreeParser with replacedAt from the self element
+        locusInfo.webex.internal.device.url = 'http://device-url.com';
+        const message = {
+          locusUrl: 'http://locus-url-B.com',
+          locusStateElements: [
+            {
+              htMeta: {elementId: {type: 'Metadata'}},
+              data: {visibleDataSets: [{name: 'dataset1', url: 'test-url'}]},
+            },
+            {
+              htMeta: {elementId: {type: 'Self'}},
+              data: {
+                devices: [{url: 'http://device-url.com', replaces: [{locusUrl: 'http://locus-url-A.com', replacedAt: '2026-01-01T00:00:00Z'}]}],
+              },
+            },
+          ],
+          dataSets: [{name: 'dataset1', url: 'test-url'}],
+        };
+
+        locusInfo.parse(mockMeeting, {
+          eventType: LOCUSEVENT.HASH_TREE_DATA_UPDATED,
+          stateElementsMessage: message,
+        });
+
+        assert.equal(locusInfo.hashTreeParsers.get('http://locus-url-A.com').replacedAt, '2026-01-01T00:00:00Z');
+      });
+
+      it('should not set replacedAt on existing entries when replacedAt is not provided', async () => {
+        await setupParserViaInitialSetup('http://locus-url-A.com');
+
+        await setupParserViaInitialSetup('http://locus-url-B.com');
+
+        assert.isUndefined(locusInfo.hashTreeParsers.get('http://locus-url-A.com').replacedAt);
+      });
+
+      it('should store the new parser in hashTreeParsers map with the correct locusUrl key', async () => {
+        await setupParserViaInitialSetup('http://locus-url-A.com');
+
+        assert.isTrue(locusInfo.hashTreeParsers.has('http://locus-url-A.com'));
+        assert.isDefined(locusInfo.hashTreeParsers.get('http://locus-url-A.com').parser);
+      });
+
+      it('should clear hashTreeObjectId2ParticipantId when creating a new parser', async () => {
+        await setupParserViaInitialSetup('http://locus-url-A.com');
+        locusInfo.hashTreeObjectId2ParticipantId.set(1, 'participant-1');
+
+        await setupParserViaInitialSetup('http://locus-url-B.com');
+
+        assert.equal(locusInfo.hashTreeObjectId2ParticipantId.size, 0);
+      });
+
+      it('should not stop already stopped parsers', async () => {
+        await setupParserViaInitialSetup('http://locus-url-A.com');
+        const firstParser = locusInfo.hashTreeParsers.get('http://locus-url-A.com').parser;
+        firstParser.state = 'stopped';
+
+        await setupParserViaInitialSetup('http://locus-url-B.com');
+
+        assert.notCalled(firstParser.stop);
+      });
+    });
+
+    describe('#handleHashTreeParserSwitch', () => {
+      const deviceUrl = 'http://device-url.com';
+      const locusUrlA = 'http://locus-url-A.com';
+      const locusUrlB = 'http://locus-url-B.com';
+
+      let HashTreeParserStub;
+
+      const createMockParser = (state = 'active') => ({
+        state,
+        stop: sinon.stub(),
+        resume: sinon.stub(),
+        handleMessage: sinon.stub(),
+      });
+
+      const createSelfElementWithReplaces = (replacedLocusUrl, replacedAt) => ({
+        htMeta: {elementId: {type: 'Self'}},
+        data: {
+          devices: [{url: deviceUrl, replaces: [{locusUrl: replacedLocusUrl, replacedAt}]}],
+        },
+      });
+
+      const createMetadataElement = () => ({
+        htMeta: {elementId: {type: 'Metadata'}},
+        data: {visibleDataSets: [{name: 'dataset1', url: 'test-url'}]},
+      });
+
+      beforeEach(() => {
+        locusInfo.webex.internal.device.url = deviceUrl;
+        HashTreeParserStub = sinon
+          .stub(HashTreeParserModule, 'default')
+          .returns(createMockParser());
+      });
+
+      it('should create a new parser when no entry exists for locusUrl and metadata has visibleDataSets', () => {
+        // set up an existing parser for a different url
+        locusInfo.hashTreeParsers.set(locusUrlA, {parser: createMockParser(), initializedFromHashTree: true});
+
+        const message = {
+          locusUrl: locusUrlB,
+          locusStateElements: [createMetadataElement()],
+          dataSets: [{name: 'dataset1', url: 'test-url'}],
+        };
+
+        locusInfo.parse(mockMeeting, {
+          eventType: LOCUSEVENT.HASH_TREE_DATA_UPDATED,
+          stateElementsMessage: message,
+        });
+
+        assert.isTrue(locusInfo.hashTreeParsers.has(locusUrlB));
+      });
+
+      it('should return true when no entry exists even if no metadata is available', () => {
+        locusInfo.hashTreeParsers.set(locusUrlA, {parser: createMockParser(), initializedFromHashTree: true});
+        const parserA = locusInfo.hashTreeParsers.get(locusUrlA).parser;
+
+        const message = {
+          locusUrl: locusUrlB,
+          locusStateElements: [],
+          dataSets: [],
+        };
+
+        locusInfo.parse(mockMeeting, {
+          eventType: LOCUSEVENT.HASH_TREE_DATA_UPDATED,
+          stateElementsMessage: message,
+        });
+
+        // no new parser created since no metadata
+        assert.isFalse(locusInfo.hashTreeParsers.has(locusUrlB));
+        // the existing parser's handleMessage should NOT have been called
+        assert.notCalled(parserA.handleMessage);
+      });
+
+      it('should resume a stopped parser when replaces info is newer', () => {
+        const parserA = createMockParser('stopped');
+        const parserB = createMockParser('active');
+        locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, replacedAt: '2026-01-01T00:00:00Z', initializedFromHashTree: true});
+        locusInfo.hashTreeParsers.set(locusUrlB, {parser: parserB, initializedFromHashTree: true});
+
+        const message = {
+          locusUrl: locusUrlA,
+          locusStateElements: [
+            createSelfElementWithReplaces(locusUrlB, '2026-02-01T00:00:00Z'),
+            createMetadataElement(),
+          ],
+          dataSets: [{name: 'dataset1', url: 'test-url'}],
+        };
+
+        locusInfo.parse(mockMeeting, {
+          eventType: LOCUSEVENT.HASH_TREE_DATA_UPDATED,
+          stateElementsMessage: message,
+        });
+
+        assert.calledOnce(parserA.resume);
+        assert.calledOnce(parserB.stop);
+      });
+
+      it('should not resume a stopped parser when replaces info is not newer', () => {
+        const parserA = createMockParser('stopped');
+        const parserB = createMockParser('active');
+        locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, replacedAt: '2026-03-01T00:00:00Z', initializedFromHashTree: true});
+        locusInfo.hashTreeParsers.set(locusUrlB, {parser: parserB, initializedFromHashTree: true});
+
+        const message = {
+          locusUrl: locusUrlA,
+          locusStateElements: [
+            createSelfElementWithReplaces(locusUrlB, '2026-01-01T00:00:00Z'),
+          ],
+          dataSets: [{name: 'dataset1', url: 'test-url'}],
+        };
+
+        locusInfo.parse(mockMeeting, {
+          eventType: LOCUSEVENT.HASH_TREE_DATA_UPDATED,
+          stateElementsMessage: message,
+        });
+
+        assert.notCalled(parserA.resume);
+        assert.notCalled(parserB.stop);
+      });
+
+      it('should return true for a stopped parser with no replaces info', () => {
+        const parserA = createMockParser('stopped');
+        locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, initializedFromHashTree: true});
+
+        const message = {
+          locusUrl: locusUrlA,
+          locusStateElements: [],
+          dataSets: [],
+        };
+
+        locusInfo.parse(mockMeeting, {
+          eventType: LOCUSEVENT.HASH_TREE_DATA_UPDATED,
+          stateElementsMessage: message,
+        });
+
+        assert.notCalled(parserA.resume);
+        assert.notCalled(parserA.handleMessage);
+      });
+
+      it('should return false when the entry exists and parser is active', () => {
+        const parserA = createMockParser('active');
+        locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, initializedFromHashTree: true});
+
+        const message = {
+          locusUrl: locusUrlA,
+          locusStateElements: [],
+          dataSets: [],
+        };
+
+        locusInfo.parse(mockMeeting, {
+          eventType: LOCUSEVENT.HASH_TREE_DATA_UPDATED,
+          stateElementsMessage: message,
+        });
+
+        assert.calledOnceWithExactly(parserA.handleMessage, message);
+      });
+
+      it('should pass replacedAt from replaces to createHashTreeParser when creating a new parser', () => {
+        locusInfo.hashTreeParsers.set(locusUrlA, {parser: createMockParser(), initializedFromHashTree: true});
+
+        const message = {
+          locusUrl: locusUrlB,
+          locusStateElements: [
+            createMetadataElement(),
+            createSelfElementWithReplaces(locusUrlA, '2026-05-01T00:00:00Z'),
+          ],
+          dataSets: [{name: 'dataset1', url: 'test-url'}],
+        };
+
+        locusInfo.parse(mockMeeting, {
+          eventType: LOCUSEVENT.HASH_TREE_DATA_UPDATED,
+          stateElementsMessage: message,
+        });
+
+        assert.isTrue(locusInfo.hashTreeParsers.has(locusUrlB));
+        assert.equal(locusInfo.hashTreeParsers.get(locusUrlA).replacedAt, '2026-05-01T00:00:00Z');
+      });
+    });
+
+    describe('#handleHashTreeMessage', () => {
+      it('should call handleHashTreeParserSwitch and not call handleMessage if parser was switched', () => {
+        const locusUrlA = 'http://locus-url-A.com';
+        const locusUrlB = 'http://locus-url-B.com';
+        const parserA = {state: 'stopped', handleMessage: sinon.stub(), resume: sinon.stub(), stop: sinon.stub()};
+        locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, initializedFromHashTree: true});
+
+        // message for a stopped parser without replaces -> handleHashTreeParserSwitch returns true
+        const message = {
+          locusUrl: locusUrlA,
+          locusStateElements: [],
+          dataSets: [],
+        };
+
+        locusInfo.parse(mockMeeting, {
+          eventType: LOCUSEVENT.HASH_TREE_DATA_UPDATED,
+          stateElementsMessage: message,
+        });
+
+        assert.notCalled(parserA.handleMessage);
+      });
+
+      it('should call handleMessage on the correct parser when no switch occurs', () => {
+        const locusUrlA = 'http://locus-url-A.com';
+        const parserA = {state: 'active', handleMessage: sinon.stub()};
+        locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, initializedFromHashTree: true});
+
+        const message = {
+          locusUrl: locusUrlA,
+          locusStateElements: [],
+          dataSets: [],
+        };
+
+        locusInfo.parse(mockMeeting, {
+          eventType: LOCUSEVENT.HASH_TREE_DATA_UPDATED,
+          stateElementsMessage: message,
+        });
+
+        assert.calledOnceWithExactly(parserA.handleMessage, message);
+      });
+    });
+
     describe('#handleLocusAPIResponse', () => {
       it('calls handleLocusDelta when we are not using hash trees', () => {
         const fakeLocus = {eventType: LOCUSEVENT.DIFFERENCE};
@@ -3008,6 +3393,43 @@ describe('plugin-meetings', () => {
         locusInfo.handleLocusAPIResponse(mockMeeting, responseBody);
 
         assert.calledOnceWithExactly(mockHashTreeParser.handleLocusUpdate, responseBody);
+      });
+
+      it('should handle unwrapped LocusDTO (without locus wrapper) when hash tree parser exists', () => {
+        const fakeLocus = {url: 'http://locus-url.com', fullState: {state: 'ACTIVE'}};
+        const mockHashTreeParser = {handleLocusUpdate: sinon.stub()};
+        locusInfo.hashTreeParsers.set(fakeLocus.url, {
+          parser: mockHashTreeParser,
+          initializedFromHashTree: true,
+        });
+
+        locusInfo.handleLocusAPIResponse(mockMeeting, fakeLocus);
+
+        assert.calledOnceWithExactly(mockHashTreeParser.handleLocusUpdate, {locus: fakeLocus});
+      });
+
+      it('should handle unwrapped LocusDTO in classic mode (no hash tree parser)', () => {
+        const fakeLocus = {url: 'http://locus-url.com', fullState: {state: 'ACTIVE'}};
+        sinon.stub(locusInfo, 'handleLocusDelta');
+
+        locusInfo.handleLocusAPIResponse(mockMeeting, fakeLocus);
+
+        assert.calledOnceWithExactly(locusInfo.handleLocusDelta, fakeLocus, mockMeeting);
+      });
+
+      it('should send mismatch metric when hash tree parser exists but dataSets are missing in wrapped response', () => {
+        const fakeLocus = {url: 'http://locus-url.com'};
+        const mockHashTreeParser = {handleLocusUpdate: sinon.stub()};
+        locusInfo.hashTreeParsers.set(fakeLocus.url, {
+          parser: mockHashTreeParser,
+          initializedFromHashTree: true,
+        });
+        sinon.stub(locusInfo, 'sendClassicVsHashTreeMismatchMetric');
+
+        locusInfo.handleLocusAPIResponse(mockMeeting, {locus: fakeLocus});
+
+        assert.calledOnce(locusInfo.sendClassicVsHashTreeMismatchMetric);
+        assert.calledOnce(mockHashTreeParser.handleLocusUpdate);
       });
     });
 
@@ -3663,6 +4085,115 @@ describe('plugin-meetings', () => {
         locusInfo.updateLocusCache(locus);
 
         assert.isNull(locusInfo.mainSessionLocusCache);
+      });
+
+      it('should map participant with htMeta.elementId.id of 0 (falsy number) to hashTreeObjectId2ParticipantId', () => {
+        const locus = {
+          url: 'url',
+          participants: [
+            {
+              id: 'participant-zero',
+              htMeta: {elementId: {id: 0}},
+            },
+          ],
+        };
+
+        sinon.stub(locusInfo.locusParser, 'isNewFullLocus').returns(true);
+        sinon.stub(locusInfo, 'updateLocusInfo');
+        sinon.stub(locusInfo, 'updateParticipants');
+        sinon.stub(locusInfo, 'isMeetingActive');
+        sinon.stub(locusInfo, 'handleOneOnOneEvent');
+        sinon.stub(locusInfo, 'updateEmbeddedApps');
+        locusInfo.locusParser.workingCopy = null;
+
+        locusInfo.onFullLocus('test', locus);
+
+        assert.equal(locusInfo.hashTreeObjectId2ParticipantId.get(0), 'participant-zero');
+      });
+    });
+
+    describe('#onDeltaLocus', () => {
+      it('should use forceReplaceMembers from jsSdkMeta when it is defined', () => {
+        sinon.stub(locusInfo, 'mergeParticipants');
+        sinon.stub(locusInfo, 'updateLocusInfo').returns(true);
+        sinon.stub(locusInfo, 'updateParticipants');
+        sinon.stub(locusInfo, 'isMeetingActive');
+
+        locusInfo.onDeltaLocus({
+          participants: [],
+          jsSdkMeta: {forceReplaceMembers: true, removedParticipantIds: []},
+        });
+
+        assert.calledOnceWithExactly(locusInfo.updateParticipants, [], [], true);
+      });
+
+      it('should fall back to isNeedReplaceMembers when forceReplaceMembers is not in jsSdkMeta', () => {
+        sinon.stub(locusInfo, 'mergeParticipants');
+        sinon.stub(locusInfo, 'updateLocusInfo').returns(true);
+        sinon.stub(locusInfo, 'updateParticipants');
+        sinon.stub(locusInfo, 'isMeetingActive');
+
+        locusInfo.onDeltaLocus({participants: []});
+
+        // without jsSdkMeta.forceReplaceMembers, uses ControlsUtils.isNeedReplaceMembers result (false by default)
+        assert.calledOnceWithExactly(locusInfo.updateParticipants, [], undefined, false);
+      });
+
+      it('should not call updateParticipants when updateLocusInfo returns false', () => {
+        sinon.stub(locusInfo, 'mergeParticipants');
+        sinon.stub(locusInfo, 'updateLocusInfo').returns(false);
+        sinon.stub(locusInfo, 'updateParticipants');
+        sinon.stub(locusInfo, 'isMeetingActive');
+
+        locusInfo.onDeltaLocus({participants: [], self: {state: 'LEFT', reason: 'MOVED'}});
+
+        assert.notCalled(locusInfo.updateParticipants);
+      });
+
+      it('should call updateParticipants when updateLocusInfo returns true', () => {
+        sinon.stub(locusInfo, 'mergeParticipants');
+        sinon.stub(locusInfo, 'updateLocusInfo').returns(true);
+        sinon.stub(locusInfo, 'updateParticipants');
+        sinon.stub(locusInfo, 'isMeetingActive');
+
+        locusInfo.onDeltaLocus({participants: [{id: 'p1'}]});
+
+        assert.calledOnce(locusInfo.updateParticipants);
+      });
+    });
+
+    describe('#updateLocusInfo', () => {
+      it('should return false when self.reason is MOVED and self.state is LEFT', () => {
+        sinon.stub(locusInfo, 'updateControls');
+
+        const result = locusInfo.updateLocusInfo({self: {reason: 'MOVED', state: 'LEFT'}});
+
+        assert.isFalse(result);
+        assert.notCalled(locusInfo.updateControls);
+      });
+
+      it('should return true when self is not in MOVED/LEFT state', () => {
+        sinon.stub(locusInfo, 'updateControls');
+        sinon.stub(locusInfo, 'updateConversationUrl');
+        sinon.stub(locusInfo, 'updateCreated');
+        sinon.stub(locusInfo, 'updateFullState');
+        sinon.stub(locusInfo, 'updateHostInfo');
+        sinon.stub(locusInfo, 'updateLocusUrl');
+        sinon.stub(locusInfo, 'updateMeetingInfo');
+        sinon.stub(locusInfo, 'updateMediaShares');
+        sinon.stub(locusInfo, 'updateReplaces');
+        sinon.stub(locusInfo, 'updateSelf');
+        sinon.stub(locusInfo, 'updateAclUrl');
+        sinon.stub(locusInfo, 'updateBasequence');
+        sinon.stub(locusInfo, 'updateSequence');
+        sinon.stub(locusInfo, 'updateEmbeddedApps');
+        sinon.stub(locusInfo, 'updateLinks');
+        sinon.stub(locusInfo, 'compareAndUpdate');
+
+        const result = locusInfo.updateLocusInfo({self: {state: 'JOINED'}});
+
+        assert.isTrue(result);
+        assert.calledOnce(locusInfo.updateControls);
       });
     });
 
