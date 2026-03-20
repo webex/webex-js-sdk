@@ -1,4 +1,5 @@
 import * as Utils from '../../../../../src/services/core/Utils';
+import {FALLBACK_DIAL_NUMBER_REGEX} from '../../../../../src/services/core/Utils';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import WebexRequest from '../../../../../src/services/core/WebexRequest';
 import {LoginOption, WebexRequestPayload} from '../../../../../src/types';
@@ -244,7 +245,7 @@ describe('Utils', () => {
       const result = Utils.getStationLoginErrorData(failure, LoginOption.AGENT_DN);
       expect(result).toEqual({
         message:
-          'Enter a valid US dial number. For help, reach out to your administrator or support team.',
+          'Enter a valid dial number. For help, reach out to your administrator or support team.',
         fieldName: LoginOption.AGENT_DN,
       });
     });
@@ -554,6 +555,67 @@ describe('Utils', () => {
 
       const result = Utils.calculateDestAgentId(interaction, currentAgentId);
       expect(result).toBe('agent-uuid-cbt'); // Returns the CBT agent
+    });
+  });
+
+  describe('isValidDialNumber', () => {
+    const anyFormatEntry = {
+      name: 'Any Format',
+      prefix: '',
+      regex: '([0-9a-zA-Z]+[-._])*[0-9a-zA-Z]+',
+      strippedChars: '( )-',
+    };
+
+    const usOnlyEntry = {
+      name: 'US',
+      prefix: '1',
+      regex: FALLBACK_DIAL_NUMBER_REGEX.source,
+      strippedChars: '( )-',
+    };
+
+    describe('with multiple dial plan entries (Any Format + US)', () => {
+      const dialPlanEntries = [anyFormatEntry, usOnlyEntry];
+
+      it('should return true for a valid US phone number', () => {
+        const result = Utils.isValidDialNumber('12223334567', dialPlanEntries);
+        expect(result).toBe(true);
+      });
+
+      it('should return true for a UK phone number', () => {
+        const result = Utils.isValidDialNumber('+442030484377', dialPlanEntries);
+        expect(result).toBe(true);
+      });
+    });
+
+    describe('with US-only dial plan entry', () => {
+      const dialPlanEntries = [usOnlyEntry];
+
+      it('should return true for a valid US phone number', () => {
+        const result = Utils.isValidDialNumber('12223334567', dialPlanEntries);
+        expect(result).toBe(true);
+      });
+
+      it('should return false for a UK phone number', () => {
+        const result = Utils.isValidDialNumber('+442030484377', dialPlanEntries);
+        expect(result).toBe(false);
+      });
+
+      it('should return false for an invalid US number format', () => {
+        const result = Utils.isValidDialNumber('1234567890', dialPlanEntries);
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('with empty dial plan entries (fallback to US regex)', () => {
+      it('should return true for a valid US phone number', () => {
+        const result = Utils.isValidDialNumber('12223334567', []);
+        expect(result).toBe(true);
+      });
+
+      it('should return false for a UK phone number', () => {
+        const result = Utils.isValidDialNumber('+442030484377', []);
+        expect(result).toBe(false);
+      });
     });
   });
 
