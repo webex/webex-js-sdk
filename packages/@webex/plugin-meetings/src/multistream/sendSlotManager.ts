@@ -214,23 +214,13 @@ export default class SendSlotManager {
    *
    * This method is used to set the codec parameters for the sendSlot of the given mediaType
    * @param {MediaType} mediaType MediaType of the sendSlot for which the codec parameters needs to be set (AUDIO_MAIN/VIDEO_MAIN/AUDIO_SLIDES/VIDEO_SLIDES)
-   * @param {Object} codecParameters
+   * @param {CodecParameters} parameters Key-value pairs of codec parameters to set
    * @returns {Promise<void>}
    */
   public async setCodecParameters(
     mediaType: MediaType,
-    codecParameters: {
-      [key: string]: string | undefined; // As per ts-sdp undefined is considered as a valid value to be used for codec parameters
-    }
+    parameters: CodecParameters
   ): Promise<void> {
-    this.LoggerProxy.logger.warn(
-      'SendSlotsManager->setCodecParameters --> [DEPRECATION WARNING]: setCodecParameters has been deprecated, use setCustomCodecParameters instead'
-    );
-
-    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DEPRECATED_SET_CODEC_PARAMETERS_USED, {
-      mediaType,
-    });
-
     const slot = this.slots.get(mediaType);
 
     if (!slot) {
@@ -242,11 +232,16 @@ export default class SendSlotManager {
         ? MediaCodecMimeType.OPUS
         : MediaCodecMimeType.H264;
 
-    await slot.setCustomCodecParameters(codecMimeType, codecParameters);
+    await slot.setCustomCodecParameters(codecMimeType, parameters);
 
-    this.LoggerProxy.logger.info(
-      `SendSlotsManager->setCodecParameters#Set codec parameters for ${mediaType} to ${codecParameters}`
+    this.LoggerProxy.logger.warn(
+      'SendSlotsManager->setCodecParameters --> [DEPRECATION WARNING]: setCodecParameters has been deprecated, use setCustomCodecParameters instead'
     );
+
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DEPRECATED_SET_CODEC_PARAMETERS_USED, {
+      mediaType,
+      parameters,
+    });
   }
 
   /**
@@ -258,14 +253,6 @@ export default class SendSlotManager {
    * @returns {Promise<void>}
    */
   public async deleteCodecParameters(mediaType: MediaType, parameters: string[]): Promise<void> {
-    this.LoggerProxy.logger.warn(
-      'SendSlotsManager->deleteCodecParameters --> [DEPRECATION WARNING]: deleteCodecParameters has been deprecated, use markCustomCodecParametersForDeletion instead'
-    );
-
-    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DEPRECATED_DELETE_CODEC_PARAMETERS_USED, {
-      mediaType,
-    });
-
     const slot = this.slots.get(mediaType);
 
     if (!slot) {
@@ -279,9 +266,14 @@ export default class SendSlotManager {
 
     await slot.markCustomCodecParametersForDeletion(codecMimeType, parameters);
 
-    this.LoggerProxy.logger.info(
-      `SendSlotsManager->deleteCodecParameters#Deleted the following codec parameters -> ${parameters} for ${mediaType}`
+    this.LoggerProxy.logger.warn(
+      'SendSlotsManager->deleteCodecParameters --> [DEPRECATION WARNING]: deleteCodecParameters has been deprecated, use markCustomCodecParametersForDeletion instead'
     );
+
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DEPRECATED_DELETE_CODEC_PARAMETERS_USED, {
+      mediaType,
+      parameters,
+    });
   }
 
   /**
@@ -289,13 +281,13 @@ export default class SendSlotManager {
    * Delegates to WCME's setCustomCodecParameters API.
    * @param {MediaType} mediaType MediaType of the sendSlot (AUDIO_MAIN/VIDEO_MAIN/AUDIO_SLIDES/VIDEO_SLIDES)
    * @param {MediaCodecMimeType} codecMimeType The codec MIME type to apply parameters to (e.g. OPUS, H264, AV1)
-   * @param {CodecParameters} codecParameters Key-value pairs of codec parameters to set
+   * @param {CodecParameters} parameters Key-value pairs of codec parameters to set
    * @returns {Promise<void>}
    */
   public async setCustomCodecParameters(
     mediaType: MediaType,
     codecMimeType: MediaCodecMimeType,
-    codecParameters: CodecParameters
+    parameters: CodecParameters
   ): Promise<void> {
     const slot = this.slots.get(mediaType);
 
@@ -303,13 +295,19 @@ export default class SendSlotManager {
       throw new Error(`Slot for ${mediaType} does not exist`);
     }
 
-    await slot.setCustomCodecParameters(codecMimeType, codecParameters);
+    await slot.setCustomCodecParameters(codecMimeType, parameters);
 
     this.LoggerProxy.logger.info(
       `SendSlotsManager->setCustomCodecParameters#Set custom codec parameters for ${mediaType} (codec: ${codecMimeType}) to ${JSON.stringify(
-        codecParameters
+        parameters
       )}`
     );
+
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.SET_CUSTOM_CODEC_PARAMETERS_USED, {
+      mediaType,
+      codecMimeType,
+      parameters,
+    });
   }
 
   /**
@@ -335,6 +333,15 @@ export default class SendSlotManager {
 
     this.LoggerProxy.logger.info(
       `SendSlotsManager->markCustomCodecParametersForDeletion#Marked codec parameters for deletion -> ${parameters} for ${mediaType} (codec: ${codecMimeType})`
+    );
+
+    Metrics.sendBehavioralMetric(
+      BEHAVIORAL_METRICS.MARK_CUSTOM_CODEC_PARAMETERS_FOR_DELETION_USED,
+      {
+        mediaType,
+        codecMimeType,
+        parameters,
+      }
     );
   }
 

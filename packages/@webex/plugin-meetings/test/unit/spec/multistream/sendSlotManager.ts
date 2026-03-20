@@ -197,7 +197,7 @@ describe('SendSlotsManager', () => {
     describe('setCodecParameters', () => {
         let mediaConnection;
         const mediaType = MediaType.AudioMain;
-        const codecParameters = {};
+        const parameters = {};
 
         beforeEach(() => {
             mediaConnection = {
@@ -205,24 +205,25 @@ describe('SendSlotsManager', () => {
             } as MultistreamRoapMediaConnection;
         });
 
-        it('should delegate to setCustomCodecParameters with default codec MIME type and send deprecation metric', async () => {
+        it('should delegate to setCustomCodecParameters with default codec MIME type, log deprecation warning and send deprecation metric', async () => {
             const slot = {
                 setCustomCodecParameters: sinon.stub().resolves(),
             };
             mediaConnection.createSendSlot.returns(slot);
             sendSlotsManager.createSlot(mediaConnection, mediaType);
 
-            await sendSlotsManager.setCodecParameters(mediaType, codecParameters);
+            await sendSlotsManager.setCodecParameters(mediaType, parameters);
 
-            expect(slot.setCustomCodecParameters.calledWith(MediaCodecMimeType.OPUS, codecParameters)).to.be.true;
+            expect(slot.setCustomCodecParameters.calledWith(MediaCodecMimeType.OPUS, parameters)).to.be.true;
+            expect(LoggerProxy.logger.warn.called).to.be.true;
             expect((Metrics.sendBehavioralMetric as sinon.SinonStub).calledWith(
                 BEHAVIORAL_METRICS.DEPRECATED_SET_CODEC_PARAMETERS_USED,
-                { mediaType }
+                { mediaType, parameters }
             )).to.be.true;
         });
 
         it('should throw an error if a slot for the given mediaType does not exist', (done) => {
-            sendSlotsManager.setCodecParameters(mediaType, codecParameters).catch((error) => {
+            sendSlotsManager.setCodecParameters(mediaType, parameters).catch((error) => {
                 expect(error.message).to.equal(`Slot for ${mediaType} does not exist`);
                 done();
             });
@@ -239,7 +240,7 @@ describe('SendSlotsManager', () => {
             } as MultistreamRoapMediaConnection;
         });
 
-        it('should delegate to markCustomCodecParametersForDeletion with default codec MIME type and send deprecation metric', async () => {
+        it('should delegate to markCustomCodecParametersForDeletion with default codec MIME type, log deprecation warning and send deprecation metric', async () => {
             const slot = {
                 markCustomCodecParametersForDeletion: sinon.stub().resolves(),
             };
@@ -249,9 +250,10 @@ describe('SendSlotsManager', () => {
             await sendSlotsManager.deleteCodecParameters(mediaType, []);
 
             expect(slot.markCustomCodecParametersForDeletion.calledWith(MediaCodecMimeType.OPUS, [])).to.be.true;
+            expect(LoggerProxy.logger.warn.called).to.be.true;
             expect((Metrics.sendBehavioralMetric as sinon.SinonStub).calledWith(
                 BEHAVIORAL_METRICS.DEPRECATED_DELETE_CODEC_PARAMETERS_USED,
-                { mediaType }
+                { mediaType, parameters: [] }
             )).to.be.true;
         });
 
@@ -267,7 +269,7 @@ describe('SendSlotsManager', () => {
         let mediaConnection;
         const mediaType = MediaType.AudioMain;
         const codecMimeType = MediaCodecMimeType.OPUS;
-        const codecParameters = { maxaveragebitrate: '64000' };
+        const parameters = { maxaveragebitrate: '64000' };
 
         beforeEach(() => {
             mediaConnection = {
@@ -275,20 +277,25 @@ describe('SendSlotsManager', () => {
             } as MultistreamRoapMediaConnection;
         });
 
-        it('should set custom codec parameters on the sendSlot for the given mediaType and codec', async () => {
+        it('should set custom codec parameters on the sendSlot for the given mediaType and codec, log info and send metric', async () => {
             const slot = {
                 setCustomCodecParameters: sinon.stub().resolves(),
             };
             mediaConnection.createSendSlot.returns(slot);
             sendSlotsManager.createSlot(mediaConnection, mediaType);
 
-            await sendSlotsManager.setCustomCodecParameters(mediaType, codecMimeType, codecParameters);
+            await sendSlotsManager.setCustomCodecParameters(mediaType, codecMimeType, parameters);
 
-            expect(slot.setCustomCodecParameters.calledWith(codecMimeType, codecParameters)).to.be.true;
+            expect(slot.setCustomCodecParameters.calledWith(codecMimeType, parameters)).to.be.true;
+            expect(LoggerProxy.logger.info.called).to.be.true;
+            expect((Metrics.sendBehavioralMetric as sinon.SinonStub).calledWith(
+                BEHAVIORAL_METRICS.SET_CUSTOM_CODEC_PARAMETERS_USED,
+                { mediaType, codecMimeType, parameters }
+            )).to.be.true;
         });
 
         it('should throw an error if a slot for the given mediaType does not exist', (done) => {
-            sendSlotsManager.setCustomCodecParameters(mediaType, codecMimeType, codecParameters).catch((error) => {
+            sendSlotsManager.setCustomCodecParameters(mediaType, codecMimeType, parameters).catch((error) => {
                 expect(error.message).to.equal(`Slot for ${mediaType} does not exist`);
                 done();
             });
@@ -307,7 +314,7 @@ describe('SendSlotsManager', () => {
             } as MultistreamRoapMediaConnection;
         });
 
-        it('should mark custom codec parameters for deletion on the sendSlot for the given mediaType and codec', async () => {
+        it('should mark custom codec parameters for deletion on the sendSlot for the given mediaType and codec, log info and send metric', async () => {
             const slot = {
                 markCustomCodecParametersForDeletion: sinon.stub().resolves(),
             };
@@ -317,6 +324,11 @@ describe('SendSlotsManager', () => {
             await sendSlotsManager.markCustomCodecParametersForDeletion(mediaType, codecMimeType, parameters);
 
             expect(slot.markCustomCodecParametersForDeletion.calledWith(codecMimeType, parameters)).to.be.true;
+            expect(LoggerProxy.logger.info.called).to.be.true;
+            expect((Metrics.sendBehavioralMetric as sinon.SinonStub).calledWith(
+                BEHAVIORAL_METRICS.MARK_CUSTOM_CODEC_PARAMETERS_FOR_DELETION_USED,
+                { mediaType, codecMimeType, parameters }
+            )).to.be.true;
         });
 
         it('should throw an error if a slot for the given mediaType does not exist', (done) => {
