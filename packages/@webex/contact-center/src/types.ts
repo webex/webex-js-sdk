@@ -541,7 +541,8 @@ export type RequestBody =
   | Contact.ConsultTransferPayLoad
   | Contact.cancelCtq
   | Contact.WrapupPayLoad
-  | Contact.DialerPayload;
+  | Contact.DialerPayload
+  | Contact.PreviewContactPayload;
 
 /**
  * Represents the options to fetch buddy agents for the logged in agent.

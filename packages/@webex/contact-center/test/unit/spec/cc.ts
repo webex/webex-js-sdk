@@ -129,6 +129,7 @@ describe('webex.cc', () => {
 
       dialer: {
         startOutdial: jest.fn(),
+        acceptPreviewContact: jest.fn(),
       },
     };
 
@@ -2178,6 +2179,70 @@ describe('webex.cc', () => {
         },
         ['behavioral', 'business', 'operational']
       );
+    });
+  });
+
+  describe('acceptPreviewContact', () => {
+    const previewPayload = {
+      interactionId: 'interaction-123',
+      campaignId: 'campaign-456',
+    };
+
+    it('should accept preview contact successfully', async () => {
+      const mockResponse = {trackingId: 'track-123'} as AgentContact;
+
+      const acceptPreviewContactMock = jest
+        .spyOn(webex.cc.services.dialer, 'acceptPreviewContact')
+        .mockResolvedValue(mockResponse);
+
+      const result = await webex.cc.acceptPreviewContact(previewPayload);
+
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Accepting campaign preview contact', {
+        module: CC_FILE,
+        method: 'acceptPreviewContact',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        'Campaign preview contact accepted successfully',
+        {
+          module: CC_FILE,
+          method: 'acceptPreviewContact',
+          trackingId: 'track-123',
+          interactionId: previewPayload.interactionId,
+        }
+      );
+
+      expect(acceptPreviewContactMock).toHaveBeenCalledWith({data: previewPayload});
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should handle error during acceptPreviewContact', async () => {
+      getErrorDetailsSpy.mockRestore();
+      getErrorDetailsSpy = jest.spyOn(Utils, 'getErrorDetails');
+
+      const error = {
+        details: {
+          trackingId: '1234',
+          data: {
+            reason: 'Error while performing acceptPreviewContact',
+          },
+        },
+      };
+
+      jest.spyOn(webex.cc.services.dialer, 'acceptPreviewContact').mockRejectedValue(error);
+
+      await expect(webex.cc.acceptPreviewContact(previewPayload)).rejects.toThrow(
+        error.details.data.reason
+      );
+
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Accepting campaign preview contact', {
+        module: CC_FILE,
+        method: 'acceptPreviewContact',
+      });
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `acceptPreviewContact failed with reason: ${error.details.data.reason}`,
+        {module: CC_FILE, method: 'acceptPreviewContact', trackingId: error.details.trackingId}
+      );
+      expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'acceptPreviewContact', CC_FILE);
     });
   });
 });
