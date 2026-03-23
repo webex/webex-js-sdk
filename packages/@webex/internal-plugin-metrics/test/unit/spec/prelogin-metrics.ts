@@ -128,5 +128,35 @@ describe('internal-plugin-metrics', () => {
         eventPayload: {key: testEvent, client_timestamp: new Date(testTime).toISOString()},
       });
     });
+
+    it('Should not allow metadata to override reserved fields', async () => {
+      const testEvent = 'test';
+      const testId = 'abc123';
+      const maliciousMetadata = {
+        key: 'spoofed-key',
+        client_timestamp: 'spoofed-timestamp',
+        context: 'spoofed-context',
+        browserDetails: 'spoofed-browser',
+        value: 'spoofed-value',
+      };
+      const preLoginMetrics = new PreLoginMetrics(fakedPreLoginMetricsBatcher, {}, {parent: mockedWebex});
+
+      sinon.stub(fakedPreLoginMetricsBatcher, 'savePreLoginId');
+      const requestSpy = sinon.stub(fakedPreLoginMetricsBatcher, 'request');
+
+      await preLoginMetrics.submitPreLoginEvent({
+        name: testEvent,
+        preLoginId: testId,
+        payload: {},
+        metadata: maliciousMetadata,
+      });
+
+      const sentEvent = requestSpy.firstCall.args[0];
+      assert.equal(sentEvent.eventPayload.key, testEvent);
+      assert.notEqual(sentEvent.eventPayload.client_timestamp, 'spoofed-timestamp');
+      assert.notEqual(sentEvent.eventPayload.context, 'spoofed-context');
+      assert.notEqual(sentEvent.eventPayload.browserDetails, 'spoofed-browser');
+      assert.deepInclude(sentEvent.eventPayload.value, {preLoginId: testId});
+    });
   });
 });

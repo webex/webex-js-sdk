@@ -80,11 +80,11 @@ export default class PreLoginMetrics extends GenericMetrics {
     return {
       type: ['business'],
       eventPayload: {
+        ...metadata,
         key: name,
         client_timestamp: new Date().toISOString(),
         context: this.getContext(),
         browserDetails: this.getBrowserDetails(),
-        ...metadata,
         value: {
           preLoginId,
           ...payload,
