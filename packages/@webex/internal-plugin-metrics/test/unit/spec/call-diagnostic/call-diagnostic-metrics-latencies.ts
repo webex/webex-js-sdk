@@ -143,7 +143,7 @@ describe('internal-plugin-metrics', () => {
         cdl.saveTimestamp({key: 'client.alert.removed', value: 50});
         const res = cdl.getDiffBetweenTimestamps('client.alert.displayed', 'client.alert.removed', {
           minimum: 0,
-          maximum: 100
+          maximum: 100,
         });
         assert.deepEqual(res, 40);
       });
@@ -153,7 +153,7 @@ describe('internal-plugin-metrics', () => {
         cdl.saveTimestamp({key: 'client.alert.removed', value: 45});
         const res = cdl.getDiffBetweenTimestamps('client.alert.displayed', 'client.alert.removed', {
           minimum: 10,
-          maximum: 100
+          maximum: 100,
         });
         assert.deepEqual(res, 10);
       });
@@ -163,7 +163,7 @@ describe('internal-plugin-metrics', () => {
         cdl.saveTimestamp({key: 'client.alert.removed', value: 210});
         const res = cdl.getDiffBetweenTimestamps('client.alert.displayed', 'client.alert.removed', {
           minimum: 0,
-          maximum: 100
+          maximum: 100,
         });
         assert.deepEqual(res, 100);
       });
@@ -172,7 +172,7 @@ describe('internal-plugin-metrics', () => {
         cdl.saveTimestamp({key: 'client.alert.displayed', value: 50});
         cdl.saveTimestamp({key: 'client.alert.removed', value: 45});
         const res = cdl.getDiffBetweenTimestamps('client.alert.displayed', 'client.alert.removed', {
-          maximum: 100
+          maximum: 100,
         });
         assert.deepEqual(res, 0);
       });
@@ -181,7 +181,7 @@ describe('internal-plugin-metrics', () => {
         cdl.saveTimestamp({key: 'client.alert.displayed', value: 10});
         cdl.saveTimestamp({key: 'client.alert.removed', value: 2000});
         const res = cdl.getDiffBetweenTimestamps('client.alert.displayed', 'client.alert.removed', {
-          minimum: 5
+          minimum: 5,
         });
         assert.deepEqual(res, 1990);
       });
@@ -191,7 +191,7 @@ describe('internal-plugin-metrics', () => {
         cdl.saveTimestamp({key: 'client.alert.removed', value: 50});
         const res = cdl.getDiffBetweenTimestamps('client.alert.displayed', 'client.alert.removed', {
           minimum: 10,
-          maximum: 1000
+          maximum: 1000,
         });
         assert.deepEqual(res, 10);
       });
@@ -200,7 +200,7 @@ describe('internal-plugin-metrics', () => {
         cdl.saveTimestamp({key: 'client.alert.displayed', value: 10});
         const res = cdl.getDiffBetweenTimestamps('client.alert.displayed', 'client.alert.removed', {
           minimum: 0,
-          maximum: 100
+          maximum: 100,
         });
         assert.deepEqual(res, undefined);
       });
@@ -513,7 +513,7 @@ describe('internal-plugin-metrics', () => {
         value: 10,
       });
       cdl.saveTimestamp({
-        key: 'internal.host.meeting.participant.admitted',
+        key: 'client.lobby.exited',
         value: 20,
       });
       assert.deepEqual(cdl.getStayLobbyTime(), 10);
@@ -656,56 +656,56 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('calculates getTotalJMT correctly when clickToInterstitial is 0', () => {
-        cdl.saveLatency('internal.click.to.interstitial', 0);
-        cdl.saveTimestamp({
-          key: 'internal.client.interstitial-window.click.joinbutton',
-          value: 20,
-        });
-        cdl.saveTimestamp({
-          key: 'client.locus.join.response',
-          value: 40,
-        });
-        assert.deepEqual(cdl.getTotalJMT(), 20);
+      cdl.saveLatency('internal.click.to.interstitial', 0);
+      cdl.saveTimestamp({
+        key: 'internal.client.interstitial-window.click.joinbutton',
+        value: 20,
       });
+      cdl.saveTimestamp({
+        key: 'client.locus.join.response',
+        value: 40,
+      });
+      assert.deepEqual(cdl.getTotalJMT(), 20);
+    });
 
-      it('calculates getTotalJMT correctly when interstitialToJoinOk is 0', () => {
-        cdl.saveTimestamp({
-          key: 'internal.client.interstitial-window.click.joinbutton',
-          value: 40,
-        });
-        cdl.saveLatency('internal.click.to.interstitial', 12);
-        cdl.saveTimestamp({
-          key: 'client.locus.join.response',
-          value: 40,
-        });
-        assert.deepEqual(cdl.getTotalJMT(), 12);
+    it('calculates getTotalJMT correctly when interstitialToJoinOk is 0', () => {
+      cdl.saveTimestamp({
+        key: 'internal.client.interstitial-window.click.joinbutton',
+        value: 40,
       });
+      cdl.saveLatency('internal.click.to.interstitial', 12);
+      cdl.saveTimestamp({
+        key: 'client.locus.join.response',
+        value: 40,
+      });
+      assert.deepEqual(cdl.getTotalJMT(), 12);
+    });
 
-      it('calculates getTotalJMT correctly when both clickToInterstitial and interstitialToJoinOk are 0', () => {
-        cdl.saveTimestamp({
-          key: 'internal.client.interstitial-window.click.joinbutton',
-          value: 40,
-        });
-        cdl.saveLatency('internal.click.to.interstitial', 0);
-        cdl.saveTimestamp({
-          key: 'client.locus.join.response',
-          value: 40,
-        });
-        assert.deepEqual(cdl.getTotalJMT(), 0);
+    it('calculates getTotalJMT correctly when both clickToInterstitial and interstitialToJoinOk are 0', () => {
+      cdl.saveTimestamp({
+        key: 'internal.client.interstitial-window.click.joinbutton',
+        value: 40,
       });
+      cdl.saveLatency('internal.click.to.interstitial', 0);
+      cdl.saveTimestamp({
+        key: 'client.locus.join.response',
+        value: 40,
+      });
+      assert.deepEqual(cdl.getTotalJMT(), 0);
+    });
 
-      it('calculates getTotalJMT correctly when both clickToInterstitial is not a number', () => {
-        cdl.saveTimestamp({
-          key: 'internal.client.interstitial-window.click.joinbutton',
-          value: 40,
-        });
-        cdl.saveLatency('internal.click.to.interstitial', 'eleven' as unknown as number);
-        cdl.saveTimestamp({
-          key: 'client.locus.join.response',
-          value: 40,
-        });
-        assert.deepEqual(cdl.getTotalJMT(), undefined);
+    it('calculates getTotalJMT correctly when both clickToInterstitial is not a number', () => {
+      cdl.saveTimestamp({
+        key: 'internal.client.interstitial-window.click.joinbutton',
+        value: 40,
       });
+      cdl.saveLatency('internal.click.to.interstitial', 'eleven' as unknown as number);
+      cdl.saveTimestamp({
+        key: 'client.locus.join.response',
+        value: 40,
+      });
+      assert.deepEqual(cdl.getTotalJMT(), undefined);
+    });
 
     it('calculates getTotalJMT correctly when it is greater than MAX_INTEGER', () => {
       cdl.saveTimestamp({
@@ -740,70 +740,73 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getTotalJMTWithUserDelay(), 45);
     });
 
-      it('calculates getTotalJMTWithUserDelay correctly when clickToInterstitialWithUserDelay is 0', () => {
-        cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 0);
-        cdl.saveTimestamp({
-          key: 'internal.client.interstitial-window.click.joinbutton',
-          value: 20,
-        });
-        cdl.saveTimestamp({
-          key: 'client.locus.join.response',
-          value: 40,
-        });
-        assert.deepEqual(cdl.getTotalJMTWithUserDelay(), 20);
+    it('calculates getTotalJMTWithUserDelay correctly when clickToInterstitialWithUserDelay is 0', () => {
+      cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 0);
+      cdl.saveTimestamp({
+        key: 'internal.client.interstitial-window.click.joinbutton',
+        value: 20,
       });
+      cdl.saveTimestamp({
+        key: 'client.locus.join.response',
+        value: 40,
+      });
+      assert.deepEqual(cdl.getTotalJMTWithUserDelay(), 20);
+    });
 
-      it('calculates getTotalJMTWithUserDelay correctly when interstitialToJoinOk is 0', () => {
-        cdl.saveTimestamp({
-          key: 'internal.client.interstitial-window.click.joinbutton',
-          value: 40,
-        });
-        cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 12);
-        cdl.saveTimestamp({
-          key: 'client.locus.join.response',
-          value: 40,
-        });
-        assert.deepEqual(cdl.getTotalJMTWithUserDelay(), 12);
+    it('calculates getTotalJMTWithUserDelay correctly when interstitialToJoinOk is 0', () => {
+      cdl.saveTimestamp({
+        key: 'internal.client.interstitial-window.click.joinbutton',
+        value: 40,
       });
+      cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 12);
+      cdl.saveTimestamp({
+        key: 'client.locus.join.response',
+        value: 40,
+      });
+      assert.deepEqual(cdl.getTotalJMTWithUserDelay(), 12);
+    });
 
-      it('calculates getTotalJMTWithUserDelay correctly when both clickToInterstitialWithUserDelay and interstitialToJoinOk are 0', () => {
-        cdl.saveTimestamp({
-          key: 'internal.client.interstitial-window.click.joinbutton',
-          value: 40,
-        });
-        cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 0);
-        cdl.saveTimestamp({
-          key: 'client.locus.join.response',
-          value: 40,
-        });
-        assert.deepEqual(cdl.getTotalJMTWithUserDelay(), 0);
+    it('calculates getTotalJMTWithUserDelay correctly when both clickToInterstitialWithUserDelay and interstitialToJoinOk are 0', () => {
+      cdl.saveTimestamp({
+        key: 'internal.client.interstitial-window.click.joinbutton',
+        value: 40,
       });
+      cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 0);
+      cdl.saveTimestamp({
+        key: 'client.locus.join.response',
+        value: 40,
+      });
+      assert.deepEqual(cdl.getTotalJMTWithUserDelay(), 0);
+    });
 
-      it('calculates getTotalJMTWithUserDelay correctly when both clickToInterstitialWithUserDelay is not a number', () => {
-        cdl.saveTimestamp({
-          key: 'internal.client.interstitial-window.click.joinbutton',
-          value: 40,
-        });
-        cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 'eleven' as unknown as number);
-        cdl.saveTimestamp({
-          key: 'client.locus.join.response',
-          value: 40,
-        });
-        assert.deepEqual(cdl.getTotalJMTWithUserDelay(), undefined);
+    it('calculates getTotalJMTWithUserDelay correctly when both clickToInterstitialWithUserDelay is not a number', () => {
+      cdl.saveTimestamp({
+        key: 'internal.client.interstitial-window.click.joinbutton',
+        value: 40,
       });
+      cdl.saveLatency(
+        'internal.click.to.interstitial.with.user.delay',
+        'eleven' as unknown as number
+      );
+      cdl.saveTimestamp({
+        key: 'client.locus.join.response',
+        value: 40,
+      });
+      assert.deepEqual(cdl.getTotalJMTWithUserDelay(), undefined);
+    });
 
-      it('calculates getTotalJMTWithUserDelay correctly when it is greater than MAX_INTEGER', () => {
-        cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 2147483648);
-        cdl.saveTimestamp({
-          key: 'internal.client.interstitial-window.click.joinbutton',
-          value: 20,
-        });
-        cdl.saveTimestamp({
-          key: 'client.locus.join.response',
-          value: 40,
-        });
-        assert.deepEqual(cdl.getTotalJMTWithUserDelay(), 2147483647);
+    it('calculates getTotalJMTWithUserDelay correctly when it is greater than MAX_INTEGER', () => {
+      cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 2147483648);
+      cdl.saveTimestamp({
+        key: 'internal.client.interstitial-window.click.joinbutton',
+        value: 20,
       });
+      cdl.saveTimestamp({
+        key: 'client.locus.join.response',
+        value: 40,
+      });
+      assert.deepEqual(cdl.getTotalJMTWithUserDelay(), 2147483647);
+    });
 
     it('calculates getTotalMediaJMT correctly', () => {
       cdl.saveTimestamp({
@@ -827,7 +830,7 @@ describe('internal-plugin-metrics', () => {
         value: 20,
       });
       cdl.saveTimestamp({
-        key: 'internal.host.meeting.participant.admitted',
+        key: 'client.lobby.exited',
         value: 24,
       });
       cdl.saveTimestamp({
@@ -863,7 +866,7 @@ describe('internal-plugin-metrics', () => {
         value: 2147483700,
       });
       cdl.saveTimestamp({
-        key: 'internal.host.meeting.participant.admitted',
+        key: 'client.lobby.exited',
         value: 2147483800,
       });
       cdl.saveTimestamp({
@@ -900,7 +903,7 @@ describe('internal-plugin-metrics', () => {
         value: 20,
       });
       cdl.saveTimestamp({
-        key: 'internal.host.meeting.participant.admitted',
+        key: 'client.lobby.exited',
         value: 24,
       });
       cdl.saveTimestamp({
@@ -937,7 +940,7 @@ describe('internal-plugin-metrics', () => {
         value: 2147483700,
       });
       cdl.saveTimestamp({
-        key: 'internal.host.meeting.participant.admitted',
+        key: 'client.lobby.exited',
         value: 2147483800,
       });
       cdl.saveTimestamp({
@@ -1041,20 +1044,20 @@ describe('internal-plugin-metrics', () => {
       // the maximum possible sum is 2400000, which is less than MAX_INTEGER (2147483647).
       // This test should verify that the final clamping works by mocking the intermediate methods
       // to return values that would sum to more than MAX_INTEGER.
-      
+
       const originalGetJoinReqResp = cdl.getJoinReqResp;
       const originalGetICESetupTime = cdl.getICESetupTime;
-      
+
       // Mock the methods to return large values that would exceed MAX_INTEGER when summed
       cdl.getJoinReqResp = () => 1500000000;
       cdl.getICESetupTime = () => 1000000000;
-      
+
       const result = cdl.getJoinConfJMT();
-      
+
       // Restore original methods
       cdl.getJoinReqResp = originalGetJoinReqResp;
       cdl.getICESetupTime = originalGetICESetupTime;
-      
+
       assert.deepEqual(result, 2147483647);
     });
 
@@ -1140,7 +1143,7 @@ describe('internal-plugin-metrics', () => {
         value: 10,
       });
       cdl.saveTimestamp({
-        key: 'internal.host.meeting.participant.admitted',
+        key: 'client.lobby.exited',
         value: 12,
       });
       cdl.saveTimestamp({
@@ -1160,7 +1163,7 @@ describe('internal-plugin-metrics', () => {
         value: 10,
       });
       cdl.saveTimestamp({
-        key: 'internal.host.meeting.participant.admitted',
+        key: 'client.lobby.exited',
         value: 12,
       });
       cdl.saveTimestamp({

@@ -55,7 +55,13 @@ import {
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
-import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/types';
+import {
+  ITask,
+  TASK_EVENTS,
+  TaskResponse,
+  DialerPayload,
+  PreviewContactPayload,
+} from './services/task/types';
 import MetricsManager from './metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from './metrics/constants';
 import {Failure} from './services/core/GlobalTypes';
@@ -119,6 +125,7 @@ import type {
  *   - `task:established` - Task/call has been connected
  *   - `task:ended` - Task/call has ended
  *   - `task:error` - An error occurred during task handling
+ *   - `task:campaignPreviewReservation` - Campaign preview contact offered to agent
  *
  * @public
  *
@@ -407,6 +414,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   /**
+   * Handles campaign preview reservation events when a contact is offered to the agent
+   * @private
+   * @param {ITask} task The campaign reservation task
+   */
+  private handleCampaignPreviewReservation = (task: ITask) => {
+    // @ts-ignore
+    this.trigger(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, task);
+  };
+
+  /**
    * Sets up event listeners for incoming tasks and task hydration
    * Subscribes to task events from the task manager
    * @private
@@ -415,6 +432,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
     this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
     this.taskManager.on(TASK_EVENTS.TASK_MERGED, this.handleTaskMerged);
+    this.taskManager.on(
+      TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+      this.handleCampaignPreviewReservation
+    );
   }
 
   /**
@@ -543,6 +564,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
       this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+      this.taskManager.off(
+        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+        this.handleCampaignPreviewReservation
+      );
       this.taskManager.unregisterIncomingCallEvent();
 
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
@@ -1509,6 +1534,79 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
       const {error: detailedError} = getErrorDetails(error, METHODS.START_OUTDIAL, CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Accepts a campaign preview contact, initiating the outbound call.
+   *
+   * When a campaign manager reserves a contact for an agent, the agent receives an
+   * `AgentOfferCampaignReservation` event. The agent can then accept the preview contact
+   * to initiate the outbound call.
+   *
+   * @param {PreviewContactPayload} payload - The preview contact payload containing interactionId and campaignId (campaign name, not UUID).
+   * @returns {Promise<TaskResponse>} Promise resolving with agent contact on success.
+   * @throws {Error} If the operation fails (network error, customer unavailable, etc.)
+   *
+   * @example
+   * ```typescript
+   * webex.cc.on('task:campaignPreviewReservation', async (task) => {
+   *   const { interactionId } = task.data;
+   *   // campaignId is the campaign name (e.g. "MyCampaign"), not a UUID
+   *   const campaignId = task.data.interaction.callProcessingDetails.campaignId;
+   *
+   *   const result = await webex.cc.acceptPreviewContact({ interactionId, campaignId });
+   * });
+   * ```
+   */
+  public async acceptPreviewContact(payload: PreviewContactPayload): Promise<TaskResponse> {
+    LoggerProxy.info('Accepting campaign preview contact', {
+      module: CC_FILE,
+      method: METHODS.ACCEPT_PREVIEW_CONTACT,
+    });
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_SUCCESS,
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_FAILED,
+      ]);
+
+      const result = await this.services.dialer.acceptPreviewContact({data: payload});
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+          interactionId: payload.interactionId,
+          campaignId: payload.campaignId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.log('Campaign preview contact accepted successfully', {
+        module: CC_FILE,
+        method: METHODS.ACCEPT_PREVIEW_CONTACT,
+        trackingId: result.trackingId,
+        interactionId: payload.interactionId,
+      });
+
+      return result;
+    } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          interactionId: payload.interactionId,
+          campaignId: payload.campaignId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+      const {error: detailedError} = getErrorDetails(
+        error,
+        METHODS.ACCEPT_PREVIEW_CONTACT,
+        CC_FILE
+      );
       throw detailedError;
     }
   }

@@ -435,6 +435,20 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     target: 'outdial_ani_ep_fetch',
     verb: 'fail',
   },
+
+  // Campaign Preview API Events
+  [METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'campaign_preview_accept',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'campaign_preview_accept',
+    verb: 'fail',
+  },
 };
 
 /**

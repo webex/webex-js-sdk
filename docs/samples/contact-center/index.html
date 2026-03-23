@@ -298,6 +298,23 @@
           </div>
         </fieldset>
       </div>
+      <!-- Campaign Preview Section -->
+      <div id="campaignPreviewSection">
+        <fieldset>
+          <legend>Campaign Preview Contact</legend>
+          <p class="note">NOTE: Enter the Interaction ID and Campaign ID from the campaign reservation event, or they will auto-populate when a reservation event arrives.</p>
+          <div id="campaign-preview-details" style="margin-bottom: 10px;">
+            <div style="display: flex; gap: 10px; margin-bottom: 8px;">
+              <input id="campaign-interaction-id" placeholder="Interaction ID" value="" type="text" style="flex: 1;">
+              <input id="campaign-id" placeholder="Campaign ID" value="" type="text" style="flex: 1;">
+            </div>
+            <p id="campaign-preview-status" class="status-par">Waiting for campaign contact...</p>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button id="acceptPreviewContact" class="btn--green" onclick="acceptPreviewContact()">Accept</button>
+          </div>
+        </fieldset>
+      </div>
     </section>
   </div>
   </div>

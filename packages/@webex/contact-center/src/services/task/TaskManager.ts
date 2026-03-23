@@ -15,6 +15,7 @@ import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import {
   checkParticipantNotInInteraction,
   getIsConferenceInProgress,
+  isCampaignPreviewReservation,
   isParticipantInMainInteraction,
   isPrimary,
   isSecondaryEpDnAgent,
@@ -81,7 +82,8 @@ export default class TaskManager extends EventEmitter {
 
   private handleIncomingWebCall = (call: ICall) => {
     const currentTask = Object.values(this.taskCollection).find(
-      (task) => task.data.interaction.mediaType === 'telephony'
+      (task) =>
+        task.data.interaction.mediaType === 'telephony' && !isCampaignPreviewReservation(task)
     );
 
     if (currentTask) {
@@ -249,8 +251,21 @@ export default class TaskManager extends EventEmitter {
             }
             break;
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-            task = this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_ASSIGNED, task);
+            // When a campaign preview contact is accepted, the assigned event may arrive
+            // with a new interactionId while the task is stored under the original
+            // reservationInteractionId. Fall back to that key so the task is found.
+            if (!task && payload.data.reservationInteractionId) {
+              task = this.taskCollection[payload.data.reservationInteractionId];
+              if (task) {
+                // Re-key the task under the new interaction ID and remove the old entry
+                delete this.taskCollection[payload.data.reservationInteractionId];
+                this.taskCollection[payload.data.interactionId] = task;
+              }
+            }
+            if (task) {
+              task = this.updateTaskData(task, payload.data);
+              task.emit(TASK_EVENTS.TASK_ASSIGNED, task);
+            }
             break;
           case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
             task = this.updateTaskData(task, {
@@ -262,6 +277,14 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
           case CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED:
           case CC_EVENTS.AGENT_INVITE_FAILED: {
+            LoggerProxy.warn(
+              `[DEBUG-CAMPAIGN-CLEAR] Task removal triggered by ${payload.data.type}, interactionId=${payload.data.interactionId}, taskType=${task?.data?.type}`,
+              {
+                module: TASK_MANAGER_FILE,
+                method: METHODS.REGISTER_TASK_LISTENERS,
+                interactionId: payload.data.interactionId,
+              }
+            );
             task = this.updateTaskData(task, payload.data);
 
             const eventTypeToMetricMap: Record<string, keyof typeof METRIC_EVENT_NAMES> = {
@@ -287,6 +310,14 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.CONTACT_ENDED:
             // Update task data
             if (task) {
+              LoggerProxy.warn(
+                `[DEBUG-CAMPAIGN-CLEAR] CONTACT_ENDED, interactionId=${payload.data.interactionId}, taskType=${task?.data?.type}, state=${task?.data?.interaction?.state}`,
+                {
+                  module: TASK_MANAGER_FILE,
+                  method: METHODS.REGISTER_TASK_LISTENERS,
+                  interactionId: payload.data.interactionId,
+                }
+              );
               task = this.updateTaskData(task, {
                 ...payload.data,
                 wrapUpRequired: payload.data.agentsPendingWrapUp?.includes(this.agentId) || false,
@@ -296,6 +327,14 @@ export default class TaskManager extends EventEmitter {
               this.handleTaskCleanup(task);
 
               task?.emit(TASK_EVENTS.TASK_END, task);
+            }
+            break;
+          case CC_EVENTS.CAMPAIGN_CONTACT_UPDATED:
+            // CampaignContactUpdated is a non-terminal event (intermediate update during accept).
+            // Only update the task data — do NOT remove the task or emit TASK_END.
+            // Task cleanup is handled by CONTACT_ENDED or other terminal events.
+            if (task) {
+              task = this.updateTaskData(task, payload.data);
             }
             break;
           case CC_EVENTS.CONTACT_MERGED:
@@ -480,6 +519,39 @@ export default class TaskManager extends EventEmitter {
             task = this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, task);
             break;
+          case CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION: {
+            // Campaign preview contact offered to agent
+            // Create a task in the collection so subsequent events (e.g. AGENT_CONTACT_ASSIGNED
+            // after acceptPreviewContact) can find and update it.
+            // Emit TASK_CAMPAIGN_PREVIEW_RESERVATION instead of TASK_INCOMING so the call
+            // does not ring out to the customer before the agent explicitly accepts the preview contact.
+            LoggerProxy.log('Campaign preview reservation received', {
+              module: TASK_MANAGER_FILE,
+              method: METHODS.REGISTER_TASK_LISTENERS,
+              interactionId: payload.data.interactionId,
+            });
+
+            if (!this.taskCollection[payload.data.interactionId]) {
+              task = new Task(
+                this.contact,
+                this.webCallingService,
+                {
+                  ...payload.data,
+                  wrapUpRequired: false,
+                  isConferenceInProgress: false,
+                  isAutoAnswering: false,
+                },
+                this.wrapupData,
+                this.agentId
+              );
+              this.taskCollection[payload.data.interactionId] = task;
+            } else {
+              task = this.updateTaskData(task, payload.data);
+            }
+
+            this.emit(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, task);
+            break;
+          }
           default:
             break;
         }
