@@ -42,6 +42,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private captionStatus: string;
 
+  private isCaptionEnabled: boolean;
+
   private toggleManualCaptionStatus: string;
 
   private currentSpokenLanguage?: string;
@@ -272,6 +274,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     // @ts-ignore
     this.webex.internal.llm.isConnected(LLM_PRACTICE_SESSION);
 
+  public getIsCaptionEnabled = (): boolean => this.isCaptionEnabled;
+
   /**
    * Resolves the active LLM publish transport, preferring the practice-session
    * connection only when that session is fully connected.
@@ -460,8 +464,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
         this.areCaptionsEnabled = true;
         this.captionStatus = TURN_ON_CAPTION_STATUS.ENABLED;
-        this.updateSubchannelSubscriptions({subscribe: ['transcription']});
         this.announce();
+        this.updateSubchannelSubscriptionsAndSyncCaptionState({subscribe: ['transcription']}, true);
       })
       .catch(() => {
         this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
@@ -659,6 +663,29 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     });
 
     this.seqNum += 1;
+  };
+
+  /**
+   * Syncs the UI caption intent and updates transcription subchannel
+   * subscriptions accordingly.
+   *
+   * @param {Object} [options] - Subscription options.
+   * @param {string[]} [options.subscribe] - Subchannels to subscribe to.
+   * @param {string[]} [options.unsubscribe] - Subchannels to unsubscribe from.
+   * @param {boolean} [isCCBoxOpen=false] - Whether captions are intended to be enabled.
+   *
+   * @returns {Promise<void>}
+   */
+  public updateSubchannelSubscriptionsAndSyncCaptionState = (
+    options: {
+      subscribe?: string[];
+      unsubscribe?: string[];
+    } = {},
+    isCCBoxOpen = false
+  ): Promise<void> => {
+    this.isCaptionEnabled = isCCBoxOpen;
+
+    return this.updateSubchannelSubscriptions(options);
   };
 }
 
