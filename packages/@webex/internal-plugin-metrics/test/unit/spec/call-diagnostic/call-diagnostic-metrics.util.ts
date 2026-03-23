@@ -311,7 +311,7 @@ describe('internal-plugin-metrics', () => {
           origin: {
             buildType: 'prod',
             networkType: 'unknown',
-            upgradeChannel: expectedUpgradeChannel
+            upgradeChannel: expectedUpgradeChannel,
           },
           event: {name: eventName, ...expectedEvent},
         },
@@ -393,7 +393,7 @@ describe('internal-plugin-metrics', () => {
             totalJmt: undefined,
             clientJmt: undefined,
             downloadTime: undefined,
-            clickToInterstitialWithUserDelay:   undefined,
+            clickToInterstitialWithUserDelay: undefined,
             totalJMTWithUserDelay: undefined,
           },
         },
@@ -430,7 +430,6 @@ describe('internal-plugin-metrics', () => {
             totalMediaJMT: undefined,
             interstitialToMediaOKJMT: undefined,
             callInitMediaEngineReady: undefined,
-            stayLobbyTime: undefined,
             totalMediaJMTWithUserDelay: undefined,
             totalJMTWithUserDelay: undefined,
           },
@@ -444,6 +443,14 @@ describe('internal-plugin-metrics', () => {
           },
           videoSetupDelay: {
             joinRespTxStart: undefined,
+          },
+        },
+      ],
+      [
+        'client.lobby.exited',
+        {
+          joinTimes: {
+            stayLobbyTime: undefined,
           },
         },
       ],
