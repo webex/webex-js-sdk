@@ -1287,7 +1287,10 @@ describe('plugin-voicea', () => {
     describe('#updateSubchannelSubscriptions', () => {
       beforeEach(() => {
         const mockWebSocket = new MockWebSocket();
-        voiceaService.webex.internal.llm.socket = mockWebSocket;
+
+        sinon.stub(voiceaService, 'getPublishTransport').returns({
+          socket: mockWebSocket,
+        });
 
         voiceaService.webex.internal.llm.getDatachannelUrl = sinon.stub().returns('mock-datachannel-uri');
 
@@ -1304,8 +1307,10 @@ describe('plugin-voicea', () => {
           unsubscribe: ['polls'],
         });
 
-        assert.calledOnceWithExactly(
-          voiceaService.webex.internal.llm.socket.send,
+        const socket = voiceaService.getPublishTransport().socket;
+
+        sinon.assert.calledOnceWithExactly(
+          socket.send,
           {
             id: '1',
             type: 'subchannelSubscriptionRequest',
@@ -1318,14 +1323,16 @@ describe('plugin-voicea', () => {
           }
         );
 
-        assert.equal(voiceaService.seqNum, 2);
+        sinon.assert.match(voiceaService.seqNum, 2);
       });
 
       it('sends empty arrays when no subscribe/unsubscribe provided', async () => {
         await voiceaService.updateSubchannelSubscriptions({});
 
-        assert.calledOnceWithExactly(
-          voiceaService.webex.internal.llm.socket.send,
+        const socket = voiceaService.getPublishTransport().socket;
+
+        sinon.assert.calledOnceWithExactly(
+          socket.send,
           {
             id: '1',
             type: 'subchannelSubscriptionRequest',
@@ -1338,7 +1345,7 @@ describe('plugin-voicea', () => {
           }
         );
 
-        assert.equal(voiceaService.seqNum, 2);
+        sinon.assert.match(voiceaService.seqNum, 2);
       });
 
       it('does nothing when LLM is not connected', async () => {
@@ -1348,8 +1355,10 @@ describe('plugin-voicea', () => {
           subscribe: ['transcription'],
         });
 
-        assert.notCalled(voiceaService.webex.internal.llm.socket.send);
-        assert.equal(voiceaService.seqNum, 1);
+        const socket = voiceaService.getPublishTransport().socket;
+
+        sinon.assert.notCalled(socket.send);
+        sinon.assert.match(voiceaService.seqNum, 1);
       });
 
       it('does nothing when dataChannelToken is not enabled', async () => {
@@ -1359,8 +1368,10 @@ describe('plugin-voicea', () => {
           subscribe: ['transcription'],
         });
 
-        assert.notCalled(voiceaService.webex.internal.llm.socket.send);
-        assert.equal(voiceaService.seqNum, 1);
+        const socket = voiceaService.getPublishTransport().socket;
+
+        sinon.assert.notCalled(socket.send);
+        sinon.assert.match(voiceaService.seqNum, 1);
       });
 
       it('does nothing when no session has dataChannelToken', async () => {
@@ -1370,92 +1381,94 @@ describe('plugin-voicea', () => {
           subscribe: ['transcription'],
         });
 
-        assert.notCalled(voiceaService.webex.internal.llm.socket.send);
-        assert.equal(voiceaService.seqNum, 1);
+        const socket = voiceaService.getPublishTransport().socket;
+
+        sinon.assert.notCalled(socket.send);
+        sinon.assert.match(voiceaService.seqNum, 1);
       });
     });
 
     describe('#updateSubchannelSubscriptionsAndSyncCaptionState', () => {
-  beforeEach(() => {
-    const mockWebSocket = new MockWebSocket();
-    voiceaService.webex.internal.llm.socket = mockWebSocket;
+      beforeEach(() => {
+        const mockWebSocket = new MockWebSocket();
+        voiceaService.webex.internal.llm.socket = mockWebSocket;
 
-    voiceaService.webex.internal.llm.getDatachannelUrl = sinon.stub().returns('mock-datachannel-uri');
+        voiceaService.webex.internal.llm.getDatachannelUrl = sinon.stub().returns('mock-datachannel-uri');
 
-    voiceaService.seqNum = 1;
+        voiceaService.seqNum = 1;
 
-    voiceaService.isLLMConnected = sinon.stub().returns(true);
-    voiceaService.webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(true);
-    voiceaService.webex.internal.llm.isLLMWithDataChannelToken = sinon.stub().returns(true);
+        voiceaService.isLLMConnected = sinon.stub().returns(true);
+        voiceaService.webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(true);
+        voiceaService.webex.internal.llm.isLLMWithDataChannelToken = sinon.stub().returns(true);
 
-    sinon.spy(voiceaService, 'updateSubchannelSubscriptions');
-  });
+        sinon.spy(voiceaService, 'updateSubchannelSubscriptions');
+      });
 
-  afterEach(() => {
-    sinon.restore();
-  });
+      afterEach(() => {
+        sinon.restore();
+      });
 
-  it('updates caption intent and forwards subscribe/unsubscribe to updateSubchannelSubscriptions', async () => {
-    await voiceaService.updateSubchannelSubscriptionsAndSyncCaptionState(
-      {
-        subscribe: ['transcription'],
-        unsubscribe: ['polls'],
-      },
-      true
-    );
+      it('updates caption intent and forwards subscribe/unsubscribe to updateSubchannelSubscriptions', async () => {
+        await voiceaService.updateSubchannelSubscriptionsAndSyncCaptionState(
+          {
+            subscribe: ['transcription'],
+            unsubscribe: ['polls'],
+          },
+          true
+        );
 
-    assert.equal(voiceaService.isCaptionBoxOn, true);
+        assert.equal(voiceaService.isCaptionBoxOn, true);
 
-    assert.calledOnceWithExactly(
-      voiceaService.updateSubchannelSubscriptions,
-      {
-        subscribe: ['transcription'],
-        unsubscribe: ['polls'],
-      }
-    );
-  });
+        assert.calledOnceWithExactly(
+          voiceaService.updateSubchannelSubscriptions,
+          {
+            subscribe: ['transcription'],
+            unsubscribe: ['polls'],
+          }
+        );
+      });
 
-  it('sets caption intent to false when isCCBoxOpen is false', async () => {
-    await voiceaService.updateSubchannelSubscriptionsAndSyncCaptionState(
-      { subscribe: ['transcription'] },
-      false
-    );
+      it('sets caption intent to false when isCCBoxOpen is false', async () => {
+        await voiceaService.updateSubchannelSubscriptionsAndSyncCaptionState(
+          { subscribe: ['transcription'] },
+          false
+        );
 
-    assert.equal(voiceaService.isCaptionBoxOn, false);
+        assert.equal(voiceaService.isCaptionBoxOn, false);
 
-    assert.calledOnceWithExactly(
-      voiceaService.updateSubchannelSubscriptions,
-      { subscribe: ['transcription'] }
-    );
-  });
+        assert.calledOnceWithExactly(
+          voiceaService.updateSubchannelSubscriptions,
+          { subscribe: ['transcription'] }
+        );
+      });
 
-  it('defaults subscribe/unsubscribe to empty arrays when options is empty', async () => {
-    await voiceaService.updateSubchannelSubscriptionsAndSyncCaptionState({}, true);
+      it('defaults subscribe/unsubscribe to empty arrays when options is empty', async () => {
+        await voiceaService.updateSubchannelSubscriptionsAndSyncCaptionState({}, true);
 
-    assert.equal(voiceaService.isCaptionBoxOn, true);
+        assert.equal(voiceaService.isCaptionBoxOn, true);
 
-    assert.calledOnceWithExactly(
-      voiceaService.updateSubchannelSubscriptions,
-      {}
-    );
-  });
+        assert.calledOnceWithExactly(
+          voiceaService.updateSubchannelSubscriptions,
+          {}
+        );
+      });
 
-  it('still updates caption intent even if updateSubchannelSubscriptions does nothing (e.g., LLM not connected)', async () => {
-    voiceaService.isLLMConnected = sinon.stub().returns(false);
+      it('still updates caption intent even if updateSubchannelSubscriptions does nothing (e.g., LLM not connected)', async () => {
+        voiceaService.isLLMConnected = sinon.stub().returns(false);
 
-    await voiceaService.updateSubchannelSubscriptionsAndSyncCaptionState(
-      { subscribe: ['transcription'] },
-      true
-    );
+        await voiceaService.updateSubchannelSubscriptionsAndSyncCaptionState(
+          { subscribe: ['transcription'] },
+          true
+        );
 
-    assert.equal(voiceaService.isCaptionBoxOn, true);
+        assert.equal(voiceaService.isCaptionBoxOn, true);
 
-    assert.calledOnceWithExactly(
-      voiceaService.updateSubchannelSubscriptions,
-      { subscribe: ['transcription'] }
-    );
-  });
-});
+        assert.calledOnceWithExactly(
+          voiceaService.updateSubchannelSubscriptions,
+          { subscribe: ['transcription'] }
+        );
+      });
+    });
 
     describe('#multiple llm connections', () => {
       let defaultSocket;

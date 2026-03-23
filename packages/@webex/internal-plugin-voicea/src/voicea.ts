@@ -650,8 +650,10 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     // @ts-ignore
     if (!this.isLLMConnected() || !isDataChannelTokenEnabled || !dataChannelToken) return;
 
+    const {socket} = this.getPublishTransport();
+
     // @ts-ignore
-    this.webex.internal.llm.socket.send({
+    socket.send({
       id: `${this.seqNum}`,
       type: 'subchannelSubscriptionRequest',
       data: {
