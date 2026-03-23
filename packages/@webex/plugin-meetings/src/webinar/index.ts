@@ -177,7 +177,7 @@ const Webinar = WebexPlugin.extend({
 
     const finalToken = currentToken ?? practiceSessionDatachannelToken;
 
-    const isCaptionEnabled = this.webex.internal.voicea.getIsCaptionEnabled();
+    const isCaptionBoxOn = this.webex.internal.voicea.getIsCaptionBoxOn();
 
     if (!currentToken && practiceSessionDatachannelToken) {
       // @ts-ignore
@@ -221,7 +221,7 @@ const Webinar = WebexPlugin.extend({
         );
         // @ts-ignore - Fix type
         this.webex.internal.voicea?.announce?.();
-        if (isCaptionEnabled) {
+        if (isCaptionBoxOn) {
           this.webex.internal.voicea.updateSubchannelSubscriptions({subscribe: ['transcription']});
         }
         LoggerProxy.logger.info(

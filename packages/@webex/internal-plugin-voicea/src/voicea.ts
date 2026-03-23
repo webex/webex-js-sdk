@@ -42,7 +42,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private captionStatus: string;
 
-  private isCaptionEnabled: boolean;
+  private isCaptionBoxOn: boolean;
 
   private toggleManualCaptionStatus: string;
 
@@ -104,6 +104,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   public deregisterEvents() {
     this.areCaptionsEnabled = false;
+    this.isCaptionBoxOn = false;
     this.captionServiceId = undefined;
     // @ts-ignore
     this.webex.internal.llm.off('event:relay.event', this.eventProcessor);
@@ -274,7 +275,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     // @ts-ignore
     this.webex.internal.llm.isConnected(LLM_PRACTICE_SESSION);
 
-  public getIsCaptionEnabled = (): boolean => this.isCaptionEnabled;
+  public getIsCaptionBoxOn = (): boolean => this.isCaptionBoxOn;
 
   /**
    * Resolves the active LLM publish transport, preferring the practice-session
@@ -672,7 +673,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @param {Object} [options] - Subscription options.
    * @param {string[]} [options.subscribe] - Subchannels to subscribe to.
    * @param {string[]} [options.unsubscribe] - Subchannels to unsubscribe from.
-   * @param {boolean} [isCCBoxOpen=false] - Whether captions are intended to be enabled.
+   * @param {boolean} [isCaptionBoxOn=false] - Whether captions are intended to be enabled.
    *
    * @returns {Promise<void>}
    */
@@ -681,9 +682,9 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       subscribe?: string[];
       unsubscribe?: string[];
     } = {},
-    isCCBoxOpen = false
+    isCaptionBoxOn = false
   ): Promise<void> => {
-    this.isCaptionEnabled = isCCBoxOpen;
+    this.isCaptionBoxOn = isCaptionBoxOn;
 
     return this.updateSubchannelSubscriptions(options);
   };

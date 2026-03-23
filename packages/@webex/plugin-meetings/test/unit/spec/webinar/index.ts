@@ -233,7 +233,7 @@ describe('plugin-meetings', () => {
         // Ensure connect path is eligible
         webinar.selfIsPanelist = true;
         webinar.practiceSessionEnabled = true;
-        webex.internal.voicea.getIsCaptionEnabled = sinon.stub().returns(false);
+        webex.internal.voicea.getIsCaptionBoxOn = sinon.stub().returns(false);
         webex.internal.voicea.updateSubchannelSubscriptions = sinon.stub();
       });
 
@@ -346,7 +346,7 @@ describe('plugin-meetings', () => {
       });
 
       it('subscribes to transcription when caption intent is enabled', async () => {
-        webex.internal.voicea.getIsCaptionEnabled = sinon.stub().returns(true);
+        webex.internal.voicea.getIsCaptionBoxOn = sinon.stub().returns(true);
 
         await webinar.updatePSDataChannel();
 
@@ -354,7 +354,7 @@ describe('plugin-meetings', () => {
       });
 
       it('does not subscribe to transcription when caption intent is disabled', async () => {
-        webex.internal.voicea.getIsCaptionEnabled = sinon.stub().returns(false);
+        webex.internal.voicea.getIsCaptionBoxOn = sinon.stub().returns(false);
 
         await webinar.updatePSDataChannel();
 
