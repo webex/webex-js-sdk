@@ -63,7 +63,7 @@ describe('ApiAIAssistant', () => {
         eventType: 'CUSTOM_EVENT',
         eventName: 'GET_TRANSCRIPTS',
         eventDetails: {
-          data: jasmine.objectContaining({
+          data: expect.objectContaining({
             interactionId: 'interaction-1',
             action: 'START',
           }),

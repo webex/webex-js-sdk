@@ -490,6 +490,49 @@ describe('AgentConfigService', () => {
     });
   });
 
+  describe('getAIFeatureFlags', () => {
+    it('should return AI feature flags successfully', async () => {
+      const mockResponse = {
+        statusCode: 200,
+        body: {
+          realtimeTranscripts: {enable: true},
+        },
+      };
+      mockWebexRequest.request.mockResolvedValue(mockResponse);
+
+      const result = await agentConfigService.getAIFeatureFlags(mockOrgId);
+      expect(result).toEqual(mockResponse.body);
+      expect(LoggerProxy.log).toHaveBeenCalledWith('getAIFeatureFlags api success.', {
+        module: CONFIG_FILE_NAME,
+        method: 'getAIFeatureFlags',
+      });
+    });
+
+    it('should throw an error if API call returns non-200 status code', async () => {
+      const mockError = {statusCode: 500};
+      mockWebexRequest.request.mockResolvedValue(mockError);
+
+      await expect(agentConfigService.getAIFeatureFlags(mockOrgId)).rejects.toThrow(
+        'API call failed with 500'
+      );
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getAIFeatureFlags API call failed with Error: API call failed with 500',
+        {module: CONFIG_FILE_NAME, method: 'getAIFeatureFlags'}
+      );
+    });
+
+    it('should handle network errors gracefully', async () => {
+      const networkError = new Error('Network Error');
+      mockWebexRequest.request.mockRejectedValue(networkError);
+
+      await expect(agentConfigService.getAIFeatureFlags(mockOrgId)).rejects.toThrow('Network Error');
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        'getAIFeatureFlags API call failed with Error: Network Error',
+        {module: CONFIG_FILE_NAME, method: 'getAIFeatureFlags'}
+      );
+    });
+  });
+
   describe(`getDialPlanData`, () => {
     it('should return dial plan data successfully', async () => {
       const mockResponse = {statusCode: 200, body: {data: {}}}; // Adjust data accordingly

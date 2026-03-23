@@ -46,6 +46,9 @@ describe('TaskManager', () => {
   beforeEach(() => {
     contactMock = contact;
     webSocketManagerMock = new EventEmitter();
+    mockApiAIAssistant = {
+      sendEvent: jest.fn().mockResolvedValue({}),
+    };
 
     webex = {
       logger: {
@@ -75,14 +78,19 @@ describe('TaskManager', () => {
     onSpy = jest.spyOn(webCallingService, 'on');
     offSpy = jest.spyOn(webCallingService, 'off');
 
-    taskManager = new TaskManager(contactMock, webCallingService, webSocketManagerMock);
-    taskManager.taskCollection[taskId] = {
+    taskManager = new TaskManager(mockApiAIAssistant, contactMock, webCallingService, webSocketManagerMock);
+    const taskMock = {
       emit: jest.fn(),
       accept: jest.fn(),
       decline: jest.fn(),
-      updateTaskData: jest.fn(),
+      updateTaskData: jest.fn().mockImplementation((updatedData) => {
+        taskMock.data = {...taskMock.data, ...updatedData};
+        return taskMock;
+      }),
       data: taskDataMock,
     };
+    taskManager.taskCollection[taskId] = taskMock;
+    taskManager.agentId = 'test-agent-id';
     taskManager.call = mockCall;
   });
 
@@ -125,13 +133,12 @@ describe('TaskManager', () => {
     expect(taskEmitSpy).toHaveBeenCalledWith(dummyPayload.data.type, dummyPayload.data);
   });
 
-  it('should invoke sendTranscriptEvent for configured start/stop backend events', () => {
-    const interactionId = 'interaction-transcript-1';
+  it('should invoke sendEvent for configured start/stop backend events', () => {
     const message = (type: CC_EVENTS) =>
       JSON.stringify({
         data: {
           ...taskDataMock,
-          interactionId,
+          taskId,
           type,
         },
       });
@@ -139,21 +146,21 @@ describe('TaskManager', () => {
     webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONTACT_ASSIGNED));
     webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULTING));
     webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULT_CONFERENCED));
-    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_WRAPUP));
     webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULT_ENDED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_WRAPUP));
     webSocketManagerMock.emit('message', message(CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE));
 
     expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledTimes(6);
     expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledWith(
       'test-agent-id',
-      interactionId,
+      taskId,
       'CUSTOM_EVENT',
       'GET_TRANSCRIPTS',
       'START'
     );
     expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledWith(
       'test-agent-id',
-      interactionId,
+      taskId,
       'CUSTOM_EVENT',
       'GET_TRANSCRIPTS',
       'STOP'
@@ -179,7 +186,7 @@ describe('TaskManager', () => {
       CC_EVENTS.REAL_TIME_TRANSCRIPTION,
       realtimePayload.data
     );
-    expect(taskEmitSpy).toHaveBeenCalledWith('realtimeTranscription', realtimePayload.data);
+    expect(taskEmitSpy).toHaveBeenCalledWith(CC_EVENTS.REAL_TIME_TRANSCRIPTION, realtimePayload.data);
   });
 
   it('should not re-emit agent related events', () => {

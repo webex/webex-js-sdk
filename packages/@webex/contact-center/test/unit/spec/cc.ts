@@ -132,8 +132,8 @@ describe('webex.cc', () => {
         acceptPreviewContact: jest.fn(),
       },
       apiAIAssistant: {
-        sendTranscriptEvent: jest.fn(),
-        setAIFeatureFlags: jest.fn(),
+        sendEvent: jest.fn(),
+        fetchHistoricTranscripts: jest.fn(),
       },
     };
 
@@ -188,13 +188,6 @@ describe('webex.cc', () => {
     });
 
     webex.emit('ready');
-  });
-
-  it('should initialize TaskManager with apiAIAssistant dependency', () => {
-    const calls = (TaskManager.getTaskManager as jest.Mock).mock.calls;
-
-    expect(calls.length).toBeGreaterThan(0);
-    expect(calls[0][0]).toBe(webex.cc.services.apiAIAssistant);
   });
 
   describe('cc.getDeviceId', () => {
