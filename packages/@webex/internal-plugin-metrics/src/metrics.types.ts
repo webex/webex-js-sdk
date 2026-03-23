@@ -194,11 +194,10 @@ export type EventPayload = Record<string, InternalEventPayload>;
 export type BehavioralEventPayload = EventPayload; // for compatibilty, can be remove after wxcc-desktop did change their imports.
 
 export interface BusinessEventPayload {
-  metricName: string;
-  timestamp: number;
-  context: DeviceContext;
-  browserDetails: object;
+  key: string;
+  client_timestamp: string;
   value: EventPayload;
+  [additionalKey: string]: unknown;
 }
 
 export interface BusinessEvent {
@@ -242,7 +241,7 @@ export type MetricEventNames =
   | ClientEvent['name']
   | BehavioralEvent['metricName']
   | OperationalEvent['metricName']
-  | BusinessEvent['eventPayload']['metricName']
+  | BusinessEvent['eventPayload']['key']
   | FeatureEvent['name']
   | MediaQualityEvent['name'];
 

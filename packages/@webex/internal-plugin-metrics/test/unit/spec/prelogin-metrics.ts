@@ -25,7 +25,7 @@ describe('internal-plugin-metrics', () => {
 
       assert.calledOnceWithMatch(requestSpy, {
         type: ['business'],
-        eventPayload: {metricName: testEvent, value: {preLoginId: testId}},
+        eventPayload: {key: testEvent, value: {preLoginId: testId}},
       });
     });
 
@@ -42,7 +42,7 @@ describe('internal-plugin-metrics', () => {
 
       assert.calledOnceWithMatch(requestSpy, {
         type: ['business'],
-        eventPayload: {metricName: testEvent, value: {preLoginId: testId, ...testMetadata}},
+        eventPayload: {key: testEvent, ...testMetadata, value: {preLoginId: testId}},
       });
     });
 
@@ -59,7 +59,7 @@ describe('internal-plugin-metrics', () => {
 
       assert.calledOnceWithMatch(requestSpy, {
         type: ['business'],
-        eventPayload: {metricName: testEvent, value: {preLoginId: testId, ...testPayload}},
+        eventPayload: {key: testEvent, value: {preLoginId: testId, ...testPayload}},
       });
     });
 
@@ -74,7 +74,7 @@ describe('internal-plugin-metrics', () => {
 
       assert.calledOnceWithMatch(requestSpy, {
         type: ['business'],
-        eventPayload: {metricName: testEvent, value: {appType: 'Web Client'}},
+        eventPayload: {key: testEvent, appType: 'Web Client'},
       });
     });
 
@@ -91,7 +91,7 @@ describe('internal-plugin-metrics', () => {
 
       assert.calledOnceWithMatch(requestSpy, {
         type: ['business'],
-        eventPayload: {browserDetails: testBrowserDetails, metricName: testEvent},
+        eventPayload: {browserDetails: testBrowserDetails, key: testEvent},
       });
     });
 
@@ -108,11 +108,11 @@ describe('internal-plugin-metrics', () => {
 
       assert.calledOnceWithMatch(requestSpy, {
         type: ['business'],
-        eventPayload: {context: testContext, metricName: testEvent},
+        eventPayload: {context: testContext, key: testEvent},
       });
     });
 
-    it('Should add timestamp', async () => {
+    it('Should add client_timestamp as ISO string', async () => {
       const testEvent = 'test';
       const testTime = 1234;
       const preLoginMetrics = new PreLoginMetrics(fakedPreLoginMetricsBatcher, {}, {parent: mockedWebex});
@@ -125,7 +125,7 @@ describe('internal-plugin-metrics', () => {
 
       assert.calledOnceWithMatch(requestSpy, {
         type: ['business'],
-        eventPayload: {metricName: testEvent, timestamp: testTime},
+        eventPayload: {key: testEvent, client_timestamp: new Date(testTime).toISOString()},
       });
     });
   });

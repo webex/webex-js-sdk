@@ -64,14 +64,15 @@ export default class PreLoginMetrics extends GenericMetrics {
 
   /**
    * Builds a formatted event object for metrics submission.
-   * @param {string} metricName - Metric name
+   * Matches the ROMA business metrics schema used by BusinessMetrics.buildEvent.
+   * @param {string} name - Metric name (maps to ROMA "key")
    * @param {string} preLoginId - Pre-login user identifier
    * @param {EventPayload} payload - Metric payload data
-   * @param {EventPayload} metadata - Additional metadata to include in the event
-   * @returns {object} Formatted metrics event object with type, eventPayload, and timestamp
+   * @param {EventPayload} metadata - Additional metadata spread at eventPayload level (e.g. appType)
+   * @returns {BusinessEvent} Formatted metrics event object
    */
   private buildEvent(
-    metricName: string,
+    name: string,
     preLoginId: string,
     payload: EventPayload,
     metadata: EventPayload
@@ -79,13 +80,13 @@ export default class PreLoginMetrics extends GenericMetrics {
     return {
       type: ['business'],
       eventPayload: {
-        metricName,
-        browserDetails: this.getBrowserDetails(),
+        key: name,
+        client_timestamp: new Date().toISOString(),
         context: this.getContext(),
-        timestamp: new Date().getTime(),
+        browserDetails: this.getBrowserDetails(),
+        ...metadata,
         value: {
           preLoginId,
-          ...metadata,
           ...payload,
         },
       },
