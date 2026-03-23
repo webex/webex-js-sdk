@@ -15,15 +15,9 @@ import {
   EventContext,
 } from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
-import {METHODS} from './constants';
+import {METHODS, TRANSCRIPT_EVENT_MAP} from './constants';
 import {CC_EVENTS, WrapupData} from '../config/types';
-import {
-  ConfigFlags,
-  LoginOption,
-  TranscriptAction,
-  AIAssistantEventType,
-  AIAssistantEventName,
-} from '../../types';
+import {ConfigFlags, LoginOption, AIAssistantEventType, AIAssistantEventName} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import {getIsConferenceInProgress, isSecondaryEpDnAgent, shouldAutoAnswerTask} from './TaskUtils';
 import TaskFactory from './TaskFactory';
@@ -36,14 +30,6 @@ const CC_EVENT_SET = new Set<CC_EVENTS>(Object.values(CC_EVENTS) as CC_EVENTS[])
 
 const isCcEvent = (value: string): value is CC_EVENTS => CC_EVENT_SET.has(value as CC_EVENTS);
 
-const TRANSCRIPT_EVENT_MAP: Record<string, TranscriptAction> = {
-  [CC_EVENTS.AGENT_CONTACT_ASSIGNED]: 'START',
-  [CC_EVENTS.AGENT_CONSULTING]: 'START',
-  [CC_EVENTS.AGENT_CONSULT_CONFERENCED]: 'START',
-  [CC_EVENTS.AGENT_WRAPUP]: 'STOP',
-  [CC_EVENTS.AGENT_CONSULT_ENDED]: 'STOP',
-  [CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE]: 'STOP',
-};
 /** @internal */
 export default class TaskManager extends EventEmitter {
   private call: ICall;

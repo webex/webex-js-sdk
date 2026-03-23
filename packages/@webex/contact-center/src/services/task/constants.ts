@@ -4,6 +4,8 @@
  * @ignore
  */
 
+import {CC_EVENTS} from '../config/types';
+
 export const TASK_MESSAGE_TYPE = 'RoutingMessage';
 export const TASK_API = '/v1/tasks/';
 export const HOLD = '/hold';
@@ -80,4 +82,13 @@ export const METHODS = {
   GET_TASK_MANAGER: 'getTaskManager',
   SETUP_AUTO_WRAPUP_TIMER: 'setupAutoWrapupTimer',
   CANCEL_AUTO_WRAPUP_TIMER: 'cancelAutoWrapupTimer',
+};
+
+export const TRANSCRIPT_EVENT_MAP = {
+  [CC_EVENTS.AGENT_CONTACT_ASSIGNED]: 'START',
+  [CC_EVENTS.AGENT_CONSULTING]: 'START',
+  [CC_EVENTS.AGENT_CONSULT_CONFERENCED]: 'START',
+  [CC_EVENTS.AGENT_WRAPUP]: 'STOP',
+  [CC_EVENTS.AGENT_CONSULT_ENDED]: 'STOP',
+  [CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE]: 'STOP',
 };

@@ -91,29 +91,117 @@ const timerValueElm = autoWrapupTimerElm.querySelector('.timer-value');
 const outdialAniSelectElm = document.querySelector('#outdialAniSelect');
 const realtimeTranscriptsElm = document.querySelector('#realtime-transcripts-content');
 const clearTranscriptsButton = document.querySelector('#clear-transcripts');
+const liveTranscriptTabElm = document.querySelector('#transcript-tab-live');
+const ivrTranscriptTabElm = document.querySelector('#transcript-tab-ivr');
+const liveTranscriptPaneElm = document.querySelector('#transcript-live-pane');
+const ivrTranscriptPaneElm = document.querySelector('#transcript-ivr-pane');
 deregisterBtn.style.backgroundColor = 'red';
 
-const transcriptLines = [];
+const transcriptEntries = [];
 const MAX_TRANSCRIPT_LINES = 200;
 
+function formatTranscriptTime(epochMillis) {
+  if (!epochMillis || typeof epochMillis !== 'number') {
+    return '--:--';
+  }
+  return new Date(epochMillis).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+}
+
+function setTranscriptTab(tab) {
+  if (!liveTranscriptTabElm || !ivrTranscriptTabElm || !liveTranscriptPaneElm || !ivrTranscriptPaneElm) {
+    return;
+  }
+
+  const isLive = tab === 'live';
+  liveTranscriptTabElm.classList.toggle('active', isLive);
+  ivrTranscriptTabElm.classList.toggle('active', !isLive);
+  liveTranscriptTabElm.setAttribute('aria-selected', isLive ? 'true' : 'false');
+  ivrTranscriptTabElm.setAttribute('aria-selected', !isLive ? 'true' : 'false');
+  liveTranscriptPaneElm.classList.toggle('hidden', !isLive);
+  ivrTranscriptPaneElm.classList.toggle('hidden', isLive);
+}
+
+function renderRealtimeTranscripts() {
+  if (!realtimeTranscriptsElm) {
+    return;
+  }
+
+  realtimeTranscriptsElm.innerHTML = '';
+  if (!transcriptEntries.length) {
+    const emptyElm = document.createElement('div');
+    emptyElm.className = 'transcript-empty';
+    emptyElm.textContent = 'No live transcript received.';
+    realtimeTranscriptsElm.appendChild(emptyElm);
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  transcriptEntries.forEach((entry) => {
+    const row = document.createElement('div');
+    row.className = 'transcript-item';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'transcript-avatar';
+    avatar.textContent = entry.role === 'AGENT' ? 'AG' : 'CU';
+
+    const body = document.createElement('div');
+
+    const meta = document.createElement('div');
+    meta.className = 'transcript-meta';
+    meta.textContent = entry.role === 'AGENT' ? '%You%' : '%Customer%';
+
+    const time = document.createElement('span');
+    time.className = 'transcript-time';
+    time.textContent = formatTranscriptTime(entry.publishTimestamp);
+    meta.appendChild(time);
+
+    const content = document.createElement('div');
+    content.className = 'transcript-content';
+    content.textContent = entry.content;
+
+    body.appendChild(meta);
+    body.appendChild(content);
+    row.appendChild(avatar);
+    row.appendChild(body);
+    fragment.appendChild(row);
+  });
+
+  realtimeTranscriptsElm.appendChild(fragment);
+  realtimeTranscriptsElm.parentElement.scrollTop = realtimeTranscriptsElm.parentElement.scrollHeight;
+}
+
 function appendRealtimeTranscript(payload) {
-  const transcriptContent = payload?.data?.data?.content || payload?.data?.content;
+  const dataNode = payload?.data;
+  const transcriptNode = dataNode?.data || dataNode;
+  const transcriptContent = transcriptNode?.content;
   if (!transcriptContent || typeof transcriptContent !== 'string') {
     return;
   }
 
-  transcriptLines.push(transcriptContent.trim());
-  if (transcriptLines.length > MAX_TRANSCRIPT_LINES) {
-    transcriptLines.shift();
+  transcriptEntries.push({
+    role: transcriptNode?.role || 'CALLER',
+    publishTimestamp: transcriptNode?.publishTimestamp || Date.now(),
+    content: transcriptContent.trim(),
+  });
+  if (transcriptEntries.length > MAX_TRANSCRIPT_LINES) {
+    transcriptEntries.shift();
   }
 
-  realtimeTranscriptsElm.textContent = transcriptLines.join('\n');
+  renderRealtimeTranscripts();
+  setTranscriptTab('live');
+}
+
+if (liveTranscriptTabElm) {
+  liveTranscriptTabElm.addEventListener('click', () => setTranscriptTab('live'));
+}
+if (ivrTranscriptTabElm) {
+  ivrTranscriptTabElm.addEventListener('click', () => setTranscriptTab('ivr'));
 }
 
 if (clearTranscriptsButton) {
   clearTranscriptsButton.addEventListener('click', () => {
-    transcriptLines.length = 0;
-    realtimeTranscriptsElm.textContent = 'No transcripts received';
+    transcriptEntries.length = 0;
+    renderRealtimeTranscripts();
   });
 }
 
@@ -1191,6 +1279,7 @@ function isInteractionOnHold(task) {
 // Register task listeners
 function registerTaskListeners(task) {
   task.on('REAL_TIME_TRANSCRIPTION', (payload) => {
+    console.info('Received real-time transcription:', payload);
     appendRealtimeTranscript(payload);
   });
 

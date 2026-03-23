@@ -59,6 +59,7 @@ global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
 
 describe('webex.cc', () => {
   let webex;
+  let mockApiAIAssistant;
   let mockContact;
   let mockTaskManager;
   let mockMetricsManager;
@@ -107,6 +108,12 @@ describe('webex.cc', () => {
       cancelCtq: jest.fn(),
     };
 
+    mockApiAIAssistant = {
+      sendEvent: jest.fn(),
+      fetchHistoricTranscripts: jest.fn(),
+      setAIFeatureFlags: jest.fn(),
+    };
+
     // Mock Services instance
     const mockServicesInstance = {
       agent: {
@@ -130,13 +137,10 @@ describe('webex.cc', () => {
       dialer: {
         startOutdial: jest.fn(),
       },
-      apiAIAssistant: {
-        sendTranscriptEvent: jest.fn(),
-        setAIFeatureFlags: jest.fn(),
-      },
     };
 
     mockTaskManager = {
+      apiAIAssistant: mockApiAIAssistant,
       contact: mockContact,
       call: undefined,
       taskCollection: {},
@@ -147,7 +151,6 @@ describe('webex.cc', () => {
       setWrapupData: jest.fn(),
       setAgentId: jest.fn(),
       setWebRtcEnabled: jest.fn(),
-      setApiAIAssistant: jest.fn(),
       registerIncomingCallEvent: jest.fn(),
       registerTaskListeners: jest.fn(),
       getTask: jest.fn(),
@@ -188,13 +191,6 @@ describe('webex.cc', () => {
     });
 
     webex.emit('ready');
-  });
-
-  it('should initialize TaskManager with apiAIAssistant dependency', () => {
-    const calls = (TaskManager.getTaskManager as jest.Mock).mock.calls;
-
-    expect(calls.length).toBeGreaterThan(0);
-    expect(calls[0][0]).toBe(webex.cc.services.apiAIAssistant);
   });
 
   describe('cc.getDeviceId', () => {

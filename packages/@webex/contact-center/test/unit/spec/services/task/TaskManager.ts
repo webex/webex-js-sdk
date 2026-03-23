@@ -249,8 +249,8 @@ describe('TaskManager', () => {
     );
   });
 
-  it('should invoke sendTranscriptEvent for configured start/stop backend events', () => {
-    const interactionId = 'interaction-transcript-1';
+  it('should invoke sendEvent for configured start/stop backend events', () => {
+    const interactionId = taskId;
     const message = (type: CC_EVENTS) =>
       JSON.stringify({
         data: {
@@ -263,9 +263,9 @@ describe('TaskManager', () => {
     webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONTACT_ASSIGNED));
     webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULTING));
     webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULT_CONFERENCED));
-    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_WRAPUP));
     webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULT_ENDED));
     webSocketManagerMock.emit('message', message(CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_WRAPUP));
 
     expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledTimes(6);
     expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledWith(
@@ -281,27 +281,6 @@ describe('TaskManager', () => {
       'CUSTOM_EVENT',
       'GET_TRANSCRIPTS',
       'STOP'
-    );
-  });
-
-  it('should emit REAL_TIME_TRANSCRIPTION from task object', () => {
-    const task = taskManager.getTask(taskId);
-    const taskEmitSpy = jest.spyOn(task, 'emit');
-    const realtimePayload = {
-      data: {
-        ...taskDataMock,
-        type: CC_EVENTS.REAL_TIME_TRANSCRIPTION,
-        data: {
-          content: 'hello from transcript',
-        },
-      },
-    };
-
-    webSocketManagerMock.emit('message', JSON.stringify(realtimePayload));
-
-    expect(taskEmitSpy).toHaveBeenCalledWith(
-      CC_EVENTS.REAL_TIME_TRANSCRIPTION,
-      realtimePayload.data
     );
   });
 
@@ -336,7 +315,10 @@ describe('TaskManager', () => {
 
     webSocketManagerMock.emit('message', JSON.stringify(realtimePayload));
 
-    expect(taskEmitSpy).toHaveBeenCalledWith(CC_EVENTS.REAL_TIME_TRANSCRIPTION, realtimePayload.data);
+    expect(taskEmitSpy).toHaveBeenCalledWith(
+      CC_EVENTS.REAL_TIME_TRANSCRIPTION,
+      realtimePayload.data
+    );
   });
 
   it('should not re-emit agent related events', () => {
