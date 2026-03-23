@@ -37,7 +37,6 @@ jobs:
             VERSION="${{ github.event.inputs.test_version }}"
             DEPLOY_SHA="${{ github.sha }}"
             PR_NUMBER="${{ github.event.inputs.test_pr_number }}"
-            echo "TEST MODE: version=${VERSION}, pr=${PR_NUMBER}"
           else
             DEPLOY_SHA="${{ github.event.workflow_run.head_sha }}"
             PR_NUMBER=""
@@ -50,13 +49,8 @@ jobs:
               TAG_SHA=$(git rev-list -n 1 "$NEAREST_TAG" 2>/dev/null || echo "")
               if [ "$TAG_SHA" = "$DEPLOY_SHA" ]; then
                 VERSION="$NEAREST_TAG"
-              else
-                echo "Tag ${NEAREST_TAG} points to ${TAG_SHA}, not deploy SHA ${DEPLOY_SHA} -- tag is stale, using for stable_version only"
               fi
             fi
-
-            echo "Deploy SHA: ${DEPLOY_SHA}"
-            echo "Tag: ${VERSION:-none (nearest: ${NEAREST_TAG:-none})}"
           fi
 
           STABLE_VERSION=""
@@ -70,10 +64,7 @@ jobs:
             FILE_NAME="v${STABLE_VERSION//./_}"
             CHANGELOG_FILE="/tmp/changelog_${FILE_NAME}.json"
             git fetch origin documentation 2>/dev/null
-            if git show "origin/documentation:docs/changelog/logs/${FILE_NAME}.json" > "$CHANGELOG_FILE" 2>/dev/null; then
-              echo "Fetched changelog: docs/changelog/logs/${FILE_NAME}.json"
-            else
-              echo "Changelog file not found on documentation branch"
+            if ! git show "origin/documentation:docs/changelog/logs/${FILE_NAME}.json" > "$CHANGELOG_FILE" 2>/dev/null; then
               CHANGELOG_FILE=""
             fi
           fi
@@ -112,7 +103,6 @@ jobs:
                 const mergedPR = prs.data.find(pr => pr.merged_at);
                 if (mergedPR) {
                   prNumber = String(mergedPR.number);
-                  console.log(`Discovered PR #${prNumber} from deploy commit ${deploySha}`);
                 }
               } catch (error) {
                 console.log(`Failed to discover PR from commit: ${error.message}`);
@@ -120,10 +110,10 @@ jobs:
             }
 
             if (!prNumber) {
-              console.log('No PR number found, skipping');
               emptyResult(null, true);
               return;
             }
+            console.log(`PR #${prNumber}, deploy SHA: ${deploySha}`);
 
             // --- Step 2: Collect commit SHAs from the PR ---
             const prShas = new Set();
@@ -135,7 +125,6 @@ jobs:
               for (const c of prCommits.data) {
                 prShas.add(c.sha);
               }
-              console.log(`Collected ${prShas.size} commit SHAs for PR #${prNumber}`);
             } catch (error) {
               console.log(`Failed to fetch PR commits: ${error.message}`);
             }
@@ -146,19 +135,16 @@ jobs:
             let fetchSuccess = false;
 
             if (!changelogFile) {
-              console.log('No changelog file available, skipping changelog lookup');
               emptyResult(prNumber, false);
               return;
             }
 
             try {
               const fs = require('fs');
-              const content = fs.readFileSync(changelogFile, 'utf8');
-              changelog = JSON.parse(content);
+              changelog = JSON.parse(fs.readFileSync(changelogFile, 'utf8'));
               fetchSuccess = true;
-              console.log(`Changelog loaded from ${changelogFile}`);
             } catch (error) {
-              console.log(`Failed to read changelog file: ${error.message}`);
+              console.log(`Failed to read changelog: ${error.message}`);
               emptyResult(prNumber, false);
               return;
             }
@@ -169,27 +155,15 @@ jobs:
             for (const [pkgName, versions] of Object.entries(changelog)) {
               for (const [ver, data] of Object.entries(versions)) {
                 const commits = data.commits || {};
-                const matchesPR = Object.keys(commits).some(sha => prShas.has(sha));
-                if (matchesPR) {
+                if (Object.keys(commits).some(sha => prShas.has(sha))) {
                   packageVersions[pkgName] = ver;
-
-                  const alongWith = data.alongWith || {};
-                  for (const [alongPkg, alongVer] of Object.entries(alongWith)) {
+                  for (const [alongPkg, alongVer] of Object.entries(data.alongWith || {})) {
                     if (!packageVersions[alongPkg]) {
                       packageVersions[alongPkg] = alongVer;
                     }
                   }
                   break;
                 }
-              }
-            }
-
-            if (Object.keys(packageVersions).length === 0) {
-              console.log('No matching packages found in changelog for this PR');
-            } else {
-              console.log('Packages found:');
-              for (const [pkg, ver] of Object.entries(packageVersions)) {
-                console.log(`  ${pkg} => ${ver}`);
               }
             }
 
@@ -215,11 +189,7 @@ jobs:
             const packageVersions = packageVersionsRaw ? JSON.parse(packageVersionsRaw) : {};
 
             const prNumber = prNumbers[0];
-            if (!prNumber) {
-              console.log('No PRs found to comment on');
-              return;
-            }
-            console.log(`Posting comment to PR #${prNumber}`);
+            if (!prNumber) return;
 
             const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
             const packageEntries = Object.entries(packageVersions);
@@ -239,8 +209,6 @@ jobs:
               } else {
                 changelogUrl.searchParams.set('commitMessage', `#${prNumber}`);
               }
-              console.log(`Changelog URL: ${changelogUrl.toString()}`);
-
               const releaseLine = version
                 ? `| **Released in:** [\`${version}\`](${repoUrl}/releases/tag/${version}) |`
                 : '';
@@ -303,14 +271,10 @@ jobs:
                   pull_number: parseInt(prNumber)
                 });
               } catch (error) {
-                console.log(`PR #${prNumber} not found: ${error.message}`);
                 return;
               }
 
-              if (!pr.data.merged_at) {
-                console.log(`PR #${prNumber} is not merged, skipping`);
-                return;
-              }
+              if (!pr.data.merged_at) return;
 
               const existingComments = await github.rest.issues.listComments({
                 owner: context.repo.owner,
@@ -324,10 +288,7 @@ jobs:
                  comment.body.includes('Your changes have been merged'))
               );
 
-              if (botCommentExists) {
-                console.log(`Already commented on PR #${prNumber}, skipping`);
-                return;
-              }
+              if (botCommentExists) return;
 
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
@@ -335,9 +296,7 @@ jobs:
                 issue_number: parseInt(prNumber),
                 body: commentBody
               });
-
-              console.log(`Successfully commented on PR #${prNumber}`);
             } catch (error) {
-              console.error(`Failed to comment on PR #${prNumber}:`, error.message);
+              core.setFailed(`Failed to comment on PR #${prNumber}: ${error.message}`);
             }
 
