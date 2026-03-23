@@ -5,9 +5,9 @@ import routingContact from './contact';
 import WebCallingService from '../WebCallingService';
 import {ITask, MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId} from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
-import {METHODS} from './constants';
+import {METHODS, TRANSCRIPT_EVENT_MAP} from './constants';
 import {CC_EVENTS, CC_TASK_EVENTS, WrapupData} from '../config/types';
-import {LoginOption, TranscriptAction} from '../../types';
+import {AIAssistantEventName, AIAssistantEventType, LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import Task from '.';
 import MetricsManager from '../../metrics/MetricsManager';
@@ -22,15 +22,6 @@ import {
   shouldAutoAnswerTask,
 } from './TaskUtils';
 import ApiAIAssistant from '../ApiAiAssistant';
-
-const TRANSCRIPT_EVENT_MAP: Record<string, TranscriptAction> = {
-  [CC_EVENTS.AGENT_CONTACT_ASSIGNED]: 'START',
-  [CC_EVENTS.AGENT_CONSULTING]: 'START',
-  [CC_EVENTS.AGENT_CONSULT_CONFERENCED]: 'START',
-  [CC_EVENTS.AGENT_WRAPUP]: 'STOP',
-  [CC_EVENTS.AGENT_CONSULT_ENDED]: 'STOP',
-  [CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE]: 'STOP',
-};
 
 /** @internal */
 export default class TaskManager extends EventEmitter {
@@ -124,9 +115,11 @@ export default class TaskManager extends EventEmitter {
       const payload = JSON.parse(event);
       // Re-emit the task events to the task object
       let task: ITask;
-      if (payload.data?.type) {
-        if (Object.values(CC_TASK_EVENTS).includes(payload.data.type)) {
-          task = this.taskCollection[payload.data.interactionId];
+      if (payload.data?.type || payload.type) {
+        if (Object.values(CC_TASK_EVENTS).includes(payload.data.type || payload.type)) {
+          task =
+            this.taskCollection[payload.data?.interactionId] ||
+            this.taskCollection[payload.data?.data?.conversationId];
         }
         LoggerProxy.info(`Handling task event ${payload.data?.type}`, {
           module: TASK_MANAGER_FILE,
@@ -565,11 +558,24 @@ export default class TaskManager extends EventEmitter {
             this.emit(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, task);
             break;
           }
+
           default:
             break;
         }
         if (task) {
+          if (payload.type === CC_EVENTS.REAL_TIME_TRANSCRIPTION) {
+            task.emit(payload.type, payload.data.data);
+          }
           task.emit(payload.data.type, payload.data);
+        }
+
+        const transcriptInteractionId =
+          payload.data?.interactionId ||
+          payload.data?.data?.conversationId ||
+          task?.data?.interactionId;
+
+        if (TRANSCRIPT_EVENT_MAP[payload.data.type] && transcriptInteractionId) {
+          this.requestRealTimeTranscripts(payload.data.type, transcriptInteractionId);
         }
       }
     });
@@ -768,7 +774,13 @@ export default class TaskManager extends EventEmitter {
     if (!action || !this.apiAIAssistant) return;
 
     this.apiAIAssistant
-      .sendEvent(this.agentId, interactionId, 'CUSTOM_EVENT', 'GET_TRANSCRIPTS', action)
+      .sendEvent(
+        this.agentId,
+        interactionId,
+        AIAssistantEventType.CUSTOM_EVENT,
+        AIAssistantEventName.GET_TRANSCRIPTS,
+        action
+      )
       .catch((error) => {
         LoggerProxy.error(`Failed to send transcript ${action} event`, {
           module: TASK_MANAGER_FILE,
