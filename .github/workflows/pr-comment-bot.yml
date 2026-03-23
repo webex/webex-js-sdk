@@ -72,7 +72,6 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "stable_version=${STABLE_VERSION}" >> $GITHUB_OUTPUT
           echo "pr_number=${PR_NUMBER}" >> $GITHUB_OUTPUT
-          echo "deploy_sha=${DEPLOY_SHA}" >> $GITHUB_OUTPUT
 
       - name: Get Packages and Versions from Changelog
         id: get-prs
@@ -164,7 +163,6 @@ jobs:
           script: |
             const version = '${{ steps.tag-info.outputs.version }}';
             const stableVersion = '${{ steps.tag-info.outputs.stable_version }}';
-            const deploySha = '${{ steps.tag-info.outputs.deploy_sha }}';
             const prNumbersRaw = '${{ steps.get-prs.outputs.pr_numbers }}';
             const packageVersionsRaw = '${{ steps.get-prs.outputs.package_versions }}';
             const primaryPackage = '${{ steps.get-prs.outputs.primary_package }}';
@@ -192,13 +190,16 @@ jobs:
             console.log(`Changelog URL: ${changelogUrl.toString()}`);
 
             const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
-            const releaseLine = version
-              ? `| **Released in:** [\`${version}\`](${repoUrl}/releases/tag/${version}) |`
-              : `| **Released via:** [\`${deploySha.slice(0, 7)}\`](${repoUrl}/commit/${deploySha}) |`;
-
             const packageEntries = Object.entries(packageVersions);
-            let packagesTable = '';
-            if (packageEntries.length > 0) {
+            const hasPackages = packageEntries.length > 0;
+
+            let commentBody;
+
+            if (hasPackages) {
+              const releaseLine = version
+                ? `| **Released in:** [\`${version}\`](${repoUrl}/releases/tag/${version}) |`
+                : '';
+
               const rows = packageEntries
                 .sort(([a], [b]) => {
                   if (a === 'webex') return -1;
@@ -209,25 +210,35 @@ jobs:
                 })
                 .map(([pkg, ver]) => `| \`${pkg}\` | \`${ver}\` |`)
                 .join('\n');
-              packagesTable = [
+              const packagesTable = [
                 '',
                 '| Packages Updated | Version |',
                 '|---------|---------|',
                 rows,
                 ''
               ].join('\n');
-            }
 
-            const commentBody = [
-              '| :tada: Your changes are now available! |',
-              '|---|',
-              releaseLine,
-              `| :book: **[View full changelog →](${changelogUrl})** |`,
-              packagesTable,
-              'Thank you for your contribution!',
-              '',
-              `_:robot: This is an automated message. For questions, please refer to the [documentation](${repoUrl}#readme)._`
-            ].join('\n');
+              commentBody = [
+                '| :tada: Your changes are now available! |',
+                '|---|',
+                releaseLine,
+                `| :book: **[View full changelog →](${changelogUrl})** |`,
+                packagesTable,
+                'Thank you for your contribution!',
+                '',
+                `_:robot: This is an automated message. For questions, please refer to the [documentation](${repoUrl}#readme)._`
+              ].join('\n');
+            } else {
+              commentBody = [
+                '| :white_check_mark: Your changes have been merged! |',
+                '|---|',
+                '| No packages affected. |',
+                '',
+                'Thank you for your contribution!',
+                '',
+                `_:robot: This is an automated message. For questions, please refer to the [documentation](${repoUrl}#readme)._`
+              ].join('\n');
+            }
 
             try {
               let pr;
