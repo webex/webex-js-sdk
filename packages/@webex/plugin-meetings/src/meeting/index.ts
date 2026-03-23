@@ -770,6 +770,11 @@ export default class Meeting extends StatelessWebexPlugin {
   private logUploadIntervalIndex: number;
   private mediaServerIp: string;
   private llmHealthCheckTimer?: ReturnType<typeof setTimeout>;
+  private defaultLLMConnectionInFlight?: {
+    promise: Promise<any>;
+    locusUrl?: string;
+    datachannelUrl?: string;
+  };
 
   /**
    * @param {Object} attrs
@@ -6303,44 +6308,76 @@ export default class Meeting extends StatelessWebexPlugin {
     // webinar panelist should use new data channel in practice session
     const dataChannelUrl = datachannelUrl;
 
-    // @ts-ignore - Fix type
-    if (this.webex.internal.llm.isConnected()) {
-      if (
-        // @ts-ignore - Fix type
-        url === this.webex.internal.llm.getLocusUrl() &&
-        // @ts-ignore - Fix type
-        dataChannelUrl === this.webex.internal.llm.getDatachannelUrl() &&
-        isJoined
-      ) {
+    if (this.defaultLLMConnectionInFlight) {
+      const {
+        promise,
+        locusUrl: pendingLocusUrl,
+        datachannelUrl: pendingDatachannelUrl,
+      } = this.defaultLLMConnectionInFlight;
+
+      if (url === pendingLocusUrl && dataChannelUrl === pendingDatachannelUrl) {
+        return promise;
+      }
+
+      await promise.catch(() => undefined);
+
+      return this.updateLLMConnection();
+    }
+
+    const connectPromise = (async () => {
+      // @ts-ignore - Fix type
+      if (this.webex.internal.llm.isConnected()) {
+        if (
+          // @ts-ignore - Fix type
+          url === this.webex.internal.llm.getLocusUrl() &&
+          // @ts-ignore - Fix type
+          dataChannelUrl === this.webex.internal.llm.getDatachannelUrl() &&
+          isJoined
+        ) {
+          return undefined;
+        }
+        await this.cleanupLLMConneciton({removeOnlineListener: false});
+      }
+
+      if (!isJoined) {
         return undefined;
       }
-      await this.cleanupLLMConneciton({removeOnlineListener: false});
-    }
 
-    if (!isJoined) {
-      return undefined;
-    }
+      // @ts-ignore - Fix type
+      return this.webex.internal.llm
+        .registerAndConnect(url, dataChannelUrl, finalToken)
+        .then((registerAndConnectResult) => {
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.on(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+          LoggerProxy.logger.info(
+            'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
+          );
 
-    // @ts-ignore - Fix type
-    return this.webex.internal.llm
-      .registerAndConnect(url, dataChannelUrl, finalToken)
-      .then((registerAndConnectResult) => {
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.on(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
-        LoggerProxy.logger.info(
-          'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
-        );
+          this.startLLMHealthCheckTimer();
 
-        this.startLLMHealthCheckTimer();
+          return Promise.resolve(registerAndConnectResult);
+        });
+    })();
 
-        return Promise.resolve(registerAndConnectResult);
-      });
+    const trackedConnectPromise = connectPromise.finally(() => {
+      if (this.defaultLLMConnectionInFlight?.promise === trackedConnectPromise) {
+        this.defaultLLMConnectionInFlight = undefined;
+      }
+    });
+
+    this.defaultLLMConnectionInFlight = {
+      promise: trackedConnectPromise,
+      locusUrl: url,
+      datachannelUrl: dataChannelUrl,
+    };
+
+    return trackedConnectPromise;
   }
 
   /**

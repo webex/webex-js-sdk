@@ -215,11 +215,22 @@ describe('plugin-meetings', () => {
     describe('#updatePSDataChannel', () => {
       let meeting;
       let processRelayEvent;
+      let defaultSessionConnected;
+      let practiceSessionConnected;
 
       beforeEach(() => {
         processRelayEvent = sinon.stub();
+        defaultSessionConnected = false;
+        practiceSessionConnected = false;
+        webex.internal.llm.isConnected.callsFake(
+          (sessionId) =>
+            sessionId === LLM_PRACTICE_SESSION ? practiceSessionConnected : defaultSessionConnected
+        );
         meeting = {
           isJoined: sinon.stub().returns(true),
+          updateLLMConnection: sinon.stub().callsFake(async () => {
+            defaultSessionConnected = true;
+          }),
           processRelayEvent,
           locusInfo: {
             url: 'locus-url',
@@ -267,7 +278,8 @@ describe('plugin-meetings', () => {
       });
 
       it('no-ops when already connected to the same endpoints', async () => {
-        webex.internal.llm.isConnected.returns(true);
+        defaultSessionConnected = true;
+        practiceSessionConnected = true;
         webex.internal.llm.getLocusUrl.returns('locus-url');
         webex.internal.llm.getDatachannelUrl.returns('dc-url');
         const cleanupPSDataChannelStub = sinon.stub(webinar, 'cleanupPSDataChannel').resolves();
@@ -275,16 +287,15 @@ describe('plugin-meetings', () => {
         const result = await webinar.updatePSDataChannel();
 
         assert.isUndefined(result);
+        assert.notCalled(meeting.updateLLMConnection);
         assert.notCalled(cleanupPSDataChannelStub);
         assert.notCalled(webex.internal.llm.registerAndConnect);
       });
 
-      it('connects when eligible and delays announce by three seconds', async () => {
-        const clock = sinon.useFakeTimers();
-
-        try {
+      it('waits for the default session to connect before connecting practice session', async () => {
         const result = await webinar.updatePSDataChannel();
 
+        assert.calledOnceWithExactly(meeting.updateLLMConnection);
         assert.calledOnceWithExactly(
           webex.internal.llm.setDatachannelToken,
           'ps-token',
@@ -298,58 +309,40 @@ describe('plugin-meetings', () => {
           'ps-token',
           LLM_PRACTICE_SESSION
         );
-          assert.notCalled(webex.internal.voicea.announce);
-
-          await clock.tickAsync(2999);
-          assert.notCalled(webex.internal.voicea.announce);
-
-          await clock.tickAsync(1);
         assert.calledOnceWithExactly(webex.internal.voicea.announce);
         assert.equal(result, 'REGISTER_AND_CONNECT_RESULT');
-        } finally {
-          clock.restore();
-        }
       });
 
-      it('clears any pending delayed announce during cleanup', async () => {
-        const clock = sinon.useFakeTimers();
+      it('skips practice session connect when default session does not connect', async () => {
+        meeting.updateLLMConnection = sinon.stub().resolves();
 
-        try {
-          await webinar.updatePSDataChannel();
-          await webinar.cleanupPSDataChannel();
-          await clock.tickAsync(3000);
+        const result = await webinar.updatePSDataChannel();
 
-          assert.notCalled(webex.internal.voicea.announce);
-        } finally {
-          clock.restore();
-        }
+        assert.isUndefined(result);
+        assert.calledOnceWithExactly(meeting.updateLLMConnection);
+        assert.notCalled(webex.internal.llm.registerAndConnect);
+        assert.notCalled(webex.internal.voicea.announce);
       });
 
-      it('replaces the pending delayed announce when reconnecting', async () => {
-        const clock = sinon.useFakeTimers();
+      it('does not re-announce during cleanup after a successful connect', async () => {
+        await webinar.updatePSDataChannel();
+        await webinar.cleanupPSDataChannel();
 
-        try {
-          await webinar.updatePSDataChannel();
+        assert.calledOnceWithExactly(webex.internal.voicea.announce);
+      });
 
-          webex.internal.llm.isConnected.returns(true);
-          webex.internal.llm.getLocusUrl.returns('old-locus-url');
-          webex.internal.llm.getDatachannelUrl.returns('old-dc-url');
+      it('announces on each successful reconnect', async () => {
+        await webinar.updatePSDataChannel();
 
-          await clock.tickAsync(2999);
-          assert.notCalled(webex.internal.voicea.announce);
+        defaultSessionConnected = true;
+        practiceSessionConnected = true;
+        webex.internal.llm.getLocusUrl.returns('old-locus-url');
+        webex.internal.llm.getDatachannelUrl.returns('old-dc-url');
 
-          await webinar.updatePSDataChannel();
+        await webinar.updatePSDataChannel();
 
-          assert.calledTwice(webex.internal.llm.registerAndConnect);
-
-          await clock.tickAsync(1);
-          assert.notCalled(webex.internal.voicea.announce);
-
-          await clock.tickAsync(2999);
-          assert.calledOnceWithExactly(webex.internal.voicea.announce);
-        } finally {
-          clock.restore();
-        }
+        assert.calledTwice(webex.internal.llm.registerAndConnect);
+        assert.calledTwice(webex.internal.voicea.announce);
       });
 
       it('uses cached token when available', async () => {
@@ -372,7 +365,8 @@ describe('plugin-meetings', () => {
       });
 
       it('cleans up the existing practice session channel before reconnecting to new endpoints', async () => {
-        webex.internal.llm.isConnected.returns(true);
+        defaultSessionConnected = true;
+        practiceSessionConnected = true;
         const cleanupPSDataChannelStub = sinon.stub(webinar, 'cleanupPSDataChannel').resolves();
 
         await webinar.updatePSDataChannel();
