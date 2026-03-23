@@ -53,3 +53,9 @@ export type LocusDTO = {
   syncUrl?: string;
   url?: string;
 };
+
+export type ReplacesInfo = {
+  locusUrl: string;
+  replacedAt: string;
+  sessionId: string;
+};

@@ -39,7 +39,7 @@ import HashTreeParser, {
 } from '../hashTree/hashTreeParser';
 import {HashTreeObject, ObjectType, ObjectTypeToLocusKeyMap} from '../hashTree/types';
 import {isMetadata, isSelf} from '../hashTree/utils';
-import {Links, LocusDTO} from './types';
+import {Links, LocusDTO, ReplacesInfo} from './types';
 import MeetingsUtil from '../meetings/util';
 import {MEETING_KEY} from '../meetings/meetings.types';
 import MeetingCollection from '../meetings/collection';
@@ -100,7 +100,7 @@ export type HashTreeParserEntry = {
  * @param {string} deviceUrl - The URL of the user's device
  * @returns {any} The replace information if available, otherwise undefined
  */
-function getReplaceInfoFromSelf(self: any, deviceUrl: string) {
+function getReplaceInfoFromSelf(self: any, deviceUrl: string): ReplacesInfo | undefined {
   if (self) {
     const device = MeetingsUtil.getThisDevice({self}, deviceUrl);
 
@@ -1029,7 +1029,6 @@ export default class LocusInfo extends EventsScope {
    * @param {Meeting} meeting - The meeting object
    * @param {eventType} eventType - The event type
    * @param {HashTreeMessage} message incoming hash tree message
-   * @param {any} replaces - if this message indicates that a new locusUrl replaces some old locusUrl, this object contains info about the old locus
    * @returns {void}
    */
   private handleHashTreeMessage(meeting: any, eventType: LOCUSEVENT, message: HashTreeMessage) {

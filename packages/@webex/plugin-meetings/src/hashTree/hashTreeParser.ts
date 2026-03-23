@@ -1416,7 +1416,6 @@ class HashTreeParser {
         dataSet.heartbeatWatchdogTimer = undefined;
       }
     });
-    this.state = 'stopped';
   }
 
   /**
@@ -1434,6 +1433,7 @@ class HashTreeParser {
       dataSet.hashTree = undefined;
     });
     this.visibleDataSets = [];
+    this.state = 'stopped';
   }
 
   /**
