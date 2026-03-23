@@ -50,16 +50,32 @@ GET https://{pragya-host}/pragya/api/v1/containers/{containerId}
 
 **Pragya response:**
 
+> **Note:** The raw Pragya response nests summary URLs under `summaryData.data`. The plugin's `getContainer()` method flattens this so consumers can access `summaryData.summaryUrl` directly.
+
 ```json
 {
-  "memberships": [{}],
+  "id": "34125120-13b5-11f1-9b36-adb685725098",
+  "objectType": "callingAIContainer",
+  "memberships": {
+    "items": [
+      { "id": "...", "roles": ["OWNER"], "objectType": "containerMembership" }
+    ]
+  },
   "summaryData": {
-    "status": "Active",
-    "summaryUrl": "https://aibridge-url/summaries/c635e870-7b3b-4b3b-8b3b-7b3b7b3b7b3c",
-    "notesUrl": "https://aibridge-url/summaries/c635e870-7b3b-4b3b-8b3b-7b3b7b3b7b3c/notes",
-    "actionItemsUrl": "https://aibridge-url/summaries/c635e870-7b3b-4b3b-8b3b-7b3b7b3b7b3c/action-items",
-    "transcriptUrl": "https://aibridge-url/summaries/c635e870-7b3b-4b3b-8b3b-7b3b7b3b7b3c/transcripts",
-    "summarizeAfterCall": true
+    "extensionId": "...",
+    "objectType": "extension",
+    "extensionType": "callingAISummary",
+    "data": {
+      "id": "...",
+      "objectType": "callingAISummary",
+      "status": "Active",
+      "summaryUrl": "https://aibridge-url/summaries/c635e870-7b3b-4b3b-8b3b-7b3b7b3b7b3c",
+      "transcriptUrl": "https://aibridge-url/summaries/c635e870-7b3b-4b3b-8b3b-7b3b7b3b7b3c/transcripts",
+      "summarizeAfterCall": true,
+      "aclUrl": "https://acl-a.wbx2.com/...",
+      "kmsResourceObjectUrl": "kms://kms-cisco.wbx2.com/resources/...",
+      "contentRetention": { ... }
+    }
   },
   "encryptionKeyUrl": "kms://kms-cisco.wbx2.com/keys/897e4d2d-6219-433d-be77-7ec73fe1c0db",
   "kmsResourceObjectUrl": "kms://kms-cisco.wbx2.com/resources/f7316435-2147-4d23-bf4a-762d831cb58c",
@@ -183,26 +199,27 @@ Client
   |     +-> Pragya API: GET /pragya/api/v1/containers/{containerId}
   |           +-> Response: { summaryData: { summaryUrl, notesUrl, ... }, encryptionKeyUrl }
   |
-  |  3. Fetch summary content
-  +-> webex.internal.aisummary.getSummary(containerInfo)
-        +-> HTTP GET {containerInfo.summaryData.summaryUrl}
-              +-> Response: { aiGeneratedContent: "<encrypted>", ... }
-                    +-> Decrypt using containerInfo.encryptionKeyUrl
-                          +-> Return decrypted summary content
+  |  3. Fetch all summary content in one call
+  +-> webex.internal.aisummary.getSummary({ containerInfo: container })
+        +-> HTTP GET {summaryUrl}?fields=note,shortnote,actionitems
+              +-> Response: { note: {...}, shortnote: {...}, actionitems: {...} }
+                    +-> Decrypt note, shortNote, and all action item snippets
+                          +-> Return { id, note, shortNote, actionItems, feedbackUrl }
 ```
 
 ### 3.2 Get Container Info Flow
 
 ```
 Client
-  +-> webex.internal.aisummary.getContainer(containerId)
+  +-> webex.internal.aisummary.getContainer({ containerId })
         +-> Validate containerId (non-empty string)
             +-> webex.request({
                   method: 'GET',
                   service: 'pragya',
                   resource: `containers/${containerId}`,
                 })
-                +-> Return PragyaContainerResponse
+                +-> Flatten: if body.summaryData.data exists, set body.summaryData = body.summaryData.data
+                    +-> Return PragyaContainerResponse (with flat summaryData)
 ```
 
 ### 3.3 Get Notes Flow
@@ -251,19 +268,22 @@ interface AISummary {
 
   /**
    * Get AI-generated full summary for a call.
-   * Fetches from containerInfo.summaryData.summaryUrl and decrypts content.
+   * Fetches from summaryUrl with ?fields=note,shortnote,actionitems and decrypts all content.
+   * Returns note, shortNote, and actionItems in a single response.
    */
   getSummary(options: GetSummaryContentOptions): Promise<SummaryContent>;
 
   /**
    * Get AI-generated notes for a call.
    * Fetches from containerInfo.summaryData.notesUrl and decrypts content.
+   * Only available if notesUrl is present in the Pragya response.
    */
   getNotes(options: GetSummaryContentOptions): Promise<SummaryNotes>;
 
   /**
    * Get AI-generated action items for a call.
    * Fetches from containerInfo.summaryData.actionItemsUrl and decrypts content.
+   * Only available if actionItemsUrl is present in the Pragya response.
    */
   getActionItems(options: GetSummaryContentOptions): Promise<SummaryActionItems>;
 
@@ -273,6 +293,12 @@ interface AISummary {
    * Does not fetch or decrypt - the consumer uses this URL directly.
    */
   getTranscriptUrl(options: GetSummaryContentOptions): string;
+
+  /**
+   * Get decrypted transcript for a call.
+   * Fetches from containerInfo.summaryData.transcriptUrl and decrypts each snippet.
+   */
+  getTranscript(options: GetSummaryContentOptions): Promise<TranscriptContent>;
 }
 ```
 
@@ -308,16 +334,16 @@ export interface GetSummaryContentOptions {
 export interface PragyaSummaryData {
   /** Status of the summary (e.g., "Active") */
   status: string;
-  /** Full summary URL */
+  /** Full summary URL (AI Bridge) */
   summaryUrl: string;
-  /** Notes-specific URL */
-  notesUrl: string;
-  /** Action items URL */
-  actionItemsUrl: string;
-  /** Transcript URL */
+  /** Transcript URL (AI Bridge) */
   transcriptUrl: string;
   /** Whether summarization runs after call ends */
   summarizeAfterCall: boolean;
+  /** Notes-specific URL (may not be present in all API versions) */
+  notesUrl?: string;
+  /** Action items URL (may not be present in all API versions) */
+  actionItemsUrl?: string;
 }
 
 /**
@@ -351,13 +377,18 @@ export interface PragyaContainerResponse {
 
 ```typescript
 /**
- * Decrypted AI-generated summary content
+ * Decrypted AI-generated summary content.
+ * Contains all three content types returned by the summary API.
  */
 export interface SummaryContent {
   /** Unique identifier */
   id: string;
-  /** Decrypted AI-generated content */
-  content: string;
+  /** Decrypted full note content */
+  note: string;
+  /** Decrypted short note content */
+  shortNote: string;
+  /** Decrypted action item snippets */
+  actionItems: ActionItemSnippet[];
   /** Feedback URL (if available) */
   feedbackUrl?: string;
 }
@@ -390,12 +421,43 @@ export interface ActionItemSnippet {
  * Decrypted AI-generated action items
  */
 export interface SummaryActionItems {
-  /** Unique identifier */
-  id: string;
+  /** Unique identifier (absent when no action items exist) */
+  id?: string;
   /** Array of action item snippets */
   snippets: ActionItemSnippet[];
   /** Feedback URL (if available) */
   feedbackUrl?: string;
+}
+
+/**
+ * Single decrypted transcript snippet
+ */
+export interface TranscriptSnippet {
+  /** Start time in milliseconds */
+  startTime: string;
+  /** End time in milliseconds */
+  endTime: string;
+  /** Decrypted transcript content */
+  content: string;
+  /** Audio CSI identifier */
+  audioCSI?: string;
+  /** Speaker information */
+  speaker?: {
+    speakerName: string;
+    speakerId: string;
+  };
+}
+
+/**
+ * Decrypted transcript response
+ */
+export interface TranscriptContent {
+  /** Unique identifier */
+  id: string;
+  /** Total number of snippets */
+  totalCount: number;
+  /** Decrypted transcript snippets */
+  snippets: TranscriptSnippet[];
 }
 ```
 
@@ -443,10 +505,9 @@ export const ERROR_MESSAGES = {
   INVALID_CONTAINER_ID: 'containerId is required and must be a non-empty string',
   INVALID_CONTAINER_INFO: 'containerInfo with valid summaryData and encryptionKeyUrl is required',
   CONTAINER_NOT_FOUND: 'Container not found',
-  SUMMARY_NOT_AVAILABLE: 'Summary data is not available for this container',
+  CONTENT_NOT_FOUND: 'Summary content not available or expired',
   ACCESS_DENIED: 'Access denied: User not authorized to view this summary',
   AUTHENTICATION_FAILED: 'Authentication failed: Invalid or expired token',
-  DECRYPTION_FAILED: 'Failed to decrypt summary content',
 } as const;
 ```
 
@@ -456,20 +517,16 @@ export const ERROR_MESSAGES = {
 // packages/@webex/internal-plugin-call-ai-summary/src/ai-summary.ts
 
 import {WebexPlugin} from '@webex/webex-core';
-import '@webex/internal-plugin-encryption';
 
-import {
-  AI_SUMMARY_SERVICE,
-  AI_SUMMARY_CONTAINERS_RESOURCE,
-  ERROR_MESSAGES,
-} from './constants';
-import {
+import {AI_SUMMARY_SERVICE, AI_SUMMARY_CONTAINERS_RESOURCE, ERROR_MESSAGES} from './constants';
+import type {
   GetContainerOptions,
   GetSummaryContentOptions,
   PragyaContainerResponse,
   SummaryContent,
   SummaryNotes,
   SummaryActionItems,
+  TranscriptContent,
 } from './types';
 
 const AISummary = WebexPlugin.extend({
@@ -477,14 +534,10 @@ const AISummary = WebexPlugin.extend({
 
   /**
    * Resolve a Pragya container by ID.
-   * Returns container metadata including summary URLs and encryption key.
-   *
-   * @param {GetContainerOptions} options
-   * @returns {Promise<PragyaContainerResponse>}
+   * Flattens the nested summaryData.data structure for consumer convenience.
    */
   getContainer(options: GetContainerOptions): Promise<PragyaContainerResponse> {
     const {containerId} = options;
-
     this._validateContainerId(containerId);
 
     return this.webex
@@ -493,7 +546,13 @@ const AISummary = WebexPlugin.extend({
         service: AI_SUMMARY_SERVICE,
         resource: `${AI_SUMMARY_CONTAINERS_RESOURCE}/${containerId}`,
       })
-      .then(({body}) => body)
+      .then(({body}) => {
+        // Pragya API nests summary URLs under summaryData.data — flatten
+        if (body.summaryData?.data) {
+          body.summaryData = body.summaryData.data;
+        }
+        return body;
+      })
       .catch((error) => {
         this.logger.error('AISummary->getContainer failed', {error, containerId});
         throw this._handleError(error, 'getContainer');
@@ -502,30 +561,46 @@ const AISummary = WebexPlugin.extend({
 
   /**
    * Get AI-generated full summary for a call.
-   *
-   * @param {GetSummaryContentOptions} options
-   * @returns {Promise<SummaryContent>}
+   * Fetches note, shortNote, and actionItems in a single request via
+   * summaryUrl?fields=note,shortnote,actionitems, then decrypts all content.
    */
   async getSummary(options: GetSummaryContentOptions): Promise<SummaryContent> {
     const {containerInfo} = options;
-
     this._validateContainerInfo(containerInfo, 'summaryUrl');
 
     try {
       const {body} = await this.webex.request({
         method: 'GET',
-        uri: containerInfo.summaryData.summaryUrl,
+        uri: `${containerInfo.summaryData.summaryUrl}?fields=note,shortnote,actionitems`,
       });
 
-      const decryptedContent = await this._decryptContent(
-        body.aiGeneratedContent,
-        containerInfo.encryptionKeyUrl
+      const keyUrl = body.keyUrl || containerInfo.encryptionKeyUrl;
+      const decryptedNote = await this._decryptContent(body.note.aiGeneratedContent, keyUrl);
+      const decryptedShortNote = await this._decryptContent(
+        body.shortnote.aiGeneratedContent, keyUrl
       );
+
+      const decryptedSnippets = await Promise.all(
+        (body.actionitems?.snippets || []).map(async (snippet: any) => {
+          const decryptedAiContent = await this._decryptContent(
+            snippet.aiGeneratedContent, keyUrl
+          );
+          return {
+            id: snippet.id,
+            editedContent: snippet.content || undefined,
+            aiGeneratedContent: decryptedAiContent,
+          };
+        })
+      );
+
+      const feedbackLink = (body.links || []).find((link: any) => link.rel === 'feedback');
 
       return {
         id: body.id,
-        content: decryptedContent,
-        feedbackUrl: body.feedbackUrl,
+        note: decryptedNote,
+        shortNote: decryptedShortNote,
+        actionItems: decryptedSnippets,
+        feedbackUrl: feedbackLink?.href,
       };
     } catch (error) {
       this.logger.error('AISummary->getSummary failed', {error});
@@ -534,14 +609,11 @@ const AISummary = WebexPlugin.extend({
   },
 
   /**
-   * Get AI-generated notes for a call.
-   *
-   * @param {GetSummaryContentOptions} options
-   * @returns {Promise<SummaryNotes>}
+   * Get AI-generated notes for a call (standalone endpoint).
+   * Uses body.keyUrl as decryption key with fallback to containerInfo.encryptionKeyUrl.
    */
   async getNotes(options: GetSummaryContentOptions): Promise<SummaryNotes> {
     const {containerInfo} = options;
-
     this._validateContainerInfo(containerInfo, 'notesUrl');
 
     try {
@@ -550,16 +622,10 @@ const AISummary = WebexPlugin.extend({
         uri: containerInfo.summaryData.notesUrl,
       });
 
-      const decryptedContent = await this._decryptContent(
-        body.aiGeneratedContent,
-        containerInfo.encryptionKeyUrl
-      );
+      const keyUrl = body.keyUrl || containerInfo.encryptionKeyUrl;
+      const decryptedContent = await this._decryptContent(body.aiGeneratedContent, keyUrl);
 
-      return {
-        id: body.id,
-        content: decryptedContent,
-        feedbackUrl: body.feedbackUrl,
-      };
+      return { id: body.id, content: decryptedContent, feedbackUrl: body.feedbackUrl };
     } catch (error) {
       this.logger.error('AISummary->getNotes failed', {error});
       throw this._handleError(error, 'getNotes');
@@ -567,14 +633,11 @@ const AISummary = WebexPlugin.extend({
   },
 
   /**
-   * Get AI-generated action items for a call.
-   *
-   * @param {GetSummaryContentOptions} options
-   * @returns {Promise<SummaryActionItems>}
+   * Get AI-generated action items for a call (standalone endpoint).
+   * Response is an array; takes the first element and decrypts all snippets.
    */
   async getActionItems(options: GetSummaryContentOptions): Promise<SummaryActionItems> {
     const {containerInfo} = options;
-
     this._validateContainerInfo(containerInfo, 'actionItemsUrl');
 
     try {
@@ -583,16 +646,15 @@ const AISummary = WebexPlugin.extend({
         uri: containerInfo.summaryData.actionItemsUrl,
       });
 
-      // Action items response is an array; take the first element
       const actionItemsData = Array.isArray(body) ? body[0] : body;
+      if (!actionItemsData) return {id: undefined, snippets: []};
 
+      const keyUrl = actionItemsData.keyUrl || containerInfo.encryptionKeyUrl;
       const decryptedSnippets = await Promise.all(
         (actionItemsData.snippets || []).map(async (snippet: any) => {
           const decryptedAiContent = await this._decryptContent(
-            snippet.aiGeneratedContent,
-            containerInfo.encryptionKeyUrl
+            snippet.aiGeneratedContent, keyUrl
           );
-
           return {
             id: snippet.id,
             editedContent: snippet.content || undefined,
@@ -612,70 +674,61 @@ const AISummary = WebexPlugin.extend({
     }
   },
 
-  /**
-   * Get the transcript URL for a call.
-   * Returns the URL string; the consumer fetches it directly.
-   *
-   * @param {GetSummaryContentOptions} options
-   * @returns {string}
-   */
+  /** Returns the transcript URL string from the container info. */
   getTranscriptUrl(options: GetSummaryContentOptions): string {
     const {containerInfo} = options;
-
     this._validateContainerInfo(containerInfo, 'transcriptUrl');
-
     return containerInfo.summaryData.transcriptUrl;
   },
 
-  /**
-   * Validate containerId parameter.
-   * @private
-   */
-  _validateContainerId(containerId: string): void {
-    if (!containerId || typeof containerId !== 'string' || containerId.trim().length === 0) {
-      throw new Error(ERROR_MESSAGES.INVALID_CONTAINER_ID);
+  /** Fetches and decrypts the full transcript, returning all snippets. */
+  async getTranscript(options: GetSummaryContentOptions): Promise<TranscriptContent> {
+    const {containerInfo} = options;
+    this._validateContainerInfo(containerInfo, 'transcriptUrl');
+
+    try {
+      const {body} = await this.webex.request({
+        method: 'GET',
+        uri: containerInfo.summaryData.transcriptUrl,
+      });
+
+      const keyUrl = body.keyUrl || containerInfo.encryptionKeyUrl;
+      const decryptedSnippets = await Promise.all(
+        (body.transcriptSnippetList || []).map(async (snippet: any) => {
+          const decryptedContent = await this._decryptContent(snippet.content, keyUrl);
+          return {
+            startTime: snippet.startTime,
+            endTime: snippet.endTime,
+            content: decryptedContent,
+            audioCSI: snippet.audioCSI,
+            speaker: snippet.speaker,
+          };
+        })
+      );
+
+      return { id: body.id, totalCount: body.totalCount, snippets: decryptedSnippets };
+    } catch (error) {
+      this.logger.error('AISummary->getTranscript failed', {error});
+      throw this._handleError(error, 'getTranscript');
     }
   },
 
-  /**
-   * Validate containerInfo has the required URL field and encryption key.
-   * @private
-   */
-  _validateContainerInfo(containerInfo: PragyaContainerResponse, urlField: string): void {
-    if (
-      !containerInfo?.summaryData?.[urlField] ||
-      !containerInfo?.encryptionKeyUrl
-    ) {
-      throw new Error(ERROR_MESSAGES.INVALID_CONTAINER_INFO);
-    }
-  },
+  // --- Private helpers ---
 
-  /**
-   * Decrypt encrypted content using KMS.
-   * Delegates to the internal encryption plugin.
-   * @private
-   */
+  _validateContainerId(containerId: string): void { /* ... */ },
+  _validateContainerInfo(containerInfo: PragyaContainerResponse, urlField: string): void { /* ... */ },
   _decryptContent(encryptedContent: string, encryptionKeyUrl: string): Promise<string> {
     return this.webex.internal.encryption.decryptText(encryptionKeyUrl, encryptedContent);
   },
-
-  /**
-   * Handle and normalize errors.
-   * @private
-   */
   _handleError(error: any, methodName: string): Error {
     if (error.statusCode === 404) {
-      return new Error(ERROR_MESSAGES.CONTAINER_NOT_FOUND);
+      const msg = methodName === 'getContainer'
+        ? ERROR_MESSAGES.CONTAINER_NOT_FOUND
+        : ERROR_MESSAGES.CONTENT_NOT_FOUND;
+      return new Error(msg);
     }
-
-    if (error.statusCode === 403) {
-      return new Error(ERROR_MESSAGES.ACCESS_DENIED);
-    }
-
-    if (error.statusCode === 401) {
-      return new Error(ERROR_MESSAGES.AUTHENTICATION_FAILED);
-    }
-
+    if (error.statusCode === 403) return new Error(ERROR_MESSAGES.ACCESS_DENIED);
+    if (error.statusCode === 401) return new Error(ERROR_MESSAGES.AUTHENTICATION_FAILED);
     return new Error(`${methodName} failed: ${error.message || 'Unknown error'}`);
   },
 });
@@ -700,29 +753,33 @@ if (!sessionWithSummary) {
   return;
 }
 
-// Step 3: Resolve the container
+// Step 3: Resolve the container (plugin flattens summaryData.data automatically)
 const containerId = sessionWithSummary.extensionPayload.callingContainerIds[0];
-const containerInfo = await webex.internal.aisummary.getContainer({ containerId });
+const container = await webex.internal.aisummary.getContainer({ containerId });
 
 // Check if summary is available
-if (containerInfo.summaryData.status !== 'Active') {
+if (container.summaryData.status !== 'Active') {
   console.log('Summary is not yet ready');
   return;
 }
 
-// Step 4: Fetch notes
-const notes = await webex.internal.aisummary.getNotes({ containerInfo });
-console.log('Notes:', notes.content);
-
-// Step 5: Fetch action items
-const actionItems = await webex.internal.aisummary.getActionItems({ containerInfo });
-actionItems.snippets.forEach((item, i) => {
+// Step 4: Fetch all summary content (note + shortNote + actionItems) in one call
+const summary = await webex.internal.aisummary.getSummary({ containerInfo: container });
+console.log('Note:', summary.note);
+console.log('Short Note:', summary.shortNote);
+summary.actionItems.forEach((item, i) => {
   console.log(`Action Item ${i + 1}: ${item.aiGeneratedContent}`);
 });
 
-// Step 6: Get transcript URL
-const transcriptUrl = webex.internal.aisummary.getTranscriptUrl({ containerInfo });
+// Step 5: Get transcript URL (or fetch full transcript)
+const transcriptUrl = webex.internal.aisummary.getTranscriptUrl({ containerInfo: container });
 console.log('Transcript URL:', transcriptUrl);
+
+// Step 6: Fetch and decrypt full transcript
+const transcript = await webex.internal.aisummary.getTranscript({ containerInfo: container });
+transcript.snippets.forEach((snippet) => {
+  console.log(`[${snippet.startTime}] ${snippet.speaker?.speakerName}: ${snippet.content}`);
+});
 ```
 
 ## 7. API Request/Response Details
@@ -737,24 +794,38 @@ Accept: application/json
 ```
 
 **Success Response (200 OK):**
+
+> The raw response nests URLs under `summaryData.data`. The plugin's `getContainer()` flattens this automatically.
+
 ```json
 {
-  "memberships": [{}],
-  "summaryData": {
-    "status": "Active",
-    "summaryUrl": "https://aibridge-url/summaries/c635e870-7b3b-4b3b-8b3b-7b3b7b3b7b3c",
-    "notesUrl": "https://aibridge-url/summaries/c635e870-7b3b-4b3b-8b3b-7b3b7b3b7b3c/notes",
-    "actionItemsUrl": "https://aibridge-url/summaries/c635e870-7b3b-4b3b-8b3b-7b3b7b3b7b3c/action-items",
-    "transcriptUrl": "https://aibridge-url/summaries/c635e870-7b3b-4b3b-8b3b-7b3b7b3b7b3c/transcripts",
-    "summarizeAfterCall": true
+  "id": "34125120-13b5-11f1-9b36-adb685725098",
+  "objectType": "callingAIContainer",
+  "memberships": {
+    "items": [{ "id": "...", "roles": ["OWNER"], "objectType": "containerMembership" }]
   },
-  "encryptionKeyUrl": "kms://kms-cisco.wbx2.com/keys/897e4d2d-6219-433d-be77-7ec73fe1c0db",
-  "kmsResourceObjectUrl": "kms://kms-cisco.wbx2.com/resources/f7316435-2147-4d23-bf4a-762d831cb58c",
-  "aclUrl": "https://acl-a.wbx2.com/acl/api/v1/acls/78c4cd90-f880-11ee-96e9-3932dce37910",
-  "forkSessionId": "123e4567-e89b-12d3-a456-426614174000",
-  "callSessionId": "123e4567-e89b-12d3-a456-426614174000",
-  "ownerUserId": "123e4567-e89b-12d3-a456-426614174000",
-  "orgId": "123e4567-e89b-12d3-a456-426614174000",
+  "summaryData": {
+    "extensionId": "...",
+    "objectType": "extension",
+    "extensionType": "callingAISummary",
+    "data": {
+      "id": "...",
+      "objectType": "callingAISummary",
+      "status": "Active",
+      "summaryUrl": "https://aibridge-url/summaries/c635e870-...",
+      "transcriptUrl": "https://aibridge-url/summaries/c635e870-.../transcripts",
+      "summarizeAfterCall": true,
+      "aclUrl": "https://acl-a.wbx2.com/...",
+      "kmsResourceObjectUrl": "kms://kms-cisco.wbx2.com/resources/..."
+    }
+  },
+  "encryptionKeyUrl": "kms://kms-cisco.wbx2.com/keys/897e4d2d-...",
+  "kmsResourceObjectUrl": "kms://kms-cisco.wbx2.com/resources/f7316435-...",
+  "aclUrl": "https://acl-a.wbx2.com/acl/api/v1/acls/78c4cd90-...",
+  "forkSessionId": "123e4567-...",
+  "callSessionId": "123e4567-...",
+  "ownerUserId": "123e4567-...",
+  "orgId": "123e4567-...",
   "start": "2023-10-01T12:00:00Z",
   "end": "2023-10-01T12:00:00Z"
 }
@@ -765,7 +836,44 @@ Accept: application/json
 - `403 Forbidden` - User not authorized to access this container
 - `404 Not Found` - Container not found
 
-### 7.2 Summary Content (fetched via summaryUrl / notesUrl)
+### 7.2 Summary Content (fetched via summaryUrl with fields query)
+
+The primary way to fetch all summary content is via `getSummary()`, which appends `?fields=note,shortnote,actionitems` to the `summaryUrl`.
+
+**Request:**
+```http
+GET {summaryData.summaryUrl}?fields=note,shortnote,actionitems HTTP/1.1
+Authorization: Bearer {user_access_token}
+Accept: application/json
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "id": "10293-dk93-ddie-odir-did932j3kdde",
+  "keyUrl": "kms://kms-us-int.wbx2.com/keys/f19d4d28-...",
+  "note": {
+    "aiGeneratedContent": "<encrypted_note_content>"
+  },
+  "shortnote": {
+    "aiGeneratedContent": "<encrypted_short_note_content>"
+  },
+  "actionitems": {
+    "snippets": [
+      {
+        "id": "394r0087-...",
+        "content": "edited version",
+        "aiGeneratedContent": "<encrypted_ai_generated_content>"
+      }
+    ]
+  },
+  "links": [
+    { "rel": "feedback", "href": "https://summarizer-r.wbx2.com/summarizer/api/v1/feedback/..." }
+  ]
+}
+```
+
+### 7.3 Notes (standalone, fetched via notesUrl)
 
 **Request:**
 ```http
@@ -779,12 +887,12 @@ Accept: application/json
 {
   "id": "10293-dk93-ddie-odir-did932j3kdde",
   "aiGeneratedContent": "<encrypted_content>",
-  "feedbackUrl": "https://summarizer-r.wbx2.com/summarizer/api/v1/feedback/report/80e44a80-b4c4-11f0-81a2-b1a3117d0ccf",
-  "keyUrl": "kms://kms-us-int.wbx2.com/keys/f19d4d28-f766-4eda-b4dd-2a9482c4c1c0"
+  "feedbackUrl": "https://summarizer-r.wbx2.com/summarizer/api/v1/feedback/report/...",
+  "keyUrl": "kms://kms-us-int.wbx2.com/keys/f19d4d28-..."
 }
 ```
 
-### 7.3 Action Items (fetched via actionItemsUrl)
+### 7.4 Action Items (standalone, fetched via actionItemsUrl)
 
 **Request:**
 ```http
@@ -798,10 +906,10 @@ Accept: application/json
 [
   {
     "id": "1234-dk93-ddie-odir-dk93dj33",
-    "keyUrl": "kms://kms-us-int.wbx2.com/keys/f19d4d28-f766-4eda-b4dd-2a9482c4c1c0",
+    "keyUrl": "kms://kms-us-int.wbx2.com/keys/f19d4d28-...",
     "snippets": [
       {
-        "id": "394r0087-9c13-5678-a1ef-635b9b8eid87",
+        "id": "394r0087-...",
         "content": "edited version",
         "aiGeneratedContent": "<encrypted_ai_generated_content>"
       }
@@ -858,8 +966,8 @@ ctx.webex.internal.encryption.decryptText(key.uri || key, object[name])
 | Authentication Failed | 401 | "Authentication failed: Invalid or expired token" | Re-authenticate user |
 | Access Denied | 403 | "Access denied: User not authorized to view this summary" | Check user permissions |
 | Container Not Found | 404 | "Container not found" | Verify containerId from Janus |
+| Content Not Found | 404 (non-getContainer) | "Summary content not available or expired" | Content may have been deleted or expired |
 | Summary Not Ready | N/A | summaryData.status !== "Active" | Retry after delay |
-| Decryption Failed | N/A | "Failed to decrypt summary content" | Check KMS access |
 
 ## 10. Security Considerations
 
