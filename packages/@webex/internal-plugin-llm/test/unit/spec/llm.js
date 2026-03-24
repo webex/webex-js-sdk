@@ -335,43 +335,46 @@ describe('plugin-llm', () => {
     });
 
     describe('#refreshDataChannelToken', () => {
-      it('throws if no handler is set', async () => {
-        try {
-          await llmService.refreshDataChannelToken();
-          assert.fail('Should have thrown');
-        } catch (err) {
-          assert.match(err.message, 'LLM refreshHandler is not set');
-        }
+      it('returns null and logs warn if no handler is set', async () => {
+        const warnSpy = llmService.logger.warn
+
+        const result = await llmService.refreshDataChannelToken();
+
+        assert.equal(result, null);
+
+        sinon.assert.calledOnce(warnSpy);
+        sinon.assert.calledWithMatch(
+          warnSpy,
+          sinon.match('LLM refreshHandler is not set')
+        );
       });
 
       it('returns token when handler resolves', async () => {
-        const mockToken = { body: { datachannelToken: 'newToken' ,isPracticeSession: false} }
+        const mockToken = { body: { datachannelToken: 'newToken', isPracticeSession: false } };
         const handler = sinon.stub().resolves(mockToken);
+
         llmService.setRefreshHandler(handler);
 
         const token = await llmService.refreshDataChannelToken();
+
         assert.equal(token, mockToken);
         sinon.assert.calledOnce(handler);
       });
 
-      it('logs and rethrows when handler rejects', async () => {
+      it('logs warn and returns null when handler rejects', async () => {
         const handler = sinon.stub().rejects(new Error('throw error'));
-
-        const loggerSpy = llmService.logger.error;
-
         llmService.setRefreshHandler(handler);
 
-        try {
-          await llmService.refreshDataChannelToken();
-          assert.fail('Should have thrown');
-        } catch (err) {
-          assert.match(err.message, /throw error/);
-        }
+        const warnSpy = llmService.logger.warn
 
-        sinon.assert.calledOnce(loggerSpy);
+        const result = await llmService.refreshDataChannelToken();
+
+        assert.equal(result, null);
+
+        sinon.assert.calledOnce(warnSpy);
         sinon.assert.calledWithMatch(
-          loggerSpy,
-          sinon.match("Error refreshing DataChannel token: Error: throw error")
+          warnSpy,
+          sinon.match('DataChannel token refresh failed'),
         );
       });
     });

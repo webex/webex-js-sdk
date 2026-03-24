@@ -232,9 +232,11 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    */
   public async refreshDataChannelToken() {
     if (!this.refreshHandler) {
-      const error = new Error('LLM refreshHandler is not set');
-      this.logger.error(`Error refreshing DataChannel token: ${error.message}`);
-      throw error;
+      this.logger.warn(
+        'llm#refreshDataChannelToken --> LLM refreshHandler is not set, skipping token refresh'
+      );
+
+      return null;
     }
 
     try {
@@ -242,8 +244,13 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
       return res;
     } catch (error: any) {
-      this.logger.error(`Error refreshing DataChannel token: ${error}`);
-      throw error;
+      this.logger.warn(
+        `llm#refreshDataChannelToken --> DataChannel token refresh failed (likely locus changed or participant left): ${
+          error?.message || error
+        }`
+      );
+
+      return null;
     }
   }
 

@@ -10317,12 +10317,12 @@ export default class Meeting extends StatelessWebexPlugin {
     } catch (e) {
       const msg = e?.message || String(e);
 
-      const err = Object.assign(new Error(`Failed to refresh data channel token: ${msg}`), {
-        statusCode: e?.statusCode,
-        original: e,
-      });
+      LoggerProxy.logger.warn(
+        `Meeting:index#refreshDataChannelToken --> DataChannel token refresh failed (likely locus changed or participant left): ${msg}`,
+        {statusCode: e?.statusCode}
+      );
 
-      throw err;
+      return null;
     }
   }
 
