@@ -12,7 +12,12 @@ import {
   HistoricTranscriptsResponse,
 } from '../types';
 import {getErrorDetails} from './core/Utils';
-import {WCC_API_GATEWAY} from './constants';
+import {
+  AI_ASSISTANT_BASE_URL_TEMPLATE,
+  AI_ASSISTANT_ENV_MAP,
+  AI_ASSISTANT_API_URLS,
+  WCC_API_GATEWAY,
+} from './constants';
 import {AIFeatureFlags} from './config/types';
 
 /**
@@ -42,37 +47,34 @@ export class ApiAIAssistant {
     } catch (_error) {
       wccApiGatewayUrl = '';
     }
+
     if (!wccApiGatewayUrl) {
-      throw new Error('AI_ASSISTANT_BASE_URL_NOT_AVAILABLE');
+      const {error: detailedError} = getErrorDetails(
+        new Error('AI_ASSISTANT_BASE_URL_NOT_AVAILABLE'),
+        METHODS.GET_BASE_URL,
+        CC_FILE
+      );
+      throw detailedError;
     }
 
     let hostname = '';
     try {
       hostname = new URL(wccApiGatewayUrl).hostname.toLowerCase();
-    } catch (_error) {
+    } catch (error) {
       hostname = wccApiGatewayUrl.toLowerCase();
     }
 
-    const envMap: Record<string, string> = {
-      'api.intgus1.ciscoccservice.com': 'intgus1',
-      'api.qaus1.ciscoccservice.com': 'qaus1',
-      'api.wxcc-us1.cisco.com': 'produs1',
-      'api.wxcc-eu1.cisco.com': 'prodeu1',
-      'api.wxcc-eu2.cisco.com': 'prodeu2',
-      'api.wxcc-anz1.cisco.com': 'prodanz1',
-      'api.wxcc-ca1.cisco.com': 'prodca1',
-      'api.wxcc-jp1.cisco.com': 'prodjp1',
-      'api.wxcc-sg1.cisco.com': 'prodsg1',
-      'api.wxcc-in1.cisco.com': 'prodin1',
-      'api.loadus1.cisco.com': 'loadus1',
-    };
-
-    const resolvedEnv = envMap[hostname];
+    const resolvedEnv = AI_ASSISTANT_ENV_MAP[hostname];
     if (!resolvedEnv) {
-      throw new Error('AI_ASSISTANT_BASE_URL_NOT_AVAILABLE');
+      const {error: detailedError} = getErrorDetails(
+        new Error('AI_ASSISTANT_BASE_URL_NOT_AVAILABLE'),
+        METHODS.GET_BASE_URL,
+        CC_FILE
+      );
+      throw detailedError;
     }
 
-    return `https://api-ai-assistant.${resolvedEnv}.ciscoccservice.com`;
+    return AI_ASSISTANT_BASE_URL_TEMPLATE.replace('%s', resolvedEnv);
   }
 
   /**
@@ -104,7 +106,7 @@ export class ApiAIAssistant {
     try {
       const baseUrl = this.getBaseUrl();
       const response = (await this.webex.request({
-        uri: `${baseUrl}/event`,
+        uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
         method: HTTP_METHODS.POST,
         addAuthHeader: true,
         body: {
@@ -141,6 +143,9 @@ export class ApiAIAssistant {
         },
         ['operational']
       );
+      if (error instanceof Error && error.message === AI_ASSISTANT_ERRORS.BASE_URL_NOT_AVAILABLE) {
+        throw error;
+      }
       const {error: detailedError} = getErrorDetails(error, METHODS.SEND_EVENT, CC_FILE);
       throw detailedError;
     }
@@ -165,15 +170,19 @@ export class ApiAIAssistant {
       METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS,
       METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED,
     ]);
+    if (!this.aiFeature?.realtimeTranscripts?.enable) {
+      const {error: detailedError} = getErrorDetails(
+        new Error('REAL_TIME_TRANSCRIPTION_NOT_ENABLED'),
+        METHODS.FETCH_HISTORIC_TRANSCRIPTS,
+        CC_FILE
+      );
+      throw detailedError;
+    }
 
     try {
-      if (!this.aiFeature?.realtimeTranscripts?.enable) {
-        throw new Error('REAL_TIME_TRANSCRIPTION_NOT_ENABLED');
-      }
-
       const baseUrl = this.getBaseUrl();
       const response = (await this.webex.request({
-        uri: `${baseUrl}/transcripts/list`,
+        uri: `${baseUrl}${AI_ASSISTANT_API_URLS.TRANSCRIPTS_LIST}`,
         method: HTTP_METHODS.POST,
         addAuthHeader: true,
         body: {
@@ -199,6 +208,9 @@ export class ApiAIAssistant {
         },
         ['operational']
       );
+      if (error instanceof Error) {
+        throw error;
+      }
       const {error: detailedError} = getErrorDetails(
         error,
         METHODS.FETCH_HISTORIC_TRANSCRIPTS,

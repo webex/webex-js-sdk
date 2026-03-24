@@ -771,7 +771,12 @@ export default class TaskManager extends EventEmitter {
    */
   private requestRealTimeTranscripts(eventType: string, interactionId: string): void {
     const action = TRANSCRIPT_EVENT_MAP[eventType];
-    if (!action || !this.apiAIAssistant) return;
+    if (
+      !action ||
+      !this.apiAIAssistant ||
+      this.apiAIAssistant.aiFeature?.realtimeTranscripts?.enable === false
+    )
+      return;
 
     this.apiAIAssistant
       .sendEvent(

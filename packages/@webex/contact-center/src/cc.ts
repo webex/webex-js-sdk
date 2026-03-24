@@ -745,6 +745,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
       this.taskManager.setAgentId(this.agentConfig.agentId);
       this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
+      this.apiAIAssistant.setAIFeatureFlags(this.agentConfig.aiFeature);
 
       if (
         this.agentConfig.webRtcEnabled &&

@@ -48,6 +48,12 @@ describe('TaskManager', () => {
     webSocketManagerMock = new EventEmitter();
     mockApiAIAssistant = {
       sendEvent: jest.fn().mockResolvedValue({}),
+      setAIFeatureFlags: jest.fn(),
+      aiFeature: {
+        realtimeTranscripts: {
+          enable: true,
+        },
+      },
     };
 
     webex = {
@@ -165,6 +171,33 @@ describe('TaskManager', () => {
       'GET_TRANSCRIPTS',
       'STOP'
     );
+  });
+
+  it('should not invoke sendEvent for transcript events when realtime transcript feature is disabled', () => {
+    mockApiAIAssistant.aiFeature = {
+      realtimeTranscripts: {
+        enable: false,
+      },
+    };
+    mockApiAIAssistant.setAIFeatureFlags(mockApiAIAssistant.aiFeature);
+
+    const message = (type: CC_EVENTS) =>
+      JSON.stringify({
+        data: {
+          ...taskDataMock,
+          taskId,
+          type,
+        },
+      });
+
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONTACT_ASSIGNED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULTING));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULT_CONFERENCED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULT_ENDED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_WRAPUP));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE));
+
+    expect(mockApiAIAssistant.sendEvent).not.toHaveBeenCalled();
   });
 
   it('should emit REAL_TIME_TRANSCRIPTION from task object', () => {
