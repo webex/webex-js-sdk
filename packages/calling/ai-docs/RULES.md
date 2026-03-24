@@ -276,6 +276,20 @@ type CallEventTypes = {
 
 ---
 
+## Testing Standards
+
+For full testing patterns including test file location, mock setup, singleton mocking, Logger mocking, and test structure, see [`patterns/testing-patterns.md`](patterns/testing-patterns.md).
+
+### Key Rules
+
+- Tests are co-located with source files (`ModuleName.test.ts` alongside `ModuleName.ts`)
+- Use test fixtures from `*Fixtures.ts` or `*fixtures.ts` files for mock data
+- Mock singletons (`SDKConnector`, `CallManager`, `MetricManager`) at module level
+- Never call real network endpoints in unit tests
+- Cover both success and failure paths for every public method
+
+---
+
 ## Import Standards
 
 Follow this 3-tier import order:
@@ -296,6 +310,13 @@ import log from '../Logger';
 import { CALL_FILE, METHODS } from './constants';
 import { ICall } from './types';
 ```
+
+### Export Standards
+
+- Public types and interfaces: Export from module's `types.ts`
+- Public factory functions: Export from `src/api.ts`
+- Internal types: Keep in service-level `types.ts`, don't re-export from api
+- Use named exports for types; default export for main class when only one primary export exists
 
 ---
 
@@ -346,6 +367,66 @@ export const getSomeManager = (webex?: WebexSDK): ISomeManager => {
 
 ---
 
+## Accessibility & Security
+
+### No Hardcoded Credentials
+
+Never commit:
+- API keys, tokens, secrets
+- Passwords or authentication data
+- Private keys or certificates
+
+### Sensitive Data Logging
+
+Never log sensitive data:
+
+```typescript
+// ❌ WRONG
+log.info(`User token: ${token}`, { file: CALL_FILE, method: 'dial' });
+
+// ✅ CORRECT
+log.info('Token received successfully', { file: CALL_FILE, method: 'dial' });
+// No sensitive data in log messages
+```
+
+---
+
+## Performance Standards
+
+### Async/Await
+
+Always use async/await over raw Promises:
+
+```typescript
+// ✅ CORRECT
+public async makeCall(dest: CallDetails): Promise<ICall> {
+  const call = await this.callManager.createCall(dest);
+  return call;
+}
+
+// ❌ AVOID (when possible)
+public makeCall(dest: CallDetails): Promise<ICall> {
+  return this.callManager.createCall(dest).then(call => call);
+}
+```
+
+### Cleanup on Deregistration
+
+Always clean up resources when lines or calls are torn down:
+
+```typescript
+// Remove event listeners
+line.off(LINE_EVENT_KEYS.INCOMING_CALL, this.handleIncomingCall);
+
+// Clear timers and intervals
+clearInterval(this.keepaliveTimer);
+
+// Close connections
+this.deregister();
+```
+
+---
+
 ## JSDoc Standards
 
 All public APIs must have JSDoc:
@@ -388,3 +469,11 @@ Before submitting code changes, verify:
 - [ ] Import order follows 3-tier convention
 - [ ] Constants defined in `constants.ts`, not inline
 - [ ] Types defined in `types.ts`, not inline
+
+---
+
+## Need More Context?
+
+- **TypeScript patterns**: [`patterns/typescript-patterns.md`](patterns/typescript-patterns.md)
+- **Testing patterns**: [`patterns/testing-patterns.md`](patterns/testing-patterns.md)
+- **Event patterns**: [`patterns/event-driven-patterns.md`](patterns/event-driven-patterns.md)

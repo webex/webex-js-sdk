@@ -44,8 +44,18 @@ This directory contains AI-optimized documentation for the `@webex/calling` pack
 | TypeScript Patterns | [`patterns/typescript-patterns.md`](patterns/typescript-patterns.md) | Type, interface, and code patterns |
 | Testing Patterns | [`patterns/testing-patterns.md`](patterns/testing-patterns.md) | Jest test conventions |
 | Event Patterns | [`patterns/event-driven-patterns.md`](patterns/event-driven-patterns.md) | Event-driven architecture patterns |
-| New Method Template | [`templates/new-method/00-master.md`](templates/new-method/00-master.md) | Add method to existing module |
-| New Module Template | [`templates/new-module/00-master.md`](templates/new-module/00-master.md) | Create new module |
+| New Module Template | [`templates/new-module/00-master.md`](templates/new-module/00-master.md) | Create new module (planned) |
+| New Method Template | [`templates/new-method/00-master.md`](templates/new-method/00-master.md) | Add method to existing module (planned) |
+| Bug Fix Template | [`templates/existing-module/bug-fix.md`](templates/existing-module/bug-fix.md) | Fix bug in existing module (planned) |
+| Feature Enhancement | [`templates/existing-module/feature-enhancement.md`](templates/existing-module/feature-enhancement.md) | Enhance existing module (planned) |
+
+---
+
+## For AI Agents
+
+### Starting a Task
+
+Start with the root [`AGENTS.md`](../AGENTS.md) — it contains the full Quick Start Workflow, task classification decision tree, and critical rules. Do not skip to templates directly.
 
 ---
 
@@ -59,19 +69,16 @@ ai-docs/
 │   ├── typescript-patterns.md         # TypeScript patterns
 │   ├── testing-patterns.md            # Jest testing patterns
 │   └── event-driven-patterns.md       # Event architecture patterns
-└── templates/
+└── templates/                         # Code generation templates (planned)
+    ├── new-module/                    # Creating new modules
+    │   ├── 00-master.md               # Workflow orchestrator
+    │   └── 01-pre-questions.md        # Pre-implementation questionnaire
     ├── new-method/                    # Adding methods to existing modules
     │   ├── 00-master.md               # Workflow orchestrator
-    │   ├── 01-requirements.md         # Requirements questionnaire
-    │   ├── 02-implementation.md       # Implementation guide
-    │   ├── 03-tests.md               # Test template
-    │   └── 04-validation.md          # Quality checklist
-    └── new-module/                    # Creating new modules
-        ├── 00-master.md               # Workflow orchestrator
-        ├── 01-pre-questions.md        # Pre-implementation questionnaire
-        ├── 02-code-generation.md      # Code generation guide
-        ├── 03-test-generation.md      # Test generation guide
-        └── 04-validation.md          # Quality checklist
+    │   └── 01-requirements.md         # Requirements questionnaire
+    └── existing-module/              # Bug fixes and feature enhancements
+        ├── bug-fix.md                 # Bug fix workflow
+        └── feature-enhancement.md     # Feature enhancement workflow
 ```
 
 ---
