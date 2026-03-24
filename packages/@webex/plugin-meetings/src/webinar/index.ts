@@ -209,25 +209,35 @@ const Webinar = WebexPlugin.extend({
       await this.cleanupPSDataChannel();
     }
 
-    // Ensure the default session data channel is connected before connecting the practice session
+    // Ensure the default session data channel is connected before connecting the practice session.
+    // Subscribe before checking isConnected() to avoid a race where the 'online' event fires
+    // between the check and the subscription — Mercury does not replay missed events.
+    if (!this._pendingOnlineListener) {
+      const onDefaultSessionConnected = () => {
+        this._pendingOnlineListener = null;
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.off('online', onDefaultSessionConnected);
+        this.updatePSDataChannel();
+      };
+      this._pendingOnlineListener = onDefaultSessionConnected;
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.on('online', onDefaultSessionConnected);
+    }
+
     // @ts-ignore - Fix type
     if (!this.webex.internal.llm.isConnected()) {
-      if (!this._pendingOnlineListener) {
-        LoggerProxy.logger.info(
-          'Webinar:index#updatePSDataChannel --> default session not yet connected, deferring practice session connect.'
-        );
-        const onDefaultSessionConnected = () => {
-          this._pendingOnlineListener = null;
-          // @ts-ignore - Fix type
-          this.webex.internal.llm.off('online', onDefaultSessionConnected);
-          this.updatePSDataChannel();
-        };
-        this._pendingOnlineListener = onDefaultSessionConnected;
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.on('online', onDefaultSessionConnected);
-      }
+      LoggerProxy.logger.info(
+        'Webinar:index#updatePSDataChannel --> default session not yet connected, deferring practice session connect.'
+      );
 
       return undefined;
+    }
+
+    // Default session is already connected — cancel the pending listener and proceed
+    if (this._pendingOnlineListener) {
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.off('online', this._pendingOnlineListener);
+      this._pendingOnlineListener = null;
     }
 
     // @ts-ignore - Fix type
@@ -388,7 +398,6 @@ const Webinar = WebexPlugin.extend({
 
   /**
    * view all webcast attendees
-   * @param {string} queryString
    * @returns {Promise}
    */
   async viewAllWebcastAttendees() {
