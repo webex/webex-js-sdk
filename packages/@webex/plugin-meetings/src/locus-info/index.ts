@@ -998,12 +998,19 @@ export default class LocusInfo extends EventsScope {
             `Locus-info:index#handleHashTreeParserSwitch --> resuming a HashTreeParser for locusUrl=${message.locusUrl}, which replaces ${replaces.locusUrl}`
           );
           const replacedEntry = this.hashTreeParsers.get(replaces.locusUrl);
-          replacedEntry.replacedAt = replaces.replacedAt;
-          entry.initializedFromHashTree = false;
-          this.hashTreeObjectId2ParticipantId.clear();
 
-          replacedEntry.parser.stop();
-          entry.parser.resume(message);
+          if (replacedEntry) {
+            replacedEntry.replacedAt = replaces.replacedAt;
+            entry.initializedFromHashTree = false;
+            this.hashTreeObjectId2ParticipantId.clear();
+
+            replacedEntry.parser.stop();
+            entry.parser.resume(message);
+          } else {
+            LoggerProxy.logger.warn(
+              `Locus-info:index#handleHashTreeParserSwitch --> the parser that is supposed to be replaced with the currently resumed parser is not found, locusUrl=${replaces.locusUrl}`
+            );
+          }
         } else {
           LoggerProxy.logger.info(
             `Locus-info:index#handleHashTreeParserSwitch --> received message for stopped HashTreeParser with locusUrl ${message.locusUrl}, but replaces info provided is not newer, so not re-activating the parser`
