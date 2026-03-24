@@ -131,6 +131,12 @@ const Webinar = WebexPlugin.extend({
    * @returns {Promise<void>}
    */
   async cleanupPSDataChannel() {
+    if (this._pendingOnlineListener) {
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.off('online', this._pendingOnlineListener);
+      this._pendingOnlineListener = null;
+    }
+
     const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
 
     // @ts-ignore - Fix type
@@ -206,16 +212,20 @@ const Webinar = WebexPlugin.extend({
     // Ensure the default session data channel is connected before connecting the practice session
     // @ts-ignore - Fix type
     if (!this.webex.internal.llm.isConnected()) {
-      LoggerProxy.logger.info(
-        'Webinar:index#updatePSDataChannel --> default session not yet connected, deferring practice session connect.'
-      );
-      const onDefaultSessionConnected = () => {
+      if (!this._pendingOnlineListener) {
+        LoggerProxy.logger.info(
+          'Webinar:index#updatePSDataChannel --> default session not yet connected, deferring practice session connect.'
+        );
+        const onDefaultSessionConnected = () => {
+          this._pendingOnlineListener = null;
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.off('online', onDefaultSessionConnected);
+          this.updatePSDataChannel();
+        };
+        this._pendingOnlineListener = onDefaultSessionConnected;
         // @ts-ignore - Fix type
-        this.webex.internal.llm.off('online', onDefaultSessionConnected);
-        this.updatePSDataChannel();
-      };
-      // @ts-ignore - Fix type
-      this.webex.internal.llm.on('online', onDefaultSessionConnected);
+        this.webex.internal.llm.on('online', onDefaultSessionConnected);
+      }
 
       return undefined;
     }
