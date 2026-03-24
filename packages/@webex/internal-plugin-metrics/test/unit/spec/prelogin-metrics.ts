@@ -78,6 +78,39 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
+    it('Should set uaType derived from default appType with spaces removed', async () => {
+      const testEvent = 'test';
+      const preLoginMetrics = new PreLoginMetrics(fakedPreLoginMetricsBatcher, {}, {parent: mockedWebex});
+
+      sinon.stub(fakedPreLoginMetricsBatcher, 'savePreLoginId');
+      const requestSpy = sinon.stub(fakedPreLoginMetricsBatcher, 'request');
+
+      await preLoginMetrics.submitPreLoginEvent({name: testEvent, preLoginId: 'abc123', payload: {}});
+
+      assert.calledOnceWithMatch(requestSpy, {
+        uaType: 'WebClient',
+      });
+    });
+
+    it('Should set uaType from custom appType in metadata', async () => {
+      const testEvent = 'test';
+      const preLoginMetrics = new PreLoginMetrics(fakedPreLoginMetricsBatcher, {}, {parent: mockedWebex});
+
+      sinon.stub(fakedPreLoginMetricsBatcher, 'savePreLoginId');
+      const requestSpy = sinon.stub(fakedPreLoginMetricsBatcher, 'request');
+
+      await preLoginMetrics.submitPreLoginEvent({
+        name: testEvent,
+        preLoginId: 'abc123',
+        payload: {},
+        metadata: {appType: 'CustomClient'},
+      });
+
+      assert.calledOnceWithMatch(requestSpy, {
+        uaType: 'CustomClient',
+      });
+    });
+
     it('Should add browser details', async () => {
       const testEvent = 'test';
       const testBrowserDetails = { browser: 'Firefox', domain: 'test.example.com' };

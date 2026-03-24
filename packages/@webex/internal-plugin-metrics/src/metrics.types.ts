@@ -203,6 +203,7 @@ export interface BusinessEventPayload {
 export interface BusinessEvent {
   type: string[];
   eventPayload: BusinessEventPayload;
+  uaType?: string;
 }
 
 export interface TaggedEvent {

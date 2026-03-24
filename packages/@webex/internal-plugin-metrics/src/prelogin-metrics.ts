@@ -77,8 +77,11 @@ export default class PreLoginMetrics extends GenericMetrics {
     payload: EventPayload,
     metadata: EventPayload
   ): BusinessEvent {
+    const uaType = String(metadata.appType || 'WebClient').replace(/\s/g, '');
+
     return {
       type: ['business'],
+      uaType,
       eventPayload: {
         ...metadata,
         key: name,
