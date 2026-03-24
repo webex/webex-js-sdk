@@ -1,4 +1,4 @@
-import {
+import type {
   ClientEvent as RawClientEvent,
   Event as RawEvent,
   MediaQualityEvent as RawMediaQualityEvent,
@@ -197,7 +197,7 @@ export interface BusinessEventPayload {
   metricName: string;
   timestamp: number;
   context: DeviceContext;
-  browserDetails: EventPayload;
+  browserDetails: object;
   value: EventPayload;
 }
 

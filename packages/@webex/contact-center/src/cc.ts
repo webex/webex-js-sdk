@@ -55,7 +55,13 @@ import {
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
-import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/types';
+import {
+  ITask,
+  TASK_EVENTS,
+  TaskResponse,
+  DialerPayload,
+  PreviewContactPayload,
+} from './services/task/types';
 import MetricsManager from './metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from './metrics/constants';
 import {Failure} from './services/core/GlobalTypes';
@@ -119,6 +125,7 @@ import type {
  *   - `task:established` - Task/call has been connected
  *   - `task:ended` - Task/call has ended
  *   - `task:error` - An error occurred during task handling
+ *   - `task:campaignPreviewReservation` - Campaign preview contact offered to agent
  *
  * @public
  *
@@ -407,6 +414,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   /**
+   * Handles campaign preview reservation events when a contact is offered to the agent
+   * @private
+   * @param {ITask} task The campaign reservation task
+   */
+  private handleCampaignPreviewReservation = (task: ITask) => {
+    // @ts-ignore
+    this.trigger(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, task);
+  };
+
+  /**
    * Sets up event listeners for incoming tasks and task hydration
    * Subscribes to task events from the task manager
    * @private
@@ -415,6 +432,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
     this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
     this.taskManager.on(TASK_EVENTS.TASK_MERGED, this.handleTaskMerged);
+    this.taskManager.on(
+      TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+      this.handleCampaignPreviewReservation
+    );
   }
 
   /**
@@ -543,6 +564,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
       this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+      this.taskManager.off(
+        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+        this.handleCampaignPreviewReservation
+      );
       this.taskManager.unregisterIncomingCallEvent();
 
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
@@ -693,52 +718,49 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       module: CC_FILE,
       method: METHODS.CONNECT_WEBSOCKET,
     });
+
     try {
-      return this.services.webSocketManager
-        .initWebSocket({
-          body: this.getConnectionConfig(),
-        })
-        .then(async (data: WelcomeEvent) => {
-          const agentId = data.agentId;
-          const orgId = this.$webex.credentials.getOrgId();
-          this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
-          LoggerProxy.log(`Agent config is fetched successfully`, {
+      const data = (await this.services.webSocketManager.initWebSocket({
+        body: this.getConnectionConfig(),
+      })) as WelcomeEvent;
+
+      const agentId = data.agentId;
+      const orgId = this.$webex.credentials.getOrgId();
+      this.agentConfig = await this.services.config.getAgentConfig(orgId, agentId);
+
+      LoggerProxy.log(`Agent config is fetched successfully`, {
+        module: CC_FILE,
+        method: METHODS.CONNECT_WEBSOCKET,
+      });
+
+      // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
+      this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
+      this.taskManager.setAgentId(this.agentConfig.agentId);
+      this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
+
+      if (
+        this.agentConfig.webRtcEnabled &&
+        this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
+      ) {
+        try {
+          await this.$webex.internal.mercury.connect();
+          LoggerProxy.log('Authentication: webex.internal.mercury.connect successful', {
             module: CC_FILE,
             method: METHODS.CONNECT_WEBSOCKET,
           });
-          // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
-          this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
-          this.taskManager.setAgentId(this.agentConfig.agentId);
-          this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
+        } catch (error) {
+          LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          });
+        }
+      }
 
-          if (
-            this.agentConfig.webRtcEnabled &&
-            this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
-          ) {
-            this.$webex.internal.mercury
-              .connect()
-              .then(() => {
-                LoggerProxy.log('Authentication: webex.internal.mercury.connect successful', {
-                  module: CC_FILE,
-                  method: METHODS.CONNECT_WEBSOCKET,
-                });
-              })
-              .catch((error) => {
-                LoggerProxy.error(`Error occurred during mercury.connect() ${error}`, {
-                  module: CC_FILE,
-                  method: METHODS.CONNECT_WEBSOCKET,
-                });
-              });
-          }
-          if (this.$config && this.$config.allowAutomatedRelogin) {
-            await this.silentRelogin();
-          }
+      if (this.$config && this.$config.allowAutomatedRelogin) {
+        await this.silentRelogin();
+      }
 
-          return this.agentConfig;
-        })
-        .catch((error) => {
-          throw error;
-        });
+      return this.agentConfig;
     } catch (error) {
       LoggerProxy.error(`Error during register: ${error}`, {
         module: CC_FILE,
@@ -788,7 +810,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
       ]);
 
-      if (data.loginOption === LoginOption.AGENT_DN && !isValidDialNumber(data.dialNumber)) {
+      const dialPlanEntries = this.agentConfig?.dialPlan?.dialPlanEntity ?? [];
+      if (
+        data.loginOption === LoginOption.AGENT_DN &&
+        !isValidDialNumber(data.dialNumber, dialPlanEntries)
+      ) {
         const error = new Error('INVALID_DIAL_NUMBER');
         // @ts-ignore - adding custom key to the error object
         error.details = {data: {reason: 'INVALID_DIAL_NUMBER'}} as Failure;
@@ -1513,6 +1539,79 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
+   * Accepts a campaign preview contact, initiating the outbound call.
+   *
+   * When a campaign manager reserves a contact for an agent, the agent receives an
+   * `AgentOfferCampaignReservation` event. The agent can then accept the preview contact
+   * to initiate the outbound call.
+   *
+   * @param {PreviewContactPayload} payload - The preview contact payload containing interactionId and campaignId (campaign name, not UUID).
+   * @returns {Promise<TaskResponse>} Promise resolving with agent contact on success.
+   * @throws {Error} If the operation fails (network error, customer unavailable, etc.)
+   *
+   * @example
+   * ```typescript
+   * webex.cc.on('task:campaignPreviewReservation', async (task) => {
+   *   const { interactionId } = task.data;
+   *   // campaignId is the campaign name (e.g. "MyCampaign"), not a UUID
+   *   const campaignId = task.data.interaction.callProcessingDetails.campaignId;
+   *
+   *   const result = await webex.cc.acceptPreviewContact({ interactionId, campaignId });
+   * });
+   * ```
+   */
+  public async acceptPreviewContact(payload: PreviewContactPayload): Promise<TaskResponse> {
+    LoggerProxy.info('Accepting campaign preview contact', {
+      module: CC_FILE,
+      method: METHODS.ACCEPT_PREVIEW_CONTACT,
+    });
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_SUCCESS,
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_FAILED,
+      ]);
+
+      const result = await this.services.dialer.acceptPreviewContact({data: payload});
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+          interactionId: payload.interactionId,
+          campaignId: payload.campaignId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.log('Campaign preview contact accepted successfully', {
+        module: CC_FILE,
+        method: METHODS.ACCEPT_PREVIEW_CONTACT,
+        trackingId: result.trackingId,
+        interactionId: payload.interactionId,
+      });
+
+      return result;
+    } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          interactionId: payload.interactionId,
+          campaignId: payload.campaignId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+      const {error: detailedError} = getErrorDetails(
+        error,
+        METHODS.ACCEPT_PREVIEW_CONTACT,
+        CC_FILE
+      );
+      throw detailedError;
+    }
+  }
+
+  /**
    * Fetches outdial ANI (Automatic Number Identification) entries for an outdial ANI ID.
    *
    * This method retrieves the list of phone numbers that can be used as caller ID when making
@@ -1659,6 +1758,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   /**
    * Updates the agent device type and login configuration.
    * Use this method to change how an agent connects to the contact center system (e.g., switching from browser-based calling to a desk phone extension).
+   * Change to any field of the profile is allowed;
    *
    * @param {AgentDeviceUpdate} data Configuration containing:
    *   - loginOption: New device type ('BROWSER', 'EXTENSION', 'AGENT_DN')
@@ -1698,29 +1798,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     });
 
     try {
-      // Only block if both loginOption AND teamId remain unchanged
-      if (
-        this.webCallingService?.loginOption === data.loginOption &&
-        data.teamId === this.agentConfig.currentTeamId
-      ) {
-        const message =
-          'Will not proceed with device update as new Device type is same as current device type and teamId is same as current teamId';
-        const err = new Error(message) as GenericError;
-        err.details = {
-          type: 'Identical Device Change Failure',
-          orgId: this.$webex.credentials.getOrgId(),
-          trackingId,
-          data: {
-            agentId: this.agentConfig.agentId,
-            reasonCode: 'R002',
-            reason: message,
-          },
-        };
-        throw err;
-      }
-
       await this.stationLogout({
-        logoutReason: 'User requested agent device change',
+        logoutReason: 'User requested agent profile update',
       });
 
       const loginPayload: AgentLogin = {

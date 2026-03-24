@@ -249,6 +249,14 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
         });
         const call = this.getCall(correlationId);
 
+        if (mobiusEvent.data.callerId) {
+          log.info('Processing Caller-Id data', {
+            file: CALL_MANAGER_FILE,
+            method: METHODS.DEQUEUE_WS_EVENTS,
+          });
+          call.startCallerIdResolution(mobiusEvent.data.callerId);
+        }
+
         call.sendCallStateMachineEvt({type: 'E_RECV_CALL_PROGRESS', data: mobiusEvent.data});
         break;
       }

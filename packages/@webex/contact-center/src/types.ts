@@ -295,6 +295,8 @@ interface IWebexInternal {
     get: (service: string) => string;
     /** Wait for service catalog to be loaded */
     waitForCatalog: (service: string) => Promise<void>;
+    /** Check if current environment is INT (integration) */
+    isIntegrationEnvironment: () => boolean;
     /** Host catalog for service discovery */
     _hostCatalog: Record<string, ServiceHost[]>;
     /** Service URLs cache */
@@ -539,7 +541,8 @@ export type RequestBody =
   | Contact.ConsultTransferPayLoad
   | Contact.cancelCtq
   | Contact.WrapupPayLoad
-  | Contact.DialerPayload;
+  | Contact.DialerPayload
+  | Contact.PreviewContactPayload;
 
 /**
  * Represents the options to fetch buddy agents for the logged in agent.

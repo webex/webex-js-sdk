@@ -129,6 +129,7 @@ describe('webex.cc', () => {
 
       dialer: {
         startOutdial: jest.fn(),
+        acceptPreviewContact: jest.fn(),
       },
     };
 
@@ -1850,7 +1851,7 @@ describe('webex.cc', () => {
       );
 
       expect(webex.cc.stationLogout).toHaveBeenCalledWith({
-        logoutReason: 'User requested agent device change',
+        logoutReason: 'User requested agent profile update',
       });
       expect(webex.cc.stationLogin).toHaveBeenCalledWith({
         teamId: 'teamId',
@@ -1934,24 +1935,26 @@ describe('webex.cc', () => {
       });
     });
 
-    it('should throw with detailed error when loginOption equals current device type', async () => {
-      webex.cc.webCallingService.loginOption = LoginOption.BROWSER;
+    it('should allow update when loginOption and teamId are unchanged (e.g. dialNumber or profile refresh)', async () => {
+      webex.cc.webCallingService.loginOption = LoginOption.AGENT_DN;
       const data = {
         teamId: 'teamId',
-        loginOption: LoginOption.BROWSER,
-        dialNumber: '',
+        loginOption: LoginOption.AGENT_DN,
+        dialNumber: '1234',
       };
-      const expectedMessage =
-        'Will not proceed with device update as new Device type is same as current device type and teamId is same as current teamId';
+      const logoutSpy = jest.spyOn(webex.cc, 'stationLogout').mockResolvedValue({});
+      const loginSpy = jest.spyOn(webex.cc, 'stationLogin').mockResolvedValue({
+        type: 'AgentDeviceTypeUpdateSuccess',
+      } as any);
 
-      await expect(webex.cc.updateAgentProfile(data)).rejects.toMatchObject({
-        message: expectedMessage,
-        details: expect.objectContaining({
-          data: expect.objectContaining({
-            agentId: webex.cc.agentConfig.agentId,
-            reason: expectedMessage,
-          }),
-        }),
+      await expect(webex.cc.updateAgentProfile(data)).resolves.toBeDefined();
+      expect(logoutSpy).toHaveBeenCalledWith({
+        logoutReason: 'User requested agent profile update',
+      });
+      expect(loginSpy).toHaveBeenCalledWith({
+        teamId: data.teamId,
+        loginOption: data.loginOption,
+        dialNumber: data.dialNumber,
       });
     });
 
@@ -2104,7 +2107,9 @@ describe('webex.cc', () => {
       const detailedError = new Error('Detailed service error');
       getErrorDetailsSpy.mockReturnValue({error: detailedError});
 
-      await expect(webex.cc.getOutdialAniEntries(mockParams)).rejects.toThrow('Detailed service error');
+      await expect(webex.cc.getOutdialAniEntries(mockParams)).rejects.toThrow(
+        'Detailed service error'
+      );
 
       // Verify failure metrics are tracked
       expect(mockMetricsManager.trackEvent).toHaveBeenCalledWith(
@@ -2128,11 +2133,7 @@ describe('webex.cc', () => {
       );
 
       // Verify getErrorDetails was called
-      expect(getErrorDetailsSpy).toHaveBeenCalledWith(
-        mockError,
-        'getOutdialAniEntries',
-        CC_FILE
-      );
+      expect(getErrorDetailsSpy).toHaveBeenCalledWith(mockError, 'getOutdialAniEntries', CC_FILE);
     });
 
     it('should throw error when orgId is not found', async () => {
@@ -2178,6 +2179,70 @@ describe('webex.cc', () => {
         },
         ['behavioral', 'business', 'operational']
       );
+    });
+  });
+
+  describe('acceptPreviewContact', () => {
+    const previewPayload = {
+      interactionId: 'interaction-123',
+      campaignId: 'campaign-456',
+    };
+
+    it('should accept preview contact successfully', async () => {
+      const mockResponse = {trackingId: 'track-123'} as AgentContact;
+
+      const acceptPreviewContactMock = jest
+        .spyOn(webex.cc.services.dialer, 'acceptPreviewContact')
+        .mockResolvedValue(mockResponse);
+
+      const result = await webex.cc.acceptPreviewContact(previewPayload);
+
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Accepting campaign preview contact', {
+        module: CC_FILE,
+        method: 'acceptPreviewContact',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        'Campaign preview contact accepted successfully',
+        {
+          module: CC_FILE,
+          method: 'acceptPreviewContact',
+          trackingId: 'track-123',
+          interactionId: previewPayload.interactionId,
+        }
+      );
+
+      expect(acceptPreviewContactMock).toHaveBeenCalledWith({data: previewPayload});
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should handle error during acceptPreviewContact', async () => {
+      getErrorDetailsSpy.mockRestore();
+      getErrorDetailsSpy = jest.spyOn(Utils, 'getErrorDetails');
+
+      const error = {
+        details: {
+          trackingId: '1234',
+          data: {
+            reason: 'Error while performing acceptPreviewContact',
+          },
+        },
+      };
+
+      jest.spyOn(webex.cc.services.dialer, 'acceptPreviewContact').mockRejectedValue(error);
+
+      await expect(webex.cc.acceptPreviewContact(previewPayload)).rejects.toThrow(
+        error.details.data.reason
+      );
+
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Accepting campaign preview contact', {
+        module: CC_FILE,
+        method: 'acceptPreviewContact',
+      });
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `acceptPreviewContact failed with reason: ${error.details.data.reason}`,
+        {module: CC_FILE, method: 'acceptPreviewContact', trackingId: error.details.trackingId}
+      );
+      expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'acceptPreviewContact', CC_FILE);
     });
   });
 });

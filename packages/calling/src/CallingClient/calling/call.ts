@@ -6,7 +6,7 @@ import {
 } from '@webex/internal-media-core';
 import {createMachine, interpret} from 'xstate';
 import {v4 as uuid} from 'uuid';
-import {EffectEvent, TrackEffect} from '@webex/web-media-effects';
+import {EffectEvent, TrackEffect} from '@webex/media-helpers';
 import {RtcMetrics} from '@webex/internal-plugin-metrics';
 import {ERROR_LAYER, ERROR_TYPE, ErrorContext} from '../../Errors/types';
 import {
@@ -1199,6 +1199,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       });
       this.startCallerIdResolution(data.callerId);
     }
+
     this.emit(CALL_EVENT_KEYS.PROGRESS, this.correlationId);
   }
 
@@ -1427,7 +1428,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.mediaConnection.close();
       log.info('Closing media channel', {
         file: CALL_FILE,
-        method: METHODS.HANDLE_OUTGOING_CALL_DISCONNECT,
+        method: METHODS.HANDLE_INCOMING_CALL_DISCONNECT,
       });
     }
 
@@ -1566,6 +1567,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       file: CALL_FILE,
       method: 'scheduleCallKeepaliveInterval',
     };
+
+    clearInterval(this.sessionTimer);
 
     this.sessionTimer = setInterval(async () => {
       try {
@@ -1905,6 +1908,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_ROAP_OFFER,
       });
+
       this.mediaConnection.initiateOffer();
 
       return;
@@ -1920,7 +1924,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         method: METHODS.HANDLE_OUTGOING_ROAP_OFFER,
       });
     } catch (err) {
-      log.warn('Failed to process MediaOk request', {
+      log.warn('Failed to send MediaOffer request', {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_ROAP_OFFER,
       });
@@ -2790,6 +2794,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     if (effect) {
       effect.on(EffectEvent.Enabled, this.onEffectEnabled);
       effect.on(EffectEvent.Disabled, this.onEffectDisabled);
+
       if (effect.isEnabled) {
         this.onEffectEnabled();
       }

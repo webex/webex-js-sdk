@@ -179,6 +179,16 @@ export const isSdpOfferCreationError = (rawError: any) => {
   return false;
 };
 
+export const isWebrtcApiNotAvailableError = (
+  rawError: {code: number; message: string; name: string} | unknown
+) => {
+  if ((rawError as {name: string}).name === ERROR_DESCRIPTIONS.WEBRTC_API_NOT_AVAILABLE) {
+    return true;
+  }
+
+  return false;
+};
+
 /**
  * Checks if the given error is a browser media error by its name.
  * Returns true if the error name matches any known browser media error name in the mapping.
@@ -351,7 +361,6 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
       joinTimes.totalMediaJMT = cdl.getTotalMediaJMT();
       joinTimes.interstitialToMediaOKJMT = cdl.getInterstitialToMediaOKJMT();
       joinTimes.callInitMediaEngineReady = cdl.getCallInitMediaEngineReady();
-      joinTimes.stayLobbyTime = cdl.getStayLobbyTime();
       joinTimes.totalMediaJMTWithUserDelay = cdl.getTotalMediaJMTWithUserDelay();
       joinTimes.totalJMTWithUserDelay = cdl.getTotalJMTWithUserDelay();
       break;
@@ -359,6 +368,11 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
     case 'client.media.tx.start':
       audioSetupDelay.joinRespTxStart = cdl.getAudioJoinRespTxStart();
       videoSetupDelay.joinRespTxStart = cdl.getVideoJoinRespTxStart();
+      break;
+
+    case 'client.lobby.exited':
+      joinTimes.stayLobbyTime = cdl.getStayLobbyTime();
+      break;
   }
 
   if (!isEmpty(joinTimes)) {

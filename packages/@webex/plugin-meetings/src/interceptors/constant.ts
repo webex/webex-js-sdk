@@ -1,0 +1,6 @@
+const DATA_CHANNEL_AUTH_HEADER = 'Data-Channel-Auth-Token';
+const MAX_RETRY = 1;
+const RETRY_INTERVAL = 2000;
+const RETRY_KEY = '_dcRetryKey';
+
+export {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY, RETRY_INTERVAL, RETRY_KEY};

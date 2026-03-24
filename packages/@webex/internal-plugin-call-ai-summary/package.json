@@ -1,0 +1,46 @@
+{
+  "name": "@webex/internal-plugin-call-ai-summary",
+  "description": "A Webex internal plugin for AI-generated call summary retrieval",
+  "license": "MIT",
+  "author": "Webex JS SDK Team",
+  "main": "dist/index.js",
+  "devMain": "src/index.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/webex/webex-js-sdk.git",
+    "directory": "packages/@webex/internal-plugin-call-ai-summary"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "browserify": {
+    "transform": [
+      "babelify",
+      "envify"
+    ]
+  },
+  "dependencies": {
+    "@webex/internal-plugin-encryption": "workspace:*",
+    "@webex/webex-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.17.10",
+    "@webex/babel-config-legacy": "workspace:*",
+    "@webex/eslint-config-legacy": "workspace:*",
+    "@webex/jest-config-legacy": "workspace:*",
+    "@webex/legacy-tools": "workspace:*",
+    "@webex/test-helper-chai": "workspace:*",
+    "@webex/test-helper-mock-webex": "workspace:*",
+    "eslint": "^8.24.0",
+    "prettier": "^2.7.1",
+    "sinon": "^9.2.4"
+  },
+  "scripts": {
+    "build": "yarn build:src",
+    "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps",
+    "deploy:npm": "yarn npm publish",
+    "test": "yarn test:style && yarn test:unit",
+    "test:style": "eslint ./src/**/*.*",
+    "test:unit": "webex-legacy-tools test --unit --runner jest"
+  }
+}

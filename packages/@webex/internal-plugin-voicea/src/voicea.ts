@@ -6,6 +6,7 @@ import {
   AIBRIDGE_RELAY_TYPES,
   TRANSCRIPTION_TYPE,
   VOICEA,
+  LLM_PRACTICE_SESSION,
   ANNOUNCE_STATUS,
   TURN_ON_CAPTION_STATUS,
   TOGGLE_MANUAL_CAPTION_STATUS,
@@ -35,7 +36,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private hasSubscribedToEvents = false;
 
-  private vmcDeviceId?: string;
+  private captionServiceId?: string;
 
   private announceStatus: string;
 
@@ -47,6 +48,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private spokenLanguages: string[] = [];
 
+  private currentCaptionLanguage?: string;
+
   /**
    * @param {Object} e
    * @returns {undefined}
@@ -56,7 +59,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     this.seqNum = e.sequenceNumber + 1;
     switch (e.data.relayType) {
       case AIBRIDGE_RELAY_TYPES.VOICEA.ANNOUNCEMENT:
-        this.vmcDeviceId = e.headers.from;
+        this.onCaptionServiceIdUpdate(e.headers.from);
         this.announceStatus = ANNOUNCE_STATUS.JOINED;
         this.processAnnouncementMessage(e.data.voiceaPayload);
         break;
@@ -87,6 +90,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     if (!this.hasSubscribedToEvents) {
       // @ts-ignore
       this.webex.internal.llm.on('event:relay.event', this.eventProcessor);
+      // @ts-ignore
+      this.webex.internal.llm.on(`event:relay.event:${LLM_PRACTICE_SESSION}`, this.eventProcessor);
       this.hasSubscribedToEvents = true;
     }
   }
@@ -97,14 +102,17 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   public deregisterEvents() {
     this.areCaptionsEnabled = false;
-    this.vmcDeviceId = undefined;
+    this.captionServiceId = undefined;
     // @ts-ignore
     this.webex.internal.llm.off('event:relay.event', this.eventProcessor);
+    // @ts-ignore
+    this.webex.internal.llm.off(`event:relay.event:${LLM_PRACTICE_SESSION}`, this.eventProcessor);
     this.hasSubscribedToEvents = false;
     this.announceStatus = ANNOUNCE_STATUS.IDLE;
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
     this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
     this.currentSpokenLanguage = undefined;
+    this.currentCaptionLanguage = undefined;
   }
 
   /**
@@ -115,11 +123,12 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     super(...args);
     this.seqNum = 1;
     this.areCaptionsEnabled = false;
-    this.vmcDeviceId = undefined;
+    this.captionServiceId = undefined;
     this.announceStatus = ANNOUNCE_STATUS.IDLE;
     this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
     this.toggleManualCaptionStatus = TOGGLE_MANUAL_CAPTION_STATUS.IDLE;
     this.currentSpokenLanguage = DEFAULT_SPOKEN_LANGUAGE;
+    this.currentCaptionLanguage = undefined;
   }
 
   /**
@@ -254,21 +263,49 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   };
 
   /**
+   * Indicates whether the default or practice-session LLM connection is active.
+   * @returns {boolean}
+   */
+  private isLLMConnected = (): boolean =>
+    // @ts-ignore
+    this.webex.internal.llm.isConnected() ||
+    // @ts-ignore
+    this.webex.internal.llm.isConnected(LLM_PRACTICE_SESSION);
+
+  /**
+   * Resolves the active LLM publish transport, preferring the practice-session
+   * connection only when that session is fully connected.
+   * @returns {Object}
+   */
+  private getPublishTransport = () => {
+    // @ts-ignore
+    const {llm} = this.webex.internal;
+    const isPracticeSessionConnected = llm.isConnected(LLM_PRACTICE_SESSION);
+
+    return {
+      socket: (isPracticeSessionConnected && llm.getSocket(LLM_PRACTICE_SESSION)) || llm.socket,
+      binding:
+        (isPracticeSessionConnected && llm.getBinding(LLM_PRACTICE_SESSION)) || llm.getBinding(),
+    };
+  };
+
+  /**
    * Sends Announcement to add voicea to the meeting
    * @returns {void}
    */
   private sendAnnouncement = (): void => {
     this.announceStatus = ANNOUNCE_STATUS.JOINING;
     this.listenToEvents();
-    // @ts-ignore
-    this.webex.internal.llm.socket.send({
+    const {socket, binding} = this.getPublishTransport();
+    socket.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {
         // @ts-ignore
-        route: this.webex.internal.llm.getBinding(),
+        route: binding,
       },
-      headers: {},
+      // If captionServiceId exists, send it as the 'to' header; otherwise keep headers empty.
+      headers: this.captionServiceId ? {to: this.captionServiceId} : {},
       data: {
         clientPayload: {
           version: 'v2',
@@ -313,18 +350,20 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {void}
    */
   public requestLanguage = (languageCode: string): void => {
-    // @ts-ignore
-    if (!this.webex.internal.llm.isConnected()) return;
-    // @ts-ignore
-    this.webex.internal.llm.socket.send({
+    if (!this.isLLMConnected()) {
+      return;
+    }
+
+    const {socket, binding} = this.getPublishTransport();
+    socket.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {
         // @ts-ignore
-        route: this.webex.internal.llm.getBinding(),
+        route: binding,
       },
       headers: {
-        to: this.vmcDeviceId,
+        to: this.captionServiceId,
       },
       data: {
         clientPayload: {
@@ -336,6 +375,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       },
       trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
     });
+    this.currentCaptionLanguage = languageCode;
+
     this.seqNum += 1;
   };
 
@@ -353,16 +394,18 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     csis: number[],
     isFinal: boolean
   ): void => {
-    // @ts-ignore
-    if (!this.webex.internal.llm.isConnected()) return;
+    if (!this.isLLMConnected()) {
+      return;
+    }
 
-    // @ts-ignore
-    this.webex.internal.llm.socket.send({
+    const {socket, binding} = this.getPublishTransport();
+
+    socket?.send({
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {
         // @ts-ignore
-        route: this.webex.internal.llm.getBinding(),
+        route: binding,
       },
       headers: {},
       data: {
@@ -433,13 +476,20 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     [ANNOUNCE_STATUS.JOINING, ANNOUNCE_STATUS.JOINED].includes(this.announceStatus);
 
   /**
+   * is announce processed
+   * @returns {boolean}
+   */
+  private isAnnounceProcessed = () => this.announceStatus === ANNOUNCE_STATUS.JOINED;
+
+  /**
    * announce to voicea data chanel
    * @returns {void}
    */
   public announce = () => {
-    if (this.isAnnounceProcessing()) return;
-    // @ts-ignore
-    if (!this.webex.internal.llm.isConnected()) {
+    if (this.isAnnounceProcessed()) {
+      return;
+    }
+    if (!this.isLLMConnected()) {
       throw new Error('voicea can not announce before llm connected');
     }
     this.sendAnnouncement();
@@ -459,8 +509,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   public turnOnCaptions = async (spokenLanguage?): undefined | Promise<void> => {
     if (this.captionStatus === TURN_ON_CAPTION_STATUS.SENDING) return undefined;
-    // @ts-ignore
-    if (!this.webex.internal.llm.isConnected()) {
+
+    if (!this.isLLMConnected()) {
       throw new Error('can not turn on captions before llm connected');
     }
 
@@ -539,6 +589,24 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     // @ts-ignore
     this.trigger(EVENT_TRIGGERS.SPOKEN_LANGUAGE_UPDATE, {languageCode, meetingId});
     this.currentSpokenLanguage = languageCode;
+  };
+
+  /**
+   * In meeting Spoken Language changed event
+   * @param {string} serviceId
+   * @returns {void}
+   */
+  public onCaptionServiceIdUpdate = (serviceId: string): void => {
+    if (!serviceId) {
+      return;
+    }
+    if (this.captionServiceId !== serviceId) {
+      this.captionServiceId = serviceId;
+      // if service id value has changed and the translation language has been set, client needs to resend the translator language message to the LLM.
+      if (this.currentCaptionLanguage) {
+        this.requestLanguage(this.currentCaptionLanguage);
+      }
+    }
   };
 
   /**

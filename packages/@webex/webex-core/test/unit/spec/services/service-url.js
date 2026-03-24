@@ -151,6 +151,116 @@ describe('webex-core', () => {
 
         assert.isTrue(homeClusterUrls.every((host) => !host.failed));
       });
+
+      describe('when hosts have negative priorities', () => {
+        it('should return defaultUrl when all hosts have negative priorities', () => {
+          const negativeServiceUrl = new ServiceUrl({
+            defaultUrl: 'https://default.example.com/api/v1',
+            hosts: [
+              {
+                host: 'example-host-neg1.com',
+                priority: -1,
+                ttl: -1,
+                id: '1',
+                homeCluster: true,
+              },
+              {
+                host: 'example-host-neg2.com',
+                priority: -1,
+                ttl: -1,
+                id: '2',
+                homeCluster: true,
+              },
+            ],
+            name: 'negative-priority-test',
+          });
+
+          assert.equal(
+            negativeServiceUrl._getPriorityHostUrl(),
+            'https://default.example.com/api/v1'
+          );
+        });
+
+        it('should return defaultUrl when all hosts have zero priority', () => {
+          const zeroServiceUrl = new ServiceUrl({
+            defaultUrl: 'https://default.example.com/api/v1',
+            hosts: [
+              {
+                host: 'example-host-zero.com',
+                priority: 0,
+                ttl: -1,
+                id: '1',
+                homeCluster: true,
+              },
+            ],
+            name: 'zero-priority-test',
+          });
+
+          assert.equal(zeroServiceUrl._getPriorityHostUrl(), 'https://default.example.com/api/v1');
+        });
+
+        it('should ignore hosts with negative priorities and return valid host', () => {
+          const mixedServiceUrl = new ServiceUrl({
+            defaultUrl: 'https://default.example.com/api/v1',
+            hosts: [
+              {
+                host: 'example-host-neg.com',
+                priority: -1,
+                ttl: -1,
+                id: '1',
+                homeCluster: true,
+              },
+              {
+                host: 'example-host-valid.com',
+                priority: 5,
+                ttl: -1,
+                id: '2',
+                homeCluster: true,
+              },
+            ],
+            name: 'mixed-priority-test',
+          });
+
+          const result = mixedServiceUrl._getPriorityHostUrl();
+
+          assert.include(result, 'example-host-valid.com');
+          assert.notInclude(result, 'example-host-neg.com');
+        });
+
+        it('should select lowest positive priority host when mixed with negative priorities', () => {
+          const mixedServiceUrl = new ServiceUrl({
+            defaultUrl: 'https://default.example.com/api/v1',
+            hosts: [
+              {
+                host: 'example-host-neg.com',
+                priority: -1,
+                ttl: -1,
+                id: '1',
+                homeCluster: true,
+              },
+              {
+                host: 'example-host-p5.com',
+                priority: 5,
+                ttl: -1,
+                id: '2',
+                homeCluster: true,
+              },
+              {
+                host: 'example-host-p2.com',
+                priority: 2,
+                ttl: -1,
+                id: '3',
+                homeCluster: true,
+              },
+            ],
+            name: 'mixed-priority-test',
+          });
+
+          const result = mixedServiceUrl._getPriorityHostUrl();
+
+          assert.include(result, 'example-host-p2.com');
+        });
+      });
     });
 
     describe('#failHost()', () => {
