@@ -59,10 +59,6 @@ class Metrics {
    * @returns {void}
    */
   sendBehavioralMetric(metricName: string, metricFields: object = {}, metricTags: object = {}) {
-    if (!this.webex?.internal?.metrics) {
-      return;
-    }
-
     this.webex.internal.metrics.submitClientMetrics(metricName, {
       type: this.webex.config.metrics.type,
       fields: metricFields,
