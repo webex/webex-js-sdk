@@ -348,23 +348,68 @@ describe('plugin-meetings', () => {
         );
       });
 
-      it('waits for default session to connect before connecting practice session', async () => {
+      it('defers connect when default session is not yet connected', async () => {
         // Default session is not connected initially
         webex.internal.llm.isConnected = sinon.stub().returns(false);
 
-        // When 'online' listener is registered, fire it asynchronously to simulate default session connecting
-        webex.internal.llm.on = sinon.stub().callsFake((eventName, callback) => {
-          if (eventName === 'online') {
-            Promise.resolve().then(() => callback());
-          }
-        });
-
         const result = await webinar.updatePSDataChannel();
 
+        // Should return undefined immediately (deferred)
+        assert.isUndefined(result);
+        // Should register an 'online' listener but NOT call registerAndConnect yet
         assert.calledWith(webex.internal.llm.on, 'online', sinon.match.func);
+        assert.notCalled(webex.internal.llm.registerAndConnect);
+      });
+
+      it('re-invokes updatePSDataChannel when default session comes online', async () => {
+        // Default session is not connected initially
+        webex.internal.llm.isConnected = sinon.stub().returns(false);
+
+        const updatePSDataChannelSpy = sinon.spy(webinar, 'updatePSDataChannel');
+
+        // First call defers
+        await webinar.updatePSDataChannel();
+
+        // Capture the 'online' listener
+        const onlineCall = webex.internal.llm.on.args.find(([event]) => event === 'online');
+        assert.isDefined(onlineCall, 'should have registered an online listener');
+
+        // Now simulate default session coming online
+        webex.internal.llm.isConnected = sinon.stub().callsFake((sessionId) => {
+          return sessionId !== LLM_PRACTICE_SESSION;
+        });
+
+        // Fire the captured listener
+        onlineCall[1]();
+
+        // The listener should have removed itself and re-called updatePSDataChannel
         assert.calledWith(webex.internal.llm.off, 'online', sinon.match.func);
-        assert.calledOnce(webex.internal.llm.registerAndConnect);
-        assert.equal(result, 'REGISTER_AND_CONNECT_RESULT');
+        assert.equal(updatePSDataChannelSpy.callCount, 2);
+      });
+
+      it('does not reconnect with stale data if demoted before default session comes online', async () => {
+        // Default session is not connected initially
+        webex.internal.llm.isConnected = sinon.stub().returns(false);
+
+        await webinar.updatePSDataChannel();
+
+        // Capture the 'online' listener
+        const onlineCall = webex.internal.llm.on.args.find(([event]) => event === 'online');
+        assert.isDefined(onlineCall);
+
+        // Simulate demotion while waiting
+        webinar.selfIsPanelist = false;
+
+        // Now default session comes online
+        webex.internal.llm.isConnected = sinon.stub().callsFake((sessionId) => {
+          return sessionId !== LLM_PRACTICE_SESSION;
+        });
+
+        // Fire the listener — re-invokes updatePSDataChannel which will see isPracticeSession = false
+        onlineCall[1]();
+
+        // Should NOT have called registerAndConnect since the user is no longer eligible
+        assert.notCalled(webex.internal.llm.registerAndConnect);
       });
 
       it('proceeds immediately when default session is already connected', async () => {
