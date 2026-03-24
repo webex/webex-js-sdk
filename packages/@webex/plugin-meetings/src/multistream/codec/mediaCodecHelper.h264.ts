@@ -41,20 +41,25 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
    * @returns {number} The total macroblocks requested
    */
   degradeMediaRequest(mr: MediaRequest, resolution: SupportedResolution): number {
-    if (mr.codecInfo?.codec !== 'h264') {
+    const codecInfos = mr.codecInfos.filter((codecInfo) => codecInfo.codec === 'h264');
+    if (codecInfos.length === 0) {
       return 0;
     }
 
-    mr.codecInfo.maxFs = Math.min(
+    const maxFs = Math.min(
       mr.preferredMaxFs || CODEC_DEFAULTS.h264.maxFs,
-      mr.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs,
+      Math.min(...codecInfos.map((codecInfo) => codecInfo.maxFs)),
       H264_CODEC_PARAMETERS[resolution].maxFs
     );
+
+    codecInfos.forEach((codecInfo) => {
+      codecInfo.maxFs = maxFs;
+    });
 
     // we only consider sources with "live" state
     const slotsWithLiveSource = mr.receiveSlots.filter((rs) => rs.sourceState === 'live');
 
-    return mr.codecInfo.maxFs * slotsWithLiveSource.length;
+    return maxFs * slotsWithLiveSource.length;
   }
 
   /**
@@ -64,11 +69,14 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
    * @returns {number} The max payload bits per second
    */
   getMaxPayloadBitsPerSecond(mediaRequest: MediaRequest): number {
-    if (mediaRequest.codecInfo?.codec !== 'h264') {
+    const codecInfos = mediaRequest.codecInfos.filter((codecInfo) => codecInfo.codec === 'h264');
+    if (codecInfos.length === 0) {
       return 0;
     }
 
-    return getRecommendedMaxBitrateForFrameSize(mediaRequest.codecInfo.maxFs);
+    return getRecommendedMaxBitrateForFrameSize(
+      Math.min(...codecInfos.map((codecInfo) => codecInfo.maxFs))
+    );
   }
 
   /**
@@ -79,14 +87,16 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
    */
   getWCMECodecInfos(mr: MediaRequest): WcmeCodecInfo[] {
     return [
-      WcmeCodecInfo.fromH264(
-        0x80, // TODO: Fix this constant
-        new H264Codec(
-          mr.codecInfo?.maxFs || this.getSizeHintMaxFs(mr.sizeHint || {}),
-          mr.codecInfo?.maxFps || CODEC_DEFAULTS.h264.maxFps,
-          mr.codecInfo?.maxMbps || CODEC_DEFAULTS.h264.maxMbps,
-          mr.codecInfo?.maxWidth,
-          mr.codecInfo?.maxHeight
+      ...mr.codecInfos.map((codecInfo) =>
+        WcmeCodecInfo.fromH264(
+          0x80, // TODO: Fix this constant
+          new H264Codec(
+            codecInfo.maxFs,
+            codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
+            codecInfo.maxMbps || CODEC_DEFAULTS.h264.maxMbps,
+            codecInfo.maxWidth,
+            codecInfo.maxHeight
+          )
         )
       ),
     ];

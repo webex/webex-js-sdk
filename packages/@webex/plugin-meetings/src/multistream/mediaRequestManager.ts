@@ -12,7 +12,7 @@ import {cloneDeepWith, debounce, isEmpty} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {ReceiveSlotEvents} from './receiveSlot';
-import {MediaRequest, MediaRequestId, RemoteVideoResolution, SizeHint} from './types';
+import {MediaRequest, MediaRequestId} from './types';
 import MediaCodecHelper from './codec/mediaCodecHelper';
 
 const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
@@ -81,8 +81,11 @@ export default class MediaRequestManager {
       let totalMacroblocksRequested = 0;
 
       Object.values(clientRequests).forEach((mr) => {
-        const mediaCodecHelper = MediaCodecHelper.get(mr.codecInfo?.codec);
-        totalMacroblocksRequested += mediaCodecHelper.degradeMediaRequest(mr, resolution);
+        totalMacroblocksRequested += Math.max(
+          ...mr.codecInfos.map((codecInfo) =>
+            MediaCodecHelper.get(codecInfo.codec).degradeMediaRequest(mr, resolution)
+          )
+        );
       });
 
       if (totalMacroblocksRequested <= this.degradationPreferences.maxMacroblocksLimit) {
@@ -146,10 +149,12 @@ export default class MediaRequestManager {
       return RecommendedOpusBitrates.FB_MONO_MUSIC;
     }
 
-    if (mediaRequest.codecInfo?.codec) {
-      const mediaCodecHelper = MediaCodecHelper.get(mediaRequest.codecInfo.codec);
+    if (mediaRequest.codecInfos) {
+      const maxPbps = mediaRequest.codecInfos.map((codecInfo) =>
+        MediaCodecHelper.get(codecInfo.codec).getMaxPayloadBitsPerSecond(mediaRequest)
+      );
 
-      return mediaCodecHelper.getMaxPayloadBitsPerSecond(mediaRequest);
+      return Math.max(...maxPbps);
     }
 
     LoggerProxy.logger.warn(
@@ -286,7 +291,9 @@ export default class MediaRequestManager {
 
       const receiveSlots = mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot);
       const maxPayloadBitsPerSecond = this.getMaxPayloadBitsPerSecond(mr);
-      const codecInfos = [...MediaCodecHelper.H264.getWCMECodecInfos(mr)];
+      const codecInfos = mr.codecInfos.flatMap((codecInfo) =>
+        MediaCodecHelper.get(codecInfo.codec).getWCMECodecInfos(mr)
+      );
 
       const streamRequest = new StreamRequest(
         policy,
@@ -301,11 +308,18 @@ export default class MediaRequestManager {
     this.sendMediaRequestsCallback(streamRequests);
   }
 
-  public addRequest(mediaRequest: Omit<MediaRequest, 'codecInfo'>, commit = true): MediaRequestId {
+  public addRequest(mediaRequest: Omit<MediaRequest, 'codecInfos'>, commit = true): MediaRequestId {
     // eslint-disable-next-line no-plusplus
     const newId = `${this.counter++}`;
 
-    this.clientRequests[newId] = mediaRequest;
+    this.clientRequests[newId] = {
+      ...mediaRequest,
+      codecInfos: [
+        MediaCodecHelper.H264.getCodecInfo({
+          sizeHint: mediaRequest.sizeHint,
+        }),
+      ],
+    };
 
     mediaRequest.handleMaxFs = ({maxFs}) => {
       mediaRequest.preferredMaxFs = maxFs;
