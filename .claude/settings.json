@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [".claude/hooks/check-ai-docs-drift.sh"]
+      }
+    ]
+  }
+}

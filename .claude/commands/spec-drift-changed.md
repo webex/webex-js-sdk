@@ -134,15 +134,17 @@ ai-docs folders checked: {list}
 After presenting the validation report (regardless of findings), create a verification marker so the pre-commit hook allows the commit:
 
 ```bash
-# Hash ALL staged contact-center files — must match the hook's hash logic exactly
+# Hash staged content (not just paths) — must match the hook's hash logic exactly
 CC_PKG="packages/@webex/contact-center"
-STAGED_CC=$(git diff --cached --name-only 2>/dev/null | grep "^${CC_PKG}/" | sort)
+STAGED_CC=$(git diff --cached --name-only 2>/dev/null | grep "^${CC_PKG}/")
 if [ -n "$STAGED_CC" ]; then
-  HASH=$(echo "$STAGED_CC" | shasum | cut -d' ' -f1)
+  HASH=$(git diff --cached -- "$CC_PKG" | (shasum 2>/dev/null || sha256sum) | cut -d' ' -f1)
   touch "/tmp/.spec-drift-verified-${HASH}"
   echo "Verification marker created: /tmp/.spec-drift-verified-${HASH}"
 fi
 ```
+
+> **Note:** The verification marker covers only currently **staged** content. If you modify and re-stage files after verification, the content hash changes and you will need to re-run `/spec-drift-changed`.
 
 Report to the user: "Verification marker created. The pre-commit hook will allow the next commit for these staged files."
 
@@ -150,7 +152,8 @@ Report to the user: "Verification marker created. The pre-commit hook will allow
 
 - Do NOT auto-fix anything — report findings only
 - Always read actual source code to verify — never assume
-- Use the Task tool with `subagent_type: "Explore"` for checker agents
+- Use the Agent tool with `subagent_type: "Explore"` for checker agents
 - Run agents in parallel when multiple folders are affected
-- Always create the verification marker at the end, even if there are findings (the developer decides whether to fix or commit as-is)
-- The marker hash MUST match the hook's hash computation — both hash ALL staged `packages/@webex/contact-center/` files sorted alphabetically
+- If an agent does not return within a reasonable time, note it as "Timed out — manual review needed" in the report and continue with available results
+- Always create the verification marker at the end, even if there are findings — this tool is **advisory**: the developer decides whether to fix or commit as-is
+- The marker hash MUST match the hook's hash computation — both use `git diff --cached` content (not just file paths)

@@ -14,7 +14,7 @@ Detect repo type and discover all ai-docs:
 
 For each ai-docs folder found, identify its corresponding source code directory (the parent directory of `ai-docs/`).
 
-Build an inventory like:
+Build an inventory (example — actual results will vary based on current branch):
 ```
 ai-docs folder                                          → source directory
 packages/@webex/contact-center/src/services/core/ai-docs/    → src/services/core/
@@ -27,7 +27,7 @@ packages/@webex/contact-center/playwright/ai-docs/           → playwright/
 
 ## Step 2: Spawn Checker Agents in Parallel
 
-Use the Task tool to spawn agents. **All agents run in parallel.**
+Use the Agent tool to spawn agents. **All agents run in parallel.**
 
 ### Per-Service Checker Agents (one per ai-docs folder)
 
@@ -187,7 +187,8 @@ Scanned: {N} ai-docs folders, {M} documents
 
 - Do NOT auto-fix anything — report findings only
 - Always read actual source code to verify — never assume
-- Use the Task tool with `subagent_type: "Explore"` for all checker agents
+- Use the Agent tool with `subagent_type: "Explore"` for all checker agents
 - Run all agents in parallel for speed
+- If an agent does not return within a reasonable time, note it as "Timed out — manual review needed" in the report and continue with available results
 - If an ai-docs folder has no corresponding source directory, flag it as a Category 1 (File Tree) finding
 - Count findings by severity in the summary table
