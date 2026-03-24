@@ -203,12 +203,9 @@ jobs:
                 changelogUrl.searchParams.set('stable_version', stableVersion);
               }
               const changelogPackage = packageVersions['webex'] ? 'webex' : primaryPackage;
-              if (changelogPackage && packageVersions[changelogPackage]) {
-                changelogUrl.searchParams.set('package', changelogPackage);
-                changelogUrl.searchParams.set('version', packageVersions[changelogPackage]);
-              } else {
-                changelogUrl.searchParams.set('commitMessage', `#${prNumber}`);
-              }
+              changelogUrl.searchParams.set('package', changelogPackage);
+              changelogUrl.searchParams.set('version', packageVersions[changelogPackage]);
+
               const releaseLine = version
                 ? `| **Released in:** [\`${version}\`](${repoUrl}/releases/tag/${version}) |`
                 : '';
