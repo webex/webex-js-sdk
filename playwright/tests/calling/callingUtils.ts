@@ -1,18 +1,17 @@
 import {Page, expect} from '@playwright/test';
 import {
-  BASE_URL,
   SAMPLE_APP_PATH,
   SELECTORS,
   AWAIT_TIMEOUT,
   SDK_INIT_TIMEOUT,
   REGISTRATION_TIMEOUT,
-} from '../constants';
+} from './constants';
 
 /**
  * Navigate to the calling sample app
  */
 export const navigateToCallingApp = async (page: Page): Promise<void> => {
-  await page.goto(`${BASE_URL}${SAMPLE_APP_PATH}`);
+  await page.goto(SAMPLE_APP_PATH);
   await page.waitForLoadState('domcontentloaded');
 };
 

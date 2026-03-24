@@ -1,4 +1,3 @@
-export const BASE_URL = process.env.PW_BASE_URL || 'https://localhost:8000';
 export const SAMPLE_APP_PATH = '/samples/calling/';
 
 // Timeouts
