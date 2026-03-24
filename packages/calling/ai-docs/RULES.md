@@ -11,35 +11,36 @@
 - **Explicit return types** on all public API methods
 - **No implicit `any`** in function parameters
 - All source files use `.ts` extension
-
----
-
-## Naming Conventions
-
-| Element | Convention | Examples |
-|---|---|---|
-| Classes | PascalCase | `CallingClient`, `CallHistory`, `Registration`, `CallManager` |
-| Interfaces | `I` prefix + PascalCase | `ICall`, `ILine`, `ICallingClient`, `IRegistration`, `ICallManager`, `ICallerId` |
-| Type aliases | PascalCase | `CallId`, `CorrelationId`, `MobiusDeviceId`, `DisplayInformation`, `WebexRequestPayload` |
-| Enums | PascalCase name, SCREAMING_SNAKE_CASE values | `CALL_EVENT_KEYS.ALERTING`, `ERROR_TYPE.CALL_ERROR`, `METRIC_EVENT.CALL` |
-| Constants | SCREAMING_SNAKE_CASE | `DISCOVERY_URL`, `DEFAULT_KEEPALIVE_INTERVAL`, `NETWORK_FLAP_TIMEOUT` |
-| Methods | camelCase | `getLines()`, `makeCall()`, `doHoldResume()`, `triggerRegistration()` |
-| Private fields | `private` keyword | `private webex: WebexSDK`, `private metricManager: IMetricManager` |
-| Event keys | SCREAMING_SNAKE_CASE in enum | `CALL_EVENT_KEYS.ESTABLISHED`, `LINE_EVENT_KEYS.INCOMING_CALL` |
+- All test files use `test.ts` extension
 
 ---
 
 ## File Naming
 
-| File Type | Convention | Examples |
-|---|---|---|
-| Main class | PascalCase | `CallingClient.ts`, `CallHistory.ts`, `Voicemail.ts` |
-| Sub-module class | camelCase | `call.ts`, `callManager.ts`, `register.ts` |
-| Type definitions | `types.ts` | `CallingClient/types.ts`, `common/types.ts` |
-| Constants | `constants.ts` | `CallingClient/constants.ts`, `common/constants.ts` |
-| Test files | `*.test.ts` (co-located) | `CallingClient.test.ts`, `call.test.ts` |
-| Test fixtures | `*Fixtures.ts` or `*fixtures.ts` | `callingClientFixtures.ts`, `registerFixtures.ts` |
-| Index files | `index.ts` | `Logger/index.ts`, `SDKConnector/index.ts` |
+| File Type        | Convention                       | Examples                                             |
+| ---------------- | -------------------------------- | ---------------------------------------------------- |
+| Main class       | PascalCase                       | `CallingClient.ts`, `CallHistory.ts`, `Voicemail.ts` |
+| Sub-module class | camelCase                        | `call.ts`, `callManager.ts`, `register.ts`           |
+| Type definitions | `types.ts`                       | `CallingClient/types.ts`, `common/types.ts`          |
+| Constants        | `constants.ts`                   | `CallingClient/constants.ts`, `common/constants.ts`  |
+| Test files       | `*.test.ts` (co-located)         | `CallingClient.test.ts`, `call.test.ts`              |
+| Test fixtures    | `*Fixtures.ts` or `*fixtures.ts` | `callingClientFixtures.ts`, `registerFixtures.ts`    |
+| Index files      | `index.ts`                       | `Logger/index.ts`, `SDKConnector/index.ts`           |
+
+---
+
+## Naming Conventions
+
+| Element        | Convention                                   | Examples                                                                                 |
+| -------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Classes        | PascalCase                                   | `CallingClient`, `CallHistory`, `Registration`, `CallManager`                            |
+| Interfaces     | `I` prefix + PascalCase                      | `ICall`, `ILine`, `ICallingClient`, `IRegistration`, `ICallManager`, `ICallerId`         |
+| Type aliases   | PascalCase                                   | `CallId`, `CorrelationId`, `MobiusDeviceId`, `DisplayInformation`, `WebexRequestPayload` |
+| Enums          | PascalCase name, SCREAMING_SNAKE_CASE values | `CALL_EVENT_KEYS.ALERTING`, `ERROR_TYPE.CALL_ERROR`, `METRIC_EVENT.CALL`                 |
+| Constants      | SCREAMING_SNAKE_CASE                         | `DISCOVERY_URL`, `DEFAULT_KEEPALIVE_INTERVAL`, `NETWORK_FLAP_TIMEOUT`                    |
+| Methods        | camelCase                                    | `getLines()`, `makeCall()`, `doHoldResume()`, `triggerRegistration()`                    |
+| Private fields | `private` keyword                            | `private webex: WebexSDK`, `private metricManager: IMetricManager`                       |
+| Event keys     | SCREAMING_SNAKE_CASE in enum                 | `CALL_EVENT_KEYS.ESTABLISHED`, `LINE_EVENT_KEYS.INCOMING_CALL`                           |
 
 ---
 
@@ -52,34 +53,47 @@ Use the Logger module (`src/Logger/index.ts`), never `console.log`:
 ```typescript
 import log from '../Logger';
 
-// Always provide file and method context
-log.info('Registration successful', { file: REGISTRATION_FILE, method: 'triggerRegistration' });
-log.error('Registration failed', { file: REGISTRATION_FILE, method: 'triggerRegistration' });
-log.warn('Retrying registration', { file: REGISTRATION_FILE, method: 'reconnectOnFailure' });
-log.trace('Detailed debug info', { file: CALL_FILE, method: 'dial' });
-log.log('General message', { file: LINE_FILE, method: 'register' });
+// Always provide file and method names in logger context
+log.info('Registration successful', {file: REGISTRATION_FILE, method: 'triggerRegistration'});
+log.error('Registration failed', {file: REGISTRATION_FILE, method: 'triggerRegistration'});
+log.warn('Retrying registration', {file: REGISTRATION_FILE, method: 'reconnectOnFailure'});
+log.trace('Detailed debug info', {file: CALL_FILE, method: 'dial'});
+log.log('General message', {file: LINE_FILE, method: 'register'});
 ```
 
 ### Log Format
 
 ```
-CALLING_SDK: <timestamp>: [LEVEL]: file:<file> - method:<method> - message:<message>
+webex-calling: <timestamp>: [LEVEL]: file:<file> - method:<method> - message:<message>
 ```
 
 Example output:
+
 ```
 webex-calling: Thu, 15 Mar 2026 10:30:00 GMT: [INFO]: file:CallingClient - method:init - message:Initialization complete
 ```
 
 ### Log Levels (in order)
 
-| Level | Numeric | Purpose |
-|---|---|---|
-| `error` | 1 | Errors only |
-| `warn` | 2 | Warnings + errors |
-| `log` | 3 | General messages + above |
-| `info` | 4 | Informational + above |
-| `trace` | 5 | Full stack trace + above |
+| Level   | Numeric | Purpose                  |
+| ------- | ------- | ------------------------ |
+| `error` | 1       | Errors only              |
+| `warn`  | 2       | Warnings + errors        |
+| `log`   | 3       | General messages + above |
+| `info`  | 4       | Informational + above    |
+| `trace` | 5       | Full stack trace + above |
+
+Log levels are cumulative — setting level `n` means all levels from 1 through `n` are logged. The default level is `error` (1). During SDK initialization, users can set the log level via `setLogger(level, module)`, which determines which log messages they will see at runtime.
+
+### When to Use Each Level
+
+| Level       | Use For                                                                                    | Example                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `log.info`  | Method entry and exit points — marks the start and completion of significant operations    | `log.info('makeCall initiated', {file: CALL_FILE, method: 'makeCall'});`                    |
+| `log.log`   | API success details and important action outcomes — the substantive result of an operation | `log.log('Call connected successfully', {file: CALL_FILE, method: 'dial'});`                |
+| `log.error` | Blocking failures that prevent an operation from completing                                | `log.error('Registration failed', {file: REGISTRATION_FILE, method: 'register'});`          |
+| `log.warn`  | Non-blocking errors — something failed but execution can continue or a fallback was used   | `log.warn('Keepalive missed, will retry', {file: REGISTRATION_FILE, method: 'keepalive'});` |
+| `log.trace` | Verbose debugging detail — full state dumps, raw payloads, internal decision paths         | `log.trace('ROAP offer details', {file: CALL_FILE, method: 'sendRoapOffer'});`              |
 
 ### File Constants for Logging
 
@@ -138,20 +152,20 @@ enum ERROR_LAYER {
 ### Usage Pattern
 
 ```typescript
-import { CallError, createCallError } from '../Errors';
-import { ERROR_TYPE, ERROR_LAYER } from '../Errors/types';
+import {CallError, createCallError} from '../Errors/catalog/CallError';
+import {ERROR_TYPE, ERROR_LAYER} from '../Errors/types';
 
 // Create a call error
 const error = createCallError(
   'Call setup failed',
-  { file: CALL_FILE, method: 'dial' },
+  {file: CALL_FILE, method: 'dial'},
   ERROR_TYPE.CALL_ERROR,
   correlationId,
   ERROR_LAYER.CALL_CONTROL
 );
 
 // Always log errors with context
-log.error('Call setup failed', { file: CALL_FILE, method: 'dial' });
+log.error('Call setup failed', {file: CALL_FILE, method: 'dial'});
 
 // Emit error events with typed error objects
 this.emit(CALL_EVENT_KEYS.CALL_ERROR, error);
@@ -173,7 +187,7 @@ this.emit(CALL_EVENT_KEYS.CALL_ERROR, error);
 Use the singleton `MetricManager` (`src/Metrics/index.ts`) via factory function:
 
 ```typescript
-import { getMetricManager } from '../Metrics';
+import {getMetricManager} from '../Metrics';
 
 const metricManager = getMetricManager(webex, serviceIndicator);
 ```
@@ -189,37 +203,37 @@ enum METRIC_TYPE {
 
 ### Metric Events (`METRIC_EVENT` enum)
 
-| Event | Purpose |
-|---|---|
-| `REGISTRATION` | Successful registration |
-| `REGISTRATION_ERROR` | Registration failure |
-| `KEEPALIVE_ERROR` | Keepalive failure |
-| `CALL` | Call control event |
-| `CALL_ERROR` | Call control error |
-| `MEDIA` | Media event |
-| `MEDIA_ERROR` | Media error |
-| `CONNECTION_ERROR` | Connection event |
-| `VOICEMAIL` | Voicemail operation |
-| `VOICEMAIL_ERROR` | Voicemail error |
-| `UPLOAD_LOGS_SUCCESS` | Log upload success |
-| `UPLOAD_LOGS_FAILED` | Log upload failure |
-| `MOBIUS_DISCOVERY` | Mobius server discovery |
-| `BNR_ENABLED` | Background noise removal enabled |
-| `BNR_DISABLED` | Background noise removal disabled |
+| Event                 | Purpose                           |
+| --------------------- | --------------------------------- |
+| `REGISTRATION`        | Successful registration           |
+| `REGISTRATION_ERROR`  | Registration failure              |
+| `KEEPALIVE_ERROR`     | Keepalive failure                 |
+| `CALL`                | Call control event                |
+| `CALL_ERROR`          | Call control error                |
+| `MEDIA`               | Media event                       |
+| `MEDIA_ERROR`         | Media error                       |
+| `CONNECTION_ERROR`    | Connection event                  |
+| `VOICEMAIL`           | Voicemail operation               |
+| `VOICEMAIL_ERROR`     | Voicemail error                   |
+| `UPLOAD_LOGS_SUCCESS` | Log upload success                |
+| `UPLOAD_LOGS_FAILED`  | Log upload failure                |
+| `MOBIUS_DISCOVERY`    | Mobius server discovery           |
+| `BNR_ENABLED`         | Background noise removal enabled  |
+| `BNR_DISABLED`        | Background noise removal disabled |
 
 ### IMetricManager Methods
 
-| Method | Purpose |
-|---|---|
-| `submitRegistrationMetric(...)` | Registration success/failure |
-| `submitCallMetric(...)` | Call control events |
-| `submitMediaMetric(...)` | Media events |
-| `submitConnectionMetrics(...)` | Network connection events |
-| `submitVoicemailMetric(...)` | Voicemail operations |
-| `submitUploadLogsMetric(...)` | Log upload events |
-| `submitBNRMetric(...)` | Background noise removal |
-| `submitRegionInfoMetric(...)` | Region discovery |
-| `submitMobiusServersMetric(...)` | Mobius server discovery |
+| Method                           | Purpose                      |
+| -------------------------------- | ---------------------------- |
+| `submitRegistrationMetric(...)`  | Registration success/failure |
+| `submitCallMetric(...)`          | Call control events          |
+| `submitMediaMetric(...)`         | Media events                 |
+| `submitConnectionMetrics(...)`   | Network connection events    |
+| `submitVoicemailMetric(...)`     | Voicemail operations         |
+| `submitUploadLogsMetric(...)`    | Log upload events            |
+| `submitBNRMetric(...)`           | Background noise removal     |
+| `submitRegionInfoMetric(...)`    | Region discovery             |
+| `submitMobiusServersMetric(...)` | Mobius server discovery      |
 
 ### Rules
 
@@ -237,8 +251,8 @@ enum METRIC_TYPE {
 All event emitters extend `Eventing<T>` from `src/Events/impl/index.ts`, which wraps `typed-emitter`:
 
 ```typescript
-import { Eventing } from '../Events/impl';
-import { CallEventTypes } from '../Events/types';
+import {Eventing} from '../Events/impl';
+import {CallEventTypes} from '../Events/types';
 
 class Call extends Eventing<CallEventTypes> implements ICall {
   // ...
@@ -247,13 +261,13 @@ class Call extends Eventing<CallEventTypes> implements ICall {
 
 ### Event Key Enums
 
-| Enum | Scope | Key Values |
-|---|---|---|
-| `CALL_EVENT_KEYS` | Call events | `ALERTING`, `CONNECT`, `ESTABLISHED`, `HELD`, `RESUMED`, `DISCONNECT`, `REMOTE_MEDIA`, `CALLER_ID`, `CALL_ERROR`, `HOLD_ERROR`, `RESUME_ERROR`, `TRANSFER_ERROR`, `PROGRESS` |
-| `LINE_EVENT_KEYS` | Line events | `INCOMING_CALL` |
-| `CALLING_CLIENT_EVENT_KEYS` | Client events | `ERROR`, `OUTGOING_CALL`, `USER_SESSION_INFO`, `ALL_CALLS_CLEARED` |
-| `COMMON_EVENT_KEYS` | Shared events | `CB_VOICEMESSAGE_CONTENT_GET`, `CALL_HISTORY_USER_SESSION_INFO`, `CALL_HISTORY_USER_VIEWED_SESSIONS`, `CALL_HISTORY_USER_SESSIONS_DELETED` |
-| `MOBIUS_EVENT_KEYS` | WebSocket events | `SERVER_EVENT_INCLUSIVE`, `CALL_SESSION_EVENT_INCLUSIVE`, `CALL_SESSION_EVENT_LEGACY`, `CALL_SESSION_EVENT_VIEWED`, `CALL_SESSION_EVENT_DELETED` |
+| Enum                        | Scope            | Key Values                                                                                                                                                                   |
+| --------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CALL_EVENT_KEYS`           | Call events      | `ALERTING`, `CONNECT`, `ESTABLISHED`, `HELD`, `RESUMED`, `DISCONNECT`, `REMOTE_MEDIA`, `CALLER_ID`, `CALL_ERROR`, `HOLD_ERROR`, `RESUME_ERROR`, `TRANSFER_ERROR`, `PROGRESS` |
+| `LINE_EVENT_KEYS`           | Line events      | `INCOMING_CALL`                                                                                                                                                              |
+| `CALLING_CLIENT_EVENT_KEYS` | Client events    | `ERROR`, `OUTGOING_CALL`, `USER_SESSION_INFO`, `ALL_CALLS_CLEARED`                                                                                                           |
+| `COMMON_EVENT_KEYS`         | Shared events    | `CB_VOICEMESSAGE_CONTENT_GET`, `CALL_HISTORY_USER_SESSION_INFO`, `CALL_HISTORY_USER_VIEWED_SESSIONS`, `CALL_HISTORY_USER_SESSIONS_DELETED`                                   |
+| `MOBIUS_EVENT_KEYS`         | WebSocket events | `SERVER_EVENT_INCLUSIVE`, `CALL_SESSION_EVENT_INCLUSIVE`, `CALL_SESSION_EVENT_LEGACY`, `CALL_SESSION_EVENT_VIEWED`, `CALL_SESSION_EVENT_DELETED`                             |
 
 ### Event Type Maps
 
@@ -296,19 +310,19 @@ Follow this 3-tier import order:
 
 ```typescript
 // 1. External packages
-import { Machine } from 'xstate';
-import { Mutex } from 'async-mutex';
-import { v4 as uuid } from 'uuid';
+import {Machine} from 'xstate';
+import {Mutex} from 'async-mutex';
+import {v4 as uuid} from 'uuid';
 
 // 2. Internal packages (within @webex)
 import * as Media from '@webex/internal-media-core';
 
 // 3. Relative imports (parent → sibling → child)
-import { METRIC_EVENT, METRIC_TYPE } from '../Metrics/types';
-import { CallError } from '../Errors';
+import {METRIC_EVENT, METRIC_TYPE} from '../Metrics/types';
+import {CallError} from '../Errors';
 import log from '../Logger';
-import { CALL_FILE, METHODS } from './constants';
-import { ICall } from './types';
+import {CALL_FILE, METHODS} from './constants';
+import {ICall} from './types';
 ```
 
 ### Export Standards
@@ -342,13 +356,13 @@ export const getCallManager = (webex?: WebexSDK, indicator?: ServiceIndicator): 
 
 Each module should contain:
 
-| File | Purpose |
-|---|---|
-| `ModuleName.ts` or `index.ts` | Main class implementation |
-| `types.ts` | Interfaces, type aliases, enums for this module |
-| `constants.ts` | Constants for this module |
-| `ModuleName.test.ts` | Co-located unit tests |
-| `*Fixtures.ts` | Test mock data (optional) |
+| File                          | Purpose                                         |
+| ----------------------------- | ----------------------------------------------- |
+| `ModuleName.ts` or `index.ts` | Main class implementation                       |
+| `types.ts`                    | Interfaces, type aliases, enums for this module |
+| `constants.ts`                | Constants for this module                       |
+| `ModuleName.test.ts`          | Co-located unit tests                           |
+| `*Fixtures.ts`                | Test mock data (optional)                       |
 
 ### Singleton Pattern
 
@@ -372,6 +386,7 @@ export const getSomeManager = (webex?: WebexSDK): ISomeManager => {
 ### No Hardcoded Credentials
 
 Never commit:
+
 - API keys, tokens, secrets
 - Passwords or authentication data
 - Private keys or certificates
@@ -382,10 +397,10 @@ Never log sensitive data:
 
 ```typescript
 // ❌ WRONG
-log.info(`User token: ${token}`, { file: CALL_FILE, method: 'dial' });
+log.info(`User token: ${token}`, {file: CALL_FILE, method: 'dial'});
 
 // ✅ CORRECT
-log.info('Token received successfully', { file: CALL_FILE, method: 'dial' });
+log.info('Token received successfully', {file: CALL_FILE, method: 'dial'});
 // No sensitive data in log messages
 ```
 
@@ -431,7 +446,7 @@ this.deregister();
 
 All public APIs must have JSDoc:
 
-```typescript
+````typescript
 /**
  * Retrieves details of the line object(s) belonging to a user.
  *
@@ -443,9 +458,10 @@ All public APIs must have JSDoc:
  * @returns Dictionary of line objects keyed by lineId.
  */
 getLines(): Record<string, ILine>;
-```
+````
 
 Required tags for public methods:
+
 - `@example` with code snippet
 - `@param` for each parameter
 - `@returns` describing the return value
@@ -476,4 +492,5 @@ Before submitting code changes, verify:
 
 - **TypeScript patterns**: [`patterns/typescript-patterns.md`](patterns/typescript-patterns.md)
 - **Testing patterns**: [`patterns/testing-patterns.md`](patterns/testing-patterns.md)
-- **Event patterns**: [`patterns/event-driven-patterns.md`](patterns/event-driven-patterns.md)
+- **Event patterns**: [`patterns/event-driven-patterns.md`](patterns/event-patterns.md)
+- **Error patterns**: [`patterns/error-handling-patterns.md`](patterns/error-handling-patterns.md)
