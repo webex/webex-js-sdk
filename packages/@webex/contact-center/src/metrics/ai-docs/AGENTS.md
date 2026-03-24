@@ -242,8 +242,6 @@ All event names are defined in `METRIC_EVENT_NAMES` (`constants.ts`). Events fol
 | `TASK_CONFERENCE_START_SUCCESS` / `FAILED` | `'Task Conference Start ...'` | Conference start result |
 | `TASK_CONFERENCE_END_SUCCESS` / `FAILED` | `'Task Conference End ...'` | Conference end result |
 | `TASK_CONFERENCE_TRANSFER_SUCCESS` / `FAILED` | `'Task Conference Transfer ...'` | Conference transfer result |
-| `TASK_CONFERENCE_EXIT_SUCCESS` / `FAILED` | `'Task Conference Exit ...'` | Conference exit result |
-| `TASK_SWITCH_CALL_SUCCESS` / `FAILED` | `'Task Switch Call ...'` | Switch call result |
 
 ### System Events
 
@@ -279,6 +277,13 @@ Each behavioral event maps to a structured taxonomy in `behavioral-events.ts`:
 - **verb**: `'complete'` for success, `'fail'` for failure, `'set'` for RONA events
 
 **Example**: `STATION_LOGIN_SUCCESS` maps to `wxcc_sdk.user.station_login.complete`
+
+> **Note**: The following events do **not** have behavioral taxonomy mappings in `behavioral-events.ts`:
+> - `WEBSOCKET_DEREGISTER_SUCCESS`
+> - `WEBSOCKET_DEREGISTER_FAIL`
+> - `WEBSOCKET_EVENT_RECEIVED`
+>
+> Calling `trackBehavioralEvent` with these event names will push an event with an `undefined` taxonomy.
 
 ---
 
