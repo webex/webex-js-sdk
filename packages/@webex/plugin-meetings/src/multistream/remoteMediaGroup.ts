@@ -217,8 +217,6 @@ export class RemoteMediaGroup {
   private sendActiveSpeakerMediaRequest(commit: boolean) {
     this.cancelActiveSpeakerMediaRequest(false);
 
-    const sizeHint = this.getSizeHintForActiveSpeaker();
-
     this.mediaRequestId = this.mediaRequestManager.addRequest(
       {
         policyInfo: {
@@ -234,11 +232,7 @@ export class RemoteMediaGroup {
         receiveSlots: this.unpinnedRemoteMedia.map((remoteMedia) =>
           remoteMedia.getUnderlyingReceiveSlot()
         ) as ReceiveSlot[],
-        codecInfo: sizeHint
-          ? MediaCodecHelper.H264.getCodecInfo({
-              sizeHint,
-            })
-          : undefined,
+        sizeHint: this.getSizeHintForActiveSpeaker(),
       },
       commit
     );
@@ -325,8 +319,6 @@ export class RemoteMediaGroup {
     // Fall back to group's resolution option
     if (this.options.resolution) {
       return {
-        width: 0,
-        height: 0,
         resolution: this.options.resolution,
       };
     }
@@ -335,6 +327,8 @@ export class RemoteMediaGroup {
   }
 
   /**
+   * @todo: Why do we calculate maxFs based on all unpinned RemoteMedia instances?
+   *
    * Calculate the effective maxFs for the active speaker media request based on unpinned RemoteMedia instances
    * @returns {number | undefined} The calculated maxFs value, or undefined if no constraints
    * @private

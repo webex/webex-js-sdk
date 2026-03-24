@@ -59,7 +59,7 @@ export class RemoteMedia extends EventsScope {
    * Set by setSizeHint() based on video element dimensions.
    * @todo remove this once deprecation of getEffectiveMaxFs() is complete
    */
-  private sizeHint?: SizeHint;
+  private sizeHint: SizeHint = {};
 
   /**
    * Constructs RemoteMedia instance
@@ -78,6 +78,7 @@ export class RemoteMedia extends EventsScope {
     this.receiveSlot = receiveSlot;
     this.mediaRequestManager = mediaRequestManager;
     this.options = options || {};
+    this.sizeHint = {resolution: this.options.resolution};
     this.setupEventListeners();
     this.id = `RM${remoteMediaCounter}-${this.receiveSlot.id}`;
   }
@@ -94,7 +95,8 @@ export class RemoteMedia extends EventsScope {
       return;
     }
 
-    this.sizeHint = {width, height, resolution: this.options.resolution};
+    this.sizeHint.width = width;
+    this.sizeHint.height = height;
     this.receiveSlot?.setSizeHint(this.sizeHint);
   }
 
@@ -112,15 +114,11 @@ export class RemoteMedia extends EventsScope {
    * @deprecated use getSizeHint() instead
    */
   public getEffectiveMaxFs(): number | undefined {
-    if (this.sizeHint) {
-      return MediaCodecHelper.H264.getSizeHintMaxFs(this.sizeHint.width, this.sizeHint.height);
-    }
-
-    if (this.options.resolution) {
-      return MediaCodecHelper.H264.getMaxFs(this.options.resolution);
-    }
-
-    return undefined;
+    return MediaCodecHelper.H264.getSizeHintMaxFs({
+      width: this.sizeHint?.width,
+      height: this.sizeHint?.height,
+      resolution: this.options.resolution,
+    });
   }
 
   /**
@@ -170,9 +168,7 @@ export class RemoteMedia extends EventsScope {
           csi,
         },
         receiveSlots: [this.receiveSlot],
-        codecInfo: MediaCodecHelper.H264.getCodecInfo({
-          sizeHint: this.sizeHint,
-        }),
+        sizeHint: this.sizeHint,
       },
       commit
     );

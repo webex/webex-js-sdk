@@ -7,7 +7,7 @@ import {
 } from '@webex/internal-media-core';
 import {CODEC_DEFAULTS, H264_CODEC_PARAMETERS, PANE_SIZE_TO_RESOLUTION} from './constants';
 import {MediaCodecHelper, H264CodecInfo, GetCodecInfoOptions} from './types';
-import {MediaRequest, RemoteVideoResolution} from '../types';
+import {MediaRequest, RemoteVideoResolution, SizeHint} from '../types';
 import LoggerProxy from '../../common/logs/logger-proxy';
 
 /**
@@ -21,13 +21,9 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
    * @returns {H264CodecInfo} The H264 codec info
    */
   getCodecInfo({sizeHint}: GetCodecInfoOptions): H264CodecInfo | undefined {
-    let maxFs: number;
+    const maxFs = this.getSizeHintMaxFs(sizeHint);
 
-    if (sizeHint?.width > 0 && sizeHint?.height > 0) {
-      maxFs = this.getSizeHintMaxFs(sizeHint.width, sizeHint.height);
-    } else if (sizeHint?.resolution) {
-      maxFs = this.getMaxFs(sizeHint.resolution);
-    } else {
+    if (!maxFs) {
       return undefined;
     }
 
@@ -82,19 +78,15 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
    * @returns {WcmeCodecInfo[]} The WCME codec infos
    */
   getWCMECodecInfos(mr: MediaRequest): WcmeCodecInfo[] {
-    if (mr.codecInfo?.codec !== 'h264') {
-      return [];
-    }
-
     return [
       WcmeCodecInfo.fromH264(
-        0x80,
+        0x80, // TODO: Fix this constant
         new H264Codec(
-          mr.codecInfo.maxFs,
-          mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
-          mr.codecInfo.maxMbps || CODEC_DEFAULTS.h264.maxMbps,
-          mr.codecInfo.maxWidth,
-          mr.codecInfo.maxHeight
+          mr.codecInfo?.maxFs || this.getSizeHintMaxFs(mr.sizeHint || {}),
+          mr.codecInfo?.maxFps || CODEC_DEFAULTS.h264.maxFps,
+          mr.codecInfo?.maxMbps || CODEC_DEFAULTS.h264.maxMbps,
+          mr.codecInfo?.maxWidth,
+          mr.codecInfo?.maxHeight
         )
       ),
     ];
@@ -124,36 +116,40 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
   /**
    * Gets the max fs for the given width and height
    *
-   * @param {number} width - The width of the video element
-   * @param {number} height - The height of the video element
+   * @param {SizeHint} sizeHint - The size hint to get the max fs for
    * @returns {number | undefined} The max fs for the given width and height, or undefined if the width or height is 0
    */
-  getSizeHintMaxFs(width: number, height: number): number | undefined {
-    if (width === 0 || height === 0) {
-      return undefined;
+  getSizeHintMaxFs({width, height, resolution}: SizeHint): number | undefined {
+    if (width > 0 && height > 0) {
+      // we switch to the next resolution level when the height is 10% more than the current resolution height
+      // except for 1080p - we switch to it immediately when the height is more than 720p
+      const threshold = 1.1;
+      const getThresholdHeight = (h: number) => Math.round(h * threshold);
+
+      if (height < getThresholdHeight(90)) {
+        return H264_CODEC_PARAMETERS['90p'].maxFs;
+      }
+      if (height < getThresholdHeight(180)) {
+        return H264_CODEC_PARAMETERS['180p'].maxFs;
+      }
+      if (height < getThresholdHeight(360)) {
+        return H264_CODEC_PARAMETERS['360p'].maxFs;
+      }
+      if (height < getThresholdHeight(540)) {
+        return H264_CODEC_PARAMETERS['540p'].maxFs;
+      }
+      if (height <= 720) {
+        return H264_CODEC_PARAMETERS['720p'].maxFs;
+      }
+
+      return H264_CODEC_PARAMETERS['1080p'].maxFs;
     }
 
-    // we switch to the next resolution level when the height is 10% more than the current resolution height
-    // except for 1080p - we switch to it immediately when the height is more than 720p
-    const threshold = 1.1;
-    const getThresholdHeight = (h: number) => Math.round(h * threshold);
-
-    if (height < getThresholdHeight(90)) {
-      return H264_CODEC_PARAMETERS['90p'].maxFs;
-    }
-    if (height < getThresholdHeight(180)) {
-      return H264_CODEC_PARAMETERS['180p'].maxFs;
-    }
-    if (height < getThresholdHeight(360)) {
-      return H264_CODEC_PARAMETERS['360p'].maxFs;
-    }
-    if (height < getThresholdHeight(540)) {
-      return H264_CODEC_PARAMETERS['540p'].maxFs;
-    }
-    if (height <= 720) {
-      return H264_CODEC_PARAMETERS['720p'].maxFs;
+    // Fall back to resolution option
+    if (resolution) {
+      return this.getMaxFs(resolution);
     }
 
-    return H264_CODEC_PARAMETERS['1080p'].maxFs;
+    return undefined;
   }
 }

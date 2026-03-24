@@ -32,7 +32,7 @@ export type RemoteVideoResolution =
   /** highest possible resolution */
   | 'best';
 
-export type SizeHint = {width: number; height: number; resolution?: RemoteVideoResolution};
+export type SizeHint = {width?: number; height?: number; resolution?: RemoteVideoResolution};
 
 export interface MediaRequest {
   policyInfo: PolicyInfo;
