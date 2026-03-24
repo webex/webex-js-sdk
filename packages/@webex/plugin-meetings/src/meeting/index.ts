@@ -568,6 +568,12 @@ type MediaReachabilityMetrics = ReachabilityMetrics & {
  * @memberof Meeting
  */
 
+/**
+ * Stores an event so all events can be later retrieved via a console command for debugging.
+ * @param {string} type
+ * @param {Object} data
+ * @returns {void}
+ */
 export function storeEventForDebugging(
   type: string,
   data: {
@@ -575,7 +581,7 @@ export function storeEventForDebugging(
     stateElementsMessage?: HashTreeMessage;
   }
 ) {
-  if ((window as any).locusEvents) {
+  if ((window as any)?.locusEvents) {
     // only store non-heartbeat hash tree messages
     if (
       data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED &&

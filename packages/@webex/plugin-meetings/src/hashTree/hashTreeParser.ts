@@ -379,6 +379,9 @@ class HashTreeParser {
    * @returns {Promise}
    */
   private async initializeDataSets(visibleDataSets: Array<DataSet>, debugText: string) {
+    if (this.state === 'stopped') {
+      return;
+    }
     const updatedObjects: HashTreeObject[] = [];
 
     for (const dataSet of visibleDataSets) {
@@ -944,6 +947,9 @@ class HashTreeParser {
    * @returns {Promise<void>}
    */
   private async initializeNewVisibleDataSets(addedDataSets: VisibleDataSetInfo[]): Promise<void> {
+    if (this.state === 'stopped') {
+      return;
+    }
     const allDataSets = await this.getAllVisibleDataSetsFromLocus();
 
     for (const ds of addedDataSets) {
@@ -976,6 +982,10 @@ class HashTreeParser {
    * @returns {HashTreeObject[]} list of hash tree objects that were updated as a result of processing the message
    */
   private parseMessage(message: HashTreeMessage, debugText?: string): HashTreeObject[] {
+    if (this.state === 'stopped') {
+      return [];
+    }
+
     const {dataSets, visibleDataSetsUrl} = message;
 
     LoggerProxy.logger.info(
@@ -1105,7 +1115,7 @@ class HashTreeParser {
     }
     if (this.isEndMessage(message)) {
       LoggerProxy.logger.info(
-        `HashTreeParser#parseMessage --> ${this.debugId} received sentinel END MEETING message`
+        `HashTreeParser#handleMessage --> ${this.debugId} received sentinel END MEETING message`
       );
       this.stopAllTimers();
 
@@ -1134,6 +1144,10 @@ class HashTreeParser {
     updateType: LocusInfoUpdateType;
     updatedObjects?: HashTreeObject[];
   }) {
+    if (this.state === 'stopped') {
+      return;
+    }
+
     const {updateType, updatedObjects} = updates;
 
     if (updateType === LocusInfoUpdateType.OBJECTS_UPDATED && updatedObjects?.length > 0) {
