@@ -206,9 +206,7 @@ export class ApiAIAssistant {
         },
         ['operational']
       );
-      if (error instanceof Error && error.message === AI_ASSISTANT_ERRORS.BASE_URL_NOT_AVAILABLE) {
-        throw error;
-      }
+
       const {error: detailedError} = getErrorDetails(
         error,
         METHODS.FETCH_HISTORIC_TRANSCRIPTS,
