@@ -14,6 +14,9 @@ describe('ApiAIAssistant', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(WebexRequest, 'getInstance').mockReturnValue({
+      uploadLogs: jest.fn(),
+    } as any);
 
     mockWebex = {
       credentials: {
@@ -124,6 +127,6 @@ describe('ApiAIAssistant', () => {
       errorMessage = (error as Error)?.message || '';
     }
 
-    expect(errorMessage).toBe('REAL_TIME_TRANSCRIPTION_NOT_ENABLED');
+    expect(errorMessage).toBe('Error while performing fetchHistoricTranscripts');
   });
 });
