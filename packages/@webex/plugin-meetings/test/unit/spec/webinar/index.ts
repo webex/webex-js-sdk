@@ -230,6 +230,11 @@ describe('plugin-meetings', () => {
 
         webex.meetings.getMeetingByType = sinon.stub().returns(meeting);
 
+        // Default session is connected by default; practice session is not
+        webex.internal.llm.isConnected = sinon.stub().callsFake((sessionId) => {
+          return sessionId !== LLM_PRACTICE_SESSION;
+        });
+
         // Ensure connect path is eligible
         webinar.selfIsPanelist = true;
         webinar.practiceSessionEnabled = true;
@@ -342,6 +347,40 @@ describe('plugin-meetings', () => {
           processRelayEvent
         );
       });
+
+      it('waits for default session to connect before connecting practice session', async () => {
+        // Default session is not connected initially
+        webex.internal.llm.isConnected = sinon.stub().returns(false);
+
+        // When 'online' listener is registered, fire it asynchronously to simulate default session connecting
+        webex.internal.llm.on = sinon.stub().callsFake((eventName, callback) => {
+          if (eventName === 'online') {
+            Promise.resolve().then(() => callback());
+          }
+        });
+
+        const result = await webinar.updatePSDataChannel();
+
+        assert.calledWith(webex.internal.llm.on, 'online', sinon.match.func);
+        assert.calledWith(webex.internal.llm.off, 'online', sinon.match.func);
+        assert.calledOnce(webex.internal.llm.registerAndConnect);
+        assert.equal(result, 'REGISTER_AND_CONNECT_RESULT');
+      });
+
+      it('proceeds immediately when default session is already connected', async () => {
+        // Default session already connected, practice session not
+        webex.internal.llm.isConnected = sinon.stub().callsFake((sessionId) => {
+          return sessionId !== LLM_PRACTICE_SESSION;
+        });
+
+        const result = await webinar.updatePSDataChannel();
+
+        // 'online' listener should NOT be registered since default session is already connected
+        const onlineCalls = webex.internal.llm.on.args.filter(([event]) => event === 'online');
+        assert.equal(onlineCalls.length, 0, 'should not register online listener when default session is already connected');
+        assert.calledOnce(webex.internal.llm.registerAndConnect);
+        assert.equal(result, 'REGISTER_AND_CONNECT_RESULT');
+      });
       });
 
       describe('#updateStatusByRole', () => {
@@ -351,6 +390,7 @@ describe('plugin-meetings', () => {
           webinar.webex.meetings = {
             getMeetingByType: sinon.stub().returns({
               id: 'meeting-id',
+              isJoined: sinon.stub().returns(false),
               updateLLMConnection: sinon.stub(),
               shareStatus: SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE,
               locusInfo: {
@@ -405,6 +445,7 @@ describe('plugin-meetings', () => {
           webinar.webex.meetings = {
             getMeetingByType: sinon.stub().returns({
               id: 'meeting-id',
+              isJoined: sinon.stub().returns(false),
               updateLLMConnection: sinon.stub(),
               shareStatus: SHARE_STATUS.REMOTE_SHARE_ACTIVE,
               locusInfo: {

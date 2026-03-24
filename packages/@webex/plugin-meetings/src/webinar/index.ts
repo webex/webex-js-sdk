@@ -203,6 +203,26 @@ const Webinar = WebexPlugin.extend({
       await this.cleanupPSDataChannel();
     }
 
+    // Ensure the default session data channel is connected before connecting the practice session
+    // @ts-ignore - Fix type
+    if (!this.webex.internal.llm.isConnected()) {
+      LoggerProxy.logger.info(
+        'Webinar:index#updatePSDataChannel --> default session not yet connected, waiting...'
+      );
+      await new Promise<void>((resolve) => {
+        const onDefaultSessionConnected = () => {
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.off('online', onDefaultSessionConnected);
+          resolve();
+        };
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.on('online', onDefaultSessionConnected);
+      });
+      LoggerProxy.logger.info(
+        'Webinar:index#updatePSDataChannel --> default session connected, proceeding to connect practice session.'
+      );
+    }
+
     // @ts-ignore - Fix type
     return this.webex.internal.llm
       .registerAndConnect(url, practiceSessionDatachannelUrl, finalToken, LLM_PRACTICE_SESSION)
