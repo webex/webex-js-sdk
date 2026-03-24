@@ -27,7 +27,7 @@ import {AIFeatureFlags} from './config/types';
 export class ApiAIAssistant {
   private webex: WebexSDK;
   private metricsManager: MetricsManager;
-  private aiFeature: AIFeatureFlags;
+  public aiFeature: AIFeatureFlags;
   private orgId: string;
 
   constructor(webex: WebexSDK) {
@@ -143,9 +143,7 @@ export class ApiAIAssistant {
         },
         ['operational']
       );
-      if (error instanceof Error && error.message === AI_ASSISTANT_ERRORS.BASE_URL_NOT_AVAILABLE) {
-        throw error;
-      }
+
       const {error: detailedError} = getErrorDetails(error, METHODS.SEND_EVENT, CC_FILE);
       throw detailedError;
     }
