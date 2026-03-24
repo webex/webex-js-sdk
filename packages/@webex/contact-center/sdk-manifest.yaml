@@ -1,0 +1,1959 @@
+name: "@webex/contact-center"
+version: workspace
+generated_at: "2026-03-24T12:27:11.156Z"
+generator: generate-manifest.ts v1.0
+classes:
+  ContactCenter:
+    source: src/cc.ts
+    extends: WebexPlugin
+    methods:
+      register:
+        params: []
+        returns: Promise<Profile>
+        events_on_success: []
+        events_on_failure: []
+      deregister:
+        params: []
+        returns: Promise<void>
+        events_on_success: []
+        events_on_failure: []
+      getBuddyAgents:
+        params:
+          - name: data
+            type: BuddyAgents
+            required: true
+        returns: Promise<BuddyAgentsResponse>
+        events_on_success: []
+        events_on_failure: []
+      stationLogin:
+        params:
+          - name: data
+            type: AgentLogin
+            required: true
+        returns: Promise<StationLoginResponse>
+        events_on_success: []
+        events_on_failure: []
+      stationLogout:
+        params:
+          - name: data
+            type: Logout
+            required: true
+        returns: Promise<StationLogoutResponse>
+        events_on_success: []
+        events_on_failure: []
+      setAgentState:
+        params:
+          - name: data
+            type: StateChange
+            required: true
+        returns: Promise<SetStateResponse>
+        events_on_success: []
+        events_on_failure: []
+      startOutdial:
+        params:
+          - name: destination
+            type: string
+            required: true
+          - name: origin
+            type: string
+            required: true
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      getOutdialAniEntries:
+        params:
+          - name: params
+            type: OutdialAniParams
+            required: true
+        returns: Promise<OutdialAniEntriesResponse>
+        events_on_success: []
+        events_on_failure: []
+      uploadLogs:
+        params: []
+        returns: Promise<UploadLogsResponse>
+        events_on_success: []
+        events_on_failure: []
+      updateAgentProfile:
+        params:
+          - name: data
+            type: AgentProfileUpdate
+            required: true
+        returns: Promise<UpdateDeviceTypeResponse>
+        events_on_success: []
+        events_on_failure: []
+      getEntryPoints:
+        params:
+          - name: params
+            type: src/utils/PageCache:BaseSearchParams
+            required: false
+        returns: Promise<EntryPointListResponse>
+        events_on_success: []
+        events_on_failure: []
+      getQueues:
+        params:
+          - name: params
+            type: ContactServiceQueueSearchParams
+            required: false
+        returns: Promise<ContactServiceQueuesResponse>
+        events_on_success: []
+        events_on_failure: []
+  Task:
+    source: src/services/task/Task.ts
+    extends: EventEmitter
+    methods:
+      accept:
+        params: []
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      decline:
+        params: []
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      pauseRecording:
+        params: []
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      resumeRecording:
+        params:
+          - name: resumeRecordingPayload
+            type: ResumeRecordingPayload
+            required: true
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      consult:
+        params:
+          - name: consultPayload
+            type: ConsultPayload
+            required: true
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      endConsult:
+        params:
+          - name: consultEndPayload
+            type: ConsultEndPayload
+            required: true
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      consultTransfer:
+        params:
+          - name: consultTransferPayload
+            type: ConsultTransferPayLoad
+            required: false
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      consultConference:
+        params: []
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      exitConference:
+        params: []
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      transferConference:
+        params: []
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      switchCall:
+        params: []
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      toggleMute:
+        params: []
+        returns: Promise<void>
+        events_on_success: []
+        events_on_failure: []
+      startTranscription:
+        params: []
+        returns: Promise<TaskResponse>
+        events_on_success:
+          - task:transcriptionStarted
+        events_on_failure:
+          - task:transcriptionFailed
+      stopTranscription:
+        params: []
+        returns: Promise<TaskResponse>
+        events_on_success:
+          - task:transcriptionStopped
+        events_on_failure: []
+      unregisterWebCallListeners:
+        params: []
+        returns: void
+        events_on_success: []
+        events_on_failure: []
+      cancelAutoWrapupTimer:
+        params: []
+        returns: void
+        events_on_success: []
+        events_on_failure: []
+      hold:
+        params: []
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      resume:
+        params: []
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      holdResume:
+        params: []
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      sendStateMachineEvent:
+        params:
+          - name: event
+            type: TaskEventPayload
+            required: true
+        returns: void
+        events_on_success: []
+        events_on_failure: []
+      updateTaskData:
+        params:
+          - name: updatedData
+            type: TaskData
+            required: true
+          - name: shouldOverwrite
+            type: boolean
+            required: false
+        returns: ITask
+        events_on_success: []
+        events_on_failure: []
+      transfer:
+        params:
+          - name: transferPayload
+            type: TransferPayLoad
+            required: true
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      end:
+        params: []
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+      wrapup:
+        params:
+          - name: wrapupPayload
+            type: WrapupPayLoad
+            required: true
+        returns: Promise<TaskResponse>
+        events_on_success: []
+        events_on_failure: []
+  AddressBook:
+    source: src/services/AddressBook.ts
+    extends: null
+    methods:
+      getEntries:
+        params:
+          - name: params
+            type: AddressBookEntrySearchParams
+            required: false
+        returns: Promise<AddressBookEntriesResponse>
+        events_on_success: []
+        events_on_failure: []
+events:
+  TASK_EVENTS:
+    TASK_INCOMING: task:incoming
+    TASK_ASSIGNED: task:assigned
+    TASK_MEDIA: task:media
+    TASK_UNASSIGNED: task:unassigned
+    TASK_HOLD: task:hold
+    TASK_RESUME: task:resume
+    TASK_CONSULT_END: task:consultEnd
+    TASK_CONSULT_QUEUE_CANCELLED: task:consultQueueCancelled
+    TASK_CONSULT_QUEUE_FAILED: task:consultQueueFailed
+    TASK_UI_CONTROLS_UPDATED: task:ui-controls-updated
+    TASK_CONSULT_ACCEPTED: task:consultAccepted
+    TASK_CONSULTING: task:consulting
+    TASK_CONSULT_CREATED: task:consultCreated
+    TASK_OFFER_CONSULT: task:offerConsult
+    TASK_END: task:end
+    TASK_WRAPUP: task:wrapup
+    TASK_WRAPPEDUP: task:wrappedup
+    TASK_CLEANUP: task:cleanup
+    TASK_RECORDING_STARTED: task:recordingStarted
+    TASK_RECORDING_PAUSED: task:recordingPaused
+    TASK_RECORDING_PAUSE_FAILED: task:recordingPauseFailed
+    TASK_RECORDING_RESUMED: task:recordingResumed
+    TASK_RECORDING_RESUME_FAILED: task:recordingResumeFailed
+    TASK_REJECT: task:rejected
+    TASK_OUTDIAL_FAILED: task:outdialFailed
+    TASK_HYDRATE: task:hydrate
+    TASK_OFFER_CONTACT: task:offerContact
+    TASK_AUTO_ANSWERED: task:autoAnswered
+    TASK_CONFERENCE_ESTABLISHING: task:conferenceEstablishing
+    TASK_CONFERENCE_STARTED: task:conferenceStarted
+    TASK_CONFERENCE_FAILED: task:conferenceFailed
+    TASK_CONFERENCE_ENDED: task:conferenceEnded
+    TASK_PARTICIPANT_JOINED: task:participantJoined
+    TASK_PARTICIPANT_LEFT: task:participantLeft
+    TASK_CONFERENCE_TRANSFERRED: task:conferenceTransferred
+    TASK_CONFERENCE_TRANSFER_FAILED: task:conferenceTransferFailed
+    TASK_CONFERENCE_END_FAILED: task:conferenceEndFailed
+    TASK_PARTICIPANT_LEFT_FAILED: task:participantLeftFailed
+    TASK_EXIT_CONFERENCE: task:exitConference
+    TASK_TRANSFER_CONFERENCE: task:transferConference
+    TASK_SWITCH_CALL: task:switchCall
+    TASK_MERGED: task:merged
+    TASK_POST_CALL_ACTIVITY: task:postCallActivity
+    TASK_TRANSCRIPTION: task:transcription
+    TASK_TRANSCRIPTION_STARTED: task:transcriptionStarted
+    TASK_TRANSCRIPTION_STOPPED: task:transcriptionStopped
+    TASK_TRANSCRIPTION_FAILED: task:transcriptionFailed
+  AGENT_EVENTS:
+    AGENT_STATE_CHANGE: agent:stateChange
+    AGENT_MULTI_LOGIN: agent:multiLogin
+    AGENT_STATION_LOGIN_SUCCESS: agent:stationLoginSuccess
+    AGENT_STATION_LOGIN_FAILED: agent:stationLoginFailed
+    AGENT_LOGOUT_SUCCESS: agent:logoutSuccess
+    AGENT_LOGOUT_FAILED: agent:logoutFailed
+    AGENT_DN_REGISTERED: agent:dnRegistered
+    AGENT_RELOGIN_SUCCESS: agent:reloginSuccess
+    AGENT_STATE_CHANGE_SUCCESS: agent:stateChangeSuccess
+    AGENT_STATE_CHANGE_FAILED: agent:stateChangeFailed
+types:
+  EntryPointRecord:
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: name
+        type: string
+        required: true
+      - name: description
+        type: string
+        required: false
+      - name: type
+        type: string
+        required: true
+      - name: isActive
+        type: boolean
+        required: true
+      - name: orgId
+        type: string
+        required: true
+      - name: createdAt
+        type: string
+        required: false
+      - name: updatedAt
+        type: string
+        required: false
+      - name: settings
+        type: Record<string, any>
+        required: false
+  EntryPointListResponse:
+    kind: alias
+    values:
+      - PaginatedResponse<EntryPointRecord>
+  EntryPointSearchParams:
+    kind: alias
+    values:
+      - BaseSearchParams
+  AddressBookEntry:
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: organizationId
+        type: string
+        required: false
+      - name: version
+        type: number
+        required: false
+      - name: name
+        type: string
+        required: true
+      - name: number
+        type: string
+        required: true
+      - name: createdTime
+        type: number
+        required: false
+      - name: lastUpdatedTime
+        type: number
+        required: false
+  AddressBookEntriesResponse:
+    kind: alias
+    values:
+      - PaginatedResponse<AddressBookEntry>
+  AddressBookEntrySearchParams:
+    fields:
+      - name: addressBookId
+        type: string
+        required: false
+  ContactServiceQueuesResponse:
+    kind: alias
+    values:
+      - PaginatedResponse<ContactServiceQueue>
+  ContactServiceQueueSearchParams:
+    fields:
+      - name: desktopProfileFilter
+        type: boolean
+        required: false
+      - name: provisioningView
+        type: boolean
+        required: false
+      - name: singleObjectResponse
+        type: boolean
+        required: false
+  ContactServiceQueue:
+    fields:
+      - name: organizationId
+        type: string
+        required: false
+      - name: id
+        type: string
+        required: false
+      - name: version
+        type: number
+        required: false
+      - name: name
+        type: string
+        required: true
+      - name: description
+        type: string
+        required: false
+      - name: queueType
+        type: "\"INBOUND\" | \"OUTBOUND\""
+        required: true
+      - name: checkAgentAvailability
+        type: boolean
+        required: true
+      - name: channelType
+        type: "\"TELEPHONY\" | \"EMAIL\" | \"FAX\" | \"CHAT\" | \"VIDEO\" | \"OTHERS\" | \"SOCIAL_CHANNEL\""
+        required: true
+      - name: socialChannelType
+        type: "\"MESSAGEBIRD\" | \"MESSENGER\" | \"WHATSAPP\" | \"APPLE_BUSINESS_CHAT\" | \"GOOGLE_BUSINESS_MESSAGES\""
+        required: false
+      - name: serviceLevelThreshold
+        type: number
+        required: true
+      - name: maxActiveContacts
+        type: number
+        required: true
+      - name: maxTimeInQueue
+        type: number
+        required: true
+      - name: defaultMusicInQueueMediaFileId
+        type: string
+        required: true
+      - name: timezone
+        type: string
+        required: false
+      - name: active
+        type: boolean
+        required: true
+      - name: outdialCampaignEnabled
+        type: boolean
+        required: false
+      - name: monitoringPermitted
+        type: boolean
+        required: true
+      - name: parkingPermitted
+        type: boolean
+        required: true
+      - name: recordingPermitted
+        type: boolean
+        required: true
+      - name: recordingAllCallsPermitted
+        type: boolean
+        required: true
+      - name: pauseRecordingPermitted
+        type: boolean
+        required: true
+      - name: recordingPauseDuration
+        type: number
+        required: false
+      - name: controlFlowScriptUrl
+        type: string
+        required: true
+      - name: ivrRequeueUrl
+        type: string
+        required: true
+      - name: overflowNumber
+        type: string
+        required: false
+      - name: vendorId
+        type: string
+        required: false
+      - name: routingType
+        type: "\"LONGEST_AVAILABLE_AGENT\" | \"SKILLS_BASED\" | \"CIRCULAR\" | \"LINEAR\""
+        required: true
+      - name: skillBasedRoutingType
+        type: "\"LONGEST_AVAILABLE_AGENT\" | \"BEST_AVAILABLE_AGENT\""
+        required: false
+      - name: queueRoutingType
+        type: "\"TEAM_BASED\" | \"SKILL_BASED\" | \"AGENT_BASED\""
+        required: true
+      - name: queueSkillRequirements
+        type: QueueSkillRequirement[]
+        required: false
+      - name: agents
+        type: QueueAgent[]
+        required: false
+      - name: callDistributionGroups
+        type: CallDistributionGroup[]
+        required: true
+      - name: xspVersion
+        type: string
+        required: false
+      - name: subscriptionId
+        type: string
+        required: false
+      - name: assistantSkill
+        type: AssistantSkillMapping
+        required: false
+      - name: systemDefault
+        type: boolean
+        required: false
+      - name: agentsLastUpdatedByUserName
+        type: string
+        required: false
+      - name: agentsLastUpdatedByUserEmailPrefix
+        type: string
+        required: false
+      - name: agentsLastUpdatedTime
+        type: number
+        required: false
+      - name: createdTime
+        type: number
+        required: false
+      - name: lastUpdatedTime
+        type: number
+        required: false
+  CC_EVENTS:
+    kind: alias
+    values:
+      - >-
+        "Welcome" | "AgentReloginSuccess" | "AgentReloginFailed" | "AgentDNRegistered" | "Logout" | "AgentLogoutSuccess"
+        | "AgentLogoutFailed" | "StationLogin" | "AgentStationLoginSuccess" | "AgentStationLoginFailed" |
+        "AgentStateChange" | "AGENT_MULTI_LOGIN" | "AgentStateChangeSuccess" | "AgentStateChangeFailed" | "BuddyAgents"
+        | "BuddyAgentsRetrieveFailed" | "AgentContactReserved" | "AgentContactAssignFailed" | "AgentOfferContactRona" |
+        "AgentContactHeld" | "AgentContactHoldFailed" | "AgentContactUnheld" | "AgentContactUnHoldFailed" |
+        "AgentConsultCreated" | "AgentOfferConsult" | "AgentConsulting" | "AgentConsultFailed" | "AgentCtqFailed" |
+        "AgentCtqCancelled" | "AgentCtqCancelFailed" | "AgentConsultEnded" | "AgentConsultEndFailed" |
+        "AgentConsultConferenceEnded" | "AgentConsultConferencing" | "AgentConsultConferenced" |
+        "AgentConsultConferenceFailed" | "ParticipantJoinedConference" | "ParticipantLeftConference" |
+        "ParticipantLeftConferenceFailed" | "AgentConsultConferenceEndFailed" | "AgentConferenceTransferred" |
+        "AgentConferenceTransferFailed" | "ParticipantPostCallActivity" | "ConsultedParticipantMoving" |
+        "REAL_TIME_TRANSCRIPTION" | "TranscriptionFailed" | "AgentBlindTransferred" | "AgentBlindTransferFailed" |
+        "AgentVteamTransferred" | "AgentVteamTransferFailed" | "AgentConsultTransferring" | "AgentConsultTransferred" |
+        "AgentConsultTransferFailed" | "ContactRecordingPaused" | "ContactRecordingStarted" |
+        "ContactRecordingPauseFailed" | "ContactRecordingResumed" | "ContactRecordingResumeFailed" | "ContactEnded" |
+        "ContactMerged" | "ContactUpdated" | "ContactOwnerChanged" | "AgentContactEndFailed" | "AgentWrapup" |
+        "AgentWrappedUp" | "AgentWrapupFailed" | "AgentOutboundFailed" | "AgentContact" | "AgentOfferContact" |
+        "AgentContactAssigned" | "AgentContactUnassigned" | "AgentInviteFailed"
+  ContactCenterEvents:
+    kind: alias
+    values:
+      - >-
+        "Welcome" | "AgentReloginSuccess" | "AgentReloginFailed" | "AgentDNRegistered" | "Logout" | "AgentLogoutSuccess"
+        | "AgentLogoutFailed" | "StationLogin" | "AgentStationLoginSuccess" | "AgentStationLoginFailed" |
+        "AgentStateChange" | "AGENT_MULTI_LOGIN" | "AgentStateChangeSuccess" | "AgentStateChangeFailed" | "BuddyAgents"
+        | "BuddyAgentsRetrieveFailed" | "AgentContactReserved" | "AgentContactAssignFailed" | "AgentOfferContactRona" |
+        "AgentContactHeld" | "AgentContactHoldFailed" | "AgentContactUnheld" | "AgentContactUnHoldFailed" |
+        "AgentConsultCreated" | "AgentOfferConsult" | "AgentConsulting" | "AgentConsultFailed" | "AgentCtqFailed" |
+        "AgentCtqCancelled" | "AgentCtqCancelFailed" | "AgentConsultEnded" | "AgentConsultEndFailed" |
+        "AgentConsultConferenceEnded" | "AgentConsultConferencing" | "AgentConsultConferenced" |
+        "AgentConsultConferenceFailed" | "ParticipantJoinedConference" | "ParticipantLeftConference" |
+        "ParticipantLeftConferenceFailed" | "AgentConsultConferenceEndFailed" | "AgentConferenceTransferred" |
+        "AgentConferenceTransferFailed" | "ParticipantPostCallActivity" | "ConsultedParticipantMoving" |
+        "REAL_TIME_TRANSCRIPTION" | "TranscriptionFailed" | "AgentBlindTransferred" | "AgentBlindTransferFailed" |
+        "AgentVteamTransferred" | "AgentVteamTransferFailed" | "AgentConsultTransferring" | "AgentConsultTransferred" |
+        "AgentConsultTransferFailed" | "ContactRecordingPaused" | "ContactRecordingStarted" |
+        "ContactRecordingPauseFailed" | "ContactRecordingResumed" | "ContactRecordingResumeFailed" | "ContactEnded" |
+        "ContactMerged" | "ContactUpdated" | "ContactOwnerChanged" | "AgentContactEndFailed" | "AgentWrapup" |
+        "AgentWrappedUp" | "AgentWrapupFailed" | "AgentOutboundFailed" | "AgentContact" | "AgentOfferContact" |
+        "AgentContactAssigned" | "AgentContactUnassigned" | "AgentInviteFailed"
+  IContactCenter:
+    fields: []
+  CCPluginConfig:
+    fields:
+      - name: allowMultiLogin
+        type: boolean
+        required: true
+      - name: allowAutomatedRelogin
+        type: boolean
+        required: true
+      - name: clientType
+        type: string
+        required: true
+      - name: isKeepAliveEnabled
+        type: boolean
+        required: true
+      - name: force
+        type: boolean
+        required: true
+      - name: metrics
+        type: "{ clientName: string; clientType: string; }"
+        required: true
+      - name: logging
+        type: "{ enable: boolean; verboseEvents: boolean; }"
+        required: true
+      - name: callingClientConfig
+        type: CallingClientConfig
+        required: true
+  WebexSDK:
+    fields:
+      - name: version
+        type: string
+        required: true
+      - name: canAuthorize
+        type: boolean
+        required: true
+      - name: credentials
+        type: "{ getUserToken: () => Promise<string>; getOrgId: () => string; }"
+        required: true
+      - name: ready
+        type: boolean
+        required: true
+      - name: request
+        type: "<T>(payload: WebexRequestPayload) => Promise<T>"
+        required: true
+      - name: once
+        type: "(event: string, callBack: () => void) => void"
+        required: true
+      - name: internal
+        type: IWebexInternal
+        required: true
+      - name: logger
+        type: Logger
+        required: true
+  LoginOption:
+    kind: alias
+    values:
+      - "\"AGENT_DN\" | \"EXTENSION\" | \"BROWSER\""
+  AgentLogin:
+    fields:
+      - name: dialNumber
+        type: string
+        required: false
+      - name: teamId
+        type: string
+        required: true
+      - name: loginOption
+        type: LoginOption
+        required: true
+  AgentProfileUpdate:
+    kind: alias
+    values:
+      - "{ loginOption: LoginOption; dialNumber?: string; teamId: string; }"
+  StationLoginResponse:
+    kind: union
+    values:
+      - Agent.StationLoginSuccessResponse
+      - Error
+  StationLogoutResponse:
+    kind: union
+    values:
+      - Agent.LogoutSuccess
+      - Error
+  BuddyAgentsResponse:
+    kind: union
+    values:
+      - Agent.BuddyAgentsSuccess
+      - Error
+  BuddyAgents:
+    fields:
+      - name: mediaType
+        type: "\"telephony\" | \"chat\" | \"social\" | \"email\""
+        required: true
+      - name: state
+        type: "\"Available\" | \"Idle\""
+        required: false
+  SubscribeRequest:
+    fields:
+      - name: force
+        type: boolean
+        required: true
+      - name: isKeepAliveEnabled
+        type: boolean
+        required: true
+      - name: clientType
+        type: string
+        required: true
+      - name: allowMultiLogin
+        type: boolean
+        required: true
+  UploadLogsResponse:
+    fields:
+      - name: trackingid
+        type: string
+        required: false
+      - name: url
+        type: string
+        required: false
+      - name: userId
+        type: string
+        required: false
+      - name: feedbackId
+        type: string
+        required: false
+      - name: correlationId
+        type: string
+        required: false
+  UpdateDeviceTypeResponse:
+    kind: union
+    values:
+      - Agent.DeviceTypeUpdateSuccess
+      - Error
+  GenericError:
+    fields:
+      - name: details
+        type: "{ type: string; orgId: string; trackingId: string; data: Record<string, any>; }"
+        required: true
+  SetStateResponse:
+    kind: union
+    values:
+      - Agent.StateChangeSuccess
+      - Error
+  AgentContact:
+    kind: alias
+    values:
+      - >-
+        { type: string; orgId: string; trackingId: string; data: { mediaResourceId: string; eventType: string;
+        eventTime?: number; agentId: string; destAgentId: string; trackingId: string; consultMediaResourceId: string;
+        interaction: Interaction; participantId?: string; fromOwner?: boolean; toOwner?: boolean; childInteractionId?:
+        string; interactionId: string; orgId: string; owner: string; queueMgr: string; queueName?: string; type: string;
+        ronaTimeout?: number; isConsulted?: boolean; isConferencing: boolean; updatedBy?: string; destinationType?:
+        string; autoResumed?: boolean; reasonCode?: string | number; reason?: string; consultingAgentId?: string;
+        taskId?: string; task?: Interaction; supervisorId?: string; monitorType?: string; supervisorDN?: string; id?:
+        string; isWebCallMute?: boolean; reservationInteractionId?: string; reservedAgentChannelId?: string;
+        monitoringState?: { type: string; }; supervisorName?: string; }; }
+  ITask:
+    fields:
+      - name: data
+        type: TaskData
+        required: true
+      - name: webCallMap
+        type: Record<string, string>
+        required: true
+      - name: autoWrapup
+        type: AutoWrapup
+        required: false
+      - name: stateMachineService
+        type: AnyActorRef
+        required: false
+      - name: state
+        type: any
+        required: false
+      - name: sendStateMachineEvent
+        type: "(event: TaskEventPayload) => void"
+        required: true
+  Interaction:
+    fields:
+      - name: isFcManaged
+        type: boolean
+        required: true
+      - name: isTerminated
+        type: boolean
+        required: true
+      - name: mediaType
+        type: MEDIA_CHANNEL
+        required: true
+      - name: previousVTeams
+        type: string[]
+        required: true
+      - name: state
+        type: string
+        required: true
+      - name: currentVTeam
+        type: string
+        required: true
+      - name: participants
+        type: InteractionParticipants
+        required: true
+      - name: callAssociatedData
+        type: CallAssociatedData
+        required: false
+      - name: callAssociatedDetails
+        type: CallAssociatedDetails
+        required: false
+      - name: interactionId
+        type: string
+        required: true
+      - name: orgId
+        type: string
+        required: true
+      - name: createdTimestamp
+        type: number
+        required: false
+      - name: isWrapUpAssist
+        type: boolean
+        required: false
+      - name: parentInteractionId
+        type: string
+        required: false
+      - name: isMediaForked
+        type: boolean
+        required: false
+      - name: flowProperties
+        type: Record<string, unknown>
+        required: false
+      - name: mediaProperties
+        type: Record<string, unknown>
+        required: false
+      - name: callProcessingDetails
+        type: >-
+          { QMgrName: string; taskToBeSelfServiced: string; ani: string; displayAni: string; dnis: string; tenantId:
+          string; QueueId: string; vteamId: string; pauseResumeEnabled?: boolean; pauseDuration?: string; isPaused?:
+          boolean; recordInProgress?: boolean; recordingStarted?: boolean; customerRegion?: string; flowTagId?: string;
+          ctqInProgress?: boolean; outdialTransferToQueueEnabled?: boolean; convIvrTranscript?: string; customerName:
+          string; virtualTeamName: string; ronaTimeout: string; category: string; reason: string; sourceNumber: string;
+          sourcePage: string; appUser: string; customerNumber: string; reasonCode: string; IvrPath: string; pathId:
+          string; fromAddress: string; parentInteractionId?: string; childInteractionId?: string; relationshipType?:
+          string; parent_ANI?: string; parent_DNIS?: string; consultDestinationAgentJoined?: boolean | string;
+          consultDestinationAgentName?: string; parent_Agent_DN?: string; parent_Agent_Name?: string;
+          parent_Agent_TeamName?: string; isConferencing?: string; monitorType?: string; workflowName?: string;
+          workflowId?: string; monitoringInvisibleMode?: string; monitoringRequestId?: string;
+          participantInviteTimeout?: string; mohFileName?: string; CONTINUE_RECORDING_ON_TRANSFER?: string; EP_ID?:
+          string; ROUTING_TYPE?: string; fceRegisteredEvents?: string; isParked?: string; priority?: string;
+          routingStrategyId?: string; monitoringState?: string; BLIND_TRANSFER_IN_PROGRESS?: boolean; fcDesktopView?:
+          string; outdialAgentId?: string; }
+        required: true
+      - name: mainInteractionId
+        type: string
+        required: false
+      - name: queuedTimestamp
+        type: number
+        required: false
+      - name: media
+        type: Record<string, MediaEntry>
+        required: true
+      - name: owner
+        type: string
+        required: true
+      - name: mediaChannel
+        type: string
+        required: true
+      - name: contactDirection
+        type: "{ type: string; }"
+        required: true
+      - name: outboundType
+        type: string
+        required: false
+      - name: workflowManager
+        type: string
+        required: false
+      - name: callFlowParams
+        type: Record<string, FlowParameter>
+        required: false
+  TaskData:
+    fields:
+      - name: mediaResourceId
+        type: string
+        required: true
+      - name: eventType
+        type: string
+        required: true
+      - name: eventTime
+        type: number
+        required: false
+      - name: agentId
+        type: string
+        required: true
+      - name: destAgentId
+        type: string
+        required: true
+      - name: trackingId
+        type: string
+        required: true
+      - name: consultMediaResourceId
+        type: string
+        required: true
+      - name: interaction
+        type: Interaction
+        required: true
+      - name: participantId
+        type: string
+        required: false
+      - name: fromOwner
+        type: boolean
+        required: false
+      - name: toOwner
+        type: boolean
+        required: false
+      - name: childInteractionId
+        type: string
+        required: false
+      - name: interactionId
+        type: string
+        required: true
+      - name: orgId
+        type: string
+        required: true
+      - name: owner
+        type: string
+        required: true
+      - name: queueMgr
+        type: string
+        required: true
+      - name: queueName
+        type: string
+        required: false
+      - name: type
+        type: string
+        required: true
+      - name: ronaTimeout
+        type: number
+        required: false
+      - name: isConsulted
+        type: boolean
+        required: false
+      - name: isConferencing
+        type: boolean
+        required: true
+      - name: isConferenceInProgress
+        type: boolean
+        required: false
+      - name: updatedBy
+        type: string
+        required: false
+      - name: destinationType
+        type: string
+        required: false
+      - name: autoResumed
+        type: boolean
+        required: false
+      - name: reasonCode
+        type: string | number
+        required: false
+      - name: reason
+        type: string
+        required: false
+      - name: consultingAgentId
+        type: string
+        required: false
+      - name: taskId
+        type: string
+        required: false
+      - name: task
+        type: Interaction
+        required: false
+      - name: id
+        type: string
+        required: false
+      - name: isWebCallMute
+        type: boolean
+        required: false
+      - name: reservationInteractionId
+        type: string
+        required: false
+      - name: reservedAgentChannelId
+        type: string
+        required: false
+      - name: wrapUpRequired
+        type: boolean
+        required: false
+      - name: consultStatus
+        type: string
+        required: false
+      - name: isConsultInProgress
+        type: boolean
+        required: false
+      - name: isIncomingTask
+        type: boolean
+        required: false
+      - name: isOnHold
+        type: boolean
+        required: false
+      - name: isCustomerInCall
+        type: boolean
+        required: false
+      - name: conferenceParticipantsCount
+        type: number
+        required: false
+      - name: isSecondaryAgent
+        type: boolean
+        required: false
+      - name: isSecondaryEpDnAgent
+        type: boolean
+        required: false
+      - name: mpcState
+        type: string
+        required: false
+      - name: isAutoAnswering
+        type: boolean
+        required: false
+      - name: agentsPendingWrapUp
+        type: string[]
+        required: false
+  TaskResponse:
+    kind: union
+    values:
+      - AgentContact
+      - Error
+      - void
+  ConsultPayload:
+    fields:
+      - name: to
+        type: string
+        required: true
+      - name: destinationType
+        type: string
+        required: true
+      - name: holdParticipants
+        type: boolean
+        required: false
+  ConsultEndPayload:
+    fields:
+      - name: isConsult
+        type: boolean
+        required: true
+      - name: isSecondaryEpDnAgent
+        type: boolean
+        required: false
+      - name: queueId
+        type: string
+        required: false
+      - name: taskId
+        type: string
+        required: true
+  ConsultTransferPayLoad:
+    fields:
+      - name: to
+        type: string
+        required: true
+      - name: destinationType
+        type: string
+        required: true
+  DialerPayload:
+    fields:
+      - name: entryPointId
+        type: string
+        required: true
+      - name: destination
+        type: string
+        required: true
+      - name: direction
+        type: "\"OUTBOUND\""
+        required: true
+      - name: attributes
+        type: "{ [key: string]: string; }"
+        required: true
+      - name: mediaType
+        type: "\"telephony\" | \"chat\" | \"social\" | \"email\""
+        required: true
+      - name: outboundType
+        type: "\"OUTDIAL\" | \"CALLBACK\" | \"EXECUTE_FLOW\""
+        required: true
+      - name: origin
+        type: string
+        required: true
+  TransferPayLoad:
+    fields:
+      - name: to
+        type: string
+        required: true
+      - name: destinationType
+        type: string
+        required: true
+  ResumeRecordingPayload:
+    fields:
+      - name: autoResumed
+        type: boolean
+        required: true
+  WrapupPayLoad:
+    fields:
+      - name: wrapUpReason
+        type: string
+        required: true
+      - name: auxCodeId
+        type: string
+        required: true
+  StateChange:
+    fields:
+      - name: state
+        type: string
+        required: true
+      - name: auxCodeId
+        type: string
+        required: true
+      - name: lastStateChangeReason
+        type: string
+        required: false
+      - name: agentId
+        type: string
+        required: false
+  Logout:
+    fields:
+      - name: logoutReason
+        type: "\"User requested logout\" | \"Inactivity Logout\" | \"User requested agent profile update\""
+        required: false
+  StateChangeSuccess:
+    kind: alias
+    values:
+      - >-
+        { type: string; orgId: string; trackingId: string; data: { eventType: "AgentDesktopMessage"; agentId: string;
+        trackingId: string; auxCodeId: string; agentSessionId: string; orgId: string; status: string; subStatus:
+        "Available" | "Idle"; lastIdleCodeChangeTimestamp: number; lastStateChangeTimestamp: number; type:
+        "AgentStateChangeSuccess"; changedBy: string | null; changedById: string | null; changedByName: string | null;
+        lastStateChangeReason: string; }; }
+  StationLoginSuccess:
+    kind: alias
+    values:
+      - >-
+        { type: string; orgId: string; trackingId: string; data: { eventType: "AgentDesktopMessage"; agentId: string;
+        trackingId: string; auxCodeId: string; teamId: string; agentSessionId: string; orgId: string; interactionIds:
+        string[]; status: string; subStatus: "Available" | "Idle"; siteId: string; lastIdleCodeChangeTimestamp: number;
+        lastStateChangeTimestamp: number; profileType: string; channelsMap: Record<string, string[]>; dialNumber?:
+        string; roles?: string[]; supervisorSessionId?: string; type: "AgentStationLoginSuccess"; }; }
+  StationLoginSuccessResponse:
+    fields:
+      - name: eventType
+        type: "\"AgentDesktopMessage\""
+        required: true
+      - name: agentId
+        type: string
+        required: true
+      - name: trackingId
+        type: string
+        required: true
+      - name: auxCodeId
+        type: string
+        required: true
+      - name: teamId
+        type: string
+        required: true
+      - name: agentSessionId
+        type: string
+        required: true
+      - name: orgId
+        type: string
+        required: true
+      - name: interactionIds
+        type: string[]
+        required: true
+      - name: status
+        type: string
+        required: true
+      - name: subStatus
+        type: "\"Available\" | \"Idle\""
+        required: true
+      - name: siteId
+        type: string
+        required: true
+      - name: lastIdleCodeChangeTimestamp
+        type: number
+        required: true
+      - name: lastStateChangeTimestamp
+        type: number
+        required: true
+      - name: profileType
+        type: string
+        required: true
+      - name: mmProfile
+        type: "{ chat: number; email: number; social: number; telephony: number; }"
+        required: true
+      - name: dialNumber
+        type: string
+        required: false
+      - name: roles
+        type: string[]
+        required: false
+      - name: supervisorSessionId
+        type: string
+        required: false
+      - name: type
+        type: "\"AgentStationLoginSuccess\""
+        required: true
+      - name: notifsTrackingId
+        type: string
+        required: true
+  DeviceTypeUpdateSuccess:
+    kind: alias
+    values:
+      - "Omit<StationLoginSuccessResponse, \"type\"> & { type: \"AgentDeviceTypeUpdateSuccess\"; }"
+  LogoutSuccess:
+    kind: alias
+    values:
+      - >-
+        { type: string; orgId: string; trackingId: string; data: { eventType: "AgentDesktopMessage"; agentId: string;
+        trackingId: string; agentSessionId: string; orgId: string; status: string; subStatus: string; loggedOutBy?:
+        string; roles?: string[]; type: "AgentLogoutSuccess"; }; }
+  ReloginSuccess:
+    kind: alias
+    values:
+      - >-
+        { type: string; orgId: string; trackingId: string; data: { eventType: "AgentDesktopMessage"; agentId: string;
+        trackingId: string; auxCodeId: string; teamId: string; agentSessionId: string; dn: string; orgId: string;
+        interactionIds: string[]; isExtension: boolean; status: "LoggedIn"; subStatus: "Idle"; siteId: string;
+        lastIdleCodeChangeTimestamp: number; lastStateChangeTimestamp: number; lastStateChangeReason?: string;
+        profileType: string; channelsMap: Record<string, string[]>; dialNumber?: string; roles?: string[]; deviceType?:
+        DeviceType; deviceId?: string | null; isEmergencyModalAlreadyDisplayed?: boolean; type: "AgentReloginSuccess";
+        }; }
+  AgentState:
+    kind: union
+    values:
+      - "'Available'"
+      - "'Idle'"
+      - "'RONA'"
+      - string
+  UserStationLogin:
+    fields:
+      - name: dialNumber
+        type: string
+        required: false
+      - name: dn
+        type: string
+        required: false
+      - name: teamId
+        type: string
+        required: true
+      - name: teamName
+        type: string
+        required: true
+      - name: roles
+        type: string[]
+        required: false
+      - name: siteId
+        type: string
+        required: true
+      - name: usesOtherDN
+        type: boolean
+        required: true
+      - name: skillProfileId
+        type: string
+        required: false
+      - name: auxCodeId
+        type: string
+        required: true
+      - name: isExtension
+        type: boolean
+        required: false
+      - name: deviceType
+        type: string
+        required: false
+      - name: deviceId
+        type: string
+        required: false
+      - name: isEmergencyModalAlreadyDisplayed
+        type: boolean
+        required: false
+  DeviceType:
+    kind: union
+    values:
+      - LoginOption
+      - string
+  BuddyDetails:
+    fields:
+      - name: agentId
+        type: string
+        required: true
+      - name: state
+        type: string
+        required: true
+      - name: teamId
+        type: string
+        required: true
+      - name: dn
+        type: string
+        required: true
+      - name: agentName
+        type: string
+        required: true
+      - name: siteId
+        type: string
+        required: true
+  BuddyAgentsSuccess:
+    kind: alias
+    values:
+      - >-
+        { type: string; orgId: string; trackingId: string; data: { eventType: "AgentDesktopMessage"; agentId: string;
+        trackingId: string; agentSessionId: string; orgId: string; type: "BuddyAgents"; agentList: Array<BuddyDetails>;
+        }; }
+  Profile:
+    fields:
+      - name: microsoftConfig
+        type: "{ showUserDetailsMS?: boolean; stateSynchronizationMS?: boolean; }"
+        required: false
+      - name: webexConfig
+        type: "{ showUserDetailsWebex?: boolean; stateSynchronizationWebex?: boolean; }"
+        required: false
+      - name: teams
+        type: Team[]
+        required: true
+      - name: defaultDn
+        type: string
+        required: true
+      - name: dn
+        type: string
+        required: false
+      - name: forceDefaultDn
+        type: boolean
+        required: true
+      - name: forceDefaultDnForAgent
+        type: boolean
+        required: true
+      - name: regexUS
+        type: string | RegExp
+        required: true
+      - name: regexOther
+        type: string | RegExp
+        required: true
+      - name: agentId
+        type: string
+        required: true
+      - name: agentName
+        type: string
+        required: true
+      - name: agentMailId
+        type: string
+        required: true
+      - name: agentProfileID
+        type: string
+        required: true
+      - name: dialPlan
+        type: DialPlan
+        required: true
+      - name: multimediaProfileId
+        type: string
+        required: true
+      - name: skillProfileId
+        type: string
+        required: true
+      - name: siteId
+        type: string
+        required: true
+      - name: enterpriseId
+        type: string
+        required: true
+      - name: privacyShieldVisible
+        type: boolean
+        required: true
+      - name: idleCodes
+        type: Entity[]
+        required: true
+      - name: idleCodesList
+        type: string[]
+        required: false
+      - name: idleCodesAccess
+        type: "\"ALL\" | \"SPECIFIC\""
+        required: false
+      - name: wrapupCodes
+        type: Entity[]
+        required: true
+      - name: agentWrapUpCodes
+        type: agentWrapUpCodes
+        required: false
+      - name: agentDefaultWrapUpCode
+        type: agentDefaultWrapupCode
+        required: false
+      - name: defaultWrapupCode
+        type: string
+        required: true
+      - name: wrapUpData
+        type: WrapupData
+        required: true
+      - name: orgId
+        type: string
+        required: false
+      - name: isOutboundEnabledForTenant
+        type: boolean
+        required: true
+      - name: isOutboundEnabledForAgent
+        type: boolean
+        required: true
+      - name: isAdhocDialingEnabled
+        type: boolean
+        required: true
+      - name: isAgentAvailableAfterOutdial
+        type: boolean
+        required: true
+      - name: isCampaignManagementEnabled
+        type: boolean
+        required: true
+      - name: outDialEp
+        type: string
+        required: true
+      - name: isEndTaskEnabled
+        type: boolean
+        required: true
+      - name: isEndConsultEnabled
+        type: boolean
+        required: true
+      - name: lcmUrl
+        type: string
+        required: false
+      - name: agentDbId
+        type: string
+        required: true
+      - name: agentAnalyzerId
+        type: string
+        required: false
+      - name: allowConsultToQueue
+        type: boolean
+        required: true
+      - name: campaignManagerAdditionalInfo
+        type: string
+        required: false
+      - name: agentPersonalStatsEnabled
+        type: boolean
+        required: true
+      - name: addressBookId
+        type: string
+        required: false
+      - name: outdialANIId
+        type: string
+        required: false
+      - name: analyserUserId
+        type: string
+        required: false
+      - name: isCallMonitoringEnabled
+        type: boolean
+        required: false
+      - name: isMidCallMonitoringEnabled
+        type: boolean
+        required: false
+      - name: isBargeInEnabled
+        type: boolean
+        required: false
+      - name: isManagedTeamsEnabled
+        type: boolean
+        required: false
+      - name: isManagedQueuesEnabled
+        type: boolean
+        required: false
+      - name: isSendMessageEnabled
+        type: boolean
+        required: false
+      - name: isAgentStateChangeEnabled
+        type: boolean
+        required: false
+      - name: isSignOutAgentsEnabled
+        type: boolean
+        required: false
+      - name: urlMappings
+        type: URLMappings
+        required: false
+      - name: isTimeoutDesktopInactivityEnabled
+        type: boolean
+        required: true
+      - name: timeoutDesktopInactivityMins
+        type: number
+        required: false
+      - name: isAnalyzerEnabled
+        type: boolean
+        required: false
+      - name: tenantTimezone
+        type: string
+        required: false
+      - name: loginVoiceOptions
+        type: LoginOption[]
+        required: false
+      - name: deviceType
+        type: LoginOption
+        required: false
+      - name: currentTeamId
+        type: string
+        required: false
+      - name: webRtcEnabled
+        type: boolean
+        required: true
+      - name: organizationIdleCodes
+        type: Entity[]
+        required: false
+      - name: isRecordingManagementEnabled
+        type: boolean
+        required: false
+      - name: lostConnectionRecoveryTimeout
+        type: number
+        required: true
+      - name: maskSensitiveData
+        type: boolean
+        required: false
+      - name: isAgentLoggedIn
+        type: boolean
+        required: false
+      - name: lastStateAuxCodeId
+        type: string
+        required: false
+      - name: lastStateChangeTimestamp
+        type: number
+        required: false
+      - name: lastIdleCodeChangeTimestamp
+        type: number
+        required: false
+  AgentResponse:
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: ciUserId
+        type: string
+        required: true
+      - name: firstName
+        type: string
+        required: true
+      - name: lastName
+        type: string
+        required: true
+      - name: agentProfileId
+        type: string
+        required: true
+      - name: email
+        type: string
+        required: true
+      - name: teamIds
+        type: string[]
+        required: true
+      - name: multimediaProfileId
+        type: string
+        required: true
+      - name: skillProfileId
+        type: string
+        required: true
+      - name: siteId
+        type: string
+        required: true
+      - name: dbId
+        type: string
+        required: false
+      - name: defaultDialledNumber
+        type: string
+        required: false
+  DesktopProfileResponse:
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: name
+        type: string
+        required: true
+      - name: description
+        type: string
+        required: true
+      - name: parentType
+        type: string
+        required: true
+      - name: screenPopup
+        type: boolean
+        required: true
+      - name: loginVoiceOptions
+        type: LoginOption[]
+        required: true
+      - name: accessWrapUpCode
+        type: string
+        required: true
+      - name: accessIdleCode
+        type: string
+        required: true
+      - name: wrapUpCodes
+        type: string[]
+        required: true
+      - name: idleCodes
+        type: string[]
+        required: true
+      - name: dialPlanEnabled
+        type: boolean
+        required: true
+      - name: lastAgentRouting
+        type: boolean
+        required: true
+      - name: autoWrapUp
+        type: boolean
+        required: true
+      - name: agentPersonalGreeting
+        type: boolean
+        required: true
+      - name: autoAnswer
+        type: boolean
+        required: true
+      - name: autoWrapAfterSeconds
+        type: number
+        required: true
+      - name: agentAvailableAfterOutdial
+        type: boolean
+        required: true
+      - name: allowAutoWrapUpExtension
+        type: boolean
+        required: true
+      - name: accessQueue
+        type: string
+        required: true
+      - name: queues
+        type: string[]
+        required: true
+      - name: accessEntryPoint
+        type: string
+        required: true
+      - name: entryPoints
+        type: string[]
+        required: true
+      - name: accessBuddyTeam
+        type: string
+        required: true
+      - name: buddyTeams
+        type: string[]
+        required: true
+      - name: outdialEnabled
+        type: boolean
+        required: true
+      - name: outdialEntryPointId
+        type: string
+        required: true
+      - name: outdialANIId
+        type: string
+        required: true
+      - name: consultToQueue
+        type: boolean
+        required: true
+      - name: addressBookId
+        type: string
+        required: true
+      - name: viewableStatistics
+        type: >-
+          { id: string; agentStats: boolean; accessQueueStats: string; contactServiceQueues: string[];
+          loggedInTeamStats: boolean; accessTeamStats: string; teams: string[]; }
+        required: true
+      - name: agentDNValidation
+        type: string
+        required: true
+      - name: agentDNValidationCriterions
+        type: string[]
+        required: true
+      - name: dialPlans
+        type: string[]
+        required: true
+      - name: timeoutDesktopInactivityCustomEnabled
+        type: boolean
+        required: true
+      - name: timeoutDesktopInactivityMins
+        type: number
+        required: true
+      - name: showUserDetailsMS
+        type: boolean
+        required: true
+      - name: stateSynchronizationMS
+        type: boolean
+        required: true
+      - name: showUserDetailsWebex
+        type: boolean
+        required: true
+      - name: stateSynchronizationWebex
+        type: boolean
+        required: true
+      - name: thresholdRules
+        type: Record<string, string | number>[]
+        required: true
+      - name: active
+        type: boolean
+        required: true
+      - name: systemDefault
+        type: boolean
+        required: true
+      - name: createdTime
+        type: number
+        required: true
+      - name: lastUpdatedTime
+        type: number
+        required: true
+  MultimediaProfileResponse:
+    fields:
+      - name: organizationId
+        type: string
+        required: true
+      - name: id
+        type: string
+        required: true
+      - name: version
+        type: number
+        required: true
+      - name: name
+        type: string
+        required: true
+      - name: description
+        type: string
+        required: true
+      - name: chat
+        type: number
+        required: true
+      - name: email
+        type: number
+        required: true
+      - name: telephony
+        type: number
+        required: true
+      - name: social
+        type: number
+        required: true
+      - name: active
+        type: boolean
+        required: true
+      - name: blendingModeEnabled
+        type: boolean
+        required: true
+      - name: blendingMode
+        type: string
+        required: true
+      - name: systemDefault
+        type: boolean
+        required: true
+      - name: createdTime
+        type: number
+        required: true
+      - name: lastUpdatedTime
+        type: number
+        required: true
+  ListTeamsResponse:
+    fields:
+      - name: data
+        type: TeamList[]
+        required: true
+      - name: meta
+        type: "{ page: number; pageSize: number; totalPages: number; totalRecords: number; }"
+        required: true
+  ListAuxCodesResponse:
+    fields:
+      - name: data
+        type: AuxCode[]
+        required: true
+      - name: meta
+        type: "{ page: number; pageSize: number; totalPages: number; totalRecords: number; }"
+        required: true
+  SiteInfo:
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: name
+        type: string
+        required: true
+      - name: active
+        type: boolean
+        required: true
+      - name: multimediaProfileId
+        type: string
+        required: true
+      - name: systemDefault
+        type: boolean
+        required: true
+  OrgInfo:
+    fields:
+      - name: tenantId
+        type: string
+        required: true
+      - name: timezone
+        type: string
+        required: true
+  OrgSettings:
+    fields:
+      - name: webRtcEnabled
+        type: boolean
+        required: true
+      - name: maskSensitiveData
+        type: boolean
+        required: true
+      - name: campaignManagerEnabled
+        type: boolean
+        required: true
+  TenantData:
+    fields:
+      - name: timeoutDesktopInactivityMins
+        type: number
+        required: true
+      - name: forceDefaultDn
+        type: boolean
+        required: true
+      - name: dnDefaultRegex
+        type: string
+        required: true
+      - name: dnOtherRegex
+        type: string
+        required: true
+      - name: privacyShieldVisible
+        type: boolean
+        required: true
+      - name: outdialEnabled
+        type: boolean
+        required: true
+      - name: endCallEnabled
+        type: boolean
+        required: true
+      - name: endConsultEnabled
+        type: boolean
+        required: true
+      - name: callVariablesSuppressed
+        type: boolean
+        required: true
+      - name: timeoutDesktopInactivityEnabled
+        type: boolean
+        required: true
+      - name: lostConnectionRecoveryTimeout
+        type: number
+        required: true
+  URLMapping:
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: name
+        type: string
+        required: true
+      - name: url
+        type: string
+        required: true
+      - name: links
+        type: string[]
+        required: true
+      - name: createdTime
+        type: number
+        required: true
+      - name: lastUpdatedTime
+        type: number
+        required: true
+  DialPlanEntity:
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: regularExpression
+        type: string
+        required: true
+      - name: prefix
+        type: string
+        required: true
+      - name: strippedChars
+        type: string
+        required: true
+      - name: name
+        type: string
+        required: true
+  AuxCode:
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: active
+        type: boolean
+        required: true
+      - name: defaultCode
+        type: boolean
+        required: true
+      - name: isSystemCode
+        type: boolean
+        required: true
+      - name: description
+        type: string
+        required: true
+      - name: name
+        type: string
+        required: true
+      - name: workTypeCode
+        type: string
+        required: true
+  TeamList:
+    fields:
+      - name: id
+        type: string
+        required: true
+      - name: name
+        type: string
+        required: true
+      - name: teamType
+        type: string
+        required: true
+      - name: teamStatus
+        type: string
+        required: true
+      - name: active
+        type: boolean
+        required: true
+      - name: siteId
+        type: string
+        required: true
+      - name: siteName
+        type: string
+        required: true
+      - name: multiMediaProfileId
+        type: string
+        required: false
+      - name: userIds
+        type: string[]
+        required: true
+      - name: rankQueuesForTeam
+        type: boolean
+        required: true
+      - name: queueRankings
+        type: string[]
+        required: true
+      - name: dbId
+        type: string
+        required: false
+      - name: desktopLayoutId
+        type: string
+        required: false
+  WrapUpReason:
+    fields:
+      - name: isSystem
+        type: boolean
+        required: true
+      - name: name
+        type: string
+        required: true
+      - name: id
+        type: string
+        required: true
+      - name: isDefault
+        type: boolean
+        required: true
+  WebSocketEvent:
+    fields:
+      - name: type
+        type: CC_EVENTS
+        required: true
+      - name: data
+        type: >-
+          Agent.BuddyAgentsSuccess | Agent.LogoutSuccess | Agent.StateChangeSuccess | Agent.StationLoginSuccess |
+          Agent.ReloginSuccess | WelcomeEvent
+        required: true
+  WrapupData:
+    fields:
+      - name: wrapUpProps
+        type: >-
+          { autoWrapup?: boolean; autoWrapupInterval?: number; lastAgentRoute?: boolean; wrapUpReasonList:
+          Array<WrapUpReason>; wrapUpCodesList?: Array<string>; idleCodesAccess?: "ALL" | "SPECIFIC"; interactionId?:
+          string; allowCancelAutoWrapup?: boolean; }
+        required: true
+  Entity:
+    fields:
+      - name: isSystem
+        type: boolean
+        required: true
+      - name: name
+        type: string
+        required: true
+      - name: id
+        type: string
+        required: true
+      - name: isDefault
+        type: boolean
+        required: true
+  DialPlan:
+    fields:
+      - name: type
+        type: string
+        required: true
+      - name: dialPlanEntity
+        type: "{ regex: string; prefix: string; strippedChars: string; name: string; }[]"
+        required: true
+  AuxCodeType:
+    kind: union
+    values:
+      - typeof IDLE_CODE
+      - typeof WRAP_UP_CODE
+constants:
+  IDLE_CODE: IDLE_CODE
+  WRAP_UP_CODE: WRAP_UP_CODE
