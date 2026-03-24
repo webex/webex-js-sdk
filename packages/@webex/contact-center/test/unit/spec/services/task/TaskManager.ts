@@ -284,6 +284,35 @@ describe('TaskManager', () => {
     );
   });
 
+  it('should not invoke sendEvent when realtime transcripts are disabled in aiFeature', () => {
+    taskManager.setConfigFlags({
+      isEndTaskEnabled: true,
+      isEndConsultEnabled: true,
+      webRtcEnabled: true,
+      autoWrapup: false,
+      aiFeature: {
+        id: 'ai-feature-1',
+        realtimeTranscripts: {
+          enable: false,
+        },
+      },
+    });
+
+    const message = (type: CC_EVENTS) =>
+      JSON.stringify({
+        data: {
+          ...taskDataMock,
+          interactionId: taskId,
+          type,
+        },
+      });
+
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONTACT_ASSIGNED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULTING));
+
+    expect(mockApiAIAssistant.sendEvent).not.toHaveBeenCalled();
+  });
+
   it('should emit REAL_TIME_TRANSCRIPTION when eventType is in top-level payload', () => {
     const task = taskManager.getTask(taskId);
     const taskEmitSpy = jest.spyOn(task, 'emit');

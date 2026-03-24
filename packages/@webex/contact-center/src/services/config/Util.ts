@@ -185,7 +185,7 @@ function parseAgentConfigs(profileData: {
 
   const defaultWrapUpData = getDefaultWrapUpCode(wrapupCodes);
   const aiFeature: AIFeatureFlags | undefined =
-    aiFeatureFlags?.data && aiFeatureFlags.data.length > 0 ? aiFeatureFlags.data[0] : undefined;
+    aiFeatureFlags?.data?.length > 0 ? aiFeatureFlags.data[0] : undefined;
 
   const finalData = {
     teams: teamData,

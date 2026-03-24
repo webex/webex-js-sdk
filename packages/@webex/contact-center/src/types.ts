@@ -6,7 +6,7 @@ import {
 } from '@webex/internal-plugin-metrics/src/metrics.types';
 import * as Agent from './services/agent/types';
 import * as Contact from './services/task/types';
-import {Profile} from './services/config/types';
+import {AIFeatureFlags, Profile} from './services/config/types';
 import {PaginatedResponse, BaseSearchParams} from './utils/PageCache';
 
 /**
@@ -574,6 +574,7 @@ export type ConfigFlags = {
   isEndConsultEnabled: boolean;
   webRtcEnabled: boolean;
   autoWrapup: boolean;
+  aiFeature?: AIFeatureFlags;
   /**
    * Optional toggle to globally enable/disable recording controls.
    * Falls back to backend hints when omitted.
@@ -857,7 +858,7 @@ export const AIAssistantEventType = {
   CUSTOM_EVENT: 'CUSTOM_EVENT',
   /** CTI-backed AI Assistant event */
   CTI_EVENT: 'CTI_EVENT',
-} as const;
+};
 
 /**
  * Union type of AI Assistant event categories.
@@ -888,7 +889,7 @@ export const AIAssistantEventName = {
   POST_CALL_SUMMARY_RESPONSE: 'POST_CALL_SUMMARY_RESPONSE',
   /** Suggested digital response event */
   SUGGESTED_RESPONSES_DIGITAL: 'SUGGESTED_RESPONSES_DIGITAL',
-} as const;
+};
 
 /**
  * Union type of AI Assistant event names.

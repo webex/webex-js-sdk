@@ -319,9 +319,6 @@ export default class TaskManager extends EventEmitter {
     this.webSocketManager.on('message', (event) => {
       // Step 1: Parse and validate the message
       const message = TaskManager.parseWebSocketMessage(event);
-      // if (message.type === CC_EVENTS.REAL_TIME_TRANSCRIPTION) {
-      //   task.emit(CC_EVENTS.REAL_TIME_TRANSCRIPTION, message.data);
-      // }
       if (!message) return;
 
       // Step 2: Prepare event context
@@ -704,6 +701,7 @@ export default class TaskManager extends EventEmitter {
   private requestRealTimeTranscripts(eventType: string, interactionId: string): void {
     const action = TRANSCRIPT_EVENT_MAP[eventType];
     if (!action || !this.apiAIAssistant) return;
+    if (this.configFlags?.aiFeature?.realtimeTranscripts?.enable === false) return;
 
     this.apiAIAssistant
       .sendEvent(
@@ -716,7 +714,7 @@ export default class TaskManager extends EventEmitter {
       .catch((error) => {
         LoggerProxy.error(`Failed to send transcript ${action} event`, {
           module: TASK_MANAGER_FILE,
-          method: 'requestRealTimeTranscripts',
+          method: METHODS.REQUEST_REAL_TIME_TRANSCRIPTS,
           interactionId,
           error,
         });

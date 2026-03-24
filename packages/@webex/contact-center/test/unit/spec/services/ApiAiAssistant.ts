@@ -1,6 +1,7 @@
 import ApiAIAssistant from '../../../../src/services/ApiAiAssistant';
 import MetricsManager from '../../../../src/metrics/MetricsManager';
 import LoggerProxy from '../../../../src/logger-proxy';
+import WebexRequest from '../../../../src/services/core/WebexRequest';
 import {HTTP_METHODS, WebexSDK} from '../../../../src/types';
 
 jest.mock('../../../../src/metrics/MetricsManager');
@@ -111,5 +112,18 @@ describe('ApiAIAssistant', () => {
 
     expect(failed).toBe(true);
     expect(LoggerProxy.error).toHaveBeenCalled();
+  });
+
+  it('should fail when realtime transcripts feature is disabled', async () => {
+    apiAIAssistant.setAIFeatureFlags({realtimeTranscripts: {enable: false}} as any);
+    let errorMessage = '';
+
+    try {
+      await apiAIAssistant.fetchHistoricTranscripts('test-agent-id', 'interaction-1');
+    } catch (error) {
+      errorMessage = (error as Error)?.message || '';
+    }
+
+    expect(errorMessage).toBe('REAL_TIME_TRANSCRIPTION_NOT_ENABLED');
   });
 });

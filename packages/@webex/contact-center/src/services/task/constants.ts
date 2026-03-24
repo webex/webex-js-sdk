@@ -82,6 +82,7 @@ export const METHODS = {
   GET_TASK_MANAGER: 'getTaskManager',
   SETUP_AUTO_WRAPUP_TIMER: 'setupAutoWrapupTimer',
   CANCEL_AUTO_WRAPUP_TIMER: 'cancelAutoWrapupTimer',
+  REQUEST_REAL_TIME_TRANSCRIPTS: 'requestRealTimeTranscripts',
 };
 
 export const TRANSCRIPT_EVENT_MAP = {
