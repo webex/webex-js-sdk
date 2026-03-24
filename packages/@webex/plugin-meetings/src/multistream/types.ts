@@ -18,16 +18,6 @@ export interface ReceiverSelectedPolicyInfo {
 
 export type PolicyInfo = ActiveSpeakerPolicyInfo | ReceiverSelectedPolicyInfo;
 
-export interface MediaRequest {
-  policyInfo: PolicyInfo;
-  receiveSlots: Array<ReceiveSlot>;
-  codecInfo?: CodecInfo;
-  preferredMaxFs?: number;
-  handleMaxFs?: ({maxFs}: {maxFs: number}) => void;
-}
-
-export type MediaRequestId = string;
-
 export type RemoteVideoResolution =
   /** the smallest possible resolution, 90p or less */
   | 'thumbnail'
@@ -41,3 +31,13 @@ export type RemoteVideoResolution =
   | 'large'
   /** highest possible resolution */
   | 'best';
+
+export interface MediaRequest {
+  policyInfo: PolicyInfo;
+  receiveSlots: Array<ReceiveSlot>;
+  codecInfos?: CodecInfo[];
+  preferredMaxFs?: number;
+  handleMaxFs?: ({maxFs}: {maxFs: number}) => void;
+}
+
+export type MediaRequestId = string;
