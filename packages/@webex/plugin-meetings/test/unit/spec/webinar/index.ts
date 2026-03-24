@@ -455,9 +455,10 @@ describe('plugin-meetings', () => {
 
         const result = await webinar.updatePSDataChannel();
 
-        // 'online' listener should NOT be registered since default session is already connected
-        const onlineCalls = webex.internal.llm.on.args.filter(([event]) => event === 'online');
-        assert.equal(onlineCalls.length, 0, 'should not register online listener when default session is already connected');
+        // The 'online' listener is registered then immediately removed since default session is already connected
+        assert.calledWith(webex.internal.llm.on, 'online', sinon.match.func);
+        assert.calledWith(webex.internal.llm.off, 'online', sinon.match.func);
+        assert.isNull(webinar._pendingOnlineListener);
         assert.calledOnce(webex.internal.llm.registerAndConnect);
         assert.equal(result, 'REGISTER_AND_CONNECT_RESULT');
       });
