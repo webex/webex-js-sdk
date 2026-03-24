@@ -22,7 +22,7 @@ src/metrics/
 ├── behavioral-events.ts    # Behavioral event taxonomy mapping
 ├── constants.ts            # METRIC_EVENT_NAMES constants
 └── ai-docs/
-    ├── AGENTS.md           # Usage documentation
+    ├── AGENTS.md           # Usage documentation (see PR #4762)
     └── ARCHITECTURE.md     # This file
 ```
 
@@ -47,10 +47,15 @@ export default class MetricsManager {
     }
     return MetricsManager.instance;
   }
+
+  public static resetInstance() {
+    MetricsManager.instance = undefined;
+  }
 }
 ```
 
-The Webex SDK instance is set once via `setWebex()`, which listens for the `ready` event before flushing pending queues.
+- The Webex SDK instance is set once via `setWebex()`, which listens for the `ready` event before flushing pending queues.
+- `resetInstance()` sets the singleton to `undefined`, allowing a fresh instance to be created. Primarily used in tests.
 
 ---
 
@@ -95,6 +100,7 @@ sequenceDiagram
     CC->>MM: timeEvent([SUCCESS_KEY, FAILURE_KEY])
     Note over MM: Store startTime + key set in runningEvents
     CC->>CC: Execute operation (e.g., stationLogin)
+    Note over MM: trackEvent defaults to ['behavioral'] only if no metricServices specified
     alt Success
         CC->>MM: trackEvent(SUCCESS_KEY, payload, ['behavioral', 'operational', 'business'])
     else Failure
@@ -123,16 +129,15 @@ sequenceDiagram
     CC->>MM: getInstance({webex})
     MM->>MM: Create singleton (if needed)
     MM->>MM: setWebex(webex)
-    alt webex.ready === true
-        MM->>MM: setReadyToSubmitEvents()
-        MM->>MM: submitPendingEvents()
-    else webex not ready yet
-        MM->>Webex: webex.once('ready', callback)
-        Note over MM: Events queue until ready
-        Webex-->>MM: 'ready' event fires
+    opt webex.ready === true
         MM->>MM: setReadyToSubmitEvents()
         MM->>MM: submitPendingEvents()
     end
+    MM->>Webex: webex.once('ready', callback)
+    Note over MM: 'ready' listener is always registered
+    Webex-->>MM: 'ready' event fires
+    MM->>MM: setReadyToSubmitEvents()
+    MM->>MM: submitPendingEvents()
 ```
 
 ---
@@ -164,11 +169,11 @@ The mapping is defined in `behavioral-events.ts` via `eventTaxonomyMap` and acce
 
 MetricsManager maintains three independent pending event queues:
 
-| Queue                       | Type         | Submitted Via                                      |
-| --------------------------- | ------------ | -------------------------------------------------- |
-| `pendingBehavioralEvents`   | behavioral   | `webex.internal.newMetrics.submitBehavioralEvent`   |
-| `pendingOperationalEvents`  | operational  | `webex.internal.newMetrics.submitOperationalEvent`  |
-| `pendingBusinessEvents`     | business     | `webex.internal.newMetrics.submitBusinessEvent`     |
+| Queue                       | Type         | Submitted Via                                      | Name Transform                                  | Extra Metadata                   |
+| --------------------------- | ------------ | -------------------------------------------------- | ----------------------------------------------- | -------------------------------- |
+| `pendingBehavioralEvents`   | behavioral   | `webex.internal.newMetrics.submitBehavioralEvent`   | Taxonomy-based (`{product}.{agent}.{target}.{verb}`) | None                             |
+| `pendingOperationalEvents`  | operational  | `webex.internal.newMetrics.submitOperationalEvent`  | `WXCC_SDK_` prefix + uppercase (e.g. `WXCC_SDK_STATION_LOGIN_SUCCESS`) | None                             |
+| `pendingBusinessEvents`     | business     | `webex.internal.newMetrics.submitBusinessEvent`     | `WXCC_SDK_` prefix + uppercase (same as operational) | `metadata: {appType: 'wxcc_sdk'}` |
 
 ### Submission Guards
 
@@ -255,24 +260,48 @@ Extracts: `agentId`, `trackingId`, `notifTrackingId`, `orgId`, `failureType`, `f
 
 All event names are defined in `constants.ts` as `METRIC_EVENT_NAMES`. Events follow a `{Domain} {Action} {Success|Failed}` naming convention:
 
-| Category          | Success Event                          | Failure Event                          |
-| ----------------- | -------------------------------------- | -------------------------------------- |
-| Agent Login       | `STATION_LOGIN_SUCCESS`                | `STATION_LOGIN_FAILED`                 |
-| Agent Logout      | `STATION_LOGOUT_SUCCESS`               | `STATION_LOGOUT_FAILED`                |
-| Agent Relogin     | `STATION_RELOGIN_SUCCESS`              | `STATION_RELOGIN_FAILED`               |
-| State Change      | `AGENT_STATE_CHANGE_SUCCESS`           | `AGENT_STATE_CHANGE_FAILED`            |
-| Buddy Agents      | `FETCH_BUDDY_AGENTS_SUCCESS`           | `FETCH_BUDDY_AGENTS_FAILED`            |
-| WebSocket         | `WEBSOCKET_REGISTER_SUCCESS`           | `WEBSOCKET_REGISTER_FAILED`            |
-| Task Accept       | `TASK_ACCEPT_SUCCESS`                  | `TASK_ACCEPT_FAILED`                   |
-| Task Hold         | `TASK_HOLD_SUCCESS`                    | `TASK_HOLD_FAILED`                     |
-| Task Transfer     | `TASK_TRANSFER_SUCCESS`                | `TASK_TRANSFER_FAILED`                 |
-| Task Conference   | `TASK_CONFERENCE_START_SUCCESS`        | `TASK_CONFERENCE_START_FAILED`         |
-| Outdial           | `TASK_OUTDIAL_SUCCESS`                 | `TASK_OUTDIAL_FAILED`                  |
-| EntryPoint        | `ENTRYPOINT_FETCH_SUCCESS`             | `ENTRYPOINT_FETCH_FAILED`              |
-| AddressBook       | `ADDRESSBOOK_FETCH_SUCCESS`            | `ADDRESSBOOK_FETCH_FAILED`             |
-| Queue             | `QUEUE_FETCH_SUCCESS`                  | `QUEUE_FETCH_FAILED`                   |
+| Category               | Success Event                          | Failure Event                          |
+| ---------------------- | -------------------------------------- | -------------------------------------- |
+| Station Login          | `STATION_LOGIN_SUCCESS`                | `STATION_LOGIN_FAILED`                 |
+| Station Logout         | `STATION_LOGOUT_SUCCESS`               | `STATION_LOGOUT_FAILED`                |
+| Station Relogin        | `STATION_RELOGIN_SUCCESS`              | `STATION_RELOGIN_FAILED`               |
+| State Change           | `AGENT_STATE_CHANGE_SUCCESS`           | `AGENT_STATE_CHANGE_FAILED`            |
+| Buddy Agents           | `FETCH_BUDDY_AGENTS_SUCCESS`           | `FETCH_BUDDY_AGENTS_FAILED`            |
+| WebSocket Register     | `WEBSOCKET_REGISTER_SUCCESS`           | `WEBSOCKET_REGISTER_FAILED`            |
+| Task Accept            | `TASK_ACCEPT_SUCCESS`                  | `TASK_ACCEPT_FAILED`                   |
+| Task Decline           | `TASK_DECLINE_SUCCESS`                 | `TASK_DECLINE_FAILED`                  |
+| Task End               | `TASK_END_SUCCESS`                     | `TASK_END_FAILED`                      |
+| Task Wrapup            | `TASK_WRAPUP_SUCCESS`                  | `TASK_WRAPUP_FAILED`                   |
+| Task Hold              | `TASK_HOLD_SUCCESS`                    | `TASK_HOLD_FAILED`                     |
+| Task Resume            | `TASK_RESUME_SUCCESS`                  | `TASK_RESUME_FAILED`                   |
+| Task Consult Start     | `TASK_CONSULT_START_SUCCESS`           | `TASK_CONSULT_START_FAILED`            |
+| Task Consult End       | `TASK_CONSULT_END_SUCCESS`             | `TASK_CONSULT_END_FAILED`              |
+| Task Transfer          | `TASK_TRANSFER_SUCCESS`                | `TASK_TRANSFER_FAILED`                 |
+| Task Resume Recording  | `TASK_RESUME_RECORDING_SUCCESS`        | `TASK_RESUME_RECORDING_FAILED`         |
+| Task Pause Recording   | `TASK_PAUSE_RECORDING_SUCCESS`         | `TASK_PAUSE_RECORDING_FAILED`          |
+| Task Accept Consult    | `TASK_ACCEPT_CONSULT_SUCCESS`          | `TASK_ACCEPT_CONSULT_FAILED`           |
+| Task Auto Answer       | `TASK_AUTO_ANSWER_SUCCESS`             | `TASK_AUTO_ANSWER_FAILED`              |
+| Conference Start       | `TASK_CONFERENCE_START_SUCCESS`        | `TASK_CONFERENCE_START_FAILED`         |
+| Conference End         | `TASK_CONFERENCE_END_SUCCESS`          | `TASK_CONFERENCE_END_FAILED`           |
+| Conference Transfer    | `TASK_CONFERENCE_TRANSFER_SUCCESS`     | `TASK_CONFERENCE_TRANSFER_FAILED`      |
+| Conference Exit        | `TASK_CONFERENCE_EXIT_SUCCESS`         | `TASK_CONFERENCE_EXIT_FAILED`          |
+| Switch Call            | `TASK_SWITCH_CALL_SUCCESS`             | `TASK_SWITCH_CALL_FAILED`              |
+| Outdial                | `TASK_OUTDIAL_SUCCESS`                 | `TASK_OUTDIAL_FAILED`                  |
+| Upload Logs            | `UPLOAD_LOGS_SUCCESS`                  | `UPLOAD_LOGS_FAILED`                   |
+| WebSocket Deregister   | `WEBSOCKET_DEREGISTER_SUCCESS`         | `WEBSOCKET_DEREGISTER_FAIL`            |
+| Device Type Update     | `AGENT_DEVICE_TYPE_UPDATE_SUCCESS`     | `AGENT_DEVICE_TYPE_UPDATE_FAILED`      |
+| EntryPoint             | `ENTRYPOINT_FETCH_SUCCESS`             | `ENTRYPOINT_FETCH_FAILED`              |
+| AddressBook            | `ADDRESSBOOK_FETCH_SUCCESS`            | `ADDRESSBOOK_FETCH_FAILED`             |
+| Queue                  | `QUEUE_FETCH_SUCCESS`                  | `QUEUE_FETCH_FAILED`                   |
+| Outdial ANI Entries    | `OUTDIAL_ANI_EP_FETCH_SUCCESS`         | `OUTDIAL_ANI_EP_FETCH_FAILED`          |
 
-Special events (no success/failure pair): `AGENT_RONA`, `AGENT_CONTACT_ASSIGN_FAILED`, `AGENT_INVITE_FAILED`, `WEBSOCKET_EVENT_RECEIVED`
+Special events (no success/failure pair):
+- `AGENT_RONA` — has behavioral taxonomy (`service.agent_rona.set`)
+- `AGENT_CONTACT_ASSIGN_FAILED` — has behavioral taxonomy (`service.agent_contact_assign.fail`)
+- `AGENT_INVITE_FAILED` — has behavioral taxonomy (`service.agent_invite.fail`)
+- `WEBSOCKET_EVENT_RECEIVED` — **no** behavioral taxonomy (not in `eventTaxonomyMap`)
+
+Events **without** behavioral taxonomy (not in `eventTaxonomyMap`): `WEBSOCKET_DEREGISTER_SUCCESS`, `WEBSOCKET_DEREGISTER_FAIL`, `WEBSOCKET_EVENT_RECEIVED`
 
 ---
 
