@@ -35,7 +35,7 @@ export type RemoteVideoResolution =
 export interface MediaRequest {
   policyInfo: PolicyInfo;
   receiveSlots: Array<ReceiveSlot>;
-  codecInfos?: CodecInfo[];
+  codecInfo?: CodecInfo;
   preferredMaxFs?: number;
   handleMaxFs?: ({maxFs}: {maxFs: number}) => void;
 }
