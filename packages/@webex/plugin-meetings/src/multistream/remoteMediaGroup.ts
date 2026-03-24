@@ -11,16 +11,7 @@ import MediaRequestManager from './mediaRequestManager';
 import type {MediaRequestId, RemoteVideoResolution, SizeHint} from './types';
 import {CSI, ReceiveSlot} from './receiveSlot';
 import BEHAVIORAL_METRICS from '../metrics/constants';
-
-/** Higher rank = larger nominal pane / resolution for active-speaker sizeHint merge. */
-const REMOTE_VIDEO_RESOLUTION_RANK: Record<RemoteVideoResolution, number> = {
-  thumbnail: 1,
-  'very small': 2,
-  small: 3,
-  medium: 4,
-  large: 5,
-  best: 6,
-};
+import {PANE_SIZE_RANK} from './codec/constants';
 
 type Options = {
   resolution?: RemoteVideoResolution; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
@@ -325,21 +316,19 @@ export class RemoteMediaGroup {
     }
 
     const withPixels = sizeHints.filter((sh) => (sh.width ?? 0) > 0 && (sh.height ?? 0) > 0);
-
     if (withPixels.length > 0) {
+      // return the size hint with the largest area
       return withPixels.reduce((best, cur) =>
-        cur.width! * cur.height! > best.width! * best.height! ? cur : best
+        cur.width * cur.height > best.width * best.height ? cur : best
       );
     }
 
     const withResolution = sizeHints.filter((sh) => sh.resolution);
 
     if (withResolution.length > 0) {
+      // return the size hint with the highest resolution rank
       return withResolution.reduce((best, cur) =>
-        REMOTE_VIDEO_RESOLUTION_RANK[cur.resolution!] >
-        REMOTE_VIDEO_RESOLUTION_RANK[best.resolution!]
-          ? cur
-          : best
+        PANE_SIZE_RANK[cur.resolution] > PANE_SIZE_RANK[best.resolution] ? cur : best
       );
     }
 
@@ -347,7 +336,7 @@ export class RemoteMediaGroup {
       return {resolution: this.options.resolution};
     }
 
-    return sizeHints[0];
+    return undefined;
   }
 
   /**

@@ -13,7 +13,6 @@ import LoggerProxy from '../common/logs/logger-proxy';
 
 import {ReceiveSlotEvents} from './receiveSlot';
 import {MediaRequest, MediaRequestId, RemoteVideoResolution, SizeHint} from './types';
-import {CODEC_DEFAULTS} from './codec/constants';
 import MediaCodecHelper from './codec/mediaCodecHelper';
 
 const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
@@ -82,41 +81,6 @@ export default class MediaRequestManager {
   public setDegradationPreferences(degradationPreferences: DegradationPreferences) {
     this.degradationPreferences = degradationPreferences;
     this.sendRequests(); // re-send requests after preferences are set
-  }
-
-  /**
-   * Fills or refreshes H264 `codecInfo` from `sizeHint` (and defaults). Video managers only;
-   * callers of `addRequest` should not need to pass `codecInfo`.
-   * @param {MediaRequest} mr - Request to mutate.
-   * @returns {void}
-   */
-  private ensureH264CodecInfo(mr: MediaRequest): void {
-    if (this.kind !== 'video') {
-      return;
-    }
-
-    const helper = MediaCodecHelper.H264;
-    const fromSizeHint = helper.getCodecInfo({sizeHint: mr.sizeHint || {}});
-
-    if (mr.codecInfo?.codec === 'h264') {
-      mr.codecInfo = {
-        ...mr.codecInfo,
-        maxFs: mr.codecInfo.maxFs ?? fromSizeHint?.maxFs ?? CODEC_DEFAULTS.h264.maxFs,
-      };
-
-      return;
-    }
-
-    mr.codecInfo = fromSizeHint ?? {codec: 'h264', maxFs: CODEC_DEFAULTS.h264.maxFs};
-  }
-
-  /**
-   * Re-applies {@link ensureH264CodecInfo} for every request (e.g. on a clone before degradation).
-   * @param {ClientRequestsMap} clientRequests - Request map to mutate.
-   * @returns {void}
-   */
-  private hydrateVideoCodecInfos(clientRequests: ClientRequestsMap): void {
-    Object.values(clientRequests).forEach((mr) => this.ensureH264CodecInfo(mr));
   }
 
   /**
@@ -321,7 +285,6 @@ export default class MediaRequestManager {
     const clientRequests = this.cloneClientRequests();
 
     this.trimRequests(clientRequests);
-    this.hydrateVideoCodecInfos(clientRequests);
     this.getDegradedClientRequests(clientRequests);
 
     // map all the client media requests to wcme stream requests
@@ -360,23 +323,19 @@ export default class MediaRequestManager {
     this.sendMediaRequestsCallback(streamRequests);
   }
 
-  public addRequest(mediaRequest: MediaRequest, commit = true): MediaRequestId {
+  public addRequest(mediaRequest: Omit<MediaRequest, 'codecInfo'>, commit = true): MediaRequestId {
     // eslint-disable-next-line no-plusplus
     const newId = `${this.counter++}`;
 
     this.clientRequests[newId] = mediaRequest;
 
-    this.ensureH264CodecInfo(mediaRequest);
-
     mediaRequest.handleMaxFs = ({maxFs}) => {
       mediaRequest.preferredMaxFs = maxFs;
-      this.ensureH264CodecInfo(mediaRequest);
       this.debouncedSourceUpdateListener();
     };
 
     mediaRequest.handleSizeHint = (sizeHint) => {
       mediaRequest.sizeHint = sizeHint;
-      this.ensureH264CodecInfo(mediaRequest);
       this.debouncedSourceUpdateListener();
     };
 

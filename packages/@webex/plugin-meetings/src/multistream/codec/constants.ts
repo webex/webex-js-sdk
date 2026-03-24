@@ -38,3 +38,13 @@ export const PANE_SIZE_TO_RESOLUTION = {
   large: '1080p',
   best: '1080p',
 } satisfies Record<RemoteVideoResolution, SupportedResolution>;
+
+/** Higher rank = larger nominal pane / resolution */
+export const PANE_SIZE_RANK = {
+  thumbnail: 1,
+  'very small': 2,
+  small: 3,
+  medium: 4,
+  large: 5,
+  best: 6,
+} satisfies Record<RemoteVideoResolution, number>;
