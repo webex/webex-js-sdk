@@ -8,6 +8,7 @@ import MediaRequestManager from './mediaRequestManager';
 import {CSI, ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
 import type {MediaRequestId, RemoteVideoResolution, SizeHint} from './types';
 import BEHAVIORAL_METRICS from '../metrics/constants';
+import MediaCodecHelper from './codec/mediaCodecHelper';
 
 export const RemoteMediaEvents = {
   SourceUpdate: ReceiveSlotEvents.SourceUpdate,
@@ -26,7 +27,7 @@ export function getMaxFs(paneSize: RemoteVideoResolution): number {
   );
   Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DEPRECATED_SET_MAX_FS_USED, {paneSize});
 
-  return MediaRequestManager.getLegacyMaxFsForPaneSize(paneSize);
+  return MediaCodecHelper.H264.getMaxFs(paneSize);
 }
 
 type Options = {
@@ -121,7 +122,7 @@ export class RemoteMedia extends EventsScope {
       surface: 'RemoteMedia',
     });
 
-    return this.mediaRequestManager.getLegacyEffectiveMaxFsFromSizeHint({
+    return MediaCodecHelper.H264.getSizeHintMaxFs({
       width: this.sizeHint?.width,
       height: this.sizeHint?.height,
       resolution: this.options.resolution,

@@ -33,15 +33,6 @@ type Options = {
 type ClientRequestsMap = {[key: MediaRequestId]: MediaRequest};
 
 export default class MediaRequestManager {
-  /**
-   * @deprecated Legacy pane-size to H264 maxFs mapping; prefer sizeHint / resolution on RemoteMedia.
-   * @param {RemoteVideoResolution} paneSize - Layout pane size label.
-   * @returns {number} H264 maxFs for that pane size.
-   */
-  static getLegacyMaxFsForPaneSize(paneSize: RemoteVideoResolution): number {
-    return MediaCodecHelper.H264.getMaxFs(paneSize);
-  }
-
   private sendMediaRequestsCallback: SendMediaRequestsCallback;
 
   private kind: Kind;
@@ -81,19 +72,6 @@ export default class MediaRequestManager {
   public setDegradationPreferences(degradationPreferences: DegradationPreferences) {
     this.degradationPreferences = degradationPreferences;
     this.sendRequests(); // re-send requests after preferences are set
-  }
-
-  /**
-   * @internal Legacy H264 maxFs preview for deprecated getEffectiveMaxFs APIs.
-   * @param {SizeHint | undefined} sizeHint - Width/height and/or resolution hint.
-   * @returns {number | undefined} Effective maxFs, if derivable.
-   */
-  public getLegacyEffectiveMaxFsFromSizeHint(sizeHint: SizeHint | undefined): number | undefined {
-    if (this.kind !== 'video') {
-      return undefined;
-    }
-
-    return MediaCodecHelper.H264.getSizeHintMaxFs(sizeHint || {});
   }
 
   private getDegradedClientRequests(clientRequests: ClientRequestsMap) {

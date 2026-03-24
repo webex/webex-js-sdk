@@ -12,6 +12,7 @@ import type {MediaRequestId, RemoteVideoResolution, SizeHint} from './types';
 import {CSI, ReceiveSlot} from './receiveSlot';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import {PANE_SIZE_RANK} from './codec/constants';
+import MediaCodecHelper from './codec/mediaCodecHelper';
 
 type Options = {
   resolution?: RemoteVideoResolution; // applies only to groups of type MediaType.VideoMain and MediaType.VideoSlides
@@ -349,9 +350,7 @@ export class RemoteMediaGroup {
    */
   private getEffectiveMaxFsForActiveSpeaker(): number | undefined {
     const maxFsValues = this.unpinnedRemoteMedia
-      .map((remoteMedia) =>
-        this.mediaRequestManager.getLegacyEffectiveMaxFsFromSizeHint(remoteMedia.getSizeHint())
-      )
+      .map((remoteMedia) => MediaCodecHelper.H264.getSizeHintMaxFs(remoteMedia.getSizeHint()))
       .filter((maxFs) => maxFs !== undefined);
 
     if (maxFsValues.length > 0) {
@@ -359,7 +358,7 @@ export class RemoteMediaGroup {
     }
 
     if (this.options.resolution) {
-      return this.mediaRequestManager.getLegacyEffectiveMaxFsFromSizeHint({
+      return MediaCodecHelper.H264.getSizeHintMaxFs({
         resolution: this.options.resolution,
       });
     }
