@@ -12,7 +12,7 @@ import {cloneDeepWith, debounce, isEmpty} from 'lodash';
 import LoggerProxy from '../common/logs/logger-proxy';
 
 import {ReceiveSlotEvents} from './receiveSlot';
-import {MediaRequest, MediaRequestId} from './types';
+import {MediaRequest, MediaRequestId, RemoteVideoResolution, SizeHint} from './types';
 import {CODEC_DEFAULTS} from './codec/constants';
 import MediaCodecHelper from './codec/mediaCodecHelper';
 
@@ -34,6 +34,15 @@ type Options = {
 type ClientRequestsMap = {[key: MediaRequestId]: MediaRequest};
 
 export default class MediaRequestManager {
+  /**
+   * @deprecated Legacy pane-size to H264 maxFs mapping; prefer sizeHint / resolution on RemoteMedia.
+   * @param {RemoteVideoResolution} paneSize - Layout pane size label.
+   * @returns {number} H264 maxFs for that pane size.
+   */
+  static getLegacyMaxFsForPaneSize(paneSize: RemoteVideoResolution): number {
+    return MediaCodecHelper.H264.getMaxFs(paneSize);
+  }
+
   private sendMediaRequestsCallback: SendMediaRequestsCallback;
 
   private kind: Kind;
@@ -73,6 +82,54 @@ export default class MediaRequestManager {
   public setDegradationPreferences(degradationPreferences: DegradationPreferences) {
     this.degradationPreferences = degradationPreferences;
     this.sendRequests(); // re-send requests after preferences are set
+  }
+
+  /**
+   * Fills or refreshes H264 `codecInfo` from `sizeHint` (and defaults). Video managers only;
+   * callers of `addRequest` should not need to pass `codecInfo`.
+   * @param {MediaRequest} mr - Request to mutate.
+   * @returns {void}
+   */
+  private ensureH264CodecInfo(mr: MediaRequest): void {
+    if (this.kind !== 'video') {
+      return;
+    }
+
+    const helper = MediaCodecHelper.H264;
+    const fromSizeHint = helper.getCodecInfo({sizeHint: mr.sizeHint || {}});
+
+    if (mr.codecInfo?.codec === 'h264') {
+      mr.codecInfo = {
+        ...mr.codecInfo,
+        maxFs: mr.codecInfo.maxFs ?? fromSizeHint?.maxFs ?? CODEC_DEFAULTS.h264.maxFs,
+      };
+
+      return;
+    }
+
+    mr.codecInfo = fromSizeHint ?? {codec: 'h264', maxFs: CODEC_DEFAULTS.h264.maxFs};
+  }
+
+  /**
+   * Re-applies {@link ensureH264CodecInfo} for every request (e.g. on a clone before degradation).
+   * @param {ClientRequestsMap} clientRequests - Request map to mutate.
+   * @returns {void}
+   */
+  private hydrateVideoCodecInfos(clientRequests: ClientRequestsMap): void {
+    Object.values(clientRequests).forEach((mr) => this.ensureH264CodecInfo(mr));
+  }
+
+  /**
+   * @internal Legacy H264 maxFs preview for deprecated getEffectiveMaxFs APIs.
+   * @param {SizeHint | undefined} sizeHint - Width/height and/or resolution hint.
+   * @returns {number | undefined} Effective maxFs, if derivable.
+   */
+  public getLegacyEffectiveMaxFsFromSizeHint(sizeHint: SizeHint | undefined): number | undefined {
+    if (this.kind !== 'video') {
+      return undefined;
+    }
+
+    return MediaCodecHelper.H264.getSizeHintMaxFs(sizeHint || {});
   }
 
   private getDegradedClientRequests(clientRequests: ClientRequestsMap) {
@@ -158,24 +215,6 @@ export default class MediaRequestManager {
     );
 
     return 0;
-  }
-
-  /**
-   * Returns the max Macro Blocks per second (maxMbps) per H264 Stream
-   *
-   * The maxMbps will be calculated based on maxFs and maxFps
-   * (default h264 maxFps as fallback if maxFps is not defined)
-   *
-   * @param {MediaRequest} mediaRequest  - mediaRequest to take data from
-   * @returns {number} maxMbps
-   */
-  // eslint-disable-next-line class-methods-use-this
-  private getH264MaxMbps(mediaRequest: MediaRequest): number {
-    // fallback for maxFps (not needed for maxFs, since there is a fallback already in getDegradedClientRequests)
-    const maxFps = mediaRequest.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps;
-
-    // divided by 100 since maxFps is 3000 (for 30 frames per seconds)
-    return (mediaRequest.codecInfo.maxFs * maxFps) / 100;
   }
 
   /**
@@ -282,6 +321,7 @@ export default class MediaRequestManager {
     const clientRequests = this.cloneClientRequests();
 
     this.trimRequests(clientRequests);
+    this.hydrateVideoCodecInfos(clientRequests);
     this.getDegradedClientRequests(clientRequests);
 
     // map all the client media requests to wcme stream requests
@@ -326,13 +366,17 @@ export default class MediaRequestManager {
 
     this.clientRequests[newId] = mediaRequest;
 
+    this.ensureH264CodecInfo(mediaRequest);
+
     mediaRequest.handleMaxFs = ({maxFs}) => {
       mediaRequest.preferredMaxFs = maxFs;
+      this.ensureH264CodecInfo(mediaRequest);
       this.debouncedSourceUpdateListener();
     };
 
     mediaRequest.handleSizeHint = (sizeHint) => {
       mediaRequest.sizeHint = sizeHint;
+      this.ensureH264CodecInfo(mediaRequest);
       this.debouncedSourceUpdateListener();
     };
 

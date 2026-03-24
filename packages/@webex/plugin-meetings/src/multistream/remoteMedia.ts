@@ -1,13 +1,13 @@
 /* eslint-disable valid-jsdoc */
 import {MediaType, StreamState} from '@webex/internal-media-core';
-import Metrics from '@webex/internal-plugin-metrics';
 import EventsScope from '../common/events/events-scope';
+import Metrics from '../metrics';
+import LoggerProxy from '../common/logs/logger-proxy';
 
 import MediaRequestManager from './mediaRequestManager';
 import {CSI, ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
 import type {MediaRequestId, RemoteVideoResolution, SizeHint} from './types';
 import BEHAVIORAL_METRICS from '../metrics/constants';
-import MediaCodecHelper from './codec/mediaCodecHelper';
 
 export const RemoteMediaEvents = {
   SourceUpdate: ReceiveSlotEvents.SourceUpdate,
@@ -18,15 +18,15 @@ export const RemoteMediaEvents = {
  * Converts pane size into h264 maxFs
  * @param {RemoteVideoResolution} paneSize
  * @returns {number}
- * @deprecated use MediaCodecHelper from plugin-meetings/src/codec/mediaCodecHelper instead
+ * @deprecated Prefer `RemoteMedia` resolution options and `setSizeHint()`; see `multistream/codec/mediaCodecHelper` for codec details.
  */
 export function getMaxFs(paneSize: RemoteVideoResolution): number {
-  this.LoggerProxy.logger.warn(
-    'RemoteMedia->getMaxFs --> [DEPRECATION WARNING]: getMaxFs has been deprecated, use MediaCodecHelper instead'
+  LoggerProxy.logger.warn(
+    'RemoteMedia->getMaxFs --> [DEPRECATION WARNING]: getMaxFs has been deprecated; use size hints / resolution on RemoteMedia instead'
   );
   Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DEPRECATED_SET_MAX_FS_USED, {paneSize});
 
-  return MediaCodecHelper.H264.getMaxFs(paneSize);
+  return MediaRequestManager.getLegacyMaxFsForPaneSize(paneSize);
 }
 
 type Options = {
@@ -111,10 +111,17 @@ export class RemoteMedia extends EventsScope {
   /**
    * Get the current effective maxFs value that would be used in media requests
    * @returns {number | undefined} The maxFs value, or undefined if no constraints
-   * @deprecated use getSizeHint() instead
+   * @deprecated Use {@link RemoteMedia.getSizeHint} and layout resolution instead.
    */
   public getEffectiveMaxFs(): number | undefined {
-    return MediaCodecHelper.H264.getSizeHintMaxFs({
+    LoggerProxy.logger.warn(
+      'RemoteMedia->getEffectiveMaxFs --> [DEPRECATION WARNING]: use getSizeHint() and resolution options instead'
+    );
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DEPRECATED_GET_EFFECTIVE_MAX_FS_USED, {
+      surface: 'RemoteMedia',
+    });
+
+    return this.mediaRequestManager.getLegacyEffectiveMaxFsFromSizeHint({
       width: this.sizeHint?.width,
       height: this.sizeHint?.height,
       resolution: this.options.resolution,

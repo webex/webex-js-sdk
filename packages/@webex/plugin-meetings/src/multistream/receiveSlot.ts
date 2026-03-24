@@ -7,7 +7,9 @@ import {
 } from '@webex/internal-media-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
+import Metrics from '../metrics';
 import EventsScope from '../common/events/events-scope';
+import BEHAVIORAL_METRICS from '../metrics/constants';
 import {SizeHint} from './types';
 
 export const ReceiveSlotEvents = {
@@ -104,9 +106,13 @@ export class ReceiveSlot extends EventsScope {
   /**
    * Set the max frame size for this slot
    * @param newFs frame size
+   * @deprecated Prefer {@link ReceiveSlot.setSizeHint} or layout resolution; H264 maxFs is handled inside MediaRequestManager.
    */
   public setMaxFs(newFs) {
-    // emit event for media request manager to listen to
+    LoggerProxy.logger.warn(
+      'ReceiveSlot->setMaxFs --> [DEPRECATION WARNING]: use setSizeHint() / layout resolution instead'
+    );
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DEPRECATED_RECEIVE_SLOT_SET_MAX_FS_USED, {});
 
     this.emit(
       {

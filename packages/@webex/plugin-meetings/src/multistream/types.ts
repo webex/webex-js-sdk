@@ -37,6 +37,11 @@ export type SizeHint = {width?: number; height?: number; resolution?: RemoteVide
 export interface MediaRequest {
   policyInfo: PolicyInfo;
   receiveSlots: Array<ReceiveSlot>;
+  /**
+   * For {@link MediaRequestManager} with `kind: 'video'`, H264 `codecInfo` is always filled from
+   * `sizeHint` (and defaults) inside the manager. Callers should pass `sizeHint` / layout resolution
+   * only and must not rely on setting this field.
+   */
   codecInfo?: CodecInfo;
   preferredMaxFs?: number;
   sizeHint?: SizeHint;
