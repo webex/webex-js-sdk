@@ -5874,37 +5874,35 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {void}
    */
   stopTranscription() {
-    if (this.transcription) {
-      // @ts-ignore
-      this.webex.internal.voicea.off(
-        VOICEAEVENTS.VOICEA_ANNOUNCEMENT,
-        this.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT]
-      );
+    // @ts-ignore
+    this.webex.internal.voicea.off(
+      VOICEAEVENTS.VOICEA_ANNOUNCEMENT,
+      this.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT]
+    );
 
-      // @ts-ignore
-      this.webex.internal.voicea.off(
-        VOICEAEVENTS.CAPTIONS_TURNED_ON,
-        this.voiceaListenerCallbacks[VOICEAEVENTS.CAPTIONS_TURNED_ON]
-      );
+    // @ts-ignore
+    this.webex.internal.voicea.off(
+      VOICEAEVENTS.CAPTIONS_TURNED_ON,
+      this.voiceaListenerCallbacks[VOICEAEVENTS.CAPTIONS_TURNED_ON]
+    );
 
-      // @ts-ignore
-      this.webex.internal.voicea.off(
-        VOICEAEVENTS.EVA_COMMAND,
-        this.voiceaListenerCallbacks[VOICEAEVENTS.EVA_COMMAND]
-      );
+    // @ts-ignore
+    this.webex.internal.voicea.off(
+      VOICEAEVENTS.EVA_COMMAND,
+      this.voiceaListenerCallbacks[VOICEAEVENTS.EVA_COMMAND]
+    );
 
-      // @ts-ignore
-      this.webex.internal.voicea.off(
-        VOICEAEVENTS.NEW_CAPTION,
-        this.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]
-      );
+    // @ts-ignore
+    this.webex.internal.voicea.off(
+      VOICEAEVENTS.NEW_CAPTION,
+      this.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]
+    );
 
-      // @ts-ignore
-      this.webex.internal.voicea.deregisterEvents();
+    // @ts-ignore
+    this.webex.internal.voicea.deregisterEvents();
 
-      this.areVoiceaEventsSetup = false;
-      this.triggerStopReceivingTranscriptionEvent();
-    }
+    this.areVoiceaEventsSetup = false;
+    this.triggerStopReceivingTranscriptionEvent();
   }
 
   /**
@@ -9585,10 +9583,8 @@ export default class Meeting extends StatelessWebexPlugin {
     }
     this.queuedMediaUpdates = [];
 
-    if (this.transcription) {
-      this.stopTranscription();
-      this.transcription = undefined;
-    }
+    this.stopTranscription();
+    this.transcription = undefined;
 
     this.annotation.deregisterEvents();
 

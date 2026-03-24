@@ -1552,6 +1552,22 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_STOPPED_RECEIVING_TRANSCRIPTION
           );
         });
+
+        it('should stop listening to voicea events even when transcription is undefined', () => {
+          meeting.transcription = undefined;
+          meeting.stopTranscription();
+          assert.equal(webex.internal.voicea.off.callCount, 4);
+          assert.equal(meeting.areVoiceaEventsSetup, false);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'triggerStopReceivingTranscriptionEvent',
+            },
+            EVENT_TRIGGERS.MEETING_STOPPED_RECEIVING_TRANSCRIPTION
+          );
+        });
       });
 
       describe('#setCaptionLanguage', () => {
@@ -13083,7 +13099,6 @@ describe('plugin-meetings', () => {
             meeting.annotation.deregisterEvents = sinon.stub();
             meeting.clearLLMHealthCheckTimer = sinon.stub();
             meeting.stopTranscription = sinon.stub();
-            meeting.transcription = {};
             meeting.shareStatus = 'no-share';
           });
 
@@ -13107,6 +13122,7 @@ describe('plugin-meetings', () => {
             );
             assert.calledOnce(meeting.clearLLMHealthCheckTimer);
             assert.calledOnce(meeting.stopTranscription);
+            assert.isUndefined(meeting.transcription);
             assert.calledOnce(meeting.annotation.deregisterEvents);
           });
           it('continues cleanup when disconnectLLM fails during meeting data cleanup', async () => {
@@ -13127,7 +13143,16 @@ describe('plugin-meetings', () => {
             );
             assert.calledOnce(meeting.clearLLMHealthCheckTimer);
             assert.calledOnce(meeting.stopTranscription);
+            assert.isUndefined(meeting.transcription);
             assert.calledOnce(meeting.annotation.deregisterEvents);
+          });
+          it('always calls stopTranscription even when transcription is undefined', async () => {
+            meeting.transcription = undefined;
+
+            await meeting.clearMeetingData();
+
+            assert.calledOnce(meeting.stopTranscription);
+            assert.isUndefined(meeting.transcription);
           });
         });
       });
