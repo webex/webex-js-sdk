@@ -20,7 +20,7 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
    * @param {GetCodecInfoOptions} options - The options for the H264 codec info
    * @returns {H264CodecInfo} The H264 codec info
    */
-  getCodecInfo({sizeHint}: GetCodecInfoOptions): H264CodecInfo | undefined {
+  getCodecInfo({sizeHint}: GetCodecInfoOptions = {}): H264CodecInfo | undefined {
     const maxFs = this.getSizeHintMaxFs(sizeHint);
 
     if (!maxFs) {
@@ -129,7 +129,8 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
    * @param {SizeHint} sizeHint - The size hint to get the max fs for
    * @returns {number | undefined} The max fs for the given width and height, or undefined if the width or height is 0
    */
-  getSizeHintMaxFs({width, height, resolution}: SizeHint): number | undefined {
+  getSizeHintMaxFs(sizeHint?: SizeHint): number | undefined {
+    const {width, height, resolution} = sizeHint ?? {};
     if (width > 0 && height > 0) {
       // we switch to the next resolution level when the height is 10% more than the current resolution height
       // except for 1080p - we switch to it immediately when the height is more than 720p

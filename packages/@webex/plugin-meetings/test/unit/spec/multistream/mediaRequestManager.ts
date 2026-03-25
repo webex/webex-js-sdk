@@ -1,12 +1,34 @@
 import 'jsdom-global/register';
 import MediaRequestManager from '@webex/plugin-meetings/src/multistream/mediaRequestManager';
 import {ReceiveSlot} from '@webex/plugin-meetings/src/multistream/receiveSlot';
+import type {SizeHint} from '@webex/plugin-meetings/src/multistream/types';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
-import {getMaxFs} from '@webex/plugin-meetings/src/multistream/remoteMedia';
+import MediaCodecHelper from '@webex/plugin-meetings/src/multistream/codec/mediaCodecHelper';
 import FakeTimers from '@sinonjs/fake-timers';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import { expect } from 'chai';
+
+/** Maps a target H264 maxFs to a size hint that yields that maxFs via MediaCodecHelper.H264. */
+const sizeHintForMaxFs = (maxFs: number): SizeHint => {
+  if (maxFs <= 60) {
+    return {resolution: 'thumbnail'};
+  }
+  if (maxFs <= 240) {
+    return {resolution: 'very small'};
+  }
+  if (maxFs <= 920) {
+    return {resolution: 'small'};
+  }
+  if (maxFs <= 2040) {
+    return {height: 500};
+  }
+  if (maxFs <= 3600) {
+    return {resolution: 'medium'};
+  }
+
+  return {resolution: 'large'};
+};
 
 type ExpectedActiveSpeaker = {
   policy: 'active-speaker';
@@ -78,6 +100,7 @@ describe('MediaRequestManager', () => {
             id: `fake receive slot ${index}`,
             on: sinon.stub(),
             off: sinon.stub(),
+            setSizeHint: sinon.stub(),
             sourceState: 'live',
             wcmeReceiveSlot: fakeWcmeSlots[index],
           } as unknown as ReceiveSlot)
@@ -104,10 +127,7 @@ describe('MediaRequestManager', () => {
           namedMediaGroups,
         },
         receiveSlots,
-        codecInfo: {
-          codec: 'h264',
-          maxFs: maxFs,
-        },
+        sizeHint: sizeHintForMaxFs(maxFs),
       },
       commit
     );
@@ -121,10 +141,7 @@ describe('MediaRequestManager', () => {
           csi,
         },
         receiveSlots: [receiveSlot],
-        codecInfo: {
-          codec: 'h264',
-          maxFs: maxFs,
-        },
+        sizeHint: sizeHintForMaxFs(maxFs),
       },
       commit
     );
@@ -160,7 +177,7 @@ describe('MediaRequestManager', () => {
                   sinon.match({
                     payloadType: 0x80,
                     h264: sinon.match({
-                      maxMbps: expectedRequest.maxMbps,
+                      maxMbps: MAX_MBPS_1080p,
                       maxFs: expectedRequest.maxFs,
                     }),
                   }),
@@ -181,7 +198,7 @@ describe('MediaRequestManager', () => {
                   sinon.match({
                     payloadType: 0x80,
                     h264: sinon.match({
-                      maxMbps: expectedRequest.maxMbps,
+                      maxMbps: MAX_MBPS_1080p,
                       maxFs: expectedRequest.maxFs,
                     }),
                   }),
@@ -218,16 +235,10 @@ describe('MediaRequestManager', () => {
           preferLiveVideo: false,
         },
         receiveSlots: [fakeReceiveSlots[0], fakeReceiveSlots[1], fakeReceiveSlots[2]],
-        codecInfo: {
-          codec: 'h264',
-          maxFs: MAX_FS_360p,
-          maxFps: MAX_FPS,
-        },
+        sizeHint: sizeHintForMaxFs(MAX_FS_360p),
       },
       false
     );
-
-
 
     mediaRequestManager.addRequest(
       {
@@ -236,12 +247,7 @@ describe('MediaRequestManager', () => {
           csi: 123,
         },
         receiveSlots: [fakeReceiveSlots[3]],
-        codecInfo: {
-          codec: 'h264',
-          maxFs: MAX_FS_720p,
-          maxFps: MAX_FPS,
-          maxMbps: MAX_MBPS_720p,
-        },
+        sizeHint: sizeHintForMaxFs(MAX_FS_720p),
       },
       false
     );
@@ -254,12 +260,7 @@ describe('MediaRequestManager', () => {
           csi: 123,
         },
         receiveSlots: [fakeReceiveSlots[4]],
-        codecInfo: {
-          codec: 'h264',
-          maxFs: MAX_FS_1080p,
-          maxFps: MAX_FPS,
-          maxMbps: MAX_MBPS_1080p,
-        },
+        sizeHint: sizeHintForMaxFs(MAX_FS_1080p),
       },
       true
     );
@@ -283,7 +284,7 @@ describe('MediaRequestManager', () => {
             h264: sinon.match({
               maxFs: MAX_FS_360p,
               maxFps: MAX_FPS,
-              maxMbps: MAX_MBPS_360p,
+              maxMbps: MAX_MBPS_1080p,
             }),
           }),
         ],
@@ -301,7 +302,7 @@ describe('MediaRequestManager', () => {
             h264: sinon.match({
               maxFs: MAX_FS_720p,
               maxFps: MAX_FPS,
-              maxMbps: MAX_MBPS_720p,
+              maxMbps: MAX_MBPS_1080p,
             }),
           }),
         ],
@@ -400,24 +401,20 @@ describe('MediaRequestManager', () => {
     ]);
   });
 
-  it('removes the events maxFsUpdate and sourceUpdate when cancelRequest() is called', async () => {
-
+  it('removes sourceUpdate, maxFsUpdate, and sizeHintUpdate when cancelRequest() is called', () => {
     const requestId = addActiveSpeakerRequest(255, [fakeReceiveSlots[2], fakeReceiveSlots[3]], MAX_FS_720p);
 
     mediaRequestManager.cancelRequest(requestId, true);
 
-    const sourceUpdateHandler = fakeReceiveSlots[2].off.getCall(0);
+    const offCalls = fakeReceiveSlots[2].off.getCalls();
+    const offFor = (event: string) => offCalls.find((c) => c.args[0] === event);
 
-    const maxFsHandlerCall = fakeReceiveSlots[2].off.getCall(1);
+    ['sourceUpdate', 'maxFsUpdate', 'sizeHintUpdate'].forEach((event) => {
+      const call = offFor(event);
 
-    const maxFsEventName = maxFsHandlerCall.args[0];
-    const sourceUpdateEventName = sourceUpdateHandler.args[0];
-
-    expect(sourceUpdateHandler.args[1]).to.be.a('function');
-    expect(maxFsHandlerCall.args[1]).to.be.a('function');
-
-    assert.equal(maxFsEventName, 'maxFsUpdate')
-    assert.equal(sourceUpdateEventName, 'sourceUpdate')
+      assert.isDefined(call, `expected off() for ${event}`);
+      expect(call.args[1]).to.be.a('function');
+    });
   });
 
   it('cancels the requests correctly when cancelRequest() is called with commit=true', () => {
@@ -830,7 +827,7 @@ describe('MediaRequestManager', () => {
     sendMediaRequestsCallback.resetHistory();
 
     // request 4 "large" 1080p streams, which should degrade to 720p if live
-    addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 4), getMaxFs('large'), true);
+    addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 4), MediaCodecHelper.H264.getMaxFs('large'), true);
 
     // check that resulting requests are 4 "large" 1080p streams
     checkMediaRequestsSent([
@@ -839,7 +836,7 @@ describe('MediaRequestManager', () => {
         priority: 255,
         receiveSlots: fakeWcmeSlots.slice(0, 4),
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
-        maxFs: getMaxFs('large'),
+        maxFs: MediaCodecHelper.H264.getMaxFs('large'),
         maxMbps: MAX_MBPS_1080p,
       },
     ]);
@@ -851,13 +848,13 @@ describe('MediaRequestManager', () => {
     sendMediaRequestsCallback.resetHistory();
 
     // request 3 "large" 1080p streams
-    addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 3), getMaxFs('large'), false);
+    addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 3), MediaCodecHelper.H264.getMaxFs('large'), false);
 
     // request additional "large" 1080p stream to exceed max macroblocks limit
     const additionalRequestId = addReceiverSelectedRequest(
       123,
       fakeReceiveSlots[3],
-      getMaxFs('large'),
+      MediaCodecHelper.H264.getMaxFs('large'),
       true
     );
 
@@ -868,7 +865,7 @@ describe('MediaRequestManager', () => {
         priority: 255,
         receiveSlots: fakeWcmeSlots.slice(0, 3),
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
-        maxFs: getMaxFs('medium'),
+        maxFs: MediaCodecHelper.H264.getMaxFs('medium'),
         maxMbps: MAX_MBPS_720p,
       },
       {
@@ -876,7 +873,7 @@ describe('MediaRequestManager', () => {
         csi: 123,
         receiveSlot: fakeWcmeSlots[3],
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
-        maxFs: getMaxFs('medium'),
+        maxFs: MediaCodecHelper.H264.getMaxFs('medium'),
         maxMbps: MAX_MBPS_720p,
       },
     ]);
@@ -891,7 +888,7 @@ describe('MediaRequestManager', () => {
         priority: 255,
         receiveSlots: fakeWcmeSlots.slice(0, 3),
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
-        maxFs: getMaxFs('large'),
+        maxFs: MediaCodecHelper.H264.getMaxFs('large'),
         maxMbps: MAX_MBPS_1080p,
       },
     ]);
@@ -903,7 +900,7 @@ describe('MediaRequestManager', () => {
     sendMediaRequestsCallback.resetHistory();
 
     // request 10 "large" 1080p streams
-    addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 10), getMaxFs('large'), true);
+    addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 10), MediaCodecHelper.H264.getMaxFs('large'), true);
 
     // check that resulting requests are 10 540p streams
     checkMediaRequestsSent([
@@ -924,8 +921,8 @@ describe('MediaRequestManager', () => {
     sendMediaRequestsCallback.resetHistory();
 
     // request 5 "large" 1080p streams and 5 "small" 360p streams
-    addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 5), getMaxFs('large'), false);
-    addActiveSpeakerRequest(254, fakeReceiveSlots.slice(5, 10), getMaxFs('small'), true);
+    addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 5), MediaCodecHelper.H264.getMaxFs('large'), false);
+    addActiveSpeakerRequest(254, fakeReceiveSlots.slice(5, 10), MediaCodecHelper.H264.getMaxFs('small'), true);
 
     // check that resulting requests are 5 "medium" 720p streams and 5 "small" 360p streams
     checkMediaRequestsSent([
@@ -934,7 +931,7 @@ describe('MediaRequestManager', () => {
         priority: 255,
         receiveSlots: fakeWcmeSlots.slice(0, 5),
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
-        maxFs: getMaxFs('medium'),
+        maxFs: MediaCodecHelper.H264.getMaxFs('medium'),
         maxMbps: MAX_MBPS_720p,
       },
       {
@@ -942,7 +939,7 @@ describe('MediaRequestManager', () => {
         priority: 254,
         receiveSlots: fakeWcmeSlots.slice(5, 10),
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
-        maxFs: getMaxFs('small'),
+        maxFs: MediaCodecHelper.H264.getMaxFs('small'),
         maxMbps: MAX_MBPS_360p,
       },
     ]);
@@ -952,7 +949,7 @@ describe('MediaRequestManager', () => {
     sendMediaRequestsCallback.resetHistory();
     const clock = FakeTimers.install({now: Date.now()});
 
-    addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 10), getMaxFs('large'), true);
+    addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 10), MediaCodecHelper.H264.getMaxFs('large'), true);
 
     sendMediaRequestsCallback.resetHistory();
 
@@ -980,7 +977,7 @@ describe('MediaRequestManager', () => {
         receiveSlots: fakeWcmeSlots.slice(0, 10),
         maxFs: preferredFrameSize,
         maxPayloadBitsPerSecond: 99000,
-        maxMbps: 3000,
+        maxMbps: MAX_MBPS_1080p,
       },
     ]);
     clock.uninstall()
@@ -1017,7 +1014,6 @@ describe('MediaRequestManager', () => {
             csi: 123,
           },
           receiveSlots: [fakeReceiveSlots[0]],
-          codecInfo: undefined,
         },
         false
       );
@@ -1049,12 +1045,7 @@ describe('MediaRequestManager', () => {
             csi: 123,
           },
           receiveSlots: [fakeReceiveSlots[0]],
-          codecInfo: {
-            codec: 'h264',
-            maxFs: MAX_FS_1080p,
-            maxFps: MAX_FPS,
-            maxMbps: MAX_MBPS_1080p,
-          },
+          sizeHint: sizeHintForMaxFs(MAX_FS_1080p),
         },
         false
       );
@@ -1091,14 +1082,7 @@ describe('MediaRequestManager', () => {
             csi: 123,
           },
           receiveSlots: [fakeReceiveSlots[0]],
-          codecInfo: {
-            codec: 'h264',
-            maxFs: MAX_FS_1080p,
-            maxFps: MAX_FPS,
-            // random value to pass in, to show that the output (below) is calculated
-            // from the maxFs and maxFps values only:
-            maxMbps: 123,
-          },
+          sizeHint: sizeHintForMaxFs(MAX_FS_1080p),
         },
         false
       );

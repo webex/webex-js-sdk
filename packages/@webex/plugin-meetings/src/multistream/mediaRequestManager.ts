@@ -14,6 +14,8 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import {ReceiveSlotEvents} from './receiveSlot';
 import {MediaRequest, MediaRequestId} from './types';
 import MediaCodecHelper from './codec/mediaCodecHelper';
+import {CODEC_DEFAULTS} from './codec/constants';
+import type {CodecInfo} from './codec/types';
 
 const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
 
@@ -305,6 +307,11 @@ export default class MediaRequestManager {
       streamRequests.push(streamRequest);
     });
 
+    if (this.checkIsNewRequestsEqualToPrev(streamRequests)) {
+      return;
+    }
+
+    this.previousStreamRequests = [...streamRequests];
     this.sendMediaRequestsCallback(streamRequests);
   }
 
@@ -312,29 +319,43 @@ export default class MediaRequestManager {
     // eslint-disable-next-line no-plusplus
     const newId = `${this.counter++}`;
 
-    this.clientRequests[newId] = {
+    const codecInfos: CodecInfo[] =
+      this.kind === 'audio'
+        ? []
+        : (() => {
+            const info = MediaCodecHelper.H264.getCodecInfo({
+              sizeHint: mediaRequest.sizeHint,
+            });
+
+            return info ? [info] : [{codec: 'h264', maxFs: CODEC_DEFAULTS.h264.maxFs}];
+          })();
+
+    const storedRequest: MediaRequest = {
       ...mediaRequest,
-      codecInfos: [
-        MediaCodecHelper.H264.getCodecInfo({
-          sizeHint: mediaRequest.sizeHint,
-        }),
-      ],
+      codecInfos,
     };
 
-    mediaRequest.handleMaxFs = ({maxFs}) => {
-      mediaRequest.preferredMaxFs = maxFs;
+    this.clientRequests[newId] = storedRequest;
+
+    const handleMaxFs = ({maxFs}: {maxFs: number}) => {
+      storedRequest.preferredMaxFs = maxFs;
       this.debouncedSourceUpdateListener();
     };
 
-    mediaRequest.handleSizeHint = (sizeHint) => {
-      mediaRequest.sizeHint = sizeHint;
+    const handleSizeHint = (sizeHint: MediaRequest['sizeHint']) => {
+      storedRequest.sizeHint = sizeHint;
       this.debouncedSourceUpdateListener();
     };
 
-    mediaRequest.receiveSlots.forEach((rs) => {
+    storedRequest.handleMaxFs = handleMaxFs;
+    storedRequest.handleSizeHint = handleSizeHint;
+    mediaRequest.handleMaxFs = handleMaxFs;
+    mediaRequest.handleSizeHint = handleSizeHint;
+
+    storedRequest.receiveSlots.forEach((rs) => {
       rs.on(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
-      rs.on(ReceiveSlotEvents.MaxFsUpdate, mediaRequest.handleMaxFs);
-      rs.on(ReceiveSlotEvents.SizeHintUpdate, mediaRequest.handleSizeHint);
+      rs.on(ReceiveSlotEvents.MaxFsUpdate, handleMaxFs);
+      rs.on(ReceiveSlotEvents.SizeHintUpdate, handleSizeHint);
     });
 
     if (commit) {
@@ -368,6 +389,7 @@ export default class MediaRequestManager {
     this.clientRequests = {};
     this.numTotalSources = 0;
     this.numLiveSources = 0;
+    this.previousStreamRequests = [];
   }
 
   public setNumCurrentSources(numTotalSources: number, numLiveSources: number) {

@@ -4,6 +4,7 @@ import EventEmitter from 'events';
 
 import {MediaType, ReceiveSlotEvents as WcmeReceiveSlotEvents} from '@webex/internal-media-core';
 import {ReceiveSlot, ReceiveSlotEvents} from '@webex/plugin-meetings/src/multistream/receiveSlot';
+import Metrics from '@webex/plugin-meetings/src/metrics';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 
@@ -144,7 +145,12 @@ describe('ReceiveSlot', () => {
   });
 
   describe('setMaxFs()', () => {
+    afterEach(() => {
+      sinon.restore();
+    });
+
     it('emits the correct event', () => {
+      sinon.stub(Metrics, 'sendBehavioralMetric');
       sinon.stub(receiveSlot, 'emit');
       receiveSlot.setMaxFs(100);
 
@@ -152,13 +158,36 @@ describe('ReceiveSlot', () => {
         receiveSlot.emit,
         {
           file: 'meeting/receiveSlot',
-          function: 'findMemberId',
+          function: 'setMaxFs',
         },
         ReceiveSlotEvents.MaxFsUpdate,
         {
           maxFs: 100,
         }
       );
-    })
+    });
+  });
+
+  describe('setSizeHint()', () => {
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it('emits SizeHintUpdate with the given hint', () => {
+      sinon.stub(receiveSlot, 'emit');
+      const hint = {width: 640, height: 360};
+
+      receiveSlot.setSizeHint(hint);
+
+      assert.calledOnceWithExactly(
+        receiveSlot.emit,
+        {
+          file: 'meeting/receiveSlot',
+          function: 'setSizeHint',
+        },
+        ReceiveSlotEvents.SizeHintUpdate,
+        hint
+      );
+    });
   });
 });

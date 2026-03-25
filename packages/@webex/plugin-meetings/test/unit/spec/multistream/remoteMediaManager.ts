@@ -290,7 +290,6 @@ describe('RemoteMediaManager', () => {
             priority: 255,
           }),
           receiveSlots: Array(5).fill(fakeAudioSlot),
-          codecInfo: undefined,
         })
       );
     });
@@ -349,7 +348,6 @@ describe('RemoteMediaManager', () => {
               namedMediaGroups: sinon.match([{type: 1, value: 20}]),
             }),
             receiveSlots: Array(1).fill(fakeAudioSlot),
-            codecInfo: undefined,
           }),
           false
         );
@@ -601,7 +599,6 @@ describe('RemoteMediaManager', () => {
             priority: 255,
           }),
           receiveSlots: Array(NUM_STREAMS).fill(fakeScreenShareAudioSlot),
-          codecInfo: undefined,
         })
       );
     });
@@ -1523,9 +1520,8 @@ describe('RemoteMediaManager', () => {
               priority: 255,
             }),
             receiveSlots: Array(6).fill(fakeVideoSlot),
-            codecInfo: sinon.match({
-              codec: 'h264',
-              maxFs: 60,
+            sizeHint: sinon.match({
+              resolution: 'thumbnail',
             }),
           })
         );
@@ -1537,9 +1533,8 @@ describe('RemoteMediaManager', () => {
               csi: 11111,
             }),
             receiveSlots: Array(1).fill(fakeVideoSlot),
-            codecInfo: sinon.match({
-              codec: 'h264',
-              maxFs: 3600,
+            sizeHint: sinon.match({
+              resolution: 'medium',
             }),
           })
         );
@@ -1551,9 +1546,8 @@ describe('RemoteMediaManager', () => {
               csi: 22222,
             }),
             receiveSlots: Array(1).fill(fakeVideoSlot),
-            codecInfo: sinon.match({
-              codec: 'h264',
-              maxFs: 3600,
+            sizeHint: sinon.match({
+              resolution: 'medium',
             }),
           })
         );
@@ -1596,9 +1590,8 @@ describe('RemoteMediaManager', () => {
               priority: 255,
             }),
             receiveSlots: Array(1).fill(fakeVideoSlot),
-            codecInfo: sinon.match({
-              codec: 'h264',
-              maxFs: 8192,
+            sizeHint: sinon.match({
+              resolution: 'large',
             }),
           })
         );
@@ -1610,9 +1603,8 @@ describe('RemoteMediaManager', () => {
               priority: 254,
             }),
             receiveSlots: Array(5).fill(fakeVideoSlot),
-            codecInfo: sinon.match({
-              codec: 'h264',
-              maxFs: 240,
+            sizeHint: sinon.match({
+              resolution: 'very small',
             }),
           })
         );
@@ -1733,9 +1725,8 @@ describe('RemoteMediaManager', () => {
               priority: 255,
             }),
             receiveSlots: [fakeScreenShareVideoSlot],
-            codecInfo: sinon.match({
-              codec: 'h264',
-              maxFs: 3600,
+            sizeHint: sinon.match({
+              resolution: 'medium',
             }),
           })
         );
@@ -2049,9 +2040,8 @@ describe('RemoteMediaManager', () => {
               csi: 1001,
             }),
             receiveSlots: Array(1).fill(fakeVideoSlot),
-            codecInfo: sinon.match({
-              codec: 'h264',
-              maxFs: 3600,
+            sizeHint: sinon.match({
+              resolution: 'medium',
             }),
           })
         );
@@ -2072,9 +2062,8 @@ describe('RemoteMediaManager', () => {
               csi: 1002,
             }),
             receiveSlots: Array(1).fill(fakeVideoSlot),
-            codecInfo: sinon.match({
-              codec: 'h264',
-              maxFs: 3600,
+            sizeHint: sinon.match({
+              resolution: 'medium',
             }),
           })
         );
@@ -2099,9 +2088,8 @@ describe('RemoteMediaManager', () => {
               csi: 2001,
             }),
             receiveSlots: Array(1).fill(fakeVideoSlot),
-            codecInfo: sinon.match({
-              codec: 'h264',
-              maxFs: 3600,
+            sizeHint: sinon.match({
+              resolution: 'medium',
             }),
           })
         );
@@ -2164,9 +2152,8 @@ describe('RemoteMediaManager', () => {
             csi: 54321,
           }),
           receiveSlots: Array(1).fill(fakeVideoSlot),
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 8192,
+          sizeHint: sinon.match({
+            resolution: 'best',
           }),
         })
       );

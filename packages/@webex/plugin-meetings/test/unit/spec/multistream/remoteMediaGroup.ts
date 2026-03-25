@@ -93,9 +93,8 @@ describe('RemoteMediaGroup', () => {
             priority: 211,
           }),
           receiveSlots: fakeReceiveSlots,
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
+          sizeHint: sinon.match({
+            resolution: 'medium',
           }),
         }),
         true
@@ -126,9 +125,8 @@ describe('RemoteMediaGroup', () => {
             preferLiveVideo: true
           }),
           receiveSlots: fakeReceiveSlots,
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
+          sizeHint: sinon.match({
+            resolution: 'medium',
           }),
         }),
         false,
@@ -174,7 +172,6 @@ describe('RemoteMediaGroup', () => {
             namedMediaGroups: sinon.match([{type: 1, value: 24}]),
           }),
           receiveSlots: fakeNamedMediaSlots,
-          codecInfo: undefined,
         }),
         false,
       );
@@ -215,7 +212,6 @@ describe('RemoteMediaGroup', () => {
             nameMediaGroups: undefined,
           }),
           receiveSlots: fakeNamedMediaSlots,
-          codecInfo: undefined,
         }),
         true,
       );
@@ -271,9 +267,8 @@ describe('RemoteMediaGroup', () => {
             priority: 255,
           }),
           receiveSlots: expectedActiveSpeakerReceiveSlots,
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
+          sizeHint: sinon.match({
+            resolution: 'medium',
           }),
         })
       );
@@ -285,9 +280,8 @@ describe('RemoteMediaGroup', () => {
             csi: CSI,
           }),
           receiveSlots: expectedReceiverSelectedSlots,
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
+          sizeHint: sinon.match({
+            resolution: 'medium',
           }),
         })
       );
@@ -342,9 +336,8 @@ describe('RemoteMediaGroup', () => {
             csi: 1234,
           }),
           receiveSlots: expectedReceiverSelectedSlots,
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
+          sizeHint: sinon.match({
+            resolution: 'medium',
           }),
         })
       );
@@ -495,9 +488,8 @@ describe('RemoteMediaGroup', () => {
             priority: 255,
           }),
           receiveSlots: expectedActiveSpeakerReceiveSlots,
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
+          sizeHint: sinon.match({
+            resolution: 'medium',
           }),
         })
       );
@@ -509,9 +501,8 @@ describe('RemoteMediaGroup', () => {
             csi: CSI,
           }),
           receiveSlots: expectedReceiverSelectedSlots,
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
+          sizeHint: sinon.match({
+            resolution: 'medium',
           }),
         })
       );
@@ -549,9 +540,8 @@ describe('RemoteMediaGroup', () => {
             priority: 255,
           }),
           receiveSlots: expectedActiveSpeakerReceiveSlots2,
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
+          sizeHint: sinon.match({
+            resolution: 'medium',
           }),
         })
       );
@@ -563,9 +553,8 @@ describe('RemoteMediaGroup', () => {
             csi: CSI2,
           }),
           receiveSlots: expectedReceiverSelectedSlots2,
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
+          sizeHint: sinon.match({
+            resolution: 'medium',
           }),
         })
       );
@@ -597,9 +586,8 @@ describe('RemoteMediaGroup', () => {
             policy: 'active-speaker',
             priority: 255,
           }),
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
+          sizeHint: sinon.match({
+            resolution: 'medium',
           }),
         })
       );
@@ -658,9 +646,8 @@ describe('RemoteMediaGroup', () => {
             csi: 2345,
           }),
           receiveSlots: [fakeReceiveSlots[PINNED_INDEX]],
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
+          sizeHint: sinon.match({
+            resolution: 'medium',
           }),
         })
       );

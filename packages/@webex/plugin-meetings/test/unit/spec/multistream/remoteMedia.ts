@@ -6,6 +6,7 @@ import {MediaType} from '@webex/internal-media-core';
 import {RemoteMedia, RemoteMediaEvents} from '@webex/plugin-meetings/src/multistream/remoteMedia';
 import {RemoteVideoResolution} from '@webex/plugin-meetings/src/multistream/types';
 import {ReceiveSlotEvents} from '@webex/plugin-meetings/src/multistream/receiveSlot';
+import Metrics from '@webex/plugin-meetings/src/metrics';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {forEach} from 'lodash';
@@ -25,6 +26,7 @@ describe('RemoteMedia', () => {
     fakeReceiveSlot.sourceState = 'avatar';
     fakeReceiveSlot.stream = fakeStream;
     fakeReceiveSlot.setMaxFs = sinon.stub();
+    fakeReceiveSlot.setSizeHint = sinon.stub();
 
     fakeMediaRequestManager = {
       addRequest: sinon.stub(),
@@ -83,9 +85,8 @@ describe('RemoteMedia', () => {
             csi,
           }),
           receiveSlots: [fakeReceiveSlot],
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
+          sizeHint: sinon.match({
+            resolution: 'medium',
           }),
         }),
         true
@@ -105,9 +106,8 @@ describe('RemoteMedia', () => {
             csi: csi2,
           }),
           receiveSlots: [fakeReceiveSlot],
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
+          sizeHint: sinon.match({
+            resolution: 'medium',
           }),
         }),
         false
@@ -139,9 +139,8 @@ describe('RemoteMedia', () => {
             csi: 5678,
           }),
           receiveSlots: [fakeReceiveSlot],
-          codecInfo: sinon.match({
-            codec: 'h264',
-            maxFs: 3600,
+          sizeHint: sinon.match({
+            resolution: 'medium',
           }),
         }),
         false
@@ -243,7 +242,7 @@ describe('RemoteMedia', () => {
         it(`skip updating the max fs when applied ${width}:${height}`, () => {
           remoteMedia.setSizeHint(width, height);
 
-          assert.notCalled(fakeReceiveSlot.setMaxFs);
+          assert.notCalled(fakeReceiveSlot.setSizeHint);
         });
       }
     );
@@ -269,13 +268,28 @@ describe('RemoteMedia', () => {
         it(`sets the max fs to ${fs} correctly when height is ${height}`, () => {
           remoteMedia.setSizeHint(100, height);
 
-          assert.calledOnceWithExactly(fakeReceiveSlot.setMaxFs, fs);
+          assert.calledOnceWithExactly(
+            fakeReceiveSlot.setSizeHint,
+            sinon.match({
+              resolution: 'medium',
+              width: 100,
+              height,
+            })
+          );
         });
       }
     );
   });
 
   describe('getEffectiveMaxFs()', () => {
+    beforeEach(() => {
+      sinon.stub(Metrics, 'sendBehavioralMetric');
+    });
+
+    afterEach(() => {
+      Metrics.sendBehavioralMetric.restore();
+    });
+
     it('returns maxFrameSize when it is greater than 0', () => {
       remoteMedia.setSizeHint(960, 540);
 
