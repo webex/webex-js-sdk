@@ -274,7 +274,8 @@ jobs:
 
               const existingComments = await github.rest.issues.listComments({
                 owner, repo,
-                issue_number: parseInt(prNumber)
+                issue_number: parseInt(prNumber),
+                per_page: 100
               });
 
               const detailedComment = existingComments.data.find(comment =>
