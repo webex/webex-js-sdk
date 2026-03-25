@@ -303,10 +303,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getStayLobbyTime() {
-    return this.getDiffBetweenTimestamps(
-      'client.locus.join.response',
-      'internal.host.meeting.participant.admitted'
-    );
+    return this.getDiffBetweenTimestamps('client.locus.join.response', 'client.lobby.exited');
   }
 
   /**
@@ -480,7 +477,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const clickToInterstitial = this.getClickToInterstitial();
     const interstitialToJoinOk = this.getInterstitialToJoinOK();
     const joinConfJMT = this.getJoinConfJMT();
-    const lobbyTime = this.getStayLobbyTime();
+    const lobbyTimeLatency = this.getStayLobbyTime();
+    const lobbyTime = typeof lobbyTimeLatency === 'number' ? lobbyTimeLatency : 0;
 
     if (clickToInterstitial && interstitialToJoinOk && joinConfJMT) {
       const totalMediaJMT = clamp(
