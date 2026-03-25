@@ -521,11 +521,23 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getClientJMT() {
-    const interstitialToJoinOk = this.getInterstitialToJoinOK();
-    const joinConfJMT = this.getJoinConfJMT();
+    const clickToInterstitialForClientJmt = this.latencyTimestamps.get(
+      'internal.click.to.interstitial.for.client.jmt'
+    );
+    const interstitialJoinToLocusJoinRequest = this.getDiffBetweenTimestamps(
+      'internal.client.interstitial-window.click.joinbutton',
+      'client.locus.join.request'
+    );
 
-    if (typeof interstitialToJoinOk === 'number' && typeof joinConfJMT === 'number') {
-      return clamp(interstitialToJoinOk - joinConfJMT, 0, this.MAX_INTEGER);
+    if (
+      typeof clickToInterstitialForClientJmt === 'number' &&
+      typeof interstitialJoinToLocusJoinRequest === 'number'
+    ) {
+      return clamp(
+        clickToInterstitialForClientJmt + interstitialJoinToLocusJoinRequest,
+        0,
+        this.MAX_INTEGER
+      );
     }
 
     return undefined;
