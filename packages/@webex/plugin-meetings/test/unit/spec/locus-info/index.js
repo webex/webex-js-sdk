@@ -4160,6 +4160,28 @@ describe('plugin-meetings', () => {
 
         assert.calledOnce(locusInfo.updateParticipants);
       });
+
+      [
+        {forceReplaceMembers: true, selfInParticipants: false, expectedSelfCopied: true},
+        {forceReplaceMembers: true, selfInParticipants: true, expectedSelfCopied: false},
+        {forceReplaceMembers: false, selfInParticipants: false, expectedSelfCopied: false},
+        {forceReplaceMembers: false, selfInParticipants: true, expectedSelfCopied: false},
+      ].forEach(({forceReplaceMembers, selfInParticipants, expectedSelfCopied}) => {
+        it(`should ${expectedSelfCopied ? '' : 'not '}copy self into participants when forceReplaceMembers=${forceReplaceMembers} and self ${selfInParticipants ? 'is' : 'is not'} in participants`, () => {
+          const self = {identity: 'selfId', state: 'JOINED', devices: [], status: {}};
+          const participant = {identity: selfInParticipants ? 'selfId' : 'other'};
+          const locus = {
+            participants: [participant],
+            self,
+            jsSdkMeta: {forceReplaceMembers, removedParticipantIds: []},
+          };
+
+          locusInfo.onDeltaLocus(locus);
+
+          const expectedParticipants = expectedSelfCopied ? [participant, self] : [participant];
+          assert.deepEqual(locus.participants, expectedParticipants);
+        });
+      });
     });
 
     describe('#updateLocusInfo', () => {

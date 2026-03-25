@@ -1432,6 +1432,33 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
+   * Makes sure that passed in locus object has a participant object for self.
+   *
+   * @param {LocusDTO} locus The locus object to check and modify if needed
+   * @returns {void}
+   */
+  ensureSelfParticipantExists(locus: any) {
+    const {self} = locus;
+
+    // sanity check, this should never fail
+    if (!self?.identity || !Array.isArray(locus.participants)) {
+      LoggerProxy.logger.warn(
+        `Locus-info:index#ensureSelfParticipantExists --> locus object is missing required fields, cannot ensure self participant exists. self?.identity="${self?.identity}"`
+      );
+
+      return;
+    }
+
+    const selfExists = locus.participants.some(
+      (participant) => participant.identity === self.identity
+    );
+
+    if (!selfExists) {
+      locus.participants.push({...self});
+    }
+  }
+
+  /**
    * @param {Object} locus
    * @returns {undefined}
    * @memberof LocusInfo
@@ -1441,6 +1468,14 @@ export default class LocusInfo extends EventsScope {
       locus.jsSdkMeta?.forceReplaceMembers !== undefined
         ? locus.jsSdkMeta.forceReplaceMembers
         : ControlsUtils.isNeedReplaceMembers(this.controls, locus.controls);
+
+    if (isReplaceMembers) {
+      // when we're moving between breakouts, Locus sometimes doesn't send us
+      // any participants at all for a few seconds
+      // Web app relies on having at least the self participant always there
+      // so we copy self into participants if it's not there.
+      this.ensureSelfParticipantExists(locus);
+    }
     this.mergeParticipants(this.participants, locus.participants);
     const updatesApplied = this.updateLocusInfo(locus);
 
