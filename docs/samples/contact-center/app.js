@@ -16,6 +16,7 @@ let entryPointId = '';
 let stateTimer;
 let currentConsultQueueId;
 let outdialANIId; // Store outdial ANI ID from agent profile
+const taskCreationTimes = new Map(); // Track when tasks first appear (taskId -> timestamp)
 
 const authTypeElm = document.querySelector('#auth-type');
 const credentialsFormElm = document.querySelector('#credentials');
@@ -1389,7 +1390,7 @@ function registerTaskListeners(task) {
         // If no uiControls available, clear all (task likely terminated)
         applyAllControlsFromUIControls(null);
         participantListElm.style.display = 'none';
-        incomingDetailsElm.innerText = '';
+        incomingDetailsElm.innerText = 'No Incoming Tasks';
         currentTask = undefined;
       }
     }
@@ -1451,13 +1452,17 @@ function registerTaskListeners(task) {
   // When task:end fires, the task is TERMINATED - ALWAYS clear all controls
   task.on('task:end', () => {
     console.info('🔚 Task ended (TERMINATED) - clearing ALL UI controls');
+
+    // Clean up task creation time tracking
+    taskCreationTimes.delete(task.data.interactionId);
+
     // If this is the current task, clear all controls
     if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
       // Task ended - ALWAYS clear all controls (don't rely on uiControls)
       applyAllControlsFromUIControls(null);
       participantListElm.style.display = 'none';
-      incomingDetailsElm.innerText = '';
-      
+      incomingDetailsElm.innerText = 'No Incoming Tasks';
+
       // Clear currentTask since task has ended
       currentTask = undefined;
     }
@@ -2053,6 +2058,7 @@ function register() {
 
     webex.cc.on('agent:stateChange', (data) => {
       if (data && typeof data === 'object' && data.type === 'AgentStateChangeSuccess') {
+        console.log('Agent state change event received:', data.type);
         const DEFAULT_CODE = '0'; // Default code when no aux code is present
         idleCodesDropdown.value = data.auxCodeId?.trim() !== '' ? data.auxCodeId : DEFAULT_CODE;
         startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
@@ -2602,7 +2608,7 @@ function renderTaskList(taskList) {
   if (!taskList || Object.keys(taskList).length === 0) {
     // No tasks - apply default (all disabled) controls
     applyAllControlsFromUIControls(null);
-    incomingDetailsElm.innerText = '';
+    incomingDetailsElm.innerText = 'No Incoming Tasks';
     autoWrapupTimerElm.style.display = 'none';
     taskListContainer.innerHTML = '<p>No tasks available</p>';
     engageElm.innerHTML = ``;
@@ -2610,26 +2616,85 @@ function renderTaskList(taskList) {
     participantListElm.style.display = 'none';
     return;
   }
-  
+
+  // Filter out orphaned tasks (customer disconnected during ALERTING)
+  // Since SDK doesn't provide createdTime, we track it ourselves
+  const ALERTING_STALE_THRESHOLD_MS = 25000; // 25 seconds (RONA timeout is ~18s)
+  const activeTasks = Object.entries(taskList).filter(([taskId, task]) => {
+    // Track when we first see this task
+    if (!taskCreationTimes.has(taskId)) {
+      taskCreationTimes.set(taskId, Date.now());
+    }
+
+    const state = task.data?.interaction?.state;
+    const participants = task.data?.interaction?.participants;
+    const agentJoined = agentId && participants?.[agentId]?.hasJoined;
+
+    // Check for explicit terminal states (if backend sets these)
+    if (state === 'ended' || state === 'disconnected' || state === 'terminated') {
+      console.warn(`⚠️ Customer disconnect detected - filtering orphaned task ${taskId} (state: ${state})`);
+      taskCreationTimes.delete(taskId); // Clean up tracking
+      return false;
+    }
+
+    // Check for stale ALERTING tasks (customer hung up before agent answered)
+    // ONLY filter if: state='new' + agent hasn't joined + task is old
+    if (state === 'new' && !agentJoined) {
+      const taskCreatedAt = taskCreationTimes.get(taskId);
+      const taskAgeMs = Date.now() - taskCreatedAt;
+
+      if (taskAgeMs > ALERTING_STALE_THRESHOLD_MS) {
+        console.warn(
+          `⚠️ Customer disconnect in ALERTING detected - filtering stale task ${taskId} ` +
+          `(age: ${Math.round(taskAgeMs/1000)}s, threshold: ${ALERTING_STALE_THRESHOLD_MS/1000}s)`
+        );
+        taskCreationTimes.delete(taskId); // Clean up tracking
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  // Clean up tracking for tasks that are no longer in the list
+  const currentTaskIds = new Set(Object.keys(taskList));
+  for (const [trackedTaskId] of taskCreationTimes) {
+    if (!currentTaskIds.has(trackedTaskId)) {
+      taskCreationTimes.delete(trackedTaskId);
+    }
+  }
+
+  // If all tasks were filtered out, show "No tasks available"
+  if (activeTasks.length === 0) {
+    applyAllControlsFromUIControls(null);
+    incomingDetailsElm.innerText = 'No Incoming Tasks';
+    autoWrapupTimerElm.style.display = 'none';
+    taskListContainer.innerHTML = '<p>No tasks available</p>';
+    engageElm.innerHTML = ``;
+    currentTask = undefined;
+    participantListElm.style.display = 'none';
+    return;
+  }
+
   // Keep track of last task for potential default selection
   let lastTask = null;
   let lastTaskId = null;
   let hasSelectedTask = false;
   
-  // Check if the current task still exists in the task list
+  // Check if the current task still exists in the active task list
   if (currentTask) {
-    const currentTaskStillExists = taskList[currentTask.data.interactionId];
-    if (!currentTaskStillExists) {
-      // Current task was removed - clear UI controls immediately
+    const currentTaskStillActive = activeTasks.find(([id]) => id === currentTask.data.interactionId);
+    if (!currentTaskStillActive) {
+      // Current task was removed or filtered out - clear UI controls immediately
       console.info('📋 Current task removed from list - clearing UI controls');
       applyAllControlsFromUIControls(null);
       participantListElm.style.display = 'none';
-      incomingDetailsElm.innerText = '';
+      incomingDetailsElm.innerText = 'No Incoming Tasks';
       currentTask = undefined;
     }
   }
-  
-  for (const [taskId, task] of Object.entries(taskList)) {
+
+  for (const [taskId, task] of activeTasks) {
     const taskElement = document.createElement('div');
     taskElement.className = 'task-item';
     taskElement.setAttribute('data-task-id', taskId);
