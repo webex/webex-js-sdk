@@ -1,5 +1,5 @@
-name: PR Release Comment Bot
-run-name: ${{ github.actor }} triggered release comment bot
+name: PR Release Comment
+run-name: ${{ github.actor }} triggered release comment
 
 on:
   workflow_dispatch:
@@ -14,8 +14,6 @@ on:
     workflows: ["Deploy CD"]
     types:
       - completed
-    branches:
-      - next
 
 jobs:
   comment-on-prs:
@@ -83,8 +81,8 @@ jobs:
             const deploySha = '${{ steps.tag-info.outputs.deploy_sha }}';
             const stableVersion = '${{ steps.tag-info.outputs.stable_version }}';
             const manualPrNumber = '${{ steps.tag-info.outputs.pr_number }}';
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
+            const owner = 'webex';
+            const repo = 'webex-js-sdk';
 
             const emptyResult = (prNum, fetchSuccess) => {
               core.setOutput('pr_numbers', JSON.stringify(prNum ? [prNum] : []));
@@ -188,10 +186,12 @@ jobs:
             const prNumbers = prNumbersRaw ? JSON.parse(prNumbersRaw) : [];
             const packageVersions = packageVersionsRaw ? JSON.parse(packageVersionsRaw) : {};
 
+            const owner = 'webex';
+            const repo = 'webex-js-sdk';
             const prNumber = prNumbers[0];
             if (!prNumber) return;
 
-            const repoUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}`;
+            const repoUrl = `https://github.com/${owner}/${repo}`;
             const packageEntries = Object.entries(packageVersions);
             const hasPackages = packageEntries.length > 0;
 
@@ -263,8 +263,7 @@ jobs:
               let pr;
               try {
                 pr = await github.rest.pulls.get({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
+                  owner, repo,
                   pull_number: parseInt(prNumber)
                 });
               } catch (error) {
@@ -274,26 +273,36 @@ jobs:
               if (!pr.data.merged_at) return;
 
               const existingComments = await github.rest.issues.listComments({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
+                owner, repo,
                 issue_number: parseInt(prNumber)
               });
 
-              const botCommentExists = existingComments.data.some(comment =>
+              const detailedComment = existingComments.data.find(comment =>
                 comment.user.type === 'Bot' &&
-                (comment.body.includes('Your changes are now available') ||
-                 comment.body.includes('Your changes have been merged'))
+                comment.body.includes('Your changes are now available')
+              );
+              const mergedComment = existingComments.data.find(comment =>
+                comment.user.type === 'Bot' &&
+                comment.body.includes('Your changes have been merged')
               );
 
-              if (botCommentExists) return;
+              if (detailedComment) return;
+              if (!hasPackages && mergedComment) return;
 
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: parseInt(prNumber),
-                body: commentBody
-              });
+              if (mergedComment && hasPackages) {
+                await github.rest.issues.updateComment({
+                  owner, repo,
+                  comment_id: mergedComment.id,
+                  body: commentBody
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner, repo,
+                  issue_number: parseInt(prNumber),
+                  body: commentBody
+                });
+              }
             } catch (error) {
-              core.setFailed(`Failed to comment on PR #${prNumber}: ${error.message}`);
+              core.warning(`Failed to comment on PR #${prNumber}: ${error.message}`);
             }
 
