@@ -492,46 +492,6 @@ describe('plugin-voicea', () => {
       });
     });
 
-describe('#getLLMDatachannelUrl', () => {
-  const DEFAULT_URL = 'wss://default.llm';
-  const PRACTICE_URL = 'wss://practice.llm';
-
-  beforeEach(() => {
-    voiceaService.webex.internal.llm.getDatachannelUrl = sinon.stub().callsFake((session) =>
-      session === LLM_PRACTICE_SESSION ? PRACTICE_URL : DEFAULT_URL
-    );
-  });
-
-  it('returns practice-session URL when practice session is connected', () => {
-    voiceaService.webex.internal.llm.isConnected = sinon
-      .stub()
-      .callsFake((session) => session === LLM_PRACTICE_SESSION);
-
-    const url = voiceaService.getLLMDatachannelUrl();
-
-    assert.equal(url, PRACTICE_URL);
-  });
-
-  it('returns default URL when only default session is connected', () => {
-    voiceaService.webex.internal.llm.isConnected = sinon
-      .stub()
-      .callsFake((session) => session !== LLM_PRACTICE_SESSION);
-
-    const url = voiceaService.getLLMDatachannelUrl();
-
-    assert.equal(url, DEFAULT_URL);
-  });
-
-  it('returns default URL when neither session is connected', () => {
-    voiceaService.webex.internal.llm.isConnected = sinon.stub().returns(false);
-
-    const url = voiceaService.getLLMDatachannelUrl();
-
-    assert.equal(url, DEFAULT_URL);
-  });
-});
-
-
     describe('#getIsCaptionBoxOn', () => {
       beforeEach(() => {
         voiceaService.isCaptionBoxOn = false;
@@ -1330,9 +1290,8 @@ describe('#getLLMDatachannelUrl', () => {
 
         sinon.stub(voiceaService, 'getPublishTransport').returns({
           socket: mockWebSocket,
+          datachannelUrl: 'mock-datachannel-uri',
         });
-
-        sinon.stub(voiceaService, 'getLLMDatachannelUrl').returns('mock-datachannel-uri');
 
         voiceaService.seqNum = 1;
 
