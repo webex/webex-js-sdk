@@ -5,6 +5,7 @@
 import {Interceptor} from '@webex/http-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY, RETRY_INTERVAL, RETRY_KEY} from './constant';
+import {isJwtTokenExpired} from './utils';
 
 /*!
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
@@ -67,6 +68,33 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
     const key = Object.keys(headers).find((k) => k.toLowerCase() === name.toLowerCase());
 
     return key ? headers[key] : undefined;
+  }
+
+  /**
+   * Intercepts outgoing requests and refreshes the Data-Channel-Auth-Token
+   * if the current JWT token is expired before the request is sent.
+   *
+   * @param {Object} options - The original request options.
+   * @returns {Promise<Object>} Updated request options with refreshed token if needed.
+   */
+  async onRequest(options) {
+    const token = this.getHeader(options.headers, DATA_CHANNEL_AUTH_HEADER);
+    const enabled = await this._isDataChannelTokenEnabled();
+
+    if (!token || !enabled) {
+      return options;
+    }
+
+    if (isJwtTokenExpired(token)) {
+      try {
+        const newToken = await this._refreshDataChannelToken();
+        options.headers[DATA_CHANNEL_AUTH_HEADER] = newToken;
+      } catch (e) {
+        LoggerProxy.logger.warn(`DataChannelAuthTokenInterceptor: refresh failed: ${e.message}`);
+      }
+    }
+
+    return options;
   }
 
   /**
