@@ -344,7 +344,6 @@ export default class MediaRequestManager {
     this.clientRequests = {};
     this.numTotalSources = 0;
     this.numLiveSources = 0;
-    this.previousStreamRequests = [];
   }
 
   public setNumCurrentSources(numTotalSources: number, numLiveSources: number) {

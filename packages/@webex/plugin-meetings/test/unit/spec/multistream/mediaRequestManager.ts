@@ -607,7 +607,7 @@ describe('MediaRequestManager', () => {
     ]);
   });
 
-  it('avoids sending duplicate requests and clears all the requests on reset()', () => {
+  it('clears all the requests on reset()', () => {
     // send some requests and commit them one by one
     addReceiverSelectedRequest(1500, fakeReceiveSlots[0], SIZE_HINT_LARGE, false);
     addReceiverSelectedRequest(1501, fakeReceiveSlots[1], SIZE_HINT_LARGE, false);
