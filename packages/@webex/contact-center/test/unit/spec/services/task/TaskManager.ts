@@ -219,7 +219,6 @@ describe('TaskManager', () => {
       CC_EVENTS.REAL_TIME_TRANSCRIPTION,
       realtimePayload.data
     );
-    expect(taskEmitSpy).toHaveBeenCalledWith(CC_EVENTS.REAL_TIME_TRANSCRIPTION, realtimePayload.data);
   });
 
   it('should not re-emit agent related events', () => {

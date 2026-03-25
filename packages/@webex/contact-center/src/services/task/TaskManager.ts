@@ -563,10 +563,10 @@ export default class TaskManager extends EventEmitter {
             break;
         }
         if (task) {
-          if (payload.type === CC_EVENTS.REAL_TIME_TRANSCRIPTION) {
-            task.emit(payload.type, payload.data.data);
-          }
-          task.emit(payload.data.type, payload.data);
+          const eventType = payload.type || payload.data.type;
+          const eventPayload = payload.data || payload.data.data;
+
+          task.emit(eventType, eventPayload);
         }
 
         const transcriptInteractionId =
