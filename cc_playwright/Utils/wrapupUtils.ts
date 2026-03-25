@@ -53,7 +53,8 @@ export async function waitForWrapupAfterCallEnd(page: Page): Promise<void> {
 }
 
 /**
- * Submits the wrap-up popup for a task in the UI.
+ * Submits the wrap-up for a task in the sample app.
+ * Sample app uses plain HTML: #wrapupCodesDropdown (select) and #wrapup (button).
  *
  * @param page Playwright Page object
  * @param reason The wrap-up reason to select (string, case-insensitive)
@@ -65,49 +66,17 @@ export async function submitWrapup(page: Page, reason: WrapupReason): Promise<vo
   }
   await page.bringToFront();
 
-  // Dismiss any open popovers that might be blocking interactions
-  await page.keyboard.press('Escape');
+  // Sample app: wait for wrapup dropdown to be enabled after call ends
+  const wrapupDropdown = page.locator('#wrapupCodesDropdown');
+  await expect(wrapupDropdown).toBeEnabled({timeout: WRAPUP_TIMEOUT});
+
+  // Select the wrapup reason from dropdown
+  await wrapupDropdown.selectOption({label: reason}, {timeout: AWAIT_TIMEOUT});
   await page.waitForTimeout(UI_SETTLE_TIMEOUT);
 
-  await expect
-    .poll(() => findFirstVisibleWrapupIndex(page), {
-      timeout: WRAPUP_TIMEOUT,
-      intervals: [250, 500, 1000, 2000],
-    })
-    .not.toBe(-1);
-
-  const wrapupIndex = await findFirstVisibleWrapupIndex(page);
-  const wrapupBox = page.getByTestId('call-control:wrapup-button').nth(wrapupIndex);
-
-  // Check if dropdown is already open (aria-expanded="true")
-  const isAlreadyOpen = (await wrapupBox.getAttribute('aria-expanded')) === 'true';
-  if (!isAlreadyOpen) {
-    await wrapupBox.click({timeout: AWAIT_TIMEOUT});
-    await page.waitForTimeout(UI_SETTLE_TIMEOUT);
-  }
-  await expect(page.getByTestId('call-control:wrapup-select').first()).toBeVisible({
-    timeout: AWAIT_TIMEOUT,
-  });
-  await page.getByTestId('call-control:wrapup-select').first().click({timeout: AWAIT_TIMEOUT});
-  await page.waitForTimeout(UI_SETTLE_TIMEOUT);
-  const optionLocator = page
-    .getByTestId(`call-control:wrapup-reason-${reason.toLowerCase()}`)
-    .filter({hasText: reason.toString()});
-  try {
-    await expect(optionLocator.first()).toBeVisible({timeout: AWAIT_TIMEOUT});
-  } catch (error) {
-    await page.waitForTimeout(UI_SETTLE_TIMEOUT);
-    await expect(page.getByTestId('call-control:wrapup-select').first()).toBeVisible({
-      timeout: AWAIT_TIMEOUT,
-    });
-    await page.getByTestId('call-control:wrapup-select').first().click({timeout: AWAIT_TIMEOUT});
-  }
-  await expect(optionLocator.first()).toBeVisible({timeout: AWAIT_TIMEOUT});
-  await optionLocator.first().click({timeout: AWAIT_TIMEOUT});
-  await page.waitForTimeout(UI_SETTLE_TIMEOUT);
-  await expect(page.getByTestId(`call-control:wrapup-submit`).first()).toBeVisible({
-    timeout: AWAIT_TIMEOUT,
-  });
-  await page.getByTestId(`call-control:wrapup-submit`).first().click({timeout: AWAIT_TIMEOUT});
+  // Click wrapup button to submit
+  const wrapupButton = page.locator('#wrapup');
+  await expect(wrapupButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
+  await wrapupButton.click({timeout: AWAIT_TIMEOUT});
   await page.waitForTimeout(UI_SETTLE_TIMEOUT);
 }

@@ -140,6 +140,23 @@ module.exports = {
       },
     },
     {
+      // Playwright E2E tests - allow patterns that make sense for sequential test operations
+      files: ['cc_playwright/**/*.ts'],
+      rules: {
+        'no-await-in-loop': 'off', // Sequential operations are intentional in E2E tests
+        'no-plusplus': 'off', // i++ is clear and idiomatic in retry loops
+        'no-continue': 'off', // Continue statements are useful for retry/polling logic
+        'no-empty': 'off', // Empty catch blocks are acceptable for best-effort operations
+        'no-console': 'off', // Console logging is useful for debugging test failures
+        'import/no-extraneous-dependencies': ['error', {devDependencies: true}], // Playwright is correctly in devDependencies
+        '@typescript-eslint/no-non-null-assertion': 'warn', // Reduce to warning for test code
+        'class-methods-use-this': 'off', // Test manager methods don't always need 'this'
+        'no-promise-executor-return': 'off', // Timeout patterns in tests
+        'default-param-last': 'off', // Parameter order flexibility for test utilities
+        'no-use-before-define': 'warn', // Helper functions can be defined after use for readability
+      },
+    },
+    {
       files: ['packages/@webex/xunit-with-logs'],
       rules: {
         'func-names': 0,

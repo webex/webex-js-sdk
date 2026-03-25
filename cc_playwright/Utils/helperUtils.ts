@@ -752,12 +752,23 @@ export const pageSetup = async (
     return; // Skip station login for multi-session tests
   }
 
-  // Step 4: Check if already logged in (idle codes dropdown visible)
+  // Step 4: Check if already logged in (logout button visible, login mode selected, AND state dropdown visible)
   const stateSelect = page.locator('#idleCodesDropdown');
   const loginButton = page.locator('#loginAgent');
-  const isStateAlreadyVisible = await stateSelect.isVisible().catch(() => false);
+  const logoutButton = page.locator('#logoutAgent');
+  const agentLoginSelect = page.locator('#AgentLogin');
 
-  if (!isStateAlreadyVisible) {
+  // Check logout button visibility, login mode selected, AND state dropdown visible (most reliable indicator)
+  const logoutButtonVisible = await logoutButton.isVisible().catch(() => false);
+  const loginModeValue = await agentLoginSelect.inputValue().catch(() => '');
+  const stateDropdownVisible = await stateSelect.isVisible().catch(() => false);
+  const isAlreadyLoggedIn =
+    logoutButtonVisible &&
+    loginModeValue !== '' &&
+    loginModeValue !== 'Choose Agent Login ...' &&
+    stateDropdownVisible;
+
+  if (!isAlreadyLoggedIn) {
     let loginButtonExists = await loginButton.isVisible().catch(() => false);
 
     if (!loginButtonExists) {
@@ -771,18 +782,18 @@ export const pageSetup = async (
     await telephonyLogin(page, loginMode, extensionNumber);
   }
 
-  // Step 5: Verify station login was successful
-  const isStateVisible = await stateSelect
+  // Step 5: Verify station login was successful (logout button visible)
+  const isLogoutVisible = await logoutButton
     .waitFor({state: 'visible', timeout: EXTENSION_REGISTRATION_TIMEOUT})
     .then(() => true)
     .catch(() => false);
 
-  if (!isStateVisible) {
+  if (!isLogoutVisible) {
     // Single bounded recovery for stale station/device registration state
     await stationLogout(page, false);
     await loginButton.waitFor({state: 'visible', timeout: OPERATION_TIMEOUT});
     await telephonyLogin(page, loginMode, extensionNumber);
-    await stateSelect.waitFor({state: 'visible', timeout: EXTENSION_REGISTRATION_TIMEOUT});
+    await logoutButton.waitFor({state: 'visible', timeout: EXTENSION_REGISTRATION_TIMEOUT});
   }
 };
 
