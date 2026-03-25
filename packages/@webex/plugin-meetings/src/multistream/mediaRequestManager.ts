@@ -10,7 +10,7 @@ import {
   RecommendedOpusBitrates,
   NamedMediaGroup,
 } from '@webex/internal-media-core';
-import {cloneDeepWith, debounce, isEmpty} from 'lodash';
+import {cloneDeepWith, debounce} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 
@@ -94,8 +94,6 @@ export class MediaRequestManager {
 
   private debouncedSourceUpdateListener: () => void;
 
-  private previousStreamRequests: Array<StreamRequest> = [];
-
   private trimRequestsToNumOfSources: boolean;
   private numTotalSources: number;
   private numLiveSources: number;
@@ -162,36 +160,6 @@ export class MediaRequestManager {
   }
 
   /**
-   * Returns true if two stream requests are the same, false otherwise.
-   *
-   * @param {StreamRequest} streamRequestA - Stream request A for comparison.
-   * @param {StreamRequest} streamRequestB - Stream request B for comparison.
-   * @returns {boolean} - Whether they are equal.
-   */
-  // eslint-disable-next-line class-methods-use-this
-  public isEqual(streamRequestA: StreamRequest, streamRequestB: StreamRequest) {
-    return (
-      JSON.stringify(streamRequestA._toJmpStreamRequest()) ===
-      JSON.stringify(streamRequestB._toJmpStreamRequest())
-    );
-  }
-
-  /**
-   * Compares new stream requests to previous ones and determines
-   * if they are the same.
-   *
-   * @param {StreamRequest[]} newRequests - Array with new requests.
-   * @returns {boolean} - True if they are equal, false otherwise.
-   */
-  private checkIsNewRequestsEqualToPrev(newRequests: StreamRequest[]) {
-    return (
-      !isEmpty(this.previousStreamRequests) &&
-      this.previousStreamRequests.length === newRequests.length &&
-      this.previousStreamRequests.every((req, idx) => this.isEqual(req, newRequests[idx]))
-    );
-  }
-
-  /**
    * Returns the maxPayloadBitsPerSecond per Stream
    *
    * If MediaRequestManager kind is "audio", a constant bitrate will be returned.
@@ -228,15 +196,6 @@ export class MediaRequestManager {
 
     // divided by 100 since maxFps is 3000 (for 30 frames per seconds)
     return (mediaRequest.codecInfo.maxFs * maxFps) / 100;
-  }
-
-  /**
-   * Clears the previous stream requests.
-   *
-   * @returns {void}
-   */
-  public clearPreviousRequests(): void {
-    this.previousStreamRequests = [];
   }
 
   /** Modifies the passed in clientRequests and makes sure that in total they don't ask
@@ -372,17 +331,8 @@ export class MediaRequestManager {
       }
     });
 
-    //! IMPORTANT: this is only a temporary fix. This will soon be done in the jmp layer (@webex/json-multistream)
-    // https://jira-eng-gpk2.cisco.com/jira/browse/WEBEX-326713
-    if (!this.checkIsNewRequestsEqualToPrev(streamRequests)) {
-      this.sendMediaRequestsCallback(streamRequests);
-      this.previousStreamRequests = streamRequests;
-      LoggerProxy.logger.info(`multistream:sendRequests --> media requests sent. `);
-    } else {
-      LoggerProxy.logger.info(
-        `multistream:sendRequests --> detected duplicate WCME requests, skipping them... `
-      );
-    }
+    this.sendMediaRequestsCallback(streamRequests);
+    LoggerProxy.logger.info(`multistream:sendRequests --> media requests sent. `);
   }
 
   public addRequest(mediaRequest: MediaRequest, commit = true): MediaRequestId {
