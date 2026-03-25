@@ -137,7 +137,13 @@ export type {
   TransferPayLoad,
   ResumeRecordingPayload,
   WrapupPayLoad,
+  /** UI control types for task buttons */
+  TaskUIControls,
+  TaskUIControlState,
 } from './services/task/types';
+
+/** UI controls utilities */
+export {getDefaultUIControls} from './services/task/state-machine/uiControlsComputer';
 
 /** Agent related types */
 export type {
