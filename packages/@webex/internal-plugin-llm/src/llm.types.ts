@@ -24,8 +24,8 @@ interface ILLMChannel {
 }
 
 export enum DataChannelTokenType {
-  Default = 'default',
-  PracticeSession = 'practiceSession',
+  Default = 'llm-default-session',
+  PracticeSession = 'llm-practice-session',
 }
 
 // eslint-disable-next-line import/prefer-default-export

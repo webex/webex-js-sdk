@@ -361,7 +361,6 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
       joinTimes.totalMediaJMT = cdl.getTotalMediaJMT();
       joinTimes.interstitialToMediaOKJMT = cdl.getInterstitialToMediaOKJMT();
       joinTimes.callInitMediaEngineReady = cdl.getCallInitMediaEngineReady();
-      joinTimes.stayLobbyTime = cdl.getStayLobbyTime();
       joinTimes.totalMediaJMTWithUserDelay = cdl.getTotalMediaJMTWithUserDelay();
       joinTimes.totalJMTWithUserDelay = cdl.getTotalJMTWithUserDelay();
       break;
@@ -369,6 +368,11 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
     case 'client.media.tx.start':
       audioSetupDelay.joinRespTxStart = cdl.getAudioJoinRespTxStart();
       videoSetupDelay.joinRespTxStart = cdl.getVideoJoinRespTxStart();
+      break;
+
+    case 'client.lobby.exited':
+      joinTimes.stayLobbyTime = cdl.getStayLobbyTime();
+      break;
   }
 
   if (!isEmpty(joinTimes)) {
