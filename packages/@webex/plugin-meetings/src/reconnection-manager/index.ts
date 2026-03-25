@@ -609,7 +609,6 @@ export default class ReconnectionManager {
     if (this.meeting.isMultistream) {
       Object.values(this.meeting.mediaRequestManagers).forEach(
         (mediaRequestManager: MediaRequestManager) => {
-          mediaRequestManager.clearPreviousRequests();
           mediaRequestManager.commit();
         }
       );

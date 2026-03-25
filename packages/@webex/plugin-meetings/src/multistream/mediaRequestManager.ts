@@ -7,7 +7,7 @@ import {
   RecommendedOpusBitrates,
   SupportedResolution,
 } from '@webex/internal-media-core';
-import {cloneDeepWith, debounce, isEmpty} from 'lodash';
+import {cloneDeepWith, debounce} from 'lodash';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 
@@ -48,8 +48,6 @@ export default class MediaRequestManager {
   private sourceUpdateListener: () => void;
 
   private debouncedSourceUpdateListener: () => void;
-
-  private previousStreamRequests: Array<StreamRequest> = [];
 
   private trimRequestsToNumOfSources: boolean;
   private numTotalSources: number;
@@ -106,36 +104,6 @@ export default class MediaRequestManager {
   }
 
   /**
-   * Returns true if two stream requests are the same, false otherwise.
-   *
-   * @param {StreamRequest} streamRequestA - Stream request A for comparison.
-   * @param {StreamRequest} streamRequestB - Stream request B for comparison.
-   * @returns {boolean} - Whether they are equal.
-   */
-  // eslint-disable-next-line class-methods-use-this
-  public isEqual(streamRequestA: StreamRequest, streamRequestB: StreamRequest) {
-    return (
-      JSON.stringify(streamRequestA._toJmpStreamRequest()) ===
-      JSON.stringify(streamRequestB._toJmpStreamRequest())
-    );
-  }
-
-  /**
-   * Compares new stream requests to previous ones and determines
-   * if they are the same.
-   *
-   * @param {StreamRequest[]} newRequests - Array with new requests.
-   * @returns {boolean} - True if they are equal, false otherwise.
-   */
-  private checkIsNewRequestsEqualToPrev(newRequests: StreamRequest[]) {
-    return (
-      !isEmpty(this.previousStreamRequests) &&
-      this.previousStreamRequests.length === newRequests.length &&
-      this.previousStreamRequests.every((req, idx) => this.isEqual(req, newRequests[idx]))
-    );
-  }
-
-  /**
    * Returns the maxPayloadBitsPerSecond per Stream
    *
    * If MediaRequestManager kind is "audio", a constant bitrate will be returned.
@@ -164,15 +132,6 @@ export default class MediaRequestManager {
     );
 
     return 0;
-  }
-
-  /**
-   * Clears the previous stream requests.
-   *
-   * @returns {void}
-   */
-  public clearPreviousRequests(): void {
-    this.previousStreamRequests = [];
   }
 
   /** Modifies the passed in clientRequests and makes sure that in total they don't ask
@@ -307,12 +266,8 @@ export default class MediaRequestManager {
       streamRequests.push(streamRequest);
     });
 
-    if (this.checkIsNewRequestsEqualToPrev(streamRequests)) {
-      return;
-    }
-
-    this.previousStreamRequests = [...streamRequests];
     this.sendMediaRequestsCallback(streamRequests);
+    LoggerProxy.logger.info(`multistream:sendRequests --> media requests sent. `);
   }
 
   public addRequest(mediaRequest: Omit<MediaRequest, 'codecInfos'>, commit = true): MediaRequestId {

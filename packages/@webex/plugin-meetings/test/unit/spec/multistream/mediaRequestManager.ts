@@ -655,12 +655,6 @@ describe('MediaRequestManager', () => {
       },
     ]);
 
-    // check that when calling commit()
-    // all requests are not re-sent again (avoid duplicate requests)
-    mediaRequestManager.commit();
-
-    assert.notCalled(sendMediaRequestsCallback);
-
     // now reset everything
     mediaRequestManager.reset();
 
