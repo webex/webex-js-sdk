@@ -1,3 +1,5 @@
+export type ServiceIndicator = 'calling' | 'contactcenter' | 'guestcalling';
+
 export const SAMPLE_APP_PATH = '/samples/calling/';
 
 // Timeouts

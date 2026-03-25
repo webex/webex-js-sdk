@@ -11,16 +11,17 @@ const chromeOptions = {
   channel: 'chrome' as const,
   launchOptions: {
     args: [
-      '--disable-site-isolation-trials',
-      '--disable-web-security',
-      '--no-sandbox',
-      '--disable-features=WebRtcHideLocalIpsWithMdns',
-      '--allow-file-access-from-files',
-      '--use-fake-ui-for-media-stream',
-      '--use-fake-device-for-media-stream',
-      '--disable-extensions',
-      '--disable-plugins',
-      '--ignore-certificate-errors',
+      '--disable-site-isolation-trials', // Allow cross-origin iframes in the same process
+      '--disable-web-security', // Bypass CORS for local dev server
+      '--no-sandbox', // Required for CI containers without root
+      '--disable-features=WebRtcHideLocalIpsWithMdns', // Expose real local IPs for WebRTC ICE candidates
+      '--allow-file-access-from-files', // Allow file:// protocol access
+      '--use-fake-ui-for-media-stream', // Auto-grant camera/mic permissions without prompt
+      '--use-fake-device-for-media-stream', // Use synthetic audio/video instead of real hardware
+      '--disable-extensions', // Prevent extensions from interfering with tests
+      '--disable-plugins', // Prevent plugins from interfering with tests
+      '--ignore-certificate-errors', // Accept self-signed certs from local dev server
+      '--auto-open-devtools-for-tabs', // Open DevTools for debugging test runs
     ],
   },
 };
@@ -48,18 +49,18 @@ export default defineConfig({
   projects: [
     {
       name: 'Calling: OAuth Setup',
-      testDir: './playwright/tests/calling',
-      testMatch: /global\.setup\.ts/,
+      testDir: './playwright/calling/utils',
+      testMatch: /oauth\.setup\.ts/,
     },
     {
       name: 'Calling SDK E2E',
       dependencies: ['Calling: OAuth Setup'],
-      testDir: './playwright/tests/calling',
+      testDir: './playwright/calling/tests',
       use: chromeOptions,
     },
     {
       name: 'Contact Center SDK E2E',
-      testDir: './playwright/tests/contact-center',
+      testDir: './playwright/contact-center',
       use: chromeOptions,
     },
   ],

@@ -5,8 +5,8 @@ import {
   verifySDKInitialized,
   setServiceIndicator,
   setServiceDomain,
-} from './callingUtils';
-import {SELECTORS, SDK_INIT_TIMEOUT, AWAIT_TIMEOUT} from './constants';
+} from '../utils/setup';
+import {SELECTORS, SDK_INIT_TIMEOUT, AWAIT_TIMEOUT} from '../utils/constants';
 
 const getCallerToken = (): string => {
   const token = process.env.CALLER_ACCESS_TOKEN;
