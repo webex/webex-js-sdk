@@ -858,7 +858,7 @@ export const AIAssistantEventType = {
   CUSTOM_EVENT: 'CUSTOM_EVENT',
   /** CTI-backed AI Assistant event */
   CTI_EVENT: 'CTI_EVENT',
-};
+} as const;
 
 /**
  * Union type of AI Assistant event categories.
@@ -889,7 +889,7 @@ export const AIAssistantEventName = {
   POST_CALL_SUMMARY_RESPONSE: 'POST_CALL_SUMMARY_RESPONSE',
   /** Suggested digital response event */
   SUGGESTED_RESPONSES_DIGITAL: 'SUGGESTED_RESPONSES_DIGITAL',
-};
+} as const;
 
 /**
  * Union type of AI Assistant event names.

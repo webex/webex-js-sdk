@@ -28,12 +28,10 @@ export class ApiAIAssistant {
   private webex: WebexSDK;
   private metricsManager: MetricsManager;
   private aiFeature: AIFeatureFlags;
-  private orgId: string;
 
   constructor(webex: WebexSDK) {
     this.webex = webex;
     this.metricsManager = MetricsManager.getInstance({webex});
-    this.orgId = this.webex.credentials.getOrgId();
   }
 
   public setAIFeatureFlags(aiFeature: AIFeatureFlags): void {
@@ -41,12 +39,7 @@ export class ApiAIAssistant {
   }
 
   private getBaseUrl(): string {
-    let wccApiGatewayUrl = '';
-    try {
-      wccApiGatewayUrl = this.webex.internal.services.get(WCC_API_GATEWAY) || '';
-    } catch (_error) {
-      wccApiGatewayUrl = '';
-    }
+    const wccApiGatewayUrl = this.webex.internal.services.get(WCC_API_GATEWAY) || '';
 
     if (!wccApiGatewayUrl) {
       const {error: detailedError} = getErrorDetails(
@@ -105,13 +98,14 @@ export class ApiAIAssistant {
 
     try {
       const baseUrl = this.getBaseUrl();
+      const orgId = this.webex.credentials.getOrgId();
       const response = (await this.webex.request({
         uri: `${baseUrl}${AI_ASSISTANT_API_URLS.EVENT}`,
         method: HTTP_METHODS.POST,
         addAuthHeader: true,
         body: {
           agentId,
-          orgId: this.orgId,
+          orgId,
           eventType,
           eventName,
           eventDetails: {
@@ -126,7 +120,7 @@ export class ApiAIAssistant {
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_SUCCESS,
-        {agentId, orgId: this.orgId, interactionId, eventType, eventName, action},
+        {agentId, orgId, interactionId, eventType, eventName, action},
         ['operational']
       );
 
@@ -179,20 +173,21 @@ export class ApiAIAssistant {
 
     try {
       const baseUrl = this.getBaseUrl();
+      const orgId = this.webex.credentials.getOrgId();
       const response = (await this.webex.request({
         uri: `${baseUrl}${AI_ASSISTANT_API_URLS.TRANSCRIPTS_LIST}`,
         method: HTTP_METHODS.POST,
         addAuthHeader: true,
         body: {
           agentId,
-          orgId: this.orgId,
+          orgId,
           interactionId,
         },
       })) as IHttpResponse;
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS,
-        {agentId, orgId: this.orgId, interactionId},
+        {agentId, orgId, interactionId},
         ['operational']
       );
 
