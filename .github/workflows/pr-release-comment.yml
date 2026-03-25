@@ -113,21 +113,7 @@ jobs:
             }
             console.log(`PR #${prNumber}, deploy SHA: ${deploySha}`);
 
-            // --- Step 2: Collect commit SHAs from the PR ---
-            const prShas = new Set();
-            if (deploySha) prShas.add(deploySha);
-            try {
-              const prCommits = await github.rest.pulls.listCommits({
-                owner, repo, pull_number: parseInt(prNumber), per_page: 100
-              });
-              for (const c of prCommits.data) {
-                prShas.add(c.sha);
-              }
-            } catch (error) {
-              console.log(`Failed to fetch PR commits: ${error.message}`);
-            }
-
-            // --- Step 3: Read changelog from local file (fetched via git in shell step) ---
+            // --- Step 2: Read changelog from local file (fetched via git in shell step) ---
             const changelogFile = '${{ steps.tag-info.outputs.changelog_file }}';
             let changelog = {};
             let fetchSuccess = false;
@@ -147,13 +133,13 @@ jobs:
               return;
             }
 
-            // --- Step 4: Match PR commits against changelog entries ---
+            // --- Step 3: Match deploy SHA against changelog entries ---
             const packageVersions = {};
 
             for (const [pkgName, versions] of Object.entries(changelog)) {
               for (const [ver, data] of Object.entries(versions)) {
                 const commits = data.commits || {};
-                if (Object.keys(commits).some(sha => prShas.has(sha))) {
+                if (deploySha in commits) {
                   packageVersions[pkgName] = ver;
                   for (const [alongPkg, alongVer] of Object.entries(data.alongWith || {})) {
                     if (!packageVersions[alongPkg]) {
