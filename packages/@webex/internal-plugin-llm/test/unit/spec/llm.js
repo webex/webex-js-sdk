@@ -164,11 +164,11 @@ describe('plugin-llm', () => {
 
         await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined);
 
-        sinon.assert.notCalled(buildSpy);
+        sinon.assert.calledOnce(buildSpy);
         sinon.assert.calledOnce(llmService.connect);
 
         const calledUrl = llmService.connect.getCall(0).args[0];
-        assert.equal(calledUrl, llmService.webSocketUrl);
+        assert.include(calledUrl, 'subscriptionAwareSubchannels=');
 
         buildSpy.restore();
       });
@@ -270,41 +270,47 @@ describe('plugin-llm', () => {
       });
     });
 
-  describe('disconnectLLM', () => {
+    describe('#disconnectLLM', () => {
       let instance;
 
       beforeEach(() => {
         instance = {
           disconnect: jest.fn(() => Promise.resolve()),
-          locusUrl: 'someUrl',
-          datachannelUrl: 'someUrl',
-          binding: {},
-          webSocketUrl: 'someUrl',
-          disconnectLLM: function (options) {
-            return this.disconnect(options).then(() => {
-              this.locusUrl = undefined;
-              this.datachannelUrl = undefined;
-              this.binding = undefined;
-              this.webSocketUrl = undefined;
+          connections: new Map([
+            ['llm-default-session', { foo: 'bar' }],
+          ]),
+          datachannelTokens: {
+            'llm-default-session': 'session-token',
+          },
+
+          disconnectLLM: function (options, sessionId = 'llm-default-session') {
+            return this.disconnect(options, sessionId).then(() => {
+              this.connections.delete(sessionId);
+              this.datachannelTokens[sessionId] = undefined;
             });
-          }
+          },
         };
       });
 
-      it('should call disconnect and clear relevant properties', async () => {
-        await instance.disconnectLLM({});
+      it('calls disconnect and clears session connection + token', async () => {
+        await instance.disconnectLLM({ code: 3000, reason: 'bye' });
 
-        expect(instance.disconnect).toHaveBeenCalledWith({});
-        expect(instance.locusUrl).toBeUndefined();
-        expect(instance.datachannelUrl).toBeUndefined();
-        expect(instance.binding).toBeUndefined();
-        expect(instance.webSocketUrl).toBeUndefined();
+        expect(instance.disconnect).toHaveBeenCalledWith(
+          { code: 3000, reason: 'bye' },
+          'llm-default-session'
+        );
+
+        expect(instance.connections.has('llm-default-session')).toBe(false);
+
+        expect(instance.datachannelTokens['llm-default-session']).toBeUndefined();
       });
 
-      it('should handle errors from disconnect gracefully', async () => {
-        instance.disconnect.mockRejectedValue(new Error('Disconnect failed'));
+      it('propagates disconnect errors', async () => {
+        instance.disconnect.mockRejectedValue(new Error('disconnect failed'));
 
-        await expect(instance.disconnectLLM({})).rejects.toThrow('Disconnect failed');
+        await expect(
+          instance.disconnectLLM({ code: 3000, reason: 'bye' })
+        ).rejects.toThrow('disconnect failed');
       });
     });
 
@@ -381,10 +387,10 @@ describe('plugin-llm', () => {
 
     describe('#getDatachannelToken / #setDatachannelToken', () => {
       it('sets and gets datachannel token', () => {
-        llmService.setDatachannelToken('abc123','default');
-        assert.equal(llmService.getDatachannelToken('default'), 'abc123');
-        llmService.setDatachannelToken('123abc','practiceSession');
-        assert.equal(llmService.getDatachannelToken('practiceSession'), '123abc');
+        llmService.setDatachannelToken('abc123','llm-default-session');
+        assert.equal(llmService.getDatachannelToken('llm-default-session'), 'abc123');
+        llmService.setDatachannelToken('123abc','llm-practice-session');
+        assert.equal(llmService.getDatachannelToken('llm-practice-session'), '123abc');
       });
     });
 
@@ -404,7 +410,6 @@ describe('plugin-llm', () => {
         assert.equal(llmService.getDatachannelUrl('s2'), datachannelUrl2);
 
         const all = llmService.getAllConnections();
-        assert.equal(all.size, 3); // include default session
         assert.equal(all.has('s1'), true);
         assert.equal(all.has('s2'), true);
       });
@@ -423,10 +428,13 @@ describe('plugin-llm', () => {
         const all = llmService.getAllConnections();
         assert.equal(all.has('s1'), false);
         assert.equal(all.has('s2'), true);
+
+        assert.equal(llmService.datachannelTokens['s1'], undefined);
       });
 
       it('disconnectAllLLM clears all sessions', async () => {
         llmService.disconnectAll = sinon.stub().resolves(true);
+        sinon.spy(llmService, 'resetDatachannelTokens');
 
         await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
         await llmService.registerAndConnect(locusUrl2, datachannelUrl2, undefined, 's2');
@@ -435,23 +443,10 @@ describe('plugin-llm', () => {
 
         sinon.assert.calledOnce(llmService.disconnectAll);
         assert.equal(llmService.getAllConnections().size, 0);
+
+        sinon.assert.calledOnce(llmService.resetDatachannelTokens);
       });
     });
 
-    describe('#isLLMWithDataChannelToken', () => {
-      it('returns true when any session has a token', () => {
-        llmService.connections.set('llm-default-session', {datachannelToken: 'abc'});
-        llmService.connections.set('llm-practice-session', {datachannelToken: null});
-
-        assert.equal(llmService.isLLMWithDataChannelToken(), true);
-      });
-
-      it('returns false when no session has a token', () => {
-        llmService.connections.set('llm-default-session', {datachannelToken: null});
-        llmService.connections.set('llm-practice-session', {datachannelToken: undefined});
-
-        assert.equal(llmService.isLLMWithDataChannelToken(), false);
-      });
-    });
   });
 });

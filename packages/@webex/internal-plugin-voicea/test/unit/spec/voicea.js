@@ -492,6 +492,46 @@ describe('plugin-voicea', () => {
       });
     });
 
+describe('#getLLMDatachannelUrl', () => {
+  const DEFAULT_URL = 'wss://default.llm';
+  const PRACTICE_URL = 'wss://practice.llm';
+
+  beforeEach(() => {
+    voiceaService.webex.internal.llm.getDatachannelUrl = sinon.stub().callsFake((session) =>
+      session === LLM_PRACTICE_SESSION ? PRACTICE_URL : DEFAULT_URL
+    );
+  });
+
+  it('returns practice-session URL when practice session is connected', () => {
+    voiceaService.webex.internal.llm.isConnected = sinon
+      .stub()
+      .callsFake((session) => session === LLM_PRACTICE_SESSION);
+
+    const url = voiceaService.getLLMDatachannelUrl();
+
+    assert.equal(url, PRACTICE_URL);
+  });
+
+  it('returns default URL when only default session is connected', () => {
+    voiceaService.webex.internal.llm.isConnected = sinon
+      .stub()
+      .callsFake((session) => session !== LLM_PRACTICE_SESSION);
+
+    const url = voiceaService.getLLMDatachannelUrl();
+
+    assert.equal(url, DEFAULT_URL);
+  });
+
+  it('returns default URL when neither session is connected', () => {
+    voiceaService.webex.internal.llm.isConnected = sinon.stub().returns(false);
+
+    const url = voiceaService.getLLMDatachannelUrl();
+
+    assert.equal(url, DEFAULT_URL);
+  });
+});
+
+
     describe('#getIsCaptionBoxOn', () => {
       beforeEach(() => {
         voiceaService.isCaptionBoxOn = false;
@@ -1292,13 +1332,12 @@ describe('plugin-voicea', () => {
           socket: mockWebSocket,
         });
 
-        voiceaService.webex.internal.llm.getDatachannelUrl = sinon.stub().returns('mock-datachannel-uri');
+        sinon.stub(voiceaService, 'getLLMDatachannelUrl').returns('mock-datachannel-uri');
 
         voiceaService.seqNum = 1;
 
         voiceaService.isLLMConnected = sinon.stub().returns(true);
         voiceaService.webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(true);
-        voiceaService.webex.internal.llm.isLLMWithDataChannelToken = sinon.stub().returns(true);
       });
 
       it('sends subchannelSubscriptionRequest with subscribe and unsubscribe lists', async () => {
@@ -1373,20 +1412,8 @@ describe('plugin-voicea', () => {
         sinon.assert.notCalled(socket.send);
         sinon.assert.match(voiceaService.seqNum, 1);
       });
-
-      it('does nothing when no session has dataChannelToken', async () => {
-        voiceaService.webex.internal.llm.isLLMWithDataChannelToken = sinon.stub().returns(false);
-
-        await voiceaService.updateSubchannelSubscriptions({
-          subscribe: ['transcription'],
-        });
-
-        const socket = voiceaService.getPublishTransport().socket;
-
-        sinon.assert.notCalled(socket.send);
-        sinon.assert.match(voiceaService.seqNum, 1);
-      });
     });
+
 
     describe('#updateSubchannelSubscriptionsAndSyncCaptionState', () => {
       beforeEach(() => {
@@ -1399,7 +1426,6 @@ describe('plugin-voicea', () => {
 
         voiceaService.isLLMConnected = sinon.stub().returns(true);
         voiceaService.webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(true);
-        voiceaService.webex.internal.llm.isLLMWithDataChannelToken = sinon.stub().returns(true);
 
         sinon.spy(voiceaService, 'updateSubchannelSubscriptions');
       });

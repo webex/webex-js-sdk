@@ -295,6 +295,22 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
   };
 
   /**
+   * Resolves the active LLM data‑channel URL, preferring the practice‑session
+   * connection only when that session is fully connected.
+   * @returns {string | undefined}
+   */
+  private getLLMDatachannelUrl = () => {
+    // @ts-ignore
+    const {llm} = this.webex.internal;
+    const isPracticeSessionConnected = llm.isConnected(LLM_PRACTICE_SESSION);
+
+    return (
+      (isPracticeSessionConnected && llm.getDatachannelUrl(LLM_PRACTICE_SESSION)) ||
+      llm.getDatachannelUrl()
+    );
+  };
+
+  /**
    * Sends Announcement to add voicea to the meeting
    * @returns {void}
    */
@@ -646,9 +662,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     // @ts-ignore
     const isDataChannelTokenEnabled = await this.webex.internal.llm.isDataChannelTokenEnabled();
     // @ts-ignore
-    const dataChannelToken = this.webex.internal.llm.isLLMWithDataChannelToken();
-    // @ts-ignore
-    if (!this.isLLMConnected() || !isDataChannelTokenEnabled || !dataChannelToken) return;
+    if (!this.isLLMConnected() || !isDataChannelTokenEnabled) return;
 
     const {socket} = this.getPublishTransport();
 
@@ -658,7 +672,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       type: 'subchannelSubscriptionRequest',
       data: {
         // @ts-ignore
-        datachannelUri: this.webex.internal.llm.getDatachannelUrl(),
+        datachannelUri: this.getLLMDatachannelUrl(),
         subscribe,
         unsubscribe,
       },

@@ -136,10 +136,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
       const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
 
-      const connectUrl =
-        isDataChannelTokenEnabled && datachannelToken
-          ? LLMChannel.buildUrlWithAwareSubchannels(sessionData.webSocketUrl, AWARE_DATA_CHANNEL)
-          : sessionData.webSocketUrl;
+      const connectUrl = isDataChannelTokenEnabled
+        ? LLMChannel.buildUrlWithAwareSubchannels(sessionData.webSocketUrl, AWARE_DATA_CHANNEL)
+        : sessionData.webSocketUrl;
 
       return this.connect(connectUrl, sessionId);
     });
@@ -193,7 +192,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @param {DataChannelTokenType} dataChannelTokenType
    * @returns {string} data channel token
    */
-  public getDatachannelToken = (dataChannelTokenType: DataChannelTokenType): string => {
+  public getDatachannelToken = (
+    dataChannelTokenType: DataChannelTokenType = DataChannelTokenType.Default
+  ): string => {
     return this.datachannelTokens[dataChannelTokenType];
   };
 
@@ -205,10 +206,22 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    */
   public setDatachannelToken = (
     datachannelToken: string,
-    dataChannelTokenType: DataChannelTokenType
+    dataChannelTokenType: DataChannelTokenType = DataChannelTokenType.Default
   ): void => {
     this.datachannelTokens[dataChannelTokenType] = datachannelToken;
   };
+
+  /**
+   * Resets all data‑channel tokens to their initial undefined values.
+   * Used when leaving or disconnecting from a meeting.
+   * @returns {void}
+   */
+  private resetDatachannelTokens() {
+    this.datachannelTokens = {
+      [DataChannelTokenType.Default]: undefined,
+      [DataChannelTokenType.PracticeSession]: undefined,
+    };
+  }
 
   /**
    * Set the handler used to refresh the DataChannel token
@@ -267,6 +280,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.disconnect(options, sessionId).then(() => {
       // Clean up sessions data
       this.connections.delete(sessionId);
+      this.datachannelTokens[sessionId] = undefined;
     });
 
   /**
@@ -278,6 +292,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.disconnectAll(options).then(() => {
       // Clean up all connection data
       this.connections.clear();
+      this.resetDatachannelTokens();
     });
 
   /**
@@ -317,19 +332,5 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     urlObj.searchParams.set(SUBSCRIPTION_AWARE_SUBCHANNELS_PARAM, subchannels.join(','));
 
     return urlObj.toString();
-  };
-
-  /**
-   * Checks whether any LLM session has a valid data‑channel token.
-   *
-   * As long as one session contains a non‑empty `datachannelToken`,
-   * the meeting is considered data‑channel‑enabled.
-   *
-   * @returns {boolean} True if any session has a token; otherwise false.
-   */
-  public isLLMWithDataChannelToken = (): boolean => {
-    return [...this.webex.internal.llm.connections.values()].some(
-      (session) => !!session.datachannelToken
-    );
   };
 }

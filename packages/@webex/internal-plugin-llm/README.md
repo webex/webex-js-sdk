@@ -79,8 +79,8 @@ llm.on(`event:${sessionB}`, (envelope) => {
 });
 
 // Optional: store/retrieve token by token type
-webex.internal.llm.setDatachannelToken(datachannelToken, 'default');
-webex.internal.llm.getDatachannelToken('default');
+webex.internal.llm.setDatachannelToken(datachannelToken, 'llm-default-session');
+webex.internal.llm.getDatachannelToken('llm-default-session');
 
 // Optional: inject token refresh handler
 webex.internal.llm.setRefreshHandler(async () => {
@@ -88,7 +88,7 @@ webex.internal.llm.setRefreshHandler(async () => {
   return {
     body: {
       datachannelToken: '<refreshed-jwt-token>',
-      datachannelTokenType: 'default',
+      datachannelTokenType: 'llm-default-session',
     },
   };
 });
