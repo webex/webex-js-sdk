@@ -144,7 +144,7 @@ describe('ReceiveSlot', () => {
     });
   });
 
-  describe('setMaxFs()', () => {
+  describe('setMaxFs() [deprecated]', () => {
     afterEach(() => {
       sinon.restore();
     });
@@ -165,6 +165,13 @@ describe('ReceiveSlot', () => {
           maxFs: 100,
         }
       );
+    });
+
+    it('sends deprecation metric', () => {
+      sinon.stub(Metrics, 'sendBehavioralMetric');
+      receiveSlot.setMaxFs(100);
+
+      assert.calledOnce(Metrics.sendBehavioralMetric);
     });
   });
 

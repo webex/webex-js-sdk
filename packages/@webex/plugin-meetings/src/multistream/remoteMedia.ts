@@ -99,6 +99,12 @@ export class RemoteMedia extends EventsScope {
     this.sizeHint.width = width;
     this.sizeHint.height = height;
     this.receiveSlot?.setSizeHint(this.sizeHint);
+
+    // TODO: remove this once deprecation of getEffectiveMaxFs() is complete
+    const maxFs = MediaCodecHelper.H264.getSizeHintMaxFs(this.sizeHint);
+    if (maxFs !== undefined) {
+      this.receiveSlot?.setMaxFs(maxFs);
+    }
   }
 
   /**

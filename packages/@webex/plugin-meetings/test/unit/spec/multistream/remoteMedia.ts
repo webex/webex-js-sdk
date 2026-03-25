@@ -6,7 +6,9 @@ import {MediaType} from '@webex/internal-media-core';
 import {RemoteMedia, RemoteMediaEvents} from '@webex/plugin-meetings/src/multistream/remoteMedia';
 import {RemoteVideoResolution} from '@webex/plugin-meetings/src/multistream/types';
 import {ReceiveSlotEvents} from '@webex/plugin-meetings/src/multistream/receiveSlot';
+import MediaCodecHelper from '@webex/plugin-meetings/src/multistream/codec/mediaCodecHelper';
 import Metrics from '@webex/plugin-meetings/src/metrics';
+import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {forEach} from 'lodash';
@@ -147,6 +149,26 @@ describe('RemoteMedia', () => {
       );
     });
 
+    it('includes updated size hint after setSizeHint is called', () => {
+      remoteMedia.setSizeHint(640, 360);
+
+      fakeMediaRequestManager.addRequest.resetHistory();
+
+      remoteMedia.sendMediaRequest(1234, true);
+
+      assert.calledWith(
+        fakeMediaRequestManager.addRequest,
+        sinon.match({
+          sizeHint: sinon.match({
+            resolution: 'medium',
+            width: 640,
+            height: 360,
+          }),
+        }),
+        true
+      );
+    });
+
     it('throws when called on a stopped RemoteMedia instance', () => {
       remoteMedia.stop();
       assert.throws(
@@ -239,33 +261,19 @@ describe('RemoteMedia', () => {
         {width: 0, height: 240},
       ],
       ({width, height}) => {
-        it(`skip updating the max fs when applied ${width}:${height}`, () => {
+        it(`skips update when applied ${width}x${height}`, () => {
           remoteMedia.setSizeHint(width, height);
 
           assert.notCalled(fakeReceiveSlot.setSizeHint);
+          assert.notCalled(fakeReceiveSlot.setMaxFs);
         });
       }
     );
 
     forEach(
-      [
-        {height: 90, fs: 60}, // 90p
-        {height: 98, fs: 60},
-        {height: 99, fs: 240}, // 180p
-        {height: 180, fs: 240},
-        {height: 197, fs: 240},
-        {height: 198, fs: 920}, // 360p
-        {height: 360, fs: 920},
-        {height: 395, fs: 920},
-        {height: 396, fs: 2040}, // 540p
-        {height: 540, fs: 2040},
-        {height: 610, fs: 3600}, // 720p
-        {height: 720, fs: 3600},
-        {height: 721, fs: 8192}, // 1080p
-        {height: 1080, fs: 8192},
-      ],
-      ({height, fs}) => {
-        it(`sets the max fs to ${fs} correctly when height is ${height}`, () => {
+      [90, 98, 99, 180, 197, 198, 360, 395, 396, 540, 610, 720, 721, 1080],
+      (height) => {
+        it(`forwards size hint to receive slot when height is ${height}`, () => {
           remoteMedia.setSizeHint(100, height);
 
           assert.calledOnceWithExactly(
@@ -279,9 +287,54 @@ describe('RemoteMedia', () => {
         });
       }
     );
+
+    it('also calls setMaxFs on the receive slot for backward compatibility', () => {
+      remoteMedia.setSizeHint(960, 540);
+
+      assert.calledOnce(fakeReceiveSlot.setMaxFs);
+
+      const expectedMaxFs = MediaCodecHelper.H264.getSizeHintMaxFs({
+        resolution: 'medium',
+        width: 960,
+        height: 540,
+      });
+
+      assert.calledWith(fakeReceiveSlot.setMaxFs, expectedMaxFs);
+    });
   });
 
-  describe('getEffectiveMaxFs()', () => {
+  describe('getSizeHint()', () => {
+    it('returns initial size hint based on resolution option', () => {
+      const hint = remoteMedia.getSizeHint();
+
+      assert.deepEqual(hint, {resolution: 'medium'});
+    });
+
+    it('returns undefined resolution when no resolution option was provided', () => {
+      const rmWithoutResolution = new RemoteMedia(fakeReceiveSlot, fakeMediaRequestManager);
+      const hint = rmWithoutResolution.getSizeHint();
+
+      assert.deepEqual(hint, {resolution: undefined});
+    });
+
+    it('includes width and height after setSizeHint is called', () => {
+      remoteMedia.setSizeHint(640, 360);
+
+      const hint = remoteMedia.getSizeHint();
+
+      assert.deepEqual(hint, {resolution: 'medium', width: 640, height: 360});
+    });
+
+    it('is not affected by zero-dimension calls to setSizeHint', () => {
+      remoteMedia.setSizeHint(0, 0);
+
+      const hint = remoteMedia.getSizeHint();
+
+      assert.deepEqual(hint, {resolution: 'medium'});
+    });
+  });
+
+  describe('getEffectiveMaxFs() [deprecated]', () => {
     beforeEach(() => {
       sinon.stub(Metrics, 'sendBehavioralMetric');
     });
@@ -290,63 +343,77 @@ describe('RemoteMedia', () => {
       Metrics.sendBehavioralMetric.restore();
     });
 
-    it('returns maxFrameSize when it is greater than 0', () => {
+    it('sends deprecation metric when called', () => {
+      remoteMedia.getEffectiveMaxFs();
+
+      assert.calledWith(
+        Metrics.sendBehavioralMetric,
+        BEHAVIORAL_METRICS.DEPRECATED_GET_EFFECTIVE_MAX_FS_USED,
+        {surface: 'RemoteMedia'}
+      );
+    });
+
+    it('returns correct maxFs after setSizeHint is called', () => {
       remoteMedia.setSizeHint(960, 540);
 
       const result = remoteMedia.getEffectiveMaxFs();
 
-      assert.strictEqual(result, 2040);
+      const expected = MediaCodecHelper.H264.getSizeHintMaxFs({
+        width: 960,
+        height: 540,
+        resolution: 'medium',
+      });
+
+      assert.strictEqual(result, expected);
     });
 
-    it('returns getMaxFs result when maxFrameSize is 0 and resolution is provided', () => {
+    it('falls back to resolution option when no pixel dimensions are set', () => {
       remoteMedia.setSizeHint(0, 0);
-
-      // remoteMedia was created with {resolution: 'medium'} in beforeEach
 
       const result = remoteMedia.getEffectiveMaxFs();
 
-      // 'medium' resolution should map to 720p which is 3600
-      assert.strictEqual(result, 3600);
+      assert.strictEqual(result, MediaCodecHelper.H264.getMaxFs('medium'));
     });
 
-    it('returns undefined when maxFrameSize is 0 and no resolution is provided', () => {
-      remoteMedia.setSizeHint(0, 0);
+    it('returns undefined when no resolution and no pixel dimensions', () => {
+      const rmWithoutResolution = new RemoteMedia(fakeReceiveSlot, fakeMediaRequestManager);
+      rmWithoutResolution.setSizeHint(0, 0);
 
-      // Create a new RemoteMedia without resolution option
-      const remoteMediaWithoutResolution = new RemoteMedia(fakeReceiveSlot, fakeMediaRequestManager);
-
-      const result = remoteMediaWithoutResolution.getEffectiveMaxFs();
+      const result = rmWithoutResolution.getEffectiveMaxFs();
 
       assert.strictEqual(result, undefined);
     });
 
-    it('prioritizes maxFrameSize over resolution option', () => {
+    it('uses pixel dimensions over resolution option when both are set', () => {
       remoteMedia.setSizeHint(640, 360);
-      // remoteMedia was created with {resolution: 'medium'} in beforeEach
 
       const result = remoteMedia.getEffectiveMaxFs();
 
-      // Should return maxFrameSize (500) instead of resolution-based value (3600)
-      assert.strictEqual(result, 920);
+      const expected = MediaCodecHelper.H264.getSizeHintMaxFs({
+        width: 640,
+        height: 360,
+        resolution: 'medium',
+      });
+
+      assert.strictEqual(result, expected);
     });
 
-    it('works correctly with different resolution options', () => {
-      const testCases: Array<{ resolution: RemoteVideoResolution; expected: number }> = [
-        { resolution: 'thumbnail', expected: 60 },
-        { resolution: 'very small', expected: 240 },
-        { resolution: 'small', expected: 920 },
-        { resolution: 'medium', expected: 3600 },
-        { resolution: 'large', expected: 8192 },
-        { resolution: 'best', expected: 8192 },
+    it('returns correct values for all resolution options', () => {
+      const resolutions: RemoteVideoResolution[] = [
+        'thumbnail', 'very small', 'small', 'medium', 'large', 'best',
       ];
 
-      testCases.forEach(({ resolution, expected }) => {
-        const testRemoteMedia = new RemoteMedia(fakeReceiveSlot, fakeMediaRequestManager, { resolution });
-        testRemoteMedia.setSizeHint(0, 0); // Ensure maxFrameSize doesn't interfere
+      resolutions.forEach((resolution) => {
+        const testRM = new RemoteMedia(fakeReceiveSlot, fakeMediaRequestManager, {resolution});
+        testRM.setSizeHint(0, 0);
 
-        const result = testRemoteMedia.getEffectiveMaxFs();
+        const result = testRM.getEffectiveMaxFs();
 
-        assert.strictEqual(result, expected, `Failed for resolution: ${resolution}`);
+        assert.strictEqual(
+          result,
+          MediaCodecHelper.H264.getMaxFs(resolution),
+          `Failed for resolution: ${resolution}`
+        );
       });
     });
   });
