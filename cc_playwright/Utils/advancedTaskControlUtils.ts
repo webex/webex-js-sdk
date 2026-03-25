@@ -167,7 +167,9 @@ export async function consultOrTransfer(
       const btn = document.querySelector('#consult') as HTMLButtonElement;
       if (btn) btn.click();
     });
-    await page.waitForTimeout(500);
+
+    // Wait for consult dialog to open (destination type selector becomes visible)
+    await page.locator('#consult-destination-type').waitFor({state: 'visible', timeout: 10000});
 
     // Select destination type
     const typeMap = {
@@ -183,15 +185,40 @@ export async function consultOrTransfer(
     // Note: When type is 'agent', 'queue', or 'entryPoint', the sample app dynamically creates a select with id='consultDestination' (camelCase)
     // When type is 'dialNumber', it uses the original input with id='consult-destination' (kebab-case)
     const destFieldId = type === 'dialNumber' ? '#consult-destination' : '#consultDestination';
-    const destField = page.locator(destFieldId);
+    const allDestFields = page.locator(destFieldId);
+    const count = await allDestFields.count();
+
+    let destField = allDestFields.first();
+
+    // If multiple dropdowns exist, find the one that contains our target value
+    if (count > 1) {
+      for (let i = 0; i < count; i++) {
+        const field = allDestFields.nth(i);
+        const isVisible = await field.isVisible().catch(() => false);
+        if (isVisible) {
+          // Check if this dropdown contains the value we're looking for
+          const optionTexts = await field
+            .locator('option')
+            .allTextContents()
+            .catch(() => []);
+          const hasMatch = optionTexts.some((opt) => opt.includes(value) || value.includes(opt));
+          if (hasMatch) {
+            destField = field;
+            break;
+          }
+        }
+      }
+    }
+
     await destField.waitFor({state: 'attached', timeout: 10000});
     const tagName = await destField.evaluate((el) => el.tagName.toLowerCase());
     if (tagName === 'select') {
-      // For agent/queue dropdowns, wait for options to populate then select
-      await page
-        .locator(`${destFieldId} option:not([value=""])`)
+      // Wait for options to populate
+      await destField
+        .locator('option:not([value=""])')
         .first()
         .waitFor({state: 'attached', timeout: 10000});
+
       // Try to find matching option by text content
       const optionTexts = await destField.locator('option').allTextContents();
       const matchingOption = optionTexts.find((opt) => opt.includes(value) || value.includes(opt));
@@ -215,7 +242,9 @@ export async function consultOrTransfer(
       const btn = document.querySelector('#transfer') as HTMLButtonElement;
       if (btn) btn.click();
     });
-    await page.waitForTimeout(1000); // Wait for transfer options to appear
+
+    // Wait for transfer dialog to open (destination type selector becomes visible)
+    await page.locator('#transfer-destination-type').waitFor({state: 'visible', timeout: 10000});
 
     // Select destination type
     const typeMap = {
@@ -228,15 +257,42 @@ export async function consultOrTransfer(
     await page.waitForTimeout(1000); // Wait for UI to update destination field
 
     // Enter/select destination value (could be input or select depending on type)
-    const destField = page.locator('#transfer-destination');
+    // Note: Sample app may have multiple #transfer-destination elements (agent/queue/entrypoint dropdowns)
+    // We need to find the one that actually contains the value we're looking for
+    const allDestFields = page.locator('#transfer-destination');
+    const count = await allDestFields.count();
+
+    let destField = allDestFields.first();
+
+    // If multiple dropdowns exist, find the one that contains our target value
+    if (count > 1) {
+      for (let i = 0; i < count; i++) {
+        const field = allDestFields.nth(i);
+        const isVisible = await field.isVisible().catch(() => false);
+        if (isVisible) {
+          // Check if this dropdown contains the value we're looking for
+          const optionTexts = await field
+            .locator('option')
+            .allTextContents()
+            .catch(() => []);
+          const hasMatch = optionTexts.some((opt) => opt.includes(value) || value.includes(opt));
+          if (hasMatch) {
+            destField = field;
+            break;
+          }
+        }
+      }
+    }
+
     await destField.waitFor({state: 'attached', timeout: 10000});
     const tagName = await destField.evaluate((el) => el.tagName.toLowerCase());
     if (tagName === 'select') {
-      // For agent/queue dropdowns, wait for options to populate then select
-      await page
-        .locator('#transfer-destination option:not([value=""])')
+      // Wait for options to populate
+      await destField
+        .locator('option:not([value=""])')
         .first()
         .waitFor({state: 'attached', timeout: 10000});
+
       // Try to find matching option by text content
       const optionTexts = await destField.locator('option').allTextContents();
       const matchingOption = optionTexts.find((opt) => opt.includes(value) || value.includes(opt));
