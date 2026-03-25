@@ -142,9 +142,7 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getDiffBetweenTimestamps = sinon
             .stub()
             .returns(10);
-          webex.internal.newMetrics.callDiagnosticLatencies.getU2CTime = sinon
-            .stub()
-            .returns(20);
+          webex.internal.newMetrics.callDiagnosticLatencies.getU2CTime = sinon.stub().returns(20);
           webex.internal.newMetrics.callDiagnosticLatencies.getReachabilityClustersReqResp = sinon
             .stub()
             .returns(10);
@@ -165,7 +163,7 @@ describe('plugin-metrics', () => {
               registerWDMDeviceJMT: 10,
               showInterstitialTime: 10,
               getU2CTime: 20,
-              getReachabilityClustersReqResp: 10
+              getReachabilityClustersReqResp: 10,
             },
           });
           assert.lengthOf(
@@ -189,9 +187,8 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getDownloadTimeJMT = sinon
             .stub()
             .returns(100);
-          webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitialWithUserDelay = sinon
-            .stub()
-            .returns(43);
+          webex.internal.newMetrics.callDiagnosticLatencies.getClickToInterstitialWithUserDelay =
+            sinon.stub().returns(43);
           webex.internal.newMetrics.callDiagnosticLatencies.getTotalJMTWithUserDelay = sinon
             .stub()
             .returns(64);
@@ -346,7 +343,7 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getInterstitialToJoinOK = sinon
             .stub()
             .returns(7);
-            webex.internal.newMetrics.callDiagnosticLatencies.getStayLobbyTime = sinon
+          webex.internal.newMetrics.callDiagnosticLatencies.getStayLobbyTime = sinon
             .stub()
             .returns(1);
           webex.internal.newMetrics.callDiagnosticLatencies.getTotalMediaJMTWithUserDelay = sinon
@@ -372,9 +369,36 @@ describe('plugin-metrics', () => {
               totalMediaJMT: 61,
               interstitialToMediaOKJMT: 22,
               callInitMediaEngineReady: 10,
-              stayLobbyTime: 1,
               totalMediaJMTWithUserDelay: 43,
               totalJMTWithUserDelay: 64,
+            },
+          });
+          assert.lengthOf(
+            webex.internal.newMetrics.callDiagnosticMetrics.callDiagnosticEventsBatcher.queue,
+            0
+          );
+        });
+
+        it('appends the correct join times to the request for client.lobby.exited', async () => {
+          webex.internal.newMetrics.callDiagnosticLatencies.getStayLobbyTime = sinon
+            .stub()
+            .returns(10);
+
+          const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
+            //@ts-ignore
+            {event: {name: 'client.lobby.exited'}}
+          );
+          await flushPromises();
+          clock.tick(config.metrics.batcherWait);
+
+          await promise;
+
+          //@ts-ignore
+          assert.calledOnce(webex.request);
+          assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
+            name: 'client.lobby.exited',
+            joinTimes: {
+              stayLobbyTime: 10,
             },
           });
           assert.lengthOf(
