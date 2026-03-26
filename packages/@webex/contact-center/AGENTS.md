@@ -429,6 +429,42 @@ Use this table to identify which service's ai-docs to load based on the develope
 
 ---
 
+## SDK Manifest (Cross-Repo Sync)
+
+This package generates a machine-readable `sdk-manifest.yaml` describing the public API surface.
+Consumers (e.g., ccWidgets) use this manifest to detect API changes and map impact.
+
+### When to regenerate
+- After changing any public method signature in `cc.ts` or `Task.ts`
+- After adding/removing/renaming exported types, enums, or constants
+- Before creating a PR that touches the public API surface
+
+### How to regenerate
+```bash
+npm run generate:manifest
+```
+
+### What it produces
+`sdk-manifest.yaml` — checked into git, ships with npm package. Contains:
+- Classes and public methods (params, return types, event emissions)
+- Exported enums with string values
+- Exported types/interfaces with field shapes
+- Exported constants
+
+### CI validation (future)
+```bash
+npm run generate:manifest && git diff --exit-code sdk-manifest.yaml
+```
+
+### SDK API Verification (MANDATORY for AI agents)
+Before generating code that changes a public API:
+1. Read `sdk-manifest.yaml` to understand the current contract
+2. After changes, run `npm run generate:manifest`
+3. Review the manifest diff — it shows the exact API surface impact
+4. Commit `sdk-manifest.yaml` alongside your code changes
+
+---
+
 ## Need More Context?
 
 - **TypeScript patterns**: [`ai-docs/patterns/typescript-patterns.md`](ai-docs/patterns/typescript-patterns.md)
