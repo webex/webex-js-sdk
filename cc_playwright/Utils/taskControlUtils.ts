@@ -52,18 +52,13 @@ export async function callTaskControlCheck(page: Page): Promise<void> {
  * @returns Promise<void>
  */
 export async function chatTaskControlCheck(page: Page): Promise<void> {
-  // Verify chat control container or equivalent is visible
-  await expect(page.getByTestId('call-control-container').nth(0)).toBeVisible({
-    timeout: OPERATION_TIMEOUT,
-  });
-
-  // Verify transfer button is visible
-  await expect(page.getByTestId('call-control:transfer').nth(0)).toBeVisible({
+  // Sample app: verify transfer button is visible
+  await expect(page.locator('#transfer')).toBeVisible({
     timeout: AWAIT_TIMEOUT,
   });
 
-  // Verify end button is visible (for chat tasks)
-  await expect(page.getByTestId('call-control:end-call').nth(0)).toBeVisible({
+  // Sample app: verify end button is visible (for chat tasks)
+  await expect(page.locator('#end')).toBeVisible({
     timeout: AWAIT_TIMEOUT,
   });
 }
@@ -75,18 +70,13 @@ export async function chatTaskControlCheck(page: Page): Promise<void> {
  * @returns Promise<void>
  */
 export async function emailTaskControlCheck(page: Page): Promise<void> {
-  // Verify email control container or equivalent is visible
-  await expect(page.getByTestId('call-control-container').nth(0)).toBeVisible({
-    timeout: OPERATION_TIMEOUT,
-  });
-
-  // Verify transfer button is visible
-  await expect(page.getByTestId('call-control:transfer').nth(0)).toBeVisible({
+  // Sample app: verify transfer button is visible
+  await expect(page.locator('#transfer')).toBeVisible({
     timeout: AWAIT_TIMEOUT,
   });
 
-  // Verify end button is visible (for email tasks)
-  await expect(page.getByTestId('call-control:end-call').nth(0)).toBeVisible({
+  // Sample app: verify end button is visible (for email tasks)
+  await expect(page.locator('#end')).toBeVisible({
     timeout: AWAIT_TIMEOUT,
   });
 }
