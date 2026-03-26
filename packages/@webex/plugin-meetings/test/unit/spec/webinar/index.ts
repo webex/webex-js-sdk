@@ -258,6 +258,8 @@ describe('plugin-meetings', () => {
         // Ensure connect path is eligible
         webinar.selfIsPanelist = true;
         webinar.practiceSessionEnabled = true;
+        webex.internal.voicea.getIsCaptionBoxOn = sinon.stub().returns(false);
+        webex.internal.voicea.updateSubchannelSubscriptions = sinon.stub();
       });
 
       it('no-ops when practice session join eligibility is false', async () => {
@@ -366,6 +368,22 @@ describe('plugin-meetings', () => {
           `event:relay.event:${LLM_PRACTICE_SESSION}`,
           processRelayEvent
         );
+      });
+
+      it('subscribes to transcription when caption intent is enabled', async () => {
+        webex.internal.voicea.getIsCaptionBoxOn = sinon.stub().returns(true);
+
+        await webinar.updatePSDataChannel();
+
+        assert.calledOnceWithExactly(webex.internal.voicea.updateSubchannelSubscriptions, { subscribe: ['transcription'] });
+      });
+
+      it('does not subscribe to transcription when caption intent is disabled', async () => {
+        webex.internal.voicea.getIsCaptionBoxOn = sinon.stub().returns(false);
+
+        await webinar.updatePSDataChannel();
+
+        assert.notCalled(webex.internal.voicea.updateSubchannelSubscriptions);
       });
 
       it('defers connect when default session is not yet connected', async () => {

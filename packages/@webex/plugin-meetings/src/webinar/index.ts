@@ -183,6 +183,8 @@ const Webinar = WebexPlugin.extend({
 
     const finalToken = currentToken ?? practiceSessionDatachannelToken;
 
+    const isCaptionBoxOn = this.webex.internal.voicea.getIsCaptionBoxOn();
+
     if (!currentToken && practiceSessionDatachannelToken) {
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(
@@ -256,6 +258,9 @@ const Webinar = WebexPlugin.extend({
         );
         // @ts-ignore - Fix type
         this.webex.internal.voicea?.announce?.();
+        if (isCaptionBoxOn) {
+          this.webex.internal.voicea.updateSubchannelSubscriptions({subscribe: ['transcription']});
+        }
         LoggerProxy.logger.info(
           `Webinar:index#updatePSDataChannel --> enabled to receive relay events for default session for ${LLM_PRACTICE_SESSION}!`
         );
