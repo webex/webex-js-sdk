@@ -239,36 +239,14 @@ export const ensureRegisteredAfterReload = async (page: Page): Promise<void> => 
   const isSubscribed = currentStatus?.trim() === 'Subscribed';
 
   if (!isSubscribed) {
-    // Initialize SDK if needed
-    const saveButton = page.locator('#access-token-save');
-    const saveEnabled = await saveButton.isEnabled().catch(() => false);
+    // Initialize SDK if needed (restore access token and init)
+    await initializeSdk(page);
 
-    if (saveEnabled) {
-      await saveButton.click();
-      await expect(page.locator('#webexcc-register')).toBeEnabled({
-        timeout: OPERATION_TIMEOUT,
-      });
-    }
-
-    // Register with CC if needed
-    const registerButton = page.locator('#webexcc-register');
-    const registerEnabled = await registerButton.isEnabled().catch(() => false);
-
-    if (registerEnabled) {
-      await registerButton.click();
-      await expect(page.locator('#ws-connection-status')).toHaveText('Subscribed', {
-        timeout: OPERATION_TIMEOUT,
-      });
-    } else {
-      // Already registered, just wait for connection
-      await page.waitForTimeout(3000);
-      await expect(page.locator('#ws-connection-status')).toHaveText('Subscribed', {
-        timeout: OPERATION_TIMEOUT,
-      });
-    }
+    // Register with CC using existing retry logic
+    await registerContactCenter(page);
   }
 
-  // Wait for dropdowns to repopulate
+  // Verify dropdowns are populated (confirms successful registration)
   await page
     .locator('#teamsDropdown option:not([value=""])')
     .first()

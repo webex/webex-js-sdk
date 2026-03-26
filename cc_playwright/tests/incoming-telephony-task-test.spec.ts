@@ -188,9 +188,11 @@ export default function createIncomingTelephonyTaskTests() {
 
       // Log the entry point being called
       const entryPoint = process.env[`${testManager.projectName}_ENTRY_POINT`];
+      // eslint-disable-next-line no-console
       console.log(`[TEST] Creating call to entry point: ${entryPoint}`);
 
       await createCallTask(testManager.callerPage, entryPoint!);
+      // eslint-disable-next-line no-console
       console.log('[TEST] Call created, waiting for incoming task...');
 
       await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CALL, 40000);
@@ -664,14 +666,31 @@ export default function createIncomingTelephonyTaskTests() {
       await submitRonaPopup(testManager.agent1Page, RONA_OPTIONS.IDLE);
       await waitForState(testManager.agent1Page, USER_STATES.MEETING);
       await expect(testManager.agent1Page.locator('#agentStatePopup')).not.toBeVisible();
-      await expect(testManager.agent1Page.locator('#incoming-task')).toContainText(
-        'No Incoming Tasks',
-        {timeout: 10000}
-      );
-      await expect(testManager.agent1ExtensionPage.locator('#answer').first()).toBeDisabled();
       await verifyCurrentState(testManager.agent1Page, USER_STATES.MEETING);
+      await expect(testManager.agent1ExtensionPage.locator('#answer').first()).toBeDisabled();
+      // In Extension mode, declining on extension phone doesn't formally decline SDK task
+      // SDK does NOT fire task:end event, task remains in ALERTING state
+      // Sample app filters out orphaned tasks older than 25s in ALERTING state
       await endCallTask(testManager.callerPage!, true);
-      await testManager.agent1Page.waitForTimeout(10000);
+      // Wait for sample app's stale task filter to kick in (25s threshold + buffer)
+      await testManager.agent1Page.waitForTimeout(26000);
+      await testManager.agent1Page.evaluate(() => {
+        if (typeof (window as any).updateTaskList === 'function') {
+          (window as any).updateTaskList();
+        }
+      });
+      // Now task should be filtered out
+      await expect
+        .poll(
+          async () => {
+            const taskList = testManager.agent1Page.locator('#taskList');
+            const text = (await taskList.innerText().catch(() => '')).toLowerCase();
+
+            return text.includes('no tasks') || text.trim() === 'tasklist';
+          },
+          {timeout: 10000, intervals: [500, 1000, 2000]}
+        )
+        .toBeTruthy();
     });
 
     test('should handle call disconnect before agent answers in extension mode', async () => {
