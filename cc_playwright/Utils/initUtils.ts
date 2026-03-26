@@ -69,9 +69,21 @@ export const oauthLogin = async (
   }
 
   await page.goto(BASE_URL);
-  await page.locator('#auth-type').selectOption('oauth', {timeout: AWAIT_TIMEOUT});
+  await page.waitForLoadState('load');
+
+  // Wait for Webex SDK to be loaded (required for OAuth flow)
+  await page.waitForFunction(() => typeof (window as any).Webex !== 'undefined', {
+    timeout: AWAIT_TIMEOUT,
+  });
+
+  // Wait for auth dropdown to be ready
+  const authTypeDropdown = page.locator('#auth-type');
+  await authTypeDropdown.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
+  await authTypeDropdown.selectOption('oauth', {timeout: AWAIT_TIMEOUT});
+
+  // Wait for OAuth form to become visible after dropdown change
   const oauthLoginButton = page.locator('#oauth-login-btn');
-  await expect(oauthLoginButton).toBeVisible({timeout: AWAIT_TIMEOUT});
+  await oauthLoginButton.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
   await oauthLoginButton.click({timeout: AWAIT_TIMEOUT});
   await page
     .getByRole('textbox', {name: 'name@example.com'})
@@ -135,6 +147,7 @@ export const registerContactCenter = async (page: Page): Promise<void> => {
 
   // Try registration with retry on failure
   const maxRetries = 3;
+  /* eslint-disable no-await-in-loop */
   // eslint-disable-next-line no-plusplus
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
@@ -184,14 +197,12 @@ export const registerContactCenter = async (page: Page): Promise<void> => {
       }
 
       // Retry: reload page and re-initialize
-      // eslint-disable-next-line no-await-in-loop
       await page.reload();
-      // eslint-disable-next-line no-await-in-loop
       await page.waitForTimeout(3000);
-      // eslint-disable-next-line no-await-in-loop
       await initializeSdk(page);
     }
   }
+  /* eslint-enable no-await-in-loop */
 };
 
 /**
