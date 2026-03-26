@@ -1,3 +1,9 @@
+/* eslint-disable no-await-in-loop, no-continue, no-constant-condition, import/extensions, import/no-unresolved */
+// Disabled no-await-in-loop: file contains polling utilities requiring sequential awaits
+// Disabled no-continue: continue statements improve readability in complex loops
+// Disabled no-constant-condition: while(true) is used intentionally for polling with timeout checks
+// Disabled import/extensions, import/no-unresolved: TypeScript handles module resolution
+
 import {Page, expect} from '@playwright/test';
 import {getCurrentState, changeUserState} from './userStateUtils';
 import {
@@ -38,69 +44,54 @@ export function parseTimeString(timeString: string): number {
 }
 
 /**
- * Waits for WebSocket disconnection by monitoring console messages for specific disconnection indicators
+ * Waits for console message matching predicate
  * @param consoleMessages - Array of console messages to monitor
- * @param timeoutMs - Maximum time to wait for disconnection in milliseconds (default: 15000)
- * @returns Promise<boolean> - True if disconnection is detected, false if timeout is reached
- * @description Monitors for network disconnection messages or WebSocket offline status changes
- * @example
- * ```typescript
- * consoleMessages.length = 0; // Clear existing messages
- * await page.context().setOffline(true);
- * const isDisconnected = await waitForWebSocketDisconnection(consoleMessages);
- * expect(isDisconnected).toBe(true);
- * ```
+ * @param predicate - Function to test each message
+ * @param timeoutMs - Maximum wait time in milliseconds (default: 15000)
+ * @returns Promise<boolean> - True if message found, false if timeout
  */
-export async function waitForWebSocketDisconnection(
+async function waitForConsoleMessage(
   consoleMessages: string[],
+  predicate: (msg: string) => boolean,
   timeoutMs = 15000
 ): Promise<boolean> {
   const startTime = Date.now();
   while (Date.now() - startTime < timeoutMs) {
-    const webSocketDisconnectLog = consoleMessages.find(
-      (msg) =>
-        msg.includes('Failed to load resource: net::ERR_INTERNET_DISCONNECTED') ||
-        msg.includes('[WebSocketStatus] event=checkOnlineStatus | online status= false')
-    );
-    if (webSocketDisconnectLog) {
+    if (consoleMessages.find(predicate)) {
       return true;
     }
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => {
+      setTimeout(resolve, 100);
+    });
   }
 
   return false;
 }
 
-/**
- * Waits for WebSocket reconnection by monitoring console messages for online status changes
- * @param consoleMessages - Array of console messages to monitor
- * @param timeoutMs - Maximum time to wait for reconnection in milliseconds (default: 15000)
- * @returns Promise<boolean> - True if reconnection is detected, false if timeout is reached
- * @description Monitors for WebSocket online status change messages indicating successful reconnection
- * @example
- * ```typescript
- * consoleMessages.length = 0; // Clear existing messages
- * await page.context().setOffline(false);
- * const isReconnected = await waitForWebSocketReconnection(consoleMessages);
- * expect(isReconnected).toBe(true);
- * ```
- */
+/** Waits for WebSocket disconnection */
+export async function waitForWebSocketDisconnection(
+  consoleMessages: string[],
+  timeoutMs = 15000
+): Promise<boolean> {
+  return waitForConsoleMessage(
+    consoleMessages,
+    (msg) =>
+      msg.includes('Failed to load resource: net::ERR_INTERNET_DISCONNECTED') ||
+      msg.includes('[WebSocketStatus] event=checkOnlineStatus | online status= false'),
+    timeoutMs
+  );
+}
+
+/** Waits for WebSocket reconnection */
 export async function waitForWebSocketReconnection(
   consoleMessages: string[],
   timeoutMs = 15000
 ): Promise<boolean> {
-  const startTime = Date.now();
-  while (Date.now() - startTime < timeoutMs) {
-    const webSocketReconnectLog = consoleMessages.find((msg) =>
-      msg.includes('[WebSocketStatus] event=checkOnlineStatus | online status= true')
-    );
-    if (webSocketReconnectLog) {
-      return true;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  return false;
+  return waitForConsoleMessage(
+    consoleMessages,
+    (msg) => msg.includes('[WebSocketStatus] event=checkOnlineStatus | online status= true'),
+    timeoutMs
+  );
 }
 
 /**
@@ -137,138 +128,81 @@ export const waitForState = async (page: Page, expectedState: userState): Promis
   }
 };
 
-/**
- * Retrieves the last state from captured logs
- * @param capturedLogs - Array of log messages
- * @returns Promise<string> - The last state name found in the logs, or a message if not found
- * @description Filters logs for state change messages and extracts the last state name
- * @example
- * ```typescript
- * const lastState = await getLastStateFromLogs(capturedLogs);
- * console.log(lastState); // Outputs the last state name or a message if not found
- * ```
- */
+/** Generic helper to extract last match from logs */
+function getLastLogMatch(
+  logs: string[],
+  pattern: string,
+  regex: RegExp,
+  notFoundMsg: string
+): string {
+  const filtered = logs.filter((log) => log.includes(pattern));
+  if (filtered.length === 0) return notFoundMsg;
+  const match = filtered[filtered.length - 1].match(regex);
 
-export async function getLastStateFromLogs(capturedLogs: string[]) {
-  const stateChangeLogs = capturedLogs.filter((log) =>
-    log.includes('onStateChange invoked with state name:')
+  return match ? match[1].trim() : notFoundMsg;
+}
+
+/** Generic helper to wait for value in logs */
+async function waitForLogValue<T extends string>(
+  logs: string[],
+  expected: T,
+  getter: (logs: string[]) => string,
+  timeoutMs: number,
+  errorMsg: string
+): Promise<void> {
+  const start = Date.now();
+  while (true) {
+    try {
+      if (getter(logs) === expected) return;
+    } catch {
+      // Ignore error if no log yet
+    }
+    if (Date.now() - start > timeoutMs) throw new Error(errorMsg);
+    await new Promise((res) => {
+      setTimeout(res, 300);
+    });
+  }
+}
+
+/** Retrieves last state from logs */
+export async function getLastStateFromLogs(logs: string[]) {
+  return getLastLogMatch(
+    logs,
+    'onStateChange invoked with state name:',
+    /onStateChange invoked with state name:\s*(.+)$/,
+    'No state change logs found'
+  );
+}
+
+/** Waits for state in logs */
+export const waitForStateLogs = (logs: string[], state: userState, timeoutMs = 10000) =>
+  waitForLogValue(
+    logs,
+    state,
+    getLastStateFromLogs,
+    timeoutMs,
+    `Timed out waiting for state "${state}" in logs`
   );
 
-  if (stateChangeLogs.length === 0) {
-    return 'No state change logs found';
-  }
-
-  const lastStateLog = stateChangeLogs[stateChangeLogs.length - 1];
-  const match = lastStateLog.match(/onStateChange invoked with state name:\s*(.+)$/);
-
-  if (!match) {
-    return 'No State change log found';
-  }
-
-  return match[1].trim();
+/** Retrieves last wrapup reason from logs */
+export async function getLastWrapupReasonFromLogs(logs: string[]): Promise<string> {
+  return getLastLogMatch(
+    logs,
+    'onWrapup invoked with reason :',
+    /onWrapup invoked with reason : (.+)$/,
+    'No wrapup reason found'
+  );
 }
 
-/**
- * Waits for a specific state to appear in the captured logs
- * @param capturedLogs - Array of log messages
- * @param expectedState - The expected state to wait for
- * @param timeoutMs - Maximum time to wait for the state in milliseconds (default: 10000)
- * uses the manual logs for that, such as "onStateChange invoked with state name: AVAILABLE"
- * @returns Promise<void>
- * @throws Error if the expected state is not found within the timeout
- * @description Continuously checks the last state in logs until it matches the expected state or times out
- * @example
- * ```typescript
- * await waitForStateLogs(capturedLogs,  AVAILABLE);
- * // Waits until the last state in logs changes to 'Available'
- * ```
- */
-
-export const waitForStateLogs = async (
-  capturedLogs: string[],
-  expectedState: userState,
-  timeoutMs = 10000
-): Promise<void> => {
-  const start = Date.now();
-  while (true) {
-    // Check if the latest state in logs matches expectedState
-    try {
-      const lastState = await getLastStateFromLogs(capturedLogs);
-      if (lastState === expectedState) return;
-    } catch {
-      // Ignore error if no state log yet
-    }
-    if (Date.now() - start > timeoutMs) {
-      throw new Error(`Timed out waiting for state "${expectedState}" in logs`);
-    }
-    await new Promise((res) => setTimeout(res, 300)); // Poll every 300ms
-  }
-};
-
-/**
- * Waits for a specific wrapup reason to appear in the captured logs
- * @param capturedLogs - Array of log messages
- * @param expectedReason - The expected wrapup reason to wait for
- * @param timeoutMs - Maximum time to wait for the wrapup reason in milliseconds (default: 10000)
- * Uses the manual logs for that, such as "onWrapup invoked with reason : Sale"
- * @returns Promise<void>
- * @throws Error if the expected wrapup reason is not found within the timeout
- * @description Continuously checks the last wrapup reason in logs until it matches the expected reason or times out
- * @example
- * ```typescript
- * await waitForWrapupReasonLogs(capturedLogs, WRAPUP_REASONS.SALE);
- * ```
- */
-
-export const waitForWrapupReasonLogs = async (
-  capturedLogs: string[],
-  expectedReason: WrapupReason,
-  timeoutMs = 10000
-): Promise<void> => {
-  const start = Date.now();
-  while (true) {
-    try {
-      const lastReason = await getLastWrapupReasonFromLogs(capturedLogs);
-      if (lastReason === expectedReason) return;
-    } catch {
-      // Ignore error if no wrapup log yet
-    }
-    if (Date.now() - start > timeoutMs) {
-      throw new Error(`Timed out waiting for wrapup reason "${expectedReason}" in logs`);
-    }
-    await new Promise((res) => setTimeout(res, 300)); // Poll every 300ms
-  }
-};
-
-/**
- * Retrieves the last wrapup reason from captured logs
- * @param capturedLogs - Array of log messages
- * @returns Promise<string> - The last wrapup reason found in the logs, or a message if not found
- * @description Filters logs for wrapup messages and extracts the last wrapup reason
- * Uses the manual logs for that, such as "onWrapup invoked with reason : Sale"
- * @example
- * ```typescript
- * const lastWrapupReason = await getLastWrapupReasonFromLogs(capturedLogs);
- * console.log(lastWrapupReason); // Outputs the last wrapup reason or a message if not found
- * ```
- */
-
-export async function getLastWrapupReasonFromLogs(capturedLogs: string[]): Promise<string> {
-  const wrapupLogs = capturedLogs.filter((log) => log.includes('onWrapup invoked with reason :'));
-
-  if (wrapupLogs.length === 0) {
-    return 'No wrapup reason found';
-  }
-
-  const lastWrapupLog = wrapupLogs[wrapupLogs.length - 1];
-  const match = lastWrapupLog.match(/onWrapup invoked with reason : (.+)$/);
-
-  if (!match) {
-    return 'No wrapup reason found';
-  }
-
-  return match[1].trim();
-}
+/** Waits for wrapup reason in logs */
+export const waitForWrapupReasonLogs = (logs: string[], reason: WrapupReason, timeoutMs = 10000) =>
+  waitForLogValue(
+    logs,
+    reason,
+    getLastWrapupReasonFromLogs,
+    timeoutMs,
+    `Timed out waiting for wrapup reason "${reason}" in logs`
+  );
 
 /**
  * Compares two RGB color strings to check if they are within a specified tolerance
@@ -292,7 +226,7 @@ export function isColorClose(
   const receivedRgb = receivedColor.match(/\d+/g)?.map(Number) || [];
   const expectedRgb = expectedColor.match(/\d+/g)?.map(Number) || [];
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 3; i += 1) {
     if (typeof receivedRgb[i] !== 'number' || typeof expectedRgb[i] !== 'number') {
       continue; // skip if not present
     }
@@ -325,7 +259,7 @@ export const handleStrayTasks = async (
   let iteration = 0;
 
   while (iteration < maxIterations) {
-    iteration++;
+    iteration += 1;
     let actionTaken = false;
 
     // Dismiss any overlays/popovers first
@@ -344,7 +278,9 @@ export const handleStrayTasks = async (
         actionTaken = true;
         await page.waitForTimeout(300);
         continue; // Start fresh after RONA
-      } catch (e) {}
+      } catch {
+        /* Ignore - not critical */
+      }
     }
 
     // ============================================
@@ -359,7 +295,9 @@ export const handleStrayTasks = async (
         actionTaken = true;
         await page.waitForTimeout(300);
         continue; // Check for more pending tasks
-      } catch (e) {}
+      } catch {
+        /* Ignore - not critical */
+      }
     }
 
     // ============================================
@@ -379,7 +317,9 @@ export const handleStrayTasks = async (
         actionTaken = true;
         await page.waitForTimeout(300);
         continue;
-      } catch (e) {}
+      } catch {
+        /* Ignore - not critical */
+      }
     }
 
     // ============================================
@@ -391,7 +331,7 @@ export const handleStrayTasks = async (
     let endButtonVisible = false;
     let endButtonEnabled = false;
 
-    for (let i = 0; i < endButtonCount; i++) {
+    for (let i = 0; i < endButtonCount; i += 1) {
       const btn = allEndButtons.nth(i);
       const visible = await btn.isVisible().catch(() => false);
       if (!visible) continue;
@@ -420,7 +360,9 @@ export const handleStrayTasks = async (
               await switchBtn.click({timeout: AWAIT_TIMEOUT});
               await page.waitForTimeout(1000);
               cancelConsultVisible = await cancelConsultBtn.isVisible().catch(() => false);
-            } catch (e) {}
+            } catch {
+              /* Ignore - not critical */
+            }
           }
         }
 
@@ -429,7 +371,9 @@ export const handleStrayTasks = async (
             await cancelConsultBtn.click({timeout: AWAIT_TIMEOUT});
             await page.waitForTimeout(1000);
             endButtonEnabled = await endButton.isEnabled().catch(() => false);
-          } catch (e) {}
+          } catch {
+            /* Ignore - not critical */
+          }
         }
 
         // Still disabled - resume only if the visible control state says the call is held
@@ -442,7 +386,9 @@ export const handleStrayTasks = async (
               await holdCallToggle(page);
               await page.waitForTimeout(500);
               endButtonEnabled = await endButton.isEnabled().catch(() => false);
-            } catch (e) {}
+            } catch {
+              /* Ignore - not critical */
+            }
           }
         }
       }
@@ -460,8 +406,11 @@ export const handleStrayTasks = async (
             actionTaken = true;
             // Don't continue - fall through to check wrapup immediately
           } else {
+            // No action needed
           }
-        } catch (e) {}
+        } catch {
+          /* Ignore - not critical */
+        }
       }
 
       // After clicking end, check for wrapup immediately (same iteration)
@@ -472,7 +421,9 @@ export const handleStrayTasks = async (
           actionTaken = true;
           await page.waitForTimeout(300);
           continue;
-        } catch (e) {}
+        } catch {
+          /* Ignore - not critical */
+        }
       }
 
       if (actionTaken) {
@@ -535,7 +486,9 @@ export const handleStrayTasks = async (
               actionTaken = true;
               continue;
             }
-          } catch (e) {}
+          } catch {
+            /* Ignore - not critical */
+          }
         } else {
           // No extensionPage - wait for RONA timeout
           await page.waitForTimeout(2000);
@@ -580,8 +533,11 @@ export const handleStrayTasks = async (
             }
             actionTaken = true;
             continue;
-          } catch (e) {}
+          } catch {
+            /* Ignore - not critical */
+          }
         } else if (acceptVisible && !acceptEnabled) {
+          // Accept button disabled - will be handled on next iteration
         }
       }
     }
@@ -627,6 +583,7 @@ export const handleStrayTasks = async (
   }
 
   if (iteration >= maxIterations) {
+    // Max iterations reached - no action needed, function will return
   }
 
   // Ensure user is in Available state at the end
@@ -638,7 +595,9 @@ export const handleStrayTasks = async (
   if (stateSelectVisible) {
     try {
       await changeUserState(page, USER_STATES.AVAILABLE);
-    } catch (e) {}
+    } catch {
+      /* Ignore - not critical */
+    }
   }
 };
 
@@ -721,9 +680,9 @@ export const pageSetup = async (
   page: Page,
   loginMode: LoginMode,
   accessToken: string,
+  extensionNumber?: string,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   extensionPage: Page | null = null,
-  extensionNumber?: string,
   isMultiSession = false
 ) => {
   const maxRetries = 3;
@@ -732,7 +691,7 @@ export const pageSetup = async (
   await loginViaAccessToken(page, accessToken);
 
   // Step 2: Initialize SDK
-  for (let i = 0; i < maxRetries; i++) {
+  for (let i = 0; i < maxRetries; i += 1) {
     try {
       await initializeSdk(page);
       break;
@@ -812,18 +771,22 @@ export async function dismissOverlays(page: Page): Promise<void> {
     }
   };
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 3; i += 1) {
     // If a Momentum popover backdrop is visible, try ESC to close (with bounded timeout)
     const backdropVisible = await isVisibleWithin(page.locator('.md-popover-backdrop'), 500);
     const tippyVisible = await isVisibleWithin(page.locator('[id^="tippy-"]').first(), 500);
     if (!backdropVisible && !tippyVisible) return;
     try {
       await page.keyboard.press('Escape');
-    } catch {}
+    } catch {
+      // Ignore if escape key fails
+    }
     // Small click near top-left to blur active elements
     try {
       await page.mouse.click(5, 5);
-    } catch {}
+    } catch {
+      // Ignore if click fails
+    }
     await page.waitForTimeout(200);
   }
 }
