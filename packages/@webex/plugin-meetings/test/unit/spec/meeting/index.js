@@ -13032,7 +13032,7 @@ describe('plugin-meetings', () => {
             'a datachannel url',
             'token-123'
           );
-          assert.calledWithExactly(webex.internal.llm.setDatachannelToken, 'token-123', 'default');
+          assert.calledWithExactly(webex.internal.llm.setDatachannelToken, 'token-123', 'llm-default-session');
         });
         it('prefers refreshed token over locus self token', async () => {
           meeting.joinedWith = {state: 'JOINED'};
@@ -13042,7 +13042,7 @@ describe('plugin-meetings', () => {
             self: {datachannelToken: 'locus-token'},
           };
 
-          webex.internal.llm.getDatachannelToken.withArgs('default').returns('refreshed-token');
+          webex.internal.llm.getDatachannelToken.withArgs('llm-default-session').returns('refreshed-token');
 
           await meeting.updateLLMConnection();
 
@@ -13075,7 +13075,7 @@ describe('plugin-meetings', () => {
             'a datachannel url',
             'token-123'
           );
-          assert.calledWithExactly(webex.internal.llm.setDatachannelToken, 'token-123', 'default');
+          assert.calledWithExactly(webex.internal.llm.setDatachannelToken, 'token-123', 'llm-default-session');
         });
 
         describe('#clearMeetingData', () => {
@@ -14738,7 +14738,7 @@ describe('plugin-meetings', () => {
           expect(result).to.deep.equal({
             body: {
               datachannelToken: 'mock-token',
-              dataChannelTokenType: 'practiceSession',
+              dataChannelTokenType: 'llm-practice-session',
             },
           });
         });
@@ -14751,7 +14751,7 @@ describe('plugin-meetings', () => {
 
           const result = meeting.getDataChannelTokenType();
 
-          expect(result).to.equal('practiceSession');
+          expect(result).to.equal('llm-practice-session');
         });
 
         it('returns Default when not in practice session mode', () => {
@@ -14761,7 +14761,7 @@ describe('plugin-meetings', () => {
 
           const result = meeting.getDataChannelTokenType();
 
-          expect(result).to.equal('default');
+          expect(result).to.equal('llm-default-session');
         });
       });
       describe('#stopKeepAlive', () => {
