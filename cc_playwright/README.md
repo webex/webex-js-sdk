@@ -212,6 +212,19 @@ OAuth setup behavior (`playwright/global.setup.ts`):
 
 ## 🚀 Running Tests
 
+### Prerequisites
+
+**Important**: Before running tests for the first time, build the sample app bundles:
+
+```bash
+yarn samples:build
+```
+
+This generates the required JavaScript bundles (including `contact-center.min.js`) that the sample
+app needs to initialize the Webex SDK.
+
+### Running Tests
+
 ```bash
 # Run all tests (workers automatically set to USER_SETS.length)
 yarn test:e2e
