@@ -1544,7 +1544,7 @@ export interface ITask extends EventEmitter {
    * Each control has `isVisible` and `isEnabled` flags computed from current task state.
    * Subscribe to {@link TASK_EVENTS.TASK_UI_CONTROLS_UPDATED} for change notifications.
    */
-  uiControls: TaskUIControls;
+  readonly uiControls: TaskUIControls;
 
   /**
    * State machine instance for managing task state transitions and derived properties.
