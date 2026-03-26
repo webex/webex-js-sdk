@@ -223,6 +223,7 @@ export default class SendSlotManager {
       [key: string]: string | undefined; // As per ts-sdp undefined is considered as a valid value to be used for codec parameters
     }
   ): Promise<void> {
+    // These codec parameter changes underneath are SDP value changes that are taken care by WCME automatically. So no need for any change in streams from the web sdk side
     const slot = this.slots.get(mediaType);
 
     if (!slot) {
