@@ -13,6 +13,7 @@ import {CC_TASK_EVENTS} from '../../../../../src/services/config/types';
 
 describe('TaskManager', () => {
   let mockCall;
+  let mockApiAIAssistant;
   let webSocketManagerMock;
   let onSpy;
   let offSpy;
@@ -45,6 +46,15 @@ describe('TaskManager', () => {
   beforeEach(() => {
     contactMock = contact;
     webSocketManagerMock = new EventEmitter();
+    mockApiAIAssistant = {
+      sendEvent: jest.fn().mockResolvedValue({}),
+      setAIFeatureFlags: jest.fn(),
+      aiFeature: {
+        realtimeTranscripts: {
+          enable: true,
+        },
+      },
+    };
 
     webex = {
       logger: {
@@ -74,14 +84,19 @@ describe('TaskManager', () => {
     onSpy = jest.spyOn(webCallingService, 'on');
     offSpy = jest.spyOn(webCallingService, 'off');
 
-    taskManager = new TaskManager(contactMock, webCallingService, webSocketManagerMock);
-    taskManager.taskCollection[taskId] = {
+    taskManager = new TaskManager(mockApiAIAssistant, contactMock, webCallingService, webSocketManagerMock);
+    const taskMock = {
       emit: jest.fn(),
       accept: jest.fn(),
       decline: jest.fn(),
-      updateTaskData: jest.fn(),
+      updateTaskData: jest.fn().mockImplementation((updatedData) => {
+        taskMock.data = {...taskMock.data, ...updatedData};
+        return taskMock;
+      }),
       data: taskDataMock,
     };
+    taskManager.taskCollection[taskId] = taskMock;
+    taskManager.agentId = 'test-agent-id';
     taskManager.call = mockCall;
   });
 
@@ -122,6 +137,88 @@ describe('TaskManager', () => {
     webSocketManagerMock.emit('message', JSON.stringify(dummyPayload));
 
     expect(taskEmitSpy).toHaveBeenCalledWith(dummyPayload.data.type, dummyPayload.data);
+  });
+
+  it('should invoke sendEvent for configured start/stop backend events', () => {
+    const message = (type: CC_EVENTS) =>
+      JSON.stringify({
+        data: {
+          ...taskDataMock,
+          taskId,
+          type,
+        },
+      });
+
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONTACT_ASSIGNED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULTING));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULT_CONFERENCED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULT_ENDED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_WRAPUP));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE));
+
+    expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledTimes(6);
+    expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledWith(
+      'test-agent-id',
+      taskId,
+      'CUSTOM_EVENT',
+      'GET_TRANSCRIPTS',
+      'START'
+    );
+    expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledWith(
+      'test-agent-id',
+      taskId,
+      'CUSTOM_EVENT',
+      'GET_TRANSCRIPTS',
+      'STOP'
+    );
+  });
+
+  it('should not invoke sendEvent for transcript events when realtime transcript feature is disabled', () => {
+    mockApiAIAssistant.aiFeature = {
+      realtimeTranscripts: {
+        enable: false,
+      },
+    };
+    mockApiAIAssistant.setAIFeatureFlags(mockApiAIAssistant.aiFeature);
+
+    const message = (type: CC_EVENTS) =>
+      JSON.stringify({
+        data: {
+          ...taskDataMock,
+          taskId,
+          type,
+        },
+      });
+
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONTACT_ASSIGNED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULTING));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULT_CONFERENCED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULT_ENDED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_WRAPUP));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE));
+
+    expect(mockApiAIAssistant.sendEvent).not.toHaveBeenCalled();
+  });
+
+  it('should emit REAL_TIME_TRANSCRIPTION from task object', () => {
+    const task = taskManager.getTask(taskId);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const realtimePayload = {
+      data: {
+        ...taskDataMock,
+        type: CC_EVENTS.REAL_TIME_TRANSCRIPTION,
+        data: {
+          content: 'hello from transcript',
+        },
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(realtimePayload));
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(
+      CC_EVENTS.REAL_TIME_TRANSCRIPTION,
+      realtimePayload.data
+    );
   });
 
   it('should not re-emit agent related events', () => {

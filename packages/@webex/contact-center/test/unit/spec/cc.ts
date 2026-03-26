@@ -131,6 +131,10 @@ describe('webex.cc', () => {
         startOutdial: jest.fn(),
         acceptPreviewContact: jest.fn(),
       },
+      apiAIAssistant: {
+        sendEvent: jest.fn(),
+        fetchHistoricTranscripts: jest.fn(),
+      },
     };
 
     mockTaskManager = {
@@ -143,6 +147,7 @@ describe('webex.cc', () => {
       setWrapupData: jest.fn(),
       setAgentId: jest.fn(),
       setWebRtcEnabled: jest.fn(),
+      setApiAIAssistant: jest.fn(),
       registerIncomingCallEvent: jest.fn(),
       registerTaskListeners: jest.fn(),
       getTask: jest.fn(),
