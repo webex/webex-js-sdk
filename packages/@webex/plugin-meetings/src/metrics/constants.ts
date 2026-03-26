@@ -91,7 +91,7 @@ const BEHAVIORAL_METRICS = {
   LOCUS_CLASSIC_VS_HASH_TREE_MISMATCH: 'js_sdk_locus_classic_vs_hash_tree_mismatch',
   LOCUS_HASH_TREE_UNSUPPORTED_OPERATION: 'js_sdk_locus_hash_tree_unsupported_operation',
   MEDIA_STILL_NOT_CONNECTED: 'js_sdk_media_still_not_connected',
-  DEPRECATED_SET_MAX_FS_USED: 'js_sdk_deprecated_set_max_fs_used',
+  DEPRECATED_GET_MAX_FS_USED: 'js_sdk_deprecated_get_max_fs_used',
   DEPRECATED_GET_EFFECTIVE_MAX_FS_USED: 'js_sdk_deprecated_get_effective_max_fs_used',
   DEPRECATED_RECEIVE_SLOT_SET_MAX_FS_USED: 'js_sdk_deprecated_receive_slot_set_max_fs_used',
 };

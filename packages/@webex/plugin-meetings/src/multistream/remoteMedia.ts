@@ -25,7 +25,7 @@ export function getMaxFs(paneSize: RemoteVideoResolution): number {
   LoggerProxy.logger.warn(
     'RemoteMedia->getMaxFs --> [DEPRECATION WARNING]: getMaxFs has been deprecated; use size hints / resolution on RemoteMedia instead'
   );
-  Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DEPRECATED_SET_MAX_FS_USED, {paneSize});
+  Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DEPRECATED_GET_MAX_FS_USED, {paneSize});
 
   return MediaCodecHelper.H264.getMaxFs(paneSize);
 }
@@ -103,7 +103,16 @@ export class RemoteMedia extends EventsScope {
     // TODO: remove this once deprecation of getEffectiveMaxFs() is complete
     const maxFs = MediaCodecHelper.H264.getSizeHintMaxFs(this.sizeHint);
     if (maxFs !== undefined) {
-      this.receiveSlot?.setMaxFs(maxFs);
+      this.receiveSlot?.emit(
+        {
+          file: 'meeting/receiveSlot',
+          function: 'setMaxFs',
+        },
+        ReceiveSlotEvents.MaxFsUpdate,
+        {
+          maxFs,
+        }
+      );
     }
   }
 

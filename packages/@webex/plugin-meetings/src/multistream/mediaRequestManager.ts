@@ -81,11 +81,9 @@ export default class MediaRequestManager {
       let totalMacroblocksRequested = 0;
 
       Object.values(clientRequests).forEach((mr) => {
-        totalMacroblocksRequested += Math.max(
-          ...mr.codecInfos.map((codecInfo) =>
-            MediaCodecHelper.get(codecInfo.codec).degradeMediaRequest(mr, resolution)
-          )
-        );
+        totalMacroblocksRequested += mr.codecInfos.reduce((acc, codecInfo) => {
+          return acc + MediaCodecHelper.get(codecInfo.codec).degradeMediaRequest(mr, resolution);
+        }, 0);
       });
 
       if (totalMacroblocksRequested <= this.degradationPreferences.maxMacroblocksLimit) {

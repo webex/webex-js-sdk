@@ -18,7 +18,7 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
    * Gets the H264 codec info
    *
    * @param {GetCodecInfoOptions} options - The options for the H264 codec info
-   * @returns {H264CodecInfo} The H264 codec info
+   * @returns {H264CodecInfo | undefined} The H264 codec info
    */
   getCodecInfo({sizeHint}: GetCodecInfoOptions = {}): H264CodecInfo | undefined {
     const maxFs = this.getSizeHintMaxFs(sizeHint);
@@ -37,7 +37,7 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
    * Degrades the media request
    *
    * @param {MediaRequest} mr - The media request to degrade
-   * @param {Resolution} resolution - The resolution to degrade to
+   * @param {SupportedResolution} resolution - The resolution to degrade to
    * @returns {number} The total macroblocks requested
    */
   degradeMediaRequest(mr: MediaRequest, resolution: SupportedResolution): number {

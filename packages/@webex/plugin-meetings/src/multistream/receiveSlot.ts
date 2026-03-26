@@ -87,10 +87,8 @@ export class ReceiveSlot extends EventsScope {
   }
 
   /**
-   * Supply the width and height of the video element
-   * to restrict the requested resolution to this size
-   * @param width width of the video element
-   * @param height height of the video element
+   * Emits a SizeHintUpdate event with the given size hint
+   * @param {SizeHint} sizeHint - The size hint to set
    */
   public setSizeHint(sizeHint: SizeHint) {
     this.emit(

@@ -715,9 +715,6 @@ describe('MediaRequestManager', () => {
       },
     ]);
 
-    // clear previous requests
-    mediaRequestManager.clearPreviousRequests();
-
     // commit same request
     mediaRequestManager.commit();
 
