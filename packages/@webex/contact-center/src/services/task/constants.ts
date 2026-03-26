@@ -24,6 +24,8 @@ export const CONFERENCE_EXIT = '/conference/exit';
 export const CONFERENCE_TRANSFER = '/conference/transfer';
 export const DIALER_API = '/v1/dialer';
 export const CAMPAIGN_PREVIEW_ACCEPT = '/accept';
+export const CAMPAIGN_PREVIEW_SKIP = '/skip';
+export const CAMPAIGN_PREVIEW_REMOVE = '/remove';
 /** 80-second timeout for accepting preview contact (outbound call setup takes longer than default 20s) */
 export const TIMEOUT_PREVIEW_ACCEPT = 80000;
 export const TASK_MANAGER_FILE = 'taskManager';

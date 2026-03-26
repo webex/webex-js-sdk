@@ -554,6 +554,54 @@ export enum TASK_EVENTS {
    * ```
    */
   TASK_CAMPAIGN_PREVIEW_RESERVATION = 'task:campaignPreviewReservation',
+
+  /**
+   * Triggered when accepting a campaign preview contact fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_ACCEPT_FAILED, (task: ITask) => {
+   *   console.log('Campaign preview accept failed:', task.data.interactionId);
+   *   // Handle accept failure
+   * });
+   * ```
+   */
+  TASK_CAMPAIGN_PREVIEW_ACCEPT_FAILED = 'task:campaignPreviewAcceptFailed',
+
+  /**
+   * Triggered when skipping a campaign preview contact fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_SKIP_FAILED, (task: ITask) => {
+   *   console.log('Campaign preview skip failed:', task.data.interactionId);
+   *   // Handle skip failure
+   * });
+   * ```
+   */
+  TASK_CAMPAIGN_PREVIEW_SKIP_FAILED = 'task:campaignPreviewSkipFailed',
+
+  /**
+   * Triggered when removing a campaign preview contact fails
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_REMOVE_FAILED, (task: ITask) => {
+   *   console.log('Campaign preview remove failed:', task.data.interactionId);
+   *   // Handle remove failure
+   * });
+   * ```
+   */
+  TASK_CAMPAIGN_PREVIEW_REMOVE_FAILED = 'task:campaignPreviewRemoveFailed',
+
+  /**
+   * Triggered when a campaign contact is updated (e.g., after skip or remove, when the next contact is offered)
+   * @example
+   * ```typescript
+   * task.on(TASK_EVENTS.TASK_CAMPAIGN_CONTACT_UPDATED, (task: ITask) => {
+   *   console.log('Campaign contact updated:', task.data.interactionId);
+   *   // Handle updated campaign contact (e.g., display next contact)
+   * });
+   * ```
+   */
+  TASK_CAMPAIGN_CONTACT_UPDATED = 'task:campaignContactUpdated',
 }
 
 /**
@@ -702,6 +750,14 @@ export type Interaction = {
     fcDesktopView?: string;
     /** Agent ID who initiated the outdial call */
     outdialAgentId?: string;
+    /** Indicates if the skip action is disabled for campaign preview contacts */
+    campaignPreviewSkipDisabled?: string;
+    /** Indicates if the remove action is disabled for campaign preview contacts */
+    campaignPreviewRemoveDisabled?: string;
+    /** Auto-action to perform when campaign preview offer times out (ACCEPT, SKIP, REMOVE) */
+    campaignPreviewAutoAction?: string;
+    /** Timestamp (ms) when the campaign preview offer expires */
+    campaignPreviewOfferTimeout?: string;
   };
   /** Main interaction identifier for related interactions */
   mainInteractionId?: string;
