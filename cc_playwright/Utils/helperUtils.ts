@@ -467,7 +467,8 @@ export const handleStrayTasks = async (
               }
               await page.waitForTimeout(500);
               // After accepting, immediately try to end and wrapup
-              const endBtnAfterAccept = page.locator('#end').first();
+              // Sample app uses #end button
+              const endBtnAfterAccept = page.locator('#end');
               const endVisibleAfterAccept = await endBtnAfterAccept.isVisible().catch(() => false);
               if (endVisibleAfterAccept) {
                 const endEnabledAfterAccept = await endBtnAfterAccept

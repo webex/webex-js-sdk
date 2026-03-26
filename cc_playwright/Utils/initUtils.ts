@@ -239,8 +239,20 @@ export const ensureRegisteredAfterReload = async (page: Page): Promise<void> => 
   const isSubscribed = currentStatus?.trim() === 'Subscribed';
 
   if (!isSubscribed) {
-    // Initialize SDK if needed (restore access token and init)
-    await initializeSdk(page);
+    // Check if SDK needs initialization (register button not yet enabled)
+    const registerButton = page.locator('#webexcc-register');
+    const isRegisterEnabled = await registerButton.isEnabled().catch(() => false);
+
+    if (!isRegisterEnabled) {
+      // SDK not initialized yet - need to call webex.init()
+      const initButton = page.locator('#access-token-save');
+      const isInitEnabled = await initButton.isEnabled().catch(() => false);
+
+      if (isInitEnabled) {
+        await initializeSdk(page);
+      }
+      // If init button is disabled, SDK is already initialized (token restored automatically)
+    }
 
     // Register with CC using existing retry logic
     await registerContactCenter(page);
