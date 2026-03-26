@@ -1,12 +1,21 @@
-/* eslint-disable no-await-in-loop, no-plusplus, no-continue */
+/* eslint-disable no-await-in-loop, no-plusplus */
+// Disabled no-await-in-loop: file contains polling utilities requiring sequential awaits
+// Disabled no-plusplus: standard loop incrementing is clearer than alternatives
 import {expect, Page} from '@playwright/test';
 import {WrapupReason, AWAIT_TIMEOUT, UI_SETTLE_TIMEOUT, WRAPUP_TIMEOUT} from '../constants';
 
-async function isWrapupVisible(page: Page): Promise<boolean> {
-  // Sample app has single #wrapup button
-  const wrapupButton = page.locator('#wrapup');
+async function findFirstVisibleWrapupIndex(page: Page): Promise<number> {
+  const wrapupButtons = page.getByTestId('call-control:wrapup-button');
+  const count = await wrapupButtons.count().catch(() => 0);
 
-  return wrapupButton.isVisible().catch(() => false);
+  for (let i = 0; i < count; i++) {
+    const button = wrapupButtons.nth(i);
+    if (await button.isVisible().catch(() => false)) {
+      return i;
+    }
+  }
+
+  return -1;
 }
 
 export async function waitForWrapupAfterCallEnd(page: Page): Promise<void> {
@@ -15,15 +24,27 @@ export async function waitForWrapupAfterCallEnd(page: Page): Promise<void> {
   await expect
     .poll(
       async () => {
-        // Sample app has single #end button
-        const endButton = page.locator('#end');
-        const hasVisibleEndControl = await endButton.isVisible().catch(() => false);
+        const endControls = page.getByTestId('call-control:end-call');
+        const endCount = await endControls.count().catch(() => 0);
+        let hasVisibleEndControl = false;
 
-        const hasVisibleWrapup = await isWrapupVisible(page);
+        for (let i = 0; i < endCount; i++) {
+          if (
+            await endControls
+              .nth(i)
+              .isVisible()
+              .catch(() => false)
+          ) {
+            hasVisibleEndControl = true;
+            break;
+          }
+        }
+
+        const wrapupIndex = await findFirstVisibleWrapupIndex(page);
 
         return {
           hasVisibleEndControl,
-          hasVisibleWrapup,
+          hasVisibleWrapup: wrapupIndex !== -1,
         };
       },
       {timeout: WRAPUP_TIMEOUT, intervals: [250, 500, 1000, 2000]}

@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop, no-plusplus, no-continue */
 import {Page, expect} from '@playwright/test';
 import {TASK_TYPES, AWAIT_TIMEOUT, OPERATION_TIMEOUT} from '../constants';
 
@@ -19,10 +18,31 @@ import {TASK_TYPES, AWAIT_TIMEOUT, OPERATION_TIMEOUT} from '../constants';
  * @returns Promise<void>
  */
 export async function callTaskControlCheck(page: Page): Promise<void> {
-  await expect(page.locator('#hold-resume')).toBeVisible({timeout: AWAIT_TIMEOUT});
-  await expect(page.locator('#transfer')).toBeVisible({timeout: AWAIT_TIMEOUT});
-  await expect(page.locator('#consult')).toBeVisible({timeout: AWAIT_TIMEOUT});
-  await expect(page.locator('#end')).toBeVisible({timeout: AWAIT_TIMEOUT});
+  // Sample app uses plain HTML IDs - verify core call control buttons are visible
+  // Verify hold/resume toggle button is visible
+  await expect(page.locator('#hold-resume')).toBeVisible({
+    timeout: AWAIT_TIMEOUT,
+  });
+
+  // Skip recording button check - may be hidden by CSS in sample app
+  // await expect(page.locator('#pause-resume-recording')).toBeVisible({
+  //   timeout: AWAIT_TIMEOUT,
+  // });
+
+  // Verify transfer button is visible
+  await expect(page.locator('#transfer')).toBeVisible({
+    timeout: AWAIT_TIMEOUT,
+  });
+
+  // Verify consult button is visible
+  await expect(page.locator('#consult')).toBeVisible({
+    timeout: AWAIT_TIMEOUT,
+  });
+
+  // Verify end call button is visible
+  await expect(page.locator('#end')).toBeVisible({
+    timeout: AWAIT_TIMEOUT,
+  });
 }
 
 /**
@@ -32,8 +52,20 @@ export async function callTaskControlCheck(page: Page): Promise<void> {
  * @returns Promise<void>
  */
 export async function chatTaskControlCheck(page: Page): Promise<void> {
-  await expect(page.locator('#transfer')).toBeVisible({timeout: AWAIT_TIMEOUT});
-  await expect(page.locator('#end')).toBeVisible({timeout: AWAIT_TIMEOUT});
+  // Verify chat control container or equivalent is visible
+  await expect(page.getByTestId('call-control-container').nth(0)).toBeVisible({
+    timeout: OPERATION_TIMEOUT,
+  });
+
+  // Verify transfer button is visible
+  await expect(page.getByTestId('call-control:transfer').nth(0)).toBeVisible({
+    timeout: AWAIT_TIMEOUT,
+  });
+
+  // Verify end button is visible (for chat tasks)
+  await expect(page.getByTestId('call-control:end-call').nth(0)).toBeVisible({
+    timeout: AWAIT_TIMEOUT,
+  });
 }
 
 /**
@@ -43,8 +75,20 @@ export async function chatTaskControlCheck(page: Page): Promise<void> {
  * @returns Promise<void>
  */
 export async function emailTaskControlCheck(page: Page): Promise<void> {
-  await expect(page.locator('#transfer')).toBeVisible({timeout: AWAIT_TIMEOUT});
-  await expect(page.locator('#end')).toBeVisible({timeout: AWAIT_TIMEOUT});
+  // Verify email control container or equivalent is visible
+  await expect(page.getByTestId('call-control-container').nth(0)).toBeVisible({
+    timeout: OPERATION_TIMEOUT,
+  });
+
+  // Verify transfer button is visible
+  await expect(page.getByTestId('call-control:transfer').nth(0)).toBeVisible({
+    timeout: AWAIT_TIMEOUT,
+  });
+
+  // Verify end button is visible (for email tasks)
+  await expect(page.getByTestId('call-control:end-call').nth(0)).toBeVisible({
+    timeout: AWAIT_TIMEOUT,
+  });
 }
 
 /**

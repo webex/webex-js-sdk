@@ -1,9 +1,8 @@
 import {Page, expect, BrowserContext} from '@playwright/test';
 import dotenv from 'dotenv';
-import * as path from 'path';
 import {BASE_URL, AWAIT_TIMEOUT, UI_SETTLE_TIMEOUT, OPERATION_TIMEOUT} from '../constants';
 
-dotenv.config({path: path.resolve(__dirname, '../.env')});
+dotenv.config();
 
 /**
  * Performs login using an access token from environment variables
@@ -234,37 +233,13 @@ export const agentRelogin = async (page: Page): Promise<void> => {
  * ```
  */
 export const ensureRegisteredAfterReload = async (page: Page): Promise<void> => {
-  // Wait for page to fully load and SDK auto-initialization
-  await page.waitForLoadState('domcontentloaded');
-  await page.waitForTimeout(3000); // Critical: Wait for SDK auto-init from localStorage
-
   // Check WebSocket connection status
   const currentStatus = await page.locator('#ws-connection-status').textContent();
   const isSubscribed = currentStatus?.trim() === 'Subscribed';
 
   if (!isSubscribed) {
-    const registerButton = page.locator('#webexcc-register');
-    const initButton = page.locator('#access-token-save');
-
-    // Wait for SDK initialization to complete (either button state is stable)
-    const isRegisterEnabled = await registerButton.isEnabled().catch(() => false);
-    const isInitDisabled = await initButton.isDisabled().catch(() => false);
-
-    if (!isRegisterEnabled) {
-      // SDK not initialized yet
-      const isInitEnabled = await initButton.isEnabled().catch(() => false);
-
-      if (isInitEnabled) {
-        await initializeSdk(page);
-      } else {
-        // Init button disabled but register not enabled - wait for auto-init
-        await expect(registerButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
-        await page.waitForTimeout(2000); // Extra wait for SDK to be fully ready
-      }
-    } else if (isInitDisabled && isRegisterEnabled) {
-      // Auto-initialization completed, but wait for SDK to be fully ready
-      await page.waitForTimeout(2000);
-    }
+    // Initialize SDK if needed (restore access token and init)
+    await initializeSdk(page);
 
     // Register with CC using existing retry logic
     await registerContactCenter(page);

@@ -1,4 +1,6 @@
-/* eslint-disable no-await-in-loop, no-plusplus, no-continue */
+/* eslint-disable no-await-in-loop, no-plusplus */
+// Disabled no-await-in-loop: file contains polling utilities requiring sequential awaits
+// Disabled no-plusplus: standard loop incrementing is clearer than alternatives
 import {Page, expect} from '@playwright/test';
 import {holdCallToggle, isCallHeld} from './taskControlUtils';
 import {hasAnyVisibleControl} from './controlUtils';
@@ -15,30 +17,20 @@ import {AWAIT_TIMEOUT} from '../constants';
 // Array to store captured console logs for verification
 const capturedAdvancedLogs: string[] = [];
 
-/**
- * Sample app consult control selectors.
- * Note: Sample app uses plain IDs, not data-testid attributes.
- * These selectors are for advanced task controls during consult/conference flows.
- */
-export const ACTIVE_CONSULT_CONTROL_SELECTORS = [
-  '#end-consult', // End consult button
-  '#transfer', // Transfer button (used during consult)
-  '#merge-conference', // Merge to conference button
-  '#exit-conference', // Exit conference button
+export const ACTIVE_CONSULT_CONTROL_TEST_IDS = [
+  'cancel-consult-btn',
+  'transfer-consult-btn',
+  'conference-consult-btn',
+  'switchToMainCall-consult-btn',
+  'call-control:switch-to-consult',
 ];
 
-/**
- * Checks if any control from the list is visible.
- * @param page - Playwright page
- * @param selectors - Array of CSS selectors (e.g., ['#end', '#transfer'])
- * @returns True if any control is visible
- */
 export async function hasAnyVisibleControlFromList(
   page: Page,
-  selectors: string[]
+  testIds: string[]
 ): Promise<boolean> {
-  for (const selector of selectors) {
-    if (await hasAnyVisibleControl(page, selector)) {
+  for (const testId of testIds) {
+    if (await hasAnyVisibleControl(page, testId)) {
       return true;
     }
   }
