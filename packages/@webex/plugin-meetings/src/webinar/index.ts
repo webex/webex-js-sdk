@@ -170,28 +170,15 @@ const Webinar = WebexPlugin.extend({
     }
 
     // @ts-ignore - Fix type
-    const {
-      url = undefined,
-      info: {practiceSessionDatachannelUrl = undefined} = {},
-      self: {practiceSessionDatachannelToken = undefined} = {},
-    } = meeting?.locusInfo || {};
+    const {url = undefined, info: {practiceSessionDatachannelUrl = undefined} = {}} =
+      meeting?.locusInfo || {};
 
     // @ts-ignore
-    const currentToken = this.webex.internal.llm.getDatachannelToken(
+    const practiceSessionDatachannelToken = this.webex.internal.llm.getDatachannelToken(
       DataChannelTokenType.PracticeSession
     );
 
-    const finalToken = currentToken ?? practiceSessionDatachannelToken;
-
     const isCaptionBoxOn = this.webex.internal.voicea.getIsCaptionBoxOn();
-
-    if (!currentToken && practiceSessionDatachannelToken) {
-      // @ts-ignore
-      this.webex.internal.llm.setDatachannelToken(
-        practiceSessionDatachannelToken,
-        DataChannelTokenType.PracticeSession
-      );
-    }
 
     if (!practiceSessionDatachannelUrl) {
       return undefined;
@@ -244,7 +231,12 @@ const Webinar = WebexPlugin.extend({
 
     // @ts-ignore - Fix type
     return this.webex.internal.llm
-      .registerAndConnect(url, practiceSessionDatachannelUrl, finalToken, LLM_PRACTICE_SESSION)
+      .registerAndConnect(
+        url,
+        practiceSessionDatachannelUrl,
+        practiceSessionDatachannelToken,
+        LLM_PRACTICE_SESSION
+      )
       .then((registerAndConnectResult) => {
         // @ts-ignore - Fix type
         this.webex.internal.llm.off(

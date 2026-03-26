@@ -244,7 +244,6 @@ describe('plugin-meetings', () => {
           locusInfo: {
             url: 'locus-url',
             info: {practiceSessionDatachannelUrl: 'dc-url'},
-            self: {practiceSessionDatachannelToken: 'ps-token'},
           },
         };
 
@@ -253,6 +252,12 @@ describe('plugin-meetings', () => {
         // Default session is connected by default; practice session is not
         webex.internal.llm.isConnected = sinon.stub().callsFake((sessionId) => {
           return sessionId !== LLM_PRACTICE_SESSION;
+        });
+
+        // Token is pre-saved into LLM by saveDataChannelToken
+        webex.internal.llm.getDatachannelToken = sinon.stub().callsFake((tokenType) => {
+          if (tokenType === DataChannelTokenType.PracticeSession) return 'ps-token';
+          return undefined;
         });
 
         // Ensure connect path is eligible
@@ -309,11 +314,6 @@ describe('plugin-meetings', () => {
       it('connects when eligible', async () => {
         const result = await webinar.updatePSDataChannel();
 
-        assert.calledOnceWithExactly(
-          webex.internal.llm.setDatachannelToken,
-          'ps-token',
-          DataChannelTokenType.PracticeSession
-        );
         assert.calledOnce(webex.internal.llm.registerAndConnect);
         assert.calledWith(
           webex.internal.llm.registerAndConnect,
@@ -326,8 +326,11 @@ describe('plugin-meetings', () => {
         assert.equal(result, 'REGISTER_AND_CONNECT_RESULT');
       });
 
-      it('uses cached token when available', async () => {
-        webex.internal.llm.getDatachannelToken.returns('cached-token');
+      it('uses token from LLM', async () => {
+        webex.internal.llm.getDatachannelToken = sinon.stub().callsFake((tokenType) => {
+          if (tokenType === DataChannelTokenType.PracticeSession) return 'cached-token';
+          return undefined;
+        });
 
         await webinar.updatePSDataChannel();
 
