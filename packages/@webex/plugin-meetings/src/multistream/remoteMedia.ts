@@ -118,9 +118,9 @@ export class RemoteMedia extends EventsScope {
 
   /**
    * Get the current size hint that would be used in media requests
-   * @returns {SizeHint | undefined} The size hint, or undefined if no size hint has been set
+   * @returns {SizeHint} The size hint
    */
-  public getSizeHint(): SizeHint | undefined {
+  public getSizeHint(): SizeHint {
     return this.sizeHint;
   }
 
