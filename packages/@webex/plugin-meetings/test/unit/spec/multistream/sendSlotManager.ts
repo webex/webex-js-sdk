@@ -1,7 +1,7 @@
 import 'jsdom-global/register';
 import SendSlotManager from '@webex/plugin-meetings/src/multistream/sendSlotManager';
 import { LocalStream, MediaType, MultistreamRoapMediaConnection, MediaCodecMimeType } from "@webex/internal-media-core";
-import {expect} from '@webex/test-helper-chai';
+import {assert, expect} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
@@ -37,13 +37,13 @@ describe('SendSlotsManager', () => {
         it('should create a slot for the given mediaType', () => {
             sendSlotsManager.createSlot(mediaConnection, mediaType);
 
-            expect(mediaConnection.createSendSlot.calledWith(mediaType, true)).to.be.true;
+            assert.calledWith(mediaConnection.createSendSlot, mediaType, true);
         });
 
         it('should create a slot for the given mediaType & active state', () => {
             sendSlotsManager.createSlot(mediaConnection, mediaType, false);
 
-            expect(mediaConnection.createSendSlot.calledWith(mediaType, false)).to.be.true;
+            assert.calledWith(mediaConnection.createSendSlot, mediaType, false);
         });
 
         it('should throw an error if a slot for the given mediaType already exists', () => {
@@ -94,7 +94,7 @@ describe('SendSlotsManager', () => {
 
             await sendSlotsManager.publishStream(mediaType, stream);
 
-            expect(slot.publishStream.calledWith(stream)).to.be.true;
+            assert.calledWith(slot.publishStream, stream);
         });
 
         it('should throw an error if a slot for the given mediaType does not exist', (done) => {
@@ -124,7 +124,7 @@ describe('SendSlotsManager', () => {
 
             await sendSlotsManager.unpublishStream(mediaType);
 
-            expect(slot.unpublishStream.called).to.be.true;
+            assert.called(slot.unpublishStream);
         });
 
         it('should throw an error if a slot for the given mediaType does not exist',(done) => {
@@ -155,7 +155,7 @@ describe('SendSlotsManager', () => {
 
       await sendSlotsManager.setNamedMediaGroups(mediaType, groups);
 
-      expect(slot.setNamedMediaGroups.calledWith(groups)).to.be.true;
+      assert.calledWith(slot.setNamedMediaGroups, groups);
     });
 
     it('should throw an error if the given mediaType is not audio', () => {
@@ -197,7 +197,7 @@ describe('SendSlotsManager', () => {
     describe('setCodecParameters', () => {
         let mediaConnection;
         const mediaType = MediaType.AudioMain;
-        const parameters = {};
+        const codecParameters = {};
 
         beforeEach(() => {
             mediaConnection = {
@@ -212,18 +212,18 @@ describe('SendSlotsManager', () => {
             mediaConnection.createSendSlot.returns(slot);
             sendSlotsManager.createSlot(mediaConnection, mediaType);
 
-            await sendSlotsManager.setCodecParameters(mediaType, parameters);
+            await sendSlotsManager.setCodecParameters(mediaType, codecParameters);
 
-            expect(slot.setCodecParameters.calledWith(parameters)).to.be.true;
-            expect(LoggerProxy.logger.warn.called).to.be.true;
-            expect((Metrics.sendBehavioralMetric as sinon.SinonStub).calledWith(
+            assert.calledWith(slot.setCodecParameters, codecParameters);
+            assert.called(LoggerProxy.logger.warn);
+            assert.calledWith(Metrics.sendBehavioralMetric as sinon.SinonStub,
                 BEHAVIORAL_METRICS.DEPRECATED_SET_CODEC_PARAMETERS_USED,
-                { mediaType, parameters }
-            )).to.be.true;
+                { mediaType, codecParameters }
+            );
         });
 
         it('should throw an error if a slot for the given mediaType does not exist', (done) => {
-            sendSlotsManager.setCodecParameters(mediaType, parameters).catch((error) => {
+            sendSlotsManager.setCodecParameters(mediaType, codecParameters).catch((error) => {
                 expect(error.message).to.equal(`Slot for ${mediaType} does not exist`);
                 done();
             });
@@ -249,12 +249,12 @@ describe('SendSlotsManager', () => {
 
             await sendSlotsManager.deleteCodecParameters(mediaType, []);
 
-            expect(slot.deleteCodecParameters.calledWith([])).to.be.true;
-            expect(LoggerProxy.logger.warn.called).to.be.true;
-            expect((Metrics.sendBehavioralMetric as sinon.SinonStub).calledWith(
+            assert.calledWith(slot.deleteCodecParameters, []);
+            assert.called(LoggerProxy.logger.warn);
+            assert.calledWith(Metrics.sendBehavioralMetric as sinon.SinonStub,
                 BEHAVIORAL_METRICS.DEPRECATED_DELETE_CODEC_PARAMETERS_USED,
                 { mediaType, parameters: [] }
-            )).to.be.true;
+            );
         });
 
         it('should throw an error if a slot for the given mediaType does not exist', (done) => {
@@ -286,12 +286,12 @@ describe('SendSlotsManager', () => {
 
             await sendSlotsManager.setCustomCodecParameters(mediaType, codecMimeType, parameters);
 
-            expect(slot.setCustomCodecParameters.calledWith(codecMimeType, parameters)).to.be.true;
-            expect(LoggerProxy.logger.info.called).to.be.true;
-            expect((Metrics.sendBehavioralMetric as sinon.SinonStub).calledWith(
+            assert.calledWith(slot.setCustomCodecParameters, codecMimeType, parameters);
+            assert.called(LoggerProxy.logger.info);
+            assert.calledWith(Metrics.sendBehavioralMetric as sinon.SinonStub,
                 BEHAVIORAL_METRICS.SET_CUSTOM_CODEC_PARAMETERS_USED,
                 { mediaType, codecMimeType, parameters }
-            )).to.be.true;
+            );
         });
 
         it('should throw an error if a slot for the given mediaType does not exist', (done) => {
@@ -323,12 +323,12 @@ describe('SendSlotsManager', () => {
 
             await sendSlotsManager.markCustomCodecParametersForDeletion(mediaType, codecMimeType, parameters);
 
-            expect(slot.markCustomCodecParametersForDeletion.calledWith(codecMimeType, parameters)).to.be.true;
-            expect(LoggerProxy.logger.info.called).to.be.true;
-            expect((Metrics.sendBehavioralMetric as sinon.SinonStub).calledWith(
+            assert.calledWith(slot.markCustomCodecParametersForDeletion, codecMimeType, parameters);
+            assert.called(LoggerProxy.logger.info);
+            assert.calledWith(Metrics.sendBehavioralMetric as sinon.SinonStub,
                 BEHAVIORAL_METRICS.MARK_CUSTOM_CODEC_PARAMETERS_FOR_DELETION_USED,
                 { mediaType, codecMimeType, parameters }
-            )).to.be.true;
+            );
         });
 
         it('should throw an error if a slot for the given mediaType does not exist', (done) => {

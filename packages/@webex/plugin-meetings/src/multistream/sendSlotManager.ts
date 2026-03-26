@@ -214,12 +214,14 @@ export default class SendSlotManager {
    *
    * This method is used to set the codec parameters for the sendSlot of the given mediaType
    * @param {MediaType} mediaType MediaType of the sendSlot for which the codec parameters needs to be set (AUDIO_MAIN/VIDEO_MAIN/AUDIO_SLIDES/VIDEO_SLIDES)
-   * @param {CodecParameters} parameters Key-value pairs of codec parameters to set
+   * @param {Object} codecParameters
    * @returns {Promise<void>}
    */
   public async setCodecParameters(
     mediaType: MediaType,
-    parameters: CodecParameters
+    codecParameters: {
+      [key: string]: string | undefined; // As per ts-sdp undefined is considered as a valid value to be used for codec parameters
+    }
   ): Promise<void> {
     const slot = this.slots.get(mediaType);
 
@@ -227,7 +229,7 @@ export default class SendSlotManager {
       throw new Error(`Slot for ${mediaType} does not exist`);
     }
 
-    await slot.setCodecParameters(parameters);
+    await slot.setCodecParameters(codecParameters);
 
     this.LoggerProxy.logger.warn(
       'SendSlotsManager->setCodecParameters --> [DEPRECATION WARNING]: setCodecParameters has been deprecated, use setCustomCodecParameters instead'
@@ -235,7 +237,7 @@ export default class SendSlotManager {
 
     Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DEPRECATED_SET_CODEC_PARAMETERS_USED, {
       mediaType,
-      parameters,
+      codecParameters,
     });
   }
 
@@ -269,7 +271,7 @@ export default class SendSlotManager {
   /**
    * Sets custom codec parameters for the sendSlot of the given mediaType, scoped to a specific codec MIME type.
    * Delegates to WCME's setCustomCodecParameters API.
-   * @param {MediaType} mediaType MediaType of the sendSlot (AUDIO_MAIN/VIDEO_MAIN/AUDIO_SLIDES/VIDEO_SLIDES)
+   * @param {MediaType} mediaType MediaType of the sendSlot
    * @param {MediaCodecMimeType} codecMimeType The codec MIME type to apply parameters to (e.g. OPUS, H264, AV1)
    * @param {CodecParameters} parameters Key-value pairs of codec parameters to set
    * @returns {Promise<void>}
@@ -303,7 +305,7 @@ export default class SendSlotManager {
   /**
    * Marks custom codec parameters for deletion on the sendSlot of the given mediaType, scoped to a specific codec MIME type.
    * Delegates to WCME's markCustomCodecParametersForDeletion API.
-   * @param {MediaType} mediaType MediaType of the sendSlot (AUDIO_MAIN/VIDEO_MAIN/AUDIO_SLIDES/VIDEO_SLIDES)
+   * @param {MediaType} mediaType MediaType of the sendSlot
    * @param {MediaCodecMimeType} codecMimeType The codec MIME type whose parameters should be deleted (e.g. OPUS, H264, AV1)
    * @param {string[]} parameters Array of parameter keys to delete
    * @returns {Promise<void>}
