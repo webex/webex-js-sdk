@@ -52,7 +52,7 @@ export const SELECTORS = {
   GUEST_CONTAINER: '#guest-container',
   JWT_TOKEN_FOR_DEST: '#jwt-token-for-dest',
   GUEST_NAME: '#guest-name',
-  GENERATE_GUEST_TOKEN_BTN: 'button:has-text("Generate Guest Token")',
+  GENERATE_GUEST_TOKEN_BTN: '#generate-guest-token',
 
   // Call info
   CALL_OBJECT: '#call-object',

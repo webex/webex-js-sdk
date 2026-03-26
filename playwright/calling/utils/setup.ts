@@ -6,6 +6,7 @@ import {
   SDK_INIT_TIMEOUT,
   ServiceIndicator,
 } from './constants';
+import {registerLine, verifyLineRegistered} from './registration';
 
 /**
  * Navigate to the calling sample app
@@ -80,8 +81,6 @@ export const initAndRegister = async (
   accessToken: string,
   options: {registerLine?: boolean; service?: ServiceIndicator} = {}
 ): Promise<void> => {
-  const {registerLine, verifyLineRegistered} = await import('./registration');
-
   await navigateToCallingApp(page);
   if (options.service) {
     await setServiceIndicator(page, options.service);

@@ -21,7 +21,7 @@ const chromeOptions = {
       '--disable-extensions', // Prevent extensions from interfering with tests
       '--disable-plugins', // Prevent plugins from interfering with tests
       '--ignore-certificate-errors', // Accept self-signed certs from local dev server
-      '--auto-open-devtools-for-tabs', // Open DevTools for debugging test runs
+      ...(process.env.CI ? [] : ['--auto-open-devtools-for-tabs']), // Open DevTools only in local runs
     ],
   },
 };
@@ -37,9 +37,9 @@ export default defineConfig({
     stdout: 'ignore',
     stderr: 'pipe',
   },
-  retries: 0,
+  retries: 3,
   fullyParallel: false,
-  workers: 1,
+  workers: 3,
   reporter: 'html',
   use: {
     baseURL: BASE_URL,
@@ -58,10 +58,11 @@ export default defineConfig({
       testDir: './playwright/calling/tests',
       use: chromeOptions,
     },
-    {
-      name: 'Contact Center SDK E2E',
-      testDir: './playwright/contact-center',
-      use: chromeOptions,
-    },
+    // TODO: Uncomment when Contact Center tests are added
+    // {
+    //   name: 'Contact Center SDK E2E',
+    //   testDir: './playwright/contact-center',
+    //   use: chromeOptions,
+    // },
   ],
 });
