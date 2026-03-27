@@ -1110,7 +1110,7 @@ export type TaskData = {
   agentsPendingWrapUp?: string[];
 };
 
-type TaskUIControlState = {
+export type TaskUIControlState = {
   isVisible: boolean;
   isEnabled: boolean;
 };
@@ -1560,6 +1560,13 @@ export interface ITask extends EventEmitter {
   autoWrapup?: AutoWrapup;
 
   /**
+   * Latest UI controls derived from the state machine.
+   * Each control has `isVisible` and `isEnabled` flags computed from current task state.
+   * Subscribe to {@link TASK_EVENTS.TASK_UI_CONTROLS_UPDATED} for change notifications.
+   */
+  readonly uiControls: TaskUIControls;
+
+  /**
    * State machine instance for managing task state transitions and derived properties.
    * The state machine handles:
    * - State transitions (IDLE → OFFERED → CONNECTED → HELD, etc.)
@@ -1798,11 +1805,6 @@ export interface ITask extends EventEmitter {
  * @public
  */
 export interface IDigital extends Omit<ITask, 'updateTaskData'> {
-  /**
-   * UI controls configuration
-   */
-  uiControls: TaskUIControls;
-
   /**
    * Updates the task data
    * @param newData - Updated task data

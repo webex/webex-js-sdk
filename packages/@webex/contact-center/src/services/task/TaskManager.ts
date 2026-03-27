@@ -359,6 +359,11 @@ export default class TaskManager extends EventEmitter {
       const eventContext = this.prepareEventContext(message);
       if (!eventContext) return;
 
+      if (eventContext.eventType === CC_EVENTS.REAL_TIME_TRANSCRIPTION) {
+        eventContext.task?.emit(CC_EVENTS.REAL_TIME_TRANSCRIPTION, eventContext.payload);
+
+        return;
+      }
       const actions = this.handleTaskLifecycleEvent(eventContext);
 
       const {task} = actions;
@@ -424,7 +429,10 @@ export default class TaskManager extends EventEmitter {
       return null;
     }
 
-    const interactionId = message.data.interactionId;
+    const interactionId =
+      eventType === CC_EVENTS.REAL_TIME_TRANSCRIPTION
+        ? message.data.data.conversationId
+        : message.data.interactionId;
     const task = this.taskCollection[interactionId];
 
     const wasConsultedTask = Boolean(task?.data?.isConsulted);
