@@ -27,6 +27,7 @@ export {default as Task} from './services/task/Task';
 
 // API exports (AddressBook is public, EntryPoint and Queue are accessed via cc wrappers)
 export {default as AddressBook} from './services/AddressBook';
+export {default as ApiAIAssistant} from './services/ApiAiAssistant';
 
 /** EntryPoint API types */
 export type {

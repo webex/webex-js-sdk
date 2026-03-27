@@ -305,6 +305,30 @@
           </div>
         </fieldset>
       </div>
+      <div id="realtimeTranscriptsSection">
+        <fieldset>
+          <legend>Conversation</legend>
+          <div class="transcript-card">
+            <div class="transcript-tabs" role="tablist" aria-label="Transcript tabs">
+              <button id="transcript-tab-ivr" class="transcript-tab" type="button" role="tab" aria-selected="false">
+                IVR transcript
+              </button>
+              <button id="transcript-tab-live" class="transcript-tab active" type="button" role="tab" aria-selected="true">
+                Live transcript
+              </button>
+              <button id="clear-transcripts" type="button" class="btn btn-secondary transcript-clear-btn">Clear</button>
+            </div>
+            <div id="transcript-ivr-pane" class="transcript-pane hidden">
+              <div class="transcript-empty">No IVR transcript available.</div>
+            </div>
+            <div id="transcript-live-pane" class="transcript-pane">
+              <div id="realtime-transcripts-content" class="transcript-list">
+                <div class="transcript-empty">No live transcript received.</div>
+              </div>
+            </div>
+          </div>
+        </fieldset>
+      </div>
     </section>
   </div>
   </div>
@@ -327,31 +351,6 @@
       <button id="closeOutdialFailedPopup" class="btn btn-primary my-3" onclick="closeOutdialFailedPopup()">Close</button>
     </div>
   </div>
-
-  <style>
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .modal-content {
-      background-color: white;
-      padding: 20px;
-      border-radius: 5px;
-      text-align: center;
-    }
-
-    .hidden {
-      display: none;
-    }
-  </style>
   <script>
     let AGENTX_SERVICE = {}; // this is needed to avoid errors in engage widgets
   </script>

@@ -15,19 +15,21 @@ import {
   EventContext,
 } from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
-import {METHODS} from './constants';
+import {METHODS, TRANSCRIPT_EVENT_MAP} from './constants';
 import {CC_EVENTS, WrapupData} from '../config/types';
-import {ConfigFlags, LoginOption} from '../../types';
+import {ConfigFlags, LoginOption, AIAssistantEventType, AIAssistantEventName} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import {getIsConferenceInProgress, isSecondaryEpDnAgent, shouldAutoAnswerTask} from './TaskUtils';
 import TaskFactory from './TaskFactory';
 import WebRTC from './voice/WebRTC';
 import {TaskEvent, type TaskEventPayload} from './state-machine';
 import {normalizeTaskData} from './taskDataNormalizer';
+import {ApiAIAssistant} from '../ApiAiAssistant';
 
 const CC_EVENT_SET = new Set<CC_EVENTS>(Object.values(CC_EVENTS) as CC_EVENTS[]);
 
 const isCcEvent = (value: string): value is CC_EVENTS => CC_EVENT_SET.has(value as CC_EVENTS);
+
 /** @internal */
 export default class TaskManager extends EventEmitter {
   private call: ICall;
@@ -46,17 +48,20 @@ export default class TaskManager extends EventEmitter {
   private wrapupData: WrapupData;
   private agentId: string;
   private webRtcEnabled: boolean;
+  private apiAIAssistant?: ApiAIAssistant;
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
    * @param webCallingService - Webrtc Service Layer
    * @param webSocketManager - Websocket Manager to maintain websocket connection and keepalives
    */
   constructor(
+    apiAIAssistant: ApiAIAssistant,
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     webSocketManager: WebSocketManager
   ) {
     super();
+    this.apiAIAssistant = apiAIAssistant;
     this.contact = contact;
     this.webCallingService = webCallingService;
     this.webSocketManager = webSocketManager;
@@ -320,7 +325,11 @@ export default class TaskManager extends EventEmitter {
       const eventContext = this.prepareEventContext(message);
       if (!eventContext) return;
 
-      // Step 3: Handle event lifecycle and get actions to perform
+      if (eventContext.eventType === CC_EVENTS.REAL_TIME_TRANSCRIPTION) {
+        eventContext.task?.emit(CC_EVENTS.REAL_TIME_TRANSCRIPTION, eventContext.payload);
+
+        return;
+      }
       const actions = this.handleTaskLifecycleEvent(eventContext);
 
       const {task} = actions;
@@ -339,6 +348,9 @@ export default class TaskManager extends EventEmitter {
       if (stateMachineEvent) {
         task.sendStateMachineEvent(stateMachineEvent);
       }
+
+      // Send transcript start/stop events for relevant CC events
+      this.requestRealTimeTranscripts(eventContext.eventType, payload.interactionId);
     });
   }
 
@@ -377,13 +389,16 @@ export default class TaskManager extends EventEmitter {
    * @returns Event context or null if event type is invalid
    */
   private prepareEventContext(message: WebSocketMessage): EventContext | null {
-    const eventType = message.data?.type;
+    const eventType = message.data?.type || message.type;
 
     if (!eventType || !isCcEvent(eventType)) {
       return null;
     }
 
-    const interactionId = message.data.interactionId;
+    const interactionId =
+      eventType === CC_EVENTS.REAL_TIME_TRANSCRIPTION
+        ? message.data.data.conversationId
+        : message.data.interactionId;
     const task = this.taskCollection[interactionId];
 
     const wasConsultedTask = Boolean(task?.data?.isConsulted);
@@ -407,6 +422,7 @@ export default class TaskManager extends EventEmitter {
             wrapUpRequired: computeWrapUpRequired(),
           }
         : message.data;
+
     const stateMachineEvent = TaskManager.mapEventToTaskStateMachineEvent(
       eventType,
       adjustedPayload,
@@ -416,7 +432,7 @@ export default class TaskManager extends EventEmitter {
     LoggerProxy.info(`Handling task event ${eventType}`, {
       module: TASK_MANAGER_FILE,
       method: 'prepareEventContext',
-      interactionId: message.data?.interactionId,
+      interactionId,
     });
 
     return {
@@ -678,6 +694,33 @@ export default class TaskManager extends EventEmitter {
     }
   }
 
+  /**
+   * Sends transcript start/stop event based on the CC event type.
+   * Fire-and-forget; errors are logged but do not interrupt event processing.
+   */
+  private requestRealTimeTranscripts(eventType: string, interactionId: string): void {
+    const action = TRANSCRIPT_EVENT_MAP[eventType];
+    if (!action || !this.apiAIAssistant) return;
+    if (this.configFlags?.aiFeature?.realtimeTranscripts?.enable === false) return;
+
+    this.apiAIAssistant
+      .sendEvent(
+        this.agentId,
+        interactionId,
+        AIAssistantEventType.CUSTOM_EVENT,
+        AIAssistantEventName.GET_TRANSCRIPTS,
+        action
+      )
+      .catch((error) => {
+        LoggerProxy.error(`Failed to send transcript ${action} event`, {
+          module: TASK_MANAGER_FILE,
+          method: METHODS.REQUEST_REAL_TIME_TRANSCRIPTS,
+          interactionId,
+          error,
+        });
+      });
+  }
+
   public getTask(taskId: TaskId): ITask {
     return this.taskCollection[taskId];
   }
@@ -687,12 +730,18 @@ export default class TaskManager extends EventEmitter {
   }
 
   public static getTaskManager(
+    apiAIAssistant: ApiAIAssistant,
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     webSocketManager: WebSocketManager
   ): TaskManager {
     if (!TaskManager.taskManager) {
-      TaskManager.taskManager = new TaskManager(contact, webCallingService, webSocketManager);
+      TaskManager.taskManager = new TaskManager(
+        apiAIAssistant,
+        contact,
+        webCallingService,
+        webSocketManager
+      );
     }
 
     return TaskManager.taskManager;

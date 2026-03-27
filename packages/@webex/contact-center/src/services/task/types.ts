@@ -963,6 +963,26 @@ export type Interaction = {
  * for UI/state machine updates.
  * @public
  */
+export type RealtimeTranscription = {
+  agentId: string;
+  orgId: string;
+  notifType: string;
+  notifDetails: {
+    actionEvent: string;
+  };
+  data: {
+    role: 'AGENT' | 'CALLER';
+    utteranceId: string;
+    conversationId: string;
+    publishTimestamp: number;
+    messageId: string;
+    isFinal: boolean;
+    languageCode: string;
+    orgId: string;
+    content: string;
+  };
+};
+
 export type TaskData = {
   /** Primary media resource identifier for the active leg (matches interaction.media[].mediaResourceId) */
   mediaResourceId: string;
@@ -1871,10 +1891,16 @@ export type WebSocketPayload = TaskData & {
   type: string;
   mediaResourceId?: string;
   reason?: string;
+  /**
+   * Optional real-time transcript chunk payload.
+   * Present on REAL_TIME_TRANSCRIPTION notifications.
+   */
+  data?: RealtimeTranscription['data'];
 };
 
 export type WebSocketMessage = {
   keepalive?: 'true' | 'false' | boolean;
+  type?: string;
   data: WebSocketPayload;
 };
 

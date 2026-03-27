@@ -162,6 +162,13 @@ export const METRIC_EVENT_NAMES = {
   // Outdial ANI Entries API Events
   OUTDIAL_ANI_EP_FETCH_SUCCESS: 'Outdial ANI Entries Fetch Success',
   OUTDIAL_ANI_EP_FETCH_FAILED: 'Outdial ANI Entries Fetch Failed',
+
+  // AI Assistant events
+  AI_ASSISTANT_SEND_EVENT_SUCCESS: 'AI Assistant Send Event Success',
+  AI_ASSISTANT_SEND_EVENT_FAILED: 'AI Assistant Send Event Failed',
+  AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS:
+    'AI Assistant Fetch Historic Transcripts Success',
+  AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED: 'AI Assistant Fetch Historic Transcripts Failed',
 } as const;
 
 /**
