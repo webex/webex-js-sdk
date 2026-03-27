@@ -87,18 +87,18 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
    */
   getWCMECodecInfos(mr: MediaRequest): WcmeCodecInfo[] {
     return [
-      ...mr.codecInfos.map((codecInfo) =>
-        WcmeCodecInfo.fromH264(
+      ...mr.codecInfos.map((codecInfo) => {
+        return WcmeCodecInfo.fromH264(
           0x80, // TODO: Fix this constant
           new H264Codec(
             codecInfo.maxFs,
             codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
-            codecInfo.maxMbps || CODEC_DEFAULTS.h264.maxMbps,
+            this.getMaxMbps(codecInfo),
             codecInfo.maxWidth,
             codecInfo.maxHeight
           )
-        )
-      ),
+        );
+      }),
     ];
   }
 
@@ -121,6 +121,22 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
     }
 
     return H264_CODEC_PARAMETERS[resolution].maxFs;
+  }
+
+  /**
+   * Returns the max Macro Blocks per second (maxMbps) per H264 Stream
+   *
+   * The maxMbps will be calculated based on maxFs and maxFps
+   * (default h264 maxFps as fallback if maxFps is not defined)
+   *
+   * @param {H264CodecInfo} codecInfo - The codec info to get the max Mbps for
+   * @returns {number} maxMbps
+   */
+  getMaxMbps(codecInfo: H264CodecInfo): number {
+    const maxFps = codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps;
+
+    // divided by 100 since maxFps is 3000 (for 30 frames per seconds)
+    return (codecInfo.maxFs * maxFps) / 100;
   }
 
   /**
