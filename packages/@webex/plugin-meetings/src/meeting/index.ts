@@ -9602,6 +9602,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.annotation.deregisterEvents();
 
+    // @ts-ignore - Fix type
+    this.webex.internal.llm.resetDatachannelTokens();
     await this.cleanupLLMConneciton({throwOnError: false});
   };
 
