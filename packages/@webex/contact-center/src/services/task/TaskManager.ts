@@ -605,7 +605,19 @@ export default class TaskManager extends EventEmitter {
             break;
         }
         if (task) {
-          task.emit(payload.data.type, payload.data);
+          const eventType = payload.type || payload.data.type;
+          const eventPayload = payload.data || payload.data.data;
+
+          task.emit(eventType, eventPayload);
+        }
+
+        const transcriptInteractionId =
+          payload.data?.interactionId ||
+          payload.data?.data?.conversationId ||
+          task?.data?.interactionId;
+
+        if (TRANSCRIPT_EVENT_MAP[payload.data.type] && transcriptInteractionId) {
+          this.requestRealTimeTranscripts(payload.data.type, transcriptInteractionId);
         }
 
         const transcriptInteractionId =
