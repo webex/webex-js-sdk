@@ -11,6 +11,7 @@ import {
   NamedMediaGroup,
   AV1Codec,
   SupportedResolution,
+  AV1EncodingParams,
 } from '@webex/internal-media-core';
 import {cloneDeepWith, debounce} from 'lodash';
 
@@ -194,12 +195,12 @@ export class MediaRequestManager {
   }
 
   /**
-   * Returns the max decode rate for an AV1 stream
-   * @param {MediaRequest} mediaRequest - The media request to get the max decode rate for
-   * @returns {number} The max decode rate
+   * Returns the AV1 encoding parameters for a media request
+   * @param mediaRequest - The media request to get the AV1 encoding parameters for
+   * @returns {AV1EncodingParams} The AV1 encoding parameters
    */
   // eslint-disable-next-line class-methods-use-this
-  private getAv1MaxDecodeRate(mediaRequest: MediaRequest): number {
+  private getAv1EncodingParams(mediaRequest: MediaRequest): AV1EncodingParams {
     const frameSize = mediaRequest.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs;
     let resolution: SupportedResolution;
 
@@ -217,7 +218,7 @@ export class MediaRequestManager {
       resolution = '1080p';
     }
 
-    return AV1_CODEC_PARAMETERS[resolution].maxDecodeRate;
+    return AV1_CODEC_PARAMETERS[resolution];
   }
 
   /** Modifies the passed in clientRequests and makes sure that in total they don't ask
@@ -320,6 +321,36 @@ export class MediaRequestManager {
     // map all the client media requests to wcme stream requests
     Object.values(clientRequests).forEach((mr) => {
       if (mr.receiveSlots.length > 0) {
+        const codecInfos: WcmeCodecInfo[] = [];
+
+        if (mr.codecInfo) {
+          const h264CodecInfo = WcmeCodecInfo.fromH264(
+            0x80,
+            new H264Codec(
+              mr.codecInfo.maxFs,
+              mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
+              this.getH264MaxMbps(mr),
+              mr.codecInfo.maxWidth,
+              mr.codecInfo.maxHeight
+            )
+          );
+          codecInfos.push(h264CodecInfo);
+
+          const av1EncodingParams = this.getAv1EncodingParams(mr);
+          const av1CodecInfo = WcmeCodecInfo.fromAv1(
+            45,
+            new AV1Codec(
+              av1EncodingParams.levelIdx,
+              av1EncodingParams.tier,
+              av1EncodingParams.maxWidth,
+              av1EncodingParams.maxHeight,
+              av1EncodingParams.maxPicSize,
+              av1EncodingParams.maxDecodeRate
+            )
+          );
+          codecInfos.push(av1CodecInfo);
+        }
+
         streamRequests.push(
           new StreamRequest(
             mr.policyInfo.policy === 'active-speaker'
@@ -336,29 +367,7 @@ export class MediaRequestManager {
               : new ReceiverSelectedInfo(mr.policyInfo.csi),
             mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot),
             this.getMaxPayloadBitsPerSecond(mr),
-            mr.codecInfo && [
-              WcmeCodecInfo.fromH264(
-                0x80,
-                new H264Codec(
-                  mr.codecInfo.maxFs,
-                  mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
-                  this.getH264MaxMbps(mr),
-                  mr.codecInfo.maxWidth,
-                  mr.codecInfo.maxHeight
-                )
-              ),
-              WcmeCodecInfo.fromAv1(
-                45,
-                new AV1Codec(
-                  CODEC_DEFAULTS.av1.levelIdx,
-                  CODEC_DEFAULTS.av1.tier,
-                  mr.codecInfo.maxWidth,
-                  mr.codecInfo.maxHeight,
-                  mr.codecInfo.maxFs * MACROBLOCK_SIZE || CODEC_DEFAULTS.av1.maxPicSize,
-                  this.getAv1MaxDecodeRate(mr)
-                )
-              ),
-            ]
+            codecInfos
           )
         );
       }
