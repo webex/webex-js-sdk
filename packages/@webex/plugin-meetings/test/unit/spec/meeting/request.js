@@ -924,7 +924,14 @@ describe('plugin-meetings', () => {
     const locusUrl = 'https://locus.example.com/locus/api/v1/loci/123';
     const participantId = 'participant-123';
 
+    beforeEach(() => {
+      sinon.restore();
+      locusDeltaRequestSpy = sinon.stub(meetingsRequest, 'locusDeltaRequest');
+    });
+
     it('sends GET request to regular datachannel token endpoint', async () => {
+      locusDeltaRequestSpy.resolves({body: {}});
+
       await meetingsRequest.fetchDatachannelToken({
         locusUrl,
         requestingParticipantId: participantId,
@@ -938,6 +945,8 @@ describe('plugin-meetings', () => {
     });
 
     it('sends GET request to practice session datachannel token endpoint', async () => {
+      locusDeltaRequestSpy.resolves({body: {}});
+
       await meetingsRequest.fetchDatachannelToken({
         locusUrl,
         requestingParticipantId: participantId,
@@ -950,7 +959,7 @@ describe('plugin-meetings', () => {
       });
     });
 
-    it('throws if locusUrl or participantId is missing', async () => {
+    it('rejects when locusUrl or participantId is missing', async () => {
       await assert.isRejected(
         meetingsRequest.fetchDatachannelToken({
           locusUrl: null,
@@ -968,18 +977,15 @@ describe('plugin-meetings', () => {
       );
     });
 
-    it('logs and rethrows error when locusDeltaRequest fails', async () => {
-      const error = new Error('network error');
-      locusDeltaRequestSpy.restore();
-      sinon.stub(meetingsRequest, 'locusDeltaRequest').rejects(error);
+    it('returns null when locusDeltaRequest fails', async () => {
+      locusDeltaRequestSpy.rejects(new Error('network error'));
 
-      await assert.isRejected(
-        meetingsRequest.fetchDatachannelToken({
-          locusUrl,
-          requestingParticipantId: participantId,
-        }),
-        /network error/
-      );
+      const result = await meetingsRequest.fetchDatachannelToken({
+        locusUrl,
+        requestingParticipantId: participantId,
+      });
+
+      assert.equal(result, null);
     });
   });
 });

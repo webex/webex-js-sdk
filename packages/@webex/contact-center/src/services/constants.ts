@@ -109,3 +109,24 @@ export const METHODS = {
   MAP_CALL_TO_TASK: 'mapCallToTask',
   GET_TASK_ID_FOR_CALL: 'getTaskIdForCall',
 };
+
+export const AI_ASSISTANT_API_URLS = {
+  EVENT: '/event',
+  TRANSCRIPTS_LIST: '/transcripts/list',
+};
+
+export const AI_ASSISTANT_BASE_URL_TEMPLATE = 'https://api-ai-assistant.%s.ciscoccservice.com';
+
+export const AI_ASSISTANT_ENV_MAP: Record<string, string> = {
+  'api.intgus1.ciscoccservice.com': 'intgus1',
+  'api.qaus1.ciscoccservice.com': 'qaus1',
+  'api.wxcc-us1.cisco.com': 'produs1',
+  'api.wxcc-eu1.cisco.com': 'prodeu1',
+  'api.wxcc-eu2.cisco.com': 'prodeu2',
+  'api.wxcc-anz1.cisco.com': 'prodanz1',
+  'api.wxcc-ca1.cisco.com': 'prodca1',
+  'api.wxcc-jp1.cisco.com': 'prodjp1',
+  'api.wxcc-sg1.cisco.com': 'prodsg1',
+  'api.wxcc-in1.cisco.com': 'prodin1',
+  'api.loadus1.cisco.com': 'loadus1',
+};
