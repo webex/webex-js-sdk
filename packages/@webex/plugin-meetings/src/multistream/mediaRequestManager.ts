@@ -10,6 +10,7 @@ import {
   RecommendedOpusBitrates,
   NamedMediaGroup,
   AV1Codec,
+  SupportedResolution,
 } from '@webex/internal-media-core';
 import {cloneDeepWith, debounce} from 'lodash';
 
@@ -18,7 +19,6 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import {ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
 import {MAX_FS_VALUES} from './remoteMedia';
 import {AV1_CODEC_PARAMETERS, CODEC_DEFAULTS, MACROBLOCK_SIZE} from './codec/constants';
-import getResolutionForFrameSize from './codec/helper';
 
 export interface ActiveSpeakerPolicyInfo {
   policy: 'active-speaker';
@@ -45,7 +45,7 @@ export interface H264CodecInfo {
   maxHeight?: number;
 }
 
-export type CodecInfo = H264CodecInfo;
+export type CodecInfo = H264CodecInfo; // we'll add AV1 here in the future when it's available
 
 export interface MediaRequest {
   policyInfo: PolicyInfo;
@@ -200,7 +200,22 @@ export class MediaRequestManager {
    */
   // eslint-disable-next-line class-methods-use-this
   private getAv1MaxDecodeRate(mediaRequest: MediaRequest): number {
-    const resolution = getResolutionForFrameSize(mediaRequest.codecInfo.maxFs);
+    const frameSize = mediaRequest.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs;
+    let resolution: SupportedResolution;
+
+    if (frameSize <= MAX_FS_VALUES['90p']) {
+      resolution = '90p';
+    } else if (frameSize <= MAX_FS_VALUES['180p']) {
+      resolution = '180p';
+    } else if (frameSize <= MAX_FS_VALUES['360p']) {
+      resolution = '360p';
+    } else if (frameSize <= MAX_FS_VALUES['540p']) {
+      resolution = '540p';
+    } else if (frameSize <= MAX_FS_VALUES['720p']) {
+      resolution = '720p';
+    } else {
+      resolution = '1080p';
+    }
 
     return AV1_CODEC_PARAMETERS[resolution].maxDecodeRate;
   }
