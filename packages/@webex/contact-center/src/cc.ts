@@ -39,7 +39,7 @@ import {
   METHODS,
 } from './constants';
 import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
-import {AGENT, RTD_SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
+import {AGENT, RTD_SUBSCRIBE_API, SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
@@ -739,6 +739,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     try {
       const data = (await this.services.webSocketManager.initWebSocket({
         body: this.getConnectionConfig(),
+        resource: SUBSCRIBE_API,
       })) as WelcomeEvent;
 
       const agentId = data.agentId;
@@ -757,14 +758,29 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.apiAIAssistant.setAIFeatureFlags(this.agentConfig.aiFeature);
 
       if (this.agentConfig.aiFeature?.realtimeTranscripts?.enable) {
-        try {
-          await this.connectRTDWebsocket();
-        } catch (error) {
-          LoggerProxy.error(`Error during RTD websocket setup: ${error}`, {
-            module: CC_FILE,
-            method: METHODS.CONNECT_WEBSOCKET,
+        LoggerProxy.info('Connecting to RTD websocket', {
+          module: CC_FILE,
+          method: METHODS.CONNECT_WEBSOCKET,
+        });
+
+        await this.services.rtdWebSocketManager
+          .initWebSocket({
+            body: this.getConnectionConfig(),
+            resource: RTD_SUBSCRIBE_API,
+          })
+          .then(() => {
+            LoggerProxy.log('RTD websocket connected successfully', {
+              module: CC_FILE,
+              method: METHODS.CONNECT_WEBSOCKET,
+            });
+            this.services.rtdWebSocketManager.on('message', this.handleRTDWebsocketMessage);
+          })
+          .catch((error) => {
+            LoggerProxy.error(`Error during RTD websocket setup: ${error}`, {
+              module: CC_FILE,
+              method: METHODS.CONNECT_WEBSOCKET,
+            });
           });
-        }
       }
 
       if (
@@ -798,20 +814,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       throw error;
     }
-  }
-
-  private async connectRTDWebsocket(): Promise<void> {
-    LoggerProxy.info('Connecting to RTD websocket', {
-      module: CC_FILE,
-      method: METHODS.CONNECT_WEBSOCKET,
-    });
-
-    await this.services.rtdWebSocketManager.initWebSocket({
-      body: this.getConnectionConfig(),
-      resource: RTD_SUBSCRIBE_API,
-    });
-
-    this.services.rtdWebSocketManager.on('message', this.handleRTDWebsocketMessage);
   }
 
   /**

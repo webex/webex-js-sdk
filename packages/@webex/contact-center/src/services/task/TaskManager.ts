@@ -616,15 +616,6 @@ export default class TaskManager extends EventEmitter {
         if (TRANSCRIPT_EVENT_MAP[payload.data.type] && transcriptInteractionId) {
           this.requestRealTimeTranscripts(payload.data.type, transcriptInteractionId);
         }
-
-        const transcriptInteractionId =
-          payload.data?.interactionId ||
-          payload.data?.data?.conversationId ||
-          task?.data?.interactionId;
-
-        if (TRANSCRIPT_EVENT_MAP[payload.data.type] && transcriptInteractionId) {
-          this.requestRealTimeTranscripts(payload.data.type, transcriptInteractionId);
-        }
       }
     });
   }
