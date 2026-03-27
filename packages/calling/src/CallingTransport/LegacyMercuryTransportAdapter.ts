@@ -9,17 +9,10 @@ import {
 import {WebexRequestPayload} from '../common/types';
 import {WebexSDK} from '../SDKConnector/types';
 
-type ConnectionStateHandlerRegistry = {
-  handlers: Set<CallingTransportConnectionStateChangeHandler>;
-  mercuryOfflineListener: () => void;
-  mercuryOnlineListener: () => void;
-};
-
 export default class LegacyMercuryTransportAdapter implements ICallingTransportAdapter {
-  private readonly connectionStateHandlers = new WeakMap<
-    WebexSDK,
-    ConnectionStateHandlerRegistry
-  >();
+  private offlineHandler?: () => void;
+
+  private onlineHandler?: () => void;
 
   public request<T>(webex: WebexSDK, request: WebexRequestPayload): Promise<T> {
     return webex.request(request);
@@ -43,59 +36,32 @@ export default class LegacyMercuryTransportAdapter implements ICallingTransportA
     webex: WebexSDK,
     handler: CallingTransportConnectionStateChangeHandler
   ): void {
-    let registry = this.connectionStateHandlers.get(webex);
+    this.offlineHandler = () => {
+      handler({
+        source: CallingTransportConnectionSource.MERCURY,
+        state: CallingTransportConnectionState.OFFLINE,
+      });
+    };
 
-    if (!registry) {
-      const handlers = new Set<CallingTransportConnectionStateChangeHandler>();
+    this.onlineHandler = () => {
+      handler({
+        source: CallingTransportConnectionSource.MERCURY,
+        state: CallingTransportConnectionState.ONLINE,
+      });
+    };
 
-      registry = {
-        handlers,
-        mercuryOfflineListener: () => {
-          handlers.forEach((registeredHandler) => {
-            registeredHandler({
-              source: CallingTransportConnectionSource.MERCURY,
-              state: CallingTransportConnectionState.OFFLINE,
-            });
-          });
-        },
-        mercuryOnlineListener: () => {
-          handlers.forEach((registeredHandler) => {
-            registeredHandler({
-              source: CallingTransportConnectionSource.MERCURY,
-              state: CallingTransportConnectionState.ONLINE,
-            });
-          });
-        },
-      };
-
-      this.connectionStateHandlers.set(webex, registry);
-      webex.internal.mercury.on('offline', registry.mercuryOfflineListener);
-      webex.internal.mercury.on('online', registry.mercuryOnlineListener);
-    }
-
-    registry.handlers.add(handler);
+    webex.internal.mercury.on('offline', this.offlineHandler);
+    webex.internal.mercury.on('online', this.onlineHandler);
   }
 
-  public offConnectionStateChange(
-    webex: WebexSDK,
-    handler?: CallingTransportConnectionStateChangeHandler
-  ): void {
-    const registry = this.connectionStateHandlers.get(webex);
-
-    if (!registry) {
-      return;
+  public offConnectionStateChange(webex: WebexSDK): void {
+    if (this.offlineHandler) {
+      webex.internal.mercury.off('offline', this.offlineHandler);
     }
-
-    if (handler) {
-      registry.handlers.delete(handler);
-    } else {
-      registry.handlers.clear();
+    if (this.onlineHandler) {
+      webex.internal.mercury.off('online', this.onlineHandler);
     }
-
-    if (registry.handlers.size === 0) {
-      webex.internal.mercury.off('offline', registry.mercuryOfflineListener);
-      webex.internal.mercury.off('online', registry.mercuryOnlineListener);
-      this.connectionStateHandlers.delete(webex);
-    }
+    this.offlineHandler = undefined;
+    this.onlineHandler = undefined;
   }
 }

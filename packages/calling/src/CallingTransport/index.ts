@@ -33,8 +33,8 @@ class CallingTransport implements ICallingTransport {
     transportAdapter.onConnectionStateChange(this.getRequiredWebex(), handler);
   }
 
-  public offConnectionStateChange(handler?: CallingTransportConnectionStateChangeHandler): void {
-    transportAdapter.offConnectionStateChange(this.getRequiredWebex(), handler);
+  public offConnectionStateChange(): void {
+    transportAdapter.offConnectionStateChange(this.getRequiredWebex());
   }
 
   private getRequiredWebex(): WebexSDK {

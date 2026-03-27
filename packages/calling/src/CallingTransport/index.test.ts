@@ -115,47 +115,15 @@ describe('CallingTransport', () => {
     });
   });
 
-  it('removes only the specified connection state handler without unregistering mercury listeners', () => {
-    const webex = createWebex();
-    const firstHandler = jest.fn();
-    const secondHandler = jest.fn();
-
-    (SDKConnector.getWebex as jest.Mock).mockReturnValue(webex);
-
-    CallingTransport.onConnectionStateChange(firstHandler);
-    CallingTransport.onConnectionStateChange(secondHandler);
-    CallingTransport.offConnectionStateChange(firstHandler);
-
-    const mercuryOfflineHandler = (webex.internal.mercury.on as jest.Mock).mock.calls.find(
-      ([event]) => event === 'offline'
-    )?.[1];
-
-    mercuryOfflineHandler();
-
-    expect(firstHandler).not.toHaveBeenCalled();
-    expect(secondHandler).toHaveBeenCalledWith({
-      source: CallingTransportConnectionSource.MERCURY,
-      state: CallingTransportConnectionState.OFFLINE,
-    });
-    expect(webex.internal.mercury.off).not.toHaveBeenCalled();
-  });
-
-  it('unregisters the mercury connection bridge when the last connection state handler is removed', () => {
+  it('unregisters mercury listeners on offConnectionStateChange', () => {
     const webex = createWebex();
     const handler = jest.fn();
 
     (SDKConnector.getWebex as jest.Mock).mockReturnValue(webex);
 
     CallingTransport.onConnectionStateChange(handler);
-    CallingTransport.offConnectionStateChange(handler);
+    CallingTransport.offConnectionStateChange();
 
-    const mercuryOfflineHandler = (webex.internal.mercury.on as jest.Mock).mock.calls.find(
-      ([event]) => event === 'offline'
-    )?.[1];
-
-    mercuryOfflineHandler();
-
-    expect(handler).not.toHaveBeenCalled();
     expect(webex.internal.mercury.off).toHaveBeenCalledWith('offline', expect.any(Function));
     expect(webex.internal.mercury.off).toHaveBeenCalledWith('online', expect.any(Function));
   });

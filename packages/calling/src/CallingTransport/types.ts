@@ -29,10 +29,7 @@ export interface ICallingTransportAdapter {
     webex: WebexSDK,
     handler: CallingTransportConnectionStateChangeHandler
   ): void;
-  offConnectionStateChange(
-    webex: WebexSDK,
-    handler?: CallingTransportConnectionStateChangeHandler
-  ): void;
+  offConnectionStateChange(webex: WebexSDK): void;
 }
 
 export interface ICallingTransport {
@@ -41,5 +38,5 @@ export interface ICallingTransport {
   on<T>(event: string, handler: CallingTransportEventHandler<T>): void;
   off<T>(event: string, handler?: CallingTransportEventHandler<T>): void;
   onConnectionStateChange(handler: CallingTransportConnectionStateChangeHandler): void;
-  offConnectionStateChange(handler?: CallingTransportConnectionStateChangeHandler): void;
+  offConnectionStateChange(): void;
 }
