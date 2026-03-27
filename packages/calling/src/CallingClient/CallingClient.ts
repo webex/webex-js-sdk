@@ -882,7 +882,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         window.removeEventListener('offline', this.handleNetworkOffline);
       }
 
-      CallingTransport.offConnectionStateChange(this.handleTransportConnectionChange);
+      CallingTransport.offConnectionStateChange();
     }
 
     return super.removeAllListeners(event);

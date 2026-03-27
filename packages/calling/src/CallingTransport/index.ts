@@ -10,31 +10,41 @@ import {
   CallingTransportConnectionStateChangeHandler,
 } from './types';
 
-let transportAdapter: ICallingTransportAdapter = new LegacyMercuryTransportAdapter();
-
 class CallingTransport implements ICallingTransport {
+  private static transportAdapter: ICallingTransportAdapter = new LegacyMercuryTransportAdapter();
+
   public setAdapter(adapter: ICallingTransportAdapter): void {
-    transportAdapter = adapter;
+    if (CallingTransport.transportAdapter === adapter) {
+      return;
+    }
+
+    const webex = SDKConnector.getWebex();
+
+    if (webex) {
+      CallingTransport.transportAdapter.dispose?.(webex);
+    }
+
+    CallingTransport.transportAdapter = adapter;
   }
 
   public request<T>(request: WebexRequestPayload): Promise<T> {
-    return transportAdapter.request<T>(this.getRequiredWebex(), request);
+    return CallingTransport.transportAdapter.request<T>(this.getRequiredWebex(), request);
   }
 
   public on<T>(event: string, handler: CallingTransportEventHandler<T>): void {
-    transportAdapter.on(this.getRequiredWebex(), event, handler);
+    CallingTransport.transportAdapter.on(this.getRequiredWebex(), event, handler);
   }
 
   public off<T>(event: string, handler?: CallingTransportEventHandler<T>): void {
-    transportAdapter.off(this.getRequiredWebex(), event, handler);
+    CallingTransport.transportAdapter.off(this.getRequiredWebex(), event, handler);
   }
 
   public onConnectionStateChange(handler: CallingTransportConnectionStateChangeHandler): void {
-    transportAdapter.onConnectionStateChange(this.getRequiredWebex(), handler);
+    CallingTransport.transportAdapter.onConnectionStateChange(this.getRequiredWebex(), handler);
   }
 
   public offConnectionStateChange(): void {
-    transportAdapter.offConnectionStateChange(this.getRequiredWebex());
+    CallingTransport.transportAdapter.offConnectionStateChange(this.getRequiredWebex());
   }
 
   private getRequiredWebex(): WebexSDK {

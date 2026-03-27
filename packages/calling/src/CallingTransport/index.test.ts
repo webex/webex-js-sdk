@@ -88,6 +88,32 @@ describe('CallingTransport', () => {
     expect(customAdapter.off).toHaveBeenCalledWith(webex, 'event:mobius', handler);
   });
 
+  it('disposes the previous adapter when the transport adapter changes', () => {
+    const webex = createWebex();
+    const firstAdapter: ICallingTransportAdapter = {
+      request: jest.fn(),
+      on: jest.fn(),
+      off: jest.fn(),
+      dispose: jest.fn(),
+      onConnectionStateChange: jest.fn(),
+      offConnectionStateChange: jest.fn(),
+    };
+    const secondAdapter: ICallingTransportAdapter = {
+      request: jest.fn(),
+      on: jest.fn(),
+      off: jest.fn(),
+      onConnectionStateChange: jest.fn(),
+      offConnectionStateChange: jest.fn(),
+    };
+
+    (SDKConnector.getWebex as jest.Mock).mockReturnValue(webex);
+
+    CallingTransport.setAdapter(firstAdapter);
+    CallingTransport.setAdapter(secondAdapter);
+
+    expect(firstAdapter.dispose).toHaveBeenCalledWith(webex);
+  });
+
   it('maps legacy mercury connectivity events to transport connection state changes', () => {
     const webex = createWebex();
     const handler = jest.fn();

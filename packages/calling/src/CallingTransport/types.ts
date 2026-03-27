@@ -25,6 +25,7 @@ export interface ICallingTransportAdapter {
   request<T>(webex: WebexSDK, request: WebexRequestPayload): Promise<T>;
   on<T>(webex: WebexSDK, event: string, handler: CallingTransportEventHandler<T>): void;
   off<T>(webex: WebexSDK, event: string, handler?: CallingTransportEventHandler<T>): void;
+  dispose?(webex: WebexSDK): Promise<void> | void;
   onConnectionStateChange(
     webex: WebexSDK,
     handler: CallingTransportConnectionStateChangeHandler
