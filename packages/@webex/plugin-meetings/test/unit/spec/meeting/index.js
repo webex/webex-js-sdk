@@ -12836,6 +12836,18 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#clearDataChannelToken', () => {
+        beforeEach(() => {
+          webex.internal.llm.resetDatachannelTokens = sinon.stub();
+        });
+
+        it('calls resetDatachannelTokens on LLM', () => {
+          meeting.clearDataChannelToken();
+
+          assert.calledOnce(webex.internal.llm.resetDatachannelTokens);
+        });
+      });
+
       describe('#updateLLMConnection', () => {
         beforeEach(() => {
           webex.internal.llm.isConnected = sinon.stub().returns(false);
@@ -13171,6 +13183,7 @@ describe('plugin-meetings', () => {
             meeting.annotation.deregisterEvents = sinon.stub();
             meeting.clearLLMHealthCheckTimer = sinon.stub();
             meeting.stopTranscription = sinon.stub();
+            meeting.clearDataChannelToken = sinon.stub();
             meeting.shareStatus = 'no-share';
           });
 
@@ -13195,6 +13208,7 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.clearLLMHealthCheckTimer);
             assert.calledOnce(meeting.stopTranscription);
             assert.isUndefined(meeting.transcription);
+            assert.calledOnce(meeting.clearDataChannelToken);
             assert.calledOnce(meeting.annotation.deregisterEvents);
           });
           it('continues cleanup when disconnectLLM fails during meeting data cleanup', async () => {
@@ -13216,6 +13230,7 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.clearLLMHealthCheckTimer);
             assert.calledOnce(meeting.stopTranscription);
             assert.isUndefined(meeting.transcription);
+            assert.calledOnce(meeting.clearDataChannelToken);
             assert.calledOnce(meeting.annotation.deregisterEvents);
           });
           it('always calls stopTranscription even when transcription is undefined', async () => {
@@ -13225,6 +13240,7 @@ describe('plugin-meetings', () => {
 
             assert.calledOnce(meeting.stopTranscription);
             assert.isUndefined(meeting.transcription);
+            assert.calledOnce(meeting.clearDataChannelToken);
           });
         });
       });

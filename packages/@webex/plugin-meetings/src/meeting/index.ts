@@ -6276,6 +6276,16 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   /**
+   * Clears all data channel tokens stored in LLM.
+   * Called during meeting cleanup to ensure stale tokens are not reused.
+   * @returns {void}
+   */
+  clearDataChannelToken(): void {
+    // @ts-ignore
+    this.webex.internal.llm.resetDatachannelTokens();
+  }
+
+  /**
    * Saves the data channel tokens from the join response into LLM so that
    * updateLLMConnection / updatePSDataChannel don't need to fetch them from locusInfo.
    * @param {Object} join - The parsed join response (from MeetingUtil.parseLocusJoin)
@@ -9602,8 +9612,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.annotation.deregisterEvents();
 
-    // @ts-ignore - Fix type
-    this.webex.internal.llm.resetDatachannelTokens();
+    this.clearDataChannelToken();
     await this.cleanupLLMConneciton({throwOnError: false});
   };
 
