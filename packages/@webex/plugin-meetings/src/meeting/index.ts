@@ -32,6 +32,10 @@ import {
   StatsMonitor,
   StatsMonitorEventNames,
   InboundAudioIssueSubTypes,
+  RoapMediaConnection,
+  MultistreamRoapMediaConnection,
+  MediaCodecMimeType,
+  StreamRequest,
 } from '@webex/internal-media-core';
 
 import {DataChannelTokenType} from '@webex/internal-plugin-llm';
@@ -966,6 +970,21 @@ export default class Meeting extends StatelessWebexPlugin {
       },
       (csi: CSI) => (this.members.findMemberByCsi(csi) as any)?.id
     );
+
+    const updatePayloadTypes = (mediaRequests: StreamRequest[], mediaType: MediaType) => {
+      const mediaConnection = this.mediaProperties.webrtcMediaConnection;
+      if (mediaConnection instanceof MultistreamRoapMediaConnection) {
+        mediaRequests
+          .flatMap((mr) => mr.codecInfos)
+          .forEach((codecInfo) => {
+            codecInfo.payloadType = mediaConnection.getIngressPayloadType(
+              mediaType,
+              codecInfo.av1 ? MediaCodecMimeType.AV1 : MediaCodecMimeType.H264
+            );
+          });
+      }
+    };
+
     /**
      * Object containing helper classes for managing media requests for audio/video/screenshare (for multistream media connections)
      * All multistream media requests sent out for this meeting have to go through them.
@@ -1001,6 +1020,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
             return;
           }
+
+          updatePayloadTypes(mediaRequests, MediaType.VideoMain);
           this.mediaProperties.webrtcMediaConnection.requestMedia(
             MediaType.VideoMain,
             mediaRequests
@@ -1022,6 +1043,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
             return;
           }
+
           this.mediaProperties.webrtcMediaConnection.requestMedia(
             MediaType.AudioSlides,
             mediaRequests
@@ -1043,6 +1065,8 @@ export default class Meeting extends StatelessWebexPlugin {
 
             return;
           }
+
+          updatePayloadTypes(mediaRequests, MediaType.VideoSlides);
           this.mediaProperties.webrtcMediaConnection.requestMedia(
             MediaType.VideoSlides,
             mediaRequests
