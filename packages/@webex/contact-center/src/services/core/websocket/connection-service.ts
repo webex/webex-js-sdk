@@ -10,6 +10,7 @@ import {
 } from '../constants';
 import {CONNECTION_SERVICE_FILE} from '../../../constants';
 import {SubscribeRequest} from '../../../types';
+import {SUBSCRIBE_API} from '../../constants';
 
 export class ConnectionService extends EventEmitter {
   private connectionProp: ConnectionProp = {
@@ -124,7 +125,10 @@ export class ConnectionService extends EventEmitter {
     });
     const onlineStatus = navigator.onLine;
     if (onlineStatus) {
-      await this.webSocketManager.initWebSocket({body: this.subscribeRequest});
+      await this.webSocketManager.initWebSocket({
+        body: this.subscribeRequest,
+        resource: SUBSCRIBE_API,
+      });
       await this.clearTimerOnRestoreFailed();
       this.isSocketReconnected = true;
     } else {

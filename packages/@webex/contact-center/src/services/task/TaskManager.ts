@@ -42,6 +42,7 @@ export default class TaskManager extends EventEmitter {
   private taskCollection: Record<TaskId, ITask>;
   private webCallingService: WebCallingService;
   private webSocketManager: WebSocketManager;
+  private rtdWebSocketManager: WebSocketManager;
   // eslint-disable-next-line no-use-before-define
   private static taskManager: TaskManager;
   private configFlags?: ConfigFlags;
@@ -58,18 +59,51 @@ export default class TaskManager extends EventEmitter {
     apiAIAssistant: ApiAIAssistant,
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
-    webSocketManager: WebSocketManager
+    webSocketManager: WebSocketManager,
+    rtdWebSocketManager: WebSocketManager
   ) {
     super();
     this.apiAIAssistant = apiAIAssistant;
     this.contact = contact;
     this.webCallingService = webCallingService;
     this.webSocketManager = webSocketManager;
+    this.rtdWebSocketManager = rtdWebSocketManager;
     this.taskCollection = {};
     this.webRtcEnabled = false;
 
     this.registerTaskListeners();
     this.registerIncomingCallEvent();
+    this.registerRealtimeWSListeners();
+  }
+
+  private registerRealtimeWSListeners() {
+    this.rtdWebSocketManager.on('message', (event: string) => {
+      try {
+        const payload = JSON.parse(event);
+
+        const interactionId = payload?.data?.data?.conversationId;
+        if (!interactionId) return;
+
+        const task = this.taskCollection[interactionId];
+        if (!task) {
+          LoggerProxy.info(`Realtime transcription task not found`, {
+            module: TASK_MANAGER_FILE,
+            method: METHODS.REGISTER_REAL_TIME_WS_LISTENERS,
+            interactionId,
+          });
+
+          return;
+        }
+
+        task.emit(payload.type, payload.data);
+      } catch (error) {
+        LoggerProxy.error('Failed to parse RTD WebSocket message', {
+          module: TASK_MANAGER_FILE,
+          method: METHODS.REGISTER_TASK_LISTENERS,
+          error,
+        });
+      }
+    });
   }
 
   /**
@@ -325,11 +359,6 @@ export default class TaskManager extends EventEmitter {
       const eventContext = this.prepareEventContext(message);
       if (!eventContext) return;
 
-      if (eventContext.eventType === CC_EVENTS.REAL_TIME_TRANSCRIPTION) {
-        eventContext.task?.emit(CC_EVENTS.REAL_TIME_TRANSCRIPTION, eventContext.payload);
-
-        return;
-      }
       const actions = this.handleTaskLifecycleEvent(eventContext);
 
       const {task} = actions;
@@ -395,10 +424,7 @@ export default class TaskManager extends EventEmitter {
       return null;
     }
 
-    const interactionId =
-      eventType === CC_EVENTS.REAL_TIME_TRANSCRIPTION
-        ? message.data.data.conversationId
-        : message.data.interactionId;
+    const interactionId = message.data.interactionId;
     const task = this.taskCollection[interactionId];
 
     const wasConsultedTask = Boolean(task?.data?.isConsulted);
@@ -733,14 +759,16 @@ export default class TaskManager extends EventEmitter {
     apiAIAssistant: ApiAIAssistant,
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
-    webSocketManager: WebSocketManager
+    webSocketManager: WebSocketManager,
+    rtdWebSocketManager?: WebSocketManager
   ): TaskManager {
     if (!TaskManager.taskManager) {
       TaskManager.taskManager = new TaskManager(
         apiAIAssistant,
         contact,
         webCallingService,
-        webSocketManager
+        webSocketManager,
+        rtdWebSocketManager
       );
     }
 
