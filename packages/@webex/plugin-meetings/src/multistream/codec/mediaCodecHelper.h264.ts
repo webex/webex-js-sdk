@@ -6,8 +6,8 @@ import {
   CodecInfo as WcmeCodecInfo,
 } from '@webex/internal-media-core';
 import {CODEC_DEFAULTS, H264_CODEC_PARAMETERS, PANE_SIZE_TO_RESOLUTION} from './constants';
-import {MediaCodecHelper, H264CodecInfo, GetCodecInfoOptions} from './types';
-import {MediaRequest, RemoteVideoResolution, SizeHint} from '../types';
+import {MediaCodecHelper, H264CodecInfo, GetCodecInfoOptions, CodecInfo} from './types';
+import {RemoteVideoResolution, SizeHint} from '../types';
 import LoggerProxy from '../../common/logs/logger-proxy';
 
 /**
@@ -34,49 +34,25 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
   }
 
   /**
-   * Degrades the media request
-   *
-   * @param {MediaRequest} mr - The media request to degrade
-   * @param {SupportedResolution} resolution - The resolution to degrade to
-   * @returns {number} The total macroblocks requested
-   */
-  degradeMediaRequest(mr: MediaRequest, resolution: SupportedResolution): number {
-    const codecInfos = mr.codecInfos.filter((codecInfo) => codecInfo.codec === 'h264');
-    if (codecInfos.length === 0) {
-      return 0;
-    }
-
-    const maxFs = Math.min(
-      mr.preferredMaxFs || CODEC_DEFAULTS.h264.maxFs,
-      Math.min(...codecInfos.map((codecInfo) => codecInfo.maxFs)),
-      H264_CODEC_PARAMETERS[resolution].maxFs
-    );
-
-    codecInfos.forEach((codecInfo) => {
-      codecInfo.maxFs = maxFs;
-    });
-
-    // we only consider sources with "live" state
-    const slotsWithLiveSource = mr.receiveSlots.filter((rs) => rs.sourceState === 'live');
-
-    return maxFs * slotsWithLiveSource.length;
-  }
-
-  /**
    * Gets the max payload bits per second
    *
-   * @param {MediaRequest} mediaRequest - The media request to get the max payload bits per second from
+   * @param {CodecInfo[]} codecInfos - The codec infos to get the max payload bits per second from
    * @returns {number} The max payload bits per second
    */
-  getMaxPayloadBitsPerSecond(mediaRequest: MediaRequest): number {
-    const codecInfos = mediaRequest.codecInfos.filter((codecInfo) => codecInfo.codec === 'h264');
-    if (codecInfos.length === 0) {
-      return 0;
-    }
+  getMaxPayloadBitsPerSecond(codecInfos: CodecInfo[]): number {
+    return codecInfos
+      .filter((codecInfo) => codecInfo.codec === 'h264')
+      .reduce((acc, codecInfo) => {
+        let bitrate = 0;
+        // Legacy maxFs
+        if (codecInfo.maxFs) {
+          bitrate = getRecommendedMaxBitrateForFrameSize(codecInfo.maxFs);
+        } else {
+          bitrate = getRecommendedMaxBitrateForFrameSize(this.getMaxFs(codecInfo.resolution)) || 0;
+        }
 
-    return getRecommendedMaxBitrateForFrameSize(
-      Math.min(...codecInfos.map((codecInfo) => codecInfo.maxFs))
-    );
+        return Math.max(acc, bitrate);
+      }, 0);
   }
 
   /**
@@ -91,7 +67,7 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
       new H264Codec(
         codecInfo.maxFs,
         codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
-        this.getMaxMbps(codecInfo),
+        this.getMaxPayloadBitsPerSecond(codecInfo),
         codecInfo.maxWidth,
         codecInfo.maxHeight
       )
@@ -117,26 +93,6 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
     }
 
     return H264_CODEC_PARAMETERS[resolution].maxFs;
-  }
-
-  /**
-   * Returns the max Macro Blocks per second (maxMbps) per H264 Stream
-   *
-   * The maxMbps will be calculated based on maxFs and maxFps
-   * (default h264 maxFps as fallback if maxFps is not defined)
-   *
-   * @param {H264CodecInfo} codecInfo - The codec info to get the max Mbps for
-   * @returns {number} maxMbps
-   */
-  getMaxMbps(codecInfo: H264CodecInfo): number {
-    if (codecInfo.maxMbps) {
-      return codecInfo.maxMbps;
-    }
-
-    const maxFps = codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps;
-
-    // divided by 100 since maxFps is 3000 (for 30 frames per seconds)
-    return (codecInfo.maxFs * maxFps) / 100;
   }
 
   /**

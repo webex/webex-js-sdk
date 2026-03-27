@@ -1,6 +1,15 @@
 import {H264EncodingParams, SupportedResolution} from '@webex/internal-media-core';
 import {RemoteVideoResolution} from '../types';
 
+export const DEGRADATION_FRAME_SIZE = {
+  '90p': 60,
+  '180p': 240,
+  '360p': 920,
+  '540p': 2040,
+  '720p': 3600,
+  '1080p': 8192,
+} satisfies Record<SupportedResolution, number>;
+
 export const H264_CODEC_PARAMETERS = {
   '90p': {
     maxFs: 60,

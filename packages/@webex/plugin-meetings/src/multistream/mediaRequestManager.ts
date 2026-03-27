@@ -6,6 +6,7 @@ import {
   ReceiverSelectedInfo,
   RecommendedOpusBitrates,
   SupportedResolution,
+  getRecommendedMaxBitrateForFrameSize,
 } from '@webex/internal-media-core';
 import {cloneDeepWith, debounce} from 'lodash';
 
@@ -14,6 +15,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import {ReceiveSlotEvents} from './receiveSlot';
 import {MediaRequest, MediaRequestId} from './types';
 import MediaCodecHelper from './codec/mediaCodecHelper';
+import {DEGRADATION_FRAME_SIZE} from './codec/constants';
 
 const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
 
@@ -76,25 +78,27 @@ export default class MediaRequestManager {
     const resolutions: SupportedResolution[] = ['1080p', '720p', '540p', '360p', '180p', '90p'];
 
     for (const resolution of resolutions) {
-      let totalMacroblocksRequested = 0;
+      let totalFrameSizeRequested = 0;
 
       Object.values(clientRequests).forEach((mr) => {
-        // TODO: Instead of degrading based on codecInfos, degrade based on sizeHint
-        totalMacroblocksRequested +=
-          mr.codecInfos?.reduce((acc, codecInfo) => {
-            const macroblocks = MediaCodecHelper.get(codecInfo.codec).degradeMediaRequest(
-              mr,
-              resolution
-            );
+        // we only consider sources with "live" state
+        const slotsWithLiveSourceCount = mr.receiveSlots.filter(
+          (rs) => rs.sourceState === 'live'
+        ).length;
 
-            return Math.max(acc, macroblocks);
-          }, 0) ?? 0;
+        const frameSize = Math.min(
+          MediaCodecHelper.getSizeHintMaxFs(mr.sizeHint) || Infinity,
+          mr.preferredMaxFs || Infinity,
+          DEGRADATION_FRAME_SIZE[resolution]
+        );
+
+        totalFrameSizeRequested += frameSize * slotsWithLiveSourceCount;
       });
 
-      if (totalMacroblocksRequested <= this.degradationPreferences.maxMacroblocksLimit) {
+      if (totalFrameSizeRequested <= this.degradationPreferences.maxMacroblocksLimit) {
         if (resolution !== '1080p') {
           LoggerProxy.logger.warn(
-            `multistream:mediaRequestManager --> too many streams with high macroblocks requested, resolution will be limited to ${resolution}`
+            `multistream:mediaRequestManager --> too many streams with high frame size requested, resolution will be limited to ${resolution}`
           );
         }
         break;
@@ -123,11 +127,8 @@ export default class MediaRequestManager {
     }
 
     if (mediaRequest.codecInfos) {
-      return mediaRequest.codecInfos.reduce((acc, codecInfo) => {
-        const mbps = MediaCodecHelper.get(codecInfo.codec).getMaxPayloadBitsPerSecond(mediaRequest);
-
-        return Math.max(acc, mbps);
-      }, 0);
+      // Default to H264 max payload bits per second
+      return MediaCodecHelper.H264.getMaxPayloadBitsPerSecond(mediaRequest.codecInfos);
     }
 
     LoggerProxy.logger.warn(
