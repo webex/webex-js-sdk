@@ -82,7 +82,12 @@ export default class MediaRequestManager {
 
       Object.values(clientRequests).forEach((mr) => {
         totalMacroblocksRequested += mr.codecInfos.reduce((acc, codecInfo) => {
-          return acc + MediaCodecHelper.get(codecInfo.codec).degradeMediaRequest(mr, resolution);
+          const macroblocks = MediaCodecHelper.get(codecInfo.codec).degradeMediaRequest(
+            mr,
+            resolution
+          );
+
+          return Math.max(acc, macroblocks);
         }, 0);
       });
 
