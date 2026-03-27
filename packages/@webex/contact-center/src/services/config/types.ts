@@ -117,6 +117,8 @@ export const CC_TASK_EVENTS = {
   CAMPAIGN_CONTACT_UPDATED: 'CampaignContactUpdated',
   /** Event emitted when accepting a campaign preview contact fails */
   CAMPAIGN_PREVIEW_ACCEPT_FAILED: 'CampaignPreviewAcceptFailed',
+  /** Event emitted when a real-time transcript chunk is received */
+  REAL_TIME_TRANSCRIPTION: 'REAL_TIME_TRANSCRIPTION',
 } as const;
 
 /**
@@ -909,6 +911,59 @@ export type URLMappings = {
 };
 
 /**
+ * AI feature resource row returned by /v2/ai-feature API.
+ * @public
+ */
+export type AIFeatureFlags = {
+  id: string;
+  realtimeTranscripts?: {
+    enable?: boolean;
+    agentInclusionType?: string;
+  };
+  suggestedResponses?: {
+    enable?: boolean;
+  };
+  generatedSummaries?: {
+    callDropSummariesEnabled?: boolean;
+    virtualAgentTransferSummariesEnabled?: boolean;
+    consultTransferSummariesEnabled?: boolean;
+    wrapUpSummariesEnabled?: boolean;
+    queuesInclusionType?: string;
+  };
+  agentWellbeing?: {
+    enable?: boolean;
+    agentInclusionType?: string;
+    wellnessBreakReminders?: string;
+  };
+  autoCSAT?: {
+    enable?: boolean;
+    queuesInclusionType?: string;
+    surveyDataSource?: string;
+  };
+  links?: string[];
+  createdTime?: number;
+  lastUpdatedTime?: number;
+};
+
+/**
+ * Response type for list AI feature resources API.
+ * @public
+ */
+export type AIFeatureFlagsResponse = {
+  meta?: {
+    orgid?: string;
+    page?: number;
+    pageSize?: number;
+    totalPages?: number;
+    totalRecords?: number;
+    links?: {
+      self?: string;
+    };
+  };
+  data: AIFeatureFlags[];
+};
+
+/**
  * Comprehensive agent profile configuration in the contact center system
  * Contains all settings and capabilities for an agent
  * @public
@@ -1065,6 +1120,8 @@ export type Profile = {
   lastStateChangeTimestamp?: number;
   /** Timestamp of last idle code change */
   lastIdleCodeChangeTimestamp?: number;
+  /** AI feature flags resolved from organization config */
+  aiFeature?: AIFeatureFlags;
 };
 
 /**
