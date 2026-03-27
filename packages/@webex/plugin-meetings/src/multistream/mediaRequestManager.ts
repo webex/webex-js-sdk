@@ -338,7 +338,7 @@ export class MediaRequestManager {
             this.getMaxPayloadBitsPerSecond(mr),
             mr.codecInfo && [
               WcmeCodecInfo.fromH264(
-                0x80, // TODO: fix this constant
+                0x80,
                 new H264Codec(
                   mr.codecInfo.maxFs,
                   mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
@@ -348,7 +348,7 @@ export class MediaRequestManager {
                 )
               ),
               WcmeCodecInfo.fromAv1(
-                45, // TODO: fix this constant
+                45,
                 new AV1Codec(
                   CODEC_DEFAULTS.av1.levelIdx,
                   CODEC_DEFAULTS.av1.tier,
