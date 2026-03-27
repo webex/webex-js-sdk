@@ -432,7 +432,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   private handleRTDWebsocketMessage = (payload: string) => {
-    this.taskManager.handleRealtimeTranscriptEvent(payload);
+    this.taskManager.handleRealtimeWebsocketEvent(payload);
   };
 
   /**
@@ -583,7 +583,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.taskManager.unregisterIncomingCallEvent();
 
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
-      this.services.rtdWebSocketManager?.off('message', this.handleRTDWebsocketMessage);
+      this.services.rtdWebSocketManager.off('message', this.handleRTDWebsocketMessage);
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
 
       if (

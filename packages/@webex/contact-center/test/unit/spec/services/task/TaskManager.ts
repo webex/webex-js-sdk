@@ -234,7 +234,7 @@ describe('TaskManager', () => {
       },
     };
 
-    taskManager.handleRealtimeTranscriptEvent(JSON.stringify(realtimePayload));
+    taskManager.handleRealtimeWebsocketEvent(JSON.stringify(realtimePayload));
 
     expect(taskEmitSpy).toHaveBeenCalledWith(CC_EVENTS.REAL_TIME_TRANSCRIPTION, realtimePayload.data);
   });
