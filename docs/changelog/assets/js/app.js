@@ -1,6 +1,7 @@
 // Global variable to store the current changelog and version paths
 let currentChangelog;
 const versionPaths = {};
+let comparisonMode = false;
 const github_base_url = "https://github.com/webex/webex-js-sdk/";
 
 // DOM elements
@@ -637,8 +638,8 @@ const showComparisonError = (error) => {
  * @returns {Array<string>} - Array of all package names (union)
  */
 const getUnionPackages = (changelogA, changelogB) => {
-    const packagesA = new Set(Object.keys(changelogA));
-    const packagesB = new Set(Object.keys(changelogB));
+    const packagesA = new Set(Object.keys(changelogA || {}));
+    const packagesB = new Set(Object.keys(changelogB || {}));
 
     // Create union of both package sets
     const allPackages = new Set([...packagesA, ...packagesB]);
@@ -671,7 +672,7 @@ const populateUnionPackages = (changelogA, changelogB) => {
         return;
     }
 
-    let optionsHtml = '<option value="">Select a package (optional)</option>';
+    let optionsHtml = '<option value="">Select a package</option>';
     allPackages.forEach(pkg => {
         if (pkg === 'separator') {
             optionsHtml += '<option disabled>──────────</option>';
@@ -981,7 +982,7 @@ const isExactStable = (version) => /^\d+\.\d+\.\d+$/.test(version);//
 
 // Extract numeric suffix: "3.5.0-next.5" → 5,  "3.5.0-multipleLLM.3" → 3
 const getPreReleaseNum = (version) => {
-    const match = version.match(/\.(\d+)$/);
+    const match = version.match(/-[a-zA-Z]+\.(\d+)$/);
     return match ? parseInt(match[1], 10) : 0;
 };
 
@@ -1021,7 +1022,9 @@ const collectCommitsFromStable = (packageData, stableVersion, versionA, versionB
                 const tag = getPreReleaseTag(v, stableVersion);
                 const num = getPreReleaseNum(v);
                 // Same tag (e.g. "next"): include if num >= numA
-                // Different tag (e.g. "multipleLLM"): include all
+                // Different tag (e.g. "multipleLLM"): include all — alternate pre-release streams also ship in the final stable
+                console.log('tag', tag, 'tagA', tagA);
+                console.log('num', num, 'numA', numA);
                 return tag === tagA ? num >= numA : true;
             });
         }
@@ -1044,7 +1047,9 @@ const collectCommitsFromStable = (packageData, stableVersion, versionA, versionB
                 const tag = getPreReleaseTag(v, stableVersion);
                 const num = getPreReleaseNum(v);
                 // Same tag: include if num <= numB
-                // Different tag: include all
+                // Different tag: include all-— alternate pre-release streams also ship in the final stable
+                console.log('tag', tag, 'tagB', tagB);
+                console.log('num', num, 'numB', numB);
                 return tag === tagB ? num <= numB : true;
             });
         }
@@ -1061,6 +1066,7 @@ const collectCommitsFromStable = (packageData, stableVersion, versionA, versionB
                 if (!isPreRelease(v, stableVersion)) return false;
                 const tag = getPreReleaseTag(v, stableVersion);
                 const num = getPreReleaseNum(v);
+                // Same tag: include up to numB; different tag: include all (ships in final stable)
                 return tag === tagB ? num <= numB : true;
             });
         } else {
@@ -1073,6 +1079,7 @@ const collectCommitsFromStable = (packageData, stableVersion, versionA, versionB
                 if (!isPreRelease(v, stableVersion)) return false;
                 const tag = getPreReleaseTag(v, stableVersion);
                 const num = getPreReleaseNum(v);
+                // Same tag: apply range bounds; different tag: include all (ships in final stable)
                 const afterStart = tag === tagA ? num >= numA : true;
                 const beforeEnd  = tag === tagB ? num <= numB : true;
                 return afterStart && beforeEnd;
@@ -1571,7 +1578,7 @@ const validateComparisonInputs = (stableA, stableB, selectedPackage, versionASpe
     if (allSorted[0] !== stableA) {
         alert(`Base version (${stableA}) must be older than target version (${stableB}). Please swap.`);
         return false;
-}
+    }
 
     // When both selected versions are exact stables (Example 5),
     // base stable must be SMALLER than target stable in semver order.
@@ -1671,19 +1678,19 @@ const loadEnhancedComparisonFromURL = async (enhancedParams) => {
 
     await new Promise(resolve => setTimeout(resolve, 300));
 
-    versionASelect.value = enhancedParams.stableA;
-    versionBSelect.value = enhancedParams.stableB;
+    if (versionASelect) versionASelect.value = enhancedParams.stableA;
+    if (versionBSelect) versionBSelect.value = enhancedParams.stableB;
     await handleStableVersionChange();
 
     await new Promise(resolve => setTimeout(resolve, 300));
 
-    comparisonPackageSelect.value = enhancedParams.packageName;
+    if (comparisonPackageSelect) comparisonPackageSelect.value = enhancedParams.packageName;
     handlePackageChange();
 
     await new Promise(resolve => setTimeout(resolve, 300));
 
-    versionAPrereleaseSelect.value = enhancedParams.versionA;
-    versionBPrereleaseSelect.value = enhancedParams.versionB;
+    if(versionAPrereleaseSelect) versionAPrereleaseSelect.value = enhancedParams.versionA;
+    if(versionBPrereleaseSelect) versionBPrereleaseSelect.value = enhancedParams.versionB;
 
     compareSpecificPackageVersions(
         enhancedParams.stableA,
