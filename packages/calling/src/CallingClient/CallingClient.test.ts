@@ -526,7 +526,7 @@ describe('CallingClient Tests', () => {
         expect.stringContaining('Mercury down, waiting for connection to be up'),
         {
           file: CALLING_CLIENT_FILE,
-          method: 'handleMercuryOffline',
+          method: 'handleTransportOffline',
         }
       );
       expect(callingClient['mercuryDownTimestamp']).toEqual(expect.any(String));

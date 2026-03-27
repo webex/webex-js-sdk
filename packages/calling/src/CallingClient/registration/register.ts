@@ -18,6 +18,7 @@ import {LOGGER} from '../../Logger/types';
 import log from '../../Logger';
 import {FailoverCacheState, IRegistration} from './types';
 import SDKConnector from '../../SDKConnector';
+import CallingTransport from '../../CallingTransport';
 import {
   ALLOWED_SERVICES,
   Devices,
@@ -257,7 +258,7 @@ export class Registration implements IRegistration {
       serviceData: this.jwe ? {...this.serviceData, jwe: this.jwe} : this.serviceData,
     };
 
-    return <WebexRequestPayload>this.webex.request({
+    return <WebexRequestPayload>CallingTransport.request({
       uri: `${url}device`,
       method: HTTP_METHODS.POST,
       headers: {
@@ -490,7 +491,7 @@ export class Registration implements IRegistration {
       try {
         const baseUri = mobiusUrl.replace(URL_ENDPOINT, '/');
         // eslint-disable-next-line no-await-in-loop
-        const response = await this.webex.request({
+        const response = await CallingTransport.request({
           uri: `${baseUri}ping`,
           method: HTTP_METHODS.GET,
           headers: {

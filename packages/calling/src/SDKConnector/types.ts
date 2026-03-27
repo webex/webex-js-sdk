@@ -9,8 +9,9 @@ import {
 } from '../common/types';
 /* eslint-disable no-shadow */
 
-type Listener = (e: string, data?: unknown) => void;
-type ListenerOff = (e: string) => void;
+type MercuryEventHandler = (...args: unknown[]) => void;
+type Listener = (e: string, handler: MercuryEventHandler) => void;
+type ListenerOff = (e: string, handler?: MercuryEventHandler) => void;
 
 export type ServiceHost = {
   host: string;

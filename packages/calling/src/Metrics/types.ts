@@ -59,6 +59,8 @@ export enum CONNECTION_ACTION {
   NETWORK_FLAP = 'network_flap',
   MERCURY_DOWN = 'mercury_down',
   MERCURY_UP = 'mercury_up',
+  MOBIUS_SOCKET_DOWN = 'mobius_socket_down',
+  MOBIUS_SOCKET_UP = 'mobius_socket_up',
 }
 
 export interface IMetricManager {

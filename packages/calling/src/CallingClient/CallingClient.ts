@@ -13,6 +13,7 @@ import {
 import {LOGGER} from '../Logger/types';
 import SDKConnector from '../SDKConnector';
 import {ClientRegionInfo, ISDKConnector, ServiceHost, WebexSDK} from '../SDKConnector/types';
+import CallingTransport from '../CallingTransport';
 import {Eventing} from '../Events/impl';
 import {
   CallingClientEventTypes,
@@ -63,6 +64,11 @@ import {
 } from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
 import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
+import {
+  CallingTransportConnectionSource,
+  CallingTransportConnectionState,
+  CallingTransportConnectionStateChangeEvent,
+} from '../CallingTransport/types';
 
 /**
  * The `CallingClient` module provides a set of APIs for line registration and calling functionalities within the SDK.
@@ -109,6 +115,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   private mercuryDownTimestamp = '';
 
   private mercuryUpTimestamp = '';
+
+  private mobiusSocketDownTimestamp = '';
+
+  private mobiusSocketUpTimestamp = '';
 
   /**
    * @ignore
@@ -284,27 +294,64 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.networkUpTimestamp = new Date().toISOString();
   };
 
-  private handleMercuryOffline = () => {
-    log.warn(`Mercury down, waiting for connection to be up`, {
-      file: CALLING_CLIENT_FILE,
-      method: METHODS.MERCURY_OFFLINE,
-    });
-    this.mercuryDownTimestamp = new Date().toISOString();
-    this.metricManager.submitConnectionMetrics(
-      METRIC_EVENT.CONNECTION_ERROR,
-      CONNECTION_ACTION.MERCURY_DOWN,
-      METRIC_TYPE.BEHAVIORAL,
-      this.mercuryDownTimestamp,
-      this.mercuryUpTimestamp
-    );
+  private handleTransportConnectionChange = async (
+    event: CallingTransportConnectionStateChangeEvent
+  ) => {
+    if (event.state === CallingTransportConnectionState.OFFLINE) {
+      this.handleTransportOffline(event.source);
+
+      return;
+    }
+
+    await this.handleTransportOnline(event.source);
   };
 
-  private handleMercuryOnline = async () => {
+  private handleTransportOffline(source: CallingTransportConnectionSource) {
+    const timestamp = new Date().toISOString();
+    const isMercury = source === CallingTransportConnectionSource.MERCURY;
+    const label = isMercury ? 'Mercury' : 'Mobius socket';
+    const connectionAction = isMercury
+      ? CONNECTION_ACTION.MERCURY_DOWN
+      : CONNECTION_ACTION.MOBIUS_SOCKET_DOWN;
+
+    if (isMercury) {
+      this.mercuryDownTimestamp = timestamp;
+    } else {
+      this.mobiusSocketDownTimestamp = timestamp;
+    }
+
+    log.warn(`${label} down, waiting for connection to be up`, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.TRANSPORT_OFFLINE,
+    });
+
+    this.metricManager.submitConnectionMetrics(
+      METRIC_EVENT.CONNECTION_ERROR,
+      connectionAction,
+      METRIC_TYPE.BEHAVIORAL,
+      isMercury ? this.mercuryDownTimestamp : this.mobiusSocketDownTimestamp,
+      isMercury ? this.mercuryUpTimestamp : this.mobiusSocketUpTimestamp
+    );
+  }
+
+  private async handleTransportOnline(source: CallingTransportConnectionSource) {
+    const timestamp = new Date().toISOString();
+    const isMercury = source === CallingTransportConnectionSource.MERCURY;
+    const connectionAction = isMercury
+      ? CONNECTION_ACTION.MERCURY_UP
+      : CONNECTION_ACTION.MOBIUS_SOCKET_UP;
+
+    if (isMercury) {
+      this.mercuryUpTimestamp = timestamp;
+    } else {
+      this.mobiusSocketUpTimestamp = timestamp;
+    }
+
     log.info(METHOD_START_MESSAGE, {
       file: CALLING_CLIENT_FILE,
-      method: METHODS.MERCURY_ONLINE,
+      method: METHODS.TRANSPORT_ONLINE,
     });
-    this.mercuryUpTimestamp = new Date().toISOString();
+
     if (this.isNetworkDown) {
       const callCheckInterval = setInterval(async () => {
         if (!Object.keys(this.callManager.getActiveCalls()).length) {
@@ -332,19 +379,22 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         this.networkDownTimestamp,
         this.networkUpTimestamp
       );
-    } else {
-      if (Object.keys(this.callManager.getActiveCalls()).length) {
-        await this.checkCallStatus();
-      }
-      this.metricManager.submitConnectionMetrics(
-        METRIC_EVENT.CONNECTION_ERROR,
-        CONNECTION_ACTION.MERCURY_UP,
-        METRIC_TYPE.BEHAVIORAL,
-        this.mercuryDownTimestamp,
-        this.mercuryUpTimestamp
-      );
+
+      return;
     }
-  };
+
+    if (Object.keys(this.callManager.getActiveCalls()).length) {
+      await this.checkCallStatus();
+    }
+
+    this.metricManager.submitConnectionMetrics(
+      METRIC_EVENT.CONNECTION_ERROR,
+      connectionAction,
+      METRIC_TYPE.BEHAVIORAL,
+      isMercury ? this.mercuryDownTimestamp : this.mobiusSocketDownTimestamp,
+      isMercury ? this.mercuryUpTimestamp : this.mobiusSocketUpTimestamp
+    );
+  }
 
   private setupNetworkEventListeners(): void {
     if (typeof window !== 'undefined' && window.addEventListener) {
@@ -353,13 +403,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       window.addEventListener('offline', this.handleNetworkOffline);
     }
 
-    this.webex.internal.mercury.on('offline', () => {
-      this.handleMercuryOffline();
-    });
-
-    this.webex.internal.mercury.on('online', () => {
-      this.handleMercuryOnline();
-    });
+    CallingTransport.onConnectionStateChange(this.handleTransportConnectionChange);
   }
 
   /**
@@ -374,7 +418,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     const regionInfo = {} as RegionInfo;
 
     try {
-      const response = <WebexRequestPayload>await this.webex.request({
+      const response = <WebexRequestPayload>await CallingTransport.request({
         uri: `${DISCOVERY_URL}`,
         method: HTTP_METHODS.GET,
         addAuthHeader: false,
@@ -505,7 +549,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         }
         try {
           // eslint-disable-next-line no-await-in-loop
-          const response = <WebexRequestPayload>await this.webex.request({
+          const response = <WebexRequestPayload>await CallingTransport.request({
             uri: `${this.mobiusHost}${URL_ENDPOINT}?regionCode=${clientRegion}&countryCode=${countryCode}`,
             method: HTTP_METHODS.GET,
             headers: {
@@ -667,7 +711,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       file: CALLING_CLIENT_FILE,
       method: METHODS.REGISTER_SESSIONS_LISTENER,
     });
-    this.sdkConnector.registerListener<CallSessionEvent>(
+    CallingTransport.on<CallSessionEvent>(
       MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE,
       async (event?: CallSessionEvent) => {
         if (event && event.data.userSessions.userSessions) {
@@ -745,7 +789,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       )}`;
       try {
         // eslint-disable-next-line no-await-in-loop
-        const response = <WebexRequestPayload>await this.webex.request({
+        const response = <WebexRequestPayload>await CallingTransport.request({
           uri,
           method: HTTP_METHODS.GET,
           service: ALLOWED_SERVICES.MOBIUS,
@@ -829,6 +873,19 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }
 
     return result;
+  }
+
+  public removeAllListeners(event?: keyof CallingClientEventTypes): this {
+    if (!event) {
+      if (typeof window !== 'undefined' && window.removeEventListener) {
+        window.removeEventListener('online', this.handleNetworkOnline);
+        window.removeEventListener('offline', this.handleNetworkOffline);
+      }
+
+      CallingTransport.offConnectionStateChange(this.handleTransportConnectionChange);
+    }
+
+    return super.removeAllListeners(event);
   }
 }
 

@@ -55,6 +55,7 @@ import {
   TRANSFER_ENDPOINT,
 } from '../constants';
 import SDKConnector from '../../SDKConnector';
+import CallingTransport from '../../CallingTransport';
 import {Eventing} from '../../Events/impl';
 import {
   CALL_EVENT_KEYS,
@@ -2324,7 +2325,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       },
     };
 
-    return this.webex.request({
+    return CallingTransport.request({
       uri: `${this.mobiusUrl}${DEVICES_ENDPOINT_RESOURCE}/${this.deviceId}/${CALL_ENDPOINT_RESOURCE}`,
       method: HTTP_METHODS.POST,
       service: ALLOWED_SERVICES.MOBIUS,
@@ -2355,7 +2356,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       method: 'patch',
     });
 
-    return this.webex.request({
+    return CallingTransport.request({
       // Sample uri: http://localhost/api/v1/calling/web/devices/{deviceid}/calls/{callid}
 
       uri: `${this.mobiusUrl}${DEVICES_ENDPOINT_RESOURCE}/${this.deviceId}/${CALLS_ENDPOINT_RESOURCE}/${this.callId}`,
@@ -2431,14 +2432,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       }
     }
 
-    return this.webex.request(request);
+    return CallingTransport.request(request);
   }
 
   /**
    * Sends Call status to Mobius.
    */
   public async postStatus(): Promise<WebexRequestPayload> {
-    return this.webex.request({
+    return CallingTransport.request({
       uri: `${this.mobiusUrl}${DEVICES_ENDPOINT_RESOURCE}/${this.deviceId}/${CALLS_ENDPOINT_RESOURCE}/${this.callId}/${CALL_STATUS_RESOURCE}`,
       method: HTTP_METHODS.POST,
       service: ALLOWED_SERVICES.MOBIUS,
@@ -2623,7 +2624,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       method: METHODS.POST_MEDIA,
     });
 
-    return this.webex.request({
+    return CallingTransport.request({
       uri: `${this.mobiusUrl}${DEVICES_ENDPOINT_RESOURCE}/${this.deviceId}/${CALLS_ENDPOINT_RESOURCE}/${this.callId}/${MEDIA_ENDPOINT_RESOURCE}`,
       method: HTTP_METHODS.POST,
       service: ALLOWED_SERVICES.MOBIUS,
@@ -2804,7 +2805,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private async delete(): Promise<MobiusCallResponse> {
     const disconnectMetrics = await this.getCallStats();
 
-    return this.webex.request({
+    return CallingTransport.request({
       uri: `${this.mobiusUrl}${DEVICES_ENDPOINT_RESOURCE}/${this.deviceId}/${CALLS_ENDPOINT_RESOURCE}/${this.callId}`,
       method: HTTP_METHODS.DELETE,
       service: ALLOWED_SERVICES.MOBIUS,

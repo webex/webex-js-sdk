@@ -5,6 +5,7 @@ import {CALL_MANAGER_FILE, METHODS} from '../constants';
 import {CALLING_CLIENT_EVENT_KEYS, CallEventTypes, LINE_EVENT_KEYS} from '../../Events/types';
 import {Eventing} from '../../Events/impl';
 import SDKConnector from '../../SDKConnector';
+import CallingTransport from '../../CallingTransport';
 import {ISDKConnector, WebexSDK} from '../../SDKConnector/types';
 import {CallDetails, CallDirection, CorrelationId, ServiceIndicator} from '../../common/types';
 import {
@@ -127,7 +128,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
    * A listener for Mobius events.
    */
   private listenForWsEvents() {
-    this.sdkConnector.registerListener('event:mobius', async (event) => {
+    CallingTransport.on('event:mobius', async (event) => {
       this.dequeueWsEvents(event);
     });
     log.info('Successfully registered listener for Mobius events', {
