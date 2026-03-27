@@ -153,6 +153,9 @@ jobs:
     needs: generate-package-matrix
     runs-on: ubuntu-latest
 
+    outputs:
+      package_versions: ${{ steps.increment.outputs.package_versions }}
+
     steps:
       - name: Checkout Project
         uses: actions/checkout@v3
@@ -191,7 +194,17 @@ jobs:
           echo "tag to increment: ${GITHUB_REF##*/}"
 
       - name: Increment Package Versions
-        run: yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag ${GITHUB_REF##*/}
+        id: increment
+        run: |
+          OUTPUT=$(yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag ${GITHUB_REF##*/})
+          echo "$OUTPUT"
+          echo "package_versions<<EOF" >> $GITHUB_OUTPUT
+          echo "$OUTPUT" | while IFS= read -r line; do
+            if echo "$line" | grep -q ' => '; then
+              echo "package: $line"
+            fi
+          done >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Build all packages for publish
         run: yarn run build:publish
@@ -365,3 +378,152 @@ jobs:
           else
             git push origin ${{ steps.versionextractor.outputs.version }}
           fi
+
+  comment-on-pr:
+    name: Comment on Released PRs
+    needs: [publish-npm, publish-tag]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get PR Number
+        id: get-pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deploySha = context.sha;
+            const owner = 'webex';
+            const repo = 'webex-js-sdk';
+
+            try {
+              const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner, repo, commit_sha: deploySha
+              });
+              const mergedPR = prs.data.find(pr => pr.merged_at);
+              if (mergedPR) {
+                core.setOutput('pr_number', String(mergedPR.number));
+                return;
+              }
+            } catch (error) {
+              console.log(`Failed to discover PR from commit: ${error.message}`);
+            }
+            core.setOutput('pr_number', '');
+
+      - name: Post Release Comment on PR
+        if: steps.get-pr.outputs.pr_number != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ needs.publish-tag.outputs.version }}';
+            const proceed = '${{ needs.publish-tag.outputs.proceed }}' === 'true';
+            const prNumber = parseInt('${{ steps.get-pr.outputs.pr_number }}');
+
+            const raw = `${{ needs.publish-npm.outputs.package_versions }}`;
+            const packageVersions = {};
+            for (const line of raw.split('\n')) {
+              const match = line.match(/^package:\s+(.+?)\s+=>\s+(.+)$/);
+              if (match) packageVersions[match[1].trim()] = match[2].trim();
+            }
+            const packageEntries = Object.entries(packageVersions);
+
+            const owner = 'webex';
+            const repo = 'webex-js-sdk';
+            const repoUrl = `https://github.com/${owner}/${repo}`;
+            const hasPackages = packageEntries.length > 0 && proceed;
+
+            let commentBody;
+
+            if (hasPackages) {
+              const stableVersion = version.replace(/^v/, '').replace(/-next\..*/, '').replace(/-[a-z]*\..*/, '');
+
+              const changelogUrl = new URL('https://web-sdk.webex.com/changelog/');
+              if (stableVersion) {
+                changelogUrl.searchParams.set('stable_version', stableVersion);
+              }
+              const primaryPackage = packageVersions['webex']
+                ? 'webex'
+                : packageEntries.filter(([p]) => p !== 'webex' && p !== 'webex-node').map(([p]) => p)[0] || packageEntries[0][0];
+              changelogUrl.searchParams.set('package', primaryPackage);
+              changelogUrl.searchParams.set('version', packageVersions[primaryPackage]);
+
+              const releaseLine = version
+                ? `| **Released in:** [\`${version}\`](${repoUrl}/releases/tag/${version}) |`
+                : '';
+
+              const rows = packageEntries
+                .sort(([a], [b]) => {
+                  if (a === 'webex') return -1;
+                  if (b === 'webex') return 1;
+                  if (a === primaryPackage) return -1;
+                  if (b === primaryPackage) return 1;
+                  return a.localeCompare(b);
+                })
+                .map(([pkg, ver]) => `| \`${pkg}\` | \`${ver}\` |`)
+                .join('\n');
+
+              const packagesTable = [
+                '',
+                '| Packages Updated | Version |',
+                '|---------|---------|',
+                rows,
+                ''
+              ].join('\n');
+
+              commentBody = [
+                '| :tada: Your changes are now available! |',
+                '|---|',
+                releaseLine,
+                `| :book: **[View full changelog →](${changelogUrl})** |`,
+                packagesTable,
+                'Thank you for your contribution!',
+                '',
+                `_:robot: This is an automated message. For questions, please refer to the [documentation](${repoUrl}#readme)._`
+              ].filter(Boolean).join('\n');
+            } else {
+              commentBody = [
+                '| :white_check_mark: Your changes have been merged! |',
+                '|---|',
+                '',
+                'Thank you for your contribution!',
+                '',
+                `_:robot: This is an automated message. For questions, please refer to the [documentation](${repoUrl}#readme)._`
+              ].join('\n');
+            }
+
+            try {
+              const pr = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+              if (!pr.data.merged_at) return;
+
+              const existingComments = await github.rest.issues.listComments({
+                owner, repo,
+                issue_number: prNumber,
+                per_page: 100
+              });
+
+              const detailedComment = existingComments.data.find(comment =>
+                comment.user.type === 'Bot' &&
+                comment.body.includes('Your changes are now available')
+              );
+              const mergedComment = existingComments.data.find(comment =>
+                comment.user.type === 'Bot' &&
+                comment.body.includes('Your changes have been merged')
+              );
+
+              if (detailedComment) return;
+              if (!hasPackages && mergedComment) return;
+
+              if (mergedComment && hasPackages) {
+                await github.rest.issues.updateComment({
+                  owner, repo,
+                  comment_id: mergedComment.id,
+                  body: commentBody
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner, repo,
+                  issue_number: prNumber,
+                  body: commentBody
+                });
+              }
+            } catch (error) {
+              core.warning(`Failed to comment on PR #${prNumber}: ${error.message}`);
+            }
