@@ -1521,6 +1521,22 @@ export type consultConferencePayloadData = {
  */
 export interface ITask extends EventEmitter {
   /**
+   * Registers a listener for the specified task event.
+   * @param event - A {@link TASK_EVENTS} value
+   * @param listener - Callback invoked when the event fires
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  on(event: string, listener: (...args: any[]) => void): this;
+
+  /**
+   * Removes a previously registered listener for the specified task event.
+   * @param event - A {@link TASK_EVENTS} value
+   * @param listener - The same function reference passed to {@link on}
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  off(event: string, listener: (...args: any[]) => void): this;
+
+  /**
    * Event data received in the Contact Center events.
    * Contains detailed task information including interaction details, media resources,
    * and participant data as defined in {@link TaskData}
