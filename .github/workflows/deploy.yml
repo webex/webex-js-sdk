@@ -413,8 +413,6 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const version = '${{ needs.publish-tag.outputs.version }}';
-            const proceed = '${{ needs.publish-tag.outputs.proceed }}' === 'true';
             const prNumber = parseInt('${{ steps.get-pr.outputs.pr_number }}');
 
             const raw = `${{ needs.publish-npm.outputs.package_versions }}`;
@@ -424,26 +422,28 @@ jobs:
               if (match) packageVersions[match[1].trim()] = match[2].trim();
             }
             const packageEntries = Object.entries(packageVersions);
+            const version = packageVersions['webex'] ? `v${packageVersions['webex']}` : '';
 
             const owner = 'webex';
             const repo = 'webex-js-sdk';
             const repoUrl = `https://github.com/${owner}/${repo}`;
-            const hasPackages = packageEntries.length > 0 && proceed;
+            const hasPackages = packageEntries.length > 0;
 
             let commentBody;
 
             if (hasPackages) {
-              const stableVersion = version.replace(/^v/, '').replace(/-next\..*/, '').replace(/-[a-z]*\..*/, '');
+              const primaryPackage = packageVersions['webex']
+                ? 'webex'
+                : packageEntries.filter(([p]) => p !== 'webex' && p !== 'webex-node').map(([p]) => p)[0] || packageEntries[0][0];
+              const primaryVersion = packageVersions[primaryPackage];
+              const stableVersion = primaryVersion.replace(/-next\..*/, '').replace(/-[a-z]*\..*/, '');
 
               const changelogUrl = new URL('https://web-sdk.webex.com/changelog/');
               if (stableVersion) {
                 changelogUrl.searchParams.set('stable_version', stableVersion);
               }
-              const primaryPackage = packageVersions['webex']
-                ? 'webex'
-                : packageEntries.filter(([p]) => p !== 'webex' && p !== 'webex-node').map(([p]) => p)[0] || packageEntries[0][0];
               changelogUrl.searchParams.set('package', primaryPackage);
-              changelogUrl.searchParams.set('version', packageVersions[primaryPackage]);
+              changelogUrl.searchParams.set('version', primaryVersion);
 
               const releaseLine = version
                 ? `| **Released in:** [\`${version}\`](${repoUrl}/releases/tag/${version}) |`
@@ -480,8 +480,7 @@ jobs:
               ].filter(Boolean).join('\n');
             } else {
               commentBody = [
-                '| :white_check_mark: Your changes have been merged! |',
-                '|---|',
+                ':white_check_mark: **Your changes have been merged!**',
                 '',
                 'Thank you for your contribution!',
                 '',
@@ -496,7 +495,7 @@ jobs:
               const existingComments = await github.rest.issues.listComments({
                 owner, repo,
                 issue_number: prNumber,
-                per_page: 100
+                per_page: 200
               });
 
               const detailedComment = existingComments.data.find(comment =>
