@@ -80,14 +80,15 @@ export default class MediaRequestManager {
 
       Object.values(clientRequests).forEach((mr) => {
         // TODO: Instead of degrading based on codecInfos, degrade based on sizeHint
-        totalMacroblocksRequested += mr.codecInfos.reduce((acc, codecInfo) => {
-          const macroblocks = MediaCodecHelper.get(codecInfo.codec).degradeMediaRequest(
-            mr,
-            resolution
-          );
+        totalMacroblocksRequested +=
+          mr.codecInfos?.reduce((acc, codecInfo) => {
+            const macroblocks = MediaCodecHelper.get(codecInfo.codec).degradeMediaRequest(
+              mr,
+              resolution
+            );
 
-          return Math.max(acc, macroblocks);
-        }, 0);
+            return Math.max(acc, macroblocks);
+          }, 0) ?? 0;
       });
 
       if (totalMacroblocksRequested <= this.degradationPreferences.maxMacroblocksLimit) {
@@ -230,13 +231,15 @@ export default class MediaRequestManager {
     // clone the requests so that any modifications we do to them don't affect the original ones
     const clientRequests = this.cloneClientRequests();
 
-    if (this.kind === 'video') {
-      Object.values(clientRequests).forEach((mr) => {
+    Object.values(clientRequests).forEach((mr) => {
+      if (this.kind === 'video') {
         mr.codecInfos = [MediaCodecHelper.H264.getCodecInfo({sizeHint: mr.sizeHint})].filter(
           (codecInfo) => codecInfo !== undefined
         );
-      });
-    }
+      } else {
+        mr.codecInfos = [];
+      }
+    });
 
     this.trimRequests(clientRequests);
     this.getDegradedClientRequests(clientRequests);

@@ -288,10 +288,10 @@ describe('RemoteMedia', () => {
       }
     );
 
-    it('also calls setMaxFs on the receive slot for backward compatibility', () => {
-      remoteMedia.setSizeHint(960, 540);
+    it('also emits MaxFsUpdate on the receive slot for backward compatibility', () => {
+      const emitSpy = sinon.spy(fakeReceiveSlot, 'emit');
 
-      assert.calledOnce(fakeReceiveSlot.setMaxFs);
+      remoteMedia.setSizeHint(960, 540);
 
       const expectedMaxFs = MediaCodecHelper.H264.getSizeHintMaxFs({
         resolution: 'medium',
@@ -299,7 +299,19 @@ describe('RemoteMedia', () => {
         height: 540,
       });
 
-      assert.calledWith(fakeReceiveSlot.setMaxFs, expectedMaxFs);
+      assert.calledWith(
+        emitSpy,
+        sinon.match({
+          file: 'meeting/receiveSlot',
+          function: 'setMaxFs',
+        }),
+        ReceiveSlotEvents.MaxFsUpdate,
+        sinon.match({
+          maxFs: expectedMaxFs,
+        })
+      );
+
+      emitSpy.restore();
     });
   });
 
