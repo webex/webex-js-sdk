@@ -6,7 +6,7 @@ import {
 } from '@webex/internal-plugin-metrics/src/metrics.types';
 import * as Agent from './services/agent/types';
 import * as Contact from './services/task/types';
-import {Profile} from './services/config/types';
+import {AIFeatureFlags, Profile} from './services/config/types';
 import {PaginatedResponse, BaseSearchParams} from './utils/PageCache';
 
 /**
@@ -574,6 +574,7 @@ export type ConfigFlags = {
   isEndConsultEnabled: boolean;
   webRtcEnabled: boolean;
   autoWrapup: boolean;
+  aiFeature?: AIFeatureFlags;
   /**
    * Optional toggle to globally enable/disable recording controls.
    * Falls back to backend hints when omitted.
@@ -835,3 +836,106 @@ export type BuddyAgentsResponse = Agent.BuddyAgentsSuccess | Error;
  * function handleUpdateDeviceType(resp: UpdateDeviceTypeResponse) { ... }
  */
 export type UpdateDeviceTypeResponse = Agent.DeviceTypeUpdateSuccess | Error;
+
+/**
+ * Supported transcript control actions for AI Assistant events.
+ * @public
+ * @example
+ * const action: TranscriptAction = 'START';
+ * @ignore
+ */
+export type TranscriptAction = 'START' | 'STOP';
+
+/**
+ * Supported AI Assistant event categories.
+ * @public
+ * @example
+ * const eventType: AIAssistantEventType = AIAssistantEventType.CUSTOM_EVENT;
+ * @ignore
+ */
+export const AIAssistantEventType = {
+  /** Custom AI Assistant event */
+  CUSTOM_EVENT: 'CUSTOM_EVENT',
+  /** CTI-backed AI Assistant event */
+  CTI_EVENT: 'CTI_EVENT',
+} as const;
+
+/**
+ * Union type of AI Assistant event categories.
+ * @public
+ * @example
+ * function send(type: AIAssistantEventType) { ... }
+ * @ignore
+ */
+export type AIAssistantEventType = Enum<typeof AIAssistantEventType>;
+
+/**
+ * Supported AI Assistant event names.
+ * @public
+ * @example
+ * const name: AIAssistantEventName = AIAssistantEventName.GET_TRANSCRIPTS;
+ * @ignore
+ */
+export const AIAssistantEventName = {
+  /** Request transcript streaming for an interaction */
+  GET_TRANSCRIPTS: 'GET_TRANSCRIPTS',
+  /** Request mid-call summary generation */
+  GET_MID_CALL_SUMMARY: 'GET_MID_CALL_SUMMARY',
+  /** Request post-call summary generation */
+  GET_POST_CALL_SUMMARY: 'GET_POST_CALL_SUMMARY',
+  /** Mid-call summary response event */
+  MID_CALL_SUMMARY_RESPONSE: 'MID_CALL_SUMMARY_RESPONSE',
+  /** Post-call summary response event */
+  POST_CALL_SUMMARY_RESPONSE: 'POST_CALL_SUMMARY_RESPONSE',
+  /** Suggested digital response event */
+  SUGGESTED_RESPONSES_DIGITAL: 'SUGGESTED_RESPONSES_DIGITAL',
+} as const;
+
+/**
+ * Union type of AI Assistant event names.
+ * @public
+ * @example
+ * function handle(name: AIAssistantEventName) { ... }
+ * @ignore
+ */
+export type AIAssistantEventName = Enum<typeof AIAssistantEventName>;
+
+/**
+ * A single transcript message entry returned by AI Assistant APIs.
+ * @public
+ * @example
+ * const message: TranscriptMessage = { role: 'AGENT', content: 'Hello', messageId: '1', publishTimestamp: Date.now() };
+ *
+ */
+export type TranscriptMessage = {
+  /** Speaker role for this message */
+  role: string;
+  /** Transcript chunk content */
+  content: string;
+  /** Unique message identifier */
+  messageId: string;
+  /** Message publish timestamp (epoch milliseconds) */
+  publishTimestamp: number;
+};
+
+/**
+ * Response payload for historic transcripts API.
+ * @public
+ * @example
+ * const resp: HistoricTranscriptsResponse = { orgId: 'org', agentId: 'agent', conversationId: null, interactionId: 'int', source: 'AI', data: [] };
+ *
+ */
+export type HistoricTranscriptsResponse = {
+  /** Organization identifier */
+  orgId: string;
+  /** Agent identifier */
+  agentId: string;
+  /** Conversation identifier when available */
+  conversationId: string | null;
+  /** Interaction identifier */
+  interactionId: string;
+  /** Data source identifier */
+  source: string;
+  /** Transcript messages */
+  data: TranscriptMessage[];
+};

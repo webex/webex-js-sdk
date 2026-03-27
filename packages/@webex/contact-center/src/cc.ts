@@ -63,6 +63,7 @@ import {Failure} from './services/core/GlobalTypes';
 import {EntryPoint} from './services/EntryPoint';
 import {AddressBook} from './services/AddressBook';
 import {Queue} from './services/Queue';
+import {ApiAIAssistant} from './services/ApiAiAssistant';
 import type {
   EntryPointListResponse,
   EntryPointSearchParams,
@@ -321,6 +322,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   public queue: Queue;
 
   /**
+   * API instance for AI Assistant operations such as transcript controls.
+   * @type {ApiAIAssistant}
+   * @public
+   */
+  public apiAIAssistant: ApiAIAssistant;
+
+  /**
    * Logger utility for Contact Center plugin
    * Provides consistent logging across the plugin
    * @type {LoggerProxy}
@@ -358,8 +366,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       this.webCallingService = new WebCallingService(this.$webex);
+      this.apiAIAssistant = new ApiAIAssistant(this.$webex);
       this.metricsManager = MetricsManager.getInstance({webex: this.$webex});
       this.taskManager = TaskManager.getTaskManager(
+        this.apiAIAssistant,
         this.services.contact,
         this.webCallingService,
         this.services.webSocketManager
@@ -371,8 +381,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.entryPoint = new EntryPoint(this.$webex);
       this.addressBook = new AddressBook(this.$webex, () => this.agentConfig?.addressBookId);
       this.queue = new Queue(this.$webex);
-
-      // Initialize logger
       LoggerProxy.initialize(this.$webex.logger);
     });
   }
@@ -713,12 +721,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             isEndConsultEnabled: this.agentConfig.isEndConsultEnabled,
             webRtcEnabled: this.agentConfig.webRtcEnabled,
             autoWrapup: this.agentConfig.wrapUpData?.wrapUpProps?.autoWrapup ?? false,
+            aiFeature: this.agentConfig.aiFeature,
           };
           this.taskManager.setConfigFlags(configFlags);
           // TODO: Make profile a singleton to make it available throughout app/sdk so we dont need to inject info everywhere
           this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
           this.taskManager.setAgentId(this.agentConfig.agentId);
           this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
+          this.apiAIAssistant.setAIFeatureFlags(this.agentConfig.aiFeature);
 
           if (
             this.agentConfig.webRtcEnabled &&
