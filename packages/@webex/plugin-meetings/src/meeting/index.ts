@@ -5842,7 +5842,10 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private processLocusLLMEvent = (event: LocusLLMEvent): void => {
     if (event.data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
-      storeEventForDebugging('llm', event.data);
+      // @ts-ignore
+      if (this.config.experimental.storeLocusHashTreeEventsForDebugging) {
+        storeEventForDebugging('llm', event.data);
+      }
 
       this.locusInfo.parse(this, event.data);
     } else {

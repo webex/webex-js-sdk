@@ -493,7 +493,10 @@ export default class Meetings extends WebexPlugin {
   private handleLocusEvent(data: LocusEvent, useRandomDelayForInfo = false) {
     let meeting = this.getCorrespondingMeetingByLocus(data);
 
-    storeEventForDebugging('mercury', data);
+    // @ts-ignore
+    if (this.config.experimental.storeLocusHashTreeEventsForDebugging) {
+      storeEventForDebugging('mercury', data);
+    }
 
     // Special case when locus has got replaced, This only happend once if a replace locus exists
     // https://sqbu-github.cisco.com/WebExSquared/locus/wiki/Locus-changing-mid-call
