@@ -14,8 +14,6 @@ import LoggerProxy from '../common/logs/logger-proxy';
 import {ReceiveSlotEvents} from './receiveSlot';
 import {MediaRequest, MediaRequestId} from './types';
 import MediaCodecHelper from './codec/mediaCodecHelper';
-import {CODEC_DEFAULTS} from './codec/constants';
-import type {CodecInfo} from './codec/types';
 
 const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
 
@@ -81,6 +79,7 @@ export default class MediaRequestManager {
       let totalMacroblocksRequested = 0;
 
       Object.values(clientRequests).forEach((mr) => {
+        // TODO: Instead of degrading based on codecInfos, degrade based on sizeHint
         totalMacroblocksRequested += mr.codecInfos.reduce((acc, codecInfo) => {
           const macroblocks = MediaCodecHelper.get(codecInfo.codec).degradeMediaRequest(
             mr,
@@ -231,6 +230,14 @@ export default class MediaRequestManager {
     // clone the requests so that any modifications we do to them don't affect the original ones
     const clientRequests = this.cloneClientRequests();
 
+    if (this.kind === 'video') {
+      Object.values(clientRequests).forEach((mr) => {
+        mr.codecInfos = [MediaCodecHelper.H264.getCodecInfo({sizeHint: mr.sizeHint})].filter(
+          (codecInfo) => codecInfo !== undefined
+        );
+      });
+    }
+
     this.trimRequests(clientRequests);
     this.getDegradedClientRequests(clientRequests);
 
@@ -277,20 +284,8 @@ export default class MediaRequestManager {
     // eslint-disable-next-line no-plusplus
     const newId = `${this.counter++}`;
 
-    const codecInfos: CodecInfo[] =
-      this.kind === 'audio'
-        ? []
-        : (() => {
-            const info = MediaCodecHelper.H264.getCodecInfo({
-              sizeHint: mediaRequest.sizeHint,
-            });
-
-            return info ? [info] : [{codec: 'h264', maxFs: CODEC_DEFAULTS.h264.maxFs}];
-          })();
-
     const storedRequest: MediaRequest = {
       ...mediaRequest,
-      codecInfos,
     };
 
     this.clientRequests[newId] = storedRequest;
