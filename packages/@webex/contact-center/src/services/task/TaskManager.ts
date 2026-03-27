@@ -605,10 +605,7 @@ export default class TaskManager extends EventEmitter {
             break;
         }
         if (task) {
-          const eventType = payload.type || payload.data.type;
-          const eventPayload = payload.data || payload.data.data;
-
-          task.emit(eventType, eventPayload);
+          task.emit(payload.data.type, payload.data);
         }
 
         const transcriptInteractionId =
