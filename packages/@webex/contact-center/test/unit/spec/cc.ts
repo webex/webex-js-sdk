@@ -15,7 +15,7 @@ import type {ContactServiceQueuesResponse} from '../../../src/types';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess, AGENT_EVENTS} from '../../../src/services/agent/types';
 import {SetStateResponse} from '../../../src/types';
-import {AGENT, WEB_RTC_PREFIX} from '../../../src/services/constants';
+import {AGENT, SUBSCRIBE_API, WEB_RTC_PREFIX} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
 import {CC_EVENTS} from '../../../src/services/config/types';
@@ -124,7 +124,7 @@ describe('webex.cc', () => {
       },
       webSocketManager: mockWebSocketManager,
       rtdWebSocketManager: {
-        initWebSocket: jest.fn(),
+        initWebSocket: jest.fn().mockResolvedValue({}),
         on: jest.fn(),
         off: jest.fn(),
         close: jest.fn(),
@@ -322,6 +322,7 @@ describe('webex.cc', () => {
           clientType: 'WebexCCSDK',
           allowMultiLogin: false,
         },
+        resource: SUBSCRIBE_API,
       });
 
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
@@ -390,6 +391,7 @@ describe('webex.cc', () => {
           clientType: 'WebexCCSDK',
           allowMultiLogin: true,
         },
+        resource: SUBSCRIBE_API,
       });
       expect(configSpy).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
@@ -469,6 +471,7 @@ describe('webex.cc', () => {
           clientType: 'WebexCCSDK',
           allowMultiLogin: false,
         },
+        resource: SUBSCRIBE_API,
       });
 
       expect(mockTaskManager.on).toHaveBeenCalledWith(
@@ -522,6 +525,7 @@ describe('webex.cc', () => {
           clientType: 'WebexCCSDK',
           allowMultiLogin: false,
         },
+        resource: SUBSCRIBE_API,
       });
 
       expect(configSpy).toHaveBeenCalled();
