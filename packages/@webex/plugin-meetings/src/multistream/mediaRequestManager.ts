@@ -9,6 +9,7 @@ import {
   getRecommendedMaxBitrateForFrameSize,
   RecommendedOpusBitrates,
   NamedMediaGroup,
+  AV1Codec,
 } from '@webex/internal-media-core';
 import {cloneDeepWith, debounce} from 'lodash';
 
@@ -16,6 +17,8 @@ import LoggerProxy from '../common/logs/logger-proxy';
 
 import {ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
 import {MAX_FS_VALUES} from './remoteMedia';
+import {AV1_CODEC_PARAMETERS, CODEC_DEFAULTS, MACROBLOCK_SIZE} from './codec/constants';
+import getResolutionForFrameSize from './codec/helper';
 
 export interface ActiveSpeakerPolicyInfo {
   policy: 'active-speaker';
@@ -42,7 +45,7 @@ export interface H264CodecInfo {
   maxHeight?: number;
 }
 
-export type CodecInfo = H264CodecInfo; // we'll add AV1 here in the future when it's available
+export type CodecInfo = H264CodecInfo;
 
 export interface MediaRequest {
   policyInfo: PolicyInfo;
@@ -53,14 +56,6 @@ export interface MediaRequest {
 }
 
 export type MediaRequestId = string;
-
-const CODEC_DEFAULTS = {
-  h264: {
-    maxFs: 8192,
-    maxFps: 3000,
-    maxMbps: 245760,
-  },
-};
 
 const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
 
@@ -198,6 +193,18 @@ export class MediaRequestManager {
     return (mediaRequest.codecInfo.maxFs * maxFps) / 100;
   }
 
+  /**
+   * Returns the max decode rate for an AV1 stream
+   * @param {MediaRequest} mediaRequest - The media request to get the max decode rate for
+   * @returns {number} The max decode rate
+   */
+  // eslint-disable-next-line class-methods-use-this
+  private getAv1MaxDecodeRate(mediaRequest: MediaRequest): number {
+    const resolution = getResolutionForFrameSize(mediaRequest.codecInfo.maxFs);
+
+    return AV1_CODEC_PARAMETERS[resolution].maxDecodeRate;
+  }
+
   /** Modifies the passed in clientRequests and makes sure that in total they don't ask
    *  for more streams than there are available.
    *
@@ -316,13 +323,24 @@ export class MediaRequestManager {
             this.getMaxPayloadBitsPerSecond(mr),
             mr.codecInfo && [
               WcmeCodecInfo.fromH264(
-                0x80,
+                0x80, // TODO: fix this constant
                 new H264Codec(
                   mr.codecInfo.maxFs,
                   mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
                   this.getH264MaxMbps(mr),
                   mr.codecInfo.maxWidth,
                   mr.codecInfo.maxHeight
+                )
+              ),
+              WcmeCodecInfo.fromAv1(
+                45, // TODO: fix this constant
+                new AV1Codec(
+                  CODEC_DEFAULTS.av1.levelIdx,
+                  CODEC_DEFAULTS.av1.tier,
+                  mr.codecInfo.maxWidth,
+                  mr.codecInfo.maxHeight,
+                  mr.codecInfo.maxFs * MACROBLOCK_SIZE || CODEC_DEFAULTS.av1.maxPicSize,
+                  this.getAv1MaxDecodeRate(mr)
                 )
               ),
             ]
