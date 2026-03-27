@@ -15,7 +15,7 @@ export type GetCodecInfoOptions = {sizeHint?: SizeHint};
 
 export interface MediaCodecHelper<TCodecInfo extends CodecInfo> {
   getCodecInfo(options: GetCodecInfoOptions): TCodecInfo | undefined;
-  getWCMECodecInfos(mediaRequest: MediaRequest): WcmeCodecInfo[];
+  getWCMECodecInfo(codecInfo: TCodecInfo): WcmeCodecInfo;
   degradeMediaRequest(mediaRequest: MediaRequest, resolution: SupportedResolution): number;
   getMaxPayloadBitsPerSecond(mediaRequest: MediaRequest): number;
 }

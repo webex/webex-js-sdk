@@ -265,8 +265,8 @@ export default class MediaRequestManager {
 
       const receiveSlots = mr.receiveSlots.map((receiveSlot) => receiveSlot.wcmeReceiveSlot);
       const maxPayloadBitsPerSecond = this.getMaxPayloadBitsPerSecond(mr);
-      const codecInfos = mr.codecInfos.flatMap((codecInfo) =>
-        MediaCodecHelper.get(codecInfo.codec).getWCMECodecInfos(mr)
+      const codecInfos = mr.codecInfos.map((codecInfo) =>
+        MediaCodecHelper.get(codecInfo.codec).getWCMECodecInfo(codecInfo)
       );
 
       const streamRequest = new StreamRequest(
@@ -287,28 +287,22 @@ export default class MediaRequestManager {
     // eslint-disable-next-line no-plusplus
     const newId = `${this.counter++}`;
 
-    const storedRequest: MediaRequest = {
-      ...mediaRequest,
-    };
-
-    this.clientRequests[newId] = storedRequest;
+    this.clientRequests[newId] = mediaRequest;
 
     const handleMaxFs = ({maxFs}: {maxFs: number}) => {
-      storedRequest.preferredMaxFs = maxFs;
+      mediaRequest.preferredMaxFs = maxFs;
       this.debouncedSourceUpdateListener();
     };
 
     const handleSizeHint = (sizeHint: MediaRequest['sizeHint']) => {
-      storedRequest.sizeHint = sizeHint;
+      mediaRequest.sizeHint = sizeHint;
       this.debouncedSourceUpdateListener();
     };
 
-    storedRequest.handleMaxFs = handleMaxFs;
-    storedRequest.handleSizeHint = handleSizeHint;
     mediaRequest.handleMaxFs = handleMaxFs;
     mediaRequest.handleSizeHint = handleSizeHint;
 
-    storedRequest.receiveSlots.forEach((rs) => {
+    mediaRequest.receiveSlots.forEach((rs) => {
       rs.on(ReceiveSlotEvents.SourceUpdate, this.sourceUpdateListener);
       rs.on(ReceiveSlotEvents.MaxFsUpdate, handleMaxFs);
       rs.on(ReceiveSlotEvents.SizeHintUpdate, handleSizeHint);

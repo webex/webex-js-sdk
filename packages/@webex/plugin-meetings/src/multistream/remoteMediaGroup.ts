@@ -122,7 +122,7 @@ export class RemoteMediaGroup {
   }
 
   /**
-   * Pins a specific remote media instance to a specfic CSI, so the media will
+   * Pins a specific remote media instance to a specific CSI, so the media will
    * no longer come from active speaker, but from that CSI.
    * If no CSI is given, the current CSI value is used.
    *

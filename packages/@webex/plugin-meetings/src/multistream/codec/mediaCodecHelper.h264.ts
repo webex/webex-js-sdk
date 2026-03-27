@@ -80,26 +80,22 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
   }
 
   /**
-   * Gets the WCME codec infos
+   * Gets the WCME codec info
    *
-   * @param {MediaRequest} mr - The media request to get the WCME codec infos from
-   * @returns {WcmeCodecInfo[]} The WCME codec infos
+   * @param {H264CodecInfo} codecInfo - The codec info to get the WCME codec infos from
+   * @returns {WcmeCodecInfo} The WCME codec info
    */
-  getWCMECodecInfos(mr: MediaRequest): WcmeCodecInfo[] {
-    return [
-      ...mr.codecInfos.map((codecInfo) => {
-        return WcmeCodecInfo.fromH264(
-          0x80, // TODO: Fix this constant
-          new H264Codec(
-            codecInfo.maxFs,
-            codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
-            this.getMaxMbps(codecInfo),
-            codecInfo.maxWidth,
-            codecInfo.maxHeight
-          )
-        );
-      }),
-    ];
+  getWCMECodecInfo(codecInfo: H264CodecInfo): WcmeCodecInfo {
+    return WcmeCodecInfo.fromH264(
+      0x80, // TODO: Fix this constant
+      new H264Codec(
+        codecInfo.maxFs,
+        codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
+        this.getMaxMbps(codecInfo),
+        codecInfo.maxWidth,
+        codecInfo.maxHeight
+      )
+    );
   }
 
   /**
@@ -133,6 +129,10 @@ export default class MediaCodecHelperH264 implements MediaCodecHelper<H264CodecI
    * @returns {number} maxMbps
    */
   getMaxMbps(codecInfo: H264CodecInfo): number {
+    if (codecInfo.maxMbps) {
+      return codecInfo.maxMbps;
+    }
+
     const maxFps = codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps;
 
     // divided by 100 since maxFps is 3000 (for 30 frames per seconds)
