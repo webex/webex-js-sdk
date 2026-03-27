@@ -201,7 +201,7 @@ jobs:
           echo "package_versions<<EOF" >> $GITHUB_OUTPUT
           echo "$OUTPUT" | while IFS= read -r line; do
             if echo "$line" | grep -q ' => '; then
-              echo "package: $line"
+              echo "__webex_release__: $line"
             fi
           done >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -418,7 +418,7 @@ jobs:
             const raw = `${{ needs.publish-npm.outputs.package_versions }}`;
             const packageVersions = {};
             for (const line of raw.split('\n')) {
-              const match = line.match(/^package:\s+(.+?)\s+=>\s+(.+)$/);
+              const match = line.match(/^__webex_release__:\s+(.+?)\s+=>\s+(.+)$/);
               if (match) packageVersions[match[1].trim()] = match[2].trim();
             }
             const packageEntries = Object.entries(packageVersions);
