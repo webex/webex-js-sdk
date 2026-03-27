@@ -1,6 +1,7 @@
 # Architecture Patterns
 
-> Quick reference for LLMs working with the `@webex/calling` package architecture.
+> Reusable architectural patterns for LLMs working with the `@webex/calling` package.
+> For high-level architecture, call lifecycle, and module-specific details, see the module-level ai-docs (e.g., `CallingClient/`, `calling/`).
 
 ---
 
@@ -12,60 +13,48 @@
 - **MUST** use `SDKConnector` for all Webex SDK interactions (requests, Mercury listeners)
 - **MUST** separate backend-specific logic into connector classes (WxCall, UCM, Broadworks)
 - **MUST** keep types co-located in `types.ts` within each module
-- **MUST** export public API through `src/api.ts` only
+- **MUST** export public API through `src/api.ts` (used for typeDoc documentation generation)
 - **NEVER** instantiate `CallingClient`, `CallManager`, or `SDKConnector` directly — use factories/singletons
 - **NEVER** access `webex` SDK directly from call/line classes — go through `SDKConnector`
 - **NEVER** create more than one `SDKConnector` instance
 
 ---
 
-## High-Level Architecture
+## Naming Conventions for Classes and Interfaces
 
+When defining new classes and their interfaces, follow this convention:
+
+| Element | Convention | Example |
+|---------|-----------|---------|
+| Class name | PascalCase | `CallingClient`, `CallManager`, `SDKConnector` |
+| Interface for class | `I` prefix + PascalCase | `ICallingClient`, `ICallManager`, `ISDKConnector` |
+| Interface file location | Co-located `types.ts` | `CallingClient/types.ts` |
+
+The interface defines the public contract; the class implements it:
+
+```typescript
+// In types.ts
+export interface ICallingClient extends Eventing<CallingClientEventTypes> {
+  getLine(): ILine | undefined;
+  register(): Promise<void>;
+}
+
+// In CallingClient.ts
+export class CallingClient extends Eventing<CallingClientEventTypes> implements ICallingClient {
+  // implementation
+}
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                      Application Layer                           │
-└──────────────────────────────────────────────────────────────────┘
-                                │
-                      createClient(webex, config)
-                                │
-┌──────────────────────────────────────────────────────────────────┐
-│  CallingClient (Eventing<CallingClientEventTypes>)               │
-│  ├── Line (Eventing<LineEventTypes>)                             │
-│  │   └── Registration (Web Worker keepalive)                     │
-│  ├── CallManager (Eventing<CallEventTypes>) [singleton]          │
-│  │   └── Call (Eventing<CallEventTypes>)                         │
-│  │       ├── Call State Machine (XState)                         │
-│  │       └── Media State Machine (XState / ROAP)                 │
-│  ├── SDKConnector [singleton] → Webex SDK / Mercury              │
-│  ├── MetricManager [singleton]                                   │
-│  └── Logger                                                      │
-└──────────────────────────────────────────────────────────────────┘
-                                │
-┌──────────────────────────────────────────────────────────────────┐
-│  @webex/internal-media-core (WebRTC, ROAP)                       │
-│  Mobius API (REST + WebSocket via Mercury)                        │
-└──────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Client Modules
-
-| Client | Factory | Interface | Purpose |
-|--------|---------|-----------|---------|
-| `CallingClient` | `createClient()` | `ICallingClient` | Line registration, call management |
-| `CallHistory` | `createCallHistoryClient()` | `ICallHistory` | Call records |
-| `CallSettings` | `createCallSettingsClient()` | `ICallSettings` | DND, forwarding, voicemail settings |
-| `ContactsClient` | `createContactsClient()` | `IContacts` | Contact management |
-| `Voicemail` | `createVoicemailClient()` | `IVoicemail` | Voicemail operations |
 
 ---
 
 ## Singleton Pattern
 
+Used for shared infrastructure that must have exactly one instance across the package.
+
 ### SDKConnector
 
 Frozen singleton that wraps the Webex SDK instance. Set once, used everywhere.
+It provides a centralized way to make HTTP requests (`request()`) and register/unregister Mercury WebSocket listeners.
 
 ```typescript
 class SDKConnector implements ISDKConnector {
@@ -99,7 +88,7 @@ export default Object.freeze(new SDKConnector());
 
 ### CallManager
 
-Module-level singleton obtained via `getCallManager()`.
+Module-level singleton obtained via `getCallManager()`. Manages the collection of active calls and dispatches incoming WebSocket events to the appropriate call instance.
 
 ```typescript
 let callManager: ICallManager;
@@ -114,7 +103,7 @@ export const getCallManager = (webex: WebexSDK, indicator: ServiceIndicator): IC
 
 ### MetricManager
 
-Same pattern as CallManager.
+Same singleton pattern as CallManager. Collects and submits telemetry/metrics for calling operations.
 
 ```typescript
 let metricManager: IMetricManager;
@@ -131,16 +120,38 @@ export const getMetricManager = (webex: WebexSDK, indicator: ServiceIndicator): 
 
 ## Factory Function Pattern
 
+All top-level clients are created through async factory functions that handle initialization internally. Consumers receive a fully initialized instance.
+
 ### Creating Clients
 
 ```typescript
-// CallingClient factory
-export const createClient = (
+// CallingClient factory — async, returns initialized instance
+export const createClient = async (
   webex: WebexSDK,
   config?: CallingClientConfig
-): ICallingClient => new CallingClient(webex, config);
+): Promise<ICallingClient> => {
+  const callingClientInstance = new CallingClient(webex, config);
+  await callingClientInstance.init();
+  return callingClientInstance;
+};
+```
 
-// Call factory (internal)
+**Important**: `createClient` is `async` and calls `init()` internally. Consumers must `await` the result and should **not** call `init()` separately.
+
+```typescript
+// Correct usage
+const client = await createClient(webex, config);
+
+// Other client factories follow the same pattern
+const callHistory = createCallHistoryClient(webex, config);
+const callSettings = createCallSettingsClient(webex, config);
+const contacts = createContactsClient(webex, config);
+const voicemail = createVoicemailClient(webex, config);
+```
+
+### Internal Call Factory
+
+```typescript
 export const createCall = (
   activeUrl: string,
   webex: WebexSDK,
@@ -174,64 +185,10 @@ export const createLineError = (
 
 ---
 
-## CallingClient Initialization
-
-```typescript
-export class CallingClient extends Eventing<CallingClientEventTypes> implements ICallingClient {
-  constructor(webex: WebexSDK, config?: CallingClientConfig) {
-    super();
-    this.sdkConnector = SDKConnector;
-
-    if (!this.sdkConnector.getWebex()) {
-      SDKConnector.setWebex(webex);
-      log.setWebexLogger(webex.logger);
-    }
-
-    this.mutex = new Mutex();
-    this.webex = this.sdkConnector.getWebex();
-    this.sdkConfig = config;
-
-    const serviceData = this.sdkConfig?.serviceData?.indicator
-      ? this.sdkConfig.serviceData
-      : {indicator: ServiceIndicator.CALLING, domain: ''};
-
-    validateServiceData(serviceData);
-
-    this.callManager = getCallManager(this.webex, serviceData.indicator);
-    this.metricManager = getMetricManager(this.webex, serviceData.indicator);
-    this.mediaEngine = Media;
-
-    this.registerSessionsListener();
-    this.registerCallsClearedListener();
-  }
-
-  public async init() {
-    // 1. Retrieve Mobius servers
-    // 2. Create a Line
-    // 3. Set up network change detection
-  }
-}
-```
-
----
-
 ## Backend Connector Pattern
 
 Different calling backends share the same interface but have platform-specific implementations.
-
-```
-CallSettings
-├── WxCallBackendConnector    (Webex Calling)
-├── UcmBackendConnector       (UCM)
-└── BroadworksBackendConnector (Broadworks)
-
-Voicemail
-├── WxCallBackendConnector
-├── UcmBackendConnector
-└── BroadworksBackendConnector
-```
-
-The appropriate connector is selected based on `ServiceIndicator` / `CALLING_BACKEND`:
+The appropriate connector is selected based on `ServiceIndicator` / `CALLING_BACKEND`.
 
 ```typescript
 export enum CALLING_BACKEND {
@@ -246,28 +203,48 @@ export enum ServiceIndicator {
 }
 ```
 
+Connector availability varies by module:
+
+| Module | WxCallBackendConnector | UcmBackendConnector | BroadworksBackendConnector |
+|--------|----------------------|--------------------|--------------------------:|
+| CallSettings | Yes | Yes | No |
+| Voicemail | Yes | Yes | Yes |
+
 ---
 
-## Call Lifecycle
+## Callback Pattern
 
+The package uses typed callbacks for cleanup and error propagation between components.
+
+### Delete/Cleanup Callback
+
+When a call ends, the `CallManager` needs to remove it from its collection. This is done via a callback passed during call creation:
+
+```typescript
+type DeleteRecordCallBack = (correlationId: CorrelationId) => void;
+
+const newCall = createCall(
+  this.activeMobiusUrl,
+  this.webex,
+  direction,
+  deviceId,
+  lineId,
+  (correlationId: CorrelationId) => {
+    delete this.callCollection[correlationId];
+  },
+  this.serviceIndicator,
+  destination
+);
 ```
-Application                CallingClient              Line                  CallManager            Call
-    │                          │                       │                       │                    │
-    ├── createClient() ───────>│                       │                       │                    │
-    ├── client.init() ────────>│                       │                       │                    │
-    │                          ├── getMobiusServers()   │                       │                    │
-    │                          ├── createLine() ──────>│                       │                    │
-    │                          │                       ├── register()          │                    │
-    │                          │                       │                       │                    │
-    ├── line.makeCall(dest) ──>│                       │                       │                    │
-    │                          │                       ├── callManager         │                    │
-    │                          │                       │   .createCall() ─────>├── new Call() ────>│
-    │                          │                       │                       │                    │
-    │<── CALL_EVENT: ALERTING ─┤<──────────────────────┤<──────────────────────┤<── emit() ────────│
-    │<── CALL_EVENT: CONNECT ──┤<──────────────────────┤<──────────────────────┤<── emit() ────────│
-    │                          │                       │                       │                    │
-    ├── call.end() ───────────────────────────────────────────────────────────────────────────────>│
-    │<── CALL_EVENT: DISCONNECT┤<──────────────────────┤<──────────────────────┤<── emit() ────────│
+
+### Error Emitter Callbacks
+
+Error handler utilities accept typed callbacks to propagate errors back to the emitting component:
+
+```typescript
+type CallErrorEmitterCallBack = (error: CallError) => void;
+type CallingClientErrorEmitterCallback = (err: CallingClientError, finalError?: boolean) => void;
+type LineErrorEmitterCallback = (err: LineError, finalError?: boolean) => void;
 ```
 
 ---
@@ -318,6 +295,6 @@ async someOperation() {
 ## Related
 
 - [Event Patterns](./event-patterns.md)
-- [State Machine Patterns](./state-machine-patterns.md)
 - [Error Handling Patterns](./error-handling-patterns.md)
 - [TypeScript Patterns](./typescript-patterns.md)
+- [Testing Patterns](./testing-patterns.md)

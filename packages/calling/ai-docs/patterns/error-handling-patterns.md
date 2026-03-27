@@ -9,13 +9,40 @@
 - **MUST** use the error class hierarchy (`ExtendedError` → `CallError` / `LineError` / `CallingClientError`)
 - **MUST** use factory functions (`createCallError`, `createLineError`, `createClientError`) to instantiate errors
 - **MUST** use `ERROR_TYPE` enum for error classification
-- **MUST** use `ERROR_LAYER` enum to distinguish call control vs media errors
+- **MUST** use `ERROR_LAYER` enum to distinguish call control layer vs media layer errors
 - **MUST** emit errors via typed events (e.g., `CALL_EVENT_KEYS.CALL_ERROR`, `LINE_EVENTS.ERROR`)
 - **MUST** include `ErrorContext` (file and method) for traceability
 - **MUST** use `handleCallErrors()` / `handleCallingClientErrors()` for HTTP/API error mapping
 - **MUST** log errors and optionally upload logs for diagnostics
+- **MUST** create a dedicated Error class for each module/object whose API errors need handling
 - **NEVER** throw raw `Error` objects — always use the typed error classes
 - **NEVER** swallow errors silently — emit, log, or propagate
+
+---
+
+## Error Flow Overview
+
+```mermaid
+flowchart TD
+    A[API/WebSocket Error] --> B{Error Source}
+    B -->|Call operation| C[handleCallErrors]
+    B -->|Client/Device operation| D[handleCallingClientErrors]
+    B -->|Service API| E[serviceErrorCodeHandler]
+
+    C --> F[Map HTTP status → ERROR_TYPE]
+    D --> F
+    F --> G[Create typed error via factory]
+
+    G -->|Call error| H[emit CALL_EVENT_KEYS.CALL_ERROR]
+    G -->|Line error| I[emit LINE_EVENTS.ERROR]
+    G -->|Client error| J[emit CALLING_CLIENT_EVENT_KEYS.ERROR]
+
+    E --> K[Return structured response with statusCode + data]
+
+    H --> L[Optionally: submit metrics + uploadLogs]
+    I --> L
+    J --> L
+```
 
 ---
 
@@ -31,7 +58,18 @@ Error (native)
 
 ### ExtendedError (Base)
 
+The base error class for all calling errors. It exists to provide a common structure (`type`, `context`) that all error subclasses share, enabling consistent error handling and logging across the package.
+
+Each child class inherits `message`, `type`, and `context` from `ExtendedError` and adds domain-specific fields:
+
+| Parameter | Type                    | Description                                  |
+| --------- | ----------------------- | -------------------------------------------- |
+| `msg`     | `ErrorMessage` (string) | Human-readable error description             |
+| `context` | `ErrorContext`          | File and method where the error originated   |
+| `type`    | `ERROR_TYPE`            | Classification of the error (see enum below) |
+
 ```typescript
+// src/Errors/catalog/ExtendedError.ts
 export default class ExtendedError extends Error {
   public type: ERROR_TYPE;
   public context: ErrorContext;
@@ -46,9 +84,12 @@ export default class ExtendedError extends Error {
 
 ### CallError
 
-For errors occurring during an active call. Carries `correlationId` to associate with the specific call and `errorLayer` to indicate whether the issue is in call control or media.
+For errors occurring during an active call. Carries `correlationId` to associate with the specific call and `errorLayer` to indicate whether the issue is in the call control layer or the media layer.
+
+Provides both `getCallError()` and `setCallError()` methods:
 
 ```typescript
+// src/Errors/catalog/CallError.ts
 export class CallError extends ExtendedError {
   private correlationId: CorrelationId;
   private errorLayer: ERROR_LAYER;
@@ -66,20 +107,10 @@ export class CallError extends ExtendedError {
   }
 
   public getCallError(): CallErrorObject {
-    return {
-      message: this.message,
-      context: this.context,
-      type: this.type,
-      correlationId: this.correlationId,
-      errorLayer: this.errorLayer,
-    };
+    /* returns error fields */
   }
-
   public setCallError(error: CallErrorObject) {
-    this.message = error.message;
-    this.correlationId = error.correlationId;
-    this.context = error.context;
-    this.type = error.type;
+    /* updates error fields */
   }
 }
 ```
@@ -88,7 +119,10 @@ export class CallError extends ExtendedError {
 
 For line registration and deregistration errors. Carries `status` to indicate the registration state.
 
+Provides both `getError()` and `setError()` methods:
+
 ```typescript
+// src/Errors/catalog/LineError.ts
 export class LineError extends ExtendedError {
   public status: RegistrationStatus = RegistrationStatus.INACTIVE;
 
@@ -103,12 +137,10 @@ export class LineError extends ExtendedError {
   }
 
   public getError(): LineErrorObject {
-    return {
-      message: this.message,
-      context: this.context,
-      type: this.type,
-      status: this.status,
-    };
+    /* returns error fields */
+  }
+  public setError(error: LineErrorObject) {
+    /* updates error fields */
   }
 }
 ```
@@ -117,7 +149,10 @@ export class LineError extends ExtendedError {
 
 For client and device-level errors (device registration, Mobius discovery, etc.).
 
+Provides both `getError()` and `setError()` methods:
+
 ```typescript
+// src/Errors/catalog/CallingDeviceError.ts
 export class CallingClientError extends ExtendedError {
   public status: RegistrationStatus = RegistrationStatus.INACTIVE;
 
@@ -132,19 +167,34 @@ export class CallingClientError extends ExtendedError {
   }
 
   public getError(): ErrorObject {
-    return {message: this.message, context: this.context, type: this.type};
+    /* returns error fields */
+  }
+  public setError(error: ErrorObject) {
+    /* updates error fields */
   }
 }
 ```
 
+### Creating Dedicated Error Classes
+
+To handle errors for a new module or object (e.g., a `Line` object or `Call` object):
+
+1. Create a new class extending `ExtendedError` in `src/Errors/catalog/`
+2. Add domain-specific fields (e.g., `status`, `correlationId`)
+3. Implement `getError()` and `setError()` methods
+4. Create a factory function for instantiation
+5. Export from `src/Errors/index.ts`
+
+Example: `LineError` handles errors thrown by methods on the `Line` object (registration failures, etc.) while `CallError` handles errors thrown during active call operations (dial, hold, resume, etc.).
+
 ---
 
-## Factory Functions
+## Instantiation of Error Objects
 
 Always use factory functions instead of `new` for error instantiation.
 
 ```typescript
-// Call error
+// Call error — see src/Errors/catalog/CallError.ts
 const error = createCallError(
   'Hold operation failed',
   {file: CALL_FILE, method: 'doHoldResume'},
@@ -153,7 +203,7 @@ const error = createCallError(
   ERROR_LAYER.CALL_CONTROL
 );
 
-// Line error
+// Line error — see src/Errors/catalog/LineError.ts
 const error = createLineError(
   'Registration failed',
   {file: 'line/index.ts', method: 'register'},
@@ -161,7 +211,7 @@ const error = createLineError(
   RegistrationStatus.INACTIVE
 );
 
-// Client error
+// Client error — see src/Errors/catalog/CallingDeviceError.ts
 const error = createClientError(
   'Device creation failed',
   {file: CALLING_CLIENT_FILE, method: 'createDevice'},
@@ -236,11 +286,61 @@ export enum CALL_ERROR_CODE {
 
 ---
 
+## Error Object Types
+
+```typescript
+// src/Errors/types.ts
+export interface ErrorContext extends IMetaContext {}
+
+// IMetaContext (src/common/types.ts) — fields are optional
+export interface IMetaContext {
+  file?: string;
+  method?: string;
+}
+
+export type ErrorObject = {
+  message: ErrorMessage;
+  type: ERROR_TYPE;
+  context: ErrorContext;
+};
+
+export interface LineErrorObject extends ErrorObject {
+  status: RegistrationStatus;
+}
+
+export interface CallErrorObject extends ErrorObject {
+  correlationId: CorrelationId;
+  errorLayer: ERROR_LAYER;
+}
+```
+
+---
+
+## Error Callback Type Definitions
+
+These typed callbacks wire error handlers to emitters:
+
+```typescript
+// src/CallingClient/calling/types.ts
+export type CallErrorEmitterCallBack = (error: CallError) => void;
+
+// src/CallingClient/types.ts
+export type CallingClientErrorEmitterCallback = (
+  err: CallingClientError,
+  finalError?: boolean
+) => void;
+
+// src/CallingClient/line/types.ts
+export type LineErrorEmitterCallback = (err: LineError, finalError?: boolean) => void;
+```
+
+---
+
 ## Error Handler Utilities
 
 ### handleCallErrors
 
-Maps HTTP/API failures to `CallError` and optionally triggers retries.
+Maps HTTP/API failures to `CallError` and optionally triggers retries. See `src/common/Utils.ts`.
 
 ```typescript
 handleCallErrors(
@@ -251,20 +351,19 @@ handleCallErrors(
   ERROR_LAYER.CALL_CONTROL,
   this.correlationId,
   {file: CALL_FILE, method: 'dial'},
-  // optional retry callback
-  () => this.retryOperation()
+  () => this.retryOperation() // optional retry callback
 );
 ```
 
 ### handleCallingClientErrors
 
-Maps errors to `CallingClientError` and returns an `abort` flag.
+Maps errors to `CallingClientError` and returns an `abort` flag. See `src/common/Utils.ts`.
 
 ```typescript
-const {abort} = handleCallingClientErrors(
-  responsePayload,
-  {file: CALLING_CLIENT_FILE, method: 'getMobiusServers'}
-);
+const {abort} = handleCallingClientErrors(responsePayload, {
+  file: CALLING_CLIENT_FILE,
+  method: 'getMobiusServers',
+});
 
 if (abort) {
   this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, callingClientError);
@@ -274,17 +373,41 @@ if (abort) {
 
 ### serviceErrorCodeHandler
 
-Internal utility that maps HTTP status codes to `ERROR_TYPE`.
+Utility that maps HTTP status codes to structured response objects (not `ERROR_TYPE` values). Used by voicemail, call settings, contacts, and call history modules — **not** for the call/line/client error hierarchy.
+
+Full signature (`src/common/Utils.ts`):
 
 ```typescript
-// 401 → ERROR_TYPE.TOKEN_ERROR
-// 403 → ERROR_TYPE.FORBIDDEN_ERROR
-// 404 → ERROR_TYPE.NOT_FOUND
-// 408 → ERROR_TYPE.TIMEOUT
-// 429 → ERROR_TYPE.TOO_MANY_REQUESTS
-// 500 → ERROR_TYPE.SERVER_ERROR
-// 503 → ERROR_TYPE.SERVICE_UNAVAILABLE
+export async function serviceErrorCodeHandler(
+  err: WebexRequestPayload,
+  loggerContext: LogContext
+): Promise<
+  | JanusResponseEvent
+  | VoicemailResponseEvent
+  | CallSettingResponse
+  | ContactResponse
+  | UpdateMissedCallsResponse
+  | UCMLinesResponse
+  | DeleteCallHistoryRecordsResponse
+> {
+  const errorCode = Number(err.statusCode);
+  switch (errorCode) {
+    case ERROR_CODE.BAD_REQUEST:
+      return {statusCode: 400, data: {error: '400 Bad request'}, message: 'FAILURE'};
+    case ERROR_CODE.UNAUTHORIZED:
+      return {statusCode: 401, data: {error: 'User is unauthorised...'}, message: 'FAILURE'};
+    // ... other status codes mapped similarly
+  }
+}
 ```
+
+### Internal Helper Functions
+
+These private (non-exported) helpers update error context on existing error instances. Found in `src/common/Utils.ts`:
+
+- `updateCallErrorContext()` — updates `CallError` fields via `setCallError()`
+- `updateLineErrorContext()` — updates `LineError` fields via `setError()`
+- `updateErrorContext()` — updates `CallingClientError` fields via `setError()`
 
 ---
 
@@ -293,10 +416,7 @@ Internal utility that maps HTTP status codes to `ERROR_TYPE`.
 ### Call Errors
 
 ```typescript
-// Direct emission
 this.emit(CALL_EVENT_KEYS.CALL_ERROR, callError);
-
-// Hold/Resume specific errors
 this.emit(CALL_EVENT_KEYS.HOLD_ERROR, holdError);
 this.emit(CALL_EVENT_KEYS.RESUME_ERROR, resumeError);
 this.emit(CALL_EVENT_KEYS.TRANSFER_ERROR, transferError);
@@ -304,8 +424,10 @@ this.emit(CALL_EVENT_KEYS.TRANSFER_ERROR, transferError);
 
 ### Line Errors
 
+The `lineEmitter` method accepts `deviceInfo` as an optional second parameter:
+
 ```typescript
-this.lineEmitter(LINE_EVENTS.ERROR, undefined, lineError);
+this.lineEmitter(LINE_EVENTS.ERROR, deviceInfo, lineError);
 ```
 
 ### CallingClient Errors
@@ -316,33 +438,9 @@ this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, callingClientError);
 
 ---
 
-## Error Flow
-
-```
-API/WebSocket Error
-        │
-        ▼
-handleCallErrors() / handleCallingClientErrors()
-        │
-        ├── Map HTTP status → ERROR_TYPE
-        ├── Create typed error (CallError, LineError, etc.)
-        │
-        ▼
-Emit via typed event
-        │
-        ├── CALL_EVENT_KEYS.CALL_ERROR
-        ├── LINE_EVENTS.ERROR
-        └── CALLING_CLIENT_EVENT_KEYS.ERROR
-        │
-        ▼
-Optionally: submit metrics + uploadLogs()
-```
-
----
-
 ## Log Upload Pattern
 
-For critical errors, upload diagnostic logs to the server.
+For critical errors, upload diagnostic logs to the server:
 
 ```typescript
 try {
@@ -362,35 +460,9 @@ try {
 
 ---
 
-## Error Object Types
-
-```typescript
-export type ErrorObject = {
-  message: ErrorMessage;
-  type: ERROR_TYPE;
-  context: ErrorContext;
-};
-
-export interface LineErrorObject extends ErrorObject {
-  status: RegistrationStatus;
-}
-
-export interface CallErrorObject extends ErrorObject {
-  correlationId: CorrelationId;
-  errorLayer: ERROR_LAYER;
-}
-
-export interface ErrorContext {
-  file: string;
-  method: string;
-}
-```
-
----
-
 ## Related
 
 - [Architecture Patterns](./architecture-patterns.md)
 - [Event Patterns](./event-patterns.md)
-- [State Machine Patterns](./state-machine-patterns.md)
 - [Testing Patterns](./testing-patterns.md)
+- [TypeScript Patterns](./typescript-patterns.md)

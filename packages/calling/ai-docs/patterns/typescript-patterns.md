@@ -23,14 +23,17 @@
 
 ## Naming Conventions
 
-### Classes
+### Classes and File Names
 
-```typescript
-// PascalCase
-CallingClient.ts
-CallManager.ts
-SDKConnector.ts
-```
+Both class names and their file names use PascalCase:
+
+| Class Name | File Name |
+|------------|-----------|
+| `CallingClient` | `CallingClient.ts` |
+| `CallManager` | `callManager.ts` |
+| `SDKConnector` | `index.ts` (in `SDKConnector/`) |
+| `Call` | `call.ts` |
+| `Line` | `index.ts` (in `line/`) |
 
 ### Interfaces
 
@@ -57,12 +60,21 @@ type MobiusServers = { ... };
 
 ### Enums
 
+The codebase uses mixed enum casing conventions due to historical reasons:
+
+| Convention | Used For | Example |
+|-----------|---------|---------|
+| `SCREAMING_SNAKE_CASE` name + members | Event keys, error codes, constants | `CALL_EVENT_KEYS`, `ERROR_TYPE`, `ERROR_CODE` |
+| `PascalCase` name + `PascalCase` members | Domain value enums | `CallDirection`, `RegistrationStatus`, `SessionType` |
+| `PascalCase` name + `SCREAMING_SNAKE_CASE` members | Backend/service enums | `CALLING_BACKEND` |
+
+When creating new enums, prefer `SCREAMING_SNAKE_CASE` for both name and members if the enum represents constants/keys, and `PascalCase` for value enums:
+
 ```typescript
-// PascalCase name, SCREAMING_SNAKE_CASE or PascalCase members
-enum CALL_EVENT_KEYS { ... }
-enum ERROR_TYPE { ... }
-enum CallDirection { ... }
-enum RegistrationStatus { ... }
+enum CALL_EVENT_KEYS { ... }    // Event key constants
+enum ERROR_TYPE { ... }          // Error classification constants
+enum CallDirection { ... }       // Domain values
+enum RegistrationStatus { ... }  // Domain values
 ```
 
 ### Constants
@@ -337,8 +349,8 @@ export {ILine, ICall, ICallHistory, ICallSettings, ICallingClient, IContacts, IV
 // Classes
 export {CallHistory, CallSettings, CallingClient, ContactsClient, Voicemail};
 
-// Types
-export {ContactGroup, Contact, CallForwardSetting, VoicemailSetting};
+// Types (use `export type` for type-only exports)
+export type {ContactGroup, Contact, CallForwardSetting, VoicemailSetting};
 
 // Factory Methods
 export {
@@ -356,6 +368,14 @@ export {
 
 ### Logging Context Object
 
+All log calls take a message string and a context object with `file` and `method` fields. Use log levels as follows:
+
+| Level | When to Use | Example |
+|-------|-------------|---------|
+| `log.info()` | Normal operations, method entry/exit, state transitions | Starting registration, call connected |
+| `log.warn()` | Recoverable issues, degraded behavior, fallbacks | ICE warmup failed (will retry), missing optional config |
+| `log.error()` | Unrecoverable failures, critical errors | Device registration failed, unhandled exception |
+
 ```typescript
 log.info('Starting registration', {
   file: CALLING_CLIENT_FILE,
@@ -365,6 +385,11 @@ log.info('Starting registration', {
 log.warn(`ICE warmup failed: ${err}`, {
   file: CALLING_CLIENT_FILE,
   method: 'init',
+});
+
+log.error(`Device creation failed: ${err}`, {
+  file: CALLING_CLIENT_FILE,
+  method: 'createDevice',
 });
 ```
 
@@ -395,3 +420,4 @@ const newCall = createCall(
 - [Event Patterns](./event-patterns.md)
 - [Error Handling Patterns](./error-handling-patterns.md)
 - [Testing Patterns](./testing-patterns.md)
+

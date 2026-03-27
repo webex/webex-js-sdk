@@ -19,7 +19,7 @@
 
 ## Eventing Base Class
 
-All event-emitting classes extend this generic typed emitter.
+All event-emitting classes extend this generic typed emitter (`src/Events/impl/index.ts`).
 
 ```typescript
 import EventEmitter from 'events';
@@ -28,10 +28,17 @@ import TypedEmitter, {EventMap} from 'typed-emitter';
 export class Eventing<T extends EventMap> extends (EventEmitter as {
   new <T extends EventMap>(): TypedEmitter<T>;
 })<T> {
-
   emit<E extends keyof T>(event: E, ...args: Parameters<T[E]>): boolean {
     const timestamp = new Date().toUTCString();
-    Logger.info(`${timestamp} ${LOG_PREFIX.EVENT}: ${event.toString()} - event emitted`);
+    Logger.info(
+      `${timestamp} ${
+        LOG_PREFIX.EVENT
+      }: ${event.toString()} - event emitted with parameters -> ${args}`,
+      {
+        file: 'Events/impl/index.ts',
+        method: 'emit',
+      }
+    );
     return super.emit(event, ...args);
   }
 
@@ -53,6 +60,8 @@ Each emitter class has a corresponding type map that constrains event keys and c
 
 ### Call Events
 
+`CallEventTypes` crosses enum boundaries — it uses keys from **three different enums** (`CALL_EVENT_KEYS`, `LINE_EVENT_KEYS`, `CALLING_CLIENT_EVENT_KEYS`):
+
 ```typescript
 export type CallEventTypes = {
   [CALL_EVENT_KEYS.ALERTING]: (callId: CallId) => void;
@@ -63,11 +72,13 @@ export type CallEventTypes = {
   [CALL_EVENT_KEYS.ESTABLISHED]: (callId: CallId) => void;
   [CALL_EVENT_KEYS.HELD]: (callId: CallId) => void;
   [CALL_EVENT_KEYS.HOLD_ERROR]: (error: CallError) => void;
+  [LINE_EVENT_KEYS.INCOMING_CALL]: (callObj: ICall) => void;
   [CALL_EVENT_KEYS.PROGRESS]: (callId: CallId) => void;
   [CALL_EVENT_KEYS.REMOTE_MEDIA]: (track: MediaStreamTrack) => void;
   [CALL_EVENT_KEYS.RESUME_ERROR]: (error: CallError) => void;
   [CALL_EVENT_KEYS.RESUMED]: (callId: CallId) => void;
   [CALL_EVENT_KEYS.TRANSFER_ERROR]: (error: CallError) => void;
+  [CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED]: () => void;
 };
 ```
 
@@ -118,6 +129,31 @@ export type VoicemailEventTypes = {
 
 ## Event Key Enums
 
+### COMMON_EVENT_KEYS
+
+Shared event keys used across CallHistory and Voicemail modules:
+
+```typescript
+export enum COMMON_EVENT_KEYS {
+  CB_VOICEMESSAGE_CONTENT_GET = 'call_back_voicemail_content_get',
+  CALL_HISTORY_USER_SESSION_INFO = 'callHistory:user_recent_sessions',
+  CALL_HISTORY_USER_VIEWED_SESSIONS = 'callHistory:user_viewed_sessions',
+  CALL_HISTORY_USER_SESSIONS_DELETED = 'callHistory:user_sessions_deleted',
+}
+```
+
+### LINE_EVENT_KEYS
+
+Separate from `LINE_EVENTS`. Used in `CallEventTypes` for incoming call events:
+
+```typescript
+export enum LINE_EVENT_KEYS {
+  INCOMING_CALL = 'incoming_call',
+}
+```
+
+Note: `LINE_EVENT_KEYS.INCOMING_CALL = 'incoming_call'` differs from `LINE_EVENTS.INCOMING_CALL = 'line:incoming_call'`. The distinction matters because `CallEventTypes` uses `LINE_EVENT_KEYS`, not `LINE_EVENTS`.
+
 ### External Events (consumed by application)
 
 ```typescript
@@ -155,7 +191,20 @@ export enum CALLING_CLIENT_EVENT_KEYS {
 }
 ```
 
+### MEDIA_CONNECTION_EVENT_KEYS
+
+Media-related event keys for WebRTC ROAP messaging:
+
+```typescript
+export enum MEDIA_CONNECTION_EVENT_KEYS {
+  ROAP_MESSAGE_TO_SEND = 'roap:messageToSend',
+  MEDIA_TYPE_AUDIO = 'audio',
+}
+```
+
 ### Internal Events (Mobius WebSocket)
+
+The `MOBIUS_EVENT_KEYS` enum defines the Mercury event names the SDK listens to:
 
 ```typescript
 export enum MOBIUS_EVENT_KEYS {
@@ -169,7 +218,7 @@ export enum MOBIUS_EVENT_KEYS {
 export enum WEBSOCKET_KEYS {
   CALL_PROGRESS = 'callprogress',
   CALL_CONNECTED = 'callconnected',
-  CALL_DISCONNECTED = 'callconnected',
+  CALL_DISCONNECTED = 'callconnected', // Known bug in source — should be 'calldisconnected'
   CALL_INFO = 'callinfo',
   CALL = 'call',
   ROAP = 'ROAP',
@@ -183,8 +232,10 @@ export enum WEBSOCKET_KEYS {
 ### Emitting from a Call
 
 ```typescript
-// Emit with callId
-this.emit(CALL_EVENT_KEYS.ALERTING, this.correlationId);
+// Emit with callId (verified examples from call.ts)
+this.emit(CALL_EVENT_KEYS.PROGRESS, this.correlationId);
+this.emit(CALL_EVENT_KEYS.CONNECT, this.correlationId);
+this.emit(CALL_EVENT_KEYS.ESTABLISHED, this.correlationId);
 
 // Emit with error
 this.emit(CALL_EVENT_KEYS.CALL_ERROR, callError);
@@ -202,14 +253,38 @@ this.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, track);
 
 ### Emitting from a Line
 
-```typescript
-lineEmitter: (event: LINE_EVENTS, deviceInfo?: IDeviceInfo, lineError?: LineError) => void;
+The `lineEmitter` method (`src/CallingClient/line/index.ts`) is **not** a simple pass-through — it contains important business logic via a `switch` statement:
 
-// Usage
-this.lineEmitter(LINE_EVENTS.REGISTERED, deviceInfo);
-this.lineEmitter(LINE_EVENTS.ERROR, undefined, lineError);
-this.lineEmitter(LINE_EVENTS.UNREGISTERED);
+```typescript
+public lineEmitter = (event: LINE_EVENTS, deviceInfo?: IDeviceInfo, lineError?: LineError) => {
+  switch (event) {
+    case LINE_EVENTS.REGISTERED:
+      if (deviceInfo) {
+        this.normalizeLine(deviceInfo);   // Processes device info first
+        this.emit(event, this);           // Emits the ILine instance, NOT deviceInfo
+      }
+      break;
+    case LINE_EVENTS.UNREGISTERED:
+    case LINE_EVENTS.RECONNECTED:
+    case LINE_EVENTS.RECONNECTING:
+      this.emit(event);                   // No payload
+      break;
+    case LINE_EVENTS.ERROR:
+      if (lineError) {                    // Only emits if lineError is truthy
+        this.emit(event, lineError);
+      }
+      break;
+    default:
+      break;
+  }
+};
 ```
+
+Key behaviors:
+
+- **REGISTERED**: calls `normalizeLine(deviceInfo)` then emits `this` (the `ILine` instance), not `deviceInfo`
+- **ERROR**: only emits if `lineError` is truthy
+- **UNREGISTERED / RECONNECTED / RECONNECTING**: emits with no args
 
 ---
 
@@ -251,32 +326,57 @@ call.on(CALL_EVENT_KEYS.CALL_ERROR, (error: CallError) => {
 });
 ```
 
+### Removing Listeners
+
+Always clean up listeners when they are no longer needed to prevent memory leaks:
+
+```typescript
+const handler = (callId: CallId) => {
+  console.log('Call established:', callId);
+};
+
+// Register
+call.on(CALL_EVENT_KEYS.ESTABLISHED, handler);
+
+// Unregister — must pass the same function reference
+call.off(CALL_EVENT_KEYS.ESTABLISHED, handler);
+```
+
+For Mercury WebSocket listeners, use `SDKConnector.unregisterListener()`:
+
+```typescript
+this.sdkConnector.unregisterListener('event:mobius');
+```
+
 ---
 
 ## WebSocket Event Flow
 
-Mercury WebSocket events flow from the server through `SDKConnector` to the appropriate handler.
+The `SDKConnector` bridges Webex Mercury WebSocket events to the calling SDK. It wraps `webex.internal.mercury.on()` to register listeners for specific events.
 
-```
-Mercury WS ──> SDKConnector.registerListener('event:mobius', cb)
-                     │
-                     ▼
-               CallManager.dequeueWsEvents()
-                     │
-           ┌─────────┼──────────┐
-           ▼         ▼          ▼
-     New Call    Existing    Mid-Call
-     Setup       Call Evt    Service
-           │         │          │
-           ▼         ▼          ▼
-    Line.emit    Call.emit  Call state
-    (INCOMING)   (event)    machine
+```mermaid
+sequenceDiagram
+    participant Mercury as Mercury WebSocket
+    participant SDK as SDKConnector
+    participant CM as CallManager.listenForWsEvents()
+    participant DQ as CallManager.dequeueWsEvents()
+    participant Line as Line
+    participant Call as Call
+
+    Mercury->>SDK: event:mobius
+    SDK->>CM: callback invoked
+    CM->>DQ: dequeueWsEvents(event)
+    alt New incoming call
+        DQ->>Line: emit(INCOMING_CALL, callObj)
+    else Existing call event
+        DQ->>Call: state machine send(event)
+    end
 ```
 
 ### Registering Mercury Listeners
 
 ```typescript
-// In SDKConnector
+// In SDKConnector (src/SDKConnector/index.ts)
 public registerListener<T>(event: string, cb: (data?: T) => void): void {
   instance.getWebex().internal.mercury.on(event, (data: T) => {
     cb(data);
@@ -290,28 +390,44 @@ public unregisterListener(event: string): void {
 
 ### CallManager Subscribes to WebSocket Events
 
+The actual code in `callManager.ts` uses the raw string `'event:mobius'` rather than the enum constant:
+
 ```typescript
+// src/CallingClient/calling/callManager.ts:130
 private listenForWsEvents() {
-  this.sdkConnector.registerListener<MobiusCallEvent>(
-    MOBIUS_EVENT_KEYS.SERVER_EVENT_INCLUSIVE,
-    (event?: MobiusCallEvent) => {
-      if (event) {
-        this.dequeueWsEvents(event);
-      }
-    }
-  );
+  this.sdkConnector.registerListener('event:mobius', async (event) => {
+    this.dequeueWsEvents(event);
+  });
 }
 ```
 
 ### Session Listener Pattern in CallingClient
 
+The actual `registerSessionsListener` (`src/CallingClient/CallingClient.ts:665-691`) contains important filtering logic — it filters out non-`WEBEX_CALLING` sessions before emitting:
+
 ```typescript
 private registerSessionsListener() {
   this.sdkConnector.registerListener<CallSessionEvent>(
     MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE,
-    (event?: CallSessionEvent) => {
-      if (event) {
-        this.emit(CALLING_CLIENT_EVENT_KEYS.USER_SESSION_INFO, event);
+    async (event?: CallSessionEvent) => {
+      if (event && event.data.userSessions.userSessions) {
+        const sessionArr = event?.data.userSessions.userSessions;
+
+        // Single session: skip if not WEBEX_CALLING
+        if (sessionArr.length === 1) {
+          if (sessionArr[0].sessionType !== SessionType.WEBEX_CALLING) {
+            return;
+          }
+        }
+
+        // Multiple sessions: remove non-WEBEX_CALLING entries
+        for (let i = 0; i < sessionArr.length; i += 1) {
+          if (sessionArr[i].sessionType !== SessionType.WEBEX_CALLING) {
+            sessionArr.splice(i, 1);
+          }
+        }
+
+        this.emit(CALLING_CLIENT_EVENT_KEYS.USER_SESSION_INFO, event as CallSessionEvent);
       }
     }
   );
@@ -320,9 +436,44 @@ private registerSessionsListener() {
 
 ---
 
+## Pattern for Adding New Events
+
+When adding a new event to the system, follow these steps:
+
+### Step 1: Add the event key to the appropriate enum
+
+Add the new key to the correct enum in `src/Events/types.ts` (for external events) or the relevant module's `types.ts`.
+
+### Step 2: Update the event type map with the callback signature
+
+Add the new key and its typed callback to the corresponding type map (e.g., `CallEventTypes`, `LineEventTypes`).
+
+### Step 3: Emit the event from the appropriate class
+
+Use `this.emit(ENUM_KEY, payload)` with the enum constant (never a raw string).
+
+### Step 4: Document the event in the interface JSDoc
+
+Add JSDoc to the interface describing when the event fires and what payload it carries.
+
+### Step 5: Add tests
+
+Write tests that register a spy via `.on()`, trigger the action, and assert the spy was called with expected args.
+
+### Checklist for new events
+
+- [ ] Event key added to the correct enum (not a raw string)
+- [ ] Event type map updated with typed callback signature
+- [ ] Emitter calls `this.emit(ENUM_KEY, payload)` using the enum constant
+- [ ] Interface JSDoc documents the event
+- [ ] Tests verify emission with correct payload
+- [ ] Listeners are cleaned up in disposal/teardown paths
+
+---
+
 ## Related
 
 - [Architecture Patterns](./architecture-patterns.md)
-- [State Machine Patterns](./state-machine-patterns.md)
 - [Error Handling Patterns](./error-handling-patterns.md)
 - [TypeScript Patterns](./typescript-patterns.md)
+- [Testing Patterns](./testing-patterns.md)
