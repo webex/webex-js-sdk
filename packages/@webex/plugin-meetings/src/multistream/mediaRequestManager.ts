@@ -123,11 +123,11 @@ export default class MediaRequestManager {
     }
 
     if (mediaRequest.codecInfos) {
-      const maxPbps = mediaRequest.codecInfos.map((codecInfo) =>
-        MediaCodecHelper.get(codecInfo.codec).getMaxPayloadBitsPerSecond(mediaRequest)
-      );
+      return mediaRequest.codecInfos.reduce((acc, codecInfo) => {
+        const mbps = MediaCodecHelper.get(codecInfo.codec).getMaxPayloadBitsPerSecond(mediaRequest);
 
-      return Math.max(...maxPbps);
+        return Math.max(acc, mbps);
+      }, 0);
     }
 
     LoggerProxy.logger.warn(
