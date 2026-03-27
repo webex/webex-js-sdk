@@ -316,7 +316,7 @@ export class RemoteMediaGroup {
       return undefined;
     }
 
-    const withPixels = sizeHints.filter((sh) => (sh.width ?? 0) > 0 && (sh.height ?? 0) > 0);
+    const withPixels = sizeHints.filter((sh) => sh.width > 0 && sh.height > 0);
     if (withPixels.length > 0) {
       // return the size hint with the largest area
       return withPixels.reduce((best, cur) =>
