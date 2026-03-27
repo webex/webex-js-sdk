@@ -350,17 +350,29 @@ it('should handle async operations', async () => {
 
 ### Using Fake Timers
 
+The session keepalive timer is set up when a call reaches the `ESTABLISHED` state. The public method `sendCallStateMachineEvt()` drives the call state machine — sending an `E_CALL_ESTABLISHED` event triggers `handleCallEstablished()` internally, which calls `scheduleCallKeepaliveInterval()` to set up a `setInterval` with `DEFAULT_SESSION_TIMER` (10 minutes).
+
 ```typescript
-it('should handle timer-based operations', async () => {
+import {DEFAULT_SESSION_TIMER} from '../constants';
+import {CallEvent} from '../../Events/types';
+
+it('successful session refresh via keepalive timer', async () => {
   jest.useFakeTimers();
+  jest.spyOn(global, 'setInterval');
 
-  // Trigger the operation that sets up a timer (via public API)
-  await call.postStatus(); // TODO: this actually doesn't trigger the timer. fix this
+  const funcSpy = jest.spyOn(call, 'postStatus').mockResolvedValue(statusPayload);
 
-  jest.advanceTimersByTime(30000);
-  await flushPromises(1);
+  // Transition the call state machine to a state that accepts E_CALL_ESTABLISHED
+  call.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'} as CallEvent);
 
-  expect(webex.request).toHaveBeenCalled();
+  // Advance time by the keepalive interval to trigger the scheduled timer
+  jest.advanceTimersByTime(DEFAULT_SESSION_TIMER);
+
+  // Flush async promise queue so the interval callback completes
+  await flushPromises(3);
+
+  expect(setInterval).toHaveBeenCalledWith(expect.any(Function), DEFAULT_SESSION_TIMER);
+  expect(funcSpy).toHaveBeenCalledTimes(1);
 
   jest.useRealTimers();
 });
