@@ -39,7 +39,7 @@ import {
   METHODS,
 } from './constants';
 import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
-import {AGENT, WEB_RTC_PREFIX} from './services/constants';
+import {AGENT, RTD_SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
@@ -431,6 +431,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.trigger(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, task);
   };
 
+  private handleRTDWebsocketMessage = (payload: string) => {
+    this.taskManager.handleRealtimeTranscriptEvent(payload);
+  };
+
   /**
    * Sets up event listeners for incoming tasks and task hydration
    * Subscribes to task events from the task manager
@@ -579,6 +583,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.taskManager.unregisterIncomingCallEvent();
 
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
+      this.services.rtdWebSocketManager?.off('message', this.handleRTDWebsocketMessage);
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
 
       if (
@@ -600,6 +605,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       if (!this.services.webSocketManager.isSocketClosed) {
         this.services.webSocketManager.close(false, 'Unregistering the SDK');
+      }
+
+      if (this.services.rtdWebSocketManager && !this.services.rtdWebSocketManager.isSocketClosed) {
+        this.services.rtdWebSocketManager.close(false, 'Unregistering the RTD websocket');
       }
 
       // Clear any cached agent configuration
@@ -747,6 +756,17 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
       this.apiAIAssistant.setAIFeatureFlags(this.agentConfig.aiFeature);
 
+      if (this.agentConfig.aiFeature?.realtimeTranscripts?.enable) {
+        try {
+          await this.connectRTDWebsocket();
+        } catch (error) {
+          LoggerProxy.error(`Error during RTD websocket setup: ${error}`, {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          });
+        }
+      }
+
       if (
         this.agentConfig.webRtcEnabled &&
         this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
@@ -778,6 +798,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       throw error;
     }
+  }
+
+  private async connectRTDWebsocket(): Promise<void> {
+    LoggerProxy.info('Connecting to RTD websocket', {
+      module: CC_FILE,
+      method: METHODS.CONNECT_WEBSOCKET,
+    });
+
+    await this.services.rtdWebSocketManager.initWebSocket({
+      body: this.getConnectionConfig(),
+      resource: RTD_SUBSCRIBE_API,
+    });
+
+    this.services.rtdWebSocketManager.on('message', this.handleRTDWebsocketMessage);
   }
 
   /**

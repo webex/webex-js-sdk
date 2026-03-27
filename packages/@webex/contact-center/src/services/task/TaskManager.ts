@@ -84,6 +84,48 @@ export default class TaskManager extends EventEmitter {
     this.webRtcEnabled = webRtcEnabled;
   }
 
+  public handleRealtimeTranscriptEvent(payload: string): void {
+    const parsedPayload = JSON.parse(payload);
+
+    const realtimePayload = parsedPayload as {
+      type?: string;
+      data?: {
+        notifType?: string;
+        notifDetails?: {actionEvent?: string};
+        data?: {conversationId?: string};
+        conversationId?: string;
+      };
+    };
+
+    const isRealtimeTranscriptEvent =
+      realtimePayload?.type === CC_EVENTS.REAL_TIME_TRANSCRIPTION ||
+      realtimePayload?.data?.notifType === CC_EVENTS.REAL_TIME_TRANSCRIPTION ||
+      realtimePayload?.data?.notifDetails?.actionEvent === CC_EVENTS.REAL_TIME_TRANSCRIPTION;
+
+    if (!isRealtimeTranscriptEvent) {
+      return;
+    }
+
+    const conversationId =
+      realtimePayload?.data?.data?.conversationId || realtimePayload?.data?.conversationId;
+    if (!conversationId) {
+      return;
+    }
+
+    const task = this.taskCollection[conversationId];
+    if (task) {
+      task.emit(CC_EVENTS.REAL_TIME_TRANSCRIPTION, realtimePayload.data);
+
+      return;
+    }
+
+    LoggerProxy.info(`Realtime transcription task not found`, {
+      module: TASK_MANAGER_FILE,
+      method: METHODS.REGISTER_TASK_LISTENERS,
+      interactionId: conversationId,
+    });
+  }
+
   private handleIncomingWebCall = (call: ICall) => {
     const currentTask = Object.values(this.taskCollection).find(
       (task) =>
@@ -563,10 +605,7 @@ export default class TaskManager extends EventEmitter {
             break;
         }
         if (task) {
-          const eventType = payload.type || payload.data.type;
-          const eventPayload = payload.data || payload.data.data;
-
-          task.emit(eventType, eventPayload);
+          task.emit(payload.data.type, payload.data);
         }
 
         const transcriptInteractionId =
