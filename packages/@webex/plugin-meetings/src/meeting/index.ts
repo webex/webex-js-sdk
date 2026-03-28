@@ -181,7 +181,7 @@ import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {ReachabilityMetrics} from '../reachability/reachability.types';
 import {SetStageOptions, SetStageVideoLayout, UnsetStageVideoLayout} from './request.type';
 import {Invitee} from './type';
-import {DataSet, Metadata} from '../hashTree/hashTreeParser';
+import {DataSet, HashTreeMessage, Metadata} from '../hashTree/hashTreeParser';
 import {LocusDTO} from '../locus-info/types';
 import AIEnableRequest from '../aiEnableRequest';
 
@@ -567,6 +567,34 @@ type MediaReachabilityMetrics = ReachabilityMetrics & {
  * @property {number} networkQualityScore - {1|0} 1 indicates acceptable uplink 0 indicates unacceptable uplink based on threshold
  * @memberof Meeting
  */
+
+/**
+ * Stores an event so all events can be later retrieved via a console command for debugging.
+ * @param {string} type
+ * @param {Object} data
+ * @returns {void}
+ */
+export function storeEventForDebugging(
+  type: string,
+  data: {
+    eventType: any;
+    stateElementsMessage?: HashTreeMessage;
+  }
+) {
+  if ((window as any)?.locusEvents) {
+    // only store non-heartbeat hash tree messages
+    if (
+      data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED &&
+      data.stateElementsMessage?.locusStateElements
+    ) {
+      (window as any).locusEvents.push({
+        ...data,
+        timestamp: new Date().toLocaleString(),
+        type,
+      });
+    }
+  }
+}
 
 /**
  * @description Meeting is the crux of the plugin
@@ -5814,6 +5842,11 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private processLocusLLMEvent = (event: LocusLLMEvent): void => {
     if (event.data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
+      // @ts-ignore
+      if (this.config.experimental.storeLocusHashTreeEventsForDebugging) {
+        storeEventForDebugging('llm', event.data);
+      }
+
       this.locusInfo.parse(this, event.data);
     } else {
       LoggerProxy.logger.warn(
