@@ -711,27 +711,29 @@ export const pageSetup = async (
     return; // Skip station login for multi-session tests
   }
 
-  // Step 4: Check if already logged in (logout button visible, login mode selected, AND state dropdown visible)
+  // Step 4: Check if already logged in with correct mode
   const stateSelect = page.locator('#idleCodesDropdown');
   const loginButton = page.locator('#loginAgent');
   const logoutButton = page.locator('#logoutAgent');
   const agentLoginSelect = page.locator('#AgentLogin');
 
-  // Check logout button visibility, login mode selected, AND state dropdown visible (most reliable indicator)
+  // Check logout button visibility, login mode matches requested, AND state dropdown visible
   const logoutButtonVisible = await logoutButton.isVisible().catch(() => false);
   const loginModeValue = await agentLoginSelect.inputValue().catch(() => '');
   const stateDropdownVisible = await stateSelect.isVisible().catch(() => false);
-  const isAlreadyLoggedIn =
-    logoutButtonVisible &&
-    loginModeValue !== '' &&
-    loginModeValue !== 'Choose Agent Login ...' &&
-    stateDropdownVisible;
 
-  if (!isAlreadyLoggedIn) {
+  // CRITICAL: Verify current mode matches requested mode to prevent test contamination
+  const currentLoginMode = loginModeValue.toUpperCase();
+  const requestedMode = loginMode.toUpperCase();
+  const isAlreadyLoggedInCorrectMode =
+    logoutButtonVisible && currentLoginMode === requestedMode && stateDropdownVisible;
+
+  if (!isAlreadyLoggedInCorrectMode) {
     let loginButtonExists = await loginButton.isVisible().catch(() => false);
 
     if (!loginButtonExists) {
-      await stationLogout(page, false); // Best-effort logout if still logged in from previous run
+      // Agent logged in but wrong mode - logout first
+      await stationLogout(page, false);
       loginButtonExists = await loginButton.isVisible().catch(() => false);
       if (!loginButtonExists) {
         await loginButton.waitFor({state: 'visible', timeout: OPERATION_TIMEOUT});
