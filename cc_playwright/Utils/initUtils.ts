@@ -1,8 +1,9 @@
 import {Page, expect, BrowserContext} from '@playwright/test';
 import dotenv from 'dotenv';
+import path from 'path';
 import {BASE_URL, AWAIT_TIMEOUT, UI_SETTLE_TIMEOUT, OPERATION_TIMEOUT} from '../constants';
 
-dotenv.config();
+dotenv.config({path: path.resolve(__dirname, '../.env')});
 
 /**
  * Performs login using an access token from environment variables
