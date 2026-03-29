@@ -1,6 +1,6 @@
 import {Page, expect, BrowserContext} from '@playwright/test';
 import dotenv from 'dotenv';
-import path from 'path';
+import * as path from 'path';
 import {BASE_URL, AWAIT_TIMEOUT, UI_SETTLE_TIMEOUT, OPERATION_TIMEOUT} from '../constants';
 
 dotenv.config({path: path.resolve(__dirname, '../.env')});

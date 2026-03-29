@@ -165,7 +165,7 @@ async function waitForLogValue<T extends string>(
 }
 
 /** Retrieves last state from logs */
-export async function getLastStateFromLogs(logs: string[]) {
+export function getLastStateFromLogs(logs: string[]) {
   return getLastLogMatch(
     logs,
     'onStateChange invoked with state name:',
@@ -185,7 +185,7 @@ export const waitForStateLogs = (logs: string[], state: userState, timeoutMs = 1
   );
 
 /** Retrieves last wrapup reason from logs */
-export async function getLastWrapupReasonFromLogs(logs: string[]): Promise<string> {
+export function getLastWrapupReasonFromLogs(logs: string[]): string {
   return getLastLogMatch(
     logs,
     'onWrapup invoked with reason :',
@@ -680,9 +680,9 @@ export const pageSetup = async (
   page: Page,
   loginMode: LoginMode,
   accessToken: string,
-  extensionNumber?: string,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   extensionPage: Page | null = null,
+  extensionNumber: string | undefined = undefined,
   isMultiSession = false
 ) => {
   const maxRetries = 3;
