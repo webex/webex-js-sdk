@@ -44,7 +44,9 @@ export async function createCallTask(page: Page, number: string) {
     throw new Error('Dial number is required');
   }
 
-  const endBtn = page.getByTestId('end');
+  // CRITICAL: Use ID-based selector for calling sample app (not widget data-testid)
+  // Check for active call and end it before creating new call to prevent state contamination
+  const endBtn = page.locator('#end').first();
   if (await endBtn.isEnabled({timeout: 500}).catch(() => false)) {
     await endBtn.click({timeout: AWAIT_TIMEOUT});
     await page.waitForTimeout(500);
