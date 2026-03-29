@@ -467,7 +467,7 @@ export const handleStrayTasks = async (
               }
               await page.waitForTimeout(500);
               // After accepting, immediately try to end and wrapup
-              const endBtnAfterAccept = page.getByTestId('call-control:end-call').first();
+              const endBtnAfterAccept = page.locator('#end').first();
               const endVisibleAfterAccept = await endBtnAfterAccept.isVisible().catch(() => false);
               if (endVisibleAfterAccept) {
                 const endEnabledAfterAccept = await endBtnAfterAccept
@@ -556,7 +556,7 @@ export const handleStrayTasks = async (
       // Check if end button is visible but disabled (stuck state)
       if (stillHasEnd && !stillHasWrapup) {
         const endEnabled = await endButton.isEnabled().catch(() => false);
-        const holdToggle = page.getByTestId('call-control:hold-toggle').first();
+        const holdToggle = page.locator('#hold-resume').first();
         const holdVisible = await holdToggle.isVisible().catch(() => false);
 
         if (!endEnabled && !holdVisible) {
