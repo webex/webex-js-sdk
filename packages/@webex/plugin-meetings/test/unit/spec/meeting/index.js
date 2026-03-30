@@ -1552,6 +1552,22 @@ describe('plugin-meetings', () => {
             EVENT_TRIGGERS.MEETING_STOPPED_RECEIVING_TRANSCRIPTION
           );
         });
+
+        it('should stop listening to voicea events even when transcription is undefined', () => {
+          meeting.transcription = undefined;
+          meeting.stopTranscription();
+          assert.equal(webex.internal.voicea.off.callCount, 4);
+          assert.equal(meeting.areVoiceaEventsSetup, false);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'triggerStopReceivingTranscriptionEvent',
+            },
+            EVENT_TRIGGERS.MEETING_STOPPED_RECEIVING_TRANSCRIPTION
+          );
+        });
       });
 
       describe('#setCaptionLanguage', () => {
@@ -12745,6 +12761,93 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#saveDataChannelToken', () => {
+        beforeEach(() => {
+          webex.internal.llm.setDatachannelToken = sinon.stub();
+        });
+
+        it('saves datachannelToken into LLM as Default', () => {
+          meeting.saveDataChannelToken({
+            locus: {
+              self: {datachannelToken: 'default-token'},
+            },
+          });
+
+          assert.calledWithExactly(
+            webex.internal.llm.setDatachannelToken,
+            'default-token',
+            'llm-default-session'
+          );
+        });
+
+        it('saves practiceSessionDatachannelToken into LLM as PracticeSession', () => {
+          meeting.saveDataChannelToken({
+            locus: {
+              self: {practiceSessionDatachannelToken: 'ps-token'},
+            },
+          });
+
+          assert.calledWithExactly(
+            webex.internal.llm.setDatachannelToken,
+            'ps-token',
+            'llm-practice-session'
+          );
+        });
+
+        it('saves both tokens when both are present', () => {
+          meeting.saveDataChannelToken({
+            locus: {
+              self: {
+                datachannelToken: 'default-token',
+                practiceSessionDatachannelToken: 'ps-token',
+              },
+            },
+          });
+
+          assert.calledTwice(webex.internal.llm.setDatachannelToken);
+          assert.calledWithExactly(
+            webex.internal.llm.setDatachannelToken,
+            'default-token',
+            'llm-default-session'
+          );
+          assert.calledWithExactly(
+            webex.internal.llm.setDatachannelToken,
+            'ps-token',
+            'llm-practice-session'
+          );
+        });
+
+        it('does not call setDatachannelToken when no tokens are present', () => {
+          meeting.saveDataChannelToken({locus: {self: {}}});
+
+          assert.notCalled(webex.internal.llm.setDatachannelToken);
+        });
+
+        it('handles undefined join gracefully', () => {
+          meeting.saveDataChannelToken(undefined);
+
+          assert.notCalled(webex.internal.llm.setDatachannelToken);
+        });
+
+        it('handles missing locus.self gracefully', () => {
+          meeting.saveDataChannelToken({locus: {}});
+
+          assert.notCalled(webex.internal.llm.setDatachannelToken);
+        });
+      });
+
+      describe('#clearDataChannelToken', () => {
+        beforeEach(() => {
+          webex.internal.llm.resetDatachannelTokens = sinon.stub();
+        });
+
+        it('calls resetDatachannelTokens on LLM', () => {
+          meeting.clearDataChannelToken();
+
+          assert.calledOnce(webex.internal.llm.resetDatachannelTokens);
+        });
+      });
+
       describe('#updateLLMConnection', () => {
         beforeEach(() => {
           webex.internal.llm.isConnected = sinon.stub().returns(false);
@@ -13011,12 +13114,30 @@ describe('plugin-meetings', () => {
             undefined
           );
         });
-        it('passes dataChannelToken to registerAndConnect', async () => {
+        it('passes dataChannelToken from LLM to registerAndConnect', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {
             url: 'a url',
             info: {datachannelUrl: 'a datachannel url'},
-            self: {datachannelToken: 'token-123'},
+          };
+
+          webex.internal.llm.getDatachannelToken.withArgs('llm-default-session').returns('token-123');
+
+          await meeting.updateLLMConnection();
+
+          assert.calledWithExactly(
+            webex.internal.llm.registerAndConnect,
+            'a url',
+            'a datachannel url',
+            'token-123'
+          );
+          assert.notCalled(webex.internal.llm.setDatachannelToken);
+        });
+        it('passes undefined token when LLM has no token stored', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
           };
 
           webex.internal.llm.getDatachannelToken.returns(undefined);
@@ -13027,27 +13148,7 @@ describe('plugin-meetings', () => {
             webex.internal.llm.registerAndConnect,
             'a url',
             'a datachannel url',
-            'token-123'
-          );
-          assert.calledWithExactly(webex.internal.llm.setDatachannelToken, 'token-123', 'llm-default-session');
-        });
-        it('prefers refreshed token over locus self token', async () => {
-          meeting.joinedWith = {state: 'JOINED'};
-          meeting.locusInfo = {
-            url: 'a url',
-            info: {datachannelUrl: 'a datachannel url'},
-            self: {datachannelToken: 'locus-token'},
-          };
-
-          webex.internal.llm.getDatachannelToken.withArgs('llm-default-session').returns('refreshed-token');
-
-          await meeting.updateLLMConnection();
-
-          assert.calledWithExactly(
-            webex.internal.llm.registerAndConnect,
-            'a url',
-            'a datachannel url',
-            'refreshed-token'
+            undefined
           );
 
           assert.notCalled(webex.internal.llm.setDatachannelToken);
@@ -13058,7 +13159,6 @@ describe('plugin-meetings', () => {
           meeting.locusInfo = {
             url: 'a url',
             info: {datachannelUrl: 'a datachannel url'},
-            self: {datachannelToken: 'token-123'},
           };
 
           webex.internal.llm.getDatachannelToken.returns(undefined);
@@ -13070,9 +13170,9 @@ describe('plugin-meetings', () => {
             webex.internal.llm.registerAndConnect,
             'a url',
             'a datachannel url',
-            'token-123'
+            undefined
           );
-          assert.calledWithExactly(webex.internal.llm.setDatachannelToken, 'token-123', 'llm-default-session');
+          assert.notCalled(webex.internal.llm.setDatachannelToken);
         });
 
         describe('#clearMeetingData', () => {
@@ -13083,7 +13183,7 @@ describe('plugin-meetings', () => {
             meeting.annotation.deregisterEvents = sinon.stub();
             meeting.clearLLMHealthCheckTimer = sinon.stub();
             meeting.stopTranscription = sinon.stub();
-            meeting.transcription = {};
+            meeting.clearDataChannelToken = sinon.stub();
             meeting.shareStatus = 'no-share';
           });
 
@@ -13107,6 +13207,8 @@ describe('plugin-meetings', () => {
             );
             assert.calledOnce(meeting.clearLLMHealthCheckTimer);
             assert.calledOnce(meeting.stopTranscription);
+            assert.isUndefined(meeting.transcription);
+            assert.calledOnce(meeting.clearDataChannelToken);
             assert.calledOnce(meeting.annotation.deregisterEvents);
           });
           it('continues cleanup when disconnectLLM fails during meeting data cleanup', async () => {
@@ -13127,7 +13229,18 @@ describe('plugin-meetings', () => {
             );
             assert.calledOnce(meeting.clearLLMHealthCheckTimer);
             assert.calledOnce(meeting.stopTranscription);
+            assert.isUndefined(meeting.transcription);
+            assert.calledOnce(meeting.clearDataChannelToken);
             assert.calledOnce(meeting.annotation.deregisterEvents);
+          });
+          it('always calls stopTranscription even when transcription is undefined', async () => {
+            meeting.transcription = undefined;
+
+            await meeting.clearMeetingData();
+
+            assert.calledOnce(meeting.stopTranscription);
+            assert.isUndefined(meeting.transcription);
+            assert.calledOnce(meeting.clearDataChannelToken);
           });
         });
       });

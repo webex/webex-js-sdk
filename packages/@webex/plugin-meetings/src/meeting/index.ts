@@ -181,7 +181,7 @@ import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {ReachabilityMetrics} from '../reachability/reachability.types';
 import {SetStageOptions, SetStageVideoLayout, UnsetStageVideoLayout} from './request.type';
 import {Invitee} from './type';
-import {DataSet, Metadata} from '../hashTree/hashTreeParser';
+import {DataSet, HashTreeMessage, Metadata} from '../hashTree/hashTreeParser';
 import {LocusDTO} from '../locus-info/types';
 import AIEnableRequest from '../aiEnableRequest';
 
@@ -567,6 +567,34 @@ type MediaReachabilityMetrics = ReachabilityMetrics & {
  * @property {number} networkQualityScore - {1|0} 1 indicates acceptable uplink 0 indicates unacceptable uplink based on threshold
  * @memberof Meeting
  */
+
+/**
+ * Stores an event so all events can be later retrieved via a console command for debugging.
+ * @param {string} type
+ * @param {Object} data
+ * @returns {void}
+ */
+export function storeEventForDebugging(
+  type: string,
+  data: {
+    eventType: any;
+    stateElementsMessage?: HashTreeMessage;
+  }
+) {
+  if ((window as any)?.locusEvents) {
+    // only store non-heartbeat hash tree messages
+    if (
+      data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED &&
+      data.stateElementsMessage?.locusStateElements
+    ) {
+      (window as any).locusEvents.push({
+        ...data,
+        timestamp: new Date().toLocaleString(),
+        type,
+      });
+    }
+  }
+}
 
 /**
  * @description Meeting is the crux of the plugin
@@ -5814,6 +5842,11 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private processLocusLLMEvent = (event: LocusLLMEvent): void => {
     if (event.data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
+      // @ts-ignore
+      if (this.config.experimental.storeLocusHashTreeEventsForDebugging) {
+        storeEventForDebugging('llm', event.data);
+      }
+
       this.locusInfo.parse(this, event.data);
     } else {
       LoggerProxy.logger.warn(
@@ -5874,37 +5907,35 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {void}
    */
   stopTranscription() {
-    if (this.transcription) {
-      // @ts-ignore
-      this.webex.internal.voicea.off(
-        VOICEAEVENTS.VOICEA_ANNOUNCEMENT,
-        this.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT]
-      );
+    // @ts-ignore
+    this.webex.internal.voicea.off(
+      VOICEAEVENTS.VOICEA_ANNOUNCEMENT,
+      this.voiceaListenerCallbacks[VOICEAEVENTS.VOICEA_ANNOUNCEMENT]
+    );
 
-      // @ts-ignore
-      this.webex.internal.voicea.off(
-        VOICEAEVENTS.CAPTIONS_TURNED_ON,
-        this.voiceaListenerCallbacks[VOICEAEVENTS.CAPTIONS_TURNED_ON]
-      );
+    // @ts-ignore
+    this.webex.internal.voicea.off(
+      VOICEAEVENTS.CAPTIONS_TURNED_ON,
+      this.voiceaListenerCallbacks[VOICEAEVENTS.CAPTIONS_TURNED_ON]
+    );
 
-      // @ts-ignore
-      this.webex.internal.voicea.off(
-        VOICEAEVENTS.EVA_COMMAND,
-        this.voiceaListenerCallbacks[VOICEAEVENTS.EVA_COMMAND]
-      );
+    // @ts-ignore
+    this.webex.internal.voicea.off(
+      VOICEAEVENTS.EVA_COMMAND,
+      this.voiceaListenerCallbacks[VOICEAEVENTS.EVA_COMMAND]
+    );
 
-      // @ts-ignore
-      this.webex.internal.voicea.off(
-        VOICEAEVENTS.NEW_CAPTION,
-        this.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]
-      );
+    // @ts-ignore
+    this.webex.internal.voicea.off(
+      VOICEAEVENTS.NEW_CAPTION,
+      this.voiceaListenerCallbacks[VOICEAEVENTS.NEW_CAPTION]
+    );
 
-      // @ts-ignore
-      this.webex.internal.voicea.deregisterEvents();
+    // @ts-ignore
+    this.webex.internal.voicea.deregisterEvents();
 
-      this.areVoiceaEventsSetup = false;
-      this.triggerStopReceivingTranscriptionEvent();
-    }
+    this.areVoiceaEventsSetup = false;
+    this.triggerStopReceivingTranscriptionEvent();
   }
 
   /**
@@ -6165,6 +6196,7 @@ export default class Meeting extends StatelessWebexPlugin {
         return Promise.reject(error);
       })
       .then((join) => {
+        this.saveDataChannelToken(join);
         // @ts-ignore - config coming from registerPlugin
         if (this.config.enableAutomaticLLM) {
           // @ts-ignore
@@ -6277,32 +6309,55 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   /**
-   * Connects to low latency mercury and reconnects if the address has changed
-   * It will also disconnect if called when the meeting has ended
-   * @param {String} datachannelUrl
-   * @returns {Promise}
+   * Clears all data channel tokens stored in LLM.
+   * Called during meeting cleanup to ensure stale tokens are not reused.
+   * @returns {void}
    */
-  async updateLLMConnection() {
-    // @ts-ignore - Fix type
-    const {
-      url = undefined,
-      info: {datachannelUrl = undefined} = {},
-      self: {datachannelToken = undefined} = {},
-    } = this.locusInfo || {};
-
-    const isJoined = this.isJoined();
-
+  clearDataChannelToken(): void {
     // @ts-ignore
-    const currentToken = this.webex.internal.llm.getDatachannelToken(DataChannelTokenType.Default);
+    this.webex.internal.llm.resetDatachannelTokens();
+  }
 
-    const finalToken = currentToken ?? datachannelToken;
+  /**
+   * Saves the data channel tokens from the join response into LLM so that
+   * updateLLMConnection / updatePSDataChannel don't need to fetch them from locusInfo.
+   * @param {Object} join - The parsed join response (from MeetingUtil.parseLocusJoin)
+   * @returns {void}
+   */
+  saveDataChannelToken(join: any): void {
+    const datachannelToken = join?.locus?.self?.datachannelToken;
+    const practiceSessionDatachannelToken = join?.locus?.self?.practiceSessionDatachannelToken;
 
-    if (!currentToken && datachannelToken) {
+    if (datachannelToken) {
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(datachannelToken, DataChannelTokenType.Default);
     }
 
-    // webinar panelist should use new data channel in practice session
+    if (practiceSessionDatachannelToken) {
+      // @ts-ignore
+      this.webex.internal.llm.setDatachannelToken(
+        practiceSessionDatachannelToken,
+        DataChannelTokenType.PracticeSession
+      );
+    }
+  }
+
+  /**
+   * Connects to low latency mercury and reconnects if the address has changed
+   * It will also disconnect if called when the meeting has ended
+   * @returns {Promise}
+   */
+  async updateLLMConnection() {
+    // @ts-ignore - Fix type
+    const {url = undefined, info: {datachannelUrl = undefined} = {}} = this.locusInfo || {};
+
+    const isJoined = this.isJoined();
+
+    // @ts-ignore
+    const datachannelToken = this.webex.internal.llm.getDatachannelToken(
+      DataChannelTokenType.Default
+    );
+
     const dataChannelUrl = datachannelUrl;
 
     // @ts-ignore - Fix type
@@ -6325,7 +6380,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
     // @ts-ignore - Fix type
     return this.webex.internal.llm
-      .registerAndConnect(url, dataChannelUrl, finalToken)
+      .registerAndConnect(url, dataChannelUrl, datachannelToken)
       .then((registerAndConnectResult) => {
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
@@ -9585,13 +9640,12 @@ export default class Meeting extends StatelessWebexPlugin {
     }
     this.queuedMediaUpdates = [];
 
-    if (this.transcription) {
-      this.stopTranscription();
-      this.transcription = undefined;
-    }
+    this.stopTranscription();
+    this.transcription = undefined;
 
     this.annotation.deregisterEvents();
 
+    this.clearDataChannelToken();
     await this.cleanupLLMConneciton({throwOnError: false});
   };
 

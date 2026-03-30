@@ -84,6 +84,35 @@ export default class TaskManager extends EventEmitter {
     this.webRtcEnabled = webRtcEnabled;
   }
 
+  public handleRealtimeWebsocketEvent(event: string) {
+    try {
+      const payload = JSON.parse(event);
+
+      const eventType = payload?.type || payload?.data?.notifType;
+      const interactionId = payload?.data?.data?.conversationId;
+      if (!eventType || !interactionId) return;
+
+      const task = this.taskCollection[interactionId];
+      if (!task) {
+        LoggerProxy.info(`Realtime transcription task not found`, {
+          module: TASK_MANAGER_FILE,
+          method: METHODS.HANDLE_REAL_TIME_WEBSOCKET_EVENT,
+          interactionId,
+        });
+
+        return;
+      }
+
+      task.emit(eventType, payload.data);
+    } catch (error) {
+      LoggerProxy.error('Failed to parse RTD WebSocket message', {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.HANDLE_REAL_TIME_WEBSOCKET_EVENT,
+        error,
+      });
+    }
+  }
+
   private handleIncomingWebCall = (call: ICall) => {
     const currentTask = Object.values(this.taskCollection).find(
       (task) =>
@@ -563,10 +592,7 @@ export default class TaskManager extends EventEmitter {
             break;
         }
         if (task) {
-          const eventType = payload.type || payload.data.type;
-          const eventPayload = payload.data || payload.data.data;
-
-          task.emit(eventType, eventPayload);
+          task.emit(payload.data.type, payload.data);
         }
 
         const transcriptInteractionId =
