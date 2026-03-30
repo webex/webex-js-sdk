@@ -987,6 +987,10 @@ export default class Meeting extends StatelessWebexPlugin {
       return undefined;
     };
 
+    /**
+     * Object containing helper classes for managing media requests for audio/video/screenshare (for multistream media connections)
+     * All multistream media requests sent out for this meeting have to go through them.
+     */
     this.mediaRequestManagers = {
       audio: new MediaRequestManager(
         (mediaRequests) => {
