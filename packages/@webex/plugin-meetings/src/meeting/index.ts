@@ -977,7 +977,11 @@ export default class Meeting extends StatelessWebexPlugin {
       mediaType: MediaType,
       codecMimeType: MediaCodecMimeType
     ): number | undefined => {
-      if (this.mediaProperties?.webrtcMediaConnection instanceof MultistreamRoapMediaConnection) {
+      if (
+        this.mediaProperties?.webrtcMediaConnection instanceof MultistreamRoapMediaConnection &&
+        this.mediaProperties.webrtcMediaConnection.getConnectionState() ===
+          ConnectionState.Connected
+      ) {
         return this.mediaProperties.webrtcMediaConnection.getIngressPayloadType(
           mediaType,
           codecMimeType
