@@ -97,11 +97,9 @@ describe('SendSlotsManager', () => {
             assert.calledWith(slot.publishStream, stream);
         });
 
-        it('should throw an error if a slot for the given mediaType does not exist', (done) => {
-            sendSlotsManager.publishStream(mediaType, stream).catch((error) => {
-                expect(error.message).to.equal(`Slot for ${mediaType} does not exist`);
-                done();
-            });
+        it('should throw an error if a slot for the given mediaType does not exist', async () => {
+            await expect(sendSlotsManager.publishStream(mediaType, stream))
+                .to.be.rejectedWith(`Slot for ${mediaType} does not exist`);
         });
     });
 
@@ -127,11 +125,9 @@ describe('SendSlotsManager', () => {
             assert.called(slot.unpublishStream);
         });
 
-        it('should throw an error if a slot for the given mediaType does not exist',(done) => {
-            sendSlotsManager.unpublishStream(mediaType).catch((error) => {
-                expect(error.message).to.equal(`Slot for ${mediaType} does not exist`);
-                done();
-            });
+        it('should throw an error if a slot for the given mediaType does not exist', async () => {
+            await expect(sendSlotsManager.unpublishStream(mediaType))
+                .to.be.rejectedWith(`Slot for ${mediaType} does not exist`);
         });
     });
 
@@ -222,11 +218,9 @@ describe('SendSlotsManager', () => {
             );
         });
 
-        it('should throw an error if a slot for the given mediaType does not exist', (done) => {
-            sendSlotsManager.setCodecParameters(mediaType, codecParameters).catch((error) => {
-                expect(error.message).to.equal(`Slot for ${mediaType} does not exist`);
-                done();
-            });
+        it('should throw an error if a slot for the given mediaType does not exist', async () => {
+            await expect(sendSlotsManager.setCodecParameters(mediaType, codecParameters))
+                .to.be.rejectedWith(`Slot for ${mediaType} does not exist`);
         });
     });
 
@@ -257,11 +251,9 @@ describe('SendSlotsManager', () => {
             );
         });
 
-        it('should throw an error if a slot for the given mediaType does not exist', (done) => {
-            sendSlotsManager.deleteCodecParameters(mediaType, []).catch((error) => {
-                expect(error.message).to.equal(`Slot for ${mediaType} does not exist`);
-                done();
-            });
+        it('should throw an error if a slot for the given mediaType does not exist', async () => {
+            await expect(sendSlotsManager.deleteCodecParameters(mediaType, []))
+                .to.be.rejectedWith(`Slot for ${mediaType} does not exist`);
         });
     });
 
@@ -294,11 +286,9 @@ describe('SendSlotsManager', () => {
             );
         });
 
-        it('should throw an error if a slot for the given mediaType does not exist', (done) => {
-            sendSlotsManager.setCustomCodecParameters(mediaType, codecMimeType, parameters).catch((error) => {
-                expect(error.message).to.equal(`Slot for ${mediaType} does not exist`);
-                done();
-            });
+        it('should throw an error if a slot for the given mediaType does not exist', async () => {
+            await expect(sendSlotsManager.setCustomCodecParameters(mediaType, codecMimeType, parameters))
+                .to.be.rejectedWith(`Slot for ${mediaType} does not exist`);
         });
     });
 
@@ -331,11 +321,9 @@ describe('SendSlotsManager', () => {
             );
         });
 
-        it('should throw an error if a slot for the given mediaType does not exist', (done) => {
-            sendSlotsManager.markCustomCodecParametersForDeletion(mediaType, codecMimeType, parameters).catch((error) => {
-                expect(error.message).to.equal(`Slot for ${mediaType} does not exist`);
-                done();
-            });
+        it('should throw an error if a slot for the given mediaType does not exist', async () => {
+            await expect(sendSlotsManager.markCustomCodecParametersForDeletion(mediaType, codecMimeType, parameters))
+                .to.be.rejectedWith(`Slot for ${mediaType} does not exist`);
         });
     });
 
