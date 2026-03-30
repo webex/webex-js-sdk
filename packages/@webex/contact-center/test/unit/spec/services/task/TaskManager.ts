@@ -221,6 +221,24 @@ describe('TaskManager', () => {
     );
   });
 
+  it('should emit REAL_TIME_TRANSCRIPTION from RTD websocket payload on task object', () => {
+    const task = taskManager.getTask(taskId);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const realtimePayload = {
+      data: {
+        notifType: CC_EVENTS.REAL_TIME_TRANSCRIPTION,
+        data: {
+          conversationId: taskId,
+          content: 'hello from rtd websocket',
+        },
+      },
+    };
+
+    taskManager.handleRealtimeWebsocketEvent(JSON.stringify(realtimePayload));
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(CC_EVENTS.REAL_TIME_TRANSCRIPTION, realtimePayload.data);
+  });
+
   it('should not re-emit agent related events', () => {
     const dummyPayload = {
       data: {

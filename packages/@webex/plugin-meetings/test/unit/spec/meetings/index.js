@@ -3943,7 +3943,7 @@ describe('plugin-meetings', () => {
           },
         });
         assert.calledWith(webex.meetings.handleLocusEvent, {
-          eventType: LOCUSEVENT.SDK_NO_EVENT,
+          eventType: LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS,
           locus: breakoutLocus,
           locusUrl: breakoutLocus.url,
         });
