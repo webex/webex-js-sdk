@@ -288,7 +288,14 @@ export default class SendSlotManager {
       throw new Error(`Slot for ${mediaType} does not exist`);
     }
 
-    await slot.setCustomCodecParameters(codecMimeType, parameters);
+    try {
+      await slot.setCustomCodecParameters(codecMimeType, parameters);
+    } catch (error) {
+      this.LoggerProxy.logger.error(
+        `SendSlotsManager->setCustomCodecParameters#Failed to set custom codec parameters for ${mediaType} (codec: ${codecMimeType}): ${error}`
+      );
+      throw error;
+    }
 
     this.LoggerProxy.logger.info(
       `SendSlotsManager->setCustomCodecParameters#Set custom codec parameters for ${mediaType} (codec: ${codecMimeType}) to ${JSON.stringify(

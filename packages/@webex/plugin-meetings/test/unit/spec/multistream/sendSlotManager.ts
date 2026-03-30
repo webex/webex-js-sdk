@@ -12,6 +12,7 @@ describe('SendSlotsManager', () => {
         logger: {
             info: sinon.stub(),
             warn: sinon.stub(),
+            error: sinon.stub(),
         },
     };
 
@@ -289,6 +290,20 @@ describe('SendSlotsManager', () => {
         it('should throw an error if a slot for the given mediaType does not exist', async () => {
             await expect(sendSlotsManager.setCustomCodecParameters(mediaType, codecMimeType, parameters))
                 .to.be.rejectedWith(`Slot for ${mediaType} does not exist`);
+        });
+
+        it('should throw and log error when setCustomCodecParameters fails', async () => {
+            const error = new Error('codec parameter failure');
+            const slot = {
+                setCustomCodecParameters: sinon.stub().rejects(error),
+            };
+            mediaConnection.createSendSlot.returns(slot);
+            sendSlotsManager.createSlot(mediaConnection, mediaType);
+
+            await expect(sendSlotsManager.setCustomCodecParameters(mediaType, codecMimeType, parameters))
+                .to.be.rejectedWith('codec parameter failure');
+
+            assert.called(LoggerProxy.logger.error);
         });
     });
 
