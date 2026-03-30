@@ -11468,15 +11468,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"baseline-browser-mapping@npm:latest":
-  version: 2.10.8
-  resolution: "baseline-browser-mapping@npm:2.10.8"
-  bin:
-    baseline-browser-mapping: dist/cli.cjs
-  checksum: 5ccd712b8190b919e0873ee2d09e9c5d5b646c89db2e16337ab86379ba1a40deb71ada6f388282dd88c0f8a6ec167d02044587095a51cd18848bfea647123c4f
-  languageName: node
-  linkType: hard
-
 "basic-auth@npm:~2.0.1":
   version: 2.0.1
   resolution: "basic-auth@npm:2.0.1"
@@ -34008,7 +33999,6 @@ __metadata:
     babel-plugin-lodash: ^3.3.4
     babel-plugin-module-resolver: ^5.0.2
     babelify: ^10.0.0
-    baseline-browser-mapping: latest
     browserify: ^17.0.0
     browserify-middleware: ^8.1.1
     builtins: ^5.1.0
