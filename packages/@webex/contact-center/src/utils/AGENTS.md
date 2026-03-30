@@ -1,4 +1,4 @@
-# Utils - AI Agent Guide
+# Utils
 
 > **This is the authoritative documentation for the `src/utils` scope.** It covers shared pagination/cache contracts used by data services. For task routing and cross-service conventions, see the [root orchestrator AGENTS.md](../../AGENTS.md).
 
@@ -13,12 +13,12 @@ The utils scope currently provides shared pagination and cache behavior for cont
 - **Cache Safety Rules**: Explicit bypass behavior for search/filter/sort scenarios
 - **Spec-Driven Utility Workflow**: Utility-specific implementation and validation flow in `agents.mmd`
 
-| Component | File | Description |
-|-----------|------|-------------|
-| `PageCache` | [`PageCache.ts`](./PageCache.ts) | Generic in-memory cache utility for paginated API responses with TTL expiry and helper methods for key generation and cache eligibility checks. |
-| `Pagination Types` | [`PageCache.ts`](./PageCache.ts) | `PaginationMeta`, `PaginatedResponse<T>`, `BaseSearchParams`, and `PageCacheEntry<T>` shared across data services. |
-| `Pagination Defaults` | [`PageCache.ts`](./PageCache.ts) | `PAGINATION_DEFAULTS` (`PAGE`, `PAGE_SIZE`) used by services for consistent request defaults. |
-| `Specs Workflow` | [`agents.mmd`](./agents.mmd) | Mermaid flow for specs-driven utility changes, acceptance criteria, and drift checks. |
+| Component             | File                             | Description                                                                                                                                     |
+| --------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PageCache`           | [`PageCache.ts`](./PageCache.ts) | Generic in-memory cache utility for paginated API responses with TTL expiry and helper methods for key generation and cache eligibility checks. |
+| `Pagination Types`    | [`PageCache.ts`](./PageCache.ts) | `PaginationMeta`, `PaginatedResponse<T>`, `BaseSearchParams`, and `PageCacheEntry<T>` shared across data services.                              |
+| `Pagination Defaults` | [`PageCache.ts`](./PageCache.ts) | `PAGINATION_DEFAULTS` (`PAGE`, `PAGE_SIZE`) used by services for consistent request defaults.                                                   |
+| `Specs Workflow`      | [`agents.mmd`](./agents.mmd)     | Mermaid flow for specs-driven utility changes, acceptance criteria, and drift checks.                                                           |
 
 ---
 
@@ -70,13 +70,13 @@ graph TD
   A[Request arrives with orgId/page/pageSize] --> B{canUseCache?}
   B -->|No: search/filter/attributes/sortBy provided| C[Bypass cache and call API]
   B -->|Yes| D[buildCacheKey orgId:page:pageSize]
-  D --> E[getCachedPage(cacheKey)]
+  D --> E["getCachedPage(cacheKey)"]
   E -->|Miss| C
   E -->|Hit and not expired| F[Return cached data and totalMeta]
   E -->|Hit but expired >= 5 minutes| G[Delete entry and treat as miss]
   G --> C
   C --> H[Receive API response]
-  H --> I[cachePage(cacheKey, data, meta)]
+  H --> I["cachePage(cacheKey, data, meta)"]
   I --> J[Return fresh response]
 ```
 
@@ -90,14 +90,14 @@ All public contracts for utils are defined in [`PageCache.ts`](./PageCache.ts).
 
 Common pagination metadata used across list APIs.
 
-| Field | Type | Notes |
-|------|------|-------|
-| `orgid` | `string` | Organization identifier |
-| `page` / `currentPage` | `number` | Current page aliases |
-| `pageSize` | `number` | Items per page |
-| `totalPages` | `number` | Total page count |
-| `totalRecords` / `totalItems` | `number` | Total item aliases |
-| `links` | `Record<string, string>` | Pagination link map |
+| Field                         | Type                     | Notes                   |
+| ----------------------------- | ------------------------ | ----------------------- |
+| `orgid`                       | `string`                 | Organization identifier |
+| `page` / `currentPage`        | `number`                 | Current page aliases    |
+| `pageSize`                    | `number`                 | Items per page          |
+| `totalPages`                  | `number`                 | Total page count        |
+| `totalRecords` / `totalItems` | `number`                 | Total item aliases      |
+| `links`                       | `Record<string, string>` | Pagination link map     |
 
 ### `PaginatedResponse<T>`
 
@@ -113,6 +113,7 @@ type PaginatedResponse<T> = {
 ### `BaseSearchParams`
 
 Common query parameter contract with pagination and sorting:
+
 - `search`, `filter`, `attributes`
 - `page`, `pageSize`
 - `sortBy`, `sortOrder`
@@ -120,6 +121,7 @@ Common query parameter contract with pagination and sorting:
 ### `PAGINATION_DEFAULTS`
 
 Standard defaults exported for callers:
+
 - `PAGE: 0`
 - `PAGE_SIZE: 100`
 
@@ -134,6 +136,7 @@ Creates a typed cache instance and stores `apiName` for `LoggerProxy` context.
 ### `canUseCache(params: CacheValidationParams): boolean`
 
 Returns `true` only when all of these are absent:
+
 - `search`
 - `filter`
 - `attributes`
@@ -150,6 +153,7 @@ ${orgId}:${page}:${pageSize}
 ### `getCachedPage(cacheKey: string): PageCacheEntry<T> | null`
 
 Behavior:
+
 1. Returns `null` if key not found
 2. Computes cache age in minutes
 3. If age is `>= 5`, logs expiry, deletes entry, returns `null`
@@ -158,6 +162,7 @@ Behavior:
 ### `cachePage(cacheKey: string, data: T[], meta?: any): void`
 
 Stores entry with:
+
 - `data`
 - `timestamp`
 - `totalMeta.totalPages`
@@ -177,13 +182,14 @@ Returns current in-memory entry count.
 
 Current consumers of `PageCache` and defaults:
 
-| Consumer | File | Usage |
-|----------|------|-------|
+| Consumer      | File                                                       | Usage                               |
+| ------------- | ---------------------------------------------------------- | ----------------------------------- |
 | `AddressBook` | [`../services/AddressBook.ts`](../services/AddressBook.ts) | Caches paged address-book responses |
-| `EntryPoint` | [`../services/EntryPoint.ts`](../services/EntryPoint.ts) | Caches paged entry-point responses |
-| `Queue` | [`../services/Queue.ts`](../services/Queue.ts) | Caches paged queue responses |
+| `EntryPoint`  | [`../services/EntryPoint.ts`](../services/EntryPoint.ts)   | Caches paged entry-point responses  |
+| `Queue`       | [`../services/Queue.ts`](../services/Queue.ts)             | Caches paged queue responses        |
 
 Cross-scope mention:
+
 - Services-layer docs reference utils caching contracts at [`../services/ai-docs/AGENTS.md`](../services/ai-docs/AGENTS.md).
 
 ---
@@ -191,6 +197,7 @@ Cross-scope mention:
 ## Spec-Driven Utility Changes
 
 When changing `src/utils` behavior or contracts:
+
 1. Follow the workflow in [`agents.mmd`](./agents.mmd)
 2. Define acceptance criteria for contract and runtime behavior
 3. Verify cache TTL, bypass rules, and key schema
@@ -213,7 +220,5 @@ When changing `src/utils` behavior or contracts:
 ## Related
 
 - [Root orchestrator AGENTS.md](../../AGENTS.md) - Task routing and critical package rules
-- [Services layer AGENTS.md](../services/ai-docs/AGENTS.md) - Cross-service composition and data-service patterns
-- [Core service AGENTS.md](../services/core/ai-docs/AGENTS.md) - Reference style and architecture depth
 - [PageCache implementation](./PageCache.ts)
 - [Specs flow diagram](./agents.mmd)
