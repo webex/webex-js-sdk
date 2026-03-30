@@ -6163,11 +6163,11 @@ export default class Meeting extends StatelessWebexPlugin {
         return Promise.reject(error);
       })
       .then((join) => {
+        this.saveDataChannelToken(join);
         // @ts-ignore - config coming from registerPlugin
         if (this.config.enableAutomaticLLM) {
           // @ts-ignore
           this.webex.internal.llm.on('online', this.handleLLMOnline);
-          this.saveDataChannelToken(join);
           this.updateLLMConnection()
             .catch((error) => {
               LoggerProxy.logger.error(
