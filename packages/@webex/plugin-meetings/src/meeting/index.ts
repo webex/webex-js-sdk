@@ -968,13 +968,15 @@ export default class Meeting extends StatelessWebexPlugin {
       (csi: CSI) => (this.members.findMemberByCsi(csi) as any)?.id
     );
     /**
-     * Object containing helper classes for managing media requests for audio/video/screenshare (for multistream media connections)
-     * All multistream media requests sent out for this meeting have to go through them.
+     * Retrieves the ingress RTP payload type for a given media type and codec from the active multistream connection.
+     * @param {MediaType} mediaType - The media type to look up.
+     * @param {MediaCodecMimeType} codecMimeType - The codec MIME type to look up.
+     * @returns {number|undefined} The ingress payload type, or undefined if the connection is not multistream.
      */
     const getIngressPayloadTypeCallback = (
       mediaType: MediaType,
       codecMimeType: MediaCodecMimeType
-    ) => {
+    ): number | undefined => {
       if (this.mediaProperties?.webrtcMediaConnection instanceof MultistreamRoapMediaConnection) {
         return this.mediaProperties.webrtcMediaConnection.getIngressPayloadType(
           mediaType,
