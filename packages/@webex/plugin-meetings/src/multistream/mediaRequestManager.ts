@@ -12,6 +12,8 @@ import {
   AV1Codec,
   SupportedResolution,
   AV1EncodingParams,
+  MediaType,
+  MediaCodecMimeType,
 } from '@webex/internal-media-core';
 import {cloneDeepWith, debounce} from 'lodash';
 
@@ -65,6 +67,10 @@ type DegradationPreferences = {
 };
 
 type SendMediaRequestsCallback = (streamRequests: StreamRequest[]) => void;
+type GetIngressPayloadTypeCallback = (
+  mediaType: MediaType,
+  codecMimeType: MediaCodecMimeType
+) => number;
 type Kind = 'audio' | 'video';
 
 type Options = {
@@ -77,6 +83,8 @@ type ClientRequestsMap = {[key: MediaRequestId]: MediaRequest};
 
 export class MediaRequestManager {
   private sendMediaRequestsCallback: SendMediaRequestsCallback;
+
+  private getIngressPayloadTypeCallback: GetIngressPayloadTypeCallback;
 
   private kind: Kind;
 
@@ -94,8 +102,13 @@ export class MediaRequestManager {
   private numTotalSources: number;
   private numLiveSources: number;
 
-  constructor(sendMediaRequestsCallback: SendMediaRequestsCallback, options: Options) {
+  constructor(
+    sendMediaRequestsCallback: SendMediaRequestsCallback,
+    getIngressPayloadTypeCallback: GetIngressPayloadTypeCallback,
+    options: Options
+  ) {
     this.sendMediaRequestsCallback = sendMediaRequestsCallback;
+    this.getIngressPayloadTypeCallback = getIngressPayloadTypeCallback;
     this.counter = 0;
     this.numLiveSources = 0;
     this.numTotalSources = 0;
@@ -325,7 +338,10 @@ export class MediaRequestManager {
 
         if (mr.codecInfo) {
           const h264CodecInfo = WcmeCodecInfo.fromH264(
-            0x80,
+            this.getIngressPayloadTypeCallback(
+              mr.receiveSlots[0].mediaType,
+              MediaCodecMimeType.H264
+            ),
             new H264Codec(
               mr.codecInfo.maxFs,
               mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
@@ -338,7 +354,10 @@ export class MediaRequestManager {
 
           const av1EncodingParams = this.getAv1EncodingParams(mr);
           const av1CodecInfo = WcmeCodecInfo.fromAv1(
-            45,
+            this.getIngressPayloadTypeCallback(
+              mr.receiveSlots[0].mediaType,
+              MediaCodecMimeType.AV1
+            ),
             new AV1Codec(
               av1EncodingParams.levelIdx,
               av1EncodingParams.tier,

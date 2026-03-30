@@ -971,18 +971,18 @@ export default class Meeting extends StatelessWebexPlugin {
       (csi: CSI) => (this.members.findMemberByCsi(csi) as any)?.id
     );
 
-    const updatePayloadTypes = (mediaRequests: StreamRequest[], mediaType: MediaType) => {
-      const mediaConnection = this.mediaProperties.webrtcMediaConnection;
-      if (mediaConnection instanceof MultistreamRoapMediaConnection) {
-        mediaRequests
-          .flatMap((mr) => mr.codecInfos)
-          .forEach((codecInfo) => {
-            codecInfo.payloadType = mediaConnection.getIngressPayloadType(
-              mediaType,
-              codecInfo.av1 ? MediaCodecMimeType.AV1 : MediaCodecMimeType.H264
-            );
-          });
+    const getIngressPayloadTypeCallback = (
+      mediaType: MediaType,
+      codecMimeType: MediaCodecMimeType
+    ) => {
+      if (this.mediaProperties?.webrtcMediaConnection instanceof MultistreamRoapMediaConnection) {
+        return this.mediaProperties.webrtcMediaConnection.getIngressPayloadType(
+          mediaType,
+          codecMimeType
+        );
       }
+
+      return 0;
     };
 
     /**
@@ -1004,6 +1004,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        getIngressPayloadTypeCallback,
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1021,12 +1022,12 @@ export default class Meeting extends StatelessWebexPlugin {
             return;
           }
 
-          updatePayloadTypes(mediaRequests, MediaType.VideoMain);
           this.mediaProperties.webrtcMediaConnection.requestMedia(
             MediaType.VideoMain,
             mediaRequests
           );
         },
+        getIngressPayloadTypeCallback,
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1049,6 +1050,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        getIngressPayloadTypeCallback,
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1066,12 +1068,12 @@ export default class Meeting extends StatelessWebexPlugin {
             return;
           }
 
-          updatePayloadTypes(mediaRequests, MediaType.VideoSlides);
           this.mediaProperties.webrtcMediaConnection.requestMedia(
             MediaType.VideoSlides,
             mediaRequests
           );
         },
+        getIngressPayloadTypeCallback,
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
