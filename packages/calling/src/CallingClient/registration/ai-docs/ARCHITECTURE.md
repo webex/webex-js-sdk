@@ -4,6 +4,25 @@
 
 The `Registration` class is the most complex subsystem in the CallingClient module. It manages the full lifecycle of device registration with Mobius, including initial registration, keepalive heartbeats, server failover, failback, 429 retry handling, and reconnection after network disruption.
 
+## File Structure
+
+```
+registration/
+├── index.ts               # Re-exports from register.ts
+├── register.ts            # Registration class (main logic)
+├── types.ts               # IRegistration, type aliases
+├── webWorker.ts           # Keepalive worker (direct module)
+├── webWorkerStr.ts        # Stringified worker for Blob URL
+├── registerFixtures.ts    # Test fixtures
+├── register.test.ts       # Unit tests
+├── webWorker.test.ts      # Web Worker unit tests
+└── ai-docs/
+    ├── AGENTS.md          # Overview, API, examples
+    └── ARCHITECTURE.md    # This file
+```
+
+---
+
 ### Responsibilities
 
 | Concern | Implementation |
@@ -20,49 +39,35 @@ The `Registration` class is the most complex subsystem in the CallingClient modu
 
 ## Internal Architecture
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                        Registration                              │
-│                                                                  │
-│  ┌────────────────────┐    ┌──────────────────────────────────┐  │
-│  │ triggerRegistration │───►│ attemptRegistrationWithServers() │  │
-│  └────────────────────┘    │  ├── Try each URI in order       │  │
-│                            │  ├── POST /calling/web/devices   │  │
-│                            │  ├── On success → ACTIVE          │  │
-│                            │  └── On failure → error handler   │  │
-│                            └──────────────┬───────────────────┘  │
-│                                           │                      │
-│  ┌────────────────────┐    ┌──────────────▼───────────────────┐  │
-│  │ lineEmitter()      │◄───│ handleRegistrationSuccess()      │  │
-│  │ → REGISTERED       │    │  ├── Set status ACTIVE           │  │
-│  │ → RECONNECTING     │    │  ├── Start keepalive worker      │  │
-│  │ → RECONNECTED      │    │  ├── Start failback if on backup │  │
-│  │ → ERROR            │    │  └── Call lineEmitter(REGISTERED) │  │
-│  └────────────────────┘    └──────────────────────────────────┘  │
-│                                                                  │
-│  ┌────────────────────┐    ┌──────────────────────────────────┐  │
-│  │ Web Worker         │◄──►│ Keepalive Loop                   │  │
-│  │ (webWorkerStr.ts)  │    │  POST /devices/{id}/status       │  │
-│  │  START_KEEPALIVE   │    │  every keepaliveInterval secs    │  │
-│  │  CLEAR_KEEPALIVE   │    │  → KEEPALIVE_SUCCESS             │  │
-│  │  KEEPALIVE_SUCCESS │    │  → KEEPALIVE_FAILURE             │  │
-│  │  KEEPALIVE_FAILURE │    └──────────────────────────────────┘  │
-│  └────────────────────┘                                          │
-│                                                                  │
-│  ┌────────────────────┐    ┌──────────────────────────────────┐  │
-│  │ Failover Timer     │◄──►│ startFailoverTimer()             │  │
-│  │                    │    │  ├── Retry primary URIs           │  │
-│  │                    │    │  ├── Then backup URIs             │  │
-│  │                    │    │  └── Exponential backoff          │  │
-│  └────────────────────┘    └──────────────────────────────────┘  │
-│                                                                  │
-│  ┌────────────────────┐    ┌──────────────────────────────────┐  │
-│  │ Failback Timer     │◄──►│ initiateFailback()               │  │
-│  │                    │    │  ├── Check primary servers        │  │
-│  │                    │    │  ├── If up → executeFailback()    │  │
-│  │                    │    │  └── Re-register on primary       │  │
-│  └────────────────────┘    └──────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+  subgraph Registration
+    TR[triggerRegistration] --> ARS[attemptRegistrationWithServers]
+    ARS -->|For each URI: POST /calling/web/device| RES{Result}
+
+    RES -->|Success| SUCC[Set ACTIVE + store deviceInfo]
+    SUCC --> KA[Start keepalive Web Worker]
+    SUCC --> FB[initiateFailback if on backup]
+    SUCC --> LE_REG[lineEmitter: REGISTERED]
+
+    RES -->|Non-fatal error| SFT[startFailoverTimer]
+    SFT -->|Retry primary with backoff| ARS
+    SFT -->|Threshold exceeded| ARS_B[attemptRegistrationWithServers: backup]
+    ARS_B -->|Success| SUCC
+    ARS_B -->|All fail| EFF[emitFinalFailure]
+
+    RES -->|Fatal error| LE_ERR[lineEmitter: ERROR]
+
+    KA <-->|START_KEEPALIVE / CLEAR_KEEPALIVE<br/>KEEPALIVE_SUCCESS / KEEPALIVE_FAILURE| WW[Web Worker<br/>webWorkerStr.ts]
+    WW -->|POST /devices/id/status<br/>every keepaliveInterval sec| MOB[Mobius]
+
+    FB --> EFB[executeFailback]
+    EFB -->|Ping primary, deregister backup, re-register| ARS
+
+    LE_REG --> LINE[lineEmitter → Line]
+    LE_ERR --> LINE
+    EFF --> LINE
+  end
 ```
 
 ---
@@ -184,26 +189,31 @@ sequenceDiagram
 
 The keepalive runs in a **Web Worker** to ensure heartbeats are not blocked by main-thread work (long computations, UI rendering, etc.).
 
-```
-Main Thread                          Web Worker
-    │                                    │
-    ├── new Worker(blobURL) ────────────►│
-    ├── postMessage(START_KEEPALIVE) ───►│
-    │   {token, url, interval,           │
-    │    retryCountThreshold}            │
-    │                                    │
-    │                              ┌─────┤ setInterval(interval)
-    │                              │     │
-    │                              │     ├── fetch(POST url/status)
-    │                              │     │   ├── 200 → postMessage(KEEPALIVE_SUCCESS)
-    │◄── KEEPALIVE_SUCCESS ────────┤     │   └── error → postMessage(KEEPALIVE_FAILURE)
-    │◄── KEEPALIVE_FAILURE ────────┤     │
-    │                              │     │
-    │                              └─────┤
-    │                                    │
-    ├── postMessage(CLEAR_KEEPALIVE) ───►│
-    │                                    ├── clearInterval()
-    ├── worker.terminate() ─────────────►│ (terminated)
+```mermaid
+sequenceDiagram
+  participant MT as Main Thread
+  participant WW as Web Worker
+  participant Mob as Mobius
+
+  MT->>WW: new Worker(blobURL)
+  MT->>WW: postMessage(START_KEEPALIVE)<br/>{token, url, interval, retryCountThreshold}
+
+  loop setInterval(interval * 1000) while retryCount < threshold
+    WW->>Mob: fetch(POST url/status)
+    alt 200 OK
+      Note over WW: Reset retryCount to 0
+      alt retryCount was > 0 (recovering)
+        WW-->>MT: postMessage(KEEPALIVE_SUCCESS)
+      end
+    else Error
+      Note over WW: Increment retryCount
+      WW-->>MT: postMessage(KEEPALIVE_FAILURE)<br/>{statusCode, headers, retryCount}
+    end
+  end
+
+  MT->>WW: postMessage(CLEAR_KEEPALIVE)
+  Note over WW: clearInterval()
+  MT->>WW: worker.terminate()
 ```
 
 ### Worker Messages
@@ -245,54 +255,67 @@ When the main thread receives `KEEPALIVE_FAILURE`:
 
 Called when keepalive failures exceed the threshold or when CallingClient detects all calls have cleared after a network disruption.
 
-```
-reconnectOnFailure(caller)
-  │
-  ├── Are there active calls?
-  │   ├── YES → Set reconnectPending = true (defer until calls clear)
-  │   └── NO  → Proceed with re-registration
-  │
-  ├── clearKeepaliveTimer()
-  ├── lineEmitter(RECONNECTING)
-  ├── attemptRegistrationWithServers(primaryUris)
-  │   ├── Success → lineEmitter(REGISTERED)
-  │   └── Failure → startFailoverTimer()
-  └── reconnectPending = false
+```mermaid
+flowchart TD
+  A[reconnectOnFailure called] --> B[Set reconnectPending = false]
+  B --> C{Device already registered?}
+  C -- Yes --> Z[Return — no action needed]
+  C -- No --> D{Active calls present?}
+  D -- Yes --> E[Set reconnectPending = true<br/>Defer until calls clear]
+  D -- No --> F[restorePreviousRegistration<br/>Try last activeMobiusUrl]
+  F --> G{Registered?}
+  G -- Yes --> Z
+  G -- No, not aborted --> H[restartRegistration<br/>Try primary servers + startFailoverTimer]
+  G -- Aborted, fatal error --> Z
 ```
 
 ### handleConnectionRestoration()
 
-Called by `CallingClient` after Mercury reconnection.
+Called by `CallingClient` after Mercury reconnection. Runs inside `mutex.runExclusive`.
 
-```
-handleConnectionRestoration(retry)
-  │
-  ├── Set status to INACTIVE
-  ├── clearKeepaliveTimer()
-  ├── lineEmitter(RECONNECTING)
-  │
-  ├── attemptRegistrationWithServers(primaryUris)
-  │   ├── Success → lineEmitter(REGISTERED), return true
-  │   └── Failure →
-  │       ├── If retry = true → startFailoverTimer()
-  │       └── return false
+```mermaid
+flowchart TD
+  A[handleConnectionRestoration called] --> B{retry = true?}
+  B -- No --> Z[Return retry value unchanged]
+  B -- Yes --> C[clearKeepaliveTimer]
+  C --> D{Currently registered?}
+  D -- Yes --> E[deregister: DELETE device + set INACTIVE]
+  D -- No --> F
+  E --> F{activeMobiusUrl set?}
+  F -- No --> G[Skip — let failover timer handle registration]
+  F -- Yes --> H[restorePreviousRegistration<br/>Try last activeMobiusUrl first]
+  H --> I{Registered?}
+  I -- Yes --> J[Set retry = false, return]
+  I -- No, not aborted --> K[restartRegistration<br/>Try primary servers + startFailoverTimer]
+  I -- Aborted, fatal error --> J
+  K --> J
+  G --> J
 ```
 
 ---
 
 ## 429 Retry Logic
 
-```
-HTTP 429 received
-  │
-  ├── Extract Retry-After header
-  ├── Increment failback429RetryAttempts
-  │
-  ├── failback429RetryAttempts <= REG_FAILBACK_429_MAX_RETRIES (5)?
-  │   ├── YES → Schedule retry after Retry-After delay
-  │   │         └── On timer: call triggerRegistration() again
-  │   └── NO  → Failover to backup servers
-  │             └── startFailoverTimer()
+`handle429Retry(retryAfter, caller)` handles 429 differently depending on the calling context:
+
+```mermaid
+flowchart TD
+  A[429 received via handle429Retry] --> B{Caller context?}
+
+  B -->|FAILBACK_UTIL| C{failback429RetryAttempts >= 5?}
+  C -- Yes --> D[Return — stay on backup, stop retrying]
+  C -- No --> E[Clear failback timer<br/>Increment failback429RetryAttempts]
+  E --> F[Start new failback timer with backoff interval]
+  F --> G[restorePreviousRegistration]
+  G --> H{Registered?}
+  H -- Yes --> I[Done]
+  H -- No --> J[restartRegistration<br/>Primary servers + startFailoverTimer]
+
+  B -->|KEEPALIVE_UTIL| K[Clear keepalive timer — terminate worker]
+  K --> L[Wait Retry-After seconds]
+  L --> M[Restart keepalive with new worker]
+
+  B -->|Other: initial registration| N[Store retryAfter on instance<br/>Used by startFailoverTimer for interval calculation]
 ```
 
 ---
@@ -304,47 +327,29 @@ HTTP 429 received
 | `DEFAULT_KEEPALIVE_INTERVAL` | 30s | Default keepalive frequency |
 | `REG_TRY_BACKUP_TIMER_VAL_IN_SEC` | 114s | Time before trying backup servers |
 | `REG_FAILBACK_429_MAX_RETRIES` | 5 | Max 429 retries before failover |
-| `BASE_REG_RETRY_TIMER_VAL_IN_SEC` | varies | Base retry timer |
-| `BASE_REG_TIMER_MFACTOR` | varies | Multiplication factor for backoff |
-| `REG_RANDOM_T_FACTOR_UPPER_LIMIT` | varies | Randomization upper bound |
-| `RETRY_TIMER_UPPER_LIMIT` | varies | Max retry timer value |
+| `BASE_REG_RETRY_TIMER_VAL_IN_SEC` | 30 | Base retry timer (seconds) |
+| `BASE_REG_TIMER_MFACTOR` | 2 | Multiplication factor for exponential backoff |
+| `REG_RANDOM_T_FACTOR_UPPER_LIMIT` | 10000 | Randomization upper bound (milliseconds) |
+| `RETRY_TIMER_UPPER_LIMIT` | 60 | Max retry timer value (seconds) |
 
 ---
 
 ## Error Handling
 
-Registration errors are mapped through `handleRegistrationErrors()`:
+Registration errors are mapped through `handleRegistrationErrors()`. Fatal errors (`abort = true`) stop the registration loop and emit `LINE_EVENTS.ERROR`. Non-fatal errors allow the loop to continue to the next server or schedule a retry via the failover timer.
 
-| HTTP Status | ERROR_TYPE | Action |
-|-------------|-----------|--------|
-| 401 | `TOKEN_ERROR` | Emit error, likely need token refresh |
-| 403 | `FORBIDDEN_ERROR` | Emit error |
-| 404 | `NOT_FOUND` | Emit error |
-| 408 | `TIMEOUT` | Retry or failover |
-| 429 | `TOO_MANY_REQUESTS` | Retry with `Retry-After` |
-| 500 | `SERVER_ERROR` | Failover |
-| 503 | `SERVICE_UNAVAILABLE` | Failover |
-
-All errors are communicated via `lineEmitter(LINE_EVENTS.ERROR, undefined, lineError)` where `lineError` is a `LineError` instance.
-
----
-
-## File Structure
-
-```
-registration/
-├── index.ts               # Re-exports from register.ts
-├── register.ts            # Registration class (main logic)
-├── types.ts               # IRegistration, type aliases
-├── webWorker.ts           # Keepalive worker (direct module)
-├── webWorkerStr.ts        # Stringified worker for Blob URL
-├── registerFixtures.ts    # Test fixtures
-├── register.test.ts       # Unit tests
-├── webWorker.test.ts      # Web Worker unit tests
-└── ai-docs/
-    ├── AGENTS.md          # Overview, API, examples
-    └── ARCHITECTURE.md    # This file
-```
+| HTTP Status | ERROR_TYPE | Fatal? | Action |
+|-------------|-----------|--------|--------|
+| 400 | `BAD_REQUEST` | Yes | Abort — emit error |
+| 401 | `TOKEN_ERROR` | Yes | Abort — emit error (token expired/invalid) |
+| 403 (code 101) | `FORBIDDEN_ERROR` | No | Device limit exceeded — `restoreRegistrationCallBack`: deregister existing + re-register |
+| 403 (code 102) | `FORBIDDEN_ERROR` | Yes | Device creation disabled — abort, emit error |
+| 403 (code 103/other) | `FORBIDDEN_ERROR` | No | Device creation failed — continue retry |
+| 404 | `NOT_FOUND` | Yes | Abort — emit error |
+| 429 | `TOO_MANY_REQUESTS` | No | Call `handle429Retry` with `Retry-After` value |
+| 500 | `SERVER_ERROR` | No | Continue to next server or schedule retry |
+| 503 | `SERVICE_UNAVAILABLE` | No | Continue to next server or schedule retry |
+| Other | `DEFAULT` | No | Continue to next server or schedule retry |
 
 ---
 
@@ -353,8 +358,3 @@ registration/
 - [Registration AGENTS.md](./AGENTS.md) — Public API, key concepts
 - [Line ARCHITECTURE.md](../../line/ai-docs/ARCHITECTURE.md) — lineEmitter pattern, Line ↔ Registration interaction
 - [CallingClient ARCHITECTURE.md](../../ai-docs/ARCHITECTURE.md) — Network resilience, initialization
-- [Error Handling Patterns](../../../../ai-docs/patterns/error-handling-patterns.md) — LineError handling
-
----
-
-_Last Updated: 2026-03-15_

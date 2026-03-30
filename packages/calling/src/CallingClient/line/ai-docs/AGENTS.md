@@ -6,7 +6,6 @@
 
 - **First step:** Load the parent [CallingClient/ai-docs/AGENTS.md](../../ai-docs/AGENTS.md) for module-level context.
 - **For registration-specific changes:** Also load [registration/ai-docs/AGENTS.md](../../registration/ai-docs/AGENTS.md).
-- **For package-level patterns:** See `packages/calling/ai-docs/patterns/`.
 
 ---
 
@@ -22,19 +21,38 @@ A `Line` is created internally by `CallingClient.createLine()` during initializa
 
 ---
 
-## Purpose
+### Key Capabilities
 
 The Line module is responsible for:
 
-- **Registration orchestration** — Delegates to `Registration` but manages the mutex and emits line-level events
+- **Exposing public registration API** — `register()` and `deregister()` for applications to control line registration state
+- **Emitting line events to the application** — Provides the `lineEmitter` callback that `Registration` uses to signal state changes, which Line then re-emits as `LineEventTypes`
 - **Incoming call forwarding** — Listens for `incoming_call` from `CallManager` and re-emits as `LINE_EVENTS.INCOMING_CALL`
 - **Outbound call initiation** — Creates calls via `CallManager.createCall()` and returns the `ICall` object
-- **Line normalization** — Populates line properties (phone number, SIP addresses, extension, voicemail, etc.) from device registration response
-- **Line event emission** — Provides the `lineEmitter` callback that `Registration` uses to signal state changes
+- **Line normalization** — Populates line properties (SIP addresses, extension, voicemail, etc.) from device registration response
+- **Registration orchestration** — Delegates to `Registration` but manages the mutex to prevent concurrent registration
 
 ---
 
-## Public API
+## Line Object
+
+### Constructor Parameters
+
+```typescript
+constructor(
+  userId: string,                              // Webex user ID
+  clientDeviceUri: string,                     // Device URL from webex.internal.device.url
+  mutex: Mutex,                                // Shared mutex for registration serialization
+  primaryMobiusUris: string[],                 // Primary Mobius server URIs
+  backupMobiusUris: string[],                  // Backup Mobius server URIs
+  logLevel: LOGGER,                            // Log verbosity
+  serviceDataConfig?: CallingClientConfig['serviceData'],  // Backend config
+  jwe?: string,                                // Optional JWE token
+  phoneNumber?: string,                        // Optional initial phone number (from provisioning)
+  extension?: string,                          // Optional initial extension
+  voicemail?: string,                          // Optional voicemail number
+)
+```
 
 ### ILine Interface
 
@@ -46,7 +64,7 @@ The Line module is responsible for:
 | `clientDeviceUri` | `string` | Device URI from Webex SDK |
 | `lineId` | `string` | Unique line identifier (UUID) |
 | `mobiusDeviceId` | `string?` | Mobius device ID (set after registration) |
-| `phoneNumber` | `string?` | Phone number (set after registration) |
+| `phoneNumber` | `string?` | Phone number (set from provisioning data at construction) |
 | `extension` | `string?` | Extension number |
 | `sipAddresses` | `string[]?` | SIP addresses |
 | `voicemail` | `string?` | Voicemail number |
@@ -59,16 +77,15 @@ The Line module is responsible for:
 | `voicePortalExtension` | `number?` | Voice portal extension |
 | `registration` | `IRegistration` | Registration instance for this line |
 
-#### Methods
+#### Methods / Public API
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `register` | `(): void` | Registers the line with Mobius (acquires mutex, emits CONNECTING, delegates to Registration) |
-| `deregister` | `(): void` | Deregisters the line (delegates to Registration, sets status IDLE) |
+| `register` | `(): Promise<void>` | Registers the line with Mobius (acquires mutex, emits CONNECTING, delegates to Registration) |
+| `deregister` | `(): Promise<void>` | Deregisters the line (delegates to Registration, sets status IDLE) |
 | `getActiveMobiusUrl` | `(): string` | Returns the currently active Mobius server URL |
 | `getStatus` | `(): RegistrationStatus` | Returns current registration status (`IDLE`, `active`, `inactive`) |
 | `getDeviceId` | `(): MobiusDeviceId \| undefined` | Returns the Mobius device ID |
-| `lineEmitter` | `(event, deviceInfo?, lineError?) => void` | Callback for Registration to emit line events |
 | `makeCall` | `(dest?: CallDetails): ICall \| undefined` | Initiates an outbound call |
 | `getCall` | `(correlationId: CorrelationId): ICall` | Retrieves a call by correlation ID |
 
@@ -88,12 +105,39 @@ The Line module is responsible for:
 
 ## Examples
 
-### Listening to Line Events
+This section covers three key aspects:
+
+1. **Fetching and Managing Line Objects / Registration**
+2. **Listening for Line Events**
+3. **Working with Calls (Call API)**
+
+---
+
+### 1. Fetching Created Line Objects & Invoking Registration Methods
 
 ```typescript
+// Get all line objects (if lines already exist)
 const lines = callingClient.getLines();
 const line = Object.values(lines)[0];
 
+// Register the line: triggers connection to Mobius, acquiring mutex, emitting events, etc.
+await line.register();
+
+// Optionally, check registration status and get IDs
+const status = line.getStatus(); // 'IDLE' | 'active' | 'inactive'
+const deviceId = line.getDeviceId();
+const mobiusUrl = line.getActiveMobiusUrl();
+
+// Deregister the line
+await line.deregister();
+```
+
+---
+
+### 2. Listening for Line Events
+
+```typescript
+// Attach event listeners for registration lifecycle, errors, and incoming calls
 line.on('connecting', () => {
   console.log('Registration in progress...');
 });
@@ -122,9 +166,10 @@ line.on('line:incoming_call', (call) => {
 });
 ```
 
-### Making an Outbound Call
+### 3. Making and Handling Outbound Calls
 
 ```typescript
+// Initiate an outbound call after registration
 const call = line.makeCall({type: 'uri', address: 'sip:bob@example.com'});
 
 if (call) {
@@ -132,34 +177,6 @@ if (call) {
   call.on('disconnect', () => console.log('Call ended'));
   call.dial(localAudioStream);
 }
-```
-
-### Checking Registration Status
-
-```typescript
-const status = line.getStatus(); // 'IDLE' | 'active' | 'inactive'
-const deviceId = line.getDeviceId();
-const mobiusUrl = line.getActiveMobiusUrl();
-```
-
----
-
-## Constructor Parameters
-
-```typescript
-constructor(
-  userId: string,                              // Webex user ID
-  clientDeviceUri: string,                     // Device URL from webex.internal.device.url
-  mutex: Mutex,                                // Shared mutex for registration serialization
-  primaryMobiusUris: string[],                 // Primary Mobius server URIs
-  backupMobiusUris: string[],                  // Backup Mobius server URIs
-  logLevel: LOGGER,                            // Log verbosity
-  serviceDataConfig?: CallingClientConfig['serviceData'],  // Backend config
-  jwe?: string,                                // Optional JWE token
-  phoneNumber?: string,                        // Optional initial phone number
-  extension?: string,                          // Optional initial extension
-  voicemail?: string,                          // Optional voicemail number
-)
 ```
 
 ---
@@ -190,11 +207,38 @@ type LineEmitterCallback = (
 ) => void;
 ```
 
-### LineErrorEmitterCallback
+### LineErrorEmitterCallback and Error Handling in `Line`
 
 ```typescript
+/**
+ * This callback is used for emitting errors related to the `Line` class.
+ * The error is represented by a `LineError` object (sometimes called `LineErrorObject`).
+ * The optional `finalError` boolean indicates if this is the terminal error state for the operation.
+ */
 type LineErrorEmitterCallback = (err: LineError, finalError?: boolean) => void;
 ```
+
+#### About `LineError` and Line Error Handling
+
+The `LineError` object encapsulates structured information about errors occurring during Line operations. It typically includes:
+
+- A human-readable error message (e.g., explaining the user-level issue, such as invalid numbers).
+- An error data payload (for debugging or UI).
+- A specific error type (`ERROR_TYPE`), identifying the domain of the failure (e.g., registration, call errors).
+- Optionally, a registration status describing the state when the error occurred.
+
+Inside [`@packages/calling/src/CallingClient/line/index.ts`](../index.ts):
+
+- All major asynchronous operations (such as `makeCall`, `register`, etc.) are instrumented with structured error handling.
+- When an error occurs that should be signaled to clients, a `LineError` object is constructed with descriptive details and relevant context.
+- This error object is emitted via the `LINE_EVENTS.ERROR` event, using the `lineEmitter` method as the emission pathway.
+- Listeners on the `Line` instance (using `line.on(LINE_EVENTS.ERROR, ...)`) can receive, log, display, or escalate these errors through the callback signature shown above.
+
+For example, in the implementation of `makeCall`:
+- If the destination phone number is invalid, a `LineError` is created with a message and detail, and emitted to listeners using the error event. This ensures callers receive clear, structured error information, and can distinguish normal versus terminal errors using the `finalError` boolean.
+
+**Summary:**  
+Error handling in the `Line` class centers on the use of the `LineError` object, with propagation through a typed emitter callback. This enables robust, structured, and type-safe error reporting to SDK consumers or UI components.
 
 ---
 
@@ -203,8 +247,3 @@ type LineErrorEmitterCallback = (err: LineError, finalError?: boolean) => void;
 - [Line Architecture](./ARCHITECTURE.md) — Internal flow, lineEmitter pattern, normalization
 - [CallingClient AGENTS.md](../../ai-docs/AGENTS.md) — Parent module overview
 - [Registration AGENTS.md](../../registration/ai-docs/AGENTS.md) — Registration details
-- [Event Patterns](../../../../ai-docs/patterns/event-patterns.md) — Typed event system
-
----
-
-_Last Updated: 2026-03-15_

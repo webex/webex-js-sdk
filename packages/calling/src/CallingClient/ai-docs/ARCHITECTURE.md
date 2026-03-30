@@ -11,11 +11,10 @@ The CallingClient module follows a layered architecture: **Application → Calli
 | **Orchestrator** | `CallingClient` | `CallingClient.ts` | Mobius discovery, line creation, network resilience, session listener, media engine config |
 | **Line Management** | `Line` | `line/index.ts` | Registration orchestration, call initiation, incoming call forwarding, line event emission |
 | **Registration** | `Registration` | `registration/register.ts` | Device register/deregister, keepalive via web worker, failover/failback, reconnection |
-| **Call Management** | `CallManager` | `calling/callManager.ts` | Call collection, WebSocket event routing, call creation/deletion |
-| **Call** | `Call` | `calling/call.ts` | Single call lifecycle via XState, media negotiation (ROAP), hold/resume/transfer/mute |
-| **SDK Bridge** | `SDKConnector` | `SDKConnector/index.ts` | Singleton Webex SDK wrapper, HTTP requests, Mercury listener registration |
 | **Metrics** | `MetricManager` | `Metrics/index.ts` | Telemetry submission for registration, calls, errors, BNR |
 | **Logging** | `Logger` | `Logger/index.ts` | Structured logging with file/method context |
+
+> **Note:** `CallManager`, `Call`, and `SDKConnector` are shared entities used across the calling package by all client modules. Their architecture is documented in the package-level source directories.
 
 ### Singletons and Factories
 
@@ -41,7 +40,7 @@ CallingClient/
 ├── callRecordFixtures.ts               # Call record test fixtures
 ├── windowsChromiumIceWarmupUtils.ts    # ICE warmup for Windows Chromium
 ├── ai-docs/
-│   ├── AGENTS.md                       # This module's agent doc (you are here)
+│   ├── AGENTS.md                       # Module agent doc
 │   └── ARCHITECTURE.md                 # This file
 ├── line/
 │   ├── index.ts                        # Line class
@@ -71,7 +70,8 @@ CallingClient/
     ├── types.ts                        # ICall, ICallManager
     └── CallerId/
         ├── index.ts                    # Caller ID resolution
-        └── index.test.ts              # Unit tests
+        ├── index.test.ts               # Unit tests
+        └── types.ts 
 ```
 
 ---
@@ -81,49 +81,50 @@ CallingClient/
 ### Layer Communication Flow
 
 ```mermaid
-graph TB
-    subgraph "Application"
+flowchart TB
+    subgraph Application
         App[Application Code]
     end
 
-    subgraph "Orchestrator Layer"
-        CC[CallingClient<br/>Eventing&lt;CallingClientEventTypes&gt;]
+    subgraph Orchestrator
+        CC[CallingClient\nEventing&lt;CallingClientEventTypes&gt;]
     end
 
-    subgraph "Line Layer"
-        Line[Line<br/>Eventing&lt;LineEventTypes&gt;]
+    subgraph Line
+        L[Line\nEventing&lt;LineEventTypes&gt;]
     end
 
-    subgraph "Registration Layer"
-        Reg[Registration<br/>IRegistration]
-        Worker[Web Worker<br/>Keepalive]
+    subgraph Registration
+        Reg[Registration\nIRegistration]
+        Worker[Web Worker\nKeepalive]
     end
 
-    subgraph "Call Layer"
-        CM[CallManager<br/>Eventing&lt;CallEventTypes&gt;]
-        Call[Call<br/>Eventing&lt;CallEventTypes&gt;]
+    subgraph Calls
+        CM[CallManager\nEventing&lt;CallEventTypes&gt;]
+        Call[Call\nEventing&lt;CallEventTypes&gt;]
     end
 
-    subgraph "Infrastructure"
-        SDK[SDKConnector<br/>singleton]
-        Metrics[MetricManager<br/>singleton]
+    subgraph Infrastructure
+        SDK[SDKConnector\nsingleton]
+        Metrics[MetricManager\nsingleton]
     end
 
-    subgraph "External"
+    subgraph External
         Webex[Webex SDK]
         Mercury[Mercury WebSocket]
         Mobius[Mobius REST API]
+        DS[ds.ciscospark.com\nRegion Discovery]
     end
 
     App -->|createClient| CC
-    CC -->|createLine| Line
-    Line -->|createRegistration| Reg
+    CC -->|createLine| L
+    L -->|createRegistration| Reg
     Reg -->|start/stop| Worker
-    Line -->|makeCall| CM
+    L -->|makeCall| CM
     CM -->|createCall| Call
 
     CC -->|emit: error, sessions| App
-    Line -->|emit: registered, incoming_call, error| App
+    L -->|emit: registered, incoming_call, error| App
     Call -->|emit: established, disconnect, hold, etc.| App
 
     SDK -->|request| Webex
@@ -131,32 +132,24 @@ graph TB
     Webex -->|HTTP| Mobius
     Mercury -->|event:mobius| CM
 
+    CC -->|region discovery| DS
     Reg -->|POST /devices| Mobius
     Worker -->|POST /status| Mobius
-
-    style CC fill:#e1f5ff
-    style Line fill:#e8f5e9
-    style Reg fill:#fff3e0
-    style CM fill:#f3e5f5
-    style Call fill:#f3e5f5
-    style SDK fill:#fce4ec
 ```
 
 ---
 
 ## Sequence Diagrams
 
-### 1. Initialization and Line Registration
+### 1. CallingClient Initialization
 
 ```mermaid
 sequenceDiagram
     participant App as Application
     participant CC as CallingClient
     participant Line as Line
-    participant Reg as Registration
-    participant Worker as WebWorker
+    participant DS as ds.ciscospark.com
     participant Mobius as Mobius API
-    participant Mercury as Mercury WS
 
     App->>CC: createClient(webex, config)
     activate CC
@@ -167,43 +160,60 @@ sequenceDiagram
     CC->>CC: registerCallsClearedListener()
 
     CC->>CC: init()
-    CC->>CC: windowsChromiumIceWarmup() [if Windows]
-    CC->>Mobius: getClientRegionInfo()
-    Mobius-->>CC: {region, countryCode}
-    CC->>Mobius: getMobiusServers()
+    CC->>CC: windowsChromiumIceWarmup() [if Windows Chromium]
+    CC->>DS: getClientRegionInfo()
+    DS-->>CC: {region, countryCode}
+    CC->>Mobius: getMobiusServers(region)
     Mobius-->>CC: {primary: [...], backup: [...]}
 
     CC->>Line: new Line(userId, deviceUri, mutex, mobiusUris, ...)
     activate Line
-    Line->>Reg: createRegistration(lineEmitter, ...)
+    Line->>Line: createRegistration(lineEmitter, ...)
     Line->>Line: incomingCallListener()
     deactivate Line
 
-    CC->>Line: register()
+    CC-->>App: ICallingClient (init complete)
+    deactivate CC
+
+    Note over App: App must call getLines() and line.register() explicitly
+```
+
+### 2. Line Registration
+
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant Line as Line
+    participant Reg as Registration
+    participant Worker as WebWorker
+    participant Mobius as Mobius API
+
+    App->>Line: getLines() → line
+    App->>Line: line.register()
     activate Line
     Line->>Line: emit(LINE_EVENTS.CONNECTING)
+    Line->>App: emit('connecting')
     Line->>Reg: triggerRegistration()
     activate Reg
-    Reg->>Mobius: POST /devices (register)
+    Reg->>Mobius: POST /calling/web/devices (register)
     Mobius-->>Reg: 200 {device: {...}}
     Reg->>Reg: setStatus(ACTIVE)
-    Reg->>Worker: START_KEEPALIVE
+    Reg->>Worker: WorkerMessageType.START_KEEPALIVE
     activate Worker
     Reg->>Line: lineEmitter(REGISTERED, deviceInfo)
     deactivate Reg
     Line->>Line: normalizeLine(deviceInfo)
     Line->>App: emit(LINE_EVENTS.REGISTERED, lineInfo)
     deactivate Line
-    deactivate CC
 
     loop Every keepaliveInterval seconds
         Worker->>Mobius: POST /devices/{id}/status
         Mobius-->>Worker: 200 OK
-        Worker->>Reg: KEEPALIVE_SUCCESS
+        Worker->>Reg: WorkerMessageType.KEEPALIVE_SUCCESS
     end
 ```
 
-### 2. Outbound Call Flow
+### 3. Outbound Call Flow
 
 ```mermaid
 sequenceDiagram
@@ -249,7 +259,7 @@ sequenceDiagram
     Call->>App: emit(CALL_EVENT_KEYS.ESTABLISHED)
 ```
 
-### 3. Inbound Call Flow
+### 4. Inbound Call Flow
 
 ```mermaid
 sequenceDiagram
@@ -283,7 +293,7 @@ sequenceDiagram
     deactivate Call
 ```
 
-### 4. Network Disruption and Recovery
+### 5. Network Disruption and Recovery
 
 ```mermaid
 sequenceDiagram
@@ -299,7 +309,7 @@ sequenceDiagram
     CC->>CC: handleNetworkOffline()
     CC->>CC: isNetworkDown = true
     CC->>Reg: clearKeepaliveTimer()
-    Reg->>Worker: CLEAR_KEEPALIVE (terminate)
+    Reg->>Worker: WorkerMessageType.CLEAR_KEEPALIVE (terminate)
 
     Note over Browser,Mobius: Network comes back
 
@@ -329,13 +339,13 @@ sequenceDiagram
     Line->>App: emit(LINE_EVENTS.RECONNECTING)
     Reg->>Mobius: POST /devices (re-register)
     Mobius-->>Reg: 200 OK
-    Reg->>Worker: START_KEEPALIVE (restart)
+    Reg->>Worker: WorkerMessageType.START_KEEPALIVE (restart)
     Reg->>Line: lineEmitter(REGISTERED, deviceInfo)
     Line->>App: emit(LINE_EVENTS.RECONNECTED)
     deactivate Reg
 ```
 
-### 5. Deregistration and Cleanup
+### 6. Deregistration and Cleanup
 
 ```mermaid
 sequenceDiagram
@@ -350,7 +360,7 @@ sequenceDiagram
     activate Line
     Line->>Reg: deregister()
     activate Reg
-    Reg->>Worker: CLEAR_KEEPALIVE (terminate)
+    Reg->>Worker: WorkerMessageType.CLEAR_KEEPALIVE (terminate)
     Reg->>Mobius: DELETE /devices/{deviceId}
     Mobius-->>Reg: 200 OK
     Reg->>Reg: setStatus(IDLE)
@@ -380,10 +390,11 @@ sequenceDiagram
 
 | Constant | Value | Description |
 |----------|-------|-------------|
-| `DEVICES_ENDPOINT_RESOURCE` | `calling/web/devices` | Device registration |
-| `CALL_ENDPOINT_RESOURCE` | `calls` | Call creation |
-| `CALL_STATUS_RESOURCE` | `status` | Call status check |
-| `MEDIA_ENDPOINT_RESOURCE` | `media` | Media/ROAP messaging |
+| `DEVICES_ENDPOINT_RESOURCE` | `'devices'` | Device registration (full path: `{mobiusUrl}devices`) |
+| `CALL_ENDPOINT_RESOURCE` | `'call'` | Single call resource endpoint |
+| `CALLS_ENDPOINT_RESOURCE` | `'calls'` | Call collection endpoint (used for call creation) |
+| `CALL_STATUS_RESOURCE` | `'status'` | Call status check |
+| `MEDIA_ENDPOINT_RESOURCE` | `'media'` | Media/ROAP messaging |
 
 ---
 
@@ -472,12 +483,3 @@ For detailed architecture of subsystems:
 ## Related Documentation
 
 - [AGENTS.md](./AGENTS.md) — Overview, examples, public API
-- [TypeScript Patterns](../../../ai-docs/patterns/typescript-patterns.md)
-- [Event Patterns](../../../ai-docs/patterns/event-patterns.md)
-- [State Machine Patterns](../../../ai-docs/patterns/state-machine-patterns.md)
-- [Error Handling Patterns](../../../ai-docs/patterns/error-handling-patterns.md)
-- [Testing Patterns](../../../ai-docs/patterns/testing-patterns.md)
-
----
-
-_Last Updated: 2026-03-15_

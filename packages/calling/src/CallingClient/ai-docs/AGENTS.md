@@ -6,20 +6,19 @@
 
 Do **not** use this file as your only entry point for reasoning or code generation.
 
-- **First step:** Locate and review the package-level `ai-docs/patterns/` directory at `packages/calling/ai-docs/patterns/` for cross-cutting patterns (TypeScript, events, state machines, error handling, testing, architecture).
 - **How to proceed:**
   - For changes within the `line/` subdirectory, also load [line/ai-docs/AGENTS.md](../line/ai-docs/AGENTS.md).
   - For changes within the `registration/` subdirectory, also load [registration/ai-docs/AGENTS.md](../registration/ai-docs/AGENTS.md).
-  - For changes within the `calling/` subdirectory (Call, CallManager, CallerId), refer to the package-level patterns — especially [event-patterns.md](../../../ai-docs/patterns/event-patterns.md) and [state-machine-patterns.md](../../../ai-docs/patterns/state-machine-patterns.md).
-- **Important:** Always load the package-level patterns first, then the module-specific docs in this file, then drill into subdirectory docs as needed.
+  - For changes within the `calling/` subdirectory (Call, CallManager, CallerId), refer to the calling subdirectory source files directly.
+- **Important:** Load the module-specific docs in this file first, then drill into subdirectory docs as needed.
 
 ---
 
 ## Overview
 
-The `CallingClient` is the top-level orchestrator for the Webex Calling SDK. It manages line registration, call lifecycle coordination, Mobius server discovery, network resilience, and media engine configuration.
+The `CallingClient` is one of the significant modules in the Webex Calling SDK, responsible for the main WebRTC call flow implementation. It manages line registration, call lifecycle coordination, Mobius server discovery, and network resilience.
 
-It is the **only entry point** for applications consuming the calling SDK — applications create a `CallingClient` via the `createClient()` factory function and interact with lines and calls through it.
+Applications create a `CallingClient` via the `createClient()` factory function and interact with lines and calls through it. Other client modules such as `CallHistoryClient`, `VoicemailClient`, and `CallSettingsClient` are independently available and do not require `CallingClient` to be initialized.
 
 **Package:** `@webex/calling`
 
@@ -29,31 +28,79 @@ It is the **only entry point** for applications consuming the calling SDK — ap
 
 ---
 
-## Purpose
-
-The CallingClient module enables applications to:
-
-- **Register a telephony line** with the Webex Calling (Mobius) backend
-- **Make and receive calls** via WebRTC and the ROAP media protocol
-- **Handle network disruptions** with automatic reconnection and failover
-- **Discover Mobius servers** (primary and backup) based on client region
-- **Manage call lifecycle** through the CallManager singleton
-- **Upload diagnostic logs** to the Webex support infrastructure
-- **Query active calls and devices** registered to the user
-
 ### Key Capabilities
 
-| Capability | Description |
-|------------|-------------|
-| **Line Registration** | Create and register a Line with Mobius, including keepalive and failover |
-| **Outbound Calls** | Initiate calls via `line.makeCall()` |
-| **Inbound Calls** | Receive incoming calls via `LINE_EVENTS.INCOMING_CALL` |
-| **Call Control** | Hold, resume, transfer, mute, DTMF via `ICall` methods |
-| **Network Resilience** | Automatic reconnection on network flap and Mercury disconnection |
-| **Mobius Discovery** | Region-based server discovery with primary/backup failover |
-| **Media Engine** | Configures `@webex/internal-media-core` for WebRTC |
-| **Diagnostics** | Log upload and metric submission |
-| **Multi-Backend** | Supports Webex Calling, UCM, and Broadworks via `ServiceIndicator` |
+| Capability | Description  |
+| ----------- | ----------- |
+| **Mobius Discovery**         | Performs region-based Mobius server discovery to select optimal primary and backup endpoints for registration, calls, and media.                                 |
+| **Line Registration**        | Creates and registers Lines with Mobius, establishing signaling sessions, subscribing for events, and managing registration/status. Includes Line keepalives and failover routines. |
+| **Media Engine Management**  | Initializes and configures the `@webex/internal-media-core` engine to negotiate, establish, and manage WebRTC media streams for audio and video calls.           |
+| **Call Keepalive**           | Periodically sends keepalive messages for both Lines and active Calls, ensuring session continuity and timely detection of network or signaling issues.           |
+| **Call Control**             | Orchestrates all aspects of call initiation, handling, and features. Divided into the following subcapabilities:                                                |
+| &nbsp;&nbsp;• Outbound Calls | Enables agents to initiate outbound calls using `line.makeCall()`. Handles call setup, signaling, and media path establishment, including error cases.            |
+| &nbsp;&nbsp;• Inbound Calls  | Receives and processes incoming calls via `LINE_EVENTS.INCOMING_CALL`, triggers session setup, and allocates resources for the new call.                         |
+| &nbsp;&nbsp;• Supplementary Services | Provides additional in-call features including hold, resume, transfer, mute, and sending DTMF using `ICall` interface methods and underlying SIP signaling. Hold and resume suspend and reestablish the audio+video media while maintaining session context. Transfer allows the redirection of calls to alternate destinations. |
+| **Active Call Monitoring**   | Monitors and tracks all ongoing calls, connection state (connected, held, disconnected), participant media status, and synchronization across lines and devices.  |
+| **Network Resilience**       | Detects network outages or Mercury channel disconnects; triggers reconnection, re-registration, and call state recovery logic to restore service with minimal interruption. |
+| **Diagnostics & Logging**    | Collects and uploads diagnostic logs and metrics for calls, registrations, and failures to Webex cloud for troubleshooting, monitoring, and analytics purposes.   |
+| **Service Indicators & Access Flows** | Supports various service flows and user types (`calling`, `guestcalling`, `contactcenter`) through the `ServiceIndicator`, enabling correct registration and feature availability based on license and context. |
+
+---
+
+## Public API
+
+### ICallingClient Interface
+
+The following methods are defined on the `ICallingClient` interface and are the officially supported public API:
+
+| Method             | Signature                                  | Description                                     |
+| ------------------ | ------------------------------------------ | ----------------------------------------------- |
+| `getSDKConnector`  | `(): ISDKConnector`                        | Returns the SDK connector singleton             |
+| `getLoggingLevel`  | `(): LOGGER`                               | Returns the current log level                   |
+| `getLines`         | `(): Record<string, ILine>`                | Returns all the lines                           |
+| `getDevices`       | `(userId?: string): Promise<DeviceType[]>` | Fetches devices from Mobius for the user        |
+| `getActiveCalls`   | `(): Record<string, ICall[]>`              | Returns active calls grouped by lineId          |
+| `getConnectedCall` | `(): ICall \| undefined`                   | Returns the currently connected (non-held) call |
+| `mediaEngine`      | `typeof Media`                             | The `@webex/internal-media-core` engine         |
+
+### CallingClient Class Methods (not on ICallingClient interface)
+
+| Method       | Signature                         | Description                                          |
+| ------------ | --------------------------------- | ---------------------------------------------------- |
+| `uploadLogs` | `(): Promise<UploadLogsResponse>` | Uploads diagnostic logs to Webex (class method only) |
+
+### Events Emitted
+
+| Event                                | Enum Key                                      | Payload              | Description                  |
+| ------------------------------------ | --------------------------------------------- | -------------------- | ---------------------------- |
+| `callingClient:error`                | `CALLING_CLIENT_EVENT_KEYS.ERROR`             | `CallingClientError` | Client-level error           |
+| `callingClient:outgoing_call`        | `CALLING_CLIENT_EVENT_KEYS.OUTGOING_CALL`     | `string` (callId)    | Outbound call initiated      |
+| `callingClient:user_recent_sessions` | `CALLING_CLIENT_EVENT_KEYS.USER_SESSION_INFO` | `CallSessionEvent`   | User session info from Janus |
+| `callingClient:all_calls_cleared`    | `CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED` | _(none)_             | All active calls have ended  |
+
+---
+
+## Configuration
+
+### CallingClientConfig
+
+```typescript
+interface CallingClientConfig {
+  logger?: {level: LOGGER};
+  discovery?: {country: string; region: string};
+  serviceData?: {indicator: ServiceIndicator; domain?: string};
+  jwe?: string;
+}
+```
+
+| Property                | Required | Default       | Description                                                 |
+| ----------------------- | -------- | ------------- | ----------------------------------------------------------- |
+| `logger.level`          | No       | `ERROR`       | Log verbosity level                                         |
+| `discovery.country`     | No       | Auto-detected | Override country for Mobius discovery                       |
+| `discovery.region`      | No       | Auto-detected | Override region for Mobius discovery                        |
+| `serviceData.indicator` | No       | `CALLING`     | Service flow: `calling`, `guestcalling`, or `contactcenter` |
+| `serviceData.domain`    | No       | `''`          | Backend domain                                              |
+| `jwe`                   | No       | -             | JSON Web Encryption token for secure registration           |
 
 ---
 
@@ -64,18 +111,21 @@ The CallingClient module enables applications to:
 #### Create and Initialize a CallingClient
 
 ```typescript
-import {createClient} from '@webex/calling';
+import {createClient, ServiceIndicator} from '@webex/calling';
 
 const callingClient = await createClient(webex, {
   logger: {level: 'info'},
-  serviceData: {indicator: 'calling', domain: ''},
+  serviceData: {indicator: ServiceIndicator.CALLING, domain: ''},
 });
 ```
 
 The `createClient` factory instantiates `CallingClient` and calls `init()`, which:
+
 1. Performs ICE warmup (Windows Chromium only)
-2. Discovers Mobius servers for the client region
-3. Creates a Line and begins registration
+2. Discovers Mobius servers for the client region (via `ds.ciscospark.com`)
+3. Creates a Line object internally
+
+**Note:** `init()` does NOT register the line. The application must call `line.register()` explicitly after obtaining the line via `getLines()`.
 
 #### Register a Line and Listen for Events
 
@@ -154,77 +204,28 @@ const devices = await callingClient.getDevices();
 
 ---
 
-## Public API
-
-### ICallingClient Interface
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `getSDKConnector` | `(): ISDKConnector` | Returns the SDK connector singleton |
-| `getLoggingLevel` | `(): LOGGER` | Returns the current log level |
-| `getLines` | `(): Record<string, ILine>` | Returns all registered lines |
-| `getDevices` | `(userId?: string): Promise<DeviceType[]>` | Fetches devices from Mobius for the user |
-| `getActiveCalls` | `(): Record<string, ICall[]>` | Returns active calls grouped by lineId |
-| `getConnectedCall` | `(): ICall \| undefined` | Returns the currently connected (non-held) call |
-| `uploadLogs` | `(): Promise<UploadLogsResponse>` | Uploads diagnostic logs to Webex |
-| `mediaEngine` | `typeof Media` | The `@webex/internal-media-core` engine |
-
-### Events Emitted
-
-| Event | Enum Key | Payload | Description |
-|-------|----------|---------|-------------|
-| `callingClient:error` | `CALLING_CLIENT_EVENT_KEYS.ERROR` | `CallingClientError` | Client-level error |
-| `callingClient:user_recent_sessions` | `CALLING_CLIENT_EVENT_KEYS.USER_SESSION_INFO` | `CallSessionEvent` | User session info from Janus |
-| `callingClient:all_calls_cleared` | `CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED` | _(none)_ | All active calls have ended |
-
----
-
-## Configuration
-
-### CallingClientConfig
-
-```typescript
-interface CallingClientConfig {
-  logger?: {level: LOGGER};
-  discovery?: {country: string; region: string};
-  serviceData?: {indicator: ServiceIndicator; domain?: string};
-  jwe?: string;
-}
-```
-
-| Property | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `logger.level` | No | `ERROR` | Log verbosity level |
-| `discovery.country` | No | Auto-detected | Override country for Mobius discovery |
-| `discovery.region` | No | Auto-detected | Override region for Mobius discovery |
-| `serviceData.indicator` | No | `CALLING` | Backend: `calling` or `contactcenter` |
-| `serviceData.domain` | No | `''` | Backend domain |
-| `jwe` | No | - | JSON Web Encryption token for secure registration |
-
----
-
 ## Dependencies
 
 ### Runtime Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| `@webex/internal-media-core` | WebRTC, ROAP media connections |
-| `@webex/media-helpers` | Microphone stream, noise reduction |
-| `@webex/internal-plugin-metrics` | Telemetry and metrics |
-| `async-mutex` | Concurrency control for registration |
-| `xstate` | State machines for call and media lifecycle |
-| `uuid` | Unique identifier generation |
+| Package                          | Purpose                                     |
+| -------------------------------- | ------------------------------------------- |
+| `@webex/internal-media-core`     | WebRTC, ROAP media connections              |
+| `@webex/media-helpers`           | Microphone stream, noise reduction          |
+| `@webex/internal-plugin-metrics` | Telemetry and metrics                       |
+| `async-mutex`                    | Concurrency control for registration        |
+| `xstate`                         | State machines for call and media lifecycle |
+| `uuid`                           | Unique identifier generation                |
 
 ### Internal Dependencies
 
-| Module | Purpose |
-|--------|---------|
-| `SDKConnector` | Singleton bridge to Webex SDK and Mercury WebSocket |
-| `CallManager` | Singleton managing all active Call instances |
-| `MetricManager` | Singleton for telemetry submission |
-| `Logger` | Structured logging with file/method context |
-| `Eventing<T>` | Typed event emitter base class |
+| Module          | Purpose                                             |
+| --------------- | --------------------------------------------------- |
+| `SDKConnector`  | Singleton bridge to Webex SDK and Mercury WebSocket |
+| `CallManager`   | Singleton managing all active Call instances        |
+| `MetricManager` | Singleton for telemetry submission                  |
+| `Logger`        | Structured logging with file/method context         |
+| `Eventing<T>`   | Typed event emitter base class                      |
 
 ---
 
@@ -232,25 +233,13 @@ interface CallingClientConfig {
 
 For detailed documentation on specific subsystems:
 
-| Subdirectory | AGENTS.md | ARCHITECTURE.md | Description |
-|--------------|-----------|-----------------|-------------|
-| `line/` | [line/ai-docs/AGENTS.md](../line/ai-docs/AGENTS.md) | [line/ai-docs/ARCHITECTURE.md](../line/ai-docs/ARCHITECTURE.md) | Line management, registration orchestration, call initiation |
-| `registration/` | [registration/ai-docs/AGENTS.md](../registration/ai-docs/AGENTS.md) | [registration/ai-docs/ARCHITECTURE.md](../registration/ai-docs/ARCHITECTURE.md) | Device registration, keepalive, failover, web worker |
-
-For the `calling/` subdirectory (Call, CallManager, CallerId), refer to the package-level patterns:
-- [State Machine Patterns](../../../ai-docs/patterns/state-machine-patterns.md) — Call and ROAP state machines
-- [Event Patterns](../../../ai-docs/patterns/event-patterns.md) — Call event types and emission
-- [Error Handling Patterns](../../../ai-docs/patterns/error-handling-patterns.md) — CallError handling
+| Subdirectory    | AGENTS.md                                                           | ARCHITECTURE.md                                                                 | Description                                                  |
+| --------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `line/`         | [line/ai-docs/AGENTS.md](../line/ai-docs/AGENTS.md)                 | [line/ai-docs/ARCHITECTURE.md](../line/ai-docs/ARCHITECTURE.md)                 | Line management, registration orchestration, call initiation |
+| `registration/` | [registration/ai-docs/AGENTS.md](../registration/ai-docs/AGENTS.md) | [registration/ai-docs/ARCHITECTURE.md](../registration/ai-docs/ARCHITECTURE.md) | Device registration, keepalive, failover, web worker         |
 
 ---
 
 ## Related Documentation
 
 - [Architecture](./ARCHITECTURE.md) — Component overview, data flows, sequence diagrams
-- [TypeScript Patterns](../../../ai-docs/patterns/typescript-patterns.md) — Naming, types, enums
-- [Testing Patterns](../../../ai-docs/patterns/testing-patterns.md) — Jest setup, mocking, fixtures
-- [Architecture Patterns](../../../ai-docs/patterns/architecture-patterns.md) — Singleton, factory, client patterns
-
----
-
-_Last Updated: 2026-03-15_
