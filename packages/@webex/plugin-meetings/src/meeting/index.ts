@@ -19,9 +19,11 @@ import {
   ConnectionState,
   Errors,
   ErrorType,
+  MediaCodecMimeType,
   MediaConnectionEventNames,
   MediaContent,
   MediaType,
+  MultistreamRoapMediaConnection,
   RemoteTrackType,
   RoapMessage,
   StatsAnalyzer,
@@ -969,6 +971,20 @@ export default class Meeting extends StatelessWebexPlugin {
      * Object containing helper classes for managing media requests for audio/video/screenshare (for multistream media connections)
      * All multistream media requests sent out for this meeting have to go through them.
      */
+    const getIngressPayloadTypeCallback = (
+      mediaType: MediaType,
+      codecMimeType: MediaCodecMimeType
+    ) => {
+      if (this.mediaProperties?.webrtcMediaConnection instanceof MultistreamRoapMediaConnection) {
+        return this.mediaProperties.webrtcMediaConnection.getIngressPayloadType(
+          mediaType,
+          codecMimeType
+        );
+      }
+
+      return undefined;
+    };
+
     this.mediaRequestManagers = {
       audio: new MediaRequestManager(
         (mediaRequests) => {
@@ -984,6 +1000,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        getIngressPayloadTypeCallback,
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1005,6 +1022,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        getIngressPayloadTypeCallback,
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1026,6 +1044,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        getIngressPayloadTypeCallback,
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1047,6 +1066,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        getIngressPayloadTypeCallback,
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,

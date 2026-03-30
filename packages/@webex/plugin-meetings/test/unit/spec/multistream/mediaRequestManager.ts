@@ -6,6 +6,7 @@ import {assert} from '@webex/test-helper-chai';
 import {getMaxFs, MAX_FS_VALUES} from '@webex/plugin-meetings/src/multistream/remoteMedia';
 import FakeTimers from '@sinonjs/fake-timers';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
+import {MediaType} from '@webex/internal-media-core';
 import { expect } from 'chai';
 
 type ExpectedActiveSpeaker = {
@@ -49,15 +50,18 @@ describe('MediaRequestManager', () => {
   const MAX_PAYLOADBITSPS_1080p = 4000000;
 
   const NUM_SLOTS = 15;
+  const FAKE_H264_PAYLOAD_TYPE = 0x80;  
 
   let mediaRequestManager: MediaRequestManager;
   let sendMediaRequestsCallback;
+  let getIngressPayloadTypeCallback;
   let fakeWcmeSlots;
   let fakeReceiveSlots;
 
   beforeEach(() => {
     sendMediaRequestsCallback = sinon.stub();
-    mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, {
+    getIngressPayloadTypeCallback = sinon.stub().returns(FAKE_H264_PAYLOAD_TYPE);
+    mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
       degradationPreferences,
       kind: 'video',
       trimRequestsToNumOfSources: false,
@@ -79,6 +83,7 @@ describe('MediaRequestManager', () => {
             on: sinon.stub(),
             off: sinon.stub(),
             sourceState: 'live',
+            mediaType: MediaType.VideoMain,
             wcmeReceiveSlot: fakeWcmeSlots[index],
           } as unknown as ReceiveSlot)
       );
@@ -158,7 +163,7 @@ describe('MediaRequestManager', () => {
             codecInfos: isCodecInfoDefined
               ? [
                   sinon.match({
-                    payloadType: 0x80,
+                    payloadType: FAKE_H264_PAYLOAD_TYPE,
                     h264: sinon.match({
                       maxMbps: expectedRequest.maxMbps,
                       maxFs: expectedRequest.maxFs,
@@ -179,7 +184,7 @@ describe('MediaRequestManager', () => {
             codecInfos: isCodecInfoDefined
               ? [
                   sinon.match({
-                    payloadType: 0x80,
+                    payloadType: FAKE_H264_PAYLOAD_TYPE,
                     h264: sinon.match({
                       maxMbps: expectedRequest.maxMbps,
                       maxFs: expectedRequest.maxFs,
@@ -279,7 +284,7 @@ describe('MediaRequestManager', () => {
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
         codecInfos: [
           sinon.match({
-            payloadType: 0x80,
+            payloadType: FAKE_H264_PAYLOAD_TYPE,
             h264: sinon.match({
               maxFs: MAX_FS_360p,
               maxFps: MAX_FPS,
@@ -297,7 +302,7 @@ describe('MediaRequestManager', () => {
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
         codecInfos: [
           sinon.match({
-            payloadType: 0x80,
+            payloadType: FAKE_H264_PAYLOAD_TYPE,
             h264: sinon.match({
               maxFs: MAX_FS_720p,
               maxFps: MAX_FPS,
@@ -315,7 +320,7 @@ describe('MediaRequestManager', () => {
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
         codecInfos: [
           sinon.match({
-            payloadType: 0x80,
+            payloadType: FAKE_H264_PAYLOAD_TYPE,
             h264: sinon.match({
               maxFs: MAX_FS_1080p,
               maxFps: MAX_FPS,
@@ -919,7 +924,7 @@ describe('MediaRequestManager', () => {
     });
 
     it('returns the default maxPayloadBitsPerSecond if kind is "audio"', () => {
-      const mediaRequestManagerAudio = new MediaRequestManager(sendMediaRequestsCallback, {
+      const mediaRequestManagerAudio = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
         kind: 'audio',
         trimRequestsToNumOfSources: false,
@@ -1037,7 +1042,7 @@ describe('MediaRequestManager', () => {
 
   describe('trimming of requested receive slots', () => {
     beforeEach(() => {
-      mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, {
+      mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
         kind: 'video',
         trimRequestsToNumOfSources: true,

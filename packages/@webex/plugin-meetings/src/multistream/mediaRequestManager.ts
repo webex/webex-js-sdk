@@ -9,6 +9,8 @@ import {
   getRecommendedMaxBitrateForFrameSize,
   RecommendedOpusBitrates,
   NamedMediaGroup,
+  MediaType,
+  MediaCodecMimeType,
 } from '@webex/internal-media-core';
 import {cloneDeepWith, debounce} from 'lodash';
 
@@ -69,6 +71,10 @@ type DegradationPreferences = {
 };
 
 type SendMediaRequestsCallback = (streamRequests: StreamRequest[]) => void;
+type GetIngressPayloadTypeCallback = (
+  mediaType: MediaType,
+  codecMimeType: MediaCodecMimeType
+) => number;
 type Kind = 'audio' | 'video';
 
 type Options = {
@@ -81,6 +87,8 @@ type ClientRequestsMap = {[key: MediaRequestId]: MediaRequest};
 
 export class MediaRequestManager {
   private sendMediaRequestsCallback: SendMediaRequestsCallback;
+
+  private getIngressPayloadTypeCallback: GetIngressPayloadTypeCallback;
 
   private kind: Kind;
 
@@ -98,8 +106,13 @@ export class MediaRequestManager {
   private numTotalSources: number;
   private numLiveSources: number;
 
-  constructor(sendMediaRequestsCallback: SendMediaRequestsCallback, options: Options) {
+  constructor(
+    sendMediaRequestsCallback: SendMediaRequestsCallback,
+    getIngressPayloadTypeCallback: GetIngressPayloadTypeCallback,
+    options: Options
+  ) {
     this.sendMediaRequestsCallback = sendMediaRequestsCallback;
+    this.getIngressPayloadTypeCallback = getIngressPayloadTypeCallback;
     this.counter = 0;
     this.numLiveSources = 0;
     this.numTotalSources = 0;
@@ -316,7 +329,10 @@ export class MediaRequestManager {
             this.getMaxPayloadBitsPerSecond(mr),
             mr.codecInfo && [
               WcmeCodecInfo.fromH264(
-                0x80,
+                this.getIngressPayloadTypeCallback(
+                  mr.receiveSlots[0].mediaType,
+                  MediaCodecMimeType.H264
+                ),
                 new H264Codec(
                   mr.codecInfo.maxFs,
                   mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
