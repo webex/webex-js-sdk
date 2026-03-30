@@ -25,6 +25,8 @@ export default class Services {
   public readonly dialer: ReturnType<typeof aqmDialer>;
   /** WebSocket manager for handling real-time communications */
   public readonly webSocketManager: WebSocketManager;
+  /** RTD WebSocket manager for handling realtime transcription */
+  public readonly rtdWebSocketManager: WebSocketManager;
   /** Connection service for managing websocket connections */
   public readonly connectionService: ConnectionService;
   /** Singleton instance of the Services class */
@@ -39,6 +41,8 @@ export default class Services {
   constructor(options: {webex: WebexSDK; connectionConfig: SubscribeRequest}) {
     const {webex, connectionConfig} = options;
     this.webSocketManager = new WebSocketManager({webex});
+    // TODO: Implement reconnection logic for this websocket in upcoming PR
+    this.rtdWebSocketManager = new WebSocketManager({webex});
     const aqmReq = new AqmReqs(this.webSocketManager);
     this.config = new AgentConfigService();
     this.agent = routingAgent(aqmReq);

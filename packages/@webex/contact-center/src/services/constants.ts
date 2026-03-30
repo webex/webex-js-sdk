@@ -60,6 +60,14 @@ export const AGENT = 'agent';
 export const SUBSCRIBE_API = 'v1/notification/subscribe';
 
 /**
+ * API path for realtime transcription subscription.
+ * @type {string}
+ * @public
+ * @ignore
+ */
+export const RTD_SUBSCRIBE_API = 'v1/realtime/subscribe';
+
+/**
  * API path for agent login.
  * @type {string}
  * @public

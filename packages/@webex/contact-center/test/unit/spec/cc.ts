@@ -15,7 +15,7 @@ import type {ContactServiceQueuesResponse} from '../../../src/types';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {StationLoginSuccess, AGENT_EVENTS} from '../../../src/services/agent/types';
 import {SetStateResponse} from '../../../src/types';
-import {AGENT, WEB_RTC_PREFIX} from '../../../src/services/constants';
+import {AGENT, SUBSCRIBE_API, WEB_RTC_PREFIX} from '../../../src/services/constants';
 import Services from '../../../src/services';
 import config from '../../../src/config';
 import {CC_EVENTS} from '../../../src/services/config/types';
@@ -88,6 +88,8 @@ describe('webex.cc', () => {
       initWebSocket: jest.fn(),
       on: jest.fn(),
       off: jest.fn(),
+      close: jest.fn(),
+      isSocketClosed: false,
     };
 
     mockContact = {
@@ -121,6 +123,13 @@ describe('webex.cc', () => {
         getOutdialAniEntries: jest.fn(),
       },
       webSocketManager: mockWebSocketManager,
+      rtdWebSocketManager: {
+        initWebSocket: jest.fn().mockResolvedValue({}),
+        on: jest.fn(),
+        off: jest.fn(),
+        close: jest.fn(),
+        isSocketClosed: false,
+      },
       connectionService: {
         on: jest.fn(),
         off: jest.fn(),
@@ -147,6 +156,7 @@ describe('webex.cc', () => {
       setWrapupData: jest.fn(),
       setAgentId: jest.fn(),
       setWebRtcEnabled: jest.fn(),
+      handleRealtimeTranscriptEvent: jest.fn(),
       setApiAIAssistant: jest.fn(),
       registerIncomingCallEvent: jest.fn(),
       registerTaskListeners: jest.fn(),
@@ -268,6 +278,7 @@ describe('webex.cc', () => {
     };
 
     it('should register successfully and return agent profile', async () => {
+      mockAgentProfile.aiFeature = {realtimeTranscripts: {enable: true}} as any;
       const mercuryConnect = jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
       const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
@@ -311,6 +322,7 @@ describe('webex.cc', () => {
           clientType: 'WebexCCSDK',
           allowMultiLogin: false,
         },
+        resource: SUBSCRIBE_API,
       });
 
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
@@ -323,6 +335,19 @@ describe('webex.cc', () => {
         expect.any(Function)
       );
       expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
+      expect(webex.cc.services.rtdWebSocketManager.initWebSocket).toHaveBeenCalledWith({
+        body: {
+          force: true,
+          isKeepAliveEnabled: false,
+          clientType: 'WebexCCSDK',
+          allowMultiLogin: false,
+        },
+        resource: 'v1/realtime/subscribe',
+      });
+      expect(webex.cc.services.rtdWebSocketManager.on).toHaveBeenCalledWith(
+        'message',
+        expect.any(Function)
+      );
 
       expect(configSpy).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
@@ -366,6 +391,7 @@ describe('webex.cc', () => {
           clientType: 'WebexCCSDK',
           allowMultiLogin: true,
         },
+        resource: SUBSCRIBE_API,
       });
       expect(configSpy).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
@@ -445,6 +471,7 @@ describe('webex.cc', () => {
           clientType: 'WebexCCSDK',
           allowMultiLogin: false,
         },
+        resource: SUBSCRIBE_API,
       });
 
       expect(mockTaskManager.on).toHaveBeenCalledWith(
@@ -468,6 +495,7 @@ describe('webex.cc', () => {
 
     it('should not attempt for mercury connection when webrtc is disabled', async () => {
       mockAgentProfile.webRtcEnabled = false;
+      mockAgentProfile.aiFeature = {realtimeTranscripts: {enable: false}} as any;
       const mercurySpy = jest.spyOn(webex.internal.mercury, 'connect');
       const connectWebsocketSpy = jest.spyOn(webex.cc, 'connectWebsocket');
       const setupEventListenersSpy = jest.spyOn(webex.cc, 'setupEventListeners');
@@ -497,11 +525,38 @@ describe('webex.cc', () => {
           clientType: 'WebexCCSDK',
           allowMultiLogin: false,
         },
+        resource: SUBSCRIBE_API,
       });
 
       expect(configSpy).toHaveBeenCalled();
       expect(mercurySpy).not.toHaveBeenCalled();
+      expect(webex.cc.services.rtdWebSocketManager.initWebSocket).not.toHaveBeenCalled();
       expect(result).toEqual(mockAgentProfile);
+    });
+
+    it('should not connect RTD websocket when realtime transcripts feature is disabled', async () => {
+      mockAgentProfile.aiFeature = {realtimeTranscripts: {enable: false}} as any;
+      jest.spyOn(webex.internal.mercury, 'connect').mockResolvedValue(true);
+      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue({
+        data: {
+          auxCodeId: 'auxCodeId',
+          agentId: 'agentId',
+          deviceType: LoginOption.EXTENSION,
+          dn: '12345',
+        },
+      });
+      jest.spyOn(webex.cc.services.config, 'getAgentConfig').mockResolvedValue(mockAgentProfile);
+      mockWebSocketManager.initWebSocket.mockResolvedValue({
+        agentId: 'agent123',
+      });
+
+      await webex.cc.register();
+
+      expect(webex.cc.services.rtdWebSocketManager.initWebSocket).not.toHaveBeenCalled();
+      expect(webex.cc.services.rtdWebSocketManager.on).not.toHaveBeenCalledWith(
+        'message',
+        expect.any(Function)
+      );
     });
   });
 
@@ -1508,6 +1563,13 @@ describe('webex.cc', () => {
     });
 
     it('should unregister successfully and clean up all resources when webrtc is enabled', async () => {
+      webex.cc.services.rtdWebSocketManager = {
+        isSocketClosed: false,
+        close: jest.fn(),
+        off: jest.fn(),
+        on: jest.fn(),
+      } as any;
+
       await webex.cc.deregister();
 
       expect(mockTaskManager.off).toHaveBeenCalledWith(
@@ -1519,12 +1581,20 @@ describe('webex.cc', () => {
         expect.any(Function)
       );
       expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
+      expect(webex.cc.services.rtdWebSocketManager.off).toHaveBeenCalledWith(
+        'message',
+        expect.any(Function)
+      );
       expect(webex.cc.services.connectionService.off).toHaveBeenCalledWith(
         'connectionLost',
         expect.any(Function)
       );
 
       expect(mockWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
+      expect(webex.cc.services.rtdWebSocketManager.close).toHaveBeenCalledWith(
+        false,
+        'Unregistering the RTD websocket'
+      );
       expect(webex.cc.agentConfig).toBeNull();
 
       expect(webex.internal.mercury.off).toHaveBeenCalledWith('online');

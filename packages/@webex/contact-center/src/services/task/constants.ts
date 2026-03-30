@@ -75,6 +75,7 @@ export const METHODS = {
   // TaskManager class methods
   HANDLE_INCOMING_WEB_CALL: 'handleIncomingWebCall',
   REGISTER_TASK_LISTENERS: 'registerTaskListeners',
+  HANDLE_REAL_TIME_WEBSOCKET_EVENT: 'handleRealtimeWebsocketEvent',
   REMOVE_TASK_FROM_COLLECTION: 'removeTaskFromCollection',
   HANDLE_TASK_CLEANUP: 'handleTaskCleanup',
   GET_TASK: 'getTask',
