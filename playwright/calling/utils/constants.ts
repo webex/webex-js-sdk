@@ -1,6 +1,7 @@
 export type ServiceIndicator = 'calling' | 'contactcenter' | 'guestcalling';
 
 export const SAMPLE_APP_PATH = '/samples/calling/';
+export const CC_SERVICE_DOMAIN = 'rtw.prod-us1.rtmsprod.net';
 
 // Timeouts — SDK timeout + 5s buffer for network/UI overhead
 export const AWAIT_TIMEOUT = 10000; // General UI interactions

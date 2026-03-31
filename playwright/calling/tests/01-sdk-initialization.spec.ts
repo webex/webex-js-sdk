@@ -6,7 +6,7 @@ import {
   setServiceIndicator,
   setServiceDomain,
 } from '../utils/setup';
-import {SELECTORS, SDK_INIT_TIMEOUT, AWAIT_TIMEOUT} from '../utils/constants';
+import {SELECTORS, SDK_INIT_TIMEOUT, AWAIT_TIMEOUT, CC_SERVICE_DOMAIN} from '../utils/constants';
 
 const getToken = (envVar: string): string => {
   const token = process.env[envVar];
@@ -31,7 +31,7 @@ test.describe('SDK Initialization', () => {
   test('Contact Center - init with contactcenter service indicator', async ({page}) => {
     await navigateToCallingApp(page);
     await setServiceIndicator(page, 'contactcenter');
-    await setServiceDomain(page, 'rtw.prod-us1.rtmsprod.net');
+    await setServiceDomain(page, CC_SERVICE_DOMAIN);
 
     await initializeCallingSDK(page, getToken('CALLEE_ACCESS_TOKEN'));
     await verifySDKInitialized(page);
