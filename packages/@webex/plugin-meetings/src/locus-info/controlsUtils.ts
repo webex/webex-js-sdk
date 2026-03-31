@@ -42,6 +42,7 @@ ControlsUtils.parse = (controls: any) => {
       caption: controls.transcribe.caption,
       spokenLanguage: controls.transcribe.spokenLanguage,
       hesiodLlmId: controls.transcribe.hesiodLlmId,
+      aiSummaryNotification: controls.transcribe.aiSummaryNotification,
     };
   }
 
@@ -207,6 +208,16 @@ ControlsUtils.getControls = (oldControls: any, newControls: any) => {
         current?.transcribe &&
         !isEqual(previous?.transcribe?.hesiodLlmId, current?.transcribe?.hesiodLlmId) &&
         !!(previous?.transcribe?.hesiodLlmId || current?.transcribe?.hesiodLlmId),
+
+      hasAiSummaryNotificationChanged:
+        current?.transcribe &&
+        !isEqual(
+          previous?.transcribe?.aiSummaryNotification,
+          current?.transcribe?.aiSummaryNotification
+        ) &&
+        !!(
+          previous?.transcribe?.aiSummaryNotification || current?.transcribe?.aiSummaryNotification
+        ),
 
       hasTranscribeSpokenLanguageChanged:
         current?.transcribe &&

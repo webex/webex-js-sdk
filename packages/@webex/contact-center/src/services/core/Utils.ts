@@ -10,6 +10,7 @@ import {
   Interaction,
 } from '../task/types';
 import {PARTICIPANT_TYPES, STATE_CONSULT} from './constants';
+import {DialPlan} from '../config/types';
 
 /**
  * Extracts common error details from a Webex request payload.
@@ -48,11 +49,37 @@ const getAgentActionTypeFromTask = (taskData?: TaskData): 'DIAL_NUMBER' | '' => 
   return isDialNumber || isEntryPointVariant ? 'DIAL_NUMBER' : '';
 };
 
-export const isValidDialNumber = (input: string): boolean => {
-  // This regex checks for a valid dial number format for only few countries such as US, Canada.
-  const regexForDn = /1[0-9]{3}[2-9][0-9]{6}([,]{1,10}[0-9]+){0,1}/;
+// Fallback regex for US/Canada dial numbers when no dial plan entries are configured
+export const FALLBACK_DIAL_NUMBER_REGEX = /1[0-9]{3}[2-9][0-9]{6}([,]{1,10}[0-9]+){0,1}/;
 
-  return regexForDn.test(input);
+/**
+ * Validates a dial number against the provided dial plan regex patterns.
+ * A number is valid if it matches at least one regex pattern in the dial plans.
+ * Falls back to US/Canada regex validation if no dial plan entries are configured.
+ *
+ * @param input - The dial number to validate
+ * @param dialPlanEntries - Array of dial plan entries containing regex patterns
+ * @returns true if the input matches at least one dial plan regex pattern, false otherwise
+ */
+export const isValidDialNumber = (
+  input: string,
+  dialPlanEntries: DialPlan['dialPlanEntity']
+): boolean => {
+  if (!dialPlanEntries || dialPlanEntries.length === 0) {
+    LoggerProxy.info('No dial plan entries found. Falling back to US number validation.');
+
+    return FALLBACK_DIAL_NUMBER_REGEX.test(input);
+  }
+
+  return dialPlanEntries.some((entry) => {
+    try {
+      const regex = new RegExp(entry.regex);
+
+      return regex.test(input);
+    } catch {
+      return false;
+    }
+  });
 };
 
 export const getStationLoginErrorData = (failure: Failure, loginOption: LoginOption) => {
@@ -74,7 +101,7 @@ export const getStationLoginErrorData = (failure: Failure, loginOption: LoginOpt
     },
     INVALID_DIAL_NUMBER: {
       message:
-        'Enter a valid US dial number. For help, reach out to your administrator or support team.',
+        'Enter a valid dial number. For help, reach out to your administrator or support team.',
       fieldName: loginOption,
     },
   };
