@@ -93,6 +93,8 @@ export default {
     degradationPreferences: {
       maxMacroblocksLimit: 8192,
     },
+    // !! TODO: this is a temporary config to enable AV1 video slides for testing purposes
+    enableAV1VideoSlides: true,
     // This only applies to non-multistream meetings
     iceCandidatesGatheringTimeout: undefined,
     backendIpv6NativeSupport: false,

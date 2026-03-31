@@ -77,6 +77,7 @@ type Options = {
   degradationPreferences: DegradationPreferences;
   kind: Kind;
   trimRequestsToNumOfSources: boolean; // if enabled, AS speaker requests will be trimmed based on the calls to setNumCurrentSources()
+  enableAV1?: boolean;
 };
 
 type ClientRequestsMap = {[key: MediaRequestId]: MediaRequest};
@@ -99,6 +100,7 @@ export class MediaRequestManager {
   private debouncedSourceUpdateListener: () => void;
 
   private trimRequestsToNumOfSources: boolean;
+  private enableAV1: boolean;
   private numTotalSources: number;
   private numLiveSources: number;
 
@@ -116,6 +118,7 @@ export class MediaRequestManager {
     this.degradationPreferences = options.degradationPreferences;
     this.kind = options.kind;
     this.trimRequestsToNumOfSources = options.trimRequestsToNumOfSources;
+    this.enableAV1 = options.enableAV1 ?? false;
     this.sourceUpdateListener = this.commit.bind(this);
     this.debouncedSourceUpdateListener = debounce(
       this.sourceUpdateListener,
@@ -354,24 +357,26 @@ export class MediaRequestManager {
           codecInfos.push(h264CodecInfo);
         }
 
-        const av1PayloadType = this.getIngressPayloadTypeCallback(
-          mr.receiveSlots[0].mediaType,
-          MediaCodecMimeType.AV1
-        );
-        if (av1PayloadType) {
-          const av1EncodingParams = this.getAv1EncodingParams(mr);
-          const av1CodecInfo = WcmeCodecInfo.fromAv1(
-            av1PayloadType,
-            new AV1Codec(
-              av1EncodingParams.levelIdx,
-              av1EncodingParams.tier,
-              av1EncodingParams.maxWidth,
-              av1EncodingParams.maxHeight,
-              av1EncodingParams.maxPicSize,
-              av1EncodingParams.maxDecodeRate
-            )
+        if (this.enableAV1) {
+          const av1PayloadType = this.getIngressPayloadTypeCallback(
+            mr.receiveSlots[0].mediaType,
+            MediaCodecMimeType.AV1
           );
-          codecInfos.push(av1CodecInfo);
+          if (av1PayloadType) {
+            const av1EncodingParams = this.getAv1EncodingParams(mr);
+            const av1CodecInfo = WcmeCodecInfo.fromAv1(
+              av1PayloadType,
+              new AV1Codec(
+                av1EncodingParams.levelIdx,
+                av1EncodingParams.tier,
+                av1EncodingParams.maxWidth,
+                av1EncodingParams.maxHeight,
+                av1EncodingParams.maxPicSize,
+                av1EncodingParams.maxDecodeRate
+              )
+            );
+            codecInfos.push(av1CodecInfo);
+          }
         }
 
         streamRequests.push(
