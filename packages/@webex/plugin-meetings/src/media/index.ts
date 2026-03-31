@@ -178,6 +178,7 @@ Media.createMediaConnection = (
     const config: MultistreamConnectionConfig = {
       iceServers,
       disableAudioTwcc: !enableAudioTwcc,
+      enableAV1SlidesSupport: true,
     };
 
     if (bundlePolicy) {

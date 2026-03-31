@@ -336,12 +336,13 @@ export class MediaRequestManager {
       if (mr.receiveSlots.length > 0) {
         const codecInfos: WcmeCodecInfo[] = [];
 
-        if (mr.codecInfo) {
+        const h264PayloadType = this.getIngressPayloadTypeCallback(
+          mr.receiveSlots[0].mediaType,
+          MediaCodecMimeType.H264
+        );
+        if (h264PayloadType) {
           const h264CodecInfo = WcmeCodecInfo.fromH264(
-            this.getIngressPayloadTypeCallback(
-              mr.receiveSlots[0].mediaType,
-              MediaCodecMimeType.H264
-            ),
+            h264PayloadType,
             new H264Codec(
               mr.codecInfo.maxFs,
               mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
@@ -351,13 +352,16 @@ export class MediaRequestManager {
             )
           );
           codecInfos.push(h264CodecInfo);
+        }
 
+        const av1PayloadType = this.getIngressPayloadTypeCallback(
+          mr.receiveSlots[0].mediaType,
+          MediaCodecMimeType.AV1
+        );
+        if (av1PayloadType) {
           const av1EncodingParams = this.getAv1EncodingParams(mr);
           const av1CodecInfo = WcmeCodecInfo.fromAv1(
-            this.getIngressPayloadTypeCallback(
-              mr.receiveSlots[0].mediaType,
-              MediaCodecMimeType.AV1
-            ),
+            av1PayloadType,
             new AV1Codec(
               av1EncodingParams.levelIdx,
               av1EncodingParams.tier,
