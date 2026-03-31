@@ -1,5 +1,5 @@
 import {Page, expect} from '@playwright/test';
-import {SELECTORS, AWAIT_TIMEOUT, REGISTRATION_TIMEOUT} from './constants';
+import {SELECTORS, AWAIT_TIMEOUT, REGISTRATION_TIMEOUT} from '../constants';
 
 export const registerLine = async (page: Page): Promise<void> => {
   await page.locator(SELECTORS.REGISTER_BTN).click({timeout: AWAIT_TIMEOUT});

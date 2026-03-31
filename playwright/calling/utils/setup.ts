@@ -5,7 +5,7 @@ import {
   AWAIT_TIMEOUT,
   SDK_INIT_TIMEOUT,
   ServiceIndicator,
-} from './constants';
+} from '../constants';
 import {registerLine, verifyLineRegistered} from './registration';
 
 /**

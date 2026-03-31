@@ -1,9 +1,6 @@
 import {test as setup} from '@playwright/test';
 import fs from 'fs';
-import path from 'path';
-
-const ENV_PATH = path.resolve(__dirname, '../../../.env');
-const WIDGETS_URL = 'https://widgets.webex.com/samples-cc-react-app/index.html';
+import {ENV_PATH, WIDGETS_URL} from '../constants';
 
 type EnvUpdateMap = Record<string, string>;
 

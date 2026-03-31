@@ -6,23 +6,45 @@ dotenv.config({path: path.resolve(__dirname, '.env')});
 
 const BASE_URL = process.env.PW_BASE_URL || 'https://localhost:8000';
 
-const chromeOptions = {
-  ...devices['Desktop Chrome'],
-  channel: 'chrome' as const,
-  launchOptions: {
-    args: [
-      '--disable-site-isolation-trials', // Allow cross-origin iframes in the same process
-      '--disable-web-security', // Bypass CORS for local dev server
-      '--no-sandbox', // Required for CI containers without root
-      '--disable-features=WebRtcHideLocalIpsWithMdns', // Expose real local IPs for WebRTC ICE candidates
-      '--allow-file-access-from-files', // Allow file:// protocol access
-      '--use-fake-ui-for-media-stream', // Auto-grant camera/mic permissions without prompt
-      '--use-fake-device-for-media-stream', // Use synthetic audio/video instead of real hardware
-      '--disable-extensions', // Prevent extensions from interfering with tests
-      '--disable-plugins', // Prevent plugins from interfering with tests
-      '--ignore-certificate-errors', // Accept self-signed certs from local dev server
-      ...(process.env.CI ? [] : ['--auto-open-devtools-for-tabs']), // Open DevTools only in local runs
-    ],
+// Browser selection via PW_BROWSER env var: 'chrome' (default), 'firefox', 'edge', 'safari'
+const PW_BROWSER = process.env.PW_BROWSER || 'chrome';
+
+const chromiumArgs = [
+  '--disable-site-isolation-trials', // Allow cross-origin iframes in the same process
+  '--disable-web-security', // Bypass CORS for local dev server
+  '--no-sandbox', // Required for CI containers without root
+  '--disable-features=WebRtcHideLocalIpsWithMdns', // Expose real local IPs for WebRTC ICE candidates
+  '--allow-file-access-from-files', // Allow file:// protocol access
+  '--use-fake-ui-for-media-stream', // Auto-grant camera/mic permissions without prompt
+  '--use-fake-device-for-media-stream', // Use synthetic audio/video instead of real hardware
+  '--disable-extensions', // Prevent extensions from interfering with tests
+  '--disable-plugins', // Prevent plugins from interfering with tests
+  '--ignore-certificate-errors', // Accept self-signed certs from local dev server
+  ...(process.env.CI ? [] : ['--auto-open-devtools-for-tabs']), // Open DevTools only in local runs
+];
+
+const browserOptions: Record<string, object> = {
+  chrome: {
+    ...devices['Desktop Chrome'],
+    channel: 'chrome' as const,
+    launchOptions: {args: chromiumArgs},
+  },
+  edge: {
+    ...devices['Desktop Edge'],
+    channel: 'msedge' as const,
+    launchOptions: {args: chromiumArgs},
+  },
+  firefox: {
+    ...devices['Desktop Firefox'],
+    launchOptions: {
+      firefoxUserPrefs: {
+        'media.navigator.streams.fake': true, // Use fake media devices
+        'media.navigator.permission.disabled': true, // Auto-grant media permissions
+      },
+    },
+  },
+  safari: {
+    ...devices['Desktop Safari'],
   },
 };
 
@@ -56,13 +78,13 @@ export default defineConfig({
       name: 'Calling SDK E2E',
       dependencies: ['Calling: OAuth Setup'],
       testDir: './playwright/calling/tests',
-      use: chromeOptions,
+      use: browserOptions[PW_BROWSER],
     },
     // TODO: Uncomment when Contact Center tests are added
     // {
     //   name: 'Contact Center SDK E2E',
     //   testDir: './playwright/contact-center',
-    //   use: chromeOptions,
+    //   use: browserOptions[PW_BROWSER],
     // },
   ],
 });

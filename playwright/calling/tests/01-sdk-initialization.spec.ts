@@ -6,7 +6,7 @@ import {
   setServiceIndicator,
   setServiceDomain,
 } from '../utils/setup';
-import {SELECTORS, SDK_INIT_TIMEOUT, AWAIT_TIMEOUT, CC_SERVICE_DOMAIN} from '../utils/constants';
+import {SELECTORS, SDK_INIT_TIMEOUT, AWAIT_TIMEOUT, CC_SERVICE_DOMAIN} from '../constants';
 
 const getToken = (envVar: string): string => {
   const token = process.env[envVar];
