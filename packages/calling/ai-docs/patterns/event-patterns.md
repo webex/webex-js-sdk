@@ -2,6 +2,12 @@
 
 > Quick reference for LLMs working with the typed event system in the `@webex/calling` package.
 
+This document describes the typed event system used throughout the `@webex/calling` package.
+
+The package implements a fully type-safe event architecture built on Node.js `EventEmitter` (from `events`) augmented with compile-time type enforcement via `typed-emitter`. At its core is the `Eventing<T>` generic base class (`src/Events/impl/index.ts`), which every event-emitting class in the package extends — including `CallingClient`, `Call`, `CallManager`, `Line`, `CallHistory`, and `Voicemail`. Each of these classes is parameterized with a dedicated event type map (e.g., `CallingClientEventTypes`, `CallEventTypes`, `LineEventTypes`, `CallHistoryEventTypes`, `VoicemailEventTypes`) defined in `src/Events/types.ts`, which statically associates string-valued enum keys to their corresponding callback signatures. All event keys are defined as TypeScript `enum` members across `CALL_EVENT_KEYS`, `LINE_EVENTS`, `LINE_EVENT_KEYS`, `CALLING_CLIENT_EVENT_KEYS`, `COMMON_EVENT_KEYS`, `MOBIUS_EVENT_KEYS`, and `MEDIA_CONNECTION_EVENT_KEYS` — raw string keys are never used directly.
+
+Events originate from two sources: **local state changes** (e.g., call state machine transitions, line registration) and **remote server events** arriving over the Webex Mercury WebSocket. The `SDKConnector` singleton (`src/SDKConnector/index.ts`) bridges Mercury to the calling SDK by wrapping `webex.internal.mercury.on()` / `.off()` via its `registerListener` / `unregisterListener` methods. Components such as `CallManager` register for Mercury events (e.g., `event:mobius` for call control, `event:janus.*` for call session/history), parse the raw payloads, drive internal state machines, and then re-emit typed events on their `Eventing<T>` instances for application consumption. Every `emit()` call is automatically logged with a UTC timestamp via the `Eventing` base class before delegation to the underlying `EventEmitter`.
+
 ---
 
 ## Rules
@@ -228,6 +234,8 @@ export enum WEBSOCKET_KEYS {
 ---
 
 ## Event Emission Pattern
+
+Events are emitted using `this.emit()` with the enum constant as the event name and the typed payload as arguments. Because every emitting class extends `Eventing<T>`, the compiler enforces that the enum key and payload match the class's event type map at every call site. The `Eventing.emit()` override logs every emission with a UTC timestamp before delegating to the underlying `EventEmitter`. Emission happens across five classes — `Call` (the most prolific emitter, covering call lifecycle and error events), `Line` (registration state and incoming calls), `CallManager` (incoming call signaling and all-calls-cleared), `CallingClient` (client-level errors and session info), and `CallHistory` (session, viewed, and deleted events). `Voicemail` defines `VoicemailEventTypes` in its type map but does not currently contain any `this.emit()` call sites in its implementation.
 
 ### Emitting from a Call
 

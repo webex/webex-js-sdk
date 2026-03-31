@@ -139,15 +139,19 @@ export const createClient = async (
 **Important**: `createClient` is `async` and calls `init()` internally. Consumers must `await` the result and should **not** call `init()` separately.
 
 ```typescript
-// Correct usage
+// CallingClient — async, takes optional CallingClientConfig
 const client = await createClient(webex, config);
 
-// Other client factories follow the same pattern
-const callHistory = createCallHistoryClient(webex, config);
-const callSettings = createCallSettingsClient(webex, config);
-const contacts = createContactsClient(webex, config);
-const voicemail = createVoicemailClient(webex, config);
+// Other client factories are synchronous and take a LoggerInterface ({ level: LOGGER })
+// instead of CallingClientConfig:
+const logger: LoggerInterface = {level: LOGGER.INFO};
+const callHistory = createCallHistoryClient(webex, logger);
+const callSettings = createCallSettingsClient(webex, logger, true /* useProdWebexApis */);
+const contacts = createContactsClient(webex, logger);
+const voicemail = createVoicemailClient(webex, logger);
 ```
+
+**Important differences from `createClient`**: The non-CallingClient factories (`createCallHistoryClient`, `createCallSettingsClient`, `createContactsClient`, `createVoicemailClient`) are **synchronous** and take a `LoggerInterface` as their second argument — not a `CallingClientConfig`. `LoggerInterface` is defined as `{ level: LOGGER }` (where `LOGGER` is the string enum from `src/Logger/types.ts`). `createCallSettingsClient` additionally accepts an optional `useProdWebexApis?: boolean` third argument.
 
 ### Internal Call Factory
 

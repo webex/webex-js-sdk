@@ -340,35 +340,52 @@ export type LineErrorEmitterCallback = (err: LineError, finalError?: boolean) =>
 
 ### handleCallErrors
 
-Maps HTTP/API failures to `CallError` and optionally triggers retries. See `src/common/Utils.ts`.
+Maps HTTP/API failures to `CallError` and optionally triggers retries. Returns `Promise<boolean>` indicating whether to abort. See `src/common/Utils.ts`.
+
+Signature: `handleCallErrors(emitterCb, errorLayer, retryCb, correlationId, err, caller, file): Promise<boolean>`
 
 ```typescript
-handleCallErrors(
+// Real usage from call.ts — handleOutgoingCallSetup error path
+const abort = await handleCallErrors(
   (error: CallError) => {
     this.emit(CALL_EVENT_KEYS.CALL_ERROR, error);
+    this.submitCallErrorMetric(error);
+    this.sendCallStateMachineEvt({type: 'E_UNKNOWN', data: errData});
   },
-  responsePayload,
   ERROR_LAYER.CALL_CONTROL,
-  this.correlationId,
-  {file: CALL_FILE, method: 'dial'},
-  () => this.retryOperation() // optional retry callback
+  /* istanbul ignore next */ (interval: number) => undefined,
+  this.getCorrelationId(),
+  errData,
+  METHODS.HANDLE_OUTGOING_CALL_SETUP,
+  CALL_FILE
 );
 ```
 
 ### handleCallingClientErrors
 
-Maps errors to `CallingClientError` and returns an `abort` flag. See `src/common/Utils.ts`.
+Maps errors to `CallingClientError` and returns `Promise<boolean>` indicating whether to abort. See `src/common/Utils.ts`.
+
+Signature: `handleCallingClientErrors(err, emitterCb, loggerContext): Promise<boolean>`
 
 ```typescript
-const {abort} = handleCallingClientErrors(responsePayload, {
-  file: CALLING_CLIENT_FILE,
-  method: 'getMobiusServers',
-});
-
-if (abort) {
-  this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, callingClientError);
-  return;
-}
+// Real usage from CallingClient.ts — getMobiusServers error path
+abort = await handleCallingClientErrors(
+  err as WebexRequestPayload,
+  (clientError) => {
+    this.metricManager.submitRegistrationMetric(
+      METRIC_EVENT.REGISTRATION_ERROR,
+      REG_ACTION.REGISTER,
+      METRIC_TYPE.BEHAVIORAL,
+      GET_MOBIUS_SERVERS_UTIL,
+      'UNKNOWN',
+      (err as WebexRequestPayload).headers?.trackingId ?? '',
+      undefined,
+      clientError
+    );
+    this.emit(CALLING_CLIENT_EVENT_KEYS.ERROR, clientError);
+  },
+  {method: GET_MOBIUS_SERVERS_UTIL, file: CALLING_CLIENT_FILE}
+);
 ```
 
 ### serviceErrorCodeHandler

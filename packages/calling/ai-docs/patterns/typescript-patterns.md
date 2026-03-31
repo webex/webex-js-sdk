@@ -368,28 +368,42 @@ export {
 
 ### Logging Context Object
 
-All log calls take a message string and a context object with `file` and `method` fields. Use log levels as follows:
+All log calls take a message string and a context object with `file` and `method` fields. The Logger module (`src/Logger/index.ts`) defines five log levels via the `LOGGING_LEVEL` enum with a cumulative threshold — setting level `n` enables all levels from 1 through `n`. The default level is `error` (1). Use log levels as follows, listed from lowest (most critical) to highest (most verbose):
 
-| Level | When to Use | Example |
-|-------|-------------|---------|
-| `log.info()` | Normal operations, method entry/exit, state transitions | Starting registration, call connected |
-| `log.warn()` | Recoverable issues, degraded behavior, fallbacks | ICE warmup failed (will retry), missing optional config |
-| `log.error()` | Unrecoverable failures, critical errors | Device registration failed, unhandled exception |
+| Level | `LOGGING_LEVEL` | Method | Format Prefix | When to Use | Example |
+|-------|-----------------|--------|---------------|-------------|---------|
+| 1 | `error` | `log.error()` | `[ERROR]` | Unrecoverable failures, critical errors | Device registration failed, unhandled exception |
+| 2 | `warn` | `log.warn()` | `[WARN]` | Recoverable issues, degraded behavior, fallbacks | Invalid metric name received, missing optional config |
+| 3 | `log` | `log.log()` | `[LOG]` | General-purpose operational messages, method entry/exit for non-critical paths | All calls cleared, setting Mobius servers |
+| 4 | `info` | `log.info()` | `[INFO]` | Normal operations, method entry/exit, state transitions (most heavily used level) | Starting registration, call connected, listener registered |
+| 5 | `trace` | `log.trace()` | `[TRACE]` | Full call-path stack traces for deep debugging (not currently used in production code) | Detailed diagnostic tracing |
+
+All log output is formatted as: `CALLING_SDK: <UTC timestamp>: [LEVEL]: file:<filename> - method:<methodName> - message:<log message>`
 
 ```typescript
+log.error(`Device creation failed: ${err}`, {
+  file: CALLING_CLIENT_FILE,
+  method: 'createDevice',
+});
+
+log.warn('Invalid metric name received. Rejecting request to submit metric.', {
+  file: METRIC_MANAGER_FILE,
+  method: this.submitMetric.name,
+});
+
+log.log('All calls have been cleared', {
+  file: CALL_MANAGER_FILE,
+  method: METHODS.DEQUEUE_WS_EVENTS,
+});
+
 log.info('Starting registration', {
   file: CALLING_CLIENT_FILE,
   method: 'register',
 });
 
-log.warn(`ICE warmup failed: ${err}`, {
+log.trace('Detailed diagnostic trace', {
   file: CALLING_CLIENT_FILE,
   method: 'init',
-});
-
-log.error(`Device creation failed: ${err}`, {
-  file: CALLING_CLIENT_FILE,
-  method: 'createDevice',
 });
 ```
 
