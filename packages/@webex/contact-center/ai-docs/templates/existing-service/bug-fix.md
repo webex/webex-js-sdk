@@ -30,10 +30,6 @@ If the developer cannot provide reproduction steps, ask for logs, error messages
    - [ ] Types
    - [ ] Not sure (this is fine — you will investigate)
 
-5. **"Are there any error messages or stack traces you can share?"**
-
-6. **"Is there a trackingId from the logs associated with this bug?"**
-
 ### Completion Gate for Section A
 
 **Before proceeding to investigation, verify:**

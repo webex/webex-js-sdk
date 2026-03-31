@@ -10,7 +10,9 @@
 
 > **Note:** If you arrived here via **Type F (Modify Existing Method)** from the root [`AGENTS.md`](../../../AGENTS.md), skip this Step 0 entirely — the method already exists in an existing service. Jump to Step 0B (Pre-Enhancement Questions).
 
-### Triage Questions — Always Ask These:
+### Triage Questions — Always Ask These (All Mandatory)
+
+> **All 6 questions must be answered before proceeding.** If the developer is unsure about a question, help them reason through it using the decision signals below. Do not skip questions or infer answers — each one informs the placement decision.
 
 1. **"Does this feature fit within the responsibility of an existing service, or does it introduce a new domain/responsibility?"**
 
@@ -266,9 +268,13 @@ featureMethod: routing.req((p: {data: FeatureParams}) => ({
 })),
 ```
 
-### Plugin Layer (cc.ts) — if the feature is exposed as a public API
+### Public API Layer — if the feature is exposed to consumers
 
-> **Note:** Not all features require a public method on `cc.ts`. If the feature is internal to a service or only consumed by other services, skip this step. Add a `cc.ts` wrapper only when the feature needs to be called directly by external consumers (e.g., `cc.featureName()`).
+> **Determine the owning object.** Public methods are added to the object that owns the feature's scope. Currently the SDK exposes:
+> - **`cc`** (in `cc.ts`) — SDK-level operations (e.g., `cc.stationLogin()`, `cc.setAgentState()`)
+> - **`task`** (in `Task.ts`) — per-interaction operations (e.g., `task.hold()`, `task.transfer()`, `task.end()`)
+>
+> New public objects may be introduced in the future. If the feature is internal to a service or only consumed by other services, skip this step entirely.
 
 Add public method:
 
