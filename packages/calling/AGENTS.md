@@ -355,7 +355,7 @@ Only reference docs/paths that exist in this package.
 - **Coding standards**: [`ai-docs/RULES.md`](ai-docs/RULES.md)
 - **TypeScript patterns**: [`ai-docs/patterns/typescript-patterns.md`](ai-docs/patterns/typescript-patterns.md)
 - **Testing patterns**: [`ai-docs/patterns/testing-patterns.md`](ai-docs/patterns/testing-patterns.md)
-- **Event patterns**: [`ai-docs/patterns/event-driven-patterns.md`](ai-docs/patterns/event-driven-patterns.md)
+- **Event patterns**: [`ai-docs/patterns/event-patterns.md`](ai-docs/patterns/event-patterns.md)
 - **Templates**: `ai-docs/templates/` is not present in this package yet; create it when standardized templates are added.
 
 ---

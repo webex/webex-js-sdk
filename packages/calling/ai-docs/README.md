@@ -39,7 +39,7 @@
 | RULES.md                | [`RULES.md`](RULES.md)                                                                                 | Coding standards and conventions        |
 | TypeScript Patterns     | [`patterns/typescript-patterns.md`](patterns/typescript-patterns.md)                                   | Type, interface, and code patterns      |
 | Testing Patterns        | [`patterns/testing-patterns.md`](patterns/testing-patterns.md)                                         | Jest test conventions                   |
-| Event Patterns          | [`patterns/event-driven-patterns.md`](patterns/event-driven-patterns.md)                               | Event-driven architecture patterns      |
+| Event Patterns          | [`patterns/event-patterns.md`](patterns/event-patterns.md)                                             | Event-driven architecture patterns      |
 | Error Handling Patterns | [`patterns/error-handling-patterns.md`](patterns/error-handling-patterns.md)                           | Error handling patterns                 |
 | New Module Template     | [`templates/new-module/00-master.md`](templates/new-module/00-master.md)                               | Create new module (planned)             |
 | New Method Template     | [`templates/new-method/00-master.md`](templates/new-method/00-master.md)                               | Add method to existing module (planned) |
@@ -67,8 +67,9 @@ packages/calling/
     ├── patterns/              # Pattern documentation
     │   ├── typescript-patterns.md
     │   ├── testing-patterns.md
-    │   ├── event-driven-patterns.md
-    │   └── error-handling-patterns.md
+    │   ├── event-patterns.md
+    │   ├── error-handling-patterns.md
+    │   └── architecture-patterns.md
     └── templates/             # Code generation templates (planned)
         ├── new-module/        # Creating new modules
         ├── new-method/        # Adding methods to existing modules

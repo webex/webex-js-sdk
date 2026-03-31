@@ -344,12 +344,15 @@ Every top-level module exposes a factory function:
 // CallingClient
 export const createClient = async (webex: WebexSDK, config?: CallingClientConfig): Promise<ICallingClient> => { ... };
 
-// CallHistory
-export const createCallHistoryClient = (webex: WebexSDK, config?): ICallHistory => { ... };
+// Public factory exports from src/api.ts
+export const createCallHistoryClient = (webex: WebexSDK, logger: LoggerInterface): ICallHistory => { ... };
+export const createCallSettingsClient = (webex: WebexSDK, logger: LoggerInterface, useProdWebexApis?: boolean): ICallSettings => { ... };
+export const createContactsClient = (webex: WebexSDK, logger: LoggerInterface): IContacts => { ... };
+export const createVoicemailClient = (webex: WebexSDK, logger: LoggerInterface): IVoicemail => { ... };
 
-// Singletons
+// Internal singletons (not exported from src/api.ts)
 export const getMetricManager = (webex?: WebexSDK, indicator?: ServiceIndicator): IMetricManager => { ... };
-export const getCallManager = (webex?: WebexSDK, indicator?: ServiceIndicator): ICallManager => { ... };
+export const getCallManager = (webex: WebexSDK, indicator: ServiceIndicator): ICallManager => { ... };
 ```
 
 ### Per-Module File Structure
@@ -492,5 +495,5 @@ Before submitting code changes, verify:
 
 - **TypeScript patterns**: [`patterns/typescript-patterns.md`](patterns/typescript-patterns.md)
 - **Testing patterns**: [`patterns/testing-patterns.md`](patterns/testing-patterns.md)
-- **Event patterns**: [`patterns/event-driven-patterns.md`](patterns/event-patterns.md)
+- **Event patterns**: [`patterns/event-patterns.md`](patterns/event-patterns.md)
 - **Error patterns**: [`patterns/error-handling-patterns.md`](patterns/error-handling-patterns.md)
