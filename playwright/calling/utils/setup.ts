@@ -74,6 +74,20 @@ export const setServiceDomain = async (page: Page, domain: string): Promise<void
 };
 
 /**
+ * Set discovery region before initialization (e.g. 'US-EAST')
+ */
+export const setRegion = async (page: Page, region: string): Promise<void> => {
+  await page.locator(SELECTORS.REGION_INPUT).fill(region, {timeout: AWAIT_TIMEOUT});
+};
+
+/**
+ * Set discovery country before initialization (e.g. 'US')
+ */
+export const setCountry = async (page: Page, country: string): Promise<void> => {
+  await page.locator(SELECTORS.COUNTRY_INPUT).fill(country, {timeout: AWAIT_TIMEOUT});
+};
+
+/**
  * Navigate, init SDK, verify, and optionally set service and register line.
  */
 export const initAndRegister = async (

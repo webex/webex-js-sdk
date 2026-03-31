@@ -6,6 +6,8 @@ export const SELECTORS = {
   AUTH_STATUS: '#access-token-status',
   SERVICE_INDICATOR: '#ServiceIndicator',
   SERVICE_DOMAIN: '#ServiceDomain',
+  REGION_INPUT: '#region',
+  COUNTRY_INPUT: '#country',
   FEDRAMP_CHECKBOX: '#fedramp',
   ENABLE_PRODUCTION_BTN: '#enableProduction',
 
