@@ -946,14 +946,18 @@ export default class Meeting extends StatelessWebexPlugin {
       mediaType: MediaType,
       codecMimeType: MediaCodecMimeType
     ) => {
-      if (this.mediaProperties?.webrtcMediaConnection instanceof MultistreamRoapMediaConnection) {
-        return this.mediaProperties.webrtcMediaConnection.getIngressPayloadType(
-          mediaType,
-          codecMimeType
-        );
+      if (this.isMultistream) {
+        try {
+          return this.mediaProperties.webrtcMediaConnection.getIngressPayloadType(
+            mediaType,
+            codecMimeType
+          );
+        } catch (error) {
+          return undefined;
+        }
       }
 
-      return 0;
+      return undefined;
     };
 
     /**
