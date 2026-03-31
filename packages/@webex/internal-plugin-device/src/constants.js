@@ -21,3 +21,8 @@ export const FEATURE_TYPES = {
 export const DEVICE_EVENT_REGISTRATION_SUCCESS = 'registration:success';
 
 export const DEVICE_EVENTS = [DEVICE_EVENT_REGISTRATION_SUCCESS];
+
+// Device deletion constants.
+export const MAX_REGISTERED_DEVICES = 100;
+export const MAX_DELETION_CONFIRMATION_ATTEMPTS = 5;
+export const DELETION_CONFIRMATION_DELAY_MS = 3000;
