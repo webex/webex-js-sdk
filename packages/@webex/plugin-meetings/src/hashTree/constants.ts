@@ -8,3 +8,7 @@ export const DataSetNames = {
   SELF: 'self', // sent to web client, over Mercury
   UNJOINED: 'unjoined', // sent when you are not joined, but can still see some stuff from the meeting (mutually exclusive with "main")
 };
+
+// Priority order for initializing data sets — higher priority names come first.
+// Data sets not listed here will be initialized after all prioritized ones.
+export const DATA_SET_INIT_PRIORITY: string[] = [DataSetNames.SELF, DataSetNames.MAIN];

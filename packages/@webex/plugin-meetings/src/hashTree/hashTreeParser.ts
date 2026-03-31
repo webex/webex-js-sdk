@@ -5,7 +5,7 @@ import {Enum, HTTP_VERBS} from '../constants';
 import {DataSetNames, EMPTY_HASH} from './constants';
 import {ObjectType, HtMeta, HashTreeObject} from './types';
 import {LocusDTO} from '../locus-info/types';
-import {deleteNestedObjectsWithHtMeta, isMetadata} from './utils';
+import {deleteNestedObjectsWithHtMeta, isMetadata, sortByInitPriority} from './utils';
 
 export interface DataSet {
   url: string;
@@ -382,9 +382,10 @@ class HashTreeParser {
     if (this.state === 'stopped') {
       return;
     }
+
     const updatedObjects: HashTreeObject[] = [];
 
-    for (const dataSet of visibleDataSets) {
+    for (const dataSet of sortByInitPriority(visibleDataSets)) {
       const {name, leafCount, url} = dataSet;
 
       if (!this.dataSets[name]) {

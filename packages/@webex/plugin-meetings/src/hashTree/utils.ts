@@ -1,5 +1,6 @@
 /* eslint-disable import/prefer-default-export */
 
+import {DATA_SET_INIT_PRIORITY} from './constants';
 import {ObjectType, HashTreeObject} from './types';
 
 /**
@@ -60,3 +61,19 @@ export const deleteNestedObjectsWithHtMeta = (
     }
   }
 };
+
+/**
+ * Reorders items so that those matching DATA_SET_INIT_PRIORITY come first (in priority order),
+ * followed by everything else in their original order.
+ *
+ * @param {Array<T>} items - The items to reorder
+ * @returns {Array<T>} A new array with prioritized items first
+ */
+export function sortByInitPriority<T extends {name: string}>(items: T[]): T[] {
+  const prioritized = DATA_SET_INIT_PRIORITY.map((name) =>
+    items.find((item) => item.name === name)
+  ).filter(Boolean) as T[];
+  const rest = items.filter((item) => !DATA_SET_INIT_PRIORITY.includes(item.name));
+
+  return [...prioritized, ...rest];
+}
