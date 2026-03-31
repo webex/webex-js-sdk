@@ -257,17 +257,17 @@ yarn workspace @webex/calling build
 
 ```bash
 # Run ESLint:
-yarn lint
+yarn test:style
 
 # Or from repo root:
-yarn workspace @webex/calling lint
+yarn workspace @webex/calling test:style
 ```
 
 ### Test
 
 ```bash
 # Run all tests:
-yarn test
+yarn test:unit
 
 # Run only the new module's tests:
 npx jest src/ModuleName/
@@ -282,8 +282,8 @@ npx jest src/ModuleName/ModuleName.test.ts --verbose
 ### Verify All Pass
 
 - [ ] `yarn build` completes without errors
-- [ ] `yarn lint` completes without errors (or only pre-existing warnings)
-- [ ] `yarn test` passes all tests
+- [ ] `yarn test:style` completes without errors (or only pre-existing warnings)
+- [ ] `yarn test:unit` passes all tests
 - [ ] `npx jest src/ModuleName/ --coverage` shows adequate coverage for new code
 
 ---
@@ -292,7 +292,7 @@ npx jest src/ModuleName/ModuleName.test.ts --verbose
 
 ### Update AGENTS.md Module Routing Table
 
-Add the new module to the Module Index table in `src/Agents.md`:
+Add the new module to the Module Index table in root `AGENTS.md` (`packages/calling/AGENTS.md`):
 
 ```markdown
 | **ModuleName** | `ModuleName` | `createModuleNameClient()` | `IModuleName` | {one-sentence description} |
@@ -347,7 +347,7 @@ Answer these self-check questions before completing:
    `npx jest src/ModuleName/` should exit with code 0.
 
 8. **Is the module discoverable?**
-   It appears in `src/api.ts` exports and in the `src/Agents.md` routing table.
+   It appears in `src/api.ts` exports and in the root `AGENTS.md` routing table.
 
 ---
 

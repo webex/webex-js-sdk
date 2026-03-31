@@ -83,7 +83,8 @@
     - `submitCallMetric` -- for call control operations
     - `submitMediaMetric` -- for media operations
     - `submitRegistrationMetric` -- for registration operations
-    - `submitVoicemailMetric` -- for voicemail operations
+    - `submitVoicemailMetric` -- for voicemail-domain operations only
+    - If no existing method fits, add a new domain-specific method in `src/Metrics/types.ts` and implement it in `src/Metrics/index.ts`
 
 15. **"Is this an OPERATIONAL or BEHAVIORAL metric?"**
     - `METRIC_TYPE.OPERATIONAL` -- internal system events (keepalive, reconnect)

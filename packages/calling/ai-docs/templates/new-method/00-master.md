@@ -71,6 +71,7 @@ Run the quality checklist to verify:
 | TypeScript Patterns | [`../../patterns/typescript-patterns.md`](../../patterns/typescript-patterns.md) |
 | Testing Patterns | [`../../patterns/testing-patterns.md`](../../patterns/testing-patterns.md) |
 | Event Patterns | [`../../patterns/event-driven-patterns.md`](../../patterns/event-driven-patterns.md) |
+| Error Handling Patterns | [`../../patterns/error-handling-patterns.md`](../../patterns/error-handling-patterns.md) |
 | METHODS constant | `src/CallingClient/constants.ts` (`METHODS` object) |
 | Metric events | `src/Metrics/types.ts` (`METRIC_EVENT` enum) |
 | Event keys | `src/Events/types.ts` (`CALL_EVENT_KEYS`, `LINE_EVENT_KEYS`, etc.) |

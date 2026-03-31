@@ -168,7 +168,7 @@ Does this match your intent? (Yes / No / Adjust)
 2. Read the target module's `ai-docs/ARCHITECTURE.md` (if exists) — understand current flows
 3. Read the specific file(s) being modified — understand current implementation
 4. Read the test file(s) — understand existing test coverage
-5. Load patterns: [`../../patterns/typescript-patterns.md`](../../patterns/typescript-patterns.md), [`../../patterns/event-driven-patterns.md`](../../patterns/event-driven-patterns.md)
+5. Load patterns: [`../../patterns/typescript-patterns.md`](../../patterns/typescript-patterns.md), [`../../patterns/event-driven-patterns.md`](../../patterns/event-driven-patterns.md), [`../../patterns/error-handling-patterns.md`](../../patterns/error-handling-patterns.md)
 
 ### Step 2: Implement the Enhancement
 

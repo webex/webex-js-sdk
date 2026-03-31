@@ -346,7 +346,7 @@ it('should emit success event when WebSocket state change arrives', async () => 
       callState: 'PARKED',
     },
   };
-  call['handleMidCallEvent'](midCallEvent as any);
+  call['handleMidCallEvent'](midCallEvent as unknown as CallEvent);
   await flushPromises();
 
   // Assert

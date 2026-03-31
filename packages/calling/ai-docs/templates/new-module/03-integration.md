@@ -118,7 +118,7 @@ export enum MODULE_NAME_ACTION {
 }
 ```
 
-If the module needs a new metric submission method on `IMetricManager`, add it to the interface in `src/Metrics/types.ts` and implement it in `src/Metrics/index.ts`. However, prefer reusing existing methods like `submitVoicemailMetric` if the signature is compatible.
+If the module needs a new metric submission method on `IMetricManager`, add it to the interface in `src/Metrics/types.ts` and implement it in `src/Metrics/index.ts`. Prefer reusing an existing domain-appropriate method (`submitCallMetric`, `submitRegistrationMetric`, `submitConnectionMetrics`, `submitVoicemailMetric`) only when its signature and semantics match your module.
 
 ---
 
@@ -234,22 +234,22 @@ public async getData(param: ParamType): Promise<ModuleNameResponseEvent> {
 
 If the module should submit metrics (recommended for all user-facing modules):
 
-### Option 1: Reuse Existing Metric Method
+### Option 1: Reuse an Existing Domain-Appropriate Metric Method
 
-If the metric payload matches an existing method signature (e.g., `submitVoicemailMetric`), reuse it:
+If the metric payload matches an existing method signature, reuse that method. Use voicemail-specific methods only for voicemail domains.
 
 ```typescript
 private submitMetric(response: ModuleNameResponseEvent, metricAction: string) {
   const { statusCode, data: { error: errorMessage } } = response;
 
   if (statusCode >= 200 && statusCode < 300) {
-    this.metricManager.submitVoicemailMetric(
+    this.metricManager.submitCallMetric(
       METRIC_EVENT.MODULE_NAME,
       metricAction,
       METRIC_TYPE.BEHAVIORAL
     );
   } else {
-    this.metricManager.submitVoicemailMetric(
+    this.metricManager.submitCallMetric(
       METRIC_EVENT.MODULE_NAME_ERROR,
       metricAction,
       METRIC_TYPE.BEHAVIORAL,

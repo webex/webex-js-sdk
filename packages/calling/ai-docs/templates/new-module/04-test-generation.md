@@ -99,7 +99,7 @@ describe('ModuleName tests', () => {
 
   describe('getData', () => {
     it('should return success response on valid request', async () => {
-      const mockPayload = <WebexRequestPayload>(<unknown>MOCK_SUCCESS_RESPONSE_BODY);
+      const mockPayload = MOCK_SUCCESS_RESPONSE_BODY as unknown as WebexRequestPayload;
       webex.request.mockResolvedValue(mockPayload);
 
       const response = await moduleName.getData(/* params */);
@@ -196,11 +196,11 @@ describe('ModuleName tests', () => {
 
   describe('edge cases', () => {
     it('should handle empty response body gracefully', async () => {
-      const emptyPayload = <WebexRequestPayload>(<unknown>{
+      const emptyPayload = {
         statusCode: 200,
         body: {},
         headers: {trackingid: 'test-tracking-id'},
-      });
+      } as unknown as WebexRequestPayload;
       webex.request.mockResolvedValue(emptyPayload);
 
       const response = await moduleName.getData(/* params */);
@@ -461,7 +461,7 @@ npx jest src/ModuleName/ --watch
 ### Run all calling package tests
 
 ```bash
-yarn test
+yarn test:unit
 ```
 
 ---
