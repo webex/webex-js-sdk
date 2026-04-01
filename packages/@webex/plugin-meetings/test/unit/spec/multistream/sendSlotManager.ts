@@ -304,7 +304,10 @@ describe('SendSlotsManager', () => {
                 .to.be.rejectedWith('codec parameter failure');
 
             assert.called(LoggerProxy.logger.error);
-            assert.notCalled(Metrics.sendBehavioralMetric as sinon.SinonStub);
+            assert.calledWith(Metrics.sendBehavioralMetric as sinon.SinonStub,
+                BEHAVIORAL_METRICS.SET_CUSTOM_CODEC_PARAMETERS_USED,
+                { mediaType, codecMimeType, parameters }
+            );
         });
     });
 

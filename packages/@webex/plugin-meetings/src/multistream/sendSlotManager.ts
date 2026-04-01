@@ -290,24 +290,24 @@ export default class SendSlotManager {
 
     try {
       await slot.setCustomCodecParameters(codecMimeType, parameters);
+
+      this.LoggerProxy.logger.info(
+        `SendSlotsManager->setCustomCodecParameters#Set custom codec parameters for ${mediaType} (codec: ${codecMimeType}) to ${JSON.stringify(
+          parameters
+        )}`
+      );
     } catch (error) {
       this.LoggerProxy.logger.error(
         `SendSlotsManager->setCustomCodecParameters#Failed to set custom codec parameters for ${mediaType} (codec: ${codecMimeType}): ${error}`
       );
       throw error;
+    } finally {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.SET_CUSTOM_CODEC_PARAMETERS_USED, {
+        mediaType,
+        codecMimeType,
+        parameters,
+      });
     }
-
-    this.LoggerProxy.logger.info(
-      `SendSlotsManager->setCustomCodecParameters#Set custom codec parameters for ${mediaType} (codec: ${codecMimeType}) to ${JSON.stringify(
-        parameters
-      )}`
-    );
-
-    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.SET_CUSTOM_CODEC_PARAMETERS_USED, {
-      mediaType,
-      codecMimeType,
-      parameters,
-    });
   }
 
   /**
