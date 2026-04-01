@@ -787,6 +787,34 @@ const Device = WebexPlugin.extend({
   },
 
   /**
+   * Get sanitized processed debug features from session storage
+   * these should be JSON encoded and in the form {feature1: true, feature2: false}
+   *
+   * @returns {Array<Object>} - Array of sanitized debug feature toggles
+   */
+  getDebugFeatures() {
+    const sanitizedDebugFeatures = [];
+    if (this.config.debugFeatureTogglesKey) {
+      const debugFeaturesString = this.webex
+        .getWindow()
+        .sessionStorage.getItem(this.config.debugFeatureTogglesKey);
+      if (debugFeaturesString) {
+        const debugFeatures = JSON.parse(debugFeaturesString);
+        Object.entries(debugFeatures).forEach(([key, value]) => {
+          sanitizedDebugFeatures.push({
+            key,
+            val: value ? 'true' : 'false',
+            mutable: true,
+            lastModified: new Date().toISOString(),
+          });
+        });
+      }
+    }
+
+    return sanitizedDebugFeatures;
+  },
+
+  /**
    * Process a successful device registration.
    *
    * @param {Object} response - response object from registration success.
@@ -814,6 +842,14 @@ const Device = WebexPlugin.extend({
       // When using the etag feature cache, user and entitlement features are still returned
       this.features.user.reset(features.user);
       this.features.entitlement.reset(features.entitlement);
+    } else if (this.config.debugFeatureTogglesKey && body?.features?.developer) {
+      // Add the debug feature toggles from session storage if available
+      try {
+        const debugFeatures = this.getDebugFeatures();
+        body.features.developer.push(...debugFeatures);
+      } catch (error) {
+        this.logger.error('Failed to parse debug feature toggles from session storage:', error);
+      }
     }
 
     // Assign the recieved DTO from **WDM** to this device.
@@ -945,6 +981,13 @@ const Device = WebexPlugin.extend({
   initialize(...args) {
     // Prototype the extended class in order to preserve the parent member.
     Reflect.apply(WebexPlugin.prototype.initialize, this, args);
+
+    this.listenToOnce(this.webex, 'change:config', () => {
+      // If debug feature toggles exist, clear the etag to ensure developer feature toggles are fetched
+      if (this.getDebugFeatures(this.config.debugFeatureTogglesKey).length > 0) {
+        this.set('etag', undefined);
+      }
+    });
 
     // Initialize feature events and listeners.
     FEATURE_COLLECTION_NAMES.forEach((collectionName) => {
