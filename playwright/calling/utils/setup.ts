@@ -57,6 +57,10 @@ export const verifySDKInitialized = async (page: Page): Promise<void> => {
 
   const hasCallingClient = await page.evaluate(() => !!(window as any).callingClient);
   expect(hasCallingClient).toBe(true);
+
+  // TODO: Based on the config passed during initialization, verify which clients are active.
+  // Different configs can instantiate CallingClient, CallHistoryClient, Voicemail, etc.
+  // Add expect statements for each client based on the service indicator / config used.
 };
 
 /**
