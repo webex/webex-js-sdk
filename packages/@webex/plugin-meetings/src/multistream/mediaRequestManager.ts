@@ -339,43 +339,45 @@ export class MediaRequestManager {
       if (mr.receiveSlots.length > 0) {
         const codecInfos: WcmeCodecInfo[] = [];
 
-        const h264PayloadType = this.getIngressPayloadTypeCallback(
-          mr.receiveSlots[0].mediaType,
-          MediaCodecMimeType.H264
-        );
-        if (h264PayloadType) {
-          const h264CodecInfo = WcmeCodecInfo.fromH264(
-            h264PayloadType,
-            new H264Codec(
-              mr.codecInfo.maxFs,
-              mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
-              this.getH264MaxMbps(mr),
-              mr.codecInfo.maxWidth,
-              mr.codecInfo.maxHeight
-            )
-          );
-          codecInfos.push(h264CodecInfo);
-        }
-
-        if (this.enableAV1) {
-          const av1PayloadType = this.getIngressPayloadTypeCallback(
+        if (mr.codecInfo) {
+          const h264PayloadType = this.getIngressPayloadTypeCallback(
             mr.receiveSlots[0].mediaType,
-            MediaCodecMimeType.AV1
+            MediaCodecMimeType.H264
           );
-          if (av1PayloadType) {
-            const av1EncodingParams = this.getAv1EncodingParams(mr);
-            const av1CodecInfo = WcmeCodecInfo.fromAv1(
-              av1PayloadType,
-              new AV1Codec(
-                av1EncodingParams.levelIdx,
-                av1EncodingParams.tier,
-                av1EncodingParams.maxWidth,
-                av1EncodingParams.maxHeight,
-                av1EncodingParams.maxPicSize,
-                av1EncodingParams.maxDecodeRate
+          if (h264PayloadType) {
+            const h264CodecInfo = WcmeCodecInfo.fromH264(
+              h264PayloadType,
+              new H264Codec(
+                mr.codecInfo.maxFs,
+                mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
+                this.getH264MaxMbps(mr),
+                mr.codecInfo.maxWidth,
+                mr.codecInfo.maxHeight
               )
             );
-            codecInfos.push(av1CodecInfo);
+            codecInfos.push(h264CodecInfo);
+          }
+
+          if (this.enableAV1) {
+            const av1PayloadType = this.getIngressPayloadTypeCallback(
+              mr.receiveSlots[0].mediaType,
+              MediaCodecMimeType.AV1
+            );
+            if (av1PayloadType) {
+              const av1EncodingParams = this.getAv1EncodingParams(mr);
+              const av1CodecInfo = WcmeCodecInfo.fromAv1(
+                av1PayloadType,
+                new AV1Codec(
+                  av1EncodingParams.levelIdx,
+                  av1EncodingParams.tier,
+                  av1EncodingParams.maxWidth,
+                  av1EncodingParams.maxHeight,
+                  av1EncodingParams.maxPicSize,
+                  av1EncodingParams.maxDecodeRate
+                )
+              );
+              codecInfos.push(av1CodecInfo);
+            }
           }
         }
 

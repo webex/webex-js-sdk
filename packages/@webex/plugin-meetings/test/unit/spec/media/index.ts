@@ -295,6 +295,7 @@ describe('createMediaConnection', () => {
         bundlePolicy: 'max-bundle',
         disableAudioMainDtx: false,
         disableAudioTwcc: false,
+        enableAV1SlidesSupport: false,
       },
       'meeting id'
     );
@@ -336,6 +337,7 @@ describe('createMediaConnection', () => {
       {
         iceServers: [],
         disableAudioTwcc: true,
+        enableAV1SlidesSupport: false,
       },
       'meeting id'
     );
@@ -359,6 +361,7 @@ describe('createMediaConnection', () => {
         doFullIce: true,
         stopIceGatheringAfterFirstRelayCandidate: true,
         disableAudioTwcc: true,
+        enableAV1SlidesSupport: false,
       },
       'meeting id'
     );
@@ -382,6 +385,7 @@ describe('createMediaConnection', () => {
         doFullIce: true,
         stopIceGatheringAfterFirstRelayCandidate: false,
         disableAudioTwcc: true,
+        enableAV1SlidesSupport: false,
       },
       'meeting id'
     );
@@ -418,6 +422,7 @@ describe('createMediaConnection', () => {
         {
           iceServers: [],
           disableAudioTwcc: true,
+          enableAV1SlidesSupport: false,
         },
         'meeting id'
       );
@@ -448,6 +453,7 @@ describe('createMediaConnection', () => {
       {
         iceServers: [],
         disableAudioTwcc: true,
+        enableAV1SlidesSupport: false,
       },
       'meeting id'
     );
@@ -477,6 +483,7 @@ describe('createMediaConnection', () => {
       {
         iceServers: [],
         disableAudioTwcc: true,
+        enableAV1SlidesSupport: false,
       },
       'meeting id'
     );
@@ -505,6 +512,7 @@ describe('createMediaConnection', () => {
       {
         iceServers: [],
         disableAudioTwcc: true,
+        enableAV1SlidesSupport: false,
       },
       'meeting id'
     );
@@ -591,6 +599,7 @@ describe('createMediaConnection', () => {
     {
       iceServers: [],
       disableAudioTwcc: true,
+      enableAV1SlidesSupport: false,
       enableInboundAudioLevelMonitoring: true,
     }
   );
@@ -602,6 +611,7 @@ describe('createMediaConnection', () => {
     {
       iceServers: [],
       disableAudioTwcc: true,
+      enableAV1SlidesSupport: false,
       enableInboundAudioLevelMonitoring: true,
     }
   );
@@ -613,6 +623,7 @@ describe('createMediaConnection', () => {
     {
       iceServers: [],
       disableAudioTwcc: true,
+      enableAV1SlidesSupport: false,
       doFullIce: true,
       stopIceGatheringAfterFirstRelayCandidate: undefined,
     }
