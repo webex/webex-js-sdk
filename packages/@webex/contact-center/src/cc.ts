@@ -39,7 +39,7 @@ import {
   METHODS,
 } from './constants';
 import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
-import {AGENT, WEB_RTC_PREFIX} from './services/constants';
+import {AGENT, RTD_SUBSCRIBE_API, SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
@@ -55,13 +55,20 @@ import {
 import {ConnectionLostDetails} from './services/core/websocket/types';
 import TaskManager from './services/task/TaskManager';
 import WebCallingService from './services/WebCallingService';
-import {ITask, TASK_EVENTS, TaskResponse, DialerPayload} from './services/task/types';
+import {
+  ITask,
+  TASK_EVENTS,
+  TaskResponse,
+  DialerPayload,
+  PreviewContactPayload,
+} from './services/task/types';
 import MetricsManager from './metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from './metrics/constants';
 import {Failure} from './services/core/GlobalTypes';
-import EntryPoint from './services/EntryPoint';
-import AddressBook from './services/AddressBook';
-import Queue from './services/Queue';
+import {EntryPoint} from './services/EntryPoint';
+import {AddressBook} from './services/AddressBook';
+import {Queue} from './services/Queue';
+import {ApiAIAssistant} from './services/ApiAiAssistant';
 import type {
   EntryPointListResponse,
   EntryPointSearchParams,
@@ -119,6 +126,7 @@ import type {
  *   - `task:established` - Task/call has been connected
  *   - `task:ended` - Task/call has ended
  *   - `task:error` - An error occurred during task handling
+ *   - `task:campaignPreviewReservation` - Campaign preview contact offered to agent
  *
  * @public
  *
@@ -320,6 +328,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private queue: Queue;
 
   /**
+   * API instance for AI Assistant operations such as transcript controls.
+   * @type {ApiAIAssistant}
+   * @public
+   */
+  public apiAIAssistant: ApiAIAssistant;
+
+  /**
    * Logger utility for Contact Center plugin
    * Provides consistent logging across the plugin
    * @type {LoggerProxy}
@@ -357,8 +372,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       this.webCallingService = new WebCallingService(this.$webex);
+      this.apiAIAssistant = new ApiAIAssistant(this.$webex);
       this.metricsManager = MetricsManager.getInstance({webex: this.$webex});
       this.taskManager = TaskManager.getTaskManager(
+        this.apiAIAssistant,
         this.services.contact,
         this.webCallingService,
         this.services.webSocketManager
@@ -370,8 +387,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.entryPoint = new EntryPoint(this.$webex);
       this.addressBook = new AddressBook(this.$webex, () => this.agentConfig?.addressBookId);
       this.queue = new Queue(this.$webex);
-
-      // Initialize logger
       LoggerProxy.initialize(this.$webex.logger);
     });
   }
@@ -407,6 +422,20 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   /**
+   * Handles campaign preview reservation events when a contact is offered to the agent
+   * @private
+   * @param {ITask} task The campaign reservation task
+   */
+  private handleCampaignPreviewReservation = (task: ITask) => {
+    // @ts-ignore
+    this.trigger(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, task);
+  };
+
+  private handleRTDWebsocketMessage = (payload: string) => {
+    this.taskManager.handleRealtimeWebsocketEvent(payload);
+  };
+
+  /**
    * Sets up event listeners for incoming tasks and task hydration
    * Subscribes to task events from the task manager
    * @private
@@ -415,6 +444,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
     this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
     this.taskManager.on(TASK_EVENTS.TASK_MERGED, this.handleTaskMerged);
+    this.taskManager.on(
+      TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+      this.handleCampaignPreviewReservation
+    );
   }
 
   /**
@@ -543,9 +576,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
       this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+      this.taskManager.off(
+        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+        this.handleCampaignPreviewReservation
+      );
       this.taskManager.unregisterIncomingCallEvent();
 
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
+      this.services.rtdWebSocketManager.off('message', this.handleRTDWebsocketMessage);
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
 
       if (
@@ -567,6 +605,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       if (!this.services.webSocketManager.isSocketClosed) {
         this.services.webSocketManager.close(false, 'Unregistering the SDK');
+      }
+
+      if (this.services.rtdWebSocketManager && !this.services.rtdWebSocketManager.isSocketClosed) {
+        this.services.rtdWebSocketManager.close(false, 'Unregistering the RTD websocket');
       }
 
       // Clear any cached agent configuration
@@ -697,6 +739,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     try {
       const data = (await this.services.webSocketManager.initWebSocket({
         body: this.getConnectionConfig(),
+        resource: SUBSCRIBE_API,
       })) as WelcomeEvent;
 
       const agentId = data.agentId;
@@ -712,6 +755,33 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.taskManager.setWrapupData(this.agentConfig.wrapUpData);
       this.taskManager.setAgentId(this.agentConfig.agentId);
       this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
+      this.apiAIAssistant.setAIFeatureFlags(this.agentConfig.aiFeature);
+
+      if (this.agentConfig.aiFeature?.realtimeTranscripts?.enable) {
+        LoggerProxy.info('Connecting to RTD websocket', {
+          module: CC_FILE,
+          method: METHODS.CONNECT_WEBSOCKET,
+        });
+
+        await this.services.rtdWebSocketManager
+          .initWebSocket({
+            body: this.getConnectionConfig(),
+            resource: RTD_SUBSCRIBE_API,
+          })
+          .then(() => {
+            LoggerProxy.log('RTD websocket connected successfully', {
+              module: CC_FILE,
+              method: METHODS.CONNECT_WEBSOCKET,
+            });
+            this.services.rtdWebSocketManager.on('message', this.handleRTDWebsocketMessage);
+          })
+          .catch((error) => {
+            LoggerProxy.error(`Error during RTD websocket setup: ${error}`, {
+              module: CC_FILE,
+              method: METHODS.CONNECT_WEBSOCKET,
+            });
+          });
+      }
 
       if (
         this.agentConfig.webRtcEnabled &&
@@ -785,7 +855,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
       ]);
 
-      if (data.loginOption === LoginOption.AGENT_DN && !isValidDialNumber(data.dialNumber)) {
+      const dialPlanEntries = this.agentConfig?.dialPlan?.dialPlanEntity ?? [];
+      if (
+        data.loginOption === LoginOption.AGENT_DN &&
+        !isValidDialNumber(data.dialNumber, dialPlanEntries)
+      ) {
         const error = new Error('INVALID_DIAL_NUMBER');
         // @ts-ignore - adding custom key to the error object
         error.details = {data: {reason: 'INVALID_DIAL_NUMBER'}} as Failure;
@@ -1505,6 +1579,79 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         ['behavioral', 'business', 'operational']
       );
       const {error: detailedError} = getErrorDetails(error, METHODS.START_OUTDIAL, CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Accepts a campaign preview contact, initiating the outbound call.
+   *
+   * When a campaign manager reserves a contact for an agent, the agent receives an
+   * `AgentOfferCampaignReservation` event. The agent can then accept the preview contact
+   * to initiate the outbound call.
+   *
+   * @param {PreviewContactPayload} payload - The preview contact payload containing interactionId and campaignId (campaign name, not UUID).
+   * @returns {Promise<TaskResponse>} Promise resolving with agent contact on success.
+   * @throws {Error} If the operation fails (network error, customer unavailable, etc.)
+   *
+   * @example
+   * ```typescript
+   * webex.cc.on('task:campaignPreviewReservation', async (task) => {
+   *   const { interactionId } = task.data;
+   *   // campaignId is the campaign name (e.g. "MyCampaign"), not a UUID
+   *   const campaignId = task.data.interaction.callProcessingDetails.campaignId;
+   *
+   *   const result = await webex.cc.acceptPreviewContact({ interactionId, campaignId });
+   * });
+   * ```
+   */
+  public async acceptPreviewContact(payload: PreviewContactPayload): Promise<TaskResponse> {
+    LoggerProxy.info('Accepting campaign preview contact', {
+      module: CC_FILE,
+      method: METHODS.ACCEPT_PREVIEW_CONTACT,
+    });
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_SUCCESS,
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_FAILED,
+      ]);
+
+      const result = await this.services.dialer.acceptPreviewContact({data: payload});
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+          interactionId: payload.interactionId,
+          campaignId: payload.campaignId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.log('Campaign preview contact accepted successfully', {
+        module: CC_FILE,
+        method: METHODS.ACCEPT_PREVIEW_CONTACT,
+        trackingId: result.trackingId,
+        interactionId: payload.interactionId,
+      });
+
+      return result;
+    } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_ACCEPT_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          interactionId: payload.interactionId,
+          campaignId: payload.campaignId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+      const {error: detailedError} = getErrorDetails(
+        error,
+        METHODS.ACCEPT_PREVIEW_CONTACT,
+        CC_FILE
+      );
       throw detailedError;
     }
   }

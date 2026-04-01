@@ -13,7 +13,7 @@ import {
 } from './constants';
 
 import {StrokeData, RequestData, IAnnotationChannel, CommandRequestBody} from './annotation.types';
-import {HTTP_VERBS, LOCUSEVENT} from '../constants';
+import {HTTP_VERBS, LOCUSEVENT, LLM_PRACTICE_SESSION} from '../constants';
 
 /**
  * @description Annotation to handle LLM and Mercury message and locus API
@@ -116,6 +116,12 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
       );
       // @ts-ignore
       this.webex.internal.llm.on('event:relay.event', this.eventDataProcessor, this);
+      // @ts-ignore
+      this.webex.internal.llm.on(
+        `event:relay.event:${LLM_PRACTICE_SESSION}`,
+        this.eventDataProcessor,
+        this
+      );
       this.hasSubscribedToEvents = true;
     }
   }
@@ -134,7 +140,11 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
 
       // @ts-ignore
       this.webex.internal.llm.off('event:relay.event', this.eventDataProcessor);
-
+      // @ts-ignore
+      this.webex.internal.llm.off(
+        `event:relay.event:${LLM_PRACTICE_SESSION}`,
+        this.eventDataProcessor
+      );
       this.hasSubscribedToEvents = false;
     }
   }
@@ -306,12 +316,19 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
    * @returns {void}
    */
   private publishEncrypted(encryptedContent: string, strokeData: StrokeData) {
+    // @ts-ignore
+    const {llm} = this.webex.internal;
+    const isPracticeSessionConnected = llm.isConnected(LLM_PRACTICE_SESSION);
+    const socket =
+      (isPracticeSessionConnected && llm.getSocket(LLM_PRACTICE_SESSION)) || llm.socket;
+    const binding =
+      (isPracticeSessionConnected && llm.getBinding(LLM_PRACTICE_SESSION)) || llm.getBinding();
     const data = {
       id: `${this.seqNum}`,
       type: 'publishRequest',
       recipients: {
         // @ts-ignore
-        route: this.webex.internal.llm.getBinding(),
+        route: binding,
       },
       headers: {
         to: strokeData.toUserId,
@@ -339,7 +356,7 @@ class AnnotationChannel extends WebexPlugin implements IAnnotationChannel {
     };
 
     // @ts-ignore
-    this.webex.internal.llm.socket.send(data);
+    socket.send(data);
     this.seqNum += 1;
   }
 }

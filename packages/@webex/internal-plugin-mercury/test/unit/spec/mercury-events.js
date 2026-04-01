@@ -38,14 +38,31 @@ describe('plugin-mercury', () => {
         },
         timestamp: Date.now(),
         trackingId: `suffix_${uuid.v4()}_${Date.now()}`,
+        sessionId: 'mercury-default-session',
       };
 
       beforeEach(() => {
         clock = FakeTimers.install({now: Date.now()});
       });
 
-      afterEach(() => {
+      afterEach(async () => {
         clock.uninstall();
+        // Clean up mercury socket and mockWebSocket
+        if (mercury && mercury.socket) {
+          try {
+            await mercury.socket.close();
+          } catch (e) {}
+        }
+        if (mockWebSocket && typeof mockWebSocket.close === 'function') {
+          mockWebSocket.close();
+        }
+        // Restore stubs
+        if (Socket.getWebSocketConstructor.restore) {
+          Socket.getWebSocketConstructor.restore();
+        }
+        if (socketOpenStub && socketOpenStub.restore) {
+          socketOpenStub.restore();
+        }
       });
 
       beforeEach(() => {
@@ -76,6 +93,7 @@ describe('plugin-mercury', () => {
         });
 
         mercury = webex.internal.mercury;
+        mercury.defaultSessionId = 'mercury-default-session';
       });
 
       afterEach(() => {
@@ -301,7 +319,7 @@ describe('plugin-mercury', () => {
                 })
                 .then(() => {
                   assert.called(offlineSpy);
-                  assert.calledWith(offlineSpy, {code, reason});
+                  assert.calledWith(offlineSpy, {code, reason, sessionId: 'mercury-default-session'});
                   switch (action) {
                     case 'close':
                       assert.called(permanentSpy);

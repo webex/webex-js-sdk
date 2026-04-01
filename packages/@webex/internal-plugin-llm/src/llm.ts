@@ -2,8 +2,14 @@
 
 import Mercury from '@webex/internal-plugin-mercury';
 
-import {LLM, DATA_CHANNEL_WITH_JWT_TOKEN} from './constants';
 // eslint-disable-next-line no-unused-vars
+import {
+  LLM,
+  DATA_CHANNEL_WITH_JWT_TOKEN,
+  AWARE_DATA_CHANNEL,
+  SUBSCRIPTION_AWARE_SUBCHANNELS_PARAM,
+  LLM_DEFAULT_SESSION,
+} from './constants';
 import {ILLMChannel, DataChannelTokenType} from './llm.types';
 
 export const config = {
@@ -42,23 +48,22 @@ export const config = {
  */
 export default class LLMChannel extends (Mercury as any) implements ILLMChannel {
   namespace = LLM;
-
+  defaultSessionId = LLM_DEFAULT_SESSION;
   /**
-   * If the LLM plugin has been registered and listening
-   * @instance
-   * @type {Boolean}
-   * @public
+   * Map to store connection-specific data for multiple LLM connections
+   * @private
+   * @type {Map<string, {webSocketUrl?: string; binding?: string; locusUrl?: string; datachannelUrl?: string}>}
    */
-
-  private webSocketUrl?: string;
-
-  private binding?: string;
-
-  private locusUrl?: string;
-
-  private datachannelUrl?: string;
-
-  private datachannelToken?: string;
+  private connections: Map<
+    string,
+    {
+      webSocketUrl?: string;
+      binding?: string;
+      locusUrl?: string;
+      datachannelUrl?: string;
+      datachannelToken?: string;
+    }
+  > = new Map();
 
   private datachannelTokens: Record<DataChannelTokenType, string> = {
     [DataChannelTokenType.Default]: undefined,
@@ -73,9 +78,14 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * Register to the websocket
    * @param {string} llmSocketUrl
    * @param {string} datachannelToken
+   * @param {string} sessionId - Connection identifier
    * @returns {Promise<void>}
    */
-  private register = async (llmSocketUrl: string, datachannelToken?: string): Promise<void> => {
+  private register = async (
+    llmSocketUrl: string,
+    datachannelToken?: string,
+    sessionId: string = LLM_DEFAULT_SESSION
+  ): Promise<void> => {
     const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
 
     return this.request({
@@ -88,11 +98,14 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
           : {},
     })
       .then((res: {body: {webSocketUrl: string; binding: string}}) => {
-        this.webSocketUrl = res.body.webSocketUrl;
-        this.binding = res.body.binding;
+        // Get or create connection data
+        const sessionData = this.connections.get(sessionId) || {};
+        sessionData.webSocketUrl = res.body.webSocketUrl;
+        sessionData.binding = res.body.binding;
+        this.connections.set(sessionId, sessionData);
       })
       .catch((error: any) => {
-        this.logger.error(`Error connecting to websocket: ${error}`);
+        this.logger.error(`Error connecting to websocket for ${sessionId}: ${error}`);
         throw error;
       });
   };
@@ -102,50 +115,86 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @param {string} locusUrl
    * @param {string} datachannelUrl
    * @param {string} datachannelToken
+   * @param {string} sessionId - Connection identifier
    * @returns {Promise<void>}
    */
   public registerAndConnect = (
     locusUrl: string,
     datachannelUrl: string,
-    datachannelToken?: string
+    datachannelToken?: string,
+    sessionId: string = LLM_DEFAULT_SESSION
   ): Promise<void> =>
-    this.register(datachannelUrl, datachannelToken).then(() => {
+    this.register(datachannelUrl, datachannelToken, sessionId).then(async () => {
       if (!locusUrl || !datachannelUrl) return undefined;
-      this.locusUrl = locusUrl;
-      this.datachannelUrl = datachannelUrl;
-      this.connect(this.webSocketUrl);
+
+      // Get or create connection data
+      const sessionData = this.connections.get(sessionId) || {};
+      sessionData.locusUrl = locusUrl;
+      sessionData.datachannelUrl = datachannelUrl;
+      sessionData.datachannelToken = datachannelToken;
+      this.connections.set(sessionId, sessionData);
+
+      const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
+
+      const connectUrl = isDataChannelTokenEnabled
+        ? LLMChannel.buildUrlWithAwareSubchannels(sessionData.webSocketUrl, AWARE_DATA_CHANNEL)
+        : sessionData.webSocketUrl;
+
+      return this.connect(connectUrl, sessionId);
     });
 
   /**
    * Tells if LLM socket is connected
+   * @param {string} sessionId - Connection identifier
    * @returns {boolean} connected
    */
-  public isConnected = (): boolean => this.connected;
+  public isConnected = (sessionId = LLM_DEFAULT_SESSION): boolean => {
+    const socket = this.getSocket(sessionId);
+
+    return socket ? socket.connected : false;
+  };
 
   /**
    * Tells if LLM socket is binding
+   * @param {string} sessionId - Connection identifier
    * @returns {string} binding
    */
-  public getBinding = (): string => this.binding;
+  public getBinding = (sessionId = LLM_DEFAULT_SESSION): string => {
+    const sessionData = this.connections.get(sessionId);
+
+    return sessionData?.binding;
+  };
 
   /**
    * Get Locus URL for the connection
+   * @param {string} sessionId - Connection identifier
    * @returns {string} locus Url
    */
-  public getLocusUrl = (): string => this.locusUrl;
+  public getLocusUrl = (sessionId = LLM_DEFAULT_SESSION): string => {
+    const sessionData = this.connections.get(sessionId);
+
+    return sessionData?.locusUrl;
+  };
 
   /**
    * Get data channel URL for the connection
+   * @param {string} sessionId - Connection identifier
    * @returns {string} data channel Url
    */
-  public getDatachannelUrl = (): string => this.datachannelUrl;
+  public getDatachannelUrl = (sessionId = LLM_DEFAULT_SESSION): string => {
+    const sessionData = this.connections.get(sessionId);
+
+    return sessionData?.datachannelUrl;
+  };
 
   /**
    * Get data channel token for the connection
    * @param {DataChannelTokenType} dataChannelTokenType
    * @returns {string} data channel token
    */
-  public getDatachannelToken = (dataChannelTokenType: DataChannelTokenType): string => {
+  public getDatachannelToken = (
+    dataChannelTokenType: DataChannelTokenType = DataChannelTokenType.Default
+  ): string => {
     return this.datachannelTokens[dataChannelTokenType];
   };
 
@@ -157,10 +206,22 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    */
   public setDatachannelToken = (
     datachannelToken: string,
-    dataChannelTokenType: DataChannelTokenType
+    dataChannelTokenType: DataChannelTokenType = DataChannelTokenType.Default
   ): void => {
     this.datachannelTokens[dataChannelTokenType] = datachannelToken;
   };
+
+  /**
+   * Resets all data‑channel tokens to their initial undefined values.
+   * Used when leaving or disconnecting from a meeting.
+   * @returns {void}
+   */
+  public resetDatachannelTokens() {
+    this.datachannelTokens = {
+      [DataChannelTokenType.Default]: undefined,
+      [DataChannelTokenType.PracticeSession]: undefined,
+    };
+  }
 
   /**
    * Set the handler used to refresh the DataChannel token
@@ -177,19 +238,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   }
 
   /**
-   * Disconnects websocket connection
-   * @param {{code: number, reason: string}} options - The disconnect option object with code and reason
-   * @returns {Promise<void>}
-   */
-  public disconnectLLM = (options: object): Promise<void> =>
-    this.disconnect(options).then(() => {
-      this.locusUrl = undefined;
-      this.datachannelUrl = undefined;
-      this.binding = undefined;
-      this.webSocketUrl = undefined;
-    });
-
-  /**
    * Refresh the data channel token using the injected handler.
    * Logs a descriptive error if the handler is missing or fails.
    *
@@ -197,9 +245,11 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    */
   public async refreshDataChannelToken() {
     if (!this.refreshHandler) {
-      const error = new Error('LLM refreshHandler is not set');
-      this.logger.error(`Error refreshing DataChannel token: ${error.message}`);
-      throw error;
+      this.logger.warn(
+        'llm#refreshDataChannelToken --> LLM refreshHandler is not set, skipping token refresh'
+      );
+
+      return null;
     }
 
     try {
@@ -207,10 +257,56 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
       return res;
     } catch (error: any) {
-      this.logger.error(`Error refreshing DataChannel token: ${error}`);
-      throw error;
+      this.logger.warn(
+        `llm#refreshDataChannelToken --> DataChannel token refresh failed (likely locus changed or participant left): ${
+          error?.message || error
+        }`
+      );
+
+      return null;
     }
   }
+
+  /**
+   * Disconnects websocket connection
+   * @param {{code: number, reason: string}} options - The disconnect option object with code and reason
+   * @param {string} sessionId - Connection identifier
+   * @returns {Promise<void>}
+   */
+  public disconnectLLM = (
+    options: {code: number; reason: string},
+    sessionId: string = LLM_DEFAULT_SESSION
+  ): Promise<void> =>
+    this.disconnect(options, sessionId).then(() => {
+      // Clean up sessions data
+      this.connections.delete(sessionId);
+    });
+
+  /**
+   * Disconnects all LLM websocket connections
+   * @param {{code: number, reason: string}} options - The disconnect option object with code and reason
+   * @returns {Promise<void>}
+   */
+  public disconnectAllLLM = (options?: {code: number; reason: string}): Promise<void> =>
+    this.disconnectAll(options).then(() => {
+      // Clean up all connection data
+      this.connections.clear();
+    });
+
+  /**
+   * Get all active LLM connections
+   * @returns {Map} Map of sessionId to session data
+   */
+  public getAllConnections = (): Map<
+    string,
+    {
+      webSocketUrl?: string;
+      binding?: string;
+      locusUrl?: string;
+      datachannelUrl?: string;
+      datachannelToken?: string;
+    }
+  > => new Map(this.connections);
 
   /**
    * Returns true if  data channel token is enabled, false otherwise
@@ -220,4 +316,19 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     // @ts-ignore
     return this.webex.internal.feature.getFeature('developer', DATA_CHANNEL_WITH_JWT_TOKEN);
   }
+
+  /**
+   * Builds a WebSocket URL with the `subscriptionAwareSubchannels` query parameter.
+   *
+   * @param {string} baseUrl - The original WebSocket URL.
+   * @param {string[]} subchannels - List of subchannels to declare as subscription-aware.
+   * @returns {string} The final URL with updated query parameters.
+   */
+
+  public static buildUrlWithAwareSubchannels = (baseUrl: string, subchannels: string[]) => {
+    const urlObj = new URL(baseUrl);
+    urlObj.searchParams.set(SUBSCRIPTION_AWARE_SUBCHANNELS_PARAM, subchannels.join(','));
+
+    return urlObj.toString();
+  };
 }

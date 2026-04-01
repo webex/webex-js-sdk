@@ -32,6 +32,7 @@ interface IInMeetingActions {
   canLowerAllHands?: boolean;
   canLowerSomeoneElsesHand?: boolean;
   bothLeaveAndEndMeetingAvailable?: boolean;
+  requireHostEndMeetingBeforeLeave?: boolean;
   canEnableClosedCaption?: boolean;
   canStartTranscribing?: boolean;
   canStopTranscribing?: boolean;
@@ -118,6 +119,7 @@ interface IInMeetingActions {
   canEnablePollingQA?: boolean;
   canDisablePollingQA?: boolean;
   canAttendeeRequestAiAssistantEnabled?: boolean;
+  isAttendeeRequestAiAssistantDeclinedAll?: boolean;
 }
 
 /**
@@ -169,6 +171,8 @@ export default class InMeetingActions implements IInMeetingActions {
   canLowerSomeoneElsesHand = null;
 
   bothLeaveAndEndMeetingAvailable = null;
+
+  requireHostEndMeetingBeforeLeave = null;
 
   canEnableClosedCaption = null;
 
@@ -340,6 +344,8 @@ export default class InMeetingActions implements IInMeetingActions {
 
   canAttendeeRequestAiAssistantEnabled = null;
 
+  isAttendeeRequestAiAssistantDeclinedAll = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -367,6 +373,7 @@ export default class InMeetingActions implements IInMeetingActions {
     canLowerAllHands: this.canLowerAllHands,
     canLowerSomeoneElsesHand: this.canLowerSomeoneElsesHand,
     bothLeaveAndEndMeetingAvailable: this.bothLeaveAndEndMeetingAvailable,
+    requireHostEndMeetingBeforeLeave: this.requireHostEndMeetingBeforeLeave,
     canEnableClosedCaption: this.canEnableClosedCaption,
     canStartTranscribing: this.canStartTranscribing,
     canStopTranscribing: this.canStopTranscribing,
@@ -452,6 +459,7 @@ export default class InMeetingActions implements IInMeetingActions {
     canEnablePollingQA: this.canEnablePollingQA,
     canDisablePollingQA: this.canDisablePollingQA,
     canAttendeeRequestAiAssistantEnabled: this.canAttendeeRequestAiAssistantEnabled,
+    isAttendeeRequestAiAssistantDeclinedAll: this.isAttendeeRequestAiAssistantDeclinedAll,
   });
 
   /**
