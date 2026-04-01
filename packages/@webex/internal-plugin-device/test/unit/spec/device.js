@@ -20,10 +20,19 @@ describe('plugin-device', () => {
     let device;
 
     beforeEach(() => {
+      const fakeStorage = {};
       webex = new MockWebex({
         children: {
           device: Device,
         },
+        getWindow: () => ({
+          sessionStorage: {
+            setItem: (key, value) => {
+              fakeStorage[key] = value;
+            },
+            getItem: (key) => fakeStorage[key],
+          },
+        }),
       });
 
       const clonedDTO = cloneDeep(dto);
@@ -101,6 +110,54 @@ describe('plugin-device', () => {
             assert.called(device.checkNetworkReachability);
             assert.isTrue(device.isReachabilityChecked);
           });
+        });
+      });
+
+      describe('when the config is changed', () => {
+        it("should unset the 'etag' if debug features are set", () => {
+          device.set('etag', 'etag-value');
+          device.config.debugFeatureTogglesKey = 'debug-feature-toggles';
+
+          webex.getWindow().sessionStorage.setItem(
+            'debug-feature-toggles',
+            JSON.stringify({
+              test_feature: true,
+            })
+          );
+          assert.equal(device.etag, 'etag-value');
+
+          webex.trigger('change:config');
+          assert.isUndefined(device.etag);
+        });
+
+        it("should not unset the 'etag' if debug features are not set", () => {
+          device.set('etag', 'etag-value');
+          device.config.debugFeatureTogglesKey = 'debug-feature-toggles';
+
+          assert.equal(device.etag, 'etag-value');
+
+          webex.trigger('change:config');
+          assert.equal(device.etag, 'etag-value');
+        });
+
+        it("should only unset the 'etag' the first time the event is sent", () => {
+          device.set('etag', 'etag-value');
+          device.config.debugFeatureTogglesKey = 'debug-feature-toggles';
+
+          webex.getWindow().sessionStorage.setItem(
+            'debug-feature-toggles',
+            JSON.stringify({
+              test_feature: true,
+            })
+          );
+          assert.equal(device.etag, 'etag-value');
+
+          webex.trigger('change:config');
+          assert.isUndefined(device.etag);
+
+          device.set('etag', 'etag-value');
+          webex.trigger('change:config');
+          assert.equal(device.etag, 'etag-value');
         });
       });
     });
@@ -424,7 +481,6 @@ describe('plugin-device', () => {
 
         assert.calledOnce(device.processRegistrationSuccess);
       });
-
     });
 
     describe('deleteDevices()', () => {
@@ -443,7 +499,7 @@ describe('plugin-device', () => {
         }
       });
 
-      ['WEB', 'WEBCLIENT'].forEach(deviceType => {
+      ['WEB', 'WEBCLIENT'].forEach((deviceType) => {
         it(`should delete correct number of devices for ${deviceType}`, async () => {
           setup(deviceType);
           const response = {
@@ -457,8 +513,8 @@ describe('plugin-device', () => {
                 {url: 'url6', modificationTime: '2023-09-50T10:00:00Z', deviceType},
                 {url: 'url7', modificationTime: '2023-09-30T10:00:00Z', deviceType},
                 {url: 'url8', modificationTime: '2023-08-30T10:00:00Z', deviceType},
-              ]
-            }
+              ],
+            },
           };
 
           requestStub = sinon.stub(device, 'request');
@@ -469,12 +525,12 @@ describe('plugin-device', () => {
 
           const expectedDeletions = ['url8', 'url7', 'url1'];
 
-          expectedDeletions.forEach(url => {
+          expectedDeletions.forEach((url) => {
             assert(requestStub.calledWith(sinon.match({uri: url, method: 'DELETE'})));
           });
 
           const notDeletedUrls = ['url2', 'url3', 'url5', 'url6', 'url4'];
-          notDeletedUrls.forEach(url => {
+          notDeletedUrls.forEach((url) => {
             assert(requestStub.neverCalledWith(sinon.match({uri: url, method: 'DELETE'})));
           });
         });
@@ -487,8 +543,8 @@ describe('plugin-device', () => {
             devices: [
               {url: 'url1', modificationTime: '2023-10-01T10:00:00Z', deviceType: 'WEB'},
               {url: 'url2', modificationTime: '2023-10-02T10:00:00Z', deviceType: 'WEB'},
-            ]
-          }
+            ],
+          },
         };
 
         requestStub = sinon.stub(device, 'request');
@@ -870,11 +926,17 @@ describe('plugin-device', () => {
       it('calls delete devices when errors with User has excessive device registrations', async () => {
         setup();
         sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
-        const deleteDeviceSpy = sinon.stub(device, 'deleteDevices').callsFake(() => Promise.resolve());
+        const deleteDeviceSpy = sinon
+          .stub(device, 'deleteDevices')
+          .callsFake(() => Promise.resolve());
         const registerStub = sinon.stub(device, '_registerInternal');
-        
-        registerStub.onFirstCall().rejects({body: {message: 'User has excessive device registrations'}});
-        registerStub.onSecondCall().callsFake(() => Promise.resolve({exampleKey: 'example response value',}));
+
+        registerStub
+          .onFirstCall()
+          .rejects({body: {message: 'User has excessive device registrations'}});
+        registerStub
+          .onSecondCall()
+          .callsFake(() => Promise.resolve({exampleKey: 'example response value'}));
 
         const result = await device.register();
 
@@ -889,8 +951,12 @@ describe('plugin-device', () => {
         setup();
 
         sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
-        const deleteDeviceSpy = sinon.stub(device, 'deleteDevices').callsFake(() => Promise.resolve());
-        const registerStub = sinon.stub(device, '_registerInternal').rejects(new Error('some error'));
+        const deleteDeviceSpy = sinon
+          .stub(device, 'deleteDevices')
+          .callsFake(() => Promise.resolve());
+        const registerStub = sinon
+          .stub(device, '_registerInternal')
+          .rejects(new Error('some error'));
 
         try {
           await device.register({deleteFlag: true});
@@ -940,7 +1006,7 @@ describe('plugin-device', () => {
         resolve({
           body: {
             exampleKey: 'example response value',
-          }
+          },
         });
 
         await resultPromise;
@@ -976,7 +1042,6 @@ describe('plugin-device', () => {
 
         assert.calledOnce(device.processRegistrationSuccess);
       });
-
 
       it('checks that submitInternalEvent gets called with internal.register.device.response on success', async () => {
         setup();
@@ -1129,7 +1194,7 @@ describe('plugin-device', () => {
 
       it('works when request returns 404 when already registered', async () => {
         setup();
-        
+
         sinon.stub(device, 'canRegister').callsFake(() => Promise.resolve());
 
         const requestStub = sinon.stub(device, 'request');
@@ -1145,7 +1210,52 @@ describe('plugin-device', () => {
       });
     });
 
+    describe('getDebugFeatures()', () => {
+      it('returns empty list if debugFeatureTogglesKey is not set', () => {
+        assert.isUndefined(device.config.debugFeatureTogglesKey);
+        const debugFeatures = device.getDebugFeatures();
+
+        assert.deepEqual(debugFeatures, []);
+      });
+
+      it('returns empty list if no debug features in session storage', () => {
+        device.config.debugFeatureTogglesKey = 'debug-feature-toggles';
+        assert.isUndefined(webex.getWindow().sessionStorage.getItem('debug-feature-toggles'));
+        const debugFeatures = device.getDebugFeatures();
+
+        assert.deepEqual(debugFeatures, []);
+      });
+
+      it('returns debug features from session storage', () => {
+        device.config.debugFeatureTogglesKey = 'debug-feature-toggles';
+        webex.getWindow().sessionStorage.setItem(
+          'debug-feature-toggles',
+          JSON.stringify({
+            feature_to_debug_enable: true,
+            feature_to_debug_disable: false,
+          })
+        );
+        const debugFeatures = device.getDebugFeatures();
+
+        assert.equal(debugFeatures.length, 2);
+
+        assert.properties(debugFeatures[0], ['key', 'val', 'mutable', 'lastModified']);
+        assert.equal(debugFeatures[0].key, 'feature_to_debug_enable');
+        assert.equal(debugFeatures[0].val, 'true');
+        assert.isTrue(debugFeatures[0].mutable);
+        assert.isISODate(debugFeatures[0].lastModified);
+
+        assert.properties(debugFeatures[1], ['key', 'val', 'mutable', 'lastModified']);
+        assert.equal(debugFeatures[1].key, 'feature_to_debug_disable');
+        assert.equal(debugFeatures[1].val, 'false');
+        assert.isTrue(debugFeatures[1].mutable);
+        assert.isISODate(debugFeatures[1].lastModified);
+      });
+    });
+
     describe('#processRegistrationSuccess()', () => {
+      const initialDTOFeatureCounts = {developer: 2, entitlement: 1, user: 1};
+
       const getClonedDTO = (overrides) => {
         const clonedDTO = cloneDeep(dto);
 
@@ -1153,6 +1263,22 @@ describe('plugin-device', () => {
           developer: [
             {
               key: '1',
+              type: 'boolean',
+              val: 'true',
+              value: true,
+              mutable: true,
+              lastModified: '2015-06-29T20:02:48.033Z',
+            },
+            {
+              key: 'feature_to_debug_enable',
+              type: 'boolean',
+              val: 'false',
+              value: false,
+              mutable: true,
+              lastModified: '2015-06-29T20:02:48.033Z',
+            },
+            {
+              key: 'feature_to_debug_disable',
               type: 'boolean',
               val: 'true',
               value: true,
@@ -1182,16 +1308,21 @@ describe('plugin-device', () => {
         return clonedDTO;
       };
 
+      const checkFeatureTypeCounts = (expectedCounts) => {
+        Object.entries(expectedCounts).forEach(([type, expectedCount]) => {
+          assert.equal(device.features[type].length, expectedCount);
+        });
+      };
+
       const checkFeatureNotPresent = (type, key) => {
         assert.isUndefined(device.features[type].get(key));
       };
 
       const checkFeature = (type, key, expectedValue) => {
-        assert.equal(device.features[type].length, 1);
         assert.deepEqual(device.features[type].get(key).get('value'), expectedValue);
       };
 
-      it('features are set correctly if etag not in headers', () => {
+      it('features are set correctly if etag not in headers, no debug features', () => {
         const clonedDTO = getClonedDTO();
 
         const response = {
@@ -1201,13 +1332,61 @@ describe('plugin-device', () => {
           headers: {},
         };
 
+        checkFeatureTypeCounts(initialDTOFeatureCounts);
         checkFeatureNotPresent('developer', '1');
+        checkFeatureNotPresent('developer', 'feature_to_debug_enable');
+        checkFeatureNotPresent('developer', 'feature_to_debug_disable');
+        checkFeatureNotPresent('developer', 'feature_debug_only');
         checkFeatureNotPresent('entitlement', '2');
         checkFeatureNotPresent('user', '3');
 
         device.processRegistrationSuccess(response);
 
+        checkFeatureTypeCounts({developer: 3, entitlement: 1, user: 1});
         checkFeature('developer', '1', true);
+        checkFeature('developer', 'feature_to_debug_enable', false);
+        checkFeature('developer', 'feature_to_debug_disable', true);
+        checkFeatureNotPresent('developer', 'feature_debug_only');
+        checkFeature('entitlement', '2', true);
+        checkFeature('user', '3', true);
+      });
+
+      it('features are set correctly if etag not in headers, debug features in session storage', () => {
+        const clonedDTO = getClonedDTO();
+
+        const response = {
+          body: {
+            ...clonedDTO,
+          },
+          headers: {},
+        };
+
+        device.config.debugFeatureTogglesKey = 'debug-feature-toggles';
+
+        webex.getWindow().sessionStorage.setItem(
+          'debug-feature-toggles',
+          JSON.stringify({
+            feature_to_debug_enable: true,
+            feature_to_debug_disable: false,
+            feature_debug_only: true,
+          })
+        );
+
+        checkFeatureTypeCounts(initialDTOFeatureCounts);
+        checkFeatureNotPresent('developer', '1');
+        checkFeatureNotPresent('developer', 'feature_to_debug_enable');
+        checkFeatureNotPresent('developer', 'feature_to_debug_disable');
+        checkFeatureNotPresent('developer', 'feature_debug_only');
+        checkFeatureNotPresent('entitlement', '2');
+        checkFeatureNotPresent('user', '3');
+
+        device.processRegistrationSuccess(response);
+
+        checkFeatureTypeCounts({developer: 4, entitlement: 1, user: 1});
+        checkFeature('developer', '1', true);
+        checkFeature('developer', 'feature_to_debug_enable', true);
+        checkFeature('developer', 'feature_to_debug_disable', false);
+        checkFeature('developer', 'feature_debug_only', true);
         checkFeature('entitlement', '2', true);
         checkFeature('user', '3', true);
       });
@@ -1226,12 +1405,17 @@ describe('plugin-device', () => {
           },
         };
 
+        checkFeatureTypeCounts(initialDTOFeatureCounts);
         checkFeatureNotPresent('developer', '1');
+        checkFeatureNotPresent('developer', 'feature_to_debug_enable');
+        checkFeatureNotPresent('developer', 'feature_to_debug_disable');
+        checkFeatureNotPresent('developer', 'feature_debug_only');
         checkFeatureNotPresent('entitlement', '2');
         checkFeatureNotPresent('user', '3');
 
         device.processRegistrationSuccess(response);
 
+        checkFeatureTypeCounts(initialDTOFeatureCounts.developer);
         checkFeatureNotPresent('developer', '1');
         checkFeature('entitlement', '2', true);
         checkFeature('user', '3', true);
@@ -1254,12 +1438,21 @@ describe('plugin-device', () => {
           },
         };
 
+        checkFeatureTypeCounts(initialDTOFeatureCounts);
         checkFeatureNotPresent('developer', '1');
+        checkFeatureNotPresent('developer', 'feature_to_debug_enable');
+        checkFeatureNotPresent('developer', 'feature_to_debug_disable');
+        checkFeatureNotPresent('developer', 'feature_debug_only');
         checkFeatureNotPresent('entitlement', '2');
         checkFeatureNotPresent('user', '3');
 
         device.processRegistrationSuccess(response);
 
+        checkFeatureTypeCounts({
+          developer: initialDTOFeatureCounts.developer,
+          entitlement: 1,
+          user: 1,
+        });
         checkFeatureNotPresent('developer', '1');
         checkFeature('entitlement', '2', true);
         checkFeature('user', '3', true);
@@ -1282,12 +1475,17 @@ describe('plugin-device', () => {
           },
         };
 
+        checkFeatureTypeCounts(initialDTOFeatureCounts);
         checkFeatureNotPresent('developer', '1');
+        checkFeatureNotPresent('developer', 'feature_to_debug_enable');
+        checkFeatureNotPresent('developer', 'feature_to_debug_disable');
+        checkFeatureNotPresent('developer', 'feature_debug_only');
         checkFeatureNotPresent('entitlement', '2');
         checkFeatureNotPresent('user', '3');
 
         device.processRegistrationSuccess(response);
 
+        checkFeatureTypeCounts({developer: 3, entitlement: 1, user: 1});
         checkFeature('developer', '1', true);
         checkFeature('entitlement', '2', true);
         checkFeature('user', '3', true);
@@ -1336,6 +1534,7 @@ describe('plugin-device', () => {
         device.processRegistrationSuccess(newResponse);
 
         // only the entitlement and user features should have been changed to false
+        checkFeatureTypeCounts({developer: 3, entitlement: 1, user: 1});
         checkFeature('developer', '1', true);
         checkFeature('entitlement', '2', false);
         checkFeature('user', '3', false);

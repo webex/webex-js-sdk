@@ -88,6 +88,7 @@ export default {
       enableAdhocMeetings: true,
       enableTcpReachability: false,
       enableTlsReachability: false,
+      storeLocusHashTreeEventsForDebugging: false,
     },
     degradationPreferences: {
       maxMacroblocksLimit: 8192,
