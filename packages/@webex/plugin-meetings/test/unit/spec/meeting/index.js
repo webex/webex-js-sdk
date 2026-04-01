@@ -11006,6 +11006,7 @@ describe('plugin-meetings', () => {
           meeting.annotation.locusUrlUpdate = sinon.stub();
           meeting.simultaneousInterpretation.locusUrlUpdate = sinon.stub();
           meeting.webinar.locusUrlUpdate = sinon.stub();
+          meeting.aiEnableRequest.locusUrlUpdate = sinon.stub();
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -11020,6 +11021,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl, false);
           assert.calledWith(meeting.simultaneousInterpretation.locusUrlUpdate, newLocusUrl);
           assert.calledWith(meeting.webinar.locusUrlUpdate, newLocusUrl);
+          assert.calledWith(meeting.aiEnableRequest.locusUrlUpdate, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
           assert(meeting.locusId, '12345');
 
@@ -13121,7 +13123,9 @@ describe('plugin-meetings', () => {
             info: {datachannelUrl: 'a datachannel url'},
           };
 
-          webex.internal.llm.getDatachannelToken.withArgs('llm-default-session').returns('token-123');
+          webex.internal.llm.getDatachannelToken
+            .withArgs('llm-default-session')
+            .returns('token-123');
 
           await meeting.updateLLMConnection();
 

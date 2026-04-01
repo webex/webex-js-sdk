@@ -934,7 +934,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.simultaneousInterpretation = new SimultaneousInterpretation({}, {parent: this.webex});
 
     // @ts-ignore
-    this.aiEnableRequest = new AIEnableRequest({}, {parent: this.webex});
+    this.aiEnableRequest = new AIEnableRequest({locusUrl: this.locusUrl}, {parent: this.webex});
 
     /**
      * @instance
@@ -3458,6 +3458,7 @@ export default class Meeting extends StatelessWebexPlugin {
         this.breakouts.locusUrlUpdate(url);
         this.simultaneousInterpretation.locusUrlUpdate(url);
         this.annotation.locusUrlUpdate(url);
+        this.aiEnableRequest.locusUrlUpdate(url);
         this.locusUrl = url;
         this.locusId = this.locusUrl?.split('/').pop();
         this.recordingController.setLocusUrl(this.locusUrl);
