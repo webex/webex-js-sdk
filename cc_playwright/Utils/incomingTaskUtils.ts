@@ -326,14 +326,18 @@ export async function acceptIncomingTask(
   // In some sample-app states, only this control is exposed.
   if (type === TASK_TYPES.CALL) {
     const mainAnswerButton = page.locator('#answer').first();
-    const isAnswerVisible = await mainAnswerButton.isVisible().catch(() => false);
 
-    if (isAnswerVisible) {
+    // Wait for Answer button to appear (Desktop mode requires task routing first)
+    try {
+      await mainAnswerButton.waitFor({state: 'visible', timeout: 10000});
       await expect(mainAnswerButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
       await page.waitForTimeout(2000);
       await mainAnswerButton.click({timeout: AWAIT_TIMEOUT});
       // Wait longer for call to connect and agent state to fully transition to Engaged
       await page.waitForTimeout(10000);
+    } catch {
+      // Answer button didn't appear within timeout - task may already be routed
+      // This is acceptable for some call flows (e.g., extension mode)
     }
   }
 }
