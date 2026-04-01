@@ -62,12 +62,12 @@ Handlebars.registerHelper('json', function(context, package, version) {
 });
 
 Handlebars.registerHelper('github_linking', function(string, type) {
+    const escaped = string.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     switch(type){
         case 'hash':
-            return `<a href='${github_base_url}commit/${string}' target='_blank'>${string}</a>`;
+            return `<a href='${github_base_url}commit/${escaped}' target='_blank'>${escaped}</a>`;
         case 'message':
-            // if commit message has a pr number, replace that pr number with pr anchor link and send back the transformed commit message
-            return string.replace(/#(\d+)/g, `<a href="${github_base_url}pull/$1" target="_blank">#$1</a>`);
+            return escaped.replace(/#(\d+)/g, `<a href="${github_base_url}pull/$1" target="_blank">#$1</a>`);
     }
 });
 
@@ -970,15 +970,13 @@ const getStableVersionsBetween = (stableA, stableB) => {
 // Is this version a pre-release of the given stable?
 // e.g. isPreRelease("3.5.0-next.1", "3.5.0") → true
 //      isPreRelease("3.5.0",         "3.5.0") → false
-const isPreRelease = (version, stableVersion) => {
-    const escaped = stableVersion.replace(/\./g, '\\.');
-    return new RegExp(`^${escaped}-`).test(version);
-};
+const isPreRelease = (version, stableVersion) =>
+    version.startsWith(stableVersion + '-');
 
 // Is this an exact stable version (no pre-release suffix)?
 // e.g. isExactStable("3.6.0")        → true
 //      isExactStable("3.6.0-next.1") → false
-const isExactStable = (version) => /^\d+\.\d+\.\d+$/.test(version);//
+const isExactStable = (version) => /^\d+\.\d+\.\d+$/.test(version);
 
 // Extract numeric suffix: "3.5.0-next.5" → 5,  "3.5.0-multipleLLM.3" → 3
 const getPreReleaseNum = (version) => {
@@ -1011,9 +1009,8 @@ const collectCommitsFromStable = (packageData, stableVersion, versionA, versionB
 
     if (position === 'start') {
         if (versionA === stableVersion) {
-            //  both versionA and versionB are exact stables → skip base entirely
-            // versionA is stable but versionB is a pre-release → pick stable commits
-            versionsToUse = isExactStable(versionB) ? [] : [stableVersion];
+            // versionA is the stable itself → include stable commits
+            versionsToUse = [stableVersion];
         } else {
             const tagA = getPreReleaseTag(versionA, stableVersion);
             const numA = getPreReleaseNum(versionA);
@@ -1023,19 +1020,13 @@ const collectCommitsFromStable = (packageData, stableVersion, versionA, versionB
                 const num = getPreReleaseNum(v);
                 // Same tag (e.g. "next"): include if num >= numA
                 // Different tag (e.g. "multipleLLM"): include all — alternate pre-release streams also ship in the final stable
-                console.log('tag', tag, 'tagA', tagA);
-                console.log('num', num, 'numA', numA);
                 return tag === tagA ? num >= numA : true;
             });
         }
 
     } else if (position === 'middle') {
-        // both versionA and versionB are exact stables → skip all intermediates
-        // take ALL pre-releases of this stable, skip exact stable entry
-        versionsToUse = (isExactStable(versionA) && isExactStable(versionB))
-            ? []
-            : all.filter(v => isPreRelease(v, stableVersion));
-
+        // Take ALL pre-releases of this stable, skip exact stable entry
+        versionsToUse = all.filter(v => isPreRelease(v, stableVersion));
     } else if (position === 'end') {
         if (versionB === stableVersion) {
             versionsToUse = [stableVersion];
@@ -1047,9 +1038,7 @@ const collectCommitsFromStable = (packageData, stableVersion, versionA, versionB
                 const tag = getPreReleaseTag(v, stableVersion);
                 const num = getPreReleaseNum(v);
                 // Same tag: include if num <= numB
-                // Different tag: include all-— alternate pre-release streams also ship in the final stable
-                console.log('tag', tag, 'tagB', tagB);
-                console.log('num', num, 'numB', numB);
+                // Different tag: include all - alternate pre-release streams also ship in the final stable
                 return tag === tagB ? num <= numB : true;
             });
         }
@@ -1101,12 +1090,25 @@ const collectCommitsFromStable = (packageData, stableVersion, versionA, versionB
 
 /**
  * Walk every stable version between stableA and stableB, fetch its log file,
- * and collect commits per the rules in normal-text.txt.
  * Returns a flat, deduplicated array of commit objects.
  */
 const collectCommitsAcrossStables = async (stableA, stableB, packageName, versionA, versionB, changelogA, changelogB) => {
     const stables = getStableVersionsBetween(stableA, stableB);
     if (stables.length === 0) return { commitsBetween: [], stableVersionsTraversed: [] };
+   // Pre-fetch all intermediate changelogs in parallel
+  const intermediateStables = stables.filter(s => s !== stableA && s !== stableB);
+  const fetched = await Promise.all(
+      intermediateStables.map(async (stable) => {
+          try {
+              const res = await fetch(versionPaths[stable]);
+              return [stable, res.ok ? await res.json() : null];
+          } catch {
+              return [stable, null];
+          }
+      })
+  );
+  const changelogMap = new Map(fetched);
+
 
     const all = new Map();
     const traversed = [];
@@ -1120,14 +1122,8 @@ const collectCommitsAcrossStables = async (stableA, stableB, packageName, versio
         } else if (stable === stableB) {
             changelog = changelogB;
         } else {
-            try {
-                const res = await fetch(versionPaths[stable]);
-                if (!res.ok) continue;
-                changelog = await res.json();
-            } catch (e) {
-                console.warn(`Could not fetch changelog for ${stable}:`, e);
-                continue;
-            }
+            changelog = changelogMap.get(stable);
+            if (!changelog) continue;
         }
 
         const pkgData = changelog[packageName];
@@ -1452,12 +1448,22 @@ const handleStableVersionChange = async () => {
             let changelogA, changelogB;
             if (stableA === stableB) {
                 // Same stable — fetch once and reuse for both sides
-                changelogA = await fetch(versionPaths[stableA]).then(res => res.json());
+                changelogA = await fetch(versionPaths[stableA]).then(res =>{
+                    if (!res.ok) throw new Error(`Failed to Fetch ${res.status}`);
+                    return res.json();
+                });
+
                 changelogB = changelogA;
             } else {
                 [changelogA, changelogB] = await Promise.all([
-                    fetch(versionPaths[stableA]).then(res => res.json()),
-                    fetch(versionPaths[stableB]).then(res => res.json())
+                    fetch(versionPaths[stableA]).then(res =>{
+                        if (!res.ok) throw new Error(`Failed to Fetch ${res.status}`);
+                        return res.json();
+                    }),
+                    fetch(versionPaths[stableB]).then(res =>{
+                        if (!res.ok) throw new Error(`Failed to Fetch ${res.status}`);
+                        return res.json();
+                    })
                 ]);
             }
 
@@ -1675,19 +1681,24 @@ const setupComparisonEventListeners = () => {
  */
 const loadEnhancedComparisonFromURL = async (enhancedParams) => {
     switchToComparisonViewMode();
-
-    await new Promise(resolve => setTimeout(resolve, 300));
-
     if (versionASelect) versionASelect.value = enhancedParams.stableA;
     if (versionBSelect) versionBSelect.value = enhancedParams.stableB;
     await handleStableVersionChange();
-
-    await new Promise(resolve => setTimeout(resolve, 300));
+    if (!comparisonState.cachedChangelogA || !comparisonState.cachedChangelogB) {
+        console.error('Changelog not found');
+        return;
+     }
+     // Validate version order for hand-crafted URLs
+    if (enhancedParams.stableA !== enhancedParams.stableB) {
+        const sorted = sortStableVersions([enhancedParams.stableA, enhancedParams.stableB]);
+        if (sorted[0] !== enhancedParams.stableA) {
+            console.error('Invalid URL: base version must be older than target version');
+            return;
+        }
+    }
 
     if (comparisonPackageSelect) comparisonPackageSelect.value = enhancedParams.packageName;
     handlePackageChange();
-
-    await new Promise(resolve => setTimeout(resolve, 300));
 
     if(versionAPrereleaseSelect) versionAPrereleaseSelect.value = enhancedParams.versionA;
     if(versionBPrereleaseSelect) versionBPrereleaseSelect.value = enhancedParams.versionB;
