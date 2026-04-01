@@ -494,8 +494,8 @@ const Device = WebexPlugin.extend({
             `${devices.length} devices remaining (limit: ${MAX_REGISTERED_DEVICES})`
         );
 
-        if (devices.length < MAX_REGISTERED_DEVICES) {
-          this.logger.info('device: device count is now below limit');
+        if (devices.length <= MAX_REGISTERED_DEVICES - 5) {
+          this.logger.info('device: device count is now safely below limit');
 
           return Promise.resolve();
         }

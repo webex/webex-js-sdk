@@ -631,11 +631,11 @@ describe('plugin-device', () => {
 
         const promise = device._waitForDeviceCountBelowLimit();
 
-        // First poll at 3s: 102 devices, still over limit
+        // First poll: 102 devices (over limit), continue polling
         await clock.tickAsync(3000);
-        // Second poll at 6s: 100 devices, still at limit (not below)
+        // Second poll: 100 devices (still at limit), continue polling
         await clock.tickAsync(3000);
-        // Third poll at 9s: 68 devices, below limit
+        // Third poll: 68 devices (below the 95 threshold), resolve
         await clock.tickAsync(3000);
 
         await promise;
@@ -669,9 +669,9 @@ describe('plugin-device', () => {
         assert.equal(requestStub.withArgs(sinon.match({method: 'GET'})).callCount, 5);
       });
 
-      it('resolves when count equals exactly 99 (below limit)', async () => {
+      it('resolves when count equals exactly 95 (5 below limit)', async () => {
         setup('WEB');
-        const devices = Array.from({length: 99}, (_, i) => ({
+        const devices = Array.from({length: 95}, (_, i) => ({
           url: `url${i}`,
           modificationTime: `2023-10-01T10:00:00Z`,
           deviceType: 'WEB',
@@ -686,7 +686,7 @@ describe('plugin-device', () => {
         await promise;
       });
 
-      it('keeps polling when count is exactly 100 (at limit, not below)', async () => {
+      it('keeps polling when count is above the 5-below-limit threshold', async () => {
         setup('WEB');
         const makeDevices = (count) =>
           Array.from({length: count}, (_, i) => ({
@@ -698,14 +698,19 @@ describe('plugin-device', () => {
         const requestStub = sinon.stub(device, 'request');
         requestStub.withArgs(sinon.match({method: 'GET'}))
           .onFirstCall().resolves({body: {devices: makeDevices(100)}})
-          .onSecondCall().resolves({body: {devices: makeDevices(99)}});
+          .onSecondCall().resolves({body: {devices: makeDevices(99)}})
+          .onThirdCall().resolves({body: {devices: makeDevices(95)}});
 
         const promise = device._waitForDeviceCountBelowLimit();
+        // First poll: 100 devices (still over the 95 threshold), continue polling
         await clock.tickAsync(3000);
+        // Second poll: 99 devices (still over the 95 threshold), continue polling
+        await clock.tickAsync(3000);
+        // Third poll: 95 devices (at the safe threshold), resolve
         await clock.tickAsync(3000);
         await promise;
 
-        assert.equal(requestStub.withArgs(sinon.match({method: 'GET'})).callCount, 2);
+        assert.equal(requestStub.withArgs(sinon.match({method: 'GET'})).callCount, 3);
       });
     });
 
