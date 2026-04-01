@@ -641,7 +641,7 @@ describe('plugin-device', () => {
         await assert.isRejected(device.deleteDevices(), 'network error');
       });
 
-      it('rejects when a deletion request fails', async () => {
+      it('resolves when all deletion requests fail (best-effort)', async () => {
         setup('WEB');
         // Use 6 devices (> MIN_DEVICES_FOR_CLEANUP=5) to ensure deletion is attempted
         const devices = [
@@ -657,7 +657,34 @@ describe('plugin-device', () => {
         requestStub.withArgs(sinon.match({method: 'GET'})).resolves({body: {devices}});
         requestStub.withArgs(sinon.match({method: 'DELETE'})).rejects(new Error('delete failed'));
 
-        await assert.isRejected(device.deleteDevices(), 'delete failed');
+        // Should resolve despite DELETE failures — best-effort cleanup must not block registration retry
+        await device.deleteDevices();
+        assert.calledWith(device.logger.warn, sinon.match(/deletions failed/));
+      });
+
+      it('resolves when only some deletion requests fail (partial failure)', async () => {
+        setup('WEB');
+        const devices = [
+          {url: 'url1', modificationTime: '2023-10-01T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url2', modificationTime: '2023-10-02T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url3', modificationTime: '2023-10-03T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url4', modificationTime: '2023-10-04T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url5', modificationTime: '2023-10-05T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url6', modificationTime: '2023-10-06T10:00:00Z', deviceType: 'WEB'},
+        ];
+
+        requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'})).resolves({body: {devices}});
+        // ceil(6/3) = 2 deletions; first succeeds, second fails
+        requestStub
+          .withArgs(sinon.match({method: 'DELETE'}))
+          .onFirstCall()
+          .resolves()
+          .onSecondCall()
+          .rejects(new Error('404 not found'));
+
+        await device.deleteDevices();
+        assert.calledWith(device.logger.warn, sinon.match(/deletions failed/));
       });
     });
 

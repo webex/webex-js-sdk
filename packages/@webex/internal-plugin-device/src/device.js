@@ -538,9 +538,24 @@ const Device = WebexPlugin.extend({
         );
 
         return Promise.all(
-          devicesToDelete.map((device) => this.request({uri: device.url, method: 'DELETE'}))
-        ).then(() => {
-          this.logger.info(`device: successfully deleted ${devicesToDelete.length} devices`);
+          devicesToDelete.map((device) =>
+            this.request({uri: device.url, method: 'DELETE'})
+              .then(() => ({status: 'fulfilled'}))
+              .catch((reason) => ({status: 'rejected', reason}))
+          )
+        ).then((results) => {
+          const failed = results.filter((r) => r.status === 'rejected');
+
+          if (failed.length > 0) {
+            this.logger.warn(
+              `device: ${failed.length} of ${devicesToDelete.length} deletions failed (best-effort, continuing)`
+            );
+          }
+          this.logger.info(
+            `device: deleted ${devicesToDelete.length - failed.length} of ${
+              devicesToDelete.length
+            } devices`
+          );
         });
       })
       .then(() => this._waitForDeviceCountBelowLimit())
