@@ -7,6 +7,7 @@ import LLMChannel from '@webex/internal-plugin-llm';
 
 import AnnotationService from '../../../../src/annotation/index';
 import {ANNOTATION_RELAY_TYPES, ANNOTATION_REQUEST_TYPE, EVENT_TRIGGERS} from '../../../../src/annotation/constants';
+import {LLM_PRACTICE_SESSION} from '../../../../src/constants';
 
 
 describe('live-annotation', () => {
@@ -28,6 +29,7 @@ describe('live-annotation', () => {
       annotationService = webex.internal.annotation;
       annotationService.connect = sinon.stub().resolves(true);
       annotationService.webex.internal.llm.isConnected = sinon.stub().returns(true);
+      annotationService.webex.internal.llm.getSocket = sinon.stub().returns(undefined);
       annotationService.webex.internal.llm.getBinding = sinon.stub().returns(undefined);
       annotationService.webex.internal.llm.getLocusUrl = sinon.stub().returns(locusUrl);
       annotationService.approvalUrl = 'url/approval';
@@ -183,7 +185,13 @@ describe('live-annotation', () => {
 
         annotationService.listenToEvents();
 
-        assert.calledOnceWithExactly(spy, 'event:relay.event', sinon.match.func,sinon.match.object);
+        assert.calledWithExactly(spy.firstCall, 'event:relay.event', sinon.match.func, sinon.match.object);
+        assert.calledWithExactly(
+          spy.secondCall,
+          `event:relay.event:${LLM_PRACTICE_SESSION}`,
+          sinon.match.func,
+          sinon.match.object
+        );
       });
 
     });
@@ -226,14 +234,11 @@ describe('live-annotation', () => {
     });
 
     describe('sendStrokeData', () => {
+      let strokeData;
 
       beforeEach(async () => {
         annotationService.webex.internal.llm.socket = new MockWebSocket();
-      });
-
-
-      it('works on publish Stroke Data', async () => {
-        const strokeData = {
+        strokeData = {
           content: {
             "contentsBuffer": [{
               "contentArray": [{
@@ -249,8 +254,11 @@ describe('live-annotation', () => {
           shareInstanceId: '7fa6fe07-dcb1-41ad-973d-7bcf65fab55d',
           encryptionKeyUrl: "encryptionKeyUrl",
           version: '1',
-        } ;
+        };
+      });
 
+
+      it('works on publish Stroke Data', async () => {
         annotationService.publishEncrypted(strokeData.content, strokeData);
 
         const sendObject = {
@@ -281,6 +289,49 @@ describe('live-annotation', () => {
         };
 
         assert.calledOnceWithExactly(annotationService.webex.internal.llm.socket.send, sendObject);
+      });
+
+      it('uses the practice-session socket and binding only when the practice-session session is connected', () => {
+        const practiceSocket = new MockWebSocket();
+
+        annotationService.webex.internal.llm.isConnected.callsFake((sessionId) =>
+          sessionId === LLM_PRACTICE_SESSION
+        );
+        annotationService.webex.internal.llm.getSocket
+          .withArgs(LLM_PRACTICE_SESSION)
+          .returns(practiceSocket);
+        annotationService.webex.internal.llm.getBinding
+          .withArgs(LLM_PRACTICE_SESSION)
+          .returns('practice-binding');
+
+        annotationService.publishEncrypted(strokeData.content, strokeData);
+
+        assert.calledOnce(practiceSocket.send);
+        assert.notCalled(annotationService.webex.internal.llm.socket.send);
+
+        const sent = practiceSocket.send.getCall(0).args[0];
+        assert.equal(sent.recipients.route, 'practice-binding');
+      });
+
+      it('falls back to the default socket and binding when the practice-session socket exists but is not connected', () => {
+        const practiceSocket = new MockWebSocket();
+
+        annotationService.webex.internal.llm.isConnected.callsFake((sessionId) => !sessionId);
+        annotationService.webex.internal.llm.getSocket
+          .withArgs(LLM_PRACTICE_SESSION)
+          .returns(practiceSocket);
+        annotationService.webex.internal.llm.getBinding
+          .withArgs(LLM_PRACTICE_SESSION)
+          .returns('practice-binding');
+        annotationService.webex.internal.llm.getBinding.returns('default-binding');
+
+        annotationService.publishEncrypted(strokeData.content, strokeData);
+
+        assert.notCalled(practiceSocket.send);
+        assert.calledOnce(annotationService.webex.internal.llm.socket.send);
+
+        const sent = annotationService.webex.internal.llm.socket.send.getCall(0).args[0];
+        assert.equal(sent.recipients.route, 'default-binding');
       });
 
     });
@@ -441,10 +492,21 @@ describe('live-annotation', () => {
           annotationService.eventDataProcessor,
           annotationService
         );
+        assert.calledWith(
+          llmOn,
+          `event:relay.event:${LLM_PRACTICE_SESSION}`,
+          annotationService.eventDataProcessor,
+          annotationService
+        );
         assert.match(annotationService.hasSubscribedToEvents, true);
 
         annotationService.deregisterEvents();
         assert.calledWith(llmOff, 'event:relay.event', annotationService.eventDataProcessor);
+        assert.calledWith(
+          llmOff,
+          `event:relay.event:${LLM_PRACTICE_SESSION}`,
+          annotationService.eventDataProcessor
+        );
         assert.calledWith(
           mercuryOff,
           'event:locus.approval_request',

@@ -369,6 +369,7 @@ const MeetingUtil = {
     meeting.stopPeriodicLogUpload();
 
     meeting.breakouts.cleanUp();
+    meeting.webinar.cleanUp();
     meeting.simultaneousInterpretation.cleanUp();
     meeting.locusMediaRequest = undefined;
 
@@ -393,8 +394,10 @@ const MeetingUtil = {
       .then(() => meeting.stopKeepAlive())
       .then(() => {
         if (meeting.config?.enableAutomaticLLM) {
-          meeting.updateLLMConnection();
+          return meeting.cleanupLLMConneciton({throwOnError: false});
         }
+
+        return undefined;
       });
   },
 

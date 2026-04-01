@@ -110,6 +110,61 @@
           </div>
         </section>
 
+        <!-- ############################## ############################## ############################## -->
+        <!-- Upload and Encrypt File -->
+        <section id="encryptFileSection">
+          <h2 class="collapsible">Upload and Encrypt File</h2>
+          <div class="section-content">
+            <fieldset>
+              <legend>Encrypt File with KMS Key</legend>
+              <div class="u-mv">
+                <p class="note"><strong>Note:</strong> Provide a KMS Key URI and upload a file to encrypt it using JWE (AES-256-GCM with direct key).</p>
+
+                <!-- Optional: Generate New Key & KRO -->
+                <details style="margin-bottom: 1rem; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+                  <summary style="cursor: pointer; font-weight: bold;">Optional: Generate New Key & KRO</summary>
+                  <div style="margin-top: 0.5rem;">
+                    <p class="note">If you don't have a KMS Key URI, you can generate a new key and KRO here.</p>
+                    <div style="margin-bottom: 0.5rem;">
+                      <label>KRO Resource URI (e.g., kms://org-id/resource-id):</label>
+                      <input id="new-kro-resource-uri" type="text" placeholder="kms://your-org-id/resource-id" style="width: 100%; margin-top: 0.25rem;">
+                    </div>
+                    <button type="button" id="generate-key-btn" class="btn-code" onclick="generateKeyAndKro()">
+                      Generate Key & KRO
+                    </button>
+                    <pre id="generate-key-status" style="margin-top: 0.5rem; font-size: 0.85rem; max-height: 100px; overflow-y: auto;">Not generated</pre>
+                  </div>
+                </details>
+
+                <div style="margin-bottom: 0.5rem;">
+                  <label>KMS Key URI:</label>
+                  <input id="encrypt-kms-key-uri" type="text" placeholder="kms://org-id/key-id" style="width: 100%; margin-top: 0.25rem;" required>
+                </div>
+
+                <div style="margin-bottom: 0.5rem;">
+                  <label>Select File to Encrypt:</label>
+                  <input id="encrypt-file-input" type="file" style="width: 100%; margin-top: 0.25rem;" required>
+                </div>
+
+                <button type="button" id="encrypt-file-btn" class="btn" onclick="encryptUploadedFile()" style="display: block; margin-top: 1rem;">
+                  Encrypt File
+                </button>
+
+                <div style="margin-top: 1rem;">
+                  <label>Encrypted JWE Output:</label>
+                  <textarea id="encrypt-jwe-output" readonly style="width: 100%; height: 150px; margin-top: 0.25rem; font-family: monospace; font-size: 0.8rem;" placeholder="Encrypted JWE will appear here..."></textarea>
+                  <button type="button" class="btn-code" onclick="copyJweToClipboard()" style="margin-top: 0.5rem;">Copy JWE to Clipboard</button>
+                </div>
+
+                <div style="margin-top: 1rem;">
+                  <label>Log:</label>
+                  <pre id="encrypt-log" style="max-height: 150px; overflow-y: auto; font-size: 0.85rem; background: #f5f5f5; padding: 0.5rem; border-radius: 4px;">Ready</pre>
+                </div>
+              </div>
+            </fieldset>
+          </div>
+        </section>
+
       </article>
     </div>
   </main>

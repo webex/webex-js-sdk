@@ -1159,13 +1159,13 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       method: HTTP_VERBS.GET,
       uri,
     }).catch((err) => {
-      LoggerProxy.logger.error(
-        `Meeting:request#fetchDatachannelToken --> Error retrieving ${
+      LoggerProxy.logger.warn(
+        `Meeting:request#fetchDatachannelToken --> Failed to retrieve ${
           isPracticeSession ? 'practice session ' : ''
-        }datachannel token, error ${err}`
+        }datachannel token: ${err?.message || err}`
       );
 
-      throw err;
+      return null;
     });
   }
 }

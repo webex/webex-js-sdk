@@ -47,7 +47,7 @@ import {
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import MeetingInfo from '../meeting-info';
 import MeetingInfoV2 from '../meeting-info/meeting-info-v2';
-import Meeting, {CallStateForMetrics} from '../meeting';
+import Meeting, {CallStateForMetrics, storeEventForDebugging} from '../meeting';
 import PersonalMeetingRoom from '../personal-meeting-room';
 import Reachability from '../reachability';
 import Request from './request';
@@ -69,6 +69,7 @@ import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {HashTreeMessage} from '../hashTree/hashTreeParser';
 import {HashTreeObject} from '../hashTree/types';
 import {isSelf} from '../hashTree/utils';
+import {createLocusFromHashTreeMessage, findMeetingForHashTreeMessage} from '../locus-info';
 
 let mediaLogger;
 
@@ -435,6 +436,20 @@ export default class Meetings extends WebexPlugin {
       return existingMeeting;
     }
 
+    if (data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
+      // need to check if maybe this event indicates a move to/from breakout
+      const meetingForHashTreeMessage = findMeetingForHashTreeMessage(
+        data.stateElementsMessage,
+        this.meetingCollection,
+        // @ts-ignore
+        this.webex.internal.device.url
+      );
+
+      if (meetingForHashTreeMessage) {
+        return meetingForHashTreeMessage;
+      }
+    }
+
     // if that didn't work, fallback to other fields like correlationId, sipUri, etc
 
     // If the event is a hash tree event, we need to extract "self" object from it
@@ -478,6 +493,11 @@ export default class Meetings extends WebexPlugin {
   private handleLocusEvent(data: LocusEvent, useRandomDelayForInfo = false) {
     let meeting = this.getCorrespondingMeetingByLocus(data);
 
+    // @ts-ignore
+    if (this.config.experimental.storeLocusHashTreeEventsForDebugging) {
+      storeEventForDebugging('mercury', data);
+    }
+
     // Special case when locus has got replaced, This only happend once if a replace locus exists
     // https://sqbu-github.cisco.com/WebExSquared/locus/wiki/Locus-changing-mid-call
 
@@ -491,7 +511,7 @@ export default class Meetings extends WebexPlugin {
       }
 
       if (meeting && !MeetingsUtil.isBreakoutLocusDTO(data.locus)) {
-        meeting.locusInfo.updateMainSessionLocusCache(data.locus);
+        meeting.locusInfo.updateMainSessionLocusCache(data.locus); // here data.locus will never be a complete locus
       }
       if (!this.isNeedHandleLocusDTO(meeting, data.locus)) {
         LoggerProxy.logger.log(
@@ -522,41 +542,45 @@ export default class Meetings extends WebexPlugin {
       // };
       // rather then locus object change to locus url
 
-      if (data.eventType !== LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
-        if (
-          data.locus &&
-          data.locus.fullState &&
-          data.locus.fullState.state === LOCUS.STATE.INACTIVE
-        ) {
-          // just ignore the event as its already ended and not active
-          LoggerProxy.logger.warn(
-            'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
-          );
+      if (data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
+        // We're about to create a new meeting object from this hash tree message.
+        // There is some existing (pre-hash trees) SDK logic here that requires a locus object
+        // (at the very minimum we need locus.url to be set)
+        // so we try to create locus from the received hash tree message
+        // it will not be complete, in most cases it will only have the self part, but that's still better than nothing
+        const {locus} = createLocusFromHashTreeMessage(data.stateElementsMessage);
 
-          return;
-        }
-
-        // When its wireless share or guest and user leaves the meeting we dont have to keep the meeting object
-        // Any future events will be neglected
-
-        if (
-          data.locus &&
-          data.locus.self &&
-          data.locus.self.state === _LEFT_ &&
-          data.locus.self.removed === true
-        ) {
-          // just ignore the event as its already ended and not active
-          LoggerProxy.logger.warn(
-            'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
-          );
-
-          return;
-        }
+        data.locus = locus;
       }
 
-      if (data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
-        // in hash tree messages we don't ge the locus object, but the meeting constructor needs at least locus.url
-        set(data, 'locus.url', data.stateElementsMessage.locusUrl);
+      if (
+        data.locus &&
+        data.locus.fullState &&
+        data.locus.fullState.state === LOCUS.STATE.INACTIVE
+      ) {
+        // just ignore the event as its already ended and not active
+        LoggerProxy.logger.warn(
+          'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
+        );
+
+        return;
+      }
+
+      // When its wireless share or guest and user leaves the meeting we dont have to keep the meeting object
+      // Any future events will be neglected
+
+      if (
+        data.locus &&
+        data.locus.self &&
+        data.locus.self.state === _LEFT_ &&
+        data.locus.self.removed === true
+      ) {
+        // just ignore the event as its already ended and not active
+        LoggerProxy.logger.warn(
+          'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
+        );
+
+        return;
       }
 
       this.create(data.locus, DESTINATION_TYPE.LOCUS_ID, useRandomDelayForInfo)
@@ -1977,7 +2001,7 @@ export default class Meetings extends WebexPlugin {
 
     const associateBreakoutLocus = this.breakoutLocusForHandleLater[existIndex];
     this.handleLocusEvent({
-      eventType: LOCUSEVENT.SDK_NO_EVENT,
+      eventType: LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS,
       locus: associateBreakoutLocus,
       locusUrl: associateBreakoutLocus.url,
     });
