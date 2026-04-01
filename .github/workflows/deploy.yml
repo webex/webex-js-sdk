@@ -198,13 +198,9 @@ jobs:
         run: |
           OUTPUT=$(yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag ${GITHUB_REF##*/})
           echo "$OUTPUT"
-          echo "package_versions<<EOF" >> $GITHUB_OUTPUT
-          echo "$OUTPUT" | while IFS= read -r line; do
-            if echo "$line" | grep -q ' => '; then
-              echo "__webex_release__: $line"
-            fi
-          done >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          VERSIONS_JSON=$(printf '%s\n' "$OUTPUT" | grep -E '^(@webex/|webex[^ ]*) => ' | \
+            jq -Rn '[inputs | split(" => ")] | map({(.[0]): .[1]}) | add // {}')
+          echo "package_versions=$VERSIONS_JSON" >> $GITHUB_OUTPUT
 
       - name: Build all packages for publish
         run: yarn run build:publish
@@ -391,8 +387,8 @@ jobs:
         with:
           script: |
             const deploySha = context.sha;
-            const owner = 'webex';
-            const repo = 'webex-js-sdk';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
 
             try {
               const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({
@@ -415,17 +411,12 @@ jobs:
           script: |
             const prNumber = parseInt('${{ steps.get-pr.outputs.pr_number }}');
 
-            const raw = `${{ needs.publish-npm.outputs.package_versions }}`;
-            const packageVersions = {};
-            for (const line of raw.split('\n')) {
-              const match = line.match(/^__webex_release__:\s+(.+?)\s+=>\s+(.+)$/);
-              if (match) packageVersions[match[1].trim()] = match[2].trim();
-            }
+            const packageVersions = JSON.parse(`${{ needs.publish-npm.outputs.package_versions }}` || '{}');
             const packageEntries = Object.entries(packageVersions);
             const version = packageVersions['webex'] ? `v${packageVersions['webex']}` : '';
 
-            const owner = 'webex';
-            const repo = 'webex-js-sdk';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
             const repoUrl = `https://github.com/${owner}/${repo}`;
             const hasPackages = packageEntries.length > 0;
 
@@ -438,7 +429,9 @@ jobs:
               const primaryVersion = packageVersions[primaryPackage];
               const stableVersion = primaryVersion.replace(/-next\..*/, '').replace(/-[a-z]*\..*/, '');
 
-              const changelogUrl = new URL('https://web-sdk.webex.com/changelog/');
+              const cnameFile = await github.rest.repos.getContent({ owner, repo, path: 'docs/CNAME' });
+              const cname = Buffer.from(cnameFile.data.content, 'base64').toString().trim();
+              const changelogUrl = new URL(`https://${cname}/changelog/`);
               if (stableVersion) {
                 changelogUrl.searchParams.set('stable_version', stableVersion);
               }
@@ -476,7 +469,7 @@ jobs:
                 packagesTable,
                 'Thank you for your contribution!',
                 '',
-                `_:robot: This is an automated message. For questions, please refer to the [documentation](${repoUrl}#readme)._`
+                `_:robot: This is an automated message. For queries, please contact [support](https://developer.webex.com/support)._`
               ].filter(Boolean).join('\n');
             } else {
               commentBody = [
@@ -484,7 +477,7 @@ jobs:
                 '',
                 'Thank you for your contribution!',
                 '',
-                `_:robot: This is an automated message. For questions, please refer to the [documentation](${repoUrl}#readme)._`
+                `_:robot: This is an automated message. For queries, please contact [support](https://developer.webex.com/support)._`
               ].join('\n');
             }
 
@@ -492,17 +485,17 @@ jobs:
               const pr = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
               if (!pr.data.merged_at) return;
 
-              const existingComments = await github.rest.issues.listComments({
+              const comments = await github.paginate(github.rest.issues.listComments, {
                 owner, repo,
                 issue_number: prNumber,
-                per_page: 200
+                per_page: 100
               });
 
-              const detailedComment = existingComments.data.find(comment =>
+              const detailedComment = comments.find(comment =>
                 comment.user.type === 'Bot' &&
                 comment.body.includes('Your changes are now available')
               );
-              const mergedComment = existingComments.data.find(comment =>
+              const mergedComment = comments.find(comment =>
                 comment.user.type === 'Bot' &&
                 comment.body.includes('Your changes have been merged')
               );
