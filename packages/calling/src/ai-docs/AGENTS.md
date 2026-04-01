@@ -26,186 +26,6 @@ The package is organized as a modular monolith inside `packages/calling/src/`. E
 
 ---
 
-## Public API Surface
-
-The package exposes two entry points:
-
-### `index.ts` — Consumer-facing exports
-
-Factory functions for creating module instances:
-
-```typescript
-import {
-  createClient,            // CallingClient
-  createCallHistoryClient, // CallHistory
-  createCallSettingsClient,// CallSettings
-  createContactsClient,    // Contacts
-  createVoicemailClient,   // Voicemail
-  Logger,                  // Logger singleton
-} from '@webex/calling';
-```
-
-Key interfaces and types re-exported:
-
-- `ICallingClient`, `ILine`, `ICall` — calling & line control
-- `ICallHistory`, `JanusResponseEvent`, `UserSession` — call history
-- `ICallSettings`, `CallForwardSetting`, `VoicemailSetting`, `ToggleSetting` — settings
-- `IContacts`, `Contact`, `ContactResponse`, `GroupType` — contacts
-- `IVoicemail`, `SummaryInfo`, `VoicemailResponseEvent` — voicemail
-- `CallError`, `LineError`, `ERROR_LAYER`, `ERROR_TYPE` — errors
-- Event key enums: `CALLING_CLIENT_EVENT_KEYS`, `CALL_EVENT_KEYS`, `LINE_EVENT_KEYS`, `COMMON_EVENT_KEYS`
-- Common types: `CallDetails`, `CallDirection`, `CallType`, `SORT`, `SORT_BY`, `ServiceIndicator`
-- `CallingClientConfig`, `LOGGER`, `TransferType`, `CallerIdDisplay`, `Disposition`
-
-### `api.ts` — Internal/advanced exports
-
-Re-exports concrete classes (`CallingClient`, `CallHistory`, `CallSettings`, `ContactsClient`, `Voicemail`) in addition to interfaces and factory functions. Used by internal consumers and tests.
-
----
-
-## Factory Functions
-
-All module instances are created via factory functions. This is the **only** supported instantiation path.
-
-| Factory | Returns | Parameters |
-|---|---|---|
-| `createClient(webex, config)` | `ICallingClient` | `WebexSDK`, `CallingClientConfig` |
-| `createCallHistoryClient(webex, logger)` | `ICallHistory` | `WebexSDK`, `LoggerInterface` |
-| `createCallSettingsClient(webex, logger)` | `ICallSettings` | `WebexSDK`, `LoggerInterface` |
-| `createContactsClient(webex, logger)` | `IContacts` | `WebexSDK`, `LoggerInterface` |
-| `createVoicemailClient(webex, logger)` | `IVoicemail` | `WebexSDK`, `LoggerInterface` |
-
-Every factory internally calls `SDKConnector.setWebex(webex)` if not already initialized.
-
----
-
-## Configuration
-
-`CallingClientConfig` controls the `CallingClient` module:
-
-```typescript
-interface CallingClientConfig {
-  logger?: { level: LOGGER };       // 'error' | 'warn' | 'log' | 'info' | 'trace'
-  discovery?: {
-    country: string;                 // Country code for Mobius region discovery
-    region: string;                  // Client region hint
-  };
-  serviceData?: {
-    indicator: ServiceIndicator;     // 'calling' | 'contactcenter' | 'guestcalling'
-    domain?: string;
-  };
-  jwe?: string;                      // Optional JWE token for guest calling
-}
-```
-
-All other modules accept `{ level: LOGGER }` as their logger configuration.
-
----
-
-## Quick Start
-
-```typescript
-import { createClient, createCallHistoryClient, SORT, SORT_BY } from '@webex/calling';
-
-// 1. Create the CallingClient (handles registration & calls)
-const callingClient = await createClient(webex, {
-  logger: { level: 'info' },
-  serviceData: { indicator: 'calling' },
-});
-
-// 2. Get lines and register
-const lines = callingClient.getLines();
-const line = Object.values(lines)[0];
-line.register();
-
-// 3. Listen for registration status
-line.on('registered', (lineInfo) => { /* ready to make/receive calls */ });
-line.on('error', (err) => { /* handle registration error */ });
-
-// 4. Make a call
-const call = line.makeCall({ type: 'uri', address: 'user@example.com' });
-call.on('connect', () => { /* call connected */ });
-call.on('disconnect', () => { /* call ended */ });
-
-// 5. Use standalone modules
-const callHistory = createCallHistoryClient(webex, { level: 'info' });
-const records = await callHistory.getCallHistoryData(7, 50, SORT.DESC, SORT_BY.END_TIME);
-```
-
----
-
-## Calling Backend Detection
-
-The SDK automatically detects the user's calling backend from their Webex entitlements:
-
-| Backend | Entitlement | Enum |
-|---|---|---|
-| Webex Calling | `bc-sp-standard` | `CALLING_BACKEND.WXC` |
-| Broadworks | `broadworks-connector` | `CALLING_BACKEND.BWRKS` |
-| UCM | `NATIVE_SIP_CALL_TO_UCM` | `CALLING_BACKEND.UCM` |
-
-The `CallSettings` and `Voicemail` modules use the **Strategy pattern** to select the appropriate backend connector class at construction time. The `CallingClient` module always communicates with the Mobius service regardless of backend.
-
----
-
-## Event System
-
-All modules that emit events extend `Eventing<T>`, a generic typed `EventEmitter` from `Events/impl`. Event type maps are defined in `Events/types.ts`.
-
-| Module | Event Type Map | Key Events |
-|---|---|---|
-| `ILine` | `LineEventTypes` | `registered`, `unregistered`, `reconnecting`, `reconnected`, `error`, `incoming_call` |
-| `ICall` | `CallEventTypes` | `alerting`, `connect`, `established`, `held`, `resumed`, `disconnect`, `call_error`, `remote_media`, `caller_id` |
-| `ICallingClient` | `CallingClientEventTypes` | `callingClient:error`, `callingClient:outgoing_call`, `callingClient:user_recent_sessions`, `callingClient:all_calls_cleared` |
-| `ICallHistory` | `CallHistoryEventTypes` | `callHistory:user_recent_sessions`, `callHistory:user_viewed_sessions`, `callHistory:user_sessions_deleted` |
-| `IVoicemail` | `VoicemailEventTypes` | `call_back_voicemail_content_get` |
-
----
-
-## Error Hierarchy
-
-All custom errors extend `ExtendedError`:
-
-```
-ExtendedError
-├── CallError        — correlationId, errorLayer (call_control | media)
-├── LineError        — status (RegistrationStatus)
-└── CallingClientError — correlationId, errorLayer
-```
-
-Errors carry `ERROR_TYPE` (semantic category) and `ERROR_CODE` (HTTP or SDK status code). Factory functions `createCallError()` and `createClientError()` are the standard instantiation path.
-
----
-
-## Logging Levels
-
-The `Logger` module uses a numeric level hierarchy:
-
-| Level | Value | Includes |
-|---|---|---|
-| `error` | 1 | Errors only |
-| `warn` | 2 | Errors + warnings |
-| `log` | 3 | + general messages |
-| `info` | 4 | + informational |
-| `trace` | 5 | + full stack traces |
-
-Log format: `Calling SDK: <UTC timestamp>: [LEVEL]: file:<filename> - method:<methodName> - message:<content>`
-
----
-
-## Sub-Module Documentation
-
-For detailed documentation on specific modules, refer to the `ai-docs/` folder within each subdirectory:
-
-| Module | Path |
-|---|---|
-| CallingClient | `CallingClient/ai-docs/AGENTS.md`, `CallingClient/ai-docs/ARCHITECTURE.md` |
-| CallingClient > Line | `CallingClient/line/ai-docs/AGENTS.md`, `CallingClient/line/ai-docs/ARCHITECTURE.md` |
-| CallingClient > Registration | `CallingClient/registration/ai-docs/AGENTS.md`, `CallingClient/registration/ai-docs/ARCHITECTURE.md` |
-| SDKConnector | `SDKConnector/ai-docs/AGENTS.md`, `SDKConnector/ai-docs/ARCHITECTURE.md` |
-
----
-
 ## Key Interfaces Quick Reference
 
 ### ICallingClient
@@ -217,25 +37,6 @@ interface ICallingClient extends Eventing<CallingClientEventTypes> {
   getActiveCalls(): Record<string, ICall[]>;
   getConnectedCall(): ICall | undefined;
   getDevices(userId?: string): Promise<DeviceType[]>;
-}
-```
-
-### ILine
-
-```typescript
-interface ILine extends Eventing<LineEventTypes> {
-  lineId: string;
-  userId: string;
-  phoneNumber?: string;
-  extension?: string;
-  registration: IRegistration;
-  register(): void;
-  deregister(): void;
-  makeCall(dest?: CallDetails): ICall | undefined;
-  getCall(correlationId: CorrelationId): ICall;
-  getStatus(): RegistrationStatus;
-  getDeviceId(): MobiusDeviceId | undefined;
-  getActiveMobiusUrl(): string;
 }
 ```
 
@@ -296,9 +97,218 @@ interface IVoicemail {
 
 ```typescript
 interface ISDKConnector {
-  setWebex(webex: WebexSDK): void;
+  setWebex(webexInstance: WebexSDK): void;
   getWebex(): WebexSDK;
-  registerListener(listener: Function, scope: string, callback: Function): void;
-  unregisterListener(listener: Function, scope: string): void;
+  registerListener<T>(event: string, cb: (data?: T) => unknown): void;
+  unregisterListener(event: string): void;
 }
 ```
+---
+
+## Public API Surface
+
+The package has two export files:
+
+### `index.ts` — Consumer-facing exports
+
+This is the primary entry point for external consumers. Factory functions for creating client module instances:
+
+```typescript
+import {
+  createClient,            // CallingClient
+  createCallHistoryClient, // CallHistory
+  createCallSettingsClient,// CallSettings
+  createContactsClient,    // Contacts
+  createVoicemailClient,   // Voicemail
+  Logger,                  // Logger singleton
+} from '@webex/calling';
+```
+
+Media-related re-exports from `@webex/media-helpers`:
+
+```typescript
+import {
+  createMicrophoneStream,   // Factory to create a microphone media stream
+  NoiseReductionEffect,     // Background noise reduction effect
+  LocalMicrophoneStream,    // Local microphone stream class
+} from '@webex/calling';
+```
+
+Key interfaces and types re-exported:
+
+- `ICallingClient`, `ILine`, `ICall` — calling & line control
+- `ICallHistory`, `JanusResponseEvent`, `UserSession` — call history
+- `ICallSettings`, `CallForwardSetting`, `VoicemailSetting`, `ToggleSetting` — settings
+- `IContacts`, `Contact`, `ContactResponse`, `GroupType` — contacts
+- `IVoicemail`, `SummaryInfo`, `VoicemailResponseEvent` — voicemail
+- `CallError`, `LineError`, `ERROR_LAYER`, `ERROR_TYPE` — errors
+- Event key enums: `CALLING_CLIENT_EVENT_KEYS`, `CALL_EVENT_KEYS`, `LINE_EVENT_KEYS`, `COMMON_EVENT_KEYS`
+- Common types: `CallDetails`, `CallDirection`, `CallType`, `SORT`, `SORT_BY`, `ServiceIndicator`, `DisplayInformation`
+- `CallingClientConfig`, `LOGGER`, `TransferType`, `CallerIdDisplay`, `Disposition`
+
+### `api.ts` — API reference documentation exports
+
+`api.ts` is used for API reference documentation generation. It re-exports concrete classes (`CallingClient`, `CallHistory`, `CallSettings`, `ContactsClient`, `Voicemail`) in addition to interfaces and factory functions. It is **not** an entry point for external consumers — use `index.ts` for all consumer-facing imports.
+
+---
+
+## Factory Functions
+
+All client module instances are created via factory functions. This is the **only** supported instantiation path.
+
+| Factory | Returns | Parameters |
+|---|---|---|
+| `createClient(webex, config)` | `ICallingClient` | `WebexSDK`, `CallingClientConfig` |
+| `createCallHistoryClient(webex, logger)` | `ICallHistory` | `WebexSDK`, `LoggerInterface` |
+| `createCallSettingsClient(webex, logger)` | `ICallSettings` | `WebexSDK`, `LoggerInterface` |
+| `createContactsClient(webex, logger)` | `IContacts` | `WebexSDK`, `LoggerInterface` |
+| `createVoicemailClient(webex, logger)` | `IVoicemail` | `WebexSDK`, `LoggerInterface` |
+
+Every factory internally calls `SDKConnector.setWebex(webex)` if not already initialized.
+
+---
+
+## Configuration
+
+`CallingClientConfig` controls the `CallingClient` client module. Each field serves a specific purpose:
+
+```typescript
+interface CallingClientConfig {
+  logger?: LoggerConfig;            // Sets the logging verbosity level for the CallingClient module
+  discovery?: {
+    country: string;                // Country code used for Mobius region discovery to find the nearest server
+    region: string;                 // Client region hint to optimize server selection
+  };
+  serviceData?: {
+    indicator: ServiceIndicator;    // Identifies the type of calling service: 'calling' (standard),
+                                    // 'contactcenter' (contact center agents), or 'guestcalling' (guest users)
+    domain?: string;                // Optional domain override for service endpoint resolution
+  };
+  jwe?: string;                     // JWE (JSON Web Encryption) token required for guest calling authentication
+}
+
+interface LoggerConfig {
+  level: LOGGER;                    // 'error' | 'warn' | 'info' | 'log' | 'trace'
+}
+```
+
+- **`logger`**: Controls the verbosity of log output. Defaults to minimal logging if not set. See the Logging Levels section for the level hierarchy.
+- **`discovery`**: Provides geographic hints so the SDK can discover the closest Mobius servers for optimal call quality and latency.
+- **`serviceData`**: Identifies the calling service type. The `indicator` determines which Mobius service endpoints are used. Standard calling uses `'calling'`, contact center agents use `'contactcenter'`, and guest/anonymous callers use `'guestcalling'`.
+- **`jwe`**: A JWE token for guest calling scenarios where the caller does not have a Webex account. Required only when `serviceData.indicator` is `'guestcalling'`.
+
+All other client modules (`CallHistory`, `CallSettings`, `Contacts`, `Voicemail`) accept `{ level: LOGGER }` as their logger configuration.
+
+---
+
+## Calling Backend Detection
+
+Certain client modules (`CallSettings`, `Voicemail`) need to determine the user's calling backend at construction time so they can select the appropriate backend connector (Strategy pattern). The `CallingClient` module also detects the backend during initialization.
+
+Backend detection is performed by the `getCallingBackEnd(webex)` function in `common/Utils.ts`. It uses a two-level branching approach:
+
+1. **First level**: Check `webex.internal.device.callingBehavior`
+2. **Second level**: If the behavior is `NATIVE_WEBEX_TEAMS_CALLING`, check user entitlements to distinguish WXC from BWRKS
+
+```
+webex.internal.device.callingBehavior
+       │
+       ├── === 'NATIVE_WEBEX_TEAMS_CALLING'
+       │       │
+       │       ├── entitlement 'bc-sp-standard' or 'bc-sp-basic' ──▶ CALLING_BACKEND.WXC
+       │       │
+       │       └── entitlement 'broadworks-connector'              ──▶ CALLING_BACKEND.BWRKS
+       │
+       ├── === 'NATIVE_SIP_CALL_TO_UCM'                           ──▶ CALLING_BACKEND.UCM
+       │
+       └── other / none matched                                    ──▶ CALLING_BACKEND.INVALID
+```
+
+| Backend | callingBehavior | Entitlement | Enum |
+|---|---|---|---|
+| Webex Calling | `NATIVE_WEBEX_TEAMS_CALLING` | `bc-sp-standard` or `bc-sp-basic` | `CALLING_BACKEND.WXC` |
+| Broadworks | `NATIVE_WEBEX_TEAMS_CALLING` | `broadworks-connector` | `CALLING_BACKEND.BWRKS` |
+| UCM | `NATIVE_SIP_CALL_TO_UCM` | (not checked) | `CALLING_BACKEND.UCM` |
+
+The `CallSettings` and `Voicemail` modules use the detected backend to select the appropriate backend connector class at construction time. The `CallingClient` module always communicates with the Mobius service regardless of backend.
+
+---
+
+## Event System
+
+All modules that emit events extend `Eventing<T>`, a generic typed `EventEmitter` from `Events/impl`. Event type maps are defined in `Events/types.ts`.
+
+| Module | Event Type Map | Key Events (enum references) |
+|---|---|---|
+| `ICallingClient` | `CallingClientEventTypes` | `CALLING_CLIENT_EVENT_KEYS.ERROR`, `CALLING_CLIENT_EVENT_KEYS.OUTGOING_CALL`, `CALLING_CLIENT_EVENT_KEYS.USER_SESSION_INFO`, `CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED` |
+| `ICallHistory` | `CallHistoryEventTypes` | `COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO`, `COMMON_EVENT_KEYS.CALL_HISTORY_USER_VIEWED_SESSIONS`, `COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSIONS_DELETED` |
+| `IVoicemail` | `VoicemailEventTypes` | `COMMON_EVENT_KEYS.CB_VOICEMESSAGE_CONTENT_GET` |
+
+For detailed `ILine` and `ICall` event information, refer to the sub-module documentation for `CallingClient`.
+
+---
+
+## Error Hierarchy
+
+All custom errors extend `ExtendedError`:
+
+```
+ExtendedError (Errors/catalog/ExtendedError.ts)
+├── CallError        — correlationId, errorLayer (call_control | media)
+├── LineError        — status (RegistrationStatus)
+└── CallingClientError (file: CallingDeviceError.ts) — status (RegistrationStatus)
+```
+
+> **Note**: The `CallingClientError` class is defined in `Errors/catalog/CallingDeviceError.ts` but exported as `CallingClientError`. It takes `status: RegistrationStatus` as a constructor parameter (not `correlationId`/`errorLayer`).
+
+Errors carry `ERROR_TYPE` (semantic category) and `ERROR_CODE` (HTTP or SDK status code). Factory functions `createCallError()` and `createClientError()` are the standard instantiation path.
+
+---
+
+## Logging Levels
+
+The `Logger` module uses a numeric level hierarchy defined in `LOGGING_LEVEL` (`Logger/types.ts`):
+
+| Level | Value | Includes |
+|---|---|---|
+| `error` | 1 | Errors only |
+| `warn` | 2 | Errors + warnings |
+| `info` | 3 | + general messages |
+| `log` | 4 | + informational |
+| `trace` | 5 | + full stack traces |
+
+The `LOGGER` enum defines the string values: `'error'`, `'warn'`, `'info'`, `'log'`, `'trace'`.
+
+Log format: `Calling SDK: <UTC timestamp>: [LEVEL]: file:<filename> - method:<methodName> - message:<content>`
+
+---
+
+## Metrics
+
+The `MetricManager` singleton (`Metrics/index.ts`) is initialized via `getMetricManager(webex, indicator)` and submits client metrics through `webex.internal.metrics.submitClientMetrics()`. Metric categories are defined by the `METRIC_EVENT` enum:
+
+| Metric Event | Description | Key Fields |
+|---|---|---|
+| `REGISTRATION` / `REGISTRATION_ERROR` | Line registration success/failure | action, device_id, service_indicator, server_type, tracking_id |
+| `KEEPALIVE_ERROR` | Keepalive heartbeat failure | action, device_id, keepalive_count, error |
+| `CALL` / `CALL_ERROR` | Call control events | action, device_id, call_id, correlation_id |
+| `MEDIA` / `MEDIA_ERROR` | Media negotiation events | action, device_id, call_id, local/remote SDP |
+| `CONNECTION_ERROR` | Network connectivity changes | action, device_id, down_timestamp, up_timestamp |
+| `VOICEMAIL` / `VOICEMAIL_ERROR` | Voicemail operations | action, device_id, message_id, status_code |
+| `BNR_ENABLED` / `BNR_DISABLED` | Background Noise Reduction toggle | device_id, call_id, correlation_id |
+| `UPLOAD_LOGS_SUCCESS` / `UPLOAD_LOGS_FAILED` | Log upload results | tracking_id, feedback_id, correlation_id |
+| `MOBIUS_DISCOVERY` | Mobius server discovery (region info and server lists) | mobius_host, client_region, country_code |
+
+Each metric submission includes common tags (`device_id`, `service_indicator`) and fields (`device_url`, `mobius_url`, `calling_sdk_version`) for traceability.
+
+---
+
+## Sub-Module Documentation
+
+For detailed documentation on specific modules, refer to the `ai-docs/` folder within each subdirectory:
+
+| Module | Path |
+|---|---|
+| CallingClient | `CallingClient/ai-docs/AGENTS.md`, `CallingClient/ai-docs/ARCHITECTURE.md` |
+| CallingClient > Line | `CallingClient/line/ai-docs/AGENTS.md`, `CallingClient/line/ai-docs/ARCHITECTURE.md` |
+| CallingClient > Registration | `CallingClient/registration/ai-docs/AGENTS.md`, `CallingClient/registration/ai-docs/ARCHITECTURE.md` |

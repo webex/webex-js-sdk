@@ -2,162 +2,59 @@
 
 ## High-Level Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                          Consumer Application                          │
-│  createClient()  createCallHistoryClient()  createCallSettingsClient() │
-│  createContactsClient()  createVoicemailClient()                       │
-└─────────┬──────────────┬──────────────┬──────────────┬─────────────────┘
-          │              │              │              │
-          ▼              ▼              ▼              ▼
-┌─────────────┐ ┌──────────────┐ ┌────────────┐ ┌───────────┐ ┌──────────┐
-│CallingClient│ │ CallHistory   │ │CallSettings│ │  Contacts │ │Voicemail │
-│  (Mobius)   │ │   (Janus)    │ │(WxC/UCM/BW)│ │  (SCIM)   │ │(XSI/VG)  │
-│             │ │              │ │            │ │           │ │          │
-│ ┌─────────┐ │ │              │ │ ┌────────┐ │ │           │ │┌────────┐│
-│ │  Line   │ │ │              │ │ │Backend │ │ │           │ ││Backend ││
-│ │┌───────┐│ │ │              │ │ │Connctor│ │ │           │ ││Connctor││
-│ ││ Reg   ││ │ │              │ │ └────────┘ │ │           │ │└────────┘│
-│ │├───────┤│ │ │              │ │            │ │           │ │          │
-│ ││ Call  ││ │ │              │ │            │ │           │ │          │
-│ ││Manager││ │ │              │ │            │ │           │ │          │
-│ │└───────┘│ │ │              │ │            │ │           │ │          │
-│ └─────────┘ │ │              │ │            │ │           │ │          │
-└──────┬──────┘ └──────┬───────┘ └─────┬──────┘ └─────┬─────┘ └────┬─────┘
-       │               │               │              │             │
-       ▼               ▼               ▼              ▼             ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    Shared Infrastructure Layer                          │
-│                                                                         │
-│  ┌─────────────┐  ┌────────┐  ┌─────────┐  ┌────────┐  ┌───────────┐  │
-│  │SDKConnector │  │ Logger │  │ Metrics  │  │ Events │  │  Errors   │  │
-│  │ (singleton) │  │        │  │(singlton)│  │Eventing│  │ hierarchy │  │
-│  └──────┬──────┘  └────────┘  └──────────┘  └────────┘  └───────────┘  │
-│         │                                                               │
-│  ┌──────┴────────────────────────────────────────────┐                  │
-│  │               common/ (types, Utils, constants)    │                  │
-│  └────────────────────────────────────────────────────┘                  │
-└──────────────────────────────┬──────────────────────────────────────────┘
-                               │
-                               ▼
-                    ┌──────────────────────┐
-                    │    Webex JS SDK       │
-                    │  (HTTP + Mercury WS)  │
-                    └──────────────────────┘
-```
-
----
-
-## Module Dependency Graph
-
 ```mermaid
 graph TD
-    subgraph Domain Modules
-        CC[CallingClient]
-        CH[CallHistory]
-        CS[CallSettings]
-        CT[Contacts]
-        VM[Voicemail]
+    subgraph Consumer["Consumer Application"]
+        Factories["createClient() · createCallHistoryClient() · createCallSettingsClient()<br/>createContactsClient() · createVoicemailClient()"]
     end
 
-    subgraph Shared Infrastructure
-        SDK[SDKConnector]
-        LOG[Logger]
-        MET[Metrics]
-        EVT[Events / Eventing]
-        ERR[Errors]
-        CMN[common]
+    subgraph Domain["Domain Modules"]
+        CC["CallingClient<br/>(Mobius)"]
+        CH["CallHistory<br/>(Janus)"]
+        CS["CallSettings<br/>(WxC/UCM/BW)"]
+        CT["Contacts<br/>(SCIM)"]
+        VM["Voicemail<br/>(XSI/VG)"]
     end
 
-    CC --> SDK
-    CC --> LOG
-    CC --> MET
-    CC --> EVT
-    CC --> ERR
-    CC --> CMN
+    subgraph CCInternal["CallingClient Internals"]
+        LINE["Line"]
+        REG["Registration"]
+        CALLMGR["CallManager"]
+    end
 
-    CH --> SDK
-    CH --> LOG
-    CH --> EVT
-    CH --> CMN
+    subgraph Infra["Shared Infrastructure Layer"]
+        SDKC["SDKConnector<br/>(singleton)"]
+        LOG["Logger"]
+        MET["Metrics<br/>(singleton)"]
+        EVT["Events / Eventing"]
+        ERR["Errors hierarchy"]
+        COMMON["common/<br/>(types, Utils, constants)"]
+    end
 
-    CS --> SDK
-    CS --> LOG
-    CS --> CMN
+    WEBEX["Webex JS SDK<br/>(HTTP + Mercury WS)"]
 
-    CT --> SDK
-    CT --> LOG
-    CT --> CMN
+    Factories --> CC
+    Factories --> CH
+    Factories --> CS
+    Factories --> CT
+    Factories --> VM
 
-    VM --> SDK
-    VM --> LOG
-    VM --> MET
-    VM --> EVT
-    VM --> CMN
+    CC --- CCInternal
+    LINE --> REG
+    LINE --> CALLMGR
 
-    MET --> SDK
-    SDK --> CMN
-    LOG --> CMN
-    ERR --> CMN
+    CS -. "Backend<br/>Connector" .-> Infra
+    VM -. "Backend<br/>Connector" .-> Infra
+
+    CC --> Infra
+    CH --> Infra
+    CS --> Infra
+    CT --> Infra
+    VM --> Infra
+
+    SDKC --> COMMON
+    Infra --> WEBEX
 ```
-
----
-
-## Design Patterns
-
-### 1. Singleton Pattern
-
-Three modules are implemented as frozen module-level singletons:
-
-| Singleton | File | Freeze Mechanism |
-|---|---|---|
-| `SDKConnector` | `SDKConnector/index.ts` | `Object.freeze()` on default export |
-| `MetricManager` | `Metrics/index.ts` | Module-scoped variable; `getMetricManager()` accessor |
-| `CallManager` | `CallingClient/calling/callManager.ts` | Module-scoped variable; `getCallManager()` accessor |
-
-`SDKConnector` uses a **set-once** pattern: `setWebex()` can be called only when the internal `webex` reference is unset. Subsequent calls are ignored. This guarantees that the entire package shares one Webex SDK instance.
-
-### 2. Factory Pattern
-
-Every public module is instantiated via a factory function (e.g., `createClient()`, `createCallHistoryClient()`). The factory:
-1. Initializes `SDKConnector` if needed
-2. Constructs the module class
-3. Returns the interface type (not the class)
-
-Individual call objects are created by `Call.createCall()` static factory inside `CallingClient/calling/call.ts`.
-
-### 3. Strategy Pattern (Backend Connectors)
-
-`CallSettings` and `Voicemail` use runtime strategy selection based on the user's detected calling backend:
-
-```
-CallSettings / Voicemail
-   │
-   ├── CALLING_BACKEND.WXC  → WxCallBackendConnector
-   ├── CALLING_BACKEND.BWRKS → BroadworksBackendConnector  (Voicemail only)
-   │                           WxCallBackendConnector       (CallSettings — BWRKS shares WxC connector)
-   └── CALLING_BACKEND.UCM  → UcmBackendConnector
-```
-
-The backend is determined by `getCallingBackEnd(webex)` in `common/Utils.ts`, which inspects user entitlements:
-- `bc-sp-standard` or `bc-sp-basic` → WXC
-- `broadworks-connector` → BWRKS
-- `NATIVE_SIP_CALL_TO_UCM` → UCM
-
-### 4. Observer / EventEmitter Pattern
-
-All modules that need to communicate asynchronously extend `Eventing<T>` from `Events/impl/index.ts`. This base class wraps Node's `EventEmitter` with `typed-emitter` for compile-time type safety.
-
-Each module defines its own event type map (e.g., `CallEventTypes`, `LineEventTypes`) that maps event key enums to callback signatures.
-
-### 5. State Machine Pattern (XState)
-
-Call lifecycle and media negotiation (ROAP) are managed by XState finite state machines within the `CallingClient/calling/` module:
-
-- **Call FSM**: States — `S_IDLE`, `S_SEND_CALL_SETUP`, `S_RECV_CALL_PROGRESS`, `S_RECV_CALL_CONNECT`, `S_CALL_ESTABLISHED`, `S_SEND_CALL_DISCONNECT`, etc.
-- **ROAP FSM**: States — `S_IDLE`, `S_SEND_ROAP_OFFER`, `S_RECV_ROAP_ANSWER`, `S_ROAP_OK`, etc.
-
-Events are discriminated unions (e.g., `CallEvent`, `RoapEvent`) enabling type-safe transitions.
 
 ---
 
@@ -232,9 +129,9 @@ src/
 │   ├── types.ts                # ERROR_TYPE, ERROR_CODE, ERROR_LAYER, error object shapes
 │   └── catalog/
 │       ├── ExtendedError.ts    # Base error class
-│       ├── CallError.ts        # Call-specific error
-│       ├── LineError.ts        # Line/registration error
-│       └── CallingDeviceError.ts # CallingClient-level error (exported as CallingClientError)
+│       ├── CallError.ts        # Call-specific error (correlationId, errorLayer)
+│       ├── LineError.ts        # Line/registration error (status: RegistrationStatus)
+│       └── CallingDeviceError.ts # CallingClient-level error — class is named CallingClientError, takes status: RegistrationStatus
 │
 └── common/                     # Shared utilities
     ├── types.ts                # CALLING_BACKEND, HTTP_METHODS, MobiusServers, DeviceType, etc.
@@ -243,6 +140,131 @@ src/
     ├── index.ts                # Re-exports Utils
     └── testUtil.ts             # Test helpers (getTestUtilsWebex, flushPromises)
 ```
+
+---
+
+## Module Dependency Graph
+
+```mermaid
+graph TD
+    subgraph Domain Modules
+        CC[CallingClient]
+        CH[CallHistory]
+        CS[CallSettings]
+        CT[Contacts]
+        VM[Voicemail]
+    end
+
+    subgraph Shared Infrastructure
+        SDK[SDKConnector]
+        LOG[Logger]
+        MET[Metrics]
+        EVT[Events / Eventing]
+        ERR[Errors]
+        CMN[common]
+    end
+
+    CC --> SDK
+    CC --> LOG
+    CC --> MET
+    CC --> EVT
+    CC --> ERR
+    CC --> CMN
+
+    CH --> SDK
+    CH --> LOG
+    CH --> EVT
+    CH --> CMN
+
+    CS --> SDK
+    CS --> LOG
+    CS --> CMN
+
+    CT --> SDK
+    CT --> LOG
+    CT --> CMN
+
+    VM --> SDK
+    VM --> LOG
+    VM --> MET
+    VM --> EVT
+    VM --> CMN
+
+    MET --> SDK
+    SDK --> CMN
+    LOG --> CMN
+    ERR --> CMN
+```
+
+---
+
+## Design Patterns
+
+### 1. Singleton Pattern
+
+Three modules are implemented as frozen module-level singletons:
+
+| Singleton | File | Freeze Mechanism |
+|---|---|---|
+| `SDKConnector` | `SDKConnector/index.ts` | `Object.freeze()` on default export |
+| `MetricManager` | `Metrics/index.ts` | Module-scoped variable; `getMetricManager()` accessor |
+| `CallManager` | `CallingClient/calling/callManager.ts` | Module-scoped variable; `getCallManager()` accessor |
+
+`SDKConnector` uses a **set-once** pattern: `setWebex()` can be called only when the internal `instance` reference is unset. If called a second time, it throws an error (`'You cannot set the SDKConnector instance more than once'`). This guarantees that the entire package shares one Webex SDK instance.
+
+### 2. Factory Pattern
+
+Every public module is instantiated via a factory function (e.g., `createClient()`, `createCallHistoryClient()`). The factory:
+1. Initializes `SDKConnector` if needed
+2. Constructs the module class
+3. Returns the interface type (not the class)
+
+Individual call objects are created by `Call.createCall()` static factory inside `CallingClient/calling/call.ts`.
+
+### 3. Strategy Pattern (Backend Connectors)
+
+`CallSettings` and `Voicemail` use runtime strategy selection based on the user's detected calling backend:
+
+```mermaid
+graph LR
+    CS["CallSettings"]
+    VM["Voicemail"]
+
+    WxCS["WxCallBackendConnector"]
+    UcmCS["UcmBackendConnector"]
+
+    WxVM["WxCallBackendConnector"]
+    BwVM["BroadworksBackendConnector"]
+    UcmVM["UcmBackendConnector"]
+
+    CS -- "WXC" --> WxCS
+    CS -- "BWRKS<br/>(shares WxC connector)" --> WxCS
+    CS -- "UCM" --> UcmCS
+
+    VM -- "WXC" --> WxVM
+    VM -- "BWRKS" --> BwVM
+    VM -- "UCM" --> UcmVM
+```
+
+The backend is determined by `getCallingBackEnd(webex)` in `common/Utils.ts`, which first checks `webex.internal.device.callingBehavior`, then inspects user entitlements:
+- `callingBehavior === 'NATIVE_WEBEX_TEAMS_CALLING'` + entitlement `bc-sp-standard`/`bc-sp-basic` → WXC
+- `callingBehavior === 'NATIVE_WEBEX_TEAMS_CALLING'` + entitlement `broadworks-connector` → BWRKS
+- `callingBehavior === 'NATIVE_SIP_CALL_TO_UCM'` → UCM
+
+### 4. Observer / EventEmitter Pattern
+
+All modules that need to communicate asynchronously extend `Eventing<T>` from `Events/impl/index.ts`. This base class wraps Node's `EventEmitter` with `typed-emitter` for compile-time type safety.
+
+Each module defines its own event type map (e.g., `CallEventTypes`, `LineEventTypes`) that maps event key enums to callback signatures.
+
+### 5. State Machine Pattern (XState)
+
+Call lifecycle and media negotiation (ROAP) are managed by XState finite state machines within the `CallingClient/calling/` module:
+
+- **Call FSM**: States — `S_IDLE`, `S_SEND_CALL_SETUP`, `S_RECV_CALL_PROGRESS`, `S_RECV_CALL_CONNECT`, `S_CALL_ESTABLISHED`, `S_SEND_CALL_DISCONNECT`, etc.
+- **ROAP FSM**: States — `S_IDLE`, `S_SEND_ROAP_OFFER`, `S_RECV_ROAP_ANSWER`, `S_ROAP_OK`, etc.
+
+Events are discriminated unions (e.g., `CallEvent`, `RoapEvent`) enabling type-safe transitions.
 
 ---
 
@@ -305,7 +327,7 @@ sequenceDiagram
     Mobius->>CM: Mercury WS event (callSetup)
     CM->>Call: new Call(inbound)
     CM->>Line: incoming call notification
-    Line-->>App: emit('incoming_call', callObj)
+    Line-->>App: emit(LINE_EVENTS.INCOMING_CALL, callObj)
     App->>Call: answer()
 ```
 
@@ -339,56 +361,44 @@ For `CallHistory` and `Voicemail`, real-time updates arrive via Mercury WebSocke
 
 The `CallSettings` and `Voicemail` modules use the Strategy pattern to handle three distinct calling backends through a unified interface:
 
-```
-┌──────────────────────┐
-│   CallSettings       │
-│   (Facade)           │
-│                      │
-│  ┌────────────────┐  │      ┌──────────────────────────┐
-│  │ backendConnector├──┼─────▶│ WxCallBackendConnector   │  (WXC + BWRKS)
-│  └────────────────┘  │      │ • XSI Actions API        │
-│                      │      │ • Hydra People API       │
-│                      │      └──────────────────────────┘
-│                      │
-│                      │      ┌──────────────────────────┐
-│                      ├─────▶│ UcmBackendConnector      │  (UCM)
-│                      │      │ • Webex Config API       │
-│                      │      └──────────────────────────┘
-└──────────────────────┘
+```mermaid
+graph LR
+    subgraph CallSettingsFacade["CallSettings (Facade)"]
+        CS_BC["backendConnector"]
+    end
 
-┌──────────────────────┐
-│   Voicemail          │
-│   (Facade)           │
-│                      │
-│  ┌────────────────┐  │      ┌──────────────────────────┐
-│  │ backendConnector├──┼─────▶│ WxCallBackendConnector   │  (WXC)
-│  └────────────────┘  │      │ • XSI VoiceMessaging API │
-│                      │      └──────────────────────────┘
-│                      │
-│                      │      ┌──────────────────────────┐
-│                      ├─────▶│ BroadworksBackendConnector│  (BWRKS)
-│                      │      │ • BW XSI + BW Token auth │
-│                      │      └──────────────────────────┘
-│                      │
-│                      │      ┌──────────────────────────┐
-│                      ├─────▶│ UcmBackendConnector      │  (UCM)
-│                      │      │ • VMGateway API          │
-│                      │      └──────────────────────────┘
-└──────────────────────┘
+    CS_WXC["WxCallBackendConnector<br/>(WXC + BWRKS)<br/>• XSI Actions API<br/>• Hydra People API"]
+    CS_UCM["UcmBackendConnector<br/>(UCM)<br/>• Webex Config API"]
+
+    CS_BC -- "WXC / BWRKS" --> CS_WXC
+    CS_BC -- "UCM" --> CS_UCM
+
+    subgraph VoicemailFacade["Voicemail (Facade)"]
+        VM_BC["backendConnector"]
+    end
+
+    VM_WXC["WxCallBackendConnector<br/>(WXC)<br/>• XSI VoiceMessaging API"]
+    VM_BW["BroadworksBackendConnector<br/>(BWRKS)<br/>• BW XSI + BW Token auth"]
+    VM_UCM["UcmBackendConnector<br/>(UCM)<br/>• VMGateway API"]
+
+    VM_BC -- "WXC" --> VM_WXC
+    VM_BC -- "BWRKS" --> VM_BW
+    VM_BC -- "UCM" --> VM_UCM
 ```
 
-### Backend Detection Logic (`common/Utils.ts`)
+### Backend Detection Logic (`getCallingBackEnd()` in `common/Utils.ts`)
 
-```
-User Entitlements
-       │
-       ├── has 'NATIVE_SIP_CALL_TO_UCM'? ──▶ CALLING_BACKEND.UCM
-       │
-       ├── has 'broadworks-connector'? ──▶ CALLING_BACKEND.BWRKS
-       │
-       ├── has 'bc-sp-standard' or 'bc-sp-basic'? ──▶ CALLING_BACKEND.WXC
-       │
-       └── none matched ──▶ CALLING_BACKEND.INVALID (throws)
+The detection uses a two-level branching: first on `callingBehavior`, then on entitlements:
+
+```mermaid
+flowchart TD
+    START["webex.internal.device.callingBehavior"] --> CHECK_NATIVE{"=== 'NATIVE_WEBEX_TEAMS_CALLING'?"}
+    CHECK_NATIVE -- Yes --> CHECK_ENT{"Check entitlements"}
+    CHECK_ENT -- "'bc-sp-standard'<br/>or 'bc-sp-basic'" --> WXC["CALLING_BACKEND.WXC"]
+    CHECK_ENT -- "'broadworks-connector'" --> BWRKS["CALLING_BACKEND.BWRKS"]
+    CHECK_NATIVE -- No --> CHECK_UCM{"=== 'NATIVE_SIP_CALL_TO_UCM'?"}
+    CHECK_UCM -- Yes --> UCM["CALLING_BACKEND.UCM"]
+    CHECK_UCM -- No --> INVALID["CALLING_BACKEND.INVALID<br/>(returned, not thrown)"]
 ```
 
 ---
@@ -400,10 +410,10 @@ User Entitlements
 The `SDKConnector` is a frozen singleton providing controlled access to the Webex JS SDK. All modules obtain their `webex` reference through it.
 
 **Key behaviors:**
-- `setWebex(webex)`: Set-once; validates via `validateWebex()` then stores
-- `getWebex()`: Returns the stored reference
-- `registerListener(listener, scope, callback)`: Proxies to `webex.internal.mercury.on(scope, callback)`
-- `unregisterListener(listener, scope)`: Proxies to `webex.internal.mercury.off(scope, listener)`
+- `setWebex(webexInstance)`: Set-once; validates via `validateWebex()` then stores. Throws an error if called more than once.
+- `getWebex()`: Returns the stored Webex SDK reference
+- `registerListener<T>(event, cb)`: Proxies to `webex.internal.mercury.on(event, cb)`
+- `unregisterListener(event)`: Proxies to `webex.internal.mercury.off(event)`
 
 The `WebexSDK` interface (in `SDKConnector/types.ts`) defines the typed contract for the Webex SDK features the calling package consumes: `internal.device`, `internal.mercury`, `internal.services`, `internal.metrics`, `internal.encryption`, `people`, `credentials`, `request()`, etc.
 
@@ -448,8 +458,8 @@ Four-class hierarchy with factory functions:
 |---|---|---|
 | `ExtendedError` | — | `message`, `type` (ERROR_TYPE), `context` (file/method) |
 | `CallError` | `createCallError()` | `correlationId`, `errorLayer` (call_control / media) |
-| `LineError` | — | `status` (RegistrationStatus) |
-| `CallingClientError` | `createClientError()` | `correlationId`, `errorLayer` |
+| `LineError` | `createLineError()` | `status` (RegistrationStatus) |
+| `CallingClientError` (file: `CallingDeviceError.ts`) | `createClientError()` | `status` (RegistrationStatus) |
 
 Error handler utilities in `common/Utils.ts`:
 - `handleCallErrors(err, ...)` — maps HTTP status codes to `CallError` instances
@@ -462,7 +472,7 @@ Error handler utilities in `common/Utils.ts`:
 |---|---|
 | `types.ts` | Shared type aliases (`CallId`, `CorrelationId`, `CallDetails`, `MobiusServers`, etc.), enums (`CALLING_BACKEND`, `HTTP_METHODS`, `SORT`, `ServiceIndicator`, `RegistrationStatus`), and complex interfaces (`IDeviceInfo`, `WebexRequestPayload`, `SCIMListResponse`) |
 | `constants.ts` | String constants for API paths, entitlement names, Webex API base URLs, status messages |
-| `Utils.ts` | ~1,700 lines of utility functions: backend detection, XSI endpoint resolution, UUID inference, SCIM queries, voicemail list caching, RTP stats parsing, error handlers, log upload, keepalive interval calculation |
+| `Utils.ts` | ~1,764 lines of utility functions: backend detection (`getCallingBackEnd`), XSI endpoint resolution, UUID inference, SCIM queries, voicemail list caching, RTP stats parsing, error handlers, log upload, keepalive interval calculation |
 | `testUtil.ts` | `getTestUtilsWebex()` — builds a mock Webex SDK instance; `flushPromises()`, `waitForMsecs()` |
 
 ---
