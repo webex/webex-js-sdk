@@ -179,6 +179,18 @@ if (call) {
 }
 ```
 
+> **Note:** For detailed information on handling of the outbound call flow refer to the following references:
+>
+> 1. `line.makeCall()` — validates the destination and delegates to `callManager.createCall()`. See `src/CallingClient/line/index.ts` (`makeCall` method).
+> 2. `callManager.createCall()` — instantiates a new `Call` object via the `createCall` factory. See `src/CallingClient/calling/callManager.ts` (`createCall` method).
+> 3. `call.dial()` — initiates the media session with a `LocalMicrophoneStream`. See `src/CallingClient/calling/call.ts` (`dial` method).
+> 4. Outbound call state machine handlers in `src/CallingClient/calling/call.ts`:
+>    - `handleOutgoingCallSetup` — sends the initial call setup request to Mobius
+>    - `handleOutgoingCallAlerting` — processes the alerting/ringing state
+>    - `handleOutgoingCallConnect` — handles call establishment
+>    - `handleOutgoingCallDisconnect` — handles call teardown
+>    - `handleOutgoingRoapOffer` / `handleOutgoingRoapAnswer` — WebRTC ROAP media negotiation
+
 ---
 
 ## Types
@@ -218,24 +230,37 @@ type LineEmitterCallback = (
 type LineErrorEmitterCallback = (err: LineError, finalError?: boolean) => void;
 ```
 
-#### About `LineError` and Line Error Handling
+#### LineError
 
 The `LineError` object encapsulates structured information about errors occurring during Line operations. It typically includes:
 
 - A human-readable error message (e.g., explaining the user-level issue, such as invalid numbers).
 - An error data payload (for debugging or UI).
 - A specific error type (`ERROR_TYPE`), identifying the domain of the failure (e.g., registration, call errors).
+  - See `ERROR_TYPE` enum in `src/Errors/types.ts`.
 - Optionally, a registration status describing the state when the error occurred.
+  - See `RegistrationStatus` enum in `src/common/types.ts`.
+
+> **File references:**
+> - `LineError` class and `createLineError` factory — `src/Errors/catalog/LineError.ts`
+> - `LineErrorObject` type definition — `src/Errors/types.ts`
 
 Inside [`@packages/calling/src/CallingClient/line/index.ts`](../index.ts):
 
 - All major asynchronous operations (such as `makeCall`, `register`, etc.) are instrumented with structured error handling.
+  - See `makeCall` in `src/CallingClient/line/index.ts` (invalid phone number path).
 - When an error occurs that should be signaled to clients, a `LineError` object is constructed with descriptive details and relevant context.
+  - See `new LineError(...)` in `src/CallingClient/line/index.ts`.
+  - See `createLineError(...)` in `src/common/Utils.ts` (used by `handleRegistrationErrors` and `emitFinalFailure`).
 - This error object is emitted via the `LINE_EVENTS.ERROR` event, using the `lineEmitter` method as the emission pathway.
+  - See `lineEmitter` switch case for `LINE_EVENTS.ERROR` in `src/CallingClient/line/index.ts`.
+  - See registration error callbacks in `src/CallingClient/registration/register.ts` (`attemptRegistrationWithServers`, keepalive worker `onmessage`).
 - Listeners on the `Line` instance (using `line.on(LINE_EVENTS.ERROR, ...)`) can receive, log, display, or escalate these errors through the callback signature shown above.
+  - See listener examples in `src/CallingClient/line/line.test.ts`.
 
 For example, in the implementation of `makeCall`:
 - If the destination phone number is invalid, a `LineError` is created with a message and detail, and emitted to listeners using the error event. This ensures callers receive clear, structured error information, and can distinguish normal versus terminal errors using the `finalError` boolean.
+  - See `src/CallingClient/line/index.ts` — the `else` branch of the phone number regex check in `makeCall`.
 
 **Summary:**  
 Error handling in the `Line` class centers on the use of the `LineError` object, with propagation through a typed emitter callback. This enables robust, structured, and type-safe error reporting to SDK consumers or UI components.

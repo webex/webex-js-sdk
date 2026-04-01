@@ -135,7 +135,8 @@ This indirection ensures that:
 The behavior of `makeCall` varies by `ServiceIndicator`:
 
 - **`ServiceIndicator.CALLING`** (licensed users): `destination` is mandatory and validated. A `CallDetails` object with a valid `type` and `address` must be provided.
-- **`ServiceIndicator.GUEST_CALLING`** or **`ServiceIndicator.CONTACT_CENTER`**: Destination handling may differ — destination may be optional or pre-configured server-side depending on the flow.
+- **`ServiceIndicator.GUEST_CALLING`**: Destination is optional. It's omitted, and a call is created without a destination (the destination is determined through the jwe token).
+- **`ServiceIndicator.CONTACT_CENTER`**: Destination **must** be provided. There is no special handling for this indicator in `makeCall` — if `dest` is omitted, `makeCall` returns `undefined` and no call is created.
 
 ```mermaid
 flowchart TD

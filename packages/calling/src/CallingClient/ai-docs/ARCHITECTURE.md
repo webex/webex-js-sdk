@@ -11,8 +11,6 @@ The CallingClient module follows a layered architecture: **Application → Calli
 | **Orchestrator** | `CallingClient` | `CallingClient.ts` | Mobius discovery, line creation, network resilience, session listener, media engine config |
 | **Line Management** | `Line` | `line/index.ts` | Registration orchestration, call initiation, incoming call forwarding, line event emission |
 | **Registration** | `Registration` | `registration/register.ts` | Device register/deregister, keepalive via web worker, failover/failback, reconnection |
-| **Metrics** | `MetricManager` | `Metrics/index.ts` | Telemetry submission for registration, calls, errors, BNR |
-| **Logging** | `Logger` | `Logger/index.ts` | Structured logging with file/method context |
 
 > **Note:** `CallManager`, `Call`, and `SDKConnector` are shared entities used across the calling package by all client modules. Their architecture is documented in the package-level source directories.
 
@@ -178,6 +176,9 @@ sequenceDiagram
     Note over App: App must call getLines() and line.register() explicitly
 ```
 
+> **Note:** For detailed information on the registration process and its architecture, refer to the [Registration architecture documentation](../registration/ai-docs/ARCHITECTURE.md).
+
+
 ### 2. Line Registration
 
 ```mermaid
@@ -195,7 +196,7 @@ sequenceDiagram
     Line->>App: emit('connecting')
     Line->>Reg: triggerRegistration()
     activate Reg
-    Reg->>Mobius: POST /calling/web/devices (register)
+    Reg->>Mobius: POST /calling/web/device (register)
     Mobius-->>Reg: 200 {device: {...}}
     Reg->>Reg: setStatus(ACTIVE)
     Reg->>Worker: WorkerMessageType.START_KEEPALIVE
@@ -213,87 +214,7 @@ sequenceDiagram
     end
 ```
 
-### 3. Outbound Call Flow
-
-```mermaid
-sequenceDiagram
-    participant App as Application
-    participant Line as Line
-    participant CM as CallManager
-    participant Call as Call
-    participant Mobius as Mobius API
-    participant Media as MediaConnection
-
-    App->>Line: makeCall({type: 'uri', address: 'sip:user@...'})
-    activate Line
-    Line->>CM: createCall(OUTBOUND, deviceId, lineId, dest)
-    activate CM
-    CM->>Call: new Call(mobiusUrl, webex, OUTBOUND, ...)
-    activate Call
-    Call->>Call: XState: callStateMachine.start()
-    Call->>Call: XState: mediaStateMachine.start()
-    CM-->>Line: call (ICall)
-    deactivate CM
-    Line-->>App: call (ICall)
-    deactivate Line
-
-    App->>Call: dial(localAudioStream)
-    Call->>Media: new RoapMediaConnection(config, options)
-    Media-->>Call: ROAP OFFER (SDP)
-    Call->>Mobius: POST /calls (with SDP)
-    Call->>Call: callStateMachine.send(E_SEND_CALL_SETUP)
-    Mobius-->>Call: 200 {callId, callData}
-
-    Note over Mobius,Call: Via Mercury WebSocket
-    Mobius->>Call: callprogress event
-    Call->>Call: callStateMachine.send(E_RECV_CALL_PROGRESS)
-    Call->>App: emit(CALL_EVENT_KEYS.PROGRESS)
-
-    Mobius->>Call: ROAP ANSWER
-    Call->>Media: handleRoapAnswer(sdp)
-    Call->>Mobius: ROAP OK
-
-    Mobius->>Call: callconnected event
-    Call->>Call: callStateMachine.send(E_RECV_CALL_CONNECT)
-    Call->>Call: callStateMachine.send(E_CALL_ESTABLISHED)
-    Call->>App: emit(CALL_EVENT_KEYS.ESTABLISHED)
-```
-
-### 4. Inbound Call Flow
-
-```mermaid
-sequenceDiagram
-    participant App as Application
-    participant Line as Line
-    participant CM as CallManager
-    participant Call as Call
-    participant Mercury as Mercury WS
-    participant Mobius as Mobius API
-
-    Mercury->>CM: event:mobius (callSetup)
-    activate CM
-    CM->>Call: new Call(mobiusUrl, webex, INBOUND, ...)
-    activate Call
-    Call->>Call: callStateMachine.send(E_RECV_CALL_SETUP)
-    Call->>Call: emit(CALL_EVENT_KEYS.ALERTING)
-    CM->>Line: emit(LINE_EVENT_KEYS.INCOMING_CALL, call)
-    deactivate CM
-    Line->>App: emit(LINE_EVENTS.INCOMING_CALL, call)
-    deactivate Call
-
-    App->>Call: answer(localAudioStream)
-    activate Call
-    Call->>Call: Create RoapMediaConnection
-    Call->>Mobius: POST /calls/{callId}/connect
-    Call->>Call: callStateMachine.send(E_SEND_CALL_CONNECT)
-    Call->>App: emit(CALL_EVENT_KEYS.CONNECT)
-
-    Note over Mobius,Call: ROAP negotiation
-    Call->>App: emit(CALL_EVENT_KEYS.ESTABLISHED)
-    deactivate Call
-```
-
-### 5. Network Disruption and Recovery
+### 3. Network Disruption and Recovery
 
 ```mermaid
 sequenceDiagram
@@ -345,7 +266,7 @@ sequenceDiagram
     deactivate Reg
 ```
 
-### 6. Deregistration and Cleanup
+### 4. Deregistration and Cleanup
 
 ```mermaid
 sequenceDiagram

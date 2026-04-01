@@ -127,15 +127,15 @@ sequenceDiagram
     Note over Reg: All primary URIs failed
 
     Reg->>Reg: startFailoverTimer()
-    Reg->>Reg: Calculate backoff delay
+    Reg->>Reg: Calculate registration retry interval
 
     loop Failover attempts
-        Reg->>Mobius1: POST /calling/web/devices (retry primary)
+        Reg->>Mobius1: POST /calling/web/device (retry primary)
         Mobius1-->>Reg: Failure (timeout/error)
 
         Note over Reg: Primary still down, try backup
 
-        Reg->>Mobius2: POST /calling/web/devices
+        Reg->>Mobius2: POST /calling/web/device
         alt Backup succeeds
             Mobius2-->>Reg: 200 OK {device: {...}}
             Reg->>Reg: setStatus(ACTIVE)
@@ -242,7 +242,7 @@ URL.revokeObjectURL(url);
 When the main thread receives `KEEPALIVE_FAILURE`:
 
 1. **Emit `RECONNECTING`** via `lineEmitter` to notify the application
-2. **Check retry count** against threshold (`MAX_CALL_KEEPALIVE_RETRY_COUNT = 4`)
+2. **Check retry count** against threshold (`MAX_CALL_KEEPALIVE_RETRY_COUNT = 4 for contact center and 5 otherwise`)
 3. **If within threshold:** Log warning, wait for next keepalive cycle
 4. **If threshold exceeded:** Trigger `reconnectOnFailure()` for full re-registration
 5. **Submit metrics** for keepalive failure
@@ -350,6 +350,74 @@ Registration errors are mapped through `handleRegistrationErrors()`. Fatal error
 | 500 | `SERVER_ERROR` | No | Continue to next server or schedule retry |
 | 503 | `SERVICE_UNAVAILABLE` | No | Continue to next server or schedule retry |
 | Other | `DEFAULT` | No | Continue to next server or schedule retry |
+
+### Final vs Non-Final Error Flow
+
+```mermaid
+sequenceDiagram
+    participant Mobius
+    participant Reg as Registration<br/>(attemptRegistrationWithServers)
+    participant HRE as handleRegistrationErrors
+    participant Line as Line<br/>(lineEmitter)
+    participant App as Application
+
+    Note over Reg: Server loop: iterate over Mobius URIs
+
+    Reg->>Mobius: POST /device (register)
+    Mobius-->>Reg: HTTP error response
+
+    Reg->>HRE: handleRegistrationErrors(err, emitterCb, ...)
+    HRE->>HRE: Map statusCode → ERROR_TYPE, set finalError flag
+
+    alt Final error (400, 401, 404, 403 code 102)
+        HRE->>HRE: finalError = true
+        HRE->>Line: emitterCb(lineError, true)
+        Line->>App: emit LINE_EVENTS.ERROR (lineError)
+        HRE-->>Reg: return abort = true
+        Reg->>Reg: setStatus(INACTIVE)
+        Reg->>Reg: uploadLogs()
+        Reg->>Reg: break out of server loop
+    else Non-final error (500, 503, other)
+        HRE->>HRE: finalError = false
+        HRE->>Line: emitterCb(lineError, false)
+        Line->>App: emit LINE_EVENTS.UNREGISTERED (no payload)
+        HRE-->>Reg: return abort = false
+        Reg->>Reg: continue to next server in loop
+        Note over Reg: If all servers exhausted:
+        Reg->>Reg: startFailoverTimer()
+        alt Primary time budget remaining
+            Reg->>Reg: Schedule retry with primary (exponential backoff)
+        else Primary time exceeded, backups exist
+            Reg->>Mobius: attemptRegistrationWithServers(backupUris)
+            alt Backups also fail
+                Reg->>Reg: Schedule one more backup retry
+                alt Still fails
+                    Reg->>Line: emitFinalFailure → lineEmitter(ERROR)
+                    Line->>App: emit LINE_EVENTS.ERROR (SERVICE_UNAVAILABLE)
+                end
+            end
+        else No backups available
+            Reg->>Line: emitFinalFailure → lineEmitter(ERROR)
+            Line->>App: emit LINE_EVENTS.ERROR (SERVICE_UNAVAILABLE)
+        end
+    else 429 Too Many Requests
+        HRE->>HRE: finalError = false
+        HRE->>Reg: retry429Cb(retryAfter, caller)
+        Reg->>Reg: handle429Retry (path depends on caller context)
+        HRE-->>Reg: return abort = false
+    else 403 Device Limit Exceeded (code 101)
+        HRE->>HRE: finalError = false
+        HRE->>Reg: restoreRegCb(errorBody, caller)
+        Reg->>Reg: Deregister existing device, re-register
+        HRE-->>Reg: return abort = false
+    end
+```
+
+> **Source references:**
+> - Server loop and error branching: `attemptRegistrationWithServers` in `src/CallingClient/registration/register.ts`
+> - Error classification and callback invocation: `handleRegistrationErrors` in `src/common/Utils.ts`
+> - Failover timer and final failure: `startFailoverTimer` in `register.ts`, `emitFinalFailure` in `src/common/Utils.ts`
+> - `lineEmitter` branching on `finalError`: the `emitterCb` closure in `attemptRegistrationWithServers` — emits `LINE_EVENTS.ERROR` for `finalError = true`, `LINE_EVENTS.UNREGISTERED` for `finalError = false`
 
 ---
 

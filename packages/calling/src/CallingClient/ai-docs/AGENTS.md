@@ -18,7 +18,7 @@ Do **not** use this file as your only entry point for reasoning or code generati
 
 The `CallingClient` is one of the significant modules in the Webex Calling SDK, responsible for the main WebRTC call flow implementation. It manages line registration, call lifecycle coordination, Mobius server discovery, and network resilience.
 
-Applications create a `CallingClient` via the `createClient()` factory function and interact with lines and calls through it. Other client modules such as `CallHistoryClient`, `VoicemailClient`, and `CallSettingsClient` are independently available and do not require `CallingClient` to be initialized.
+Applications create a `CallingClient` via the `createClient()` factory function and interact with lines and calls through it.
 
 **Package:** `@webex/calling`
 
@@ -99,8 +99,8 @@ interface CallingClientConfig {
 | `discovery.country`     | No       | Auto-detected | Override country for Mobius discovery                       |
 | `discovery.region`      | No       | Auto-detected | Override region for Mobius discovery                        |
 | `serviceData.indicator` | No       | `CALLING`     | Service flow: `calling`, `guestcalling`, or `contactcenter` |
-| `serviceData.domain`    | No       | `''`          | Backend domain                                              |
-| `jwe`                   | No       | -             | JSON Web Encryption token for secure registration           |
+| `serviceData.domain`    | No       | `''`          | RTMS domain required for contact center flow                |
+| `jwe`                   | No       | -             | JSON Web Encryption token having destination information. This is only required for guest calling flow |
 
 ---
 
