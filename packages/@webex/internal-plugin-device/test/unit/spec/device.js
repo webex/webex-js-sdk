@@ -712,6 +712,22 @@ describe('plugin-device', () => {
 
         assert.equal(requestStub.withArgs(sinon.match({method: 'GET'})).callCount, 3);
       });
+
+      it('resolves (best-effort) when the polling GET throws a transient error', async () => {
+        setup('WEB');
+
+        sinon.stub(device, 'request')
+          .withArgs(sinon.match({method: 'GET'}))
+          .rejects(new Error('transient network error'));
+
+        const promise = device._waitForDeviceCountBelowLimit();
+        await clock.tickAsync(3000);
+        await promise;
+
+        assert(device.logger.warn.calledWith(
+          sinon.match('device: confirmation check 1 failed, proceeding anyway:')
+        ));
+      });
     });
 
     describe('_getDevicesOfCurrentType()', () => {

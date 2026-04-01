@@ -501,6 +501,14 @@ const Device = WebexPlugin.extend({
         }
 
         return this._waitForDeviceCountBelowLimit(attempt + 1);
+      })
+      .catch((error) => {
+        this.logger.warn(
+          `device: confirmation check ${attempt + 1} failed, proceeding anyway:`,
+          error
+        );
+
+        return Promise.resolve();
       });
   },
 
