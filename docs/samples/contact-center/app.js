@@ -84,6 +84,13 @@ const changeEnvBtn = document.querySelector('#changeEnv');
 const autoWrapupTimerElm = document.getElementById('autoWrapupTimer');
 const timerValueElm = autoWrapupTimerElm.querySelector('.timer-value');
 const outdialAniSelectElm = document.querySelector('#outdialAniSelect');
+const realtimeTranscriptsElm = document.querySelector('#realtime-transcripts-content');
+const clearTranscriptsButton = document.querySelector('#clear-transcripts');
+const ivrTranscriptContentElm = document.querySelector('#ivr-transcript-content');
+const ivrTranscriptTabButton = document.querySelector('#ivr-transcript-tab');
+const liveTranscriptTabButton = document.querySelector('#live-transcript-tab');
+const ivrTranscriptPanel = document.querySelector('#ivr-transcript-panel');
+const liveTranscriptPanel = document.querySelector('#live-transcript-panel');
 deregisterBtn.style.backgroundColor = 'red';
 let enableProd = true;
 
@@ -91,6 +98,185 @@ function changeEnv() {
   enableProd = !enableProd;
   changeEnvBtn.innerHTML = enableProd ? 'In Production' : 'In Integration';
 }
+
+const liveTranscriptEntries = [];
+const MAX_TRANSCRIPT_LINES = 200;
+let activeTranscriptConversationId = null;
+
+function setTranscriptTab(tabName) {
+  const isIvrTab = tabName === 'ivr';
+  ivrTranscriptTabButton?.classList.toggle('active', isIvrTab);
+  liveTranscriptTabButton?.classList.toggle('active', !isIvrTab);
+  ivrTranscriptTabButton?.setAttribute('aria-selected', String(isIvrTab));
+  liveTranscriptTabButton?.setAttribute('aria-selected', String(!isIvrTab));
+  ivrTranscriptPanel?.classList.toggle('active', isIvrTab);
+  ivrTranscriptPanel?.classList.toggle('hidden', !isIvrTab);
+  liveTranscriptPanel?.classList.toggle('active', !isIvrTab);
+  liveTranscriptPanel?.classList.toggle('hidden', isIvrTab);
+}
+
+function formatTranscriptTimestamp(value) {
+  if (value === undefined || value === null || value === '') {
+    return '00:00';
+  }
+
+  let timestamp = Number(value);
+  if (Number.isNaN(timestamp)) {
+    timestamp = Date.parse(value);
+  }
+
+  if (Number.isNaN(timestamp)) {
+    return '00:00';
+  }
+
+  if (timestamp < 1_000_000_000_000) {
+    timestamp *= 1000;
+  }
+
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function normalizeTranscriptPayload(payload) {
+  const source = payload?.data?.data || payload?.data || payload || {};
+
+  const textCandidate = source.content || source.transcript || source.text || source.message || source.action || '';
+  const transcriptText = Array.isArray(textCandidate)
+    ? textCandidate.join(' ')
+    : String(textCandidate || '').trim();
+  if (!transcriptText) {
+    return null;
+  }
+
+  const rawSpeaker = source.speaker || source.speakerType || source.participantType || source.role || source.source || '';
+  const speakerLower = String(rawSpeaker).toLowerCase();
+  const isSystem = speakerLower.includes('tombstone') || speakerLower.includes('system') || speakerLower.includes('event');
+  const isCustomer = speakerLower.includes('customer');
+
+  const speaker = isSystem ? 'Tombstone' : isCustomer ? 'Customer' : 'You';
+  const timestamp = source.timestamp || source.createdTime || source.time || source.receivedAt;
+
+  return {
+    type: isSystem ? 'system' : 'speech',
+    speaker,
+    text: transcriptText,
+    timeLabel: formatTranscriptTimestamp(timestamp),
+    conversationId: source.conversationId || source.interactionId || null,
+  };
+}
+
+function renderLiveTranscripts() {
+  if (!realtimeTranscriptsElm) {
+    return;
+  }
+
+  realtimeTranscriptsElm.innerHTML = '';
+  if (liveTranscriptEntries.length === 0) {
+    const emptyState = document.createElement('div');
+    emptyState.className = 'realtime-transcript-empty';
+    emptyState.textContent = 'No live transcript available.';
+    realtimeTranscriptsElm.appendChild(emptyState);
+    return;
+  }
+
+  liveTranscriptEntries.forEach((entry) => {
+    if (entry.type === 'system') {
+      const systemLine = document.createElement('div');
+      systemLine.className = 'realtime-transcript-system';
+      systemLine.textContent = `%${entry.speaker} - ${entry.text}%. ${entry.timeLabel}`;
+      realtimeTranscriptsElm.appendChild(systemLine);
+      return;
+    }
+
+    const row = document.createElement('div');
+    row.className = 'realtime-transcript-event';
+
+    const avatar = document.createElement('div');
+    avatar.className = `realtime-transcript-avatar ${entry.speaker === 'You' ? 'you' : ''}`.trim();
+    avatar.textContent = entry.speaker === 'Customer' ? 'CU' : 'YO';
+
+    const content = document.createElement('div');
+    const meta = document.createElement('div');
+    meta.className = 'realtime-transcript-meta';
+
+    const speaker = document.createElement('span');
+    speaker.className = 'realtime-transcript-speaker';
+    speaker.textContent = `%${entry.speaker}%`;
+
+    const time = document.createElement('button');
+    time.className = 'realtime-transcript-time';
+    time.type = 'button';
+    time.textContent = entry.timeLabel;
+
+    const text = document.createElement('p');
+    text.className = 'realtime-transcript-text';
+    text.textContent = entry.text;
+
+    meta.appendChild(speaker);
+    meta.appendChild(time);
+    content.appendChild(meta);
+    content.appendChild(text);
+    row.appendChild(avatar);
+    row.appendChild(content);
+    realtimeTranscriptsElm.appendChild(row);
+  });
+
+  realtimeTranscriptsElm.scrollTop = realtimeTranscriptsElm.scrollHeight;
+}
+
+function resetLiveTranscripts() {
+  liveTranscriptEntries.length = 0;
+  activeTranscriptConversationId = null;
+  renderLiveTranscripts();
+}
+
+function appendRealtimeTranscript(payload) {
+  const entry = normalizeTranscriptPayload(payload);
+  if (!entry) {
+    return;
+  }
+
+  if (entry.conversationId && activeTranscriptConversationId && activeTranscriptConversationId !== entry.conversationId) {
+    resetLiveTranscripts();
+  }
+
+  if (entry.conversationId) {
+    activeTranscriptConversationId = entry.conversationId;
+  }
+
+  liveTranscriptEntries.push(entry);
+  if (liveTranscriptEntries.length > MAX_TRANSCRIPT_LINES) {
+    liveTranscriptEntries.shift();
+  }
+
+  renderLiveTranscripts();
+}
+
+function renderIvrTranscript(task) {
+  if (!ivrTranscriptContentElm) {
+    return;
+  }
+
+  const ivrText = task?.data?.interaction?.callProcessingDetails?.convIvrTranscript;
+  if (typeof ivrText === 'string' && ivrText.trim()) {
+    ivrTranscriptContentElm.textContent = ivrText;
+  } else {
+    ivrTranscriptContentElm.textContent = 'No IVR transcript available.';
+  }
+}
+
+if (clearTranscriptsButton) {
+  clearTranscriptsButton.addEventListener('click', () => {
+    resetLiveTranscripts();
+  });
+}
+
+ivrTranscriptTabButton?.addEventListener('click', () => setTranscriptTab('ivr'));
+liveTranscriptTabButton?.addEventListener('click', () => setTranscriptTab('live'));
+setTranscriptTab('live');
+renderLiveTranscripts();
 
 function isIncomingTask(task, agentId) {
   const taskData = task?.data;
@@ -907,8 +1093,7 @@ async function loadOutdialAniEntries(outdialANIId) {
     console.log(`Loaded ${aniList.length} outdial ANI entries`);
 
   } catch (error) {
-    console.error('Failed to load outdial ANI entries:', error);
-    alert('Failed to load outdial ANI entries', error)
+    console.log('Failed to load outdial ANI entries:', error);
     // Add error option to select
     outdialAniSelectElm.innerHTML = '<option value="">Select Caller ID...</option>';
     const errorOption = document.createElement('option');
@@ -948,6 +1133,57 @@ async function startOutdial() {
   } catch (error) {
     console.error('Failed to initiate outdial call', error);
     alert('Failed to initiate outdial call: ' + (error.message || error));
+  }
+}
+
+// Campaign Preview Contact Functions
+
+function getCampaignPreviewPayload() {
+  const interactionId = document.getElementById('campaign-interaction-id').value.trim();
+  const campaignId = document.getElementById('campaign-id').value.trim();
+  console.log('[CampaignPreview] getCampaignPreviewPayload:', { interactionId, campaignId });
+  if (!interactionId || !campaignId) {
+    console.warn('[CampaignPreview] Missing required fields - interactionId:', interactionId, 'campaignId:', campaignId);
+    alert('Interaction ID and Campaign ID are required');
+    return null;
+  }
+  return { interactionId, campaignId };
+}
+
+function onCampaignReservationReceived(task) {
+  console.log('[CampaignPreview] === RESERVATION EVENT RECEIVED ===');
+  console.log('[CampaignPreview] Task data:', JSON.stringify(task.data, null, 2));
+  const interactionId = task.data?.interactionId || '';
+  // campaignId is the campaign NAME (e.g. "MyCampaign"), not a UUID.
+  // It is available at the top level of the event data or in callProcessingDetails.
+  const campaignId = task.data?.campaignId || task.data?.interaction?.callProcessingDetails?.campaignId || '';
+  console.log('[CampaignPreview] Resolved interactionId:', interactionId, 'campaignId (name):', campaignId);
+  document.getElementById('campaign-interaction-id').value = interactionId;
+  document.getElementById('campaign-id').value = campaignId;
+  document.getElementById('campaign-preview-status').innerText = 'Campaign preview contact received!';
+}
+
+async function acceptPreviewContact() {
+  const payload = getCampaignPreviewPayload();
+  if (!payload) return;
+  console.log('[CampaignPreview] === ACCEPT PREVIEW CONTACT ===');
+  console.log('[CampaignPreview] Sending payload:', JSON.stringify(payload));
+  try {
+    document.getElementById('acceptPreviewContact').disabled = true;
+    document.getElementById('campaign-preview-status').innerText = 'Accepting preview contact...';
+    const result = await webex.cc.acceptPreviewContact(payload);
+    console.log('[CampaignPreview] Accept SUCCESS - result:', JSON.stringify(result, null, 2));
+    document.getElementById('campaign-preview-status').innerText = 'Preview contact accepted!';
+    document.getElementById('campaign-interaction-id').value = '';
+    document.getElementById('campaign-id').value = '';
+  } catch (error) {
+    console.error('[CampaignPreview] Accept FAILED - error:', error);
+    console.error('[CampaignPreview] Error message:', error.message);
+    console.error('[CampaignPreview] Error details:', error.details);
+    console.error('[CampaignPreview] Error stack:', error.stack);
+    document.getElementById('campaign-preview-status').innerText = 'Accept failed: ' + (error.message || error);
+  } finally {
+    document.getElementById('acceptPreviewContact').disabled = false;
   }
 }
 
@@ -999,6 +1235,10 @@ function isInteractionOnHold(task) {
 
 // Register task listeners
 function registerTaskListeners(task) {
+  task.on('REAL_TIME_TRANSCRIPTION', (payload) => {
+    appendRealtimeTranscript(payload);
+  });
+
   task.on('task:assigned', (task) => {
     updateTaskList(); // Update the task list UI to have latest tasks
     console.info('Call has been accepted for task: ', task.data.interactionId);
@@ -1007,7 +1247,12 @@ function registerTaskListeners(task) {
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
-  task.on('task:end', updateTaskList); // Update the task list UI to have latest tasks
+  task.on('task:end', () => {
+    updateTaskList();
+    document.getElementById('campaign-interaction-id').value = '';
+    document.getElementById('campaign-id').value = '';
+    document.getElementById('campaign-preview-status').innerText = '';
+  });
 
   task.on('task:hold', updateTaskList);
 
@@ -1580,6 +1825,10 @@ function register() {
       }
     });
 
+    webex.cc.on('task:campaignPreviewReservation', (data) => {
+      onCampaignReservationReceived(data);
+    });
+
     webex.cc.on('agent:multiLogin', (data) => {
       if (data && typeof data === 'object' && data.type === 'AgentMultiLoginCloseSession') {
         agentMultiLoginAlert.innerHTML = 'Multiple Agent Login Session Detected!';  
@@ -2147,6 +2396,8 @@ function renderTaskList(taskList) {
     engageElm.innerHTML = ``;
     currentTask = undefined;
     participantListElm.style.display = 'none';
+    renderIvrTranscript(undefined);
+    resetLiveTranscripts();
     return;
   }
   
@@ -2312,6 +2563,7 @@ function handleTaskSelect(task) {
   // Handle the task click event
   console.log('Task clicked:', task);
   enableAnswerDeclineButtons(task);
+  renderIvrTranscript(task);
   engageElm.innerHTML = ``;
   engageElm.style.height = "100px"
   const chatAndSocial = ['chat', 'social'];

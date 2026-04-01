@@ -5,9 +5,9 @@ import routingContact from './contact';
 import WebCallingService from '../WebCallingService';
 import {ITask, MEDIA_CHANNEL, TASK_EVENTS, TaskData, TaskId} from './types';
 import {TASK_MANAGER_FILE} from '../../constants';
-import {METHODS} from './constants';
+import {METHODS, TRANSCRIPT_EVENT_MAP} from './constants';
 import {CC_EVENTS, CC_TASK_EVENTS, WrapupData} from '../config/types';
-import {LoginOption} from '../../types';
+import {AIAssistantEventName, AIAssistantEventType, LoginOption} from '../../types';
 import LoggerProxy from '../../logger-proxy';
 import Task from '.';
 import MetricsManager from '../../metrics/MetricsManager';
@@ -15,11 +15,13 @@ import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import {
   checkParticipantNotInInteraction,
   getIsConferenceInProgress,
+  isCampaignPreviewReservation,
   isParticipantInMainInteraction,
   isPrimary,
   isSecondaryEpDnAgent,
   shouldAutoAnswerTask,
 } from './TaskUtils';
+import ApiAIAssistant from '../ApiAiAssistant';
 
 /** @internal */
 export default class TaskManager extends EventEmitter {
@@ -38,17 +40,20 @@ export default class TaskManager extends EventEmitter {
   private wrapupData: WrapupData;
   private agentId: string;
   private webRtcEnabled: boolean;
+  private apiAIAssistant?: ApiAIAssistant;
   /**
    * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
    * @param webCallingService - Webrtc Service Layer
    * @param webSocketManager - Websocket Manager to maintain websocket connection and keepalives
    */
   constructor(
+    apiAIAssistant: ApiAIAssistant,
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     webSocketManager: WebSocketManager
   ) {
     super();
+    this.apiAIAssistant = apiAIAssistant;
     this.contact = contact;
     this.taskCollection = {};
     this.webCallingService = webCallingService;
@@ -79,9 +84,39 @@ export default class TaskManager extends EventEmitter {
     this.webRtcEnabled = webRtcEnabled;
   }
 
+  public handleRealtimeWebsocketEvent(event: string) {
+    try {
+      const payload = JSON.parse(event);
+
+      const eventType = payload?.type || payload?.data?.notifType;
+      const interactionId = payload?.data?.data?.conversationId;
+      if (!eventType || !interactionId) return;
+
+      const task = this.taskCollection[interactionId];
+      if (!task) {
+        LoggerProxy.info(`Realtime transcription task not found`, {
+          module: TASK_MANAGER_FILE,
+          method: METHODS.HANDLE_REAL_TIME_WEBSOCKET_EVENT,
+          interactionId,
+        });
+
+        return;
+      }
+
+      task.emit(eventType, payload.data);
+    } catch (error) {
+      LoggerProxy.error('Failed to parse RTD WebSocket message', {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.HANDLE_REAL_TIME_WEBSOCKET_EVENT,
+        error,
+      });
+    }
+  }
+
   private handleIncomingWebCall = (call: ICall) => {
     const currentTask = Object.values(this.taskCollection).find(
-      (task) => task.data.interaction.mediaType === 'telephony'
+      (task) =>
+        task.data.interaction.mediaType === 'telephony' && !isCampaignPreviewReservation(task)
     );
 
     if (currentTask) {
@@ -109,9 +144,11 @@ export default class TaskManager extends EventEmitter {
       const payload = JSON.parse(event);
       // Re-emit the task events to the task object
       let task: ITask;
-      if (payload.data?.type) {
-        if (Object.values(CC_TASK_EVENTS).includes(payload.data.type)) {
-          task = this.taskCollection[payload.data.interactionId];
+      if (payload.data?.type || payload.type) {
+        if (Object.values(CC_TASK_EVENTS).includes(payload.data.type || payload.type)) {
+          task =
+            this.taskCollection[payload.data?.interactionId] ||
+            this.taskCollection[payload.data?.data?.conversationId];
         }
         LoggerProxy.info(`Handling task event ${payload.data?.type}`, {
           module: TASK_MANAGER_FILE,
@@ -249,8 +286,21 @@ export default class TaskManager extends EventEmitter {
             }
             break;
           case CC_EVENTS.AGENT_CONTACT_ASSIGNED:
-            task = this.updateTaskData(task, payload.data);
-            task.emit(TASK_EVENTS.TASK_ASSIGNED, task);
+            // When a campaign preview contact is accepted, the assigned event may arrive
+            // with a new interactionId while the task is stored under the original
+            // reservationInteractionId. Fall back to that key so the task is found.
+            if (!task && payload.data.reservationInteractionId) {
+              task = this.taskCollection[payload.data.reservationInteractionId];
+              if (task) {
+                // Re-key the task under the new interaction ID and remove the old entry
+                delete this.taskCollection[payload.data.reservationInteractionId];
+                this.taskCollection[payload.data.interactionId] = task;
+              }
+            }
+            if (task) {
+              task = this.updateTaskData(task, payload.data);
+              task.emit(TASK_EVENTS.TASK_ASSIGNED, task);
+            }
             break;
           case CC_EVENTS.AGENT_CONTACT_UNASSIGNED:
             task = this.updateTaskData(task, {
@@ -262,6 +312,14 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
           case CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED:
           case CC_EVENTS.AGENT_INVITE_FAILED: {
+            LoggerProxy.warn(
+              `[DEBUG-CAMPAIGN-CLEAR] Task removal triggered by ${payload.data.type}, interactionId=${payload.data.interactionId}, taskType=${task?.data?.type}`,
+              {
+                module: TASK_MANAGER_FILE,
+                method: METHODS.REGISTER_TASK_LISTENERS,
+                interactionId: payload.data.interactionId,
+              }
+            );
             task = this.updateTaskData(task, payload.data);
 
             const eventTypeToMetricMap: Record<string, keyof typeof METRIC_EVENT_NAMES> = {
@@ -287,6 +345,14 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.CONTACT_ENDED:
             // Update task data
             if (task) {
+              LoggerProxy.warn(
+                `[DEBUG-CAMPAIGN-CLEAR] CONTACT_ENDED, interactionId=${payload.data.interactionId}, taskType=${task?.data?.type}, state=${task?.data?.interaction?.state}`,
+                {
+                  module: TASK_MANAGER_FILE,
+                  method: METHODS.REGISTER_TASK_LISTENERS,
+                  interactionId: payload.data.interactionId,
+                }
+              );
               task = this.updateTaskData(task, {
                 ...payload.data,
                 wrapUpRequired: payload.data.agentsPendingWrapUp?.includes(this.agentId) || false,
@@ -296,6 +362,14 @@ export default class TaskManager extends EventEmitter {
               this.handleTaskCleanup(task);
 
               task?.emit(TASK_EVENTS.TASK_END, task);
+            }
+            break;
+          case CC_EVENTS.CAMPAIGN_CONTACT_UPDATED:
+            // CampaignContactUpdated is a non-terminal event (intermediate update during accept).
+            // Only update the task data — do NOT remove the task or emit TASK_END.
+            // Task cleanup is handled by CONTACT_ENDED or other terminal events.
+            if (task) {
+              task = this.updateTaskData(task, payload.data);
             }
             break;
           case CC_EVENTS.CONTACT_MERGED:
@@ -480,11 +554,54 @@ export default class TaskManager extends EventEmitter {
             task = this.updateTaskData(task, payload.data);
             task.emit(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, task);
             break;
+          case CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION: {
+            // Campaign preview contact offered to agent
+            // Create a task in the collection so subsequent events (e.g. AGENT_CONTACT_ASSIGNED
+            // after acceptPreviewContact) can find and update it.
+            // Emit TASK_CAMPAIGN_PREVIEW_RESERVATION instead of TASK_INCOMING so the call
+            // does not ring out to the customer before the agent explicitly accepts the preview contact.
+            LoggerProxy.log('Campaign preview reservation received', {
+              module: TASK_MANAGER_FILE,
+              method: METHODS.REGISTER_TASK_LISTENERS,
+              interactionId: payload.data.interactionId,
+            });
+
+            if (!this.taskCollection[payload.data.interactionId]) {
+              task = new Task(
+                this.contact,
+                this.webCallingService,
+                {
+                  ...payload.data,
+                  wrapUpRequired: false,
+                  isConferenceInProgress: false,
+                  isAutoAnswering: false,
+                },
+                this.wrapupData,
+                this.agentId
+              );
+              this.taskCollection[payload.data.interactionId] = task;
+            } else {
+              task = this.updateTaskData(task, payload.data);
+            }
+
+            this.emit(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, task);
+            break;
+          }
+
           default:
             break;
         }
         if (task) {
           task.emit(payload.data.type, payload.data);
+        }
+
+        const transcriptInteractionId =
+          payload.data?.interactionId ||
+          payload.data?.data?.conversationId ||
+          task?.data?.interactionId;
+
+        if (TRANSCRIPT_EVENT_MAP[payload.data.type] && transcriptInteractionId) {
+          this.requestRealTimeTranscripts(payload.data.type, transcriptInteractionId);
         }
       }
     });
@@ -675,11 +792,39 @@ export default class TaskManager extends EventEmitter {
   }
 
   /**
-   * @param taskId - Unique identifier for each task
+   * Sends transcript start/stop event based on the CC event type.
+   * Fire-and-forget; errors are logged but do not interrupt event processing.
    */
-  public getTask = (taskId: string) => {
+  private requestRealTimeTranscripts(eventType: string, interactionId: string): void {
+    const action = TRANSCRIPT_EVENT_MAP[eventType];
+    if (
+      !action ||
+      !this.apiAIAssistant ||
+      this.apiAIAssistant.aiFeature?.realtimeTranscripts?.enable === false
+    )
+      return;
+
+    this.apiAIAssistant
+      .sendEvent(
+        this.agentId,
+        interactionId,
+        AIAssistantEventType.CUSTOM_EVENT,
+        AIAssistantEventName.GET_TRANSCRIPTS,
+        action
+      )
+      .catch((error) => {
+        LoggerProxy.error(`Failed to send transcript ${action} event`, {
+          module: TASK_MANAGER_FILE,
+          method: 'requestRealTimeTranscripts',
+          interactionId,
+          error,
+        });
+      });
+  }
+
+  public getTask(taskId: TaskId): ITask {
     return this.taskCollection[taskId];
-  };
+  }
 
   /**
    * @param taskId - Unique identifier for each task
@@ -688,20 +833,21 @@ export default class TaskManager extends EventEmitter {
     return this.taskCollection;
   };
 
-  /**
-   * @param contact - Routing Contact layer. Talks to AQMReq layer to convert events to promises
-   * @param webCallingService - Webrtc Service Layer
-   * @param webSocketManager - Websocket Manager to maintain websocket connection and keepalives
-   */
-  public static getTaskManager = (
+  public static getTaskManager(
+    apiAIAssistant: ApiAIAssistant,
     contact: ReturnType<typeof routingContact>,
     webCallingService: WebCallingService,
     webSocketManager: WebSocketManager
-  ): TaskManager => {
-    if (!this.taskManager) {
-      this.taskManager = new TaskManager(contact, webCallingService, webSocketManager);
+  ): TaskManager {
+    if (!TaskManager.taskManager) {
+      TaskManager.taskManager = new TaskManager(
+        apiAIAssistant,
+        contact,
+        webCallingService,
+        webSocketManager
+      );
     }
 
     return this.taskManager;
-  };
+  }
 }
