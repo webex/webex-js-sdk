@@ -982,6 +982,11 @@ export default class Meeting extends StatelessWebexPlugin {
             codecMimeType
           );
         } catch (error) {
+          LoggerProxy.logger.error(
+            `Meeting:index#getIngressPayloadTypeCallback --> failed to get ingress payload type for mediaType=${mediaType}, codecMimeType=${codecMimeType}`,
+            error
+          );
+
           return undefined;
         }
       }
