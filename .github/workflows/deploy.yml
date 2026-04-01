@@ -198,9 +198,13 @@ jobs:
         run: |
           OUTPUT=$(yarn package-tools increment --packages ${{ needs.generate-package-matrix.outputs.node-recursive }} --tag ${GITHUB_REF##*/})
           echo "$OUTPUT"
-          VERSIONS_JSON=$(printf '%s\n' "$OUTPUT" | grep -E '^(@webex/|webex[^ ]*) => ' | \
-            jq -Rn '[inputs | split(" => ")] | map({(.[0]): .[1]}) | add // {}')
-          echo "package_versions=$VERSIONS_JSON" >> $GITHUB_OUTPUT
+          echo "package_versions<<EOF" >> $GITHUB_OUTPUT
+          echo "$OUTPUT" | while IFS= read -r line; do
+            if echo "$line" | grep -q ' => '; then
+              echo "__webex_release__: $line"
+            fi
+          done >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Build all packages for publish
         run: yarn run build:publish
@@ -411,7 +415,12 @@ jobs:
           script: |
             const prNumber = parseInt('${{ steps.get-pr.outputs.pr_number }}');
 
-            const packageVersions = JSON.parse(`${{ needs.publish-npm.outputs.package_versions }}` || '{}');
+            const raw = `${{ needs.publish-npm.outputs.package_versions }}`;
+            const packageVersions = {};
+            for (const line of raw.split('\n')) {
+              const match = line.match(/^__webex_release__:\s+(.+?)\s+=>\s+(.+)$/);
+              if (match) packageVersions[match[1].trim()] = match[2].trim();
+            }
             const packageEntries = Object.entries(packageVersions);
             const version = packageVersions['webex'] ? `v${packageVersions['webex']}` : '';
 
@@ -424,8 +433,7 @@ jobs:
 
             if (hasPackages) {
               const primaryPackage = packageVersions['webex']
-                ? 'webex'
-                : packageEntries.filter(([p]) => p !== 'webex' && p !== 'webex-node').map(([p]) => p)[0] || packageEntries[0][0];
+                ? 'webex' : packageEntries[0][0];
               const primaryVersion = packageVersions[primaryPackage];
               const stableVersion = primaryVersion.replace(/-next\..*/, '').replace(/-[a-z]*\..*/, '');
 
