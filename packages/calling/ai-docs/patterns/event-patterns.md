@@ -4,7 +4,23 @@
 
 This document describes the typed event system used throughout the `@webex/calling` package.
 
-The package implements a fully type-safe event architecture built on Node.js `EventEmitter` (from `events`) augmented with compile-time type enforcement via `typed-emitter`. At its core is the `Eventing<T>` generic base class (`src/Events/impl/index.ts`), which every event-emitting class in the package extends — including `CallingClient`, `Call`, `CallManager`, `Line`, `CallHistory`, and `Voicemail`. Each of these classes is parameterized with a dedicated event type map (e.g., `CallingClientEventTypes`, `CallEventTypes`, `LineEventTypes`, `CallHistoryEventTypes`, `VoicemailEventTypes`) defined in `src/Events/types.ts`, which statically associates string-valued enum keys to their corresponding callback signatures. All event keys are defined as TypeScript `enum` members across `CALL_EVENT_KEYS`, `LINE_EVENTS`, `LINE_EVENT_KEYS`, `CALLING_CLIENT_EVENT_KEYS`, `COMMON_EVENT_KEYS`, `MOBIUS_EVENT_KEYS`, and `MEDIA_CONNECTION_EVENT_KEYS` — raw string keys are never used directly.
+- Built on Node.js `EventEmitter` (from `events`) with compile-time type enforcement via `typed-emitter`.
+- The `Eventing<T>` generic base class (`src/Events/impl/index.ts`) is extended by every event-emitting class: `CallingClient`, `Call`, `CallManager`, `Line`, `CallHistory`, and `Voicemail`.
+- Each class is parameterized with a dedicated event type map defined in `src/Events/types.ts`:
+  - `CallingClientEventTypes`
+  - `CallEventTypes`
+  - `LineEventTypes`
+  - `CallHistoryEventTypes`
+  - `VoicemailEventTypes`
+- The type maps statically associate string-valued enum keys to their corresponding callback signatures.
+- All event keys are defined as TypeScript `enum` members — raw string keys are never used directly:
+  - `CALL_EVENT_KEYS`
+  - `LINE_EVENTS`
+  - `LINE_EVENT_KEYS`
+  - `CALLING_CLIENT_EVENT_KEYS`
+  - `COMMON_EVENT_KEYS`
+  - `MOBIUS_EVENT_KEYS`
+  - `MEDIA_CONNECTION_EVENT_KEYS`
 
 Events originate from two sources: **local state changes** (e.g., call state machine transitions, line registration) and **remote server events** arriving over the Webex Mercury WebSocket. The `SDKConnector` singleton (`src/SDKConnector/index.ts`) bridges Mercury to the calling SDK by wrapping `webex.internal.mercury.on()` / `.off()` via its `registerListener` / `unregisterListener` methods. Components such as `CallManager` register for Mercury events (e.g., `event:mobius` for call control, `event:janus.*` for call session/history), parse the raw payloads, drive internal state machines, and then re-emit typed events on their `Eventing<T>` instances for application consumption. Every `emit()` call is automatically logged with a UTC timestamp via the `Eventing` base class before delegation to the underlying `EventEmitter`.
 
@@ -25,7 +41,7 @@ Events originate from two sources: **local state changes** (e.g., call state mac
 
 ## Eventing Base Class
 
-All event-emitting classes extend this generic typed emitter (`src/Events/impl/index.ts`).
+All event-emitting classes extend this generic typed emitter (Source File: `src/Events/impl/index.ts`).
 
 ```typescript
 import EventEmitter from 'events';
@@ -135,6 +151,17 @@ export type VoicemailEventTypes = {
 
 ## Event Key Enums
 
+All events in the package are identified by TypeScript `enum` members rather than raw string literals, providing compile-time safety and autocompletion. The enums are organized by scope:
+
+- **`COMMON_EVENT_KEYS`** — shared keys used across CallHistory and Voicemail modules
+- **`LINE_EVENT_KEYS`** / **`LINE_EVENTS`** — line registration state and incoming call signaling (note: these are two distinct enums with overlapping names but different string values)
+- **`CALL_EVENT_KEYS`** — call lifecycle events consumed by the application (alerting, connect, hold, transfer, etc.)
+- **`CALLING_CLIENT_EVENT_KEYS`** — client-level events (errors, outgoing calls, session info, all-calls-cleared)
+- **`MEDIA_CONNECTION_EVENT_KEYS`** — WebRTC ROAP messaging and media type keys
+- **`MOBIUS_EVENT_KEYS`** / **`WEBSOCKET_KEYS`** — internal Mercury WebSocket event names the SDK listens to for server-side call control and session updates
+
+All enums are defined in `src/Events/types.ts` (or co-located type files) and re-exported for use across the package.
+
 ### COMMON_EVENT_KEYS
 
 Shared event keys used across CallHistory and Voicemail modules:
@@ -235,7 +262,16 @@ export enum WEBSOCKET_KEYS {
 
 ## Event Emission Pattern
 
-Events are emitted using `this.emit()` with the enum constant as the event name and the typed payload as arguments. Because every emitting class extends `Eventing<T>`, the compiler enforces that the enum key and payload match the class's event type map at every call site. The `Eventing.emit()` override logs every emission with a UTC timestamp before delegating to the underlying `EventEmitter`. Emission happens across five classes — `Call` (the most prolific emitter, covering call lifecycle and error events), `Line` (registration state and incoming calls), `CallManager` (incoming call signaling and all-calls-cleared), `CallingClient` (client-level errors and session info), and `CallHistory` (session, viewed, and deleted events). `Voicemail` defines `VoicemailEventTypes` in its type map but does not currently contain any `this.emit()` call sites in its implementation.
+- Events are emitted using `this.emit()` with the enum constant as the event name and the typed payload as arguments.
+- Because every emitting class extends `Eventing<T>`, the compiler enforces that the enum key and payload match the class's event type map at every call site.
+- The `Eventing.emit()` override logs every emission with a UTC timestamp before delegating to the underlying `EventEmitter`.
+- Emission happens across five classes:
+  - `Call` — the most prolific emitter, covering call lifecycle and error events
+  - `Line` — registration state and incoming calls
+  - `CallManager` — incoming call signaling and all-calls-cleared
+  - `CallingClient` — client-level errors and session info
+  - `CallHistory` — session, viewed, and deleted events
+- `Voicemail` defines `VoicemailEventTypes` in its type map but does not currently contain any `this.emit()` call sites in its implementation.
 
 ### Emitting from a Call
 
@@ -288,6 +324,25 @@ public lineEmitter = (event: LINE_EVENTS, deviceInfo?: IDeviceInfo, lineError?: 
 };
 ```
 
+Calling `lineEmitter` (from `src/CallingClient/registration/register.ts`):
+
+```typescript
+// On successful registration — passes device info for normalization
+this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
+
+// On deregistration or connection loss — no payload
+this.lineEmitter(LINE_EVENTS.UNREGISTERED);
+
+// On keepalive recovery
+this.lineEmitter(LINE_EVENTS.RECONNECTED);
+
+// While attempting reconnection
+this.lineEmitter(LINE_EVENTS.RECONNECTING);
+
+// On fatal registration failure — passes the error object
+this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
+```
+
 Key behaviors:
 
 - **REGISTERED**: calls `normalizeLine(deviceInfo)` then emits `this` (the `ILine` instance), not `deviceInfo`
@@ -301,10 +356,10 @@ Key behaviors:
 ### Application Listening to Line Events
 
 ```typescript
-const line = callingClient.getLine();
+const line = callingClient.getLines()[0];
 
 line.on(LINE_EVENTS.REGISTERED, (lineInfo: ILine) => {
-  console.log('Line registered:', lineInfo.lineId);
+  console.log('Line registered:', lineInfo.deviceId);
 });
 
 line.on(LINE_EVENTS.INCOMING_CALL, (call: ICall) => {
@@ -452,21 +507,31 @@ When adding a new event to the system, follow these steps:
 
 Add the new key to the correct enum in `src/Events/types.ts` (for external events) or the relevant module's `types.ts`.
 
+> See [Event Key Enums](#event-key-enums) for the full list of enums, their scopes, and their string values — including the distinction between `LINE_EVENT_KEYS` and `LINE_EVENTS`.
+
 ### Step 2: Update the event type map with the callback signature
 
 Add the new key and its typed callback to the corresponding type map (e.g., `CallEventTypes`, `LineEventTypes`).
+
+> See [Event Type Maps](#event-type-maps) for the structure of each type map and examples of how keys are associated with typed callback signatures for `Call`, `Line`, `CallingClient`, `CallHistory`, and `Voicemail`.
 
 ### Step 3: Emit the event from the appropriate class
 
 Use `this.emit(ENUM_KEY, payload)` with the enum constant (never a raw string).
 
+> See [Event Emission Pattern](#event-emission-pattern) for how `this.emit()` is called in practice — including the `Call`, `Line`, and `lineEmitter` patterns with real code examples.
+
 ### Step 4: Document the event in the interface JSDoc
 
 Add JSDoc to the interface describing when the event fires and what payload it carries.
 
+> See [Event Type Maps](#event-type-maps) for examples of JSDoc on event type map interfaces (e.g., `CallEventTypes`, `LineEventTypes`).
+
 ### Step 5: Add tests
 
 Write tests that register a spy via `.on()`, trigger the action, and assert the spy was called with expected args.
+
+> See [Event Listening Pattern](#event-listening-pattern) for how `.on()` and `.off()` are used with the typed emitter, which mirrors how test spies are registered.
 
 ### Checklist for new events
 

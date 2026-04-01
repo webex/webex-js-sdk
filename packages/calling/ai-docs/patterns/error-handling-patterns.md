@@ -27,7 +27,7 @@ flowchart TD
     A[API/WebSocket Error] --> B{Error Source}
     B -->|Call operation| C[handleCallErrors]
     B -->|Client/Device operation| D[handleCallingClientErrors]
-    B -->|Service API| E[serviceErrorCodeHandler]
+    B -->|Service API: Voicemail, CallHistory, CallSettings, Contacts| E[serviceErrorCodeHandler]
 
     C --> F[Map HTTP status → ERROR_TYPE]
     D --> F
@@ -38,11 +38,14 @@ flowchart TD
     G -->|Client error| J[emit CALLING_CLIENT_EVENT_KEYS.ERROR]
 
     E --> K[Return structured response with statusCode + data]
+    K --> M[Caller receives error directly — no event emitted]
 
     H --> L[Optionally: submit metrics + uploadLogs]
     I --> L
     J --> L
 ```
+
+> **Note:** `serviceErrorCodeHandler` operates on a **separate path** from the event-based error flow. The call/line/client handlers create typed error objects and **emit** them as events for application listeners, while `serviceErrorCodeHandler` maps HTTP status codes to structured response objects that are **returned directly** to the caller. See the [serviceErrorCodeHandler](#serviceerorcodehandler) section below for the full signature and usage.
 
 ---
 
@@ -338,6 +341,57 @@ export type LineErrorEmitterCallback = (err: LineError, finalError?: boolean) =>
 
 ## Error Handler Utilities
 
+### handleRegistrationErrors
+
+Handles registration and keepalive error flows by mapping HTTP status codes to `LineError` and deciding whether to emit a final error, trigger a retry, or restore registration. Used by `Registration` for both initial registration failures and keepalive failures received from the web worker. Returns `Promise<boolean>` indicating whether to abort. See `src/common/Utils.ts`.
+
+Signature: `handleRegistrationErrors(err, emitterCb, loggerContext, retry429Cb?, restoreRegCb?): Promise<boolean>`
+
+```typescript
+// Real usage from register.ts — initial registration error path
+abort = await handleRegistrationErrors(
+  body,
+  (clientError, finalError) => {
+    if (finalError) {
+      this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
+    }
+    this.metricManager.submitRegistrationMetric(
+      METRIC_EVENT.REGISTRATION_ERROR, ...
+    );
+  },
+  loggerContext,
+  retry429Cb,
+  restoreRegCb
+);
+
+// Real usage from register.ts — keepalive failure path (web worker message handler)
+if (event.data.type === WorkerMessageType.KEEPALIVE_FAILURE) {
+  const abort = await handleRegistrationErrors(
+    error,
+    (clientError, finalError) => {
+      if (finalError) {
+        this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
+      }
+      this.metricManager.submitRegistrationMetric(
+        METRIC_EVENT.KEEPALIVE_ERROR,
+        REG_ACTION.KEEPALIVE_FAILURE, ...
+      );
+    },
+    loggerContext,
+    retry429Cb,
+    restoreRegCb
+  );
+}
+```
+
+Key behaviors by status code:
+- **400 Bad Request** — final error, emits `LINE_EVENTS.ERROR`
+- **401 Unauthorized** — final error, emits token error
+- **403 Forbidden** — inspects `errorCode` in body for device-limit-exceeded (triggers `restoreRegCb`), device-creation-disabled (final error), or device-creation-failed (non-final)
+- **404 Device Not Found** — final error; on keepalive, triggers `handle404KeepaliveFailure` which re-attempts registration
+- **429 Too Many Requests** — non-final, invokes `retry429Cb` with the `Retry-After` header value
+- **500 / 503** — non-final, emits error and allows retry
+
 ### handleCallErrors
 
 Maps HTTP/API failures to `CallError` and optionally triggers retries. Returns `Promise<boolean>` indicating whether to abort. See `src/common/Utils.ts`.
@@ -388,9 +442,25 @@ abort = await handleCallingClientErrors(
 );
 ```
 
+### emitFinalFailure
+
+Emits a terminal `LINE_EVENTS.ERROR` after all registration retry attempts are exhausted. Creates a `LineError` with `ERROR_TYPE.SERVICE_UNAVAILABLE` and `RegistrationStatus.INACTIVE`. See `src/common/Utils.ts`.
+
+Signature: `emitFinalFailure(emitterCb, loggerContext): void`
+
+```typescript
+// Real usage from register.ts — after exhausting all primary + backup Mobius URIs
+if (!abort && !this.isDeviceRegistered()) {
+  await uploadLogs();
+  emitFinalFailure((clientError: LineError) => {
+    this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
+  }, loggerContext);
+}
+```
+
 ### serviceErrorCodeHandler
 
-Utility that maps HTTP status codes to structured response objects (not `ERROR_TYPE` values). Used by voicemail, call settings, contacts, and call history modules — **not** for the call/line/client error hierarchy.
+Utility that maps HTTP status codes to structured error response objects. Used by voicemail, call settings, contacts, and call history modules — **not** for the call/line/client error hierarchy.
 
 Full signature (`src/common/Utils.ts`):
 

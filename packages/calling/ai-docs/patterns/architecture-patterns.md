@@ -151,7 +151,7 @@ const contacts = createContactsClient(webex, logger);
 const voicemail = createVoicemailClient(webex, logger);
 ```
 
-**Important differences from `createClient`**: The non-CallingClient factories (`createCallHistoryClient`, `createCallSettingsClient`, `createContactsClient`, `createVoicemailClient`) are **synchronous** and take a `LoggerInterface` as their second argument — not a `CallingClientConfig`. `LoggerInterface` is defined as `{ level: LOGGER }` (where `LOGGER` is the string enum from `src/Logger/types.ts`). `createCallSettingsClient` additionally accepts an optional `useProdWebexApis?: boolean` third argument.
+**Important differences from `createClient`**: The other client module factories (`createCallHistoryClient`, `createCallSettingsClient`, `createContactsClient`, `createVoicemailClient`) are **synchronous** and take a `LoggerInterface` as their second argument — not a `CallingClientConfig`. `LoggerInterface` is defined as `{ level: LOGGER }` (where `LOGGER` is the string enum from `src/Logger/types.ts`). `createCallSettingsClient` additionally accepts an optional `useProdWebexApis?: boolean` third argument.
 
 ### Internal Call Factory
 
