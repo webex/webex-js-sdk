@@ -31,6 +31,7 @@ tasks/selenium
 
 .DS_Store
 .env
+cc_playwright/.env
 .grunt
 .github-publish
 .idea
