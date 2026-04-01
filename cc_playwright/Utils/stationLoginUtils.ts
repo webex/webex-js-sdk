@@ -80,7 +80,9 @@ export async function desktopLogin(page: Page): Promise<void> {
 
 export async function extensionLogin(page: Page, extensionNumber?: string): Promise<void> {
   const number = extensionNumber || process.env.PW_EXTENSION_NUMBER;
-  if (!number || !number.trim()) {
+  // Convert to string and validate
+  const numberStr = number != null ? String(number) : '';
+  if (!numberStr || !numberStr.trim()) {
     throw new Error('Extension number is required for extension login');
   }
 
@@ -92,14 +94,16 @@ export async function extensionLogin(page: Page, extensionNumber?: string): Prom
 
   const dialNumberInput = page.locator(getSelector('dialNumberInput'));
   await dialNumberInput.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
-  await dialNumberInput.fill(number, {timeout: AWAIT_TIMEOUT});
+  await dialNumberInput.fill(numberStr, {timeout: AWAIT_TIMEOUT});
   await selectTeam(page);
   await submitLogin(page);
 }
 
 export async function dialLogin(page: Page, dialNumber?: string): Promise<void> {
   const number = dialNumber || process.env.PW_ENTRY_POINT1;
-  if (!number || !number.trim()) {
+  // Convert to string and validate
+  const numberStr = number != null ? String(number) : '';
+  if (!numberStr || !numberStr.trim()) {
     throw new Error('Dial number is required for dial-number login');
   }
 
@@ -111,7 +115,7 @@ export async function dialLogin(page: Page, dialNumber?: string): Promise<void> 
 
   const dialNumberInput = page.locator(getSelector('dialNumberInput'));
   await dialNumberInput.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
-  await dialNumberInput.fill(number, {timeout: AWAIT_TIMEOUT});
+  await dialNumberInput.fill(numberStr, {timeout: AWAIT_TIMEOUT});
   await selectTeam(page);
   await submitLogin(page);
 }

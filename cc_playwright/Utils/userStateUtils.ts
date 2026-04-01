@@ -130,10 +130,16 @@ export const changeUserState = async (page: Page, userState: string): Promise<vo
  */
 export const verifyCurrentState = async (page: Page, expectedState: string): Promise<void> => {
   await page.bringToFront();
-  const currentState = await getCurrentState(page);
-  if (currentState !== expectedState) {
-    throw new Error(`Expected state "${expectedState}" but found "${currentState}".`);
-  }
+
+  // Poll for state to match expected (handles transitional states after task cleanup)
+  await expect
+    .poll(
+      async () => {
+        return getCurrentState(page);
+      },
+      {timeout: AWAIT_TIMEOUT, intervals: [200, 400, 800]}
+    )
+    .toBe(expectedState);
 };
 
 /**
