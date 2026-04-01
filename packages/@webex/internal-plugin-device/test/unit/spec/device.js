@@ -480,7 +480,7 @@ describe('plugin-device', () => {
         });
       });
 
-      it('deletes the oldest device when there are just 2 devices', async () => {
+      it('does not delete when there are only 2 devices (below MIN_DEVICES_FOR_CLEANUP)', async () => {
         setup('WEB');
         const response = {
           body: {
@@ -496,9 +496,25 @@ describe('plugin-device', () => {
         requestStub.withArgs(sinon.match({method: 'DELETE'})).resolves();
 
         await device.deleteDevices();
-        // Math.ceil(2/3) = 1, so the oldest device (url1) should be deleted
-        assert(requestStub.calledWith(sinon.match({uri: 'url1', method: 'DELETE'})));
-        assert(requestStub.neverCalledWith(sinon.match({uri: 'url2', method: 'DELETE'})));
+        // MIN_DEVICES_FOR_CLEANUP = 5; 2 devices is below the threshold, so nothing should be deleted
+        assert(requestStub.neverCalledWith(sinon.match({method: 'DELETE'})));
+      });
+
+      it('does not delete when device count equals MIN_DEVICES_FOR_CLEANUP (5 devices)', async () => {
+        setup('WEB');
+        const devices = Array.from({length: 5}, (_, i) => ({
+          url: `url${i}`,
+          modificationTime: `2023-10-0${i + 1}T10:00:00Z`,
+          deviceType: 'WEB',
+        }));
+
+        requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'})).resolves({body: {devices}});
+        requestStub.withArgs(sinon.match({method: 'DELETE'})).resolves();
+
+        await device.deleteDevices();
+        // MIN_DEVICES_FOR_CLEANUP = 5; exactly at the threshold means no deletion
+        assert(requestStub.neverCalledWith(sinon.match({method: 'DELETE'})));
       });
 
       it('waits for all deletions to complete before proceeding', async () => {
@@ -541,6 +557,9 @@ describe('plugin-device', () => {
           {url: 'web1', modificationTime: '2023-10-01T10:00:00Z', deviceType: 'WEB'},
           {url: 'web2', modificationTime: '2023-10-02T10:00:00Z', deviceType: 'WEB'},
           {url: 'web3', modificationTime: '2023-10-03T10:00:00Z', deviceType: 'WEB'},
+          {url: 'web4', modificationTime: '2023-10-04T10:00:00Z', deviceType: 'WEB'},
+          {url: 'web5', modificationTime: '2023-10-05T10:00:00Z', deviceType: 'WEB'},
+          {url: 'web6', modificationTime: '2023-10-06T10:00:00Z', deviceType: 'WEB'},
           {url: 'desktop1', modificationTime: '2023-10-01T10:00:00Z', deviceType: 'DESKTOP'},
           {url: 'mobile1', modificationTime: '2023-10-01T10:00:00Z', deviceType: 'MOBILE'},
         ];
@@ -551,8 +570,9 @@ describe('plugin-device', () => {
 
         await device.deleteDevices();
 
-        // Only WEB devices considered: 3 total, ceil(3/3)=1 deleted (oldest: web1)
+        // Only WEB devices considered: 6 total (> MIN_DEVICES_FOR_CLEANUP=5), ceil(6/3)=2 deleted (oldest: web1, web2)
         assert(requestStub.calledWith(sinon.match({uri: 'web1', method: 'DELETE'})));
+        assert(requestStub.calledWith(sinon.match({uri: 'web2', method: 'DELETE'})));
         assert(requestStub.neverCalledWith(sinon.match({uri: 'desktop1', method: 'DELETE'})));
         assert(requestStub.neverCalledWith(sinon.match({uri: 'mobile1', method: 'DELETE'})));
       });
@@ -567,10 +587,14 @@ describe('plugin-device', () => {
 
       it('rejects when a deletion request fails', async () => {
         setup('WEB');
+        // Use 6 devices (> MIN_DEVICES_FOR_CLEANUP=5) to ensure deletion is attempted
         const devices = [
           {url: 'url1', modificationTime: '2023-10-01T10:00:00Z', deviceType: 'WEB'},
           {url: 'url2', modificationTime: '2023-10-02T10:00:00Z', deviceType: 'WEB'},
           {url: 'url3', modificationTime: '2023-10-03T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url4', modificationTime: '2023-10-04T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url5', modificationTime: '2023-10-05T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url6', modificationTime: '2023-10-06T10:00:00Z', deviceType: 'WEB'},
         ];
 
         requestStub = sinon.stub(device, 'request');

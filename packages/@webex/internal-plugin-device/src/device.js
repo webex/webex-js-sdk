@@ -10,6 +10,7 @@ import {
   FEATURE_COLLECTION_NAMES,
   DEVICE_EVENT_REGISTRATION_SUCCESS,
   MAX_REGISTERED_DEVICES,
+  MIN_DEVICES_FOR_CLEANUP,
   MAX_DELETION_CONFIRMATION_ATTEMPTS,
   DELETION_CONFIRMATION_DELAY_MS,
 } from './constants';
@@ -521,11 +522,16 @@ const Device = WebexPlugin.extend({
     return this._getDevicesOfCurrentType()
       .then((webDevices) => {
         const sortedDevices = orderBy(webDevices, [(item) => new Date(item.modificationTime)]);
-        const devicesToDelete = sortedDevices.slice(0, Math.ceil(sortedDevices.length / 3));
 
-        if (devicesToDelete.length === 0) {
+        if (sortedDevices.length <= MIN_DEVICES_FOR_CLEANUP) {
+          this.logger.info(
+            `device: only ${sortedDevices.length} devices found (minimum ${MIN_DEVICES_FOR_CLEANUP}), skipping cleanup`
+          );
+
           return Promise.resolve();
         }
+
+        const devicesToDelete = sortedDevices.slice(0, Math.ceil(sortedDevices.length / 3));
 
         this.logger.info(
           `device: deleting ${devicesToDelete.length} of ${webDevices.length} devices`
