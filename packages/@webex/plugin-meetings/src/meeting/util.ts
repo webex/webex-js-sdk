@@ -369,6 +369,7 @@ const MeetingUtil = {
     meeting.stopPeriodicLogUpload();
 
     meeting.breakouts.cleanUp();
+    meeting.webinar.cleanUp();
     meeting.simultaneousInterpretation.cleanUp();
     meeting.locusMediaRequest = undefined;
 
@@ -393,8 +394,10 @@ const MeetingUtil = {
       .then(() => meeting.stopKeepAlive())
       .then(() => {
         if (meeting.config?.enableAutomaticLLM) {
-          meeting.updateLLMConnection();
+          return meeting.cleanupLLMConneciton({throwOnError: false});
         }
+
+        return undefined;
       });
   },
 
@@ -660,6 +663,11 @@ const MeetingUtil = {
     displayHints.includes(DISPLAY_HINTS.LEAVE_TRANSFER_HOST_END_MEETING) ||
     displayHints.includes(DISPLAY_HINTS.LEAVE_END_MEETING),
 
+  requireHostEndMeetingBeforeLeave: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.REQUIRE_HOST_END_MEETING_BEFORE_LEAVE) ||
+    (!displayHints.includes(DISPLAY_HINTS.LEAVE_TRANSFER_HOST_END_MEETING) &&
+      displayHints.includes(DISPLAY_HINTS.END_MEETING)),
+
   canManageBreakout: (displayHints) => displayHints.includes(DISPLAY_HINTS.BREAKOUT_MANAGEMENT),
 
   canStartBreakout: (displayHints) => !displayHints.includes(DISPLAY_HINTS.DISABLE_BREAKOUT_START),
@@ -918,6 +926,9 @@ const MeetingUtil = {
 
     return false;
   },
+
+  attendeeRequestAiAssistantDeclinedAll: (displayHints = []) =>
+    displayHints.includes(DISPLAY_HINTS.ATTENDEE_REQUEST_AI_ASSISTANT_DECLINED_ALL),
 
   selfSupportsFeature: (feature: SELF_POLICY, userPolicies: Record<SELF_POLICY, boolean>) => {
     if (!userPolicies) {

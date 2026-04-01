@@ -29,6 +29,60 @@ const webex = new WebexCore();
 webex.internal.mercury.WHATEVER;
 ```
 
+### Multiple Connections
+
+Mercury now supports multiple simultaneous websocket connections scoped by `sessionId`.
+
+```js
+const mercury = webex.internal.mercury;
+
+// Default session
+await mercury.connect();
+
+// Additional session
+await mercury.connect(undefined, 'secondary-session');
+
+// Disconnect only one session
+await mercury.disconnect(undefined, 'secondary-session');
+
+// Disconnect everything
+await mercury.disconnectAll();
+```
+
+#### Listening to multiple connections
+
+```js
+const mercury = webex.internal.mercury;
+const secondarySessionId = 'secondary-session';
+
+// Connect both sessions first.
+await mercury.connect();
+await mercury.connect(undefined, secondarySessionId);
+
+// Default session listeners use the base event name.
+mercury.on('online', () => {
+  console.log('[default] online');
+});
+
+mercury.on('event:conversation.activity', (envelope) => {
+  console.log('[default] activity', envelope.data?.eventType);
+});
+
+// Non-default sessions use :<sessionId> suffix.
+mercury.on(`online:${secondarySessionId}`, () => {
+  console.log(`[${secondarySessionId}] online`);
+});
+
+mercury.on(`event:conversation.activity:${secondarySessionId}`, (envelope) => {
+  console.log(`[${secondarySessionId}] activity`, envelope.data?.eventType);
+});
+```
+
+Notes:
+- `connect(webSocketUrl, sessionId)` and `disconnect(options, sessionId)` are session-aware.
+- Non-default sessions emit events with a `:<sessionId>` suffix (for example, `online:secondary-session`).
+- `getSocket(sessionId)` returns the socket for a specific session.
+
 ## Config Options
 
 ### Using A Proxy Agent To Open A Websocket Connection

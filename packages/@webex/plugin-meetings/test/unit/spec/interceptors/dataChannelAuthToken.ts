@@ -5,6 +5,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import {WebexHttpError} from '@webex/webex-core';
 import DataChannelAuthTokenInterceptor from '@webex/plugin-meetings/src/interceptors/dataChannelAuthToken';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
+import * as utils from '@webex/plugin-meetings/src/interceptors/utils';
 import {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY} from '@webex/plugin-meetings/src/interceptors/constant';
 
 describe('plugin-meetings', () => {
@@ -14,6 +15,10 @@ describe('plugin-meetings', () => {
 
       beforeEach(() => {
         clock = sinon.useFakeTimers();
+        sinon.stub(LoggerProxy, 'logger').value({
+          error: sinon.stub(),
+          warn: sinon.stub(),
+        });
 
         webex = new MockWebex({children: {}});
         webex.request = sinon.stub().resolves({});
@@ -25,6 +30,7 @@ describe('plugin-meetings', () => {
       });
 
       afterEach(() => {
+        sinon.restore();
         clock.restore();
       });
 
@@ -83,6 +89,69 @@ describe('plugin-meetings', () => {
           interceptor._isDataChannelTokenEnabled.resolves(false);
 
           await assert.isRejected(interceptor.onResponseError(options, reason), reason);
+        });
+      });
+
+      describe('#onRequest', () => {
+        let isJwtTokenExpiredStub;
+
+        beforeEach(() => {
+          isJwtTokenExpiredStub = sinon.stub(utils, 'isJwtTokenExpired').returns(false);
+        });
+
+        it('does nothing when token is missing', async () => {
+          const options = {headers: {}};
+
+          const res = await interceptor.onRequest(options);
+
+          expect(res).to.equal(options);
+          sinon.assert.notCalled(isJwtTokenExpiredStub);
+        });
+
+        it('does nothing when feature is disabled', async () => {
+          interceptor._isDataChannelTokenEnabled.resolves(false);
+
+          const options = {headers: {[DATA_CHANNEL_AUTH_HEADER]: 'old-token'}};
+          const res = await interceptor.onRequest(options);
+
+          expect(res).to.equal(options);
+          sinon.assert.notCalled(isJwtTokenExpiredStub);
+        });
+
+        it('does not refresh when token is not expired', async () => {
+          interceptor._isDataChannelTokenEnabled.resolves(true);
+          isJwtTokenExpiredStub.returns(false);
+
+          const options = {headers: {[DATA_CHANNEL_AUTH_HEADER]: 'old-token'}};
+          const res = await interceptor.onRequest(options);
+
+          sinon.assert.notCalled(interceptor._refreshDataChannelToken);
+          expect(res.headers[DATA_CHANNEL_AUTH_HEADER]).to.equal('old-token');
+        });
+
+        it('refreshes token when expired', async () => {
+          interceptor._isDataChannelTokenEnabled.resolves(true);
+          isJwtTokenExpiredStub.returns(true);
+
+          interceptor._refreshDataChannelToken.resolves('new-token');
+
+          const options = {headers: {[DATA_CHANNEL_AUTH_HEADER]: 'old-token'}};
+          const res = await interceptor.onRequest(options);
+
+          sinon.assert.calledOnce(interceptor._refreshDataChannelToken);
+          expect(res.headers[DATA_CHANNEL_AUTH_HEADER]).to.equal('new-token');
+        });
+
+        it('continues request when refresh fails', async () => {
+          interceptor._isDataChannelTokenEnabled.resolves(true);
+          isJwtTokenExpiredStub.returns(true);
+
+          interceptor._refreshDataChannelToken.rejects(new Error('refresh failed'));
+
+          const options = {headers: {[DATA_CHANNEL_AUTH_HEADER]: 'old-token'}};
+          const res = await interceptor.onRequest(options);
+
+          expect(res.headers[DATA_CHANNEL_AUTH_HEADER]).to.equal('old-token');
         });
       });
 
