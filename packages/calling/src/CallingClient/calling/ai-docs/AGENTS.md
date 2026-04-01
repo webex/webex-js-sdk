@@ -296,15 +296,15 @@ interface ICall extends Eventing<CallEventTypes> {
 
 | Event | Enum Key | Payload | When Emitted |
 |-------|----------|---------|-------------|
-| `alerting` | `CALL_EVENT_KEYS.ALERTING` | `CallId` | Outgoing call alerting at remote |
-| `progress` | `CALL_EVENT_KEYS.PROGRESS` | `CallId` | Call progress received |
-| `connect` | `CALL_EVENT_KEYS.CONNECT` | `CallId` | Remote answered or call connected |
-| `established` | `CALL_EVENT_KEYS.ESTABLISHED` | `CallId` | Call fully established with media |
-| `held` | `CALL_EVENT_KEYS.HELD` | `CallId` | Call placed on hold |
-| `resumed` | `CALL_EVENT_KEYS.RESUMED` | `CallId` | Call resumed from hold |
-| `disconnect` | `CALL_EVENT_KEYS.DISCONNECT` | `CallId` | Call disconnected |
+| `alerting` | `CALL_EVENT_KEYS.ALERTING` | `CorrelationId` | Outgoing call alerting at remote |
+| `progress` | `CALL_EVENT_KEYS.PROGRESS` | `CorrelationId` | Call progress received |
+| `connect` | `CALL_EVENT_KEYS.CONNECT` | `CorrelationId` | Remote answered or call connected |
+| `established` | `CALL_EVENT_KEYS.ESTABLISHED` | `CorrelationId` | Call fully established with media |
+| `held` | `CALL_EVENT_KEYS.HELD` | `CorrelationId` | Call placed on hold |
+| `resumed` | `CALL_EVENT_KEYS.RESUMED` | `CorrelationId` | Call resumed from hold |
+| `disconnect` | `CALL_EVENT_KEYS.DISCONNECT` | `CorrelationId` | Call disconnected |
 | `remote_media` | `CALL_EVENT_KEYS.REMOTE_MEDIA` | `MediaStreamTrack` | Remote media track available |
-| `caller_id` | `CALL_EVENT_KEYS.CALLER_ID` | `CallerIdDisplay` | Caller ID resolved |
+| `caller_id` | `CALL_EVENT_KEYS.CALLER_ID` | `{ correlationId: CorrelationId, callerId: DisplayInformation }` | Caller ID resolved |
 | `call_error` | `CALL_EVENT_KEYS.CALL_ERROR` | `CallError` | Error in call signaling |
 | `hold_error` | `CALL_EVENT_KEYS.HOLD_ERROR` | `CallError` | Error placing call on hold |
 | `resume_error` | `CALL_EVENT_KEYS.RESUME_ERROR` | `CallError` | Error resuming call |

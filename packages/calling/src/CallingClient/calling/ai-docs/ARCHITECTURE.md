@@ -1,5 +1,22 @@
 # Call Management Sub-Module - Architecture Specification
 
+## Component Overview
+
+The call management sub-module is organized around one manager (`CallManager`) and per-call executors (`Call`).  
+`CallManager` handles event intake/routing and active call tracking, while each `Call` owns signaling/media state, Mobius API operations, and event emission.  
+`CallerId` is a focused helper used by `Call` for caller identity resolution and incremental updates.
+
+### Component Responsibilities
+
+| Component | Primary Responsibility | Key Interactions |
+|-----------|------------------------|------------------|
+| `CallManager` | Owns active call collection, resolves/routs backend events | `SDKConnector` (`event:mobius`), `Call`, `Line` |
+| `Call` | Executes call lifecycle operations and state machines | `Mobius` REST APIs, `RoapMediaConnection`, `CallerId`, app listeners |
+| `CallerId` | Resolves display identity from headers + SCIM enrichment | `Call` callback emitter, shared identity utilities |
+| `Call State Machine` | Signaling transitions and call control actions | `Call` handlers (`setup`, `connect`, `disconnect`, `hold/resume`) |
+| `Media ROAP State Machine` | ROAP negotiation transitions (`OFFER/ANSWER/OK/ERROR`) | `Call` ROAP handlers, `RoapMediaConnection`, Mobius media API |
+
+
 ## Class Diagram
 
 ```mermaid
@@ -32,7 +49,7 @@ classDiagram
 
   class ICallerId {
     <<interface>>
-    +fetchCallerDetails(callerInfo) Promise~DisplayInformation~
+    +fetchCallerDetails(callerInfo) DisplayInformation
   }
 
   class CallManager {
@@ -83,10 +100,10 @@ classDiagram
   }
 
   class CallerId {
-    +fetchCallerDetails(callerInfo) Promise~DisplayInformation~
+    +fetchCallerDetails(callerInfo) DisplayInformation
     -parseSipUri(paid) DisplayInformation
     -parseRemotePartyInfo(data) Promise~void~
-    -resolveCallerId(filter) Promise~DisplayInformation~
+    -resolveCallerId(filter) Promise~void~
   }
 
   Eventing~CallEventTypes~ <|-- CallManager
@@ -96,7 +113,7 @@ classDiagram
   ICallerId <|.. CallerId
   CallManager "1" --> "*" Call : creates/manages
   Call --> CallerId : uses
-  CallManager ..> SDKConnector : listens event:mobius
+  CallManager ..> SDKConnector : listens event-mobius
 ```
 
 ---
@@ -369,7 +386,7 @@ This module has two event layers:
 | `CALL_EVENT_KEYS.RESUMED` | `correlationId` | Resume confirmed by mid-call state |
 | `CALL_EVENT_KEYS.DISCONNECT` | `correlationId` | Call disconnected (local or remote) |
 | `CALL_EVENT_KEYS.REMOTE_MEDIA` | `MediaStreamTrack` | Remote audio track becomes available |
-| `CALL_EVENT_KEYS.CALLER_ID` | `DisplayInformation` | Caller ID resolved/updated |
+| `CALL_EVENT_KEYS.CALLER_ID` | `{ correlationId: CorrelationId, callerId: DisplayInformation }` | Caller ID resolved/updated |
 | `CALL_EVENT_KEYS.CALL_ERROR` | `CallError` | General call or media error |
 | `CALL_EVENT_KEYS.HOLD_ERROR` | `CallError` | Hold operation failed/timed out |
 | `CALL_EVENT_KEYS.RESUME_ERROR` | `CallError` | Resume operation failed/timed out |
@@ -389,7 +406,7 @@ line.on(LINE_EVENT_KEYS.INCOMING_CALL, (call: ICall) => {
   call.on(CALL_EVENT_KEYS.CONNECT, (id) => {/* ringing -> connected */});
   call.on(CALL_EVENT_KEYS.ESTABLISHED, (id) => {/* media established */});
   call.on(CALL_EVENT_KEYS.REMOTE_MEDIA, (track) => {/* attach remote track */});
-  call.on(CALL_EVENT_KEYS.CALLER_ID, (display) => {/* refresh caller display */});
+  call.on(CALL_EVENT_KEYS.CALLER_ID, ({correlationId, callerId}) => {/* refresh caller display */});
   call.on(CALL_EVENT_KEYS.CALL_ERROR, (err) => {/* show retry/failure */});
   call.on(CALL_EVENT_KEYS.DISCONNECT, (id) => {/* teardown UI */});
 });
@@ -701,7 +718,7 @@ sequenceDiagram
     Call->>Call: E_SEND_CALL_DISCONNECT -> S_SEND_CALL_DISCONNECT
     Call->>Call: handleOutgoingCallDisconnect()
     Call->>Call: forceSendStatsReport()\ngetCallStats()
-    Call->>Mobius: DELETE /devices/{deviceId}/calls/{callId}\n{device, callId, callStats, cause}
+    Call->>Mobius: DELETE /devices/{deviceId}/calls/{callId}\n{device, callId, metrics, causecode, cause}
     Call->>Call: clearTimeout(sessionTimer)
     Call->>Call: mediaStateMachine.send(E_ROAP_TEARDOWN)
     Call->>Call: mediaConnection.close()\nunregisterListeners()
