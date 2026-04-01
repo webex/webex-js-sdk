@@ -4,6 +4,39 @@
 
 The `calling/` sub-module within `CallingClient` contains the core call management logic for the Webex Calling SDK. It consists of two primary classes -- `Call` and `CallManager` -- along with the `CallerId` sub-module for caller identity resolution. Together, these classes handle the full lifecycle of voice calls: creation, signaling via Mobius, WebRTC media negotiation via ROAP, mid-call operations, and termination.
 
+## Key Capabilities
+
+### 1. Call Lifecycle Orchestration
+- Creates and manages outbound and inbound call instances with stable `correlationId` mapping.
+- Drives call progression from setup to established, held/resumed, transfer, and disconnect states.
+- Cleans up call resources and collection state when calls terminate.
+
+### 2. Mobius Event Intake and Routing
+- Subscribes to `event:mobius` via `SDKConnector` and processes signaling/media events.
+- Routes each event to the correct `Call` object based on `correlationId` and `callId` matching.
+- Handles out-of-order event scenarios (for example, media before setup) safely.
+
+### 3. Signaling and Media State Machine Coordination
+- Maintains call signaling and ROAP media state machines per call.
+- Coordinates HTTP signaling operations with asynchronous WebSocket-driven transitions.
+- Preserves deterministic behavior through explicit event-driven transitions.
+
+### 4. Mid-Call Operations and Supplementary Services
+- Supports hold/resume, transfer, mute, DTMF, and media updates during active calls.
+- Enforces supplementary-service timeout behavior and emits typed error events on failure.
+- Tracks connected/held/muted state transitions for accurate client behavior.
+
+### 5. Caller Identity Resolution
+- Resolves caller display details from SIP headers (`p-asserted-identity`, `from`) and Broadworks metadata.
+- Performs SCIM-backed resolution where applicable and emits caller ID updates through typed events.
+
+### 6. Typed Events, Errors, and Metrics
+- Emits strongly typed lifecycle and error events through shared event enums/type maps.
+- Uses call-scoped typed errors (`CallError`) with correlation and layer context.
+- Submits call and media metrics for both success and failure paths.
+
+---
+
 ## Files
 
 | File | Class | Interface | Description |
@@ -41,16 +74,10 @@ export const getCallManager = (webex: WebexSDK, indicator: ServiceIndicator): IC
 };
 ```
 
-### Key Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `callCollection` | `Record<CorrelationId, ICall>` | Active calls keyed by client-side correlation ID |
-| `activeMobiusUrl` | `string` | Current active Mobius server URL |
-| `serviceIndicator` | `ServiceIndicator` | Service type (`calling`, `contactcenter`, `guestcalling`) |
-| `lineDict` | `Record<string, ILine>` | Lines keyed by device ID, for resolving `lineId` from incoming events |
-
 ### ICallManager Interface
+
+`ICallManager` is the contract for the `CallManager` class. It defines the core methods `CallManager` must expose for call creation, lookup, lifecycle tracking, and line/Mobius context updates.  
+In practice, this interface ensures a consistent API surface between the singleton accessor (`getCallManager`) and the concrete `CallManager` implementation.
 
 ```typescript
 interface ICallManager extends Eventing<CallEventTypes> {
@@ -61,6 +88,30 @@ interface ICallManager extends Eventing<CallEventTypes> {
   updateLine(deviceId: string, line: ILine): void;
 }
 ```
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `callCollection` | `Record<CorrelationId, ICall>` | Active calls keyed by client-side correlation ID |
+| `activeMobiusUrl` | `string` | Current active Mobius server URL |
+| `serviceIndicator` | `ServiceIndicator` | Service type (`calling`, `contactcenter`, `guestcalling`) |
+| `lineDict` | `Record<string, ILine>` | Lines keyed by device ID, for resolving `lineId` from incoming events |
+
+
+### Methods
+
+| Method | Signature | Scope | Purpose |
+|--------|-----------|-------|---------|
+| `constructor` | `constructor(webex: WebexSDK, indicator: ServiceIndicator)` | Public | Initializes manager state, connector references, and Mobius listener registration |
+| `createCall` | `createCall(direction: CallDirection, deviceId: string, lineId: string, destination?: CallDetails): ICall` | Public | Creates a `Call` instance, stores it in `callCollection`, and wires delete callback |
+| `getCall` | `getCall(correlationId: CorrelationId): ICall` | Public | Returns the active call for a correlation ID |
+| `getActiveCalls` | `getActiveCalls(): Record<string, ICall>` | Public | Returns the current active call map |
+| `updateActiveMobius` | `updateActiveMobius(url: string): void` | Public | Updates active Mobius URL used by newly created calls |
+| `updateLine` | `updateLine(deviceId: string, line: ILine): void` | Public | Stores/updates line mapping used for incoming call routing |
+| `listenForWsEvents` | `listenForWsEvents(): void` | Private | Registers `event:mobius` listener and forwards inbound payloads for processing |
+| `dequeueWsEvents` | `dequeueWsEvents(eventData: MobiusCallEvent): void` | Private | Routes Mobius call/media/disconnect events to the correct `Call` instance |
+| `getLineId` | `getLineId(deviceId: string): string` | Private | Resolves line ID from `lineDict` for inbound call creation/routing |
 
 ### Mobius Event Routing
 
@@ -123,7 +174,58 @@ export const createCall = (
 ): ICall => new Call(activeUrl, webex, direction, deviceId, lineId, deleteCb, indicator, destination);
 ```
 
-### Key Properties
+### ICall Interface
+
+`ICall` is the contract for the `Call` class. It defines the methods a call object must expose for call control operations, state checks, media updates, event handling hooks, and call metadata access.
+
+```typescript
+// Contract implemented by Call class.
+// Eventing<CallEventTypes> means consumers can subscribe to strongly typed call events.
+interface ICall extends Eventing<CallEventTypes> {
+  // Call control operations
+  dial(localAudioStream: LocalMicrophoneStream): void;
+  answer(localAudioStream: LocalMicrophoneStream): void;
+  end(): void;
+  doHoldResume(): void;
+  completeTransfer(
+    transferType: TransferType,
+    transferCallId?: CallId,
+    transferTarget?: string
+  ): void;
+  sendDigit(tone: string): void;
+
+  // Media operations
+  mute(localAudioStream: LocalMicrophoneStream, muteType?: MUTE_TYPE): void;
+  updateMedia(newAudioStream: LocalMicrophoneStream): void;
+  getCallRtpStats(): Promise<CallRtpStats>;
+
+  // State checks
+  isMuted(): boolean;
+  isConnected(): boolean;
+  isHeld(): boolean;
+
+  // Identifiers and call metadata
+  getCallId(): string;
+  setCallId(callId: CallId): void;
+  getCorrelationId(): string;
+  getDirection(): CallDirection;
+  getDisconnectReason(): DisconnectReason;
+  getBroadworksCorrelationInfo(): string | undefined;
+  setBroadworksCorrelationInfo(info: string): void;
+
+  // Caller identity
+  getCallerInfo(): DisplayInformation;
+  startCallerIdResolution(callerInfo: CallerIdInfo): void;
+
+  // Internal event pathways exposed on the interface
+  handleMidCallEvent(event: MidCallEvent): void;
+  sendCallStateMachineEvt(event: CallEvent): void;
+  sendMediaStateMachineEvt(event: RoapEvent): void;
+  postStatus(): Promise<WebexRequestPayload>;
+}
+```
+
+### Properties
 
 | Property | Type | Visibility | Description |
 |----------|------|-----------|-------------|
@@ -137,9 +239,11 @@ export const createCall = (
 | `held` | `boolean` | private | Whether call is currently on hold |
 | `muted` | `boolean` | private | Whether local audio is muted |
 | `earlyMedia` | `boolean` | private | Whether early media (inband ROAP) was detected |
+| `mediaInactivity` | `boolean` | private | Whether media inactivity was detected |
 | `mediaNegotiationCompleted` | `boolean` | private | Whether ROAP negotiation finished |
 | `mediaConnection` | `RoapMediaConnection` | public | WebRTC media connection instance |
 | `localAudioStream` | `LocalMicrophoneStream` | private | Local microphone stream |
+| `mobiusUrl` | `string` | private | Active Mobius server URL for this call |
 | `callStateMachine` | XState interpreter | private | Call signaling state machine |
 | `mediaStateMachine` | XState interpreter | private | ROAP media state machine |
 | `seq` | `number` | private | ROAP sequence number (starts at 1) |
@@ -151,11 +255,14 @@ export const createCall = (
 | `sessionTimer` | `NodeJS.Timeout` | private | 10-minute session inactivity timer |
 | `supplementaryServicesTimer` | `NodeJS.Timeout` | private | 10-second timeout for hold/resume responses |
 | `broadworksCorrelationInfo` | `string` | private | Broadworks correlation ID (used for WxCC) |
+| `serviceIndicator` | `ServiceIndicator` | private | Service type (`calling`, `contactcenter`, `guestcalling`) |
 | `metricManager` | `IMetricManager` | private | Metrics submission |
 | `rtcMetrics` | `RtcMetrics` | private | WebRTC metrics from `@webex/internal-plugin-metrics` |
+| `receivedRoapOKSeq` | `number` | private | Tracks the sequence number of the last received ROAP OK |
 | `callKeepaliveRetryCount` | `number` | private | Keepalive retry counter (max 4) |
 
-### ICall Interface - Public Methods
+
+### Method
 
 | Method | Signature | Description |
 |--------|-----------|-------------|

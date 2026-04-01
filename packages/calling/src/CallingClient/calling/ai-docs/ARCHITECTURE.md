@@ -1,136 +1,135 @@
 # Call Management Sub-Module - Architecture Specification
 
-## Table of Contents
-
-- [Class Diagram](#class-diagram)
-- [Call Construction and Initialization](#call-construction-and-initialization)
-- [Call State Machine (XState)](#call-state-machine-xstate)
-- [Media ROAP State Machine (XState)](#media-roap-state-machine-xstate)
-- [CallManager Event Processing Pipeline](#callmanager-event-processing-pipeline)
-- [Outgoing Call Flow (Detailed)](#outgoing-call-flow-detailed)
-- [Incoming Call Flow (Detailed)](#incoming-call-flow-detailed)
-- [Hold and Resume Flow](#hold-and-resume-flow)
-- [Transfer Flow](#transfer-flow)
-- [Media Connection Lifecycle](#media-connection-lifecycle)
-- [Disconnect and Cleanup Flow](#disconnect-and-cleanup-flow)
-- [API Endpoints (Call-Specific)](#api-endpoints-call-specific)
-- [Types Reference](#types-reference)
-- [Error Handling](#error-handling)
-
----
-
 ## Class Diagram
 
-```
-┌───────────────────────────────────────────────────────────┐
-│                    CallManager (singleton)                 │
-│                implements ICallManager                     │
-│                extends Eventing<CallEventTypes>            │
-│                                                           │
-│  Properties:                                              │
-│    callCollection: Record<CorrelationId, ICall>           │
-│    activeMobiusUrl: string                                │
-│    serviceIndicator: ServiceIndicator                     │
-│    lineDict: Record<string, ILine>                        │
-│                                                           │
-│  Methods:                                                 │
-│    createCall(direction, deviceId, lineId, dest?) → ICall │
-│    getCall(correlationId) → ICall                         │
-│    getActiveCalls() → Record<string, ICall>               │
-│    updateActiveMobius(url)                                │
-│    updateLine(deviceId, line)                             │
-│    [private] listenForWsEvents()                          │
-│    [private] dequeueWsEvents(event)                       │
-│    [private] getLineId(deviceId) → string                 │
-│                                                           │
-│  Listens: SDKConnector('event:mobius')                    │
-│  Emits:   INCOMING_CALL, ALL_CALLS_CLEARED               │
-└────────────────────────┬──────────────────────────────────┘
-                         │ creates & manages
-                         v
-┌───────────────────────────────────────────────────────────┐
-│                       Call                                │
-│                implements ICall                            │
-│                extends Eventing<CallEventTypes>            │
-│                                                           │
-│  State Machines:                                          │
-│    callStateMachine  (XState - call signaling)            │
-│    mediaStateMachine (XState - ROAP media)                │
-│                                                           │
-│  Properties:                                              │
-│    callId, correlationId, deviceId, lineId, direction     │
-│    connected, held, muted, earlyMedia                     │
-│    mediaConnection (RoapMediaConnection)                  │
-│    disconnectReason, callerInfo                           │
-│    seq, localRoapMessage, remoteRoapMessage               │
-│    sessionTimer, supplementaryServicesTimer               │
-│    callKeepaliveRetryCount                                │
-│                                                           │
-│  Public Methods:                                          │
-│    dial(), answer(), end(), mute(), doHoldResume()        │
-│    sendDigit(), completeTransfer(), updateMedia()         │
-│    getCallId(), getCorrelationId(), getDirection()        │
-│    getCallerInfo(), getCallRtpStats(), postStatus()       │
-│    handleMidCallEvent(), startCallerIdResolution()        │
-│                                                           │
-│  Private Methods:                                         │
-│    post(), patch(), postSSRequest(), postMedia()          │
-│    initMediaConnection(), mediaRoapEventsListener()       │
-│    mediaTrackListener(), registerListeners()              │
-│    handleIncoming/Outgoing[CallSetup|CallProgress|...]    │
-│    handleIncoming/Outgoing[RoapOffer|RoapAnswer|...]      │
-│    handleCallEstablished(), handleRoapEstablished()       │
-│    handleTimeout(), forceSendStatsReport()                │
-│                                                           │
-│  Emits: ALERTING, PROGRESS, CONNECT, ESTABLISHED,        │
-│         HELD, RESUMED, DISCONNECT, REMOTE_MEDIA,          │
-│         CALLER_ID, CALL_ERROR, HOLD_ERROR,                │
-│         RESUME_ERROR, TRANSFER_ERROR                      │
-└────────────────────────┬──────────────────────────────────┘
-                         │ uses
-                         v
-┌───────────────────────────────────────────────────────────┐
-│                     CallerId                              │
-│                implements ICallerId                        │
-│                                                           │
-│  Methods:                                                 │
-│    fetchCallerDetails(callerInfo) → DisplayInformation    │
-│    [private] parseSipUri(paid) → DisplayInformation       │
-│    [private] parseRemotePartyInfo(data) → async           │
-│    [private] resolveCallerId(filter) → async              │
-└───────────────────────────────────────────────────────────┘
+```mermaid
+classDiagram
+  class Eventing~CallEventTypes~
+
+  class ICallManager {
+    <<interface>>
+    +createCall(direction, deviceId, lineId, destination?) ICall
+    +getCall(correlationId) ICall
+    +getActiveCalls() Record~string, ICall~
+    +updateActiveMobius(url) void
+    +updateLine(deviceId, line) void
+  }
+
+  class ICall {
+    <<interface>>
+    +dial(localAudioStream) void
+    +answer(localAudioStream) void
+    +end() void
+    +mute(localAudioStream, muteType?) void
+    +doHoldResume() void
+    +completeTransfer(transferType, transferCallId?, transferTarget?) void
+    +getCallId() string
+    +getCorrelationId() string
+    +getDirection() CallDirection
+    +getCallRtpStats() Promise~CallRtpStats~
+    +postStatus() Promise~WebexRequestPayload~
+  }
+
+  class ICallerId {
+    <<interface>>
+    +fetchCallerDetails(callerInfo) Promise~DisplayInformation~
+  }
+
+  class CallManager {
+    -callCollection: Record~CorrelationId, ICall~
+    -activeMobiusUrl: string
+    -serviceIndicator: ServiceIndicator
+    -lineDict: Record~string, ILine~
+    +createCall(direction, deviceId, lineId, destination?) ICall
+    +getCall(correlationId) ICall
+    +getActiveCalls() Record~string, ICall~
+    +updateActiveMobius(url) void
+    +updateLine(deviceId, line) void
+    -listenForWsEvents() void
+    -dequeueWsEvents(event) void
+    -getLineId(deviceId) string
+  }
+
+  class Call {
+    -callId: CallId
+    -correlationId: CorrelationId
+    -direction: CallDirection
+    -connected: boolean
+    -held: boolean
+    -muted: boolean
+    -mediaInactivity: boolean
+    -mobiusUrl: string
+    -mediaConnection: RoapMediaConnection
+    -callStateMachine
+    -mediaStateMachine
+    -callerId: ICallerId
+    -serviceIndicator: ServiceIndicator
+    -receivedRoapOKSeq: number
+    +dial(localAudioStream) void
+    +answer(localAudioStream) void
+    +end() void
+    +mute(localAudioStream, muteType?) void
+    +doHoldResume() void
+    +sendDigit(tone) void
+    +completeTransfer(transferType, transferCallId?, transferTarget?) void
+    +updateMedia(newAudioStream) void
+    +getCallId() string
+    +getCorrelationId() string
+    +getDirection() CallDirection
+    +getCallRtpStats() Promise~CallRtpStats~
+    +postStatus() Promise~WebexRequestPayload~
+    +handleMidCallEvent(event) void
+    +startCallerIdResolution(callerInfo) void
+  }
+
+  class CallerId {
+    +fetchCallerDetails(callerInfo) Promise~DisplayInformation~
+    -parseSipUri(paid) DisplayInformation
+    -parseRemotePartyInfo(data) Promise~void~
+    -resolveCallerId(filter) Promise~DisplayInformation~
+  }
+
+  Eventing~CallEventTypes~ <|-- CallManager
+  Eventing~CallEventTypes~ <|-- Call
+  ICallManager <|.. CallManager
+  ICall <|.. Call
+  ICallerId <|.. CallerId
+  CallManager "1" --> "*" Call : creates/manages
+  Call --> CallerId : uses
+  CallManager ..> SDKConnector : listens event:mobius
 ```
 
 ---
 
 ## Call Construction and Initialization
 
-When a `Call` is created (via `createCall` factory):
+`Call` creation has two entry conditions (inbound and outbound), then both follow the same initialization pipeline.
 
-```
-new Call(activeUrl, webex, direction, deviceId, lineId, deleteCb, indicator, destination)
-│
-├── Generate correlationId (uuid)
-├── Generate initial callId ("DefaultLocalId_{uuid}")
-├── Initialize SDKConnector, MetricManager
-├── Create CallerId instance with emitter callback
-├── Set defaults: connected=false, held=false, muted=false, earlyMedia=false
-├── Initialize disconnectReason: {code: NORMAL(0), cause: 'Normal Disconnect.'}
-├── Create RtcMetrics instance
-│
-├── Create Call State Machine (XState createMachine)
-│   ├── id: 'call-state'
-│   ├── initial: 'S_IDLE'
-│   ├── 15 states with transitions and actions
-│   └── interpret().onTransition(submitCallMetric).start()
-│
-├── Create Media State Machine (XState createMachine)
-│   ├── id: 'roap-state'
-│   ├── initial: 'S_ROAP_IDLE'
-│   ├── 9 states with transitions and actions
-│   └── interpret().onTransition(submitMediaMetric).start()
-│
-└── Set muted = false, seq = 1 (INITIAL_SEQ_NUMBER)
+```mermaid
+flowchart TD
+    A{Call creation trigger}
+    A -->|Outbound| B[Line makeCall destination]
+    B --> C[CallManager.createCall OUTBOUND with destination]
+
+    A -->|Inbound| D[Mobius CALL_SETUP event]
+    D --> E[CallManager.dequeueWsEvents]
+    E --> F[CallManager.createCall INBOUND without destination]
+
+    C --> G[new Call activeUrl webex direction deviceId lineId deleteCb indicator destination]
+    F --> G
+
+    G --> H[Generate correlationId uuid]
+    H --> I[Generate initial callId DefaultLocalId_uuid]
+    I --> J[Initialize SDKConnector and MetricManager]
+    J --> K[Create CallerId instance with emitter callback]
+    K --> L[Set defaults connected false held false muted false earlyMedia false]
+    L --> M[Initialize disconnectReason code NORMAL cause Normal Disconnect]
+    M --> N[Create RtcMetrics instance]
+    N --> O[Create Call State Machine id call-state initial S_IDLE]
+    O --> P[interpret onTransition submitCallMetric start]
+    P --> Q[Create Media State Machine id roap-state initial S_ROAP_IDLE]
+    Q --> R[interpret onTransition submitMediaMetric start]
+    R --> S[Finalize muted false and seq 1 INITIAL_SEQ_NUMBER]
 ```
 
 ---
@@ -139,118 +138,76 @@ new Call(activeUrl, webex, direction, deviceId, lineId, deleteCb, indicator, des
 
 ### Complete State Definition
 
-```
-Machine ID: 'call-state'
-Initial State: S_IDLE
+```mermaid
+stateDiagram-v2
+    [*] --> S_IDLE
 
-┌─────────────────────────────────────────────────────────────────────┐
-│ S_IDLE                                                              │
-│   E_RECV_CALL_SETUP      → S_RECV_CALL_SETUP   [incomingCallSetup] │
-│   E_SEND_CALL_SETUP      → S_SEND_CALL_SETUP   [outgoingCallSetup] │
-│   E_RECV_CALL_DISCONNECT  → S_RECV_CALL_DISCONNECT [incomingDisc]   │
-│   E_SEND_CALL_DISCONNECT  → S_SEND_CALL_DISCONNECT [outgoingDisc]   │
-│   E_UNKNOWN               → S_UNKNOWN           [unknownState]      │
-└─────────────────────────────────────────────────────────────────────┘
+    S_IDLE --> S_RECV_CALL_SETUP: E_RECV_CALL_SETUP / incomingCallSetup
+    S_IDLE --> S_SEND_CALL_SETUP: E_SEND_CALL_SETUP / outgoingCallSetup
+    S_IDLE --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT / incomingDisc
+    S_IDLE --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT / outgoingDisc
+    S_IDLE --> S_UNKNOWN: E_UNKNOWN / unknownState
 
-┌─────────────────────────────────────────────────────────────────────┐
-│ S_RECV_CALL_SETUP (timeout: 10000ms → S_CALL_CLEARED)              │
-│   E_SEND_CALL_ALERTING    → S_SEND_CALL_PROGRESS [outCallAlerting] │
-│   E_RECV_CALL_DISCONNECT  → S_RECV_CALL_DISCONNECT                  │
-│   E_SEND_CALL_DISCONNECT  → S_SEND_CALL_DISCONNECT                  │
-│   E_UNKNOWN               → S_UNKNOWN                               │
-└─────────────────────────────────────────────────────────────────────┘
+    S_RECV_CALL_SETUP --> S_SEND_CALL_PROGRESS: E_SEND_CALL_ALERTING / outCallAlerting
+    S_RECV_CALL_SETUP --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
+    S_RECV_CALL_SETUP --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
+    S_RECV_CALL_SETUP --> S_UNKNOWN: E_UNKNOWN
+    S_RECV_CALL_SETUP --> S_CALL_CLEARED: timeout 10000ms
 
-┌─────────────────────────────────────────────────────────────────────┐
-│ S_SEND_CALL_SETUP (timeout: 10000ms → S_CALL_CLEARED)              │
-│   E_RECV_CALL_PROGRESS    → S_RECV_CALL_PROGRESS [inCallProgress]  │
-│   E_RECV_CALL_CONNECT     → S_RECV_CALL_CONNECT  [inCallConnect]   │
-│   E_RECV_CALL_DISCONNECT  → S_RECV_CALL_DISCONNECT                  │
-│   E_SEND_CALL_DISCONNECT  → S_SEND_CALL_DISCONNECT                  │
-│   E_UNKNOWN               → S_UNKNOWN                               │
-└─────────────────────────────────────────────────────────────────────┘
+    S_SEND_CALL_SETUP --> S_RECV_CALL_PROGRESS: E_RECV_CALL_PROGRESS / inCallProgress
+    S_SEND_CALL_SETUP --> S_RECV_CALL_CONNECT: E_RECV_CALL_CONNECT / inCallConnect
+    S_SEND_CALL_SETUP --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
+    S_SEND_CALL_SETUP --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
+    S_SEND_CALL_SETUP --> S_UNKNOWN: E_UNKNOWN
+    S_SEND_CALL_SETUP --> S_CALL_CLEARED: timeout 10000ms
 
-┌─────────────────────────────────────────────────────────────────────┐
-│ S_RECV_CALL_PROGRESS (timeout: 60000ms → S_CALL_CLEARED)           │
-│   E_RECV_CALL_CONNECT     → S_RECV_CALL_CONNECT                    │
-│   E_RECV_CALL_DISCONNECT  → S_RECV_CALL_DISCONNECT                  │
-│   E_SEND_CALL_DISCONNECT  → S_SEND_CALL_DISCONNECT                  │
-│   E_RECV_CALL_PROGRESS    → S_RECV_CALL_PROGRESS (self-loop)       │
-│   E_UNKNOWN               → S_UNKNOWN                               │
-└─────────────────────────────────────────────────────────────────────┘
+    S_RECV_CALL_PROGRESS --> S_RECV_CALL_CONNECT: E_RECV_CALL_CONNECT
+    S_RECV_CALL_PROGRESS --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
+    S_RECV_CALL_PROGRESS --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
+    S_RECV_CALL_PROGRESS --> S_RECV_CALL_PROGRESS: E_RECV_CALL_PROGRESS
+    S_RECV_CALL_PROGRESS --> S_UNKNOWN: E_UNKNOWN
+    S_RECV_CALL_PROGRESS --> S_CALL_CLEARED: timeout 60000ms
 
-┌─────────────────────────────────────────────────────────────────────┐
-│ S_SEND_CALL_PROGRESS (timeout: 60000ms → S_CALL_CLEARED)           │
-│   E_SEND_CALL_CONNECT     → S_SEND_CALL_CONNECT  [outCallConnect]  │
-│   E_RECV_CALL_DISCONNECT  → S_RECV_CALL_DISCONNECT                  │
-│   E_SEND_CALL_DISCONNECT  → S_SEND_CALL_DISCONNECT                  │
-│   E_UNKNOWN               → S_UNKNOWN                               │
-└─────────────────────────────────────────────────────────────────────┘
+    S_SEND_CALL_PROGRESS --> S_SEND_CALL_CONNECT: E_SEND_CALL_CONNECT / outCallConnect
+    S_SEND_CALL_PROGRESS --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
+    S_SEND_CALL_PROGRESS --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
+    S_SEND_CALL_PROGRESS --> S_UNKNOWN: E_UNKNOWN
+    S_SEND_CALL_PROGRESS --> S_CALL_CLEARED: timeout 60000ms
 
-┌─────────────────────────────────────────────────────────────────────┐
-│ S_RECV_CALL_CONNECT (timeout: 10000ms → S_CALL_CLEARED)            │
-│   E_CALL_ESTABLISHED      → S_CALL_ESTABLISHED   [callEstablished] │
-│   E_RECV_CALL_DISCONNECT  → S_RECV_CALL_DISCONNECT                  │
-│   E_SEND_CALL_DISCONNECT  → S_SEND_CALL_DISCONNECT                  │
-│   E_UNKNOWN               → S_UNKNOWN                               │
-└─────────────────────────────────────────────────────────────────────┘
+    S_RECV_CALL_CONNECT --> S_CALL_ESTABLISHED: E_CALL_ESTABLISHED / callEstablished
+    S_RECV_CALL_CONNECT --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
+    S_RECV_CALL_CONNECT --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
+    S_RECV_CALL_CONNECT --> S_UNKNOWN: E_UNKNOWN
+    S_RECV_CALL_CONNECT --> S_CALL_CLEARED: timeout 10000ms
 
-┌─────────────────────────────────────────────────────────────────────┐
-│ S_SEND_CALL_CONNECT (timeout: 10000ms → S_CALL_CLEARED)            │
-│   E_CALL_ESTABLISHED      → S_CALL_ESTABLISHED   [callEstablished] │
-│   E_RECV_CALL_DISCONNECT  → S_RECV_CALL_DISCONNECT                  │
-│   E_SEND_CALL_DISCONNECT  → S_SEND_CALL_DISCONNECT                  │
-│   E_UNKNOWN               → S_UNKNOWN                               │
-└─────────────────────────────────────────────────────────────────────┘
+    S_SEND_CALL_CONNECT --> S_CALL_ESTABLISHED: E_CALL_ESTABLISHED / callEstablished
+    S_SEND_CALL_CONNECT --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
+    S_SEND_CALL_CONNECT --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
+    S_SEND_CALL_CONNECT --> S_UNKNOWN: E_UNKNOWN
+    S_SEND_CALL_CONNECT --> S_CALL_CLEARED: timeout 10000ms
 
-┌─────────────────────────────────────────────────────────────────────┐
-│ S_CALL_ESTABLISHED                                                  │
-│   E_CALL_HOLD             → S_CALL_HOLD          [initiateHold]    │
-│   E_CALL_RESUME           → S_CALL_RESUME        [initiateResume]  │
-│   E_RECV_CALL_DISCONNECT  → S_RECV_CALL_DISCONNECT                  │
-│   E_SEND_CALL_DISCONNECT  → S_SEND_CALL_DISCONNECT                  │
-│   E_CALL_ESTABLISHED      → S_CALL_ESTABLISHED   (self-loop)       │
-│   E_UNKNOWN               → S_UNKNOWN                               │
-└─────────────────────────────────────────────────────────────────────┘
+    S_CALL_ESTABLISHED --> S_CALL_HOLD: E_CALL_HOLD / initiateHold
+    S_CALL_ESTABLISHED --> S_CALL_RESUME: E_CALL_RESUME / initiateResume
+    S_CALL_ESTABLISHED --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
+    S_CALL_ESTABLISHED --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
+    S_CALL_ESTABLISHED --> S_CALL_ESTABLISHED: E_CALL_ESTABLISHED
+    S_CALL_ESTABLISHED --> S_UNKNOWN: E_UNKNOWN
 
-┌─────────────────────────────────────────────────────────────────────┐
-│ S_CALL_HOLD                                                         │
-│   E_RECV_CALL_DISCONNECT  → S_RECV_CALL_DISCONNECT                  │
-│   E_SEND_CALL_DISCONNECT  → S_SEND_CALL_DISCONNECT                  │
-│   E_CALL_ESTABLISHED      → S_CALL_ESTABLISHED   [callEstablished] │
-│   E_UNKNOWN               → S_UNKNOWN                               │
-└─────────────────────────────────────────────────────────────────────┘
+    S_CALL_HOLD --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
+    S_CALL_HOLD --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
+    S_CALL_HOLD --> S_CALL_ESTABLISHED: E_CALL_ESTABLISHED / callEstablished
+    S_CALL_HOLD --> S_UNKNOWN: E_UNKNOWN
 
-┌─────────────────────────────────────────────────────────────────────┐
-│ S_CALL_RESUME                                                       │
-│   E_RECV_CALL_DISCONNECT  → S_RECV_CALL_DISCONNECT                  │
-│   E_SEND_CALL_DISCONNECT  → S_SEND_CALL_DISCONNECT                  │
-│   E_CALL_ESTABLISHED      → S_CALL_ESTABLISHED   [callEstablished] │
-│   E_UNKNOWN               → S_UNKNOWN                               │
-└─────────────────────────────────────────────────────────────────────┘
+    S_CALL_RESUME --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
+    S_CALL_RESUME --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
+    S_CALL_RESUME --> S_CALL_ESTABLISHED: E_CALL_ESTABLISHED / callEstablished
+    S_CALL_RESUME --> S_UNKNOWN: E_UNKNOWN
 
-┌────────────────────────────────────────────────┐
-│ S_RECV_CALL_DISCONNECT                          │
-│   E_CALL_CLEARED → S_CALL_CLEARED              │
-└────────────────────────────────────────────────┘
-
-┌────────────────────────────────────────────────┐
-│ S_SEND_CALL_DISCONNECT                          │
-│   E_CALL_CLEARED → S_CALL_CLEARED              │
-└────────────────────────────────────────────────┘
-
-┌────────────────────────────────────────────────┐
-│ S_UNKNOWN                                       │
-│   E_CALL_CLEARED → S_CALL_CLEARED              │
-└────────────────────────────────────────────────┘
-
-┌────────────────────────────────────────────────┐
-│ S_ERROR                                         │
-│   E_CALL_CLEARED → S_CALL_CLEARED              │
-└────────────────────────────────────────────────┘
-
-┌────────────────────────────────────────────────┐
-│ S_CALL_CLEARED (final state)                    │
-└────────────────────────────────────────────────┘
+    S_RECV_CALL_DISCONNECT --> S_CALL_CLEARED: E_CALL_CLEARED
+    S_SEND_CALL_DISCONNECT --> S_CALL_CLEARED: E_CALL_CLEARED
+    S_UNKNOWN --> S_CALL_CLEARED: E_CALL_CLEARED
+    S_ERROR --> S_CALL_CLEARED: E_CALL_CLEARED
+    S_CALL_CLEARED --> [*]
 ```
 
 ### State Machine Action Handlers
@@ -277,76 +234,50 @@ Initial State: S_IDLE
 
 ### Complete State Definition
 
-```
-Machine ID: 'roap-state'
-Initial State: S_ROAP_IDLE
+```mermaid
+stateDiagram-v2
+    [*] --> S_ROAP_IDLE
 
-┌────────────────────────────────────────────────────────────────────┐
-│ S_ROAP_IDLE                                                        │
-│   E_RECV_ROAP_OFFER_REQUEST → S_RECV_ROAP_OFFER_REQUEST           │
-│   E_RECV_ROAP_OFFER         → S_RECV_ROAP_OFFER                   │
-│   E_SEND_ROAP_OFFER         → S_SEND_ROAP_OFFER                   │
-└────────────────────────────────────────────────────────────────────┘
+    S_ROAP_IDLE --> S_RECV_ROAP_OFFER_REQUEST: E_RECV_ROAP_OFFER_REQUEST
+    S_ROAP_IDLE --> S_RECV_ROAP_OFFER: E_RECV_ROAP_OFFER
+    S_ROAP_IDLE --> S_SEND_ROAP_OFFER: E_SEND_ROAP_OFFER
 
-┌────────────────────────────────────────────────────────────────────┐
-│ S_RECV_ROAP_OFFER_REQUEST                                          │
-│   E_SEND_ROAP_OFFER  → S_SEND_ROAP_OFFER   [outgoingRoapOffer]   │
-│   E_ROAP_OK          → S_ROAP_OK            [roapEstablished]     │
-│   E_ROAP_ERROR       → S_ROAP_ERROR         [roapError]           │
-└────────────────────────────────────────────────────────────────────┘
+    S_RECV_ROAP_OFFER_REQUEST --> S_SEND_ROAP_OFFER: E_SEND_ROAP_OFFER / outgoingRoapOffer
+    S_RECV_ROAP_OFFER_REQUEST --> S_ROAP_OK: E_ROAP_OK / roapEstablished
+    S_RECV_ROAP_OFFER_REQUEST --> S_ROAP_ERROR: E_ROAP_ERROR / roapError
 
-┌────────────────────────────────────────────────────────────────────┐
-│ S_RECV_ROAP_OFFER                                                  │
-│   E_SEND_ROAP_ANSWER → S_SEND_ROAP_ANSWER  [outgoingRoapAnswer]  │
-│   E_ROAP_OK          → S_ROAP_OK            [roapEstablished]     │
-│   E_ROAP_ERROR       → S_ROAP_ERROR         [roapError]           │
-└────────────────────────────────────────────────────────────────────┘
+    S_RECV_ROAP_OFFER --> S_SEND_ROAP_ANSWER: E_SEND_ROAP_ANSWER / outgoingRoapAnswer
+    S_RECV_ROAP_OFFER --> S_ROAP_OK: E_ROAP_OK / roapEstablished
+    S_RECV_ROAP_OFFER --> S_ROAP_ERROR: E_ROAP_ERROR / roapError
 
-┌────────────────────────────────────────────────────────────────────┐
-│ S_SEND_ROAP_OFFER                                                  │
-│   E_RECV_ROAP_ANSWER → S_RECV_ROAP_ANSWER  [incomingRoapAnswer]  │
-│   E_SEND_ROAP_ANSWER → S_SEND_ROAP_ANSWER  [outgoingRoapAnswer]  │
-│   E_SEND_ROAP_OFFER  → S_SEND_ROAP_OFFER   [outgoingRoapOffer]   │
-│   E_ROAP_ERROR       → S_ROAP_ERROR         [roapError]           │
-└────────────────────────────────────────────────────────────────────┘
+    S_SEND_ROAP_OFFER --> S_RECV_ROAP_ANSWER: E_RECV_ROAP_ANSWER / incomingRoapAnswer
+    S_SEND_ROAP_OFFER --> S_SEND_ROAP_ANSWER: E_SEND_ROAP_ANSWER / outgoingRoapAnswer
+    S_SEND_ROAP_OFFER --> S_SEND_ROAP_OFFER: E_SEND_ROAP_OFFER / outgoingRoapOffer
+    S_SEND_ROAP_OFFER --> S_ROAP_ERROR: E_ROAP_ERROR / roapError
 
-┌────────────────────────────────────────────────────────────────────┐
-│ S_RECV_ROAP_ANSWER                                                 │
-│   E_ROAP_OK    → S_ROAP_OK      [roapEstablished]                 │
-│   E_ROAP_ERROR → S_ROAP_ERROR   [roapError]                       │
-└────────────────────────────────────────────────────────────────────┘
+    S_RECV_ROAP_ANSWER --> S_ROAP_OK: E_ROAP_OK / roapEstablished
+    S_RECV_ROAP_ANSWER --> S_ROAP_ERROR: E_ROAP_ERROR / roapError
 
-┌────────────────────────────────────────────────────────────────────┐
-│ S_SEND_ROAP_ANSWER                                                 │
-│   E_RECV_ROAP_OFFER_REQUEST → S_RECV_ROAP_OFFER_REQUEST           │
-│   E_RECV_ROAP_OFFER         → S_RECV_ROAP_OFFER                   │
-│   E_ROAP_OK                 → S_ROAP_OK     [roapEstablished]     │
-│   E_SEND_ROAP_ANSWER        → S_SEND_ROAP_ANSWER (self-loop)     │
-│   E_ROAP_ERROR              → S_ROAP_ERROR  [roapError]           │
-└────────────────────────────────────────────────────────────────────┘
+    S_SEND_ROAP_ANSWER --> S_RECV_ROAP_OFFER_REQUEST: E_RECV_ROAP_OFFER_REQUEST
+    S_SEND_ROAP_ANSWER --> S_RECV_ROAP_OFFER: E_RECV_ROAP_OFFER
+    S_SEND_ROAP_ANSWER --> S_ROAP_OK: E_ROAP_OK / roapEstablished
+    S_SEND_ROAP_ANSWER --> S_SEND_ROAP_ANSWER: E_SEND_ROAP_ANSWER
+    S_SEND_ROAP_ANSWER --> S_ROAP_ERROR: E_ROAP_ERROR / roapError
 
-┌────────────────────────────────────────────────────────────────────┐
-│ S_ROAP_OK (stable media state)                                     │
-│   E_RECV_ROAP_OFFER_REQUEST → S_RECV_ROAP_OFFER_REQUEST           │
-│   E_RECV_ROAP_OFFER         → S_RECV_ROAP_OFFER                   │
-│   E_ROAP_OK                 → S_ROAP_OK     (self-loop)           │
-│   E_SEND_ROAP_OFFER         → S_SEND_ROAP_OFFER (renegotiation)  │
-│   E_ROAP_ERROR              → S_ROAP_ERROR                        │
-│   E_ROAP_TEARDOWN           → S_ROAP_TEARDOWN                     │
-└────────────────────────────────────────────────────────────────────┘
+    S_ROAP_OK --> S_RECV_ROAP_OFFER_REQUEST: E_RECV_ROAP_OFFER_REQUEST
+    S_ROAP_OK --> S_RECV_ROAP_OFFER: E_RECV_ROAP_OFFER
+    S_ROAP_OK --> S_ROAP_OK: E_ROAP_OK
+    S_ROAP_OK --> S_SEND_ROAP_OFFER: E_SEND_ROAP_OFFER / renegotiation
+    S_ROAP_OK --> S_ROAP_ERROR: E_ROAP_ERROR
+    S_ROAP_OK --> S_ROAP_TEARDOWN: E_ROAP_TEARDOWN
 
-┌────────────────────────────────────────────────────────────────────┐
-│ S_ROAP_ERROR                                                       │
-│   E_ROAP_TEARDOWN           → S_ROAP_TEARDOWN                     │
-│   E_RECV_ROAP_OFFER_REQUEST → S_RECV_ROAP_OFFER_REQUEST           │
-│   E_RECV_ROAP_OFFER         → S_RECV_ROAP_OFFER                   │
-│   E_RECV_ROAP_ANSWER        → S_RECV_ROAP_ANSWER                  │
-│   E_ROAP_OK                 → S_ROAP_OK                           │
-└────────────────────────────────────────────────────────────────────┘
+    S_ROAP_ERROR --> S_ROAP_TEARDOWN: E_ROAP_TEARDOWN
+    S_ROAP_ERROR --> S_RECV_ROAP_OFFER_REQUEST: E_RECV_ROAP_OFFER_REQUEST
+    S_ROAP_ERROR --> S_RECV_ROAP_OFFER: E_RECV_ROAP_OFFER
+    S_ROAP_ERROR --> S_RECV_ROAP_ANSWER: E_RECV_ROAP_ANSWER
+    S_ROAP_ERROR --> S_ROAP_OK: E_ROAP_OK
 
-┌────────────────────────────────────────────────┐
-│ S_ROAP_TEARDOWN (final state)                   │
-└────────────────────────────────────────────────┘
+    S_ROAP_TEARDOWN --> [*]
 ```
 
 ### ROAP Action Handlers
@@ -365,238 +296,225 @@ Initial State: S_ROAP_IDLE
 
 ## CallManager Event Processing Pipeline
 
+```mermaid
+flowchart TD
+    A[event:mobius on Mercury WebSocket] --> B[SDKConnector listener]
+    B --> C[CallManager.dequeueWsEvents event]
+    C --> D[Parse MobiusCallEvent data]
+    D --> E{eventType}
+
+    E -->|CALL_SETUP mobius.call| F{midCallService present?}
+    F -->|Yes| F1[call.handleMidCallEvent for each midcall event]
+    F -->|No| F2[Find existing call by callId]
+    F2 --> F3{Call found?}
+    F3 -->|No| F4[createCall INBOUND]
+    F4 --> F5[setCallId and setBroadworksCorrelationInfo]
+    F3 -->|Yes| F6[Use existing call]
+    F5 --> F7[startCallerIdResolution callerId]
+    F6 --> F7
+    F7 --> F8[emit INCOMING_CALL call]
+    F8 --> F9[sendCallStateMachineEvt E_RECV_CALL_SETUP]
+
+    E -->|CALL_PROGRESS mobius.callprogress| G[getCall correlationId]
+    G --> G1[startCallerIdResolution callerId]
+    G1 --> G2[sendCallStateMachineEvt E_RECV_CALL_PROGRESS]
+
+    E -->|CALL_CONNECTED mobius.callconnected| H[getCall correlationId]
+    H --> H1[sendCallStateMachineEvt E_RECV_CALL_CONNECT]
+
+    E -->|CALL_MEDIA mobius.media| I{correlationId present?}
+    I -->|Yes| I1[getCall correlationId]
+    I -->|No| I2[Search by callId or create INBOUND call]
+    I1 --> J{message.messageType}
+    I2 --> J
+    J -->|OFFER| J1[sendMediaStateMachineEvt E_RECV_ROAP_OFFER]
+    J -->|ANSWER| J2[sendMediaStateMachineEvt E_RECV_ROAP_ANSWER]
+    J -->|OFFER_REQUEST| J3[sendMediaStateMachineEvt E_RECV_ROAP_OFFER_REQUEST]
+    J -->|OK| J4[sendMediaStateMachineEvt E_ROAP_OK]
+    J -->|ERROR| J5[log error]
+
+    E -->|CALL_DISCONNECTED mobius.calldisconnected| K[getCall correlationId]
+    K --> K1[sendCallStateMachineEvt E_RECV_CALL_DISCONNECT]
 ```
-Mercury WebSocket
-│
-│  event:mobius
-│
-└──► SDKConnector.registerListener('event:mobius')
-     │
-     └──► CallManager.dequeueWsEvents(event)
-          │
-          ├── Parse MobiusCallEvent: { data: { eventType, callId, correlationId, ... } }
-          │
-          ├── CALL_SETUP (mobius.call)
-          │   ├── midCallService present?
-          │   │   └── YES: call.handleMidCallEvent() for each midcall event → return
-          │   ├── Find existing call by callId in callCollection
-          │   ├── Not found? → createCall(INBOUND, deviceId, lineId)
-          │   │                 setCallId(), setBroadworksCorrelationInfo()
-          │   ├── startCallerIdResolution(callerId)
-          │   ├── emit(INCOMING_CALL, call)
-          │   └── call.sendCallStateMachineEvt({type: 'E_RECV_CALL_SETUP', data})
-          │
-          ├── CALL_PROGRESS (mobius.callprogress)
-          │   ├── getCall(correlationId)
-          │   ├── startCallerIdResolution(callerId)
-          │   └── call.sendCallStateMachineEvt({type: 'E_RECV_CALL_PROGRESS', data})
-          │
-          ├── CALL_CONNECTED (mobius.callconnected)
-          │   ├── getCall(correlationId)
-          │   └── call.sendCallStateMachineEvt({type: 'E_RECV_CALL_CONNECT', data})
-          │
-          ├── CALL_MEDIA (mobius.media)
-          │   ├── correlationId present?
-          │   │   ├── YES: getCall(correlationId)
-          │   │   └── NO: Search by callId or create new INBOUND call
-          │   └── Route by message.messageType:
-          │       ├── OFFER  → call.sendMediaStateMachineEvt({type: 'E_RECV_ROAP_OFFER'})
-          │       ├── ANSWER → call.sendMediaStateMachineEvt({type: 'E_RECV_ROAP_ANSWER'})
-          │       ├── OFFER_REQUEST → call.sendMediaStateMachineEvt({type: 'E_RECV_ROAP_OFFER_REQUEST'})
-          │       ├── OK     → call.sendMediaStateMachineEvt({type: 'E_ROAP_OK'})
-          │       └── ERROR  → log
-          │
-          └── CALL_DISCONNECTED (mobius.calldisconnected)
-              ├── getCall(correlationId)
-              └── call.sendCallStateMachineEvt({type: 'E_RECV_CALL_DISCONNECT'})
+
+## Event Handling Details
+
+This module has two event layers:
+- **Inbound/internal events** consumed by `CallManager`/`Call` (Mobius, media engine, stream/effect events).
+- **Public SDK events** emitted from `Call` (and `CallManager`) for app consumers.
+
+### 1) Events We Listen To
+
+| Source | Event | Handler Path | Purpose |
+|--------|-------|--------------|---------|
+| `SDKConnector` | `event:mobius` | `CallManager.listenForWsEvents()` -> `dequeueWsEvents()` | Entry point for all signaling/media events from backend |
+| `Mobius CALL_SETUP` | `mobius.call` | `CallManager.dequeueWsEvents()` | Create/resolve call, trigger `E_RECV_CALL_SETUP`, handle mid-call payload |
+| `Mobius CALL_PROGRESS` | `mobius.callprogress` | `CallManager.dequeueWsEvents()` | Trigger `E_RECV_CALL_PROGRESS` and caller ID refresh |
+| `Mobius CALL_CONNECTED` | `mobius.callconnected` | `CallManager.dequeueWsEvents()` | Trigger `E_RECV_CALL_CONNECT` |
+| `Mobius CALL_MEDIA` | `mobius.media` | `CallManager.dequeueWsEvents()` -> `call.sendMediaStateMachineEvt(...)` | Route ROAP `OFFER/ANSWER/OFFER_REQUEST/OK` |
+| `Mobius CALL_DISCONNECTED` | `mobius.calldisconnected` | `CallManager.dequeueWsEvents()` -> `E_RECV_CALL_DISCONNECT` | Start disconnect cleanup |
+| `MediaConnection` | `ROAP_MESSAGE_TO_SEND` | `Call.mediaRoapEventsListener()` | Publish local ROAP back to Mobius (`postMedia`) |
+| `MediaConnection` | `REMOTE_TRACK_ADDED` | `Call.mediaTrackListener()` | Emit remote media track to app |
+| `LocalMicrophoneStream` | `OutputTrackChange`, `EffectAdded`, `EffectRemoved` | `Call.registerListeners()` | Keep media/effect state synchronized |
+
+### 2) Events Emitted By Call Object
+
+| Event Key | Payload | Emitted When |
+|-----------|---------|--------------|
+| `CALL_EVENT_KEYS.ALERTING` | `correlationId` | Remote side is alerting |
+| `CALL_EVENT_KEYS.PROGRESS` | `correlationId` | Progress/proceeding signaling received |
+| `CALL_EVENT_KEYS.CONNECT` | `correlationId` | Call connected signaling received |
+| `CALL_EVENT_KEYS.ESTABLISHED` | `correlationId` | Signaling + media negotiation complete |
+| `CALL_EVENT_KEYS.HELD` | `correlationId` | Hold confirmed by mid-call state |
+| `CALL_EVENT_KEYS.RESUMED` | `correlationId` | Resume confirmed by mid-call state |
+| `CALL_EVENT_KEYS.DISCONNECT` | `correlationId` | Call disconnected (local or remote) |
+| `CALL_EVENT_KEYS.REMOTE_MEDIA` | `MediaStreamTrack` | Remote audio track becomes available |
+| `CALL_EVENT_KEYS.CALLER_ID` | `DisplayInformation` | Caller ID resolved/updated |
+| `CALL_EVENT_KEYS.CALL_ERROR` | `CallError` | General call or media error |
+| `CALL_EVENT_KEYS.HOLD_ERROR` | `CallError` | Hold operation failed/timed out |
+| `CALL_EVENT_KEYS.RESUME_ERROR` | `CallError` | Resume operation failed/timed out |
+| `CALL_EVENT_KEYS.TRANSFER_ERROR` | `CallError` | Transfer operation failed |
+
+Related manager-level emissions:
+- `LINE_EVENT_KEYS.INCOMING_CALL` (from `CallManager`) with `ICall` payload.
+- `CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED` when active call collection becomes empty.
+
+### 3) How Consumers Should Listen
+
+Listen for incoming calls first, then attach per-call listeners:
+
+```typescript
+line.on(LINE_EVENT_KEYS.INCOMING_CALL, (call: ICall) => {
+  call.on(CALL_EVENT_KEYS.PROGRESS, (id) => {/* update UI */});
+  call.on(CALL_EVENT_KEYS.CONNECT, (id) => {/* ringing -> connected */});
+  call.on(CALL_EVENT_KEYS.ESTABLISHED, (id) => {/* media established */});
+  call.on(CALL_EVENT_KEYS.REMOTE_MEDIA, (track) => {/* attach remote track */});
+  call.on(CALL_EVENT_KEYS.CALLER_ID, (display) => {/* refresh caller display */});
+  call.on(CALL_EVENT_KEYS.CALL_ERROR, (err) => {/* show retry/failure */});
+  call.on(CALL_EVENT_KEYS.DISCONNECT, (id) => {/* teardown UI */});
+});
 ```
+
+For outbound calls, attach listeners immediately after `createCall`/`makeCall` and before or right after `dial()` to avoid missing early events.
 
 ---
 
 ## Outgoing Call Flow (Detailed)
 
-```
-Application            Line           CallManager         Call                   Mobius
-│                       │                 │                 │                      │
-│ makeCall(dest)        │                 │                 │                      │
-│──────────────────────►│                 │                 │                      │
-│                       │ createCall(OUT) │                 │                      │
-│                       │────────────────►│                 │                      │
-│                       │                 │ new Call(OUT)   │                      │
-│                       │                 │────────────────►│                      │
-│                       │                 │                 │ callStateMachine     │
-│                       │                 │                 │ starts at S_IDLE     │
-│                       │                 │                 │ mediaStateMachine    │
-│                       │  return call    │                 │ starts at S_ROAP_IDLE│
-│◄──────────────────────│                 │                 │                      │
-│                       │                 │                 │                      │
-│ call.dial(stream)     │                 │                 │                      │
-│─────────────────────────────────────────────────────────►│                      │
-│                       │                 │                 │                      │
-│                       │                 │                 │ initMediaConnection()│
-│                       │                 │                 │ mediaRoapEventsListener()
-│                       │                 │                 │ mediaTrackListener() │
-│                       │                 │                 │                      │
-│                       │                 │                 │ E_SEND_ROAP_OFFER    │
-│                       │                 │                 │ → S_SEND_ROAP_OFFER  │
-│                       │                 │                 │                      │
-│                       │                 │                 │ handleOutgoingRoapOffer()
-│                       │                 │                 │ mediaConnection      │
-│                       │                 │                 │  .initiateOffer()    │
-│                       │                 │                 │                      │
-│                       │                 │                 │ ROAP_MESSAGE_TO_SEND │
-│                       │                 │                 │ (from mediaConnection)
-│                       │                 │                 │                      │
-│                       │                 │                 │ E_SEND_CALL_SETUP    │
-│                       │                 │                 │ → S_SEND_CALL_SETUP  │
-│                       │                 │                 │                      │
-│                       │                 │                 │ handleOutgoingCallSetup()
-│                       │                 │                 │──── POST ────────────►│
-│                       │                 │                 │ /devices/{id}/call   │
-│                       │                 │                 │ {device, localMedia,  │
-│                       │                 │                 │  callee}             │
-│                       │                 │                 │                      │
-│                       │                 │                 │◄──── 200 ────────────│
-│                       │                 │                 │ {callId, callState}  │
-│                       │                 │                 │ setCallId(callId)    │
-│                       │                 │                 │                      │
-│                       │                 │  mobius.callprogress                   │
-│                       │                 │◄───────────────────────────────────────│
-│                       │                 │  E_RECV_CALL_PROGRESS                  │
-│                       │                 │────────────────►│                      │
-│                       │                 │                 │ → S_RECV_CALL_PROGRESS
-│                       │                 │                 │ emit(PROGRESS)       │
-│◄──── PROGRESS ────────────────────────────────────────────│                      │
-│                       │                 │                 │                      │
-│                       │                 │  mobius.media (ANSWER)                 │
-│                       │                 │◄───────────────────────────────────────│
-│                       │                 │  E_RECV_ROAP_ANSWER                    │
-│                       │                 │────────────────►│                      │
-│                       │                 │                 │ → S_RECV_ROAP_ANSWER │
-│                       │                 │                 │ mediaConnection      │
-│                       │                 │                 │  .roapMessageReceived()
-│                       │                 │                 │                      │
-│                       │                 │  mobius.callconnected                  │
-│                       │                 │◄───────────────────────────────────────│
-│                       │                 │  E_RECV_CALL_CONNECT                   │
-│                       │                 │────────────────►│                      │
-│                       │                 │                 │ → S_RECV_CALL_CONNECT│
-│                       │                 │                 │ emit(CONNECT)        │
-│◄──── CONNECT ─────────────────────────────────────────────│                      │
-│                       │                 │                 │                      │
-│                       │                 │                 │ E_ROAP_OK            │
-│                       │                 │                 │ → S_ROAP_OK          │
-│                       │                 │                 │ handleRoapEstablished()
-│                       │                 │                 │──── POST media ──────►│
-│                       │                 │                 │ (ROAP OK message)    │
-│                       │                 │                 │                      │
-│                       │                 │                 │ E_CALL_ESTABLISHED   │
-│                       │                 │                 │ → S_CALL_ESTABLISHED │
-│                       │                 │                 │ emit(ESTABLISHED)    │
-│◄──── ESTABLISHED ─────────────────────────────────────────│                      │
-│                       │                 │                 │ start sessionTimer   │
-│                       │                 │                 │ (600000ms)           │
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant Line as Line
+    participant CM as CallManager
+    participant Call as Call
+    participant Mobius as Mobius
+
+    App->>Line: makeCall(destination)
+    Line->>CM: createCall(OUTBOUND)
+    CM->>Call: new Call(OUTBOUND)
+    Note over Call: callStateMachine starts at S_IDLE
+    Note over Call: mediaStateMachine starts at S_ROAP_IDLE
+    CM-->>Line: return call
+    Line-->>App: return call
+
+    App->>Call: dial(localAudioStream)
+    Call->>Call: initMediaConnection()\nmediaRoapEventsListener()\nmediaTrackListener()
+    Call->>Call: E_SEND_ROAP_OFFER -> S_SEND_ROAP_OFFER
+    Call->>Call: handleOutgoingRoapOffer()\nmediaConnection.initiateOffer()
+    Call->>Call: ROAP_MESSAGE_TO_SEND (OFFER)
+
+    Call->>Call: E_SEND_CALL_SETUP -> S_SEND_CALL_SETUP
+    Call->>Mobius: POST /devices/{id}/call\n{device, localMedia, callee}
+    Mobius-->>Call: 200 {callId, callState}
+    Call->>Call: setCallId(callId)
+
+    Mobius-->>CM: mobius.callprogress
+    CM->>Call: E_RECV_CALL_PROGRESS
+    Call->>Call: S_RECV_CALL_PROGRESS + emit(PROGRESS)
+    Call-->>App: PROGRESS
+
+    Mobius-->>CM: mobius.media (ANSWER)
+    CM->>Call: E_RECV_ROAP_ANSWER
+    Call->>Call: S_RECV_ROAP_ANSWER\nmediaConnection.roapMessageReceived()
+
+    Mobius-->>CM: mobius.callconnected
+    CM->>Call: E_RECV_CALL_CONNECT
+    Call->>Call: S_RECV_CALL_CONNECT + emit(CONNECT)
+    Call-->>App: CONNECT
+
+    Call->>Call: E_ROAP_OK -> S_ROAP_OK\nhandleRoapEstablished()
+    Call->>Mobius: POST /media (ROAP OK)
+    Call->>Call: E_CALL_ESTABLISHED -> S_CALL_ESTABLISHED
+    Call-->>App: ESTABLISHED
+    Call->>Call: start sessionTimer (600000ms)
 ```
 
 ---
 
 ## Incoming Call Flow (Detailed)
 
-```
-Mobius          Mercury WS      CallManager            Call                Application
-│                  │                │                    │                      │
-│ event:mobius     │                │                    │                      │
-│ (CALL_SETUP)    │                │                    │                      │
-│─────────────────►│               │                    │                      │
-│                  │ dequeueWsEvents                    │                      │
-│                  │───────────────►│                    │                      │
-│                  │                │ createCall(INBOUND)│                      │
-│                  │                │──────────────────►│                      │
-│                  │                │ setCallId()        │                      │
-│                  │                │ startCallerIdResolution()                 │
-│                  │                │                    │                      │
-│                  │                │ emit(INCOMING_CALL)│                      │
-│                  │                │──────────────────────────────────────────►│
-│                  │                │                    │                      │
-│                  │                │ E_RECV_CALL_SETUP  │                      │
-│                  │                │──────────────────►│                      │
-│                  │                │                    │ → S_RECV_CALL_SETUP  │
-│                  │                │                    │ handleIncomingCallSetup()
-│                  │                │                    │ E_SEND_CALL_ALERTING │
-│                  │                │                    │ → S_SEND_CALL_PROGRESS
-│                  │                │                    │ handleOutgoingCallAlerting()
-│                  │                │                    │─── PATCH (alerting) ─►│
-│                  │                │                    │                      │
-│                  │                │                    │  call.answer(stream)  │
-│                  │                │                    │◄─────────────────────│
-│                  │                │                    │                      │
-│                  │                │                    │ initMediaConnection() │
-│                  │                │                    │ E_SEND_CALL_CONNECT  │
-│                  │                │                    │ → S_SEND_CALL_CONNECT│
-│                  │                │                    │ handleOutgoingCallConnect()
-│                  │                │                    │ mediaConnection      │
-│                  │                │                    │  .roapMessageReceived()
-│                  │                │                    │  (buffered offer)    │
-│                  │                │                    │─── PATCH (connected)─►│
-│                  │                │                    │                      │
-│                  │                │                    │ ROAP OFFER → ANSWER  │
-│                  │                │                    │◄────────────────────►│
-│                  │                │                    │                      │
-│                  │                │                    │ E_ROAP_OK            │
-│                  │                │                    │ → S_ROAP_OK          │
-│                  │                │                    │                      │
-│                  │                │                    │ E_CALL_ESTABLISHED   │
-│                  │                │                    │ → S_CALL_ESTABLISHED │
-│                  │                │                    │ emit(ESTABLISHED)    │
-│                  │                │                    │─────────────────────►│
+```mermaid
+sequenceDiagram
+    participant Mobius as Mobius
+    participant Mercury as Mercury WS
+    participant CM as CallManager
+    participant Call as Call
+    participant App as Application
+
+    Mobius->>Mercury: event:mobius (CALL_SETUP)
+    Mercury->>CM: dequeueWsEvents(event)
+    CM->>Call: createCall(INBOUND)
+    CM->>Call: setCallId()
+    CM->>Call: startCallerIdResolution()
+    CM-->>App: emit(INCOMING_CALL)
+
+    CM->>Call: E_RECV_CALL_SETUP
+    Call->>Call: S_RECV_CALL_SETUP / handleIncomingCallSetup()
+    Call->>Call: E_SEND_CALL_ALERTING -> S_SEND_CALL_PROGRESS
+    Call->>Mobius: PATCH /calls/{callId} (alerting)
+
+    App->>Call: answer(localAudioStream)
+    Call->>Call: initMediaConnection()
+    Call->>Call: E_SEND_CALL_CONNECT -> S_SEND_CALL_CONNECT
+    Call->>Call: handleOutgoingCallConnect()\nmediaConnection.roapMessageReceived(buffered offer)
+    Call->>Mobius: PATCH /calls/{callId} (connected)
+
+    Note over Call,Mobius: ROAP OFFER/ANSWER exchange
+    Call->>Call: E_ROAP_OK -> S_ROAP_OK
+    Call->>Call: E_CALL_ESTABLISHED -> S_CALL_ESTABLISHED
+    Call-->>App: emit(ESTABLISHED)
 ```
 
 ---
 
 ## Hold and Resume Flow
 
-```
-Application          Call                                   Mobius
-│                     │                                       │
-│ doHoldResume()      │                                       │
-│ (held=false)        │                                       │
-│────────────────────►│                                       │
-│                     │ E_CALL_HOLD                            │
-│                     │ → S_CALL_HOLD                          │
-│                     │ handleCallHold()                       │
-│                     │──── POST /callhold/hold ──────────────►│
-│                     │     {device, callId}                   │
-│                     │◄──── 200 ─────────────────────────────│
-│                     │                                       │
-│                     │ Start supplementaryServicesTimer (10s)  │
-│                     │                                       │
-│                     │ [Mobius sends midcall event via CALL_SETUP]
-│                     │ handleMidCallEvent({callState: HELD})  │
-│                     │ held = true                            │
-│                     │ clearTimeout(supplementaryServicesTimer)│
-│                     │ emit(HELD, correlationId)              │
-│◄──── HELD ──────────│                                       │
-│                     │                                       │
-│ doHoldResume()      │                                       │
-│ (held=true)         │                                       │
-│────────────────────►│                                       │
-│                     │ E_CALL_RESUME                          │
-│                     │ → S_CALL_RESUME                        │
-│                     │ handleCallResume()                     │
-│                     │──── POST /callhold/resume ────────────►│
-│                     │     {device, callId}                   │
-│                     │◄──── 200 ─────────────────────────────│
-│                     │                                       │
-│                     │ Start supplementaryServicesTimer (10s)  │
-│                     │                                       │
-│                     │ handleMidCallEvent({callState: CONNECTED})
-│                     │ held = false                           │
-│                     │ clearTimeout(supplementaryServicesTimer)│
-│                     │ emit(RESUMED, correlationId)           │
-│◄──── RESUMED ───────│                                       │
-│                     │                                       │
-│                     │ E_CALL_ESTABLISHED                     │
-│                     │ → S_CALL_ESTABLISHED                   │
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant Call as Call
+    participant Mobius as Mobius
+
+    App->>Call: doHoldResume() (held=false)
+    Call->>Call: E_CALL_HOLD -> S_CALL_HOLD
+    Call->>Call: handleCallHold()
+    Call->>Mobius: POST /callhold/hold {device, callId}
+    Mobius-->>Call: 200
+    Call->>Call: start supplementaryServicesTimer (10s)
+    Mobius-->>Call: midcall CALL_SETUP {callState: HELD}
+    Call->>Call: handleMidCallEvent()\nheld=true\nclear timer
+    Call-->>App: emit(HELD, correlationId)
+
+    App->>Call: doHoldResume() (held=true)
+    Call->>Call: E_CALL_RESUME -> S_CALL_RESUME
+    Call->>Call: handleCallResume()
+    Call->>Mobius: POST /callhold/resume {device, callId}
+    Mobius-->>Call: 200
+    Call->>Call: start supplementaryServicesTimer (10s)
+    Mobius-->>Call: midcall CALL_SETUP {callState: CONNECTED}
+    Call->>Call: handleMidCallEvent()\nheld=false\nclear timer
+    Call-->>App: emit(RESUMED, correlationId)
+    Call->>Call: E_CALL_ESTABLISHED -> S_CALL_ESTABLISHED
 ```
 
 ---
@@ -605,53 +523,36 @@ Application          Call                                   Mobius
 
 ### Blind Transfer
 
-```
-Application          Call                                   Mobius
-│                     │                                       │
-│ completeTransfer(   │                                       │
-│   BLIND,            │                                       │
-│   undefined,        │                                       │
-│   '5998')           │                                       │
-│────────────────────►│                                       │
-│                     │ postSSRequest({                        │
-│                     │   transferorCallId: this.callId,      │
-│                     │   destination: '5998'                  │
-│                     │ }, TRANSFER)                           │
-│                     │                                       │
-│                     │──── POST /calltransfer/commit ────────►│
-│                     │     { device, callId,                  │
-│                     │       blindTransferContext,             │
-│                     │       transferType: 'BLIND' }          │
-│                     │◄──── 200 ─────────────────────────────│
-│                     │                                       │
-│                     │ Submit BLIND transfer metric           │
-│                     │                                       │
-│                     │ [Mobius sends calldisconnected]        │
-│                     │ E_RECV_CALL_DISCONNECT                │
-│                     │ emit(DISCONNECT)                      │
-│◄──── DISCONNECT ────│                                       │
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant Call as Call
+    participant Mobius as Mobius
+
+    App->>Call: completeTransfer(BLIND, undefined, "5998")
+    Call->>Call: postSSRequest({transferorCallId, destination}, TRANSFER)
+    Call->>Mobius: POST /calltransfer/commit\n{device, callId, blindTransferContext, transferType: BLIND}
+    Mobius-->>Call: 200
+    Call->>Call: submit BLIND transfer metric
+    Mobius-->>Call: calldisconnected
+    Call->>Call: E_RECV_CALL_DISCONNECT
+    Call-->>App: emit(DISCONNECT)
 ```
 
 ### Consult Transfer
 
-```
-Application          Call-A               Call-B             Mobius
-│                     │                     │                  │
-│ completeTransfer(   │                     │                  │
-│   CONSULT,          │                     │                  │
-│   callB.getCallId(),│                     │                  │
-│   undefined)        │                     │                  │
-│────────────────────►│                     │                  │
-│                     │ postSSRequest({      │                  │
-│                     │   transferorCallId,  │                  │
-│                     │   transferToCallId   │                  │
-│                     │ }, TRANSFER)         │                  │
-│                     │                     │                  │
-│                     │──── POST /calltransfer/commit ─────────►│
-│                     │     { device, callId,                   │
-│                     │       consultTransferContext,            │
-│                     │       transferType: 'CONSULT' }         │
-│                     │◄──── 200 ──────────────────────────────│
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant CallA as Call-A
+    participant CallB as Call-B
+    participant Mobius as Mobius
+
+    App->>CallA: completeTransfer(CONSULT, callB.getCallId(), undefined)
+    CallA->>CallB: getCallId()
+    CallA->>CallA: postSSRequest({transferorCallId, transferToCallId}, TRANSFER)
+    CallA->>Mobius: POST /calltransfer/commit\n{device, callId, consultTransferContext, transferType: CONSULT}
+    Mobius-->>CallA: 200
 ```
 
 ---
@@ -660,53 +561,128 @@ Application          Call-A               Call-B             Mobius
 
 ### Initialization
 
-```
-initMediaConnection(localAudioTrack, debugId?)
-│
-├── Create RoapMediaConnection({
-│     localTracks: { audio: localAudioTrack },
-│     iceServers: [],
-│     skipInactiveTransceivers: false,
-│     debugId: debugId || correlationId
-│   })
-│
-├── mediaRoapEventsListener()
-│   └── mediaConnection.on(ROAP_MESSAGE_TO_SEND, (event) => {
-│       ├── Parse ROAP message type
-│       ├── OFFER → store localRoapMessage, send E_SEND_ROAP_OFFER (or E_SEND_CALL_SETUP for initial)
-│       ├── ANSWER → store localRoapMessage, send E_SEND_ROAP_ANSWER
-│       └── OK → send E_ROAP_OK
-│   })
-│
-├── mediaTrackListener()
-│   └── mediaConnection.on(REMOTE_TRACK_ADDED, (event) => {
-│       └── emit(CALL_EVENT_KEYS.REMOTE_MEDIA, track)
-│   })
-│
-└── registerListeners(localAudioStream)
-    ├── localAudioStream.on(EFFECT_ADDED, onEffectEnabled)
-    └── localAudioStream.on(EFFECT_REMOVED, onEffectDisabled)
+```mermaid
+flowchart TD
+    A[initMediaConnection localAudioTrack debugId] --> B[Create RoapMediaConnection]
+    B --> C[Set localTracks audio from localAudioTrack]
+    C --> D[Set iceServers empty and skipInactiveTransceivers false]
+    D --> E[Set debugId to debugId or correlationId]
+
+    E --> F[Register mediaRoapEventsListener]
+    F --> G[On ROAP_MESSAGE_TO_SEND parse messageType]
+    G --> H{messageType}
+    H -->|OFFER| H1[Store localRoapMessage and send E_SEND_ROAP_OFFER or E_SEND_CALL_SETUP for initial]
+    H -->|ANSWER| H2[Store localRoapMessage and send E_SEND_ROAP_ANSWER]
+    H -->|OK| H3[Send E_ROAP_OK]
+
+    E --> I[Register mediaTrackListener]
+    I --> J[On REMOTE_TRACK_ADDED emit CALL_EVENT_KEYS.REMOTE_MEDIA with track]
+
+    E --> K[registerListeners localAudioStream]
+    K --> L[Subscribe EFFECT_ADDED to onEffectEnabled]
+    K --> M[Subscribe EFFECT_REMOVED to onEffectDisabled]
 ```
 
 ### SDP Processing
 
-ROAP messages are sent to Mobius via `postMedia()`:
+ROAP handling is bidirectional:
 
+### Direction 1: Mobius -> Call -> MediaConnection (incoming signaling/media event)
+
+When Mobius sends a media event, `CallManager` routes it to the target `Call`, which forwards it into the media state machine and then to `mediaConnection.roapMessageReceived()` for SDP processing.
+
+1. `event:mobius` with `CALL_MEDIA` reaches `CallManager.dequeueWsEvents()`.
+2. `CallManager` resolves the correct call by `correlationId` (or fallback by `callId`).
+3. `message.messageType` is mapped to media state events:
+   - `OFFER` -> `E_RECV_ROAP_OFFER`
+   - `ANSWER` -> `E_RECV_ROAP_ANSWER`
+   - `OFFER_REQUEST` -> `E_RECV_ROAP_OFFER_REQUEST`
+   - `OK` -> `E_ROAP_OK`
+4. `Call` action handlers process the event and pass the ROAP payload to media engine APIs when applicable.
+
+### Direction 2: MediaConnection -> Call -> Mobius (outgoing ROAP publish)
+
+When the media engine emits `ROAP_MESSAGE_TO_SEND`, `Call` converts that into state-machine events and publishes ROAP to Mobius via `postMedia()`.
+
+1. `mediaConnection` emits `ROAP_MESSAGE_TO_SEND` (`OFFER`/`ANSWER`/`OK`).
+2. `Call.mediaRoapEventsListener()` stores the local ROAP message and sends the corresponding event (`E_SEND_ROAP_OFFER`, `E_SEND_ROAP_ANSWER`, `E_ROAP_OK`).
+3. Outgoing action handlers invoke `postMedia()`.
+4. `postMedia()` applies `modifySdpForIPv4()` before sending SDP-bearing payloads.
+
+### Complete ROAP Sequence (Inbound Call)
+
+```mermaid
+sequenceDiagram
+    participant Mobius as Mobius
+    participant CM as CallManager
+    participant Call as Call
+    participant MC as MediaConnection
+
+    Note over Mobius,MC: Inbound media negotiation: OFFER -> ANSWER -> OK
+
+    Mobius-->>CM: CALL_MEDIA (messageType: OFFER, correlationId/callId)
+    CM->>Call: sendMediaStateMachineEvt(E_RECV_ROAP_OFFER)
+    Call->>Call: S_RECV_ROAP_OFFER / handleIncomingRoapOffer()
+    Call->>MC: roapMessageReceived(offer)
+
+    MC-->>Call: ROAP_MESSAGE_TO_SEND (messageType: ANSWER, sdp)
+    Call->>Call: store localRoapMessage
+    Call->>Call: sendMediaStateMachineEvt(E_SEND_ROAP_ANSWER)\n-> S_SEND_ROAP_ANSWER
+    Call->>Call: handleOutgoingRoapAnswer()
+    Call->>Call: modifySdpForIPv4(sdp)
+    Call->>Mobius: POST /devices/{deviceId}/calls/{callId}/media\nlocalMedia.roap={seq, messageType: ANSWER, sdp}
+    Mobius-->>Call: 200 response
+
+    Mobius-->>CM: CALL_MEDIA (messageType: OK)
+    CM->>Call: sendMediaStateMachineEvt(E_ROAP_OK)
+    Call->>Call: S_ROAP_OK / handleRoapEstablished()
+    Call->>Call: sendCallStateMachineEvt(E_CALL_ESTABLISHED)
 ```
-POST {mobiusUrl}/devices/{deviceId}/calls/{callId}/media
+
+### Complete ROAP Sequence (Outbound Call)
+
+```mermaid
+sequenceDiagram
+    participant MC as MediaConnection
+    participant Call as Call
+    participant Mobius as Mobius
+    participant CM as CallManager
+
+    Note over MC,CM: Outbound media negotiation: OFFER -> ANSWER -> OK
+
+    MC-->>Call: ROAP_MESSAGE_TO_SEND (messageType: OFFER, sdp)
+    Call->>Call: store localRoapMessage
+    Call->>Call: sendMediaStateMachineEvt(E_SEND_ROAP_OFFER)\n-> S_SEND_ROAP_OFFER
+    Call->>Call: handleOutgoingRoapOffer()
+    Call->>Call: modifySdpForIPv4(sdp)
+    Call->>Mobius: POST /devices/{deviceId}/calls/{callId}/media\nlocalMedia.roap={seq, messageType: OFFER, sdp}
+    Mobius-->>Call: 200 response
+
+    Mobius-->>CM: CALL_MEDIA (messageType: ANSWER, correlationId/callId)
+    CM->>Call: sendMediaStateMachineEvt(E_RECV_ROAP_ANSWER)
+    Call->>Call: S_RECV_ROAP_ANSWER / handleIncomingRoapAnswer()
+    Call->>MC: roapMessageReceived(answer)
+
+    MC-->>Call: ROAP_MESSAGE_TO_SEND (messageType: OK)
+    Call->>Call: sendMediaStateMachineEvt(E_ROAP_OK)\n-> S_ROAP_OK
+    Call->>Call: handleRoapEstablished()\nset mediaNegotiationCompleted=true
+    Call->>Mobius: POST /devices/{deviceId}/calls/{callId}/media\nlocalMedia.roap={seq, messageType: OK}
+    Mobius-->>Call: 200 response
+    Call->>Call: sendCallStateMachineEvt(E_CALL_ESTABLISHED)
+```
+
+ROAP publish payload shape:
+
+```json
 {
-  device: { deviceId, correlationId },
-  callId,
-  localMedia: {
-    roap: {
-      seq, messageType, sdp, ...
-    },
-    mediaId
+  "device": { "deviceId": "...", "correlationId": "..." },
+  "callId": "...",
+  "localMedia": {
+    "roap": { "seq": 1, "messageType": "OFFER|ANSWER|OK", "sdp": "..." },
+    "mediaId": "..."
   }
 }
 ```
-
-SDP is modified for IPv4 compatibility via `modifySdpForIPv4()` before sending.
 
 ---
 
@@ -714,57 +690,84 @@ SDP is modified for IPv4 compatibility via `modifySdpForIPv4()` before sending.
 
 ### Local Disconnect (`end()`)
 
-```
-call.end()
-│
-├── sendCallStateMachineEvt({type: 'E_SEND_CALL_DISCONNECT'})
-│   → S_SEND_CALL_DISCONNECT
-│   → handleOutgoingCallDisconnect()
-│
-├── forceSendStatsReport()     // Force send RTC metrics
-├── getCallStats()             // Collect final RTP stats
-│
-├── DELETE {mobiusUrl}/devices/{deviceId}/calls/{callId}
-│   Body: { device, callId, callStats, cause }
-│
-├── clearTimeout(sessionTimer)
-├── mediaStateMachine.send('E_ROAP_TEARDOWN')
-├── mediaConnection.close()
-├── unregisterListeners()
-│
-├── emit(CALL_EVENT_KEYS.DISCONNECT, correlationId)
-│
-├── deleteCb(correlationId)     // Remove from CallManager
-│
-└── sendCallStateMachineEvt({type: 'E_CALL_CLEARED'})
-    → S_CALL_CLEARED (final)
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant Call as Call
+    participant Mobius as Mobius
+    participant CM as CallManager
+
+    App->>Call: end()
+    Call->>Call: E_SEND_CALL_DISCONNECT -> S_SEND_CALL_DISCONNECT
+    Call->>Call: handleOutgoingCallDisconnect()
+    Call->>Call: forceSendStatsReport()\ngetCallStats()
+    Call->>Mobius: DELETE /devices/{deviceId}/calls/{callId}\n{device, callId, callStats, cause}
+    Call->>Call: clearTimeout(sessionTimer)
+    Call->>Call: mediaStateMachine.send(E_ROAP_TEARDOWN)
+    Call->>Call: mediaConnection.close()\nunregisterListeners()
+    Call-->>App: emit(DISCONNECT, correlationId)
+    Call->>CM: deleteCb(correlationId)
+    Call->>Call: E_CALL_CLEARED -> S_CALL_CLEARED (final)
 ```
 
 ### Remote Disconnect
 
+```mermaid
+sequenceDiagram
+    participant Mobius as Mobius
+    participant CM as CallManager
+    participant Call as Call
+    participant App as Application
+
+    Mobius->>CM: mobius.calldisconnected
+    CM->>Call: sendCallStateMachineEvt(E_RECV_CALL_DISCONNECT)
+    Call->>Call: S_RECV_CALL_DISCONNECT / handleIncomingCallDisconnect()
+    Call->>Call: setDisconnectReason(causecode, cause)
+    Call->>Call: forceSendStatsReport()\ngetCallStats()
+    Call->>Call: clearTimeout(sessionTimer)
+    Call->>Call: mediaStateMachine.send(E_ROAP_TEARDOWN)
+    Call->>Call: mediaConnection.close()\nunregisterListeners()
+    Call-->>App: emit(DISCONNECT, correlationId)
+    Call->>CM: deleteCb(correlationId)
+    Call->>Call: E_CALL_CLEARED -> S_CALL_CLEARED (final)
 ```
-mobius.calldisconnected received
-│
-├── CallManager.dequeueWsEvents()
-├── call.sendCallStateMachineEvt({type: 'E_RECV_CALL_DISCONNECT'})
-│   → S_RECV_CALL_DISCONNECT
-│   → handleIncomingCallDisconnect()
-│
-├── setDisconnectReason(causecode, cause)
-├── forceSendStatsReport()
-├── getCallStats()
-│
-├── clearTimeout(sessionTimer)
-├── mediaStateMachine.send('E_ROAP_TEARDOWN')
-├── mediaConnection.close()
-├── unregisterListeners()
-│
-├── emit(CALL_EVENT_KEYS.DISCONNECT, correlationId)
-│
-├── deleteCb(correlationId)
-│
-└── sendCallStateMachineEvt({type: 'E_CALL_CLEARED'})
-    → S_CALL_CLEARED (final)
+
+## Call Keepalive Flow
+
+Keepalive is active while the call is established. A session timer triggers periodic status checks using `postStatus()`:
+
+- `sessionTimer` starts after call establishment (default interval: `600000ms`).
+- On each tick, `Call` sends `POST /devices/{deviceId}/calls/{callId}/status`.
+- Success resets keepalive retry tracking and schedules the next keepalive cycle.
+- Failure increments `callKeepaliveRetryCount` and schedules retry via `RetryCallBack`.
+- After max retries (4), the call is force-disconnected by sending `E_SEND_CALL_DISCONNECT`.
+
+```mermaid
+sequenceDiagram
+    participant Call as Call
+    participant Mobius as Mobius
+
+    Note over Call: Call is in S_CALL_ESTABLISHED
+    Call->>Call: start sessionTimer (600000ms)
+
+    loop On each sessionTimer interval
+        Call->>Mobius: POST /devices/{deviceId}/calls/{callId}/status
+        alt Keepalive success
+            Mobius-->>Call: 200 response
+            Call->>Call: callKeepaliveRetryCount = 0
+            Call->>Call: schedule next keepalive interval
+        else Keepalive failure
+            Mobius-->>Call: error/timeout
+            Call->>Call: callKeepaliveRetryCount += 1
+            alt retries <= 4
+                Call->>Call: retryCallback(nextInterval)
+                Call->>Mobius: retry POST /status
+            else retries exceeded
+                Call->>Call: sendCallStateMachineEvt(E_SEND_CALL_DISCONNECT)
+                Call->>Call: transition to disconnect flow
+            end
+        end
+    end
 ```
 
 ---
@@ -784,7 +787,7 @@ All endpoints relative to `{mobiusUrl}` (which is `{mobiusHost}/api/v1/calling/w
 | `POST` | `/services/callhold/resume` | `postSSRequest()` | Resume call from hold |
 | `POST` | `/services/calltransfer/commit` | `postSSRequest()` | Complete blind or consult transfer |
 
-### Request Body Patterns
+### Request Body
 
 **POST call (outgoing setup):**
 ```json
