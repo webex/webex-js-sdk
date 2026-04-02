@@ -1,4 +1,4 @@
-# Call Management Sub-Module - Agent Specification
+# Calling Sub-Module - Agent Guide
 
 ## Overview
 
@@ -13,7 +13,8 @@ The `calling/` sub-module within `CallingClient` contains the core call manageme
 
 ### 2. Mobius Event Intake and Routing
 - Subscribes to `event:mobius` via `SDKConnector` and processes signaling/media events.
-- Routes each event to the correct `Call` object based on `correlationId` and `callId` matching.
+- Uses `mobiusEvent.data.eventType` to match and route by `MobiusEventType`.
+- Routes each event to the correct `Call` object based on `correlationId` and `callId` matching. 
 - Handles out-of-order event scenarios (for example, media before setup) safely.
 
 ### 3. Signaling and Media State Machine Coordination
@@ -47,6 +48,28 @@ The `calling/` sub-module within `CallingClient` contains the core call manageme
 | `CallerId/index.ts` | `CallerId` | `ICallerId` | Caller identity resolution from SIP headers and SCIM |
 | `CallerId/types.ts` | - | - | CallerId types |
 
+### Import Paths
+
+All paths are relative to `CallingClient/calling/` (the directory containing `call.ts` and `callManager.ts`).
+
+| Symbol(s) | Import Path |
+|-----------|-------------|
+| `ICall`, `ICallManager`, `MobiusEventType`, `MediaState`, `MobiusCallEvent`, `MobiusCallData`, `MobiusCallResponse`, `PatchResponse`, `SSResponse`, `TransferContext`, `CallRtpStats`, `DisconnectCode`, `DisconnectCause`, `TransferType`, `MUTE_TYPE`, `MidCallEventType`, `MobiusCallState`, `MidCallEvent` | `./types` |
+| `CALL_EVENT_KEYS`, `CallerIdInfo`, `CallEvent`, `CallEventTypes`, `RoapEvent`, `RoapMessage`, `SUPPLEMENTARY_SERVICES`, `LINE_EVENT_KEYS`, `CALLING_CLIENT_EVENT_KEYS`, `MEDIA_CONNECTION_EVENT_KEYS`, `MOBIUS_MIDCALL_STATE` | `../../Events/types` |
+| `Eventing` | `../../Events/impl` |
+| `CallError`, `createCallError` | `../../Errors/catalog/CallError` |
+| `ERROR_LAYER`, `ERROR_TYPE`, `ErrorContext` | `../../Errors/types` |
+| `handleCallErrors`, `modifySdpForIPv4`, `parseMediaQualityStatistics`, `serviceErrorCodeHandler`, `uploadLogs` | `../../common/Utils` |
+| `CallDetails`, `CallDirection`, `CallId`, `CorrelationId`, `DisplayInformation`, `HTTP_METHODS`, `ServiceIndicator`, `WebexRequestPayload`, `ALLOWED_SERVICES` | `../../common/types` |
+| `SDKConnector` | `../../SDKConnector` |
+| `ISDKConnector`, `WebexSDK` | `../../SDKConnector/types` |
+| `ILine` | `../line/types` |
+| Constants (`DEFAULT_SESSION_TIMER`, `SUPPLEMENTARY_SERVICES_TIMEOUT`, `MAX_CALL_KEEPALIVE_RETRY_COUNT`, `INITIAL_SEQ_NUMBER`, endpoint resources, `METHODS`) | `../constants` |
+| `RoapMediaConnection`, `LocalMicrophoneStream`, `MediaConnectionEventNames`, `LocalStreamEventNames` | `@webex/internal-media-core` |
+| `RtcMetrics` | `@webex/internal-plugin-metrics` |
+| `EffectEvent`, `TrackEffect` | `@webex/media-helpers` |
+| `createMachine`, `interpret` | `xstate` |
+
 ---
 
 ## CallManager
@@ -56,7 +79,8 @@ The `calling/` sub-module within `CallingClient` contains the core call manageme
 `CallManager` is a **singleton** that serves as the central hub for all call-related operations. It:
 - Maintains the collection of active `Call` objects keyed by `correlationId`
 - Listens for Mobius WebSocket events (`event:mobius`) via the `SDKConnector`
-- Routes incoming Mobius events to the correct `Call` instance
+- Uses a `switch` on `mobiusEvent.data.eventType` to match and route each event path
+- Each incoming Mobius events are matched with the correct `Call` instance
 - Creates new `Call` objects for incoming calls
 - Emits `ALL_CALLS_CLEARED` when the last call is removed from the collection
 - Emits `INCOMING_CALL` to signal the Line about new incoming calls
@@ -103,7 +127,6 @@ interface ICallManager extends Eventing<CallEventTypes> {
 
 | Method | Signature | Scope | Purpose |
 |--------|-----------|-------|---------|
-| `constructor` | `constructor(webex: WebexSDK, indicator: ServiceIndicator)` | Public | Initializes manager state, connector references, and Mobius listener registration |
 | `createCall` | `createCall(direction: CallDirection, deviceId: string, lineId: string, destination?: CallDetails): ICall` | Public | Creates a `Call` instance, stores it in `callCollection`, and wires delete callback |
 | `getCall` | `getCall(correlationId: CorrelationId): ICall` | Public | Returns the active call for a correlation ID |
 | `getActiveCalls` | `getActiveCalls(): Record<string, ICall>` | Public | Returns the current active call map |
@@ -147,6 +170,9 @@ This `ALL_CALLS_CLEARED` event is consumed by `CallingClient` to trigger deferre
 ---
 
 ## Call
+
+This section documents the per-call execution unit in the CallingClient stack.  
+Each `Call` instance owns call lifecycle state, media negotiation, supplementary services, and app-facing event emission for a single `correlationId`.
 
 ### Purpose
 
@@ -291,12 +317,87 @@ interface ICall extends Eventing<CallEventTypes> {
 | `postStatus` | `postStatus(): Promise<WebexRequestPayload>` | Send call keepalive to Mobius |
 | `sendCallStateMachineEvt` | `sendCallStateMachineEvt(event: CallEvent): void` | Send event to call state machine |
 | `sendMediaStateMachineEvt` | `sendMediaStateMachineEvt(event: RoapEvent): void` | Send event to media state machine |
+| `postSSRequest` | `postSSRequest(context: unknown, type: SUPPLEMENTARY_SERVICES): Promise<SSResponse>` | Send supplementary service request (hold, resume, transfer) to Mobius |
+
+### Private Methods
+
+These are internal methods on the `Call` class. They are not exposed via `ICall` but are essential for understanding call internals when implementing new features or modifying existing flows.
+
+#### Media Infrastructure
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `initMediaConnection` | `private initMediaConnection(localAudioTrack: MediaStreamTrack, debugId?: string): void` | Creates `RoapMediaConnection` with local audio track, registers ROAP and track listeners |
+| `mediaRoapEventsListener` | `private mediaRoapEventsListener(): void` | Listens for `ROAP_MESSAGE_TO_SEND` from media SDK, stores local ROAP message and drives media state machine |
+| `mediaTrackListener` | `private mediaTrackListener(): void` | Listens for `REMOTE_TRACK_ADDED` and emits `CALL_EVENT_KEYS.REMOTE_MEDIA` |
+| `registerListeners` | `private registerListeners(localAudioStream: LocalMicrophoneStream): void` | Registers effect and track change listeners on local audio stream |
+| `unregisterListeners` | `private unregisterListeners(): void` | Removes all event listeners from local audio stream and effects |
+| `registerEffectListener` | `private registerEffectListener(addedEffect: TrackEffect): void` | Registers enabled/disabled listeners for a specific audio effect (e.g., BNR) |
+| `updateTrack` | `private updateTrack = (audioTrack: MediaStreamTrack): void` | Updates local audio track in media connection |
+
+#### HTTP Methods
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `post` | `private post = async (roapMessage: RoapMessage): Promise<MobiusCallResponse>` | POST `/devices/{deviceId}/call` -- outgoing call setup with ROAP offer |
+| `patch` | `private async patch(state: MobiusCallState): Promise<PatchResponse>` | PATCH `/devices/{deviceId}/calls/{callId}` -- update call state (alerting, connected) |
+| `delete` | `private async delete(): Promise<MobiusCallResponse>` | DELETE `/devices/{deviceId}/calls/{callId}` -- disconnect call with metrics and reason |
+| `postMedia` | `private async postMedia(roapMessage: RoapMessage): Promise<WebexRequestPayload>` | POST `/devices/{deviceId}/calls/{callId}/media` -- send ROAP message, applies `modifySdpForIPv4()` for SDP payloads |
+
+#### State Machine Action Handlers
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `handleIncomingCallSetup` | `private handleIncomingCallSetup(event: CallEvent): void` | Sends `E_SEND_CALL_ALERTING` to begin alerting flow |
+| `handleOutgoingCallSetup` | `private async handleOutgoingCallSetup(event: CallEvent): void` | POSTs to `/call` endpoint, sets server-assigned `callId` |
+| `handleIncomingCallProgress` | `private handleIncomingCallProgress(event: CallEvent): void` | Processes inband media flag, emits `PROGRESS` |
+| `handleOutgoingCallAlerting` | `private async handleOutgoingCallAlerting(event: CallEvent): void` | PATCHes call state to `sig_alerting` |
+| `handleIncomingCallConnect` | `private handleIncomingCallConnect(event: CallEvent): void` | Emits `CONNECT` event |
+| `handleOutgoingCallConnect` | `private async handleOutgoingCallConnect(event: CallEvent): void` | Processes buffered ROAP offer, PATCHes to `sig_connected` |
+| `handleCallEstablished` | `private handleCallEstablished(event: CallEvent): void` | Emits `ESTABLISHED`, starts `sessionTimer` for keepalive |
+| `handleCallHold` | `private async handleCallHold(event: CallEvent): void` | POSTs to `/callhold/hold`, starts `supplementaryServicesTimer` |
+| `handleCallResume` | `private async handleCallResume(event: CallEvent): void` | POSTs to `/callhold/resume`, starts `supplementaryServicesTimer` |
+| `handleIncomingCallDisconnect` | `private async handleIncomingCallDisconnect(event: CallEvent): void` | Sets disconnect reason, cleans up resources, emits `DISCONNECT` |
+| `handleOutgoingCallDisconnect` | `private async handleOutgoingCallDisconnect(event: CallEvent): void` | DELETEs call, cleans up resources, emits `DISCONNECT` |
+| `handleUnknownState` | `private async handleUnknownState(event: CallEvent): void` | Handles unexpected state, cleans up and deletes call |
+| `handleTimeout` | `private async handleTimeout(): void` | Handles state timeout, emits error and cleans up |
+
+#### ROAP Action Handlers
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `handleOutgoingRoapOffer` | `private async handleOutgoingRoapOffer(context: MediaContext, event: RoapEvent): void` | Calls `mediaConnection.initiateOffer()` or sends ROAP offer via `postMedia()` |
+| `handleOutgoingRoapAnswer` | `private async handleOutgoingRoapAnswer(context: MediaContext, event: RoapEvent): void` | Sends SDP answer via `postMedia()` |
+| `handleIncomingRoapOffer` | `private handleIncomingRoapOffer(context: MediaContext, event: RoapEvent): void` | Buffers or forwards OFFER to `mediaConnection.roapMessageReceived()` |
+| `handleIncomingRoapAnswer` | `private handleIncomingRoapAnswer(context: MediaContext, event: RoapEvent): void` | Forwards ANSWER to `mediaConnection.roapMessageReceived()` |
+| `handleIncomingRoapOfferRequest` | `private handleIncomingRoapOfferRequest(context: MediaContext, event: RoapEvent): void` | Buffers or forwards offer request to media connection |
+| `handleRoapEstablished` | `private async handleRoapEstablished(context: MediaContext, event: RoapEvent): void` | Sends ROAP OK, sets `mediaNegotiationCompleted`, triggers `E_CALL_ESTABLISHED` |
+| `handleRoapError` | `private async handleRoapError(context: MediaContext, event: RoapEvent): void` | POSTs error to `/media`, disconnects if not connected |
+
+#### Metrics and Utilities
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `getCallStats` | `private async getCallStats(): Promise<CallRtpStats>` | Retrieves RTP statistics from media connection |
+| `forceSendStatsReport` | `private async forceSendStatsReport({callFrom}: {callFrom?: string}): Promise<void>` | Sends WebRTC telemetry dump via media core metrics |
+| `submitCallErrorMetric` | `private submitCallErrorMetric(error: CallError, transferMetricAction?: TRANSFER_ACTION): void` | Submits error metrics based on error layer and current state |
+| `onEffectEnabled` | `private onEffectEnabled = (): void` | Submits BNR enabled metric |
+| `onEffectDisabled` | `private onEffectDisabled = (): void` | Submits BNR disabled metric |
+| `setDisconnectReason` | `private setDisconnectReason(): void` | Sets disconnect code/cause based on call state (mediaInactivity, connected, direction) |
+| `getEmitterCallback` | `private getEmitterCallback(errData: MobiusCallResponse): (error: CallError) => void` | Returns error emitter callback that emits the correct error event based on current state machine state |
+
+#### Keepalive
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `scheduleCallKeepaliveInterval` | `private scheduleCallKeepaliveInterval = (): void` | Schedules periodic `postStatus()` call to Mobius |
+| `callKeepaliveRetryCallback` | `private callKeepaliveRetryCallback = (interval: number): void` | Retries keepalive POST after error with given interval, and aborts retry scheduling after max retry count |
+| `handleCallKeepaliveError` | `private handleCallKeepaliveError = async (err: unknown): Promise<void>` | Handles keepalive errors; disconnect transition is only sent when `handleCallErrors(...)` returns `abort=true` |
 
 ### Call Events Emitted
 
 | Event | Enum Key | Payload | When Emitted |
 |-------|----------|---------|-------------|
-| `alerting` | `CALL_EVENT_KEYS.ALERTING` | `CorrelationId` | Outgoing call alerting at remote |
 | `progress` | `CALL_EVENT_KEYS.PROGRESS` | `CorrelationId` | Call progress received |
 | `connect` | `CALL_EVENT_KEYS.CONNECT` | `CorrelationId` | Remote answered or call connected |
 | `established` | `CALL_EVENT_KEYS.ESTABLISHED` | `CorrelationId` | Call fully established with media |
@@ -344,6 +445,8 @@ CallerIdInfo received
 
 ### DisplayInformation Type
 
+`DisplayInformation` is the normalized caller identity model used by `Call` events and UI consumers.
+
 ```typescript
 type DisplayInformation = {
   avatarSrc: AvatarId | undefined;
@@ -378,6 +481,21 @@ When a `callState` mid-call event with `HELD` state is received, the Call emits 
 ---
 
 ## Supplementary Services
+
+### SUPPLEMENTARY_SERVICES Enum
+
+```typescript
+// From ../../Events/types
+enum SUPPLEMENTARY_SERVICES {
+  HOLD = 'hold',
+  RESUME = 'resume',
+  DIVERT = 'divert',
+  TRANSFER = 'transfer',
+  PARK = 'park',
+}
+```
+
+This enum is used by `postSSRequest(context, type)` to determine which Mobius endpoint to call for supplementary service operations.
 
 ### Hold/Resume
 

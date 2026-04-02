@@ -1,17 +1,17 @@
-# Call Management Sub-Module - Architecture Specification
+# Calling Sub-module - Architecture
 
 ## Component Overview
 
-The call management sub-module is organized around one manager (`CallManager`) and per-call executors (`Call`).  
-`CallManager` handles event intake/routing and active call tracking, while each `Call` owns signaling/media state, Mobius API operations, and event emission.  
+The calling sub-module is organized around one manager (`CallManager`) and per-call executors (`Call`).  
+`CallManager` handles event intake/routing and active call tracking, while each `Call` owns signaling/media state, backend API operations (Mobius), and event emission.  
 `CallerId` is a focused helper used by `Call` for caller identity resolution and incremental updates.
 
 ### Component Responsibilities
 
 | Component | Primary Responsibility | Key Interactions |
 |-----------|------------------------|------------------|
-| `CallManager` | Owns active call collection, resolves/routs backend events | `SDKConnector` (`event:mobius`), `Call`, `Line` |
-| `Call` | Executes call lifecycle operations and state machines | `Mobius` REST APIs, `RoapMediaConnection`, `CallerId`, app listeners |
+| `CallManager` | Owns active call collection and routes backend events | `SDKConnector` (`event:mobius`), `Call`, `Line` |
+| `Call` | Single-call executor for lifecycle operations and state machines | `Mobius` REST APIs, `RoapMediaConnection`, `CallerId`, app listeners |
 | `CallerId` | Resolves display identity from headers + SCIM enrichment | `Call` callback emitter, shared identity utilities |
 | `Call State Machine` | Signaling transitions and call control actions | `Call` handlers (`setup`, `connect`, `disconnect`, `hold/resume`) |
 | `Media ROAP State Machine` | ROAP negotiation transitions (`OFFER/ANSWER/OK/ERROR`) | `Call` ROAP handlers, `RoapMediaConnection`, Mobius media API |
@@ -161,18 +161,18 @@ stateDiagram-v2
 
     S_IDLE --> S_RECV_CALL_SETUP: E_RECV_CALL_SETUP / incomingCallSetup
     S_IDLE --> S_SEND_CALL_SETUP: E_SEND_CALL_SETUP / outgoingCallSetup
-    S_IDLE --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT / incomingDisc
-    S_IDLE --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT / outgoingDisc
+    S_IDLE --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT / incomingCallDisconnect
+    S_IDLE --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT / outgoingCallDisconnect
     S_IDLE --> S_UNKNOWN: E_UNKNOWN / unknownState
 
-    S_RECV_CALL_SETUP --> S_SEND_CALL_PROGRESS: E_SEND_CALL_ALERTING / outCallAlerting
+    S_RECV_CALL_SETUP --> S_SEND_CALL_PROGRESS: E_SEND_CALL_ALERTING / outgoingCallAlerting
     S_RECV_CALL_SETUP --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
     S_RECV_CALL_SETUP --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
     S_RECV_CALL_SETUP --> S_UNKNOWN: E_UNKNOWN
     S_RECV_CALL_SETUP --> S_CALL_CLEARED: timeout 10000ms
 
-    S_SEND_CALL_SETUP --> S_RECV_CALL_PROGRESS: E_RECV_CALL_PROGRESS / inCallProgress
-    S_SEND_CALL_SETUP --> S_RECV_CALL_CONNECT: E_RECV_CALL_CONNECT / inCallConnect
+    S_SEND_CALL_SETUP --> S_RECV_CALL_PROGRESS: E_RECV_CALL_PROGRESS / incomingCallProgress
+    S_SEND_CALL_SETUP --> S_RECV_CALL_CONNECT: E_RECV_CALL_CONNECT / incomingCallConnect
     S_SEND_CALL_SETUP --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
     S_SEND_CALL_SETUP --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
     S_SEND_CALL_SETUP --> S_UNKNOWN: E_UNKNOWN
@@ -185,7 +185,7 @@ stateDiagram-v2
     S_RECV_CALL_PROGRESS --> S_UNKNOWN: E_UNKNOWN
     S_RECV_CALL_PROGRESS --> S_CALL_CLEARED: timeout 60000ms
 
-    S_SEND_CALL_PROGRESS --> S_SEND_CALL_CONNECT: E_SEND_CALL_CONNECT / outCallConnect
+    S_SEND_CALL_PROGRESS --> S_SEND_CALL_CONNECT: E_SEND_CALL_CONNECT / outgoingCallConnect
     S_SEND_CALL_PROGRESS --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
     S_SEND_CALL_PROGRESS --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
     S_SEND_CALL_PROGRESS --> S_UNKNOWN: E_UNKNOWN
@@ -203,8 +203,8 @@ stateDiagram-v2
     S_SEND_CALL_CONNECT --> S_UNKNOWN: E_UNKNOWN
     S_SEND_CALL_CONNECT --> S_CALL_CLEARED: timeout 10000ms
 
-    S_CALL_ESTABLISHED --> S_CALL_HOLD: E_CALL_HOLD / initiateHold
-    S_CALL_ESTABLISHED --> S_CALL_RESUME: E_CALL_RESUME / initiateResume
+    S_CALL_ESTABLISHED --> S_CALL_HOLD: E_CALL_HOLD / initiateCallHold
+    S_CALL_ESTABLISHED --> S_CALL_RESUME: E_CALL_RESUME / initiateCallResume
     S_CALL_ESTABLISHED --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
     S_CALL_ESTABLISHED --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
     S_CALL_ESTABLISHED --> S_CALL_ESTABLISHED: E_CALL_ESTABLISHED
@@ -255,9 +255,9 @@ stateDiagram-v2
 stateDiagram-v2
     [*] --> S_ROAP_IDLE
 
-    S_ROAP_IDLE --> S_RECV_ROAP_OFFER_REQUEST: E_RECV_ROAP_OFFER_REQUEST
-    S_ROAP_IDLE --> S_RECV_ROAP_OFFER: E_RECV_ROAP_OFFER
-    S_ROAP_IDLE --> S_SEND_ROAP_OFFER: E_SEND_ROAP_OFFER
+    S_ROAP_IDLE --> S_RECV_ROAP_OFFER_REQUEST: E_RECV_ROAP_OFFER_REQUEST / incomingRoapOfferRequest
+    S_ROAP_IDLE --> S_RECV_ROAP_OFFER: E_RECV_ROAP_OFFER / incomingRoapOffer
+    S_ROAP_IDLE --> S_SEND_ROAP_OFFER: E_SEND_ROAP_OFFER / outgoingRoapOffer
 
     S_RECV_ROAP_OFFER_REQUEST --> S_SEND_ROAP_OFFER: E_SEND_ROAP_OFFER / outgoingRoapOffer
     S_RECV_ROAP_OFFER_REQUEST --> S_ROAP_OK: E_ROAP_OK / roapEstablished
@@ -275,14 +275,14 @@ stateDiagram-v2
     S_RECV_ROAP_ANSWER --> S_ROAP_OK: E_ROAP_OK / roapEstablished
     S_RECV_ROAP_ANSWER --> S_ROAP_ERROR: E_ROAP_ERROR / roapError
 
-    S_SEND_ROAP_ANSWER --> S_RECV_ROAP_OFFER_REQUEST: E_RECV_ROAP_OFFER_REQUEST
-    S_SEND_ROAP_ANSWER --> S_RECV_ROAP_OFFER: E_RECV_ROAP_OFFER
+    S_SEND_ROAP_ANSWER --> S_RECV_ROAP_OFFER_REQUEST: E_RECV_ROAP_OFFER_REQUEST / incomingRoapOfferRequest
+    S_SEND_ROAP_ANSWER --> S_RECV_ROAP_OFFER: E_RECV_ROAP_OFFER / incomingRoapOffer
     S_SEND_ROAP_ANSWER --> S_ROAP_OK: E_ROAP_OK / roapEstablished
     S_SEND_ROAP_ANSWER --> S_SEND_ROAP_ANSWER: E_SEND_ROAP_ANSWER
     S_SEND_ROAP_ANSWER --> S_ROAP_ERROR: E_ROAP_ERROR / roapError
 
-    S_ROAP_OK --> S_RECV_ROAP_OFFER_REQUEST: E_RECV_ROAP_OFFER_REQUEST
-    S_ROAP_OK --> S_RECV_ROAP_OFFER: E_RECV_ROAP_OFFER
+    S_ROAP_OK --> S_RECV_ROAP_OFFER_REQUEST: E_RECV_ROAP_OFFER_REQUEST / incomingRoapOfferRequest
+    S_ROAP_OK --> S_RECV_ROAP_OFFER: E_RECV_ROAP_OFFER / incomingRoapOffer
     S_ROAP_OK --> S_ROAP_OK: E_ROAP_OK
     S_ROAP_OK --> S_SEND_ROAP_OFFER: E_SEND_ROAP_OFFER / renegotiation
     S_ROAP_OK --> S_ROAP_ERROR: E_ROAP_ERROR
@@ -372,13 +372,12 @@ This module has two event layers:
 | `Mobius CALL_DISCONNECTED` | `mobius.calldisconnected` | `CallManager.dequeueWsEvents()` -> `E_RECV_CALL_DISCONNECT` | Start disconnect cleanup |
 | `MediaConnection` | `ROAP_MESSAGE_TO_SEND` | `Call.mediaRoapEventsListener()` | Publish local ROAP back to Mobius (`postMedia`) |
 | `MediaConnection` | `REMOTE_TRACK_ADDED` | `Call.mediaTrackListener()` | Emit remote media track to app |
-| `LocalMicrophoneStream` | `OutputTrackChange`, `EffectAdded`, `EffectRemoved` | `Call.registerListeners()` | Keep media/effect state synchronized |
+| `LocalMicrophoneStream` | `OutputTrackChange`, `EffectAdded` | `Call.registerListeners()` | Keep media/effect state synchronized; effect enabled/disabled handlers are attached by `registerEffectListener()` |
 
 ### 2) Events Emitted By Call Object
 
 | Event Key | Payload | Emitted When |
 |-----------|---------|--------------|
-| `CALL_EVENT_KEYS.ALERTING` | `correlationId` | Remote side is alerting |
 | `CALL_EVENT_KEYS.PROGRESS` | `correlationId` | Progress/proceeding signaling received |
 | `CALL_EVENT_KEYS.CONNECT` | `correlationId` | Call connected signaling received |
 | `CALL_EVENT_KEYS.ESTABLISHED` | `correlationId` | Signaling + media negotiation complete |
@@ -596,8 +595,8 @@ flowchart TD
     I --> J[On REMOTE_TRACK_ADDED emit CALL_EVENT_KEYS.REMOTE_MEDIA with track]
 
     E --> K[registerListeners localAudioStream]
-    K --> L[Subscribe EFFECT_ADDED to onEffectEnabled]
-    K --> M[Subscribe EFFECT_REMOVED to onEffectDisabled]
+    K --> L[Subscribe EFFECT_ADDED to registerEffectListener]
+    L --> M[registerEffectListener wires Effect.Enabled and Effect.Disabled handlers for noise reduction]
 ```
 
 ### SDP Processing
@@ -739,12 +738,12 @@ sequenceDiagram
     Mobius->>CM: mobius.calldisconnected
     CM->>Call: sendCallStateMachineEvt(E_RECV_CALL_DISCONNECT)
     Call->>Call: S_RECV_CALL_DISCONNECT / handleIncomingCallDisconnect()
+    Call-->>App: emit(DISCONNECT, correlationId)
     Call->>Call: setDisconnectReason(causecode, cause)
     Call->>Call: forceSendStatsReport()\ngetCallStats()
     Call->>Call: clearTimeout(sessionTimer)
     Call->>Call: mediaStateMachine.send(E_ROAP_TEARDOWN)
     Call->>Call: mediaConnection.close()\nunregisterListeners()
-    Call-->>App: emit(DISCONNECT, correlationId)
     Call->>CM: deleteCb(correlationId)
     Call->>Call: E_CALL_CLEARED -> S_CALL_CLEARED (final)
 ```
@@ -757,7 +756,8 @@ Keepalive is active while the call is established. A session timer triggers peri
 - On each tick, `Call` sends `POST /devices/{deviceId}/calls/{callId}/status`.
 - Success resets keepalive retry tracking and schedules the next keepalive cycle.
 - Failure increments `callKeepaliveRetryCount` and schedules retry via `RetryCallBack`.
-- After max retries (4), the call is force-disconnected by sending `E_SEND_CALL_DISCONNECT`.
+- Keepalive retry stops once `callKeepaliveRetryCount` reaches max (`4`).
+- Disconnect transition is triggered only when keepalive error handling returns `abort=true` (for example, non-retriable auth/not-found paths).
 
 ```mermaid
 sequenceDiagram
@@ -776,12 +776,11 @@ sequenceDiagram
         else Keepalive failure
             Mobius-->>Call: error/timeout
             Call->>Call: callKeepaliveRetryCount += 1
-            alt retries <= 4
+            alt retries < max
                 Call->>Call: retryCallback(nextInterval)
                 Call->>Mobius: retry POST /status
-            else retries exceeded
-                Call->>Call: sendCallStateMachineEvt(E_SEND_CALL_DISCONNECT)
-                Call->>Call: transition to disconnect flow
+            else retries reached max
+                Call->>Call: stop scheduling further keepalive retries
             end
         end
     end
@@ -950,11 +949,283 @@ type CallErrorEmitterCallBack = (error: CallError) => void;
 type RetryCallBack = (interval: number) => void;
 ```
 
+### State Machine Event Types
+
+```typescript
+// From ../../Events/types
+
+type CallEvent =
+  | {type: 'E_RECV_CALL_SETUP'; data?: unknown}
+  | {type: 'E_RECV_CALL_PROGRESS'; data?: unknown}
+  | {type: 'E_RECV_CALL_CONNECT'; data?: unknown}
+  | {type: 'E_RECV_CALL_DISCONNECT'; data?: unknown}
+  | {type: 'E_SEND_CALL_SETUP'; data?: unknown}
+  | {type: 'E_SEND_CALL_ALERTING'; data?: unknown}
+  | {type: 'E_SEND_CALL_CONNECT'; data?: unknown}
+  | {type: 'E_SEND_CALL_DISCONNECT'; data?: unknown}
+  | {type: 'E_CALL_ESTABLISHED'; data?: unknown}
+  | {type: 'E_CALL_INFO'; data?: unknown}
+  | {type: 'E_UNKNOWN'; data?: unknown}
+  | {type: 'E_CALL_CLEARED'; data?: unknown}
+  | {type: 'E_CALL_HOLD'; data?: unknown}
+  | {type: 'E_CALL_RESUME'; data?: unknown};
+
+type RoapEvent =
+  | {type: 'E_SEND_ROAP_OFFER'; data?: unknown}
+  | {type: 'E_SEND_ROAP_ANSWER'; data?: unknown}
+  | {type: 'E_RECV_ROAP_OFFER'; data?: unknown}
+  | {type: 'E_RECV_ROAP_ANSWER'; data?: unknown}
+  | {type: 'E_ROAP_ERROR'; data?: unknown}
+  | {type: 'E_ROAP_OK'; data?: unknown}
+  | {type: 'E_RECV_ROAP_OFFER_REQUEST'; data?: unknown}
+  | {type: 'E_ROAP_TEARDOWN'; data?: unknown};
+```
+
+### ROAP Message Type
+
+```typescript
+// From ../../Events/types
+
+interface RoapMessage {
+  seq: number;
+  messageType: 'OFFER' | 'ANSWER' | 'OK' | 'ERROR' | 'OFFER_REQUEST';
+  offererSessionId?: string;
+  answererSessionId?: string;
+  sdp?: string;
+  version?: string;
+  tieBreaker?: string;
+  errorType?: string;
+}
+```
+
+### Response Types
+
+```typescript
+// From ./types (local types.ts)
+
+type MobiusCallResponse = {
+  statusCode: number;
+  body: {
+    device: { deviceId: string; correlationId: string };
+    callId: CallId;
+    callData?: { callState: MobiusCallState };
+  };
+};
+
+type PatchResponse = {
+  statusCode: number;
+  body: {
+    device: { deviceId: string; correlationId: string };
+    callId: CallId;
+  };
+};
+
+type SSResponse = {
+  statusCode: number;
+  body: {
+    device: { deviceId: string; correlationId: string };
+    callId: CallId;
+  };
+};
+
+type MobiusCallEvent = {
+  id: string;
+  data: MobiusCallData;
+  timestamp: number;
+  trackingId: string;
+};
+```
+
+### Other Types
+
+```typescript
+// From ../../common/types
+type CallDetails = {
+  type: CallType;
+  address: string;
+};
+
+// From ../../Events/types
+enum SUPPLEMENTARY_SERVICES {
+  HOLD = 'hold',
+  RESUME = 'resume',
+  DIVERT = 'divert',
+  TRANSFER = 'transfer',
+  PARK = 'park',
+}
+```
+
+### Event Key Enums
+
+```typescript
+// All from ../../Events/types
+
+enum CALL_EVENT_KEYS {
+  ALERTING = 'alerting',
+  CALL_ERROR = 'call_error',
+  CALLER_ID = 'caller_id',
+  CONNECT = 'connect',
+  DISCONNECT = 'disconnect',
+  ESTABLISHED = 'established',
+  HELD = 'held',
+  HOLD_ERROR = 'hold_error',
+  PROGRESS = 'progress',
+  REMOTE_MEDIA = 'remote_media',
+  RESUME_ERROR = 'resume_error',
+  RESUMED = 'resumed',
+  TRANSFER_ERROR = 'transfer_error',
+}
+
+enum LINE_EVENT_KEYS {
+  INCOMING_CALL = 'incoming_call',
+}
+
+enum CALLING_CLIENT_EVENT_KEYS {
+  ERROR = 'callingClient:error',
+  OUTGOING_CALL = 'callingClient:outgoing_call',
+  USER_SESSION_INFO = 'callingClient:user_recent_sessions',
+  ALL_CALLS_CLEARED = 'callingClient:all_calls_cleared',
+}
+
+enum MOBIUS_MIDCALL_STATE {
+  HELD = 'HELD',
+  CONNECTED = 'CONNECTED',
+}
+```
+
+---
+
+## Constants
+
+All constants are imported from `../constants` (`CallingClient/constants.ts`).
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `DEFAULT_SESSION_TIMER` | `600000` (10 minutes) | Keepalive interval after call establishment |
+| `SUPPLEMENTARY_SERVICES_TIMEOUT` | `10000` (10 seconds) | Timeout for hold/resume mid-call response |
+| `MAX_CALL_KEEPALIVE_RETRY_COUNT` | `4` | Maximum keepalive retries before retry scheduling is aborted |
+| `INITIAL_SEQ_NUMBER` | `1` | Starting ROAP sequence number |
+| `DEVICES_ENDPOINT_RESOURCE` | `'devices'` | URL path segment |
+| `CALL_ENDPOINT_RESOURCE` | `'call'` | URL path segment (singular, for POST) |
+| `CALLS_ENDPOINT_RESOURCE` | `'calls'` | URL path segment (plural, for PATCH/DELETE/media/status) |
+| `MEDIA_ENDPOINT_RESOURCE` | `'media'` | URL path segment |
+| `CALL_STATUS_RESOURCE` | `'status'` | URL path segment |
+| `CALL_HOLD_SERVICE` | `'callhold'` | Supplementary service path segment |
+| `CALL_TRANSFER_SERVICE` | `'calltransfer'` | Supplementary service path segment |
+| `HOLD_ENDPOINT` | `'hold'` | Hold action endpoint |
+| `RESUME_ENDPOINT` | `'resume'` | Resume action endpoint |
+| `TRANSFER_ENDPOINT` | `'commit'` | Transfer action endpoint |
+
 ---
 
 ## Error Handling
 
 All call errors use the `CallError` class with `ERROR_LAYER` distinguishing call control vs media errors.
+
+### Error Enums
+
+```typescript
+// From ../../Errors/types
+
+enum ERROR_LAYER {
+  CALL_CONTROL = 'call_control',
+  MEDIA = 'media',
+}
+
+enum ERROR_TYPE {
+  CALL_ERROR = 'call_error',
+  DEFAULT = 'default_error',
+  BAD_REQUEST = 'bad_request',
+  FORBIDDEN_ERROR = 'forbidden',
+  NOT_FOUND = 'not_found',
+  REGISTRATION_ERROR = 'registration_error',
+  SERVICE_UNAVAILABLE = 'service_unavailable',
+  TIMEOUT = 'timeout',
+  TOKEN_ERROR = 'token_error',
+  TOO_MANY_REQUESTS = 'too_many_requests',
+  SERVER_ERROR = 'server_error',
+}
+
+enum ERROR_CODE {
+  UNAUTHORIZED = 401,
+  FORBIDDEN = 403,
+  DEVICE_NOT_FOUND = 404,
+  INTERNAL_SERVER_ERROR = 500,
+  NOT_IMPLEMENTED = 501,
+  SERVICE_UNAVAILABLE = 503,
+  BAD_REQUEST = 400,
+  REQUEST_TIMEOUT = 408,
+  TOO_MANY_REQUESTS = 429,
+}
+
+enum CALL_ERROR_CODE {
+  INVALID_STATUS_UPDATE = 111,
+  DEVICE_NOT_REGISTERED = 112,
+  CALL_NOT_FOUND = 113,
+  ERROR_PROCESSING = 114,
+  USER_BUSY = 115,
+  PARSING_ERROR = 116,
+  TIMEOUT_ERROR = 117,
+  NOT_ACCEPTABLE = 118,
+  CALL_REJECTED = 119,
+  NOT_AVAILABLE = 120,
+}
+```
+
+### CallError Class
+
+```typescript
+// From ../../Errors/catalog/CallError.ts
+
+class CallError extends ExtendedError {
+  private correlationId: CorrelationId;
+  private errorLayer: ERROR_LAYER;
+
+  constructor(
+    msg: ErrorMessage,
+    context: ErrorContext,
+    type: ERROR_TYPE,
+    correlationId: CorrelationId,
+    errorLayer: ERROR_LAYER
+  );
+
+  public setCallError(error: CallErrorObject): void;
+  public getCallError(): CallErrorObject;
+}
+
+// Factory function
+const createCallError = (
+  msg: ErrorMessage,
+  context: ErrorContext,
+  type: ERROR_TYPE,
+  correlationId: CorrelationId,
+  errorLayer: ERROR_LAYER
+) => new CallError(msg, context, type, correlationId, errorLayer);
+```
+
+### handleCallErrors Utility
+
+This is a standalone function from `../../common/Utils.ts` (not a method on `Call`). It processes HTTP error responses from Mobius and maps them to `CallError` instances.
+
+```typescript
+// From ../../common/Utils
+
+async function handleCallErrors(
+  emitterCb: CallErrorEmitterCallBack,
+  errorLayer: ERROR_LAYER,
+  retryCb: RetryCallBack,
+  correlationId: CorrelationId,
+  err: WebexRequestPayload,
+  caller: string,       // METHODS constant identifying which function made the request
+  file: string          // File name for logging context
+): Promise<boolean>     // Returns true if the caller should abort further operations
+```
+
+Behavior:
+- Handles HTTP status codes: 401, 403, 404, 500, 503, 429
+- Extracts service error codes from the response body and maps `CALL_ERROR_CODE` values to user-facing messages
+- Supports `retry-after` header for rate limiting (429 and 503)
+- Special handling for keepalive calls: returns `abort: true` for 401, 403, 404 during keepalive
 
 ### Error Emission Pattern
 
