@@ -3734,9 +3734,8 @@ export default class Meeting extends StatelessWebexPlugin {
       });
       this.updateLLMConnection();
     });
-    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, async (payload) => {
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, (payload) => {
       this.stopKeepAlive();
-      await this.ensureDefaultDatachannelTokenAfterAdmit();
 
       if (payload) {
         Trigger.trigger(
@@ -3761,6 +3760,11 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       }
       this.rtcMetrics?.sendNextMetrics();
+
+      this.ensureDefaultDatachannelTokenAfterAdmit().then(() => {
+        this.updateLLMConnection();
+      });
+
       this.updateLLMConnection();
     });
 
@@ -6376,16 +6380,16 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {Promise<void>}
    */
   private async ensureDefaultDatachannelTokenAfterAdmit(): Promise<void> {
-    // @ts-ignore
-    const datachannelToken = this.webex.internal.llm.getDatachannelToken();
-    // @ts-ignore
-    const isDataChannelTokenEnabled = await this.webex.internal.llm.isDataChannelTokenEnabled();
-
-    if (!isDataChannelTokenEnabled || datachannelToken) {
-      return;
-    }
-
     try {
+      // @ts-ignore
+      const datachannelToken = this.webex.internal.llm.getDatachannelToken();
+      // @ts-ignore
+      const isDataChannelTokenEnabled = await this.webex.internal.llm.isDataChannelTokenEnabled();
+
+      if (!isDataChannelTokenEnabled || datachannelToken) {
+        return;
+      }
+
       const response = await this.meetingRequest.fetchDatachannelToken({
         locusUrl: this.locusUrl,
         requestingParticipantId: this.members.selfId,

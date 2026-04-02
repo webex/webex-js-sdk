@@ -10417,17 +10417,21 @@ describe('plugin-meetings', () => {
           );
           done();
         });
-        it('listens to the self admitted guest event', async () => {
+        it('listens to the self admitted guest event without blocking on token prefetch', async () => {
           meeting.stopKeepAlive = sinon.stub();
           meeting.updateLLMConnection = sinon.stub();
-          meeting.ensureDefaultDatachannelTokenAfterAdmit = sinon.stub().resolves();
+          let resolvePrefetch;
+
+          meeting.ensureDefaultDatachannelTokenAfterAdmit = sinon
+            .stub()
+            .returns(new Promise((resolve) => {
+              resolvePrefetch = resolve;
+            }));
           meeting.rtcMetrics = {
             sendNextMetrics: sinon.stub(),
           };
 
           meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_ADMITTED_GUEST', test1);
-
-          await Promise.resolve();
 
           assert.calledOnceWithExactly(meeting.stopKeepAlive);
           assert.calledOnceWithExactly(meeting.ensureDefaultDatachannelTokenAfterAdmit);
@@ -10449,6 +10453,11 @@ describe('plugin-meetings', () => {
               correlation_id: meeting.correlationId,
             }
           );
+
+          resolvePrefetch();
+          await Promise.resolve();
+
+          assert.calledTwice(meeting.updateLLMConnection);
         });
 
         it('listens to the breakouts changed event', () => {
