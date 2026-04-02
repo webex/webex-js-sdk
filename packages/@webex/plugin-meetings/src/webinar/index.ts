@@ -208,6 +208,9 @@ const Webinar = WebexPlugin.extend({
    * @returns {Promise}
    */
   async updatePSDataChannel() {
+    this._updatePSDataChannelSequence = (this._updatePSDataChannelSequence || 0) + 1;
+    const invocationSequence = this._updatePSDataChannelSequence;
+
     const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
     const isPracticeSession = meeting?.isJoined() && this.isJoinPracticeSessionDataChannel();
 
@@ -278,6 +281,23 @@ const Webinar = WebexPlugin.extend({
     }
 
     const refreshedPracticeSessionToken = await this.ensurePracticeSessionDatachannelToken(meeting);
+
+    const latestPracticeSessionDatachannelUrl = get(
+      meeting,
+      'locusInfo.info.practiceSessionDatachannelUrl'
+    );
+    const isStillPracticeSession = meeting?.isJoined() && this.isJoinPracticeSessionDataChannel();
+
+    // Skip stale invocations after async refresh to avoid reconnecting a session
+    // that was already updated/cleaned by a newer state transition.
+    if (
+      invocationSequence !== this._updatePSDataChannelSequence ||
+      !isStillPracticeSession ||
+      !latestPracticeSessionDatachannelUrl ||
+      latestPracticeSessionDatachannelUrl !== practiceSessionDatachannelUrl
+    ) {
+      return undefined;
+    }
 
     if (refreshedPracticeSessionToken) {
       practiceSessionDatachannelToken = refreshedPracticeSessionToken;

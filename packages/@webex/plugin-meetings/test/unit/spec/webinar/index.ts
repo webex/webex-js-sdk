@@ -299,6 +299,34 @@ describe('plugin-meetings', () => {
         );
       });
 
+      it('does not reconnect if practice-session eligibility changes during async token refresh', async () => {
+        webex.internal.llm.isDataChannelTokenEnabled.resolves(true);
+        webex.internal.llm.getDatachannelToken = sinon.stub().returns(undefined);
+
+        let resolveRefresh;
+        meeting.refreshDataChannelToken = sinon.stub().returns(
+          new Promise((resolve) => {
+            resolveRefresh = resolve;
+          })
+        );
+
+        const updatePromise = webinar.updatePSDataChannel();
+
+        webinar.practiceSessionEnabled = false;
+
+        resolveRefresh({
+          body: {
+            datachannelToken: 'stale-ps-token',
+            dataChannelTokenType: DataChannelTokenType.PracticeSession,
+          },
+        });
+
+        const result = await updatePromise;
+
+        assert.isUndefined(result);
+        assert.notCalled(webex.internal.llm.registerAndConnect);
+      });
+
       it('no-ops when practice session join eligibility is false', async () => {
         webinar.practiceSessionEnabled = false;
         const cleanupPSDataChannelStub = sinon.stub(webinar, 'cleanupPSDataChannel').resolves();
