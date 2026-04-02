@@ -2099,16 +2099,34 @@ describe('HashTreeParser', () => {
       });
 
       it('initializes new visible data sets in priority order', async () => {
-        const parser = createHashTreeParser();
+        // Create a parser that only has "self" as visible (no "main")
+        const initialLocusWithoutMain = {
+          dataSets: [createDataSet('self', 1, 2000)],
+          locus: {
+            ...exampleInitialLocus.locus,
+          },
+        };
+        const metadataWithoutMain = {
+          ...exampleMetadata,
+          visibleDataSets: [
+            {
+              name: 'self',
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+            },
+          ],
+        };
+        const parser = createHashTreeParser(initialLocusWithoutMain, metadataWithoutMain);
+
+        // Verify "main" is not visible initially
+        expect(parser.visibleDataSets.some((vds) => vds.name === 'main')).to.be.false;
 
         // Stub updateItems on self hash tree to return true
         sinon.stub(parser.dataSets.self.hashTree, 'updateItems').returns([true]);
 
-        // Send a message that adds two new visible datasets: 'new-main' and 'new-self'
-        // where neither has info in dataSets (so both require async initialization)
-        // Note: we use names that match priority names to test ordering
-        const newMainDataSet = createDataSet('main-2', 8, 6000);
-        const newSelfDataSet = createDataSet('self-2', 1, 7000);
+        // Send a message that adds "main" and "atd-active" as new visible datasets.
+        // Neither has info in dataSets, so both require async initialization.
+        const newMainDataSet = createDataSet('main', 16, 6000);
+        const newAtdActiveDataSet = createDataSet('atd-active', 4, 7000);
 
         const message = {
           dataSets: [createDataSet('self', 1, 2100)],
@@ -2127,19 +2145,12 @@ describe('HashTreeParser', () => {
               data: {
                 visibleDataSets: [
                   {
-                    name: 'main',
-                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main',
-                  },
-                  {
                     name: 'self',
                     url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
                   },
-                  {
-                    name: 'atd-unmuted',
-                    url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/atd-unmuted',
-                  },
-                  {name: 'main-2', url: newMainDataSet.url},
-                  {name: 'self-2', url: newSelfDataSet.url},
+                  // listed in non-priority order: atd-active before main
+                  {name: 'atd-active', url: newAtdActiveDataSet.url},
+                  {name: 'main', url: newMainDataSet.url},
                 ],
               },
             },
@@ -2148,34 +2159,35 @@ describe('HashTreeParser', () => {
 
         // Mock getAllVisibleDataSetsFromLocus to return both new datasets (in non-priority order)
         mockGetAllDataSetsMetadata(webexRequest, visibleDataSetsUrl, [
+          newAtdActiveDataSet,
           newMainDataSet,
-          newSelfDataSet,
         ]);
         mockSyncRequest(webexRequest, newMainDataSet.url);
-        mockSyncRequest(webexRequest, newSelfDataSet.url);
+        mockSyncRequest(webexRequest, newAtdActiveDataSet.url);
 
-        parser.handleMessage(message, 'add two new datasets');
+        parser.handleMessage(message, 'add main and atd-active datasets');
 
         // Wait for the async initialization (queueMicrotask) to complete
         await clock.tickAsync(0);
 
         // Verify both datasets are initialized
-        expect(parser.dataSets['main-2']?.hashTree).to.exist;
-        expect(parser.dataSets['self-2']?.hashTree).to.exist;
+        expect(parser.dataSets.main?.hashTree).to.exist;
+        expect(parser.dataSets['atd-active']?.hashTree).to.exist;
 
-        // Verify sync requests were sent in priority order: main-2 before self-2
+        // Verify sync requests were sent in priority order: "main" before "atd-active",
+        // even though atd-active was listed first in both the message and the Locus response
         const syncCalls = webexRequest
           .getCalls()
           .filter(
             (call) =>
               call.args[0]?.method === 'POST' &&
               call.args[0]?.uri?.endsWith('/sync') &&
-              (call.args[0]?.uri?.includes('main-2') || call.args[0]?.uri?.includes('self-2'))
+              (call.args[0]?.uri?.includes('/main/') || call.args[0]?.uri?.includes('/atd-active/'))
           );
 
         expect(syncCalls).to.have.lengthOf(2);
         expect(syncCalls[0].args[0].uri).to.equal(`${newMainDataSet.url}/sync`);
-        expect(syncCalls[1].args[0].uri).to.equal(`${newSelfDataSet.url}/sync`);
+        expect(syncCalls[1].args[0].uri).to.equal(`${newAtdActiveDataSet.url}/sync`);
       });
 
       it('emits MEETING_ENDED if async init of a new visible dataset fails with 404', async () => {
