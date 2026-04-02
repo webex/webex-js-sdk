@@ -5,7 +5,11 @@ import {
   MultistreamRoapMediaConnection,
   NamedMediaGroup,
   StreamState,
+  MediaCodecMimeType,
+  CodecParameters,
 } from '@webex/internal-media-core';
+import Metrics from '../metrics';
+import BEHAVIORAL_METRICS from '../metrics/constants';
 
 /**
  * This class is used to manage the sendSlots for the given media types.
@@ -206,6 +210,8 @@ export default class SendSlotManager {
   }
 
   /**
+   * @deprecated Use {@link setCustomCodecParameters} instead, which requires specifying the codec MIME type.
+   *
    * This method is used to set the codec parameters for the sendSlot of the given mediaType
    * @param {MediaType} mediaType MediaType of the sendSlot for which the codec parameters needs to be set (AUDIO_MAIN/VIDEO_MAIN/AUDIO_SLIDES/VIDEO_SLIDES)
    * @param {Object} codecParameters
@@ -226,12 +232,19 @@ export default class SendSlotManager {
 
     await slot.setCodecParameters(codecParameters);
 
-    this.LoggerProxy.logger.info(
-      `SendSlotsManager->setCodecParameters#Set codec parameters for ${mediaType} to ${codecParameters}`
+    this.LoggerProxy.logger.warn(
+      'SendSlotsManager->setCodecParameters --> [DEPRECATION WARNING]: setCodecParameters has been deprecated, use setCustomCodecParameters instead'
     );
+
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DEPRECATED_SET_CODEC_PARAMETERS_USED, {
+      mediaType,
+      codecParameters,
+    });
   }
 
   /**
+   * @deprecated Use {@link markCustomCodecParametersForDeletion} instead, which requires specifying the codec MIME type.
+   *
    * This method is used to delete the codec parameters for the sendSlot of the given mediaType
    * @param {MediaType} mediaType MediaType of the sendSlot for which the codec parameters needs to be deleted (AUDIO_MAIN/VIDEO_MAIN/AUDIO_SLIDES/VIDEO_SLIDES)
    * @param {Array<String>} parameters Array of keys of the codec parameters to be deleted
@@ -246,8 +259,89 @@ export default class SendSlotManager {
 
     await slot.deleteCodecParameters(parameters);
 
+    this.LoggerProxy.logger.warn(
+      'SendSlotsManager->deleteCodecParameters --> [DEPRECATION WARNING]: deleteCodecParameters has been deprecated, use markCustomCodecParametersForDeletion instead'
+    );
+
+    Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.DEPRECATED_DELETE_CODEC_PARAMETERS_USED, {
+      mediaType,
+      parameters,
+    });
+  }
+
+  /**
+   * Sets custom codec parameters for the sendSlot of the given mediaType, scoped to a specific codec MIME type.
+   * Delegates to WCME's setCustomCodecParameters API.
+   * @param {MediaType} mediaType MediaType of the sendSlot
+   * @param {MediaCodecMimeType} codecMimeType The codec MIME type to apply parameters to (e.g. OPUS, H264, AV1)
+   * @param {CodecParameters} parameters Key-value pairs of codec parameters to set
+   * @returns {Promise<void>}
+   */
+  public async setCustomCodecParameters(
+    mediaType: MediaType,
+    codecMimeType: MediaCodecMimeType,
+    parameters: CodecParameters
+  ): Promise<void> {
+    const slot = this.slots.get(mediaType);
+
+    if (!slot) {
+      throw new Error(`Slot for ${mediaType} does not exist`);
+    }
+
+    try {
+      await slot.setCustomCodecParameters(codecMimeType, parameters);
+
+      this.LoggerProxy.logger.info(
+        `SendSlotsManager->setCustomCodecParameters#Set custom codec parameters for ${mediaType} (codec: ${codecMimeType}) to ${JSON.stringify(
+          parameters
+        )}`
+      );
+    } catch (error) {
+      this.LoggerProxy.logger.error(
+        `SendSlotsManager->setCustomCodecParameters#Failed to set custom codec parameters for ${mediaType} (codec: ${codecMimeType}): ${error}`
+      );
+      throw error;
+    } finally {
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.SET_CUSTOM_CODEC_PARAMETERS_USED, {
+        mediaType,
+        codecMimeType,
+        parameters,
+      });
+    }
+  }
+
+  /**
+   * Marks custom codec parameters for deletion on the sendSlot of the given mediaType, scoped to a specific codec MIME type.
+   * Delegates to WCME's markCustomCodecParametersForDeletion API.
+   * @param {MediaType} mediaType MediaType of the sendSlot
+   * @param {MediaCodecMimeType} codecMimeType The codec MIME type whose parameters should be deleted (e.g. OPUS, H264, AV1)
+   * @param {string[]} parameters Array of parameter keys to delete
+   * @returns {Promise<void>}
+   */
+  public async markCustomCodecParametersForDeletion(
+    mediaType: MediaType,
+    codecMimeType: MediaCodecMimeType,
+    parameters: string[]
+  ): Promise<void> {
+    const slot = this.slots.get(mediaType);
+
+    if (!slot) {
+      throw new Error(`Slot for ${mediaType} does not exist`);
+    }
+
+    await slot.markCustomCodecParametersForDeletion(codecMimeType, parameters);
+
     this.LoggerProxy.logger.info(
-      `SendSlotsManager->deleteCodecParameters#Deleted the following codec parameters -> ${parameters} for ${mediaType}`
+      `SendSlotsManager->markCustomCodecParametersForDeletion#Marked codec parameters for deletion -> ${parameters} for ${mediaType} (codec: ${codecMimeType})`
+    );
+
+    Metrics.sendBehavioralMetric(
+      BEHAVIORAL_METRICS.MARK_CUSTOM_CODEC_PARAMETERS_FOR_DELETION_USED,
+      {
+        mediaType,
+        codecMimeType,
+        parameters,
+      }
     );
   }
 

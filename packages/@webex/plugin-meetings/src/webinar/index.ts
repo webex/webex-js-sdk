@@ -131,6 +131,12 @@ const Webinar = WebexPlugin.extend({
    * @returns {Promise<void>}
    */
   async cleanupPSDataChannel() {
+    if (this._pendingOnlineListener) {
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.off('online', this._pendingOnlineListener);
+      this._pendingOnlineListener = null;
+    }
+
     const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
 
     // @ts-ignore - Fix type
@@ -164,28 +170,15 @@ const Webinar = WebexPlugin.extend({
     }
 
     // @ts-ignore - Fix type
-    const {
-      url = undefined,
-      info: {practiceSessionDatachannelUrl = undefined} = {},
-      self: {practiceSessionDatachannelToken = undefined} = {},
-    } = meeting?.locusInfo || {};
+    const {url = undefined, info: {practiceSessionDatachannelUrl = undefined} = {}} =
+      meeting?.locusInfo || {};
 
     // @ts-ignore
-    const currentToken = this.webex.internal.llm.getDatachannelToken(
+    const practiceSessionDatachannelToken = this.webex.internal.llm.getDatachannelToken(
       DataChannelTokenType.PracticeSession
     );
 
-    const finalToken = currentToken ?? practiceSessionDatachannelToken;
-
     const isCaptionBoxOn = this.webex.internal.voicea.getIsCaptionBoxOn();
-
-    if (!currentToken && practiceSessionDatachannelToken) {
-      // @ts-ignore
-      this.webex.internal.llm.setDatachannelToken(
-        practiceSessionDatachannelToken,
-        DataChannelTokenType.PracticeSession
-      );
-    }
 
     if (!practiceSessionDatachannelUrl) {
       return undefined;
@@ -205,9 +198,45 @@ const Webinar = WebexPlugin.extend({
       await this.cleanupPSDataChannel();
     }
 
+    // Ensure the default session data channel is connected before connecting the practice session.
+    // Subscribe before checking isConnected() to avoid a race where the 'online' event fires
+    // between the check and the subscription — Mercury does not replay missed events.
+    if (!this._pendingOnlineListener) {
+      const onDefaultSessionConnected = () => {
+        this._pendingOnlineListener = null;
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.off('online', onDefaultSessionConnected);
+        this.updatePSDataChannel();
+      };
+      this._pendingOnlineListener = onDefaultSessionConnected;
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.on('online', onDefaultSessionConnected);
+    }
+
+    // @ts-ignore - Fix type
+    if (!this.webex.internal.llm.isConnected()) {
+      LoggerProxy.logger.info(
+        'Webinar:index#updatePSDataChannel --> default session not yet connected, deferring practice session connect.'
+      );
+
+      return undefined;
+    }
+
+    // Default session is already connected — cancel the pending listener and proceed
+    if (this._pendingOnlineListener) {
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.off('online', this._pendingOnlineListener);
+      this._pendingOnlineListener = null;
+    }
+
     // @ts-ignore - Fix type
     return this.webex.internal.llm
-      .registerAndConnect(url, practiceSessionDatachannelUrl, finalToken, LLM_PRACTICE_SESSION)
+      .registerAndConnect(
+        url,
+        practiceSessionDatachannelUrl,
+        practiceSessionDatachannelToken,
+        LLM_PRACTICE_SESSION
+      )
       .then((registerAndConnectResult) => {
         // @ts-ignore - Fix type
         this.webex.internal.llm.off(
@@ -366,7 +395,6 @@ const Webinar = WebexPlugin.extend({
 
   /**
    * view all webcast attendees
-   * @param {string} queryString
    * @returns {Promise}
    */
   async viewAllWebcastAttendees() {
