@@ -11,6 +11,7 @@ import {
   CHAT_LAUNCHER_TIMEOUT,
   FORM_FIELD_TIMEOUT,
   TEST_DATA,
+  CHAT_UI,
   UI_SETTLE_TIMEOUT,
   EXTENSION_REGISTRATION_TIMEOUT,
   ACCEPT_TASK_TIMEOUT,
@@ -82,54 +83,54 @@ export async function createChatTask(page: Page, chatURL: string) {
       await page.goto(chatURL);
       await page.waitForTimeout(UI_SETTLE_TIMEOUT);
       await page
-        .locator('iframe[name="Livechat launcher icon"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_LAUNCHER}"]`)
         .contentFrame()
-        .getByRole('button', {name: 'Livechat Button - 0 unread'})
+        .getByRole('button', {name: CHAT_UI.BUTTON_LAUNCHER})
         .waitFor({state: 'visible', timeout: CHAT_LAUNCHER_TIMEOUT});
       await page
-        .locator('iframe[name="Livechat launcher icon"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_LAUNCHER}"]`)
         .contentFrame()
-        .getByRole('button', {name: 'Livechat Button - 0 unread'})
+        .getByRole('button', {name: CHAT_UI.BUTTON_LAUNCHER})
         .click({timeout: AWAIT_TIMEOUT});
       await page
-        .locator('iframe[name="Conversation Window"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_CONVERSATION}"]`)
         .contentFrame()
-        .getByRole('button', {name: 'Hit Us Up!'})
+        .getByRole('button', {name: CHAT_UI.BUTTON_START_CHAT})
         .waitFor({state: 'visible', timeout: FORM_FIELD_TIMEOUT});
       await page
-        .locator('iframe[name="Conversation Window"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_CONVERSATION}"]`)
         .contentFrame()
-        .getByRole('button', {name: 'Hit Us Up!'})
+        .getByRole('button', {name: CHAT_UI.BUTTON_START_CHAT})
         .click({timeout: AWAIT_TIMEOUT});
       await page
-        .locator('iframe[name="Conversation Window"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_CONVERSATION}"]`)
         .contentFrame()
-        .getByRole('textbox', {name: 'Name'})
+        .getByRole('textbox', {name: CHAT_UI.TEXTBOX_NAME})
         .waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
       await page
-        .locator('iframe[name="Conversation Window"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_CONVERSATION}"]`)
         .contentFrame()
-        .getByRole('textbox', {name: 'Name'})
+        .getByRole('textbox', {name: CHAT_UI.TEXTBOX_NAME})
         .click({timeout: AWAIT_TIMEOUT});
       await page
-        .locator('iframe[name="Conversation Window"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_CONVERSATION}"]`)
         .contentFrame()
-        .getByRole('textbox', {name: 'Name'})
+        .getByRole('textbox', {name: CHAT_UI.TEXTBOX_NAME})
         .fill(TEST_DATA.CHAT_NAME, {timeout: AWAIT_TIMEOUT});
       await page
-        .locator('iframe[name="Conversation Window"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_CONVERSATION}"]`)
         .contentFrame()
-        .getByRole('textbox', {name: 'Name'})
+        .getByRole('textbox', {name: CHAT_UI.TEXTBOX_NAME})
         .fill(TEST_DATA.CHAT_NAME, {timeout: AWAIT_TIMEOUT});
       await page
-        .locator('iframe[name="Conversation Window"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_CONVERSATION}"]`)
         .contentFrame()
-        .getByRole('button', {name: 'Submit Name'})
+        .getByRole('button', {name: CHAT_UI.BUTTON_SUBMIT_NAME})
         .waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
       await page
-        .locator('iframe[name="Conversation Window"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_CONVERSATION}"]`)
         .contentFrame()
-        .getByRole('button', {name: 'Submit Name'})
+        .getByRole('button', {name: CHAT_UI.BUTTON_SUBMIT_NAME})
         .click({timeout: AWAIT_TIMEOUT});
       await page.waitForTimeout(200);
       await expect(
