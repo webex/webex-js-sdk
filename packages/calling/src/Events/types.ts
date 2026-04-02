@@ -291,21 +291,7 @@ export interface CallSetupMessage extends BaseMessage {
   trackingId: string;
   alertType: string;
 }
-interface CallProgressMessage extends BaseMessage {
-  callProgressData: callProgressData;
-  callerId: CallerIdInfo;
-}
 
-export const WEBSOCKET_SCOPE = 'mobius';
-
-export enum WEBSOCKET_KEYS {
-  CALL_PROGRESS = 'callprogress',
-  CALL_CONNECTED = 'callconnected',
-  CALL_DISCONNECTED = 'callconnected',
-  CALL_INFO = 'callinfo',
-  CALL = 'call',
-  ROAP = 'ROAP',
-}
 /** Internal Eventing End */
 
 /** State Machine Events */
