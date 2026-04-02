@@ -2,7 +2,7 @@ import {cloneDeep, isEmpty, zip} from 'lodash';
 import HashTree, {LeafDataItem} from './hashTree';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {Enum, HTTP_VERBS} from '../constants';
-import {DataSetNames, EMPTY_HASH} from './constants';
+import {DataSetNames, DATA_SET_INIT_PRIORITY, EMPTY_HASH} from './constants';
 import {ObjectType, HtMeta, HashTreeObject} from './types';
 import {LocusDTO} from '../locus-info/types';
 import {deleteNestedObjectsWithHtMeta, isMetadata, sortByInitPriority} from './utils';
@@ -385,7 +385,7 @@ class HashTreeParser {
 
     const updatedObjects: HashTreeObject[] = [];
 
-    for (const dataSet of sortByInitPriority(visibleDataSets)) {
+    for (const dataSet of sortByInitPriority(visibleDataSets, DATA_SET_INIT_PRIORITY)) {
       const {name, leafCount, url} = dataSet;
 
       if (!this.dataSets[name]) {
@@ -953,7 +953,7 @@ class HashTreeParser {
     }
     const allDataSets = await this.getAllVisibleDataSetsFromLocus();
 
-    for (const ds of sortByInitPriority(addedDataSets)) {
+    for (const ds of sortByInitPriority(addedDataSets, DATA_SET_INIT_PRIORITY)) {
       const dataSetInfo = allDataSets.find((d) => d.name === ds.name);
 
       LoggerProxy.logger.info(

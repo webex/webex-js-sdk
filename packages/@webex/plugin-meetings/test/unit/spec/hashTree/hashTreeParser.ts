@@ -2162,6 +2162,20 @@ describe('HashTreeParser', () => {
         // Verify both datasets are initialized
         expect(parser.dataSets['main-2']?.hashTree).to.exist;
         expect(parser.dataSets['self-2']?.hashTree).to.exist;
+
+        // Verify sync requests were sent in priority order: main-2 before self-2
+        const syncCalls = webexRequest
+          .getCalls()
+          .filter(
+            (call) =>
+              call.args[0]?.method === 'POST' &&
+              call.args[0]?.uri?.endsWith('/sync') &&
+              (call.args[0]?.uri?.includes('main-2') || call.args[0]?.uri?.includes('self-2'))
+          );
+
+        expect(syncCalls).to.have.lengthOf(2);
+        expect(syncCalls[0].args[0].uri).to.equal(`${newMainDataSet.url}/sync`);
+        expect(syncCalls[1].args[0].uri).to.equal(`${newSelfDataSet.url}/sync`);
       });
 
       it('emits MEETING_ENDED if async init of a new visible dataset fails with 404', async () => {

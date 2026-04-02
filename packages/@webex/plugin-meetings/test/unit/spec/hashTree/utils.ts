@@ -4,7 +4,7 @@ import {
   isSelf,
   sortByInitPriority,
 } from '../../../../src/hashTree/utils';
-import {DataSetNames} from '../../../../src/hashTree/constants';
+import {DataSetNames, DATA_SET_INIT_PRIORITY} from '../../../../src/hashTree/constants';
 
 import {assert} from '@webex/test-helper-chai';
 
@@ -189,7 +189,7 @@ describe('Hash Tree Utils', () => {
       it(description, () => {
         const items = input.map((name) => ({name}));
 
-        const result = sortByInitPriority(items);
+        const result = sortByInitPriority(items, DATA_SET_INIT_PRIORITY);
 
         assert.deepEqual(
           result.map((i) => i.name),
@@ -202,7 +202,7 @@ describe('Hash Tree Utils', () => {
       const items = [{name: DataSetNames.ATD_ACTIVE}, {name: DataSetNames.SELF}];
       const originalOrder = items.map((i) => i.name);
 
-      sortByInitPriority(items);
+      sortByInitPriority(items, DATA_SET_INIT_PRIORITY);
 
       assert.deepEqual(
         items.map((i) => i.name),
@@ -216,7 +216,7 @@ describe('Hash Tree Utils', () => {
         {name: DataSetNames.SELF, url: 'url2'},
       ];
 
-      const result = sortByInitPriority(items);
+      const result = sortByInitPriority(items, DATA_SET_INIT_PRIORITY);
 
       assert.deepEqual(result, [
         {name: DataSetNames.SELF, url: 'url2'},
