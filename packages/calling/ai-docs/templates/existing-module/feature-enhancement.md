@@ -87,6 +87,11 @@ Ask the developer:
 ### 6. Metrics
 
 10. **"Do existing metrics need to change, or do new metrics need to be added?"**
+   - If YES, also ask:
+     - Which metric event/action names are impacted?
+     - Is this success-only, failure-only, or does it include progress/state-transition metrics?
+     - Are `src/Metrics/types.ts` enum/interface updates required?
+     - Which code path submits each metric (method/action handler/state transition)?
 
 ### 7. Behavior
 

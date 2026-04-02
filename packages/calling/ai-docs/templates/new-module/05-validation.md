@@ -243,6 +243,8 @@ export function createModuleNameClient(webex, logger) {   // Missing types, usin
 
 Run these commands from the calling package directory (`packages/calling/`):
 
+> If scripts ever drift, validate command names against `packages/calling/package.json` before finalizing validation instructions.
+
 ### Build
 
 ```bash
@@ -270,12 +272,15 @@ yarn workspace @webex/calling test:style
 yarn test:unit
 
 # Run only the new module's tests:
+cd packages/calling 
 npx jest src/ModuleName/
 
 # Run with coverage:
+cd packages/calling 
 npx jest src/ModuleName/ --coverage
 
 # Run a single test file:
+cd packages/calling 
 npx jest src/ModuleName/ModuleName.test.ts --verbose
 ```
 

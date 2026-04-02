@@ -333,17 +333,17 @@ it('should emit success event when WebSocket state change arrives', async () => 
   const mockResponse = {statusCode: 200, body: {}};
   webex.request.mockResolvedValueOnce(mockResponse);
   const successHandler = jest.fn();
-  call.on(CALL_EVENT_KEYS.PARKED, successHandler);
+  call.on(CALL_EVENT_KEYS.HELD, successHandler);
 
   // Act — trigger the method
-  call.parkCall();
+  call.doHoldResume();
   await flushPromises();
 
   // Simulate the Mercury WebSocket event arriving
   const midCallEvent = {
     eventType: 'callState',
     eventData: {
-      callState: 'PARKED',
+      callState: 'HELD',
     },
   };
   call['handleMidCallEvent'](midCallEvent as unknown as CallEvent);
@@ -383,7 +383,7 @@ yarn jest --testPathPattern="call.test" --verbose
 
 ```bash
 cd packages/calling
-yarn jest src/CallingClient/calling/call.test.ts -t "parkCall tests"
+yarn jest src/CallingClient/calling/call.test.ts -t "doHoldResume tests"
 ```
 
 ### Run lint check

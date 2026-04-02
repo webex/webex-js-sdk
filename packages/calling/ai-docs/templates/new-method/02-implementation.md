@@ -15,18 +15,18 @@ The consumer calls the method directly on the class instance. The method is defi
 ```typescript
 // In types.ts — interface declaration
 export interface ICall {
-  parkCall(): void;
+  doHoldResume(): void;
 }
 
 // In call.ts — class implementation
 export class Call extends Eventing<CallEventTypes> implements ICall {
-  public parkCall = (): void => {
+  public doHoldResume = (): void => {
     // implementation
   };
 }
 
 // Consumer usage
-call.parkCall();
+call.doHoldResume();
 ```
 
 ### Pattern 2: Factory + Internal Delegation
@@ -49,7 +49,7 @@ private async handleCallHold(event: CallEvent) {
 }
 ```
 
-Choose the pattern based on whether the operation needs state machine coordination. If the method triggers a supplementary service (hold, resume, transfer, park), use Pattern 2. If it is a simple query or direct action, use Pattern 1.
+Choose the pattern based on whether the operation needs state machine coordination. If the method triggers a supplementary service (hold, resume, transfer), use Pattern 2. If it is a simple query or direct action, use Pattern 1.
 
 ---
 
@@ -63,9 +63,14 @@ Use this 13-step template for any method that calls the Mobius API. Adapt as nee
  *
  * @param param1 - <Description of param1.>
  * @param param2 - <Description of param2.>
+ * @param additionalParam - <Description of additional params as needed.>
  * @returns <Description of return value.>
  */
-public async methodName(param1: ParamType, param2?: OptionalType): Promise<ReturnType> {
+public async methodName(
+  param1: ParamType1,
+  param2?: ParamType2,
+  additionalParam?: OptionalType
+): Promise<ReturnType> {
   // Step 1: Define log context
   const logContext = {
     file: CALL_FILE,                    // Use the appropriate *_FILE constant
@@ -138,7 +143,7 @@ public async methodName(param1: ParamType, param2?: OptionalType): Promise<Retur
 
 ### Pattern A: Mobius WebSocket -> State Machine -> Emit
 
-For operations where the state change is confirmed by a Mercury WebSocket event (hold, resume, park). The HTTP response only confirms the request was accepted; the actual state change arrives asynchronously.
+For operations where the state change is confirmed by a Mercury WebSocket event (hold, resume, disconnect). The HTTP response only confirms the request was accepted; the actual state change arrives asynchronously.
 
 ```
 Consumer calls method
@@ -164,10 +169,16 @@ Consumer calls method
 
 ### Real Example: doHoldResume Flow
 
-This is the actual pattern from `src/CallingClient/calling/call.ts`:
+This is the full state-driven flow from `src/CallingClient/calling/call.ts`:
+
+1. Public method decides hold vs resume and sends state event.
+2. State machine transitions to `S_CALL_HOLD` or `S_CALL_RESUME`.
+3. Transition invokes action (`initiateHold` / `initiateResume`).
+4. Action calls async handler (`handleCallHold` / `handleCallResume`) that invokes Mobius API.
+5. Mid-call confirmation event (`HELD` or `CONNECTED`) drives final event emission and returns to established state.
 
 ```typescript
-// PUBLIC: Consumer calls this
+// 1) PUBLIC ENTRYPOINT: consumer toggles hold/resume
 public doHoldResume = (): void => {
   if (this.held) {
     this.sendCallStateMachineEvt({type: 'E_CALL_RESUME'});
@@ -176,7 +187,49 @@ public doHoldResume = (): void => {
   }
 };
 
-// PRIVATE: State machine action invokes this
+// 2) STATE TRANSITIONS: hold/resume path from established state
+private readonly callStateMachine = interpret(
+  createMachine<Context, CallEvent>({
+    id: 'call-state',
+    initial: 'S_IDLE',
+    states: {
+      S_CALL_ESTABLISHED: {
+        on: {
+          E_CALL_HOLD: {
+            target: 'S_CALL_HOLD',
+            actions: ['initiateHold'],
+          },
+          E_CALL_RESUME: {
+            target: 'S_CALL_RESUME',
+            actions: ['initiateResume'],
+          },
+        },
+      },
+      S_CALL_HOLD: {
+        on: {
+          E_CALL_ESTABLISHED: {target: 'S_CALL_ESTABLISHED', actions: ['callEstablished']},
+          E_RECV_CALL_DISCONNECT: {target: 'S_RECV_CALL_DISCONNECT'},
+        },
+      },
+      S_CALL_RESUME: {
+        on: {
+          E_CALL_ESTABLISHED: {target: 'S_CALL_ESTABLISHED', actions: ['callEstablished']},
+          E_RECV_CALL_DISCONNECT: {target: 'S_RECV_CALL_DISCONNECT'},
+        },
+      },
+    },
+  }),
+  {
+    actions: {
+      // 3) ACTION MAPPING: transition action -> async handler
+      initiateHold: (ctx, event) => this.handleCallHold(event),
+      initiateResume: (ctx, event) => this.handleCallResume(event),
+      callEstablished: (ctx, event) => this.handleCallEstablished(event),
+    },
+  }
+).start();
+
+// 4) ACTION HANDLER: hold API request
 private async handleCallHold(event: CallEvent) {
   log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
     file: CALL_FILE,
@@ -228,12 +281,40 @@ private async handleCallHold(event: CallEvent) {
         this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED', data: errData});
       },
       ERROR_LAYER.CALL_CONTROL,
-      /* istanbul ignore next */ (interval: number) => undefined,
+      // Keep callback explicit so behavior is readable in docs/tests.
+      (interval: number) => undefined,
       this.getCorrelationId(),
       errData,
       METHODS.HANDLE_CALL_HOLD,
       CALL_FILE
     );
+  }
+}
+
+// 4b) ACTION HANDLER: resume API request
+private async handleCallResume(event: CallEvent) {
+  const response = await this.postSSRequest(undefined, SUPPLEMENTARY_SERVICES.RESUME);
+  log.log(`Response code: ${response.statusCode}`, {file: CALL_FILE, method: METHODS.HANDLE_CALL_RESUME});
+}
+
+// 5) MID-CALL CONFIRMATION: Mobius async event finalizes state + emits SDK event
+public handleMidCallEvent(event: MidCallEvent): void {
+  if (event.eventType !== MidCallEventType.CALL_STATE) {
+    return;
+  }
+
+  const callState = (event.eventData as SupplementaryServiceState).callState;
+
+  if (callState === MOBIUS_MIDCALL_STATE.HELD) {
+    this.held = true;
+    clearTimeout(this.supplementaryServicesTimer);
+    this.emit(CALL_EVENT_KEYS.HELD, this.getCorrelationId());
+    this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
+  } else if (callState === MOBIUS_MIDCALL_STATE.CONNECTED) {
+    this.held = false;
+    clearTimeout(this.supplementaryServicesTimer);
+    this.emit(CALL_EVENT_KEYS.RESUMED, this.getCorrelationId());
+    this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED'});
   }
 }
 ```
@@ -247,8 +328,9 @@ private async handleCallHold(event: CallEvent) {
 ```typescript
 export const METHODS = {
   // ... existing methods ...
-  PARK_CALL: 'parkCall',           // Add new method constant
-  HANDLE_CALL_PARK: 'handleCallPark',  // Add handler constant if Pattern 2
+  DO_HOLD_RESUME: 'doHoldResume',
+  HANDLE_CALL_HOLD: 'handleCallHold',
+  HANDLE_CALL_RESUME: 'handleCallResume',
 };
 ```
 
@@ -259,8 +341,8 @@ Most new methods use existing metric events (`METRIC_EVENT.CALL`, `METRIC_EVENT.
 ```typescript
 export enum METRIC_EVENT {
   // ... existing events ...
-  PARK = 'web-calling-sdk-park',           // Only if needed
-  PARK_ERROR = 'web-calling-sdk-park-error', // Only if needed
+  CALL = 'web-calling-sdk-callcontrol',
+  CALL_ERROR = 'web-calling-sdk-callcontrol-error',
 }
 ```
 
@@ -269,8 +351,10 @@ export enum METRIC_EVENT {
 ```typescript
 export enum CALL_EVENT_KEYS {
   // ... existing keys ...
-  PARKED = 'parked',
-  PARK_ERROR = 'park_error',
+  HELD = 'held',
+  RESUMED = 'resumed',
+  HOLD_ERROR = 'hold_error',
+  RESUME_ERROR = 'resume_error',
 }
 ```
 
@@ -279,8 +363,10 @@ export enum CALL_EVENT_KEYS {
 ```typescript
 export type CallEventTypes = {
   // ... existing event types ...
-  [CALL_EVENT_KEYS.PARKED]: (callId: CallId) => void;
-  [CALL_EVENT_KEYS.PARK_ERROR]: (error: CallError) => void;
+  [CALL_EVENT_KEYS.HELD]: (callId: CallId) => void;
+  [CALL_EVENT_KEYS.RESUMED]: (callId: CallId) => void;
+  [CALL_EVENT_KEYS.HOLD_ERROR]: (error: CallError) => void;
+  [CALL_EVENT_KEYS.RESUME_ERROR]: (error: CallError) => void;
 };
 ```
 
@@ -298,14 +384,14 @@ Add parameter types, response types, and the method to the public interface:
 // Add to the ICall interface
 export interface ICall {
   // ... existing methods ...
-  parkCall(): void;
+  doHoldResume(): void;
 }
 
 // Add any new types needed by the method
-export type ParkResponse = {
+export type HoldResumeResponse = {
   statusCode: number;
   body: {
-    parkExtension: string;
+    callState: 'HELD' | 'CONNECTED';
   };
 };
 ```
@@ -320,7 +406,6 @@ export enum SUPPLEMENTARY_SERVICES {
   RESUME = 'resume',
   DIVERT = 'divert',
   TRANSFER = 'transfer',
-  PARK = 'park',        // Already exists in the codebase
 }
 ```
 
@@ -335,7 +420,8 @@ If the method requires a new state machine state or transition:
 ```typescript
 export type CallEvent =
   // ... existing events ...
-  | {type: 'E_CALL_PARK'; data?: unknown};
+  | {type: 'E_CALL_HOLD'; data?: unknown}
+  | {type: 'E_CALL_RESUME'; data?: unknown};
 ```
 
 ### Add the state and transition to the call state machine in `call.ts`
@@ -344,12 +430,17 @@ export type CallEvent =
 // In the createMachine call within the Call constructor
 states: {
   // ... existing states ...
-  S_CALL_PARK: {
+  S_CALL_HOLD: {
     on: {
       E_CALL_ESTABLISHED: {target: 'S_CALL_ESTABLISHED', actions: ['callEstablished']},
       E_RECV_CALL_DISCONNECT: {target: 'S_RECV_CALL_DISCONNECT', actions: ['incomingCallDisconnect']},
     },
-    entry: ['initiateCallPark'],
+  },
+  S_CALL_RESUME: {
+    on: {
+      E_CALL_ESTABLISHED: {target: 'S_CALL_ESTABLISHED', actions: ['callEstablished']},
+      E_RECV_CALL_DISCONNECT: {target: 'S_RECV_CALL_DISCONNECT', actions: ['incomingCallDisconnect']},
+    },
   },
 }
 ```
@@ -359,7 +450,9 @@ states: {
 ```typescript
 actions: {
   // ... existing actions ...
-  initiateCallPark: (context, event: CallEvent) => this.handleCallPark(event),
+  initiateCallHold: (context, event: CallEvent) => this.handleCallHold(event),
+  initiateCallResume: (context, event: CallEvent) => this.handleCallResume(event),
+  incomingCallDisconnect: (context, event: CallEvent) => this.handleCallDisconnect(event),
 }
 ```
 

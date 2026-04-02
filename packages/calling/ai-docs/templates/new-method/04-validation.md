@@ -61,7 +61,7 @@
 ```typescript
 log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
   file: CALL_FILE,
-  method: METHODS.PARK_CALL,
+  method: METHODS.HANDLE_CALL_HOLD,
 });
 ```
 
@@ -69,21 +69,21 @@ log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
 
 ```typescript
 // WRONG: No context object
-log.info('Starting parkCall');
+log.info('Starting hold operation');
 
 // WRONG: String literals instead of constants
-log.info('Starting parkCall', {file: 'call', method: 'parkCall'});
+log.info('Starting hold operation', {file: 'call', method: 'handleCallHold'});
 
 // WRONG: Using console instead of Logger module
-console.log('Starting parkCall');
+console.log('Starting hold operation');
 
 // WRONG: Using LoggerProxy (that is the contact-center SDK pattern, not calling)
-LoggerProxy.logger.info('Starting parkCall');
+LoggerProxy.logger.info('Starting hold operation');
 ```
 
 ### Error Logging Level Guide
 
-Use the correct log level for each situation:
+Use the correct log level for each situation (summary below; canonical guidance lives in `../../patterns/typescript-patterns.md`):
 
 | Level | Usage | Example |
 |---|---|---|
@@ -99,9 +99,10 @@ Use the correct log level for each situation:
 
 ```typescript
 // Success metric
+const actionName = METHODS.HANDLE_CALL_HOLD;
 this.metricManager.submitCallMetric(
   METRIC_EVENT.CALL,
-  'parkCall',                    // action string
+  actionName,                    // action constant/variable
   METRIC_TYPE.BEHAVIORAL,
   this.getCallId(),
   this.getCorrelationId(),
@@ -118,11 +119,11 @@ this.submitCallErrorMetric(callError);
 // WRONG: Using getMetricManager() inside Call class (it has this.metricManager)
 getMetricManager().submitCallMetric(...);
 
-// WRONG: String literal instead of METRIC_EVENT enum
-this.metricManager.submitCallMetric('web-calling-sdk-callcontrol', ...);
+// WRONG: Using method constant where METRIC_EVENT enum is expected
+this.metricManager.submitCallMetric(METRIC_EVENT.CALL, METHODS.HANDLE_CALL_HOLD, METRIC_TYPE.BEHAVIORAL, ...);
 
-// WRONG: Missing callId or correlationId
-this.metricManager.submitCallMetric(METRIC_EVENT.CALL, 'parkCall', METRIC_TYPE.BEHAVIORAL);
+// WRONG: Hardcoded action string and missing callId/correlationId
+this.metricManager.submitCallMetric(METRIC_EVENT.CALL, 'doHoldResume', METRIC_TYPE.BEHAVIORAL);
 ```
 
 > **Note**: `getMetricManager()` is used in utility functions (e.g., `src/common/Utils.ts`) that do not have a class instance. Inside class methods that have `this.metricManager`, always use the instance property.
@@ -136,14 +137,14 @@ catch (e) {
   // 1. Log the error
   log.error(`Failed to park call: ${JSON.stringify(e)}`, {
     file: CALL_FILE,
-    method: METHODS.PARK_CALL,
+    method: METHODS.HANDLE_CALL_HOLD,
   });
 
   // 2. Create typed error
   const errData = e as MobiusCallResponse;
   const callError = createCallError(
     'An error occurred while parking the call. Wait a moment and try again.',
-    {file: CALL_FILE, method: METHODS.PARK_CALL} as ErrorContext,
+    {file: CALL_FILE, method: METHODS.HANDLE_CALL_HOLD} as ErrorContext,
     ERROR_TYPE.CALL_ERROR,
     this.getCorrelationId(),
     ERROR_LAYER.CALL_CONTROL
@@ -153,14 +154,14 @@ catch (e) {
   this.submitCallErrorMetric(callError);
 
   // 4. Emit error event to consumer
-  this.emit(CALL_EVENT_KEYS.PARK_ERROR, callError);
+  this.emit(CALL_EVENT_KEYS.HOLD_ERROR, callError);
 
   // 5. Recover state machine (if applicable)
   this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED', data: errData});
 }
 ```
 
-**Incorrect** -- Incomplete error handling:
+**Common mistakes**:
 
 ```typescript
 // WRONG: Swallowing the error
@@ -176,7 +177,7 @@ catch (e) {
 // WRONG: Missing metric submission
 catch (e) {
   const callError = createCallError(...);
-  this.emit(CALL_EVENT_KEYS.PARK_ERROR, callError);
+  this.emit(CALL_EVENT_KEYS.HOLD_ERROR, callError);
   // Forgot: this.submitCallErrorMetric(callError);
 }
 
@@ -184,7 +185,7 @@ catch (e) {
 catch (e) {
   const callError = createCallError(...);
   this.submitCallErrorMetric(callError);
-  // Forgot: this.emit(CALL_EVENT_KEYS.PARK_ERROR, callError);
+  // Forgot: this.emit(CALL_EVENT_KEYS.HOLD_ERROR, callError);
 }
 ```
 
@@ -198,21 +199,22 @@ For methods that need to map HTTP status codes to specific error types, use the 
 catch (e) {
   log.error(`Failed to park call: ${JSON.stringify(e)}`, {
     file: CALL_FILE,
-    method: METHODS.PARK_CALL,
+    method: METHODS.HANDLE_CALL_HOLD,
   });
   const errData = e as MobiusCallResponse;
 
   handleCallErrors(
     (error: CallError) => {
-      this.emit(CALL_EVENT_KEYS.PARK_ERROR, error);
+      this.emit(CALL_EVENT_KEYS.HOLD_ERROR, error);
       this.submitCallErrorMetric(error);
       this.sendCallStateMachineEvt({type: 'E_CALL_ESTABLISHED', data: errData});
     },
     ERROR_LAYER.CALL_CONTROL,
-    /* istanbul ignore next */ (interval: number) => undefined,
+    // For docs/examples, prefer explicit callback over test-coverage pragmas.
+    (interval: number) => undefined,
     this.getCorrelationId(),
     errData,
-    METHODS.PARK_CALL,
+    METHODS.HANDLE_CALL_HOLD,
     CALL_FILE
   );
 }

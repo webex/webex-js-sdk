@@ -2,6 +2,8 @@
 
 Generate the module files based on the specification gathered in `01-pre-questions.md`. Follow the file structure for the chosen placement type, then proceed through each step in order.
 
+> This file intentionally restates a subset of pattern rules as implementation-time guardrails so code generation can be executed without context switching between files.
+
 ---
 
 ## File Structure by Placement Type
@@ -60,7 +62,7 @@ Before defining any new types, check if they already exist:
 5. **Check `src/Logger/types.ts`** for `LOGGER` enum
 6. **Check `src/Metrics/types.ts`** for `IMetricManager`, `METRIC_EVENT`, `METRIC_TYPE`
 
-Only create new types that do not already exist in these shared locations.
+Only create new types that do not already exist in these shared locations. This complements pattern docs and prevents duplicate types during generation.
 
 ### Types Template
 

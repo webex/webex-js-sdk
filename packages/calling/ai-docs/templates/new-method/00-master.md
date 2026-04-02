@@ -7,7 +7,7 @@
 ## Use Cases
 
 Use this workflow when:
-- **Adding a new method** to an existing class (e.g., `parkCall` on `Call`, `getDeviceList` on `CallingClient`)
+- **Adding a new method** to an existing class (e.g., `doHoldResume` on `Call`, `getDeviceList` on `CallingClient`)
 - **Extending module capabilities** with a new public or private operation
 - **Adding a supplementary service** (hold, resume, transfer, park, etc.)
 
@@ -36,9 +36,9 @@ STOP and ask the developer questions before writing any code. Collect:
 
 Write the method following the calling SDK's established patterns:
 - Logger with `{ file, method }` context
-- MetricManager via `getMetricManager()` for success/failure metrics
+- MetricManager via `getMetricManager()` for success/failure and state/progress metrics where applicable
 - Error hierarchy (`ExtendedError` -> `CallError` / `LineError` / `CallingClientError`)
-- `Eventing<T>` base class for event emission
+- `Eventing<T>` base class for typed event emission (only if the class emits/subscribes to SDK events)
 - xstate state machine integration (if applicable)
 - Constants, types, and event keys in canonical locations
 

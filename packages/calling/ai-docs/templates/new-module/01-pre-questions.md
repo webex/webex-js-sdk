@@ -52,7 +52,11 @@ Endpoint 1: getRecordings
   Service: janus
   Request: query params only (date: string, limit: number)
   Response: { statusCode: number; data: { recordings: Recording[] }; message: string }
-  Errors: 400, 401, 404, 500
+  Errors:
+    400 - invalid date/limit input
+    401 - auth token missing/expired
+    404 - recordings resource not found for tenant/user
+    500 - server-side processing failure
 ```
 
 ---
@@ -66,7 +70,7 @@ If the module does NOT use events, the user may write "None" and skip this secti
 >
 > | Event Key | Direction | Payload Type | Description |
 > |-----------|-----------|-------------|-------------|
-> | `moduleName:event_name` | Outbound (to consumer) | `EventPayloadType` | When this fires |
+> | `moduleName:event_name` | Outbound (to consumer) | `EventPayloadType` | When is it fired |
 
 > **b) Does the module listen to Mercury WebSocket events?**
 > If yes, list each Mercury event key:
@@ -172,7 +176,7 @@ Endpoint 1: {methodName}
   Service:  {mobius|janus|hydra|...}
   Request:  {type shape}
   Response: {type shape}
-  Errors:   {status codes}
+  Errors:   {status code1} - {reason1}, {status code2} - {reason2}, ..., {status codeN} - {reasonN}
 
 [...repeat for each endpoint]
 

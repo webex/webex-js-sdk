@@ -14,17 +14,17 @@
    - e.g., `src/CallingClient/calling/call.ts`, `src/CallingClient/CallingClient.ts`, `src/CallingClient/line/index.ts`
 
 2. **"What is the method name?"** (must be camelCase)
-   - e.g., `parkCall`, `retrieveCall`, `sendDigit`
+   - e.g., `doHoldResume`, `retrieveCall`, `sendDigit`
 
 3. **"Describe what this method does in one or two sentences."**
-   - e.g., "Parks the current active call on a designated call park extension. The parked call can be retrieved by another user."
+   - e.g., "Toggles hold/resume for the current call and waits for Mobius mid-call confirmation events."
 
 ---
 
 ### 2. Method Signature (MANDATORY)
 
 4. **"What parameters does this method accept? Provide name and type for each."**
-   - e.g., `parkExtension: string`, `timeout?: number`
+   - e.g., `holdReason?: string`, `timeout?: number`
    - Are any parameters optional?
 
 5. **"What does this method return?"**
@@ -36,7 +36,7 @@
 ### 3. API Integration (MANDATORY if the method makes an API call, otherwise skip)
 
 6. **"What is the HTTP method and Mobius endpoint?"**
-   - e.g., `POST /calling/web/calls/{callId}/park`
+   - e.g., `POST /services/callhold/hold` or `POST /services/callhold/resume`
 
 7. **"What is the request body (if any)?"**
    - Provide the JSON shape or note "no request body"
@@ -60,7 +60,7 @@
 ### 4. Event Contract (MANDATORY if the method emits events to consumers, otherwise skip)
 
 10. **"What event key should be emitted on success?"**
-    - e.g., `CALL_EVENT_KEYS.PARKED`, `CALL_EVENT_KEYS.HELD`
+    - e.g., `CALL_EVENT_KEYS.HELD`, `CALL_EVENT_KEYS.RESUMED`
     - Does this need a new entry in `CALL_EVENT_KEYS` / `LINE_EVENT_KEYS` / `CALLING_CLIENT_EVENT_KEYS`?
 
 11. **"What is the event payload type?"**
@@ -172,48 +172,45 @@ Does this match your intent? (Yes / No / Adjust)
 
 ---
 
-## Example: parkCall on the Call class
+## Example: doHoldResume on the Call class
 
-Here is a concrete example of a completed spec for a hypothetical `parkCall` method:
+Here is a concrete example of a completed spec for `doHoldResume`:
 
 ```
 ## Spec Summary -- New Method
 
-**Method**: `parkCall` on `Call`
+**Method**: `doHoldResume` on `Call`
 **File**: `src/CallingClient/calling/call.ts`
-**Signature**: `parkCall(): void`
+**Signature**: `doHoldResume(): void`
 
 ### API Call:
-- HTTP: POST /calling/web/calls/{callId}/park
-- Request: none (callId is in the URL path)
+- HTTP: POST /services/callhold/hold OR POST /services/callhold/resume
+- Request: none (service inferred by current `held` state; call context from instance)
 - Success response: 200 OK with { statusCode: number }
 - Error codes: 404 (call not found), 408 (timeout), 500 (server error)
-- State change via: Mercury WebSocket event (callState: 'PARKED')
+- State change via: Mercury WebSocket event (`callState: 'HELD' | 'CONNECTED'`)
 
 ### Events:
-- Success: `CALL_EVENT_KEYS.PARKED` with payload `(callId: CallId) => void`
-- Error: `CALL_EVENT_KEYS.PARK_ERROR` with payload `(error: CallError) => void`
-- Trigger: Deferred — success event emitted when Mercury WS delivers callState 'PARKED'
+- Success: `CALL_EVENT_KEYS.HELD` and `CALL_EVENT_KEYS.RESUMED` with payload `(callId: CallId) => void`
+- Error: `CALL_EVENT_KEYS.HOLD_ERROR` / `CALL_EVENT_KEYS.RESUME_ERROR` with payload `(error: CallError) => void`
+- Trigger: Deferred — success event emitted when Mercury WS delivers `HELD` or `CONNECTED`
 
 ### Metrics:
 - Success: `METRIC_EVENT.CALL` via `submitCallMetric` (type: BEHAVIORAL)
 - Failure: `METRIC_EVENT.CALL_ERROR` via `submitCallMetric` (type: BEHAVIORAL)
 
 ### Behavior:
-- Happy path: User calls parkCall() -> POST to Mobius -> 200 OK -> Mercury WS delivers
-  callState 'PARKED' -> emit PARKED event to consumer -> submit CALL metric
+- Happy path: User calls doHoldResume() -> state machine sends hold/resume request -> 200 OK -> Mercury WS delivers
+  `HELD` or `CONNECTED` -> emit `HELD`/`RESUMED` -> submit CALL metric
 - Error path: POST fails -> log error -> create CallError -> submit CALL_ERROR metric
-  -> emit PARK_ERROR event -> send state machine back to E_CALL_ESTABLISHED
-- Edge cases: Call not in connected state (reject), parkCall called during hold
-  (reject with error), supplementary services timeout (emit PARK_ERROR after 10s)
+  -> emit HOLD_ERROR/RESUME_ERROR -> send state machine back to E_CALL_ESTABLISHED
+- Edge cases: hold/resume timeout (emit HOLD_ERROR/RESUME_ERROR after 10s), remote disconnect while pending
 
 ### Constants & Types to add:
-- `METHODS.PARK_CALL = 'parkCall'` in `src/CallingClient/constants.ts`
-- `SUPPLEMENTARY_SERVICES.PARK` already exists in `src/Events/types.ts`
-- `CALL_EVENT_KEYS.PARKED = 'parked'` in `src/Events/types.ts`
-- `CALL_EVENT_KEYS.PARK_ERROR = 'park_error'` in `src/Events/types.ts`
-- Add `parkCall(): void` to `ICall` interface in `src/CallingClient/calling/types.ts`
-- Add event handler types to `CallEventTypes` in `src/Events/types.ts`
+- No new constants/types required if reusing existing hold/resume paths:
+  - `METHODS.HANDLE_CALL_HOLD`, `METHODS.HANDLE_CALL_RESUME`
+  - `SUPPLEMENTARY_SERVICES.HOLD`, `SUPPLEMENTARY_SERVICES.RESUME`
+  - `CALL_EVENT_KEYS.HELD`, `CALL_EVENT_KEYS.RESUMED`, `CALL_EVENT_KEYS.HOLD_ERROR`, `CALL_EVENT_KEYS.RESUME_ERROR`
 
 ---
 Does this match your intent? (Yes / No / Adjust)

@@ -8,6 +8,8 @@ Wire the newly created module into the `@webex/calling` package so it is accessi
 
 This is the most common path. Used by CallHistory, CallSettings, Contacts, and Voicemail.
 
+Use the exposure and event decisions already captured in `01-pre-questions.md` as source-of-truth while performing this step.
+
 ### A1. Export from `src/api.ts`
 
 Add the module's exports to `src/api.ts` following the existing grouped pattern:
@@ -83,6 +85,7 @@ Add Mercury event keys to the `MOBIUS_EVENT_KEYS` enum in `src/Events/types.ts`:
 export enum MOBIUS_EVENT_KEYS {
   // ... existing keys ...
   MODULE_NAME_EVENT = 'event:janus.module_name_event',
+  MODULE_NAME_MOBIUS_EVENT = 'event:mobius.module_name_event',
 }
 ```
 
