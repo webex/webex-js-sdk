@@ -62,14 +62,21 @@ export default {
      * @type {boolean}
      */
     energyForecast: false,
-  },
 
-  /**
-   * installationId is used exclusively as web client for fraud prevention,
-   * and is aliased to as machineId by CA.
-   *
-   * @alias device.machineId
-   * @type {string}
-   */
-  installationId: undefined,
+    /**
+     * debugFeatureTogglesKey
+     * The session storage key for debug feature toggles
+     * @type {string}
+     */
+    debugFeatureTogglesKey: undefined,
+
+    /**
+     * installationId is used exclusively as web client for fraud prevention,
+     * and is aliased to as machineId by CA.
+     *
+     * @alias device.machineId
+     * @type {string}
+     */
+    installationId: undefined,
+  },
 };
