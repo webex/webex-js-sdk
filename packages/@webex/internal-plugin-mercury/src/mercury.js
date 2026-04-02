@@ -828,6 +828,9 @@ const Mercury = WebexPlugin.extend({
   },
 
   _getEventHandlers(eventType) {
+    if (!eventType) {
+      return [];
+    }
     const [namespace, name] = eventType.split('.');
     const handlers = [];
 
@@ -996,6 +999,12 @@ const Mercury = WebexPlugin.extend({
     const {data} = envelope;
 
     this._applyOverrides(data);
+
+    if (!data || !data.eventType) {
+      this._emit(sessionId, 'event', envelope);
+
+      return Promise.resolve();
+    }
 
     return this._getEventHandlers(data.eventType)
       .reduce(

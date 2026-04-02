@@ -1174,6 +1174,111 @@ describe('plugin-mercury', () => {
         });
       });
 
+      describe('#_onmessage() with missing data or eventType', () => {
+        beforeEach(() => {
+          sinon.stub(mercury, '_emit');
+          sinon.stub(mercury, '_setTimeOffset');
+          sinon.stub(mercury, '_applyOverrides');
+        });
+
+        afterEach(() => {
+          mercury._emit.restore();
+          mercury._setTimeOffset.restore();
+          mercury._applyOverrides.restore();
+        });
+
+        it('should not throw when envelope.data is undefined', () => {
+          const event = {
+            data: {
+              type: 'someType',
+              // no nested data property
+            },
+          };
+
+          const result = mercury._onmessage(mercury.defaultSessionId, event);
+
+          assert.instanceOf(result, Promise);
+          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'event', event.data);
+        });
+
+        it('should not throw when data.eventType is undefined', () => {
+          const event = {
+            data: {
+              type: 'someType',
+              data: {
+                // no eventType property
+                someField: 'value',
+              },
+            },
+          };
+
+          const result = mercury._onmessage(mercury.defaultSessionId, event);
+
+          assert.instanceOf(result, Promise);
+          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'event', event.data);
+        });
+
+        it('should emit generic event for messages without eventType (e.g. subscription responses)', () => {
+          const event = {
+            data: {
+              id: 'msg-123',
+              sequenceNumber: 5,
+              data: {
+                statusCode: 200,
+              },
+            },
+          };
+
+          const result = mercury._onmessage(mercury.defaultSessionId, event);
+
+          assert.instanceOf(result, Promise);
+          assert.calledOnce(mercury._emit);
+          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'event', event.data);
+        });
+
+        it('should still process messages with a valid eventType', () => {
+          const event = {
+            data: {
+              data: {
+                eventType: 'conversation.activity',
+              },
+            },
+          };
+
+          mercury._onmessage(mercury.defaultSessionId, event);
+
+          // Should NOT early-return — _emit should be called via the normal flow (not the guard)
+          // The first call would be from the .then() block, not the early return
+          assert.neverCalledWith(mercury._emit, mercury.defaultSessionId, 'event', event.data);
+        });
+      });
+
+      describe('#_getEventHandlers()', () => {
+        it('should return an empty array when eventType is undefined', () => {
+          const result = mercury._getEventHandlers(undefined);
+
+          assert.deepEqual(result, []);
+        });
+
+        it('should return an empty array when eventType is null', () => {
+          const result = mercury._getEventHandlers(null);
+
+          assert.deepEqual(result, []);
+        });
+
+        it('should return an empty array when eventType is an empty string', () => {
+          const result = mercury._getEventHandlers('');
+
+          assert.deepEqual(result, []);
+        });
+
+        it('should return an empty array when namespace is not registered', () => {
+          const result = mercury._getEventHandlers('unknownNamespace.someEvent');
+
+          assert.deepEqual(result, []);
+        });
+      });
+
       describe('#_onclose() with code 4001 (shutdown replacement)', () => {
         let mockSocket, anotherSocket;
 
