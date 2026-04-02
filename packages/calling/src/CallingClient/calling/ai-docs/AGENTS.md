@@ -1,4 +1,4 @@
-# Calling Sub-Module - Agent Guide
+# Call Management Sub-Module - Agent Specification
 
 ## Overview
 
@@ -13,8 +13,7 @@ The `calling/` sub-module within `CallingClient` contains the core call manageme
 
 ### 2. Mobius Event Intake and Routing
 - Subscribes to `event:mobius` via `SDKConnector` and processes signaling/media events.
-- Uses `mobiusEvent.data.eventType` to match and route by `MobiusEventType`.
-- Routes each event to the correct `Call` object based on `correlationId` and `callId` matching. 
+- Routes each event to the correct `Call` object based on `correlationId` and `callId` matching.
 - Handles out-of-order event scenarios (for example, media before setup) safely.
 
 ### 3. Signaling and Media State Machine Coordination
@@ -79,8 +78,7 @@ All paths are relative to `CallingClient/calling/` (the directory containing `ca
 `CallManager` is a **singleton** that serves as the central hub for all call-related operations. It:
 - Maintains the collection of active `Call` objects keyed by `correlationId`
 - Listens for Mobius WebSocket events (`event:mobius`) via the `SDKConnector`
-- Uses a `switch` on `mobiusEvent.data.eventType` to match and route each event path
-- Each incoming Mobius events are matched with the correct `Call` instance
+- Routes incoming Mobius events to the correct `Call` instance
 - Creates new `Call` objects for incoming calls
 - Emits `ALL_CALLS_CLEARED` when the last call is removed from the collection
 - Emits `INCOMING_CALL` to signal the Line about new incoming calls
@@ -127,6 +125,7 @@ interface ICallManager extends Eventing<CallEventTypes> {
 
 | Method | Signature | Scope | Purpose |
 |--------|-----------|-------|---------|
+| `constructor` | `constructor(webex: WebexSDK, indicator: ServiceIndicator)` | Public | Initializes manager state, connector references, and Mobius listener registration |
 | `createCall` | `createCall(direction: CallDirection, deviceId: string, lineId: string, destination?: CallDetails): ICall` | Public | Creates a `Call` instance, stores it in `callCollection`, and wires delete callback |
 | `getCall` | `getCall(correlationId: CorrelationId): ICall` | Public | Returns the active call for a correlation ID |
 | `getActiveCalls` | `getActiveCalls(): Record<string, ICall>` | Public | Returns the current active call map |
@@ -170,9 +169,6 @@ This `ALL_CALLS_CLEARED` event is consumed by `CallingClient` to trigger deferre
 ---
 
 ## Call
-
-This section documents the per-call execution unit in the CallingClient stack.  
-Each `Call` instance owns call lifecycle state, media negotiation, supplementary services, and app-facing event emission for a single `correlationId`.
 
 ### Purpose
 
@@ -391,8 +387,8 @@ These are internal methods on the `Call` class. They are not exposed via `ICall`
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `scheduleCallKeepaliveInterval` | `private scheduleCallKeepaliveInterval = (): void` | Schedules periodic `postStatus()` call to Mobius |
-| `callKeepaliveRetryCallback` | `private callKeepaliveRetryCallback = (interval: number): void` | Retries keepalive POST after error with given interval, and aborts retry scheduling after max retry count |
-| `handleCallKeepaliveError` | `private handleCallKeepaliveError = async (err: unknown): Promise<void>` | Handles keepalive errors; disconnect transition is only sent when `handleCallErrors(...)` returns `abort=true` |
+| `callKeepaliveRetryCallback` | `private callKeepaliveRetryCallback = (interval: number): void` | Retries keepalive POST after error with given interval |
+| `handleCallKeepaliveError` | `private handleCallKeepaliveError = async (err: unknown): Promise<void>` | Handles keepalive errors, increments retry count, force-disconnects after max retries |
 
 ### Call Events Emitted
 
@@ -444,8 +440,6 @@ CallerIdInfo received
 ```
 
 ### DisplayInformation Type
-
-`DisplayInformation` is the normalized caller identity model used by `Call` events and UI consumers.
 
 ```typescript
 type DisplayInformation = {

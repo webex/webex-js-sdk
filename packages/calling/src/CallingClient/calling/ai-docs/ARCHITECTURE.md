@@ -1,17 +1,18 @@
-# Calling Sub-module - Architecture
+# Calling Sub-module - Architecture Specification
 
 ## Component Overview
 
-The calling sub-module is organized around one manager (`CallManager`) and per-call executors (`Call`).  
-`CallManager` handles event intake/routing and active call tracking, while each `Call` owns signaling/media state, backend API operations (Mobius), and event emission.  
+The Calling sub-module is organized around one manager (`CallManager`) and per-call executors (`Call`).  
+`CallManager` handles event intake/routing and active call tracking, while each `Call` owns signaling/media state, backend signaling API operations, and event emission.  
 `CallerId` is a focused helper used by `Call` for caller identity resolution and incremental updates.
+In this document, **Mobius** refers to the backend signaling/control service used by the calling stack.
 
 ### Component Responsibilities
 
 | Component | Primary Responsibility | Key Interactions |
 |-----------|------------------------|------------------|
-| `CallManager` | Owns active call collection and routes backend events | `SDKConnector` (`event:mobius`), `Call`, `Line` |
-| `Call` | Single-call executor for lifecycle operations and state machines | `Mobius` REST APIs, `RoapMediaConnection`, `CallerId`, app listeners |
+| `CallManager` | Owns active call collection, resolves/routes backend events | `SDKConnector` (`event:mobius`), `Call`, `Line` |
+| `Call` | Executes call lifecycle operations and state machines | Backend signaling service (`Mobius`) REST APIs, `RoapMediaConnection`, `CallerId`, app listeners |
 | `CallerId` | Resolves display identity from headers + SCIM enrichment | `Call` callback emitter, shared identity utilities |
 | `Call State Machine` | Signaling transitions and call control actions | `Call` handlers (`setup`, `connect`, `disconnect`, `hold/resume`) |
 | `Media ROAP State Machine` | ROAP negotiation transitions (`OFFER/ANSWER/OK/ERROR`) | `Call` ROAP handlers, `RoapMediaConnection`, Mobius media API |
@@ -166,59 +167,59 @@ stateDiagram-v2
     S_IDLE --> S_UNKNOWN: E_UNKNOWN / unknownState
 
     S_RECV_CALL_SETUP --> S_SEND_CALL_PROGRESS: E_SEND_CALL_ALERTING / outgoingCallAlerting
-    S_RECV_CALL_SETUP --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
-    S_RECV_CALL_SETUP --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
-    S_RECV_CALL_SETUP --> S_UNKNOWN: E_UNKNOWN
+    S_RECV_CALL_SETUP --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT / incomingCallDisconnect
+    S_RECV_CALL_SETUP --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT / outgoingCallDisconnect
+    S_RECV_CALL_SETUP --> S_UNKNOWN: E_UNKNOWN / unknownState
     S_RECV_CALL_SETUP --> S_CALL_CLEARED: timeout 10000ms
 
     S_SEND_CALL_SETUP --> S_RECV_CALL_PROGRESS: E_RECV_CALL_PROGRESS / incomingCallProgress
     S_SEND_CALL_SETUP --> S_RECV_CALL_CONNECT: E_RECV_CALL_CONNECT / incomingCallConnect
-    S_SEND_CALL_SETUP --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
-    S_SEND_CALL_SETUP --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
-    S_SEND_CALL_SETUP --> S_UNKNOWN: E_UNKNOWN
+    S_SEND_CALL_SETUP --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT / incomingCallDisconnect
+    S_SEND_CALL_SETUP --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT / outgoingCallDisconnect
+    S_SEND_CALL_SETUP --> S_UNKNOWN: E_UNKNOWN / unknownState
     S_SEND_CALL_SETUP --> S_CALL_CLEARED: timeout 10000ms
 
-    S_RECV_CALL_PROGRESS --> S_RECV_CALL_CONNECT: E_RECV_CALL_CONNECT
-    S_RECV_CALL_PROGRESS --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
-    S_RECV_CALL_PROGRESS --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
-    S_RECV_CALL_PROGRESS --> S_RECV_CALL_PROGRESS: E_RECV_CALL_PROGRESS
-    S_RECV_CALL_PROGRESS --> S_UNKNOWN: E_UNKNOWN
+    S_RECV_CALL_PROGRESS --> S_RECV_CALL_CONNECT: E_RECV_CALL_CONNECT / incomingCallConnect
+    S_RECV_CALL_PROGRESS --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT / incomingCallDisconnect
+    S_RECV_CALL_PROGRESS --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT / outgoingCallDisconnect
+    S_RECV_CALL_PROGRESS --> S_RECV_CALL_PROGRESS: E_RECV_CALL_PROGRESS / incomingCallProgress
+    S_RECV_CALL_PROGRESS --> S_UNKNOWN: E_UNKNOWN / unknownState
     S_RECV_CALL_PROGRESS --> S_CALL_CLEARED: timeout 60000ms
 
     S_SEND_CALL_PROGRESS --> S_SEND_CALL_CONNECT: E_SEND_CALL_CONNECT / outgoingCallConnect
-    S_SEND_CALL_PROGRESS --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
-    S_SEND_CALL_PROGRESS --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
-    S_SEND_CALL_PROGRESS --> S_UNKNOWN: E_UNKNOWN
+    S_SEND_CALL_PROGRESS --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT / incomingCallDisconnect
+    S_SEND_CALL_PROGRESS --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT / outgoingCallDisconnect
+    S_SEND_CALL_PROGRESS --> S_UNKNOWN: E_UNKNOWN / unknownState
     S_SEND_CALL_PROGRESS --> S_CALL_CLEARED: timeout 60000ms
 
     S_RECV_CALL_CONNECT --> S_CALL_ESTABLISHED: E_CALL_ESTABLISHED / callEstablished
-    S_RECV_CALL_CONNECT --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
-    S_RECV_CALL_CONNECT --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
-    S_RECV_CALL_CONNECT --> S_UNKNOWN: E_UNKNOWN
+    S_RECV_CALL_CONNECT --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT / incomingCallDisconnect
+    S_RECV_CALL_CONNECT --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT / outgoingCallDisconnect
+    S_RECV_CALL_CONNECT --> S_UNKNOWN: E_UNKNOWN / unknownState
     S_RECV_CALL_CONNECT --> S_CALL_CLEARED: timeout 10000ms
 
     S_SEND_CALL_CONNECT --> S_CALL_ESTABLISHED: E_CALL_ESTABLISHED / callEstablished
-    S_SEND_CALL_CONNECT --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
-    S_SEND_CALL_CONNECT --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
-    S_SEND_CALL_CONNECT --> S_UNKNOWN: E_UNKNOWN
+    S_SEND_CALL_CONNECT --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT / incomingCallDisconnect
+    S_SEND_CALL_CONNECT --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT / outgoingCallDisconnect
+    S_SEND_CALL_CONNECT --> S_UNKNOWN: E_UNKNOWN / unknownState
     S_SEND_CALL_CONNECT --> S_CALL_CLEARED: timeout 10000ms
 
     S_CALL_ESTABLISHED --> S_CALL_HOLD: E_CALL_HOLD / initiateCallHold
     S_CALL_ESTABLISHED --> S_CALL_RESUME: E_CALL_RESUME / initiateCallResume
-    S_CALL_ESTABLISHED --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
-    S_CALL_ESTABLISHED --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
+    S_CALL_ESTABLISHED --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT / incomingCallDisconnect
+    S_CALL_ESTABLISHED --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT / outgoingCallDisconnect
     S_CALL_ESTABLISHED --> S_CALL_ESTABLISHED: E_CALL_ESTABLISHED
-    S_CALL_ESTABLISHED --> S_UNKNOWN: E_UNKNOWN
+    S_CALL_ESTABLISHED --> S_UNKNOWN: E_UNKNOWN / unknownState
 
-    S_CALL_HOLD --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
-    S_CALL_HOLD --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
+    S_CALL_HOLD --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT / incomingCallDisconnect
+    S_CALL_HOLD --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT / outgoingCallDisconnect
     S_CALL_HOLD --> S_CALL_ESTABLISHED: E_CALL_ESTABLISHED / callEstablished
-    S_CALL_HOLD --> S_UNKNOWN: E_UNKNOWN
+    S_CALL_HOLD --> S_UNKNOWN: E_UNKNOWN / unknownState
 
-    S_CALL_RESUME --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT
-    S_CALL_RESUME --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT
+    S_CALL_RESUME --> S_RECV_CALL_DISCONNECT: E_RECV_CALL_DISCONNECT / incomingCallDisconnect
+    S_CALL_RESUME --> S_SEND_CALL_DISCONNECT: E_SEND_CALL_DISCONNECT / outgoingCallDisconnect
     S_CALL_RESUME --> S_CALL_ESTABLISHED: E_CALL_ESTABLISHED / callEstablished
-    S_CALL_RESUME --> S_UNKNOWN: E_UNKNOWN
+    S_CALL_RESUME --> S_UNKNOWN: E_UNKNOWN / unknownState
 
     S_RECV_CALL_DISCONNECT --> S_CALL_CLEARED: E_CALL_CLEARED
     S_SEND_CALL_DISCONNECT --> S_CALL_CLEARED: E_CALL_CLEARED
@@ -278,21 +279,21 @@ stateDiagram-v2
     S_SEND_ROAP_ANSWER --> S_RECV_ROAP_OFFER_REQUEST: E_RECV_ROAP_OFFER_REQUEST / incomingRoapOfferRequest
     S_SEND_ROAP_ANSWER --> S_RECV_ROAP_OFFER: E_RECV_ROAP_OFFER / incomingRoapOffer
     S_SEND_ROAP_ANSWER --> S_ROAP_OK: E_ROAP_OK / roapEstablished
-    S_SEND_ROAP_ANSWER --> S_SEND_ROAP_ANSWER: E_SEND_ROAP_ANSWER
+    S_SEND_ROAP_ANSWER --> S_SEND_ROAP_ANSWER: E_SEND_ROAP_ANSWER / outgoingRoapAnswer
     S_SEND_ROAP_ANSWER --> S_ROAP_ERROR: E_ROAP_ERROR / roapError
 
     S_ROAP_OK --> S_RECV_ROAP_OFFER_REQUEST: E_RECV_ROAP_OFFER_REQUEST / incomingRoapOfferRequest
     S_ROAP_OK --> S_RECV_ROAP_OFFER: E_RECV_ROAP_OFFER / incomingRoapOffer
-    S_ROAP_OK --> S_ROAP_OK: E_ROAP_OK
-    S_ROAP_OK --> S_SEND_ROAP_OFFER: E_SEND_ROAP_OFFER / renegotiation
-    S_ROAP_OK --> S_ROAP_ERROR: E_ROAP_ERROR
+    S_ROAP_OK --> S_ROAP_OK: E_ROAP_OK / roapEstablished
+    S_ROAP_OK --> S_SEND_ROAP_OFFER: E_SEND_ROAP_OFFER / outgoingRoapOffer
+    S_ROAP_OK --> S_ROAP_ERROR: E_ROAP_ERROR / roapError
     S_ROAP_OK --> S_ROAP_TEARDOWN: E_ROAP_TEARDOWN
 
     S_ROAP_ERROR --> S_ROAP_TEARDOWN: E_ROAP_TEARDOWN
-    S_ROAP_ERROR --> S_RECV_ROAP_OFFER_REQUEST: E_RECV_ROAP_OFFER_REQUEST
-    S_ROAP_ERROR --> S_RECV_ROAP_OFFER: E_RECV_ROAP_OFFER
-    S_ROAP_ERROR --> S_RECV_ROAP_ANSWER: E_RECV_ROAP_ANSWER
-    S_ROAP_ERROR --> S_ROAP_OK: E_ROAP_OK
+    S_ROAP_ERROR --> S_RECV_ROAP_OFFER_REQUEST: E_RECV_ROAP_OFFER_REQUEST / incomingRoapOfferRequest
+    S_ROAP_ERROR --> S_RECV_ROAP_OFFER: E_RECV_ROAP_OFFER / incomingRoapOffer
+    S_ROAP_ERROR --> S_RECV_ROAP_ANSWER: E_RECV_ROAP_ANSWER / incomingRoapAnswer
+    S_ROAP_ERROR --> S_ROAP_OK: E_ROAP_OK / roapEstablished
 
     S_ROAP_TEARDOWN --> [*]
 ```
@@ -372,12 +373,13 @@ This module has two event layers:
 | `Mobius CALL_DISCONNECTED` | `mobius.calldisconnected` | `CallManager.dequeueWsEvents()` -> `E_RECV_CALL_DISCONNECT` | Start disconnect cleanup |
 | `MediaConnection` | `ROAP_MESSAGE_TO_SEND` | `Call.mediaRoapEventsListener()` | Publish local ROAP back to Mobius (`postMedia`) |
 | `MediaConnection` | `REMOTE_TRACK_ADDED` | `Call.mediaTrackListener()` | Emit remote media track to app |
-| `LocalMicrophoneStream` | `OutputTrackChange`, `EffectAdded` | `Call.registerListeners()` | Keep media/effect state synchronized; effect enabled/disabled handlers are attached by `registerEffectListener()` |
+| `LocalMicrophoneStream` | `OutputTrackChange`, `EffectAdded` | `Call.registerListeners()` | Keep media/effect state synchronized (`EffectAdded` registers per-effect `Enabled/Disabled` listeners) |
 
 ### 2) Events Emitted By Call Object
 
 | Event Key | Payload | Emitted When |
 |-----------|---------|--------------|
+| `CALL_EVENT_KEYS.ALERTING` | `correlationId` | Remote side is alerting |
 | `CALL_EVENT_KEYS.PROGRESS` | `correlationId` | Progress/proceeding signaling received |
 | `CALL_EVENT_KEYS.CONNECT` | `correlationId` | Call connected signaling received |
 | `CALL_EVENT_KEYS.ESTABLISHED` | `correlationId` | Signaling + media negotiation complete |
@@ -596,7 +598,7 @@ flowchart TD
 
     E --> K[registerListeners localAudioStream]
     K --> L[Subscribe EFFECT_ADDED to registerEffectListener]
-    L --> M[registerEffectListener wires Effect.Enabled and Effect.Disabled handlers for noise reduction]
+    L --> M[registerEffectListener binds Effect.Enabled and Effect.Disabled handlers]
 ```
 
 ### SDP Processing
@@ -756,8 +758,7 @@ Keepalive is active while the call is established. A session timer triggers peri
 - On each tick, `Call` sends `POST /devices/{deviceId}/calls/{callId}/status`.
 - Success resets keepalive retry tracking and schedules the next keepalive cycle.
 - Failure increments `callKeepaliveRetryCount` and schedules retry via `RetryCallBack`.
-- Keepalive retry stops once `callKeepaliveRetryCount` reaches max (`4`).
-- Disconnect transition is triggered only when keepalive error handling returns `abort=true` (for example, non-retriable auth/not-found paths).
+- After max retries (4), the call is force-disconnected by sending `E_SEND_CALL_DISCONNECT`.
 
 ```mermaid
 sequenceDiagram
@@ -776,11 +777,12 @@ sequenceDiagram
         else Keepalive failure
             Mobius-->>Call: error/timeout
             Call->>Call: callKeepaliveRetryCount += 1
-            alt retries < max
+            alt retries <= 4
                 Call->>Call: retryCallback(nextInterval)
                 Call->>Mobius: retry POST /status
-            else retries reached max
-                Call->>Call: stop scheduling further keepalive retries
+            else retries exceeded
+                Call->>Call: sendCallStateMachineEvt(E_SEND_CALL_DISCONNECT)
+                Call->>Call: transition to disconnect flow
             end
         end
     end
@@ -1103,7 +1105,7 @@ All constants are imported from `../constants` (`CallingClient/constants.ts`).
 |----------|-------|-------------|
 | `DEFAULT_SESSION_TIMER` | `600000` (10 minutes) | Keepalive interval after call establishment |
 | `SUPPLEMENTARY_SERVICES_TIMEOUT` | `10000` (10 seconds) | Timeout for hold/resume mid-call response |
-| `MAX_CALL_KEEPALIVE_RETRY_COUNT` | `4` | Maximum keepalive retries before retry scheduling is aborted |
+| `MAX_CALL_KEEPALIVE_RETRY_COUNT` | `4` | Maximum keepalive retries before force disconnect |
 | `INITIAL_SEQ_NUMBER` | `1` | Starting ROAP sequence number |
 | `DEVICES_ENDPOINT_RESOURCE` | `'devices'` | URL path segment |
 | `CALL_ENDPOINT_RESOURCE` | `'call'` | URL path segment (singular, for POST) |
