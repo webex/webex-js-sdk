@@ -70,6 +70,7 @@ export default class Reachability extends EventsScope {
   startTime = undefined;
   totalDuration = undefined;
   natType = NatType.Unknown;
+  private reachabilityDoneEmitted = false;
 
   protected lastTrigger?: string;
 
@@ -818,15 +819,19 @@ export default class Reachability extends EventsScope {
     this.overallTimer = setTimeout(() => {
       this.overallTimer = undefined;
       this.abortClusterReachability();
-      this.emit(
-        {
-          file: 'reachability',
-          function: 'overallTimer timeout',
-        },
-        'reachability:done',
-        {}
-      );
-      this.sendMetric();
+      // Guard: abort may have triggered resultReady events that already emitted reachability:done
+      if (!this.reachabilityDoneEmitted) {
+        this.reachabilityDoneEmitted = true;
+        this.emit(
+          {
+            file: 'reachability',
+            function: 'overallTimer timeout',
+          },
+          'reachability:done',
+          {}
+        );
+        this.sendMetric();
+      }
 
       LoggerProxy.logger.log(
         `Reachability:index#startTimers --> Reachability checks fully timed out (${OVERALL_TIMEOUT}s)`
@@ -915,6 +920,7 @@ export default class Reachability extends EventsScope {
     );
 
     this.resetResultCounters();
+    this.reachabilityDoneEmitted = false;
 
     // sanitize the urls in the clusterList
     Object.keys(clusterList).forEach((key) => {
@@ -968,6 +974,7 @@ export default class Reachability extends EventsScope {
       // nothing to do, finish immediately
       this.resolveReachabilityPromise(false);
 
+      this.reachabilityDoneEmitted = true;
       this.emit(
         {
           file: 'reachability',
@@ -1054,6 +1061,7 @@ export default class Reachability extends EventsScope {
           await this.storeResults(results);
 
           this.clearTimer('overallTimer');
+          this.reachabilityDoneEmitted = true;
           this.emit(
             {
               file: 'reachability',

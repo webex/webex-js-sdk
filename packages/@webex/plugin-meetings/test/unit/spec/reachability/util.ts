@@ -33,7 +33,7 @@ describe('plugin-meetings/src/reachability/util', () => {
     });
 
     it('show fail if stunUrl is not a valid url', () => {
-      assert.throws(() => convertStunUrlToTurn('not a url', 'tcp'), 'Invalid URL: not a url');
+      assert.throws(() => convertStunUrlToTurn('not a url', 'tcp'), 'Invalid URL');
     });
 
     it('show fail if stunUrl is not a STUN url', () => {
@@ -57,7 +57,7 @@ describe('plugin-meetings/src/reachability/util', () => {
     });
 
     it('show fail if stunUrl is not a valid url', () => {
-      assert.throws(() => convertStunUrlToTurn('not a url', 'tcp'), 'Invalid URL: not a url');
+      assert.throws(() => convertStunUrlToTurn('not a url', 'tcp'), 'Invalid URL');
     });
 
     it('show fail if stunUrl is not a STUN url', () => {

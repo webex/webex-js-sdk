@@ -132,11 +132,12 @@ describe('ClusterReachability', () => {
       // resultReady is emitted immediately for the first reachable protocol (UDP)
       assert.equal(emittedEvents[Events.resultReady].length, 1);
 
-      // Complete ICE gathering to trigger resultReady emission for remaining protocols
+      // Complete ICE gathering — in default mode (enablePerUdpUrlReachability=false),
+      // unreachable protocols do NOT emit resultReady events
       fakePeerConnection.iceGatheringState = 'complete';
       fakePeerConnection.onicegatheringstatechange();
 
-      assert.equal(emittedEvents[Events.resultReady].length, 3);
+      assert.equal(emittedEvents[Events.resultReady].length, 1);
       const udpEvent = emittedEvents[Events.resultReady].find((e) => e.protocol === 'udp');
       assert.equal(udpEvent.result, 'reachable');
       assert.equal(udpEvent.latencyInMilliseconds, 50);
@@ -476,8 +477,9 @@ describe('ClusterReachability', () => {
       clusterReachability.abort();
       await promise;
 
-      // abort emits resultReady for all protocols
-      assert.equal(emittedEvents[Events.resultReady].length, 3);
+      // In default mode (enablePerUdpUrlReachability=false), abort does NOT emit
+      // resultReady for unreachable protocols — only reachable ones are emitted
+      assert.equal(emittedEvents[Events.resultReady].length, 0);
       assert.deepEqual(emittedEvents[Events.clientMediaIpsUpdated], []);
     });
 
@@ -522,8 +524,9 @@ describe('ClusterReachability', () => {
       clusterReachability.abort();
       await promise;
 
-      // abort emits resultReady for all protocols
-      assert.equal(emittedEvents[Events.resultReady].length, 3);
+      // In default mode (enablePerUdpUrlReachability=false), abort does NOT emit
+      // resultReady for unreachable protocols
+      assert.equal(emittedEvents[Events.resultReady].length, 0);
       assert.deepEqual(emittedEvents[Events.clientMediaIpsUpdated], []);
 
       assert.deepEqual(clusterReachability.getResult(), {
@@ -545,8 +548,9 @@ describe('ClusterReachability', () => {
       clusterReachability.abort();
       await promise;
 
-      // abort emits resultReady for remaining unreachable protocols (TCP, XTLS)
-      assert.equal(emittedEvents[Events.resultReady].length, 3);
+      // In default mode (enablePerUdpUrlReachability=false), abort does NOT emit
+      // resultReady for unreachable protocols — only the 1 reachable UDP event remains
+      assert.equal(emittedEvents[Events.resultReady].length, 1);
 
       assert.deepEqual(clusterReachability.getResult(), {
         udp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['somePublicIp'], details: undefined},

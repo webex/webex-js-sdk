@@ -34,6 +34,7 @@ export class ReachabilityPeerConnection extends EventsScope {
   private result: ClusterReachabilityResult;
   private emittedSubnets: Set<string> = new Set();
   private emittedProtocols: Set<Protocol> = new Set();
+  private enablePerUdpUrlReachability: boolean;
 
   /**
    * Constructor for ReachabilityPeerConnection
@@ -46,6 +47,7 @@ export class ReachabilityPeerConnection extends EventsScope {
   constructor(clusterName: string, clusterInfo: ClusterNode, enablePerUdpUrlReachability = false) {
     super();
     this.clusterName = clusterName;
+    this.enablePerUdpUrlReachability = enablePerUdpUrlReachability;
     this.numUdpUrls = clusterInfo.udp.length;
     this.numTcpUrls = clusterInfo.tcp.length;
     this.numXTlsUrls = clusterInfo.xtls.length;
@@ -184,7 +186,11 @@ export class ReachabilityPeerConnection extends EventsScope {
 
     if (this.pc && this.pc.connectionState !== CLOSED) {
       // Emit results for all protocols before closing (important for timeout scenarios)
-      this.emitResultsForAllProtocols();
+      // Only emit when enablePerUdpUrlReachability is true — in standard mode,
+      // unreachable protocols were never reported as events (relies on timers instead).
+      if (this.enablePerUdpUrlReachability) {
+        this.emitResultsForAllProtocols();
+      }
       this.closePeerConnection();
       this.finishReachabilityCheck();
     }
@@ -237,7 +243,11 @@ export class ReachabilityPeerConnection extends EventsScope {
   private registerIceGatheringStateChangeListener() {
     this.pc.onicegatheringstatechange = () => {
       if (this.pc.iceGatheringState === ICE_GATHERING_STATE.COMPLETE) {
-        this.emitResultsForAllProtocols();
+        // Only emit unreachable results when enablePerUdpUrlReachability is true —
+        // in standard mode, unreachable protocols are not reported as events.
+        if (this.enablePerUdpUrlReachability) {
+          this.emitResultsForAllProtocols();
+        }
         this.closePeerConnection();
         this.defer.resolve();
       }
@@ -462,8 +472,17 @@ export class ReachabilityPeerConnection extends EventsScope {
           : {host: undefined, port: undefined};
 
         const isPerUrlMode = this.numUdpUrls === 1;
+        // Only pass serverPort when enablePerUdpUrlReachability is true —
+        // in standard mode there are no subnet details to update.
+        const effectiveServerPort = this.enablePerUdpUrlReachability ? serverPort : undefined;
         if (isPerUrlMode || this.result.udp.result !== 'reachable') {
-          this.saveResult('udp', latencyInMilliseconds, e.candidate.address, serverIp, serverPort);
+          this.saveResult(
+            'udp',
+            latencyInMilliseconds,
+            e.candidate.address,
+            serverIp,
+            effectiveServerPort
+          );
         } else {
           this.addPublicIp('udp', e.candidate.address);
           // Tracking reached subnets for subsequent UDP responses
@@ -491,7 +510,7 @@ export class ReachabilityPeerConnection extends EventsScope {
           latencyInMilliseconds,
           null,
           e.candidate.address,
-          e.candidate.port
+          this.enablePerUdpUrlReachability ? e.candidate.port : undefined
         );
       }
     };
