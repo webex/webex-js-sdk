@@ -946,9 +946,9 @@ export default class Meetings extends WebexPlugin {
     }
 
     // @ts-ignore
-    if (this.config.enableAV1VideoSlides !== newValue) {
+    if (this.config.enableAv1VideoSlides !== newValue) {
       // @ts-ignore
-      this.config.enableAV1VideoSlides = newValue;
+      this.config.enableAv1VideoSlides = newValue;
     }
   }
 

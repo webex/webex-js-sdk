@@ -77,7 +77,7 @@ type Options = {
   degradationPreferences: DegradationPreferences;
   kind: Kind;
   trimRequestsToNumOfSources: boolean; // if enabled, AS speaker requests will be trimmed based on the calls to setNumCurrentSources()
-  enableAV1?: boolean;
+  enableAv1?: boolean;
 };
 
 type ClientRequestsMap = {[key: MediaRequestId]: MediaRequest};
@@ -100,7 +100,7 @@ export class MediaRequestManager {
   private debouncedSourceUpdateListener: () => void;
 
   private trimRequestsToNumOfSources: boolean;
-  private enableAV1: boolean;
+  private enableAv1: boolean;
   private numTotalSources: number;
   private numLiveSources: number;
 
@@ -118,7 +118,7 @@ export class MediaRequestManager {
     this.degradationPreferences = options.degradationPreferences;
     this.kind = options.kind;
     this.trimRequestsToNumOfSources = options.trimRequestsToNumOfSources;
-    this.enableAV1 = options.enableAV1 ?? false;
+    this.enableAv1 = options.enableAv1 ?? false;
     this.sourceUpdateListener = this.commit.bind(this);
     this.debouncedSourceUpdateListener = debounce(
       this.sourceUpdateListener,
@@ -358,7 +358,7 @@ export class MediaRequestManager {
             codecInfos.push(h264CodecInfo);
           }
 
-          if (this.enableAV1) {
+          if (this.enableAv1) {
             const av1PayloadType = this.getIngressPayloadTypeCallback(
               mr.receiveSlots[0].mediaType,
               MediaCodecMimeType.AV1

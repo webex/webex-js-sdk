@@ -983,7 +983,7 @@ export default class Meeting extends StatelessWebexPlugin {
           );
         } catch (error) {
           LoggerProxy.logger.error(
-            `Meeting:index#getIngressPayloadTypeCallback --> failed to get ingress payload type for mediaType=${mediaType}, codecMimeType=${codecMimeType}`,
+            `Meeting:index#mediaRequestManager --> failed to get ingress payload type for mediaType=${mediaType}, codecMimeType=${codecMimeType}`,
             error
           );
 
@@ -1089,7 +1089,7 @@ export default class Meeting extends StatelessWebexPlugin {
           kind: 'video',
           trimRequestsToNumOfSources: false,
           // @ts-ignore - config coming from registerPlugin
-          enableAV1: this.config.enableAV1VideoSlides,
+          enableAv1: this.config.enableAv1VideoSlides,
         }
       ),
     };
@@ -7588,7 +7588,7 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - config coming from registerPlugin
         enableAudioTwcc: this.config.enableAudioTwccForMultistream,
         // @ts-ignore - config coming from registerPlugin
-        enableAV1VideoSlides: this.config.enableAV1VideoSlides,
+        enableAv1VideoSlides: this.config.enableAv1VideoSlides,
         stopIceGatheringAfterFirstRelayCandidate:
           // @ts-ignore - config coming from registerPlugin
           this.config.stopIceGatheringAfterFirstRelayCandidate,

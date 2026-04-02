@@ -1414,7 +1414,7 @@ describe('MediaRequestManager', () => {
         degradationPreferences,
         kind: 'video',
         trimRequestsToNumOfSources: false,
-        enableAV1: true,
+        enableAv1: true,
       });
       sendMediaRequestsCallback.resetHistory();
 
