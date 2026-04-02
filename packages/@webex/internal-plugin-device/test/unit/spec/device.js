@@ -486,10 +486,15 @@ describe('plugin-device', () => {
     describe('deleteDevices()', () => {
       let requestStub;
       let clock;
+      let waitForLimitStub;
 
       const setup = (deviceType) => {
         device.config.defaults = {body: {deviceType}};
       };
+
+      beforeEach(() => {
+        waitForLimitStub = sinon.stub(device, '_waitForDeviceCountBelowLimit').resolves();
+      });
 
       afterEach(() => {
         sinon.restore();
@@ -686,6 +691,45 @@ describe('plugin-device', () => {
         await device.deleteDevices();
         assert.calledWith(device.logger.warn, sinon.match(/deletions failed/));
       });
+
+      it('calls _waitForDeviceCountBelowLimit with targetCount equal to preCount minus 5', async () => {
+        setup('WEB');
+        const devices = Array.from({length: 20}, (_, i) => ({
+          url: `url${i}`,
+          modificationTime: `2023-10-${String(i + 1).padStart(2, '0')}T10:00:00Z`,
+          deviceType: 'WEB',
+        }));
+
+        requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'})).resolves({body: {devices}});
+        requestStub.withArgs(sinon.match({method: 'DELETE'})).resolves();
+
+        await device.deleteDevices();
+
+        // 20 WEB devices, preCount = 20, targetCount = 20 - 5 = 15
+        assert.calledWith(waitForLimitStub, 15, 0);
+      });
+
+      it('regression: 144-device case — deleteDevices passes targetCount=139 (144 - 5)', async () => {
+        setup('WEB');
+        const devices = Array.from({length: 144}, (_, i) => ({
+          url: `url${i}`,
+          modificationTime: new Date(Date.UTC(2020, 0, 1, 0, i)).toISOString(),
+          deviceType: 'WEB',
+        }));
+
+        requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'})).resolves({body: {devices}});
+        requestStub.withArgs(sinon.match({method: 'DELETE'})).resolves();
+
+        await device.deleteDevices();
+
+        // ceil(144/3) = 48 deletions
+        assert.equal(requestStub.withArgs(sinon.match({method: 'DELETE'})).callCount, 48);
+        // targetCount = 144 - 5 = 139 — with the old hardcoded MAX_REGISTERED_DEVICES - 5 = 95,
+        // 96 remaining devices after cleanup would never pass the check, burning all 5 polls (15s)
+        assert.calledWith(waitForLimitStub, 139, 0);
+      });
     });
 
     describe('_waitForDeviceCountBelowLimit()', () => {
@@ -716,7 +760,7 @@ describe('plugin-device', () => {
           .withArgs(sinon.match({method: 'GET'}))
           .resolves({body: {devices}});
 
-        const promise = device._waitForDeviceCountBelowLimit();
+        const promise = device._waitForDeviceCountBelowLimit(55, 0);
         await clock.tickAsync(3000);
         await promise;
       });
@@ -736,13 +780,13 @@ describe('plugin-device', () => {
           .onSecondCall().resolves({body: {devices: makeDevices(100)}})
           .onThirdCall().resolves({body: {devices: makeDevices(68)}});
 
-        const promise = device._waitForDeviceCountBelowLimit();
+        const promise = device._waitForDeviceCountBelowLimit(95, 0);
 
-        // First poll: 102 devices (over limit), continue polling
+        // First poll: 102 devices (above target 95), continue polling
         await clock.tickAsync(3000);
-        // Second poll: 100 devices (still at limit), continue polling
+        // Second poll: 100 devices (still above target 95), continue polling
         await clock.tickAsync(3000);
-        // Third poll: 68 devices (below the 95 threshold), resolve
+        // Third poll: 68 devices (below target 95), resolve
         await clock.tickAsync(3000);
 
         await promise;
@@ -763,7 +807,7 @@ describe('plugin-device', () => {
         requestStub.withArgs(sinon.match({method: 'GET'}))
           .resolves({body: {devices: makeDevices(105)}});
 
-        const promise = device._waitForDeviceCountBelowLimit();
+        const promise = device._waitForDeviceCountBelowLimit(100, 0);
 
         // Tick through all 5 attempts (5 * 3000ms)
         for (let i = 0; i < 5; i += 1) {
@@ -788,7 +832,7 @@ describe('plugin-device', () => {
           .withArgs(sinon.match({method: 'GET'}))
           .resolves({body: {devices}});
 
-        const promise = device._waitForDeviceCountBelowLimit();
+        const promise = device._waitForDeviceCountBelowLimit(95, 0);
         await clock.tickAsync(3000);
         await promise;
       });
@@ -808,7 +852,7 @@ describe('plugin-device', () => {
           .onSecondCall().resolves({body: {devices: makeDevices(99)}})
           .onThirdCall().resolves({body: {devices: makeDevices(95)}});
 
-        const promise = device._waitForDeviceCountBelowLimit();
+        const promise = device._waitForDeviceCountBelowLimit(95, 0);
         // First poll: 100 devices (still over the 95 threshold), continue polling
         await clock.tickAsync(3000);
         // Second poll: 99 devices (still over the 95 threshold), continue polling
@@ -827,7 +871,7 @@ describe('plugin-device', () => {
           .withArgs(sinon.match({method: 'GET'}))
           .rejects(new Error('transient network error'));
 
-        const promise = device._waitForDeviceCountBelowLimit();
+        const promise = device._waitForDeviceCountBelowLimit(95, 0);
         await clock.tickAsync(3000);
         await promise;
 

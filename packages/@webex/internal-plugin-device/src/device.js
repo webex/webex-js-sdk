@@ -9,7 +9,6 @@ import METRICS from './metrics';
 import {
   FEATURE_COLLECTION_NAMES,
   DEVICE_EVENT_REGISTRATION_SUCCESS,
-  MAX_REGISTERED_DEVICES,
   MIN_DEVICES_FOR_CLEANUP,
   MAX_DELETION_CONFIRMATION_ATTEMPTS,
   DELETION_CONFIRMATION_DELAY_MS,
@@ -475,12 +474,13 @@ const Device = WebexPlugin.extend({
   },
 
   /**
-   * Waits until the server-side device count drops below the limit,
+   * Waits until the server-side device count drops to or below targetCount,
    * polling up to maxAttempts times with a delay between each check.
+   * @param {number} targetCount - resolve when device count drops to this value or below
    * @param {number} [attempt=0]
    * @returns {Promise<void>}
    */
-  _waitForDeviceCountBelowLimit(attempt = 0) {
+  _waitForDeviceCountBelowLimit(targetCount, attempt = 0) {
     if (attempt >= MAX_DELETION_CONFIRMATION_ATTEMPTS) {
       this.logger.warn('device: max confirmation attempts reached, proceeding anyway');
 
@@ -492,16 +492,16 @@ const Device = WebexPlugin.extend({
       .then((devices) => {
         this.logger.info(
           `device: confirmation check ${attempt + 1}/${MAX_DELETION_CONFIRMATION_ATTEMPTS}, ` +
-            `${devices.length} devices remaining (limit: ${MAX_REGISTERED_DEVICES})`
+            `${devices.length} devices remaining (target: ≤ ${targetCount})`
         );
 
-        if (devices.length <= MAX_REGISTERED_DEVICES - 5) {
+        if (devices.length <= targetCount) {
           this.logger.info('device: device count is now safely below limit');
 
           return Promise.resolve();
         }
 
-        return this._waitForDeviceCountBelowLimit(attempt + 1);
+        return this._waitForDeviceCountBelowLimit(targetCount, attempt + 1);
       })
       .catch((error) => {
         this.logger.warn(
@@ -519,6 +519,8 @@ const Device = WebexPlugin.extend({
    * @returns {Promise<void>}
    */
   deleteDevices() {
+    let targetCount;
+
     return this._getDevicesOfCurrentType()
       .then((webDevices) => {
         const sortedDevices = orderBy(webDevices, [(item) => new Date(item.modificationTime)]);
@@ -531,6 +533,7 @@ const Device = WebexPlugin.extend({
           return Promise.resolve();
         }
 
+        targetCount = sortedDevices.length - 5;
         const devicesToDelete = sortedDevices.slice(0, Math.ceil(sortedDevices.length / 3));
 
         this.logger.info(
@@ -558,7 +561,11 @@ const Device = WebexPlugin.extend({
           );
         });
       })
-      .then(() => this._waitForDeviceCountBelowLimit())
+      .then(() =>
+        targetCount !== undefined
+          ? this._waitForDeviceCountBelowLimit(targetCount, 0)
+          : Promise.resolve()
+      )
       .then(() => {
         this.logger.info('device: device count confirmed below limit, cleanup successful');
       })
