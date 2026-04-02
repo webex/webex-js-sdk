@@ -30,6 +30,8 @@ The package is organized as a modular monolith inside `packages/calling/src/`. E
 
 ### ICallingClient
 
+Top-level orchestrator for line registration and calling — provides APIs to manage lines, track active calls, and access the media engine. Defined in `src/CallingClient/types.ts`.
+
 ```typescript
 interface ICallingClient extends Eventing<CallingClientEventTypes> {
   mediaEngine: typeof Media;
@@ -42,6 +44,8 @@ interface ICallingClient extends Eventing<CallingClientEventTypes> {
 
 ### ICallHistory
 
+Provides APIs for retrieving, updating, and deleting recent call history records via the Janus service. Defined in `src/CallHistory/types.ts`.
+
 ```typescript
 interface ICallHistory extends Eventing<CallHistoryEventTypes> {
   getCallHistoryData(days: number, limit: number, sort: SORT, sortBy: SORT_BY): Promise<JanusResponseEvent>;
@@ -51,6 +55,8 @@ interface ICallHistory extends Eventing<CallHistoryEventTypes> {
 ```
 
 ### ICallSettings
+
+Provides APIs to retrieve and update user call settings — call waiting, DND, call forwarding, and voicemail configuration. Uses the Strategy pattern to select a backend-specific connector (WXC or UCM). Defined in `src/CallSettings/types.ts`.
 
 ```typescript
 interface ICallSettings {
@@ -67,6 +73,8 @@ interface ICallSettings {
 
 ### IContacts
 
+Provides APIs for fetching, creating, and deleting user contacts and contact groups. Defined in `src/Contacts/types.ts`.
+
 ```typescript
 interface IContacts {
   getContacts(): Promise<ContactResponse>;
@@ -78,6 +86,8 @@ interface IContacts {
 ```
 
 ### IVoicemail
+
+Provides APIs for retrieving and managing voicemail — listing, playback content, read/unread state, deletion, summary counts, and transcription. Uses the Strategy pattern to select a backend-specific connector (WXC or UCM). Defined in `src/Voicemail/types.ts`.
 
 ```typescript
 interface IVoicemail {
@@ -94,6 +104,8 @@ interface IVoicemail {
 ```
 
 ### ISDKConnector
+
+Singleton bridge to the Webex JS SDK — provides access to the `webex` instance for HTTP requests and manages Mercury WebSocket listener registration/unregistration. Defined in `src/SDKConnector/types.ts`.
 
 ```typescript
 interface ISDKConnector {
@@ -203,25 +215,24 @@ All other client modules (`CallHistory`, `CallSettings`, `Contacts`, `Voicemail`
 
 ## Calling Backend Detection
 
-Certain client modules (`CallSettings`, `Voicemail`) need to determine the user's calling backend at construction time so they can select the appropriate backend connector (Strategy pattern). The `CallingClient` module also detects the backend during initialization.
+Certain client modules (`CallSettings`, `Voicemail`) need to determine the user's calling backend at instantiation time so they can select the appropriate backend connector (Strategy pattern). The `CallingClient` module also detects the backend during initialization.
 
 Backend detection is performed by the `getCallingBackEnd(webex)` function in `common/Utils.ts`. It uses a two-level branching approach:
 
 1. **First level**: Check `webex.internal.device.callingBehavior`
 2. **Second level**: If the behavior is `NATIVE_WEBEX_TEAMS_CALLING`, check user entitlements to distinguish WXC from BWRKS
 
-```
-webex.internal.device.callingBehavior
-       │
-       ├── === 'NATIVE_WEBEX_TEAMS_CALLING'
-       │       │
-       │       ├── entitlement 'bc-sp-standard' or 'bc-sp-basic' ──▶ CALLING_BACKEND.WXC
-       │       │
-       │       └── entitlement 'broadworks-connector'              ──▶ CALLING_BACKEND.BWRKS
-       │
-       ├── === 'NATIVE_SIP_CALL_TO_UCM'                           ──▶ CALLING_BACKEND.UCM
-       │
-       └── other / none matched                                    ──▶ CALLING_BACKEND.INVALID
+```mermaid
+flowchart TD
+    A["getCallingBackEnd(webex)"] --> B{webex.internal.device<br/>.callingBehavior?}
+
+    B -->|NATIVE_WEBEX_TEAMS_CALLING| C{User entitlements?}
+    C -->|bc-sp-standard<br/>or bc-sp-basic| D[CALLING_BACKEND.WXC]
+    C -->|broadworks-connector| E[CALLING_BACKEND.BWRKS]
+
+    B -->|NATIVE_SIP_CALL_TO_UCM| F[CALLING_BACKEND.UCM]
+
+    B -->|other / none matched| G[CALLING_BACKEND.INVALID]
 ```
 
 | Backend | callingBehavior | Entitlement | Enum |
