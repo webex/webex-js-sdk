@@ -553,20 +553,9 @@ describe('HashTreeParser', () => {
     );
 
     // Verify callback was called with OBJECTS_UPDATED and correct updatedObjects list
-    // Note: self is initialized before main due to sortByInitPriority
+    // Note: main is initialized before self due to sortByInitPriority
     assert.calledWith(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
       updatedObjects: [
-        {
-          htMeta: {
-            elementId: {
-              type: 'self',
-              id: 2,
-              version: 110,
-            },
-            dataSetNames: ['self'],
-          },
-          data: {person: {name: 'fake self name'}},
-        },
         {
           htMeta: {
             elementId: {
@@ -577,6 +566,17 @@ describe('HashTreeParser', () => {
             dataSetNames: ['main'],
           },
           data: {info: {id: 'some-fake-locus-info'}},
+        },
+        {
+          htMeta: {
+            elementId: {
+              type: 'self',
+              id: 2,
+              version: 110,
+            },
+            dataSetNames: ['self'],
+          },
+          data: {person: {name: 'fake self name'}},
         },
       ],
     });
@@ -597,7 +597,7 @@ describe('HashTreeParser', () => {
       });
     });
 
-    it('initializes "self" before "main" regardless of order from Locus', async () => {
+    it('initializes "main" before "self" regardless of order from Locus', async () => {
       const parser = createHashTreeParser({dataSets: [], locus: null}, null);
 
       // Locus returns datasets in non-priority order: atd-active, main, self
@@ -621,14 +621,14 @@ describe('HashTreeParser', () => {
         locusUrl,
       });
 
-      // Verify sync requests were sent in priority order: self, main, then atd-active
+      // Verify sync requests were sent in priority order: main, self, then atd-active
       const syncCalls = webexRequest
         .getCalls()
         .filter((call) => call.args[0]?.method === 'POST' && call.args[0]?.uri?.endsWith('/sync'));
 
       expect(syncCalls).to.have.lengthOf(3);
-      expect(syncCalls[0].args[0].uri).to.equal(`${selfDataSet.url}/sync`);
-      expect(syncCalls[1].args[0].uri).to.equal(`${mainDataSet.url}/sync`);
+      expect(syncCalls[0].args[0].uri).to.equal(`${mainDataSet.url}/sync`);
+      expect(syncCalls[1].args[0].uri).to.equal(`${selfDataSet.url}/sync`);
       expect(syncCalls[2].args[0].uri).to.equal(`${atdActiveDataSet.url}/sync`);
     });
 

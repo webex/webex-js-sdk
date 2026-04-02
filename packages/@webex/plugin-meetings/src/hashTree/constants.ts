@@ -11,4 +11,4 @@ export const DataSetNames = {
 
 // Priority order for initializing data sets — higher priority names come first.
 // Data sets not listed here will be initialized after all prioritized ones.
-export const DATA_SET_INIT_PRIORITY: string[] = [DataSetNames.SELF, DataSetNames.MAIN];
+export const DATA_SET_INIT_PRIORITY: string[] = [DataSetNames.MAIN, DataSetNames.SELF];

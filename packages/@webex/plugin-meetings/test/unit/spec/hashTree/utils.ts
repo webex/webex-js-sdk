@@ -146,9 +146,9 @@ describe('Hash Tree Utils', () => {
   describe('#sortByInitPriority', () => {
     [
       {
-        description: 'places "self" and "main" first when both appear',
+        description: 'places "main" and "self" first when both appear',
         input: ['atd-active', 'main', 'atd-unmuted', 'self'],
-        expected: ['self', 'main', 'atd-active', 'atd-unmuted'],
+        expected: ['main', 'self', 'atd-active', 'atd-unmuted'],
       },
       {
         description: 'preserves original order of non-priority items',
@@ -162,8 +162,8 @@ describe('Hash Tree Utils', () => {
       },
       {
         description: 'reorders when only priority items present',
-        input: ['main', 'self'],
-        expected: ['self', 'main'],
+        input: ['self', 'main'],
+        expected: ['main', 'self'],
       },
       {
         description: 'handles empty list',
