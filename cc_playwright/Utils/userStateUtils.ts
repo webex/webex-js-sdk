@@ -178,9 +178,11 @@ export const getStateElapsedTime = async (page: Page): Promise<string> => {
  * const isValid = await validateConsoleStateChange(page, USER_STATES.AVAILABLE, consoleMessages);
  * ```
  */
-// Validates that the console state change matches the expected state by checking the last onStateChange log
-// and comparing it to the expected state name.
-// Note: This function is for legacy widget patterns, not used in CC SDK sample app
+/**
+ * @deprecated Legacy function for widget patterns - not used in CC SDK sample app.
+ * Sample app doesn't emit widget-specific console patterns like "onStateChange invoked with state name:"
+ * Use checkCallbackSequence() or UI state verification instead.
+ */
 export const validateConsoleStateChange = async (
   _page: Page,
   state: string,
@@ -202,7 +204,6 @@ export const validateConsoleStateChange = async (
     throw new Error('Failed to extract state name from onStateChange console message');
   }
 
-  // Simplified comparison logic
   const expectedState = state.trim().toLowerCase();
   const loggedState = actualState.toLowerCase();
 
