@@ -135,7 +135,6 @@ export default function createStationLoginTests() {
 
     test.skip('should support multi-login synchronization for Dial Number mode', async () => {
       // Multi-session support removed - sample app doesn't support widget-based multi-session
-      // See MIGRATION.md for details
     });
   });
 
@@ -250,7 +249,6 @@ export default function createStationLoginTests() {
 
     test.skip('should support multi-login synchronization for Extension mode', async () => {
       // Multi-session support removed - sample app doesn't support widget-based multi-session
-      // See MIGRATION.md for details
     });
   });
 

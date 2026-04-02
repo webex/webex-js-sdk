@@ -360,8 +360,7 @@ export default function createIncomingTelephonyTaskTests() {
     });
 
     test('should handle customer disconnect before agent answers in desktop mode', async () => {
-      // ✅ FIXED (2026-03-24): Sample app now filters out orphaned tasks
-      // When customer disconnects an unanswered call (ALERTING state):
+      // Sample app now filters out orphaned tasks when customer disconnects an unanswered call (ALERTING state):
       // - SDK does NOT fire task:end event
       // - SDK does NOT trigger RONA popup
       // - Sample app now filters out tasks older than 25s in ALERTING state
@@ -383,7 +382,6 @@ export default function createIncomingTelephonyTaskTests() {
       await endCallTask(testManager.callerPage!, true);
 
       // Wait for sample app to filter out the stale task (threshold: 25s)
-      // Sample app tracks task creation time and filters tasks older than 25s in ALERTING state
       // Force updateTaskList() after 26s to trigger the filter
       await testManager.agent1Page.waitForTimeout(26000);
       await testManager.agent1Page.evaluate(() => {
@@ -447,9 +445,25 @@ export default function createIncomingTelephonyTaskTests() {
       await testManager.setupForIncomingTaskExtension(browser);
       setupConsoleLogging(testManager.agent1Page);
 
-      // Verify station login completed successfully and recover if needed
-      const {telephonyLogin} = await import('../Utils/stationLoginUtils');
+      // SESSION CLEANUP: Force logout to clear any concurrent/stale sessions
+      const {telephonyLogin, stationLogout} = await import('../Utils/stationLoginUtils');
       const {LOGIN_MODE} = await import('../constants');
+
+      // Check if already logged in and force logout
+      const logoutButtonInitial = testManager.agent1Page.locator('#logoutAgent');
+      const isAlreadyLoggedIn = await logoutButtonInitial.isVisible().catch(() => false);
+
+      if (isAlreadyLoggedIn) {
+        // Handle any stray tasks before logout
+        await handleStrayTasks(testManager.agent1Page).catch(() => {});
+        await testManager.agent1Page.waitForTimeout(2000);
+
+        // Force logout to clear session
+        await stationLogout(testManager.agent1Page, false);
+        await testManager.agent1Page.waitForTimeout(5000); // Wait for backend to process logout
+      }
+
+      // Verify station login completed successfully and recover if needed
 
       const logoutButton = testManager.agent1Page.locator('#logoutAgent');
       let isLoggedIn = await logoutButton.isVisible().catch(() => false);
@@ -590,7 +604,6 @@ export default function createIncomingTelephonyTaskTests() {
     });
 
     test('should set agent state to Available and receive another call in extension mode', async () => {
-      // TEST RE-ENABLED: Confirmed passing (2026-03-24)
       // This test explicitly handles cleanup for orphaned tasks at the end (line 517).
       // Validates agent can receive second call after handling RONA from first declined call.
       await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
@@ -625,7 +638,6 @@ export default function createIncomingTelephonyTaskTests() {
       await endCallTask(testManager.callerPage!, true);
       // Customer disconnected - orphaned task needs manual cleanup
       // Wait for sample app to filter out the stale task (threshold: 25s)
-      // Sample app tracks task creation time and filters tasks older than 25s in ALERTING state
       // Force updateTaskList() after 26s to trigger the filter
       await testManager.agent1Page.waitForTimeout(26000);
       await testManager.agent1Page.evaluate(() => {
@@ -694,8 +706,7 @@ export default function createIncomingTelephonyTaskTests() {
     });
 
     test('should handle call disconnect before agent answers in extension mode', async () => {
-      // ✅ FIXED (2026-03-24): Sample app now filters out orphaned tasks
-      // When customer disconnects an unanswered call (ALERTING state):
+      // Sample app now filters out orphaned tasks when customer disconnects an unanswered call (ALERTING state):
       // - SDK does NOT fire task:end event
       // - SDK does NOT trigger RONA popup
       // - Sample app now filters out tasks older than 25s in ALERTING state
@@ -717,7 +728,6 @@ export default function createIncomingTelephonyTaskTests() {
       await endCallTask(testManager.callerPage!, true);
 
       // Wait for sample app to filter out the stale task (threshold: 25s)
-      // Sample app tracks task creation time and filters tasks older than 25s in ALERTING state
       // Force updateTaskList() after 26s to trigger the filter
       await testManager.agent1Page.waitForTimeout(26000);
       await testManager.agent1Page.evaluate(() => {
