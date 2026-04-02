@@ -121,33 +121,79 @@ classDiagram
 
 ## Call Construction and Initialization
 
-`Call` creation has two entry conditions (inbound and outbound), then both follow the same initialization pipeline.
+`Call` creation has two entry paths (inbound and outbound). Both converge at `CallManager.createCall()`, which invokes the `Call` constructor. The constructor runs a deterministic initialization pipeline that sets up identifiers, state defaults, caller ID resolution, metrics, and both XState state machines.
+
+### Entry Paths
 
 ```mermaid
 flowchart TD
-    A{Call creation trigger}
-    A -->|Outbound| B[Line makeCall destination]
-    B --> C[CallManager.createCall OUTBOUND with destination]
+    subgraph Outbound ["Outbound (app-initiated)"]
+        O1["App calls Line.makeCall(destination)"]
+        O2["Line calls CallManager.createCall(\n  direction=OUTBOUND,\n  deviceId,\n  lineId,\n  destination\n)"]
+        O1 --> O2
+    end
 
-    A -->|Inbound| D[Mobius CALL_SETUP event]
-    D --> E[CallManager.dequeueWsEvents]
-    E --> F[CallManager.createCall INBOUND without destination]
+    subgraph Inbound ["Inbound (network-initiated)"]
+        I1["Mobius sends CALL_SETUP via WebSocket"]
+        I2["CallManager.dequeueWsEvents() receives event"]
+        I3["CallManager.createCall(\n  direction=INBOUND,\n  deviceId,\n  lineId\n)"]
+        I1 --> I2 --> I3
+    end
 
-    C --> G[new Call activeUrl webex direction deviceId lineId deleteCb indicator destination]
-    F --> G
+    O2 --> CTOR
+    I3 --> CTOR
 
-    G --> H[Generate correlationId uuid]
-    H --> I[Generate initial callId DefaultLocalId_uuid]
-    I --> J[Initialize SDKConnector and MetricManager]
-    J --> K[Create CallerId instance with emitter callback]
-    K --> L[Set defaults connected false held false muted false earlyMedia false]
-    L --> M[Initialize disconnectReason code NORMAL cause Normal Disconnect]
-    M --> N[Create RtcMetrics instance]
-    N --> O[Create Call State Machine id call-state initial S_IDLE]
-    O --> P[interpret onTransition submitCallMetric start]
-    P --> Q[Create Media State Machine id roap-state initial S_ROAP_IDLE]
-    Q --> R[interpret onTransition submitMediaMetric start]
-    R --> S[Finalize muted false and seq 1 INITIAL_SEQ_NUMBER]
+    CTOR["createCall() factory → new Call(activeUrl, webex, direction, deviceId, lineId, deleteCb, indicator, destination?)"]
+```
+
+### Constructor Initialization Pipeline
+
+```mermaid
+flowchart TD
+    subgraph IDs ["1. Identifiers"]
+        A1["correlationId = uuid()  — client-generated, stable for call lifetime"]
+        A2["callId = 'DefaultLocalId_' + uuid()  — placeholder until Mobius assigns real ID"]
+        A1 --> A2
+    end
+
+    subgraph Infra ["2. Infrastructure"]
+        B1["Set SDKConnector reference, resolve webex instance"]
+        B2["metricManager = getMetricManager(webex, serviceIndicator)"]
+        B3["mobiusUrl = activeUrl"]
+        B1 --> B2 --> B3
+    end
+
+    subgraph Defaults ["3. State Defaults"]
+        C1["connected = false, held = false, earlyMedia = false"]
+        C2["mediaInactivity = false, mediaNegotiationCompleted = false"]
+        C3["disconnectReason = { code: NORMAL, cause: 'Normal Disconnect.' }"]
+        C4["callerInfo = {}, localRoapMessage = {}, remoteRoapMessage = null"]
+        C5["receivedRoapOKSeq = 0, seq = INITIAL_SEQ_NUMBER (1)"]
+        C1 --> C2 --> C3 --> C4 --> C5
+    end
+
+    subgraph Resolvers ["4. Caller ID + Metrics"]
+        D1["callerId = createCallerId(webex, emitterCallback)\n— emitterCallback emits CALLER_ID event on resolution"]
+        D2["rtcMetrics = new RtcMetrics(webex, {callId}, correlationId)"]
+        D1 --> D2
+    end
+
+    subgraph SM ["5. State Machines (XState)"]
+        E1["callStateMachine = createMachine(\n  id: 'call-state', initial: 'S_IDLE'\n)"]
+        E2["interpret → onTransition: submitCallMetric\n  (skips S_UNKNOWN) → .start()"]
+        E3["mediaStateMachine = createMachine(\n  id: 'roap-state', initial: 'S_ROAP_IDLE'\n)"]
+        E4["interpret → onTransition: submitMediaMetric\n  (skips S_ROAP_ERROR) → .start()"]
+        E1 --> E2 --> E3 --> E4
+    end
+
+    subgraph Final ["6. Finalize"]
+        F1["muted = false"]
+        F2["Call stored in CallManager.callCollection keyed by correlationId"]
+        F3["deleteCb wired: removes from collection,\n  emits ALL_CALLS_CLEARED when collection empty"]
+        F1 --> F2 --> F3
+    end
+
+    IDs --> Infra --> Defaults --> Resolvers --> SM --> Final
 ```
 
 ---
@@ -365,11 +411,11 @@ This module has two event layers:
 
 | Source | Event | Handler Path | Purpose |
 |--------|-------|--------------|---------|
-| `SDKConnector` | `event:mobius` | `CallManager.listenForWsEvents()` -> `dequeueWsEvents()` | Entry point for all signaling/media events from backend |
-| `Mobius CALL_SETUP` | `mobius.call` | `CallManager.dequeueWsEvents()` | Create/resolve call, trigger `E_RECV_CALL_SETUP`, handle mid-call payload |
-| `Mobius CALL_PROGRESS` | `mobius.callprogress` | `CallManager.dequeueWsEvents()` | Trigger `E_RECV_CALL_PROGRESS` and caller ID refresh |
+| `CallMananger Instantiation` | `event:mobius` | `listenForWsEvents()` -> `dequeueWsEvents()` | Entry point for all signaling/media events from backend |
+| `Mobius` | `mobius.call` | `CallManager.dequeueWsEvents()` | Create/resolve call, trigger `E_RECV_CALL_SETUP`, handle mid-call payload |
+| `Mobius` | `mobius.callprogress` | `CallManager.dequeueWsEvents()` | Trigger `E_RECV_CALL_PROGRESS` and caller ID refresh |
 | `Mobius CALL_CONNECTED` | `mobius.callconnected` | `CallManager.dequeueWsEvents()` | Trigger `E_RECV_CALL_CONNECT` |
-| `Mobius CALL_MEDIA` | `mobius.media` | `CallManager.dequeueWsEvents()` -> `call.sendMediaStateMachineEvt(...)` | Route ROAP `OFFER/ANSWER/OFFER_REQUEST/OK` |
+| `Mobius` | `mobius.media` | `CallManager.dequeueWsEvents()` -> `call.sendMediaStateMachineEvt(...)` | Route ROAP `OFFER/ANSWER/OFFER_REQUEST/OK` |
 | `Mobius CALL_DISCONNECTED` | `mobius.calldisconnected` | `CallManager.dequeueWsEvents()` -> `E_RECV_CALL_DISCONNECT` | Start disconnect cleanup |
 | `MediaConnection` | `ROAP_MESSAGE_TO_SEND` | `Call.mediaRoapEventsListener()` | Publish local ROAP back to Mobius (`postMedia`) |
 | `MediaConnection` | `REMOTE_TRACK_ADDED` | `Call.mediaTrackListener()` | Emit remote media track to app |
@@ -723,7 +769,6 @@ sequenceDiagram
     Call->>Call: clearTimeout(sessionTimer)
     Call->>Call: mediaStateMachine.send(E_ROAP_TEARDOWN)
     Call->>Call: mediaConnection.close()\nunregisterListeners()
-    Call-->>App: emit(DISCONNECT, correlationId)
     Call->>CM: deleteCb(correlationId)
     Call->>Call: E_CALL_CLEARED -> S_CALL_CLEARED (final)
 ```
