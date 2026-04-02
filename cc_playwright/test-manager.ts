@@ -403,7 +403,6 @@ export class TestManager {
           this.agent1Page,
           LOGIN_MODE.EXTENSION,
           envTokens.agent1AccessToken,
-          this.agent1ExtensionPage,
           envTokens.agent1ExtensionNumber
         ),
         this.retryOperation(
@@ -457,7 +456,6 @@ export class TestManager {
         this.multiSessionAgent1Page!,
         LOGIN_MODE.EXTENSION,
         envTokens.agent1AccessToken,
-        this.agent1ExtensionPage,
         envTokens.agent1ExtensionNumber,
         true // Enable multi-session mode
       );

@@ -666,23 +666,21 @@ export async function clearPendingCallAndWrapup(page: Page): Promise<boolean> {
  * @param page - Playwright Page object
  * @param loginMode - The login mode to use (e.g., LOGIN_MODE.DESKTOP or LOGIN_MODE.EXTENSION)
  * @param accessToken - Access token for authentication
- * @param extensionPage - Optional extension page for handling calls in extension mode (default: null) - currently unused but kept for API compatibility
  * @param extensionNumber - Optional extension number for extension/dial login
  * @param isMultiSession - Whether this is a multi-session setup (default: false)
  * @returns Promise<void>
- * @description Logs in via access token, initializes SDK, registers with CC, and performs station login
+ * @description Logs in via access token, initializes SDK, registers with CC, and performs station login.
+ * Note: Extension calling webclient page setup is handled separately via loginExtension().
  * @example
  * ```typescript
  * await pageSetup(page, LOGIN_MODE.DESKTOP, accessToken);
- * await pageSetup(page, LOGIN_MODE.EXTENSION, accessToken, extensionPage, extensionNumber);
+ * await pageSetup(page, LOGIN_MODE.EXTENSION, accessToken, extensionNumber);
  * ```
  */
 export const pageSetup = async (
   page: Page,
   loginMode: LoginMode,
   accessToken: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  extensionPage: Page | null = null,
   extensionNumber: string | undefined = undefined,
   isMultiSession = false
 ) => {
