@@ -22,6 +22,7 @@ import {
   MediaConnectionEventNames,
   MediaContent,
   MediaType,
+  MediaCodecMimeType,
   RemoteTrackType,
   RoapMessage,
   StatsAnalyzer,
@@ -9839,15 +9840,20 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     if (shouldEnableMusicMode) {
-      await this.sendSlotManager.setCodecParameters(MediaType.AudioMain, {
-        maxaveragebitrate: '64000',
-        maxplaybackrate: '48000',
-      });
+      await this.sendSlotManager.setCustomCodecParameters(
+        MediaType.AudioMain,
+        MediaCodecMimeType.OPUS,
+        {
+          maxaveragebitrate: '64000',
+          maxplaybackrate: '48000',
+        }
+      );
     } else {
-      await this.sendSlotManager.deleteCodecParameters(MediaType.AudioMain, [
-        'maxaveragebitrate',
-        'maxplaybackrate',
-      ]);
+      await this.sendSlotManager.markCustomCodecParametersForDeletion(
+        MediaType.AudioMain,
+        MediaCodecMimeType.OPUS,
+        ['maxaveragebitrate', 'maxplaybackrate']
+      );
     }
   }
 

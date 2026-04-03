@@ -38,6 +38,7 @@ import {
 import {
   ConnectionState,
   MediaConnectionEventNames,
+  MediaCodecMimeType,
   StatsAnalyzerEventNames,
   StatsMonitorEventNames,
   Errors,
@@ -9214,8 +9215,8 @@ describe('plugin-meetings', () => {
         const fakeMultistreamRoapMediaConnection = {
           createSendSlot: () => {
             return {
-              setCodecParameters: sinon.stub().resolves(),
-              deleteCodecParameters: sinon.stub().resolves(),
+              setCustomCodecParameters: sinon.stub().resolves(),
+              markCustomCodecParametersForDeletion: sinon.stub().resolves(),
             };
           },
         };
@@ -9238,27 +9239,29 @@ describe('plugin-meetings', () => {
         }
       );
 
-      it('should set the codec parameters when shouldEnableMusicMode is true', async () => {
+      it('should set custom codec parameters when shouldEnableMusicMode is true', async () => {
         await meeting.enableMusicMode(true);
         assert.calledOnceWithExactly(
-          meeting.sendSlotManager.getSlot(MediaType.AudioMain).setCodecParameters,
+          meeting.sendSlotManager.getSlot(MediaType.AudioMain).setCustomCodecParameters,
+          MediaCodecMimeType.OPUS,
           {
             maxaveragebitrate: '64000',
             maxplaybackrate: '48000',
           }
         );
         assert.notCalled(
-          meeting.sendSlotManager.getSlot(MediaType.AudioMain).deleteCodecParameters
+          meeting.sendSlotManager.getSlot(MediaType.AudioMain).markCustomCodecParametersForDeletion
         );
       });
 
-      it('should set the codec parameters when shouldEnableMusicMode is false', async () => {
+      it('should mark custom codec parameters for deletion when shouldEnableMusicMode is false', async () => {
         await meeting.enableMusicMode(false);
         assert.calledOnceWithExactly(
-          meeting.sendSlotManager.getSlot(MediaType.AudioMain).deleteCodecParameters,
+          meeting.sendSlotManager.getSlot(MediaType.AudioMain).markCustomCodecParametersForDeletion,
+          MediaCodecMimeType.OPUS,
           ['maxaveragebitrate', 'maxplaybackrate']
         );
-        assert.notCalled(meeting.sendSlotManager.getSlot(MediaType.AudioMain).setCodecParameters);
+        assert.notCalled(meeting.sendSlotManager.getSlot(MediaType.AudioMain).setCustomCodecParameters);
       });
     });
 
