@@ -692,7 +692,7 @@ describe('plugin-device', () => {
         assert.calledWith(device.logger.warn, sinon.match(/deletions failed/));
       });
 
-      it('calls _waitForDeviceCountBelowLimit with targetCount equal to preCount minus 5', async () => {
+      it('calls _waitForDeviceCountBelowLimit with targetCount equal to preCount minus min(5, deletedCount)', async () => {
         setup('WEB');
         const devices = Array.from({length: 20}, (_, i) => ({
           url: `url${i}`,
@@ -706,11 +706,31 @@ describe('plugin-device', () => {
 
         await device.deleteDevices();
 
-        // 20 WEB devices, preCount = 20, targetCount = 20 - 5 = 15
+        // 20 WEB devices, ceil(20/3) = 7 deletions (>= 5), targetCount = 20 - min(5, 7) = 15
         assert.calledWith(waitForLimitStub, 15, 0);
       });
 
-      it('regression: 144-device case — deleteDevices passes targetCount=139 (144 - 5)', async () => {
+      it('small-n: 6-device case — targetCount is reachable (ceil(6/3)=2 < 5, so wait for 6-2=4)', async () => {
+        setup('WEB');
+        const devices = Array.from({length: 6}, (_, i) => ({
+          url: `url${i}`,
+          modificationTime: `2023-10-0${i + 1}T10:00:00Z`,
+          deviceType: 'WEB',
+        }));
+
+        requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'})).resolves({body: {devices}});
+        requestStub.withArgs(sinon.match({method: 'DELETE'})).resolves();
+
+        await device.deleteDevices();
+
+        // ceil(6/3) = 2 deletions (< 5), targetCount = 6 - min(5, 2) = 4
+        // With the old n-5 formula this was 1, which is unreachable and burned all 5 polls
+        assert.equal(requestStub.withArgs(sinon.match({method: 'DELETE'})).callCount, 2);
+        assert.calledWith(waitForLimitStub, 4, 0);
+      });
+
+      it('regression: 144-device case — deleteDevices passes targetCount=139 (144 - min(5, ceil(144/3)))', async () => {
         setup('WEB');
         const devices = Array.from({length: 144}, (_, i) => ({
           url: `url${i}`,
@@ -724,10 +744,8 @@ describe('plugin-device', () => {
 
         await device.deleteDevices();
 
-        // ceil(144/3) = 48 deletions
+        // ceil(144/3) = 48 deletions (>= 5), targetCount = 144 - min(5, 48) = 139
         assert.equal(requestStub.withArgs(sinon.match({method: 'DELETE'})).callCount, 48);
-        // targetCount = 144 - 5 = 139 — with the old hardcoded MAX_REGISTERED_DEVICES - 5 = 95,
-        // 96 remaining devices after cleanup would never pass the check, burning all 5 polls (15s)
         assert.calledWith(waitForLimitStub, 139, 0);
       });
     });

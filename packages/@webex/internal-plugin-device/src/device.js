@@ -533,8 +533,8 @@ const Device = WebexPlugin.extend({
           return Promise.resolve();
         }
 
-        targetCount = sortedDevices.length - 5;
         const devicesToDelete = sortedDevices.slice(0, Math.ceil(sortedDevices.length / 3));
+        targetCount = sortedDevices.length - Math.min(5, devicesToDelete.length);
 
         this.logger.info(
           `device: deleting ${devicesToDelete.length} of ${webDevices.length} devices`
