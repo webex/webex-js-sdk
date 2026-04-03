@@ -3761,10 +3761,12 @@ export default class Meeting extends StatelessWebexPlugin {
       }
       this.rtcMetrics?.sendNextMetrics();
 
-      this.ensureDefaultDatachannelTokenAfterAdmit().then((isTokenFetched) => {
-        if (isTokenFetched) {
-          this.updateLLMConnection();
-        }
+      this.ensureDefaultDatachannelTokenAfterAdmit().catch((error) => {
+        LoggerProxy.logger.warn(
+          `Meeting:index#setUpLocusInfoSelfListener --> failed post-admit token prefetch flow: ${
+            error?.message || String(error)
+          }`
+        );
       });
 
       this.updateLLMConnection();
