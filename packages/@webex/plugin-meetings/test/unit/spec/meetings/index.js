@@ -1285,10 +1285,10 @@ describe('plugin-meetings', () => {
           assert.exists(result.dispose);
         });
 
-        it('creates noise reduction effect with ST model', async () => {
+        it('creates noise reduction effect with OFMV model', async () => {
           const result = await webex.meetings.createNoiseReductionEffect({
             audioContext: {},
-            model: 'st',
+            model: 'ofmv',
           });
 
           assert.exists(result);
@@ -1300,7 +1300,7 @@ describe('plugin-meetings', () => {
             authToken: 'fake_token',
             mode: 'WORKLET',
             avoidSimd: false,
-            model: 'st',
+            model: 'ofmv',
           });
           assert.exists(result.enable);
           assert.exists(result.disable);
