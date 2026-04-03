@@ -10454,10 +10454,10 @@ describe('plugin-meetings', () => {
             }
           );
 
-          resolvePrefetch();
+          resolvePrefetch(false);
           await Promise.resolve();
 
-          assert.calledTwice(meeting.updateLLMConnection);
+          assert.calledOnce(meeting.updateLLMConnection);
         });
 
         it('listens to the breakouts changed event', () => {

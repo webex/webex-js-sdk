@@ -3761,8 +3761,10 @@ export default class Meeting extends StatelessWebexPlugin {
       }
       this.rtcMetrics?.sendNextMetrics();
 
-      this.ensureDefaultDatachannelTokenAfterAdmit().then(() => {
-        this.updateLLMConnection();
+      this.ensureDefaultDatachannelTokenAfterAdmit().then((isTokenFetched) => {
+        if (isTokenFetched) {
+          this.updateLLMConnection();
+        }
       });
 
       this.updateLLMConnection();
@@ -6377,9 +6379,9 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Ensures default-session data channel token exists after lobby admission.
    * Some lobby users do not receive a token until they are admitted.
-   * @returns {Promise<void>}
+   * @returns {Promise<boolean>} true when a new token is fetched and cached
    */
-  private async ensureDefaultDatachannelTokenAfterAdmit(): Promise<void> {
+  private async ensureDefaultDatachannelTokenAfterAdmit(): Promise<boolean> {
     try {
       // @ts-ignore
       const datachannelToken = this.webex.internal.llm.getDatachannelToken();
@@ -6387,7 +6389,7 @@ export default class Meeting extends StatelessWebexPlugin {
       const isDataChannelTokenEnabled = await this.webex.internal.llm.isDataChannelTokenEnabled();
 
       if (!isDataChannelTokenEnabled || datachannelToken) {
-        return;
+        return false;
       }
 
       const response = await this.meetingRequest.fetchDatachannelToken({
@@ -6398,7 +6400,7 @@ export default class Meeting extends StatelessWebexPlugin {
       const fetchedDatachannelToken = response?.body?.datachannelToken;
 
       if (!fetchedDatachannelToken) {
-        return;
+        return false;
       }
 
       // @ts-ignore
@@ -6406,6 +6408,8 @@ export default class Meeting extends StatelessWebexPlugin {
         fetchedDatachannelToken,
         DataChannelTokenType.Default
       );
+
+      return true;
     } catch (error) {
       const msg = error?.message || String(error);
 
@@ -6413,6 +6417,8 @@ export default class Meeting extends StatelessWebexPlugin {
         `Meeting:index#ensureDefaultDatachannelTokenAfterAdmit --> failed to proactively fetch default data channel token after admit: ${msg}`,
         {statusCode: error?.statusCode}
       );
+
+      return false;
     }
   }
 
