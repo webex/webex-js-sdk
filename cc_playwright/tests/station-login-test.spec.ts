@@ -2,6 +2,7 @@
 import {expect, test} from '@playwright/test';
 import {
   ensureUserStateVisible,
+  stationLogout,
   telephonyLogin,
   verifyDesktopOptionVisibility,
   verifyLoginMode,
@@ -9,6 +10,7 @@ import {
 import {ensureRegisteredAfterReload} from '../Utils/initUtils';
 import {changeUserState, getStateElapsedTime, verifyCurrentState} from '../Utils/userStateUtils';
 import {
+  handleStrayTasks,
   parseTimeString,
   waitForWebSocketDisconnection,
   waitForWebSocketReconnection,
@@ -262,6 +264,19 @@ export default function createStationLoginTests() {
     test.beforeAll(async ({browser}, testInfo) => {
       testManager = new TestManager(testInfo.project.name);
       await testManager.setupForStationLogin(browser);
+
+      // CRITICAL: Clear any concurrent Extension sessions from previous tests
+      const agent1Page = testManager.agent1Page;
+      const logoutVisible = await agent1Page
+        .locator('#logoutAgent')
+        .isVisible()
+        .catch(() => false);
+
+      if (logoutVisible) {
+        await handleStrayTasks(agent1Page).catch(() => {});
+        await stationLogout(agent1Page, false);
+        await agent1Page.waitForTimeout(5000); // Wait for backend session cleanup
+      }
     });
 
     test.afterAll(async () => {

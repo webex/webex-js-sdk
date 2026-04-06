@@ -1,10 +1,11 @@
 /* eslint-disable import/no-extraneous-dependencies */
 import {expect, Page} from '@playwright/test';
 import dotenv from 'dotenv';
+import * as path from 'path';
 import {AWAIT_TIMEOUT, EXTENSION_REGISTRATION_TIMEOUT, LOGIN_MODE, LoginMode} from '../constants';
 import {getSelector, handleStrayTasks} from './helperUtils';
 
-dotenv.config();
+dotenv.config({path: path.resolve(__dirname, '../.env')});
 
 const MODE_VALUE_MAP: Record<string, string> = {
   [LOGIN_MODE.DESKTOP]: 'BROWSER',
