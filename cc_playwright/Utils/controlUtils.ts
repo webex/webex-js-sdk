@@ -1,4 +1,4 @@
-/* eslint-disable no-await-in-loop, no-plusplus, no-continue, no-console */
+/* eslint-disable no-await-in-loop, no-plusplus, no-continue */
 import {Page} from '@playwright/test';
 import {AWAIT_TIMEOUT} from '../constants';
 
