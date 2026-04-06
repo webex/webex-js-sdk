@@ -9,12 +9,12 @@
 Use this workflow when:
 - **Adding a new method** to an existing class (e.g., `doHoldResume` on `Call`, `getDeviceList` on `CallingClient`)
 - **Extending module capabilities** with a new public or private operation
-- **Adding a supplementary service** (hold, resume, transfer, park, etc.)
+- **Adding a supplementary service** (hold, resume, transfer etc.)
 
 Do NOT use this workflow for:
-- **Creating an entirely new module** (new class/folder) -- Use [`../new-module/00-master.md`](../new-module/00-master.md)
-- **Enhancing or modifying an existing method** -- Use [`../existing-module/feature-enhancement.md`](../existing-module/feature-enhancement.md)
-- **Fixing a bug** -- Use [`../existing-module/bug-fix.md`](../existing-module/bug-fix.md)
+- **Creating an entirely new module** (new class/folder) -- Use [`../new-module/00-master.md`](../new-module/00-master.md) instead.
+- **Enhancing or modifying an existing method** -- Use [`../existing-module/feature-enhancement.md`](../existing-module/feature-enhancement.md) instead.
+- **Fixing a bug** -- Use [`../existing-module/bug-fix.md`](../existing-module/bug-fix.md) instead.
 
 ---
 

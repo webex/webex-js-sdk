@@ -69,7 +69,7 @@ Use this 13-step template for any method that calls the Mobius API. Adapt as nee
 public async methodName(
   param1: ParamType1,
   param2?: ParamType2,
-  additionalParam?: OptionalType
+  additionalParam?: additionalParamType
 ): Promise<ReturnType> {
   // Step 1: Define log context
   const logContext = {
@@ -164,7 +164,6 @@ Consumer calls method
   -> HTTP POST to Mobius
   -> Success response received
   -> Submit success metric
-  -> Emit success event to consumer immediately
 ```
 
 ### Real Example: doHoldResume Flow

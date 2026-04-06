@@ -10,9 +10,17 @@ This is the most common path. Used by CallHistory, CallSettings, Contacts, and V
 
 Use the exposure and event decisions already captured in `01-pre-questions.md` as source-of-truth while performing this step.
 
+### A0. Confirm exposure decision (from `01-pre-questions.md`)
+
+Treat `01-pre-questions.md` as the authority for export behavior:
+
+- If pre-questions say the module must be **public**, complete **A1** (and entrypoint export updates where required).
+- If pre-questions say the module is **internal-only**, skip **A1** and avoid adding package-level exports.
+- If pre-questions classify this as a **sub-module**, follow the sub-module path and do not add top-level exports.
+
 ### A1. Export from `src/api.ts`
 
-Add the module's exports to `src/api.ts` following the existing grouped pattern:
+If `01-pre-questions.md` marked this module as public, add the module's exports to `src/api.ts` following the existing grouped pattern:
 
 ```typescript
 // src/api.ts
