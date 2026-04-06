@@ -1,108 +1,122 @@
-# New Module - Master Template
+# New Module Workflow - Master Orchestrator
 
-> **Purpose**: Orchestrator for creating new modules within the `@webex/calling` package — whether top-level (e.g., a new service like CallHistory, Contacts) or a sub-module within an existing module.
+## Purpose
+
+This template guides the creation of a new module within the `@webex/calling` package. It ensures every new module follows established patterns for types, constants, module classes, integration, testing, and validation.
 
 ---
 
 ## Entry Paths
 
-You can land on this template from:
-- Direct "create new module" requests
-- "Add feature" requests where triage determines a new module is needed
-- Requests to add a new backend connector or service
+### Direct Request
+
+The user explicitly asks to create a new module (e.g., "create a Presence module", "add a new Recordings service").
+
+### Feature Triage
+
+Routed here from the root `AGENTS.md` or `ai-docs/README.md` when the task requires a new class, directory, or module that does not yet exist in the codebase.
 
 ---
 
 ## Prerequisites
 
-Before starting, ensure you have:
-- Clear understanding of what the module will do
-- API endpoint details (payload, response, HTTP method, endpoint) if the module calls a backend
-- Event contract details (event keys, payload shape, emission source) if the module uses events
-- Understanding of which calling backend(s) it supports (WXC, UCM, BroadWorks, or all)
+Before starting, confirm the following:
+
+- [ ] You have read `ai-docs/RULES.md` for coding standards
+- [ ] You have read `ai-docs/patterns/typescript-patterns.md` for type and interface conventions
+- [ ] You have read `ai-docs/patterns/event-driven-patterns.md` if the module emits events
+- [ ] You have read `ai-docs/patterns/error-handling-patterns.md` for error class usage, error mapping, and error event emission conventions
+- [ ] You have read `ai-docs/patterns/testing-patterns.md` for Jest conventions
+- [ ] You understand the existing module structure by examining at least one reference implementation
 
 ---
 
 ## Workflow Overview
 
+The workflow consists of 5 sequential steps. Each step has a completion gate that must be satisfied before proceeding.
+
 ```
-Step 1: Pre-Questions → Step 2: Code Generation → Step 3: Test Generation → Step 4: Validation
+Step 1          Step 2             Step 3           Step 4            Step 5
+Pre-Questions   Code Generation    Integration      Tests             Validation
+01-pre-         02-code-           03-integration   04-test-          05-validation
+questions.md    generation.md      .md              generation.md     .md
+     |               |                  |                |                |
+     v               v                  v                v                v
+  Gather spec    Generate files     Wire into        Write tests      Final checks
+  from user      (types, consts,    package          (unit, event,    (build, lint,
+                  service class)    exports          backend)         patterns)
 ```
 
----
+### Step 1: Pre-Questions (`01-pre-questions.md`)
 
-## Step-by-Step Process
+**STOP and ask the user questions first.** Gather the module specification including name, placement, API contract, event contract, dependencies, and exposure model. Do NOT generate any code until this step is complete.
 
-### Step 1: Gather Requirements
-**Template**: [`01-pre-questions.md`](01-pre-questions.md)
+### Step 2: Code Generation (`02-code-generation.md`)
 
-Answer these questions:
-- What is the module name and purpose?
-- What API endpoints will it call?
-- What events will it emit or listen to?
-- Will it need backend connectors (WXC, UCM, BroadWorks)?
-- Is it exposed via a factory function in `src/api.ts`?
+Generate the module files: `types.ts`, `constants.ts`, and the main service class. Follow the appropriate file structure based on placement type (top-level, sub-module, or multi-backend).
 
-### Step 2: Generate Code
-**Template**: [`02-code-generation.md`](02-code-generation.md)
+### Step 3: Integration (`03-integration.md`)
 
-Create:
-- Module directory with standard file structure
-- Main class file implementing the module interface
-- Type definitions (`types.ts`)
-- Constants (`constants.ts`)
-- Factory function for public instantiation
+Wire the new module into the package: update `src/api.ts` exports, add event keys to `Events/types.ts`, register Mercury listeners via `SDKConnector`, and add metric events if applicable.
 
-### Step 3: Generate Tests
-**Template**: [`03-test-generation.md`](03-test-generation.md)
+### Step 4: Test Generation (`04-test-generation.md`)
 
-Create:
-- Unit test file (co-located with source)
-- Test fixtures file
-- Tests for all public methods (success + error)
-- Event emission tests
+Write co-located Jest tests covering initialization, method success/error paths, event emission, and backend connector delegation (if multi-backend).
 
-### Step 4: Validation
-**Template**: [`04-validation.md`](04-validation.md)
+### Step 5: Validation (`05-validation.md`)
 
-Verify:
-- All patterns followed (Logger, Metrics, Errors, Events)
-- Tests pass
-- Types exported from `src/api.ts`
-- ai-docs created for the new module
-
----
-
-## Patterns to Load
-
-Before generating code, read:
-1. [`../../patterns/typescript-patterns.md`](../../patterns/typescript-patterns.md) - Type conventions, factory pattern, singleton pattern
-2. [`../../patterns/event-driven-patterns.md`](../../patterns/event-driven-patterns.md) - Event and WebSocket patterns
-3. [`../../patterns/testing-patterns.md`](../../patterns/testing-patterns.md) - Test patterns
-4. [`../../RULES.md`](../../RULES.md) - Coding standards
+Run through the final quality checklist: verify pattern compliance, build success, test passage, and documentation updates.
 
 ---
 
 ## Reference Implementations
 
-Study existing modules for patterns:
-- **Simple module**: `src/CallHistory/CallHistory.ts` - Single class, factory function, event handling
-- **Multi-backend module**: `src/Voicemail/Voicemail.ts` - WXC, UCM, and BroadWorks backend connectors
-- **Complex module**: `src/CallingClient/CallingClient.ts` - Sub-modules, state machines, WebSocket events
+Use these existing modules as reference when generating code:
+
+| Module            | Complexity    | Key Patterns                                                                           | Path                 |
+| ----------------- | ------------- | -------------------------------------------------------------------------------------- | -------------------- |
+| **CallingClient** | Complex       | Sub-modules (Line, Call, Registration), state machines, media                          | `src/CallingClient/` |
+| **CallHistory**   | Simple        | Single class, Eventing, Mercury listeners, SDKConnector                                | `src/CallHistory/`   |
+| **CallSettings**  | Medium        | Multi-backend connectors (WXC/UCM), factory function                                   | `src/CallSettings/`  |
+| **Contacts**      | Simple        | Single class, SDKConnector, SCIM/People API                                            | `src/Contacts/`      |
+| **Voicemail**     | Multi-backend | WxCallBackendConnector, BroadworksBackendConnector, UcmBackendConnector, MetricManager | `src/Voicemail/`     |
+
+### When to use which reference
+
+- **Simple data-fetch module** (no backends, no events) --> Use Contacts as reference
+- **Simple module with events** --> Use CallHistory as reference
+- **Multi-backend module** --> Use Voicemail as reference
+- **Sub-module of CallingClient** --> Examine `src/CallingClient/calling/` or `src/CallingClient/line/`
+
+---
+
+## Pattern References
+
+These documents define the conventions your generated code must follow:
+
+| Document            | Path                                        | Key Content                                        |
+| ------------------- | ------------------------------------------- | -------------------------------------------------- |
+| Coding Standards    | `ai-docs/RULES.md`                          | Naming, imports, error handling, logging           |
+| TypeScript Patterns | `ai-docs/patterns/typescript-patterns.md`   | Type definitions, interfaces, generics             |
+| Event Patterns      | `ai-docs/patterns/event-driven-patterns.md` | Eventing base class, event keys, Mercury listeners |
+| Error Handling Patterns | `ai-docs/patterns/error-handling-patterns.md` | Error classes, mapping utilities, and error emission conventions |
+| Testing Patterns    | `ai-docs/patterns/testing-patterns.md`      | Jest conventions, mocking, fixture files           |
 
 ---
 
 ## Quick Checklist
 
-- [ ] Module directory created with standard structure (`types.ts`, `constants.ts`, main class)
-- [ ] Interface defined with `I` prefix (`IModuleName`)
-- [ ] Class extends `Eventing<T>` if it emits events
-- [ ] Factory function exported (`createModuleNameClient`)
-- [ ] Logger used with `{ file, method }` context in all methods
-- [ ] Metrics tracked for all operations (success + failure)
-- [ ] Error handling follows ExtendedError hierarchy
-- [ ] Types defined in `types.ts` and exported from `src/api.ts`
-- [ ] Constants defined in `constants.ts`
-- [ ] Unit tests created and co-located
-- [ ] JSDoc added for all public methods
-- [ ] ai-docs created (`AGENTS.md` + `ARCHITECTURE.md`) if module is non-trivial
+Use this as a final summary before declaring the module complete:
+
+- [ ] **Pre-questions answered** -- Module name, placement, API contract, events, dependencies, exposure
+- [ ] **Types defined** -- Interface (`IModuleName`), response types, event types (if applicable)
+- [ ] **Constants defined** -- File name constant, METHODS object, module-specific constants
+- [ ] **Service class created** -- Extends `Eventing<T>`, uses SDKConnector, Logger, MetricManager
+- [ ] **Factory function exported** -- `createModuleNameClient(webex, logger)` pattern
+- [ ] **Integrated into package** -- Exports added to `src/api.ts`, event keys registered
+- [ ] **Tests written** -- Co-located `.test.ts` file with fixtures, covers success/error/events
+- [ ] **Validation passed** -- Build succeeds, tests pass, lint clean, patterns followed
+
+---
+
+**Next Step:** [01-pre-questions.md](./01-pre-questions.md) -- Gather the module specification before writing any code.

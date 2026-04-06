@@ -247,15 +247,6 @@ export enum MOBIUS_EVENT_KEYS {
   CALL_SESSION_EVENT_VIEWED = 'event:janus.user_viewed_sessions',
   CALL_SESSION_EVENT_DELETED = 'event:janus.user_sessions_deleted',
 }
-
-export enum WEBSOCKET_KEYS {
-  CALL_PROGRESS = 'callprogress',
-  CALL_CONNECTED = 'callconnected',
-  CALL_DISCONNECTED = 'callconnected', // Known bug in source — should be 'calldisconnected'
-  CALL_INFO = 'callinfo',
-  CALL = 'call',
-  ROAP = 'ROAP',
-}
 ```
 
 ---
