@@ -11,11 +11,11 @@ In this document, **Mobius** refers to the backend signaling/control service use
 
 | Component | Primary Responsibility | Key Interactions |
 |-----------|------------------------|------------------|
-| `CallManager` | Owns active call collection, resolves/routes backend events | `SDKConnector` (`event:mobius`), `Call`, `Line` |
-| `Call` | Executes call lifecycle operations and state machines | Backend signaling service (`Mobius`) REST APIs, `RoapMediaConnection`, `CallerId`, app listeners |
+| `CallManager` (class) | Owns active call collection, resolves/routes backend events | Backend signaling stream (`event:mobius`), `Call`, `Line` |
+| `Call` (class) | Executes call lifecycle operations and state machines | Backend signaling service (`Mobius`) REST APIs, `RoapMediaConnection`, `CallerId`, app listeners |
 | `CallerId` | Resolves display identity from headers + SCIM enrichment | `Call` callback emitter, shared identity utilities |
-| `Call State Machine` | Signaling transitions and call control actions | `Call` handlers (`setup`, `connect`, `disconnect`, `hold/resume`) |
-| `Media ROAP State Machine` | ROAP negotiation transitions (`OFFER/ANSWER/OK/ERROR`) | `Call` ROAP handlers, `RoapMediaConnection`, Mobius media API |
+| `Call State Machine` | Signaling transitions and call control actions | Lives in `Call` as `callMachine` and drives handlers (`setup`, `connect`, `disconnect`, `hold/resume`) |
+| `Media ROAP State Machine` | ROAP negotiation transitions (`OFFER/ANSWER/OK/ERROR`) | Lives in `Call` as `mediaMachine` and drives ROAP handlers + `RoapMediaConnection` |
 
 
 ## Class Diagram
@@ -362,7 +362,7 @@ stateDiagram-v2
 
 ```mermaid
 flowchart TD
-    A[event:mobius on Mercury WebSocket] --> B[SDKConnector listener]
+    A[event:mobius on Mercury WebSocket] --> B[CallManager backend event subscription]
     B --> C[CallManager.dequeueWsEvents event]
     C --> D[Parse MobiusCallEvent data]
     D --> E{eventType}
@@ -380,8 +380,7 @@ flowchart TD
     F8 --> F9[sendCallStateMachineEvt E_RECV_CALL_SETUP]
 
     E -->|CALL_PROGRESS mobius.callprogress| G[getCall correlationId]
-    G --> G1[startCallerIdResolution callerId]
-    G1 --> G2[sendCallStateMachineEvt E_RECV_CALL_PROGRESS]
+    G --> G1[sendCallStateMachineEvt E_RECV_CALL_PROGRESS]
 
     E -->|CALL_CONNECTED mobius.callconnected| H[getCall correlationId]
     H --> H1[sendCallStateMachineEvt E_RECV_CALL_CONNECT]
@@ -411,12 +410,12 @@ This module has two event layers:
 
 | Source | Event | Handler Path | Purpose |
 |--------|-------|--------------|---------|
-| `CallMananger Instantiation` | `event:mobius` | `listenForWsEvents()` -> `dequeueWsEvents()` | Entry point for all signaling/media events from backend |
+| `CallManager Instantiation` | `event:mobius` | `listenForWsEvents()` -> `dequeueWsEvents()` | Entry point for all signaling/media events from backend |
 | `Mobius` | `mobius.call` | `CallManager.dequeueWsEvents()` | Create/resolve call, trigger `E_RECV_CALL_SETUP`, handle mid-call payload |
-| `Mobius` | `mobius.callprogress` | `CallManager.dequeueWsEvents()` | Trigger `E_RECV_CALL_PROGRESS` and caller ID refresh |
-| `Mobius CALL_CONNECTED` | `mobius.callconnected` | `CallManager.dequeueWsEvents()` | Trigger `E_RECV_CALL_CONNECT` |
+| `Mobius` | `mobius.callprogress` | `CallManager.dequeueWsEvents()` | Trigger `E_RECV_CALL_PROGRESS` (caller ID refresh is handled in `Call.handleIncomingCallProgress()`) |
+| `Mobius` | `mobius.callconnected` | `CallManager.dequeueWsEvents()` | Trigger `E_RECV_CALL_CONNECT` |
 | `Mobius` | `mobius.media` | `CallManager.dequeueWsEvents()` -> `call.sendMediaStateMachineEvt(...)` | Route ROAP `OFFER/ANSWER/OFFER_REQUEST/OK` |
-| `Mobius CALL_DISCONNECTED` | `mobius.calldisconnected` | `CallManager.dequeueWsEvents()` -> `E_RECV_CALL_DISCONNECT` | Start disconnect cleanup |
+| `Mobius` | `mobius.calldisconnected` | `CallManager.dequeueWsEvents()` -> `E_RECV_CALL_DISCONNECT` | Start disconnect cleanup |
 | `MediaConnection` | `ROAP_MESSAGE_TO_SEND` | `Call.mediaRoapEventsListener()` | Publish local ROAP back to Mobius (`postMedia`) |
 | `MediaConnection` | `REMOTE_TRACK_ADDED` | `Call.mediaTrackListener()` | Emit remote media track to app |
 | `LocalMicrophoneStream` | `OutputTrackChange`, `EffectAdded` | `Call.registerListeners()` | Keep media/effect state synchronized (`EffectAdded` registers per-effect `Enabled/Disabled` listeners) |
@@ -425,7 +424,6 @@ This module has two event layers:
 
 | Event Key | Payload | Emitted When |
 |-----------|---------|--------------|
-| `CALL_EVENT_KEYS.ALERTING` | `correlationId` | Remote side is alerting |
 | `CALL_EVENT_KEYS.PROGRESS` | `correlationId` | Progress/proceeding signaling received |
 | `CALL_EVENT_KEYS.CONNECT` | `correlationId` | Call connected signaling received |
 | `CALL_EVENT_KEYS.ESTABLISHED` | `correlationId` | Signaling + media negotiation complete |
@@ -448,7 +446,9 @@ Related manager-level emissions:
 Listen for incoming calls first, then attach per-call listeners:
 
 ```typescript
-line.on(LINE_EVENT_KEYS.INCOMING_CALL, (call: ICall) => {
+import {CALL_EVENT_KEYS, ICall, LINE_EVENTS} from '@webex/calling';
+
+line.on(LINE_EVENTS.INCOMING_CALL, (call: ICall) => {
   call.on(CALL_EVENT_KEYS.PROGRESS, (id) => {/* update UI */});
   call.on(CALL_EVENT_KEYS.CONNECT, (id) => {/* ringing -> connected */});
   call.on(CALL_EVENT_KEYS.ESTABLISHED, (id) => {/* media established */});
@@ -583,6 +583,52 @@ sequenceDiagram
 
 ---
 
+## Failure Flows
+
+### Outgoing Call Setup Failure
+
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant Call as Call
+    participant Mobius as Mobius
+
+    App->>Call: dial(localAudioStream)
+    Call->>Call: E_SEND_CALL_SETUP -> S_SEND_CALL_SETUP
+    Call->>Mobius: POST /devices/{deviceId}/call
+    Mobius-->>Call: 4xx/5xx
+    Call->>Call: handleCallErrors(...)
+    Call-->>App: emit(CALL_ERROR, CallError)
+    Call->>Call: sendCallStateMachineEvt(E_UNKNOWN)
+    Call->>Call: transition to S_UNKNOWN -> S_CALL_CLEARED
+```
+
+### Hold/Resume Failure (Error + Timeout)
+
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant Call as Call
+    participant Mobius as Mobius
+
+    App->>Call: doHoldResume() / doHoldResume()
+    alt API failure path
+        Call->>Mobius: POST /callhold/hold or /callhold/resume
+        Mobius-->>Call: 4xx/5xx
+        Call->>Call: handleCallErrors(...)
+        Call-->>App: emit(HOLD_ERROR or RESUME_ERROR, CallError)
+        Call->>Call: sendCallStateMachineEvt(E_CALL_ESTABLISHED)
+    else timeout path
+        Call->>Call: start supplementaryServicesTimer(10s)
+        Mobius--x Call: no midcall response
+        Call->>Call: timer callback creates timeout CallError
+        Call-->>App: emit(HOLD_ERROR or RESUME_ERROR, CallError)
+        Call->>Call: sendCallStateMachineEvt(E_CALL_ESTABLISHED)
+    end
+```
+
+---
+
 ## Transfer Flow
 
 ### Blind Transfer
@@ -629,7 +675,7 @@ sequenceDiagram
 flowchart TD
     A[initMediaConnection localAudioTrack debugId] --> B[Create RoapMediaConnection]
     B --> C[Set localTracks audio from localAudioTrack]
-    C --> D[Set iceServers empty and skipInactiveTransceivers false]
+    C --> D[Set iceServers empty and skipInactiveTransceivers true]
     D --> E[Set debugId to debugId or correlationId]
 
     E --> F[Register mediaRoapEventsListener]
@@ -764,7 +810,7 @@ sequenceDiagram
     App->>Call: end()
     Call->>Call: E_SEND_CALL_DISCONNECT -> S_SEND_CALL_DISCONNECT
     Call->>Call: handleOutgoingCallDisconnect()
-    Call->>Call: forceSendStatsReport()\ngetCallStats()
+    Note over Call: DELETE path collects stats internally via delete() -> getCallStats()
     Call->>Mobius: DELETE /devices/{deviceId}/calls/{callId}\n{device, callId, metrics, causecode, cause}
     Call->>Call: clearTimeout(sessionTimer)
     Call->>Call: mediaStateMachine.send(E_ROAP_TEARDOWN)
@@ -787,7 +833,7 @@ sequenceDiagram
     Call->>Call: S_RECV_CALL_DISCONNECT / handleIncomingCallDisconnect()
     Call-->>App: emit(DISCONNECT, correlationId)
     Call->>Call: setDisconnectReason(causecode, cause)
-    Call->>Call: forceSendStatsReport()\ngetCallStats()
+    Note over Call: DELETE path collects stats internally via delete() -> getCallStats()
     Call->>Call: clearTimeout(sessionTimer)
     Call->>Call: mediaStateMachine.send(E_ROAP_TEARDOWN)
     Call->>Call: mediaConnection.close()\nunregisterListeners()
@@ -803,7 +849,8 @@ Keepalive is active while the call is established. A session timer triggers peri
 - On each tick, `Call` sends `POST /devices/{deviceId}/calls/{callId}/status`.
 - Success resets keepalive retry tracking and schedules the next keepalive cycle.
 - Failure increments `callKeepaliveRetryCount` and schedules retry via `RetryCallBack`.
-- After max retries (4), the call is force-disconnected by sending `E_SEND_CALL_DISCONNECT`.
+- On retry exhaustion (`MAX_CALL_KEEPALIVE_RETRY_COUNT`), retry loop stops and no immediate disconnect event is sent.
+- Disconnect is triggered only on abort scenarios from `handleCallErrors` (for example keepalive 401/403/404 paths), where `E_SEND_CALL_DISCONNECT` is emitted.
 
 ```mermaid
 sequenceDiagram
@@ -822,12 +869,11 @@ sequenceDiagram
         else Keepalive failure
             Mobius-->>Call: error/timeout
             Call->>Call: callKeepaliveRetryCount += 1
-            alt retries <= 4
+            alt retries < MAX_CALL_KEEPALIVE_RETRY_COUNT
                 Call->>Call: retryCallback(nextInterval)
                 Call->>Mobius: retry POST /status
             else retries exceeded
-                Call->>Call: sendCallStateMachineEvt(E_SEND_CALL_DISCONNECT)
-                Call->>Call: transition to disconnect flow
+                Call->>Call: stop keepalive retries (no immediate disconnect)
             end
         end
     end
@@ -1150,7 +1196,7 @@ All constants are imported from `../constants` (`CallingClient/constants.ts`).
 |----------|-------|-------------|
 | `DEFAULT_SESSION_TIMER` | `600000` (10 minutes) | Keepalive interval after call establishment |
 | `SUPPLEMENTARY_SERVICES_TIMEOUT` | `10000` (10 seconds) | Timeout for hold/resume mid-call response |
-| `MAX_CALL_KEEPALIVE_RETRY_COUNT` | `4` | Maximum keepalive retries before force disconnect |
+| `MAX_CALL_KEEPALIVE_RETRY_COUNT` | `4` | Maximum keepalive retries before retry loop stops |
 | `INITIAL_SEQ_NUMBER` | `1` | Starting ROAP sequence number |
 | `DEVICES_ENDPOINT_RESOURCE` | `'devices'` | URL path segment |
 | `CALL_ENDPOINT_RESOURCE` | `'call'` | URL path segment (singular, for POST) |
