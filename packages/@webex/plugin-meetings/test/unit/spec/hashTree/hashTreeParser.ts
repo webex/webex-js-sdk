@@ -861,6 +861,116 @@ describe('HashTreeParser', () => {
       });
     });
 
+    it('handles updates to control entries correctly', () => {
+      const parser = createHashTreeParser();
+
+      const mainPutItemsSpy = sinon.spy(parser.dataSets.main.hashTree, 'putItems');
+
+      // Create a locus update with new htMeta information for some things
+      const locusUpdate = {
+        dataSets: [
+          createDataSet('main', 16, 1100),
+        ],
+        locus: {
+          url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f',
+          htMeta: {
+            elementId: {
+              type: 'locus',
+              id: 0,
+              version: 200, // same version
+            },
+            dataSetNames: ['main'],
+          },
+          participants: [],
+          controls: {
+            lock: {
+              locked: true,
+              htMeta: {
+                elementId: {
+                  type: 'ControlEntry',
+                  id: 10100,
+                  version: 100,
+                },
+                dataSetNames: ['main'],
+              },
+            },
+            stream: {
+              streaming: true,
+              htMeta: {
+                elementId: {
+                  type: 'ControlEntry',
+                  id: 10101,
+                  version: 100,
+                },
+                dataSetNames: ['main'],
+              },
+            } 
+          }
+        },
+      };
+
+      // Call handleLocusUpdate
+      parser.handleLocusUpdate(locusUpdate);
+
+      // Verify putItems was called on main hash tree with correct data
+      assert.calledOnceWithExactly(mainPutItemsSpy, [
+        {type: 'locus', id: 0, version: 200},
+        {type: 'ControlEntry', id: 10100, version: 100},
+        {type: 'ControlEntry', id: 10101, version: 100}
+      ]);
+
+      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+        updatedObjects: [
+          {
+            htMeta: {
+              elementId: {
+                type: 'ControlEntry',
+                id: 10100,
+                version: 100,
+              },
+              dataSetNames: ['main'],
+            },
+            data: {
+              lock: {
+                locked: true,
+                htMeta: {
+                  elementId: {
+                    type: 'ControlEntry',
+                    id: 10100,
+                    version: 100,
+                  },
+                  dataSetNames: ['main'],
+                },
+              },
+            },
+          },
+          {
+            htMeta: {
+              elementId: {
+                type: 'ControlEntry',
+                id: 10101,
+                version: 100,
+              },
+              dataSetNames: ['main'],
+            },
+            data: {
+              stream: {
+                streaming: true,
+                htMeta: {
+                  elementId: {
+                    type: 'ControlEntry',
+                    id: 10101,
+                    version: 100,
+                  },
+                  dataSetNames: ['main'],
+                },
+              },
+            },
+          }
+        ],
+      });
+    });
+
     it('handles unknown datasets gracefully', () => {
       const parser = createHashTreeParser();
 

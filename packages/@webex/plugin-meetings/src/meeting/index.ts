@@ -3734,7 +3734,7 @@ export default class Meeting extends StatelessWebexPlugin {
       });
       this.updateLLMConnection();
     });
-    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, async (payload) => {
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, (payload) => {
       this.stopKeepAlive();
 
       if (payload) {
@@ -3760,6 +3760,15 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       }
       this.rtcMetrics?.sendNextMetrics();
+
+      this.ensureDefaultDatachannelTokenAfterAdmit().catch((error) => {
+        LoggerProxy.logger.warn(
+          `Meeting:index#setUpLocusInfoSelfListener --> failed post-admit token prefetch flow: ${
+            error?.message || String(error)
+          }`
+        );
+      });
+
       this.updateLLMConnection();
     });
 
@@ -5961,6 +5970,30 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Restores LLM subchannel subscriptions after reconnect when captions are active.
+   * @returns {void}
+   */
+  private restoreLLMSubscriptionsIfNeeded(): void {
+    try {
+      // @ts-ignore
+      const isCaptionBoxOn = this.webex.internal.voicea?.getIsCaptionBoxOn?.();
+
+      if (!isCaptionBoxOn) {
+        return;
+      }
+
+      // @ts-ignore
+      this.webex.internal.voicea.updateSubchannelSubscriptions({subscribe: ['transcription']});
+    } catch (error) {
+      const msg = error?.message || String(error);
+
+      LoggerProxy.logger.warn(
+        `Meeting:index#restoreLLMSubscriptionsIfNeeded --> failed to restore subscriptions after LLM online: ${msg}`
+      );
+    }
+  }
+
+  /**
    * This is a callback for the LLM event that is triggered when it comes online
    * This method in turn will trigger an event to the developers that the LLM is connected
    * @private
@@ -5968,8 +6001,8 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {null}
    */
   private handleLLMOnline = (): void => {
-    // @ts-ignore
-    this.webex.internal.llm.off('online', this.handleLLMOnline);
+    this.restoreLLMSubscriptionsIfNeeded();
+
     Trigger.trigger(
       this,
       {
@@ -6201,6 +6234,8 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - config coming from registerPlugin
         if (this.config.enableAutomaticLLM) {
           // @ts-ignore
+          this.webex.internal.llm.off('online', this.handleLLMOnline);
+          // @ts-ignore
           this.webex.internal.llm.on('online', this.handleLLMOnline);
           this.updateLLMConnection()
             .catch((error) => {
@@ -6340,6 +6375,52 @@ export default class Meeting extends StatelessWebexPlugin {
         practiceSessionDatachannelToken,
         DataChannelTokenType.PracticeSession
       );
+    }
+  }
+
+  /**
+   * Ensures default-session data channel token exists after lobby admission.
+   * Some lobby users do not receive a token until they are admitted.
+   * @returns {Promise<boolean>} true when a new token is fetched and cached
+   */
+  private async ensureDefaultDatachannelTokenAfterAdmit(): Promise<boolean> {
+    try {
+      // @ts-ignore
+      const datachannelToken = this.webex.internal.llm.getDatachannelToken();
+      // @ts-ignore
+      const isDataChannelTokenEnabled = await this.webex.internal.llm.isDataChannelTokenEnabled();
+
+      if (!isDataChannelTokenEnabled || datachannelToken) {
+        return false;
+      }
+
+      const response = await this.meetingRequest.fetchDatachannelToken({
+        locusUrl: this.locusUrl,
+        requestingParticipantId: this.members.selfId,
+        isPracticeSession: false,
+      });
+      const fetchedDatachannelToken = response?.body?.datachannelToken;
+
+      if (!fetchedDatachannelToken) {
+        return false;
+      }
+
+      // @ts-ignore
+      this.webex.internal.llm.setDatachannelToken(
+        fetchedDatachannelToken,
+        DataChannelTokenType.Default
+      );
+
+      return true;
+    } catch (error) {
+      const msg = error?.message || String(error);
+
+      LoggerProxy.logger.warn(
+        `Meeting:index#ensureDefaultDatachannelTokenAfterAdmit --> failed to proactively fetch default data channel token after admit: ${msg}`,
+        {statusCode: error?.statusCode}
+      );
+
+      return false;
     }
   }
 
