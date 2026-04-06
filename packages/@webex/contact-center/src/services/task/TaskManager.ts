@@ -73,37 +73,34 @@ export default class TaskManager extends EventEmitter {
 
     this.registerTaskListeners();
     this.registerIncomingCallEvent();
-    this.registerRealtimeWSListeners();
   }
 
-  private registerRealtimeWSListeners() {
-    this.rtdWebSocketManager.on('message', (event: string) => {
-      try {
-        const payload = JSON.parse(event);
+  public handleRealtimeWebsocketEvent(event: string) {
+    try {
+      const payload = JSON.parse(event);
 
-        const interactionId = payload?.data?.data?.conversationId;
-        if (!interactionId) return;
+      const interactionId = payload?.data?.data?.conversationId;
+      if (!interactionId) return;
 
-        const task = this.taskCollection[interactionId];
-        if (!task) {
-          LoggerProxy.info(`Realtime transcription task not found`, {
-            module: TASK_MANAGER_FILE,
-            method: METHODS.REGISTER_REAL_TIME_WS_LISTENERS,
-            interactionId,
-          });
-
-          return;
-        }
-
-        task.emit(payload.type, payload.data);
-      } catch (error) {
-        LoggerProxy.error('Failed to parse RTD WebSocket message', {
+      const task = this.taskCollection[interactionId];
+      if (!task) {
+        LoggerProxy.info(`Realtime transcription task not found`, {
           module: TASK_MANAGER_FILE,
-          method: METHODS.REGISTER_TASK_LISTENERS,
-          error,
+          method: METHODS.HANDLE_REAL_TIME_WEBSOCKET_EVENT,
+          interactionId,
         });
+
+        return;
       }
-    });
+
+      task.emit(payload.type, payload.data);
+    } catch (error) {
+      LoggerProxy.error('Failed to parse RTD WebSocket message', {
+        module: TASK_MANAGER_FILE,
+        method: METHODS.HANDLE_REAL_TIME_WEBSOCKET_EVENT,
+        error,
+      });
+    }
   }
 
   /**

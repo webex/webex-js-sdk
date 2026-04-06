@@ -225,7 +225,6 @@ describe('TaskManager', () => {
     expect(taskManager).toBeInstanceOf(TaskManager);
     expect(webCallingService.listenerCount(LINE_EVENTS.INCOMING_CALL)).toBe(1);
     expect(webSocketManagerMock.listenerCount('message')).toBe(1);
-    expect(rtdWebSocketManagerMock.listenerCount('message')).toBe(1);
     expect(onSpy).toHaveBeenCalledWith(LINE_EVENTS.INCOMING_CALL, incomingCallCb);
 
     incomingCallCb(mockCall);
@@ -346,7 +345,7 @@ describe('TaskManager', () => {
       type: 'REAL_TIME_TRANSCRIPTION',
     };
 
-    rtdWebSocketManagerMock.emit('message', JSON.stringify(realtimePayload));
+    taskManager.handleRealtimeWebsocketEvent(JSON.stringify(realtimePayload));
 
     expect(taskEmitSpy).toHaveBeenCalledWith(
       CC_EVENTS.REAL_TIME_TRANSCRIPTION,
@@ -382,7 +381,7 @@ describe('TaskManager', () => {
 
     const existingTaskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
 
-    rtdWebSocketManagerMock.emit('message', JSON.stringify(realtimePayload));
+    taskManager.handleRealtimeWebsocketEvent(JSON.stringify(realtimePayload));
 
     expect(existingTaskEmitSpy).not.toHaveBeenCalled();
   });

@@ -556,6 +556,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.taskManager.unregisterIncomingCallEvent();
 
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
+      this.services.rtdWebSocketManager.off('message', this.handleRTDWebsocketMessage);
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
 
       if (
@@ -578,7 +579,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       if (!this.services.webSocketManager.isSocketClosed) {
         this.services.webSocketManager.close(false, 'Unregistering the SDK');
       }
-      if (!this.services.rtdWebSocketManager.isSocketClosed) {
+      if (this.services.rtdWebSocketManager && !this.services.rtdWebSocketManager.isSocketClosed) {
         this.services.rtdWebSocketManager.close(false, 'Unregistering the SDK');
       }
 
@@ -755,6 +756,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
                   module: CC_FILE,
                   method: METHODS.CONNECT_WEBSOCKET,
                 });
+                this.services.rtdWebSocketManager.on('message', this.handleRTDWebsocketMessage);
               })
               .catch((error) => {
                 LoggerProxy.error(`Error connecting to RTD websocket ${error}`, {
@@ -1225,6 +1227,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       default:
         break;
     }
+  };
+
+  private handleRTDWebsocketMessage = (event: string) => {
+    this.taskManager.handleRealtimeWebsocketEvent(event);
   };
 
   /**
