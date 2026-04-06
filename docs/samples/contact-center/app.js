@@ -2629,6 +2629,7 @@ function renderTaskList(taskList) {
     const state = task.data?.interaction?.state;
     const participants = task.data?.interaction?.participants;
     const agentJoined = agentId && participants?.[agentId]?.hasJoined;
+    const mediaType = task.data?.interaction?.mediaType;
 
     // Check for explicit terminal states (if backend sets these)
     if (state === 'ended' || state === 'disconnected' || state === 'terminated') {
@@ -2638,14 +2639,14 @@ function renderTaskList(taskList) {
     }
 
     // Check for stale ALERTING tasks (customer hung up before agent answered)
-    // ONLY filter if: state='new' + agent hasn't joined + task is old
-    if (state === 'new' && !agentJoined) {
+    // ONLY filter telephony tasks - digital channels (chat/email/social) can wait in queue longer
+    if (state === 'new' && !agentJoined && mediaType === 'telephony') {
       const taskCreatedAt = taskCreationTimes.get(taskId);
       const taskAgeMs = Date.now() - taskCreatedAt;
 
       if (taskAgeMs > ALERTING_STALE_THRESHOLD_MS) {
         console.warn(
-          `⚠️ Customer disconnect in ALERTING detected - filtering stale task ${taskId} ` +
+          `⚠️ Customer disconnect in ALERTING detected - filtering stale telephony task ${taskId} ` +
           `(age: ${Math.round(taskAgeMs/1000)}s, threshold: ${ALERTING_STALE_THRESHOLD_MS/1000}s)`
         );
         taskCreationTimes.delete(taskId); // Clean up tracking
