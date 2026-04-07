@@ -10,6 +10,7 @@ import {
   VoiceUIControlOptions,
   VOICE_VARIANT,
 } from '../types';
+import {TaskEvent} from '../state-machine';
 import Voice from './Voice';
 import WebCallingService from '../../WebCallingService';
 import {WrapupData} from '../../config/types';
@@ -136,6 +137,9 @@ export default class WebRTC extends Voice implements IWebRTC {
 
       this.webCallingService.declineCall(this.data.interactionId);
       this.unregisterWebCallListeners();
+
+      // Send DECLINE event to state machine to transition to TERMINATED
+      this.sendStateMachineEvent({type: TaskEvent.DECLINE, taskData: this.data});
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_DECLINE_SUCCESS,

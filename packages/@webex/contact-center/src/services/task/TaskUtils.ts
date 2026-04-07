@@ -82,7 +82,10 @@ export const getIsConsultInProgressForConferenceControls = (
     if (!m || m.mType !== 'consult') return false;
     if (!Array.isArray(m.participants) || m.participants.length === 0) return false;
 
-    return m.participants.some((participantId: string) => {
+    // After a conference merge, the consult leg may still exist but all participants
+    // from that consult are now in the main call. If ALL non-self participants in a
+    // consult leg are in the main call, the consult has been merged and is no longer "in progress".
+    const consultParticipantsOutsideMainCall = m.participants.filter((participantId: string) => {
       const p: any = interaction.participants?.[participantId];
       if (!p || p.hasLeft) return false;
       if (selfAgentId && participantId === selfAgentId) return false;
@@ -92,8 +95,12 @@ export const getIsConsultInProgressForConferenceControls = (
         p.isConsulted === true ||
         p.currentState === 'consulting';
 
+      // Include this participant if they're consulting AND not in main call yet
       return consultLegActive && !mainSet.has(participantId);
     });
+
+    // Consult is "in progress" only if there are participants actively consulting outside the main call
+    return consultParticipantsOutsideMainCall.length > 0;
   });
 };
 

@@ -225,12 +225,27 @@ export const guards = {
   },
 
   /**
-   * Check if wrapUpRequired in payload OR is consult initiator
+   * Check if wrapUpRequired in payload OR is consult initiator OR consulting from conference OR initiated transfer.
+   *
+   * When an agent consults from within a conference and then transfers that consult,
+   * they're transferring ownership of the entire interaction (including the conference).
+   * The transferring agent should ALWAYS exit and wrapup, even if the backend doesn't
+   * explicitly set wrapUpRequired=true.
+   *
+   * For blind transfers, the agent who initiated the transfer should also wrapup,
+   * even if the backend doesn't set wrapUpRequired=true.
    */
   shouldWrapUpOrIsInitiator: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
+    const interactionId = context.taskData?.interactionId || taskData?.interactionId;
+    const wrapUpRequired = taskData?.wrapUpRequired;
+    const consultInitiator = context.consultInitiator;
+    const consultFromConference = context.consultFromConference;
+    const transferRequested = context.transferRequested;
 
-    return Boolean(taskData?.wrapUpRequired || context.consultInitiator);
+    const result = Boolean(wrapUpRequired || consultInitiator || consultFromConference || transferRequested);
+
+    return result;
   },
 
   /**

@@ -1,7 +1,7 @@
 /* eslint-disable import/no-cycle */
 import EventEmitter from 'events';
 import type {AnyActorRef} from 'xstate';
-import {TaskEventPayload} from './state-machine';
+import {TaskEventPayload, TaskState} from './state-machine';
 import {Msg} from '../core/GlobalTypes';
 import AutoWrapup from './AutoWrapup';
 
@@ -1604,6 +1604,13 @@ export interface ITask extends EventEmitter {
    * @internal
    */
   sendStateMachineEvent: (event: TaskEventPayload) => void;
+
+  /**
+   * Returns the current state machine state.
+   * This is part of the migration to XState.
+   * @internal
+   */
+  getCurrentState(): TaskState | undefined;
 
   /**
    * Cancels the auto-wrapup timer for the task.

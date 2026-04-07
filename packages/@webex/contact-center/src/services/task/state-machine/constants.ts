@@ -119,6 +119,7 @@ export enum TaskEvent {
   RESUME_RECORDING = 'RESUME_RECORDING',
 
   // Transfer events
+  TRANSFER = 'TRANSFER', // User-initiated transfer (UI action)
   TRANSFER_SUCCESS = 'TRANSFER_SUCCESS',
   TRANSFER_FAILED = 'TRANSFER_FAILED',
 

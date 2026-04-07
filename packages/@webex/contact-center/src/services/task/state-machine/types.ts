@@ -57,9 +57,11 @@ export interface TaskContext {
   exitingConference: boolean;
   consultFromConference: boolean;
   transferConferenceRequested: boolean;
+  transferRequested: boolean; // Tracks if transfer is in progress (for dial number consult transfer wrapup)
   consultDestinationType: DestinationType | null;
   consultDestinationAgentJoined: boolean;
   consultCallHeld: boolean;
+  pendingEndConsult: boolean; // Tracks if endConsult was attempted but failed, needs retry
 
   // Recording
   recordingControlsAvailable: boolean;
@@ -156,6 +158,7 @@ interface TaskEventPayloadMap {
   [TaskEvent.RECORDING_STARTED]: BaseEvent<TaskEvent.RECORDING_STARTED> & {taskData: TaskData};
   [TaskEvent.PAUSE_RECORDING]: BaseEvent<TaskEvent.PAUSE_RECORDING> & {taskData: TaskData};
   [TaskEvent.RESUME_RECORDING]: BaseEvent<TaskEvent.RESUME_RECORDING> & {taskData: TaskData};
+  [TaskEvent.TRANSFER]: BaseEvent<TaskEvent.TRANSFER>; // User-initiated transfer (no payload)
   [TaskEvent.TRANSFER_SUCCESS]: BaseEvent<TaskEvent.TRANSFER_SUCCESS> & {taskData?: TaskData};
   [TaskEvent.TRANSFER_FAILED]: BaseEvent<TaskEvent.TRANSFER_FAILED> & {
     reason?: string;
@@ -174,7 +177,7 @@ interface TaskEventPayloadMap {
   [TaskEvent.SWITCH_TO_MAIN_CALL]: BaseEvent<TaskEvent.SWITCH_TO_MAIN_CALL>;
   [TaskEvent.SWITCH_TO_CONSULT]: BaseEvent<TaskEvent.SWITCH_TO_CONSULT>;
   [TaskEvent.ACCEPT]: BaseEvent<TaskEvent.ACCEPT>;
-  [TaskEvent.DECLINE]: BaseEvent<TaskEvent.DECLINE>;
+  [TaskEvent.DECLINE]: BaseEvent<TaskEvent.DECLINE> & {taskData?: TaskData};
   [TaskEvent.END]: BaseEvent<TaskEvent.END> & {taskData?: TaskData};
   [TaskEvent.CTQ_CANCEL]: BaseEvent<TaskEvent.CTQ_CANCEL> & {taskData: TaskData};
   [TaskEvent.CTQ_CANCEL_FAILED]: BaseEvent<TaskEvent.CTQ_CANCEL_FAILED> & {taskData: TaskData};

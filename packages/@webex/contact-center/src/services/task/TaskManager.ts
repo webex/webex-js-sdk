@@ -22,7 +22,7 @@ import LoggerProxy from '../../logger-proxy';
 import {getIsConferenceInProgress, isSecondaryEpDnAgent, shouldAutoAnswerTask} from './TaskUtils';
 import TaskFactory from './TaskFactory';
 import WebRTC from './voice/WebRTC';
-import {TaskEvent, type TaskEventPayload} from './state-machine';
+import {TaskEvent, TaskState, type TaskEventPayload} from './state-machine';
 import {normalizeTaskData} from './taskDataNormalizer';
 import {ApiAIAssistant} from '../ApiAiAssistant';
 
@@ -347,6 +347,19 @@ export default class TaskManager extends EventEmitter {
       // including TASK_INCOMING which is now handled via the state machine callbacks
       if (stateMachineEvent) {
         task.sendStateMachineEvent(stateMachineEvent);
+
+        // After CONFERENCE_START in CONFERENCING state, also send CONSULT_END to clear consult state.
+        // Backend sends AgentConsultConferenced but does NOT send AgentConsultEnded after a merge,
+        // so agents in conference still see consultInProgress=true. We send CONSULT_END locally to fix this.
+        if (
+          stateMachineEvent.type === TaskEvent.CONFERENCE_START &&
+          task.getCurrentState() === TaskState.CONFERENCING
+        ) {
+          task.sendStateMachineEvent({
+            type: TaskEvent.CONSULT_END,
+            taskData: stateMachineEvent.taskData,
+          });
+        }
       }
 
       // Send transcript start/stop events for relevant CC events

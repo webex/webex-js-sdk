@@ -87,6 +87,13 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
           if (consultInitiator !== undefined) updates.consultInitiator = consultInitiator;
         }
 
+        // Force recording state for voice tasks to handle unreliable backend data
+        const isVoiceTask = taskData?.interaction?.mediaType === 'telephony';
+        if (isVoiceTask) {
+          updates.recordingControlsAvailable = true;
+          updates.recordingInProgress = true;
+        }
+
         return updates;
       })()
     : {};
@@ -104,9 +111,11 @@ export function createInitialContext(
     exitingConference: false,
     consultFromConference: false,
     transferConferenceRequested: false,
+    transferRequested: false,
     consultDestinationType: null,
     consultDestinationAgentJoined: false,
     consultCallHeld: false,
+    pendingEndConsult: false,
     recordingControlsAvailable: false,
     recordingInProgress: false,
     uiControlConfig,
@@ -192,22 +201,35 @@ export const actions: TaskActionsMap = {
 
   setConsultAgentJoined: assign(
     ({context, event}: {context: TaskContext; event: TaskEventPayload}) => {
-      if (context.consultDestinationAgentJoined) {
-        return {};
+      const updates: Partial<TaskContext> = {};
+
+      if (!context.consultDestinationAgentJoined) {
+        if (
+          event &&
+          event.type === TaskEvent.CONSULTING_ACTIVE &&
+          'consultDestinationAgentJoined' in event
+        ) {
+          const eventValue = (event as {consultDestinationAgentJoined: boolean})
+            .consultDestinationAgentJoined;
+          if (eventValue) {
+            updates.consultDestinationAgentJoined = true;
+          }
+        }
       }
 
-      if (
-        !event ||
-        event.type !== TaskEvent.CONSULTING_ACTIVE ||
-        !('consultDestinationAgentJoined' in event)
-      ) {
-        return {};
+      // Also initialize consultCallHeld from actual media state when consulting becomes active
+      // This ensures sync even if no HOLD/UNHOLD event was processed yet
+      const taskData = getTaskDataFromEvent(event);
+      const consultMediaResourceId = taskData?.consultMediaResourceId;
+      if (consultMediaResourceId && taskData?.interaction?.media) {
+        const consultMedia = taskData.interaction.media[consultMediaResourceId];
+        if (consultMedia) {
+          // Derive consultCallHeld from whether consult media is held
+          updates.consultCallHeld = consultMedia.isHold === true;
+        }
       }
 
-      const eventValue = (event as {consultDestinationAgentJoined: boolean})
-        .consultDestinationAgentJoined;
-
-      return eventValue ? {consultDestinationAgentJoined: true} : {};
+      return Object.keys(updates).length > 0 ? updates : {};
     }
   ),
 
@@ -232,23 +254,90 @@ export const actions: TaskActionsMap = {
     return {};
   }),
 
-  clearConsultState: assign({
-    consultDestinationType: null,
-    consultDestinationAgentJoined: false,
-    consultInitiator: false,
-    exitingConference: false,
-    consultCallHeld: false,
-    consultFromConference: false,
-    transferConferenceRequested: false,
+  enableRecordingControls: assign(() => ({
+    recordingControlsAvailable: true,
+  })),
+
+  clearConsultState: assign(() => {
+    return {
+      consultDestinationType: null as DestinationType | null,
+      consultDestinationAgentJoined: false,
+      consultInitiator: false,
+      exitingConference: false,
+      consultCallHeld: false,
+      consultFromConference: false,
+      transferConferenceRequested: false,
+      pendingEndConsult: false,
+    };
+  }),
+
+  /**
+   * Clear consult state but preserve consultFromConference flag.
+   * Used when CONFERENCE_START arrives while in CONFERENCING state with an active
+   * consult-from-conference. We need to preserve the flag so the agent can properly
+   * transition to wrapup after transferring that consult.
+   */
+  clearConsultStatePreservingConferenceFlag: assign(({context}: TaskActionArgs) => {
+    const preserveFlag = context.consultFromConference === true;
+    return {
+      consultDestinationType: context.consultFromConference ? context.consultDestinationType : null,
+      consultDestinationAgentJoined: false,
+      consultInitiator: preserveFlag ? context.consultInitiator : false,
+      exitingConference: false,
+      consultCallHeld: false,
+      consultFromConference: preserveFlag,
+      transferConferenceRequested: false,
+      pendingEndConsult: false,
+    };
+  }),
+
+  /**
+   * Clear consult state but conditionally preserve consultInitiator and consultFromConference.
+   * Used when CONSULT_END arrives but we expect TRANSFER_SUCCESS to follow.
+   * For dial numbers, backend sends AgentConsultEnded before AgentConsultTransferred,
+   * so we need to preserve consultInitiator for the wrapup transition.
+   * For conference consult transfers, we also preserve consultFromConference to ensure
+   * the agent transitions to wrapup even if the backend doesn't send wrapUpRequired=true.
+   * Only preserves if transferRequested is true (transfer in progress).
+   */
+  clearConsultStatePreservingInitiator: assign(({context}: TaskActionArgs) => {
+    const preserveInitiator = context.transferRequested === true;
+    const currentInitiator = context.consultInitiator;
+    const currentFromConference = context.consultFromConference;
+
+    const newInitiator = preserveInitiator ? currentInitiator : false;
+    const newFromConference = preserveInitiator ? currentFromConference : false;
+
+    // Always explicitly set consultInitiator and consultFromConference to avoid XState ambiguity
+    return {
+      consultDestinationType: null as DestinationType | null,
+      consultDestinationAgentJoined: false,
+      consultInitiator: newInitiator,
+      exitingConference: false,
+      consultCallHeld: false,
+      consultFromConference: newFromConference,
+      transferConferenceRequested: false,
+      pendingEndConsult: false,
+    };
+  }),
+
+  setTransferRequested: assign(() => {
+    return {transferRequested: true};
+  }),
+  clearTransferRequested: assign(() => {
+    return {transferRequested: false};
   }),
 
   setTransferConferenceRequested: assign({transferConferenceRequested: true}),
   clearTransferConferenceRequested: assign({transferConferenceRequested: false}),
 
+  setPendingEndConsult: assign({pendingEndConsult: true}),
+  clearPendingEndConsult: assign({pendingEndConsult: false}),
+
   setConsultCallHeld: assign({consultCallHeld: true}),
   clearConsultCallHeld: assign({consultCallHeld: false}),
-  handleSwitchToMainCall: assign({consultCallHeld: true}),
-  handleSwitchToConsult: assign({consultCallHeld: false}),
+  handleSwitchToMainCall: assign(() => ({consultCallHeld: true})),
+  handleSwitchToConsult: assign(() => ({consultCallHeld: false})),
   handleConferenceFailed: assign(({event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event);
 
@@ -285,7 +374,10 @@ export const actions: TaskActionsMap = {
       return {};
     }
 
-    const interaction = context.taskData?.interaction;
+    // Get taskData from event - this is the UPDATED data from backend
+    // Don't use context.taskData because updateTaskData runs in parallel
+    const eventTaskData = getTaskDataFromEvent(event);
+    const interaction = eventTaskData?.interaction || context.taskData?.interaction;
     const mediaEntry = interaction?.media?.[mediaResourceId];
 
     if (!interaction || !mediaEntry) {
@@ -300,14 +392,32 @@ export const actions: TaskActionsMap = {
       },
     };
 
+    // During consulting: Derive consultCallHeld from actual media hold states
+    // This ensures sessions stay in sync regardless of which build initiated the switch
+    // Use consultMediaResourceId from EVENT taskData (the updated one)
+    const consultMediaResourceId = eventTaskData?.consultMediaResourceId || context.taskData?.consultMediaResourceId;
+    let updatedConsultCallHeld = context.consultCallHeld;
+
+    // If we have a consult media, derive the state from whether it's held
+    if (consultMediaResourceId) {
+      // After updating media, check if consult media is held
+      const consultMediaState = updatedMedia[consultMediaResourceId];
+      if (consultMediaState) {
+        // If consult media is held → we're on main call → consultCallHeld = true
+        // If consult media is not held → we're on consult call → consultCallHeld = false
+        updatedConsultCallHeld = consultMediaState.isHold === true;
+      }
+    }
+
     return {
       taskData: {
-        ...(context.taskData as TaskData),
+        ...(eventTaskData || context.taskData as TaskData),
         interaction: {
           ...interaction,
           media: updatedMedia,
         },
       },
+      consultCallHeld: updatedConsultCallHeld,
     };
   }),
 
@@ -316,9 +426,14 @@ export const actions: TaskActionsMap = {
     recordingInProgress: false,
   })),
 
+  logStateTransition: () => {
+    // State transition logging removed
+  },
+
   requestAutoAnswer: () => undefined,
   requestCleanup: () => undefined,
   cleanupResources: () => undefined,
+  requestEndConsultRetry: () => undefined,
 
   // Event emitters - placeholders overridden by consumers
   emitTaskIncoming: () => undefined,
@@ -348,4 +463,5 @@ export const actions: TaskActionsMap = {
   emitTaskConferenceFailed: () => undefined,
   emitTaskTransferConferenceFailed: () => undefined,
   emitTaskOutdialFailed: () => undefined,
+  updateUIControlsAfterSwitch: () => undefined,
 };

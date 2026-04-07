@@ -259,7 +259,7 @@ export default abstract class Task extends EventEmitter implements ITask {
   /**
    * Get the current state machine state
    */
-  protected getCurrentState(): TaskState | undefined {
+  public getCurrentState(): TaskState | undefined {
     return this.stateMachineService?.getSnapshot()?.value as TaskState;
   }
 
@@ -493,6 +493,9 @@ export default abstract class Task extends EventEmitter implements ITask {
       },
       cleanupResources: () => {
         this.emit(TASK_EVENTS.TASK_CLEANUP, this, {removeFromCollection: true});
+      },
+      requestEndConsultRetry: () => {
+        // Override in channel-specific implementations (Voice)
       },
     };
   }

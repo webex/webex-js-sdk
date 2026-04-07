@@ -22,11 +22,12 @@ export default class TaskFactory {
   ): Task {
     const mediaType = data.interaction.mediaType ?? MEDIA_CHANNEL.TELEPHONY;
     const {isEndTaskEnabled, isEndConsultEnabled} = configFlags;
-    const recordingEnabled = data?.interaction?.callProcessingDetails?.pauseResumeEnabled ?? true;
+    // Hardcode recording enabled for voice tasks - backend pauseResumeEnabled is unreliable
+    const isVoiceTask = mediaType === MEDIA_CHANNEL.TELEPHONY;
     const voiceControlOptions = {
       isEndTaskEnabled,
       isEndConsultEnabled,
-      isRecordingEnabled: recordingEnabled,
+      isRecordingEnabled: isVoiceTask ? true : (data?.interaction?.callProcessingDetails?.pauseResumeEnabled ?? true),
     };
     switch (mediaType) {
       case MEDIA_CHANNEL.TELEPHONY:

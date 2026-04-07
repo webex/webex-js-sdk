@@ -25,7 +25,7 @@ import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
-import {TaskState, TaskEvent} from '../state-machine';
+import {TaskState, TaskEvent, TaskContext} from '../state-machine';
 import {WrapupData} from '../../config/types';
 import {getConsultMediaResourceId, getIsConferenceInProgress} from '../TaskUtils';
 
@@ -33,6 +33,7 @@ export default class Voice extends Task implements IVoice {
   // Cached consult destination — backend hold/unhold event payloads can clear
   private consultDestAgentId: string | null = null;
   private consultDestType: string | null = null;
+  private pendingEndConsultPayload: ConsultEndPayload | null = null;
 
   constructor(
     contact: ReturnType<typeof routingContact>,
@@ -574,8 +575,22 @@ export default class Voice extends Task implements IVoice {
         interactionId: this.data.interactionId,
       });
 
+      // Clear pending payload on success
+      this.pendingEndConsultPayload = null;
       return result;
     } catch (error) {
+      // Store payload for potential retry when CONSULTING_ACTIVE arrives
+      if (consultEndPayload) {
+        this.pendingEndConsultPayload = consultEndPayload;
+      }
+
+      // Send CONSULT_FAILED event to state machine before throwing
+      // This allows retry mechanism to trigger when CONSULTING_ACTIVE arrives
+      this.stateMachineService.send({
+        type: TaskEvent.CONSULT_FAILED,
+        reason: error.toString(),
+      });
+
       const {error: detailedError} = getErrorDetails(error, 'endConsult', CC_FILE);
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_CONSULT_END_FAILED,
@@ -617,8 +632,15 @@ export default class Voice extends Task implements IVoice {
         METRIC_EVENT_NAMES.TASK_TRANSFER_FAILED,
       ]);
 
-      // consult transfer path
-      if (this.data.interaction.state === 'consulting') {
+      // Dispatch TRANSFER event to state machine to set transferRequested flag
+      // This tracks that a transfer is in progress, used for dial number consult transfers
+      // where backend may send CONSULT_END before TRANSFER_SUCCESS
+      this.sendStateMachineEvent({type: TaskEvent.TRANSFER});
+
+      // consult transfer path - check state machine state, not backend interaction state
+      // State machine is the source of truth for whether we're in an active consult
+      const currentState = this.getCurrentState();
+      if (currentState === TaskState.CONSULTING) {
         let consultPayload: ConsultTransferPayLoad = {
           to: payload.to,
           destinationType: payload.destinationType,
@@ -1230,6 +1252,40 @@ export default class Voice extends Task implements IVoice {
       emitTaskOutdialFailed: this.createEmitSelfAction(TASK_EVENTS.TASK_OUTDIAL_FAILED, {
         updateTaskData: true,
       }),
+      // Override retry action to use stored payload with queueId
+      requestEndConsultRetry: ({context}: {context: TaskContext}) => {
+        if (context.pendingEndConsult && this.pendingEndConsultPayload) {
+          const payload = this.pendingEndConsultPayload;
+          LoggerProxy.info(`Retrying endConsult after CONSULTING_ACTIVE with stored payload`, {
+            module: CC_FILE,
+            method: 'requestEndConsultRetry',
+            interactionId: this.data?.interactionId,
+          });
+          setTimeout(() => {
+            this.endConsult(payload)
+              .then(() => {
+                LoggerProxy.info(`endConsult retry succeeded`, {
+                  module: CC_FILE,
+                  method: 'requestEndConsultRetry',
+                  interactionId: this.data?.interactionId,
+                });
+              })
+              .catch((error) => {
+                LoggerProxy.error(`endConsult retry failed: ${error.message}`, {
+                  module: CC_FILE,
+                  method: 'requestEndConsultRetry',
+                  interactionId: this.data?.interactionId,
+                });
+              });
+          }, 100);
+        }
+      },
+      // Force UI controls update after switch call events
+      // By the time this runs (after assign actions), snapshot should be updated
+      updateUIControlsAfterSwitch: () => {
+        // Force emit to ensure widget layer receives update
+        this.updateUiControls(true);
+      },
     };
   }
 }

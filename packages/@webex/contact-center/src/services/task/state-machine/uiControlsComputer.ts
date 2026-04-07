@@ -76,7 +76,9 @@ function computeVoiceUIControls(
     interaction && mainCallId ? getConferenceParticipantsCount(interaction, mainCallId) : 0;
   const maxParticipants = participantCount >= MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE;
   const selfAgentId = config.agentId ?? taskData?.agentId;
-  const consultInProgress = getIsConsultInProgressForConferenceControls(
+
+  // Check backend for active consult legs
+  const consultInProgressFromBackend = getIsConsultInProgressForConferenceControls(
     interaction,
     mainCallId,
     selfAgentId
@@ -107,6 +109,10 @@ function computeVoiceUIControls(
   // Treat consult initiator as "in conference" even if mainCall participant list lags while consulting.
   const inConference = conferenceActive && (isConferencing || selfInMainCall || consultInitiator);
 
+  // Determine if a consult is actually in progress:
+  // Trust backend data - it correctly distinguishes between active and merged consult legs
+  const consultInProgress = consultInProgressFromBackend;
+
   // Check if this is a consulted agent (must be after isConsulting is computed).
   const isSoleAgentOnCall = participantCount <= 1 && !isConsulting && !inConference;
   const isConsulted =
@@ -128,11 +134,12 @@ function computeVoiceUIControls(
   const hasFullControls = !isConsulted || consultInitiator || inConference || isWrappingUp;
 
   return {
-    // Accept/Decline: WebRTC offered state only
+    // Accept/Decline: Voice tasks in offered state
     // For outdial, accept is disabled (auto-answer handles it), decline remains enabled
+    // For Extension mode (non-WebRTC), accept shows as disabled "Ringing" button
     accept:
-      isWebrtc && state === TaskState.OFFERED && !interaction?.isTerminated
-        ? {isVisible: true, isEnabled: !isOutdial}
+      state === TaskState.OFFERED && !interaction?.isTerminated
+        ? {isVisible: true, isEnabled: isWebrtc && !isOutdial}
         : DISABLED,
     decline:
       isWebrtc && state === TaskState.OFFERED && !interaction?.isTerminated
@@ -167,12 +174,15 @@ function computeVoiceUIControls(
       return DISABLED;
     })(),
 
-    // End: varies by state; during consulting only on main leg (consult held)
+    // End: varies by state; during consulting always disabled (must end consult or merge/transfer first)
     end: (() => {
       if (!config.isEndTaskEnabled) return DISABLED;
 
       if (isConsulting) {
-        return consultInitiator && consultCallHeld ? VISIBLE_ENABLED : DISABLED;
+        // Always show end button during consulting as disabled
+        // Can't end main call while consult is active - must end consult first or merge/transfer
+        if (!consultInitiator) return DISABLED;
+        return VISIBLE_DISABLED;
       }
 
       if (inConference) {
@@ -189,12 +199,12 @@ function computeVoiceUIControls(
     })(),
 
     // Transfer: connected/held, not in conference
+    // Hide completely during consulting (consultTransfer button used instead)
     transfer: (() => {
       if (!hasFullControls || inConference) return DISABLED;
       if (state === TaskState.CONNECTED || state === TaskState.HELD) return VISIBLE_ENABLED;
-      if (isConsulting && !conferenceFromBackend) {
-        return consultDestinationAgentJoined ? VISIBLE_ENABLED : VISIBLE_DISABLED;
-      }
+      // Hide blind transfer during consulting - consultTransfer button takes over
+      if (isConsulting) return DISABLED;
 
       return DISABLED;
     })(),
@@ -218,8 +228,16 @@ function computeVoiceUIControls(
       return {isVisible: true, isEnabled};
     })(),
 
-    // ConsultTransfer: always hidden (use transfer button)
-    consultTransfer: DISABLED,
+    // ConsultTransfer: visible during consulting for initiator
+    // Enabled only when on main call (consultCallHeld = true) and agent has joined
+    consultTransfer: (() => {
+      if (!hasFullControls || !isConsulting) return DISABLED;
+      // Only visible for consult initiator
+      if (!consultInitiator) return DISABLED;
+      // Can only transfer when on main call with customer (consult agent on hold)
+      const isEnabled = context.consultDestinationAgentJoined && consultCallHeld;
+      return {isVisible: true, isEnabled};
+    })(),
 
     // EndConsult: during consulting
     endConsult: (() => {
@@ -237,19 +255,22 @@ function computeVoiceUIControls(
       if (!recordingControlsAvailable || !config.isRecordingEnabled) return DISABLED;
       if (!hasFullControls || isConsulting || inConference) return DISABLED;
       if (state === TaskState.CONNECTED || state === TaskState.HELD) {
-        return recordingInProgress ? VISIBLE_ENABLED : VISIBLE_DISABLED;
+        // Always enabled for voice calls to allow pause/resume from call start
+        return VISIBLE_ENABLED;
       }
 
       return DISABLED;
     })(),
 
-    // Conference: during consulting, enabled on both legs when agent joined
-    // Label changes based on leg: "Conference" on main leg, "Merge" on consult leg
+    // Conference: during consulting, enabled only when on main call
+    // Can only merge when on main call with customer (consult agent on hold)
     conference: (() => {
       if (!hasFullControls || !isConsulting) return DISABLED;
       if (!consultInitiator) return DISABLED;
 
-      return consultDestinationAgentJoined && !maxParticipants ? VISIBLE_ENABLED : VISIBLE_DISABLED;
+      // Can only conference/merge when on main call with customer
+      const isEnabled = consultDestinationAgentJoined && consultCallHeld && !maxParticipants;
+      return isEnabled ? VISIBLE_ENABLED : VISIBLE_DISABLED;
     })(),
 
     // Wrapup: wrapping up state
@@ -272,11 +293,13 @@ function computeVoiceUIControls(
       return consultDestinationAgentJoined ? VISIBLE_ENABLED : VISIBLE_DISABLED;
     })(),
 
-    // MergeToConference: mirrors conference control, enabled on both legs
+    // MergeToConference: mirrors conference control, enabled only when on main call
     mergeToConference: (() => {
       if (!isConsulting || !consultInitiator) return DISABLED;
 
-      return consultDestinationAgentJoined && !maxParticipants ? VISIBLE_ENABLED : VISIBLE_DISABLED;
+      // Can only merge when on main call with customer (consult agent on hold)
+      const isEnabled = consultDestinationAgentJoined && consultCallHeld && !maxParticipants;
+      return isEnabled ? VISIBLE_ENABLED : VISIBLE_DISABLED;
     })(),
 
     // SwitchToMainCall: consulting, on consult leg
