@@ -940,7 +940,7 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    * @returns {undefined}
    */
-  private _toggleEnableAV1VideoSlides(newValue: boolean) {
+  private _toggleEnableAv1VideoSlides(newValue: boolean) {
     if (typeof newValue !== 'boolean') {
       return;
     }
