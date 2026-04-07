@@ -1,7 +1,6 @@
 export const AV1_CODEC_PARAMETERS = {
   '90p': {
     levelIdx: 0,
-    tier: 0,
     profile: 0,
     maxWidth: 160,
     maxHeight: 90,
@@ -10,7 +9,6 @@ export const AV1_CODEC_PARAMETERS = {
   },
   '180p': {
     levelIdx: 0,
-    tier: 0,
     profile: 0,
     maxWidth: 320,
     maxHeight: 180,
@@ -19,7 +17,6 @@ export const AV1_CODEC_PARAMETERS = {
   },
   '360p': {
     levelIdx: 1,
-    tier: 0,
     profile: 0,
     maxWidth: 640,
     maxHeight: 360,
@@ -28,7 +25,6 @@ export const AV1_CODEC_PARAMETERS = {
   },
   '540p': {
     levelIdx: 4,
-    tier: 0,
     profile: 0,
     maxWidth: 960,
     maxHeight: 540,
@@ -37,7 +33,6 @@ export const AV1_CODEC_PARAMETERS = {
   },
   '720p': {
     levelIdx: 5,
-    tier: 0,
     profile: 0,
     maxWidth: 1280,
     maxHeight: 720,
@@ -46,7 +41,6 @@ export const AV1_CODEC_PARAMETERS = {
   },
   '1080p': {
     levelIdx: 8,
-    tier: 0,
     profile: 0,
     maxWidth: 1920,
     maxHeight: 1080,
