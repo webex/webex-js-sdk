@@ -36,7 +36,7 @@
 | Classes        | PascalCase                                   | `CallingClient`, `CallHistory`, `Registration`, `CallManager`                            |
 | Interfaces     | `I` prefix + PascalCase                      | `ICall`, `ILine`, `ICallingClient`, `IRegistration`, `ICallManager`, `ICallerId`         |
 | Type aliases   | PascalCase                                   | `CallId`, `CorrelationId`, `MobiusDeviceId`, `DisplayInformation`, `WebexRequestPayload` |
-| Enums          | PascalCase name, SCREAMING_SNAKE_CASE values | `CALL_EVENT_KEYS.ALERTING`, `ERROR_TYPE.CALL_ERROR`, `METRIC_EVENT.CALL`                 |
+| Enums          | PascalCase name, SCREAMING_SNAKE_CASE values | `CALL_EVENT_KEYS.PROGRESS`, `ERROR_TYPE.CALL_ERROR`, `METRIC_EVENT.CALL`                 |
 | Constants      | SCREAMING_SNAKE_CASE                         | `DISCOVERY_URL`, `DEFAULT_KEEPALIVE_INTERVAL`, `NETWORK_FLAP_TIMEOUT`                    |
 | Methods        | camelCase                                    | `getLines()`, `makeCall()`, `doHoldResume()`, `triggerRegistration()`                    |
 | Private fields | `private` keyword                            | `private webex: WebexSDK`, `private metricManager: IMetricManager`                       |
@@ -274,7 +274,7 @@ class Call extends Eventing<CallEventTypes> implements ICall {
 ```typescript
 // Each event key maps to a typed callback signature
 type CallEventTypes = {
-  [CALL_EVENT_KEYS.ALERTING]: (callId: CallId) => void;
+  [CALL_EVENT_KEYS.PROGRESS]: (callId: CallId) => void;
   [CALL_EVENT_KEYS.CALL_ERROR]: (error: CallError) => void;
   [CALL_EVENT_KEYS.CONNECT]: (callId: CallId) => void;
   // ...
