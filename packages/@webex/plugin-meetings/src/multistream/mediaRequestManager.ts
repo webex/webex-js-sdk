@@ -234,7 +234,10 @@ export class MediaRequestManager {
       resolution = '1080p';
     }
 
-    return AV1_CODEC_PARAMETERS[resolution];
+    return {
+      ...CODEC_DEFAULTS.av1,
+      ...AV1_CODEC_PARAMETERS[resolution],
+    };
   }
 
   /** Modifies the passed in clientRequests and makes sure that in total they don't ask
