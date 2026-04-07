@@ -22,7 +22,6 @@ import {
   MediaConnectionEventNames,
   MediaContent,
   MediaType,
-  MediaCodecMimeType,
   RemoteTrackType,
   RoapMessage,
   StatsAnalyzer,
@@ -31,11 +30,7 @@ import {
   NetworkQualityMonitor,
   StatsMonitor,
   StatsMonitorEventNames,
-  InboundAudioIssueSubTypes,
-  RoapMediaConnection,
-  MultistreamRoapMediaConnection,
   MediaCodecMimeType,
-  StreamRequest,
 } from '@webex/internal-media-core';
 
 import {DataChannelTokenType} from '@webex/internal-plugin-llm';
