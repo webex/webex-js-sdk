@@ -145,7 +145,7 @@ Media.createMediaConnection = (
     iceCandidatesTimeout?: number;
     disableAudioMainDtx?: boolean;
     enableAudioTwcc?: boolean;
-    enableAv1VideoSlides?: boolean;
+    enableAv1SlidesSupport?: boolean;
     stopIceGatheringAfterFirstRelayCandidate?: boolean;
   }
 ) => {
@@ -160,7 +160,7 @@ Media.createMediaConnection = (
     iceCandidatesTimeout,
     disableAudioMainDtx,
     enableAudioTwcc,
-    enableAv1VideoSlides,
+    enableAv1SlidesSupport,
     stopIceGatheringAfterFirstRelayCandidate,
   } = options;
 
@@ -180,7 +180,7 @@ Media.createMediaConnection = (
     const config: MultistreamConnectionConfig = {
       iceServers,
       disableAudioTwcc: !enableAudioTwcc,
-      enableAV1SlidesSupport: !!enableAv1VideoSlides,
+      enableAV1SlidesSupport: !!enableAv1SlidesSupport,
     };
 
     if (bundlePolicy) {

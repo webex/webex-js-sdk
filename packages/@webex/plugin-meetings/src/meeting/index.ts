@@ -1084,7 +1084,7 @@ export default class Meeting extends StatelessWebexPlugin {
           kind: 'video',
           trimRequestsToNumOfSources: false,
           // @ts-ignore - config coming from registerPlugin
-          enableAv1: this.config.enableAv1VideoSlides,
+          enableAv1: this.config.enableAv1SlidesSupport,
         }
       ),
     };
@@ -7583,7 +7583,7 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - config coming from registerPlugin
         enableAudioTwcc: this.config.enableAudioTwccForMultistream,
         // @ts-ignore - config coming from registerPlugin
-        enableAv1VideoSlides: this.config.enableAv1VideoSlides,
+        enableAv1SlidesSupport: this.config.enableAv1SlidesSupport,
         stopIceGatheringAfterFirstRelayCandidate:
           // @ts-ignore - config coming from registerPlugin
           this.config.stopIceGatheringAfterFirstRelayCandidate,

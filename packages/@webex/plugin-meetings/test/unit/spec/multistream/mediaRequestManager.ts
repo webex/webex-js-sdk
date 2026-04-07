@@ -1434,7 +1434,3 @@ describe('MediaRequestManager', () => {
     });
   });
 });
-function assertEqual(arg0: any, arg1: string) {
-  throw new Error('Function not implemented.');
-}
-

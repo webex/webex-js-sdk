@@ -21,7 +21,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
 
 import {ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
 import {MAX_FS_VALUES} from './remoteMedia';
-import {AV1_CODEC_PARAMETERS, CODEC_DEFAULTS, MACROBLOCK_SIZE} from './codec/constants';
+import {AV1_CODEC_PARAMETERS, CODEC_DEFAULTS} from './codec/constants';
 
 export interface ActiveSpeakerPolicyInfo {
   policy: 'active-speaker';
@@ -70,7 +70,7 @@ type SendMediaRequestsCallback = (streamRequests: StreamRequest[]) => void;
 type GetIngressPayloadTypeCallback = (
   mediaType: MediaType,
   codecMimeType: MediaCodecMimeType
-) => number;
+) => number | undefined;
 type Kind = 'audio' | 'video';
 
 type Options = {
@@ -234,10 +234,7 @@ export class MediaRequestManager {
       resolution = '1080p';
     }
 
-    return {
-      ...CODEC_DEFAULTS.av1,
-      ...AV1_CODEC_PARAMETERS[resolution],
-    };
+    return AV1_CODEC_PARAMETERS[resolution];
   }
 
   /** Modifies the passed in clientRequests and makes sure that in total they don't ask
@@ -347,7 +344,7 @@ export class MediaRequestManager {
             mr.receiveSlots[0].mediaType,
             MediaCodecMimeType.H264
           );
-          if (h264PayloadType) {
+          if (h264PayloadType !== undefined) {
             const h264CodecInfo = WcmeCodecInfo.fromH264(
               h264PayloadType,
               new H264Codec(
@@ -366,7 +363,7 @@ export class MediaRequestManager {
               mr.receiveSlots[0].mediaType,
               MediaCodecMimeType.AV1
             );
-            if (av1PayloadType) {
+            if (av1PayloadType !== undefined) {
               const av1EncodingParams = this.getAv1EncodingParams(mr);
               const av1CodecInfo = WcmeCodecInfo.fromAv1(
                 av1PayloadType,
@@ -407,7 +404,7 @@ export class MediaRequestManager {
     });
 
     this.sendMediaRequestsCallback(streamRequests);
-    LoggerProxy.logger.info(`multistream:sendRequests --> media requests sent. `);
+    LoggerProxy.logger.info(`multistream:sendRequests --> media requests sent.`);
   }
 
   public addRequest(mediaRequest: MediaRequest, commit = true): MediaRequestId {

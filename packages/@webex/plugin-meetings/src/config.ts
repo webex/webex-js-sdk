@@ -93,7 +93,7 @@ export default {
     degradationPreferences: {
       maxMacroblocksLimit: 8192,
     },
-    enableAv1VideoSlides: true,
+    enableAv1SlidesSupport: false,
     // This only applies to non-multistream meetings
     iceCandidatesGatheringTimeout: undefined,
     backendIpv6NativeSupport: false,

@@ -940,15 +940,15 @@ export default class Meetings extends WebexPlugin {
    * @memberof Meetings
    * @returns {undefined}
    */
-  private _toggleEnableAv1VideoSlides(newValue: boolean) {
+  private _toggleEnableAv1SlidesSupport(newValue: boolean) {
     if (typeof newValue !== 'boolean') {
       return;
     }
 
     // @ts-ignore
-    if (this.config.enableAv1VideoSlides !== newValue) {
+    if (this.config.enableAv1SlidesSupport !== newValue) {
       // @ts-ignore
-      this.config.enableAv1VideoSlides = newValue;
+      this.config.enableAv1SlidesSupport = newValue;
     }
   }
 
