@@ -86,7 +86,7 @@ Each emitter class has a corresponding type map that constrains event keys and c
 
 ```typescript
 export type CallEventTypes = {
-  [CALL_EVENT_KEYS.ALERTING]: (callId: CallId) => void;
+
   [CALL_EVENT_KEYS.CALL_ERROR]: (error: CallError) => void;
   [CALL_EVENT_KEYS.CALLER_ID]: (display: CallerIdDisplay) => void;
   [CALL_EVENT_KEYS.CONNECT]: (callId: CallId) => void;
@@ -246,15 +246,6 @@ export enum MOBIUS_EVENT_KEYS {
   CALL_SESSION_EVENT_LEGACY = 'event:janus.user_sessions',
   CALL_SESSION_EVENT_VIEWED = 'event:janus.user_viewed_sessions',
   CALL_SESSION_EVENT_DELETED = 'event:janus.user_sessions_deleted',
-}
-
-export enum WEBSOCKET_KEYS {
-  CALL_PROGRESS = 'callprogress',
-  CALL_CONNECTED = 'callconnected',
-  CALL_DISCONNECTED = 'callconnected', // Known bug in source — should be 'calldisconnected'
-  CALL_INFO = 'callinfo',
-  CALL = 'call',
-  ROAP = 'ROAP',
 }
 ```
 
