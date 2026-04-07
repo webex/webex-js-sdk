@@ -33,6 +33,7 @@ describe('plugin-meetings', () => {
       webex.internal.llm = {
         getDatachannelToken: sinon.stub().returns(undefined),
         setDatachannelToken: sinon.stub(),
+        isDataChannelTokenEnabled: sinon.stub().resolves(false),
         isConnected: sinon.stub().returns(false),
         disconnectLLM: sinon.stub().resolves(),
         off: sinon.stub(),
@@ -265,6 +266,65 @@ describe('plugin-meetings', () => {
         webinar.practiceSessionEnabled = true;
         webex.internal.voicea.getIsCaptionBoxOn = sinon.stub().returns(false);
         webex.internal.voicea.updateSubchannelSubscriptions = sinon.stub();
+      });
+
+      it('refreshes practice-session token before register when cached token is missing', async () => {
+        webex.internal.llm.isDataChannelTokenEnabled.resolves(true);
+        webex.internal.llm.getDatachannelToken = sinon.stub().callsFake((tokenType) => {
+          if (tokenType === DataChannelTokenType.PracticeSession) return undefined;
+
+          return undefined;
+        });
+        meeting.refreshDataChannelToken = sinon.stub().resolves({
+          body: {
+            datachannelToken: 'ps-token-from-refresh',
+            dataChannelTokenType: DataChannelTokenType.PracticeSession,
+          },
+        });
+
+        await webinar.updatePSDataChannel();
+
+        assert.calledOnceWithExactly(meeting.refreshDataChannelToken);
+        assert.calledWithExactly(
+          webex.internal.llm.setDatachannelToken,
+          'ps-token-from-refresh',
+          DataChannelTokenType.PracticeSession
+        );
+        assert.calledWith(
+          webex.internal.llm.registerAndConnect,
+          'locus-url',
+          'dc-url',
+          'ps-token-from-refresh',
+          LLM_PRACTICE_SESSION
+        );
+      });
+
+      it('does not reconnect if practice-session eligibility changes during async token refresh', async () => {
+        webex.internal.llm.isDataChannelTokenEnabled.resolves(true);
+        webex.internal.llm.getDatachannelToken = sinon.stub().returns(undefined);
+
+        let resolveRefresh;
+        meeting.refreshDataChannelToken = sinon.stub().returns(
+          new Promise((resolve) => {
+            resolveRefresh = resolve;
+          })
+        );
+
+        const updatePromise = webinar.updatePSDataChannel();
+
+        webinar.practiceSessionEnabled = false;
+
+        resolveRefresh({
+          body: {
+            datachannelToken: 'stale-ps-token',
+            dataChannelTokenType: DataChannelTokenType.PracticeSession,
+          },
+        });
+
+        const result = await updatePromise;
+
+        assert.isUndefined(result);
+        assert.notCalled(webex.internal.llm.registerAndConnect);
       });
 
       it('no-ops when practice session join eligibility is false', async () => {

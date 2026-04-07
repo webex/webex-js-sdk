@@ -38,6 +38,7 @@ import {
 import {
   ConnectionState,
   MediaConnectionEventNames,
+  MediaCodecMimeType,
   StatsAnalyzerEventNames,
   StatsMonitorEventNames,
   Errors,
@@ -1981,11 +1982,12 @@ describe('plugin-meetings', () => {
       describe('#handleLLMOnline', () => {
         beforeEach(() => {
           webex.internal.llm.off = sinon.stub();
+          webex.internal.voicea.getIsCaptionBoxOn = sinon.stub().returns(false);
+          webex.internal.voicea.updateSubchannelSubscriptions = sinon.stub();
         });
 
-        it('turns off llm online, emits transcription connected events', () => {
+        it('emits transcription connected events', () => {
           meeting.handleLLMOnline();
-          assert.calledOnceWithExactly(webex.internal.llm.off, 'online', meeting.handleLLMOnline);
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
@@ -1995,6 +1997,24 @@ describe('plugin-meetings', () => {
             },
             EVENT_TRIGGERS.MEETING_TRANSCRIPTION_CONNECTED
           );
+        });
+
+        it('restores transcription subscription when caption intent is enabled', () => {
+          webex.internal.voicea.getIsCaptionBoxOn.returns(true);
+
+          meeting.handleLLMOnline();
+
+          assert.calledOnceWithExactly(webex.internal.voicea.updateSubchannelSubscriptions, {
+            subscribe: ['transcription'],
+          });
+        });
+
+        it('does not restore transcription subscription when caption intent is disabled', () => {
+          webex.internal.voicea.getIsCaptionBoxOn.returns(false);
+
+          meeting.handleLLMOnline();
+
+          assert.notCalled(webex.internal.voicea.updateSubchannelSubscriptions);
         });
       });
 
@@ -2015,6 +2035,7 @@ describe('plugin-meetings', () => {
         it('should have #join', () => {
           assert.exists(meeting.join);
         });
+
         beforeEach(() => {
           setCorrelationIdSpy = sinon.spy(meeting, 'setCorrelationId');
           meeting.setLocus = sinon.stub().returns(true);
@@ -2168,7 +2189,6 @@ describe('plugin-meetings', () => {
             await meeting.join().catch(() => {
               assert.calledOnce(MeetingUtil.joinMeeting);
 
-              // Assert that client.locus.join.response error event is not sent from this function, it is now emitted from MeetingUtil.joinMeeting
               assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
               assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
                 name: 'client.call.initiated',
@@ -2200,6 +2220,7 @@ describe('plugin-meetings', () => {
             });
           });
         });
+
         describe('lmm, transcription & permissionTokenRefresh decoupling', () => {
           beforeEach(() => {
             sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve(joinMeetingResult));
@@ -2270,7 +2291,6 @@ describe('plugin-meetings', () => {
               const locusInfoParseStub = sinon.stub(meeting.locusInfo, 'parse');
               sinon.stub(meeting, 'isJoined').returns(true);
 
-              // Set up llm.on stub to capture the registered listener when updateLLMConnection is called
               let locusLLMEventListener;
               meeting.webex.internal.llm.on = sinon.stub().callsFake((eventName, callback) => {
                 if (eventName === 'event:locus.state_message') {
@@ -2279,16 +2299,12 @@ describe('plugin-meetings', () => {
               });
               meeting.webex.internal.llm.off = sinon.stub();
 
-              // we need the real meeting.updateLLMConnection not the mock
               meeting.updateLLMConnection.restore();
 
-              // Call updateLLMConnection to register the listener
               await meeting.updateLLMConnection();
 
-              // Verify the listener was registered and we captured it
               assert.isDefined(locusLLMEventListener, 'LLM event listener should be registered');
 
-              // Now trigger the event
               const eventData = {
                 eventType: 'locus.state_message',
                 stateElementsMessage: {
@@ -2308,13 +2324,10 @@ describe('plugin-meetings', () => {
               sinon.stub(meeting.webex.internal.llm, 'hasEverConnected').value(true);
               sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves({});
 
-              // Restore the real updateLLMConnection
               meeting.updateLLMConnection.restore();
 
-              // Call updateLLMConnection to start the timer
               await meeting.updateLLMConnection();
 
-              // Fast forward time by 3 minutes
               fakeClock.tick(3 * 60 * 1000);
 
               assert.calledWith(
@@ -2339,18 +2352,14 @@ describe('plugin-meetings', () => {
                 .stub(meeting.webex.internal.llm, 'getDatachannelUrl')
                 .returns('https://datachannel1.example.com');
 
-              // Restore the real updateLLMConnection
               meeting.updateLLMConnection.restore();
 
-              // First, connect LLM and start the timer
               isJoinedStub.returns(true);
               meeting.webex.internal.llm.isConnected.returns(false);
               await meeting.updateLLMConnection();
 
-              // Verify timer was started
               assert.exists(meeting.llmHealthCheckTimer);
 
-              // Now simulate that we're no longer joined
               isJoinedStub.returns(false);
               meeting.webex.internal.llm.isConnected.returns(true);
 
@@ -2358,10 +2367,8 @@ describe('plugin-meetings', () => {
 
               assert.calledOnce(meeting.webex.internal.llm.disconnectLLM);
 
-              // Verify the timer was cleared (should be undefined)
               assert.isUndefined(meeting.llmHealthCheckTimer);
 
-              // Fast forward time to ensure no metric is sent
               Metrics.sendBehavioralMetric.resetHistory();
               fakeClock.tick(3 * 60 * 1000);
 
@@ -2396,7 +2403,6 @@ describe('plugin-meetings', () => {
                 .stub()
                 .rejects(new CaptchaError('bad captcha'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
-              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil, 'joinMeetingOptions');
 
               try {
                 await meeting.join();
@@ -2410,8 +2416,7 @@ describe('plugin-meetings', () => {
                 );
                 assert.instanceOf(error, CaptchaError);
                 assert.equal(error.message, 'bad captcha');
-                // should not get to the end promise chain, which does do the join
-                assert.notCalled(joinMeetingOptionsSpy);
+                assert.notCalled(MeetingUtil.joinMeeting);
               }
             });
 
@@ -2420,7 +2425,6 @@ describe('plugin-meetings', () => {
                 .stub()
                 .rejects(new PasswordError('bad password'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
-              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
 
               try {
                 await meeting.join();
@@ -2434,8 +2438,7 @@ describe('plugin-meetings', () => {
                 );
                 assert.instanceOf(error, PasswordError);
                 assert.equal(error.message, 'bad password');
-                // should not get to the end promise chain, which does do the join
-                assert.notCalled(joinMeetingOptionsSpy);
+                assert.notCalled(MeetingUtil.joinMeeting);
               }
             });
 
@@ -2444,7 +2447,6 @@ describe('plugin-meetings', () => {
                 .stub()
                 .rejects(new PermissionError('bad permission'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
-              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
 
               try {
                 await meeting.join();
@@ -2458,13 +2460,13 @@ describe('plugin-meetings', () => {
                 );
                 assert.instanceOf(error, PermissionError);
                 assert.equal(error.message, 'bad permission');
-                // should not get to the end promise chain, which does do the join
-                assert.notCalled(joinMeetingOptionsSpy);
+                assert.notCalled(MeetingUtil.joinMeeting);
               }
             });
           });
         });
       });
+
 
       describe('#addMedia', () => {
         const muteStateStub = {
@@ -9214,8 +9216,8 @@ describe('plugin-meetings', () => {
         const fakeMultistreamRoapMediaConnection = {
           createSendSlot: () => {
             return {
-              setCodecParameters: sinon.stub().resolves(),
-              deleteCodecParameters: sinon.stub().resolves(),
+              setCustomCodecParameters: sinon.stub().resolves(),
+              markCustomCodecParametersForDeletion: sinon.stub().resolves(),
             };
           },
         };
@@ -9238,27 +9240,29 @@ describe('plugin-meetings', () => {
         }
       );
 
-      it('should set the codec parameters when shouldEnableMusicMode is true', async () => {
+      it('should set custom codec parameters when shouldEnableMusicMode is true', async () => {
         await meeting.enableMusicMode(true);
         assert.calledOnceWithExactly(
-          meeting.sendSlotManager.getSlot(MediaType.AudioMain).setCodecParameters,
+          meeting.sendSlotManager.getSlot(MediaType.AudioMain).setCustomCodecParameters,
+          MediaCodecMimeType.OPUS,
           {
             maxaveragebitrate: '64000',
             maxplaybackrate: '48000',
           }
         );
         assert.notCalled(
-          meeting.sendSlotManager.getSlot(MediaType.AudioMain).deleteCodecParameters
+          meeting.sendSlotManager.getSlot(MediaType.AudioMain).markCustomCodecParametersForDeletion
         );
       });
 
-      it('should set the codec parameters when shouldEnableMusicMode is false', async () => {
+      it('should mark custom codec parameters for deletion when shouldEnableMusicMode is false', async () => {
         await meeting.enableMusicMode(false);
         assert.calledOnceWithExactly(
-          meeting.sendSlotManager.getSlot(MediaType.AudioMain).deleteCodecParameters,
+          meeting.sendSlotManager.getSlot(MediaType.AudioMain).markCustomCodecParametersForDeletion,
+          MediaCodecMimeType.OPUS,
           ['maxaveragebitrate', 'maxplaybackrate']
         );
-        assert.notCalled(meeting.sendSlotManager.getSlot(MediaType.AudioMain).setCodecParameters);
+        assert.notCalled(meeting.sendSlotManager.getSlot(MediaType.AudioMain).setCustomCodecParameters);
       });
     });
 
@@ -10413,14 +10417,24 @@ describe('plugin-meetings', () => {
           );
           done();
         });
-        it('listens to the self admitted guest event', (done) => {
+        it('listens to the self admitted guest event without blocking on token prefetch', async () => {
           meeting.stopKeepAlive = sinon.stub();
           meeting.updateLLMConnection = sinon.stub();
+          let resolvePrefetch;
+
+          meeting.ensureDefaultDatachannelTokenAfterAdmit = sinon
+            .stub()
+            .returns(new Promise((resolve) => {
+              resolvePrefetch = resolve;
+            }));
           meeting.rtcMetrics = {
             sendNextMetrics: sinon.stub(),
           };
+
           meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_ADMITTED_GUEST', test1);
+
           assert.calledOnceWithExactly(meeting.stopKeepAlive);
+          assert.calledOnceWithExactly(meeting.ensureDefaultDatachannelTokenAfterAdmit);
           assert.calledThrice(TriggerProxy.trigger);
           assert.calledWith(
             TriggerProxy.trigger,
@@ -10439,7 +10453,11 @@ describe('plugin-meetings', () => {
               correlation_id: meeting.correlationId,
             }
           );
-          done();
+
+          resolvePrefetch(false);
+          await Promise.resolve();
+
+          assert.calledOnce(meeting.updateLLMConnection);
         });
 
         it('listens to the breakouts changed event', () => {

@@ -450,7 +450,7 @@ class HashTreeParser {
     // object mapping dataset names to arrays of leaf data
     const leafInfo: Record<string, Array<LeafInfo>> = {};
 
-    const findAndStoreMetaData = (currentLocusPart: any) => {
+    const findAndStoreMetaData = (currentLocusPart: any, currentLocusPartName: string) => {
       if (typeof currentLocusPart !== 'object' || currentLocusPart === null) {
         return;
       }
@@ -465,10 +465,18 @@ class HashTreeParser {
         };
 
         if (copyData) {
-          newLeafInfo.data = cloneDeep(currentLocusPart);
+          if ((type as string).toLowerCase() === ObjectType.control) {
+            // control entries require special handling, because they are signalled by Locus
+            // differently when coming in messages vs API responses
+            newLeafInfo.data = {
+              [currentLocusPartName]: cloneDeep(currentLocusPart),
+            };
+          } else {
+            newLeafInfo.data = cloneDeep(currentLocusPart);
 
-          // remove any nested other objects that have their own htMeta
-          deleteNestedObjectsWithHtMeta(newLeafInfo.data);
+            // remove any nested other objects that have their own htMeta
+            deleteNestedObjectsWithHtMeta(newLeafInfo.data);
+          }
         }
 
         for (const dataSetName of dataSetNames) {
@@ -480,19 +488,19 @@ class HashTreeParser {
       }
 
       if (Array.isArray(currentLocusPart)) {
-        for (const item of currentLocusPart) {
-          findAndStoreMetaData(item);
+        for (const [index, item] of currentLocusPart.entries()) {
+          findAndStoreMetaData(item, index.toString());
         }
       } else {
         for (const key of Object.keys(currentLocusPart)) {
           if (Object.prototype.hasOwnProperty.call(currentLocusPart, key)) {
-            findAndStoreMetaData(currentLocusPart[key]);
+            findAndStoreMetaData(currentLocusPart[key], key);
           }
         }
       }
     };
 
-    findAndStoreMetaData(locus);
+    findAndStoreMetaData(locus, 'locus');
 
     return leafInfo;
   }
