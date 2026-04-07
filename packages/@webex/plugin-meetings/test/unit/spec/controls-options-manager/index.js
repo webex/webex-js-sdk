@@ -340,14 +340,27 @@ describe('plugin-meetings', () => {
                 assert.deepEqual(result, request.request.firstCall.returnValue);
               });
 
-              it('request with mainLocusUrl and make locusUrl as authorizingLocusUrl if mainLocusUrl is exist and not same with locusUrl', () => {
+              it('sends audio controls directly to breakout locusUrl without authorizingLocusUrl when mainLocusUrl differs (SPARK-785662)', () => {
                 manager.setDisplayHints(['MUTE_ALL', 'DISABLE_HARD_MUTE', 'DISABLE_MUTE_ON_ENTRY']);
                 manager.mainLocusUrl = `test/main`;
 
                 const result = manager.setMuteAll(true, true, true, ['attendee']);
 
-                assert.calledWith(request.request, {  uri: 'test/main/controls',
-                  body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true, roles: ['attendee'] }, authorizingLocusUrl: 'test/id' },
+                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                  body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true, roles: ['attendee'] } },
+                  method: HTTP_VERBS.PATCH});
+
+                assert.deepEqual(result, request.request.firstCall.returnValue);
+              });
+
+              it('sends audio controls to locusUrl when mainLocusUrl equals locusUrl (not in breakout)', () => {
+                manager.setDisplayHints(['MUTE_ALL', 'DISABLE_HARD_MUTE', 'DISABLE_MUTE_ON_ENTRY']);
+                manager.mainLocusUrl = 'test/id';
+
+                const result = manager.setMuteAll(true, false, false, ['attendee']);
+
+                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                  body: { audio: { muted: true, disallowUnmute: false, muteOnEntry: false, roles: ['attendee'] } },
                   method: HTTP_VERBS.PATCH});
 
                 assert.deepEqual(result, request.request.firstCall.returnValue);

@@ -258,15 +258,17 @@ export default class ControlsOptionsManager {
     if (error) {
       return Promise.reject(error);
     }
-    const extraBody =
-      this.mainLocusUrl && this.mainLocusUrl !== this.locusUrl
-        ? {authorizingLocusUrl: this.locusUrl}
-        : {};
 
+    // Audio controls (muted, disallowUnmute, muteOnEntry) must be sent directly
+    // to the current session's locus URL — NOT routed through mainLocusUrl with
+    // authorizingLocusUrl. Unlike meeting options (video, share, reactions), audio
+    // controls are not in locus's doesControlSupportRemoteLocusCall() allowlist
+    // and will be rejected with 403 if sent to the main locus in breakout context.
+    // See: SPARK-785662, native client TelephonyAdapter.cpp::muteAllParticipants()
     // @ts-ignore
     return this.request.request({
-      uri: `${this.mainLocusUrl || this.locusUrl}/${CONTROLS}`,
-      body: {...body, ...extraBody},
+      uri: `${this.locusUrl}/${CONTROLS}`,
+      body,
       method: HTTP_VERBS.PATCH,
     });
   }
