@@ -1025,7 +1025,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
             return;
           }
-
           this.mediaProperties.webrtcMediaConnection.requestMedia(
             MediaType.VideoMain,
             mediaRequests
