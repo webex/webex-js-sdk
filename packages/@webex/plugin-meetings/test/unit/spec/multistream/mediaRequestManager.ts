@@ -1402,7 +1402,16 @@ describe('MediaRequestManager', () => {
       ]);
     });
 
-    it('includes both H264 and AV1 codec infos when enableAV1 is true and both payload types are available', () => {
+    it('does not invoke the callback for AV1 when enableAv1 is false (default)', () => {
+      addReceiverSelectedRequest(100, fakeReceiveSlots[0], MAX_FS_720p, true);
+
+      const av1Calls = getIngressPayloadTypeCallback.getCalls().filter(
+        (call) => call.args[1] === MediaCodecMimeType.AV1
+      );
+      expect(av1Calls).to.have.length(0);
+    });
+
+    it('includes both H264 and AV1 codec infos when enableAv1 is true and both payload types are available', () => {
       const FAKE_AV1_PAYLOAD_TYPE = 0x90;
       getIngressPayloadTypeCallback.callsFake((mediaType, codecMimeType) => {
         if (codecMimeType === MediaCodecMimeType.H264) return FAKE_H264_PAYLOAD_TYPE;
@@ -1431,6 +1440,124 @@ describe('MediaRequestManager', () => {
           ),
         }),
       ]);
+    });
+
+    it('sends only H264 codec info when enableAv1 is true but AV1 payload type is undefined', () => {
+      getIngressPayloadTypeCallback.callsFake((mediaType, codecMimeType) => {
+        if (codecMimeType === MediaCodecMimeType.H264) return FAKE_H264_PAYLOAD_TYPE;
+        return undefined;
+      });
+
+      mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
+        degradationPreferences,
+        kind: 'video',
+        trimRequestsToNumOfSources: false,
+        enableAv1: true,
+      });
+      sendMediaRequestsCallback.resetHistory();
+
+      addReceiverSelectedRequest(100, fakeReceiveSlots[0], MAX_FS_720p, true);
+
+      assert.calledWith(sendMediaRequestsCallback, [
+        sinon.match({
+          codecInfos: sinon.match((codecInfos) =>
+            codecInfos.length === 1 &&
+            codecInfos[0].payloadType === FAKE_H264_PAYLOAD_TYPE
+          ),
+        }),
+      ]);
+    });
+  });
+
+  describe('AV1 encoding parameters (resolution mapping)', () => {
+    const FAKE_AV1_PAYLOAD_TYPE = 0x90;
+
+    beforeEach(() => {
+      getIngressPayloadTypeCallback.callsFake((mediaType, codecMimeType) => {
+        if (codecMimeType === MediaCodecMimeType.H264) return FAKE_H264_PAYLOAD_TYPE;
+        if (codecMimeType === MediaCodecMimeType.AV1) return FAKE_AV1_PAYLOAD_TYPE;
+        return undefined;
+      });
+
+      mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
+        degradationPreferences,
+        kind: 'video',
+        trimRequestsToNumOfSources: false,
+        enableAv1: true,
+      });
+
+      sendMediaRequestsCallback.resetHistory();
+    });
+
+    const resolutionCases = [
+      {maxFs: MAX_FS_VALUES['90p'], expectedRes: '90p', levelIdx: 0, maxWidth: 160, maxHeight: 90},
+      {maxFs: MAX_FS_VALUES['180p'], expectedRes: '180p', levelIdx: 0, maxWidth: 320, maxHeight: 180},
+      {maxFs: MAX_FS_VALUES['360p'], expectedRes: '360p', levelIdx: 1, maxWidth: 640, maxHeight: 360},
+      {maxFs: MAX_FS_VALUES['540p'], expectedRes: '540p', levelIdx: 4, maxWidth: 960, maxHeight: 540},
+      {maxFs: MAX_FS_VALUES['720p'], expectedRes: '720p', levelIdx: 5, maxWidth: 1280, maxHeight: 720},
+      {maxFs: MAX_FS_VALUES['1080p'], expectedRes: '1080p', levelIdx: 8, maxWidth: 1920, maxHeight: 1080},
+    ];
+
+    resolutionCases.forEach(({maxFs, expectedRes, levelIdx, maxWidth, maxHeight}) => {
+      it(`maps maxFs=${maxFs} to ${expectedRes} AV1 parameters (levelIdx=${levelIdx}, ${maxWidth}x${maxHeight})`, () => {
+        addReceiverSelectedRequest(100, fakeReceiveSlots[0], maxFs, true);
+
+        assert.calledOnce(sendMediaRequestsCallback);
+        const codecInfos = sendMediaRequestsCallback.getCall(0).args[0][0].codecInfos;
+
+        expect(codecInfos).to.have.length(2);
+
+        const av1Info = codecInfos[1];
+        expect(av1Info.payloadType).to.equal(FAKE_AV1_PAYLOAD_TYPE);
+        expect(av1Info.av1.levelIdx).to.equal(levelIdx);
+        expect(av1Info.av1.maxWidth).to.equal(maxWidth);
+        expect(av1Info.av1.maxHeight).to.equal(maxHeight);
+
+        sendMediaRequestsCallback.resetHistory();
+      });
+    });
+
+    it('maps maxFs values between breakpoints to the correct resolution bucket', () => {
+      const betweenFs = MAX_FS_VALUES['360p'] + 1;
+
+      addReceiverSelectedRequest(100, fakeReceiveSlots[0], betweenFs, true);
+
+      const codecInfos = sendMediaRequestsCallback.getCall(0).args[0][0].codecInfos;
+      const av1Info = codecInfos[1];
+
+      expect(av1Info.av1.levelIdx).to.equal(4);
+      expect(av1Info.av1.maxWidth).to.equal(960);
+      expect(av1Info.av1.maxHeight).to.equal(540);
+    });
+
+    it('maps maxFs exceeding 1080p to 1080p AV1 parameters', () => {
+      const largeFs = MAX_FS_VALUES['1080p'] + 1000;
+
+      addReceiverSelectedRequest(100, fakeReceiveSlots[0], largeFs, true);
+
+      const codecInfos = sendMediaRequestsCallback.getCall(0).args[0][0].codecInfos;
+      const av1Info = codecInfos[1];
+
+      expect(av1Info.av1.levelIdx).to.equal(8);
+      expect(av1Info.av1.maxWidth).to.equal(1920);
+      expect(av1Info.av1.maxHeight).to.equal(1080);
+    });
+
+    it('includes AV1 codec info for active-speaker requests', () => {
+      addActiveSpeakerRequest(
+        255,
+        [fakeReceiveSlots[0], fakeReceiveSlots[1], fakeReceiveSlots[2]],
+        MAX_FS_720p,
+        true
+      );
+
+      assert.calledOnce(sendMediaRequestsCallback);
+      const codecInfos = sendMediaRequestsCallback.getCall(0).args[0][0].codecInfos;
+
+      expect(codecInfos).to.have.length(2);
+      expect(codecInfos[0].payloadType).to.equal(FAKE_H264_PAYLOAD_TYPE);
+      expect(codecInfos[1].payloadType).to.equal(FAKE_AV1_PAYLOAD_TYPE);
+      expect(codecInfos[1].av1.levelIdx).to.equal(5);
     });
   });
 });
