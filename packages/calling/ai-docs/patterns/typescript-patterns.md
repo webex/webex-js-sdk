@@ -164,7 +164,6 @@ export interface ICall extends Eventing<CallEventTypes> {
 
 ```typescript
 export type CallEventTypes = {
-  [CALL_EVENT_KEYS.ALERTING]: (callId: CallId) => void;
   [CALL_EVENT_KEYS.CALL_ERROR]: (error: CallError) => void;
   [CALL_EVENT_KEYS.CALLER_ID]: (display: CallerIdDisplay) => void;
   [CALL_EVENT_KEYS.CONNECT]: (callId: CallId) => void;

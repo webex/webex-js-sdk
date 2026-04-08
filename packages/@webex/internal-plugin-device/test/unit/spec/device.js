@@ -484,9 +484,26 @@ describe('plugin-device', () => {
     });
 
     describe('deleteDevices()', () => {
+      let requestStub;
+      let clock;
+      let waitForLimitStub;
+
       const setup = (deviceType) => {
         device.config.defaults = {body: {deviceType}};
       };
+
+      beforeEach(() => {
+        waitForLimitStub = sinon.stub(device, '_waitForDeviceCountBelowLimit').resolves();
+      });
+
+      afterEach(() => {
+        sinon.restore();
+        if (clock) {
+          clock.restore();
+          clock = null;
+        }
+      });
+
       ['WEB', 'WEBCLIENT'].forEach((deviceType) => {
         it(`should delete correct number of devices for ${deviceType}`, async () => {
           setup(deviceType);
@@ -504,7 +521,8 @@ describe('plugin-device', () => {
               ],
             },
           };
-          const requestStub = sinon.stub(device, 'request');
+
+          requestStub = sinon.stub(device, 'request');
           requestStub.withArgs(sinon.match({method: 'GET'})).resolves(response);
           requestStub.withArgs(sinon.match({method: 'DELETE'})).resolves();
 
@@ -523,7 +541,7 @@ describe('plugin-device', () => {
         });
       });
 
-      it('does not delete when there are just 2 devices', async () => {
+      it('does not delete when there are only 2 devices (below MIN_DEVICES_FOR_CLEANUP)', async () => {
         setup('WEB');
         const response = {
           body: {
@@ -534,15 +552,392 @@ describe('plugin-device', () => {
           },
         };
 
-        const requestStub = sinon.stub(device, 'request');
+        requestStub = sinon.stub(device, 'request');
         requestStub.withArgs(sinon.match({method: 'GET'})).resolves(response);
         requestStub.withArgs(sinon.match({method: 'DELETE'})).resolves();
 
         await device.deleteDevices();
-        const notDeletedUrls = ['url1', 'url2'];
-        notDeletedUrls.forEach((url) => {
-          assert(requestStub.neverCalledWith(sinon.match({uri: url, method: 'DELETE'})));
+        // MIN_DEVICES_FOR_CLEANUP = 5; 2 devices is below the threshold, so nothing should be deleted
+        assert(requestStub.neverCalledWith(sinon.match({method: 'DELETE'})));
+      });
+
+      it('does not delete when device count equals MIN_DEVICES_FOR_CLEANUP (5 devices)', async () => {
+        setup('WEB');
+        const devices = Array.from({length: 5}, (_, i) => ({
+          url: `url${i}`,
+          modificationTime: `2023-10-0${i + 1}T10:00:00Z`,
+          deviceType: 'WEB',
+        }));
+
+        requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'})).resolves({body: {devices}});
+        requestStub.withArgs(sinon.match({method: 'DELETE'})).resolves();
+
+        await device.deleteDevices();
+        // MIN_DEVICES_FOR_CLEANUP = 5; exactly at the threshold means no deletion
+        assert(requestStub.neverCalledWith(sinon.match({method: 'DELETE'})));
+      });
+
+      it('waits for all deletions to complete before proceeding', async () => {
+        setup('WEB');
+        const devices = Array.from({length: 6}, (_, i) => ({
+          url: `url${i}`,
+          modificationTime: `2023-10-0${i}T10:00:00Z`,
+          deviceType: 'WEB',
+        }));
+
+        requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'})).resolves({body: {devices}});
+
+        const deleteOrder = [];
+        requestStub.withArgs(sinon.match({method: 'DELETE'})).callsFake((opts) => {
+          deleteOrder.push(opts.uri);
+          return Promise.resolve();
         });
+
+        await device.deleteDevices();
+
+        // ceil(6/3) = 2 devices should be deleted
+        assert.equal(deleteOrder.length, 2);
+      });
+
+      it('does not delete when there are zero devices', async () => {
+        setup('WEB');
+        requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'})).resolves({body: {devices: []}});
+        requestStub.withArgs(sinon.match({method: 'DELETE'})).resolves();
+
+        await device.deleteDevices();
+
+        assert(requestStub.neverCalledWith(sinon.match({method: 'DELETE'})));
+      });
+
+      it('only deletes devices matching the current device type', async () => {
+        setup('WEB');
+        const devices = [
+          {url: 'web1', modificationTime: '2023-10-01T10:00:00Z', deviceType: 'WEB'},
+          {url: 'web2', modificationTime: '2023-10-02T10:00:00Z', deviceType: 'WEB'},
+          {url: 'web3', modificationTime: '2023-10-03T10:00:00Z', deviceType: 'WEB'},
+          {url: 'web4', modificationTime: '2023-10-04T10:00:00Z', deviceType: 'WEB'},
+          {url: 'web5', modificationTime: '2023-10-05T10:00:00Z', deviceType: 'WEB'},
+          {url: 'web6', modificationTime: '2023-10-06T10:00:00Z', deviceType: 'WEB'},
+          {url: 'desktop1', modificationTime: '2023-10-01T10:00:00Z', deviceType: 'DESKTOP'},
+          {url: 'mobile1', modificationTime: '2023-10-01T10:00:00Z', deviceType: 'MOBILE'},
+        ];
+
+        requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'})).resolves({body: {devices}});
+        requestStub.withArgs(sinon.match({method: 'DELETE'})).resolves();
+
+        await device.deleteDevices();
+
+        // Only WEB devices considered: 6 total (> MIN_DEVICES_FOR_CLEANUP=5), ceil(6/3)=2 deleted (oldest: web1, web2)
+        assert(requestStub.calledWith(sinon.match({uri: 'web1', method: 'DELETE'})));
+        assert(requestStub.calledWith(sinon.match({uri: 'web2', method: 'DELETE'})));
+        assert(requestStub.neverCalledWith(sinon.match({uri: 'desktop1', method: 'DELETE'})));
+        assert(requestStub.neverCalledWith(sinon.match({uri: 'mobile1', method: 'DELETE'})));
+      });
+
+      it('rejects when fetching devices fails', async () => {
+        setup('WEB');
+        requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'})).rejects(new Error('network error'));
+
+        await assert.isRejected(device.deleteDevices(), 'network error');
+      });
+
+      it('resolves when all deletion requests fail (best-effort)', async () => {
+        setup('WEB');
+        // Use 6 devices (> MIN_DEVICES_FOR_CLEANUP=5) to ensure deletion is attempted
+        const devices = [
+          {url: 'url1', modificationTime: '2023-10-01T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url2', modificationTime: '2023-10-02T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url3', modificationTime: '2023-10-03T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url4', modificationTime: '2023-10-04T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url5', modificationTime: '2023-10-05T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url6', modificationTime: '2023-10-06T10:00:00Z', deviceType: 'WEB'},
+        ];
+
+        requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'})).resolves({body: {devices}});
+        requestStub.withArgs(sinon.match({method: 'DELETE'})).rejects(new Error('delete failed'));
+
+        // Should resolve despite DELETE failures — best-effort cleanup must not block registration retry
+        await device.deleteDevices();
+        assert.calledWith(device.logger.warn, sinon.match(/deletions failed/));
+      });
+
+      it('resolves when only some deletion requests fail (partial failure)', async () => {
+        setup('WEB');
+        const devices = [
+          {url: 'url1', modificationTime: '2023-10-01T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url2', modificationTime: '2023-10-02T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url3', modificationTime: '2023-10-03T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url4', modificationTime: '2023-10-04T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url5', modificationTime: '2023-10-05T10:00:00Z', deviceType: 'WEB'},
+          {url: 'url6', modificationTime: '2023-10-06T10:00:00Z', deviceType: 'WEB'},
+        ];
+
+        requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'})).resolves({body: {devices}});
+        // ceil(6/3) = 2 deletions; first succeeds, second fails
+        requestStub
+          .withArgs(sinon.match({method: 'DELETE'}))
+          .onFirstCall()
+          .resolves()
+          .onSecondCall()
+          .rejects(new Error('404 not found'));
+
+        await device.deleteDevices();
+        assert.calledWith(device.logger.warn, sinon.match(/deletions failed/));
+      });
+
+      it('calls _waitForDeviceCountBelowLimit with targetCount equal to preCount minus min(5, deletedCount)', async () => {
+        setup('WEB');
+        const devices = Array.from({length: 20}, (_, i) => ({
+          url: `url${i}`,
+          modificationTime: `2023-10-${String(i + 1).padStart(2, '0')}T10:00:00Z`,
+          deviceType: 'WEB',
+        }));
+
+        requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'})).resolves({body: {devices}});
+        requestStub.withArgs(sinon.match({method: 'DELETE'})).resolves();
+
+        await device.deleteDevices();
+
+        // 20 WEB devices, ceil(20/3) = 7 deletions (>= 5), targetCount = 20 - min(5, 7) = 15
+        assert.calledWith(waitForLimitStub, 15, 0);
+      });
+
+      it('small-n: 6-device case — targetCount is reachable (ceil(6/3)=2 < 5, so wait for 6-2=4)', async () => {
+        setup('WEB');
+        const devices = Array.from({length: 6}, (_, i) => ({
+          url: `url${i}`,
+          modificationTime: `2023-10-0${i + 1}T10:00:00Z`,
+          deviceType: 'WEB',
+        }));
+
+        requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'})).resolves({body: {devices}});
+        requestStub.withArgs(sinon.match({method: 'DELETE'})).resolves();
+
+        await device.deleteDevices();
+
+        // ceil(6/3) = 2 deletions (< 5), targetCount = 6 - min(5, 2) = 4
+        // With the old n-5 formula this was 1, which is unreachable and burned all 5 polls
+        assert.equal(requestStub.withArgs(sinon.match({method: 'DELETE'})).callCount, 2);
+        assert.calledWith(waitForLimitStub, 4, 0);
+      });
+
+      it('regression: 144-device case — deleteDevices passes targetCount=139 (144 - min(5, ceil(144/3)))', async () => {
+        setup('WEB');
+        const devices = Array.from({length: 144}, (_, i) => ({
+          url: `url${i}`,
+          modificationTime: new Date(Date.UTC(2020, 0, 1, 0, i)).toISOString(),
+          deviceType: 'WEB',
+        }));
+
+        requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'})).resolves({body: {devices}});
+        requestStub.withArgs(sinon.match({method: 'DELETE'})).resolves();
+
+        await device.deleteDevices();
+
+        // ceil(144/3) = 48 deletions (>= 5), targetCount = 144 - min(5, 48) = 139
+        assert.equal(requestStub.withArgs(sinon.match({method: 'DELETE'})).callCount, 48);
+        assert.calledWith(waitForLimitStub, 139, 0);
+      });
+    });
+
+    describe('_waitForDeviceCountBelowLimit()', () => {
+      let clock;
+
+      const setup = (deviceType) => {
+        device.config.defaults = {body: {deviceType}};
+      };
+
+      beforeEach(() => {
+        clock = sinon.useFakeTimers();
+      });
+
+      afterEach(() => {
+        sinon.restore();
+        clock.restore();
+      });
+
+      it('resolves immediately when device count is below the limit on first check', async () => {
+        setup('WEB');
+        const devices = Array.from({length: 50}, (_, i) => ({
+          url: `url${i}`,
+          modificationTime: `2023-10-01T10:00:00Z`,
+          deviceType: 'WEB',
+        }));
+
+        sinon.stub(device, 'request')
+          .withArgs(sinon.match({method: 'GET'}))
+          .resolves({body: {devices}});
+
+        const promise = device._waitForDeviceCountBelowLimit(55, 0);
+        await clock.tickAsync(3000);
+        await promise;
+      });
+
+      it('polls multiple times until device count drops below the limit', async () => {
+        setup('WEB');
+        const makeDevices = (count) =>
+          Array.from({length: count}, (_, i) => ({
+            url: `url${i}`,
+            modificationTime: `2023-10-01T10:00:00Z`,
+            deviceType: 'WEB',
+          }));
+
+        const requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'}))
+          .onFirstCall().resolves({body: {devices: makeDevices(102)}})
+          .onSecondCall().resolves({body: {devices: makeDevices(100)}})
+          .onThirdCall().resolves({body: {devices: makeDevices(68)}});
+
+        const promise = device._waitForDeviceCountBelowLimit(95, 0);
+
+        // First poll: 102 devices (above target 95), continue polling
+        await clock.tickAsync(3000);
+        // Second poll: 100 devices (still above target 95), continue polling
+        await clock.tickAsync(3000);
+        // Third poll: 68 devices (below target 95), resolve
+        await clock.tickAsync(3000);
+
+        await promise;
+
+        assert.equal(requestStub.withArgs(sinon.match({method: 'GET'})).callCount, 3);
+      });
+
+      it('gives up after max confirmation attempts and resolves anyway', async () => {
+        setup('WEB');
+        const makeDevices = (count) =>
+          Array.from({length: count}, (_, i) => ({
+            url: `url${i}`,
+            modificationTime: `2023-10-01T10:00:00Z`,
+            deviceType: 'WEB',
+          }));
+
+        const requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'}))
+          .resolves({body: {devices: makeDevices(105)}});
+
+        const promise = device._waitForDeviceCountBelowLimit(100, 0);
+
+        // Tick through all 5 attempts (5 * 3000ms)
+        for (let i = 0; i < 5; i += 1) {
+          await clock.tickAsync(3000);
+        }
+
+        await promise;
+
+        assert(device.logger.warn.calledWith('device: max confirmation attempts reached, proceeding anyway'));
+        assert.equal(requestStub.withArgs(sinon.match({method: 'GET'})).callCount, 5);
+      });
+
+      it('resolves when count equals exactly 95 (5 below limit)', async () => {
+        setup('WEB');
+        const devices = Array.from({length: 95}, (_, i) => ({
+          url: `url${i}`,
+          modificationTime: `2023-10-01T10:00:00Z`,
+          deviceType: 'WEB',
+        }));
+
+        sinon.stub(device, 'request')
+          .withArgs(sinon.match({method: 'GET'}))
+          .resolves({body: {devices}});
+
+        const promise = device._waitForDeviceCountBelowLimit(95, 0);
+        await clock.tickAsync(3000);
+        await promise;
+      });
+
+      it('keeps polling when count is above the 5-below-limit threshold', async () => {
+        setup('WEB');
+        const makeDevices = (count) =>
+          Array.from({length: count}, (_, i) => ({
+            url: `url${i}`,
+            modificationTime: `2023-10-01T10:00:00Z`,
+            deviceType: 'WEB',
+          }));
+
+        const requestStub = sinon.stub(device, 'request');
+        requestStub.withArgs(sinon.match({method: 'GET'}))
+          .onFirstCall().resolves({body: {devices: makeDevices(100)}})
+          .onSecondCall().resolves({body: {devices: makeDevices(99)}})
+          .onThirdCall().resolves({body: {devices: makeDevices(95)}});
+
+        const promise = device._waitForDeviceCountBelowLimit(95, 0);
+        // First poll: 100 devices (still over the 95 threshold), continue polling
+        await clock.tickAsync(3000);
+        // Second poll: 99 devices (still over the 95 threshold), continue polling
+        await clock.tickAsync(3000);
+        // Third poll: 95 devices (at the safe threshold), resolve
+        await clock.tickAsync(3000);
+        await promise;
+
+        assert.equal(requestStub.withArgs(sinon.match({method: 'GET'})).callCount, 3);
+      });
+
+      it('resolves (best-effort) when the polling GET throws a transient error', async () => {
+        setup('WEB');
+
+        sinon.stub(device, 'request')
+          .withArgs(sinon.match({method: 'GET'}))
+          .rejects(new Error('transient network error'));
+
+        const promise = device._waitForDeviceCountBelowLimit(95, 0);
+        await clock.tickAsync(3000);
+        await promise;
+
+        assert(device.logger.warn.calledWith(
+          sinon.match('device: confirmation check 1 failed, proceeding anyway:')
+        ));
+      });
+    });
+
+    describe('_getDevicesOfCurrentType()', () => {
+      const setup = (deviceType) => {
+        device.config.defaults = {body: {deviceType}};
+      };
+
+      afterEach(() => {
+        sinon.restore();
+      });
+
+      it('filters devices by the current device type', async () => {
+        setup('WEB');
+        const allDevices = [
+          {url: 'web1', deviceType: 'WEB'},
+          {url: 'desktop1', deviceType: 'DESKTOP'},
+          {url: 'web2', deviceType: 'WEB'},
+          {url: 'mobile1', deviceType: 'MOBILE'},
+        ];
+
+        sinon.stub(device, 'request').resolves({body: {devices: allDevices}});
+
+        const result = await device._getDevicesOfCurrentType();
+
+        assert.equal(result.length, 2);
+        assert.equal(result[0].url, 'web1');
+        assert.equal(result[1].url, 'web2');
+      });
+
+      it('returns an empty array when no devices match', async () => {
+        setup('WEB');
+        const allDevices = [
+          {url: 'desktop1', deviceType: 'DESKTOP'},
+          {url: 'mobile1', deviceType: 'MOBILE'},
+        ];
+
+        sinon.stub(device, 'request').resolves({body: {devices: allDevices}});
+
+        const result = await device._getDevicesOfCurrentType();
+
+        assert.equal(result.length, 0);
       });
     });
 
