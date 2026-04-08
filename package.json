@@ -67,7 +67,7 @@
     "samples:serve": "webpack serve --color --env NODE_ENV=development",
     "samples:serve:integration": "webpack serve --color --env NODE_ENV=test",
     "samples:test": "NODE_ENV=test npx wdio run wdio.conf.js",
-    "test:e2e:calling": "yarn playwright test --project='Calling SDK E2E'",
+    "test:e2e": "yarn workspaces foreach run test:e2e",
     "samples:test:mobile": "NODE_ENV=test wdio run ./wdio.conf.mobile.js",
     "tooling": "node ./tooling/index.js",
     "preinstall": "[ -f ./package-lock.json ] && [ \"$npm_config_refer\" != \"ci\" ] && npx npm-force-resolutions || exit 0",

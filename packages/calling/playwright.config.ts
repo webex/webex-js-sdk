@@ -2,7 +2,8 @@ import {defineConfig, devices} from '@playwright/test';
 import dotenv from 'dotenv';
 import path from 'path';
 
-dotenv.config({path: path.resolve(__dirname, '.env')});
+// .env lives at repo root
+dotenv.config({path: path.resolve(__dirname, '../../.env')});
 
 const BASE_URL = process.env.PW_BASE_URL || 'https://localhost:8000';
 
@@ -53,6 +54,7 @@ export default defineConfig({
   timeout: 120000,
   webServer: {
     command: 'yarn samples:serve',
+    cwd: path.resolve(__dirname, '../..'),
     url: BASE_URL,
     ignoreHTTPSErrors: true,
     reuseExistingServer: true,
@@ -61,7 +63,7 @@ export default defineConfig({
   },
   retries: 3,
   fullyParallel: false,
-  workers: 3,
+  workers: 6,
   reporter: 'html',
   use: {
     baseURL: BASE_URL,
@@ -69,22 +71,30 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
+    // Production
     {
-      name: 'Calling: OAuth Setup',
-      testDir: './playwright/calling/utils',
+      name: 'Calling: OAuth Setup - PROD',
+      testDir: './playwright/utils',
       testMatch: /oauth\.setup\.ts/,
     },
     {
-      name: 'Calling SDK E2E',
-      dependencies: ['Calling: OAuth Setup'],
-      testDir: './playwright/calling/tests',
+      name: 'Calling SDK E2E - PROD',
+      dependencies: ['Calling: OAuth Setup - PROD'],
+      testDir: './playwright/tests',
       use: browserOptions[PW_BROWSER],
     },
-    // TODO: Uncomment when Contact Center tests are added
-    // {
-    //   name: 'Contact Center SDK E2E',
-    //   testDir: './playwright/contact-center',
-    //   use: browserOptions[PW_BROWSER],
-    // },
+    // Integration
+    {
+      name: 'Calling: OAuth Setup - INT',
+      testDir: './playwright/utils',
+      testMatch: /oauth\.setup\.ts/,
+      use: {testEnv: 'int'} as any,
+    },
+    {
+      name: 'Calling SDK E2E - INT',
+      dependencies: ['Calling: OAuth Setup - INT'],
+      testDir: './playwright/tests',
+      use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
+    },
   ],
 });

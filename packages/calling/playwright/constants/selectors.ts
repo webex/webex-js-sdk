@@ -1,5 +1,5 @@
-// Element selectors (from the calling sample app)
-export const SELECTORS = {
+// Element CALLING_SELECTORS (from the calling sample app)
+export const CALLING_SELECTORS = {
   // Authentication
   ACCESS_TOKEN_INPUT: '#access-token',
   INITIALIZE_CALLING_BTN: '#access-token-save',
