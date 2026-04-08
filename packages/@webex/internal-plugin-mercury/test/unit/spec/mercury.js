@@ -1236,7 +1236,7 @@ describe('plugin-mercury', () => {
           assert.calledWith(mercury._emit, mercury.defaultSessionId, 'event', event.data);
         });
 
-        it('should still process messages with a valid eventType', () => {
+        it('should still process messages with a valid eventType', async () => {
           const event = {
             data: {
               data: {
@@ -1245,11 +1245,12 @@ describe('plugin-mercury', () => {
             },
           };
 
-          mercury._onmessage(mercury.defaultSessionId, event);
+          await mercury._onmessage(mercury.defaultSessionId, event);
 
-          // Should NOT early-return — _emit should be called via the normal flow (not the guard)
-          // The first call would be from the .then() block, not the early return
-          assert.neverCalledWith(mercury._emit, mercury.defaultSessionId, 'event', event.data);
+          // Normal flow emits namespace-specific events after processing handlers.
+          // The early-return guard only emits 'event', so asserting these proves the normal path was taken.
+          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'event:conversation', event.data);
+          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'event:conversation.activity', event.data);
         });
       });
 
