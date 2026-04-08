@@ -1,6 +1,7 @@
 import {env} from 'process';
+import * as path from 'path';
 
-require('dotenv').config();
+require('dotenv').config({path: path.resolve(__dirname, '.env')});
 
 export const USER_SETS = {
   SET_1: {

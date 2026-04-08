@@ -234,41 +234,43 @@ export const agentRelogin = async (page: Page): Promise<void> => {
  * ```
  */
 export const ensureRegisteredAfterReload = async (page: Page): Promise<void> => {
+  // Wait for page to fully load and SDK auto-initialization
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForTimeout(3000); // Critical: Wait for SDK auto-init from localStorage
+
   // Check WebSocket connection status
   const currentStatus = await page.locator('#ws-connection-status').textContent();
   const isSubscribed = currentStatus?.trim() === 'Subscribed';
 
   if (!isSubscribed) {
-    // Initialize SDK if needed
-    const saveButton = page.locator('#access-token-save');
-    const saveEnabled = await saveButton.isEnabled().catch(() => false);
-
-    if (saveEnabled) {
-      await saveButton.click();
-      await expect(page.locator('#webexcc-register')).toBeEnabled({
-        timeout: OPERATION_TIMEOUT,
-      });
-    }
-
-    // Register with CC if needed
     const registerButton = page.locator('#webexcc-register');
-    const registerEnabled = await registerButton.isEnabled().catch(() => false);
+    const initButton = page.locator('#access-token-save');
 
-    if (registerEnabled) {
-      await registerButton.click();
-      await expect(page.locator('#ws-connection-status')).toHaveText('Subscribed', {
-        timeout: OPERATION_TIMEOUT,
-      });
-    } else {
-      // Already registered, just wait for connection
-      await page.waitForTimeout(3000);
-      await expect(page.locator('#ws-connection-status')).toHaveText('Subscribed', {
-        timeout: OPERATION_TIMEOUT,
-      });
+    // Wait for SDK initialization to complete (either button state is stable)
+    const isRegisterEnabled = await registerButton.isEnabled().catch(() => false);
+    const isInitDisabled = await initButton.isDisabled().catch(() => false);
+
+    if (!isRegisterEnabled) {
+      // SDK not initialized yet
+      const isInitEnabled = await initButton.isEnabled().catch(() => false);
+
+      if (isInitEnabled) {
+        await initializeSdk(page);
+      } else {
+        // Init button disabled but register not enabled - wait for auto-init
+        await expect(registerButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
+        await page.waitForTimeout(2000); // Extra wait for SDK to be fully ready
+      }
+    } else if (isInitDisabled && isRegisterEnabled) {
+      // Auto-initialization completed, but wait for SDK to be fully ready
+      await page.waitForTimeout(2000);
     }
+
+    // Register with CC using existing retry logic
+    await registerContactCenter(page);
   }
 
-  // Wait for dropdowns to repopulate
+  // Verify dropdowns are populated (confirms successful registration)
   await page
     .locator('#teamsDropdown option:not([value=""])')
     .first()
