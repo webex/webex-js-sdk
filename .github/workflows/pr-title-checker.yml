@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check PR title
-        uses: webex/pr-title-checker@main
+        uses: webex/pr-title-checker@e914bff8ab5e6f1a6a270da6954cd6bfd1d7f1fb # main
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           pass_on_octokit_error: false
