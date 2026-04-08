@@ -668,15 +668,8 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('calculates getCallInitMediaEngineReady correctly', () => {
-      cdl.saveTimestamp({
-        key: 'internal.client.interstitial-window.click.joinbutton',
-        value: 10,
-      });
-      cdl.saveTimestamp({
-        key: 'client.media-engine.ready',
-        value: 20,
-      });
-      assert.deepEqual(cdl.getCallInitMediaEngineReady(), 10);
+      sinon.stub(cdl, 'getInterstitialToMediaOKJMT').returns(42);
+      assert.deepEqual(cdl.getCallInitMediaEngineReady(), 42);
     });
 
     it('calculates getTotalJMT correctly', () => {
@@ -900,7 +893,7 @@ describe('internal-plugin-metrics', () => {
       cdl.saveTimestamp({key: 'internal.client.interstitial-window.click.joinbutton', value: 10});
       cdl.saveTimestamp({key: 'client.media-engine.ready', value: 4294967400});
       cdl.saveTimestamp({key: 'client.locus.join.response', value: 20});
-      cdl.saveTimestamp({key: 'client.lobby.exited', value: 30});
+      cdl.saveTimestamp({key: 'client.lobby.exited', value: 20});
       assert.deepEqual(cdl.getTotalMediaJMT(), 2147483647);
     });
 
@@ -1090,7 +1083,7 @@ describe('internal-plugin-metrics', () => {
       });
       cdl.saveTimestamp({
         key: 'client.lobby.exited',
-        value: 12,
+        value: 10,
       });
       cdl.saveTimestamp({
         key: 'client.ice.end',
@@ -1105,10 +1098,14 @@ describe('internal-plugin-metrics', () => {
         value: 4,
       });
       cdl.saveTimestamp({
+        key: 'client.locus.join.response',
+        value: 8,
+      });
+      cdl.saveTimestamp({
         key: 'client.ice.end',
         value: 14,
       });
-      assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 10);
+      assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 4);
     });
 
     it('calculates getShareDuration correctly', () => {
