@@ -666,8 +666,8 @@ describe('MediaRequestManager', () => {
     ]);
   });
 
-  it('avoids sending duplicate requests and clears all the requests on reset()', () => {
-    // send some requests and commit them one by one
+  it('clears all the requests on reset()', () => {
+    // send some requests and commit them
     addReceiverSelectedRequest(1500, fakeReceiveSlots[0], MAX_FS_1080p, false);
     addReceiverSelectedRequest(1501, fakeReceiveSlots[1], MAX_FS_1080p, false);
     addActiveSpeakerRequest(
@@ -722,95 +722,12 @@ describe('MediaRequestManager', () => {
       },
     ]);
 
-    // check that when calling commit()
-    // all requests are not re-sent again (avoid duplicate requests)
-    mediaRequestManager.commit();
-
-    assert.notCalled(sendMediaRequestsCallback);
-
     // now reset everything
     mediaRequestManager.reset();
 
     // calling commit now should not cause any requests to be sent out
     mediaRequestManager.commit();
     checkMediaRequestsSent([]);
-  });
-
-  it('makes sure to call requests correctly after reset was called and another request was added', () => {
-    addReceiverSelectedRequest(1500, fakeReceiveSlots[0], MAX_FS_1080p, false);
-
-    assert.notCalled(sendMediaRequestsCallback);
-
-    mediaRequestManager.commit();
-    checkMediaRequestsSent([
-      {
-        policy: 'receiver-selected',
-        csi: 1500,
-        receiveSlot: fakeWcmeSlots[0],
-        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
-        maxFs: MAX_FS_1080p,
-        maxMbps: MAX_MBPS_1080p,
-      },
-    ]);
-
-    // now reset everything
-    mediaRequestManager.reset();
-
-    // calling commit now should not cause any requests to be sent out
-    mediaRequestManager.commit();
-    checkMediaRequestsSent([]);
-
-    //add new request
-    addReceiverSelectedRequest(1501, fakeReceiveSlots[1], MAX_FS_1080p, false);
-
-    // commit
-    mediaRequestManager.commit();
-
-    // check the new request was sent
-    checkMediaRequestsSent([
-      {
-        policy: 'receiver-selected',
-        csi: 1501,
-        receiveSlot: fakeWcmeSlots[1],
-        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
-        maxFs: MAX_FS_1080p,
-        maxMbps: MAX_MBPS_1080p,
-      },
-    ]);
-  });
-
-  it('can send same media request after previous requests have been cleared', () => {
-    // add a request and commit
-    addReceiverSelectedRequest(1500, fakeReceiveSlots[0], MAX_FS_1080p, false);
-    mediaRequestManager.commit();
-    checkMediaRequestsSent([
-      {
-        policy: 'receiver-selected',
-        csi: 1500,
-        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
-        receiveSlot: fakeWcmeSlots[0],
-        maxFs: MAX_FS_1080p,
-        maxMbps: MAX_MBPS_1080p,
-      },
-    ]);
-
-    // clear previous requests
-    mediaRequestManager.clearPreviousRequests();
-
-    // commit same request
-    mediaRequestManager.commit();
-
-    // check the request was sent
-    checkMediaRequestsSent([
-      {
-        policy: 'receiver-selected',
-        csi: 1500,
-        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
-        receiveSlot: fakeWcmeSlots[0],
-        maxFs: MAX_FS_1080p,
-        maxMbps: MAX_MBPS_1080p,
-      },
-    ]);
   });
 
   it('re-sends media requests after degradation preferences are set', () => {

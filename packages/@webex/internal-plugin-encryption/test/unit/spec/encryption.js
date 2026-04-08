@@ -154,4 +154,82 @@ describe('internal-plugin-encryption', () => {
       });
     });
   });
+
+  describe('encryptBinaryData', () => {
+    let webex;
+
+    beforeEach(() => {
+      webex = new MockWebex({
+        children: {
+          encryption: Encryption,
+        },
+      });
+    });
+
+    describe('check encryptBinaryData()', () => {
+      const testKey = 'https://kms.example.com/keys/test-key-id';
+      const testData = Buffer.from('binary data to encrypt');
+      const testOptions = {onBehalfOf: 'test-user-uuid'};
+      const mockJwk = {kty: 'oct', k: 'test-key-material'};
+      const mockKey = {jwk: mockJwk};
+      const mockEncryptedJWE = 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..encrypted.data.here';
+      let getKeyStub;
+      let joseEncryptStub;
+      let mockEncryptor;
+
+      beforeEach(() => {
+        getKeyStub = sinon.stub(webex.internal.encryption, 'getKey').resolves(mockKey);
+        
+        // Mock the jose.JWE.createEncrypt chain
+        mockEncryptor = {
+          final: sinon.stub().resolves(mockEncryptedJWE)
+        };
+        joseEncryptStub = sinon.stub(require('node-jose').JWE, 'createEncrypt').returns(mockEncryptor);
+      });
+
+      it('should call getKey and jose.JWE.createEncrypt with correct parameters', async () => {
+        await webex.internal.encryption.encryptBinaryData(testKey, testData, testOptions);
+        
+        assert.equal(getKeyStub.calledOnce, true);
+        assert.equal(getKeyStub.args[0][0], testKey);
+        assert.deepEqual(getKeyStub.args[0][1], testOptions);
+
+        assert.equal(joseEncryptStub.calledOnce, true);
+        assert.deepEqual(joseEncryptStub.args[0][1], {
+          key: mockJwk,
+          header: {
+            alg: 'dir',
+          },
+          reference: null,
+        });
+      });
+
+      it('should call final with buffer', async () => {
+        await webex.internal.encryption.encryptBinaryData(testKey, testData, testOptions);
+        
+        assert.equal(mockEncryptor.final.calledOnce, true);
+        assert.equal(Buffer.isBuffer(mockEncryptor.final.args[0][0]), true);
+      });
+
+      it('should return the encrypted JWE string', async () => {
+        const result = await webex.internal.encryption.encryptBinaryData(testKey, testData, testOptions);
+        
+        assert.equal(result, mockEncryptedJWE);
+        assert.equal(typeof result, 'string');
+      });
+
+      it('should work without options parameter', async () => {
+        await webex.internal.encryption.encryptBinaryData(testKey, testData);
+        
+        assert.equal(getKeyStub.calledOnce, true);
+        assert.equal(getKeyStub.args[0][0], testKey);
+        assert.equal(getKeyStub.args[0][1], undefined);
+      });
+
+      afterEach(() => {
+        getKeyStub.restore();
+        joseEncryptStub.restore();
+      });
+    });
+  });
 });

@@ -1,5 +1,6 @@
 /* eslint-disable import/prefer-default-export */
 import {Interaction, ITask, TaskData, MEDIA_CHANNEL} from './types';
+import {CC_EVENTS} from '../config/types';
 import {OUTDIAL_DIRECTION, OUTDIAL_MEDIA_TYPE, OUTBOUND_TYPE} from '../../constants';
 import {LoginOption} from '../../types';
 
@@ -218,4 +219,15 @@ export const shouldAutoAnswerTask = (
   }
 
   return false;
+};
+
+/**
+ * Checks if a task is a campaign preview reservation that has not yet been accepted.
+ * Campaign preview tasks should not trigger incoming call handling until the agent
+ * explicitly accepts the preview contact.
+ * @param task - The task to check
+ * @returns true if the task is a pending campaign preview reservation, false otherwise
+ */
+export const isCampaignPreviewReservation = (task: ITask): boolean => {
+  return task?.data?.type === CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION;
 };
