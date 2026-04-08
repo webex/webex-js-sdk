@@ -152,12 +152,6 @@ module.exports = {
         'no-sync': 0,
       },
     },
-    {
-      files: ['playwright/**/*.ts'],
-      rules: {
-        'import/no-extraneous-dependencies': ['off'],
-      },
-    },
   ],
 
   rules: {
