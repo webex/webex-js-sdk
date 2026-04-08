@@ -40,7 +40,6 @@ export default function createAdvanceCombinationsTests() {
         process.env[`${testManager.projectName}_ENTRY_POINT`]!
       );
       await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CALL);
-      // Desktop mode doesn't auto-transition to Engaged - verify call connected instead
       await expect(testManager.agent1Page.locator('#incoming-task')).toContainText('connected', {
         timeout: 10000,
       });
@@ -55,7 +54,6 @@ export default function createAdvanceCombinationsTests() {
         process.env[`${testManager.projectName}_AGENT2_NAME`]!
       );
       await acceptIncomingTask(testManager.agent2Page, TASK_TYPES.CALL);
-      // Desktop mode - verify call connected on agent2
       await expect(testManager.agent2Page.locator('#incoming-task')).toContainText('connected', {
         timeout: 10000,
       });
@@ -71,14 +69,12 @@ export default function createAdvanceCombinationsTests() {
       );
       await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CALL);
       await testManager.agent1Page.waitForTimeout(2000);
-      // Desktop mode - verify call connected on agent1 again
       await expect(testManager.agent1Page.locator('#incoming-task')).toContainText('connected', {
         timeout: 10000,
       });
       await testManager.agent1Page.waitForTimeout(2000);
       await submitWrapup(testManager.agent2Page, WRAPUP_REASONS.SALE);
 
-      // End call via JS (button may be CSS-hidden)
       await testManager.agent1Page.evaluate(() => {
         const btn = document.querySelector('#end') as HTMLButtonElement;
         if (btn) btn.click();
@@ -96,7 +92,6 @@ export default function createAdvanceCombinationsTests() {
       );
       await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CALL);
       await changeUserState(testManager.agent2Page, USER_STATES.AVAILABLE);
-      // Desktop mode doesn't auto-transition to Engaged - skip state check
       await testManager.agent1Page.waitForTimeout(2000);
       await waitForState(testManager.agent2Page, USER_STATES.AVAILABLE);
       await testManager.agent2Page.waitForTimeout(2000);
@@ -108,15 +103,11 @@ export default function createAdvanceCombinationsTests() {
         process.env[`${testManager.projectName}_AGENT2_NAME`]!
       );
       await acceptIncomingTask(testManager.agent2Page, TASK_TYPES.CALL);
-      // Desktop mode doesn't auto-transition to Engaged - skip state check
       await testManager.agent2Page.waitForTimeout(2000);
-      // Wait for consult state to fully establish (consultingAgentId populated in SDK)
       await waitForConsultingAgentIdReady(testManager.agent1Page, 20000);
 
-      // Execute consult transfer via SDK API workaround
       await executeConsultTransfer(testManager.agent1Page);
 
-      // Wait for wrapup to become available (transfer completes and task ends)
       await expect(testManager.agent1Page.locator('#wrapupCodesDropdown')).toBeEnabled({
         timeout: 25000,
       });
@@ -129,13 +120,9 @@ export default function createAdvanceCombinationsTests() {
         process.env[`${testManager.projectName}_AGENT1_NAME`]!
       );
       await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CALL);
-      // Desktop mode doesn't auto-transition to Engaged - skip state check
       await testManager.agent1Page.waitForTimeout(2000);
-      // Wait for consult state to fully establish (consultingAgentId populated in SDK)
       await waitForConsultingAgentIdReady(testManager.agent2Page, 20000);
-      // Execute consult transfer via SDK API workaround
       await executeConsultTransfer(testManager.agent2Page);
-      // Wait for wrapup to become available (transfer completes and task ends)
       await expect(testManager.agent2Page.locator('#wrapupCodesDropdown')).toBeEnabled({
         timeout: 25000,
       });
@@ -156,7 +143,6 @@ export default function createAdvanceCombinationsTests() {
       );
       await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CALL);
       await changeUserState(testManager.agent2Page, USER_STATES.AVAILABLE);
-      // Desktop mode doesn't auto-transition to Engaged - skip state check
       await testManager.agent1Page.waitForTimeout(2000);
       await waitForState(testManager.agent2Page, USER_STATES.AVAILABLE);
       await consultOrTransfer(
@@ -166,13 +152,9 @@ export default function createAdvanceCombinationsTests() {
         process.env[`${testManager.projectName}_AGENT2_NAME`]!
       );
       await acceptIncomingTask(testManager.agent2Page, TASK_TYPES.CALL);
-      // Desktop mode doesn't auto-transition to Engaged - skip state check
       await testManager.agent2Page.waitForTimeout(2000);
-      // Wait for consult state to fully establish (consultingAgentId populated in SDK)
       await waitForConsultingAgentIdReady(testManager.agent1Page, 20000);
-      // Execute consult transfer via SDK API workaround
       await executeConsultTransfer(testManager.agent1Page);
-      // Wait for wrapup to become available (transfer completes and task ends)
       await expect(testManager.agent1Page.locator('#wrapupCodesDropdown')).toBeEnabled({
         timeout: 25000,
       });
@@ -186,7 +168,6 @@ export default function createAdvanceCombinationsTests() {
         process.env[`${testManager.projectName}_AGENT1_NAME`]!
       );
       await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CALL);
-      // Desktop mode doesn't auto-transition to Engaged - skip state check
       await testManager.agent1Page.waitForTimeout(2000);
       await testManager.agent2Page.waitForTimeout(2000);
       await submitWrapup(testManager.agent2Page, WRAPUP_REASONS.SALE);
@@ -206,7 +187,6 @@ export default function createAdvanceCombinationsTests() {
         process.env[`${testManager.projectName}_ENTRY_POINT`]!
       );
       await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CALL);
-      // Desktop mode doesn't auto-transition to Engaged - skip state check
       await testManager.agent1Page.waitForTimeout(2000);
       await changeUserState(testManager.agent2Page, USER_STATES.AVAILABLE);
       await testManager.agent1Page.waitForTimeout(2000);
@@ -217,7 +197,6 @@ export default function createAdvanceCombinationsTests() {
         process.env[`${testManager.projectName}_AGENT2_NAME`]!
       );
       await acceptIncomingTask(testManager.agent2Page, TASK_TYPES.CALL);
-      // Desktop mode doesn't auto-transition to Engaged - skip state check
       await testManager.agent2Page.waitForTimeout(2000);
       await testManager.agent1Page.waitForTimeout(2000);
       await submitWrapup(testManager.agent1Page, WRAPUP_REASONS.SALE);
@@ -229,13 +208,9 @@ export default function createAdvanceCombinationsTests() {
         process.env[`${testManager.projectName}_AGENT1_NAME`]!
       );
       await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CALL);
-      // Desktop mode doesn't auto-transition to Engaged - skip state check
       await testManager.agent1Page.waitForTimeout(2000);
-      // Wait for consult state to fully establish (consultingAgentId populated in SDK)
       await waitForConsultingAgentIdReady(testManager.agent2Page, 20000);
-      // Execute consult transfer via SDK API workaround
       await executeConsultTransfer(testManager.agent2Page);
-      // Wait for wrapup to become available (transfer completes and task ends)
       await expect(testManager.agent2Page.locator('#wrapupCodesDropdown')).toBeEnabled({
         timeout: 25000,
       });
@@ -258,7 +233,6 @@ export default function createAdvanceCombinationsTests() {
       await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CALL);
       await changeUserState(testManager.agent2Page, USER_STATES.AVAILABLE);
       await testManager.agent1Page.waitForTimeout(5000);
-      // Desktop mode doesn't auto-transition to Engaged - skip verification
       await consultOrTransfer(
         testManager.agent1Page,
         'agent',
@@ -267,15 +241,11 @@ export default function createAdvanceCombinationsTests() {
       );
       await acceptIncomingTask(testManager.agent2Page, TASK_TYPES.CALL);
       await testManager.agent2Page.waitForTimeout(3000);
-      // Desktop mode doesn't auto-transition to Engaged - skip verification
-      // Wait for consult state to fully establish (consultingAgentId populated in SDK)
       await waitForConsultingAgentIdReady(testManager.agent1Page, 20000);
-      // Execute consult transfer via SDK API workaround
       await executeConsultTransfer(testManager.agent1Page);
       await testManager.agent1Page.waitForTimeout(2000);
       await submitWrapup(testManager.agent1Page, WRAPUP_REASONS.SALE);
       await testManager.agent2Page.waitForTimeout(3000);
-      // Desktop mode doesn't auto-transition to Engaged - skip verification
       await consultOrTransfer(
         testManager.agent2Page,
         'agent',
@@ -284,16 +254,12 @@ export default function createAdvanceCombinationsTests() {
       );
       await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CALL);
       await testManager.agent1Page.waitForTimeout(3000);
-      // Wait for consult state to fully establish (consultingAgentId populated in SDK)
       await waitForConsultingAgentIdReady(testManager.agent2Page, 20000);
-      // Execute consult transfer via SDK API workaround
       await executeConsultTransfer(testManager.agent2Page);
-      // Wait for wrapup to become available (transfer completes and task ends)
       await expect(testManager.agent2Page.locator('#wrapupCodesDropdown')).toBeEnabled({
         timeout: 25000,
       });
       await submitWrapup(testManager.agent2Page, WRAPUP_REASONS.RESOLVED);
-      // Desktop mode doesn't auto-transition to Engaged - skip verification
       await consultOrTransfer(
         testManager.agent1Page,
         'agent',
@@ -309,7 +275,6 @@ export default function createAdvanceCombinationsTests() {
       // NOTE: #consult-transfer button not made visible by SDK (uiControls.consultTransfer not set)
       // await expect(testManager.agent1Page.locator('#consult-transfer')).toBeHidden();
       await expect(testManager.agent1Page.locator('#consult').first()).toBeVisible();
-      // Desktop mode doesn't auto-transition to Engaged - skip verification
       await endTask(testManager.agent1Page);
       await testManager.agent1Page.waitForTimeout(3000);
       await submitWrapup(testManager.agent1Page, WRAPUP_REASONS.RESOLVED);
