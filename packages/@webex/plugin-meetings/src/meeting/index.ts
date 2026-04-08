@@ -1047,7 +1047,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
             return;
           }
-
           this.mediaProperties.webrtcMediaConnection.requestMedia(
             MediaType.AudioSlides,
             mediaRequests
@@ -1070,7 +1069,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
             return;
           }
-
           this.mediaProperties.webrtcMediaConnection.requestMedia(
             MediaType.VideoSlides,
             mediaRequests
