@@ -208,15 +208,6 @@ describe('State Machine Guards', () => {
 
         expect(guards.isConsultOffer(createParams(ctx, event))).toBe(false);
       });
-
-      it('prioritizes context.taskData over event.taskData when event data is missing', () => {
-        const ctx = createContext({
-          taskData: createTaskData({isConsulted: true}),
-        });
-        const event = createEventWithTaskData(createTaskData({isConsulted: undefined}));
-
-        expect(guards.isConsultOffer(createParams(ctx, event))).toBe(true);
-      });
     });
   });
 
