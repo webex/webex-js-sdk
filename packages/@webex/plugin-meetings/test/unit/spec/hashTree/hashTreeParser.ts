@@ -553,7 +553,7 @@ describe('HashTreeParser', () => {
     );
 
     // Verify callback was called with OBJECTS_UPDATED and correct updatedObjects list
-    assert.calledWith(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+    assert.calledWith(callback, {updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
       updatedObjects: [
         {
           htMeta: {
@@ -788,7 +788,7 @@ describe('HashTreeParser', () => {
       expect(parser.dataSets.self.version).to.equal(2100);
       expect(parser.dataSets['atd-unmuted'].version).to.equal(3100);
 
-      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+      assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
         updatedObjects: [
           {
             htMeta: {
@@ -919,7 +919,7 @@ describe('HashTreeParser', () => {
         {type: 'ControlEntry', id: 10101, version: 100}
       ]);
 
-      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+      assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
         updatedObjects: [
           {
             htMeta: {
@@ -1009,7 +1009,7 @@ describe('HashTreeParser', () => {
       assert.calledOnceWithExactly(mainPutItemsSpy, [{type: 'locus', id: 0, version: 201}]);
 
       // Verify callback was called only for known dataset
-      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+      assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
         updatedObjects: [
           {
             htMeta: {
@@ -1109,7 +1109,7 @@ describe('HashTreeParser', () => {
       assert.calledOnceWithExactly(selfPutItemSpy, {type: 'metadata', id: 5, version: 51});
 
       // Verify callback was called with metadata object and removed dataset objects
-      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+      assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
         updatedObjects: [
           // updated metadata object:
           {
@@ -1270,7 +1270,7 @@ describe('HashTreeParser', () => {
       assert.notCalled(atdUnmutedPutItemsSpy);
 
       // Verify callback was called with the updated object
-      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+      assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
         updatedObjects: [
           {
             htMeta: {
@@ -1498,7 +1498,7 @@ describe('HashTreeParser', () => {
       ]);
 
       // Verify callback was called with OBJECTS_UPDATED and all updated objects
-      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+      assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
         updatedObjects: [
           {
             htMeta: {
@@ -1563,9 +1563,7 @@ describe('HashTreeParser', () => {
           parser.handleMessage(sentinelMessage, 'sentinel message');
 
           // Verify callback was called with MEETING_ENDED
-          assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
-            updatedObjects: undefined,
-          });
+          assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.MEETING_ENDED});
 
           // Verify that all timers were stopped
           Object.values(parser.dataSets).forEach((ds: any) => {
@@ -1587,9 +1585,7 @@ describe('HashTreeParser', () => {
         parser.handleMessage(sentinelMessage, 'sentinel message');
 
         // Verify callback was called with MEETING_ENDED
-        assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
-          updatedObjects: undefined,
-        });
+        assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.MEETING_ENDED});
 
         // Verify that all timers were stopped
         Object.values(parser.dataSets).forEach((ds: any) => {
@@ -1685,7 +1681,7 @@ describe('HashTreeParser', () => {
         );
 
         // Verify that callback was called with synced objects
-        assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+        assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
           updatedObjects: [
             {
               htMeta: {
@@ -1747,9 +1743,7 @@ describe('HashTreeParser', () => {
             await clock.tickAsync(1000);
 
             // Verify callback was called with MEETING_ENDED
-            assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
-              updatedObjects: undefined,
-            });
+            assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.MEETING_ENDED});
 
             // Verify all timers are stopped
             Object.values(parser.dataSets).forEach((ds: any) => {
@@ -1812,9 +1806,7 @@ describe('HashTreeParser', () => {
             await clock.tickAsync(1000);
 
             // Verify callback was called with MEETING_ENDED
-            assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
-              updatedObjects: undefined,
-            });
+            assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.MEETING_ENDED});
 
             // Verify all timers are stopped
             Object.values(parser.dataSets).forEach((ds: any) => {
@@ -2052,7 +2044,7 @@ describe('HashTreeParser', () => {
         assert.equal(parser.dataSets.attendees.hashTree.numLeaves, 8);
 
         // Verify callback was called with the metadata update (appears twice - processed once for visible dataset changes, once in main loop)
-        assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+        assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
           updatedObjects: [
             {
               htMeta: {
@@ -2238,9 +2230,7 @@ describe('HashTreeParser', () => {
         await clock.tickAsync(0);
 
         // Verify callback was called with MEETING_ENDED
-        assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
-          updatedObjects: undefined,
-        });
+        assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.MEETING_ENDED});
       });
 
       it('handles removal of visible data set', async () => {
@@ -2303,7 +2293,7 @@ describe('HashTreeParser', () => {
         assert.isUndefined(parser.dataSets['atd-unmuted'].timer);
 
         // Verify callback was called with the metadata update and the removed objects (metadata appears twice - processed once for dataset changes, once in main loop)
-        assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+        assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
           updatedObjects: [
             {
               htMeta: {
@@ -2922,7 +2912,7 @@ describe('HashTreeParser', () => {
       parser.handleMessage(updateMessage, 'update with newer version');
 
       // Callback should be called with the update
-      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+      assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
         updatedObjects: [
           {
             htMeta: {
@@ -2993,7 +2983,7 @@ describe('HashTreeParser', () => {
       parser.handleMessage(removalMessage, 'removal of non-existent object');
 
       // Callback should be called with the removal
-      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+      assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
         updatedObjects: [
           {
             htMeta: {
@@ -3128,7 +3118,7 @@ describe('HashTreeParser', () => {
       parser.handleMessage(mixedMessage, 'mixed updates');
 
       // Callback should be called with only the valid updates (participant 1 v110 and participant 3 v10)
-      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.OBJECTS_UPDATED, {
+      assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
         updatedObjects: [
           {
             htMeta: {
@@ -3306,9 +3296,7 @@ describe('HashTreeParser', () => {
       parser.handleMessage(sentinelMessage as any, 'sentinel message');
 
       // Callback should be called with MEETING_ENDED
-      assert.calledOnceWithExactly(callback, LocusInfoUpdateType.MEETING_ENDED, {
-        updatedObjects: undefined,
-      });
+      assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.MEETING_ENDED});
     });
   });
 
