@@ -124,6 +124,8 @@ export type {
 /** Task related types */
 export type {
   AgentContact,
+  /** Event emitter contract for task consumers (no @types/node needed) */
+  IEventEmitter,
   /** Task interface */
   ITask,
   Interaction,

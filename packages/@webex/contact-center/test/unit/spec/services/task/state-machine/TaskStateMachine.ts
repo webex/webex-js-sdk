@@ -420,4 +420,98 @@ describe('Task state machine', () => {
       expect(service.getSnapshot().value).toBe(TaskState.HELD);
     });
   });
+
+  describe('OFFERED state event handlers', () => {
+    describe('CONTACT_ENDED in OFFERED state', () => {
+      it('transitions to TERMINATED when customer disconnects before agent answers', () => {
+        const service = startMachine();
+        const taskData = createTaskData({isConsulted: false});
+
+        service.send({type: TaskEvent.TASK_INCOMING, taskData});
+        expect(service.getSnapshot().value).toBe(TaskState.OFFERED);
+
+        service.send({type: TaskEvent.CONTACT_ENDED, taskData});
+        expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+      });
+    });
+
+    describe('CONSULT_FAILED in OFFERED state', () => {
+      it('transitions to TERMINATED when consulted agent does not answer', () => {
+        const service = startMachine();
+        const taskData = createTaskData({
+          isConsulted: true,
+          consultingAgentId: 'agent-1',
+        });
+
+        service.send({type: TaskEvent.TASK_INCOMING, taskData});
+        expect(service.getSnapshot().value).toBe(TaskState.OFFERED);
+
+        service.send({type: TaskEvent.CONSULT_FAILED, taskData});
+        expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+      });
+
+      it('does NOT terminate normal incoming call on CONSULT_FAILED (guard protection)', () => {
+        const service = startMachine();
+        const taskData = createTaskData({isConsulted: false});
+
+        service.send({type: TaskEvent.TASK_INCOMING, taskData});
+        expect(service.getSnapshot().value).toBe(TaskState.OFFERED);
+
+        service.send({type: TaskEvent.CONSULT_FAILED, taskData});
+        expect(service.getSnapshot().value).toBe(TaskState.OFFERED);
+
+        service.send({type: TaskEvent.ASSIGN, taskData});
+        expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+      });
+    });
+
+    describe('CONSULT_END in OFFERED state', () => {
+      it('transitions to TERMINATED when consult ends before consulted agent accepts', () => {
+        const service = startMachine();
+        const taskData = createTaskData({
+          isConsulted: true,
+          consultingAgentId: 'agent-1',
+        });
+
+        service.send({type: TaskEvent.TASK_INCOMING, taskData});
+        expect(service.getSnapshot().value).toBe(TaskState.OFFERED);
+
+        service.send({type: TaskEvent.CONSULT_END, taskData});
+        expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+      });
+
+      it('does NOT terminate normal incoming call on CONSULT_END (guard protection)', () => {
+        const service = startMachine();
+        const taskData = createTaskData({isConsulted: false});
+
+        service.send({type: TaskEvent.TASK_INCOMING, taskData});
+        expect(service.getSnapshot().value).toBe(TaskState.OFFERED);
+
+        service.send({type: TaskEvent.CONSULT_END, taskData});
+        expect(service.getSnapshot().value).toBe(TaskState.OFFERED);
+      });
+
+      it('handles CONSULT_FAILED and CONSULT_END in any order for consult offers', () => {
+        const service1 = startMachine();
+        const taskData1 = createTaskData({isConsulted: true});
+
+        service1.send({type: TaskEvent.TASK_INCOMING, taskData: taskData1});
+        service1.send({type: TaskEvent.CONSULT_FAILED, taskData: taskData1});
+        expect(service1.getSnapshot().value).toBe(TaskState.TERMINATED);
+
+        service1.send({type: TaskEvent.CONSULT_END, taskData: taskData1});
+        expect(service1.getSnapshot().value).toBe(TaskState.TERMINATED);
+
+        const service2 = startMachine();
+        const taskData2 = createTaskData({isConsulted: true});
+
+        service2.send({type: TaskEvent.TASK_INCOMING, taskData: taskData2});
+        service2.send({type: TaskEvent.CONSULT_END, taskData: taskData2});
+        expect(service2.getSnapshot().value).toBe(TaskState.TERMINATED);
+
+        service2.send({type: TaskEvent.CONSULT_FAILED, taskData: taskData2});
+        expect(service2.getSnapshot().value).toBe(TaskState.TERMINATED);
+      });
+    });
+  });
 });

@@ -171,6 +171,53 @@ describe('State Machine Guards', () => {
         false
       );
     });
+
+    describe('isConsultOffer', () => {
+      it('returns true when context.taskData.isConsulted is true', () => {
+        const ctx = createContext({
+          taskData: createTaskData({isConsulted: true}),
+        });
+        const event = createEventWithTaskData(createTaskData({}));
+
+        expect(guards.isConsultOffer(createParams(ctx, event))).toBe(true);
+      });
+
+      it('returns true when event.taskData.isConsulted is true (fallback)', () => {
+        const ctx = createContext({
+          taskData: createTaskData({isConsulted: false}),
+        });
+        const event = createEventWithTaskData(createTaskData({isConsulted: true}));
+
+        expect(guards.isConsultOffer(createParams(ctx, event))).toBe(true);
+      });
+
+      it('returns false when both context and event isConsulted are false', () => {
+        const ctx = createContext({
+          taskData: createTaskData({isConsulted: false}),
+        });
+        const event = createEventWithTaskData(createTaskData({isConsulted: false}));
+
+        expect(guards.isConsultOffer(createParams(ctx, event))).toBe(false);
+      });
+
+      it('returns false when both context and event isConsulted are undefined', () => {
+        const ctx = createContext({
+          taskData: createTaskData({}),
+        });
+        const event = createEventWithTaskData(createTaskData({}));
+
+        expect(guards.isConsultOffer(createParams(ctx, event))).toBe(false);
+      });
+
+      it('prioritizes context.taskData over event.taskData when event data is missing', () => {
+        const ctx = createContext({
+          taskData: createTaskData({isConsulted: true}),
+        });
+        const event = createEventWithTaskData(createTaskData({isConsulted: undefined}));
+
+        expect(guards.isConsultOffer(createParams(ctx, event))).toBe(true);
+      });
+    });
   });
 
   describe('Wrap-up Guards', () => {
