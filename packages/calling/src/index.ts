@@ -1,3 +1,4 @@
+// Copyright (c) 2015-2025 Cisco Systems, Inc. See LICENSE file.
 import {NoiseReductionEffect, createMicrophoneStream} from '@webex/media-helpers';
 import {createCallSettingsClient} from './CallSettings/CallSettings';
 import {createContactsClient} from './Contacts/ContactsClient';
