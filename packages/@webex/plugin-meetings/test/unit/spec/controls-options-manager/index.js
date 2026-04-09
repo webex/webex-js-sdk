@@ -340,14 +340,42 @@ describe('plugin-meetings', () => {
                 assert.deepEqual(result, request.request.firstCall.returnValue);
               });
 
-              it('request with mainLocusUrl and make locusUrl as authorizingLocusUrl if mainLocusUrl is exist and not same with locusUrl', () => {
+              it('sends audio controls directly to locusUrl even when mainLocusUrl differs (breakout session)', () => {
                 manager.setDisplayHints(['MUTE_ALL', 'DISABLE_HARD_MUTE', 'DISABLE_MUTE_ON_ENTRY']);
                 manager.mainLocusUrl = `test/main`;
 
                 const result = manager.setMuteAll(true, true, true, ['attendee']);
 
-                assert.calledWith(request.request, {  uri: 'test/main/controls',
-                  body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true, roles: ['attendee'] }, authorizingLocusUrl: 'test/id' },
+                // Audio controls must target the locus the caller is currently in (locusUrl),
+                // NOT mainLocusUrl, because Locus does not support authorizingLocusUrl for audio.
+                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                  body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true, roles: ['attendee'] } },
+                  method: HTTP_VERBS.PATCH});
+
+                assert.deepEqual(result, request.request.firstCall.returnValue);
+              });
+
+              it('sends setMuteOnEntry directly to locusUrl in breakout session', () => {
+                manager.setDisplayHints(['ENABLE_MUTE_ON_ENTRY']);
+                manager.mainLocusUrl = `test/main`;
+
+                const result = manager.setMuteOnEntry(true);
+
+                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                  body: { muteOnEntry: { enabled: true } },
+                  method: HTTP_VERBS.PATCH});
+
+                assert.deepEqual(result, request.request.firstCall.returnValue);
+              });
+
+              it('sends setDisallowUnmute directly to locusUrl in breakout session', () => {
+                manager.setDisplayHints(['ENABLE_HARD_MUTE']);
+                manager.mainLocusUrl = `test/main`;
+
+                const result = manager.setDisallowUnmute(true);
+
+                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                  body: { disallowUnmute: { enabled: true } },
                   method: HTTP_VERBS.PATCH});
 
                 assert.deepEqual(result, request.request.firstCall.returnValue);

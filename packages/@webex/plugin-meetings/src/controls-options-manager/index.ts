@@ -258,15 +258,26 @@ export default class ControlsOptionsManager {
     if (error) {
       return Promise.reject(error);
     }
-    const extraBody =
-      this.mainLocusUrl && this.mainLocusUrl !== this.locusUrl
-        ? {authorizingLocusUrl: this.locusUrl}
-        : {};
+
+    // Audio controls (mute/unmute, muteOnEntry, disallowUnmute) are NOT in Locus's
+    // cross-locus GraphQL authorization allowlist (doesControlSupportRemoteLocusCall).
+    // Unlike update() which handles controls that DO support authorizingLocusUrl
+    // (video, reactions, share, etc.), audio MUST target the locus the caller is in.
+    // In breakout: locusUrl is the breakout URL — send directly there.
+    // Outside breakout: locusUrl === mainLocusUrl — same destination either way.
+    // See: https://sqbu-github.cisco.com/pages/WebExSquared/locus/api/controls/put-controls.html
+    const isInBreakout = this.mainLocusUrl && this.mainLocusUrl !== this.locusUrl;
+
+    if (isInBreakout) {
+      LoggerProxy.logger.log(
+        'ControlsOptionsManager:index#setControls --> in breakout session, sending audio controls directly to breakout locus (authorizingLocusUrl not supported for audio)'
+      );
+    }
 
     // @ts-ignore
     return this.request.request({
-      uri: `${this.mainLocusUrl || this.locusUrl}/${CONTROLS}`,
-      body: {...body, ...extraBody},
+      uri: `${this.locusUrl}/${CONTROLS}`,
+      body,
       method: HTTP_VERBS.PATCH,
     });
   }
