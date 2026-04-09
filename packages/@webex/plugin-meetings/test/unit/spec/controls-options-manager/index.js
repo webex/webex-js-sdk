@@ -119,6 +119,34 @@ describe('plugin-meetings', () => {
                       assert.deepEqual(result, request.request.firstCall.returnValue);
                     });
                   });
+
+                  describe('breakout routing', () => {
+                    it('sends setMuteOnEntry to breakout locusUrl without authorizingLocusUrl when mainLocusUrl differs (SPARK-785662)', () => {
+                      manager.setDisplayHints(['ENABLE_MUTE_ON_ENTRY']);
+                      manager.mainLocusUrl = 'test/main';
+
+                      const result = manager.setMuteOnEntry(true);
+
+                      assert.calledWith(request.request, {  uri: 'test/id/controls',
+                      body: { muteOnEntry: { enabled: true } },
+                      method: HTTP_VERBS.PATCH});
+
+                      assert.deepEqual(result, request.request.firstCall.returnValue);
+                    });
+
+                    it('sends setDisallowUnmute to breakout locusUrl without authorizingLocusUrl when mainLocusUrl differs (SPARK-785662)', () => {
+                      manager.setDisplayHints(['ENABLE_HARD_MUTE']);
+                      manager.mainLocusUrl = 'test/main';
+
+                      const result = manager.setDisallowUnmute(true);
+
+                      assert.calledWith(request.request, {  uri: 'test/id/controls',
+                      body: { disallowUnmute: { enabled: true } },
+                      method: HTTP_VERBS.PATCH});
+
+                      assert.deepEqual(result, request.request.firstCall.returnValue);
+                    });
+                  });
             });
 
             describe('update()', () => {
