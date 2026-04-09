@@ -509,7 +509,12 @@ export default function createDigitalIncomingTaskAndTaskControlsTests() {
 
     // Accept the incoming chat
     await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT);
-    await testManager.agent1Page.waitForTimeout(5000);
+
+    // Wait for chat session to fully establish (digital channels take longer than voice)
+    // Digital channels require backend communication to enable transfer functionality
+    // SDK fires task:ui-controls-updated when uiControls.transfer becomes available
+    await expect(testManager.agent1Page.locator('#transfer')).toBeEnabled({timeout: 30000});
+    await testManager.agent1Page.waitForTimeout(2000); // Additional settle time
 
     // Desktop mode: Agent state does NOT auto-transition to Engaged
     // Skip: verifyCurrentState(ENGAGED) - Desktop mode doesn't auto-transition
@@ -575,7 +580,12 @@ export default function createDigitalIncomingTaskAndTaskControlsTests() {
 
     // Accept the incoming email
     await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL);
-    await testManager.agent1Page.waitForTimeout(5000);
+
+    // Wait for email session to fully establish (digital channels take longer than voice)
+    // Digital channels require backend communication to enable transfer functionality
+    // SDK fires task:ui-controls-updated when uiControls.transfer becomes available
+    await expect(testManager.agent1Page.locator('#transfer')).toBeEnabled({timeout: 30000});
+    await testManager.agent1Page.waitForTimeout(2000); // Additional settle time
 
     // Desktop mode: Agent state does NOT auto-transition to Engaged
     // Skip: verifyCurrentState(ENGAGED) - Desktop mode doesn't auto-transition
