@@ -1461,6 +1461,16 @@ class HashTreeParser {
   }
 
   /**
+   * Cleans up the HashTreeParser, stopping all timers and clearing all internal state.
+   * After calling this, the parser should not be used anymore.
+   * @returns {void}
+   */
+  public cleanUp() {
+    this.stop();
+    this.dataSets = {};
+  }
+
+  /**
    * Resumes the HashTreeParser that was previously stopped.
    * @param {HashTreeMessage} message - The message to resume with, it must contain metadata with visible data sets info
    * @returns {void}

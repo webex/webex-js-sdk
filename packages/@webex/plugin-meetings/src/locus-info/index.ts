@@ -2870,4 +2870,17 @@ export default class LocusInfo extends EventsScope {
   clearMainSessionLocusCache() {
     this.mainSessionLocusCache = null;
   }
+
+  /**
+   * Cleans up all hash tree parsers and clears internal maps.
+   * @returns {void}
+   * @memberof LocusInfo
+   */
+  cleanUp() {
+    this.hashTreeParsers.forEach((entry) => {
+      entry.parser.cleanUp();
+    });
+    this.hashTreeParsers.clear();
+    this.hashTreeObjectId2ParticipantId.clear();
+  }
 }

@@ -4413,6 +4413,31 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#cleanUp', () => {
+      it('calls cleanUp on all hash tree parsers and clears maps', () => {
+        const parser1 = {cleanUp: sinon.stub()};
+        const parser2 = {cleanUp: sinon.stub()};
+
+        locusInfo.hashTreeParsers.set('url1', {parser: parser1, initializedFromHashTree: true});
+        locusInfo.hashTreeParsers.set('url2', {parser: parser2, initializedFromHashTree: true});
+        locusInfo.hashTreeObjectId2ParticipantId.set(1, 'participant1');
+
+        locusInfo.cleanUp();
+
+        assert.calledOnce(parser1.cleanUp);
+        assert.calledOnce(parser2.cleanUp);
+        assert.equal(locusInfo.hashTreeParsers.size, 0);
+        assert.equal(locusInfo.hashTreeObjectId2ParticipantId.size, 0);
+      });
+
+      it('works when there are no hash tree parsers', () => {
+        locusInfo.cleanUp();
+
+        assert.equal(locusInfo.hashTreeParsers.size, 0);
+        assert.equal(locusInfo.hashTreeObjectId2ParticipantId.size, 0);
+      });
+    });
+
     describe('#handleOneonOneEvent', () => {
       beforeEach(() => {
         locusInfo.emitScoped = sinon.stub();

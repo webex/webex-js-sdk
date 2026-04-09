@@ -3655,4 +3655,44 @@ describe('HashTreeParser', () => {
       assert.notCalled(callback);
     });
   });
+
+  describe('#cleanUp', () => {
+    it('should stop the parser, clear all timers and clear all dataSets', () => {
+      const parser = createHashTreeParser();
+
+      // Send a message to set up sync timers via runSyncAlgorithm
+      const message = {
+        dataSets: [
+          {
+            ...createDataSet('main', 16, 1100),
+            root: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1',
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        heartbeatIntervalMs: 5000,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 0, version: 201},
+              dataSetNames: ['main'],
+            },
+            data: {someData: 'value'},
+          },
+        ],
+      };
+
+      parser.handleMessage(message, 'setup timers');
+
+      // Verify timers were set by handleMessage
+      expect(parser.dataSets.main.timer).to.not.be.undefined;
+      expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+
+      parser.cleanUp();
+
+      expect(parser.state).to.equal('stopped');
+      expect(parser.visibleDataSets).to.deep.equal([]);
+      expect(parser.dataSets).to.deep.equal({});
+    });
+  });
 });
