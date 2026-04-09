@@ -1,6 +1,7 @@
 import {defineConfig, devices} from '@playwright/test';
 import dotenv from 'dotenv';
 import path from 'path';
+import {USER_SETS} from './playwright/test-data';
 
 // .env lives at repo root
 dotenv.config({path: path.resolve(__dirname, '../../.env')});
@@ -71,60 +72,35 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    // Production
+    // OAuth (structurally different — not generated from USER_SETS)
     {
-      name: 'OAuth',
+      name: 'OAuth - PROD',
       testDir: './playwright/utils',
       testMatch: /oauth\.setup\.ts/,
     },
-    {
-      name: 'SET_1',
-      dependencies: ['OAuth'],
-      testDir: './playwright/suites',
-      testMatch: /set-1\.spec\.ts/,
-      use: browserOptions[PW_BROWSER],
-    },
-    {
-      name: 'SET_2',
-      dependencies: ['OAuth'],
-      testDir: './playwright/suites',
-      testMatch: /set-2\.spec\.ts/,
-      use: browserOptions[PW_BROWSER],
-    },
-    {
-      name: 'SET_3',
-      dependencies: ['OAuth'],
-      testDir: './playwright/suites',
-      testMatch: /set-3\.spec\.ts/,
-      use: browserOptions[PW_BROWSER],
-    },
-    // Integration
     {
       name: 'OAuth - INT',
       testDir: './playwright/utils',
       testMatch: /oauth\.setup\.ts/,
       use: {testEnv: 'int'} as any,
     },
-    {
-      name: 'SET_1 - INT',
-      dependencies: ['OAuth - INT'],
-      testDir: './playwright/suites',
-      testMatch: /set-1\.spec\.ts/,
-      use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
-    },
-    {
-      name: 'SET_2 - INT',
-      dependencies: ['OAuth - INT'],
-      testDir: './playwright/suites',
-      testMatch: /set-2\.spec\.ts/,
-      use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
-    },
-    {
-      name: 'SET_3 - INT',
-      dependencies: ['OAuth - INT'],
-      testDir: './playwright/suites',
-      testMatch: /set-3\.spec\.ts/,
-      use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
-    },
+
+    // Generated from USER_SETS — prod + INT mirror for each set
+    ...Object.entries(USER_SETS).flatMap(([key, set]) => [
+      {
+        name: `${key} - PROD`,
+        dependencies: ['OAuth - PROD'],
+        testDir: './playwright/suites',
+        testMatch: set.testSuite,
+        use: browserOptions[PW_BROWSER],
+      },
+      {
+        name: `${key} - INT`,
+        dependencies: ['OAuth - INT'],
+        testDir: './playwright/suites',
+        testMatch: set.testSuite,
+        use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
+      },
+    ]),
   ],
 });

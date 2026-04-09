@@ -20,20 +20,24 @@ export interface UserSet {
   testSuite: string;
 }
 
-/** Environment suffix used for INT project names in Playwright config. */
-const INT_SUFFIX = ' - INT';
+/** Separator between set name and environment in project names (e.g. "SET_1 - PROD"). */
+const ENV_SEPARATOR = ' - ';
 
 /**
  * Whether a Playwright project targets the Integration environment.
  */
-export const isIntProject = (projectName: string): boolean => projectName.endsWith(INT_SUFFIX);
+export const isIntProject = (projectName: string): boolean =>
+  projectName.endsWith(`${ENV_SEPARATOR}INT`);
 
 /**
- * Strip the environment suffix (e.g. ` - INT`) from a project name
+ * Strip the environment suffix (e.g. ` - INT`, ` - PROD`) from a project name
  * so it can be looked up in USER_SETS.
  */
-export const baseProjectName = (projectName: string): string =>
-  projectName.endsWith(INT_SUFFIX) ? projectName.slice(0, -INT_SUFFIX.length) : projectName;
+export const baseProjectName = (projectName: string): string => {
+  const idx = projectName.lastIndexOf(ENV_SEPARATOR);
+
+  return idx === -1 ? projectName : projectName.slice(0, idx);
+};
 
 /**
  * Token env var name for a given account role and environment.

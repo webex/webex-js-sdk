@@ -5,6 +5,7 @@ import {
   DEVELOPER_PORTAL_GETTING_STARTED_URL,
   DEVELOPER_PORTAL_INT_GETTING_STARTED_URL,
 } from '../constants';
+import {USER_SETS, AccountRole, tokenEnvVar} from '../test-data';
 
 type EnvUpdateMap = Record<string, string>;
 
@@ -109,6 +110,11 @@ const fetchAccessToken = async (
   }
 };
 
+// Collect unique account roles across all sets
+const uniqueRoles: AccountRole[] = [
+  ...new Set(Object.values(USER_SETS).flatMap((set) => set.accounts)),
+];
+
 setup('OAuth', async ({browser}, testInfo) => {
   const isInt = (testInfo.project.use as any).testEnv === 'int';
   const envPrefix = isInt ? '_INT' : '';
@@ -119,51 +125,32 @@ setup('OAuth', async ({browser}, testInfo) => {
   // Skip OAuth if SKIP_AUTH=true and tokens already exist in env
   if (
     process.env.SKIP_AUTH === 'true' &&
-    process.env[`USER_1${envPrefix}_ACCESS_TOKEN`] &&
-    process.env[`USER_2${envPrefix}_ACCESS_TOKEN`] &&
-    process.env[`USER_3${envPrefix}_ACCESS_TOKEN`]
+    uniqueRoles.every((role) => process.env[tokenEnvVar(role, isInt)])
   ) {
     return;
   }
 
   const tokenUpdates: EnvUpdateMap = {};
-
-  const user1Email = process.env[`USER_1${envPrefix}_EMAIL`];
-  const user1Password = process.env[`USER_1${envPrefix}_PASSWORD`];
-
-  if (!user1Email || !user1Password) {
-    throw new Error(`USER_1${envPrefix}_EMAIL and USER_1${envPrefix}_PASSWORD must be set in .env`);
-  }
-
-  // Build list of token fetches to run in parallel
   const tokenFetches: Promise<void>[] = [];
 
-  tokenFetches.push(
-    fetchAccessToken(browser, user1Email, user1Password, tokenPortalUrl).then((token) => {
-      tokenUpdates[`USER_1${envPrefix}_ACCESS_TOKEN`] = token;
-    })
-  );
+  for (const role of uniqueRoles) {
+    const email = process.env[`${role}${envPrefix}_EMAIL`];
+    const password = process.env[`${role}${envPrefix}_PASSWORD`];
 
-  const user2Email = process.env[`USER_2${envPrefix}_EMAIL`];
-  const user2Password = process.env[`USER_2${envPrefix}_PASSWORD`];
-
-  if (user2Email && user2Password) {
-    tokenFetches.push(
-      fetchAccessToken(browser, user2Email, user2Password, tokenPortalUrl).then((token) => {
-        tokenUpdates[`USER_2${envPrefix}_ACCESS_TOKEN`] = token;
-      })
-    );
-  }
-
-  const user3Email = process.env[`USER_3${envPrefix}_EMAIL`];
-  const user3Password = process.env[`USER_3${envPrefix}_PASSWORD`];
-
-  if (user3Email && user3Password) {
-    tokenFetches.push(
-      fetchAccessToken(browser, user3Email, user3Password, tokenPortalUrl).then((token) => {
-        tokenUpdates[`USER_3${envPrefix}_ACCESS_TOKEN`] = token;
-      })
-    );
+    // First account is required; others are optional
+    if (!email || !password) {
+      if (role === uniqueRoles[0]) {
+        throw new Error(
+          `${role}${envPrefix}_EMAIL and ${role}${envPrefix}_PASSWORD must be set in .env`
+        );
+      }
+    } else {
+      tokenFetches.push(
+        fetchAccessToken(browser, email, password, tokenPortalUrl).then((token) => {
+          tokenUpdates[tokenEnvVar(role, isInt)] = token;
+        })
+      );
+    }
   }
 
   await Promise.all(tokenFetches);

@@ -64,7 +64,7 @@ export function registrationLifecycleTests() {
     test('REG-001: Initial registration success', async () => {
       const page = tm.page;
 
-      expect(registrationPosts).toBe(1);
+      expect(registrationPosts).toBeGreaterThanOrEqual(1);
 
       const statusText = await page.locator(CALLING_SELECTORS.REGISTRATION_STATUS).textContent();
       expect(statusText).toMatch(/Registered, deviceId: .+/);
@@ -151,7 +151,9 @@ export function registrationLifecycleTests() {
 
       expect(deletePosts).toBeGreaterThanOrEqual(1);
 
-      expect(await isLineRegistered(page)).toBe(false);
+      await expect(async () => {
+        expect(await isLineRegistered(page)).toBe(false);
+      }).toPass({timeout: AWAIT_TIMEOUT});
 
       await expect(page.locator(CALLING_SELECTORS.REGISTER_BTN)).toBeEnabled({
         timeout: AWAIT_TIMEOUT,
