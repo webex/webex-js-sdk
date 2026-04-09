@@ -167,14 +167,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
           },
-          // AgentContactEnded - customer disconnects before agent answers (voice + digital)
-          // Both Desktop Mode (WebRTC) and Extension Mode need this handler
           [TaskEvent.CONTACT_ENDED]: {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
           },
           // This needs to be handled for all assign failed scenarios (contact, buddy)
-          // [AgentContactAssignFailed, AgentConsultFailed, AgentCtqFailed, AgentBlindTransferFailed,
+          // [AgentContactAssignFailed, AgentCtqFailed, AgentBlindTransferFailed,
           //  AgentVTeamTransferFailed, AgentConsultTransferFailed]
           [TaskEvent.ASSIGN_FAILED]: {
             target: TaskState.TERMINATED,
@@ -211,21 +209,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.OFFER_CONSULT]: {
             actions: ['updateTaskData', 'emitTaskOfferConsult', 'requestAutoAnswer'],
           },
-          // AgentConsultFailed - when consulted agent (Agent 2) doesn't answer
-          // Guard ensures this only applies to consult offers, not normal incoming calls
-          // This prevents spurious AgentConsultFailed events from terminating regular calls
+          // AgentConsultFailed - when consulted agent (Agent 2) doesn't answer (RONA or decline)
+          // Clears the incoming consult notification by transitioning to TERMINATED
           [TaskEvent.CONSULT_FAILED]: {
-            guard: guards.isConsultOffer,
             target: TaskState.TERMINATED,
-            actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
-          },
-          // AgentConsultEnded - when consult ends before Agent 2 accepts
-          // Backend may send CONSULT_END before or after CONSULT_FAILED
-          // Guard ensures this only applies to consult offers, not normal incoming calls
-          [TaskEvent.CONSULT_END]: {
-            guard: guards.isConsultOffer,
-            target: TaskState.TERMINATED,
-            actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            actions: ['updateTaskData', 'clearConsultState', 'emitTaskReject'],
           },
         },
       },

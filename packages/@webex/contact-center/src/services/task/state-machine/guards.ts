@@ -184,30 +184,6 @@ export const guards = {
   },
 
   /**
-   * Checks if this is a consult offer (Agent 2 receiving a consult from Agent 1)
-   * Used to differentiate between normal incoming calls and consult offers in OFFERED state
-   *
-   * IMPORTANT: Check context.taskData (not event taskData) because:
-   * - isConsulted is set when task is created (from participant data)
-   * - AgentConsultFailed/AgentConsultEnded events don't include top-level isConsulted field
-   * - We need the original value from task creation, not from the current event
-   */
-  isConsultOffer: ({context, event}: GuardParams): boolean => {
-    // Check context first (has original isConsulted from task creation)
-    if (context.taskData?.isConsulted === true) {
-      return true;
-    }
-
-    // Fallback to event taskData (for OFFER_CONSULT event which may arrive first)
-    const eventTaskData = getTaskDataFromEvent(event);
-    if (eventTaskData?.isConsulted === true) {
-      return true;
-    }
-
-    return false;
-  },
-
-  /**
    * EP-DN / consulted consult legs can arrive as AGENT_CONTACT_ASSIGNED without a preceding
    * AgentConsulting event. When that happens, we should enter CONSULTING (not CONNECTED).
    */
