@@ -154,6 +154,7 @@ export class TestManager {
     operationName: string,
     maxRetries: number = this.maxRetries
   ): Promise<T> {
+    /* eslint-disable no-await-in-loop, no-plusplus */
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         return await operation();
@@ -162,9 +163,12 @@ export class TestManager {
           throw new Error(`Failed ${operationName} after ${maxRetries} attempts: ${error}`);
         }
         // Simple exponential backoff
-        await new Promise((resolve) => setTimeout(resolve, 2 ** attempt * 1000));
+        await new Promise((resolve) => {
+          setTimeout(resolve, 2 ** attempt * 1000);
+        });
       }
     }
+    /* eslint-enable no-await-in-loop, no-plusplus */
     throw new Error(`Retry operation failed unexpectedly for ${operationName}`);
   }
 
@@ -186,7 +190,9 @@ export class TestManager {
     timeout: number = OPERATION_TIMEOUT
   ): Promise<void> {
     const guardedOperation = operation().catch(() => {});
-    const timeoutGuard = new Promise<void>((resolve) => setTimeout(resolve, timeout));
+    const timeoutGuard = new Promise<void>((resolve) => {
+      setTimeout(resolve, timeout);
+    });
     await Promise.race([guardedOperation, timeoutGuard]);
   }
 
@@ -397,7 +403,6 @@ export class TestManager {
           this.agent1Page,
           LOGIN_MODE.EXTENSION,
           envTokens.agent1AccessToken,
-          this.agent1ExtensionPage,
           envTokens.agent1ExtensionNumber
         ),
         this.retryOperation(
@@ -451,7 +456,6 @@ export class TestManager {
         this.multiSessionAgent1Page!,
         LOGIN_MODE.EXTENSION,
         envTokens.agent1AccessToken,
-        this.agent1ExtensionPage,
         envTokens.agent1ExtensionNumber,
         true // Enable multi-session mode
       );

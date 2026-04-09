@@ -1,4 +1,4 @@
-/* eslint-disable no-await-in-loop, no-plusplus, no-continue, no-console */
+/* eslint-disable no-await-in-loop, no-plusplus, no-continue */
 import {Page, expect} from '@playwright/test';
 import nodemailer from 'nodemailer';
 import {
@@ -11,6 +11,7 @@ import {
   CHAT_LAUNCHER_TIMEOUT,
   FORM_FIELD_TIMEOUT,
   TEST_DATA,
+  CHAT_UI,
   UI_SETTLE_TIMEOUT,
   EXTENSION_REGISTRATION_TIMEOUT,
   ACCEPT_TASK_TIMEOUT,
@@ -44,9 +45,9 @@ export async function createCallTask(page: Page, number: string) {
     throw new Error('Dial number is required');
   }
 
-  // CRITICAL: Use ID-based selector for calling sample app (not widget data-testid)
+  // CRITICAL: Use caller's #end-call selector (not agent's #end)
   // Check for active call and end it before creating new call to prevent state contamination
-  const endBtn = page.locator('#end').first();
+  const endBtn = page.locator('#end-call').first();
   if (await endBtn.isEnabled({timeout: 500}).catch(() => false)) {
     await endBtn.click({timeout: AWAIT_TIMEOUT});
     await page.waitForTimeout(500);
@@ -82,54 +83,54 @@ export async function createChatTask(page: Page, chatURL: string) {
       await page.goto(chatURL);
       await page.waitForTimeout(UI_SETTLE_TIMEOUT);
       await page
-        .locator('iframe[name="Livechat launcher icon"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_LAUNCHER}"]`)
         .contentFrame()
-        .getByRole('button', {name: 'Livechat Button - 0 unread'})
+        .getByRole('button', {name: CHAT_UI.BUTTON_LAUNCHER})
         .waitFor({state: 'visible', timeout: CHAT_LAUNCHER_TIMEOUT});
       await page
-        .locator('iframe[name="Livechat launcher icon"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_LAUNCHER}"]`)
         .contentFrame()
-        .getByRole('button', {name: 'Livechat Button - 0 unread'})
+        .getByRole('button', {name: CHAT_UI.BUTTON_LAUNCHER})
         .click({timeout: AWAIT_TIMEOUT});
       await page
-        .locator('iframe[name="Conversation Window"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_CONVERSATION}"]`)
         .contentFrame()
-        .getByRole('button', {name: 'Hit Us Up!'})
+        .getByRole('button', {name: CHAT_UI.BUTTON_START_CHAT})
         .waitFor({state: 'visible', timeout: FORM_FIELD_TIMEOUT});
       await page
-        .locator('iframe[name="Conversation Window"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_CONVERSATION}"]`)
         .contentFrame()
-        .getByRole('button', {name: 'Hit Us Up!'})
+        .getByRole('button', {name: CHAT_UI.BUTTON_START_CHAT})
         .click({timeout: AWAIT_TIMEOUT});
       await page
-        .locator('iframe[name="Conversation Window"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_CONVERSATION}"]`)
         .contentFrame()
-        .getByRole('textbox', {name: 'Name'})
+        .getByRole('textbox', {name: CHAT_UI.TEXTBOX_NAME})
         .waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
       await page
-        .locator('iframe[name="Conversation Window"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_CONVERSATION}"]`)
         .contentFrame()
-        .getByRole('textbox', {name: 'Name'})
+        .getByRole('textbox', {name: CHAT_UI.TEXTBOX_NAME})
         .click({timeout: AWAIT_TIMEOUT});
       await page
-        .locator('iframe[name="Conversation Window"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_CONVERSATION}"]`)
         .contentFrame()
-        .getByRole('textbox', {name: 'Name'})
+        .getByRole('textbox', {name: CHAT_UI.TEXTBOX_NAME})
         .fill(TEST_DATA.CHAT_NAME, {timeout: AWAIT_TIMEOUT});
       await page
-        .locator('iframe[name="Conversation Window"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_CONVERSATION}"]`)
         .contentFrame()
-        .getByRole('textbox', {name: 'Name'})
+        .getByRole('textbox', {name: CHAT_UI.TEXTBOX_NAME})
         .fill(TEST_DATA.CHAT_NAME, {timeout: AWAIT_TIMEOUT});
       await page
-        .locator('iframe[name="Conversation Window"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_CONVERSATION}"]`)
         .contentFrame()
-        .getByRole('button', {name: 'Submit Name'})
+        .getByRole('button', {name: CHAT_UI.BUTTON_SUBMIT_NAME})
         .waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
       await page
-        .locator('iframe[name="Conversation Window"]')
+        .locator(`iframe[name="${CHAT_UI.IFRAME_CONVERSATION}"]`)
         .contentFrame()
-        .getByRole('button', {name: 'Submit Name'})
+        .getByRole('button', {name: CHAT_UI.BUTTON_SUBMIT_NAME})
         .click({timeout: AWAIT_TIMEOUT});
       await page.waitForTimeout(200);
       await expect(
@@ -326,7 +327,12 @@ export async function acceptIncomingTask(
   // In some sample-app states, only this control is exposed.
   if (type === TASK_TYPES.CALL) {
     const mainAnswerButton = page.locator('#answer').first();
-    const isAnswerVisible = await mainAnswerButton.isVisible().catch(() => false);
+
+    // Check if Answer button appears (Desktop mode requires task routing first)
+    const isAnswerVisible = await mainAnswerButton
+      .waitFor({state: 'visible', timeout: 10000})
+      .then(() => true)
+      .catch(() => false);
 
     if (isAnswerVisible) {
       await expect(mainAnswerButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
@@ -335,6 +341,7 @@ export async function acceptIncomingTask(
       // Wait longer for call to connect and agent state to fully transition to Engaged
       await page.waitForTimeout(10000);
     }
+    // If button didn't appear, task may already be routed (e.g., extension mode)
   }
 }
 
