@@ -40,7 +40,7 @@ import {
   METHODS,
 } from './constants';
 import {AGENT_STATE_AVAILABLE, AGENT_STATE_AVAILABLE_ID} from './services/config/constants';
-import {AGENT, WEB_RTC_PREFIX} from './services/constants';
+import {AGENT, RTD_SUBSCRIBE_API, SUBSCRIBE_API, WEB_RTC_PREFIX} from './services/constants';
 import Services from './services';
 import WebexRequest from './services/core/WebexRequest';
 import LoggerProxy from './logger-proxy';
@@ -372,7 +372,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         this.apiAIAssistant,
         this.services.contact,
         this.webCallingService,
-        this.services.webSocketManager
+        this.services.webSocketManager,
+        this.services.rtdWebSocketManager
       );
       this.incomingTaskListener();
 
@@ -555,6 +556,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.taskManager.unregisterIncomingCallEvent();
 
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
+      this.services.rtdWebSocketManager.off('message', this.handleRTDWebsocketMessage);
       this.services.connectionService.off('connectionLost', this.handleConnectionLost);
 
       if (
@@ -576,6 +578,9 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       if (!this.services.webSocketManager.isSocketClosed) {
         this.services.webSocketManager.close(false, 'Unregistering the SDK');
+      }
+      if (this.services.rtdWebSocketManager && !this.services.rtdWebSocketManager.isSocketClosed) {
+        this.services.rtdWebSocketManager.close(false, 'Unregistering the SDK');
       }
 
       // Clear any cached agent configuration
@@ -706,6 +711,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       return this.services.webSocketManager
         .initWebSocket({
           body: this.getConnectionConfig(),
+          resource: SUBSCRIBE_API,
         })
         .then(async (data: WelcomeEvent) => {
           const agentId = data.agentId;
@@ -729,7 +735,36 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.taskManager.setAgentId(this.agentConfig.agentId);
           this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
           this.apiAIAssistant.setAIFeatureFlags(this.agentConfig.aiFeature);
+          /**
+           * TODO: We need to re-check this condition if this websocket is only for realtime transcripts
+           * or other AI Assistant features will also use the same.
+           * If the latter is true, we need to update this condition.
+           */
+          if (this.agentConfig.aiFeature?.realtimeTranscripts?.enable) {
+            LoggerProxy.info('Connecting to RTD websocket', {
+              module: CC_FILE,
+              method: METHODS.CONNECT_WEBSOCKET,
+            });
 
+            this.services.rtdWebSocketManager
+              .initWebSocket({
+                body: this.getConnectionConfig(),
+                resource: RTD_SUBSCRIBE_API,
+              })
+              .then(() => {
+                LoggerProxy.log('RTD websocket connected successfully', {
+                  module: CC_FILE,
+                  method: METHODS.CONNECT_WEBSOCKET,
+                });
+                this.services.rtdWebSocketManager.on('message', this.handleRTDWebsocketMessage);
+              })
+              .catch((error) => {
+                LoggerProxy.error(`Error connecting to RTD websocket ${error}`, {
+                  module: CC_FILE,
+                  method: METHODS.CONNECT_WEBSOCKET,
+                });
+              });
+          }
           if (
             this.agentConfig.webRtcEnabled &&
             this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
@@ -1192,6 +1227,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       default:
         break;
     }
+  };
+
+  private handleRTDWebsocketMessage = (event: string) => {
+    this.taskManager.handleRealtimeWebsocketEvent(event);
   };
 
   /**

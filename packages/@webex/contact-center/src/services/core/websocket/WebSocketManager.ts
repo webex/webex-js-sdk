@@ -1,6 +1,6 @@
 import EventEmitter from 'events';
 import {WebexSDK, SubscribeRequest, HTTP_METHODS} from '../../../types';
-import {SUBSCRIBE_API, WCC_API_GATEWAY} from '../../constants';
+import {WCC_API_GATEWAY} from '../../constants';
 import {ConnectionLostDetails} from './types';
 import {CC_EVENTS, SubscribeResponse, WelcomeResponse} from '../../config/types';
 import LoggerProxy from '../../../logger-proxy';
@@ -44,9 +44,12 @@ export class WebSocketManager extends EventEmitter {
     this.keepaliveWorker = new Worker(URL.createObjectURL(workerScriptBlob));
   }
 
-  async initWebSocket(options: {body: SubscribeRequest}): Promise<WelcomeResponse> {
-    const connectionConfig = options.body;
-    await this.register(connectionConfig);
+  async initWebSocket(options: {
+    body: SubscribeRequest;
+    resource: string;
+  }): Promise<WelcomeResponse> {
+    const {body, resource} = options;
+    await this.register(body, resource);
 
     return new Promise((resolve, reject) => {
       this.welcomePromiseResolve = resolve;
@@ -76,11 +79,11 @@ export class WebSocketManager extends EventEmitter {
     this.isConnectionLost = event.isConnectionLost;
   }
 
-  private async register(connectionConfig: SubscribeRequest) {
+  private async register(connectionConfig: SubscribeRequest, resource: string) {
     try {
       const subscribeResponse: SubscribeResponse = await this.webex.request({
         service: WCC_API_GATEWAY,
-        resource: SUBSCRIBE_API,
+        resource,
         method: HTTP_METHODS.POST,
         body: connectionConfig,
       });
