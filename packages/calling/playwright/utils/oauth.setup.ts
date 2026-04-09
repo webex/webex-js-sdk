@@ -119,49 +119,49 @@ setup('OAuth', async ({browser}, testInfo) => {
   // Skip OAuth if SKIP_AUTH=true and tokens already exist in env
   if (
     process.env.SKIP_AUTH === 'true' &&
-    process.env[`CALLER${envPrefix}_ACCESS_TOKEN`] &&
-    process.env[`CALLEE${envPrefix}_ACCESS_TOKEN`] &&
-    process.env[`TRANSFER${envPrefix}_ACCESS_TOKEN`]
+    process.env[`USER_1${envPrefix}_ACCESS_TOKEN`] &&
+    process.env[`USER_2${envPrefix}_ACCESS_TOKEN`] &&
+    process.env[`USER_3${envPrefix}_ACCESS_TOKEN`]
   ) {
     return;
   }
 
   const tokenUpdates: EnvUpdateMap = {};
 
-  const callerEmail = process.env[`CALLER${envPrefix}_EMAIL`];
-  const callerPassword = process.env[`CALLER${envPrefix}_PASSWORD`];
+  const user1Email = process.env[`USER_1${envPrefix}_EMAIL`];
+  const user1Password = process.env[`USER_1${envPrefix}_PASSWORD`];
 
-  if (!callerEmail || !callerPassword) {
-    throw new Error(`CALLER${envPrefix}_EMAIL and CALLER${envPrefix}_PASSWORD must be set in .env`);
+  if (!user1Email || !user1Password) {
+    throw new Error(`USER_1${envPrefix}_EMAIL and USER_1${envPrefix}_PASSWORD must be set in .env`);
   }
 
   // Build list of token fetches to run in parallel
   const tokenFetches: Promise<void>[] = [];
 
   tokenFetches.push(
-    fetchAccessToken(browser, callerEmail, callerPassword, tokenPortalUrl).then((token) => {
-      tokenUpdates[`CALLER${envPrefix}_ACCESS_TOKEN`] = token;
+    fetchAccessToken(browser, user1Email, user1Password, tokenPortalUrl).then((token) => {
+      tokenUpdates[`USER_1${envPrefix}_ACCESS_TOKEN`] = token;
     })
   );
 
-  const calleeEmail = process.env[`CALLEE${envPrefix}_EMAIL`];
-  const calleePassword = process.env[`CALLEE${envPrefix}_PASSWORD`];
+  const user2Email = process.env[`USER_2${envPrefix}_EMAIL`];
+  const user2Password = process.env[`USER_2${envPrefix}_PASSWORD`];
 
-  if (calleeEmail && calleePassword) {
+  if (user2Email && user2Password) {
     tokenFetches.push(
-      fetchAccessToken(browser, calleeEmail, calleePassword, tokenPortalUrl).then((token) => {
-        tokenUpdates[`CALLEE${envPrefix}_ACCESS_TOKEN`] = token;
+      fetchAccessToken(browser, user2Email, user2Password, tokenPortalUrl).then((token) => {
+        tokenUpdates[`USER_2${envPrefix}_ACCESS_TOKEN`] = token;
       })
     );
   }
 
-  const transferEmail = process.env[`TRANSFER${envPrefix}_EMAIL`];
-  const transferPassword = process.env[`TRANSFER${envPrefix}_PASSWORD`];
+  const user3Email = process.env[`USER_3${envPrefix}_EMAIL`];
+  const user3Password = process.env[`USER_3${envPrefix}_PASSWORD`];
 
-  if (transferEmail && transferPassword) {
+  if (user3Email && user3Password) {
     tokenFetches.push(
-      fetchAccessToken(browser, transferEmail, transferPassword, tokenPortalUrl).then((token) => {
-        tokenUpdates[`TRANSFER${envPrefix}_ACCESS_TOKEN`] = token;
+      fetchAccessToken(browser, user3Email, user3Password, tokenPortalUrl).then((token) => {
+        tokenUpdates[`USER_3${envPrefix}_ACCESS_TOKEN`] = token;
       })
     );
   }
