@@ -122,3 +122,13 @@ export const TEST_DATA = {
   EMAIL_TEXT: '--This Email is generated due to playwright automation test for incoming Tasks---',
   EXTENSION_CALL_INDICATOR: 'Ringing...',
 };
+
+// Chat UI Element Constants (Third-party chat client)
+export const CHAT_UI = {
+  IFRAME_LAUNCHER: 'Livechat launcher icon',
+  IFRAME_CONVERSATION: 'Conversation Window',
+  BUTTON_LAUNCHER: 'Livechat Button - 0 unread',
+  BUTTON_START_CHAT: 'Hit Us Up!',
+  TEXTBOX_NAME: 'Name',
+  BUTTON_SUBMIT_NAME: 'Submit Name',
+};
