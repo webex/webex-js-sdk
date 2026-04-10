@@ -76,6 +76,19 @@ describe('plugin-meetings', () => {
 
                       assert.deepEqual(result, request.request.firstCall.returnValue);
                     });
+
+                    it('should send setMuteOnEntry to locusUrl without authorizingLocusUrl when in breakout', () => {
+                      manager.setDisplayHints(['ENABLE_MUTE_ON_ENTRY']);
+                      manager.mainLocusUrl = 'test/main';
+
+                      const result = manager.setMuteOnEntry(true);
+
+                      assert.calledWith(request.request, {  uri: 'test/id/controls',
+                      body: { muteOnEntry: { enabled: true } },
+                      method: HTTP_VERBS.PATCH});
+
+                      assert.deepEqual(result, request.request.firstCall.returnValue);
+                    });
                   });
 
                   describe('setDisallowUnmute', () => {
@@ -114,6 +127,19 @@ describe('plugin-meetings', () => {
 
                       assert.calledWith(request.request, {  uri: 'test/id/controls',
                       body: { disallowUnmute: { enabled: false } },
+                      method: HTTP_VERBS.PATCH});
+
+                      assert.deepEqual(result, request.request.firstCall.returnValue);
+                    });
+
+                    it('should send setDisallowUnmute to locusUrl without authorizingLocusUrl when in breakout', () => {
+                      manager.setDisplayHints(['ENABLE_HARD_MUTE']);
+                      manager.mainLocusUrl = 'test/main';
+
+                      const result = manager.setDisallowUnmute(true);
+
+                      assert.calledWith(request.request, {  uri: 'test/id/controls',
+                      body: { disallowUnmute: { enabled: true } },
                       method: HTTP_VERBS.PATCH});
 
                       assert.deepEqual(result, request.request.firstCall.returnValue);
@@ -203,7 +229,7 @@ describe('plugin-meetings', () => {
                   });
               });
 
-              it('should call request with mainLocusUrl and locusUrl as authorizingLocusUrl if mainLocusUrl is exist and not same with locusUrl', () => {
+              it('should send audio controls to locusUrl without authorizingLocusUrl and non-audio to mainLocusUrl with authorizingLocusUrl when in breakout', () => {
                 const restorable = Util.canUpdate;
                 Util.canUpdate = sinon.stub().returns(true);
                 manager.mainLocusUrl = 'test/main';
@@ -213,20 +239,64 @@ describe('plugin-meetings', () => {
 
                 return manager.update(audio, reactions)
                   .then(() => {
+                    // Audio controls go directly to current locusUrl (no cross-locus authorization)
                     assert.calledWith(request.request, {
-                      uri: 'test/main/controls',
+                      uri: 'test/id/controls',
                       body: {
                         audio: audio.properties,
-                        authorizingLocusUrl: 'test/id'
                       },
                       method: HTTP_VERBS.PATCH,
                     });
 
+                    // Non-audio controls go to mainLocusUrl with authorizingLocusUrl
                     assert.calledWith(request.request, {
                       uri: 'test/main/controls',
                       body: {
                         reactions: reactions.properties,
                         authorizingLocusUrl: 'test/id'
+                      },
+                      method: HTTP_VERBS.PATCH,
+                    });
+
+                    Util.canUpdate = restorable;
+                  });
+              });
+
+              it('should send audio controls to locusUrl without authorizingLocusUrl when in breakout', () => {
+                const restorable = Util.canUpdate;
+                Util.canUpdate = sinon.stub().returns(true);
+                manager.mainLocusUrl = 'test/main';
+
+                const audio = {scope: 'audio', properties: {muted: true, disallowUnmute: false}};
+
+                return manager.update(audio)
+                  .then(() => {
+                    assert.calledWith(request.request, {
+                      uri: 'test/id/controls',
+                      body: {
+                        audio: audio.properties,
+                      },
+                      method: HTTP_VERBS.PATCH,
+                    });
+
+                    Util.canUpdate = restorable;
+                  });
+              });
+
+              it('should send non-audio controls to mainLocusUrl with authorizingLocusUrl when in breakout', () => {
+                const restorable = Util.canUpdate;
+                Util.canUpdate = sinon.stub().returns(true);
+                manager.mainLocusUrl = 'test/main';
+
+                const reactions = {scope: 'reactions', properties: {enabled: true}};
+
+                return manager.update(reactions)
+                  .then(() => {
+                    assert.calledWith(request.request, {
+                      uri: 'test/main/controls',
+                      body: {
+                        reactions: reactions.properties,
+                        authorizingLocusUrl: 'test/id',
                       },
                       method: HTTP_VERBS.PATCH,
                     });
@@ -340,14 +410,27 @@ describe('plugin-meetings', () => {
                 assert.deepEqual(result, request.request.firstCall.returnValue);
               });
 
-              it('request with mainLocusUrl and make locusUrl as authorizingLocusUrl if mainLocusUrl is exist and not same with locusUrl', () => {
+              it('should send setMuteAll to locusUrl without authorizingLocusUrl when in breakout', () => {
                 manager.setDisplayHints(['MUTE_ALL', 'DISABLE_HARD_MUTE', 'DISABLE_MUTE_ON_ENTRY']);
                 manager.mainLocusUrl = `test/main`;
 
                 const result = manager.setMuteAll(true, true, true, ['attendee']);
 
-                assert.calledWith(request.request, {  uri: 'test/main/controls',
-                  body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true, roles: ['attendee'] }, authorizingLocusUrl: 'test/id' },
+                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                  body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true, roles: ['attendee'] } },
+                  method: HTTP_VERBS.PATCH});
+
+                assert.deepEqual(result, request.request.firstCall.returnValue);
+              });
+
+              it('should send setMuteAll with PANELIST role to locusUrl without authorizingLocusUrl when in breakout', () => {
+                manager.setDisplayHints(['MUTE_ALL', 'ENABLE_HARD_MUTE', 'ENABLE_MUTE_ON_ENTRY']);
+                manager.mainLocusUrl = `test/main`;
+
+                const result = manager.setMuteAll(true, true, true, ['PANELIST']);
+
+                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                  body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true, roles: ['PANELIST'] } },
                   method: HTTP_VERBS.PATCH});
 
                 assert.deepEqual(result, request.request.firstCall.returnValue);

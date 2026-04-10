@@ -172,15 +172,16 @@ export default class ControlsOptionsManager {
     });
 
     return payloads.reduce((previous, payload) => {
-      const extraBody =
-        this.mainLocusUrl && this.mainLocusUrl !== this.locusUrl
-          ? {authorizingLocusUrl: this.locusUrl}
-          : {};
+      const {targetUrl, extraBody} = Util.getControlsRequestParams({
+        body: payload,
+        locusUrl: this.locusUrl,
+        mainLocusUrl: this.mainLocusUrl,
+      });
 
       return previous.then(() =>
         // @ts-ignore
         this.request.request({
-          uri: `${this.mainLocusUrl || this.locusUrl}/${CONTROLS}`,
+          uri: `${targetUrl}/${CONTROLS}`,
           body: {...payload, ...extraBody},
           method: HTTP_VERBS.PATCH,
         })
@@ -258,14 +259,15 @@ export default class ControlsOptionsManager {
     if (error) {
       return Promise.reject(error);
     }
-    const extraBody =
-      this.mainLocusUrl && this.mainLocusUrl !== this.locusUrl
-        ? {authorizingLocusUrl: this.locusUrl}
-        : {};
+    const {targetUrl, extraBody} = Util.getControlsRequestParams({
+      body,
+      locusUrl: this.locusUrl,
+      mainLocusUrl: this.mainLocusUrl,
+    });
 
     // @ts-ignore
     return this.request.request({
-      uri: `${this.mainLocusUrl || this.locusUrl}/${CONTROLS}`,
+      uri: `${targetUrl}/${CONTROLS}`,
       body: {...body, ...extraBody},
       method: HTTP_VERBS.PATCH,
     });
