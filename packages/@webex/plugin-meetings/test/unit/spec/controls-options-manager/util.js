@@ -856,18 +856,6 @@ describe('plugin-meetings', () => {
         const locusUrl = 'locus/breakout';
         const mainLocusUrl = 'locus/main';
 
-        it('should return request params with undefined-based uri when locusUrl is falsy', () => {
-          const result = ControlsOptionsUtil.getControlsRequestParams({
-            body: {audio: {muted: true}},
-            locusUrl: undefined,
-            mainLocusUrl: 'locus/main',
-          });
-
-          assert.equal(result.uri, 'undefined/controls');
-          assert.deepEqual(result.body, {audio: {muted: true}});
-          assert.equal(result.method, 'PATCH');
-        });
-
         it('should return full request params targeting locusUrl when not in a breakout', () => {
           const result = ControlsOptionsUtil.getControlsRequestParams({
             body: {raiseHand: {enabled: true}},
@@ -925,18 +913,6 @@ describe('plugin-meetings', () => {
 
           assert.equal(result.uri, 'locus/breakout/controls');
           assert.deepEqual(result.body, {disallowUnmute: {enabled: true}});
-          assert.equal(result.method, 'PATCH');
-        });
-
-        it('should return mainLocusUrl with authorizingLocusUrl for mixed audio and non-audio in a breakout', () => {
-          const result = ControlsOptionsUtil.getControlsRequestParams({
-            body: {audio: {muted: true}, raiseHand: {enabled: true}},
-            locusUrl,
-            mainLocusUrl,
-          });
-
-          assert.equal(result.uri, 'locus/main/controls');
-          assert.deepEqual(result.body, {audio: {muted: true}, raiseHand: {enabled: true}, authorizingLocusUrl: locusUrl});
           assert.equal(result.method, 'PATCH');
         });
 

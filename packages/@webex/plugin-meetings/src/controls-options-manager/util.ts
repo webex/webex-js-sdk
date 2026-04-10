@@ -448,9 +448,20 @@ class Utils {
    * Meeting-wide audio control actions (e.g., muting panelists across all breakouts
    * from a single request) are not currently supported through this mechanism.
    *
+   * Note: This is a pure computation function — it does not validate that locusUrl is
+   * defined. Callers (update, setControls) must guard against falsy locusUrl before
+   * invoking this function.
+   *
+   * Note: Mixed audio and non-audio keys in a single body (e.g., {audio: {...},
+   * raiseHand: {...}}) are treated as non-audio and routed to mainLocusUrl with
+   * authorizingLocusUrl. This means the audio portion would go through unsupported
+   * cross-locus authorization. Callers must not produce mixed payloads — update()
+   * sends each control scope as a separate request, and setControls() only handles
+   * audio-related settings.
+   *
    * @param {object} options
    * @param {Record<string, any>} options.body - The request body.
-   * @param {string} options.locusUrl - The current locus URL.
+   * @param {string} options.locusUrl - The current locus URL. Must be defined (callers must validate).
    * @param {string} [options.mainLocusUrl] - The main locus URL.
    * @returns {{ uri: string, body: Record<string, any>, method: string }}
    */
