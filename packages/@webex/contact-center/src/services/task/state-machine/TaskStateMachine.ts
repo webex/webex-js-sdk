@@ -162,7 +162,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
           },
-          // ContactEnded (customer can end call before connect or via agent softphone decline)
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
