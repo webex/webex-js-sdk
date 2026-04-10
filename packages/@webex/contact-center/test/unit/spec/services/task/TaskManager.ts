@@ -19,6 +19,7 @@ describe('TaskManager', () => {
   let mockCall;
   let mockApiAIAssistant;
   let webSocketManagerMock;
+  let rtdWebSocketManagerMock;
   let onSpy;
   let offSpy;
   let taskManager;
@@ -159,6 +160,7 @@ describe('TaskManager', () => {
   beforeEach(() => {
     contactMock = contact;
     webSocketManagerMock = new EventEmitter();
+    rtdWebSocketManagerMock = new EventEmitter();
 
     webex = {
       logger: {
@@ -196,7 +198,8 @@ describe('TaskManager', () => {
       mockApiAIAssistant as any,
       contactMock,
       webCallingService,
-      webSocketManagerMock as any
+      webSocketManagerMock as any,
+      rtdWebSocketManagerMock as any
     );
     taskManager.taskCollection[taskId] = createMockTask(taskDataMock);
     (taskManager as any).setupTaskListeners?.(taskManager.taskCollection[taskId]);
@@ -313,7 +316,7 @@ describe('TaskManager', () => {
     expect(mockApiAIAssistant.sendEvent).not.toHaveBeenCalled();
   });
 
-  it('should emit REAL_TIME_TRANSCRIPTION when eventType is in top-level payload', () => {
+  it('should emit REAL_TIME_TRANSCRIPTION from RTD websocket payload', () => {
     const task = taskManager.getTask(taskId);
     const taskEmitSpy = jest.spyOn(task, 'emit');
     const realtimePayload = {
@@ -342,12 +345,45 @@ describe('TaskManager', () => {
       type: 'REAL_TIME_TRANSCRIPTION',
     };
 
-    webSocketManagerMock.emit('message', JSON.stringify(realtimePayload));
+    taskManager.handleRealtimeWebsocketEvent(JSON.stringify(realtimePayload));
 
     expect(taskEmitSpy).toHaveBeenCalledWith(
       CC_EVENTS.REAL_TIME_TRANSCRIPTION,
       realtimePayload.data
     );
+  });
+
+  it('should ignore RTD transcript events when task is not found', () => {
+    const realtimePayload = {
+      data: {
+        data: {
+          content: 'Thank you. Okay.',
+          conversationId: 'missing-task-id',
+          isFinal: true,
+          languageCode: 'en-US',
+          messageId: '1',
+          orgId: 'org-id',
+          publishTimestamp: 1773807297475,
+          role: 'AGENT',
+          trackingId: 'tracking-id',
+          utteranceId: 'utterance-id',
+        },
+        notifDetails: {
+          actionEvent: 'REAL_TIME_TRANSCRIPTION',
+        },
+        notifType: 'REAL_TIME_TRANSCRIPTION',
+        orgId: 'org-id',
+      },
+      orgId: 'org-id',
+      trackingId: 'notifs_tracking-id',
+      type: 'REAL_TIME_TRANSCRIPTION',
+    };
+
+    const existingTaskEmitSpy = jest.spyOn(taskManager.getTask(taskId), 'emit');
+
+    taskManager.handleRealtimeWebsocketEvent(JSON.stringify(realtimePayload));
+
+    expect(existingTaskEmitSpy).not.toHaveBeenCalled();
   });
 
   it('should not re-emit agent related events', () => {
