@@ -196,12 +196,9 @@ export default class Socket extends EventEmitter {
    * @param {string} url
    * @param {options} options
    * @param {number} options.forceCloseDelay (required)
-   * @param {number} options.pingInterval (required)
-   * @param {number} options.pongTimeout (required)
    * @param {string} options.token (required)
    * @param {string} options.trackingId (required)
    * @param {Logger} options.logger (required)
-   * @param {string} options.logLevelToken
    * @returns {Promise}
    */
   open(url, options) {
@@ -227,10 +224,7 @@ export default class Socket extends EventEmitter {
 
       options = options || {};
 
-      checkRequired(
-        ['forceCloseDelay', 'pingInterval', 'pongTimeout', 'token', 'trackingId', 'logger'],
-        options
-      );
+      checkRequired(['forceCloseDelay', 'token', 'trackingId', 'logger'], options);
 
       Object.keys(options).forEach((key) => {
         Reflect.defineProperty(this, key, {
@@ -297,8 +291,6 @@ export default class Socket extends EventEmitter {
    */
   onclose(event) {
     this.logger.info(`socket,${this._domain}: closed`, event.code, event.reason);
-    clearTimeout(this.pongTimer);
-    clearTimeout(this.pingTimer);
 
     event = this._fixCloseCode(event);
     this.emit('close', event);
@@ -316,32 +308,16 @@ export default class Socket extends EventEmitter {
   onmessage(event) {
     try {
       const data = JSON.parse(event.data);
-      const sequenceNumber = parseInt(data.sequenceNumber, 10);
-
-      this.logger.debug(`socket,${this._domain}: sequence number: `, sequenceNumber);
-      if (this.expectedSequenceNumber && sequenceNumber !== this.expectedSequenceNumber) {
-        this.logger.debug(
-          `socket,${this._domain}: sequence number mismatch indicates lost mercury message. expected: ${this.expectedSequenceNumber}, actual: ${sequenceNumber}`
-        );
-        this.emit('sequence-mismatch', sequenceNumber, this.expectedSequenceNumber);
-      }
-      this.expectedSequenceNumber = sequenceNumber + 1;
-
-      // Yes, it's a little weird looking; we want to emit message events that
-      // look like normal socket message events, but event.data cannot be
-      // modified and we don't actually care about anything but the data property
       const processedEvent = {data};
 
-      this._acknowledge(processedEvent);
-      if (data.type === 'pong') {
-        this.emit('pong', processedEvent);
-      } else {
-        this.emit('message', processedEvent);
+      if (data.type === 'async_event') {
+        this._acknowledge(processedEvent).catch((error) => {
+          this.logger.warn(`socket,${this._domain}: failed to acknowledge async event`, error);
+        });
       }
+
+      this.emit('message', processedEvent);
     } catch (error) {
-      // The above code should only be able to throw if we receive an unparsable
-      // message from Mercury. At this time, the only action we have is to
-      // ignore it and move on.
       /* istanbul ignore next */
       this.logger.warn(`socket,${this._domain}: error while receiving WebSocket message`, error);
     }
@@ -380,24 +356,24 @@ export default class Socket extends EventEmitter {
       return Promise.reject(new Error('`event` is required'));
     }
 
-    if (!has(event, 'data.id')) {
-      return Promise.reject(new Error('`event.data.id` is required'));
+    if (!has(event, 'data.eventId')) {
+      return Promise.reject(new Error('`event.data.eventId` is required'));
     }
 
     // Don't try to acknowledge if socket is not in open state
     if (this.readyState !== SOCKET_READY_STATE.OPEN) {
-      return Promise.resolve(); // Silently ignore acknowledgment for closed sockets
+      return Promise.resolve();
     }
 
     return this.send({
-      messageId: event.data.id,
-      type: 'ack',
+      type: 'event_ack',
+      trackingId: event.data.trackingId || this._createTrackingId(),
+      eventId: event.data.eventId,
     }).catch((error) => {
-      // Gracefully handle send errors (like INVALID_STATE_ERROR) to prevent test issues
       if (error.message === 'INVALID_STATE_ERROR') {
-        return Promise.resolve(); // Socket was closed, ignore the acknowledgment
+        return Promise.resolve();
       }
-      throw error; // Re-throw other errors
+      throw error;
     });
   }
 
@@ -407,32 +383,69 @@ export default class Socket extends EventEmitter {
    * @returns {Promise}
    */
   _authorize() {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       this.logger.info(`socket,${this._domain}: authorizing`);
-      this.send({
-        id: uuid.v4(),
-        type: 'authorization',
-        data: {
-          token: this.token,
-        },
-        trackingId: this.trackingId,
-        logLevelToken: this.logLevelToken,
-      });
+      let authResponseTimer;
 
-      const waitForBufferState = (event) => {
-        if (
-          !event.data.type &&
-          (event.data.data.eventType === 'mercury.buffer_state' ||
-            event.data.data.eventType === 'mercury.registration_status')
-        ) {
-          this.removeListener('message', waitForBufferState);
-          this._ping();
-          resolve();
-        }
+      const cleanup = () => {
+        clearTimeout(authResponseTimer);
+        this.off('message', waitForAuthResponse);
       };
 
-      this.once('message', waitForBufferState);
+      const waitForAuthResponse = (event) => {
+        if (event.data?.type !== 'auth.response') {
+          return;
+        }
+
+        cleanup();
+
+        const statusCode = event.data?.status?.code;
+
+        if (statusCode >= 200 && statusCode < 300) {
+          resolve();
+
+          return;
+        }
+
+        reject(
+          new NotAuthorized({
+            code: 4401,
+            reason: event.data?.status?.message || 'Mobius auth failed',
+          })
+        );
+      };
+
+      this.on('message', waitForAuthResponse);
+      authResponseTimer = safeSetTimeout(() => {
+        cleanup();
+        reject(
+          new NotAuthorized({
+            code: 4401,
+            reason: 'Mobius auth response not received before timeout',
+          })
+        );
+      }, this.authResponseTimeout || 10000);
+
+      this.send({
+        type: 'auth',
+        trackingId: this._createTrackingId(),
+        payload: {
+          token: this.token,
+        },
+      }).catch((error) => {
+        cleanup();
+        reject(error);
+      });
     });
+  }
+
+  /**
+   * Creates a unique tracking ID
+   * @private
+   * @returns {string}
+   */
+  _createTrackingId() {
+    return `${this.trackingId}_${uuid.v4()}`;
   }
 
   /**
@@ -466,93 +479,5 @@ export default class Socket extends EventEmitter {
     }
 
     return event;
-  }
-
-  /**
-   * Sends a ping up the socket and confirms we get it back
-   * @param {[type]} id
-   * @private
-   * @returns {[type]}
-   */
-  _ping(id) {
-    const confirmPongId = (event) => {
-      try {
-        this.logger.debug(`socket,${this._domain}: pong`, event.data.id);
-        if (event.data && event.data.id !== id) {
-          this.logger.info(
-            `socket,${this._domain}: received pong for wrong ping id, closing socket`
-          );
-          this.logger.debug(`socket,${this._domain}: expected`, id, 'received', event.data.id);
-          this.close({
-            code: 1000,
-            reason: 'Pong mismatch',
-          });
-        }
-      } catch (error) {
-        // This try/catch block was added as a debugging step; to the best of my
-        // knowledge, the above can never throw.
-        /* istanbul ignore next */
-        this.logger.error(`socket,${this._domain}: error occurred in confirmPongId`, error);
-      }
-    };
-
-    const onPongNotReceived = () => {
-      try {
-        this.logger.info(
-          `socket,${this._domain}: pong not receive in expected period, closing socket`
-        );
-        this.close({
-          code: 1000,
-          reason: 'Pong not received',
-        }).catch((reason) => {
-          this.logger.warn(
-            `socket,${this._domain}: failed to close socket after missed pong`,
-            reason
-          );
-        });
-      } catch (error) {
-        // This try/catch block was added as a debugging step; to the best of my
-        // knowledge, the above can never throw.
-        /* istanbul ignore next */
-        this.logger.error(`socket,${this._domain}: error occurred in onPongNotReceived`, error);
-      }
-    };
-
-    const scheduleNextPingAndCancelPongTimer = () => {
-      try {
-        clearTimeout(this.pongTimer);
-        this.pingTimer = safeSetTimeout(() => this._ping(), this.pingInterval);
-      } catch (error) {
-        // This try/catch block was added as a debugging step; to the best of my
-        // knowledge, the above can never throw.
-        /* istanbul ignore next */
-        this.logger.error(
-          `socket,${this._domain}: error occurred in scheduleNextPingAndCancelPongTimer`,
-          error
-        );
-      }
-    };
-
-    const calculateLatency = (pingTimestamp) => {
-      const now = performance.now();
-      const latency = now - pingTimestamp;
-
-      this.logger.debug(`socket,${this._domain}: latency: `, latency);
-      this.emit('ping-pong-latency', latency);
-    };
-
-    id = id || uuid.v4();
-    const pingTimestamp = performance.now();
-
-    this.pongTimer = safeSetTimeout(onPongNotReceived, this.pongTimeout);
-    this.once('pong', scheduleNextPingAndCancelPongTimer);
-    this.once('pong', confirmPongId);
-    this.once('pong', () => calculateLatency(pingTimestamp));
-    this.logger.debug(`socket,${this._domain}: ping ${id}`);
-
-    return this.send({
-      id,
-      type: 'ping',
-    });
   }
 }

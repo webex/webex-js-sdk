@@ -3,7 +3,7 @@
  */
 
 import {assert} from '@webex/test-helper-chai';
-import Mercury, {config as mercuryConfig, Socket} from '@webex/internal-plugin-mercury';
+import MobiusSocket, {config as mobiusConfig, Socket} from '../../../src';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
@@ -13,10 +13,10 @@ import {wrap} from 'lodash';
 
 import promiseTick from '../lib/promise-tick';
 
-describe('plugin-mercury', () => {
-  describe('Mercury', () => {
+describe('plugin-mobiusSocket', () => {
+  describe('MobiusSocket', () => {
     describe('Events', () => {
-      let clock, mercury, mockWebSocket, socketOpenStub, webex;
+      let clock, mobiusSocket, mockWebSocket, socketOpenStub, webex;
 
       const fakeTestMessage = {
         id: uuid.v4(),
@@ -38,7 +38,7 @@ describe('plugin-mercury', () => {
         },
         timestamp: Date.now(),
         trackingId: `suffix_${uuid.v4()}_${Date.now()}`,
-        sessionId: 'mercury-default-session',
+        sessionId: 'mobius-websocket-session',
       };
 
       beforeEach(() => {
@@ -47,10 +47,10 @@ describe('plugin-mercury', () => {
 
       afterEach(async () => {
         clock.uninstall();
-        // Clean up mercury socket and mockWebSocket
-        if (mercury && mercury.socket) {
+        // Clean up mobiusSocket socket and mockWebSocket
+        if (mobiusSocket && mobiusSocket.socket) {
           try {
-            await mercury.socket.close();
+            await mobiusSocket.socket.close();
           } catch (e) {}
         }
         if (mockWebSocket && typeof mockWebSocket.close === 'function') {
@@ -68,14 +68,14 @@ describe('plugin-mercury', () => {
       beforeEach(() => {
         webex = new MockWebex({
           children: {
-            mercury: Mercury,
+            mobiusSocket: MobiusSocket,
           },
         });
 
+        webex.internal.device.registered = true;
         webex.internal.metrics.submitClientMetrics = sinon.stub();
-        webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus = sinon.stub();
         webex.trackingId = 'fakeTrackingId';
-        webex.config.mercury = mercuryConfig.mercury;
+        webex.config.mobiussocket = mobiusConfig.mobiusSocket;
 
         webex.logger = console;
 
@@ -87,13 +87,24 @@ describe('plugin-mercury', () => {
         socketOpenStub = sinon.stub(Socket.prototype, 'open').callsFake(function (...args) {
           const promise = Reflect.apply(origOpen, this, args);
 
-          process.nextTick(() => mockWebSocket.open());
+          process.nextTick(() => {
+            mockWebSocket.open();
+            // Simulate Mobius auth.response after socket open
+            process.nextTick(() => {
+              mockWebSocket.emit('message', {
+                data: JSON.stringify({
+                  type: 'auth.response',
+                  status: {code: 200},
+                }),
+              });
+            });
+          });
 
           return promise;
         });
 
-        mercury = webex.internal.mercury;
-        mercury.defaultSessionId = 'mercury-default-session';
+        mobiusSocket = webex.internal.mobiusSocket;
+        mobiusSocket.defaultSessionId = 'mobius-websocket-session';
       });
 
       afterEach(() => {
@@ -110,8 +121,8 @@ describe('plugin-mercury', () => {
         it('emits the `online` event', () => {
           const spy = sinon.spy();
 
-          mercury.on('online', spy);
-          const promise = mercury.connect();
+          mobiusSocket.on('online', spy);
+          const promise = mobiusSocket.connect();
 
           mockWebSocket.open();
 
@@ -123,14 +134,14 @@ describe('plugin-mercury', () => {
         it('emits the `offline` event', () => {
           const spy = sinon.spy();
 
-          mercury.on('offline', spy);
-          const promise = mercury.connect();
+          mobiusSocket.on('offline', spy);
+          const promise = mobiusSocket.connect();
 
           mockWebSocket.open();
 
           return promise
             .then(() => {
-              const promise = mercury.disconnect();
+              const promise = mobiusSocket.disconnect();
 
               mockWebSocket.emit('close', {
                 code: 1000,
@@ -146,16 +157,16 @@ describe('plugin-mercury', () => {
           it('emits the `online` event', () => {
             const spy = sinon.spy();
 
-            mercury.on('online', spy);
+            mobiusSocket.on('online', spy);
 
-            const promise = mercury.connect();
+            const promise = mobiusSocket.connect();
 
             mockWebSocket.open();
 
             return promise
               .then(() => assert.calledOnce(spy))
               .then(() => mockWebSocket.emit('close', {code: 1000, reason: 'Idle'}))
-              .then(() => mercury.connect())
+              .then(() => mobiusSocket.connect())
               .then(() => assert.calledTwice(spy));
           });
         });
@@ -163,7 +174,7 @@ describe('plugin-mercury', () => {
 
       describe('when `mercury.buffer_state` is received', () => {
         // This test is here because the buffer states message may arrive before
-        // the mercury Promise resolves.
+        // the mobiusSocket Promise resolves.
         it('gets emitted', (done) => {
           const spy = mockWebSocket.send;
 
@@ -171,13 +182,13 @@ describe('plugin-mercury', () => {
           const bufferStateSpy = sinon.spy();
           const onlineSpy = sinon.spy();
 
-          mercury.on('event:mercury.buffer_state', bufferStateSpy);
-          mercury.on('online', onlineSpy);
+          mobiusSocket.on('event:mercury.buffer_state', bufferStateSpy);
+          mobiusSocket.on('online', onlineSpy);
 
           Socket.getWebSocketConstructor.returns(() => {
             process.nextTick(() => {
-              assert.isTrue(mercury.connecting, 'Mercury is still connecting');
-              assert.isFalse(mercury.connected, 'Mercury has not yet connected');
+              assert.isTrue(mobiusSocket.connecting, 'MobiusSocket is still connecting');
+              assert.isFalse(mobiusSocket.connected, 'MobiusSocket has not yet connected');
               assert.notCalled(onlineSpy);
               assert.lengthOf(spy.args, 0, 'The client has not yet sent the auth message');
               // set websocket readystate to 1 to allow a successful send message
@@ -199,7 +210,7 @@ describe('plugin-mercury', () => {
                 .then(() => {
                   assert.calledOnce(bufferStateSpy);
 
-                  return mercury.connect().then(done);
+                  return mobiusSocket.connect().then(done);
                 })
                 .catch(done);
             });
@@ -214,7 +225,7 @@ describe('plugin-mercury', () => {
               Reflect.apply(fn, this, args);
             });
           });
-          mercury.connect();
+          mobiusSocket.connect();
           assert.lengthOf(spy.args, 0);
         });
       });
@@ -234,12 +245,12 @@ describe('plugin-mercury', () => {
           {
             code: 1000,
             reason: 'pong not received',
-            action: 'reconnect',
+            action: 'close',
           },
           {
             code: 1000,
             reason: 'pong mismatch',
-            action: 'reconnect',
+            action: 'close',
           },
           {
             code: 1000,
@@ -288,30 +299,30 @@ describe('plugin-mercury', () => {
 
           describe(`when an event ${description} is received`, () => {
             it(`takes the ${action} action`, () => {
-              if (mercury._reconnect.restore) {
-                mercury._reconnect.restore();
+              if (mobiusSocket._reconnect.restore) {
+                mobiusSocket._reconnect.restore();
               }
 
-              sinon.spy(mercury, 'connect');
+              sinon.spy(mobiusSocket, 'connect');
 
               const offlineSpy = sinon.spy();
               const permanentSpy = sinon.spy();
               const transientSpy = sinon.spy();
               const replacedSpy = sinon.spy();
 
-              mercury.on('offline', offlineSpy);
-              mercury.on('offline.permanent', permanentSpy);
-              mercury.on('offline.transient', transientSpy);
-              mercury.on('offline.replaced', replacedSpy);
+              mobiusSocket.on('offline', offlineSpy);
+              mobiusSocket.on('offline.permanent', permanentSpy);
+              mobiusSocket.on('offline.transient', transientSpy);
+              mobiusSocket.on('offline.replaced', replacedSpy);
 
-              const promise = mercury.connect();
+              const promise = mobiusSocket.connect();
 
               mockWebSocket.open();
 
               return promise
                 .then(() => {
-                  // Make sure mercury.connect has a call count of zero
-                  mercury.connect.resetHistory();
+                  // Make sure mobiusSocket.connect has a call count of zero
+                  mobiusSocket.connect.resetHistory();
 
                   mockWebSocket.emit('close', {code, reason});
 
@@ -319,7 +330,7 @@ describe('plugin-mercury', () => {
                 })
                 .then(() => {
                   assert.called(offlineSpy);
-                  assert.calledWith(offlineSpy, {code, reason, sessionId: 'mercury-default-session'});
+                  assert.calledWith(offlineSpy, {code, reason, sessionId: 'mobius-websocket-session'});
                   switch (action) {
                     case 'close':
                       assert.called(permanentSpy);
@@ -339,18 +350,18 @@ describe('plugin-mercury', () => {
                     default:
                       assert(false, 'unreachable code reached');
                   }
-                  assert.isFalse(mercury.connected, 'Mercury is not connected');
+                  assert.isFalse(mobiusSocket.connected, 'MobiusSocket is not connected');
                   if (action === 'reconnect') {
-                    assert.called(mercury.connect);
-                    assert.calledWith(mercury.connect, mockWebSocket.url);
-                    assert.isTrue(mercury.connecting, 'Mercury is connecting');
+                    assert.called(mobiusSocket.connect);
+                    assert.calledWith(mobiusSocket.connect, mockWebSocket.url);
+                    assert.isTrue(mobiusSocket.connecting, 'MobiusSocket is connecting');
 
                     // Block until reconnect completes so logs don't overlap
-                    return mercury.connect();
+                    return mobiusSocket.connect();
                   }
 
-                  assert.notCalled(mercury.connect);
-                  assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+                  assert.notCalled(mobiusSocket.connect);
+                  assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
 
                   return Promise.resolve();
                 });
@@ -365,7 +376,7 @@ describe('plugin-mercury', () => {
             processTestEvent: sinon.spy(),
           };
 
-          const promise = mercury.connect();
+          const promise = mobiusSocket.connect();
 
           mockWebSocket.open();
 
@@ -380,14 +391,14 @@ describe('plugin-mercury', () => {
             });
         });
 
-        it('emits the Mercury envelope', () => {
+        it('emits the MobiusSocket envelope', () => {
           const startSpy = sinon.spy();
           const stopSpy = sinon.spy();
 
-          mercury.on('event:status.start_typing', startSpy);
-          mercury.on('event:status.stop_typing', stopSpy);
+          mobiusSocket.on('event:status.start_typing', startSpy);
+          mobiusSocket.on('event:status.stop_typing', stopSpy);
 
-          const promise = mercury.connect();
+          const promise = mobiusSocket.connect();
 
           mockWebSocket.open();
 
@@ -404,14 +415,14 @@ describe('plugin-mercury', () => {
             });
         });
 
-        it("emits the Mercury envelope named by the Mercury event's eventType", () => {
+        it("emits the MobiusSocket envelope named by the MobiusSocket event's eventType", () => {
           const startSpy = sinon.spy();
           const stopSpy = sinon.spy();
 
-          mercury.on('event:status.start_typing', startSpy);
-          mercury.on('event:status.stop_typing', stopSpy);
+          mobiusSocket.on('event:status.start_typing', startSpy);
+          mobiusSocket.on('event:status.stop_typing', stopSpy);
 
-          const promise = mercury.connect();
+          const promise = mobiusSocket.connect();
 
           mockWebSocket.open();
 
@@ -429,43 +440,12 @@ describe('plugin-mercury', () => {
         });
       });
 
-      describe('when a sequence number is skipped', () => {
-        it('emits an event', () => {
-          const spy = sinon.spy();
-
-          mercury.on('sequence-mismatch', spy);
-          const promise = mercury.connect();
-
-          mockWebSocket.open();
-
-          return promise.then(() => {
-            mockWebSocket.emit('message', {
-              data: JSON.stringify({
-                sequenceNumber: 2,
-                id: 'mockid',
-                data: {
-                  eventType: 'mercury.buffer_state',
-                },
-              }),
-            });
-            mockWebSocket.emit('message', {
-              data: JSON.stringify({
-                sequenceNumber: 4,
-                id: 'mockid',
-                data: {
-                  eventType: 'mercury.buffer_state',
-                },
-              }),
-            });
-            assert.called(spy);
-          });
-        });
-      });
+      // Mobius does not use sequence numbers, so sequence-mismatch tests are not applicable
     });
   });
 
   /*
-  // On mercury:
+  // On mobiusSocket:
   online
   offline
   offline.transient
@@ -477,15 +457,15 @@ describe('plugin-mercury', () => {
   mockWebSocket.sequence-mismatch
 
   // On webex:
-  mercury.online
-  mercury.offline
-  mercury.offline.transient
-  mercury.offline.permanent
-  mercury.offline.replaced
-  mercury.event
-  mercury.event:locus.participant_joined
-  mercury.mockWebSocket.connection-failed
-  mercury.mockWebSocket.sequence-mismatch
+  mobiusSocket.online
+  mobiusSocket.offline
+  mobiusSocket.offline.transient
+  mobiusSocket.offline.permanent
+  mobiusSocket.offline.replaced
+  mobiusSocket.event
+  mobiusSocket.event:locus.participant_joined
+  mobiusSocket.mockWebSocket.connection-failed
+  mobiusSocket.mockWebSocket.sequence-mismatch
 
   // TODO go through all it(`emits...`) and make sure corresponding tests are here
   */

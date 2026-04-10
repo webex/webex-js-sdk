@@ -37,9 +37,9 @@
   },
   "dependencies": {
     "@types/platform": "1.3.4",
-    "@webex/internal-plugin-mercury": "workspace:*",
     "@webex/internal-media-core": "2.23.3",
     "@webex/internal-plugin-metrics": "workspace:*",
+    "@webex/internal-plugin-mobius-socket": "workspace:*",
     "@webex/media-helpers": "workspace:*",
     "async-mutex": "0.4.0",
     "buffer": "6.0.3",

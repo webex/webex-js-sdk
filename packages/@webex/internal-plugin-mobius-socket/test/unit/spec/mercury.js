@@ -3,16 +3,16 @@
  */
 
 import {assert} from '@webex/test-helper-chai';
-import Mercury, {
+import MobiusSocket, {
   BadRequest,
   NotAuthorized,
   Forbidden,
   UnknownResponse,
   // NotFound,
-  config as mercuryConfig,
+  config as mobiusConfig,
   ConnectionError,
   Socket,
-} from '@webex/internal-plugin-mercury';
+} from '../../../src';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
@@ -22,9 +22,9 @@ import {skipInBrowser} from '@webex/test-helper-mocha';
 
 import promiseTick from '../lib/promise-tick';
 
-describe('plugin-mercury', () => {
-  describe('Mercury', () => {
-    let clock, mercury, mockWebSocket, socketOpenStub, webex;
+describe('plugin-mobius-socket', () => {
+  describe('MobiusSocket', () => {
+    let clock, mobiusSocket, mockWebSocket, socketOpenStub, webex;
 
     const statusStartTypingMessage = JSON.stringify({
       id: uuid.v4(),
@@ -50,7 +50,7 @@ describe('plugin-mercury', () => {
     beforeEach(() => {
       webex = new MockWebex({
         children: {
-          mercury: Mercury,
+          mobiusSocket: MobiusSocket,
         },
       });
       webex.credentials = {
@@ -64,6 +64,7 @@ describe('plugin-mercury', () => {
         ),
       };
       webex.internal.device = {
+        registered: true,
         register: sinon.stub().returns(Promise.resolve()),
         refresh: sinon.stub().returns(Promise.resolve()),
         webSocketUrl: 'ws://example.com',
@@ -80,9 +81,8 @@ describe('plugin-mercury', () => {
         isValidHost: sinon.stub().returns(Promise.resolve(true)),
       };
       webex.internal.metrics.submitClientMetrics = sinon.stub();
-      webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus = sinon.stub();
       webex.trackingId = 'fakeTrackingId';
-      webex.config.mercury = mercuryConfig.mercury;
+      webex.config.mobiussocket = mobiusConfig.mobiusSocket;
 
       webex.logger = console;
 
@@ -94,26 +94,37 @@ describe('plugin-mercury', () => {
       socketOpenStub = sinon.stub(Socket.prototype, 'open').callsFake(function (...args) {
         const promise = Reflect.apply(origOpen, this, args);
 
-        process.nextTick(() => mockWebSocket.open());
+        process.nextTick(() => {
+          mockWebSocket.open();
+          // Simulate Mobius auth.response after socket open
+          process.nextTick(() => {
+            mockWebSocket.emit('message', {
+              data: JSON.stringify({
+                type: 'auth.response',
+                status: {code: 200},
+              }),
+            });
+          });
+        });
 
         return promise;
       });
 
-      mercury = webex.internal.mercury;
-      mercury.defaultSessionId = 'mercury-default-session';
+      mobiusSocket = webex.internal.mobiusSocket;
+      mobiusSocket.defaultSessionId = 'mobius-websocket-session';
     });
 
     afterEach(async () => {
-      // Clean up Mercury connections and internal state
-      if (mercury) {
+      // Clean up MobiusSocket connections and internal state
+      if (mobiusSocket) {
         try {
-          await mercury.disconnectAll();
+          await mobiusSocket.disconnectAll();
         } catch (e) {
           // Ignore cleanup errors
         }
         // Clear any remaining connection promises
-        if (mercury._connectPromises) {
-          mercury._connectPromises.clear();
+        if (mobiusSocket._connectPromises) {
+          mobiusSocket._connectPromises.clear();
         }
       }
 
@@ -140,30 +151,21 @@ describe('plugin-mercury', () => {
 
     describe('#listen()', () => {
       it('proxies to #connect()', () => {
-        const connectStub = sinon.stub(mercury, 'connect').callThrough();
-        return mercury.listen().then(() => {
+        const connectStub = sinon.stub(mobiusSocket, 'connect').callThrough();
+        return mobiusSocket.listen().then(() => {
           assert.called(connectStub);
-          assert.calledWith(
-            webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus,
-            true
-          );
         });
       });
     });
 
     describe('#stopListening()', () => {
       it('proxies to #disconnect()', () => {
-        return mercury.connect().then(() => {
-          webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus.resetHistory();
-          const disconnectStub = sinon.stub(mercury, 'disconnect').callThrough();
+        return mobiusSocket.connect().then(() => {
+          const disconnectStub = sinon.stub(mobiusSocket, 'disconnect').callThrough();
 
-          mercury.stopListening();
+          mobiusSocket.stopListening();
           assert.called(disconnectStub);
           mockWebSocket.emit('close', {code: 1000, reason: 'test'});
-          assert.calledWith(
-            webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus,
-            false
-          );
         });
       });
     });
@@ -172,7 +174,7 @@ describe('plugin-mercury', () => {
       it('lazily registers the device', () => {
         webex.internal.device.registered = false;
         assert.notCalled(webex.internal.device.register);
-        const promise = mercury.connect();
+        const promise = mobiusSocket.connect();
 
         mockWebSocket.open();
 
@@ -181,9 +183,9 @@ describe('plugin-mercury', () => {
         });
       });
 
-      it('connects to Mercury using default url', () => {
+      it('connects to MobiusSocket using default url', () => {
         webex.internal.feature.updateFeature = sinon.stub();
-        const promise = mercury.connect();
+        const promise = mobiusSocket.connect();
         const envelope = {
           data: {
             featureToggle: {
@@ -191,15 +193,15 @@ describe('plugin-mercury', () => {
             },
           },
         };
-        assert.isFalse(mercury.connected, 'Mercury is not connected');
-        assert.isTrue(mercury.connecting, 'Mercury is connecting');
+        assert.isFalse(mobiusSocket.connected, 'MobiusSocket is not connected');
+        assert.isTrue(mobiusSocket.connecting, 'MobiusSocket is connecting');
         mockWebSocket.open();
 
         return promise.then(() => {
-          assert.isTrue(mercury.connected, 'Mercury is connected');
-          assert.isFalse(mercury.connecting, 'Mercury is not connecting');
-          assert.calledWith(socketOpenStub, sinon.match(/ws:\/\/example.com/), sinon.match.any);
-          mercury._emit('event:featureToggle_update', envelope);
+          assert.isTrue(mobiusSocket.connected, 'MobiusSocket is connected');
+          assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
+          assert.calledWith(socketOpenStub, 'ws://example.com', sinon.match.any);
+          mobiusSocket._emit('event:featureToggle_update', envelope);
           assert.calledOnceWithExactly(
             webex.internal.feature.updateFeature,
             envelope.data.featureToggle
@@ -208,19 +210,19 @@ describe('plugin-mercury', () => {
         });
       });
 
-      it('connects to Mercury but does not call updateFeature', () => {
+      it('connects to MobiusSocket but does not call updateFeature', () => {
         webex.internal.feature.updateFeature = sinon.stub();
-        const promise = mercury.connect();
+        const promise = mobiusSocket.connect();
         const envelope = {};
 
         return promise.then(() => {
-          mercury._emit('event:featureToggle_update', envelope);
+          mobiusSocket._emit('event:featureToggle_update', envelope);
           assert.notCalled(webex.internal.feature.updateFeature);
           sinon.restore();
         });
       });
-      it('Mercury emit event:ActiveClusterStatusEvent, call services switchActiveClusterIds', () => {
-        const promise = mercury.connect();
+      it('MobiusSocket emit event:ActiveClusterStatusEvent, call services switchActiveClusterIds', () => {
+        const promise = mobiusSocket.connect();
         const activeClusterEventEnvelope = {
           data: {
             activeClusters: {
@@ -231,7 +233,7 @@ describe('plugin-mercury', () => {
         mockWebSocket.open();
 
         return promise.then(() => {
-          mercury._emit('event:ActiveClusterStatusEvent', activeClusterEventEnvelope);
+          mobiusSocket._emit('event:ActiveClusterStatusEvent', activeClusterEventEnvelope);
           assert.calledOnceWithExactly(
             webex.internal.services.switchActiveClusterIds,
             activeClusterEventEnvelope.data.activeClusters
@@ -239,19 +241,19 @@ describe('plugin-mercury', () => {
           sinon.restore();
         });
       });
-      it('Mercury emit event:ActiveClusterStatusEvent with no data, not call services switchActiveClusterIds', () => {
+      it('MobiusSocket emit event:ActiveClusterStatusEvent with no data, not call services switchActiveClusterIds', () => {
         webex.internal.feature.updateFeature = sinon.stub();
-        const promise = mercury.connect();
+        const promise = mobiusSocket.connect();
         const envelope = {};
 
         return promise.then(() => {
-          mercury._emit('event:ActiveClusterStatusEvent', envelope);
+          mobiusSocket._emit('event:ActiveClusterStatusEvent', envelope);
           assert.notCalled(webex.internal.services.switchActiveClusterIds);
           sinon.restore();
         });
       });
-      it('Mercury emit event:u2c.cache-invalidation, call services invalidateCache', () => {
-        const promise = mercury.connect();
+      it('MobiusSocket emit event:u2c.cache-invalidation, call services invalidateCache', () => {
+        const promise = mobiusSocket.connect();
         const u2cInvalidateEventEnvelope = {
           data: {
             timestamp: '1759289614',
@@ -261,7 +263,7 @@ describe('plugin-mercury', () => {
         mockWebSocket.open();
 
         return promise.then(() => {
-          mercury._emit('event:u2c.cache-invalidation', u2cInvalidateEventEnvelope);
+          mobiusSocket._emit('event:u2c.cache-invalidation', u2cInvalidateEventEnvelope);
           assert.calledOnceWithExactly(
             webex.internal.services.invalidateCache,
             u2cInvalidateEventEnvelope.data.timestamp
@@ -269,13 +271,13 @@ describe('plugin-mercury', () => {
           sinon.restore();
         });
       });
-      it('Mercury emit event:u2c.cache-invalidation with no data, not call services switchActiveClusterIds', () => {
+      it('MobiusSocket emit event:u2c.cache-invalidation with no data, not call services switchActiveClusterIds', () => {
         webex.internal.feature.updateFeature = sinon.stub();
-        const promise = mercury.connect();
+        const promise = mobiusSocket.connect();
         const envelope = {};
 
         return promise.then(() => {
-          mercury._emit('event:u2c.cache-invalidation', envelope);
+          mobiusSocket._emit('event:u2c.cache-invalidation', envelope);
           assert.notCalled(webex.internal.services.invalidateCache);
           sinon.restore();
         });
@@ -288,7 +290,7 @@ describe('plugin-mercury', () => {
           socketOpenStub.returns(Promise.reject(new ConnectionError()));
           assert.notCalled(Socket.prototype.open);
 
-          const promise = mercury.connect();
+          const promise = mobiusSocket.connect();
 
           return promiseTick(5)
             .then(() => {
@@ -297,19 +299,19 @@ describe('plugin-mercury', () => {
               return promiseTick(5);
             })
             .then(() => {
-              clock.tick(mercury.config.backoffTimeReset);
+              clock.tick(mobiusSocket.config.backoffTimeReset);
 
               return promiseTick(5);
             })
             .then(() => {
               assert.calledTwice(Socket.prototype.open);
-              clock.tick(2 * mercury.config.backoffTimeReset);
+              clock.tick(2 * mobiusSocket.config.backoffTimeReset);
 
               return promiseTick(5);
             })
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
-              clock.tick(5 * mercury.config.backoffTimeReset);
+              clock.tick(5 * mobiusSocket.config.backoffTimeReset);
               return assert.isRejected(promise);
             })
             .then(() => {
@@ -318,43 +320,43 @@ describe('plugin-mercury', () => {
         };
 
         // skipping due to apparent bug with lolex in all browsers but Chrome.
-        // if initial retries is zero and mercury has never connected max retries is used
+        // if initial retries is zero and mobiusSocket has never connected max retries is used
         skipInBrowser(it)('fails after `maxRetries` attempts', () => {
-          mercury.config.maxRetries = 2;
-          mercury.config.initialConnectionMaxRetries = 0;
+          mobiusSocket.config.maxRetries = 2;
+          mobiusSocket.config.initialConnectionMaxRetries = 0;
 
           return check();
         });
 
-        // initial retries is non-zero so takes precedence over maxRetries when mercury has never connected
+        // initial retries is non-zero so takes precedence over maxRetries when mobiusSocket has never connected
         skipInBrowser(it)('fails after `initialConnectionMaxRetries` attempts', () => {
-          mercury.config.maxRetries = 0;
-          mercury.config.initialConnectionMaxRetries = 2;
+          mobiusSocket.config.maxRetries = 0;
+          mobiusSocket.config.initialConnectionMaxRetries = 2;
           return check();
         });
 
-        // initial retries is non-zero so takes precedence over maxRetries when mercury has never connected
+        // initial retries is non-zero so takes precedence over maxRetries when mobiusSocket has never connected
         skipInBrowser(it)('fails after `initialConnectionMaxRetries` attempts', () => {
-          mercury.config.initialConnectionMaxRetries = 2;
-          mercury.config.maxRetries = 5;
+          mobiusSocket.config.initialConnectionMaxRetries = 2;
+          mobiusSocket.config.maxRetries = 5;
           return check();
         });
 
-        // when mercury has connected maxRetries is used and the initialConnectionMaxRetries is ignored
+        // when mobiusSocket has connected maxRetries is used and the initialConnectionMaxRetries is ignored
         skipInBrowser(it)('fails after `initialConnectionMaxRetries` attempts', () => {
-          mercury.config.initialConnectionMaxRetries = 5;
-          mercury.config.maxRetries = 2;
-          mercury.hasEverConnected = true;
+          mobiusSocket.config.initialConnectionMaxRetries = 5;
+          mobiusSocket.config.maxRetries = 2;
+          mobiusSocket.hasEverConnected = true;
           return check();
         });
       });
 
       it('can safely be called multiple times', () => {
         const promise = Promise.all([
-          mercury.connect(),
-          mercury.connect(),
-          mercury.connect(),
-          mercury.connect(),
+          mobiusSocket.connect(),
+          mobiusSocket.connect(),
+          mobiusSocket.connect(),
+          mobiusSocket.connect(),
         ]);
 
         mockWebSocket.open();
@@ -374,7 +376,7 @@ describe('plugin-mercury', () => {
           socketOpenStub.onCall(2).returns(Promise.resolve(new MockWebSocket()));
           assert.notCalled(Socket.prototype.open);
 
-          const promise = mercury.connect();
+          const promise = mobiusSocket.connect();
 
           return promiseTick(5)
             .then(() => {
@@ -385,25 +387,25 @@ describe('plugin-mercury', () => {
               return promiseTick(5);
             })
             .then(() => {
-              clock.tick(mercury.config.backoffTimeReset);
+              clock.tick(mobiusSocket.config.backoffTimeReset);
 
               return promiseTick(5);
             })
             .then(() => {
               assert.calledTwice(Socket.prototype.open);
-              clock.tick(2 * mercury.config.backoffTimeReset);
+              clock.tick(2 * mobiusSocket.config.backoffTimeReset);
 
               return promiseTick(5);
             })
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
-              clock.tick(5 * mercury.config.backoffTimeReset);
+              clock.tick(5 * mobiusSocket.config.backoffTimeReset);
 
               return promise;
             })
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
-              clock.tick(8 * mercury.config.backoffTimeReset);
+              clock.tick(8 * mobiusSocket.config.backoffTimeReset);
 
               return promiseTick(5);
             })
@@ -420,7 +422,7 @@ describe('plugin-mercury', () => {
               .stub(Socket.prototype, 'open')
               .returns(Promise.reject(new BadRequest({code: 4400})));
 
-            return assert.isRejected(mercury.connect());
+            return assert.isRejected(mobiusSocket.connect());
           });
         });
 
@@ -431,7 +433,7 @@ describe('plugin-mercury', () => {
             socketOpenStub.onCall(0).returns(Promise.reject(new UnknownResponse({code: 4444})));
             assert.notCalled(webex.credentials.refresh);
             assert.notCalled(webex.internal.device.refresh);
-            const promise = mercury.connect();
+            const promise = mobiusSocket.connect();
 
             return promiseTick(7).then(() => {
               assert.notCalled(webex.credentials.refresh);
@@ -450,7 +452,7 @@ describe('plugin-mercury', () => {
             socketOpenStub.onCall(0).returns(Promise.reject(new NotAuthorized({code: 4401})));
             assert.notCalled(webex.credentials.refresh);
             assert.notCalled(webex.internal.device.refresh);
-            const promise = mercury.connect();
+            const promise = mobiusSocket.connect();
 
             return promiseTick(7).then(() => {
               assert.called(webex.credentials.refresh);
@@ -470,7 +472,7 @@ describe('plugin-mercury', () => {
               .stub(Socket.prototype, 'open')
               .returns(Promise.reject(new Forbidden({code: 4403})));
 
-            return assert.isRejected(mercury.connect());
+            return assert.isRejected(mobiusSocket.connect());
           });
         });
 
@@ -481,7 +483,7 @@ describe('plugin-mercury', () => {
         //     socketOpenStub.onCall(0).returns(Promise.reject(new NotFound({code: 4404})));
         //     assert.notCalled(webex.credentials.refresh);
         //     assert.notCalled(webex.internal.device.refresh);
-        //     const promise = mercury.connect();
+        //     const promise = mobiusSocket.connect();
         //     return promiseTick(6)
         //       .then(() => {
         //         assert.notCalled(webex.credentials.refresh);
@@ -492,40 +494,25 @@ describe('plugin-mercury', () => {
         //   });
         // });
 
-        describe('when web-high-availability feature is enabled', () => {
-          it('marks current socket url as failed and get new one on Connection Error', () => {
-            webex.internal.feature.getFeature.returns(Promise.resolve(true));
-            socketOpenStub.restore();
-            socketOpenStub = sinon.stub(Socket.prototype, 'open').returns(Promise.resolve());
-            socketOpenStub.onCall(0).returns(Promise.reject(new ConnectionError({code: 4001})));
-            const promise = mercury.connect();
-
-            return promiseTick(7).then(() => {
-              assert.calledOnce(webex.internal.services.markFailedUrl);
-              clock.tick(1000);
-
-              return promise;
-            });
-          });
-        });
+  
       });
 
       describe('when connected', () => {
         it('resolves immediately', () =>
-          mercury.connect().then(() => {
-            assert.isTrue(mercury.connected, 'Mercury is connected');
-            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
-            const promise = mercury.connect();
+          mobiusSocket.connect().then(() => {
+            assert.isTrue(mobiusSocket.connected, 'MobiusSocket is connected');
+            assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
+            const promise = mobiusSocket.connect();
 
-            assert.isTrue(mercury.connected, 'Mercury is connected');
-            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+            assert.isTrue(mobiusSocket.connected, 'MobiusSocket is connected');
+            assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
 
             return promise;
           }));
 
         // skipping due to apparent bug with lolex in all browsers but Chrome.
         skipInBrowser(it)('does not continue attempting to connect', () => {
-          const promise = mercury.connect();
+          const promise = mobiusSocket.connect();
 
           // Wait for the connection to be established before proceeding
           mockWebSocket.open();
@@ -533,7 +520,7 @@ describe('plugin-mercury', () => {
           return promise.then(() =>
             promiseTick(2)
             .then(() => {
-              clock.tick(6 * webex.internal.mercury.config.backoffTimeReset);
+              clock.tick(6 * webex.internal.mobiusSocket.config.backoffTimeReset);
 
               return promiseTick(2);
             })
@@ -545,20 +532,20 @@ describe('plugin-mercury', () => {
       });
 
       describe('when webSocketUrl is provided', () => {
-        it('connects to Mercury with provided url', () => {
+        it('connects to MobiusSocket with provided url', () => {
           const webSocketUrl = 'ws://providedurl.com';
-          const promise = mercury.connect(webSocketUrl);
+          const promise = mobiusSocket.connect(webSocketUrl);
 
-          assert.isFalse(mercury.connected, 'Mercury is not connected');
-          assert.isTrue(mercury.connecting, 'Mercury is connecting');
+          assert.isFalse(mobiusSocket.connected, 'MobiusSocket is not connected');
+          assert.isTrue(mobiusSocket.connecting, 'MobiusSocket is connecting');
           mockWebSocket.open();
 
           return promise.then(() => {
-            assert.isTrue(mercury.connected, 'Mercury is connected');
-            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+            assert.isTrue(mobiusSocket.connected, 'MobiusSocket is connected');
+            assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
             assert.calledWith(
               Socket.prototype.open,
-              sinon.match(/ws:\/\/providedurl.com.*clientTimestamp[=]\d+/),
+              'ws://providedurl.com',
               sinon.match.any
             );
           });
@@ -568,25 +555,25 @@ describe('plugin-mercury', () => {
 
     describe('Websocket proxy agent', () => {
       afterEach(() => {
-        delete webex.config.defaultMercuryOptions;
+        delete webex.config.defaultMobiusSocketOptions;
       });
 
-      it('connects to Mercury using proxy agent', () => {
+      it('connects to MobiusSocket using proxy agent', () => {
         const testProxyUrl = 'http://proxyurl.com:80';
 
-        webex.config.defaultMercuryOptions = {agent: {proxy: {href: testProxyUrl}}};
-        const promise = mercury.connect();
+        webex.config.defaultMobiusSocketOptions = {agent: {proxy: {href: testProxyUrl}}};
+        const promise = mobiusSocket.connect();
 
-        assert.isFalse(mercury.connected, 'Mercury is not connected');
-        assert.isTrue(mercury.connecting, 'Mercury is connecting');
+        assert.isFalse(mobiusSocket.connected, 'MobiusSocket is not connected');
+        assert.isTrue(mobiusSocket.connecting, 'MobiusSocket is connecting');
         mockWebSocket.open();
 
         return promise.then(() => {
-          assert.isTrue(mercury.connected, 'Mercury is connected');
-          assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+          assert.isTrue(mobiusSocket.connected, 'MobiusSocket is connected');
+          assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
           assert.calledWith(
             socketOpenStub,
-            sinon.match(/ws:\/\/example.com/),
+            'ws://example.com',
             sinon.match.has(
               'agent',
               sinon.match.has('proxy', sinon.match.has('href', testProxyUrl))
@@ -595,19 +582,19 @@ describe('plugin-mercury', () => {
         });
       });
 
-      it('connects to Mercury without proxy agent', () => {
-        const promise = mercury.connect();
+      it('connects to MobiusSocket without proxy agent', () => {
+        const promise = mobiusSocket.connect();
 
-        assert.isFalse(mercury.connected, 'Mercury is not connected');
-        assert.isTrue(mercury.connecting, 'Mercury is connecting');
+        assert.isFalse(mobiusSocket.connected, 'MobiusSocket is not connected');
+        assert.isTrue(mobiusSocket.connecting, 'MobiusSocket is connecting');
         mockWebSocket.open();
 
         return promise.then(() => {
-          assert.isTrue(mercury.connected, 'Mercury is connected');
-          assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+          assert.isTrue(mobiusSocket.connected, 'MobiusSocket is connected');
+          assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
           assert.calledWith(
             socketOpenStub,
-            sinon.match(/ws:\/\/example.com/),
+            'ws://example.com',
             sinon.match({agent: undefined})
           );
         });
@@ -616,50 +603,44 @@ describe('plugin-mercury', () => {
 
     describe('#logout()', () => {
       it('calls disconnectAll and logs', () => {
-        sinon.stub(mercury.logger, 'info');
-        sinon.stub(mercury, 'disconnectAll');
-        mercury.logout();
-        assert.called(mercury.disconnectAll);
-        assert.calledTwice(mercury.logger.info);
-
-        assert.calledWith(mercury.logger.info.getCall(0), 'Mercury: logout() called');
-        assert.isTrue(
-          mercury.logger.info
-            .getCall(1)
-            .args[0].startsWith('Mercury: debug_mercury_logging stack: ')
-        );
+        sinon.stub(mobiusSocket.logger, 'info');
+        sinon.stub(mobiusSocket, 'disconnectAll');
+        mobiusSocket.logout();
+        assert.called(mobiusSocket.disconnectAll);
+        assert.calledOnce(mobiusSocket.logger.info);
+        assert.calledWith(mobiusSocket.logger.info.getCall(0), 'MobiusSocket: logout() called');
       });
 
       it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 3050 for logout', () => {
-        sinon.stub(mercury, 'disconnectAll');
-        mercury.config.beforeLogoutOptionsCloseReason = 'done (permanent)';
-        mercury.logout();
-        assert.calledWith(mercury.disconnectAll, {code: 3050, reason: 'done (permanent)'});
+        sinon.stub(mobiusSocket, 'disconnectAll');
+        mobiusSocket.config.beforeLogoutOptionsCloseReason = 'done (permanent)';
+        mobiusSocket.logout();
+        assert.calledWith(mobiusSocket.disconnectAll, {code: 3050, reason: 'done (permanent)'});
       });
 
       it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 3050 for logout if the reason is different than standard', () => {
-        sinon.stub(mercury, 'disconnectAll');
-        mercury.config.beforeLogoutOptionsCloseReason = 'test';
-        mercury.logout();
-        assert.calledWith(mercury.disconnectAll, {code: 3050, reason: 'test'});
+        sinon.stub(mobiusSocket, 'disconnectAll');
+        mobiusSocket.config.beforeLogoutOptionsCloseReason = 'test';
+        mobiusSocket.logout();
+        assert.calledWith(mobiusSocket.disconnectAll, {code: 3050, reason: 'test'});
       });
 
       it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send undefined for logout if the reason is same as standard', () => {
-        sinon.stub(mercury, 'disconnectAll');
-        mercury.config.beforeLogoutOptionsCloseReason = 'done (forced)';
-        mercury.logout();
-        assert.calledWith(mercury.disconnectAll, undefined);
+        sinon.stub(mobiusSocket, 'disconnectAll');
+        mobiusSocket.config.beforeLogoutOptionsCloseReason = 'done (forced)';
+        mobiusSocket.logout();
+        assert.calledWith(mobiusSocket.disconnectAll, undefined);
       });
     });
 
     describe('#disconnect()', () => {
       it('disconnects the WebSocket', () =>
-        mercury
+        mobiusSocket
           .connect()
           .then(() => {
-            assert.isTrue(mercury.connected, 'Mercury is connected');
-            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
-            const promise = mercury.disconnect();
+            assert.isTrue(mobiusSocket.connected, 'MobiusSocket is connected');
+            assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
+            const promise = mobiusSocket.disconnect();
 
             mockWebSocket.emit('close', {
               code: 1000,
@@ -669,18 +650,18 @@ describe('plugin-mercury', () => {
             return promise;
           })
           .then(() => {
-            assert.isFalse(mercury.connected, 'Mercury is not connected');
-            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
-            assert.isUndefined(mercury.mockWebSocket, 'Mercury does not have a mockWebSocket');
+            assert.isFalse(mobiusSocket.connected, 'MobiusSocket is not connected');
+            assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
+            assert.isUndefined(mobiusSocket.mockWebSocket, 'MobiusSocket does not have a mockWebSocket');
           }));
 
       it('disconnects the WebSocket with code 3050', () =>
-        mercury
+        mobiusSocket
           .connect()
           .then(() => {
-            assert.isTrue(mercury.connected, 'Mercury is connected');
-            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
-            const promise = mercury.disconnect();
+            assert.isTrue(mobiusSocket.connected, 'MobiusSocket is connected');
+            assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
+            const promise = mobiusSocket.disconnect();
 
             mockWebSocket.emit('close', {
               code: 3050,
@@ -690,21 +671,21 @@ describe('plugin-mercury', () => {
             return promise;
           })
           .then(() => {
-            assert.isFalse(mercury.connected, 'Mercury is not connected');
-            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
-            assert.isUndefined(mercury.mockWebSocket, 'Mercury does not have a mockWebSocket');
+            assert.isFalse(mobiusSocket.connected, 'MobiusSocket is not connected');
+            assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
+            assert.isUndefined(mobiusSocket.mockWebSocket, 'MobiusSocket does not have a mockWebSocket');
           }));
 
       it('stops emitting message events', () => {
         const spy = sinon.spy();
 
-        mercury.on('event:status.start_typing', spy);
+        mobiusSocket.on('event:status.start_typing', spy);
 
-        return mercury
+        return mobiusSocket
           .connect()
           .then(() => {
-            assert.isTrue(mercury.connected, 'Mercury is connected');
-            assert.isFalse(mercury.connecting, 'Mercury is not connecting');
+            assert.isTrue(mobiusSocket.connected, 'MobiusSocket is connected');
+            assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
 
             assert.notCalled(spy);
             mockWebSocket.readyState = 1;
@@ -714,7 +695,7 @@ describe('plugin-mercury', () => {
           .then(() => {
             assert.calledOnce(spy);
 
-            const promise = mercury.disconnect();
+            const promise = mobiusSocket.disconnect();
 
             mockWebSocket.readyState = 1;
             mockWebSocket.emit('open');
@@ -743,29 +724,29 @@ describe('plugin-mercury', () => {
           socketOpenStub.onCall(0).returns(
             // Delay the opening of the socket so that disconnect is called while open
             // is in progress
-            promiseTick(2 * webex.internal.mercury.config.backoffTimeReset)
+            promiseTick(2 * webex.internal.mobiusSocket.config.backoffTimeReset)
               // Pretend the socket opened successfully. Failing should be fine too but
               // it generates more console output.
               .then(() => Promise.resolve())
           );
-          const promise = mercury.connect();
+          const promise = mobiusSocket.connect();
 
           // Wait for the connect call to setup
-          return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
-            // By this time backoffCall and mercury socket should be defined by the
+          return promiseTick(webex.internal.mobiusSocket.config.backoffTimeReset).then(() => {
+            // By this time backoffCall and mobiusSocket socket should be defined by the
             // 'connect' call
-            assert.isDefined(mercury.backoffCalls.get('mercury-default-session'), 'Mercury backoffCall is not defined');
-            assert.isDefined(mercury.socket, 'Mercury socket is not defined');
+            assert.isDefined(mobiusSocket.backoffCalls.get('mobius-websocket-session'), 'MobiusSocket backoffCall is not defined');
+            assert.isDefined(mobiusSocket.socket, 'MobiusSocket socket is not defined');
             // Calling disconnect will abort the backoffCall, close the socket, and
             // reject the connect
-            mercury.disconnect();
-            assert.isUndefined(mercury.backoffCalls.get('mercury-default-session'), 'Mercury backoffCall is still defined');
+            mobiusSocket.disconnect();
+            assert.isUndefined(mobiusSocket.backoffCalls.get('mobius-websocket-session'), 'MobiusSocket backoffCall is still defined');
             // The socket will never be unset (which seems bad)
-            assert.isDefined(mercury.socket, 'Mercury socket is not defined');
+            assert.isDefined(mobiusSocket.socket, 'MobiusSocket socket is not defined');
 
             return assert.isRejected(promise).then((error) => {
               // connection did not fail, so no last error
-              assert.isUndefined(mercury.getLastError());
+              assert.isUndefined(mobiusSocket.getLastError());
             });
           });
         });
@@ -777,20 +758,20 @@ describe('plugin-mercury', () => {
 
           let reason;
 
-          mercury.backoffCalls.clear();
+          mobiusSocket.backoffCalls.clear();
 
-          const promise = mercury._attemptConnection(
+          const promise = mobiusSocket._attemptConnection(
             'ws://example.com',
-            'mercury-default-session',
+            'mobius-websocket-session',
             (_reason) => {
               reason = _reason;
             }
           );
 
-          return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
+          return promiseTick(webex.internal.mobiusSocket.config.backoffTimeReset).then(() => {
             assert.equal(
               reason.message,
-              `Mercury: prevent socket open when backoffCall no longer defined for ${mercury.defaultSessionId}`
+              `MobiusSocket: prevent socket open when backoffCall no longer defined for ${mobiusSocket.defaultSessionId}`
             );
 
             // Ensure the promise was actually rejected (short-circuited)
@@ -804,18 +785,18 @@ describe('plugin-mercury', () => {
           socketOpenStub.restore();
           socketOpenStub = sinon.stub(Socket.prototype, 'open');
           socketOpenStub.onCall(0).returns(Promise.reject(realError));
-          const promise = mercury.connect();
+          const promise = mobiusSocket.connect();
 
           // Wait for the connect call to setup
-          return promiseTick(webex.internal.mercury.config.backoffTimeReset).then(() => {
+          return promiseTick(webex.internal.mobiusSocket.config.backoffTimeReset).then(() => {
             // Calling disconnect will abort the backoffCall, close the socket, and
             // reject the connect
-            mercury.disconnect();
+            mobiusSocket.disconnect();
 
             return assert.isRejected(promise).then((error) => {
-              const lastError = mercury.getLastError();
+              const lastError = mobiusSocket.getLastError();
 
-              assert.equal(error.message, `Mercury Connection Aborted for ${mercury.defaultSessionId}`);
+              assert.equal(error.message, `MobiusSocket Connection Aborted for ${mobiusSocket.defaultSessionId}`);
               assert.isDefined(lastError);
               assert.equal(lastError, realError);
             });
@@ -828,15 +809,15 @@ describe('plugin-mercury', () => {
       it('emits Error-safe events and log the error with the call parameters', () => {
         const error = 'error';
         const event = {data: 'some data'};
-        mercury.on('break', () => {
+        mobiusSocket.on('break', () => {
           throw error;
         });
-        sinon.stub(mercury.logger, 'error');
+        sinon.stub(mobiusSocket.logger, 'error');
 
-        return Promise.resolve(mercury._emit('break', event)).then((res) => {
+        return Promise.resolve(mobiusSocket._emit('break', event)).then((res) => {
           assert.calledWith(
-            mercury.logger.error,
-            'Mercury: error occurred in event handler:',
+            mobiusSocket.logger.error,
+            'MobiusSocket: error occurred in event handler:',
             error,
             ' with args: ',
             ['break', event]
@@ -860,7 +841,7 @@ describe('plugin-mercury', () => {
           },
         };
 
-        mercury._applyOverrides(envelope);
+        mobiusSocket._applyOverrides(envelope);
 
         assert.equal(envelope.data.activity.target.lastSeenActivityDate, lastSeenActivityDate);
       });
@@ -876,7 +857,7 @@ describe('plugin-mercury', () => {
           },
         };
 
-        mercury._applyOverrides(envelope);
+        mobiusSocket._applyOverrides(envelope);
 
         assert.equal(envelope.data.activity.target.lastSeenActivityDate, lastSeenActivityDate);
         assert.equal(
@@ -885,7 +866,7 @@ describe('plugin-mercury', () => {
         );
       });
 
-      it('merges headers when Mercury messages arrive', () => {
+      it('merges headers when MobiusSocket messages arrive', () => {
         const envelope = {
           headers: {
             'data.activity.target.lastSeenActivityDate': lastSeenActivityDate,
@@ -895,7 +876,7 @@ describe('plugin-mercury', () => {
           },
         };
 
-        mercury._applyOverrides(envelope);
+        mobiusSocket._applyOverrides(envelope);
 
         assert.equal(envelope.data.activity.target.lastSeenActivityDate, lastSeenActivityDate);
       });
@@ -908,10 +889,10 @@ describe('plugin-mercury', () => {
             wsWriteTimestamp: Date.now() - 60000,
           },
         };
-        assert.isUndefined(mercury.mercuryTimeOffset);
-        mercury._setTimeOffset('mercury-default-session', event);
-        assert.isDefined(mercury.mercuryTimeOffset);
-        assert.isTrue(mercury.mercuryTimeOffset > 0);
+        assert.isUndefined(mobiusSocket.mercuryTimeOffset);
+        mobiusSocket._setTimeOffset('mobius-websocket-session', event);
+        assert.isDefined(mobiusSocket.mercuryTimeOffset);
+        assert.isTrue(mobiusSocket.mercuryTimeOffset > 0);
       });
       it('handles negative offsets', () => {
         const event = {
@@ -919,8 +900,8 @@ describe('plugin-mercury', () => {
             wsWriteTimestamp: Date.now() + 60000,
           },
         };
-        mercury._setTimeOffset('mercury-default-session', event);
-        assert.isTrue(mercury.mercuryTimeOffset < 0);
+        mobiusSocket._setTimeOffset('mobius-websocket-session', event);
+        assert.isTrue(mobiusSocket.mercuryTimeOffset < 0);
       });
       it('handles invalid wsWriteTimestamp', () => {
         const invalidTimestamps = [null, -1, 'invalid', undefined];
@@ -930,148 +911,65 @@ describe('plugin-mercury', () => {
               wsWriteTimestamp: invalidTimestamp,
             },
           };
-          mercury._setTimeOffset('mercury-default-session', event);
-          assert.isUndefined(mercury.mercuryTimeOffset);
+          mobiusSocket._setTimeOffset('mobius-websocket-session', event);
+          assert.isUndefined(mobiusSocket.mercuryTimeOffset);
         });
       });
     });
 
     describe('#_prepareUrl()', () => {
-      beforeEach(() => {
-        webex.internal.device.webSocketUrl = 'ws://example.com';
-      });
-
-      it('uses device default webSocketUrl', () =>
-        webex.internal.mercury._prepareUrl().then((wsUrl) => assert.match(wsUrl, /example.com/)));
-      it('uses provided webSocketUrl', () =>
-        webex.internal.mercury
-          ._prepareUrl('ws://provided.com')
-          .then((wsUrl) => assert.match(wsUrl, /.*provided.com.*/)));
-      it('requests text-mode WebSockets', () =>
-        webex.internal.mercury
-          ._prepareUrl()
-          .then((wsUrl) => assert.match(wsUrl, /.*outboundWireFormat=text.*/)));
-
-      it('requests the buffer state message', () =>
-        webex.internal.mercury
-          ._prepareUrl()
-          .then((wsUrl) => assert.match(wsUrl, /.*bufferStates=true.*/)));
-
-      it('does not add conditional properties', () =>
-        webex.internal.mercury._prepareUrl().then((wsUrl) => {
-          assert.notMatch(wsUrl, /mercuryRegistrationStatus/);
-          assert.notMatch(wsUrl, /mercuryRegistrationStatus/);
-          assert.notMatch(wsUrl, /isRegistrationRefreshEnabled/);
-          assert.notMatch(wsUrl, /multipleConnections/);
+      it('returns the provided URL as-is (no Mercury URL transforms)', () =>
+        mobiusSocket._prepareUrl('ws://provided.com').then((wsUrl) => {
+          assert.equal(wsUrl, 'ws://provided.com');
         }));
 
-      describe('when web-high-availability is enabled', () => {
-        it('uses webSocketUrl provided by device', () => {
-          webex.internal.device.useServiceCatalogUrl = sinon
-            .stub()
-            .returns(Promise.resolve('ws://example-2.com'));
-          webex.internal.feature.getFeature.onCall(0).returns(Promise.resolve(true));
+      it('falls back to device webSocketUrl when no URL is provided', () =>
+        mobiusSocket._prepareUrl().then((wsUrl) => {
+          assert.equal(wsUrl, 'ws://example.com');
+        }));
 
-          return webex.internal.mercury
-            ._prepareUrl()
-            .then((wsUrl) => assert.match(wsUrl, /example-2.com/));
-        });
-        it('uses high priority url instead of provided webSocketUrl', () => {
-          webex.internal.feature.getFeature.onCall(0).returns(Promise.resolve(true));
-          webex.internal.services.convertUrlToPriorityHostUrl = sinon
-            .stub()
-            .returns(Promise.resolve('ws://example-2.com'));
-          return webex.internal.mercury
-            ._prepareUrl('ws://provided.com')
-            .then((wsUrl) => assert.match(wsUrl, /example-2.com/));
-        });
-      });
-
-      describe("when 'web-shared-socket' is enabled", () => {
-        beforeEach(() => {
-          webex.internal.feature.getFeature.returns(Promise.resolve(true));
-        });
-
-        it('requests shared socket support', () =>
-          webex.internal.mercury
-            ._prepareUrl()
-            .then((wsUrl) => assert.match(wsUrl, /isRegistrationRefreshEnabled=true/)));
-
-        it('requests the registration banner', () =>
-          webex.internal.mercury
-            ._prepareUrl()
-            .then((wsUrl) => assert.match(wsUrl, /mercuryRegistrationStatus=true/)));
-
-        it('does not request the buffer state message', () =>
-          webex.internal.mercury._prepareUrl().then((wsUrl) => {
-            assert.match(wsUrl, /mercuryRegistrationStatus=true/);
-            assert.notMatch(wsUrl, /bufferStates/);
-          }));
-      });
-
-      describe('when using an ephemeral device', () => {
-        beforeEach(() => {
-          webex.config.device.ephemeral = true;
-        });
-
-        it('indicates multiple connections may be coming from this user', () =>
-          webex.internal.mercury
-            ._prepareUrl()
-            .then((wsUrl) => assert.match(wsUrl, /multipleConnections/)));
-      });
     });
 
-    describe('ping pong latency event is forwarded', () => {
-      it('should forward ping pong latency event', () => {
-        const spy = sinon.spy();
 
-        mercury.on('ping-pong-latency', spy);
-
-        return mercury.connect().then(() => {
-          assert.calledWith(spy, 0);
-          assert.calledOnce(spy);
-        });
-      });
-    });
 
     describe('shutdown protocol', () => {
       describe('#_handleImminentShutdown()', () => {
         let connectWithBackoffStub;
-        const sessionId = 'mercury-default-session';
+        const sessionId = 'mobius-websocket-session';
 
         beforeEach(() => {
-          mercury.connected = true;
-          mercury.sockets.set(sessionId, {
+          mobiusSocket.connected = true;
+          mobiusSocket.sockets.set(sessionId, {
             url: 'ws://old-socket.com',
             removeAllListeners: sinon.stub(),
           });
-          mercury.socket = mercury.sockets.get(sessionId);
-          connectWithBackoffStub = sinon.stub(mercury, '_connectWithBackoff');
+          mobiusSocket.socket = mobiusSocket.sockets.get(sessionId);
+          connectWithBackoffStub = sinon.stub(mobiusSocket, '_connectWithBackoff');
           connectWithBackoffStub.returns(Promise.resolve());
-          sinon.stub(mercury, '_emit');
+          sinon.stub(mobiusSocket, '_emit');
         });
 
         afterEach(() => {
           connectWithBackoffStub.restore();
-          mercury._emit.restore();
-          mercury.sockets.clear();
+          mobiusSocket._emit.restore();
+          mobiusSocket.sockets.clear();
         });
 
         it('should be idempotent - no-op if already in progress', () => {
           // Simulate an existing switchover in progress by seeding the backoff map
-          mercury._shutdownSwitchoverBackoffCalls.set(sessionId, {placeholder: true});
+          mobiusSocket._shutdownSwitchoverBackoffCalls.set(sessionId, {placeholder: true});
 
-          mercury._handleImminentShutdown(sessionId);
+          mobiusSocket._handleImminentShutdown(sessionId);
 
           assert.notCalled(connectWithBackoffStub);
         });
 
         it('should set switchover flags when called', () => {
-          mercury._handleImminentShutdown(sessionId);
+          mobiusSocket._handleImminentShutdown(sessionId);
 
           // With _connectWithBackoff stubbed, the backoff map entry may not be created here.
           // Assert that switchover initiation state was set and a shutdown switchover connect was requested.
-          assert.isDefined(mercury._shutdownSwitchoverId);
+          assert.isDefined(mobiusSocket._shutdownSwitchoverId);
 
           assert.calledOnce(connectWithBackoffStub);
           const callArgs = connectWithBackoffStub.firstCall.args;
@@ -1084,7 +982,7 @@ describe('plugin-mercury', () => {
         });
 
         it('should call _connectWithBackoff with correct parameters', (done) => {
-          mercury._handleImminentShutdown(sessionId);
+          mobiusSocket._handleImminentShutdown(sessionId);
 
           process.nextTick(() => {
             assert.calledOnce(connectWithBackoffStub);
@@ -1101,30 +999,30 @@ describe('plugin-mercury', () => {
 
         it('should handle exceptions during switchover', () => {
           connectWithBackoffStub.restore();
-          sinon.stub(mercury, '_connectWithBackoff').throws(new Error('Connection failed'));
+          sinon.stub(mobiusSocket, '_connectWithBackoff').throws(new Error('Connection failed'));
 
-          mercury._handleImminentShutdown(sessionId);
+          mobiusSocket._handleImminentShutdown(sessionId);
 
           // When an exception happens synchronously, the placeholder entry
           // should be removed from the map.
-          const switchoverCall = mercury._shutdownSwitchoverBackoffCalls.get(sessionId);
+          const switchoverCall = mobiusSocket._shutdownSwitchoverBackoffCalls.get(sessionId);
           assert.isUndefined(switchoverCall);
-          mercury._connectWithBackoff.restore();
+          mobiusSocket._connectWithBackoff.restore();
         });
       });
 
 
       describe('#_onmessage() with shutdown message', () => {
         beforeEach(() => {
-          sinon.stub(mercury, '_handleImminentShutdown');
-          sinon.stub(mercury, '_emit');
-          sinon.stub(mercury, '_setTimeOffset');
+          sinon.stub(mobiusSocket, '_handleImminentShutdown');
+          sinon.stub(mobiusSocket, '_emit');
+          sinon.stub(mobiusSocket, '_setTimeOffset');
         });
 
         afterEach(() => {
-          mercury._handleImminentShutdown.restore();
-          mercury._emit.restore();
-          mercury._setTimeOffset.restore();
+          mobiusSocket._handleImminentShutdown.restore();
+          mobiusSocket._emit.restore();
+          mobiusSocket._setTimeOffset.restore();
         });
 
         it('should trigger _handleImminentShutdown on shutdown message', () => {
@@ -1134,12 +1032,12 @@ describe('plugin-mercury', () => {
             },
           };
 
-          const result = mercury._onmessage(mercury.defaultSessionId, shutdownEvent);
+          const result = mobiusSocket._onmessage(mobiusSocket.defaultSessionId, shutdownEvent);
 
-          assert.calledOnce(mercury._handleImminentShutdown);
+          assert.calledOnce(mobiusSocket._handleImminentShutdown);
           assert.calledWith(
-            mercury._emit,
-            mercury.defaultSessionId,
+            mobiusSocket._emit,
+            mobiusSocket.defaultSessionId,
             'event:mercury_shutdown_imminent',
             shutdownEvent.data
           );
@@ -1153,9 +1051,9 @@ describe('plugin-mercury', () => {
             },
           };
 
-          mercury._onmessage(mercury.defaultSessionId, shutdownEvent);
+          mobiusSocket._onmessage(mobiusSocket.defaultSessionId, shutdownEvent);
 
-          assert.calledOnce(mercury._handleImminentShutdown);
+          assert.calledOnce(mobiusSocket._handleImminentShutdown);
         });
 
         it('should not trigger shutdown handling for non-shutdown messages', () => {
@@ -1168,23 +1066,23 @@ describe('plugin-mercury', () => {
             },
           };
 
-          mercury._onmessage(mercury.defaultSessionId, regularEvent);
+          mobiusSocket._onmessage(mobiusSocket.defaultSessionId, regularEvent);
 
-          assert.notCalled(mercury._handleImminentShutdown);
+          assert.notCalled(mobiusSocket._handleImminentShutdown);
         });
       });
 
       describe('#_onmessage() with missing data or eventType', () => {
         beforeEach(() => {
-          sinon.stub(mercury, '_emit');
-          sinon.stub(mercury, '_setTimeOffset');
-          sinon.stub(mercury, '_applyOverrides');
+          sinon.stub(mobiusSocket, '_emit');
+          sinon.stub(mobiusSocket, '_setTimeOffset');
+          sinon.stub(mobiusSocket, '_applyOverrides');
         });
 
         afterEach(() => {
-          mercury._emit.restore();
-          mercury._setTimeOffset.restore();
-          mercury._applyOverrides.restore();
+          mobiusSocket._emit.restore();
+          mobiusSocket._setTimeOffset.restore();
+          mobiusSocket._applyOverrides.restore();
         });
 
         it('should not throw when envelope.data is undefined', () => {
@@ -1195,10 +1093,10 @@ describe('plugin-mercury', () => {
             },
           };
 
-          const result = mercury._onmessage(mercury.defaultSessionId, event);
+          const result = mobiusSocket._onmessage(mobiusSocket.defaultSessionId, event);
 
           assert.instanceOf(result, Promise);
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'event', event.data);
+          assert.calledWith(mobiusSocket._emit, mobiusSocket.defaultSessionId, 'event', event.data);
         });
 
         it('should not throw when data.eventType is undefined', () => {
@@ -1212,10 +1110,10 @@ describe('plugin-mercury', () => {
             },
           };
 
-          const result = mercury._onmessage(mercury.defaultSessionId, event);
+          const result = mobiusSocket._onmessage(mobiusSocket.defaultSessionId, event);
 
           assert.instanceOf(result, Promise);
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'event', event.data);
+          assert.calledWith(mobiusSocket._emit, mobiusSocket.defaultSessionId, 'event', event.data);
         });
 
         it('should emit generic event for messages without eventType (e.g. subscription responses)', () => {
@@ -1229,11 +1127,11 @@ describe('plugin-mercury', () => {
             },
           };
 
-          const result = mercury._onmessage(mercury.defaultSessionId, event);
+          const result = mobiusSocket._onmessage(mobiusSocket.defaultSessionId, event);
 
           assert.instanceOf(result, Promise);
-          assert.calledOnce(mercury._emit);
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'event', event.data);
+          assert.calledOnce(mobiusSocket._emit);
+          assert.calledWith(mobiusSocket._emit, mobiusSocket.defaultSessionId, 'event', event.data);
         });
 
         it('should still process messages with a valid eventType', async () => {
@@ -1245,36 +1143,36 @@ describe('plugin-mercury', () => {
             },
           };
 
-          await mercury._onmessage(mercury.defaultSessionId, event);
+          await mobiusSocket._onmessage(mobiusSocket.defaultSessionId, event);
 
           // Normal flow emits namespace-specific events after processing handlers.
           // The early-return guard only emits 'event', so asserting these proves the normal path was taken.
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'event:conversation', event.data);
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'event:conversation.activity', event.data);
+          assert.calledWith(mobiusSocket._emit, mobiusSocket.defaultSessionId, 'event:conversation', event.data);
+          assert.calledWith(mobiusSocket._emit, mobiusSocket.defaultSessionId, 'event:conversation.activity', event.data);
         });
       });
 
       describe('#_getEventHandlers()', () => {
         it('should return an empty array when eventType is undefined', () => {
-          const result = mercury._getEventHandlers(undefined);
+          const result = mobiusSocket._getEventHandlers(undefined);
 
           assert.deepEqual(result, []);
         });
 
         it('should return an empty array when eventType is null', () => {
-          const result = mercury._getEventHandlers(null);
+          const result = mobiusSocket._getEventHandlers(null);
 
           assert.deepEqual(result, []);
         });
 
         it('should return an empty array when eventType is an empty string', () => {
-          const result = mercury._getEventHandlers('');
+          const result = mobiusSocket._getEventHandlers('');
 
           assert.deepEqual(result, []);
         });
 
         it('should return an empty array when namespace is not registered', () => {
-          const result = mercury._getEventHandlers('unknownNamespace.someEvent');
+          const result = mobiusSocket._getEventHandlers('unknownNamespace.someEvent');
 
           assert.deepEqual(result, []);
         });
@@ -1292,18 +1190,18 @@ describe('plugin-mercury', () => {
             url: 'ws://old-socket.com',
             removeAllListeners: sinon.stub(),
           };
-          mercury.socket = mockSocket;
-          mercury.sockets.set(mercury.defaultSessionId, mockSocket);
-          mercury.connected = true;
-          sinon.stub(mercury, '_emit');
-          sinon.stub(mercury, '_reconnect');
-          sinon.stub(mercury, 'unset');
+          mobiusSocket.socket = mockSocket;
+          mobiusSocket.sockets.set(mobiusSocket.defaultSessionId, mockSocket);
+          mobiusSocket.connected = true;
+          sinon.stub(mobiusSocket, '_emit');
+          sinon.stub(mobiusSocket, '_reconnect');
+          sinon.stub(mobiusSocket, 'unset');
         });
 
         afterEach(() => {
-          mercury._emit.restore();
-          mercury._reconnect.restore();
-          mercury.unset.restore();
+          mobiusSocket._emit.restore();
+          mobiusSocket._reconnect.restore();
+          mobiusSocket.unset.restore();
         });
 
         it('should handle active socket close with 4001 - permanent failure', () => {
@@ -1312,11 +1210,11 @@ describe('plugin-mercury', () => {
             reason: 'replaced during shutdown',
           };
 
-          mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
+          mobiusSocket._onclose(mobiusSocket.defaultSessionId, closeEvent, mockSocket);
 
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.permanent', closeEvent);
-          assert.notCalled(mercury._reconnect); // No reconnect for 4001 on active socket
-          assert.isFalse(mercury.connected);
+          assert.calledWith(mobiusSocket._emit, mobiusSocket.defaultSessionId, 'offline.permanent', closeEvent);
+          assert.notCalled(mobiusSocket._reconnect); // No reconnect for 4001 on active socket
+          assert.isFalse(mobiusSocket.connected);
         });
 
         it('should handle non-active socket close with 4001 - no reconnect needed', () => {
@@ -1325,12 +1223,12 @@ describe('plugin-mercury', () => {
             reason: 'replaced during shutdown',
           };
 
-          mercury._onclose(mercury.defaultSessionId, closeEvent, anotherSocket);
+          mobiusSocket._onclose(mobiusSocket.defaultSessionId, closeEvent, anotherSocket);
 
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.replaced', closeEvent);
-          assert.notCalled(mercury._reconnect);
-          assert.isTrue(mercury.connected); // Should remain connected
-          assert.notCalled(mercury.unset);
+          assert.calledWith(mobiusSocket._emit, mobiusSocket.defaultSessionId, 'offline.replaced', closeEvent);
+          assert.notCalled(mobiusSocket._reconnect);
+          assert.isTrue(mobiusSocket.connected); // Should remain connected
+          assert.notCalled(mobiusSocket.unset);
         });
 
         it('should distinguish between active and non-active socket closes', () => {
@@ -1340,16 +1238,16 @@ describe('plugin-mercury', () => {
           };
 
           // Test non-active socket
-          mercury._onclose(mercury.defaultSessionId, closeEvent, anotherSocket);
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.replaced', closeEvent);
+          mobiusSocket._onclose(mobiusSocket.defaultSessionId, closeEvent, anotherSocket);
+          assert.calledWith(mobiusSocket._emit, mobiusSocket.defaultSessionId, 'offline.replaced', closeEvent);
 
           // Reset the spy call history
-          mercury._emit.resetHistory();
+          mobiusSocket._emit.resetHistory();
 
           // Test active socket
-          mercury.sockets.set(mercury.defaultSessionId, mockSocket);
-          mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.permanent', closeEvent);
+          mobiusSocket.sockets.set(mobiusSocket.defaultSessionId, mockSocket);
+          mobiusSocket._onclose(mobiusSocket.defaultSessionId, closeEvent, mockSocket);
+          assert.calledWith(mobiusSocket._emit, mobiusSocket.defaultSessionId, 'offline.permanent', closeEvent);
         });
 
         it('should handle missing sourceSocket parameter (treats as non-active)', () => {
@@ -1358,11 +1256,11 @@ describe('plugin-mercury', () => {
             reason: 'replaced during shutdown',
           };
 
-          mercury._onclose(mercury.defaultSessionId, closeEvent); // No sourceSocket parameter
+          mobiusSocket._onclose(mobiusSocket.defaultSessionId, closeEvent); // No sourceSocket parameter
 
           // With simplified logic, undefined !== this.socket, so isActiveSocket = false
-          assert.calledWith(mercury._emit, mercury.defaultSessionId, 'offline.replaced', closeEvent);
-          assert.notCalled(mercury._reconnect);
+          assert.calledWith(mobiusSocket._emit, mobiusSocket.defaultSessionId, 'offline.replaced', closeEvent);
+          assert.notCalled(mobiusSocket._reconnect);
         });
 
         it('should clean up event listeners from non-active socket when it closes', () => {
@@ -1372,7 +1270,7 @@ describe('plugin-mercury', () => {
           };
 
           // Close non-active socket (not the active one)
-          mercury._onclose(mercury.defaultSessionId, closeEvent, anotherSocket);
+          mobiusSocket._onclose(mobiusSocket.defaultSessionId, closeEvent, anotherSocket);
 
           // Verify listeners were removed from the old socket
           // The _onclose method checks if sourceSocket !== this.socket (non-active)
@@ -1387,7 +1285,7 @@ describe('plugin-mercury', () => {
           };
 
           // Close active socket
-          mercury._onclose(mercury.defaultSessionId, closeEvent, mockSocket);
+          mobiusSocket._onclose(mobiusSocket.defaultSessionId, closeEvent, mockSocket);
 
           // Verify listeners were removed from active socket
           assert.calledOnce(mockSocket.removeAllListeners);
@@ -1396,29 +1294,29 @@ describe('plugin-mercury', () => {
 
       describe('shutdown switchover with retry logic', () => {
         let connectWithBackoffStub;
-        const sessionId = 'mercury-default-session';
+        const sessionId = 'mobius-websocket-session';
 
         beforeEach(() => {
-          mercury.connected = true;
-          mercury.sockets.set(sessionId, {
+          mobiusSocket.connected = true;
+          mobiusSocket.sockets.set(sessionId, {
             url: 'ws://old-socket.com',
             removeAllListeners: sinon.stub(),
           });
-          mercury.socket = mercury.sockets.get(sessionId);
-          connectWithBackoffStub = sinon.stub(mercury, '_connectWithBackoff');
-          sinon.stub(mercury, '_emit');
+          mobiusSocket.socket = mobiusSocket.sockets.get(sessionId);
+          connectWithBackoffStub = sinon.stub(mobiusSocket, '_connectWithBackoff');
+          sinon.stub(mobiusSocket, '_emit');
         });
 
         afterEach(() => {
           connectWithBackoffStub.restore();
-          mercury._emit.restore();
-          mercury.sockets.clear();
+          mobiusSocket._emit.restore();
+          mobiusSocket.sockets.clear();
         });
 
         it('should call _connectWithBackoff with shutdown switchover context', (done) => {
           connectWithBackoffStub.returns(Promise.resolve());
 
-          mercury._handleImminentShutdown(sessionId);
+          mobiusSocket._handleImminentShutdown(sessionId);
 
           process.nextTick(() => {
             assert.calledOnce(connectWithBackoffStub);
@@ -1440,13 +1338,13 @@ describe('plugin-mercury', () => {
           // Since _connectWithBackoff is stubbed in this suite, simulate its side-effect
           // of seeding the backoff-call map entry.
           connectWithBackoffStub.callsFake(() => {
-            mercury._shutdownSwitchoverBackoffCalls.set(sessionId, {placeholder: true});
+            mobiusSocket._shutdownSwitchoverBackoffCalls.set(sessionId, {placeholder: true});
             return new Promise(() => {}); // Never resolves
           });
 
-          mercury._handleImminentShutdown(sessionId);
+          mobiusSocket._handleImminentShutdown(sessionId);
 
-          const switchoverBackoffCall = mercury._shutdownSwitchoverBackoffCalls.get(sessionId);
+          const switchoverBackoffCall = mobiusSocket._shutdownSwitchoverBackoffCalls.get(sessionId);
           assert.isOk(switchoverBackoffCall);
         });
 
@@ -1459,11 +1357,11 @@ describe('plugin-mercury', () => {
             return Promise.resolve();
           });
 
-          mercury._handleImminentShutdown(sessionId);
+          mobiusSocket._handleImminentShutdown(sessionId);
 
           await promiseTick(50);
 
-          const emitCalls = mercury._emit.getCalls();
+          const emitCalls = mobiusSocket._emit.getCalls();
           const hasCompleteEvent = emitCalls.some(
             (call) =>
               call.args[0] === sessionId &&
@@ -1478,10 +1376,10 @@ describe('plugin-mercury', () => {
 
           connectWithBackoffStub.returns(Promise.reject(testError));
 
-          mercury._handleImminentShutdown(sessionId);
+          mobiusSocket._handleImminentShutdown(sessionId);
           await promiseTick(50);
 
-          const emitCalls = mercury._emit.getCalls();
+          const emitCalls = mobiusSocket._emit.getCalls();
           const hasFailureEvent = emitCalls.some(
             (call) =>
               call.args[0] === sessionId &&
@@ -1496,10 +1394,10 @@ describe('plugin-mercury', () => {
         it('should allow old socket to be closed by server after switchover failure', async () => {
           connectWithBackoffStub.returns(Promise.reject(new Error('Failed')));
 
-          mercury._handleImminentShutdown(sessionId);
+          mobiusSocket._handleImminentShutdown(sessionId);
           await promiseTick(50);
 
-          assert.equal(mercury.socket.removeAllListeners.callCount, 0);
+          assert.equal(mobiusSocket.socket.removeAllListeners.callCount, 0);
         });
       });
 
@@ -1511,7 +1409,7 @@ describe('plugin-mercury', () => {
             open: sinon.stub().returns(Promise.resolve()),
           };
           prepareUrlStub = sinon
-            .stub(mercury, '_prepareUrl')
+            .stub(mobiusSocket, '_prepareUrl')
             .returns(Promise.resolve('ws://example.com'));
           getUserTokenStub = webex.credentials.getUserToken;
           getUserTokenStub.returns(
@@ -1526,7 +1424,7 @@ describe('plugin-mercury', () => {
         });
 
         it('should prepare URL and get user token', async () => {
-          await mercury._prepareAndOpenSocket(mockSocket, 'ws://test.com', false);
+          await mobiusSocket._prepareAndOpenSocket(mockSocket, 'ws://test.com', false);
 
           assert.calledOnce(prepareUrlStub);
           assert.calledWith(prepareUrlStub, 'ws://test.com');
@@ -1534,7 +1432,7 @@ describe('plugin-mercury', () => {
         });
 
         it('should open socket with correct options for normal connection', async () => {
-          await mercury._prepareAndOpenSocket(mockSocket, undefined, false);
+          await mobiusSocket._prepareAndOpenSocket(mockSocket, undefined, false);
 
           assert.calledOnce(mockSocket.open);
           const callArgs = mockSocket.open.firstCall.args;
@@ -1543,12 +1441,11 @@ describe('plugin-mercury', () => {
           assert.isObject(callArgs[1]);
           assert.equal(callArgs[1].token, 'mock-token');
           assert.isDefined(callArgs[1].forceCloseDelay);
-          assert.isDefined(callArgs[1].pingInterval);
-          assert.isDefined(callArgs[1].pongTimeout);
+          assert.isDefined(callArgs[1].authResponseTimeout);
         });
 
         it('should log with correct prefix for normal connection', async () => {
-          await mercury._prepareAndOpenSocket(mockSocket, undefined, false);
+          await mobiusSocket._prepareAndOpenSocket(mockSocket, undefined, false);
 
           // The method should complete successfully - we're testing it runs without error
           // Actual log message verification is complex due to existing stubs in parent scope
@@ -1556,28 +1453,28 @@ describe('plugin-mercury', () => {
         });
 
         it('should log with shutdown prefix for shutdown connection', async () => {
-          await mercury._prepareAndOpenSocket(mockSocket, undefined, true);
+          await mobiusSocket._prepareAndOpenSocket(mockSocket, undefined, true);
 
           // The method should complete successfully with shutdown flag
           assert.calledOnce(mockSocket.open);
         });
 
-        it('should merge custom mercury options when provided', async () => {
-          webex.config.defaultMercuryOptions = {
+        it('should merge custom mobiusSocket options when provided', async () => {
+          webex.config.defaultMobiusSocketOptions = {
             customOption: 'test-value',
-            pingInterval: 99999,
+            authResponseTimeout: 99999,
           };
 
-          await mercury._prepareAndOpenSocket(mockSocket, undefined, false);
+          await mobiusSocket._prepareAndOpenSocket(mockSocket, undefined, false);
 
           const callArgs = mockSocket.open.firstCall.args;
 
           assert.equal(callArgs[1].customOption, 'test-value');
-          assert.equal(callArgs[1].pingInterval, 99999); // Custom value overrides default
+          assert.equal(callArgs[1].authResponseTimeout, 99999); // Custom value overrides default
         });
 
         it('should return the webSocketUrl after opening', async () => {
-          const result = await mercury._prepareAndOpenSocket(mockSocket, undefined, false);
+          const result = await mobiusSocket._prepareAndOpenSocket(mockSocket, undefined, false);
 
           assert.equal(result, 'ws://example.com');
         });
@@ -1586,7 +1483,7 @@ describe('plugin-mercury', () => {
           mockSocket.open.returns(Promise.reject(new Error('Open failed')));
 
           try {
-            await mercury._prepareAndOpenSocket(mockSocket, undefined, false);
+            await mobiusSocket._prepareAndOpenSocket(mockSocket, undefined, false);
             assert.fail('Should have thrown an error');
           } catch (err) {
             assert.equal(err.message, 'Open failed');
@@ -1596,44 +1493,44 @@ describe('plugin-mercury', () => {
 
       describe('#_attemptConnection() with shutdown switchover', () => {
         let prepareAndOpenSocketStub, callback;
-        const sessionId = 'mercury-default-session';
+        const sessionId = 'mobius-websocket-session';
 
         beforeEach(() => {
           prepareAndOpenSocketStub = sinon
-            .stub(mercury, '_prepareAndOpenSocket')
+            .stub(mobiusSocket, '_prepareAndOpenSocket')
             .returns(Promise.resolve('ws://new-socket.com'));
           callback = sinon.stub();
-          mercury._shutdownSwitchoverBackoffCalls.set(sessionId, {abort: sinon.stub()});
-          mercury.socket = {url: 'ws://test.com'};
-          mercury.connected = true;
-          sinon.stub(mercury, '_emit');
-          sinon.stub(mercury, '_attachSocketEventListeners');
+          mobiusSocket._shutdownSwitchoverBackoffCalls.set(sessionId, {abort: sinon.stub()});
+          mobiusSocket.socket = {url: 'ws://test.com'};
+          mobiusSocket.connected = true;
+          sinon.stub(mobiusSocket, '_emit');
+          sinon.stub(mobiusSocket, '_attachSocketEventListeners');
         });
 
         afterEach(() => {
           prepareAndOpenSocketStub.restore();
-          mercury._emit.restore();
-          mercury._attachSocketEventListeners.restore();
-          mercury._shutdownSwitchoverBackoffCalls.clear();
+          mobiusSocket._emit.restore();
+          mobiusSocket._attachSocketEventListeners.restore();
+          mobiusSocket._shutdownSwitchoverBackoffCalls.clear();
         });
 
         it('should not set socket reference before opening for shutdown switchover', async () => {
-          const originalSocket = mercury.socket;
+          const originalSocket = mobiusSocket.socket;
 
-          await mercury._attemptConnection('ws://test.com', sessionId, callback, {
+          await mobiusSocket._attemptConnection('ws://test.com', sessionId, callback, {
             isShutdownSwitchover: true,
             onSuccess: (newSocket, url) => {
-              assert.equal(mercury.socket, originalSocket);
+              assert.equal(mobiusSocket.socket, originalSocket);
             },
           });
 
-          assert.equal(mercury.socket, originalSocket);
+          assert.equal(mobiusSocket.socket, originalSocket);
         });
 
         it('should call onSuccess callback with new socket and URL for shutdown', async () => {
           const onSuccessStub = sinon.stub();
 
-          await mercury._attemptConnection('ws://test.com', sessionId, callback, {
+          await mobiusSocket._attemptConnection('ws://test.com', sessionId, callback, {
             isShutdownSwitchover: true,
             onSuccess: onSuccessStub,
           });
@@ -1643,12 +1540,12 @@ describe('plugin-mercury', () => {
         });
 
         it('should emit shutdown switchover complete event', async () => {
-          await mercury._attemptConnection('ws://test.com', sessionId, callback, {
+          await mobiusSocket._attemptConnection('ws://test.com', sessionId, callback, {
             isShutdownSwitchover: true,
             onSuccess: (newSocket, url) => {
-              mercury.socket = newSocket;
-              mercury.connected = true;
-              mercury._emit(
+              mobiusSocket.socket = newSocket;
+              mobiusSocket.connected = true;
+              mobiusSocket._emit(
                 sessionId,
                 'event:mercury_shutdown_switchover_complete',
                 {url}
@@ -1657,7 +1554,7 @@ describe('plugin-mercury', () => {
           });
 
           assert.calledWith(
-            mercury._emit,
+            mobiusSocket._emit,
             sessionId,
             'event:mercury_shutdown_switchover_complete',
             sinon.match.has('url', 'ws://new-socket.com')
@@ -1667,7 +1564,7 @@ describe('plugin-mercury', () => {
         it('should use simpler error handling for shutdown switchover failures', async () => {
           prepareAndOpenSocketStub.returns(Promise.reject(new Error('Connection failed')));
 
-          await mercury
+          await mobiusSocket
             ._attemptConnection('ws://test.com', sessionId, callback, {
               isShutdownSwitchover: true,
             })
@@ -1678,9 +1575,9 @@ describe('plugin-mercury', () => {
         });
 
         it('should check _shutdownSwitchoverBackoffCall for shutdown connections', () => {
-          mercury._shutdownSwitchoverBackoffCalls.clear();
+          mobiusSocket._shutdownSwitchoverBackoffCalls.clear();
 
-          const result = mercury._attemptConnection(
+          const result = mobiusSocket._attemptConnection(
             'ws://test.com',
             sessionId,
             callback,
@@ -1695,14 +1592,14 @@ describe('plugin-mercury', () => {
       });
 
       describe('#_connectWithBackoff() with shutdown switchover', () => {
-        const sessionId = 'mercury-default-session';
+        const sessionId = 'mobius-websocket-session';
 
         it('should use shutdown-specific parameters when called', () => {
           const connectWithBackoffStub = sinon
-            .stub(mercury, '_connectWithBackoff')
+            .stub(mobiusSocket, '_connectWithBackoff')
             .returns(Promise.resolve());
 
-          mercury._handleImminentShutdown(sessionId);
+          mobiusSocket._handleImminentShutdown(sessionId);
 
           assert.calledOnce(connectWithBackoffStub);
           const callArgs = connectWithBackoffStub.firstCall.args;
@@ -1714,7 +1611,7 @@ describe('plugin-mercury', () => {
         });
 
         it('should pass shutdown switchover options to _attemptConnection', () => {
-          const attemptStub = sinon.stub(mercury, '_attemptConnection');
+          const attemptStub = sinon.stub(mobiusSocket, '_attemptConnection');
           attemptStub.callsFake((url, sid, cb) => cb());
 
           const context = {
@@ -1725,7 +1622,7 @@ describe('plugin-mercury', () => {
             },
           };
 
-          const promise = mercury._connectWithBackoff(undefined, sessionId, context);
+          const promise = mobiusSocket._connectWithBackoff(undefined, sessionId, context);
 
           return promise.then(() => {
             assert.calledOnce(attemptStub);
@@ -1738,48 +1635,48 @@ describe('plugin-mercury', () => {
         });
 
         it('should set and clear state flags appropriately', () => {
-          sinon.stub(mercury, '_attemptConnection').callsFake((url, sid, cb) => cb());
+          sinon.stub(mobiusSocket, '_attemptConnection').callsFake((url, sid, cb) => cb());
 
-          mercury._shutdownSwitchoverBackoffCalls.set(sessionId, {placeholder: true});
+          mobiusSocket._shutdownSwitchoverBackoffCalls.set(sessionId, {placeholder: true});
 
-          const promise = mercury._connectWithBackoff(undefined, sessionId, {
+          const promise = mobiusSocket._connectWithBackoff(undefined, sessionId, {
             isShutdownSwitchover: true,
             attemptOptions: {isShutdownSwitchover: true, onSuccess: () => {}},
           });
 
           return promise.then(() => {
-            assert.isUndefined(mercury._shutdownSwitchoverBackoffCalls.get(sessionId));
-            mercury._attemptConnection.restore();
+            assert.isUndefined(mobiusSocket._shutdownSwitchoverBackoffCalls.get(sessionId));
+            mobiusSocket._attemptConnection.restore();
           });
         });
       });
 
       describe('#disconnect() with shutdown switchover in progress', () => {
         let abortStub;
-        const sessionId = 'mercury-default-session';
+        const sessionId = 'mobius-websocket-session';
 
         beforeEach(() => {
-          mercury.sockets.clear();
-          mercury.sockets.set(sessionId, {
+          mobiusSocket.sockets.clear();
+          mobiusSocket.sockets.set(sessionId, {
             close: sinon.stub().returns(Promise.resolve()),
             removeAllListeners: sinon.stub(),
           });
           abortStub = sinon.stub();
-          mercury._shutdownSwitchoverBackoffCalls.set(sessionId, {abort: abortStub});
+          mobiusSocket._shutdownSwitchoverBackoffCalls.set(sessionId, {abort: abortStub});
         });
 
         it('should abort shutdown switchover backoff call on disconnect', async () => {
-          await mercury.disconnect(undefined, sessionId);
+          await mobiusSocket.disconnect(undefined, sessionId);
 
           assert.calledOnce(abortStub);
         });
 
         it('should handle disconnect when no switchover is in progress', async () => {
-          mercury._shutdownSwitchoverBackoffCalls.clear();
+          mobiusSocket._shutdownSwitchoverBackoffCalls.clear();
 
-          await mercury.disconnect(undefined, sessionId);
+          await mobiusSocket.disconnect(undefined, sessionId);
 
-          assert.calledOnce(mercury.sockets.get(sessionId).close);
+          assert.calledOnce(mobiusSocket.sockets.get(sessionId).close);
         });
       });
     });

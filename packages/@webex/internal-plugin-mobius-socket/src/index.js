@@ -6,27 +6,37 @@ import '@webex/internal-plugin-device';
 import '@webex/internal-plugin-feature';
 import '@webex/internal-plugin-metrics';
 
-import {registerInternalPlugin} from '@webex/webex-core';
-
-import Mercury from './mercury';
+import MobiusSocket from './mercury';
 import config from './config';
 
-registerInternalPlugin('mercury', Mercury, {
-  config,
-  onBeforeLogout() {
-    return this.logout();
-  },
-});
+/**
+ * Creates a calling-owned Mobius socket client for the provided Webex instance.
+ *
+ * Note: this mutates `webex.config` to ensure `WebexPlugin` can resolve
+ * `this.config` via the Mobius socket namespace.
+ *
+ * @param {object} webex
+ * @param {object} [mobiusSocketConfig={}]
+ * @returns {MobiusSocket}
+ */
+export function createMobiusSocket(webex, mobiusSocketConfig = {}) {
+  const webexConfig = webex.config || {};
+  const mobiusConfig = {
+    ...config.mobiusSocket,
+    ...(webexConfig.mobiusSocket || {}),
+    ...mobiusSocketConfig,
+  };
 
-export {default} from './mercury';
-export {default as Mercury} from './mercury';
+  webex.config = {
+    ...webexConfig,
+    mobiussocket: mobiusConfig,
+  };
+
+  return new MobiusSocket({}, {parent: webex});
+}
+
+export default MobiusSocket;
+export {MobiusSocket};
 export {default as Socket} from './socket';
-export {default as config} from './config';
-export {
-  BadRequest,
-  ConnectionError,
-  Forbidden,
-  NotAuthorized,
-  UnknownResponse,
-  // NotFound
-} from './errors';
+export {config};
+export {BadRequest, ConnectionError, Forbidden, NotAuthorized, UnknownResponse} from './errors';
