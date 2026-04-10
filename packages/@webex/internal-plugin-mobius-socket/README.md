@@ -1,13 +1,17 @@
-# @webex/internal-plugin-mercury
+# @webex/internal-plugin-mobius-socket
 
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
 
-> Plugin for the Mercury service
+> Internal Mobius WebSocket plugin for Webex Calling
 
 This is an internal Cisco Webex plugin. As such, it does not strictly adhere to semantic versioning. Use at your own risk. If you're not working on one of our first party clients, please look at our [developer api](https://developer.webex.com/) and stick to our public plugins.
 
 - [Install](#install)
 - [Usage](#usage)
+- [API](#api)
+- [Auth Protocol](#auth-protocol)
+- [Events](#events)
+- [Config Options](#config-options)
 - [Contribute](#contribute)
 - [Maintainers](#maintainers)
 - [License](#license)
@@ -15,117 +19,110 @@ This is an internal Cisco Webex plugin. As such, it does not strictly adhere to 
 ## Install
 
 ```bash
-npm install --save @webex/internal-plugin-mercury
+npm install --save @webex/internal-plugin-mobius-socket
 ```
 
 ## Usage
 
 ```js
-import '@webex/internal-plugin-mercury';
+import {createMobiusSocket} from '@webex/internal-plugin-mobius-socket';
 
-import WebexCore from '@webex/webex-core';
+const mobiusSocket = createMobiusSocket(webex, {
+  backoffTimeReset: 1000,
+});
 
-const webex = new WebexCore();
-webex.internal.mercury.WHATEVER;
+await mobiusSocket.connect('wss://mobius.example.com/ws');
+
+if (mobiusSocket.isConnected()) {
+  await mobiusSocket.send({type: 'register', deviceUrl: '...'});
+}
+
+mobiusSocket.on('event:async_event', (envelope) => {
+  console.log('Received event:', envelope);
+});
+
+await mobiusSocket.disconnect();
 ```
 
-### Multiple Connections
+## API
 
-Mercury now supports multiple simultaneous websocket connections scoped by `sessionId`.
+| Method | Signature | Description |
+|---|---|---|
+| `connect` | `connect(webSocketUrl?, sessionId?)` | Connect to Mobius. Falls back to device websocket URL if no URL provided. |
+| `disconnect` | `disconnect(options?, sessionId?)` | Disconnect a session. `options` may include `{code, reason}`. |
+| `disconnectAll` | `disconnectAll(options?)` | Disconnect all active sessions. |
+| `send` | `send(payload, sessionId?)` | Send a JSON payload on the connected socket. |
+| `isConnected` | `isConnected()` | Returns `true` if the plugin is connected. |
+| `hasConnectedSockets` | `hasConnectedSockets(sessionId?)` | Check if a specific session socket is connected. |
+| `hasConnectingSockets` | `hasConnectingSockets(sessionId?)` | Check if a specific session socket is connecting. |
+| `getSocket` | `getSocket(sessionId?)` | Get the raw socket instance for a session. |
+| `logout` | `logout()` | Disconnect all sockets using the configured close reason. |
 
-```js
-const mercury = webex.internal.mercury;
+## Auth Protocol
 
-// Default session
-await mercury.connect();
+Mobius uses a token-based auth handshake:
 
-// Additional session
-await mercury.connect(undefined, 'secondary-session');
+1. Client opens WebSocket and sends: `{type: 'auth', payload: {token: '<access_token>'}}`
+2. Server responds with: `{type: 'auth.response', status: {code: 200}}`
+3. Connection is established after a successful `auth.response`.
 
-// Disconnect only one session
-await mercury.disconnect(undefined, 'secondary-session');
+Non-200 status codes are handled as auth failures with automatic retry via exponential backoff.
 
-// Disconnect everything
-await mercury.disconnectAll();
-```
+## Events
 
-#### Listening to multiple connections
-
-```js
-const mercury = webex.internal.mercury;
-const secondarySessionId = 'secondary-session';
-
-// Connect both sessions first.
-await mercury.connect();
-await mercury.connect(undefined, secondarySessionId);
-
-// Default session listeners use the base event name.
-mercury.on('online', () => {
-  console.log('[default] online');
-});
-
-mercury.on('event:conversation.activity', (envelope) => {
-  console.log('[default] activity', envelope.data?.eventType);
-});
-
-// Non-default sessions use :<sessionId> suffix.
-mercury.on(`online:${secondarySessionId}`, () => {
-  console.log(`[${secondarySessionId}] online`);
-});
-
-mercury.on(`event:conversation.activity:${secondarySessionId}`, (envelope) => {
-  console.log(`[${secondarySessionId}] activity`, envelope.data?.eventType);
-});
-```
-
-Notes:
-- `connect(webSocketUrl, sessionId)` and `disconnect(options, sessionId)` are session-aware.
-- Non-default sessions emit events with a `:<sessionId>` suffix (for example, `online:secondary-session`).
-- `getSocket(sessionId)` returns the socket for a specific session.
+| Event | Description |
+|---|---|
+| `online` | Fired when the socket connects and auth succeeds. |
+| `offline` | Fired when the socket disconnects for any reason. Payload includes `{code, reason, sessionId}`. |
+| `offline.transient` | Fired on a recoverable disconnect (socket will auto-reconnect). |
+| `offline.permanent` | Fired on a non-recoverable disconnect. |
+| `offline.replaced` | Fired when the socket is replaced (close code `4000`). |
+| `event:<eventType>` | Fired for each incoming message, keyed by `data.eventType` (e.g., `event:async_event`). |
+| `event:<type>` | Fired for typed messages, keyed by `type` (e.g., `event:shutdown`). |
 
 ## Config Options
 
-### Using A Proxy Agent To Open A Websocket Connection
+### Using a Proxy Agent to Open a WebSocket Connection
 
-For consumers who are not using the SDK via the browser it may be necessary to configure a proxy agent in order to connect with Mercury and open a Websocket in a proxy environment.
+For consumers who are not using the SDK via the browser it may be necessary to configure a proxy agent in order to connect and open a websocket in a proxy environment.
 
-This can be done by configuring an agent as part of a DefaultMercuryOptions config object as shown below. The agent object will then be injected into the SDK and used in the Mercury plugin during WebSocket construction as an option property, allowing a connection to be established via the specified proxy url.
+This can be done by configuring an agent as part of a `defaultMobiusSocketOptions` config object as shown below. The agent object will then be injected into the SDK and used during WebSocket construction as an option property, allowing a connection to be established via the specified proxy URL.
 
 ```js
-const webex = require(`webex`);
+const webex = require('webex');
 const HttpsProxyAgent = require('https-proxy-agent');
 
-let httpsProxyAgent = new HttpsProxyAgent(url.parse(proxyUrl));
+const httpsProxyAgent = new HttpsProxyAgent(url.parse(proxyUrl));
 
 webex.init({
-	config: {
-	  defaultMercuryOptions: {
-		agent: httpsProxyAgent
-	  },
-	 ...
-	}
+  config: {
+    defaultMobiusSocketOptions: {
+      agent: httpsProxyAgent,
+    },
+  },
 });
 ```
 
 ### Retries
 
+The default behaviour is to continue to try to connect with an exponential back-off. This behavior can be adjusted with the following config params:
 
-The default behaviour is for Mercury to continue to try to connect with an exponential back-off. This behavior can be adjusted with the following config params:
-
-- `maxRetries` - the number of times it will retry before error. Default: 0
-- `initialConnectionMaxRetries` - the number of times it will retry before error on the first connection. Once a connection has been established, any further connection attempts will use `maxRetries`. Default: 0
-- `backoffTimeMax` - The maximum time between connection attempts in ms. Default: 32000
-- `backoffTimeReset` - The time before the first retry in ms. Default: 1000
-
-
-## Maintainers
-
-This package is maintained by [Cisco Webex for Developers](https://developer.webex.com/).
+| Config Key | Default | Env Override | Description |
+|---|---|---|---|
+| `backoffTimeMax` | `32000` | `MOBIUS_SOCKET_BACKOFF_TIME_MAX` | Maximum milliseconds between connection attempts. |
+| `backoffTimeReset` | `1000` | `MOBIUS_SOCKET_BACKOFF_TIME_RESET` | Initial milliseconds between connection attempts. |
+| `forceCloseDelay` | `2000` | `MOBIUS_SOCKET_FORCE_CLOSE_DELAY` | Milliseconds to wait for a close frame before forcing socket closure. |
+| `authResponseTimeout` | `10000` | `MOBIUS_SOCKET_AUTH_RESPONSE_TIMEOUT` | Milliseconds to wait for `auth.response` before failing authorization. |
+| `beforeLogoutOptionsCloseReason` | `done (forced)` | `MOBIUS_SOCKET_LOGOUT_REASON` | Close reason sent on logout. Set to a non-reconnectable reason to prevent reconnect on logout. |
 
 ## Contribute
 
-Pull requests welcome. Please see [CONTRIBUTING.md](https://github.com/webex/webex-js-sdk/blob/master/CONTRIBUTING.md) for more details.
+PRs accepted.
+
+## Maintainers
+
+Cisco Webex
 
 ## License
 
-© 2016-2020 Cisco and/or its affiliates. All Rights Reserved.
+MIT
