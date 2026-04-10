@@ -7438,6 +7438,7 @@ __metadata:
     "@web/dev-server": 0.4.5
     "@webex/internal-media-core": 2.23.3
     "@webex/internal-plugin-metrics": "workspace:*"
+    "@webex/internal-plugin-mobius-socket": "workspace:*"
     "@webex/media-helpers": "workspace:*"
     async-mutex: 0.4.0
     buffer: 6.0.3
@@ -8242,7 +8243,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-mobius-socket@workspace:packages/@webex/internal-plugin-mobius-socket":
+"@webex/internal-plugin-mobius-socket@workspace:*, @webex/internal-plugin-mobius-socket@workspace:packages/@webex/internal-plugin-mobius-socket":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-mobius-socket@workspace:packages/@webex/internal-plugin-mobius-socket"
   dependencies:
