@@ -272,7 +272,15 @@ export default class Socket extends EventEmitter {
             socket.onclose = this.onclose;
             resolve();
           })
-          .catch(reject);
+          .catch((reason) => {
+            // Close the underlying socket on auth failure to prevent leaked connections
+            try {
+              socket.close();
+            } catch (e) {
+              // ignore close errors
+            }
+            reject(reason);
+          });
       };
 
       socket.onerror = (event) => {
