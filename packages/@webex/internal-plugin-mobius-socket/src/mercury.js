@@ -977,6 +977,11 @@ const MobiusSocket = WebexPlugin.extend({
       this.logger.debug(`${this.namespace}: message envelope from ${sessionId}: `, envelope);
     }
 
+    // Mobius uses `payload` instead of `data`; normalize to `data` for downstream compatibility
+    if (envelope.payload && !envelope.data) {
+      envelope.data = envelope.payload;
+    }
+
     envelope.sessionId = sessionId;
 
     // Handle shutdown message shape: { type: 'shutdown' }
@@ -997,7 +1002,8 @@ const MobiusSocket = WebexPlugin.extend({
     }
 
     envelope.sessionId = sessionId;
-    const {data} = envelope;
+    // Use data/payload if present, otherwise treat the envelope itself as the data (flat format)
+    const data = envelope.data || envelope;
 
     this._applyOverrides(data);
 
