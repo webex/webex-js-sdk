@@ -7,6 +7,7 @@ let keepaliveTimer: NodeJS.Timeout | undefined;
 const messageHandler = (event: MessageEvent) => {
   const {type} = event.data;
 
+  // TODO: Use APIRequest to make the request
   const postKeepAlive = async (accessToken: string, deviceUrl: string, url: string) => {
     const response = await fetch(`${url}/status`, {
       method: HTTP_METHODS.POST,

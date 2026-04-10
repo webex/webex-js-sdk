@@ -1,4 +1,3 @@
-import {v4 as uuid} from 'uuid';
 import {Mutex} from 'async-mutex';
 import {METHOD_START_MESSAGE} from '../../common/constants';
 import {emitFinalFailure, handleRegistrationErrors, uploadLogs} from '../../common';
@@ -35,7 +34,6 @@ import {
   CISCO_DEVICE_URL,
   DEVICES_ENDPOINT_RESOURCE,
   SPARK_USER_AGENT,
-  WEBEX_WEB_CLIENT,
   BASE_REG_RETRY_TIMER_VAL_IN_SEC,
   BASE_REG_TIMER_MFACTOR,
   SEC_TO_MSEC_MFACTOR,
@@ -61,6 +59,7 @@ import {
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
+import {APIRequest} from '../utils/request';
 
 /**
  *
@@ -96,6 +95,7 @@ export class Registration implements IRegistration {
   private retryAfter: number | undefined;
   private scheduled429Retry = false;
   private webWorker: Worker | undefined;
+  private apiRequest: APIRequest;
 
   /**
    */
@@ -129,6 +129,7 @@ export class Registration implements IRegistration {
 
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
+    this.apiRequest = APIRequest.getInstance({webex: this.webex});
   }
 
   private getFailoverCacheKey(): string {
@@ -222,14 +223,14 @@ export class Registration implements IRegistration {
   private async deleteRegistration(url: string, deviceId: string, deviceUrl: string) {
     let response;
     try {
-      response = await fetch(`${url}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`, {
+      response = await this.apiRequest.makeRequest({
+        uri: `${url}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`,
         method: HTTP_METHODS.DELETE,
         headers: {
           [CISCO_DEVICE_URL]: deviceUrl,
-          Authorization: await this.webex.credentials.getUserToken(),
-          trackingId: `${WEBEX_WEB_CLIENT}_${uuid()}`,
           [SPARK_USER_AGENT]: CALLING_USER_AGENT,
         },
+        service: ALLOWED_SERVICES.MOBIUS,
       });
     } catch (error) {
       log.warn(`Delete failed with Mobius: ${JSON.stringify(error)}`, {
@@ -243,7 +244,7 @@ export class Registration implements IRegistration {
     this.setStatus(RegistrationStatus.INACTIVE);
     this.lineEmitter(LINE_EVENTS.UNREGISTERED);
 
-    return <WebexRequestPayload>response?.json();
+    return response as WebexRequestPayload;
   }
 
   /**
@@ -257,7 +258,7 @@ export class Registration implements IRegistration {
       serviceData: this.jwe ? {...this.serviceData, jwe: this.jwe} : this.serviceData,
     };
 
-    return <WebexRequestPayload>this.webex.request({
+    return this.apiRequest.makeRequest({
       uri: `${url}device`,
       method: HTTP_METHODS.POST,
       headers: {
@@ -266,7 +267,7 @@ export class Registration implements IRegistration {
       },
       body: deviceInfo,
       service: ALLOWED_SERVICES.MOBIUS,
-    });
+    }) as Promise<WebexRequestPayload>;
   }
 
   /**
