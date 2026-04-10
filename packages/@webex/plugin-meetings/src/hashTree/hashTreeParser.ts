@@ -269,7 +269,7 @@ class HashTreeParser {
   private sendInitializationSyncRequestToLocus(
     datasetName: string,
     debugText: string
-  ): Promise<{updateType: LocusInfoUpdateType; updatedObjects?: HashTreeObject[]}> {
+  ): Promise<LocusInfoUpdate> {
     const dataset = this.dataSets[datasetName];
 
     if (!dataset) {
