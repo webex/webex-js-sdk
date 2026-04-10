@@ -1,6 +1,6 @@
 import {camelCase} from 'lodash';
+import ParameterError from '../common/errors/parameter';
 import PermissionError from '../common/errors/permission';
-import {CONTROLS, HTTP_VERBS} from '../constants';
 import MeetingRequest from '../meeting/request';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {Control, Setting} from './enums';
@@ -153,6 +153,12 @@ export default class ControlsOptionsManager {
    * @returns {Promise<Array<any>>}- Promise resolving if the request was successful.
    */
   public update(...controls: Array<ControlConfig>) {
+    if (!this.locusUrl) {
+      return Promise.reject(
+        new ParameterError('The locusUrl for this controls request must be defined.')
+      );
+    }
+
     const payloads = controls.map((control) => {
       if (!Object.keys(Control).includes(control.scope)) {
         throw new Error(
@@ -172,7 +178,7 @@ export default class ControlsOptionsManager {
     });
 
     return payloads.reduce((previous, payload) => {
-      const {targetUrl, extraBody} = Util.getControlsRequestParams({
+      const requestParams = Util.getControlsRequestParams({
         body: payload,
         locusUrl: this.locusUrl,
         mainLocusUrl: this.mainLocusUrl,
@@ -180,11 +186,7 @@ export default class ControlsOptionsManager {
 
       return previous.then(() =>
         // @ts-ignore
-        this.request.request({
-          uri: `${targetUrl}/${CONTROLS}`,
-          body: {...payload, ...extraBody},
-          method: HTTP_VERBS.PATCH,
-        })
+        this.request.request(requestParams)
       );
     }, Promise.resolve());
   }
@@ -201,6 +203,12 @@ export default class ControlsOptionsManager {
     [Setting.muteOnEntry]?: boolean;
     [Setting.roles]?: Array<string>;
   }): Promise<any> {
+    if (!this.locusUrl) {
+      return Promise.reject(
+        new ParameterError('The associated locusUrl for this controls request must be defined.')
+      );
+    }
+
     LoggerProxy.logger.log(
       `ControlsOptionsManager:index#setControls --> ${JSON.stringify(setting)}`
     );
@@ -259,18 +267,15 @@ export default class ControlsOptionsManager {
     if (error) {
       return Promise.reject(error);
     }
-    const {targetUrl, extraBody} = Util.getControlsRequestParams({
+
+    const requestParams = Util.getControlsRequestParams({
       body,
       locusUrl: this.locusUrl,
       mainLocusUrl: this.mainLocusUrl,
     });
 
     // @ts-ignore
-    return this.request.request({
-      uri: `${targetUrl}/${CONTROLS}`,
-      body: {...body, ...extraBody},
-      method: HTTP_VERBS.PATCH,
-    });
+    return this.request.request(requestParams);
   }
 
   /**

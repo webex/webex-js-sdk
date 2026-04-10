@@ -1,4 +1,4 @@
-import {DISPLAY_HINTS} from '../constants';
+import {CONTROLS, DISPLAY_HINTS, HTTP_VERBS} from '../constants';
 import {Control} from './enums';
 import {AUDIO_CONTROL_BODY_KEYS} from './constants';
 import {
@@ -452,28 +452,27 @@ class Utils {
    * @param {Record<string, any>} options.body - The request body.
    * @param {string} options.locusUrl - The current locus URL.
    * @param {string} [options.mainLocusUrl] - The main locus URL.
-   * @returns {{ targetUrl: string, extraBody: Record<string, any> }}
+   * @returns {{ uri: string, body: Record<string, any>, method: string }}
    */
   public static getControlsRequestParams(options: {
     body: Record<string, any>;
     locusUrl: string;
     mainLocusUrl?: string;
   }): {
-    targetUrl: string;
-    extraBody: Record<string, any>;
+    uri: string;
+    body: Record<string, any>;
+    method: string;
   } {
     const {body, locusUrl, mainLocusUrl} = options;
 
-    if (!locusUrl) {
-      return {targetUrl: locusUrl, extraBody: {}};
-    }
-
     const isAudio = Utils.isAudioControl(body);
     const inBreakout = Utils.isBreakoutLocusUrl(locusUrl, mainLocusUrl);
+    const targetUrl = inBreakout && !isAudio ? mainLocusUrl : locusUrl;
 
     return {
-      extraBody: inBreakout && !isAudio ? {authorizingLocusUrl: locusUrl} : {},
-      targetUrl: inBreakout && !isAudio ? mainLocusUrl : locusUrl,
+      uri: `${targetUrl}/${CONTROLS}`,
+      body: inBreakout && !isAudio ? {...body, authorizingLocusUrl: locusUrl} : body,
+      method: HTTP_VERBS.PATCH,
     };
   }
 }
