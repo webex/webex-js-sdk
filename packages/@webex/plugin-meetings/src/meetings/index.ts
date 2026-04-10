@@ -1898,8 +1898,8 @@ export default class Meetings extends WebexPlugin {
 
     return this.request
       .getActiveMeetings()
-      .then((locusArray) => {
-        const activeLocusUrl = [];
+      .then((locusArray?: {loci: any[]}) => {
+        const activeLocusUrl: string[] = [];
 
         if (locusArray?.loci && locusArray.loci.length > 0) {
           const lociToUpdate = this.sortLocusArrayToUpdate(locusArray.loci);
@@ -1928,8 +1928,24 @@ export default class Meetings extends WebexPlugin {
             }
           }
         }
+
+        // Trigger hash tree syncs for all remaining meetings
+        const remainingMeetings = this.meetingCollection.getAll();
+        const syncPromises = [];
+
+        for (const meeting of Object.values(remainingMeetings) as any[]) {
+          if (meeting.locusInfo?.hashTreeParsers?.size > 0) {
+            syncPromises.push(meeting.locusInfo.syncAllHashTreeDatasets());
+          }
+        }
+
+        if (syncPromises.length > 0) {
+          return Promise.all(syncPromises).then(() => {});
+        }
+
+        return Promise.resolve();
       })
-      .catch((error) => {
+      .catch((error: any) => {
         LoggerProxy.logger.error(
           `Meetings:index#syncMeetings --> failed to sync meetings, ${error}`
         );

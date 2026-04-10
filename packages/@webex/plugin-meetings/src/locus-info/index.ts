@@ -1064,6 +1064,21 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
+   * Triggers a sync of all hash tree datasets for all hash tree parsers associated with this meeting.
+   * The syncs are executed sequentially within each parser.
+   *
+   * @returns {Promise<void>}
+   */
+  async syncAllHashTreeDatasets(): Promise<void> {
+    for (const [, entry] of this.hashTreeParsers) {
+      if (entry.parser) {
+        // eslint-disable-next-line no-await-in-loop
+        await entry.parser.syncAllDatasets();
+      }
+    }
+  }
+
+  /**
    * Callback registered with HashTreeParser to receive locus info updates.
    * Updates our locus info based on the data parsed by the hash tree parser.
    *

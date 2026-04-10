@@ -104,6 +104,10 @@ class HashTreeParser {
   heartbeatIntervalMs?: number;
   private excludedDataSets: string[];
   state: 'active' | 'stopped';
+  private syncQueue: Array<{dataSetName: string; reason: string}> = [];
+  private isSyncInProgress = false;
+  private isSyncAllInProgress = false;
+  private syncQueueProcessingPromise: Promise<void> = Promise.resolve();
 
   /**
    * Constructor for HashTreeParser
@@ -1224,18 +1228,16 @@ class HashTreeParser {
    * Performs a sync for the given data set.
    *
    * @param {InternalDataSet} dataSet - The data set to sync
-   * @param {string} rootHash - Our current root hash for this data set
    * @param {string} reason - The reason for the sync (used for logging)
    * @returns {Promise<void>}
    */
-  private async performSync(
-    dataSet: InternalDataSet,
-    rootHash: string,
-    reason: string
-  ): Promise<void> {
+  private async performSync(dataSet: InternalDataSet, reason: string): Promise<void> {
     if (!dataSet.hashTree) {
       return;
     }
+
+    const {hashTree} = dataSet;
+    const rootHash = hashTree.getRootHash();
 
     try {
       LoggerProxy.logger.info(
@@ -1256,7 +1258,7 @@ class HashTreeParser {
 
           receivedHashes = hashes;
 
-          dataSet.hashTree.resize(latestDataSetInfo.leafCount);
+          hashTree.resize(latestDataSetInfo.leafCount);
         } catch (error) {
           if (error.statusCode === 409) {
             // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
@@ -1270,13 +1272,13 @@ class HashTreeParser {
         }
 
         // identify mismatched leaves
-        const mismatchedLeaveIndexes = dataSet.hashTree.diffHashes(receivedHashes);
+        const mismatchedLeaveIndexes = hashTree.diffHashes(receivedHashes);
 
         mismatchedLeaveIndexes.forEach((index) => {
-          mismatchedLeavesData[index] = dataSet.hashTree.getLeafData(index);
+          mismatchedLeavesData[index] = hashTree.getLeafData(index);
         });
       } else {
-        mismatchedLeavesData[0] = dataSet.hashTree.getLeafData(0);
+        mismatchedLeavesData[0] = hashTree.getLeafData(0);
       }
       // request sync for mismatched leaves
       if (Object.keys(mismatchedLeavesData).length > 0) {
@@ -1299,6 +1301,95 @@ class HashTreeParser {
           error
         );
       }
+    }
+  }
+
+  /**
+   * Enqueues a sync for the given data set. If the data set is already in the queue, the request is ignored.
+   * This ensures that all syncs are executed sequentially and no more than 1 sync runs at a time.
+   *
+   * @param {string} dataSetName - The name of the data set to sync
+   * @param {string} reason - The reason for the sync (used for logging)
+   * @returns {void}
+   */
+  private enqueueSyncForDataset(dataSetName: string, reason: string): void {
+    if (this.state === 'stopped') return;
+
+    if (this.syncQueue.some((entry) => entry.dataSetName === dataSetName)) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#enqueueSyncForDataset --> ${this.debugId} data set "${dataSetName}" already in sync queue, skipping`
+      );
+
+      return;
+    }
+
+    this.syncQueue.push({dataSetName, reason});
+
+    if (!this.isSyncInProgress) {
+      this.syncQueueProcessingPromise = this.processSyncQueue();
+    }
+  }
+
+  /**
+   * Processes the sync queue sequentially. Only one instance of this method runs at a time.
+   *
+   * @returns {Promise<void>}
+   */
+  private async processSyncQueue(): Promise<void> {
+    if (this.isSyncInProgress) return;
+
+    this.isSyncInProgress = true;
+    try {
+      while (this.syncQueue.length > 0 && this.state !== 'stopped') {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const {dataSetName, reason} = this.syncQueue.shift()!;
+        const dataSet = this.dataSets[dataSetName];
+
+        if (!dataSet?.hashTree) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        // eslint-disable-next-line no-await-in-loop
+        await this.performSync(dataSet, reason);
+      }
+    } finally {
+      this.isSyncInProgress = false;
+    }
+  }
+
+  /**
+   * Syncs all data sets that have hash trees, one by one in sequence, using the priority order
+   * provided by sortByInitPriority(). Does nothing if the parser is stopped or if a syncAllDatasets
+   * call is already in progress.
+   *
+   * @returns {Promise<void>}
+   */
+  public async syncAllDatasets(): Promise<void> {
+    if (this.state === 'stopped') return;
+    if (this.isSyncAllInProgress) return;
+
+    this.isSyncAllInProgress = true;
+    try {
+      const dataSetsWithHashTrees = Object.values(this.dataSets)
+        .filter((dataSet) => dataSet?.hashTree)
+        .map((dataSet) => ({name: dataSet.name}));
+
+      const sorted = sortByInitPriority(dataSetsWithHashTrees, DATA_SET_INIT_PRIORITY);
+
+      LoggerProxy.logger.info(
+        `HashTreeParser#syncAllDatasets --> ${this.debugId} syncing datasets: ${sorted
+          .map((ds) => ds.name)
+          .join(', ')}`
+      );
+
+      for (const ds of sorted) {
+        this.enqueueSyncForDataset(ds.name, 'syncAllDatasets');
+      }
+
+      await this.syncQueueProcessingPromise;
+    } finally {
+      this.isSyncAllInProgress = false;
     }
   }
 
@@ -1346,7 +1437,7 @@ class HashTreeParser {
         `HashTreeParser#runSyncAlgorithm --> ${this.debugId} setting "${dataSet.name}" sync timer for ${delay}`
       );
 
-      dataSet.timer = setTimeout(async () => {
+      dataSet.timer = setTimeout(() => {
         dataSet.timer = undefined;
 
         if (!dataSet.hashTree) {
@@ -1360,9 +1451,8 @@ class HashTreeParser {
         const rootHash = dataSet.hashTree.getRootHash();
 
         if (dataSet.root !== rootHash) {
-          await this.performSync(
-            dataSet,
-            rootHash,
+          this.enqueueSyncForDataset(
+            dataSet.name,
             `Root hash mismatch: received=${dataSet.root}, ours=${rootHash}`
           );
         } else {
@@ -1408,18 +1498,14 @@ class HashTreeParser {
       const backoffTime = this.getWeightedBackoffTime(dataSet.backoff);
       const delay = this.heartbeatIntervalMs + backoffTime;
 
-      dataSet.heartbeatWatchdogTimer = setTimeout(async () => {
+      dataSet.heartbeatWatchdogTimer = setTimeout(() => {
         dataSet.heartbeatWatchdogTimer = undefined;
 
         LoggerProxy.logger.warn(
           `HashTreeParser#resetHeartbeatWatchdogs --> ${this.debugId} Heartbeat watchdog fired for data set "${dataSet.name}" - no heartbeat received within expected interval, initiating sync`
         );
 
-        await this.performSync(
-          dataSet,
-          dataSet.hashTree.getRootHash(),
-          `heartbeat watchdog expired`
-        );
+        this.enqueueSyncForDataset(dataSet.name, `heartbeat watchdog expired`);
       }, delay);
     }
   }
@@ -1452,6 +1538,7 @@ class HashTreeParser {
       `HashTreeParser#stop --> ${this.debugId} Stopping HashTreeParser, clearing timers and hash trees`
     );
     this.stopAllTimers();
+    this.syncQueue = [];
     Object.values(this.dataSets).forEach((dataSet) => {
       dataSet.hashTree = undefined;
     });
