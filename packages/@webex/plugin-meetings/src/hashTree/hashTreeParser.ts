@@ -2,10 +2,10 @@ import {cloneDeep, isEmpty, zip} from 'lodash';
 import HashTree, {LeafDataItem} from './hashTree';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {Enum, HTTP_VERBS} from '../constants';
-import {DataSetNames, EMPTY_HASH} from './constants';
+import {DataSetNames, DATA_SET_INIT_PRIORITY, EMPTY_HASH} from './constants';
 import {ObjectType, HtMeta, HashTreeObject} from './types';
 import {LocusDTO} from '../locus-info/types';
-import {deleteNestedObjectsWithHtMeta, isMetadata} from './utils';
+import {deleteNestedObjectsWithHtMeta, isMetadata, sortByInitPriority} from './utils';
 
 export interface DataSet {
   url: string;
@@ -382,9 +382,10 @@ class HashTreeParser {
     if (this.state === 'stopped') {
       return;
     }
+
     const updatedObjects: HashTreeObject[] = [];
 
-    for (const dataSet of visibleDataSets) {
+    for (const dataSet of sortByInitPriority(visibleDataSets, DATA_SET_INIT_PRIORITY)) {
       const {name, leafCount, url} = dataSet;
 
       if (!this.dataSets[name]) {
@@ -960,7 +961,7 @@ class HashTreeParser {
     }
     const allDataSets = await this.getAllVisibleDataSetsFromLocus();
 
-    for (const ds of addedDataSets) {
+    for (const ds of sortByInitPriority(addedDataSets, DATA_SET_INIT_PRIORITY)) {
       const dataSetInfo = allDataSets.find((d) => d.name === ds.name);
 
       LoggerProxy.logger.info(
@@ -972,8 +973,6 @@ class HashTreeParser {
           `HashTreeParser#initializeNewVisibleDataSets --> ${this.debugId} missing info about data set "${ds.name}" in Locus response from visibleDataSetsUrl`
         );
       } else {
-        // we're awaiting in a loop, because in practice there will be only one new data set at a time,
-        // so no point in trying to parallelize this
         // eslint-disable-next-line no-await-in-loop
         const updates = await this.initializeNewVisibleDataSet(ds, dataSetInfo);
 

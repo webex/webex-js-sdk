@@ -565,7 +565,10 @@ export default class Task extends EventEmitter implements ITask {
         METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
       ]);
 
-      const effectiveMediaResourceId = mediaResourceId ?? this.data.mediaResourceId;
+      const {mainInteractionId} = this.data.interaction;
+      const defaultMediaResourceId =
+        this.data.interaction.media[mainInteractionId]?.mediaResourceId;
+      const effectiveMediaResourceId = mediaResourceId ?? defaultMediaResourceId;
 
       const response = await this.contact.hold({
         interactionId: this.data.interactionId,
@@ -599,7 +602,9 @@ export default class Task extends EventEmitter implements ITask {
         errorData: err.data?.errorData,
         reasonCode: err.data?.reasonCode,
       };
-      const effectiveMediaResourceId = mediaResourceId ?? this.data.mediaResourceId;
+      const defaultMediaResourceId =
+        this.data.interaction.media[this.data.interaction.mainInteractionId]?.mediaResourceId;
+      const effectiveMediaResourceId = mediaResourceId ?? defaultMediaResourceId;
 
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.TASK_HOLD_FAILED,
