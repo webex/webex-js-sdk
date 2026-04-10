@@ -1,5 +1,4 @@
 /* eslint-disable import/no-cycle */
-import EventEmitter from 'events';
 import type {AnyActorRef} from 'xstate';
 import {TaskEventPayload} from './state-machine';
 import {Msg} from '../core/GlobalTypes';
@@ -1536,10 +1535,28 @@ export type consultConferencePayloadData = {
 };
 
 /**
- * Interface for managing task-related operations in the contact center
- * Extends EventEmitter to support event-driven task updates
+ * Minimal event-emitter contract exposed to SDK consumers.
+ * Defined here so that consumers do NOT need `@types/node` in their tsconfig.
+ * The runtime Task class still extends Node's EventEmitter (via ampersand-events),
+ * which satisfies this interface at runtime.
+ * @public
  */
-export interface ITask extends EventEmitter {
+export interface IEventEmitter {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  on(event: string, listener: (...args: any[]) => void): this;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  off(event: string, listener: (...args: any[]) => void): this;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  once(event: string, listener: (...args: any[]) => void): this;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  emit(event: string, ...args: any[]): boolean;
+}
+
+/**
+ * Interface for managing task-related operations in the contact center
+ * Extends IEventEmitter to support event-driven task updates
+ */
+export interface ITask extends IEventEmitter {
   /**
    * Event data received in the Contact Center events.
    * Contains detailed task information including interaction details, media resources,
