@@ -263,7 +263,7 @@ describe('AgentConfigService', () => {
 
       expect(mockWebexRequest.request).toHaveBeenCalledWith({
         service: mockWccAPIURL,
-        resource: `organization/${mockOrgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}&filter=id=in=(${filter})&attributes=${attributes}`,
+        resource: `organization/${mockOrgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}&filter=id=in=(${filter})&attributes=${attributes}&desktopProfileFilter=true`,
         method: 'GET',
       });
       expect(result).toEqual(mockResponse.body);
