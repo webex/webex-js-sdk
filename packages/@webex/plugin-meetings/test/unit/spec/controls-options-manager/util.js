@@ -951,6 +951,42 @@ describe('plugin-meetings', () => {
           assert.deepEqual(result.body, {raiseHand: {enabled: true}});
           assert.equal(result.method, 'PATCH');
         });
+
+        it('should return locusUrl when mainLocusUrl is null', () => {
+          const result = ControlsOptionsUtil.getControlsRequestParams({
+            body: {raiseHand: {enabled: true}},
+            locusUrl,
+            mainLocusUrl: null,
+          });
+
+          assert.equal(result.uri, 'locus/breakout/controls');
+          assert.deepEqual(result.body, {raiseHand: {enabled: true}});
+          assert.equal(result.method, 'PATCH');
+        });
+
+        it('should return locusUrl when mainLocusUrl is empty string', () => {
+          const result = ControlsOptionsUtil.getControlsRequestParams({
+            body: {raiseHand: {enabled: true}},
+            locusUrl,
+            mainLocusUrl: '',
+          });
+
+          assert.equal(result.uri, 'locus/breakout/controls');
+          assert.deepEqual(result.body, {raiseHand: {enabled: true}});
+          assert.equal(result.method, 'PATCH');
+        });
+
+        it('should return locusUrl for audio controls when not in a breakout', () => {
+          const result = ControlsOptionsUtil.getControlsRequestParams({
+            body: {audio: {muted: true}},
+            locusUrl: 'locus/main',
+            mainLocusUrl: 'locus/main',
+          });
+
+          assert.equal(result.uri, 'locus/main/controls');
+          assert.deepEqual(result.body, {audio: {muted: true}});
+          assert.equal(result.method, 'PATCH');
+        });
       });
     });
   });

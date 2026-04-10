@@ -1,5 +1,6 @@
 import ControlsOptionsManager from '@webex/plugin-meetings/src/controls-options-manager';
 import Util from '@webex/plugin-meetings/src/controls-options-manager/util';
+import ParameterError from '@webex/plugin-meetings/src/common/errors/parameter';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import { HTTP_VERBS } from '@webex/plugin-meetings/src/constants';
@@ -164,6 +165,18 @@ describe('plugin-meetings', () => {
                 });
               });
 
+              it('should reject with ParameterError when locusUrl is not set', () => {
+                const noLocusManager = new ControlsOptionsManager(request);
+
+                const result = noLocusManager.update({scope: 'audio', properties: {muted: true}});
+
+                assert.notCalled(request.request);
+                return assert.isRejected(result).then((err) => {
+                  assert.instanceOf(err, ParameterError);
+                  assert.match(err.message, /locusUrl.*must be defined/);
+                });
+              });
+
               it('should throw an error if the scope is not supported', () => {
                 const scope = 'invalid';
 
@@ -320,6 +333,18 @@ describe('plugin-meetings', () => {
                   mainLocusUrl: '',
                   displayHints: [],
                 })
+              });
+
+              it('should reject with ParameterError when locusUrl is not set', () => {
+                const noLocusManager = new ControlsOptionsManager(request);
+
+                const result = noLocusManager.setMuteAll(true, true, true);
+
+                assert.notCalled(request.request);
+                return assert.isRejected(result).then((err) => {
+                  assert.instanceOf(err, ParameterError);
+                  assert.match(err.message, /locusUrl.*must be defined/);
+                });
               });
 
               it('rejects when correct display hint is not present mutedEnabled=false', () => {
