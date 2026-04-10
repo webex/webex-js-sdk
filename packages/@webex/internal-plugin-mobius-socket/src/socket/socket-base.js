@@ -272,15 +272,7 @@ export default class Socket extends EventEmitter {
             socket.onclose = this.onclose;
             resolve();
           })
-          .catch((reason) => {
-            // Close the underlying socket on auth failure to prevent leaked connections
-            try {
-              socket.close();
-            } catch (e) {
-              // ignore close errors
-            }
-            reject(reason);
-          });
+          .catch(reject);
       };
 
       socket.onerror = (event) => {
@@ -417,7 +409,7 @@ export default class Socket extends EventEmitter {
 
         reject(
           new NotAuthorized({
-            code: 4401,
+            code: statusCode,
             reason: event.data?.status?.message || 'Mobius auth failed',
           })
         );
@@ -428,7 +420,6 @@ export default class Socket extends EventEmitter {
         cleanup();
         reject(
           new NotAuthorized({
-            code: 4401,
             reason: 'Mobius auth response not received before timeout',
           })
         );

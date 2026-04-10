@@ -3,11 +3,9 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import url from 'url';
-
 import {WebexPlugin} from '@webex/webex-core';
 import {deprecated} from '@webex/common';
-import {camelCase, get, set} from 'lodash';
+import {camelCase, set} from 'lodash';
 import backoff from 'backoff';
 
 import Socket from './socket';
@@ -439,72 +437,17 @@ const MobiusSocket = WebexPlugin.extend({
       webSocketUrl = this.webex.internal.device.webSocketUrl;
     }
 
-    // TODO: Add Mobius-specific URL preparation if needed
+    // TODO: Validate the host against the service catalog
+    // const hostFromUrl = url.parse(webSocketUrl, true)?.host;
+    // const isValidHost = this.webex.internal.services.isValidHost(hostFromUrl);
+    // if (!isValidHost) {
+    //   this.logger.error(
+    //     `${this.namespace}: host ${hostFromUrl} is not a valid host from host catalog`
+    //   );
+    //   return Promise.resolve('');
+    // }
+
     return Promise.resolve(webSocketUrl);
-
-    /* eslint-disable no-unreachable */
-
-    return this.webex.internal.feature
-      .getFeature('developer', 'web-high-availability')
-      .then((haMessagingEnabled) => {
-        if (haMessagingEnabled) {
-          let highPrioritySocketUrl;
-          try {
-            highPrioritySocketUrl =
-              this.webex.internal.services.convertUrlToPriorityHostUrl(webSocketUrl);
-          } catch (e) {
-            this.logger.warn(`${this.namespace}: error converting to high priority url`, e);
-          }
-          if (!highPrioritySocketUrl) {
-            const hostFromUrl = url.parse(webSocketUrl, true)?.host;
-            const isValidHost = this.webex.internal.services.isValidHost(hostFromUrl);
-            if (!isValidHost) {
-              this.logger.error(
-                `${this.namespace}: host ${hostFromUrl} is not a valid host from host catalog`
-              );
-
-              return '';
-            }
-          }
-
-          return highPrioritySocketUrl || webSocketUrl;
-        }
-
-        return webSocketUrl;
-      })
-      .then((wsUrl) => {
-        webSocketUrl = wsUrl;
-      })
-      .then(() => this.webex.internal.feature.getFeature('developer', 'web-shared-mercury'))
-      .then((webSharedMercury) => {
-        if (!webSocketUrl) {
-          return '';
-        }
-        webSocketUrl = url.parse(webSocketUrl, true);
-        Object.assign(webSocketUrl.query, {
-          outboundWireFormat: 'text',
-          bufferStates: true,
-          aliasHttpStatus: true,
-        });
-
-        if (webSharedMercury) {
-          Object.assign(webSocketUrl.query, {
-            mercuryRegistrationStatus: true,
-            isRegistrationRefreshEnabled: true,
-          });
-          Reflect.deleteProperty(webSocketUrl.query, 'bufferStates');
-        }
-
-        if (get(this, 'webex.config.device.ephemeral', false)) {
-          webSocketUrl.query.multipleConnections = true;
-        }
-
-        webSocketUrl.query.clientTimestamp = Date.now();
-        delete webSocketUrl.search;
-
-        return url.format(webSocketUrl);
-      });
-    /* eslint-enable no-unreachable */
   },
 
   _attemptConnection(socketUrl, sessionId, callback, options = {}) {
