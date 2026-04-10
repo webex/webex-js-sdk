@@ -426,38 +426,32 @@ class Utils {
 
   /**
    * Resolve the target URL and extra body fields for a controls request,
-   * handling breakout session routing
-   *
-   * The authorizingLocusUrl mechanism on PATCH /loci/{lid}/controls is not supported
-   * for audio control updates (mute/unmute, muteOnEntry, disallowUnmute).
-   *
-   * Audio controls are not wired into the cross-locus GraphQL authorization path that
-   * other control types (raiseHand, viewParticipantList, admit, reactions, etc.) use.
-   * Specifically, the GraphQL authorization layer does not recognize audio as a control
-   * type eligible for remote locus authorization.
-   *
-   * This means authorizingLocusUrl is effectively ignored for audio controls and the
-   * server evaluates the request against the target locus only, where the host may not
-   * be currently joined.
-   *
-   * Audio control updates must be sent directly to the locus the user is currently in.
-   * If the host is in a breakout and wants to mute participants in that breakout, the
-   * request should target the breakout locus URL directly, not the main session locus
-   * with authorizingLocusUrl.
-   *
-   * Meeting-wide audio control actions (e.g., muting panelists across all breakouts
-   * from a single request) are not currently supported through this mechanism.
-   *
-   * Note: This is a pure computation function — it does not validate that locusUrl is
-   * defined. Callers (update, setControls) must guard against falsy locusUrl before
+   * handling breakout session routing. Note: This is a pure computation function.
+   * It does not validate that locusUrl is
+   * defined. Callers must guard against falsy locusUrl before
    * invoking this function.
-   *
-   * Note: Mixed audio and non-audio keys in a single body (e.g., {audio: {...},
+   * Mixed audio and non-audio keys in a single body (e.g., {audio: {...},
    * raiseHand: {...}}) are treated as non-audio and routed to mainLocusUrl with
    * authorizingLocusUrl. This means the audio portion would go through unsupported
    * cross-locus authorization. Callers must not produce mixed payloads — update()
    * sends each control scope as a separate request, and setControls() only handles
    * audio-related settings.
+   *
+   * The authorizingLocusUrl mechanism on PATCH /loci/{lid}/controls is not supported
+   * for audio control updates (mute/unmute, muteOnEntry, disallowUnmute).
+   * Audio controls are not wired into the cross-locus GraphQL authorization path that
+   * other control types (raiseHand, viewParticipantList, admit, reactions, etc.) use.
+   * Specifically, the GraphQL authorization layer does not recognize audio as a control
+   * type eligible for remote locus authorization.
+   * This means authorizingLocusUrl is effectively ignored for audio controls and the
+   * server evaluates the request against the target locus only, where the host may not
+   * be currently joined.
+   * Audio control updates must be sent directly to the locus the user is currently in.
+   * If the host is in a breakout and wants to mute participants in that breakout, the
+   * request should target the breakout locus URL directly, not the main session locus
+   * with authorizingLocusUrl.
+   * Meeting-wide audio control actions (e.g., muting panelists across all breakouts
+   * from a single request) are not currently supported through this mechanism.
    *
    * @param {object} options
    * @param {Record<string, any>} options.body - The request body.
