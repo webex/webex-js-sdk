@@ -33,6 +33,9 @@
     "fix:prettier": "prettier \"src/**/*.ts\" --write",
     "build:docs": "typedoc --out ../../docs/calling",
     "docs": "typedoc --emit none",
+    "test:e2e": "npx playwright test --config=playwright.config.ts",
+    "test:e2e:prod": "npx playwright test --config=playwright.config.ts --project='Calling SDK E2E - PROD'",
+    "test:e2e:int": "npx playwright test --config=playwright.config.ts --project='Calling SDK E2E - INT'",
     "deploy:npm": "yarn npm publish"
   },
   "dependencies": {
