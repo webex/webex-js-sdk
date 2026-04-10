@@ -155,7 +155,7 @@ export default class ControlsOptionsManager {
   public update(...controls: Array<ControlConfig>) {
     if (!this.locusUrl) {
       return Promise.reject(
-        new ParameterError('The locusUrl for this controls request must be defined.')
+        new ParameterError('The associated locusUrl for update() controls must be defined.')
       );
     }
 
@@ -205,7 +205,7 @@ export default class ControlsOptionsManager {
   }): Promise<any> {
     if (!this.locusUrl) {
       return Promise.reject(
-        new ParameterError('The associated locusUrl for this controls request must be defined.')
+        new ParameterError('The associated locusUrl for setControls() must be defined.')
       );
     }
 
