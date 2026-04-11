@@ -30,6 +30,10 @@ const determineConsultInitiator = (
   return undefined;
 };
 
+/**
+ * Derives recording state from backend callProcessingDetails.
+ * Returns empty object if backend doesn't provide recording flags.
+ */
 const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate => {
   const callProcessingDetails = taskData?.interaction?.callProcessingDetails;
 
@@ -81,6 +85,20 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
           ...deriveRecordingState(taskData),
         };
 
+        // Force recording controls for voice tasks when backend doesn't provide explicit state
+        // Voice calls always support recording, but backend may send empty callProcessingDetails
+        const isVoiceTask = taskData?.interaction?.mediaType === 'telephony';
+        if (isVoiceTask) {
+          // Always show controls for voice tasks
+          if (updates.recordingControlsAvailable === undefined) {
+            updates.recordingControlsAvailable = true;
+          }
+          // Default to recording active unless backend explicitly says otherwise
+          if (updates.recordingInProgress === undefined) {
+            updates.recordingInProgress = true;
+          }
+        }
+
         if (!context.consultInitiator) {
           const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
           const consultInitiator = determineConsultInitiator(taskData, selfAgentId);
@@ -98,6 +116,8 @@ export function createInitialContext(
   uiControlConfig: UIControlConfig,
   initialState: TaskState = TaskState.IDLE
 ): TaskContext {
+  // Voice tasks have recording controls available; digital tasks do not
+  const isVoiceTask = uiControlConfig.channelType === 'voice';
   const baseContext: TaskContext = {
     taskData: null,
     consultInitiator: false,
@@ -107,7 +127,7 @@ export function createInitialContext(
     consultDestinationType: null,
     consultDestinationAgentJoined: false,
     consultCallHeld: false,
-    recordingControlsAvailable: false,
+    recordingControlsAvailable: isVoiceTask,
     recordingInProgress: false,
     uiControlConfig,
     uiControls: getDefaultUIControls(),
