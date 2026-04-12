@@ -842,17 +842,19 @@ export const AIAssistantEventName = {
 export type AIAssistantEventName = Enum<typeof AIAssistantEventName>;
 
 export type TranscriptMessage = {
-  role: string;
   content: string;
+  conversationId: string;
+  isFinal: boolean;
+  languageCode: string;
   messageId: string;
+  orgId: string;
   publishTimestamp: number;
+  role: string;
+  trackingId: string;
+  utteranceId: string;
 };
 
 export type HistoricTranscriptsResponse = {
-  orgId: string;
   agentId: string;
-  conversationId: string | null;
-  interactionId: string;
-  source: string;
   data: TranscriptMessage[];
 };

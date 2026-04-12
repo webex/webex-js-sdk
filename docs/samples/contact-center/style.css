@@ -546,7 +546,31 @@ legend {
   border-radius: 10px;
   padding: 14px;
   border: 1px solid #e3e3e3;
-  max-width: 520px;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+#realtimeTranscriptsSection,
+#realtimeTranscriptsSection fieldset {
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff !important;
+}
+
+#realtimeTranscriptsSection fieldset,
+#realtimeTranscriptsSection .realtime-transcript-card,
+#realtimeTranscriptsSection .realtime-transcript-tabs,
+#realtimeTranscriptsSection .realtime-transcript-panel,
+#realtimeTranscriptsSection #live-transcript-panel,
+#realtimeTranscriptsSection #ivr-transcript-panel,
+#realtimeTranscriptsSection #realtime-transcripts-content,
+#realtimeTranscriptsSection #ivr-transcript-content,
+#realtimeTranscriptsSection .realtime-transcript-empty {
+  background-color: #fff !important;
+  background-image: none !important;
+  color: #222 !important;
+  box-shadow: none !important;
 }
 
 .realtime-transcript-header {
@@ -569,6 +593,7 @@ legend {
   padding: 0 2px;
   border-bottom: 1px solid #d8d8d8;
   margin-bottom: 10px;
+  background: transparent;
 }
 
 .realtime-transcript-tab {
@@ -579,19 +604,27 @@ legend {
   padding: 10px 0 8px;
   border-bottom: 3px solid transparent;
   border-radius: 0;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .realtime-transcript-tab.active {
   color: #111;
   border-bottom-color: #111;
+  background: transparent;
+  box-shadow: none;
 }
 
 .realtime-transcript-tab:focus {
   outline: none;
+  box-shadow: none;
 }
 
 .realtime-transcript-panel {
   display: none;
+  width: 100%;
+  background: transparent;
 }
 
 .realtime-transcript-panel.active {
@@ -601,7 +634,14 @@ legend {
 .realtime-transcript-list {
   max-height: 410px;
   overflow-y: auto;
-  padding-right: 6px;
+  overflow-x: hidden;
+  padding: 8px 6px 8px 0;
+  width: 100%;
+  min-height: 120px;
+  background: transparent;
+  box-shadow: none;
+  box-sizing: border-box;
+  border-radius: 8px;
 }
 
 .realtime-transcript-list::-webkit-scrollbar {
@@ -621,6 +661,8 @@ legend {
 .realtime-transcript-empty {
   color: #666;
   font-size: 14px;
+  background: transparent;
+  padding: 8px 0;
 }
 
 .realtime-transcript-system {

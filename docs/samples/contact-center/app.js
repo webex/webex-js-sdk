@@ -102,6 +102,7 @@ function changeEnv() {
 const liveTranscriptEntries = [];
 const MAX_TRANSCRIPT_LINES = 200;
 let activeTranscriptConversationId = null;
+const registeredTaskListeners = new WeakSet();
 
 function setTranscriptTab(tabName) {
   const isIvrTab = tabName === 'ivr';
@@ -153,9 +154,10 @@ function normalizeTranscriptPayload(payload) {
   const rawSpeaker = source.speaker || source.speakerType || source.participantType || source.role || source.source || '';
   const speakerLower = String(rawSpeaker).toLowerCase();
   const isSystem = speakerLower.includes('tombstone') || speakerLower.includes('system') || speakerLower.includes('event');
-  const isCustomer = speakerLower.includes('customer');
+  const isCaller = speakerLower.includes('caller') || speakerLower.includes('customer');
+  const isAgent = speakerLower.includes('agent');
 
-  const speaker = isSystem ? 'Tombstone' : isCustomer ? 'Customer' : 'You';
+  const speaker = isSystem ? 'Tombstone' : isCaller ? 'Caller' : isAgent ? 'Agent' : 'Unknown';
   const timestamp = source.timestamp || source.createdTime || source.time || source.receivedAt;
 
   return {
@@ -164,6 +166,7 @@ function normalizeTranscriptPayload(payload) {
     text: transcriptText,
     timeLabel: formatTranscriptTimestamp(timestamp),
     conversationId: source.conversationId || source.interactionId || null,
+    messageId: source.messageId || null,
   };
 }
 
@@ -194,8 +197,8 @@ function renderLiveTranscripts() {
     row.className = 'realtime-transcript-event';
 
     const avatar = document.createElement('div');
-    avatar.className = `realtime-transcript-avatar ${entry.speaker === 'You' ? 'you' : ''}`.trim();
-    avatar.textContent = entry.speaker === 'Customer' ? 'CU' : 'YO';
+    avatar.className = `realtime-transcript-avatar ${entry.speaker === 'Agent' ? 'you' : ''}`.trim();
+    avatar.textContent = entry.speaker === 'Caller' ? 'CA' : entry.speaker === 'Agent' ? 'AG' : 'UN';
 
     const content = document.createElement('div');
     const meta = document.createElement('div');
@@ -246,7 +249,21 @@ function appendRealtimeTranscript(payload) {
     activeTranscriptConversationId = entry.conversationId;
   }
 
-  liveTranscriptEntries.push(entry);
+  const existingEntryIndex = entry.messageId
+    ? liveTranscriptEntries.findIndex(
+        (liveEntry) =>
+          liveEntry.messageId &&
+          liveEntry.messageId === entry.messageId &&
+          liveEntry.conversationId === entry.conversationId
+      )
+    : -1;
+
+  if (existingEntryIndex >= 0) {
+    liveTranscriptEntries.splice(existingEntryIndex, 1, entry);
+  } else {
+    liveTranscriptEntries.push(entry);
+  }
+
   if (liveTranscriptEntries.length > MAX_TRANSCRIPT_LINES) {
     liveTranscriptEntries.shift();
   }
@@ -1235,6 +1252,12 @@ function isInteractionOnHold(task) {
 
 // Register task listeners
 function registerTaskListeners(task) {
+  if (!task || registeredTaskListeners.has(task)) {
+    return;
+  }
+
+  registeredTaskListeners.add(task);
+
   task.on('REAL_TIME_TRANSCRIPTION', (payload) => {
     appendRealtimeTranscript(payload);
   });
@@ -1810,7 +1833,7 @@ function register() {
           console.log('Incoming task received: ', task);
           updateTaskList();
           taskId = task.data.interactionId;
-          registerTaskListeners(currentTask);
+          registerTaskListeners(task);
         });
 
     webex.cc.on('task:hydrate', (currentTask) => {

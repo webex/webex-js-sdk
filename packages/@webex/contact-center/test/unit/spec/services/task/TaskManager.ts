@@ -200,7 +200,7 @@ describe('TaskManager', () => {
     expect(mockApiAIAssistant.sendEvent).not.toHaveBeenCalled();
   });
 
-  it('should emit REAL_TIME_TRANSCRIPTION from task object', () => {
+  it('should buffer REAL_TIME_TRANSCRIPTION from task object until isFinal is true', () => {
     const task = taskManager.getTask(taskId);
     const taskEmitSpy = jest.spyOn(task, 'emit');
     const realtimePayload = {
@@ -208,35 +208,98 @@ describe('TaskManager', () => {
         ...taskDataMock,
         type: CC_EVENTS.REAL_TIME_TRANSCRIPTION,
         data: {
+          messageId: 'msg-1',
+          role: 'AGENT',
           content: 'hello from transcript',
+          conversationId: taskId,
+          isFinal: false,
         },
       },
     };
 
     webSocketManagerMock.emit('message', JSON.stringify(realtimePayload));
 
-    expect(taskEmitSpy).toHaveBeenCalledWith(
-      CC_EVENTS.REAL_TIME_TRANSCRIPTION,
-      realtimePayload.data
-    );
+    expect(taskEmitSpy).not.toHaveBeenCalled();
   });
 
-  it('should emit REAL_TIME_TRANSCRIPTION from RTD websocket payload on task object', () => {
+  it('should buffer REAL_TIME_TRANSCRIPTION from RTD websocket payload until isFinal is true', () => {
     const task = taskManager.getTask(taskId);
     const taskEmitSpy = jest.spyOn(task, 'emit');
     const realtimePayload = {
+      notifType: CC_EVENTS.REAL_TIME_TRANSCRIPTION,
       data: {
-        notifType: CC_EVENTS.REAL_TIME_TRANSCRIPTION,
-        data: {
-          conversationId: taskId,
-          content: 'hello from rtd websocket',
-        },
+        conversationId: taskId,
+        messageId: 'msg-1',
+        role: 'CUSTOMER',
+        content: 'hello from rtd websocket',
+        isFinal: false,
       },
     };
 
     taskManager.handleRealtimeWebsocketEvent(JSON.stringify(realtimePayload));
 
-    expect(taskEmitSpy).toHaveBeenCalledWith(CC_EVENTS.REAL_TIME_TRANSCRIPTION, realtimePayload.data);
+    expect(taskEmitSpy).not.toHaveBeenCalled();
+  });
+
+  it('should emit REAL_TIME_TRANSCRIPTION only when final content is received for the same messageId', () => {
+    const task = taskManager.getTask(taskId);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const firstRealtimePayload = {
+      notifType: CC_EVENTS.REAL_TIME_TRANSCRIPTION,
+      data: {
+        conversationId: taskId,
+        messageId: 'msg-merge-1',
+        role: 'CUSTOMER',
+        content: 'hello',
+        isFinal: false,
+      },
+    };
+    const secondRealtimePayload = {
+      notifType: CC_EVENTS.REAL_TIME_TRANSCRIPTION,
+      data: {
+        conversationId: taskId,
+        messageId: 'msg-merge-1',
+        role: 'CUSTOMER',
+        content: 'hello world',
+        isFinal: true,
+      },
+    };
+
+    taskManager.handleRealtimeWebsocketEvent(JSON.stringify(firstRealtimePayload));
+    taskManager.handleRealtimeWebsocketEvent(JSON.stringify(secondRealtimePayload));
+
+    expect(taskEmitSpy).toHaveBeenCalledTimes(1);
+    expect(taskEmitSpy).toHaveBeenNthCalledWith(
+      1,
+      CC_EVENTS.REAL_TIME_TRANSCRIPTION,
+      {
+        notifType: CC_EVENTS.REAL_TIME_TRANSCRIPTION,
+        data: secondRealtimePayload.data,
+      }
+    );
+  });
+
+  it('should not emit non-final REAL_TIME_TRANSCRIPTION on task cleanup', () => {
+    const task = taskManager.getTask(taskId);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const realtimePayload = {
+      notifType: CC_EVENTS.REAL_TIME_TRANSCRIPTION,
+      data: {
+        conversationId: taskId,
+        messageId: 'msg-cleanup-1',
+        role: 'CUSTOMER',
+        content: 'final buffered sentence',
+        isFinal: false,
+      },
+    };
+
+    taskManager.handleRealtimeWebsocketEvent(JSON.stringify(realtimePayload));
+    taskManager['removeTaskFromCollection'](task);
+
+    expect(taskEmitSpy).not.toHaveBeenCalledWith(CC_EVENTS.REAL_TIME_TRANSCRIPTION, {
+      notifType: CC_EVENTS.REAL_TIME_TRANSCRIPTION,
+      data: realtimePayload.data,
+    });
   });
 
   it('should not re-emit agent related events', () => {
