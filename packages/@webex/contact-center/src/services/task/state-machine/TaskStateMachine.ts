@@ -162,16 +162,13 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
           },
+          // ContactEnded (customer can end call before connect or via agent softphone decline)
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
           },
-          [TaskEvent.CONTACT_ENDED]: {
-            target: TaskState.TERMINATED,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
-          },
           // This needs to be handled for all assign failed scenarios (contact, buddy)
-          // [AgentContactAssignFailed, AgentCtqFailed, AgentBlindTransferFailed,
+          // [AgentContactAssignFailed, AgentConsultFailed, AgentCtqFailed, AgentBlindTransferFailed,
           //  AgentVTeamTransferFailed, AgentConsultTransferFailed]
           [TaskEvent.ASSIGN_FAILED]: {
             target: TaskState.TERMINATED,
@@ -207,12 +204,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // agentOfferConsult happens only on the receiver side of consult
           [TaskEvent.OFFER_CONSULT]: {
             actions: ['updateTaskData', 'emitTaskOfferConsult', 'requestAutoAnswer'],
-          },
-          // AgentConsultFailed - when consulted agent (Agent 2) doesn't answer (RONA or decline)
-          // Clears the incoming consult notification by transitioning to TERMINATED
-          [TaskEvent.CONSULT_FAILED]: {
-            target: TaskState.TERMINATED,
-            actions: ['updateTaskData', 'clearConsultState', 'emitTaskReject'],
           },
         },
       },
