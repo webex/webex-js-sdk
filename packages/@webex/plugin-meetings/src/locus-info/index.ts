@@ -103,7 +103,7 @@ export type HashTreeParserEntry = {
  */
 function getReplaceInfoFromSelf(self: any, deviceUrl: string): ReplacesInfo | undefined {
   if (self) {
-    const device = MeetingsUtil.getThisDevice({self}, deviceUrl);
+    const device = MeetingsUtil.getThisDevice({self}, self?.deviceUrl);
 
     if (device?.replaces?.length > 0) {
       return device.replaces[0];

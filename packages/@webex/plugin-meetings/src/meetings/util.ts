@@ -294,7 +294,10 @@ MeetingsUtil.joinedOnThisDevice = (meeting: any, newLocus: any, deviceUrl: strin
  * @private
  */
 MeetingsUtil.isBreakoutLocusDTO = (newLocus: any) => {
-  return newLocus?.controls?.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT;
+  return (
+    newLocus?.controls?.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT ||
+    !!newLocus?.info?.isBreakout
+  );
 };
 
 /**

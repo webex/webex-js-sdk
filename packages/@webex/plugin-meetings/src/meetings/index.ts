@@ -69,6 +69,7 @@ import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {HashTreeMessage} from '../hashTree/hashTreeParser';
 import {HashTreeObject} from '../hashTree/types';
 import {isSelf} from '../hashTree/utils';
+
 import {createLocusFromHashTreeMessage, findMeetingForHashTreeMessage} from '../locus-info';
 
 let mediaLogger;
@@ -1898,8 +1899,8 @@ export default class Meetings extends WebexPlugin {
 
     return this.request
       .getActiveMeetings()
-      .then((locusArray) => {
-        const activeLocusUrl = [];
+      .then((locusArray: any) => {
+        const activeLocusUrl: string[] = [];
 
         if (locusArray?.loci && locusArray.loci.length > 0) {
           const lociToUpdate = this.sortLocusArrayToUpdate(locusArray.loci);
@@ -1950,9 +1951,18 @@ export default class Meetings extends WebexPlugin {
     this.breakoutLocusForHandleLater = [];
     const lociToUpdate = [...mainLoci];
     breakoutLoci.forEach((breakoutLocus) => {
-      const associateMainLocus = mainLoci.find(
-        (mainLocus) => mainLocus.controls?.breakout?.url === breakoutLocus.controls?.breakout?.url
-      );
+      const associateMainLocus = mainLoci.find((mainLocus) => {
+        if (mainLocus.controls?.breakout?.url === breakoutLocus.controls?.breakout?.url) {
+          return true;
+        }
+        const deviceUrl = breakoutLocus?.self?.deviceUrl;
+        const replaceInfo = MeetingsUtil.getThisDevice(breakoutLocus, deviceUrl)?.replaces?.[0];
+        if (replaceInfo?.locusUrl === mainLocus.url) {
+          return true;
+        }
+
+        return false;
+      });
       const existCorrespondingMeeting = this.getCorrespondingMeetingByLocus({
         eventType: LOCUSEVENT.SDK_NO_EVENT,
         locus: breakoutLocus,

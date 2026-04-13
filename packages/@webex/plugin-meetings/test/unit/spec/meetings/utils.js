@@ -128,6 +128,38 @@ describe('plugin-meetings', () => {
         };
         assert.equal(MeetingsUtil.isBreakoutLocusDTO(newLocus), false);
       });
+
+      it('returns true if newLocus.info.isBreakout is true', () => {
+        const newLocus = {
+          info: {
+            isBreakout: true,
+          },
+        };
+        assert.equal(MeetingsUtil.isBreakoutLocusDTO(newLocus), true);
+      });
+
+      it('returns false if newLocus.info.isBreakout is false', () => {
+        const newLocus = {
+          info: {
+            isBreakout: false,
+          },
+        };
+        assert.equal(MeetingsUtil.isBreakoutLocusDTO(newLocus), false);
+      });
+
+      it('returns true if both sessionType is BREAKOUT and info.isBreakout is true', () => {
+        const newLocus = {
+          controls: {
+            breakout: {
+              sessionType: 'BREAKOUT',
+            },
+          },
+          info: {
+            isBreakout: true,
+          },
+        };
+        assert.equal(MeetingsUtil.isBreakoutLocusDTO(newLocus), true);
+      });
     });
 
     describe('#joinedOnThisDevice', () => {
