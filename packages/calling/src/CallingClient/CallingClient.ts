@@ -63,6 +63,7 @@ import {
 } from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
 import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
+import {APIRequest} from './utils/request';
 
 /**
  * The `CallingClient` module provides a set of APIs for line registration and calling functionalities within the SDK.
@@ -99,6 +100,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   public mediaEngine: typeof Media;
 
   private lineDict: Record<string, ILine> = {};
+
+  private apiRequest: APIRequest;
 
   private isNetworkDown = false;
 
@@ -156,6 +159,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.backupMobiusUris = [];
     this.mobiusClusters = this.webex.internal.services.getMobiusClusters();
     this.mobiusHost = '';
+
+    this.apiRequest = APIRequest.getInstance({webex: this.webex});
 
     this.registerSessionsListener();
 
@@ -744,8 +749,9 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         userid
       )}`;
       try {
+        // TODO: Add Mobius Socket support
         // eslint-disable-next-line no-await-in-loop
-        const response = <WebexRequestPayload>await this.webex.request({
+        const response = (await this.apiRequest.makeRequest({
           uri,
           method: HTTP_METHODS.GET,
           service: ALLOWED_SERVICES.MOBIUS,
@@ -753,7 +759,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
             [CISCO_DEVICE_URL]: this.webex.internal.device.url,
             [SPARK_USER_AGENT]: CALLING_USER_AGENT,
           },
-        });
+        })) as WebexRequestPayload;
 
         if (response.statusCode !== 200) {
           throw new Error(`API call failed with ${response.statusCode}`);

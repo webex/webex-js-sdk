@@ -39,6 +39,7 @@ import {LINE_EVENTS} from '../line/types';
 import {createLineError} from '../../Errors/catalog/LineError';
 import {IRegistration} from './types';
 import {METRIC_EVENT, REG_ACTION, METRIC_TYPE} from '../../Metrics/types';
+import {APIRequest} from '../utils/request';
 
 const webex = getTestUtilsWebex();
 const MockServiceData = {
@@ -158,6 +159,7 @@ describe('Registration Tests', () => {
   };
 
   beforeEach(() => {
+    APIRequest.resetInstance();
     setupRegistration(MockServiceData);
   });
 
@@ -258,25 +260,29 @@ describe('Registration Tests', () => {
       })
       .mockResolvedValueOnce({
         statusCode: 200,
+        body: mockDeleteResponse,
+      })
+      .mockResolvedValueOnce({
+        statusCode: 200,
         body: mockPostResponse,
         headers: {
           trackingid: 'webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15',
         },
       });
 
-    global.fetch = jest.fn(() => Promise.resolve({json: () => mockDeleteResponse})) as jest.Mock;
-
     expect(reg.getStatus()).toEqual(RegistrationStatus.IDLE);
     await reg.triggerRegistration();
-    expect(webex.request).toBeCalledTimes(2);
+    expect(webex.request).toBeCalledTimes(3);
     expect(webex.request).toBeCalledWith({
       ...mockResponse,
       method: 'POST',
     });
-    expect(global.fetch).toBeCalledOnceWith(mockPostResponse.device.uri, {
-      method: 'DELETE',
-      headers: expect.anything(),
-    });
+    expect(webex.request).toBeCalledWith(
+      expect.objectContaining({
+        uri: mockPostResponse.device.uri,
+        method: 'DELETE',
+      })
+    );
 
     expect(warnSpy).toBeCalledWith('User device limit exceeded', expect.anything());
     expect(infoSpy).toBeCalledWith('Registration restoration in progress.', expect.anything());

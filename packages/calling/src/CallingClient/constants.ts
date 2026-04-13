@@ -69,6 +69,7 @@ export const CALL_FILE = 'call';
 export const CALL_MANAGER_FILE = 'callManager';
 export const METRIC_FILE = 'metric';
 export const REGISTRATION_FILE = 'register';
+export const REQUEST_FILE = 'REQUEST';
 export const CODEC_ID = 'codecId';
 export const MEDIA_ID = 'id';
 export const RTC_ICE_CANDIDATE_PAIR = 'RTCIceCandidatePair_';
