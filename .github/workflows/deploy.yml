@@ -439,7 +439,7 @@ jobs:
               const primaryPackage = packageVersions['webex']
                 ? 'webex' : packageEntries[0][0];
               const primaryVersion = packageVersions[primaryPackage];
-              core.setOutput('primary_version', `v${primaryVersion}`);
+              core.setOutput('primary_version', `${primaryPackage}@${primaryVersion}`);
               const stableVersion = primaryVersion.replace(/-next\..*/, '').replace(/-[a-z]*\..*/, '');
 
               const cnameFile = await github.rest.repos.getContent({ owner, repo, path: 'docs/CNAME' });
