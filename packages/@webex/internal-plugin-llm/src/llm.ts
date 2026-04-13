@@ -5,6 +5,7 @@ import Mercury from '@webex/internal-plugin-mercury';
 // eslint-disable-next-line no-unused-vars
 import {
   LLM,
+  WEB_DATA_CHANNEL_WITH_JWT_TOKEN,
   DATA_CHANNEL_WITH_JWT_TOKEN,
   AWARE_DATA_CHANNEL,
   SUBSCRIPTION_AWARE_SUBCHANNELS_PARAM,
@@ -313,8 +314,18 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @returns {Promise<boolean>} resolves with true if data channel token  is enabled
    */
   public isDataChannelTokenEnabled(): Promise<boolean> {
-    // @ts-ignore
-    return this.webex.internal.feature.getFeature('developer', DATA_CHANNEL_WITH_JWT_TOKEN);
+    const getToggleValue = (featureKey: string): Promise<boolean> =>
+      this.webex.internal.feature
+        .getFeature('developer', featureKey)
+        .then((value: boolean) => Boolean(value))
+        .catch(() => false);
+
+    return Promise.all([
+      getToggleValue(WEB_DATA_CHANNEL_WITH_JWT_TOKEN),
+      getToggleValue(DATA_CHANNEL_WITH_JWT_TOKEN),
+    ]).then(([isWebToggleEnabled, isLegacyToggleEnabled]) => {
+      return isWebToggleEnabled || isLegacyToggleEnabled;
+    });
   }
 
   /**

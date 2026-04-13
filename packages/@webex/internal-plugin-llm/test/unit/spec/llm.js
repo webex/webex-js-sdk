@@ -325,16 +325,31 @@ describe('plugin-llm', () => {
     });
 
     describe('#isDataChannelTokenEnabled', () => {
-      it('works correctly', async () => {
-        webex.internal.feature.getFeature.returns(true);
+      it('returns true when web-prefixed toggle is enabled', async () => {
+        webex.internal.feature.getFeature.onFirstCall().resolves(true);
+        webex.internal.feature.getFeature.onSecondCall().resolves(false);
 
         const result = await llmService.isDataChannelTokenEnabled();
 
-        sinon.assert.calledOnceWithExactly(
+        sinon.assert.calledWithExactly(
+          webex.internal.feature.getFeature,
+          'developer',
+          'web-data-channel-with-jwt-token'
+        );
+        sinon.assert.calledWithExactly(
           webex.internal.feature.getFeature,
           'developer',
           'data-channel-with-jwt-token'
         );
+
+        assert.equal(result, true);
+      });
+
+      it('returns true when legacy toggle is enabled', async () => {
+        webex.internal.feature.getFeature.onFirstCall().resolves(false);
+        webex.internal.feature.getFeature.onSecondCall().resolves(true);
+
+        const result = await llmService.isDataChannelTokenEnabled();
 
         assert.equal(result, true);
       });
