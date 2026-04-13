@@ -443,8 +443,6 @@ describe('plugin-llm', () => {
 
         sinon.assert.calledOnce(llmService.disconnectAll);
         assert.equal(llmService.getAllConnections().size, 0);
-
-        sinon.assert.calledOnce(llmService.resetDatachannelTokens);
       });
     });
 

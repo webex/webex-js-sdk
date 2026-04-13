@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css"
       integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous" />
     <link rel="stylesheet" href="assets/css/app.css">
-    
+
     <link rel="canonical" href="https://webex.github.io/webex-js-sdk/changelog/" />
   </head>
 
@@ -78,15 +78,6 @@
 
             <!-- Comparison Form (Hidden by default) -->
             <form id="comparison-form" class="hide" method="GET">
-              <!-- Package Selection Row (first, required) -->
-              <div class="form-row" id="comparison-package-row">
-                <div class="form-group">
-                  <label for="comparison-package-select">Select Package <span class="required-asterisk">*</span></label>
-                  <select id="comparison-package-select" class="full-width" required>
-                    <option value="">Select a Package</option>
-                  </select>
-                </div>
-              </div>
 
               <div class="form-row">
                 <div class="form-group">
@@ -95,7 +86,6 @@
                     <select id="version-a-select" class="full-width" required disabled>
                       <option value="">Select base version</option>
                     </select>
-                    <button type="button" id="clear-version-a-btn" class="btn btn-clear-circle" title="Clear base version" aria-label="Clear base version"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                   </div>
                 </div>
                 <div class="form-group">
@@ -104,11 +94,18 @@
                     <select id="version-b-select" class="full-width" required disabled>
                       <option value="">Select target version</option>
                     </select>
-                    <button type="button" id="clear-version-b-btn" class="btn btn-clear-circle" title="Clear target version" aria-label="Clear target version"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
                   </div>
                 </div>
               </div>
-              
+               <div class="form-row" id="comparison-package-row" style="display: none;">
+                <div class="form-group">
+                  <label for="comparison-package-select">Select Package</label>
+                  <select id="comparison-package-select" class="full-width" >
+                    <option value="">Select a Package</option>
+                  </select>
+                </div>
+              </div>
+
               <!-- NEW: Pre-release Version Selection Row -->
               <div class="form-row" id="comparison-prerelease-row">
                 <div class="form-group">
@@ -128,20 +125,20 @@
                   </select>
                 </div>
               </div>
-              
+
               <div class="form-row">
                 <div class="form-group">
                   <button type="submit" id="compare-button" class="btn btn-primary">Compare Versions</button>
                   <button type="button" id="clear-comparison-button" class="btn btn-default">Clear</button>
-                  <button type="button" id="copy-comparison-link" class="btn btn-info hide" title="Copy shareable link to clipboard" onclick="copyComparisonLink()">
-                     📋 Copy Permalink & share link
+                  <button type="button" id="copy-comparison-link" class="btn btn-info hide" title="Copy shareable link to clipboard" >
+                     📋 Copy Permalink
                   </button>
                 </div>
               </div>
               <!-- Comparison Helper Text -->
               <div class="comparison-helper hide" id="comparison-helper">
                 <p class="comparison-helper-tip">
-                  <strong>💡 Tip:</strong> After comparing, you can share the URL from your browser's address bar, or use the "Copy Permalink & share link" button above. 
+                  <strong>💡 Tip:</strong> After comparing, you can share the URL from your browser's address bar, or use the "Copy Permalink" button above.
                   Anyone with the link will see the same comparison!
                 </p>
               </div>
@@ -209,7 +206,7 @@
               <ul><li><a href="https://app.vidcast.io/share/072f82d1-3735-4a13-8c74-1ece59723ff3" target="_blank">Watch the vidcast here</a></li></ul>
           </div>
         </div>
-      </div> 
+      </div>
       <div class="container">
         <div class="col-md-12">
           <div class="results-container" id="search-results">
@@ -290,12 +287,51 @@
           <span class="stat-item unchanged">Unchanged: <strong>{{unchangedCount}}</strong></span>
           <span class="stat-item added">Added in {{versionB}}: <strong>{{onlyInBCount}}</strong></span>
           <span class="stat-item removed">Removed in {{versionB}}: <strong>{{onlyInACount}}</strong></span>
+          {{#if packageName}}<span class="stat-item commits">Commits: <strong>{{commitsBetweenCount}}</strong></span>{{/if}}
         </div>
       </div>
 
-      <!-- Package Comparison Table (Now First) -->
-      <div class="table-wrapper">
-        <h4 class="comparison-package-versions-heading">📦 Package Versions</h4>
+      <!-- Commit History: package-level comparison -->
+      {{#if packageName}}
+      <div class="commit-history-section" style="margin-top: 24px;">
+        <h4>Commit History &mdash; <strong>{{packageName}}</strong> &nbsp;
+          <span style="font-weight:normal; font-size:0.9em;">({{versionA}} &rarr; {{versionB}})</span>
+        </h4>
+        <p style="font-size:0.88em; color:#666; margin:4px 0 12px;">
+          {{commitsBetweenCount}} commit(s) collected across
+          {{stableVersionsTraversed.length}} stable version log file(s):
+          <strong>{{#each stableVersionsTraversed}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}</strong>
+        </p>
+
+        {{#if hasCommitsBetween}}
+        <div class="table-wrapper">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th style="width:100px;">Hash</th>
+                <th>Commit Message</th>
+                <th style="width:155px;">Version</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each commitsBetween}}
+              <tr>
+                <td><code><a href="{{this.url}}" target="_blank">{{this.shortHash}}</a></code></td>
+                <td>{{{github_linking this.message 'message'}}}</td>
+                <td><small>{{this.version}}</small></td>
+              </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+        {{else}}
+        <p style="color:#888; font-style:italic;">No commits found between these versions.</p>
+        {{/if}}
+      </div>
+      {{/if}}
+      <!-- Package Comparison Table -->
+      <div class="table-wrapper" style="margin-top:28px;">
+        <h4>📦 Package Versions</h4>
         <table class="comparison-table">
           <thead>
             <tr>
