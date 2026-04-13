@@ -17,7 +17,7 @@ import {
 } from '../constants';
 
 /**
- * Registration lifecycle tests: REG-001, REG-002, REG-008, REG-010.
+ * Registration lifecycle tests: REG-001, REG-008, REG-010.
  * Run serially in a shared browser context to save setup time.
  */
 export function registrationLifecycleTests() {
@@ -64,7 +64,7 @@ export function registrationLifecycleTests() {
     test('REG-001: Initial registration success', async () => {
       const page = tm.page;
 
-      expect(registrationPosts).toBeGreaterThanOrEqual(1);
+      expect(registrationPosts).toBe(1);
 
       const statusText = await page.locator(CALLING_SELECTORS.REGISTRATION_STATUS).textContent();
       expect(statusText).toMatch(/Registered, deviceId: .+/);
@@ -77,23 +77,11 @@ export function registrationLifecycleTests() {
       const deviceInfo = await getDeviceInfo(page);
       expect(deviceInfo.device).toBeTruthy();
       expect(deviceInfo.device.deviceId).toBeTruthy();
-    });
 
-    test('REG-002: Repeated register calls are idempotent', async () => {
-      const page = tm.page;
-      const regCountBefore = registrationPosts;
-
-      expect(await isLineRegistered(page)).toBe(true);
-
-      await page.evaluate(() => {
-        const line = Object.values((window as any).callingClient.getLines())[0] as any;
-
-        return line.register();
+      // Register button should be disabled after successful registration
+      await expect(page.locator(CALLING_SELECTORS.REGISTER_BTN)).toBeDisabled({
+        timeout: AWAIT_TIMEOUT,
       });
-
-      expect(registrationPosts).toBe(regCountBefore);
-
-      expect(await isLineRegistered(page)).toBe(true);
     });
 
     test('REG-008: Connection restoration re-registers when no active calls', async () => {

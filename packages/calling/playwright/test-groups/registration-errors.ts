@@ -4,8 +4,8 @@ import {isLineRegistered} from '../utils/registration';
 import {CALLING_SELECTORS, AWAIT_TIMEOUT, SDK_INIT_TIMEOUT} from '../constants';
 
 /**
- * Registration error/edge-case tests: REG-011, REG-012, REG-013.
- * No valid account needed — these test invalid/missing tokens.
+ * Registration error tests: REG-011.
+ * No valid account needed — tests invalid token registration.
  */
 export function registrationErrorTests() {
   test.describe('Registration Error Cases', () => {
@@ -55,36 +55,6 @@ export function registrationErrorTests() {
 
       const status = await page.locator(CALLING_SELECTORS.REGISTRATION_STATUS).textContent();
       expect(status).not.toMatch(/Registered, deviceId:/);
-    });
-
-    test('REG-012: SDK init fails with empty token', async ({page}) => {
-      await navigateToCallingApp(page);
-      await setServiceIndicator(page, 'calling');
-
-      await page.locator(CALLING_SELECTORS.INITIALIZE_CALLING_BTN).click({timeout: AWAIT_TIMEOUT});
-
-      await page.waitForTimeout(10000);
-
-      const hasCallingClient = await page.evaluate(() => !!(window as any).callingClient);
-      expect(hasCallingClient).toBe(false);
-
-      await expect(page.locator(CALLING_SELECTORS.REGISTER_BTN)).toBeDisabled({
-        timeout: AWAIT_TIMEOUT,
-      });
-    });
-
-    test('REG-013: Registration not possible before SDK init', async ({page}) => {
-      await navigateToCallingApp(page);
-
-      const hasCallingClient = await page.evaluate(() => !!(window as any).callingClient);
-      expect(hasCallingClient).toBe(false);
-
-      await expect(page.locator(CALLING_SELECTORS.REGISTER_BTN)).toBeDisabled({
-        timeout: AWAIT_TIMEOUT,
-      });
-      await expect(page.locator(CALLING_SELECTORS.UNREGISTER_BTN)).toBeDisabled({
-        timeout: AWAIT_TIMEOUT,
-      });
     });
   });
 }

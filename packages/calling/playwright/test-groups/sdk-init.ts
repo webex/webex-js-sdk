@@ -22,7 +22,8 @@ import {
 } from '../constants';
 
 /**
- * SDK initialization tests: Normal Calling, Contact Center, Guest Calling, Region/Country.
+ * SDK initialization tests: Normal Calling, Contact Center, Guest Calling, Region/Country,
+ * and negative cases (registration blocked without valid init).
  * All tests use a single account from the owning set.
  */
 export function sdkInitTests() {
@@ -85,6 +86,14 @@ export function sdkInitTests() {
       await setCountry(page, COUNTRY);
       await setRegion(page, REGION);
 
+      // Track any region discovery requests — there should be none when region is explicit
+      const regionDiscoveryRequests: string[] = [];
+      page.on('request', (request) => {
+        if (request.url().includes('/v1/region')) {
+          regionDiscoveryRequests.push(request.url());
+        }
+      });
+
       const mobiusDiscoveryRequest = waitForMobiusDiscoveryRequest(page, {
         region: REGION,
         country: COUNTRY,
@@ -93,6 +102,9 @@ export function sdkInitTests() {
       await initializeCallingSDK(page, getToken(role, isInt));
       await verifySDKInitialized(page);
 
+      // Verify no region discovery was performed (explicit region bypasses it)
+      expect(regionDiscoveryRequests).toHaveLength(0);
+
       await expect(mobiusDiscoveryRequest).resolves.toContain(
         `regionCode=${encodeURIComponent(REGION)}`
       );
@@ -100,6 +112,29 @@ export function sdkInitTests() {
         `countryCode=${encodeURIComponent(COUNTRY)}`
       );
       await verifyMobiusServersDiscovered(page);
+    });
+
+    test('SDK init - registration blocked without valid initialization', async ({page}) => {
+      await navigateToCallingApp(page);
+
+      // Before any init attempt: no client, buttons disabled
+      expect(await page.evaluate(() => !!(window as any).callingClient)).toBe(false);
+      await expect(page.locator(CALLING_SELECTORS.REGISTER_BTN)).toBeDisabled({
+        timeout: AWAIT_TIMEOUT,
+      });
+      await expect(page.locator(CALLING_SELECTORS.UNREGISTER_BTN)).toBeDisabled({
+        timeout: AWAIT_TIMEOUT,
+      });
+
+      // Attempt init with empty token — should not create a client
+      await setServiceIndicator(page, 'calling');
+      await page.locator(CALLING_SELECTORS.INITIALIZE_CALLING_BTN).click({timeout: AWAIT_TIMEOUT});
+      await page.waitForTimeout(10000);
+
+      expect(await page.evaluate(() => !!(window as any).callingClient)).toBe(false);
+      await expect(page.locator(CALLING_SELECTORS.REGISTER_BTN)).toBeDisabled({
+        timeout: AWAIT_TIMEOUT,
+      });
     });
   });
 }
