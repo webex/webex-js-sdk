@@ -158,7 +158,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
             `DataChannelAuthTokenInterceptor: retry after refresh failed: ${e?.message || e}`
           );
 
-          reject(reason || e);
+          reject(e || reason);
         }
       }, RETRY_INTERVAL);
     });

@@ -180,7 +180,7 @@ describe('plugin-meetings', () => {
           expect(result).to.equal('mock-response');
         });
 
-        it('rejects with original reason when refreshDataChannelToken fails', async () => {
+        it('rejects with refresh error when refreshDataChannelToken fails', async () => {
           const reason = makeReason(401);
 
           interceptor._refreshDataChannelToken.rejects(new Error('refresh failed'));
@@ -189,11 +189,11 @@ describe('plugin-meetings', () => {
 
           clock.tick(2000);
 
-          await assert.isRejected(promise, reason);
+          await assert.isRejected(promise, /refresh failed/);
           sinon.assert.calledOnce(LoggerProxy.logger.warn);
         });
 
-        it('rejects with original reason when retry request fails', async () => {
+        it('rejects with retry request error when retry request fails', async () => {
           const reason = makeReason(401);
 
           interceptor._refreshDataChannelToken.resolves('new-token');
@@ -203,7 +203,7 @@ describe('plugin-meetings', () => {
 
           clock.tick(2000);
 
-          await assert.isRejected(promise, reason);
+          await assert.isRejected(promise, /request failed/);
           sinon.assert.calledOnce(LoggerProxy.logger.warn);
         });
       });
