@@ -2598,6 +2598,7 @@ export default class LocusInfo extends EventsScope {
           {
             muted: parsedSelves.current.remoteMuted,
             unmuteAllowed: parsedSelves.current.unmuteAllowed,
+            // Audio-specific: sourced from self.controls.audio.meta.modifiedBy via SelfUtils.getModifiedBy()
             modifiedBy: parsedSelves.current.modifiedBy ?? null,
           }
         );
