@@ -1922,9 +1922,16 @@ export default class Meetings extends WebexPlugin {
             // @ts-ignore
             const {locusUrl} = meeting;
             if ((keepOnlyLocusMeetings || locusUrl) && !activeLocusUrl.includes(locusUrl)) {
-              // destroy function also uploads logs
-              // @ts-ignore
-              this.destroy(meeting, MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC);
+              const mainLocusUrl = (meeting as Meeting).breakouts?.mainLocusUrl;
+              if (mainLocusUrl && activeLocusUrl.includes(mainLocusUrl)) {
+                // Don't destroy the meeting as it's associated with a breakout for a main session
+                // that's still returned in the sync.
+                // The user was probably moved between breakouts while being temporarily offline
+              } else {
+                // destroy function also uploads logs
+                // @ts-ignore
+                this.destroy(meeting, MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC);
+              }
             }
           }
         }

@@ -701,6 +701,7 @@ class HashTreeParser {
     const {dataSets, locus, metadata} = update;
 
     if (!dataSets) {
+      // this happens for example when we handle GET /loci response
       LoggerProxy.logger.info(
         `HashTreeParser#handleLocusUpdate --> ${this.debugId} received hash tree update without dataSets`
       );

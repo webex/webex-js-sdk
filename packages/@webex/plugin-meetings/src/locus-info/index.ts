@@ -683,7 +683,7 @@ export default class LocusInfo extends EventsScope {
    * @param {LocusApiResponseBody} responseBody body of the http response from Locus API call
    * @returns {void}
    */
-  handleLocusAPIResponse(meeting, responseBody: LocusApiResponseBody): void {
+  handleLocusAPIResponse(meeting: any, responseBody: LocusApiResponseBody): void {
     const isWrapped = 'locus' in responseBody;
     const locusUrl = isWrapped ? responseBody.locus?.url : responseBody.url;
     const hashTreeParserEntry = locusUrl && this.hashTreeParsers.get(locusUrl);
@@ -703,16 +703,28 @@ export default class LocusInfo extends EventsScope {
         // update the data in our hash trees
         hashTreeParserEntry.parser.handleLocusUpdate(responseBody);
       } else {
-        // LocusDTO without wrapper - pass it through as if it had no dataSets
+        // LocusDTO without wrapper - pass it through as if it had no dataSets nor metadata
         hashTreeParserEntry.parser.handleLocusUpdate({locus: responseBody});
       }
     } else {
+      if (this.hashTreeParsers.size > 0) {
+        // This could happen if we were moved to a breakout while being temporarily offline
+        // so we don't have the HashTreeParser for the new breakout created yet
+        // todo: confirm if this works
+        console.log(
+          `marcin: we are using hash trees but API response cannot find the hash tree parser for url ${locusUrl}`
+        );
+
+        return;
+      }
+
       if (isWrapped && responseBody.dataSets) {
         this.sendClassicVsHashTreeMismatchMetric(
           meeting,
           `unexpected hash tree dataSets in API response`
         );
       }
+
       // classic Locus delta
       const locus = isWrapped ? responseBody.locus : responseBody;
       this.handleLocusDelta(locus, meeting);
@@ -1216,11 +1228,17 @@ export default class LocusInfo extends EventsScope {
    */
   parse(meeting: any, data: any) {
     if (this.hashTreeParsers.size > 0) {
-      this.handleHashTreeMessage(
-        meeting,
-        data.eventType,
-        data.stateElementsMessage as HashTreeMessage
-      );
+      if (data.eventType === LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS) {
+        // sync meetings response follows the format of "not wrapped" locus API responses,
+        // so has no dataSets nor Metadata
+        this.handleLocusAPIResponse(meeting, {...data.locus});
+      } else {
+        this.handleHashTreeMessage(
+          meeting,
+          data.eventType,
+          data.stateElementsMessage as HashTreeMessage
+        );
+      }
     } else {
       const {eventType} = data;
 
