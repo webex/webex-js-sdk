@@ -36,6 +36,27 @@ describe('plugin-meetings', () => {
                 uri: `https://locus-test.webex.com/locus/api/v1/loci/call`,
                 body: 'foo'
                 };
+
+            const hashTreeOptions = {
+              method: 'GET',
+              headers: {
+                trackingid: 'test',
+                'retry-after': 1000,
+              },
+              uri: `https://locus-test.webex.com/locus/api/v1/loci/12345/session/abc/datasets/main/hashtree`,
+              body: undefined,
+            };
+
+            const syncOptions = {
+              method: 'POST',
+              headers: {
+                trackingid: 'test',
+                'retry-after': 1000,
+              },
+              uri: `https://locus-test.webex.com/locus/api/v1/loci/12345/session/abc/datasets/main/sync`,
+              body: 'foo',
+            };
+
             const reason1 = new WebexHttpError.MethodNotAllowed({
                 statusCode: 403,
                 options: {
@@ -68,14 +89,101 @@ describe('plugin-meetings', () => {
             });
 
             it('calls handleRetryRequestLocusServiceError with correct retry time when locus service unavailable error', () => {
-                interceptor.webex.request = sinon.stub().returns(Promise.resolve());
-                const handleRetryStub = sinon.stub(interceptor, 'handleRetryRequestLocusServiceError');
+              interceptor.webex.request = sinon.stub().returns(Promise.resolve());
+              const handleRetryStub = sinon.stub(
+                interceptor,
+                'handleRetryRequestLocusServiceError'
+              );
+              handleRetryStub.returns(Promise.resolve());
+
+              return interceptor.onResponseError(options, reason2).then(() => {
+                expect(handleRetryStub.calledWith(options, 1000)).to.be.true;
+              });
+            });
+
+            [429, 500, 502, 503, 504].forEach((statusCode) => {
+              it(`does not retry /hashtree requests on ${statusCode}`, () => {
+                const reason = new WebexHttpError.MethodNotAllowed({
+                  statusCode,
+                  options: {
+                    headers: {trackingid: 'test', 'retry-after': 1000},
+                    uri: hashTreeOptions.uri,
+                  },
+                  body: {error: `Fake ${statusCode}`},
+                });
+
+                const handleRetryStub = sinon.stub(
+                  interceptor,
+                  'handleRetryRequestLocusServiceError'
+                );
                 handleRetryStub.returns(Promise.resolve());
 
-                return interceptor.onResponseError(options, reason2).then(() => {
-                    expect(handleRetryStub.calledWith(options, 1000)).to.be.true;
-
+                return interceptor.onResponseError(hashTreeOptions, reason).catch((err) => {
+                  expect(err).to.equal(reason);
+                  expect(handleRetryStub.called).to.be.false;
+                  handleRetryStub.restore();
                 });
+              });
+
+              it(`does not retry /sync requests on ${statusCode}`, () => {
+                const reason = new WebexHttpError.MethodNotAllowed({
+                  statusCode,
+                  options: {
+                    headers: {trackingid: 'test', 'retry-after': 1000},
+                    uri: syncOptions.uri,
+                  },
+                  body: {error: `Fake ${statusCode}`},
+                });
+
+                const handleRetryStub = sinon.stub(
+                  interceptor,
+                  'handleRetryRequestLocusServiceError'
+                );
+                handleRetryStub.returns(Promise.resolve());
+
+                return interceptor.onResponseError(syncOptions, reason).catch((err) => {
+                  expect(err).to.equal(reason);
+                  expect(handleRetryStub.called).to.be.false;
+                  handleRetryStub.restore();
+                });
+              });
+            });
+
+            it('still retries other locus requests on 429', () => {
+              const reason429 = new WebexHttpError.MethodNotAllowed({
+                statusCode: 429,
+                options: {
+                  headers: {trackingid: 'test', 'retry-after': 1000},
+                  uri: options.uri,
+                },
+                body: {error: 'Too Many Requests'},
+              });
+
+              interceptor.webex.request = sinon.stub().returns(Promise.resolve());
+              const handleRetryStub = sinon.stub(
+                interceptor,
+                'handleRetryRequestLocusServiceError'
+              );
+              handleRetryStub.returns(Promise.resolve());
+
+              return interceptor.onResponseError(options, reason429).then(() => {
+                expect(handleRetryStub.calledOnce).to.be.true;
+                handleRetryStub.restore();
+              });
+            });
+
+            it('still retries other locus requests on 503', () => {
+              interceptor.webex.request = sinon.stub().returns(Promise.resolve());
+              const handleRetryStub = sinon.stub(
+                interceptor,
+                'handleRetryRequestLocusServiceError'
+              );
+              handleRetryStub.returns(Promise.resolve());
+
+              return interceptor.onResponseError(options, reason2).then(() => {
+                expect(handleRetryStub.calledOnce).to.be.true;
+                handleRetryStub.restore();
+              });
             });
         });
 
