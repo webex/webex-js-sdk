@@ -413,7 +413,7 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [{htMeta: {elementId: {type: 'self'}}, data: newSelf}],
           });
 
@@ -440,7 +440,7 @@ describe('plugin-meetings', () => {
           locusInfo.info.isWebinar = true;
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [{htMeta: {elementId: {type: 'self'}}, data: newSelf}],
           });
 
@@ -473,7 +473,7 @@ describe('plugin-meetings', () => {
           locusInfo.info.isWebinar = true;
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [{htMeta: {elementId: {type: 'self'}}, data: newSelf}],
           });
 
@@ -501,7 +501,7 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [{htMeta: {elementId: {type: 'fullState'}}, data: newFullState}],
           });
 
@@ -519,7 +519,7 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [{htMeta: {elementId: {type: 'info'}}, data: newInfo}],
           });
 
@@ -537,7 +537,7 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [{htMeta: {elementId: {type: 'links'}}, data: newLinks}],
           });
 
@@ -557,7 +557,7 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [{htMeta: newLocusHtMeta, data: newLocus}],
           });
 
@@ -590,7 +590,7 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {
                 htMeta: newLocusHtMeta,
@@ -637,7 +637,7 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [
               // first, a removal of LOCUS object
               {htMeta: {elementId: {type: 'locus'}}, data: null},
@@ -671,7 +671,7 @@ describe('plugin-meetings', () => {
           const newLocusHtMeta = {elementId: {type: 'locus', version: 99}};
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [
               // first, an update
               {htMeta: newLocusHtMeta, data: newLocus},
@@ -700,7 +700,7 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [
               // first, an update
               {htMeta: {elementId: {type: 'locus'}}, data: newLocus1},
@@ -730,7 +730,7 @@ describe('plugin-meetings', () => {
           };
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
           // with 1 participant added, 1 updated, and 1 removed
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {htMeta: {elementId: {type: 'participant', id: 'fake-ht-participant-1'}}, data: null},
               {
@@ -774,7 +774,7 @@ describe('plugin-meetings', () => {
           };
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
           // with 1 participant added, 1 updated, and 1 removed
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {htMeta: {elementId: {type: 'mediashare', id: 'fake-ht-mediaShare-1'}}, data: null},
               {
@@ -807,7 +807,7 @@ describe('plugin-meetings', () => {
           };
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
           // with 1 embedded app added, 1 updated, and 1 removed
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {htMeta: {elementId: {type: 'embeddedapp', id: 'fake-ht-embeddedApp-1'}}, data: null},
               {
@@ -844,7 +844,7 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {
                 htMeta: {elementId: {type: 'mediashare', id: 'fake-ht-mediaShare-2'}},
@@ -883,7 +883,7 @@ describe('plugin-meetings', () => {
           };
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {
                 htMeta: {elementId: {type: 'controlentry', id: 'control-1'}},
@@ -911,7 +911,7 @@ describe('plugin-meetings', () => {
 
         it('should process locus update correctly when CONTROL object is received with no data', () => {
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {
                 htMeta: {elementId: {type: 'controlentry', id: 'some-control-id'}},
@@ -935,7 +935,7 @@ describe('plugin-meetings', () => {
           const destroyStub = sinon.stub(locusInfo.webex.meetings, 'destroy');
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback(MEETING_ENDED);
+          locusInfoUpdateCallback({updateType: MEETING_ENDED});
 
           assert.calledOnceWithExactly(collectionGetStub, locusInfo.meetingId);
           assert.calledOnceWithExactly(
@@ -953,7 +953,7 @@ describe('plugin-meetings', () => {
           const destroyStub = sinon.stub(locusInfo.webex.meetings, 'destroy');
 
           // simulate an update from the HashTreeParser (normally this would be triggered by incoming locus messages)
-          locusInfoUpdateCallback(MEETING_ENDED);
+          locusInfoUpdateCallback({updateType: MEETING_ENDED});
 
           assert.calledOnceWithExactly(collectionGetStub, locusInfo.meetingId);
           assert.notCalled(destroyStub);
@@ -963,7 +963,7 @@ describe('plugin-meetings', () => {
           const createdHashTreeParser = locusInfo.hashTreeParsers.get('fake-locus-url');
           createdHashTreeParser.initializedFromHashTree = false;
 
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {
                 htMeta: {elementId: {type: 'self'}},
@@ -978,7 +978,7 @@ describe('plugin-meetings', () => {
         });
 
         it('should set forceReplaceMembers to false on subsequent updates (initializedFromHashTree is true)', () => {
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {
                 htMeta: {elementId: {type: 'self'}},
@@ -994,7 +994,7 @@ describe('plugin-meetings', () => {
         it('should copy participant data to self when participant matches self identity and state is LEFT with reason MOVED', () => {
           locusInfo.self = {id: 'fake-self', identity: 'user-123'};
 
-          locusInfoUpdateCallback(OBJECTS_UPDATED, {
+          locusInfoUpdateCallback({updateType: OBJECTS_UPDATED,
             updatedObjects: [
               {
                 htMeta: {elementId: {type: 'participant', id: 99}},
@@ -4410,6 +4410,31 @@ describe('plugin-meetings', () => {
         locusInfo.mainSessionLocusCache = {controls: {}};
         locusInfo.clearMainSessionLocusCache();
         assert.isNull(locusInfo.mainSessionLocusCache);
+      });
+    });
+
+    describe('#cleanUp', () => {
+      it('calls cleanUp on all hash tree parsers and clears maps', () => {
+        const parser1 = {cleanUp: sinon.stub()};
+        const parser2 = {cleanUp: sinon.stub()};
+
+        locusInfo.hashTreeParsers.set('url1', {parser: parser1, initializedFromHashTree: true});
+        locusInfo.hashTreeParsers.set('url2', {parser: parser2, initializedFromHashTree: true});
+        locusInfo.hashTreeObjectId2ParticipantId.set(1, 'participant1');
+
+        locusInfo.cleanUp();
+
+        assert.calledOnce(parser1.cleanUp);
+        assert.calledOnce(parser2.cleanUp);
+        assert.equal(locusInfo.hashTreeParsers.size, 0);
+        assert.equal(locusInfo.hashTreeObjectId2ParticipantId.size, 0);
+      });
+
+      it('works when there are no hash tree parsers', () => {
+        locusInfo.cleanUp();
+
+        assert.equal(locusInfo.hashTreeParsers.size, 0);
+        assert.equal(locusInfo.hashTreeObjectId2ParticipantId.size, 0);
       });
     });
 

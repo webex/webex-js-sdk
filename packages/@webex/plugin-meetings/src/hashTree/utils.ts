@@ -60,3 +60,20 @@ export const deleteNestedObjectsWithHtMeta = (
     }
   }
 };
+
+/**
+ * Reorders items so that those matching the given priority list come first (in priority order),
+ * followed by everything else in their original order.
+ *
+ * @param {Array<T>} items - The items to reorder
+ * @param {string[]} priority - Ordered list of names that should come first
+ * @returns {Array<T>} A new array with prioritized items first
+ */
+export function sortByInitPriority<T extends {name: string}>(items: T[], priority: string[]): T[] {
+  const prioritized = priority
+    .map((name) => items.find((item) => item.name === name))
+    .filter(Boolean) as T[];
+  const rest = items.filter((item) => !priority.includes(item.name));
+
+  return [...prioritized, ...rest];
+}
