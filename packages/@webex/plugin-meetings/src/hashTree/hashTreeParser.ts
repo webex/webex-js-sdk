@@ -1251,16 +1251,18 @@ class HashTreeParser {
 
         try {
           // request hashes from sender
-          const {hashes, dataSet: latestDataSetInfo} = await this.getHashesFromLocus(
-            dataSet.name,
-            rootHash
-          );
+          const hashesResult = await this.getHashesFromLocus(dataSet.name, rootHash);
 
-          receivedHashes = hashes;
+          if (!hashesResult) {
+            // hashes match, no sync needed
+            return;
+          }
 
-          hashTree.resize(latestDataSetInfo.leafCount);
-        } catch (error) {
-          if (error.statusCode === 409) {
+          receivedHashes = hashesResult.hashes;
+
+          hashTree.resize(hashesResult.dataSet.leafCount);
+        } catch (error: any) {
+          if (error?.statusCode === 409) {
             // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
             LoggerProxy.logger.info(
               `HashTreeParser#getHashesFromLocus --> ${this.debugId} Got 409 when fetching hashes for data set "${dataSet.name}": ${error.message}`
@@ -1622,7 +1624,7 @@ class HashTreeParser {
    * Gets the current hashes from the locus for a specific data set.
    * @param {string} dataSetName
    * @param {string} currentRootHash
-   * @returns {string[]}
+   * @returns {Object|null} An object containing the hashes and leaf count, or null if the hashes match and no sync is needed
    */
   private getHashesFromLocus(dataSetName: string, currentRootHash: string) {
     LoggerProxy.logger.info(
@@ -1641,6 +1643,15 @@ class HashTreeParser {
       },
     })
       .then((response) => {
+        if (!response.body || isEmpty(response.body)) {
+          // 204 with empty body means our hashes match Locus, no sync needed
+          LoggerProxy.logger.info(
+            `HashTreeParser#getHashesFromLocus --> ${this.debugId} Got ${response.statusCode} with empty body for data set "${dataSetName}", hashes match - no sync needed`
+          );
+
+          return null;
+        }
+
         const hashes = response.body?.hashes as string[] | undefined;
         const dataSetFromResponse = response.body?.dataSet;
 

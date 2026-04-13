@@ -1934,9 +1934,7 @@ export default class Meetings extends WebexPlugin {
         const syncPromises = [];
 
         for (const meeting of Object.values(remainingMeetings) as any[]) {
-          if (meeting.locusInfo?.hashTreeParsers?.size > 0) {
-            syncPromises.push(meeting.locusInfo.syncAllHashTreeDatasets());
-          }
+          syncPromises.push(meeting.locusInfo.syncAllHashTreeDatasets());
         }
 
         if (syncPromises.length > 0) {
