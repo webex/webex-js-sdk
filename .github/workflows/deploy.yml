@@ -582,13 +582,23 @@ jobs:
 
           MESSAGE=""
           if [ -n "${VERSION}" ]; then
-            MESSAGE="**Version:** ${VERSION}"
+            MESSAGE=$(printf '%s' "**Version:** ${VERSION}")
           fi
           if [ -n "${PR_LINK}" ]; then
-            MESSAGE="${MESSAGE}\n\n**PR:** [${PR_TITLE}](${PR_LINK})"
+            PR_BLOCK=$(printf '%s' "**PR:** [${PR_TITLE}](${PR_LINK})")
+            if [ -n "${MESSAGE}" ]; then
+              MESSAGE=$(printf '%s\n\n%s' "${MESSAGE}" "${PR_BLOCK}")
+            else
+              MESSAGE="${PR_BLOCK}"
+            fi
           fi
           if [ -n "${CHANGELOG_URL}" ]; then
-            MESSAGE="${MESSAGE}\n\n**Changelog:** ${CHANGELOG_URL}"
+            CL_BLOCK=$(printf '%s' "**Changelog:** ${CHANGELOG_URL}")
+            if [ -n "${MESSAGE}" ]; then
+              MESSAGE=$(printf '%s\n\n%s' "${MESSAGE}" "${CL_BLOCK}")
+            else
+              MESSAGE="${CL_BLOCK}"
+            fi
           fi
 
           if [ -z "${MESSAGE}" ]; then
