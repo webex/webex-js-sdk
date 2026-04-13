@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import '@webex/internal-plugin-mercury';
+import '../../../src';
 
 import {assert} from '@webex/test-helper-chai';
 import {flaky} from '@webex/test-helper-mocha';
@@ -11,9 +11,9 @@ import WebexCore from '@webex/webex-core';
 import testUsers from '@webex/test-helper-test-users';
 import refreshCallback from '@webex/test-helper-refresh-callback';
 
-describe('plugin-mercury', function () {
+describe('plugin-mobiusSocket', function () {
   this.timeout(30000);
-  describe('Mercury', () => {
+  describe('MobiusSocket', () => {
     let webex;
 
     beforeEach(() =>
@@ -31,10 +31,10 @@ describe('plugin-mercury', function () {
       })
     );
 
-    afterEach(() => webex && webex.internal.mercury.disconnect());
+    afterEach(() => webex && webex.internal.mobiusSocket.disconnect());
 
     describe('#connect()', () => {
-      it('connects to mercury', () => webex.internal.mercury.connect());
+      it('connects to mobiusSocket', () => webex.internal.mobiusSocket.connect());
 
       it('refreshes the access token when a 4401 is received', () =>
         webex.internal.device
@@ -43,7 +43,7 @@ describe('plugin-mercury', function () {
             // eslint-disable-next-line camelcase
             webex.credentials.supertoken.access_token = 'fake token';
 
-            return webex.internal.mercury.connect();
+            return webex.internal.mobiusSocket.connect();
           })
           // eslint-disable-next-line camelcase
           .then(() => assert.notEqual(webex.credentials.supertoken.access_token, 'fake token')));
@@ -60,7 +60,7 @@ describe('plugin-mercury', function () {
       //     wsu[1] = uuid.v4();
       //     wsu.reverse();
       //     webex.internal.device.webSocketUrl = wsu.join(`/`);
-      //     return webex.internal.mercury.connect()
+      //     return webex.internal.mobiusSocket.connect()
       //       .then(() => assert.notEqual(webex.internal.device.webSocketUrl, webSocketUrl));
       //   }));
 
@@ -69,12 +69,12 @@ describe('plugin-mercury', function () {
           webex.config.device.ephemeral = true;
         });
 
-        it('connects to mercury', () => webex.internal.mercury.connect());
+        it('connects to mobiusSocket', () => webex.internal.mobiusSocket.connect());
       });
 
       describe('when web-high-availability is enabled', () => {
         flaky(it, process.env.SKIP_FLAKY_TESTS)(
-          'connects to mercury using service catalog url',
+          'connects to mobiusSocket using service catalog url',
           () => {
             let defaultWebSocketUrl;
 
@@ -92,11 +92,11 @@ describe('plugin-mercury', function () {
                 .then(() => {
                   defaultWebSocketUrl = webex.internal.device.webSocketUrl;
                 })
-                .then(() => webex.internal.mercury.connect())
+                .then(() => webex.internal.mobiusSocket.connect())
                 .then(() => webex.internal.device.getWebSocketUrl())
                 .then((wsUrl) => {
-                  assert.notEqual(defaultWebSocketUrl, webex.internal.mercury.socket.url);
-                  assert.include(webex.internal.mercury.socket.url, wsUrl);
+                  assert.notEqual(defaultWebSocketUrl, webex.internal.mobiusSocket.socket.url);
+                  assert.include(webex.internal.mobiusSocket.socket.url, wsUrl);
                 })
             );
           }
@@ -107,9 +107,9 @@ describe('plugin-mercury', function () {
     it('emits messages that arrive before authorization completes', () => {
       const spy = sinon.spy();
 
-      webex.internal.mercury.on('event:mercury.buffer_state', spy);
+      webex.internal.mobiusSocket.on('event:mercury.buffer_state', spy);
 
-      return webex.internal.mercury.connect().then(() => {
+      return webex.internal.mobiusSocket.connect().then(() => {
         assert.calledOnce(spy);
       });
     });

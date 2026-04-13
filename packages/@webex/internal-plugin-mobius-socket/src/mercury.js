@@ -3,11 +3,9 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import url from 'url';
-
 import {WebexPlugin} from '@webex/webex-core';
 import {deprecated} from '@webex/common';
-import {camelCase, get, set} from 'lodash';
+import {camelCase, set} from 'lodash';
 import backoff from 'backoff';
 
 import Socket from './socket';
@@ -16,16 +14,16 @@ import {
   Forbidden,
   NotAuthorized,
   UnknownResponse,
-  ConnectionError,
   // NotFound
 } from './errors';
 
-const normalReconnectReasons = ['idle', 'done (forced)', 'pong not received', 'pong mismatch'];
+const normalReconnectReasons = ['idle', 'done (forced)'];
+const DEFAULT_MOBIUS_WEBSOCKET_SESSION = 'mobius-websocket-session';
 
-const Mercury = WebexPlugin.extend({
-  namespace: 'Mercury',
+const MobiusSocket = WebexPlugin.extend({
+  namespace: 'MobiusSocket',
   lastError: undefined,
-  defaultSessionId: 'mercury-default-session',
+  defaultSessionId: DEFAULT_MOBIUS_WEBSOCKET_SESSION,
 
   session: {
     connected: {
@@ -226,6 +224,30 @@ const Mercury = WebexPlugin.extend({
   },
 
   /**
+   * Sends a payload on the active connected socket
+   * @param {Object} payload - The data to send
+   * @param {string} [sessionId=this.defaultSessionId] - The session identifier
+   * @returns {Promise}
+   */
+  send(payload, sessionId = this.defaultSessionId) {
+    const socket = this.getSocket(sessionId);
+
+    if (!socket || !socket.connected) {
+      return Promise.reject(new Error(`Mobius socket is not connected for session ${sessionId}`));
+    }
+
+    return socket.send(payload);
+  },
+
+  /**
+   * Check if the plugin is connected
+   * @returns {boolean} True if connected
+   */
+  isConnected() {
+    return this.connected;
+  },
+
+  /**
    * Check if a socket is connected
    * @param {string} [sessionId=this.defaultSessionId] - The session identifier
    * @returns {boolean|undefined} True if the socket is connected
@@ -248,7 +270,7 @@ const Mercury = WebexPlugin.extend({
   },
 
   /**
-   * Connect to Mercury for a specific session.
+   * Connect to Mobius for a specific session.
    * @param {string} [webSocketUrl] - Optional websocket URL override. Falls back to the device websocket URL.
    * @param {string} [sessionId=this.defaultSessionId] - The session identifier for this connection.
    * @returns {Promise<void>} Resolves when connection flow completes for the session.
@@ -274,13 +296,15 @@ const Mercury = WebexPlugin.extend({
       return Promise.resolve();
     }
 
+    // Cache the caller-provided URL for reconnect
+    const resolvedUrl = webSocketUrl || this.socketUrl;
+    if (webSocketUrl) {
+      this.socketUrl = webSocketUrl;
+    }
+
     this.connecting = true;
 
     this.logger.info(`${this.namespace}: starting connection attempt for ${sessionId}`);
-    this.logger.info(
-      `${this.namespace}: debug_mercury_logging stack: `,
-      new Error('debug_mercury_logging').stack
-    );
 
     const connectPromise = Promise.resolve(
       this.webex.internal.device.registered || this.webex.internal.device.register()
@@ -288,7 +312,7 @@ const Mercury = WebexPlugin.extend({
       .then(() => {
         this.logger.info(`${this.namespace}: connecting ${sessionId}`);
 
-        return this._connectWithBackoff(webSocketUrl, sessionId);
+        return this._connectWithBackoff(resolvedUrl, sessionId);
       })
       .finally(() => {
         this._connectPromises.delete(sessionId);
@@ -301,10 +325,6 @@ const Mercury = WebexPlugin.extend({
 
   logout() {
     this.logger.info(`${this.namespace}: logout() called`);
-    this.logger.info(
-      `${this.namespace}: debug_mercury_logging stack: `,
-      new Error('debug_mercury_logging').stack
-    );
 
     return this.disconnectAll(
       this.config.beforeLogoutOptionsCloseReason &&
@@ -315,7 +335,7 @@ const Mercury = WebexPlugin.extend({
   },
 
   /**
-   * Disconnect a Mercury socket for a specific session.
+   * Disconnect a Mobius socket for a specific session.
    * @param {object} [options] - Optional websocket close options (for example: `{code, reason}`).
    * @param {string} [sessionId=this.defaultSessionId] - The session identifier to disconnect.
    * @returns {Promise<void>} Resolves after disconnect cleanup and close handling are initiated/completed.
@@ -417,66 +437,17 @@ const Mercury = WebexPlugin.extend({
       webSocketUrl = this.webex.internal.device.webSocketUrl;
     }
 
-    return this.webex.internal.feature
-      .getFeature('developer', 'web-high-availability')
-      .then((haMessagingEnabled) => {
-        if (haMessagingEnabled) {
-          let highPrioritySocketUrl;
-          try {
-            highPrioritySocketUrl =
-              this.webex.internal.services.convertUrlToPriorityHostUrl(webSocketUrl);
-          } catch (e) {
-            this.logger.warn(`${this.namespace}: error converting to high priority url`, e);
-          }
-          if (!highPrioritySocketUrl) {
-            const hostFromUrl = url.parse(webSocketUrl, true)?.host;
-            const isValidHost = this.webex.internal.services.isValidHost(hostFromUrl);
-            if (!isValidHost) {
-              this.logger.error(
-                `${this.namespace}: host ${hostFromUrl} is not a valid host from host catalog`
-              );
+    // TODO: Validate the host against the service catalog
+    // const hostFromUrl = url.parse(webSocketUrl, true)?.host;
+    // const isValidHost = this.webex.internal.services.isValidHost(hostFromUrl);
+    // if (!isValidHost) {
+    //   this.logger.error(
+    //     `${this.namespace}: host ${hostFromUrl} is not a valid host from host catalog`
+    //   );
+    //   return Promise.resolve('');
+    // }
 
-              return '';
-            }
-          }
-
-          return highPrioritySocketUrl || webSocketUrl;
-        }
-
-        return webSocketUrl;
-      })
-      .then((wsUrl) => {
-        webSocketUrl = wsUrl;
-      })
-      .then(() => this.webex.internal.feature.getFeature('developer', 'web-shared-mercury'))
-      .then((webSharedMercury) => {
-        if (!webSocketUrl) {
-          return '';
-        }
-        webSocketUrl = url.parse(webSocketUrl, true);
-        Object.assign(webSocketUrl.query, {
-          outboundWireFormat: 'text',
-          bufferStates: true,
-          aliasHttpStatus: true,
-        });
-
-        if (webSharedMercury) {
-          Object.assign(webSocketUrl.query, {
-            mercuryRegistrationStatus: true,
-            isRegistrationRefreshEnabled: true,
-          });
-          Reflect.deleteProperty(webSocketUrl.query, 'bufferStates');
-        }
-
-        if (get(this, 'webex.config.device.ephemeral', false)) {
-          webSocketUrl.query.multipleConnections = true;
-        }
-
-        webSocketUrl.query.clientTimestamp = Date.now();
-        delete webSocketUrl.search;
-
-        return url.format(webSocketUrl);
-      });
+    return Promise.resolve(webSocketUrl);
   },
 
   _attemptConnection(socketUrl, sessionId, callback, options = {}) {
@@ -519,7 +490,7 @@ const Mercury = WebexPlugin.extend({
         this.logger.info(
           `${this.namespace}: ${
             isShutdownSwitchover ? '[shutdown] switchover' : ''
-          } connected to mercury, success, action: connected for ${sessionId}, url: ${newWSUrl}`
+          } connected to mobius socket, success, action: connected for ${sessionId}, url: ${newWSUrl}`
         );
 
         // Custom success handler for shutdown switchover
@@ -533,15 +504,7 @@ const Mercury = WebexPlugin.extend({
         // Default behavior for normal connection
         callback();
 
-        return this.webex.internal.feature
-          .getFeature('developer', 'web-high-availability')
-          .then((haMessagingEnabled) => {
-            if (haMessagingEnabled) {
-              return this.webex.internal.device.refresh();
-            }
-
-            return Promise.resolve();
-          });
+        return Promise.resolve();
       })
       .catch((reason) => {
         // For shutdown, simpler error handling - just callback for retry
@@ -597,30 +560,14 @@ const Mercury = WebexPlugin.extend({
         //     .then(() => callback(reason));
         // }
         // BadRequest implies current credentials are for a Service Account
-        // Forbidden implies current user is not entitle for Webex
+        // Forbidden implies current user is not entitled for Webex
         if (reason instanceof BadRequest || reason instanceof Forbidden) {
           this.logger.warn(
-            `${this.namespace}: received unrecoverable response from mercury for ${sessionId}`
+            `${this.namespace}: received unrecoverable response from ${this.namespace} for ${sessionId}`
           );
           backoffCallNormal?.abort();
 
           return callback(reason);
-        }
-        if (reason instanceof ConnectionError) {
-          return this.webex.internal.feature
-            .getFeature('developer', 'web-high-availability')
-            .then((haMessagingEnabled) => {
-              if (haMessagingEnabled) {
-                this.logger.info(
-                  `${this.namespace}: received a generic connection error for ${sessionId}, will try to connect to another datacenter. failed, action: 'failed', url: ${newWSUrl} error: ${reason.message}`
-                );
-
-                return this.webex.internal.services.markFailedUrl(newWSUrl);
-              }
-
-              return null;
-            })
-            .then(() => callback(reason));
         }
 
         return callback(reason);
@@ -641,20 +588,19 @@ const Mercury = WebexPlugin.extend({
       ([webSocketUrl, token]) => {
         let options = {
           forceCloseDelay: this.config.forceCloseDelay,
-          pingInterval: this.config.pingInterval,
-          pongTimeout: this.config.pongTimeout,
+          authResponseTimeout: this.config.authResponseTimeout,
           token: token.toString(),
           trackingId: `${this.webex.sessionId}_${Date.now()}`,
           logger: this.logger,
         };
 
-        if (this.webex.config.defaultMercuryOptions) {
+        if (this.webex.config.defaultMobiusSocketOptions) {
           const customOptionsMsg = isShutdownSwitchover
             ? 'setting custom options for switchover'
             : 'setting custom options';
 
           this.logger.info(`${this.namespace}: ${customOptionsMsg}`);
-          options = {...options, ...this.webex.config.defaultMercuryOptions};
+          options = {...options, ...this.webex.config.defaultMobiusSocketOptions};
         }
 
         // Set the socket before opening it. This allows a disconnect() to close
@@ -710,9 +656,6 @@ const Mercury = WebexPlugin.extend({
           this.connected = this.hasConnectedSockets();
           this.hasEverConnected = true;
           this._emit(sid, 'online');
-          if (this.connected) {
-            this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(true);
-          }
         }
 
         return resolve();
@@ -760,7 +703,7 @@ const Mercury = WebexPlugin.extend({
         const msg = isShutdownSwitchover ? 'Shutdown Switchover' : 'Connection';
 
         this.logger.info(`${this.namespace}: ${msg} aborted for ${sessionId}`);
-        reject(new Error(`Mercury ${msg} Aborted for ${sessionId}`));
+        reject(new Error(`MobiusSocket ${msg} Aborted for ${sessionId}`));
       });
 
       call.on('callback', (err) => {
@@ -822,7 +765,7 @@ const Mercury = WebexPlugin.extend({
       } catch (logError) {
         // If even logging fails, just ignore to prevent cascading errors during cleanup
         // eslint-disable-next-line no-console
-        console.error('Mercury _emit error handling failed:', logError);
+        console.error('MobiusSocket _emit error handling failed:', logError);
       }
     }
   },
@@ -876,10 +819,6 @@ const Mercury = WebexPlugin.extend({
         // Update overall connected status
         this.connecting = this.hasConnectingSockets();
         this.connected = this.hasConnectedSockets();
-
-        if (!this.connected) {
-          this.webex.internal.newMetrics.callDiagnosticMetrics.setMercuryConnectedStatus(false);
-        }
       } else {
         // Old socket closed; do not flip connection state
         this.logger.info(
@@ -895,7 +834,7 @@ const Mercury = WebexPlugin.extend({
         case 1003:
           // metric: disconnect
           this.logger.info(
-            `${this.namespace}: Mercury service rejected last message for ${sessionId}; will not reconnect: ${event.reason}`
+            `${this.namespace}: service rejected last message for ${sessionId}; will not reconnect: ${event.reason}`
           );
           if (isActiveSocket) this._emit(sessionId, 'offline.permanent', event);
           break;
@@ -995,18 +934,27 @@ const Mercury = WebexPlugin.extend({
       return Promise.resolve();
     }
 
+    // Mobius: emit event:<type> for typed messages (e.g., register.response)
+    if (envelope.type) {
+      this._emit(sessionId, `event:${envelope.type}`, envelope);
+    }
+
     envelope.sessionId = sessionId;
-    const {data} = envelope;
+    // Use data/payload if present, otherwise treat the envelope itself as the data (flat format)
+    const data = envelope.data || envelope;
 
     this._applyOverrides(data);
 
-    if (!data || !data.eventType) {
+    // Support both Mercury-enveloped (data.eventType) and flat (eventType) formats
+    const eventType = data?.eventType || envelope.eventType;
+
+    if (!eventType) {
       this._emit(sessionId, 'event', envelope);
 
       return Promise.resolve();
     }
 
-    return this._getEventHandlers(data.eventType)
+    return this._getEventHandlers(eventType)
       .reduce(
         (promise, handler) =>
           promise.then(() => {
@@ -1016,7 +964,7 @@ const Mercury = WebexPlugin.extend({
               resolve((this.webex[namespace] || this.webex.internal[namespace])[name](data))
             ).catch((reason) =>
               this.logger.error(
-                `${this.namespace}: error occurred in autowired event handler for ${data.eventType} from ${sessionId}`,
+                `${this.namespace}: error occurred in autowired event handler for ${eventType} from ${sessionId}`,
                 reason
               )
             );
@@ -1025,13 +973,13 @@ const Mercury = WebexPlugin.extend({
       )
       .then(() => {
         this._emit(sessionId, 'event', envelope);
-        const [namespace] = data.eventType.split('.');
+        const [namespace] = eventType.split('.');
 
-        if (namespace === data.eventType) {
+        if (namespace === eventType) {
           this._emit(sessionId, `event:${namespace}`, envelope);
         } else {
           this._emit(sessionId, `event:${namespace}`, envelope);
-          this._emit(sessionId, `event:${data.eventType}`, envelope);
+          this._emit(sessionId, `event:${eventType}`, envelope);
         }
       })
       .catch((reason) => {
@@ -1052,8 +1000,8 @@ const Mercury = WebexPlugin.extend({
   _reconnect(webSocketUrl, sessionId = this.defaultSessionId) {
     this.logger.info(`${this.namespace}: reconnecting ${sessionId}`);
 
-    return this.connect(webSocketUrl, sessionId);
+    return this.connect(webSocketUrl || this.socketUrl, sessionId);
   },
 });
 
-export default Mercury;
+export default MobiusSocket;
