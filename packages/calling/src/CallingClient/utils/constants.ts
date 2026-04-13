@@ -1,35 +1,8 @@
 /**
- * Mobius WebSocket namespace prefixes for channel topic paths
- */
-export enum MOBIUS_SOCKET_NAMESPACE {
-  REGISTRATION = 'registration',
-  CALLS = 'calls',
-}
-
-/**
- * Mobius WebSocket channel topic paths
- * Each channel maps to a request/response event pair
- */
-export enum MOBIUS_SOCKET_CHANNEL {
-  REGISTER = 'registration/register',
-  UNREGISTER = 'registration/unregister',
-  DEVICE_STATUS = 'registration/device-status',
-  DEVICE_GET = 'registration/device-get',
-  DEVICE_LIST = 'registration/device-list',
-  CALL_SETUP = 'calls/setup',
-  CALL_STATE = 'calls/state',
-  CALL_STATUS = 'calls/status',
-  CALL_MEDIA = 'calls/media',
-  CALL_HOLD = 'calls/hold',
-  CALL_RESUME = 'calls/resume',
-  CALL_TRANSFER = 'calls/transfer',
-  CALL_DELETE = 'calls/delete',
-}
-
-/**
  * Mobius WebSocket event names for request and response messages
  * Response events follow the pattern: `{request_event}.response`
  */
+// eslint-disable-next-line import/prefer-default-export
 export enum MOBIUS_SOCKET_MESSAGE_TYPE {
   UNKNOWN = 'UNKNOWN',
 

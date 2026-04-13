@@ -29,6 +29,10 @@ export class APIRequest {
     return APIRequest.instance;
   }
 
+  static resetInstance(): void {
+    APIRequest.instance = undefined;
+  }
+
   /**
    * Creates an instance of APIRequest
    * @param config - Configuration object containing webex instance and optional socket flag
