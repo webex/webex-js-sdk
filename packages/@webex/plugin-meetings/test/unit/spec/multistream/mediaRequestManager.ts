@@ -1433,11 +1433,10 @@ describe('MediaRequestManager', () => {
       assert.calledWith(getIngressPayloadTypeCallback, MediaType.VideoMain, MediaCodecMimeType.AV1);
       assert.calledWith(sendMediaRequestsCallback, [
         sinon.match({
-          codecInfos: sinon.match((codecInfos) =>
-            codecInfos.length === 2 &&
-            codecInfos[0].payloadType === FAKE_H264_PAYLOAD_TYPE &&
-            codecInfos[1].payloadType === FAKE_AV1_PAYLOAD_TYPE
-          ),
+          codecInfos: [
+            sinon.match({ payloadType: FAKE_H264_PAYLOAD_TYPE }),
+            sinon.match({ payloadType: FAKE_AV1_PAYLOAD_TYPE }),
+          ],
         }),
       ]);
     });
@@ -1469,7 +1468,7 @@ describe('MediaRequestManager', () => {
     });
   });
 
-  describe('AV1 encoding parameters (resolution mapping)', () => {
+  describe('AV1 resolution mapping', () => {
     const FAKE_AV1_PAYLOAD_TYPE = 0x90;
 
     beforeEach(() => {
@@ -1502,18 +1501,20 @@ describe('MediaRequestManager', () => {
       it(`maps maxFs=${maxFs} to ${expectedRes} AV1 parameters (levelIdx=${levelIdx}, ${maxWidth}x${maxHeight})`, () => {
         addReceiverSelectedRequest(100, fakeReceiveSlots[0], maxFs, true);
 
-        assert.calledOnce(sendMediaRequestsCallback);
-        const codecInfos = sendMediaRequestsCallback.getCall(0).args[0][0].codecInfos;
-
-        expect(codecInfos).to.have.length(2);
-
-        const av1Info = codecInfos[1];
-        expect(av1Info.payloadType).to.equal(FAKE_AV1_PAYLOAD_TYPE);
-        expect(av1Info.av1.levelIdx).to.equal(levelIdx);
-        expect(av1Info.av1.maxWidth).to.equal(maxWidth);
-        expect(av1Info.av1.maxHeight).to.equal(maxHeight);
-
-        sendMediaRequestsCallback.resetHistory();
+        assert.calledWith(sendMediaRequestsCallback, [
+          sinon.match({
+            codecInfos: [
+              sinon.match({
+                payloadType: FAKE_H264_PAYLOAD_TYPE,
+                h264: sinon.match({ maxFs: maxFs })
+              }),
+              sinon.match({
+                payloadType: FAKE_AV1_PAYLOAD_TYPE,
+                av1: sinon.match({ levelIdx: levelIdx, maxWidth: maxWidth, maxHeight: maxHeight })
+              }),
+            ],
+          }),
+        ]);
       });
     });
 

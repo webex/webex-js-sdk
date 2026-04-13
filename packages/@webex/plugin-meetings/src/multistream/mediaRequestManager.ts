@@ -21,7 +21,7 @@ import LoggerProxy from '../common/logs/logger-proxy';
 
 import {ReceiveSlot, ReceiveSlotEvents} from './receiveSlot';
 import {MAX_FS_VALUES} from './remoteMedia';
-import {AV1_CODEC_PARAMETERS, CODEC_DEFAULTS} from './codec/constants';
+import {AV1_CODEC_PARAMETERS, H264_CODEC_PARAMETERS} from './codec/constants';
 
 export interface ActiveSpeakerPolicyInfo {
   policy: 'active-speaker';
@@ -147,8 +147,8 @@ export class MediaRequestManager {
       Object.values(clientRequests).forEach((mr) => {
         if (mr.codecInfo) {
           mr.codecInfo.maxFs = Math.min(
-            mr.preferredMaxFs || CODEC_DEFAULTS.h264.maxFs,
-            mr.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs,
+            mr.preferredMaxFs || H264_CODEC_PARAMETERS.maxFs,
+            mr.codecInfo.maxFs || H264_CODEC_PARAMETERS.maxFs,
             maxFsLimits[i]
           );
           // we only consider sources with "live" state
@@ -188,7 +188,7 @@ export class MediaRequestManager {
     }
 
     return getRecommendedMaxBitrateForFrameSize(
-      mediaRequest.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs
+      mediaRequest.codecInfo.maxFs || H264_CODEC_PARAMETERS.maxFs
     );
   }
 
@@ -204,7 +204,7 @@ export class MediaRequestManager {
   // eslint-disable-next-line class-methods-use-this
   private getH264MaxMbps(mediaRequest: MediaRequest): number {
     // fallback for maxFps (not needed for maxFs, since there is a fallback already in getDegradedClientRequests)
-    const maxFps = mediaRequest.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps;
+    const maxFps = mediaRequest.codecInfo.maxFps || H264_CODEC_PARAMETERS.maxFps;
 
     // divided by 100 since maxFps is 3000 (for 30 frames per seconds)
     return (mediaRequest.codecInfo.maxFs * maxFps) / 100;
@@ -217,7 +217,7 @@ export class MediaRequestManager {
    */
   // eslint-disable-next-line class-methods-use-this
   private getAv1EncodingParams(mediaRequest: MediaRequest): AV1EncodingParams {
-    const frameSize = mediaRequest.codecInfo.maxFs || CODEC_DEFAULTS.h264.maxFs;
+    const frameSize = mediaRequest.codecInfo.maxFs || H264_CODEC_PARAMETERS.maxFs;
     let resolution: SupportedResolution;
 
     if (frameSize <= MAX_FS_VALUES['90p']) {
@@ -349,7 +349,7 @@ export class MediaRequestManager {
               h264PayloadType,
               new H264Codec(
                 mr.codecInfo.maxFs,
-                mr.codecInfo.maxFps || CODEC_DEFAULTS.h264.maxFps,
+                mr.codecInfo.maxFps || H264_CODEC_PARAMETERS.maxFps,
                 this.getH264MaxMbps(mr),
                 mr.codecInfo.maxWidth,
                 mr.codecInfo.maxHeight

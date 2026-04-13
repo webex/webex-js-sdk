@@ -49,10 +49,8 @@ export const AV1_CODEC_PARAMETERS = {
   },
 };
 
-export const CODEC_DEFAULTS = {
-  h264: {
-    maxFs: 8192,
-    maxFps: 3000,
-    maxMbps: 245760,
-  },
+export const H264_CODEC_PARAMETERS = {
+  maxFs: 8192,
+  maxFps: 3000,
+  maxMbps: 245760,
 };
