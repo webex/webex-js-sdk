@@ -12,10 +12,6 @@ import {isJwtTokenExpired} from './utils';
  */
 
 const retryCountMap = new Map();
-interface HttpLikeError extends Error {
-  statusCode?: number;
-  original?: any;
-}
 /**
  * @class
  */
@@ -89,7 +85,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
       try {
         const newToken = await this._refreshDataChannelToken();
         options.headers[DATA_CHANNEL_AUTH_HEADER] = newToken;
-      } catch (e) {
+      } catch (e: any) {
         LoggerProxy.logger.warn(`DataChannelAuthTokenInterceptor: refresh failed: ${e.message}`);
       }
     }
@@ -121,7 +117,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
     const retryCount = retryCountMap.get(key) || 0;
 
     if (retryCount >= MAX_RETRY) {
-      LoggerProxy.logger.error(`data channel token refresh exceeded max retry (${MAX_RETRY})`);
+      LoggerProxy.logger.warn(`data channel token refresh exceeded max retry (${MAX_RETRY})`);
       retryCountMap.delete(key);
 
       return Promise.reject(reason);
@@ -129,7 +125,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
 
     retryCountMap.set(key, retryCount + 1);
 
-    return this.refreshTokenAndRetryWithDelay(options);
+    return this.refreshTokenAndRetryWithDelay(options, reason);
   }
 
   /**
@@ -137,9 +133,10 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
    * Refreshes the Data-Channel-Auth-Token and re-sends the original request.
    *
    * @param {Object} options - Original request options.
+   * @param {Object} reason - The original response error reason.
    * @returns {Promise<HttpResponse>} - Resolves on successful retry.
    */
-  refreshTokenAndRetryWithDelay(options) {
+  refreshTokenAndRetryWithDelay(options, reason) {
     return new Promise((resolve, reject) => {
       setTimeout(async () => {
         const key = this.getRetryKey(options);
@@ -153,16 +150,15 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
           retryCountMap.delete(key);
 
           resolve(res);
-        } catch (e) {
+        } catch (e: any) {
           retryCountMap.delete(key);
 
-          const msg = e?.message || String(e);
+          // Do not wrap into a new error to avoid noisy failures during teardown.
+          LoggerProxy.logger.warn(
+            `DataChannelAuthTokenInterceptor: retry after refresh failed: ${e?.message || e}`
+          );
 
-          const err: HttpLikeError = new Error(`DataChannel token refresh failed: ${msg}`);
-          err.statusCode = e?.statusCode;
-          err.original = e;
-
-          reject(err);
+          reject(reason || e);
         }
       }, RETRY_INTERVAL);
     });

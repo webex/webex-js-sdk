@@ -66,7 +66,7 @@ describe('plugin-meetings', () => {
 
           await assert.isRejected(interceptor.onResponseError(options, reason), reason);
 
-          sinon.assert.calledOnce(LoggerProxy.logger.error);
+          sinon.assert.calledOnce(LoggerProxy.logger.warn);
         });
 
         it('calls refreshTokenAndRetryWithDelay when eligible', async () => {
@@ -79,7 +79,7 @@ describe('plugin-meetings', () => {
 
           await interceptor.onResponseError(options, reason);
 
-          sinon.assert.calledOnceWithExactly(stub, options);
+          sinon.assert.calledOnceWithExactly(stub, options, reason);
         });
 
         it('rejects when isDataChannelTokenEnabled is false', async () => {
@@ -163,10 +163,12 @@ describe('plugin-meetings', () => {
         };
 
         it('refreshes token and retries request successfully', async () => {
+          const reason = makeReason(401);
+
           interceptor._refreshDataChannelToken.resolves('new-token');
           webex.request.resolves('mock-response');
 
-          const promise = interceptor.refreshTokenAndRetryWithDelay(options);
+          const promise = interceptor.refreshTokenAndRetryWithDelay(options, reason);
 
           clock.tick(2000);
 
@@ -178,31 +180,31 @@ describe('plugin-meetings', () => {
           expect(result).to.equal('mock-response');
         });
 
-        it('rejects when refreshDataChannelToken fails', async () => {
+        it('rejects with original reason when refreshDataChannelToken fails', async () => {
+          const reason = makeReason(401);
+
           interceptor._refreshDataChannelToken.rejects(new Error('refresh failed'));
 
-          const promise = interceptor.refreshTokenAndRetryWithDelay(options);
+          const promise = interceptor.refreshTokenAndRetryWithDelay(options, reason);
 
           clock.tick(2000);
 
-          await assert.isRejected(
-            promise,
-            /DataChannel token refresh failed: refresh failed/
-          );
+          await assert.isRejected(promise, reason);
+          sinon.assert.calledOnce(LoggerProxy.logger.warn);
         });
 
-        it('rejects when retry request fails', async () => {
+        it('rejects with original reason when retry request fails', async () => {
+          const reason = makeReason(401);
+
           interceptor._refreshDataChannelToken.resolves('new-token');
           webex.request.rejects(new Error('request failed'));
 
-          const promise = interceptor.refreshTokenAndRetryWithDelay(options);
+          const promise = interceptor.refreshTokenAndRetryWithDelay(options, reason);
 
           clock.tick(2000);
 
-          await assert.isRejected(
-            promise,
-            /DataChannel token refresh failed: request failed/
-          );
+          await assert.isRejected(promise, reason);
+          sinon.assert.calledOnce(LoggerProxy.logger.warn);
         });
       });
     });
