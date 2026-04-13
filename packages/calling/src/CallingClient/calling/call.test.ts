@@ -29,6 +29,7 @@ import {waitForMsecs} from '../../common/Utils';
 import log from '../../Logger';
 import {CallError} from '../../Errors';
 import {METHOD_START_MESSAGE} from '../../common/constants';
+import {APIRequest} from '../utils/request';
 
 jest.mock('@webex/internal-media-core');
 
@@ -132,6 +133,7 @@ describe('Call Tests', () => {
   });
 
   beforeEach(() => {
+    APIRequest.resetInstance();
     callManager = getCallManager(webex, defaultServiceIndicator);
   });
 
@@ -915,6 +917,7 @@ describe('State Machine handler tests', () => {
   let dtmfMock: jest.SpyInstance;
 
   beforeEach(() => {
+    APIRequest.resetInstance();
     call = new Call(
       activeUrl,
       webex,
@@ -1603,6 +1606,8 @@ describe('State Machine handler tests', () => {
 
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
     await flushPromises(3);
+    await Promise.resolve();
+    await Promise.resolve();
     expect(call['callStateMachine'].state.value).toBe('S_UNKNOWN');
     expect(errorSpy).toHaveBeenCalled();
     expect(uploadLogsSpy).toHaveBeenCalledWith({
@@ -1633,6 +1638,8 @@ describe('State Machine handler tests', () => {
 
     await call['handleRoapEstablished']({} as MediaContext, dummyEvent as RoapEvent);
     await flushPromises(2);
+    await Promise.resolve();
+    await Promise.resolve();
     expect(call.isConnected()).toBe(false);
 
     expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_TEARDOWN');
@@ -1984,6 +1991,8 @@ describe('State Machine handler tests', () => {
 
     await call.sendMediaStateMachineEvt(answerEvent as RoapEvent);
     await flushPromises(2);
+    await Promise.resolve();
+    await Promise.resolve();
 
     expect(postMediaSpy).toBeCalledOnceWith(answerEvent.data as RoapMessage);
     expect(warnSpy).toHaveBeenCalledWith('Failed to send MediaAnswer request', {
@@ -2591,6 +2600,7 @@ describe('Supplementary Services tests', () => {
   let call: Call;
 
   beforeEach(() => {
+    APIRequest.resetInstance();
     /* Since we are not actually testing from the start of a call , so it's good to set the below
      * parameters manually
      */
