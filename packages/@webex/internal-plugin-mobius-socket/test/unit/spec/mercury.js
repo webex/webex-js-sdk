@@ -19,6 +19,7 @@ import MockWebSocket from '@webex/test-helper-mock-web-socket';
 import uuid from 'uuid';
 import FakeTimers from '@sinonjs/fake-timers';
 import {skipInBrowser} from '@webex/test-helper-mocha';
+import {MESSAGE_TYPES} from '../../../src/socket/constants';
 
 import promiseTick from '../lib/promise-tick';
 
@@ -100,7 +101,7 @@ describe('plugin-mobius-socket', () => {
           process.nextTick(() => {
             mockWebSocket.emit('message', {
               data: JSON.stringify({
-                type: 'auth.response',
+                type: MESSAGE_TYPES.AUTH_RESPONSE,
                 status: {code: 200},
               }),
             });

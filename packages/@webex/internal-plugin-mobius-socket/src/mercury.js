@@ -490,7 +490,7 @@ const MobiusSocket = WebexPlugin.extend({
         this.logger.info(
           `${this.namespace}: ${
             isShutdownSwitchover ? '[shutdown] switchover' : ''
-          } connected, success, action: connected for ${sessionId}, url: ${newWSUrl}`
+          } connected to mobius socket, success, action: connected for ${sessionId}, url: ${newWSUrl}`
         );
 
         // Custom success handler for shutdown switchover
@@ -918,11 +918,6 @@ const MobiusSocket = WebexPlugin.extend({
 
     if (process.env.ENABLE_MERCURY_LOGGING) {
       this.logger.debug(`${this.namespace}: message envelope from ${sessionId}: `, envelope);
-    }
-
-    // Mobius uses `payload` instead of `data`; normalize to `data` for downstream compatibility
-    if (envelope.payload && !envelope.data) {
-      envelope.data = envelope.payload;
     }
 
     envelope.sessionId = sessionId;

@@ -17,7 +17,7 @@ import {
   UnknownResponse,
   // NotFound
 } from '../errors';
-import {SOCKET_READY_STATE} from './constants';
+import {MESSAGE_TYPES, SOCKET_READY_STATE} from './constants';
 
 const sockets = new WeakMap();
 
@@ -366,7 +366,7 @@ export default class Socket extends EventEmitter {
     }
 
     return this.send({
-      type: 'event_ack',
+      type: MESSAGE_TYPES.EVENT_ACK,
       trackingId: event.data.trackingId || this._createTrackingId(),
       eventId: event.data.eventId,
     }).catch((error) => {
@@ -393,7 +393,7 @@ export default class Socket extends EventEmitter {
       };
 
       const waitForAuthResponse = (event) => {
-        if (event.data?.type !== 'auth.response') {
+        if (event.data?.type !== MESSAGE_TYPES.AUTH_RESPONSE) {
           return;
         }
 
@@ -426,7 +426,7 @@ export default class Socket extends EventEmitter {
       }, this.authResponseTimeout || 10000);
 
       this.send({
-        type: 'auth',
+        type: MESSAGE_TYPES.AUTH,
         trackingId: this._createTrackingId(),
         payload: {
           token: this.token,

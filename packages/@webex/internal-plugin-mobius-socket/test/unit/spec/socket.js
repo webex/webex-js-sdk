@@ -17,6 +17,7 @@ import {
 } from '../../../src';
 import uuid from 'uuid';
 import FakeTimers from '@sinonjs/fake-timers';
+import {MESSAGE_TYPES} from '../../../src/socket/constants';
 
 describe('plugin-mobius-socket', () => {
   describe('Socket', () => {
@@ -58,7 +59,7 @@ describe('plugin-mobius-socket', () => {
       process.nextTick(() => {
         mockWebSocket.emit('message', {
           data: JSON.stringify({
-            type: 'auth.response',
+            type: MESSAGE_TYPES.AUTH_RESPONSE,
             status: {code: 200},
           }),
         });
@@ -136,7 +137,7 @@ describe('plugin-mobius-socket', () => {
 
         mockWebSocket.emit('message', {
           data: JSON.stringify({
-            type: 'auth.response',
+            type: MESSAGE_TYPES.AUTH_RESPONSE,
             status: {code: 200},
           }),
         });
@@ -221,7 +222,7 @@ describe('plugin-mobius-socket', () => {
 
           const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
 
-          assert.equal(firstCallArgs.type, 'auth');
+          assert.equal(firstCallArgs.type, MESSAGE_TYPES.AUTH);
 
           mockWebSocket.emit('close', {
             code: 4400,
@@ -249,7 +250,7 @@ describe('plugin-mobius-socket', () => {
 
           const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
 
-          assert.equal(firstCallArgs.type, 'auth');
+          assert.equal(firstCallArgs.type, MESSAGE_TYPES.AUTH);
 
           mockWebSocket.emit('close', {
             code: 4401,
@@ -277,7 +278,7 @@ describe('plugin-mobius-socket', () => {
 
           const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
 
-          assert.equal(firstCallArgs.type, 'auth');
+          assert.equal(firstCallArgs.type, MESSAGE_TYPES.AUTH);
 
           mockWebSocket.emit('close', {
             code: 4403,
@@ -346,7 +347,7 @@ describe('plugin-mobius-socket', () => {
         it('sends an auth message up the socket', () => {
           const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
 
-          assert.equal(firstCallArgs.type, 'auth');
+          assert.equal(firstCallArgs.type, MESSAGE_TYPES.AUTH);
           assert.property(firstCallArgs, 'payload');
           assert.property(firstCallArgs.payload, 'token');
           assert.equal(firstCallArgs.payload.token, 'mocktoken');
@@ -369,7 +370,7 @@ describe('plugin-mobius-socket', () => {
 
             const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
 
-            assert.equal(firstCallArgs.type, 'auth');
+            assert.equal(firstCallArgs.type, MESSAGE_TYPES.AUTH);
             assert.property(firstCallArgs, 'payload');
             assert.equal(firstCallArgs.payload.token, 'mocktoken');
             assert.property(firstCallArgs, 'trackingId');
@@ -386,7 +387,7 @@ describe('plugin-mobius-socket', () => {
           mockWebSocket.emit('open');
           mockWebSocket.emit('message', {
             data: JSON.stringify({
-              type: 'auth.response',
+              type: MESSAGE_TYPES.AUTH_RESPONSE,
               status: {code: 200},
             }),
           });
@@ -441,7 +442,7 @@ describe('plugin-mobius-socket', () => {
         mockWebSocket.emit('open');
         mockWebSocket.emit('message', {
           data: JSON.stringify({
-            type: 'auth.response',
+            type: MESSAGE_TYPES.AUTH_RESPONSE,
             status: {code: 200},
           }),
         });
@@ -478,7 +479,7 @@ describe('plugin-mobius-socket', () => {
         mockWebSocket.emit('open');
         mockWebSocket.emit('message', {
           data: JSON.stringify({
-            type: 'auth.response',
+            type: MESSAGE_TYPES.AUTH_RESPONSE,
             status: {code: 200},
           }),
         });
@@ -515,7 +516,7 @@ describe('plugin-mobius-socket', () => {
         mockWebSocket.emit('open');
         mockWebSocket.emit('message', {
           data: JSON.stringify({
-            type: 'auth.response',
+            type: MESSAGE_TYPES.AUTH_RESPONSE,
             status: {code: 200},
           }),
         });
@@ -552,7 +553,7 @@ describe('plugin-mobius-socket', () => {
         mockWebSocket.emit('open');
         mockWebSocket.emit('message', {
           data: JSON.stringify({
-            type: 'auth.response',
+            type: MESSAGE_TYPES.AUTH_RESPONSE,
             status: {code: 200},
           }),
         });
@@ -805,7 +806,7 @@ describe('plugin-mobius-socket', () => {
             assert.calledWith(
               mockWebSocket.send,
               JSON.stringify({
-                type: 'event_ack',
+                type: MESSAGE_TYPES.EVENT_ACK,
                 trackingId: 'tracking-123',
                 eventId: 'event-123',
               })
