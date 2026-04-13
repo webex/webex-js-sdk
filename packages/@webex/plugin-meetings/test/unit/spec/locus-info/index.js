@@ -2024,7 +2024,7 @@ describe('plugin-meetings', () => {
             function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          {muted: true, unmuteAllowed: true, modifiedBy: null, isMuteOnEntry: false}
+          {muted: true, unmuteAllowed: true, modifiedBy: null}
         );
 
         // but sometimes "previous self" is defined, but without controls.audio.muted, so we test this here:
@@ -2039,7 +2039,7 @@ describe('plugin-meetings', () => {
             function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          {muted: true, unmuteAllowed: true, modifiedBy: null, isMuteOnEntry: false}
+          {muted: true, unmuteAllowed: true, modifiedBy: null}
         );
       });
 
@@ -2098,7 +2098,7 @@ describe('plugin-meetings', () => {
             function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          {muted: true, unmuteAllowed: true, modifiedBy: null, isMuteOnEntry: false}
+          {muted: true, unmuteAllowed: true, modifiedBy: null}
         );
       });
 
@@ -2237,7 +2237,7 @@ describe('plugin-meetings', () => {
             function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          {muted: true, unmuteAllowed: false, modifiedBy: null, isMuteOnEntry: false}
+          {muted: true, unmuteAllowed: false, modifiedBy: null}
         );
 
         // now change only disallowUnmute
@@ -2255,7 +2255,7 @@ describe('plugin-meetings', () => {
             function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          {muted: true, unmuteAllowed: true, modifiedBy: null, isMuteOnEntry: false}
+          {muted: true, unmuteAllowed: true, modifiedBy: null}
         );
       });
 
@@ -2296,46 +2296,6 @@ describe('plugin-meetings', () => {
           },
           LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
           sinon.match({modifiedBy: null})
-        );
-      });
-
-      it('should include isMuteOnEntry true when muteOnEntry is enabled', () => {
-        const newSelf = cloneDeep(self);
-        newSelf.controls.audio.muted = true;
-        locusInfo.controls = {muteOnEntry: {enabled: true}};
-        
-        locusInfo.webex.internal.device.url = self.deviceUrl;
-        locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(newSelf);
-        
-        assert.calledWith(
-          locusInfo.emitScoped,
-          {
-            file: 'locus-info',
-            function: 'updateSelf',
-          },
-          LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          sinon.match({isMuteOnEntry: true})
-        );
-      });
-
-      it('should include isMuteOnEntry false when muteOnEntry is disabled', () => {
-        const newSelf = cloneDeep(self);
-        newSelf.controls.audio.muted = true;
-        locusInfo.controls = {muteOnEntry: {enabled: false}};
-        
-        locusInfo.webex.internal.device.url = self.deviceUrl;
-        locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(newSelf);
-        
-        assert.calledWith(
-          locusInfo.emitScoped,
-          {
-            file: 'locus-info',
-            function: 'updateSelf',
-          },
-          LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          sinon.match({isMuteOnEntry: false})
         );
       });
 

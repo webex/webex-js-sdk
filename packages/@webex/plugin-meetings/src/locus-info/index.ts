@@ -2599,7 +2599,6 @@ export default class LocusInfo extends EventsScope {
             muted: parsedSelves.current.remoteMuted,
             unmuteAllowed: parsedSelves.current.unmuteAllowed,
             modifiedBy: parsedSelves.current.modifiedBy ?? null,
-            isMuteOnEntry: this.controls?.muteOnEntry?.enabled === true,
           }
         );
       }
