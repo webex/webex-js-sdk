@@ -6,7 +6,7 @@ import '@webex/internal-plugin-device';
 import '@webex/internal-plugin-feature';
 import '@webex/internal-plugin-metrics';
 
-import MobiusSocket from './mercury';
+import MobiusSocket from './mobius-socket';
 import config from './config';
 
 /**
