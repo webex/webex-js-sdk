@@ -75,6 +75,7 @@ export type Digit = string | number;
 export type ServerInfo = {
   region: string;
   uris: string[];
+  wss?: string[];
 };
 
 export type MobiusServers = {

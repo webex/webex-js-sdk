@@ -232,4 +232,5 @@ export const METHODS = {
   UPLOAD_LOGS: 'uploadLogs',
   GET_SDK_CONNECTOR: 'getSDKConnector',
   GET_CONNECTED_CALL: 'getConnectedCall',
+  CONNECT_TO_MOBIUS_SOCKET: 'connectToMobiusSocket',
 };
