@@ -139,6 +139,8 @@ export type {
   ResumeRecordingPayload,
   WrapupPayLoad,
   /** UI control types for task buttons */
+  InteractionUIControls,
+  TaskUILeg,
   TaskUIControls,
   TaskUIControlState,
 } from './services/task/types';

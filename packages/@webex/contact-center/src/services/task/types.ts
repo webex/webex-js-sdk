@@ -1116,10 +1116,9 @@ export type TaskUIControlState = {
 };
 
 /**
- * UI control representation surfaced to task consumers.
- * Mirrors the buttons available in Task.uiControls without extra metadata.
+ * UI control representation for a single interaction leg.
  */
-export type TaskUIControls = {
+export type InteractionUIControls = {
   accept: TaskUIControlState;
   decline: TaskUIControlState;
   hold: TaskUIControlState;
@@ -1137,6 +1136,19 @@ export type TaskUIControls = {
   wrapup: TaskUIControlState;
   switchToMainCall: TaskUIControlState;
   switchToConsult: TaskUIControlState;
+};
+
+export type TaskUILeg = 'main' | 'consult';
+
+/**
+ * UI controls surfaced to task consumers.
+ * Top-level properties mirror the currently active leg for backwards compatibility,
+ * while `main` and `consultLeg` expose leg-specific control sets when both are present.
+ */
+export type TaskUIControls = InteractionUIControls & {
+  main: InteractionUIControls;
+  consultLeg: InteractionUIControls | null;
+  activeLeg: TaskUILeg;
 };
 
 /**

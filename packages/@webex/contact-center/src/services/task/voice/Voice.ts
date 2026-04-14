@@ -1097,9 +1097,9 @@ export default class Voice extends Task implements IVoice {
 
     try {
       if (isOnConsultLeg) {
-        const response = await this.contact.hold({
+        const response = await this.contact.unHold({
           interactionId: this.data.interactionId,
-          data: {mediaResourceId: consultMediaResourceId},
+          data: {mediaResourceId: this.data.mediaResourceId},
         });
 
         this.metricsManager.trackEvent(
@@ -1123,9 +1123,9 @@ export default class Voice extends Task implements IVoice {
         return response;
       }
 
-      const response = await this.contact.unHold({
+      const response = await this.contact.hold({
         interactionId: this.data.interactionId,
-        data: {mediaResourceId: consultMediaResourceId},
+        data: {mediaResourceId: this.data.mediaResourceId},
       });
 
       this.metricsManager.trackEvent(
