@@ -280,7 +280,7 @@ const MobiusSocket = WebexPlugin.extend({
    * @returns {Promise<Object>}
    */
   sendWssRequest(payload, sessionIdOrOptions = this.defaultSessionId, options = {}) {
-    if (!payload || typeof payload !== 'object') {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       return Promise.reject(new Error('`payload` is required'));
     }
 
@@ -307,10 +307,8 @@ const MobiusSocket = WebexPlugin.extend({
         response?.type === 'response_event' &&
         response?.subtype === request.type &&
         response?.trackingId === request.trackingId,
-      getStatusCode: (response) =>
-        response?.statusCode || response?.status?.code || response?.data?.statusCode,
-      getStatusMessage: (response) =>
-        response?.statusMessage || response?.status?.message || response?.data?.statusMessage,
+      getStatusCode: (response) => response?.statusCode,
+      getStatusMessage: (response) => response?.statusMessage,
       createError: (response, statusCode, statusMessage) =>
         this._createWssResponseError(response, statusCode, statusMessage),
       createTimeoutError: (request) =>
@@ -689,8 +687,7 @@ const MobiusSocket = WebexPlugin.extend({
       ([webSocketUrl, token]) => {
         let options = {
           forceCloseDelay: this.config.forceCloseDelay,
-          wssResponseTimeout:
-            this.config.wssResponseTimeout || this.config.authResponseTimeout || 10000,
+          wssResponseTimeout: this.config.wssResponseTimeout || 10000,
           token: normalizeMobiusAuthToken(token.toString()),
           trackingId: `${this.webex.sessionId}_${Date.now()}`,
           logger: this.logger,

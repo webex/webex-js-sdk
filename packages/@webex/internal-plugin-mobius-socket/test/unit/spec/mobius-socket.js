@@ -915,6 +915,35 @@ describe('plugin-mobius-socket', () => {
         });
       });
 
+      it('rejects with a clear error when the matching response is missing status code', async () => {
+        await mobiusSocket.connect();
+
+        const requestPromise = mobiusSocket.sendWssRequest({
+          type: 'auth',
+          data: {
+            token: 'Bearer test',
+          },
+        });
+
+        await promiseTick();
+
+        const requestPayload = JSON.parse(mockWebSocket.send.lastCall.args[0]);
+
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            type: 'response_event',
+            subtype: 'auth',
+            trackingId: requestPayload.trackingId,
+          }),
+        });
+
+        await assert.isRejected(requestPromise).then((error) => {
+          assert.equal(error.name, 'MobiusSocketResponseError');
+          assert.isUndefined(error.statusCode);
+          assert.equal(error.statusMessage, 'Socket response missing status code');
+        });
+      });
+
       it('rejects pending requests when the active socket closes', async () => {
         await mobiusSocket.connect();
 
@@ -965,6 +994,14 @@ describe('plugin-mobius-socket', () => {
         });
 
         await requestPromise;
+      });
+
+      it('rejects array payloads', async () => {
+        await mobiusSocket.connect();
+
+        await assert.isRejected(mobiusSocket.sendWssRequest([])).then((error) => {
+          assert.equal(error.message, '`payload` is required');
+        });
       });
     });
 

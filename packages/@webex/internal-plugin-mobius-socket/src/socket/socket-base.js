@@ -372,13 +372,8 @@ export default class Socket extends EventEmitter {
     const matchesResponse =
       options.matchesResponse ||
       ((response) => response?.trackingId === trackingId && response?.type === 'response_event');
-    const getStatusCode =
-      options.getStatusCode ||
-      ((response) => response?.statusCode || response?.status?.code || response?.data?.statusCode);
-    const getStatusMessage =
-      options.getStatusMessage ||
-      ((response) =>
-        response?.statusMessage || response?.status?.message || response?.data?.statusMessage);
+    const getStatusCode = options.getStatusCode || ((response) => response?.statusCode);
+    const getStatusMessage = options.getStatusMessage || ((response) => response?.statusMessage);
     const createError =
       options.createError ||
       ((response, statusCode, statusMessage) =>
@@ -547,6 +542,7 @@ export default class Socket extends EventEmitter {
       return false;
     }
 
+    // Pending request correlation currently requires trackingId on the response.
     const pendingResponse = response.trackingId
       ? this._pendingResponses.get(response.trackingId)
       : undefined;
@@ -562,7 +558,15 @@ export default class Socket extends EventEmitter {
     const statusCode = pendingResponse.getStatusCode(response);
     const statusMessage = pendingResponse.getStatusMessage(response);
 
-    if (statusCode >= 200 && statusCode < 300) {
+    if (statusCode === undefined) {
+      pendingResponse.reject(
+        pendingResponse.createError(
+          response,
+          statusCode,
+          statusMessage || 'Socket response missing status code'
+        )
+      );
+    } else if (statusCode >= 200 && statusCode < 300) {
       pendingResponse.resolve(response);
     } else {
       pendingResponse.reject(pendingResponse.createError(response, statusCode, statusMessage));
