@@ -176,8 +176,13 @@ const populatePackageNames = (changelog) => {
     // Sort the remaining packages alphabetically
     filteredPackages.sort();
 
-    // Add 'webex' and '@webex/calling' back to the beginning of the array
-    let sortedPackages = ['separator', ...specialPackages, 'separator', ...filteredPackages];
+    const existingSpecialPackages = specialPackages.filter(pkg => changelog[pkg]);
+    let sortedPackages;
+    if (existingSpecialPackages.length > 0) {
+        sortedPackages = [...existingSpecialPackages, 'separator', ...filteredPackages];
+    } else {
+        sortedPackages = filteredPackages;
+    }
     let optionsHtml = '<option value="">Select a package</option>'; // Placeholder option
 
     sortedPackages.forEach((packageName) => {
@@ -1720,15 +1725,23 @@ const initializeComparisonMode = async () => {
     // Setup all event listeners
     setupComparisonEventListeners();
 
+    // Listen for browser navigation affecting comparison view
+    window.addEventListener('popstate', async () => {
+        const enhancedParams = await handleEnhancedComparisonURL();
+        if (enhancedParams.shouldCompare) {
+            await loadEnhancedComparisonFromURL(enhancedParams);
+        } else {
+            clearComparisonForm();
+        }
+    });
+
     // Check for URL parameters on page load
     const enhancedParams = await handleEnhancedComparisonURL();
     if (enhancedParams.shouldCompare) {
         await loadEnhancedComparisonFromURL(enhancedParams);
         return;
     }
-
 };
-
 /**
  * Initialize application in correct order to prevent race conditions
  * This ensures versionPaths is populated before URL parameters are checked
@@ -1739,6 +1752,40 @@ const initializeApplication = async () => {
 
     // Step 2: Then initialize comparison mode (which checks URL params)
     await initializeComparisonMode();
+
+    // Step 3: Handle Back/Forward for single-version search.
+    window.addEventListener('popstate', async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // Comparison URLs are handled by the listener in initializeComparisonMode.
+        if (urlParams.has('compareStableA')) return;
+
+        const hasSingleSearchParams =
+            urlParams.has('stable_version') ||
+            urlParams.has('package') ||
+            urlParams.has('version') ||
+            urlParams.has('commitMessage') ||
+            urlParams.has('commitHash');
+
+        if (hasSingleSearchParams) {
+            await populateFormFieldsFromURL();
+        } else {
+            versionSelectDropdown.value = '';
+            packageNameInputDropdown.value = '';
+            versionInput.value = '';
+            commitMessageInput.value = '';
+            commitHashInput.value = '';
+            searchResults.innerHTML = '';
+            searchResults.classList.add('hide');
+            updateFormState({
+                stable_version: '',
+                package: '',
+                version: '',
+                commitMessage: '',
+                commitHash: '',
+            });
+        }
+    });
 };
 
 // Wait for DOM to be ready, then initialize
