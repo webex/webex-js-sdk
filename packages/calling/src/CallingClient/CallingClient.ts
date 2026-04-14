@@ -65,6 +65,9 @@ import {getMetricManager} from '../Metrics';
 import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
 import {APIRequest} from './utils/request';
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+const {createMobiusSocket} = require('@webex/internal-plugin-mobius-socket');
+
 /**
  * The `CallingClient` module provides a set of APIs for line registration and calling functionalities within the SDK.
  *
@@ -102,6 +105,15 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   private lineDict: Record<string, ILine> = {};
 
   private apiRequest: APIRequest;
+
+  private primaryWssMobiusUris: string[];
+
+  private backupWssMobiusUris: string[];
+
+  private isMobiusSocketEnabled: boolean;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private mobiusSocket: any;
 
   private isNetworkDown = false;
 
@@ -157,8 +169,17 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
+    this.primaryWssMobiusUris = [];
+    this.backupWssMobiusUris = [];
     this.mobiusClusters = this.webex.internal.services.getMobiusClusters();
     this.mobiusHost = '';
+
+    // MOBIUS SOCKET TODO: Fix this when feature flag is implemented
+    this.isMobiusSocketEnabled = config?.isMobiusSocketEnabled ?? false;
+
+    if (this.isMobiusSocketEnabled) {
+      this.mobiusSocket = createMobiusSocket(this.webex);
+    }
 
     this.apiRequest = APIRequest.getInstance({webex: this.webex});
 
@@ -207,6 +228,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }
 
     await this.getMobiusServers();
+
+    if (this.isMobiusSocketEnabled) {
+      await this.connectToMobiusSocket();
+    }
+
     await this.createLine();
 
     this.setupNetworkEventListeners();
@@ -543,6 +569,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
           const mobiusUris = filterMobiusUris(mobiusServers, this.mobiusHost);
           this.primaryMobiusUris = mobiusUris.primary;
           this.backupMobiusUris = mobiusUris.backup;
+          this.primaryWssMobiusUris = mobiusUris.primaryWss;
+          this.backupWssMobiusUris = mobiusUris.backupWss;
 
           log.log(
             `Final list of Mobius Servers, primary: ${mobiusUris.primary} and backup: ${mobiusUris.backup}`,
@@ -606,6 +634,89 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       this.mobiusHost = `https://${this.mobiusClusters[0].host}${API_V1}`;
       this.primaryMobiusUris = [`${this.mobiusHost}${URL_ENDPOINT}`];
     }
+  }
+
+  /**
+   * Connects to the Mobius WebSocket using WSS URIs discovered during Mobius server discovery.
+   * Attempts primary WSS URIs first, then falls back to backup WSS URIs.
+   * If all attempts fail, logs a warning and continues without a socket connection.
+   */
+  private async connectToMobiusSocket(): Promise<void> {
+    const loggerContext = {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.CONNECT_TO_MOBIUS_SOCKET,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
+    if (!this.primaryWssMobiusUris.length && !this.backupWssMobiusUris.length) {
+      log.warn(
+        'No WSS URIs available from Mobius discovery, skipping socket connection',
+        loggerContext
+      );
+
+      return;
+    }
+
+    if (this.primaryWssMobiusUris.length) {
+      log.log(
+        `Attempting Mobius socket connection using primary WSS URIs (${this.primaryWssMobiusUris.length} available)`,
+        loggerContext
+      );
+
+      for (const wssUri of this.primaryWssMobiusUris) {
+        try {
+          log.log(`Trying primary WSS URI: ${wssUri}`, loggerContext);
+          // eslint-disable-next-line no-await-in-loop
+          await this.mobiusSocket.connect(wssUri);
+          log.log(
+            `Successfully connected to Mobius socket on primary WSS URI: ${wssUri}`,
+            loggerContext
+          );
+
+          return;
+        } catch (err: unknown) {
+          log.warn(`Primary WSS URI connection failed for ${wssUri}: ${err}`, loggerContext);
+        }
+      }
+
+      log.warn('All primary WSS URI connection attempts failed', loggerContext);
+    } else {
+      log.warn('No primary WSS URIs available, skipping to backup', loggerContext);
+    }
+
+    if (this.backupWssMobiusUris.length) {
+      log.log(
+        `Attempting Mobius socket connection using backup WSS URIs (${this.backupWssMobiusUris.length} available)`,
+        loggerContext
+      );
+
+      for (const wssUri of this.backupWssMobiusUris) {
+        try {
+          log.log(`Trying backup WSS URI: ${wssUri}`, loggerContext);
+          // eslint-disable-next-line no-await-in-loop
+          await this.mobiusSocket.connect(wssUri);
+          log.log(
+            `Successfully connected to Mobius socket on backup WSS URI: ${wssUri}`,
+            loggerContext
+          );
+
+          return;
+        } catch (err: unknown) {
+          log.warn(`Backup WSS URI connection failed for ${wssUri}: ${err}`, loggerContext);
+        }
+      }
+
+      log.warn('All backup WSS URI connection attempts failed', loggerContext);
+    } else {
+      log.warn('No backup WSS URIs available', loggerContext);
+    }
+
+    // MOBIUS WSS TODO: See if we need to throw an error here if all connection attempts fail
+    log.warn(
+      'All Mobius socket connection attempts exhausted for both primary and backup, continuing without socket',
+      loggerContext
+    );
   }
 
   /**

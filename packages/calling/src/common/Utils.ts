@@ -142,8 +142,10 @@ export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl:
     method: 'filterMobiusUris',
   };
 
-  const urisArrayPrimary = [];
-  const urisArrayBackup = [];
+  const urisArrayPrimary: string[] = [];
+  const urisArrayBackup: string[] = [];
+  const wssArrayPrimary: string[] = [];
+  const wssArrayBackup: string[] = [];
 
   if (mobiusServers?.primary?.uris) {
     log.info('Adding Primary uris', logContext);
@@ -152,10 +154,24 @@ export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl:
     }
   }
 
+  if (mobiusServers?.primary?.wss) {
+    log.info('Adding Primary wss uris', logContext);
+    for (const wssUri of mobiusServers.primary.wss) {
+      wssArrayPrimary.push(wssUri);
+    }
+  }
+
   if (mobiusServers?.backup?.uris) {
     log.info('Adding Backup uris', logContext);
     for (const uri of mobiusServers.backup.uris) {
       urisArrayBackup.push(`${uri}${URL_ENDPOINT}`);
+    }
+  }
+
+  if (mobiusServers?.backup?.wss) {
+    log.info('Adding Backup wss uris', logContext);
+    for (const wssUri of mobiusServers.backup.wss) {
+      wssArrayBackup.push(wssUri);
     }
   }
 
@@ -172,6 +188,8 @@ export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl:
 
   const primaryUris: string[] = [];
   const backupUris: string[] = [];
+  const primaryWss: string[] = [];
+  const backupWss: string[] = [];
 
   /* Remove duplicates from primary by keeping the order intact */
   for (let i = 0; i < urisArrayPrimary.length; i += 1) {
@@ -187,7 +205,21 @@ export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl:
     }
   }
 
-  return {primary: primaryUris, backup: backupUris};
+  /* Remove duplicates from primary wss by keeping the order intact */
+  for (let i = 0; i < wssArrayPrimary.length; i += 1) {
+    if (primaryWss.indexOf(wssArrayPrimary[i]) === -1) {
+      primaryWss.push(wssArrayPrimary[i]);
+    }
+  }
+
+  /* Remove duplicates from backup wss by keeping the order intact */
+  for (let i = 0; i < wssArrayBackup.length; i += 1) {
+    if (backupWss.indexOf(wssArrayBackup[i]) === -1) {
+      backupWss.push(wssArrayBackup[i]);
+    }
+  }
+
+  return {primary: primaryUris, backup: backupUris, primaryWss, backupWss};
 }
 
 /**
