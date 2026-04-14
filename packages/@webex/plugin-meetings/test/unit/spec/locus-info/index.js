@@ -2259,135 +2259,118 @@ describe('plugin-meetings', () => {
         );
       });
 
-      it('should include modifiedBy when host mutes participant', () => {
-        const newSelf = cloneDeep(self);
-        newSelf.controls.audio.muted = true;
-        newSelf.controls.audio.meta = {modifiedBy: 'host-uuid-123'};
-        
-        locusInfo.webex.internal.device.url = self.deviceUrl;
-        locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(newSelf);
-        
-        assert.calledWith(
-          locusInfo.emitScoped,
-          {
-            file: 'locus-info',
-            function: 'updateSelf',
-          },
-          LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          sinon.match({modifiedBy: 'host-uuid-123'})
-        );
+      // Parameterized tests for initial mute with different modifiedBy/disallowUnmute variants
+      [
+        {
+          description: "should emit modifiedBy='host-uuid-123' with unmuteAllowed=true when muted by host",
+          meta: {modifiedBy: 'host-uuid-123'},
+          disallowUnmute: undefined,
+          expected: {muted: true, unmuteAllowed: true, modifiedBy: 'host-uuid-123'},
+        },
+        {
+          description: 'should emit modifiedBy=null with unmuteAllowed=true when meta is missing',
+          meta: undefined,
+          disallowUnmute: undefined,
+          expected: {muted: true, unmuteAllowed: true, modifiedBy: null},
+        },
+        {
+          description: "should emit modifiedBy='host-uuid-456' with unmuteAllowed=false for hard mute",
+          meta: {modifiedBy: 'host-uuid-456'},
+          disallowUnmute: true,
+          expected: {muted: true, unmuteAllowed: false, modifiedBy: 'host-uuid-456'},
+        },
+      ].forEach(({description, meta, disallowUnmute, expected}) => {
+        it(description, () => {
+          locusInfo.webex.internal.device.url = self.deviceUrl;
+          locusInfo.updateSelf(self);
+          const newSelf = cloneDeep(self);
+          newSelf.controls.audio.muted = true;
+          if (meta !== undefined) {
+            newSelf.controls.audio.meta = meta;
+          } else {
+            delete newSelf.controls.audio.meta;
+          }
+          if (disallowUnmute !== undefined) {
+            newSelf.controls.audio.disallowUnmute = disallowUnmute;
+          }
+
+          locusInfo.emitScoped = sinon.stub();
+          locusInfo.updateSelf(newSelf);
+
+          assert.calledWith(
+            locusInfo.emitScoped,
+            {
+              file: 'locus-info',
+              function: 'updateSelf',
+            },
+            LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
+            expected
+          );
+        });
       });
 
-      it('should include modifiedBy as null when meta.modifiedBy is missing', () => {
-        const newSelf = cloneDeep(self);
-        newSelf.controls.audio.muted = true;
-        delete newSelf.controls.audio.meta;
-        
-        locusInfo.webex.internal.device.url = self.deviceUrl;
-        locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(newSelf);
-        
-        assert.calledWith(
-          locusInfo.emitScoped,
-          {
-            file: 'locus-info',
-            function: 'updateSelf',
-          },
-          LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          sinon.match({modifiedBy: null})
-        );
-      });
+      describe('already-muted state changes', () => {
+        it('should emit unmuteAllowed=false when host enables hard mute while already muted', () => {
+          const mutedSelf = cloneDeep(self);
+          mutedSelf.controls.audio.muted = true;
+          locusInfo.webex.internal.device.url = self.deviceUrl;
+          locusInfo.updateSelf(mutedSelf);
 
-      it('should include modifiedBy with hard mute (disallowUnmute)', () => {
-        locusInfo.webex.internal.device.url = self.deviceUrl;
-        locusInfo.updateSelf(self);
-        const newSelf = cloneDeep(self);
-        newSelf.controls.audio.muted = true;
-        newSelf.controls.audio.disallowUnmute = true;
-        newSelf.controls.audio.meta = {modifiedBy: 'host-uuid-456'};
+          const hardMuteSelf = cloneDeep(mutedSelf);
+          hardMuteSelf.controls.audio.disallowUnmute = true;
+          hardMuteSelf.controls.audio.meta = {modifiedBy: 'host-uuid-789'};
 
-        locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(newSelf);
+          locusInfo.emitScoped = sinon.stub();
+          locusInfo.updateSelf(hardMuteSelf);
 
-        assert.calledWith(
-          locusInfo.emitScoped,
-          {
-            file: 'locus-info',
-            function: 'updateSelf',
-          },
-          LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          {muted: true, unmuteAllowed: false, modifiedBy: 'host-uuid-456'}
-        );
-      });
+          assert.calledWith(
+            locusInfo.emitScoped,
+            {
+              file: 'locus-info',
+              function: 'updateSelf',
+            },
+            LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
+            {muted: true, unmuteAllowed: false, modifiedBy: 'host-uuid-789'}
+          );
+        });
 
-      it('should emit event when unmuteAllowed changes while already muted', () => {
-        // Setup: user is already muted with unmuteAllowed=true
-        const mutedSelf = cloneDeep(self);
-        mutedSelf.controls.audio.muted = true;
-        locusInfo.webex.internal.device.url = self.deviceUrl;
-        locusInfo.updateSelf(mutedSelf);
+        it('should emit muted=false with modifiedBy when host unmutes participant', () => {
+          const mutedSelf = cloneDeep(self);
+          mutedSelf.controls.audio.muted = true;
+          mutedSelf.controls.audio.meta = {modifiedBy: 'host-uuid-111'};
+          locusInfo.webex.internal.device.url = self.deviceUrl;
+          locusInfo.updateSelf(mutedSelf);
 
-        // Now host enables hard mute (unmuteAllowed changes to false)
-        const hardMuteSelf = cloneDeep(mutedSelf);
-        hardMuteSelf.controls.audio.disallowUnmute = true;
-        hardMuteSelf.controls.audio.meta = {modifiedBy: 'host-uuid-789'};
+          const unmutedSelf = cloneDeep(self);
+          unmutedSelf.controls.audio.muted = false;
+          unmutedSelf.controls.audio.meta = {modifiedBy: 'host-uuid-111'};
 
-        locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(hardMuteSelf);
+          locusInfo.emitScoped = sinon.stub();
+          locusInfo.updateSelf(unmutedSelf);
 
-        assert.calledWith(
-          locusInfo.emitScoped,
-          {
-            file: 'locus-info',
-            function: 'updateSelf',
-          },
-          LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          {muted: true, unmuteAllowed: false, modifiedBy: 'host-uuid-789'}
-        );
-      });
-
-      it('should include modifiedBy when host unmutes participant', () => {
-        // Setup: user is muted
-        const mutedSelf = cloneDeep(self);
-        mutedSelf.controls.audio.muted = true;
-        mutedSelf.controls.audio.meta = {modifiedBy: 'host-uuid-111'};
-        locusInfo.webex.internal.device.url = self.deviceUrl;
-        locusInfo.updateSelf(mutedSelf);
-
-        // Host unmutes
-        const unmutedSelf = cloneDeep(self);
-        unmutedSelf.controls.audio.muted = false;
-        unmutedSelf.controls.audio.meta = {modifiedBy: 'host-uuid-111'};
-
-        locusInfo.emitScoped = sinon.stub();
-        locusInfo.updateSelf(unmutedSelf);
-
-        assert.calledWith(
-          locusInfo.emitScoped,
-          {
-            file: 'locus-info',
-            function: 'updateSelf',
-          },
-          LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          {muted: false, unmuteAllowed: true, modifiedBy: 'host-uuid-111'}
-        );
+          assert.calledWith(
+            locusInfo.emitScoped,
+            {
+              file: 'locus-info',
+              function: 'updateSelf',
+            },
+            LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
+            {muted: false, unmuteAllowed: true, modifiedBy: 'host-uuid-111'}
+          );
+        });
       });
 
       it('should not emit SELF_REMOTE_MUTE_STATUS_UPDATED when user mutes themselves', () => {
         locusInfo.webex.internal.device.url = self.deviceUrl;
         locusInfo.updateSelf(self);
 
-        // Self-mute: modifiedBy equals user's own identity
         const selfMutedSelf = cloneDeep(self);
         selfMutedSelf.controls.audio.muted = true;
-        // The user's selfIdentity comes from self.person.id via SelfUtils.getSelfIdentity()
         selfMutedSelf.controls.audio.meta = {modifiedBy: self.person.id};
 
         locusInfo.emitScoped = sinon.stub();
         locusInfo.updateSelf(selfMutedSelf);
 
-        // Verify no SELF_REMOTE_MUTE_STATUS_UPDATED was emitted
         locusInfo.emitScoped.args.forEach((x) => {
           assert.notEqual(x[1], LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED);
         });
@@ -2397,7 +2380,6 @@ describe('plugin-meetings', () => {
         locusInfo.webex.internal.device.url = self.deviceUrl;
         locusInfo.updateSelf(self);
 
-        // First mute by host A
         const mutedByHostA = cloneDeep(self);
         mutedByHostA.controls.audio.muted = true;
         mutedByHostA.controls.audio.meta = {modifiedBy: 'host-A-uuid'};
@@ -2415,13 +2397,11 @@ describe('plugin-meetings', () => {
           sinon.match({modifiedBy: 'host-A-uuid'})
         );
 
-        // User unmutes themselves
         const unmutedSelf = cloneDeep(self);
         unmutedSelf.controls.audio.muted = false;
         unmutedSelf.controls.audio.meta = {modifiedBy: self.person.id};
         locusInfo.updateSelf(unmutedSelf);
 
-        // Second mute by host B
         const mutedByHostB = cloneDeep(self);
         mutedByHostB.controls.audio.muted = true;
         mutedByHostB.controls.audio.meta = {modifiedBy: 'host-B-uuid'};
