@@ -28,31 +28,6 @@ function normalizeMobiusAuthToken(token) {
   return token.replace(/^Bearer\s+/i, '');
 }
 
-function normalizeAuthRequestPayload(payload) {
-  if (!payload || payload.type !== 'auth') {
-    return payload;
-  }
-
-  const token = payload?.data?.token || payload?.payload?.token;
-
-  if (typeof token !== 'string') {
-    return payload;
-  }
-
-  const normalizedToken = normalizeMobiusAuthToken(token);
-  const restPayload = {...payload};
-
-  delete restPayload.payload;
-
-  return {
-    ...restPayload,
-    data: {
-      ...(payload.data || {}),
-      token: normalizedToken,
-    },
-  };
-}
-
 const MobiusSocket = WebexPlugin.extend({
   namespace: 'MobiusSocket',
   lastError: undefined,
@@ -299,9 +274,7 @@ const MobiusSocket = WebexPlugin.extend({
       return Promise.reject(new Error(`Mobius socket is not connected for session ${sessionId}`));
     }
 
-    const normalizedPayload = normalizeAuthRequestPayload(payload);
-
-    return socket.sendRequest(normalizedPayload, {
+    return socket.sendRequest(payload, {
       timeout: requestOptions.timeout || this.config.wssResponseTimeout || 10000,
       matchesResponse: (response, request) =>
         response?.type === 'response_event' &&

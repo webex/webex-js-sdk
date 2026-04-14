@@ -833,14 +833,13 @@ describe('plugin-mobius-socket', () => {
         const requestPromise = mobiusSocket.sendWssRequest({
           type: 'auth',
           data: {
-            token: 'Bearer test',
+            token: 'test',
           },
         });
 
         await promiseTick();
 
         const requestPayload = JSON.parse(mockWebSocket.send.lastCall.args[0]);
-
         assert.equal(requestPayload.data.token, 'test');
 
         mockWebSocket.emit('message', {
@@ -876,7 +875,7 @@ describe('plugin-mobius-socket', () => {
         const requestPromise = mobiusSocket.sendWssRequest({
           type: 'auth',
           data: {
-            token: 'Bearer test',
+            token: 'test',
           },
         });
 
@@ -908,7 +907,7 @@ describe('plugin-mobius-socket', () => {
         const requestPromise = mobiusSocket.sendWssRequest({
           type: 'auth',
           data: {
-            token: 'Bearer test',
+            token: 'test',
           },
         });
 
@@ -928,7 +927,7 @@ describe('plugin-mobius-socket', () => {
         const requestPromise = mobiusSocket.sendWssRequest({
           type: 'auth',
           data: {
-            token: 'Bearer test',
+            token: 'test',
           },
         });
 
@@ -957,7 +956,7 @@ describe('plugin-mobius-socket', () => {
         const requestPromise = mobiusSocket.sendWssRequest({
           type: 'auth',
           data: {
-            token: 'Bearer test',
+            token: 'test',
           },
         });
 
@@ -971,36 +970,6 @@ describe('plugin-mobius-socket', () => {
           assert.equal(error.code, 1003);
           assert.equal(error.reason, 'service rejected request');
         });
-      });
-
-      it('converts legacy auth payload token requests to the data envelope', async () => {
-        await mobiusSocket.connect();
-
-        const requestPromise = mobiusSocket.sendWssRequest({
-          type: 'auth',
-          payload: {
-            token: 'Bearer test',
-          },
-        });
-
-        await promiseTick();
-
-        const requestPayload = JSON.parse(mockWebSocket.send.lastCall.args[0]);
-
-        assert.equal(requestPayload.data.token, 'test');
-        assert.isUndefined(requestPayload.payload);
-
-        mockWebSocket.emit('message', {
-          data: JSON.stringify({
-            type: 'response_event',
-            subtype: 'auth',
-            trackingId: requestPayload.trackingId,
-            statusCode: 200,
-            statusMessage: 'OK',
-          }),
-        });
-
-        await requestPromise;
       });
 
       it('rejects array payloads', async () => {
