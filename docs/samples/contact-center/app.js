@@ -826,14 +826,13 @@ async function toggleTransferOptions() {
   if (!currentTask) return;
 
   const interactionState = currentTask.data?.interaction?.state;
-  const controls = currentTask.uiControls || {};
+  const controls = getActiveUIControls(currentTask);
   const inConferenceFlow =
     interactionState === 'conference' || currentTask.data?.isConferenceInProgress === true;
   const inConsultFlow =
     interactionState === 'consulting' ||
     controls.endConsult?.isVisible ||
-    controls.switchToMainCall?.isVisible ||
-    controls.switchToConsult?.isVisible ||
+    controls.switch?.isVisible ||
     controls.conference?.isVisible;
 
   // In consult/conference/switched flows, transfer button should execute transfer API directly.
@@ -1102,41 +1101,30 @@ async function transferConference() {
 }
 
 /**
- * Switch to main call - puts consult leg on hold
+ * Switch between main and consult call
  */
-async function switchToMainCall() {
+async function switchCall() {
   if (!currentTask) {
     alert('No active task');
     return;
   }
 
   try {
-    console.log('Switching to main call...');
+    console.log('Switching call...');
     await currentTask.switchCall();
-    console.log('Switched to main call successfully');
+    console.log('Switched call successfully');
   } catch (error) {
-    console.error('Failed to switch to main call:', error);
-    alert(`Failed to switch to main call. ${error.message || 'Please try again.'}`);
+    console.error('Failed to switch call:', error);
+    alert(`Failed to switch call. ${error.message || 'Please try again.'}`);
   }
 }
 
-/**
- * Switch to consult call - puts main call leg on hold
- */
-async function switchToConsult() {
-  if (!currentTask) {
-    alert('No active task');
-    return;
-  }
+async function switchToMainCall() {
+  return switchCall();
+}
 
-  try {
-    console.log('Switching to consult call...');
-    await currentTask.switchCall();
-    console.log('Switched to consult call successfully');
-  } catch (error) {
-    console.error('Failed to switch to consult call:', error);
-    alert(`Failed to switch to consult call. ${error.message || 'Please try again.'}`);
-  }
+async function switchToConsult() {
+  return switchCall();
 }
 
 // Update task state display in the UI
@@ -1672,11 +1660,21 @@ function getTaskLegControls(task, leg) {
     return task.uiControls;
   }
 
-  return leg === 'consult' ? task.uiControls.consultLeg : task.uiControls.main;
+  return leg === 'consult' ? task.uiControls.consult : task.uiControls.main;
 }
 
 function getTaskActiveLeg(task) {
   return task?.uiControls?.activeLeg || 'main';
+}
+
+function getActiveUIControls(task) {
+  return getTaskLegControls(task, getTaskActiveLeg(task)) || {};
+}
+
+function hasVisibleControls(controls) {
+  if (!controls) return false;
+
+  return Object.values(controls).some((control) => control?.isVisible);
 }
 
 function getTaskControlCardStatus(task, leg) {
@@ -1686,7 +1684,7 @@ function getTaskControlCardStatus(task, leg) {
     return activeLeg === 'consult' ? 'Consulting' : 'On Hold';
   }
 
-  if (task?.uiControls?.consultLeg) {
+  if (hasVisibleControls(task?.uiControls?.consult)) {
     return activeLeg === 'main' ? 'Connected' : 'On Hold';
   }
 
@@ -1696,6 +1694,10 @@ function getTaskControlCardStatus(task, leg) {
 function getTaskControlCardLabel(task, leg, actionKey) {
   if (actionKey === 'hold') {
     return isTaskLegOnHold(task, leg) ? 'Resume' : 'Hold';
+  }
+
+  if (actionKey === 'switch') {
+    return 'Switch';
   }
 
   if (actionKey === 'conference') {
@@ -1708,8 +1710,6 @@ function getTaskControlCardLabel(task, leg, actionKey) {
     transfer: 'Transfer',
     endConsult: 'End Consult',
     exitConference: 'Exit Conference',
-    switchToMainCall: 'Switch to Main',
-    switchToConsult: 'Switch to Consult',
     end: 'End',
     wrapup: 'Wrapup',
     recording: 'Recording',
@@ -1729,8 +1729,7 @@ function executeTaskControlCardAction(task, actionKey) {
     conference: () => mergeToConference(),
     endConsult: () => endConsult(),
     exitConference: () => exitConference(),
-    switchToMainCall: () => switchToMainCall(),
-    switchToConsult: () => switchToConsult(),
+    switch: () => switchCall(),
     end: () => endCall(),
     wrapup: () => wrapupCall(),
   };
@@ -1751,7 +1750,7 @@ function renderTaskControlsSections(task) {
   const legs = [
     {id: 'main', title: 'Main Interaction', controls: getTaskLegControls(task, 'main')},
     {id: 'consult', title: 'Consult Interaction', controls: getTaskLegControls(task, 'consult')},
-  ].filter((entry) => Boolean(entry.controls));
+  ].filter((entry) => entry.id === 'main' || hasVisibleControls(entry.controls));
 
   const actionOrder = [
     'hold',
@@ -1761,8 +1760,7 @@ function renderTaskControlsSections(task) {
     'conference',
     'endConsult',
     'exitConference',
-    'switchToMainCall',
-    'switchToConsult',
+    'switch',
     'end',
     'wrapup',
   ];
@@ -1800,16 +1798,15 @@ function renderTaskControlsSections(task) {
         return;
       }
 
-      if (
-        !isActive &&
-        (actionKey === 'switchToMainCall' || actionKey === 'switchToConsult')
-      ) {
+      if (!isActive && actionKey === 'switch') {
         return;
       }
 
       const button = document.createElement('button');
       button.textContent = getTaskControlCardLabel(task, id, actionKey);
-      button.disabled = !isActive || !control.isEnabled;
+      const allowInactiveAction = actionKey === 'endConsult';
+
+      button.disabled = (!isActive && !allowInactiveAction) || !control.isEnabled;
       button.addEventListener('click', () => executeTaskControlCardAction(task, actionKey));
       actionsElm.appendChild(button);
     });
@@ -1834,7 +1831,7 @@ function updateCallControlUI(task) {
   const { callProcessingDetails } = interaction || {};
 
   // Get uiControls from task - this is the SINGLE SOURCE OF TRUTH
-  const uiControls = task.uiControls || {};
+  const uiControls = getActiveUIControls(task);
 
   // Apply ALL button states from uiControls
   applyAllControlsFromUIControls(uiControls);
@@ -1858,6 +1855,7 @@ function updateCallControlUI(task) {
   // Debug logging
   console.log('uiControls applied:', {
     interactionId: task.data?.interactionId,
+    activeLeg: task.uiControls?.activeLeg,
     accept: uiControls.accept,
     decline: uiControls.decline,
     hold: uiControls.hold,
@@ -1868,8 +1866,7 @@ function updateCallControlUI(task) {
     conference: uiControls.conference,
     mergeToConference: uiControls.mergeToConference,
     exitConference: uiControls.exitConference,
-    switchToMainCall: uiControls.switchToMainCall,
-    switchToConsult: uiControls.switchToConsult,
+    switch: uiControls.switch,
     wrapup: uiControls.wrapup,
   });
 }
@@ -1917,8 +1914,8 @@ function applyAllControlsFromUIControls(uiControls) {
   applyControlState(mergeConferenceBtn, controls.conference);
   applyControlState(exitConferenceBtn, controls.exitConference);
   applyControlState(transferConferenceBtn, controls.transferConference);
-  applyControlState(switchToMainBtn, controls.switchToMainCall);
-  applyControlState(switchToConsultBtn, controls.switchToConsult);
+  applyControlState(switchToMainBtn, controls.switch);
+  applyControlState(switchToConsultBtn, controls.switch);
   
   // Wrapup controls
   applyControlState(wrapupElm, controls.wrapup);
@@ -1956,12 +1953,10 @@ function updateButtonLabels(task, callProcessingDetails) {
   }
 
   // Conference/Merge button label based on which leg is active
-  // switchToConsult visible → agent is on main leg → label "Conference"
-  // switchToMainCall visible → agent is on consult leg → label "Merge"
   if (mergeConferenceBtn) {
-    const controls = task.uiControls;
+    const controls = getActiveUIControls(task);
     if (controls?.conference?.isVisible) {
-      const onMainLeg = controls?.switchToConsult?.isVisible;
+      const onMainLeg = getTaskActiveLeg(task) === 'main';
 
       mergeConferenceBtn.innerText = onMainLeg ? 'Conference' : 'Merge';
     }

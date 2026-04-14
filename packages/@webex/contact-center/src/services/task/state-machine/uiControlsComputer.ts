@@ -42,28 +42,28 @@ function getDefaultInteractionUIControls(): InteractionUIControls {
     exitConference: DISABLED,
     transferConference: DISABLED,
     mergeToConference: DISABLED,
-    switchToMainCall: DISABLED,
-    switchToConsult: DISABLED,
+    switch: DISABLED,
   };
 }
 
 function createTaskUIControls(
   main: InteractionUIControls,
-  consultLeg: InteractionUIControls | null,
+  consult: InteractionUIControls,
   activeLeg: TaskUILeg
 ): TaskUIControls {
-  const activeControls = activeLeg === 'consult' && consultLeg ? consultLeg : main;
-
   return {
-    ...activeControls,
     main,
-    consultLeg,
+    consult,
     activeLeg,
-  } as TaskUIControls;
+  };
 }
 
 export function getDefaultUIControls(): TaskUIControls {
-  return createTaskUIControls(getDefaultInteractionUIControls(), null, 'main');
+  return createTaskUIControls(
+    getDefaultInteractionUIControls(),
+    getDefaultInteractionUIControls(),
+    'main'
+  );
 }
 
 function computeVoiceInteractionUIControls(
@@ -344,21 +344,19 @@ function computeVoiceInteractionUIControls(
       return consultDestinationAgentJoined && !maxParticipants ? VISIBLE_ENABLED : VISIBLE_DISABLED;
     })(),
 
-    // SwitchToMainCall: consulting, on consult leg
-    switchToMainCall: (() => {
-      if (!isConsulting || !consultInitiator || consultCallHeld) return DISABLED;
+    // Switch: visible only on the currently active leg
+    switch: (() => {
+      if (currentLeg === 'consult') {
+        if (!isConsulting || !consultInitiator || consultCallHeld) return DISABLED;
 
-      return consultDestinationAgentJoined ? VISIBLE_ENABLED : VISIBLE_DISABLED;
-    })(),
+        return consultDestinationAgentJoined ? VISIBLE_ENABLED : VISIBLE_DISABLED;
+      }
 
-    // SwitchToConsult: consulting, on main call
-    switchToConsult: (() => {
       if (hasParallelConsultLeg && state === TaskState.CONNECTED) {
         return consultDestinationAgentJoined ? VISIBLE_ENABLED : VISIBLE_DISABLED;
       }
-      if (!isConsulting || !consultInitiator || !consultCallHeld) return DISABLED;
 
-      return consultDestinationAgentJoined ? VISIBLE_ENABLED : VISIBLE_DISABLED;
+      return DISABLED;
     })(),
   };
 }
@@ -390,8 +388,7 @@ function computeDigitalInteractionUIControls(
     exitConference: DISABLED,
     transferConference: DISABLED,
     mergeToConference: DISABLED,
-    switchToMainCall: DISABLED,
-    switchToConsult: DISABLED,
+    switch: DISABLED,
   };
 }
 
@@ -478,14 +475,14 @@ export function computeUIControls(
             fallbackTaskData,
             'consult'
           )
-        : null;
+        : getDefaultInteractionUIControls();
 
       return createTaskUIControls(mainControls, consultControls, activeLeg);
     }
     case TASK_CHANNEL_TYPE.DIGITAL:
       return createTaskUIControls(
         computeDigitalInteractionUIControls(currentState, context, fallbackTaskData),
-        null,
+        getDefaultInteractionUIControls(),
         'main'
       );
     default:
@@ -494,12 +491,9 @@ export function computeUIControls(
 }
 
 function haveInteractionUIControlsChanged(
-  previous: InteractionUIControls | null,
-  next: InteractionUIControls | null
+  previous: InteractionUIControls,
+  next: InteractionUIControls
 ): boolean {
-  if (previous === next) return false;
-  if (!previous || !next) return previous !== next;
-
   return (Object.keys(next) as (keyof InteractionUIControls)[]).some((key) => {
     const prev = previous[key];
     const curr = next[key];
@@ -517,6 +511,6 @@ export function haveUIControlsChanged(
   return (
     previous.activeLeg !== next.activeLeg ||
     haveInteractionUIControlsChanged(previous.main, next.main) ||
-    haveInteractionUIControlsChanged(previous.consultLeg, next.consultLeg)
+    haveInteractionUIControlsChanged(previous.consult, next.consult)
   );
 }

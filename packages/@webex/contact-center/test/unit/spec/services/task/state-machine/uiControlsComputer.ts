@@ -77,21 +77,18 @@ describe('uiControlsComputer consult initiator controls', () => {
     const uiControls = computeUIControls(TaskState.CONSULTING, context, context.taskData);
 
     expect(uiControls.activeLeg).toBe('consult');
-    expect(uiControls.consultLeg).not.toBeNull();
+    expect(uiControls.consult).toBeDefined();
 
     expect(uiControls.main.hold).toEqual({isVisible: false, isEnabled: false});
     expect(uiControls.main.transfer).toEqual({isVisible: true, isEnabled: false});
     expect(uiControls.main.conference).toEqual({isVisible: true, isEnabled: false});
     expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: false});
 
-    expect(uiControls.consultLeg?.hold).toEqual({isVisible: false, isEnabled: false});
-    expect(uiControls.consultLeg?.transfer).toEqual({isVisible: true, isEnabled: true});
-    expect(uiControls.consultLeg?.conference).toEqual({isVisible: true, isEnabled: true});
-    expect(uiControls.consultLeg?.endConsult).toEqual({isVisible: true, isEnabled: true});
-    expect(uiControls.consultLeg?.switchToMainCall).toEqual({isVisible: true, isEnabled: true});
-
-    expect(uiControls.switchToMainCall).toEqual({isVisible: true, isEnabled: true});
-    expect(uiControls.transfer).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.hold).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.consult.transfer).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.conference).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.endConsult).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.switch).toEqual({isVisible: true, isEnabled: true});
   });
 
   it('switches top-level controls to main leg while keeping consult leg visible', () => {
@@ -102,23 +99,20 @@ describe('uiControlsComputer consult initiator controls', () => {
     const uiControls = computeUIControls(TaskState.CONNECTED, context, context.taskData);
 
     expect(uiControls.activeLeg).toBe('main');
-    expect(uiControls.consultLeg).not.toBeNull();
+    expect(uiControls.consult).toBeDefined();
 
     expect(uiControls.main.hold).toEqual({isVisible: false, isEnabled: false});
-    expect(uiControls.main.switchToConsult).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.switch).toEqual({isVisible: true, isEnabled: true});
     expect(uiControls.main.transfer).toEqual({isVisible: true, isEnabled: true});
     expect(uiControls.main.conference).toEqual({isVisible: true, isEnabled: true});
     expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: false});
 
-    expect(uiControls.consultLeg?.hold).toEqual({isVisible: false, isEnabled: false});
-    expect(uiControls.consultLeg?.transfer).toEqual({isVisible: true, isEnabled: false});
-    expect(uiControls.consultLeg?.conference).toEqual({isVisible: true, isEnabled: false});
-    expect(uiControls.consultLeg?.endConsult).toEqual({isVisible: true, isEnabled: true});
-    expect(uiControls.consultLeg?.end).toEqual({isVisible: false, isEnabled: false});
-    expect(uiControls.consultLeg?.switchToMainCall).toEqual({isVisible: false, isEnabled: false});
-
-    expect(uiControls.switchToConsult).toEqual({isVisible: true, isEnabled: true});
-    expect(uiControls.end).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.consult.hold).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.consult.transfer).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.consult.conference).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.consult.endConsult).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.end).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.consult.switch).toEqual({isVisible: false, isEnabled: false});
   });
 
   it('hides transfer for the consulted agent during consult', () => {
@@ -137,6 +131,6 @@ describe('uiControlsComputer consult initiator controls', () => {
       consultedContext.taskData
     );
 
-    expect(uiControls.transfer).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.consult.transfer).toEqual({isVisible: false, isEnabled: false});
   });
 });

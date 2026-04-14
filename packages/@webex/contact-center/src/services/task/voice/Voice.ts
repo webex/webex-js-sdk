@@ -619,12 +619,16 @@ export default class Voice extends Task implements IVoice {
 
       // consult transfer path
       if (this.data.interaction.state === 'consulting') {
+        const normalizedDestinationType =
+          payload.destinationType === 'Agent' || payload.destinationType === 'Queue'
+            ? (payload.destinationType.toLowerCase() as ConsultTransferPayLoad['destinationType'])
+            : payload.destinationType;
         let consultPayload: ConsultTransferPayLoad = {
           to: payload.to,
-          destinationType: payload.destinationType,
+          destinationType: normalizedDestinationType,
         };
 
-        if (payload.destinationType === CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE) {
+        if (normalizedDestinationType === CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE) {
           const destAgent = this.consultDestAgentId || this.data.destAgentId;
           if (!destAgent) {
             throw new Error('No agent has accepted this queue consult yet');

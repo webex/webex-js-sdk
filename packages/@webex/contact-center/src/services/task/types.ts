@@ -599,7 +599,7 @@ export enum TASK_EVENTS {
    * ```typescript
    * task.on(TASK_EVENTS.TASK_SWITCH_CALL, (task: ITask) => {
    *   console.log('Call switched:', task.data.interactionId);
-   *   // Update UI based on task.uiControls.switchToMainCall / switchToConsult
+   *   // Update UI based on task.uiControls.main.switch / task.uiControls.consult.switch
    * });
    * ```
    */
@@ -1133,20 +1133,19 @@ export type InteractionUIControls = {
   transferConference: TaskUIControlState;
   mergeToConference: TaskUIControlState;
   wrapup: TaskUIControlState;
-  switchToMainCall: TaskUIControlState;
-  switchToConsult: TaskUIControlState;
+  switch: TaskUIControlState;
 };
 
 export type TaskUILeg = 'main' | 'consult';
 
 /**
  * UI controls surfaced to task consumers.
- * Top-level properties mirror the currently active leg for backwards compatibility,
- * while `main` and `consultLeg` expose leg-specific control sets when both are present.
+ * Consumers should read controls from the per-leg surfaces and use `activeLeg`
+ * to determine which one is currently interactive.
  */
-export type TaskUIControls = InteractionUIControls & {
+export type TaskUIControls = {
   main: InteractionUIControls;
-  consultLeg: InteractionUIControls | null;
+  consult: InteractionUIControls;
   activeLeg: TaskUILeg;
 };
 
