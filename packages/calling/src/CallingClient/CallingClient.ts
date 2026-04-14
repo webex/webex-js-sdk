@@ -2,6 +2,8 @@
 /* eslint-disable valid-jsdoc */
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as Media from '@webex/internal-media-core';
+// @ts-ignore - JS module without type declarations
+import {createMobiusSocket} from '@webex/internal-plugin-mobius-socket';
 import {Mutex} from 'async-mutex';
 import {METHOD_START_MESSAGE} from '../common/constants';
 import {
@@ -64,9 +66,6 @@ import {
 import {getMetricManager} from '../Metrics';
 import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
 import {APIRequest} from './utils/request';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
-const {createMobiusSocket} = require('@webex/internal-plugin-mobius-socket');
 
 /**
  * The `CallingClient` module provides a set of APIs for line registration and calling functionalities within the SDK.

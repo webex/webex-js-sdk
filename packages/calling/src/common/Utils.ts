@@ -219,6 +219,9 @@ export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl:
     }
   }
 
+  // TODO (Remove this later): Hardcoding the wss urls for now with test server url
+  primaryWss.push('wss://mobius.aload-calling1.ciscospark.com/v1/calling/web');
+
   return {primary: primaryUris, backup: backupUris, primaryWss, backupWss};
 }
 
