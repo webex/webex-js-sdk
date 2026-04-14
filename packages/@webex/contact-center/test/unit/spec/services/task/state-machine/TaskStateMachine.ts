@@ -420,4 +420,31 @@ describe('Task state machine', () => {
       expect(service.getSnapshot().value).toBe(TaskState.HELD);
     });
   });
+
+  describe('OFFERED state event handlers', () => {
+    it('transitions to TERMINATED when customer disconnects before agent answers', () => {
+      const service = startMachine();
+      const taskData = createTaskData({isConsulted: false});
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.OFFERED);
+
+      service.send({type: TaskEvent.CONTACT_ENDED, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+    });
+
+    it('transitions to TERMINATED when consulted agent does not answer', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        isConsulted: true,
+        consultingAgentId: 'agent-1',
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.OFFERED);
+
+      service.send({type: TaskEvent.CONSULT_FAILED, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+    });
+  });
 });
