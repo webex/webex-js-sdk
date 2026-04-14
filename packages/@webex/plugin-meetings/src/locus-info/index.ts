@@ -2598,9 +2598,6 @@ export default class LocusInfo extends EventsScope {
           {
             muted: parsedSelves.current.remoteMuted,
             unmuteAllowed: parsedSelves.current.unmuteAllowed,
-            // SPARK-795472: identifies who triggered the mute so the web client can distinguish
-            // self-mute from remote-mute for notifications. May be null when locus omits
-            // meta.modifiedBy (e.g., mute-on-entry or legacy DTO scenarios).
             modifiedBy: parsedSelves.current.modifiedBy ?? null,
           }
         );
