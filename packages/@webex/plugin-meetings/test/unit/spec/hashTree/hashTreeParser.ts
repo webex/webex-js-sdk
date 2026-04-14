@@ -566,6 +566,11 @@ describe('HashTreeParser', () => {
           },
           data: {info: {id: 'some-fake-locus-info'}},
         },
+      ],
+    });
+
+    assert.calledWith(callback, {updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
+      updatedObjects: [
         {
           htMeta: {
             elementId: {

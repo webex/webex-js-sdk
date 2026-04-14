@@ -1886,23 +1886,20 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-  public syncMeetings({keepOnlyLocusMeetings = true} = {}): Promise<void> {
+  public async syncMeetings({keepOnlyLocusMeetings = true} = {}): Promise<void> {
     // @ts-ignore
     if (this.webex.credentials.isUnverifiedGuest) {
       LoggerProxy.logger.info(
-        'Meetings:index#syncMeetings --> skipping meeting sync as unverified guest'
+        'Meetings:index#syncMeetings --> user is unverified guest, skipping calling Locus for meeting sync'
       );
-
-      return Promise.resolve();
-    }
-
-    return this.request
-      .getActiveMeetings()
-      .then((locusArray?: {loci: any[]}) => {
+    } else {
+      try {
+        const locusArray = await this.request.getActiveMeetings();
         const activeLocusUrl: string[] = [];
 
         if (locusArray?.loci && locusArray.loci.length > 0) {
           const lociToUpdate = this.sortLocusArrayToUpdate(locusArray.loci);
+
           lociToUpdate.forEach((locus) => {
             activeLocusUrl.push(locus.url);
             this.handleLocusEvent({
@@ -1935,27 +1932,27 @@ export default class Meetings extends WebexPlugin {
             }
           }
         }
-
-        // Trigger hash tree syncs for all remaining meetings
-        const remainingMeetings = this.meetingCollection.getAll();
-        const syncPromises = [];
-
-        for (const meeting of Object.values(remainingMeetings) as any[]) {
-          syncPromises.push(meeting.locusInfo.syncAllHashTreeDatasets());
-        }
-
-        if (syncPromises.length > 0) {
-          return Promise.all(syncPromises).then(() => {});
-        }
-
-        return Promise.resolve();
-      })
-      .catch((error: any) => {
+      } catch (error) {
         LoggerProxy.logger.error(
           `Meetings:index#syncMeetings --> failed to sync meetings, ${error}`
         );
-        throw new Error(error);
-      });
+        throw error;
+      }
+    }
+
+    // Trigger hash tree syncs for all remaining meetings
+    const remainingMeetings = this.meetingCollection.getAll();
+    const syncPromises = [];
+
+    for (const meeting of Object.values(remainingMeetings) as any[]) {
+      if (meeting.locusInfo) {
+        syncPromises.push(meeting.locusInfo.syncAllHashTreeDatasets());
+      }
+    }
+
+    if (syncPromises.length > 0) {
+      await Promise.all(syncPromises);
+    }
   }
 
   /**

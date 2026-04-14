@@ -104,7 +104,7 @@ class HashTreeParser {
   heartbeatIntervalMs?: number;
   private excludedDataSets: string[];
   state: 'active' | 'stopped';
-  private syncQueue: Array<{dataSetName: string; reason: string}> = [];
+  private syncQueue: Array<{dataSetName: string; reason: string; isInitialization?: boolean}> = [];
   private isSyncInProgress = false;
   private isSyncAllInProgress = false;
   private syncQueueProcessingPromise: Promise<void> = Promise.resolve();
@@ -233,16 +233,16 @@ class HashTreeParser {
    * @param {DataSet} dataSetInfo The new data set to be added
    * @returns {Promise}
    */
-  private initializeNewVisibleDataSet(
+  private async initializeNewVisibleDataSet(
     visibleDataSetInfo: VisibleDataSetInfo,
     dataSetInfo: DataSet
-  ): Promise<LocusInfoUpdate> {
+  ): Promise<void> {
     if (this.isVisibleDataSet(dataSetInfo.name)) {
       LoggerProxy.logger.info(
         `HashTreeParser#initializeNewVisibleDataSet --> ${this.debugId} Data set "${dataSetInfo.name}" already exists, skipping init`
       );
 
-      return Promise.resolve({updateType: LocusInfoUpdateType.OBJECTS_UPDATED, updatedObjects: []});
+      return;
     }
 
     LoggerProxy.logger.info(
@@ -250,7 +250,7 @@ class HashTreeParser {
     );
 
     if (!this.addToVisibleDataSetsList(visibleDataSetInfo)) {
-      return Promise.resolve({updateType: LocusInfoUpdateType.OBJECTS_UPDATED, updatedObjects: []});
+      return;
     }
 
     const hashTree = new HashTree([], dataSetInfo.leafCount);
@@ -260,51 +260,8 @@ class HashTreeParser {
       hashTree,
     };
 
-    return this.sendInitializationSyncRequestToLocus(dataSetInfo.name, 'new visible data set');
-  }
-
-  /**
-   * Sends a special sync request to Locus with all leaves empty - this is a way to get all the data for a given dataset.
-   *
-   * @param {string} datasetName - name of the dataset for which to send the request
-   * @param {string} debugText - text to include in logs
-   * @returns {Promise}
-   */
-  private sendInitializationSyncRequestToLocus(
-    datasetName: string,
-    debugText: string
-  ): Promise<LocusInfoUpdate> {
-    const dataset = this.dataSets[datasetName];
-
-    if (!dataset) {
-      LoggerProxy.logger.warn(
-        `HashTreeParser#sendInitializationSyncRequestToLocus --> ${this.debugId} No data set found for ${datasetName}, cannot send the request for leaf data`
-      );
-
-      return Promise.resolve({updateType: LocusInfoUpdateType.OBJECTS_UPDATED, updatedObjects: []});
-    }
-
-    const emptyLeavesData = new Array(dataset.leafCount).fill([]);
-
-    LoggerProxy.logger.info(
-      `HashTreeParser#sendInitializationSyncRequestToLocus --> ${this.debugId} Sending initial sync request to Locus for data set "${datasetName}" with empty leaf data`
-    );
-
-    return this.sendSyncRequestToLocus(this.dataSets[datasetName], emptyLeavesData).then(
-      (syncResponse) => {
-        if (syncResponse) {
-          return {
-            updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
-            updatedObjects: this.parseMessage(
-              syncResponse,
-              `via empty leaves /sync API call for ${debugText}`
-            ),
-          };
-        }
-
-        return {updateType: LocusInfoUpdateType.OBJECTS_UPDATED, updatedObjects: []};
-      }
-    );
+    this.enqueueSyncForDataset(dataSetInfo.name, 'new visible data set initialization', true);
+    await this.syncQueueProcessingPromise;
   }
 
   /**
@@ -392,8 +349,6 @@ class HashTreeParser {
       return;
     }
 
-    const updatedObjects: HashTreeObject[] = [];
-
     for (const dataSet of sortByInitPriority(visibleDataSets, DATA_SET_INIT_PRIORITY)) {
       const {name, leafCount, url} = dataSet;
 
@@ -430,19 +385,12 @@ class HashTreeParser {
         );
         this.dataSets[name].hashTree = new HashTree([], leafCount);
 
-        // eslint-disable-next-line no-await-in-loop
-        const data = await this.sendInitializationSyncRequestToLocus(name, debugText);
-
-        if (data.updateType === LocusInfoUpdateType.OBJECTS_UPDATED) {
-          updatedObjects.push(...(data.updatedObjects || []));
-        }
+        this.enqueueSyncForDataset(name, `initialization sync for ${debugText}`, true);
       }
     }
 
-    this.callLocusInfoUpdateCallback({
-      updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
-      updatedObjects,
-    });
+    // wait for all enqueued initialization syncs to complete
+    await this.syncQueueProcessingPromise;
   }
 
   /**
@@ -984,9 +932,7 @@ class HashTreeParser {
         );
       } else {
         // eslint-disable-next-line no-await-in-loop
-        const updates = await this.initializeNewVisibleDataSet(ds, dataSetInfo);
-
-        this.callLocusInfoUpdateCallback(updates);
+        await this.initializeNewVisibleDataSet(ds, dataSetInfo);
       }
     }
   }
@@ -1230,9 +1176,14 @@ class HashTreeParser {
    *
    * @param {InternalDataSet} dataSet - The data set to sync
    * @param {string} reason - The reason for the sync (used for logging)
+   * @param {boolean} [isInitialization] - Whether this is an initialization sync (sends empty leaves data instead of comparing hashes)
    * @returns {Promise<void>}
    */
-  private async performSync(dataSet: InternalDataSet, reason: string): Promise<void> {
+  private async performSync(
+    dataSet: InternalDataSet,
+    reason: string,
+    isInitialization?: boolean
+  ): Promise<void> {
     if (!dataSet.hashTree) {
       return;
     }
@@ -1245,9 +1196,16 @@ class HashTreeParser {
         `HashTreeParser#performSync --> ${this.debugId} ${reason}, syncing data set "${dataSet.name}"`
       );
 
-      const mismatchedLeavesData: Record<number, LeafDataItem[]> = {};
+      let leavesData: Record<number, LeafDataItem[]>;
 
-      if (dataSet.leafCount !== 1) {
+      if (isInitialization) {
+        // initialization sync: send all leaves as empty to get all data from Locus
+        leavesData = {};
+        for (let i = 0; i < dataSet.leafCount; i += 1) {
+          leavesData[i] = [];
+        }
+      } else if (dataSet.leafCount !== 1) {
+        leavesData = {};
         let receivedHashes;
 
         try {
@@ -1278,14 +1236,14 @@ class HashTreeParser {
         const mismatchedLeaveIndexes = hashTree.diffHashes(receivedHashes);
 
         mismatchedLeaveIndexes.forEach((index) => {
-          mismatchedLeavesData[index] = hashTree.getLeafData(index);
+          leavesData[index] = hashTree.getLeafData(index);
         });
       } else {
-        mismatchedLeavesData[0] = hashTree.getLeafData(0);
+        leavesData = {0: hashTree.getLeafData(0)};
       }
       // request sync for mismatched leaves
-      if (Object.keys(mismatchedLeavesData).length > 0) {
-        const syncResponse = await this.sendSyncRequestToLocus(dataSet, mismatchedLeavesData);
+      if (Object.keys(leavesData).length > 0) {
+        const syncResponse = await this.sendSyncRequestToLocus(dataSet, leavesData);
 
         // sync API may return nothing (in that case data will arrive via messages)
         // or it may return a response in the same format as messages
@@ -1313,12 +1271,22 @@ class HashTreeParser {
    *
    * @param {string} dataSetName - The name of the data set to sync
    * @param {string} reason - The reason for the sync (used for logging)
+   * @param {boolean} [isInitialization=false] - Whether this is an initialization sync (uses empty leaves data instead of hash comparison)
    * @returns {void}
    */
-  private enqueueSyncForDataset(dataSetName: string, reason: string): void {
+  private enqueueSyncForDataset(
+    dataSetName: string,
+    reason: string,
+    isInitialization = false
+  ): void {
     if (this.state === 'stopped') return;
 
-    if (this.syncQueue.some((entry) => entry.dataSetName === dataSetName)) {
+    const existingEntry = this.syncQueue.find((entry) => entry.dataSetName === dataSetName);
+
+    if (existingEntry) {
+      if (isInitialization) {
+        existingEntry.isInitialization = true;
+      }
       LoggerProxy.logger.info(
         `HashTreeParser#enqueueSyncForDataset --> ${this.debugId} data set "${dataSetName}" already in sync queue, skipping`
       );
@@ -1326,7 +1294,7 @@ class HashTreeParser {
       return;
     }
 
-    this.syncQueue.push({dataSetName, reason});
+    this.syncQueue.push({dataSetName, reason, isInitialization});
 
     if (!this.isSyncInProgress) {
       this.syncQueueProcessingPromise = this.processSyncQueue();
@@ -1345,7 +1313,7 @@ class HashTreeParser {
     try {
       while (this.syncQueue.length > 0 && this.state !== 'stopped') {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const {dataSetName, reason} = this.syncQueue.shift()!;
+        const {dataSetName, reason, isInitialization} = this.syncQueue.shift()!;
         const dataSet = this.dataSets[dataSetName];
 
         if (!dataSet?.hashTree) {
@@ -1354,7 +1322,7 @@ class HashTreeParser {
         }
 
         // eslint-disable-next-line no-await-in-loop
-        await this.performSync(dataSet, reason);
+        await this.performSync(dataSet, reason, isInitialization);
       }
     } finally {
       this.isSyncInProgress = false;

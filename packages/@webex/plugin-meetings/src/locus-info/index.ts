@@ -687,6 +687,9 @@ export default class LocusInfo extends EventsScope {
     const isWrapped = 'locus' in responseBody;
     const locusUrl = isWrapped ? responseBody.locus?.url : responseBody.url;
     const hashTreeParserEntry = locusUrl && this.hashTreeParsers.get(locusUrl);
+    const locus = isWrapped
+      ? (responseBody as {locus: LocusDTO}).locus
+      : (responseBody as LocusDTO);
 
     if (this.hashTreeParsers.size > 0) {
       // We are in hash tree mode. Check if we need to create/reactivate a parser for this locusUrl.
@@ -698,9 +701,7 @@ export default class LocusInfo extends EventsScope {
 
           return;
         }
-        const locus = isWrapped
-          ? (responseBody as {locus: LocusDTO}).locus
-          : (responseBody as LocusDTO);
+
         this.handleHashTreeParserSwitchForAPIResponse(locusUrl, locus);
 
         return;
@@ -738,7 +739,6 @@ export default class LocusInfo extends EventsScope {
     }
 
     // classic Locus delta
-    const locus = isWrapped ? responseBody.locus : responseBody;
     this.handleLocusDelta(locus, meeting);
   }
 

@@ -91,6 +91,7 @@ describe('plugin-meetings', () => {
       locusInfo = {
         parse: sinon.stub().returns(true),
         updateMainSessionLocusCache: sinon.stub(),
+        syncAllHashTreeDatasets: sinon.stub(),
       };
       webex = new MockWebex({
         children: {
@@ -1391,7 +1392,7 @@ describe('plugin-meetings', () => {
         it('should have #syncMeetings', () => {
           assert.exists(webex.meetings.syncMeetings);
         });
-        it('should do nothing and return a resolved promise if unverified guest', async () => {
+        it('should skip getActiveMeetings but still call syncAllHashTreeDatasets if unverified guest', async () => {
           webex.meetings.request.getActiveMeetings = sinon.stub().returns(
             Promise.resolve({
               loci: [
@@ -1404,13 +1405,23 @@ describe('plugin-meetings', () => {
           webex.credentials.isUnverifiedGuest = true;
           LoggerProxy.logger.info = sinon.stub();
 
+          const mockLocusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
+          };
+          webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+            meeting1: {locusInfo: mockLocusInfo},
+            meeting2: {locusInfo: undefined},
+            meeting3: {},
+          });
+
           await webex.meetings.syncMeetings();
 
           assert.notCalled(webex.meetings.request.getActiveMeetings);
           assert.calledWith(
             LoggerProxy.logger.info,
-            'Meetings:index#syncMeetings --> skipping meeting sync as unverified guest'
+            'Meetings:index#syncMeetings --> user is unverified guest, skipping calling Locus for meeting sync'
           );
+          assert.calledOnce(mockLocusInfo.syncAllHashTreeDatasets);
         });
         describe('succesful requests', () => {
           beforeEach(() => {
@@ -1429,6 +1440,9 @@ describe('plugin-meetings', () => {
               webex.meetings.meetingCollection.getByKey = sinon.stub().returns({
                 locusInfo,
               });
+              webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+                meeting1: {locusInfo, locusUrl: url1},
+              });
             });
             it('tests the sync meeting calls for existing meeting', async () => {
               await webex.meetings.syncMeetings();
@@ -1436,6 +1450,7 @@ describe('plugin-meetings', () => {
               assert.calledOnce(webex.meetings.meetingCollection.getByKey);
               assert.calledOnce(locusInfo.parse);
               assert.calledWith(webex.meetings.meetingCollection.getByKey, 'locusUrl', url1);
+              assert.calledOnce(locusInfo.syncAllHashTreeDatasets);
             });
           });
           describe('when meeting is not returned', () => {
@@ -1520,7 +1535,7 @@ describe('plugin-meetings', () => {
             it('destroy any meeting that has no active locus url if keepOnlyLocusMeetings is not defined', async () => {
               await webex.meetings.syncMeetings();
               assert.calledOnce(webex.meetings.request.getActiveMeetings);
-              assert.calledOnce(webex.meetings.meetingCollection.getAll);
+              assert.calledTwice(webex.meetings.meetingCollection.getAll);
               assert.calledWith(destroySpy, meetingCollectionMeetings.noLongerValidLocusMeeting);
               assert.calledWith(destroySpy, meetingCollectionMeetings.otherNonLocusMeeting1);
               assert.calledWith(destroySpy, meetingCollectionMeetings.otherNonLocusMeeting2);
@@ -1532,7 +1547,7 @@ describe('plugin-meetings', () => {
             it('destroy any meeting that has no active locus url if keepOnlyLocusMeetings === true', async () => {
               await webex.meetings.syncMeetings({keepOnlyLocusMeetings: true});
               assert.calledOnce(webex.meetings.request.getActiveMeetings);
-              assert.calledOnce(webex.meetings.meetingCollection.getAll);
+              assert.calledTwice(webex.meetings.meetingCollection.getAll);
               assert.calledWith(destroySpy, meetingCollectionMeetings.noLongerValidLocusMeeting);
               assert.calledWith(destroySpy, meetingCollectionMeetings.otherNonLocusMeeting1);
               assert.calledWith(destroySpy, meetingCollectionMeetings.otherNonLocusMeeting2);
@@ -1544,7 +1559,7 @@ describe('plugin-meetings', () => {
             it('destroy any LOCUS meetings that have no active locus url if keepOnlyLocusMeetings === false', async () => {
               await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false});
               assert.calledOnce(webex.meetings.request.getActiveMeetings);
-              assert.calledOnce(webex.meetings.meetingCollection.getAll);
+              assert.calledTwice(webex.meetings.meetingCollection.getAll);
               assert.calledWith(destroySpy, meetingCollectionMeetings.noLongerValidLocusMeeting);
               assert.callCount(destroySpy, 1);
 
