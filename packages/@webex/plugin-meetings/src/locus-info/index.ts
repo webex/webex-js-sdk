@@ -2598,7 +2598,7 @@ export default class LocusInfo extends EventsScope {
           {
             muted: parsedSelves.current.remoteMuted,
             unmuteAllowed: parsedSelves.current.unmuteAllowed,
-            modifiedBy: parsedSelves.current.modifiedBy ?? null,
+            modifiedBy: parsedSelves.current.modifiedBy ?? null, // enables remote-mute vs self-mute distinction; null for mute-on-entry or legacy DTOs
           }
         );
       }
