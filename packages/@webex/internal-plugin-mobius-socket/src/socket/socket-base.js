@@ -368,7 +368,7 @@ export default class Socket extends EventEmitter {
 
     const request = {...data};
     const trackingId = request.trackingId || this._createTrackingId();
-    const timeout = options.timeout || this.authResponseTimeout || 10000;
+    const timeout = options.timeout || this.wssResponseTimeout || this.authResponseTimeout || 10000;
     const matchesResponse =
       options.matchesResponse ||
       ((response) => response?.trackingId === trackingId && response?.type === 'response_event');
@@ -478,7 +478,7 @@ export default class Socket extends EventEmitter {
         },
       },
       {
-        timeout: this.authResponseTimeout || 10000,
+        timeout: this.wssResponseTimeout || this.authResponseTimeout || 10000,
         matchesResponse: (response, request) =>
           response?.type === 'response_event' &&
           response?.subtype === MESSAGE_TYPES.AUTH &&

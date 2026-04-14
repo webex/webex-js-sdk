@@ -4,15 +4,13 @@
 
 const mobiusSocketConfig = {
   /**
-   * Milliseconds to wait for the auth websocket response before declaring auth failed
+   * Milliseconds to wait for websocket request/response messages, including auth.
    * @type {number}
    */
-  authResponseTimeout: process.env.MOBIUS_SOCKET_AUTH_RESPONSE_TIMEOUT || 10000,
-  /**
-   * Milliseconds to wait for a request/response style websocket message.
-   * @type {number}
-   */
-  wssResponseTimeout: process.env.MOBIUS_SOCKET_RESPONSE_TIMEOUT || 10000,
+  wssResponseTimeout:
+    process.env.MOBIUS_SOCKET_RESPONSE_TIMEOUT ||
+    process.env.MOBIUS_SOCKET_AUTH_RESPONSE_TIMEOUT ||
+    10000,
   /**
    * Maximum milliseconds between connection attempts
    * @type {Number}

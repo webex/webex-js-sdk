@@ -825,7 +825,7 @@ describe('plugin-mobius-socket', () => {
 
         const requestPromise = mobiusSocket.sendWssRequest({
           type: 'auth',
-          payload: {
+          data: {
             token: 'Bearer test',
           },
         });
@@ -834,7 +834,7 @@ describe('plugin-mobius-socket', () => {
 
         const requestPayload = JSON.parse(mockWebSocket.send.lastCall.args[0]);
 
-        assert.equal(requestPayload.payload.token, 'test');
+        assert.equal(requestPayload.data.token, 'test');
 
         mockWebSocket.emit('message', {
           data: JSON.stringify({
@@ -860,7 +860,7 @@ describe('plugin-mobius-socket', () => {
         const authPayload = JSON.parse(mockWebSocket.send.firstCall.args[0]);
 
         assert.equal(authPayload.type, MESSAGE_TYPES.AUTH);
-        assert.equal(authPayload.payload.token, 'FAKE');
+        assert.equal(authPayload.data.token, 'FAKE');
       });
 
       it('rejects when a matching response_event is non-2xx', async () => {
@@ -868,7 +868,7 @@ describe('plugin-mobius-socket', () => {
 
         const requestPromise = mobiusSocket.sendWssRequest({
           type: 'auth',
-          payload: {
+          data: {
             token: 'Bearer test',
           },
         });
@@ -900,7 +900,7 @@ describe('plugin-mobius-socket', () => {
 
         const requestPromise = mobiusSocket.sendWssRequest({
           type: 'auth',
-          payload: {
+          data: {
             token: 'Bearer test',
           },
         });
@@ -920,7 +920,7 @@ describe('plugin-mobius-socket', () => {
 
         const requestPromise = mobiusSocket.sendWssRequest({
           type: 'auth',
-          payload: {
+          data: {
             token: 'Bearer test',
           },
         });
@@ -935,6 +935,36 @@ describe('plugin-mobius-socket', () => {
           assert.equal(error.code, 1003);
           assert.equal(error.reason, 'service rejected request');
         });
+      });
+
+      it('converts legacy auth payload token requests to the data envelope', async () => {
+        await mobiusSocket.connect();
+
+        const requestPromise = mobiusSocket.sendWssRequest({
+          type: 'auth',
+          payload: {
+            token: 'Bearer test',
+          },
+        });
+
+        await promiseTick();
+
+        const requestPayload = JSON.parse(mockWebSocket.send.lastCall.args[0]);
+
+        assert.equal(requestPayload.data.token, 'test');
+        assert.isUndefined(requestPayload.payload);
+
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            type: 'response_event',
+            subtype: 'auth',
+            trackingId: requestPayload.trackingId,
+            statusCode: 200,
+            statusMessage: 'OK',
+          }),
+        });
+
+        await requestPromise;
       });
     });
 
@@ -1574,7 +1604,7 @@ describe('plugin-mobius-socket', () => {
           assert.isObject(callArgs[1]);
           assert.equal(callArgs[1].token, 'mock-token');
           assert.isDefined(callArgs[1].forceCloseDelay);
-          assert.isDefined(callArgs[1].authResponseTimeout);
+          assert.isDefined(callArgs[1].wssResponseTimeout);
         });
 
         it('should log with correct prefix for normal connection', async () => {
@@ -1595,7 +1625,7 @@ describe('plugin-mobius-socket', () => {
         it('should merge custom mobiusSocket options when provided', async () => {
           webex.config.defaultMobiusSocketOptions = {
             customOption: 'test-value',
-            authResponseTimeout: 99999,
+            wssResponseTimeout: 99999,
           };
 
           await mobiusSocket._prepareAndOpenSocket(mockSocket, undefined, false);
@@ -1603,7 +1633,7 @@ describe('plugin-mobius-socket', () => {
           const callArgs = mockSocket.open.firstCall.args;
 
           assert.equal(callArgs[1].customOption, 'test-value');
-          assert.equal(callArgs[1].authResponseTimeout, 99999); // Custom value overrides default
+          assert.equal(callArgs[1].wssResponseTimeout, 99999); // Custom value overrides default
         });
 
         it('should return the webSocketUrl after opening', async () => {

@@ -134,7 +134,7 @@ describe('plugin-mobius-socket', () => {
       it('accepts a logLevelToken option', () => {
         const promise = socket.open('ws://example.com', {
           forceCloseDelay: mockoptions.forceCloseDelay,
-          authResponseTimeout: mockoptions.authResponseTimeout,
+          wssResponseTimeout: mockoptions.authResponseTimeout,
           logger: console,
           token: 'mocktoken',
           trackingId: 'mocktrackingid',
@@ -352,9 +352,9 @@ describe('plugin-mobius-socket', () => {
           const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
 
           assert.equal(firstCallArgs.type, MESSAGE_TYPES.AUTH);
-          assert.property(firstCallArgs, 'payload');
-          assert.property(firstCallArgs.payload, 'token');
-          assert.equal(firstCallArgs.payload.token, 'mocktoken');
+          assert.property(firstCallArgs, 'data');
+          assert.property(firstCallArgs.data, 'token');
+          assert.equal(firstCallArgs.data.token, 'mocktoken');
           assert.property(firstCallArgs, 'trackingId');
         });
 
@@ -364,7 +364,7 @@ describe('plugin-mobius-socket', () => {
 
             s.open('ws://example.com', {
               forceCloseDelay: mockoptions.forceCloseDelay,
-              authResponseTimeout: mockoptions.authResponseTimeout,
+              wssResponseTimeout: mockoptions.authResponseTimeout,
               logger: console,
               token: 'mocktoken',
               trackingId: 'mocktrackingid',
@@ -375,8 +375,8 @@ describe('plugin-mobius-socket', () => {
             const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
 
             assert.equal(firstCallArgs.type, MESSAGE_TYPES.AUTH);
-            assert.property(firstCallArgs, 'payload');
-            assert.equal(firstCallArgs.payload.token, 'mocktoken');
+            assert.property(firstCallArgs, 'data');
+            assert.equal(firstCallArgs.data.token, 'mocktoken');
             assert.property(firstCallArgs, 'trackingId');
 
             return s.close();
