@@ -53,6 +53,12 @@ export default function createAdvanceCombinationsTests() {
         'transfer',
         process.env[`${testManager.projectName}_AGENT2_NAME`]!
       );
+
+      // Wait for transfer to complete - wrapup becomes enabled on Agent1
+      await expect(testManager.agent1Page.locator('#wrapupCodesDropdown')).toBeEnabled({
+        timeout: 15000,
+      });
+
       await acceptIncomingTask(testManager.agent2Page, TASK_TYPES.CALL);
       await expect(testManager.agent2Page.locator('#incoming-task')).toContainText('connected', {
         timeout: 10000,
@@ -67,6 +73,12 @@ export default function createAdvanceCombinationsTests() {
         'transfer',
         process.env[`${testManager.projectName}_AGENT1_NAME`]!
       );
+
+      // Wait for transfer to complete - wrapup becomes enabled on Agent2
+      await expect(testManager.agent2Page.locator('#wrapupCodesDropdown')).toBeEnabled({
+        timeout: 15000,
+      });
+
       await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CALL);
       await testManager.agent1Page.waitForTimeout(2000);
       await expect(testManager.agent1Page.locator('#incoming-task')).toContainText('connected', {
