@@ -233,8 +233,7 @@ function computeVoiceUIControls(
       return {isVisible: true, isEnabled: consultInitiator || config.isEndConsultEnabled};
     })(),
 
-    // Recording: available in connected/held states only, not during consult/conference
-    // Always enabled for voice tasks as recording auto-starts on call connect
+    // Recording: connected/held only, not in consult/conference
     recording: (() => {
       if (!recordingControlsAvailable || !config.isRecordingEnabled) return DISABLED;
       if (!hasFullControls || isConsulting || inConference) return DISABLED;
