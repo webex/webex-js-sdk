@@ -112,7 +112,7 @@ Initial `connect()` attempts retry with exponential back-off and reject after a 
 | `backoffTimeMax` | `32000` | `MOBIUS_SOCKET_BACKOFF_TIME_MAX` | Maximum milliseconds between connection attempts. |
 | `backoffTimeReset` | `1000` | `MOBIUS_SOCKET_BACKOFF_TIME_RESET` | Initial milliseconds between connection attempts. |
 | `initialConnectionMaxRetries` | `2` | `MOBIUS_SOCKET_INITIAL_CONNECTION_MAX_RETRIES` | Maximum retries before the initial `connect()` promise rejects. |
-| `maxRetries` | `0` | `MOBIUS_SOCKET_MAX_RETRIES` | Maximum retries for reconnect attempts after the socket has connected once. |
+| `maxRetries` | `0` | `MOBIUS_SOCKET_MAX_RETRIES` | Maximum retries for reconnect attempts after the socket has connected once. `0` means unlimited retries. |
 | `forceCloseDelay` | `2000` | `MOBIUS_SOCKET_FORCE_CLOSE_DELAY` | Milliseconds to wait for a close frame before forcing socket closure. |
 | `wssResponseTimeout` | `10000` | `MOBIUS_SOCKET_RESPONSE_TIMEOUT` | Milliseconds to wait for websocket request/response messages, including auth, before timing out. |
 | `beforeLogoutOptionsCloseReason` | `done (forced)` | `MOBIUS_SOCKET_LOGOUT_REASON` | Close reason sent on logout. Set to a non-reconnectable reason to prevent reconnect on logout. |

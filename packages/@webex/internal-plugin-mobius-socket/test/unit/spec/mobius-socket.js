@@ -749,7 +749,7 @@ describe('plugin-mobius-socket', () => {
           const promise = mobiusSocket.connect();
 
           // Wait for the connect call to setup
-          return promiseTick(webex.internal.mobiusSocket.config.backoffTimeReset).then(() => {
+          return promiseTick(webex.internal.mobiusSocket.config.backoffTimeReset).then(async () => {
             // By this time backoffCall and mobiusSocket socket should be defined by the
             // 'connect' call
             assert.isDefined(mobiusSocket.backoffCalls.get('mobius-websocket-session'), 'MobiusSocket backoffCall is not defined');
@@ -761,10 +761,9 @@ describe('plugin-mobius-socket', () => {
             // The socket will never be unset (which seems bad)
             assert.isDefined(mobiusSocket.socket, 'MobiusSocket socket is not defined');
 
-            return assert.isRejected(promise).then((error) => {
-              // connection did not fail, so no last error
-              assert.isUndefined(mobiusSocket.getLastError());
-            });
+            await assert.isRejected(promise);
+            // connection did not fail, so no last error
+            assert.isUndefined(mobiusSocket.getLastError());
           });
         });
 
@@ -805,18 +804,20 @@ describe('plugin-mobius-socket', () => {
           const promise = mobiusSocket.connect();
 
           // Wait for the connect call to setup
-          return promiseTick(webex.internal.mobiusSocket.config.backoffTimeReset).then(() => {
+          return promiseTick(webex.internal.mobiusSocket.config.backoffTimeReset).then(async () => {
             // Calling disconnect will abort the backoffCall, close the socket, and
             // reject the connect
             mobiusSocket.disconnect();
 
-            return assert.isRejected(promise).then((error) => {
-              const lastError = mobiusSocket.getLastError();
+            const error = await assert.isRejected(promise);
+            const lastError = mobiusSocket.getLastError();
 
-              assert.equal(error.message, `MobiusSocket Connection Aborted for ${mobiusSocket.defaultSessionId}`);
-              assert.isDefined(lastError);
-              assert.equal(lastError, realError);
-            });
+            assert.equal(
+              error.message,
+              `MobiusSocket Connection Aborted for ${mobiusSocket.defaultSessionId}`
+            );
+            assert.isDefined(lastError);
+            assert.equal(lastError, realError);
           });
         });
       });
@@ -893,12 +894,12 @@ describe('plugin-mobius-socket', () => {
           }),
         });
 
-        await assert.isRejected(requestPromise).then((error) => {
-          assert.equal(error.name, 'MobiusSocketResponseError');
-          assert.equal(error.statusCode, 403);
-          assert.equal(error.statusMessage, 'Forbidden');
-          assert.equal(error.trackingId, requestPayload.trackingId);
-        });
+        const error = await assert.isRejected(requestPromise);
+
+        assert.equal(error.name, 'MobiusSocketResponseError');
+        assert.equal(error.statusCode, 403);
+        assert.equal(error.statusMessage, 'Forbidden');
+        assert.equal(error.trackingId, requestPayload.trackingId);
       });
 
       it('rejects when the matching response does not arrive before timeout', async () => {
@@ -914,11 +915,11 @@ describe('plugin-mobius-socket', () => {
         clock.tick(101);
         await promiseTick();
 
-        await assert.isRejected(requestPromise).then((error) => {
-          assert.equal(error.name, 'MobiusSocketResponseError');
-          assert.equal(error.statusCode, 408);
-          assert.equal(error.statusMessage, 'Mobius websocket response timed out');
-        });
+        const error = await assert.isRejected(requestPromise);
+
+        assert.equal(error.name, 'MobiusSocketResponseError');
+        assert.equal(error.statusCode, 408);
+        assert.equal(error.statusMessage, 'Mobius websocket response timed out');
       });
 
       it('rejects with a clear error when the matching response is missing status code', async () => {
@@ -943,11 +944,11 @@ describe('plugin-mobius-socket', () => {
           }),
         });
 
-        await assert.isRejected(requestPromise).then((error) => {
-          assert.equal(error.name, 'MobiusSocketResponseError');
-          assert.isUndefined(error.statusCode);
-          assert.equal(error.statusMessage, 'Socket response missing status code');
-        });
+        const error = await assert.isRejected(requestPromise);
+
+        assert.equal(error.name, 'MobiusSocketResponseError');
+        assert.isUndefined(error.statusCode);
+        assert.equal(error.statusMessage, 'Socket response missing status code');
       });
 
       it('rejects pending requests when the active socket closes', async () => {
@@ -965,19 +966,19 @@ describe('plugin-mobius-socket', () => {
           reason: 'service rejected request',
         });
 
-        await assert.isRejected(requestPromise).then((error) => {
-          assert.instanceOf(error, ConnectionError);
-          assert.equal(error.code, 1003);
-          assert.equal(error.reason, 'service rejected request');
-        });
+        const error = await assert.isRejected(requestPromise);
+
+        assert.instanceOf(error, ConnectionError);
+        assert.equal(error.code, 1003);
+        assert.equal(error.reason, 'service rejected request');
       });
 
       it('rejects array payloads', async () => {
         await mobiusSocket.connect();
 
-        await assert.isRejected(mobiusSocket.sendWssRequest([])).then((error) => {
-          assert.equal(error.message, '`payload` is required');
-        });
+        const error = await assert.isRejected(mobiusSocket.sendWssRequest([]));
+
+        assert.equal(error.message, '`payload` is required');
       });
     });
 

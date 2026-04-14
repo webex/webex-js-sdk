@@ -134,7 +134,7 @@ describe('plugin-mobius-socket', () => {
       it('accepts a logLevelToken option', () => {
         const promise = socket.open('ws://example.com', {
           forceCloseDelay: mockoptions.forceCloseDelay,
-          wssResponseTimeout: mockoptions.authResponseTimeout,
+          wssResponseTimeout: mockoptions.wssResponseTimeout,
           logger: console,
           token: 'mocktoken',
           trackingId: 'mocktrackingid',
@@ -364,7 +364,7 @@ describe('plugin-mobius-socket', () => {
 
             s.open('ws://example.com', {
               forceCloseDelay: mockoptions.forceCloseDelay,
-              wssResponseTimeout: mockoptions.authResponseTimeout,
+              wssResponseTimeout: mockoptions.wssResponseTimeout,
               logger: console,
               token: 'mocktoken',
               trackingId: 'mocktrackingid',

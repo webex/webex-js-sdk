@@ -275,7 +275,7 @@ const MobiusSocket = WebexPlugin.extend({
     }
 
     return socket.sendRequest(payload, {
-      timeout: requestOptions.timeout || this.config.wssResponseTimeout || 10000,
+      timeout: requestOptions.timeout,
       matchesResponse: (response, request) =>
         response?.type === 'response_event' &&
         response?.subtype === request.type &&
@@ -660,7 +660,7 @@ const MobiusSocket = WebexPlugin.extend({
       ([webSocketUrl, token]) => {
         let options = {
           forceCloseDelay: this.config.forceCloseDelay,
-          wssResponseTimeout: this.config.wssResponseTimeout || 10000,
+          wssResponseTimeout: this.config.wssResponseTimeout,
           token: normalizeMobiusAuthToken(token.toString()),
           trackingId: `${this.webex.sessionId}_${Date.now()}`,
           logger: this.logger,

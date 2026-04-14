@@ -318,6 +318,8 @@ export default class Socket extends EventEmitter {
         });
       }
 
+      // Match pending request/response promises before emitting the public message event.
+      // The message is still emitted afterward for any external listeners that care about it.
       this._handlePendingResponse(data);
       this.emit('message', processedEvent);
     } catch (error) {
@@ -368,7 +370,7 @@ export default class Socket extends EventEmitter {
 
     const request = {...data};
     const trackingId = request.trackingId || this._createTrackingId();
-    const timeout = options.timeout || this.wssResponseTimeout || this.authResponseTimeout || 10000;
+    const timeout = options.timeout || this.wssResponseTimeout || 10000;
     const matchesResponse =
       options.matchesResponse ||
       ((response) => response?.trackingId === trackingId && response?.type === 'response_event');
@@ -473,7 +475,6 @@ export default class Socket extends EventEmitter {
         },
       },
       {
-        timeout: this.wssResponseTimeout || this.authResponseTimeout || 10000,
         matchesResponse: (response, request) =>
           response?.type === 'response_event' &&
           response?.subtype === MESSAGE_TYPES.AUTH &&

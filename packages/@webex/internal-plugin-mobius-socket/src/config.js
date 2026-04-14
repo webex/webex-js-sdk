@@ -28,6 +28,7 @@ const mobiusSocketConfig = {
   initialConnectionMaxRetries: process.env.MOBIUS_SOCKET_INITIAL_CONNECTION_MAX_RETRIES || 2,
   /**
    * Maximum number of retries for reconnect attempts after the socket has connected once.
+   * A value of 0 means unlimited reconnect retries.
    * @type {Number}
    */
   maxRetries: process.env.MOBIUS_SOCKET_MAX_RETRIES || 0,
