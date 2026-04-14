@@ -22,6 +22,16 @@ const mobiusSocketConfig = {
    */
   backoffTimeReset: process.env.MOBIUS_SOCKET_BACKOFF_TIME_RESET || 1000,
   /**
+   * Maximum number of retries for the initial connect() flow before rejecting.
+   * @type {Number}
+   */
+  initialConnectionMaxRetries: process.env.MOBIUS_SOCKET_INITIAL_CONNECTION_MAX_RETRIES || 2,
+  /**
+   * Maximum number of retries for reconnect attempts after the socket has connected once.
+   * @type {Number}
+   */
+  maxRetries: process.env.MOBIUS_SOCKET_MAX_RETRIES || 0,
+  /**
    * Milliseconds to wait for a close frame before declaring the socket dead and
    * discarding it
    * @type {number}

@@ -330,6 +330,13 @@ describe('plugin-mobius-socket', () => {
         };
 
         // skipping due to apparent bug with lolex in all browsers but Chrome.
+        skipInBrowser(it)('fails after default `initialConnectionMaxRetries` attempts', () => {
+          mobiusSocket.config.maxRetries = 0;
+
+          return check();
+        });
+
+        // skipping due to apparent bug with lolex in all browsers but Chrome.
         // if initial retries is zero and mobiusSocket has never connected max retries is used
         skipInBrowser(it)('fails after `maxRetries` attempts', () => {
           mobiusSocket.config.maxRetries = 2;
