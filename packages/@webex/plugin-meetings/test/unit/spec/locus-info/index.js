@@ -3083,6 +3083,7 @@ describe('plugin-meetings', () => {
 
         // Call createHashTreeParser with replacedAt via parse -> handleHashTreeParserSwitch
         // which calls createHashTreeParser with replacedAt from the self element
+        locusInfo.webex.internal.device.url = 'http://device-url.com';
         const message = {
           locusUrl: 'http://locus-url-B.com',
           locusStateElements: [
@@ -3093,7 +3094,6 @@ describe('plugin-meetings', () => {
             {
               htMeta: {elementId: {type: 'Self'}},
               data: {
-                deviceUrl: 'http://device-url.com',
                 devices: [{url: 'http://device-url.com', replaces: [{locusUrl: 'http://locus-url-A.com', replacedAt: '2026-01-01T00:00:00Z'}]}],
               },
             },

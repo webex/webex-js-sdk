@@ -436,14 +436,11 @@ export default class Meetings extends WebexPlugin {
     if (existingMeeting) {
       return existingMeeting;
     }
-
     if (data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
       // need to check if maybe this event indicates a move to/from breakout
       const meetingForHashTreeMessage = findMeetingForHashTreeMessage(
-        data.stateElementsMessage,
-        this.meetingCollection,
-        // @ts-ignore
-        this.webex.internal.device.url
+        data?.stateElementsMessage,
+        this.meetingCollection
       );
 
       if (meetingForHashTreeMessage) {
@@ -493,7 +490,6 @@ export default class Meetings extends WebexPlugin {
    */
   private handleLocusEvent(data: LocusEvent, useRandomDelayForInfo = false) {
     let meeting = this.getCorrespondingMeetingByLocus(data);
-
     // @ts-ignore
     if (this.config.experimental.storeLocusHashTreeEventsForDebugging) {
       storeEventForDebugging('mercury', data);
@@ -605,7 +601,6 @@ export default class Meetings extends WebexPlugin {
             // @ts-ignore
             this.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
           }
-
           this.checkHandleBreakoutLocus(data.locus);
         })
         .catch((e) => {
@@ -1952,12 +1947,15 @@ export default class Meetings extends WebexPlugin {
     const lociToUpdate = [...mainLoci];
     breakoutLoci.forEach((breakoutLocus) => {
       const associateMainLocus = mainLoci.find((mainLocus) => {
-        if (mainLocus.controls?.breakout?.url === breakoutLocus.controls?.breakout?.url) {
+        if (
+          mainLocus.controls?.breakout?.url &&
+          mainLocus.controls?.breakout?.url === breakoutLocus.controls?.breakout?.url
+        ) {
           return true;
         }
         const deviceUrl = breakoutLocus?.self?.deviceUrl;
         const replaceInfo = MeetingsUtil.getThisDevice(breakoutLocus, deviceUrl)?.replaces?.[0];
-        if (replaceInfo?.locusUrl === mainLocus.url) {
+        if (replaceInfo?.locusUrl && replaceInfo.locusUrl === mainLocus.url) {
           return true;
         }
 
@@ -2000,10 +1998,21 @@ export default class Meetings extends WebexPlugin {
     if (MeetingsUtil.isBreakoutLocusDTO(newCreatedLocus)) {
       return;
     }
-    const existIndex = this.breakoutLocusForHandleLater.findIndex(
-      (breakoutLocus) =>
-        breakoutLocus.controls?.breakout?.url === newCreatedLocus.controls?.breakout?.url
-    );
+    const existIndex = this.breakoutLocusForHandleLater.findIndex((breakoutLocus) => {
+      if (
+        newCreatedLocus.controls?.breakout?.url &&
+        newCreatedLocus.controls?.breakout?.url === breakoutLocus.controls?.breakout?.url
+      ) {
+        return true;
+      }
+      const deviceUrl = breakoutLocus?.self?.deviceUrl;
+      const replaceInfo = MeetingsUtil.getThisDevice(breakoutLocus, deviceUrl)?.replaces?.[0];
+      if (replaceInfo?.locusUrl && replaceInfo.locusUrl === newCreatedLocus.url) {
+        return true;
+      }
+
+      return false;
+    });
 
     if (existIndex < 0) {
       return;

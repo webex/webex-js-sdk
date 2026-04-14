@@ -98,12 +98,12 @@ export type HashTreeParserEntry = {
  * Gets the replacement information
  *
  * @param {any} self - "self" object from Locus DTO
- * @param {string} deviceUrl - The URL of the user's device
+ * @param {string} deviceUrl - The URL of the specified device
  * @returns {any} The replace information if available, otherwise undefined
  */
-function getReplaceInfoFromSelf(self: any, deviceUrl: string): ReplacesInfo | undefined {
+function getReplaceInfoFromSelf(self: any, deviceUrl?: string): ReplacesInfo | undefined {
   if (self) {
-    const device = MeetingsUtil.getThisDevice({self}, self?.deviceUrl);
+    const device = MeetingsUtil.getThisDevice({self}, deviceUrl || self?.deviceUrl);
 
     if (device?.replaces?.length > 0) {
       return device.replaces[0];
@@ -142,10 +142,12 @@ function findLocusUrlInAnyHashTreeParser(
  * @returns {any} The meeting if found, otherwise undefined
  */
 export function findMeetingForHashTreeMessage(
-  message: HashTreeMessage,
-  meetingCollection: MeetingCollection,
-  deviceUrl: string
+  message: HashTreeMessage | undefined,
+  meetingCollection: MeetingCollection
 ): any {
+  if (!message) {
+    return undefined;
+  }
   let foundMeeting = findLocusUrlInAnyHashTreeParser(meetingCollection, message.locusUrl);
 
   if (foundMeeting) {
@@ -155,7 +157,7 @@ export function findMeetingForHashTreeMessage(
   // if we haven't found anything, it may mean that message has a new locusUrl
   // check if it indicates that it replaces some existing current locusUrl (this is indicated in "self")
   const self = message.locusStateElements?.find((el) => isSelf(el))?.data;
-  const replaces = getReplaceInfoFromSelf(self, deviceUrl);
+  const replaces = getReplaceInfoFromSelf(self, self?.deviceUrl);
 
   if (replaces?.locusUrl) {
     foundMeeting = findLocusUrlInAnyHashTreeParser(meetingCollection, replaces.locusUrl);
