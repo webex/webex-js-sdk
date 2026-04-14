@@ -17,7 +17,7 @@ import promiseTick from '../lib/promise-tick';
 describe('plugin-mobiusSocket', () => {
   describe('MobiusSocket', () => {
     describe('Events', () => {
-      let clock, mobiusSocket, mockWebSocket, socketOpenStub, webex;
+      let clock, mobiusSocket, mockWebSocket, originalSendSpy, socketOpenStub, webex;
 
       const fakeTestMessage = {
         id: uuid.v4(),
@@ -43,7 +43,8 @@ describe('plugin-mobiusSocket', () => {
       };
 
       const emitAuthResponse = ({statusCode = 200, statusMessage = 'OK'} = {}) => {
-        const authRequest = JSON.parse(mockWebSocket.send.lastCall.args[0]);
+        const sendSpy = mockWebSocket.send.lastCall ? mockWebSocket.send : originalSendSpy;
+        const authRequest = JSON.parse(sendSpy.lastCall.args[0]);
 
         mockWebSocket.emit('message', {
           data: JSON.stringify({
@@ -95,6 +96,7 @@ describe('plugin-mobiusSocket', () => {
         webex.logger = console;
 
         mockWebSocket = new MockWebSocket('ws://example.com');
+        originalSendSpy = mockWebSocket.send;
         sinon.stub(Socket, 'getWebSocketConstructor').returns(() => mockWebSocket);
 
         const origOpen = Socket.prototype.open;
