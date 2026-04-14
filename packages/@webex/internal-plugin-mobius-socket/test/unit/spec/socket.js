@@ -32,6 +32,20 @@ describe('plugin-mobius-socket', () => {
       config.mobiusSocket
     );
 
+    const emitAuthResponse = ({statusCode = 200, statusMessage = 'OK'} = {}) => {
+      const authRequest = JSON.parse(mockWebSocket.send.lastCall.args[0]);
+
+      mockWebSocket.emit('message', {
+        data: JSON.stringify({
+          type: 'response_event',
+          subtype: MESSAGE_TYPES.AUTH,
+          trackingId: authRequest.trackingId,
+          statusCode,
+          statusMessage,
+        }),
+      });
+    };
+
     beforeEach(() => {
       clock = FakeTimers.install({now: Date.now()});
     });
@@ -55,14 +69,9 @@ describe('plugin-mobius-socket', () => {
       const promise = socket.open('ws://example.com', mockoptions);
 
       mockWebSocket.open();
-      // Simulate Mobius auth.response (MockWebSocket.open auto-sends mercury.buffer_state which Mobius ignores)
+      // Simulate Mobius auth response (MockWebSocket.open auto-sends mercury.buffer_state which Mobius ignores)
       process.nextTick(() => {
-        mockWebSocket.emit('message', {
-          data: JSON.stringify({
-            type: MESSAGE_TYPES.AUTH_RESPONSE,
-            status: {code: 200},
-          }),
-        });
+        emitAuthResponse();
       });
 
       return promise;
@@ -135,12 +144,7 @@ describe('plugin-mobius-socket', () => {
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
 
-        mockWebSocket.emit('message', {
-          data: JSON.stringify({
-            type: MESSAGE_TYPES.AUTH_RESPONSE,
-            status: {code: 200},
-          }),
-        });
+        emitAuthResponse();
 
         return promise.then(() => {
           assert.equal(socket.logLevelToken, 'mocklogleveltoken');
@@ -379,20 +383,32 @@ describe('plugin-mobius-socket', () => {
           });
         });
 
-        it('resolves upon receiving auth.response', () => {
+        it('resolves upon receiving response_event auth response', () => {
           const s = new Socket();
           const promise = s.open('ws://example.com', mockoptions);
 
           mockWebSocket.readyState = 1;
           mockWebSocket.emit('open');
-          mockWebSocket.emit('message', {
-            data: JSON.stringify({
-              type: MESSAGE_TYPES.AUTH_RESPONSE,
-              status: {code: 200},
-            }),
-          });
+          emitAuthResponse();
 
           return promise.then(() => s.close());
+        });
+
+        it('rejects upon receiving a non-2xx auth response_event', () => {
+          const s = new Socket();
+          const promise = s.open('ws://example.com', mockoptions);
+
+          mockWebSocket.readyState = 1;
+          mockWebSocket.emit('open');
+          emitAuthResponse({statusCode: 401, statusMessage: 'Unauthorized'});
+
+          return assert.isRejected(promise).then((reason) => {
+            assert.instanceOf(reason, NotAuthorized);
+            assert.equal(reason.code, 401);
+            assert.match(reason.reason, /Unauthorized/);
+
+            return s.close();
+          });
         });
       });
     });
@@ -440,12 +456,7 @@ describe('plugin-mobius-socket', () => {
 
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
-        mockWebSocket.emit('message', {
-          data: JSON.stringify({
-            type: MESSAGE_TYPES.AUTH_RESPONSE,
-            status: {code: 200},
-          }),
-        });
+        emitAuthResponse();
 
         return promise.then(() => {
           const spy = sinon.spy();
@@ -477,12 +488,7 @@ describe('plugin-mobius-socket', () => {
 
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
-        mockWebSocket.emit('message', {
-          data: JSON.stringify({
-            type: MESSAGE_TYPES.AUTH_RESPONSE,
-            status: {code: 200},
-          }),
-        });
+        emitAuthResponse();
 
         return promise.then(() => {
           const spy = sinon.spy();
@@ -514,12 +520,7 @@ describe('plugin-mobius-socket', () => {
 
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
-        mockWebSocket.emit('message', {
-          data: JSON.stringify({
-            type: MESSAGE_TYPES.AUTH_RESPONSE,
-            status: {code: 200},
-          }),
-        });
+        emitAuthResponse();
 
         return promise.then(() => {
           const spy = sinon.spy();
@@ -551,12 +552,7 @@ describe('plugin-mobius-socket', () => {
 
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
-        mockWebSocket.emit('message', {
-          data: JSON.stringify({
-            type: MESSAGE_TYPES.AUTH_RESPONSE,
-            status: {code: 200},
-          }),
-        });
+        emitAuthResponse();
 
         return promise.then(() => {
           const spy = sinon.spy();

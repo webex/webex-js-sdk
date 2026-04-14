@@ -42,6 +42,20 @@ describe('plugin-mobiusSocket', () => {
         sessionId: 'mobius-websocket-session',
       };
 
+      const emitAuthResponse = ({statusCode = 200, statusMessage = 'OK'} = {}) => {
+        const authRequest = JSON.parse(mockWebSocket.send.lastCall.args[0]);
+
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            type: 'response_event',
+            subtype: MESSAGE_TYPES.AUTH,
+            trackingId: authRequest.trackingId,
+            statusCode,
+            statusMessage,
+          }),
+        });
+      };
+
       beforeEach(() => {
         clock = FakeTimers.install({now: Date.now()});
       });
@@ -90,14 +104,9 @@ describe('plugin-mobiusSocket', () => {
 
           process.nextTick(() => {
             mockWebSocket.open();
-            // Simulate Mobius auth.response after socket open
+            // Simulate Mobius auth response after socket open
             process.nextTick(() => {
-              mockWebSocket.emit('message', {
-                data: JSON.stringify({
-                  type: MESSAGE_TYPES.AUTH_RESPONSE,
-                  status: {code: 200},
-                }),
-              });
+              emitAuthResponse();
             });
           });
 

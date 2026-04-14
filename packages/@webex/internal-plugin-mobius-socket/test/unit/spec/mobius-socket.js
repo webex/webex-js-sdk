@@ -40,6 +40,20 @@ describe('plugin-mobius-socket', () => {
       trackingId: `suffix_${uuid.v4()}_${Date.now()}`,
     });
 
+    const emitAuthResponse = ({statusCode = 200, statusMessage = 'OK'} = {}) => {
+      const authRequest = JSON.parse(mockWebSocket.send.lastCall.args[0]);
+
+      mockWebSocket.emit('message', {
+        data: JSON.stringify({
+          type: 'response_event',
+          subtype: MESSAGE_TYPES.AUTH,
+          trackingId: authRequest.trackingId,
+          statusCode,
+          statusMessage,
+        }),
+      });
+    };
+
     beforeEach(() => {
       clock = FakeTimers.install({now: Date.now()});
     });
@@ -97,14 +111,9 @@ describe('plugin-mobius-socket', () => {
 
         process.nextTick(() => {
           mockWebSocket.open();
-          // Simulate Mobius auth.response after socket open
+          // Simulate Mobius auth response after socket open
           process.nextTick(() => {
-            mockWebSocket.emit('message', {
-              data: JSON.stringify({
-                type: MESSAGE_TYPES.AUTH_RESPONSE,
-                status: {code: 200},
-              }),
-            });
+            emitAuthResponse();
           });
         });
 
@@ -802,6 +811,129 @@ describe('plugin-mobius-socket', () => {
               assert.equal(lastError, realError);
             });
           });
+        });
+      });
+    });
+
+    describe('#sendWssRequest()', () => {
+      beforeEach(() => {
+        mobiusSocket.config.wssResponseTimeout = 100;
+      });
+
+      it('resolves when a matching response_event arrives', async () => {
+        await mobiusSocket.connect();
+
+        const requestPromise = mobiusSocket.sendWssRequest({
+          type: 'auth',
+          payload: {
+            token: 'Bearer test',
+          },
+        });
+
+        await promiseTick();
+
+        const requestPayload = JSON.parse(mockWebSocket.send.lastCall.args[0]);
+
+        assert.equal(requestPayload.payload.token, 'test');
+
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            type: 'response_event',
+            subtype: 'auth',
+            trackingId: requestPayload.trackingId,
+            statusCode: 200,
+            statusMessage: 'OK',
+          }),
+        });
+
+        const response = await requestPromise;
+
+        assert.equal(response.type, 'response_event');
+        assert.equal(response.subtype, 'auth');
+        assert.equal(response.trackingId, requestPayload.trackingId);
+        assert.equal(response.statusCode, 200);
+      });
+
+      it('strips the Bearer prefix from connect-time auth token', async () => {
+        await mobiusSocket.connect();
+
+        const authPayload = JSON.parse(mockWebSocket.send.firstCall.args[0]);
+
+        assert.equal(authPayload.type, MESSAGE_TYPES.AUTH);
+        assert.equal(authPayload.payload.token, 'FAKE');
+      });
+
+      it('rejects when a matching response_event is non-2xx', async () => {
+        await mobiusSocket.connect();
+
+        const requestPromise = mobiusSocket.sendWssRequest({
+          type: 'auth',
+          payload: {
+            token: 'Bearer test',
+          },
+        });
+
+        await promiseTick();
+
+        const requestPayload = JSON.parse(mockWebSocket.send.lastCall.args[0]);
+
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            type: 'response_event',
+            subtype: 'auth',
+            trackingId: requestPayload.trackingId,
+            statusCode: 403,
+            statusMessage: 'Forbidden',
+          }),
+        });
+
+        await assert.isRejected(requestPromise).then((error) => {
+          assert.equal(error.name, 'MobiusSocketResponseError');
+          assert.equal(error.statusCode, 403);
+          assert.equal(error.statusMessage, 'Forbidden');
+          assert.equal(error.trackingId, requestPayload.trackingId);
+        });
+      });
+
+      it('rejects when the matching response does not arrive before timeout', async () => {
+        await mobiusSocket.connect();
+
+        const requestPromise = mobiusSocket.sendWssRequest({
+          type: 'auth',
+          payload: {
+            token: 'Bearer test',
+          },
+        });
+
+        clock.tick(101);
+        await promiseTick();
+
+        await assert.isRejected(requestPromise).then((error) => {
+          assert.equal(error.name, 'MobiusSocketResponseError');
+          assert.equal(error.statusCode, 408);
+          assert.equal(error.statusMessage, 'Mobius websocket response timed out');
+        });
+      });
+
+      it('rejects pending requests when the active socket closes', async () => {
+        await mobiusSocket.connect();
+
+        const requestPromise = mobiusSocket.sendWssRequest({
+          type: 'auth',
+          payload: {
+            token: 'Bearer test',
+          },
+        });
+
+        mockWebSocket.emit('close', {
+          code: 1003,
+          reason: 'service rejected request',
+        });
+
+        await assert.isRejected(requestPromise).then((error) => {
+          assert.instanceOf(error, ConnectionError);
+          assert.equal(error.code, 1003);
+          assert.equal(error.reason, 'service rejected request');
         });
       });
     });
