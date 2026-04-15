@@ -4,6 +4,7 @@ import {ReceiveSlot} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {getMaxFs, MAX_FS_VALUES} from '@webex/plugin-meetings/src/multistream/remoteMedia';
+import {AV1_CODEC_PARAMETERS} from '@webex/plugin-meetings/src/multistream/codec/constants';
 import FakeTimers from '@sinonjs/fake-timers';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {MediaType, MediaCodecMimeType} from '@webex/internal-media-core';
@@ -1559,6 +1560,197 @@ describe('MediaRequestManager', () => {
       expect(codecInfos[0].payloadType).to.equal(FAKE_H264_PAYLOAD_TYPE);
       expect(codecInfos[1].payloadType).to.equal(FAKE_AV1_PAYLOAD_TYPE);
       expect(codecInfos[1].av1.levelIdx).to.equal(5);
+    });
+  });
+
+  describe('degradation with AV1 enabled', () => {
+    const FAKE_AV1_PAYLOAD_TYPE = 0x90;
+
+    beforeEach(() => {
+      getIngressPayloadTypeCallback.callsFake((mediaType, codecMimeType) => {
+        if (codecMimeType === MediaCodecMimeType.H264) return FAKE_H264_PAYLOAD_TYPE;
+        if (codecMimeType === MediaCodecMimeType.AV1) return FAKE_AV1_PAYLOAD_TYPE;
+        return undefined;
+      });
+
+      mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
+        degradationPreferences,
+        kind: 'video',
+        trimRequestsToNumOfSources: false,
+        enableAv1: true,
+      });
+
+      sendMediaRequestsCallback.resetHistory();
+    });
+
+    it('degrades AV1 codec info along with H264 when request exceeds max macroblocks limit', () => {
+      mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
+      sendMediaRequestsCallback.resetHistory();
+
+      addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 3), getMaxFs('large'), false);
+      addReceiverSelectedRequest(123, fakeReceiveSlots[3], getMaxFs('large'), true);
+
+      assert.calledOnce(sendMediaRequestsCallback);
+      assert.calledWith(sendMediaRequestsCallback, [
+        sinon.match({
+          policy: 'active-speaker',
+          policySpecificInfo: sinon.match({ priority: 255 }),
+          receiveSlots: fakeWcmeSlots.slice(0, 3),
+          maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+          codecInfos: [
+            sinon.match({
+              payloadType: FAKE_H264_PAYLOAD_TYPE,
+              h264: sinon.match({ maxFs: getMaxFs('medium'), maxMbps: MAX_MBPS_720p }),
+            }),
+            sinon.match({
+              payloadType: FAKE_AV1_PAYLOAD_TYPE,
+              av1: sinon.match({
+                levelIdx: AV1_CODEC_PARAMETERS['720p'].levelIdx,
+                maxWidth: AV1_CODEC_PARAMETERS['720p'].maxWidth,
+                maxHeight: AV1_CODEC_PARAMETERS['720p'].maxHeight,
+              }),
+            }),
+          ],
+        }),
+        sinon.match({
+          policy: 'receiver-selected',
+          policySpecificInfo: sinon.match({ csi: 123 }),
+          receiveSlots: [fakeWcmeSlots[3]],
+          maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+          codecInfos: [
+            sinon.match({
+              payloadType: FAKE_H264_PAYLOAD_TYPE,
+              h264: sinon.match({ maxFs: getMaxFs('medium'), maxMbps: MAX_MBPS_720p }),
+            }),
+            sinon.match({
+              payloadType: FAKE_AV1_PAYLOAD_TYPE,
+              av1: sinon.match({
+                levelIdx: AV1_CODEC_PARAMETERS['720p'].levelIdx,
+                maxWidth: AV1_CODEC_PARAMETERS['720p'].maxWidth,
+                maxHeight: AV1_CODEC_PARAMETERS['720p'].maxHeight,
+              }),
+            }),
+          ],
+        }),
+      ]);
+    });
+
+    it('degrades AV1 codec info through multiple steps when many streams are requested', () => {
+      mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
+      sendMediaRequestsCallback.resetHistory();
+
+      addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 10), getMaxFs('large'), true);
+
+      assert.calledOnce(sendMediaRequestsCallback);
+      assert.calledWith(sendMediaRequestsCallback, [
+        sinon.match({
+          policy: 'active-speaker',
+          policySpecificInfo: sinon.match({ priority: 255 }),
+          receiveSlots: fakeWcmeSlots.slice(0, 10),
+          maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_540p,
+          codecInfos: [
+            sinon.match({
+              payloadType: FAKE_H264_PAYLOAD_TYPE,
+              h264: sinon.match({ maxFs: MAX_FS_VALUES['540p'], maxMbps: MAX_MBPS_540p }),
+            }),
+            sinon.match({
+              payloadType: FAKE_AV1_PAYLOAD_TYPE,
+              av1: sinon.match({
+                levelIdx: AV1_CODEC_PARAMETERS['540p'].levelIdx,
+                maxWidth: AV1_CODEC_PARAMETERS['540p'].maxWidth,
+                maxHeight: AV1_CODEC_PARAMETERS['540p'].maxHeight,
+              }),
+            }),
+          ],
+        }),
+      ]);
+    });
+
+    it('degrades only the largest streams AV1 info when mixed resolutions exceed the limit', () => {
+      mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
+      sendMediaRequestsCallback.resetHistory();
+
+      addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 5), getMaxFs('large'), false);
+      addActiveSpeakerRequest(254, fakeReceiveSlots.slice(5, 10), getMaxFs('small'), true);
+
+      assert.calledOnce(sendMediaRequestsCallback);
+      assert.calledWith(sendMediaRequestsCallback, [
+        sinon.match({
+          policy: 'active-speaker',
+          policySpecificInfo: sinon.match({ priority: 255 }),
+          receiveSlots: fakeWcmeSlots.slice(0, 5),
+          maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+          codecInfos: [
+            sinon.match({
+              payloadType: FAKE_H264_PAYLOAD_TYPE,
+              h264: sinon.match({ maxFs: getMaxFs('medium'), maxMbps: MAX_MBPS_720p }),
+            }),
+            sinon.match({
+              payloadType: FAKE_AV1_PAYLOAD_TYPE,
+              av1: sinon.match({
+                levelIdx: AV1_CODEC_PARAMETERS['720p'].levelIdx,
+                maxWidth: AV1_CODEC_PARAMETERS['720p'].maxWidth,
+                maxHeight: AV1_CODEC_PARAMETERS['720p'].maxHeight,
+              }),
+            }),
+          ],
+        }),
+        sinon.match({
+          policy: 'active-speaker',
+          policySpecificInfo: sinon.match({ priority: 254 }),
+          receiveSlots: fakeWcmeSlots.slice(5, 10),
+          maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
+          codecInfos: [
+            sinon.match({
+              payloadType: FAKE_H264_PAYLOAD_TYPE,
+              h264: sinon.match({ maxFs: getMaxFs('small'), maxMbps: MAX_MBPS_360p }),
+            }),
+            sinon.match({
+              payloadType: FAKE_AV1_PAYLOAD_TYPE,
+              av1: sinon.match({
+                levelIdx: AV1_CODEC_PARAMETERS['360p'].levelIdx,
+                maxWidth: AV1_CODEC_PARAMETERS['360p'].maxWidth,
+                maxHeight: AV1_CODEC_PARAMETERS['360p'].maxHeight,
+              }),
+            }),
+          ],
+        }),
+      ]);
+    });
+
+    it('does not degrade AV1 codec info if receive slot sources are not live', () => {
+      fakeReceiveSlots.forEach((slot) => {
+        slot.sourceState = 'no source';
+      });
+
+      mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
+      sendMediaRequestsCallback.resetHistory();
+
+      addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 4), getMaxFs('large'), true);
+
+      assert.calledOnce(sendMediaRequestsCallback);
+      assert.calledWith(sendMediaRequestsCallback, [
+        sinon.match({
+          policy: 'active-speaker',
+          policySpecificInfo: sinon.match({ priority: 255 }),
+          receiveSlots: fakeWcmeSlots.slice(0, 4),
+          maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+          codecInfos: [
+            sinon.match({
+              payloadType: FAKE_H264_PAYLOAD_TYPE,
+              h264: sinon.match({ maxFs: getMaxFs('large'), maxMbps: MAX_MBPS_1080p }),
+            }),
+            sinon.match({
+              payloadType: FAKE_AV1_PAYLOAD_TYPE,
+              av1: sinon.match({
+                levelIdx: AV1_CODEC_PARAMETERS['1080p'].levelIdx,
+                maxWidth: AV1_CODEC_PARAMETERS['1080p'].maxWidth,
+                maxHeight: AV1_CODEC_PARAMETERS['1080p'].maxHeight,
+              }),
+            }),
+          ],
+        }),
+      ]);
     });
   });
 });
