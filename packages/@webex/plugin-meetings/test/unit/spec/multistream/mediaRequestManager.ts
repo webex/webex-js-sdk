@@ -1507,8 +1507,6 @@ describe('MediaRequestManager', () => {
         trimRequestsToNumOfSources: false,
         enableAv1: true,
       });
-
-      sendMediaRequestsCallback.resetHistory();
     });
 
     const resolutionCases = [
@@ -1557,7 +1555,6 @@ describe('MediaRequestManager', () => {
         policy: 'receiver-selected',
         csi: 100,
         receiveSlot: fakeWcmeSlots[0],
-        maxFs: largeFs,
         av1: {payloadType: FAKE_AV1_PAYLOAD_TYPE, levelIdx: 8, maxWidth: 1920, maxHeight: 1080},
       }]);
     });
