@@ -820,3 +820,39 @@ export type BuddyAgentsResponse = Agent.BuddyAgentsSuccess | Error;
  * function handleUpdateDeviceType(resp: UpdateDeviceTypeResponse) { ... }
  */
 export type UpdateDeviceTypeResponse = Agent.DeviceTypeUpdateSuccess | Error;
+
+export type TranscriptAction = 'START' | 'STOP';
+
+export const AIAssistantEventType = {
+  CUSTOM_EVENT: 'CUSTOM_EVENT',
+  CTI_EVENT: 'CTI_EVENT',
+} as const;
+
+export type AIAssistantEventType = Enum<typeof AIAssistantEventType>;
+
+export const AIAssistantEventName = {
+  GET_TRANSCRIPTS: 'GET_TRANSCRIPTS',
+  GET_MID_CALL_SUMMARY: 'GET_MID_CALL_SUMMARY',
+  GET_POST_CALL_SUMMARY: 'GET_POST_CALL_SUMMARY',
+  MID_CALL_SUMMARY_RESPONSE: 'MID_CALL_SUMMARY_RESPONSE',
+  POST_CALL_SUMMARY_RESPONSE: 'POST_CALL_SUMMARY_RESPONSE',
+  SUGGESTED_RESPONSES_DIGITAL: 'SUGGESTED_RESPONSES_DIGITAL',
+} as const;
+
+export type AIAssistantEventName = Enum<typeof AIAssistantEventName>;
+
+export type TranscriptMessage = {
+  role: string;
+  content: string;
+  messageId: string;
+  publishTimestamp: number;
+};
+
+export type HistoricTranscriptsResponse = {
+  orgId: string;
+  agentId: string;
+  conversationId: string | null;
+  interactionId: string;
+  source: string;
+  data: TranscriptMessage[];
+};

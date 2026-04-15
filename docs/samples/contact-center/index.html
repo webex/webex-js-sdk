@@ -315,6 +315,34 @@
           </div>
         </fieldset>
       </div>
+      <div id="realtimeTranscriptsSection">
+        <fieldset>
+          <legend>Real-time Transcripts</legend>
+          <div class="realtime-transcript-card">
+            <div class="realtime-transcript-header">
+              <h3>Conversation</h3>
+              <button id="clear-transcripts" type="button" class="btn btn-secondary">Clear</button>
+            </div>
+
+            <div class="realtime-transcript-tabs" role="tablist" aria-label="Transcript tabs">
+              <button id="ivr-transcript-tab" class="realtime-transcript-tab" role="tab" aria-selected="false" aria-controls="ivr-transcript-panel" type="button">
+                IVR transcript
+              </button>
+              <button id="live-transcript-tab" class="realtime-transcript-tab active" role="tab" aria-selected="true" aria-controls="live-transcript-panel" type="button">
+                Live transcript
+              </button>
+            </div>
+
+            <div id="ivr-transcript-panel" class="realtime-transcript-panel hidden" role="tabpanel" aria-labelledby="ivr-transcript-tab">
+              <div id="ivr-transcript-content" class="realtime-transcript-empty">No IVR transcript available.</div>
+            </div>
+
+            <div id="live-transcript-panel" class="realtime-transcript-panel active" role="tabpanel" aria-labelledby="live-transcript-tab">
+              <div id="realtime-transcripts-content" class="realtime-transcript-list"></div>
+            </div>
+          </div>
+        </fieldset>
+      </div>
     </section>
   </div>
   </div>

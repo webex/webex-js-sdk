@@ -50,4 +50,7 @@ export const METHODS = {
   HANDLE_TASK_HYDRATE: 'handleTaskHydrate',
   INCOMING_TASK_LISTENER: 'incomingTaskListener',
   ACCEPT_PREVIEW_CONTACT: 'acceptPreviewContact',
+  GET_BASE_URL: 'getBaseUrl',
+  SEND_EVENT: 'sendEvent',
+  FETCH_HISTORIC_TRANSCRIPTS: 'fetchHistoricTranscripts',
 };

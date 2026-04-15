@@ -1285,10 +1285,10 @@ describe('plugin-meetings', () => {
           assert.exists(result.dispose);
         });
 
-        it('creates noise reduction effect with ST model', async () => {
+        it('creates noise reduction effect with OFMV model', async () => {
           const result = await webex.meetings.createNoiseReductionEffect({
             audioContext: {},
-            model: 'st',
+            model: 'ofmv',
           });
 
           assert.exists(result);
@@ -1300,7 +1300,7 @@ describe('plugin-meetings', () => {
             authToken: 'fake_token',
             mode: 'WORKLET',
             avoidSimd: false,
-            model: 'st',
+            model: 'ofmv',
           });
           assert.exists(result.enable);
           assert.exists(result.disable);
@@ -2833,6 +2833,39 @@ describe('plugin-meetings', () => {
             checkCreateMeetingWithNoMeetingInfo(true, true);
           });
 
+          it('does not emit meeting:added when meeting is destroyed due to missing meeting info', async () => {
+            // Make destroy actually remove the meeting from the collection
+            // so that getMeetingByType returns null in the finally block
+            webex.meetings.destroy = sinon.stub().callsFake((meeting) => {
+              webex.meetings.meetingCollection.delete(meeting.id);
+            });
+
+            try {
+              await webex.meetings.createMeeting(
+                'test destination',
+                'test type',
+                undefined,
+                undefined,
+                undefined,
+                true
+              );
+              assert.fail('should have thrown NoMeetingInfoError');
+            } catch (err) {
+              assert.instanceOf(err, NoMeetingInfoError);
+            }
+
+            assert.calledOnce(webex.meetings.destroy);
+
+            // meeting:added should NOT have been triggered since the meeting was destroyed
+            assert.neverCalledWith(
+              TriggerProxy.trigger,
+              sinon.match.any,
+              sinon.match({function: 'createMeeting'}),
+              'meeting:added',
+              sinon.match.any
+            );
+          });
+
           it('creates the meeting avoiding meeting info fetch by passing type as DESTINATION_TYPE.ONE_ON_ONE_CALL', async () => {
             const meeting = await webex.meetings.createMeeting(
               'test destination',
@@ -3943,7 +3976,7 @@ describe('plugin-meetings', () => {
           },
         });
         assert.calledWith(webex.meetings.handleLocusEvent, {
-          eventType: LOCUSEVENT.SDK_NO_EVENT,
+          eventType: LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS,
           locus: breakoutLocus,
           locusUrl: breakoutLocus.url,
         });
