@@ -139,6 +139,8 @@ describe('webex.cc', () => {
       dialer: {
         startOutdial: jest.fn(),
         acceptPreviewContact: jest.fn(),
+        skipPreviewContact: jest.fn(),
+        removePreviewContact: jest.fn(),
       },
       apiAIAssistant: {
         sendEvent: jest.fn(),
@@ -2318,6 +2320,134 @@ describe('webex.cc', () => {
         {module: CC_FILE, method: 'acceptPreviewContact', trackingId: error.details.trackingId}
       );
       expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'acceptPreviewContact', CC_FILE);
+    });
+  });
+
+  describe('skipPreviewContact', () => {
+    const previewPayload = {
+      interactionId: 'interaction-123',
+      campaignId: 'campaign-456',
+    };
+
+    it('should skip preview contact successfully', async () => {
+      const mockResponse = {trackingId: 'track-123'} as AgentContact;
+
+      const skipPreviewContactMock = jest
+        .spyOn(webex.cc.services.dialer, 'skipPreviewContact')
+        .mockResolvedValue(mockResponse);
+
+      const result = await webex.cc.skipPreviewContact(previewPayload);
+
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Skipping campaign preview contact', {
+        module: CC_FILE,
+        method: 'skipPreviewContact',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        'Campaign preview contact skipped successfully',
+        {
+          module: CC_FILE,
+          method: 'skipPreviewContact',
+          trackingId: 'track-123',
+          interactionId: previewPayload.interactionId,
+        }
+      );
+
+      expect(skipPreviewContactMock).toHaveBeenCalledWith({data: previewPayload});
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should handle error during skipPreviewContact', async () => {
+      getErrorDetailsSpy.mockRestore();
+      getErrorDetailsSpy = jest.spyOn(Utils, 'getErrorDetails');
+
+      const error = {
+        details: {
+          trackingId: '1234',
+          data: {
+            reason: 'Error while performing skipPreviewContact',
+          },
+        },
+      };
+
+      jest.spyOn(webex.cc.services.dialer, 'skipPreviewContact').mockRejectedValue(error);
+
+      await expect(webex.cc.skipPreviewContact(previewPayload)).rejects.toThrow(
+        error.details.data.reason
+      );
+
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Skipping campaign preview contact', {
+        module: CC_FILE,
+        method: 'skipPreviewContact',
+      });
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `skipPreviewContact failed with reason: ${error.details.data.reason}`,
+        {module: CC_FILE, method: 'skipPreviewContact', trackingId: error.details.trackingId}
+      );
+      expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'skipPreviewContact', CC_FILE);
+    });
+  });
+
+  describe('removePreviewContact', () => {
+    const previewPayload = {
+      interactionId: 'interaction-123',
+      campaignId: 'campaign-456',
+    };
+
+    it('should remove preview contact successfully', async () => {
+      const mockResponse = {trackingId: 'track-123'} as AgentContact;
+
+      const removePreviewContactMock = jest
+        .spyOn(webex.cc.services.dialer, 'removePreviewContact')
+        .mockResolvedValue(mockResponse);
+
+      const result = await webex.cc.removePreviewContact(previewPayload);
+
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Removing campaign preview contact', {
+        module: CC_FILE,
+        method: 'removePreviewContact',
+      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        'Campaign preview contact removed successfully',
+        {
+          module: CC_FILE,
+          method: 'removePreviewContact',
+          trackingId: 'track-123',
+          interactionId: previewPayload.interactionId,
+        }
+      );
+
+      expect(removePreviewContactMock).toHaveBeenCalledWith({data: previewPayload});
+      expect(result).toEqual(mockResponse);
+    });
+
+    it('should handle error during removePreviewContact', async () => {
+      getErrorDetailsSpy.mockRestore();
+      getErrorDetailsSpy = jest.spyOn(Utils, 'getErrorDetails');
+
+      const error = {
+        details: {
+          trackingId: '1234',
+          data: {
+            reason: 'Error while performing removePreviewContact',
+          },
+        },
+      };
+
+      jest.spyOn(webex.cc.services.dialer, 'removePreviewContact').mockRejectedValue(error);
+
+      await expect(webex.cc.removePreviewContact(previewPayload)).rejects.toThrow(
+        error.details.data.reason
+      );
+
+      expect(LoggerProxy.info).toHaveBeenCalledWith('Removing campaign preview contact', {
+        module: CC_FILE,
+        method: 'removePreviewContact',
+      });
+      expect(LoggerProxy.error).toHaveBeenCalledWith(
+        `removePreviewContact failed with reason: ${error.details.data.reason}`,
+        {module: CC_FILE, method: 'removePreviewContact', trackingId: error.details.trackingId}
+      );
+      expect(getErrorDetailsSpy).toHaveBeenCalledWith(error, 'removePreviewContact', CC_FILE);
     });
   });
 });
