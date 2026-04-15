@@ -17,8 +17,11 @@ import {
 } from '../constants';
 
 /**
- * Registration lifecycle tests: REG-001, REG-008, REG-010.
+ * Registration lifecycle tests: REG-001, REG-003, REG-008, REG-010.
  * Run serially in a shared browser context to save setup time.
+ * REG-003 (basic keepalive) lives here because it only needs to observe
+ * keepalive traffic after a normal registration — no pre-registration
+ * route setup required, so it piggybacks on the shared context.
  */
 export function registrationLifecycleTests() {
   test.describe('Registration Lifecycle', () => {
@@ -27,6 +30,7 @@ export function registrationLifecycleTests() {
     let tm: TestManager;
     let registrationPosts = 0;
     let deletePosts = 0;
+    let keepaliveCount = 0;
     let expectedPrimaryUrl: string;
 
     test.beforeAll(async ({browser}, testInfo) => {
@@ -38,10 +42,24 @@ export function registrationLifecycleTests() {
         service: 'calling',
       });
 
-      // Track Mobius registration and delete requests across all tests
+      // Track Mobius registration and delete requests across all tests,
+      // and shorten keepalive interval so REG-003 completes quickly.
       await context.route(/\/calling\/web\/device$/, async (route) => {
         if (route.request().method() === 'POST') {
           registrationPosts += 1;
+          const response = await route.fetch();
+          const body = await response.json();
+          body.keepaliveInterval = 5;
+          await route.fulfill({response, body: JSON.stringify(body)});
+        } else {
+          await route.continue();
+        }
+      });
+
+      // Track keepalive status requests for REG-003
+      await context.route(/\/devices\/[^/]+\/status$/, async (route) => {
+        if (route.request().method() === 'POST') {
+          keepaliveCount += 1;
         }
         await route.continue();
       });
@@ -82,6 +100,20 @@ export function registrationLifecycleTests() {
       await expect(page.locator(CALLING_SELECTORS.REGISTER_BTN)).toBeDisabled({
         timeout: AWAIT_TIMEOUT,
       });
+    });
+
+    test('REG-003: Keepalive requests are sent after registration', async () => {
+      const page = tm.page;
+
+      await expect
+        .poll(() => keepaliveCount, {
+          message: 'Expected at least one keepalive request within 20s',
+          timeout: 20000,
+          intervals: [1000],
+        })
+        .toBeGreaterThan(0);
+
+      expect(await isLineRegistered(page)).toBe(true);
     });
 
     test('REG-008: Connection restoration re-registers when no active calls', async () => {

@@ -10,6 +10,17 @@ export const CC_SERVICE_DOMAIN = 'rtw.prod-us1.rtmsprod.net';
 export const REGION = 'US-EAST';
 export const COUNTRY = 'US';
 
+// Server region names returned in Mobius discovery response when REGION='US-EAST'.
+// These are internal server names and don't match the logical regionCode in the request.
+export const EXPECTED_PRIMARY_REGION = {
+  PROD: 'us-east-1',
+  INT: 'us-east-1-ngnix',
+};
+export const EXPECTED_BACKUP_REGION = {
+  PROD: 'us-west-2',
+  INT: 'us-east-1-istio',
+};
+
 // Mobius URLs for the test accounts (from service catalog)
 export const PRIMARY_MOBIUS_URL = {
   PROD: 'https://mobius.asinwxt-prd-3.p4.prod.infra.webex.com/api/v1/calling/web/',

@@ -11,9 +11,10 @@ import {
 } from '../constants';
 
 /**
- * Failover & failback tests: REG-006, REG-007.
- * Run serially in a shared browser context — REG-007 chains from REG-006's
- * backup-registered state to test failback without repeating the failover phase.
+ * Failover & failback tests: REG-006, REG-017, REG-007.
+ * Run serially in a shared browser context — each test chains from the
+ * previous test's state (REG-006 → backup, REG-017 → still backup after
+ * 429 exhaustion, REG-007 → clean failback to primary).
  */
 export function registrationFailoverTests() {
   test.describe('Failover & Failback', () => {
@@ -22,8 +23,10 @@ export function registrationFailoverTests() {
     let tm: TestManager;
     let registrationAttempts = 0;
     const attemptedUrls: string[] = [];
-    let phase: 'failover' | 'failback' = 'failover';
+    let phase: 'failover' | 'failback' | 'failback-429' = 'failover';
     let failbackRegistrationAttempts = 0;
+    let failback429Attempts = 0;
+    const FAILBACK_RETRY_AFTER_SECONDS = 5;
     const MAX_FAILURES = 6;
     let expectedPrimaryUrl: string;
     let expectedBackupUrl: string;
@@ -39,7 +42,7 @@ export function registrationFailoverTests() {
         service: 'calling',
       });
 
-      // Intercept registration POST — fail primary during failover, allow during failback
+      // Intercept registration POST — behavior depends on current phase
       await context.route(/\/calling\/web\/device$/, async (route) => {
         if (route.request().method() === 'POST') {
           registrationAttempts += 1;
@@ -51,6 +54,24 @@ export function registrationFailoverTests() {
               contentType: 'application/json',
               body: JSON.stringify({message: 'Service Unavailable'}),
             });
+          } else if (phase === 'failback-429') {
+            const url = route.request().url();
+
+            if (url.startsWith(expectedPrimaryUrl)) {
+              // Primary attempts get 429
+              failback429Attempts += 1;
+              await route.fulfill({
+                status: 429,
+                headers: {
+                  'Retry-After': String(FAILBACK_RETRY_AFTER_SECONDS),
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({message: 'Too Many Requests'}),
+              });
+            } else {
+              // Backup attempts pass through (restorePreviousRegistration)
+              await route.continue();
+            }
           } else {
             if (phase === 'failback') {
               failbackRegistrationAttempts += 1;
@@ -98,6 +119,72 @@ export function registrationFailoverTests() {
       // After failover, active Mobius should be the backup server
       const activeMobius = await getActiveMobiusUrl(page);
       expect(activeMobius).toBe(expectedBackupUrl);
+    });
+
+    test('REG-017: 429 during failback exhausts retry budget, stays on backup', async () => {
+      test.setTimeout(300000);
+
+      const page = tm.page;
+
+      // Device is on backup from REG-006
+      expect(await getActiveMobiusUrl(page)).toBe(expectedBackupUrl);
+
+      // Switch to failback-429 phase — primary POSTs get 429, backup POSTs pass through
+      phase = 'failback-429';
+      failback429Attempts = 0;
+
+      // Clear existing failback timer and trigger failback with short rehoming interval
+      await page.evaluate(() => {
+        const reg = (Object.values((window as any).callingClient.getLines())[0] as any)
+          .registration;
+        reg.clearFailbackTimer();
+        reg.failbackTimer = undefined;
+        reg.scheduled429Retry = false;
+        reg.failback429RetryAttempts = 0;
+        reg.rehomingIntervalMin = 0.08;
+        reg.rehomingIntervalMax = 0.08;
+        reg.initiateFailback();
+      });
+
+      // Wait for SDK to exhaust its 5-retry budget (REG_FAILBACK_429_MAX_RETRIES)
+      await expect
+        .poll(
+          () =>
+            page.evaluate(
+              () =>
+                (Object.values((window as any).callingClient.getLines())[0] as any).registration
+                  .failback429RetryAttempts
+            ),
+          {
+            message: 'Expected failback429RetryAttempts to reach 5 (max budget)',
+            timeout: 240000,
+            intervals: [3000],
+          }
+        )
+        .toBeGreaterThanOrEqual(5);
+
+      // Verify we actually sent 429 responses to primary attempts
+      expect(failback429Attempts).toBeGreaterThanOrEqual(5);
+
+      // Device must still be on backup — failback should have given up
+      expect(await getActiveMobiusUrl(page)).toBe(expectedBackupUrl);
+      await expect
+        .poll(() => isLineRegistered(page), {
+          message: 'Line should remain registered on backup after failback 429 exhaustion',
+          timeout: AWAIT_TIMEOUT,
+          intervals: [1000],
+        })
+        .toBe(true);
+
+      // Clean up SDK state so REG-007 can trigger a fresh failback
+      await page.evaluate(() => {
+        const reg = (Object.values((window as any).callingClient.getLines())[0] as any)
+          .registration;
+        reg.clearFailbackTimer();
+        reg.failbackTimer = undefined;
+        reg.scheduled429Retry = false;
+        reg.failback429RetryAttempts = 0;
+      });
     });
 
     test('REG-007: Fallback to primary from backup', async () => {

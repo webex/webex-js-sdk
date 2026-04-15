@@ -7,64 +7,31 @@ import {
   setServiceIndicator,
   setEnvironmentToInt,
 } from '../utils/setup';
-import {registerLine, verifyLineRegistered, isLineRegistered} from '../utils/registration';
-import {CALLING_SELECTORS, REGISTRATION_TIMEOUT} from '../constants';
+import {
+  registerLine,
+  verifyLineRegistered,
+  isLineRegistered,
+  getActiveMobiusUrl,
+} from '../utils/registration';
+import {
+  CALLING_SELECTORS,
+  REGISTRATION_TIMEOUT,
+  AWAIT_TIMEOUT,
+  PRIMARY_MOBIUS_URL,
+  BACKUP_MOBIUS_URL,
+} from '../constants';
 
 /**
- * Keepalive tests: REG-003, REG-004, REG-005.
- * Each test needs custom routes set up BEFORE registration (to shorten keepalive
- * interval), so they cannot share post-registration state. They run serially
- * to avoid account contention, each with a fresh page/context.
+ * Keepalive & registration-retry tests: REG-004, REG-005, REG-015, REG-016.
+ * Each test needs custom routes set up BEFORE registration, so they cannot share
+ * post-registration state. They run serially to avoid account contention, each
+ * with a fresh page/context.
+ *
+ * REG-003 (basic keepalive observation) lives in registration-lifecycle.ts
+ * because it only needs to observe keepalive traffic after a normal registration.
  */
 export function registrationKeepaliveTests() {
   test.describe('Keepalive Flows', () => {
-    test('REG-003: Keepalive requests are sent after registration', async ({
-      page,
-      context,
-    }, testInfo) => {
-      const isInt = isIntProject(testInfo.project.name);
-      const role = getUserSet(testInfo.project.name).accounts[0];
-      test.setTimeout(120000);
-
-      let keepaliveCount = 0;
-
-      await context.route(/\/calling\/web\/device$/, async (route) => {
-        if (route.request().method() === 'POST') {
-          const response = await route.fetch();
-          const body = await response.json();
-          body.keepaliveInterval = 5;
-          await route.fulfill({response, body: JSON.stringify(body)});
-        } else {
-          await route.continue();
-        }
-      });
-
-      await context.route(/\/devices\/[^/]+\/status$/, async (route) => {
-        if (route.request().method() === 'POST') {
-          keepaliveCount += 1;
-        }
-        await route.continue();
-      });
-
-      await navigateToCallingApp(page);
-      if (isInt) await setEnvironmentToInt(page);
-      await setServiceIndicator(page, 'calling');
-      await initializeCallingSDK(page, getToken(role, isInt));
-      await verifySDKInitialized(page);
-      await registerLine(page);
-      await verifyLineRegistered(page);
-
-      await expect
-        .poll(() => keepaliveCount, {
-          message: 'Expected at least one keepalive request within 20s',
-          timeout: 20000,
-          intervals: [1000],
-        })
-        .toBeGreaterThan(0);
-
-      expect(await isLineRegistered(page)).toBe(true);
-    });
-
     test('REG-004: Keepalive 404 triggers re-registration', async ({page, context}, testInfo) => {
       const isInt = isIntProject(testInfo.project.name);
       const role = getUserSet(testInfo.project.name).accounts[0];
@@ -222,6 +189,134 @@ export function registrationKeepaliveTests() {
       }
 
       expect(await isLineRegistered(page)).toBe(true);
+    });
+
+    test('REG-015: 429 on initial registration honors Retry-After before retrying', async ({
+      page,
+      context,
+    }, testInfo) => {
+      const isInt = isIntProject(testInfo.project.name);
+      const role = getUserSet(testInfo.project.name).accounts[0];
+      test.setTimeout(300000);
+
+      const RETRY_AFTER_SECONDS = 10;
+      const MAX_429_RESPONSES = 2;
+      let registrationAttempts = 0;
+      const attemptTimestamps: number[] = [];
+
+      // Intercept registration POST — first N attempts return 429 with Retry-After
+      await context.route(/\/calling\/web\/device$/, async (route) => {
+        if (route.request().method() === 'POST') {
+          registrationAttempts += 1;
+          attemptTimestamps.push(Date.now());
+
+          if (registrationAttempts <= MAX_429_RESPONSES) {
+            await route.fulfill({
+              status: 429,
+              headers: {
+                'Retry-After': String(RETRY_AFTER_SECONDS),
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({message: 'Too Many Requests'}),
+            });
+          } else {
+            await route.continue();
+          }
+        } else {
+          await route.continue();
+        }
+      });
+
+      await navigateToCallingApp(page);
+      if (isInt) await setEnvironmentToInt(page);
+      await setServiceIndicator(page, 'calling');
+      await initializeCallingSDK(page, getToken(role, isInt));
+      await verifySDKInitialized(page);
+
+      // Click register — will get 429s then succeed
+      await page.locator(CALLING_SELECTORS.REGISTER_BTN).click({timeout: AWAIT_TIMEOUT});
+
+      await expect(page.locator(CALLING_SELECTORS.REGISTRATION_STATUS)).toContainText(
+        'Registered, deviceId:',
+        {timeout: 240000}
+      );
+
+      expect(registrationAttempts).toBeGreaterThan(MAX_429_RESPONSES);
+      expect(await isLineRegistered(page)).toBe(true);
+
+      // Verify the SDK waited at least Retry-After between the last 429 and the next attempt
+      if (attemptTimestamps.length > MAX_429_RESPONSES) {
+        const last429Time = attemptTimestamps[MAX_429_RESPONSES - 1];
+        const firstSuccessAttemptTime = attemptTimestamps[MAX_429_RESPONSES];
+        const gap = firstSuccessAttemptTime - last429Time;
+
+        expect(gap).toBeGreaterThanOrEqual((RETRY_AFTER_SECONDS - 2) * 1000);
+      }
+    });
+
+    test('REG-016: 429 with high Retry-After triggers immediate backup failover', async ({
+      page,
+      context,
+    }, testInfo) => {
+      const isInt = isIntProject(testInfo.project.name);
+      const role = getUserSet(testInfo.project.name).accounts[0];
+      test.setTimeout(300000);
+
+      const expectedPrimaryUrl = isInt ? PRIMARY_MOBIUS_URL.INT : PRIMARY_MOBIUS_URL.PROD;
+      const expectedBackupUrl = isInt ? BACKUP_MOBIUS_URL.INT : BACKUP_MOBIUS_URL.PROD;
+      const HIGH_RETRY_AFTER = 120; // Above RETRY_TIMER_UPPER_LIMIT (60s)
+      let primaryAttempts = 0;
+      let backupAttempts = 0;
+      const testStartTime = Date.now();
+
+      // Intercept registration POST — 429 on primary, pass-through on backup
+      await context.route(/\/calling\/web\/device$/, async (route) => {
+        if (route.request().method() === 'POST') {
+          const url = route.request().url();
+
+          if (url.startsWith(expectedPrimaryUrl)) {
+            primaryAttempts += 1;
+            await route.fulfill({
+              status: 429,
+              headers: {
+                'Retry-After': String(HIGH_RETRY_AFTER),
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({message: 'Too Many Requests'}),
+            });
+          } else {
+            backupAttempts += 1;
+            await route.continue();
+          }
+        } else {
+          await route.continue();
+        }
+      });
+
+      await navigateToCallingApp(page);
+      if (isInt) await setEnvironmentToInt(page);
+      await setServiceIndicator(page, 'calling');
+      await initializeCallingSDK(page, getToken(role, isInt));
+      await verifySDKInitialized(page);
+
+      await page.locator(CALLING_SELECTORS.REGISTER_BTN).click({timeout: AWAIT_TIMEOUT});
+
+      await expect(page.locator(CALLING_SELECTORS.REGISTRATION_STATUS)).toContainText(
+        'Registered, deviceId:',
+        {timeout: 240000}
+      );
+
+      expect(primaryAttempts).toBeGreaterThanOrEqual(1);
+      expect(backupAttempts).toBeGreaterThanOrEqual(1);
+      expect(await isLineRegistered(page)).toBe(true);
+
+      // Verify registered on backup, not primary
+      const activeMobius = await getActiveMobiusUrl(page);
+      expect(activeMobius).toBe(expectedBackupUrl);
+
+      // Verify failover happened well before the 120s Retry-After would have elapsed
+      const elapsed = Date.now() - testStartTime;
+      expect(elapsed).toBeLessThan(HIGH_RETRY_AFTER * 1000);
     });
   });
 }

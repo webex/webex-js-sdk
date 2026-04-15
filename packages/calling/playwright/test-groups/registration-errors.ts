@@ -41,7 +41,7 @@ export function registrationErrorTests() {
 
       if (isEnabled) {
         await registerBtn.click({timeout: AWAIT_TIMEOUT});
-        await page.waitForTimeout(15000);
+        await page.waitForTimeout(5000);
       }
 
       const hasCallingClient = await page.evaluate(() => !!(window as any).callingClient);
