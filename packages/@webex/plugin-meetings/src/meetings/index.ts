@@ -1917,14 +1917,28 @@ export default class Meetings extends WebexPlugin {
           // (they had a locusUrl previously but are no longer active) in the sync
           for (const meeting of Object.values(meetingsCollection)) {
             // @ts-ignore
-            const {locusUrl} = meeting;
+            const {locusUrl, locusInfo} = meeting;
             if ((keepOnlyLocusMeetings || locusUrl) && !activeLocusUrl.includes(locusUrl)) {
-              const mainLocusUrl = (meeting as Meeting).breakouts?.mainLocusUrl;
-              if (mainLocusUrl && activeLocusUrl.includes(mainLocusUrl)) {
-                // Don't destroy the meeting as it's associated with a breakout for a main session
-                // that's still returned in the sync.
-                // The user was probably moved between breakouts while being temporarily offline
+              const globalMeetingId = locusInfo?.info?.globalMeetingId;
+
+              if (
+                globalMeetingId &&
+                locusArray?.loci?.some((locus) => locus.info?.globalMeetingId === globalMeetingId)
+              ) {
+                console.log(
+                  `marcin: found globalMeetingId ${globalMeetingId} in one of returned locus objects from GET /loci`
+                );
+                // don't destroy the meeting as Locus API still returned some Locus that shares
+                // the same globalMeetingId - that happens for example if a webinar user (who hasn't scheduled it)
+                // is in a breakout and gets moved to a different breakout while we were offline
               } else {
+                console.log(`marcin: destroying the meeting globalMeetingId=${globalMeetingId}`);
+                // const mainLocusUrl = (meeting as Meeting).breakouts?.mainLocusUrl;
+                // if (mainLocusUrl && activeLocusUrl.includes(mainLocusUrl)) {
+                //   // Don't destroy the meeting as it's associated with a breakout for a main session
+                //   // that's still returned in the sync.
+                //   // The user was probably moved between breakouts while being temporarily offline
+                // } else {
                 // destroy function also uploads logs
                 // @ts-ignore
                 this.destroy(meeting, MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC);
