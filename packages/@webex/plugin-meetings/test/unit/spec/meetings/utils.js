@@ -162,6 +162,82 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#isMainAssociatedWithBreakout', () => {
+      it('returns true when breakout control url matches main locus breakout url', () => {
+        const mainLocus = {
+          url: 'main-locus-url',
+          controls: {
+            breakout: {
+              url: 'breakout-control-url',
+            },
+          },
+        };
+        const breakoutLocus = {
+          controls: {
+            breakout: {
+              url: 'breakout-control-url',
+            },
+          },
+        };
+
+        assert.equal(MeetingsUtil.isMainAssociatedWithBreakout(mainLocus, breakoutLocus), true);
+      });
+
+      it('returns true when breakout self device replaces the main locus url', () => {
+        const mainLocus = {
+          url: 'main-locus-url',
+          controls: {},
+        };
+        const breakoutLocus = {
+          controls: {
+            breakout: {
+              url: 'other-breakout-url',
+            },
+          },
+          self: {
+            deviceUrl: 'device-url-1',
+            devices: [
+              {
+                url: 'device-url-1',
+                replaces: [{locusUrl: 'main-locus-url'}],
+              },
+            ],
+          },
+        };
+
+        assert.equal(MeetingsUtil.isMainAssociatedWithBreakout(mainLocus, breakoutLocus), true);
+      });
+
+      it('returns false when breakout locus is not associated with the main locus', () => {
+        const mainLocus = {
+          url: 'main-locus-url',
+          controls: {
+            breakout: {
+              url: 'breakout-control-url',
+            },
+          },
+        };
+        const breakoutLocus = {
+          controls: {
+            breakout: {
+              url: 'different-breakout-url',
+            },
+          },
+          self: {
+            deviceUrl: 'device-url-1',
+            devices: [
+              {
+                url: 'device-url-1',
+                replaces: [{locusUrl: 'another-main-locus-url'}],
+              },
+            ],
+          },
+        };
+
+        assert.equal(MeetingsUtil.isMainAssociatedWithBreakout(mainLocus, breakoutLocus), false);
+      });
+    });
+
     describe('#joinedOnThisDevice', () => {
       it('return false if no devices in self', () => {
         const newLocus = {};

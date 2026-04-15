@@ -1950,21 +1950,9 @@ export default class Meetings extends WebexPlugin {
     this.breakoutLocusForHandleLater = [];
     const lociToUpdate = [...mainLoci];
     breakoutLoci.forEach((breakoutLocus) => {
-      const associateMainLocus = mainLoci.find((mainLocus) => {
-        if (
-          mainLocus.controls?.breakout?.url &&
-          mainLocus.controls?.breakout?.url === breakoutLocus.controls?.breakout?.url
-        ) {
-          return true;
-        }
-        const deviceUrl = breakoutLocus?.self?.deviceUrl;
-        const replaceInfo = MeetingsUtil.getThisDevice(breakoutLocus, deviceUrl)?.replaces?.[0];
-        if (replaceInfo?.locusUrl && replaceInfo.locusUrl === mainLocus.url) {
-          return true;
-        }
-
-        return false;
-      });
+      const associateMainLocus = mainLoci.find((mainLocus) =>
+        MeetingsUtil.isMainAssociatedWithBreakout(mainLocus, breakoutLocus)
+      );
       const existCorrespondingMeeting = this.getCorrespondingMeetingByLocus({
         eventType: LOCUSEVENT.SDK_NO_EVENT,
         locus: breakoutLocus,
@@ -1991,7 +1979,7 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-  checkHandleBreakoutLocus(newCreatedLocus) {
+  checkHandleBreakoutLocus(newCreatedLocus: any) {
     if (
       !newCreatedLocus ||
       !this.breakoutLocusForHandleLater ||
@@ -2002,21 +1990,9 @@ export default class Meetings extends WebexPlugin {
     if (MeetingsUtil.isBreakoutLocusDTO(newCreatedLocus)) {
       return;
     }
-    const existIndex = this.breakoutLocusForHandleLater.findIndex((breakoutLocus) => {
-      if (
-        newCreatedLocus.controls?.breakout?.url &&
-        newCreatedLocus.controls?.breakout?.url === breakoutLocus.controls?.breakout?.url
-      ) {
-        return true;
-      }
-      const deviceUrl = breakoutLocus?.self?.deviceUrl;
-      const replaceInfo = MeetingsUtil.getThisDevice(breakoutLocus, deviceUrl)?.replaces?.[0];
-      if (replaceInfo?.locusUrl && replaceInfo.locusUrl === newCreatedLocus.url) {
-        return true;
-      }
-
-      return false;
-    });
+    const existIndex = this.breakoutLocusForHandleLater.findIndex((breakoutLocus: any) =>
+      MeetingsUtil.isMainAssociatedWithBreakout(newCreatedLocus, breakoutLocus)
+    );
 
     if (existIndex < 0) {
       return;
