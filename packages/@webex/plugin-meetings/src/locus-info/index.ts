@@ -974,31 +974,33 @@ export default class LocusInfo extends EventsScope {
    *
    * @param {string} callerName - name of the calling method, used in log messages
    * @param {string} locusUrl - the locus URL of the stopped parser
-   * @param {HashTreeParserEntry} entry - the stopped parser entry
+   * @param {HashTreeParserEntry} stoppedEntry - the stopped parser entry
    * @param {ReplacesInfo} replaces - replacement info extracted from self
-   * @returns {boolean} true if the parser was reactivated, false otherwise
+   * @param {Function} resumeCallback - callback to invoke after reactivation to resume the parser
+   * @returns {void}
    */
-  private tryReactivateStoppedParser(
+  private resumeStoppedParser(
     callerName: string,
     locusUrl: string,
-    entry: HashTreeParserEntry,
-    replaces: ReplacesInfo | undefined
-  ): boolean {
+    stoppedEntry: HashTreeParserEntry,
+    replaces: ReplacesInfo | undefined,
+    resumeCallback: () => void
+  ): void {
     // this check is just for typescript, it should never happen, replaces should always be defined
     if (!replaces) {
       LoggerProxy.logger.info(
         `Locus-info:index#${callerName} --> received data for stopped HashTreeParser with locusUrl ${locusUrl}, but no replaces info provided, so not re-activating the parser`
       );
 
-      return false;
+      return;
     }
 
-    if (replaces.replacedAt <= (entry.replacedAt || '')) {
+    if (replaces.replacedAt <= (stoppedEntry.replacedAt || '')) {
       LoggerProxy.logger.info(
         `Locus-info:index#${callerName} --> received data for stopped HashTreeParser with locusUrl ${locusUrl}, but replaces info provided is not newer, so not re-activating the parser`
       );
 
-      return false;
+      return;
     }
 
     LoggerProxy.logger.info(
@@ -1016,10 +1018,10 @@ export default class LocusInfo extends EventsScope {
       );
     }
 
-    entry.initializedFromHashTree = false;
+    stoppedEntry.initializedFromHashTree = false;
     this.hashTreeObjectId2ParticipantId.clear();
 
-    return true;
+    resumeCallback();
   }
 
   /**
@@ -1065,16 +1067,13 @@ export default class LocusInfo extends EventsScope {
       return;
     }
 
-    const reactivated = this.tryReactivateStoppedParser(
+    this.resumeStoppedParser(
       'handleHashTreeParserSwitchForAPIResponse',
       locusUrl,
       entry,
-      replaces
+      replaces,
+      () => entry.parser.resumeFromApiResponse(locus)
     );
-
-    if (reactivated) {
-      entry.parser.resumeFromApiResponse(locus);
-    }
   }
 
   /**
@@ -1125,16 +1124,13 @@ export default class LocusInfo extends EventsScope {
     if (entry.parser.state === 'stopped') {
       // the message matches a stopped parser, we need to check if maybe this is a new "replacement" and we need to re-activate the parser
       // this happens when you move from breakout A -> breakout B -> back to breakout A
-      const reactivated = this.tryReactivateStoppedParser(
+      this.resumeStoppedParser(
         'handleHashTreeParserSwitch',
         message.locusUrl,
         entry,
-        replaces
+        replaces,
+        () => entry.parser.resumeFromMessage(message)
       );
-
-      if (reactivated) {
-        entry.parser.resumeFromMessage(message);
-      }
 
       return true;
     }
