@@ -185,6 +185,84 @@ describe('plugin-meetings', () => {
                 handleRetryStub.restore();
               });
             });
+
+            describe('URI parsing edge cases', () => {
+              const make503Reason = (uri) =>
+                new WebexHttpError.MethodNotAllowed({
+                  statusCode: 503,
+                  options: {headers: {trackingid: 'test', 'retry-after': 1000}, uri},
+                  body: {error: 'Service Unavailable'},
+                });
+
+              const makeOptions = (uri) => ({
+                method: 'GET',
+                headers: {trackingid: 'test', 'retry-after': 1000},
+                uri,
+                body: undefined,
+              });
+
+              [
+                'https://locus.webex.com/locus/api/v1/loci/123/session/abc/datasets/main/hashtree?rootHash=xyz',
+                'https://locus.webex.com/locus/api/v1/loci/123/session/abc/datasets/main/sync?seq=5',
+              ].forEach((uri) => {
+                it(`skips retry even with query params: ${uri.split('/').pop()}`, () => {
+                  const opts = makeOptions(uri);
+                  const reason = make503Reason(uri);
+                  const stub = sinon
+                    .stub(interceptor, 'handleRetryRequestLocusServiceError')
+                    .returns(Promise.resolve());
+
+                  return interceptor.onResponseError(opts, reason).catch((err) => {
+                    expect(err).to.equal(reason);
+                    expect(stub.called).to.be.false;
+                    stub.restore();
+                  });
+                });
+              });
+
+              [
+                'https://locus.webex.com/locus/api/v1/loci/123/hashtree-v2',
+                'https://locus.webex.com/locus/api/v1/loci/123/syncData',
+                'https://locus.webex.com/locus/api/v1/loci/123/async',
+                'https://locus.webex.com/locus/api/v1/loci/123/hashtree/metadata',
+              ].forEach((uri) => {
+                it(`still retries when path only partially matches: ${uri
+                  .split('/')
+                  .pop()}`, () => {
+                  const opts = makeOptions(uri);
+                  const reason = make503Reason(uri);
+                  interceptor.webex.request = sinon.stub().returns(Promise.resolve());
+                  const stub = sinon
+                    .stub(interceptor, 'handleRetryRequestLocusServiceError')
+                    .returns(Promise.resolve());
+
+                  return interceptor.onResponseError(opts, reason).then(() => {
+                    expect(stub.calledOnce).to.be.true;
+                    stub.restore();
+                  });
+                });
+              });
+
+              it('still retries when /hashtree is on a non-locus host', () => {
+                const uri = 'https://other-service.webex.com/api/v1/hashtree';
+                const opts = makeOptions(uri);
+                const reason = make503Reason(uri);
+
+                return interceptor.onResponseError(opts, reason).catch((err) => {
+                  expect(err).to.equal(reason);
+                });
+              });
+
+              it('still retries when URI is malformed', () => {
+                const uri = 'not-a-valid-url';
+                const opts = makeOptions(uri);
+                const reason = make503Reason(uri);
+
+                return interceptor.onResponseError(opts, reason).catch((err) => {
+                  expect(err).to.equal(reason);
+                });
+              });
+            });
         });
 
         describe('#handleRetryRequestLocusServiceError', () => {
