@@ -42,6 +42,7 @@ const createBaseData = (overrides: Partial<TaskData> = {}): TaskData =>
     mediaResourceId: 'media1',
     interaction: {
       ...(overrides.interaction || {}),
+      mainInteractionId: (overrides.interaction as any)?.mainInteractionId ?? 'media1',
       media: {
         media1: {mediaResourceId: 'media1', isHold: false},
         ...(overrides.interaction as any)?.media,
@@ -103,6 +104,19 @@ describe('Voice Task', () => {
     primeHeldState(voice, heldData);
     await voice.holdResume();
     expect(dummyContact.unHold).toHaveBeenCalledWith({
+      interactionId: 'int1',
+      data: {mediaResourceId: 'media1'},
+    });
+  });
+
+  it('hold() reads mediaResourceId from interaction.media via mainInteractionId', async () => {
+    const taskData = createBaseData() as any;
+    // Simulate top-level mediaResourceId being stale/cleared (e.g. after recording event reconciliation)
+    taskData.mediaResourceId = '';
+    const voice = new Voice(dummyContact, taskData, {});
+    primeConnectedState(voice, taskData);
+    await voice.holdResume();
+    expect(dummyContact.hold).toHaveBeenCalledWith({
       interactionId: 'int1',
       data: {mediaResourceId: 'media1'},
     });

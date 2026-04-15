@@ -116,11 +116,16 @@ export default class Voice extends Task implements IVoice {
    * ```
    * */
   public async holdResume(): Promise<TaskResponse> {
-    /* 
-    Determine if the task is being held or resumed based on the media resource state
-    If the media resource is not found, default to resuming the task
+    /*
+    Determine if the task is being held or resumed based on the media resource state.
+    Read mediaResourceId from interaction.media (the canonical source) rather than
+    the top-level this.data.mediaResourceId, which can be stale after partial event
+    payloads (e.g. recording events) overwrite task data.
     */
-    const shouldHold = !this.data.interaction.media[this.data.mediaResourceId].isHold;
+    const {mainInteractionId} = this.data.interaction;
+    const mediaResourceId =
+      this.data.interaction.media[mainInteractionId]?.mediaResourceId ?? this.data.mediaResourceId;
+    const shouldHold = !this.data.interaction.media[mediaResourceId].isHold;
 
     // Validate operation is allowed in current state
     const state = this.stateMachineService?.getSnapshot?.();
@@ -152,7 +157,7 @@ export default class Voice extends Task implements IVoice {
       const initiatingEvent = shouldHold ? TaskEvent.HOLD_INITIATED : TaskEvent.UNHOLD_INITIATED;
       this.stateMachineService.send({
         type: initiatingEvent,
-        mediaResourceId: this.data.mediaResourceId,
+        mediaResourceId,
       });
     }
 
@@ -172,14 +177,14 @@ export default class Voice extends Task implements IVoice {
       if (shouldHold) {
         response = await this.contact.hold({
           interactionId: this.data.interactionId,
-          data: {mediaResourceId: this.data.mediaResourceId},
+          data: {mediaResourceId},
         });
 
         // Send success event to complete the transition
         if (this.stateMachineService) {
           this.stateMachineService.send({
             type: TaskEvent.HOLD_SUCCESS,
-            mediaResourceId: this.data.mediaResourceId,
+            mediaResourceId,
           });
         }
 
@@ -187,7 +192,7 @@ export default class Voice extends Task implements IVoice {
           successEvt,
           {
             taskId: this.data.interactionId,
-            mediaResourceId: this.data.mediaResourceId,
+            mediaResourceId,
             ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
           },
           ['operational', 'behavioral']
@@ -199,17 +204,16 @@ export default class Voice extends Task implements IVoice {
           interactionId: this.data.interactionId,
         });
       } else {
-        const mainId = this.data.interaction?.mainInteractionId;
         response = await this.contact.unHold({
           interactionId: this.data.interactionId,
-          data: {mediaResourceId: this.data.mediaResourceId},
+          data: {mediaResourceId},
         });
 
         // Send success event to complete the transition
         if (this.stateMachineService) {
           this.stateMachineService.send({
             type: TaskEvent.UNHOLD_SUCCESS,
-            mediaResourceId: this.data.mediaResourceId,
+            mediaResourceId,
           });
         }
 
@@ -217,8 +221,8 @@ export default class Voice extends Task implements IVoice {
           successEvt,
           {
             taskId: this.data.interactionId,
-            mainInteractionId: mainId,
-            mediaResourceId: this.data.mediaResourceId,
+            mainInteractionId,
+            mediaResourceId,
             ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
           },
           ['operational', 'behavioral']
@@ -237,7 +241,7 @@ export default class Voice extends Task implements IVoice {
       this.stateMachineService.send({
         type: failureEvent,
         reason: error.toString(),
-        mediaResourceId: this.data.mediaResourceId,
+        mediaResourceId,
       });
 
       const {error: detailedError} = getErrorDetails(error, 'holdResume', CC_FILE);
@@ -246,7 +250,7 @@ export default class Voice extends Task implements IVoice {
         shouldHold
           ? {
               taskId: this.data.interactionId,
-              mediaResourceId: this.data.mediaResourceId,
+              mediaResourceId,
               error: error.toString(),
               ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(error.details || {}),
             }
