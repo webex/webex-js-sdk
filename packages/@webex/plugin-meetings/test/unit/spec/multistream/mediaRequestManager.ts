@@ -8,7 +8,7 @@ import {AV1_CODEC_PARAMETERS} from '@webex/plugin-meetings/src/multistream/codec
 import FakeTimers from '@sinonjs/fake-timers';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {MediaType, MediaCodecMimeType} from '@webex/internal-media-core';
-import { expect } from 'chai';
+
 
 type ExpectedActiveSpeaker = {
   policy: 'active-speaker';
@@ -419,8 +419,8 @@ describe('MediaRequestManager', () => {
     const maxFsEventName = maxFsHandlerCall.args[0];
     const sourceUpdateEventName = sourceUpdateHandler.args[0];
 
-    expect(sourceUpdateHandler.args[1]).to.be.a('function');
-    expect(maxFsHandlerCall.args[1]).to.be.a('function');
+    assert.isFunction(sourceUpdateHandler.args[1]);
+    assert.isFunction(maxFsHandlerCall.args[1]);
 
     assert.equal(maxFsEventName, 'maxFsUpdate')
     assert.equal(sourceUpdateEventName, 'sourceUpdate')
@@ -1409,7 +1409,7 @@ describe('MediaRequestManager', () => {
       const av1Calls = getIngressPayloadTypeCallback.getCalls().filter(
         (call) => call.args[1] === MediaCodecMimeType.AV1
       );
-      expect(av1Calls).to.have.length(0);
+      assert.lengthOf(av1Calls, 0);
     });
 
     it('includes both H264 and AV1 codec infos when enableAv1 is true and both payload types are available', () => {
@@ -1527,9 +1527,9 @@ describe('MediaRequestManager', () => {
       const codecInfos = sendMediaRequestsCallback.getCall(0).args[0][0].codecInfos;
       const av1Info = codecInfos[1];
 
-      expect(av1Info.av1.levelIdx).to.equal(4);
-      expect(av1Info.av1.maxWidth).to.equal(960);
-      expect(av1Info.av1.maxHeight).to.equal(540);
+      assert.equal(av1Info.av1.levelIdx, 4);
+      assert.equal(av1Info.av1.maxWidth, 960);
+      assert.equal(av1Info.av1.maxHeight, 540);
     });
 
     it('maps maxFs exceeding 1080p to 1080p AV1 parameters', () => {
@@ -1540,9 +1540,9 @@ describe('MediaRequestManager', () => {
       const codecInfos = sendMediaRequestsCallback.getCall(0).args[0][0].codecInfos;
       const av1Info = codecInfos[1];
 
-      expect(av1Info.av1.levelIdx).to.equal(8);
-      expect(av1Info.av1.maxWidth).to.equal(1920);
-      expect(av1Info.av1.maxHeight).to.equal(1080);
+      assert.equal(av1Info.av1.levelIdx, 8);
+      assert.equal(av1Info.av1.maxWidth, 1920);
+      assert.equal(av1Info.av1.maxHeight, 1080);
     });
 
     it('includes AV1 codec info for active-speaker requests', () => {
@@ -1556,10 +1556,10 @@ describe('MediaRequestManager', () => {
       assert.calledOnce(sendMediaRequestsCallback);
       const codecInfos = sendMediaRequestsCallback.getCall(0).args[0][0].codecInfos;
 
-      expect(codecInfos).to.have.length(2);
-      expect(codecInfos[0].payloadType).to.equal(FAKE_H264_PAYLOAD_TYPE);
-      expect(codecInfos[1].payloadType).to.equal(FAKE_AV1_PAYLOAD_TYPE);
-      expect(codecInfos[1].av1.levelIdx).to.equal(5);
+      assert.lengthOf(codecInfos, 2);
+      assert.equal(codecInfos[0].payloadType, FAKE_H264_PAYLOAD_TYPE);
+      assert.equal(codecInfos[1].payloadType, FAKE_AV1_PAYLOAD_TYPE);
+      assert.equal(codecInfos[1].av1.levelIdx, 5);
     });
   });
 
