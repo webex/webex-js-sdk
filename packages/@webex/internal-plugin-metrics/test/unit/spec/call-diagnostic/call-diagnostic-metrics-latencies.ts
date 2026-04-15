@@ -899,7 +899,7 @@ describe('internal-plugin-metrics', () => {
       cdl.saveTimestamp({key: 'internal.client.meeting.interstitial-window.showed', value: 8});
       cdl.saveTimestamp({key: 'internal.client.interstitial-window.click.joinbutton', value: 10});
       cdl.saveTimestamp({key: 'client.media-engine.ready', value: 4294967400});
-      cdl.saveTimestamp({key: 'client.locus.join.response', value: 20});
+      cdl.saveTimestamp({key: 'client.locus.join.response', value: 28});
       cdl.saveTimestamp({key: 'client.lobby.exited', value: 30});
       assert.deepEqual(cdl.getTotalMediaJMT(), 2147483647);
     });
