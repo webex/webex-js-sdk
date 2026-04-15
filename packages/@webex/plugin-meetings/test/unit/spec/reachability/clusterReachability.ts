@@ -896,5 +896,69 @@ describe('ClusterReachability', () => {
         assert.deepEqual(detail.latencies, []);
       });
     });
+
+    it('uses candidate.url for xTLS protocol detection and updates pre-populated detail via port-only fallback when relay IP differs', async () => {
+      // This tests the Chrome relay candidate path:
+      // - candidate.url gives the configured TURN port (443) → correctly identifies xTLS
+      // - relay IP (candidate.address) differs from the configured server IP in the URL
+      // - updateSubnetDetail falls back to port-only matching and overwrites serverIp with the relay IP
+      const allFakePcs: Record<string, unknown>[] = [];
+      (global.RTCPeerConnection as sinon.SinonStub).callsFake(() => {
+        const pc: Record<string, unknown> = {
+          createOffer: sinon.stub().resolves(FAKE_OFFER),
+          setLocalDescription: sinon.stub().resolves(),
+          close: sinon.stub(),
+          iceGatheringState: 'new',
+        };
+        allFakePcs.push(pc);
+        return pc;
+      });
+
+      const perUrlCluster = new ClusterReachability(
+        'testCluster',
+        {
+          isVideoMesh: false,
+          udp: [],
+          tcp: [],
+          xtls: ['stun:203.0.113.1:443'], // IP-based URL → pre-populated as {serverIp: '203.0.113.1', port: 443}
+        },
+        true // enablePerUdpUrlReachability
+      );
+
+      const promise = perUrlCluster.start();
+      await testUtils.flushPromises();
+
+      const tcpTlsPc = allFakePcs[0];
+      await clock.tickAsync(20);
+
+      // Chrome-style relay candidate: url provides configured port 443, but relay IP is different
+      tcpTlsPc.onicecandidate({
+        candidate: {
+          type: 'relay',
+          address: '5.6.7.8',                              // relay IP — different from configured '203.0.113.1'
+          port: 54321,                                     // ephemeral port — would wrongly give 'tcp' without candidate.url
+          url: 'turn:203.0.113.1:443?transport=tcp',      // configured port 443 → should give 'xtls'
+        },
+      });
+      tcpTlsPc.iceGatheringState = 'complete';
+      tcpTlsPc.onicegatheringstatechange();
+
+      await promise;
+
+      const result = perUrlCluster.getResult();
+
+      // Protocol should be xtls (from configured port 443 in candidate.url, not ephemeral port 54321)
+      assert.equal(result.xtls.result, 'reachable');
+      assert.equal(result.tcp.result, 'untested'); // no tcp URLs configured
+
+      // Detail entry: port-only fallback matched the pre-populated entry and overwrote serverIp with relay IP
+      assert.isArray(result.xtls.details);
+      assert.equal(result.xtls.details.length, 1);
+      assert.equal(result.xtls.details[0].serverIp, '5.6.7.8'); // relay IP, not '203.0.113.1'
+      assert.equal(result.xtls.details[0].port, 443);
+      assert.equal(result.xtls.details[0].answeredTx, 1);
+      assert.equal(result.xtls.details[0].lostTx, 0);
+      assert.equal(result.xtls.details[0].latencies.length, 1);
+    });
   });
 });

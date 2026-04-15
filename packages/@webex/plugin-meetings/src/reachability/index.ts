@@ -785,6 +785,29 @@ export default class Reachability extends EventsScope {
   }
 
   /**
+   * Emits the reachability:done event and sets the reachabilityDoneEmitted flag.
+   * The guard ensures the event is only emitted once, regardless of how many
+   * code paths converge here.
+   *
+   * @returns {void}
+   */
+  private emitReachabilityDoneEvent() {
+    if (this.reachabilityDoneEmitted) {
+      return;
+    }
+    this.reachabilityDoneEmitted = true;
+    this.emit(
+      {
+        file: 'reachability',
+        function: 'emitReachabilityDoneEvent',
+      },
+      'reachability:done',
+      {}
+    );
+    this.sendMetric();
+  }
+
+  /**
    * Starts all the timers used for various timeouts
    *
    * @returns {void}
@@ -819,19 +842,7 @@ export default class Reachability extends EventsScope {
     this.overallTimer = setTimeout(() => {
       this.overallTimer = undefined;
       this.abortClusterReachability();
-      // Guard: abort may have triggered resultReady events that already emitted reachability:done
-      if (!this.reachabilityDoneEmitted) {
-        this.reachabilityDoneEmitted = true;
-        this.emit(
-          {
-            file: 'reachability',
-            function: 'overallTimer timeout',
-          },
-          'reachability:done',
-          {}
-        );
-        this.sendMetric();
-      }
+      this.emitReachabilityDoneEvent();
 
       LoggerProxy.logger.log(
         `Reachability:index#startTimers --> Reachability checks fully timed out (${OVERALL_TIMEOUT}s)`
@@ -973,16 +984,7 @@ export default class Reachability extends EventsScope {
     if (!clusterList || !Object.keys(clusterList).length) {
       // nothing to do, finish immediately
       this.resolveReachabilityPromise(false);
-
-      this.reachabilityDoneEmitted = true;
-      this.emit(
-        {
-          file: 'reachability',
-          function: 'performReachabilityChecks',
-        },
-        'reachability:done',
-        {}
-      );
+      this.emitReachabilityDoneEvent();
 
       return;
     }
@@ -1030,7 +1032,9 @@ export default class Reachability extends EventsScope {
           );
           isFirstResult[protocol] = false;
         }
-        this.resultsCount[cluster.isVideoMesh ? 'videoMesh' : 'public'][protocol] += 1;
+        if (result === 'reachable') {
+          this.resultsCount[cluster.isVideoMesh ? 'videoMesh' : 'public'][protocol] += 1;
+        }
 
         const areAllResultsReady = this.areAllResultsReady();
 
@@ -1041,11 +1045,10 @@ export default class Reachability extends EventsScope {
           results[key][protocol].details = details;
         }
 
-        await this.storeResults(results);
-
         if (areAllResultsReady) {
-          // Re-read final details from all clusters to capture any late-arriving UDP results
-          // (in per-URL mode, early resultReady events may have incomplete details)
+          // Re-read final details from all clusters before storing, to capture fully merged
+          // UDP results. In per-URL mode, each resultReady event only carries details for a
+          // single URL; getResult() holds the accumulated state across all URLs.
           Object.keys(this.clusterReachability).forEach((clusterKey) => {
             const finalResult = this.clusterReachability[clusterKey].getResult();
             if (finalResult.udp.details) {
@@ -1058,19 +1061,13 @@ export default class Reachability extends EventsScope {
               results[clusterKey].xtls.details = finalResult.xtls.details;
             }
           });
-          await this.storeResults(results);
+        }
 
+        await this.storeResults(results);
+
+        if (areAllResultsReady) {
           this.clearTimer('overallTimer');
-          this.reachabilityDoneEmitted = true;
-          this.emit(
-            {
-              file: 'reachability',
-              function: 'performReachabilityChecks',
-            },
-            'reachability:done',
-            {}
-          );
-          this.sendMetric();
+          this.emitReachabilityDoneEvent();
 
           LoggerProxy.logger.log(
             `Reachability:index#gatherReachability --> Reachability checks fully completed`

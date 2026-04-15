@@ -382,12 +382,13 @@ export class ReachabilityPeerConnection extends EventsScope {
     // Find existing detail entry matching this server IP and port
     let existingDetail = details.find((d) => d.serverIp === serverIp && d.port === port);
 
-    // If not found and this is per-URL mode with a single URL,
-    // match the only entry (could be a domain name entry)
-    if (!existingDetail && details.length === 1) {
-      const onlyDetail = details[0];
-      if (onlyDetail.port === port && onlyDetail.answeredTx === 0) {
-        existingDetail = onlyDetail;
+    // Fallback: match by port alone — pre-populated entries store the domain name, but relay
+    // candidates expose a relay IP, so exact IP+port match fails; overwrite serverIp once matched.
+    if (!existingDetail) {
+      const portMatchedDetail = details.find((d) => d.port === port && d.answeredTx === 0);
+      if (portMatchedDetail) {
+        existingDetail = portMatchedDetail;
+        existingDetail.serverIp = serverIp; // replace domain name with relay IP
       }
     }
 
@@ -471,46 +472,36 @@ export class ReachabilityPeerConnection extends EventsScope {
           ? parseIceServerUrl(candidateWithUrl.url)
           : {host: undefined, port: undefined};
 
-        const isPerUrlMode = this.numUdpUrls === 1;
         // Only pass serverPort when enablePerUdpUrlReachability is true —
         // in standard mode there are no subnet details to update.
         const effectiveServerPort = this.enablePerUdpUrlReachability ? serverPort : undefined;
-        if (isPerUrlMode || this.result.udp.result !== 'reachable') {
-          this.saveResult(
-            'udp',
-            latencyInMilliseconds,
-            e.candidate.address,
-            serverIp,
-            effectiveServerPort
-          );
-        } else {
-          this.addPublicIp('udp', e.candidate.address);
-          // Tracking reached subnets for subsequent UDP responses
-          if (serverIp && !this.emittedSubnets.has(serverIp)) {
-            this.emittedSubnets.add(serverIp);
-            this.emit(
-              {
-                file: 'reachabilityPeerConnection',
-                function: 'registerIceCandidateListener',
-              },
-              ReachabilityPeerConnectionEvents.reachedSubnets,
-              {
-                subnets: [serverIp],
-              }
-            );
-          }
-        }
+        this.saveResult(
+          'udp',
+          latencyInMilliseconds,
+          e.candidate.address,
+          serverIp,
+          effectiveServerPort
+        );
 
         this.determineNatTypeForSrflxCandidate(e.candidate);
       } else if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
-        const protocol: Protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
+        // Use candidate.url (Chrome) for protocol detection; fall back to ephemeral e.candidate.port in Firefox (best-effort).
+        const relayCandidateWithUrl = e.candidate as RTCIceCandidate & {url?: string};
+        const configuredPort = relayCandidateWithUrl.url
+          ? parseIceServerUrl(relayCandidateWithUrl.url).port
+          : undefined;
 
+        // Determine protocol from the configured TURN port (443 = xTLS, else TCP).
+        const portForProtocol = configuredPort ?? e.candidate.port;
+        const protocol: Protocol = portForProtocol === TURN_TLS_PORT ? 'xtls' : 'tcp';
+
+        // Pass relay IP as serverIp — updateSubnetDetail matches by port and overwrites the pre-populated domain name with it.
         this.saveResult(
           protocol,
           latencyInMilliseconds,
           null,
           e.candidate.address,
-          this.enablePerUdpUrlReachability ? e.candidate.port : undefined
+          this.enablePerUdpUrlReachability ? configuredPort ?? e.candidate.port : undefined
         );
       }
     };
