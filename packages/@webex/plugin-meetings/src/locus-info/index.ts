@@ -984,6 +984,7 @@ export default class LocusInfo extends EventsScope {
     entry: HashTreeParserEntry,
     replaces: ReplacesInfo | undefined
   ): boolean {
+    // this check is just for typescript, it should never happen, replaces should always be defined
     if (!replaces) {
       LoggerProxy.logger.info(
         `Locus-info:index#${callerName} --> received data for stopped HashTreeParser with locusUrl ${locusUrl}, but no replaces info provided, so not re-activating the parser`
@@ -1072,16 +1073,7 @@ export default class LocusInfo extends EventsScope {
     );
 
     if (reactivated) {
-      // Can't use resume() because API responses don't carry metadata/dataSets.
-      // Create a fresh parser instead (createHashTreeParser will overwrite the stopped entry).
-      const parser = this.createHashTreeParser({
-        locusUrl,
-        initialLocus: {locus: null, dataSets: []},
-        metadata: null,
-        replacedAt: replaces?.replacedAt,
-      });
-
-      parser.initializeFromGetLociResponse(locus);
+      entry.parser.resumeFromApiResponse(locus);
     }
   }
 
@@ -1141,7 +1133,7 @@ export default class LocusInfo extends EventsScope {
       );
 
       if (reactivated) {
-        entry.parser.resume(message);
+        entry.parser.resumeFromMessage(message);
       }
 
       return true;

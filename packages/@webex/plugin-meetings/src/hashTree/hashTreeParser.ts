@@ -1528,17 +1528,17 @@ class HashTreeParser {
   }
 
   /**
-   * Resumes the HashTreeParser that was previously stopped.
+   * Resumes the HashTreeParser that was previously stopped, using a hash tree message.
    * @param {HashTreeMessage} message - The message to resume with, it must contain metadata with visible data sets info
    * @returns {void}
    */
-  public resume(message: HashTreeMessage) {
+  public resumeFromMessage(message: HashTreeMessage) {
     // check that message contains metadata with visible data sets - this is essential to be able to resume
     const metadataObject = message.locusStateElements?.find((el) => isMetadata(el));
 
     if (!metadataObject?.data?.visibleDataSets) {
       LoggerProxy.logger.warn(
-        `HashTreeParser#resume --> ${this.debugId} Cannot resume HashTreeParser because the message is missing metadata with visible data sets info`
+        `HashTreeParser#resumeFromMessage --> ${this.debugId} Cannot resume HashTreeParser because the message is missing metadata with visible data sets info`
       );
 
       return;
@@ -1559,7 +1559,7 @@ class HashTreeParser {
       };
     }
     LoggerProxy.logger.info(
-      `HashTreeParser#resume --> ${
+      `HashTreeParser#resumeFromMessage --> ${
         this.debugId
       } Resuming HashTreeParser with data sets: ${Object.keys(this.dataSets).join(
         ', '
@@ -1568,6 +1568,24 @@ class HashTreeParser {
     this.state = 'active';
 
     this.handleMessage(message, 'on resume');
+  }
+
+  /**
+   * Resumes the HashTreeParser that was previously stopped, using a Locus API response.
+   * Unlike resumeFromMessage(), this does not require metadata/dataSets in the input,
+   * as it fetches all necessary information from Locus via initializeFromGetLociResponse.
+   * @param {LocusDTO} locus - locus object from an API response
+   * @returns {Promise}
+   */
+  public async resumeFromApiResponse(locus: LocusDTO) {
+    this.state = 'active';
+    this.dataSets = {};
+
+    LoggerProxy.logger.info(
+      `HashTreeParser#resumeFromApiResponse --> ${this.debugId} Resuming HashTreeParser from API response`
+    );
+
+    await this.initializeFromGetLociResponse(locus);
   }
 
   private checkForSentinelHttpResponse(error: any, dataSetName?: string) {

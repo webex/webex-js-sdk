@@ -3154,7 +3154,7 @@ describe('plugin-meetings', () => {
       const createMockParser = (state = 'active') => ({
         state,
         stop: sinon.stub(),
-        resume: sinon.stub(),
+        resumeFromMessage: sinon.stub(),
         handleMessage: sinon.stub(),
       });
 
@@ -3236,7 +3236,7 @@ describe('plugin-meetings', () => {
           stateElementsMessage: message,
         });
 
-        assert.calledOnce(parserA.resume);
+        assert.calledOnce(parserA.resumeFromMessage);
         assert.calledOnce(parserB.stop);
       });
 
@@ -3259,7 +3259,7 @@ describe('plugin-meetings', () => {
           stateElementsMessage: message,
         });
 
-        assert.notCalled(parserA.resume);
+        assert.notCalled(parserA.resumeFromMessage);
         assert.notCalled(parserB.stop);
       });
 
@@ -3278,7 +3278,7 @@ describe('plugin-meetings', () => {
           stateElementsMessage: message,
         });
 
-        assert.notCalled(parserA.resume);
+        assert.notCalled(parserA.resumeFromMessage);
         assert.notCalled(parserA.handleMessage);
       });
 

@@ -3634,7 +3634,7 @@ describe('HashTreeParser', () => {
     });
   });
 
-  describe('#resume', () => {
+  describe('#resumeFromMessage', () => {
     const createResumeMessage = (visibleDataSets?, dataSets?) => ({
       locusUrl,
       visibleDataSetsUrl,
@@ -3661,7 +3661,7 @@ describe('HashTreeParser', () => {
 
       expect(parser.state).to.equal('stopped');
 
-      parser.resume(createResumeMessage());
+      parser.resumeFromMessage(createResumeMessage());
 
       expect(parser.state).to.equal('active');
     });
@@ -3670,7 +3670,7 @@ describe('HashTreeParser', () => {
       const parser = createHashTreeParser();
       parser.stop();
 
-      parser.resume({
+      parser.resumeFromMessage({
         locusUrl,
         visibleDataSetsUrl,
         dataSets: [createDataSet('main', 16, 2000)],
@@ -3689,7 +3689,7 @@ describe('HashTreeParser', () => {
         createDataSet('self', 2, 6000),
       ];
 
-      parser.resume(createResumeMessage(undefined, newDataSets));
+      parser.resumeFromMessage(createResumeMessage(undefined, newDataSets));
 
       expect(Object.keys(parser.dataSets)).to.have.lengthOf(2);
       expect(parser.dataSets.main.leafCount).to.equal(8);
@@ -3711,7 +3711,7 @@ describe('HashTreeParser', () => {
         {name: 'self', url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self'},
       ];
 
-      parser.resume(createResumeMessage(visibleDataSets, dataSets));
+      parser.resumeFromMessage(createResumeMessage(visibleDataSets, dataSets));
 
       expect(parser.dataSets.main.hashTree).to.be.instanceOf(HashTree);
       expect(parser.dataSets.self.hashTree).to.be.instanceOf(HashTree);
@@ -3725,7 +3725,7 @@ describe('HashTreeParser', () => {
       const handleMessageStub = sinon.stub(parser, 'handleMessage');
 
       const message = createResumeMessage();
-      parser.resume(message);
+      parser.resumeFromMessage(message);
 
       assert.calledOnceWithExactly(handleMessageStub, message, 'on resume');
     });
@@ -3745,7 +3745,7 @@ describe('HashTreeParser', () => {
         {name: 'atd-unmuted', url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/atd-unmuted'},
       ];
 
-      parser.resume(createResumeMessage(visibleDataSets, dataSets));
+      parser.resumeFromMessage(createResumeMessage(visibleDataSets, dataSets));
 
       expect(parser.visibleDataSets.some((vds) => vds.name === 'atd-unmuted')).to.be.false;
       expect(parser.visibleDataSets.some((vds) => vds.name === 'main')).to.be.true;
