@@ -371,7 +371,7 @@ describe('plugin-metrics', () => {
             joinTimes: {
               totalMediaJMT: 44,
               interstitialToMediaOKJMT: 22,
-              callInitMediaEngineReady: 10,
+              callInitMediaEngineReady: 22,
               totalMediaJMTWithUserDelay: 43,
               totalJMTWithUserDelay: 64,
             },
