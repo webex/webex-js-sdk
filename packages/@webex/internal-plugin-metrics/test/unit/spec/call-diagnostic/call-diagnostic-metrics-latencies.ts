@@ -406,7 +406,7 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('calculates getShowInterstitialTime correctly', () => {
-      cdl.saveTimestamp({key: 'client.interstitial-window.start-launch', value: 10});
+      cdl.saveTimestamp({key: 'internal.client.meeting.interstitial-window.showed', value: 10});
       cdl.saveTimestamp({key: 'internal.client.interstitial-window.click.joinbutton', value: 20});
       assert.deepEqual(cdl.getShowInterstitialTime(), 10);
     });
@@ -712,7 +712,7 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getTotalJMT(), 20);
     });
 
-    it('calculates getTotalJMT correctly when interstitialToJoinOk is 0', () => {
+    it('calculates getTotalJMT correctly when interstitialClickJoinToJoinLocusResponse is 0', () => {
       cdl.saveTimestamp({
         key: 'internal.client.interstitial-window.click.joinbutton',
         value: 40,
@@ -725,7 +725,7 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getTotalJMT(), 12);
     });
 
-    it('calculates getTotalJMT correctly when both clickToInterstitial and interstitialToJoinOk are 0', () => {
+    it('calculates getTotalJMT correctly when both clickToInterstitial and interstitialClickJoinToJoinLocusResponse are 0', () => {
       cdl.saveTimestamp({
         key: 'internal.client.interstitial-window.click.joinbutton',
         value: 40,
@@ -781,13 +781,13 @@ describe('internal-plugin-metrics', () => {
         key: 'client.locus.join.response',
         value: 40,
       });
-      assert.deepEqual(cdl.getTotalJMTWithUserDelay(), 45);
+      assert.deepEqual(cdl.getTotalJMTWithUserDelay(), 30);
     });
 
     it('calculates getTotalJMTWithUserDelay correctly when clickToInterstitialWithUserDelay is 0', () => {
       cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 0);
       cdl.saveTimestamp({
-        key: 'internal.client.interstitial-window.click.joinbutton',
+        key: 'internal.client.meeting.interstitial-window.showed',
         value: 20,
       });
       cdl.saveTimestamp({
@@ -797,9 +797,9 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getTotalJMTWithUserDelay(), 20);
     });
 
-    it('calculates getTotalJMTWithUserDelay correctly when interstitialToJoinOk is 0', () => {
+    it('calculates getTotalJMTWithUserDelay correctly when interstitialShowedToJoinLocusResponse is 0', () => {
       cdl.saveTimestamp({
-        key: 'internal.client.interstitial-window.click.joinbutton',
+        key: 'internal.client.meeting.interstitial-window.showed',
         value: 40,
       });
       cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 12);
@@ -810,9 +810,9 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getTotalJMTWithUserDelay(), 12);
     });
 
-    it('calculates getTotalJMTWithUserDelay correctly when both clickToInterstitialWithUserDelay and interstitialToJoinOk are 0', () => {
+    it('calculates getTotalJMTWithUserDelay correctly when both clickToInterstitialWithUserDelay and interstitialShowedToJoinLocusResponse are 0', () => {
       cdl.saveTimestamp({
-        key: 'internal.client.interstitial-window.click.joinbutton',
+        key: 'internal.client.meeting.interstitial-window.showed',
         value: 40,
       });
       cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 0);
@@ -825,7 +825,7 @@ describe('internal-plugin-metrics', () => {
 
     it('calculates getTotalJMTWithUserDelay correctly when both clickToInterstitialWithUserDelay is not a number', () => {
       cdl.saveTimestamp({
-        key: 'internal.client.interstitial-window.click.joinbutton',
+        key: 'internal.client.meeting.interstitial-window.showed',
         value: 40,
       });
       cdl.saveLatency(
@@ -842,7 +842,7 @@ describe('internal-plugin-metrics', () => {
     it('calculates getTotalJMTWithUserDelay correctly when it is greater than MAX_INTEGER', () => {
       cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 2147483648);
       cdl.saveTimestamp({
-        key: 'internal.client.interstitial-window.click.joinbutton',
+        key: 'internal.client.meeting.interstitial-window.showed',
         value: 20,
       });
       cdl.saveTimestamp({

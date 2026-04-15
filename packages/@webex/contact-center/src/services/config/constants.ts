@@ -166,7 +166,7 @@ export const endPointMap = {
   ) =>
     `organization/${orgId}/v2/auxiliary-code?page=${page}&pageSize=${pageSize}${
       filter && filter.length > 0 ? `&filter=id=in=(${filter})` : ''
-    }&attributes=${attributes}`,
+    }&attributes=${attributes}&desktopProfileFilter=true`,
 
   /**
    * Gets the endpoint for organization info.

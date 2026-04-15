@@ -1,9 +1,9 @@
-/* 
+/*
  * CSS Variables for consistent theming
- * 
+ *
  * Usage in CSS: background-color: var(--color-webex-blue);
  * Usage in JS: element.style.backgroundColor = 'var(--color-success)';
- * 
+ *
  * Available variables:
  * --color-success: Success state (green)
  * --color-success-hover: Success hover state
@@ -559,6 +559,10 @@ footer .copyright {
 
 .stat-item.removed {
     border-left: 4px solid #dc3545;
+}
+
+.stat-item.commits {
+    border-left: 4px solid #6f42c1;
 }
 
 .stat-item strong {
