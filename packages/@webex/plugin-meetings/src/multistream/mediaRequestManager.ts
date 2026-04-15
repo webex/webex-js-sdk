@@ -370,8 +370,8 @@ export class MediaRequestManager {
                 new AV1Codec(
                   av1EncodingParams.levelIdx,
                   av1EncodingParams.tier,
-                  av1EncodingParams.maxWidth,
-                  av1EncodingParams.maxHeight,
+                  mr.codecInfo.maxWidth || av1EncodingParams.maxWidth,
+                  mr.codecInfo.maxHeight || av1EncodingParams.maxHeight,
                   av1EncodingParams.maxPicSize,
                   av1EncodingParams.maxDecodeRate
                 )
