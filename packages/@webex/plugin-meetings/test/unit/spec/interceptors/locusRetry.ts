@@ -118,11 +118,14 @@ describe('plugin-meetings', () => {
                 );
                 handleRetryStub.returns(Promise.resolve());
 
-                return interceptor.onResponseError(hashTreeOptions, reason).catch((err) => {
-                  expect(err).to.equal(reason);
-                  expect(handleRetryStub.called).to.be.false;
-                  handleRetryStub.restore();
-                });
+                return interceptor.onResponseError(hashTreeOptions, reason).then(
+                  () => assert.fail('Expected promise to be rejected'),
+                  (err) => {
+                    expect(err).to.equal(reason);
+                    expect(handleRetryStub.called).to.be.false;
+                    handleRetryStub.restore();
+                  }
+                );
               });
 
               it(`does not retry /sync requests on ${statusCode}`, () => {
@@ -141,11 +144,14 @@ describe('plugin-meetings', () => {
                 );
                 handleRetryStub.returns(Promise.resolve());
 
-                return interceptor.onResponseError(syncOptions, reason).catch((err) => {
-                  expect(err).to.equal(reason);
-                  expect(handleRetryStub.called).to.be.false;
-                  handleRetryStub.restore();
-                });
+                return interceptor.onResponseError(syncOptions, reason).then(
+                  () => assert.fail('Expected promise to be rejected'),
+                  (err) => {
+                    expect(err).to.equal(reason);
+                    expect(handleRetryStub.called).to.be.false;
+                    handleRetryStub.restore();
+                  }
+                );
               });
             });
 
@@ -212,11 +218,14 @@ describe('plugin-meetings', () => {
                     .stub(interceptor, 'handleRetryRequestLocusServiceError')
                     .returns(Promise.resolve());
 
-                  return interceptor.onResponseError(opts, reason).catch((err) => {
-                    expect(err).to.equal(reason);
-                    expect(stub.called).to.be.false;
-                    stub.restore();
-                  });
+                  return interceptor.onResponseError(opts, reason).then(
+                    () => assert.fail('Expected promise to be rejected'),
+                    (err) => {
+                      expect(err).to.equal(reason);
+                      expect(stub.called).to.be.false;
+                      stub.restore();
+                    }
+                  );
                 });
               });
 
@@ -248,9 +257,12 @@ describe('plugin-meetings', () => {
                 const opts = makeOptions(uri);
                 const reason = make503Reason(uri);
 
-                return interceptor.onResponseError(opts, reason).catch((err) => {
-                  expect(err).to.equal(reason);
-                });
+                return interceptor.onResponseError(opts, reason).then(
+                  () => assert.fail('Expected promise to be rejected'),
+                  (err) => {
+                    expect(err).to.equal(reason);
+                  }
+                );
               });
 
               it('still retries when URI is malformed', () => {
@@ -258,9 +270,12 @@ describe('plugin-meetings', () => {
                 const opts = makeOptions(uri);
                 const reason = make503Reason(uri);
 
-                return interceptor.onResponseError(opts, reason).catch((err) => {
-                  expect(err).to.equal(reason);
-                });
+                return interceptor.onResponseError(opts, reason).then(
+                  () => assert.fail('Expected promise to be rejected'),
+                  (err) => {
+                    expect(err).to.equal(reason);
+                  }
+                );
               });
             });
         });
