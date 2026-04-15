@@ -11,14 +11,14 @@ The utils scope currently provides shared pagination and cache behavior for cont
 - **Typed Pagination Contracts**: Reusable interfaces for response metadata and query params
 - **Generic In-Memory Page Caching**: `PageCache<T>` utility for simple pagination reuse
 - **Cache Safety Rules**: Explicit bypass behavior for search/filter/sort scenarios
-- **Spec-Driven Utility Workflow**: Utility-specific implementation and validation flow in `agents.mmd`
+- **Spec-Driven Utility Workflow**: Utility-specific implementation and validation flow documented inline in this file
 
 | Component             | File                             | Description                                                                                                                                     |
 | --------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `PageCache`           | [`PageCache.ts`](./PageCache.ts) | Generic in-memory cache utility for paginated API responses with TTL expiry and helper methods for key generation and cache eligibility checks. |
 | `Pagination Types`    | [`PageCache.ts`](./PageCache.ts) | `PaginationMeta`, `PaginatedResponse<T>`, `BaseSearchParams`, and `PageCacheEntry<T>` shared across data services.                              |
 | `Pagination Defaults` | [`PageCache.ts`](./PageCache.ts) | `PAGINATION_DEFAULTS` (`PAGE`, `PAGE_SIZE`) used by services for consistent request defaults.                                                   |
-| `Specs Workflow`      | [`agents.mmd`](./agents.mmd)     | Mermaid flow for specs-driven utility changes, acceptance criteria, and drift checks.                                                           |
+| `Specs Workflow`      | `AGENTS.md` (inline)             | Mermaid flow for specs-driven utility changes, acceptance criteria, and drift checks.                                                           |
 
 ---
 
@@ -27,8 +27,7 @@ The utils scope currently provides shared pagination and cache behavior for cont
 ```
 src/utils/
 ├── AGENTS.md          # This file: utils scope guide
-├── PageCache.ts       # Generic cache + pagination contracts/defaults
-└── agents.mmd         # Spec-driven development flow for utils changes
+└── PageCache.ts       # Generic cache + pagination contracts/defaults
 ```
 
 ---
@@ -46,9 +45,12 @@ const cache = new PageCache<MyItem>('MyService');
 
 const page = PAGINATION_DEFAULTS.PAGE;
 const pageSize = PAGINATION_DEFAULTS.PAGE_SIZE;
-const cacheKey = cache.buildCacheKey(orgId, page, pageSize);
+const cacheKey = cache.buildCacheKey(scopeId, page, pageSize);
 
-if (cache.canUseCache({search, filter, attributes, sortBy})) {
+// Include sortBy only for services that support sorting.
+const canUseCache = cache.canUseCache({search, filter, attributes, sortBy});
+
+if (canUseCache) {
   const cachedEntry = cache.getCachedPage(cacheKey);
   if (cachedEntry) {
     return {
@@ -61,15 +63,23 @@ if (cache.canUseCache({search, filter, attributes, sortBy})) {
     };
   }
 }
+
+const response = await fetchPageFromApi();
+
+if (canUseCache && response.data) {
+  cache.cachePage(cacheKey, response.data, response.meta);
+}
+
+return response;
 ```
 
 ### Cache Lifecycle
 
 ```mermaid
 graph TD
-  A[Request arrives with orgId/page/pageSize] --> B{canUseCache?}
+  A[Request arrives with scopeId/page/pageSize] --> B{canUseCache?}
   B -->|No: search/filter/attributes/sortBy provided| C[Bypass cache and call API]
-  B -->|Yes| D[buildCacheKey orgId:page:pageSize]
+  B -->|Yes| D[buildCacheKey scopeId:page:pageSize]
   D --> E["getCachedPage(cacheKey)"]
   E -->|Miss| C
   E -->|Hit and not expired| F[Return cached data and totalMeta]
@@ -104,11 +114,33 @@ Common pagination metadata used across list APIs.
 Canonical paginated response type:
 
 ```typescript
-type PaginatedResponse<T> = {
+interface PaginatedResponse<T> {
   data: T[];
   meta: PaginationMeta;
-};
+}
 ```
+
+### `PageCacheEntry<T>`
+
+Shape of a cached page entry returned by `getCachedPage()`:
+
+- `data: T[]`
+- `timestamp: number` (epoch milliseconds)
+- `totalMeta?: { totalPages?: number; totalRecords?: number }`
+
+### `CacheValidationParams`
+
+Contract passed to `canUseCache()`:
+
+- `search?: string`
+- `filter?: string`
+- `attributes?: string`
+- `sortBy?: string`
+
+Behavior note:
+
+- Cache bypass is triggered by `sortBy`, not by `sortOrder` alone.
+- If a new service treats `sortOrder` as meaningful without `sortBy`, extend `CacheValidationParams` and `canUseCache()` together.
 
 ### `BaseSearchParams`
 
@@ -142,12 +174,14 @@ Returns `true` only when all of these are absent:
 - `attributes`
 - `sortBy`
 
-### `buildCacheKey(orgId: string, page: number, pageSize: number): string`
+`sortOrder` alone does not trigger cache bypass because `CacheValidationParams` currently keys bypass on fields that materially change the query result set in existing consumers.
+
+### `buildCacheKey(scopeId: string, page: number, pageSize: number): string`
 
 Builds deterministic cache key format:
 
 ```text
-${orgId}:${page}:${pageSize}
+${scopeId}:${page}:${pageSize}
 ```
 
 ### `getCachedPage(cacheKey: string): PageCacheEntry<T> | null`
@@ -176,17 +210,20 @@ Clears all entries and logs cleared entry count.
 
 Returns current in-memory entry count.
 
+Note: `clearCache()` and `getCacheSize()` are available for future use and are not currently called by existing consumers.
+
 ---
 
 ## Consumer Map
 
 Current consumers of `PageCache` and defaults:
 
-| Consumer      | File                                                       | Usage                               |
-| ------------- | ---------------------------------------------------------- | ----------------------------------- |
-| `AddressBook` | [`../services/AddressBook.ts`](../services/AddressBook.ts) | Caches paged address-book responses |
-| `EntryPoint`  | [`../services/EntryPoint.ts`](../services/EntryPoint.ts)   | Caches paged entry-point responses  |
-| `Queue`       | [`../services/Queue.ts`](../services/Queue.ts)             | Caches paged queue responses        |
+| Consumer                | File                                                       | Usage                                                        |
+| ----------------------- | ---------------------------------------------------------- | ------------------------------------------------------------ |
+| `AddressBook`           | [`../services/AddressBook.ts`](../services/AddressBook.ts) | Caches paged address-book responses                          |
+| `EntryPoint`            | [`../services/EntryPoint.ts`](../services/EntryPoint.ts)   | Caches paged entry-point responses                           |
+| `Queue`                 | [`../services/Queue.ts`](../services/Queue.ts)             | Caches paged queue responses                                 |
+| `Public type contracts` | [`../types.ts`](../types.ts)                               | Re-exports pagination/search contracts into SDK-facing types |
 
 Cross-scope mention:
 
@@ -198,10 +235,26 @@ Cross-scope mention:
 
 When changing `src/utils` behavior or contracts:
 
-1. Follow the workflow in [`agents.mmd`](./agents.mmd)
+1. Follow the workflow diagram below
 2. Define acceptance criteria for contract and runtime behavior
 3. Verify cache TTL, bypass rules, and key schema
 4. Validate no spec drift before shipping
+
+```mermaid
+flowchart TD
+  A[Change proposed in src/utils] --> B{Classify change scope}
+  B -->|Contract change| C[Document expected API/type behavior]
+  B -->|Runtime behavior change| D[Document cache behavior and TTL impact]
+  B -->|Both| C
+  C --> E[Update utils AGENTS.md contracts and consumer map]
+  D --> F[Validate cache key schema and bypass conditions]
+  E --> G[Run drift check against PageCache.ts and consumer services]
+  F --> G
+  G --> H{Behavior and docs aligned?}
+  H -->|No| I[Revise implementation/docs and re-validate]
+  I --> G
+  H -->|Yes| J[Prepare PR with acceptance criteria and evidence]
+```
 
 ---
 
@@ -221,4 +274,3 @@ When changing `src/utils` behavior or contracts:
 
 - [Root orchestrator AGENTS.md](../../AGENTS.md) - Task routing and critical package rules
 - [PageCache implementation](./PageCache.ts)
-- [Specs flow diagram](./agents.mmd)
