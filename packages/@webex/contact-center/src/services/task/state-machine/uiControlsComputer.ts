@@ -116,8 +116,11 @@ function computeVoiceInteractionUIControls(
     context;
   const {recordingControlsAvailable, recordingInProgress} = context;
 
-  const isHeld = serverHold ?? state === TaskState.HELD;
-  const isConnected = serverHold !== undefined ? !serverHold : state === TaskState.CONNECTED;
+  const stateImpliesHeld = state === TaskState.HELD || state === TaskState.RESUME_INITIATING;
+  const stateImpliesConnected =
+    state === TaskState.CONNECTED || state === TaskState.HOLD_INITIATING;
+  const isHeld = stateImpliesHeld || serverHold === true;
+  const isConnected = stateImpliesConnected || (!stateImpliesHeld && serverHold === false);
 
   // State categories for cleaner logic
   const isConsulting =
@@ -398,6 +401,15 @@ function getVoiceLegState(
   config: UIControlConfig,
   fallbackTaskData?: TaskData
 ): {hasConsultLeg: boolean; activeLeg: TaskUILeg; mainState: TaskState; consultState: TaskState} {
+  if (currentState === TaskState.WRAPPING_UP) {
+    return {
+      hasConsultLeg: false,
+      activeLeg: 'main',
+      mainState: currentState,
+      consultState: TaskState.CONSULTING,
+    };
+  }
+
   const taskData = context.taskData ?? fallbackTaskData ?? null;
   const interaction = taskData?.interaction;
   const mainCallId = interaction?.mainInteractionId || taskData?.interactionId;

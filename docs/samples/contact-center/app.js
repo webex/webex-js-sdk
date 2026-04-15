@@ -845,6 +845,7 @@ async function toggleTransferOptions() {
         return;
       }
 
+      console.log('pkesari_currentTask.data', currentTask.data);
       const transferTo = currentTask.data?.destAgentId || currentTask.data?.consultingAgentId;
       const transferDestinationType = currentTask.data?.destinationType || 'agent';
 
@@ -1932,7 +1933,7 @@ function updateButtonLabels(task, callProcessingDetails) {
   if (!task) return;
   
   // Hold/Resume button text
-  const isHold = isInteractionOnHold(task);
+  const isHold = isTaskLegOnHold(task, getTaskActiveLeg(task));
   if (holdResumeElm) {
     holdResumeElm.innerText = isHold ? 'Resume' : 'Hold';
   }

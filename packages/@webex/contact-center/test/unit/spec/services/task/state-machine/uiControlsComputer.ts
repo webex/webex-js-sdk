@@ -133,4 +133,14 @@ describe('uiControlsComputer consult initiator controls', () => {
 
     expect(uiControls.consult.transfer).toEqual({isVisible: false, isEnabled: false});
   });
+
+  it('collapses stale consult leg controls during wrapup', () => {
+    const context = createVoiceContext();
+
+    const uiControls = computeUIControls(TaskState.WRAPPING_UP, context, context.taskData);
+
+    expect(uiControls.activeLeg).toBe('main');
+    expect(uiControls.main.wrapup).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult).toEqual(getDefaultUIControls().consult);
+  });
 });

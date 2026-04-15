@@ -250,7 +250,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUpOrIsInitiator,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
             },
             {
               // Receiver goes to connected as he receives transferSuccess event
@@ -438,6 +438,13 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
             {
+              // Initiator already switched back to the main/customer leg
+              guard: ({context}) =>
+                context.consultInitiator === true && context.consultCallHeld === true,
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+            {
               // Initiator (no conference) → HELD
               guard: ({context}) => context.consultInitiator === true,
               target: TaskState.HELD,
@@ -468,7 +475,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.shouldWrapUpOrIsInitiator,
               target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
             },
             {
               target: TaskState.CONNECTED,

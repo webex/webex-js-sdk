@@ -120,10 +120,24 @@ export default class Voice extends Task implements IVoice {
     Determine if the task is being held or resumed based on the media resource state
     If the media resource is not found, default to resuming the task
     */
-    const shouldHold = !this.data.interaction.media[this.data.mediaResourceId].isHold;
+    const snapshot = this.stateMachineService?.getSnapshot?.();
+    const snapshotState = snapshot?.value as TaskState | undefined;
+    const mainInteractionId = this.data.interaction?.mainInteractionId || this.data.interactionId;
+    const mainMediaResource =
+      this.data.interaction?.media?.[mainInteractionId]?.mediaResourceId ||
+      this.data.mediaResourceId;
+    const mediaHoldState =
+      this.data.interaction?.media?.[mainInteractionId]?.isHold ??
+      this.data.interaction.media?.[mainMediaResource]?.isHold;
+    let shouldHold = !(mediaHoldState ?? false);
+    if (snapshotState === TaskState.HELD) {
+      shouldHold = false;
+    } else if (snapshotState === TaskState.CONNECTED) {
+      shouldHold = true;
+    }
 
     // Validate operation is allowed in current state
-    const state = this.stateMachineService?.getSnapshot?.();
+    const state = snapshot;
     if (state) {
       const currentState = state.value as TaskState;
       if (shouldHold) {
@@ -152,7 +166,7 @@ export default class Voice extends Task implements IVoice {
       const initiatingEvent = shouldHold ? TaskEvent.HOLD_INITIATED : TaskEvent.UNHOLD_INITIATED;
       this.stateMachineService.send({
         type: initiatingEvent,
-        mediaResourceId: this.data.mediaResourceId,
+        mediaResourceId: mainMediaResource,
       });
     }
 
@@ -172,14 +186,14 @@ export default class Voice extends Task implements IVoice {
       if (shouldHold) {
         response = await this.contact.hold({
           interactionId: this.data.interactionId,
-          data: {mediaResourceId: this.data.mediaResourceId},
+          data: {mediaResourceId: mainMediaResource},
         });
 
         // Send success event to complete the transition
         if (this.stateMachineService) {
           this.stateMachineService.send({
             type: TaskEvent.HOLD_SUCCESS,
-            mediaResourceId: this.data.mediaResourceId,
+            mediaResourceId: mainMediaResource,
           });
         }
 
@@ -187,7 +201,7 @@ export default class Voice extends Task implements IVoice {
           successEvt,
           {
             taskId: this.data.interactionId,
-            mediaResourceId: this.data.mediaResourceId,
+            mediaResourceId: mainMediaResource,
             ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
           },
           ['operational', 'behavioral']
@@ -199,17 +213,16 @@ export default class Voice extends Task implements IVoice {
           interactionId: this.data.interactionId,
         });
       } else {
-        const mainId = this.data.interaction?.mainInteractionId;
         response = await this.contact.unHold({
           interactionId: this.data.interactionId,
-          data: {mediaResourceId: this.data.mediaResourceId},
+          data: {mediaResourceId: mainMediaResource},
         });
 
         // Send success event to complete the transition
         if (this.stateMachineService) {
           this.stateMachineService.send({
             type: TaskEvent.UNHOLD_SUCCESS,
-            mediaResourceId: this.data.mediaResourceId,
+            mediaResourceId: mainMediaResource,
           });
         }
 
@@ -217,8 +230,8 @@ export default class Voice extends Task implements IVoice {
           successEvt,
           {
             taskId: this.data.interactionId,
-            mainInteractionId: mainId,
-            mediaResourceId: this.data.mediaResourceId,
+            mainInteractionId,
+            mediaResourceId: mainMediaResource,
             ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
           },
           ['operational', 'behavioral']

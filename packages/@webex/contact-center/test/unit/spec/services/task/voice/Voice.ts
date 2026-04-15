@@ -108,6 +108,45 @@ describe('Voice Task', () => {
     });
   });
 
+  it('calls contact.unHold when state is held even if task data hold flag is stale', async () => {
+    const taskData = createBaseData() as any;
+    const voice = new Voice(dummyContact, taskData, {});
+    primeHeldState(voice, taskData);
+    voice.data.interaction.media.media1.isHold = false;
+
+    await voice.holdResume();
+
+    expect(dummyContact.unHold).toHaveBeenCalledWith({
+      interactionId: 'int1',
+      data: {mediaResourceId: 'media1'},
+    });
+  });
+
+  it('uses the main media resource when stale consult media is left in task data', async () => {
+    const heldData = createBaseData({
+      mediaResourceId: 'main-media',
+      interactionId: 'main-int',
+      interaction: {
+        mainInteractionId: 'main-int',
+        media: {
+          'main-int': {mediaResourceId: 'main-media', isHold: true},
+          'consult-media': {mediaResourceId: 'consult-media', isHold: false, mType: 'consult'},
+        },
+      } as any,
+    }) as any;
+    const voice = new Voice(dummyContact, heldData, {});
+    primeHeldState(voice, heldData);
+    voice.data.mediaResourceId = 'consult-media';
+
+    await voice.holdResume();
+
+    expect(dummyContact.unHold).toHaveBeenCalledWith({
+      interactionId: 'main-int',
+      data: {mediaResourceId: 'main-media'},
+    });
+    expect(dummyContact.hold).not.toHaveBeenCalled();
+  });
+
   it('pauseRecording() calls contact.pauseRecording', async () => {
     const taskData = createBaseData();
     const voice = new Voice(dummyContact, taskData, {
@@ -390,26 +429,22 @@ describe('Voice Task', () => {
       voice.stateMachineService?.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
     };
 
-    it('switches from consult leg to main leg by holding consult media', async () => {
+    it('switches from consult leg to main leg by unholding main media', async () => {
       const taskData = buildConsultingTaskData();
       const voice = new Voice(dummyContact, taskData, {});
       primeConsultingState(voice, taskData);
 
       await voice.switchCall();
 
-      expect(dummyContact.hold).toHaveBeenCalledTimes(1);
-      expect(dummyContact.hold).toHaveBeenCalledWith({
-        interactionId: 'int1',
-        data: {mediaResourceId: 'consultMedia1'},
-      });
       expect(dummyContact.unHold).toHaveBeenCalledTimes(1);
       expect(dummyContact.unHold).toHaveBeenCalledWith({
         interactionId: 'int1',
         data: {mediaResourceId: 'media1'},
       });
+      expect(dummyContact.hold).not.toHaveBeenCalled();
     });
 
-    it('switches from main leg to consult leg by holding main media and unholding consult media', async () => {
+    it('switches from main leg to consult leg by holding main media', async () => {
       const taskData = buildConsultingTaskData();
       taskData.interaction.media.media1.isHold = false;
       taskData.interaction.media.consultMedia1.isHold = true;
@@ -424,11 +459,7 @@ describe('Voice Task', () => {
         interactionId: 'int1',
         data: {mediaResourceId: 'media1'},
       });
-      expect(dummyContact.unHold).toHaveBeenCalledTimes(1);
-      expect(dummyContact.unHold).toHaveBeenCalledWith({
-        interactionId: 'int1',
-        data: {mediaResourceId: 'consultMedia1'},
-      });
+      expect(dummyContact.unHold).not.toHaveBeenCalled();
     });
   });
 

@@ -211,6 +211,29 @@ describe('Task state machine', () => {
       expect(snapshotAfterEnd.context.consultDestinationAgentJoined).toBe(false);
     });
 
+    it('returns to connected when consult ends after switching back to the main leg', () => {
+      const service = startMachine();
+      const taskData = createTaskData();
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: 'agent-42',
+        destinationType: 'agent',
+      });
+      service.send({type: TaskEvent.CONSULT_SUCCESS});
+      service.send({type: TaskEvent.SWITCH_TO_MAIN_CALL});
+
+      expect(service.getSnapshot().context.consultCallHeld).toBe(true);
+
+      service.send({type: TaskEvent.CONSULT_END});
+
+      const snapshotAfterEnd = service.getSnapshot();
+      expect(snapshotAfterEnd.value).toBe(TaskState.CONNECTED);
+      expect(snapshotAfterEnd.context.consultCallHeld).toBe(false);
+    });
+
     it('transitions to conferencing when merge event is received', () => {
       const service = startMachine();
       const taskData = createTaskData({consultingAgentId: 'agent-1'});
