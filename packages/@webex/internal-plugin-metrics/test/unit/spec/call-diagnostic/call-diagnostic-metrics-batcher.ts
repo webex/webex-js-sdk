@@ -346,6 +346,9 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getStayLobbyTime = sinon
             .stub()
             .returns(1);
+          webex.internal.newMetrics.callDiagnosticLatencies.getStayLobbyTimeCappedBy = sinon
+            .stub()
+            .returns(1);
           webex.internal.newMetrics.callDiagnosticLatencies.getTotalMediaJMTWithUserDelay = sinon
             .stub()
             .returns(43);
@@ -366,7 +369,7 @@ describe('plugin-metrics', () => {
           assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
             name: 'client.media-engine.ready',
             joinTimes: {
-              totalMediaJMT: 61,
+              totalMediaJMT: 44,
               interstitialToMediaOKJMT: 22,
               callInitMediaEngineReady: 10,
               totalMediaJMTWithUserDelay: 43,
