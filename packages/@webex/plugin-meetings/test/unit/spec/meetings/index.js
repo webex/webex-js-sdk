@@ -2833,6 +2833,39 @@ describe('plugin-meetings', () => {
             checkCreateMeetingWithNoMeetingInfo(true, true);
           });
 
+          it('does not emit meeting:added when meeting is destroyed due to missing meeting info', async () => {
+            // Make destroy actually remove the meeting from the collection
+            // so that getMeetingByType returns null in the finally block
+            webex.meetings.destroy = sinon.stub().callsFake((meeting) => {
+              webex.meetings.meetingCollection.delete(meeting.id);
+            });
+
+            try {
+              await webex.meetings.createMeeting(
+                'test destination',
+                'test type',
+                undefined,
+                undefined,
+                undefined,
+                true
+              );
+              assert.fail('should have thrown NoMeetingInfoError');
+            } catch (err) {
+              assert.instanceOf(err, NoMeetingInfoError);
+            }
+
+            assert.calledOnce(webex.meetings.destroy);
+
+            // meeting:added should NOT have been triggered since the meeting was destroyed
+            assert.neverCalledWith(
+              TriggerProxy.trigger,
+              sinon.match.any,
+              sinon.match({function: 'createMeeting'}),
+              'meeting:added',
+              sinon.match.any
+            );
+          });
+
           it('creates the meeting avoiding meeting info fetch by passing type as DESTINATION_TYPE.ONE_ON_ONE_CALL', async () => {
             const meeting = await webex.meetings.createMeeting(
               'test destination',

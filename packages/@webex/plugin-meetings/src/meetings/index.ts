@@ -1811,7 +1811,11 @@ export default class Meetings extends WebexPlugin {
       // For type LOCUS_ID we need to parse the locus object to get the information
       // about the caller and callee
       // Meeting Added event will be created in `handleLocusEvent`
-      if (type !== DESTINATION_TYPE.LOCUS_ID) {
+      // Only emit MEETING_ADDED if the meeting still exists in the collection.
+      // If fetchMeetingInfo failed and the meeting was destroyed in the catch block,
+      // skip emitting to prevent orphaned meeting references on the consumer side.
+      // @ts-ignore - getMeetingByType types value as object but accepts strings (same as handleLocusEvent)
+      if (type !== DESTINATION_TYPE.LOCUS_ID && this.getMeetingByType(_ID_, meeting.id)) {
         if (!meeting.sipUri) {
           meeting.setSipUri(destination);
         }
