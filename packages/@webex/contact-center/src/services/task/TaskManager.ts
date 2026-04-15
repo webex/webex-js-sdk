@@ -103,9 +103,7 @@ export default class TaskManager extends EventEmitter {
         return;
       }
 
-      if (eventType === CC_EVENTS.REAL_TIME_TRANSCRIPTION && payload.data.data.isFinal) {
-        task.emit(eventType, payload.data);
-      }
+      task.emit(eventType, payload.data);
     } catch (error) {
       LoggerProxy.error('Failed to parse RTD WebSocket message', {
         module: TASK_MANAGER_FILE,
