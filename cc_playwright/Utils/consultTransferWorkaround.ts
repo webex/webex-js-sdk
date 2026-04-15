@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop, no-plusplus, no-continue, no-console */
 import {Page} from '@playwright/test';
 
 /**
@@ -17,7 +16,7 @@ export async function executeConsultTransfer(page: Page): Promise<void> {
 
     // Call the onclick handler directly if available
     if (btn.onclick) {
-      btn.onclick(new MouseEvent('click') as any);
+      btn.onclick(new MouseEvent('click'));
 
       return true;
     }
