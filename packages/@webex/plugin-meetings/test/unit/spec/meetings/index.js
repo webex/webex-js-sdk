@@ -1567,6 +1567,113 @@ describe('plugin-meetings', () => {
             });
           });
         });
+
+        describe('when globalMeetingId preserves breakout meetings', () => {
+          let destroySpy;
+          let cleanUpSpy;
+
+          beforeEach(() => {
+            destroySpy = sinon.spy(webex.meetings, 'destroy');
+            cleanUpSpy = sinon.stub(MeetingUtil, 'cleanUp').returns(Promise.resolve());
+          });
+
+          afterEach(() => {
+            cleanUpSpy.restore();
+          });
+
+          it('should not destroy a meeting whose globalMeetingId matches an active locus', async () => {
+            const meetingCollectionMeetings = {
+              breakoutMeeting: {
+                locusUrl: 'breakout-url',
+                locusInfo: {
+                  info: {globalMeetingId: 'gmid-123'},
+                  syncAllHashTreeDatasets: sinon.stub().resolves(),
+                },
+                sendCallAnalyzerMetrics: sinon.stub(),
+              },
+            };
+
+            webex.meetings.meetingCollection.getAll = sinon
+              .stub()
+              .returns(meetingCollectionMeetings);
+            webex.meetings.request.getActiveMeetings = sinon.stub().resolves({
+              loci: [{url: 'main-url', info: {globalMeetingId: 'gmid-123'}}],
+            });
+
+            await webex.meetings.syncMeetings();
+
+            assert.notCalled(destroySpy);
+          });
+
+          it('should destroy a meeting whose globalMeetingId does NOT match any active locus', async () => {
+            const meetingCollectionMeetings = {
+              breakoutMeeting: {
+                locusUrl: 'breakout-url',
+                locusInfo: {
+                  info: {globalMeetingId: 'gmid-other'},
+                  syncAllHashTreeDatasets: sinon.stub().resolves(),
+                },
+                sendCallAnalyzerMetrics: sinon.stub(),
+              },
+            };
+
+            webex.meetings.meetingCollection.getAll = sinon
+              .stub()
+              .returns(meetingCollectionMeetings);
+            webex.meetings.request.getActiveMeetings = sinon.stub().resolves({
+              loci: [{url: 'main-url', info: {globalMeetingId: 'gmid-123'}}],
+            });
+
+            await webex.meetings.syncMeetings();
+
+            assert.calledOnce(destroySpy);
+            assert.calledWith(destroySpy, meetingCollectionMeetings.breakoutMeeting);
+          });
+        });
+
+        describe('syncAllHashTreeDatasets in syncMeetings', () => {
+          it('should call syncAllHashTreeDatasets for multiple meetings, skipping those without locusInfo', async () => {
+            const mockLocusInfo1 = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
+            };
+            const mockLocusInfo2 = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
+            };
+
+            webex.meetings.request.getActiveMeetings = sinon.stub().resolves({loci: []});
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              meeting1: {locusInfo: mockLocusInfo1},
+              meeting2: {locusInfo: undefined},
+              meeting3: {locusInfo: mockLocusInfo2},
+              meeting4: {},
+            });
+
+            await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false});
+
+            assert.calledOnce(mockLocusInfo1.syncAllHashTreeDatasets);
+            assert.calledOnce(mockLocusInfo2.syncAllHashTreeDatasets);
+          });
+
+          it('should not call syncAllHashTreeDatasets when getActiveMeetings throws an error', async () => {
+            const mockLocusInfo = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
+            };
+
+            webex.meetings.request.getActiveMeetings = sinon.stub().rejects(new Error('network error'));
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              meeting1: {locusInfo: mockLocusInfo},
+            });
+
+            try {
+              await webex.meetings.syncMeetings();
+              assert.fail('should have thrown');
+            } catch (err) {
+              assert.equal(err.message, 'network error');
+            }
+
+            assert.notCalled(mockLocusInfo.syncAllHashTreeDatasets);
+          });
+        });
       });
       describe('#fetchStaticMeetingLink', () => {
         const conversationUrl = 'conv.fakeconversationurl.com';

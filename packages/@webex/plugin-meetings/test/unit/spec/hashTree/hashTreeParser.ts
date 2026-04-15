@@ -3788,6 +3788,305 @@ describe('HashTreeParser', () => {
     });
   });
 
+  describe('#syncAllDatasets', () => {
+    it('should sync all datasets that have hash trees in priority order', async () => {
+      const parser = createHashTreeParser();
+
+      // parser starts with main (leafCount=16) and self (leafCount=1) as visible datasets with hash trees
+      // atd-unmuted has no hash tree (not visible)
+      expect(parser.dataSets.main.hashTree).to.be.instanceOf(HashTree);
+      expect(parser.dataSets.self.hashTree).to.be.instanceOf(HashTree);
+
+      const mainUrl = parser.dataSets.main.url;
+      const selfUrl = parser.dataSets.self.url;
+
+      // Mock GET hashtree for main (leafCount > 1, so it does GET first)
+      mockGetHashesFromLocusResponse(
+        mainUrl,
+        new Array(16).fill(EMPTY_HASH),
+        createDataSet('main', 16, 1100)
+      );
+
+      // Mock POST sync for main - return matching root hash so no further sync needed
+      const mainSyncDataSet = createDataSet('main', 16, 1100);
+      mainSyncDataSet.root = parser.dataSets.main.hashTree.getRootHash();
+      mockSendSyncRequestResponse(mainUrl, {
+        dataSets: [mainSyncDataSet],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      // Mock POST sync for self (leafCount=1, skips GET hashtree)
+      const selfSyncDataSet = createDataSet('self', 1, 2100);
+      selfSyncDataSet.root = parser.dataSets.self.hashTree.getRootHash();
+      mockSendSyncRequestResponse(selfUrl, {
+        dataSets: [selfSyncDataSet],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      await parser.syncAllDatasets();
+
+      // Verify GET hashtree was called for main only (not self, because leafCount=1)
+      assert.calledWith(webexRequest, sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`}));
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'GET', uri: `${selfUrl}/hashtree`}));
+
+      // Verify POST sync was called for both
+      assert.calledWith(webexRequest, sinon.match({method: 'POST', uri: `${mainUrl}/sync`}));
+      assert.calledWith(webexRequest, sinon.match({method: 'POST', uri: `${selfUrl}/sync`}));
+
+      // Verify main was synced before self (priority order)
+      const mainSyncCallIndex = webexRequest.args.findIndex(
+        (args) => args[0]?.method === 'GET' && args[0]?.uri === `${mainUrl}/hashtree`
+      );
+      const selfSyncCallIndex = webexRequest.args.findIndex(
+        (args) => args[0]?.method === 'POST' && args[0]?.uri === `${selfUrl}/sync`
+      );
+      expect(mainSyncCallIndex).to.be.lessThan(selfSyncCallIndex);
+
+      // Verify isSyncAllInProgress is reset
+      expect(parser.isSyncAllInProgress).to.be.false;
+    });
+
+    it('should return immediately when state is stopped', async () => {
+      const parser = createHashTreeParser();
+      parser.stop();
+
+      await parser.syncAllDatasets();
+
+      // No sync requests should have been made (only the initial sync from constructor)
+      // Reset history to clear constructor calls then verify
+      const callCountBefore = webexRequest.callCount;
+      await parser.syncAllDatasets();
+      assert.equal(webexRequest.callCount, callCountBefore);
+    });
+
+    it('should guard against concurrent calls', async () => {
+      const parser = createHashTreeParser();
+
+      const mainUrl = parser.dataSets.main.url;
+      const selfUrl = parser.dataSets.self.url;
+
+      // Use a deferred promise for the main sync to control timing
+      let resolveMainSync;
+      webexRequest
+        .withArgs(sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`}))
+        .returns(new Promise((resolve) => { resolveMainSync = resolve; }));
+
+      mockSendSyncRequestResponse(mainUrl, {
+        dataSets: [createDataSet('main', 16, 1100)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      mockSendSyncRequestResponse(selfUrl, {
+        dataSets: [createDataSet('self', 1, 2100)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      // Start first call
+      const promise1 = parser.syncAllDatasets();
+      // Start second call while first is in progress
+      const promise2 = parser.syncAllDatasets();
+
+      // Resolve the pending request
+      resolveMainSync({
+        body: {
+          hashes: new Array(16).fill(EMPTY_HASH),
+          dataSet: createDataSet('main', 16, 1100),
+        },
+      });
+
+      await promise1;
+      await promise2;
+
+      // GET hashtree for main should only be called once (second syncAllDatasets returned immediately)
+      const getHashtreeCalls = webexRequest.args.filter(
+        (args) => args[0]?.method === 'GET' && args[0]?.uri === `${mainUrl}/hashtree`
+      );
+      expect(getHashtreeCalls).to.have.lengthOf(1);
+    });
+
+    it('should skip datasets that do not have a hash tree', async () => {
+      // Create parser with metadata that only has main and self as visible (not atd-unmuted)
+      const metadataWithoutAtd = {
+        ...exampleMetadata,
+        visibleDataSets: exampleMetadata.visibleDataSets.filter((ds) => ds.name !== 'atd-unmuted'),
+      };
+      const parser = createHashTreeParser(exampleInitialLocus, metadataWithoutAtd);
+
+      // atd-unmuted is in dataSets but has no hashTree (not visible)
+      expect(parser.dataSets['atd-unmuted']).to.exist;
+      expect(parser.dataSets['atd-unmuted'].hashTree).to.be.undefined;
+
+      const atdUrl = parser.dataSets['atd-unmuted'].url;
+      const mainUrl = parser.dataSets.main.url;
+      const selfUrl = parser.dataSets.self.url;
+
+      mockGetHashesFromLocusResponse(
+        mainUrl,
+        new Array(16).fill(EMPTY_HASH),
+        createDataSet('main', 16, 1100)
+      );
+
+      const mainSyncDs = createDataSet('main', 16, 1100);
+      mainSyncDs.root = parser.dataSets.main.hashTree.getRootHash();
+      mockSendSyncRequestResponse(mainUrl, {
+        dataSets: [mainSyncDs],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      const selfSyncDs = createDataSet('self', 1, 2100);
+      selfSyncDs.root = parser.dataSets.self.hashTree.getRootHash();
+      mockSendSyncRequestResponse(selfUrl, {
+        dataSets: [selfSyncDs],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      await parser.syncAllDatasets();
+
+      // No requests should have been made for atd-unmuted
+      assert.neverCalledWith(webexRequest, sinon.match({uri: sinon.match(atdUrl)}));
+    });
+  });
+
+  describe('#handleMessage sync queue', () => {
+    it('should deduplicate: not sync the same dataset twice when enqueued multiple times', async () => {
+      const parser = createHashTreeParser();
+
+      const mainUrl = parser.dataSets.main.url;
+
+      // Setup mocks before triggering syncs
+      mockGetHashesFromLocusResponse(
+        mainUrl,
+        new Array(16).fill(EMPTY_HASH),
+        createDataSet('main', 16, 1101)
+      );
+
+      const mainSyncDs = createDataSet('main', 16, 1101);
+      mainSyncDs.root = parser.dataSets.main.hashTree.getRootHash();
+      mockSendSyncRequestResponse(mainUrl, {
+        dataSets: [mainSyncDs],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      // Send two heartbeat messages (no locusStateElements) with different root hashes for main
+      parser.handleMessage(createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'), 'first');
+      parser.handleMessage(createHeartbeatMessage('main', 16, 1101, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa2'), 'second');
+
+      // The second call resets the timer. After 1000ms, only one sync fires.
+      await clock.tickAsync(1000);
+
+      // Only one GET hashtree call should have been made for main
+      const getHashtreeCalls = webexRequest.args.filter(
+        (args) => args[0]?.method === 'GET' && args[0]?.uri === `${mainUrl}/hashtree`
+      );
+      expect(getHashtreeCalls).to.have.lengthOf(1);
+    });
+
+    it('should stop processing the sync queue when parser is stopped mid-queue', async () => {
+      const parser = createHashTreeParser();
+
+      const mainUrl = parser.dataSets.main.url;
+      const selfUrl = parser.dataSets.self.url;
+
+      // Mock main GET hashtree with a deferred promise so we can control when it resolves
+      let resolveMainHashtree;
+      webexRequest
+        .withArgs(sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`}))
+        .callsFake(() => new Promise((resolve) => { resolveMainHashtree = resolve; }));
+
+      // Send a heartbeat message that triggers sync timers for both main and self
+      parser.handleMessage(
+        createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
+        'trigger main sync'
+      );
+      parser.handleMessage(
+        createHeartbeatMessage('self', 1, 2100, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb1'),
+        'trigger self sync'
+      );
+
+      // Fire the timers - main sync starts (calls GET hashtree, which blocks)
+      await clock.tickAsync(1000);
+
+      // Stop the parser while main sync is in progress
+      parser.stop();
+
+      // Resolve the pending main GET request
+      resolveMainHashtree({
+        body: {
+          hashes: new Array(16).fill(EMPTY_HASH),
+          dataSet: createDataSet('main', 16, 1100),
+        },
+      });
+
+      await clock.tickAsync(0);
+
+      // Self sync should NOT have been triggered because parser was stopped
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'POST', uri: `${selfUrl}/sync`}));
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'GET', uri: `${selfUrl}/hashtree`}));
+    });
+  });
+
+  describe('#stop sync queue', () => {
+    it('should clear the syncQueue when stopped so remaining queued items are not processed', async () => {
+      const parser = createHashTreeParser();
+
+      const mainUrl = parser.dataSets.main.url;
+      const selfUrl = parser.dataSets.self.url;
+
+      // Mock main GET hashtree with a deferred promise so we can control when it resolves
+      let resolveMainHashtree;
+      webexRequest
+        .withArgs(sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`}))
+        .callsFake(() => new Promise((resolve) => { resolveMainHashtree = resolve; }));
+
+      // Enqueue syncs for both main and self by sending heartbeat messages
+      parser.handleMessage(
+        createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
+        'trigger main sync'
+      );
+      parser.handleMessage(
+        createHeartbeatMessage('self', 1, 2100, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb1'),
+        'trigger self sync'
+      );
+
+      // Fire the timers - main sync starts and blocks on GET hashtree
+      await clock.tickAsync(1000);
+
+      // Verify that self is still in the queue (main is being processed, self is waiting)
+      // Now stop the parser - this should clear the syncQueue
+      parser.stop();
+
+      // Resolve the pending main GET request so the in-flight sync can finish
+      resolveMainHashtree({
+        body: {
+          hashes: new Array(16).fill(EMPTY_HASH),
+          dataSet: createDataSet('main', 16, 1100),
+        },
+      });
+
+      await clock.tickAsync(0);
+
+      // Self should never have been synced because stop() cleared the queue
+      const selfGetCalls = webexRequest.args.filter(
+        (args) => args[0]?.method === 'GET' && args[0]?.uri === `${selfUrl}/hashtree`
+      );
+      expect(selfGetCalls).to.have.lengthOf(0);
+    });
+  });
+
   describe('#cleanUp', () => {
     it('should stop the parser, clear all timers and clear all dataSets', () => {
       const parser = createHashTreeParser();
