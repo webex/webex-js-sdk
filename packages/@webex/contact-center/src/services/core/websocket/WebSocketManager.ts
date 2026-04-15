@@ -1,6 +1,6 @@
 import EventEmitter from 'events';
 import {WebexSDK, SubscribeRequest, HTTP_METHODS} from '../../../types';
-import {SUBSCRIBE_API, WCC_API_GATEWAY} from '../../constants';
+import {WCC_API_GATEWAY} from '../../constants';
 import {ConnectionLostDetails} from './types';
 import {CC_EVENTS, SubscribeResponse, WelcomeResponse} from '../../config/types';
 import LoggerProxy from '../../../logger-proxy';
@@ -44,10 +44,13 @@ export class WebSocketManager extends EventEmitter {
     this.keepaliveWorker = new Worker(URL.createObjectURL(workerScriptBlob));
   }
 
-  async initWebSocket(options: {body: SubscribeRequest}): Promise<WelcomeResponse> {
-    const connectionConfig = options.body;
+  async initWebSocket(options: {
+    body: SubscribeRequest;
+    resource: string;
+  }): Promise<WelcomeResponse> {
+    const {body: connectionConfig, resource} = options;
     try {
-      await this.register(connectionConfig);
+      await this.register(connectionConfig, resource);
     } catch (error) {
       LoggerProxy.error(`[WebSocketStatus] | Error in registering Websocket ${error}`, {
         module: WEB_SOCKET_MANAGER_FILE,
@@ -84,7 +87,7 @@ export class WebSocketManager extends EventEmitter {
     this.isConnectionLost = event.isConnectionLost;
   }
 
-  private async register(connectionConfig: SubscribeRequest) {
+  private async register(connectionConfig: SubscribeRequest, resource: string) {
     try {
       // X-ORGANIZATION-ID header is only required for INT environments
       const isIntEnv = this.webex.internal?.services?.isIntegrationEnvironment() || false;
@@ -99,7 +102,7 @@ export class WebSocketManager extends EventEmitter {
 
       const subscribeResponse: SubscribeResponse = await this.webex.request({
         service: WCC_API_GATEWAY,
-        resource: SUBSCRIBE_API,
+        resource,
         method: HTTP_METHODS.POST,
         body: connectionConfig,
         headers: isIntEnv && orgId ? {'X-ORGANIZATION-ID': orgId} : undefined,

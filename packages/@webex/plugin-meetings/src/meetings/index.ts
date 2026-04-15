@@ -47,7 +47,7 @@ import {
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import MeetingInfo from '../meeting-info';
 import MeetingInfoV2 from '../meeting-info/meeting-info-v2';
-import Meeting, {CallStateForMetrics} from '../meeting';
+import Meeting, {CallStateForMetrics, storeEventForDebugging} from '../meeting';
 import PersonalMeetingRoom from '../personal-meeting-room';
 import Reachability from '../reachability';
 import Request from './request';
@@ -69,7 +69,7 @@ import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {HashTreeMessage} from '../hashTree/hashTreeParser';
 import {HashTreeObject} from '../hashTree/types';
 import {isSelf} from '../hashTree/utils';
-import {createLocusFromHashTreeMessage} from '../locus-info';
+import {createLocusFromHashTreeMessage, findMeetingForHashTreeMessage} from '../locus-info';
 
 let mediaLogger;
 
@@ -436,6 +436,20 @@ export default class Meetings extends WebexPlugin {
       return existingMeeting;
     }
 
+    if (data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
+      // need to check if maybe this event indicates a move to/from breakout
+      const meetingForHashTreeMessage = findMeetingForHashTreeMessage(
+        data.stateElementsMessage,
+        this.meetingCollection,
+        // @ts-ignore
+        this.webex.internal.device.url
+      );
+
+      if (meetingForHashTreeMessage) {
+        return meetingForHashTreeMessage;
+      }
+    }
+
     // if that didn't work, fallback to other fields like correlationId, sipUri, etc
 
     // If the event is a hash tree event, we need to extract "self" object from it
@@ -479,6 +493,11 @@ export default class Meetings extends WebexPlugin {
   private handleLocusEvent(data: LocusEvent, useRandomDelayForInfo = false) {
     let meeting = this.getCorrespondingMeetingByLocus(data);
 
+    // @ts-ignore
+    if (this.config.experimental.storeLocusHashTreeEventsForDebugging) {
+      storeEventForDebugging('mercury', data);
+    }
+
     // Special case when locus has got replaced, This only happend once if a replace locus exists
     // https://sqbu-github.cisco.com/WebExSquared/locus/wiki/Locus-changing-mid-call
 
@@ -492,7 +511,7 @@ export default class Meetings extends WebexPlugin {
       }
 
       if (meeting && !MeetingsUtil.isBreakoutLocusDTO(data.locus)) {
-        meeting.locusInfo.updateMainSessionLocusCache(data.locus);
+        meeting.locusInfo.updateMainSessionLocusCache(data.locus); // here data.locus will never be a complete locus
       }
       if (!this.isNeedHandleLocusDTO(meeting, data.locus)) {
         LoggerProxy.logger.log(
@@ -1982,7 +2001,7 @@ export default class Meetings extends WebexPlugin {
 
     const associateBreakoutLocus = this.breakoutLocusForHandleLater[existIndex];
     this.handleLocusEvent({
-      eventType: LOCUSEVENT.SDK_NO_EVENT,
+      eventType: LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS,
       locus: associateBreakoutLocus,
       locusUrl: associateBreakoutLocus.url,
     });

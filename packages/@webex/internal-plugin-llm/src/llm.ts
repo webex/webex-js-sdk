@@ -216,7 +216,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * Used when leaving or disconnecting from a meeting.
    * @returns {void}
    */
-  private resetDatachannelTokens() {
+  public resetDatachannelTokens() {
     this.datachannelTokens = {
       [DataChannelTokenType.Default]: undefined,
       [DataChannelTokenType.PracticeSession]: undefined,
@@ -280,7 +280,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.disconnect(options, sessionId).then(() => {
       // Clean up sessions data
       this.connections.delete(sessionId);
-      this.datachannelTokens[sessionId] = undefined;
     });
 
   /**
@@ -292,7 +291,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.disconnectAll(options).then(() => {
       // Clean up all connection data
       this.connections.clear();
-      this.resetDatachannelTokens();
     });
 
   /**
