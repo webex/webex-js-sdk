@@ -87,7 +87,7 @@ function computeVoiceUIControls(
   // Context flags (set by state machine actions)
   const {consultInitiator, consultDestinationAgentJoined, consultCallHeld, consultFromConference} =
     context;
-  const {recordingControlsAvailable, recordingInProgress} = context;
+  const {recordingControlsAvailable} = context;
 
   const isHeld = serverHold ?? state === TaskState.HELD;
   const isConnected = serverHold !== undefined ? !serverHold : state === TaskState.CONNECTED;
@@ -238,7 +238,7 @@ function computeVoiceUIControls(
       if (!recordingControlsAvailable || !config.isRecordingEnabled) return DISABLED;
       if (!hasFullControls || isConsulting || inConference) return DISABLED;
       if (state === TaskState.CONNECTED || state === TaskState.HELD) {
-        return recordingInProgress ? VISIBLE_ENABLED : VISIBLE_DISABLED;
+        return VISIBLE_ENABLED;
       }
 
       return DISABLED;
