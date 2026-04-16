@@ -5,6 +5,7 @@ import {
   DEVELOPER_PORTAL_GETTING_STARTED_URL,
   DEVELOPER_PORTAL_INT_GETTING_STARTED_URL,
 } from '../constants';
+import {USER_SETS, AccountRole, tokenEnvVar} from '../test-data';
 
 type EnvUpdateMap = Record<string, string>;
 
@@ -109,6 +110,11 @@ const fetchAccessToken = async (
   }
 };
 
+// Collect unique account roles across all sets
+const uniqueRoles: AccountRole[] = [
+  ...new Set(Object.values(USER_SETS).flatMap((set) => set.accounts)),
+];
+
 setup('OAuth', async ({browser}, testInfo) => {
   const isInt = (testInfo.project.use as any).testEnv === 'int';
   const envPrefix = isInt ? '_INT' : '';
@@ -119,51 +125,32 @@ setup('OAuth', async ({browser}, testInfo) => {
   // Skip OAuth if SKIP_AUTH=true and tokens already exist in env
   if (
     process.env.SKIP_AUTH === 'true' &&
-    process.env[`CALLER${envPrefix}_ACCESS_TOKEN`] &&
-    process.env[`CALLEE${envPrefix}_ACCESS_TOKEN`] &&
-    process.env[`TRANSFER${envPrefix}_ACCESS_TOKEN`]
+    uniqueRoles.every((role) => process.env[tokenEnvVar(role, isInt)])
   ) {
     return;
   }
 
   const tokenUpdates: EnvUpdateMap = {};
-
-  const callerEmail = process.env[`CALLER${envPrefix}_EMAIL`];
-  const callerPassword = process.env[`CALLER${envPrefix}_PASSWORD`];
-
-  if (!callerEmail || !callerPassword) {
-    throw new Error(`CALLER${envPrefix}_EMAIL and CALLER${envPrefix}_PASSWORD must be set in .env`);
-  }
-
-  // Build list of token fetches to run in parallel
   const tokenFetches: Promise<void>[] = [];
 
-  tokenFetches.push(
-    fetchAccessToken(browser, callerEmail, callerPassword, tokenPortalUrl).then((token) => {
-      tokenUpdates[`CALLER${envPrefix}_ACCESS_TOKEN`] = token;
-    })
-  );
+  for (const role of uniqueRoles) {
+    const email = process.env[`${role}${envPrefix}_EMAIL`];
+    const password = process.env[`${role}${envPrefix}_PASSWORD`];
 
-  const calleeEmail = process.env[`CALLEE${envPrefix}_EMAIL`];
-  const calleePassword = process.env[`CALLEE${envPrefix}_PASSWORD`];
-
-  if (calleeEmail && calleePassword) {
-    tokenFetches.push(
-      fetchAccessToken(browser, calleeEmail, calleePassword, tokenPortalUrl).then((token) => {
-        tokenUpdates[`CALLEE${envPrefix}_ACCESS_TOKEN`] = token;
-      })
-    );
-  }
-
-  const transferEmail = process.env[`TRANSFER${envPrefix}_EMAIL`];
-  const transferPassword = process.env[`TRANSFER${envPrefix}_PASSWORD`];
-
-  if (transferEmail && transferPassword) {
-    tokenFetches.push(
-      fetchAccessToken(browser, transferEmail, transferPassword, tokenPortalUrl).then((token) => {
-        tokenUpdates[`TRANSFER${envPrefix}_ACCESS_TOKEN`] = token;
-      })
-    );
+    // First account is required; others are optional
+    if (!email || !password) {
+      if (role === uniqueRoles[0]) {
+        throw new Error(
+          `${role}${envPrefix}_EMAIL and ${role}${envPrefix}_PASSWORD must be set in .env`
+        );
+      }
+    } else {
+      tokenFetches.push(
+        fetchAccessToken(browser, email, password, tokenPortalUrl).then((token) => {
+          tokenUpdates[tokenEnvVar(role, isInt)] = token;
+        })
+      );
+    }
   }
 
   await Promise.all(tokenFetches);
