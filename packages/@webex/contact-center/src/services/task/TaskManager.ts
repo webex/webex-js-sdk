@@ -312,14 +312,11 @@ export default class TaskManager extends EventEmitter {
           case CC_EVENTS.AGENT_CONTACT_OFFER_RONA:
           case CC_EVENTS.AGENT_CONTACT_ASSIGN_FAILED:
           case CC_EVENTS.AGENT_INVITE_FAILED: {
-            LoggerProxy.warn(
-              `[DEBUG-CAMPAIGN-CLEAR] Task removal triggered by ${payload.data.type}, interactionId=${payload.data.interactionId}, taskType=${task?.data?.type}`,
-              {
-                module: TASK_MANAGER_FILE,
-                method: METHODS.REGISTER_TASK_LISTENERS,
-                interactionId: payload.data.interactionId,
-              }
-            );
+            LoggerProxy.info(`Task removal triggered by ${payload.data.type}`, {
+              module: TASK_MANAGER_FILE,
+              method: METHODS.REGISTER_TASK_LISTENERS,
+              interactionId: payload.data.interactionId,
+            });
             task = this.updateTaskData(task, payload.data);
 
             const eventTypeToMetricMap: Record<string, keyof typeof METRIC_EVENT_NAMES> = {
@@ -343,19 +340,31 @@ export default class TaskManager extends EventEmitter {
             break;
           }
           case CC_EVENTS.CONTACT_ENDED:
-            // Update task data
+            // Update task data.
             if (task) {
-              LoggerProxy.warn(
-                `[DEBUG-CAMPAIGN-CLEAR] CONTACT_ENDED, interactionId=${payload.data.interactionId}, taskType=${task?.data?.type}, state=${task?.data?.interaction?.state}`,
-                {
-                  module: TASK_MANAGER_FILE,
-                  method: METHODS.REGISTER_TASK_LISTENERS,
-                  interactionId: payload.data.interactionId,
-                }
+              LoggerProxy.info(`Contact ended for interaction`, {
+                module: TASK_MANAGER_FILE,
+                method: METHODS.REGISTER_TASK_LISTENERS,
+                interactionId: payload.data.interactionId,
+              });
+
+              // Campaign preview tasks should never trigger wrapup on ContactEnded —
+              // they are terminal cleanup events. For all other tasks, derive
+              // wrapUpRequired from agentsPendingWrapUp as before.
+              const CAMPAIGN_OUTBOUND_TYPES = [
+                'STANDARD_PREVIEW_CAMPAIGN',
+                'DIRECT_PREVIEW_CAMPAIGN',
+              ];
+              const isCampaignPreview = CAMPAIGN_OUTBOUND_TYPES.includes(
+                task.data?.interaction?.outboundType ?? ''
               );
+              const wrapUpRequired = isCampaignPreview
+                ? false
+                : payload.data.agentsPendingWrapUp?.includes(this.agentId) || false;
+
               task = this.updateTaskData(task, {
                 ...payload.data,
-                wrapUpRequired: payload.data.agentsPendingWrapUp?.includes(this.agentId) || false,
+                wrapUpRequired,
               });
 
               // Handle cleanup based on whether task should be deleted
@@ -364,12 +373,83 @@ export default class TaskManager extends EventEmitter {
               task?.emit(TASK_EVENTS.TASK_END, task);
             }
             break;
-          case CC_EVENTS.CAMPAIGN_CONTACT_UPDATED:
-            // CampaignContactUpdated is a non-terminal event (intermediate update during accept).
-            // Only update the task data — do NOT remove the task or emit TASK_END.
-            // Task cleanup is handled by CONTACT_ENDED or other terminal events.
+          case CC_EVENTS.CAMPAIGN_CONTACT_UPDATED: {
+            // CampaignContactUpdated is a non-terminal event (e.g., next contact after skip/remove).
+            // Update the task data and emit an event so consumers can react to the updated contact.
+            // Do NOT remove the task or emit TASK_END — cleanup is handled by CONTACT_ENDED.
             if (task) {
-              task = this.updateTaskData(task, payload.data);
+              // Carry forward campaign preview fields from existing task data since the updated
+              // contact payload may not include them, and reconcileData would delete them.
+              const existingCpd = task.data?.interaction?.callProcessingDetails;
+              const updatedData = {...payload.data};
+
+              if (existingCpd) {
+                const campaignFields = {
+                  ...(existingCpd.campaignPreviewAutoAction && {
+                    campaignPreviewAutoAction: existingCpd.campaignPreviewAutoAction,
+                  }),
+                  ...(existingCpd.campaignPreviewOfferTimeout && {
+                    campaignPreviewOfferTimeout: existingCpd.campaignPreviewOfferTimeout,
+                  }),
+                  ...(existingCpd.campaignPreviewSkipDisabled && {
+                    campaignPreviewSkipDisabled: existingCpd.campaignPreviewSkipDisabled,
+                  }),
+                  ...(existingCpd.campaignPreviewRemoveDisabled && {
+                    campaignPreviewRemoveDisabled: existingCpd.campaignPreviewRemoveDisabled,
+                  }),
+                };
+
+                if (!updatedData.interaction) {
+                  updatedData.interaction = {} as typeof updatedData.interaction;
+                }
+
+                updatedData.interaction = {
+                  ...updatedData.interaction,
+                  callProcessingDetails: {
+                    ...campaignFields,
+                    ...(updatedData.interaction.callProcessingDetails || {}),
+                  } as typeof existingCpd,
+                };
+              }
+
+              LoggerProxy.log('Campaign contact updated - carrying forward preview fields', {
+                module: TASK_MANAGER_FILE,
+                method: METHODS.REGISTER_TASK_LISTENERS,
+                interactionId: payload.data.interactionId,
+                data: {
+                  hasCpd: !!updatedData.interaction?.callProcessingDetails,
+                  autoAction:
+                    updatedData.interaction?.callProcessingDetails?.campaignPreviewAutoAction,
+                  skipDisabled:
+                    updatedData.interaction?.callProcessingDetails?.campaignPreviewSkipDisabled,
+                  removeDisabled:
+                    updatedData.interaction?.callProcessingDetails?.campaignPreviewRemoveDisabled,
+                },
+              });
+
+              task = this.updateTaskData(task, updatedData);
+              task.emit(TASK_EVENTS.TASK_CAMPAIGN_CONTACT_UPDATED, task);
+            }
+            break;
+          }
+          case CC_EVENTS.CAMPAIGN_PREVIEW_ACCEPT_FAILED:
+            if (task) {
+              // Failure payloads are sparse (no interaction field). Spread existing
+              // task data first so reconcileData doesn't delete interaction/cpd.
+              task = this.updateTaskData(task, {...task.data, ...payload.data});
+              task.emit(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_ACCEPT_FAILED, task);
+            }
+            break;
+          case CC_EVENTS.CAMPAIGN_PREVIEW_SKIP_FAILED:
+            if (task) {
+              task = this.updateTaskData(task, {...task.data, ...payload.data});
+              task.emit(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_SKIP_FAILED, task);
+            }
+            break;
+          case CC_EVENTS.CAMPAIGN_PREVIEW_REMOVE_FAILED:
+            if (task) {
+              task = this.updateTaskData(task, {...task.data, ...payload.data});
+              task.emit(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_REMOVE_FAILED, task);
             }
             break;
           case CC_EVENTS.CONTACT_MERGED:

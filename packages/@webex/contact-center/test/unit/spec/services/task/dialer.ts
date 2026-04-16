@@ -239,5 +239,195 @@ describe('AQM routing dialer', () => {
         ).rejects.toThrow('Request Timeout');
       });
     });
+
+    describe('skipPreviewContact', () => {
+      it('should construct the correct URL with campaignId and interactionId', () => {
+        const dialer = aqmDialer(fakeAqm as any);
+        const config = dialer.skipPreviewContact({data: previewPayload}) as any;
+
+        expect(config.url).toBe(
+          `/v1/dialer/campaign/${previewPayload.campaignId}/preview-task/${previewPayload.interactionId}/skip`
+        );
+      });
+
+      it('should URL-encode campaignId when it contains reserved characters', () => {
+        const dialer = aqmDialer(fakeAqm as any);
+        const payloadWithSpecialChars = {
+          interactionId: 'interaction-456',
+          campaignId: 'My Campaign/Test #1',
+        };
+        const config = dialer.skipPreviewContact({data: payloadWithSpecialChars}) as any;
+
+        expect(config.url).toBe(
+          `/v1/dialer/campaign/${encodeURIComponent(
+            payloadWithSpecialChars.campaignId
+          )}/preview-task/${payloadWithSpecialChars.interactionId}/skip`
+        );
+        expect(config.url).toContain('My%20Campaign%2FTest%20%231');
+      });
+
+      it('should call the skipPreviewContact api', () => {
+        const fakeAqm = {
+          req: () =>
+            jest.fn().mockResolvedValue(() => {
+              Promise.resolve({data: 'skip preview success'});
+            }),
+          evt: jest.fn(),
+        };
+
+        const dialer = aqmDialer(fakeAqm as any);
+
+        dialer
+          .skipPreviewContact({data: previewPayload})
+          .then((response) => {
+            expect(response.data).toBe('skip preview success');
+          })
+          .catch(() => {
+            expect(true).toBe(true);
+          });
+
+        expect(dialer.skipPreviewContact).toHaveBeenCalled();
+      });
+
+      it('should handle network errors', () => {
+        const fakeAqm = {
+          req: () => jest.fn().mockRejectedValue(new Error('Network Error')),
+          evt: jest.fn(),
+        };
+
+        const dialer = aqmDialer(fakeAqm as any);
+
+        return expect(
+          dialer.skipPreviewContact({
+            data: previewPayload,
+          })
+        ).rejects.toThrow('Network Error');
+      });
+
+      it('should handle server errors', () => {
+        const fakeAqm = {
+          req: () => jest.fn().mockRejectedValue(new Error('Server Error')),
+          evt: jest.fn(),
+        };
+
+        const dialer = aqmDialer(fakeAqm as any);
+
+        return expect(
+          dialer.skipPreviewContact({
+            data: previewPayload,
+          })
+        ).rejects.toThrow('Server Error');
+      });
+
+      it('should handle timeout scenarios', () => {
+        const fakeAqm = {
+          req: () => jest.fn().mockRejectedValue(new Error('Request Timeout')),
+          evt: jest.fn(),
+        };
+
+        const dialer = aqmDialer(fakeAqm as any);
+
+        return expect(
+          dialer.skipPreviewContact({
+            data: previewPayload,
+          })
+        ).rejects.toThrow('Request Timeout');
+      });
+    });
+
+    describe('removePreviewContact', () => {
+      it('should construct the correct URL with campaignId and interactionId', () => {
+        const dialer = aqmDialer(fakeAqm as any);
+        const config = dialer.removePreviewContact({data: previewPayload}) as any;
+
+        expect(config.url).toBe(
+          `/v1/dialer/campaign/${previewPayload.campaignId}/preview-task/${previewPayload.interactionId}/remove`
+        );
+      });
+
+      it('should URL-encode campaignId when it contains reserved characters', () => {
+        const dialer = aqmDialer(fakeAqm as any);
+        const payloadWithSpecialChars = {
+          interactionId: 'interaction-456',
+          campaignId: 'My Campaign/Test #1',
+        };
+        const config = dialer.removePreviewContact({data: payloadWithSpecialChars}) as any;
+
+        expect(config.url).toBe(
+          `/v1/dialer/campaign/${encodeURIComponent(
+            payloadWithSpecialChars.campaignId
+          )}/preview-task/${payloadWithSpecialChars.interactionId}/remove`
+        );
+        expect(config.url).toContain('My%20Campaign%2FTest%20%231');
+      });
+
+      it('should call the removePreviewContact api', () => {
+        const fakeAqm = {
+          req: () =>
+            jest.fn().mockResolvedValue(() => {
+              Promise.resolve({data: 'remove preview success'});
+            }),
+          evt: jest.fn(),
+        };
+
+        const dialer = aqmDialer(fakeAqm as any);
+
+        dialer
+          .removePreviewContact({data: previewPayload})
+          .then((response) => {
+            expect(response.data).toBe('remove preview success');
+          })
+          .catch(() => {
+            expect(true).toBe(true);
+          });
+
+        expect(dialer.removePreviewContact).toHaveBeenCalled();
+      });
+
+      it('should handle network errors', () => {
+        const fakeAqm = {
+          req: () => jest.fn().mockRejectedValue(new Error('Network Error')),
+          evt: jest.fn(),
+        };
+
+        const dialer = aqmDialer(fakeAqm as any);
+
+        return expect(
+          dialer.removePreviewContact({
+            data: previewPayload,
+          })
+        ).rejects.toThrow('Network Error');
+      });
+
+      it('should handle server errors', () => {
+        const fakeAqm = {
+          req: () => jest.fn().mockRejectedValue(new Error('Server Error')),
+          evt: jest.fn(),
+        };
+
+        const dialer = aqmDialer(fakeAqm as any);
+
+        return expect(
+          dialer.removePreviewContact({
+            data: previewPayload,
+          })
+        ).rejects.toThrow('Server Error');
+      });
+
+      it('should handle timeout scenarios', () => {
+        const fakeAqm = {
+          req: () => jest.fn().mockRejectedValue(new Error('Request Timeout')),
+          evt: jest.fn(),
+        };
+
+        const dialer = aqmDialer(fakeAqm as any);
+
+        return expect(
+          dialer.removePreviewContact({
+            data: previewPayload,
+          })
+        ).rejects.toThrow('Request Timeout');
+      });
+    });
   });
 });
