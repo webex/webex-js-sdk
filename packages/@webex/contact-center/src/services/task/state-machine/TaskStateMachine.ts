@@ -162,13 +162,16 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskReject'],
           },
-          // ContactEnded (customer can end call before connect or via agent softphone decline)
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
           },
+          [TaskEvent.CONTACT_ENDED]: {
+            target: TaskState.TERMINATED,
+            actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
+          },
           // This needs to be handled for all assign failed scenarios (contact, buddy)
-          // [AgentContactAssignFailed, AgentConsultFailed, AgentCtqFailed, AgentBlindTransferFailed,
+          // [AgentContactAssignFailed, AgentCtqFailed, AgentBlindTransferFailed,
           //  AgentVTeamTransferFailed, AgentConsultTransferFailed]
           [TaskEvent.ASSIGN_FAILED]: {
             target: TaskState.TERMINATED,
@@ -205,6 +208,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.OFFER_CONSULT]: {
             actions: ['updateTaskData', 'emitTaskOfferConsult', 'requestAutoAnswer'],
           },
+          // AgentConsultFailed - when consulted agent (Agent 2) doesn't answer (RONA or decline)
+          // Clears the incoming consult notification by transitioning to TERMINATED
+          [TaskEvent.CONSULT_FAILED]: {
+            target: TaskState.TERMINATED,
+            actions: ['updateTaskData', 'clearConsultState', 'emitTaskReject'],
+          },
         },
       },
 
@@ -230,6 +239,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // Click of hold button
           [TaskEvent.HOLD_INITIATED]: {
             target: TaskState.HOLD_INITIATING,
+          },
+          // Remote hold from another login session (multi-login)
+          [TaskEvent.HOLD_SUCCESS]: {
+            target: TaskState.HELD,
+            actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
           },
           // Click of the consult button
           [TaskEvent.CONSULT]: {
@@ -304,6 +318,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // Click of the unhold button
           [TaskEvent.UNHOLD_INITIATED]: {
             target: TaskState.RESUME_INITIATING,
+          },
+          // Remote resume from another login session (multi-login)
+          [TaskEvent.UNHOLD_SUCCESS]: {
+            target: TaskState.CONNECTED,
+            actions: ['updateTaskData', 'setHoldState', 'emitTaskResume'],
           },
           // Click of the consult button
           [TaskEvent.CONSULT]: {

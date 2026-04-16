@@ -87,7 +87,7 @@ function computeVoiceUIControls(
   // Context flags (set by state machine actions)
   const {consultInitiator, consultDestinationAgentJoined, consultCallHeld, consultFromConference} =
     context;
-  const {recordingControlsAvailable, recordingInProgress} = context;
+  const {recordingControlsAvailable} = context;
 
   const isHeld = serverHold ?? state === TaskState.HELD;
   const isConnected = serverHold !== undefined ? !serverHold : state === TaskState.CONNECTED;
@@ -128,11 +128,12 @@ function computeVoiceUIControls(
   const hasFullControls = !isConsulted || consultInitiator || inConference || isWrappingUp;
 
   return {
-    // Accept/Decline: WebRTC offered state only
+    // Accept/Decline: Voice tasks in offered state
     // For outdial, accept is disabled (auto-answer handles it), decline remains enabled
+    // For Extension mode (non-WebRTC), accept shows as disabled "Ringing" button
     accept:
-      isWebrtc && state === TaskState.OFFERED && !interaction?.isTerminated
-        ? {isVisible: true, isEnabled: !isOutdial}
+      state === TaskState.OFFERED && !interaction?.isTerminated
+        ? {isVisible: true, isEnabled: isWebrtc && !isOutdial}
         : DISABLED,
     decline:
       isWebrtc && state === TaskState.OFFERED && !interaction?.isTerminated
@@ -237,7 +238,7 @@ function computeVoiceUIControls(
       if (!recordingControlsAvailable || !config.isRecordingEnabled) return DISABLED;
       if (!hasFullControls || isConsulting || inConference) return DISABLED;
       if (state === TaskState.CONNECTED || state === TaskState.HELD) {
-        return recordingInProgress ? VISIBLE_ENABLED : VISIBLE_DISABLED;
+        return VISIBLE_ENABLED;
       }
 
       return DISABLED;

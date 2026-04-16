@@ -1,5 +1,4 @@
 /* eslint-disable import/no-cycle */
-import EventEmitter from 'events';
 import type {AnyActorRef} from 'xstate';
 import {TaskEventPayload} from './state-machine';
 import {Msg} from '../core/GlobalTypes';
@@ -963,6 +962,26 @@ export type Interaction = {
  * for UI/state machine updates.
  * @public
  */
+export type RealtimeTranscription = {
+  agentId: string;
+  orgId: string;
+  notifType: string;
+  notifDetails: {
+    actionEvent: string;
+  };
+  data: {
+    role: 'AGENT' | 'CALLER';
+    utteranceId: string;
+    conversationId: string;
+    publishTimestamp: number;
+    messageId: string;
+    isFinal: boolean;
+    languageCode: string;
+    orgId: string;
+    content: string;
+  };
+};
+
 export type TaskData = {
   /** Primary media resource identifier for the active leg (matches interaction.media[].mediaResourceId) */
   mediaResourceId: string;
@@ -1090,7 +1109,7 @@ export type TaskData = {
   agentsPendingWrapUp?: string[];
 };
 
-type TaskUIControlState = {
+export type TaskUIControlState = {
   isVisible: boolean;
   isEnabled: boolean;
 };
@@ -1516,10 +1535,28 @@ export type consultConferencePayloadData = {
 };
 
 /**
- * Interface for managing task-related operations in the contact center
- * Extends EventEmitter to support event-driven task updates
+ * Minimal event-emitter contract exposed to SDK consumers.
+ * Defined here so that consumers do NOT need `@types/node` in their tsconfig.
+ * The runtime Task class still extends Node's EventEmitter (via ampersand-events),
+ * which satisfies this interface at runtime.
+ * @public
  */
-export interface ITask extends EventEmitter {
+export interface IEventEmitter {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  on(event: string, listener: (...args: any[]) => void): this;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  off(event: string, listener: (...args: any[]) => void): this;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  once(event: string, listener: (...args: any[]) => void): this;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  emit(event: string, ...args: any[]): boolean;
+}
+
+/**
+ * Interface for managing task-related operations in the contact center
+ * Extends IEventEmitter to support event-driven task updates
+ */
+export interface ITask extends IEventEmitter {
   /**
    * Event data received in the Contact Center events.
    * Contains detailed task information including interaction details, media resources,
@@ -1538,6 +1575,13 @@ export interface ITask extends EventEmitter {
    * as defined in {@link AutoWrapup}
    */
   autoWrapup?: AutoWrapup;
+
+  /**
+   * Latest UI controls derived from the state machine.
+   * Each control has `isVisible` and `isEnabled` flags computed from current task state.
+   * Subscribe to {@link TASK_EVENTS.TASK_UI_CONTROLS_UPDATED} for change notifications.
+   */
+  readonly uiControls: TaskUIControls;
 
   /**
    * State machine instance for managing task state transitions and derived properties.
@@ -1779,11 +1823,6 @@ export interface ITask extends EventEmitter {
  */
 export interface IDigital extends Omit<ITask, 'updateTaskData'> {
   /**
-   * UI controls configuration
-   */
-  uiControls: TaskUIControls;
-
-  /**
    * Updates the task data
    * @param newData - Updated task data
    * @param shouldOverwrite - Whether to completely replace existing data
@@ -1869,10 +1908,16 @@ export type WebSocketPayload = TaskData & {
   type: string;
   mediaResourceId?: string;
   reason?: string;
+  /**
+   * Optional real-time transcript chunk payload.
+   * Present on REAL_TIME_TRANSCRIPTION notifications.
+   */
+  data?: RealtimeTranscription['data'];
 };
 
 export type WebSocketMessage = {
   keepalive?: 'true' | 'false' | boolean;
+  type?: string;
   data: WebSocketPayload;
 };
 

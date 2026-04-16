@@ -59,6 +59,7 @@ global.URL.createObjectURL = jest.fn(() => 'blob:http://localhost:3000/12345');
 
 describe('webex.cc', () => {
   let webex;
+  let mockApiAIAssistant;
   let mockContact;
   let mockTaskManager;
   let mockMetricsManager;
@@ -107,6 +108,12 @@ describe('webex.cc', () => {
       cancelCtq: jest.fn(),
     };
 
+    mockApiAIAssistant = {
+      sendEvent: jest.fn(),
+      fetchHistoricTranscripts: jest.fn(),
+      setAIFeatureFlags: jest.fn(),
+    };
+
     // Mock Services instance
     const mockServicesInstance = {
       agent: {
@@ -133,6 +140,7 @@ describe('webex.cc', () => {
     };
 
     mockTaskManager = {
+      apiAIAssistant: mockApiAIAssistant,
       contact: mockContact,
       call: undefined,
       taskCollection: {},
@@ -306,6 +314,7 @@ describe('webex.cc', () => {
           clientType: 'WebexCCSDK',
           allowMultiLogin: false,
         },
+        resource: 'v1/notification/subscribe',
       });
 
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
@@ -373,6 +382,7 @@ describe('webex.cc', () => {
           clientType: 'WebexCCSDK',
           allowMultiLogin: true,
         },
+        resource: 'v1/notification/subscribe',
       });
       expect(configSpy).toHaveBeenCalled();
       expect(LoggerProxy.log).toHaveBeenCalledWith('Agent config is fetched successfully', {
@@ -452,6 +462,7 @@ describe('webex.cc', () => {
           clientType: 'WebexCCSDK',
           allowMultiLogin: false,
         },
+        resource: 'v1/notification/subscribe',
       });
 
       expect(mockTaskManager.on).toHaveBeenCalledWith(
@@ -504,6 +515,7 @@ describe('webex.cc', () => {
           clientType: 'WebexCCSDK',
           allowMultiLogin: false,
         },
+        resource: 'v1/notification/subscribe',
       });
 
       expect(configSpy).toHaveBeenCalled();
@@ -1502,6 +1514,7 @@ describe('webex.cc', () => {
 
   describe('unregister', () => {
     let mockWebSocketManager;
+    let mockRTDWebSocketManager;
     let mercuryDisconnectSpy;
     let deviceUnregisterSpy;
 
@@ -1518,8 +1531,15 @@ describe('webex.cc', () => {
         off: jest.fn(),
         on: jest.fn(),
       };
+      mockRTDWebSocketManager = {
+        isSocketClosed: false,
+        close: jest.fn(),
+        off: jest.fn(),
+        on: jest.fn(),
+      };
 
       webex.cc.services.webSocketManager = mockWebSocketManager;
+      webex.cc.services.rtdWebSocketManager = mockRTDWebSocketManager;
 
       webex.internal = webex.internal || {};
       webex.internal.mercury = {
@@ -1553,6 +1573,7 @@ describe('webex.cc', () => {
       );
 
       expect(mockWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
+      expect(mockRTDWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
       expect(webex.cc.agentConfig).toBeNull();
 
       expect(webex.internal.mercury.off).toHaveBeenCalledWith('online');
@@ -1628,6 +1649,7 @@ describe('webex.cc', () => {
       expect(webex.internal.mercury.off).not.toHaveBeenCalled();
       expect(mercuryDisconnectSpy).not.toHaveBeenCalled();
       expect(deviceUnregisterSpy).not.toHaveBeenCalled();
+      expect(mockRTDWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
     });
 
     it('should skip internal mercury cleanup when loginVoiceOptions does not include BROWSER', async () => {
@@ -1645,6 +1667,7 @@ describe('webex.cc', () => {
       expect(deviceUnregisterSpy).not.toHaveBeenCalled();
 
       expect(mockWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
+      expect(mockRTDWebSocketManager.close).toHaveBeenCalledWith(false, 'Unregistering the SDK');
       expect(webex.cc.agentConfig).toBeNull();
     });
 

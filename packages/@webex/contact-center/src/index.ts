@@ -27,6 +27,7 @@ export {default as Task} from './services/task/Task';
 
 // API exports (AddressBook is public, EntryPoint and Queue are accessed via cc wrappers)
 export {default as AddressBook} from './services/AddressBook';
+export {default as ApiAIAssistant} from './services/ApiAiAssistant';
 
 /** EntryPoint API types */
 export type {
@@ -123,6 +124,8 @@ export type {
 /** Task related types */
 export type {
   AgentContact,
+  /** Event emitter contract for task consumers (no @types/node needed) */
+  IEventEmitter,
   /** Task interface */
   ITask,
   Interaction,
@@ -137,7 +140,13 @@ export type {
   TransferPayLoad,
   ResumeRecordingPayload,
   WrapupPayLoad,
+  /** UI control types for task buttons */
+  TaskUIControls,
+  TaskUIControlState,
 } from './services/task/types';
+
+/** UI controls utilities */
+export {getDefaultUIControls} from './services/task/state-machine/uiControlsComputer';
 
 /** Agent related types */
 export type {
