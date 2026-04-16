@@ -14,7 +14,7 @@ import {
 import {ILine, LINE_EVENTS} from './types';
 import {LINE_FILE, METHODS, VALID_PHONE_REGEX} from '../constants';
 import log from '../../Logger';
-import {IRegistration} from '../registration/types';
+import {IRegistration, TransportLayer} from '../registration/types';
 import {createRegistration} from '../registration';
 import {ISDKConnector, WebexSDK} from '../../SDKConnector/types';
 import {CallingClientConfig} from '../types';
@@ -88,7 +88,8 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
     jwe?: string,
     phoneNumber?: string,
     extension?: string,
-    voicemail?: string
+    voicemail?: string,
+    registrationOptions?: TransportLayer
   ) {
     super();
     this.lineId = uuid();
@@ -117,7 +118,8 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
       this.#mutex,
       this.lineEmitter,
       logLevel,
-      jwe
+      jwe,
+      registrationOptions
     );
 
     log.setLogger(logLevel, LINE_FILE);

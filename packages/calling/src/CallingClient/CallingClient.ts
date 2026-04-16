@@ -814,16 +814,34 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       file: CALLING_CLIENT_FILE,
       method: METHODS.CREATE_LINE,
     });
-    const line = new Line(
-      this.webex.internal.device.userId,
-      this.webex.internal.device.url,
-      this.mutex,
-      this.primaryMobiusUris,
-      this.backupMobiusUris,
-      this.getLoggingLevel(),
-      this.sdkConfig?.serviceData,
-      this.sdkConfig?.jwe
-    );
+    const line = this.isMobiusSocketEnabled
+      ? new Line(
+          this.webex.internal.device.userId,
+          this.webex.internal.device.url,
+          this.mutex,
+          this.primaryMobiusUris,
+          this.backupMobiusUris,
+          this.getLoggingLevel(),
+          this.sdkConfig?.serviceData,
+          this.sdkConfig?.jwe,
+          undefined,
+          undefined,
+          undefined,
+          {
+            isMobiusSocketEnabled: this.isMobiusSocketEnabled,
+            mobiusSocket: this.mobiusSocket,
+          }
+        )
+      : new Line(
+          this.webex.internal.device.userId,
+          this.webex.internal.device.url,
+          this.mutex,
+          this.primaryMobiusUris,
+          this.backupMobiusUris,
+          this.getLoggingLevel(),
+          this.sdkConfig?.serviceData,
+          this.sdkConfig?.jwe
+        );
 
     this.lineDict[line.lineId] = line;
   }

@@ -13,99 +13,92 @@ const uuid = () => {
   });
 };
 
-// Enum values from the original imports
-const HTTP_METHODS = {
-  GET: 'GET',
-  POST: 'POST',
-  PUT: 'PUT',
-  DELETE: 'DELETE',
-  PATCH: 'PATCH',
-};
-
 const WorkerMessageType = {
   START_KEEPALIVE: 'START_KEEPALIVE',
   CLEAR_KEEPALIVE: 'CLEAR_KEEPALIVE',
+  SEND_KEEPALIVE: 'SEND_KEEPALIVE',
+  KEEPALIVE_RESULT: 'KEEPALIVE_RESULT',
   KEEPALIVE_SUCCESS: 'KEEPALIVE_SUCCESS',
   KEEPALIVE_FAILURE: 'KEEPALIVE_FAILURE',
 };
 
 let keepaliveTimer;
+let keepAliveRetryCount = 0;
+let keepaliveInFlight = false;
+
+const normalizeKeepaliveError = (err) => {
+  const headers = {};
+
+  if (err?.headers?.has?.('Retry-After')) {
+    headers['retry-after'] = err.headers.get('Retry-After');
+  }
+
+  if (err?.headers?.has?.('Trackingid')) {
+    headers.trackingid = err.headers.get('Trackingid');
+  }
+
+  return {
+    headers,
+    statusCode: err?.status ?? err?.statusCode ?? 0,
+    statusText: err?.statusText ?? err?.message ?? 'Keepalive failed',
+    type: err?.type,
+  };
+};
+
+const clearKeepaliveTimer = () => {
+  if (keepaliveTimer) {
+    clearInterval(keepaliveTimer);
+    keepaliveTimer = undefined;
+  }
+};
 
 const messageHandler = (event) => {
   const {type} = event.data;
 
-  const postKeepAlive = async (accessToken, deviceUrl, url) => {
-    const response = await fetch(\`\${url}/status\`, {
-      method: HTTP_METHODS.POST,
-      headers: {
-        'cisco-device-url': deviceUrl,
-        'spark-user-agent': 'webex-calling/beta',
-        Authorization: \`\${accessToken}\`,
-        trackingId: \`web_worker_\${uuid()}\`,
-      },
-    });
-
-    if (!response.ok) {
-      throw response;
-    }
-
-    return response;
-  };
-
   if (type === WorkerMessageType.START_KEEPALIVE) {
-    let keepAliveRetryCount = 0;
-    const {accessToken, deviceUrl, interval, retryCountThreshold, url} = event.data;
+    const {interval, retryCountThreshold} = event.data;
 
-    if (keepaliveTimer) {
-      clearInterval(keepaliveTimer);
-      keepaliveTimer = undefined;
-    }
+    clearKeepaliveTimer();
+    keepAliveRetryCount = 0;
+    keepaliveInFlight = false;
 
-    keepaliveTimer = setInterval(async () => {
-      if (keepAliveRetryCount < retryCountThreshold) {
-        try {
-          const res = await postKeepAlive(accessToken, deviceUrl, url);
-          const statusCode = res.status;
-          if (keepAliveRetryCount > 0) {
-            self.postMessage({
-              type: WorkerMessageType.KEEPALIVE_SUCCESS,
-              statusCode,
-            });
-          }
-          keepAliveRetryCount = 0;
-        } catch (err) {
-          let headers = {};
-          if(err.headers?.has('Retry-After')) {
-            headers['retry-after'] = err.headers.get('Retry-After');
-          } 
-
-          if(err.headers?.has('Trackingid')) {
-            headers['trackingid'] = err.headers.get('Trackingid');
-          }   
-
-          const error = {
-            headers,
-            statusCode: err.status,
-            statusText: err.statusText,
-            type: err.type,
-          };
-
-          keepAliveRetryCount += 1
-          self.postMessage({
-            type: WorkerMessageType.KEEPALIVE_FAILURE,
-            err: error,
-            keepAliveRetryCount,
-          });
-        }
+    keepaliveTimer = setInterval(() => {
+      if (keepAliveRetryCount < retryCountThreshold && !keepaliveInFlight) {
+        keepaliveInFlight = true;
+        self.postMessage({
+          type: WorkerMessageType.SEND_KEEPALIVE,
+          trackingId: \`web_worker_\${uuid()}\`,
+        });
       }
     }, interval * 1000);
   }
 
-  if (type === WorkerMessageType.CLEAR_KEEPALIVE) {
-    if (keepaliveTimer) {
-      clearInterval(keepaliveTimer);
-      keepaliveTimer = undefined;
+  if (type === WorkerMessageType.KEEPALIVE_RESULT) {
+    keepaliveInFlight = false;
+
+    if (event.data.err === undefined) {
+      if (keepAliveRetryCount > 0) {
+        self.postMessage({
+          type: WorkerMessageType.KEEPALIVE_SUCCESS,
+          statusCode: event.data.statusCode,
+        });
+      }
+
+      keepAliveRetryCount = 0;
+    } else {
+      keepAliveRetryCount += 1;
+      self.postMessage({
+        type: WorkerMessageType.KEEPALIVE_FAILURE,
+        err: normalizeKeepaliveError(event.data.err),
+        keepAliveRetryCount,
+      });
     }
+  }
+
+  if (type === WorkerMessageType.CLEAR_KEEPALIVE) {
+    clearKeepaliveTimer();
+    keepAliveRetryCount = 0;
+    keepaliveInFlight = false;
   }
 };
 

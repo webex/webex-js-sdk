@@ -15,7 +15,7 @@ import {ICallManager} from '../calling/types';
 import {getCallManager} from '../calling';
 import {LOGGER} from '../../Logger/types';
 import log from '../../Logger';
-import {FailoverCacheState, IRegistration} from './types';
+import {FailoverCacheState, IRegistration, TransportLayer} from './types';
 import SDKConnector from '../../SDKConnector';
 import {
   ALLOWED_SERVICES,
@@ -96,6 +96,8 @@ export class Registration implements IRegistration {
   private scheduled429Retry = false;
   private webWorker: Worker | undefined;
   private apiRequest: APIRequest;
+  private isMobiusSocketEnabled: boolean;
+  private mobiusSocket?: TransportLayer['mobiusSocket'];
 
   /**
    */
@@ -105,7 +107,8 @@ export class Registration implements IRegistration {
     mutex: Mutex,
     lineEmitter: LineEmitterCallback,
     logLevel: LOGGER,
-    jwe?: string
+    jwe?: string,
+    transportOptions?: TransportLayer
   ) {
     this.jwe = jwe;
     this.sdkConnector = SDKConnector;
@@ -130,6 +133,8 @@ export class Registration implements IRegistration {
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
     this.apiRequest = APIRequest.getInstance({webex: this.webex});
+    this.isMobiusSocketEnabled = transportOptions?.isMobiusSocketEnabled ?? false;
+    this.mobiusSocket = transportOptions?.mobiusSocket;
   }
 
   private getFailoverCacheKey(): string {
@@ -483,6 +488,41 @@ export class Registration implements IRegistration {
       clearTimeout(this.failbackTimer);
       this.failbackTimer = undefined;
     }
+  }
+
+  private async postKeepAlive(
+    accessToken: string,
+    deviceUrl: string,
+    url: string,
+    trackingId: string
+  ): Promise<{status: number}> {
+    const mobiusSocket = this.mobiusSocket;
+
+    if (this.isMobiusSocketEnabled && mobiusSocket?.isConnected?.()) {
+      await mobiusSocket.send({
+        type: 'status',
+        deviceUrl,
+        trackingId,
+      });
+
+      return {status: 200};
+    }
+
+    const response = await fetch(`${url}/status`, {
+      method: HTTP_METHODS.POST,
+      headers: {
+        [CISCO_DEVICE_URL]: deviceUrl,
+        [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+        Authorization: `${accessToken}`,
+        trackingId,
+      },
+    });
+
+    if (!response.ok) {
+      throw response;
+    }
+
+    return response;
   }
 
   private async isPrimaryActive() {
@@ -932,11 +972,8 @@ export class Registration implements IRegistration {
 
           this.webWorker.postMessage({
             type: WorkerMessageType.START_KEEPALIVE,
-            accessToken: String(accessToken),
-            deviceUrl: String(this.webex.internal.device.url),
             interval,
             retryCountThreshold: RETRY_COUNT_THRESHOLD,
-            url,
           });
 
           this.webWorker.onmessage = async (event: MessageEvent) => {
@@ -944,6 +981,29 @@ export class Registration implements IRegistration {
               file: REGISTRATION_FILE,
               method: KEEPALIVE_UTIL,
             };
+            if (event.data.type === WorkerMessageType.SEND_KEEPALIVE) {
+              try {
+                const res = await this.postKeepAlive(
+                  String(accessToken),
+                  String(this.webex.internal.device.url),
+                  url,
+                  event.data.trackingId
+                );
+
+                this.webWorker?.postMessage({
+                  type: WorkerMessageType.KEEPALIVE_RESULT,
+                  statusCode: res.status,
+                });
+              } catch (err: any) {
+                this.webWorker?.postMessage({
+                  type: WorkerMessageType.KEEPALIVE_RESULT,
+                  err,
+                });
+              }
+
+              return;
+            }
+
             if (event.data.type === WorkerMessageType.KEEPALIVE_SUCCESS) {
               log.info(`Sent Keepalive, status: ${event.data.statusCode}`, logContext);
               this.lineEmitter(LINE_EVENTS.RECONNECTED);
@@ -1122,5 +1182,7 @@ export const createRegistration = (
   mutex: Mutex,
   lineEmitter: LineEmitterCallback,
   logLevel: LOGGER,
-  jwe?: string
-): IRegistration => new Registration(webex, serviceData, mutex, lineEmitter, logLevel, jwe);
+  jwe?: string,
+  transportOptions?: TransportLayer
+): IRegistration =>
+  new Registration(webex, serviceData, mutex, lineEmitter, logLevel, jwe, transportOptions);
