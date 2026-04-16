@@ -378,18 +378,30 @@ export default class Socket extends EventEmitter {
   }
 
   /**
-   * Sends an auth message up the socket
-   * @private
+   * Sends an auth message up the socket with a refreshed token.
+   * @param {string} token
    * @returns {Promise}
    */
-  _authorize() {
+  refresh(token) {
     return new Promise((resolve, reject) => {
+      if (!token) {
+        reject(new Error('`token` is required for Socket#refresh()'));
+
+        return;
+      }
+
+      const refreshedToken =
+        token && typeof token.toString === 'function' ? token.toString() : token;
+
+      this.token = refreshedToken;
       this.logger.info(`socket,${this._domain}: authorizing`);
       let authResponseTimer;
 
-      const cleanup = () => {
+      const cleanup = (handler) => {
         clearTimeout(authResponseTimer);
-        this.off('message', waitForAuthResponse);
+        if (handler) {
+          this.off('message', handler);
+        }
       };
 
       const waitForAuthResponse = (event) => {
@@ -397,7 +409,7 @@ export default class Socket extends EventEmitter {
           return;
         }
 
-        cleanup();
+        cleanup(waitForAuthResponse);
 
         const statusCode = event.data?.status?.code;
 
@@ -417,7 +429,70 @@ export default class Socket extends EventEmitter {
 
       this.on('message', waitForAuthResponse);
       authResponseTimer = safeSetTimeout(() => {
-        cleanup();
+        cleanup(waitForAuthResponse);
+        reject(
+          new NotAuthorized({
+            reason: 'Mobius auth response not received before timeout',
+          })
+        );
+      }, this.authResponseTimeout || 10000);
+
+      this.send({
+        type: MESSAGE_TYPES.AUTH,
+        trackingId: this._createTrackingId(),
+        payload: {
+          token: refreshedToken,
+        },
+      }).catch((error) => {
+        cleanup(waitForAuthResponse);
+        reject(error);
+      });
+    });
+  }
+
+  /**
+   * Sends an initial auth message up the socket
+   * @private
+   * @returns {Promise}
+   */
+  _authorize() {
+    return new Promise((resolve, reject) => {
+      this.logger.info(`socket,${this._domain}: authorizing`);
+      let authResponseTimer;
+
+      const cleanup = (handler) => {
+        clearTimeout(authResponseTimer);
+        if (handler) {
+          this.off('message', handler);
+        }
+      };
+
+      const waitForAuthResponse = (event) => {
+        if (event.data?.type !== MESSAGE_TYPES.AUTH_RESPONSE) {
+          return;
+        }
+
+        cleanup(waitForAuthResponse);
+
+        const statusCode = event.data?.status?.code;
+
+        if (statusCode >= 200 && statusCode < 300) {
+          resolve();
+
+          return;
+        }
+
+        reject(
+          new NotAuthorized({
+            code: statusCode,
+            reason: event.data?.status?.message || 'Mobius auth failed',
+          })
+        );
+      };
+
+      this.on('message', waitForAuthResponse);
+      authResponseTimer = safeSetTimeout(() => {
+        cleanup(waitForAuthResponse);
         reject(
           new NotAuthorized({
             reason: 'Mobius auth response not received before timeout',
@@ -432,7 +507,7 @@ export default class Socket extends EventEmitter {
           token: this.token,
         },
       }).catch((error) => {
-        cleanup();
+        cleanup(waitForAuthResponse);
         reject(error);
       });
     });
