@@ -23,6 +23,7 @@ import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 import PersonalMeetingRoom from '@webex/plugin-meetings/src/personal-meeting-room';
 import Reachability from '@webex/plugin-meetings/src/reachability';
 import Metrics from '@webex/plugin-meetings/src/metrics';
+import * as prepareInitialLocusModule from '@webex/plugin-meetings/src/hashTree/prepareInitialLocus';
 
 import testUtils from '../../../utils/testUtils';
 import {
@@ -2050,6 +2051,56 @@ describe('plugin-meetings', () => {
               },
               hashTreeMessage,
             });
+          });
+
+          it('should not create duplicate meeting while first hash tree hydration is in progress', async () => {
+            const hashTreeMessage = {
+              locusUrl: url1,
+              locusStateElements: [
+                {
+                  htMeta: {elementId: {type: 'Self', id: 1, version: 1}},
+                  data: {},
+                },
+              ],
+            };
+            const hydratedLocus = {
+              participants: [],
+              url: url1,
+              self: {},
+              info: {webExMeetingId},
+            };
+            let resolveHydration;
+            const hydrationPromise = new Promise((resolve) => {
+              resolveHydration = resolve;
+            });
+
+            sinon
+              .stub(prepareInitialLocusModule, 'prepareInitialLocus')
+              .callsFake(({onLocusReady}) => {
+                hydrationPromise.then(() => onLocusReady(hydratedLocus));
+              });
+
+            const firstEventPromise = webex.meetings.handleLocusEvent({
+              eventType: LOCUSEVENT.HASH_TREE_DATA_UPDATED,
+              locusUrl: url1,
+              stateElementsMessage: hashTreeMessage,
+            });
+
+            await testUtils.flushPromises();
+
+            await webex.meetings.handleLocusEvent({
+              eventType: LOCUSEVENT.HASH_TREE_DATA_UPDATED,
+              locusUrl: url1,
+              stateElementsMessage: hashTreeMessage,
+            });
+
+            resolveHydration();
+            await firstEventPromise;
+            await testUtils.flushPromises();
+
+            assert.calledTwice(prepareInitialLocusModule.prepareInitialLocus);
+            assert.calledTwice(webex.meetings.create);
+            assert.calledTwice(initialSetup);
           });
 
           it('should ignore hash tree event when created locus has INACTIVE fullState', async () => {

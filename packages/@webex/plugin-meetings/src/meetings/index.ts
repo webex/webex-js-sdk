@@ -69,7 +69,8 @@ import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {HashTreeMessage} from '../hashTree/hashTreeParser';
 import {HashTreeObject} from '../hashTree/types';
 import {isSelf} from '../hashTree/utils';
-import {createLocusFromHashTreeMessage, findMeetingForHashTreeMessage} from '../locus-info';
+import {findMeetingForHashTreeMessage} from '../locus-info';
+import {prepareInitialLocus} from '../hashTree/prepareInitialLocus';
 
 let mediaLogger;
 
@@ -548,105 +549,126 @@ export default class Meetings extends WebexPlugin {
         // (at the very minimum we need locus.url to be set)
         // so we try to create locus from the received hash tree message
         // it will not be complete, in most cases it will only have the self part, but that's still better than nothing
-        const {locus} = createLocusFromHashTreeMessage(data.stateElementsMessage);
-
-        data.locus = locus;
-      }
-
-      if (
-        data.locus &&
-        data.locus.fullState &&
-        data.locus.fullState.state === LOCUS.STATE.INACTIVE
-      ) {
-        // just ignore the event as its already ended and not active
-        LoggerProxy.logger.warn(
-          'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
-        );
-
-        return;
-      }
-
-      // When its wireless share or guest and user leaves the meeting we dont have to keep the meeting object
-      // Any future events will be neglected
-
-      if (
-        data.locus &&
-        data.locus.self &&
-        data.locus.self.state === _LEFT_ &&
-        data.locus.self.removed === true
-      ) {
-        // just ignore the event as its already ended and not active
-        LoggerProxy.logger.warn(
-          'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
-        );
-
-        return;
-      }
-
-      this.create(data.locus, DESTINATION_TYPE.LOCUS_ID, useRandomDelayForInfo)
-        .then(async (newMeeting) => {
-          meeting = newMeeting;
-
-          try {
-            // It's a new meeting so initialize the locus data
-            await meeting.locusInfo.initialSetup({
-              trigger:
-                data.eventType === LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS
-                  ? 'get-loci-response'
-                  : 'locus-message',
-              locus: data.locus,
-              hashTreeMessage: data.stateElementsMessage,
-            });
-          } catch (error) {
-            LoggerProxy.logger.warn(
-              `Meetings:index#handleLocusEvent --> Error initializing locus data: ${error.message}`
-            );
-            // @ts-ignore
-            this.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
-          }
-
-          this.checkHandleBreakoutLocus(data.locus);
-        })
-        .catch((e) => {
-          LoggerProxy.logger.error(e);
-        })
-        .finally(() => {
-          // There will be cases where locus event comes in gets created and deleted because its a 1:1 and meeting gets deleted
-          // because the other user left so before sending 'added' event make sure it exists in the collection
-
-          if (this.getMeetingByType(_ID_, meeting.id)) {
-            // @ts-ignore
-            this.webex.internal.newMetrics.submitClientEvent({
-              name: 'client.call.remote-started',
-              payload: {
-                trigger: 'mercury-event',
-              },
-              options: {
-                meetingId: meeting.id,
-              },
-            });
-            Trigger.trigger(
-              this,
+        prepareInitialLocus({
+          message: data.stateElementsMessage,
+          // @ts-ignore
+          webexRequest: this.webex.request.bind(this.webex),
+          // @ts-ignore
+          excludedDataSets: this.webex.config.meetings.locus?.excludedDataSets,
+          onLocusReady: (locus) => {
+            this.createMeetingForNewLocusEvent(
               {
-                file: 'meetings',
-                function: 'handleLocusEvent',
+                ...data,
+                locus,
               },
-              EVENT_TRIGGERS.MEETING_ADDED,
-              {
-                meeting,
-                type: meeting.type === _MEETING_ ? _JOIN_ : _INCOMING_,
-              }
+              useRandomDelayForInfo
             );
-          } else {
-            // Meeting got added but was not found in the collection. It might have got destroyed
-            LoggerProxy.logger.warn(
-              'Meetings:index#handleLocusEvent --> Created and destroyed meeting object before sending an event'
-            );
-          }
+          },
         });
+      } else {
+        this.createMeetingForNewLocusEvent(data, useRandomDelayForInfo);
+      }
     } else {
       meeting.locusInfo.parse(meeting, data);
     }
+  }
+
+  /**
+   * creates a meeting object for a new locus event and adds it to the collection, then triggers meeting added event
+   * @param {Object} data a locus event
+   * @param {Boolean} useRandomDelayForInfo whether a random delay should be added to fetching meeting info
+   * @returns {undefined}
+   * @private
+   * @memberof Meetings
+   *  */
+  private createMeetingForNewLocusEvent(data: LocusEvent, useRandomDelayForInfo: boolean): void {
+    let meeting: any;
+
+    if (data.locus && data.locus.fullState && data.locus.fullState.state === LOCUS.STATE.INACTIVE) {
+      // just ignore the event as its already ended and not active
+      LoggerProxy.logger.warn(
+        'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
+      );
+
+      return;
+    }
+
+    // When its wireless share or guest and user leaves the meeting we dont have to keep the meeting object
+    // Any future events will be neglected
+    if (
+      data.locus &&
+      data.locus.self &&
+      data.locus.self.state === _LEFT_ &&
+      data.locus.self.removed === true
+    ) {
+      // just ignore the event as its already ended and not active
+      LoggerProxy.logger.warn(
+        'Meetings:index#handleLocusEvent --> Locus event received for meeting, after it was ended.'
+      );
+
+      return;
+    }
+
+    this.create(data.locus, DESTINATION_TYPE.LOCUS_ID, useRandomDelayForInfo)
+      .then(async (newMeeting: any) => {
+        meeting = newMeeting;
+
+        try {
+          // It's a new meeting so initialize the locus data
+          await meeting.locusInfo.initialSetup({
+            trigger:
+              data.eventType === LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS
+                ? 'get-loci-response'
+                : 'locus-message',
+            locus: data.locus,
+            hashTreeMessage: data.stateElementsMessage,
+          });
+        } catch (error: any) {
+          LoggerProxy.logger.warn(
+            `Meetings:index#handleLocusEvent --> Error initializing locus data: ${error.message}`
+          );
+          // @ts-ignore
+          this.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
+        }
+
+        this.checkHandleBreakoutLocus(data.locus);
+      })
+      .catch((e: any) => {
+        LoggerProxy.logger.error(e);
+      })
+      .finally(() => {
+        // There will be cases where locus event comes in gets created and deleted because its a 1:1 and meeting gets deleted
+        // because the other user left so before sending 'added' event make sure it exists in the collection
+        if (this.getMeetingByType(_ID_, meeting.id)) {
+          // @ts-ignore
+          this.webex.internal.newMetrics.submitClientEvent({
+            name: 'client.call.remote-started',
+            payload: {
+              trigger: 'mercury-event',
+            },
+            options: {
+              meetingId: meeting.id,
+            },
+          });
+          Trigger.trigger(
+            this,
+            {
+              file: 'meetings',
+              function: 'handleLocusEvent',
+            },
+            EVENT_TRIGGERS.MEETING_ADDED,
+            {
+              meeting,
+              type: meeting.type === _MEETING_ ? _JOIN_ : _INCOMING_,
+            }
+          );
+        } else {
+          // Meeting got added but was not found in the collection. It might have got destroyed
+          LoggerProxy.logger.warn(
+            'Meetings:index#handleLocusEvent --> Created and destroyed meeting object before sending an event'
+          );
+        }
+      });
   }
 
   /**
