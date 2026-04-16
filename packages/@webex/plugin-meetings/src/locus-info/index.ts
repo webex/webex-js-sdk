@@ -101,9 +101,9 @@ export type HashTreeParserEntry = {
  * @param {string} deviceUrl - The URL of the specified device
  * @returns {any} The replace information if available, otherwise undefined
  */
-function getReplaceInfoFromSelf(self: any, deviceUrl?: string): ReplacesInfo | undefined {
+function getReplaceInfoFromSelf(self: any, deviceUrl: string): ReplacesInfo | undefined {
   if (self) {
-    const device = MeetingsUtil.getThisDevice({self}, deviceUrl || self?.deviceUrl);
+    const device = MeetingsUtil.getThisDevice({self}, deviceUrl);
 
     if (device?.replaces?.length > 0) {
       return device.replaces[0];
