@@ -3680,6 +3680,15 @@ describe('internal-plugin-metrics', () => {
         assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'Webcast');
       });
 
+      it('returns subServicetype as LargeScaleWebinar when meeting is converged Webinar and enable large scale', () => {
+        fakeMeeting.meetingInfo = {
+          enableEvent: true,
+          enableConvergedArchitecture: true,
+          enableConvergedWebinarLargeScale: true,
+        };
+        assert.deepEqual(cd.getSubServiceType(fakeMeeting), 'LargeScaleWebinar');
+      });
+
       it('returns subServicetype as undefined when correct parameters are not found', () => {
         fakeMeeting.meetingInfo = {};
         assert.deepEqual(cd.getSubServiceType(fakeMeeting), undefined);
