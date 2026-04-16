@@ -56,15 +56,14 @@ export function sdkInitTests() {
       // Without explicit region, SDK must auto-discover via ds.ciscospark.com
       expect(regionDiscoveryRequests.length).toBeGreaterThanOrEqual(1);
 
-      // Verify discovery response has distinct primary and backup server regions.
-      // Auto-discovered region depends on the runner's location, so we only check
-      // that both regions are present and differ from each other.
+      // Verify discovery response includes primary and backup with regions and URIs.
+      // Auto-discovered region depends on the runner's location; primary and backup
+      // regions are not guaranteed to differ.
       const discoveryResponse = await discoveryResponsePromise;
       expect(discoveryResponse.primary?.uris?.length).toBeGreaterThan(0);
       expect(discoveryResponse.backup?.uris?.length).toBeGreaterThan(0);
       expect(discoveryResponse.primary.region).toBeTruthy();
       expect(discoveryResponse.backup.region).toBeTruthy();
-      expect(discoveryResponse.primary.region).not.toBe(discoveryResponse.backup.region);
 
       // Primary and backup should be different server groups
       expect(discoveryResponse.primary.uris[0]).not.toBe(discoveryResponse.backup.uris[0]);
