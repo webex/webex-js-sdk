@@ -13,6 +13,11 @@ type DiscoveryLocation = {
   country: string;
 };
 
+export type MobiusDiscoveryResponse = {
+  primary: {region: string; uris: string[]};
+  backup: {region: string; uris: string[]};
+};
+
 /**
  * Navigate to the calling sample app
  */
@@ -83,9 +88,26 @@ export const setEnvironmentToInt = async (page: Page): Promise<void> => {
 };
 
 /**
- * Set service indicator before initialization (calling, contactcenter, guestcalling)
+ * Verify the service indicator dropdown is visible and contains all expected options.
+ */
+export const verifyServiceIndicatorOptions = async (page: Page): Promise<void> => {
+  const dropdown = page.locator(CALLING_SELECTORS.SERVICE_INDICATOR);
+
+  await expect(dropdown).toBeVisible({timeout: AWAIT_TIMEOUT});
+
+  const optionValues = await dropdown
+    .locator('option:not([disabled])')
+    .evaluateAll((opts) => (opts as HTMLOptionElement[]).map((o) => o.value));
+
+  expect(optionValues).toEqual(['calling', 'contactcenter', 'guestcalling']);
+};
+
+/**
+ * Set service indicator before initialization (calling, contactcenter, guestcalling).
+ * Verifies the dropdown is present with the expected options before selecting.
  */
 export const setServiceIndicator = async (page: Page, service: ServiceIndicator): Promise<void> => {
+  await verifyServiceIndicatorOptions(page);
   await page
     .locator(CALLING_SELECTORS.SERVICE_INDICATOR)
     .selectOption(service, {timeout: AWAIT_TIMEOUT});
@@ -136,6 +158,19 @@ export const waitForMobiusDiscoveryRequest = (
       {timeout: SDK_INIT_TIMEOUT}
     )
     .then((request) => request.url());
+
+/**
+ * Wait for the Mobius discovery response and return its parsed body.
+ * Must be called before initializeCallingSDK triggers the request.
+ */
+export const captureMobiusDiscoveryResponse = (page: Page): Promise<MobiusDiscoveryResponse> =>
+  page
+    .waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' && response.url().includes('/calling/web/'),
+      {timeout: SDK_INIT_TIMEOUT}
+    )
+    .then((response) => response.json() as Promise<MobiusDiscoveryResponse>);
 
 /**
  * Verify the client stored discovered Mobius servers after initialization.
