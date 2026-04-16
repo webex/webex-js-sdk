@@ -138,7 +138,6 @@ function findLocusUrlInAnyHashTreeParser(
  *
  * @param {HashTreeMessage} message - The hash tree message to find the meeting for
  * @param {MeetingCollection} meetingCollection - The collection of meetings to search
- * @param {string} deviceUrl - The URL of the user's device
  * @returns {any} The meeting if found, otherwise undefined
  */
 export function findMeetingForHashTreeMessage(
