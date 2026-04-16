@@ -240,6 +240,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.HOLD_INITIATED]: {
             target: TaskState.HOLD_INITIATING,
           },
+          // Remote hold from another login session (multi-login)
+          [TaskEvent.HOLD_SUCCESS]: {
+            target: TaskState.HELD,
+            actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
+          },
           // Click of the consult button
           [TaskEvent.CONSULT]: {
             target: TaskState.CONSULT_INITIATING,
@@ -313,6 +318,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // Click of the unhold button
           [TaskEvent.UNHOLD_INITIATED]: {
             target: TaskState.RESUME_INITIATING,
+          },
+          // Remote resume from another login session (multi-login)
+          [TaskEvent.UNHOLD_SUCCESS]: {
+            target: TaskState.CONNECTED,
+            actions: ['updateTaskData', 'setHoldState', 'emitTaskResume'],
           },
           // Click of the consult button
           [TaskEvent.CONSULT]: {

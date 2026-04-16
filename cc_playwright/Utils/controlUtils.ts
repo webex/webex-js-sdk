@@ -1,4 +1,7 @@
 /* eslint-disable no-await-in-loop, no-plusplus, no-continue */
+// Disabled no-await-in-loop: file contains polling utilities requiring sequential awaits
+// Disabled no-plusplus: standard loop incrementing is clearer than alternatives
+// Disabled no-continue: continue statements improve readability in these control flow scenarios
 import {Page} from '@playwright/test';
 import {AWAIT_TIMEOUT} from '../constants';
 
