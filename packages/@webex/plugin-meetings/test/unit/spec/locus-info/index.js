@@ -2024,7 +2024,7 @@ describe('plugin-meetings', () => {
             function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          {muted: true, unmuteAllowed: true}
+          {muted: true, unmuteAllowed: true, modifiedBy: null}
         );
 
         // but sometimes "previous self" is defined, but without controls.audio.muted, so we test this here:
@@ -2039,7 +2039,7 @@ describe('plugin-meetings', () => {
             function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          {muted: true, unmuteAllowed: true}
+          {muted: true, unmuteAllowed: true, modifiedBy: null}
         );
       });
 
@@ -2098,7 +2098,7 @@ describe('plugin-meetings', () => {
             function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          {muted: true, unmuteAllowed: true}
+          {muted: true, unmuteAllowed: true, modifiedBy: null}
         );
       });
 
@@ -2237,7 +2237,7 @@ describe('plugin-meetings', () => {
             function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          {muted: true, unmuteAllowed: false}
+          {muted: true, unmuteAllowed: false, modifiedBy: null}
         );
 
         // now change only disallowUnmute
@@ -2255,7 +2255,28 @@ describe('plugin-meetings', () => {
             function: 'updateSelf',
           },
           LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
-          {muted: true, unmuteAllowed: true}
+          {muted: true, unmuteAllowed: true, modifiedBy: null}
+        );
+      });
+
+      it('should include modifiedBy in payload when muted by host', () => {
+        locusInfo.webex.internal.device.url = self.deviceUrl;
+        locusInfo.updateSelf(self);
+        const newSelf = cloneDeep(self);
+        newSelf.controls.audio.muted = true;
+        newSelf.controls.audio.meta = {modifiedBy: 'host-uuid-123'};
+
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateSelf(newSelf);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateSelf',
+          },
+          LOCUSINFO.EVENTS.SELF_REMOTE_MUTE_STATUS_UPDATED,
+          {muted: true, unmuteAllowed: true, modifiedBy: 'host-uuid-123'}
         );
       });
 

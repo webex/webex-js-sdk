@@ -33,3 +33,24 @@ export const unregisterLine = async (page: Page): Promise<void> => {
     }
   );
 };
+
+export const isLineRegistered = (page: Page): Promise<boolean> =>
+  page.evaluate(() =>
+    (
+      Object.values((window as any).callingClient.getLines())[0] as any
+    ).registration.isDeviceRegistered()
+  );
+
+export const getActiveMobiusUrl = (page: Page): Promise<string> =>
+  page.evaluate(() =>
+    (
+      Object.values((window as any).callingClient.getLines())[0] as any
+    ).registration.getActiveMobiusUrl()
+  );
+
+export const getDeviceInfo = (page: Page) =>
+  page.evaluate(() => {
+    const ln = Object.values((window as any).callingClient.getLines())[0] as any;
+
+    return JSON.parse(JSON.stringify(ln.registration.getDeviceInfo()));
+  });

@@ -1,5 +1,6 @@
-import {DISPLAY_HINTS} from '../constants';
+import {CONTROLS, DISPLAY_HINTS, HTTP_VERBS} from '../constants';
 import {Control} from './enums';
+import {AUDIO_CONTROL_BODY_KEYS} from './constants';
 import {
   ControlConfig,
   AudioProperties,
@@ -399,6 +400,85 @@ class Utils {
     }
 
     return determinant;
+  }
+
+  /**
+   * Check if all body keys represent audio controls.
+   *
+   * @param {Record<string, any>} body - The request body to inspect.
+   * @returns {boolean} - True if every key in the body is an audio control key.
+   */
+  public static isAudioControl(body: Record<string, any>): boolean {
+    return Object.keys(body).every((key) => AUDIO_CONTROL_BODY_KEYS.has(key));
+  }
+
+  /**
+   * Check if the current locus URL differs from the main locus URL,
+   * indicating a breakout session.
+   *
+   * @param {string} locusUrl - The current locus URL.
+   * @param {string} [mainLocusUrl] - The main locus URL.
+   * @returns {boolean} - True if in a breakout session.
+   */
+  public static isBreakoutLocusUrl(locusUrl: string, mainLocusUrl?: string): boolean {
+    return Boolean(mainLocusUrl) && mainLocusUrl !== locusUrl;
+  }
+
+  /**
+   * Resolve the target URL and extra body fields for a controls request,
+   * handling breakout session routing. Note: This is a pure computation function.
+   * It does not validate that locusUrl is
+   * defined. Callers must guard against falsy locusUrl before
+   * invoking this function.
+   * Mixed audio and non-audio keys in a single body (e.g., {audio: {...},
+   * raiseHand: {...}}) are treated as non-audio and routed to mainLocusUrl with
+   * authorizingLocusUrl. This means the audio portion would go through unsupported
+   * cross-locus authorization. Callers must not produce mixed payloads — update()
+   * sends each control scope as a separate request, and setControls() only handles
+   * audio-related settings.
+   *
+   * The authorizingLocusUrl mechanism on PATCH /loci/{lid}/controls is not supported
+   * for audio control updates (mute/unmute, muteOnEntry, disallowUnmute).
+   * Audio controls are not wired into the cross-locus GraphQL authorization path that
+   * other control types (raiseHand, viewParticipantList, admit, reactions, etc.) use.
+   * Specifically, the GraphQL authorization layer does not recognize audio as a control
+   * type eligible for remote locus authorization.
+   * This means authorizingLocusUrl is effectively ignored for audio controls and the
+   * server evaluates the request against the target locus only, where the host may not
+   * be currently joined.
+   * Audio control updates must be sent directly to the locus the user is currently in.
+   * If the host is in a breakout and wants to mute participants in that breakout, the
+   * request should target the breakout locus URL directly, not the main session locus
+   * with authorizingLocusUrl.
+   * Meeting-wide audio control actions (e.g., muting panelists across all breakouts
+   * from a single request) are not currently supported through this mechanism.
+   *
+   * @param {object} options
+   * @param {Record<string, any>} options.body - The request body.
+   * @param {string} options.locusUrl - The current locus URL. Must be defined (callers must validate).
+   * @param {string} [options.mainLocusUrl] - The main locus URL.
+   * @returns {{ uri: string, body: Record<string, any>, method: string }}
+   */
+  public static getControlsRequestParams(options: {
+    body: Record<string, any>;
+    locusUrl: string;
+    mainLocusUrl?: string;
+  }): {
+    uri: string;
+    body: Record<string, any>;
+    method: string;
+  } {
+    const {body, locusUrl, mainLocusUrl} = options;
+
+    const isAudio = Utils.isAudioControl(body);
+    const inBreakout = Utils.isBreakoutLocusUrl(locusUrl, mainLocusUrl);
+    const targetUrl = inBreakout && !isAudio ? mainLocusUrl : locusUrl;
+
+    return {
+      uri: `${targetUrl}/${CONTROLS}`,
+      body: inBreakout && !isAudio ? {...body, authorizingLocusUrl: locusUrl} : body,
+      method: HTTP_VERBS.PATCH,
+    };
   }
 }
 
