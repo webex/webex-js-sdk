@@ -30,10 +30,6 @@ import {WrapupData} from '../../config/types';
 import {getConsultMediaResourceId, getIsConferenceInProgress} from '../TaskUtils';
 
 export default class Voice extends Task implements IVoice {
-  // Cached consult destination — backend hold/unhold event payloads can clear
-  private consultDestAgentId: string | null = null;
-  private consultDestType: string | null = null;
-
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
@@ -57,6 +53,10 @@ export default class Voice extends Task implements IVoice {
       wrapupData,
       agentId
     );
+  }
+
+  private getStateMachineSnapshot() {
+    return this.stateMachineService?.getSnapshot?.();
   }
 
   /**
@@ -120,7 +120,7 @@ export default class Voice extends Task implements IVoice {
     Determine if the task is being held or resumed based on the media resource state
     If the media resource is not found, default to resuming the task
     */
-    const snapshot = this.stateMachineService?.getSnapshot?.();
+    const snapshot = this.getStateMachineSnapshot();
     const snapshotState = snapshot?.value as TaskState | undefined;
     const mainInteractionId = this.data.interaction?.mainInteractionId || this.data.interactionId;
     const mainMediaResource =
@@ -285,7 +285,7 @@ export default class Voice extends Task implements IVoice {
    */
   public async pauseRecording(): Promise<TaskResponse> {
     // Validate recording is active
-    const state = this.stateMachineService?.getSnapshot?.();
+    const state = this.getStateMachineSnapshot();
     if (state) {
       const {recordingControlsAvailable, recordingInProgress} = state.context as {
         recordingControlsAvailable?: boolean;
@@ -359,7 +359,7 @@ export default class Voice extends Task implements IVoice {
     resumeRecordingPayload?: ResumeRecordingPayload
   ): Promise<TaskResponse> {
     // Validate recording is paused
-    const state = this.stateMachineService?.getSnapshot?.();
+    const state = this.getStateMachineSnapshot();
     if (state) {
       const {recordingControlsAvailable, recordingInProgress} = state.context as {
         recordingControlsAvailable?: boolean;
@@ -440,7 +440,7 @@ export default class Voice extends Task implements IVoice {
    * */
   public async consult(consultPayload?: ConsultPayload): Promise<TaskResponse> {
     // Validate consult is allowed
-    const state = this.stateMachineService?.getSnapshot?.();
+    const state = this.getStateMachineSnapshot();
     const canConsult =
       state &&
       (state.matches(TaskState.CONNECTED) ||
@@ -457,10 +457,6 @@ export default class Voice extends Task implements IVoice {
       });
       throw error;
     }
-
-    // Cache consult destination — hold/unhold events during switchCall can clear this.data.destAgentId
-    this.consultDestAgentId = consultPayload.to;
-    this.consultDestType = consultPayload.destinationType;
 
     // Send initiating event to transition to CONSULT_INITIATING state
     if (this.stateMachineService) {
@@ -642,7 +638,8 @@ export default class Voice extends Task implements IVoice {
         };
 
         if (normalizedDestinationType === CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE) {
-          const destAgent = this.consultDestAgentId || this.data.destAgentId;
+          const consultContext = this.getStateMachineSnapshot()?.context;
+          const destAgent = consultContext?.consultDestinationAgentId || this.data.destAgentId;
           if (!destAgent) {
             throw new Error('No agent has accepted this queue consult yet');
           }
@@ -716,8 +713,14 @@ export default class Voice extends Task implements IVoice {
     const consultationData: consultConferencePayloadData = {
       agentId: this.data.agentId,
       destinationType:
-        this.consultDestType || this.data.destinationType || derivedDestType || 'agent',
-      destAgentId: this.consultDestAgentId || this.data.destAgentId || derivedDestAgentId,
+        this.getStateMachineSnapshot()?.context?.consultDestinationType ||
+        this.data.destinationType ||
+        derivedDestType ||
+        'agent',
+      destAgentId:
+        this.getStateMachineSnapshot()?.context?.consultDestinationAgentId ||
+        this.data.destAgentId ||
+        derivedDestAgentId,
     };
 
     // Send state machine event to transition to CONF_INITIATING
@@ -832,7 +835,7 @@ export default class Voice extends Task implements IVoice {
     // This handles cases where:
     // 1. State machine is in CONFERENCING state
     // 2. State machine is in CONNECTED but conference is active (e.g., ownership transferred)
-    const state = this.stateMachineService?.getSnapshot?.();
+    const state = this.getStateMachineSnapshot();
     const isConferencingState = state?.matches(TaskState.CONFERENCING);
 
     const isConferenceInProgressFromData = this.data ? getIsConferenceInProgress(this.data) : false;
@@ -950,7 +953,7 @@ export default class Voice extends Task implements IVoice {
     // Validate we're in conference or consulting state
     // CONSULTING is allowed because agent can transfer conference while consulting
     // (transfers ownership to the consulted agent)
-    const state = this.stateMachineService?.getSnapshot?.();
+    const state = this.getStateMachineSnapshot();
     const isValidState =
       state && (state.matches(TaskState.CONFERENCING) || state.matches(TaskState.CONSULTING));
     if (!isValidState) {
@@ -1064,7 +1067,7 @@ export default class Voice extends Task implements IVoice {
    */
   public async switchCall(): Promise<TaskResponse> {
     // Validate we're in CONSULTING state
-    const state = this.stateMachineService?.getSnapshot?.();
+    const state = this.getStateMachineSnapshot();
     if (!state?.matches(TaskState.CONSULTING)) {
       const currentState = state?.value as TaskState;
       const error = new Error(`Cannot switch call in ${currentState} state`);

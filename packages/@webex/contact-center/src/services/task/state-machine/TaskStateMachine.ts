@@ -130,6 +130,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: [
               'updateTaskData',
               'setConsultInitiator',
+              'setConsultDestination',
               'setConsultFromConference',
               'setConsultAgentJoined',
               'emitTaskConsultAccepted',
@@ -226,6 +227,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: [
               'updateTaskData',
               'setConsultInitiator',
+              'setConsultDestination',
               'setConsultAgentJoined',
               'emitTaskConsultAccepted',
               'emitTaskConsulting',
@@ -423,7 +425,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
         on: {
           // AgentConsulting updates consulted agent arrival
           [TaskEvent.CONSULTING_ACTIVE]: {
-            actions: ['updateTaskData', 'setConsultAgentJoined', 'emitTaskConsulting'],
+            actions: [
+              'updateTaskData',
+              'setConsultAgentJoined',
+              'setConsultDestination',
+              'emitTaskConsulting',
+            ],
           },
 
           // AgentConsultEnded

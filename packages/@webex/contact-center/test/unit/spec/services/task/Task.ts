@@ -57,7 +57,7 @@ jest.mock('../../../../../src/logger-proxy', () => ({
 jest.mock('../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
   default: {
-    getInstance: jest.fn().mockReturnValue({ uploadLogs: jest.fn() }),
+    getInstance: jest.fn().mockReturnValue({uploadLogs: jest.fn()}),
   },
 }));
 
@@ -133,11 +133,16 @@ describe('Task (base class)', () => {
 
     logSpy.mockClear();
 
-    transitionTask.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData: statefulData});
+    transitionTask.stateMachineService?.send({
+      type: TaskEvent.TASK_INCOMING,
+      taskData: statefulData,
+    });
     transitionTask.stateMachineService?.send({type: TaskEvent.ASSIGN, taskData: statefulData});
 
     const transitionMessages = logSpy.mock.calls
-      .filter(([msg]) => typeof msg === 'string' && (msg as string).startsWith('State machine transition'))
+      .filter(
+        ([msg]) => typeof msg === 'string' && (msg as string).startsWith('State machine transition')
+      )
       .map(([msg]) => msg);
 
     expect(transitionMessages).toEqual([
@@ -295,7 +300,6 @@ describe('Task (base class)', () => {
 
     expect(cleanupSpy).toHaveBeenCalledWith(webrtcTask, {removeFromCollection: true});
   });
-
 });
 
 describe('Task common methods', () => {
@@ -372,9 +376,7 @@ describe('Task failure scenarios', () => {
     const err = new Error('Error while performing transfer');
     contact.blindTransfer.mockRejectedValue(err);
 
-    await expect(task.transfer(payload))
-      .rejects
-      .toThrow('Error while performing transfer');
+    await expect(task.transfer(payload)).rejects.toThrow('Error while performing transfer');
   });
 
   it('transfer rejects when vteamTransfer throws', async () => {
@@ -382,9 +384,7 @@ describe('Task failure scenarios', () => {
     const err = new Error('Error while performing transfer');
     contact.vteamTransfer.mockRejectedValue(err);
 
-    await expect(task.transfer(payload))
-      .rejects
-      .toThrow('Error while performing transfer');
+    await expect(task.transfer(payload)).rejects.toThrow('Error while performing transfer');
   });
 
   it('end rejects when contact.end throws', async () => {
@@ -395,11 +395,15 @@ describe('Task failure scenarios', () => {
   });
 
   it('wrapup throws when auxCodeId is missing', async () => {
-    await expect(task.wrapup({auxCodeId: '', wrapUpReason: 'reason1'} as any)).rejects.toThrow('Error while performing wrapup');
+    await expect(task.wrapup({auxCodeId: '', wrapUpReason: 'reason1'} as any)).rejects.toThrow(
+      'Error while performing wrapup'
+    );
   });
 
   it('wrapup throws when wrapUpReason is missing', async () => {
-    await expect(task.wrapup({auxCodeId: 'code1', wrapUpReason: ''} as any)).rejects.toThrow('Error while performing wrapup');
+    await expect(task.wrapup({auxCodeId: 'code1', wrapUpReason: ''} as any)).rejects.toThrow(
+      'Error while performing wrapup'
+    );
   });
 
   it('wrapup rejects when contact.wrapup throws', async () => {

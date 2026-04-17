@@ -54,6 +54,7 @@ function createVoiceContext(overrides: Partial<TaskContext> = {}): TaskContext {
     consultFromConference: false,
     transferConferenceRequested: false,
     consultDestinationType: null,
+    consultDestinationAgentId: null,
     consultDestinationAgentJoined: true,
     consultCallHeld: false,
     recordingControlsAvailable: true,

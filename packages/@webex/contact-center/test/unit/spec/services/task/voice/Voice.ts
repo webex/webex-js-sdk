@@ -254,6 +254,41 @@ describe('Voice Task', () => {
         },
       });
     });
+
+    it('uses preserved consult destination from state context for queue consult transfer', async () => {
+      const consultTransferMock = jest.fn().mockResolvedValue('consultedQ');
+      const dataWithState = createBaseData({
+        destAgentId: undefined,
+        destinationType: undefined,
+        interaction: {state: 'consulting'} as any,
+      });
+      const voice = new Voice(
+        {...dummyContact, consultTransfer: consultTransferMock},
+        dataWithState as any,
+        {isEndTaskEnabled: true, isEndConsultEnabled: true}
+      );
+
+      primeConnectedState(voice, dataWithState);
+      voice.stateMachineService?.send({
+        type: TaskEvent.CONSULT,
+        destination: 'agent-preserved',
+        destAgentId: 'agent-preserved',
+        destinationType: 'agent' as any,
+      });
+
+      await voice.transfer({
+        to: 'queueX',
+        destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE,
+      });
+
+      expect(consultTransferMock).toHaveBeenCalledWith({
+        interactionId: 'int1',
+        data: {
+          to: 'agent-preserved',
+          destinationType: CONSULT_TRANSFER_DESTINATION_TYPE.AGENT,
+        },
+      });
+    });
   });
 
   describe('endConsult()', () => {
@@ -485,20 +520,33 @@ describe('Voice Task', () => {
 
       const voice = new Voice(dummyContact, taskData, {});
       primeConnectedState(voice, taskData);
-      await voice.consult({to: 'agent2', destinationType: 'agent'} as any);
+      voice.stateMachineService?.send({
+        type: TaskEvent.CONSULT,
+        destination: 'agent2',
+        destAgentId: 'agent2',
+        destinationType: 'agent' as any,
+      });
+      voice.updateTaskData(
+        createBaseData({
+          agentId: 'agent1',
+          destAgentId: undefined,
+          destinationType: undefined,
+          interaction: {state: 'consulting'} as any,
+        }) as any
+      );
 
       await voice.consultConference();
 
       expect(dummyContact.consultConference).toHaveBeenCalledWith({
         interactionId: 'int1',
-        data: expect.objectContaining({
+        data: jasmine.objectContaining({
           to: 'agent2',
           destinationType: 'agent',
         }),
       });
     });
 
-    it('falls back to derived destination when cached and task destination are unavailable', async () => {
+    it('falls back to derived destination when context and task destination are unavailable', async () => {
       jest.spyOn(Utils, 'calculateDestAgentId').mockReturnValueOnce('derivedAgent');
       jest.spyOn(Utils, 'calculateDestType').mockReturnValueOnce('agent');
 
@@ -521,11 +569,10 @@ describe('Voice Task', () => {
       voice.stateMachineService?.send({
         type: TaskEvent.CONSULT,
         destination: '',
+        destAgentId: undefined,
         destinationType: 'agent' as any,
       });
       voice.stateMachineService?.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
-      (voice as any).consultDestAgentId = null;
-      (voice as any).consultDestType = null;
 
       await voice.consultConference();
 
