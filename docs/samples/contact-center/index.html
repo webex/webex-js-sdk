@@ -44,6 +44,18 @@
       </h2>
 
       <div class="section-content">
+        <!-- SDK Toggles -->
+        <fieldset style="margin-bottom: 20px;">
+          <legend>SDK Toggles</legend>
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="multiLoginFlag" onchange="toggleMultiLogin()">
+            Enable Multi Login
+          </label>
+          <p class="note" style="margin-top: 5px;">
+            NOTE: Toggle before initializing SDK. Persisted across page reloads.
+          </p>
+        </fieldset>
+
         <div>
           <select name="auth-type" id="auth-type" onchange="changeAuthType()">
             <option value="accessToken">Access Token</option>

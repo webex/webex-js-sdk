@@ -185,6 +185,7 @@ Does this match your intent? (Yes / No / Adjust)
 **Method**: `getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse>`
 **Target file**: cc.ts
 **Purpose**: Get list of available agents for consult/transfer
+**Types to create**: Define `BuddyAgents` (request params) and `BuddyAgentsResponse` (response) in the appropriate types file (`src/types.ts` for public types, or `src/services/[service]/types.ts` for internal types). Export public types from `src/types.ts`.
 
 ### Parameters:
 | Name | Type | Required | Description |

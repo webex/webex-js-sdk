@@ -6,24 +6,31 @@
 
 ## Method Invocation Patterns
 
-There are two common patterns for where methods are implemented:
+There are two common patterns for where methods are implemented. The public method lives on whichever object owns the feature's scope (currently `cc` for SDK-level operations, `task` for per-interaction operations, or a public service accessor for domain-specific queries). New public objects may be introduced in the future.
 
-1. **Public wrapper + internal service call**: The public method is defined on `cc` (in `cc.ts`) or `task` (in `Task.ts`), but the actual implementation lives in a service module. The public method calls the service internally.
+1. **Public wrapper + internal service call**: The public method is defined on the owning object, but the actual implementation lives in a service module. The public method delegates internally.
    ```typescript
-   // cc.ts — public method delegates to service
+   // Example A: cc.ts — SDK-level method delegates to agent service
    public async getBuddyAgents(data: BuddyAgents): Promise<BuddyAgentsResponse> {
      const resp = await this.services.agent.buddyAgents({
        data: {agentProfileId: this.agentConfig.agentProfileID, ...data},
      });
      return resp;
    }
+
+   // Example B: Task.ts — per-interaction method delegates to contact service
+   public async hold(): Promise<TaskResponse> {
+     return this.contact.hold({...});
+   }
    ```
 
-2. **Direct service access**: Sometimes consumers call the service method directly via the `cc` object.
+2. **Direct service access**: Sometimes consumers call a service method directly via a public service accessor on `cc`.
    ```typescript
-   // Consumer code calling service directly
-   const queues = await cc.services.queue.getQueues();
+   // Consumer code calling service directly via public accessor
+   const queues = await cc.queue.getQueues();
+   const entries = await cc.addressBook.getEntries();
    ```
+   > **Note:** Use `cc.<serviceName>` (e.g., `cc.queue`, `cc.addressBook`), NOT `cc.services.<serviceName>`. The `services` object is internal.
 
 Determine which pattern applies based on the requirements gathered in Step 1.
 
@@ -155,7 +162,7 @@ If the method needs to emit events, understand the two-step flow used in the SDK
 
 ### How it works: WebSocket trigger → EventEmitter emit
 
-For methods that go through `aqm-reqs` (agent service methods), the flow is:
+For methods that go through `aqm-reqs` (used by all AQM-integrated services — agent, task, etc., except config service GET methods), the flow is:
 
 1. **cc.ts** public method calls a service method (e.g., `this.services.agent.stationLogin()`)
 2. **aqm-reqs.ts** sends an HTTP request AND registers pending handlers for the expected WebSocket success/fail messages (via `notifSuccess`/`notifFail` bindings)

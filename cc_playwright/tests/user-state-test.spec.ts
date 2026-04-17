@@ -52,6 +52,7 @@ export default function createUserStateTests() {
 
   test.skip('should verify Meeting state theme color', async () => {
     // Sample app doesn't implement widget theme system - theme colors not available
+    // See MIGRATION.md for details
   });
 
   test('should change state to Available and verify timer reset', async () => {
@@ -135,11 +136,8 @@ export default function createUserStateTests() {
   });
 
   test.skip('should test multi-session synchronization', async () => {
-    // SDK does not support multi-session (concurrent logins with same agent credentials).
-    // Backend detects and shows warning: "Multiple Agent Login Session Detected!"
-    // State changes do not reliably synchronize between sessions. This test may pass incorrectly
-    // because both sessions independently default to MEETING state, not because synchronization works.
-    // Multi-session support is not a feature of the Contact Center SDK.
+    // Multi-session support removed - sample app doesn't support widget-based multi-session
+    // Additionally, test creates context without ignoreHTTPSErrors: true, causing SSL failures
   });
 
   test.skip('should test idle state transition and dual timer', async () => {

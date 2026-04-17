@@ -1,4 +1,6 @@
-/* eslint-disable no-await-in-loop, no-plusplus, no-continue */
+/* eslint-disable no-await-in-loop, no-plusplus */
+// Disabled no-await-in-loop: file contains polling utilities requiring sequential awaits
+// Disabled no-plusplus: standard loop incrementing is clearer than alternatives
 import {expect, Page} from '@playwright/test';
 import {WrapupReason, AWAIT_TIMEOUT, UI_SETTLE_TIMEOUT, WRAPUP_TIMEOUT} from '../constants';
 

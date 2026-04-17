@@ -97,7 +97,18 @@ const liveTranscriptTabElm = document.querySelector('#transcript-tab-live');
 const ivrTranscriptTabElm = document.querySelector('#transcript-tab-ivr');
 const liveTranscriptPaneElm = document.querySelector('#transcript-live-pane');
 const ivrTranscriptPaneElm = document.querySelector('#transcript-ivr-pane');
+const multiLoginCheckbox = document.querySelector('#multiLoginFlag');
 deregisterBtn.style.backgroundColor = 'red';
+
+let isMultiLoginEnabled = localStorage.getItem('isMultiLoginEnabled') === 'true';
+if (multiLoginCheckbox) {
+  multiLoginCheckbox.checked = isMultiLoginEnabled;
+}
+
+function toggleMultiLogin() {
+  isMultiLoginEnabled = multiLoginCheckbox.checked;
+  localStorage.setItem('isMultiLoginEnabled', String(isMultiLoginEnabled));
+}
 
 const transcriptEntries = [];
 const MAX_TRANSCRIPT_LINES = 200;
@@ -2021,8 +2032,10 @@ function generateWebexConfig({credentials}) {
       level: 'info',
       bufferLogLevel: 'log',
     },
+    cc: {
+      allowMultiLogin: isMultiLoginEnabled,
+    },
     credentials,
-    // Any other sdk config we need
   };
 }
 

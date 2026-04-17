@@ -312,6 +312,18 @@ import LoggerProxy from '../../logger-proxy';
 // Types and constants from parent's files
 import {ServiceType} from './types';
 import {SOME_CONSTANT} from './constants';
+
+// Example: sub-module class structure (see task/Voice.ts or task/Digital.ts for reference)
+export default class ServiceName {
+  private webex: WebexSDK;
+
+  constructor(webex: WebexSDK) {
+    this.webex = webex;
+  }
+
+  // Methods follow the same patterns as top-level services
+  // but may receive parent service state/context via constructor or method params
+}
 ```
 
 ---
