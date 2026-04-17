@@ -22,6 +22,14 @@ const DEFAULT_MOBIUS_WEBSOCKET_SESSION = 'mobius-websocket-session';
 const TOKEN_REFRESH_INTERVAL_MS = 1 * 60 * 60 * 1000; // 1 hour
 const TEST_MOBIUS_WEBSOCKET_URL = 'wss://mobius.aload-calling1.ciscospark.com/v1/calling/web';
 
+function normalizeMobiusAuthToken(token) {
+  if (typeof token !== 'string') {
+    return token;
+  }
+
+  return token.replace(/^Bearer\s+/i, '');
+}
+
 const MobiusSocket = WebexPlugin.extend({
   namespace: 'MobiusSocket',
   lastError: undefined,
@@ -245,6 +253,56 @@ const MobiusSocket = WebexPlugin.extend({
   },
 
   /**
+   * Sends a websocket request and resolves when the matching response arrives.
+   * @param {Object} payload - The websocket request payload.
+   * @param {string|Object} [sessionIdOrOptions=this.defaultSessionId] - Session ID or request options.
+   * @param {Object} [options={}] - Additional request options.
+   * @returns {Promise<Object>}
+   */
+  sendWssRequest(payload, sessionIdOrOptions = this.defaultSessionId, options = {}) {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return Promise.reject(new Error('`payload` is required'));
+    }
+
+    let sessionId = this.defaultSessionId;
+    let requestOptions = options;
+
+    if (typeof sessionIdOrOptions === 'string') {
+      sessionId = sessionIdOrOptions;
+    } else if (sessionIdOrOptions && typeof sessionIdOrOptions === 'object') {
+      requestOptions = sessionIdOrOptions;
+    }
+
+    const socket = this.getSocket(sessionId);
+
+    if (!socket || !socket.connected) {
+      return Promise.reject(new Error(`Mobius socket is not connected for session ${sessionId}`));
+    }
+
+    return socket.sendRequest(payload, {
+      timeout: requestOptions.timeout,
+      matchesResponse: (response, request) =>
+        response?.type === 'response_event' &&
+        response?.subtype === request.type &&
+        response?.trackingId === request.trackingId,
+      getStatusCode: (response) => response?.statusCode,
+      getStatusMessage: (response) => response?.statusMessage,
+      createError: (response, statusCode, statusMessage) =>
+        this._createWssResponseError(response, statusCode, statusMessage),
+      createTimeoutError: (request) =>
+        this._createWssResponseError(
+          {
+            type: 'response_event',
+            subtype: request.type,
+            trackingId: request.trackingId,
+          },
+          408,
+          'Mobius websocket response timed out'
+        ),
+    });
+  },
+
+  /**
    * Check if the plugin is connected
    * @returns {boolean} True if connected
    */
@@ -433,6 +491,20 @@ const MobiusSocket = WebexPlugin.extend({
     this.localClusterServiceUrls = message.localClusterServiceUrls;
   },
 
+  _createWssResponseError(response, statusCode, statusMessage) {
+    const error = new Error(
+      statusMessage || `Mobius websocket request failed with status ${statusCode || 'unknown'}`
+    );
+
+    error.name = 'MobiusSocketResponseError';
+    error.statusCode = statusCode;
+    error.statusMessage = statusMessage;
+    error.response = response;
+    error.trackingId = response?.trackingId;
+
+    return error;
+  },
+
   _applyOverrides(event) {
     if (!event || !event.headers) {
       return;
@@ -604,8 +676,8 @@ const MobiusSocket = WebexPlugin.extend({
       ([webSocketUrl, token]) => {
         let options = {
           forceCloseDelay: this.config.forceCloseDelay,
-          authResponseTimeout: this.config.authResponseTimeout,
-          token: token.toString(),
+          wssResponseTimeout: this.config.wssResponseTimeout,
+          token: normalizeMobiusAuthToken(token.toString()),
           trackingId: `${this.webex.sessionId}_${Date.now()}`,
           logger: this.logger,
         };
@@ -848,12 +920,18 @@ const MobiusSocket = WebexPlugin.extend({
       return Promise.resolve();
     }
 
-    this._tokenRefreshInFlight = this.webex.credentials
-      .refresh({force: true})
-      .then(() => this.webex.credentials.getUserToken())
+    const tokenPromise = this.webex.credentials.canRefresh
+      ? this.webex.credentials
+          .refresh({force: true})
+          .then(() => this.webex.credentials.getUserToken())
+      : this.webex.credentials.getUserToken();
+
+    this._tokenRefreshInFlight = tokenPromise
       .then((token) => {
-        const refreshedToken =
-          token && typeof token.toString === 'function' ? token.toString() : token;
+        if (!token) {
+          throw new Error('Mobius token refresh did not return a token');
+        }
+        const refreshedToken = normalizeMobiusAuthToken(token.toString());
         const authPayloadPromises = [];
 
         for (const socket of this.sockets.values()) {
