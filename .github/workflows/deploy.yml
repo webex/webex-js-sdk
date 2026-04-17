@@ -380,6 +380,12 @@ jobs:
     needs: [publish-npm, publish-tag]
     runs-on: ubuntu-latest
 
+    outputs:
+      pr_number: ${{ steps.get-pr.outputs.pr_number }}
+      changelog_url: ${{ steps.post-comment.outputs.changelog_url }}
+      version: ${{ steps.post-comment.outputs.version }}
+      primary_version: ${{ steps.post-comment.outputs.primary_version }}
+
     steps:
       - name: Get PR Number
         id: get-pr
@@ -405,6 +411,7 @@ jobs:
             core.setOutput('pr_number', '');
 
       - name: Post Release Comment on PR
+        id: post-comment
         if: steps.get-pr.outputs.pr_number != ''
         uses: actions/github-script@v7
         with:
@@ -419,6 +426,7 @@ jobs:
             }
             const packageEntries = Object.entries(packageVersions);
             const version = packageVersions['webex'] ? `v${packageVersions['webex']}` : '';
+            core.setOutput('version', version);
 
             const owner = context.repo.owner;
             const repo = context.repo.repo;
@@ -431,6 +439,7 @@ jobs:
               const primaryPackage = packageVersions['webex']
                 ? 'webex' : packageEntries[0][0];
               const primaryVersion = packageVersions[primaryPackage];
+              core.setOutput('primary_version', `${primaryPackage}@${primaryVersion}`);
               const stableVersion = primaryVersion.replace(/-next\..*/, '').replace(/-[a-z]*\..*/, '');
 
               const cnameFile = await github.rest.repos.getContent({ owner, repo, path: 'docs/CNAME' });
@@ -441,6 +450,8 @@ jobs:
               }
               changelogUrl.searchParams.set('package', primaryPackage);
               changelogUrl.searchParams.set('version', primaryVersion);
+
+              core.setOutput('changelog_url', changelogUrl.toString());
 
               const releaseLine = version
                 ? `| **Released in:** [\`${version}\`](${repoUrl}/releases/tag/${version}) |`
@@ -483,6 +494,26 @@ jobs:
                 '',
                 `_:robot: This is an automated message. For queries, please contact [support](https://developer.webex.com/support)._`
               ].join('\n');
+
+              const tagVersion = '${{ needs.publish-tag.outputs.version }}'.trim();
+              if (tagVersion) {
+                const primaryVersion = tagVersion.replace(/^v/, '') || tagVersion;
+                const primaryPackage = 'webex';
+                try {
+                  const stableVersion = primaryVersion.replace(/-next\..*/, '').replace(/-[a-z]*\..*/, '');
+                  const cnameFile = await github.rest.repos.getContent({ owner, repo, path: 'docs/CNAME' });
+                  const cname = Buffer.from(cnameFile.data.content, 'base64').toString().trim();
+                  const changelogUrl = new URL(`https://${cname}/changelog/`);
+                  if (stableVersion) changelogUrl.searchParams.set('stable_version', stableVersion);
+                  changelogUrl.searchParams.set('package', primaryPackage);
+                  changelogUrl.searchParams.set('version', primaryVersion);
+                  core.setOutput('changelog_url', changelogUrl.toString());
+                } catch (e) {
+                  core.warning(`Could not build changelog URL: ${e.message}`);
+                }
+                core.setOutput('primary_version', `${primaryPackage}@${primaryVersion}`);
+                core.setOutput('version', tagVersion);
+              }
             }
 
             try {
@@ -523,3 +554,65 @@ jobs:
             } catch (error) {
               core.warning(`Failed to comment on PR #${prNumber}: ${error.message}`);
             }
+
+  notify-webex-space:
+    name: Send Webex Space Notification
+    needs: [publish-tag, publish-npm, comment-on-pr]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Post Webex Space Message
+        env:
+          WEBEX_BOT_TOKEN: ${{ secrets.WEBEX_BOT_TOKEN }}
+          WEBEX_ROOM_ID: ${{ secrets.WEBEX_ROOM_ID }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          VERSION="${{ needs.comment-on-pr.outputs.primary_version }}"
+          PR_NUMBER="${{ needs.comment-on-pr.outputs.pr_number }}"
+          CHANGELOG_URL="${{ needs.comment-on-pr.outputs.changelog_url }}"
+
+          if [ -n "${PR_NUMBER}" ]; then
+            PR_LINK="https://github.com/${{ github.repository }}/pull/${PR_NUMBER}"
+          else
+            PR_LINK=""
+          fi
+
+          PR_TITLE=$(printf '%s' "${COMMIT_MESSAGE}" | head -n 1)
+
+          MESSAGE=""
+          if [ -n "${VERSION}" ]; then
+            MESSAGE=$(printf '%s' "**Version:** ${VERSION}")
+          fi
+          if [ -n "${PR_LINK}" ]; then
+            PR_BLOCK=$(printf '%s' "**PR:** [${PR_TITLE}](${PR_LINK})")
+            if [ -n "${MESSAGE}" ]; then
+              MESSAGE=$(printf '%s\n\n%s' "${MESSAGE}" "${PR_BLOCK}")
+            else
+              MESSAGE="${PR_BLOCK}"
+            fi
+          fi
+          if [ -n "${CHANGELOG_URL}" ]; then
+            CL_BLOCK=$(printf '%s' "**Changelog:** ${CHANGELOG_URL}")
+            if [ -n "${MESSAGE}" ]; then
+              MESSAGE=$(printf '%s\n\n%s' "${MESSAGE}" "${CL_BLOCK}")
+            else
+              MESSAGE="${CL_BLOCK}"
+            fi
+          fi
+
+          if [ -z "${MESSAGE}" ]; then
+            echo "No version or PR info available. Skipping notification."
+            exit 0
+          fi
+
+          echo "Sending message to Webex Space..."
+
+          BODY=$(jq -n --arg room "${WEBEX_ROOM_ID}" --arg md "${MESSAGE}" '{roomId: $room, markdown: $md}')
+          curl -sSf \
+            -H "Authorization: Bearer ${WEBEX_BOT_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "${BODY}" \
+            https://webexapis.com/v1/messages > /dev/null
+
+          echo "Message sent successfully!"
