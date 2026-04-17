@@ -19,7 +19,19 @@ import config from './config';
  * @param {object} [mobiusSocketConfig={}]
  * @returns {MobiusSocket}
  */
-export function createMobiusSocket(webex, mobiusSocketConfig = {}) {
+let mobiusSocketInstance; // Keeping just one instance of MobiusSocket since there won't be multiple connections
+
+/**
+ * Creates or returns the singleton Mobius socket client for the provided Webex instance.
+ * @param {object} webex - The Webex SDK instance
+ * @param {object} [mobiusSocketConfig={}] - Optional configuration overrides
+ * @returns {MobiusSocket} The singleton MobiusSocket instance
+ */
+export function getMobiusSocketInstance(webex, mobiusSocketConfig = {}) {
+  if (mobiusSocketInstance) {
+    return mobiusSocketInstance;
+  }
+
   const webexConfig = webex.config || {};
   const mobiusConfig = {
     ...config.mobiusSocket,
@@ -32,7 +44,17 @@ export function createMobiusSocket(webex, mobiusSocketConfig = {}) {
     mobiussocket: mobiusConfig,
   };
 
-  return new MobiusSocket({}, {parent: webex});
+  mobiusSocketInstance = new MobiusSocket({}, {parent: webex});
+
+  return mobiusSocketInstance;
+}
+
+/**
+ * Resets the singleton MobiusSocket instance, allowing a new one to be created.
+ * @returns {void}
+ */
+export function resetMobiusSocketInstance() {
+  mobiusSocketInstance = undefined;
 }
 
 export default MobiusSocket;
