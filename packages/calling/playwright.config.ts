@@ -1,6 +1,7 @@
 import {defineConfig, devices} from '@playwright/test';
 import dotenv from 'dotenv';
 import path from 'path';
+import {USER_SETS} from './playwright/test-data';
 
 // .env lives at repo root
 dotenv.config({path: path.resolve(__dirname, '../../.env')});
@@ -63,7 +64,7 @@ export default defineConfig({
   },
   retries: 3,
   fullyParallel: false,
-  workers: 6,
+  workers: 10,
   reporter: 'html',
   use: {
     baseURL: BASE_URL,
@@ -71,30 +72,35 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    // Production
+    // OAuth (structurally different — not generated from USER_SETS)
     {
-      name: 'Calling: OAuth Setup - PROD',
+      name: 'OAuth - PROD',
       testDir: './playwright/utils',
       testMatch: /oauth\.setup\.ts/,
     },
     {
-      name: 'Calling SDK E2E - PROD',
-      dependencies: ['Calling: OAuth Setup - PROD'],
-      testDir: './playwright/tests',
-      use: browserOptions[PW_BROWSER],
-    },
-    // Integration
-    {
-      name: 'Calling: OAuth Setup - INT',
+      name: 'OAuth - INT',
       testDir: './playwright/utils',
       testMatch: /oauth\.setup\.ts/,
       use: {testEnv: 'int'} as any,
     },
-    {
-      name: 'Calling SDK E2E - INT',
-      dependencies: ['Calling: OAuth Setup - INT'],
-      testDir: './playwright/tests',
-      use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
-    },
+
+    // Generated from USER_SETS — prod + INT mirror for each set
+    ...Object.entries(USER_SETS).flatMap(([key, set]) => [
+      {
+        name: `${key} - PROD`,
+        dependencies: ['OAuth - PROD'],
+        testDir: './playwright/suites',
+        testMatch: set.testSuite,
+        use: browserOptions[PW_BROWSER],
+      },
+      {
+        name: `${key} - INT`,
+        dependencies: ['OAuth - INT'],
+        testDir: './playwright/suites',
+        testMatch: set.testSuite,
+        use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
+      },
+    ]),
   ],
 });
