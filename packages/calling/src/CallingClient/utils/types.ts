@@ -5,7 +5,10 @@ import {WebexSDK} from '../../SDKConnector/types';
  * Configuration for APIRequest class
  */
 export interface APIRequestConfig {
-  /** Enable Mobius WebSocket transport (default: false) */
+  /**
+   * Interim SDK opt-in for Mobius WebSocket transport when WDM
+   * `webrtc-calling-over-ws` is not yet true (until prod rollout).
+   */
   isMobiusSocketEnabled?: boolean;
   /** Webex SDK instance for making requests */
   webex: WebexSDK;
