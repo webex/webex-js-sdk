@@ -255,7 +255,7 @@ describe('Voice Task', () => {
       });
     });
 
-    it('uses preserved consult destination from state context for queue consult transfer', async () => {
+    it('uses preserved consult destination from task data for queue consult transfer', async () => {
       const consultTransferMock = jest.fn().mockResolvedValue('consultedQ');
       const dataWithState = createBaseData({
         destAgentId: undefined,
@@ -269,12 +269,12 @@ describe('Voice Task', () => {
       );
 
       primeConnectedState(voice, dataWithState);
-      voice.stateMachineService?.send({
-        type: TaskEvent.CONSULT,
-        destination: 'agent-preserved',
-        destAgentId: 'agent-preserved',
-        destinationType: 'agent' as any,
-      });
+      voice.updateTaskData(
+        createBaseData({
+          destAgentId: 'agent-preserved',
+          interaction: {state: 'consulting'} as any,
+        }) as any
+      );
 
       await voice.transfer({
         to: 'queueX',
@@ -539,7 +539,7 @@ describe('Voice Task', () => {
 
       expect(dummyContact.consultConference).toHaveBeenCalledWith({
         interactionId: 'int1',
-        data: jasmine.objectContaining({
+        data: expect.objectContaining({
           to: 'agent2',
           destinationType: 'agent',
         }),
