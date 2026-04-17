@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as Media from '@webex/internal-media-core';
 // @ts-ignore - JS module without type declarations
-import {createMobiusSocket} from '@webex/internal-plugin-mobius-socket';
+import {getMobiusSocketInstance} from '@webex/internal-plugin-mobius-socket';
 import {Mutex} from 'async-mutex';
 import {METHOD_START_MESSAGE} from '../common/constants';
 import {
@@ -174,10 +174,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.mobiusHost = '';
 
     // MOBIUS SOCKET TODO: Fix this when feature flag is implemented
-    this.isMobiusSocketEnabled = config?.isMobiusSocketEnabled ?? false;
+    // this.isMobiusSocketEnabled = config?.isMobiusSocketEnabled ?? false;
+    this.isMobiusSocketEnabled = config?.isMobiusSocketEnabled ?? true;
 
     if (this.isMobiusSocketEnabled) {
-      this.mobiusSocket = createMobiusSocket(this.webex);
+      this.mobiusSocket = getMobiusSocketInstance(this.webex);
     }
 
     this.apiRequest = APIRequest.getInstance({webex: this.webex});
