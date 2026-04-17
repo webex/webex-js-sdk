@@ -7,6 +7,7 @@ import {expect} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {EMPTY_HASH} from '@webex/plugin-meetings/src/hashTree/constants';
+import { some } from 'lodash';
 
 const visibleDataSetsUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/visibleDataSets';
 
@@ -2516,6 +2517,151 @@ describe('HashTreeParser', () => {
 
         // Verify callback was NOT called (no updates for non-visible datasets)
         assert.notCalled(callback);
+      });
+
+      it('reports update for object that moves from removed visible dataset to new visible dataset even if version is unchanged', async () => {
+        // The purpose of this test is to verify that when an object
+        // moves from one visible dataset to another without version change,
+        // the parser still reports it as an update.
+        // Locus has some additional signalling for this - the "view" property in htMeta.elementId.
+        // When a view changes, the contents of the object may change even if version doesn't.
+        // HashTreeParser doesn't use the "view" property, because it doesn't need to -
+        // the same functionality is achieved thanks to the fact that a new visible data set means
+        // a new hash tree is created, so HashTreeParser still detects the change as new
+        // object is added to the new hash tree.
+
+        // Setup: parser with visible datasets "self" and "unjoined"
+        const unjoinedDataSet = createDataSet('unjoined', 4, 3000);
+        const selfDataSet = createDataSet('self', 1, 2000);
+
+        // start with Locus that has "info" in both "unjoined" and "main" datasets,
+        // but only "unjoined" is visible.
+        const initialLocus = {
+          dataSets: [selfDataSet, unjoinedDataSet],
+          locus: {
+            url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f',
+            links: {resources: {visibleDataSets: {url: visibleDataSetsUrl}}},
+            // info object in "unjoined" dataset with version 500
+            info: {
+              htMeta: {
+                elementId: {
+                  type: 'info',
+                  id: 42,
+                  version: 500,
+                  view: ['unjoined'], // not used by our code, but here for completeness - that's what real Locus would send
+                },
+                dataSetNames: ['main', 'unjoined'],
+              },
+              someField: 'some-initial-value',
+            },
+            self: {
+              htMeta: {
+                elementId: {
+                  type: 'self',
+                  id: 4,
+                  version: 100,
+                },
+                dataSetNames: ['self'],
+              },
+            },
+          },
+        };
+
+        const metadata = {
+          htMeta: {
+            elementId: {
+              type: 'metadata',
+              id: 5,
+              version: 50,
+            },
+            dataSetNames: ['self'],
+          },
+          visibleDataSets: [
+            {name: 'self', url: selfDataSet.url},
+            {name: 'unjoined', url: unjoinedDataSet.url},
+          ],
+        };
+
+        const parser = createHashTreeParser(initialLocus, metadata);
+
+        // Verify initial state: unjoined is visible and has the info object
+        expect(parser.visibleDataSets.some((vds) => vds.name === 'unjoined')).to.be.true;
+        assert.exists(parser.dataSets.unjoined.hashTree);
+        assert.equal(parser.dataSets.unjoined.hashTree?.getItemVersion(42, 'info'), 500);
+
+        // Stub updateItems on self hash tree to return true for metadata update
+        sinon.stub(parser.dataSets.self.hashTree, 'updateItems').returns([true]);
+
+        // Now send a message that:
+        // 1. Changes visible datasets: removes "unjoined", adds "main"
+        // 2. Contains the same info object (same id=42, same version=500) but we see the view from "main" dataset
+        const mainDataSet = createDataSet('main', 16, 1000);
+
+        const message = {
+          dataSets: [selfDataSet, mainDataSet],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [
+            {
+              htMeta: {
+                elementId: {
+                  type: 'metadata' as const,
+                  id: 5,
+                  version: 51,
+                },
+                dataSetNames: ['self'],
+              },
+              data: {
+                visibleDataSets: [
+                  {name: 'self', url: selfDataSet.url},
+                  {name: 'main', url: mainDataSet.url},
+                  // "unjoined" is no longer here
+                ],
+              },
+            },
+            {
+              htMeta: {
+                elementId: {
+                  type: 'info' as const,
+                  id: 42,
+                  version: 500, // same version as before
+                  view: ['main'], // now points to "main" instead of "unjoined"
+                },
+                dataSetNames: ['main', 'unjoined'], // still in both datasets, but only "main" is visible now
+              },
+              data: {someNewField: 'some-value'},
+            },
+          ],
+        };
+
+        parser.handleMessage(message, 'visible dataset swap with same-version object');
+
+        // Verify "unjoined" is no longer visible and "main" is now visible
+        expect(parser.visibleDataSets.some((vds) => vds.name === 'unjoined')).to.be.false;
+        expect(parser.visibleDataSets.some((vds) => vds.name === 'main')).to.be.true;
+
+        // Verify the info object is now in the "main" hash tree
+        assert.exists(parser.dataSets.main.hashTree);
+        assert.equal(parser.dataSets.main.hashTree?.getItemVersion(42, 'info'), 500);
+
+        // The key assertion: callback should be called with the info object update even though
+        // its version hasn't changed - because visible datasets changed (moved from unjoined to main)
+        assert.calledOnce(callback);
+        const callbackArgs = callback.firstCall.args[0];
+        assert.equal(callbackArgs.updateType, LocusInfoUpdateType.OBJECTS_UPDATED);
+
+        // Should contain the info object update (with data)
+        const infoUpdate = callbackArgs.updatedObjects.find(
+          (obj) => obj.htMeta.elementId.type === 'info' && obj.htMeta.elementId.id === 42
+        );
+        assert.exists(infoUpdate);
+        assert.deepEqual(infoUpdate.htMeta.elementId, {
+          type: 'info',
+          id: 42,
+          version: 500,
+          view: ['main'],
+        });
+        assert.deepEqual(infoUpdate.data, {someNewField: 'some-value'});
       });
     });
 
