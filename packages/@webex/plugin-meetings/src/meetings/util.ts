@@ -294,7 +294,10 @@ MeetingsUtil.joinedOnThisDevice = (meeting: any, newLocus: any, deviceUrl: strin
  * @private
  */
 MeetingsUtil.isBreakoutLocusDTO = (newLocus: any) => {
-  return newLocus?.controls?.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT;
+  return (
+    newLocus?.controls?.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT ||
+    !!newLocus?.info?.isBreakout
+  );
 };
 
 /**
@@ -309,5 +312,27 @@ MeetingsUtil.isValidBreakoutLocus = (locus: any) => {
   const selfJoined = locus.self?.state === _JOINED_;
 
   return isLocusAsBreakout && !inActiveStatus && selfJoined;
+};
+/**
+ * check if the breakout locus is associated with the main locus by comparing the breakout control url or the replaces info in self device
+ * @param {Object} mainLocus main locus data
+ * @param {Object} breakoutLocus breakout locus data
+ * @returns {boolean}
+ * @private
+ */
+MeetingsUtil.isMainAssociatedWithBreakout = (mainLocus: any, breakoutLocus: any) => {
+  if (
+    mainLocus.controls?.breakout?.url &&
+    mainLocus.controls?.breakout?.url === breakoutLocus.controls?.breakout?.url
+  ) {
+    return true;
+  }
+  const deviceUrl = breakoutLocus?.self?.deviceUrl;
+  const replaceInfo = MeetingsUtil.getThisDevice(breakoutLocus, deviceUrl)?.replaces?.[0];
+  if (replaceInfo?.locusUrl && replaceInfo.locusUrl === mainLocus.url) {
+    return true;
+  }
+
+  return false;
 };
 export default MeetingsUtil;
