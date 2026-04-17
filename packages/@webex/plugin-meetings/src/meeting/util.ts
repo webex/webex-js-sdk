@@ -859,7 +859,11 @@ const MeetingUtil = {
       return response;
     }
 
-    if (response?.body?.locus) {
+    // locus API responses can come in different shapes:
+    if (
+      response?.body?.locus || // for APIs called on our participant - locus is one of props in the response body
+      response?.body?.url // for APIs that act on locus itself (like mute all), the body is the locus
+    ) {
       meeting.locusInfo.handleLocusAPIResponse(meeting, response.body);
     }
 
