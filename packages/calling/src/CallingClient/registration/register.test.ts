@@ -41,6 +41,12 @@ import {IRegistration} from './types';
 import {METRIC_EVENT, REG_ACTION, METRIC_TYPE} from '../../Metrics/types';
 import {APIRequest} from '../utils/request';
 
+jest.mock('@webex/internal-plugin-mobius-socket', () => ({
+  getMobiusSocketInstance: jest.fn().mockReturnValue({
+    sendWssRequest: jest.fn(),
+  }),
+}));
+
 const webex = getTestUtilsWebex();
 const MockServiceData = {
   indicator: ServiceIndicator.CALLING,
@@ -160,6 +166,7 @@ describe('Registration Tests', () => {
 
   beforeEach(() => {
     APIRequest.resetInstance();
+    APIRequest.getInstance({webex, isMobiusSocketEnabled: false});
     setupRegistration(MockServiceData);
   });
 
