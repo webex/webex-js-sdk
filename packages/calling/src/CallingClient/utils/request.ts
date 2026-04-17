@@ -6,11 +6,12 @@ import {WebexSDK} from '../../SDKConnector/types';
 import {APIRequestConfig, APIRequestOptions, MobiusSocketResponse} from './types';
 import {deriveMobiusSocketMessageType} from './mobiusSocketMapper';
 import {MOBIUS_SOCKET_MESSAGE_TYPE} from './constants';
+import {isWsFeatureEnabled} from './wsFeatureFlag';
 
 /**
- * APIRequest class provides a unified interface for making requests
- * that can be routed through either HTTP (webex.request) or WebSocket
- * (mobiusSocketRequest) based on configuration.
+ * APIRequest routes Mobius traffic over HTTP (`webex.request`) or the Mobius WebSocket path
+ * (`mobiusSocketRequest`). `isMobiusSocketEnabled` is set in the constructor from WDM
+ * `webrtc-calling-over-ws` and/or SDK config (interim until WDM is fully in prod).
  */
 export class APIRequest {
   // eslint-disable-next-line no-use-before-define
@@ -33,8 +34,7 @@ export class APIRequest {
   }
 
   /**
-   * Creates an instance of APIRequest
-   * @param config - Configuration object containing webex instance and optional socket flag
+   * @param config - Webex instance plus optional SDK Mobius-socket override
    */
   constructor(config: APIRequestConfig) {
     if (!config.webex) {
@@ -42,15 +42,13 @@ export class APIRequest {
     }
 
     this.webex = config.webex;
+    this.isMobiusSocketEnabled =
+      isWsFeatureEnabled(config.webex) || (config.isMobiusSocketEnabled ?? false);
     this.mobiusSocket = getMobiusSocketInstance(this.webex);
-
-    // TODO: Update this once feature flag is implemented
-    // this.isMobiusSocketEnabled = config.isMobiusSocketEnabled ?? false;
-    this.isMobiusSocketEnabled = config.isMobiusSocketEnabled ?? true;
   }
 
   /**
-   * Makes a request using either HTTP or WebSocket transport based on configuration
+   * Makes a request using HTTP or WebSocket transport per the flag set in the constructor.
    * @param request - Request options (uri, method, body, headers, service)
    * @returns Promise resolving to WebexRequestPayload or MobiusSocketResponse
    */

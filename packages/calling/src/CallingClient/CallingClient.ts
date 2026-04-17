@@ -66,6 +66,7 @@ import {
 import {getMetricManager} from '../Metrics';
 import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
 import {APIRequest} from './utils/request';
+import {isWsFeatureEnabled} from './utils';
 
 /**
  * The `CallingClient` module provides a set of APIs for line registration and calling functionalities within the SDK.
@@ -173,9 +174,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.mobiusClusters = this.webex.internal.services.getMobiusClusters();
     this.mobiusHost = '';
 
-    // MOBIUS SOCKET TODO: Fix this when feature flag is implemented
-    // this.isMobiusSocketEnabled = config?.isMobiusSocketEnabled ?? false;
-    this.isMobiusSocketEnabled = config?.isMobiusSocketEnabled ?? true;
+    this.isMobiusSocketEnabled =
+      isWsFeatureEnabled(this.webex) || (config?.isMobiusSocketEnabled ?? false);
 
     if (this.isMobiusSocketEnabled) {
       this.mobiusSocket = getMobiusSocketInstance(this.webex);
