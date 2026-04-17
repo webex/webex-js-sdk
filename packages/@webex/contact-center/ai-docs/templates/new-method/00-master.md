@@ -8,7 +8,7 @@
 
 Use this template when:
 - Adding a new method or feature to an existing service or util
-- Adding a new public API method to `cc` or `task` object
+- Adding a new public API method to any public object (`cc` for SDK-level operations, `task` for per-interaction operations, or future public objects)
 - Extending service capabilities
 
 ---

@@ -30,10 +30,6 @@ If the developer cannot provide reproduction steps, ask for logs, error messages
    - [ ] Types
    - [ ] Not sure (this is fine — you will investigate)
 
-5. **"Are there any error messages or stack traces you can share?"**
-
-6. **"Is there a trackingId from the logs associated with this bug?"**
-
 ### Completion Gate for Section A
 
 **Before proceeding to investigation, verify:**
@@ -253,6 +249,6 @@ If the bug affected documented behavior:
 Bug fix is complete when:
 1. Root cause identified and confirmed with developer
 2. Fix implemented after developer approval
-3. Regression test added
+3. Regression test added — a test that reproduces the original bug (fails before the fix, passes after) to prevent the same issue from recurring
 4. All tests pass
 5. Build succeeds

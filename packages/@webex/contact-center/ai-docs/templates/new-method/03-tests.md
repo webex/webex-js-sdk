@@ -178,6 +178,12 @@ describe('cc.methodName', () => {
 
 ---
 
+## Test Assertion Guidelines
+
+> **Team standard: Use exact matches, not partial matchers.** Always use `expect(result).toEqual(expectedValue)` with the full expected object. Avoid `expect.objectContaining()` or `expect.arrayContaining()` unless there is a specific reason (e.g., dynamic fields like timestamps). Exact assertions catch unintended payload changes early.
+
+---
+
 ## Running Tests
 
 ```bash
