@@ -1,25 +1,25 @@
 import {v4 as uuid} from 'uuid';
+// @ts-ignore - JS module without type declarations
+import {getMobiusSocketInstance} from '@webex/internal-plugin-mobius-socket';
 import {WebexRequestPayload} from '../../common/types';
 import {WebexSDK} from '../../SDKConnector/types';
-import {
-  APIRequestConfig,
-  APIRequestOptions,
-  MobiusSocketRequestOptions,
-  MobiusSocketResponse,
-} from './types';
+import {APIRequestConfig, APIRequestOptions, MobiusSocketResponse} from './types';
 import {deriveMobiusSocketMessageType} from './mobiusSocketMapper';
 import {MOBIUS_SOCKET_MESSAGE_TYPE} from './constants';
+import {isWsFeatureEnabled} from './wsFeatureFlag';
 
 /**
- * APIRequest class provides a unified interface for making requests
- * that can be routed through either HTTP (webex.request) or WebSocket
- * (mobiusSocketRequest) based on configuration.
+ * APIRequest routes Mobius traffic over HTTP (`webex.request`) or the Mobius WebSocket path
+ * (`mobiusSocketRequest`). `isMobiusSocketEnabled` is set in the constructor from WDM
+ * `webrtc-calling-over-ws` and/or SDK config (interim until WDM is fully in prod).
  */
 export class APIRequest {
   // eslint-disable-next-line no-use-before-define
   private static instance: APIRequest | undefined;
   private isMobiusSocketEnabled: boolean;
   private webex: WebexSDK;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private mobiusSocket: any;
 
   static getInstance(config: APIRequestConfig): APIRequest {
     if (!APIRequest.instance) {
@@ -34,8 +34,7 @@ export class APIRequest {
   }
 
   /**
-   * Creates an instance of APIRequest
-   * @param config - Configuration object containing webex instance and optional socket flag
+   * @param config - Webex instance plus optional SDK Mobius-socket override
    */
   constructor(config: APIRequestConfig) {
     if (!config.webex) {
@@ -43,11 +42,13 @@ export class APIRequest {
     }
 
     this.webex = config.webex;
-    this.isMobiusSocketEnabled = config.isMobiusSocketEnabled ?? false;
+    this.isMobiusSocketEnabled =
+      isWsFeatureEnabled(config.webex) || (config.isMobiusSocketEnabled ?? false);
+    this.mobiusSocket = getMobiusSocketInstance(this.webex);
   }
 
   /**
-   * Makes a request using either HTTP or WebSocket transport based on configuration
+   * Makes a request using HTTP or WebSocket transport per the flag set in the constructor.
    * @param request - Request options (uri, method, body, headers, service)
    * @returns Promise resolving to WebexRequestPayload or MobiusSocketResponse
    */
@@ -55,45 +56,25 @@ export class APIRequest {
     request: APIRequestOptions
   ): Promise<WebexRequestPayload | MobiusSocketResponse> {
     if (this.isMobiusSocketEnabled) {
-      const trackingId = `mobius-wss_${uuid()}`;
+      const trackingId = `webex-js-sdk_${uuid()}`;
       const socketType = deriveMobiusSocketMessageType(request.uri, request.method);
 
       if (socketType === MOBIUS_SOCKET_MESSAGE_TYPE.UNKNOWN) {
         throw new Error(`Unknown Mobius Socket message type: ${socketType}`);
       }
 
-      return this.mobiusSocketRequest({
+      return this.mobiusSocket.sendWssRequest({
         type: socketType,
         trackingId,
-        metadata: {}, // TODO: Add auth token to metadata
-        payload: request.body,
+        metadata: {
+          // userAgent: CALLING_USER_AGENT,
+          userAgent: 'mobius-ws-test-ui', // TODO: Confirm if this needs to be hardcoded
+        }, // TODO: Add auth token to metadata for call transfer etc
+        data: request.body,
       });
     }
 
     return this.webex.request(request);
-  }
-
-  /**
-   * Placeholder implementation for Mobius WebSocket request
-   * TODO: Implement WebSocket-based request handling
-   * This will use the Mobius WebSocket connection instead of HTTP
-   * @param options - Request options containing type, trackingId, metadata, and payload
-   * @returns Promise resolving to MobiusSocketResponse
-   */
-  private async mobiusSocketRequest(
-    options: MobiusSocketRequestOptions
-  ): Promise<MobiusSocketResponse> {
-    // Placeholder implementation - to be replaced with actual WebSocket logic
-    return Promise.resolve({
-      type: options.type,
-      trackingId: options.trackingId,
-      status: {
-        code: 501,
-        message: 'Not Implemented - Mobius Socket support coming soon',
-      },
-      metadata: options.metadata,
-      payload: options.payload,
-    });
   }
 }
 

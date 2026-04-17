@@ -56,6 +56,13 @@ import {ServiceHost} from '../SDKConnector/types';
 import {METHOD_START_MESSAGE} from '../common/constants';
 import {METRIC_EVENT, CONNECTION_ACTION, METRIC_TYPE} from '../Metrics/types';
 import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
+import {APIRequest} from './utils/request';
+
+jest.mock('@webex/internal-plugin-mobius-socket', () => ({
+  getMobiusSocketInstance: jest.fn().mockReturnValue({
+    sendWssRequest: jest.fn(),
+  }),
+}));
 
 global.crypto = {
   randomUUID: () => '12345678-1234-5678-1234-567812345678',
@@ -84,6 +91,11 @@ describe('CallingClient Tests', () => {
       originalProcessNextTick(resolve);
     });
   }
+
+  beforeEach(() => {
+    APIRequest.resetInstance();
+    APIRequest.getInstance({webex, isMobiusSocketEnabled: false});
+  });
 
   describe('CallingClient pick Mobius cluster using Service Host Tests', () => {
     afterAll(() => {

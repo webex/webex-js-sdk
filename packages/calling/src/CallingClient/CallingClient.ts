@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as Media from '@webex/internal-media-core';
 // @ts-ignore - JS module without type declarations
-import {createMobiusSocket} from '@webex/internal-plugin-mobius-socket';
+import {getMobiusSocketInstance} from '@webex/internal-plugin-mobius-socket';
 import {Mutex} from 'async-mutex';
 import {METHOD_START_MESSAGE} from '../common/constants';
 import {
@@ -66,6 +66,7 @@ import {
 import {getMetricManager} from '../Metrics';
 import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
 import {APIRequest} from './utils/request';
+import {isWsFeatureEnabled} from './utils';
 
 /**
  * The `CallingClient` module provides a set of APIs for line registration and calling functionalities within the SDK.
@@ -173,11 +174,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.mobiusClusters = this.webex.internal.services.getMobiusClusters();
     this.mobiusHost = '';
 
-    // MOBIUS SOCKET TODO: Fix this when feature flag is implemented
-    this.isMobiusSocketEnabled = config?.isMobiusSocketEnabled ?? false;
+    this.isMobiusSocketEnabled =
+      isWsFeatureEnabled(this.webex) || (config?.isMobiusSocketEnabled ?? false);
 
     if (this.isMobiusSocketEnabled) {
-      this.mobiusSocket = createMobiusSocket(this.webex);
+      this.mobiusSocket = getMobiusSocketInstance(this.webex);
     }
 
     this.apiRequest = APIRequest.getInstance({webex: this.webex});
