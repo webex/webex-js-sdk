@@ -96,6 +96,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
   private backupMobiusUris: string[];
 
+  private primaryWssMobiusUris: string[];
+
+  private backupWssMobiusUris: string[];
+
   private mobiusClusters: ServiceHost[];
 
   private mobiusHost: string;
@@ -105,10 +109,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   private lineDict: Record<string, ILine> = {};
 
   private apiRequest: APIRequest;
-
-  private primaryWssMobiusUris: string[];
-
-  private backupWssMobiusUris: string[];
 
   private isMobiusSocketEnabled: boolean;
 
@@ -819,8 +819,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       this.webex.internal.device.userId,
       this.webex.internal.device.url,
       this.mutex,
-      this.primaryMobiusUris,
-      this.backupMobiusUris,
+      this.apiRequest.isSocketEnabled() ? this.primaryWssMobiusUris : this.primaryMobiusUris,
+      this.apiRequest.isSocketEnabled() ? this.backupWssMobiusUris : this.backupMobiusUris,
       this.getLoggingLevel(),
       this.sdkConfig?.serviceData,
       this.sdkConfig?.jwe
