@@ -61,6 +61,9 @@ import {APIRequest} from './utils/request';
 jest.mock('@webex/internal-plugin-mobius-socket', () => ({
   getMobiusSocketInstance: jest.fn().mockReturnValue({
     sendWssRequest: jest.fn(),
+    connect: jest.fn(),
+    on: jest.fn(),
+    off: jest.fn(),
   }),
 }));
 
@@ -829,6 +832,89 @@ describe('CallingClient Tests', () => {
       const callSessionCallback = mockOn.mock.calls[0][1];
 
       callSessionCallback(MOCK_MULTIPLE_SESSIONS_EVENT);
+    });
+  });
+
+  describe('Mobius async_event routing', () => {
+    let callingClient: ICallingClient;
+    let asyncEventCallback;
+    let mobiusSocketMock;
+
+    beforeEach(async () => {
+      mobiusSocketMock = (
+        jest.requireMock('@webex/internal-plugin-mobius-socket') as {
+          getMobiusSocketInstance: (w: unknown) => unknown;
+        }
+      ).getMobiusSocketInstance(webex) as {
+        on: jest.Mock;
+        off: jest.Mock;
+      };
+      (mobiusSocketMock.on as jest.Mock).mockClear();
+      (mobiusSocketMock.off as jest.Mock).mockClear();
+
+      callingClient = await createClient(webex, {
+        logger: {level: LOGGER.INFO},
+        isMobiusSocketEnabled: true,
+      });
+
+      const asyncEventOnCall = (mobiusSocketMock.on as jest.Mock).mock.calls.find(
+        (call) => call[0] === 'async_event'
+      );
+      asyncEventCallback = asyncEventOnCall[1];
+    });
+
+    afterEach(() => {
+      callingClient.removeAllListeners();
+      callManager.removeAllListeners();
+    });
+
+    it('routes mobius.* async events to callManager', async () => {
+      const callEventSpy = jest.spyOn(callingClient['callManager'], 'dequeueWsEvents');
+
+      await asyncEventCallback({
+        type: 'async_event',
+        data: {
+          eventType: 'mobius.call',
+          callId: 'fcf86aa5-5539-4c9f-8b72-667786ae9b6c',
+          callUrl: 'https://mobius-a.wbx2.com/api/v1/calling/web/devices/d1/calls/c1',
+          deviceId: 'd1',
+          correlationId: 'corr-1',
+        },
+      });
+
+      expect(callEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'async_event',
+          data: expect.objectContaining({
+            eventType: 'mobius.call',
+          }),
+        })
+      );
+    });
+
+    it('routes registration.down async event to registration layer', async () => {
+      const line = Object.values(callingClient['lineDict'])[0] as ILine;
+      line.mobiusDeviceId = '334f3d50-1d26-4712-93f1-4972390cc565';
+      const reconnectSpy = jest
+        .spyOn(line.registration, 'reconnectOnFailure')
+        .mockResolvedValue(undefined);
+
+      await asyncEventCallback({
+        type: 'async_event',
+        data: {
+          eventType: 'registration.down',
+          deviceInfo: {
+            userId: '44533573-f6aa-429d-b4fe-58aa04a2b636',
+            device: {
+              deviceId: line.mobiusDeviceId,
+              uri: 'https://mobius-a.wbx2.com/api/v1/calling/web/devices/334f3d50-1d26-4712-93f1-4972390cc565',
+              status: 'inactive',
+            },
+          },
+        },
+      });
+
+      expect(reconnectSpy).toHaveBeenCalledWith('handleRegistrationDownEvent');
     });
   });
 

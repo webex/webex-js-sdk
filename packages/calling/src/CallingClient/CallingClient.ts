@@ -36,7 +36,7 @@ import {
   Devices,
 } from '../common/types';
 import {ICallingClient, CallingClientConfig} from './types';
-import {ICall, ICallManager} from './calling/types';
+import {ICall, ICallManager, MobiusAsyncEvent, MobiusEventType} from './calling/types';
 import log from '../Logger';
 import {getCallManager} from './calling/callManager';
 import {
@@ -231,6 +231,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     if (this.isMobiusSocketEnabled) {
       await this.connectToMobiusSocket();
+      this.registerMobiusSocketListener();
     }
 
     await this.createLine();
@@ -718,6 +719,56 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       loggerContext
     );
   }
+
+  private registerMobiusSocketListener() {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.REGISTER_MOBIUS_SOCKET_LISTENER,
+    });
+    this.sdkConnector.registerMobiusSocketListener('async_event', this.handleMobiusAsyncEvent);
+    log.info('Successfully registered listener for Mobius events', {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.REGISTER_MOBIUS_SOCKET_LISTENER,
+    });
+  }
+
+  // private unregisterMobiusSocketListener() {
+  //   log.info(METHOD_START_MESSAGE, {
+  //     file: CALLING_CLIENT_FILE,
+  //     method: METHODS.UNREGISTER_MOBIUS_SOCKET_LISTENER,
+  //   });
+  //   this.sdkConnector.unregisterMobiusSocketListener('async_event');
+  // }
+
+  private handleMobiusAsyncEvent = async (event?: MobiusAsyncEvent) => {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.HANDLE_MOBIUS_ASYNC_EVENT,
+    });
+
+    const eventType = event?.data.eventType;
+
+    if (!eventType) {
+      log.warn('Dropping unsupported mobius socket payload', {
+        file: CALLING_CLIENT_FILE,
+        method: METHODS.HANDLE_MOBIUS_ASYNC_EVENT,
+      });
+
+      return;
+    }
+
+    if (eventType === MobiusEventType.REGISTRATION_DOWN) {
+      // TODO: Handle registration down event
+      // const line = Object.values(this.lineDict)[0];
+      // line.registration.handleRegistrationDownEvent(event);
+
+      return;
+    }
+
+    if (eventType.startsWith('mobius.')) {
+      this.callManager.dequeueWsEvents(event);
+    }
+  };
 
   /**
    * Registers a listener/handler for ALL_CALLS_CLEARED
