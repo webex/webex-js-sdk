@@ -424,35 +424,62 @@ jobs:
               console.log(`Failed to discover PR from commit: ${error.message}`);
             }
 
-            // Branch pushes: often no merged-PR association for context.sha; find PR whose head is this branch.
+            // Full commit message from the API (webhook head_commit can be missing or not the merge body).
+            try {
+              const { data: commitData } = await github.rest.repos.getCommit({
+                owner, repo, commit_sha: deploySha
+              });
+              const fullMsg = commitData.commit?.message || '';
+              const fromFull = prNumberFromCommitMessage(fullMsg);
+              if (fromFull) {
+                core.setOutput('pr_number', fromFull);
+                return;
+              }
+            } catch (error) {
+              console.log(`Failed to load commit for PR discovery: ${error.message}`);
+            }
+
+            // Feature-branch pushes: PR head ref matches owner:branch and head SHA matches deploy SHA only.
+            // Skip release branches like next — head:owner:next matches PRs *from* next, not merges *into* next.
             if (context.ref.startsWith('refs/heads/')) {
               const branch = context.ref.replace('refs/heads/', '');
-              try {
-                const { data: pulls } = await github.rest.pulls.list({
-                  owner,
-                  repo,
-                  head: `${owner}:${branch}`,
-                  state: 'all',
-                  sort: 'updated',
-                  direction: 'desc',
-                  per_page: 30,
-                });
-                const exact = pulls.find((pr) => pr.head.sha === deploySha);
-                const chosen = exact || pulls[0];
-                if (chosen) {
-                  core.setOutput('pr_number', String(chosen.number));
-                  return;
+              const skipHeadLookup = new Set(['next', 'main', 'master']);
+              if (!skipHeadLookup.has(branch)) {
+                try {
+                  const { data: pulls } = await github.rest.pulls.list({
+                    owner,
+                    repo,
+                    head: `${owner}:${branch}`,
+                    state: 'all',
+                    sort: 'updated',
+                    direction: 'desc',
+                    per_page: 30,
+                  });
+                  const exact = pulls.find((pr) => pr.head.sha === deploySha);
+                  if (exact) {
+                    core.setOutput('pr_number', String(exact.number));
+                    return;
+                  }
+                } catch (error) {
+                  console.log(`Failed to list PRs for branch ${branch}: ${error.message}`);
                 }
-              } catch (error) {
-                console.log(`Failed to list PRs for branch ${branch}: ${error.message}`);
               }
             }
 
             const headMsg = context.payload.head_commit?.message || '';
-            const fromMsg = prNumberFromCommitMessage(headMsg);
-            if (fromMsg) {
-              core.setOutput('pr_number', fromMsg);
+            const fromHead = prNumberFromCommitMessage(headMsg);
+            if (fromHead) {
+              core.setOutput('pr_number', fromHead);
               return;
+            }
+
+            const commits = context.payload.commits || [];
+            for (const c of commits) {
+              const fromC = prNumberFromCommitMessage(c?.message || '');
+              if (fromC) {
+                core.setOutput('pr_number', fromC);
+                return;
+              }
             }
 
             core.setOutput('pr_number', '');
