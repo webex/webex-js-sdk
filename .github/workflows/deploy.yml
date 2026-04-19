@@ -523,6 +523,8 @@ jobs:
               core.setOutput('primary_version', `${primaryPackage}@${primaryVersion}`);
               // Shorter label in comments/Webex for BYoDS (avoid "@webex/" in the visible line; changelog still uses full npm name).
               const versionDisplaySlug = primaryPackage === '@webex/byods' ? 'byods' : primaryPackage;
+              const versionLineLabel =
+                primaryPackage === '@webex/byods' ? versionDisplaySlug : `${versionDisplaySlug}@${primaryVersion}`;
               const stableVersion = primaryVersion.replace(/-next\..*/, '').replace(/-[a-z]*\..*/, '');
 
               const cnameFile = await github.rest.repos.getContent({ owner, repo, path: 'docs/CNAME' });
@@ -543,7 +545,7 @@ jobs:
               const prSummaryUrl = `${repoUrl}/pull/${prNumber}`;
               const summaryLines = [
                 '',
-                `**Version:** \`${versionDisplaySlug}@${primaryVersion}\``,
+                `**Version:** \`${versionLineLabel}\``,
                 `**PR Link:** [PR #${prNumber}](${prSummaryUrl})`,
                 `**Changelog:** ${changelogUrl.toString()}`,
                 '',
@@ -705,7 +707,7 @@ jobs:
           VERSION_DISPLAY="${VERSION}"
           case "${VERSION}" in
             @webex/byods@*)
-              VERSION_DISPLAY="byods@${VERSION#@webex/byods@}"
+              VERSION_DISPLAY="byods"
               ;;
           esac
 
