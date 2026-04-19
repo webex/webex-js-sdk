@@ -64,3 +64,5 @@ To consume the latest stable version of the BYoDS SDK, you can use NPM.
 ```javascript
   import BYoDS from '@webex/byods';
 ```
+
+Test marker (byods-only): CD matrix check — ensures `yarn package-tools list --since …` includes `@webex/byods` when only this package changes.
