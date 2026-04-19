@@ -66,3 +66,5 @@ To consume the latest stable version of the BYoDS SDK, you can use NPM.
 ```
 
 Test marker (byods-only): CD matrix check — ensures `yarn package-tools list --since …` includes `@webex/byods` when only this package changes.
+
+Fork smoke (no functional change): touch BYoDS so Deploy CD publishes `@webex/byods` and the PR bot can show **Version** `byods@…`, **PR Link**, and **Changelog** (semver comes from the increment step, not this line).
