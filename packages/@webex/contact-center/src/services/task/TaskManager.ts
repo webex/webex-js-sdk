@@ -585,6 +585,8 @@ export default class TaskManager extends EventEmitter {
       ? {
           ...taskData,
           destAgentId: taskData.destAgentId ?? snapshot?.context?.consultDestinationAgentId ?? null,
+          destinationType:
+            taskData.destinationType ?? snapshot?.context?.consultDestinationType ?? null,
         }
       : taskData;
 
