@@ -402,6 +402,15 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
+            function prNumberFromCommitMessage(msg) {
+              if (!msg || typeof msg !== 'string') return null;
+              const mergeMatch = msg.match(/Merge pull request #(\d+)/i);
+              if (mergeMatch) return mergeMatch[1];
+              const squashMatch = msg.match(/\(#(\d+)\)\s*$/m);
+              if (squashMatch) return squashMatch[1];
+              return null;
+            }
+
             try {
               const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({
                 owner, repo, commit_sha: deploySha
@@ -437,6 +446,13 @@ jobs:
               } catch (error) {
                 console.log(`Failed to list PRs for branch ${branch}: ${error.message}`);
               }
+            }
+
+            const headMsg = context.payload.head_commit?.message || '';
+            const fromMsg = prNumberFromCommitMessage(headMsg);
+            if (fromMsg) {
+              core.setOutput('pr_number', fromMsg);
+              return;
             }
 
             core.setOutput('pr_number', '');
@@ -501,7 +517,7 @@ jobs:
               const summaryLines = [
                 '',
                 `**Version:** \`${versionDisplaySlug}@${primaryVersion}\``,
-                `**PR:** [PR #${prNumber}](${prSummaryUrl})`,
+                `**PR Link:** [PR #${prNumber}](${prSummaryUrl})`,
                 `**Changelog:** ${changelogUrl.toString()}`,
                 '',
               ].join('\n');
@@ -548,7 +564,7 @@ jobs:
               const tagVersion = '${{ needs.publish-tag.outputs.version }}'.trim();
               if (tagVersion) {
                 const primaryVersion = tagVersion.replace(/^v/, '') || tagVersion;
-                const primaryPackage = 'webex';
+                const primaryPackage = '@webex/byods';
                 try {
                   const stableVersion = primaryVersion.replace(/-next\..*/, '').replace(/-[a-z]*\..*/, '');
                   const cnameFile = await github.rest.repos.getContent({ owner, repo, path: 'docs/CNAME' });
@@ -623,7 +639,6 @@ jobs:
         env:
           WEBEX_BOT_TOKEN: ${{ secrets.WEBEX_BOT_TOKEN }}
           WEBEX_ROOM_ID: ${{ secrets.WEBEX_ROOM_ID }}
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           TAG_VERSION: ${{ needs.publish-tag.outputs.version }}
         run: |
           VERSION="${{ needs.comment-on-pr.outputs.primary_version }}"
@@ -632,7 +647,7 @@ jobs:
 
           if [ -z "${VERSION}" ] && [ -n "${TAG_VERSION}" ]; then
             PV="${TAG_VERSION#v}"
-            VERSION="webex@${PV}"
+            VERSION="@webex/byods@${PV}"
           fi
 
           if [ -z "${CHANGELOG_URL}" ] && [ -n "${VERSION}" ] && [ -f docs/CNAME ]; then
@@ -652,15 +667,13 @@ jobs:
             fi
           fi
 
-          PR_LABEL="PR"
           if [ -n "${PR_NUMBER}" ]; then
             PR_LINK="https://github.com/${{ github.repository }}/pull/${PR_NUMBER}"
+            PR_LINK_TEXT="PR #${PR_NUMBER}"
           else
             PR_LINK="https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
-            PR_LABEL="Commit"
+            PR_LINK_TEXT="View commit"
           fi
-
-          PR_TITLE=$(printf '%s' "${COMMIT_MESSAGE}" | head -n 1)
 
           VERSION_DISPLAY="${VERSION}"
           case "${VERSION}" in
@@ -674,7 +687,7 @@ jobs:
             MESSAGE=$(printf '%s' "**Version:** ${VERSION_DISPLAY}")
           fi
           if [ -n "${PR_LINK}" ]; then
-            PR_BLOCK=$(printf '%s' "**${PR_LABEL}:** [${PR_TITLE}](${PR_LINK})")
+            PR_BLOCK=$(printf '%s' "**PR Link:** [${PR_LINK_TEXT}](${PR_LINK})")
             if [ -n "${MESSAGE}" ]; then
               MESSAGE=$(printf '%s\n\n%s' "${MESSAGE}" "${PR_BLOCK}")
             else
