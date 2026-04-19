@@ -439,19 +439,17 @@ jobs:
             const repoUrl = `https://github.com/${owner}/${repo}`;
             const hasPackages = packageEntries.length > 0;
 
-            // On branch test-no-webex-primary only: pick first published package that is not the root "webex" package (e.g. @webex/byods).
-            const preferNonWebexPrimary = context.ref === 'refs/heads/test-no-webex-primary';
-
             let commentBody;
 
             if (hasPackages) {
+              // Prefer @webex/byods for headline Version + changelog when it shipped; else root webex; else first package.
               let primaryPackage;
-              if (preferNonWebexPrimary) {
-                const nonWebex = packageEntries.find(([name]) => name !== 'webex');
-                primaryPackage = nonWebex ? nonWebex[0] : packageEntries[0][0];
+              if (packageVersions['@webex/byods']) {
+                primaryPackage = '@webex/byods';
+              } else if (packageVersions['webex']) {
+                primaryPackage = 'webex';
               } else {
-                primaryPackage = packageVersions['webex']
-                  ? 'webex' : packageEntries[0][0];
+                primaryPackage = packageEntries[0][0];
               }
               const primaryVersion = packageVersions[primaryPackage];
               core.setOutput('primary_version', `${primaryPackage}@${primaryVersion}`);
@@ -472,14 +470,21 @@ jobs:
                 ? `| **Released in:** [\`${version}\`](${repoUrl}/releases/tag/${version}) |`
                 : '';
 
+              const prSummaryUrl = `${repoUrl}/pull/${prNumber}`;
+              const summaryLines = [
+                '',
+                `**Version:** \`${primaryPackage}@${primaryVersion}\``,
+                `**PR:** [PR #${prNumber}](${prSummaryUrl})`,
+                `**Changelog:** ${changelogUrl.toString()}`,
+                '',
+              ].join('\n');
+
               const rows = packageEntries
                 .sort(([a], [b]) => {
-                  if (!preferNonWebexPrimary) {
-                    if (a === 'webex') return -1;
-                    if (b === 'webex') return 1;
-                  }
                   if (a === primaryPackage) return -1;
                   if (b === primaryPackage) return 1;
+                  if (a === 'webex') return -1;
+                  if (b === 'webex') return 1;
                   return a.localeCompare(b);
                 })
                 .map(([pkg, ver]) => `| \`${pkg}\` | \`${ver}\` |`)
@@ -496,6 +501,7 @@ jobs:
               commentBody = [
                 '| :tada: Your changes are now available! |',
                 '|---|',
+                summaryLines,
                 releaseLine,
                 `| :book: **[View full changelog →](${changelogUrl})** |`,
                 packagesTable,
@@ -588,7 +594,6 @@ jobs:
           WEBEX_ROOM_ID: ${{ secrets.WEBEX_ROOM_ID }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           TAG_VERSION: ${{ needs.publish-tag.outputs.version }}
-          PREFER_NON_WEBEX_PRIMARY: ${{ github.ref == 'refs/heads/test-no-webex-primary' }}
         run: |
           VERSION="${{ needs.comment-on-pr.outputs.primary_version }}"
           PR_NUMBER="${{ needs.comment-on-pr.outputs.pr_number }}"
@@ -596,11 +601,7 @@ jobs:
 
           if [ -z "${VERSION}" ] && [ -n "${TAG_VERSION}" ]; then
             PV="${TAG_VERSION#v}"
-            if [ "${PREFER_NON_WEBEX_PRIMARY}" = "true" ]; then
-              VERSION="@webex/byods@${PV}"
-            else
-              VERSION="webex@${PV}"
-            fi
+            VERSION="webex@${PV}"
           fi
 
           if [ -z "${CHANGELOG_URL}" ] && [ -n "${VERSION}" ] && [ -f docs/CNAME ]; then
