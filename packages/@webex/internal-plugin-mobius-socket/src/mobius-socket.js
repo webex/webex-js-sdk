@@ -312,13 +312,21 @@ const MobiusSocket = WebexPlugin.extend({
 
   /**
    * Check if a socket is connected
-   * @param {string} [sessionId=this.defaultSessionId] - The session identifier
+   * @param {string} [sessionId] - Optional session identifier
    * @returns {boolean|undefined} True if the socket is connected
    */
-  hasConnectedSockets(sessionId = this.defaultSessionId) {
-    const socket = this.sockets.get(sessionId || this.defaultSessionId);
+  hasConnectedSockets(sessionId) {
+    if (sessionId) {
+      return this.sockets.get(sessionId)?.connected;
+    }
 
-    return socket?.connected;
+    for (const socket of this.sockets.values()) {
+      if (socket?.connected) {
+        return true;
+      }
+    }
+
+    return false;
   },
 
   /**
@@ -442,10 +450,7 @@ const MobiusSocket = WebexPlugin.extend({
 
       // Update overall connected status
       this.connected = this.hasConnectedSockets();
-      const hasConnectedSocket = Array.from(this.sockets.values()).some(
-        (socket) => socket?.connected
-      );
-      if (!hasConnectedSocket) {
+      if (!this.hasConnectedSockets()) {
         this._stopTokenRefreshTimer();
       }
     });
@@ -678,6 +683,7 @@ const MobiusSocket = WebexPlugin.extend({
           forceCloseDelay: this.config.forceCloseDelay,
           wssResponseTimeout: this.config.wssResponseTimeout,
           token: normalizeMobiusAuthToken(token.toString()),
+          refreshToken: () => this._refreshToken(),
           trackingId: `${this.webex.sessionId}_${Date.now()}`,
           logger: this.logger,
         };
@@ -883,15 +889,12 @@ const MobiusSocket = WebexPlugin.extend({
   },
 
   _startTokenRefreshTimer() {
-    const hasConnectedSocket = Array.from(this.sockets.values()).some(
-      (socket) => socket?.connected
-    );
-    if (this._tokenRefreshTimer || !hasConnectedSocket) {
+    if (this._tokenRefreshTimer || !this.hasConnectedSockets()) {
       return;
     }
 
     this._tokenRefreshTimer = setInterval(() => {
-      this._refreshAndReauthSockets().catch((error) => {
+      this._refreshToken().catch((error) => {
         this.logger.error(`${this.namespace}: periodic token refresh failed`, error);
       });
     }, TOKEN_REFRESH_INTERVAL_MS);
@@ -906,15 +909,12 @@ const MobiusSocket = WebexPlugin.extend({
     this._tokenRefreshTimer = undefined;
   },
 
-  _refreshAndReauthSockets() {
+  _refreshToken() {
     if (this._tokenRefreshInFlight) {
       return this._tokenRefreshInFlight;
     }
 
-    const hasConnectedSocket = Array.from(this.sockets.values()).some(
-      (socket) => socket?.connected
-    );
-    if (!hasConnectedSocket) {
+    if (!this.hasConnectedSockets()) {
       this._stopTokenRefreshTimer();
 
       return Promise.resolve();
@@ -979,10 +979,7 @@ const MobiusSocket = WebexPlugin.extend({
         // Update overall connected status
         this.connecting = this.hasConnectingSockets();
         this.connected = this.hasConnectedSockets();
-        const hasConnectedSocketAfterClose = Array.from(this.sockets.values()).some(
-          (socket) => socket?.connected
-        );
-        if (!hasConnectedSocketAfterClose) {
+        if (!this.hasConnectedSockets()) {
           this._stopTokenRefreshTimer();
         }
       } else {

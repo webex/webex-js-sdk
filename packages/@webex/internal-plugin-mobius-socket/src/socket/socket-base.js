@@ -569,6 +569,18 @@ export default class Socket extends EventEmitter {
     const statusCode = pendingResponse.getStatusCode(response);
     const statusMessage = pendingResponse.getStatusMessage(response);
 
+    if (statusCode === 440 && response?.subtype !== MESSAGE_TYPES.AUTH) {
+      if (typeof this.refreshToken === 'function') {
+        Promise.resolve(this.refreshToken(response)).catch((error) => {
+          this.logger.warn(`socket,${this._domain}: failed token-expiry re-auth`, error);
+        });
+      } else {
+        this.logger.warn(
+          `socket,${this._domain}: refreshToken callback is unavailable for statusCode 440`
+        );
+      }
+    }
+
     if (statusCode === undefined) {
       pendingResponse.reject(
         pendingResponse.createError(
