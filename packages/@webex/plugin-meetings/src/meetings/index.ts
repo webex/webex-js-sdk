@@ -583,6 +583,8 @@ export default class Meetings extends WebexPlugin {
       this.create(data.locus, DESTINATION_TYPE.LOCUS_ID, useRandomDelayForInfo)
         .then(async (newMeeting) => {
           meeting = newMeeting;
+          const shouldFetchMeetingInfoAfterInitialSetup =
+            data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED && !data.locus?.info;
 
           try {
             // It's a new meeting so initialize the locus data
@@ -594,6 +596,11 @@ export default class Meetings extends WebexPlugin {
               locus: data.locus,
               hashTreeMessage: data.stateElementsMessage,
             });
+            if (data.eventType !== LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS) {
+              await meeting.finalizeMeetingAfterInitialLocusSetup(
+                shouldFetchMeetingInfoAfterInitialSetup
+              );
+            }
           } catch (error) {
             LoggerProxy.logger.warn(
               `Meetings:index#handleLocusEvent --> Error initializing locus data: ${error.message}`
@@ -601,6 +608,7 @@ export default class Meetings extends WebexPlugin {
             // @ts-ignore
             this.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
           }
+
           this.checkHandleBreakoutLocus(data.locus);
         })
         .catch((e) => {
@@ -1761,6 +1769,7 @@ export default class Meetings extends WebexPlugin {
         extraParams: infoExtraParams,
         sendCAevents: !!callStateForMetrics?.correlationId, // if client sends correlation id as argument of public create(), then it means that this meeting creation is part of a pre-join intent from user
       };
+      const shouldDeferMeetingInfoFetch = type === DESTINATION_TYPE.LOCUS_ID && !destination?.info;
 
       if (meetingInfo) {
         meeting.injectMeetingInfo(meetingInfo, meetingInfoOptions, meetingLookupUrl);
@@ -1772,8 +1781,12 @@ export default class Meetings extends WebexPlugin {
             waitingTime
           );
           meeting.parseMeetingInfo(undefined, destination);
-        } else {
+        } else if (!shouldDeferMeetingInfoFetch) {
           await meeting.fetchMeetingInfo(meetingInfoOptions);
+        } else {
+          LoggerProxy.logger.info(
+            'Meetings:index#createMeeting --> defer fetchMeetingInfo for incomplete locus, will retry after locus initialSetup'
+          );
         }
       }
     } catch (err) {

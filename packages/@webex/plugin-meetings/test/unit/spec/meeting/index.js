@@ -11353,6 +11353,57 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#finalizeMeetingAfterInitialLocusSetup', () => {
+        it('refreshes destination from parsed locus for LOCUS_ID without fetching when fetch is not needed', async () => {
+          const parsedLocus = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
+
+          meeting.destinationType = DESTINATION_TYPE.LOCUS_ID;
+          meeting.destination = {info: {topic: 'old'}};
+          meeting.locusInfo.parsedLocus = parsedLocus;
+
+          const fetchMeetingInfoStub = sinon.stub(meeting, 'fetchMeetingInfo').resolves();
+
+          await meeting.finalizeMeetingAfterInitialLocusSetup(false);
+
+          assert.equal(meeting.destination, parsedLocus);
+          assert.notCalled(fetchMeetingInfoStub);
+        });
+
+        it('fetches meeting info when needed and destination has info', async () => {
+          meeting.destination = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
+          const fetchMeetingInfoStub = sinon.stub(meeting, 'fetchMeetingInfo').resolves();
+
+          await meeting.finalizeMeetingAfterInitialLocusSetup(true);
+
+          assert.calledOnceWithExactly(fetchMeetingInfoStub, {});
+        });
+
+        it('does not fetch meeting info when destination has no info', async () => {
+          meeting.destination = {url: 'https://locus.example.com/locus/123'};
+          const fetchMeetingInfoStub = sinon.stub(meeting, 'fetchMeetingInfo').resolves();
+
+          await meeting.finalizeMeetingAfterInitialLocusSetup(true);
+
+          assert.notCalled(fetchMeetingInfoStub);
+        });
+
+        it('swallows deferred fetchMeetingInfo errors and logs info', async () => {
+          const error = new Error('fetch failed');
+
+          meeting.destination = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
+          sinon.stub(meeting, 'fetchMeetingInfo').rejects(error);
+          const loggerInfoStub = sinon.stub(LoggerProxy.logger, 'info');
+
+          await meeting.finalizeMeetingAfterInitialLocusSetup(true);
+
+          assert.calledOnce(loggerInfoStub);
+          assert.match(
+            loggerInfoStub.firstCall.args[0],
+            /Meeting:index#finalizeMeetingAfterInitialLocusSetup --> deferred fetchMeetingInfo failed: fetch failed/
+          );
+        });
+      });
+
       describe('#emailInput', () => {
         it('should set the email input', () => {
           assert.notOk(meeting.emailInput);

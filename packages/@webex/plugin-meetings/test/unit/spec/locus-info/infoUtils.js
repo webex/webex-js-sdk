@@ -106,6 +106,27 @@ describe('plugin-meetings', () => {
           userDisplayHints: [],
         });
       });
+
+      it('only adds webExSite and webExMeetingName when present', () => {
+        assert.deepEqual(
+          InfoUtils.parse({webExSite: 'example.webex.com', webExMeetingName: 'Test Meeting'}, []),
+          {
+            coHost: {LOWER_SOMEONE_ELSES_HAND: true},
+            moderator: {LOWER_SOMEONE_ELSES_HAND: true},
+            webExSite: 'example.webex.com',
+            webExMeetingName: 'Test Meeting',
+            policy: {},
+            userDisplayHints: [],
+          }
+        );
+
+        assert.deepEqual(InfoUtils.parse({}, []), {
+          coHost: {LOWER_SOMEONE_ELSES_HAND: true},
+          moderator: {LOWER_SOMEONE_ELSES_HAND: true},
+          policy: {},
+          userDisplayHints: [],
+        });
+      });
     });
 
     describe('parseDisplayHintsSection', () => {

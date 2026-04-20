@@ -4660,6 +4660,34 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * After initial locus setup, refreshes destination with synced locus data and optionally
+   * performs deferred meeting info fetch when initial locus was incomplete.
+   * @param {Boolean} needFetchMeetingInfo
+   * @returns {Promise<void>}
+   */
+  public async finalizeMeetingAfterInitialLocusSetup(needFetchMeetingInfo: boolean): Promise<void> {
+    const syncedLocus = this?.locusInfo?.parsedLocus;
+
+    if (syncedLocus && this?.destinationType === DESTINATION_TYPE.LOCUS_ID) {
+      // destination is initialized from the initial locus snapshot in constructor,
+      // so refresh it after locus sync to avoid stale partial hash-tree data.
+      this.destination = syncedLocus;
+    }
+
+    const destinationLocus = this?.destination as any;
+
+    if (needFetchMeetingInfo && destinationLocus?.info) {
+      try {
+        await this.fetchMeetingInfo({});
+      } catch (error: any) {
+        LoggerProxy.logger.info(
+          `Meeting:index#finalizeMeetingAfterInitialLocusSetup --> deferred fetchMeetingInfo failed: ${error.message}`
+        );
+      }
+    }
+  }
+
+  /**
    * Set the locus info the class instance. Should be called with the parsed locus
    * we got in the join response.
    *
