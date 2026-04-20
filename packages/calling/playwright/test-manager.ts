@@ -156,7 +156,6 @@ export class TestManager {
     await Promise.all(
       Array.from(this.contexts.values()).map((mc) => cleanupActiveCalls(mc.page).catch(() => {}))
     );
-
     // Deregister lines before closing — prevents stale backend registrations
     // that block subsequent tests reusing the same account.
     await Promise.all(
