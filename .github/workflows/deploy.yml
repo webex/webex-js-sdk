@@ -5,8 +5,6 @@ on:
   push:
     branches: # White-list of deployable tags and branches. Note that all white-listed branches cannot include any `/` characters
       - next
-      # Temporary: run Deploy CD on this branch to validate non-webex primary package in PR comment + Webex (remove after testing).
-      - test-no-webex-primary
 
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
@@ -211,7 +209,6 @@ jobs:
         run: yarn run build:script
 
       - name: Deploy Packages
-        continue-on-error: true
         run: yarn workspaces foreach --from '${{ needs.generate-package-matrix.outputs.yarn-recursive }}' --verbose run deploy:npm --access public --tag ${GITHUB_REF##*/}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -290,8 +287,6 @@ jobs:
     name: Publish - Tags
     runs-on: ubuntu-latest
     needs: [generate-package-matrix, publish-npm]
-    # Run even when npm publish fails (e.g. fork) so version outputs stay available for PR comment + Webex notify.
-    if: always() && needs.generate-package-matrix.result == 'success'
 
     outputs:
       message: ${{ steps.versionextractor.outputs.message }}
@@ -339,7 +334,7 @@ jobs:
           if git rev-parse "${{ steps.versionextractor.outputs.version }}" >/dev/null 2>&1; then
             echo "Tag ${{ steps.versionextractor.outputs.version }} already exists. Exiting job."
             echo "proceed=false" >> $GITHUB_OUTPUT
-          elif [ -z "${{ needs.generate-package-matrix.outputs.node-recursive }}" ]; then
+          elif [ -z ${{ needs.generate-package-matrix.outputs.node-recursive }} ]; then
             echo "No packages published, therefore, publishing a tag is unnecessary. Exiting job."
             echo "proceed=false" >> $GITHUB_OUTPUT
           else
@@ -384,8 +379,6 @@ jobs:
     name: Comment on Released PRs
     needs: [publish-npm, publish-tag]
     runs-on: ubuntu-latest
-    # Run after publish-tag even when npm publish failed, so Webex/PR outputs are still produced.
-    if: always() && (needs.publish-npm.result == 'success' || needs.publish-tag.result == 'success')
 
     outputs:
       pr_number: ${{ steps.get-pr.outputs.pr_number }}
@@ -403,15 +396,6 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            function prNumberFromCommitMessage(msg) {
-              if (!msg || typeof msg !== 'string') return null;
-              const mergeMatch = msg.match(/Merge pull request #(\d+)/i);
-              if (mergeMatch) return mergeMatch[1];
-              const squashMatch = msg.match(/\(#(\d+)\)\s*$/m);
-              if (squashMatch) return squashMatch[1];
-              return null;
-            }
-
             try {
               const prs = await github.rest.repos.listPullRequestsAssociatedWithCommit({
                 owner, repo, commit_sha: deploySha
@@ -424,65 +408,6 @@ jobs:
             } catch (error) {
               console.log(`Failed to discover PR from commit: ${error.message}`);
             }
-
-            // Full commit message from the API (webhook head_commit can be missing or not the merge body).
-            try {
-              const { data: commitData } = await github.rest.repos.getCommit({
-                owner, repo, commit_sha: deploySha
-              });
-              const fullMsg = commitData.commit?.message || '';
-              const fromFull = prNumberFromCommitMessage(fullMsg);
-              if (fromFull) {
-                core.setOutput('pr_number', fromFull);
-                return;
-              }
-            } catch (error) {
-              console.log(`Failed to load commit for PR discovery: ${error.message}`);
-            }
-
-            // Feature-branch pushes: PR head ref matches owner:branch and head SHA matches deploy SHA only.
-            // Skip release branches like next — head:owner:next matches PRs *from* next, not merges *into* next.
-            if (context.ref.startsWith('refs/heads/')) {
-              const branch = context.ref.replace('refs/heads/', '');
-              const skipHeadLookup = new Set(['next', 'main', 'master']);
-              if (!skipHeadLookup.has(branch)) {
-                try {
-                  const { data: pulls } = await github.rest.pulls.list({
-                    owner,
-                    repo,
-                    head: `${owner}:${branch}`,
-                    state: 'all',
-                    sort: 'updated',
-                    direction: 'desc',
-                    per_page: 30,
-                  });
-                  const exact = pulls.find((pr) => pr.head.sha === deploySha);
-                  if (exact) {
-                    core.setOutput('pr_number', String(exact.number));
-                    return;
-                  }
-                } catch (error) {
-                  console.log(`Failed to list PRs for branch ${branch}: ${error.message}`);
-                }
-              }
-            }
-
-            const headMsg = context.payload.head_commit?.message || '';
-            const fromHead = prNumberFromCommitMessage(headMsg);
-            if (fromHead) {
-              core.setOutput('pr_number', fromHead);
-              return;
-            }
-
-            const commits = context.payload.commits || [];
-            for (const c of commits) {
-              const fromC = prNumberFromCommitMessage(c?.message || '');
-              if (fromC) {
-                core.setOutput('pr_number', fromC);
-                return;
-              }
-            }
-
             core.setOutput('pr_number', '');
 
       - name: Post Release Comment on PR
@@ -507,26 +432,14 @@ jobs:
             const repo = context.repo.repo;
             const repoUrl = `https://github.com/${owner}/${repo}`;
             const hasPackages = packageEntries.length > 0;
-            const tagVersion = '${{ needs.publish-tag.outputs.version }}'.trim();
 
             let commentBody;
 
             if (hasPackages) {
-              // Prefer @webex/byods for headline Version + changelog when it shipped; else root webex; else first package.
-              let primaryPackage;
-              if (packageVersions['@webex/byods']) {
-                primaryPackage = '@webex/byods';
-              } else if (packageVersions['webex']) {
-                primaryPackage = 'webex';
-              } else {
-                primaryPackage = packageEntries[0][0];
-              }
+              const primaryPackage = packageVersions['webex']
+                ? 'webex' : packageEntries[0][0];
               const primaryVersion = packageVersions[primaryPackage];
               core.setOutput('primary_version', `${primaryPackage}@${primaryVersion}`);
-              // Shorter label in comments/Webex for BYoDS (avoid "@webex/" in the visible line; changelog still uses full npm name).
-              const versionDisplaySlug = primaryPackage === '@webex/byods' ? 'byods' : primaryPackage;
-              const versionLineLabel =
-                primaryPackage === '@webex/byods' ? `${versionDisplaySlug}@${primaryVersion}` : `${versionDisplaySlug}@${primaryVersion}`;
               const stableVersion = primaryVersion.replace(/-next\..*/, '').replace(/-[a-z]*\..*/, '');
 
               const cnameFile = await github.rest.repos.getContent({ owner, repo, path: 'docs/CNAME' });
@@ -544,21 +457,12 @@ jobs:
                 ? `| **Released in:** [\`${version}\`](${repoUrl}/releases/tag/${version}) |`
                 : '';
 
-              const prSummaryUrl = `${repoUrl}/pull/${prNumber}`;
-              const summaryLines = [
-                '',
-                `**Version:** \`${versionLineLabel}\``,
-                `**PR Link:** [PR #${prNumber}](${prSummaryUrl})`,
-                `**Changelog:** ${changelogUrl.toString()}`,
-                '',
-              ].join('\n');
-
               const rows = packageEntries
                 .sort(([a], [b]) => {
-                  if (a === primaryPackage) return -1;
-                  if (b === primaryPackage) return 1;
                   if (a === 'webex') return -1;
                   if (b === 'webex') return 1;
+                  if (a === primaryPackage) return -1;
+                  if (b === primaryPackage) return 1;
                   return a.localeCompare(b);
                 })
                 .map(([pkg, ver]) => `| \`${pkg}\` | \`${ver}\` |`)
@@ -575,7 +479,6 @@ jobs:
               commentBody = [
                 '| :tada: Your changes are now available! |',
                 '|---|',
-                summaryLines,
                 releaseLine,
                 `| :book: **[View full changelog →](${changelogUrl})** |`,
                 packagesTable,
@@ -583,60 +486,6 @@ jobs:
                 '',
                 `_:robot: This is an automated message. For queries, please contact [support](https://developer.webex.com/support)._`
               ].filter(Boolean).join('\n');
-            } else if (tagVersion) {
-              // npm package_versions can be empty when registry publish fails (fork) even though a tag exists — still post the rich comment.
-              const primaryPackage = '@webex/byods';
-              const primaryVersion = tagVersion.replace(/^v/, '') || tagVersion;
-              core.setOutput('primary_version', `${primaryPackage}@${primaryVersion}`);
-              const versionDisplaySlug = 'byods';
-              const versionLineLabel = `${versionDisplaySlug}@${primaryVersion}`;
-              const stableVersion = primaryVersion.replace(/-next\..*/, '').replace(/-[a-z]*\..*/, '');
-
-              let changelogUrl;
-              try {
-                const cnameFile = await github.rest.repos.getContent({ owner, repo, path: 'docs/CNAME' });
-                const cname = Buffer.from(cnameFile.data.content, 'base64').toString().trim();
-                changelogUrl = new URL(`https://${cname}/changelog/`);
-                if (stableVersion) changelogUrl.searchParams.set('stable_version', stableVersion);
-                changelogUrl.searchParams.set('package', primaryPackage);
-                changelogUrl.searchParams.set('version', primaryVersion);
-                core.setOutput('changelog_url', changelogUrl.toString());
-              } catch (e) {
-                core.warning(`Could not build changelog URL: ${e.message}`);
-                changelogUrl = new URL('https://web-sdk.webex.com/changelog/');
-              }
-
-              core.setOutput('version', tagVersion);
-
-              const releaseLine = `| **Released in:** [\`${tagVersion}\`](${repoUrl}/releases/tag/${tagVersion}) |`;
-              const prSummaryUrl = `${repoUrl}/pull/${prNumber}`;
-              const summaryLines = [
-                '',
-                `**Version:** \`${versionLineLabel}\``,
-                `**PR Link:** [PR #${prNumber}](${prSummaryUrl})`,
-                `**Changelog:** ${changelogUrl.toString()}`,
-                '',
-              ].join('\n');
-
-              const packagesTable = [
-                '',
-                '| Packages Updated | Version |',
-                '|---------|---------|',
-                '| _Release tag (npm publish may not have completed in CI)_ | `' + tagVersion + '` |',
-                ''
-              ].join('\n');
-
-              commentBody = [
-                '| :tada: Your changes are now available! |',
-                '|---|',
-                summaryLines,
-                releaseLine,
-                `| :book: **[View full changelog →](${changelogUrl})** |`,
-                packagesTable,
-                'Thank you for your contribution!',
-                '',
-                `_:robot: This is an automated message. For queries, please contact [support](https://developer.webex.com/support)._`
-              ].join('\n');
             } else {
               commentBody = [
                 ':white_check_mark: **Your changes have been merged!**',
@@ -645,15 +494,31 @@ jobs:
                 '',
                 `_:robot: This is an automated message. For queries, please contact [support](https://developer.webex.com/support)._`
               ].join('\n');
+
+              const tagVersion = '${{ needs.publish-tag.outputs.version }}'.trim();
+              if (tagVersion) {
+                const primaryVersion = tagVersion.replace(/^v/, '') || tagVersion;
+                const primaryPackage = 'webex';
+                try {
+                  const stableVersion = primaryVersion.replace(/-next\..*/, '').replace(/-[a-z]*\..*/, '');
+                  const cnameFile = await github.rest.repos.getContent({ owner, repo, path: 'docs/CNAME' });
+                  const cname = Buffer.from(cnameFile.data.content, 'base64').toString().trim();
+                  const changelogUrl = new URL(`https://${cname}/changelog/`);
+                  if (stableVersion) changelogUrl.searchParams.set('stable_version', stableVersion);
+                  changelogUrl.searchParams.set('package', primaryPackage);
+                  changelogUrl.searchParams.set('version', primaryVersion);
+                  core.setOutput('changelog_url', changelogUrl.toString());
+                } catch (e) {
+                  core.warning(`Could not build changelog URL: ${e.message}`);
+                }
+                core.setOutput('primary_version', `${primaryPackage}@${primaryVersion}`);
+                core.setOutput('version', tagVersion);
+              }
             }
 
             try {
               const pr = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
-              const deploySha = context.sha;
-              if (!pr.data.merged_at && pr.data.head.sha !== deploySha) {
-                core.warning(`Skipping PR comment: PR #${prNumber} is not merged and head sha does not match deploy commit.`);
-                return;
-              }
+              if (!pr.data.merged_at) return;
 
               const comments = await github.paginate(github.rest.issues.listComments, {
                 owner, repo,
@@ -671,10 +536,9 @@ jobs:
               );
 
               if (detailedComment) return;
-              // Avoid duplicate short comment only when we have no detailed payload (no packages and no tag).
-              if (mergedComment && !hasPackages && !tagVersion) return;
+              if (!hasPackages && mergedComment) return;
 
-              if (mergedComment && (hasPackages || tagVersion)) {
+              if (mergedComment && hasPackages) {
                 await github.rest.issues.updateComment({
                   owner, repo,
                   comment_id: mergedComment.id,
@@ -698,62 +562,30 @@ jobs:
     if: always()
 
     steps:
-      - name: Checkout for changelog URL fallback
-        uses: actions/checkout@v3
-
       - name: Post Webex Space Message
         env:
           WEBEX_BOT_TOKEN: ${{ secrets.WEBEX_BOT_TOKEN }}
           WEBEX_ROOM_ID: ${{ secrets.WEBEX_ROOM_ID }}
-          TAG_VERSION: ${{ needs.publish-tag.outputs.version }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           VERSION="${{ needs.comment-on-pr.outputs.primary_version }}"
           PR_NUMBER="${{ needs.comment-on-pr.outputs.pr_number }}"
           CHANGELOG_URL="${{ needs.comment-on-pr.outputs.changelog_url }}"
 
-          if [ -z "${VERSION}" ] && [ -n "${TAG_VERSION}" ]; then
-            PV="${TAG_VERSION#v}"
-            VERSION="@webex/byods@${PV}"
-          fi
-
-          if [ -z "${CHANGELOG_URL}" ] && [ -n "${VERSION}" ] && [ -f docs/CNAME ]; then
-            CNAME=$(tr -d '\r\n[:space:]' < docs/CNAME)
-            if printf '%s' "${VERSION}" | grep -q '@'; then
-              PV="${VERSION##*@}"
-              PKG="${VERSION%@${PV}}"
-            else
-              PV="${VERSION}"
-              PKG="webex"
-            fi
-            STABLE=$(printf '%s' "${PV}" | sed -e 's/-next\..*$//' -e 's/-[a-z][a-z0-9]*\..*$//')
-            PKG_ENC=$(printf '%s' "${PKG}" | sed -e 's/+/%2B/g' -e 's/@/%40/g' -e 's|/|%2F|g')
-            CHANGELOG_URL="https://${CNAME}/changelog/?package=${PKG_ENC}&version=$(printf '%s' "${PV}" | sed -e 's/+/%2B/g')"
-            if [ -n "${STABLE}" ] && [ "${STABLE}" != "${PV}" ]; then
-              CHANGELOG_URL="${CHANGELOG_URL}&stable_version=$(printf '%s' "${STABLE}" | sed -e 's/+/%2B/g')"
-            fi
-          fi
-
           if [ -n "${PR_NUMBER}" ]; then
             PR_LINK="https://github.com/${{ github.repository }}/pull/${PR_NUMBER}"
-            PR_LINK_TEXT="PR #${PR_NUMBER}"
           else
-            PR_LINK="https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
-            PR_LINK_TEXT="View commit"
+            PR_LINK=""
           fi
 
-          VERSION_DISPLAY="${VERSION}"
-          case "${VERSION}" in
-            @webex/byods@*)
-              VERSION_DISPLAY="byods@${VERSION#@webex/byods@}"
-              ;;
-          esac
+          PR_TITLE=$(printf '%s' "${COMMIT_MESSAGE}" | head -n 1)
 
           MESSAGE=""
           if [ -n "${VERSION}" ]; then
-            MESSAGE=$(printf '%s' "**Version:** ${VERSION_DISPLAY}")
+            MESSAGE=$(printf '%s' "**Version:** ${VERSION}")
           fi
           if [ -n "${PR_LINK}" ]; then
-            PR_BLOCK=$(printf '%s' "**PR Link:** [${PR_LINK_TEXT}](${PR_LINK})")
+            PR_BLOCK=$(printf '%s' "**PR:** [${PR_TITLE}](${PR_LINK})")
             if [ -n "${MESSAGE}" ]; then
               MESSAGE=$(printf '%s\n\n%s' "${MESSAGE}" "${PR_BLOCK}")
             else
@@ -784,3 +616,4 @@ jobs:
             https://webexapis.com/v1/messages > /dev/null
 
           echo "Message sent successfully!"
+
