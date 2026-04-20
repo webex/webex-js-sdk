@@ -3182,6 +3182,7 @@ describe('plugin-meetings', () => {
       const createSelfElementWithReplaces = (replacedLocusUrl, replacedAt) => ({
         htMeta: {elementId: {type: 'Self'}},
         data: {
+          deviceUrl,
           devices: [{url: deviceUrl, replaces: [{locusUrl: replacedLocusUrl, replacedAt}]}],
         },
       });
@@ -5192,6 +5193,7 @@ describe('plugin-meetings', () => {
       return {
         htMeta: {elementId: {type: 'Self'}},
         data: {
+          deviceUrl,
           devices,
         },
       };
