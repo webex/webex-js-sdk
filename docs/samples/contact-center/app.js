@@ -48,6 +48,7 @@ const participantListElm = document.querySelector('#participant-list');
 const answerElm = document.querySelector('#answer');
 const declineElm = document.querySelector('#decline');
 const callControlListener = document.querySelector('#callcontrolsection');
+const taskControlsCardsElm = document.querySelector('#taskControlsCards');
 const holdResumeElm = document.querySelector('#hold-resume');
 const muteElm = document.querySelector('#mute-unmute');
 const pauseResumeRecordingElm = document.querySelector('#pause-resume-recording');
@@ -836,14 +837,13 @@ async function toggleTransferOptions() {
   if (!currentTask) return;
 
   const interactionState = currentTask.data?.interaction?.state;
-  const controls = currentTask.uiControls || {};
+  const controls = getActiveUIControls(currentTask);
   const inConferenceFlow =
     interactionState === 'conference' || currentTask.data?.isConferenceInProgress === true;
   const inConsultFlow =
     interactionState === 'consulting' ||
     controls.endConsult?.isVisible ||
-    controls.switchToMainCall?.isVisible ||
-    controls.switchToConsult?.isVisible ||
+    controls.switch?.isVisible ||
     controls.conference?.isVisible;
 
   // In consult/conference/switched flows, transfer button should execute transfer API directly.
@@ -856,6 +856,7 @@ async function toggleTransferOptions() {
         return;
       }
 
+      console.log('pkesari_currentTask.data', currentTask.data);
       const transferTo = currentTask.data?.destAgentId || currentTask.data?.consultingAgentId;
       const transferDestinationType = currentTask.data?.destinationType || 'agent';
 
@@ -1112,41 +1113,30 @@ async function transferConference() {
 }
 
 /**
- * Switch to main call - puts consult leg on hold
+ * Switch between main and consult call
  */
-async function switchToMainCall() {
+async function switchCall() {
   if (!currentTask) {
     alert('No active task');
     return;
   }
 
   try {
-    console.log('Switching to main call...');
+    console.log('Switching call...');
     await currentTask.switchCall();
-    console.log('Switched to main call successfully');
+    console.log('Switched call successfully');
   } catch (error) {
-    console.error('Failed to switch to main call:', error);
-    alert(`Failed to switch to main call. ${error.message || 'Please try again.'}`);
+    console.error('Failed to switch call:', error);
+    alert(`Failed to switch call. ${error.message || 'Please try again.'}`);
   }
 }
 
-/**
- * Switch to consult call - puts main call leg on hold
- */
-async function switchToConsult() {
-  if (!currentTask) {
-    alert('No active task');
-    return;
-  }
+async function switchToMainCall() {
+  return switchCall();
+}
 
-  try {
-    console.log('Switching to consult call...');
-    await currentTask.switchCall();
-    console.log('Switched to consult call successfully');
-  } catch (error) {
-    console.error('Failed to switch to consult call:', error);
-    alert(`Failed to switch to consult call. ${error.message || 'Please try again.'}`);
-  }
+async function switchToConsult() {
+  return switchCall();
 }
 
 // Update task state display in the UI
@@ -1287,6 +1277,25 @@ function isInteractionOnHold(task) {
   }
   return Object.values(interaction.media).some((media) => media.isHold);
 } 
+
+function isTaskLegOnHold(task, leg = 'main') {
+  const interaction = task?.data?.interaction;
+  const media = interaction?.media;
+
+  if (!interaction || !media) {
+    return false;
+  }
+
+  const mediaResourceId = leg === 'consult'
+    ? task?.data?.consultMediaResourceId
+    : task?.data?.mediaResourceId;
+
+  if (mediaResourceId && media[mediaResourceId]) {
+    return Boolean(media[mediaResourceId].isHold);
+  }
+
+  return isInteractionOnHold(task);
+}
 
 // Register task listeners
 function registerTaskListeners(task) {
@@ -1654,10 +1663,178 @@ function getConsultStatus(task) {
  * All button visibility and enabled states come from task.uiControls.
  * DO NOT manually set .disabled or .style.display anywhere else!
  */
+function getTaskLegControls(task, leg) {
+  if (!task?.uiControls) {
+    return null;
+  }
+
+  if (!task.uiControls.main) {
+    return task.uiControls;
+  }
+
+  return leg === 'consult' ? task.uiControls.consult : task.uiControls.main;
+}
+
+function getTaskActiveLeg(task) {
+  return task?.uiControls?.activeLeg || 'main';
+}
+
+function getActiveUIControls(task) {
+  return getTaskLegControls(task, getTaskActiveLeg(task)) || {};
+}
+
+function hasVisibleControls(controls) {
+  if (!controls) return false;
+
+  return Object.values(controls).some((control) => control?.isVisible);
+}
+
+function getTaskControlCardStatus(task, leg) {
+  const activeLeg = getTaskActiveLeg(task);
+
+  if (leg === 'consult') {
+    return activeLeg === 'consult' ? 'Consulting' : 'On Hold';
+  }
+
+  if (hasVisibleControls(task?.uiControls?.consult)) {
+    return activeLeg === 'main' ? 'Connected' : 'On Hold';
+  }
+
+  return task?.data?.interaction?.state || 'Unknown';
+}
+
+function getTaskControlCardLabel(task, leg, actionKey) {
+  if (actionKey === 'hold') {
+    return isTaskLegOnHold(task, leg) ? 'Resume' : 'Hold';
+  }
+
+  if (actionKey === 'switch') {
+    return 'Switch';
+  }
+
+  if (actionKey === 'conference') {
+    return leg === 'consult' ? 'Merge' : 'Conference';
+  }
+
+  return {
+    mute: 'Mute',
+    consult: 'Consult',
+    transfer: 'Transfer',
+    endConsult: 'End Consult',
+    exitConference: 'Exit Conference',
+    end: 'End',
+    wrapup: 'Wrapup',
+    recording: 'Recording',
+  }[actionKey] || actionKey;
+}
+
+function executeTaskControlCardAction(task, actionKey) {
+  if (!task) return;
+
+  currentTask = task;
+
+  const actionMap = {
+    hold: () => holdResumeCall(),
+    mute: () => muteUnmute(),
+    consult: () => showInitiateConsultDialog(),
+    transfer: () => toggleTransferOptions(),
+    conference: () => mergeToConference(),
+    endConsult: () => endConsult(),
+    exitConference: () => exitConference(),
+    switch: () => switchCall(),
+    end: () => endCall(),
+    wrapup: () => wrapupCall(),
+  };
+
+  actionMap[actionKey]?.();
+}
+
+function renderTaskControlsSections(task) {
+  if (!taskControlsCardsElm) return;
+
+  taskControlsCardsElm.innerHTML = '';
+
+  if (!task?.uiControls?.main) {
+    return;
+  }
+
+  const activeLeg = getTaskActiveLeg(task);
+  const legs = [
+    {id: 'main', title: 'Main Interaction', controls: getTaskLegControls(task, 'main')},
+    {id: 'consult', title: 'Consult Interaction', controls: getTaskLegControls(task, 'consult')},
+  ].filter((entry) => entry.id === 'main' || hasVisibleControls(entry.controls));
+
+  const actionOrder = [
+    'hold',
+    'mute',
+    'consult',
+    'transfer',
+    'conference',
+    'endConsult',
+    'exitConference',
+    'switch',
+    'end',
+    'wrapup',
+  ];
+
+  legs.forEach(({id, title, controls}) => {
+    const isActive = id === activeLeg;
+    const card = document.createElement('section');
+    card.className = `task-controls-card${isActive ? ' is-active' : ''}`;
+
+    const header = document.createElement('div');
+    header.className = 'task-controls-card__header';
+
+    const titleElm = document.createElement('div');
+    titleElm.className = 'task-controls-card__title';
+    titleElm.textContent = title;
+
+    const badgeElm = document.createElement('span');
+    badgeElm.className = 'task-controls-card__badge';
+    badgeElm.textContent = isActive ? 'Active' : 'Inactive';
+
+    header.appendChild(titleElm);
+    header.appendChild(badgeElm);
+
+    const metaElm = document.createElement('div');
+    metaElm.className = 'task-controls-card__meta';
+    metaElm.textContent = `State: ${getTaskControlCardStatus(task, id)}`;
+
+    const actionsElm = document.createElement('div');
+    actionsElm.className = 'task-controls-card__actions';
+
+    actionOrder.forEach((actionKey) => {
+      const control = controls?.[actionKey];
+
+      if (!control?.isVisible) {
+        return;
+      }
+
+      if (!isActive && actionKey === 'switch') {
+        return;
+      }
+
+      const button = document.createElement('button');
+      button.textContent = getTaskControlCardLabel(task, id, actionKey);
+      const allowInactiveAction = actionKey === 'endConsult';
+
+      button.disabled = (!isActive && !allowInactiveAction) || !control.isEnabled;
+      button.addEventListener('click', () => executeTaskControlCardAction(task, actionKey));
+      actionsElm.appendChild(button);
+    });
+
+    card.appendChild(header);
+    card.appendChild(metaElm);
+    card.appendChild(actionsElm);
+    taskControlsCardsElm.appendChild(card);
+  });
+}
+
 function updateCallControlUI(task) {
   if (!task) {
     // No task - hide all call controls
     applyAllControlsFromUIControls(null);
+    renderTaskControlsSections(null);
     return;
   }
 
@@ -1666,10 +1843,11 @@ function updateCallControlUI(task) {
   const { callProcessingDetails } = interaction || {};
 
   // Get uiControls from task - this is the SINGLE SOURCE OF TRUTH
-  const uiControls = task.uiControls || {};
+  const uiControls = getActiveUIControls(task);
 
   // Apply ALL button states from uiControls
   applyAllControlsFromUIControls(uiControls);
+  renderTaskControlsSections(task);
 
   // Update button text based on state (text only, not visibility/enabled)
   updateButtonLabels(task, callProcessingDetails);
@@ -1689,6 +1867,7 @@ function updateCallControlUI(task) {
   // Debug logging
   console.log('uiControls applied:', {
     interactionId: task.data?.interactionId,
+    activeLeg: task.uiControls?.activeLeg,
     accept: uiControls.accept,
     decline: uiControls.decline,
     hold: uiControls.hold,
@@ -1699,8 +1878,7 @@ function updateCallControlUI(task) {
     conference: uiControls.conference,
     mergeToConference: uiControls.mergeToConference,
     exitConference: uiControls.exitConference,
-    switchToMainCall: uiControls.switchToMainCall,
-    switchToConsult: uiControls.switchToConsult,
+    switch: uiControls.switch,
     wrapup: uiControls.wrapup,
   });
 }
@@ -1748,8 +1926,8 @@ function applyAllControlsFromUIControls(uiControls) {
   applyControlState(mergeConferenceBtn, controls.conference);
   applyControlState(exitConferenceBtn, controls.exitConference);
   applyControlState(transferConferenceBtn, controls.transferConference);
-  applyControlState(switchToMainBtn, controls.switchToMainCall);
-  applyControlState(switchToConsultBtn, controls.switchToConsult);
+  applyControlState(switchToMainBtn, controls.switch);
+  applyControlState(switchToConsultBtn, controls.switch);
   
   // Wrapup controls
   applyControlState(wrapupElm, controls.wrapup);
@@ -1766,7 +1944,7 @@ function updateButtonLabels(task, callProcessingDetails) {
   if (!task) return;
   
   // Hold/Resume button text
-  const isHold = isInteractionOnHold(task);
+  const isHold = isTaskLegOnHold(task, getTaskActiveLeg(task));
   if (holdResumeElm) {
     holdResumeElm.innerText = isHold ? 'Resume' : 'Hold';
   }
@@ -1787,12 +1965,10 @@ function updateButtonLabels(task, callProcessingDetails) {
   }
 
   // Conference/Merge button label based on which leg is active
-  // switchToConsult visible → agent is on main leg → label "Conference"
-  // switchToMainCall visible → agent is on consult leg → label "Merge"
   if (mergeConferenceBtn) {
-    const controls = task.uiControls;
+    const controls = getActiveUIControls(task);
     if (controls?.conference?.isVisible) {
-      const onMainLeg = controls?.switchToConsult?.isVisible;
+      const onMainLeg = getTaskActiveLeg(task) === 'main';
 
       mergeConferenceBtn.innerText = onMainLeg ? 'Conference' : 'Merge';
     }
@@ -2621,6 +2797,7 @@ function renderTaskList(taskList) {
   if (!taskList || Object.keys(taskList).length === 0) {
     // No tasks - apply default (all disabled) controls
     applyAllControlsFromUIControls(null);
+    renderTaskControlsSections(null);
     incomingDetailsElm.innerText = 'No Incoming Tasks';
     autoWrapupTimerElm.style.display = 'none';
     taskListContainer.innerHTML = '<p>No tasks available</p>';
@@ -2681,6 +2858,7 @@ function renderTaskList(taskList) {
   // If all tasks were filtered out, show "No tasks available"
   if (activeTasks.length === 0) {
     applyAllControlsFromUIControls(null);
+    renderTaskControlsSections(null);
     incomingDetailsElm.innerText = 'No Incoming Tasks';
     autoWrapupTimerElm.style.display = 'none';
     taskListContainer.innerHTML = '<p>No tasks available</p>';
@@ -2702,6 +2880,7 @@ function renderTaskList(taskList) {
       // Current task was removed or filtered out - clear UI controls immediately
       console.info('📋 Current task removed from list - clearing UI controls');
       applyAllControlsFromUIControls(null);
+      renderTaskControlsSections(null);
       participantListElm.style.display = 'none';
       incomingDetailsElm.innerText = 'No Incoming Tasks';
       currentTask = undefined;

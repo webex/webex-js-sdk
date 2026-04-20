@@ -48,8 +48,8 @@ describe('Digital Task', () => {
   it('constructor shows accept when offered', () => {
     const task = new Digital(dummyContact, dummyData);
     sendStateEvents(task, [{type: TaskEvent.TASK_INCOMING, taskData: dummyData}]);
-    expect(task.uiControls.accept.isVisible).toBe(true);
-    expect(task.uiControls.accept.isEnabled).toBe(true);
+    expect(task.uiControls.main.accept.isVisible).toBe(true);
+    expect(task.uiControls.main.accept.isEnabled).toBe(true);
   });
 
   describe('UI controls derived from state machine events', () => {
@@ -59,10 +59,10 @@ describe('Digital Task', () => {
         {type: TaskEvent.TASK_INCOMING, taskData: dummyData},
         {type: TaskEvent.ASSIGN, taskData: dummyData},
       ]);
-      expect(task.uiControls.accept.isVisible).toBe(false);
-      expect(task.uiControls.transfer.isVisible).toBe(true);
-      expect(task.uiControls.end.isVisible).toBe(true);
-      expect(task.uiControls.wrapup.isVisible).toBe(false);
+      expect(task.uiControls.main.accept.isVisible).toBe(false);
+      expect(task.uiControls.main.transfer.isVisible).toBe(true);
+      expect(task.uiControls.main.end.isVisible).toBe(true);
+      expect(task.uiControls.main.wrapup.isVisible).toBe(false);
     });
 
     it('wrapup state hides transfer/end and shows wrapup button', () => {
@@ -72,9 +72,9 @@ describe('Digital Task', () => {
         {type: TaskEvent.ASSIGN, taskData: dummyData},
         {type: TaskEvent.TASK_WRAPUP},
       ]);
-      expect(task.uiControls.transfer.isVisible).toBe(false);
-      expect(task.uiControls.end.isVisible).toBe(false);
-      expect(task.uiControls.wrapup.isVisible).toBe(true);
+      expect(task.uiControls.main.transfer.isVisible).toBe(false);
+      expect(task.uiControls.main.end.isVisible).toBe(false);
+      expect(task.uiControls.main.wrapup.isVisible).toBe(true);
     });
 
     it('terminated interaction toggles wrapup visibility even before END event', () => {
@@ -88,7 +88,7 @@ describe('Digital Task', () => {
         {type: TaskEvent.TASK_INCOMING, taskData: dummyData},
         {type: TaskEvent.ASSIGN, taskData: terminatedData},
       ]);
-      expect(task.uiControls.wrapup.isVisible).toBe(true);
+      expect(task.uiControls.main.wrapup.isVisible).toBe(true);
     });
 
     it('rona hides accept controls', () => {
@@ -97,9 +97,9 @@ describe('Digital Task', () => {
         {type: TaskEvent.TASK_INCOMING, taskData: dummyData},
         {type: TaskEvent.RONA},
       ]);
-      expect(task.uiControls.accept.isVisible).toBe(false);
-      expect(task.uiControls.transfer.isVisible).toBe(false);
-      expect(task.uiControls.end.isVisible).toBe(false);
+      expect(task.uiControls.main.accept.isVisible).toBe(false);
+      expect(task.uiControls.main.transfer.isVisible).toBe(false);
+      expect(task.uiControls.main.end.isVisible).toBe(false);
     });
   });
 });

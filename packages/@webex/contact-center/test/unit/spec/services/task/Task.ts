@@ -57,7 +57,7 @@ jest.mock('../../../../../src/logger-proxy', () => ({
 jest.mock('../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
   default: {
-    getInstance: jest.fn().mockReturnValue({ uploadLogs: jest.fn() }),
+    getInstance: jest.fn().mockReturnValue({uploadLogs: jest.fn()}),
   },
 }));
 
@@ -91,31 +91,33 @@ describe('Task (base class)', () => {
 
   it('getUIControls returns default controls shape for idle voice task', () => {
     const controls = task.uiControls;
+    const mainControls = controls.main;
+
     // IDLE state: no active call, ALL controls should be hidden AND disabled
-    expect(controls.accept.isVisible).toBe(false);
-    expect(controls.accept.isEnabled).toBe(false);
-    expect(controls.decline.isVisible).toBe(false);
-    expect(controls.decline.isEnabled).toBe(false);
-    expect(controls.end.isVisible).toBe(false);
-    expect(controls.end.isEnabled).toBe(false);
-    expect(controls.transfer.isVisible).toBe(false);
-    expect(controls.transfer.isEnabled).toBe(false);
-    expect(controls.hold.isVisible).toBe(false);
-    expect(controls.hold.isEnabled).toBe(false);
-    expect(controls.mute.isVisible).toBe(false);
-    expect(controls.mute.isEnabled).toBe(false);
-    expect(controls.consult.isVisible).toBe(false);
-    expect(controls.consult.isEnabled).toBe(false);
-    expect(controls.consultTransfer.isVisible).toBe(false);
-    expect(controls.consultTransfer.isEnabled).toBe(false);
-    expect(controls.endConsult.isVisible).toBe(false);
-    expect(controls.endConsult.isEnabled).toBe(false);
-    expect(controls.recording.isVisible).toBe(false);
-    expect(controls.recording.isEnabled).toBe(false);
-    expect(controls.conference.isVisible).toBe(false);
-    expect(controls.conference.isEnabled).toBe(false);
-    expect(controls.wrapup.isVisible).toBe(false);
-    expect(controls.wrapup.isEnabled).toBe(false);
+    expect(mainControls.accept.isVisible).toBe(false);
+    expect(mainControls.accept.isEnabled).toBe(false);
+    expect(mainControls.decline.isVisible).toBe(false);
+    expect(mainControls.decline.isEnabled).toBe(false);
+    expect(mainControls.end.isVisible).toBe(false);
+    expect(mainControls.end.isEnabled).toBe(false);
+    expect(mainControls.transfer.isVisible).toBe(false);
+    expect(mainControls.transfer.isEnabled).toBe(false);
+    expect(mainControls.hold.isVisible).toBe(false);
+    expect(mainControls.hold.isEnabled).toBe(false);
+    expect(mainControls.mute.isVisible).toBe(false);
+    expect(mainControls.mute.isEnabled).toBe(false);
+    expect(mainControls.consult.isVisible).toBe(false);
+    expect(mainControls.consult.isEnabled).toBe(false);
+    expect(mainControls.consultTransfer.isVisible).toBe(false);
+    expect(mainControls.consultTransfer.isEnabled).toBe(false);
+    expect(mainControls.endConsult.isVisible).toBe(false);
+    expect(mainControls.endConsult.isEnabled).toBe(false);
+    expect(mainControls.recording.isVisible).toBe(false);
+    expect(mainControls.recording.isEnabled).toBe(false);
+    expect(mainControls.conference.isVisible).toBe(false);
+    expect(mainControls.conference.isEnabled).toBe(false);
+    expect(mainControls.wrapup.isVisible).toBe(false);
+    expect(mainControls.wrapup.isEnabled).toBe(false);
   });
 
   it('calls updateUiControls when updateTaskData is invoked', () => {
@@ -131,11 +133,16 @@ describe('Task (base class)', () => {
 
     logSpy.mockClear();
 
-    transitionTask.stateMachineService?.send({type: TaskEvent.TASK_INCOMING, taskData: statefulData});
+    transitionTask.stateMachineService?.send({
+      type: TaskEvent.TASK_INCOMING,
+      taskData: statefulData,
+    });
     transitionTask.stateMachineService?.send({type: TaskEvent.ASSIGN, taskData: statefulData});
 
     const transitionMessages = logSpy.mock.calls
-      .filter(([msg]) => typeof msg === 'string' && (msg as string).startsWith('State machine transition'))
+      .filter(
+        ([msg]) => typeof msg === 'string' && (msg as string).startsWith('State machine transition')
+      )
       .map(([msg]) => msg);
 
     expect(transitionMessages).toEqual([
@@ -293,7 +300,6 @@ describe('Task (base class)', () => {
 
     expect(cleanupSpy).toHaveBeenCalledWith(webrtcTask, {removeFromCollection: true});
   });
-
 });
 
 describe('Task common methods', () => {
@@ -370,9 +376,7 @@ describe('Task failure scenarios', () => {
     const err = new Error('Error while performing transfer');
     contact.blindTransfer.mockRejectedValue(err);
 
-    await expect(task.transfer(payload))
-      .rejects
-      .toThrow('Error while performing transfer');
+    await expect(task.transfer(payload)).rejects.toThrow('Error while performing transfer');
   });
 
   it('transfer rejects when vteamTransfer throws', async () => {
@@ -380,9 +384,7 @@ describe('Task failure scenarios', () => {
     const err = new Error('Error while performing transfer');
     contact.vteamTransfer.mockRejectedValue(err);
 
-    await expect(task.transfer(payload))
-      .rejects
-      .toThrow('Error while performing transfer');
+    await expect(task.transfer(payload)).rejects.toThrow('Error while performing transfer');
   });
 
   it('end rejects when contact.end throws', async () => {
@@ -393,11 +395,15 @@ describe('Task failure scenarios', () => {
   });
 
   it('wrapup throws when auxCodeId is missing', async () => {
-    await expect(task.wrapup({auxCodeId: '', wrapUpReason: 'reason1'} as any)).rejects.toThrow('Error while performing wrapup');
+    await expect(task.wrapup({auxCodeId: '', wrapUpReason: 'reason1'} as any)).rejects.toThrow(
+      'Error while performing wrapup'
+    );
   });
 
   it('wrapup throws when wrapUpReason is missing', async () => {
-    await expect(task.wrapup({auxCodeId: 'code1', wrapUpReason: ''} as any)).rejects.toThrow('Error while performing wrapup');
+    await expect(task.wrapup({auxCodeId: 'code1', wrapUpReason: ''} as any)).rejects.toThrow(
+      'Error while performing wrapup'
+    );
   });
 
   it('wrapup rejects when contact.wrapup throws', async () => {

@@ -577,7 +577,20 @@ export default class TaskManager extends EventEmitter {
       throw new Error('Task not found for update');
     }
 
-    task.updateTaskData(taskData);
+    const snapshot = task.stateMachineService?.getSnapshot?.();
+    const isConsultingFlow =
+      snapshot?.value === 'CONSULTING' || taskData.interaction?.state === 'consulting';
+
+    const updateTaskData = isConsultingFlow
+      ? {
+          ...taskData,
+          destAgentId: taskData.destAgentId ?? snapshot?.context?.consultDestinationAgentId ?? null,
+          destinationType:
+            taskData.destinationType ?? snapshot?.context?.consultDestinationType ?? null,
+        }
+      : taskData;
+
+    task.updateTaskData(updateTaskData);
     this.taskCollection[taskData.interactionId] = task;
 
     return task;

@@ -1809,6 +1809,74 @@ describe('TaskManager', () => {
     expect(updateTaskDataSpy).toHaveBeenCalledWith(unassignedPayload.data);
   });
 
+  it('preserves consult fields from state context during consulting payload refresh', () => {
+    const task = createMockTask({
+      ...taskDataMock,
+      interaction: {state: 'consulting'} as any,
+      interactionId: taskId,
+    });
+    task.stateMachineService = {
+      getSnapshot: () => ({
+        value: 'CONSULTING',
+        context: {
+          consultDestinationAgentId: 'agent-preserved',
+          consultDestinationType: 'agent',
+        },
+      }),
+    };
+
+    const incomingTaskData = {
+      ...taskDataMock,
+      interaction: {state: 'consulting'} as any,
+      interactionId: taskId,
+      destAgentId: null,
+      destinationType: null,
+    };
+
+    (taskManager as any).updateTaskData(task, incomingTaskData);
+
+    expect(task.updateTaskData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        destAgentId: 'agent-preserved',
+        destinationType: 'agent',
+      })
+    );
+  });
+
+  it('does not preserve stale consult fields once consult is no longer active', () => {
+    const task = createMockTask({
+      ...taskDataMock,
+      interaction: {state: 'connected'} as any,
+      interactionId: taskId,
+    });
+    task.stateMachineService = {
+      getSnapshot: () => ({
+        value: 'CONNECTED',
+        context: {
+          consultDestinationAgentId: 'agent-stale',
+          consultDestinationType: 'agent',
+        },
+      }),
+    };
+
+    const incomingTaskData = {
+      ...taskDataMock,
+      interaction: {state: 'connected'} as any,
+      interactionId: taskId,
+      destAgentId: null,
+      destinationType: null,
+    };
+
+    (taskManager as any).updateTaskData(task, incomingTaskData);
+
+    expect(task.updateTaskData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        destAgentId: null,
+        destinationType: null,
+      })
+    );
+  });
+
   it('should handle chat interaction and emit TASK_INCOMING immediately', () => {
     // Setup chat payload with specific media type
     const chatPayload = {

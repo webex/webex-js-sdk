@@ -81,6 +81,13 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
           ...deriveRecordingState(taskData),
         };
 
+        if (taskData.destAgentId) {
+          updates.consultDestinationAgentId = taskData.destAgentId;
+        }
+        if (taskData.interaction?.state === 'consulting' && taskData.destinationType) {
+          updates.consultDestinationType = taskData.destinationType as DestinationType;
+        }
+
         if (!context.consultInitiator) {
           const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
           const consultInitiator = determineConsultInitiator(taskData, selfAgentId);
@@ -105,6 +112,7 @@ export function createInitialContext(
     consultFromConference: false,
     transferConferenceRequested: false,
     consultDestinationType: null,
+    consultDestinationAgentId: null,
     consultDestinationAgentJoined: false,
     consultCallHeld: false,
     recordingControlsAvailable: false,
@@ -174,15 +182,20 @@ export const actions: TaskActionsMap = {
       return {};
     }
 
-    const destinationType =
-      'destinationType' in event
-        ? (event as {destinationType?: DestinationType}).destinationType ?? null
-        : null;
+    const taskData = getTaskDataFromEvent(event);
+    const consultDestinationType =
+      'destinationType' in event ? event.destinationType ?? null : null;
+    const consultDestinationAgentId = 'destAgentId' in event ? event.destAgentId ?? null : null;
 
     return {
-      consultDestinationType: destinationType,
+      consultDestinationType,
+      consultDestinationAgentId,
       consultDestinationAgentJoined: false,
       consultFromConference: false,
+      taskData: {
+        ...taskData,
+        destAgentId: consultDestinationAgentId,
+      },
     };
   }),
 
@@ -234,6 +247,7 @@ export const actions: TaskActionsMap = {
 
   clearConsultState: assign({
     consultDestinationType: null,
+    consultDestinationAgentId: null,
     consultDestinationAgentJoined: false,
     consultInitiator: false,
     exitingConference: false,
