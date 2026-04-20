@@ -20,7 +20,6 @@ import {
 const normalReconnectReasons = ['idle', 'done (forced)'];
 const DEFAULT_MOBIUS_WEBSOCKET_SESSION = 'mobius-websocket-session';
 const TOKEN_REFRESH_INTERVAL_MS = 1 * 60 * 60 * 1000; // 1 hour
-const TEST_MOBIUS_WEBSOCKET_URL = 'wss://mobius.aload-calling1.ciscospark.com/v1/calling/web';
 
 function normalizeMobiusAuthToken(token) {
   if (typeof token !== 'string') {
@@ -523,11 +522,7 @@ const MobiusSocket = WebexPlugin.extend({
 
   _prepareUrl(webSocketUrl) {
     if (!webSocketUrl) {
-      // Original catalog-based URL resolution (kept for later restore):
-      // webSocketUrl = this.webex.internal.device.webSocketUrl;
-
-      // Temporary testing override until catalog URI is available.
-      webSocketUrl = TEST_MOBIUS_WEBSOCKET_URL;
+      webSocketUrl = this.webex.internal.device.webSocketUrl;
     }
 
     // TODO: Validate the host against the service catalog
