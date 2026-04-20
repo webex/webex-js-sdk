@@ -1,3 +1,5 @@
+/* Fork CI: trivial touch so package-tools maps this file to @webex/byods (not docs). Safe to revert. */
+
 import BYODS from './byods';
 import TokenManager from './token-manager';
 import BaseClient from './base-client';
