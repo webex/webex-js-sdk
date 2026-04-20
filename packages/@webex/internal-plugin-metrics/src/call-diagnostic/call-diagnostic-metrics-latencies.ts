@@ -426,7 +426,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       'internal.client.interstitial-window.click.joinbutton',
       'client.ice.end'
     );
-    const stayLobbyTimeCappedByIceEnd = this.getStayLobbyTimeCappedBy('client.ice.end');
+    const stayLobbyTimeCappedByIceEnd = this.getStayLobbyTimeCappedBy('client.ice.end') ?? 0;
 
     if (
       typeof interstitialClickJoinToIceEnd === 'number' &&
@@ -517,9 +517,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       'internal.client.interstitial-window.click.joinbutton',
       'client.media-engine.ready'
     );
-    const stayLobbyTimeCappedByMediaEngineReady = this.getStayLobbyTimeCappedBy(
-      'client.media-engine.ready'
-    );
+    const stayLobbyTimeCappedByMediaEngineReady =
+      this.getStayLobbyTimeCappedBy('client.media-engine.ready') ?? 0;
 
     if (
       typeof clickToInterstitial === 'number' &&

@@ -905,6 +905,18 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.getTotalMediaJMT(), undefined);
     });
 
+    it('calculates getTotalMediaJMT correctly when there is no lobby and stayLobbyTime defaults to 0', () => {
+      cdl.saveTimestamp({key: 'internal.client.meeting.click.joinbutton', value: 5});
+      cdl.saveTimestamp({key: 'internal.client.meeting.interstitial-window.showed', value: 8});
+      // clickToInterstitial = 8 - 5 = 3
+      cdl.saveTimestamp({key: 'internal.client.interstitial-window.click.joinbutton', value: 10});
+      cdl.saveTimestamp({key: 'client.media-engine.ready', value: 50});
+      // interstitialClickJoinToMediaEngineReady = 50 - 10 = 40
+      // no client.locus.join.response → stayLobbyTimeCappedByMediaEngineReady = undefined ?? 0 = 0
+      // total = 3 + 40 - 0 = 43
+      assert.deepEqual(cdl.getTotalMediaJMT(), 43);
+    });
+
     it('calculates getTotalMediaJMTWithUserDelay correctly', () => {
       cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 7);
       // clickToInterstitialWithUserDelay = 7
@@ -1106,6 +1118,20 @@ describe('internal-plugin-metrics', () => {
         value: 14,
       });
       assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 4);
+    });
+
+    it('calculates getInterstitialToMediaOKJMT correctly when there is no lobby and stayLobbyTime defaults to 0', () => {
+      cdl.saveTimestamp({
+        key: 'internal.client.interstitial-window.click.joinbutton',
+        value: 4,
+      });
+      cdl.saveTimestamp({
+        key: 'client.ice.end',
+        value: 14,
+      });
+      // stayLobbyTimeCappedByIceEnd = undefined ?? 0 = 0
+      // result = (14 - 4) - 0 = 10
+      assert.deepEqual(cdl.getInterstitialToMediaOKJMT(), 10);
     });
 
     it('calculates getShareDuration correctly', () => {
