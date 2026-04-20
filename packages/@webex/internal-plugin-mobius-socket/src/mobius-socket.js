@@ -58,6 +58,10 @@ const MobiusSocket = WebexPlugin.extend({
       default: () => new Map(),
       type: 'object',
     },
+    _seenAsyncEventIdsBySession: {
+      default: () => new Map(),
+      type: 'object',
+    },
     localClusterServiceUrls: 'object',
     mercuryTimeOffset: {
       default: undefined,
@@ -130,6 +134,58 @@ const MobiusSocket = WebexPlugin.extend({
     socket.on('ping-pong-latency', (...args) =>
       this._emit(sessionId, 'ping-pong-latency', ...args)
     );
+  },
+
+  _getSeenAsyncEventIds(sessionId) {
+    let seenAsyncEventIds = this._seenAsyncEventIdsBySession.get(sessionId);
+
+    if (!seenAsyncEventIds) {
+      seenAsyncEventIds = new Map();
+      this._seenAsyncEventIdsBySession.set(sessionId, seenAsyncEventIds);
+    }
+
+    return seenAsyncEventIds;
+  },
+
+  _clearSeenAsyncEventIds(sessionId) {
+    if (sessionId) {
+      this._seenAsyncEventIdsBySession.delete(sessionId);
+
+      return;
+    }
+
+    this._seenAsyncEventIdsBySession.clear();
+  },
+
+  _shouldSuppressDuplicateAsyncEvent(sessionId, envelope) {
+    if (envelope?.type !== 'async_event' || !envelope.eventId) {
+      return false;
+    }
+
+    const seenAsyncEventIds = this._getSeenAsyncEventIds(sessionId);
+
+    if (seenAsyncEventIds.has(envelope.eventId)) {
+      const previousValue = seenAsyncEventIds.get(envelope.eventId);
+
+      // Refresh recency so frequently retransmitted eventIds stay protected longer.
+      seenAsyncEventIds.delete(envelope.eventId);
+      seenAsyncEventIds.set(envelope.eventId, previousValue);
+      this.logger.info(
+        `${this.namespace}: duplicate async_event suppressed for ${sessionId}, eventId=${envelope.eventId}`
+      );
+
+      return true;
+    }
+
+    seenAsyncEventIds.set(envelope.eventId, true);
+
+    if (seenAsyncEventIds.size > this.config.dedupCacheMaxSize) {
+      const oldestEventId = seenAsyncEventIds.keys().next().value;
+
+      seenAsyncEventIds.delete(oldestEventId);
+    }
+
+    return false;
   },
 
   /**
@@ -426,6 +482,8 @@ const MobiusSocket = WebexPlugin.extend({
       const sessionSocket = this.sockets.get(sessionId);
       const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
 
+      this._clearSeenAsyncEventIds(sessionId);
+
       if (sessionSocket) {
         sessionSocket.removeAllListeners('message');
         sessionSocket.connecting = false;
@@ -456,6 +514,7 @@ const MobiusSocket = WebexPlugin.extend({
       this.connected = false;
       this.sockets.clear();
       this.backoffCalls.clear();
+      this._clearSeenAsyncEventIds();
       // Clear connection promises to prevent stale promises
       if (this._connectPromises) {
         this._connectPromises.clear();
@@ -1003,6 +1062,10 @@ const MobiusSocket = WebexPlugin.extend({
 
       this._handleImminentShutdown(sessionId);
 
+      return Promise.resolve();
+    }
+
+    if (this._shouldSuppressDuplicateAsyncEvent(sessionId, envelope)) {
       return Promise.resolve();
     }
 

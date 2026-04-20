@@ -44,6 +44,12 @@ const mobiusSocketConfig = {
    * @type {String}
    */
   beforeLogoutOptionsCloseReason: process.env.MOBIUS_SOCKET_LOGOUT_REASON || 'done (forced)',
+  /**
+   * Maximum number of eventIds to retain in the dedup cache for suppressing
+   * duplicate async_event messages retransmitted by the server.
+   * @type {Number}
+   */
+  dedupCacheMaxSize: process.env.MOBIUS_SOCKET_DEDUP_CACHE_MAX_SIZE || 1000,
 };
 
 export default {
