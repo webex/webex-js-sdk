@@ -385,7 +385,7 @@ jobs:
     needs: [publish-npm, publish-tag]
     runs-on: ubuntu-latest
     # Run after publish-tag even when npm publish failed, so Webex/PR outputs are still produced.
-    if: always() && needs.publish-tag.result == 'success'
+    if: always() && (needs.publish-npm.result == 'success' || needs.publish-tag.result == 'success')
 
     outputs:
       pr_number: ${{ steps.get-pr.outputs.pr_number }}
@@ -526,7 +526,7 @@ jobs:
               // Shorter label in comments/Webex for BYoDS (avoid "@webex/" in the visible line; changelog still uses full npm name).
               const versionDisplaySlug = primaryPackage === '@webex/byods' ? 'byods' : primaryPackage;
               const versionLineLabel =
-                primaryPackage === '@webex/byods' ? versionDisplaySlug : `${versionDisplaySlug}@${primaryVersion}`;
+                primaryPackage === '@webex/byods' ? `${versionDisplaySlug}@${primaryVersion}` : `${versionDisplaySlug}@${primaryVersion}`;
               const stableVersion = primaryVersion.replace(/-next\..*/, '').replace(/-[a-z]*\..*/, '');
 
               const cnameFile = await github.rest.repos.getContent({ owner, repo, path: 'docs/CNAME' });
@@ -589,7 +589,7 @@ jobs:
               const primaryVersion = tagVersion.replace(/^v/, '') || tagVersion;
               core.setOutput('primary_version', `${primaryPackage}@${primaryVersion}`);
               const versionDisplaySlug = 'byods';
-              const versionLineLabel = versionDisplaySlug;
+              const versionLineLabel = `${versionDisplaySlug}@${primaryVersion}`;
               const stableVersion = primaryVersion.replace(/-next\..*/, '').replace(/-[a-z]*\..*/, '');
 
               let changelogUrl;
@@ -744,7 +744,7 @@ jobs:
           VERSION_DISPLAY="${VERSION}"
           case "${VERSION}" in
             @webex/byods@*)
-              VERSION_DISPLAY="byods"
+              VERSION_DISPLAY="byods@${VERSION#@webex/byods@}"
               ;;
           esac
 
