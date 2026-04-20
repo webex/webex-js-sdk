@@ -53,6 +53,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
     this.webex = this.sdkConnector.getWebex();
     this.callCollection = {};
     this.activeMobiusUrl = '';
+    this.listenForWsEvents();
   }
 
   /**
@@ -124,13 +125,26 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
   }
 
   /**
+   * A listener for Mobius events.
+   */
+  private listenForWsEvents() {
+    this.sdkConnector.registerListener('event:mobius', async (event) => {
+      this.dequeueWsEvents(event);
+    });
+    log.info('Successfully registered listener for Mobius events', {
+      file: CALL_MANAGER_FILE,
+      method: METHODS.REGISTER_SESSIONS_LISTENER,
+    });
+  }
+
+  /**
    * This a Queue where Mobius Events are reported by the underlying Mercury
    * Connection. We handle the events in the order they are posted here. New call
    * Objects are generated from here.
    *
    * @param event - Mobius Events.
    */
-  public dequeueWsEvents(event: MobiusAsyncEvent) {
+  public dequeueWsEvents(event: MobiusAsyncEvent | unknown) {
     log.info(`${METHOD_START_MESSAGE} with event ${event}`, {
       file: CALL_MANAGER_FILE,
       method: METHODS.DEQUEUE_WS_EVENTS,

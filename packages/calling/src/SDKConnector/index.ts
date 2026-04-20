@@ -1,10 +1,10 @@
 /* eslint-disable valid-jsdoc */
+// @ts-ignore - JS module without type declarations
 import {getMobiusSocketInstance} from '@webex/internal-plugin-mobius-socket';
 import {WebexRequestPayload} from '../common/types';
 import {ISDKConnector, WebexSDK} from './types';
 /* eslint-disable class-methods-use-this */
 import {validateWebex} from './utils';
-// @ts-ignore - JS module without type declarations
 
 let instance: ISDKConnector;
 let webex: WebexSDK;
