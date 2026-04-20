@@ -20,6 +20,18 @@ export interface UserSet {
   testSuite: string;
 }
 
+/**
+ * Roles that must have credentials/tokens available for the currently enabled
+ * Playwright projects. USER_6 remains optional until SET_3USER is enabled.
+ */
+export const REQUIRED_OAUTH_ROLES: AccountRole[] = [
+  'USER_1',
+  'USER_2',
+  'USER_3',
+  'USER_4',
+  'USER_5',
+];
+
 /** Separator between set name and environment in project names (e.g. "SET_1 - PROD"). */
 const ENV_SEPARATOR = ' - ';
 
