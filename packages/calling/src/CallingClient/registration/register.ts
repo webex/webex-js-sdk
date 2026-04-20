@@ -222,10 +222,9 @@ export class Registration implements IRegistration {
    */
   private async deleteRegistration(url: string, deviceId: string, deviceUrl: string) {
     let response;
-    const devicesUrl = url.endsWith('/') ? url : `${url}/`;
 
     const requestObj = {
-      uri: `${devicesUrl}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`,
+      uri: `${url}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`,
       method: HTTP_METHODS.DELETE,
       headers: {
         [CISCO_DEVICE_URL]: deviceUrl,
@@ -269,10 +268,8 @@ export class Registration implements IRegistration {
       serviceData: this.jwe ? {...this.serviceData, jwe: this.jwe} : this.serviceData,
     };
 
-    const registrationUrl = url.endsWith('/') ? url : `${url}/`;
-
     return this.apiRequest.makeRequest({
-      uri: `${registrationUrl}device`,
+      uri: `${url}device`,
       method: HTTP_METHODS.POST,
       headers: {
         [CISCO_DEVICE_URL]: deviceInfo.clientDeviceUri,
@@ -845,8 +842,10 @@ export class Registration implements IRegistration {
         });
 
         if (this.apiRequest.isSocketEnabled()) {
+          const wssNormalizedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+
           // eslint-disable-next-line no-await-in-loop
-          await this.apiRequest.connectToMobiusSocket(url);
+          await this.apiRequest.connectToMobiusSocket(wssNormalizedUrl);
         }
 
         // eslint-disable-next-line no-await-in-loop

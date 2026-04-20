@@ -9,6 +9,7 @@ import {METHOD_START_MESSAGE} from '../common/constants';
 import {
   filterMobiusUris,
   handleCallingClientErrors,
+  normalizeMobiusUris,
   uploadLogs,
   validateServiceData,
 } from '../common/Utils';
@@ -819,8 +820,12 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       this.webex.internal.device.userId,
       this.webex.internal.device.url,
       this.mutex,
-      this.apiRequest.isSocketEnabled() ? this.primaryWssMobiusUris : this.primaryMobiusUris,
-      this.apiRequest.isSocketEnabled() ? this.backupWssMobiusUris : this.backupMobiusUris,
+      this.apiRequest.isSocketEnabled()
+        ? normalizeMobiusUris(this.primaryWssMobiusUris)
+        : this.primaryMobiusUris,
+      this.apiRequest.isSocketEnabled()
+        ? normalizeMobiusUris(this.backupWssMobiusUris)
+        : this.backupMobiusUris,
       this.getLoggingLevel(),
       this.sdkConfig?.serviceData,
       this.sdkConfig?.jwe
