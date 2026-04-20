@@ -3899,6 +3899,67 @@ describe('HashTreeParser', () => {
     });
   });
 
+  describe('#resumeFromApiResponse', () => {
+    const exampleLocus = {
+      participants: [],
+    } as any;
+
+    it('should set state to active', async () => {
+      const parser = createHashTreeParser();
+      parser.stop();
+
+      expect(parser.state).to.equal('stopped');
+
+      sinon.stub(parser, 'initializeFromGetLociResponse').resolves();
+
+      await parser.resumeFromApiResponse(exampleLocus);
+
+      expect(parser.state).to.equal('active');
+    });
+
+    it('should reset dataSets to empty', async () => {
+      const parser = createHashTreeParser();
+
+      expect(Object.keys(parser.dataSets).length).to.be.greaterThan(0);
+
+      parser.stop();
+
+      sinon.stub(parser, 'initializeFromGetLociResponse').resolves();
+
+      await parser.resumeFromApiResponse(exampleLocus);
+
+      expect(parser.dataSets).to.deep.equal({});
+    });
+
+    it('should call initializeFromGetLociResponse with the provided locus', async () => {
+      const parser = createHashTreeParser();
+      parser.stop();
+
+      const initStub = sinon.stub(parser, 'initializeFromGetLociResponse').resolves();
+
+      await parser.resumeFromApiResponse(exampleLocus);
+
+      assert.calledOnceWithExactly(initStub, exampleLocus);
+    });
+
+    it('should propagate errors from initializeFromGetLociResponse', async () => {
+      const parser = createHashTreeParser();
+      parser.stop();
+
+      const error = new Error('initialization failed');
+      const initStub = sinon.stub(parser, 'initializeFromGetLociResponse').rejects(error);
+
+      let caughtError: Error | undefined;
+      try {
+        await parser.resumeFromApiResponse(exampleLocus);
+      } catch (e) {
+        caughtError = e;
+      }
+
+      expect(caughtError).to.equal(error);
+    });
+  });
+
   describe('#handleLocusUpdate when stopped', () => {
     it('should return early without processing when parser is stopped', () => {
       const parser = createHashTreeParser();
