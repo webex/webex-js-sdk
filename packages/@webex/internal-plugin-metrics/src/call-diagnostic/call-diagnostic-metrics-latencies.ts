@@ -314,12 +314,16 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getStayLobbyTimeCappedBy(endTimestampKey: MetricEventNames) {
-    const lobbyStartTimestamp = this.latencyTimestamps.get('client.locus.join.response'); // must exist
-    const lobbyEndTimestamp = this.latencyTimestamps.get('client.lobby.exited'); // might not exist
+    const lobbyStartTimestamp = this.latencyTimestamps.get('client.locus.join.response'); // might not exist (some meetings don't have lobby)
+    const lobbyEndTimestamp = this.latencyTimestamps.get('client.lobby.exited'); // might not exist (some meetings don't have lobby / user still in lobby at the time of measurement)
     const maximumEndTimestamp = this.latencyTimestamps.get(endTimestampKey); // must exist
 
-    if (typeof lobbyStartTimestamp !== 'number' || typeof maximumEndTimestamp !== 'number') {
+    if (typeof maximumEndTimestamp !== 'number') {
       return undefined;
+    }
+
+    if (typeof lobbyStartTimestamp !== 'number') {
+      return 0;
     }
 
     const endTimestamp =
@@ -426,7 +430,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       'internal.client.interstitial-window.click.joinbutton',
       'client.ice.end'
     );
-    const stayLobbyTimeCappedByIceEnd = this.getStayLobbyTimeCappedBy('client.ice.end') ?? 0;
+    const stayLobbyTimeCappedByIceEnd = this.getStayLobbyTimeCappedBy('client.ice.end');
 
     if (
       typeof interstitialClickJoinToIceEnd === 'number' &&
@@ -517,8 +521,9 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       'internal.client.interstitial-window.click.joinbutton',
       'client.media-engine.ready'
     );
-    const stayLobbyTimeCappedByMediaEngineReady =
-      this.getStayLobbyTimeCappedBy('client.media-engine.ready') ?? 0;
+    const stayLobbyTimeCappedByMediaEngineReady = this.getStayLobbyTimeCappedBy(
+      'client.media-engine.ready'
+    );
 
     if (
       typeof clickToInterstitial === 'number' &&

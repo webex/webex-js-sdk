@@ -520,9 +520,9 @@ describe('internal-plugin-metrics', () => {
     });
 
     describe('getStayLobbyTimeCappedBy', () => {
-      it('returns undefined when lobbyStartTimestamp is missing', () => {
+      it('returns 0 when lobbyStartTimestamp is missing', () => {
         cdl.saveTimestamp({key: 'client.media-engine.ready', value: 100});
-        assert.deepEqual(cdl.getStayLobbyTimeCappedBy('client.media-engine.ready'), undefined);
+        assert.deepEqual(cdl.getStayLobbyTimeCappedBy('client.media-engine.ready'), 0);
       });
 
       it('returns undefined when endTimestampKey is missing', () => {
