@@ -17,4 +17,5 @@ export const BYODS_BASE_CLIENT_MODULE = 'base-client';
 export const BYODS_MODULE = 'byods';
 export const BYODS_TOKEN_MANAGER_MODULE = 'token-manager';
 export const BYODS_DATA_SOURCE_CLIENT_MODULE = 'data-source-client';
+// Fork CI touch: source-only BYoDS change to validate package detection.
 export const DEFAULT_LOGGER_CONFIG = {level: LOGGER.ERROR};
