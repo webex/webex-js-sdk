@@ -3592,7 +3592,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   handleDataChannelUrlChange(datachannelUrl) {
     // @ts-ignore - config coming from registerPlugin
-    if (datachannelUrl && this.config.enableAutomaticLLM) {
+    if (datachannelUrl && this.config.enableAutomaticLLM && this.isJoined()) {
       this.updateLLMConnection();
       if (this.webinar.isJoinPracticeSessionDataChannel()) {
         this.webinar.updatePSDataChannel();
@@ -6321,6 +6321,9 @@ export default class Meeting extends StatelessWebexPlugin {
         code: 3050,
         reason: 'done (permanent)',
       });
+      LoggerProxy.logger.info(
+        'Meeting:index#cleanupLLMConneciton --> disconnect default LLM session'
+      );
     } catch (error) {
       LoggerProxy.logger.error(
         'Meeting:index#cleanupLLMConneciton --> Failed to disconnect default LLM session',
@@ -6453,10 +6456,26 @@ export default class Meeting extends StatelessWebexPlugin {
       ) {
         return undefined;
       }
+
+      // Guard: Don't disconnect if the meeting is still joined but reconnection
+      // would fail (datachannelUrl or url is missing). registerAndConnect() would
+      // silently bail without them, leaving the LLM permanently dead.
+      if (isJoined && (!dataChannelUrl || !url)) {
+        LoggerProxy.logger.info(
+          'Meeting:index#updateLLMConnection --> Not disconnecting LLM: reconnection params unavailable'
+        );
+
+        return undefined;
+      }
+
       await this.cleanupLLMConneciton({removeOnlineListener: false});
     }
 
     if (!isJoined) {
+      LoggerProxy.logger.info(
+        'Meeting:index#updateLLMConnection --> No need reconnect default llm'
+      );
+
       return undefined;
     }
 

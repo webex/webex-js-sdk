@@ -2354,20 +2354,22 @@ describe('plugin-meetings', () => {
 
               meeting.updateLLMConnection.restore();
 
+              // First connect with isJoined=true, LLM not connected
               isJoinedStub.returns(true);
               meeting.webex.internal.llm.isConnected.returns(false);
               await meeting.updateLLMConnection();
 
               assert.exists(meeting.llmHealthCheckTimer);
 
-              isJoinedStub.returns(false);
+              // Now disconnect: LLM is connected, URLs differ, isJoined=true
+              // so it should disconnect and try to reconnect (but isJoined is true and URLs are valid)
+              isJoinedStub.returns(true);
               meeting.webex.internal.llm.isConnected.returns(true);
+              meeting.locusInfo = {url: 'https://locus2.example.com', info: {datachannelUrl: 'https://datachannel2.example.com'}};
 
               await meeting.updateLLMConnection();
 
               assert.calledOnce(meeting.webex.internal.llm.disconnectLLM);
-
-              assert.isUndefined(meeting.llmHealthCheckTimer);
 
               Metrics.sendBehavioralMetric.resetHistory();
               fakeClock.tick(3 * 60 * 1000);
@@ -2376,6 +2378,64 @@ describe('plugin-meetings', () => {
                 Metrics.sendBehavioralMetric,
                 BEHAVIORAL_METRICS.LLM_HEALTHCHECK_FAILURE
               );
+            });
+
+            it('does not disconnect LLM when datachannelUrl becomes null but meeting is still joined', async () => {
+              sinon.stub(meeting, 'isJoined').returns(true);
+              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(true);
+              sinon.stub(meeting.webex.internal.llm, 'disconnectLLM').resolves();
+              sinon
+                .stub(meeting.webex.internal.llm, 'getLocusUrl')
+                .returns('https://locus1.example.com');
+              sinon
+                .stub(meeting.webex.internal.llm, 'getDatachannelUrl')
+                .returns('https://datachannel1.example.com');
+
+              meeting.updateLLMConnection.restore();
+              // datachannelUrl cleared by locus.difference but meeting still joined
+              meeting.locusInfo = {url: 'https://locus1.example.com', info: {datachannelUrl: undefined}};
+
+              await meeting.updateLLMConnection();
+
+              assert.notCalled(meeting.webex.internal.llm.disconnectLLM);
+            });
+
+            it('does not disconnect LLM when locusUrl is missing but meeting is still joined', async () => {
+              sinon.stub(meeting, 'isJoined').returns(true);
+              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(true);
+              sinon.stub(meeting.webex.internal.llm, 'disconnectLLM').resolves();
+              sinon
+                .stub(meeting.webex.internal.llm, 'getLocusUrl')
+                .returns('https://locus1.example.com');
+              sinon
+                .stub(meeting.webex.internal.llm, 'getDatachannelUrl')
+                .returns('https://datachannel1.example.com');
+
+              meeting.updateLLMConnection.restore();
+              meeting.locusInfo = {url: undefined, info: {datachannelUrl: 'https://datachannel1.example.com'}};
+
+              await meeting.updateLLMConnection();
+
+              assert.notCalled(meeting.webex.internal.llm.disconnectLLM);
+            });
+
+            it('disconnects LLM when user is no longer joined (lobby/leave)', async () => {
+              sinon.stub(meeting, 'isJoined').returns(false);
+              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(true);
+              sinon.stub(meeting.webex.internal.llm, 'disconnectLLM').resolves();
+              sinon
+                .stub(meeting.webex.internal.llm, 'getLocusUrl')
+                .returns('https://locus1.example.com');
+              sinon
+                .stub(meeting.webex.internal.llm, 'getDatachannelUrl')
+                .returns('https://datachannel1.example.com');
+
+              meeting.updateLLMConnection.restore();
+              meeting.locusInfo = {url: 'https://locus1.example.com', info: {datachannelUrl: 'https://datachannel1.example.com'}};
+
+              await meeting.updateLLMConnection();
+
+              assert.calledOnce(meeting.webex.internal.llm.disconnectLLM);
             });
           });
 
@@ -12716,6 +12776,7 @@ describe('plugin-meetings', () => {
           updateLLMConnectionSpy = sinon.spy(meeting, 'updateLLMConnection');
           updatePSDataChannelSpy = sinon.stub(meeting.webinar, 'updatePSDataChannel').resolves();
           meeting.webinar.isJoinPracticeSessionDataChannel = sinon.stub().returns(false);
+          meeting.joinedWith = {state: 'JOINED'};
         });
 
         const check = (
@@ -12776,6 +12837,12 @@ describe('plugin-meetings', () => {
             expectedMainCalled: false,
             expectedPracticeCalled: false,
           });
+        });
+
+        it('does not call updateLLMConnection if meeting is not joined', () => {
+          meeting.config.enableAutomaticLLM = true;
+          meeting.joinedWith = {state: 'IDLE'};
+          check('some url', undefined, {expectedMainCalled: false, expectedPracticeCalled: false});
         });
       });
 
