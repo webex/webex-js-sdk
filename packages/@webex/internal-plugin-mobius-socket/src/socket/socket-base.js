@@ -267,7 +267,7 @@ export default class Socket extends EventEmitter {
 
       socket.onopen = () => {
         this.logger.info(`socket,${this._domain}: connected`);
-        this._authorize()
+        this._authorize(this.token)
           .then(() => {
             this.logger.info(`socket,${this._domain}: authorized`);
             socket.onclose = this.onclose;
@@ -459,19 +459,29 @@ export default class Socket extends EventEmitter {
     });
   }
 
+  refresh(token) {
+    if (!token) {
+      return Promise.reject(new Error('`token` is required for Socket#refresh()'));
+    }
+
+    const refreshedToken = token && typeof token.toString === 'function' ? token.toString() : token;
+
+    return this._authorize(refreshedToken);
+  }
+
   /**
-   * Sends an auth message up the socket
-   * @private
+   * Sends an auth message up the socket with a refreshed token.
+   * @param {string} token
    * @returns {Promise}
    */
-  _authorize() {
+  _authorize(token) {
     this.logger.info(`socket,${this._domain}: authorizing`);
 
     return this.sendRequest(
       {
         type: MESSAGE_TYPES.AUTH,
         data: {
-          token: this.token,
+          token,
         },
       },
       {
@@ -558,6 +568,18 @@ export default class Socket extends EventEmitter {
 
     const statusCode = pendingResponse.getStatusCode(response);
     const statusMessage = pendingResponse.getStatusMessage(response);
+
+    if (statusCode === 440 && response?.subtype !== MESSAGE_TYPES.AUTH) {
+      if (typeof this.refreshToken === 'function') {
+        Promise.resolve(this.refreshToken(response)).catch((error) => {
+          this.logger.warn(`socket,${this._domain}: failed token-expiry re-auth`, error);
+        });
+      } else {
+        this.logger.warn(
+          `socket,${this._domain}: refreshToken callback is unavailable for statusCode 440`
+        );
+      }
+    }
 
     if (statusCode === undefined) {
       pendingResponse.reject(
