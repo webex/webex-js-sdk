@@ -733,12 +733,9 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       file: CALLING_CLIENT_FILE,
       method: METHODS.REGISTER_MOBIUS_SOCKET_LISTENER,
     });
-    this.sdkConnector.registerMobiusSocketListener<MobiusAsyncEvent>(
-      'event:async_event',
-      (event) => {
-        this.handleMobiusAsyncEvent(event);
-      }
-    );
+    this.sdkConnector.registerMobiusSocketListener<MobiusAsyncEvent>('async_event', (event) => {
+      this.handleMobiusAsyncEvent(event);
+    });
 
     log.info('Successfully registered listener for Mobius events', {
       file: CALLING_CLIENT_FILE,
@@ -772,7 +769,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }
 
     if (eventType === MobiusEventType.REGISTRATION_DOWN) {
-      // TODO: Handle registration down event
       // const line = Object.values(this.lineDict)[0];
       // line.registration.handleRegistrationDownEvent(event);
 

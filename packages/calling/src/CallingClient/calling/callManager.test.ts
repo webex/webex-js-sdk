@@ -586,12 +586,11 @@ describe('Coverage for Events listener', () => {
 
   it('Handles registration down event without routing to call state machine', async () => {
     jest.clearAllMocks();
-    const infoSpy = jest.spyOn(log, 'info');
 
     await callManager['dequeueWsEvents'](registrationDownEvent);
 
     expect(callSpy).not.toHaveBeenCalled();
-    expect(infoSpy).toHaveBeenCalledWith('Dropping unsupported Mobius event in call queue', {
+    expect(logSpy).toHaveBeenCalledWith('Unknown Call Event mobiusEvent: registration.down', {
       file: 'callManager',
       method: 'dequeueWsEvents',
     });

@@ -131,7 +131,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
    * A listener for Mobius events.
    */
   private listenForWsEvents() {
-    if (this.isMobiusSocketEnabled) {
+    if (!this.isMobiusSocketEnabled) {
       this.sdkConnector.registerListener('event:mobius', async (event) => {
         this.dequeueWsEvents(event);
       });

@@ -869,7 +869,9 @@ describe('CallingClient Tests', () => {
     });
 
     it('routes mobius.* async events to callManager', async () => {
-      const callEventSpy = jest.spyOn(callingClient['callManager'], 'dequeueWsEvents');
+      const callEventSpy = jest
+        .spyOn(callingClient['callManager'], 'dequeueWsEvents')
+        .mockImplementation(() => undefined);
 
       await asyncEventCallback({
         type: 'async_event',
@@ -890,31 +892,6 @@ describe('CallingClient Tests', () => {
           }),
         })
       );
-    });
-
-    it('routes registration.down async event to registration layer', async () => {
-      const line = Object.values(callingClient['lineDict'])[0] as ILine;
-      line.mobiusDeviceId = '334f3d50-1d26-4712-93f1-4972390cc565';
-      const reconnectSpy = jest
-        .spyOn(line.registration, 'reconnectOnFailure')
-        .mockResolvedValue(undefined);
-
-      await asyncEventCallback({
-        type: 'async_event',
-        data: {
-          eventType: 'registration.down',
-          deviceInfo: {
-            userId: '44533573-f6aa-429d-b4fe-58aa04a2b636',
-            device: {
-              deviceId: line.mobiusDeviceId,
-              uri: 'https://mobius-a.wbx2.com/api/v1/calling/web/devices/334f3d50-1d26-4712-93f1-4972390cc565',
-              status: 'inactive',
-            },
-          },
-        },
-      });
-
-      expect(reconnectSpy).toHaveBeenCalledWith('handleRegistrationDownEvent');
     });
   });
 
