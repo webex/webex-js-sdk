@@ -6321,6 +6321,9 @@ export default class Meeting extends StatelessWebexPlugin {
         code: 3050,
         reason: 'done (permanent)',
       });
+      LoggerProxy.logger.info(
+        'Meeting:index#cleanupLLMConneciton --> disconnect default LLM session'
+      );
     } catch (error) {
       LoggerProxy.logger.error(
         'Meeting:index#cleanupLLMConneciton --> Failed to disconnect default LLM session',
@@ -6453,10 +6456,28 @@ export default class Meeting extends StatelessWebexPlugin {
       ) {
         return undefined;
       }
+
+      // Don't disconnect the shared LLM connection if we cannot reconnect.
+      // This prevents permanently killing the LLM when:
+      // 1. An unjoined meeting (e.g. incoming CALL) triggers updateLLMConnection
+      // 2. datachannelUrl becomes null/undefined due to a locus.difference event
+      if (!isJoined || !url || !dataChannelUrl) {
+        LoggerProxy.logger.info(
+          'Meeting:index#updateLLMConnection --> Not disconnecting LLM: reconnection not feasible' +
+            ` (isJoined=${isJoined}, hasUrl=${!!url}, hasDataChannelUrl=${!!dataChannelUrl})`
+        );
+
+        return undefined;
+      }
+
       await this.cleanupLLMConneciton({removeOnlineListener: false});
     }
 
     if (!isJoined) {
+      LoggerProxy.logger.info(
+        'Meeting:index#updateLLMConnection --> No need reconnect default llm'
+      );
+
       return undefined;
     }
 
