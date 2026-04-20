@@ -1350,7 +1350,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.agentConfig.lastStateAuxCodeId = auxCodeId;
       this.agentConfig.isAgentLoggedIn = true;
       // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
-      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
+      if (
+        !this.services.webSocketManager.listeners('message').includes(this.handleWebsocketMessage)
+      ) {
+        this.services.webSocketManager.on('message', this.handleWebsocketMessage);
+      }
 
       LoggerProxy.log(
         `Silent relogin process completed successfully with login Option: ${reLoginResponse.data.deviceType} teamId: ${reLoginResponse.data.teamId}`,
