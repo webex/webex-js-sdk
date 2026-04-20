@@ -222,16 +222,26 @@ export class Registration implements IRegistration {
    */
   private async deleteRegistration(url: string, deviceId: string, deviceUrl: string) {
     let response;
+
+    const requestObj = {
+      uri: `${url}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`,
+      method: HTTP_METHODS.DELETE,
+      headers: {
+        [CISCO_DEVICE_URL]: deviceUrl,
+        [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+      },
+      service: ALLOWED_SERVICES.MOBIUS,
+    };
+
+    if (this.apiRequest.isSocketEnabled()) {
+      // @ts-ignore - body is added for mobius wss support, it is not used for mobius http
+      requestObj.body = {
+        deviceId,
+      };
+    }
+
     try {
-      response = await this.apiRequest.makeRequest({
-        uri: `${url}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`,
-        method: HTTP_METHODS.DELETE,
-        headers: {
-          [CISCO_DEVICE_URL]: deviceUrl,
-          [SPARK_USER_AGENT]: CALLING_USER_AGENT,
-        },
-        service: ALLOWED_SERVICES.MOBIUS,
-      });
+      response = await this.apiRequest.makeRequest(requestObj);
     } catch (error) {
       log.warn(`Delete failed with Mobius: ${JSON.stringify(error)}`, {
         file: REGISTRATION_FILE,
@@ -830,6 +840,14 @@ export class Registration implements IRegistration {
           file: REGISTRATION_FILE,
           method: REGISTER_UTIL,
         });
+
+        if (this.apiRequest.isSocketEnabled()) {
+          const wssNormalizedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+
+          // eslint-disable-next-line no-await-in-loop
+          await this.apiRequest.connectToMobiusSocket(wssNormalizedUrl);
+        }
+
         // eslint-disable-next-line no-await-in-loop
         const resp = await this.postRegistration(url);
         this.clearFailoverState();
