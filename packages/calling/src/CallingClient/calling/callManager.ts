@@ -30,6 +30,8 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
 
   private webex: WebexSDK;
 
+  private isMobiusSocketEnabled: boolean;
+
   private callCollection: Record<CorrelationId, ICall>;
 
   private activeMobiusUrl!: string;
@@ -42,10 +44,11 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
    * @param webex -.
    * @param indicator - Service Indicator.
    */
-  constructor(webex: WebexSDK, indicator: ServiceIndicator) {
+  constructor(webex: WebexSDK, indicator: ServiceIndicator, isMobiusSocketEnabled: boolean) {
     super();
     this.sdkConnector = SDKConnector;
     this.serviceIndicator = indicator;
+    this.isMobiusSocketEnabled = isMobiusSocketEnabled;
     if (!this.sdkConnector.getWebex()) {
       SDKConnector.setWebex(webex);
     }
@@ -128,13 +131,15 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
    * A listener for Mobius events.
    */
   private listenForWsEvents() {
-    this.sdkConnector.registerListener('event:mobius', async (event) => {
-      this.dequeueWsEvents(event);
-    });
-    log.info('Successfully registered listener for Mobius events', {
-      file: CALL_MANAGER_FILE,
-      method: METHODS.REGISTER_SESSIONS_LISTENER,
-    });
+    if (this.isMobiusSocketEnabled) {
+      this.sdkConnector.registerListener('event:mobius', async (event) => {
+        this.dequeueWsEvents(event);
+      });
+      log.info('Successfully registered listener for Mobius events', {
+        file: CALL_MANAGER_FILE,
+        method: METHODS.REGISTER_SESSIONS_LISTENER,
+      });
+    }
   }
 
   /**
@@ -489,9 +494,13 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
  * @param webex -.
  * @param indicator - Service Indicator.
  */
-export const getCallManager = (webex: WebexSDK, indicator: ServiceIndicator): ICallManager => {
+export const getCallManager = (
+  webex: WebexSDK,
+  indicator: ServiceIndicator,
+  isMobiusSocketEnabled = false
+): ICallManager => {
   if (!callManager) {
-    callManager = new CallManager(webex, indicator);
+    callManager = new CallManager(webex, indicator, isMobiusSocketEnabled);
   }
 
   return callManager;

@@ -152,7 +152,14 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     log.setLogger(logLevel, CALLING_CLIENT_FILE);
     validateServiceData(serviceData);
 
-    this.callManager = getCallManager(this.webex, serviceData.indicator);
+    this.isMobiusSocketEnabled =
+      isWsFeatureEnabled(this.webex) || (config?.isMobiusSocketEnabled ?? false);
+
+    this.callManager = getCallManager(
+      this.webex,
+      serviceData.indicator,
+      this.isMobiusSocketEnabled
+    );
     this.metricManager = getMetricManager(this.webex, serviceData.indicator);
 
     this.mediaEngine = Media;
@@ -175,14 +182,14 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.mobiusClusters = this.webex.internal.services.getMobiusClusters();
     this.mobiusHost = '';
 
-    this.isMobiusSocketEnabled =
-      isWsFeatureEnabled(this.webex) || (config?.isMobiusSocketEnabled ?? false);
-
     if (this.isMobiusSocketEnabled) {
       this.mobiusSocket = getMobiusSocketInstance(this.webex);
     }
 
-    this.apiRequest = APIRequest.getInstance({webex: this.webex});
+    this.apiRequest = APIRequest.getInstance({
+      webex: this.webex,
+      isMobiusSocketEnabled: this.isMobiusSocketEnabled,
+    });
 
     this.registerSessionsListener();
 
@@ -726,7 +733,13 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       file: CALLING_CLIENT_FILE,
       method: METHODS.REGISTER_MOBIUS_SOCKET_LISTENER,
     });
-    this.sdkConnector.registerMobiusSocketListener('async_event', this.handleMobiusAsyncEvent);
+    this.sdkConnector.registerMobiusSocketListener<MobiusAsyncEvent>(
+      'event:async_event',
+      (event) => {
+        this.handleMobiusAsyncEvent(event);
+      }
+    );
+
     log.info('Successfully registered listener for Mobius events', {
       file: CALLING_CLIENT_FILE,
       method: METHODS.REGISTER_MOBIUS_SOCKET_LISTENER,
