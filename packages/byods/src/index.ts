@@ -1,4 +1,5 @@
 /* Fork CI: trivial touch so package-tools maps this file to @webex/byods (not docs). Safe to revert. */
+/* Natural-detection test touch: BYoDS source file updated without README/workflow changes. */
 
 import BYODS from './byods';
 import TokenManager from './token-manager';
