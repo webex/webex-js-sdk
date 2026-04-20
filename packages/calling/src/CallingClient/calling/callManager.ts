@@ -12,7 +12,8 @@ import {
   ICallManager,
   MediaState,
   MidCallEvent,
-  MobiusCallEvent,
+  MobiusAsyncEvent,
+  MobiusCallData,
   MobiusEventType,
 } from './types';
 import {createCall} from './call';
@@ -29,6 +30,8 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
 
   private webex: WebexSDK;
 
+  private isMobiusSocketEnabled: boolean;
+
   private callCollection: Record<CorrelationId, ICall>;
 
   private activeMobiusUrl!: string;
@@ -41,10 +44,11 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
    * @param webex -.
    * @param indicator - Service Indicator.
    */
-  constructor(webex: WebexSDK, indicator: ServiceIndicator) {
+  constructor(webex: WebexSDK, indicator: ServiceIndicator, isMobiusSocketEnabled: boolean) {
     super();
     this.sdkConnector = SDKConnector;
     this.serviceIndicator = indicator;
+    this.isMobiusSocketEnabled = isMobiusSocketEnabled;
     if (!this.sdkConnector.getWebex()) {
       SDKConnector.setWebex(webex);
     }
@@ -127,13 +131,15 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
    * A listener for Mobius events.
    */
   private listenForWsEvents() {
-    this.sdkConnector.registerListener('event:mobius', async (event) => {
-      this.dequeueWsEvents(event);
-    });
-    log.info('Successfully registered listener for Mobius events', {
-      file: CALL_MANAGER_FILE,
-      method: METHODS.REGISTER_SESSIONS_LISTENER,
-    });
+    if (!this.isMobiusSocketEnabled) {
+      this.sdkConnector.registerListener('event:mobius', async (event) => {
+        this.dequeueWsEvents(event);
+      });
+      log.info('Successfully registered listener for Mobius events', {
+        file: CALL_MANAGER_FILE,
+        method: METHODS.REGISTER_SESSIONS_LISTENER,
+      });
+    }
   }
 
   /**
@@ -143,13 +149,14 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
    *
    * @param event - Mobius Events.
    */
-  private dequeueWsEvents(event: unknown) {
+  public dequeueWsEvents(event: MobiusAsyncEvent | unknown) {
     log.info(`${METHOD_START_MESSAGE} with event ${event}`, {
       file: CALL_MANAGER_FILE,
       method: METHODS.DEQUEUE_WS_EVENTS,
     });
-    const mobiusEvent = event as MobiusCallEvent;
-    const {callId, correlationId} = mobiusEvent.data;
+    const mobiusEvent = event as MobiusAsyncEvent;
+
+    const {callId, correlationId} = mobiusEvent.data as MobiusCallData;
 
     switch (mobiusEvent.data.eventType) {
       case MobiusEventType.CALL_SETUP: {
@@ -258,6 +265,22 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
         }
 
         call.sendCallStateMachineEvt({type: 'E_RECV_CALL_PROGRESS', data: mobiusEvent.data});
+        break;
+      }
+      case MobiusEventType.CALL_INFO: {
+        log.log(`Received call info mobiusEvent for call: ${correlationId}`, {
+          file: CALL_MANAGER_FILE,
+          method: METHODS.DEQUEUE_WS_EVENTS,
+        });
+        const call = this.getCall(correlationId);
+
+        if (call && mobiusEvent.data.callerId) {
+          log.info('Processing Caller-Id data', {
+            file: CALL_MANAGER_FILE,
+            method: METHODS.DEQUEUE_WS_EVENTS,
+          });
+          call.startCallerIdResolution(mobiusEvent.data.callerId);
+        }
         break;
       }
       case MobiusEventType.CALL_MEDIA: {
@@ -471,9 +494,13 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
  * @param webex -.
  * @param indicator - Service Indicator.
  */
-export const getCallManager = (webex: WebexSDK, indicator: ServiceIndicator): ICallManager => {
+export const getCallManager = (
+  webex: WebexSDK,
+  indicator: ServiceIndicator,
+  isMobiusSocketEnabled = false
+): ICallManager => {
   if (!callManager) {
-    callManager = new CallManager(webex, indicator);
+    callManager = new CallManager(webex, indicator, isMobiusSocketEnabled);
   }
 
   return callManager;
