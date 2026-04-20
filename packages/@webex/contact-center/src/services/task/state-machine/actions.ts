@@ -259,10 +259,82 @@ export const actions: TaskActionsMap = {
   setTransferConferenceRequested: assign({transferConferenceRequested: true}),
   clearTransferConferenceRequested: assign({transferConferenceRequested: false}),
 
+  /**
+   * Reconstruct consult context flags from hydrated task data on page refresh.
+   * During live flows these are set incrementally by setConsultInitiator,
+   * setConsultAgentJoined, and handleSwitchToMainCall/handleSwitchToConsult.
+   * After HYDRATE those actions never fire, so we derive the same flags from
+   * the backend snapshot.
+   */
+  hydrateConsultState: assign(({context, event}: TaskActionArgs) => {
+    const taskData = getTaskDataFromEvent(event);
+    if (!taskData?.interaction) return {};
+
+    const interaction = taskData.interaction;
+    const selfAgentId = context.uiControlConfig?.agentId ?? taskData?.agentId;
+
+    const derivedInitiator = determineConsultInitiator(taskData, selfAgentId);
+    const consultInitiator = derivedInitiator ?? taskData.isConsulted !== true;
+
+    const consultDestinationAgentJoined = Boolean(
+      interaction.participants &&
+        Object.values(interaction.participants).some(
+          (p: any) => p?.isConsulted === true && !p?.hasLeft
+        )
+    );
+
+    const consultMediaId = taskData.consultMediaResourceId;
+    const consultMedia: any = consultMediaId
+      ? interaction.media?.[consultMediaId]
+      : Object.values(interaction.media ?? {}).find((m: any) => m?.mType === 'consult');
+    const consultCallHeld = Boolean(consultMedia?.isHold);
+
+    return {
+      consultInitiator,
+      consultDestinationAgentJoined,
+      consultCallHeld,
+    };
+  }),
+
   setConsultCallHeld: assign({consultCallHeld: true}),
   clearConsultCallHeld: assign({consultCallHeld: false}),
   handleSwitchToMainCall: assign({consultCallHeld: true}),
   handleSwitchToConsult: assign({consultCallHeld: false}),
+
+  /**
+   * Derive consultCallHeld from remote hold/unhold events during consulting.
+   * Handles multi-login sync: when another session switches the call, the
+   * backend broadcasts AgentContactHeld/AgentContactUnheld to all sessions.
+   * Without this, consultCallHeld stays stale and activeLeg never changes.
+   */
+  syncConsultCallHeld: assign(({context, event}: TaskActionArgs) => {
+    if (
+      !event ||
+      (event.type !== TaskEvent.HOLD_SUCCESS && event.type !== TaskEvent.UNHOLD_SUCCESS)
+    ) {
+      return {};
+    }
+
+    const mediaResourceId =
+      'mediaResourceId' in event
+        ? (event as {mediaResourceId?: string}).mediaResourceId
+        : undefined;
+    if (!mediaResourceId) return {};
+
+    const taskData = context.taskData;
+    const consultMediaId = taskData?.consultMediaResourceId;
+
+    const isConsultMedia = consultMediaId
+      ? mediaResourceId === consultMediaId
+      : taskData?.interaction?.media?.[mediaResourceId]?.mType === 'consult';
+
+    if (!isConsultMedia) return {};
+
+    return {
+      consultCallHeld: event.type === TaskEvent.HOLD_SUCCESS,
+    };
+  }),
+
   handleConferenceFailed: assign(({event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event);
 

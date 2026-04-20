@@ -95,7 +95,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.isInteractionConsulting,
               target: TaskState.CONSULTING,
-              actions: ['updateTaskData', 'emitTaskHydrate'],
+              actions: ['updateTaskData', 'hydrateConsultState', 'emitTaskHydrate'],
             },
             {
               guard: guards.isInteractionHeld,
@@ -212,6 +212,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentConsultFailed - when consulted agent (Agent 2) doesn't answer (RONA or decline)
           // Clears the incoming consult notification by transitioning to TERMINATED
           [TaskEvent.CONSULT_FAILED]: {
+            target: TaskState.TERMINATED,
+            actions: ['updateTaskData', 'clearConsultState', 'emitTaskReject'],
+          },
+          // AgentConsultEnded - when consult initiator (Agent 1) ends the consult before
+          // the consulted agent (Agent 2) accepts. Clears the incoming notification.
+          [TaskEvent.CONSULT_END]: {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'clearConsultState', 'emitTaskReject'],
           },
@@ -482,10 +488,10 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: ['handleSwitchToConsult', 'emitTaskSwitchCall'],
           },
           [TaskEvent.HOLD_SUCCESS]: {
-            actions: ['updateTaskData', 'setHoldState'],
+            actions: ['updateTaskData', 'setHoldState', 'syncConsultCallHeld', 'emitTaskHold'],
           },
           [TaskEvent.UNHOLD_SUCCESS]: {
-            actions: ['updateTaskData', 'setHoldState'],
+            actions: ['updateTaskData', 'setHoldState', 'syncConsultCallHeld', 'emitTaskResume'],
           },
 
           [TaskEvent.TRANSFER_SUCCESS]: [
