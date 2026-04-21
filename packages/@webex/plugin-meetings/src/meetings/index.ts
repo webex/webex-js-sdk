@@ -69,7 +69,9 @@ import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {HashTreeMessage} from '../hashTree/hashTreeParser';
 import {HashTreeObject} from '../hashTree/types';
 import {isSelf} from '../hashTree/utils';
+
 import {createLocusFromHashTreeMessage, findMeetingForHashTreeMessage} from '../locus-info';
+import {LocusDTO} from '../locus-info/types';
 
 let mediaLogger;
 
@@ -435,14 +437,11 @@ export default class Meetings extends WebexPlugin {
     if (existingMeeting) {
       return existingMeeting;
     }
-
     if (data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
       // need to check if maybe this event indicates a move to/from breakout
       const meetingForHashTreeMessage = findMeetingForHashTreeMessage(
-        data.stateElementsMessage,
-        this.meetingCollection,
-        // @ts-ignore
-        this.webex.internal.device.url
+        data?.stateElementsMessage,
+        this.meetingCollection
       );
 
       if (meetingForHashTreeMessage) {
@@ -492,7 +491,6 @@ export default class Meetings extends WebexPlugin {
    */
   private handleLocusEvent(data: LocusEvent, useRandomDelayForInfo = false) {
     let meeting = this.getCorrespondingMeetingByLocus(data);
-
     // @ts-ignore
     if (this.config.experimental.storeLocusHashTreeEventsForDebugging) {
       storeEventForDebugging('mercury', data);
@@ -604,7 +602,6 @@ export default class Meetings extends WebexPlugin {
             // @ts-ignore
             this.destroy(meeting, MEETING_REMOVED_REASON.LOCUS_DTO_SYNC_FAILED);
           }
-
           this.checkHandleBreakoutLocus(data.locus);
         })
         .catch((e) => {
@@ -1811,7 +1808,11 @@ export default class Meetings extends WebexPlugin {
       // For type LOCUS_ID we need to parse the locus object to get the information
       // about the caller and callee
       // Meeting Added event will be created in `handleLocusEvent`
-      if (type !== DESTINATION_TYPE.LOCUS_ID) {
+      // Only emit MEETING_ADDED if the meeting still exists in the collection.
+      // If fetchMeetingInfo failed and the meeting was destroyed in the catch block,
+      // skip emitting to prevent orphaned meeting references on the consumer side.
+      // @ts-ignore - getMeetingByType types value as object but accepts strings (same as handleLocusEvent)
+      if (type !== DESTINATION_TYPE.LOCUS_ID && this.getMeetingByType(_ID_, meeting.id)) {
         if (!meeting.sipUri) {
           meeting.setSipUri(destination);
         }
@@ -1886,23 +1887,20 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-  public syncMeetings({keepOnlyLocusMeetings = true} = {}): Promise<void> {
+  public async syncMeetings({keepOnlyLocusMeetings = true} = {}): Promise<void> {
     // @ts-ignore
     if (this.webex.credentials.isUnverifiedGuest) {
       LoggerProxy.logger.info(
-        'Meetings:index#syncMeetings --> skipping meeting sync as unverified guest'
+        'Meetings:index#syncMeetings --> user is unverified guest, skipping calling Locus for meeting sync'
       );
-
-      return Promise.resolve();
-    }
-
-    return this.request
-      .getActiveMeetings()
-      .then((locusArray) => {
-        const activeLocusUrl = [];
+    } else {
+      try {
+        const locusArray = await this.request.getActiveMeetings();
+        const activeLocusUrl: string[] = [];
 
         if (locusArray?.loci && locusArray.loci.length > 0) {
           const lociToUpdate = this.sortLocusArrayToUpdate(locusArray.loci);
+
           lociToUpdate.forEach((locus) => {
             activeLocusUrl.push(locus.url);
             this.handleLocusEvent({
@@ -1920,21 +1918,48 @@ export default class Meetings extends WebexPlugin {
           // (they had a locusUrl previously but are no longer active) in the sync
           for (const meeting of Object.values(meetingsCollection)) {
             // @ts-ignore
-            const {locusUrl} = meeting;
+            const {locusUrl, locusInfo} = meeting;
             if ((keepOnlyLocusMeetings || locusUrl) && !activeLocusUrl.includes(locusUrl)) {
-              // destroy function also uploads logs
-              // @ts-ignore
-              this.destroy(meeting, MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC);
+              const globalMeetingId = locusInfo?.info?.globalMeetingId;
+
+              if (
+                globalMeetingId &&
+                locusArray?.loci?.some(
+                  (locus: LocusDTO) => locus.info?.globalMeetingId === globalMeetingId
+                )
+              ) {
+                // don't destroy the meeting as Locus API still returned some Locus that shares
+                // the same globalMeetingId - that happens for example if a webinar user (who hasn't scheduled it)
+                // is in a breakout and gets moved to a different breakout while we were offline
+              } else {
+                // destroy function also uploads logs
+                // @ts-ignore
+                this.destroy(meeting, MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC);
+              }
             }
           }
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         LoggerProxy.logger.error(
           `Meetings:index#syncMeetings --> failed to sync meetings, ${error}`
         );
-        throw new Error(error);
-      });
+        throw error;
+      }
+    }
+
+    // Trigger hash tree syncs for all remaining meetings
+    const remainingMeetings = this.meetingCollection.getAll();
+    const syncPromises = [];
+
+    for (const meeting of Object.values(remainingMeetings) as any[]) {
+      if (meeting.locusInfo) {
+        syncPromises.push(meeting.locusInfo.syncAllHashTreeDatasets());
+      }
+    }
+
+    if (syncPromises.length > 0) {
+      await Promise.all(syncPromises);
+    }
   }
 
   /**
@@ -1950,8 +1975,8 @@ export default class Meetings extends WebexPlugin {
     this.breakoutLocusForHandleLater = [];
     const lociToUpdate = [...mainLoci];
     breakoutLoci.forEach((breakoutLocus) => {
-      const associateMainLocus = mainLoci.find(
-        (mainLocus) => mainLocus.controls?.breakout?.url === breakoutLocus.controls?.breakout?.url
+      const associateMainLocus = mainLoci.find((mainLocus) =>
+        MeetingsUtil.isMainAssociatedWithBreakout(mainLocus, breakoutLocus)
       );
       const existCorrespondingMeeting = this.getCorrespondingMeetingByLocus({
         eventType: LOCUSEVENT.SDK_NO_EVENT,
@@ -1979,7 +2004,7 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-  checkHandleBreakoutLocus(newCreatedLocus) {
+  checkHandleBreakoutLocus(newCreatedLocus: any) {
     if (
       !newCreatedLocus ||
       !this.breakoutLocusForHandleLater ||
@@ -1990,9 +2015,8 @@ export default class Meetings extends WebexPlugin {
     if (MeetingsUtil.isBreakoutLocusDTO(newCreatedLocus)) {
       return;
     }
-    const existIndex = this.breakoutLocusForHandleLater.findIndex(
-      (breakoutLocus) =>
-        breakoutLocus.controls?.breakout?.url === newCreatedLocus.controls?.breakout?.url
+    const existIndex = this.breakoutLocusForHandleLater.findIndex((breakoutLocus: any) =>
+      MeetingsUtil.isMainAssociatedWithBreakout(newCreatedLocus, breakoutLocus)
     );
 
     if (existIndex < 0) {
