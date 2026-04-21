@@ -499,7 +499,7 @@ export class Registration implements IRegistration {
     let status;
     for (const mobiusUrl of this.primaryMobiusUris) {
       try {
-        const baseUri = mobiusUrl.replace(URL_ENDPOINT, '/');
+        const baseUri = mobiusUrl.replace(URL_ENDPOINT, '/').replace('wss://', 'https://');
         // eslint-disable-next-line no-await-in-loop
         const response = await this.webex.request({
           uri: `${baseUri}ping`,
@@ -882,6 +882,9 @@ export class Registration implements IRegistration {
         this.initiateFailback();
         break;
       } catch (err: unknown) {
+        // eslint-disable-next-line no-await-in-loop
+        await this.apiRequest.disconnectFromMobiusSocket();
+
         const body = err as WebexRequestPayload;
         // eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-unused-vars
         abort = await handleRegistrationErrors(

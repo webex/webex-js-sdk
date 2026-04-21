@@ -125,6 +125,24 @@ export class APIRequest {
   }
 
   /**
+   * Disconnects the default session from the Mobius WebSocket.
+   */
+  public async disconnectFromMobiusSocket(): Promise<void> {
+    const logContext = {
+      file: REQUEST_FILE,
+      method: 'disconnectFromMobiusSocket',
+    };
+
+    try {
+      await this.mobiusSocket.disconnect();
+      log.log('Mobius WebSocket disconnected successfully', logContext);
+    } catch (err) {
+      // silent error - no need to throw an error
+      log.warn(`Mobius WebSocket disconnection failed: ${String(err)}`, logContext);
+    }
+  }
+
+  /**
    * Makes a request using HTTP or WebSocket transport per the flag set in the constructor.
    * When using WebSocket, the response is normalized to the WebexRequestPayload shape
    * so callers do not need to know which transport was used.
