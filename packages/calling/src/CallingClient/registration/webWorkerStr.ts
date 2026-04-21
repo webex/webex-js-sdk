@@ -26,25 +26,6 @@ let keepaliveTimer;
 let keepAliveRetryCount = 0;
 let keepaliveInFlight = false;
 
-const normalizeKeepaliveError = (err) => {
-  const headers = {};
-
-  if (err?.headers?.has?.('Retry-After')) {
-    headers['retry-after'] = err.headers.get('Retry-After');
-  }
-
-  if (err?.headers?.has?.('Trackingid')) {
-    headers.trackingid = err.headers.get('Trackingid');
-  }
-
-  return {
-    headers,
-    statusCode: err?.status ?? err?.statusCode ?? 0,
-    statusText: err?.statusText ?? err?.message ?? 'Keepalive failed',
-    type: err?.type,
-  };
-};
-
 const clearKeepaliveTimer = () => {
   if (keepaliveTimer) {
     clearInterval(keepaliveTimer);
@@ -89,7 +70,7 @@ const messageHandler = (event) => {
       keepAliveRetryCount += 1;
       self.postMessage({
         type: WorkerMessageType.KEEPALIVE_FAILURE,
-        err: normalizeKeepaliveError(event.data.err),
+        err: event.data.err,
         keepAliveRetryCount,
       });
     }

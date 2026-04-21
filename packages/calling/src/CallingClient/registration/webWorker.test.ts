@@ -70,21 +70,7 @@ describe('webWorker', () => {
       data: {
         type: WorkerMessageType.KEEPALIVE_RESULT,
         err: {
-          headers: {
-            has: (key: string) => key === 'Retry-After' || key === 'Trackingid',
-            get: (key: string) => {
-              if (key === 'Retry-After') {
-                return '10';
-              }
-
-              if (key === 'Trackingid') {
-                return 'web_worker_mock-uuid';
-              }
-
-              return null;
-            },
-          },
-          status: 401,
+          statusCode: 401,
           statusText: 'Unauthorized',
           type: undefined,
         },
@@ -94,7 +80,6 @@ describe('webWorker', () => {
     expect(postMessageSpy).toHaveBeenCalledWith({
       type: WorkerMessageType.KEEPALIVE_FAILURE,
       err: {
-        headers: {'retry-after': '10', trackingid: 'web_worker_mock-uuid'},
         statusCode: 401,
         statusText: 'Unauthorized',
         type: undefined,
@@ -117,11 +102,7 @@ describe('webWorker', () => {
       data: {
         type: WorkerMessageType.KEEPALIVE_RESULT,
         err: {
-          headers: {
-            has: () => false,
-            get: () => null,
-          },
-          status: 404,
+          statusCode: 404,
           statusText: 'Not Found',
         },
       },

@@ -98,6 +98,7 @@ export class Registration implements IRegistration {
   private apiRequest: APIRequest;
   private isMobiusSocketEnabled: boolean;
   private mobiusSocket?: TransportLayer['mobiusSocket'];
+  private keepaliveErrorHeaders?: Record<string, string>;
 
   /**
    */
@@ -495,30 +496,29 @@ export class Registration implements IRegistration {
     deviceUrl: string,
     url: string,
     trackingId: string
-  ): Promise<{status: number}> {
+  ) {
+    let response;
     const mobiusSocket = this.mobiusSocket;
 
     if (this.isMobiusSocketEnabled && mobiusSocket?.isConnected?.()) {
-      await mobiusSocket.send({
+      response = await mobiusSocket.send({
         type: 'status',
         deviceUrl,
         trackingId,
       });
-
-      return {status: 200};
+    } else {
+      response = await fetch(`${url}/status`, {
+        method: HTTP_METHODS.POST,
+        headers: {
+          [CISCO_DEVICE_URL]: deviceUrl,
+          [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+          Authorization: `${accessToken}`,
+          trackingId,
+        },
+      });
     }
 
-    const response = await fetch(`${url}/status`, {
-      method: HTTP_METHODS.POST,
-      headers: {
-        [CISCO_DEVICE_URL]: deviceUrl,
-        [SPARK_USER_AGENT]: CALLING_USER_AGENT,
-        Authorization: `${accessToken}`,
-        trackingId,
-      },
-    });
-
-    if (!response.ok) {
+    if (!response?.ok) {
       throw response;
     }
 
@@ -995,13 +995,28 @@ export class Registration implements IRegistration {
                   statusCode: res.status,
                 });
               } catch (err: any) {
+                const headers = {} as Record<string, string>;
+                if (err.headers?.has('Retry-After')) {
+                  headers['retry-after'] = err.headers.get('Retry-After');
+                }
+
+                if (err.headers?.has('Trackingid')) {
+                  // eslint-disable-next-line dot-notation
+                  headers['trackingid'] = err.headers.get('Trackingid');
+                }
+
+                const error = {
+                  headers,
+                  statusCode: err.status,
+                  statusText: err.statusText,
+                  type: err.type,
+                };
+
                 this.webWorker?.postMessage({
                   type: WorkerMessageType.KEEPALIVE_RESULT,
-                  err,
+                  err: error,
                 });
               }
-
-              return;
             }
 
             if (event.data.type === WorkerMessageType.KEEPALIVE_SUCCESS) {
@@ -1010,7 +1025,13 @@ export class Registration implements IRegistration {
             }
 
             if (event.data.type === WorkerMessageType.KEEPALIVE_FAILURE) {
-              const error = <WebexRequestPayload>event.data.err;
+              const workerError = event.data.err as WebexRequestPayload;
+              const headers = workerError?.headers ?? this.keepaliveErrorHeaders;
+              const error = {
+                ...workerError,
+                ...(headers && Object.keys(headers).length > 0 ? {headers} : {}),
+              } as WebexRequestPayload;
+              this.keepaliveErrorHeaders = undefined;
               log.warn(
                 `Keep-alive missed ${event.data.keepAliveRetryCount} times. Status -> ${error.statusCode} `,
                 logContext
