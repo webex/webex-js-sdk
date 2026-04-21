@@ -3175,7 +3175,7 @@ describe('plugin-meetings', () => {
       const createMockParser = (state = 'active') => ({
         state,
         stop: sinon.stub(),
-        resume: sinon.stub(),
+        resumeFromMessage: sinon.stub(),
         handleMessage: sinon.stub(),
       });
 
@@ -3258,7 +3258,7 @@ describe('plugin-meetings', () => {
           stateElementsMessage: message,
         });
 
-        assert.calledOnce(parserA.resume);
+        assert.calledOnce(parserA.resumeFromMessage);
         assert.calledOnce(parserB.stop);
       });
 
@@ -3281,7 +3281,7 @@ describe('plugin-meetings', () => {
           stateElementsMessage: message,
         });
 
-        assert.notCalled(parserA.resume);
+        assert.notCalled(parserA.resumeFromMessage);
         assert.notCalled(parserB.stop);
       });
 
@@ -3300,7 +3300,7 @@ describe('plugin-meetings', () => {
           stateElementsMessage: message,
         });
 
-        assert.notCalled(parserA.resume);
+        assert.notCalled(parserA.resumeFromMessage);
         assert.notCalled(parserA.handleMessage);
       });
 
@@ -3452,6 +3452,156 @@ describe('plugin-meetings', () => {
 
         assert.calledOnce(locusInfo.sendClassicVsHashTreeMismatchMetric);
         assert.calledOnce(mockHashTreeParser.handleLocusUpdate);
+      });
+
+      describe('parser switch via API response', () => {
+        const deviceUrl = 'http://device-url.com';
+        const locusUrlA = 'http://locus-url-A.com';
+        const locusUrlB = 'http://locus-url-B.com';
+
+        let HashTreeParserStub;
+
+        const createMockApiParser = (state = 'active') => ({
+          state,
+          stop: sinon.stub(),
+          resumeFromApiResponse: sinon.stub(),
+          handleLocusUpdate: sinon.stub(),
+          initializeFromGetLociResponse: sinon.stub(),
+        });
+
+        const createLocusWithReplaces = (url, replacedLocusUrl, replacedAt) => ({
+          url,
+          self: {
+            devices: [{url: deviceUrl, replaces: [{locusUrl: replacedLocusUrl, replacedAt}]}],
+          },
+        });
+
+        const createLocusWithoutReplaces = (url) => ({
+          url,
+          self: {devices: [{url: deviceUrl}]},
+        });
+
+        beforeEach(() => {
+          locusInfo.webex.internal.device.url = deviceUrl;
+          HashTreeParserStub = sinon
+            .stub(HashTreeParserModule, 'default')
+            .returns(createMockApiParser());
+        });
+
+        it('should create a new parser and initialize it when no entry exists for the locusUrl', () => {
+          // existing parser for a different url so hashTreeParsers.size > 0
+          locusInfo.hashTreeParsers.set(locusUrlA, {parser: createMockApiParser(), initializedFromHashTree: true});
+
+          const locus = createLocusWithReplaces(locusUrlB, locusUrlA, '2026-01-01T00:00:00Z');
+          sinon.stub(locusInfo, 'handleLocusDelta');
+
+          locusInfo.handleLocusAPIResponse(mockMeeting, {locus});
+
+          assert.isTrue(locusInfo.hashTreeParsers.has(locusUrlB));
+          const newEntry = locusInfo.hashTreeParsers.get(locusUrlB);
+          assert.isFalse(newEntry.initializedFromHashTree);
+
+          // the stub returns the mock, so initializeFromGetLociResponse should be called on it
+          const createdParser = HashTreeParserStub.returnValues[0];
+          assert.calledOnceWithExactly(createdParser.initializeFromGetLociResponse, locus);
+          assert.notCalled(locusInfo.handleLocusDelta);
+        });
+
+        it('should reactivate a stopped parser when replaces info is newer', () => {
+          const parserA = createMockApiParser('stopped');
+          const parserB = createMockApiParser('active');
+          locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, replacedAt: '2026-01-01T00:00:00Z', initializedFromHashTree: true});
+          locusInfo.hashTreeParsers.set(locusUrlB, {parser: parserB, initializedFromHashTree: true});
+
+          const locus = createLocusWithReplaces(locusUrlA, locusUrlB, '2026-02-01T00:00:00Z');
+
+          locusInfo.handleLocusAPIResponse(mockMeeting, {locus});
+
+          assert.calledOnce(parserA.resumeFromApiResponse);
+          assert.calledWithExactly(parserA.resumeFromApiResponse, locus);
+          assert.calledOnce(parserB.stop);
+          assert.equal(locusInfo.hashTreeParsers.get(locusUrlB).replacedAt, '2026-02-01T00:00:00Z');
+          assert.isFalse(locusInfo.hashTreeParsers.get(locusUrlA).initializedFromHashTree);
+        });
+
+        it('should not reactivate a stopped parser when replaces info is not newer', () => {
+          const parserA = createMockApiParser('stopped');
+          const parserB = createMockApiParser('active');
+          locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, replacedAt: '2026-03-01T00:00:00Z', initializedFromHashTree: true});
+          locusInfo.hashTreeParsers.set(locusUrlB, {parser: parserB, initializedFromHashTree: true});
+
+          const locus = createLocusWithReplaces(locusUrlA, locusUrlB, '2026-01-01T00:00:00Z');
+
+          locusInfo.handleLocusAPIResponse(mockMeeting, {locus});
+
+          assert.notCalled(parserA.resumeFromApiResponse);
+          assert.notCalled(parserB.stop);
+        });
+
+        it('should not reactivate a stopped parser when no replaces info is available', () => {
+          const parserA = createMockApiParser('stopped');
+          locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, initializedFromHashTree: true});
+
+          const locus = createLocusWithoutReplaces(locusUrlA);
+
+          locusInfo.handleLocusAPIResponse(mockMeeting, {locus});
+
+          assert.notCalled(parserA.resumeFromApiResponse);
+        });
+      });
+    });
+
+    describe('#syncAllHashTreeDatasets', () => {
+      it('should call syncAllDatasets on each parser that has an entry', async () => {
+        const parser1 = {syncAllDatasets: sinon.stub().resolves()};
+        const parser2 = {syncAllDatasets: sinon.stub().resolves()};
+        locusInfo.hashTreeParsers.set('url1', {parser: parser1});
+        locusInfo.hashTreeParsers.set('url2', {parser: parser2});
+
+        await locusInfo.syncAllHashTreeDatasets();
+
+        assert.calledOnce(parser1.syncAllDatasets);
+        assert.calledOnce(parser2.syncAllDatasets);
+      });
+
+      it('should skip parser entries without a parser object', async () => {
+        const parser1 = {syncAllDatasets: sinon.stub().resolves()};
+        locusInfo.hashTreeParsers.set('url1', {parser: parser1});
+        locusInfo.hashTreeParsers.set('url2', {parser: undefined});
+
+        await locusInfo.syncAllHashTreeDatasets();
+
+        assert.calledOnce(parser1.syncAllDatasets);
+      });
+
+      it('should await each parsers syncAllDatasets sequentially', async () => {
+        const callOrder = [];
+        const parser1 = {syncAllDatasets: sinon.stub().callsFake(() => {
+          callOrder.push('start1');
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              callOrder.push('end1');
+              resolve();
+            }, 100);
+          });
+        })};
+        const parser2 = {syncAllDatasets: sinon.stub().callsFake(() => {
+          callOrder.push('start2');
+          return Promise.resolve();
+        })};
+        locusInfo.hashTreeParsers.set('url1', {parser: parser1});
+        locusInfo.hashTreeParsers.set('url2', {parser: parser2});
+
+        const clock = sinon.useFakeTimers();
+        const promise = locusInfo.syncAllHashTreeDatasets();
+        // parser1 started but parser2 not yet
+        assert.deepEqual(callOrder, ['start1']);
+
+        await clock.tickAsync(100);
+        await promise;
+        // parser1 finished, then parser2 started and finished
+        assert.deepEqual(callOrder, ['start1', 'end1', 'start2']);
+        clock.restore();
       });
     });
 
@@ -5000,6 +5150,31 @@ describe('plugin-meetings', () => {
           'Locus-info:index#parse --> received locus hash tree event before hashTreeParser is created'
         );
         assert.notCalled(getTheLocusToUpdateStub);
+      });
+
+      it('should call handleLocusAPIResponse for SDK_LOCUS_FROM_SYNC_MEETINGS when hash tree parsers exist', () => {
+        const fakeLocusUrl = 'http://locus-url.com';
+        const fakeLocus = {url: fakeLocusUrl, fullState: {state: 'ACTIVE'}};
+        const mockHashTreeParser = {
+          handleMessage: sinon.stub(),
+          handleLocusUpdate: sinon.stub(),
+        };
+        locusInfo.hashTreeParsers.set(fakeLocusUrl, {
+          parser: mockHashTreeParser,
+          initializedFromHashTree: true,
+        });
+
+        sinon.stub(locusInfo, 'handleLocusDelta');
+
+        locusInfo.parse(mockMeeting, {
+          eventType: LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS,
+          locus: fakeLocus,
+        });
+
+        // should route through handleLocusAPIResponse which passes unwrapped LocusDTO to parser
+        assert.calledOnce(mockHashTreeParser.handleLocusUpdate);
+        assert.notCalled(mockHashTreeParser.handleMessage);
+        assert.notCalled(locusInfo.handleLocusDelta);
       });
     });
   });
