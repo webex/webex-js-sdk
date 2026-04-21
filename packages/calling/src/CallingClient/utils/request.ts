@@ -7,7 +7,7 @@ import log from '../../Logger';
 import {APIRequestConfig, APIRequestOptions, MobiusSocketResponse} from './types';
 import {deriveMobiusSocketMessageType} from './mobiusSocketMapper';
 import {MOBIUS_SOCKET_MESSAGE_TYPE} from './constants';
-import {isWsFeatureEnabled} from './wsFeatureFlag';
+import {isMobiusWssFlagEnabled} from './wsFeatureFlag';
 import {METHODS, REQUEST_FILE} from '../constants';
 
 /**
@@ -82,7 +82,7 @@ export class APIRequest {
 
     this.webex = config.webex;
     this.isMobiusSocketEnabled =
-      isWsFeatureEnabled(config.webex) || (config.isMobiusSocketEnabled ?? false);
+      isMobiusWssFlagEnabled(config.webex) || (config.isMobiusSocketEnabled ?? false);
     this.mobiusSocket = getMobiusSocketInstance(this.webex);
   }
 
