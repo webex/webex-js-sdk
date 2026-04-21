@@ -60,6 +60,7 @@ const MobiusSocket = WebexPlugin.extend({
       type: 'object',
     },
     _seenAsyncEventIdsBySession: {
+      // Ampersand's property types are coarse-grained; Map is stored as an object value here.
       default: () => new Map(),
       type: 'object',
     },
