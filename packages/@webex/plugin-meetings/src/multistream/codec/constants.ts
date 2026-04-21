@@ -1,4 +1,6 @@
-export const AV1_CODEC_PARAMETERS = {
+import {AV1EncodingParams, SupportedResolution} from '@webex/internal-media-core';
+
+export const AV1_CODEC_PARAMETERS: Record<SupportedResolution, AV1EncodingParams> = {
   '90p': {
     levelIdx: 0,
     tier: 0,
