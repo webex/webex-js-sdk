@@ -49,34 +49,60 @@ const getAgentActionTypeFromTask = (taskData?: TaskData): 'DIAL_NUMBER' | '' => 
   return isDialNumber || isEntryPointVariant ? 'DIAL_NUMBER' : '';
 };
 
-// Fallback regex for US/Canada dial numbers when no dial plan entries are configured
-export const FALLBACK_DIAL_NUMBER_REGEX = /1[0-9]{3}[2-9][0-9]{6}([,]{1,10}[0-9]+){0,1}/;
+/**
+ * Strips characters defined in the dial plan entry from the input string.
+ *
+ * @param input - The dial number to sanitize
+ * @param strippedChars - String of characters to remove from the input
+ * @returns The sanitized input with specified characters removed
+ */
+export const stripDialPlanChars = (input: string, strippedChars: string): string => {
+  if (!strippedChars) {
+    return input;
+  }
+
+  const charsToStrip = new Set(strippedChars.split(''));
+
+  return input
+    .split('')
+    .filter((c) => !charsToStrip.has(c))
+    .join('');
+};
 
 /**
  * Validates a dial number against the provided dial plan regex patterns.
  * A number is valid if it matches at least one regex pattern in the dial plans.
- * Falls back to US/Canada regex validation if no dial plan entries are configured.
+ * Skips validation when no dial plan entries are configured, deferring to the server.
  *
  * @param input - The dial number to validate
  * @param dialPlanEntries - Array of dial plan entries containing regex patterns
- * @returns true if the input matches at least one dial plan regex pattern, false otherwise
+ * @returns true if the input matches at least one dial plan regex pattern or no entries are configured, false otherwise
  */
 export const isValidDialNumber = (
   input: string,
   dialPlanEntries: DialPlan['dialPlanEntity']
 ): boolean => {
   if (!dialPlanEntries || dialPlanEntries.length === 0) {
-    LoggerProxy.info('No dial plan entries found. Falling back to US number validation.');
+    LoggerProxy.log(
+      'No dial plan entries found. Skipping client-side validation, deferring to server.',
+      {module: 'Utils', method: 'isValidDialNumber'}
+    );
 
-    return FALLBACK_DIAL_NUMBER_REGEX.test(input);
+    return true;
   }
 
   return dialPlanEntries.some((entry) => {
     try {
+      const sanitizedInput = stripDialPlanChars(input, entry.strippedChars);
       const regex = new RegExp(entry.regex);
 
-      return regex.test(input);
-    } catch {
+      return regex.test(sanitizedInput);
+    } catch (e) {
+      LoggerProxy.warn(`Invalid dial plan regex for entry "${entry.name}": ${e}`, {
+        module: 'Utils',
+        method: 'isValidDialNumber',
+      });
+
       return false;
     }
   });

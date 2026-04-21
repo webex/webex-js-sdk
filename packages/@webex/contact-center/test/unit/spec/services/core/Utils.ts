@@ -1,5 +1,4 @@
 import * as Utils from '../../../../../src/services/core/Utils';
-import {FALLBACK_DIAL_NUMBER_REGEX} from '../../../../../src/services/core/Utils';
 import LoggerProxy from '../../../../../src/logger-proxy';
 import WebexRequest from '../../../../../src/services/core/WebexRequest';
 import {LoginOption, WebexRequestPayload} from '../../../../../src/types';
@@ -12,6 +11,7 @@ jest.mock('../../../../../src/logger-proxy', () => ({
     log: jest.fn(),
     error: jest.fn(),
     info: jest.fn(),
+    warn: jest.fn(),
     initialize: jest.fn(),
   },
 }));
@@ -569,7 +569,7 @@ describe('Utils', () => {
     const usOnlyEntry = {
       name: 'US',
       prefix: '1',
-      regex: FALLBACK_DIAL_NUMBER_REGEX.source,
+      regex: '1[0-9]{3}[2-9][0-9]{6}([,]{1,10}[0-9]+){0,1}',
       strippedChars: '( )-',
     };
 
@@ -583,6 +583,11 @@ describe('Utils', () => {
 
       it('should return true for a UK phone number', () => {
         const result = Utils.isValidDialNumber('+442030484377', dialPlanEntries);
+        expect(result).toBe(true);
+      });
+
+      it('should return true for a European number', () => {
+        const result = Utils.isValidDialNumber('6955577166', dialPlanEntries);
         expect(result).toBe(true);
       });
     });
@@ -606,16 +611,74 @@ describe('Utils', () => {
       });
     });
 
-    describe('with empty dial plan entries (fallback to US regex)', () => {
-      it('should return true for a valid US phone number', () => {
-        const result = Utils.isValidDialNumber('12223334567', []);
+    describe('with empty dial plan entries (defers to server)', () => {
+      it('should return true for any dial number', () => {
+        expect(Utils.isValidDialNumber('12223334567', [])).toBe(true);
+      });
+
+      it('should return true for a UK phone number', () => {
+        expect(Utils.isValidDialNumber('+442030484377', [])).toBe(true);
+      });
+
+      it('should return true for a European number', () => {
+        expect(Utils.isValidDialNumber('6955577166', [])).toBe(true);
+      });
+    });
+
+    describe('strippedChars handling', () => {
+      it('should strip characters before regex matching', () => {
+        const strictEntry = {
+          name: 'Digits Only',
+          prefix: '',
+          regex: '^[0-9]{10,15}$',
+          strippedChars: '( )-+',
+        };
+        const result = Utils.isValidDialNumber('+44 (203) 048-4377', [strictEntry]);
         expect(result).toBe(true);
       });
 
-      it('should return false for a UK phone number', () => {
-        const result = Utils.isValidDialNumber('+442030484377', []);
-        expect(result).toBe(false);
+      it('should handle entries with no strippedChars', () => {
+        const noStripEntry = {
+          name: 'No Strip',
+          prefix: '',
+          regex: '^[0-9]+$',
+          strippedChars: '',
+        };
+        expect(Utils.isValidDialNumber('12345', [noStripEntry])).toBe(true);
+        expect(Utils.isValidDialNumber('+12345', [noStripEntry])).toBe(false);
       });
+    });
+
+    describe('invalid regex handling', () => {
+      it('should return false and log warning for invalid regex pattern', () => {
+        const badEntry = {
+          name: 'Bad Regex',
+          prefix: '',
+          regex: '[invalid(',
+          strippedChars: '',
+        };
+        const result = Utils.isValidDialNumber('12345', [badEntry]);
+        expect(result).toBe(false);
+        expect(LoggerProxy.warn).toHaveBeenCalledWith(
+          expect.stringContaining('Invalid dial plan regex for entry "Bad Regex"'),
+          expect.objectContaining({module: 'Utils', method: 'isValidDialNumber'})
+        );
+      });
+    });
+  });
+
+  describe('stripDialPlanChars', () => {
+    it('should remove specified characters from input', () => {
+      expect(Utils.stripDialPlanChars('+44 (203) 048-4377', '( )-+')).toBe('442030484377');
+    });
+
+    it('should return input unchanged when strippedChars is empty', () => {
+      expect(Utils.stripDialPlanChars('+442030484377', '')).toBe('+442030484377');
+    });
+
+    it('should return input unchanged when strippedChars is null/undefined', () => {
+      expect(Utils.stripDialPlanChars('12345', null as any)).toBe('12345');
+      expect(Utils.stripDialPlanChars('12345', undefined as any)).toBe('12345');
     });
   });
 
