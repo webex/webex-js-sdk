@@ -60,6 +60,7 @@ describe('plugin-meetings', () => {
       meeting.annotaion = {cleanUp: sinon.stub()};
       meeting.getWebexObject = sinon.stub().returns(webex);
       meeting.simultaneousInterpretation = {cleanUp: sinon.stub()};
+      meeting.locusInfo = {cleanUp: sinon.stub()};
       meeting.trigger = sinon.stub();
       meeting.webex = webex;
       meeting.webex.internal.newMetrics.callDiagnosticMetrics =
@@ -89,6 +90,7 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(meeting.cleanupLLMConneciton, {throwOnError: false});
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
+        assert.calledOnce(meeting.locusInfo.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
         assert.calledOnceWithExactly(
           meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId,
@@ -110,6 +112,7 @@ describe('plugin-meetings', () => {
         assert.notCalled(meeting.cleanupLLMConneciton);
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
+        assert.calledOnce(meeting.locusInfo.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
         assert.calledOnceWithExactly(
           meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId,
@@ -130,6 +133,7 @@ describe('plugin-meetings', () => {
         assert.notCalled(meeting.cleanupLLMConneciton);
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
+        assert.calledOnce(meeting.locusInfo.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
         assert.calledOnceWithExactly(
           meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId,

@@ -13,6 +13,7 @@ import {CC_TASK_EVENTS} from '../../../../../src/services/config/types';
 
 describe('TaskManager', () => {
   let mockCall;
+  let mockApiAIAssistant;
   let webSocketManagerMock;
   let onSpy;
   let offSpy;
@@ -45,6 +46,15 @@ describe('TaskManager', () => {
   beforeEach(() => {
     contactMock = contact;
     webSocketManagerMock = new EventEmitter();
+    mockApiAIAssistant = {
+      sendEvent: jest.fn().mockResolvedValue({}),
+      setAIFeatureFlags: jest.fn(),
+      aiFeature: {
+        realtimeTranscripts: {
+          enable: true,
+        },
+      },
+    };
 
     webex = {
       logger: {
@@ -74,14 +84,24 @@ describe('TaskManager', () => {
     onSpy = jest.spyOn(webCallingService, 'on');
     offSpy = jest.spyOn(webCallingService, 'off');
 
-    taskManager = new TaskManager(contactMock, webCallingService, webSocketManagerMock);
-    taskManager.taskCollection[taskId] = {
+    taskManager = new TaskManager(
+      mockApiAIAssistant,
+      contactMock,
+      webCallingService,
+      webSocketManagerMock
+    );
+    const taskMock = {
       emit: jest.fn(),
       accept: jest.fn(),
       decline: jest.fn(),
-      updateTaskData: jest.fn(),
+      updateTaskData: jest.fn().mockImplementation((updatedData) => {
+        taskMock.data = {...taskMock.data, ...updatedData};
+        return taskMock;
+      }),
       data: taskDataMock,
     };
+    taskManager.taskCollection[taskId] = taskMock;
+    taskManager.agentId = 'test-agent-id';
     taskManager.call = mockCall;
   });
 
@@ -122,6 +142,106 @@ describe('TaskManager', () => {
     webSocketManagerMock.emit('message', JSON.stringify(dummyPayload));
 
     expect(taskEmitSpy).toHaveBeenCalledWith(dummyPayload.data.type, dummyPayload.data);
+  });
+
+  it('should invoke sendEvent for configured start/stop backend events', () => {
+    const message = (type: CC_EVENTS) =>
+      JSON.stringify({
+        data: {
+          ...taskDataMock,
+          taskId,
+          type,
+        },
+      });
+
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONTACT_ASSIGNED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULTING));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULT_CONFERENCED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULT_ENDED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_WRAPUP));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE));
+
+    expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledTimes(6);
+    expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledWith(
+      'test-agent-id',
+      taskId,
+      'CUSTOM_EVENT',
+      'GET_TRANSCRIPTS',
+      'START'
+    );
+    expect(mockApiAIAssistant.sendEvent).toHaveBeenCalledWith(
+      'test-agent-id',
+      taskId,
+      'CUSTOM_EVENT',
+      'GET_TRANSCRIPTS',
+      'STOP'
+    );
+  });
+
+  it('should not invoke sendEvent for transcript events when realtime transcript feature is disabled', () => {
+    mockApiAIAssistant.aiFeature = {
+      realtimeTranscripts: {
+        enable: false,
+      },
+    };
+    mockApiAIAssistant.setAIFeatureFlags(mockApiAIAssistant.aiFeature);
+
+    const message = (type: CC_EVENTS) =>
+      JSON.stringify({
+        data: {
+          ...taskDataMock,
+          taskId,
+          type,
+        },
+      });
+
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONTACT_ASSIGNED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULTING));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULT_CONFERENCED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_CONSULT_ENDED));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.AGENT_WRAPUP));
+    webSocketManagerMock.emit('message', message(CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE));
+
+    expect(mockApiAIAssistant.sendEvent).not.toHaveBeenCalled();
+  });
+
+  it('should emit REAL_TIME_TRANSCRIPTION from task object', () => {
+    const task = taskManager.getTask(taskId);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const realtimePayload = {
+      data: {
+        ...taskDataMock,
+        type: CC_EVENTS.REAL_TIME_TRANSCRIPTION,
+        data: {
+          content: 'hello from transcript',
+        },
+      },
+    };
+
+    webSocketManagerMock.emit('message', JSON.stringify(realtimePayload));
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(
+      CC_EVENTS.REAL_TIME_TRANSCRIPTION,
+      realtimePayload.data
+    );
+  });
+
+  it('should emit REAL_TIME_TRANSCRIPTION from RTD websocket payload on task object', () => {
+    const task = taskManager.getTask(taskId);
+    const taskEmitSpy = jest.spyOn(task, 'emit');
+    const realtimePayload = {
+      data: {
+        notifType: CC_EVENTS.REAL_TIME_TRANSCRIPTION,
+        data: {
+          conversationId: taskId,
+          content: 'hello from rtd websocket',
+        },
+      },
+    };
+
+    taskManager.handleRealtimeWebsocketEvent(JSON.stringify(realtimePayload));
+
+    expect(taskEmitSpy).toHaveBeenCalledWith(CC_EVENTS.REAL_TIME_TRANSCRIPTION, realtimePayload.data);
   });
 
   it('should not re-emit agent related events', () => {
@@ -1031,7 +1151,7 @@ describe('TaskManager', () => {
       taskManager.setAgentId(agentId);
     });
 
-    it('should set wrapUpRequired to true when agent is in agentsPendingWrapUp array', () => {
+    it('should set wrapUpRequired to true when agent is in agentsPendingWrapUp array for non-campaign tasks', () => {
       const task = taskManager.getTask(taskId);
       task.updateTaskData = jest.fn().mockImplementation((newData) => {
         task.data = {
@@ -1191,7 +1311,7 @@ describe('TaskManager', () => {
       );
     });
 
-    it('should set wrapUpRequired correctly when agent is the only one in agentsPendingWrapUp', () => {
+    it('should set wrapUpRequired to true when agent is the only one in agentsPendingWrapUp for non-campaign tasks', () => {
       const task = taskManager.getTask(taskId);
       task.updateTaskData = jest.fn().mockImplementation((newData) => {
         task.data = {
@@ -1223,7 +1343,7 @@ describe('TaskManager', () => {
       );
     });
 
-    it('should work correctly for different interaction states when agent is in agentsPendingWrapUp', () => {
+    it('should set wrapUpRequired to true for different interaction states when agent is in agentsPendingWrapUp for non-campaign tasks', () => {
       const task = taskManager.getTask(taskId);
       task.updateTaskData = jest.fn().mockImplementation((newData) => {
         task.data = {
@@ -1253,7 +1373,6 @@ describe('TaskManager', () => {
 
       webSocketManagerMock.emit('message', JSON.stringify(payloadConnected));
 
-      // First call should set wrapUpRequired to true
       expect(task.updateTaskData).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({
@@ -1276,11 +1395,47 @@ describe('TaskManager', () => {
 
       webSocketManagerMock.emit('message', JSON.stringify(payloadHeld));
 
-      // Second call should also set wrapUpRequired to true
       expect(task.updateTaskData).toHaveBeenNthCalledWith(
         2,
         expect.objectContaining({
           wrapUpRequired: true,
+        })
+      );
+    });
+
+    it('should set wrapUpRequired to false for campaign preview tasks even when agent is in agentsPendingWrapUp', () => {
+      const task = taskManager.getTask(taskId);
+      // Set up task as a campaign preview task via outboundType
+      task.data.interaction = {
+        ...task.data.interaction,
+        outboundType: 'STANDARD_PREVIEW_CAMPAIGN',
+      };
+      task.updateTaskData = jest.fn().mockImplementation((newData) => {
+        task.data = {
+          ...task.data,
+          ...newData,
+        };
+        return task;
+      });
+      task.unregisterWebCallListeners = jest.fn();
+
+      const payload = {
+        data: {
+          type: CC_EVENTS.CONTACT_ENDED,
+          interactionId: taskId,
+          interaction: {
+            state: 'connected',
+            mediaType: 'telephony',
+          },
+          agentsPendingWrapUp: [agentId],
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(payload));
+
+      expect(task.updateTaskData).toHaveBeenCalledWith(
+        expect.objectContaining({
+          wrapUpRequired: false,
         })
       );
     });
@@ -3179,7 +3334,7 @@ describe('TaskManager', () => {
       );
     });
 
-    it('should update task data but NOT remove task when CampaignContactUpdated is received', () => {
+    it('should emit TASK_CAMPAIGN_CONTACT_UPDATED and NOT remove task when CampaignContactUpdated is received', () => {
       const campaignInteractionId = 'campaign-interaction-123';
 
       // First create a campaign preview task
@@ -3229,8 +3384,199 @@ describe('TaskManager', () => {
       // Task should still exist in collection (not removed — non-terminal event)
       expect(taskManager['taskCollection'][campaignInteractionId]).toBeDefined();
 
+      // TASK_CAMPAIGN_CONTACT_UPDATED should have been emitted
+      expect(taskEmitSpy).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_CAMPAIGN_CONTACT_UPDATED,
+        expect.objectContaining({
+          data: expect.objectContaining({
+            interactionId: campaignInteractionId,
+          }),
+        })
+      );
+
       // TASK_END should NOT have been emitted
       expect(taskEmitSpy).not.toHaveBeenCalledWith(TASK_EVENTS.TASK_END, expect.anything());
+    });
+
+    it('should emit TASK_CAMPAIGN_PREVIEW_ACCEPT_FAILED when CampaignPreviewAcceptFailed is received', () => {
+      const campaignInteractionId = 'campaign-interaction-123';
+
+      // First create a campaign preview task
+      const reservationPayload = {
+        data: {
+          type: CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION,
+          interactionId: campaignInteractionId,
+          agentId: taskDataMock.agentId,
+          orgId: taskDataMock.orgId,
+          trackingId: 'campaign-tracking-456',
+          interaction: {
+            mediaType: 'telephony',
+            callProcessingDetails: {
+              campaignId: 'campaign-789',
+            },
+          },
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(reservationPayload));
+
+      const task = taskManager['taskCollection'][campaignInteractionId];
+      expect(task).toBeDefined();
+
+      const taskEmitSpy = jest.spyOn(task, 'emit');
+
+      const failPayload = {
+        data: {
+          type: CC_EVENTS.CAMPAIGN_PREVIEW_ACCEPT_FAILED,
+          interactionId: campaignInteractionId,
+          campaignId: 'campaign-789',
+          reason: 'INTERNAL_ERROR',
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(failPayload));
+
+      expect(taskEmitSpy).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_ACCEPT_FAILED,
+        expect.objectContaining({
+          data: expect.objectContaining({interactionId: campaignInteractionId}),
+        })
+      );
+      // Task should still exist (failure is non-terminal)
+      expect(taskManager['taskCollection'][campaignInteractionId]).toBeDefined();
+
+      // Failure payload (reason, campaignId) should be merged into task.data
+      expect(task.data.reason).toBe('INTERNAL_ERROR');
+
+      // Original reservation data must be preserved
+      expect(task.data.interaction).toBeDefined();
+      expect(task.data.interaction.callProcessingDetails.campaignId).toBe('campaign-789');
+    });
+
+    it('should emit TASK_CAMPAIGN_PREVIEW_SKIP_FAILED when CampaignPreviewSkipFailed is received', () => {
+      const campaignInteractionId = 'campaign-interaction-123';
+
+      const reservationPayload = {
+        data: {
+          type: CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION,
+          interactionId: campaignInteractionId,
+          agentId: taskDataMock.agentId,
+          orgId: taskDataMock.orgId,
+          trackingId: 'campaign-tracking-456',
+          interaction: {
+            mediaType: 'telephony',
+            callProcessingDetails: {
+              campaignId: 'campaign-789',
+            },
+          },
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(reservationPayload));
+
+      const task = taskManager['taskCollection'][campaignInteractionId];
+      expect(task).toBeDefined();
+
+      const taskEmitSpy = jest.spyOn(task, 'emit');
+
+      const failPayload = {
+        data: {
+          type: CC_EVENTS.CAMPAIGN_PREVIEW_SKIP_FAILED,
+          interactionId: campaignInteractionId,
+          campaignId: 'campaign-789',
+          reason: 'INTERNAL_ERROR',
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(failPayload));
+
+      expect(taskEmitSpy).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_SKIP_FAILED,
+        expect.objectContaining({
+          data: expect.objectContaining({interactionId: campaignInteractionId}),
+        })
+      );
+      expect(taskManager['taskCollection'][campaignInteractionId]).toBeDefined();
+
+      // Failure payload (reason) should be merged into task.data
+      expect(task.data.reason).toBe('INTERNAL_ERROR');
+
+      // Original reservation data must be preserved
+      expect(task.data.interaction).toBeDefined();
+      expect(task.data.interaction.callProcessingDetails.campaignId).toBe('campaign-789');
+    });
+
+    it('should emit TASK_CAMPAIGN_PREVIEW_REMOVE_FAILED when CampaignPreviewRemoveFailed is received', () => {
+      const campaignInteractionId = 'campaign-interaction-123';
+
+      const reservationPayload = {
+        data: {
+          type: CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION,
+          interactionId: campaignInteractionId,
+          agentId: taskDataMock.agentId,
+          orgId: taskDataMock.orgId,
+          trackingId: 'campaign-tracking-456',
+          interaction: {
+            mediaType: 'telephony',
+            callProcessingDetails: {
+              campaignId: 'campaign-789',
+            },
+          },
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(reservationPayload));
+
+      const task = taskManager['taskCollection'][campaignInteractionId];
+      expect(task).toBeDefined();
+
+      const taskEmitSpy = jest.spyOn(task, 'emit');
+
+      const failPayload = {
+        data: {
+          type: CC_EVENTS.CAMPAIGN_PREVIEW_REMOVE_FAILED,
+          interactionId: campaignInteractionId,
+          campaignId: 'campaign-789',
+          reason: 'INTERNAL_ERROR',
+        },
+      };
+
+      webSocketManagerMock.emit('message', JSON.stringify(failPayload));
+
+      expect(taskEmitSpy).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_REMOVE_FAILED,
+        expect.objectContaining({
+          data: expect.objectContaining({interactionId: campaignInteractionId}),
+        })
+      );
+      expect(taskManager['taskCollection'][campaignInteractionId]).toBeDefined();
+
+      // Failure payload (reason) should be merged into task.data
+      expect(task.data.reason).toBe('INTERNAL_ERROR');
+
+      // Original reservation data must be preserved
+      expect(task.data.interaction).toBeDefined();
+      expect(task.data.interaction.callProcessingDetails.campaignId).toBe('campaign-789');
+    });
+
+    it('should not emit campaign preview failure events when task does not exist', () => {
+      const nonExistentId = 'non-existent-interaction';
+
+      const failPayload = {
+        data: {
+          type: CC_EVENTS.CAMPAIGN_PREVIEW_SKIP_FAILED,
+          interactionId: nonExistentId,
+          campaignId: 'campaign-789',
+          reason: 'INTERNAL_ERROR',
+        },
+      };
+
+      // Should not throw when task is not found
+      expect(() => {
+        webSocketManagerMock.emit('message', JSON.stringify(failPayload));
+      }).not.toThrow();
+
+      expect(taskManager['taskCollection'][nonExistentId]).toBeUndefined();
     });
   });
 });
