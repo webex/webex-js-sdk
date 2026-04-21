@@ -102,6 +102,16 @@ export const guards = {
     return taskData?.interaction?.state === 'hold';
   },
 
+  isAgentInWrapUp: ({context, event}: GuardParams): boolean => {
+    const taskData = getTaskDataFromEvent(event);
+    if (!taskData) return false;
+
+    const selfAgentId = getSelfAgentId(context, taskData);
+    if (!selfAgentId) return false;
+
+    return taskData?.interaction?.participants?.[selfAgentId]?.isWrapUp === true;
+  },
+
   isInteractionConnected: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 

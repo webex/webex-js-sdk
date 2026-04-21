@@ -103,6 +103,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'emitTaskHydrate'],
             },
             {
+              guard: guards.isAgentInWrapUp,
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'emitTaskHydrate'],
+            },
+            {
               guard: guards.isInteractionConnected,
               target: TaskState.CONNECTED,
               actions: ['updateTaskData', 'emitTaskHydrate'],
