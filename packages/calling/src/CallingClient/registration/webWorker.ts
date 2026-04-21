@@ -1,5 +1,4 @@
 /* eslint-env worker */
-import {v4 as uuid} from 'uuid';
 import {KeepaliveStatusMessage, WorkerMessageType} from '../../common/types';
 
 let keepaliveTimer: NodeJS.Timeout | undefined;
@@ -27,7 +26,6 @@ const messageHandler = (event: MessageEvent) => {
         keepaliveInFlight = true;
         postMessage({
           type: WorkerMessageType.SEND_KEEPALIVE,
-          trackingId: `web_worker_${uuid()}`,
         });
       }
     }, interval * 1000);

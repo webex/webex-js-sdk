@@ -7,6 +7,5 @@ export const SOCKET_READY_STATE = Object.freeze({
 
 export const MESSAGE_TYPES = Object.freeze({
   AUTH: 'auth',
-  AUTH_RESPONSE: 'auth.response',
   EVENT_ACK: 'event_ack',
 });

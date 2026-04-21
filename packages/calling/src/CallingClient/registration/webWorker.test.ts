@@ -1,10 +1,7 @@
-import {v4 as uuid} from 'uuid';
 import messageHandler from './webWorker';
 import {WorkerMessageType} from '../../common/types';
 
 (global as any).self = global;
-
-jest.mock('uuid');
 
 describe('webWorker', () => {
   let postMessageSpy: jest.SpyInstance;
@@ -14,7 +11,6 @@ describe('webWorker', () => {
 
   beforeEach(() => {
     jest.useFakeTimers();
-    (uuid as jest.Mock).mockReturnValue('mock-uuid');
 
     postMessageSpy = jest.spyOn(global, 'postMessage').mockImplementation(() => {});
     clearIntervalSpy = jest.spyOn(global, 'clearInterval');
@@ -51,7 +47,6 @@ describe('webWorker', () => {
 
     expect(postMessageSpy).toHaveBeenCalledWith({
       type: WorkerMessageType.SEND_KEEPALIVE,
-      trackingId: 'web_worker_mock-uuid',
     });
   });
 

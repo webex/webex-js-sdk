@@ -1,4 +1,6 @@
 /* eslint-disable valid-jsdoc */
+// @ts-ignore - JS module without type declarations
+import {getMobiusSocketInstance} from '@webex/internal-plugin-mobius-socket';
 import {WebexRequestPayload} from '../common/types';
 import {ISDKConnector, WebexSDK} from './types';
 /* eslint-disable class-methods-use-this */
@@ -6,6 +8,8 @@ import {validateWebex} from './utils';
 
 let instance: ISDKConnector;
 let webex: WebexSDK;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let mobiusSocket: any;
 
 /**
  *
@@ -24,6 +28,7 @@ class SDKConnector implements ISDKConnector {
       throw error;
     } else if (success) {
       webex = webexInstance; // TODO: Object.freeze to prevent changes? That might break the reference chain though
+      mobiusSocket = getMobiusSocketInstance(webexInstance);
     } else {
       throw new Error('An unknown error occurred setting up the webex instance.');
     }
@@ -68,6 +73,29 @@ class SDKConnector implements ISDKConnector {
    */
   public unregisterListener(event: string): void {
     instance.getWebex().internal.mercury.off(event);
+  }
+
+  /**
+   * @param event - TODO.
+   * @param cb - TODO.
+   */
+  public registerMobiusSocketListener<T>(event: string, cb: (data?: T) => void): void {
+    if (!mobiusSocket) {
+      mobiusSocket = getMobiusSocketInstance(instance.getWebex());
+    }
+    mobiusSocket.on(event, (data: T) => {
+      cb(data);
+    });
+  }
+
+  /**
+   * @param event - TODO.
+   */
+  public unregisterMobiusSocketListener(event: string): void {
+    if (!mobiusSocket) {
+      mobiusSocket = getMobiusSocketInstance(instance.getWebex());
+    }
+    mobiusSocket.off(event);
   }
 }
 

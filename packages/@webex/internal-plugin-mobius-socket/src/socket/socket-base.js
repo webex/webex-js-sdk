@@ -32,6 +32,7 @@ export default class Socket extends EventEmitter {
   constructor() {
     super();
     this._domain = 'unknown-domain';
+    this._pendingResponses = new Map();
     this.onmessage = this.onmessage.bind(this);
     this.onclose = this.onclose.bind(this);
     // Increase max listeners to avoid memory leak warning in tests
@@ -266,7 +267,7 @@ export default class Socket extends EventEmitter {
 
       socket.onopen = () => {
         this.logger.info(`socket,${this._domain}: connected`);
-        this._authorize()
+        this._authorize(this.token)
           .then(() => {
             this.logger.info(`socket,${this._domain}: authorized`);
             socket.onclose = this.onclose;
@@ -293,6 +294,7 @@ export default class Socket extends EventEmitter {
     this.logger.info(`socket,${this._domain}: closed`, event.code, event.reason);
 
     event = this._fixCloseCode(event);
+    this._rejectPendingResponses(new ConnectionError(event));
     this.emit('close', event);
 
     // Remove all listeners to (a) avoid reacting to late pongs and (b) ensure
@@ -316,6 +318,9 @@ export default class Socket extends EventEmitter {
         });
       }
 
+      // Match pending request/response promises before emitting the public message event.
+      // The message is still emitted afterward for any external listeners that care about it.
+      this._handlePendingResponse(data);
       this.emit('message', processedEvent);
     } catch (error) {
       /* istanbul ignore next */
@@ -343,6 +348,83 @@ export default class Socket extends EventEmitter {
       socket.send(data);
 
       return resolve();
+    });
+  }
+
+  /**
+   * Sends a request and resolves when the matching response arrives.
+   * @param {Object} data
+   * @param {Object} [options={}]
+   * @param {Function} [options.matchesResponse]
+   * @param {Function} [options.createError]
+   * @param {Function} [options.createTimeoutError]
+   * @param {Function} [options.getStatusCode]
+   * @param {Function} [options.getStatusMessage]
+   * @param {number} [options.timeout]
+   * @returns {Promise<Object>}
+   */
+  sendRequest(data, options = {}) {
+    if (!isObject(data)) {
+      return Promise.reject(new Error('`data` is required'));
+    }
+
+    const request = {...data};
+    const trackingId = request.trackingId || this._createTrackingId();
+    const timeout = options.timeout || this.wssResponseTimeout || 10000;
+    const matchesResponse =
+      options.matchesResponse ||
+      ((response) => response?.trackingId === trackingId && response?.type === 'response_event');
+    const getStatusCode = options.getStatusCode || ((response) => response?.statusCode);
+    const getStatusMessage = options.getStatusMessage || ((response) => response?.statusMessage);
+    const createError =
+      options.createError ||
+      ((response, statusCode, statusMessage) =>
+        new ConnectionError({
+          code: statusCode,
+          reason: statusMessage || response?.reason || 'Socket request failed',
+        }));
+    const createTimeoutError =
+      options.createTimeoutError ||
+      (() =>
+        new ConnectionError({
+          reason: 'Socket response not received before timeout',
+        }));
+
+    if (this._pendingResponses.has(trackingId)) {
+      return Promise.reject(
+        new Error(`socket request already pending for trackingId ${trackingId}`)
+      );
+    }
+
+    request.trackingId = trackingId;
+
+    return new Promise((resolve, reject) => {
+      const timeoutId = safeSetTimeout(() => {
+        this._clearPendingResponse(trackingId);
+        reject(createTimeoutError(request));
+      }, timeout);
+
+      this._pendingResponses.set(trackingId, {
+        request,
+        matchesResponse,
+        getStatusCode,
+        getStatusMessage,
+        createError,
+        resolve: (response) => {
+          this._clearPendingResponse(trackingId);
+          resolve(response);
+        },
+        reject: (error) => {
+          this._clearPendingResponse(trackingId);
+          reject(error);
+        },
+        timeoutId,
+      });
+
+      this.send(request).catch((error) => {
+        this._clearPendingResponse(trackingId);
+        reject(error);
+      });
     });
   }
 
@@ -377,65 +459,49 @@ export default class Socket extends EventEmitter {
     });
   }
 
+  refresh(token) {
+    if (!token) {
+      return Promise.reject(new Error('`token` is required for Socket#refresh()'));
+    }
+
+    const refreshedToken = token && typeof token.toString === 'function' ? token.toString() : token;
+
+    return this._authorize(refreshedToken);
+  }
+
   /**
-   * Sends an auth message up the socket
-   * @private
+   * Sends an auth message up the socket with a refreshed token.
+   * @param {string} token
    * @returns {Promise}
    */
-  _authorize() {
-    return new Promise((resolve, reject) => {
-      this.logger.info(`socket,${this._domain}: authorizing`);
-      let authResponseTimer;
+  _authorize(token) {
+    this.logger.info(`socket,${this._domain}: authorizing`);
 
-      const cleanup = () => {
-        clearTimeout(authResponseTimer);
-        this.off('message', waitForAuthResponse);
-      };
-
-      const waitForAuthResponse = (event) => {
-        if (event.data?.type !== MESSAGE_TYPES.AUTH_RESPONSE) {
-          return;
-        }
-
-        cleanup();
-
-        const statusCode = event.data?.status?.code;
-
-        if (statusCode >= 200 && statusCode < 300) {
-          resolve();
-
-          return;
-        }
-
-        reject(
+    return this.sendRequest(
+      {
+        type: MESSAGE_TYPES.AUTH,
+        data: {
+          token,
+        },
+      },
+      {
+        matchesResponse: (response, request) =>
+          response?.type === 'response_event' &&
+          response?.subtype === MESSAGE_TYPES.AUTH &&
+          response?.trackingId === request.trackingId,
+        getStatusCode: (response) => response?.statusCode,
+        getStatusMessage: (response) => response?.statusMessage,
+        createError: (response, statusCode, statusMessage) =>
           new NotAuthorized({
             code: statusCode,
-            reason: event.data?.status?.message || 'Mobius auth failed',
-          })
-        );
-      };
-
-      this.on('message', waitForAuthResponse);
-      authResponseTimer = safeSetTimeout(() => {
-        cleanup();
-        reject(
+            reason: statusMessage || 'Mobius auth failed',
+          }),
+        createTimeoutError: () =>
           new NotAuthorized({
             reason: 'Mobius auth response not received before timeout',
-          })
-        );
-      }, this.authResponseTimeout || 10000);
-
-      this.send({
-        type: MESSAGE_TYPES.AUTH,
-        trackingId: this._createTrackingId(),
-        payload: {
-          token: this.token,
-        },
-      }).catch((error) => {
-        cleanup();
-        reject(error);
-      });
-    });
+          }),
+      }
+    );
   }
 
   /**
@@ -445,6 +511,91 @@ export default class Socket extends EventEmitter {
    */
   _createTrackingId() {
     return `${this.trackingId}_${uuid.v4()}`;
+  }
+
+  /**
+   * Clears a pending response entry.
+   * @param {string} trackingId
+   * @returns {void}
+   */
+  _clearPendingResponse(trackingId) {
+    const pendingResponse = this._pendingResponses.get(trackingId);
+
+    if (pendingResponse?.timeoutId) {
+      clearTimeout(pendingResponse.timeoutId);
+    }
+
+    this._pendingResponses.delete(trackingId);
+  }
+
+  /**
+   * Rejects all pending responses with the provided error.
+   * @param {Error} error
+   * @returns {void}
+   */
+  _rejectPendingResponses(error) {
+    if (!this._pendingResponses.size) {
+      return;
+    }
+
+    Array.from(this._pendingResponses.values()).forEach((pendingResponse) => {
+      pendingResponse.reject(error);
+    });
+  }
+
+  /**
+   * Handles incoming responses for pending requests.
+   * @param {Object} response
+   * @returns {boolean}
+   */
+  _handlePendingResponse(response) {
+    if (!response) {
+      return false;
+    }
+
+    // Pending request correlation currently requires trackingId on the response.
+    const pendingResponse = response.trackingId
+      ? this._pendingResponses.get(response.trackingId)
+      : undefined;
+
+    if (!pendingResponse) {
+      return false;
+    }
+
+    if (!pendingResponse.matchesResponse(response, pendingResponse.request)) {
+      return false;
+    }
+
+    const statusCode = pendingResponse.getStatusCode(response);
+    const statusMessage = pendingResponse.getStatusMessage(response);
+
+    if (statusCode === 440 && response?.subtype !== MESSAGE_TYPES.AUTH) {
+      if (typeof this.refreshToken === 'function') {
+        Promise.resolve(this.refreshToken(response)).catch((error) => {
+          this.logger.warn(`socket,${this._domain}: failed token-expiry re-auth`, error);
+        });
+      } else {
+        this.logger.warn(
+          `socket,${this._domain}: refreshToken callback is unavailable for statusCode 440`
+        );
+      }
+    }
+
+    if (statusCode === undefined) {
+      pendingResponse.reject(
+        pendingResponse.createError(
+          response,
+          statusCode,
+          statusMessage || 'Socket response missing status code'
+        )
+      );
+    } else if (statusCode >= 200 && statusCode < 300) {
+      pendingResponse.resolve(response);
+    } else {
+      pendingResponse.reject(pendingResponse.createError(response, statusCode, statusMessage));
+    }
+
+    return true;
   }
 
   /**

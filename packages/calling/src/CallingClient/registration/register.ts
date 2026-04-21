@@ -1,3 +1,4 @@
+// @ts-ignore - JS module without type declarations
 import {Mutex} from 'async-mutex';
 import {METHOD_START_MESSAGE} from '../../common/constants';
 import {emitFinalFailure, handleRegistrationErrors, uploadLogs} from '../../common';
@@ -15,7 +16,7 @@ import {ICallManager} from '../calling/types';
 import {getCallManager} from '../calling';
 import {LOGGER} from '../../Logger/types';
 import log from '../../Logger';
-import {FailoverCacheState, IRegistration, TransportLayer} from './types';
+import {FailoverCacheState, IRegistration} from './types';
 import SDKConnector from '../../SDKConnector';
 import {
   ALLOWED_SERVICES,
@@ -60,6 +61,7 @@ import {
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
 import {APIRequest} from '../utils/request';
+import {isWsFeatureEnabled} from '../utils';
 
 /**
  *
@@ -97,8 +99,6 @@ export class Registration implements IRegistration {
   private webWorker: Worker | undefined;
   private apiRequest: APIRequest;
   private isMobiusSocketEnabled: boolean;
-  private mobiusSocket?: TransportLayer['mobiusSocket'];
-  private keepaliveErrorHeaders?: Record<string, string>;
 
   /**
    */
@@ -108,8 +108,7 @@ export class Registration implements IRegistration {
     mutex: Mutex,
     lineEmitter: LineEmitterCallback,
     logLevel: LOGGER,
-    jwe?: string,
-    transportOptions?: TransportLayer
+    jwe?: string
   ) {
     this.jwe = jwe;
     this.sdkConnector = SDKConnector;
@@ -133,9 +132,8 @@ export class Registration implements IRegistration {
 
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
+    this.isMobiusSocketEnabled = isWsFeatureEnabled(this.webex) || true;
     this.apiRequest = APIRequest.getInstance({webex: this.webex});
-    this.isMobiusSocketEnabled = transportOptions?.isMobiusSocketEnabled ?? false;
-    this.mobiusSocket = transportOptions?.mobiusSocket;
   }
 
   private getFailoverCacheKey(): string {
@@ -228,16 +226,26 @@ export class Registration implements IRegistration {
    */
   private async deleteRegistration(url: string, deviceId: string, deviceUrl: string) {
     let response;
+
+    const requestObj = {
+      uri: `${url}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`,
+      method: HTTP_METHODS.DELETE,
+      headers: {
+        [CISCO_DEVICE_URL]: deviceUrl,
+        [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+      },
+      service: ALLOWED_SERVICES.MOBIUS,
+    };
+
+    if (this.apiRequest.isSocketEnabled()) {
+      // @ts-ignore - body is added for mobius wss support, it is not used for mobius http
+      requestObj.body = {
+        deviceId,
+      };
+    }
+
     try {
-      response = await this.apiRequest.makeRequest({
-        uri: `${url}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`,
-        method: HTTP_METHODS.DELETE,
-        headers: {
-          [CISCO_DEVICE_URL]: deviceUrl,
-          [SPARK_USER_AGENT]: CALLING_USER_AGENT,
-        },
-        service: ALLOWED_SERVICES.MOBIUS,
-      });
+      response = await this.apiRequest.makeRequest(requestObj);
     } catch (error) {
       log.warn(`Delete failed with Mobius: ${JSON.stringify(error)}`, {
         file: REGISTRATION_FILE,
@@ -491,34 +499,20 @@ export class Registration implements IRegistration {
     }
   }
 
-  private async postKeepAlive(
-    accessToken: string,
-    deviceUrl: string,
-    url: string,
-    trackingId: string
-  ) {
-    let response;
-    const mobiusSocket = this.mobiusSocket;
+  private async postKeepAlive(deviceUrl: string, url: string) {
+    const response = await this.apiRequest.makeRequest({
+      uri: `${url}/status`,
+      headers: {
+        [CISCO_DEVICE_URL]: deviceUrl,
+        [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+      },
+      body: {
+        deviceId: this.deviceInfo.device?.deviceId,
+      },
+      service: ALLOWED_SERVICES.MOBIUS,
+    });
 
-    if (this.isMobiusSocketEnabled && mobiusSocket?.isConnected?.()) {
-      response = await mobiusSocket.send({
-        type: 'status',
-        deviceUrl,
-        trackingId,
-      });
-    } else {
-      response = await fetch(`${url}/status`, {
-        method: HTTP_METHODS.POST,
-        headers: {
-          [CISCO_DEVICE_URL]: deviceUrl,
-          [SPARK_USER_AGENT]: CALLING_USER_AGENT,
-          Authorization: `${accessToken}`,
-          trackingId,
-        },
-      });
-    }
-
-    if (!response?.ok) {
+    if (response.statusCode !== 200) {
       throw response;
     }
 
@@ -870,6 +864,14 @@ export class Registration implements IRegistration {
           file: REGISTRATION_FILE,
           method: REGISTER_UTIL,
         });
+
+        if (this.apiRequest.isSocketEnabled()) {
+          const wssNormalizedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+
+          // eslint-disable-next-line no-await-in-loop
+          await this.apiRequest.connectToMobiusSocket(wssNormalizedUrl);
+        }
+
         // eslint-disable-next-line no-await-in-loop
         const resp = await this.postRegistration(url);
         this.clearFailoverState();
@@ -962,8 +964,6 @@ export class Registration implements IRegistration {
 
     await this.mutex.runExclusive(async () => {
       if (this.isDeviceRegistered()) {
-        const accessToken = await this.webex.credentials.getUserToken();
-
         if (!this.webWorker) {
           const blob = new Blob([webWorkerStr], {type: 'application/javascript'});
           const blobUrl = URL.createObjectURL(blob);
@@ -983,16 +983,11 @@ export class Registration implements IRegistration {
             };
             if (event.data.type === WorkerMessageType.SEND_KEEPALIVE) {
               try {
-                const res = await this.postKeepAlive(
-                  String(accessToken),
-                  String(this.webex.internal.device.url),
-                  url,
-                  event.data.trackingId
-                );
+                const res = await this.postKeepAlive(String(this.webex.internal.device.url), url);
 
                 this.webWorker?.postMessage({
                   type: WorkerMessageType.KEEPALIVE_RESULT,
-                  statusCode: res.status,
+                  statusCode: res.statusCode,
                 });
               } catch (err: any) {
                 const headers = {} as Record<string, string>;
@@ -1025,13 +1020,7 @@ export class Registration implements IRegistration {
             }
 
             if (event.data.type === WorkerMessageType.KEEPALIVE_FAILURE) {
-              const workerError = event.data.err as WebexRequestPayload;
-              const headers = workerError?.headers ?? this.keepaliveErrorHeaders;
-              const error = {
-                ...workerError,
-                ...(headers && Object.keys(headers).length > 0 ? {headers} : {}),
-              } as WebexRequestPayload;
-              this.keepaliveErrorHeaders = undefined;
+              const error = event.data.err as WebexRequestPayload;
               log.warn(
                 `Keep-alive missed ${event.data.keepAliveRetryCount} times. Status -> ${error.statusCode} `,
                 logContext
@@ -1203,7 +1192,5 @@ export const createRegistration = (
   mutex: Mutex,
   lineEmitter: LineEmitterCallback,
   logLevel: LOGGER,
-  jwe?: string,
-  transportOptions?: TransportLayer
-): IRegistration =>
-  new Registration(webex, serviceData, mutex, lineEmitter, logLevel, jwe, transportOptions);
+  jwe?: string
+): IRegistration => new Registration(webex, serviceData, mutex, lineEmitter, logLevel, jwe);

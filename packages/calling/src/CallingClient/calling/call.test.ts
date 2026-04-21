@@ -31,6 +31,11 @@ import {CallError} from '../../Errors';
 import {METHOD_START_MESSAGE} from '../../common/constants';
 import {APIRequest} from '../utils/request';
 
+jest.mock('@webex/internal-plugin-mobius-socket', () => ({
+  getMobiusSocketInstance: jest.fn().mockReturnValue({
+    sendWssRequest: jest.fn(),
+  }),
+}));
 jest.mock('@webex/internal-media-core');
 
 const uploadLogsSpy = jest.spyOn(Utils, 'uploadLogs').mockResolvedValue(undefined);
@@ -134,6 +139,7 @@ describe('Call Tests', () => {
 
   beforeEach(() => {
     APIRequest.resetInstance();
+    APIRequest.getInstance({webex, isMobiusSocketEnabled: false});
     callManager = getCallManager(webex, defaultServiceIndicator);
   });
 
@@ -918,6 +924,7 @@ describe('State Machine handler tests', () => {
 
   beforeEach(() => {
     APIRequest.resetInstance();
+    APIRequest.getInstance({webex, isMobiusSocketEnabled: false});
     call = new Call(
       activeUrl,
       webex,
@@ -2601,6 +2608,7 @@ describe('Supplementary Services tests', () => {
 
   beforeEach(() => {
     APIRequest.resetInstance();
+    APIRequest.getInstance({webex, isMobiusSocketEnabled: false});
     /* Since we are not actually testing from the start of a call , so it's good to set the below
      * parameters manually
      */

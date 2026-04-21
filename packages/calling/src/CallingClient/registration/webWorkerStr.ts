@@ -5,14 +5,6 @@
 
 const webWorkerStr = `/* eslint-env worker */
 
-const uuid = () => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-};
-
 const WorkerMessageType = {
   START_KEEPALIVE: 'START_KEEPALIVE',
   CLEAR_KEEPALIVE: 'CLEAR_KEEPALIVE',
@@ -48,7 +40,6 @@ const messageHandler = (event) => {
         keepaliveInFlight = true;
         self.postMessage({
           type: WorkerMessageType.SEND_KEEPALIVE,
-          trackingId: \`web_worker_\${uuid()}\`,
         });
       }
     }, interval * 1000);

@@ -3,12 +3,13 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 import * as Media from '@webex/internal-media-core';
 // @ts-ignore - JS module without type declarations
-import {createMobiusSocket} from '@webex/internal-plugin-mobius-socket';
+import {getMobiusSocketInstance} from '@webex/internal-plugin-mobius-socket';
 import {Mutex} from 'async-mutex';
 import {METHOD_START_MESSAGE} from '../common/constants';
 import {
   filterMobiusUris,
   handleCallingClientErrors,
+  normalizeMobiusUris,
   uploadLogs,
   validateServiceData,
 } from '../common/Utils';
@@ -36,7 +37,7 @@ import {
   Devices,
 } from '../common/types';
 import {ICallingClient, CallingClientConfig} from './types';
-import {ICall, ICallManager} from './calling/types';
+import {ICall, ICallManager, MobiusAsyncEvent, MobiusEventType} from './calling/types';
 import log from '../Logger';
 import {getCallManager} from './calling/callManager';
 import {
@@ -66,6 +67,7 @@ import {
 import {getMetricManager} from '../Metrics';
 import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
 import {APIRequest} from './utils/request';
+import {isWsFeatureEnabled} from './utils';
 
 /**
  * The `CallingClient` module provides a set of APIs for line registration and calling functionalities within the SDK.
@@ -95,6 +97,10 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
   private backupMobiusUris: string[];
 
+  private primaryWssMobiusUris: string[];
+
+  private backupWssMobiusUris: string[];
+
   private mobiusClusters: ServiceHost[];
 
   private mobiusHost: string;
@@ -104,10 +110,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   private lineDict: Record<string, ILine> = {};
 
   private apiRequest: APIRequest;
-
-  private primaryWssMobiusUris: string[];
-
-  private backupWssMobiusUris: string[];
 
   private isMobiusSocketEnabled: boolean;
 
@@ -150,7 +152,14 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     log.setLogger(logLevel, CALLING_CLIENT_FILE);
     validateServiceData(serviceData);
 
-    this.callManager = getCallManager(this.webex, serviceData.indicator);
+    this.isMobiusSocketEnabled =
+      isWsFeatureEnabled(this.webex) || (config?.isMobiusSocketEnabled ?? false);
+
+    this.callManager = getCallManager(
+      this.webex,
+      serviceData.indicator,
+      this.isMobiusSocketEnabled
+    );
     this.metricManager = getMetricManager(this.webex, serviceData.indicator);
 
     this.mediaEngine = Media;
@@ -173,14 +182,14 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.mobiusClusters = this.webex.internal.services.getMobiusClusters();
     this.mobiusHost = '';
 
-    // MOBIUS SOCKET TODO: Fix this when feature flag is implemented
-    this.isMobiusSocketEnabled = config?.isMobiusSocketEnabled ?? false;
-
     if (this.isMobiusSocketEnabled) {
-      this.mobiusSocket = createMobiusSocket(this.webex);
+      this.mobiusSocket = getMobiusSocketInstance(this.webex);
     }
 
-    this.apiRequest = APIRequest.getInstance({webex: this.webex});
+    this.apiRequest = APIRequest.getInstance({
+      webex: this.webex,
+      isMobiusSocketEnabled: this.isMobiusSocketEnabled,
+    });
 
     this.registerSessionsListener();
 
@@ -230,6 +239,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     if (this.isMobiusSocketEnabled) {
       await this.connectToMobiusSocket();
+      this.registerMobiusSocketListener();
     }
 
     await this.createLine();
@@ -718,6 +728,58 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     );
   }
 
+  private registerMobiusSocketListener() {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.REGISTER_MOBIUS_SOCKET_LISTENER,
+    });
+    this.sdkConnector.registerMobiusSocketListener<MobiusAsyncEvent>('async_event', (event) => {
+      this.handleMobiusAsyncEvent(event);
+    });
+
+    log.info('Successfully registered listener for Mobius events', {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.REGISTER_MOBIUS_SOCKET_LISTENER,
+    });
+  }
+
+  // private unregisterMobiusSocketListener() {
+  //   log.info(METHOD_START_MESSAGE, {
+  //     file: CALLING_CLIENT_FILE,
+  //     method: METHODS.UNREGISTER_MOBIUS_SOCKET_LISTENER,
+  //   });
+  //   this.sdkConnector.unregisterMobiusSocketListener('async_event');
+  // }
+
+  private handleMobiusAsyncEvent = async (event?: MobiusAsyncEvent) => {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.HANDLE_MOBIUS_ASYNC_EVENT,
+    });
+
+    const eventType = event?.data.eventType;
+
+    if (!eventType) {
+      log.warn('Dropping unsupported mobius socket payload', {
+        file: CALLING_CLIENT_FILE,
+        method: METHODS.HANDLE_MOBIUS_ASYNC_EVENT,
+      });
+
+      return;
+    }
+
+    if (eventType === MobiusEventType.REGISTRATION_DOWN) {
+      // const line = Object.values(this.lineDict)[0];
+      // line.registration.handleRegistrationDownEvent(event);
+
+      return;
+    }
+
+    if (eventType.startsWith('mobius.')) {
+      this.callManager.dequeueWsEvents(event);
+    }
+  };
+
   /**
    * Registers a listener/handler for ALL_CALLS_CLEARED
    * event emitted by callManager when all the calls
@@ -814,34 +876,20 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       file: CALLING_CLIENT_FILE,
       method: METHODS.CREATE_LINE,
     });
-    const line = this.isMobiusSocketEnabled
-      ? new Line(
-          this.webex.internal.device.userId,
-          this.webex.internal.device.url,
-          this.mutex,
-          this.primaryMobiusUris,
-          this.backupMobiusUris,
-          this.getLoggingLevel(),
-          this.sdkConfig?.serviceData,
-          this.sdkConfig?.jwe,
-          undefined,
-          undefined,
-          undefined,
-          {
-            isMobiusSocketEnabled: this.isMobiusSocketEnabled,
-            mobiusSocket: this.mobiusSocket,
-          }
-        )
-      : new Line(
-          this.webex.internal.device.userId,
-          this.webex.internal.device.url,
-          this.mutex,
-          this.primaryMobiusUris,
-          this.backupMobiusUris,
-          this.getLoggingLevel(),
-          this.sdkConfig?.serviceData,
-          this.sdkConfig?.jwe
-        );
+    const line = new Line(
+      this.webex.internal.device.userId,
+      this.webex.internal.device.url,
+      this.mutex,
+      this.apiRequest.isSocketEnabled()
+        ? normalizeMobiusUris(this.primaryWssMobiusUris)
+        : this.primaryMobiusUris,
+      this.apiRequest.isSocketEnabled()
+        ? normalizeMobiusUris(this.backupWssMobiusUris)
+        : this.backupMobiusUris,
+      this.getLoggingLevel(),
+      this.sdkConfig?.serviceData,
+      this.sdkConfig?.jwe
+    );
 
     this.lineDict[line.lineId] = line;
   }

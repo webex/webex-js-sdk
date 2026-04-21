@@ -19,6 +19,15 @@ import {
 
 const normalReconnectReasons = ['idle', 'done (forced)'];
 const DEFAULT_MOBIUS_WEBSOCKET_SESSION = 'mobius-websocket-session';
+const TOKEN_REFRESH_INTERVAL_MS = 1 * 60 * 60 * 1000; // 1 hour
+
+function normalizeMobiusAuthToken(token) {
+  if (typeof token !== 'string') {
+    return token;
+  }
+
+  return token.replace(/^Bearer\s+/i, '');
+}
 
 const MobiusSocket = WebexPlugin.extend({
   namespace: 'MobiusSocket',
@@ -67,6 +76,9 @@ const MobiusSocket = WebexPlugin.extend({
   },
 
   initialize() {
+    this._tokenRefreshTimer = undefined;
+    this._tokenRefreshInFlight = undefined;
+
     /*
       When one of these legacy feature gets updated, this event would be triggered
         * group-message-notifications
@@ -240,6 +252,56 @@ const MobiusSocket = WebexPlugin.extend({
   },
 
   /**
+   * Sends a websocket request and resolves when the matching response arrives.
+   * @param {Object} payload - The websocket request payload.
+   * @param {string|Object} [sessionIdOrOptions=this.defaultSessionId] - Session ID or request options.
+   * @param {Object} [options={}] - Additional request options.
+   * @returns {Promise<Object>}
+   */
+  sendWssRequest(payload, sessionIdOrOptions = this.defaultSessionId, options = {}) {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return Promise.reject(new Error('`payload` is required'));
+    }
+
+    let sessionId = this.defaultSessionId;
+    let requestOptions = options;
+
+    if (typeof sessionIdOrOptions === 'string') {
+      sessionId = sessionIdOrOptions;
+    } else if (sessionIdOrOptions && typeof sessionIdOrOptions === 'object') {
+      requestOptions = sessionIdOrOptions;
+    }
+
+    const socket = this.getSocket(sessionId);
+
+    if (!socket || !socket.connected) {
+      return Promise.reject(new Error(`Mobius socket is not connected for session ${sessionId}`));
+    }
+
+    return socket.sendRequest(payload, {
+      timeout: requestOptions.timeout,
+      matchesResponse: (response, request) =>
+        response?.type === 'response_event' &&
+        response?.subtype === request.type &&
+        response?.trackingId === request.trackingId,
+      getStatusCode: (response) => response?.statusCode,
+      getStatusMessage: (response) => response?.statusMessage,
+      createError: (response, statusCode, statusMessage) =>
+        this._createWssResponseError(response, statusCode, statusMessage),
+      createTimeoutError: (request) =>
+        this._createWssResponseError(
+          {
+            type: 'response_event',
+            subtype: request.type,
+            trackingId: request.trackingId,
+          },
+          408,
+          'Mobius websocket response timed out'
+        ),
+    });
+  },
+
+  /**
    * Check if the plugin is connected
    * @returns {boolean} True if connected
    */
@@ -249,13 +311,21 @@ const MobiusSocket = WebexPlugin.extend({
 
   /**
    * Check if a socket is connected
-   * @param {string} [sessionId=this.defaultSessionId] - The session identifier
+   * @param {string} [sessionId] - Optional session identifier
    * @returns {boolean|undefined} True if the socket is connected
    */
-  hasConnectedSockets(sessionId = this.defaultSessionId) {
-    const socket = this.sockets.get(sessionId || this.defaultSessionId);
+  hasConnectedSockets(sessionId) {
+    if (sessionId) {
+      return this.sockets.get(sessionId)?.connected;
+    }
 
-    return socket?.connected;
+    for (const socket of this.sockets.values()) {
+      if (socket?.connected) {
+        return true;
+      }
+    }
+
+    return false;
   },
 
   /**
@@ -379,6 +449,9 @@ const MobiusSocket = WebexPlugin.extend({
 
       // Update overall connected status
       this.connected = this.hasConnectedSockets();
+      if (!this.hasConnectedSockets()) {
+        this._stopTokenRefreshTimer();
+      }
     });
   },
 
@@ -398,6 +471,7 @@ const MobiusSocket = WebexPlugin.extend({
       this.connected = false;
       this.sockets.clear();
       this.backoffCalls.clear();
+      this._stopTokenRefreshTimer();
       // Clear connection promises to prevent stale promises
       if (this._connectPromises) {
         this._connectPromises.clear();
@@ -419,6 +493,20 @@ const MobiusSocket = WebexPlugin.extend({
 
   processRegistrationStatusEvent(message) {
     this.localClusterServiceUrls = message.localClusterServiceUrls;
+  },
+
+  _createWssResponseError(response, statusCode, statusMessage) {
+    const error = new Error(
+      statusMessage || `Mobius websocket request failed with status ${statusCode || 'unknown'}`
+    );
+
+    error.name = 'MobiusSocketResponseError';
+    error.statusCode = statusCode;
+    error.statusMessage = statusMessage;
+    error.response = response;
+    error.trackingId = response?.trackingId;
+
+    return error;
   },
 
   _applyOverrides(event) {
@@ -588,8 +676,9 @@ const MobiusSocket = WebexPlugin.extend({
       ([webSocketUrl, token]) => {
         let options = {
           forceCloseDelay: this.config.forceCloseDelay,
-          authResponseTimeout: this.config.authResponseTimeout,
-          token: token.toString(),
+          wssResponseTimeout: this.config.wssResponseTimeout,
+          token: normalizeMobiusAuthToken(token.toString()),
+          refreshToken: () => this._refreshToken(),
           trackingId: `${this.webex.sessionId}_${Date.now()}`,
           logger: this.logger,
         };
@@ -655,6 +744,7 @@ const MobiusSocket = WebexPlugin.extend({
           this.connecting = this.hasConnectingSockets();
           this.connected = this.hasConnectedSockets();
           this.hasEverConnected = true;
+          this._startTokenRefreshTimer();
           this._emit(sid, 'online');
         }
 
@@ -793,6 +883,71 @@ const MobiusSocket = WebexPlugin.extend({
     return handlers;
   },
 
+  _startTokenRefreshTimer() {
+    if (this._tokenRefreshTimer || !this.hasConnectedSockets()) {
+      return;
+    }
+
+    this._tokenRefreshTimer = setInterval(() => {
+      this._refreshToken().catch((error) => {
+        this.logger.error(`${this.namespace}: periodic token refresh failed`, error);
+      });
+    }, TOKEN_REFRESH_INTERVAL_MS);
+  },
+
+  _stopTokenRefreshTimer() {
+    if (!this._tokenRefreshTimer) {
+      return;
+    }
+
+    clearInterval(this._tokenRefreshTimer);
+    this._tokenRefreshTimer = undefined;
+  },
+
+  _refreshToken() {
+    if (this._tokenRefreshInFlight) {
+      return this._tokenRefreshInFlight;
+    }
+
+    if (!this.hasConnectedSockets()) {
+      this._stopTokenRefreshTimer();
+
+      return Promise.resolve();
+    }
+
+    const tokenPromise = this.webex.credentials.canRefresh
+      ? this.webex.credentials
+          .refresh({force: true})
+          .then(() => this.webex.credentials.getUserToken())
+      : this.webex.credentials.getUserToken();
+
+    this._tokenRefreshInFlight = tokenPromise
+      .then((token) => {
+        if (!token) {
+          throw new Error('Mobius token refresh did not return a token');
+        }
+        const refreshedToken = normalizeMobiusAuthToken(token.toString());
+        const authPayloadPromises = [];
+
+        for (const socket of this.sockets.values()) {
+          if (socket?.connected) {
+            authPayloadPromises.push(socket.refresh(refreshedToken));
+          }
+        }
+
+        return Promise.all(authPayloadPromises);
+      })
+      .catch((error) => {
+        this.logger.error(`${this.namespace}: failed to refresh/re-auth Mobius sockets`, error);
+        throw error;
+      })
+      .finally(() => {
+        this._tokenRefreshInFlight = undefined;
+      });
+
+    return this._tokenRefreshInFlight;
+  },
+
   _onclose(sessionId, event, sourceSocket) {
     // I don't see any way to avoid the complexity or statement count in here.
     /* eslint complexity: [0] */
@@ -819,6 +974,9 @@ const MobiusSocket = WebexPlugin.extend({
         // Update overall connected status
         this.connecting = this.hasConnectingSockets();
         this.connected = this.hasConnectedSockets();
+        if (!this.hasConnectedSockets()) {
+          this._stopTokenRefreshTimer();
+        }
       } else {
         // Old socket closed; do not flip connection state
         this.logger.info(

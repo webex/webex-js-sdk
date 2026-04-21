@@ -1797,3 +1797,7 @@ export async function uploadLogs(
     return undefined;
   }
 }
+
+export function normalizeMobiusUris(urls: string[]): string[] {
+  return urls.map((url) => (!url.endsWith('/') ? `${url}/` : url));
+}

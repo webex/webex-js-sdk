@@ -18,14 +18,6 @@ export type FailoverCacheState = {
   serverType: 'primary' | 'backup';
 };
 
-export type TransportLayer = {
-  isMobiusSocketEnabled?: boolean;
-  mobiusSocket?: {
-    isConnected?: () => boolean;
-    send: (payload: Record<string, unknown>) => Promise<unknown>;
-  };
-};
-
 /**
  * Represents an interface for managing registration-related operations.
  */

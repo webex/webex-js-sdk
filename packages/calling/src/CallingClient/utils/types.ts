@@ -5,7 +5,10 @@ import {WebexSDK} from '../../SDKConnector/types';
  * Configuration for APIRequest class
  */
 export interface APIRequestConfig {
-  /** Enable Mobius WebSocket transport (default: false) */
+  /**
+   * Interim SDK opt-in for Mobius WebSocket transport when WDM
+   * `webrtc-calling-over-ws` is not yet true (until prod rollout).
+   */
   isMobiusSocketEnabled?: boolean;
   /** Webex SDK instance for making requests */
   webex: WebexSDK;
@@ -26,8 +29,8 @@ export interface MobiusSocketRequestOptions {
   trackingId: string;
   /** Optional metadata (uri, service, headers, etc.) */
   metadata?: Record<string, unknown>;
-  /** Optional request payload/body */
-  payload?: unknown;
+  /** Optional request data/body */
+  data?: unknown;
 }
 
 /**
@@ -36,10 +39,18 @@ export interface MobiusSocketRequestOptions {
 export type MobiusSocketResponse = {
   type: string;
   trackingId: string;
-  status: {
-    code: number;
-    message: string;
-  };
+  statusCode: number;
+  statusMessage: string;
   metadata?: Record<string, unknown>;
-  payload?: unknown;
+  data?: unknown;
 };
+
+/**
+ * Function signature for MobiusSocket.sendWssRequest.
+ * Sends a websocket request data and resolves when the matching response arrives.
+ */
+export type SendWssRequestFn = (
+  data: MobiusSocketRequestOptions,
+  sessionIdOrOptions?: string | Record<string, unknown>,
+  options?: Record<string, unknown>
+) => Promise<MobiusSocketResponse>;

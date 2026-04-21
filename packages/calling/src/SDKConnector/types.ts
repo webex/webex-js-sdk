@@ -96,6 +96,8 @@ export interface WebexSDK {
       orgId: string;
       version: string;
       callingBehavior: string;
+      /** WDM / device-registration settings (e.g. `webrtc-calling-over-ws`). */
+      settings?: Record<string, {value?: boolean} | undefined>;
       features: {
         entitlement: {
           models: Model[];
@@ -167,4 +169,6 @@ export interface ISDKConnector {
   get: () => ISDKConnector;
   registerListener: <T>(event: string, cb: (data?: T) => unknown) => void;
   unregisterListener: (event: string) => void;
+  registerMobiusSocketListener: <T>(event: string, cb: (data?: T) => unknown) => void;
+  unregisterMobiusSocketListener: (event: string) => void;
 }

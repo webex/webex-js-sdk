@@ -17,7 +17,7 @@ import promiseTick from '../lib/promise-tick';
 describe('plugin-mobiusSocket', () => {
   describe('MobiusSocket', () => {
     describe('Events', () => {
-      let clock, mobiusSocket, mockWebSocket, socketOpenStub, webex;
+      let clock, mobiusSocket, mockWebSocket, originalSendSpy, socketOpenStub, webex;
 
       const fakeTestMessage = {
         id: uuid.v4(),
@@ -40,6 +40,21 @@ describe('plugin-mobiusSocket', () => {
         timestamp: Date.now(),
         trackingId: `suffix_${uuid.v4()}_${Date.now()}`,
         sessionId: 'mobius-websocket-session',
+      };
+
+      const emitAuthResponse = ({statusCode = 200, statusMessage = 'OK'} = {}) => {
+        const sendSpy = mockWebSocket.send.lastCall ? mockWebSocket.send : originalSendSpy;
+        const authRequest = JSON.parse(sendSpy.lastCall.args[0]);
+
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            type: 'response_event',
+            subtype: MESSAGE_TYPES.AUTH,
+            trackingId: authRequest.trackingId,
+            statusCode,
+            statusMessage,
+          }),
+        });
       };
 
       beforeEach(() => {
@@ -81,6 +96,7 @@ describe('plugin-mobiusSocket', () => {
         webex.logger = console;
 
         mockWebSocket = new MockWebSocket('ws://example.com');
+        originalSendSpy = mockWebSocket.send;
         sinon.stub(Socket, 'getWebSocketConstructor').returns(() => mockWebSocket);
 
         const origOpen = Socket.prototype.open;
@@ -90,14 +106,9 @@ describe('plugin-mobiusSocket', () => {
 
           process.nextTick(() => {
             mockWebSocket.open();
-            // Simulate Mobius auth.response after socket open
+            // Simulate Mobius auth response after socket open
             process.nextTick(() => {
-              mockWebSocket.emit('message', {
-                data: JSON.stringify({
-                  type: MESSAGE_TYPES.AUTH_RESPONSE,
-                  status: {code: 200},
-                }),
-              });
+              emitAuthResponse();
             });
           });
 

@@ -62,9 +62,9 @@ await mobiusSocket.disconnect();
 
 Mobius uses a token-based auth handshake:
 
-1. Client opens WebSocket and sends: `{type: 'auth', payload: {token: '<access_token>'}}`
-2. Server responds with: `{type: 'auth.response', status: {code: 200}}`
-3. Connection is established after a successful `auth.response`.
+1. Client opens WebSocket and sends: `{type: 'auth', data: {token: '<access_token>'}}`
+2. Server responds with: `{type: 'response_event', subtype: 'auth', statusCode: 200}`
+3. Connection is established after a successful auth `response_event`.
 
 Non-200 status codes are handled as auth failures with automatic retry via exponential backoff.
 
@@ -105,14 +105,16 @@ webex.init({
 
 ### Retries
 
-The default behaviour is to continue to try to connect with an exponential back-off. This behavior can be adjusted with the following config params:
+Initial `connect()` attempts retry with exponential back-off and reject after a limited number of retries by default. Reconnect behavior can still be configured separately. This behavior can be adjusted with the following config params:
 
 | Config Key | Default | Env Override | Description |
 |---|---|---|---|
 | `backoffTimeMax` | `32000` | `MOBIUS_SOCKET_BACKOFF_TIME_MAX` | Maximum milliseconds between connection attempts. |
 | `backoffTimeReset` | `1000` | `MOBIUS_SOCKET_BACKOFF_TIME_RESET` | Initial milliseconds between connection attempts. |
+| `initialConnectionMaxRetries` | `2` | `MOBIUS_SOCKET_INITIAL_CONNECTION_MAX_RETRIES` | Maximum retries before the initial `connect()` promise rejects. |
+| `maxRetries` | `0` | `MOBIUS_SOCKET_MAX_RETRIES` | Maximum retries for reconnect attempts after the socket has connected once. `0` means unlimited retries. |
 | `forceCloseDelay` | `2000` | `MOBIUS_SOCKET_FORCE_CLOSE_DELAY` | Milliseconds to wait for a close frame before forcing socket closure. |
-| `authResponseTimeout` | `10000` | `MOBIUS_SOCKET_AUTH_RESPONSE_TIMEOUT` | Milliseconds to wait for `auth.response` before failing authorization. |
+| `wssResponseTimeout` | `10000` | `MOBIUS_SOCKET_RESPONSE_TIMEOUT` | Milliseconds to wait for websocket request/response messages, including auth, before timing out. |
 | `beforeLogoutOptionsCloseReason` | `done (forced)` | `MOBIUS_SOCKET_LOGOUT_REASON` | Close reason sent on logout. Set to a non-reconnectable reason to prevent reconnect on logout. |
 
 ## Contribute
