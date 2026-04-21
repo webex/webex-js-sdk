@@ -7,6 +7,7 @@ import {
   _LEFT_,
   DESTINATION_TYPE,
   _MOVED_,
+  _BREAKOUT_ENDED_,
   BREAKOUTS,
   EVENT_TRIGGERS,
   LOCUS,
@@ -264,6 +265,23 @@ MeetingsUtil.getThisDevice = (newLocus: any, deviceUrl: string) => {
   }
 
   return null;
+};
+
+/**
+ * Checks if the self state in a locus indicates a breakout move or breakout end.
+ * Returns true when:
+ * - self state is LEFT with reason MOVED (regular breakout move), OR
+ * - fullState is INACTIVE with endMeetingReason BREAKOUT_ENDED (breakout session ended)
+ * @param {Object} locus locus data
+ * @returns {boolean}
+ */
+MeetingsUtil.isSelfMovedOrBreakoutEnded = (locus: any): boolean => {
+  const isSelfLeftMoved = locus?.self?.state === _LEFT_ && locus?.self?.reason === _MOVED_;
+  const isBreakoutEnded =
+    locus?.fullState?.state === LOCUS.STATE.INACTIVE &&
+    locus?.fullState?.endMeetingReason === _BREAKOUT_ENDED_;
+
+  return isSelfLeftMoved || isBreakoutEnded;
 };
 
 /**
