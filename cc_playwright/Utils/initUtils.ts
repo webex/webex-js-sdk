@@ -248,7 +248,6 @@ export const ensureRegisteredAfterReload = async (page: Page): Promise<void> => 
 
     // Wait for SDK initialization to complete (either button state is stable)
     const isRegisterEnabled = await registerButton.isEnabled().catch(() => false);
-    const isInitDisabled = await initButton.isDisabled().catch(() => false);
 
     if (!isRegisterEnabled) {
       // SDK not initialized yet
@@ -259,12 +258,13 @@ export const ensureRegisteredAfterReload = async (page: Page): Promise<void> => 
       } else {
         // Init button disabled but register not enabled - wait for auto-init
         await expect(registerButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
-        await page.waitForTimeout(2000); // Extra wait for SDK to be fully ready
       }
-    } else if (isInitDisabled && isRegisterEnabled) {
-      // Auto-initialization completed, but wait for SDK to be fully ready
-      await page.waitForTimeout(2000);
     }
+
+    // CRITICAL: After register button is enabled, wait for CC plugin to be fully initialized
+    // The button enables when webex.init() completes, but webex.cc needs extra time
+    // to complete internal initialization before register() can be called successfully
+    await page.waitForTimeout(5000);
 
     // Register with CC using existing retry logic
     await registerContactCenter(page);

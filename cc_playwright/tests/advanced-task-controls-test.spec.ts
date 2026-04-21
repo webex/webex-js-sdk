@@ -53,6 +53,12 @@ export default function createAdvancedTaskControlsTests() {
   test.beforeEach(async () => {
     await handleStrayTasks(testManager.agent1Page);
     await handleStrayTasks(testManager.agent2Page);
+
+    // Ensure both agents are Available before each test to prevent routing issues
+    // This prevents blind transfer failures where dropdown shows stale availability
+    await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
+    await changeUserState(testManager.agent2Page, USER_STATES.AVAILABLE);
+    await testManager.agent1Page.waitForTimeout(3000); // Wait for routing engine propagation
   });
 
   // =============================================================================
@@ -78,7 +84,7 @@ export default function createAdvancedTaskControlsTests() {
       });
 
       await changeUserState(testManager.agent2Page, USER_STATES.AVAILABLE);
-      await testManager.agent2Page.waitForTimeout(3000);
+      await testManager.agent2Page.waitForTimeout(5000); // Increased from 3000ms - extra time for routing engine after rapid state changes
 
       // Clear console logs to track transfer events
       clearAdvancedCapturedLogs();

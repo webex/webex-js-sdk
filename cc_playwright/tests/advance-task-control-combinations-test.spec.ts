@@ -29,6 +29,12 @@ export default function createAdvanceCombinationsTests() {
     test.beforeEach(async () => {
       await handleStrayTasks(testManager.agent1Page);
       await handleStrayTasks(testManager.agent2Page);
+
+      // Ensure both agents are Available before each test to prevent routing issues
+      // This prevents blind transfer failures where dropdown shows stale availability
+      await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
+      await changeUserState(testManager.agent2Page, USER_STATES.AVAILABLE);
+      await testManager.agent1Page.waitForTimeout(3000); // Wait for routing engine propagation
     });
 
     test('Transfer from one agent to another, then transfer back to the first agent', async () => {
@@ -45,7 +51,7 @@ export default function createAdvanceCombinationsTests() {
       });
 
       await changeUserState(testManager.agent2Page, USER_STATES.AVAILABLE);
-      await testManager.agent2Page.waitForTimeout(3000);
+      await testManager.agent1Page.waitForTimeout(5000); // Extra wait for routing engine
       await waitForState(testManager.agent2Page, USER_STATES.AVAILABLE);
       await consultOrTransfer(
         testManager.agent1Page,
@@ -54,18 +60,19 @@ export default function createAdvanceCombinationsTests() {
         process.env[`${testManager.projectName}_AGENT2_NAME`]!
       );
 
-      // Wait for transfer to complete - wrapup becomes enabled on Agent1
-      await expect(testManager.agent1Page.locator('#wrapupCodesDropdown')).toBeEnabled({
-        timeout: 15000,
-      });
-
+      // Agent 2 must accept the transferred call first for transfer to complete
       await acceptIncomingTask(testManager.agent2Page, TASK_TYPES.CALL);
       await expect(testManager.agent2Page.locator('#incoming-task')).toContainText('connected', {
         timeout: 10000,
       });
+
+      // Wait for transfer to complete - wrapup becomes enabled on Agent1
+      await expect(testManager.agent1Page.locator('#wrapupCodesDropdown')).toBeEnabled({
+        timeout: 15000,
+      });
       await testManager.agent1Page.waitForTimeout(2000);
       await submitWrapup(testManager.agent1Page, WRAPUP_REASONS.SALE);
-      await testManager.agent1Page.waitForTimeout(2000);
+      await waitForState(testManager.agent1Page, USER_STATES.AVAILABLE);
 
       await consultOrTransfer(
         testManager.agent2Page,
@@ -74,18 +81,20 @@ export default function createAdvanceCombinationsTests() {
         process.env[`${testManager.projectName}_AGENT1_NAME`]!
       );
 
-      // Wait for transfer to complete - wrapup becomes enabled on Agent2
-      await expect(testManager.agent2Page.locator('#wrapupCodesDropdown')).toBeEnabled({
-        timeout: 15000,
-      });
-
+      // Agent 1 must accept the transferred call first for transfer to complete
       await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CALL);
       await testManager.agent1Page.waitForTimeout(2000);
       await expect(testManager.agent1Page.locator('#incoming-task')).toContainText('connected', {
         timeout: 10000,
       });
+
+      // Wait for transfer to complete - wrapup becomes enabled on Agent2
+      await expect(testManager.agent2Page.locator('#wrapupCodesDropdown')).toBeEnabled({
+        timeout: 15000,
+      });
       await testManager.agent1Page.waitForTimeout(2000);
       await submitWrapup(testManager.agent2Page, WRAPUP_REASONS.SALE);
+      await waitForState(testManager.agent2Page, USER_STATES.AVAILABLE);
 
       await testManager.agent1Page.evaluate(() => {
         const btn = document.querySelector('#end') as HTMLButtonElement;
