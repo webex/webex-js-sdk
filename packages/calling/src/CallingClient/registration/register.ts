@@ -502,6 +502,7 @@ export class Registration implements IRegistration {
   private async postKeepAlive(deviceUrl: string, url: string) {
     const response = await this.apiRequest.makeRequest({
       uri: `${url}/status`,
+      method: HTTP_METHODS.POST,
       headers: {
         [CISCO_DEVICE_URL]: deviceUrl,
         [SPARK_USER_AGENT]: CALLING_USER_AGENT,
@@ -1002,7 +1003,7 @@ export class Registration implements IRegistration {
 
                 const error = {
                   headers,
-                  statusCode: err.status,
+                  statusCode: err.statusCode,
                   statusText: err.statusText,
                   type: err.type,
                 };
