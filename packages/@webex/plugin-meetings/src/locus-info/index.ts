@@ -684,11 +684,31 @@ export default class LocusInfo extends EventsScope {
    * @param {LocusApiResponseBody} responseBody body of the http response from Locus API call
    * @returns {void}
    */
-  handleLocusAPIResponse(meeting, responseBody: LocusApiResponseBody): void {
+  handleLocusAPIResponse(meeting: any, responseBody: LocusApiResponseBody): void {
     const isWrapped = 'locus' in responseBody;
     const locusUrl = isWrapped ? responseBody.locus?.url : responseBody.url;
     const hashTreeParserEntry = locusUrl && this.hashTreeParsers.get(locusUrl);
-    if (hashTreeParserEntry) {
+    const locus = isWrapped
+      ? (responseBody as {locus: LocusDTO}).locus
+      : (responseBody as LocusDTO);
+
+    if (this.hashTreeParsers.size > 0) {
+      // We are in hash tree mode. Check if we need to create/reactivate a parser for this locusUrl.
+      if (!hashTreeParserEntry || hashTreeParserEntry.parser.state === 'stopped') {
+        if (!locusUrl) {
+          LoggerProxy.logger.warn(
+            'Locus-info:index#handleLocusAPIResponse --> API response has no locusUrl, cannot handle hash tree parser switch'
+          );
+
+          return;
+        }
+
+        this.handleHashTreeParserSwitchForAPIResponse(locusUrl, locus);
+
+        return;
+      }
+
+      // Active parser found - pass the API response to it
       if (isWrapped) {
         if (!responseBody.dataSets) {
           this.sendClassicVsHashTreeMismatchMetric(
@@ -704,20 +724,23 @@ export default class LocusInfo extends EventsScope {
         // update the data in our hash trees
         hashTreeParserEntry.parser.handleLocusUpdate(responseBody);
       } else {
-        // LocusDTO without wrapper - pass it through as if it had no dataSets
+        // LocusDTO without wrapper - pass it through as if it had no dataSets nor metadata
         hashTreeParserEntry.parser.handleLocusUpdate({locus: responseBody});
       }
-    } else {
-      if (isWrapped && responseBody.dataSets) {
-        this.sendClassicVsHashTreeMismatchMetric(
-          meeting,
-          `unexpected hash tree dataSets in API response`
-        );
-      }
-      // classic Locus delta
-      const locus = isWrapped ? responseBody.locus : responseBody;
-      this.handleLocusDelta(locus, meeting);
+
+      return;
     }
+
+    // No hash tree parsers - classic Locus mode
+    if (isWrapped && responseBody.dataSets) {
+      this.sendClassicVsHashTreeMismatchMetric(
+        meeting,
+        `unexpected hash tree dataSets in API response`
+      );
+    }
+
+    // classic Locus delta
+    this.handleLocusDelta(locus, meeting);
   }
 
   /**
@@ -947,6 +970,114 @@ export default class LocusInfo extends EventsScope {
   }
 
   /**
+   * Helper that handles the common logic for reactivating a stopped HashTreeParser when
+   * a newer "replaces" is detected. Used by both the message and API response parser switch methods.
+   *
+   * @param {string} callerName - name of the calling method, used in log messages
+   * @param {string} locusUrl - the locus URL of the stopped parser
+   * @param {HashTreeParserEntry} stoppedEntry - the stopped parser entry
+   * @param {ReplacesInfo} replaces - replacement info extracted from self
+   * @param {Function} resumeCallback - callback to invoke after reactivation to resume the parser
+   * @returns {void}
+   */
+  private resumeStoppedParser(
+    callerName: string,
+    locusUrl: string,
+    stoppedEntry: HashTreeParserEntry,
+    replaces: ReplacesInfo | undefined,
+    resumeCallback: () => void
+  ): void {
+    // this check is just for typescript, it should never happen, replaces should always be defined
+    if (!replaces) {
+      LoggerProxy.logger.info(
+        `Locus-info:index#${callerName} --> received data for stopped HashTreeParser with locusUrl ${locusUrl}, but no replaces info provided, so not re-activating the parser`
+      );
+
+      return;
+    }
+
+    if (replaces.replacedAt <= (stoppedEntry.replacedAt || '')) {
+      LoggerProxy.logger.info(
+        `Locus-info:index#${callerName} --> received data for stopped HashTreeParser with locusUrl ${locusUrl}, but replaces info provided is not newer, so not re-activating the parser`
+      );
+
+      return;
+    }
+
+    LoggerProxy.logger.info(
+      `Locus-info:index#${callerName} --> reactivating HashTreeParser for locusUrl=${locusUrl}, which replaces ${replaces.locusUrl}`
+    );
+
+    const replacedEntry = this.hashTreeParsers.get(replaces.locusUrl);
+
+    if (replacedEntry) {
+      replacedEntry.replacedAt = replaces.replacedAt;
+      replacedEntry.parser.stop();
+    } else {
+      LoggerProxy.logger.warn(
+        `Locus-info:index#${callerName} --> the parser that is supposed to be replaced with the currently reactivated parser is not found, locusUrl=${replaces.locusUrl}`
+      );
+    }
+
+    stoppedEntry.initializedFromHashTree = false;
+    this.hashTreeObjectId2ParticipantId.clear();
+
+    resumeCallback();
+  }
+
+  /**
+   * Handles an API response whose locusUrl doesn't match any active HashTreeParser
+   * (either no entry exists, or the existing entry is stopped).
+   * Creates a new parser or reactivates a stopped one using initializeFromGetLociResponse.
+   *
+   * @param {string} locusUrl - the locus URL from the API response
+   * @param {LocusDTO} locus - the locus DTO from the API response
+   * @returns {void}
+   */
+  private handleHashTreeParserSwitchForAPIResponse(locusUrl: string, locus: LocusDTO): void {
+    const entry = this.hashTreeParsers.get(locusUrl);
+
+    const replaces = getReplaceInfoFromSelf(
+      locus.self,
+      // @ts-ignore
+      this.webex.internal.device.url
+    );
+
+    if (!entry) {
+      LoggerProxy.logger.info(
+        `Locus-info:index#handleHashTreeParserSwitchForAPIResponse --> no parser for locusUrl ${locusUrl}, creating a new one`
+      );
+
+      const parser = this.createHashTreeParser({
+        locusUrl,
+        initialLocus: {locus: null, dataSets: []},
+        metadata: null,
+        replacedAt: replaces?.replacedAt,
+      });
+
+      parser.initializeFromGetLociResponse(locus);
+
+      return;
+    }
+
+    if (entry.parser.state !== 'stopped') {
+      LoggerProxy.logger.warn(
+        `Locus-info:index#handleHashTreeParserSwitchForAPIResponse --> unexpected parser state "${entry.parser.state}" for locusUrl ${locusUrl}`
+      );
+
+      return;
+    }
+
+    this.resumeStoppedParser(
+      'handleHashTreeParserSwitchForAPIResponse',
+      locusUrl,
+      entry,
+      replaces,
+      () => entry.parser.resumeFromApiResponse(locus)
+    );
+  }
+
+  /**
    * Checks if the hash tree message should trigger a switch to a different HashTreeParser
    *
    * @param {HashTreeMessage} message incoming hash tree message
@@ -994,36 +1125,12 @@ export default class LocusInfo extends EventsScope {
     if (entry.parser.state === 'stopped') {
       // the message matches a stopped parser, we need to check if maybe this is a new "replacement" and we need to re-activate the parser
       // this happens when you move from breakout A -> breakout B -> back to breakout A
-      if (replaces) {
-        if (replaces.replacedAt > (entry.replacedAt || '')) {
-          LoggerProxy.logger.info(
-            `Locus-info:index#handleHashTreeParserSwitch --> resuming a HashTreeParser for locusUrl=${message.locusUrl}, which replaces ${replaces.locusUrl}`
-          );
-          const replacedEntry = this.hashTreeParsers.get(replaces.locusUrl);
-
-          if (replacedEntry) {
-            replacedEntry.replacedAt = replaces.replacedAt;
-            entry.initializedFromHashTree = false;
-            this.hashTreeObjectId2ParticipantId.clear();
-
-            replacedEntry.parser.stop();
-            entry.parser.resume(message);
-          } else {
-            LoggerProxy.logger.warn(
-              `Locus-info:index#handleHashTreeParserSwitch --> the parser that is supposed to be replaced with the currently resumed parser is not found, locusUrl=${replaces.locusUrl}`
-            );
-          }
-        } else {
-          LoggerProxy.logger.info(
-            `Locus-info:index#handleHashTreeParserSwitch --> received message for stopped HashTreeParser with locusUrl ${message.locusUrl}, but replaces info provided is not newer, so not re-activating the parser`
-          );
-        }
-
-        return true;
-      }
-
-      LoggerProxy.logger.info(
-        `Locus-info:index#handleHashTreeParserSwitch --> received message for stopped HashTreeParser with locusUrl ${message.locusUrl}, but no replaces info provided, so not re-activating the parser`
+      this.resumeStoppedParser(
+        'handleHashTreeParserSwitch',
+        message.locusUrl,
+        entry,
+        replaces,
+        () => entry.parser.resumeFromMessage(message)
       );
 
       return true;
@@ -1061,6 +1168,21 @@ export default class LocusInfo extends EventsScope {
     // the check is just for typescript, the case of no entry in hashTreeParsers is handled in handleHashTreeParserSwitch() above
     if (entry) {
       entry.parser.handleMessage(message);
+    }
+  }
+
+  /**
+   * Triggers a sync of all hash tree datasets for all hash tree parsers associated with this meeting.
+   * The syncs are executed sequentially within each parser.
+   *
+   * @returns {Promise<void>}
+   */
+  async syncAllHashTreeDatasets(): Promise<void> {
+    for (const [, entry] of this.hashTreeParsers) {
+      if (entry.parser) {
+        // eslint-disable-next-line no-await-in-loop
+        await entry.parser.syncAllDatasets();
+      }
     }
   }
 
@@ -1202,11 +1324,17 @@ export default class LocusInfo extends EventsScope {
    */
   parse(meeting: any, data: any) {
     if (this.hashTreeParsers.size > 0) {
-      this.handleHashTreeMessage(
-        meeting,
-        data.eventType,
-        data.stateElementsMessage as HashTreeMessage
-      );
+      if (data.eventType === LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS) {
+        // sync meetings response follows the format of "not wrapped" locus API responses,
+        // so has no dataSets nor Metadata
+        this.handleLocusAPIResponse(meeting, {...data.locus});
+      } else {
+        this.handleHashTreeMessage(
+          meeting,
+          data.eventType,
+          data.stateElementsMessage as HashTreeMessage
+        );
+      }
     } else {
       const {eventType} = data;
 
