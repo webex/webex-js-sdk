@@ -604,6 +604,14 @@ export class Registration implements IRegistration {
             method: this.executeFailback.name,
           });
           await this.deregister();
+
+          if (this.apiRequest.isSocketEnabled()) {
+            await this.apiRequest.disconnectFromMobiusSocket({
+              code: 3050,
+              reason: 'done (permanent)',
+            });
+          }
+
           const abort = await this.attemptRegistrationWithServers(FAILBACK_UTIL);
 
           if (this.scheduled429Retry || abort || this.isDeviceRegistered()) {
