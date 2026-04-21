@@ -1099,10 +1099,10 @@ export class Registration implements IRegistration {
 
       const stringToReplace = `${DEVICES_ENDPOINT_RESOURCE}/${restoreData.devices[0].deviceId}`;
 
-      const uri = restoreData.devices[0].uri.replace(stringToReplace, '');
+      let uri = restoreData.devices[0].uri.replace(stringToReplace, '');
 
       if (this.apiRequest.isSocketEnabled()) {
-        uri.replace('https://', 'wss://');
+        uri = uri.replace('https://', 'wss://');
       }
 
       this.setActiveMobiusUrl(uri);
