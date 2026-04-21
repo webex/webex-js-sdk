@@ -37,7 +37,7 @@ import {
   Devices,
 } from '../common/types';
 import {ICallingClient, CallingClientConfig} from './types';
-import {ICall, ICallManager} from './calling/types';
+import {ICall, ICallManager, MobiusAsyncEvent, MobiusEventType} from './calling/types';
 import log from '../Logger';
 import {getCallManager} from './calling/callManager';
 import {
@@ -152,7 +152,14 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     log.setLogger(logLevel, CALLING_CLIENT_FILE);
     validateServiceData(serviceData);
 
-    this.callManager = getCallManager(this.webex, serviceData.indicator);
+    this.isMobiusSocketEnabled =
+      isWsFeatureEnabled(this.webex) || (config?.isMobiusSocketEnabled ?? false);
+
+    this.callManager = getCallManager(
+      this.webex,
+      serviceData.indicator,
+      this.isMobiusSocketEnabled
+    );
     this.metricManager = getMetricManager(this.webex, serviceData.indicator);
 
     this.mediaEngine = Media;
@@ -175,14 +182,14 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.mobiusClusters = this.webex.internal.services.getMobiusClusters();
     this.mobiusHost = '';
 
-    this.isMobiusSocketEnabled =
-      isWsFeatureEnabled(this.webex) || (config?.isMobiusSocketEnabled ?? false);
-
     if (this.isMobiusSocketEnabled) {
       this.mobiusSocket = getMobiusSocketInstance(this.webex);
     }
 
-    this.apiRequest = APIRequest.getInstance({webex: this.webex});
+    this.apiRequest = APIRequest.getInstance({
+      webex: this.webex,
+      isMobiusSocketEnabled: this.isMobiusSocketEnabled,
+    });
 
     this.registerSessionsListener();
 
@@ -232,6 +239,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     if (this.isMobiusSocketEnabled) {
       await this.connectToMobiusSocket();
+      this.registerMobiusSocketListener();
     }
 
     await this.createLine();
@@ -719,6 +727,58 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       loggerContext
     );
   }
+
+  private registerMobiusSocketListener() {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.REGISTER_MOBIUS_SOCKET_LISTENER,
+    });
+    this.sdkConnector.registerMobiusSocketListener<MobiusAsyncEvent>('async_event', (event) => {
+      this.handleMobiusAsyncEvent(event);
+    });
+
+    log.info('Successfully registered listener for Mobius events', {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.REGISTER_MOBIUS_SOCKET_LISTENER,
+    });
+  }
+
+  // private unregisterMobiusSocketListener() {
+  //   log.info(METHOD_START_MESSAGE, {
+  //     file: CALLING_CLIENT_FILE,
+  //     method: METHODS.UNREGISTER_MOBIUS_SOCKET_LISTENER,
+  //   });
+  //   this.sdkConnector.unregisterMobiusSocketListener('async_event');
+  // }
+
+  private handleMobiusAsyncEvent = async (event?: MobiusAsyncEvent) => {
+    log.info(METHOD_START_MESSAGE, {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.HANDLE_MOBIUS_ASYNC_EVENT,
+    });
+
+    const eventType = event?.data.eventType;
+
+    if (!eventType) {
+      log.warn('Dropping unsupported mobius socket payload', {
+        file: CALLING_CLIENT_FILE,
+        method: METHODS.HANDLE_MOBIUS_ASYNC_EVENT,
+      });
+
+      return;
+    }
+
+    if (eventType === MobiusEventType.REGISTRATION_DOWN) {
+      // const line = Object.values(this.lineDict)[0];
+      // line.registration.handleRegistrationDownEvent(event);
+
+      return;
+    }
+
+    if (eventType.startsWith('mobius.')) {
+      this.callManager.dequeueWsEvents(event);
+    }
+  };
 
   /**
    * Registers a listener/handler for ALL_CALLS_CLEARED
