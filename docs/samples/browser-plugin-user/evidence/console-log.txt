@@ -1,0 +1,35 @@
+[log] [2026-04-21T19:22:59.522Z] Initializing SDK with bearer token...
+[log] [2026-04-21T19:22:59.530Z] SDK initialized. Waiting for ready event...
+[log] wx-js-sdk call-diagnostic-events ->  CallDiagnosticMetrics: @submitDelayedClientEvents. Submitting delayed client events.
+[log] [2026-04-21T19:22:59.557Z] SDK ready. Registering device...
+[log] wx-js-sdk CallDiagnosticMetrics: @setDeviceInfo called {}
+[log] *** Keepalive Worker Thread ***
+[log] *** Keepalive Worker Thread ***
+[log] [2026-04-21T19:23:04.737Z] Device registered. userId: ee1f42ae-35a0-4eab-8835-45e13ab3f7ee
+[log] [2026-04-21T19:23:04.738Z] OrgId extracted from token: 77571e7f-f3f9-4d0c-bc98-f754faafc7aa
+[log] [2026-04-21T19:23:04.738Z] Ready to get user profile.
+[log] [2026-04-21T19:23:04.804Z] Fetching user profile via webex.internal.user.get()...
+[log] [2026-04-21T19:23:05.472Z] User profile received. displayName: undefined
+[log] [2026-04-21T19:23:05.472Z] trainSiteNames: ["webclientacmeco.webex.com","convergedats1-webclient.webex.com"]
+[log] [2026-04-21T19:23:05.473Z] linkedTrainSiteNames: undefined
+[log] [2026-04-21T19:23:05.473Z] preferredWebExSite: undefined
+[log] [2026-04-21T19:23:05.473Z] Calling webex.internal.user.getMeetingSiteList(user)...
+[log] [2026-04-21T19:23:05.473Z] getMeetingSiteList result: ["convergedats1-webclient.webex.com","webclientacmeco.webex.com"]
+[log] [2026-04-21T19:23:05.604Z] Calling updatePreferredWebexSite({ newSiteUrl: "webclientacmeco.webex.com", oldSiteUrl: "undefined" })...
+[log] [2026-04-21T19:23:07.247Z] ✅ SCIM PATCH succeeded! Response preferredWebExSite: (check response)
+[log] [2026-04-21T19:23:07.248Z] Full response keys: schemas, userName, userNameType, emails, name, entitlements, cisSyncSource, userStatus, id, meta, displayName, active, accountStatus, licenseID, userSettings, userPreferences, sipAddresses, trainSiteNames, isTeamsOnJabberEnabled, isUCCallOnJabberEnabled, userType, sensitive
+[log] [2026-04-21T19:23:07.249Z] PATCH response userPreferences: ["\"preferredWebExSite\":\"webclientacmeco.webex.com\""]
+[log] [2026-04-21T19:23:07.308Z] Re-fetching user from SCIM endpoint to verify persistence...
+[log] [2026-04-21T19:23:07.558Z] SCIM GET response keys: schemas, id, userName, active, entitlements, name, displayName, emails, userType, urn:scim:schemas:extension:cisco:webexidentity:2.0:User, meta
+[log] [2026-04-21T19:23:07.559Z] Extension keys: accountStatus, provisionSource, teamsClusterId, isTeamsOnJabberEnabled, isUCCallOnJabberEnabled, licenseID, userSettings, userPreferences, sipAddresses, trainSiteNames, avatarSyncEnabled, meta, userNameType, sensitive
+[log] [2026-04-21T19:23:07.559Z] Extension userPreferences: ["\"preferredWebExSite\":\"webclientacmeco.webex.com\""]
+[log] [2026-04-21T19:23:07.560Z] Resolved userPreferences: ["\"preferredWebExSite\":\"webclientacmeco.webex.com\""]
+[log] [2026-04-21T19:23:07.561Z] SCIM preferredWebExSite direct: undefined
+[log] [2026-04-21T19:23:07.561Z]   Checking pref: "\"preferredWebExSite\":\"webclientacmeco.webex.com\"" → val=""preferredWebExSite":"webclientacmeco.webex.com""
+[log] [2026-04-21T19:23:07.562Z]   → match: ["preferredWebExSite\":\"webclientacmeco.webex.com","webclientacmeco.webex.com"]
+[log] [2026-04-21T19:23:07.563Z] Verified preferredWebExSite from SCIM: webclientacmeco.webex.com
+[log] [2026-04-21T19:23:07.563Z] ✅ Site persisted correctly!
+[log] [2026-04-21T19:23:07.642Z] Calling updatePreferredWebexSite({ newSiteUrl: "convergedats1-webclient.webex.com", oldSiteUrl: "webclientacmeco.webex.com" })...
+[log] [2026-04-21T19:23:07.844Z] ✅ SCIM PATCH succeeded! Response preferredWebExSite: (check response)
+[log] [2026-04-21T19:23:07.846Z] Full response keys: schemas, userName, userNameType, emails, name, entitlements, cisSyncSource, userStatus, id, meta, displayName, active, accountStatus, licenseID, userSettings, userPreferences, sipAddresses, trainSiteNames, isTeamsOnJabberEnabled, isUCCallOnJabberEnabled, userType, sensitive
+[log] [2026-04-21T19:23:07.846Z] PATCH response userPreferences: ["\"preferredWebExSite\":\"convergedats1-webclient.webex.com\""]
