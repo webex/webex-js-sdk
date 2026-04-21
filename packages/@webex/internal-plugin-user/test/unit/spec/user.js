@@ -147,6 +147,159 @@ describe('plugin-user', () => {
         ));
     });
 
+    describe('#updatePreferredWebexSite()', () => {
+      const testUserId = 'test-user-id-1234';
+      const testOrgId = 'test-org-id-5678';
+
+      beforeEach(() => {
+        webex.internal.device.userId = testUserId;
+        webex.credentials.getOrgId = sinon.stub().returns(testOrgId);
+        webex.config.credentials.identity = {url: 'https://identity.webex.com'};
+      });
+
+      it('rejects when `newSiteUrl` is not provided', () =>
+        assert.isRejected(
+          userService.updatePreferredWebexSite({}),
+          /`options.newSiteUrl` is required/
+        ));
+
+      it('rejects when `newSiteUrl` is an empty string', () =>
+        assert.isRejected(
+          userService.updatePreferredWebexSite({newSiteUrl: ''}),
+          /`options.newSiteUrl` is required/
+        ));
+
+      it('rejects when device has no userId', () => {
+        webex.internal.device.userId = undefined;
+
+        return assert.isRejected(
+          userService.updatePreferredWebexSite({newSiteUrl: 'new.webex.com'}),
+          /Device is not registered/
+        );
+      });
+
+      it('rejects when orgId cannot be determined and none provided', () => {
+        webex.credentials.getOrgId = sinon.stub().throws(new Error('no org'));
+
+        return assert.isRejected(
+          userService.updatePreferredWebexSite({newSiteUrl: 'new.webex.com'}),
+          /Unable to determine organization ID/
+        );
+      });
+
+      it('uses provided orgId instead of extracting from credentials', () => {
+        const customOrgId = 'custom-org-9999';
+
+        return userService
+          .updatePreferredWebexSite({newSiteUrl: 'new.webex.com', orgId: customOrgId})
+          .then(() => {
+            assert.notCalled(webex.credentials.getOrgId);
+            const requestArgs = webex.request.getCall(0).args[0];
+
+            assert.include(requestArgs.uri, `/identity/scim/${customOrgId}/v1/Users/`);
+          });
+      });
+
+      it('constructs org-scoped URL with correct orgId and userId', () =>
+        userService
+          .updatePreferredWebexSite({newSiteUrl: 'new.webex.com'})
+          .then(() => {
+            const requestArgs = webex.request.getCall(0).args[0];
+
+            assert.equal(
+              requestArgs.uri,
+              `https://identity.webex.com/identity/scim/${testOrgId}/v1/Users/${testUserId}`
+            );
+            assert.equal(requestArgs.method, 'PATCH');
+          }));
+
+      it('sends add-only userPreferences when no oldSiteUrl', () =>
+        userService
+          .updatePreferredWebexSite({newSiteUrl: 'new.webex.com'})
+          .then(() => {
+            const requestArgs = webex.request.getCall(0).args[0];
+
+            assert.deepEqual(requestArgs.body, {
+              schemas: [
+                'urn:scim:schemas:core:1.0',
+                'urn:scim:schemas:extension:cisco:commonidentity:1.0',
+              ],
+              userPreferences: [{value: '"preferredWebExSite":"new.webex.com"'}],
+            });
+          }));
+
+      it('sends delete+add userPreferences when oldSiteUrl provided', () =>
+        userService
+          .updatePreferredWebexSite({newSiteUrl: 'new.webex.com', oldSiteUrl: 'old.webex.com'})
+          .then(() => {
+            const requestArgs = webex.request.getCall(0).args[0];
+
+            assert.deepEqual(requestArgs.body.userPreferences, [
+              {operation: 'delete', value: '"preferredWebExSite":"old.webex.com"'},
+              {value: '"preferredWebExSite":"new.webex.com"'},
+            ]);
+          }));
+
+      it('returns the response body', () => {
+        const responseBody = {id: testUserId, preferredWebExSite: 'new.webex.com'};
+
+        userService.request = sinon.stub().returns(Promise.resolve({body: responseBody}));
+
+        return userService
+          .updatePreferredWebexSite({newSiteUrl: 'new.webex.com'})
+          .then((result) => {
+            assert.deepEqual(result, responseBody);
+          });
+      });
+
+      it('propagates HTTP 403 rejection', () => {
+        const error = new Error('Forbidden');
+
+        error.statusCode = 403;
+        userService.request = sinon.stub().callsFake(() => Promise.reject(error));
+
+        return assert.isRejected(
+          userService.updatePreferredWebexSite({newSiteUrl: 'new.webex.com'}),
+          /Forbidden/
+        );
+      });
+
+      it('propagates network error rejection', () => {
+        userService.request = sinon
+          .stub()
+          .callsFake(() => Promise.reject(new Error('Network failure')));
+
+        return assert.isRejected(
+          userService.updatePreferredWebexSite({newSiteUrl: 'new.webex.com'}),
+          /Network failure/
+        );
+      });
+    });
+
+    describe('#getMeetingSiteList()', () => {
+      it('returns empty array when user is null or undefined', () => {
+        assert.deepEqual(userService.getMeetingSiteList(null), []);
+        assert.deepEqual(userService.getMeetingSiteList(undefined), []);
+        assert.deepEqual(userService.getMeetingSiteList({}), []);
+      });
+
+      it('merges linked + train sites, filters # sites, and sorts alphabetically', () => {
+        const user = {
+          linkedTrainSiteNames: ['charlie.webex.com', 'alpha.webex.com'],
+          trainSiteNames: ['bravo.webex.com', 'delta#attendee.webex.com', 'echo.webex.com'],
+        };
+
+        const result = userService.getMeetingSiteList(user);
+
+        assert.deepEqual(result, [
+          'alpha.webex.com',
+          'bravo.webex.com',
+          'charlie.webex.com',
+          'echo.webex.com',
+        ]);
+      });
+    });
+
     describe('#verify()', () => {
       it('requires an `email` param', () =>
         assert.isRejected(userService.verify(), /`options.email` is required/));
