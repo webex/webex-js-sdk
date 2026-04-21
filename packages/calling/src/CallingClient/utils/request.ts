@@ -100,8 +100,10 @@ export class APIRequest {
    * On failure, throws a normalized WebexRequestPayload-shaped error.
    *
    * @param wssUrl - The Mobius WebSocket URL to connect to.
+   * @param options - Connection options.
+   * @param options.singleAttempt - When true, bypass backoff retries and attempt a single connection. On failure the returned promise rejects immediately.
    */
-  public async connectToMobiusSocket(wssUrl: string): Promise<void> {
+  public async connectToMobiusSocket(wssUrl: string, {singleAttempt = false} = {}): Promise<void> {
     const logContext = {
       file: REQUEST_FILE,
       method: METHODS.CONNECT_TO_MOBIUS_SOCKET,
@@ -116,7 +118,7 @@ export class APIRequest {
     log.info('Mobius WebSocket not connected, initiating connection', logContext);
 
     try {
-      await this.mobiusSocket.connect(wssUrl);
+      await this.mobiusSocket.connect(wssUrl, undefined, {singleAttempt});
       log.log('Mobius WebSocket connected successfully', logContext);
     } catch (err) {
       log.warn(`Mobius WebSocket connection failed: ${String(err)}`, logContext);
@@ -127,14 +129,14 @@ export class APIRequest {
   /**
    * Disconnects the default session from the Mobius WebSocket.
    */
-  public async disconnectFromMobiusSocket(): Promise<void> {
+  public async disconnectFromMobiusSocket(options?: {code: number; reason: string}): Promise<void> {
     const logContext = {
       file: REQUEST_FILE,
       method: 'disconnectFromMobiusSocket',
     };
 
     try {
-      await this.mobiusSocket.disconnect();
+      await this.mobiusSocket.disconnect(options);
       log.log('Mobius WebSocket disconnected successfully', logContext);
     } catch (err) {
       // silent error - no need to throw an error

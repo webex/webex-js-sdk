@@ -479,9 +479,13 @@ export class Registration implements IRegistration {
       }
     } else {
       await uploadLogs();
-      emitFinalFailure((clientError: LineError) => {
-        this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
-      }, loggerContext);
+      emitFinalFailure(
+        (clientError: LineError) => {
+          this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
+        },
+        loggerContext,
+        interval < 0 ? 'Timer threshold exceeded during failover' : undefined
+      );
     }
   }
 
@@ -845,7 +849,7 @@ export class Registration implements IRegistration {
           const wssNormalizedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
 
           // eslint-disable-next-line no-await-in-loop
-          await this.apiRequest.connectToMobiusSocket(wssNormalizedUrl);
+          await this.apiRequest.connectToMobiusSocket(wssNormalizedUrl, {singleAttempt: true});
         }
 
         // eslint-disable-next-line no-await-in-loop
@@ -883,7 +887,7 @@ export class Registration implements IRegistration {
         break;
       } catch (err: unknown) {
         // eslint-disable-next-line no-await-in-loop
-        await this.apiRequest.disconnectFromMobiusSocket();
+        await this.apiRequest.disconnectFromMobiusSocket({code: 3050, reason: 'done (permanent)'});
 
         const body = err as WebexRequestPayload;
         // eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-unused-vars
@@ -1096,6 +1100,11 @@ export class Registration implements IRegistration {
       const stringToReplace = `${DEVICES_ENDPOINT_RESOURCE}/${restoreData.devices[0].deviceId}`;
 
       const uri = restoreData.devices[0].uri.replace(stringToReplace, '');
+
+      if (this.apiRequest.isSocketEnabled()) {
+        uri.replace('https://', 'wss://');
+      }
+
       this.setActiveMobiusUrl(uri);
       this.registrationStatus = RegistrationStatus.ACTIVE;
 
