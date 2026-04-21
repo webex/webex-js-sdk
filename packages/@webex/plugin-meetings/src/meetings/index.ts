@@ -71,6 +71,7 @@ import {HashTreeObject} from '../hashTree/types';
 import {isSelf} from '../hashTree/utils';
 
 import {createLocusFromHashTreeMessage, findMeetingForHashTreeMessage} from '../locus-info';
+import {LocusDTO} from '../locus-info/types';
 
 let mediaLogger;
 
@@ -1886,23 +1887,20 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-  public syncMeetings({keepOnlyLocusMeetings = true} = {}): Promise<void> {
+  public async syncMeetings({keepOnlyLocusMeetings = true} = {}): Promise<void> {
     // @ts-ignore
     if (this.webex.credentials.isUnverifiedGuest) {
       LoggerProxy.logger.info(
-        'Meetings:index#syncMeetings --> skipping meeting sync as unverified guest'
+        'Meetings:index#syncMeetings --> user is unverified guest, skipping calling Locus for meeting sync'
       );
-
-      return Promise.resolve();
-    }
-
-    return this.request
-      .getActiveMeetings()
-      .then((locusArray: any) => {
+    } else {
+      try {
+        const locusArray = await this.request.getActiveMeetings();
         const activeLocusUrl: string[] = [];
 
         if (locusArray?.loci && locusArray.loci.length > 0) {
           const lociToUpdate = this.sortLocusArrayToUpdate(locusArray.loci);
+
           lociToUpdate.forEach((locus) => {
             activeLocusUrl.push(locus.url);
             this.handleLocusEvent({
@@ -1920,21 +1918,48 @@ export default class Meetings extends WebexPlugin {
           // (they had a locusUrl previously but are no longer active) in the sync
           for (const meeting of Object.values(meetingsCollection)) {
             // @ts-ignore
-            const {locusUrl} = meeting;
+            const {locusUrl, locusInfo} = meeting;
             if ((keepOnlyLocusMeetings || locusUrl) && !activeLocusUrl.includes(locusUrl)) {
-              // destroy function also uploads logs
-              // @ts-ignore
-              this.destroy(meeting, MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC);
+              const globalMeetingId = locusInfo?.info?.globalMeetingId;
+
+              if (
+                globalMeetingId &&
+                locusArray?.loci?.some(
+                  (locus: LocusDTO) => locus.info?.globalMeetingId === globalMeetingId
+                )
+              ) {
+                // don't destroy the meeting as Locus API still returned some Locus that shares
+                // the same globalMeetingId - that happens for example if a webinar user (who hasn't scheduled it)
+                // is in a breakout and gets moved to a different breakout while we were offline
+              } else {
+                // destroy function also uploads logs
+                // @ts-ignore
+                this.destroy(meeting, MEETING_REMOVED_REASON.NO_MEETINGS_TO_SYNC);
+              }
             }
           }
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         LoggerProxy.logger.error(
           `Meetings:index#syncMeetings --> failed to sync meetings, ${error}`
         );
-        throw new Error(error);
-      });
+        throw error;
+      }
+    }
+
+    // Trigger hash tree syncs for all remaining meetings
+    const remainingMeetings = this.meetingCollection.getAll();
+    const syncPromises = [];
+
+    for (const meeting of Object.values(remainingMeetings) as any[]) {
+      if (meeting.locusInfo) {
+        syncPromises.push(meeting.locusInfo.syncAllHashTreeDatasets());
+      }
+    }
+
+    if (syncPromises.length > 0) {
+      await Promise.all(syncPromises);
+    }
   }
 
   /**
