@@ -966,29 +966,6 @@ export default class Meeting extends StatelessWebexPlugin {
       (csi: CSI) => (this.members.findMemberByCsi(csi) as any)?.id
     );
 
-    const getIngressPayloadTypeCallback = (
-      mediaType: MediaType,
-      codecMimeType: MediaCodecMimeType
-    ) => {
-      if (this.isMultistream) {
-        try {
-          return this.mediaProperties.webrtcMediaConnection.getIngressPayloadType(
-            mediaType,
-            codecMimeType
-          );
-        } catch (error) {
-          LoggerProxy.logger.info(
-            `Meeting:index#mediaRequestManager --> failed to get ingress payload type for mediaType=${mediaType}, codecMimeType=${codecMimeType}`,
-            error
-          );
-
-          return undefined;
-        }
-      }
-
-      return undefined;
-    };
-
     /**
      * Object containing helper classes for managing media requests for audio/video/screenshare (for multistream media connections)
      * All multistream media requests sent out for this meeting have to go through them.
@@ -1008,7 +985,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
-        getIngressPayloadTypeCallback,
+        this.getIngressPayloadTypeCallback.bind(this),
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1030,7 +1007,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
-        getIngressPayloadTypeCallback,
+        this.getIngressPayloadTypeCallback.bind(this),
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1052,7 +1029,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
-        getIngressPayloadTypeCallback,
+        this.getIngressPayloadTypeCallback.bind(this),
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1074,7 +1051,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
-        getIngressPayloadTypeCallback,
+        this.getIngressPayloadTypeCallback.bind(this),
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1740,6 +1717,37 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.mediaServerIp = undefined;
+  }
+
+  /**
+   * Get the ingress payload type for a given media type and codec mime type
+   * @param {MediaType} mediaType - The media type
+   * @param {MediaCodecMimeType} codecMimeType - The codec mime type
+   * @returns {number | undefined} - The ingress payload type
+   * @private
+   * @memberof Meeting
+   */
+  private getIngressPayloadTypeCallback(
+    mediaType: MediaType,
+    codecMimeType: MediaCodecMimeType
+  ): number | undefined {
+    if (this.isMultistream) {
+      try {
+        return this.mediaProperties.webrtcMediaConnection.getIngressPayloadType(
+          mediaType,
+          codecMimeType
+        );
+      } catch (error) {
+        LoggerProxy.logger.info(
+          `Meeting:index#mediaRequestManager --> failed to get ingress payload type for mediaType=${mediaType}, codecMimeType=${codecMimeType}`,
+          error
+        );
+
+        return undefined;
+      }
+    }
+
+    return undefined;
   }
 
   /**
