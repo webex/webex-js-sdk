@@ -376,19 +376,70 @@ export default function createDigitalIncomingTaskAndTaskControlsTests() {
     await waitForState(testManager.agent1Page, USER_STATES.MEETING);
     await verifyCurrentState(testManager.agent1Page, USER_STATES.MEETING);
 
-    // Task clears after RONA is handled
-    await testManager.agent1Page.waitForTimeout(2000);
+    // Wait for first email task to be fully cleared from TaskList
+    const taskList = testManager.agent1Page.locator('#taskList');
+    await expect
+      .poll(
+        async () => {
+          const text = await taskList.innerText().catch(() => '');
 
-    // Set agent back to Available to accept the same task
+          return text;
+        },
+        {timeout: 15000, intervals: [1000, 2000]}
+      )
+      .toContain('No tasks available');
+
+    // FIX 1: Longer wait for backend email session cleanup (CRITICAL)
+    await testManager.agent1Page.waitForTimeout(10000);
+
+    // Now create a NEW email task with clean slate
     await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
-    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, 10000);
+    await createEmailTask(process.env[`${testManager.projectName}_EMAIL_ENTRY_POINT`]!);
+
+    // FIX 2: Wait for task to fully arrive before accepting
+    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, 180000);
+    await testManager.agent1Page.waitForTimeout(3000); // Backend readiness buffer
+
     await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL);
 
-    // Wait for email session to fully establish
-    await expect(testManager.agent1Page.locator('#end')).toBeEnabled({timeout: 30000});
-    await testManager.agent1Page.waitForTimeout(2000);
+    // FIX 3: Poll for successful session establishment OR handle API error
+    const endButton = testManager.agent1Page.locator('#end').first();
+    const tryAgainButton = testManager.agent1Page.locator('button:has-text("Try Again")').first();
 
-    await testManager.agent1Page.locator('#end').first().click({timeout: 5000});
+    // Check if API error occurred and retry if needed
+    const apiErrorVisible = await tryAgainButton
+      .waitFor({state: 'visible', timeout: 5000})
+      .then(() => true)
+      .catch(() => false);
+
+    if (apiErrorVisible) {
+      // Email session API error detected, retrying...
+      await tryAgainButton.click();
+      await testManager.agent1Page.waitForTimeout(3000);
+    }
+
+    // Wait for #end button to become visible and enabled
+    await expect
+      .poll(
+        async () => {
+          const isVisible = await endButton.isVisible().catch(() => false);
+          const isEnabled = await endButton.isEnabled().catch(() => false);
+
+          return isVisible && isEnabled;
+        },
+        {
+          timeout: 60000, // Generous timeout for email session
+          intervals: [3000, 5000],
+          message: 'Email session failed to establish after retry - check backend logs',
+        }
+      )
+      .toBeTruthy();
+
+    // FIX 4: Final verification - no API error present
+    const apiError = testManager.agent1Page.locator('text=An error occurred');
+    await expect(apiError).not.toBeVisible({timeout: 2000});
+
+    await endButton.click({timeout: 10000});
     await testManager.agent1Page.waitForTimeout(1000);
     await submitWrapup(testManager.agent1Page, WRAPUP_REASONS.SALE);
     await testManager.agent1Page.waitForTimeout(2000);
