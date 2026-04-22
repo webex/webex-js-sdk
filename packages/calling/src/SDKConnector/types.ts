@@ -99,6 +99,10 @@ export interface WebexSDK {
       /** WDM / device-registration settings (e.g. `webrtc-calling-over-ws`). */
       settings?: Record<string, {value?: boolean} | undefined>;
       features: {
+        developer: {
+          models: Model[];
+          get: (key: string) => {value: boolean} | undefined;
+        };
         entitlement: {
           models: Model[];
         };
