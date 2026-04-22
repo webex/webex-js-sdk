@@ -54,6 +54,26 @@ describe('plugin-mobius-socket', () => {
       });
     };
 
+    const createAsyncEvent = (eventId, eventType = 'custom.event') => ({
+      data: {
+        type: 'async_event',
+        eventId,
+        data: {
+          eventType,
+        },
+      },
+    });
+
+    const createSessionSocket = () => ({
+      close: sinon.stub().returns(Promise.resolve()),
+      removeAllListeners: sinon.stub(),
+    });
+
+    const countGenericEventEmits = (emitSpy, sessionId) =>
+      emitSpy
+        .getCalls()
+        .filter((call) => call.args[0] === sessionId && call.args[1] === 'event').length;
+
     beforeEach(() => {
       clock = FakeTimers.install({now: Date.now()});
     });
@@ -1371,6 +1391,72 @@ describe('plugin-mobius-socket', () => {
           // The early-return guard only emits 'event', so asserting these proves the normal path was taken.
           assert.calledWith(mobiusSocket._emit, mobiusSocket.defaultSessionId, 'event:conversation', event.data);
           assert.calledWith(mobiusSocket._emit, mobiusSocket.defaultSessionId, 'event:conversation.activity', event.data);
+        });
+      });
+
+      describe('#_onmessage() async_event deduplication', () => {
+        let originalDedupCacheMaxSize;
+
+        beforeEach(() => {
+          originalDedupCacheMaxSize = mobiusSocket.config.dedupCacheMaxSize;
+        });
+
+        afterEach(() => {
+          mobiusSocket.config.dedupCacheMaxSize = originalDedupCacheMaxSize;
+        });
+
+        it('suppresses duplicate async_event messages for the same session', async () => {
+          const emitSpy = sinon.spy(mobiusSocket, '_emit');
+
+          await mobiusSocket._onmessage('session-a', createAsyncEvent('evt-1'));
+          await mobiusSocket._onmessage('session-a', createAsyncEvent('evt-1'));
+
+          assert.equal(countGenericEventEmits(emitSpy, 'session-a'), 1);
+          emitSpy.restore();
+        });
+
+        it('suppresses duplicate async_event messages across socket replacement without disconnect', async () => {
+          const sessionId = 'session-a';
+          const emitSpy = sinon.spy(mobiusSocket, '_emit');
+          mobiusSocket.sockets.set(sessionId, createSessionSocket());
+
+          await mobiusSocket._onmessage(sessionId, createAsyncEvent('evt-2'));
+
+          mobiusSocket.sockets.set(sessionId, createSessionSocket());
+          await mobiusSocket._onmessage(sessionId, createAsyncEvent('evt-2'));
+
+          assert.equal(countGenericEventEmits(emitSpy, sessionId), 1);
+          emitSpy.restore();
+        });
+
+        it('evicts only the oldest eventId when the dedup cache exceeds max size', async () => {
+          const emitSpy = sinon.spy(mobiusSocket, '_emit');
+
+          mobiusSocket.config.dedupCacheMaxSize = 3;
+
+          await mobiusSocket._onmessage('session-a', createAsyncEvent('e1'));
+          await mobiusSocket._onmessage('session-a', createAsyncEvent('e2'));
+          await mobiusSocket._onmessage('session-a', createAsyncEvent('e3'));
+          await mobiusSocket._onmessage('session-a', createAsyncEvent('e4'));
+          await mobiusSocket._onmessage('session-a', createAsyncEvent('e2'));
+          await mobiusSocket._onmessage('session-a', createAsyncEvent('e1'));
+
+          assert.equal(countGenericEventEmits(emitSpy, 'session-a'), 5);
+          emitSpy.restore();
+        });
+
+        it('clears the session dedup cache on disconnect', async () => {
+          const sessionId = 'session-a';
+          const emitSpy = sinon.spy(mobiusSocket, '_emit');
+
+          await mobiusSocket._onmessage(sessionId, createAsyncEvent('evt-3'));
+
+          mobiusSocket.sockets.set(sessionId, createSessionSocket());
+          await mobiusSocket.disconnect(undefined, sessionId);
+          await mobiusSocket._onmessage(sessionId, createAsyncEvent('evt-3'));
+
+          assert.equal(countGenericEventEmits(emitSpy, sessionId), 2);
+          emitSpy.restore();
         });
       });
 
