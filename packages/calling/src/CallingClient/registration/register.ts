@@ -499,6 +499,21 @@ export class Registration implements IRegistration {
     }
   }
 
+  private async postKeepAlive(deviceUrl: string, url: string) {
+    return this.apiRequest.makeRequest({
+      uri: `${url}/status`,
+      method: HTTP_METHODS.POST,
+      headers: {
+        [CISCO_DEVICE_URL]: deviceUrl,
+        [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+      },
+      body: {
+        deviceId: this.deviceInfo.device?.deviceId,
+      },
+      service: ALLOWED_SERVICES.MOBIUS,
+    });
+  }
+
   private async isPrimaryActive() {
     let status;
     for (const mobiusUrl of this.primaryMobiusUris) {
@@ -958,8 +973,6 @@ export class Registration implements IRegistration {
 
     await this.mutex.runExclusive(async () => {
       if (this.isDeviceRegistered()) {
-        const accessToken = await this.webex.credentials.getUserToken();
-
         if (!this.webWorker) {
           const blob = new Blob([webWorkerStr], {type: 'application/javascript'});
           const blobUrl = URL.createObjectURL(blob);
@@ -968,11 +981,8 @@ export class Registration implements IRegistration {
 
           this.webWorker.postMessage({
             type: WorkerMessageType.START_KEEPALIVE,
-            accessToken: String(accessToken),
-            deviceUrl: String(this.webex.internal.device.url),
             interval,
             retryCountThreshold: RETRY_COUNT_THRESHOLD,
-            url,
           });
 
           this.webWorker.onmessage = async (event: MessageEvent) => {
@@ -980,13 +990,39 @@ export class Registration implements IRegistration {
               file: REGISTRATION_FILE,
               method: KEEPALIVE_UTIL,
             };
+            if (event.data.type === WorkerMessageType.SEND_KEEPALIVE) {
+              try {
+                const res = await this.postKeepAlive(String(this.webex.internal.device.url), url);
+
+                this.webWorker?.postMessage({
+                  type: WorkerMessageType.KEEPALIVE_RESULT,
+                  statusCode: res.statusCode,
+                });
+              } catch (err: any) {
+                const error = {
+                  headers: {
+                    trackingid: err.headers?.trackingid,
+                    'retry-after': err.headers['retry-after'],
+                  },
+                  statusCode: err.statusCode,
+                  statusText: err.statusText,
+                  type: err.type,
+                };
+
+                this.webWorker?.postMessage({
+                  type: WorkerMessageType.KEEPALIVE_RESULT,
+                  err: error,
+                });
+              }
+            }
+
             if (event.data.type === WorkerMessageType.KEEPALIVE_SUCCESS) {
               log.info(`Sent Keepalive, status: ${event.data.statusCode}`, logContext);
               this.lineEmitter(LINE_EVENTS.RECONNECTED);
             }
 
             if (event.data.type === WorkerMessageType.KEEPALIVE_FAILURE) {
-              const error = <WebexRequestPayload>event.data.err;
+              const error = event.data.err as WebexRequestPayload;
               log.warn(
                 `Keep-alive missed ${event.data.keepAliveRetryCount} times. Status -> ${error.statusCode} `,
                 logContext

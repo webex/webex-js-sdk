@@ -1358,11 +1358,8 @@ describe('Registration Tests', () => {
       expect(postMessageSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'START_KEEPALIVE',
-          accessToken: expect.any(String),
-          deviceUrl: expect.any(String),
           interval: expect.any(Number),
           retryCountThreshold: expect.any(Number),
-          url: expect.any(String),
         })
       );
 
@@ -1741,11 +1738,8 @@ describe('Registration Tests', () => {
       expect(postMessageSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'START_KEEPALIVE',
-          accessToken: expect.any(String),
-          deviceUrl: expect.any(String),
           interval: expect.any(Number),
           retryCountThreshold: expect.any(Number),
-          url: expect.any(String),
         })
       );
     });
