@@ -521,7 +521,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getClientJMT() {
-    const clickToInterstitialForClientJmt = this.latencyTimestamps.get(
+    const clickToInterstitialForClientJmt = this.precomputedLatencies.get(
       'internal.click.to.interstitial.for.client.jmt'
     );
     const interstitialJoinToLocusJoinRequest = this.getDiffBetweenTimestamps(

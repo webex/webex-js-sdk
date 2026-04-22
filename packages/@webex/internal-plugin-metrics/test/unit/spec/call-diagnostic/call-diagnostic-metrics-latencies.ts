@@ -1062,10 +1062,7 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('calculates getClientJMT correctly', () => {
-      cdl.saveTimestamp({
-        key: 'internal.click.to.interstitial.for.client.jmt',
-        value: 5,
-      });
+      cdl.saveLatency('internal.click.to.interstitial.for.client.jmt', 5);
       cdl.saveTimestamp({
         key: 'internal.client.interstitial-window.click.joinbutton',
         value: 2,
@@ -1091,10 +1088,7 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('returns undefined for getClientJMT when interstitialJoinToLocusJoinRequest is missing', () => {
-      cdl.saveTimestamp({
-        key: 'internal.click.to.interstitial.for.client.jmt',
-        value: 5,
-      });
+      cdl.saveLatency('internal.click.to.interstitial.for.client.jmt', 5);
       assert.deepEqual(cdl.getClientJMT(), undefined);
     });
 
