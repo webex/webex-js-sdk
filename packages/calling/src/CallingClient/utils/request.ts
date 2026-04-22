@@ -103,13 +103,8 @@ export class APIRequest {
    * On failure, throws a normalized WebexRequestPayload-shaped error.
    *
    * @param wssUrl - The Mobius WebSocket URL to connect to.
-   * @param options - Connection options.
-   * @param options.singleAttempt - When true, bypass backoff retries and attempt a single connection. On failure the returned promise rejects immediately.
    */
-  public async connectToMobiusSocket(
-    wssUrl: string,
-    {singleAttempt = false} = {}
-  ): Promise<string | undefined> {
+  public async connectToMobiusSocket(wssUrl: string): Promise<string | undefined> {
     const logContext = {
       file: REQUEST_FILE,
       method: METHODS.CONNECT_TO_MOBIUS_SOCKET,
@@ -124,7 +119,7 @@ export class APIRequest {
     log.info('Mobius WebSocket not connected, initiating connection', logContext);
 
     try {
-      await this.mobiusSocket.connect(wssUrl, undefined, {singleAttempt});
+      await this.mobiusSocket.connect(wssUrl);
       log.log('Mobius WebSocket connected successfully', logContext);
 
       return this.mobiusSocket.getConnectedWebSocketUrl();
