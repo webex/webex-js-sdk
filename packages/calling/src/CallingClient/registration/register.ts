@@ -858,7 +858,7 @@ export class Registration implements IRegistration {
           const wssNormalizedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
 
           // eslint-disable-next-line no-await-in-loop
-          await this.apiRequest.connectToMobiusSocket(wssNormalizedUrl);
+          connectedWebSocketUrl = await this.apiRequest.connectToMobiusSocket(wssNormalizedUrl);
         }
 
         // eslint-disable-next-line no-await-in-loop
