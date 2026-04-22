@@ -59,6 +59,11 @@ const MobiusSocket = WebexPlugin.extend({
       default: () => new Map(),
       type: 'object',
     },
+    _seenAsyncEventIdsBySession: {
+      // Ampersand's property types are coarse-grained; Map is stored as an object value here.
+      default: () => new Map(),
+      type: 'object',
+    },
     localClusterServiceUrls: 'object',
     mercuryTimeOffset: {
       default: undefined,
@@ -134,6 +139,80 @@ const MobiusSocket = WebexPlugin.extend({
     socket.on('ping-pong-latency', (...args) =>
       this._emit(sessionId, 'ping-pong-latency', ...args)
     );
+  },
+
+  /**
+   * Returns the per-session cache of seen async_event IDs, creating it on first access.
+   * @param {string} sessionId - The session identifier.
+   * @returns {Map<string, boolean>} Ordered cache of seen event IDs for the session.
+   */
+  _getSeenAsyncEventIds(sessionId) {
+    let seenAsyncEventIds = this._seenAsyncEventIdsBySession.get(sessionId);
+
+    if (!seenAsyncEventIds) {
+      seenAsyncEventIds = new Map();
+      this._seenAsyncEventIdsBySession.set(sessionId, seenAsyncEventIds);
+    }
+
+    return seenAsyncEventIds;
+  },
+
+  /**
+   * Clears the dedup cache for one session or for all sessions when omitted.
+   * @param {string} [sessionId] - Optional session identifier.
+   * @returns {void}
+   */
+  _clearSeenAsyncEventIds(sessionId) {
+    if (sessionId) {
+      this._seenAsyncEventIdsBySession.delete(sessionId);
+
+      return;
+    }
+
+    this._seenAsyncEventIdsBySession.clear();
+  },
+
+  /**
+   * Tracks a newly seen async_event ID and reports whether a duplicate should be suppressed.
+   * @param {string} sessionId - The session identifier.
+   * @param {object} envelope - Parsed websocket message envelope.
+   * @returns {boolean} True when the event has already been seen for this session.
+   */
+  _trackAsyncEventAndShouldSuppressDuplicate(sessionId, envelope) {
+    if (envelope?.type !== 'async_event' || !envelope.eventId) {
+      return false;
+    }
+
+    const seenAsyncEventIds = this._getSeenAsyncEventIds(sessionId);
+
+    if (seenAsyncEventIds.has(envelope.eventId)) {
+      const previousValue = seenAsyncEventIds.get(envelope.eventId);
+
+      // Refresh recency so frequently retransmitted eventIds stay protected longer.
+      seenAsyncEventIds.delete(envelope.eventId);
+      seenAsyncEventIds.set(envelope.eventId, previousValue);
+      this.logger.info(
+        `${this.namespace}: duplicate async_event suppressed for ${sessionId}, eventId=${envelope.eventId}`
+      );
+
+      return true;
+    }
+
+    this.logger.info(
+      `${this.namespace}: tracking async_event for ${sessionId}, eventId=${envelope.eventId}`
+    );
+    seenAsyncEventIds.set(envelope.eventId, true);
+
+    if (seenAsyncEventIds.size > this.config.dedupCacheMaxSize) {
+      const oldestEventId = seenAsyncEventIds.keys().next().value;
+
+      seenAsyncEventIds.delete(oldestEventId);
+      this.logger.info(
+        `${this.namespace}: evicted oldest async_event from dedup cache for ${sessionId}, eventId=${oldestEventId}`
+      );
+    }
+
+    return false;
   },
 
   /**
@@ -233,6 +312,21 @@ const MobiusSocket = WebexPlugin.extend({
    */
   getSocket(sessionId = this.defaultSessionId) {
     return this.sockets.get(sessionId);
+  },
+
+  /**
+   * Get the websocket URL for a currently connected session.
+   * @param {string} [sessionId=this.defaultSessionId] - The session identifier.
+   * @returns {string|undefined} The connected websocket URL, or undefined when not connected.
+   */
+  getConnectedWebSocketUrl(sessionId = this.defaultSessionId) {
+    const socket = this.getSocket(sessionId);
+
+    if (!socket?.connected) {
+      return undefined;
+    }
+
+    return socket.url;
   },
 
   /**
@@ -374,7 +468,13 @@ const MobiusSocket = WebexPlugin.extend({
 
     this.connecting = true;
 
-    this.logger.info(`${this.namespace}: starting connection attempt for ${sessionId}`);
+    this.logger.info(
+      `${this.namespace}: starting connection attempt for ${sessionId}${
+        Number(this.config.initialConnectionMaxRetries) === 0 && !this.hasEverConnected
+          ? ' (initial retries disabled)'
+          : ''
+      }`
+    );
 
     const connectPromise = Promise.resolve(
       this.webex.internal.device.registered || this.webex.internal.device.register()
@@ -438,6 +538,8 @@ const MobiusSocket = WebexPlugin.extend({
       const sessionSocket = this.sockets.get(sessionId);
       const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
 
+      this._clearSeenAsyncEventIds(sessionId);
+
       if (sessionSocket) {
         sessionSocket.removeAllListeners('message');
         sessionSocket.connecting = false;
@@ -471,6 +573,7 @@ const MobiusSocket = WebexPlugin.extend({
       this.connected = false;
       this.sockets.clear();
       this.backoffCalls.clear();
+      this._clearSeenAsyncEventIds();
       this._stopTokenRefreshTimer();
       // Clear connection promises to prevent stale promises
       if (this._connectPromises) {
@@ -677,6 +780,8 @@ const MobiusSocket = WebexPlugin.extend({
         let options = {
           forceCloseDelay: this.config.forceCloseDelay,
           wssResponseTimeout: this.config.wssResponseTimeout,
+          skipAckEventId: this.config.skipAckEventId,
+          skipAckEventType: this.config.skipAckEventType,
           token: normalizeMobiusAuthToken(token.toString()),
           refreshToken: () => this._refreshToken(),
           trackingId: `${this.webex.sessionId}_${Date.now()}`,
@@ -711,6 +816,13 @@ const MobiusSocket = WebexPlugin.extend({
       // eslint gets confused about whether call is actually used
       // eslint-disable-next-line prefer-const
       let call;
+      const isInitialConnect = !isShutdownSwitchover && !this.hasEverConnected;
+      const initialRetryLimit =
+        this.config.initialConnectionMaxRetries == null
+          ? null
+          : Number(this.config.initialConnectionMaxRetries);
+      const isInitialConnectWithoutRetries = isInitialConnect && initialRetryLimit === 0;
+
       const onComplete = (err, sid = sessionId) => {
         if (isShutdownSwitchover) {
           this._shutdownSwitchoverBackoffCalls.delete(sid);
@@ -771,12 +883,10 @@ const MobiusSocket = WebexPlugin.extend({
         })
       );
 
-      if (
-        this.config.initialConnectionMaxRetries &&
-        !this.hasEverConnected &&
-        !isShutdownSwitchover
-      ) {
-        call.failAfter(this.config.initialConnectionMaxRetries);
+      if (isInitialConnectWithoutRetries) {
+        call.retryIf(() => false);
+      } else if (isInitialConnect && initialRetryLimit > 0) {
+        call.failAfter(initialRetryLimit);
       } else if (this.config.maxRetries) {
         call.failAfter(this.config.maxRetries);
       }
@@ -798,6 +908,16 @@ const MobiusSocket = WebexPlugin.extend({
 
       call.on('callback', (err) => {
         if (err) {
+          if (isInitialConnectWithoutRetries) {
+            // retryIf(() => false) already disabled retries for this initial connect;
+            // this branch only avoids logging the generic "attempting retry" message.
+            this.logger.info(
+              `${this.namespace}: initial connect failed for ${sessionId}; retries already disabled`
+            );
+
+            return;
+          }
+
           const number = call.getNumRetries();
           const delay = Math.min(call.strategy_.nextBackoffDelay_, this.config.backoffTimeMax);
 
@@ -1089,6 +1209,10 @@ const MobiusSocket = WebexPlugin.extend({
 
       this._handleImminentShutdown(sessionId);
 
+      return Promise.resolve();
+    }
+
+    if (this._trackAsyncEventAndShouldSuppressDuplicate(sessionId, envelope)) {
       return Promise.resolve();
     }
 

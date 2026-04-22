@@ -7,7 +7,7 @@ import log from '../../Logger';
 import {APIRequestConfig, APIRequestOptions, MobiusSocketResponse} from './types';
 import {deriveMobiusSocketMessageType} from './mobiusSocketMapper';
 import {MOBIUS_SOCKET_MESSAGE_TYPE} from './constants';
-import {isWsFeatureEnabled} from './wsFeatureFlag';
+import {isMobiusWssEnabled} from './wsFeatureFlag';
 import {METHODS, REQUEST_FILE} from '../constants';
 
 /**
@@ -82,7 +82,7 @@ export class APIRequest {
 
     this.webex = config.webex;
     this.isMobiusSocketEnabled =
-      isWsFeatureEnabled(config.webex) || (config.isMobiusSocketEnabled ?? false);
+      isMobiusWssEnabled(config.webex) || (config.isMobiusSocketEnabled ?? false);
     this.mobiusSocket = getMobiusSocketInstance(this.webex);
   }
 
@@ -121,6 +121,24 @@ export class APIRequest {
     } catch (err) {
       log.warn(`Mobius WebSocket connection failed: ${String(err)}`, logContext);
       throw normalizeWsError(err);
+    }
+  }
+
+  /**
+   * Disconnects the default session from the Mobius WebSocket.
+   */
+  public async disconnectFromMobiusSocket(options?: {code: number; reason: string}): Promise<void> {
+    const logContext = {
+      file: REQUEST_FILE,
+      method: 'disconnectFromMobiusSocket',
+    };
+
+    try {
+      await this.mobiusSocket.disconnect(options);
+      log.log('Mobius WebSocket disconnected successfully', logContext);
+    } catch (err) {
+      // silent error - no need to throw an error
+      log.warn(`Mobius WebSocket disconnection failed: ${String(err)}`, logContext);
     }
   }
 
