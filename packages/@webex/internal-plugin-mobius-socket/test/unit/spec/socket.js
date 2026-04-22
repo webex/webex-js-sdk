@@ -762,6 +762,34 @@ describe('plugin-mobius-socket', () => {
         });
       });
 
+      it('preserves top-level type and eventId for async_event envelopes', () => {
+        mockWebSocket.emit('message', {
+          data: JSON.stringify({
+            type: 'async_event',
+            trackingId: 'SRV_bb000000-0000-0000-0000-000000000006',
+            eventId: 'f6a7b8c9-d0e1-2345-fabc-456789012345',
+            data: {
+              eventType: 'mobius.callinfo',
+              callId: 'fcf86aa5-5539-4c9f-8b72-667786ae9b6c',
+              deviceId: '334f3d50-1d26-4712-93f1-4972390cc565',
+            },
+          }),
+        });
+
+        assert.calledWith(spy, {
+          data: {
+            type: 'async_event',
+            trackingId: 'SRV_bb000000-0000-0000-0000-000000000006',
+            eventId: 'f6a7b8c9-d0e1-2345-fabc-456789012345',
+            data: {
+              eventType: 'mobius.callinfo',
+              callId: 'fcf86aa5-5539-4c9f-8b72-667786ae9b6c',
+              deviceId: '334f3d50-1d26-4712-93f1-4972390cc565',
+            },
+          },
+        });
+      });
+
       it('acknowledges async_event messages only', () => {
         sinon.spy(socket, '_acknowledge');
         mockWebSocket.emit('message', {
