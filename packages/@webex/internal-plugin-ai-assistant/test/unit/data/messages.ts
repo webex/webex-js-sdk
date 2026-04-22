@@ -709,6 +709,82 @@ export const scheduleMeetingResponse = [
   },
 ];
 
+export const citedAnswerWithSourcesResponse = [
+  {
+    eventType: 'assistant-api.response',
+    sequence: 1,
+    finished: true,
+    clientRequestId: 'test-request-id',
+    responseId: '3c1a4b30-92fe-11f0-8e9f-1bafc66fbbc5',
+    responseType: 'response',
+    response: {
+      sessionId: '3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5',
+      sessionUrl:
+        'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5',
+      messageId: '3c19fd10-92fe-11f0-8e9f-1bafc66fbbc5',
+      messageUrl:
+        'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5/messages/3c19fd10-92fe-11f0-8e9f-1bafc66fbbc5',
+      responseId: '3c1a4b30-92fe-11f0-8e9f-1bafc66fbbc5',
+      responseUrl:
+        'https://assistant-api-a.wbx2.com:443/assistant-api/api/v1/sessions/3c1939c0-92fe-11f0-8e9f-1bafc66fbbc5/messages/3c1a4b30-92fe-11f0-8e9f-1bafc66fbbc5',
+      content: {
+        name: 'cited_answer',
+        type: 'json',
+        encryptionKeyUrl: 'kms://kms-us.wbx2.com/keys/9565506d-78b1-4742-b0fd-63719748282e',
+        value: {
+          value: 'json_1_encrypted_value',
+          type: 'markdown',
+          citations: [
+            {
+              id: '6ccc8286e2084e05a6b9a29faae77095',
+              index: 1,
+              name: 'json_1_encrypted_citation_0',
+              url: 'https://co.webex.com/webappng/sites/co/recording/playback/6ccc8286e2084e05a6b9a29faae77095',
+              metadata: {
+                provider: 'webex',
+                type: 'meeting_recording',
+              },
+            },
+          ],
+          sources: [
+            {
+              id: '6ccc8286e2084e05a6b9a29faae77096',
+              index: 1,
+              type: 'post_meeting',
+              name: 'json_1_encrypted_source_0',
+              metadata: {
+                meetingContainerId: 'mccc8286e2084e05a6b9a29faae77096',
+              },
+            },
+            {
+              id: '6ccc8286e2084e05a6b9a29faae77096',
+              index: 2,
+              type: 'post_call',
+              name: 'json_1_encrypted_source_1',
+              metadata: {
+                callContainerId: 'mccc8286e2084e05a6b9a29faae77096',
+              },
+            },
+            {
+              id: '6ccc8286e2084e05a6b9a29faae77096',
+              index: 3,
+              type: 'message',
+              name: 'json_1_encrypted_source_2',
+              metadata: {
+                spaceId: 'mccc8286e2084e05a6b9a29faae77096',
+              },
+            },
+          ],
+        },
+      },
+      createdAt: '2025-09-16T13:08:30.594220705Z',
+      creator: {
+        role: 'assistant',
+      },
+    },
+  },
+];
+
 export const assistantActivity = [
   {
     eventType: 'assistant-api.activity',

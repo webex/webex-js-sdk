@@ -26,6 +26,7 @@ export const WEBEX_SUB_SERVICE_TYPES: Record<string, ClientSubServiceType> = {
   SCHEDULED_MEETING: 'ScheduledMeeting',
   WEBINAR: 'Webinar',
   WEBCAST: 'Webcast',
+  LARGE_SCALE_WEBINAR: 'LargeScaleWebinar',
 };
 
 // Found in https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia

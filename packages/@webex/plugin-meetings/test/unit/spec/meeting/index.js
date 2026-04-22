@@ -38,6 +38,7 @@ import {
 import {
   ConnectionState,
   MediaConnectionEventNames,
+  MediaCodecMimeType,
   StatsAnalyzerEventNames,
   StatsMonitorEventNames,
   Errors,
@@ -82,6 +83,7 @@ import Mercury from '@webex/internal-plugin-mercury';
 import Breakouts from '@webex/plugin-meetings/src/breakouts';
 import SimultaneousInterpretation from '@webex/plugin-meetings/src/interpretation';
 import Webinar from '@webex/plugin-meetings/src/webinar';
+import AIEnableRequest from '@webex/plugin-meetings/src/aiEnableRequest';
 import {REACTION_RELAY_TYPES} from '../../../../src/reactions/constants';
 import locus from '../fixture/locus';
 import {
@@ -123,7 +125,6 @@ import {EVENT_TRIGGERS as VOICEAEVENTS} from '@webex/internal-plugin-voicea';
 import {createBrbState} from '@webex/plugin-meetings/src/meeting/brbState';
 import JoinForbiddenError from '../../../../src/common/errors/join-forbidden-error';
 import {EventEmitter} from 'stream';
-
 describe('plugin-meetings', () => {
   const logger = {
     info: () => {},
@@ -265,7 +266,9 @@ describe('plugin-meetings', () => {
       stopReachability: sinon.stub(),
       isSubnetReachable: sinon.stub().returns(true),
     };
+    webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(false);
     webex.internal.llm.on = sinon.stub();
+    webex.internal.voicea.announce = sinon.stub();
     webex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
       {},
       {parent: webex}
@@ -376,6 +379,7 @@ describe('plugin-meetings', () => {
           assert.instanceOf(meeting.breakouts, Breakouts);
           assert.instanceOf(meeting.simultaneousInterpretation, SimultaneousInterpretation);
           assert.instanceOf(meeting.webinar, Webinar);
+          assert.instanceOf(meeting.aiEnableRequest, AIEnableRequest);
         });
 
         it('should call the callback with the meeting that has id already set', () => {
@@ -738,7 +742,9 @@ describe('plugin-meetings', () => {
         let supportsRTCPeerConnectionStub;
 
         beforeEach(() => {
-          supportsRTCPeerConnectionStub = sinon.stub(WebCapabilities, 'supportsRTCPeerConnection').returns(CapabilityState.CAPABLE);
+          supportsRTCPeerConnectionStub = sinon
+            .stub(WebCapabilities, 'supportsRTCPeerConnection')
+            .returns(CapabilityState.CAPABLE);
 
           meeting.join = sinon.stub().callsFake((joinOptions) => {
             meeting.isMultistream = joinOptions.enableMultistream;
@@ -1011,33 +1017,53 @@ describe('plugin-meetings', () => {
           );
         });
 
-        it('should call leave() if addMediaInternal() fails ', async () => {
+        it('should call leave() if addMediaInternal() fails with a browser media error (TypeError)', async () => {
           const addMediaError = new Error('fake addMedia error');
-          addMediaError.name = 'TypeError';
+          addMediaError.name = 'TypeError'; // This makes it a browser media error
 
-          const rejectError = {
-            error: {
-              body: {
-                errorCode: 2729,
-                message: 'fake addMedia error',
-                name: 'TypeError'
-              }
-            }
-          };
-          meeting.addMediaInternal.rejects(addMediaError);
-          sinon.stub(meeting, 'leave').resolves();
+          const leaveStub = sinon.stub(meeting, 'leave').resolves();
+          meeting.addMediaInternal = sinon.stub().rejects(addMediaError);
 
-          await assert.isRejected(
+          // When a browser media error occurs, it gets transformed into a special structure
+          const rejectedError = await assert.isRejected(
             meeting.joinWithMedia({
               joinOptions,
               mediaOptions,
-            }),
-            rejectError
+            })
           );
+
+          // Verify the error was transformed with errorCode 2729
+          assert.equal(rejectedError.error.body.errorCode, 2729);
+          assert.equal(rejectedError.error.body.message, 'fake addMedia error');
+          assert.equal(rejectedError.error.body.name, 'TypeError');
 
           assert.calledOnce(meeting.join);
           assert.calledOnce(meeting.addMediaInternal);
+          assert.calledOnce(leaveStub);
+          assert.calledOnceWithExactly(leaveStub, {
+            resourceId: undefined,
+            reason: 'joinWithMedia failure',
+          });
+
+          // Browser media errors don't retry, so behavioral metric is sent only once
+          // NOTE: The error gets transformed, so the metric receives undefined for message/stack/name
+          // because they're now nested in error.body instead of at the top level
           assert.calledOnce(Metrics.sendBehavioralMetric);
+          assert.calledWith(
+            Metrics.sendBehavioralMetric,
+            BEHAVIORAL_METRICS.JOIN_WITH_MEDIA_FAILURE,
+            {
+              correlation_id: meeting.correlationId,
+              locus_id: meeting.locusUrl.split('/').pop(),
+              reason: undefined, // transformed error doesn't have .message at top level
+              stack: undefined, // transformed error doesn't have .stack at top level
+              leaveErrorReason: undefined,
+              isRetry: false,
+            },
+            {
+              type: undefined, // transformed error doesn't have .name at top level
+            }
+          );
         });
 
         it('should not call leave() if addMediaInternal() fails the first time and succeeds the second time and should only call join() once', async () => {
@@ -1249,8 +1275,14 @@ describe('plugin-meetings', () => {
         });
 
         [
-          {errorName: 'SdpOfferCreationError', description: 'if we fail to create the offer on first attempt'},
-          {errorName: 'WebrtcApiNotAvailableError', description: 'if RTCPeerConnection is not available'},
+          {
+            errorName: 'SdpOfferCreationError',
+            description: 'if we fail to create the offer on first attempt',
+          },
+          {
+            errorName: 'WebrtcApiNotAvailableError',
+            description: 'if RTCPeerConnection is not available',
+          },
         ].forEach(({errorName, description}) => {
           it(`should not attempt a retry ${description}`, async () => {
             const addMediaError = new Error('fake addMedia error');
@@ -1290,7 +1322,7 @@ describe('plugin-meetings', () => {
               resourceId: undefined,
               reason: 'joinWithMedia failure',
             });
-          })
+          });
         });
 
         it('should ignore sendVideo/receiveVideo when videoEnabled is false', async () => {
@@ -1508,6 +1540,22 @@ describe('plugin-meetings', () => {
         });
 
         it('should stop listening to voicea events and also trigger a stop event', () => {
+          meeting.stopTranscription();
+          assert.equal(webex.internal.voicea.off.callCount, 4);
+          assert.equal(meeting.areVoiceaEventsSetup, false);
+          assert.calledWith(
+            TriggerProxy.trigger,
+            sinon.match.instanceOf(Meeting),
+            {
+              file: 'meeting/index',
+              function: 'triggerStopReceivingTranscriptionEvent',
+            },
+            EVENT_TRIGGERS.MEETING_STOPPED_RECEIVING_TRANSCRIPTION
+          );
+        });
+
+        it('should stop listening to voicea events even when transcription is undefined', () => {
+          meeting.transcription = undefined;
           meeting.stopTranscription();
           assert.equal(webex.internal.voicea.off.callCount, 4);
           assert.equal(meeting.areVoiceaEventsSetup, false);
@@ -1934,11 +1982,12 @@ describe('plugin-meetings', () => {
       describe('#handleLLMOnline', () => {
         beforeEach(() => {
           webex.internal.llm.off = sinon.stub();
+          webex.internal.voicea.getIsCaptionBoxOn = sinon.stub().returns(false);
+          webex.internal.voicea.updateSubchannelSubscriptions = sinon.stub();
         });
 
-        it('turns off llm online, emits transcription connected events', () => {
+        it('emits transcription connected events', () => {
           meeting.handleLLMOnline();
-          assert.calledOnceWithExactly(webex.internal.llm.off, 'online', meeting.handleLLMOnline);
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
@@ -1948,6 +1997,24 @@ describe('plugin-meetings', () => {
             },
             EVENT_TRIGGERS.MEETING_TRANSCRIPTION_CONNECTED
           );
+        });
+
+        it('restores transcription subscription when caption intent is enabled', () => {
+          webex.internal.voicea.getIsCaptionBoxOn.returns(true);
+
+          meeting.handleLLMOnline();
+
+          assert.calledOnceWithExactly(webex.internal.voicea.updateSubchannelSubscriptions, {
+            subscribe: ['transcription'],
+          });
+        });
+
+        it('does not restore transcription subscription when caption intent is disabled', () => {
+          webex.internal.voicea.getIsCaptionBoxOn.returns(false);
+
+          meeting.handleLLMOnline();
+
+          assert.notCalled(webex.internal.voicea.updateSubchannelSubscriptions);
         });
       });
 
@@ -1968,6 +2035,7 @@ describe('plugin-meetings', () => {
         it('should have #join', () => {
           assert.exists(meeting.join);
         });
+
         beforeEach(() => {
           setCorrelationIdSpy = sinon.spy(meeting, 'setCorrelationId');
           meeting.setLocus = sinon.stub().returns(true);
@@ -2121,7 +2189,6 @@ describe('plugin-meetings', () => {
             await meeting.join().catch(() => {
               assert.calledOnce(MeetingUtil.joinMeeting);
 
-              // Assert that client.locus.join.response error event is not sent from this function, it is now emitted from MeetingUtil.joinMeeting
               assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
               assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
                 name: 'client.call.initiated',
@@ -2153,6 +2220,7 @@ describe('plugin-meetings', () => {
             });
           });
         });
+
         describe('lmm, transcription & permissionTokenRefresh decoupling', () => {
           beforeEach(() => {
             sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve(joinMeetingResult));
@@ -2223,7 +2291,6 @@ describe('plugin-meetings', () => {
               const locusInfoParseStub = sinon.stub(meeting.locusInfo, 'parse');
               sinon.stub(meeting, 'isJoined').returns(true);
 
-              // Set up llm.on stub to capture the registered listener when updateLLMConnection is called
               let locusLLMEventListener;
               meeting.webex.internal.llm.on = sinon.stub().callsFake((eventName, callback) => {
                 if (eventName === 'event:locus.state_message') {
@@ -2232,16 +2299,12 @@ describe('plugin-meetings', () => {
               });
               meeting.webex.internal.llm.off = sinon.stub();
 
-              // we need the real meeting.updateLLMConnection not the mock
               meeting.updateLLMConnection.restore();
 
-              // Call updateLLMConnection to register the listener
               await meeting.updateLLMConnection();
 
-              // Verify the listener was registered and we captured it
               assert.isDefined(locusLLMEventListener, 'LLM event listener should be registered');
 
-              // Now trigger the event
               const eventData = {
                 eventType: 'locus.state_message',
                 stateElementsMessage: {
@@ -2261,13 +2324,10 @@ describe('plugin-meetings', () => {
               sinon.stub(meeting.webex.internal.llm, 'hasEverConnected').value(true);
               sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves({});
 
-              // Restore the real updateLLMConnection
               meeting.updateLLMConnection.restore();
 
-              // Call updateLLMConnection to start the timer
               await meeting.updateLLMConnection();
 
-              // Fast forward time by 3 minutes
               fakeClock.tick(3 * 60 * 1000);
 
               assert.calledWith(
@@ -2292,18 +2352,14 @@ describe('plugin-meetings', () => {
                 .stub(meeting.webex.internal.llm, 'getDatachannelUrl')
                 .returns('https://datachannel1.example.com');
 
-              // Restore the real updateLLMConnection
               meeting.updateLLMConnection.restore();
 
-              // First, connect LLM and start the timer
               isJoinedStub.returns(true);
               meeting.webex.internal.llm.isConnected.returns(false);
               await meeting.updateLLMConnection();
 
-              // Verify timer was started
               assert.exists(meeting.llmHealthCheckTimer);
 
-              // Now simulate that we're no longer joined
               isJoinedStub.returns(false);
               meeting.webex.internal.llm.isConnected.returns(true);
 
@@ -2311,10 +2367,8 @@ describe('plugin-meetings', () => {
 
               assert.calledOnce(meeting.webex.internal.llm.disconnectLLM);
 
-              // Verify the timer was cleared (should be undefined)
               assert.isUndefined(meeting.llmHealthCheckTimer);
 
-              // Fast forward time to ensure no metric is sent
               Metrics.sendBehavioralMetric.resetHistory();
               fakeClock.tick(3 * 60 * 1000);
 
@@ -2349,7 +2403,6 @@ describe('plugin-meetings', () => {
                 .stub()
                 .rejects(new CaptchaError('bad captcha'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
-              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil, 'joinMeetingOptions');
 
               try {
                 await meeting.join();
@@ -2363,8 +2416,7 @@ describe('plugin-meetings', () => {
                 );
                 assert.instanceOf(error, CaptchaError);
                 assert.equal(error.message, 'bad captcha');
-                // should not get to the end promise chain, which does do the join
-                assert.notCalled(joinMeetingOptionsSpy);
+                assert.notCalled(MeetingUtil.joinMeeting);
               }
             });
 
@@ -2373,7 +2425,6 @@ describe('plugin-meetings', () => {
                 .stub()
                 .rejects(new PasswordError('bad password'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
-              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
 
               try {
                 await meeting.join();
@@ -2387,8 +2438,7 @@ describe('plugin-meetings', () => {
                 );
                 assert.instanceOf(error, PasswordError);
                 assert.equal(error.message, 'bad password');
-                // should not get to the end promise chain, which does do the join
-                assert.notCalled(joinMeetingOptionsSpy);
+                assert.notCalled(MeetingUtil.joinMeeting);
               }
             });
 
@@ -2397,7 +2447,6 @@ describe('plugin-meetings', () => {
                 .stub()
                 .rejects(new PermissionError('bad permission'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
-              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
 
               try {
                 await meeting.join();
@@ -2411,13 +2460,13 @@ describe('plugin-meetings', () => {
                 );
                 assert.instanceOf(error, PermissionError);
                 assert.equal(error.message, 'bad permission');
-                // should not get to the end promise chain, which does do the join
-                assert.notCalled(joinMeetingOptionsSpy);
+                assert.notCalled(MeetingUtil.joinMeeting);
               }
             });
           });
         });
       });
+
 
       describe('#addMedia', () => {
         const muteStateStub = {
@@ -6370,7 +6419,10 @@ describe('plugin-meetings', () => {
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
           meeting.unsetPeerConnections = sinon.stub().returns(true);
           meeting.logger.error = sinon.stub().returns(true);
-          meeting.updateLLMConnection = sinon.stub().returns(Promise.resolve());
+          meeting.clearMeetingData = sinon.stub().callsFake(async () => {
+            meeting.audio = null;
+            meeting.video = null;
+          });
           webex.internal.voicea.off = sinon.stub().returns(true);
           meeting.stopTranscription = sinon.stub();
           meeting.transcription = {};
@@ -6397,9 +6449,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.closePeerConnections);
           assert.calledOnce(meeting.unsetRemoteStreams);
           assert.calledOnce(meeting.unsetPeerConnections);
-          assert.calledOnce(meeting.stopTranscription);
-          assert.calledOnce(meeting.annotation.deregisterEvents);
-          assert.calledWith(webex.internal.llm.off, 'event:relay.event', meeting.processRelayEvent);
+          assert.calledOnce(meeting.clearMeetingData);
         });
 
         it('should reset call diagnostic latencies correctly', async () => {
@@ -8400,7 +8450,10 @@ describe('plugin-meetings', () => {
           meeting.statsAnalyzer = {stopAnalyzer: sinon.stub().resolves()};
           meeting.unsetPeerConnections = sinon.stub().returns(true);
           meeting.logger.error = sinon.stub().returns(true);
-          meeting.updateLLMConnection = sinon.stub().returns(Promise.resolve());
+          meeting.clearMeetingData = sinon.stub().callsFake(async () => {
+            meeting.audio = null;
+            meeting.video = null;
+          });
           meeting.transcription = {};
           meeting.stopTranscription = sinon.stub();
 
@@ -8426,10 +8479,7 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting?.closePeerConnections);
           assert.calledOnce(meeting?.unsetRemoteStreams);
           assert.calledOnce(meeting?.unsetPeerConnections);
-          assert.calledOnce(meeting?.stopTranscription);
-
-          assert.called(meeting.annotation.deregisterEvents);
-          assert.calledWith(webex.internal.llm.off, 'event:relay.event', meeting.processRelayEvent);
+          assert.calledOnce(meeting?.clearMeetingData);
         });
       });
 
@@ -9166,8 +9216,8 @@ describe('plugin-meetings', () => {
         const fakeMultistreamRoapMediaConnection = {
           createSendSlot: () => {
             return {
-              setCodecParameters: sinon.stub().resolves(),
-              deleteCodecParameters: sinon.stub().resolves(),
+              setCustomCodecParameters: sinon.stub().resolves(),
+              markCustomCodecParametersForDeletion: sinon.stub().resolves(),
             };
           },
         };
@@ -9190,27 +9240,29 @@ describe('plugin-meetings', () => {
         }
       );
 
-      it('should set the codec parameters when shouldEnableMusicMode is true', async () => {
+      it('should set custom codec parameters when shouldEnableMusicMode is true', async () => {
         await meeting.enableMusicMode(true);
         assert.calledOnceWithExactly(
-          meeting.sendSlotManager.getSlot(MediaType.AudioMain).setCodecParameters,
+          meeting.sendSlotManager.getSlot(MediaType.AudioMain).setCustomCodecParameters,
+          MediaCodecMimeType.OPUS,
           {
             maxaveragebitrate: '64000',
             maxplaybackrate: '48000',
           }
         );
         assert.notCalled(
-          meeting.sendSlotManager.getSlot(MediaType.AudioMain).deleteCodecParameters
+          meeting.sendSlotManager.getSlot(MediaType.AudioMain).markCustomCodecParametersForDeletion
         );
       });
 
-      it('should set the codec parameters when shouldEnableMusicMode is false', async () => {
+      it('should mark custom codec parameters for deletion when shouldEnableMusicMode is false', async () => {
         await meeting.enableMusicMode(false);
         assert.calledOnceWithExactly(
-          meeting.sendSlotManager.getSlot(MediaType.AudioMain).deleteCodecParameters,
+          meeting.sendSlotManager.getSlot(MediaType.AudioMain).markCustomCodecParametersForDeletion,
+          MediaCodecMimeType.OPUS,
           ['maxaveragebitrate', 'maxplaybackrate']
         );
-        assert.notCalled(meeting.sendSlotManager.getSlot(MediaType.AudioMain).setCodecParameters);
+        assert.notCalled(meeting.sendSlotManager.getSlot(MediaType.AudioMain).setCustomCodecParameters);
       });
     });
 
@@ -10365,14 +10417,24 @@ describe('plugin-meetings', () => {
           );
           done();
         });
-        it('listens to the self admitted guest event', (done) => {
+        it('listens to the self admitted guest event without blocking on token prefetch', async () => {
           meeting.stopKeepAlive = sinon.stub();
           meeting.updateLLMConnection = sinon.stub();
+          let resolvePrefetch;
+
+          meeting.ensureDefaultDatachannelTokenAfterAdmit = sinon
+            .stub()
+            .returns(new Promise((resolve) => {
+              resolvePrefetch = resolve;
+            }));
           meeting.rtcMetrics = {
             sendNextMetrics: sinon.stub(),
           };
+
           meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_ADMITTED_GUEST', test1);
+
           assert.calledOnceWithExactly(meeting.stopKeepAlive);
+          assert.calledOnceWithExactly(meeting.ensureDefaultDatachannelTokenAfterAdmit);
           assert.calledThrice(TriggerProxy.trigger);
           assert.calledWith(
             TriggerProxy.trigger,
@@ -10391,7 +10453,11 @@ describe('plugin-meetings', () => {
               correlation_id: meeting.correlationId,
             }
           );
-          done();
+
+          resolvePrefetch(false);
+          await Promise.resolve();
+
+          assert.calledOnce(meeting.updateLLMConnection);
         });
 
         it('listens to the breakouts changed event', () => {
@@ -10476,6 +10542,21 @@ describe('plugin-meetings', () => {
             meeting,
             {file: 'meeting/index', function: 'setUpLocusInfoSelfListener'},
             EVENT_TRIGGERS.MEETING_INTERPRETATION_UPDATE
+          );
+        });
+
+        it('listens to the self id changed event and updates aiEnableRequest', () => {
+          meeting.aiEnableRequest = {
+            selfParticipantIdUpdate: sinon.stub(),
+          };
+
+          const payload = {selfId: 'participant-test-123'};
+
+          meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_ID_CHANGED', payload);
+
+          assert.calledOnceWithExactly(
+            meeting.aiEnableRequest.selfParticipantIdUpdate,
+            payload.selfId
           );
         });
       });
@@ -10722,6 +10803,24 @@ describe('plugin-meetings', () => {
             {file: 'meeting/index', function: 'setupLocusControlsListener'},
             EVENT_TRIGGERS.MEETING_CONTROLS_WEBCAST_UPDATED,
             {state}
+          );
+        });
+
+        it('listens to MEETING_CONTROLS_AI_SUMMARY_NOTIFICATION_UPDATED', async () => {
+          const aiSummaryNotification = {example: 'value'};
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_AI_SUMMARY_NOTIFICATION_UPDATED,
+            {aiSummaryNotification}
+          );
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_CONTROLS_AI_SUMMARY_NOTIFICATION_UPDATED,
+            {aiSummaryNotification}
           );
         });
 
@@ -10997,6 +11096,9 @@ describe('plugin-meetings', () => {
           meeting.simultaneousInterpretation = {
             approvalUrlUpdate: sinon.stub().returns(undefined),
           };
+          meeting.aiEnableRequest = {
+            approvalUrlUpdate: sinon.stub().returns(undefined),
+          };
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -11014,6 +11116,10 @@ describe('plugin-meetings', () => {
           );
           assert.calledWith(
             meeting.simultaneousInterpretation.approvalUrlUpdate,
+            newLocusServices.services.approval.url
+          );
+          assert.calledWith(
+            meeting.aiEnableRequest.approvalUrlUpdate,
             newLocusServices.services.approval.url
           );
           assert.calledOnce(meeting.recordingController.setSessionId);
@@ -11421,6 +11527,41 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('localConstraintsChangeHandler', () => {
+        it('calls updatePreferredBitrateKbps when not multistream', () => {
+          meeting.isMultistream = false;
+          meeting.mediaProperties.webrtcMediaConnection = {
+            updatePreferredBitrateKbps: sinon.stub(),
+          };
+
+          meeting.localConstraintsChangeHandler();
+
+          assert.calledOnce(
+            meeting.mediaProperties.webrtcMediaConnection.updatePreferredBitrateKbps
+          );
+        });
+
+        it('does not call updatePreferredBitrateKbps when multistream', () => {
+          meeting.isMultistream = true;
+          meeting.mediaProperties.webrtcMediaConnection = {
+            updatePreferredBitrateKbps: sinon.stub(),
+          };
+
+          meeting.localConstraintsChangeHandler();
+
+          assert.notCalled(
+            meeting.mediaProperties.webrtcMediaConnection.updatePreferredBitrateKbps
+          );
+        });
+
+        it('does not throw when webrtcMediaConnection is undefined', () => {
+          meeting.isMultistream = false;
+          meeting.mediaProperties.webrtcMediaConnection = undefined;
+
+          assert.doesNotThrow(() => meeting.localConstraintsChangeHandler());
+        });
+      });
+
       describe('#parseMeetingInfo', () => {
         const checkParseMeetingInfo = (expectedInfoToParse) => {
           assert.equal(meeting.conversationUrl, expectedInfoToParse.conversationUrl);
@@ -11800,6 +11941,7 @@ describe('plugin-meetings', () => {
         let canUnsetDisallowUnmuteSpy;
         let canUserRaiseHandSpy;
         let bothLeaveAndEndMeetingAvailableSpy;
+        let requireHostEndMeetingBeforeLeaveSpy;
         let canUserLowerAllHandsSpy;
         let canUserLowerSomeoneElsesHandSpy;
         let waitingForOthersToJoinSpy;
@@ -11811,6 +11953,8 @@ describe('plugin-meetings', () => {
         let canMoveToLobbySpy;
         let isSpokenLanguageAutoDetectionEnabledSpy;
         let showAutoEndMeetingWarningSpy;
+        let canAttendeeRequestAiAssistantEnabledSpy;
+        let attendeeRequestAiAssistantDeclinedAllSpy;
         // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
         beforeEach(() => {
@@ -11831,6 +11975,10 @@ describe('plugin-meetings', () => {
             MeetingUtil,
             'bothLeaveAndEndMeetingAvailable'
           );
+          requireHostEndMeetingBeforeLeaveSpy = sinon.spy(
+            MeetingUtil,
+            'requireHostEndMeetingBeforeLeave'
+          );
           canUserLowerSomeoneElsesHandSpy = sinon.spy(MeetingUtil, 'canUserLowerSomeoneElsesHand');
           waitingForOthersToJoinSpy = sinon.spy(MeetingUtil, 'waitingForOthersToJoin');
           canSendReactionsSpy = sinon.spy(MeetingUtil, 'canSendReactions');
@@ -11847,12 +11995,22 @@ describe('plugin-meetings', () => {
             MeetingUtil,
             'isSpokenLanguageAutoDetectionEnabled'
           );
+          canAttendeeRequestAiAssistantEnabledSpy = sinon.spy(
+            MeetingUtil,
+            'canAttendeeRequestAiAssistantEnabled'
+          );
+          attendeeRequestAiAssistantDeclinedAllSpy = sinon.spy(
+            MeetingUtil,
+            'attendeeRequestAiAssistantDeclinedAll'
+          );
         });
 
         afterEach(() => {
           inMeetingActionsSetSpy.restore();
           waitingForOthersToJoinSpy.restore();
           showAutoEndMeetingWarningSpy.restore();
+          canAttendeeRequestAiAssistantEnabledSpy.restore();
+          attendeeRequestAiAssistantDeclinedAllSpy.restore();
         });
 
         forEach(
@@ -12376,6 +12534,7 @@ describe('plugin-meetings', () => {
           const userDisplayHints = ['LOCK_CONTROL_UNLOCK'];
           meeting.userDisplayHints = ['LOCK_CONTROL_UNLOCK'];
           meeting.meetingInfo.supportVoIP = true;
+          meeting.roles = [];
 
           meeting.updateMeetingActions();
 
@@ -12391,6 +12550,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(canUnsetDisallowUnmuteSpy, userDisplayHints);
           assert.calledWith(canUserRaiseHandSpy, userDisplayHints);
           assert.calledWith(bothLeaveAndEndMeetingAvailableSpy, userDisplayHints);
+          assert.calledWith(requireHostEndMeetingBeforeLeaveSpy, userDisplayHints);
           assert.calledWith(canUserLowerAllHandsSpy, userDisplayHints);
           assert.calledWith(canUserLowerSomeoneElsesHandSpy, userDisplayHints);
           assert.calledWith(waitingForOthersToJoinSpy, userDisplayHints);
@@ -12402,6 +12562,12 @@ describe('plugin-meetings', () => {
           assert.calledWith(canMoveToLobbySpy, userDisplayHints);
           assert.calledWith(showAutoEndMeetingWarningSpy, userDisplayHints);
           assert.calledWith(isSpokenLanguageAutoDetectionEnabledSpy, userDisplayHints);
+          assert.calledWith(
+            canAttendeeRequestAiAssistantEnabledSpy,
+            userDisplayHints,
+            meeting.roles
+          );
+          assert.calledWith(attendeeRequestAiAssistantDeclinedAllSpy, userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],
@@ -12544,33 +12710,159 @@ describe('plugin-meetings', () => {
 
       describe('#handleDataChannelUrlChange', () => {
         let updateLLMConnectionSpy;
+        let updatePSDataChannelSpy;
 
         beforeEach(() => {
           updateLLMConnectionSpy = sinon.spy(meeting, 'updateLLMConnection');
+          updatePSDataChannelSpy = sinon.stub(meeting.webinar, 'updatePSDataChannel').resolves();
+          meeting.webinar.isJoinPracticeSessionDataChannel = sinon.stub().returns(false);
         });
 
-        const check = (url, expectedCalled) => {
-          meeting.handleDataChannelUrlChange(url);
+        const check = (
+          url,
+          practiceSessionDatachannelUrl,
+          {expectedMainCalled, expectedPracticeCalled}
+        ) => {
+          meeting.handleDataChannelUrlChange(url, practiceSessionDatachannelUrl);
 
-          if (expectedCalled) {
+          if (expectedMainCalled) {
             assert.calledWith(updateLLMConnectionSpy);
           } else {
             assert.notCalled(updateLLMConnectionSpy);
+          }
+
+          if (expectedPracticeCalled) {
+            assert.calledWith(updatePSDataChannelSpy);
+          } else {
+            assert.notCalled(updatePSDataChannelSpy);
           }
         };
 
         it('calls deferred updateLLMConnection if datachannelURL is set and the enableAutomaticLLM is true', () => {
           meeting.config.enableAutomaticLLM = true;
-          check('some url', true);
+          check('some url', undefined, {expectedMainCalled: true, expectedPracticeCalled: false});
         });
 
         it('does not call updateLLMConnection if datachannelURL is undefined', () => {
           meeting.config.enableAutomaticLLM = true;
-          check(undefined, false);
+          check(undefined, undefined, {
+            expectedMainCalled: false,
+            expectedPracticeCalled: false,
+          });
         });
 
         it('does not call updateLLMConnection if enableAutomaticLLM is false', () => {
-          check('some url', false);
+          check('some url', 'some practice url', {
+            expectedMainCalled: false,
+            expectedPracticeCalled: false,
+          });
+        });
+
+        it('calls updatePSDataChannel when practice-session routing is active', () => {
+          meeting.config.enableAutomaticLLM = true;
+          meeting.webinar.isJoinPracticeSessionDataChannel.returns(true);
+
+          check('some url', 'some practice url', {
+            expectedMainCalled: true,
+            expectedPracticeCalled: true,
+          });
+        });
+
+        it('does not call updatePSDataChannel when the main datachannelURL is undefined', () => {
+          meeting.config.enableAutomaticLLM = true;
+          meeting.webinar.isJoinPracticeSessionDataChannel.returns(true);
+
+          check(undefined, 'some practice url', {
+            expectedMainCalled: false,
+            expectedPracticeCalled: false,
+          });
+        });
+      });
+
+      describe('#saveDataChannelToken', () => {
+        beforeEach(() => {
+          webex.internal.llm.setDatachannelToken = sinon.stub();
+        });
+
+        it('saves datachannelToken into LLM as Default', () => {
+          meeting.saveDataChannelToken({
+            locus: {
+              self: {datachannelToken: 'default-token'},
+            },
+          });
+
+          assert.calledWithExactly(
+            webex.internal.llm.setDatachannelToken,
+            'default-token',
+            'llm-default-session'
+          );
+        });
+
+        it('saves practiceSessionDatachannelToken into LLM as PracticeSession', () => {
+          meeting.saveDataChannelToken({
+            locus: {
+              self: {practiceSessionDatachannelToken: 'ps-token'},
+            },
+          });
+
+          assert.calledWithExactly(
+            webex.internal.llm.setDatachannelToken,
+            'ps-token',
+            'llm-practice-session'
+          );
+        });
+
+        it('saves both tokens when both are present', () => {
+          meeting.saveDataChannelToken({
+            locus: {
+              self: {
+                datachannelToken: 'default-token',
+                practiceSessionDatachannelToken: 'ps-token',
+              },
+            },
+          });
+
+          assert.calledTwice(webex.internal.llm.setDatachannelToken);
+          assert.calledWithExactly(
+            webex.internal.llm.setDatachannelToken,
+            'default-token',
+            'llm-default-session'
+          );
+          assert.calledWithExactly(
+            webex.internal.llm.setDatachannelToken,
+            'ps-token',
+            'llm-practice-session'
+          );
+        });
+
+        it('does not call setDatachannelToken when no tokens are present', () => {
+          meeting.saveDataChannelToken({locus: {self: {}}});
+
+          assert.notCalled(webex.internal.llm.setDatachannelToken);
+        });
+
+        it('handles undefined join gracefully', () => {
+          meeting.saveDataChannelToken(undefined);
+
+          assert.notCalled(webex.internal.llm.setDatachannelToken);
+        });
+
+        it('handles missing locus.self gracefully', () => {
+          meeting.saveDataChannelToken({locus: {}});
+
+          assert.notCalled(webex.internal.llm.setDatachannelToken);
+        });
+      });
+
+      describe('#clearDataChannelToken', () => {
+        beforeEach(() => {
+          webex.internal.llm.resetDatachannelTokens = sinon.stub();
+        });
+
+        it('calls resetDatachannelTokens on LLM', () => {
+          meeting.clearDataChannelToken();
+
+          assert.calledOnce(webex.internal.llm.resetDatachannelTokens);
         });
       });
 
@@ -12579,16 +12871,20 @@ describe('plugin-meetings', () => {
           webex.internal.llm.isConnected = sinon.stub().returns(false);
           webex.internal.llm.getLocusUrl = sinon.stub();
           webex.internal.llm.getDatachannelUrl = sinon.stub();
-          webex.internal.llm.registerAndConnect = sinon
-            .stub()
-            .returns(Promise.resolve('something'));
-          webex.internal.llm.disconnectLLM = sinon.stub().returns(Promise.resolve());
-          meeting.webex.internal.llm.on = sinon.stub();
-          meeting.webex.internal.llm.off = sinon.stub();
+          webex.internal.llm.registerAndConnect = sinon.stub().resolves('something');
+          webex.internal.llm.disconnectLLM = sinon.stub().resolves();
+          webex.internal.llm.on = sinon.stub();
+          webex.internal.llm.off = sinon.stub();
+          webex.internal.llm.getDatachannelToken = sinon.stub().returns(undefined);
+          webex.internal.llm.setDatachannelToken = sinon.stub();
+
           meeting.processRelayEvent = sinon.stub();
+          meeting.processLocusLLMEvent = sinon.stub();
+          meeting.clearLLMHealthCheckTimer = sinon.stub();
+          meeting.startLLMHealthCheckTimer = sinon.stub();
+
           meeting.webinar.isJoinPracticeSessionDataChannel = sinon.stub().returns(false);
         });
-
         it('does not connect if the call is not joined yet', async () => {
           meeting.joinedWith = {state: 'any other state'};
           webex.internal.llm.getLocusUrl.returns('a url');
@@ -12602,23 +12898,43 @@ describe('plugin-meetings', () => {
           assert.equal(result, undefined);
           assert.notCalled(meeting.webex.internal.llm.on);
         });
-
         it('returns undefined if llm is already connected and the locus url is unchanged', async () => {
           meeting.joinedWith = {state: 'JOINED'};
-          webex.internal.llm.isConnected.returns(true);
-          webex.internal.llm.getLocusUrl.returns('a url');
-          webex.internal.llm.getDatachannelUrl.returns('a datachannel url');
-
-          meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
+          meeting.locusInfo = {
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
 
           const result = await meeting.updateLLMConnection();
-
-          assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.notCalled(webex.internal.llm.disconnectLLM);
-          assert.equal(result, undefined);
-          assert.notCalled(meeting.webex.internal.llm.on);
+          assert.calledWithExactly(
+            webex.internal.llm.registerAndConnect,
+            'a url',
+            'a datachannel url',
+            undefined
+          );
+          assert.equal(result, 'something');
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.off,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
+          );
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.on,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            meeting.webex.internal.llm.on,
+            'event:locus.state_message',
+            meeting.processLocusLLMEvent
+          );
         });
-
         it('connects if not already connected', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
@@ -12626,50 +12942,42 @@ describe('plugin-meetings', () => {
           const result = await meeting.updateLLMConnection();
 
           assert.notCalled(webex.internal.llm.disconnectLLM);
-          assert.calledWith(webex.internal.llm.registerAndConnect, 'a url', 'a datachannel url');
+          assert.calledWithExactly(
+            webex.internal.llm.registerAndConnect,
+            'a url',
+            'a datachannel url',
+            undefined
+          );
           assert.equal(result, 'something');
-          assert.calledWithExactly(
-            meeting.webex.internal.llm.off,
-            'event:relay.event',
-            meeting.processRelayEvent
-          );
-          assert.calledWithExactly(
-            meeting.webex.internal.llm.off,
-            'event:locus.state_message',
-            meeting.processLocusLLMEvent
-          );
-          assert.calledWithExactly(
-            meeting.webex.internal.llm.on,
-            'event:relay.event',
-            meeting.processRelayEvent
-          );
-          assert.calledWithExactly(
-            meeting.webex.internal.llm.on,
-            'event:locus.state_message',
-            meeting.processLocusLLMEvent
-          );
         });
-
-        it('disconnects if first if the locus url has changed', async () => {
+        it('disconnects if the locus url has changed', async () => {
           meeting.joinedWith = {state: 'JOINED'};
+
           webex.internal.llm.isConnected.returns(true);
           webex.internal.llm.getLocusUrl.returns('a url');
-          webex.internal.llm.getDatachannelUrl.returns('a datachannel url');
 
-          meeting.locusInfo = {url: 'a different url', info: {datachannelUrl: 'a datachannel url'}};
+          meeting.locusInfo = {
+            url: 'a different url',
+            info: {datachannelUrl: 'a datachannel url'},
+            self: {},
+          };
 
           const result = await meeting.updateLLMConnection();
 
-          assert.calledWith(webex.internal.llm.disconnectLLM, {
+          assert.calledWithExactly(webex.internal.llm.disconnectLLM, {
             code: 3050,
             reason: 'done (permanent)',
           });
-          assert.calledWith(
+
+          assert.calledWithExactly(
             webex.internal.llm.registerAndConnect,
             'a different url',
-            'a datachannel url'
+            'a datachannel url',
+            undefined
           );
+
           assert.equal(result, 'something');
+
           assert.calledWithExactly(
             meeting.webex.internal.llm.off,
             'event:relay.event',
@@ -12681,6 +12989,7 @@ describe('plugin-meetings', () => {
             meeting.processLocusLLMEvent
           );
           assert.callCount(meeting.webex.internal.llm.off, 4);
+
           assert.calledWithExactly(
             meeting.webex.internal.llm.on,
             'event:relay.event',
@@ -12691,28 +13000,37 @@ describe('plugin-meetings', () => {
             'event:locus.state_message',
             meeting.processLocusLLMEvent
           );
+          assert.isFalse(
+            meeting.webex.internal.llm.off.calledWithExactly('online', meeting.handleLLMOnline)
+          );
         });
-
-        it('disconnects it first if the data channel url has changed', async () => {
+        it('disconnects if the data channel url has changed', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           webex.internal.llm.isConnected.returns(true);
           webex.internal.llm.getLocusUrl.returns('a url');
-          webex.internal.llm.getDatachannelUrl.returns('a datachannel url');
 
-          meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a different datachannel url'}};
+          meeting.locusInfo = {
+            url: 'a url',
+            info: {datachannelUrl: 'a different datachannel url'},
+            self: {},
+          };
 
           const result = await meeting.updateLLMConnection();
 
-          assert.calledWith(webex.internal.llm.disconnectLLM, {
+          assert.calledWithExactly(webex.internal.llm.disconnectLLM, {
             code: 3050,
             reason: 'done (permanent)',
           });
-          assert.calledWith(
+
+          assert.calledWithExactly(
             webex.internal.llm.registerAndConnect,
             'a url',
-            'a different datachannel url'
+            'a different datachannel url',
+            undefined
           );
+
           assert.equal(result, 'something');
+
           assert.calledWithExactly(
             meeting.webex.internal.llm.off,
             'event:relay.event',
@@ -12723,6 +13041,7 @@ describe('plugin-meetings', () => {
             'event:locus.state_message',
             meeting.processLocusLLMEvent
           );
+
           assert.calledWithExactly(
             meeting.webex.internal.llm.on,
             'event:relay.event',
@@ -12732,9 +13051,11 @@ describe('plugin-meetings', () => {
             meeting.webex.internal.llm.on,
             'event:locus.state_message',
             meeting.processLocusLLMEvent
+          );
+          assert.isFalse(
+            meeting.webex.internal.llm.off.calledWithExactly('online', meeting.handleLLMOnline)
           );
         });
-
         it('disconnects when the state is not JOINED', async () => {
           meeting.joinedWith = {state: 'any other state'};
           webex.internal.llm.isConnected.returns(true);
@@ -12744,9 +13065,38 @@ describe('plugin-meetings', () => {
 
           const result = await meeting.updateLLMConnection();
 
-          assert.calledWith(webex.internal.llm.disconnectLLM, undefined);
+          assert.calledWith(webex.internal.llm.disconnectLLM, {
+            code: 3050,
+            reason: 'done (permanent)',
+          });
           assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.equal(result, undefined);
+          assert.isFalse(
+            meeting.webex.internal.llm.off.calledWithExactly('online', meeting.handleLLMOnline)
+          );
+        });
+        it('rethrows disconnect errors during reconnect cleanup after removing relay listeners and timer', async () => {
+          const disconnectError = new Error('disconnect failed');
+
+          meeting.joinedWith = {state: 'JOINED'};
+          webex.internal.llm.isConnected.returns(true);
+          webex.internal.llm.getLocusUrl.returns('a url');
+          webex.internal.llm.disconnectLLM.rejects(disconnectError);
+
+          meeting.locusInfo = {
+            url: 'a different url',
+            info: {datachannelUrl: 'a datachannel url'},
+            self: {},
+          };
+
+          try {
+            await meeting.updateLLMConnection();
+            assert.fail('Expected updateLLMConnection to reject when disconnectLLM fails');
+          } catch (error) {
+            assert.equal(error, disconnectError);
+          }
+
+          assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.calledWithExactly(
             meeting.webex.internal.llm.off,
             'event:relay.event',
@@ -12757,22 +13107,159 @@ describe('plugin-meetings', () => {
             'event:locus.state_message',
             meeting.processLocusLLMEvent
           );
+          assert.isFalse(
+            meeting.webex.internal.llm.off.calledWithExactly('online', meeting.handleLLMOnline)
+          );
+          assert.calledOnce(meeting.clearLLMHealthCheckTimer);
         });
-
-        it('connect ps data channel if ps started in webinar', async () => {
+        it('still need connect main session data channel when PS started', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {
             url: 'a url',
             info: {
               datachannelUrl: 'a datachannel url',
-              practiceSessionDatachannelUrl: 'a ps datachannel url',
+              practiceSessionDatachannelUrl: 'ps-url',
             },
           };
-          meeting.webinar.isJoinPracticeSessionDataChannel = sinon.stub().returns(true);
+          meeting.webinar.isJoinPracticeSessionDataChannel.returns(true);
+
           await meeting.updateLLMConnection();
 
-          assert.notCalled(webex.internal.llm.disconnectLLM);
-          assert.calledWith(webex.internal.llm.registerAndConnect, 'a url', 'a ps datachannel url');
+          assert.calledWithExactly(
+            webex.internal.llm.registerAndConnect,
+            'a url',
+            'a datachannel url',
+            undefined
+          );
+        });
+        it('passes dataChannelToken from LLM to registerAndConnect', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          webex.internal.llm.getDatachannelToken.withArgs('llm-default-session').returns('token-123');
+
+          await meeting.updateLLMConnection();
+
+          assert.calledWithExactly(
+            webex.internal.llm.registerAndConnect,
+            'a url',
+            'a datachannel url',
+            'token-123'
+          );
+          assert.notCalled(webex.internal.llm.setDatachannelToken);
+        });
+        it('passes undefined token when LLM has no token stored', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          webex.internal.llm.getDatachannelToken.returns(undefined);
+
+          await meeting.updateLLMConnection();
+
+          assert.calledWithExactly(
+            webex.internal.llm.registerAndConnect,
+            'a url',
+            'a datachannel url',
+            undefined
+          );
+
+          assert.notCalled(webex.internal.llm.setDatachannelToken);
+        });
+
+        it('does not pass token when data channel with jwt token is disabled', async () => {
+          meeting.joinedWith = {state: 'JOINED'};
+          meeting.locusInfo = {
+            url: 'a url',
+            info: {datachannelUrl: 'a datachannel url'},
+          };
+
+          webex.internal.llm.getDatachannelToken.returns(undefined);
+          webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(false);
+
+          await meeting.updateLLMConnection();
+
+          assert.calledWithExactly(
+            webex.internal.llm.registerAndConnect,
+            'a url',
+            'a datachannel url',
+            undefined
+          );
+          assert.notCalled(webex.internal.llm.setDatachannelToken);
+        });
+
+        describe('#clearMeetingData', () => {
+          beforeEach(() => {
+            webex.internal.llm.isConnected = sinon.stub().returns(true);
+            webex.internal.llm.disconnectLLM = sinon.stub().resolves();
+            webex.internal.llm.off = sinon.stub();
+            meeting.annotation.deregisterEvents = sinon.stub();
+            meeting.clearLLMHealthCheckTimer = sinon.stub();
+            meeting.stopTranscription = sinon.stub();
+            meeting.clearDataChannelToken = sinon.stub();
+            meeting.shareStatus = 'no-share';
+          });
+
+          it('disconnects llm and removes online and relay listeners during meeting data cleanup', async () => {
+            await meeting.clearMeetingData();
+
+            assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
+              code: 3050,
+              reason: 'done (permanent)',
+            });
+            assert.calledWithExactly(webex.internal.llm.off, 'online', meeting.handleLLMOnline);
+            assert.calledWithExactly(
+              webex.internal.llm.off,
+              'event:relay.event',
+              meeting.processRelayEvent
+            );
+            assert.calledWithExactly(
+              webex.internal.llm.off,
+              'event:locus.state_message',
+              meeting.processLocusLLMEvent
+            );
+            assert.calledOnce(meeting.clearLLMHealthCheckTimer);
+            assert.calledOnce(meeting.stopTranscription);
+            assert.isUndefined(meeting.transcription);
+            assert.calledOnce(meeting.clearDataChannelToken);
+            assert.calledOnce(meeting.annotation.deregisterEvents);
+          });
+          it('continues cleanup when disconnectLLM fails during meeting data cleanup', async () => {
+            webex.internal.llm.disconnectLLM.rejects(new Error('disconnect failed'));
+
+            await meeting.clearMeetingData();
+
+            assert.calledWithExactly(webex.internal.llm.off, 'online', meeting.handleLLMOnline);
+            assert.calledWithExactly(
+              webex.internal.llm.off,
+              'event:relay.event',
+              meeting.processRelayEvent
+            );
+            assert.calledWithExactly(
+              webex.internal.llm.off,
+              'event:locus.state_message',
+              meeting.processLocusLLMEvent
+            );
+            assert.calledOnce(meeting.clearLLMHealthCheckTimer);
+            assert.calledOnce(meeting.stopTranscription);
+            assert.isUndefined(meeting.transcription);
+            assert.calledOnce(meeting.clearDataChannelToken);
+            assert.calledOnce(meeting.annotation.deregisterEvents);
+          });
+          it('always calls stopTranscription even when transcription is undefined', async () => {
+            meeting.transcription = undefined;
+
+            await meeting.clearMeetingData();
+
+            assert.calledOnce(meeting.stopTranscription);
+            assert.isUndefined(meeting.transcription);
+            assert.calledOnce(meeting.clearDataChannelToken);
+          });
         });
       });
 
@@ -14340,6 +14827,69 @@ describe('plugin-meetings', () => {
           assert.isNull(meeting.keepAliveTimerId);
           await progressTime(defaultExpectedInterval);
           assert.calledOnce(meeting.meetingRequest.keepAlive);
+        });
+      });
+      describe('#refreshDataChannelToken()', () => {
+        let meeting;
+
+        beforeEach(() => {
+          meeting = Object.create(Meeting.prototype);
+          meeting.locusUrl = 'https://locus.example.com';
+          meeting.meetingRequest = {
+            fetchDatachannelToken: sinon.stub().resolves({
+              body: {datachannelToken: 'mock-token'},
+            }),
+          };
+          meeting.members = {
+            selfId: 'self-123',
+          };
+          meeting.webinar = {
+            isJoinPracticeSessionDataChannel: sinon.stub().returns(true),
+          };
+        });
+
+        it('calls fetchDatachannelToken with correct parameters', async () => {
+          await meeting.refreshDataChannelToken();
+
+          sinon.assert.calledOnce(meeting.meetingRequest.fetchDatachannelToken);
+
+          sinon.assert.calledWith(meeting.meetingRequest.fetchDatachannelToken, {
+            locusUrl: 'https://locus.example.com',
+            requestingParticipantId: 'self-123',
+            isPracticeSession: true,
+          });
+        });
+
+        it('returns the correct structured result', async () => {
+          const result = await meeting.refreshDataChannelToken();
+
+          expect(result).to.deep.equal({
+            body: {
+              datachannelToken: 'mock-token',
+              dataChannelTokenType: 'llm-practice-session',
+            },
+          });
+        });
+      });
+      describe('#getDataChannelTokenType', () => {
+        it('returns PracticeSession when webinar is in practice session mode', () => {
+          meeting.webinar = {
+            isJoinPracticeSessionDataChannel: sinon.stub().returns(true),
+          };
+
+          const result = meeting.getDataChannelTokenType();
+
+          expect(result).to.equal('llm-practice-session');
+        });
+
+        it('returns Default when not in practice session mode', () => {
+          meeting.webinar = {
+            isJoinPracticeSessionDataChannel: sinon.stub().returns(false),
+          };
+
+          const result = meeting.getDataChannelTokenType();
+
+          expect(result).to.equal('llm-default-session');
         });
       });
       describe('#stopKeepAlive', () => {

@@ -284,7 +284,8 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
         devicePairingType: webex.devicemanager.getPairedMethod(),
         deviceURL: pairedDevice.url,
         isPersonalDevice: pairedDevice.mode === 'personal',
-        productName: pairedDevice.devices[0]?.productName,
+        productName:
+          pairedDevice.devices?.length > 0 ? pairedDevice.devices[0]?.productName : undefined,
       };
       item.eventPayload.event.pairingState = 'paired';
       item.eventPayload.event.pairedDevice = devicePayload;
@@ -361,7 +362,6 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
       joinTimes.totalMediaJMT = cdl.getTotalMediaJMT();
       joinTimes.interstitialToMediaOKJMT = cdl.getInterstitialToMediaOKJMT();
       joinTimes.callInitMediaEngineReady = cdl.getCallInitMediaEngineReady();
-      joinTimes.stayLobbyTime = cdl.getStayLobbyTime();
       joinTimes.totalMediaJMTWithUserDelay = cdl.getTotalMediaJMTWithUserDelay();
       joinTimes.totalJMTWithUserDelay = cdl.getTotalJMTWithUserDelay();
       break;
@@ -369,6 +369,11 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
     case 'client.media.tx.start':
       audioSetupDelay.joinRespTxStart = cdl.getAudioJoinRespTxStart();
       videoSetupDelay.joinRespTxStart = cdl.getVideoJoinRespTxStart();
+      break;
+
+    case 'client.lobby.exited':
+      joinTimes.stayLobbyTime = cdl.getStayLobbyTime();
+      break;
   }
 
   if (!isEmpty(joinTimes)) {

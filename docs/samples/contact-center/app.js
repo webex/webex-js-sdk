@@ -15,6 +15,8 @@ let consultationData = null; // Track who we consulted with for conference
 let entryPointId = '';
 let stateTimer;
 let currentConsultQueueId;
+let campaignCountdownInterval = null; // Campaign preview countdown timer
+let campaignPreviewAutoAction = null; // Auto-action on timeout: ACCEPT, SKIP, REMOVE
 let outdialANIId; // Store outdial ANI ID from agent profile
 
 const authTypeElm = document.querySelector('#auth-type');
@@ -84,6 +86,13 @@ const changeEnvBtn = document.querySelector('#changeEnv');
 const autoWrapupTimerElm = document.getElementById('autoWrapupTimer');
 const timerValueElm = autoWrapupTimerElm.querySelector('.timer-value');
 const outdialAniSelectElm = document.querySelector('#outdialAniSelect');
+const realtimeTranscriptsElm = document.querySelector('#realtime-transcripts-content');
+const clearTranscriptsButton = document.querySelector('#clear-transcripts');
+const ivrTranscriptContentElm = document.querySelector('#ivr-transcript-content');
+const ivrTranscriptTabButton = document.querySelector('#ivr-transcript-tab');
+const liveTranscriptTabButton = document.querySelector('#live-transcript-tab');
+const ivrTranscriptPanel = document.querySelector('#ivr-transcript-panel');
+const liveTranscriptPanel = document.querySelector('#live-transcript-panel');
 deregisterBtn.style.backgroundColor = 'red';
 let enableProd = true;
 
@@ -91,6 +100,185 @@ function changeEnv() {
   enableProd = !enableProd;
   changeEnvBtn.innerHTML = enableProd ? 'In Production' : 'In Integration';
 }
+
+const liveTranscriptEntries = [];
+const MAX_TRANSCRIPT_LINES = 200;
+let activeTranscriptConversationId = null;
+
+function setTranscriptTab(tabName) {
+  const isIvrTab = tabName === 'ivr';
+  ivrTranscriptTabButton?.classList.toggle('active', isIvrTab);
+  liveTranscriptTabButton?.classList.toggle('active', !isIvrTab);
+  ivrTranscriptTabButton?.setAttribute('aria-selected', String(isIvrTab));
+  liveTranscriptTabButton?.setAttribute('aria-selected', String(!isIvrTab));
+  ivrTranscriptPanel?.classList.toggle('active', isIvrTab);
+  ivrTranscriptPanel?.classList.toggle('hidden', !isIvrTab);
+  liveTranscriptPanel?.classList.toggle('active', !isIvrTab);
+  liveTranscriptPanel?.classList.toggle('hidden', isIvrTab);
+}
+
+function formatTranscriptTimestamp(value) {
+  if (value === undefined || value === null || value === '') {
+    return '00:00';
+  }
+
+  let timestamp = Number(value);
+  if (Number.isNaN(timestamp)) {
+    timestamp = Date.parse(value);
+  }
+
+  if (Number.isNaN(timestamp)) {
+    return '00:00';
+  }
+
+  if (timestamp < 1_000_000_000_000) {
+    timestamp *= 1000;
+  }
+
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function normalizeTranscriptPayload(payload) {
+  const source = payload?.data?.data || payload?.data || payload || {};
+
+  const textCandidate = source.content || source.transcript || source.text || source.message || source.action || '';
+  const transcriptText = Array.isArray(textCandidate)
+    ? textCandidate.join(' ')
+    : String(textCandidate || '').trim();
+  if (!transcriptText) {
+    return null;
+  }
+
+  const rawSpeaker = source.speaker || source.speakerType || source.participantType || source.role || source.source || '';
+  const speakerLower = String(rawSpeaker).toLowerCase();
+  const isSystem = speakerLower.includes('tombstone') || speakerLower.includes('system') || speakerLower.includes('event');
+  const isCustomer = speakerLower.includes('customer');
+
+  const speaker = isSystem ? 'Tombstone' : isCustomer ? 'Customer' : 'You';
+  const timestamp = source.timestamp || source.createdTime || source.time || source.receivedAt;
+
+  return {
+    type: isSystem ? 'system' : 'speech',
+    speaker,
+    text: transcriptText,
+    timeLabel: formatTranscriptTimestamp(timestamp),
+    conversationId: source.conversationId || source.interactionId || null,
+  };
+}
+
+function renderLiveTranscripts() {
+  if (!realtimeTranscriptsElm) {
+    return;
+  }
+
+  realtimeTranscriptsElm.innerHTML = '';
+  if (liveTranscriptEntries.length === 0) {
+    const emptyState = document.createElement('div');
+    emptyState.className = 'realtime-transcript-empty';
+    emptyState.textContent = 'No live transcript available.';
+    realtimeTranscriptsElm.appendChild(emptyState);
+    return;
+  }
+
+  liveTranscriptEntries.forEach((entry) => {
+    if (entry.type === 'system') {
+      const systemLine = document.createElement('div');
+      systemLine.className = 'realtime-transcript-system';
+      systemLine.textContent = `%${entry.speaker} - ${entry.text}%. ${entry.timeLabel}`;
+      realtimeTranscriptsElm.appendChild(systemLine);
+      return;
+    }
+
+    const row = document.createElement('div');
+    row.className = 'realtime-transcript-event';
+
+    const avatar = document.createElement('div');
+    avatar.className = `realtime-transcript-avatar ${entry.speaker === 'You' ? 'you' : ''}`.trim();
+    avatar.textContent = entry.speaker === 'Customer' ? 'CU' : 'YO';
+
+    const content = document.createElement('div');
+    const meta = document.createElement('div');
+    meta.className = 'realtime-transcript-meta';
+
+    const speaker = document.createElement('span');
+    speaker.className = 'realtime-transcript-speaker';
+    speaker.textContent = `%${entry.speaker}%`;
+
+    const time = document.createElement('button');
+    time.className = 'realtime-transcript-time';
+    time.type = 'button';
+    time.textContent = entry.timeLabel;
+
+    const text = document.createElement('p');
+    text.className = 'realtime-transcript-text';
+    text.textContent = entry.text;
+
+    meta.appendChild(speaker);
+    meta.appendChild(time);
+    content.appendChild(meta);
+    content.appendChild(text);
+    row.appendChild(avatar);
+    row.appendChild(content);
+    realtimeTranscriptsElm.appendChild(row);
+  });
+
+  realtimeTranscriptsElm.scrollTop = realtimeTranscriptsElm.scrollHeight;
+}
+
+function resetLiveTranscripts() {
+  liveTranscriptEntries.length = 0;
+  activeTranscriptConversationId = null;
+  renderLiveTranscripts();
+}
+
+function appendRealtimeTranscript(payload) {
+  const entry = normalizeTranscriptPayload(payload);
+  if (!entry) {
+    return;
+  }
+
+  if (entry.conversationId && activeTranscriptConversationId && activeTranscriptConversationId !== entry.conversationId) {
+    resetLiveTranscripts();
+  }
+
+  if (entry.conversationId) {
+    activeTranscriptConversationId = entry.conversationId;
+  }
+
+  liveTranscriptEntries.push(entry);
+  if (liveTranscriptEntries.length > MAX_TRANSCRIPT_LINES) {
+    liveTranscriptEntries.shift();
+  }
+
+  renderLiveTranscripts();
+}
+
+function renderIvrTranscript(task) {
+  if (!ivrTranscriptContentElm) {
+    return;
+  }
+
+  const ivrText = task?.data?.interaction?.callProcessingDetails?.convIvrTranscript;
+  if (typeof ivrText === 'string' && ivrText.trim()) {
+    ivrTranscriptContentElm.textContent = ivrText;
+  } else {
+    ivrTranscriptContentElm.textContent = 'No IVR transcript available.';
+  }
+}
+
+if (clearTranscriptsButton) {
+  clearTranscriptsButton.addEventListener('click', () => {
+    resetLiveTranscripts();
+  });
+}
+
+ivrTranscriptTabButton?.addEventListener('click', () => setTranscriptTab('ivr'));
+liveTranscriptTabButton?.addEventListener('click', () => setTranscriptTab('live'));
+setTranscriptTab('live');
+renderLiveTranscripts();
 
 function isIncomingTask(task, agentId) {
   const taskData = task?.data;
@@ -907,8 +1095,7 @@ async function loadOutdialAniEntries(outdialANIId) {
     console.log(`Loaded ${aniList.length} outdial ANI entries`);
 
   } catch (error) {
-    console.error('Failed to load outdial ANI entries:', error);
-    alert('Failed to load outdial ANI entries', error)
+    console.log('Failed to load outdial ANI entries:', error);
     // Add error option to select
     outdialAniSelectElm.innerHTML = '<option value="">Select Caller ID...</option>';
     const errorOption = document.createElement('option');
@@ -948,6 +1135,238 @@ async function startOutdial() {
   } catch (error) {
     console.error('Failed to initiate outdial call', error);
     alert('Failed to initiate outdial call: ' + (error.message || error));
+  }
+}
+
+// Campaign Preview Contact Functions
+
+function getCampaignPreviewPayload() {
+  const interactionId = document.getElementById('campaign-interaction-id').value.trim();
+  const campaignId = document.getElementById('campaign-id').value.trim();
+  console.log('[CampaignPreview] getCampaignPreviewPayload:', { interactionId, campaignId });
+  if (!interactionId || !campaignId) {
+    console.warn('[CampaignPreview] Missing required fields - interactionId:', interactionId, 'campaignId:', campaignId);
+    alert('Interaction ID and Campaign ID are required');
+    return null;
+  }
+  return { interactionId, campaignId };
+}
+
+function stopCampaignCountdown() {
+  if (campaignCountdownInterval) {
+    clearInterval(campaignCountdownInterval);
+    campaignCountdownInterval = null;
+  }
+}
+
+function formatCampaignCountdown(seconds) {
+  if (seconds <= 0) return '00:00';
+  const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+  const secs = String(seconds % 60).padStart(2, '0');
+  return `${mins}:${secs}`;
+}
+
+function startCampaignCountdown(timeoutTimestamp) {
+  stopCampaignCountdown();
+
+  const timerSection = document.getElementById('campaign-timer-section');
+  const countdownElm = document.getElementById('campaign-countdown');
+  timerSection.style.display = 'block';
+
+  function updateCountdown() {
+    const now = Date.now();
+    const diffMs = timeoutTimestamp - now;
+    const remaining = diffMs > 0 ? Math.ceil(diffMs / 1000) : 0;
+
+    countdownElm.textContent = formatCampaignCountdown(remaining);
+    countdownElm.style.color = remaining <= 10 ? '#d32f2f' : '#333';
+
+    if (remaining <= 0) {
+      stopCampaignCountdown();
+      handleCampaignTimeout();
+    }
+  }
+
+  updateCountdown();
+  campaignCountdownInterval = setInterval(updateCountdown, 1000);
+}
+
+function handleCampaignTimeout() {
+  console.log('[CampaignPreview] Countdown expired, autoAction:', campaignPreviewAutoAction);
+  const statusElm = document.getElementById('campaign-preview-status');
+  const acceptBtn = document.getElementById('acceptPreviewContact');
+  const skipBtn = document.getElementById('skipPreviewContact');
+  const removeBtn = document.getElementById('removePreviewContact');
+
+  if (campaignPreviewAutoAction === 'SKIP') {
+    statusElm.innerText = 'Timeout! Auto-SKIP triggered...';
+    acceptBtn.disabled = true;
+    skipBtn.disabled = true;
+    removeBtn.disabled = true;
+    skipPreviewContact();
+  } else if (campaignPreviewAutoAction === 'REMOVE') {
+    statusElm.innerText = 'Timeout! Auto-REMOVE triggered...';
+    acceptBtn.disabled = true;
+    skipBtn.disabled = true;
+    removeBtn.disabled = true;
+    removePreviewContact();
+  } else if (campaignPreviewAutoAction === 'ACCEPT') {
+    statusElm.innerText = 'Timeout! Auto-ACCEPT triggered...';
+    skipBtn.disabled = true;
+    removeBtn.disabled = true;
+    acceptPreviewContact();
+  } else {
+    statusElm.innerText = 'Countdown expired (no auto-action configured)';
+    acceptBtn.disabled = true;
+    skipBtn.disabled = true;
+    removeBtn.disabled = true;
+  }
+}
+
+function updateCampaignPreviewButtons(cpd) {
+  const skipAllowedElm = document.getElementById('campaign-skip-allowed');
+  const removeAllowedElm = document.getElementById('campaign-remove-allowed');
+
+  const skipDisabled = cpd?.campaignPreviewSkipDisabled === 'true';
+  const removeDisabled = cpd?.campaignPreviewRemoveDisabled === 'true';
+
+  // Show status but do NOT disable buttons — let the user attempt the action
+  // so they can see the SDK error when the action is disabled.
+  skipAllowedElm.textContent = skipDisabled ? 'No' : 'Yes';
+  skipAllowedElm.style.color = skipDisabled ? '#d32f2f' : '#2e7d32';
+  removeAllowedElm.textContent = removeDisabled ? 'No' : 'Yes';
+  removeAllowedElm.style.color = removeDisabled ? '#d32f2f' : '#2e7d32';
+}
+
+function resetCampaignPreviewUI() {
+  stopCampaignCountdown();
+  campaignPreviewAutoAction = null;
+  document.getElementById('campaign-timer-section').style.display = 'none';
+  document.getElementById('campaign-countdown').textContent = '--:--';
+  document.getElementById('campaign-auto-action').textContent = 'N/A';
+  document.getElementById('campaign-skip-allowed').textContent = '--';
+  document.getElementById('campaign-remove-allowed').textContent = '--';
+  document.getElementById('acceptPreviewContact').disabled = false;
+  document.getElementById('skipPreviewContact').disabled = false;
+  document.getElementById('removePreviewContact').disabled = false;
+}
+
+function setupCampaignPreviewFromTask(task) {
+  const cpd = task.data?.interaction?.callProcessingDetails || {};
+  const timeoutTimestamp = cpd.campaignPreviewOfferTimeout;
+  campaignPreviewAutoAction = cpd.campaignPreviewAutoAction || null;
+
+  const autoActionElm = document.getElementById('campaign-auto-action');
+  autoActionElm.textContent = campaignPreviewAutoAction || 'None';
+  autoActionElm.style.color = campaignPreviewAutoAction ? '#1565c0' : '#555';
+
+  updateCampaignPreviewButtons(cpd);
+
+  if (timeoutTimestamp) {
+    const ts = typeof timeoutTimestamp === 'string' ? parseInt(timeoutTimestamp, 10) : timeoutTimestamp;
+    if (!isNaN(ts) && ts > Date.now()) {
+      startCampaignCountdown(ts);
+    } else {
+      console.log('[CampaignPreview] Timeout already expired or invalid:', timeoutTimestamp);
+      document.getElementById('campaign-countdown').textContent = '00:00';
+      document.getElementById('campaign-timer-section').style.display = 'block';
+    }
+  } else {
+    document.getElementById('campaign-timer-section').style.display = 'block';
+    document.getElementById('campaign-countdown').textContent = 'No timeout';
+  }
+}
+
+function onCampaignReservationReceived(task) {
+  console.log('[CampaignPreview] === RESERVATION EVENT RECEIVED ===');
+  console.log('[CampaignPreview] Task data:', JSON.stringify(task.data, null, 2));
+  const interactionId = task.data?.interactionId || '';
+  const campaignId = task.data?.campaignId || task.data?.interaction?.callProcessingDetails?.campaignId || '';
+  console.log('[CampaignPreview] Resolved interactionId:', interactionId, 'campaignId (name):', campaignId);
+  document.getElementById('campaign-interaction-id').value = interactionId;
+  document.getElementById('campaign-id').value = campaignId;
+  document.getElementById('campaign-preview-status').innerText = 'Campaign preview contact received!';
+
+  resetCampaignPreviewUI();
+  setupCampaignPreviewFromTask(task);
+}
+
+async function acceptPreviewContact() {
+  const payload = getCampaignPreviewPayload();
+  if (!payload) return;
+  stopCampaignCountdown();
+  console.log('[CampaignPreview] === ACCEPT PREVIEW CONTACT ===');
+  console.log('[CampaignPreview] Sending payload:', JSON.stringify(payload));
+  try {
+    document.getElementById('acceptPreviewContact').disabled = true;
+    document.getElementById('campaign-preview-status').innerText = 'Accepting preview contact...';
+    const result = await webex.cc.acceptPreviewContact(payload);
+    console.log('[CampaignPreview] Accept SUCCESS - result:', JSON.stringify(result, null, 2));
+    document.getElementById('campaign-preview-status').innerText = 'Preview contact accepted!';
+    document.getElementById('campaign-interaction-id').value = '';
+    document.getElementById('campaign-id').value = '';
+  } catch (error) {
+    console.error('[CampaignPreview] Accept FAILED - error:', error);
+    console.error('[CampaignPreview] Error message:', error.message);
+    console.error('[CampaignPreview] Error details:', error.details);
+    console.error('[CampaignPreview] Error stack:', error.stack);
+    document.getElementById('campaign-preview-status').innerText = 'Accept failed: ' + (error.message || error);
+  } finally {
+    document.getElementById('acceptPreviewContact').disabled = false;
+  }
+}
+
+async function skipPreviewContact() {
+  const payload = getCampaignPreviewPayload();
+  if (!payload) return;
+  // Do NOT stop the countdown here — if the skip is not allowed, the timer
+  // must keep running so the auto-action can still fire on timeout.
+  // Consistent with Agent Desktop: timer runs independently of button clicks.
+  console.log('[CampaignPreview] === SKIP PREVIEW CONTACT ===');
+  console.log('[CampaignPreview] Sending payload:', JSON.stringify(payload));
+  try {
+    document.getElementById('skipPreviewContact').disabled = true;
+    document.getElementById('campaign-preview-status').innerText = 'Skipping preview contact...';
+    const result = await webex.cc.skipPreviewContact(payload);
+    console.log('[CampaignPreview] Skip SUCCESS - result:', JSON.stringify(result, null, 2));
+    stopCampaignCountdown(); // Only stop timer on success
+    document.getElementById('campaign-preview-status').innerText = 'Preview contact skipped!';
+    document.getElementById('campaign-interaction-id').value = '';
+    document.getElementById('campaign-id').value = '';
+  } catch (error) {
+    console.error('[CampaignPreview] Skip FAILED - error:', error);
+    console.error('[CampaignPreview] Error message:', error.message);
+    console.error('[CampaignPreview] Error details:', error.details);
+    document.getElementById('campaign-preview-status').innerText = 'Skip failed: ' + (error.message || error);
+  } finally {
+    document.getElementById('skipPreviewContact').disabled = false;
+  }
+}
+
+async function removePreviewContact() {
+  const payload = getCampaignPreviewPayload();
+  if (!payload) return;
+  // Do NOT stop the countdown here — if the remove is not allowed, the timer
+  // must keep running so the auto-action can still fire on timeout.
+  // Consistent with Agent Desktop: timer runs independently of button clicks.
+  console.log('[CampaignPreview] === REMOVE PREVIEW CONTACT ===');
+  console.log('[CampaignPreview] Sending payload:', JSON.stringify(payload));
+  try {
+    document.getElementById('removePreviewContact').disabled = true;
+    document.getElementById('campaign-preview-status').innerText = 'Removing preview contact...';
+    const result = await webex.cc.removePreviewContact(payload);
+    console.log('[CampaignPreview] Remove SUCCESS - result:', JSON.stringify(result, null, 2));
+    stopCampaignCountdown(); // Only stop timer on success
+    document.getElementById('campaign-preview-status').innerText = 'Preview contact removed!';
+    document.getElementById('campaign-interaction-id').value = '';
+    document.getElementById('campaign-id').value = '';
+  } catch (error) {
+    console.error('[CampaignPreview] Remove FAILED - error:', error);
+    console.error('[CampaignPreview] Error message:', error.message);
+    console.error('[CampaignPreview] Error details:', error.details);
+    document.getElementById('campaign-preview-status').innerText = 'Remove failed: ' + (error.message || error);
+  } finally {
+    document.getElementById('removePreviewContact').disabled = false;
   }
 }
 
@@ -999,6 +1418,10 @@ function isInteractionOnHold(task) {
 
 // Register task listeners
 function registerTaskListeners(task) {
+  task.on('REAL_TIME_TRANSCRIPTION', (payload) => {
+    appendRealtimeTranscript(payload);
+  });
+
   task.on('task:assigned', (task) => {
     updateTaskList(); // Update the task list UI to have latest tasks
     console.info('Call has been accepted for task: ', task.data.interactionId);
@@ -1007,7 +1430,35 @@ function registerTaskListeners(task) {
   task.on('task:media', (track) => {
     document.getElementById('remote-audio').srcObject = new MediaStream([track]);
   });
-  task.on('task:end', updateTaskList); // Update the task list UI to have latest tasks
+  task.on('task:end', (endedTask) => {
+    updateTaskList();
+    // Log campaign preview fields so we can verify values are retained through task:end
+    const cpd = endedTask?.data?.interaction?.callProcessingDetails || {};
+    console.log('[CampaignPreview] task:end — campaign preview fields:', {
+      campaignPreviewAutoAction: cpd.campaignPreviewAutoAction || 'N/A',
+      campaignPreviewOfferTimeout: cpd.campaignPreviewOfferTimeout || 'N/A',
+      campaignPreviewSkipDisabled: cpd.campaignPreviewSkipDisabled || 'N/A',
+      campaignPreviewRemoveDisabled: cpd.campaignPreviewRemoveDisabled || 'N/A',
+    });
+
+    // Stop the countdown but keep displaying the last campaign values
+    // (auto-action, skip/remove allowed) so the user can see the final state.
+    stopCampaignCountdown();
+    document.getElementById('campaign-preview-status').innerText = 'Campaign contact ended';
+    document.getElementById('campaign-countdown').textContent = '00:00';
+
+    // Update the campaign fields from the ended task so values are still visible
+    updateCampaignPreviewButtons(cpd);
+    const autoAction = cpd.campaignPreviewAutoAction || null;
+    const autoActionElm = document.getElementById('campaign-auto-action');
+    autoActionElm.textContent = autoAction || 'None';
+    autoActionElm.style.color = autoAction ? '#1565c0' : '#555';
+
+    // Disable action buttons since the contact has ended
+    document.getElementById('acceptPreviewContact').disabled = true;
+    document.getElementById('skipPreviewContact').disabled = true;
+    document.getElementById('removePreviewContact').disabled = true;
+  });
 
   task.on('task:hold', updateTaskList);
 
@@ -1048,6 +1499,49 @@ function registerTaskListeners(task) {
   task.on('task:participantLeft', (task) => {
     console.info('🔚 Conference ended event - updating task list');
     updateTaskList(); // This will refresh currentTask and call updateCallControlUI with latest data
+  });
+
+  // Campaign preview event listeners
+  task.on('task:campaignContactUpdated', (updatedTask) => {
+    console.log('[CampaignPreview] Campaign contact updated (next contact after skip/remove)');
+    const cpd = updatedTask.data?.interaction?.callProcessingDetails || {};
+    console.log('[CampaignPreview] task:campaignContactUpdated — campaign preview fields:', {
+      campaignPreviewAutoAction: cpd.campaignPreviewAutoAction || 'N/A',
+      campaignPreviewOfferTimeout: cpd.campaignPreviewOfferTimeout || 'N/A',
+      campaignPreviewSkipDisabled: cpd.campaignPreviewSkipDisabled || 'N/A',
+      campaignPreviewRemoveDisabled: cpd.campaignPreviewRemoveDisabled || 'N/A',
+    });
+    const interactionId = updatedTask.data?.interactionId || '';
+    const campaignId = updatedTask.data?.campaignId || updatedTask.data?.interaction?.callProcessingDetails?.campaignId || '';
+    document.getElementById('campaign-interaction-id').value = interactionId;
+    document.getElementById('campaign-id').value = campaignId;
+    document.getElementById('campaign-preview-status').innerText = 'New campaign contact received!';
+    resetCampaignPreviewUI();
+    setupCampaignPreviewFromTask(updatedTask);
+  });
+
+  task.on('task:campaignPreviewAcceptFailed', (failedTask) => {
+    console.error('[CampaignPreview] Accept failed event received');
+    document.getElementById('campaign-preview-status').innerText = 'Accept failed!';
+    const cpd = failedTask.data?.interaction?.callProcessingDetails || {};
+    updateCampaignPreviewButtons(cpd);
+    document.getElementById('acceptPreviewContact').disabled = false;
+  });
+
+  task.on('task:campaignPreviewSkipFailed', (failedTask) => {
+    console.error('[CampaignPreview] Skip failed event received');
+    document.getElementById('campaign-preview-status').innerText = 'Skip failed!';
+    const cpd = failedTask.data?.interaction?.callProcessingDetails || {};
+    updateCampaignPreviewButtons(cpd);
+    document.getElementById('acceptPreviewContact').disabled = false;
+  });
+
+  task.on('task:campaignPreviewRemoveFailed', (failedTask) => {
+    console.error('[CampaignPreview] Remove failed event received');
+    document.getElementById('campaign-preview-status').innerText = 'Remove failed!';
+    const cpd = failedTask.data?.interaction?.callProcessingDetails || {};
+    updateCampaignPreviewButtons(cpd);
+    document.getElementById('acceptPreviewContact').disabled = false;
   });
 }
 
@@ -1578,6 +2072,13 @@ function register() {
         idleCodesDropdown.value = data.auxCodeId?.trim() !== '' ? data.auxCodeId : DEFAULT_CODE;
         startStateTimer(data.lastStateChangeTimestamp, data.lastIdleCodeChangeTimestamp);
       }
+    });
+
+    webex.cc.on('task:campaignPreviewReservation', (data) => {
+      onCampaignReservationReceived(data);
+      updateTaskList();
+      taskId = data.data.interactionId;
+      registerTaskListeners(data);
     });
 
     webex.cc.on('agent:multiLogin', (data) => {
@@ -2147,6 +2648,8 @@ function renderTaskList(taskList) {
     engageElm.innerHTML = ``;
     currentTask = undefined;
     participantListElm.style.display = 'none';
+    renderIvrTranscript(undefined);
+    resetLiveTranscripts();
     return;
   }
   
@@ -2312,6 +2815,7 @@ function handleTaskSelect(task) {
   // Handle the task click event
   console.log('Task clicked:', task);
   enableAnswerDeclineButtons(task);
+  renderIvrTranscript(task);
   engageElm.innerHTML = ``;
   engageElm.style.height = "100px"
   const chatAndSocial = ['chat', 'social'];
