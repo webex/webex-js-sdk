@@ -1,4 +1,3 @@
-// @ts-ignore - JS module without type declarations
 import {Mutex} from 'async-mutex';
 import {METHOD_START_MESSAGE} from '../../common/constants';
 import {emitFinalFailure, handleRegistrationErrors, uploadLogs} from '../../common';
@@ -61,7 +60,6 @@ import {
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
 import {APIRequest} from '../utils/request';
-import {isWsFeatureEnabled} from '../utils';
 
 /**
  *
@@ -98,7 +96,6 @@ export class Registration implements IRegistration {
   private scheduled429Retry = false;
   private webWorker: Worker | undefined;
   private apiRequest: APIRequest;
-  private isMobiusSocketEnabled: boolean;
 
   /**
    */
@@ -132,7 +129,6 @@ export class Registration implements IRegistration {
 
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
-    this.isMobiusSocketEnabled = isWsFeatureEnabled(this.webex) || true;
     this.apiRequest = APIRequest.getInstance({webex: this.webex});
   }
 
@@ -500,7 +496,7 @@ export class Registration implements IRegistration {
   }
 
   private async postKeepAlive(deviceUrl: string, url: string) {
-    const response = await this.apiRequest.makeRequest({
+    return this.apiRequest.makeRequest({
       uri: `${url}/status`,
       method: HTTP_METHODS.POST,
       headers: {
@@ -512,12 +508,6 @@ export class Registration implements IRegistration {
       },
       service: ALLOWED_SERVICES.MOBIUS,
     });
-
-    if (response.statusCode !== 200) {
-      throw response;
-    }
-
-    return response;
   }
 
   private async isPrimaryActive() {
@@ -991,18 +981,11 @@ export class Registration implements IRegistration {
                   statusCode: res.statusCode,
                 });
               } catch (err: any) {
-                const headers = {} as Record<string, string>;
-                if (err.headers?.has('Retry-After')) {
-                  headers['retry-after'] = err.headers.get('Retry-After');
-                }
-
-                if (err.headers?.has('Trackingid')) {
-                  // eslint-disable-next-line dot-notation
-                  headers['trackingid'] = err.headers.get('Trackingid');
-                }
-
                 const error = {
-                  headers,
+                  headers: {
+                    trackingid: err.headers?.trackingid,
+                    retryAfter: Number(err.headers['retry-after']),
+                  },
                   statusCode: err.statusCode,
                   statusText: err.statusText,
                   type: err.type,
