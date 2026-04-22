@@ -721,7 +721,13 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       log.warn('No backup WSS URIs available', loggerContext);
     }
 
-    // MOBIUS WSS TODO: See if we need to throw an error here if all connection attempts fail
+    // Throwing an error is not required here. Connection will be attempted again during registration if no connection is established.
+    // We might remove this connection attempt logic during optimization since we are anyway going to try to connect to Mobius during
+    // registration and without registration the connection will be closed automatically by the mobius server.
+    log.warn(
+      'All Mobius socket connection attempts exhausted for both primary and backup, continuing without socket',
+      loggerContext
+    );
     log.warn(
       'All Mobius socket connection attempts exhausted for both primary and backup, continuing without socket',
       loggerContext
@@ -925,9 +931,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         userid
       )}`;
       try {
-        // TODO: Add Mobius Socket support
         // eslint-disable-next-line no-await-in-loop
-        const response = (await this.apiRequest.makeRequest({
+        const response = (await this.webex.request({
           uri,
           method: HTTP_METHODS.GET,
           service: ALLOWED_SERVICES.MOBIUS,

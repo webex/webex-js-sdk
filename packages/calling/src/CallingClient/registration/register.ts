@@ -841,6 +841,7 @@ export class Registration implements IRegistration {
   ): Promise<boolean> {
     let abort = false;
     this.retryAfter = undefined;
+    let connectedWebSocketUrl: string | undefined;
 
     if (this.failoverImmediately) {
       return abort;
@@ -872,7 +873,8 @@ export class Registration implements IRegistration {
           const wssNormalizedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
 
           // eslint-disable-next-line no-await-in-loop
-          await this.apiRequest.connectToMobiusSocket(wssNormalizedUrl);
+          connectedWebSocketUrl = await this.apiRequest.connectToMobiusSocket(wssNormalizedUrl);
+          connectedWebSocketUrl = connectedWebSocketUrl ? `${connectedWebSocketUrl}/` : undefined;
         }
 
         // eslint-disable-next-line no-await-in-loop
@@ -880,7 +882,7 @@ export class Registration implements IRegistration {
         this.clearFailoverState();
         this.deviceInfo = resp.body as IDeviceInfo;
         this.registrationStatus = RegistrationStatus.ACTIVE;
-        this.setActiveMobiusUrl(url);
+        this.setActiveMobiusUrl(connectedWebSocketUrl || url);
         this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
         log.log(
           `Registration successful for deviceId: ${this.deviceInfo.device?.deviceId} userId: ${this.userId} responseTrackingId: ${resp.headers?.trackingid}`,
@@ -909,6 +911,7 @@ export class Registration implements IRegistration {
         this.initiateFailback();
         break;
       } catch (err: unknown) {
+        connectedWebSocketUrl = undefined;
         // eslint-disable-next-line no-await-in-loop
         await this.apiRequest.disconnectFromMobiusSocket({code: 3050, reason: 'done (permanent)'});
 
