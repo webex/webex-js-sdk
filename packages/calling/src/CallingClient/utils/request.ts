@@ -171,7 +171,7 @@ export class APIRequest {
           trackingId,
           metadata: {
             userAgent: CALLING_USER_AGENT,
-            authorization: `Bearer ${
+            authorization: `${
               (isSupplementaryService && (await this.webex.credentials.getUserToken())) || ''
             }`,
           },
