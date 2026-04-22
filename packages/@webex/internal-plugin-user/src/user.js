@@ -52,9 +52,7 @@ function buildMeetingSiteList(user) {
   const linked = (user && user.linkedTrainSiteNames) || [];
   const train = (user && user.trainSiteNames) || [];
 
-  return [...new Set(linked.concat(train))]
-    .filter((site) => site.indexOf('#') === -1)
-    .sort();
+  return [...new Set(linked.concat(train))].filter((site) => site.indexOf('#') === -1).sort();
 }
 
 /**
