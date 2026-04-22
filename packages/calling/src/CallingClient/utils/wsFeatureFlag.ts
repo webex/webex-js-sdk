@@ -7,8 +7,9 @@ export const WEBRTC_CALLING_OVER_WS_FEATURE_KEY = 'webrtc-calling-over-ws-CALL-2
  * Reads WDM `webex.internal.device.settings['webrtc-calling-over-ws'].value`; must be
  * strictly `true` to enable WebSocket—otherwise use HTTP.
  */
-export function isMobiusWssFlagEnabled(webex: WebexSDK): boolean {
+export function isMobiusWssEnabled(webex: WebexSDK): boolean {
   return (
-    webex.internal.device.features.developer.get(WEBRTC_CALLING_OVER_WS_FEATURE_KEY)?.value === true
+    webex.internal?.device?.features?.developer?.get(WEBRTC_CALLING_OVER_WS_FEATURE_KEY)?.value ===
+    true
   );
 }
