@@ -113,7 +113,7 @@ export class APIRequest {
     if (this.mobiusSocket.isConnected()) {
       log.info('Mobius WebSocket already connected', logContext);
 
-      return undefined;
+      return this.mobiusSocket.getConnectedWebSocketUrl();
     }
 
     log.info('Mobius WebSocket not connected, initiating connection', logContext);
@@ -122,7 +122,7 @@ export class APIRequest {
       await this.mobiusSocket.connect(wssUrl);
       log.log('Mobius WebSocket connected successfully', logContext);
 
-      return this.mobiusSocket.getConnectedWebSocketUrl();
+      return wssUrl;
     } catch (err) {
       log.warn(`Mobius WebSocket connection failed: ${String(err)}`, logContext);
       throw normalizeWsError(err);

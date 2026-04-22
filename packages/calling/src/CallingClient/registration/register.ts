@@ -859,6 +859,7 @@ export class Registration implements IRegistration {
 
           // eslint-disable-next-line no-await-in-loop
           connectedWebSocketUrl = await this.apiRequest.connectToMobiusSocket(wssNormalizedUrl);
+          connectedWebSocketUrl = connectedWebSocketUrl ? `${connectedWebSocketUrl}/` : undefined;
         }
 
         // eslint-disable-next-line no-await-in-loop
