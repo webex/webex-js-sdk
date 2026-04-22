@@ -343,9 +343,11 @@ const MobiusSocket = WebexPlugin.extend({
    * Connect to Mobius for a specific session.
    * @param {string} [webSocketUrl] - Optional websocket URL override. Falls back to the device websocket URL.
    * @param {string} [sessionId=this.defaultSessionId] - The session identifier for this connection.
+   * @param {Object} [options={}] - Connection options.
+   * @param {boolean} [options.singleAttempt=false] - When true, bypass backoff retries and attempt a single connection. On failure the returned promise rejects immediately.
    * @returns {Promise<void>} Resolves when connection flow completes for the session.
    */
-  connect(webSocketUrl, sessionId = this.defaultSessionId) {
+  connect(webSocketUrl, sessionId = this.defaultSessionId, options = {}) {
     if (!this._connectPromises) this._connectPromises = new Map();
 
     // First check if there's already a connection promise for this session
@@ -374,13 +376,23 @@ const MobiusSocket = WebexPlugin.extend({
 
     this.connecting = true;
 
-    this.logger.info(`${this.namespace}: starting connection attempt for ${sessionId}`);
+    const {singleAttempt = false} = options;
+
+    this.logger.info(
+      `${this.namespace}: starting connection attempt for ${sessionId}${
+        singleAttempt ? ' (single attempt, no backoff)' : ''
+      }`
+    );
 
     const connectPromise = Promise.resolve(
       this.webex.internal.device.registered || this.webex.internal.device.register()
     )
       .then(() => {
         this.logger.info(`${this.namespace}: connecting ${sessionId}`);
+
+        if (singleAttempt) {
+          return this._connectSingleAttempt(resolvedUrl, sessionId);
+        }
 
         return this._connectWithBackoff(resolvedUrl, sessionId);
       })
@@ -820,6 +832,33 @@ const MobiusSocket = WebexPlugin.extend({
 
       call.start();
     });
+  },
+
+  _connectSingleAttempt(webSocketUrl, sessionId) {
+    const socket = new Socket();
+    socket.connecting = true;
+    this._attachSocketEventListeners(socket, sessionId);
+    this.sockets.set(sessionId, socket);
+
+    return this._prepareAndOpenSocket(socket, webSocketUrl, sessionId)
+      .then(() => {
+        socket.connecting = false;
+        socket.connected = true;
+        this.connecting = this.hasConnectingSockets();
+        this.connected = this.hasConnectedSockets();
+        this.hasEverConnected = true;
+        this._startTokenRefreshTimer();
+        this._emit(sessionId, 'online');
+      })
+      .catch((err) => {
+        this.lastError = err;
+        socket.connecting = false;
+        socket.connected = false;
+        this.sockets.delete(sessionId);
+        this.connecting = this.hasConnectingSockets();
+        this.connected = this.hasConnectedSockets();
+        throw err;
+      });
   },
 
   _emit(...args) {

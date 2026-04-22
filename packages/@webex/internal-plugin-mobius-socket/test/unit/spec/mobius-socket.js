@@ -568,6 +568,51 @@ describe('plugin-mobius-socket', () => {
           });
         });
       });
+
+      describe('when singleAttempt option is set', () => {
+        it('connects successfully without backoff', () => {
+          const promise = mobiusSocket.connect('ws://example.com', undefined, {singleAttempt: true});
+
+          assert.isTrue(mobiusSocket.connecting, 'MobiusSocket is connecting');
+          mockWebSocket.open();
+
+          return promise.then(() => {
+            assert.isTrue(mobiusSocket.connected, 'MobiusSocket is connected');
+            assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
+            assert.isTrue(mobiusSocket.hasEverConnected, 'hasEverConnected is true');
+            assert.calledOnce(Socket.prototype.open);
+          });
+        });
+
+        it('rejects immediately on failure without retrying', () => {
+          clock.uninstall();
+          socketOpenStub.restore();
+          socketOpenStub = sinon
+            .stub(Socket.prototype, 'open')
+            .returns(Promise.reject(new ConnectionError({code: 4001})));
+
+          const promise = mobiusSocket.connect('ws://example.com', undefined, {singleAttempt: true});
+
+          return assert.isRejected(promise).then(() => {
+            assert.calledOnce(Socket.prototype.open);
+            assert.isFalse(mobiusSocket.connected, 'MobiusSocket is not connected');
+            assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
+          });
+        });
+
+        it('does not use backoff strategy', () => {
+          const backoffSpy = sinon.spy(mobiusSocket, '_connectWithBackoff');
+
+          const promise = mobiusSocket.connect('ws://example.com', undefined, {singleAttempt: true});
+
+          mockWebSocket.open();
+
+          return promise.then(() => {
+            assert.notCalled(backoffSpy);
+            backoffSpy.restore();
+          });
+        });
+      });
     });
 
     describe('Websocket proxy agent', () => {

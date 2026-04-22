@@ -305,13 +305,23 @@ function updateErrorContext(
  * @param caller - Method which called this handler.
  * @param file - File name from where error got reported.
  */
-export function emitFinalFailure(emitterCb: LineErrorEmitterCallback, loggerContext: LogContext) {
-  const clientError = createLineError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
+export function emitFinalFailure(
+  emitterCb: LineErrorEmitterCallback,
+  loggerContext: LogContext,
+  message?: string
+) {
+  const clientError = createLineError(
+    message || '',
+    {},
+    ERROR_TYPE.DEFAULT,
+    RegistrationStatus.INACTIVE
+  );
 
   updateLineErrorContext(
     loggerContext,
     ERROR_TYPE.SERVICE_UNAVAILABLE,
-    'An unknown error occurred. Wait a moment and try again. Please contact the administrator if the problem persists.',
+    message ||
+      'An unknown error occurred. Wait a moment and try again. Please contact the administrator if the problem persists.',
     RegistrationStatus.INACTIVE,
     clientError
   );
