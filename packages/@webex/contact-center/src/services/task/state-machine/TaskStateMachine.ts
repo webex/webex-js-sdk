@@ -95,17 +95,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               guard: guards.isInteractionConsulting,
               target: TaskState.CONSULTING,
-              actions: ['updateTaskData', 'hydrateConsultState', 'emitTaskHydrate'],
+              actions: ['updateTaskData', 'emitTaskHydrate'],
             },
             {
               guard: guards.isInteractionHeld,
               target: TaskState.HELD,
               actions: ['updateTaskData', 'emitTaskHydrate'],
-            },
-            {
-              guard: guards.isAgentInWrapUp,
-              target: TaskState.WRAPPING_UP,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskHydrate'],
             },
             {
               guard: guards.isInteractionConnected,
@@ -493,10 +488,10 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: ['handleSwitchToConsult', 'emitTaskSwitchCall'],
           },
           [TaskEvent.HOLD_SUCCESS]: {
-            actions: ['updateTaskData', 'setHoldState', 'syncConsultCallHeld', 'emitTaskHold'],
+            actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
           },
           [TaskEvent.UNHOLD_SUCCESS]: {
-            actions: ['updateTaskData', 'setHoldState', 'syncConsultCallHeld', 'emitTaskResume'],
+            actions: ['updateTaskData', 'setHoldState', 'emitTaskResume'],
           },
 
           [TaskEvent.TRANSFER_SUCCESS]: [
