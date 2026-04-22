@@ -315,6 +315,21 @@ const MobiusSocket = WebexPlugin.extend({
   },
 
   /**
+   * Get the websocket URL for a currently connected session.
+   * @param {string} [sessionId=this.defaultSessionId] - The session identifier.
+   * @returns {string|undefined} The connected websocket URL, or undefined when not connected.
+   */
+  getConnectedWebSocketUrl(sessionId = this.defaultSessionId) {
+    const socket = this.getSocket(sessionId);
+
+    if (!socket?.connected) {
+      return undefined;
+    }
+
+    return socket.url;
+  },
+
+  /**
    * Sends a payload on the active connected socket
    * @param {Object} payload - The data to send
    * @param {string} [sessionId=this.defaultSessionId] - The session identifier

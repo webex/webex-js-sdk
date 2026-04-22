@@ -1068,6 +1068,29 @@ describe('plugin-mobius-socket', () => {
       });
     });
 
+    describe('#getConnectedWebSocketUrl()', () => {
+      it('returns the connected websocket url for the session', () => {
+        mobiusSocket.sockets.set(mobiusSocket.defaultSessionId, {
+          connected: true,
+          url: 'ws://connected-url.com',
+        });
+
+        assert.equal(
+          mobiusSocket.getConnectedWebSocketUrl(),
+          'ws://connected-url.com'
+        );
+      });
+
+      it('returns undefined when the session is not connected', () => {
+        mobiusSocket.sockets.set(mobiusSocket.defaultSessionId, {
+          connected: false,
+          url: 'ws://disconnected-url.com',
+        });
+
+        assert.isUndefined(mobiusSocket.getConnectedWebSocketUrl());
+      });
+    });
+
     describe('#_emit()', () => {
       it('emits Error-safe events and log the error with the call parameters', () => {
         const error = 'error';
