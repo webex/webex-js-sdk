@@ -141,6 +141,11 @@ const MobiusSocket = WebexPlugin.extend({
     );
   },
 
+  /**
+   * Returns the per-session cache of seen async_event IDs, creating it on first access.
+   * @param {string} sessionId - The session identifier.
+   * @returns {Map<string, boolean>} Ordered cache of seen event IDs for the session.
+   */
   _getSeenAsyncEventIds(sessionId) {
     let seenAsyncEventIds = this._seenAsyncEventIdsBySession.get(sessionId);
 
@@ -152,6 +157,11 @@ const MobiusSocket = WebexPlugin.extend({
     return seenAsyncEventIds;
   },
 
+  /**
+   * Clears the dedup cache for one session or for all sessions when omitted.
+   * @param {string} [sessionId] - Optional session identifier.
+   * @returns {void}
+   */
   _clearSeenAsyncEventIds(sessionId) {
     if (sessionId) {
       this._seenAsyncEventIdsBySession.delete(sessionId);
@@ -162,6 +172,12 @@ const MobiusSocket = WebexPlugin.extend({
     this._seenAsyncEventIdsBySession.clear();
   },
 
+  /**
+   * Tracks a newly seen async_event ID and reports whether a duplicate should be suppressed.
+   * @param {string} sessionId - The session identifier.
+   * @param {object} envelope - Parsed websocket message envelope.
+   * @returns {boolean} True when the event has already been seen for this session.
+   */
   _trackAsyncEventAndShouldSuppressDuplicate(sessionId, envelope) {
     if (envelope?.type !== 'async_event' || !envelope.eventId) {
       return false;
@@ -299,6 +315,21 @@ const MobiusSocket = WebexPlugin.extend({
   },
 
   /**
+   * Get the websocket URL for a currently connected session.
+   * @param {string} [sessionId=this.defaultSessionId] - The session identifier.
+   * @returns {string|undefined} The connected websocket URL, or undefined when not connected.
+   */
+  getConnectedWebSocketUrl(sessionId = this.defaultSessionId) {
+    const socket = this.getSocket(sessionId);
+
+    if (!socket?.connected) {
+      return undefined;
+    }
+
+    return socket.url;
+  },
+
+  /**
    * Sends a payload on the active connected socket
    * @param {Object} payload - The data to send
    * @param {string} [sessionId=this.defaultSessionId] - The session identifier
@@ -406,11 +437,9 @@ const MobiusSocket = WebexPlugin.extend({
    * Connect to Mobius for a specific session.
    * @param {string} [webSocketUrl] - Optional websocket URL override. Falls back to the device websocket URL.
    * @param {string} [sessionId=this.defaultSessionId] - The session identifier for this connection.
-   * @param {Object} [options={}] - Connection options.
-   * @param {boolean} [options.singleAttempt=false] - When true, bypass backoff retries and attempt a single connection. On failure the returned promise rejects immediately.
    * @returns {Promise<void>} Resolves when connection flow completes for the session.
    */
-  connect(webSocketUrl, sessionId = this.defaultSessionId, options = {}) {
+  connect(webSocketUrl, sessionId = this.defaultSessionId) {
     if (!this._connectPromises) this._connectPromises = new Map();
 
     // First check if there's already a connection promise for this session
@@ -439,11 +468,11 @@ const MobiusSocket = WebexPlugin.extend({
 
     this.connecting = true;
 
-    const {singleAttempt = false} = options;
-
     this.logger.info(
       `${this.namespace}: starting connection attempt for ${sessionId}${
-        singleAttempt ? ' (single attempt, no backoff)' : ''
+        Number(this.config.initialConnectionMaxRetries) === 0 && !this.hasEverConnected
+          ? ' (initial retries disabled)'
+          : ''
       }`
     );
 
@@ -452,10 +481,6 @@ const MobiusSocket = WebexPlugin.extend({
     )
       .then(() => {
         this.logger.info(`${this.namespace}: connecting ${sessionId}`);
-
-        if (singleAttempt) {
-          return this._connectSingleAttempt(resolvedUrl, sessionId);
-        }
 
         return this._connectWithBackoff(resolvedUrl, sessionId);
       })
@@ -791,6 +816,13 @@ const MobiusSocket = WebexPlugin.extend({
       // eslint gets confused about whether call is actually used
       // eslint-disable-next-line prefer-const
       let call;
+      const isInitialConnect = !isShutdownSwitchover && !this.hasEverConnected;
+      const initialRetryLimit =
+        this.config.initialConnectionMaxRetries == null
+          ? null
+          : Number(this.config.initialConnectionMaxRetries);
+      const isInitialConnectWithoutRetries = isInitialConnect && initialRetryLimit === 0;
+
       const onComplete = (err, sid = sessionId) => {
         if (isShutdownSwitchover) {
           this._shutdownSwitchoverBackoffCalls.delete(sid);
@@ -851,12 +883,10 @@ const MobiusSocket = WebexPlugin.extend({
         })
       );
 
-      if (
-        this.config.initialConnectionMaxRetries &&
-        !this.hasEverConnected &&
-        !isShutdownSwitchover
-      ) {
-        call.failAfter(this.config.initialConnectionMaxRetries);
+      if (isInitialConnectWithoutRetries) {
+        call.retryIf(() => false);
+      } else if (isInitialConnect && initialRetryLimit > 0) {
+        call.failAfter(initialRetryLimit);
       } else if (this.config.maxRetries) {
         call.failAfter(this.config.maxRetries);
       }
@@ -878,6 +908,16 @@ const MobiusSocket = WebexPlugin.extend({
 
       call.on('callback', (err) => {
         if (err) {
+          if (isInitialConnectWithoutRetries) {
+            // retryIf(() => false) already disabled retries for this initial connect;
+            // this branch only avoids logging the generic "attempting retry" message.
+            this.logger.info(
+              `${this.namespace}: initial connect failed for ${sessionId}; retries already disabled`
+            );
+
+            return;
+          }
+
           const number = call.getNumRetries();
           const delay = Math.min(call.strategy_.nextBackoffDelay_, this.config.backoffTimeMax);
 
@@ -900,33 +940,6 @@ const MobiusSocket = WebexPlugin.extend({
 
       call.start();
     });
-  },
-
-  _connectSingleAttempt(webSocketUrl, sessionId) {
-    const socket = new Socket();
-    socket.connecting = true;
-    this._attachSocketEventListeners(socket, sessionId);
-    this.sockets.set(sessionId, socket);
-
-    return this._prepareAndOpenSocket(socket, webSocketUrl, sessionId)
-      .then(() => {
-        socket.connecting = false;
-        socket.connected = true;
-        this.connecting = this.hasConnectingSockets();
-        this.connected = this.hasConnectedSockets();
-        this.hasEverConnected = true;
-        this._startTokenRefreshTimer();
-        this._emit(sessionId, 'online');
-      })
-      .catch((err) => {
-        this.lastError = err;
-        socket.connecting = false;
-        socket.connected = false;
-        this.sockets.delete(sessionId);
-        this.connecting = this.hasConnectingSockets();
-        this.connected = this.hasConnectedSockets();
-        throw err;
-      });
   },
 
   _emit(...args) {

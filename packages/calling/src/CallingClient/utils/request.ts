@@ -7,7 +7,7 @@ import log from '../../Logger';
 import {APIRequestConfig, APIRequestOptions, MobiusSocketResponse} from './types';
 import {deriveMobiusSocketMessageType} from './mobiusSocketMapper';
 import {MOBIUS_SOCKET_MESSAGE_TYPE} from './constants';
-import {isWsFeatureEnabled} from './wsFeatureFlag';
+import {isMobiusWssEnabled} from './wsFeatureFlag';
 import {METHODS, REQUEST_FILE} from '../constants';
 
 /**
@@ -82,7 +82,7 @@ export class APIRequest {
 
     this.webex = config.webex;
     this.isMobiusSocketEnabled =
-      isWsFeatureEnabled(config.webex) || (config.isMobiusSocketEnabled ?? false);
+      isMobiusWssEnabled(config.webex) || (config.isMobiusSocketEnabled ?? false);
     this.mobiusSocket = getMobiusSocketInstance(this.webex);
   }
 
@@ -100,10 +100,8 @@ export class APIRequest {
    * On failure, throws a normalized WebexRequestPayload-shaped error.
    *
    * @param wssUrl - The Mobius WebSocket URL to connect to.
-   * @param options - Connection options.
-   * @param options.singleAttempt - When true, bypass backoff retries and attempt a single connection. On failure the returned promise rejects immediately.
    */
-  public async connectToMobiusSocket(wssUrl: string, {singleAttempt = false} = {}): Promise<void> {
+  public async connectToMobiusSocket(wssUrl: string): Promise<void> {
     const logContext = {
       file: REQUEST_FILE,
       method: METHODS.CONNECT_TO_MOBIUS_SOCKET,
@@ -118,7 +116,7 @@ export class APIRequest {
     log.info('Mobius WebSocket not connected, initiating connection', logContext);
 
     try {
-      await this.mobiusSocket.connect(wssUrl, undefined, {singleAttempt});
+      await this.mobiusSocket.connect(wssUrl);
       log.log('Mobius WebSocket connected successfully', logContext);
     } catch (err) {
       log.warn(`Mobius WebSocket connection failed: ${String(err)}`, logContext);

@@ -142,6 +142,8 @@ describe('plugin-mobius-socket', () => {
 
       mobiusSocket = webex.internal.mobiusSocket;
       mobiusSocket.defaultSessionId = 'mobius-websocket-session';
+      mobiusSocket.config.initialConnectionMaxRetries = mobiusConfig.mobiusSocket.initialConnectionMaxRetries;
+      mobiusSocket.config.maxRetries = mobiusConfig.mobiusSocket.maxRetries;
     });
 
     afterEach(async () => {
@@ -357,12 +359,27 @@ describe('plugin-mobius-socket', () => {
         });
 
         // skipping due to apparent bug with lolex in all browsers but Chrome.
-        // if initial retries is zero and mobiusSocket has never connected max retries is used
-        skipInBrowser(it)('fails after `maxRetries` attempts', () => {
+        // if initial retries is zero and mobiusSocket has never connected, do not retry
+        skipInBrowser(it)('fails immediately when `initialConnectionMaxRetries` is 0', () => {
           mobiusSocket.config.maxRetries = 2;
           mobiusSocket.config.initialConnectionMaxRetries = 0;
 
-          return check();
+          socketOpenStub.restore();
+          socketOpenStub = sinon.stub(Socket.prototype, 'open');
+          socketOpenStub.returns(Promise.reject(new ConnectionError()));
+          assert.notCalled(Socket.prototype.open);
+
+          const promise = mobiusSocket.connect();
+
+          return promiseTick(5)
+            .then(() => {
+              assert.calledOnce(Socket.prototype.open);
+
+              return assert.isRejected(promise);
+            })
+            .then(() => {
+              assert.calledOnce(Socket.prototype.open);
+            });
         });
 
         // initial retries is non-zero so takes precedence over maxRetries when mobiusSocket has never connected
@@ -589,9 +606,11 @@ describe('plugin-mobius-socket', () => {
         });
       });
 
-      describe('when singleAttempt option is set', () => {
-        it('connects successfully without backoff', () => {
-          const promise = mobiusSocket.connect('ws://example.com', undefined, {singleAttempt: true});
+      describe('when config.initialConnectionMaxRetries is set to 0', () => {
+        it('connects successfully through the shared backoff flow', () => {
+          const backoffSpy = sinon.spy(mobiusSocket, '_connectWithBackoff');
+          mobiusSocket.config.initialConnectionMaxRetries = 0;
+          const promise = mobiusSocket.connect('ws://example.com');
 
           assert.isTrue(mobiusSocket.connecting, 'MobiusSocket is connecting');
           mockWebSocket.open();
@@ -601,6 +620,9 @@ describe('plugin-mobius-socket', () => {
             assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
             assert.isTrue(mobiusSocket.hasEverConnected, 'hasEverConnected is true');
             assert.calledOnce(Socket.prototype.open);
+            assert.calledOnce(backoffSpy);
+            assert.isUndefined(backoffSpy.firstCall.args[2]?.initialConnectionMaxRetries);
+            backoffSpy.restore();
           });
         });
 
@@ -610,25 +632,27 @@ describe('plugin-mobius-socket', () => {
           socketOpenStub = sinon
             .stub(Socket.prototype, 'open')
             .returns(Promise.reject(new ConnectionError({code: 4001})));
+          mobiusSocket.config.initialConnectionMaxRetries = 0;
 
-          const promise = mobiusSocket.connect('ws://example.com', undefined, {singleAttempt: true});
+          const promise = mobiusSocket.connect('ws://example.com');
 
           return assert.isRejected(promise).then(() => {
             assert.calledOnce(Socket.prototype.open);
             assert.isFalse(mobiusSocket.connected, 'MobiusSocket is not connected');
-            assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
           });
         });
 
-        it('does not use backoff strategy', () => {
+        it('uses config-driven initial retry behavior in the shared backoff strategy', () => {
           const backoffSpy = sinon.spy(mobiusSocket, '_connectWithBackoff');
+          mobiusSocket.config.initialConnectionMaxRetries = 0;
 
-          const promise = mobiusSocket.connect('ws://example.com', undefined, {singleAttempt: true});
+          const promise = mobiusSocket.connect('ws://example.com');
 
           mockWebSocket.open();
 
           return promise.then(() => {
-            assert.notCalled(backoffSpy);
+            assert.calledOnce(backoffSpy);
+            assert.isUndefined(backoffSpy.firstCall.args[2]?.initialConnectionMaxRetries);
             backoffSpy.restore();
           });
         });
@@ -877,10 +901,7 @@ describe('plugin-mobius-socket', () => {
             const error = await assert.isRejected(promise);
             const lastError = mobiusSocket.getLastError();
 
-            assert.equal(
-              error.message,
-              `MobiusSocket Connection Aborted for ${mobiusSocket.defaultSessionId}`
-            );
+            assert.equal(error, realError);
             assert.isDefined(lastError);
             assert.equal(lastError, realError);
           });
@@ -1044,6 +1065,29 @@ describe('plugin-mobius-socket', () => {
         const error = await assert.isRejected(mobiusSocket.sendWssRequest([]));
 
         assert.equal(error.message, '`payload` is required');
+      });
+    });
+
+    describe('#getConnectedWebSocketUrl()', () => {
+      it('returns the connected websocket url for the session', () => {
+        mobiusSocket.sockets.set(mobiusSocket.defaultSessionId, {
+          connected: true,
+          url: 'ws://connected-url.com',
+        });
+
+        assert.equal(
+          mobiusSocket.getConnectedWebSocketUrl(),
+          'ws://connected-url.com'
+        );
+      });
+
+      it('returns undefined when the session is not connected', () => {
+        mobiusSocket.sockets.set(mobiusSocket.defaultSessionId, {
+          connected: false,
+          url: 'ws://disconnected-url.com',
+        });
+
+        assert.isUndefined(mobiusSocket.getConnectedWebSocketUrl());
       });
     });
 

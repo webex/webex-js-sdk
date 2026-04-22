@@ -52,6 +52,9 @@ export function getTestUtilsWebex() {
           entitlement: {
             models: [{_values: {key: 'bc-sp-standard'}}],
           },
+          developer: {
+            get: jest.fn().mockReturnValue({value: false}),
+          },
         },
       },
       encryption: {
