@@ -5,10 +5,13 @@ import {WebexRequestPayload} from '../../common/types';
 import {WebexSDK} from '../../SDKConnector/types';
 import log from '../../Logger';
 import {APIRequestConfig, APIRequestOptions, MobiusSocketResponse} from './types';
-import {deriveMobiusSocketMessageType} from './mobiusSocketMapper';
+import {
+  deriveMobiusSocketMessageType,
+  isSupplementaryServiceMessageType,
+} from './mobiusSocketMapper';
 import {MOBIUS_SOCKET_MESSAGE_TYPE} from './constants';
 import {isMobiusWssEnabled} from './wsFeatureFlag';
-import {METHODS, REQUEST_FILE} from '../constants';
+import {CALLING_USER_AGENT, METHODS, REQUEST_FILE} from '../constants';
 
 /**
  * Converts a MobiusSocketResponse into the WebexRequestPayload shape that
@@ -103,7 +106,10 @@ export class APIRequest {
    * @param options - Connection options.
    * @param options.singleAttempt - When true, bypass backoff retries and attempt a single connection. On failure the returned promise rejects immediately.
    */
-  public async connectToMobiusSocket(wssUrl: string, {singleAttempt = false} = {}): Promise<void> {
+  public async connectToMobiusSocket(
+    wssUrl: string,
+    {singleAttempt = false} = {}
+  ): Promise<string | undefined> {
     const logContext = {
       file: REQUEST_FILE,
       method: METHODS.CONNECT_TO_MOBIUS_SOCKET,
@@ -112,7 +118,7 @@ export class APIRequest {
     if (this.mobiusSocket.isConnected()) {
       log.info('Mobius WebSocket already connected', logContext);
 
-      return;
+      return undefined;
     }
 
     log.info('Mobius WebSocket not connected, initiating connection', logContext);
@@ -120,6 +126,8 @@ export class APIRequest {
     try {
       await this.mobiusSocket.connect(wssUrl, undefined, {singleAttempt});
       log.log('Mobius WebSocket connected successfully', logContext);
+
+      return this.mobiusSocket.getConnectedWebSocketUrl();
     } catch (err) {
       log.warn(`Mobius WebSocket connection failed: ${String(err)}`, logContext);
       throw normalizeWsError(err);
@@ -160,14 +168,18 @@ export class APIRequest {
         throw new Error(`Unknown Mobius Socket message type: ${socketType}`);
       }
 
+      const isSupplementaryService = isSupplementaryServiceMessageType(socketType);
+
       try {
         const wsResponse: MobiusSocketResponse = await this.mobiusSocket.sendWssRequest({
           type: socketType,
           trackingId,
           metadata: {
-            // userAgent: CALLING_USER_AGENT,
-            userAgent: 'mobius-ws-test-ui', // TODO: Confirm if this needs to be hardcoded
-          }, // TODO: Add auth token to metadata for call transfer etc
+            userAgent: CALLING_USER_AGENT,
+            authorization: `Bearer ${
+              (isSupplementaryService && (await this.webex.credentials.getUserToken())) || ''
+            }`,
+          },
           data: request.body,
         });
 

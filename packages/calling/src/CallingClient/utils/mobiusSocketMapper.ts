@@ -104,3 +104,10 @@ export function deriveMobiusSocketMessageType(
 
   return MOBIUS_SOCKET_MESSAGE_TYPE.UNKNOWN;
 }
+
+export const isSupplementaryServiceMessageType = (type: MOBIUS_SOCKET_MESSAGE_TYPE): boolean =>
+  [
+    MOBIUS_SOCKET_MESSAGE_TYPE.CALL_HOLD,
+    MOBIUS_SOCKET_MESSAGE_TYPE.CALL_RESUME,
+    MOBIUS_SOCKET_MESSAGE_TYPE.CALL_TRANSFER,
+  ].includes(type);
