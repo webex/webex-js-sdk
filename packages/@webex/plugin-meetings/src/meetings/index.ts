@@ -584,9 +584,6 @@ export default class Meetings extends WebexPlugin {
       this.create(data.locus, DESTINATION_TYPE.LOCUS_ID, useRandomDelayForInfo)
         .then(async (newMeeting) => {
           meeting = newMeeting;
-          const shouldFetchMeetingInfoAfterInitialSetup =
-            data.eventType === LOCUSEVENT.HASH_TREE_DATA_UPDATED && !data.locus?.info;
-
           try {
             // It's a new meeting so initialize the locus data
             await meeting.locusInfo.initialSetup({
@@ -596,12 +593,10 @@ export default class Meetings extends WebexPlugin {
                   : 'locus-message',
               locus: data.locus,
               hashTreeMessage: data.stateElementsMessage,
+              onLocusSynced: (locus: LocusDTO) => {
+                meeting.finalizeMeetingAfterInitialLocusSetup(locus);
+              },
             });
-            if (data.eventType !== LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS) {
-              await meeting.finalizeMeetingAfterInitialLocusSetup(
-                shouldFetchMeetingInfoAfterInitialSetup
-              );
-            }
           } catch (error) {
             LoggerProxy.logger.warn(
               `Meetings:index#handleLocusEvent --> Error initializing locus data: ${error.message}`

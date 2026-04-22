@@ -1489,6 +1489,7 @@ describe('plugin-meetings', () => {
                   url: url1,
                 },
                 hashTreeMessage: undefined,
+                onLocusSynced: sinon.match.func,
               });
             });
           });
@@ -2137,6 +2138,7 @@ describe('plugin-meetings', () => {
                 },
               },
               hashTreeMessage: undefined,
+              onLocusSynced: sinon.match.func,
             });
           });
           it('should setup the meeting from a hash tree event', async () => {
@@ -2171,6 +2173,7 @@ describe('plugin-meetings', () => {
                 info: infoData,
               },
               hashTreeMessage,
+              onLocusSynced: sinon.match.func,
             });
           });
 
@@ -2251,6 +2254,7 @@ describe('plugin-meetings', () => {
                 },
               },
               hashTreeMessage: undefined,
+              onLocusSynced: sinon.match.func,
             });
           });
 
@@ -2327,6 +2331,7 @@ describe('plugin-meetings', () => {
                 },
               },
               hashTreeMessage: undefined,
+              onLocusSynced: sinon.match.func,
             });
           });
 

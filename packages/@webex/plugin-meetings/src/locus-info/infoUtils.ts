@@ -40,12 +40,6 @@ InfoUtils.parse = (info, roles, isJoined = true) => {
   if (info.datachannelUrl) {
     parsed.datachannelUrl = info.datachannelUrl;
   }
-  if (info.webExSite) {
-    parsed.webExSite = info.webExSite;
-  }
-  if (info.webExMeetingName) {
-    parsed.webExMeetingName = info.webExMeetingName;
-  }
 
   return parsed;
 };

@@ -592,17 +592,21 @@ export default class LocusInfo extends EventsScope {
           locus: LocusDTO;
           dataSets?: DataSet[];
           metadata?: Metadata;
+          onLocusSynced?: (locus: LocusDTO) => void;
         }
       | {
           trigger: 'locus-message';
           locus?: LocusDTO;
           hashTreeMessage?: HashTreeMessage;
+          onLocusSynced?: (locus: LocusDTO) => void;
         }
       | {
           trigger: 'get-loci-response';
           locus?: LocusDTO;
+          onLocusSynced?: (locus: LocusDTO) => void;
         }
   ) {
+    let initialFullLocus: LocusDTO | null = null;
     switch (data.trigger) {
       case 'locus-message':
         if (data.hashTreeMessage) {
@@ -650,6 +654,7 @@ export default class LocusInfo extends EventsScope {
       case 'join-response':
         this.updateLocusCache(data.locus);
         this.onFullLocus('join response', data.locus, undefined, data.dataSets, data.metadata);
+        initialFullLocus = data.locus;
         break;
       case 'get-loci-response':
         if (data.locus?.links?.resources?.visibleDataSets?.url) {
@@ -672,10 +677,45 @@ export default class LocusInfo extends EventsScope {
           // "classic" Locus case, no hash trees involved
           this.updateLocusCache(data.locus);
           this.onFullLocus('classic get-loci-response', data.locus, undefined);
+          initialFullLocus = data.locus || null;
         }
     }
+
+    if (data.onLocusSynced) {
+      try {
+        data.onLocusSynced(initialFullLocus || this.getCurrentLocusSnapshot());
+      } catch (error) {
+        LoggerProxy.logger.warn(
+          `Locus-info:index#initialSetup --> onLocusSynced callback failed: ${error}`
+        );
+      }
+    }
+
     // Change it to true after it receives it first locus object
     this.emitChange = true;
+  }
+
+  /**
+   * Builds a full locus DTO snapshot from current internal locus state.
+   *
+   * @returns {LocusDTO}
+   */
+  private getCurrentLocusSnapshot(): LocusDTO {
+    const locus: Record<string, any> = {};
+
+    LocusDtoTopLevelKeys.forEach((key) => {
+      const value = (this as Record<string, any>)[key];
+
+      if (value !== undefined && value !== null) {
+        locus[key] = cloneDeep(value);
+      }
+    });
+
+    if (!Array.isArray(locus.participants)) {
+      locus.participants = [];
+    }
+
+    return locus as LocusDTO;
   }
 
   /**
