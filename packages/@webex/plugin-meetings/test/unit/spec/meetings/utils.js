@@ -238,6 +238,22 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#isSelfMovedOrBreakoutEnded', () => {
+      [
+        {description: 'locus is undefined', locus: undefined, expected: false},
+        {description: 'self state is JOINED', locus: {self: {state: 'JOINED', reason: 'OTHER'}}, expected: false},
+        {description: 'self state is LEFT with reason MOVED', locus: {self: {state: 'LEFT', reason: 'MOVED'}}, expected: true},
+        {description: 'fullState is INACTIVE with BREAKOUT_ENDED', locus: {self: {state: 'LEFT', reason: 'OTHER'}, fullState: {state: 'INACTIVE', endMeetingReason: 'BREAKOUT_ENDED'}}, expected: true},
+        {description: 'fullState is INACTIVE with different endMeetingReason', locus: {self: {state: 'LEFT', reason: 'OTHER'}, fullState: {state: 'INACTIVE', endMeetingReason: 'SOME_OTHER_REASON'}}, expected: false},
+        {description: 'fullState is missing', locus: {self: {state: 'LEFT', reason: 'OTHER'}}, expected: false},
+        {description: 'endMeetingReason is missing', locus: {self: {state: 'LEFT', reason: 'OTHER'}, fullState: {state: 'INACTIVE'}}, expected: false},
+      ].forEach(({description, locus, expected}) => {
+        it(`returns ${expected} when ${description}`, () => {
+          assert.equal(MeetingsUtil.isSelfMovedOrBreakoutEnded(locus), expected);
+        });
+      });
+    });
+
     describe('#joinedOnThisDevice', () => {
       it('return false if no devices in self', () => {
         const newLocus = {};

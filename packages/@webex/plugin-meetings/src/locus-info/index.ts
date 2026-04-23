@@ -1635,7 +1635,7 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   updateLocusInfo(locus) {
-    if (locus.self?.reason === 'MOVED' && locus.self?.state === 'LEFT') {
+    if (MeetingsUtil.isSelfMovedOrBreakoutEnded(locus)) {
       // When moved to a breakout session locus sends a message for the previous locus
       // indicating that we have been moved. It isn't helpful to continue parsing this
       // as it gets interpreted as if we have left the call
