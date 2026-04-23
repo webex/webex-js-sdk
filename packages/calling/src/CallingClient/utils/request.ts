@@ -170,6 +170,7 @@ export class APIRequest {
           type: socketType,
           trackingId,
           metadata: {
+            ...request.headers,
             userAgent: CALLING_USER_AGENT,
             authorization: `${
               (isSupplementaryService && (await this.webex.credentials.getUserToken())) || ''
