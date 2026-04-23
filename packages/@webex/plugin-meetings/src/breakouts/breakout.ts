@@ -165,7 +165,8 @@ const Breakout = WebexPlugin.extend({
       return;
     }
     this.breakoutRosterLocus = locus;
-    this.members.locusParticipantsUpdate(locus);
+    // The roster via breakout roster event is full roster, use replace strategy to update the members
+    this.members.locusParticipantsUpdate({participants: locus.participants, isReplace: true});
   },
 
   /**
