@@ -84,10 +84,17 @@ export type GuardFunction = (params: GuardParams) => boolean;
 
 export const guards = {
   // Hydrate Guards
-  isInteractionTerminated: ({event}: GuardParams): boolean => {
+  isInteractionTerminated: ({context, event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
-    return taskData?.interaction?.isTerminated === true;
+    if (taskData?.interaction?.isTerminated === true) return true;
+
+    const selfAgentId = getSelfAgentId(context, taskData);
+    if (selfAgentId && taskData?.interaction?.participants?.[selfAgentId]?.isWrapUp === true) {
+      return true;
+    }
+
+    return false;
   },
 
   isInteractionConsulting: ({event}: GuardParams): boolean => {
@@ -99,7 +106,14 @@ export const guards = {
   isInteractionHeld: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
-    return taskData?.interaction?.state === 'hold';
+    if (taskData?.interaction?.state === 'hold') return true;
+
+    const mainMediaId = taskData?.interaction?.mainInteractionId || taskData?.interactionId;
+    if (mainMediaId && taskData?.interaction?.media?.[mainMediaId]?.isHold === true) {
+      return true;
+    }
+
+    return false;
   },
 
   isInteractionConnected: ({event}: GuardParams): boolean => {

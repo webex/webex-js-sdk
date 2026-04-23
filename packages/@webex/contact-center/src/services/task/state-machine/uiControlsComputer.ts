@@ -205,7 +205,7 @@ function computeVoiceInteractionUIControls(
       if (isWrappingUp) return DISABLED;
       if (isConsulting) return VISIBLE_ENABLED;
 
-      if (state === TaskState.CONNECTED || isConferencing) {
+      if (isConnected || isHeld || isConferencing) {
         if (inConference) return VISIBLE_ENABLED;
 
         return isHeld ? VISIBLE_DISABLED : VISIBLE_ENABLED;

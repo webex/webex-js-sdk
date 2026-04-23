@@ -215,6 +215,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.TERMINATED,
             actions: ['updateTaskData', 'clearConsultState', 'emitTaskReject'],
           },
+          // AgentConsultEnded - when consult initiator (Agent 1) ends the consult before
+          // the consulted agent (Agent 2) accepts. Clears the incoming notification.
+          [TaskEvent.CONSULT_END]: {
+            target: TaskState.TERMINATED,
+            actions: ['updateTaskData', 'clearConsultState', 'emitTaskReject'],
+          },
         },
       },
 
@@ -482,10 +488,10 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: ['handleSwitchToConsult', 'emitTaskSwitchCall'],
           },
           [TaskEvent.HOLD_SUCCESS]: {
-            actions: ['updateTaskData', 'setHoldState'],
+            actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
           },
           [TaskEvent.UNHOLD_SUCCESS]: {
-            actions: ['updateTaskData', 'setHoldState'],
+            actions: ['updateTaskData', 'setHoldState', 'emitTaskResume'],
           },
 
           [TaskEvent.TRANSFER_SUCCESS]: [

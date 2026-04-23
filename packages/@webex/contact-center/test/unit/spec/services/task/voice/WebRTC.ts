@@ -165,7 +165,7 @@ describe('WebRTC Task', () => {
       {type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId},
       {type: TaskEvent.HOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId},
     ]);
-    expect(webRtc.uiControls.main.mute.isVisible).toBe(false);
+    expect(webRtc.uiControls.main.mute.isVisible).toBe(true);
     expect(webRtc.uiControls.main.mute.isEnabled).toBe(false);
   });
 

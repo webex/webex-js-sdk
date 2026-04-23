@@ -91,7 +91,39 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
         if (!context.consultInitiator) {
           const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
           const consultInitiator = determineConsultInitiator(taskData, selfAgentId);
-          if (consultInitiator !== undefined) updates.consultInitiator = consultInitiator;
+          if (consultInitiator !== undefined) {
+            updates.consultInitiator = consultInitiator;
+          } else if (
+            taskData.interaction?.state === 'consulting' &&
+            taskData.isConsulted === false
+          ) {
+            updates.consultInitiator = true;
+          }
+        }
+
+        if (taskData.interaction?.state === 'consulting') {
+          if (!context.consultDestinationAgentJoined) {
+            const hasJoinedConsultee = Boolean(
+              taskData.interaction.participants &&
+                Object.values(taskData.interaction.participants).some(
+                  (p: any) => p?.isConsulted === true && !p?.hasLeft
+                )
+            );
+            if (hasJoinedConsultee) updates.consultDestinationAgentJoined = true;
+          }
+
+          const effectiveConsultInitiator = updates.consultInitiator ?? context.consultInitiator;
+          if (effectiveConsultInitiator) {
+            const consultMediaId = taskData.consultMediaResourceId;
+            const consultMedia: any = consultMediaId
+              ? taskData.interaction.media?.[consultMediaId]
+              : Object.values(taskData.interaction.media ?? {}).find(
+                  (m: any) => m?.mType === 'consult'
+                );
+            if (consultMedia) {
+              updates.consultCallHeld = Boolean(consultMedia.isHold);
+            }
+          }
         }
 
         return updates;
@@ -263,6 +295,7 @@ export const actions: TaskActionsMap = {
   clearConsultCallHeld: assign({consultCallHeld: false}),
   handleSwitchToMainCall: assign({consultCallHeld: true}),
   handleSwitchToConsult: assign({consultCallHeld: false}),
+
   handleConferenceFailed: assign(({event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event);
 
@@ -314,7 +347,7 @@ export const actions: TaskActionsMap = {
       },
     };
 
-    return {
+    const updates: Partial<TaskContext> = {
       taskData: {
         ...(context.taskData as TaskData),
         interaction: {
@@ -323,6 +356,17 @@ export const actions: TaskActionsMap = {
         },
       },
     };
+
+    const consultMediaId = context.taskData?.consultMediaResourceId;
+    const isConsultMedia = consultMediaId
+      ? mediaResourceId === consultMediaId
+      : mediaEntry?.mType === 'consult';
+
+    if (isConsultMedia && context.consultInitiator) {
+      updates.consultCallHeld = event.type === TaskEvent.HOLD_SUCCESS;
+    }
+
+    return updates;
   }),
 
   markEnded: assign(() => ({
