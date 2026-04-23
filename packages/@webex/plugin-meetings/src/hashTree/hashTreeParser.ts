@@ -47,6 +47,7 @@ interface InternalDataSet extends DataSet {
   hashTree?: HashTree; // set only for visible data sets
   timer?: ReturnType<typeof setTimeout>;
   heartbeatWatchdogTimer?: ReturnType<typeof setTimeout>;
+  syncAbortController?: AbortController;
 }
 
 type WebexRequestMethod = (options: Record<string, any>) => Promise<any>;
@@ -544,6 +545,8 @@ class HashTreeParser {
       )}`
     );
 
+    this.cancelPendingSyncsForDataSets(dataSets.map((ds) => ds.name));
+
     dataSets.forEach((dataSet) => {
       this.updateDataSetInfo(dataSet);
       this.runSyncAlgorithm(dataSet);
@@ -803,6 +806,8 @@ class HashTreeParser {
    */
   private deleteHashTree(dataSetName: string) {
     this.dataSets[dataSetName].hashTree = undefined;
+    this.dataSets[dataSetName].syncAbortController?.abort();
+    this.dataSets[dataSetName].syncAbortController = undefined;
 
     // we also need to stop the timers as there is no hash tree anymore to sync
     if (this.dataSets[dataSetName].timer) {
@@ -965,6 +970,7 @@ class HashTreeParser {
     // first, update our metadata about the datasets with info from the message
     this.visibleDataSetsUrl = visibleDataSetsUrl;
     dataSets.forEach((dataSet) => this.updateDataSetInfo(dataSet));
+    this.cancelPendingSyncsForDataSets(dataSets.map((ds) => ds.name));
 
     const updatedObjects: HashTreeObject[] = [];
 
@@ -1188,6 +1194,9 @@ class HashTreeParser {
       return;
     }
 
+    const abortController = dataSet.syncAbortController ?? new AbortController();
+    dataSet.syncAbortController = abortController;
+
     const {hashTree} = dataSet;
     const rootHash = hashTree.getRootHash();
 
@@ -1236,6 +1245,14 @@ class HashTreeParser {
           leavesData = {0: hashTree.getLeafData(0)};
         }
       }
+
+      if (abortController.signal.aborted) {
+        LoggerProxy.logger.info(
+          `HashTreeParser#performSync --> ${this.debugId} abandoning sync for "${dataSet.name}" before /sync - message received during sync`
+        );
+
+        return;
+      }
       // request sync for mismatched leaves
       let syncResponse: HashTreeMessage | null = null;
 
@@ -1262,6 +1279,38 @@ class HashTreeParser {
           `HashTreeParser#performSync --> ${this.debugId} error during sync for data set "${dataSet.name}":`,
           error
         );
+      }
+    } finally {
+      dataSet.syncAbortController = undefined;
+    }
+  }
+
+  /**
+   * Cancels any pending or in-flight syncs for the specified data sets.
+   * This removes matching entries from the sync queue and aborts any in-flight sync HTTP requests.
+   *
+   * @param {string[]} dataSetNames - The names of the data sets to cancel syncs for
+   * @returns {void}
+   */
+  private cancelPendingSyncsForDataSets(dataSetNames: string[]): void {
+    const previousLength = this.syncQueue.length;
+
+    this.syncQueue = this.syncQueue.filter((entry) => !dataSetNames.includes(entry.dataSetName));
+
+    if (previousLength !== this.syncQueue.length) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#cancelPendingSyncsForDataSets --> ${this.debugId} removed ${
+          previousLength - this.syncQueue.length
+        } entries from sync queue for data sets: ${dataSetNames.join(', ')}`
+      );
+    }
+
+    for (const name of dataSetNames) {
+      if (this.dataSets[name]?.syncAbortController) {
+        LoggerProxy.logger.info(
+          `HashTreeParser#cancelPendingSyncsForDataSets --> ${this.debugId} aborting in-flight sync for data set "${name}"`
+        );
+        this.dataSets[name].syncAbortController.abort();
       }
     }
   }
@@ -1512,6 +1561,8 @@ class HashTreeParser {
     this.stopAllTimers();
     this.syncQueue = [];
     Object.values(this.dataSets).forEach((dataSet) => {
+      dataSet.syncAbortController?.abort();
+      dataSet.syncAbortController = undefined;
       dataSet.hashTree = undefined;
     });
     this.visibleDataSets = [];
