@@ -13,6 +13,7 @@ import MobiusSocket, {
   ConnectionError,
   Socket,
 } from '../../../src';
+import {getMobiusSocketInstance, resetMobiusSocketInstance} from '../../../src/index';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
@@ -24,6 +25,33 @@ import {MESSAGE_TYPES} from '../../../src/socket/constants';
 import promiseTick from '../lib/promise-tick';
 
 describe('plugin-mobius-socket', () => {
+  describe('getMobiusSocketInstance', () => {
+    afterEach(() => {
+      resetMobiusSocketInstance();
+    });
+
+    it('uses package config when consumer config is not provided', () => {
+      const configuredWebex = new MockWebex();
+      const instance = getMobiusSocketInstance(configuredWebex);
+
+      assert.instanceOf(instance, MobiusSocket);
+      assert.equal(instance.config, mobiusConfig.mobiusSocket);
+    });
+
+    it('uses consumer config when it is provided', () => {
+      const configuredWebex = new MockWebex();
+      const consumerConfig = {
+        initialConnectionMaxRetries: 0,
+        backoffTimeReset: 1234,
+      };
+
+      const instance = getMobiusSocketInstance(configuredWebex, consumerConfig);
+
+      assert.instanceOf(instance, MobiusSocket);
+      assert.equal(instance.config, consumerConfig);
+    });
+  });
+
   describe('MobiusSocket', () => {
     let clock, mobiusSocket, mockWebSocket, socketOpenStub, webex;
 
@@ -323,8 +351,9 @@ describe('plugin-mobius-socket', () => {
         };
 
         // skipping due to apparent bug with lolex in all browsers but Chrome.
-        skipInBrowser(it)('fails after default `initialConnectionMaxRetries` attempts', () => {
+        skipInBrowser(it)('fails after configured `initialConnectionMaxRetries` attempts', () => {
           mobiusSocket.config.maxRetries = 0;
+          mobiusSocket.config.initialConnectionMaxRetries = 2;
 
           return check();
         });
@@ -394,6 +423,7 @@ describe('plugin-mobius-socket', () => {
       // skipping due to apparent bug with lolex in all browsers but Chrome.
       skipInBrowser(describe)('when the connection fails', () => {
         it('backs off exponentially', () => {
+          mobiusSocket.config.initialConnectionMaxRetries = 2;
           socketOpenStub.restore();
           socketOpenStub = sinon.stub(Socket.prototype, 'open');
           socketOpenStub.returns(Promise.reject(new ConnectionError({code: 4001})));
@@ -453,6 +483,7 @@ describe('plugin-mobius-socket', () => {
 
         describe('with `UnknownResponse`', () => {
           it('triggers a device refresh', () => {
+            mobiusSocket.config.initialConnectionMaxRetries = 1;
             socketOpenStub.restore();
             socketOpenStub = sinon.stub(Socket.prototype, 'open').returns(Promise.resolve());
             socketOpenStub.onCall(0).returns(Promise.reject(new UnknownResponse({code: 4444})));
@@ -472,6 +503,7 @@ describe('plugin-mobius-socket', () => {
 
         describe('with `NotAuthorized`', () => {
           it('triggers a token refresh', () => {
+            mobiusSocket.config.initialConnectionMaxRetries = 1;
             socketOpenStub.restore();
             socketOpenStub = sinon.stub(Socket.prototype, 'open').returns(Promise.resolve());
             socketOpenStub.onCall(0).returns(Promise.reject(new NotAuthorized({code: 4401})));
@@ -625,6 +657,27 @@ describe('plugin-mobius-socket', () => {
             assert.calledOnce(backoffSpy);
             assert.isUndefined(backoffSpy.firstCall.args[2]?.initialConnectionMaxRetries);
             backoffSpy.restore();
+          });
+        });
+
+        it('treats a different explicit URL as a fresh initial connect', () => {
+          clock.uninstall();
+          mobiusSocket.hasEverConnected = true;
+          mobiusSocket.socketUrl = 'ws://old-url.com';
+          mobiusSocket.config.initialConnectionMaxRetries = 0;
+          mobiusSocket.config.maxRetries = 5;
+
+          socketOpenStub.restore();
+          socketOpenStub = sinon
+            .stub(Socket.prototype, 'open')
+            .returns(Promise.reject(new ConnectionError({code: 4001})));
+
+          const promise = mobiusSocket.connect('ws://new-url.com');
+
+          return assert.isRejected(promise).then(() => {
+            assert.calledOnce(Socket.prototype.open);
+            assert.equal(mobiusSocket.socketUrl, 'ws://new-url.com');
+            assert.isFalse(mobiusSocket.hasEverConnected, 'hasEverConnected is false');
           });
         });
       });
@@ -857,6 +910,7 @@ describe('plugin-mobius-socket', () => {
 
         it('sets lastError when retrying', () => {
           const realError = new Error('FORCED');
+          mobiusSocket.config.initialConnectionMaxRetries = 1;
 
           socketOpenStub.restore();
           socketOpenStub = sinon.stub(Socket.prototype, 'open');
