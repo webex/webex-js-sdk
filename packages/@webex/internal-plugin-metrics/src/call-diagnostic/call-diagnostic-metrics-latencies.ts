@@ -363,14 +363,6 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getClickToInterstitial() {
-    // for normal join (where green join button exists before interstitial, i.e reminder, space list etc)
-    if (this.latencyTimestamps.get('internal.client.meeting.click.joinbutton')) {
-      return this.getDiffBetweenTimestamps(
-        'internal.client.meeting.click.joinbutton',
-        'internal.client.meeting.interstitial-window.showed'
-      );
-    }
-
     const clickToInterstitialLatency = this.precomputedLatencies.get(
       'internal.click.to.interstitial'
     );
@@ -387,14 +379,6 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getClickToInterstitialWithUserDelay() {
-    // for normal join (where green join button exists before interstitial, i.e reminder, space list etc)
-    if (this.latencyTimestamps.get('internal.client.meeting.click.joinbutton')) {
-      return this.getDiffBetweenTimestamps(
-        'internal.client.meeting.click.joinbutton',
-        'internal.client.meeting.interstitial-window.showed'
-      );
-    }
-
     const clickToInterstitialWithUserDelayLatency = this.precomputedLatencies.get(
       'internal.click.to.interstitial.with.user.delay'
     );

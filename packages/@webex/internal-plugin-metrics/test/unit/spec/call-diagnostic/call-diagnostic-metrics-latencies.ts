@@ -574,71 +574,31 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('calculates getClickToInterstitial correctly', () => {
-      cdl.saveTimestamp({
-        key: 'internal.client.meeting.click.joinbutton',
-        value: 10,
-      });
-      cdl.saveTimestamp({
-        key: 'internal.client.meeting.interstitial-window.showed',
-        value: 20,
-      });
-      assert.deepEqual(cdl.getClickToInterstitial(), 10);
-    });
-
-    it('calculates getClickToInterstitial without join button timestamp', () => {
       cdl.saveLatency('internal.click.to.interstitial', 5);
-      cdl.saveTimestamp({
-        key: 'internal.client.meeting.interstitial-window.showed',
-        value: 20,
-      });
       assert.deepEqual(cdl.getClickToInterstitial(), 5);
     });
 
-    it('calculates getClickToInterstitial without join button timestamp when it is 0', () => {
+    it('calculates getClickToInterstitial correctly when it is 0', () => {
       cdl.saveLatency('internal.click.to.interstitial', 0);
-      cdl.saveTimestamp({
-        key: 'internal.client.meeting.interstitial-window.showed',
-        value: 20,
-      });
       assert.deepEqual(cdl.getClickToInterstitial(), 0);
     });
 
-    it('calculates getClickToInterstitial without join button timestamp when it is greater than MAX_INTEGER', () => {
+    it('calculates getClickToInterstitial correctly when it is greater than MAX_INTEGER', () => {
       cdl.saveLatency('internal.click.to.interstitial', 2147483648);
       assert.deepEqual(cdl.getClickToInterstitial(), 2147483647);
     });
 
     it('calculates getClickToInterstitialWithUserDelay correctly', () => {
-      cdl.saveTimestamp({
-        key: 'internal.client.meeting.click.joinbutton',
-        value: 10,
-      });
-      cdl.saveTimestamp({
-        key: 'internal.client.meeting.interstitial-window.showed',
-        value: 20,
-      });
-      assert.deepEqual(cdl.getClickToInterstitialWithUserDelay(), 10);
-    });
-
-    it('calculates getClickToInterstitialWithUserDelay without join button timestamp', () => {
       cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 5);
-      cdl.saveTimestamp({
-        key: 'internal.client.meeting.interstitial-window.showed',
-        value: 20,
-      });
       assert.deepEqual(cdl.getClickToInterstitialWithUserDelay(), 5);
     });
 
-    it('calculates getClickToInterstitialWithUserDelay without join button timestamp when it is 0', () => {
+    it('calculates getClickToInterstitialWithUserDelay correctly when it is 0', () => {
       cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 0);
-      cdl.saveTimestamp({
-        key: 'internal.client.meeting.interstitial-window.showed',
-        value: 20,
-      });
       assert.deepEqual(cdl.getClickToInterstitialWithUserDelay(), 0);
     });
 
-    it('calculates getClickToInterstitialWithUserDelay without join button timestamp when it is greater than MAX_INTEGER', () => {
+    it('calculates getClickToInterstitialWithUserDelay correctly when it is greater than MAX_INTEGER', () => {
       cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 2147483648);
       assert.deepEqual(cdl.getClickToInterstitialWithUserDelay(), 2147483647);
     });
