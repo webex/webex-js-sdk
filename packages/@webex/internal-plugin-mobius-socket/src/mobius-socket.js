@@ -49,6 +49,8 @@ class MobiusSocket extends EventEmitter {
     this._shutdownSwitchoverBackoffCalls = new Map();
     this._seenAsyncEventIdsBySession = new Map();
     this._connectPromises = new Map();
+    this._tokenRefreshTimer = undefined;
+    this._tokenRefreshInFlight = undefined;
 
     this._bindInternalEvents();
   }
