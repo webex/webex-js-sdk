@@ -633,17 +633,10 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('calculates getTotalJMT correctly', () => {
+      cdl.saveLatency('internal.click.to.interstitial', 10);
       cdl.saveTimestamp({
         key: 'internal.client.interstitial-window.click.joinbutton',
         value: 5,
-      });
-      cdl.saveTimestamp({
-        key: 'internal.client.meeting.click.joinbutton',
-        value: 10,
-      });
-      cdl.saveTimestamp({
-        key: 'internal.client.meeting.interstitial-window.showed',
-        value: 20,
       });
       cdl.saveTimestamp({
         key: 'client.locus.join.response',
@@ -718,14 +711,7 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('calculates getTotalJMTWithUserDelay correctly', () => {
-      cdl.saveTimestamp({
-        key: 'internal.client.interstitial-window.click.joinbutton',
-        value: 5,
-      });
-      cdl.saveTimestamp({
-        key: 'internal.client.meeting.click.joinbutton',
-        value: 10,
-      });
+      cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 10);
       cdl.saveTimestamp({
         key: 'internal.client.meeting.interstitial-window.showed',
         value: 20,
@@ -806,9 +792,8 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('calculates getTotalMediaJMT correctly with lobby exiting before media-engine.ready', () => {
-      cdl.saveTimestamp({key: 'internal.client.meeting.click.joinbutton', value: 5});
-      cdl.saveTimestamp({key: 'internal.client.meeting.interstitial-window.showed', value: 8});
-      // clickToInterstitial = 8 - 5 = 3
+      cdl.saveLatency('internal.click.to.interstitial', 3);
+      // clickToInterstitial = 3
       cdl.saveTimestamp({key: 'internal.client.interstitial-window.click.joinbutton', value: 10});
       cdl.saveTimestamp({key: 'client.media-engine.ready', value: 50});
       // interstitialClickJoinToMediaEngineReady = 50 - 10 = 40
@@ -820,8 +805,7 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('calculates getTotalMediaJMT correctly without lobby', () => {
-      cdl.saveTimestamp({key: 'internal.client.meeting.click.joinbutton', value: 5});
-      cdl.saveTimestamp({key: 'internal.client.meeting.interstitial-window.showed', value: 8});
+      cdl.saveLatency('internal.click.to.interstitial', 3);
       // clickToInterstitial = 3
       cdl.saveTimestamp({key: 'internal.client.interstitial-window.click.joinbutton', value: 10});
       cdl.saveTimestamp({key: 'client.media-engine.ready', value: 50});
@@ -832,8 +816,7 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('calculates getTotalMediaJMT correctly with lobby exiting after media-engine.ready', () => {
-      cdl.saveTimestamp({key: 'internal.client.meeting.click.joinbutton', value: 5});
-      cdl.saveTimestamp({key: 'internal.client.meeting.interstitial-window.showed', value: 8});
+      cdl.saveLatency('internal.click.to.interstitial', 3);
       // clickToInterstitial = 3
       cdl.saveTimestamp({key: 'internal.client.interstitial-window.click.joinbutton', value: 10});
       cdl.saveTimestamp({key: 'client.media-engine.ready', value: 50});
@@ -846,8 +829,7 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('calculates getTotalMediaJMT correctly when it is greater than MAX_INTEGER', () => {
-      cdl.saveTimestamp({key: 'internal.client.meeting.click.joinbutton', value: 5});
-      cdl.saveTimestamp({key: 'internal.client.meeting.interstitial-window.showed', value: 8});
+      cdl.saveLatency('internal.click.to.interstitial', 3);
       cdl.saveTimestamp({key: 'internal.client.interstitial-window.click.joinbutton', value: 10});
       cdl.saveTimestamp({key: 'client.media-engine.ready', value: 4294967400});
       cdl.saveTimestamp({key: 'client.lobby.entered', value: 28});
@@ -856,17 +838,15 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('returns undefined for getTotalMediaJMT when media-engine.ready is missing', () => {
-      cdl.saveTimestamp({key: 'internal.client.meeting.click.joinbutton', value: 5});
-      cdl.saveTimestamp({key: 'internal.client.meeting.interstitial-window.showed', value: 8});
+      cdl.saveLatency('internal.click.to.interstitial', 3);
       cdl.saveTimestamp({key: 'internal.client.interstitial-window.click.joinbutton', value: 10});
       cdl.saveTimestamp({key: 'client.locus.join.response', value: 20});
       assert.deepEqual(cdl.getTotalMediaJMT(), undefined);
     });
 
     it('calculates getTotalMediaJMT correctly when there is no lobby and stayLobbyTime defaults to 0', () => {
-      cdl.saveTimestamp({key: 'internal.client.meeting.click.joinbutton', value: 5});
-      cdl.saveTimestamp({key: 'internal.client.meeting.interstitial-window.showed', value: 8});
-      // clickToInterstitial = 8 - 5 = 3
+      cdl.saveLatency('internal.click.to.interstitial', 3);
+      // clickToInterstitial = 3
       cdl.saveTimestamp({key: 'internal.client.interstitial-window.click.joinbutton', value: 10});
       cdl.saveTimestamp({key: 'client.media-engine.ready', value: 50});
       // interstitialClickJoinToMediaEngineReady = 50 - 10 = 40
@@ -886,9 +866,9 @@ describe('internal-plugin-metrics', () => {
     });
 
     it('calculates getTotalMediaJMTWithUserDelay correctly for guest join', () => {
-      cdl.saveTimestamp({key: 'internal.client.meeting.click.joinbutton', value: 5});
+      cdl.saveLatency('internal.click.to.interstitial.with.user.delay', 3);
+      // clickToInterstitialWithUserDelay = 3
       cdl.saveTimestamp({key: 'internal.client.meeting.interstitial-window.showed', value: 8});
-      // clickToInterstitialWithUserDelay = 8 - 5 = 3
       cdl.saveTimestamp({key: 'client.media-engine.ready', value: 50});
       // interstitialShowedToMediaEngineReady = 50 - 8 = 42
       // total = 3 + 42 = 45
