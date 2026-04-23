@@ -6303,6 +6303,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Disconnects and cleans up the default LLM session listeners/timers.
+   *
+   * Ownership-aware: only calls `disconnectLLM` when this meeting is the
+   * current owner of the default LLM session (or when no owner is recorded).
+   * Event listeners belonging to this meeting instance are always detached
+   * so they do not receive another meeting's relay events.
+   *
    * @param {Object} options
    * @param {boolean} [options.removeOnlineListener=true] removes the one-time online listener
    * @param {boolean} [options.throwOnError=true] rethrows disconnect errors when true
@@ -6315,12 +6321,22 @@ export default class Meeting extends StatelessWebexPlugin {
     removeOnlineListener?: boolean;
     throwOnError?: boolean;
   } = {}): Promise<void> => {
+    // @ts-ignore - Fix type
+    const currentOwner = this.webex.internal.llm.getOwnerMeetingId?.();
+    const isOwner = !currentOwner || currentOwner === this.id;
+
     try {
-      // @ts-ignore - Fix type
-      await this.webex.internal.llm.disconnectLLM({
-        code: 3050,
-        reason: 'done (permanent)',
-      });
+      if (isOwner) {
+        // @ts-ignore - Fix type
+        await this.webex.internal.llm.disconnectLLM({
+          code: 3050,
+          reason: 'done (permanent)',
+        });
+      } else {
+        LoggerProxy.logger.info(
+          `Meeting:index#cleanupLLMConneciton --> skipping disconnect; LLM owned by meeting ${currentOwner}, not ${this.id}`
+        );
+      }
     } catch (error) {
       LoggerProxy.logger.error(
         'Meeting:index#cleanupLLMConneciton --> Failed to disconnect default LLM session',
@@ -6442,8 +6458,25 @@ export default class Meeting extends StatelessWebexPlugin {
 
     const dataChannelUrl = datachannelUrl;
 
+    // Ownership guard: when the default LLM session is already connected and
+    // owned by a *different* Meeting instance, do not disconnect or reconfigure
+    // it. Another meeting's `updateLLMConnection` must be ignored here to
+    // avoid killing the socket it relies on. We only proceed to manage the
+    // connection when this meeting is the current owner, or when no owner is
+    // set yet (first claim).
+    // @ts-ignore - Fix type
+    const currentOwner = this.webex.internal.llm.getOwnerMeetingId?.();
+
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
+      if (currentOwner && currentOwner !== this.id) {
+        LoggerProxy.logger.info(
+          `Meeting:index#updateLLMConnection --> skipping; LLM owned by meeting ${currentOwner}, not ${this.id}`
+        );
+
+        return undefined;
+      }
+
       if (
         // @ts-ignore - Fix type
         url === this.webex.internal.llm.getLocusUrl() &&
@@ -6464,6 +6497,11 @@ export default class Meeting extends StatelessWebexPlugin {
     return this.webex.internal.llm
       .registerAndConnect(url, dataChannelUrl, datachannelToken)
       .then((registerAndConnectResult) => {
+        // Record ownership of the default LLM session for this meeting so
+        // subsequent cross-meeting `updateLLMConnection` / `cleanupLLMConneciton`
+        // calls can detect and skip work that doesn't belong to them.
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.setOwnerMeetingId?.(this.id);
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
         // @ts-ignore - Fix type
