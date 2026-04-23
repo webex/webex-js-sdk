@@ -522,8 +522,12 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         method: GET_MOBIUS_SERVERS_UTIL,
       });
 
-      const regionInfo = await this.getClientRegionInfo();
-
+      // MOBIUS TODO: Remove this later. Added for testing purposes.
+      // const regionInfo = await this.getClientRegionInfo();
+      const regionInfo = {
+        clientRegion: 'US-EAST',
+        countryCode: 'WS-LOAD-TEST',
+      };
       clientRegion = regionInfo.clientRegion;
       countryCode = regionInfo.countryCode;
     }
@@ -546,7 +550,9 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         try {
           // eslint-disable-next-line no-await-in-loop
           const response = <WebexRequestPayload>await this.webex.request({
-            uri: `${this.mobiusHost}${URL_ENDPOINT}?regionCode=${clientRegion}&countryCode=${countryCode}`,
+            // uri: `${this.mobiusHost}${URL_ENDPOINT}?regionCode=${clientRegion}&countryCode=${countryCode}`,
+            // MOBIUS TODO: Remove this later. Added for testing purposes.
+            uri: 'https://mobius.aload-calling1.ciscospark.com/api/v1/calling/web/?regionCode=US-EAST&countryCode=WS-LOAD-TEST',
             method: HTTP_METHODS.GET,
             headers: {
               [CISCO_DEVICE_URL]: this.webex.internal.device.url,
