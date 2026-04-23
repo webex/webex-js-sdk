@@ -449,6 +449,34 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     target: 'campaign_preview_accept',
     verb: 'fail',
   },
+
+  // Campaign Preview Skip API Events
+  [METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_SKIP_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'campaign_preview_skip',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_SKIP_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'campaign_preview_skip',
+    verb: 'fail',
+  },
+
+  // Campaign Preview Remove API Events
+  [METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_REMOVE_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'campaign_preview_remove',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_REMOVE_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'campaign_preview_remove',
+    verb: 'fail',
+  },
 };
 
 /**

@@ -42,6 +42,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
 
   private captionStatus: string;
 
+  private isCaptionBoxOn: boolean;
+
   private toggleManualCaptionStatus: string;
 
   private currentSpokenLanguage?: string;
@@ -102,6 +104,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    */
   public deregisterEvents() {
     this.areCaptionsEnabled = false;
+    this.isCaptionBoxOn = false;
     this.captionServiceId = undefined;
     // @ts-ignore
     this.webex.internal.llm.off('event:relay.event', this.eventProcessor);
@@ -272,6 +275,8 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
     // @ts-ignore
     this.webex.internal.llm.isConnected(LLM_PRACTICE_SESSION);
 
+  public getIsCaptionBoxOn = (): boolean => this.isCaptionBoxOn;
+
   /**
    * Resolves the active LLM publish transport, preferring the practice-session
    * connection only when that session is fully connected.
@@ -286,6 +291,9 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
       socket: (isPracticeSessionConnected && llm.getSocket(LLM_PRACTICE_SESSION)) || llm.socket,
       binding:
         (isPracticeSessionConnected && llm.getBinding(LLM_PRACTICE_SESSION)) || llm.getBinding(),
+      datachannelUrl:
+        (isPracticeSessionConnected && llm.getDatachannelUrl(LLM_PRACTICE_SESSION)) ||
+        llm.getDatachannelUrl(),
     };
   };
 
@@ -461,6 +469,7 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
         this.areCaptionsEnabled = true;
         this.captionStatus = TURN_ON_CAPTION_STATUS.ENABLED;
         this.announce();
+        this.updateSubchannelSubscriptionsAndSyncCaptionState({subscribe: ['transcription']}, true);
       })
       .catch(() => {
         this.captionStatus = TURN_ON_CAPTION_STATUS.IDLE;
@@ -620,6 +629,68 @@ export class VoiceaChannel extends WebexPlugin implements IVoiceaChannel {
    * @returns {string}
    */
   public getAnnounceStatus = () => this.announceStatus;
+  /**
+   * update LLM sub‑channel subscriptions.
+   *
+   * sends a single `subchannelSubscriptionRequest` to LLM,
+   * allowing subscribe and unsubscribe subchannel.
+   *
+   * @param {string[]} options.subscribe   Sub‑channels to subscribe to.
+   * @param {string[]} options.unsubscribe Sub‑channels to unsubscribe from.
+   * @returns {Promise}
+   */
+  public updateSubchannelSubscriptions = async ({
+    subscribe = [],
+    unsubscribe = [],
+  }: {
+    subscribe?: string[];
+    unsubscribe?: string[];
+  } = {}): Promise<void> => {
+    // @ts-ignore
+    const isDataChannelTokenEnabled = await this.webex.internal.llm.isDataChannelTokenEnabled();
+    // @ts-ignore
+    if (!this.isLLMConnected() || !isDataChannelTokenEnabled) return;
+
+    const {socket, datachannelUrl} = this.getPublishTransport();
+
+    // @ts-ignore
+    socket.send({
+      id: `${this.seqNum}`,
+      type: 'subchannelSubscriptionRequest',
+      data: {
+        // @ts-ignore
+        datachannelUri: datachannelUrl,
+        subscribe,
+        unsubscribe,
+      },
+      trackingId: `${config.trackingIdPrefix}_${uuid.v4().toString()}`,
+    });
+
+    this.seqNum += 1;
+  };
+
+  /**
+   * Syncs the UI caption intent and updates transcription subchannel
+   * subscriptions accordingly.
+   *
+   * @param {Object} [options] - Subscription options.
+   * @param {string[]} [options.subscribe] - Subchannels to subscribe to.
+   * @param {string[]} [options.unsubscribe] - Subchannels to unsubscribe from.
+   * @param {boolean} [isCaptionBoxOn=false] - Whether captions are intended to be enabled.
+   *
+   * @returns {Promise<void>}
+   */
+  public updateSubchannelSubscriptionsAndSyncCaptionState = (
+    options: {
+      subscribe?: string[];
+      unsubscribe?: string[];
+    } = {},
+    isCaptionBoxOn = false
+  ): Promise<void> => {
+    this.isCaptionBoxOn = isCaptionBoxOn;
+
+    return this.updateSubchannelSubscriptions(options);
+  };
 }
 
 export default VoiceaChannel;

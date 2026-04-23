@@ -4,6 +4,8 @@
  * @ignore
  */
 
+import {CC_EVENTS} from '../config/types';
+
 export const TASK_MESSAGE_TYPE = 'RoutingMessage';
 export const TASK_API = '/v1/tasks/';
 export const HOLD = '/hold';
@@ -22,6 +24,8 @@ export const CONFERENCE_EXIT = '/conference/exit';
 export const CONFERENCE_TRANSFER = '/conference/transfer';
 export const DIALER_API = '/v1/dialer';
 export const CAMPAIGN_PREVIEW_ACCEPT = '/accept';
+export const CAMPAIGN_PREVIEW_SKIP = '/skip';
+export const CAMPAIGN_PREVIEW_REMOVE = '/remove';
 /** 80-second timeout for accepting preview contact (outbound call setup takes longer than default 20s) */
 export const TIMEOUT_PREVIEW_ACCEPT = 80000;
 export const TASK_MANAGER_FILE = 'taskManager';
@@ -73,6 +77,7 @@ export const METHODS = {
   // TaskManager class methods
   HANDLE_INCOMING_WEB_CALL: 'handleIncomingWebCall',
   REGISTER_TASK_LISTENERS: 'registerTaskListeners',
+  HANDLE_REAL_TIME_WEBSOCKET_EVENT: 'handleRealtimeWebsocketEvent',
   REMOVE_TASK_FROM_COLLECTION: 'removeTaskFromCollection',
   HANDLE_TASK_CLEANUP: 'handleTaskCleanup',
   GET_TASK: 'getTask',
@@ -80,4 +85,13 @@ export const METHODS = {
   GET_TASK_MANAGER: 'getTaskManager',
   SETUP_AUTO_WRAPUP_TIMER: 'setupAutoWrapupTimer',
   CANCEL_AUTO_WRAPUP_TIMER: 'cancelAutoWrapupTimer',
+};
+
+export const TRANSCRIPT_EVENT_MAP = {
+  [CC_EVENTS.AGENT_CONTACT_ASSIGNED]: 'START',
+  [CC_EVENTS.AGENT_CONSULTING]: 'START',
+  [CC_EVENTS.AGENT_CONSULT_CONFERENCED]: 'START',
+  [CC_EVENTS.AGENT_WRAPUP]: 'STOP',
+  [CC_EVENTS.AGENT_CONSULT_ENDED]: 'STOP',
+  [CC_EVENTS.PARTICIPANT_LEFT_CONFERENCE]: 'STOP',
 };
