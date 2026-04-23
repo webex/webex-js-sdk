@@ -188,6 +188,7 @@ export class Registration implements IRegistration {
   }
 
   public setActiveMobiusUrl(url: string) {
+    url = "https://mobius.sa-02wrtm1.prod.infra.webex.com/api/v1/calling/web/";
     log.info(`${METHOD_START_MESSAGE} with ${url}`, {
       method: METHODS.UPDATE_ACTIVE_MOBIUS,
       file: REGISTRATION_FILE,
@@ -816,6 +817,8 @@ export class Registration implements IRegistration {
 
       return abort;
     }
+    // Hardcoded url
+    servers = ["https://mobius.sa-02wrtm1.prod.infra.webex.com/api/v1/calling/web/"];
     for (const url of servers) {
       const serverType =
         (this.primaryMobiusUris.includes(url) && 'PRIMARY') ||
