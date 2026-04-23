@@ -441,6 +441,10 @@ class MobiusSocket extends EventEmitter {
       return Promise.resolve();
     }
 
+    if (webSocketUrl && this.socketUrl && webSocketUrl !== this.socketUrl) {
+      this.hasEverConnected = false;
+    }
+
     // Cache the caller-provided URL for reconnect
     const resolvedUrl = webSocketUrl || this.socketUrl;
     if (webSocketUrl) {
