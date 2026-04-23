@@ -858,7 +858,7 @@ describe('CallingClient Tests', () => {
       });
 
       const asyncEventOnCall = (mobiusSocketMock.on as jest.Mock).mock.calls.find(
-        (call) => call[0] === 'async_event'
+        (call) => call[0] === 'event:async_event'
       );
       asyncEventCallback = asyncEventOnCall[1];
     });
