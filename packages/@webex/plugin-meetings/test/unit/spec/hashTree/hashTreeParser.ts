@@ -637,6 +637,32 @@ describe('HashTreeParser', () => {
       expect(syncCalls[2].args[0].uri).to.equal(`${atdActiveDataSet.url}/sync`);
     });
 
+    it('sends leafCount=1 with a single empty leaf for initialization sync, regardless of actual dataset leafCount', async () => {
+      const parser = createHashTreeParser({dataSets: [], locus: null}, null);
+
+      // Use a dataset with leafCount=16 to verify the initialization sync always uses leafCount=1
+      const mainDataSet = createDataSet('main', 16, 1100);
+
+      mockGetAllDataSetsMetadata(webexRequest, visibleDataSetsUrl, [mainDataSet]);
+      mockSyncRequest(webexRequest, mainDataSet.url);
+
+      await parser.initializeFromMessage({
+        dataSets: [],
+        visibleDataSetsUrl,
+        locusUrl,
+      });
+
+      assert.calledWith(webexRequest, {
+        method: 'POST',
+        uri: `${mainDataSet.url}/sync`,
+        qs: {rootHash: sinon.match.string},
+        body: {
+          leafCount: 1,
+          leafDataEntries: [{leafIndex: 0, elementIds: []}],
+        },
+      });
+    });
+
     it('handles sync response that has locusStateElements undefined', async () => {
       const minimalInitialLocus = {
         dataSets: [],
