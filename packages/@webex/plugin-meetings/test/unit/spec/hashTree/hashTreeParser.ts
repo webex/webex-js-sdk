@@ -7,6 +7,7 @@ import {expect} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {EMPTY_HASH} from '@webex/plugin-meetings/src/hashTree/constants';
+import testUtils from '@webex/plugin-meetings/test/utils/testUtils';
 import { some } from 'lodash';
 
 const visibleDataSetsUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/visibleDataSets';
@@ -4329,10 +4330,14 @@ describe('HashTreeParser', () => {
       const existingController = new AbortController();
       parser.dataSets.main.syncAbortController = existingController;
 
-      // Mock GET hashtree to return matching hashes (no sync needed)
-      webexRequest
-        .withArgs(sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`}))
-        .resolves({body: {}});
+      // Use a deferred promise for GET hashtree so we can inspect the controller mid-sync
+      let resolveGetHashtree;
+      webexRequest.withArgs(sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`})).callsFake(
+        () =>
+          new Promise((resolve) => {
+            resolveGetHashtree = resolve;
+          })
+      );
 
       // Trigger sync for main
       parser.handleMessage(
@@ -4342,9 +4347,15 @@ describe('HashTreeParser', () => {
 
       await clock.tickAsync(1000);
 
-      // The controller used during performSync should be the same one we pre-set
-      // Since hashes matched and sync completed, syncAbortController is cleared in finally
-      expect(parser.dataSets.main.syncAbortController).to.be.undefined; // cleaned up in finally
+      // While sync is in-flight, verify the controller is the same one we pre-set
+      expect(parser.dataSets.main.syncAbortController).to.equal(existingController);
+
+      // Resolve GET hashtree with matching hashes (no sync needed)
+      resolveGetHashtree({body: {}});
+      await testUtils.flushPromises();
+
+      // After sync completes, syncAbortController is cleared in finally
+      expect(parser.dataSets.main.syncAbortController).to.be.undefined;
     });
 
     it('should abort the sync before /sync request when the controller is aborted during getHashesFromLocus', async () => {
@@ -4384,7 +4395,7 @@ describe('HashTreeParser', () => {
         },
       });
 
-      await clock.tickAsync(0);
+      await testUtils.flushPromises();
 
       // POST sync should NOT have been called because the controller was aborted
       assert.neverCalledWith(webexRequest, sinon.match({method: 'POST', uri: `${mainUrl}/sync`}));
@@ -4420,6 +4431,9 @@ describe('HashTreeParser', () => {
 
       // Fire the timer to start the sync
       await clock.tickAsync(1000);
+
+      // GET hashtree should NOT have been called (leafCount === 1 skips it)
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'GET', uri: `${selfUrl}/hashtree`}));
 
       // POST sync should NOT have been called because the controller was already aborted
       assert.neverCalledWith(webexRequest, sinon.match({method: 'POST', uri: `${selfUrl}/sync`}));
@@ -4552,7 +4566,7 @@ describe('HashTreeParser', () => {
         },
       });
 
-      await clock.tickAsync(0);
+      await testUtils.flushPromises();
 
       // POST sync should NOT have been called because cancelPendingSyncsForDataSets aborted the controller
       assert.neverCalledWith(webexRequest, sinon.match({method: 'POST', uri: `${mainUrl}/sync`}));

@@ -1267,6 +1267,10 @@ class HashTreeParser {
       // sync API may return nothing (in that case data will arrive via messages)
       // or it may return a response in the same format as messages
       if (syncResponse) {
+        // clear the abort controller before processing the response so that
+        // parseMessage() -> cancelPendingSyncsForDataSets() doesn't log a
+        // misleading "aborting sync" message for this already-completed sync
+        dataSet.syncAbortController = undefined;
         this.handleMessage(syncResponse, 'via sync API');
       }
     } catch (error) {
