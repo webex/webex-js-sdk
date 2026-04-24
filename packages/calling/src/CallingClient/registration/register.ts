@@ -446,6 +446,13 @@ export class Registration implements IRegistration {
         loggerContext
       );
     } else if (this.backupMobiusUris.length) {
+      if (this.apiRequest.isSocketEnabled()) {
+        await this.apiRequest.disconnectFromMobiusSocket({
+          code: 3050,
+          reason: 'done (permanent)',
+        });
+      }
+
       this.saveFailoverState({
         attempt,
         timeElapsed,
@@ -911,10 +918,6 @@ export class Registration implements IRegistration {
         this.initiateFailback();
         break;
       } catch (err: unknown) {
-        connectedWebSocketUrl = undefined;
-        // eslint-disable-next-line no-await-in-loop
-        await this.apiRequest.disconnectFromMobiusSocket({code: 3050, reason: 'done (permanent)'});
-
         const body = err as WebexRequestPayload;
         // eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-unused-vars
         abort = await handleRegistrationErrors(
@@ -950,6 +953,16 @@ export class Registration implements IRegistration {
           );
           break;
         }
+
+        if (servers.length > 1 && this.apiRequest.isSocketEnabled()) {
+          connectedWebSocketUrl = undefined;
+          // eslint-disable-next-line no-await-in-loop
+          await this.apiRequest.disconnectFromMobiusSocket({
+            code: 3050,
+            reason: 'done (permanent)',
+          });
+        }
+
         if (abort) {
           this.setStatus(RegistrationStatus.INACTIVE);
           // eslint-disable-next-line no-await-in-loop
