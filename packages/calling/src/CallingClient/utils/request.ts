@@ -4,7 +4,7 @@ import {getMobiusSocketInstance} from '@webex/internal-plugin-mobius-socket';
 import {WebexRequestPayload} from '../../common/types';
 import {WebexSDK} from '../../SDKConnector/types';
 import log from '../../Logger';
-import {APIRequestConfig, APIRequestOptions, MobiusSocketResponse} from './types';
+import {APIRequestConfig, APIRequestOptions, MobiusAsyncEvent, MobiusSocketResponse} from './types';
 import {
   deriveMobiusSocketMessageType,
   isSupplementaryServiceMessageType,
@@ -84,8 +84,7 @@ export class APIRequest {
     }
 
     this.webex = config.webex;
-    this.isMobiusSocketEnabled =
-      isMobiusWssEnabled(config.webex) || (config.isMobiusSocketEnabled ?? false);
+    this.isMobiusSocketEnabled = isMobiusWssEnabled(config.webex) || false;
     this.mobiusSocket = getMobiusSocketInstance(this.webex);
   }
 
@@ -186,6 +185,16 @@ export class APIRequest {
     }
 
     return this.webex.request(request) as Promise<WebexRequestPayload>;
+  }
+
+  public registerMobiusSocketListener(cb: (data?: MobiusAsyncEvent) => void): void {
+    this.mobiusSocket.on('event:async_event', (data: MobiusAsyncEvent) => {
+      cb(data);
+    });
+  }
+
+  public unregisterMobiusSocketListener(): void {
+    this.mobiusSocket.off('event:async_event');
   }
 }
 
