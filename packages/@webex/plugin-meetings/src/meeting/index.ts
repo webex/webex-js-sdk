@@ -6356,6 +6356,17 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore - Fix type
       this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
 
+      // If this meeting owned (or could have owned) the default LLM session,
+      // always release the owner tag here regardless of whether disconnectLLM
+      // resolved. `disconnectLLM` only clears the owner on its success path,
+      // so a failed disconnect would otherwise leave a stale owner pointing
+      // at a torn-down meeting and permanently block other meetings'
+      // `updateLLMConnection` calls via the ownership guard.
+      if (isOwner) {
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.setOwnerMeetingId?.(undefined);
+      }
+
       this.clearLLMHealthCheckTimer();
     }
   };
@@ -6470,11 +6481,37 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
       if (currentOwner && currentOwner !== this.id) {
-        LoggerProxy.logger.info(
-          `Meeting:index#updateLLMConnection --> skipping; LLM owned by meeting ${currentOwner}, not ${this.id}`
-        );
+        // Reclaim path: ownership is only cleared on a *successful*
+        // `disconnectLLM`. If the previous owner's cleanup failed (or the
+        // session has since been reconfigured for a different locus/data
+        // channel URL), the stale owner tag would otherwise permanently
+        // block every other meeting from calling `updateLLMConnection`.
+        // Detect that drift and reclaim the session instead of returning.
+        // @ts-ignore - Fix type
+        const connectedLocusUrl = this.webex.internal.llm.getLocusUrl?.();
+        // @ts-ignore - Fix type
+        const connectedDataChannelUrl = this.webex.internal.llm.getDatachannelUrl?.();
+        const locusMismatch =
+          (!!url && !!connectedLocusUrl && url !== connectedLocusUrl) ||
+          (!!dataChannelUrl &&
+            !!connectedDataChannelUrl &&
+            dataChannelUrl !== connectedDataChannelUrl);
 
-        return undefined;
+        if (!locusMismatch) {
+          LoggerProxy.logger.info(
+            `Meeting:index#updateLLMConnection --> skipping; LLM owned by meeting ${currentOwner}, not ${this.id}`
+          );
+
+          return undefined;
+        }
+
+        LoggerProxy.logger.info(
+          `Meeting:index#updateLLMConnection --> reclaiming stale LLM ownership from meeting ${currentOwner} (locus/datachannel mismatch); this=${this.id}`
+        );
+        // Drop the stale owner tag so `cleanupLLMConneciton` below treats
+        // this meeting as eligible to disconnect + reconfigure the session.
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.setOwnerMeetingId?.(undefined);
       }
 
       if (
@@ -9765,7 +9802,22 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.annotation.deregisterEvents();
 
-    this.clearDataChannelToken();
+    // Ownership-aware token clear: only clear the shared LLM data channel
+    // tokens when this meeting owns (or no meeting owns) the default LLM
+    // session. Otherwise we would wipe tokens still in use by another
+    // meeting's active LLM connection.
+    // @ts-ignore - Fix type
+    const currentOwner = this.webex.internal.llm.getOwnerMeetingId?.();
+    const isOwner = !currentOwner || currentOwner === this.id;
+
+    if (isOwner) {
+      this.clearDataChannelToken();
+    } else {
+      LoggerProxy.logger.info(
+        `Meeting:index#clearMeetingData --> skipping clearDataChannelToken; LLM owned by meeting ${currentOwner}, not ${this.id}`
+      );
+    }
+
     await this.cleanupLLMConneciton({throwOnError: false});
   };
 
