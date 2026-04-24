@@ -3,7 +3,7 @@
  */
 
 import {forEach} from 'lodash';
-import {assert} from '@webex/test-helper-chai';
+import {assert} from './test/assert';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
 import sinon from 'sinon';
 import {
@@ -15,13 +15,11 @@ import {
   ConnectionError,
   Socket,
 } from './index';
-import {v4 as uuid} from 'uuid';
-import FakeTimers from '@sinonjs/fake-timers';
 import {MESSAGE_TYPES} from './socket/constants';
 
 describe('plugin-mobius-socket', () => {
   describe('Socket', () => {
-    let clock, mockWebSocket, socket;
+    let mockWebSocket, socket, usingFakeTimers;
 
     const mockoptions = Object.assign(
       {
@@ -47,11 +45,8 @@ describe('plugin-mobius-socket', () => {
     };
 
     beforeEach(() => {
-      clock = FakeTimers.install({now: Date.now()});
-    });
-
-    afterEach(() => {
-      clock.uninstall();
+      jest.useFakeTimers({doNotFake: ['nextTick']});
+      usingFakeTimers = true;
     });
 
     beforeEach(() => {
@@ -78,6 +73,11 @@ describe('plugin-mobius-socket', () => {
     });
 
     afterEach(() => {
+      if (usingFakeTimers) {
+        jest.useRealTimers();
+        usingFakeTimers = false;
+      }
+
       Socket.getWebSocketConstructor.restore();
 
 
@@ -470,7 +470,7 @@ describe('plugin-mobius-socket', () => {
 
           const promise = socket.close();
 
-          clock.tick(mockoptions.forceCloseDelay);
+          jest.advanceTimersByTime(mockoptions.forceCloseDelay);
 
           return promise.then(() => {
             assert.called(spy);
@@ -502,7 +502,7 @@ describe('plugin-mobius-socket', () => {
 
           const promise = socket.close({code: 3050, reason: 'done (permanent)'});
 
-          clock.tick(mockoptions.forceCloseDelay);
+          jest.advanceTimersByTime(mockoptions.forceCloseDelay);
 
           return promise.then(() => {
             assert.called(spy);
@@ -534,7 +534,7 @@ describe('plugin-mobius-socket', () => {
 
           const promise = socket.close({code: 1000, reason: 'test'});
 
-          clock.tick(mockoptions.forceCloseDelay);
+          jest.advanceTimersByTime(mockoptions.forceCloseDelay);
 
           return promise.then(() => {
             assert.called(spy);
@@ -566,7 +566,7 @@ describe('plugin-mobius-socket', () => {
 
           const promise = socket.close({code: 1000});
 
-          clock.tick(mockoptions.forceCloseDelay);
+          jest.advanceTimersByTime(mockoptions.forceCloseDelay);
 
           return promise.then(() => {
             assert.called(spy);

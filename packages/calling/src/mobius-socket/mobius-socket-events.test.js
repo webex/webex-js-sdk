@@ -2,13 +2,12 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {assert} from '@webex/test-helper-chai';
+import {assert} from './test/assert';
 import MobiusSocket, {config as mobiusConfig, Socket} from './index';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
 import {v4 as uuid} from 'uuid';
-import FakeTimers from '@sinonjs/fake-timers';
 import {wrap} from 'lodash';
 import {MESSAGE_TYPES} from './socket/constants';
 
@@ -17,7 +16,7 @@ import promiseTick from './test/promise-tick';
 describe('plugin-mobiusSocket', () => {
   describe('MobiusSocket', () => {
     describe('Events', () => {
-      let clock, mobiusSocket, mockWebSocket, originalSendSpy, socketOpenStub, webex;
+      let mobiusSocket, mockWebSocket, originalSendSpy, socketOpenStub, usingFakeTimers, webex;
 
       const fakeTestMessage = {
         id: uuid(),
@@ -58,11 +57,15 @@ describe('plugin-mobiusSocket', () => {
       };
 
       beforeEach(() => {
-        clock = FakeTimers.install({now: Date.now()});
+        jest.useFakeTimers({doNotFake: ['nextTick']});
+        usingFakeTimers = true;
       });
 
       afterEach(async () => {
-        clock.uninstall();
+        if (usingFakeTimers) {
+          jest.useRealTimers();
+          usingFakeTimers = false;
+        }
         if (mobiusSocket) {
           if (mobiusSocket._connectPromises) {
             mobiusSocket._connectPromises.forEach((promise) => {

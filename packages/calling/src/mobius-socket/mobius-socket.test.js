@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {assert} from '@webex/test-helper-chai';
+import {assert} from './test/assert';
 import MobiusSocket, {
   BadRequest,
   NotAuthorized,
@@ -18,8 +18,7 @@ import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
 import {v4 as uuid} from 'uuid';
-import FakeTimers from '@sinonjs/fake-timers';
-import {skipInBrowser} from '@webex/test-helper-mocha';
+import {skipInBrowser} from './test/mocha-helpers';
 import {MESSAGE_TYPES} from './socket/constants';
 
 import promiseTick from './test/promise-tick';
@@ -53,7 +52,7 @@ describe('plugin-mobius-socket', () => {
   });
 
   describe('MobiusSocket', () => {
-    let clock, mobiusSocket, mockWebSocket, socketOpenStub, webex;
+    let mobiusSocket, mockWebSocket, socketOpenStub, usingFakeTimers, webex;
 
     const statusStartTypingMessage = JSON.stringify({
       id: uuid(),
@@ -103,11 +102,8 @@ describe('plugin-mobius-socket', () => {
         .filter((call) => call.args[0] === sessionId && call.args[1] === 'event').length;
 
     beforeEach(() => {
-      clock = FakeTimers.install({now: Date.now()});
-    });
-
-    afterEach(() => {
-      clock.uninstall();
+      jest.useFakeTimers({doNotFake: ['nextTick']});
+      usingFakeTimers = true;
     });
 
     beforeEach(() => {
@@ -173,6 +169,11 @@ describe('plugin-mobius-socket', () => {
     });
 
     afterEach(async () => {
+      if (usingFakeTimers) {
+        jest.useRealTimers();
+        usingFakeTimers = false;
+      }
+
       // Clean up MobiusSocket connections and internal state
       if (mobiusSocket) {
         try {
@@ -334,19 +335,19 @@ describe('plugin-mobius-socket', () => {
               return promiseTick(5);
             })
             .then(() => {
-              clock.tick(mobiusSocket.config.backoffTimeReset);
+              jest.advanceTimersByTime(mobiusSocket.config.backoffTimeReset);
 
               return promiseTick(5);
             })
             .then(() => {
               assert.calledTwice(Socket.prototype.open);
-              clock.tick(2 * mobiusSocket.config.backoffTimeReset);
+              jest.advanceTimersByTime(2 * mobiusSocket.config.backoffTimeReset);
 
               return promiseTick(5);
             })
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
-              clock.tick(5 * mobiusSocket.config.backoffTimeReset);
+              jest.advanceTimersByTime(5 * mobiusSocket.config.backoffTimeReset);
               return assert.isRejected(promise);
             })
             .then(() => {
@@ -446,25 +447,25 @@ describe('plugin-mobius-socket', () => {
               return promiseTick(5);
             })
             .then(() => {
-              clock.tick(mobiusSocket.config.backoffTimeReset);
+              jest.advanceTimersByTime(mobiusSocket.config.backoffTimeReset);
 
               return promiseTick(5);
             })
             .then(() => {
               assert.calledTwice(Socket.prototype.open);
-              clock.tick(2 * mobiusSocket.config.backoffTimeReset);
+              jest.advanceTimersByTime(2 * mobiusSocket.config.backoffTimeReset);
 
               return promiseTick(5);
             })
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
-              clock.tick(5 * mobiusSocket.config.backoffTimeReset);
+              jest.advanceTimersByTime(5 * mobiusSocket.config.backoffTimeReset);
 
               return promise;
             })
             .then(() => {
               assert.calledThrice(Socket.prototype.open);
-              clock.tick(8 * mobiusSocket.config.backoffTimeReset);
+              jest.advanceTimersByTime(8 * mobiusSocket.config.backoffTimeReset);
 
               return promiseTick(5);
             })
@@ -475,7 +476,8 @@ describe('plugin-mobius-socket', () => {
 
         describe('with `BadRequest`', () => {
           it('fails permanently', () => {
-            clock.uninstall();
+            jest.useRealTimers();
+            usingFakeTimers = false;
             socketOpenStub.restore();
             socketOpenStub = sinon
               .stub(Socket.prototype, 'open')
@@ -498,7 +500,7 @@ describe('plugin-mobius-socket', () => {
             return promiseTick(7).then(() => {
               assert.notCalled(webex.credentials.refresh);
               assert.called(webex.internal.device.refresh);
-              clock.tick(1000);
+              jest.advanceTimersByTime(1000);
 
               return promise;
             });
@@ -518,7 +520,7 @@ describe('plugin-mobius-socket', () => {
             return promiseTick(7).then(() => {
               assert.called(webex.credentials.refresh);
               assert.notCalled(webex.internal.device.refresh);
-              clock.tick(1000);
+              jest.advanceTimersByTime(1000);
 
               return promise;
             });
@@ -527,7 +529,8 @@ describe('plugin-mobius-socket', () => {
 
         describe('with `Forbidden`', () => {
           it('fails permanently', () => {
-            clock.uninstall();
+            jest.useRealTimers();
+            usingFakeTimers = false;
             socketOpenStub.restore();
             socketOpenStub = sinon
               .stub(Socket.prototype, 'open')
@@ -581,7 +584,7 @@ describe('plugin-mobius-socket', () => {
           return promise.then(() =>
             promiseTick(2)
             .then(() => {
-              clock.tick(6 * mobiusSocket.config.backoffTimeReset);
+              jest.advanceTimersByTime(6 * mobiusSocket.config.backoffTimeReset);
 
               return promiseTick(2);
             })
@@ -634,7 +637,8 @@ describe('plugin-mobius-socket', () => {
         });
 
         it('rejects immediately on failure without retrying', () => {
-          clock.uninstall();
+          jest.useRealTimers();
+          usingFakeTimers = false;
           socketOpenStub.restore();
           socketOpenStub = sinon
             .stub(Socket.prototype, 'open')
@@ -665,7 +669,8 @@ describe('plugin-mobius-socket', () => {
         });
 
         it('treats a different explicit URL as a fresh initial connect', () => {
-          clock.uninstall();
+          jest.useRealTimers();
+          usingFakeTimers = false;
           mobiusSocket.hasEverConnected = true;
           mobiusSocket.socketUrl = 'ws://old-url.com';
           mobiusSocket.config.initialConnectionMaxRetries = 0;
@@ -1027,7 +1032,7 @@ describe('plugin-mobius-socket', () => {
           },
         });
 
-        clock.tick(101);
+        jest.advanceTimersByTime(101);
         await promiseTick();
 
         const error = await assert.isRejected(requestPromise);
