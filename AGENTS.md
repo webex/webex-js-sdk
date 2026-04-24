@@ -25,7 +25,10 @@ for example, for plugin-meetings use:
 `yarn workspace @webex/plugin-meetings test:unit`
 
 ## Running a specific test file
-To run a single test file, use `--targets` with a path **relative to `test/unit/spec/`**:
+To run a single test file, use `--targets` with a path relative to the test type's spec directory:
+- `test:unit` resolves from `test/unit/spec/`
+- `test:integration` and `test:browser` resolve from `test/integration/spec/`
+
 ```
 yarn workspace @webex/<plugin-name> test:unit --targets <path-relative-to-spec>
 ```
@@ -35,7 +38,7 @@ For example, to run `packages/@webex/plugin-meetings/test/unit/spec/locus-info/c
 yarn workspace @webex/plugin-meetings test:unit --targets locus-info/controlsUtils.js
 ```
 
-**Common mistake:** passing just the filename (`--targets controlsUtils.js`) or a full path. The `--targets` value must be the path starting from inside `test/unit/spec/`.
+**Common mistake:** passing just the filename (`--targets controlsUtils.js`) or a full path. The `--targets` value must be the path starting from inside the spec directory for that test type.
 
 ## Test writing guidelines
 When adding tests to existing test files, use same coding style as the existing tests
