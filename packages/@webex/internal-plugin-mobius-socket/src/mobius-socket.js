@@ -44,11 +44,13 @@ class MobiusSocket extends EventEmitter {
     this.connected = false;
     this.connecting = false;
     this.hasEverConnected = false;
+    this.socket = undefined;
     this.sockets = new Map();
     this.backoffCalls = new Map();
     this._shutdownSwitchoverBackoffCalls = new Map();
     this._seenAsyncEventIdsBySession = new Map();
     this._connectPromises = new Map();
+    this.mercuryTimeOffset = undefined;
     this._tokenRefreshTimer = undefined;
     this._tokenRefreshInFlight = undefined;
 
@@ -440,6 +442,8 @@ class MobiusSocket extends EventEmitter {
       return Promise.resolve();
     }
 
+    // Treat a connect() call that targets a different Mobius websocket URL
+    // as a fresh initial connection for retry purposes.
     if (webSocketUrl && this.socketUrl && webSocketUrl !== this.socketUrl) {
       this.hasEverConnected = false;
     }
