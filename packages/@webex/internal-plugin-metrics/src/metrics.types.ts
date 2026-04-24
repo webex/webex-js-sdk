@@ -156,7 +156,6 @@ export type InternalEvent = {
     | 'internal.register.device.request'
     | 'internal.register.device.response'
     | 'internal.reset.join.latencies'
-    | 'internal.client.meeting.click.joinbutton'
     | 'internal.host.meeting.participant.admitted'
     | 'internal.client.meeting.interstitial-window.showed'
     | 'internal.client.interstitial-window.click.joinbutton'
