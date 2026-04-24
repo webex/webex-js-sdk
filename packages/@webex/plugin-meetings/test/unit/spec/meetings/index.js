@@ -3581,6 +3581,21 @@ describe('plugin-meetings', () => {
           'Meetings:index#isNeedHandleMainLocus --> self device left&moved in main locus with self joined status, not need to handle'
         );
       });
+
+      it('check breakout ended with self removed, return false', () => {
+        webex.meetings.meetingCollection.getActiveBreakoutLocus = sinon.stub().returns(null);
+        newLocus.self.state = 'LEFT';
+        newLocus.self.reason = 'OTHER';
+        newLocus.self.removed = true;
+        newLocus.fullState = {state: 'INACTIVE', endMeetingReason: 'BREAKOUT_ENDED'};
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleMainLocus(meeting, newLocus);
+        assert.equal(result, false);
+        assert.calledWith(
+          LoggerProxy.logger.log,
+          'Meetings:index#isNeedHandleMainLocus --> self moved main locus with self removed status or with device resource moved, not need to handle'
+        );
+      });
     });
 
     describe('#isNeedHandleLocusDTO', () => {
@@ -3637,6 +3652,18 @@ describe('plugin-meetings', () => {
         newLocus.self.state = 'LEFT';
         newLocus.self.reason = 'MOVED';
         newLocus.self.devices = [];
+        LoggerProxy.logger.log = sinon.stub();
+        const result = webex.meetings.isNeedHandleLocusDTO(meeting, newLocus);
+        assert.equal(result, false);
+      });
+      it('breakout session with breakout ended, return false', () => {
+        newLocus.controls.breakout = {
+          sessionType: 'BREAKOUT',
+        };
+        newLocus.self.state = 'LEFT';
+        newLocus.self.reason = 'OTHER';
+        newLocus.self.devices = [];
+        newLocus.fullState = {state: 'INACTIVE', endMeetingReason: 'BREAKOUT_ENDED'};
         LoggerProxy.logger.log = sinon.stub();
         const result = webex.meetings.isNeedHandleLocusDTO(meeting, newLocus);
         assert.equal(result, false);

@@ -13,6 +13,7 @@ import MediaSharesUtils from '@webex/plugin-meetings/src/locus-info//mediaShares
 import LocusDeltaParser from '@webex/plugin-meetings/src/locus-info/parser';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import * as HashTreeParserModule from '@webex/plugin-meetings/src/hashTree/hashTreeParser';
+import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 
 import {
   LOCUSINFO,
@@ -3693,49 +3694,23 @@ describe('plugin-meetings', () => {
         assert.deepEqual(callOrder, ['updateLocusUrl', 'updateMeetingInfo']);
       });
 
-      it('#updateLocusInfo ignores breakout LEFT message', () => {
-        const newLocus = {
-          self: {
-            reason: 'MOVED',
-            state: 'LEFT',
-          },
-        };
+      it('#updateLocusInfo ignores locus when isSelfMovedOrBreakoutEnded returns true', () => {
+        const newLocus = {self: {state: 'JOINED'}};
+
+        sinon.stub(MeetingsUtil, 'isSelfMovedOrBreakoutEnded').returns(true);
 
         locusInfo.updateControls = sinon.stub();
-        locusInfo.updateConversationUrl = sinon.stub();
-        locusInfo.updateCreated = sinon.stub();
         locusInfo.updateFullState = sinon.stub();
-        locusInfo.updateHostInfo = sinon.stub();
-        locusInfo.updateMeetingInfo = sinon.stub();
-        locusInfo.updateMediaShares = sinon.stub();
-        locusInfo.updateReplaces = sinon.stub();
         locusInfo.updateSelf = sinon.stub();
-        locusInfo.updateLocusUrl = sinon.stub();
-        locusInfo.updateAclUrl = sinon.stub();
-        locusInfo.updateBasequence = sinon.stub();
-        locusInfo.updateSequence = sinon.stub();
-        locusInfo.updateEmbeddedApps = sinon.stub();
-        locusInfo.updateLinks = sinon.stub();
-        locusInfo.compareAndUpdate = sinon.stub();
 
         locusInfo.updateLocusInfo(newLocus);
 
+        assert.calledOnceWithExactly(MeetingsUtil.isSelfMovedOrBreakoutEnded, newLocus);
         assert.notCalled(locusInfo.updateControls);
-        assert.notCalled(locusInfo.updateConversationUrl);
-        assert.notCalled(locusInfo.updateCreated);
         assert.notCalled(locusInfo.updateFullState);
-        assert.notCalled(locusInfo.updateHostInfo);
-        assert.notCalled(locusInfo.updateMeetingInfo);
-        assert.notCalled(locusInfo.updateMediaShares);
-        assert.notCalled(locusInfo.updateReplaces);
         assert.notCalled(locusInfo.updateSelf);
-        assert.notCalled(locusInfo.updateLocusUrl);
-        assert.notCalled(locusInfo.updateAclUrl);
-        assert.notCalled(locusInfo.updateBasequence);
-        assert.notCalled(locusInfo.updateSequence);
-        assert.notCalled(locusInfo.updateEmbeddedApps);
-        assert.notCalled(locusInfo.updateLinks);
-        assert.notCalled(locusInfo.compareAndUpdate);
+
+        MeetingsUtil.isSelfMovedOrBreakoutEnded.restore();
       });
 
       it('#updateLocusInfo puts the Locus DTO top level properties at the right place in LocusInfo class', () => {
