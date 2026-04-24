@@ -77,6 +77,9 @@ describe('internal-plugin-metrics', () => {
       sessionCorrelationId: 'sessionCorrelationId5',
       userNameInput: 'test',
       emailInput: 'test@test.com',
+      meetingInfo: {
+        vipmeeting: false,
+      },
     };
 
     const fakeMeetings = {
@@ -117,7 +120,6 @@ describe('internal-plugin-metrics', () => {
             },
           },
           getBasicMeetingInformation: (id) => fakeMeetings[id],
-          getMeetingByType: sinon.stub().returns(undefined),
           meetingCollection: {
             get: (meetingId) => {
               return {
@@ -913,7 +915,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
           },
           options
         );
@@ -942,7 +944,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -982,7 +984,7 @@ describe('internal-plugin-metrics', () => {
               isConvergedArchitectureEnabled: undefined,
               webexSubServiceType: undefined,
               webClientPreload: undefined,
-              isVIPMeeting: false,
+              isVipMeeting: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1058,7 +1060,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
           },
           options
         );
@@ -1087,7 +1089,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1127,7 +1129,7 @@ describe('internal-plugin-metrics', () => {
               isConvergedArchitectureEnabled: undefined,
               webexSubServiceType: undefined,
               webClientPreload: undefined,
-              isVIPMeeting: false,
+              isVipMeeting: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1204,7 +1206,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
           },
           options
         );
@@ -1234,7 +1236,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1275,7 +1277,7 @@ describe('internal-plugin-metrics', () => {
               isConvergedArchitectureEnabled: undefined,
               webexSubServiceType: undefined,
               webClientPreload: undefined,
-              isVIPMeeting: false,
+              isVipMeeting: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1351,7 +1353,7 @@ describe('internal-plugin-metrics', () => {
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
           },
           options
         );
@@ -1381,7 +1383,7 @@ describe('internal-plugin-metrics', () => {
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1422,7 +1424,7 @@ describe('internal-plugin-metrics', () => {
               userType: 'host',
               isConvergedArchitectureEnabled: undefined,
               webexSubServiceType: undefined,
-              isVIPMeeting: false,
+              isVipMeeting: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1500,7 +1502,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
           },
           options
         );
@@ -1532,7 +1534,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1575,7 +1577,7 @@ describe('internal-plugin-metrics', () => {
               isConvergedArchitectureEnabled: undefined,
               webexSubServiceType: undefined,
               webClientPreload: undefined,
-              isVIPMeeting: false,
+              isVipMeeting: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1966,7 +1968,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2022,7 +2024,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2116,115 +2118,18 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      it('should submit client event with isVIPMeeting: false when getMeetingByType is undefined', () => {
-        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
-        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
-
-        webex.meetings.getMeetingByType = undefined;
-        cd.setMercuryConnectedStatus(true);
-        cd.submitClientEvent({
-          name: 'client.alert.displayed',
-          options: {meetingId: fakeMeeting.id},
-        });
-
-        assert.calledWith(
-          submitToCallDiagnosticsSpy,
-          sinon.match({event: sinon.match({isVIPMeeting: false})})
-        );
-      });
-
-      it('should submit client event with isVIPMeeting: false when getMeetingByType returns null', () => {
-        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
-        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
-
-        webex.meetings.getMeetingByType = sinon.stub().returns(null);
-        cd.setMercuryConnectedStatus(true);
-        cd.submitClientEvent({
-          name: 'client.alert.displayed',
-          options: {meetingId: fakeMeeting.id},
-        });
-
-        assert.calledWith(
-          submitToCallDiagnosticsSpy,
-          sinon.match({event: sinon.match({isVIPMeeting: false})})
-        );
-      });
-
-      it('should submit client event with isVIPMeeting: false when getMeetingByType returns undefined', () => {
-        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
-        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
-
-        webex.meetings.getMeetingByType = sinon.stub().returns(undefined);
-        cd.setMercuryConnectedStatus(true);
-        cd.submitClientEvent({
-          name: 'client.alert.displayed',
-          options: {meetingId: fakeMeeting.id},
-        });
-
-        assert.calledWith(
-          submitToCallDiagnosticsSpy,
-          sinon.match({event: sinon.match({isVIPMeeting: false})})
-        );
-      });
-
-      it('should submit client event with isVIPMeeting: false when getMeetingByType returns empty object', () => {
-        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
-        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
-
-        webex.meetings.getMeetingByType = sinon.stub().returns({});
-        cd.setMercuryConnectedStatus(true);
-        cd.submitClientEvent({
-          name: 'client.alert.displayed',
-          options: {meetingId: fakeMeeting.id},
-        });
-
-        assert.calledWith(
-          submitToCallDiagnosticsSpy,
-          sinon.match({event: sinon.match({isVIPMeeting: false})})
-        );
-      });
-
-      it('should submit client event with isVIPMeeting: false when getMeetingByType returns object without meetingInfo', () => {
-        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
-        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
-
-        webex.meetings.getMeetingByType = sinon.stub().returns({someOtherField: 'value'});
-        cd.setMercuryConnectedStatus(true);
-        cd.submitClientEvent({
-          name: 'client.alert.displayed',
-          options: {meetingId: fakeMeeting.id},
-        });
-
-        assert.calledWith(
-          submitToCallDiagnosticsSpy,
-          sinon.match({event: sinon.match({isVIPMeeting: false})})
-        );
-      });
-
-      it('should submit client event with isVIPMeeting: false when meetingInfo does not contain vipMeeting', () => {
-        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
-        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
-
-        webex.meetings.getMeetingByType = sinon.stub().returns({meetingInfo: {}});
-        cd.setMercuryConnectedStatus(true);
-        cd.submitClientEvent({
-          name: 'client.alert.displayed',
-          options: {meetingId: fakeMeeting.id},
-        });
-
-        assert.calledWith(
-          submitToCallDiagnosticsSpy,
-          sinon.match({event: sinon.match({isVIPMeeting: false})})
-        );
-      });
-
-      it('should submit client event with isVIPMeeting: true when vipMeeting is true', () => {
+      it('should submit client event with isVipMeeting: true when vipMeeting is false', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
 
-        webex.meetings.getMeetingByType = sinon.stub().returns({meetingInfo: {vipMeeting: true}});
+        webex.meetings.getBasicMeetingInformation = sinon.stub().returns({
+          ...fakeMeeting,
+          meetingInfo: {
+            vipmeeting: false,
+          },
+        });
 
         const options = {
           correlationId: 'correlationId',
@@ -2267,7 +2172,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: true,
+            isVipMeeting: false,
           },
           options
         );
@@ -2297,7 +2202,106 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: true,
+            isVipMeeting: false,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+      });
+
+      it('should submit client event with isVipMeeting: true when vipMeeting is true', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        webex.meetings.getBasicMeetingInformation = sinon.stub().returns({
+          ...fakeMeeting,
+          meetingInfo: {
+            vipmeeting: true,
+          },
+        });
+
+        const options = {
+          correlationId: 'correlationId',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
+          sessionCorrelationId: 'sessionCorrelationId1',
+          meetingId: fakeMeeting.id,
+        };
+        cd.setMercuryConnectedStatus(true);
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.notCalled(generateClientEventErrorPayloadSpy);
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: true,
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              globalMeetingId: 'globalMeetingId1',
+              sessionCorrelationId: 'sessionCorrelationId1',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusSessionId: 'locusSessionId',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+            isVipMeeting: true,
+          },
+          options
+        );
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: true,
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              globalMeetingId: 'globalMeetingId1',
+              sessionCorrelationId: 'sessionCorrelationId1',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusSessionId: 'locusSessionId',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+            isVipMeeting: true,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2372,7 +2376,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2455,7 +2459,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2689,7 +2693,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -3974,7 +3978,7 @@ describe('internal-plugin-metrics', () => {
                     isConvergedArchitectureEnabled: undefined,
                     webexSubServiceType: undefined,
                     webClientPreload: undefined,
-                    isVIPMeeting: false,
+                    isVipMeeting: false,
                   },
                   eventId: 'my-fake-id',
                   origin: {
@@ -4377,7 +4381,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
             meetingSummaryInfo: {
               featureName: 'syncSystemMuteStatus',
               featureActions: [
@@ -4419,7 +4423,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
-            isVIPMeeting: false,
+            isVipMeeting: false,
             meetingSummaryInfo: {
               featureName: 'syncSystemMuteStatus',
               featureActions: [
