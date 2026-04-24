@@ -14,10 +14,10 @@ import {
   config,
   ConnectionError,
   Socket,
-} from '../../../src';
-import uuid from 'uuid';
+} from './index';
+import {v4 as uuid} from 'uuid';
 import FakeTimers from '@sinonjs/fake-timers';
-import {MESSAGE_TYPES} from '../../../src/socket/constants';
+import {MESSAGE_TYPES} from './socket/constants';
 
 describe('plugin-mobius-socket', () => {
   describe('Socket', () => {

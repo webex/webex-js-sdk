@@ -58,7 +58,7 @@ import {METRIC_EVENT, CONNECTION_ACTION, METRIC_TYPE} from '../Metrics/types';
 import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
 import {APIRequest} from './utils/request';
 
-jest.mock('@webex/internal-plugin-mobius-socket', () => ({
+jest.mock('../mobius-socket', () => ({
   getMobiusSocketInstance: jest.fn().mockReturnValue({
     sendWssRequest: jest.fn(),
     connect: jest.fn(),
@@ -850,7 +850,7 @@ describe('CallingClient Tests', () => {
       APIRequest.getInstance({webex});
 
       mobiusSocketMock = (
-        jest.requireMock('@webex/internal-plugin-mobius-socket') as {
+        jest.requireMock('../mobius-socket') as {
           getMobiusSocketInstance: (w: unknown) => unknown;
         }
       ).getMobiusSocketInstance(webex) as {

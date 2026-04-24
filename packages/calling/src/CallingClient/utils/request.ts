@@ -1,6 +1,6 @@
 import {v4 as uuid} from 'uuid';
 // @ts-ignore - JS module without type declarations
-import {getMobiusSocketInstance} from '@webex/internal-plugin-mobius-socket';
+import {getMobiusSocketInstance} from '../../mobius-socket';
 import {WebexRequestPayload} from '../../common/types';
 import {WebexSDK} from '../../SDKConnector/types';
 import log from '../../Logger';

@@ -41,7 +41,7 @@ import {IRegistration} from './types';
 import {METRIC_EVENT, REG_ACTION, METRIC_TYPE} from '../../Metrics/types';
 import {APIRequest} from '../utils/request';
 
-jest.mock('@webex/internal-plugin-mobius-socket', () => ({
+jest.mock('../../mobius-socket', () => ({
   getMobiusSocketInstance: jest.fn().mockReturnValue({
     sendWssRequest: jest.fn(),
   }),

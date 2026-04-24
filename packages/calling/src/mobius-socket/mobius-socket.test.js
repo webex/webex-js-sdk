@@ -12,17 +12,17 @@ import MobiusSocket, {
   config as mobiusConfig,
   ConnectionError,
   Socket,
-} from '../../../src';
-import {getMobiusSocketInstance, resetMobiusSocketInstance} from '../../../src/index';
+} from './index';
+import {getMobiusSocketInstance, resetMobiusSocketInstance} from './index';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
-import uuid from 'uuid';
+import {v4 as uuid} from 'uuid';
 import FakeTimers from '@sinonjs/fake-timers';
 import {skipInBrowser} from '@webex/test-helper-mocha';
-import {MESSAGE_TYPES} from '../../../src/socket/constants';
+import {MESSAGE_TYPES} from './socket/constants';
 
-import promiseTick from '../lib/promise-tick';
+import promiseTick from './test/promise-tick';
 
 describe('plugin-mobius-socket', () => {
   describe('getMobiusSocketInstance', () => {
@@ -56,16 +56,16 @@ describe('plugin-mobius-socket', () => {
     let clock, mobiusSocket, mockWebSocket, socketOpenStub, webex;
 
     const statusStartTypingMessage = JSON.stringify({
-      id: uuid.v4(),
+      id: uuid(),
       data: {
         eventType: 'status.start_typing',
         actor: {
           id: 'actorId',
         },
-        conversationId: uuid.v4(),
+        conversationId: uuid(),
       },
       timestamp: Date.now(),
-      trackingId: `suffix_${uuid.v4()}_${Date.now()}`,
+      trackingId: `suffix_${uuid()}_${Date.now()}`,
     });
 
     const emitAuthResponse = ({statusCode = 200, statusMessage = 'OK'} = {}) => {
@@ -143,8 +143,14 @@ describe('plugin-mobius-socket', () => {
       webex.trackingId = 'fakeTrackingId';
       webex.logger = console;
 
-      mockWebSocket = new MockWebSocket();
-      sinon.stub(Socket, 'getWebSocketConstructor').returns(() => mockWebSocket);
+      sinon.stub(Socket, 'getWebSocketConstructor').callsFake(
+        () =>
+          function (...args) {
+            mockWebSocket = new MockWebSocket(...args);
+
+            return mockWebSocket;
+          }
+      );
 
       const origOpen = Socket.prototype.open;
 
@@ -206,8 +212,6 @@ describe('plugin-mobius-socket', () => {
         webex.internal.device.registered = false;
         assert.notCalled(webex.internal.device.register);
         const promise = mobiusSocket.connect();
-
-        mockWebSocket.open();
 
         return promise.then(() => {
           assert.calledOnce(webex.internal.device.register);

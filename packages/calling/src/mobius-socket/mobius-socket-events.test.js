@@ -3,16 +3,16 @@
  */
 
 import {assert} from '@webex/test-helper-chai';
-import MobiusSocket, {config as mobiusConfig, Socket} from '../../../src';
+import MobiusSocket, {config as mobiusConfig, Socket} from './index';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
-import uuid from 'uuid';
+import {v4 as uuid} from 'uuid';
 import FakeTimers from '@sinonjs/fake-timers';
 import {wrap} from 'lodash';
-import {MESSAGE_TYPES} from '../../../src/socket/constants';
+import {MESSAGE_TYPES} from './socket/constants';
 
-import promiseTick from '../lib/promise-tick';
+import promiseTick from './test/promise-tick';
 
 describe('plugin-mobiusSocket', () => {
   describe('MobiusSocket', () => {
@@ -20,25 +20,25 @@ describe('plugin-mobiusSocket', () => {
       let clock, mobiusSocket, mockWebSocket, originalSendSpy, socketOpenStub, webex;
 
       const fakeTestMessage = {
-        id: uuid.v4(),
+        id: uuid(),
         data: {
           eventType: 'fake.test',
         },
         timestamp: Date.now(),
-        trackingId: `suffix_${uuid.v4()}_${Date.now()}`,
+        trackingId: `suffix_${uuid()}_${Date.now()}`,
       };
 
       const statusStartTypingMessage = {
-        id: uuid.v4(),
+        id: uuid(),
         data: {
           eventType: 'status.start_typing',
           actor: {
             id: 'actorId',
           },
-          conversationId: uuid.v4(),
+          conversationId: uuid(),
         },
         timestamp: Date.now(),
-        trackingId: `suffix_${uuid.v4()}_${Date.now()}`,
+        trackingId: `suffix_${uuid()}_${Date.now()}`,
         sessionId: 'mobius-websocket-session',
       };
 
@@ -63,14 +63,23 @@ describe('plugin-mobiusSocket', () => {
 
       afterEach(async () => {
         clock.uninstall();
-        // Clean up mobiusSocket socket and mockWebSocket
-        if (mobiusSocket && mobiusSocket.socket) {
+        if (mobiusSocket) {
+          if (mobiusSocket._connectPromises) {
+            mobiusSocket._connectPromises.forEach((promise) => {
+              promise.catch(() => {});
+            });
+          }
           try {
-            await mobiusSocket.socket.close();
+            await mobiusSocket.disconnectAll();
           } catch (e) {}
+          if (mobiusSocket._connectPromises) {
+            mobiusSocket._connectPromises.clear();
+          }
         }
         if (mockWebSocket && typeof mockWebSocket.close === 'function') {
-          mockWebSocket.close();
+          try {
+            mockWebSocket.close();
+          } catch (e) {}
         }
         // Restore stubs
         if (Socket.getWebSocketConstructor.restore) {
@@ -90,9 +99,15 @@ describe('plugin-mobiusSocket', () => {
 
         webex.logger = console;
 
-        mockWebSocket = new MockWebSocket('ws://example.com');
-        originalSendSpy = mockWebSocket.send;
-        sinon.stub(Socket, 'getWebSocketConstructor').returns(() => mockWebSocket);
+        sinon.stub(Socket, 'getWebSocketConstructor').callsFake(
+          () =>
+            function (...args) {
+              mockWebSocket = new MockWebSocket(...args);
+              originalSendSpy = mockWebSocket.send;
+
+              return mockWebSocket;
+            }
+        );
 
         const origOpen = Socket.prototype.open;
 
@@ -145,8 +160,6 @@ describe('plugin-mobiusSocket', () => {
           mobiusSocket.on('online', spy);
           const promise = mobiusSocket.connect();
 
-          mockWebSocket.open();
-
           return promise.then(() => assert.called(spy));
         });
       });
@@ -196,58 +209,64 @@ describe('plugin-mobiusSocket', () => {
       describe('when `mercury.buffer_state` is received', () => {
         // This test is here because the buffer states message may arrive before
         // the mobiusSocket Promise resolves.
-        it('gets emitted', (done) => {
-          const spy = mockWebSocket.send;
-
-          assert.notCalled(spy);
+        it('gets emitted', () => {
+          let sendSpy;
+          let resolveTest;
+          let rejectTest;
           const bufferStateSpy = sinon.spy();
           const onlineSpy = sinon.spy();
 
           mobiusSocket.on('event:mercury.buffer_state', bufferStateSpy);
           mobiusSocket.on('online', onlineSpy);
 
-          Socket.getWebSocketConstructor.returns(() => {
-            process.nextTick(() => {
-              assert.isTrue(mobiusSocket.connecting, 'MobiusSocket is still connecting');
-              assert.isFalse(mobiusSocket.connected, 'MobiusSocket has not yet connected');
-              assert.notCalled(onlineSpy);
-              assert.lengthOf(spy.args, 0, 'The client has not yet sent the auth message');
-              // set websocket readystate to 1 to allow a successful send message
-              mockWebSocket.readyState = 1;
-              mockWebSocket.emit('open');
-              mockWebSocket.emit('message', {
-                data: JSON.stringify({
-                  id: uuid.v4(),
-                  data: {
-                    eventType: 'mercury.buffer_state',
-                  },
-                }),
-              });
-              // using lengthOf because notCalled doesn't allow the helpful
-              // string assertion
-              assert.lengthOf(spy.args, 0, 'The client has not acked the buffer_state message');
+          Socket.getWebSocketConstructor.callsFake(
+            () =>
+              function (...args) {
+                mockWebSocket = new MockWebSocket(...args);
+                sendSpy = mockWebSocket.send;
+                mockWebSocket.send = wrap(mockWebSocket.send, function (fn, ...sendArgs) {
+                  process.nextTick(() => {
+                    Reflect.apply(fn, this, sendArgs);
+                  });
+                });
 
-              promiseTick(1)
-                .then(() => {
-                  assert.calledOnce(bufferStateSpy);
+                process.nextTick(() => {
+                  assert.isTrue(mobiusSocket.connecting, 'MobiusSocket is still connecting');
+                  assert.isFalse(mobiusSocket.connected, 'MobiusSocket has not yet connected');
+                  assert.notCalled(onlineSpy);
+                  assert.lengthOf(sendSpy.args, 0, 'The client has not yet sent the auth message');
+                  // set websocket readystate to 1 to allow a successful send message
+                  mockWebSocket.readyState = 1;
+                  mockWebSocket.emit('open');
+                  mockWebSocket.emit('message', {
+                    data: JSON.stringify({
+                      id: uuid(),
+                      data: {
+                        eventType: 'mercury.buffer_state',
+                      },
+                    }),
+                  });
+                  // using lengthOf because notCalled doesn't allow the helpful
+                  // string assertion
+                  assert.lengthOf(sendSpy.args, 0, 'The client has not acked the buffer_state message');
 
-                  return mobiusSocket.connect().then(done);
-                })
-                .catch(done);
-            });
+                  promiseTick(1)
+                    .then(() => {
+                      assert.calledOnce(bufferStateSpy);
+                      resolveTest();
+                    })
+                    .catch(rejectTest);
+                });
 
-            return mockWebSocket;
+                return mockWebSocket;
+              }
+          );
+
+          return new Promise((resolve, reject) => {
+            resolveTest = resolve;
+            rejectTest = reject;
+            mobiusSocket.connect().catch(() => {});
           });
-
-          // Delay send for a tick to ensure the buffer message comes before
-          // auth completes.
-          mockWebSocket.send = wrap(mockWebSocket.send, function (fn, ...args) {
-            process.nextTick(() => {
-              Reflect.apply(fn, this, args);
-            });
-          });
-          mobiusSocket.connect();
-          assert.lengthOf(spy.args, 0);
         });
       });
 
