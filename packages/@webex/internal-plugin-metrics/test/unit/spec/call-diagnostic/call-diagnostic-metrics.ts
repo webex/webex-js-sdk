@@ -77,9 +77,6 @@ describe('internal-plugin-metrics', () => {
       sessionCorrelationId: 'sessionCorrelationId5',
       userNameInput: 'test',
       emailInput: 'test@test.com',
-      meetingInfo: {
-        vipmeeting: false,
-      },
     };
 
     const fakeMeetings = {
