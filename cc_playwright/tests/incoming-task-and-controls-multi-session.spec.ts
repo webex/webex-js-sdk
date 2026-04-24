@@ -331,7 +331,7 @@ export default function createIncomingTaskAndControlsMultiSessionTests() {
       (el) => getComputedStyle(el).backgroundColor
     );
     expect(isColorClose(userStateElementColor, THEME_COLORS.ENGAGED)).toBe(true);
-    const userStateElement2 = testManager.agent1Page.locator('#idleCodesDropdown');
+    const userStateElement2 = testManager.multiSessionAgent1Page.locator('#idleCodesDropdown');
     const userStateElementColor2 = await userStateElement2.evaluate(
       (el) => getComputedStyle(el).backgroundColor
     );

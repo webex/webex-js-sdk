@@ -328,11 +328,11 @@ export default function createDialNumberTaskControlTests() {
       });
 
       test.beforeEach(async () => {
-        testManager.softCleanup();
+        await testManager.softCleanup();
         await changeUserState(testManager.agent2Page, USER_STATES.MEETING);
-        await testManager.agent2Page.waitForTimeout(2000); // Wait for Agent2 MEETING state to propagate
+        await testManager.agent2Page.waitForTimeout(2000);
         await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
-        await testManager.agent1Page.waitForTimeout(3000); // Wait for routing engine propagation
+        await testManager.agent1Page.waitForTimeout(3000);
       });
 
       test('Blind Transfer to DialNumber', async () => {

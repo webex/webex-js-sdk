@@ -335,10 +335,10 @@ export default function createTaskListTests() {
     // Desktop mode doesn't auto-transition to Available - wrapup submission is sufficient
   });
 
-  // Skip: Test expects multiple simultaneous active tasks, but backend routing may not
-  // support this in current configuration. When agent has active call, new tasks
-  // (chat/email) are not routed to them. This worked in widgets repo with different
-  // backend config, but requires investigation for current setup.
+  // Skip: Backend routing doesn't support multiple simultaneous active tasks in Desktop mode.
+  // When agent has active call, new chat/email tasks are not routed. Confirmed via test run:
+  // "No acceptable incoming task found after 60 seconds" - chat/email never arrive while call active.
+  // This worked in widgets repo likely with Extension mode or different backend config.
   /* eslint-disable @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-unused-vars, no-plusplus, no-await-in-loop */
   test.skip('Task List Test with Multiple Tasks', async () => {
     await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);

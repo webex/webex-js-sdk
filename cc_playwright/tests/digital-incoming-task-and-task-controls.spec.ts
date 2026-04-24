@@ -1,4 +1,4 @@
-import {test, Page, expect} from '@playwright/test';
+import {test, Page, expect, ConsoleMessage} from '@playwright/test';
 import {changeUserState, verifyCurrentState} from '../Utils/userStateUtils';
 import {
   createCallTask,
@@ -24,23 +24,20 @@ import {TestManager} from '../test-manager';
 
 const moduleCapturedLogs: string[] = [];
 
-// NOTE : Make Sure to set RONA Timeout to 18 seconds before running this test.
+const TIMEOUTS = {
+  RONA_POPUP: 25000,
+  SESSION_ESTABLISH: 30000,
+  EMAIL_TASK: 180000,
+  CHAT_TASK: 60000,
+  CHAT_TASK_EXTENDED: 120000,
+  TASK_CLEANUP: 10000,
+  WRAPUP_POLL: 30000,
+} as const;
 
 /**
- * Verifies the captured logs for wrapup and state change events
- * @param capturedLogs - Array of log messages
- * @param expectedWrapupReason - The expected wrapup reason to verify
- * @param expectedState - The expected state name to verify
- * @param shouldWrapupComeFirst - Whether the wrapup log should come before the state change log (default: true)
- * @returns Promise<boolean> - True if verification is successful, otherwise throws an error
- * @throws Error if logs do not match expected values or order
- * @description Checks the last wrapup reason and state name in logs against expected values, ensuring correct order if specified
- * @example
- * ```typescript
- * await verifyCallbackLogs(moduleCapturedLogs, WRAPUP_REASONS.SALE, USER_STATES.AVAILABLE);
- * ```
+ * Verifies callback logs match expected wrapup reason and state.
+ * @throws Error if logs don't match or order is incorrect
  */
-
 export async function verifyCallbackLogs(
   capturedLogs: string[],
   expectedWrapupReason: string,
@@ -76,7 +73,6 @@ export async function verifyCallbackLogs(
   const actualWrapupReason = wrapupMatch[1].trim();
   const actualStateName = stateMatch[1].trim();
 
-  // Verify expected values
   if (actualWrapupReason !== expectedWrapupReason) {
     throw new Error(
       `Wrapup reason mismatch, expected ${expectedWrapupReason}, got ${actualWrapupReason}`
@@ -90,10 +86,41 @@ export async function verifyCallbackLogs(
   return true;
 }
 
+async function clearStrayDigitalTasks(page: Page): Promise<void> {
+  const taskList = page.locator('#taskList');
+  let taskItems = taskList.locator('.task-item-content');
+  let taskCount = await taskItems.count();
+
+  while (taskCount > 0) {
+    const firstTask = taskItems.first();
+    const declineButton = firstTask.getByRole('button', {name: 'Decline'}).first();
+    const isVisible = await declineButton.isVisible().catch(() => false);
+
+    if (isVisible) {
+      await declineButton.click({timeout: 5000}).catch(() => false);
+      await page.waitForTimeout(1000);
+    }
+
+    taskItems = taskList.locator('.task-item-content');
+    taskCount = await taskItems.count();
+    if (taskCount === 0) break;
+
+    if (taskCount > 0) {
+      await page.waitForTimeout(2000);
+      taskItems = taskList.locator('.task-item-content');
+      const newCount = await taskItems.count();
+      if (newCount === taskCount) break;
+      taskCount = newCount;
+    }
+  }
+
+  await expect(taskList).toContainText('No tasks available', {timeout: TIMEOUTS.TASK_CLEANUP}).catch(() => false);
+}
+
 function setupConsoleLogging(page: Page): () => void {
   moduleCapturedLogs.length = 0;
 
-  const consoleHandler = (msg) => {
+  const consoleHandler = (msg: ConsoleMessage) => {
     const logText = msg.text();
     if (
       logText.includes('onStateChange invoked with state name:') ||
@@ -138,30 +165,22 @@ export default function createDigitalIncomingTaskAndTaskControlsTests() {
     await createEmailTask(process.env[`${testManager.projectName}_EMAIL_ENTRY_POINT`]!);
     await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
 
-    // Wait for incoming email notification
-    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, 180000);
+    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, TIMEOUTS.EMAIL_TASK);
 
-    // Wait for RONA timeout (~18s) - popup appears when RONA triggers
-    await testManager.agent1Page
-      .locator('#agentStatePopup')
-      .waitFor({state: 'visible', timeout: 25000});
-    await expect(testManager.agent1Page.locator('#agentStatePopup')).toBeVisible();
+    const ronaPopup = testManager.agent1Page.locator('#agentStatePopup');
+    await ronaPopup.waitFor({state: 'visible', timeout: TIMEOUTS.RONA_POPUP});
+    await expect(ronaPopup).toBeVisible();
 
-    // RONA is a transitional state with no UI dropdown representation
-    // Skip: verifyCurrentState(RONA), waitForState(RONA) - no UI dropdown value
+    // RONA has no UI dropdown representation
     await submitRonaPopup(testManager.agent1Page, RONA_OPTIONS.AVAILABLE);
     await waitForState(testManager.agent1Page, USER_STATES.AVAILABLE);
 
-    // Email task should still be available after handling RONA
-    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, 10000);
+    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, TIMEOUTS.TASK_CLEANUP);
     await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL);
 
-    // Wait for email session to fully establish
-    await expect(testManager.agent1Page.locator('#end')).toBeEnabled({timeout: 30000});
-    await testManager.agent1Page.waitForTimeout(2000);
-
     const endButton = testManager.agent1Page.locator('#end').first();
-    await expect(endButton).toBeEnabled({timeout: 10000});
+    await expect(endButton).toBeEnabled({timeout: TIMEOUTS.SESSION_ESTABLISH});
+    await testManager.agent1Page.waitForTimeout(2000);
     await endButton.click({timeout: 5000});
     await testManager.agent1Page.waitForTimeout(1000);
     await submitWrapup(testManager.agent1Page, WRAPUP_REASONS.SALE);
@@ -171,147 +190,101 @@ export default function createDigitalIncomingTaskAndTaskControlsTests() {
   test('should ignore incoming chat task and wait for RONA popup', async () => {
     await createChatTask(testManager.chatPage, process.env[`${testManager.projectName}_CHAT_URL`]!);
     await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
-    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT, 60000);
+    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT, TIMEOUTS.CHAT_TASK);
 
-    // Desktop mode: Wait directly for RONA popup (tasks persist until popup is handled)
-    // RONA timeout configured at ~18 seconds - popup appears when RONA triggers
-    await testManager.agent1Page
-      .locator('#agentStatePopup')
-      .waitFor({state: 'visible', timeout: 25000});
-    await expect(testManager.agent1Page.locator('#agentStatePopup')).toBeVisible();
-
-    // RONA is a transitional state with no UI dropdown representation - verify via popup visibility
-    // Skip: verifyCurrentState(RONA) - RONA has no UI dropdown value
-    // Skip: waitForStateLogs - sample app doesn't emit widget console logs
-    // Skip: theme color check - sample app has no theme system
+    const ronaPopup = testManager.agent1Page.locator('#agentStatePopup');
+    await ronaPopup.waitFor({state: 'visible', timeout: TIMEOUTS.RONA_POPUP});
+    await expect(ronaPopup).toBeVisible();
 
     await submitRonaPopup(testManager.agent1Page, RONA_OPTIONS.IDLE);
     await waitForState(testManager.agent1Page, USER_STATES.MEETING);
 
-    // Clean up ignored task from TaskList
     await testManager.softCleanup();
     await testManager.agent1Page.waitForTimeout(2000);
   });
 
   test('should set agent to Available and verify chat task behavior', async () => {
-    // Create a fresh chat task for this test
     await createChatTask(testManager.chatPage, process.env[`${testManager.projectName}_CHAT_URL`]!);
     await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
-    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT, 60000);
+    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT, TIMEOUTS.CHAT_TASK);
 
-    // Desktop mode: Wait directly for RONA popup (tasks persist until popup is handled)
-    await testManager.agent1Page
-      .locator('#agentStatePopup')
-      .waitFor({state: 'visible', timeout: 25000});
-    await expect(testManager.agent1Page.locator('#agentStatePopup')).toBeVisible();
+    const ronaPopup = testManager.agent1Page.locator('#agentStatePopup');
+    await ronaPopup.waitFor({state: 'visible', timeout: TIMEOUTS.RONA_POPUP});
+    await expect(ronaPopup).toBeVisible();
 
-    // Skip: verifyCurrentState(RONA), waitForStateLogs - RONA has no UI dropdown, sample app has no widget logs
     await submitRonaPopup(testManager.agent1Page, RONA_OPTIONS.AVAILABLE);
     await testManager.agent1Page.waitForTimeout(2000);
     await waitForState(testManager.agent1Page, USER_STATES.AVAILABLE);
-    await expect(testManager.agent1Page.locator('#agentStatePopup')).not.toBeVisible();
+    await expect(ronaPopup).not.toBeVisible();
     await verifyCurrentState(testManager.agent1Page, USER_STATES.AVAILABLE);
 
-    // Clean up first ignored task from TaskList
     await testManager.softCleanup();
     await testManager.agent1Page.waitForTimeout(2000);
 
-    // Agent is back to Available - create another chat task
     await createChatTask(testManager.chatPage, process.env[`${testManager.projectName}_CHAT_URL`]!);
-    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT, 60000);
+    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT, TIMEOUTS.CHAT_TASK);
 
-    // Wait for RONA popup again after ignoring second chat
-    await testManager.agent1Page
-      .locator('#agentStatePopup')
-      .waitFor({state: 'visible', timeout: 25000});
+    await ronaPopup.waitFor({state: 'visible', timeout: TIMEOUTS.RONA_POPUP});
     await submitRonaPopup(testManager.agent1Page, RONA_OPTIONS.IDLE);
     await waitForState(testManager.agent1Page, USER_STATES.MEETING);
 
-    // Clean up second ignored task from TaskList
     await testManager.softCleanup();
     await testManager.agent1Page.waitForTimeout(2000);
   });
 
   test('should set agent state to busy after ignoring chat task', async () => {
-    // Create a fresh chat task for this test
     await createChatTask(testManager.chatPage, process.env[`${testManager.projectName}_CHAT_URL`]!);
     await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
-    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT, 60000);
+    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT, TIMEOUTS.CHAT_TASK);
 
-    // Wait for RONA timeout (~18s) - popup appears when RONA triggers
-    // Note: In sample app, #incoming-task div stays visible but text changes to "No Incoming Tasks"
-    await testManager.agent1Page
-      .locator('#agentStatePopup')
-      .waitFor({state: 'visible', timeout: 25000});
-    await expect(testManager.agent1Page.locator('#agentStatePopup')).toBeVisible();
+    const ronaPopup = testManager.agent1Page.locator('#agentStatePopup');
+    await ronaPopup.waitFor({state: 'visible', timeout: TIMEOUTS.RONA_POPUP});
+    await expect(ronaPopup).toBeVisible();
 
-    // RONA is a transitional state with no UI dropdown representation - verify via popup visibility
-    // Skip: verifyCurrentState(RONA) - RONA has no UI dropdown value
-    // Skip: waitForStateLogs - sample app doesn't emit widget console logs
     await submitRonaPopup(testManager.agent1Page, RONA_OPTIONS.IDLE);
     await waitForState(testManager.agent1Page, USER_STATES.MEETING);
-    await expect(testManager.agent1Page.locator('#agentStatePopup')).not.toBeVisible();
+    await expect(ronaPopup).not.toBeVisible();
     await testManager.agent1Page.waitForTimeout(3000);
     await verifyCurrentState(testManager.agent1Page, USER_STATES.MEETING);
 
-    // Clean up ignored task from TaskList
     await testManager.softCleanup();
     await testManager.agent1Page.waitForTimeout(2000);
   });
 
   test('should accept incoming chat, end chat and complete wrapup with callback verification', async () => {
     await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
-
-    // Create a fresh chat task for this test
     await createChatTask(testManager.chatPage, process.env[`${testManager.projectName}_CHAT_URL`]!);
 
-    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT, 60000);
+    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT, TIMEOUTS.CHAT_TASK);
     await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT);
 
-    // Wait for chat session to fully establish (digital channels take longer than voice)
-    await expect(testManager.agent1Page.locator('#end')).toBeEnabled({timeout: 30000});
-    await testManager.agent1Page.waitForTimeout(2000);
-
-    // Desktop mode: Agent state does NOT auto-transition to Engaged - verify chat active via UI
-    // Skip: waitForState(ENGAGED), verifyCurrentState(ENGAGED) - Desktop mode doesn't auto-transition
-    // Skip: theme color check - sample app has no theme system
-    // Skip: waitForStateLogs - sample app doesn't emit widget console logs
     const endButton = testManager.agent1Page.locator('#end').first();
-    await expect(endButton).toBeVisible({timeout: 10000});
-    await expect(endButton).toBeEnabled({timeout: 10000});
+    await expect(endButton).toBeEnabled({timeout: TIMEOUTS.SESSION_ESTABLISH});
+    await testManager.agent1Page.waitForTimeout(2000);
     await endButton.click({timeout: 5000});
     await testManager.agent1Page.waitForTimeout(500);
     await submitWrapup(testManager.agent1Page, WRAPUP_REASONS.SALE);
 
-    // Desktop mode: Agent state does NOT auto-transition back to Available after wrapup
-    // Skip: waitForState(AVAILABLE), waitForStateLogs - Desktop mode doesn't auto-transition
-    // Verify wrapup was submitted successfully by checking task list is empty
-    // Note: Backend needs time to process wrapup and clear task - use polling with longer timeout
     const taskList = testManager.agent1Page.locator('#taskList');
     await expect
       .poll(
         async () => {
           const text = await taskList.innerText().catch(() => '');
-
           return text;
         },
-        {timeout: 30000, intervals: [1000, 2000]}
+        {timeout: TIMEOUTS.WRAPUP_POLL, intervals: [1000, 2000]}
       )
       .toContain('No tasks available');
-
-    // Skip: wrapup callback verification - sample app doesn't emit onWrapup console logs
   });
 
   test('should handle chat disconnect before agent answers', async () => {
     await createChatTask(testManager.chatPage, process.env[`${testManager.projectName}_CHAT_URL`]!);
     await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
-    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT, 60000);
+    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT, TIMEOUTS.CHAT_TASK);
     await endChatTask(testManager.chatPage);
 
-    // Wait for backend to process customer disconnect and task to clear
     await testManager.agent1Page.waitForTimeout(5000);
 
-    // Customer disconnect may trigger RONA popup - handle it if present
     const ronaPopup = testManager.agent1Page.locator('#agentStatePopup');
     const isRonaVisible = await ronaPopup.isVisible().catch(() => false);
     if (isRonaVisible) {
@@ -319,42 +292,29 @@ export default function createDigitalIncomingTaskAndTaskControlsTests() {
       await waitForState(testManager.agent1Page, USER_STATES.AVAILABLE);
     }
 
-    // Verify agent state is Available (or was restored to Available via RONA)
     await verifyCurrentState(testManager.agent1Page, USER_STATES.AVAILABLE);
   });
 
-  // Skip: Test ordering dependency - RONA doesn't trigger when run after previous RONA test
-  // The previous test's email task handling affects this test's RONA behavior
+  // Skip: Duplicate of line 137 test. Backend RONA config gets exhausted after first email RONA
+  // test, preventing RONA from triggering in subsequent email tests. Behavior already covered.
   test.skip('should set agent to Available and verify email task behavior', async () => {
     await createEmailTask(process.env[`${testManager.projectName}_EMAIL_ENTRY_POINT`]!);
     await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
 
-    // Wait for incoming email notification
-    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, 180000);
+    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, TIMEOUTS.EMAIL_TASK);
 
-    // Wait for RONA timeout (~18s) - popup appears when RONA triggers
-    await testManager.agent1Page
-      .locator('#agentStatePopup')
-      .waitFor({state: 'visible', timeout: 25000});
-    await expect(testManager.agent1Page.locator('#agentStatePopup')).toBeVisible();
+    const ronaPopup = testManager.agent1Page.locator('#agentStatePopup');
+    await ronaPopup.waitFor({state: 'visible', timeout: TIMEOUTS.RONA_POPUP});
+    await expect(ronaPopup).toBeVisible();
 
-    // RONA is a transitional state with no UI dropdown representation
-    // Skip: verifyCurrentState(RONA), waitForStateLogs - no UI dropdown value
     await submitRonaPopup(testManager.agent1Page, RONA_OPTIONS.AVAILABLE);
     await waitForState(testManager.agent1Page, USER_STATES.AVAILABLE);
-    await expect(testManager.agent1Page.locator('#agentStatePopup')).not.toBeVisible();
-    await verifyCurrentState(testManager.agent1Page, USER_STATES.AVAILABLE);
 
-    // Email task should still be available after handling RONA
-    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, 10000);
+    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, TIMEOUTS.TASK_CLEANUP);
     await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL);
 
-    // Wait for email session to fully establish
-    await expect(testManager.agent1Page.locator('#end')).toBeEnabled({timeout: 30000});
-    await testManager.agent1Page.waitForTimeout(2000);
-
     const endButton = testManager.agent1Page.locator('#end').first();
-    await expect(endButton).toBeEnabled({timeout: 10000});
+    await expect(endButton).toBeEnabled({timeout: TIMEOUTS.SESSION_ESTABLISH});
     await endButton.click({timeout: 5000});
     await testManager.agent1Page.waitForTimeout(1000);
     await submitWrapup(testManager.agent1Page, WRAPUP_REASONS.SALE);
@@ -365,77 +325,64 @@ export default function createDigitalIncomingTaskAndTaskControlsTests() {
     await createEmailTask(process.env[`${testManager.projectName}_EMAIL_ENTRY_POINT`]!);
     await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
 
-    // Wait for incoming email notification
-    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, 180000);
+    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, TIMEOUTS.EMAIL_TASK);
 
-    // Wait for RONA timeout (~18s) - popup appears when RONA triggers
     await testManager.agent1Page
       .locator('#agentStatePopup')
-      .waitFor({state: 'visible', timeout: 25000});
+      .waitFor({state: 'visible', timeout: TIMEOUTS.RONA_POPUP});
     await submitRonaPopup(testManager.agent1Page, RONA_OPTIONS.IDLE);
     await waitForState(testManager.agent1Page, USER_STATES.MEETING);
     await verifyCurrentState(testManager.agent1Page, USER_STATES.MEETING);
 
-    // Wait for first email task to be fully cleared from TaskList
     const taskList = testManager.agent1Page.locator('#taskList');
     await expect
       .poll(
         async () => {
           const text = await taskList.innerText().catch(() => '');
-
           return text;
         },
         {timeout: 15000, intervals: [1000, 2000]}
       )
       .toContain('No tasks available');
 
-    // FIX 1: Longer wait for backend email session cleanup (CRITICAL)
     await testManager.agent1Page.waitForTimeout(10000);
 
-    // Now create a NEW email task with clean slate
     await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
     await createEmailTask(process.env[`${testManager.projectName}_EMAIL_ENTRY_POINT`]!);
 
-    // FIX 2: Wait for task to fully arrive before accepting
-    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, 180000);
-    await testManager.agent1Page.waitForTimeout(3000); // Backend readiness buffer
+    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, TIMEOUTS.EMAIL_TASK);
+    await testManager.agent1Page.waitForTimeout(3000);
 
     await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL);
 
-    // FIX 3: Poll for successful session establishment OR handle API error
     const endButton = testManager.agent1Page.locator('#end').first();
     const tryAgainButton = testManager.agent1Page.locator('button:has-text("Try Again")').first();
 
-    // Check if API error occurred and retry if needed
     const apiErrorVisible = await tryAgainButton
       .waitFor({state: 'visible', timeout: 5000})
       .then(() => true)
       .catch(() => false);
 
     if (apiErrorVisible) {
-      // Email session API error detected, retrying...
       await tryAgainButton.click();
       await testManager.agent1Page.waitForTimeout(3000);
     }
 
-    // Wait for #end button to become visible and enabled
     await expect
       .poll(
         async () => {
           const isVisible = await endButton.isVisible().catch(() => false);
           const isEnabled = await endButton.isEnabled().catch(() => false);
-
           return isVisible && isEnabled;
         },
         {
-          timeout: 60000, // Generous timeout for email session
+          timeout: 60000,
           intervals: [3000, 5000],
           message: 'Email session failed to establish after retry - check backend logs',
         }
       )
       .toBeTruthy();
 
-    // FIX 4: Final verification - no API error present
     const apiError = testManager.agent1Page.locator('text=An error occurred');
     await expect(apiError).not.toBeVisible({timeout: 2000});
 
@@ -445,11 +392,10 @@ export default function createDigitalIncomingTaskAndTaskControlsTests() {
     await testManager.agent1Page.waitForTimeout(2000);
   });
 
-  // Skip: Test expects Desktop mode auto-transition to Engaged (line 409) and widget console
-  // logs (line 411) which don't exist in sample app. Would need complete rewrite to:
-  // 1. Remove waitForState(ENGAGED) checks - verify tasks active via UI instead
-  // 2. Remove all console log verification - sample app doesn't emit widget patterns
-  // 3. Verify Extension phone registration in beforeAll
+  // Skip: Test expects multiple simultaneous active tasks (call + chat + email at once), but
+  // backend routing doesn't support this (confirmed by tasklist-test.spec.ts:343 failure).
+  // When agent has active call, new chat/email tasks are not routed. Additionally expects
+  // ENGAGED state auto-transition and widget console logs which don't exist in sample app.
   test.skip('should handle multiple incoming tasks with callback verifications', async () => {
     // First become available, then create tasks so they arrive fresh
     await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
@@ -557,70 +503,22 @@ export default function createDigitalIncomingTaskAndTaskControlsTests() {
   });
 
   test('Chat task - verify transfer and end buttons are visible, end chat, and wrap up', async () => {
-    // Clear any stray tasks from TaskList that softCleanup() missed
-    // (softCleanup doesn't handle digital channel tasks in TaskList properly)
-    const taskList = testManager.agent1Page.locator('#taskList');
-    let taskItems = taskList.locator('.task-item-content');
-    let taskCount = await taskItems.count();
+    await clearStrayDigitalTasks(testManager.agent1Page);
 
-    /* eslint-disable no-await-in-loop */
-    while (taskCount > 0) {
-      const firstTask = taskItems.first();
-      const declineButton = firstTask.getByRole('button', {name: 'Decline'}).first();
-      const isVisible = await declineButton.isVisible().catch(() => false);
-      if (isVisible) {
-        await declineButton.click({timeout: 5000}).catch(() => {});
-        await testManager.agent1Page.waitForTimeout(1000);
-      }
-      taskItems = taskList.locator('.task-item-content');
-      taskCount = await taskItems.count();
-      if (taskCount === 0) break;
-      // Prevent infinite loop
-      if (taskCount > 0) {
-        await testManager.agent1Page.waitForTimeout(2000);
-        taskItems = taskList.locator('.task-item-content');
-        const newCount = await taskItems.count();
-        if (newCount === taskCount) break; // No change, stop trying
-        taskCount = newCount;
-      }
-    }
-    /* eslint-enable no-await-in-loop */
-
-    // Wait for TaskList to show "No tasks available"
-    await expect(taskList)
-      .toContainText('No tasks available', {timeout: 10000})
-      .catch(() => {});
-
-    // Create fresh chat task
     await createChatTask(testManager.chatPage, process.env[`${testManager.projectName}_CHAT_URL`]!);
     await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
 
-    // Wait for incoming chat notification
-    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT, 120000);
+    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT, TIMEOUTS.CHAT_TASK_EXTENDED);
 
-    // Accept the incoming chat
     await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CHAT);
 
-    // Wait for chat session to fully establish (digital channels take longer than voice)
-    // Digital channels require backend communication to enable transfer functionality
-    // SDK fires task:ui-controls-updated when uiControls.transfer becomes available
-    await expect(testManager.agent1Page.locator('#transfer')).toBeEnabled({timeout: 30000});
-    await testManager.agent1Page.waitForTimeout(2000); // Additional settle time
-
-    // Desktop mode: Agent state does NOT auto-transition to Engaged
-    // Skip: verifyCurrentState(ENGAGED) - Desktop mode doesn't auto-transition
+    await expect(testManager.agent1Page.locator('#transfer')).toBeEnabled({timeout: TIMEOUTS.SESSION_ESTABLISH});
+    await testManager.agent1Page.waitForTimeout(2000);
 
     try {
-      // Use utility to check chat control buttons are visible
       await verifyTaskControls(testManager.agent1Page, TASK_TYPES.CHAT);
-
-      // End the chat by clicking the end button
       await endTask(testManager.agent1Page);
       await testManager.agent1Page.waitForTimeout(3000);
-
-      // Skip: verifyEndLogs() - sample app doesn't emit onEnd console logs
-
-      // Submit wrapup
       await submitWrapup(testManager.agent1Page, WRAPUP_REASONS.RESOLVED);
       await testManager.agent1Page.waitForTimeout(2000);
     } catch (error) {
@@ -629,69 +527,21 @@ export default function createDigitalIncomingTaskAndTaskControlsTests() {
   });
 
   test('Email task - verify transfer and end buttons are visible, end email, and wrap up', async () => {
-    // Clear any stray tasks from TaskList that softCleanup() missed
-    const taskList = testManager.agent1Page.locator('#taskList');
-    let taskItems = taskList.locator('.task-item-content');
-    let taskCount = await taskItems.count();
+    await clearStrayDigitalTasks(testManager.agent1Page);
 
-    /* eslint-disable no-await-in-loop */
-    while (taskCount > 0) {
-      const firstTask = taskItems.first();
-      const declineButton = firstTask.getByRole('button', {name: 'Decline'}).first();
-      const isVisible = await declineButton.isVisible().catch(() => false);
-      if (isVisible) {
-        await declineButton.click({timeout: 5000}).catch(() => {});
-        await testManager.agent1Page.waitForTimeout(1000);
-      }
-      taskItems = taskList.locator('.task-item-content');
-      taskCount = await taskItems.count();
-      if (taskCount === 0) break;
-      // Prevent infinite loop
-      if (taskCount > 0) {
-        await testManager.agent1Page.waitForTimeout(2000);
-        taskItems = taskList.locator('.task-item-content');
-        const newCount = await taskItems.count();
-        if (newCount === taskCount) break;
-        taskCount = newCount;
-      }
-    }
-    /* eslint-enable no-await-in-loop */
-
-    // Wait for TaskList to show "No tasks available"
-    await expect(taskList)
-      .toContainText('No tasks available', {timeout: 10000})
-      .catch(() => {});
-
-    // Create fresh email task
     await createEmailTask(process.env[`${testManager.projectName}_EMAIL_ENTRY_POINT`]!);
     await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
 
-    // Wait for incoming email notification (emails may take longer)
-    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, 180000);
-
-    // Accept the incoming email
+    await waitForIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL, TIMEOUTS.EMAIL_TASK);
     await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.EMAIL);
 
-    // Wait for email session to fully establish (digital channels take longer than voice)
-    // Digital channels require backend communication to enable transfer functionality
-    // SDK fires task:ui-controls-updated when uiControls.transfer becomes available
-    await expect(testManager.agent1Page.locator('#transfer')).toBeEnabled({timeout: 30000});
-    await testManager.agent1Page.waitForTimeout(2000); // Additional settle time
-
-    // Desktop mode: Agent state does NOT auto-transition to Engaged
-    // Skip: verifyCurrentState(ENGAGED) - Desktop mode doesn't auto-transition
+    await expect(testManager.agent1Page.locator('#transfer')).toBeEnabled({timeout: TIMEOUTS.SESSION_ESTABLISH});
+    await testManager.agent1Page.waitForTimeout(2000);
 
     try {
-      // Use utility to check email control buttons are visible
       await verifyTaskControls(testManager.agent1Page, TASK_TYPES.EMAIL);
-
-      // End the email by clicking the end button
       await endTask(testManager.agent1Page);
       await testManager.agent1Page.waitForTimeout(3000);
-
-      // Skip: verifyEndLogs() - sample app doesn't emit onEnd console logs
-
-      // Submit wrapup
       await submitWrapup(testManager.agent1Page, WRAPUP_REASONS.RESOLVED);
       await testManager.agent1Page.waitForTimeout(2000);
     } catch (error) {

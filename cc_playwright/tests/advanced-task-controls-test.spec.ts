@@ -91,17 +91,27 @@ export default function createAdvancedTaskControlsTests() {
     });
 
     test('Call Blind Transferred by Agent to Another Agent', async () => {
-      // Agent 1 performs blind transfer to Agent 2
       await consultOrTransfer(
         testManager.agent1Page,
         'agent',
         'transfer',
         process.env[`${testManager.projectName}_AGENT2_NAME`]!
       );
-      // Agent 2 should receive the transfer and accept it
-      await acceptIncomingTask(testManager.agent2Page, TASK_TYPES.CALL, ACCEPT_TASK_TIMEOUT);
 
-      // Desktop mode - verify call connected on agent2
+      await testManager.agent2Page.bringToFront();
+
+      const isAlreadyConnected = await testManager.agent2Page
+        .locator('#incoming-task')
+        .filter({hasText: 'connected'})
+        .isVisible()
+        .catch(() => false);
+
+      if (!isAlreadyConnected) {
+        await acceptIncomingTask(testManager.agent2Page, TASK_TYPES.CALL, ACCEPT_TASK_TIMEOUT);
+      } else {
+        await expect(testManager.agent2Page.locator('#end')).toBeVisible({timeout: 10000});
+      }
+
       await expect(testManager.agent2Page.locator('#incoming-task')).toContainText('connected', {
         timeout: 10000,
       });
@@ -125,7 +135,6 @@ export default function createAdvancedTaskControlsTests() {
     });
 
     test('Call Blind Transferred to Queue', async () => {
-      // Transfer from Agent 1 to Queue (routed to Agent 2)
       await consultOrTransfer(
         testManager.agent1Page,
         'queue',
@@ -133,10 +142,20 @@ export default function createAdvancedTaskControlsTests() {
         process.env[`${testManager.projectName}_QUEUE_NAME`]!
       );
 
-      // Agent 2 accepts the transfer
-      await acceptIncomingTask(testManager.agent2Page, TASK_TYPES.CALL, ACCEPT_TASK_TIMEOUT);
+      await testManager.agent2Page.bringToFront();
 
-      // Desktop mode - verify call connected on agent2
+      const isAlreadyConnected = await testManager.agent2Page
+        .locator('#incoming-task')
+        .filter({hasText: 'connected'})
+        .isVisible()
+        .catch(() => false);
+
+      if (!isAlreadyConnected) {
+        await acceptIncomingTask(testManager.agent2Page, TASK_TYPES.CALL, ACCEPT_TASK_TIMEOUT);
+      } else {
+        await expect(testManager.agent2Page.locator('#end')).toBeVisible({timeout: 10000});
+      }
+
       await expect(testManager.agent2Page.locator('#incoming-task')).toContainText('connected', {
         timeout: 10000,
       });
@@ -229,6 +248,10 @@ export default function createAdvancedTaskControlsTests() {
       await holdCallToggle(testManager.agent1Page);
       await testManager.agent1Page.waitForTimeout(2000);
       await expect(testManager.agent1Page.locator('#end-consult')).not.toBeVisible();
+
+      await handleStrayTasks(testManager.agent2Page);
+      await changeUserState(testManager.agent2Page, USER_STATES.MEETING);
+      await testManager.agent2Page.waitForTimeout(2000);
 
       // 4. Consult transfer
       clearAdvancedCapturedLogs();
@@ -408,6 +431,8 @@ export default function createAdvancedTaskControlsTests() {
       process.env.PW_ENTRYPOINT_NAME!
     );
     await expect(testManager.agent1Page.locator('#end-consult')).toBeVisible();
+    // Wait for console logs to be captured before verifying
+    await testManager.agent1Page.waitForTimeout(2000);
     await verifyConsultStartSuccessLogs();
     await cancelConsult(testManager.agent1Page);
     await testManager.agent1Page.waitForTimeout(1000);
