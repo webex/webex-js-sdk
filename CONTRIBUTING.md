@@ -257,8 +257,9 @@ Running tests against a module can be performed by using the following commands 
 * `yarn workspace {module-name} test:syntax` - Run syntax tests.
 * `yarn workspace {module-name} test:browser` - Run browser tests.
 
-**Note:** To run individual test files, use the `--targets` option along with the test command. An example is shown below:
-* `yarn workspace {module name} test:unit --targets {filename}` - Run the unit test only for the target filename.
+**Note:** To run individual test files, use the `--targets` option along with the test command. The `--targets` value must be a path **relative to `test/unit/spec/`**, not just a filename or a full path. Examples:
+* `yarn workspace {module name} test:unit --targets {path-relative-to-spec}` - Run the unit test only for the target file.
+* `yarn workspace @webex/plugin-meetings test:unit --targets locus-info/controlsUtils.js` - Run a specific test file within a subdirectory.
 
 #### Submitting Changes
 
