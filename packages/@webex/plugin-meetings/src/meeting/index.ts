@@ -4671,7 +4671,11 @@ export default class Meeting extends StatelessWebexPlugin {
       // so refresh it after locus sync to avoid stale partial hash-tree data.
       this.destination = locus;
     }
-    if ((!this.meetingInfo || isEmpty(this.meetingInfo)) && (this.destination as LocusDTO)?.info) {
+    if (
+      (!this.meetingInfo || isEmpty(this.meetingInfo)) &&
+      (this.destination as LocusDTO)?.info &&
+      !this.fetchMeetingInfoTimeoutId
+    ) {
       try {
         this.fetchMeetingInfo({});
       } catch (error: any) {

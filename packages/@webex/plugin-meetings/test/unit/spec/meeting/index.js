@@ -11410,6 +11410,18 @@ describe('plugin-meetings', () => {
           assert.notCalled(fetchMeetingInfoStub);
         });
 
+        it('does not fetch meeting info when delayed fetch timer is already scheduled', () => {
+          const fetchMeetingInfoStub = sinon.stub(meeting, 'fetchMeetingInfo').resolves();
+
+          meeting.meetingInfo = {};
+          meeting.destination = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
+          meeting.fetchMeetingInfoTimeoutId = 42;
+
+          meeting.finalizeMeetingAfterInitialLocusSetup({});
+
+          assert.notCalled(fetchMeetingInfoStub);
+        });
+
         it('swallows sync fetchMeetingInfo errors and logs info', () => {
           const error = new Error('fetch failed');
 
