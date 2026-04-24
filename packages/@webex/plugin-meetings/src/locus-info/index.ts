@@ -710,13 +710,6 @@ export default class LocusInfo extends EventsScope {
 
       // Active parser found - pass the API response to it
       if (isWrapped) {
-        if (!responseBody.dataSets) {
-          this.sendClassicVsHashTreeMismatchMetric(
-            meeting,
-            `expected hash tree dataSets in API response but they are missing`
-          );
-          // continuing as we can still manage without responseBody.dataSets, but this is very suspicious
-        }
         LoggerProxy.logger.info(
           'Locus-info:index#handleLocusAPIResponse --> passing Locus API response to HashTreeParser: ',
           responseBody
