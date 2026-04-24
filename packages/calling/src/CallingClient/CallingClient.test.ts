@@ -97,7 +97,7 @@ describe('CallingClient Tests', () => {
 
   beforeEach(() => {
     APIRequest.resetInstance();
-    APIRequest.getInstance({webex, isMobiusSocketEnabled: false});
+    APIRequest.getInstance({webex});
   });
 
   describe('CallingClient pick Mobius cluster using Service Host Tests', () => {
@@ -845,6 +845,10 @@ describe('CallingClient Tests', () => {
     let mobiusSocketMock;
 
     beforeEach(async () => {
+      webex.internal.device.features.developer.get = jest.fn().mockReturnValue({value: true});
+      APIRequest.resetInstance();
+      APIRequest.getInstance({webex});
+
       mobiusSocketMock = (
         jest.requireMock('@webex/internal-plugin-mobius-socket') as {
           getMobiusSocketInstance: (w: unknown) => unknown;
@@ -858,7 +862,6 @@ describe('CallingClient Tests', () => {
 
       callingClient = await createClient(webex, {
         logger: {level: LOGGER.INFO},
-        isMobiusSocketEnabled: true,
       });
 
       const asyncEventOnCall = (mobiusSocketMock.on as jest.Mock).mock.calls.find(
@@ -870,6 +873,7 @@ describe('CallingClient Tests', () => {
     afterEach(() => {
       callingClient.removeAllListeners();
       callManager.removeAllListeners();
+      webex.internal.device.features.developer.get = jest.fn().mockReturnValue({value: false});
     });
 
     it('routes mobius.* async events to callManager', async () => {

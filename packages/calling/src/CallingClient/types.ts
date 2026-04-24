@@ -22,7 +22,6 @@ export interface CallingClientConfig {
   discovery?: DiscoveryConfig;
   serviceData?: ServiceData;
   jwe?: string;
-  isMobiusSocketEnabled?: boolean;
 }
 
 export type CallingClientErrorEmitterCallback = (

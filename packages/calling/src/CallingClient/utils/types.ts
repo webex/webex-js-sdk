@@ -1,3 +1,4 @@
+import {MobiusCallData, MobiusRegistrationDownData} from '../calling/types';
 import {WebexRequestPayload} from '../../common/types';
 import {WebexSDK} from '../../SDKConnector/types';
 
@@ -5,11 +6,6 @@ import {WebexSDK} from '../../SDKConnector/types';
  * Configuration for APIRequest class
  */
 export interface APIRequestConfig {
-  /**
-   * Interim SDK opt-in for Mobius WebSocket transport when WDM
-   * `webrtc-calling-over-ws` is not yet true (until prod rollout).
-   */
-  isMobiusSocketEnabled?: boolean;
   /** Webex SDK instance for making requests */
   webex: WebexSDK;
 }
@@ -54,3 +50,10 @@ export type SendWssRequestFn = (
   sessionIdOrOptions?: string | Record<string, unknown>,
   options?: Record<string, unknown>
 ) => Promise<MobiusSocketResponse>;
+
+export type MobiusAsyncEvent = {
+  type: string;
+  eventId: string;
+  trackingId: string;
+  data: MobiusCallData | MobiusRegistrationDownData;
+};

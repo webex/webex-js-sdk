@@ -1,5 +1,6 @@
 /* eslint-disable dot-notation */
 /* eslint-disable valid-jsdoc */
+import {APIRequest} from '../utils/request';
 import {METHOD_START_MESSAGE} from '../../common/constants';
 import {CALL_MANAGER_FILE, METHODS} from '../constants';
 import {CALLING_CLIENT_EVENT_KEYS, CallEventTypes, LINE_EVENT_KEYS} from '../../Events/types';
@@ -30,8 +31,6 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
 
   private webex: WebexSDK;
 
-  private isMobiusSocketEnabled: boolean;
-
   private callCollection: Record<CorrelationId, ICall>;
 
   private activeMobiusUrl!: string;
@@ -40,20 +39,22 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
 
   private lineDict: Record<string, ILine>;
 
+  private apiRequest: APIRequest;
+
   /**
    * @param webex -.
    * @param indicator - Service Indicator.
    */
-  constructor(webex: WebexSDK, indicator: ServiceIndicator, isMobiusSocketEnabled: boolean) {
+  constructor(webex: WebexSDK, indicator: ServiceIndicator) {
     super();
     this.sdkConnector = SDKConnector;
     this.serviceIndicator = indicator;
-    this.isMobiusSocketEnabled = isMobiusSocketEnabled;
     if (!this.sdkConnector.getWebex()) {
       SDKConnector.setWebex(webex);
     }
     this.lineDict = {};
     this.webex = this.sdkConnector.getWebex();
+    this.apiRequest = APIRequest.getInstance({webex: this.webex});
     this.callCollection = {};
     this.activeMobiusUrl = '';
     this.listenForWsEvents();
@@ -131,7 +132,7 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
    * A listener for Mobius events.
    */
   private listenForWsEvents() {
-    if (!this.isMobiusSocketEnabled) {
+    if (!this.apiRequest.isSocketEnabled()) {
       this.sdkConnector.registerListener('event:mobius', async (event) => {
         this.dequeueWsEvents(event);
       });
@@ -494,13 +495,9 @@ export class CallManager extends Eventing<CallEventTypes> implements ICallManage
  * @param webex -.
  * @param indicator - Service Indicator.
  */
-export const getCallManager = (
-  webex: WebexSDK,
-  indicator: ServiceIndicator,
-  isMobiusSocketEnabled = false
-): ICallManager => {
+export const getCallManager = (webex: WebexSDK, indicator: ServiceIndicator): ICallManager => {
   if (!callManager) {
-    callManager = new CallManager(webex, indicator, isMobiusSocketEnabled);
+    callManager = new CallManager(webex, indicator);
   }
 
   return callManager;
