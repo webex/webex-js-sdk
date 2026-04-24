@@ -13,6 +13,7 @@ import MobiusSocket, {
   ConnectionError,
   Socket,
 } from '../../../src';
+import {getMobiusSocketInstance, resetMobiusSocketInstance} from '../../../src/index';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
@@ -24,6 +25,33 @@ import {MESSAGE_TYPES} from '../../../src/socket/constants';
 import promiseTick from '../lib/promise-tick';
 
 describe('plugin-mobius-socket', () => {
+  describe('getMobiusSocketInstance', () => {
+    afterEach(() => {
+      resetMobiusSocketInstance();
+    });
+
+    it('uses package config when consumer config is not provided', () => {
+      const configuredWebex = new MockWebex();
+      const instance = getMobiusSocketInstance(configuredWebex);
+
+      assert.instanceOf(instance, MobiusSocket);
+      assert.equal(instance.config, mobiusConfig.mobiusSocket);
+    });
+
+    it('uses consumer config when it is provided', () => {
+      const configuredWebex = new MockWebex();
+      const consumerConfig = {
+        initialConnectionMaxRetries: 0,
+        backoffTimeReset: 1234,
+      };
+
+      const instance = getMobiusSocketInstance(configuredWebex, consumerConfig);
+
+      assert.instanceOf(instance, MobiusSocket);
+      assert.equal(instance.config, consumerConfig);
+    });
+  });
+
   describe('MobiusSocket', () => {
     let clock, mobiusSocket, mockWebSocket, socketOpenStub, webex;
 
@@ -83,11 +111,7 @@ describe('plugin-mobius-socket', () => {
     });
 
     beforeEach(() => {
-      webex = new MockWebex({
-        children: {
-          mobiusSocket: MobiusSocket,
-        },
-      });
+      webex = new MockWebex();
       webex.credentials = {
         refresh: sinon.stub().returns(Promise.resolve()),
         getUserToken: sinon.stub().returns(
@@ -117,8 +141,6 @@ describe('plugin-mobius-socket', () => {
       };
       webex.internal.metrics.submitClientMetrics = sinon.stub();
       webex.trackingId = 'fakeTrackingId';
-      webex.config.mobiussocket = mobiusConfig.mobiusSocket;
-
       webex.logger = console;
 
       mockWebSocket = new MockWebSocket();
@@ -140,10 +162,8 @@ describe('plugin-mobius-socket', () => {
         return promise;
       });
 
-      mobiusSocket = webex.internal.mobiusSocket;
+      mobiusSocket = new MobiusSocket(webex, {...mobiusConfig.mobiusSocket});
       mobiusSocket.defaultSessionId = 'mobius-websocket-session';
-      mobiusSocket.config.initialConnectionMaxRetries = mobiusConfig.mobiusSocket.initialConnectionMaxRetries;
-      mobiusSocket.config.maxRetries = mobiusConfig.mobiusSocket.maxRetries;
     });
 
     afterEach(async () => {
@@ -181,27 +201,6 @@ describe('plugin-mobius-socket', () => {
       await new Promise(resolve => setTimeout(resolve, 10));
     });
 
-    describe('#listen()', () => {
-      it('proxies to #connect()', () => {
-        const connectStub = sinon.stub(mobiusSocket, 'connect').callThrough();
-        return mobiusSocket.listen().then(() => {
-          assert.called(connectStub);
-        });
-      });
-    });
-
-    describe('#stopListening()', () => {
-      it('proxies to #disconnect()', () => {
-        return mobiusSocket.connect().then(() => {
-          const disconnectStub = sinon.stub(mobiusSocket, 'disconnect').callThrough();
-
-          mobiusSocket.stopListening();
-          assert.called(disconnectStub);
-          mockWebSocket.emit('close', {code: 1000, reason: 'test'});
-        });
-      });
-    });
-
     describe('#connect()', () => {
       it('lazily registers the device', () => {
         webex.internal.device.registered = false;
@@ -233,7 +232,7 @@ describe('plugin-mobius-socket', () => {
           assert.isTrue(mobiusSocket.connected, 'MobiusSocket is connected');
           assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
           assert.calledWith(socketOpenStub, 'ws://example.com', sinon.match.any);
-          mobiusSocket._emit('event:featureToggle_update', envelope);
+          mobiusSocket.emit('event:featureToggle_update', envelope);
           assert.calledOnceWithExactly(
             webex.internal.feature.updateFeature,
             envelope.data.featureToggle
@@ -248,7 +247,7 @@ describe('plugin-mobius-socket', () => {
         const envelope = {};
 
         return promise.then(() => {
-          mobiusSocket._emit('event:featureToggle_update', envelope);
+          mobiusSocket.emit('event:featureToggle_update', envelope);
           assert.notCalled(webex.internal.feature.updateFeature);
           sinon.restore();
         });
@@ -265,7 +264,7 @@ describe('plugin-mobius-socket', () => {
         mockWebSocket.open();
 
         return promise.then(() => {
-          mobiusSocket._emit('event:ActiveClusterStatusEvent', activeClusterEventEnvelope);
+          mobiusSocket.emit('event:ActiveClusterStatusEvent', activeClusterEventEnvelope);
           assert.calledOnceWithExactly(
             webex.internal.services.switchActiveClusterIds,
             activeClusterEventEnvelope.data.activeClusters
@@ -279,7 +278,7 @@ describe('plugin-mobius-socket', () => {
         const envelope = {};
 
         return promise.then(() => {
-          mobiusSocket._emit('event:ActiveClusterStatusEvent', envelope);
+          mobiusSocket.emit('event:ActiveClusterStatusEvent', envelope);
           assert.notCalled(webex.internal.services.switchActiveClusterIds);
           sinon.restore();
         });
@@ -295,7 +294,7 @@ describe('plugin-mobius-socket', () => {
         mockWebSocket.open();
 
         return promise.then(() => {
-          mobiusSocket._emit('event:u2c.cache-invalidation', u2cInvalidateEventEnvelope);
+          mobiusSocket.emit('event:u2c.cache-invalidation', u2cInvalidateEventEnvelope);
           assert.calledOnceWithExactly(
             webex.internal.services.invalidateCache,
             u2cInvalidateEventEnvelope.data.timestamp
@@ -309,7 +308,7 @@ describe('plugin-mobius-socket', () => {
         const envelope = {};
 
         return promise.then(() => {
-          mobiusSocket._emit('event:u2c.cache-invalidation', envelope);
+          mobiusSocket.emit('event:u2c.cache-invalidation', envelope);
           assert.notCalled(webex.internal.services.invalidateCache);
           sinon.restore();
         });
@@ -352,8 +351,9 @@ describe('plugin-mobius-socket', () => {
         };
 
         // skipping due to apparent bug with lolex in all browsers but Chrome.
-        skipInBrowser(it)('fails after default `initialConnectionMaxRetries` attempts', () => {
+        skipInBrowser(it)('fails after configured `initialConnectionMaxRetries` attempts', () => {
           mobiusSocket.config.maxRetries = 0;
+          mobiusSocket.config.initialConnectionMaxRetries = 2;
 
           return check();
         });
@@ -423,6 +423,7 @@ describe('plugin-mobius-socket', () => {
       // skipping due to apparent bug with lolex in all browsers but Chrome.
       skipInBrowser(describe)('when the connection fails', () => {
         it('backs off exponentially', () => {
+          mobiusSocket.config.initialConnectionMaxRetries = 2;
           socketOpenStub.restore();
           socketOpenStub = sinon.stub(Socket.prototype, 'open');
           socketOpenStub.returns(Promise.reject(new ConnectionError({code: 4001})));
@@ -482,6 +483,7 @@ describe('plugin-mobius-socket', () => {
 
         describe('with `UnknownResponse`', () => {
           it('triggers a device refresh', () => {
+            mobiusSocket.config.initialConnectionMaxRetries = 1;
             socketOpenStub.restore();
             socketOpenStub = sinon.stub(Socket.prototype, 'open').returns(Promise.resolve());
             socketOpenStub.onCall(0).returns(Promise.reject(new UnknownResponse({code: 4444})));
@@ -501,6 +503,7 @@ describe('plugin-mobius-socket', () => {
 
         describe('with `NotAuthorized`', () => {
           it('triggers a token refresh', () => {
+            mobiusSocket.config.initialConnectionMaxRetries = 1;
             socketOpenStub.restore();
             socketOpenStub = sinon.stub(Socket.prototype, 'open').returns(Promise.resolve());
             socketOpenStub.onCall(0).returns(Promise.reject(new NotAuthorized({code: 4401})));
@@ -574,7 +577,7 @@ describe('plugin-mobius-socket', () => {
           return promise.then(() =>
             promiseTick(2)
             .then(() => {
-              clock.tick(6 * webex.internal.mobiusSocket.config.backoffTimeReset);
+              clock.tick(6 * mobiusSocket.config.backoffTimeReset);
 
               return promiseTick(2);
             })
@@ -654,6 +657,27 @@ describe('plugin-mobius-socket', () => {
             assert.calledOnce(backoffSpy);
             assert.isUndefined(backoffSpy.firstCall.args[2]?.initialConnectionMaxRetries);
             backoffSpy.restore();
+          });
+        });
+
+        it('treats a different explicit URL as a fresh initial connect', () => {
+          clock.uninstall();
+          mobiusSocket.hasEverConnected = true;
+          mobiusSocket.socketUrl = 'ws://old-url.com';
+          mobiusSocket.config.initialConnectionMaxRetries = 0;
+          mobiusSocket.config.maxRetries = 5;
+
+          socketOpenStub.restore();
+          socketOpenStub = sinon
+            .stub(Socket.prototype, 'open')
+            .returns(Promise.reject(new ConnectionError({code: 4001})));
+
+          const promise = mobiusSocket.connect('ws://new-url.com');
+
+          return assert.isRejected(promise).then(() => {
+            assert.calledOnce(Socket.prototype.open);
+            assert.equal(mobiusSocket.socketUrl, 'ws://new-url.com');
+            assert.isFalse(mobiusSocket.hasEverConnected, 'hasEverConnected is false');
           });
         });
       });
@@ -830,7 +854,7 @@ describe('plugin-mobius-socket', () => {
           socketOpenStub.onCall(0).returns(
             // Delay the opening of the socket so that disconnect is called while open
             // is in progress
-            promiseTick(2 * webex.internal.mobiusSocket.config.backoffTimeReset)
+            promiseTick(2 * mobiusSocket.config.backoffTimeReset)
               // Pretend the socket opened successfully. Failing should be fine too but
               // it generates more console output.
               .then(() => Promise.resolve())
@@ -838,7 +862,7 @@ describe('plugin-mobius-socket', () => {
           const promise = mobiusSocket.connect();
 
           // Wait for the connect call to setup
-          return promiseTick(webex.internal.mobiusSocket.config.backoffTimeReset).then(async () => {
+          return promiseTick(mobiusSocket.config.backoffTimeReset).then(async () => {
             // By this time backoffCall and mobiusSocket socket should be defined by the
             // 'connect' call
             assert.isDefined(mobiusSocket.backoffCalls.get('mobius-websocket-session'), 'MobiusSocket backoffCall is not defined');
@@ -873,7 +897,7 @@ describe('plugin-mobius-socket', () => {
             }
           );
 
-          return promiseTick(webex.internal.mobiusSocket.config.backoffTimeReset).then(() => {
+          return promiseTick(mobiusSocket.config.backoffTimeReset).then(() => {
             assert.equal(
               reason.message,
               `MobiusSocket: prevent socket open when backoffCall no longer defined for ${mobiusSocket.defaultSessionId}`
@@ -886,6 +910,7 @@ describe('plugin-mobius-socket', () => {
 
         it('sets lastError when retrying', () => {
           const realError = new Error('FORCED');
+          mobiusSocket.config.initialConnectionMaxRetries = 1;
 
           socketOpenStub.restore();
           socketOpenStub = sinon.stub(Socket.prototype, 'open');
@@ -893,7 +918,7 @@ describe('plugin-mobius-socket', () => {
           const promise = mobiusSocket.connect();
 
           // Wait for the connect call to setup
-          return promiseTick(webex.internal.mobiusSocket.config.backoffTimeReset).then(async () => {
+          return promiseTick(mobiusSocket.config.backoffTimeReset).then(async () => {
             // Calling disconnect will abort the backoffCall, close the socket, and
             // reject the connect
             mobiusSocket.disconnect();
@@ -901,7 +926,7 @@ describe('plugin-mobius-socket', () => {
             const error = await assert.isRejected(promise);
             const lastError = mobiusSocket.getLastError();
 
-            assert.equal(error, realError);
+            assert.match(error.message, /MobiusSocket Connection Aborted/);
             assert.isDefined(lastError);
             assert.equal(lastError, realError);
           });
@@ -1100,13 +1125,15 @@ describe('plugin-mobius-socket', () => {
         });
         sinon.stub(mobiusSocket.logger, 'error');
 
-        return Promise.resolve(mobiusSocket._emit('break', event)).then((res) => {
+        return Promise.resolve(
+          mobiusSocket._emit(mobiusSocket.defaultSessionId, 'break', event)
+        ).then((res) => {
           assert.calledWith(
             mobiusSocket.logger.error,
             'MobiusSocket: error occurred in event handler:',
             error,
             ' with args: ',
-            ['break', event]
+            [mobiusSocket.defaultSessionId, 'break', event]
           );
           return res;
         });
@@ -1252,10 +1279,6 @@ describe('plugin-mobius-socket', () => {
 
         it('should set switchover flags when called', () => {
           mobiusSocket._handleImminentShutdown(sessionId);
-
-          // With _connectWithBackoff stubbed, the backoff map entry may not be created here.
-          // Assert that switchover initiation state was set and a shutdown switchover connect was requested.
-          assert.isDefined(mobiusSocket._shutdownSwitchoverId);
 
           assert.calledOnce(connectWithBackoffStub);
           const callArgs = connectWithBackoffStub.firstCall.args;
@@ -1547,13 +1570,11 @@ describe('plugin-mobius-socket', () => {
           mobiusSocket.connected = true;
           sinon.stub(mobiusSocket, '_emit');
           sinon.stub(mobiusSocket, '_reconnect');
-          sinon.stub(mobiusSocket, 'unset');
         });
 
         afterEach(() => {
           mobiusSocket._emit.restore();
           mobiusSocket._reconnect.restore();
-          mobiusSocket.unset.restore();
         });
 
         it('should handle active socket close with 4001 - permanent failure', () => {
@@ -1580,7 +1601,7 @@ describe('plugin-mobius-socket', () => {
           assert.calledWith(mobiusSocket._emit, mobiusSocket.defaultSessionId, 'offline.replaced', closeEvent);
           assert.notCalled(mobiusSocket._reconnect);
           assert.isTrue(mobiusSocket.connected); // Should remain connected
-          assert.notCalled(mobiusSocket.unset);
+          assert.strictEqual(mobiusSocket.socket, mockSocket);
         });
 
         it('should distinguish between active and non-active socket closes', () => {

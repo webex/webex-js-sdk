@@ -12,11 +12,8 @@ import config from './config';
 /**
  * Creates a calling-owned Mobius socket client for the provided Webex instance.
  *
- * Note: this mutates `webex.config` to ensure `WebexPlugin` can resolve
- * `this.config` via the Mobius socket namespace.
- *
  * @param {object} webex
- * @param {object} [mobiusSocketConfig={}]
+ * @param {object} [mobiusSocketConfig]
  * @returns {MobiusSocket}
  */
 let mobiusSocketInstance; // Keeping just one instance of MobiusSocket since there won't be multiple connections
@@ -24,27 +21,15 @@ let mobiusSocketInstance; // Keeping just one instance of MobiusSocket since the
 /**
  * Creates or returns the singleton Mobius socket client for the provided Webex instance.
  * @param {object} webex - The Webex SDK instance
- * @param {object} [mobiusSocketConfig={}] - Optional configuration overrides
+ * @param {object} [mobiusSocketConfig] - Optional configuration overrides
  * @returns {MobiusSocket} The singleton MobiusSocket instance
  */
-export function getMobiusSocketInstance(webex, mobiusSocketConfig = {}) {
+export function getMobiusSocketInstance(webex, mobiusSocketConfig) {
   if (mobiusSocketInstance) {
     return mobiusSocketInstance;
   }
 
-  const webexConfig = webex.config || {};
-  const mobiusConfig = {
-    ...config.mobiusSocket,
-    ...(webexConfig.mobiusSocket || {}),
-    ...mobiusSocketConfig,
-  };
-
-  webex.config = {
-    ...webexConfig,
-    mobiussocket: mobiusConfig,
-  };
-
-  mobiusSocketInstance = new MobiusSocket({}, {parent: webex});
+  mobiusSocketInstance = new MobiusSocket(webex, mobiusSocketConfig || config.mobiusSocket);
 
   return mobiusSocketInstance;
 }

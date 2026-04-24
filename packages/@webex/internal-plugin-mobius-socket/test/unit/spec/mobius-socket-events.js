@@ -82,16 +82,11 @@ describe('plugin-mobiusSocket', () => {
       });
 
       beforeEach(() => {
-        webex = new MockWebex({
-          children: {
-            mobiusSocket: MobiusSocket,
-          },
-        });
+        webex = new MockWebex();
 
         webex.internal.device.registered = true;
         webex.internal.metrics.submitClientMetrics = sinon.stub();
         webex.trackingId = 'fakeTrackingId';
-        webex.config.mobiussocket = mobiusConfig.mobiusSocket;
 
         webex.logger = console;
 
@@ -115,8 +110,22 @@ describe('plugin-mobiusSocket', () => {
           return promise;
         });
 
-        mobiusSocket = webex.internal.mobiusSocket;
+        mobiusSocket = new MobiusSocket(webex, {...mobiusConfig.mobiusSocket});
         mobiusSocket.defaultSessionId = 'mobius-websocket-session';
+      });
+
+      it('removes all listeners for an event when off() is called without a listener', () => {
+        const firstListener = sinon.stub();
+        const secondListener = sinon.stub();
+
+        mobiusSocket.on('event:fake.test', firstListener);
+        mobiusSocket.on('event:fake.test', secondListener);
+
+        mobiusSocket.off('event:fake.test');
+        mobiusSocket.emit('event:fake.test', fakeTestMessage);
+
+        assert.notCalled(firstListener);
+        assert.notCalled(secondListener);
       });
 
       afterEach(() => {
