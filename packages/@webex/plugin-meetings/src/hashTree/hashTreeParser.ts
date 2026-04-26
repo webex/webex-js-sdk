@@ -1196,60 +1196,61 @@ class HashTreeParser {
         `HashTreeParser#performSync --> ${this.debugId} ${reason}, syncing data set "${dataSet.name}"`
       );
 
-      let leavesData: Record<number, LeafDataItem[]>;
+      let leavesData: Record<number, LeafDataItem[]> = {};
 
-      if (isInitialization) {
-        // initialization sync: send all leaves as empty to get all data from Locus
-        leavesData = {};
-        for (let i = 0; i < dataSet.leafCount; i += 1) {
-          leavesData[i] = [];
-        }
-      } else if (dataSet.leafCount !== 1) {
-        leavesData = {};
-        let receivedHashes;
+      if (!isInitialization) {
+        if (dataSet.leafCount !== 1) {
+          let receivedHashes;
 
-        try {
-          // request hashes from sender
-          const hashesResult = await this.getHashesFromLocus(dataSet.name, rootHash);
+          try {
+            // request hashes from sender
+            const hashesResult = await this.getHashesFromLocus(dataSet.name, rootHash);
 
-          if (!hashesResult) {
-            // hashes match, no sync needed
-            return;
+            if (!hashesResult) {
+              // hashes match, no sync needed
+              return;
+            }
+
+            receivedHashes = hashesResult.hashes;
+
+            hashTree.resize(hashesResult.dataSet.leafCount);
+          } catch (error: any) {
+            if (error?.statusCode === 409) {
+              // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
+              LoggerProxy.logger.info(
+                `HashTreeParser#getHashesFromLocus --> ${this.debugId} Got 409 when fetching hashes for data set "${dataSet.name}": ${error.message}`
+              );
+
+              return;
+            }
+            throw error;
           }
 
-          receivedHashes = hashesResult.hashes;
+          // identify mismatched leaves
+          const mismatchedLeaveIndexes = hashTree.diffHashes(receivedHashes);
 
-          hashTree.resize(hashesResult.dataSet.leafCount);
-        } catch (error: any) {
-          if (error?.statusCode === 409) {
-            // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
-            LoggerProxy.logger.info(
-              `HashTreeParser#getHashesFromLocus --> ${this.debugId} Got 409 when fetching hashes for data set "${dataSet.name}": ${error.message}`
-            );
-
-            return;
-          }
-          throw error;
+          mismatchedLeaveIndexes.forEach((index) => {
+            leavesData[index] = hashTree.getLeafData(index);
+          });
+        } else {
+          leavesData = {0: hashTree.getLeafData(0)};
         }
-
-        // identify mismatched leaves
-        const mismatchedLeaveIndexes = hashTree.diffHashes(receivedHashes);
-
-        mismatchedLeaveIndexes.forEach((index) => {
-          leavesData[index] = hashTree.getLeafData(index);
-        });
-      } else {
-        leavesData = {0: hashTree.getLeafData(0)};
       }
       // request sync for mismatched leaves
-      if (Object.keys(leavesData).length > 0) {
-        const syncResponse = await this.sendSyncRequestToLocus(dataSet, leavesData);
+      let syncResponse: HashTreeMessage | null = null;
 
-        // sync API may return nothing (in that case data will arrive via messages)
-        // or it may return a response in the same format as messages
-        if (syncResponse) {
-          this.handleMessage(syncResponse, 'via sync API');
-        }
+      if (isInitialization) {
+        syncResponse = await this.sendSyncRequestToLocus(dataSet, {isInitialization: true});
+      } else if (Object.keys(leavesData).length > 0) {
+        syncResponse = await this.sendSyncRequestToLocus(dataSet, {
+          mismatchedLeavesData: leavesData,
+        });
+      }
+
+      // sync API may return nothing (in that case data will arrive via messages)
+      // or it may return a response in the same format as messages
+      if (syncResponse) {
+        this.handleMessage(syncResponse, 'via sync API');
       }
     } catch (error) {
       if (error instanceof MeetingEndedError) {
@@ -1676,34 +1677,43 @@ class HashTreeParser {
    * Sends a sync request to Locus for the specified data set.
    *
    * @param {InternalDataSet} dataSet The data set to sync.
-   * @param {Record<number, LeafDataItem[]>} mismatchedLeavesData The mismatched leaves data to include in the sync request.
+   * @param {Object} options Either `{ isInitialization: true }` for init syncs (uses leafCount=1 with empty leaf data) or `{ mismatchedLeavesData }` for normal syncs.
    * @returns {Promise<HashTreeMessage|null>}
    */
   private sendSyncRequestToLocus(
     dataSet: InternalDataSet,
-    mismatchedLeavesData: Record<number, LeafDataItem[]>
+    options: {isInitialization: true} | {mismatchedLeavesData: Record<number, LeafDataItem[]>}
   ): Promise<HashTreeMessage | null> {
     LoggerProxy.logger.info(
       `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Sending sync request for data set "${dataSet.name}"`
     );
+
+    const isInitialization = 'isInitialization' in options;
 
     const url = `${dataSet.url}/sync`;
     const body: {
       leafCount: number;
       leafDataEntries: {leafIndex: number; elementIds: LeafDataItem[]}[];
     } = {
-      leafCount: dataSet.leafCount,
+      leafCount: isInitialization ? 1 : dataSet.leafCount,
       leafDataEntries: [],
     };
 
-    Object.keys(mismatchedLeavesData).forEach((index) => {
-      const leafIndex = parseInt(index, 10);
+    if (isInitialization) {
+      // initialization sync: Locus requires leafCount=1 with a single empty leaf
+      body.leafDataEntries.push({leafIndex: 0, elementIds: []});
+    } else {
+      const {mismatchedLeavesData} = options;
 
-      body.leafDataEntries.push({
-        leafIndex,
-        elementIds: mismatchedLeavesData[leafIndex],
+      Object.keys(mismatchedLeavesData).forEach((index) => {
+        const leafIndex = parseInt(index, 10);
+
+        body.leafDataEntries.push({
+          leafIndex,
+          elementIds: mismatchedLeavesData[leafIndex],
+        });
       });
-    });
+    }
 
     const ourCurrentRootHash = dataSet.hashTree ? dataSet.hashTree.getRootHash() : EMPTY_HASH;
 

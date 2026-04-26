@@ -710,13 +710,6 @@ export default class LocusInfo extends EventsScope {
 
       // Active parser found - pass the API response to it
       if (isWrapped) {
-        if (!responseBody.dataSets) {
-          this.sendClassicVsHashTreeMismatchMetric(
-            meeting,
-            `expected hash tree dataSets in API response but they are missing`
-          );
-          // continuing as we can still manage without responseBody.dataSets, but this is very suspicious
-        }
         LoggerProxy.logger.info(
           'Locus-info:index#handleLocusAPIResponse --> passing Locus API response to HashTreeParser: ',
           responseBody
@@ -1635,7 +1628,7 @@ export default class LocusInfo extends EventsScope {
    * @memberof LocusInfo
    */
   updateLocusInfo(locus) {
-    if (locus.self?.reason === 'MOVED' && locus.self?.state === 'LEFT') {
+    if (MeetingsUtil.isSelfMovedOrBreakoutEnded(locus)) {
       // When moved to a breakout session locus sends a message for the previous locus
       // indicating that we have been moved. It isn't helpful to continue parsing this
       // as it gets interpreted as if we have left the call
