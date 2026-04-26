@@ -13,6 +13,7 @@ import MediaSharesUtils from '@webex/plugin-meetings/src/locus-info//mediaShares
 import LocusDeltaParser from '@webex/plugin-meetings/src/locus-info/parser';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import * as HashTreeParserModule from '@webex/plugin-meetings/src/hashTree/hashTreeParser';
+import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 
 import {
   LOCUSINFO,
@@ -3384,6 +3385,51 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(parserA.handleMessage, message);
       });
+
+      it('should send mismatch metric when eventType is not HASH_TREE_DATA_UPDATED', () => {
+        const locusUrlA = 'http://locus-url-A.com';
+        const parserA = {state: 'active', handleMessage: sinon.stub()};
+        locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, initializedFromHashTree: true});
+
+        locusInfo.parse(mockMeeting, {
+          eventType: LOCUSEVENT.SELF_CHANGED,
+          stateElementsMessage: {locusUrl: locusUrlA, locusStateElements: [], dataSets: []},
+        });
+
+        assert.calledOnceWithExactly(
+          sendBehavioralMetricStub,
+          'js_sdk_locus_classic_vs_hash_tree_mismatch',
+          {
+            correlationId: mockMeeting.correlationId,
+            message: `got ${LOCUSEVENT.SELF_CHANGED}, expected ${LOCUSEVENT.HASH_TREE_DATA_UPDATED}`,
+          }
+        );
+        assert.notCalled(parserA.handleMessage);
+      });
+    });
+
+    describe('#sendClassicVsHashTreeMismatchMetric', () => {
+      it('should send the metric when called for the first time', () => {
+        locusInfo.sendClassicVsHashTreeMismatchMetric(mockMeeting, 'some mismatch');
+
+        assert.calledOnceWithExactly(
+          sendBehavioralMetricStub,
+          'js_sdk_locus_classic_vs_hash_tree_mismatch',
+          {
+            correlationId: mockMeeting.correlationId,
+            message: 'some mismatch',
+          }
+        );
+      });
+
+      it('should send the metric up to 5 times and stop after that', () => {
+        for (let i = 0; i < 7; i += 1) {
+          locusInfo.sendClassicVsHashTreeMismatchMetric(mockMeeting, `mismatch ${i}`);
+        }
+
+        assert.callCount(sendBehavioralMetricStub, 5);
+        assert.equal(locusInfo.classicVsHashTreeMismatchMetricCounter, 5);
+      });
     });
 
     describe('#handleLocusAPIResponse', () => {
@@ -3439,19 +3485,24 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(locusInfo.handleLocusDelta, fakeLocus, mockMeeting);
       });
 
-      it('should send mismatch metric when hash tree parser exists but dataSets are missing in wrapped response', () => {
+      it('should send mismatch metric in classic mode when wrapped response has dataSets', () => {
         const fakeLocus = {url: 'http://locus-url.com'};
-        const mockHashTreeParser = {handleLocusUpdate: sinon.stub()};
-        locusInfo.hashTreeParsers.set(fakeLocus.url, {
-          parser: mockHashTreeParser,
-          initializedFromHashTree: true,
+        sinon.stub(locusInfo, 'handleLocusDelta');
+
+        locusInfo.handleLocusAPIResponse(mockMeeting, {
+          locus: fakeLocus,
+          dataSets: [{name: 'dataset1', url: 'test-url'}],
         });
-        sinon.stub(locusInfo, 'sendClassicVsHashTreeMismatchMetric');
 
-        locusInfo.handleLocusAPIResponse(mockMeeting, {locus: fakeLocus});
-
-        assert.calledOnce(locusInfo.sendClassicVsHashTreeMismatchMetric);
-        assert.calledOnce(mockHashTreeParser.handleLocusUpdate);
+        assert.calledOnceWithExactly(
+          sendBehavioralMetricStub,
+          'js_sdk_locus_classic_vs_hash_tree_mismatch',
+          {
+            correlationId: mockMeeting.correlationId,
+            message: 'unexpected hash tree dataSets in API response',
+          }
+        );
+        assert.calledOnce(locusInfo.handleLocusDelta);
       });
 
       describe('parser switch via API response', () => {
@@ -3693,49 +3744,23 @@ describe('plugin-meetings', () => {
         assert.deepEqual(callOrder, ['updateLocusUrl', 'updateMeetingInfo']);
       });
 
-      it('#updateLocusInfo ignores breakout LEFT message', () => {
-        const newLocus = {
-          self: {
-            reason: 'MOVED',
-            state: 'LEFT',
-          },
-        };
+      it('#updateLocusInfo ignores locus when isSelfMovedOrBreakoutEnded returns true', () => {
+        const newLocus = {self: {state: 'JOINED'}};
+
+        sinon.stub(MeetingsUtil, 'isSelfMovedOrBreakoutEnded').returns(true);
 
         locusInfo.updateControls = sinon.stub();
-        locusInfo.updateConversationUrl = sinon.stub();
-        locusInfo.updateCreated = sinon.stub();
         locusInfo.updateFullState = sinon.stub();
-        locusInfo.updateHostInfo = sinon.stub();
-        locusInfo.updateMeetingInfo = sinon.stub();
-        locusInfo.updateMediaShares = sinon.stub();
-        locusInfo.updateReplaces = sinon.stub();
         locusInfo.updateSelf = sinon.stub();
-        locusInfo.updateLocusUrl = sinon.stub();
-        locusInfo.updateAclUrl = sinon.stub();
-        locusInfo.updateBasequence = sinon.stub();
-        locusInfo.updateSequence = sinon.stub();
-        locusInfo.updateEmbeddedApps = sinon.stub();
-        locusInfo.updateLinks = sinon.stub();
-        locusInfo.compareAndUpdate = sinon.stub();
 
         locusInfo.updateLocusInfo(newLocus);
 
+        assert.calledOnceWithExactly(MeetingsUtil.isSelfMovedOrBreakoutEnded, newLocus);
         assert.notCalled(locusInfo.updateControls);
-        assert.notCalled(locusInfo.updateConversationUrl);
-        assert.notCalled(locusInfo.updateCreated);
         assert.notCalled(locusInfo.updateFullState);
-        assert.notCalled(locusInfo.updateHostInfo);
-        assert.notCalled(locusInfo.updateMeetingInfo);
-        assert.notCalled(locusInfo.updateMediaShares);
-        assert.notCalled(locusInfo.updateReplaces);
         assert.notCalled(locusInfo.updateSelf);
-        assert.notCalled(locusInfo.updateLocusUrl);
-        assert.notCalled(locusInfo.updateAclUrl);
-        assert.notCalled(locusInfo.updateBasequence);
-        assert.notCalled(locusInfo.updateSequence);
-        assert.notCalled(locusInfo.updateEmbeddedApps);
-        assert.notCalled(locusInfo.updateLinks);
-        assert.notCalled(locusInfo.compareAndUpdate);
+
+        MeetingsUtil.isSelfMovedOrBreakoutEnded.restore();
       });
 
       it('#updateLocusInfo puts the Locus DTO top level properties at the right place in LocusInfo class', () => {
