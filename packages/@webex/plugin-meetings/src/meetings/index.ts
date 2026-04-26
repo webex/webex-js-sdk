@@ -315,7 +315,7 @@ export default class Meetings extends WebexPlugin {
     const breakoutLocus = this.meetingCollection.getActiveBreakoutLocus(breakoutUrl);
 
     const isSelfJoined = newLocus?.self?.state === _JOINED_;
-    const isSelfMoved = newLocus?.self?.state === _LEFT_ && newLocus?.self?.reason === _MOVED_;
+    const isSelfMoved = MeetingsUtil.isSelfMovedOrBreakoutEnded(newLocus);
     // @ts-ignore
     const deviceFromNewLocus = MeetingsUtil.getThisDevice(newLocus, this.webex.internal.device.url);
     const isResourceMovedOnThisDevice =
@@ -392,7 +392,7 @@ export default class Meetings extends WebexPlugin {
   private isNeedHandleLocusDTO(meeting: any, newLocus: any) {
     if (newLocus) {
       const isNewLocusAsBreakout = MeetingsUtil.isBreakoutLocusDTO(newLocus);
-      const isSelfMoved = newLocus?.self?.state === _LEFT_ && newLocus?.self?.reason === _MOVED_;
+      const isSelfMoved = MeetingsUtil.isSelfMovedOrBreakoutEnded(newLocus);
       const isSelfMovedToLobby =
         newLocus?.self?.devices[0]?.intent?.reason === _ON_HOLD_LOBBY_ &&
         newLocus?.self?.devices[0]?.intent?.type === _WAIT_;
