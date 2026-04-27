@@ -452,6 +452,175 @@ describe('Call Tests', () => {
     );
   });
 
+  it('registers and unregisters media connection listeners with stable handlers', () => {
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+      on: jest.fn(),
+      getEffectByKind: jest.fn().mockReturnValue(undefined),
+    };
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+    const call = createCall(
+      activeUrl,
+      webex,
+      CallDirection.OUTBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator,
+      dest
+    );
+
+    call.dial(localAudioStream);
+
+    const mediaOnMock = call['mediaConnection'].on as jest.Mock;
+    const mediaOffSpy = jest.spyOn(call['mediaConnection'], 'off');
+
+    expect(mediaOnMock).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND,
+      expect.any(Function)
+    );
+    expect(mediaOnMock).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.REMOTE_TRACK_ADDED,
+      expect.any(Function)
+    );
+    expect(mediaOnMock).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
+      expect.any(Function)
+    );
+    expect(mediaOnMock).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
+      expect.any(Function)
+    );
+    expect(mediaOnMock).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
+      expect.any(Function)
+    );
+    expect(mediaOnMock).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_CANDIDATE_ERROR,
+      expect.any(Function)
+    );
+
+    call['unregisterMediaConnectionListeners']();
+
+    expect(mediaOffSpy).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND,
+      expect.any(Function)
+    );
+    expect(mediaOffSpy).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.REMOTE_TRACK_ADDED,
+      expect.any(Function)
+    );
+    expect(mediaOffSpy).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
+      expect.any(Function)
+    );
+    expect(mediaOffSpy).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
+      expect.any(Function)
+    );
+    expect(mediaOffSpy).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
+      expect.any(Function)
+    );
+    expect(mediaOffSpy).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_CANDIDATE_ERROR,
+      expect.any(Function)
+    );
+  });
+
+  it('handles ICE listener payloads and submits metrics with event names', () => {
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+      on: jest.fn(),
+      getEffectByKind: jest.fn().mockReturnValue(undefined),
+    };
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+    const call = createCall(
+      activeUrl,
+      webex,
+      CallDirection.OUTBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator,
+      dest
+    );
+
+    call.dial(localAudioStream);
+
+    const metricSpy = jest.spyOn(call['metricManager'], 'submitMediaMetric');
+    const warnSpy = jest.spyOn(log, 'warn');
+
+    const getHandlerForEvent = (eventName: string) =>
+      (call['mediaConnection'].on as jest.Mock).mock.calls.find(
+        ([name]) => name === eventName
+      )?.[1];
+
+    const iceGatheringHandler = getHandlerForEvent(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED
+    );
+    const peerConnectionHandler = getHandlerForEvent(
+      InternalMediaCoreModule.MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED
+    );
+    const iceConnectionHandler = getHandlerForEvent(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED
+    );
+    const iceCandidateErrorHandler = getHandlerForEvent(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_CANDIDATE_ERROR
+    );
+
+    iceGatheringHandler({iceGatheringState: 'gathering'});
+    peerConnectionHandler({connectionState: 'connected'});
+    iceConnectionHandler({iceConnectionState: 'completed'});
+    iceCandidateErrorHandler({
+      errorCode: 701,
+      errorText: 'STUN host lookup failed',
+      url: 'stun:example.org:3478',
+    });
+
+    expect(metricSpy).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT.MEDIA,
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
+      METRIC_TYPE.BEHAVIORAL,
+      call.getCallId(),
+      call.getCorrelationId()
+    );
+    expect(metricSpy).toHaveBeenNthCalledWith(
+      2,
+      METRIC_EVENT.MEDIA,
+      InternalMediaCoreModule.MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
+      METRIC_TYPE.BEHAVIORAL,
+      call.getCallId(),
+      call.getCorrelationId()
+    );
+    expect(metricSpy).toHaveBeenNthCalledWith(
+      3,
+      METRIC_EVENT.MEDIA,
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
+      METRIC_TYPE.BEHAVIORAL,
+      call.getCallId(),
+      call.getCorrelationId()
+    );
+    expect(metricSpy).toHaveBeenNthCalledWith(
+      4,
+      METRIC_EVENT.MEDIA_ERROR,
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_CANDIDATE_ERROR,
+      METRIC_TYPE.BEHAVIORAL,
+      call.getCallId(),
+      call.getCorrelationId()
+    );
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'ICE candidate error occurred: {"address":null,"errorCode":701,"errorText":"STUN host lookup failed","port":null,"url":"stun:example.org:3478"}',
+      {file: 'call', method: 'mediaIceEventsListener'}
+    );
+  });
+
   it('testing enabling/disabling the BNR on an active call', async () => {
     const mockStream = {
       outputStream: {

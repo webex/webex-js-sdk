@@ -101,6 +101,8 @@ import {METHOD_START_MESSAGE, SERVICES_ENDPOINT} from '../../common/constants';
  *
  */
 export class Call extends Eventing<CallEventTypes> implements ICall {
+  private static readonly UNKNOWN_PEER_CONNECTION_STATE = 'unknown';
+
   private sdkConnector: ISDKConnector;
 
   private webex: WebexSDK;
@@ -171,6 +173,180 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private rtcMetrics: RtcMetrics;
 
   private callKeepaliveRetryCount = 0;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private handleMediaRoapEvent = async (event: any) => {
+    log.info(
+      `ROAP message to send (rcv from MEDIA-SDK) :
+          \n type:  ${event.roapMessage?.messageType}, seq: ${event.roapMessage.seq} , version: ${event.roapMessage.version}`,
+      {file: CALL_FILE, method: METHODS.MEDIA_ROAP_EVENTS_LISTENER}
+    );
+
+    log.info(`SDP message to send : \n ${event.roapMessage?.sdp}`, {
+      file: CALL_FILE,
+      method: METHODS.MEDIA_ROAP_EVENTS_LISTENER,
+    });
+
+    switch (event.roapMessage.messageType) {
+      case RoapScenario.OK: {
+        const mediaOk = {
+          received: false,
+          message: event.roapMessage,
+        };
+
+        this.sendMediaStateMachineEvt({type: 'E_ROAP_OK', data: mediaOk});
+        break;
+      }
+
+      case RoapScenario.OFFER: {
+        // TODO: Remove these after the Media-Core adds the fix
+        // Check if at least one IPv6 "c=" line is present
+        log.info(`before modifying sdp: ${event.roapMessage.sdp}`, {
+          file: CALL_FILE,
+          method: METHODS.MEDIA_ROAP_EVENTS_LISTENER,
+        });
+
+        event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
+
+        const sdpVideoPortZero = event.roapMessage.sdp.replace(/^m=(video) (?:\d+) /gim, 'm=$1 0 ');
+
+        log.info(`after modification sdp: ${sdpVideoPortZero}`, {
+          file: CALL_FILE,
+          method: METHODS.MEDIA_ROAP_EVENTS_LISTENER,
+        });
+
+        event.roapMessage.sdp = sdpVideoPortZero;
+        this.localRoapMessage = event.roapMessage;
+        this.sendCallStateMachineEvt({type: 'E_SEND_CALL_SETUP', data: event.roapMessage});
+        break;
+      }
+
+      case RoapScenario.ANSWER:
+        event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
+        this.localRoapMessage = event.roapMessage;
+        this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_ANSWER', data: event.roapMessage});
+        break;
+
+      case RoapScenario.ERROR:
+        this.sendMediaStateMachineEvt({type: 'E_ROAP_ERROR', data: event.roapMessage});
+        break;
+
+      case RoapScenario.OFFER_RESPONSE:
+        event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
+        this.localRoapMessage = event.roapMessage;
+        this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_OFFER', data: event.roapMessage});
+        break;
+
+      default:
+    }
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private handleRemoteTrackAdded = (event: any) => {
+    if (event.type === MEDIA_CONNECTION_EVENT_KEYS.MEDIA_TYPE_AUDIO) {
+      this.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, event.track);
+    }
+  };
+
+  private static getPeerConnectionStateFromEvent(
+    event: Partial<{
+      state: string;
+      connectionState: string;
+      iceConnectionState: string;
+      iceGatheringState: string;
+    }>,
+    preferredKey: 'connectionState' | 'iceConnectionState' | 'iceGatheringState'
+  ): string {
+    return event[preferredKey] || event.state || Call.UNKNOWN_PEER_CONNECTION_STATE;
+  }
+
+  private handleIceGatheringStateChanged = (
+    event: Partial<{state: string; iceGatheringState: string}>
+  ) => {
+    const iceGatheringState = Call.getPeerConnectionStateFromEvent(event, 'iceGatheringState');
+
+    log.info(`ICE gathering state changed to: ${iceGatheringState}`, {
+      file: CALL_FILE,
+      method: METHODS.MEDIA_ICE_EVENTS_LISTENER,
+    });
+
+    this.metricManager.submitMediaMetric(
+      METRIC_EVENT.MEDIA,
+      MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
+      METRIC_TYPE.BEHAVIORAL,
+      this.callId,
+      this.correlationId
+    );
+  };
+
+  private handlePeerConnectionStateChanged = (
+    event: Partial<{state: string; connectionState: string}>
+  ) => {
+    const connectionState = Call.getPeerConnectionStateFromEvent(event, 'connectionState');
+
+    log.info(`Peer connection state changed to: ${connectionState}`, {
+      file: CALL_FILE,
+      method: METHODS.MEDIA_ICE_EVENTS_LISTENER,
+    });
+
+    this.metricManager.submitMediaMetric(
+      METRIC_EVENT.MEDIA,
+      MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
+      METRIC_TYPE.BEHAVIORAL,
+      this.callId,
+      this.correlationId
+    );
+  };
+
+  private handleIceConnectionStateChanged = (
+    event: Partial<{state: string; iceConnectionState: string}>
+  ) => {
+    const iceConnectionState = Call.getPeerConnectionStateFromEvent(event, 'iceConnectionState');
+
+    log.info(`ICE connection state changed to: ${iceConnectionState}`, {
+      file: CALL_FILE,
+      method: METHODS.MEDIA_ICE_EVENTS_LISTENER,
+    });
+
+    this.metricManager.submitMediaMetric(
+      METRIC_EVENT.MEDIA,
+      MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
+      METRIC_TYPE.BEHAVIORAL,
+      this.callId,
+      this.correlationId
+    );
+  };
+
+  private handleIceCandidateError = (
+    event: Partial<{
+      address: string | null;
+      errorCode: number;
+      errorText: string;
+      port: number | null;
+      url: string;
+    }>
+  ) => {
+    const iceErrorPayload = {
+      address: event.address ?? null,
+      errorCode: event.errorCode,
+      errorText: event.errorText,
+      port: event.port ?? null,
+      url: event.url,
+    };
+
+    log.warn(`ICE candidate error occurred: ${JSON.stringify(iceErrorPayload)}`, {
+      file: CALL_FILE,
+      method: METHODS.MEDIA_ICE_EVENTS_LISTENER,
+    });
+
+    this.metricManager.submitMediaMetric(
+      METRIC_EVENT.MEDIA_ERROR,
+      MediaConnectionEventNames.ICE_CANDIDATE_ERROR,
+      METRIC_TYPE.BEHAVIORAL,
+      this.callId,
+      this.correlationId
+    );
+  };
 
   /**
    * Getter to check if the call is muted or not.
@@ -1425,6 +1601,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     /* istanbul ignore else */
     if (this.mediaConnection) {
+      this.unregisterMediaConnectionListeners();
       this.mediaConnection.close();
       log.info('Closing media channel', {
         file: CALL_FILE,
@@ -1487,6 +1664,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     /* istanbul ignore else */
     if (this.mediaConnection) {
+      this.unregisterMediaConnectionListeners();
       this.mediaConnection.close();
       log.info('Closing media channel', {
         file: CALL_FILE,
@@ -1662,6 +1840,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     }
 
     if (this.mediaConnection) {
+      this.unregisterMediaConnectionListeners();
       this.mediaConnection.close();
       log.info('Closing media channel', {
         file: CALL_FILE,
@@ -2654,75 +2833,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private mediaRoapEventsListener() {
     this.mediaConnection.on(
       MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      async (event: any) => {
-        log.info(
-          `ROAP message to send (rcv from MEDIA-SDK) :
-          \n type:  ${event.roapMessage?.messageType}, seq: ${event.roapMessage.seq} , version: ${event.roapMessage.version}`,
-          {file: CALL_FILE, method: METHODS.MEDIA_ROAP_EVENTS_LISTENER}
-        );
-
-        log.info(`SDP message to send : \n ${event.roapMessage?.sdp}`, {
-          file: CALL_FILE,
-          method: METHODS.MEDIA_ROAP_EVENTS_LISTENER,
-        });
-
-        switch (event.roapMessage.messageType) {
-          case RoapScenario.OK: {
-            const mediaOk = {
-              received: false,
-              message: event.roapMessage,
-            };
-
-            this.sendMediaStateMachineEvt({type: 'E_ROAP_OK', data: mediaOk});
-            break;
-          }
-
-          case RoapScenario.OFFER: {
-            // TODO: Remove these after the Media-Core adds the fix
-            // Check if at least one IPv6 "c=" line is present
-            log.info(`before modifying sdp: ${event.roapMessage.sdp}`, {
-              file: CALL_FILE,
-              method: METHODS.MEDIA_ROAP_EVENTS_LISTENER,
-            });
-
-            event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
-
-            const sdpVideoPortZero = event.roapMessage.sdp.replace(
-              /^m=(video) (?:\d+) /gim,
-              'm=$1 0 '
-            );
-
-            log.info(`after modification sdp: ${sdpVideoPortZero}`, {
-              file: CALL_FILE,
-              method: METHODS.MEDIA_ROAP_EVENTS_LISTENER,
-            });
-
-            event.roapMessage.sdp = sdpVideoPortZero;
-            this.localRoapMessage = event.roapMessage;
-            this.sendCallStateMachineEvt({type: 'E_SEND_CALL_SETUP', data: event.roapMessage});
-            break;
-          }
-
-          case RoapScenario.ANSWER:
-            event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
-            this.localRoapMessage = event.roapMessage;
-            this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_ANSWER', data: event.roapMessage});
-            break;
-
-          case RoapScenario.ERROR:
-            this.sendMediaStateMachineEvt({type: 'E_ROAP_ERROR', data: event.roapMessage});
-            break;
-
-          case RoapScenario.OFFER_RESPONSE:
-            event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
-            this.localRoapMessage = event.roapMessage;
-            this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_OFFER', data: event.roapMessage});
-            break;
-
-          default:
-        }
-      }
+      this.handleMediaRoapEvent
     );
   }
 
@@ -2731,12 +2842,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    * Setup a listener for remote track added event emitted by the media sdk.
    */
   private mediaTrackListener() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.mediaConnection.on(MediaConnectionEventNames.REMOTE_TRACK_ADDED, (e: any) => {
-      if (e.type === MEDIA_CONNECTION_EVENT_KEYS.MEDIA_TYPE_AUDIO) {
-        this.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, e.track);
-      }
-    });
+    this.mediaConnection.on(
+      MediaConnectionEventNames.REMOTE_TRACK_ADDED,
+      this.handleRemoteTrackAdded
+    );
   }
 
   /* istanbul ignore next */
@@ -2746,92 +2855,51 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private mediaIceEventsListener() {
     this.mediaConnection.on(
       MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
-      (event: {state: string}) => {
-        log.info(`ICE gathering state changed to: ${event.state}`, {
-          file: CALL_FILE,
-          method: METHODS.MEDIA_ICE_EVENTS_LISTENER,
-        });
-
-        this.metricManager.submitMediaMetric(
-          METRIC_EVENT.MEDIA,
-          `ice_gathering_state_${event.state}`,
-          METRIC_TYPE.BEHAVIORAL,
-          this.callId,
-          this.correlationId,
-          undefined,
-          undefined,
-          undefined
-        );
-
-        this.emit(CALL_EVENT_KEYS.ICE_GATHERING_STATE_CHANGED, event.state);
-      }
+      this.handleIceGatheringStateChanged
     );
-
     this.mediaConnection.on(
       MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
-      (event: {state: string}) => {
-        log.info(`Peer connection state changed to: ${event.state}`, {
-          file: CALL_FILE,
-          method: METHODS.MEDIA_ICE_EVENTS_LISTENER,
-        });
-
-        this.metricManager.submitMediaMetric(
-          METRIC_EVENT.MEDIA,
-          `peer_connection_state_${event.state}`,
-          METRIC_TYPE.BEHAVIORAL,
-          this.callId,
-          this.correlationId,
-          undefined,
-          undefined,
-          undefined
-        );
-
-        this.emit(CALL_EVENT_KEYS.PEER_CONNECTION_STATE_CHANGED, event.state);
-      }
+      this.handlePeerConnectionStateChanged
     );
-
     this.mediaConnection.on(
       MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
-      (event: {state: string}) => {
-        log.info(`ICE connection state changed to: ${event.state}`, {
-          file: CALL_FILE,
-          method: METHODS.MEDIA_ICE_EVENTS_LISTENER,
-        });
-
-        this.metricManager.submitMediaMetric(
-          METRIC_EVENT.MEDIA,
-          `ice_connection_state_${event.state}`,
-          METRIC_TYPE.BEHAVIORAL,
-          this.callId,
-          this.correlationId,
-          undefined,
-          undefined,
-          undefined
-        );
-
-        this.emit(CALL_EVENT_KEYS.ICE_CONNECTION_STATE_CHANGED, event.state);
-      }
+      this.handleIceConnectionStateChanged
     );
+    this.mediaConnection.on(
+      MediaConnectionEventNames.ICE_CANDIDATE_ERROR,
+      this.handleIceCandidateError
+    );
+  }
 
-    this.mediaConnection.on(MediaConnectionEventNames.ICE_CANDIDATE_ERROR, (event: unknown) => {
-      log.warn(`ICE candidate error occurred: ${JSON.stringify(event)}`, {
-        file: CALL_FILE,
-        method: METHODS.MEDIA_ICE_EVENTS_LISTENER,
-      });
+  private unregisterMediaConnectionListeners() {
+    if (!this.mediaConnection || typeof this.mediaConnection.off !== 'function') {
+      return;
+    }
 
-      this.metricManager.submitMediaMetric(
-        METRIC_EVENT.MEDIA_ERROR,
-        'ice_candidate_error',
-        METRIC_TYPE.BEHAVIORAL,
-        this.callId,
-        this.correlationId,
-        undefined,
-        undefined,
-        undefined
-      );
-
-      this.emit(CALL_EVENT_KEYS.ICE_CANDIDATE_ERROR, event);
-    });
+    this.mediaConnection.off(
+      MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND,
+      this.handleMediaRoapEvent
+    );
+    this.mediaConnection.off(
+      MediaConnectionEventNames.REMOTE_TRACK_ADDED,
+      this.handleRemoteTrackAdded
+    );
+    this.mediaConnection.off(
+      MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
+      this.handleIceGatheringStateChanged
+    );
+    this.mediaConnection.off(
+      MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
+      this.handlePeerConnectionStateChanged
+    );
+    this.mediaConnection.off(
+      MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
+      this.handleIceConnectionStateChanged
+    );
+    this.mediaConnection.off(
+      MediaConnectionEventNames.ICE_CANDIDATE_ERROR,
+      this.handleIceCandidateError
+    );
   }
 
   private onEffectEnabled = () => {
