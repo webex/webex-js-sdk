@@ -164,6 +164,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private mediaNegotiationCompleted: boolean;
 
+  private pendingProgressSend: boolean;
+
+  private answerPending: boolean;
+
   private receivedRoapOKSeq: number;
 
   private localAudioStream?: LocalMicrophoneStream;
@@ -239,6 +243,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.mobiusUrl = activeUrl;
     this.receivedRoapOKSeq = 0;
     this.mediaNegotiationCompleted = false;
+    this.pendingProgressSend = false;
+    this.answerPending = false;
 
     log.info(`Webex Calling Url:- ${this.mobiusUrl}`, {
       file: CALL_FILE,
@@ -953,7 +959,13 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       method: METHODS.HANDLE_INCOMING_CALL_SETUP,
     });
 
-    this.sendCallStateMachineEvt({type: 'E_SEND_CALL_ALERTING'});
+    // Don't send progress immediately, wait for ROAP offer to avoid race condition
+    // where Connect gets skipped because the offer hasn't been buffered yet
+    this.pendingProgressSend = true;
+    log.info('Waiting for ROAP offer before sending progress', {
+      file: CALL_FILE,
+      method: METHODS.HANDLE_INCOMING_CALL_SETUP,
+    });
   }
 
   /**
@@ -1262,6 +1274,16 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_CALL_ALERTING,
       });
+
+      // If answer() was called before progress was sent, proceed to connect now
+      if (this.answerPending) {
+        log.info('Answer was pending, now sending connect', {
+          file: CALL_FILE,
+          method: METHODS.HANDLE_OUTGOING_CALL_ALERTING,
+        });
+        this.answerPending = false;
+        this.sendCallStateMachineEvt({type: 'E_SEND_CALL_CONNECT'});
+      }
     } catch (e) {
       log.error(`Failed to signal call progression: ${JSON.stringify(e)}`, {
         file: CALL_FILE,
@@ -2034,6 +2056,16 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: METHODS.HANDLE_INCOMING_ROAP_OFFER,
       });
+
+      // ROAP offer received, now safe to send progress (alerting) to Mobius
+      if (this.pendingProgressSend) {
+        this.pendingProgressSend = false;
+        log.info('ROAP offer received, now sending progress', {
+          file: CALL_FILE,
+          method: METHODS.HANDLE_INCOMING_ROAP_OFFER,
+        });
+        this.sendCallStateMachineEvt({type: 'E_SEND_CALL_ALERTING'});
+      }
     } else if (this.receivedRoapOKSeq === message.seq - 2) {
       log.info('Waiting for Roap OK, buffer the remote offer for later handling', {
         file: CALL_FILE,
@@ -2256,6 +2288,13 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     if (this.callStateMachine.state.value === 'S_SEND_CALL_PROGRESS') {
       this.sendCallStateMachineEvt({type: 'E_SEND_CALL_CONNECT'});
+    } else if (this.callStateMachine.state.value === 'S_RECV_CALL_SETUP') {
+      // Progress not yet sent (waiting for ROAP offer), mark answer as pending
+      log.info('Progress not yet sent, marking answer as pending', {
+        file: CALL_FILE,
+        method: METHODS.ANSWER,
+      });
+      this.answerPending = true;
     } else {
       log.warn(
         `Call cannot be answered because the state is : ${this.callStateMachine.state.value}`,

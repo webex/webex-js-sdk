@@ -1170,6 +1170,10 @@ describe('State Machine handler tests', () => {
     webex.request.mockReturnValue(statusPayload);
     call['direction'] = CallDirection.INBOUND;
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_SETUP');
+
+    // Progress is now deferred until ROAP offer is received
+    call.sendCallStateMachineEvt({type: 'E_SEND_CALL_ALERTING'} as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
 
     dummyEvent.type = 'E_SEND_CALL_CONNECT';
@@ -1235,6 +1239,10 @@ describe('State Machine handler tests', () => {
     webex.request.mockReturnValue(statusPayload);
 
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_SETUP');
+
+    // Progress is now deferred until ROAP offer is received
+    call.sendCallStateMachineEvt({type: 'E_SEND_CALL_ALERTING'} as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
     await call['handleOutgoingCallConnect']({type: 'E_SEND_CALL_CONNECT'} as CallEvent);
     /* state should not change since there is no offer received. */
@@ -1361,6 +1369,10 @@ describe('State Machine handler tests', () => {
     webex.request.mockReturnValue(statusPayload);
 
     call.sendCallStateMachineEvt({type: 'E_RECV_CALL_SETUP'} as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_SETUP');
+
+    // Progress is now deferred until ROAP offer is received
+    call.sendCallStateMachineEvt({type: 'E_SEND_CALL_ALERTING'} as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
 
     call.sendMediaStateMachineEvt({type: 'E_RECV_ROAP_OFFER', data: roapMessage} as RoapEvent);
@@ -1959,6 +1971,10 @@ describe('State Machine handler tests', () => {
     };
 
     call.sendCallStateMachineEvt(setupEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_SETUP');
+
+    // Progress is now deferred until ROAP offer is received
+    call.sendCallStateMachineEvt({type: 'E_SEND_CALL_ALERTING'} as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
 
     const connectEvent = {type: 'E_SEND_CALL_CONNECT'};
@@ -2017,6 +2033,10 @@ describe('State Machine handler tests', () => {
     webex.request.mockReturnValue(statusPayload);
     call['direction'] = CallDirection.INBOUND;
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_SETUP');
+
+    // Progress is now deferred until ROAP offer is received
+    call.sendCallStateMachineEvt({type: 'E_SEND_CALL_ALERTING'} as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
 
     dummyEvent.type = 'E_SEND_CALL_CONNECT';
@@ -2209,6 +2229,10 @@ describe('State Machine handler tests', () => {
     webex.request.mockReturnValue(statusPayload);
     call['direction'] = CallDirection.INBOUND;
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_RECV_CALL_SETUP');
+
+    // Progress is now deferred until ROAP offer is received
+    call.sendCallStateMachineEvt({type: 'E_SEND_CALL_ALERTING'} as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
 
     dummyEvent.type = 'E_SEND_CALL_CONNECT';
