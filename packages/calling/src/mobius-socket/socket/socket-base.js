@@ -7,7 +7,6 @@ import {EventEmitter} from 'events';
 import {checkRequired} from '@webex/common';
 import {safeSetTimeout} from '@webex/common-timers';
 import {defaults, has, isObject} from 'lodash';
-import uuid from 'uuid';
 
 import {
   BadRequest,
@@ -510,7 +509,7 @@ export default class Socket extends EventEmitter {
    * @returns {string}
    */
   _createTrackingId() {
-    return `${this.trackingId}_${uuid.v4()}`;
+    return `${this.trackingId}_${crypto.randomUUID()}`;
   }
 
   /**

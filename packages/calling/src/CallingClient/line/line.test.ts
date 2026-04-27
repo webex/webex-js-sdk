@@ -24,7 +24,7 @@ import {LOGGER} from '../../Logger/types';
 import * as regUtils from '../registration/register';
 import {APIRequest} from '../utils/request';
 
-jest.mock('@webex/internal-plugin-mobius-socket', () => ({
+jest.mock('../../mobius-socket', () => ({
   getMobiusSocketInstance: jest.fn().mockReturnValue({
     sendWssRequest: jest.fn(),
   }),
