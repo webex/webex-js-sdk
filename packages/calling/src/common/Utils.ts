@@ -415,7 +415,7 @@ export async function handleRegistrationErrors(
 
       if (retry429Cb && err.headers) {
         const retryAfter = Number(err.headers['retry-after']);
-        retry429Cb(retryAfter, caller);
+        await retry429Cb(retryAfter, caller);
       }
 
       break;

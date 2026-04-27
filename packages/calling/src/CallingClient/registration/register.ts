@@ -974,7 +974,7 @@ export class Registration implements IRegistration {
         /**
          * 1. This is to ensure that registration error is handled before moving to the disconnect step.
          * 2. We are not tearing down the socket if there is only one server in the list during the failover/re-attempt process.
-         * 3. Connection should not be torn down for 429 error case because retry will happen
+         * 3. Connection should not be torn down for 429 error case because retry will happen, which takes care disconnect/connect step.
          */
         if (servers.length > 1 && this.apiRequest.isSocketEnabled() && body.statusCode !== 429) {
           connectedWebSocketUrl = undefined;
