@@ -27,7 +27,6 @@ import {
   _MEETING_,
   _SIP_BRIDGE_,
   _SPACE_SHARE_,
-  _BREAKOUT_ENDED_,
 } from '../../../../src/constants';
 
 import {self, selfWithInactivity} from './selfConstant';
@@ -4779,7 +4778,7 @@ describe('plugin-meetings', () => {
 
         locusInfo.fullState = {
           state: LOCUS.STATE.INACTIVE,
-          endMeetingReason: _BREAKOUT_ENDED_,
+          endMeetingReason: 'BREAKOUT_ENDED',
         };
 
         locusInfo.isMeetingActive();

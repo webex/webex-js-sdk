@@ -19,7 +19,6 @@ import {
   RECORDING_STATE,
   Enum,
   SELF_ROLES,
-  _BREAKOUT_ENDED_,
 } from '../constants';
 
 import InfoUtils from './infoUtils';
@@ -1782,13 +1781,9 @@ export default class LocusInfo extends EventsScope {
         );
       }
     } else if (this.parsedLocus.fullState?.type === _MEETING_) {
-      if (
-        this.fullState &&
-        this.fullState.state === LOCUS.STATE.INACTIVE &&
-        this.fullState.endMeetingReason !== _BREAKOUT_ENDED_
-      ) {
+      if (this.fullState && MeetingsUtil.isWholeMeetingEnded(this.fullState)) {
         LoggerProxy.logger.warn(
-          'Locus-info:index#isMeetingActive --> Meeting is ending due to inactive or terminating'
+          'Locus-info:index#isMeetingActive --> Meeting is ending due to inactive'
         );
 
         // @ts-ignore
