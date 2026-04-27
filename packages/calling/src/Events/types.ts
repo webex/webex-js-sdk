@@ -38,6 +38,10 @@ export enum CALL_EVENT_KEYS {
   RESUME_ERROR = 'resume_error',
   RESUMED = 'resumed',
   TRANSFER_ERROR = 'transfer_error',
+  ICE_GATHERING_STATE_CHANGED = 'ice_gathering_state_changed',
+  PEER_CONNECTION_STATE_CHANGED = 'peer_connection_state_changed',
+  ICE_CONNECTION_STATE_CHANGED = 'ice_connection_state_changed',
+  ICE_CANDIDATE_ERROR = 'ice_candidate_error',
 }
 
 export enum SUPPLEMENTARY_SERVICES {
@@ -215,6 +219,10 @@ export type CallEventTypes = {
   [CALL_EVENT_KEYS.RESUME_ERROR]: (error: CallError) => void;
   [CALL_EVENT_KEYS.RESUMED]: (callId: CallId) => void;
   [CALL_EVENT_KEYS.TRANSFER_ERROR]: (error: CallError) => void;
+  [CALL_EVENT_KEYS.ICE_GATHERING_STATE_CHANGED]: (state: string) => void;
+  [CALL_EVENT_KEYS.PEER_CONNECTION_STATE_CHANGED]: (state: string) => void;
+  [CALL_EVENT_KEYS.ICE_CONNECTION_STATE_CHANGED]: (state: string) => void;
+  [CALL_EVENT_KEYS.ICE_CANDIDATE_ERROR]: (error: unknown) => void;
   [CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED]: () => void;
 };
 

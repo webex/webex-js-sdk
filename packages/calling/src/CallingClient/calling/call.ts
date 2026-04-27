@@ -2251,6 +2251,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.initMediaConnection(localAudioTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
+      this.mediaIceEventsListener();
       this.registerListeners(localAudioStream);
     }
 
@@ -2294,6 +2295,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       this.initMediaConnection(localAudioTrack);
       this.mediaRoapEventsListener();
       this.mediaTrackListener();
+      this.mediaIceEventsListener();
       this.registerListeners(localAudioStream);
     }
 
@@ -2734,6 +2736,101 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       if (e.type === MEDIA_CONNECTION_EVENT_KEYS.MEDIA_TYPE_AUDIO) {
         this.emit(CALL_EVENT_KEYS.REMOTE_MEDIA, e.track);
       }
+    });
+  }
+
+  /* istanbul ignore next */
+  /**
+   * Setup listeners for ICE-related media connection events.
+   */
+  private mediaIceEventsListener() {
+    this.mediaConnection.on(
+      MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
+      (event: {state: string}) => {
+        log.info(`ICE gathering state changed to: ${event.state}`, {
+          file: CALL_FILE,
+          method: METHODS.MEDIA_ICE_EVENTS_LISTENER,
+        });
+
+        this.metricManager.submitMediaMetric(
+          METRIC_EVENT.MEDIA,
+          `ice_gathering_state_${event.state}`,
+          METRIC_TYPE.BEHAVIORAL,
+          this.callId,
+          this.correlationId,
+          undefined,
+          undefined,
+          undefined
+        );
+
+        this.emit(CALL_EVENT_KEYS.ICE_GATHERING_STATE_CHANGED, event.state);
+      }
+    );
+
+    this.mediaConnection.on(
+      MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
+      (event: {state: string}) => {
+        log.info(`Peer connection state changed to: ${event.state}`, {
+          file: CALL_FILE,
+          method: METHODS.MEDIA_ICE_EVENTS_LISTENER,
+        });
+
+        this.metricManager.submitMediaMetric(
+          METRIC_EVENT.MEDIA,
+          `peer_connection_state_${event.state}`,
+          METRIC_TYPE.BEHAVIORAL,
+          this.callId,
+          this.correlationId,
+          undefined,
+          undefined,
+          undefined
+        );
+
+        this.emit(CALL_EVENT_KEYS.PEER_CONNECTION_STATE_CHANGED, event.state);
+      }
+    );
+
+    this.mediaConnection.on(
+      MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
+      (event: {state: string}) => {
+        log.info(`ICE connection state changed to: ${event.state}`, {
+          file: CALL_FILE,
+          method: METHODS.MEDIA_ICE_EVENTS_LISTENER,
+        });
+
+        this.metricManager.submitMediaMetric(
+          METRIC_EVENT.MEDIA,
+          `ice_connection_state_${event.state}`,
+          METRIC_TYPE.BEHAVIORAL,
+          this.callId,
+          this.correlationId,
+          undefined,
+          undefined,
+          undefined
+        );
+
+        this.emit(CALL_EVENT_KEYS.ICE_CONNECTION_STATE_CHANGED, event.state);
+      }
+    );
+
+    this.mediaConnection.on(MediaConnectionEventNames.ICE_CANDIDATE_ERROR, (event: unknown) => {
+      log.warn(`ICE candidate error occurred: ${JSON.stringify(event)}`, {
+        file: CALL_FILE,
+        method: METHODS.MEDIA_ICE_EVENTS_LISTENER,
+      });
+
+      this.metricManager.submitMediaMetric(
+        METRIC_EVENT.MEDIA_ERROR,
+        'ice_candidate_error',
+        METRIC_TYPE.BEHAVIORAL,
+        this.callId,
+        this.correlationId,
+        undefined,
+        undefined,
+        undefined
+      );
+
+      this.emit(CALL_EVENT_KEYS.ICE_CANDIDATE_ERROR, event);
     });
   }
 
