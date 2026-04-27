@@ -181,6 +181,35 @@ describe('plugin-meetings', () => {
         assert.equal(parsedControls.transcribe.hesiodLlmId, newControls.transcribe.hesiodLlmId);
       });
 
+      it('should parse modifiedByServiceAppName from record meta when present', () => {
+        const newControls = {record: {recording: true, paused: false, meta: {lastModified: '2026-01-01', modifiedByServiceAppName: 'My Bot'}}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.record.modifiedByServiceAppName, 'My Bot');
+      });
+
+      it('should parse modifiedByServiceAppId from record meta when present', () => {
+        const newControls = {record: {recording: true, paused: false, meta: {lastModified: '2026-01-01', modifiedByServiceAppId: 'app-id-123'}}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.record.modifiedByServiceAppId, 'app-id-123');
+      });
+
+      it('should return undefined for modifiedByServiceAppName and modifiedByServiceAppId when absent from record meta', () => {
+        const newControls = {record: {recording: true, paused: false, meta: {lastModified: '2026-01-01'}}};
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.isUndefined(parsedControls.record.modifiedByServiceAppName);
+        assert.isUndefined(parsedControls.record.modifiedByServiceAppId);
+        // existing fields still parsed correctly
+        assert.equal(parsedControls.record.recording, true);
+        assert.equal(parsedControls.record.paused, false);
+        assert.equal(parsedControls.record.lastModified, '2026-01-01');
+      });
+
       describe('videoEnabled', () => {
         it('returns expected', () => {
           const result = ControlsUtils.parse({video: {enabled: true}});

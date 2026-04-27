@@ -27,6 +27,8 @@ ControlsUtils.parse = (controls: any) => {
       paused: controls.record.paused ? controls.record.paused : false,
       recording: controls.record.recording,
       lastModified: controls.record.meta.lastModified,
+      modifiedByServiceAppName: controls.record.meta?.modifiedByServiceAppName || undefined,
+      modifiedByServiceAppId: controls.record.meta?.modifiedByServiceAppId || undefined,
     };
   }
 
