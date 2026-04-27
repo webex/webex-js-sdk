@@ -93,7 +93,13 @@ import {
 import log from '../../Logger';
 import {ICallerId} from './CallerId/types';
 import {createCallerId} from './CallerId';
-import {IMetricManager, METRIC_TYPE, METRIC_EVENT, TRANSFER_ACTION} from '../../Metrics/types';
+import {
+  IMetricManager,
+  METRIC_TYPE,
+  METRIC_EVENT,
+  TRANSFER_ACTION,
+  MEDIA_CONNECTION_ACTION,
+} from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
 import {METHOD_START_MESSAGE, SERVICES_ENDPOINT} from '../../common/constants';
 
@@ -272,7 +278,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.metricManager.submitMediaMetric(
       METRIC_EVENT.MEDIA,
-      MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
+      MEDIA_CONNECTION_ACTION.ICE_GATHERING_STATE_CHANGED,
       METRIC_TYPE.BEHAVIORAL,
       this.callId,
       this.correlationId
@@ -291,7 +297,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.metricManager.submitMediaMetric(
       METRIC_EVENT.MEDIA,
-      MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
+      MEDIA_CONNECTION_ACTION.PEER_CONNECTION_STATE_CHANGED,
       METRIC_TYPE.BEHAVIORAL,
       this.callId,
       this.correlationId
@@ -310,7 +316,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.metricManager.submitMediaMetric(
       METRIC_EVENT.MEDIA,
-      MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
+      MEDIA_CONNECTION_ACTION.ICE_CONNECTION_STATE_CHANGED,
       METRIC_TYPE.BEHAVIORAL,
       this.callId,
       this.correlationId
@@ -341,7 +347,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
     this.metricManager.submitMediaMetric(
       METRIC_EVENT.MEDIA_ERROR,
-      MediaConnectionEventNames.ICE_CANDIDATE_ERROR,
+      MEDIA_CONNECTION_ACTION.ICE_CANDIDATE_ERROR,
       METRIC_TYPE.BEHAVIORAL,
       this.callId,
       this.correlationId
