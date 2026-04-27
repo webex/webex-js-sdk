@@ -93,7 +93,6 @@
     "./node_modules/**",
     "./test",
     "./docs/examples",
-    "./src/**/*.test.ts",
-    "./src/**/*.integration-test.ts"
+    "./src/**/*.test.ts"
   ]
 }

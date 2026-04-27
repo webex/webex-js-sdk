@@ -27,16 +27,16 @@ if (!crypto.randomUUID) {
 
 describe('plugin-mobius-socket', () => {
   describe('Socket', () => {
-    let mockWebSocket, socket, usingFakeTimers;
+    let mockWebSocket;
+    let socket;
+    let usingFakeTimers;
 
-    const mockoptions = Object.assign(
-      {
-        logger: console,
-        token: 'mocktoken',
-        trackingId: 'mocktrackingid',
-      },
-      config.mobiusSocket
-    );
+    const mockoptions = {
+      logger: console,
+      token: 'mocktoken',
+      trackingId: 'mocktrackingid',
+      ...config.mobiusSocket,
+    };
 
     const emitAuthResponse = ({statusCode = 200, statusMessage = 'OK'} = {}) => {
       const authRequest = JSON.parse(mockWebSocket.send.lastCall.args[0]);
@@ -67,7 +67,6 @@ describe('plugin-mobius-socket', () => {
           }
       );
 
-
       socket = new Socket();
       const promise = socket.open('ws://example.com', mockoptions);
 
@@ -87,7 +86,6 @@ describe('plugin-mobius-socket', () => {
       }
 
       Socket.getWebSocketConstructor.restore();
-
 
       return Promise.resolve(socket && socket.close()).then(() => {
         mockWebSocket = undefined;
@@ -611,6 +609,7 @@ describe('plugin-mobius-socket', () => {
             () =>
               function (...args) {
                 socketInstance = new MockWebSocket(...args);
+
                 return socketInstance;
               }
           );
@@ -687,7 +686,6 @@ describe('plugin-mobius-socket', () => {
     });
 
     describe('#onclose()', () => {
-
       describe('when it receives close code 1005', () => {
         forEach(
           {
@@ -716,7 +714,7 @@ describe('plugin-mobius-socket', () => {
       });
 
       describe('when it receives close code 3050', () => {
-        it(`emits code 3050 for code 3050`, () => {
+        it('emits code 3050 for code 3050', () => {
           const code = 3050;
           const reason = 'done (permanent)';
           const spy = sinon.spy();
@@ -845,7 +843,5 @@ describe('plugin-mobius-socket', () => {
             );
           }));
     });
-
-
   });
 });
