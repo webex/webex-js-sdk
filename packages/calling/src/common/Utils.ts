@@ -346,8 +346,10 @@ export async function handleRegistrationErrors(
   emitterCb: LineErrorEmitterCallback,
   loggerContext: LogContext,
   retry429Cb?: retry429CallBack,
-  restoreRegCb?: restoreRegistrationCallBack
-): Promise<boolean> {
+  restoreRegCb?: restoreRegistrationCallBack,
+  serverCount = 1 // Number of servers in the list
+): Promise<{finalError: boolean; shouldDisconnect: boolean}> {
+  let shouldDisconnect = false;
   const lineError = createLineError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
 
   const errorCode = Number(err.statusCode);
@@ -366,6 +368,7 @@ export async function handleRegistrationErrors(
         lineError
       );
       emitterCb(lineError, finalError);
+      shouldDisconnect = serverCount > 1;
       break;
     }
 
@@ -383,6 +386,7 @@ export async function handleRegistrationErrors(
       );
 
       emitterCb(lineError, finalError);
+      shouldDisconnect = serverCount > 1;
       break;
     }
 
@@ -399,6 +403,7 @@ export async function handleRegistrationErrors(
       );
 
       emitterCb(lineError, finalError);
+      shouldDisconnect = serverCount > 1;
       break;
     }
 
@@ -415,8 +420,9 @@ export async function handleRegistrationErrors(
 
       if (retry429Cb && err.headers) {
         const retryAfter = Number(err.headers['retry-after']);
-        retry429Cb(retryAfter, caller);
+        await retry429Cb(retryAfter, caller);
       }
+      shouldDisconnect = false;
 
       break;
     }
@@ -432,6 +438,7 @@ export async function handleRegistrationErrors(
       );
 
       emitterCb(lineError, finalError);
+      shouldDisconnect = serverCount > 1;
       break;
     }
 
@@ -446,6 +453,7 @@ export async function handleRegistrationErrors(
       );
 
       emitterCb(lineError, finalError);
+      shouldDisconnect = serverCount > 1;
       break;
     }
     case ERROR_CODE.FORBIDDEN: {
@@ -463,8 +471,9 @@ export async function handleRegistrationErrors(
         );
 
         emitterCb(lineError, finalError);
+        shouldDisconnect = serverCount > 1;
 
-        return finalError;
+        return {finalError, shouldDisconnect};
       }
 
       const code = Number(errorBody.errorCode);
@@ -477,6 +486,7 @@ export async function handleRegistrationErrors(
             const caller = loggerContext.method || 'handleErrors';
             await restoreRegCb(errorBody, caller);
           }
+          shouldDisconnect = false;
           break;
         }
         case DEVICE_ERROR_CODE.DEVICE_CREATION_DISABLED: {
@@ -492,6 +502,7 @@ export async function handleRegistrationErrors(
           );
           log.warn(errorMessage, loggerContext);
           emitterCb(lineError, true);
+          shouldDisconnect = true;
           break;
         }
         case DEVICE_ERROR_CODE.DEVICE_CREATION_FAILED: {
@@ -506,6 +517,7 @@ export async function handleRegistrationErrors(
           );
           log.warn(errorMessage, loggerContext);
           emitterCb(lineError, finalError);
+          shouldDisconnect = serverCount > 1;
           break;
         }
         default: {
@@ -520,6 +532,7 @@ export async function handleRegistrationErrors(
           );
           log.warn(errorMessage, loggerContext);
           emitterCb(lineError, finalError);
+          shouldDisconnect = serverCount > 1;
         }
       }
       break;
@@ -535,10 +548,11 @@ export async function handleRegistrationErrors(
       );
       log.warn(`Unknown Error`, loggerContext);
       emitterCb(lineError, finalError);
+      shouldDisconnect = serverCount > 1;
     }
   }
 
-  return finalError;
+  return {finalError, shouldDisconnect};
 }
 
 /**

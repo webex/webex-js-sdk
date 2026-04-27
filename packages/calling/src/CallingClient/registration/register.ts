@@ -287,6 +287,18 @@ export class Registration implements IRegistration {
   private async restorePreviousRegistration(caller: string): Promise<boolean> {
     let abort = false;
 
+    if (this.apiRequest.isSocketEnabled()) {
+      log.info(`Disconnecting from Mobius socket to restore previous registration.`, {
+        file: REGISTRATION_FILE,
+        method: 'restorePreviousRegistration',
+      });
+
+      await this.apiRequest.disconnectFromMobiusSocket({
+        code: 3050,
+        reason: 'done (permanent)',
+      });
+    }
+
     if (this.activeMobiusUrl) {
       abort = await this.attemptRegistrationWithServers(caller, [this.activeMobiusUrl]);
       if (this.retryAfter) {
@@ -303,7 +315,7 @@ export class Registration implements IRegistration {
           abort = await this.attemptRegistrationWithServers(caller, this.backupMobiusUris);
         } else {
           // If we are using backup and got 429, restart registration
-          this.restartRegistration(caller);
+          await this.restartRegistration(caller);
         }
         this.retryAfter = undefined;
 
@@ -446,6 +458,18 @@ export class Registration implements IRegistration {
         loggerContext
       );
     } else if (this.backupMobiusUris.length) {
+      if (this.apiRequest.isSocketEnabled()) {
+        log.info(
+          'Disconnecting from primary Mobius socket for failover to backup servers',
+          loggerContext
+        );
+
+        await this.apiRequest.disconnectFromMobiusSocket({
+          code: 3050,
+          reason: 'done (permanent)',
+        });
+      }
+
       this.saveFailoverState({
         attempt,
         timeElapsed,
@@ -911,16 +935,12 @@ export class Registration implements IRegistration {
         this.initiateFailback();
         break;
       } catch (err: unknown) {
-        connectedWebSocketUrl = undefined;
-        // eslint-disable-next-line no-await-in-loop
-        await this.apiRequest.disconnectFromMobiusSocket({code: 3050, reason: 'done (permanent)'});
-
         const body = err as WebexRequestPayload;
         // eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-unused-vars
-        abort = await handleRegistrationErrors(
+        const {finalError, shouldDisconnect} = await handleRegistrationErrors(
           body,
-          (clientError, finalError) => {
-            if (finalError) {
+          (clientError, isFinalError) => {
+            if (isFinalError) {
               this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
             } else {
               this.lineEmitter(LINE_EVENTS.UNREGISTERED);
@@ -938,8 +958,12 @@ export class Registration implements IRegistration {
           },
           {method: caller, file: REGISTRATION_FILE},
           (retryAfter: number, retryCaller: string) => this.handle429Retry(retryAfter, retryCaller),
-          this.restoreRegistrationCallBack()
+          this.restoreRegistrationCallBack(),
+          servers.length
         );
+
+        abort = finalError;
+
         if (this.registrationStatus === RegistrationStatus.ACTIVE) {
           log.info(
             `[${caller}] : Device is already restored, active mobius url: ${this.activeMobiusUrl}`,
@@ -950,6 +974,21 @@ export class Registration implements IRegistration {
           );
           break;
         }
+
+        /**
+         * 1. This is to ensure that registration error is handled before moving to the disconnect step.
+         * 2. We are not tearing down the socket if there is only one server in the list during the failover/re-attempt process.
+         * 3. Connection should not be torn down for 429 error case because retry will happen, which takes care disconnect/connect step.
+         */
+        if (shouldDisconnect && this.apiRequest.isSocketEnabled()) {
+          connectedWebSocketUrl = undefined;
+          // eslint-disable-next-line no-await-in-loop
+          await this.apiRequest.disconnectFromMobiusSocket({
+            code: 3050,
+            reason: 'done (permanent)',
+          });
+        }
+
         if (abort) {
           this.setStatus(RegistrationStatus.INACTIVE);
           // eslint-disable-next-line no-await-in-loop
@@ -1028,7 +1067,7 @@ export class Registration implements IRegistration {
                 logContext
               );
 
-              const abort = await handleRegistrationErrors(
+              const {finalError: abort} = await handleRegistrationErrors(
                 error,
                 (clientError, finalError) => {
                   if (finalError) {

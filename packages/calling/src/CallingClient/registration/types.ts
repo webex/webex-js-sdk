@@ -9,7 +9,7 @@ export type restoreRegistrationCallBack = (
   caller: string
 ) => Promise<boolean>;
 
-export type retry429CallBack = (retryAfter: number, caller: string) => void;
+export type retry429CallBack = (retryAfter: number, caller: string) => Promise<void>;
 
 export type FailoverCacheState = {
   attempt: number;
