@@ -288,6 +288,18 @@ export class Registration implements IRegistration {
     let abort = false;
 
     if (this.activeMobiusUrl) {
+      if (this.apiRequest.isSocketEnabled()) {
+        log.info(`Disconnecting from Mobius socket to restore previous registration.`, {
+          file: REGISTRATION_FILE,
+          method: 'restorePreviousRegistration',
+        });
+
+        await this.apiRequest.disconnectFromMobiusSocket({
+          code: 3050,
+          reason: 'done (permanent)',
+        });
+      }
+
       abort = await this.attemptRegistrationWithServers(caller, [this.activeMobiusUrl]);
       if (this.retryAfter) {
         if (this.retryAfter < RETRY_TIMER_UPPER_LIMIT) {
@@ -300,25 +312,10 @@ export class Registration implements IRegistration {
           this.backupMobiusUris.length > 0
         ) {
           // If we are using primary and got 429, switch to backup
-          if (this.apiRequest.isSocketEnabled()) {
-            log.info(
-              'Disconnecting from primary Mobius socket to attempt registration with backup servers due to 429 error.',
-              {
-                file: REGISTRATION_FILE,
-                method: 'restorePreviousRegistration',
-              }
-            );
-
-            await this.apiRequest.disconnectFromMobiusSocket({
-              code: 3050,
-              reason: 'done (permanent)',
-            });
-          }
-
           abort = await this.attemptRegistrationWithServers(caller, this.backupMobiusUris);
         } else {
           // If we are using backup and got 429, restart registration
-          this.restartRegistration(caller);
+          await this.restartRegistration(caller);
         }
         this.retryAfter = undefined;
 
