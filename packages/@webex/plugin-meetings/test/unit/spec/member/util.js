@@ -643,6 +643,30 @@ describe('plugin-meetings', () => {
       assert.isUndefined(MemberUtil.isPresenterAssignmentProhibited(participant));
     });
   });
+
+  describe('MemberUtil.isAttendeeAssignmentProhibited', () => {
+    it('returns true when attendeeAssignmentNotAllowed is true', () => {
+      const participant = {
+        attendeeAssignmentNotAllowed: true,
+      };
+
+      assert.isTrue(MemberUtil.isAttendeeAssignmentProhibited(participant));
+    });
+
+    it('returns false when attendeeAssignmentNotAllowed is false', () => {
+      const participant = {
+        attendeeAssignmentNotAllowed: false,
+      };
+
+      assert.isFalse(MemberUtil.isAttendeeAssignmentProhibited(participant));
+    });
+
+    it('returns false when attendeeAssignmentNotAllowed is undefined', () => {
+      const participant = {};
+
+      assert.isFalse(MemberUtil.isAttendeeAssignmentProhibited(participant));
+    });
+  });
 });
 
 describe('extractMediaStatus', () => {

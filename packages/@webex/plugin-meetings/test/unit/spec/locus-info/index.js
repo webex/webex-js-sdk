@@ -3385,6 +3385,51 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(parserA.handleMessage, message);
       });
+
+      it('should send mismatch metric when eventType is not HASH_TREE_DATA_UPDATED', () => {
+        const locusUrlA = 'http://locus-url-A.com';
+        const parserA = {state: 'active', handleMessage: sinon.stub()};
+        locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, initializedFromHashTree: true});
+
+        locusInfo.parse(mockMeeting, {
+          eventType: LOCUSEVENT.SELF_CHANGED,
+          stateElementsMessage: {locusUrl: locusUrlA, locusStateElements: [], dataSets: []},
+        });
+
+        assert.calledOnceWithExactly(
+          sendBehavioralMetricStub,
+          'js_sdk_locus_classic_vs_hash_tree_mismatch',
+          {
+            correlationId: mockMeeting.correlationId,
+            message: `got ${LOCUSEVENT.SELF_CHANGED}, expected ${LOCUSEVENT.HASH_TREE_DATA_UPDATED}`,
+          }
+        );
+        assert.notCalled(parserA.handleMessage);
+      });
+    });
+
+    describe('#sendClassicVsHashTreeMismatchMetric', () => {
+      it('should send the metric when called for the first time', () => {
+        locusInfo.sendClassicVsHashTreeMismatchMetric(mockMeeting, 'some mismatch');
+
+        assert.calledOnceWithExactly(
+          sendBehavioralMetricStub,
+          'js_sdk_locus_classic_vs_hash_tree_mismatch',
+          {
+            correlationId: mockMeeting.correlationId,
+            message: 'some mismatch',
+          }
+        );
+      });
+
+      it('should send the metric up to 5 times and stop after that', () => {
+        for (let i = 0; i < 7; i += 1) {
+          locusInfo.sendClassicVsHashTreeMismatchMetric(mockMeeting, `mismatch ${i}`);
+        }
+
+        assert.callCount(sendBehavioralMetricStub, 5);
+        assert.equal(locusInfo.classicVsHashTreeMismatchMetricCounter, 5);
+      });
     });
 
     describe('#handleLocusAPIResponse', () => {
@@ -3440,19 +3485,24 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(locusInfo.handleLocusDelta, fakeLocus, mockMeeting);
       });
 
-      it('should send mismatch metric when hash tree parser exists but dataSets are missing in wrapped response', () => {
+      it('should send mismatch metric in classic mode when wrapped response has dataSets', () => {
         const fakeLocus = {url: 'http://locus-url.com'};
-        const mockHashTreeParser = {handleLocusUpdate: sinon.stub()};
-        locusInfo.hashTreeParsers.set(fakeLocus.url, {
-          parser: mockHashTreeParser,
-          initializedFromHashTree: true,
+        sinon.stub(locusInfo, 'handleLocusDelta');
+
+        locusInfo.handleLocusAPIResponse(mockMeeting, {
+          locus: fakeLocus,
+          dataSets: [{name: 'dataset1', url: 'test-url'}],
         });
-        sinon.stub(locusInfo, 'sendClassicVsHashTreeMismatchMetric');
 
-        locusInfo.handleLocusAPIResponse(mockMeeting, {locus: fakeLocus});
-
-        assert.calledOnce(locusInfo.sendClassicVsHashTreeMismatchMetric);
-        assert.calledOnce(mockHashTreeParser.handleLocusUpdate);
+        assert.calledOnceWithExactly(
+          sendBehavioralMetricStub,
+          'js_sdk_locus_classic_vs_hash_tree_mismatch',
+          {
+            correlationId: mockMeeting.correlationId,
+            message: 'unexpected hash tree dataSets in API response',
+          }
+        );
+        assert.calledOnce(locusInfo.handleLocusDelta);
       });
 
       describe('parser switch via API response', () => {
