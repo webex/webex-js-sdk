@@ -190,6 +190,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
       // if ConvergedArchitecture enable and isConvergedWebinarWebcast -- then webcast
       if (meetingInfo?.enableConvergedArchitecture && meetingInfo?.enableEvent) {
+        // if enableConvergedWebinarLargeScale - then large scale webinar
+        if (meetingInfo?.enableConvergedWebinarLargeScale) {
+          return WEBEX_SUB_SERVICE_TYPES.LARGE_SCALE_WEBINAR;
+        }
+
         return meetingInfo?.isConvergedWebinarWebcast
           ? WEBEX_SUB_SERVICE_TYPES.WEBCAST
           : WEBEX_SUB_SERVICE_TYPES.WEBINAR;
