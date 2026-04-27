@@ -2,7 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {randomUUID} from 'node:crypto';
+import {randomUUID} from 'crypto';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
