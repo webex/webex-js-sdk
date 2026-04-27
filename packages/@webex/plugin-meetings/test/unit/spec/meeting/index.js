@@ -13439,10 +13439,13 @@ describe('plugin-meetings', () => {
               meeting.processLocusLLMEvent
             );
             assert.calledOnce(meeting.clearLLMHealthCheckTimer);
-            assert.calledOnce(meeting.stopTranscription);
-            assert.isUndefined(meeting.transcription);
             assert.calledOnce(meeting.clearDataChannelToken);
-            assert.calledOnce(meeting.annotation.deregisterEvents);
+            // stopTranscription and annotation.deregisterEvents are not
+            // called here: they run in stopListeningForMeetingEvents()
+            // before /leave to avoid double-emitting
+            // MEETING_STOPPED_RECEIVING_TRANSCRIPTION.
+            assert.notCalled(meeting.stopTranscription);
+            assert.notCalled(meeting.annotation.deregisterEvents);
           });
           it('continues cleanup when disconnectLLM fails during meeting data cleanup', async () => {
             webex.internal.llm.disconnectLLM.rejects(new Error('disconnect failed'));
@@ -13461,19 +13464,9 @@ describe('plugin-meetings', () => {
               meeting.processLocusLLMEvent
             );
             assert.calledOnce(meeting.clearLLMHealthCheckTimer);
-            assert.calledOnce(meeting.stopTranscription);
-            assert.isUndefined(meeting.transcription);
             assert.calledOnce(meeting.clearDataChannelToken);
-            assert.calledOnce(meeting.annotation.deregisterEvents);
-          });
-          it('always calls stopTranscription even when transcription is undefined', async () => {
-            meeting.transcription = undefined;
-
-            await meeting.clearMeetingData();
-
-            assert.calledOnce(meeting.stopTranscription);
-            assert.isUndefined(meeting.transcription);
-            assert.calledOnce(meeting.clearDataChannelToken);
+            assert.notCalled(meeting.stopTranscription);
+            assert.notCalled(meeting.annotation.deregisterEvents);
           });
         });
       });

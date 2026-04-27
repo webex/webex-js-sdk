@@ -9824,11 +9824,11 @@ export default class Meeting extends StatelessWebexPlugin {
     }
     this.queuedMediaUpdates = [];
 
-    this.stopTranscription();
-    this.transcription = undefined;
-
-    this.annotation.deregisterEvents();
-
+    // Listener teardown (transcription, annotation, llm/mercury) runs in
+    // stopListeningForMeetingEvents() before /leave and /end so events
+    // received mid-teardown do not trigger Locus syncs. Calling it here
+    // again would double-emit MEETING_STOPPED_RECEIVING_TRANSCRIPTION
+    // because stopTranscription() always fires its trigger.
     this.clearDataChannelToken();
     await this.cleanupLLMConneciton({throwOnError: false});
   };
