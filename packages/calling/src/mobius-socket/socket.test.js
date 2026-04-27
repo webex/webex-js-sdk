@@ -2,8 +2,9 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
+import {randomUUID} from 'node:crypto';
 import {forEach} from 'lodash';
-import {assert} from './test/assert';
+import {assert} from '@webex/test-helper-chai';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
 import sinon from 'sinon';
 import {
@@ -16,6 +17,13 @@ import {
   Socket,
 } from './index';
 import {MESSAGE_TYPES} from './socket/constants';
+
+if (!crypto.randomUUID) {
+  Object.defineProperty(crypto, 'randomUUID', {
+    value: randomUUID,
+    configurable: true,
+  });
+}
 
 describe('plugin-mobius-socket', () => {
   describe('Socket', () => {

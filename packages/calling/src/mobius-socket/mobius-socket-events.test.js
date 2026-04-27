@@ -4,11 +4,11 @@
 
 import {randomUUID} from 'node:crypto';
 import sinon from 'sinon';
+import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
 import {wrap} from 'lodash';
 import MobiusSocket, {config as mobiusConfig, Socket} from './index';
-import {assert} from './test/assert';
 import {MESSAGE_TYPES} from './socket/constants';
 
 import promiseTick from './test/promise-tick';
