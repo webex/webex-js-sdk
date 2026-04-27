@@ -1,10 +1,7 @@
 import {assert} from '@webex/test-helper-chai';
 import ControlsUtils from '@webex/plugin-meetings/src/locus-info/controlsUtils';
-import controlsUtils from "@webex/plugin-meetings/src/locus-info/controlsUtils";
-import {
-  MEETING_STATE,
-  BREAKOUTS,
-} from '../../../../src/constants';
+import controlsUtils from '@webex/plugin-meetings/src/locus-info/controlsUtils';
+import {MEETING_STATE, BREAKOUTS} from '../../../../src/constants';
 
 const defaultControls = {
   entryExitTone: {
@@ -82,17 +79,31 @@ describe('plugin-meetings', () => {
 
         const parsedControls = ControlsUtils.parse(newControls);
 
-        assert.equal(parsedControls.reactions.showDisplayNameWithReactions, newControls.reactions.showDisplayNameWithReactions);
+        assert.equal(
+          parsedControls.reactions.showDisplayNameWithReactions,
+          newControls.reactions.showDisplayNameWithReactions
+        );
       });
 
       it('should parse the viewTheParticipantList control', () => {
-        const newControls = {viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: false}};
+        const newControls = {
+          viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: false},
+        };
 
         const parsedControls = ControlsUtils.parse(newControls);
 
-        assert.equal(parsedControls.viewTheParticipantList.enabled, newControls.viewTheParticipantList.enabled);
-        assert.equal(parsedControls.viewTheParticipantList.panelistEnabled, newControls.viewTheParticipantList.panelistEnabled);
-        assert.equal(parsedControls.viewTheParticipantList.attendeeCount, newControls.viewTheParticipantList.attendeeCount);
+        assert.equal(
+          parsedControls.viewTheParticipantList.enabled,
+          newControls.viewTheParticipantList.enabled
+        );
+        assert.equal(
+          parsedControls.viewTheParticipantList.panelistEnabled,
+          newControls.viewTheParticipantList.panelistEnabled
+        );
+        assert.equal(
+          parsedControls.viewTheParticipantList.attendeeCount,
+          newControls.viewTheParticipantList.attendeeCount
+        );
       });
 
       it('should parse the raiseHand control', () => {
@@ -125,7 +136,10 @@ describe('plugin-meetings', () => {
         const parsedControls = ControlsUtils.parse(newControls);
 
         assert.equal(parsedControls.meetingFull.meetingFull, newControls.meetingFull.meetingFull);
-        assert.equal(parsedControls.meetingFull.meetingPanelistFull, newControls.meetingFull.meetingPanelistFull);
+        assert.equal(
+          parsedControls.meetingFull.meetingPanelistFull,
+          newControls.meetingFull.meetingPanelistFull
+        );
       });
 
       it('should parse the practiceSession control', () => {
@@ -137,13 +151,28 @@ describe('plugin-meetings', () => {
       });
 
       it('should parse the videoLayout control', () => {
-        const newControls = {videoLayout: {overrideDefault: true, lockAttendeeViewOnStageOnly:false, stageParameters: {}}};
+        const newControls = {
+          videoLayout: {
+            overrideDefault: true,
+            lockAttendeeViewOnStageOnly: false,
+            stageParameters: {},
+          },
+        };
 
         const parsedControls = ControlsUtils.parse(newControls);
 
-        assert.equal(parsedControls.videoLayout.overrideDefault, newControls.videoLayout.overrideDefault);
-        assert.equal(parsedControls.videoLayout.lockAttendeeViewOnStageOnly, newControls.videoLayout.lockAttendeeViewOnStageOnly);
-        assert.equal(parsedControls.videoLayout.stageParameters, newControls.videoLayout.stageParameters);
+        assert.equal(
+          parsedControls.videoLayout.overrideDefault,
+          newControls.videoLayout.overrideDefault
+        );
+        assert.equal(
+          parsedControls.videoLayout.lockAttendeeViewOnStageOnly,
+          newControls.videoLayout.lockAttendeeViewOnStageOnly
+        );
+        assert.equal(
+          parsedControls.videoLayout.stageParameters,
+          newControls.videoLayout.stageParameters
+        );
       });
 
       it('should parse the annotationControl control', () => {
@@ -174,7 +203,14 @@ describe('plugin-meetings', () => {
       });
 
       it('should parse the hesiodLlmId in transcribe control', () => {
-        const newControls = {transcribe: {hesiodLlmId: 'llm-123', transcribing: true, caption: true, spokenLanguage: 'en-US'}};
+        const newControls = {
+          transcribe: {
+            hesiodLlmId: 'llm-123',
+            transcribing: true,
+            caption: true,
+            spokenLanguage: 'en-US',
+          },
+        };
 
         const parsedControls = ControlsUtils.parse(newControls);
 
@@ -182,7 +218,13 @@ describe('plugin-meetings', () => {
       });
 
       it('should parse modifiedByServiceAppName from record meta when present', () => {
-        const newControls = {record: {recording: true, paused: false, meta: {lastModified: '2026-01-01', modifiedByServiceAppName: 'My Bot'}}};
+        const newControls = {
+          record: {
+            recording: true,
+            paused: false,
+            meta: {lastModified: '2026-01-01', modifiedByServiceAppName: 'My Bot'},
+          },
+        };
 
         const parsedControls = ControlsUtils.parse(newControls);
 
@@ -190,7 +232,13 @@ describe('plugin-meetings', () => {
       });
 
       it('should parse modifiedByServiceAppId from record meta when present', () => {
-        const newControls = {record: {recording: true, paused: false, meta: {lastModified: '2026-01-01', modifiedByServiceAppId: 'app-id-123'}}};
+        const newControls = {
+          record: {
+            recording: true,
+            paused: false,
+            meta: {lastModified: '2026-01-01', modifiedByServiceAppId: 'app-id-123'},
+          },
+        };
 
         const parsedControls = ControlsUtils.parse(newControls);
 
@@ -198,7 +246,9 @@ describe('plugin-meetings', () => {
       });
 
       it('should return undefined for modifiedByServiceAppName and modifiedByServiceAppId when absent from record meta', () => {
-        const newControls = {record: {recording: true, paused: false, meta: {lastModified: '2026-01-01'}}};
+        const newControls = {
+          record: {recording: true, paused: false, meta: {lastModified: '2026-01-01'}},
+        };
 
         const parsedControls = ControlsUtils.parse(newControls);
 
@@ -275,19 +325,29 @@ describe('plugin-meetings', () => {
       });
 
       it('returns hasViewTheParticipantListChanged = true when changed', () => {
-        const oldControls = {viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: false}};
+        const oldControls = {
+          viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: false},
+        };
 
-        let result = ControlsUtils.getControls(oldControls, {viewTheParticipantList: {enabled: false, panelistEnabled: true, attendeeCount: false}});
-
-        assert.equal(result.updates.hasViewTheParticipantListChanged, true);
-
-        result = ControlsUtils.getControls(oldControls, {viewTheParticipantList: {enabled: true, panelistEnabled: false, attendeeCount: false}});
-
-        assert.equal(result.updates.hasViewTheParticipantListChanged, true);
-        result = ControlsUtils.getControls(oldControls, {viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: true}});
+        let result = ControlsUtils.getControls(oldControls, {
+          viewTheParticipantList: {enabled: false, panelistEnabled: true, attendeeCount: false},
+        });
 
         assert.equal(result.updates.hasViewTheParticipantListChanged, true);
-        result = ControlsUtils.getControls(oldControls, {viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: false}});
+
+        result = ControlsUtils.getControls(oldControls, {
+          viewTheParticipantList: {enabled: true, panelistEnabled: false, attendeeCount: false},
+        });
+
+        assert.equal(result.updates.hasViewTheParticipantListChanged, true);
+        result = ControlsUtils.getControls(oldControls, {
+          viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: true},
+        });
+
+        assert.equal(result.updates.hasViewTheParticipantListChanged, true);
+        result = ControlsUtils.getControls(oldControls, {
+          viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: false},
+        });
 
         assert.equal(result.updates.hasViewTheParticipantListChanged, false);
       });
@@ -323,7 +383,9 @@ describe('plugin-meetings', () => {
 
         assert.equal(result.updates.hasMeetingFullChanged, true);
 
-        result = ControlsUtils.getControls(newControls, {meetingFull: {meetingFull: true, meetingPanelistFull: true}});
+        result = ControlsUtils.getControls(newControls, {
+          meetingFull: {meetingFull: true, meetingPanelistFull: true},
+        });
 
         assert.equal(result.updates.hasMeetingFullChanged, true);
       });
@@ -415,7 +477,10 @@ describe('plugin-meetings', () => {
           interpretation: 'interpretation',
         };
 
-        const {updates} = ControlsUtils.getControls({interpretation: 'interpretation'}, newControls);
+        const {updates} = ControlsUtils.getControls(
+          {interpretation: 'interpretation'},
+          newControls
+        );
 
         assert.equal(updates.hasInterpretationChanged, false);
       });
@@ -425,7 +490,10 @@ describe('plugin-meetings', () => {
           manualCaptionControl: {enabled: false},
         };
 
-        const {updates} = ControlsUtils.getControls({manualCaptionControl: {enabled: true}}, newControls);
+        const {updates} = ControlsUtils.getControls(
+          {manualCaptionControl: {enabled: true}},
+          newControls
+        );
 
         assert.equal(updates.hasManualCaptionChanged, true);
       });
@@ -435,7 +503,10 @@ describe('plugin-meetings', () => {
           manualCaptionControl: {enabled: true},
         };
 
-        const {updates} = ControlsUtils.getControls({manualCaptionControl: {enabled: true}}, newControls);
+        const {updates} = ControlsUtils.getControls(
+          {manualCaptionControl: {enabled: true}},
+          newControls
+        );
 
         assert.equal(updates.hasManualCaptionChanged, false);
       });
@@ -465,8 +536,8 @@ describe('plugin-meetings', () => {
       });
 
       it('returns false when previous spoken language is undefined and current is a invalid value', () => {
-        const previous = { transcribe: undefined };
-        const current = { transcribe: { spokenLanguage: null } };
+        const previous = {transcribe: undefined};
+        const current = {transcribe: {spokenLanguage: null}};
 
         const {updates} = ControlsUtils.getControls(previous, current);
 
@@ -474,8 +545,8 @@ describe('plugin-meetings', () => {
       });
 
       it('detects spoken language change when previous is undefined and current is a valid value', () => {
-        const previous = { transcribe: undefined };
-        const current = { transcribe: { spokenLanguage: 'en-US' } };
+        const previous = {transcribe: undefined};
+        const current = {transcribe: {spokenLanguage: 'en-US'}};
 
         const {updates} = ControlsUtils.getControls(previous, current);
 
@@ -483,8 +554,8 @@ describe('plugin-meetings', () => {
       });
 
       it('returns false when spoken language changes to a same value', () => {
-        const previous = { transcribe: {caption: true, spokenLanguage: 'en-US' } };
-        const current = { transcribe: {caption: true, spokenLanguage: 'en-US' } };
+        const previous = {transcribe: {caption: true, spokenLanguage: 'en-US'}};
+        const current = {transcribe: {caption: true, spokenLanguage: 'en-US'}};
 
         const {updates} = ControlsUtils.getControls(previous, current);
 
@@ -492,8 +563,8 @@ describe('plugin-meetings', () => {
       });
 
       it('returns true when spoken language changes to a different value', () => {
-        const previous = { transcribe: {caption: true, spokenLanguage: 'en-US' } };
-        const current = { transcribe: {caption: true, spokenLanguage: 'fr-FR' } };
+        const previous = {transcribe: {caption: true, spokenLanguage: 'en-US'}};
+        const current = {transcribe: {caption: true, spokenLanguage: 'fr-FR'}};
 
         const {updates} = ControlsUtils.getControls(previous, current);
 
@@ -501,8 +572,8 @@ describe('plugin-meetings', () => {
       });
 
       it('returns false when previous hesiodLlmId is undefined and current is a invalid value', () => {
-        const previous = { transcribe: undefined };
-        const current = { transcribe: { hesiodLlmId: null } };
+        const previous = {transcribe: undefined};
+        const current = {transcribe: {hesiodLlmId: null}};
 
         const {updates} = ControlsUtils.getControls(previous, current);
 
@@ -510,8 +581,8 @@ describe('plugin-meetings', () => {
       });
 
       it('detects hesiodLlmId change when previous is undefined and current is a valid value', () => {
-        const previous = { transcribe: undefined };
-        const current = { transcribe: { hesiodLlmId: '123a-456b' } };
+        const previous = {transcribe: undefined};
+        const current = {transcribe: {hesiodLlmId: '123a-456b'}};
 
         const {updates} = ControlsUtils.getControls(previous, current);
 
@@ -541,7 +612,9 @@ describe('plugin-meetings', () => {
         });
 
         it('parses aiSummaryNotification into the transcribe block', () => {
-          const controls = {transcribe: {transcribing: false, caption: false, aiSummaryNotification: true}};
+          const controls = {
+            transcribe: {transcribing: false, caption: false, aiSummaryNotification: true},
+          };
           const parsed = ControlsUtils.parse(controls);
           assert.equal(parsed.transcribe.aiSummaryNotification, true);
         });
@@ -609,7 +682,8 @@ describe('plugin-meetings', () => {
         const oldLocus = {};
         const newLocus = {};
         assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
-          isReturnToMain: false, isJoinToBreakout: false
+          isReturnToMain: false,
+          isJoinToBreakout: false,
         });
       });
 
@@ -617,7 +691,8 @@ describe('plugin-meetings', () => {
         const oldLocus = {controls: {breakout: {sessionType: 'BREAKOUT'}}};
         const newLocus = {controls: {breakout: {sessionType: 'MAIN'}}};
         assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
-          isReturnToMain: true, isJoinToBreakout: false
+          isReturnToMain: true,
+          isJoinToBreakout: false,
         });
       });
 
@@ -625,55 +700,52 @@ describe('plugin-meetings', () => {
         const oldLocus = {controls: {breakout: {sessionType: 'MAIN'}}};
         const newLocus = {controls: {breakout: {sessionType: 'BREAKOUT'}}};
         assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
-          isReturnToMain: false, isJoinToBreakout: true
+          isReturnToMain: false,
+          isJoinToBreakout: true,
         });
       });
 
       it('if needUseCache conditions are met, return isJoinToBreakout as true', () => {
         const oldLocus = {
-          self: { isCreator: true },
-          controls: { breakout: { sessionType: BREAKOUTS.SESSION_TYPES.MAIN} },
+          self: {isCreator: true},
+          controls: {breakout: {sessionType: BREAKOUTS.SESSION_TYPES.MAIN}},
         };
 
         const newLocus = {
-          participants: [
-            { isCreator: true, state: MEETING_STATE.STATES.JOINED },
-          ],
+          participants: [{isCreator: true, state: MEETING_STATE.STATES.JOINED}],
           controls: {
             breakout: {
               sessionType: BREAKOUTS.SESSION_TYPES.MAIN,
-              groups: [{ id: 'group1' }]
+              groups: [{id: 'group1'}],
             },
           },
         };
 
         assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
           isReturnToMain: true,
-          isJoinToBreakout: false
+          isJoinToBreakout: false,
         });
       });
 
       it('if needUseCache conditions are not met, return newLocus and isReturnToMain as false', () => {
         const oldLocus = {
-          self: { isCreator: false },
-          controls: { breakout: { sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT} },
+          self: {isCreator: false},
+          controls: {breakout: {sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT}},
         };
 
         const newLocus = {
-          participants: [
-            { isCreator: true, state: MEETING_STATE.STATES.JOINED },
-          ],
+          participants: [{isCreator: true, state: MEETING_STATE.STATES.JOINED}],
           controls: {
             breakout: {
               sessionType: BREAKOUTS.SESSION_TYPES.BREAKOUT,
-              groups: []
+              groups: [],
             },
           },
         };
 
         assert.deepEqual(controlsUtils.getSessionSwitchStatus(oldLocus, newLocus), {
           isReturnToMain: false,
-          isJoinToBreakout: false
+          isJoinToBreakout: false,
         });
       });
     });
@@ -681,7 +753,7 @@ describe('plugin-meetings', () => {
     describe('#isMainSessionDTO', () => {
       it('return false is sessionType is BREAKOUT', () => {
         const locus = {
-          controls: {breakout: {sessionType: 'BREAKOUT'}}
+          controls: {breakout: {sessionType: 'BREAKOUT'}},
         };
 
         assert.equal(controlsUtils.isMainSessionDTO(locus), false);
@@ -689,7 +761,7 @@ describe('plugin-meetings', () => {
 
       it('return true is sessionType is not BREAKOUT', () => {
         const locus = {
-          controls: {breakout: {sessionType: 'MAIN'}}
+          controls: {breakout: {sessionType: 'MAIN'}},
         };
 
         assert.equal(controlsUtils.isMainSessionDTO(locus), true);
