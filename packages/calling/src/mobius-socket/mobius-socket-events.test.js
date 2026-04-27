@@ -2,42 +2,56 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-import {assert} from './test/assert';
-import MobiusSocket, {config as mobiusConfig, Socket} from './index';
+import {randomUUID} from 'node:crypto';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
-import {v4 as uuid} from 'uuid';
 import {wrap} from 'lodash';
+import MobiusSocket, {config as mobiusConfig, Socket} from './index';
+import {assert} from './test/assert';
 import {MESSAGE_TYPES} from './socket/constants';
 
 import promiseTick from './test/promise-tick';
 
+if (!crypto.randomUUID) {
+  Object.defineProperty(crypto, 'randomUUID', {
+    value: randomUUID,
+    configurable: true,
+  });
+}
+
 describe('plugin-mobiusSocket', () => {
+  const createUuid = () => crypto.randomUUID();
+
   describe('MobiusSocket', () => {
     describe('Events', () => {
-      let mobiusSocket, mockWebSocket, originalSendSpy, socketOpenStub, usingFakeTimers, webex;
+      let mobiusSocket;
+      let mockWebSocket;
+      let originalSendSpy;
+      let socketOpenStub;
+      let usingFakeTimers;
+      let webex;
 
       const fakeTestMessage = {
-        id: uuid(),
+        id: createUuid(),
         data: {
           eventType: 'fake.test',
         },
         timestamp: Date.now(),
-        trackingId: `suffix_${uuid()}_${Date.now()}`,
+        trackingId: `suffix_${createUuid()}_${Date.now()}`,
       };
 
       const statusStartTypingMessage = {
-        id: uuid(),
+        id: createUuid(),
         data: {
           eventType: 'status.start_typing',
           actor: {
             id: 'actorId',
           },
-          conversationId: uuid(),
+          conversationId: createUuid(),
         },
         timestamp: Date.now(),
-        trackingId: `suffix_${uuid()}_${Date.now()}`,
+        trackingId: `suffix_${createUuid()}_${Date.now()}`,
         sessionId: 'mobius-websocket-session',
       };
 
@@ -243,7 +257,7 @@ describe('plugin-mobiusSocket', () => {
                   mockWebSocket.emit('open');
                   mockWebSocket.emit('message', {
                     data: JSON.stringify({
-                      id: uuid(),
+                      id: createUuid(),
                       data: {
                         eventType: 'mercury.buffer_state',
                       },
@@ -251,7 +265,11 @@ describe('plugin-mobiusSocket', () => {
                   });
                   // using lengthOf because notCalled doesn't allow the helpful
                   // string assertion
-                  assert.lengthOf(sendSpy.args, 0, 'The client has not acked the buffer_state message');
+                  assert.lengthOf(
+                    sendSpy.args,
+                    0,
+                    'The client has not acked the buffer_state message'
+                  );
 
                   promiseTick(1)
                     .then(() => {
@@ -373,7 +391,11 @@ describe('plugin-mobiusSocket', () => {
                 })
                 .then(() => {
                   assert.called(offlineSpy);
-                  assert.calledWith(offlineSpy, {code, reason, sessionId: 'mobius-websocket-session'});
+                  assert.calledWith(offlineSpy, {
+                    code,
+                    reason,
+                    sessionId: 'mobius-websocket-session',
+                  });
                   switch (action) {
                     case 'close':
                       assert.called(permanentSpy);
