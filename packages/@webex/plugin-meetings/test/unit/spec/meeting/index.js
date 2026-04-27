@@ -11422,15 +11422,15 @@ describe('plugin-meetings', () => {
           assert.notCalled(fetchMeetingInfoStub);
         });
 
-        it('swallows sync fetchMeetingInfo errors and logs info', () => {
+        it('swallows async fetchMeetingInfo errors and logs info', async () => {
           const error = new Error('fetch failed');
 
           meeting.meetingInfo = {};
           meeting.destination = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
-          sinon.stub(meeting, 'fetchMeetingInfo').throws(error);
+          sinon.stub(meeting, 'fetchMeetingInfo').returns(Promise.reject(error));
           const loggerInfoStub = sinon.stub(LoggerProxy.logger, 'info');
 
-          meeting.finalizeMeetingAfterInitialLocusSetup({});
+          await meeting.finalizeMeetingAfterInitialLocusSetup({});
 
           assert.calledOnce(loggerInfoStub);
           assert.match(

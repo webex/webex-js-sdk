@@ -586,17 +586,19 @@ export default class Meetings extends WebexPlugin {
           meeting = newMeeting;
           try {
             // It's a new meeting so initialize the locus data
-            await meeting.locusInfo.initialSetup({
-              trigger:
-                data.eventType === LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS
-                  ? 'get-loci-response'
-                  : 'locus-message',
-              locus: data.locus,
-              hashTreeMessage: data.stateElementsMessage,
-              onLocusSynced: (locus: LocusDTO) => {
-                meeting.finalizeMeetingAfterInitialLocusSetup(locus);
+            await meeting.locusInfo.initialSetup(
+              {
+                trigger:
+                  data.eventType === LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS
+                    ? 'get-loci-response'
+                    : 'locus-message',
+                locus: data.locus,
+                hashTreeMessage: data.stateElementsMessage,
               },
-            });
+              (locus: LocusDTO) => {
+                meeting.finalizeMeetingAfterInitialLocusSetup(locus);
+              }
+            );
           } catch (error) {
             LoggerProxy.logger.warn(
               `Meetings:index#handleLocusEvent --> Error initializing locus data: ${error.message}`
@@ -1781,7 +1783,7 @@ export default class Meetings extends WebexPlugin {
           await meeting.fetchMeetingInfo(meetingInfoOptions);
         } else {
           LoggerProxy.logger.info(
-            'Meetings:index#createMeeting --> defer fetchMeetingInfo for incomplete locus, will retry after locus initialSetup'
+            'Meetings:index#createMeeting --> defer fetchMeetingInfo for incomplete locus, will do it after locus initialSetup'
           );
         }
       }

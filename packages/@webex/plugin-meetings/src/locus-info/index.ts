@@ -582,6 +582,7 @@ export default class LocusInfo extends EventsScope {
 
   /**
    * @param {Object} data - data to initialize locus info with. It may be from a join or GET /loci response or from a Mercury event that triggers a creation of meeting object
+   * @param {Function} [onLocusSynced] - optional callback that will be called at the end of initial setup, when locus info is fully synced. It will be called with the full locus snapshot as an argument (which may be null if we haven't received any full locus DTOs during the initial setup, for example in case we receive only hash tree messages without full locus DTOs)
    * @returns {undefined}
    * @memberof LocusInfo
    */
@@ -592,19 +593,17 @@ export default class LocusInfo extends EventsScope {
           locus: LocusDTO;
           dataSets?: DataSet[];
           metadata?: Metadata;
-          onLocusSynced?: (locus: LocusDTO) => void;
         }
       | {
           trigger: 'locus-message';
           locus?: LocusDTO;
           hashTreeMessage?: HashTreeMessage;
-          onLocusSynced?: (locus: LocusDTO) => void;
         }
       | {
           trigger: 'get-loci-response';
           locus?: LocusDTO;
-          onLocusSynced?: (locus: LocusDTO) => void;
-        }
+        },
+    onLocusSynced?: (locus: LocusDTO) => void
   ) {
     let initialFullLocus: LocusDTO | null = null;
     switch (data.trigger) {
@@ -681,9 +680,9 @@ export default class LocusInfo extends EventsScope {
         }
     }
 
-    if (data.onLocusSynced) {
+    if (onLocusSynced) {
       try {
-        data.onLocusSynced(initialFullLocus || this.getCurrentLocusSnapshot());
+        onLocusSynced(initialFullLocus || this.getCurrentLocusSnapshot());
       } catch (error) {
         LoggerProxy.logger.warn(
           `Locus-info:index#initialSetup --> onLocusSynced callback failed: ${error}`

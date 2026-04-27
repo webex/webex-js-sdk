@@ -221,6 +221,47 @@ describe('plugin-meetings', () => {
         assert.isTrue(locusInfo.emitChange);
       });
 
+      it('calls onLocusSynced callback passed as second argument with full locus from join response', async () => {
+        const syncedLocus = {url: 'http://locus-url.com', participants: []};
+        const onLocusSynced = sinon.stub();
+
+        await locusInfo.initialSetup(
+          {
+            trigger: 'join-response',
+            locus: syncedLocus,
+          },
+          onLocusSynced
+        );
+
+        assert.calledOnceWithExactly(onLocusSynced, syncedLocus);
+      });
+
+      it('swallows onLocusSynced callback errors and logs warn', async () => {
+        const syncedLocus = {url: 'http://locus-url.com', participants: []};
+        const callbackError = new Error('onLocusSynced failed');
+        const onLocusSynced = sinon.stub().throws(callbackError);
+        const loggerWarnStub = LoggerProxy.logger.warn?.isSinonProxy
+          ? LoggerProxy.logger.warn
+          : sinon.stub(LoggerProxy.logger, 'warn');
+
+        loggerWarnStub.resetHistory();
+
+        await locusInfo.initialSetup(
+          {
+            trigger: 'join-response',
+            locus: syncedLocus,
+          },
+          onLocusSynced
+        );
+
+        assert.calledOnceWithExactly(onLocusSynced, syncedLocus);
+        assert.calledOnce(loggerWarnStub);
+        assert.match(
+          loggerWarnStub.firstCall.args[0],
+          /Locus-info:index#initialSetup --> onLocusSynced callback failed/
+        );
+      });
+
       it('should initialize the hash tree parser correctly when triggered from a get loci response containing visible datasets', async () => {
         const visibleDataSets = ['dataset1', 'dataset2'];
         const locus = createLocusWithVisibleDataSets(visibleDataSets);

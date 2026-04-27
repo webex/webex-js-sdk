@@ -4665,7 +4665,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @param {LocusDTO} locus
    * @returns {void}
    */
-  public finalizeMeetingAfterInitialLocusSetup(locus: LocusDTO): void {
+  public async finalizeMeetingAfterInitialLocusSetup(locus: LocusDTO): Promise<void> {
     if (locus && this?.destinationType === DESTINATION_TYPE.LOCUS_ID) {
       // destination is initialized from the initial locus snapshot in constructor,
       // so refresh it after locus sync to avoid stale partial hash-tree data.
@@ -4677,7 +4677,7 @@ export default class Meeting extends StatelessWebexPlugin {
       !this.fetchMeetingInfoTimeoutId
     ) {
       try {
-        this.fetchMeetingInfo({});
+        await this.fetchMeetingInfo({});
       } catch (error: any) {
         LoggerProxy.logger.info(
           `Meeting:index#finalizeMeetingAfterInitialLocusSetup --> deferred fetchMeetingInfo failed: ${error.message}`
