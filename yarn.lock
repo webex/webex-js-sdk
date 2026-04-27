@@ -7443,6 +7443,7 @@ __metadata:
     "@webex/internal-plugin-feature": "workspace:*"
     "@webex/internal-plugin-metrics": "workspace:*"
     "@webex/media-helpers": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
     "@webex/test-helper-mock-web-socket": "workspace:*"
     "@webex/test-helper-mock-webex": "workspace:*"
     async-mutex: 0.4.0

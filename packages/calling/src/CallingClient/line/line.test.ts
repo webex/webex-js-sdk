@@ -210,7 +210,8 @@ describe('Line Tests', () => {
           method: 'triggerRegistration',
         },
         expect.anything(),
-        expect.anything()
+        expect.anything(),
+        expect.any(Number)
       );
     });
 

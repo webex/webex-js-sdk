@@ -937,10 +937,10 @@ export class Registration implements IRegistration {
       } catch (err: unknown) {
         const body = err as WebexRequestPayload;
         // eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-unused-vars
-        abort = await handleRegistrationErrors(
+        const {finalError, shouldDisconnect} = await handleRegistrationErrors(
           body,
-          (clientError, finalError) => {
-            if (finalError) {
+          (clientError, isFinalError) => {
+            if (isFinalError) {
               this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
             } else {
               this.lineEmitter(LINE_EVENTS.UNREGISTERED);
@@ -958,8 +958,12 @@ export class Registration implements IRegistration {
           },
           {method: caller, file: REGISTRATION_FILE},
           (retryAfter: number, retryCaller: string) => this.handle429Retry(retryAfter, retryCaller),
-          this.restoreRegistrationCallBack()
+          this.restoreRegistrationCallBack(),
+          servers.length
         );
+
+        abort = finalError;
+
         if (this.registrationStatus === RegistrationStatus.ACTIVE) {
           log.info(
             `[${caller}] : Device is already restored, active mobius url: ${this.activeMobiusUrl}`,
@@ -976,7 +980,7 @@ export class Registration implements IRegistration {
          * 2. We are not tearing down the socket if there is only one server in the list during the failover/re-attempt process.
          * 3. Connection should not be torn down for 429 error case because retry will happen, which takes care disconnect/connect step.
          */
-        if (servers.length > 1 && this.apiRequest.isSocketEnabled() && body.statusCode !== 429) {
+        if (shouldDisconnect && this.apiRequest.isSocketEnabled()) {
           connectedWebSocketUrl = undefined;
           // eslint-disable-next-line no-await-in-loop
           await this.apiRequest.disconnectFromMobiusSocket({
@@ -1063,7 +1067,7 @@ export class Registration implements IRegistration {
                 logContext
               );
 
-              const abort = await handleRegistrationErrors(
+              const {finalError: abort} = await handleRegistrationErrors(
                 error,
                 (clientError, finalError) => {
                   if (finalError) {
