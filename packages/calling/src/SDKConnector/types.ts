@@ -143,6 +143,7 @@ export interface WebexSDK {
         mobius: string;
       };
       get: (service: string) => string;
+      waitForCatalog: (type: string) => Promise<void>;
       getMobiusClusters: () => ServiceHost[];
       fetchClientRegionInfo: () => Promise<ClientRegionInfo>;
     };

@@ -220,15 +220,11 @@ describe('CallingClient Tests', () => {
      *
      * DOMAIN field for service type 'contactcenter' must carry a non-empty valid domain type string.
      */
-    it('ContactCenter: verify empty invalid service domain', async () => {
+    it('ContactCenter: verify empty domain is allowed (auto-fetch from catalog)', async () => {
       const serviceDataObj = {indicator: ServiceIndicator.CONTACT_CENTER, domain: ''};
 
-      try {
-        callingClient = await createClient(webex, {serviceData: serviceDataObj});
-      } catch (e) {
-        expect(e.message).toEqual('Invalid service domain.');
-      }
-      expect.assertions(1);
+      callingClient = await createClient(webex, {serviceData: serviceDataObj});
+      expect(callingClient).toBeTruthy();
     });
 
     /**

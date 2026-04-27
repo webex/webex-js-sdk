@@ -50,6 +50,9 @@ import {
   METHODS,
   NETWORK_FLAP_TIMEOUT,
   DEVICES_ENDPOINT_RESOURCE,
+  POST_AUTH,
+  WCC_CALLING_RTMS_DOMAIN,
+  DEFAULT_RTMS_DOMAIN,
 } from './constants';
 import Line from './line';
 import {ILine} from './line/types';
@@ -202,9 +205,58 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }
 
     await this.getMobiusServers();
+
+    // Auto-fetch RTMS domain from service catalog for contact-center flows
+    if (
+      this.sdkConfig?.serviceData?.indicator === ServiceIndicator.CONTACT_CENTER &&
+      !this.sdkConfig?.serviceData?.domain
+    ) {
+      const rtmsDomain = await this.getRTMSDomain();
+
+      if (this.sdkConfig.serviceData) {
+        this.sdkConfig.serviceData.domain = rtmsDomain;
+      }
+    }
+
     await this.createLine();
 
     this.setupNetworkEventListeners();
+  }
+
+  /**
+   * Retrieves the RTMS domain from the service catalog for contact-center flows.
+   * Falls back to the default RTMS domain if the catalog lookup fails.
+   *
+   * @returns The RTMS domain to use.
+   */
+  private async getRTMSDomain(): Promise<string> {
+    log.info('Fetching RTMS domain from service catalog', {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.GET_RTMS_DOMAIN,
+    });
+
+    try {
+      await this.webex.internal.services.waitForCatalog(POST_AUTH);
+      const rtmsURL = this.webex.internal.services.get(WCC_CALLING_RTMS_DOMAIN);
+      const url = new URL(rtmsURL);
+
+      log.info(`RTMS domain resolved from catalog: ${url.hostname}`, {
+        file: CALLING_CLIENT_FILE,
+        method: METHODS.GET_RTMS_DOMAIN,
+      });
+
+      return url.hostname;
+    } catch (error) {
+      log.warn(
+        `Failed to fetch RTMS domain from service catalog, falling back to default: ${error}`,
+        {
+          file: CALLING_CLIENT_FILE,
+          method: METHODS.GET_RTMS_DOMAIN,
+        }
+      );
+
+      return DEFAULT_RTMS_DOMAIN;
+    }
   }
 
   /**
