@@ -2,6 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
+import {randomUUID} from 'crypto';
 import {forEach} from 'lodash';
 import {assert} from '@webex/test-helper-chai';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
@@ -14,23 +15,28 @@ import {
   config,
   ConnectionError,
   Socket,
-} from '../../../src';
-import uuid from 'uuid';
-import FakeTimers from '@sinonjs/fake-timers';
-import {MESSAGE_TYPES} from '../../../src/socket/constants';
+} from './index';
+import {MESSAGE_TYPES} from './socket/constants';
+
+if (!crypto.randomUUID) {
+  Object.defineProperty(crypto, 'randomUUID', {
+    value: randomUUID,
+    configurable: true,
+  });
+}
 
 describe('plugin-mobius-socket', () => {
   describe('Socket', () => {
-    let clock, mockWebSocket, socket;
+    let mockWebSocket;
+    let socket;
+    let usingFakeTimers;
 
-    const mockoptions = Object.assign(
-      {
-        logger: console,
-        token: 'mocktoken',
-        trackingId: 'mocktrackingid',
-      },
-      config.mobiusSocket
-    );
+    const mockoptions = {
+      logger: console,
+      token: 'mocktoken',
+      trackingId: 'mocktrackingid',
+      ...config.mobiusSocket,
+    };
 
     const emitAuthResponse = ({statusCode = 200, statusMessage = 'OK'} = {}) => {
       const authRequest = JSON.parse(mockWebSocket.send.lastCall.args[0]);
@@ -47,11 +53,8 @@ describe('plugin-mobius-socket', () => {
     };
 
     beforeEach(() => {
-      clock = FakeTimers.install({now: Date.now()});
-    });
-
-    afterEach(() => {
-      clock.uninstall();
+      jest.useFakeTimers({doNotFake: ['nextTick']});
+      usingFakeTimers = true;
     });
 
     beforeEach(() => {
@@ -63,7 +66,6 @@ describe('plugin-mobius-socket', () => {
             return mockWebSocket;
           }
       );
-
 
       socket = new Socket();
       const promise = socket.open('ws://example.com', mockoptions);
@@ -78,8 +80,12 @@ describe('plugin-mobius-socket', () => {
     });
 
     afterEach(() => {
-      Socket.getWebSocketConstructor.restore();
+      if (usingFakeTimers) {
+        jest.useRealTimers();
+        usingFakeTimers = false;
+      }
 
+      Socket.getWebSocketConstructor.restore();
 
       return Promise.resolve(socket && socket.close()).then(() => {
         mockWebSocket = undefined;
@@ -470,7 +476,7 @@ describe('plugin-mobius-socket', () => {
 
           const promise = socket.close();
 
-          clock.tick(mockoptions.forceCloseDelay);
+          jest.advanceTimersByTime(mockoptions.forceCloseDelay);
 
           return promise.then(() => {
             assert.called(spy);
@@ -502,7 +508,7 @@ describe('plugin-mobius-socket', () => {
 
           const promise = socket.close({code: 3050, reason: 'done (permanent)'});
 
-          clock.tick(mockoptions.forceCloseDelay);
+          jest.advanceTimersByTime(mockoptions.forceCloseDelay);
 
           return promise.then(() => {
             assert.called(spy);
@@ -534,7 +540,7 @@ describe('plugin-mobius-socket', () => {
 
           const promise = socket.close({code: 1000, reason: 'test'});
 
-          clock.tick(mockoptions.forceCloseDelay);
+          jest.advanceTimersByTime(mockoptions.forceCloseDelay);
 
           return promise.then(() => {
             assert.called(spy);
@@ -566,7 +572,7 @@ describe('plugin-mobius-socket', () => {
 
           const promise = socket.close({code: 1000});
 
-          clock.tick(mockoptions.forceCloseDelay);
+          jest.advanceTimersByTime(mockoptions.forceCloseDelay);
 
           return promise.then(() => {
             assert.called(spy);
@@ -603,6 +609,7 @@ describe('plugin-mobius-socket', () => {
             () =>
               function (...args) {
                 socketInstance = new MockWebSocket(...args);
+
                 return socketInstance;
               }
           );
@@ -679,7 +686,6 @@ describe('plugin-mobius-socket', () => {
     });
 
     describe('#onclose()', () => {
-
       describe('when it receives close code 1005', () => {
         forEach(
           {
@@ -708,7 +714,7 @@ describe('plugin-mobius-socket', () => {
       });
 
       describe('when it receives close code 3050', () => {
-        it(`emits code 3050 for code 3050`, () => {
+        it('emits code 3050 for code 3050', () => {
           const code = 3050;
           const reason = 'done (permanent)';
           const spy = sinon.spy();
@@ -837,7 +843,5 @@ describe('plugin-mobius-socket', () => {
             );
           }));
     });
-
-
   });
 });

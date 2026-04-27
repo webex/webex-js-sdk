@@ -31,7 +31,7 @@ import {CallError} from '../../Errors';
 import {METHOD_START_MESSAGE} from '../../common/constants';
 import {APIRequest} from '../utils/request';
 
-jest.mock('@webex/internal-plugin-mobius-socket', () => ({
+jest.mock('../../mobius-socket', () => ({
   getMobiusSocketInstance: jest.fn().mockReturnValue({
     sendWssRequest: jest.fn(),
   }),
