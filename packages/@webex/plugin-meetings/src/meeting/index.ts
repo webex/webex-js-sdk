@@ -5066,6 +5066,22 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Removes the Mercury ONLINE/OFFLINE event listeners registered by
+   * setMercuryListener(). Must be called before Locus /leave to avoid
+   * unnecessary syncs/metrics triggered by events received while leaving
+   * (per Locus team recommendation).
+   * Idempotent: safe to call when no listeners are registered.
+   * @private
+   * @returns {void}
+   */
+  private stopListeningForMercuryEvents() {
+    // @ts-ignore
+    this.webex.internal.mercury.off(ONLINE);
+    // @ts-ignore
+    this.webex.internal.mercury.off(OFFLINE);
+  }
+
+  /**
    * Close the peer connections and remove them from the class.
    * Cleanup any media connection related things.
    *
@@ -6182,6 +6198,49 @@ export default class Meeting extends StatelessWebexPlugin {
       clearTimeout(this.llmHealthCheckTimer);
       this.llmHealthCheckTimer = undefined;
     }
+  }
+
+  /**
+   * Removes LLM event listeners and clears the health check timer.
+   * Must be called before Locus /leave to avoid unnecessary syncs triggered
+   * by events received while leaving (per Locus team recommendation).
+   * Idempotent: safe to call multiple times; .off() is a no-op when no
+   * matching listener is registered.
+   * @private
+   * @returns {void}
+   */
+  private stopListeningForLLMEvents() {
+    // @ts-ignore - fix types
+    this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
+    // @ts-ignore - fix types
+    this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+    this.clearLLMHealthCheckTimer();
+  }
+
+  /**
+   * Stops listening on every event bus (LLM, Mercury, voicea/transcription,
+   * annotation) that could otherwise deliver events to this meeting while
+   * Locus is processing /leave or /end. Per the Locus team recommendation,
+   * this must run before the Locus request is dispatched to avoid
+   * unnecessary syncs triggered by in-flight events.
+   *
+   * Voicea (transcription) subscribes to llm 'event:relay.event' internally,
+   * and the annotation plugin subscribes to both mercury and llm, so both
+   * must be torn down alongside the direct LLM/Mercury listeners.
+   *
+   * Idempotent: safe to call multiple times; .off() is a no-op when no
+   * matching listener is registered, and stopTranscription is guarded.
+   * @private
+   * @returns {void}
+   */
+  private stopListeningForMeetingEvents() {
+    this.stopListeningForLLMEvents();
+    this.stopListeningForMercuryEvents();
+    if (this.transcription) {
+      this.stopTranscription();
+      this.transcription = undefined;
+    }
+    this.annotation.deregisterEvents();
   }
 
   /**
@@ -8571,6 +8630,8 @@ export default class Meeting extends StatelessWebexPlugin {
       });
     LoggerProxy.logger.log('Meeting:index#leave --> Leaving a meeting');
 
+    this.stopListeningForMeetingEvents();
+
     return MeetingUtil.leaveMeeting(this, options)
       .then((leave) => {
         // CA team recommends submitting this *after* locus /leave
@@ -9435,6 +9496,8 @@ export default class Meeting extends StatelessWebexPlugin {
       locus_id: this.locusId,
     });
 
+    this.stopListeningForMeetingEvents();
+
     return MeetingUtil.endMeetingForAll(this)
       .then((end) => {
         this.meetingFiniteStateMachine.end();
@@ -9495,20 +9558,6 @@ export default class Meeting extends StatelessWebexPlugin {
       this.shareStatus = SHARE_STATUS.NO_SHARE;
     }
     this.queuedMediaUpdates = [];
-
-    if (this.transcription) {
-      this.stopTranscription();
-      this.transcription = undefined;
-    }
-
-    this.annotation.deregisterEvents();
-
-    // @ts-ignore - fix types
-    this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
-    // @ts-ignore - Fix type
-    this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
-
-    this.clearLLMHealthCheckTimer();
   };
 
   /**

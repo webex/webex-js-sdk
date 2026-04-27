@@ -34,6 +34,7 @@ import {
   ONLINE,
   OFFLINE,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
+  LOCUS_LLM_EVENT,
 } from '@webex/plugin-meetings/src/constants';
 import {
   ConnectionState,
@@ -6377,6 +6378,7 @@ describe('plugin-meetings', () => {
 
           meeting.annotation.deregisterEvents = sinon.stub();
           webex.internal.llm.off = sinon.stub();
+          webex.internal.mercury.off = sinon.stub();
 
           // A meeting needs to be joined to leave
           meeting.meetingState = 'ACTIVE';
@@ -6400,6 +6402,42 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.stopTranscription);
           assert.calledOnce(meeting.annotation.deregisterEvents);
           assert.calledWith(webex.internal.llm.off, 'event:relay.event', meeting.processRelayEvent);
+        });
+
+        it('stops listening for LLM/Mercury and tears down transcription and annotation before calling Locus /leave', async () => {
+          await meeting.leave();
+
+          // All llm/mercury consumers (direct listeners, voicea transcription,
+          // annotation) must be detached before the /leave request so that
+          // in-flight events do not trigger unnecessary Locus syncs
+          // (per Locus team recommendation).
+          assert.callOrder(
+            webex.internal.llm.off,
+            webex.internal.mercury.off,
+            meeting.stopTranscription,
+            meeting.annotation.deregisterEvents,
+            meeting.meetingRequest.leaveMeeting
+          );
+          assert.calledWith(webex.internal.llm.off, 'event:relay.event', meeting.processRelayEvent);
+          assert.calledWith(webex.internal.llm.off, LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
+          assert.calledWith(webex.internal.mercury.off, ONLINE);
+          assert.calledWith(webex.internal.mercury.off, OFFLINE);
+          assert.isUndefined(meeting.transcription);
+        });
+
+        it('tears down llm/mercury/transcription/annotation even when /leave rejects', async () => {
+          meeting.meetingRequest.leaveMeeting = sinon
+            .stub()
+            .returns(Promise.reject(new Error('leave failed')));
+
+          await meeting.leave().catch(() => {});
+
+          assert.calledWith(webex.internal.llm.off, 'event:relay.event', meeting.processRelayEvent);
+          assert.calledWith(webex.internal.llm.off, LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
+          assert.calledWith(webex.internal.mercury.off, ONLINE);
+          assert.calledWith(webex.internal.mercury.off, OFFLINE);
+          assert.calledOnce(meeting.stopTranscription);
+          assert.calledOnce(meeting.annotation.deregisterEvents);
         });
 
         it('should reset call diagnostic latencies correctly', async () => {
@@ -8406,6 +8444,7 @@ describe('plugin-meetings', () => {
 
           meeting.annotation.deregisterEvents = sinon.stub();
           webex.internal.llm.off = sinon.stub();
+          webex.internal.mercury.off = sinon.stub();
 
           // A meeting needs to be joined to end
           meeting.meetingState = 'ACTIVE';
@@ -8430,6 +8469,26 @@ describe('plugin-meetings', () => {
 
           assert.called(meeting.annotation.deregisterEvents);
           assert.calledWith(webex.internal.llm.off, 'event:relay.event', meeting.processRelayEvent);
+        });
+
+        it('stops listening for LLM/Mercury and tears down transcription and annotation before calling Locus /end', async () => {
+          await meeting.endMeetingForAll();
+
+          // All llm/mercury consumers (direct listeners, voicea transcription,
+          // annotation) must be detached before the /end request so that
+          // in-flight events do not trigger unnecessary Locus syncs
+          // (per Locus team recommendation).
+          assert.callOrder(
+            webex.internal.llm.off,
+            webex.internal.mercury.off,
+            meeting.stopTranscription,
+            meeting.annotation.deregisterEvents,
+            meeting.meetingRequest.endMeetingForAll
+          );
+          assert.calledWith(webex.internal.llm.off, 'event:relay.event', meeting.processRelayEvent);
+          assert.calledWith(webex.internal.llm.off, LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
+          assert.calledWith(webex.internal.mercury.off, ONLINE);
+          assert.calledWith(webex.internal.mercury.off, OFFLINE);
         });
       });
 
