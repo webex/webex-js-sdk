@@ -193,7 +193,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   public getShowInterstitialTime() {
     return this.getDiffBetweenTimestamps(
-      'client.interstitial-window.start-launch',
+      'internal.client.meeting.interstitial-window.showed',
       'internal.client.interstitial-window.click.joinbutton'
     );
   }
@@ -224,11 +224,17 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getCallInitJoinReq() {
-    return this.getDiffBetweenTimestamps(
-      'internal.client.interstitial-window.click.joinbutton',
-      'client.locus.join.request',
-      {maximum: 1200000}
+    const interstitialShowedToJoinReq = this.getDiffBetweenTimestamps(
+      'internal.client.meeting.interstitial-window.showed',
+      'client.locus.join.request'
     );
+    const showInterstitialTime = this.getShowInterstitialTime() || 0;
+
+    if (typeof interstitialShowedToJoinReq !== 'number') {
+      return undefined;
+    }
+
+    return clamp(interstitialShowedToJoinReq - showInterstitialTime, 0, 1200000);
   }
 
   /**
@@ -303,10 +309,39 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getStayLobbyTime() {
-    return this.getDiffBetweenTimestamps(
-      'client.locus.join.response',
-      'internal.host.meeting.participant.admitted'
-    );
+    return this.getDiffBetweenTimestamps('client.lobby.entered', 'client.lobby.exited');
+  }
+
+  /**
+   * Stay lobby time capped by a certain timestamp.
+   * This is to handle the case where the target end timestamp could happen before the lobby is exited,
+   * for example media-engine.ready or client.ice.end
+   * This is supposed to be called AFTER the end timestamp happens
+   * @param endTimestampKey name of the target end event
+   * @returns - latency
+   */
+  public getStayLobbyTimeCappedBy(endTimestampKey: MetricEventNames) {
+    const lobbyStartTimestamp = this.latencyTimestamps.get('client.lobby.entered'); // might not exist (some meetings don't have lobby)
+
+    if (typeof lobbyStartTimestamp !== 'number') {
+      // no lobby in the meeting, stayLobbyTime is 0
+      return 0;
+    }
+
+    const lobbyEndTimestamp = this.latencyTimestamps.get('client.lobby.exited'); // might not exist (if user still in lobby at the time of measurement)
+    const maximumEndTimestamp = this.latencyTimestamps.get(endTimestampKey); // must exist
+
+    if (typeof maximumEndTimestamp !== 'number') {
+      // the provided timestamp to be used as a cap should exist, return undefined if it doesn't
+      return undefined;
+    }
+
+    const endTimestamp =
+      typeof lobbyEndTimestamp === 'number'
+        ? Math.min(lobbyEndTimestamp, maximumEndTimestamp)
+        : maximumEndTimestamp;
+
+    return clamp(endTimestamp - lobbyStartTimestamp, 0, this.MAX_INTEGER);
   }
 
   /**
@@ -334,14 +369,6 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getClickToInterstitial() {
-    // for normal join (where green join button exists before interstitial, i.e reminder, space list etc)
-    if (this.latencyTimestamps.get('internal.client.meeting.click.joinbutton')) {
-      return this.getDiffBetweenTimestamps(
-        'internal.client.meeting.click.joinbutton',
-        'internal.client.meeting.interstitial-window.showed'
-      );
-    }
-
     const clickToInterstitialLatency = this.precomputedLatencies.get(
       'internal.click.to.interstitial'
     );
@@ -358,14 +385,6 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getClickToInterstitialWithUserDelay() {
-    // for normal join (where green join button exists before interstitial, i.e reminder, space list etc)
-    if (this.latencyTimestamps.get('internal.client.meeting.click.joinbutton')) {
-      return this.getDiffBetweenTimestamps(
-        'internal.client.meeting.click.joinbutton',
-        'internal.client.meeting.interstitial-window.showed'
-      );
-    }
-
     const clickToInterstitialWithUserDelayLatency = this.precomputedLatencies.get(
       'internal.click.to.interstitial.with.user.delay'
     );
@@ -382,10 +401,17 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getInterstitialToJoinOK() {
-    return this.getDiffBetweenTimestamps(
-      'internal.client.interstitial-window.click.joinbutton',
+    const interstitialShowedToJoinResp = this.getDiffBetweenTimestamps(
+      'internal.client.meeting.interstitial-window.showed',
       'client.locus.join.response'
     );
+    const showInterstitialTime = this.getShowInterstitialTime() || 0;
+
+    if (typeof interstitialShowedToJoinResp !== 'number') {
+      return undefined;
+    }
+
+    return clamp(interstitialShowedToJoinResp - showInterstitialTime, 0, this.MAX_INTEGER);
   }
 
   /**
@@ -393,11 +419,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getCallInitMediaEngineReady() {
-    return this.getDiffBetweenTimestamps(
-      'internal.client.interstitial-window.click.joinbutton',
-      'client.media-engine.ready',
-      {maximum: 1200000}
-    );
+    return this.getInterstitialToMediaOKJMT();
   }
 
   /**
@@ -405,20 +427,22 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getInterstitialToMediaOKJMT() {
-    const interstitialJoinClickTimestamp = this.latencyTimestamps.get(
-      'internal.client.interstitial-window.click.joinbutton'
+    const interstitialShowedToIceEnd = this.getDiffBetweenTimestamps(
+      'internal.client.meeting.interstitial-window.showed',
+      'client.ice.end'
     );
+    const showInterstitialTime = this.getShowInterstitialTime() || 0;
+    const stayLobbyTimeCappedByIceEnd = this.getStayLobbyTimeCappedBy('client.ice.end');
 
-    // get the first timestamp
-    const connectedMedia = this.latencyTimestamps.get('client.ice.end');
-
-    const lobbyTimeLatency = this.getStayLobbyTime();
-    const lobbyTime = typeof lobbyTimeLatency === 'number' ? lobbyTimeLatency : 0;
-
-    if (interstitialJoinClickTimestamp && connectedMedia) {
-      const interstitialToMediaOKJmt = connectedMedia - interstitialJoinClickTimestamp - lobbyTime;
-
-      return clamp(interstitialToMediaOKJmt, 0, this.MAX_INTEGER);
+    if (
+      typeof interstitialShowedToIceEnd === 'number' &&
+      typeof stayLobbyTimeCappedByIceEnd === 'number'
+    ) {
+      return clamp(
+        interstitialShowedToIceEnd - showInterstitialTime - stayLobbyTimeCappedByIceEnd,
+        0,
+        this.MAX_INTEGER
+      );
     }
 
     return undefined;
@@ -430,10 +454,21 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   public getTotalJMT() {
     const clickToInterstitial = this.getClickToInterstitial();
-    const interstitialToJoinOk = this.getInterstitialToJoinOK();
+    const interstitialShowedToJoinLocusResponse = this.getDiffBetweenTimestamps(
+      'internal.client.meeting.interstitial-window.showed',
+      'client.locus.join.response'
+    );
+    const showInterstitialTime = this.getShowInterstitialTime() || 0;
 
-    if (typeof clickToInterstitial === 'number' && typeof interstitialToJoinOk === 'number') {
-      return clamp(clickToInterstitial + interstitialToJoinOk, 0, this.MAX_INTEGER);
+    if (
+      typeof clickToInterstitial === 'number' &&
+      typeof interstitialShowedToJoinLocusResponse === 'number'
+    ) {
+      return clamp(
+        clickToInterstitial + interstitialShowedToJoinLocusResponse - showInterstitialTime,
+        0,
+        this.MAX_INTEGER
+      );
     }
 
     return undefined;
@@ -445,13 +480,20 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   public getTotalJMTWithUserDelay() {
     const clickToInterstitialWithUserDelay = this.getClickToInterstitialWithUserDelay();
-    const interstitialToJoinOk = this.getInterstitialToJoinOK();
+    const interstitialShowedToJoinLocusResponse = this.getDiffBetweenTimestamps(
+      'internal.client.meeting.interstitial-window.showed',
+      'client.locus.join.response'
+    );
 
     if (
       typeof clickToInterstitialWithUserDelay === 'number' &&
-      typeof interstitialToJoinOk === 'number'
+      typeof interstitialShowedToJoinLocusResponse === 'number'
     ) {
-      return clamp(clickToInterstitialWithUserDelay + interstitialToJoinOk, 0, this.MAX_INTEGER);
+      return clamp(
+        clickToInterstitialWithUserDelay + interstitialShowedToJoinLocusResponse,
+        0,
+        this.MAX_INTEGER
+      );
     }
 
     return undefined;
@@ -478,21 +520,28 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   public getTotalMediaJMT() {
     const clickToInterstitial = this.getClickToInterstitial();
-    const interstitialToJoinOk = this.getInterstitialToJoinOK();
-    const joinConfJMT = this.getJoinConfJMT();
-    const lobbyTime = this.getStayLobbyTime();
+    const interstitialShowedToMediaEngineReady = this.getDiffBetweenTimestamps(
+      'internal.client.meeting.interstitial-window.showed',
+      'client.media-engine.ready'
+    );
+    const showInterstitialTime = this.getShowInterstitialTime() || 0;
+    const stayLobbyTimeCappedByMediaEngineReady = this.getStayLobbyTimeCappedBy(
+      'client.media-engine.ready'
+    );
 
-    if (clickToInterstitial && interstitialToJoinOk && joinConfJMT) {
-      const totalMediaJMT = clamp(
-        clickToInterstitial + interstitialToJoinOk + joinConfJMT,
+    if (
+      typeof clickToInterstitial === 'number' &&
+      typeof interstitialShowedToMediaEngineReady === 'number' &&
+      typeof stayLobbyTimeCappedByMediaEngineReady === 'number'
+    ) {
+      return clamp(
+        clickToInterstitial +
+          interstitialShowedToMediaEngineReady -
+          showInterstitialTime -
+          stayLobbyTimeCappedByMediaEngineReady,
         0,
-        Infinity
+        this.MAX_INTEGER
       );
-      if (this.getMeeting()?.allowMediaInLobby) {
-        return clamp(totalMediaJMT, 0, this.MAX_INTEGER);
-      }
-
-      return clamp(totalMediaJMT - lobbyTime, 0, this.MAX_INTEGER);
     }
 
     return undefined;
@@ -504,12 +553,17 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   public getTotalMediaJMTWithUserDelay() {
     const clickToInterstitialWithUserDelay = this.getClickToInterstitialWithUserDelay();
-    const interstitialToJoinOk = this.getInterstitialToJoinOK();
-    const joinConfJMT = this.getJoinConfJMT();
+    const interstitialShowedToMediaEngineReady = this.getDiffBetweenTimestamps(
+      'internal.client.meeting.interstitial-window.showed',
+      'client.media-engine.ready'
+    );
 
-    if (clickToInterstitialWithUserDelay && interstitialToJoinOk && joinConfJMT) {
+    if (
+      typeof clickToInterstitialWithUserDelay === 'number' &&
+      typeof interstitialShowedToMediaEngineReady === 'number'
+    ) {
       return clamp(
-        clickToInterstitialWithUserDelay + interstitialToJoinOk + joinConfJMT,
+        clickToInterstitialWithUserDelay + interstitialShowedToMediaEngineReady,
         0,
         this.MAX_INTEGER
       );
@@ -523,11 +577,26 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns - latency
    */
   public getClientJMT() {
-    const interstitialToJoinOk = this.getInterstitialToJoinOK();
-    const joinConfJMT = this.getJoinConfJMT();
+    const clickToInterstitialForClientJmt = this.precomputedLatencies.get(
+      'internal.click.to.interstitial.for.client.jmt'
+    );
+    const interstitialShowedToLocusJoinRequest = this.getDiffBetweenTimestamps(
+      'internal.client.meeting.interstitial-window.showed',
+      'client.locus.join.request'
+    );
+    const showInterstitialTime = this.getShowInterstitialTime() || 0;
 
-    if (typeof interstitialToJoinOk === 'number' && typeof joinConfJMT === 'number') {
-      return clamp(interstitialToJoinOk - joinConfJMT, 0, this.MAX_INTEGER);
+    if (
+      typeof clickToInterstitialForClientJmt === 'number' &&
+      typeof interstitialShowedToLocusJoinRequest === 'number'
+    ) {
+      return clamp(
+        clickToInterstitialForClientJmt +
+          interstitialShowedToLocusJoinRequest -
+          showInterstitialTime,
+        0,
+        this.MAX_INTEGER
+      );
     }
 
     return undefined;
