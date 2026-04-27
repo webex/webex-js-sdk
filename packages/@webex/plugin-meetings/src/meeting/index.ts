@@ -651,6 +651,8 @@ export default class Meeting extends StatelessWebexPlugin {
   floorGrantPending: boolean;
   hasJoinedOnce: boolean;
   hasWebsocketConnected: boolean;
+  private mercuryOnlineHandler?: () => void;
+  private mercuryOfflineHandler?: () => void;
   inMeetingActions: InMeetingActions;
   isLocalShareLive: boolean;
   isRoapInProgress: boolean;
@@ -5130,8 +5132,7 @@ export default class Meeting extends StatelessWebexPlugin {
   public setMercuryListener() {
     // Client will have a socket manager and handle reconnecting to mercury, when we reconnect to mercury
     // if the meeting has active peer connections, it should try to reconnect.
-    // @ts-ignore
-    this.webex.internal.mercury.on(ONLINE, () => {
+    this.mercuryOnlineHandler = () => {
       LoggerProxy.logger.info('Meeting:index#setMercuryListener --> Web socket online');
 
       // Only send restore event when it was disconnected before and for connected later
@@ -5141,31 +5142,47 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       }
       this.hasWebsocketConnected = true;
-    });
+    };
 
-    // @ts-ignore
-    this.webex.internal.mercury.on(OFFLINE, () => {
+    this.mercuryOfflineHandler = () => {
       LoggerProxy.logger.error('Meeting:index#setMercuryListener --> Web socket offline');
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MERCURY_CONNECTION_FAILURE, {
         correlation_id: this.correlationId,
       });
-    });
+    };
+
+    // @ts-ignore
+    this.webex.internal.mercury.on(ONLINE, this.mercuryOnlineHandler);
+    // @ts-ignore
+    this.webex.internal.mercury.on(OFFLINE, this.mercuryOfflineHandler);
   }
 
   /**
-   * Removes the Mercury ONLINE/OFFLINE event listeners registered by
-   * setMercuryListener(). Must be called before Locus /leave to avoid
+   * Removes this meeting's Mercury ONLINE/OFFLINE event listeners registered
+   * by setMercuryListener(). Must be called before Locus /leave to avoid
    * unnecessary syncs/metrics triggered by events received while leaving
    * (per Locus team recommendation).
-   * Idempotent: safe to call when no listeners are registered.
+   *
+   * Mercury is a process-wide singleton shared with other plugins, so we
+   * pass the bound handler refs to .off() to avoid clearing every listener
+   * for ONLINE/OFFLINE on the shared emitter.
+   *
+   * Idempotent: subsequent calls are no-ops because the handler refs are
+   * cleared after detaching.
    * @private
    * @returns {void}
    */
   private stopListeningForMercuryEvents() {
-    // @ts-ignore
-    this.webex.internal.mercury.off(ONLINE);
-    // @ts-ignore
-    this.webex.internal.mercury.off(OFFLINE);
+    if (this.mercuryOnlineHandler) {
+      // @ts-ignore
+      this.webex.internal.mercury.off(ONLINE, this.mercuryOnlineHandler);
+      this.mercuryOnlineHandler = undefined;
+    }
+    if (this.mercuryOfflineHandler) {
+      // @ts-ignore
+      this.webex.internal.mercury.off(OFFLINE, this.mercuryOfflineHandler);
+      this.mercuryOfflineHandler = undefined;
+    }
   }
 
   /**
@@ -6394,12 +6411,7 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('online', this.handleLLMOnline);
       }
-      // @ts-ignore - fix types
-      this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
-      // @ts-ignore - Fix type
-      this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
-
-      this.clearLLMHealthCheckTimer();
+      this.stopListeningForLLMEvents();
     }
   };
 

@@ -6431,6 +6431,8 @@ describe('plugin-meetings', () => {
           meeting.annotation.deregisterEvents = sinon.stub();
           webex.internal.llm.off = sinon.stub();
           webex.internal.mercury.off = sinon.stub();
+          meeting.mercuryOnlineHandler = sinon.stub();
+          meeting.mercuryOfflineHandler = sinon.stub();
 
           // A meeting needs to be joined to leave
           meeting.meetingState = 'ACTIVE';
@@ -6455,6 +6457,9 @@ describe('plugin-meetings', () => {
         });
 
         it('stops listening for LLM/Mercury and tears down transcription and annotation before calling Locus /leave', async () => {
+          const onlineHandler = meeting.mercuryOnlineHandler;
+          const offlineHandler = meeting.mercuryOfflineHandler;
+
           await meeting.leave();
 
           // All llm/mercury consumers (direct listeners, voicea transcription,
@@ -6468,26 +6473,48 @@ describe('plugin-meetings', () => {
             meeting.annotation.deregisterEvents,
             meeting.meetingRequest.leaveMeeting
           );
-          assert.calledWith(webex.internal.llm.off, 'event:relay.event', meeting.processRelayEvent);
-          assert.calledWith(webex.internal.llm.off, LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
-          assert.calledWith(webex.internal.mercury.off, ONLINE);
-          assert.calledWith(webex.internal.mercury.off, OFFLINE);
+          assert.calledWithExactly(
+            webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            webex.internal.llm.off,
+            LOCUS_LLM_EVENT,
+            meeting.processLocusLLMEvent
+          );
+          assert.calledWithExactly(webex.internal.mercury.off, ONLINE, onlineHandler);
+          assert.calledWithExactly(webex.internal.mercury.off, OFFLINE, offlineHandler);
+          assert.isUndefined(meeting.mercuryOnlineHandler);
+          assert.isUndefined(meeting.mercuryOfflineHandler);
+          assert.calledOnceWithExactly(meeting.stopTranscription);
+          assert.calledOnceWithExactly(meeting.annotation.deregisterEvents);
           assert.isUndefined(meeting.transcription);
         });
 
         it('tears down llm/mercury/transcription/annotation even when /leave rejects', async () => {
+          const onlineHandler = meeting.mercuryOnlineHandler;
+          const offlineHandler = meeting.mercuryOfflineHandler;
           meeting.meetingRequest.leaveMeeting = sinon
             .stub()
             .returns(Promise.reject(new Error('leave failed')));
 
           await meeting.leave().catch(() => {});
 
-          assert.calledWith(webex.internal.llm.off, 'event:relay.event', meeting.processRelayEvent);
-          assert.calledWith(webex.internal.llm.off, LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
-          assert.calledWith(webex.internal.mercury.off, ONLINE);
-          assert.calledWith(webex.internal.mercury.off, OFFLINE);
-          assert.calledOnce(meeting.stopTranscription);
-          assert.calledOnce(meeting.annotation.deregisterEvents);
+          assert.calledWithExactly(
+            webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            webex.internal.llm.off,
+            LOCUS_LLM_EVENT,
+            meeting.processLocusLLMEvent
+          );
+          assert.calledWithExactly(webex.internal.mercury.off, ONLINE, onlineHandler);
+          assert.calledWithExactly(webex.internal.mercury.off, OFFLINE, offlineHandler);
+          assert.calledOnceWithExactly(meeting.stopTranscription);
+          assert.calledOnceWithExactly(meeting.annotation.deregisterEvents);
         });
 
         it('should reset call diagnostic latencies correctly', async () => {
@@ -8498,6 +8525,8 @@ describe('plugin-meetings', () => {
           meeting.annotation.deregisterEvents = sinon.stub();
           webex.internal.llm.off = sinon.stub();
           webex.internal.mercury.off = sinon.stub();
+          meeting.mercuryOnlineHandler = sinon.stub();
+          meeting.mercuryOfflineHandler = sinon.stub();
 
           // A meeting needs to be joined to end
           meeting.meetingState = 'ACTIVE';
@@ -8522,6 +8551,9 @@ describe('plugin-meetings', () => {
         });
 
         it('stops listening for LLM/Mercury and tears down transcription and annotation before calling Locus /end', async () => {
+          const onlineHandler = meeting.mercuryOnlineHandler;
+          const offlineHandler = meeting.mercuryOfflineHandler;
+
           await meeting.endMeetingForAll();
 
           // All llm/mercury consumers (direct listeners, voicea transcription,
@@ -8535,10 +8567,47 @@ describe('plugin-meetings', () => {
             meeting.annotation.deregisterEvents,
             meeting.meetingRequest.endMeetingForAll
           );
-          assert.calledWith(webex.internal.llm.off, 'event:relay.event', meeting.processRelayEvent);
-          assert.calledWith(webex.internal.llm.off, LOCUS_LLM_EVENT, meeting.processLocusLLMEvent);
-          assert.calledWith(webex.internal.mercury.off, ONLINE);
-          assert.calledWith(webex.internal.mercury.off, OFFLINE);
+          assert.calledWithExactly(
+            webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            webex.internal.llm.off,
+            LOCUS_LLM_EVENT,
+            meeting.processLocusLLMEvent
+          );
+          assert.calledWithExactly(webex.internal.mercury.off, ONLINE, onlineHandler);
+          assert.calledWithExactly(webex.internal.mercury.off, OFFLINE, offlineHandler);
+          assert.isUndefined(meeting.mercuryOnlineHandler);
+          assert.isUndefined(meeting.mercuryOfflineHandler);
+          assert.calledOnceWithExactly(meeting.stopTranscription);
+          assert.calledOnceWithExactly(meeting.annotation.deregisterEvents);
+        });
+
+        it('tears down llm/mercury/transcription/annotation even when /end rejects', async () => {
+          const onlineHandler = meeting.mercuryOnlineHandler;
+          const offlineHandler = meeting.mercuryOfflineHandler;
+          meeting.meetingRequest.endMeetingForAll = sinon
+            .stub()
+            .returns(Promise.reject(new Error('end failed')));
+
+          await meeting.endMeetingForAll().catch(() => {});
+
+          assert.calledWithExactly(
+            webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            webex.internal.llm.off,
+            LOCUS_LLM_EVENT,
+            meeting.processLocusLLMEvent
+          );
+          assert.calledWithExactly(webex.internal.mercury.off, ONLINE, onlineHandler);
+          assert.calledWithExactly(webex.internal.mercury.off, OFFLINE, offlineHandler);
+          assert.calledOnceWithExactly(meeting.stopTranscription);
+          assert.calledOnceWithExactly(meeting.annotation.deregisterEvents);
         });
       });
 
