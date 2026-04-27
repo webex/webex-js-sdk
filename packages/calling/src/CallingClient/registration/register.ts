@@ -287,19 +287,19 @@ export class Registration implements IRegistration {
   private async restorePreviousRegistration(caller: string): Promise<boolean> {
     let abort = false;
 
+    if (this.apiRequest.isSocketEnabled()) {
+      log.info(`Disconnecting from Mobius socket to restore previous registration.`, {
+        file: REGISTRATION_FILE,
+        method: 'restorePreviousRegistration',
+      });
+
+      await this.apiRequest.disconnectFromMobiusSocket({
+        code: 3050,
+        reason: 'done (permanent)',
+      });
+    }
+
     if (this.activeMobiusUrl) {
-      if (this.apiRequest.isSocketEnabled()) {
-        log.info(`Disconnecting from Mobius socket to restore previous registration.`, {
-          file: REGISTRATION_FILE,
-          method: 'restorePreviousRegistration',
-        });
-
-        await this.apiRequest.disconnectFromMobiusSocket({
-          code: 3050,
-          reason: 'done (permanent)',
-        });
-      }
-
       abort = await this.attemptRegistrationWithServers(caller, [this.activeMobiusUrl]);
       if (this.retryAfter) {
         if (this.retryAfter < RETRY_TIMER_UPPER_LIMIT) {
@@ -971,6 +971,10 @@ export class Registration implements IRegistration {
           break;
         }
 
+        /**
+         * 1. This is to ensure that registration error is handled before moving to the disconnect step.
+         * 2. We are not tearing down the socket if there is only one server in the list during the failover/re-attempt process.
+         */
         if (servers.length > 1 && this.apiRequest.isSocketEnabled()) {
           connectedWebSocketUrl = undefined;
           // eslint-disable-next-line no-await-in-loop
