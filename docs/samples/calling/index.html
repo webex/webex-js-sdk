@@ -44,7 +44,7 @@
                   <div id="guest-container" class="hidden">
                     <input id="jwt-token-for-dest" name="jwtToken" placeholder="JWT token for destination" value="" type="text" style="margin: 0.5rem 0 0.5rem 0;">
                     <input id="guest-name" name="guestName" placeholder="Guest name" value="" type="text" style="margin: 0.5rem 0 0.5rem 0;">
-                    <button type="button" onclick="generateGuestToken()">Generate Guest Token [Prod only]</button>
+                    <button id="generate-guest-token" type="button" onclick="generateGuestToken()">Generate Guest Token [Prod only]</button>
                   </div>
                 </div>
 
@@ -86,6 +86,19 @@
                     <button id="registration-unregister" type="button" onclick="unregister()" class="btn-code" disabled>unregister</button>
                   </div>
                   <pre id="registration-status">Not Registered</pre>
+                </div>
+              </fieldset>
+              <fieldset>
+                <h2 class="collapsible">Devices</h2>
+                <div class="section-content">
+                  <div class="u-mv">
+                    <input id="devices-user-id" name="devices-user-id" placeholder="User ID (optional)" type="string">
+                    <button id="fetch-devices" type="button" class="btn-code">Fetch Devices</button>
+                  </div>
+                  <table>
+                    <thead id="devicesHeaderId"></thead>
+                    <tbody id="devicesTableBody"></tbody>
+                  </table>
                 </div>
               </fieldset>
             </form>

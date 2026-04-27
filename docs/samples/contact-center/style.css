@@ -540,3 +540,146 @@ legend {
   border-left: 3px solid #1890ff;
   font-weight: bold;
 }
+
+.realtime-transcript-card {
+  background: #f8f8f8;
+  border-radius: 10px;
+  padding: 14px;
+  border: 1px solid #e3e3e3;
+  max-width: 520px;
+}
+
+.realtime-transcript-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.realtime-transcript-header h3 {
+  margin: 0;
+  color: #252525;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.realtime-transcript-tabs {
+  display: flex;
+  gap: 22px;
+  padding: 0 2px;
+  border-bottom: 1px solid #d8d8d8;
+  margin-bottom: 10px;
+}
+
+.realtime-transcript-tab {
+  border: none;
+  background: transparent;
+  color: #555;
+  font-weight: 500;
+  padding: 10px 0 8px;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+}
+
+.realtime-transcript-tab.active {
+  color: #111;
+  border-bottom-color: #111;
+}
+
+.realtime-transcript-tab:focus {
+  outline: none;
+}
+
+.realtime-transcript-panel {
+  display: none;
+}
+
+.realtime-transcript-panel.active {
+  display: block;
+}
+
+.realtime-transcript-list {
+  max-height: 410px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.realtime-transcript-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.realtime-transcript-list::-webkit-scrollbar-track {
+  background: #efefef;
+  border-radius: 8px;
+}
+
+.realtime-transcript-list::-webkit-scrollbar-thumb {
+  background: #b8b8b8;
+  border-radius: 8px;
+}
+
+.realtime-transcript-empty {
+  color: #666;
+  font-size: 14px;
+}
+
+.realtime-transcript-system {
+  color: #666;
+  font-size: 14px;
+  margin: 6px 0 16px;
+}
+
+.realtime-transcript-event {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.realtime-transcript-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111;
+  background: #e4e4e4;
+}
+
+.realtime-transcript-avatar.you {
+  background: linear-gradient(135deg, #6fc1ff, #2b6de0);
+  color: #fff;
+}
+
+.realtime-transcript-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+
+.realtime-transcript-speaker {
+  color: #5c5c5c;
+  font-size: 14px;
+}
+
+.realtime-transcript-time {
+  border: none;
+  background: transparent;
+  color: #0f66dc;
+  text-decoration: underline;
+  padding: 0;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.realtime-transcript-text {
+  margin: 0;
+  color: #222;
+  font-size: 15px;
+  line-height: 1.45;
+}

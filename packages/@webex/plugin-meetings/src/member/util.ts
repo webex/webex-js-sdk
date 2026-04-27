@@ -44,6 +44,18 @@ const MemberUtil = {
 
   /**
    * @param {Object} participant - The locus participant object.
+   * @returns {Boolean}
+   */
+  canApproveAIEnablement: (participant) => {
+    if (!participant) {
+      return false;
+    }
+
+    return !participant.attendeeRequestAiAssistantNotAllowed;
+  },
+
+  /**
+   * @param {Object} participant - The locus participant object.
    * @returns {[ServerRoleShape]}
    */
   getControlsRoles: (participant: Participant): Array<ServerRoleShape> =>
@@ -127,6 +139,9 @@ const MemberUtil = {
 
   isPresenterAssignmentProhibited: (participant: Participant) =>
     participant && participant.presenterAssignmentNotAllowed,
+
+  isAttendeeAssignmentProhibited: (participant: Participant) =>
+    !!(participant && participant.attendeeAssignmentNotAllowed),
 
   /**
    * checks to see if the participant id is the same as the passed id

@@ -19,6 +19,7 @@ export type Links = {
 
 export type LocusDTO = {
   controls?: any;
+  embeddedApps?: any[];
   fullState?: LocusFullState;
   host?: {
     id: string;
@@ -31,6 +32,7 @@ export type LocusDTO = {
   info?: any;
   jsSdkMeta?: {
     removedParticipantIds: string[]; // list of ids of participants that are removed in the last update
+    forceReplaceMembers?: boolean; // when true, forces a full replacement of meeting members (e.g. when switching to a new hash tree parser - when moving between breakouts)
   };
   links?: Links;
   mediaShares?: any[];
@@ -50,4 +52,10 @@ export type LocusDTO = {
   };
   syncUrl?: string;
   url?: string;
+};
+
+export type ReplacesInfo = {
+  locusUrl: string;
+  replacedAt: string;
+  sessionId: string;
 };

@@ -18,12 +18,33 @@ export default class LocusRetryStatusInterceptor extends Interceptor {
   }
 
   /**
-   * Handle response errors
-   * @param {Object} options
-   * @param {WebexHttpError} reason
-   * @returns {Promise<WebexHttpError>}
+   * Check whether a URI is a Locus /hashtree or /sync endpoint.
+   * @param {string} uri
+   * @returns {boolean}
    */
+  private static isLocusHashtreeOrSync(uri: string): boolean {
+    try {
+      const {pathname} = new URL(uri);
+
+      return (
+        pathname.includes('/locus/') &&
+        (pathname.endsWith('/hashtree') || pathname.endsWith('/sync'))
+      );
+    } catch {
+      return false;
+    }
+  }
+
   onResponseError(options, reason) {
+    // Don't retry /hashtree or /sync calls for 429 or any 5xx — during a sync storm retries
+    // make things worse. The normal sync timers will handle recovery for these endpoints.
+    if (
+      (reason.statusCode === 429 || reason.statusCode >= 500) &&
+      LocusRetryStatusInterceptor.isLocusHashtreeOrSync(options.uri)
+    ) {
+      return Promise.reject(reason);
+    }
+
     if ((reason.statusCode === 503 || reason.statusCode === 429) && options.uri.includes('locus')) {
       const hasRetriedLocusRequest = rateLimitExpiryTime.get(this);
       const retryAfterTime = options.headers['retry-after'] || 2000;

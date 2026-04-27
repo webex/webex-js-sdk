@@ -212,7 +212,7 @@
                     <button id="ts-load-mic" type="button" onclick="loadMicrophone()" class="btn-code">Load Microphone</button>
                     <select id="ts-model-select" onchange="handleModelChange()" class="btn-code">
                       <option value="bnr" selected>BNR (Noise Reduction)</option>
-                      <option value="st">ST (Single Talker)</option>
+                      <option value="ofmv">OFMV (Optimize for My Voice)</option>
                     </select>
                     <button id="ts-noise-reduction-btn" type="button" onclick="handleNoiseReduction()" class="btn-code">Enable BNR</button>
                   </div>
@@ -278,6 +278,7 @@
                 <select name="multistream-layout" id="multistream-layout" disabled
                   onchange="updateMultistreamVideoLayout()">
                   <option value="AllEqual">All Equal (max 9)</option>
+                  <option value="AllEqual25">All Equal (max 25) - EXPERIMENTAL</option>
                   <option value="OnePlusFive">One big plane + five small</option>
                   <option value="Single">Single video pane</option>
                   <option value="Stage">Stage with thumbnails</option>
