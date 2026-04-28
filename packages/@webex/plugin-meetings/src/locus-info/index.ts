@@ -582,6 +582,7 @@ export default class LocusInfo extends EventsScope {
 
   /**
    * @param {Object} data - data to initialize locus info with. It may be from a join or GET /loci response or from a Mercury event that triggers a creation of meeting object
+   * @param {Function} [onLocusSynced] - optional callback that will be called at the end of initial setup, when locus info is fully synced. It will be called with the full locus snapshot as an argument (which may be null if we haven't received any full locus DTOs during the initial setup, for example in case we receive only hash tree messages without full locus DTOs)
    * @returns {undefined}
    * @memberof LocusInfo
    */
@@ -601,8 +602,10 @@ export default class LocusInfo extends EventsScope {
       | {
           trigger: 'get-loci-response';
           locus?: LocusDTO;
-        }
+        },
+    onLocusSynced?: (locus: LocusDTO) => void
   ) {
+    let initialFullLocus: LocusDTO | null = null;
     switch (data.trigger) {
       case 'locus-message':
         if (data.hashTreeMessage) {
@@ -650,6 +653,7 @@ export default class LocusInfo extends EventsScope {
       case 'join-response':
         this.updateLocusCache(data.locus);
         this.onFullLocus('join response', data.locus, undefined, data.dataSets, data.metadata);
+        initialFullLocus = data.locus;
         break;
       case 'get-loci-response':
         if (data.locus?.links?.resources?.visibleDataSets?.url) {
@@ -672,10 +676,45 @@ export default class LocusInfo extends EventsScope {
           // "classic" Locus case, no hash trees involved
           this.updateLocusCache(data.locus);
           this.onFullLocus('classic get-loci-response', data.locus, undefined);
+          initialFullLocus = data.locus || null;
         }
     }
+
+    if (onLocusSynced) {
+      try {
+        onLocusSynced(initialFullLocus || this.getCurrentLocusSnapshot());
+      } catch (error) {
+        LoggerProxy.logger.warn(
+          `Locus-info:index#initialSetup --> onLocusSynced callback failed: ${error}`
+        );
+      }
+    }
+
     // Change it to true after it receives it first locus object
     this.emitChange = true;
+  }
+
+  /**
+   * Builds a full locus DTO snapshot from current internal locus state.
+   *
+   * @returns {LocusDTO}
+   */
+  private getCurrentLocusSnapshot(): LocusDTO {
+    const locus: Record<string, any> = {};
+
+    LocusDtoTopLevelKeys.forEach((key) => {
+      const value = (this as Record<string, any>)[key];
+
+      if (value !== undefined && value !== null) {
+        locus[key] = cloneDeep(value);
+      }
+    });
+
+    if (!Array.isArray(locus.participants)) {
+      locus.participants = [];
+    }
+
+    return locus as LocusDTO;
   }
 
   /**
@@ -1781,14 +1820,9 @@ export default class LocusInfo extends EventsScope {
         );
       }
     } else if (this.parsedLocus.fullState?.type === _MEETING_) {
-      if (
-        this.fullState &&
-        (this.fullState.state === LOCUS.STATE.INACTIVE ||
-          // @ts-ignore
-          this.fullState.state === LOCUS.STATE.TERMINATING)
-      ) {
+      if (this.fullState && MeetingsUtil.isWholeMeetingEnded(this.fullState)) {
         LoggerProxy.logger.warn(
-          'Locus-info:index#isMeetingActive --> Meeting is ending due to inactive or terminating'
+          'Locus-info:index#isMeetingActive --> Meeting is ending due to inactive'
         );
 
         // @ts-ignore

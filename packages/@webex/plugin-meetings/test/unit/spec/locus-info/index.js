@@ -221,6 +221,47 @@ describe('plugin-meetings', () => {
         assert.isTrue(locusInfo.emitChange);
       });
 
+      it('calls onLocusSynced callback passed as second argument with full locus from join response', async () => {
+        const syncedLocus = {url: 'http://locus-url.com', participants: []};
+        const onLocusSynced = sinon.stub();
+
+        await locusInfo.initialSetup(
+          {
+            trigger: 'join-response',
+            locus: syncedLocus,
+          },
+          onLocusSynced
+        );
+
+        assert.calledOnceWithExactly(onLocusSynced, syncedLocus);
+      });
+
+      it('swallows onLocusSynced callback errors and logs warn', async () => {
+        const syncedLocus = {url: 'http://locus-url.com', participants: []};
+        const callbackError = new Error('onLocusSynced failed');
+        const onLocusSynced = sinon.stub().throws(callbackError);
+        const loggerWarnStub = LoggerProxy.logger.warn?.isSinonProxy
+          ? LoggerProxy.logger.warn
+          : sinon.stub(LoggerProxy.logger, 'warn');
+
+        loggerWarnStub.resetHistory();
+
+        await locusInfo.initialSetup(
+          {
+            trigger: 'join-response',
+            locus: syncedLocus,
+          },
+          onLocusSynced
+        );
+
+        assert.calledOnceWithExactly(onLocusSynced, syncedLocus);
+        assert.calledOnce(loggerWarnStub);
+        assert.match(
+          loggerWarnStub.firstCall.args[0],
+          /Locus-info:index#initialSetup --> onLocusSynced callback failed/
+        );
+      });
+
       it('should initialize the hash tree parser correctly when triggered from a get loci response containing visible datasets', async () => {
         const visibleDataSets = ['dataset1', 'dataset2'];
         const locus = createLocusWithVisibleDataSets(visibleDataSets);
@@ -4677,6 +4718,9 @@ describe('plugin-meetings', () => {
     });
 
     describe('#isMeetingActive', () => {
+      beforeEach(() => {
+        webex.internal.newMetrics.submitClientEvent.resetHistory();
+      });
       forEach([_CALL_, _SIP_BRIDGE_, _SPACE_SHARE_], (type) => {
         describe(`type = ${type}`, () => {
           it('sends client event correctly for state = inactive', () => {
@@ -4743,7 +4787,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('sends client event correctly for state = MEETING_INACTIVE_TERMINATING', () => {
+      it('sends client event correctly for state = MEETING_INACTIVE', () => {
         locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
         locusInfo.parsedLocus = {
           fullState: {
@@ -4765,7 +4809,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('sends client event correctly for state = FULLSTATE_REMOVED', () => {
+      it('does not send client event when state = INACTIVE and endMeetingReason = BREAKOUT_ENDED', () => {
         locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
         locusInfo.parsedLocus = {
           fullState: {
@@ -4774,17 +4818,41 @@ describe('plugin-meetings', () => {
         };
 
         locusInfo.fullState = {
-          removed: true,
+          state: LOCUS.STATE.INACTIVE,
+          endMeetingReason: 'BREAKOUT_ENDED',
         };
 
         locusInfo.isMeetingActive();
 
-        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-          name: 'client.call.remote-ended',
-          options: {
-            meetingId: locusInfo.meetingId,
+        assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+      });
+
+      it('sends client event correctly for state self removed', () => {
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.parsedLocus = {
+          fullState: {
+            type: _MEETING_,
           },
-        });
+          self: {
+            removed: true,
+          }
+        };
+
+        locusInfo.isMeetingActive();
+
+        assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+        assert.calledOnceWithExactly(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'isMeetingActive',
+          },
+          EVENTS.DESTROY_MEETING,
+          {
+            reason: MEETING_REMOVED_REASON.SELF_REMOVED,
+            shouldLeave: false,
+          }
+        );
       });
     });
 
