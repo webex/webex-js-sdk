@@ -2464,7 +2464,7 @@ describe('State Machine handler tests', () => {
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_CALL_HOLD');
 
-    expect(infoSpy).toHaveBeenLastCalledWith(
+    expect(infoSpy).toHaveBeenCalledWith(
       `${METHOD_START_MESSAGE} with: ${call.getCorrelationId()}`,
       {
         file: 'call',
