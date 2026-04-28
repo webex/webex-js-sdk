@@ -26,6 +26,7 @@ import {
   FAILOVER_UTIL,
   KEEPALIVE_UTIL,
   MINUTES_TO_SEC_MFACTOR,
+  REGISTER_UTIL,
   REGISTRATION_FILE,
   REGISTRATION_UTIL,
   REG_429_RETRY_UTIL,
@@ -203,7 +204,7 @@ describe('Registration Tests', () => {
       `Registration successful for deviceId: ${mockPostResponse.device.deviceId} userId: ${mockPostResponse.userId} responseTrackingId: webex-js-sdk_06bafdd0-2f9b-4cd7-b438-9c0d95ecec9b_15`,
       expect.objectContaining({
         file: REGISTRATION_FILE,
-        method: 'register',
+        method: REGISTER_UTIL,
       })
     );
     expect(metricSpy).toBeCalledWith(

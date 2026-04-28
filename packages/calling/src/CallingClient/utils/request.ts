@@ -1,5 +1,4 @@
 import {v4 as uuid} from 'uuid';
-// @ts-ignore - JS module without type declarations
 import {getMobiusSocketInstance} from '../../mobius-socket';
 import {WebexRequestPayload} from '../../common/types';
 import {WebexSDK} from '../../SDKConnector/types';
@@ -79,13 +78,24 @@ export class APIRequest {
    * @param config - Webex instance plus optional SDK Mobius-socket override
    */
   constructor(config: APIRequestConfig) {
+    const logContext = {
+      file: REQUEST_FILE,
+      method: METHODS.CONSTRUCTOR,
+    };
+
     if (!config.webex) {
+      log.error('APIRequest instantiation failed: WebexSDK instance is required', logContext);
       throw new Error('WebexSDK instance is required');
     }
 
     this.webex = config.webex;
     this.isMobiusSocketEnabled = isMobiusWssEnabled(config.webex) || false;
     this.mobiusSocket = getMobiusSocketInstance(this.webex);
+
+    log.info(
+      `APIRequest initialized with transport: ${this.isMobiusSocketEnabled ? 'WSS' : 'HTTP'}`,
+      logContext
+    );
   }
 
   /**
@@ -134,8 +144,10 @@ export class APIRequest {
   public async disconnectFromMobiusSocket(options?: {code: number; reason: string}): Promise<void> {
     const logContext = {
       file: REQUEST_FILE,
-      method: 'disconnectFromMobiusSocket',
+      method: METHODS.DISCONNECT_FROM_MOBIUS_SOCKET,
     };
+
+    log.info('Disconnecting from Mobius WebSocket', logContext);
 
     try {
       await this.mobiusSocket.disconnect(options);
@@ -154,11 +166,21 @@ export class APIRequest {
    * @returns Promise resolving to WebexRequestPayload
    */
   public async makeRequest(request: APIRequestOptions): Promise<WebexRequestPayload> {
+    const logContext = {
+      file: REQUEST_FILE,
+      method: METHODS.MAKE_REQUEST,
+    };
+    log.info(`Dispatching request via ${this.isMobiusSocketEnabled ? 'WSS' : 'HTTP'} `, logContext);
+
     if (this.isMobiusSocketEnabled) {
       const trackingId = `webex-js-sdk_${uuid()}`;
       const socketType = deriveMobiusSocketMessageType(request.uri, request.method);
 
       if (socketType === MOBIUS_SOCKET_MESSAGE_TYPE.UNKNOWN) {
+        log.error(
+          `Unknown Mobius Socket message type for uri: ${request.uri}, httpMethod: ${request.method}`,
+          logContext
+        );
         throw new Error(`Unknown Mobius Socket message type: ${socketType}`);
       }
 
@@ -178,8 +200,19 @@ export class APIRequest {
           data: request.body,
         });
 
+        log.log(
+          `WSS request succeeded - socketType: ${socketType}, trackingId: ${trackingId}, statusCode: ${wsResponse.statusCode}`,
+          logContext
+        );
+
         return normalizeWsResponse(wsResponse);
       } catch (err) {
+        log.error(
+          `WSS request failed - socketType: ${socketType}, trackingId: ${trackingId}, error: ${String(
+            err
+          )}`,
+          logContext
+        );
         throw normalizeWsError(err);
       }
     }
@@ -188,13 +221,33 @@ export class APIRequest {
   }
 
   public registerMobiusSocketListener(cb: (data?: MobiusAsyncEvent) => void): void {
+    const logContext = {
+      file: REQUEST_FILE,
+      method: METHODS.REGISTER_MOBIUS_SOCKET_LISTENER,
+    };
+
+    log.info('Attaching Mobius async event listener', logContext);
+
     this.mobiusSocket.on('event:async_event', (data: MobiusAsyncEvent) => {
+      log.trace(
+        `Mobius async event received - eventType: ${data?.data?.eventType ?? 'unknown'}`,
+        logContext
+      );
       cb(data);
     });
+
+    log.log('Mobius async event listener attached', logContext);
   }
 
   public unregisterMobiusSocketListener(): void {
+    const logContext = {
+      file: REQUEST_FILE,
+      method: METHODS.UNREGISTER_MOBIUS_SOCKET_LISTENER,
+    };
+
+    log.info('Detaching Mobius async event listener', logContext);
     this.mobiusSocket.off('event:async_event');
+    log.log('Mobius async event listener detached', logContext);
   }
 }
 

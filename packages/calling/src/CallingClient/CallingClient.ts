@@ -187,6 +187,13 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    * @ignore
    */
   public async init() {
+    const loggerContext = {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.INIT,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
     // Only for Windows Chromium based browsers we need to do the ICE warmup
     if (typeof window !== 'undefined' && window?.navigator?.userAgent) {
       const ua = window.navigator.userAgent;
@@ -217,12 +224,13 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     if (this.apiRequest.isSocketEnabled()) {
       await this.connectToMobiusSocket();
-      this.registerMobiusSocketListener();
+      this.apiRequest.registerMobiusSocketListener(this.handleMobiusAsyncEvent);
     }
 
     await this.createLine();
-
     this.setupNetworkEventListeners();
+
+    log.log('CallingClient initialization complete', loggerContext);
   }
 
   /**
@@ -714,42 +722,21 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     );
   }
 
-  private registerMobiusSocketListener() {
-    log.info(METHOD_START_MESSAGE, {
-      file: CALLING_CLIENT_FILE,
-      method: METHODS.REGISTER_MOBIUS_SOCKET_LISTENER,
-    });
-
-    this.apiRequest.registerMobiusSocketListener(this.handleMobiusAsyncEvent);
-
-    log.info('Successfully registered listener for Mobius events', {
-      file: CALLING_CLIENT_FILE,
-      method: METHODS.REGISTER_MOBIUS_SOCKET_LISTENER,
-    });
-  }
-
-  // MOBIUS TODO: Check and remove this later. This might not be required.
-  // private unregisterMobiusSocketListener() {
-  //   log.info(METHOD_START_MESSAGE, {
-  //     file: CALLING_CLIENT_FILE,
-  //     method: METHODS.UNREGISTER_MOBIUS_SOCKET_LISTENER,
-  //   });
-  //   this.apiRequest.unregisterMobiusSocketListener();
-  // }
-
   private handleMobiusAsyncEvent = async (event?: MobiusAsyncEvent) => {
-    log.info(METHOD_START_MESSAGE, {
+    const loggerContext = {
       file: CALLING_CLIENT_FILE,
       method: METHODS.HANDLE_MOBIUS_ASYNC_EVENT,
-    });
+    };
 
     const eventType = event?.data.eventType;
 
+    log.trace(
+      `Mobius async event received - eventType: ${eventType ?? 'undefined'}`,
+      loggerContext
+    );
+
     if (!eventType) {
-      log.warn('Dropping unsupported mobius socket payload', {
-        file: CALLING_CLIENT_FILE,
-        method: METHODS.HANDLE_MOBIUS_ASYNC_EVENT,
-      });
+      log.warn('Dropping unsupported mobius socket payload', loggerContext);
 
       return;
     }
@@ -759,11 +746,20 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       // line.registration.handleRegistrationDownEvent(event);
 
       // TODO: check active calls and clean up the state and emit disconnect event
+      log.warn(
+        'Received REGISTRATION_DOWN event from Mobius; teardown handling pending (TODO)',
+        loggerContext
+      );
 
       return;
     }
 
     this.callManager.dequeueWsEvents(event);
+
+    log.trace(
+      `Mobius async event dispatched to CallManager - eventType: ${eventType}`,
+      loggerContext
+    );
   };
 
   /**

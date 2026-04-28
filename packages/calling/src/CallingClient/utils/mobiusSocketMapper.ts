@@ -1,4 +1,6 @@
 import {HTTP_METHODS} from '../../common/types';
+import log from '../../Logger';
+import {METHODS, MOBIUS_SOCKET_MAPPER_FILE} from '../constants';
 import {MOBIUS_SOCKET_MESSAGE_TYPE} from './constants';
 
 /**
@@ -25,7 +27,14 @@ export function deriveMobiusSocketMessageType(
   uri?: string,
   httpMethodType?: HTTP_METHODS
 ): MOBIUS_SOCKET_MESSAGE_TYPE {
+  const logContext = {
+    file: MOBIUS_SOCKET_MAPPER_FILE,
+    method: METHODS.DERIVE_MOBIUS_SOCKET_MESSAGE_TYPE,
+  };
+
   if (!uri) {
+    log.warn('Cannot derive Mobius socket message type: uri is empty', logContext);
+
     return MOBIUS_SOCKET_MESSAGE_TYPE.UNKNOWN;
   }
 
@@ -40,6 +49,11 @@ export function deriveMobiusSocketMessageType(
     if (uri.includes('/calltransfer/commit')) {
       return MOBIUS_SOCKET_MESSAGE_TYPE.CALL_TRANSFER;
     }
+
+    log.warn(
+      `Unrecognized supplementary service uri - uri: ${uri}, httpMethod: ${httpMethodType}`,
+      logContext
+    );
 
     return MOBIUS_SOCKET_MESSAGE_TYPE.UNKNOWN;
   }
@@ -64,6 +78,11 @@ export function deriveMobiusSocketMessageType(
     if (httpMethodType === HTTP_METHODS.DELETE) {
       return MOBIUS_SOCKET_MESSAGE_TYPE.CALL_DELETE;
     }
+
+    log.warn(
+      `Unrecognized httpMethod for calls/{callId} - uri: ${uri}, httpMethod: ${httpMethodType}`,
+      logContext
+    );
 
     return MOBIUS_SOCKET_MESSAGE_TYPE.UNKNOWN;
   }
@@ -94,6 +113,11 @@ export function deriveMobiusSocketMessageType(
       return MOBIUS_SOCKET_MESSAGE_TYPE.DEVICE_GET;
     }
 
+    log.warn(
+      `Unrecognized httpMethod for devices/{deviceId} - uri: ${uri}, httpMethod: ${httpMethodType}`,
+      logContext
+    );
+
     return MOBIUS_SOCKET_MESSAGE_TYPE.UNKNOWN;
   }
 
@@ -101,6 +125,11 @@ export function deriveMobiusSocketMessageType(
   if (uri.includes('/devices') && !uri.match(/\/devices\/[^/?]+/)) {
     return MOBIUS_SOCKET_MESSAGE_TYPE.DEVICE_LIST;
   }
+
+  log.warn(
+    `Unrecognized uri pattern for Mobius socket - uri: ${uri}, httpMethod: ${httpMethodType}`,
+    logContext
+  );
 
   return MOBIUS_SOCKET_MESSAGE_TYPE.UNKNOWN;
 }
