@@ -8,7 +8,12 @@ import * as Utils from '../../common/Utils';
 import {CALL_EVENT_KEYS, CallEvent, RoapEvent, RoapMessage} from '../../Events/types';
 import {DEFAULT_SESSION_TIMER, ICE_CANDIDATES_TIMEOUT} from '../constants';
 import {CallDirection, CallType, ServiceIndicator, WebexRequestPayload} from '../../common/types';
-import {METRIC_EVENT, TRANSFER_ACTION, METRIC_TYPE} from '../../Metrics/types';
+import {
+  METRIC_EVENT,
+  TRANSFER_ACTION,
+  METRIC_TYPE,
+  MEDIA_CONNECTION_ACTION,
+} from '../../Metrics/types';
 import {Call, createCall} from './call';
 import {
   MobiusCallState,
@@ -585,34 +590,52 @@ describe('Call Tests', () => {
     expect(metricSpy).toHaveBeenNthCalledWith(
       1,
       METRIC_EVENT.MEDIA,
-      InternalMediaCoreModule.MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
+      MEDIA_CONNECTION_ACTION.ICE_GATHERING_STATE_CHANGED,
       METRIC_TYPE.BEHAVIORAL,
       call.getCallId(),
-      call.getCorrelationId()
+      call.getCorrelationId(),
+      undefined,
+      undefined,
+      'gathering'
     );
     expect(metricSpy).toHaveBeenNthCalledWith(
       2,
       METRIC_EVENT.MEDIA,
-      InternalMediaCoreModule.MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
+      MEDIA_CONNECTION_ACTION.PEER_CONNECTION_STATE_CHANGED,
       METRIC_TYPE.BEHAVIORAL,
       call.getCallId(),
-      call.getCorrelationId()
+      call.getCorrelationId(),
+      undefined,
+      undefined,
+      'connected'
     );
     expect(metricSpy).toHaveBeenNthCalledWith(
       3,
       METRIC_EVENT.MEDIA,
-      InternalMediaCoreModule.MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
+      MEDIA_CONNECTION_ACTION.ICE_CONNECTION_STATE_CHANGED,
       METRIC_TYPE.BEHAVIORAL,
       call.getCallId(),
-      call.getCorrelationId()
+      call.getCorrelationId(),
+      undefined,
+      undefined,
+      'completed'
     );
     expect(metricSpy).toHaveBeenNthCalledWith(
       4,
       METRIC_EVENT.MEDIA_ERROR,
-      InternalMediaCoreModule.MediaConnectionEventNames.ICE_CANDIDATE_ERROR,
+      MEDIA_CONNECTION_ACTION.ICE_CANDIDATE_ERROR,
       METRIC_TYPE.BEHAVIORAL,
       call.getCallId(),
-      call.getCorrelationId()
+      call.getCorrelationId(),
+      undefined,
+      undefined,
+      undefined,
+      expect.any(CallError)
+    );
+    const mediaErrorCall = metricSpy.mock.calls[3];
+
+    expect((mediaErrorCall[mediaErrorCall.length - 1] as CallError).getCallError().message).toBe(
+      'ICE candidate error occurred: {"address":null,"errorCode":701,"errorText":"STUN host lookup failed","port":null,"url":"stun:example.org:3478"}'
     );
 
     expect(warnSpy).toHaveBeenCalledWith(

@@ -403,6 +403,7 @@ class MetricManager implements IMetricManager {
     correlationId: CorrelationId,
     localSdp?: string,
     remoteSdp?: string,
+    state?: string,
     callError?: CallError
   ) {
     let data;
@@ -423,6 +424,7 @@ class MetricManager implements IMetricManager {
             correlation_id: correlationId,
             local_media_details: localSdp,
             remote_media_details: remoteSdp,
+            state,
           },
           type,
         };

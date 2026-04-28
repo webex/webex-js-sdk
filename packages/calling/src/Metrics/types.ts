@@ -62,10 +62,10 @@ export enum CONNECTION_ACTION {
 }
 
 export enum MEDIA_CONNECTION_ACTION {
-  ICE_GATHERING_STATE_CHANGED = 'ice_gathering_state_changed',
-  PEER_CONNECTION_STATE_CHANGED = 'peer_connection_state_changed',
-  ICE_CONNECTION_STATE_CHANGED = 'ice_connection_state_changed',
-  ICE_CANDIDATE_ERROR = 'ice_candidate_error',
+  ICE_GATHERING_STATE_CHANGED = 'ICE_GATHERING_STATE_CHANGED',
+  PEER_CONNECTION_STATE_CHANGED = 'PEER_CONNECTION_STATE_CHANGED',
+  ICE_CONNECTION_STATE_CHANGED = 'ICE_CONNECTION_STATE_CHANGED',
+  ICE_CANDIDATE_ERROR = 'ICE_CANDIDATE_ERROR',
 }
 
 export interface IMetricManager {
@@ -106,6 +106,7 @@ export interface IMetricManager {
     correlationId: CorrelationId,
     localSdp?: string,
     remoteSdp?: string,
+    state?: string,
     callError?: CallError
   ) => void;
 

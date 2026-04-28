@@ -107,7 +107,7 @@ import {METHOD_START_MESSAGE, SERVICES_ENDPOINT} from '../../common/constants';
  *
  */
 export class Call extends Eventing<CallEventTypes> implements ICall {
-  private static readonly UNKNOWN_PEER_CONNECTION_STATE = 'unknown';
+  private static readonly UNKNOWN_STATE = 'unknown';
 
   private sdkConnector: ISDKConnector;
 
@@ -255,20 +255,21 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   };
 
   private static getPeerConnectionStateFromEvent(
-    event: Partial<{
-      state: string;
-      connectionState: string;
-      iceConnectionState: string;
-      iceGatheringState: string;
-    }>,
+    event: {
+      state?: string;
+      connectionState?: string;
+      iceConnectionState?: string;
+      iceGatheringState?: string;
+    },
     preferredKey: 'connectionState' | 'iceConnectionState' | 'iceGatheringState'
   ): string {
-    return event[preferredKey] || event.state || Call.UNKNOWN_PEER_CONNECTION_STATE;
+    return event[preferredKey] || event.state || Call.UNKNOWN_STATE;
   }
 
-  private handleIceGatheringStateChanged = (
-    event: Partial<{state: string; iceGatheringState: string}>
-  ) => {
+  private handleIceGatheringStateChanged = (event: {
+    state?: string;
+    iceGatheringState?: string;
+  }) => {
     const iceGatheringState = Call.getPeerConnectionStateFromEvent(event, 'iceGatheringState');
 
     log.info(`ICE gathering state changed to: ${iceGatheringState}`, {
@@ -281,13 +282,17 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       MEDIA_CONNECTION_ACTION.ICE_GATHERING_STATE_CHANGED,
       METRIC_TYPE.BEHAVIORAL,
       this.callId,
-      this.correlationId
+      this.correlationId,
+      undefined,
+      undefined,
+      iceGatheringState
     );
   };
 
-  private handlePeerConnectionStateChanged = (
-    event: Partial<{state: string; connectionState: string}>
-  ) => {
+  private handlePeerConnectionStateChanged = (event: {
+    state?: string;
+    connectionState?: string;
+  }) => {
     const connectionState = Call.getPeerConnectionStateFromEvent(event, 'connectionState');
 
     log.info(`Peer connection state changed to: ${connectionState}`, {
@@ -300,13 +305,17 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       MEDIA_CONNECTION_ACTION.PEER_CONNECTION_STATE_CHANGED,
       METRIC_TYPE.BEHAVIORAL,
       this.callId,
-      this.correlationId
+      this.correlationId,
+      undefined,
+      undefined,
+      connectionState
     );
   };
 
-  private handleIceConnectionStateChanged = (
-    event: Partial<{state: string; iceConnectionState: string}>
-  ) => {
+  private handleIceConnectionStateChanged = (event: {
+    state?: string;
+    iceConnectionState?: string;
+  }) => {
     const iceConnectionState = Call.getPeerConnectionStateFromEvent(event, 'iceConnectionState');
 
     log.info(`ICE connection state changed to: ${iceConnectionState}`, {
@@ -319,19 +328,20 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       MEDIA_CONNECTION_ACTION.ICE_CONNECTION_STATE_CHANGED,
       METRIC_TYPE.BEHAVIORAL,
       this.callId,
-      this.correlationId
+      this.correlationId,
+      undefined,
+      undefined,
+      iceConnectionState
     );
   };
 
-  private handleIceCandidateError = (
-    event: Partial<{
-      address: string | null;
-      errorCode: number;
-      errorText: string;
-      port: number | null;
-      url: string;
-    }>
-  ) => {
+  private handleIceCandidateError = (event: {
+    address?: string | null;
+    errorCode?: number;
+    errorText?: string;
+    port?: number | null;
+    url?: string;
+  }) => {
     const iceErrorPayload = {
       address: event.address ?? null,
       errorCode: event.errorCode,
@@ -345,12 +355,24 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       method: METHODS.MEDIA_ICE_EVENTS_LISTENER,
     });
 
+    const callError = createCallError(
+      `ICE candidate error occurred: ${JSON.stringify(iceErrorPayload)}`,
+      {file: CALL_FILE, method: METHODS.MEDIA_ICE_EVENTS_LISTENER},
+      ERROR_TYPE.CALL_ERROR,
+      this.correlationId,
+      ERROR_LAYER.MEDIA
+    );
+
     this.metricManager.submitMediaMetric(
       METRIC_EVENT.MEDIA_ERROR,
       MEDIA_CONNECTION_ACTION.ICE_CANDIDATE_ERROR,
       METRIC_TYPE.BEHAVIORAL,
       this.callId,
-      this.correlationId
+      this.correlationId,
+      undefined,
+      undefined,
+      undefined,
+      callError
     );
   };
 
@@ -3020,6 +3042,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         this.correlationId,
         this.localRoapMessage.sdp,
         this.remoteRoapMessage?.sdp,
+        undefined,
         error
       );
     }

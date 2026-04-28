@@ -391,6 +391,7 @@ describe('CALLING: Metric tests', () => {
         mockCorrelationId,
         mockSdp,
         mockSdp,
+        undefined,
         callError
       );
       expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.MEDIA_ERROR, expectedData);
