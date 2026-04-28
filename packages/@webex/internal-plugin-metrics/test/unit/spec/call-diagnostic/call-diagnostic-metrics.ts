@@ -2115,7 +2115,7 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
-      it('should submit client event with isVipMeeting: true when vipMeeting is false', () => {
+      it('should submit client event with isVipMeeting: false when vipMeeting is false', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
         const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
