@@ -4575,7 +4575,7 @@ describe('plugin-meetings', () => {
               assert.equal(meeting.mediaProperties.srtpCipher, 'AES_CM_128_HMAC_SHA1_80');
             });
 
-            it('updates meeting.srtpCipher when cipher changes', async () => {
+            it('updates meeting.mediaProperties.srtpCipher when cipher changes', async () => {
               const firstStats = new Map([
                 [
                   'transport-1',
@@ -4699,7 +4699,7 @@ describe('plugin-meetings', () => {
                 sinon.match.any
               );
 
-              assert.isUndefined(meeting.srtpCipher);
+              assert.isUndefined(meeting.mediaProperties.srtpCipher);
             });
 
             it('does not emit event when transport stat has no srtpCipher property', async () => {
@@ -4728,7 +4728,7 @@ describe('plugin-meetings', () => {
                 sinon.match.any
               );
 
-              assert.isUndefined(meeting.srtpCipher);
+              assert.isUndefined(meeting.mediaProperties.srtpCipher);
             });
 
             it('uses first transport with srtpCipher when multiple transports exist', async () => {
@@ -4773,7 +4773,7 @@ describe('plugin-meetings', () => {
                 {srtpCipher: 'AES_CM_128_HMAC_SHA1_80'}
               );
 
-              assert.equal(meeting.srtpCipher, 'AES_CM_128_HMAC_SHA1_80');
+              assert.equal(meeting.mediaProperties.srtpCipher, 'AES_CM_128_HMAC_SHA1_80');
             });
 
             it('handles empty stats map without errors', async () => {
@@ -4793,13 +4793,13 @@ describe('plugin-meetings', () => {
                 sinon.match.any
               );
 
-              assert.isUndefined(meeting.srtpCipher);
+              assert.isUndefined(meeting.mediaProperties.srtpCipher);
             });
 
             it('logs cipher change when cipher is updated', async () => {
               const loggerSpy = sinon.spy(LoggerProxy.logger, 'info');
 
-              meeting.srtpCipher = 'AES_CM_128_HMAC_SHA1_80';
+              meeting.mediaProperties.srtpCipher = 'AES_CM_128_HMAC_SHA1_80';
 
               const newStats = new Map([
                 [
