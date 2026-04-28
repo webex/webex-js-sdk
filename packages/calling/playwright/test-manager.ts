@@ -8,7 +8,7 @@ import {
   setEnvironmentToInt,
 } from './utils/setup';
 import {registerLine, verifyLineRegistered, unregisterLine} from './utils/registration';
-import {getMediaStreams} from './utils/call';
+import {cleanupActiveCalls, getMediaStreams} from './utils/call';
 import {ServiceIndicator} from './constants';
 
 interface SetupConfig {
@@ -115,6 +115,7 @@ export class TestManager {
     // Tear down existing context for this role to avoid leaked registrations
     const existing = this.contexts.get(role);
     if (existing) {
+      await cleanupActiveCalls(existing.page).catch(() => {});
       await unregisterLine(existing.page).catch(() => {});
       await existing.context.close().catch(() => {});
     }
@@ -152,6 +153,10 @@ export class TestManager {
    * Deregister all lines, then close all managed contexts.
    */
   async cleanup(): Promise<void> {
+    await Promise.all(
+      Array.from(this.contexts.values()).map((mc) => cleanupActiveCalls(mc.page).catch(() => {}))
+    );
+
     // Deregister lines before closing — prevents stale backend registrations
     // that block subsequent tests reusing the same account.
     await Promise.all(
