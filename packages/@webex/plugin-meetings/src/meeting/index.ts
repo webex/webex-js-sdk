@@ -612,7 +612,7 @@ export default class Meeting extends StatelessWebexPlugin {
   webinar: any;
   conversationUrl: string;
   callStateForMetrics: CallStateForMetrics;
-  destination: string;
+  destination: string | LocusDTO;
   destinationType: DESTINATION_TYPE;
   deviceUrl: string;
   hostId: string;
@@ -651,6 +651,8 @@ export default class Meeting extends StatelessWebexPlugin {
   floorGrantPending: boolean;
   hasJoinedOnce: boolean;
   hasWebsocketConnected: boolean;
+  private mercuryOnlineHandler?: () => void;
+  private mercuryOfflineHandler?: () => void;
   inMeetingActions: InMeetingActions;
   isLocalShareLive: boolean;
   isRoapInProgress: boolean;
@@ -4660,6 +4662,33 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * After initial locus setup, refreshes destination with synced locus data and optionally
+   * performs deferred meeting info fetch when initial locus was incomplete.
+   * @param {LocusDTO} locus
+   * @returns {void}
+   */
+  public async finalizeMeetingAfterInitialLocusSetup(locus: LocusDTO): Promise<void> {
+    if (locus && this?.destinationType === DESTINATION_TYPE.LOCUS_ID) {
+      // destination is initialized from the initial locus snapshot in constructor,
+      // so refresh it after locus sync to avoid stale partial hash-tree data.
+      this.destination = locus;
+    }
+    if (
+      (!this.meetingInfo || isEmpty(this.meetingInfo)) &&
+      (this.destination as LocusDTO)?.info &&
+      !this.fetchMeetingInfoTimeoutId
+    ) {
+      try {
+        await this.fetchMeetingInfo({});
+      } catch (error: any) {
+        LoggerProxy.logger.info(
+          `Meeting:index#finalizeMeetingAfterInitialLocusSetup --> deferred fetchMeetingInfo failed: ${error.message}`
+        );
+      }
+    }
+  }
+
+  /**
    * Set the locus info the class instance. Should be called with the parsed locus
    * we got in the join response.
    *
@@ -5130,8 +5159,7 @@ export default class Meeting extends StatelessWebexPlugin {
   public setMercuryListener() {
     // Client will have a socket manager and handle reconnecting to mercury, when we reconnect to mercury
     // if the meeting has active peer connections, it should try to reconnect.
-    // @ts-ignore
-    this.webex.internal.mercury.on(ONLINE, () => {
+    this.mercuryOnlineHandler = () => {
       LoggerProxy.logger.info('Meeting:index#setMercuryListener --> Web socket online');
 
       // Only send restore event when it was disconnected before and for connected later
@@ -5141,15 +5169,47 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       }
       this.hasWebsocketConnected = true;
-    });
+    };
 
-    // @ts-ignore
-    this.webex.internal.mercury.on(OFFLINE, () => {
+    this.mercuryOfflineHandler = () => {
       LoggerProxy.logger.error('Meeting:index#setMercuryListener --> Web socket offline');
       Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.MERCURY_CONNECTION_FAILURE, {
         correlation_id: this.correlationId,
       });
-    });
+    };
+
+    // @ts-ignore
+    this.webex.internal.mercury.on(ONLINE, this.mercuryOnlineHandler);
+    // @ts-ignore
+    this.webex.internal.mercury.on(OFFLINE, this.mercuryOfflineHandler);
+  }
+
+  /**
+   * Removes this meeting's Mercury ONLINE/OFFLINE event listeners registered
+   * by setMercuryListener(). Must be called before Locus /leave to avoid
+   * unnecessary syncs/metrics triggered by events received while leaving
+   * (per Locus team recommendation).
+   *
+   * Mercury is a process-wide singleton shared with other plugins, so we
+   * pass the bound handler refs to .off() to avoid clearing every listener
+   * for ONLINE/OFFLINE on the shared emitter.
+   *
+   * Idempotent: subsequent calls are no-ops because the handler refs are
+   * cleared after detaching.
+   * @private
+   * @returns {void}
+   */
+  private stopListeningForMercuryEvents() {
+    if (this.mercuryOnlineHandler) {
+      // @ts-ignore
+      this.webex.internal.mercury.off(ONLINE, this.mercuryOnlineHandler);
+      this.mercuryOnlineHandler = undefined;
+    }
+    if (this.mercuryOfflineHandler) {
+      // @ts-ignore
+      this.webex.internal.mercury.off(OFFLINE, this.mercuryOfflineHandler);
+      this.mercuryOfflineHandler = undefined;
+    }
   }
 
   /**
@@ -6302,6 +6362,49 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Removes LLM event listeners and clears the health check timer.
+   * Must be called before Locus /leave to avoid unnecessary syncs triggered
+   * by events received while leaving (per Locus team recommendation).
+   * Idempotent: safe to call multiple times; .off() is a no-op when no
+   * matching listener is registered.
+   * @private
+   * @returns {void}
+   */
+  private stopListeningForLLMEvents() {
+    // @ts-ignore - fix types
+    this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
+    // @ts-ignore - fix types
+    this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+    this.clearLLMHealthCheckTimer();
+  }
+
+  /**
+   * Stops listening on every event bus (LLM, Mercury, voicea/transcription,
+   * annotation) that could otherwise deliver events to this meeting while
+   * Locus is processing /leave or /end. Per the Locus team recommendation,
+   * this must run before the Locus request is dispatched to avoid
+   * unnecessary syncs triggered by in-flight events.
+   *
+   * Voicea (transcription) subscribes to llm 'event:relay.event' internally,
+   * and the annotation plugin subscribes to both mercury and llm, so both
+   * must be torn down alongside the direct LLM/Mercury listeners.
+   *
+   * Idempotent: safe to call multiple times; .off() is a no-op when no
+   * matching listener is registered, and stopTranscription is guarded.
+   * @private
+   * @returns {void}
+   */
+  private stopListeningForMeetingEvents() {
+    this.stopListeningForLLMEvents();
+    this.stopListeningForMercuryEvents();
+    if (this.transcription) {
+      this.stopTranscription();
+      this.transcription = undefined;
+    }
+    this.annotation.deregisterEvents();
+  }
+
+  /**
    * Disconnects and cleans up the default LLM session listeners/timers.
    * @param {Object} options
    * @param {boolean} [options.removeOnlineListener=true] removes the one-time online listener
@@ -6335,12 +6438,7 @@ export default class Meeting extends StatelessWebexPlugin {
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('online', this.handleLLMOnline);
       }
-      // @ts-ignore - fix types
-      this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
-      // @ts-ignore - Fix type
-      this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
-
-      this.clearLLMHealthCheckTimer();
+      this.stopListeningForLLMEvents();
     }
   };
 
@@ -8797,6 +8895,8 @@ export default class Meeting extends StatelessWebexPlugin {
       });
     LoggerProxy.logger.log('Meeting:index#leave --> Leaving a meeting');
 
+    this.stopListeningForMeetingEvents();
+
     return MeetingUtil.leaveMeeting(this, options)
       .then(async (leave) => {
         // CA team recommends submitting this *after* locus /leave
@@ -9661,6 +9761,8 @@ export default class Meeting extends StatelessWebexPlugin {
       locus_id: this.locusId,
     });
 
+    this.stopListeningForMeetingEvents();
+
     return MeetingUtil.endMeetingForAll(this)
       .then(async (end) => {
         this.meetingFiniteStateMachine.end();
@@ -9722,11 +9824,11 @@ export default class Meeting extends StatelessWebexPlugin {
     }
     this.queuedMediaUpdates = [];
 
-    this.stopTranscription();
-    this.transcription = undefined;
-
-    this.annotation.deregisterEvents();
-
+    // Listener teardown (transcription, annotation, llm/mercury) runs in
+    // stopListeningForMeetingEvents() before /leave and /end so events
+    // received mid-teardown do not trigger Locus syncs. Calling it here
+    // again would double-emit MEETING_STOPPED_RECEIVING_TRANSCRIPTION
+    // because stopTranscription() always fires its trigger.
     this.clearDataChannelToken();
     await this.cleanupLLMConneciton({throwOnError: false});
   };

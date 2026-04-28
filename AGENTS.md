@@ -13,12 +13,32 @@ For example, the file `packages/@webex/plugin-meetings/src/meeting/index.ts` con
 
 Usually, when working on new features or fixing bugs, you will be working on a single plugin, so when analyzing the code or running the tests, focus only on that single plugin.
 
+# Building
+To build the source code for a specific plugin, use:
+`yarn workspace @webex/<plugin-name> build:src`
+
 # Unit tests
 To run unit tests for a specific plugin, use the following command:
 `yarn workspace @webex/<plugin-name> test:unit`
 
 for example, for plugin-meetings use:
 `yarn workspace @webex/plugin-meetings test:unit`
+
+## Running a specific test file
+To run a single test file, use `--targets` with a path relative to the test type's spec directory:
+- `test:unit` resolves from `test/unit/spec/`
+- `test:integration` and `test:browser` resolve from `test/integration/spec/`
+
+```
+yarn workspace @webex/<plugin-name> test:unit --targets <path-relative-to-spec>
+```
+
+For example, to run `packages/@webex/plugin-meetings/test/unit/spec/locus-info/controlsUtils.js`:
+```
+yarn workspace @webex/plugin-meetings test:unit --targets locus-info/controlsUtils.js
+```
+
+**Common mistake:** passing just the filename (`--targets controlsUtils.js`) or a full path. The `--targets` value must be the path starting from inside the spec directory for that test type.
 
 ## Test writing guidelines
 When adding tests to existing test files, use same coding style as the existing tests
