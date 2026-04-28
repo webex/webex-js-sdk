@@ -8034,7 +8034,7 @@ __metadata:
     "@webex/test-helper-mock-webex": "workspace:*"
     "@webex/test-helper-test-users": "workspace:*"
     "@webex/webex-core": "workspace:*"
-    asn1js: ^2.0.26
+    asn1js: ^3.0.10
     debug: ^4.3.4
     eslint: ^8.24.0
     isomorphic-webcrypto: ^2.3.8
@@ -10828,12 +10828,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"asn1js@npm:^2.0.26":
-  version: 2.4.0
-  resolution: "asn1js@npm:2.4.0"
+"asn1js@npm:^3.0.10":
+  version: 3.0.10
+  resolution: "asn1js@npm:3.0.10"
   dependencies:
-    pvutils: ^1.1.3
-  checksum: 0aaa8d64d0824643f69826c31ed0d89fffd4832d93fd71f745b19d6af9d0e1b4e8e7c9f81fcd343ea7e2bd51858f5f80c31ed8381ecf782e44504ce554274b98
+    pvtsutils: ^1.3.6
+    pvutils: ^1.1.5
+    tslib: ^2.8.1
+  checksum: 4194e332bb066d664f5b2d2fffb33f786e558397399a87439185f80280c453c505a9d429c1e792c25ecce2f9f877f291933428f85bb24c02c3ad635478febc1d
   languageName: node
   linkType: hard
 
@@ -27977,7 +27979,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pvutils@npm:^1.1.3":
+"pvutils@npm:^1.1.3, pvutils@npm:^1.1.5":
   version: 1.1.5
   resolution: "pvutils@npm:1.1.5"
   checksum: b86a8d1e74aa430faea75b510e33e5d5315213616e3c2870c2a3c0c152fd5eab08a52d3fdda3a4c711990d5e8e43918b5bc364fba531f81192146c5cbb9b7aa6
