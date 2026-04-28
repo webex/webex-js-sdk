@@ -451,6 +451,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
               },
             },
             on: {
+              E_SEND_CALL_CONNECT: {
+                cond: () => this.connectPending,
+                target: 'S_SEND_CALL_CONNECT',
+                actions: ['outgoingCallConnect'],
+              },
               E_CALL_ESTABLISHED: {
                 target: 'S_CALL_ESTABLISHED',
                 actions: ['callEstablished'],

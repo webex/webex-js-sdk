@@ -452,6 +452,92 @@ describe('Call Tests', () => {
     );
   });
 
+  it('sends connect before ROAP answer when inbound offer is delayed', async () => {
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+      on: jest.fn(),
+      getEffectByKind: jest.fn().mockImplementation(() => {
+        return mockEffect;
+      }),
+    };
+
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+    const call = createCall(
+      activeUrl,
+      webex,
+      CallDirection.INBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator,
+      dest
+    ) as Call;
+
+    webex.request.mockReturnValue({
+      statusCode: 200,
+      body: {
+        callId: 'mock-call-id',
+      },
+    } as WebexRequestPayload);
+
+    call.sendCallStateMachineEvt({
+      type: 'E_RECV_CALL_SETUP',
+      data: {
+        seq: 1,
+        messageType: 'OFFER',
+      },
+    } as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
+
+    await call.answer(localAudioStream);
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_CONNECT');
+
+    // Connect is attempted by answer(), but is deferred because offer is not buffered yet.
+    expect(call['connectPending']).toBe(true);
+    expect(call['mediaConnection'].roapMessageReceived).not.toHaveBeenCalled();
+
+    const delayedOffer = {
+      seq: 1,
+      messageType: 'OFFER',
+      sdp: 'v=0',
+      version: 1,
+    };
+
+    call.sendMediaStateMachineEvt({type: 'E_RECV_ROAP_OFFER', data: delayedOffer} as RoapEvent);
+    await flushPromises(2);
+    expect(call['mediaConnection'].roapMessageReceived).toHaveBeenCalledWith(delayedOffer);
+
+    const sendCallStateMachineEvtSpy = jest.spyOn(call, 'sendCallStateMachineEvt');
+    const sendMediaStateMachineEvtSpy = jest.spyOn(call, 'sendMediaStateMachineEvt');
+    const roapListener = (call['mediaConnection'].on as jest.Mock).mock.calls.find(
+      ([eventName]) =>
+        eventName === InternalMediaCoreModule.MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND
+    )?.[1];
+
+    expect(roapListener).toBeDefined();
+
+    await roapListener({
+      roapMessage: {
+        messageType: 'ANSWER',
+        sdp: 'v=0',
+        seq: 1,
+        version: 2,
+      },
+    });
+    await flushPromises(2);
+
+    // On ANSWER from media layer, connect is retried first, then ROAP answer is posted.
+    expect(sendCallStateMachineEvtSpy).toHaveBeenNthCalledWith(1, {type: 'E_SEND_CALL_CONNECT'});
+    expect(sendMediaStateMachineEvtSpy).toHaveBeenNthCalledWith(1, {
+      type: 'E_SEND_ROAP_ANSWER',
+      data: expect.objectContaining({messageType: 'ANSWER'}),
+    });
+    expect(call['mediaConnection'].roapMessageReceived).toHaveBeenLastCalledWith(delayedOffer);
+    expect(call['connectPending']).toBe(false);
+  });
+
   it('testing enabling/disabling the BNR on an active call', async () => {
     const mockStream = {
       outputStream: {
@@ -1172,10 +1258,6 @@ describe('State Machine handler tests', () => {
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
 
-    // Progress is now deferred until ROAP offer is received
-    call.sendCallStateMachineEvt({type: 'E_SEND_CALL_ALERTING'} as CallEvent);
-    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
-
     dummyEvent.type = 'E_SEND_CALL_CONNECT';
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
 
@@ -1239,10 +1321,6 @@ describe('State Machine handler tests', () => {
     webex.request.mockReturnValue(statusPayload);
 
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
-
-    // Progress is now deferred until ROAP offer is received
-    call.sendCallStateMachineEvt({type: 'E_SEND_CALL_ALERTING'} as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
     await call['handleOutgoingCallConnect']({type: 'E_SEND_CALL_CONNECT'} as CallEvent);
     /* state should not change since there is no offer received. */
@@ -1371,16 +1449,12 @@ describe('State Machine handler tests', () => {
     call.sendCallStateMachineEvt({type: 'E_RECV_CALL_SETUP'} as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
 
-    // Progress is now deferred until ROAP offer is received
-    call.sendCallStateMachineEvt({type: 'E_SEND_CALL_ALERTING'} as CallEvent);
-    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
-
     call.sendMediaStateMachineEvt({type: 'E_RECV_ROAP_OFFER', data: roapMessage} as RoapEvent);
     webex.request.mockRejectedValueOnce({statusCode: 403}).mockResolvedValue(statusPayload);
 
     await call['handleOutgoingCallConnect']({type: 'E_SEND_CALL_CONNECT'} as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_UNKNOWN');
-    expect(stateMachineSpy).toBeCalledTimes(4);
+    expect(stateMachineSpy).toBeCalledTimes(3);
     expect(warnSpy).toBeCalledTimes(3);
     expect(errorSpy).toBeCalledTimes(1);
   });
@@ -1973,10 +2047,6 @@ describe('State Machine handler tests', () => {
     call.sendCallStateMachineEvt(setupEvent as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
 
-    // Progress is now deferred until ROAP offer is received
-    call.sendCallStateMachineEvt({type: 'E_SEND_CALL_ALERTING'} as CallEvent);
-    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
-
     const connectEvent = {type: 'E_SEND_CALL_CONNECT'};
     call.sendCallStateMachineEvt(connectEvent as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_CONNECT');
@@ -2033,10 +2103,6 @@ describe('State Machine handler tests', () => {
     webex.request.mockReturnValue(statusPayload);
     call['direction'] = CallDirection.INBOUND;
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
-
-    // Progress is now deferred until ROAP offer is received
-    call.sendCallStateMachineEvt({type: 'E_SEND_CALL_ALERTING'} as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
 
     dummyEvent.type = 'E_SEND_CALL_CONNECT';
@@ -2229,10 +2295,6 @@ describe('State Machine handler tests', () => {
     webex.request.mockReturnValue(statusPayload);
     call['direction'] = CallDirection.INBOUND;
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
-    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
-
-    // Progress is now deferred until ROAP offer is received
-    call.sendCallStateMachineEvt({type: 'E_SEND_CALL_ALERTING'} as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
 
     dummyEvent.type = 'E_SEND_CALL_CONNECT';
