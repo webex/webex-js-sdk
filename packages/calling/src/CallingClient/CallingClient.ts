@@ -50,9 +50,7 @@ import {
   METHODS,
   NETWORK_FLAP_TIMEOUT,
   DEVICES_ENDPOINT_RESOURCE,
-  POST_AUTH,
   WCC_CALLING_RTMS_DOMAIN,
-  DEFAULT_RTMS_DOMAIN,
 } from './constants';
 import Line from './line';
 import {ILine} from './line/types';
@@ -213,7 +211,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     ) {
       const rtmsDomain = await this.getRTMSDomain();
 
-      if (this.sdkConfig.serviceData) {
+      if (this.sdkConfig.serviceData && rtmsDomain) {
         this.sdkConfig.serviceData.domain = rtmsDomain;
       }
     }
@@ -225,18 +223,16 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
   /**
    * Retrieves the RTMS domain from the service catalog for contact-center flows.
-   * Falls back to the default RTMS domain if the catalog lookup fails.
    *
-   * @returns The RTMS domain to use.
+   * @returns The RTMS domain from catalog when available.
    */
-  private async getRTMSDomain(): Promise<string> {
+  private async getRTMSDomain(): Promise<string | undefined> {
     log.info('Fetching RTMS domain from service catalog', {
       file: CALLING_CLIENT_FILE,
       method: METHODS.GET_RTMS_DOMAIN,
     });
 
     try {
-      await this.webex.internal.services.waitForCatalog(POST_AUTH);
       const rtmsURL = this.webex.internal.services.get(WCC_CALLING_RTMS_DOMAIN);
       const url = new URL(rtmsURL);
 
@@ -247,15 +243,12 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
       return url.hostname;
     } catch (error) {
-      log.warn(
-        `Failed to fetch RTMS domain from service catalog, falling back to default: ${error}`,
-        {
-          file: CALLING_CLIENT_FILE,
-          method: METHODS.GET_RTMS_DOMAIN,
-        }
-      );
+      log.warn(`Failed to fetch RTMS domain from service catalog: ${error}`, {
+        file: CALLING_CLIENT_FILE,
+        method: METHODS.GET_RTMS_DOMAIN,
+      });
 
-      return DEFAULT_RTMS_DOMAIN;
+      return undefined;
     }
   }
 
