@@ -6322,7 +6322,7 @@ export default class Meeting extends StatelessWebexPlugin {
     throwOnError?: boolean;
   } = {}): Promise<void> => {
     // @ts-ignore - Fix type
-    const currentOwner = this.webex.internal.llm.getOwnerMeetingId?.();
+    const currentOwner = this.webex.internal.llm.getOwnerMeetingId();
     const isOwner = !currentOwner || currentOwner === this.id;
 
     try {
@@ -6476,7 +6476,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // connection when this meeting is the current owner, or when no owner is
     // set yet (first claim).
     // @ts-ignore - Fix type
-    const currentOwner = this.webex.internal.llm.getOwnerMeetingId?.();
+    const currentOwner = this.webex.internal.llm.getOwnerMeetingId();
 
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
@@ -9789,7 +9789,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // session. Otherwise we would wipe tokens still in use by another
     // meeting's active LLM connection.
     // @ts-ignore - Fix type
-    const currentOwner = this.webex.internal.llm.getOwnerMeetingId?.();
+    const currentOwner = this.webex.internal.llm.getOwnerMeetingId();
     const isOwner = !currentOwner || currentOwner === this.id;
 
     if (isOwner) {
