@@ -286,7 +286,6 @@ export const cleanupActiveCalls = async (page: Page): Promise<void> => {
   if (page.isClosed()) return;
 
   try {
-<<<<<<< HEAD
     const getActiveCallCount = () =>
       page.evaluate(() => {
         const client = (window as any).callingClient;
@@ -354,48 +353,6 @@ export const cleanupActiveCalls = async (page: Page): Promise<void> => {
       await page.waitForTimeout(1000).catch(() => {});
     }
     /* eslint-enable no-await-in-loop */
-
-=======
-    const hasActiveCalls = await page.evaluate(() => {
-      const client = (window as any).callingClient;
-      if (!client) return false;
-      const calls = client.getActiveCalls();
-
-      return Object.values(calls).flat().length > 0;
-    });
-
-    if (!hasActiveCalls) return;
-
-    // Try ending the second call (transfer call) if visible and enabled
-    const endSecondBtn = page.locator(CALLING_SELECTORS.END_SECOND_CALL_BTN);
-    const endSecondVisible = await endSecondBtn.isVisible().catch(() => false);
-    if (endSecondVisible) {
-      const endSecondEnabled = await endSecondBtn.isEnabled().catch(() => false);
-      if (endSecondEnabled) {
-        await endSecondBtn.click({timeout: 5000}).catch(() => {});
-        await page.waitForTimeout(2000);
-      }
-    }
-
-    // Try ending the primary call
-    const endCallBtn = page.locator(CALLING_SELECTORS.END_CALL_BTN);
-    const endCallEnabled = await endCallBtn.isEnabled().catch(() => false);
-    if (endCallEnabled) {
-      await endCallBtn.click({timeout: 5000}).catch(() => {});
-    }
-
-    // Also try the incoming call end button
-    const endBtn = page.locator(CALLING_SELECTORS.END_BTN);
-    const endBtnVisible = await endBtn.isVisible().catch(() => false);
-    if (endBtnVisible) {
-      const endBtnEnabled = await endBtn.isEnabled().catch(() => false);
-      if (endBtnEnabled) {
-        await endBtn.click({timeout: 5000}).catch(() => {});
-      }
-    }
-
-    // Wait for all calls to clear
->>>>>>> eeb81ba3bb (feat: 2 user call flows)
     await page
       .waitForFunction(
         () => {
@@ -408,15 +365,12 @@ export const cleanupActiveCalls = async (page: Page): Promise<void> => {
         {timeout: 15000}
       )
       .catch(() => {});
-<<<<<<< HEAD
 
     if ((await getActiveCallCount()) === 0) {
       await expect(page.locator(CALLING_SELECTORS.MAKE_CALL_BTN)).toBeEnabled({
         timeout: AWAIT_TIMEOUT,
       });
     }
-=======
->>>>>>> eeb81ba3bb (feat: 2 user call flows)
   } catch {
     // Best effort
   }
