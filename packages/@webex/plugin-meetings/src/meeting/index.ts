@@ -7603,6 +7603,33 @@ export default class Meeting extends StatelessWebexPlugin {
         }
       }
     });
+    this.statsAnalyzer.on(StatsAnalyzerEventNames.STATS_UPDATE, (data) => {
+      // Extract srtpCipher from transport stats
+      let srtpCipher: string | undefined;
+      for (const stats of data.stats.values()) {
+        if (stats.type === 'transport' && stats.srtpCipher) {
+          srtpCipher = stats.srtpCipher as string;
+          break;
+        }
+      }
+
+      // Only emit event if srtpCipher has changed
+      if (srtpCipher && srtpCipher !== this.mediaProperties.srtpCipher) {
+        LoggerProxy.logger.info(
+          `Meeting:index#setupStatsAnalyzerEventHandlers --> SRTP cipher changed from ${this.mediaProperties.srtpCipher} to ${srtpCipher}`
+        );
+        this.mediaProperties.srtpCipher = srtpCipher;
+        Trigger.trigger(
+          this,
+          {
+            file: 'meeting/index',
+            function: 'setupStatsAnalyzerEventHandlers',
+          },
+          EVENT_TRIGGERS.MEETING_SRTP_CIPHER_UPDATED,
+          {srtpCipher}
+        );
+      }
+    });
   };
 
   getMediaConnectionDebugId() {
