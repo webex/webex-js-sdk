@@ -103,7 +103,6 @@ export const _JOINED_ = 'JOINED';
 export const _LOCUS_ID_ = 'LOCUS_ID';
 export const _LEFT_ = 'LEFT';
 export const _MOVED_ = 'MOVED';
-export const _BREAKOUT_ENDED_ = 'BREAKOUT_ENDED';
 export const _ON_HOLD_LOBBY_ = 'ON_HOLD_LOBBY';
 export const _MEETING_LINK_ = 'MEETING_LINK';
 export const _MEETING_UUID_ = 'MEETING_UUID';
@@ -418,7 +417,7 @@ export const HEADERS = {
 // Meeting actually ended
 export const MEETING_REMOVED_REASON = {
   SELF_REMOVED: 'SELF_REMOVED', // server or host removed you from the meeting
-  MEETING_INACTIVE_TERMINATING: 'MEETING_INACTIVE_TERMINATING', // Meeting got ended or everyone left the meeting
+  MEETING_INACTIVE_TERMINATING: 'MEETING_INACTIVE_TERMINATING', // Meeting got ended or everyone left the meeting (historically was sent on Locus TERMINATING or INACTIVE, but now only on INACTIVE as that's the final state)
   CLIENT_LEAVE_REQUEST: 'CLIENT_LEAVE_REQUEST', // You triggered leave meeting
   CLIENT_LEAVE_REQUEST_TAB_CLOSED: 'CLIENT_LEAVE_REQUEST_TAB_CLOSED', // You triggered leave meeting, such as closing the browser tab directly
   USER_ENDED_SHARE_STREAMS: 'USER_ENDED_SHARE_STREAMS', // user triggered stop share
