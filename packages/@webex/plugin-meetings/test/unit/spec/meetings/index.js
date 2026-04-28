@@ -1489,7 +1489,7 @@ describe('plugin-meetings', () => {
                   url: url1,
                 },
                 hashTreeMessage: undefined,
-              });
+              }, sinon.match.func);
             });
           });
           describe('when destroying meeting is needed', () => {
@@ -2137,7 +2137,7 @@ describe('plugin-meetings', () => {
                 },
               },
               hashTreeMessage: undefined,
-            });
+            }, sinon.match.func);
           });
           it('should setup the meeting from a hash tree event', async () => {
             const selfData = {};
@@ -2171,7 +2171,7 @@ describe('plugin-meetings', () => {
                 info: infoData,
               },
               hashTreeMessage,
-            });
+            }, sinon.match.func);
           });
 
           it('should ignore hash tree event when created locus has INACTIVE fullState', async () => {
@@ -2251,7 +2251,7 @@ describe('plugin-meetings', () => {
                 },
               },
               hashTreeMessage: undefined,
-            });
+            }, sinon.match.func);
           });
 
           it('sends client event correctly on finally', async () => {
@@ -2327,7 +2327,7 @@ describe('plugin-meetings', () => {
                 },
               },
               hashTreeMessage: undefined,
-            });
+            }, sinon.match.func);
           });
 
           const generateFakeLocusData = (isUnifiedSpaceMeeting) => ({

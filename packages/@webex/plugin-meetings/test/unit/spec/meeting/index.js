@@ -11353,6 +11353,93 @@ describe('plugin-meetings', () => {
         });
       });
 
+      describe('#finalizeMeetingAfterInitialLocusSetup', () => {
+        it('refreshes destination from synced locus when destination type is LOCUS_ID', () => {
+          const syncedLocus = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
+
+          meeting.destinationType = DESTINATION_TYPE.LOCUS_ID;
+          meeting.destination = {info: {topic: 'old'}};
+
+          meeting.finalizeMeetingAfterInitialLocusSetup(syncedLocus);
+
+          assert.equal(meeting.destination, syncedLocus);
+        });
+
+        it('does not refresh destination when destination type is not LOCUS_ID', () => {
+          const syncedLocus = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
+          const originalDestination = {destination: 'original-destination'};
+
+          meeting.destinationType = DESTINATION_TYPE.CONVERSATION_URL;
+          meeting.destination = originalDestination;
+
+          meeting.finalizeMeetingAfterInitialLocusSetup(syncedLocus);
+
+          assert.equal(meeting.destination, originalDestination);
+        });
+
+        it('fetches meeting info when meetingInfo is empty and destination has info', () => {
+          const fetchMeetingInfoStub = sinon.stub(meeting, 'fetchMeetingInfo').resolves();
+
+          meeting.meetingInfo = {};
+          meeting.destination = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
+
+          meeting.finalizeMeetingAfterInitialLocusSetup({});
+
+          assert.calledOnceWithExactly(fetchMeetingInfoStub, {});
+        });
+
+        it('does not fetch meeting info when destination has no info', () => {
+          const fetchMeetingInfoStub = sinon.stub(meeting, 'fetchMeetingInfo').resolves();
+
+          meeting.meetingInfo = {};
+          meeting.destination = {url: 'https://locus.example.com/locus/123'};
+
+          meeting.finalizeMeetingAfterInitialLocusSetup({});
+
+          assert.notCalled(fetchMeetingInfoStub);
+        });
+
+        it('does not fetch meeting info when meetingInfo is already populated', () => {
+          const fetchMeetingInfoStub = sinon.stub(meeting, 'fetchMeetingInfo').resolves();
+
+          meeting.meetingInfo = {meetingJoinUrl: 'https://example.com/join/abc'};
+          meeting.destination = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
+
+          meeting.finalizeMeetingAfterInitialLocusSetup({});
+
+          assert.notCalled(fetchMeetingInfoStub);
+        });
+
+        it('does not fetch meeting info when delayed fetch timer is already scheduled', () => {
+          const fetchMeetingInfoStub = sinon.stub(meeting, 'fetchMeetingInfo').resolves();
+
+          meeting.meetingInfo = {};
+          meeting.destination = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
+          meeting.fetchMeetingInfoTimeoutId = 42;
+
+          meeting.finalizeMeetingAfterInitialLocusSetup({});
+
+          assert.notCalled(fetchMeetingInfoStub);
+        });
+
+        it('swallows async fetchMeetingInfo errors and logs info', async () => {
+          const error = new Error('fetch failed');
+
+          meeting.meetingInfo = {};
+          meeting.destination = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
+          sinon.stub(meeting, 'fetchMeetingInfo').returns(Promise.reject(error));
+          const loggerInfoStub = sinon.stub(LoggerProxy.logger, 'info');
+
+          await meeting.finalizeMeetingAfterInitialLocusSetup({});
+
+          assert.calledOnce(loggerInfoStub);
+          assert.match(
+            loggerInfoStub.firstCall.args[0],
+            /Meeting:index#finalizeMeetingAfterInitialLocusSetup --> deferred fetchMeetingInfo failed: fetch failed/
+          );
+        });
+      });
+
       describe('#emailInput', () => {
         it('should set the email input', () => {
           assert.notOk(meeting.emailInput);

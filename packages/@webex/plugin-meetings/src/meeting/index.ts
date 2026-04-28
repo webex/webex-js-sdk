@@ -612,7 +612,7 @@ export default class Meeting extends StatelessWebexPlugin {
   webinar: any;
   conversationUrl: string;
   callStateForMetrics: CallStateForMetrics;
-  destination: string;
+  destination: string | LocusDTO;
   destinationType: DESTINATION_TYPE;
   deviceUrl: string;
   hostId: string;
@@ -4657,6 +4657,33 @@ export default class Meeting extends StatelessWebexPlugin {
   setSipUri(sipUri: string) {
     // This can be tel no, device id or a sip uri, user Id
     this.sipUri = sipUri;
+  }
+
+  /**
+   * After initial locus setup, refreshes destination with synced locus data and optionally
+   * performs deferred meeting info fetch when initial locus was incomplete.
+   * @param {LocusDTO} locus
+   * @returns {void}
+   */
+  public async finalizeMeetingAfterInitialLocusSetup(locus: LocusDTO): Promise<void> {
+    if (locus && this?.destinationType === DESTINATION_TYPE.LOCUS_ID) {
+      // destination is initialized from the initial locus snapshot in constructor,
+      // so refresh it after locus sync to avoid stale partial hash-tree data.
+      this.destination = locus;
+    }
+    if (
+      (!this.meetingInfo || isEmpty(this.meetingInfo)) &&
+      (this.destination as LocusDTO)?.info &&
+      !this.fetchMeetingInfoTimeoutId
+    ) {
+      try {
+        await this.fetchMeetingInfo({});
+      } catch (error: any) {
+        LoggerProxy.logger.info(
+          `Meeting:index#finalizeMeetingAfterInitialLocusSetup --> deferred fetchMeetingInfo failed: ${error.message}`
+        );
+      }
+    }
   }
 
   /**
