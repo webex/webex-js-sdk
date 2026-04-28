@@ -1249,7 +1249,11 @@ class HashTreeParser {
 
       // sync API may return nothing (in that case data will arrive via messages)
       // or it may return a response in the same format as messages
+      // We still need to restart the sync timer as a safety net in case the messages don't arrive.
+      this.runSyncAlgorithm(dataSet);
+
       if (syncResponse) {
+        // the format of sync response is the same as messages, so we can reuse the same handler
         this.handleMessage(syncResponse, 'via sync API');
       }
     } catch (error) {
@@ -1392,12 +1396,6 @@ class HashTreeParser {
 
     dataSet.hashTree.resize(receivedDataSet.leafCount);
 
-    // temporary log for the workshop // todo: remove
-    const ourCurrentRootHash = dataSet.hashTree.getRootHash();
-    LoggerProxy.logger.info(
-      `HashTreeParser#runSyncAlgorithm --> ${this.debugId} dataSet="${dataSet.name}" version=${dataSet.version} hashes before starting timer: ours=${ourCurrentRootHash} Locus=${dataSet.root}`
-    );
-
     const delay = dataSet.idleMs + this.getWeightedBackoffTime(dataSet.backoff);
 
     if (delay > 0) {
@@ -1478,6 +1476,7 @@ class HashTreeParser {
         );
 
         this.enqueueSyncForDataset(dataSet.name, `heartbeat watchdog expired`);
+        this.resetHeartbeatWatchdogs([dataSet]);
       }, delay);
     }
   }
