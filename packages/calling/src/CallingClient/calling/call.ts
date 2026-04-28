@@ -376,6 +376,35 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     );
   };
 
+  private handleRoapFailure = (error: {message?: string; stack?: string; code?: string}) => {
+    const failureMessage = error.message || 'Unknown ROAP failure received from media SDK';
+
+    log.warn(`ROAP failure occurred: ${failureMessage}`, {
+      file: CALL_FILE,
+      method: METHODS.MEDIA_ROAP_EVENTS_LISTENER,
+    });
+
+    const callError = createCallError(
+      `ROAP failure occurred: ${failureMessage}`,
+      {file: CALL_FILE, method: METHODS.MEDIA_ROAP_EVENTS_LISTENER},
+      ERROR_TYPE.CALL_ERROR,
+      this.correlationId,
+      ERROR_LAYER.MEDIA
+    );
+
+    this.metricManager.submitMediaMetric(
+      METRIC_EVENT.MEDIA_ERROR,
+      MEDIA_CONNECTION_ACTION.ROAP_FAILURE,
+      METRIC_TYPE.BEHAVIORAL,
+      this.callId,
+      this.correlationId,
+      undefined,
+      undefined,
+      undefined,
+      callError
+    );
+  };
+
   /**
    * Getter to check if the call is muted or not.
    *
@@ -2863,6 +2892,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND,
       this.handleMediaRoapEvent
     );
+    this.mediaConnection.on(MediaConnectionEventNames.ROAP_FAILURE, this.handleRoapFailure);
   }
 
   /* istanbul ignore next */
@@ -2908,6 +2938,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND,
       this.handleMediaRoapEvent
     );
+    this.mediaConnection.off(MediaConnectionEventNames.ROAP_FAILURE, this.handleRoapFailure);
     this.mediaConnection.off(
       MediaConnectionEventNames.REMOTE_TRACK_ADDED,
       this.handleRemoteTrackAdded

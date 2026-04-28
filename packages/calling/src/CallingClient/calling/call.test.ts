@@ -487,6 +487,10 @@ describe('Call Tests', () => {
       expect.any(Function)
     );
     expect(mediaOnMock).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ROAP_FAILURE,
+      expect.any(Function)
+    );
+    expect(mediaOnMock).toBeCalledWith(
       InternalMediaCoreModule.MediaConnectionEventNames.REMOTE_TRACK_ADDED,
       expect.any(Function)
     );
@@ -511,6 +515,10 @@ describe('Call Tests', () => {
 
     expect(mediaOffSpy).toBeCalledWith(
       InternalMediaCoreModule.MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND,
+      expect.any(Function)
+    );
+    expect(mediaOffSpy).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ROAP_FAILURE,
       expect.any(Function)
     );
     expect(mediaOffSpy).toBeCalledWith(
@@ -642,6 +650,61 @@ describe('Call Tests', () => {
       'ICE candidate error occurred: {"address":null,"errorCode":701,"errorText":"STUN host lookup failed","port":null,"url":"stun:example.org:3478"}',
       {file: 'call', method: 'mediaIceEventsListener'}
     );
+  });
+
+  it('handles ROAP failure listener and submits media error metric', () => {
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+      on: jest.fn(),
+      getEffectByKind: jest.fn().mockReturnValue(undefined),
+    };
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+    const call = createCall(
+      activeUrl,
+      webex,
+      CallDirection.OUTBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator,
+      dest
+    );
+
+    call.dial(localAudioStream);
+
+    const metricSpy = jest.spyOn(call['metricManager'], 'submitMediaMetric');
+    const warnSpy = jest.spyOn(log, 'warn');
+    const roapFailureHandler = (call['mediaConnection'].on as jest.Mock).mock.calls.find(
+      ([name]) => name === InternalMediaCoreModule.MediaConnectionEventNames.ROAP_FAILURE
+    )?.[1];
+
+    const roapFailure = new Error('Failed to process remote SDP');
+
+    roapFailureHandler(roapFailure);
+
+    expect(metricSpy).toHaveBeenCalledWith(
+      METRIC_EVENT.MEDIA_ERROR,
+      MEDIA_CONNECTION_ACTION.ROAP_FAILURE,
+      METRIC_TYPE.BEHAVIORAL,
+      call.getCallId(),
+      call.getCorrelationId(),
+      undefined,
+      undefined,
+      undefined,
+      expect.any(CallError)
+    );
+
+    const roapFailureMetricCall = metricSpy.mock.calls[0];
+
+    expect(
+      (roapFailureMetricCall[roapFailureMetricCall.length - 1] as CallError).getCallError().message
+    ).toBe('ROAP failure occurred: Failed to process remote SDP');
+    expect(warnSpy).toHaveBeenCalledWith('ROAP failure occurred: Failed to process remote SDP', {
+      file: 'call',
+      method: 'mediaRoapEventsListener',
+    });
   });
 
   it('testing enabling/disabling the BNR on an active call', async () => {
