@@ -2052,6 +2052,79 @@ describe('HashTreeParser', () => {
           },
         });
       });
+
+      it('restarts the sync timer when sync response is empty so that a future sync can be triggered', async () => {
+        const parser = createHashTreeParser();
+
+        // Send a heartbeat with a mismatched root hash to trigger runSyncAlgorithm
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1', // different from ours
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'heartbeat with mismatch');
+
+        // The sync timer should be set
+        expect(parser.dataSets.main.timer).to.not.be.undefined;
+
+        // Mock responses for the first sync - return null (204/empty body)
+        const mainDataSetUrl = parser.dataSets.main.url;
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          {
+            ...createDataSet('main', 16, 1101),
+            root: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', // still mismatched
+          }
+        );
+        mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+        // Advance time to fire the sync timer (idleMs=1000 + backoff=0)
+        await clock.tickAsync(1000);
+
+        // Verify sync was triggered
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'POST',
+            uri: `${mainDataSetUrl}/sync`,
+          })
+        );
+
+        // After empty response, runSyncAlgorithm should have been called,
+        // setting a new sync timer as a safety net
+        expect(parser.dataSets.main.timer).to.not.be.undefined;
+
+        // Reset and set up mocks for the second sync
+        webexRequest.resetHistory();
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          {
+            ...createDataSet('main', 16, 1102),
+            root: 'cccccccccccccccccccccccccccccccc', // still mismatched
+          }
+        );
+        mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+        // Advance time again to fire the second sync timer
+        await clock.tickAsync(1000);
+
+        // Verify a second sync was triggered
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'POST',
+            uri: `${mainDataSetUrl}/sync`,
+          })
+        );
+      });
     });
 
     describe('handles visible data sets changes correctly', () => {
@@ -3119,7 +3192,77 @@ describe('HashTreeParser', () => {
         expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
         expect(parser.dataSets['atd-active']?.heartbeatWatchdogTimer).to.be.undefined;
       });
+
+      it('restarts the watchdog timer after it fires so that future missed heartbeats still trigger syncs', async () => {
+        const parser = createHashTreeParser();
+        const heartbeatIntervalMs = 5000;
+
+        // Send initial heartbeat for 'main'
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'initial heartbeat');
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+
+        // Mock responses for performSync - return null (204/empty body)
+        const mainDataSetUrl = parser.dataSets.main.url;
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          createDataSet('main', 16, 1101)
+        );
+        mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+        // Advance time past heartbeatIntervalMs to fire the watchdog
+        await clock.tickAsync(heartbeatIntervalMs);
+
+        // Verify sync was triggered
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'GET',
+            uri: `${mainDataSetUrl}/hashtree`,
+          })
+        );
+
+        // The watchdog timer should have been restarted after firing
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+
+        // Reset call history and set up new mock responses for the second sync
+        webexRequest.resetHistory();
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          createDataSet('main', 16, 1102)
+        );
+        mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+        // Advance time again to fire the watchdog a second time
+        await clock.tickAsync(heartbeatIntervalMs);
+
+        // Verify a second sync was triggered
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'GET',
+            uri: `${mainDataSetUrl}/hashtree`,
+          })
+        );
+
+        // And the watchdog should still be running
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+      });
     });
+
   });
 
   describe('#callLocusInfoUpdateCallback filtering', () => {

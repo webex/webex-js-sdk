@@ -43,6 +43,7 @@ export default class MediaProperties {
   shareAudioStream?: LocalSystemAudioStream;
   videoDeviceId: any;
   videoStream?: LocalCameraStream;
+  srtpCipher: string | undefined;
   namespace = MEETINGS;
   mediaIssueCounters: {[key: string]: number} = {};
   throttledSendMediaIssueMetric: ReturnType<typeof throttle>;
