@@ -260,6 +260,20 @@ describe('plugin-meetings', () => {
         assert.equal(parsedControls.record.lastModified, '2026-01-01');
       });
 
+      it('should handle record with no meta without throwing', () => {
+        const newControls = {
+          record: {recording: true, paused: false},
+        };
+
+        const parsedControls = ControlsUtils.parse(newControls);
+
+        assert.equal(parsedControls.record.recording, true);
+        assert.equal(parsedControls.record.paused, false);
+        assert.isUndefined(parsedControls.record.lastModified);
+        assert.isUndefined(parsedControls.record.modifiedByServiceAppName);
+        assert.isUndefined(parsedControls.record.modifiedByServiceAppId);
+      });
+
       describe('videoEnabled', () => {
         it('returns expected', () => {
           const result = ControlsUtils.parse({video: {enabled: true}});

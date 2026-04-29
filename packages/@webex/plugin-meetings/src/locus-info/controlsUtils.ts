@@ -26,9 +26,9 @@ ControlsUtils.parse = (controls: any) => {
       modifiedBy: ControlsUtils.getId(controls),
       paused: controls.record.paused ? controls.record.paused : false,
       recording: controls.record.recording,
-      lastModified: controls.record.meta.lastModified,
-      modifiedByServiceAppName: controls.record.meta?.modifiedByServiceAppName || undefined,
-      modifiedByServiceAppId: controls.record.meta?.modifiedByServiceAppId || undefined,
+      lastModified: controls.record.meta?.lastModified,
+      modifiedByServiceAppName: controls.record.meta?.modifiedByServiceAppName,
+      modifiedByServiceAppId: controls.record.meta?.modifiedByServiceAppId,
     };
   }
 

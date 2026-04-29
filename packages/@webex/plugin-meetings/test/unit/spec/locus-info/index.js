@@ -1290,6 +1290,8 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.IDLE,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
           }
         );
       });
@@ -1324,6 +1326,8 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.RECORDING,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
           }
         );
       });
@@ -1359,6 +1363,8 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.PAUSED,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
           }
         );
       });
@@ -1395,6 +1401,8 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.RESUMED,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
           }
         );
       });
@@ -1430,6 +1438,44 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.IDLE,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
+          }
+        );
+      });
+
+      it('should include service app fields in the recording event when present', () => {
+        locusInfo.controls = {
+          record: {
+            recording: false,
+            paused: false,
+            meta: {
+              lastModified: 'TODAY',
+              modifiedBy: 'George Kittle',
+            },
+          },
+          shareControl: {},
+          transcribe: {},
+        };
+        newControls.record.recording = true;
+        newControls.record.meta.modifiedByServiceAppName = 'My Bot';
+        newControls.record.meta.modifiedByServiceAppId = 'app-id-123';
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+          {
+            state: RECORDING_STATE.RECORDING,
+            modifiedBy: 'George Kittle',
+            lastModified: 'TODAY',
+            modifiedByServiceAppName: 'My Bot',
+            modifiedByServiceAppId: 'app-id-123',
           }
         );
       });
