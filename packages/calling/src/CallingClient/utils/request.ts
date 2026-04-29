@@ -11,6 +11,8 @@ import {
 import {MOBIUS_SOCKET_MESSAGE_TYPE} from './constants';
 import {isMobiusWssEnabled} from './wsFeatureFlag';
 import {CALLING_USER_AGENT, METHODS, REQUEST_FILE} from '../constants';
+import {getMetricManager} from '../../Metrics';
+import {IMetricManager, METRIC_EVENT, METRIC_TYPE, MOBIUS_SOCKET_ACTION} from '../../Metrics/types';
 
 /**
  * Converts a MobiusSocketResponse into the WebexRequestPayload shape that
@@ -61,6 +63,7 @@ export class APIRequest {
   private webex: WebexSDK;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private mobiusSocket: any;
+  private metricManager: IMetricManager;
 
   static getInstance(config: APIRequestConfig): APIRequest {
     if (!APIRequest.instance) {
@@ -91,6 +94,7 @@ export class APIRequest {
     this.webex = config.webex;
     this.isMobiusSocketEnabled = isMobiusWssEnabled(config.webex) || false;
     this.mobiusSocket = getMobiusSocketInstance(this.webex);
+    this.metricManager = getMetricManager(this.webex);
 
     log.info(
       `APIRequest initialized with transport: ${this.isMobiusSocketEnabled ? 'WSS' : 'HTTP'}`,
@@ -131,9 +135,26 @@ export class APIRequest {
       await this.mobiusSocket.connect(wssUrl);
       log.log('Mobius WebSocket connected successfully', logContext);
 
+      this.metricManager?.submitMobiusSocketMetric(
+        METRIC_EVENT.MOBIUS_SOCKET,
+        MOBIUS_SOCKET_ACTION.CONNECT,
+        METRIC_TYPE.BEHAVIORAL,
+        wssUrl
+      );
+
       return wssUrl;
     } catch (err) {
       log.warn(`Mobius WebSocket connection failed: ${String(err)}`, logContext);
+
+      this.metricManager?.submitMobiusSocketMetric(
+        METRIC_EVENT.MOBIUS_SOCKET_ERROR,
+        MOBIUS_SOCKET_ACTION.CONNECT,
+        METRIC_TYPE.BEHAVIORAL,
+        wssUrl,
+        undefined,
+        String(err)
+      );
+
       throw normalizeWsError(err);
     }
   }
@@ -152,9 +173,24 @@ export class APIRequest {
     try {
       await this.mobiusSocket.disconnect(options);
       log.log('Mobius WebSocket disconnected successfully', logContext);
+
+      this.metricManager?.submitMobiusSocketMetric(
+        METRIC_EVENT.MOBIUS_SOCKET,
+        MOBIUS_SOCKET_ACTION.DISCONNECT,
+        METRIC_TYPE.BEHAVIORAL
+      );
     } catch (err) {
       // silent error - no need to throw an error
       log.warn(`Mobius WebSocket disconnection failed: ${String(err)}`, logContext);
+
+      this.metricManager?.submitMobiusSocketMetric(
+        METRIC_EVENT.MOBIUS_SOCKET_ERROR,
+        MOBIUS_SOCKET_ACTION.DISCONNECT,
+        METRIC_TYPE.BEHAVIORAL,
+        undefined,
+        undefined,
+        String(err)
+      );
     }
   }
 
@@ -237,6 +273,12 @@ export class APIRequest {
     });
 
     log.log('Mobius async event listener attached', logContext);
+
+    this.metricManager?.submitMobiusSocketMetric(
+      METRIC_EVENT.MOBIUS_SOCKET,
+      MOBIUS_SOCKET_ACTION.LISTENER_REGISTERED,
+      METRIC_TYPE.BEHAVIORAL
+    );
   }
 
   public unregisterMobiusSocketListener(): void {
@@ -248,6 +290,12 @@ export class APIRequest {
     log.info('Detaching Mobius async event listener', logContext);
     this.mobiusSocket.off('event:async_event');
     log.log('Mobius async event listener detached', logContext);
+
+    this.metricManager?.submitMobiusSocketMetric(
+      METRIC_EVENT.MOBIUS_SOCKET,
+      MOBIUS_SOCKET_ACTION.LISTENER_UNREGISTERED,
+      METRIC_TYPE.BEHAVIORAL
+    );
   }
 }
 

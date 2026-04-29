@@ -132,6 +132,14 @@ export class Registration implements IRegistration {
     this.apiRequest = APIRequest.getInstance({webex: this.webex});
   }
 
+  private getServerType(url: string): SERVER_TYPE {
+    return (
+      (this.primaryMobiusUris.includes(url) && 'PRIMARY') ||
+      (this.backupMobiusUris?.includes(url) && 'BACKUP') ||
+      'UNKNOWN'
+    );
+  }
+
   private getFailoverCacheKey(): string {
     return `${FAILOVER_CACHE_PREFIX}.${this.userId || 'unknown'}`;
   }
@@ -972,10 +980,8 @@ export class Registration implements IRegistration {
       return abort;
     }
     for (const url of servers) {
-      const serverType =
-        (this.primaryMobiusUris.includes(url) && 'PRIMARY') ||
-        (this.backupMobiusUris?.includes(url) && 'BACKUP') ||
-        'UNKNOWN';
+      const serverType = this.getServerType(url);
+
       try {
         abort = false;
         this.registrationStatus = RegistrationStatus.INACTIVE;

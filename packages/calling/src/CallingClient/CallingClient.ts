@@ -61,6 +61,7 @@ import {
   IMetricManager,
   CONNECTION_ACTION,
   MOBIUS_SERVER_ACTION,
+  MOBIUS_SOCKET_ACTION,
 } from '../Metrics/types';
 import {getMetricManager} from '../Metrics';
 import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
@@ -749,6 +750,16 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       log.warn(
         'Received REGISTRATION_DOWN event from Mobius; teardown handling pending (TODO)',
         loggerContext
+      );
+
+      this.metricManager.submitMobiusSocketMetric(
+        METRIC_EVENT.MOBIUS_SOCKET_ERROR,
+        MOBIUS_SOCKET_ACTION.REGISTRATION_DOWN,
+        METRIC_TYPE.BEHAVIORAL,
+        undefined,
+        event?.trackingId,
+        undefined,
+        eventType
       );
 
       return;
