@@ -1829,4 +1829,151 @@ describe('Registration Tests', () => {
       expect(status).toEqual(false);
     });
   });
+
+  describe('handleRegistrationDownEvent tests', () => {
+    const registrationDownEvent = {
+      type: 'async_event',
+      eventId: 'evt-1',
+      trackingId: 'tid-1',
+      data: {
+        eventType: 'registration.down',
+        deviceInfo: {
+          userId: 'u1',
+          device: {deviceId: 'd1', uri: 'https://mobius/device/d1', status: 'ACTIVE'},
+        },
+      },
+    };
+
+    beforeEach(async () => {
+      postRegistrationSpy.mockResolvedValueOnce(successPayload);
+      await reg.triggerRegistration();
+      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
+    });
+
+    afterEach(() => {
+      const calls = Object.values(reg.callManager.getActiveCalls()) as ICall[];
+
+      calls.forEach((call) => {
+        call.end();
+      });
+      reg.callManager.callCollection = {};
+    });
+
+    it('runs cleanup immediately when no active calls are present (socket disabled)', async () => {
+      const clearKeepaliveSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
+      const setStatusSpy = jest.spyOn(reg, 'setStatus');
+      const disconnectSocketSpy = jest.spyOn(
+        APIRequest.getInstance({webex}),
+        'disconnectFromMobiusSocket'
+      );
+
+      lineEmitter.mockClear();
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
+
+      await reg.handleRegistrationDownEvent(registrationDownEvent as any);
+
+      expect(clearKeepaliveSpy).toHaveBeenCalled();
+      expect(setStatusSpy).toHaveBeenCalledWith(RegistrationStatus.INACTIVE);
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
+      expect(reg.reconnectPending).toBe(false);
+      expect(reg.scheduled429Retry).toBe(false);
+      expect(reg.failoverImmediately).toBe(false);
+      expect(reg.retryAfter).toBeUndefined();
+      expect(reg.registerRetry).toBe(false);
+      expect(disconnectSocketSpy).not.toHaveBeenCalled();
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(reg.isRegistrationDownPending()).toBe(false);
+    });
+
+    it('defers cleanup when active calls are present', async () => {
+      const clearKeepaliveSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
+      const setStatusSpy = jest.spyOn(reg, 'setStatus');
+
+      reg.callManager.createCall();
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(1);
+
+      lineEmitter.mockClear();
+
+      await reg.handleRegistrationDownEvent(registrationDownEvent as any);
+
+      expect(reg.isRegistrationDownPending()).toBe(true);
+      expect(infoSpy).toHaveBeenCalledWith(
+        'Active call(s) present, deferring registration-down cleanup till call cleanup.',
+        {file: REGISTRATION_FILE, method: METHODS.HANDLE_REGISTRATION_DOWN_EVENT}
+      );
+
+      expect(clearKeepaliveSpy).not.toHaveBeenCalled();
+      expect(setStatusSpy).not.toHaveBeenCalled();
+      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
+      expect(lineEmitter).not.toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+    });
+
+    it('runs deferred cleanup on re-invocation once active calls are cleared', async () => {
+      const clearKeepaliveSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
+      const setStatusSpy = jest.spyOn(reg, 'setStatus');
+
+      reg.callManager.createCall();
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(1);
+
+      await reg.handleRegistrationDownEvent(registrationDownEvent as any);
+      expect(reg.isRegistrationDownPending()).toBe(true);
+      expect(clearKeepaliveSpy).not.toHaveBeenCalled();
+      expect(setStatusSpy).not.toHaveBeenCalled();
+
+      reg.callManager.callCollection = {};
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
+
+      lineEmitter.mockClear();
+
+      await reg.handleRegistrationDownEvent(registrationDownEvent as any);
+
+      expect(clearKeepaliveSpy).toHaveBeenCalled();
+      expect(setStatusSpy).toHaveBeenCalledWith(RegistrationStatus.INACTIVE);
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(reg.isRegistrationDownPending()).toBe(false);
+    });
+
+    it('disconnects the Mobius WebSocket when socket is enabled', async () => {
+      const apiRequest = APIRequest.getInstance({webex});
+      jest.spyOn(apiRequest, 'isSocketEnabled').mockReturnValue(true);
+      const disconnectSocketSpy = jest
+        .spyOn(apiRequest, 'disconnectFromMobiusSocket')
+        .mockResolvedValue();
+
+      lineEmitter.mockClear();
+      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
+
+      await reg.handleRegistrationDownEvent(registrationDownEvent as any);
+
+      expect(disconnectSocketSpy).toHaveBeenCalledWith({
+        code: 3050,
+        reason: 'done (permanent)',
+      });
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(reg.isRegistrationDownPending()).toBe(false);
+    });
+
+    it('still emits UNREGISTERED when socket disconnect fails', async () => {
+      const apiRequest = APIRequest.getInstance({webex});
+      jest.spyOn(apiRequest, 'isSocketEnabled').mockReturnValue(true);
+      const disconnectSocketSpy = jest
+        .spyOn(apiRequest, 'disconnectFromMobiusSocket')
+        .mockRejectedValue(new Error('socket teardown failed'));
+
+      lineEmitter.mockClear();
+
+      await reg.handleRegistrationDownEvent(registrationDownEvent as any);
+
+      expect(disconnectSocketSpy).toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Mobius socket disconnect failed after registration-down'),
+        {file: REGISTRATION_FILE, method: METHODS.HANDLE_REGISTRATION_DOWN_EVENT}
+      );
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(reg.isRegistrationDownPending()).toBe(false);
+    });
+  });
 });

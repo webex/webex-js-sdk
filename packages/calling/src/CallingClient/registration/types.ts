@@ -1,4 +1,5 @@
 import {Devices, IDeviceInfo, RegistrationStatus} from '../../common/types';
+import {MobiusAsyncEvent} from '../calling/types';
 
 export type Header = {
   [key: string]: string;
@@ -109,4 +110,24 @@ export interface IRegistration {
    * Populate deviceInfo from a devices response (e.g., getDevices API).
    */
   setDeviceInfo(body: Devices): void;
+
+  /**
+   * Handles a Mobius REGISTRATION_DOWN async event.
+   *
+   * When active calls are present the cleanup is deferred and the method
+   * returns early with {@link isRegistrationDownPending} set to `true`;
+   * the caller is expected to re-invoke this method periodically until
+   * the pending flag clears. When no active calls are present the
+   * cleanup runs immediately.
+   *
+   * @param event - The Mobius async event payload (optional).
+   */
+  handleRegistrationDownEvent(event?: MobiusAsyncEvent): Promise<void>;
+
+  /**
+   * Returns `true` while a registration-down cleanup is still deferred
+   * because active calls were present. The `CallingClient` polls this
+   * flag to decide when the deferred cleanup can proceed.
+   */
+  isRegistrationDownPending(): boolean;
 }
