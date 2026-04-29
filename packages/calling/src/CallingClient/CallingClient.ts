@@ -754,6 +754,12 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       log.warn(`Received ${eventType} event from Mobius.`, loggerContext);
       const line = Object.values(this.lineDict)[0];
 
+      if (!line) {
+        log.warn('No line found, skipping registration down event', loggerContext);
+
+        return;
+      }
+
       await line.registration.handleRegistrationDownEvent(event);
       clearInterval(this.registrationDownInterval);
       this.registrationDownInterval = undefined;
