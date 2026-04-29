@@ -248,7 +248,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
         method: METHODS.GET_RTMS_DOMAIN,
       });
 
-      return undefined;
+      return '';
     }
   }
 

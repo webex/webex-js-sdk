@@ -1586,8 +1586,7 @@ function isValidServiceDomain(serviceData: ServiceData): boolean {
   if (!domain) {
     return (
       serviceData.indicator === ServiceIndicator.CALLING ||
-      serviceData.indicator === ServiceIndicator.GUEST_CALLING ||
-      serviceData.indicator === ServiceIndicator.CONTACT_CENTER
+      serviceData.indicator === ServiceIndicator.GUEST_CALLING
     );
   }
 
