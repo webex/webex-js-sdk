@@ -495,6 +495,7 @@ describe('Call Tests', () => {
     expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_CONNECT');
 
     // Connect is attempted by answer(), but is deferred because offer is not buffered yet.
+    const handleOutgoingCallConnectSpy = jest.spyOn(call as any, 'handleOutgoingCallConnect');
     expect(call['connectPending']).toBe(true);
     expect(call['mediaConnection'].roapMessageReceived).not.toHaveBeenCalled();
 
@@ -534,6 +535,7 @@ describe('Call Tests', () => {
       type: 'E_SEND_ROAP_ANSWER',
       data: expect.objectContaining({messageType: 'ANSWER'}),
     });
+    expect(handleOutgoingCallConnectSpy).toHaveBeenCalled();
     expect(call['mediaConnection'].roapMessageReceived).toHaveBeenLastCalledWith(delayedOffer);
     expect(call['connectPending']).toBe(false);
   });

@@ -1329,6 +1329,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleOutgoingCallConnect(event: CallEvent) {
+    this.connectPending = false;
     log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_OUTGOING_CALL_CONNECT,
@@ -2715,7 +2716,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
             this.localRoapMessage = event.roapMessage;
             if (this.connectPending) {
-              this.connectPending = false;
               this.sendCallStateMachineEvt({type: 'E_SEND_CALL_CONNECT'});
             }
             this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_ANSWER', data: event.roapMessage});
@@ -2729,7 +2729,6 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
             this.localRoapMessage = event.roapMessage;
             if (this.connectPending) {
-              this.connectPending = false;
               this.sendCallStateMachineEvt({type: 'E_SEND_CALL_CONNECT'});
             }
             this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_OFFER', data: event.roapMessage});
