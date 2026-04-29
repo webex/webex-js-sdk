@@ -2728,6 +2728,10 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           case RoapScenario.OFFER_RESPONSE:
             event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
             this.localRoapMessage = event.roapMessage;
+            if (this.connectPending) {
+              this.connectPending = false;
+              this.sendCallStateMachineEvt({type: 'E_SEND_CALL_CONNECT'});
+            }
             this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_OFFER', data: event.roapMessage});
             break;
 
