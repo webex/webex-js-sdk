@@ -27,6 +27,7 @@ import {
   ALLOWED_SERVICES,
   HTTP_METHODS,
   MobiusServers,
+  ServiceData,
   WebexRequestPayload,
   RegistrationStatus,
   UploadLogsResponse,
@@ -89,6 +90,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
   private sdkConfig?: CallingClientConfig;
 
+  private serviceData: ServiceData;
+
   private primaryMobiusUris: string[];
 
   private backupMobiusUris: string[];
@@ -129,16 +132,15 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.webex = this.sdkConnector.getWebex();
 
     this.sdkConfig = config;
-    const serviceData = this.sdkConfig?.serviceData?.indicator
+    this.serviceData = this.sdkConfig?.serviceData?.indicator
       ? this.sdkConfig.serviceData
       : {indicator: ServiceIndicator.CALLING, domain: ''};
 
     const logLevel = this.sdkConfig?.logger?.level ? this.sdkConfig.logger.level : LOGGER.ERROR;
     log.setLogger(logLevel, CALLING_CLIENT_FILE);
-    validateServiceData(serviceData);
 
-    this.callManager = getCallManager(this.webex, serviceData.indicator);
-    this.metricManager = getMetricManager(this.webex, serviceData.indicator);
+    this.callManager = getCallManager(this.webex, this.serviceData.indicator);
+    this.metricManager = getMetricManager(this.webex, this.serviceData.indicator);
 
     this.mediaEngine = Media;
 
@@ -206,14 +208,25 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     // Auto-fetch RTMS domain from service catalog for contact-center flows
     if (
-      this.sdkConfig?.serviceData?.indicator === ServiceIndicator.CONTACT_CENTER &&
-      !this.sdkConfig?.serviceData?.domain
+      this.serviceData.indicator === ServiceIndicator.CONTACT_CENTER &&
+      !this.serviceData.domain
     ) {
       const rtmsDomain = await this.getRTMSDomain();
 
-      if (this.sdkConfig.serviceData && rtmsDomain) {
-        this.sdkConfig.serviceData.domain = rtmsDomain;
+      this.serviceData.domain = rtmsDomain || '';
+      if (this.sdkConfig?.serviceData) {
+        this.sdkConfig.serviceData.domain = this.serviceData.domain;
       }
+    }
+
+    try {
+      validateServiceData(this.serviceData);
+    } catch (error) {
+      log.error(`Service data validation failed during init: ${error}`, {
+        file: CALLING_CLIENT_FILE,
+        method: METHODS.INIT,
+      });
+      throw error;
     }
 
     await this.createLine();
@@ -751,7 +764,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       this.primaryMobiusUris,
       this.backupMobiusUris,
       this.getLoggingLevel(),
-      this.sdkConfig?.serviceData,
+      this.serviceData,
       this.sdkConfig?.jwe
     );
 
