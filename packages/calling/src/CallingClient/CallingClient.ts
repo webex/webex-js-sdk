@@ -120,14 +120,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   private mercuryUpTimestamp = '';
 
   /**
-   * Polling interval used to retry a deferred `REGISTRATION_DOWN` cleanup.
-   * Set when `Registration.handleRegistrationDownEvent` defers cleanup because
-   * active calls are present; cleared once the registration-down cleanup
-   * completes (`Registration.isRegistrationDownPending()` returns `false`).
-   */
-  private registrationDownInterval?: NodeJS.Timeout;
-
-  /**
    * @ignore
    */
   constructor(webex: WebexSDK, config?: CallingClientConfig) {
@@ -761,19 +753,6 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       }
 
       await line.registration.handleRegistrationDownEvent(event);
-      clearInterval(this.registrationDownInterval);
-      this.registrationDownInterval = undefined;
-
-      if (line.registration.isRegistrationDownPending()) {
-        this.registrationDownInterval = setInterval(async () => {
-          await line.registration.handleRegistrationDownEvent(event);
-
-          if (!line.registration.isRegistrationDownPending()) {
-            clearInterval(this.registrationDownInterval);
-            this.registrationDownInterval = undefined;
-          }
-        }, 1000 * 30); // 30 seconds
-      }
 
       this.metricManager.submitMobiusSocketMetric(
         METRIC_EVENT.MOBIUS_SOCKET_ERROR,

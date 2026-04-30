@@ -1882,48 +1882,38 @@ describe('Registration Tests', () => {
       expect(reg.registerRetry).toBe(false);
       expect(disconnectSocketSpy).not.toHaveBeenCalled();
       expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
-      expect(reg.isRegistrationDownPending()).toBe(false);
     });
 
-    it('defers cleanup when active calls are present', async () => {
+    it('ends the active call and still runs cleanup when an active call is present', async () => {
       const clearKeepaliveSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
       const setStatusSpy = jest.spyOn(reg, 'setStatus');
 
-      reg.callManager.createCall();
+      const activeCall = reg.callManager.createCall() as ICall;
+      const endSpy = jest.spyOn(activeCall, 'end');
       expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(1);
 
       lineEmitter.mockClear();
 
       await reg.handleRegistrationDownEvent(registrationDownEvent as any);
 
-      expect(reg.isRegistrationDownPending()).toBe(true);
-      expect(infoSpy).toHaveBeenCalledWith(
-        'Active call(s) present, deferring registration-down cleanup till call cleanup.',
-        {file: REGISTRATION_FILE, method: METHODS.HANDLE_REGISTRATION_DOWN_EVENT}
-      );
-
-      expect(clearKeepaliveSpy).not.toHaveBeenCalled();
-      expect(setStatusSpy).not.toHaveBeenCalled();
-      expect(reg.getStatus()).toBe(RegistrationStatus.ACTIVE);
-      expect(lineEmitter).not.toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
+      expect(endSpy).toHaveBeenCalledTimes(1);
+      expect(clearKeepaliveSpy).toHaveBeenCalled();
+      expect(setStatusSpy).toHaveBeenCalledWith(RegistrationStatus.INACTIVE);
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
+      expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
     });
 
-    it('runs deferred cleanup on re-invocation once active calls are cleared', async () => {
+    it('runs cleanup without calling end when no active call is present on re-invocation', async () => {
       const clearKeepaliveSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
       const setStatusSpy = jest.spyOn(reg, 'setStatus');
 
-      reg.callManager.createCall();
-      expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(1);
-
       await reg.handleRegistrationDownEvent(registrationDownEvent as any);
-      expect(reg.isRegistrationDownPending()).toBe(true);
-      expect(clearKeepaliveSpy).not.toHaveBeenCalled();
-      expect(setStatusSpy).not.toHaveBeenCalled();
+      expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
+      clearKeepaliveSpy.mockClear();
+      setStatusSpy.mockClear();
+      lineEmitter.mockClear();
 
-      reg.callManager.callCollection = {};
       expect(Object.keys(reg.callManager.getActiveCalls()).length).toBe(0);
-
-      lineEmitter.mockClear();
 
       await reg.handleRegistrationDownEvent(registrationDownEvent as any);
 
@@ -1931,7 +1921,6 @@ describe('Registration Tests', () => {
       expect(setStatusSpy).toHaveBeenCalledWith(RegistrationStatus.INACTIVE);
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
       expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
-      expect(reg.isRegistrationDownPending()).toBe(false);
     });
 
     it('disconnects the Mobius WebSocket when socket is enabled', async () => {
@@ -1952,7 +1941,6 @@ describe('Registration Tests', () => {
       });
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
       expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
-      expect(reg.isRegistrationDownPending()).toBe(false);
     });
 
     it('still emits UNREGISTERED when socket disconnect fails', async () => {
@@ -1973,7 +1961,6 @@ describe('Registration Tests', () => {
       );
       expect(reg.getStatus()).toBe(RegistrationStatus.INACTIVE);
       expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
-      expect(reg.isRegistrationDownPending()).toBe(false);
     });
   });
 });
