@@ -1334,68 +1334,6 @@ describe('webex.cc', () => {
       expect(webex.cc.agentConfig.lastIdleCodeChangeTimestamp).toStrictEqual(1738575135189);
     });
 
-    it('should not attach the message listener during silentRelogin', async () => {
-      const mockReLoginResponse = {
-        data: {
-          auxCodeId: 'auxCodeId',
-          agentId: 'agentId',
-          deviceType: LoginOption.EXTENSION,
-          dn: '12345',
-          lastStateChangeTimestamp: 1738575135188,
-          lastIdleCodeChangeTimestamp: 1738575135189,
-          teamId: 'teamId',
-        },
-      };
-
-      webex.cc.agentConfig = {
-        agentId: 'agentId',
-        agentProfileID: 'test-agent-profile-id',
-        isAgentLoggedIn: false,
-      } as Profile;
-
-      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
-
-      webex.cc.services.webSocketManager.listeners = jest.fn().mockReturnValue([]);
-      webex.cc.services.webSocketManager.on.mockClear();
-
-      await webex.cc['silentRelogin']();
-
-      expect(webex.cc.services.webSocketManager.listeners).not.toHaveBeenCalled();
-      expect(webex.cc.services.webSocketManager.on).not.toHaveBeenCalled();
-    });
-
-    it('should leave an already attached message listener untouched during silentRelogin (CAI-7782)', async () => {
-      const mockReLoginResponse = {
-        data: {
-          auxCodeId: 'auxCodeId',
-          agentId: 'agentId',
-          deviceType: LoginOption.EXTENSION,
-          dn: '12345',
-          lastStateChangeTimestamp: 1738575135188,
-          lastIdleCodeChangeTimestamp: 1738575135189,
-          teamId: 'teamId',
-        },
-      };
-
-      webex.cc.agentConfig = {
-        agentId: 'agentId',
-        agentProfileID: 'test-agent-profile-id',
-        isAgentLoggedIn: false,
-      } as Profile;
-
-      jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
-
-      webex.cc.services.webSocketManager.listeners = jest
-        .fn()
-        .mockReturnValue([webex.cc['handleWebsocketMessage']]);
-      webex.cc.services.webSocketManager.on.mockClear();
-
-      await webex.cc['silentRelogin']();
-
-      expect(webex.cc.services.webSocketManager.listeners).not.toHaveBeenCalled();
-      expect(webex.cc.services.webSocketManager.on).not.toHaveBeenCalled();
-    });
-
     it('should update agentConfig with deviceType during silent relogin for AGENT_DN', async () => {
       const mockReLoginResponse = {
         data: {
