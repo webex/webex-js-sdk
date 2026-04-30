@@ -11,7 +11,7 @@ import {
   SERVER_TYPE,
 } from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
-import {ICallManager} from '../calling/types';
+import {ICallManager, MobiusAsyncEvent} from '../calling/types';
 import {getCallManager} from '../calling';
 import {LOGGER} from '../../Logger/types';
 import log from '../../Logger';
@@ -1338,6 +1338,82 @@ export class Registration implements IRegistration {
         });
       }
     }
+  }
+
+  /**
+   * Handles an async REGISTRATION_DOWN event emitted by Mobius. Ends the first
+   * active call (if any) and runs registration-side cleanup.
+   *
+   * @param event - The Mobius async event payload (trackingId/eventId used for logs).
+   */
+  public async handleRegistrationDownEvent(event?: MobiusAsyncEvent): Promise<void> {
+    const loggerContext = {
+      file: REGISTRATION_FILE,
+      method: METHODS.HANDLE_REGISTRATION_DOWN_EVENT,
+    };
+
+    log.info(
+      `Registration down received - trackingId: ${event?.trackingId ?? 'unknown'}, eventId: ${
+        event?.eventId ?? 'unknown'
+      }`,
+      loggerContext
+    );
+
+    const [activeCall] = Object.values(this.callManager.getActiveCalls());
+    activeCall?.end();
+
+    await this.performRegistrationDownCleanup(METHODS.HANDLE_REGISTRATION_DOWN_EVENT);
+  }
+
+  /**
+   * Cleans up registration-side state after a Mobius registration-down event.
+   *
+   * Stops timers, resets transient flags, clears failover cache, sets status to
+   * INACTIVE, tears down the Mobius WebSocket (when enabled), and finally emits
+   * `LINE_EVENTS.UNREGISTERED` so the SDK consumer is notified.
+   *
+   * Runs under the shared mutex to avoid racing with other registration flows.
+   *
+   * @param caller - Identifier of the caller, used for logs.
+   */
+  private async performRegistrationDownCleanup(caller: string): Promise<void> {
+    const loggerContext = {
+      file: REGISTRATION_FILE,
+      method: METHODS.HANDLE_REGISTRATION_DOWN_EVENT,
+    };
+
+    log.info(`[${caller}] : Running registration-down cleanup`, loggerContext);
+
+    await this.mutex.runExclusive(async () => {
+      this.clearFailbackTimer();
+      this.clearKeepaliveTimer();
+
+      this.reconnectPending = false;
+      this.scheduled429Retry = false;
+      this.failoverImmediately = false;
+      this.retryAfter = undefined;
+      this.registerRetry = false;
+
+      this.clearFailoverState();
+      this.setStatus(RegistrationStatus.INACTIVE);
+
+      if (this.apiRequest.isSocketEnabled()) {
+        try {
+          await this.apiRequest.disconnectFromMobiusSocket({
+            code: 3050,
+            reason: 'done (permanent)',
+          });
+          log.log('Mobius socket disconnect complete after registration-down', loggerContext);
+        } catch (err) {
+          log.warn(
+            `Mobius socket disconnect failed after registration-down: ${String(err)}`,
+            loggerContext
+          );
+        }
+      }
+
+      this.lineEmitter(LINE_EVENTS.UNREGISTERED);
+    });
   }
 }
 

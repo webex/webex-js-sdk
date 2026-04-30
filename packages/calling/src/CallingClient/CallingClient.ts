@@ -743,14 +743,16 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }
 
     if (eventType === MobiusEventType.REGISTRATION_DOWN) {
-      // const line = Object.values(this.lineDict)[0];
-      // line.registration.handleRegistrationDownEvent(event);
+      log.warn(`Received ${eventType} event from Mobius.`, loggerContext);
+      const line = Object.values(this.lineDict)[0];
 
-      // TODO: check active calls and clean up the state and emit disconnect event
-      log.warn(
-        'Received REGISTRATION_DOWN event from Mobius; teardown handling pending (TODO)',
-        loggerContext
-      );
+      if (!line) {
+        log.warn('No line found, skipping registration down event', loggerContext);
+
+        return;
+      }
+
+      await line.registration.handleRegistrationDownEvent(event);
 
       this.metricManager.submitMobiusSocketMetric(
         METRIC_EVENT.MOBIUS_SOCKET_ERROR,
