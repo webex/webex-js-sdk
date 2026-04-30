@@ -315,12 +315,37 @@ describe('plugin-llm', () => {
     });
 
     describe('#setRefreshHandler', () => {
-      it('stores the provided handler', () => {
+      it('stores the provided handler against the default session by default', () => {
         const handler = sinon.stub().resolves({ body: { datachannelToken: 'newToken' } });
         llmService.setRefreshHandler(handler);
 
         // @ts-ignore
-        assert.equal(llmService.refreshHandler, handler);
+        assert.equal(llmService.refreshHandlers.get('llm-default-session'), handler);
+      });
+
+      it('stores handlers under the supplied sessionId without affecting other sessions', () => {
+        const defaultHandler = sinon.stub();
+        const practiceHandler = sinon.stub();
+
+        llmService.setRefreshHandler(defaultHandler);
+        llmService.setRefreshHandler(practiceHandler, 'llm-practice-session');
+
+        // @ts-ignore
+        assert.equal(llmService.refreshHandlers.get('llm-default-session'), defaultHandler);
+        // @ts-ignore
+        assert.equal(llmService.refreshHandlers.get('llm-practice-session'), practiceHandler);
+      });
+    });
+
+    describe('#clearRefreshHandler', () => {
+      it('removes the handler for the given session', () => {
+        const handler = sinon.stub();
+        llmService.setRefreshHandler(handler, 'llm-practice-session');
+
+        llmService.clearRefreshHandler('llm-practice-session');
+
+        // @ts-ignore
+        assert.equal(llmService.refreshHandlers.has('llm-practice-session'), false);
       });
     });
 
@@ -351,8 +376,22 @@ describe('plugin-llm', () => {
         sinon.assert.calledOnce(warnSpy);
         sinon.assert.calledWithMatch(
           warnSpy,
-          sinon.match('LLM refreshHandler is not set')
+          sinon.match('no refreshHandler registered')
         );
+      });
+
+      it('routes to the per-session handler when a sessionId is supplied', async () => {
+        const defaultHandler = sinon.stub().resolves({ body: { datachannelToken: 'default-token' } });
+        const practiceHandler = sinon.stub().resolves({ body: { datachannelToken: 'practice-token' } });
+
+        llmService.setRefreshHandler(defaultHandler);
+        llmService.setRefreshHandler(practiceHandler, 'llm-practice-session');
+
+        const result = await llmService.refreshDataChannelToken('llm-practice-session');
+
+        assert.deepEqual(result, { body: { datachannelToken: 'practice-token' } });
+        sinon.assert.calledOnce(practiceHandler);
+        sinon.assert.notCalled(defaultHandler);
       });
 
       it('returns token when handler resolves', async () => {

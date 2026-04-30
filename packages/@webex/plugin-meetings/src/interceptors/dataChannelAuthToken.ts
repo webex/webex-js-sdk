@@ -6,12 +6,17 @@ import {Interceptor} from '@webex/http-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY, RETRY_INTERVAL, RETRY_KEY} from './constant';
 import {isJwtTokenExpired} from './utils';
+import {LLM_PRACTICE_SESSION} from '../constants';
 
 /*!
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 
 const retryCountMap = new Map();
+// Marker substring on practice-session datachannel URLs (the base64-encoded
+// locus path embeds `/practiceSession`). Used to route a refresh request to
+// the correct per-session handler in `internal-plugin-llm`.
+const PRACTICE_SESSION_URL_MARKER = 'practiceSession';
 interface HttpLikeError extends Error {
   statusCode?: number;
   original?: any;
@@ -20,7 +25,7 @@ interface HttpLikeError extends Error {
  * @class
  */
 export default class DataChannelAuthTokenInterceptor extends Interceptor {
-  private _refreshDataChannelToken: () => Promise<string>;
+  private _refreshDataChannelToken: (sessionId?: string) => Promise<string>;
   private _isDataChannelTokenEnabled: () => Promise<boolean>;
   constructor(options) {
     super(options);
@@ -42,10 +47,15 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
         return this.internal.llm.isDataChannelTokenEnabled();
       },
 
-      refreshDataChannelToken: async () => {
+      refreshDataChannelToken: async (sessionId?: string) => {
         // @ts-ignore
-        const {body} = await this.internal.llm.refreshDataChannelToken();
-        const {datachannelToken, dataChannelTokenType} = body ?? {};
+        const result = await this.internal.llm.refreshDataChannelToken(sessionId);
+
+        if (!result) {
+          return undefined;
+        }
+
+        const {datachannelToken, dataChannelTokenType} = result.body ?? {};
 
         // @ts-ignore
         this.internal.llm.setDatachannelToken(datachannelToken, dataChannelTokenType);
@@ -53,6 +63,23 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
         return datachannelToken;
       },
     });
+  }
+
+  /**
+   * Derive the LLM session id this request belongs to from the request URL.
+   * Practice-session datachannel URLs embed `practiceSession` in their
+   * base64 locus path; everything else is treated as the default session.
+   *
+   * @param {string} url - The outgoing request URL
+   * @returns {string | undefined} sessionId, or undefined to fall back to
+   *   the default-session handler in `internal-plugin-llm`.
+   */
+  private getSessionIdFromUrl(url?: string): string | undefined {
+    if (typeof url === 'string' && url.includes(PRACTICE_SESSION_URL_MARKER)) {
+      return LLM_PRACTICE_SESSION;
+    }
+
+    return undefined;
   }
 
   private getRetryKey(options) {
@@ -87,7 +114,8 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
 
     if (isJwtTokenExpired(token)) {
       try {
-        const newToken = await this._refreshDataChannelToken();
+        const sessionId = this.getSessionIdFromUrl(options.url);
+        const newToken = await this._refreshDataChannelToken(sessionId);
         options.headers[DATA_CHANNEL_AUTH_HEADER] = newToken;
       } catch (e) {
         LoggerProxy.logger.warn(`DataChannelAuthTokenInterceptor: refresh failed: ${e.message}`);
@@ -144,7 +172,8 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
       setTimeout(async () => {
         const key = this.getRetryKey(options);
         try {
-          const newToken = await this._refreshDataChannelToken();
+          const sessionId = this.getSessionIdFromUrl(options.url);
+          const newToken = await this._refreshDataChannelToken(sessionId);
 
           options.headers[DATA_CHANNEL_AUTH_HEADER] = newToken;
 

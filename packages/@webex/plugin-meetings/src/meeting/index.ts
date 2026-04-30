@@ -137,6 +137,7 @@ import {
   STAGE_MANAGER_TYPE,
   LOCUSEVENT,
   LOCUS_LLM_EVENT,
+  LLM_DEFAULT_SESSION,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -3468,7 +3469,10 @@ export default class Meeting extends StatelessWebexPlugin {
         this.controlsOptionsManager.setLocusUrl(this.locusUrl, !!isMainLocus);
         this.webinar.locusUrlUpdate(url);
         // @ts-ignore
-        this.webex.internal.llm.setRefreshHandler(() => this.refreshDataChannelToken());
+        this.webex.internal.llm.setRefreshHandler(
+          () => this.refreshDataChannelToken(),
+          LLM_DEFAULT_SESSION
+        );
 
         Trigger.trigger(
           this,

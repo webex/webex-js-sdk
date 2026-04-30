@@ -355,6 +355,17 @@ const Webinar = WebexPlugin.extend({
         LLM_PRACTICE_SESSION
       )
       .then((registerAndConnectResult) => {
+        // Register a per-session refresh handler so that token refreshes
+        // triggered by `DataChannelAuthTokenInterceptor` for the practice
+        // session route to *this* meeting's `refreshDataChannelToken`,
+        // rather than whichever Meeting most recently overwrote the
+        // single (default-session) handler in internal-plugin-llm.
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.setRefreshHandler(
+          () => meeting.refreshDataChannelToken(),
+          LLM_PRACTICE_SESSION
+        );
+
         // Track the exact listener reference so cleanupPSDataChannel can
         // unsubscribe deterministically, even if the meeting can no longer
         // be resolved at cleanup time.

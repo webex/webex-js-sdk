@@ -41,6 +41,8 @@ describe('plugin-meetings', () => {
         getLocusUrl: sinon.stub().returns('old-locus-url'),
         getDatachannelUrl: sinon.stub().returns('old-dc-url'),
         registerAndConnect: sinon.stub().resolves('REGISTER_AND_CONNECT_RESULT'),
+        setRefreshHandler: sinon.stub(),
+        clearRefreshHandler: sinon.stub(),
       };
         });
 

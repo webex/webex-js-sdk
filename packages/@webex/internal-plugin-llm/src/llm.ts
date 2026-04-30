@@ -71,9 +71,17 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     [DataChannelTokenType.PracticeSession]: undefined,
   };
 
-  private refreshHandler?: () => Promise<{
-    body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
-  }>;
+  /**
+   * Per-session map of refresh handlers. Keyed by sessionId so that the
+   * default and practice-session datachannels can each carry their own
+   * (Meeting-owned) refresh callback without trampling one another.
+   */
+  private refreshHandlers: Map<
+    string,
+    () => Promise<{
+      body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
+    }>
+  > = new Map();
 
   /**
    * Register to the websocket
@@ -268,41 +276,59 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   }
 
   /**
-   * Set the handler used to refresh the DataChannel token
+   * Set the handler used to refresh the DataChannel token for a given session.
    *
    * @param {function} handler - Function that returns a refreshed token
+   * @param {string} sessionId - Connection identifier (defaults to default session)
    * @returns {void}
    */
   public setRefreshHandler(
     handler: () => Promise<{
       body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
-    }>
+    }>,
+    sessionId: string = LLM_DEFAULT_SESSION
   ) {
-    this.refreshHandler = handler;
+    this.refreshHandlers.set(sessionId, handler);
   }
 
   /**
-   * Refresh the data channel token using the injected handler.
-   * Logs a descriptive error if the handler is missing or fails.
+   * Remove the refresh handler associated with a session. Used during meeting
+   * teardown so a destroyed Meeting does not remain registered as the refresher
+   * for a session it no longer owns.
    *
-   * @returns {Promise<string>} The refreshed token.
+   * @param {string} sessionId - Connection identifier (defaults to default session)
+   * @returns {void}
    */
-  public async refreshDataChannelToken() {
-    if (!this.refreshHandler) {
+  public clearRefreshHandler(sessionId: string = LLM_DEFAULT_SESSION) {
+    this.refreshHandlers.delete(sessionId);
+  }
+
+  /**
+   * Refresh the data channel token for the given session using the registered
+   * handler. Logs a descriptive warning if the handler is missing or fails.
+   *
+   * @param {string} sessionId - Connection identifier (defaults to default session)
+   * @returns {Promise} Resolves with the refresh handler result, or null when
+   *   no handler is registered or the handler rejects.
+   */
+  public async refreshDataChannelToken(sessionId: string = LLM_DEFAULT_SESSION) {
+    const handler = this.refreshHandlers.get(sessionId);
+
+    if (!handler) {
       this.logger.warn(
-        'llm#refreshDataChannelToken --> LLM refreshHandler is not set, skipping token refresh'
+        `llm#refreshDataChannelToken --> no refreshHandler registered for sessionId=${sessionId}, skipping token refresh`
       );
 
       return null;
     }
 
     try {
-      const res = await this.refreshHandler();
+      const res = await handler();
 
       return res;
     } catch (error: any) {
       this.logger.warn(
-        `llm#refreshDataChannelToken --> DataChannel token refresh failed (likely locus changed or participant left): ${
+        `llm#refreshDataChannelToken --> DataChannel token refresh failed for sessionId=${sessionId} (likely locus changed or participant left): ${
           error?.message || error
         }`
       );
@@ -324,6 +350,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.disconnect(options, sessionId).then(() => {
       // Clean up sessions data
       this.connections.delete(sessionId);
+      this.refreshHandlers.delete(sessionId);
     });
 
   /**
@@ -335,6 +362,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.disconnectAll(options).then(() => {
       // Clean up all connection data
       this.connections.clear();
+      this.refreshHandlers.clear();
     });
 
   /**
