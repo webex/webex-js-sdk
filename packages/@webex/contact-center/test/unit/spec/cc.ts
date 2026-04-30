@@ -662,10 +662,8 @@ describe('webex.cc', () => {
 
       expect(emitSpy).toHaveBeenCalledTimes(1);
       expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, mockTask);
-      // Verify message event listener
-      const messageCallback = mockWebSocketManager.on.mock.calls.find(
-        (call) => call[0] === 'message'
-      )[1];
+      // Verify websocket message handling
+      const messageCallback = webex.cc['handleWebsocketMessage'];
       const agentStateChangeEventData = {
         type: CC_EVENTS.AGENT_STATE_CHANGE,
         data: {some: 'data'},
@@ -1336,7 +1334,7 @@ describe('webex.cc', () => {
       expect(webex.cc.agentConfig.lastIdleCodeChangeTimestamp).toStrictEqual(1738575135189);
     });
 
-    it('should attach the message listener on silentRelogin if not already attached', async () => {
+    it('should not attach the message listener during silentRelogin', async () => {
       const mockReLoginResponse = {
         data: {
           auxCodeId: 'auxCodeId',
@@ -1357,22 +1355,16 @@ describe('webex.cc', () => {
 
       jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
 
-      // Simulate no listeners currently attached
       webex.cc.services.webSocketManager.listeners = jest.fn().mockReturnValue([]);
-      // Clear any calls made during ContactCenter construction so we only observe
-      // what silentRelogin itself does.
       webex.cc.services.webSocketManager.on.mockClear();
 
       await webex.cc['silentRelogin']();
 
-      expect(webex.cc.services.webSocketManager.listeners).toHaveBeenCalledWith('message');
-      expect(webex.cc.services.webSocketManager.on).toHaveBeenCalledWith(
-        'message',
-        webex.cc['handleWebsocketMessage']
-      );
+      expect(webex.cc.services.webSocketManager.listeners).not.toHaveBeenCalled();
+      expect(webex.cc.services.webSocketManager.on).not.toHaveBeenCalled();
     });
 
-    it('should not re-attach the message listener on silentRelogin if already attached (CAI-7782)', async () => {
+    it('should leave an already attached message listener untouched during silentRelogin (CAI-7782)', async () => {
       const mockReLoginResponse = {
         data: {
           auxCodeId: 'auxCodeId',
@@ -1393,17 +1385,14 @@ describe('webex.cc', () => {
 
       jest.spyOn(webex.cc.services.agent, 'reload').mockResolvedValue(mockReLoginResponse);
 
-      // Simulate the handler being already attached (e.g. from a prior register/reconnect)
       webex.cc.services.webSocketManager.listeners = jest
         .fn()
         .mockReturnValue([webex.cc['handleWebsocketMessage']]);
-      // Clear any calls made during ContactCenter construction so we only observe
-      // what silentRelogin itself does.
       webex.cc.services.webSocketManager.on.mockClear();
 
       await webex.cc['silentRelogin']();
 
-      expect(webex.cc.services.webSocketManager.listeners).toHaveBeenCalledWith('message');
+      expect(webex.cc.services.webSocketManager.listeners).not.toHaveBeenCalled();
       expect(webex.cc.services.webSocketManager.on).not.toHaveBeenCalled();
     });
 
@@ -1798,7 +1787,7 @@ describe('webex.cc', () => {
 
     beforeEach(() => {
       emitSpy = jest.spyOn(webex.cc, 'emit');
-      messageCallback = mockWebSocketManager.on.mock.calls.find((c) => c[0] === 'message')[1];
+      messageCallback = webex.cc['handleWebsocketMessage'];
     });
 
     it('should emit AGENT_STATION_LOGIN_SUCCESS on CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS with mapped payload', () => {
