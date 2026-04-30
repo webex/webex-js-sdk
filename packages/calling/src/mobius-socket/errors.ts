@@ -2,6 +2,7 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
+// @ts-expect-error `@webex/common` is still JS-only and does not ship declarations.
 import {Exception} from '@webex/common';
 
 type CloseEventLike = {
