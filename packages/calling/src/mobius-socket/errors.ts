@@ -4,11 +4,7 @@
 
 // @ts-expect-error `@webex/common` is still JS-only and does not ship declarations.
 import {Exception} from '@webex/common';
-
-type CloseEventLike = {
-  code?: number;
-  reason?: string;
-};
+import type {SocketCloseEvent} from './socket/types';
 
 /**
  * Exception thrown when a websocket gets closed
@@ -19,7 +15,7 @@ export class ConnectionError extends Exception {
   /**
    * @param event
    */
-  parse(event: CloseEventLike = {}) {
+  parse(event: SocketCloseEvent = {}) {
     Object.defineProperties(this, {
       code: {
         value: event.code,

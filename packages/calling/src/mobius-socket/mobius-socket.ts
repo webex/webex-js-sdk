@@ -1225,14 +1225,14 @@ class MobiusSocket extends EventEmitter {
           promise.then(() => {
             const {namespace, name} = handler;
 
-            return Promise.resolve()
-              .then(() => (this.webex[namespace] || this.webex.internal[namespace])[name](data))
-              .catch((reason) =>
-                this.logger.error(
-                  `${MOBIUS_SOCKET_NAMESPACE}: error occurred in autowired event handler for ${eventType} from ${sessionId}`,
-                  reason
-                )
-              );
+            return new Promise((resolve) => {
+              resolve((this.webex[namespace] || this.webex.internal[namespace])[name](data));
+            }).catch((reason) =>
+              this.logger.error(
+                `${MOBIUS_SOCKET_NAMESPACE}: error occurred in autowired event handler for ${eventType} from ${sessionId}`,
+                reason
+              )
+            );
           }),
         Promise.resolve()
       )

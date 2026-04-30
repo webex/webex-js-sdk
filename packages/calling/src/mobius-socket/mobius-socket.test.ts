@@ -1957,7 +1957,9 @@ describe('plugin-mobius-socket', () => {
 
           await mobiusSocket._attemptConnection('ws://test.com', sessionId, callback, {
             isShutdownSwitchover: true,
-            onSuccess: () => {
+            onSuccess: (newSocket, url) => {
+              assert.exists(newSocket);
+              assert.equal(url, 'ws://test.com');
               assert.equal(mobiusSocket.socket, originalSocket);
             },
           });

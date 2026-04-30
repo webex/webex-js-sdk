@@ -26,13 +26,16 @@ let mobiusSocketInstance: MobiusSocket | undefined; // Keeping just one instance
  */
 export function getMobiusSocketInstance(
   webex: any,
-  mobiusSocketConfig?: MobiusSocketConfig
+  mobiusSocketConfig?: Partial<MobiusSocketConfig>
 ): MobiusSocket {
   if (mobiusSocketInstance) {
     return mobiusSocketInstance;
   }
 
-  mobiusSocketInstance = new MobiusSocket(webex, mobiusSocketConfig || config.mobiusSocket);
+  mobiusSocketInstance = new MobiusSocket(webex, {
+    ...config.mobiusSocket,
+    ...mobiusSocketConfig,
+  });
 
   return mobiusSocketInstance;
 }
