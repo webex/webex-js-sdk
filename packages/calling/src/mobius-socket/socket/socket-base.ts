@@ -167,6 +167,9 @@ export default class Socket extends EventEmitter {
         return;
       }
 
+      const originalCode = options?.code;
+      const originalReason = options?.reason;
+
       const resolvedOptions = defaults(options || {}, {
         code: 1000,
         reason: 'Done',
@@ -181,9 +184,6 @@ export default class Socket extends EventEmitter {
 
         return;
       }
-
-      const originalCode = options?.code;
-      const originalReason = options?.reason;
 
       const closeTimer = safeSetTimeout(() => {
         try {
@@ -517,12 +517,15 @@ export default class Socket extends EventEmitter {
       return Promise.reject(new Error('`token` is required for Socket#refresh()'));
     }
 
-    const refreshedToken =
-      typeof token === 'string'
-        ? token
-        : token && typeof token.toString === 'function'
-        ? token.toString()
-        : String(token);
+    let refreshedToken;
+
+    if (typeof token === 'string') {
+      refreshedToken = token;
+    } else if (token && typeof token.toString === 'function') {
+      refreshedToken = token.toString();
+    } else {
+      refreshedToken = String(token);
+    }
 
     return this._authorize(refreshedToken);
   }

@@ -44,7 +44,7 @@ describe('plugin-mobius-socket', () => {
       const instance = getMobiusSocketInstance(configuredWebex);
 
       assert.instanceOf(instance, MobiusSocket);
-      assert.equal(instance.config, mobiusConfig.mobiusSocket);
+      assert.deepEqual(instance.config, mobiusConfig.mobiusSocket);
     });
 
     it('uses consumer config when it is provided', () => {
@@ -57,7 +57,10 @@ describe('plugin-mobius-socket', () => {
       const instance = getMobiusSocketInstance(configuredWebex, consumerConfig);
 
       assert.instanceOf(instance, MobiusSocket);
-      assert.equal(instance.config, consumerConfig);
+      assert.deepEqual(instance.config, {
+        ...mobiusConfig.mobiusSocket,
+        ...consumerConfig,
+      });
     });
   });
 
