@@ -204,6 +204,130 @@ describe('plugin-meetings', () => {
             /DataChannel token refresh failed: request failed/
           );
         });
+
+        it('passes the in-flight request URL through to the refresh handler', async () => {
+          interceptor._refreshDataChannelToken.resolves('new-token');
+          webex.request.resolves('mock-response');
+
+          const psOptions = {
+            ...options,
+            uri: 'https://aibridge/practiceSession/datachannel',
+          };
+
+          const promise = interceptor.refreshTokenAndRetryWithDelay(psOptions);
+          clock.tick(2000);
+          await promise;
+
+          sinon.assert.calledOnceWithExactly(
+            interceptor._refreshDataChannelToken,
+            psOptions.uri
+          );
+        });
+      });
+
+      describe('refreshDataChannelToken routing (factory dispatcher)', () => {
+        let factoryWebex;
+        let factoryInterceptor;
+        let psMeeting;
+        let defaultMeeting;
+
+        beforeEach(() => {
+          factoryWebex = new MockWebex({children: {}});
+          factoryWebex.internal.llm = {
+            isDataChannelTokenEnabled: sinon.stub().resolves(true),
+            getLocusUrl: sinon.stub(),
+            refreshDataChannelToken: sinon.stub().resolves({
+              body: {datachannelToken: 'fallback-token', dataChannelTokenType: 'llm-default-session'},
+            }),
+            setDatachannelToken: sinon.stub(),
+          };
+
+          psMeeting = {
+            refreshDataChannelToken: sinon.stub().resolves({
+              body: {datachannelToken: 'ps-meeting-token', dataChannelTokenType: 'llm-practice-session'},
+            }),
+          };
+          defaultMeeting = {
+            refreshDataChannelToken: sinon.stub().resolves({
+              body: {datachannelToken: 'default-meeting-token', dataChannelTokenType: 'llm-default-session'},
+            }),
+          };
+
+          factoryWebex.meetings = {
+            getMeetingByType: sinon.stub().callsFake((key, value) => {
+              if (key !== 'locusUrl') return undefined;
+              if (value === 'locus://A') return psMeeting;
+              if (value === 'locus://B') return defaultMeeting;
+
+              return undefined;
+            }),
+          };
+
+          factoryInterceptor = Reflect.apply(
+            DataChannelAuthTokenInterceptor.create,
+            factoryWebex,
+            []
+          );
+        });
+
+        it('routes a practice-session request URL to the PS-owning meeting', async () => {
+          factoryWebex.internal.llm.getLocusUrl.callsFake((sessionId) =>
+            sessionId === 'llm-practice-session' ? 'locus://A' : 'locus://B'
+          );
+
+          const token = await factoryInterceptor._refreshDataChannelToken(
+            'https://aibridge/practiceSession/datachannel'
+          );
+
+          sinon.assert.calledOnce(psMeeting.refreshDataChannelToken);
+          sinon.assert.notCalled(defaultMeeting.refreshDataChannelToken);
+          sinon.assert.notCalled(factoryWebex.internal.llm.refreshDataChannelToken);
+          sinon.assert.calledOnceWithExactly(
+            factoryWebex.internal.llm.setDatachannelToken,
+            'ps-meeting-token',
+            'llm-practice-session'
+          );
+          expect(token).to.equal('ps-meeting-token');
+        });
+
+        it('routes a non-PS request URL to the default-session-owning meeting', async () => {
+          factoryWebex.internal.llm.getLocusUrl.callsFake((sessionId) =>
+            sessionId === 'llm-default-session' ? 'locus://B' : 'locus://A'
+          );
+
+          const token = await factoryInterceptor._refreshDataChannelToken(
+            'https://example.com/datachannel'
+          );
+
+          sinon.assert.calledOnce(defaultMeeting.refreshDataChannelToken);
+          sinon.assert.notCalled(psMeeting.refreshDataChannelToken);
+          sinon.assert.notCalled(factoryWebex.internal.llm.refreshDataChannelToken);
+          expect(token).to.equal('default-meeting-token');
+        });
+
+        it('falls back to the LLM singleton handler when no Meeting matches', async () => {
+          factoryWebex.internal.llm.getLocusUrl.returns('locus://unknown');
+
+          const token = await factoryInterceptor._refreshDataChannelToken(
+            'https://example.com/datachannel'
+          );
+
+          sinon.assert.calledOnce(factoryWebex.internal.llm.refreshDataChannelToken);
+          sinon.assert.notCalled(psMeeting.refreshDataChannelToken);
+          sinon.assert.notCalled(defaultMeeting.refreshDataChannelToken);
+          expect(token).to.equal('fallback-token');
+        });
+
+        it('falls back to the LLM singleton handler when LLM has no locusUrl for the session', async () => {
+          factoryWebex.internal.llm.getLocusUrl.returns(undefined);
+
+          const token = await factoryInterceptor._refreshDataChannelToken(
+            'https://aibridge/practiceSession/datachannel'
+          );
+
+          sinon.assert.calledOnce(factoryWebex.internal.llm.refreshDataChannelToken);
+          expect(token).to.equal('fallback-token');
+        });
       });
     });
   });
