@@ -64,8 +64,8 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
         // @ts-ignore
         const sessionLocusUrl = this.internal.llm.getLocusUrl?.(sessionId);
         const meeting =
-          // @ts-ignore
           (sessionLocusUrl &&
+            // @ts-ignore
             this.meetings?.getMeetingByType?.(MEETING_KEY.LOCUS_URL, sessionLocusUrl)) ||
           undefined;
 
