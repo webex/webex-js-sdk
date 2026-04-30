@@ -20,8 +20,7 @@ Socket.getWebSocketConstructor = function getWebSocketConstructor() {
   }
 
   // Based on https://github.com/heineiuo/isomorphic-ws/blob/9b977394ac875638c045fd9cf774ed418484b394/browser.js
-  const scope =
-    typeof globalThis !== 'undefined' ? (globalThis as ShimGlobalScope) : undefined;
+  const scope = typeof globalThis !== 'undefined' ? (globalThis as ShimGlobalScope) : undefined;
 
   return scope?.MozWebSocket || scope?.WebSocket;
 };

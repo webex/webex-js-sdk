@@ -336,7 +336,9 @@ export default class Socket extends EventEmitter {
   send(data) {
     return new Promise((resolve, reject) => {
       if (this.readyState !== SOCKET_READY_STATE.OPEN) {
-        return reject(new Error('INVALID_STATE_ERROR'));
+        reject(new Error('INVALID_STATE_ERROR'));
+
+        return;
       }
 
       if (isObject(data)) {
@@ -347,7 +349,7 @@ export default class Socket extends EventEmitter {
 
       socket.send(data);
 
-      return resolve();
+      resolve();
     });
   }
 

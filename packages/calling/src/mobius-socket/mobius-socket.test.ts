@@ -218,7 +218,9 @@ describe('plugin-mobius-socket', () => {
       }
 
       // Small delay to ensure all async operations complete
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await new Promise((resolve) => {
+        setTimeout(resolve, 10);
+      });
     });
 
     describe('#connect()', () => {
@@ -1955,7 +1957,7 @@ describe('plugin-mobius-socket', () => {
 
           await mobiusSocket._attemptConnection('ws://test.com', sessionId, callback, {
             isShutdownSwitchover: true,
-            onSuccess: (newSocket, url) => {
+            onSuccess: () => {
               assert.equal(mobiusSocket.socket, originalSocket);
             },
           });
