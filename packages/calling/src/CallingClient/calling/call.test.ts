@@ -696,10 +696,16 @@ describe('Call Tests', () => {
       expect.any(CallError)
     );
 
-    const roapFailureMetricCall = metricSpy.mock.calls[0];
+    const roapFailureMetricCall = metricSpy.mock.calls.find(
+      ([name, metricAction]) =>
+        name === METRIC_EVENT.MEDIA_ERROR && metricAction === MEDIA_CONNECTION_ACTION.ROAP_FAILURE
+    );
+
+    expect(roapFailureMetricCall).toBeDefined();
 
     expect(
-      (roapFailureMetricCall[roapFailureMetricCall.length - 1] as CallError).getCallError().message
+      (roapFailureMetricCall?.[roapFailureMetricCall.length - 1] as CallError).getCallError()
+        .message
     ).toBe('ROAP failure occurred: Failed to process remote SDP');
     expect(warnSpy).toHaveBeenCalledWith('ROAP failure occurred: Failed to process remote SDP', {
       file: 'call',
