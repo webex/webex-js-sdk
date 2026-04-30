@@ -391,7 +391,7 @@ const Webinar = WebexPlugin.extend({
    * @returns {Promise}
    */
   setPracticeSessionState(enabled) {
-    const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
+    const meeting = this.getValidatedWebinarMeeting();
 
     return this.request({
       method: HTTP_VERBS.PATCH,
