@@ -85,22 +85,55 @@ export default defineConfig({
       use: {testEnv: 'int'} as any,
     },
 
-    // Generated from USER_SETS — prod + INT mirror for each set
-    ...Object.entries(USER_SETS).flatMap(([key, set]) => [
+    // Single-user registration sets (generated from USER_SETS, depend on OAuth)
+    ...['SET_1', 'SET_2', 'SET_3'].flatMap((key) => [
       {
         name: `${key} - PROD`,
         dependencies: ['OAuth - PROD'],
         testDir: './playwright/suites',
-        testMatch: set.testSuite,
+        testMatch: USER_SETS[key].testSuite,
         use: browserOptions[PW_BROWSER],
       },
       {
         name: `${key} - INT`,
         dependencies: ['OAuth - INT'],
         testDir: './playwright/suites',
-        testMatch: set.testSuite,
+        testMatch: USER_SETS[key].testSuite,
         use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
       },
     ]),
+
+    // 2-user call tests (PROD uses USER_4+USER_5, parallel with registration sets)
+    {
+      name: 'SET_2USER - PROD',
+      dependencies: ['OAuth - PROD'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_2USER.testSuite,
+      use: browserOptions[PW_BROWSER],
+    },
+    // INT USER_4/5/6 are aliases for the same 3 INT accounts, must wait for registration
+    {
+      name: 'SET_2USER - INT',
+      dependencies: ['SET_1 - INT', 'SET_2 - INT', 'SET_3 - INT'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_2USER.testSuite,
+      use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
+    },
+
+    // 3-user transfer tests — waits for 2-user (shared USER_4+USER_5)
+    // {
+    //   name: 'SET_3USER - PROD',
+    //   dependencies: ['SET_2USER - PROD'],
+    //   testDir: './playwright/suites',
+    //   testMatch: USER_SETS.SET_3USER.testSuite,
+    //   use: browserOptions[PW_BROWSER],
+    // },
+    // {
+    //   name: 'SET_3USER - INT',
+    //   dependencies: ['SET_2USER - INT'],
+    //   testDir: './playwright/suites',
+    //   testMatch: USER_SETS.SET_3USER.testSuite,
+    //   use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
+    // },
   ],
 });
