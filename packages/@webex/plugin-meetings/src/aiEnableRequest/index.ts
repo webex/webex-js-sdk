@@ -11,6 +11,7 @@ const AIEnableRequest = WebexPlugin.extend({
   namespace: MEETINGS,
 
   props: {
+    locusUrl: 'string',
     approvalUrl: 'string',
     selfParticipantId: 'string',
     hasSubscribedToEvents: 'boolean',
@@ -40,12 +41,27 @@ const AIEnableRequest = WebexPlugin.extend({
   },
 
   /**
+   * Update the locus url
+   * @param {string} locusUrl
+   * @returns {void}
+   */
+  locusUrlUpdate(locusUrl: string) {
+    this.locusUrl = locusUrl;
+  },
+
+  /**
    * Listen to locus approval request events and trigger a new event with necessary details when an AI enablement approval request is received
    * @returns {void}
    */
   listenToApprovalRequests() {
     this.listenTo(this.webex.internal.mercury, `event:${LOCUSEVENT.APPROVAL_REQUEST}`, (event) => {
       if (event?.data?.approval?.resourceType === AI_ENABLE_REQUEST.RESOURCE_TYPE) {
+        if (event?.data?.locusUrl !== this.locusUrl) {
+          this.webex.logger.info('AIEnableRequest: Ignoring approval request for different locus');
+
+          return;
+        }
+
         const {receivers, initiator, actionType, url} = event.data.approval;
         const approverId = receivers?.[0]?.participantId;
         const isApprover = !!approverId && approverId === this.selfParticipantId;

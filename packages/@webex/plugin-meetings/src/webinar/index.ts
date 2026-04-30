@@ -99,12 +99,48 @@ const Webinar = WebexPlugin.extend({
   },
 
   /**
+   * Resolves the meeting associated with this webinar instance, guarded against the
+   * meetingId pointer drifting onto an unrelated transient meeting (e.g. an inbound
+   * 1:1 call) that may exist in the meeting collection. Returns the meeting only when
+   * its locusUrl matches this webinar's tracked locusUrl. Returns undefined (with a
+   * warning) when the meeting cannot be resolved or when the webinar's locusUrl has
+   * not been initialized yet — callers must treat this as "no owned meeting" rather
+   * than fall through to an unvalidated lookup.
+   * @returns {object|undefined}
+   */
+  getValidatedWebinarMeeting() {
+    const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
+
+    if (!meeting) {
+      return undefined;
+    }
+
+    if (!this.locusUrl) {
+      LoggerProxy.logger.warn(
+        `Webinar:index#getValidatedWebinarMeeting --> skipping; webinar locusUrl is not yet initialized for meetingId ${this.meetingId}`
+      );
+
+      return undefined;
+    }
+
+    if (meeting.locusUrl !== this.locusUrl) {
+      LoggerProxy.logger.warn(
+        `Webinar:index#getValidatedWebinarMeeting --> skipping; meeting ${this.meetingId} locusUrl ${meeting.locusUrl} does not match webinar locusUrl ${this.locusUrl}`
+      );
+
+      return undefined;
+    }
+
+    return meeting;
+  },
+
+  /**
    * should join practice session data channel or not
    * @param {Object} {isPromoted: boolean, isDemoted: boolean}} Role transition states
    * @returns {void}
    */
   updateStatusByRole({isPromoted, isDemoted}) {
-    const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
+    const meeting = this.getValidatedWebinarMeeting();
 
     if (
       (isDemoted && meeting?.shareStatus === SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE) ||
@@ -128,6 +164,9 @@ const Webinar = WebexPlugin.extend({
 
   /**
    * Disconnects the practice session data channel and removes its relay listener.
+   * The listener reference removed here is the exact callback captured at subscribe
+   * time (see updatePSDataChannel) so that cleanup is correct even if the underlying
+   * meeting can no longer be resolved (e.g. locusUrl mismatch).
    * @returns {Promise<void>}
    */
   async cleanupPSDataChannel() {
@@ -137,8 +176,6 @@ const Webinar = WebexPlugin.extend({
       this._pendingOnlineListener = null;
     }
 
-    const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
-
     // @ts-ignore - Fix type
     await this.webex.internal.llm.disconnectLLM(
       {
@@ -147,15 +184,21 @@ const Webinar = WebexPlugin.extend({
       },
       LLM_PRACTICE_SESSION
     );
-    // @ts-ignore - Fix type
-    this.webex.internal.llm.off(
-      `event:relay.event:${LLM_PRACTICE_SESSION}`,
-      meeting?.processRelayEvent
-    );
+
+    if (this._practiceSessionRelayListener) {
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.off(
+        `event:relay.event:${LLM_PRACTICE_SESSION}`,
+        this._practiceSessionRelayListener
+      );
+      this._practiceSessionRelayListener = null;
+    }
   },
 
   /**
    * Ensures practice-session token exists before registering the practice LLM channel.
+   * Caller is responsible for passing a meeting that has already been resolved via
+   * getValidatedWebinarMeeting() — this method does not re-validate ownership.
    * @param {object} meeting
    * @returns {Promise<string|undefined>}
    */
@@ -211,7 +254,7 @@ const Webinar = WebexPlugin.extend({
     this._updatePSDataChannelSequence = (this._updatePSDataChannelSequence || 0) + 1;
     const invocationSequence = this._updatePSDataChannelSequence;
 
-    const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
+    const meeting = this.getValidatedWebinarMeeting();
     const isPracticeSession = meeting?.isJoined() && this.isJoinPracticeSessionDataChannel();
 
     if (!isPracticeSession) {
@@ -312,15 +355,21 @@ const Webinar = WebexPlugin.extend({
         LLM_PRACTICE_SESSION
       )
       .then((registerAndConnectResult) => {
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.off(
-          `event:relay.event:${LLM_PRACTICE_SESSION}`,
-          meeting?.processRelayEvent
-        );
+        // Track the exact listener reference so cleanupPSDataChannel can
+        // unsubscribe deterministically, even if the meeting can no longer
+        // be resolved at cleanup time.
+        if (this._practiceSessionRelayListener) {
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.off(
+            `event:relay.event:${LLM_PRACTICE_SESSION}`,
+            this._practiceSessionRelayListener
+          );
+        }
+        this._practiceSessionRelayListener = meeting?.processRelayEvent;
         // @ts-ignore - Fix type
         this.webex.internal.llm.on(
           `event:relay.event:${LLM_PRACTICE_SESSION}`,
-          meeting?.processRelayEvent
+          this._practiceSessionRelayListener
         );
         // @ts-ignore - Fix type
         this.webex.internal.voicea?.announce?.();
@@ -532,7 +581,14 @@ const Webinar = WebexPlugin.extend({
    * @returns {Promise}
    */
   async searchLargeScaleWebinarAttendees(payload) {
-    const meeting = this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
+    const meeting = this.getValidatedWebinarMeeting();
+    if (!meeting) {
+      LoggerProxy.logger.error(
+        'Meeting:webinar5k#searchLargeScaleWebinarAttendees failed --> webinar meeting could not be validated'
+      );
+      throw new Error('Meeting:webinar5k#Webinar meeting is not resolvable for the current locus');
+    }
+
     const rawParams = {
       search_text: payload?.queryString,
       limit: payload?.limit ?? DEFAULT_LARGE_SCALE_WEBINAR_ATTENDEE_SEARCH_LIMIT,
@@ -540,7 +596,9 @@ const Webinar = WebexPlugin.extend({
     };
     const attendeeSearchUrl = meeting?.locusInfo?.links?.resources?.attendeeSearch?.url;
     if (!attendeeSearchUrl) {
-      LoggerProxy.logger.error(`Meeting:webinar5k#searchLargeScaleWebinarAttendees failed`);
+      LoggerProxy.logger.error(
+        'Meeting:webinar5k#searchLargeScaleWebinarAttendees failed --> attendee search url unavailable'
+      );
       throw new Error('Meeting:webinar5k#Attendee search url is not available');
     }
 
