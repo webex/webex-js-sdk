@@ -6,10 +6,16 @@ import {Interceptor} from '@webex/http-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY, RETRY_INTERVAL, RETRY_KEY} from './constant';
 import {isJwtTokenExpired} from './utils';
+import {LOCUS_URL, LLM_PRACTICE_SESSION, LLM_DEFAULT_SESSION} from '../constants';
 
 /*!
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
+
+// Marker substring on practice-session datachannel URLs (the base64-encoded
+// locus path embeds `practiceSession`). Used to pick the right LLM session id
+// when resolving the owning Meeting at refresh time.
+const PRACTICE_SESSION_URL_MARKER = 'practiceSession';
 
 const retryCountMap = new Map();
 interface HttpLikeError extends Error {
@@ -20,7 +26,7 @@ interface HttpLikeError extends Error {
  * @class
  */
 export default class DataChannelAuthTokenInterceptor extends Interceptor {
-  private _refreshDataChannelToken: () => Promise<string>;
+  private _refreshDataChannelToken: (requestUrl?: string) => Promise<string>;
   private _isDataChannelTokenEnabled: () => Promise<boolean>;
   constructor(options) {
     super(options);
@@ -42,11 +48,38 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
         return this.internal.llm.isDataChannelTokenEnabled();
       },
 
-      refreshDataChannelToken: async () => {
-        // @ts-ignore
-        const {body} = await this.internal.llm.refreshDataChannelToken();
-        const {datachannelToken, dataChannelTokenType} = body ?? {};
+      // Resolves the *owning* Meeting at refresh time instead of relying on
+      // whichever Meeting most recently overwrote the singleton refresh handler
+      // in `internal-plugin-llm`. Uses the in-flight request URL to pick the
+      // correct LLM session id (default vs practice-session), looks up the
+      // session's tracked locusUrl, and finds the matching Meeting in the
+      // meetings collection. Falls back to the LLM plugin's singleton handler
+      // when the lookup cannot resolve a Meeting (preserves prior behavior).
+      refreshDataChannelToken: async (requestUrl?: string) => {
+        const sessionId =
+          typeof requestUrl === 'string' && requestUrl.includes(PRACTICE_SESSION_URL_MARKER)
+            ? LLM_PRACTICE_SESSION
+            : LLM_DEFAULT_SESSION;
 
+        // @ts-ignore
+        const sessionLocusUrl = this.internal.llm.getLocusUrl?.(sessionId);
+        const meeting =
+          // @ts-ignore
+          (sessionLocusUrl &&
+            // @ts-ignore
+            this.meetings?.getMeetingByType?.(LOCUS_URL, sessionLocusUrl)) ||
+          undefined;
+
+        let result;
+        if (meeting) {
+          result = await meeting.refreshDataChannelToken();
+        } else {
+          // @ts-ignore
+          result = await this.internal.llm.refreshDataChannelToken();
+        }
+
+        if (!result?.body) return undefined;
+        const {datachannelToken, dataChannelTokenType} = result.body;
         // @ts-ignore
         this.internal.llm.setDatachannelToken(datachannelToken, dataChannelTokenType);
 
@@ -87,7 +120,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
 
     if (isJwtTokenExpired(token)) {
       try {
-        const newToken = await this._refreshDataChannelToken();
+        const newToken = await this._refreshDataChannelToken(options.uri || options.url);
         options.headers[DATA_CHANNEL_AUTH_HEADER] = newToken;
       } catch (e) {
         LoggerProxy.logger.warn(`DataChannelAuthTokenInterceptor: refresh failed: ${e.message}`);
@@ -144,7 +177,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
       setTimeout(async () => {
         const key = this.getRetryKey(options);
         try {
-          const newToken = await this._refreshDataChannelToken();
+          const newToken = await this._refreshDataChannelToken(options.uri || options.url);
 
           options.headers[DATA_CHANNEL_AUTH_HEADER] = newToken;
 
