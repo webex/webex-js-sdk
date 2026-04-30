@@ -140,6 +140,9 @@ const MemberUtil = {
   isPresenterAssignmentProhibited: (participant: Participant) =>
     participant && participant.presenterAssignmentNotAllowed,
 
+  isAttendeeAssignmentProhibited: (participant: Participant) =>
+    !!(participant && participant.attendeeAssignmentNotAllowed),
+
   /**
    * checks to see if the participant id is the same as the passed id
    * there are multiple ids that can be used

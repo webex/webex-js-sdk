@@ -128,6 +128,143 @@ describe('plugin-meetings', () => {
         };
         assert.equal(MeetingsUtil.isBreakoutLocusDTO(newLocus), false);
       });
+
+      it('returns true if newLocus.info.isBreakout is true', () => {
+        const newLocus = {
+          info: {
+            isBreakout: true,
+          },
+        };
+        assert.equal(MeetingsUtil.isBreakoutLocusDTO(newLocus), true);
+      });
+
+      it('returns false if newLocus.info.isBreakout is false', () => {
+        const newLocus = {
+          info: {
+            isBreakout: false,
+          },
+        };
+        assert.equal(MeetingsUtil.isBreakoutLocusDTO(newLocus), false);
+      });
+
+      it('returns true if both sessionType is BREAKOUT and info.isBreakout is true', () => {
+        const newLocus = {
+          controls: {
+            breakout: {
+              sessionType: 'BREAKOUT',
+            },
+          },
+          info: {
+            isBreakout: true,
+          },
+        };
+        assert.equal(MeetingsUtil.isBreakoutLocusDTO(newLocus), true);
+      });
+    });
+
+    describe('#isMainAssociatedWithBreakout', () => {
+      it('returns true when breakout control url matches main locus breakout url', () => {
+        const mainLocus = {
+          url: 'main-locus-url',
+          controls: {
+            breakout: {
+              url: 'breakout-control-url',
+            },
+          },
+        };
+        const breakoutLocus = {
+          controls: {
+            breakout: {
+              url: 'breakout-control-url',
+            },
+          },
+        };
+
+        assert.equal(MeetingsUtil.isMainAssociatedWithBreakout(mainLocus, breakoutLocus), true);
+      });
+
+      it('returns true when breakout self device replaces the main locus url', () => {
+        const mainLocus = {
+          url: 'main-locus-url',
+          controls: {},
+        };
+        const breakoutLocus = {
+          controls: {
+            breakout: {
+              url: 'other-breakout-url',
+            },
+          },
+          self: {
+            deviceUrl: 'device-url-1',
+            devices: [
+              {
+                url: 'device-url-1',
+                replaces: [{locusUrl: 'main-locus-url'}],
+              },
+            ],
+          },
+        };
+
+        assert.equal(MeetingsUtil.isMainAssociatedWithBreakout(mainLocus, breakoutLocus), true);
+      });
+
+      it('returns false when breakout locus is not associated with the main locus', () => {
+        const mainLocus = {
+          url: 'main-locus-url',
+          controls: {
+            breakout: {
+              url: 'breakout-control-url',
+            },
+          },
+        };
+        const breakoutLocus = {
+          controls: {
+            breakout: {
+              url: 'different-breakout-url',
+            },
+          },
+          self: {
+            deviceUrl: 'device-url-1',
+            devices: [
+              {
+                url: 'device-url-1',
+                replaces: [{locusUrl: 'another-main-locus-url'}],
+              },
+            ],
+          },
+        };
+
+        assert.equal(MeetingsUtil.isMainAssociatedWithBreakout(mainLocus, breakoutLocus), false);
+      });
+    });
+
+    describe('#isWholeMeetingEnded', () => {
+      [
+        {description: 'state is INACTIVE with no endMeetingReason', fullState: {state: 'INACTIVE'}, expected: true},
+        {description: 'state is INACTIVE with endMeetingReason OTHER', fullState: {state: 'INACTIVE', endMeetingReason: 'SOME_OTHER_REASON'}, expected: true},
+        {description: 'state is INACTIVE with endMeetingReason BREAKOUT_ENDED', fullState: {state: 'INACTIVE', endMeetingReason: 'BREAKOUT_ENDED'}, expected: false},
+        {description: 'state is not INACTIVE', fullState: {state: 'ACTIVE', endMeetingReason: 'SOME_OTHER_REASON'}, expected: false},
+      ].forEach(({description, fullState, expected}) => {
+        it(`returns ${expected} when ${description}`, () => {
+          assert.equal(MeetingsUtil.isWholeMeetingEnded(fullState), expected);
+        });
+      });
+    });
+
+    describe('#isSelfMovedOrBreakoutEnded', () => {
+      [
+        {description: 'locus is undefined', locus: undefined, expected: false},
+        {description: 'self state is JOINED', locus: {self: {state: 'JOINED', reason: 'OTHER'}}, expected: false},
+        {description: 'self state is LEFT with reason MOVED', locus: {self: {state: 'LEFT', reason: 'MOVED'}}, expected: true},
+        {description: 'fullState is INACTIVE with BREAKOUT_ENDED', locus: {self: {state: 'LEFT', reason: 'OTHER'}, fullState: {state: 'INACTIVE', endMeetingReason: 'BREAKOUT_ENDED'}}, expected: true},
+        {description: 'fullState is INACTIVE with different endMeetingReason', locus: {self: {state: 'LEFT', reason: 'OTHER'}, fullState: {state: 'INACTIVE', endMeetingReason: 'SOME_OTHER_REASON'}}, expected: false},
+        {description: 'fullState is missing', locus: {self: {state: 'LEFT', reason: 'OTHER'}}, expected: false},
+        {description: 'endMeetingReason is missing', locus: {self: {state: 'LEFT', reason: 'OTHER'}, fullState: {state: 'INACTIVE'}}, expected: false},
+      ].forEach(({description, locus, expected}) => {
+        it(`returns ${expected} when ${description}`, () => {
+          assert.equal(MeetingsUtil.isSelfMovedOrBreakoutEnded(locus), expected);
+        });
+      });
     });
 
     describe('#joinedOnThisDevice', () => {

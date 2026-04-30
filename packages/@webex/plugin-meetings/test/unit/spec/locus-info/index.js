@@ -13,6 +13,7 @@ import MediaSharesUtils from '@webex/plugin-meetings/src/locus-info//mediaShares
 import LocusDeltaParser from '@webex/plugin-meetings/src/locus-info/parser';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import * as HashTreeParserModule from '@webex/plugin-meetings/src/hashTree/hashTreeParser';
+import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 
 import {
   LOCUSINFO,
@@ -218,6 +219,47 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(updateLocusCacheStub, locus);
         assert.calledOnce(updateLocusInfoStub);
         assert.isTrue(locusInfo.emitChange);
+      });
+
+      it('calls onLocusSynced callback passed as second argument with full locus from join response', async () => {
+        const syncedLocus = {url: 'http://locus-url.com', participants: []};
+        const onLocusSynced = sinon.stub();
+
+        await locusInfo.initialSetup(
+          {
+            trigger: 'join-response',
+            locus: syncedLocus,
+          },
+          onLocusSynced
+        );
+
+        assert.calledOnceWithExactly(onLocusSynced, syncedLocus);
+      });
+
+      it('swallows onLocusSynced callback errors and logs warn', async () => {
+        const syncedLocus = {url: 'http://locus-url.com', participants: []};
+        const callbackError = new Error('onLocusSynced failed');
+        const onLocusSynced = sinon.stub().throws(callbackError);
+        const loggerWarnStub = LoggerProxy.logger.warn?.isSinonProxy
+          ? LoggerProxy.logger.warn
+          : sinon.stub(LoggerProxy.logger, 'warn');
+
+        loggerWarnStub.resetHistory();
+
+        await locusInfo.initialSetup(
+          {
+            trigger: 'join-response',
+            locus: syncedLocus,
+          },
+          onLocusSynced
+        );
+
+        assert.calledOnceWithExactly(onLocusSynced, syncedLocus);
+        assert.calledOnce(loggerWarnStub);
+        assert.match(
+          loggerWarnStub.firstCall.args[0],
+          /Locus-info:index#initialSetup --> onLocusSynced callback failed/
+        );
       });
 
       it('should initialize the hash tree parser correctly when triggered from a get loci response containing visible datasets', async () => {
@@ -3175,13 +3217,14 @@ describe('plugin-meetings', () => {
       const createMockParser = (state = 'active') => ({
         state,
         stop: sinon.stub(),
-        resume: sinon.stub(),
+        resumeFromMessage: sinon.stub(),
         handleMessage: sinon.stub(),
       });
 
       const createSelfElementWithReplaces = (replacedLocusUrl, replacedAt) => ({
         htMeta: {elementId: {type: 'Self'}},
         data: {
+          deviceUrl,
           devices: [{url: deviceUrl, replaces: [{locusUrl: replacedLocusUrl, replacedAt}]}],
         },
       });
@@ -3257,7 +3300,7 @@ describe('plugin-meetings', () => {
           stateElementsMessage: message,
         });
 
-        assert.calledOnce(parserA.resume);
+        assert.calledOnce(parserA.resumeFromMessage);
         assert.calledOnce(parserB.stop);
       });
 
@@ -3280,7 +3323,7 @@ describe('plugin-meetings', () => {
           stateElementsMessage: message,
         });
 
-        assert.notCalled(parserA.resume);
+        assert.notCalled(parserA.resumeFromMessage);
         assert.notCalled(parserB.stop);
       });
 
@@ -3299,7 +3342,7 @@ describe('plugin-meetings', () => {
           stateElementsMessage: message,
         });
 
-        assert.notCalled(parserA.resume);
+        assert.notCalled(parserA.resumeFromMessage);
         assert.notCalled(parserA.handleMessage);
       });
 
@@ -3383,6 +3426,51 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(parserA.handleMessage, message);
       });
+
+      it('should send mismatch metric when eventType is not HASH_TREE_DATA_UPDATED', () => {
+        const locusUrlA = 'http://locus-url-A.com';
+        const parserA = {state: 'active', handleMessage: sinon.stub()};
+        locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, initializedFromHashTree: true});
+
+        locusInfo.parse(mockMeeting, {
+          eventType: LOCUSEVENT.SELF_CHANGED,
+          stateElementsMessage: {locusUrl: locusUrlA, locusStateElements: [], dataSets: []},
+        });
+
+        assert.calledOnceWithExactly(
+          sendBehavioralMetricStub,
+          'js_sdk_locus_classic_vs_hash_tree_mismatch',
+          {
+            correlationId: mockMeeting.correlationId,
+            message: `got ${LOCUSEVENT.SELF_CHANGED}, expected ${LOCUSEVENT.HASH_TREE_DATA_UPDATED}`,
+          }
+        );
+        assert.notCalled(parserA.handleMessage);
+      });
+    });
+
+    describe('#sendClassicVsHashTreeMismatchMetric', () => {
+      it('should send the metric when called for the first time', () => {
+        locusInfo.sendClassicVsHashTreeMismatchMetric(mockMeeting, 'some mismatch');
+
+        assert.calledOnceWithExactly(
+          sendBehavioralMetricStub,
+          'js_sdk_locus_classic_vs_hash_tree_mismatch',
+          {
+            correlationId: mockMeeting.correlationId,
+            message: 'some mismatch',
+          }
+        );
+      });
+
+      it('should send the metric up to 5 times and stop after that', () => {
+        for (let i = 0; i < 7; i += 1) {
+          locusInfo.sendClassicVsHashTreeMismatchMetric(mockMeeting, `mismatch ${i}`);
+        }
+
+        assert.callCount(sendBehavioralMetricStub, 5);
+        assert.equal(locusInfo.classicVsHashTreeMismatchMetricCounter, 5);
+      });
     });
 
     describe('#handleLocusAPIResponse', () => {
@@ -3438,19 +3526,174 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(locusInfo.handleLocusDelta, fakeLocus, mockMeeting);
       });
 
-      it('should send mismatch metric when hash tree parser exists but dataSets are missing in wrapped response', () => {
+      it('should send mismatch metric in classic mode when wrapped response has dataSets', () => {
         const fakeLocus = {url: 'http://locus-url.com'};
-        const mockHashTreeParser = {handleLocusUpdate: sinon.stub()};
-        locusInfo.hashTreeParsers.set(fakeLocus.url, {
-          parser: mockHashTreeParser,
-          initializedFromHashTree: true,
+        sinon.stub(locusInfo, 'handleLocusDelta');
+
+        locusInfo.handleLocusAPIResponse(mockMeeting, {
+          locus: fakeLocus,
+          dataSets: [{name: 'dataset1', url: 'test-url'}],
         });
-        sinon.stub(locusInfo, 'sendClassicVsHashTreeMismatchMetric');
 
-        locusInfo.handleLocusAPIResponse(mockMeeting, {locus: fakeLocus});
+        assert.calledOnceWithExactly(
+          sendBehavioralMetricStub,
+          'js_sdk_locus_classic_vs_hash_tree_mismatch',
+          {
+            correlationId: mockMeeting.correlationId,
+            message: 'unexpected hash tree dataSets in API response',
+          }
+        );
+        assert.calledOnce(locusInfo.handleLocusDelta);
+      });
 
-        assert.calledOnce(locusInfo.sendClassicVsHashTreeMismatchMetric);
-        assert.calledOnce(mockHashTreeParser.handleLocusUpdate);
+      describe('parser switch via API response', () => {
+        const deviceUrl = 'http://device-url.com';
+        const locusUrlA = 'http://locus-url-A.com';
+        const locusUrlB = 'http://locus-url-B.com';
+
+        let HashTreeParserStub;
+
+        const createMockApiParser = (state = 'active') => ({
+          state,
+          stop: sinon.stub(),
+          resumeFromApiResponse: sinon.stub(),
+          handleLocusUpdate: sinon.stub(),
+          initializeFromGetLociResponse: sinon.stub(),
+        });
+
+        const createLocusWithReplaces = (url, replacedLocusUrl, replacedAt) => ({
+          url,
+          self: {
+            devices: [{url: deviceUrl, replaces: [{locusUrl: replacedLocusUrl, replacedAt}]}],
+          },
+        });
+
+        const createLocusWithoutReplaces = (url) => ({
+          url,
+          self: {devices: [{url: deviceUrl}]},
+        });
+
+        beforeEach(() => {
+          locusInfo.webex.internal.device.url = deviceUrl;
+          HashTreeParserStub = sinon
+            .stub(HashTreeParserModule, 'default')
+            .returns(createMockApiParser());
+        });
+
+        it('should create a new parser and initialize it when no entry exists for the locusUrl', () => {
+          // existing parser for a different url so hashTreeParsers.size > 0
+          locusInfo.hashTreeParsers.set(locusUrlA, {parser: createMockApiParser(), initializedFromHashTree: true});
+
+          const locus = createLocusWithReplaces(locusUrlB, locusUrlA, '2026-01-01T00:00:00Z');
+          sinon.stub(locusInfo, 'handleLocusDelta');
+
+          locusInfo.handleLocusAPIResponse(mockMeeting, {locus});
+
+          assert.isTrue(locusInfo.hashTreeParsers.has(locusUrlB));
+          const newEntry = locusInfo.hashTreeParsers.get(locusUrlB);
+          assert.isFalse(newEntry.initializedFromHashTree);
+
+          // the stub returns the mock, so initializeFromGetLociResponse should be called on it
+          const createdParser = HashTreeParserStub.returnValues[0];
+          assert.calledOnceWithExactly(createdParser.initializeFromGetLociResponse, locus);
+          assert.notCalled(locusInfo.handleLocusDelta);
+        });
+
+        it('should reactivate a stopped parser when replaces info is newer', () => {
+          const parserA = createMockApiParser('stopped');
+          const parserB = createMockApiParser('active');
+          locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, replacedAt: '2026-01-01T00:00:00Z', initializedFromHashTree: true});
+          locusInfo.hashTreeParsers.set(locusUrlB, {parser: parserB, initializedFromHashTree: true});
+
+          const locus = createLocusWithReplaces(locusUrlA, locusUrlB, '2026-02-01T00:00:00Z');
+
+          locusInfo.handleLocusAPIResponse(mockMeeting, {locus});
+
+          assert.calledOnce(parserA.resumeFromApiResponse);
+          assert.calledWithExactly(parserA.resumeFromApiResponse, locus);
+          assert.calledOnce(parserB.stop);
+          assert.equal(locusInfo.hashTreeParsers.get(locusUrlB).replacedAt, '2026-02-01T00:00:00Z');
+          assert.isFalse(locusInfo.hashTreeParsers.get(locusUrlA).initializedFromHashTree);
+        });
+
+        it('should not reactivate a stopped parser when replaces info is not newer', () => {
+          const parserA = createMockApiParser('stopped');
+          const parserB = createMockApiParser('active');
+          locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, replacedAt: '2026-03-01T00:00:00Z', initializedFromHashTree: true});
+          locusInfo.hashTreeParsers.set(locusUrlB, {parser: parserB, initializedFromHashTree: true});
+
+          const locus = createLocusWithReplaces(locusUrlA, locusUrlB, '2026-01-01T00:00:00Z');
+
+          locusInfo.handleLocusAPIResponse(mockMeeting, {locus});
+
+          assert.notCalled(parserA.resumeFromApiResponse);
+          assert.notCalled(parserB.stop);
+        });
+
+        it('should not reactivate a stopped parser when no replaces info is available', () => {
+          const parserA = createMockApiParser('stopped');
+          locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, initializedFromHashTree: true});
+
+          const locus = createLocusWithoutReplaces(locusUrlA);
+
+          locusInfo.handleLocusAPIResponse(mockMeeting, {locus});
+
+          assert.notCalled(parserA.resumeFromApiResponse);
+        });
+      });
+    });
+
+    describe('#syncAllHashTreeDatasets', () => {
+      it('should call syncAllDatasets on each parser that has an entry', async () => {
+        const parser1 = {syncAllDatasets: sinon.stub().resolves()};
+        const parser2 = {syncAllDatasets: sinon.stub().resolves()};
+        locusInfo.hashTreeParsers.set('url1', {parser: parser1});
+        locusInfo.hashTreeParsers.set('url2', {parser: parser2});
+
+        await locusInfo.syncAllHashTreeDatasets();
+
+        assert.calledOnce(parser1.syncAllDatasets);
+        assert.calledOnce(parser2.syncAllDatasets);
+      });
+
+      it('should skip parser entries without a parser object', async () => {
+        const parser1 = {syncAllDatasets: sinon.stub().resolves()};
+        locusInfo.hashTreeParsers.set('url1', {parser: parser1});
+        locusInfo.hashTreeParsers.set('url2', {parser: undefined});
+
+        await locusInfo.syncAllHashTreeDatasets();
+
+        assert.calledOnce(parser1.syncAllDatasets);
+      });
+
+      it('should await each parsers syncAllDatasets sequentially', async () => {
+        const callOrder = [];
+        const parser1 = {syncAllDatasets: sinon.stub().callsFake(() => {
+          callOrder.push('start1');
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              callOrder.push('end1');
+              resolve();
+            }, 100);
+          });
+        })};
+        const parser2 = {syncAllDatasets: sinon.stub().callsFake(() => {
+          callOrder.push('start2');
+          return Promise.resolve();
+        })};
+        locusInfo.hashTreeParsers.set('url1', {parser: parser1});
+        locusInfo.hashTreeParsers.set('url2', {parser: parser2});
+
+        const clock = sinon.useFakeTimers();
+        const promise = locusInfo.syncAllHashTreeDatasets();
+        // parser1 started but parser2 not yet
+        assert.deepEqual(callOrder, ['start1']);
+
+        await clock.tickAsync(100);
+        await promise;
+        // parser1 finished, then parser2 started and finished
+        assert.deepEqual(callOrder, ['start1', 'end1', 'start2']);
+        clock.restore();
       });
     });
 
@@ -3542,49 +3785,23 @@ describe('plugin-meetings', () => {
         assert.deepEqual(callOrder, ['updateLocusUrl', 'updateMeetingInfo']);
       });
 
-      it('#updateLocusInfo ignores breakout LEFT message', () => {
-        const newLocus = {
-          self: {
-            reason: 'MOVED',
-            state: 'LEFT',
-          },
-        };
+      it('#updateLocusInfo ignores locus when isSelfMovedOrBreakoutEnded returns true', () => {
+        const newLocus = {self: {state: 'JOINED'}};
+
+        sinon.stub(MeetingsUtil, 'isSelfMovedOrBreakoutEnded').returns(true);
 
         locusInfo.updateControls = sinon.stub();
-        locusInfo.updateConversationUrl = sinon.stub();
-        locusInfo.updateCreated = sinon.stub();
         locusInfo.updateFullState = sinon.stub();
-        locusInfo.updateHostInfo = sinon.stub();
-        locusInfo.updateMeetingInfo = sinon.stub();
-        locusInfo.updateMediaShares = sinon.stub();
-        locusInfo.updateReplaces = sinon.stub();
         locusInfo.updateSelf = sinon.stub();
-        locusInfo.updateLocusUrl = sinon.stub();
-        locusInfo.updateAclUrl = sinon.stub();
-        locusInfo.updateBasequence = sinon.stub();
-        locusInfo.updateSequence = sinon.stub();
-        locusInfo.updateEmbeddedApps = sinon.stub();
-        locusInfo.updateLinks = sinon.stub();
-        locusInfo.compareAndUpdate = sinon.stub();
 
         locusInfo.updateLocusInfo(newLocus);
 
+        assert.calledOnceWithExactly(MeetingsUtil.isSelfMovedOrBreakoutEnded, newLocus);
         assert.notCalled(locusInfo.updateControls);
-        assert.notCalled(locusInfo.updateConversationUrl);
-        assert.notCalled(locusInfo.updateCreated);
         assert.notCalled(locusInfo.updateFullState);
-        assert.notCalled(locusInfo.updateHostInfo);
-        assert.notCalled(locusInfo.updateMeetingInfo);
-        assert.notCalled(locusInfo.updateMediaShares);
-        assert.notCalled(locusInfo.updateReplaces);
         assert.notCalled(locusInfo.updateSelf);
-        assert.notCalled(locusInfo.updateLocusUrl);
-        assert.notCalled(locusInfo.updateAclUrl);
-        assert.notCalled(locusInfo.updateBasequence);
-        assert.notCalled(locusInfo.updateSequence);
-        assert.notCalled(locusInfo.updateEmbeddedApps);
-        assert.notCalled(locusInfo.updateLinks);
-        assert.notCalled(locusInfo.compareAndUpdate);
+
+        MeetingsUtil.isSelfMovedOrBreakoutEnded.restore();
       });
 
       it('#updateLocusInfo puts the Locus DTO top level properties at the right place in LocusInfo class', () => {
@@ -4501,6 +4718,9 @@ describe('plugin-meetings', () => {
     });
 
     describe('#isMeetingActive', () => {
+      beforeEach(() => {
+        webex.internal.newMetrics.submitClientEvent.resetHistory();
+      });
       forEach([_CALL_, _SIP_BRIDGE_, _SPACE_SHARE_], (type) => {
         describe(`type = ${type}`, () => {
           it('sends client event correctly for state = inactive', () => {
@@ -4567,7 +4787,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('sends client event correctly for state = MEETING_INACTIVE_TERMINATING', () => {
+      it('sends client event correctly for state = MEETING_INACTIVE', () => {
         locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
         locusInfo.parsedLocus = {
           fullState: {
@@ -4589,7 +4809,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('sends client event correctly for state = FULLSTATE_REMOVED', () => {
+      it('does not send client event when state = INACTIVE and endMeetingReason = BREAKOUT_ENDED', () => {
         locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
         locusInfo.parsedLocus = {
           fullState: {
@@ -4598,17 +4818,41 @@ describe('plugin-meetings', () => {
         };
 
         locusInfo.fullState = {
-          removed: true,
+          state: LOCUS.STATE.INACTIVE,
+          endMeetingReason: 'BREAKOUT_ENDED',
         };
 
         locusInfo.isMeetingActive();
 
-        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-          name: 'client.call.remote-ended',
-          options: {
-            meetingId: locusInfo.meetingId,
+        assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+      });
+
+      it('sends client event correctly for state self removed', () => {
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.parsedLocus = {
+          fullState: {
+            type: _MEETING_,
           },
-        });
+          self: {
+            removed: true,
+          }
+        };
+
+        locusInfo.isMeetingActive();
+
+        assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+        assert.calledOnceWithExactly(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'isMeetingActive',
+          },
+          EVENTS.DESTROY_MEETING,
+          {
+            reason: MEETING_REMOVED_REASON.SELF_REMOVED,
+            shouldLeave: false,
+          }
+        );
       });
     });
 
@@ -5000,6 +5244,31 @@ describe('plugin-meetings', () => {
         );
         assert.notCalled(getTheLocusToUpdateStub);
       });
+
+      it('should call handleLocusAPIResponse for SDK_LOCUS_FROM_SYNC_MEETINGS when hash tree parsers exist', () => {
+        const fakeLocusUrl = 'http://locus-url.com';
+        const fakeLocus = {url: fakeLocusUrl, fullState: {state: 'ACTIVE'}};
+        const mockHashTreeParser = {
+          handleMessage: sinon.stub(),
+          handleLocusUpdate: sinon.stub(),
+        };
+        locusInfo.hashTreeParsers.set(fakeLocusUrl, {
+          parser: mockHashTreeParser,
+          initializedFromHashTree: true,
+        });
+
+        sinon.stub(locusInfo, 'handleLocusDelta');
+
+        locusInfo.parse(mockMeeting, {
+          eventType: LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS,
+          locus: fakeLocus,
+        });
+
+        // should route through handleLocusAPIResponse which passes unwrapped LocusDTO to parser
+        assert.calledOnce(mockHashTreeParser.handleLocusUpdate);
+        assert.notCalled(mockHashTreeParser.handleMessage);
+        assert.notCalled(locusInfo.handleLocusDelta);
+      });
     });
   });
 
@@ -5192,6 +5461,7 @@ describe('plugin-meetings', () => {
       return {
         htMeta: {elementId: {type: 'Self'}},
         data: {
+          deviceUrl,
           devices,
         },
       };

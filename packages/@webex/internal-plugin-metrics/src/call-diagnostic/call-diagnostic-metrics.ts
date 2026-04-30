@@ -190,6 +190,11 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
 
       // if ConvergedArchitecture enable and isConvergedWebinarWebcast -- then webcast
       if (meetingInfo?.enableConvergedArchitecture && meetingInfo?.enableEvent) {
+        // if enableConvergedWebinarLargeScale - then large scale webinar
+        if (meetingInfo?.enableConvergedWebinarLargeScale) {
+          return WEBEX_SUB_SERVICE_TYPES.LARGE_SCALE_WEBINAR;
+        }
+
         return meetingInfo?.isConvergedWebinarWebcast
           ? WEBEX_SUB_SERVICE_TYPES.WEBCAST
           : WEBEX_SUB_SERVICE_TYPES.WEBINAR;
@@ -1005,6 +1010,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       webexSubServiceType: this.getSubServiceType(meeting),
       // @ts-ignore
       webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
+      isVipMeeting: meeting?.meetingInfo?.vipmeeting || false,
     };
 
     const joinFlowVersion = options.joinFlowVersion ?? meeting.callStateForMetrics?.joinFlowVersion;
