@@ -7,6 +7,7 @@ import {METHOD_START_MESSAGE} from '../common/constants';
 import {
   filterMobiusUris,
   handleCallingClientErrors,
+  isValidServiceDomain,
   uploadLogs,
   validateServiceData,
 } from '../common/Utils';
@@ -138,6 +139,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     const logLevel = this.sdkConfig?.logger?.level ? this.sdkConfig.logger.level : LOGGER.ERROR;
     log.setLogger(logLevel, CALLING_CLIENT_FILE);
+    validateServiceData(this.serviceData);
 
     this.callManager = getCallManager(this.webex, this.serviceData.indicator);
     this.metricManager = getMetricManager(this.webex, this.serviceData.indicator);
@@ -219,14 +221,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       }
     }
 
-    try {
-      validateServiceData(this.serviceData);
-    } catch (error) {
-      log.error(`Service data validation failed during init: ${error}`, {
-        file: CALLING_CLIENT_FILE,
-        method: METHODS.INIT,
-      });
-      throw error;
+    if (!isValidServiceDomain(this.serviceData)) {
+      throw new Error('Invalid service domain.');
     }
 
     await this.createLine();
