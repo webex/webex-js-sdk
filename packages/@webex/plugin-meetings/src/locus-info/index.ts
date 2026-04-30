@@ -37,6 +37,7 @@ import HashTreeParser, {
   LocusInfoUpdate,
   LocusInfoUpdateType,
   Metadata,
+  SyncMetricsCallback,
 } from '../hashTree/hashTreeParser';
 import {HashTreeObject, ObjectType, ObjectTypeToLocusKeyMap} from '../hashTree/types';
 import {isMetadata, isSelf} from '../hashTree/utils';
@@ -286,6 +287,8 @@ export default class LocusInfo extends EventsScope {
   hashTreeParsers: Map<string, HashTreeParserEntry>;
   hashTreeObjectId2ParticipantId: Map<number, string>; // mapping of hash tree object ids to participant ids
   classicVsHashTreeMismatchMetricCounter = 0;
+  /** Callback to be set by the meeting layer for reporting sync latency metrics */
+  syncMetricsCallback?: SyncMetricsCallback;
 
   /**
    * Constructor
@@ -576,6 +579,10 @@ export default class LocusInfo extends EventsScope {
 
     this.hashTreeParsers.set(locusUrl, {parser, initializedFromHashTree: false});
     this.hashTreeObjectId2ParticipantId.clear();
+
+    if (this.syncMetricsCallback) {
+      parser.syncMetricsCallback = this.syncMetricsCallback;
+    }
 
     return parser;
   }

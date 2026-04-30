@@ -4,7 +4,7 @@ interface ILLMChannel {
     datachannelUrl: string,
     datachannelToken?: string,
     sessionId?: string
-  ) => Promise<void>;
+  ) => Promise<LLMConnectionTimings>;
   isConnected: (sessionId?: string) => boolean;
   getBinding: (sessionId?: string) => string;
   getLocusUrl: (sessionId?: string) => string;
@@ -21,6 +21,16 @@ interface ILLMChannel {
       datachannelToken?: string;
     }
   >;
+}
+
+/**
+ * Timing measurements captured during LLM registration and WebSocket connection.
+ */
+export interface LLMConnectionTimings {
+  /** Time in ms for the datachannel API call (HTTP POST to get WebSocket URL) */
+  clientLLMDatachannelResponseTime: number;
+  /** Time in ms for the WebSocket connection establishment */
+  clientLLMWebSocketConnectTime?: number;
 }
 
 export enum DataChannelTokenType {

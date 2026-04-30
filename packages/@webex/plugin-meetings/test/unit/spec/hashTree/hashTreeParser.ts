@@ -4359,4 +4359,418 @@ describe('HashTreeParser', () => {
       expect(parser.dataSets).to.deep.equal({});
     });
   });
+
+  describe('sync metrics integration', () => {
+    let syncMetricsCallbackStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      syncMetricsCallbackStub = sinon.stub();
+    });
+
+    it('collects sync latency metrics end-to-end when sync response is null (data arrives via LLM message)', async () => {
+      const parser = createHashTreeParser();
+      parser.syncMetricsCallback = syncMetricsCallbackStub;
+      const heartbeatIntervalMs = 5000;
+
+      // Step 1: send heartbeat for 'main' to start watchdog
+      const heartbeatMessage = {
+        dataSets: [
+          {
+            ...createDataSet('main', 16, 1100),
+            root: parser.dataSets.main.hashTree.getRootHash(),
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        heartbeatIntervalMs,
+      };
+      parser.handleMessage(heartbeatMessage, 'initial heartbeat');
+
+      // Step 2: mock GET /hashtree and POST /sync (sync returns null => data via LLM)
+      const mainDataSetUrl = parser.dataSets.main.url;
+      mockGetHashesFromLocusResponse(
+        mainDataSetUrl,
+        new Array(16).fill('00000000000000000000000000000000'),
+        createDataSet('main', 16, 1101)
+      );
+      mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+      // Step 3: watchdog fires, performSync runs
+      await clock.tickAsync(heartbeatIntervalMs);
+
+      // Metrics callback should NOT have been called yet (waiting for LLM message)
+      assert.notCalled(syncMetricsCallbackStub);
+
+      // Step 4: simulate LLM broadcast message arriving with 'main' dataset
+      const llmMessage = {
+        dataSets: [
+          {
+            ...createDataSet('main', 16, 1102),
+            root: parser.dataSets.main.hashTree.getRootHash(),
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 0, version: 201},
+              dataSetNames: ['main'],
+            },
+            data: {someData: 'value'},
+          },
+        ],
+      };
+      parser.handleMessage(llmMessage, 'LLM broadcast');
+
+      // Step 5: verify syncMetricsCallback was called with correct structure
+      assert.calledOnce(syncMetricsCallbackStub);
+      const metricsArg = syncMetricsCallbackStub.firstCall.args[0];
+      expect(metricsArg.dataSet).to.equal('main');
+      expect(metricsArg.syncLatency).to.have.all.keys(
+        'randomBackoffTime',
+        'hashtreePrepTime',
+        'hashtreeResponseTime',
+        'syncPrepTime',
+        'syncResponseTime',
+        'syncMessageReceiveTime',
+        'totalTime'
+      );
+      // All values should be non-negative numbers
+      Object.values(metricsArg.syncLatency).forEach((val) => {
+        expect(val).to.be.a('number');
+        expect(val).to.be.at.least(0);
+      });
+    });
+
+    it('completes sync metrics immediately when sync response contains data', async () => {
+      const parser = createHashTreeParser();
+      parser.syncMetricsCallback = syncMetricsCallbackStub;
+      const heartbeatIntervalMs = 5000;
+
+      // Send heartbeat for 'main'
+      const heartbeatMessage = {
+        dataSets: [
+          {
+            ...createDataSet('main', 16, 1100),
+            root: parser.dataSets.main.hashTree.getRootHash(),
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        heartbeatIntervalMs,
+      };
+      parser.handleMessage(heartbeatMessage, 'initial heartbeat');
+
+      const mainDataSetUrl = parser.dataSets.main.url;
+      mockGetHashesFromLocusResponse(
+        mainDataSetUrl,
+        new Array(16).fill('00000000000000000000000000000000'),
+        createDataSet('main', 16, 1101)
+      );
+
+      // Sync response contains data directly (not null)
+      const syncResponseWithData = {
+        dataSets: [createDataSet('main', 16, 1102)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 0, version: 202},
+              dataSetNames: ['main'],
+            },
+            data: {someData: 'updated'},
+          },
+        ],
+      };
+      mockSendSyncRequestResponse(mainDataSetUrl, syncResponseWithData);
+
+      // Watchdog fires, performSync runs, sync response has data => metrics complete immediately
+      await clock.tickAsync(heartbeatIntervalMs);
+
+      assert.calledOnce(syncMetricsCallbackStub);
+      const metricsArg = syncMetricsCallbackStub.firstCall.args[0];
+      expect(metricsArg.dataSet).to.equal('main');
+      expect(metricsArg.syncLatency.syncMessageReceiveTime).to.be.at.least(0);
+      expect(metricsArg.syncLatency.totalTime).to.be.at.least(0);
+    });
+
+    it('does not collect sync metrics for non-tracked datasets like "self"', async () => {
+      const parser = createHashTreeParser();
+      parser.syncMetricsCallback = syncMetricsCallbackStub;
+      const heartbeatIntervalMs = 5000;
+
+      // Send heartbeat for 'self' (leafCount === 1, not in SYNC_METRICS_DATA_SETS)
+      const heartbeatMessage = {
+        dataSets: [
+          {
+            ...createDataSet('self', 1, 2100),
+            root: parser.dataSets.self.hashTree.getRootHash(),
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        heartbeatIntervalMs,
+      };
+      parser.handleMessage(heartbeatMessage, 'self heartbeat');
+
+      const selfDataSetUrl = parser.dataSets.self.url;
+      mockSendSyncRequestResponse(selfDataSetUrl, null);
+
+      await clock.tickAsync(heartbeatIntervalMs);
+
+      // No metrics should be collected for 'self'
+      assert.notCalled(syncMetricsCallbackStub);
+    });
+
+    it('does not invoke callback when syncMetricsCallback is not set', async () => {
+      const parser = createHashTreeParser();
+      // Intentionally not setting syncMetricsCallback
+      const heartbeatIntervalMs = 5000;
+
+      const heartbeatMessage = {
+        dataSets: [
+          {
+            ...createDataSet('main', 16, 1100),
+            root: parser.dataSets.main.hashTree.getRootHash(),
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        heartbeatIntervalMs,
+      };
+      parser.handleMessage(heartbeatMessage, 'initial heartbeat');
+
+      const mainDataSetUrl = parser.dataSets.main.url;
+      mockGetHashesFromLocusResponse(
+        mainDataSetUrl,
+        new Array(16).fill('00000000000000000000000000000000'),
+        createDataSet('main', 16, 1101)
+      );
+
+      const syncResponseWithData = {
+        dataSets: [createDataSet('main', 16, 1102)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 0, version: 202},
+              dataSetNames: ['main'],
+            },
+          },
+        ],
+      };
+      mockSendSyncRequestResponse(mainDataSetUrl, syncResponseWithData);
+
+      // Should not throw even without callback
+      await clock.tickAsync(heartbeatIntervalMs);
+    });
+
+    it('does not collect sync metrics for initialization syncs', async () => {
+      // Create parser without initialization so we can trigger it manually
+      const parser = createHashTreeParser();
+      parser.syncMetricsCallback = syncMetricsCallbackStub;
+
+      const mainDataSetUrl = parser.dataSets.main.url;
+
+      // Mock the sync response for initialization
+      const syncResponseWithData = {
+        dataSets: [createDataSet('main', 16, 1102)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 0, version: 201},
+              dataSetNames: ['main'],
+            },
+            data: {someData: 'init'},
+          },
+        ],
+      };
+      mockSendSyncRequestResponse(mainDataSetUrl, syncResponseWithData);
+
+      // Trigger initialization sync via initializeFromMessage
+      mockGetAllDataSetsMetadata(webexRequest, visibleDataSetsUrl, [
+        createDataSet('main', 16, 1100),
+        createDataSet('self', 1, 2100),
+        createDataSet('atd-unmuted', 16, 3100),
+      ]);
+      mockSendSyncRequestResponse(
+        parser.dataSets.self.url,
+        null
+      );
+      mockSendSyncRequestResponse(
+        parser.dataSets['atd-unmuted'].url,
+        null
+      );
+
+      // Remove hash trees so initializeDataSets re-creates them with isInitialization=true
+      parser.dataSets.main.hashTree = undefined;
+      parser.dataSets.self.hashTree = undefined;
+      parser.dataSets['atd-unmuted'].hashTree = undefined;
+
+      await parser.initializeFromMessage({
+        dataSets: [
+          createDataSet('main', 16, 1100),
+          createDataSet('self', 1, 2100),
+          createDataSet('atd-unmuted', 16, 3100),
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      // Initialization sync should NOT produce metrics
+      assert.notCalled(syncMetricsCallbackStub);
+    });
+
+    it('does not collect metrics when getHashesFromLocus returns null (hashes match)', async () => {
+      const parser = createHashTreeParser();
+      parser.syncMetricsCallback = syncMetricsCallbackStub;
+      const heartbeatIntervalMs = 5000;
+
+      // Send heartbeat for 'main' with mismatched root hash to trigger sync timer
+      const heartbeatMessage = {
+        dataSets: [
+          {
+            ...createDataSet('main', 16, 1100),
+            root: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', // different from our hash
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        heartbeatIntervalMs,
+      };
+      parser.handleMessage(heartbeatMessage, 'heartbeat with mismatch');
+
+      const mainDataSetUrl = parser.dataSets.main.url;
+
+      // Mock getHashesFromLocus to return empty body (hashes match - returns null)
+      webexRequest
+        .withArgs(
+          sinon.match({
+            method: 'GET',
+            uri: `${mainDataSetUrl}/hashtree`,
+          })
+        )
+        .resolves({
+          body: {},
+        });
+
+      // Timer fires => performSync => getHashesFromLocus returns null => early return, no metrics
+      await clock.tickAsync(heartbeatIntervalMs);
+
+      assert.notCalled(syncMetricsCallbackStub);
+    });
+
+    it('collects sync metrics for atd-unmuted dataset', async () => {
+      const parser = createHashTreeParser();
+      parser.syncMetricsCallback = syncMetricsCallbackStub;
+      const heartbeatIntervalMs = 5000;
+
+      // Send heartbeat for 'atd-unmuted'
+      const heartbeatMessage = {
+        dataSets: [
+          {
+            ...createDataSet('atd-unmuted', 16, 3100),
+            root: parser.dataSets['atd-unmuted'].hashTree.getRootHash(),
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        heartbeatIntervalMs,
+      };
+      parser.handleMessage(heartbeatMessage, 'atd-unmuted heartbeat');
+
+      const atdUnmutedDataSetUrl = parser.dataSets['atd-unmuted'].url;
+      mockGetHashesFromLocusResponse(
+        atdUnmutedDataSetUrl,
+        new Array(16).fill('00000000000000000000000000000000'),
+        createDataSet('atd-unmuted', 16, 3101)
+      );
+
+      const syncResponseWithData = {
+        dataSets: [createDataSet('atd-unmuted', 16, 3102)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'participant' as const, id: 14, version: 301},
+              dataSetNames: ['atd-unmuted'],
+            },
+            data: {someData: 'updated'},
+          },
+        ],
+      };
+      mockSendSyncRequestResponse(atdUnmutedDataSetUrl, syncResponseWithData);
+
+      // Watchdog fires => sync => metrics complete
+      await clock.tickAsync(heartbeatIntervalMs);
+
+      assert.calledOnce(syncMetricsCallbackStub);
+      const metricsArg = syncMetricsCallbackStub.firstCall.args[0];
+      expect(metricsArg.dataSet).to.equal('atd-unmuted');
+      expect(metricsArg.syncLatency.totalTime).to.be.at.least(0);
+    });
+
+    it('records randomBackoffTime from the actual timer delay in runSyncAlgorithm', async () => {
+      const parser = createHashTreeParser();
+      parser.syncMetricsCallback = syncMetricsCallbackStub;
+
+      // Send a heartbeat with a root hash that differs from ours to trigger sync via timer
+      const mismatchedRoot = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+      const heartbeatMessage = {
+        dataSets: [
+          {
+            ...createDataSet('main', 16, 1100),
+            root: mismatchedRoot,
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        heartbeatIntervalMs: 10000,
+      };
+
+      // Update the dataSet root so performSync will see a mismatch
+      parser.dataSets.main.root = mismatchedRoot;
+
+      parser.handleMessage(heartbeatMessage, 'heartbeat with mismatched root');
+
+      const mainDataSetUrl = parser.dataSets.main.url;
+      mockGetHashesFromLocusResponse(
+        mainDataSetUrl,
+        new Array(16).fill('00000000000000000000000000000000'),
+        createDataSet('main', 16, 1101)
+      );
+
+      const syncResponseWithData = {
+        dataSets: [createDataSet('main', 16, 1102)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 0, version: 203},
+              dataSetNames: ['main'],
+            },
+            data: {someData: 'new'},
+          },
+        ],
+      };
+      mockSendSyncRequestResponse(mainDataSetUrl, syncResponseWithData);
+
+      // idleMs=1000, backoff with Math.random()=0 => weightedBackoff = 0, total delay = 1000ms
+      // The randomBackoffTime should reflect the actual elapsed time of the timer
+      await clock.tickAsync(1000);
+
+      assert.calledOnce(syncMetricsCallbackStub);
+      const metricsArg = syncMetricsCallbackStub.firstCall.args[0];
+      // With fake timers and Math.random()=0, the delay should be idleMs (1000) + 0 backoff = 1000ms
+      expect(metricsArg.syncLatency.randomBackoffTime).to.equal(1000);
+    });
+  });
 });

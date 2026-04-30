@@ -10,7 +10,7 @@ import {
   SUBSCRIPTION_AWARE_SUBCHANNELS_PARAM,
   LLM_DEFAULT_SESSION,
 } from './constants';
-import {ILLMChannel, DataChannelTokenType} from './llm.types';
+import {ILLMChannel, DataChannelTokenType, LLMConnectionTimings} from './llm.types';
 
 export const config = {
   llm: {
@@ -116,16 +116,22 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @param {string} datachannelUrl
    * @param {string} datachannelToken
    * @param {string} sessionId - Connection identifier
-   * @returns {Promise<void>}
+   * @returns {Promise<LLMConnectionTimings>} Timing measurements for the registration and connection phases
    */
   public registerAndConnect = (
     locusUrl: string,
     datachannelUrl: string,
     datachannelToken?: string,
     sessionId: string = LLM_DEFAULT_SESSION
-  ): Promise<void> =>
-    this.register(datachannelUrl, datachannelToken, sessionId).then(async () => {
-      if (!locusUrl || !datachannelUrl) return undefined;
+  ): Promise<LLMConnectionTimings> => {
+    const registerStart = performance.now();
+
+    return this.register(datachannelUrl, datachannelToken, sessionId).then(async () => {
+      const datachannelResponseTime = Math.round(performance.now() - registerStart);
+
+      if (!locusUrl || !datachannelUrl) {
+        return {clientLLMDatachannelResponseTime: datachannelResponseTime};
+      }
 
       // Get or create connection data
       const sessionData = this.connections.get(sessionId) || {};
@@ -140,8 +146,16 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
         ? LLMChannel.buildUrlWithAwareSubchannels(sessionData.webSocketUrl, AWARE_DATA_CHANNEL)
         : sessionData.webSocketUrl;
 
-      return this.connect(connectUrl, sessionId);
+      const connectStart = performance.now();
+      await this.connect(connectUrl, sessionId);
+      const webSocketConnectTime = Math.round(performance.now() - connectStart);
+
+      return {
+        clientLLMDatachannelResponseTime: datachannelResponseTime,
+        clientLLMWebSocketConnectTime: webSocketConnectTime,
+      };
     });
+  };
 
   /**
    * Tells if LLM socket is connected
