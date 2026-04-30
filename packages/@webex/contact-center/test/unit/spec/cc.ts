@@ -89,7 +89,6 @@ describe('webex.cc', () => {
       on: jest.fn(),
       off: jest.fn(),
       close: jest.fn(),
-      listeners: jest.fn().mockReturnValue([]),
       isSocketClosed: false,
     };
 
