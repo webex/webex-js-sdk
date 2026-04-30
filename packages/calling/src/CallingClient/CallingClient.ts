@@ -213,9 +213,9 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       this.serviceData.indicator === ServiceIndicator.CONTACT_CENTER &&
       !this.serviceData.domain
     ) {
-      const rtmsDomain = await this.getRTMSDomain();
+      const rtmsDomain = this.getRTMSDomain();
 
-      this.serviceData.domain = rtmsDomain || '';
+      this.serviceData.domain = rtmsDomain;
       if (this.sdkConfig?.serviceData) {
         this.sdkConfig.serviceData.domain = this.serviceData.domain;
       }
@@ -235,7 +235,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
    *
    * @returns The RTMS domain from catalog when available.
    */
-  private async getRTMSDomain(): Promise<string | undefined> {
+  private getRTMSDomain(): string {
     log.info('Fetching RTMS domain from service catalog', {
       file: CALLING_CLIENT_FILE,
       method: METHODS.GET_RTMS_DOMAIN,
