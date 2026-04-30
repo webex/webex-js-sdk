@@ -21,8 +21,7 @@
     "directory": "packages/calling"
   },
   "browser": {
-    "./dist/module/mobius-socket/socket/socket.js": "./dist/module/mobius-socket/socket/socket.shim.js",
-    "./src/mobius-socket/socket/socket.js": "./src/mobius-socket/socket/socket.shim.js"
+    "./dist/module/mobius-socket/socket/socket.js": "./dist/module/mobius-socket/socket/socket.shim.js"
   },
   "engines": {
     "node": ">=18"

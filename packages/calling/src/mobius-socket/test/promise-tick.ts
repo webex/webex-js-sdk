@@ -4,11 +4,10 @@
 
 /**
  * Uses Promise#then to run some number of ticks
- * @param {number} count
- * @returns {Promise}
+ * @param count
  */
-export default function promiseTick(count) {
-  let promise = Promise.resolve();
+export default function promiseTick(count: number): Promise<void> {
+  let promise = Promise.resolve<void>(undefined);
 
   while (count > 1) {
     promise = promise.then(() => promiseTick(1));

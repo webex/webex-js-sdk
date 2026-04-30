@@ -4,6 +4,11 @@
 
 import {Exception} from '@webex/common';
 
+type CloseEventLike = {
+  code?: number;
+  reason?: string;
+};
+
 /**
  * Exception thrown when a websocket gets closed
  */
@@ -11,10 +16,9 @@ export class ConnectionError extends Exception {
   static defaultMessage = 'Failed to connect to socket';
 
   /**
-   * @param {CloseEvent} event
-   * @returns {string}
+   * @param event
    */
-  parse(event = {}) {
+  parse(event: CloseEventLike = {}) {
     Object.defineProperties(this, {
       code: {
         value: event.code,

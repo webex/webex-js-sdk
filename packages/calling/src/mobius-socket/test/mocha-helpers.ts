@@ -2,7 +2,11 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
-export function flaky(mochaMethod, envVar) {
+type MochaMethod = ((...args: any[]) => any) & {
+  skip?: (...args: any[]) => any;
+};
+
+export function flaky(mochaMethod: MochaMethod, envVar?: string) {
   if (!mochaMethod.skip) {
     return mochaMethod;
   }
@@ -12,6 +16,6 @@ export function flaky(mochaMethod, envVar) {
   return shouldSkip ? mochaMethod.skip : mochaMethod;
 }
 
-export function skipInBrowser(mochaMethod) {
+export function skipInBrowser(mochaMethod: MochaMethod) {
   return mochaMethod;
 }
