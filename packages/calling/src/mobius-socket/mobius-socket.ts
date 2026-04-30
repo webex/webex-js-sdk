@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* eslint-disable require-jsdoc */
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file
@@ -1224,9 +1225,9 @@ class MobiusSocket extends EventEmitter {
           promise.then(() => {
             const {namespace, name} = handler;
 
-            return new Promise((resolve) =>
-              resolve((this.webex[namespace] || this.webex.internal[namespace])[name](data))
-            ).catch((reason) =>
+            return new Promise((resolve) => {
+              resolve((this.webex[namespace] || this.webex.internal[namespace])[name](data));
+            }).catch((reason) =>
               this.logger.error(
                 `${MOBIUS_SOCKET_NAMESPACE}: error occurred in autowired event handler for ${eventType} from ${sessionId}`,
                 reason

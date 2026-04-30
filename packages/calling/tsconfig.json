@@ -86,13 +86,13 @@
   },
   "include": [
     "src/**/*.ts",
-    "src/mobius-socket/socket/socket.shim.js",
     "jest.global.d.ts"
   ],
   "exclude": [
     "./node_modules/**",
     "./test",
     "./docs/examples",
+    "./src/mobius-socket/test/**",
     "./src/**/*.test.ts"
   ]
 }

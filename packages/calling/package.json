@@ -22,7 +22,7 @@
   },
   "browser": {
     "./dist/module/mobius-socket/socket/socket.js": "./dist/module/mobius-socket/socket/socket.shim.js",
-    "./src/mobius-socket/socket/socket.js": "./src/mobius-socket/socket/socket.shim.js"
+    "./src/mobius-socket/socket/socket.ts": "./src/mobius-socket/socket/socket.shim.ts"
   },
   "engines": {
     "node": ">=18"

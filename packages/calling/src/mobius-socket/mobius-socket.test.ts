@@ -44,7 +44,7 @@ describe('plugin-mobius-socket', () => {
       const instance = getMobiusSocketInstance(configuredWebex);
 
       assert.instanceOf(instance, MobiusSocket);
-      assert.equal(instance.config, mobiusConfig.mobiusSocket);
+      assert.deepEqual(instance.config, mobiusConfig.mobiusSocket);
     });
 
     it('uses consumer config when it is provided', () => {
@@ -57,7 +57,10 @@ describe('plugin-mobius-socket', () => {
       const instance = getMobiusSocketInstance(configuredWebex, consumerConfig);
 
       assert.instanceOf(instance, MobiusSocket);
-      assert.equal(instance.config, consumerConfig);
+      assert.deepEqual(instance.config, {
+        ...mobiusConfig.mobiusSocket,
+        ...consumerConfig,
+      });
     });
   });
 
@@ -218,7 +221,9 @@ describe('plugin-mobius-socket', () => {
       }
 
       // Small delay to ensure all async operations complete
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await new Promise((resolve) => {
+        setTimeout(resolve, 10);
+      });
     });
 
     describe('#connect()', () => {
@@ -1956,6 +1961,8 @@ describe('plugin-mobius-socket', () => {
           await mobiusSocket._attemptConnection('ws://test.com', sessionId, callback, {
             isShutdownSwitchover: true,
             onSuccess: (newSocket, url) => {
+              assert.exists(newSocket);
+              assert.equal(url, 'ws://test.com');
               assert.equal(mobiusSocket.socket, originalSocket);
             },
           });

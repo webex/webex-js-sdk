@@ -4,7 +4,9 @@
 
 import {EventEmitter} from 'events';
 
+// @ts-expect-error `@webex/common` is still JS-only and does not ship declarations.
 import {checkRequired} from '@webex/common';
+// @ts-expect-error `@webex/common-timers` is still JS-only and does not ship declarations.
 import {safeSetTimeout} from '@webex/common-timers';
 import {defaults, has, isObject} from 'lodash';
 
@@ -17,13 +19,51 @@ import {
   // NotFound
 } from '../errors';
 import {MESSAGE_TYPES, SOCKET_READY_STATE} from './constants';
+import type {
+  SocketCloseEvent,
+  SocketLogger,
+  SocketMessageEvent,
+  PendingResponseEntry,
+  SendRequestOptions,
+  SocketOpenOptions,
+  SocketResponse,
+  SocketTransport,
+  SocketTransportConstructor,
+} from './types';
 
-const sockets = new WeakMap();
+const sockets = new WeakMap<Socket, SocketTransport>();
+const UnknownResponseCtor = UnknownResponse as unknown as new (
+  event?: SocketCloseEvent
+) => UnknownResponse;
+const BadRequestCtor = BadRequest as unknown as new (event?: SocketCloseEvent) => BadRequest;
+const NotAuthorizedCtor = NotAuthorized as unknown as new (
+  event?: SocketCloseEvent
+) => NotAuthorized;
+const ForbiddenCtor = Forbidden as unknown as new (event?: SocketCloseEvent) => Forbidden;
+const ConnectionErrorCtor = ConnectionError as unknown as new (
+  event?: SocketCloseEvent
+) => ConnectionError;
 
 /**
  * Generalized socket abstraction
  */
 export default class Socket extends EventEmitter {
+  _domain: string;
+
+  _pendingResponses: Map<string, PendingResponseEntry>;
+
+  forceCloseDelay!: number;
+
+  logger!: SocketLogger;
+
+  refreshToken?: (response: SocketResponse) => unknown;
+
+  token!: string;
+
+  trackingId!: string;
+
+  wssResponseTimeout?: number;
+
   /**
    * constructor
    * @returns {Socket}
@@ -43,7 +83,7 @@ export default class Socket extends EventEmitter {
    * @returns {string}
    */
   get binaryType() {
-    return sockets.get(this).binaryType;
+    return sockets.get(this)!.binaryType;
   }
 
   /**
@@ -51,7 +91,7 @@ export default class Socket extends EventEmitter {
    * @returns {number}
    */
   get bufferedAmount() {
-    return sockets.get(this).bufferedAmount;
+    return sockets.get(this)!.bufferedAmount;
   }
 
   /**
@@ -59,7 +99,7 @@ export default class Socket extends EventEmitter {
    * @returns {string}
    */
   get extensions() {
-    return sockets.get(this).extensions;
+    return sockets.get(this)!.extensions;
   }
 
   /**
@@ -67,7 +107,7 @@ export default class Socket extends EventEmitter {
    * @returns {string}
    */
   get protocol() {
-    return sockets.get(this).protocol;
+    return sockets.get(this)!.protocol;
   }
 
   /**
@@ -75,7 +115,7 @@ export default class Socket extends EventEmitter {
    * @returns {number}
    */
   get readyState() {
-    return sockets.get(this).readyState;
+    return sockets.get(this)!.readyState;
   }
 
   /**
@@ -83,7 +123,7 @@ export default class Socket extends EventEmitter {
    * @returns {string}
    */
   get url() {
-    return sockets.get(this).url;
+    return sockets.get(this)!.url;
   }
 
   /**
@@ -91,7 +131,7 @@ export default class Socket extends EventEmitter {
    * WebSocket in browsers)
    * @returns {WebSocket}
    */
-  static getWebSocketConstructor() {
+  static getWebSocketConstructor(): unknown {
     throw new Error(
       'Socket.getWebSocketConstructor() must be implemented in an environmentally appropriate way'
     );
@@ -104,8 +144,8 @@ export default class Socket extends EventEmitter {
    * @param {number} options.code
    * @returns {Promise}
    */
-  close(options) {
-    return new Promise((resolve, reject) => {
+  close(options?: {reason?: string; code?: number}) {
+    return new Promise<SocketCloseEvent | void>((resolve, reject) => {
       const socket = sockets.get(this);
 
       if (!socket) {
@@ -127,20 +167,23 @@ export default class Socket extends EventEmitter {
         return;
       }
 
-      options = options || {};
-      if (options.code && options.code !== 1000 && (options.code < 3000 || options.code > 4999)) {
+      const originalCode = options?.code;
+      const originalReason = options?.reason;
+
+      const resolvedOptions = defaults(options || {}, {
+        code: 1000,
+        reason: 'Done',
+      }) as {code: number; reason: string};
+
+      if (
+        resolvedOptions.code &&
+        resolvedOptions.code !== 1000 &&
+        (resolvedOptions.code < 3000 || resolvedOptions.code > 4999)
+      ) {
         reject(new Error('`options.code` must be 1000 or between 3000 and 4999 (inclusive)'));
 
         return;
       }
-
-      const originalCode = options.code;
-      const originalReason = options.reason;
-
-      options = defaults(options, {
-        code: 1000,
-        reason: 'Done',
-      });
 
       const closeTimer = safeSetTimeout(() => {
         try {
@@ -174,11 +217,14 @@ export default class Socket extends EventEmitter {
           `socket,${this._domain}: socket still connecting, triggering close manually`
         );
         clearTimeout(closeTimer);
-        const closeEvent = {code: options.code, reason: options.reason};
+        const closeEvent: SocketCloseEvent = {
+          code: resolvedOptions.code,
+          reason: resolvedOptions.reason,
+        };
         this.onclose(closeEvent);
         resolve(closeEvent);
         try {
-          socket.close(options.code, options.reason);
+          socket.close(resolvedOptions.code, resolvedOptions.reason);
         } catch (error) {
           this.logger.info(
             `socket,${this._domain}: error while closing CONNECTING socket, likely due to browser incompatibility with custom close codes`,
@@ -186,7 +232,7 @@ export default class Socket extends EventEmitter {
           );
         }
       } else {
-        socket.close(options.code, options.reason);
+        socket.close(resolvedOptions.code, resolvedOptions.reason);
       }
     });
   }
@@ -201,14 +247,14 @@ export default class Socket extends EventEmitter {
    * @param {Logger} options.logger (required)
    * @returns {Promise}
    */
-  open(url, options) {
+  open(url: string, options?: SocketOpenOptions) {
     try {
       this._domain = new URL(url).hostname;
     } catch {
       this._domain = url;
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       /* eslint complexity: [0] */
       if (!url) {
         reject(new Error('`url` is required'));
@@ -222,21 +268,21 @@ export default class Socket extends EventEmitter {
         return;
       }
 
-      options = options || {};
+      const resolvedOptions = (options || {}) as SocketOpenOptions;
 
-      checkRequired(['forceCloseDelay', 'token', 'trackingId', 'logger'], options);
+      checkRequired(['forceCloseDelay', 'token', 'trackingId', 'logger'], resolvedOptions);
 
-      Object.keys(options).forEach((key) => {
+      Object.keys(resolvedOptions).forEach((key) => {
         Reflect.defineProperty(this, key, {
           enumerable: false,
-          value: options[key],
+          value: resolvedOptions[key],
         });
       });
 
-      const WebSocket = Socket.getWebSocketConstructor();
+      const WebSocket = Socket.getWebSocketConstructor() as SocketTransportConstructor;
 
       this.logger.info(`socket,${this._domain}: creating WebSocket`);
-      const socket = new WebSocket(url, [], options);
+      const socket = new WebSocket(url, [], resolvedOptions);
 
       socket.binaryType = 'arraybuffer';
       socket.onmessage = this.onmessage;
@@ -250,17 +296,17 @@ export default class Socket extends EventEmitter {
             // it's a bad websocket url. That'll trigger a device refresh; if it
             // turns out we had a bad token, the device refresh should 401 and
             // trigger a token refresh.
-            return reject(new UnknownResponse(event));
+            return reject(new UnknownResponseCtor(event));
           case 4400:
-            return reject(new BadRequest(event));
+            return reject(new BadRequestCtor(event));
           case 4401:
-            return reject(new NotAuthorized(event));
+            return reject(new NotAuthorizedCtor(event));
           case 4403:
-            return reject(new Forbidden(event));
+            return reject(new ForbiddenCtor(event));
           // case 4404:
           //   return reject(new NotFound(event));
           default:
-            return reject(new ConnectionError(event));
+            return reject(new ConnectionErrorCtor(event));
         }
       };
 
@@ -289,11 +335,11 @@ export default class Socket extends EventEmitter {
    * @param {CloseEvent} event
    * @returns {undefined}
    */
-  onclose(event) {
+  onclose(event: SocketCloseEvent) {
     this.logger.info(`socket,${this._domain}: closed`, event.code, event.reason);
 
     event = this._fixCloseCode(event);
-    this._rejectPendingResponses(new ConnectionError(event));
+    this._rejectPendingResponses(new ConnectionErrorCtor(event));
     this.emit('close', event);
 
     // Remove all listeners to (a) avoid reacting to late pongs and (b) ensure
@@ -306,9 +352,9 @@ export default class Socket extends EventEmitter {
    * @param {MessageEvent} event
    * @returns {undefined}
    */
-  onmessage(event) {
+  onmessage(event: SocketMessageEvent<string>) {
     try {
-      const data = JSON.parse(event.data);
+      const data = JSON.parse(event.data) as SocketResponse;
       const processedEvent = {data};
 
       if (data.type === 'async_event') {
@@ -332,10 +378,12 @@ export default class Socket extends EventEmitter {
    * @param {mixed} data
    * @returns {Promise}
    */
-  send(data) {
-    return new Promise((resolve, reject) => {
+  send(data: string | Record<string, unknown>) {
+    return new Promise<void>((resolve, reject) => {
       if (this.readyState !== SOCKET_READY_STATE.OPEN) {
-        return reject(new Error('INVALID_STATE_ERROR'));
+        reject(new Error('INVALID_STATE_ERROR'));
+
+        return;
       }
 
       if (isObject(data)) {
@@ -344,9 +392,15 @@ export default class Socket extends EventEmitter {
 
       const socket = sockets.get(this);
 
+      if (!socket) {
+        reject(new Error('INVALID_STATE_ERROR'));
+
+        return;
+      }
+
       socket.send(data);
 
-      return resolve();
+      resolve();
     });
   }
 
@@ -362,7 +416,7 @@ export default class Socket extends EventEmitter {
    * @param {number} [options.timeout]
    * @returns {Promise<Object>}
    */
-  sendRequest(data, options = {}) {
+  sendRequest(data: SocketResponse, options: SendRequestOptions = {}) {
     if (!isObject(data)) {
       return Promise.reject(new Error('`data` is required'));
     }
@@ -378,14 +432,14 @@ export default class Socket extends EventEmitter {
     const createError =
       options.createError ||
       ((response, statusCode, statusMessage) =>
-        new ConnectionError({
+        new ConnectionErrorCtor({
           code: statusCode,
           reason: statusMessage || response?.reason || 'Socket request failed',
         }));
     const createTimeoutError =
       options.createTimeoutError ||
       (() =>
-        new ConnectionError({
+        new ConnectionErrorCtor({
           reason: 'Socket response not received before timeout',
         }));
 
@@ -397,7 +451,7 @@ export default class Socket extends EventEmitter {
 
     request.trackingId = trackingId;
 
-    return new Promise((resolve, reject) => {
+    return new Promise<SocketResponse>((resolve, reject) => {
       const timeoutId = safeSetTimeout(() => {
         this._clearPendingResponse(trackingId);
         reject(createTimeoutError(request));
@@ -432,7 +486,7 @@ export default class Socket extends EventEmitter {
    * @param {MessageEvent} event
    * @returns {Promise}
    */
-  _acknowledge(event) {
+  _acknowledge(event: SocketMessageEvent<SocketResponse>) {
     if (!event) {
       return Promise.reject(new Error('`event` is required'));
     }
@@ -458,12 +512,20 @@ export default class Socket extends EventEmitter {
     });
   }
 
-  refresh(token) {
+  refresh(token: string | {toString(): string}) {
     if (!token) {
       return Promise.reject(new Error('`token` is required for Socket#refresh()'));
     }
 
-    const refreshedToken = token && typeof token.toString === 'function' ? token.toString() : token;
+    let refreshedToken;
+
+    if (typeof token === 'string') {
+      refreshedToken = token;
+    } else if (token && typeof token.toString === 'function') {
+      refreshedToken = token.toString();
+    } else {
+      refreshedToken = String(token);
+    }
 
     return this._authorize(refreshedToken);
   }
@@ -473,7 +535,7 @@ export default class Socket extends EventEmitter {
    * @param {string} token
    * @returns {Promise}
    */
-  _authorize(token) {
+  _authorize(token: string) {
     this.logger.info(`socket,${this._domain}: authorizing`);
 
     return this.sendRequest(
@@ -491,12 +553,12 @@ export default class Socket extends EventEmitter {
         getStatusCode: (response) => response?.statusCode,
         getStatusMessage: (response) => response?.statusMessage,
         createError: (response, statusCode, statusMessage) =>
-          new NotAuthorized({
+          new NotAuthorizedCtor({
             code: statusCode,
             reason: statusMessage || 'Mobius auth failed',
           }),
         createTimeoutError: () =>
-          new NotAuthorized({
+          new NotAuthorizedCtor({
             reason: 'Mobius auth response not received before timeout',
           }),
       }
@@ -517,7 +579,7 @@ export default class Socket extends EventEmitter {
    * @param {string} trackingId
    * @returns {void}
    */
-  _clearPendingResponse(trackingId) {
+  _clearPendingResponse(trackingId: string) {
     const pendingResponse = this._pendingResponses.get(trackingId);
 
     if (pendingResponse?.timeoutId) {
@@ -532,7 +594,7 @@ export default class Socket extends EventEmitter {
    * @param {Error} error
    * @returns {void}
    */
-  _rejectPendingResponses(error) {
+  _rejectPendingResponses(error: unknown) {
     if (!this._pendingResponses.size) {
       return;
     }
@@ -547,7 +609,7 @@ export default class Socket extends EventEmitter {
    * @param {Object} response
    * @returns {boolean}
    */
-  _handlePendingResponse(response) {
+  _handlePendingResponse(response: SocketResponse) {
     if (!response) {
       return false;
     }
@@ -604,7 +666,7 @@ export default class Socket extends EventEmitter {
    * @private
    * @returns {CloseEvent}
    */
-  _fixCloseCode(event) {
+  _fixCloseCode(event: SocketCloseEvent) {
     if (event.code === 1005 && event.reason) {
       switch (event.reason.toLowerCase()) {
         case 'replaced':

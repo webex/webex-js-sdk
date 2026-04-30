@@ -2,7 +2,9 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
+// @ts-expect-error `@webex/common` is still JS-only and does not ship declarations.
 import {Exception} from '@webex/common';
+import type {SocketCloseEvent} from './socket/types';
 
 /**
  * Exception thrown when a websocket gets closed
@@ -11,10 +13,9 @@ export class ConnectionError extends Exception {
   static defaultMessage = 'Failed to connect to socket';
 
   /**
-   * @param {CloseEvent} event
-   * @returns {string}
+   * @param event
    */
-  parse(event = {}) {
+  parse(event: SocketCloseEvent = {}) {
     Object.defineProperties(this, {
       code: {
         value: event.code,

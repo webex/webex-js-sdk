@@ -88,7 +88,9 @@ describe('plugin-mobiusSocket', () => {
           }
           try {
             await mobiusSocket.disconnectAll();
-          } catch (e) {}
+          } catch (e) {
+            // Ignore cleanup errors in tests.
+          }
           if (mobiusSocket._connectPromises) {
             mobiusSocket._connectPromises.clear();
           }
@@ -96,7 +98,9 @@ describe('plugin-mobiusSocket', () => {
         if (mockWebSocket && typeof mockWebSocket.close === 'function') {
           try {
             mockWebSocket.close();
-          } catch (e) {}
+          } catch (e) {
+            // Ignore cleanup errors in tests.
+          }
         }
         // Restore stubs
         if (Socket.getWebSocketConstructor.restore) {
@@ -192,14 +196,14 @@ describe('plugin-mobiusSocket', () => {
 
           return promise
             .then(() => {
-              const promise = mobiusSocket.disconnect();
+              const disconnectPromise = mobiusSocket.disconnect();
 
               mockWebSocket.emit('close', {
                 code: 1000,
                 reason: 'Done',
               });
 
-              return promise;
+              return disconnectPromise;
             })
             .then(() => assert.calledOnce(spy));
         });

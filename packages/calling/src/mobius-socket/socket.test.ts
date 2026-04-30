@@ -94,25 +94,25 @@ describe('plugin-mobius-socket', () => {
     });
 
     describe('#open()', () => {
-      let socket;
+      let freshSocket;
 
       beforeEach(() => {
-        socket = new Socket();
+        freshSocket = new Socket();
       });
 
-      afterEach(() => socket.close().catch(() => console.log()));
+      afterEach(() => freshSocket.close().catch(() => undefined));
 
-      it('requires a url', () => assert.isRejected(socket.open(), /`url` is required/));
+      it('requires a url', () => assert.isRejected(freshSocket.open(), /`url` is required/));
 
       it('requires a forceCloseDelay option', () =>
         assert.isRejected(
-          socket.open('ws://example.com'),
+          freshSocket.open('ws://example.com'),
           /missing required property forceCloseDelay/
         ));
 
       it('requires a token option', () =>
         assert.isRejected(
-          socket.open('ws://example.com', {
+          freshSocket.open('ws://example.com', {
             forceCloseDelay: mockoptions.forceCloseDelay,
           }),
           /missing required property token/
@@ -120,7 +120,7 @@ describe('plugin-mobius-socket', () => {
 
       it('requires a trackingId option', () =>
         assert.isRejected(
-          socket.open('ws://example.com', {
+          freshSocket.open('ws://example.com', {
             forceCloseDelay: mockoptions.forceCloseDelay,
             token: 'mocktoken',
           }),
@@ -129,7 +129,7 @@ describe('plugin-mobius-socket', () => {
 
       it('requires a logger option', () =>
         assert.isRejected(
-          socket.open('ws://example.com', {
+          freshSocket.open('ws://example.com', {
             forceCloseDelay: mockoptions.forceCloseDelay,
             token: 'mocktoken',
             trackingId: 'mocktrackingid',
@@ -138,7 +138,7 @@ describe('plugin-mobius-socket', () => {
         ));
 
       it('accepts a logLevelToken option', () => {
-        const promise = socket.open('ws://example.com', {
+        const openPromise = freshSocket.open('ws://example.com', {
           forceCloseDelay: mockoptions.forceCloseDelay,
           wssResponseTimeout: mockoptions.wssResponseTimeout,
           logger: console,
@@ -152,8 +152,8 @@ describe('plugin-mobius-socket', () => {
 
         emitAuthResponse();
 
-        return promise.then(() => {
-          assert.equal(socket.logLevelToken, 'mocklogleveltoken');
+        return openPromise.then(() => {
+          assert.equal(freshSocket.logLevelToken, 'mocklogleveltoken');
         });
       });
     });
@@ -457,28 +457,28 @@ describe('plugin-mobius-socket', () => {
       });
 
       it('signals closure if no close frame is received within the specified window', () => {
-        const socket = new Socket();
-        const promise = socket.open('ws://example.com', mockoptions);
+        const transientSocket = new Socket();
+        const openPromise = transientSocket.open('ws://example.com', mockoptions);
 
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
         emitAuthResponse();
 
-        return promise.then(() => {
+        return openPromise.then(() => {
           const spy = sinon.spy();
 
-          socket.on('close', spy);
+          transientSocket.on('close', spy);
           mockWebSocket.close = () =>
             new Promise(() => {
               /* eslint no-inline-comments: [0] */
             });
           mockWebSocket.removeAllListeners('close');
 
-          const promise = socket.close();
+          const closePromise = transientSocket.close();
 
           jest.advanceTimersByTime(mockoptions.forceCloseDelay);
 
-          return promise.then(() => {
+          return closePromise.then(() => {
             assert.called(spy);
             assert.calledWith(spy, {
               code: 1000,
@@ -489,28 +489,28 @@ describe('plugin-mobius-socket', () => {
       });
 
       it('signals closure if no close frame is received within the specified window, but uses the initial options as 3050 if specified by options call', () => {
-        const socket = new Socket();
-        const promise = socket.open('ws://example.com', mockoptions);
+        const transientSocket = new Socket();
+        const openPromise = transientSocket.open('ws://example.com', mockoptions);
 
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
         emitAuthResponse();
 
-        return promise.then(() => {
+        return openPromise.then(() => {
           const spy = sinon.spy();
 
-          socket.on('close', spy);
+          transientSocket.on('close', spy);
           mockWebSocket.close = () =>
             new Promise(() => {
               /* eslint no-inline-comments: [0] */
             });
           mockWebSocket.removeAllListeners('close');
 
-          const promise = socket.close({code: 3050, reason: 'done (permanent)'});
+          const closePromise = transientSocket.close({code: 3050, reason: 'done (permanent)'});
 
           jest.advanceTimersByTime(mockoptions.forceCloseDelay);
 
-          return promise.then(() => {
+          return closePromise.then(() => {
             assert.called(spy);
             assert.calledWith(spy, {
               code: 3050,
@@ -521,28 +521,28 @@ describe('plugin-mobius-socket', () => {
       });
 
       it('signals closure if no close frame is received within the specified window, and uses default options as 1000 if the code is not 3050', () => {
-        const socket = new Socket();
-        const promise = socket.open('ws://example.com', mockoptions);
+        const transientSocket = new Socket();
+        const openPromise = transientSocket.open('ws://example.com', mockoptions);
 
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
         emitAuthResponse();
 
-        return promise.then(() => {
+        return openPromise.then(() => {
           const spy = sinon.spy();
 
-          socket.on('close', spy);
+          transientSocket.on('close', spy);
           mockWebSocket.close = () =>
             new Promise(() => {
               /* eslint no-inline-comments: [0] */
             });
           mockWebSocket.removeAllListeners('close');
 
-          const promise = socket.close({code: 1000, reason: 'test'});
+          const closePromise = transientSocket.close({code: 1000, reason: 'test'});
 
           jest.advanceTimersByTime(mockoptions.forceCloseDelay);
 
-          return promise.then(() => {
+          return closePromise.then(() => {
             assert.called(spy);
             assert.calledWith(spy, {
               code: 1000,
@@ -553,28 +553,28 @@ describe('plugin-mobius-socket', () => {
       });
 
       it('signals closure if no close frame is received within the specified window, and uses default options as 1000 if the code is not 3050', () => {
-        const socket = new Socket();
-        const promise = socket.open('ws://example.com', mockoptions);
+        const transientSocket = new Socket();
+        const openPromise = transientSocket.open('ws://example.com', mockoptions);
 
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
         emitAuthResponse();
 
-        return promise.then(() => {
+        return openPromise.then(() => {
           const spy = sinon.spy();
 
-          socket.on('close', spy);
+          transientSocket.on('close', spy);
           mockWebSocket.close = () =>
             new Promise(() => {
               /* eslint no-inline-comments: [0] */
             });
           mockWebSocket.removeAllListeners('close');
 
-          const promise = socket.close({code: 1000});
+          const closePromise = transientSocket.close({code: 1000});
 
           jest.advanceTimersByTime(mockoptions.forceCloseDelay);
 
-          return promise.then(() => {
+          return closePromise.then(() => {
             assert.called(spy);
             assert.calledWith(spy, {
               code: 1000,
