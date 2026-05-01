@@ -10,7 +10,7 @@
 - Locus signalling (server state synchronisation via Mercury websocket and REST)
 - In-meeting controls: mute, recording, screen share, breakouts, captions, reactions, etc.
 
-See [architecture.md](./architecture.md) for a detailed design document.
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for a detailed design document.
 
 ---
 
@@ -66,15 +66,18 @@ it.only('should do something', () => {
 | `src/reconnection-manager/` | ICE failure detection, media-only reconnect vs full rejoin, auto-rejoin. |
 | `src/meeting-info/` | `MeetingInfoV2` — fetches meeting info from wbxappapi; handles password/captcha/webinar errors. |
 | `src/reachability/` | Pre-join cluster reachability checks; influences TURN/media server selection. |
-| `src/transcription/` | Real-time transcription via WebSocket (older path); AI captions via Voicea (newer path). |
+| `src/transcription/` | Real-time transcription via WebSocket (older path). The newer Voicea captions path is in `src/meeting/voicea-meeting.ts`. |
 | `src/interpretation/` | Simultaneous interpretation (language channels). |
 | `src/annotation/` | Annotation support for screen share. |
 | `src/webinar/` | Webinar-specific logic (practice session, webcast). |
 | `src/metrics/` | Behavioral and diagnostic metric emission via `@webex/internal-plugin-metrics`. |
-| `src/interceptors/` | Axios interceptors: Locus retry, Locus route token, data-channel auth token. |
+| `src/interceptors/` | HTTP interceptors (via `@webex/http-core`): Locus retry, Locus route token, data-channel auth token. |
 | `src/common/` | Shared infrastructure: errors, events (`EventsScope`, `TriggerProxy`), logging (`LoggerProxy`), config. |
 | `src/hashTree/` | Hash-tree–based incremental Locus state synchronisation (newer Mercury path). |
 | `src/controls-options-manager/` | Meeting controls options (mute-on-entry, disallow-unmute, etc.). |
+| `src/reactions/` | Meeting reactions (emoji reactions): types, constants, relay handling. |
+| `src/personal-meeting-room/` | Personal meeting room (PMR) info, requests, and utilities. |
+| `src/aiEnableRequest/` | AI assistant enable/opt-in request flow. |
 | `src/constants.ts` | All string constants, enums, `EVENT_TRIGGERS`, state machines, error dictionaries. |
 
 ---
@@ -88,12 +91,12 @@ it.only('should do something', () => {
 
 ### Logging
 - Always log through `LoggerProxy` (`import LoggerProxy from '../common/logs/logger-proxy'`). Never use `console.*`.
-- Log format convention: `ClassName:filename#methodName --> message`.
+- Log format convention (aspirational, not strictly enforced): `ClassName:filename#methodName --> message`.
 
 ### Events
-- **Public events** (emitted to app consumers) are fired through `TriggerProxy` / `Trigger.trigger(this, {file, function}, EVENT_TRIGGERS.SOME_EVENT, payload)`.
+- **Public events** (emitted to app consumers) are fired through `TriggerProxy` / `Trigger.trigger(this, {file, function}, EVENT_TRIGGERS.SOME_EVENT, payload)`. Note: `Trigger` and `TriggerProxy` are the same default export from `src/common/events/trigger-proxy.ts` — different files import it under different aliases.
 - **Internal cross-component events** use `EVENTS.*` constants and are emitted on specific objects (e.g. `locusInfo.on(EVENTS.LOCUS_INFO_UPDATE_SELF, ...)`).
-- Never bypass `TriggerProxy`; it provides scoped logging and debugging context.
+- Never bypass `TriggerProxy`; it provides scoped debug logging via `LoggerProxy` before emitting.
 
 ### Meeting class size
 `src/meeting/index.ts` is very large. When adding new functionality, extract it to a focused helper file in `src/meeting/` (e.g. `muteState.ts`, `connectionStateHandler.ts`, `brbState.ts`) rather than growing the index file further.

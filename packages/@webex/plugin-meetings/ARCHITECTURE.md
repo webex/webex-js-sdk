@@ -43,9 +43,9 @@ This makes the plugin available as `webex.meetings` (an instance of `Meetings`).
 
 | Interceptor | Purpose |
 |---|---|
-| `LocusRetryStatusInterceptor` | Retries Locus requests on transient 5xx errors |
+| `LocusRetryStatusInterceptor` | Retries Locus requests on 503 and 429 (rate-limit) errors; excludes `/hashtree` and `/sync` endpoints |
 | `LocusRouteTokenInterceptor` | Injects the current Locus route token into request headers |
-| `DataChannelAuthTokenInterceptor` | Injects the data-channel auth token for Low Latency Mercury (LLM)/data-channel requests |
+| `DataChannelAuthTokenInterceptor` | Refreshes expired JWT tokens before LLM/data-channel requests, injects auth token, and retries on 401/403 |
 
 ---
 
@@ -125,23 +125,28 @@ A `Meeting` object is created when:
 
 ### State machine (`src/meeting/state.ts`)
 
-The `MeetingStateMachine` uses `javascript-state-machine`:
+The `MeetingStateMachine` (instance property: `meeting.meetingFiniteStateMachine`) uses `javascript-state-machine`:
 
 ```
 IDLE ──ring()──→ RINGING ──join()──→ JOINED ──leave()──→ ENDED
- ↑                  │                   │
- └──── error ───────┘                   └──── error ──→ ERROR
-                  remote()
-              ↙           ↘
-         ANSWERED       DECLINED
+                    │                   │
+                 decline()           fail()──→ ERROR
+                    ↓                   │
+                DECLINED             remote()
+                                   ↙        ↘
+                              ANSWERED     DECLINED
 ```
 
 | Transition | Trigger |
 |---|---|
 | `ring` | Incoming 1:1 call Locus event; or outgoing call placed |
 | `join` | Successful Locus `/join` response |
-| `remote` | Remote party answered or declined (1:1 only) |
+| `remote` | Remote party answered or declined (from JOINED or ERROR states) |
 | `leave` | User calls `meeting.leave()`, or Locus DESTROY event |
+| `end` | Meeting ended by server |
+| `decline` | Call declined (from RINGING) |
+| `fail` | Error during meeting (from JOINED) |
+| `reset` | Reset state back to IDLE |
 
 ### Typical join flow (multi-party meeting)
 
@@ -155,10 +160,10 @@ app calls meeting.fetchMeetingInfo()          [optional but recommended]
 
 app calls meeting.join({ enableMultistream })
   → (optionally) Roap.generateTurnDiscoveryRequestMessage
-  → MeetingRequest.join (Locus POST /join)
+  → MeetingRequest.joinMeeting (Locus PUT /join)
   → receives join response: locusUrl, mediaId, selfId, dataSets…
   → Meeting.setLocus()  → LocusInfo.initialSetup()
-  → StateMachine: IDLE → JOINED
+  → StateMachine: IDLE → ring(_JOIN_) → RINGING → join() → JOINED
   → emit meeting:added (if not already emitted)
 
 app calls meeting.addMedia({ localStreams, … })
@@ -216,12 +221,13 @@ Locus is the Webex server-side meeting state service. It maintains the authorita
 ```
 Mercury WebSocket
   → webex.internal.mercury emits 'event:locus'
-    → Meetings.onLocusEvent()
-      → finds or creates Meeting
-        → Meeting.locusInfo.parse(locus)
-          → LocusDeltaParser.parse() compares new vs. previous DTO sequences
-            → fires EVENTS.* on LocusInfo for each changed section
-              → Meeting's registered listeners update state & fire public EVENT_TRIGGERS
+    → Meetings.handleLocusMercury()
+      → Meetings.handleLocusEvent()
+        → finds or creates Meeting
+          → Meeting.locusInfo.parse(locus)
+            → LocusDeltaParser.parse() compares new vs. previous DTO sequences
+              → fires EVENTS.* on LocusInfo for each changed section
+                → Meeting's registered listeners update state & fire public EVENT_TRIGGERS
 ```
 
 **Path 2 — Hash-tree incremental sync (LLM `HASH_TREE_DATA_UPDATED` event)**
@@ -291,7 +297,7 @@ ROAP (RTCWeb Offer Answer Protocol) is Webex's mechanism for SDP offer/answer ex
 Flow:
 ```
 1. WebRTC creates SDP offer (via internal-media-core)
-2. Roap.sendRoapOffer() → POST to Locus /media with OFFER message
+2. Roap.sendRoapMediaRequest() → PUT to {selfUrl}/media with OFFER message
 3. Locus returns SDP answer in response or via Mercury
 4. WebRTC processes SDP answer
 5. ICE candidates gathered → connection established
@@ -299,7 +305,7 @@ Flow:
 
 ### TURN discovery
 
-Before joining or after an ICE failure, `Roap.generateTurnDiscoveryRequestMessage()` initiates TURN discovery:
+Before joining or after an ICE failure, `TurnDiscovery.generateTurnDiscoveryRequestMessage()` (accessed via `meeting.roap.turnDiscovery`) initiates TURN discovery:
 
 ```
 1. Client sends TURN_DISCOVERY_REQUEST in the ROAP Offer (or standalone)
@@ -350,12 +356,12 @@ RemoteMediaManager
   └── RemoteMedia       (wraps a ReceiveSlot, exposes remote stream to app)
 
 MediaRequestManager  (one per: audio, video, screenShareAudio, screenShareVideo)
-  └── batches and de-duplicates requestMedia() calls to the WebRTC connection
+  └── batches and de-duplicates addRequest()/commit() calls to the WebRTC connection
 ```
 
 ### Video layouts
 
-The app configures layouts via `RemoteMediaManagerConfiguration`:
+The app configures layouts via the `Configuration` interface (from `remoteMediaManager.ts`):
 
 ```typescript
 {
@@ -384,7 +390,7 @@ The app configures layouts via `RemoteMediaManagerConfiguration`:
 - `LocalDisplayStream` → `VideoSlides` send slot
 - `LocalSystemAudioStream` → `AudioSlides` send slot
 
-For the "Be Right Back" feature, `BrbState` mutes the video send slot via a server-side signal while keeping the local stream active.
+For the "Be Right Back" feature, `BrbState` sets a source state override (`'away'`) on the `VideoMain` send slot, signalling the server that the user is away while keeping the local stream active.
 
 ---
 
@@ -415,12 +421,12 @@ Audio and video mute each have their own `MuteState` instance (`meeting.audio`, 
 
 ### Sync guarantee
 
-Whenever local mute state changes, `MuteState` sends a Locus `/controls` PATCH request. If a new change arrives while a sync is in progress, the latest desired state is queued and applied after the in-flight request completes. This prevents race conditions where rapid user actions would leave the server in an inconsistent state.
+Whenever local mute state changes, `MuteState` sends a `LocalMute` request via `MeetingUtil.remoteUpdateAudioVideo()` → `locusMediaRequest.send()` (HTTP PUT to `{selfUrl}/media`). If a new change arrives while a sync is in progress, the latest desired state is queued and applied after the in-flight request completes. This prevents race conditions where rapid user actions would leave the server in an inconsistent state.
 
 ### Remote mute by host
 
 When the host mutes a participant:
-1. Locus sends a delta update to `locus.self.localAudioMuted = true`
+1. Locus sends a delta update to `self.controls.audio.muted = true`
 2. `SelfUtils` detects the change and emits `SELF_REMOTE_MUTE_STATUS_UPDATED`
 3. `Meeting` calls `audio.handleServerRemoteMuteUpdate(meeting, muted, unmuteAllowed)`
 4. `MuteState` stops/starts the local audio track as appropriate
@@ -443,7 +449,7 @@ Locus participant delta
 ```
 
 Each `Member` object represents a Locus participant and exposes:
-- `id`, `name`, `status` (JOINED, IN_LOBBY, LEFT…)
+- `id`, `name`, `status` (`IN_MEETING`, `IN_LOBBY`, `NOT_IN_MEETING`)
 - `isAudioMuted`, `isVideoMuted`
 - `roles` (host, moderator, cohost, presenter…)
 - `isSelf`, `isGuest`, `isInMeeting`
@@ -469,10 +475,12 @@ Before joining (and sometimes during), meeting info must be fetched from `wbxapp
 |---|---|---|
 | `MEETING_LINK` | `https://company.webex.com/meet/alice` | Standard meeting join URL |
 | `MEETING_ID` | `123456789` | 9-digit meeting number |
+| `MEETING_UUID` | `<uuid>` | Meeting UUID identifier |
 | `LOCUS_ID` | `<locus UUID>` | Internal identifier, e.g. for incoming calls |
 | `CONVERSATION_URL` | `https://conv.webex.com/…` | Instant meeting from a Webex space |
 | `SIP_URI` | `alice@company.webex.com` | SIP address |
 | `PERSONAL_ROOM` | `alice@company.webex.com` | PMR address |
+| `ONE_ON_ONE_CALL` | — | Direct 1:1 call |
 
 `MeetingInfoV2` selects the correct wbxappapi endpoint based on destination type.
 
@@ -511,9 +519,8 @@ The `permissionToken` field returned in meeting info is a short-lived JWT that m
 ### Failure detection
 
 Triggered by:
-- `ConnectionStateHandler` reporting ICE failure
+- `ConnectionStateHandler` reporting ICE failure (ConnectionState.Failed or Disconnected)
 - `MEDIA_INACTIVITY` Locus event (media inactive for too long)
-- Mercury websocket reconnect triggering a sync
 
 ### Reconnect strategy
 
@@ -530,14 +537,14 @@ ICE failure detected
         → fail → emit meeting:reconnectionFailure
 ```
 
-The `autoRejoin` config flag controls whether the SDK automatically attempts a rejoin on inactivity. When `false`, the app receives `meeting:self:left` and must handle reconnection itself.
+The `autoRejoin` config flag controls whether the SDK automatically attempts a full rejoin when media-only reconnect fails with `NeedsRejoinError`. When `false`, the `NeedsRejoinError` is re-thrown, resulting in `meeting:reconnectionFailure` being emitted — the app must handle reconnection itself.
 
 ### Key error classes
 
 | Class | Meaning |
 |---|---|
-| `NeedsRetryError` | Reconnect should be retried (transient failure) |
-| `NeedsRejoinError` | Media reconnect insufficient; full Locus rejoin required |
+| `NeedsRetryError` | Reconnect should be retried (transient failure) — private class, not exported |
+| `NeedsRejoinError` | Media reconnect insufficient; full Locus rejoin required — private class, not exported |
 | `ReconnectionNotStartedError` | Reconnect already in progress; new attempt ignored |
 
 ---
@@ -550,7 +557,7 @@ Before joining (and periodically), the SDK tests connectivity to Webex media clu
 
 ```
 Reachability.gatherReachability()
-  → fetches cluster list from Locus discovery endpoint
+  → fetches cluster list from Calliope Discovery service (calliopeDiscovery)
   → creates ClusterReachability per cluster
     → creates RTCPeerConnection per subnet
     → gathers ICE candidates with STUN/TURN
@@ -574,7 +581,7 @@ Two sources gate recording permissions:
 1. **Display hints** (`DISPLAY_HINTS.RECORDING_CONTROL_*`) — per-meeting per-user hints from Locus
 2. **Self policies** (`SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD`, `SUPPORT_PREMISE_RECORD`) — org-level JWT policies
 
-Both must be present for a recording action to be allowed. `RecordingUtil` provides the check functions: `canUserStart()`, `canUserStop()`, `canUserPause()`, `canUserResume()`.
+Both must be present for a recording action to be allowed. The recording `util.ts` module provides the check functions: `canUserStart()`, `canUserStop()`, `canUserPause()`, `canUserResume()`.
 
 ### Recording state
 
@@ -623,7 +630,8 @@ Participant joins breakout → Locus URL changes to breakout session URL
   → Meeting.locusUrl updated → breakouts.locusUrlUpdate()
   → breakouts.sessionType = 'BREAKOUT'
 
-Breakouts closing → emit meeting:breakouts:closing (with countdown)
+Breakouts closing → emit meeting:breakouts:closing
+  (countdown info available via breakouts.delayCloseTime property)
 ```
 
 ### Key interactions across roles
@@ -660,7 +668,7 @@ The `meeting.transcription` object tracks:
 Reactions are delivered via the LLM relay channel (not Locus):
 
 ```
-LLM relay event (relayType: 'reaction')
+LLM relay event (relayType: 'react')
   → Meeting.processRelayEvent()
     → looks up sender in MembersCollection
     → emit meeting:receiveReactions { reaction, sender }
@@ -719,7 +727,9 @@ The `EVENT_TRIGGERS` constant object in `src/constants.ts` is the single source 
 
 ### EventsScope base class
 
-`EventsScope` (`src/common/events/events-scope.ts`) is a typed EventEmitter wrapper used by `LocusInfo` and other internal components. It provides scoped `on()`, `off()`, and `emit()` with logging context.
+`EventsScope` (`src/common/events/events-scope.ts`) extends Node.js `EventEmitter` (imported as `ChildEmitter`) and is used by `LocusInfo` and other internal components. It overrides `emit()` to inject a scope parameter and log event names via `LoggerProxy`. The `on()` and `off()` methods are inherited unchanged from `EventEmitter`.
+
+See `EVENT_TRIGGERS` in `src/constants.ts` for the canonical full list of public events.
 
 ---
 
@@ -736,7 +746,11 @@ The `EVENT_TRIGGERS` constant object in `src/constants.ts` is the single source 
 | `@webex/internal-plugin-llm` | LLM data channel (hash-tree Locus events, reactions relay, data-channel auth tokens) |
 | `@webex/internal-plugin-device` | Device registration, device URL |
 | `@webex/web-capabilities` | Runtime capability checks (e.g. `supportsRTCPeerConnection`) |
+| `@webex/ts-sdp` | SDP parsing for multistream signalling |
 | `javascript-state-machine` | Meeting FSM implementation |
 | `lodash` | Utility functions (deep clone, merge, isEqual, etc.) |
 | `jwt-decode` | Decodes the permission token JWT |
+| `jose` | JWT verification in interceptors (token expiry checks) |
+| `xxh3-ts` | Hash function for hash-tree Locus state verification |
+| `uuid` | UUID generation |
 | `webrtc-adapter` | WebRTC cross-browser shim |
