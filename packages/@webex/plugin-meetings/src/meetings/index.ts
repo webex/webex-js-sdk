@@ -1897,7 +1897,10 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-  public async syncMeetings({keepOnlyLocusMeetings = true} = {}): Promise<void> {
+  public async syncMeetings({
+    keepOnlyLocusMeetings = true,
+    skipHashTreeSync = false,
+  } = {}): Promise<void> {
     // @ts-ignore
     if (this.webex.credentials.isUnverifiedGuest) {
       LoggerProxy.logger.info(
@@ -1957,18 +1960,20 @@ export default class Meetings extends WebexPlugin {
       }
     }
 
-    // Trigger hash tree syncs for all remaining meetings
-    const remainingMeetings = this.meetingCollection.getAll();
-    const syncPromises = [];
+    if (!skipHashTreeSync) {
+      // Trigger hash tree syncs for all remaining meetings
+      const remainingMeetings = this.meetingCollection.getAll();
+      const syncPromises = [];
 
-    for (const meeting of Object.values(remainingMeetings) as any[]) {
-      if (meeting.locusInfo) {
-        syncPromises.push(meeting.locusInfo.syncAllHashTreeDatasets());
+      for (const meeting of Object.values(remainingMeetings) as any[]) {
+        if (meeting.locusInfo) {
+          syncPromises.push(meeting.locusInfo.syncAllHashTreeDatasets());
+        }
       }
-    }
 
-    if (syncPromises.length > 0) {
-      await Promise.all(syncPromises);
+      if (syncPromises.length > 0) {
+        await Promise.all(syncPromises);
+      }
     }
   }
 

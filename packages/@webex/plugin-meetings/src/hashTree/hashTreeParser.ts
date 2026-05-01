@@ -54,6 +54,7 @@ type WebexRequestMethod = (options: Record<string, any>) => Promise<any>;
 export const LocusInfoUpdateType = {
   OBJECTS_UPDATED: 'OBJECTS_UPDATED',
   MEETING_ENDED: 'MEETING_ENDED',
+  LOCUS_NOT_FOUND: 'LOCUS_NOT_FOUND',
 } as const;
 
 export type LocusInfoUpdateType = Enum<typeof LocusInfoUpdateType>;
@@ -64,6 +65,9 @@ export type LocusInfoUpdate =
     }
   | {
       updateType: typeof LocusInfoUpdateType.MEETING_ENDED;
+    }
+  | {
+      updateType: typeof LocusInfoUpdateType.LOCUS_NOT_FOUND;
     };
 export type LocusInfoUpdateCallback = (update: LocusInfoUpdate) => void;
 
@@ -79,6 +83,13 @@ interface LeafInfo {
  * It's handled internally by HashTreeParser and results in MEETING_ENDED being sent up.
  */
 export class MeetingEndedError extends Error {}
+
+/**
+ * This error is thrown when a 404 is received from Locus hash tree endpoints, indicating that the locus URL
+ * is no longer valid (e.g. participant moved to a breakout room, or meeting ended).
+ * It's handled internally by HashTreeParser and results in LOCUS_NOT_FOUND being sent up.
+ */
+export class LocusNotFoundError extends Error {}
 
 /* Currently Locus always sends Metadata objects only in the "self" dataset.
  * If this ever changes, update all the code that relies on this constant.
@@ -570,6 +581,11 @@ class HashTreeParser {
           this.callLocusInfoUpdateCallback({
             updateType: LocusInfoUpdateType.MEETING_ENDED,
           });
+        } else if (error instanceof LocusNotFoundError) {
+          this.callLocusInfoUpdateCallback({
+            updateType: LocusInfoUpdateType.LOCUS_NOT_FOUND,
+          });
+          this.stop();
         } else {
           LoggerProxy.logger.warn(
             `HashTreeParser#queueInitForNewVisibleDataSets --> ${
@@ -1261,6 +1277,11 @@ class HashTreeParser {
         this.callLocusInfoUpdateCallback({
           updateType: LocusInfoUpdateType.MEETING_ENDED,
         });
+      } else if (error instanceof LocusNotFoundError) {
+        this.callLocusInfoUpdateCallback({
+          updateType: LocusInfoUpdateType.LOCUS_NOT_FOUND,
+        });
+        this.stop();
       } else {
         LoggerProxy.logger.warn(
           `HashTreeParser#performSync --> ${this.debugId} error during sync for data set "${dataSet.name}":`,
@@ -1589,17 +1610,27 @@ class HashTreeParser {
   }
 
   private checkForSentinelHttpResponse(error: any, dataSetName?: string) {
+    // 404 means the locus is no longer available at this URL - could be replaced or ended
+    if (error.statusCode === 404) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#checkForSentinelHttpResponse --> ${this.debugId} Received 404 for data set "${dataSetName}", locus not found`
+      );
+      this.stopAllTimers();
+
+      throw new LocusNotFoundError();
+    }
+
     const isValidDataSetForSentinel =
       dataSetName === undefined ||
       PossibleSentinelMessageDataSetNames.includes(dataSetName.toLowerCase());
 
     if (
-      ((error.statusCode === 409 && error.body?.errorCode === 2403004) ||
-        error.statusCode === 404) &&
+      error.statusCode === 409 &&
+      error.body?.errorCode === 2403004 &&
       isValidDataSetForSentinel
     ) {
       LoggerProxy.logger.info(
-        `HashTreeParser#checkForSentinelHttpResponse --> ${this.debugId} Received ${error.statusCode} for data set "${dataSetName}", indicating that the meeting has ended`
+        `HashTreeParser#checkForSentinelHttpResponse --> ${this.debugId} Received 409/2403004 for data set "${dataSetName}", indicating that the meeting has ended`
       );
       this.stopAllTimers();
 
