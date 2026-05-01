@@ -1,5 +1,7 @@
 # plugin-meetings — Architecture
 
+> **Audience:** This document is for developers (human or AI) who need to understand the internal design of `@webex/plugin-meetings`. It covers component relationships, data flows, and state machines.
+
 ## Table of Contents
 
 1. [Plugin Registration](#1-plugin-registration)
@@ -232,9 +234,10 @@ Mercury WebSocket
       → Meetings.handleLocusEvent()
         → finds or creates Meeting
           → Meeting.locusInfo.parse(locus)
-            → LocusDeltaParser.parse() compares new vs. previous DTO sequences  (note: class is named `Parser` in source, imported as `LocusDeltaParser`)
-              → fires EVENTS.* on LocusInfo for each changed section
-                → Meeting's registered listeners update state & fire public EVENT_TRIGGERS
+            → dispatches to onFullLocus() or handleLocusDelta()
+              → uses LocusDeltaParser internally (note: class is named `Parser` in source, imported as `LocusDeltaParser`)
+                → fires EVENTS.* on LocusInfo for each changed section
+                  → Meeting's registered listeners update state & fire public EVENT_TRIGGERS
 ```
 
 **Path 2 — Hash-tree incremental sync (LLM `HASH_TREE_DATA_UPDATED` event)**
@@ -245,32 +248,33 @@ Available when the Locus DTO contains `htMeta`. This reduces bandwidth by only s
 webex.internal.llm LLM data channel
   → Meeting.processLocusLLMEvent()
     → LocusInfo.parse(event.data)
-      → HashTreeParser.processHashTreeMessage()
-        → fetches changed data sets from visibleDataSetsUrl
-        → merges leaf data into local LocusDTO snapshot
-        → fires LocusInfoUpdate callbacks (OBJECTS_UPDATED or MEETING_ENDED)
-          → same EVENTS.* pipeline as classic path
+      → LocusInfo.handleHashTreeMessage()
+        → uses HashTreeParser instance to sync/manage data sets
+          → fetches changed data sets from visibleDataSetsUrl
+          → merges leaf data into local LocusDTO snapshot
+          → fires LocusInfoUpdate callbacks (OBJECTS_UPDATED or MEETING_ENDED)
+            → same EVENTS.* pipeline as classic path
 ```
 
 ### LocusInfo event bus
 
 `LocusInfo` extends `EventsScope` and is used purely as an internal event bus between `LocusInfo` and `Meeting`. Key internal events:
 
-| Internal event (`EVENTS.*` / `LOCUSINFO.EVENTS.*`) | What changed |
-|---|---|
-| `LOCUS_INFO_UPDATE_PARTICIPANTS` | Participant list delta |
-| `LOCUS_INFO_UPDATE_SELF` | Self participant state (mute, lobby, roles) |
-| `LOCUS_INFO_UPDATE_HOST` | Host changed |
-| `LOCUS_INFO_UPDATE_MEDIA_SHARES` | Screen share / whiteboard floor |
-| `CONTROLS_RECORDING_UPDATED` | Recording state change |
-| `CONTROLS_MUTE_ON_ENTRY_CHANGED` | Mute-on-entry setting |
-| `CONTROLS_MEETING_BREAKOUT_UPDATED` | Breakout room state |
-| `SELF_REMOTE_MUTE_STATUS_UPDATED` | Remote-muted by host |
-| `LOCAL_UNMUTE_REQUIRED` | Host unmuted you |
-| `SELF_UNADMITTED_GUEST` | You entered the lobby |
-| `SELF_ADMITTED_GUEST` | You were admitted from lobby |
-| `DESTROY_MEETING` | Meeting ended / you were removed |
-| `DISCONNECT_DUE_TO_INACTIVITY` | Media inactivity timeout |
+| Internal event | Namespace | What changed |
+|---|---|---|
+| `LOCUS_INFO_UPDATE_PARTICIPANTS` | `EVENTS` | Participant list delta |
+| `LOCUS_INFO_UPDATE_SELF` | `EVENTS` | Self participant state (mute, lobby, roles) |
+| `LOCUS_INFO_UPDATE_HOST` | `EVENTS` | Host changed |
+| `LOCUS_INFO_UPDATE_MEDIA_SHARES` | `EVENTS` | Screen share / whiteboard floor |
+| `CONTROLS_RECORDING_UPDATED` | `LOCUSINFO.EVENTS` | Recording state change |
+| `CONTROLS_MUTE_ON_ENTRY_CHANGED` | `LOCUSINFO.EVENTS` | Mute-on-entry setting |
+| `CONTROLS_MEETING_BREAKOUT_UPDATED` | `LOCUSINFO.EVENTS` | Breakout room state |
+| `SELF_REMOTE_MUTE_STATUS_UPDATED` | `LOCUSINFO.EVENTS` | Remote-muted by host |
+| `LOCAL_UNMUTE_REQUIRED` | `LOCUSINFO.EVENTS` | Host unmuted you |
+| `SELF_UNADMITTED_GUEST` | both | You entered the lobby |
+| `SELF_ADMITTED_GUEST` | both | You were admitted from lobby |
+| `DESTROY_MEETING` | `EVENTS` | Meeting ended / you were removed |
+| `DISCONNECT_DUE_TO_INACTIVITY` | both | Media inactivity timeout |
 
 `Meeting.setUpLocusInfoListeners()` registers handlers for all of these and translates them into public `EVENT_TRIGGERS.*` emitted to app consumers.
 
@@ -342,7 +346,8 @@ When the overall `ConnectionState` changes it emits `connectionState:changed`, w
 Local streams (`LocalMicrophoneStream`, `LocalCameraStream`, `LocalDisplayStream`, `LocalSystemAudioStream`) are managed by `@webex/media-helpers`. The `Meeting` class:
 
 - Holds references in `MediaProperties`
-- Listens for `UserMuteStateChange`, `SystemMuteStateChange`, `OutputTrackChange`, `ConstraintsChange` events on each stream
+- Listens for `UserMuteStateChange`, `SystemMuteStateChange`, `OutputTrackChange` events on audio and video streams
+- Listens for `ConstraintsChange` on the video stream (not audio)
 - Calls `publishStream()` / `unpublishStream()` to connect/disconnect tracks from the WebRTC connection
 - Emits `meeting:streamPublishStateChanged` when publish state changes
 
@@ -437,7 +442,7 @@ Whenever local mute state changes, `MuteState` sends a `LocalMute` request via `
 
 When the host mutes a participant:
 1. Locus sends a delta update to `self.controls.audio.muted = true`
-2. `SelfUtils` detects the change and emits `SELF_REMOTE_MUTE_STATUS_UPDATED`
+2. `SelfUtils` detects the change (computes update flags); `LocusInfo` emits `SELF_REMOTE_MUTE_STATUS_UPDATED`
 3. `Meeting` calls `audio.handleServerRemoteMuteUpdate(meeting, muted, unmuteAllowed)`
 4. `MuteState` stops/starts the local audio track as appropriate
 5. Public event `meeting:self:mutedByOthers` or `meeting:self:unmutedByOthers` is emitted
@@ -585,7 +590,7 @@ Reachability.gatherReachability()
 
 ### Permission model
 
-Two sources gate recording permissions:
+Two sources gate recording permissions (see [§5 Display hints vs. policies concept](#7-mute-state-machine) for background on this dual-check pattern):
 
 1. **Display hints** (`DISPLAY_HINTS.RECORDING_CONTROL_*`) — per-meeting per-user hints from Locus
 2. **Self policies** (`SELF_POLICY.SUPPORT_NETWORK_BASED_RECORD`, `SUPPORT_PREMISE_RECORD`) — org-level JWT policies
@@ -646,7 +651,7 @@ Breakouts closing → emit meeting:breakouts:closing
 ### Key interactions across roles
 
 - **Host/cohost** can create, start, stop, and manage breakout groups via `breakouts.*` methods.
-- **Participants** can ask for help (`breakouts.askForHelp()`), which sends a request to the host.
+- **Participants** can ask for help (`breakout.askForHelp()` on a specific `Breakout` session instance), which sends a request to the host.
 - **Host in breakout** admitting lobby participants: must pass `authorizingLocusUrl` (breakout session URL) and `mainLocusUrl` to `meeting.admit()`.
 
 ---
@@ -684,7 +689,7 @@ LLM relay event (relayType: 'react')
     → emit meeting:receiveReactions { reaction, sender }
 ```
 
-Reactions require both `controls.reactions.enabled` (Locus control) and either `config.receiveReactions` (SDK config) or `options.receiveReactions` (join-time option).
+Reactions require both `controls.reactions.enabled` (Locus control) and `options.receiveReactions` (join-time option, passed to `join()` or `joinWithMedia()`).
 
 ---
 
@@ -739,7 +744,7 @@ The `EVENT_TRIGGERS` constant object in `src/constants.ts` is the single source 
 
 `EventsScope` (`src/common/events/events-scope.ts`) extends Node.js `EventEmitter` (imported as `ChildEmitter`) and is used by `LocusInfo` and other internal components. It overrides `emit()` to inject a scope parameter and log event names via `LoggerProxy`. The `on()` and `off()` methods are inherited unchanged from `EventEmitter`.
 
-See `EVENT_TRIGGERS` in `src/constants.ts` for the canonical full list of public events.
+See `EVENT_TRIGGERS` in `src/constants.ts` for the canonical full list of public events. The table above is a curated selection — new events are added over time.
 
 ---
 

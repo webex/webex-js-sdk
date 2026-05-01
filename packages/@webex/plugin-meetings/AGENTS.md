@@ -1,5 +1,7 @@
 # plugin-meetings — Agent Guide
 
+> **Audience:** This document is for AI coding agents (e.g. GitHub Copilot) working on this plugin. It provides operational rules, common pitfalls, and terse guidance. For architectural understanding, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 ## Overview
 
 `@webex/plugin-meetings` is the Cisco Webex JS SDK plugin that manages the full lifecycle of Webex meetings. It is registered as `webex.meetings` on the SDK instance and drives:
@@ -36,7 +38,7 @@ yarn workspace @webex/plugin-meetings test:unit --targets multistream/remoteMedi
 
 **Common mistake:** passing `--targets controlsUtils.js` (filename only) or a full absolute path. The value must be the path starting from inside `test/unit/spec/` — not the full path, not just the filename.
 
-**Note on file extensions:** Most test files use `.js`, but newer tests (especially in `multistream/`) use `.ts`. Check the actual file extension before running.
+**Note on file extensions:** Many test files use `.js`, but `.ts` tests are common in newer subdirectories (`multistream/`, `breakouts/`, `interpretation/`, `reachability/`, `hashTree/`, `interceptors/`, `webinar/`, `annotation/`). Always check the actual file extension before running.
 
 ### Running a focused subset
 
@@ -81,7 +83,7 @@ it.only('should do something', () => {
 | `src/personal-meeting-room/` | Personal meeting room (PMR) info, requests, and utilities. |
 | `src/aiEnableRequest/` | AI assistant enable/opt-in request flow. |
 | `src/constants.ts` | All string constants, enums, `EVENT_TRIGGERS`, state machines, error dictionaries. |
-| `src/config.ts` | Plugin configuration defaults (e.g. `autoRejoin`, `receiveReactions`). |
+| `src/config.ts` | Plugin configuration defaults (e.g. `autoRejoin`, `receiveTranscription`). |
 | `src/index.ts` | Package entry point — registers the plugin via `registerPlugin()`. |
 
 ---
@@ -91,7 +93,7 @@ it.only('should do something', () => {
 ### Constants
 - All public event name strings live in `EVENT_TRIGGERS` in `src/constants.ts`. Never hard-code event strings; always import from there.
 - Uppercase constants like `_LEFT_`, `_JOINED_`, `_MOVED_` represent Locus participant/meeting state values. When searching for logic that handles a particular state, search for **both** the named constant (e.g. `_LEFT_`) **and** its raw string value (e.g. `'LEFT'`, `"LEFT"`) — the codebase is inconsistent.
-- Keep `constants.ts` sections alphabetised.
+- Keep `constants.ts` sections alphabetised (sections have `// Please alphabetize` comments — existing code doesn't always follow this, but new additions should maintain order).
 
 ### Logging
 - Always log through `LoggerProxy` (`import LoggerProxy from '../common/logs/logger-proxy'`). Never use `console.*`.
@@ -121,8 +123,9 @@ Both paths feed into the same `LocusInfo` event bus that `Meeting` listens to.
 
 ## Testing Conventions
 
+- The test runner is **Mocha** (not Jest). Tests use `describe`/`it` blocks.
 - Use **sinon** for stubs, spies, and mocks.
-- Use **`assert`** from `@webex/test-helper-chai` for assertions. Do not use Jest's `expect`.
+- Use **`assert`** from `@webex/test-helper-chai` for assertions (preferred). Chai's `expect` from the same package is also acceptable and used in some files. Do not use Jest's `expect`.
 - Use `assert.calledOnceWithExactly` instead of `assert.calledOnce()` + `assert.calledWith()` separately.
 - Use `sinon.useFakeTimers()` for any logic involving timeouts or intervals.
 - Parameterise tests when there are more than 3 similar cases — use `forEach` or a helper approach matching the style of the surrounding test file.
