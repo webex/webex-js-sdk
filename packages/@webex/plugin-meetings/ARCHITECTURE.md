@@ -43,8 +43,8 @@ This makes the plugin available as `webex.meetings` (an instance of `Meetings`).
 
 | Interceptor | Purpose |
 |---|---|
-| `LocusRetryStatusInterceptor` | Retries Locus requests on 503 and 429 (rate-limit) errors; excludes `/hashtree` and `/sync` endpoints |
-| `LocusRouteTokenInterceptor` | Injects the current Locus route token into request headers |
+| `LocusRetryStatusInterceptor` | Retries Locus requests on 503 and 429 (rate-limit) errors; excludes `/hashtree` and `/sync` endpoints from all 5xx and 429 retries |
+| `LocusRouteTokenInterceptor` | Injects the current Locus route token into request headers; also captures and stores route tokens from responses |
 | `DataChannelAuthTokenInterceptor` | Refreshes expired JWT tokens before LLM/data-channel requests, injects auth token, and retries on 401/403 |
 
 ---
@@ -128,25 +128,30 @@ A `Meeting` object is created when:
 The `MeetingStateMachine` (instance property: `meeting.meetingFiniteStateMachine`) uses `javascript-state-machine`:
 
 ```
-IDLE ──ring()──→ RINGING ──join()──→ JOINED ──leave()──→ ENDED
-                    │                   │
-                 decline()           fail()──→ ERROR
-                    ↓                   │
-                DECLINED             remote()
-                                   ↙        ↘
-                              ANSWERED     DECLINED
+                              ┌──────────────────────────────────────────────┐
+                              │                                              │
+IDLE ──ring()──→ RINGING ──join()──→ JOINED ──leave()──→ ENDED              │
+  │                 │                   │                   ↑                │
+  │              decline()           fail()──→ ERROR ──leave()──→ ENDED     │
+  │                 │                   │         │                          │
+  └────join()───────┼───────────────────┘     ring()────────────────────────┘
+                    │               remote()
+                    ↓              ↙        ↘
+                  ENDED       ANSWERED     DECLINED
 ```
 
-| Transition | Trigger |
-|---|---|
-| `ring` | Incoming 1:1 call Locus event; or outgoing call placed |
-| `join` | Successful Locus `/join` response |
-| `remote` | Remote party answered or declined (from JOINED or ERROR states) |
-| `leave` | User calls `meeting.leave()`, or Locus DESTROY event |
-| `end` | Meeting ended by server |
-| `decline` | Call declined (from RINGING) |
-| `fail` | Error during meeting (from JOINED) |
-| `reset` | Reset state back to IDLE |
+Note: `decline` goes to ENDED, not DECLINED. `ring` and `join` have additional source states.
+
+| Transition | From states | To state | Trigger |
+|---|---|---|---|
+| `ring` | IDLE, JOINED, ERROR | RINGING | Incoming 1:1 call Locus event; or outgoing call placed |
+| `join` | IDLE, RINGING, JOINED, ERROR | JOINED | Successful Locus `/join` response |
+| `remote` | JOINED, ERROR | ANSWERED or DECLINED | Remote party answered or declined |
+| `leave` | IDLE, RINGING, JOINED, ANSWERED, DECLINED, ERROR | ENDED | User calls `meeting.leave()`, or Locus DESTROY event |
+| `end` | IDLE, RINGING, JOINED, ANSWERED, DECLINED, ERROR | ENDED | Meeting ended by server |
+| `decline` | RINGING, ERROR | ENDED | Call declined |
+| `fail` | any | ERROR | Error during meeting |
+| `reset` | any | IDLE | Reset state back to IDLE |
 
 ### Typical join flow (multi-party meeting)
 
@@ -205,6 +210,8 @@ A meeting is destroyed when:
 | `MEETING_CONNECTION_FAILED` | ICE failure, unreachable |
 | `LOCUS_DTO_SYNC_FAILED` | Could not fetch a Locus DTO after reconnect |
 | `MISSING_MEETING_INFO` | Meeting info failed to be fetched |
+| `USER_ENDED_SHARE_STREAMS` | User triggered stop share |
+| `NO_MEETINGS_TO_SYNC` | After syncMeeting no meeting exists |
 
 ---
 
@@ -225,7 +232,7 @@ Mercury WebSocket
       → Meetings.handleLocusEvent()
         → finds or creates Meeting
           → Meeting.locusInfo.parse(locus)
-            → LocusDeltaParser.parse() compares new vs. previous DTO sequences
+            → LocusDeltaParser.parse() compares new vs. previous DTO sequences  (note: class is named `Parser` in source, imported as `LocusDeltaParser`)
               → fires EVENTS.* on LocusInfo for each changed section
                 → Meeting's registered listeners update state & fire public EVENT_TRIGGERS
 ```
@@ -297,11 +304,14 @@ ROAP (RTCWeb Offer Answer Protocol) is Webex's mechanism for SDP offer/answer ex
 Flow:
 ```
 1. WebRTC creates SDP offer (via internal-media-core)
-2. Roap.sendRoapMediaRequest() → PUT to {selfUrl}/media with OFFER message
+2. Roap.sendRoapMediaRequest() → RoapRequest.sendRoap() → LocusMediaRequest.send()
+   → HTTP PUT to {selfUrl}/media with OFFER message
 3. Locus returns SDP answer in response or via Mercury
 4. WebRTC processes SDP answer
 5. ICE candidates gathered → connection established
 ```
+
+`LocusMediaRequest` (`src/meeting/locusMediaRequest.ts`) serializes concurrent media update requests to prevent race conditions. All mute changes, ROAP messages, and media negotiations are routed through it, ensuring only one request is in flight at a time.
 
 ### TURN discovery
 
@@ -531,13 +541,12 @@ ICE failure detected
       → success → emit meeting:reconnectionSuccess
       → fail → NeedsRejoinError thrown
     → on NeedsRejoinError:
-      → call meeting.leave({ reason: 'reconnect' })
-      → call meeting.join() again
+      → call meeting.join({ rejoin: true })
         → success → emit meeting:reconnectionSuccess
         → fail → emit meeting:reconnectionFailure
 ```
 
-The `autoRejoin` config flag controls whether the SDK automatically attempts a full rejoin when media-only reconnect fails with `NeedsRejoinError`. When `false`, the `NeedsRejoinError` is re-thrown, resulting in `meeting:reconnectionFailure` being emitted — the app must handle reconnection itself.
+The `autoRejoin` config flag (default: `true`) controls whether the SDK automatically attempts a full rejoin when media-only reconnect fails with `NeedsRejoinError`. When `false`, the `NeedsRejoinError` is re-thrown, resulting in `meeting:reconnectionFailure` being emitted — the app must handle reconnection itself.
 
 ### Key error classes
 
@@ -562,7 +571,7 @@ Reachability.gatherReachability()
     → creates RTCPeerConnection per subnet
     → gathers ICE candidates with STUN/TURN
     → records reachable/unreachable + latency
-  → stores results in localStorage (reused across short-lived meetings)
+  → stores results via webex.boundedStorage (localStorage abstraction, reused across short-lived meetings)
   → results used by Roap to select / skip TURN server
 ```
 
@@ -662,6 +671,7 @@ The `meeting.transcription` object tracks:
 - `interimCaptions` — in-progress captions (keyed by speaker CSI)
 - `languageOptions` — spoken/caption language settings
 - `isCaptioning`, `isListening`, `commandText`
+- `showCaptionBox`, `transcribingRequestStatus`, `speakerProxy`
 
 ### Reactions
 
@@ -674,7 +684,7 @@ LLM relay event (relayType: 'react')
     → emit meeting:receiveReactions { reaction, sender }
 ```
 
-Reactions require both `controls.reactions.enabled` (Locus control) and `config.receiveReactions` (SDK config).
+Reactions require both `controls.reactions.enabled` (Locus control) and either `config.receiveReactions` (SDK config) or `options.receiveReactions` (join-time option).
 
 ---
 

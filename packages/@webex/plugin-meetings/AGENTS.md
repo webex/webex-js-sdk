@@ -31,10 +31,12 @@ yarn workspace @webex/plugin-meetings test:unit --targets <relative-path>
 ```bash
 yarn workspace @webex/plugin-meetings test:unit --targets meeting/index.js
 yarn workspace @webex/plugin-meetings test:unit --targets locus-info/controlsUtils.js
-yarn workspace @webex/plugin-meetings test:unit --targets multistream/remoteMediaManager.js
+yarn workspace @webex/plugin-meetings test:unit --targets multistream/remoteMediaManager.ts
 ```
 
 **Common mistake:** passing `--targets controlsUtils.js` (filename only) or a full absolute path. The value must be the path starting from inside `test/unit/spec/` — not the full path, not just the filename.
+
+**Note on file extensions:** Most test files use `.js`, but newer tests (especially in `multistream/`) use `.ts`. Check the actual file extension before running.
 
 ### Running a focused subset
 
@@ -79,6 +81,8 @@ it.only('should do something', () => {
 | `src/personal-meeting-room/` | Personal meeting room (PMR) info, requests, and utilities. |
 | `src/aiEnableRequest/` | AI assistant enable/opt-in request flow. |
 | `src/constants.ts` | All string constants, enums, `EVENT_TRIGGERS`, state machines, error dictionaries. |
+| `src/config.ts` | Plugin configuration defaults (e.g. `autoRejoin`, `receiveReactions`). |
+| `src/index.ts` | Package entry point — registers the plugin via `registerPlugin()`. |
 
 ---
 
@@ -136,6 +140,8 @@ Both paths feed into the same `LocusInfo` event bus that `Meeting` listens to.
 - **Emitting events with hard-coded strings** — always use `EVENT_TRIGGERS.*`.
 - **Not checking both display hints and self policies** when implementing a new meeting control.
 - **Calling `new MuteState()` directly** — always use `createMuteState()` instead.
+- **Adding manual request serialization** — all media updates (mute, ROAP, etc.) are already serialized by `LocusMediaRequest` (`src/meeting/locusMediaRequest.ts`). Do not add your own queuing on top.
+- **Assuming `LocusDeltaParser` is the class name** — the class is `Parser` in `src/locus-info/parser.ts`, imported with the alias `LocusDeltaParser`. Searching for `class LocusDeltaParser` will find nothing.
 
 ---
 
