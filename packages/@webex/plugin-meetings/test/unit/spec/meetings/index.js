@@ -1631,6 +1631,40 @@ describe('plugin-meetings', () => {
           });
         });
 
+        describe('skipHashTreeSync parameter', () => {
+          it('should skip syncAllHashTreeDatasets when skipHashTreeSync is true', async () => {
+            const mockLocusInfo = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
+            };
+
+            webex.meetings.request.getActiveMeetings = sinon.stub().resolves({loci: []});
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              meeting1: {locusInfo: mockLocusInfo},
+            });
+
+            await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: true});
+
+            assert.calledOnce(webex.meetings.request.getActiveMeetings);
+            assert.notCalled(mockLocusInfo.syncAllHashTreeDatasets);
+          });
+
+          it('should call syncAllHashTreeDatasets when skipHashTreeSync is false (default)', async () => {
+            const mockLocusInfo = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
+            };
+
+            webex.meetings.request.getActiveMeetings = sinon.stub().resolves({loci: []});
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              meeting1: {locusInfo: mockLocusInfo},
+            });
+
+            await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: false});
+
+            assert.calledOnce(webex.meetings.request.getActiveMeetings);
+            assert.calledOnce(mockLocusInfo.syncAllHashTreeDatasets);
+          });
+        });
+
         describe('syncAllHashTreeDatasets in syncMeetings', () => {
           it('should call syncAllHashTreeDatasets for multiple meetings, skipping those without locusInfo', async () => {
             const mockLocusInfo1 = {
