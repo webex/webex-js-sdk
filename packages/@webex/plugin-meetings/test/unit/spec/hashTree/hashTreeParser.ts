@@ -2125,6 +2125,62 @@ describe('HashTreeParser', () => {
           })
         );
       });
+
+      it('updates dataSet.leafCount when hash tree is resized during sync so that the sync request has the correct leafCount', async () => {
+        const parser = createHashTreeParser();
+
+        // Send a heartbeat with a mismatched root hash to trigger runSyncAlgorithm
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1', // different from ours
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'heartbeat with mismatch');
+
+        // The sync timer should be set
+        expect(parser.dataSets.main.timer).to.not.be.undefined;
+
+        const mainDataSetUrl = parser.dataSets.main.url;
+        const newLeafCount = 32;
+
+        // Mock getHashesFromLocus response with a DIFFERENT leafCount (32 instead of 16)
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(newLeafCount).fill('00000000000000000000000000000000'),
+          createDataSet('main', newLeafCount, 1101)
+        );
+
+        // Mock the sync request - use matching root hash
+        const syncResponseDataSet = createDataSet('main', newLeafCount, 1102);
+        syncResponseDataSet.root = parser.dataSets.main.hashTree.getRootHash();
+        mockSendSyncRequestResponse(mainDataSetUrl, {
+          dataSets: [syncResponseDataSet],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [],
+        });
+
+        // Advance time to fire the sync timer (idleMs=1000 + backoff=0)
+        await clock.tickAsync(1000);
+
+        // Verify the sync request was sent with the NEW leafCount (32), not the old one (16)
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'POST',
+            uri: `${mainDataSetUrl}/sync`,
+            body: sinon.match({
+              leafCount: newLeafCount,
+            }),
+          })
+        );
+      });
     });
 
     describe('handles visible data sets changes correctly', () => {

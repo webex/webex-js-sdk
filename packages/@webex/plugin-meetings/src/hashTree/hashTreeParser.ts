@@ -754,6 +754,18 @@ class HashTreeParser {
   }
 
   /**
+   * Updates the leaf count for a data set, resizing its hash tree accordingly.
+   *
+   * @param {InternalDataSet} dataSet - The data set to update
+   * @param {number} newLeafCount - The new leaf count
+   * @returns {void}
+   */
+  private updateDataSetLeafCount(dataSet: InternalDataSet, newLeafCount: number): void {
+    dataSet.hashTree?.resize(newLeafCount);
+    dataSet.leafCount = newLeafCount;
+  }
+
+  /**
    * Checks for changes in the visible data sets based on the updated objects.
    * @param {HashTreeObject[]} updatedObjects - The list of updated hash tree objects.
    * @returns {Object} An object containing the removed and added visible data sets.
@@ -1213,7 +1225,7 @@ class HashTreeParser {
 
             receivedHashes = hashesResult.hashes;
 
-            hashTree.resize(hashesResult.dataSet.leafCount);
+            this.updateDataSetLeafCount(dataSet, hashesResult.dataSet.leafCount);
           } catch (error: any) {
             if (error?.statusCode === 409) {
               // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
