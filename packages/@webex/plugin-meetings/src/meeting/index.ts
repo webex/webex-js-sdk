@@ -4614,6 +4614,9 @@ export default class Meeting extends StatelessWebexPlugin {
           ),
           isAttendeeRequestAiAssistantDeclinedAll:
             MeetingUtil.attendeeRequestAiAssistantDeclinedAll(this.userDisplayHints),
+          isAnonymizeDisplayNamesEnabled: MeetingUtil.isAnonymizeDisplayNamesEnabled(
+            this.userDisplayHints
+          ),
         }) || changed;
     }
     if (changed) {
