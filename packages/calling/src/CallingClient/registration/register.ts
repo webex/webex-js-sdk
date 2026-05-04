@@ -188,7 +188,7 @@ export class Registration implements IRegistration {
   }
 
   public setActiveMobiusUrl(url: string) {
-    url = "https://mobius.prod-afra-calling1.wbx2.com/api/v1/calling/web/";
+    url = "https://mobius.prod-afra-calling2.wbx2.com/api/v1/calling/web/";
     log.info(`${METHOD_START_MESSAGE} with ${url}`, {
       method: METHODS.UPDATE_ACTIVE_MOBIUS,
       file: REGISTRATION_FILE,
@@ -817,7 +817,7 @@ export class Registration implements IRegistration {
 
       return abort;
     }
-    servers = ["https://mobius.prod-afra-calling1.wbx2.com/api/v1/calling/web/"];
+    servers = ["https://mobius.prod-afra-calling2.wbx2.com/api/v1/calling/web/"];
     for (const url of servers) {
       const serverType =
         (this.primaryMobiusUris.includes(url) && 'PRIMARY') ||
