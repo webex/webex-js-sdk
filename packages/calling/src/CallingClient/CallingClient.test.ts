@@ -227,16 +227,9 @@ describe('CallingClient Tests', () => {
     /**
      * Input sdk config to callingClient with serviceData carrying valid value for indicator
      * 'contactcenter' , and a valid domain type string for domain field in it.
-     *
-     * Execution should proceed properly and createRegistration should be called with same serviceData.
-     *
-     * DOMAIN field for service type 'contactcenter' must carry a non-empty valid domain type string.
      */
     it('ContactCenter: fetches RTMS domain from catalog when config domain is empty', async () => {
       const serviceDataObj = {indicator: ServiceIndicator.CONTACT_CENTER, domain: ''};
-      const validateServiceDataSpy = jest
-        .spyOn(utils, 'validateServiceData')
-        .mockImplementation(() => undefined);
 
       webex.internal.services.get = jest
         .fn()
@@ -245,8 +238,6 @@ describe('CallingClient Tests', () => {
       callingClient = await createClient(webex, {serviceData: serviceDataObj});
       expect(callingClient).toBeTruthy();
       expect(webex.internal.services.get).toHaveBeenCalledWith('wcc-calling-rtms-domain');
-
-      validateServiceDataSpy.mockRestore();
     });
 
     it('ContactCenter: init fails when config domain is empty and catalog fetch fails', async () => {

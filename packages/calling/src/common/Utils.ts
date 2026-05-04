@@ -1594,7 +1594,7 @@ export function isValidServiceDomain(serviceData: ServiceData): boolean {
 }
 
 /**
- * Validates service data object(indicator & domain) and throws
+ * Validates service data object(indicator) and throws
  * exception with a message indicating the reason for validation
  * failure.
  *
