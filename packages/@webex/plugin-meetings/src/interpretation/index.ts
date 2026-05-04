@@ -4,6 +4,7 @@
 import {WebexPlugin} from '@webex/webex-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {HTTP_VERBS, INTERPRETATION, LOCUSEVENT, MEETINGS} from '../constants';
+import MeetingUtil from '../meeting/util';
 
 import SILanguageCollection from './collection';
 
@@ -183,6 +184,8 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    * @returns {Promise}
    */
   updateInterpreters(interpreters) {
+    const meeting = this.webex.meetings.meetingCollection.getByKey('locusUrl', this.locusUrl);
+
     return this.request({
       method: HTTP_VERBS.PATCH,
       uri: `${this.locusUrl}/controls`,
@@ -191,10 +194,16 @@ const SimultaneousInterpretation = WebexPlugin.extend({
           interpreters,
         },
       },
-    }).catch((error) => {
-      LoggerProxy.logger.error('Meeting:interpretation#updateInterpreters failed', error);
-      throw error;
-    });
+    })
+      .then((response) => {
+        MeetingUtil.updateLocusFromApiResponse(meeting, response);
+
+        return response;
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error('Meeting:interpretation#updateInterpreters failed', error);
+        throw error;
+      });
   },
   /**
    * Change direction of interpretation for an interpreter participant
@@ -209,6 +218,8 @@ const SimultaneousInterpretation = WebexPlugin.extend({
       return Promise.reject(new Error('Missing self participant id'));
     }
 
+    const meeting = this.webex.meetings.meetingCollection.getByKey('locusUrl', this.locusUrl);
+
     return this.request({
       method: HTTP_VERBS.PATCH,
       uri: `${this.locusUrl}/participant/${this.selfParticipantId}/controls`,
@@ -220,10 +231,16 @@ const SimultaneousInterpretation = WebexPlugin.extend({
           order: this.order,
         },
       },
-    }).catch((error) => {
-      LoggerProxy.logger.error('Meeting:interpretation#changeDirection failed', error);
-      throw error;
-    });
+    })
+      .then((response) => {
+        MeetingUtil.updateLocusFromApiResponse(meeting, response);
+
+        return response;
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error('Meeting:interpretation#changeDirection failed', error);
+        throw error;
+      });
   },
   /**
    * Sets up a listener for handoff requests from mercury
