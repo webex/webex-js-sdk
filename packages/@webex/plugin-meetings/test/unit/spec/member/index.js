@@ -59,6 +59,13 @@ describe('member', () => {
       assert.calledOnceWithExactly(MemberUtil.isPresenterAssignmentProhibited, participant);
     });
 
+    it('checks that processParticipant calls isAttendeeAssignmentProhibited', () => {
+      sinon.spy(MemberUtil, 'isAttendeeAssignmentProhibited');
+      member.processParticipant(participant);
+
+      assert.calledOnceWithExactly(MemberUtil.isAttendeeAssignmentProhibited, participant);
+    });
+
     it('checks that processParticipant calls canApproveAIEnablement', () => {
       sinon.spy(MemberUtil, 'canApproveAIEnablement');
       member.processParticipant(participant);

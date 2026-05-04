@@ -9,6 +9,7 @@ describe('plugin-meetings', () => {
   describe('SimultaneousInterpretation', () => {
     let webex;
     let interpretation;
+    let mockMeeting;
 
     beforeEach(() => {
       // @ts-ignore
@@ -17,8 +18,17 @@ describe('plugin-meetings', () => {
       interpretation = new SimultaneousInterpretation({}, {parent: webex});
       interpretation.locusUrl = 'locusUrl';
       webex.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
-      webex.meetings = {};
-      webex.meetings.getMeetingByType = sinon.stub();
+      mockMeeting = {
+        locusInfo: {
+          handleLocusAPIResponse: sinon.stub(),
+        },
+      };
+      webex.meetings = {
+        getMeetingByType: sinon.stub(),
+        meetingCollection: {
+          getByKey: sinon.stub().returns(mockMeeting),
+        },
+      };
     });
 
     describe('#initialize', () => {
@@ -316,7 +326,8 @@ describe('plugin-meetings', () => {
             order : 0,
             isActive : true
           },];
-        webex.request.returns(Promise.resolve({}));
+        const mockResponse = {body: {locus: {url: 'locusUrl'}}};
+        webex.request.returns(Promise.resolve(mockResponse));
 
         await interpretation.updateInterpreters(sampleData);
         assert.calledOnceWithExactly(webex.request, {
@@ -328,6 +339,11 @@ describe('plugin-meetings', () => {
             },
           },
         });
+        assert.calledOnceWithExactly(
+          mockMeeting.locusInfo.handleLocusAPIResponse,
+          mockMeeting,
+          mockResponse.body
+        );
       });
 
       it('rejects with error', async () => {
@@ -354,7 +370,8 @@ describe('plugin-meetings', () => {
           order: 0,
           selfParticipantId: '123',
         });
-        webex.request.returns(Promise.resolve({}));
+        const mockResponse = {body: {locus: {url: 'locusUrl'}}};
+        webex.request.returns(Promise.resolve(mockResponse));
 
         await interpretation.changeDirection();
         assert.calledOnceWithExactly(webex.request, {
@@ -369,6 +386,11 @@ describe('plugin-meetings', () => {
             },
           },
         });
+        assert.calledOnceWithExactly(
+          mockMeeting.locusInfo.handleLocusAPIResponse,
+          mockMeeting,
+          mockResponse.body
+        );
       });
 
       it('request rejects with error', async () => {

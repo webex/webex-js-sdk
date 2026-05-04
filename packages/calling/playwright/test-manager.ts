@@ -7,7 +7,8 @@ import {
   setServiceIndicator,
   setEnvironmentToInt,
 } from './utils/setup';
-import {registerLine, verifyLineRegistered} from './utils/registration';
+import {registerLine, verifyLineRegistered, unregisterLine} from './utils/registration';
+import {cleanupActiveCalls, getMediaStreams} from './utils/call';
 import {ServiceIndicator} from './constants';
 
 interface SetupConfig {
@@ -15,6 +16,8 @@ interface SetupConfig {
   initSDK?: boolean;
   /** Register the line after SDK init */
   register?: boolean;
+  /** Get media streams after registration (needed for call tests) */
+  media?: boolean;
   /** Service indicator to set before init (default: 'calling') */
   service?: ServiceIndicator;
 }
@@ -109,6 +112,14 @@ export class TestManager {
       );
     }
 
+    // Tear down existing context for this role to avoid leaked registrations
+    const existing = this.contexts.get(role);
+    if (existing) {
+      await cleanupActiveCalls(existing.page).catch(() => {});
+      await unregisterLine(existing.page).catch(() => {});
+      await existing.context.close().catch(() => {});
+    }
+
     const context = await browser.newContext({ignoreHTTPSErrors: true});
     const page = await context.newPage();
     const mc: ManagedContext = {context, page, role};
@@ -129,15 +140,29 @@ export class TestManager {
         await registerLine(page);
         await verifyLineRegistered(page);
       }
+
+      if (config.media) {
+        await getMediaStreams(page);
+      }
     }
 
     return mc;
   }
 
   /**
-   * Close all managed contexts.
+   * Deregister all lines, then close all managed contexts.
    */
   async cleanup(): Promise<void> {
+    await Promise.all(
+      Array.from(this.contexts.values()).map((mc) => cleanupActiveCalls(mc.page).catch(() => {}))
+    );
+
+    // Deregister lines before closing — prevents stale backend registrations
+    // that block subsequent tests reusing the same account.
+    await Promise.all(
+      Array.from(this.contexts.values()).map((mc) => unregisterLine(mc.page).catch(() => {}))
+    );
+
     const closePromises = Array.from(this.contexts.values()).map((mc) =>
       mc.context.close().catch(() => {})
     );
