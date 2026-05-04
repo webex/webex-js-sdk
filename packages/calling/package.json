@@ -34,13 +34,11 @@
     "build:docs": "typedoc --out ../../docs/calling",
     "docs": "typedoc --emit none",
     "test:e2e": "npx playwright test --config=playwright.config.ts",
-    "test:e2e:prod": "npx playwright test --config=playwright.config.ts --project='Calling SDK E2E - PROD'",
-    "test:e2e:int": "npx playwright test --config=playwright.config.ts --project='Calling SDK E2E - INT'",
     "deploy:npm": "yarn npm publish"
   },
   "dependencies": {
     "@types/platform": "1.3.4",
-    "@webex/internal-media-core": "2.23.3",
+    "@webex/internal-media-core": "2.24.1",
     "@webex/internal-plugin-metrics": "workspace:*",
     "@webex/media-helpers": "workspace:*",
     "async-mutex": "0.4.0",

@@ -60,6 +60,7 @@ describe('plugin-meetings', () => {
       meeting.annotaion = {cleanUp: sinon.stub()};
       meeting.getWebexObject = sinon.stub().returns(webex);
       meeting.simultaneousInterpretation = {cleanUp: sinon.stub()};
+      meeting.locusInfo = {cleanUp: sinon.stub()};
       meeting.trigger = sinon.stub();
       meeting.webex = webex;
       meeting.webex.internal.newMetrics.callDiagnosticMetrics =
@@ -89,6 +90,7 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(meeting.cleanupLLMConneciton, {throwOnError: false});
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
+        assert.calledOnce(meeting.locusInfo.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
         assert.calledOnceWithExactly(
           meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId,
@@ -110,6 +112,7 @@ describe('plugin-meetings', () => {
         assert.notCalled(meeting.cleanupLLMConneciton);
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
+        assert.calledOnce(meeting.locusInfo.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
         assert.calledOnceWithExactly(
           meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId,
@@ -130,6 +133,7 @@ describe('plugin-meetings', () => {
         assert.notCalled(meeting.cleanupLLMConneciton);
         assert.calledOnce(meeting.breakouts.cleanUp);
         assert.calledOnce(meeting.simultaneousInterpretation.cleanUp);
+        assert.calledOnce(meeting.locusInfo.cleanUp);
         assert.calledOnce(webex.internal.device.meetingEnded);
         assert.calledOnceWithExactly(
           meeting.webex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId,
@@ -270,6 +274,31 @@ describe('plugin-meetings', () => {
 
         assert.deepEqual(response, originalResponse);
         assert.notCalled(meeting.locusInfo.handleLocusAPIResponse);
+      });
+
+      it('should call handleLocusAPIResponse when response body is an unwrapped LocusDTO', () => {
+        const meeting = {
+          locusInfo: {
+            handleLocusAPIResponse: sinon.stub(),
+          },
+        };
+
+        const originalResponse = {
+          body: {
+            url: 'https://locus-a.wbx2.com/locus/api/v1/loci/some-id',
+            participants: [],
+            self: {},
+          },
+        };
+
+        const response = MeetingUtil.updateLocusFromApiResponse(meeting, originalResponse);
+
+        assert.deepEqual(response, originalResponse);
+        assert.calledOnceWithExactly(
+          meeting.locusInfo.handleLocusAPIResponse,
+          meeting,
+          originalResponse.body
+        );
       });
 
       it('should work with an undefined meeting', () => {

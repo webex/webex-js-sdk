@@ -8,3 +8,12 @@ export const DataSetNames = {
   SELF: 'self', // sent to web client, over Mercury
   UNJOINED: 'unjoined', // sent when you are not joined, but can still see some stuff from the meeting (mutually exclusive with "main")
 };
+
+// Priority order for initializing data sets — higher priority names come first.
+// Data sets not listed here will be initialized after all prioritized ones.
+// MAIN must come before SELF because LocusInfo.updateFromHashTree processes the
+// batch of updatedObjects in order, and the SELF handler in updateLocusFromHashTreeObject
+// checks locus.info?.isWebinar (which comes from MAIN) to decide whether to create a
+// participant object for webinar attendees. If SELF were initialized first, locus.info
+// would not yet be populated and the attendee participant would be skipped.
+export const DATA_SET_INIT_PRIORITY: string[] = [DataSetNames.MAIN, DataSetNames.SELF];

@@ -1,6 +1,7 @@
 import {defineConfig, devices} from '@playwright/test';
 import dotenv from 'dotenv';
 import path from 'path';
+import {USER_SETS} from './playwright/test-data';
 
 // .env lives at repo root
 dotenv.config({path: path.resolve(__dirname, '../../.env')});
@@ -63,7 +64,7 @@ export default defineConfig({
   },
   retries: 3,
   fullyParallel: false,
-  workers: 6,
+  workers: 10,
   reporter: 'html',
   use: {
     baseURL: BASE_URL,
@@ -71,30 +72,68 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    // Production
+    // OAuth (structurally different — not generated from USER_SETS)
     {
-      name: 'Calling: OAuth Setup - PROD',
+      name: 'OAuth - PROD',
       testDir: './playwright/utils',
       testMatch: /oauth\.setup\.ts/,
     },
     {
-      name: 'Calling SDK E2E - PROD',
-      dependencies: ['Calling: OAuth Setup - PROD'],
-      testDir: './playwright/tests',
-      use: browserOptions[PW_BROWSER],
-    },
-    // Integration
-    {
-      name: 'Calling: OAuth Setup - INT',
+      name: 'OAuth - INT',
       testDir: './playwright/utils',
       testMatch: /oauth\.setup\.ts/,
       use: {testEnv: 'int'} as any,
     },
+
+    // Single-user registration sets (generated from USER_SETS, depend on OAuth)
+    ...['SET_1', 'SET_2', 'SET_3'].flatMap((key) => [
+      {
+        name: `${key} - PROD`,
+        dependencies: ['OAuth - PROD'],
+        testDir: './playwright/suites',
+        testMatch: USER_SETS[key].testSuite,
+        use: browserOptions[PW_BROWSER],
+      },
+      {
+        name: `${key} - INT`,
+        dependencies: ['OAuth - INT'],
+        testDir: './playwright/suites',
+        testMatch: USER_SETS[key].testSuite,
+        use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
+      },
+    ]),
+
+    // 2-user call tests (PROD uses USER_4+USER_5, parallel with registration sets)
     {
-      name: 'Calling SDK E2E - INT',
-      dependencies: ['Calling: OAuth Setup - INT'],
-      testDir: './playwright/tests',
+      name: 'SET_2USER - PROD',
+      dependencies: ['OAuth - PROD'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_2USER.testSuite,
+      use: browserOptions[PW_BROWSER],
+    },
+    // INT USER_4/5/6 are aliases for the same 3 INT accounts, must wait for registration
+    {
+      name: 'SET_2USER - INT',
+      dependencies: ['SET_1 - INT', 'SET_2 - INT', 'SET_3 - INT'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_2USER.testSuite,
       use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
     },
+
+    // 3-user transfer tests — waits for 2-user (shared USER_4+USER_5)
+    // {
+    //   name: 'SET_3USER - PROD',
+    //   dependencies: ['SET_2USER - PROD'],
+    //   testDir: './playwright/suites',
+    //   testMatch: USER_SETS.SET_3USER.testSuite,
+    //   use: browserOptions[PW_BROWSER],
+    // },
+    // {
+    //   name: 'SET_3USER - INT',
+    //   dependencies: ['SET_2USER - INT'],
+    //   testDir: './playwright/suites',
+    //   testMatch: USER_SETS.SET_3USER.testSuite,
+    //   use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
+    // },
   ],
 });

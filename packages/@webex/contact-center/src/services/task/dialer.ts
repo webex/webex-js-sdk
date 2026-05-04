@@ -7,6 +7,8 @@ import {
   TASK_API,
   DIALER_API,
   CAMPAIGN_PREVIEW_ACCEPT,
+  CAMPAIGN_PREVIEW_SKIP,
+  CAMPAIGN_PREVIEW_REMOVE,
   TIMEOUT_PREVIEW_ACCEPT,
 } from './constants';
 import * as Contact from './types';
@@ -101,6 +103,84 @@ export default function aqmDialer(aqm: AqmReqs) {
           data: {type: CC_EVENTS.CAMPAIGN_PREVIEW_ACCEPT_FAILED, campaignId: p.data.campaignId},
         },
         errId: 'Service.aqm.dialer.acceptPreviewContact',
+      },
+    })),
+
+    /**
+     * Skips a campaign preview contact, requesting the next contact from the campaign.
+     *
+     * @param {Object} p - Parameters object.
+     * @param {Contact.PreviewContactPayload} p.data - Payload containing interactionId and campaignId.
+     * @returns {Promise<Contact.AgentContact>} A promise that resolves with agent contact on success.
+     *
+     * Emits:
+     * - `CC_EVENTS.CAMPAIGN_CONTACT_UPDATED` or `CC_EVENTS.CONTACT_ENDED` on success
+     * - `CC_EVENTS.CAMPAIGN_PREVIEW_SKIP_FAILED` on failure
+     * @ignore
+     */
+    skipPreviewContact: aqm.req((p: {data: Contact.PreviewContactPayload}) => ({
+      url: `${DIALER_API}/campaign/${encodeURIComponent(p.data.campaignId)}/preview-task/${
+        p.data.interactionId
+      }${CAMPAIGN_PREVIEW_SKIP}`,
+      host: WCC_API_GATEWAY,
+      data: {},
+      method: HTTP_METHODS.POST,
+      err,
+      notifSuccess: {
+        bind: {
+          type: TASK_MESSAGE_TYPE,
+          data: {
+            type: [CC_EVENTS.CAMPAIGN_CONTACT_UPDATED, CC_EVENTS.CONTACT_ENDED],
+            interactionId: p.data.interactionId,
+          },
+        },
+        msg: {} as Contact.AgentContact,
+      },
+      notifFail: {
+        bind: {
+          type: TASK_MESSAGE_TYPE,
+          data: {type: CC_EVENTS.CAMPAIGN_PREVIEW_SKIP_FAILED, campaignId: p.data.campaignId},
+        },
+        errId: 'Service.aqm.dialer.skipPreviewContact',
+      },
+    })),
+
+    /**
+     * Removes a campaign preview contact from the campaign list entirely.
+     *
+     * @param {Object} p - Parameters object.
+     * @param {Contact.PreviewContactPayload} p.data - Payload containing interactionId and campaignId.
+     * @returns {Promise<Contact.AgentContact>} A promise that resolves with agent contact on success.
+     *
+     * Emits:
+     * - `CC_EVENTS.CAMPAIGN_CONTACT_UPDATED` or `CC_EVENTS.CONTACT_ENDED` on success
+     * - `CC_EVENTS.CAMPAIGN_PREVIEW_REMOVE_FAILED` on failure
+     * @ignore
+     */
+    removePreviewContact: aqm.req((p: {data: Contact.PreviewContactPayload}) => ({
+      url: `${DIALER_API}/campaign/${encodeURIComponent(p.data.campaignId)}/preview-task/${
+        p.data.interactionId
+      }${CAMPAIGN_PREVIEW_REMOVE}`,
+      host: WCC_API_GATEWAY,
+      data: {},
+      method: HTTP_METHODS.POST,
+      err,
+      notifSuccess: {
+        bind: {
+          type: TASK_MESSAGE_TYPE,
+          data: {
+            type: [CC_EVENTS.CAMPAIGN_CONTACT_UPDATED, CC_EVENTS.CONTACT_ENDED],
+            interactionId: p.data.interactionId,
+          },
+        },
+        msg: {} as Contact.AgentContact,
+      },
+      notifFail: {
+        bind: {
+          type: TASK_MESSAGE_TYPE,
+          data: {type: CC_EVENTS.CAMPAIGN_PREVIEW_REMOVE_FAILED, campaignId: p.data.campaignId},
+        },
+        errId: 'Service.aqm.dialer.removePreviewContact',
       },
     })),
   };

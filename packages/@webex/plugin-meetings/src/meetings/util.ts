@@ -18,6 +18,7 @@ import Trigger from '../common/events/trigger-proxy';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import Metrics from '../metrics';
 import {MEETING_KEY} from './meetings.types';
+import {EndMeetingReason, LocusFullState} from '../locus-info/types';
 
 /**
  * Meetings Media Codec Missing Event
@@ -267,6 +268,35 @@ MeetingsUtil.getThisDevice = (newLocus: any, deviceUrl: string) => {
 };
 
 /**
+ * Checks if the fullState indicates the meeting has fully ended (not just a breakout move).
+ * @param {Object} fullState locus fullState data
+ * @returns {boolean}
+ */
+MeetingsUtil.isWholeMeetingEnded = (fullState: LocusFullState): boolean => {
+  return (
+    fullState.state === LOCUS.STATE.INACTIVE &&
+    fullState.endMeetingReason !== EndMeetingReason.breakoutEnded
+  );
+};
+
+/**
+ * Checks if the self state in a locus indicates a breakout move or breakout end.
+ * Returns true when:
+ * - self state is LEFT with reason MOVED (regular breakout move), OR
+ * - fullState is INACTIVE with endMeetingReason BREAKOUT_ENDED (breakout session ended)
+ * @param {Object} locus locus data
+ * @returns {boolean}
+ */
+MeetingsUtil.isSelfMovedOrBreakoutEnded = (locus: any): boolean => {
+  const isSelfLeftMoved = locus?.self?.state === _LEFT_ && locus?.self?.reason === _MOVED_;
+  const isBreakoutEnded =
+    locus?.fullState?.state === LOCUS.STATE.INACTIVE &&
+    locus?.fullState?.endMeetingReason === EndMeetingReason.breakoutEnded;
+
+  return isSelfLeftMoved || isBreakoutEnded;
+};
+
+/**
  * get self device joined status from locus data
  * @param {Object} meeting current meeting data
  * @param {Object} newLocus new locus data
@@ -294,7 +324,10 @@ MeetingsUtil.joinedOnThisDevice = (meeting: any, newLocus: any, deviceUrl: strin
  * @private
  */
 MeetingsUtil.isBreakoutLocusDTO = (newLocus: any) => {
-  return newLocus?.controls?.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT;
+  return (
+    newLocus?.controls?.breakout?.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT ||
+    !!newLocus?.info?.isBreakout
+  );
 };
 
 /**
@@ -309,5 +342,27 @@ MeetingsUtil.isValidBreakoutLocus = (locus: any) => {
   const selfJoined = locus.self?.state === _JOINED_;
 
   return isLocusAsBreakout && !inActiveStatus && selfJoined;
+};
+/**
+ * check if the breakout locus is associated with the main locus by comparing the breakout control url or the replaces info in self device
+ * @param {Object} mainLocus main locus data
+ * @param {Object} breakoutLocus breakout locus data
+ * @returns {boolean}
+ * @private
+ */
+MeetingsUtil.isMainAssociatedWithBreakout = (mainLocus: any, breakoutLocus: any) => {
+  if (
+    mainLocus.controls?.breakout?.url &&
+    mainLocus.controls?.breakout?.url === breakoutLocus.controls?.breakout?.url
+  ) {
+    return true;
+  }
+  const deviceUrl = breakoutLocus?.self?.deviceUrl;
+  const replaceInfo = MeetingsUtil.getThisDevice(breakoutLocus, deviceUrl)?.replaces?.[0];
+  if (replaceInfo?.locusUrl && replaceInfo.locusUrl === mainLocus.url) {
+    return true;
+  }
+
+  return false;
 };
 export default MeetingsUtil;
