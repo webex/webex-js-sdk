@@ -499,7 +499,13 @@ describe('CALLING: Metric tests', () => {
   });
 
   describe('Voicemail metric tests', () => {
+    const originalProcess: NodeJS.Process = global.process;
+
     beforeAll(() => metricManager.setDeviceInfo(mockDeviceInfo));
+
+    afterEach(() => {
+      global.process = originalProcess;
+    });
 
     it('submit voicemail success metric', () => {
       const expectedData1 = {
@@ -585,9 +591,6 @@ describe('CALLING: Metric tests', () => {
     });
 
     it('submit voicemail metric with undefined process object', () => {
-      // Save original process
-      const originalProcess = global.process;
-
       // Mock process as undefined (browser environment)
       (global as any).process = undefined;
 
@@ -610,15 +613,9 @@ describe('CALLING: Metric tests', () => {
       );
 
       expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.VOICEMAIL, expectedData);
-
-      // Restore process
-      global.process = originalProcess;
     });
 
     it('submit voicemail error metric with undefined process object', () => {
-      // Save original process
-      const originalProcess = global.process;
-
       // Mock process as undefined (browser environment)
       (global as any).process = undefined;
 
@@ -648,9 +645,6 @@ describe('CALLING: Metric tests', () => {
       );
 
       expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.VOICEMAIL_ERROR, expectedData);
-
-      // Restore process
-      global.process = originalProcess;
     });
 
     it('submit unknown voicemail metric', () => {
