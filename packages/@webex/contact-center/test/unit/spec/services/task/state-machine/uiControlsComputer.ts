@@ -144,4 +144,103 @@ describe('uiControlsComputer consult initiator controls', () => {
     expect(uiControls.main.wrapup).toEqual({isVisible: true, isEnabled: true});
     expect(uiControls.consult).toEqual(getDefaultUIControls().consult);
   });
+
+  it('derives consult leg from isConsultInProgress when consult media is unavailable', () => {
+    const consultFlagOnlyTaskData = createTaskData({
+      agentId: 'agent-1',
+      mediaResourceId: 'interaction-1',
+      consultMediaResourceId: undefined,
+      consultingAgentId: 'agent-1',
+      isConsultInProgress: true,
+      interaction: {
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        participants: {
+          'agent-1': {id: 'agent-1', pType: 'AGENT', hasLeft: false},
+          'customer-1': {id: 'customer-1', pType: 'CUSTOMER', hasLeft: false},
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            isHold: false,
+            participants: ['agent-1', 'customer-1'],
+          },
+        } as any,
+      } as any,
+    });
+    const context = createVoiceContext({
+      taskData: consultFlagOnlyTaskData,
+      consultDestinationAgentJoined: false,
+    });
+
+    const uiControls = computeUIControls(TaskState.CONNECTED, context, context.taskData);
+
+    expect(uiControls.activeLeg).toBe('consult');
+    expect(uiControls.consult.endConsult).toEqual({isVisible: true, isEnabled: true});
+  });
+
+  it('shows only endConsult for consult relationship assignment payloads', () => {
+    const consultRelationshipTaskData = createTaskData({
+      agentId: 'agent-1',
+      isConsulted: false,
+      consultMediaResourceId: undefined,
+      interaction: {
+        interactionId: 'interaction-1',
+        mainInteractionId: 'main-interaction-1',
+        state: 'connected',
+        callProcessingDetails: {
+          relationshipType: 'consult',
+          parentInteractionId: 'main-interaction-1',
+          hasCustomerLeft: 'true',
+        },
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'AGENT',
+            hasLeft: false,
+            currentState: 'post_call',
+            isConsulted: false,
+          },
+          'customer-1': {
+            id: 'customer-1',
+            pType: 'CUSTOMER',
+            hasLeft: false,
+          },
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            isHold: false,
+            mType: 'mainCall',
+            participants: ['agent-1', 'customer-1'],
+          },
+        } as any,
+      } as any,
+    });
+    const context = createVoiceContext({
+      taskData: consultRelationshipTaskData,
+      consultInitiator: false,
+      consultDestinationAgentJoined: false,
+      consultCallHeld: false,
+    });
+
+    const uiControls = computeUIControls(TaskState.CONNECTED, context, context.taskData);
+    const controls = uiControls.main;
+
+    expect(controls.endConsult).toEqual({isVisible: true, isEnabled: true});
+    expect(controls.accept).toEqual({isVisible: false, isEnabled: false});
+    expect(controls.decline).toEqual({isVisible: false, isEnabled: false});
+    expect(controls.hold).toEqual({isVisible: false, isEnabled: false});
+    expect(controls.mute).toEqual({isVisible: false, isEnabled: false});
+    expect(controls.end).toEqual({isVisible: false, isEnabled: false});
+    expect(controls.transfer).toEqual({isVisible: false, isEnabled: false});
+    expect(controls.consult).toEqual({isVisible: false, isEnabled: false});
+    expect(controls.conference).toEqual({isVisible: false, isEnabled: false});
+    expect(controls.switch).toEqual({isVisible: false, isEnabled: false});
+    expect(controls.wrapup).toEqual({isVisible: false, isEnabled: false});
+    expect(controls.recording).toEqual({isVisible: false, isEnabled: false});
+    expect(controls.exitConference).toEqual({isVisible: false, isEnabled: false});
+    expect(controls.transferConference).toEqual({isVisible: false, isEnabled: false});
+    expect(controls.mergeToConference).toEqual({isVisible: false, isEnabled: false});
+  });
 });

@@ -97,6 +97,20 @@ export const getIsConsultInProgressForConferenceControls = (
   });
 };
 
+/**
+ * Determines whether consult is in progress for generic control visibility.
+ * Uses explicit task flag first and falls back to consult media detection.
+ */
+export const getIsConsultInProgress = (taskData: TaskData | null | undefined): boolean => {
+  if (!taskData) return false;
+  if (typeof taskData.isConsultInProgress === 'boolean') return taskData.isConsultInProgress;
+
+  const media = taskData.interaction?.media;
+  if (!media) return false;
+
+  return Object.values(media).some((m: any) => m?.mType === 'consult');
+};
+
 export const getIsConsultedAgentForControls = (
   taskData: TaskData | null,
   context: TaskContext,

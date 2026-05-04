@@ -16,6 +16,7 @@ import {
   getIsCustomerInCall,
   getConferenceParticipantsCount,
   getIsConferenceInProgress,
+  getIsConsultInProgress,
   getIsConsultInProgressForConferenceControls,
   getIsConsultedAgentForControls,
   getServerHoldStateForControls,
@@ -108,7 +109,9 @@ function computeVoiceInteractionUIControls(
     mainCallId,
     selfAgentId
   );
+  const consultInProgressForVisibility = getIsConsultInProgress(taskData);
   const conferenceFromBackend = taskData ? getIsConferenceInProgress(taskData) : false;
+  const consultRelationship = interaction?.callProcessingDetails?.relationshipType === 'consult';
   // Note: ownership is used by some controls; keep computations local to those controls
 
   // Context flags (set by state machine actions)
@@ -126,7 +129,9 @@ function computeVoiceInteractionUIControls(
   const isConsulting =
     state === TaskState.CONSULTING ||
     state === TaskState.CONSULT_INITIATING ||
-    state === TaskState.CONF_INITIATING;
+    state === TaskState.CONF_INITIATING ||
+    consultInProgressForVisibility ||
+    consultRelationship;
   const isConferencing = state === TaskState.CONFERENCING;
   const isWrappingUp = state === TaskState.WRAPPING_UP;
   const selfInMainCall =
@@ -203,7 +208,7 @@ function computeVoiceInteractionUIControls(
     mute: (() => {
       if (!isWebrtc) return DISABLED;
       if (isWrappingUp) return DISABLED;
-      if (isConsulting) return VISIBLE_ENABLED;
+      if (isConsulting) return hasFullControls ? VISIBLE_ENABLED : DISABLED;
 
       if (isConnected || isHeld || isConferencing) {
         if (inConference) return VISIBLE_ENABLED;
@@ -420,6 +425,7 @@ function getVoiceLegState(
     mainCallId,
     selfAgentId
   );
+  const consultInProgressForVisibility = getIsConsultInProgress(taskData);
   const isConsultingState =
     currentState === TaskState.CONSULTING ||
     currentState === TaskState.CONSULT_INITIATING ||
@@ -435,7 +441,11 @@ function getVoiceLegState(
     consultOwnedBySelf &&
       !taskData?.isConsulted &&
       !interaction?.isTerminated &&
-      (consultInProgress || isConsultingState || context.consultCallHeld || hasConsultMedia)
+      (consultInProgress ||
+        consultInProgressForVisibility ||
+        isConsultingState ||
+        context.consultCallHeld ||
+        hasConsultMedia)
   );
 
   if (!hasConsultLeg) {
