@@ -1,6 +1,8 @@
 import {cloneDeep, isEmpty, zip} from 'lodash';
 import HashTree, {LeafDataItem} from './hashTree';
 import LoggerProxy from '../common/logs/logger-proxy';
+import Metrics from '../metrics';
+import BEHAVIORAL_METRICS from '../metrics/constants';
 import {Enum, HTTP_VERBS} from '../constants';
 import {DataSetNames, DATA_SET_INIT_PRIORITY, EMPTY_HASH} from './constants';
 import {ObjectType, HtMeta, HashTreeObject} from './types';
@@ -754,6 +756,18 @@ class HashTreeParser {
   }
 
   /**
+   * Updates the leaf count for a data set, resizing its hash tree accordingly.
+   *
+   * @param {InternalDataSet} dataSet - The data set to update
+   * @param {number} newLeafCount - The new leaf count
+   * @returns {void}
+   */
+  private updateDataSetLeafCount(dataSet: InternalDataSet, newLeafCount: number): void {
+    dataSet.hashTree?.resize(newLeafCount);
+    dataSet.leafCount = newLeafCount;
+  }
+
+  /**
    * Checks for changes in the visible data sets based on the updated objects.
    * @param {HashTreeObject[]} updatedObjects - The list of updated hash tree objects.
    * @returns {Object} An object containing the removed and added visible data sets.
@@ -1196,60 +1210,65 @@ class HashTreeParser {
         `HashTreeParser#performSync --> ${this.debugId} ${reason}, syncing data set "${dataSet.name}"`
       );
 
-      let leavesData: Record<number, LeafDataItem[]>;
+      let leavesData: Record<number, LeafDataItem[]> = {};
 
-      if (isInitialization) {
-        // initialization sync: send all leaves as empty to get all data from Locus
-        leavesData = {};
-        for (let i = 0; i < dataSet.leafCount; i += 1) {
-          leavesData[i] = [];
-        }
-      } else if (dataSet.leafCount !== 1) {
-        leavesData = {};
-        let receivedHashes;
+      if (!isInitialization) {
+        if (dataSet.leafCount !== 1) {
+          let receivedHashes;
 
-        try {
-          // request hashes from sender
-          const hashesResult = await this.getHashesFromLocus(dataSet.name, rootHash);
+          try {
+            // request hashes from sender
+            const hashesResult = await this.getHashesFromLocus(dataSet.name, rootHash);
 
-          if (!hashesResult) {
-            // hashes match, no sync needed
-            return;
+            if (!hashesResult) {
+              // hashes match, no sync needed
+              return;
+            }
+
+            receivedHashes = hashesResult.hashes;
+
+            this.updateDataSetLeafCount(dataSet, hashesResult.dataSet.leafCount);
+          } catch (error: any) {
+            if (error?.statusCode === 409) {
+              // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
+              LoggerProxy.logger.info(
+                `HashTreeParser#getHashesFromLocus --> ${this.debugId} Got 409 when fetching hashes for data set "${dataSet.name}": ${error.message}`
+              );
+
+              return;
+            }
+            throw error;
           }
 
-          receivedHashes = hashesResult.hashes;
+          // identify mismatched leaves
+          const mismatchedLeaveIndexes = hashTree.diffHashes(receivedHashes);
 
-          hashTree.resize(hashesResult.dataSet.leafCount);
-        } catch (error: any) {
-          if (error?.statusCode === 409) {
-            // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
-            LoggerProxy.logger.info(
-              `HashTreeParser#getHashesFromLocus --> ${this.debugId} Got 409 when fetching hashes for data set "${dataSet.name}": ${error.message}`
-            );
-
-            return;
-          }
-          throw error;
+          mismatchedLeaveIndexes.forEach((index) => {
+            leavesData[index] = hashTree.getLeafData(index);
+          });
+        } else {
+          leavesData = {0: hashTree.getLeafData(0)};
         }
-
-        // identify mismatched leaves
-        const mismatchedLeaveIndexes = hashTree.diffHashes(receivedHashes);
-
-        mismatchedLeaveIndexes.forEach((index) => {
-          leavesData[index] = hashTree.getLeafData(index);
-        });
-      } else {
-        leavesData = {0: hashTree.getLeafData(0)};
       }
       // request sync for mismatched leaves
-      if (Object.keys(leavesData).length > 0) {
-        const syncResponse = await this.sendSyncRequestToLocus(dataSet, leavesData);
+      let syncResponse: HashTreeMessage | null = null;
 
-        // sync API may return nothing (in that case data will arrive via messages)
-        // or it may return a response in the same format as messages
-        if (syncResponse) {
-          this.handleMessage(syncResponse, 'via sync API');
-        }
+      if (isInitialization) {
+        syncResponse = await this.sendSyncRequestToLocus(dataSet, {isInitialization: true});
+      } else if (Object.keys(leavesData).length > 0) {
+        syncResponse = await this.sendSyncRequestToLocus(dataSet, {
+          mismatchedLeavesData: leavesData,
+        });
+      }
+
+      // sync API may return nothing (in that case data will arrive via messages)
+      // or it may return a response in the same format as messages
+      // We still need to restart the sync timer as a safety net in case the messages don't arrive.
+      this.runSyncAlgorithm(dataSet);
+
+      if (syncResponse) {
+        // the format of sync response is the same as messages, so we can reuse the same handler
+        this.handleMessage(syncResponse, 'via sync API');
       }
     } catch (error) {
       if (error instanceof MeetingEndedError) {
@@ -1391,12 +1410,6 @@ class HashTreeParser {
 
     dataSet.hashTree.resize(receivedDataSet.leafCount);
 
-    // temporary log for the workshop // todo: remove
-    const ourCurrentRootHash = dataSet.hashTree.getRootHash();
-    LoggerProxy.logger.info(
-      `HashTreeParser#runSyncAlgorithm --> ${this.debugId} dataSet="${dataSet.name}" version=${dataSet.version} hashes before starting timer: ours=${ourCurrentRootHash} Locus=${dataSet.root}`
-    );
-
     const delay = dataSet.idleMs + this.getWeightedBackoffTime(dataSet.backoff);
 
     if (delay > 0) {
@@ -1477,6 +1490,7 @@ class HashTreeParser {
         );
 
         this.enqueueSyncForDataset(dataSet.name, `heartbeat watchdog expired`);
+        this.resetHeartbeatWatchdogs([dataSet]);
       }, delay);
     }
   }
@@ -1667,6 +1681,13 @@ class HashTreeParser {
           error
         );
         this.checkForSentinelHttpResponse(error, dataSet.name);
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_SYNC_FAILURE, {
+          debugId: this.debugId,
+          dataSetName,
+          request: 'GET /hashtree',
+          statusCode: error.statusCode,
+          reason: error.message,
+        });
 
         throw error;
       });
@@ -1676,34 +1697,43 @@ class HashTreeParser {
    * Sends a sync request to Locus for the specified data set.
    *
    * @param {InternalDataSet} dataSet The data set to sync.
-   * @param {Record<number, LeafDataItem[]>} mismatchedLeavesData The mismatched leaves data to include in the sync request.
+   * @param {Object} options Either `{ isInitialization: true }` for init syncs (uses leafCount=1 with empty leaf data) or `{ mismatchedLeavesData }` for normal syncs.
    * @returns {Promise<HashTreeMessage|null>}
    */
   private sendSyncRequestToLocus(
     dataSet: InternalDataSet,
-    mismatchedLeavesData: Record<number, LeafDataItem[]>
+    options: {isInitialization: true} | {mismatchedLeavesData: Record<number, LeafDataItem[]>}
   ): Promise<HashTreeMessage | null> {
     LoggerProxy.logger.info(
       `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Sending sync request for data set "${dataSet.name}"`
     );
+
+    const isInitialization = 'isInitialization' in options;
 
     const url = `${dataSet.url}/sync`;
     const body: {
       leafCount: number;
       leafDataEntries: {leafIndex: number; elementIds: LeafDataItem[]}[];
     } = {
-      leafCount: dataSet.leafCount,
+      leafCount: isInitialization ? 1 : dataSet.leafCount,
       leafDataEntries: [],
     };
 
-    Object.keys(mismatchedLeavesData).forEach((index) => {
-      const leafIndex = parseInt(index, 10);
+    if (isInitialization) {
+      // initialization sync: Locus requires leafCount=1 with a single empty leaf
+      body.leafDataEntries.push({leafIndex: 0, elementIds: []});
+    } else {
+      const {mismatchedLeavesData} = options;
 
-      body.leafDataEntries.push({
-        leafIndex,
-        elementIds: mismatchedLeavesData[leafIndex],
+      Object.keys(mismatchedLeavesData).forEach((index) => {
+        const leafIndex = parseInt(index, 10);
+
+        body.leafDataEntries.push({
+          leafIndex,
+          elementIds: mismatchedLeavesData[leafIndex],
+        });
       });
-    });
+    }
 
     const ourCurrentRootHash = dataSet.hashTree ? dataSet.hashTree.getRootHash() : EMPTY_HASH;
 
@@ -1736,6 +1766,13 @@ class HashTreeParser {
           error
         );
         this.checkForSentinelHttpResponse(error, dataSet.name);
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_SYNC_FAILURE, {
+          debugId: this.debugId,
+          dataSetName: dataSet.name,
+          request: 'POST /sync',
+          statusCode: error.statusCode,
+          reason: error.message,
+        });
 
         throw error;
       });
