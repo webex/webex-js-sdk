@@ -663,10 +663,8 @@ describe('webex.cc', () => {
 
       expect(emitSpy).toHaveBeenCalledTimes(1);
       expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, mockTask);
-      // Verify message event listener
-      const messageCallback = mockWebSocketManager.on.mock.calls.find(
-        (call) => call[0] === 'message'
-      )[1];
+      // Verify websocket message handling
+      const messageCallback = webex.cc['handleWebsocketMessage'];
       const agentStateChangeEventData = {
         type: CC_EVENTS.AGENT_STATE_CHANGE,
         data: {some: 'data'},
@@ -1728,7 +1726,7 @@ describe('webex.cc', () => {
 
     beforeEach(() => {
       emitSpy = jest.spyOn(webex.cc, 'emit');
-      messageCallback = mockWebSocketManager.on.mock.calls.find((c) => c[0] === 'message')[1];
+      messageCallback = webex.cc['handleWebsocketMessage'];
     });
 
     it('should emit AGENT_STATION_LOGIN_SUCCESS on CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS with mapped payload', () => {

@@ -18,6 +18,7 @@ import {
 
 import WebinarCollection from './collection';
 import LoggerProxy from '../common/logs/logger-proxy';
+import MeetingUtil from '../meeting/util';
 import {sanitizeParams} from './utils';
 
 /**
@@ -390,6 +391,8 @@ const Webinar = WebexPlugin.extend({
    * @returns {Promise}
    */
   setPracticeSessionState(enabled) {
+    const meeting = this.getValidatedWebinarMeeting();
+
     return this.request({
       method: HTTP_VERBS.PATCH,
       uri: `${this.locusUrl}/controls`,
@@ -398,10 +401,16 @@ const Webinar = WebexPlugin.extend({
           enabled,
         },
       },
-    }).catch((error) => {
-      LoggerProxy.logger.error('Meeting:webinar#setPracticeSessionState failed', error);
-      throw error;
-    });
+    })
+      .then((response) => {
+        MeetingUtil.updateLocusFromApiResponse(meeting, response);
+
+        return response;
+      })
+      .catch((error) => {
+        LoggerProxy.logger.error('Meeting:webinar#setPracticeSessionState failed', error);
+        throw error;
+      });
   },
 
   /**

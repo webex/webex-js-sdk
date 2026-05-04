@@ -184,10 +184,7 @@ export default class ControlsOptionsManager {
         mainLocusUrl: this.mainLocusUrl,
       });
 
-      return previous.then(() =>
-        // @ts-ignore
-        this.request.request(requestParams)
-      );
+      return previous.then(() => this.sendControlsRequest(requestParams));
     }, Promise.resolve());
   }
 
@@ -274,8 +271,27 @@ export default class ControlsOptionsManager {
       mainLocusUrl: this.mainLocusUrl,
     });
 
-    // @ts-ignore
-    return this.request.request(requestParams);
+    return this.sendControlsRequest(requestParams);
+  }
+
+  /**
+   * Sends a controls request to Locus. When authorizingLocusUrl is present in the body,
+   * we use a plain request() because the response contains the main session Locus DTO
+   * instead of the breakout we're in, so we don't want to parse it as a delta.
+   * Otherwise we use locusDeltaRequest() for normal delta processing.
+   *
+   * @param {Object} requestParams - The request parameters from getControlsRequestParams.
+   * @returns {Promise<any>}
+   */
+  private sendControlsRequest(requestParams: {
+    uri: string;
+    body: Record<string, any>;
+    method: string;
+  }): Promise<any> {
+    return requestParams.body.authorizingLocusUrl
+      ? // @ts-ignore
+        this.request.request(requestParams)
+      : this.request.locusDeltaRequest(requestParams);
   }
 
   /**
