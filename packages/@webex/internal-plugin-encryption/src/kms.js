@@ -11,7 +11,6 @@ import {WebexPlugin} from '@webex/webex-core';
 import {Context, Request, Response} from 'node-kms';
 import jose from 'node-jose';
 import {omit} from 'lodash';
-import uuid from 'uuid';
 
 import KMSBatcher, {TIMEOUT_SYMBOL} from './kms-batcher';
 import validateKMS, {KMSError} from './kms-certificate-validation';
@@ -295,7 +294,7 @@ const KMS = WebexPlugin.extend({
       uri: awsKms ? '/awsKmsCmk' : '/cmk',
       assignedOrgId,
       customerMasterKey,
-      requestId: uuid.v4(),
+      requestId: crypto.randomUUID(),
       customerMasterKeyBackup: awsKms ? customerMasterKeyBackup : undefined,
       customerMasterKeyRole: awsKms ? customerMasterKeyRole : undefined,
     }).then((res) => {
@@ -319,7 +318,7 @@ const KMS = WebexPlugin.extend({
       method: 'retrieve',
       uri: awsKms ? '/awsKmsCmk' : '/cmk',
       assignedOrgId,
-      requestId: uuid.v4(),
+      requestId: crypto.randomUUID(),
     }).then((res) => {
       this.logger.info('kms: finish to get all customer master keys');
 
@@ -362,7 +361,7 @@ const KMS = WebexPlugin.extend({
       uri: keyId,
       keyState,
       assignedOrgId,
-      requestId: uuid.v4(),
+      requestId: crypto.randomUUID(),
     }).then((res) => {
       this.logger.info('kms: finish to change the customer master key state to {}', keyState);
 
@@ -384,7 +383,7 @@ const KMS = WebexPlugin.extend({
       method: 'delete',
       uri: awsKms ? '/awsKmsCmk' : '/cmk',
       assignedOrgId,
-      requestId: uuid.v4(),
+      requestId: crypto.randomUUID(),
     }).then((res) => {
       this.logger.info('kms: finish to delete all customer master keys');
 
@@ -406,7 +405,7 @@ const KMS = WebexPlugin.extend({
       uri: 'default',
       keyState: 'ACTIVE',
       assignedOrgId,
-      requestId: uuid.v4(),
+      requestId: crypto.randomUUID(),
     }).then((res) => {
       this.logger.info('kms: finish to return to global master key');
 

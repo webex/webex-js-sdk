@@ -64,8 +64,6 @@
 | 2026-01-22 | ampersand-collection | ^2.0.2 | packages/@webex/webex-core | npm_stale(8y) | npm_last_publish:2018-01-10T01:18:04.377Z ; deprecated:false | High |  |  |
 | 2026-01-22 | crypto-js | ^4.1.1 | packages/@webex/webex-core | npm_stale(2y) | npm_last_publish:2023-10-24T22:20:29.229Z ; deprecated:false | High |  |  |
 | 2026-01-22 | node-scr | ^0.3.0 | packages/@webex/internal-plugin-encryption | npm_stale(5y) | npm_last_publish:2020-10-21T17:38:28.760Z ; deprecated:false | High |  |  |
-| 2026-01-22 | isomorphic-webcrypto | ^2.3.8 | packages/@webex/internal-plugin-encryption | npm_stale(4y) | npm_last_publish:2021-02-27T04:53:05.017Z ; deprecated:false | High |  |  |
-| 2026-01-22 | valid-url | ^1.0.9 | packages/@webex/internal-plugin-encryption | npm_stale(12y) | npm_last_publish:2013-07-31T03:27:38.576Z ; deprecated:false | High |  |  |
 | 2026-01-22 | node-jose | ^2.2.0 | packages/@webex/internal-plugin-encryption | npm_stale(2y) | npm_last_publish:2023-02-16T15:32:58.548Z ; deprecated:false | High |  |  |
 | 2026-01-22 | @ciscospark/test-users-legacy | ^1.2.0 | packages/@webex/internal-plugin-lyra | npm_stale(6y) | npm_last_publish:2019-06-04T17:43:53.524Z ; deprecated:false | High |  |  |
 | 2026-01-22 | ip-anonymize | ^0.1.0 | packages/@webex/plugin-meetings | npm_stale(6y) | npm_last_publish:2019-06-05T02:53:26.824Z ; deprecated:false | High |  |  |
