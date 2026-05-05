@@ -7,6 +7,7 @@ import {METHOD_START_MESSAGE} from '../common/constants';
 import {
   filterMobiusUris,
   handleCallingClientErrors,
+  isValidServiceDomain,
   uploadLogs,
   validateServiceData,
 } from '../common/Utils';
@@ -27,6 +28,7 @@ import {
   ALLOWED_SERVICES,
   HTTP_METHODS,
   MobiusServers,
+  ServiceData,
   WebexRequestPayload,
   RegistrationStatus,
   UploadLogsResponse,
@@ -50,6 +52,7 @@ import {
   METHODS,
   NETWORK_FLAP_TIMEOUT,
   DEVICES_ENDPOINT_RESOURCE,
+  WCC_CALLING_RTMS_DOMAIN,
 } from './constants';
 import Line from './line';
 import {ILine} from './line/types';
@@ -87,6 +90,8 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   private metricManager: IMetricManager;
 
   private sdkConfig?: CallingClientConfig;
+
+  private serviceData: ServiceData;
 
   private primaryMobiusUris: string[];
 
@@ -128,16 +133,16 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     this.webex = this.sdkConnector.getWebex();
 
     this.sdkConfig = config;
-    const serviceData = this.sdkConfig?.serviceData?.indicator
+    this.serviceData = this.sdkConfig?.serviceData?.indicator
       ? this.sdkConfig.serviceData
       : {indicator: ServiceIndicator.CALLING, domain: ''};
 
     const logLevel = this.sdkConfig?.logger?.level ? this.sdkConfig.logger.level : LOGGER.ERROR;
     log.setLogger(logLevel, CALLING_CLIENT_FILE);
-    validateServiceData(serviceData);
+    validateServiceData(this.serviceData);
 
-    this.callManager = getCallManager(this.webex, serviceData.indicator);
-    this.metricManager = getMetricManager(this.webex, serviceData.indicator);
+    this.callManager = getCallManager(this.webex, this.serviceData.indicator);
+    this.metricManager = getMetricManager(this.webex, this.serviceData.indicator);
 
     this.mediaEngine = Media;
 
@@ -202,9 +207,58 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }
 
     await this.getMobiusServers();
+
+    // Auto-fetch RTMS domain from service catalog for contact-center flows
+    if (
+      this.serviceData.indicator === ServiceIndicator.CONTACT_CENTER &&
+      !this.serviceData.domain
+    ) {
+      const rtmsDomain = this.getRTMSDomain();
+
+      this.serviceData.domain = rtmsDomain;
+      if (this.sdkConfig?.serviceData) {
+        this.sdkConfig.serviceData.domain = this.serviceData.domain;
+      }
+    }
+
+    if (!isValidServiceDomain(this.serviceData)) {
+      throw new Error('Invalid service domain.');
+    }
+
     await this.createLine();
 
     this.setupNetworkEventListeners();
+  }
+
+  /**
+   * Retrieves the RTMS domain from the service catalog for contact-center flows.
+   *
+   * @returns The RTMS domain from catalog when available.
+   */
+  private getRTMSDomain(): string {
+    log.info('Fetching RTMS domain from service catalog', {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.GET_RTMS_DOMAIN,
+    });
+
+    try {
+      const rtmsURL = this.webex.internal.services.get(WCC_CALLING_RTMS_DOMAIN);
+      const url = new URL(rtmsURL);
+
+      log.info(`RTMS domain resolved from catalog: ${url.hostname}`, {
+        file: CALLING_CLIENT_FILE,
+        method: METHODS.GET_RTMS_DOMAIN,
+      });
+
+      return url.hostname;
+    } catch (error) {
+      log.warn(`Failed to fetch RTMS domain from service catalog: ${error}`, {
+        file: CALLING_CLIENT_FILE,
+        method: METHODS.GET_RTMS_DOMAIN,
+      });
+
+      return '';
+    }
   }
 
   /**
@@ -706,7 +760,7 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
       this.primaryMobiusUris,
       this.backupMobiusUris,
       this.getLoggingLevel(),
-      this.sdkConfig?.serviceData,
+      this.serviceData,
       this.sdkConfig?.jwe
     );
 

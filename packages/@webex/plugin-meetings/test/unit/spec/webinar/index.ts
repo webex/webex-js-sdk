@@ -176,6 +176,42 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#getValidatedWebinarMeeting', () => {
+      it('returns the meeting when its locusUrl matches the webinar locusUrl', () => {
+        const meeting = {locusUrl: 'locusUrl'};
+        webex.meetings.getMeetingByType = sinon.stub().returns(meeting);
+        webinar.locusUrl = 'locusUrl';
+
+        assert.equal(webinar.getValidatedWebinarMeeting(), meeting);
+      });
+
+      it('returns undefined and warns when the resolved meeting locusUrl does not match', () => {
+        const warnStub = sinon.stub(LoggerProxy.logger, 'warn');
+        const meeting = {locusUrl: 'other-locus-url'};
+        webex.meetings.getMeetingByType = sinon.stub().returns(meeting);
+        webinar.locusUrl = 'locusUrl';
+
+        assert.isUndefined(webinar.getValidatedWebinarMeeting());
+        assert.calledOnce(warnStub);
+      });
+
+      it('returns undefined when no meeting is resolved', () => {
+        webex.meetings.getMeetingByType = sinon.stub().returns(undefined);
+
+        assert.isUndefined(webinar.getValidatedWebinarMeeting());
+      });
+
+      it('returns undefined and warns when webinar locusUrl is not yet initialized', () => {
+        const warnStub = sinon.stub(LoggerProxy.logger, 'warn');
+        const meeting = {locusUrl: 'some-url'};
+        webex.meetings.getMeetingByType = sinon.stub().returns(meeting);
+        webinar.locusUrl = undefined;
+
+        assert.isUndefined(webinar.getValidatedWebinarMeeting());
+        assert.calledOnce(warnStub);
+      });
+    });
+
     describe('#cleanUp', () => {
       it('delegates to cleanupPSDataChannel', () => {
         const cleanupPSDataChannelStub = sinon.stub(webinar, 'cleanupPSDataChannel').resolves();
@@ -187,17 +223,14 @@ describe('plugin-meetings', () => {
     });
 
     describe('#cleanupPSDataChannel', () => {
-      let meeting;
+      let relayListener;
 
       beforeEach(() => {
-        meeting = {
-          processRelayEvent: sinon.stub(),
-        };
-
-        webex.meetings.getMeetingByType = sinon.stub().returns(meeting);
+        relayListener = sinon.stub();
+        webinar._practiceSessionRelayListener = relayListener;
       });
 
-      it('disconnects the practice session channel and removes the relay listener', async () => {
+      it('disconnects the practice session channel and removes the tracked relay listener', async () => {
         await webinar.cleanupPSDataChannel();
 
         assert.calledOnceWithExactly(
@@ -208,8 +241,28 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(
           webex.internal.llm.off,
           `event:relay.event:${LLM_PRACTICE_SESSION}`,
-          meeting.processRelayEvent
+          relayListener
         );
+        assert.isNull(webinar._practiceSessionRelayListener);
+      });
+
+      it('skips relay listener removal when no listener has been tracked', async () => {
+        webinar._practiceSessionRelayListener = null;
+
+        await webinar.cleanupPSDataChannel();
+
+        const relayOffCalls = webex.internal.llm.off.args.filter(
+          ([event]) => event === `event:relay.event:${LLM_PRACTICE_SESSION}`
+        );
+        assert.equal(relayOffCalls.length, 0);
+      });
+
+      it('does not consult the meeting collection during cleanup', async () => {
+        webex.meetings.getMeetingByType = sinon.stub();
+
+        await webinar.cleanupPSDataChannel();
+
+        assert.notCalled(webex.meetings.getMeetingByType);
       });
 
       it('removes a pending online listener if one exists', async () => {
@@ -240,6 +293,7 @@ describe('plugin-meetings', () => {
       beforeEach(() => {
         processRelayEvent = sinon.stub();
         meeting = {
+          locusUrl: 'locusUrl',
           isJoined: sinon.stub().returns(true),
           processRelayEvent,
           locusInfo: {
@@ -418,19 +472,30 @@ describe('plugin-meetings', () => {
         assert.calledOnce(webex.internal.llm.registerAndConnect);
       });
 
-      it('rebinds relay listener after successful connect', async () => {
+      it('tracks and binds the relay listener after successful connect', async () => {
         await webinar.updatePSDataChannel();
 
-        assert.calledWith(
-          webex.internal.llm.off,
-          `event:relay.event:${LLM_PRACTICE_SESSION}`,
-          processRelayEvent
-        );
+        // Stores the exact listener reference for deterministic cleanup
+        assert.equal(webinar._practiceSessionRelayListener, processRelayEvent);
         assert.calledWith(
           webex.internal.llm.on,
           `event:relay.event:${LLM_PRACTICE_SESSION}`,
           processRelayEvent
         );
+      });
+
+      it('removes a previously tracked relay listener before re-binding on reconnect', async () => {
+        const previousListener = sinon.stub();
+        webinar._practiceSessionRelayListener = previousListener;
+
+        await webinar.updatePSDataChannel();
+
+        assert.calledWith(
+          webex.internal.llm.off,
+          `event:relay.event:${LLM_PRACTICE_SESSION}`,
+          previousListener
+        );
+        assert.equal(webinar._practiceSessionRelayListener, processRelayEvent);
       });
 
       it('subscribes to transcription when caption intent is enabled', async () => {
@@ -551,7 +616,7 @@ describe('plugin-meetings', () => {
           updateMediaShares = sinon.stub()
           webinar.webex.meetings = {
             getMeetingByType: sinon.stub().returns({
-              id: 'meeting-id',
+              id: 'meeting-id', locusUrl: 'locusUrl',
               isJoined: sinon.stub().returns(false),
               updateLLMConnection: sinon.stub(),
               shareStatus: SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE,
@@ -606,7 +671,7 @@ describe('plugin-meetings', () => {
 
           webinar.webex.meetings = {
             getMeetingByType: sinon.stub().returns({
-              id: 'meeting-id',
+              id: 'meeting-id', locusUrl: 'locusUrl',
               isJoined: sinon.stub().returns(false),
               updateLLMConnection: sinon.stub(),
               shareStatus: SHARE_STATUS.REMOTE_SHARE_ACTIVE,
@@ -1034,7 +1099,7 @@ describe('plugin-meetings', () => {
           // @ts-ignore
           webinar.webex.meetings = {
             getMeetingByType: sinon.stub().returns({
-              id: 'meeting-id',
+              id: 'meeting-id', locusUrl: 'locusUrl',
               locusInfo: {
                 links:{
                   resources: {
@@ -1051,7 +1116,7 @@ describe('plugin-meetings', () => {
         it('throws an error if attendeeSearchUrl is not available', async () => {
           webinar.webex.meetings = {
             getMeetingByType: sinon.stub().returns({
-              id: 'meeting-id',
+              id: 'meeting-id', locusUrl: 'locusUrl',
               locusInfo: {
                 links:{
                   resources: {
