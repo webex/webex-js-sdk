@@ -35,11 +35,11 @@ The `Voicemail` module provides APIs for managing voicemail messages across mult
 | **Initialize** | Initializes the voicemail connector, resolving XSI endpoints and authentication for the selected backend. |
 | **List Voicemails** | Retrieves paginated, sorted voicemail lists. WXC/BWRKS use XSI VoiceMessagingMessages API; UCM uses VG Gateway API. |
 | **Voicemail Content** | Fetches the audio content (media type + base64 content) for a specific voicemail message. |
-| **Voicemail Summary** | Retrieves quantitative summary (new, old, urgent message counts). Only supported on WXC. |
+| **Voicemail Summary** | Retrieves quantitative summary (new, old, urgent message counts) via XSI `MessageSummary` endpoint. Only supported on WXC; BWRKS and UCM return `null`. |
 | **Mark Read/Unread** | Updates the read status of a voicemail message. |
 | **Delete Voicemail** | Deletes a voicemail message by its messageId. |
-| **Voicemail Transcript** | Retrieves the text transcript of a voicemail. Only supported on WXC. |
-| **Contact Resolution** | Resolves caller identity from calling party info (userId, display name). Only supported on WXC. |
+| **Voicemail Transcript** | Retrieves the text transcript of a voicemail via XSI. Only supported on WXC; BWRKS and UCM return `null`. |
+| **Contact Resolution** | Resolves caller identity from `CallingPartyInfo` (name, userId, address). Only supported on WXC; BWRKS and UCM return `null`. |
 | **Metrics Integration** | Automatically submits success/error metrics for every voicemail operation via MetricManager. |
 | **Multi-Backend Support** | Delegates to WXC, Broadworks, or UCM connectors based on user entitlements. |
 
@@ -88,6 +88,34 @@ type SummaryInfo = {
   oldMessages: number;
   newUrgentMessages: number;
   oldUrgentMessages: number;
+};
+```
+
+#### MessageInfo (voicemail list item)
+
+```typescript
+type ResponseString$ = { $: string };
+type ResponseNumber$ = { $: number };
+
+type MessageInfo = {
+  duration: ResponseString$;
+  callingPartyInfo: CallingPartyInfo;
+  time: ResponseNumber$;
+  messageId: ResponseString$;
+  read: ResponseString$ | object;  // empty object {} means read=true (UCM convention)
+};
+```
+
+Note: Fields use `ResponseString$`/`ResponseNumber$` wrapper types with a `$` property to match the XSI JSON format. Access values as `message.messageId.$`, `message.time.$`, etc.
+
+#### CallingPartyInfo
+
+```typescript
+type CallingPartyInfo = {
+  name: ResponseString$;
+  userId?: ResponseString$;
+  address: ResponseString$;
+  userExternalId?: ResponseString$;
 };
 ```
 
@@ -162,25 +190,69 @@ console.log('Transcript:', transcript?.data.voicemailTranscript);
 
 ---
 
+## Implementation Notes
+
+### HTTP Client Usage
+
+All three backends use `this.webex.request()` exclusively (no browser `fetch`).
+
+| Backend | Auth Mechanism | Notes |
+| ------- | -------------- | ----- |
+| WXC | FedRAMP: `Authorization` header via `getUserToken()`; otherwise: none | Auth headers cached at `init()` time |
+| Broadworks | BW token fetched from `broadworksIdpProxy` service, used as `Bearer {bwtoken}` | Token decoded to extract userId |
+| UCM | Implicit SDK auth | Adds `orgId`, `deviceUrl`, `mercuryHostname` headers for content requests |
+
+### WXC messageId Path Convention
+
+In WXC/BWRKS, the `messageId` returned from `getVoicemailList` is a **full XSI path** (e.g., `/v2.0/user/{userId}/VoiceMessagingMessages/{id}`). Operations concatenate it directly to `xsiEndpoint`:
+
+```typescript
+// Content:  {xsiEndpoint}{messageId}
+// Mark read: {xsiEndpoint}{messageId}/MarkAsRead
+// Delete:   {xsiEndpoint}{messageId} (DELETE method)
+// Transcript: {xsiEndpoint}{messageId}/transcript
+```
+
+### WXC Pagination (Client-Side Caching)
+
+WXC fetches the **entire** voicemail list from XSI on `refresh=true`, sorts it, and stores it in an in-memory cache keyed by a random `context` string. Subsequent calls paginate from this cache using `fetchVoicemailList(context, offset, limit)`. Returns status 204 when offset exceeds available messages.
+
+### UCM Pagination (Server-Side)
+
+UCM passes `offset`, `limit`, and `sortOrder` as query parameters to the VG Gateway, which handles pagination server-side.
+
+### Metrics Integration
+
+The facade submits metrics for every operation via `MetricManager`:
+- Success (2xx): `METRIC_EVENT.VOICEMAIL` with `METRIC_TYPE.BEHAVIORAL`
+- Failure (non-2xx): `METRIC_EVENT.VOICEMAIL_ERROR` with status code and error message
+
+Metric actions: `get_voicemails`, `get_voicemail_content`, `get_voicemail_summary`, `mark_read`, `mark_unread`, `delete`, `transcript`
+
+---
+
 ## Dependencies
 
 ### Runtime Dependencies
 
 | Package | Purpose |
 | ------- | ------- |
-| `webex` (SDK) | HTTP requests, XSI Actions, VG Gateway, Mercury WebSocket |
+| `webex` (SDK) | HTTP requests via `webex.request()`, Mercury WebSocket event subscription |
 
 ### Internal Dependencies
 
 | Module | Purpose |
 | ------ | ------- |
-| `SDKConnector` | Singleton bridge to Webex SDK, Mercury listener registration |
-| `Eventing<T>` | Typed event emitter base class |
-| `MetricManager` | Submits voicemail success/error metrics |
+| `SDKConnector` | Singleton bridge to Webex SDK, Mercury listener registration/unregistration (UCM content) |
+| `Eventing<T>` | Typed event emitter base class (Voicemail extends `Eventing<VoicemailEventTypes>`) |
+| `MetricManager` | Submits voicemail success/error metrics via `getMetricManager(webex)` |
 | `Logger` | Structured logging with file/method context |
 | `getCallingBackEnd` | Determines calling backend (WXC, UCM, BWRKS) |
-| `getXsiActionEndpoint` | Resolves XSI Actions endpoint |
-| `getVgActionEndpoint` | Resolves VG Gateway endpoint for UCM |
+| `getXsiActionEndpoint` | Resolves XSI Actions endpoint (WXC, BWRKS) |
+| `getVgActionEndpoint` | Resolves VG Gateway endpoint (UCM) |
+| `getSortedVoicemailList` | Sorts voicemail messages by time |
+| `storeVoicemailList` / `fetchVoicemailList` | Client-side pagination cache for WXC/BWRKS |
+| `resolveContact` | Contact resolution utility (WXC only) |
 | `serviceErrorCodeHandler` | Standardized error response formatting |
 | `uploadLogs` | Uploads diagnostic logs on errors |
 

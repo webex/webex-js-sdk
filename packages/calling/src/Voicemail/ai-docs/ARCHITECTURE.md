@@ -130,16 +130,21 @@ sequenceDiagram
 
     alt refresh=true
         WXC->>XSI: GET {xsiEndpoint}/v2.0/user/{userId}/VoiceMessagingMessages?format=json
+        Note over WXC,XSI: Uses webex.request() with optional FedRAMP auth headers
         XSI-->>WXC: VoicemailList JSON
-        WXC->>WXC: Parse messageInfoList, sort, store in cache
+        WXC->>WXC: Parse messageInfoList, sort via getSortedVoicemailList()
+        WXC->>WXC: storeVoicemailList(context, messageinfo) — cache full list in memory
     end
 
-    WXC->>WXC: fetchVoicemailList(context, offset, limit)
+    WXC->>WXC: fetchVoicemailList(context, offset, limit) — paginate from cached list
+    Note over WXC: Returns 204 (NO_VOICEMAIL_STATUS_CODE) if no more messages available
     WXC-->>VM: VoicemailResponseEvent
 
     VM->>VM: submitMetric(response, GET_VOICEMAILS)
     VM-->>App: VoicemailResponseEvent
 ```
+
+Note: WXC pagination is **client-side** — the entire voicemail list is fetched from XSI on `refresh=true` and cached locally. Subsequent calls with `refresh=false` paginate from the cache.
 
 ### 3. Get Voicemail Content (UCM — Async)
 
@@ -151,19 +156,22 @@ sequenceDiagram
     participant Mercury as Mercury WebSocket
 
     App->>UCM: getVoicemailContent(messageId)
-    UCM->>VG: GET {vgEndpoint}/vmgateway/api/v1/Users/{userId}/voicemails/{messageId}/content
+    UCM->>VG: GET {vgEndpoint}/vmgateway/api/v1/users/{userId}/voicemails/{messageId}/content
+    Note over UCM,VG: Headers: orgId, deviceUrl, mercuryHostname
     VG-->>UCM: Response
 
     alt statusCode 200
         UCM-->>App: {voicemailContent: {type, content}}
     else statusCode 202 (processing)
         UCM->>Mercury: registerListener('event:ucm.voicemail_download_complete')
-        Mercury-->>UCM: voicemail_download_complete event
+        Mercury-->>UCM: voicemail_download_complete event (contains messageId)
 
-        UCM->>VG: GET .../voicemails/{messageId}/content (retry)
+        UCM->>VG: GET .../voicemails/{event.data.messageId}/content (retry)
         VG-->>UCM: 200 {voicemailContent}
-        UCM->>Mercury: unregisterListener(...)
+        UCM->>Mercury: unregisterListener('event:ucm.voicemail_download_complete')
         UCM-->>App: {voicemailContent: {type, content}}
+    else other status
+        UCM-->>App: reject with error response
     end
 ```
 
@@ -186,7 +194,7 @@ sequenceDiagram
 
 ## Key Constants
 
-### API Endpoints
+### API Endpoints (from `Voicemail/constants.ts`)
 
 | Constant | Value | Description |
 |----------|-------|-------------|
@@ -196,10 +204,25 @@ sequenceDiagram
 | `MARK_AS_UNREAD` | `'MarkAsUnread'` | XSI mark as unread endpoint |
 | `MESSAGE_MEDIA_CONTENT` | `'messageMediaContent'` | XML tag for voicemail content |
 | `MESSAGE_SUMMARY` | `'MessageSummary'` | XSI message summary path |
+| `CALLS` | `'calls'` | XSI calls path segment (for summary URL) |
 | `BW_TOKEN_FETCH_ENDPOINT` | `'/idp/bwtoken/fetch'` | Broadworks token endpoint |
 | `VMGATEWAY` | `'vmgateway'` | UCM VG Gateway path segment |
 | `API_V1` | `'api/v1'` | UCM VG API version |
 | `VOICEMAILS` | `'voicemails'` | UCM voicemails path segment |
+| `OFFSET` | `'?offset'` | UCM offset query param (includes `?`) |
+| `LIMIT` | `'&limit'` | UCM limit query param (includes `&`) |
+| `SORT_ORDER` | `'&sortOrder'` | UCM sort order query param (includes `&`) |
+
+### Constants from `common/constants.ts`
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `BW_XSI_ENDPOINT_VERSION` | `'v2.0'` | XSI API version used in URLs |
+| `USER` | `'user'` | XSI user path segment (singular) |
+| `USERS` | `'users'` | UCM VG users path segment (plural, lowercase) |
+| `CONTENT` | `'content'` | UCM voicemail content path segment |
+| `TRANSCRIPT` | `'transcript'` | WXC transcript path segment |
+| `RAW_REQUEST` | `'rawRequest'` | Key to access raw XML response from `webex.request()` |
 
 ### Pagination Defaults
 
@@ -208,6 +231,44 @@ sequenceDiagram
 | `OFFSET_INDEX` | `0` | Default pagination offset |
 | `OFFSET_LIMIT` | `100` | Default pagination limit |
 | `NO_VOICEMAIL_STATUS_CODE` | `204` | Status when no more voicemails |
+
+### HTTP Client Pattern
+
+All backends use `this.webex.request()` (never browser `fetch`).
+
+| Backend | Auth Handling | Custom Headers |
+|---------|---------------|----------------|
+| WXC | FedRAMP: manual `Authorization` header; otherwise: none | Optional auth headers spread into request |
+| Broadworks | XSI Access Token (`Bearer {bwtoken}`) sent in each request | Token-based auth |
+| UCM | None (implicit SDK auth) | `orgId`, `deviceUrl`, `mercuryHostname` on content requests |
+
+### URL Patterns
+
+**WXC Voicemail List:**
+```
+{xsiEndpoint}/v2.0/user/{userId}/VoiceMessagingMessages?format=json
+```
+
+**WXC Voicemail Operations (content, mark read, delete, transcript):**
+```
+{xsiEndpoint}{messageId}[/MarkAsRead|MarkAsUnread|transcript]
+```
+Note: `messageId` from the voicemail list is a **full path** starting with `/` (e.g., `/v2.0/user/{id}/VoiceMessagingMessages/{msgId}`). It is concatenated directly to `xsiEndpoint` without an additional slash.
+
+**WXC Voicemail Summary:**
+```
+{xsiEndpoint}/v2.0/user/{userId}/calls/MessageSummary
+```
+
+**UCM Voicemail List:**
+```
+{vgEndpoint}/vmgateway/api/v1/users/{userId}/voicemails/?offset={offset}&limit={limit}&sortOrder={sort}
+```
+
+**UCM Voicemail Operations:**
+```
+{vgEndpoint}/vmgateway/api/v1/users/{userId}/voicemails/{messageId}[/content]
+```
 
 ---
 
@@ -227,9 +288,12 @@ sequenceDiagram
 **Symptoms:** `getVoicemailList` returns empty list
 
 **Possible Causes:**
-- `refresh` parameter not set to `true` on first call
+- `refresh` parameter not set to `true` on first call (WXC/BWRKS cache is empty until first refresh)
 - No voicemails exist for the user
 - XSI/VG service unavailable
+- Response `messageInfoList` is an empty object (`Object.keys().length === 0`)
+
+**WXC/BWRKS behavior:** Returns `statusCode: 204` with `message: 'No additional voicemails'` when offset exceeds available messages.
 
 ### 3. UCM Content Returns 202
 
