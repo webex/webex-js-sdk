@@ -1356,7 +1356,7 @@ describe('plugin-meetings', () => {
             );
           });
         });
-        describe('#getSitePreferences', () => {
+        describe('#fetchSitePreferencesMeViaSite', () => {
           const sitePreferencesResponse = {
             scheduling: {
               supportScheduleWebinar: true,
@@ -1365,68 +1365,48 @@ describe('plugin-meetings', () => {
           };
 
           beforeEach(() => {
-            webex.meetings.request.getSitePreferences = sinon
+            webex.meetings.request.fetchSitePreferencesMeViaSite = sinon
               .stub()
               .resolves(sitePreferencesResponse);
           });
 
-          it('should have #getSitePreferences', () => {
-            assert.exists(webex.meetings.getSitePreferences);
+          it('should have #fetchSitePreferencesMeViaSite', () => {
+            assert.exists(webex.meetings.fetchSitePreferencesMeViaSite);
           });
 
-          it('gets site preferences for the preferred Webex site', async () => {
+          it('fetches scheduling preferences for the preferred Webex site by default', async () => {
             webex.meetings.preferredWebexSite = 'go.webex.com';
 
-            const result = await webex.meetings.getSitePreferences();
+            const result = await webex.meetings.fetchSitePreferencesMeViaSite();
 
             assert.deepEqual(result, sitePreferencesResponse);
-            assert.calledOnceWithExactly(webex.meetings.request.getSitePreferences, {
-              siteUrl: 'go.webex.com',
-            });
+            assert.calledOnceWithExactly(
+              webex.meetings.request.fetchSitePreferencesMeViaSite,
+              'go.webex.com',
+              ['scheduling']
+            );
           });
 
-          it('gets site preferences for the provided Webex site', async () => {
-            webex.meetings.preferredWebexSite = 'preferred.webex.com';
+          it('forwards custom preference sections to the request helper', async () => {
+            webex.meetings.preferredWebexSite = 'go.webex.com';
 
-            await webex.meetings.getSitePreferences({siteUrl: 'go.webex.com'});
+            await webex.meetings.fetchSitePreferencesMeViaSite(['scheduling', 'custom']);
 
-            assert.calledOnceWithExactly(webex.meetings.request.getSitePreferences, {
-              siteUrl: 'go.webex.com',
-            });
-          });
-
-          it('forwards site preference options to the request helper', async () => {
-            await webex.meetings.getSitePreferences({
-              siteUrl: 'go.webex.com',
-              select: ['scheduling', 'pmr'],
-              siteName: 'custom-site',
-            });
-
-            assert.calledOnceWithExactly(webex.meetings.request.getSitePreferences, {
-              siteUrl: 'go.webex.com',
-              select: ['scheduling', 'pmr'],
-              siteName: 'custom-site',
-            });
+            assert.calledOnceWithExactly(
+              webex.meetings.request.fetchSitePreferencesMeViaSite,
+              'go.webex.com',
+              ['scheduling', 'custom']
+            );
           });
 
           it('rejects when no Webex site is available', async () => {
             webex.meetings.preferredWebexSite = '';
 
             await assert.isRejected(
-              webex.meetings.getSitePreferences(),
-              'No site URL available. Call register() first or provide options.siteUrl.'
+              webex.meetings.fetchSitePreferencesMeViaSite(),
+              'No preferred Webex site available. Call register() before fetching site preferences.'
             );
-            assert.notCalled(webex.meetings.request.getSitePreferences);
-          });
-
-          it('rejects when the configured Webex site is blank', async () => {
-            webex.meetings.preferredWebexSite = '   ';
-
-            await assert.isRejected(
-              webex.meetings.getSitePreferences(),
-              'No site URL available. Call register() first or provide options.siteUrl.'
-            );
-            assert.notCalled(webex.meetings.request.getSitePreferences);
+            assert.notCalled(webex.meetings.request.fetchSitePreferencesMeViaSite);
           });
         });
         describe('Static shortcut proxy methods', () => {

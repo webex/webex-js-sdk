@@ -3,36 +3,12 @@ import {StatelessWebexPlugin} from '@webex/webex-core';
 
 import LoggerProxy from '../common/logs/logger-proxy';
 import {HTTP_VERBS, API, RESOURCE} from '../constants';
-import type {
-  GetSitePreferencesOptions,
-  SitePreferencesResponse,
-  SitePreferencesSelect,
+import {
+  DEFAULT_SITE_PREFERENCE_SELECT,
+  type SitePreferenceSelect,
+  type SitePreferencesResponse,
 } from './meetings.types';
-
-const DEFAULT_SITE_PREFERENCES_SELECT = ['pmr', 'audioVideo', 'scheduling'];
-const WEBEX_SITE_SUFFIX = '.webex.com';
-
-const normalizeSiteUrl = (siteUrl: string) =>
-  siteUrl
-    .trim()
-    .replace(/^(https?:)?\/\//, '')
-    .split(/[/?#]/)[0];
-
-const getSiteName = (siteUrl: string) => {
-  const normalizedSiteUrl = normalizeSiteUrl(siteUrl);
-
-  return normalizedSiteUrl.endsWith(WEBEX_SITE_SUFFIX)
-    ? normalizedSiteUrl.slice(0, -WEBEX_SITE_SUFFIX.length)
-    : normalizedSiteUrl;
-};
-
-const getSelectQuery = (select?: SitePreferencesSelect | null) => {
-  if (!select || (Array.isArray(select) && select.length === 0)) {
-    return DEFAULT_SITE_PREFERENCES_SELECT.join(',');
-  }
-
-  return Array.isArray(select) ? select.join(',') : select;
-};
+import MeetingsUtil from './util';
 
 /**
  * @class MeetingRequest
@@ -76,37 +52,25 @@ export default class MeetingRequest extends StatelessWebexPlugin {
   }
 
   /**
-   * Get appapi site preferences for a Webex site.
+   * Fetches appapi user site preferences for a Webex site.
    *
-   * @param {object} options
-   * @param {string} options.siteUrl - Webex site URL, for example "go.webex.com".
-   * @param {string[]|string} [options.select] - Preference sections to fetch.
-   * @param {string} [options.siteName] - Site name query override.
+   * @param {string} siteUrl - Webex site URL, for example "go.webex.com".
+   * @param {string[]} [selectOptions] - Preference sections to fetch.
    * @returns {Promise<SitePreferencesResponse>} site preferences response body
    * @public
    * @memberof MeetingRequest
    */
-  getSitePreferences({
-    siteUrl,
-    select,
-    siteName,
-  }: GetSitePreferencesOptions & {siteUrl: string}): Promise<SitePreferencesResponse> {
-    const normalizedSiteUrl = normalizeSiteUrl(siteUrl);
-
-    if (!normalizedSiteUrl) {
-      return Promise.reject(
-        new Error('No site URL available. Call register() first or provide options.siteUrl.')
-      );
-    }
+  fetchSitePreferencesMeViaSite(
+    siteUrl: string,
+    selectOptions: SitePreferenceSelect = DEFAULT_SITE_PREFERENCE_SELECT
+  ): Promise<SitePreferencesResponse> {
+    const select = encodeURIComponent(selectOptions.join(','));
+    const siteName = encodeURIComponent(MeetingsUtil.getSiteName(siteUrl));
 
     // @ts-ignore
     return this.request({
       method: HTTP_VERBS.GET,
-      uri: `https://${normalizedSiteUrl}/wbxappapi/v1/users/me/preference`,
-      qs: {
-        select: getSelectQuery(select),
-        siteurl: siteName || getSiteName(normalizedSiteUrl),
-      },
+      uri: `https://${siteUrl}/wbxappapi/v1/users/me/preference?select=${select}&siteurl=${siteName}`,
     }).then((res) => res.body);
   }
 

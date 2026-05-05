@@ -75,6 +75,20 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#getSiteName', () => {
+      it('gets the site name from a standard Webex site', () => {
+        assert.equal(MeetingsUtil.getSiteName('go.webex.com'), 'go');
+      });
+
+      it('gets the site name from a my Webex site', () => {
+        assert.equal(MeetingsUtil.getSiteName('go.my.webex.com'), 'go.my');
+      });
+
+      it('returns null when the site is empty', () => {
+        assert.equal(MeetingsUtil.getSiteName(''), null);
+      });
+    });
+
     describe('#getThisDevice', () => {
       it('return null if no devices in self', () => {
         const newLocus = {};

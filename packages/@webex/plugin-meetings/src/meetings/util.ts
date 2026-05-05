@@ -39,6 +39,7 @@ import {EndMeetingReason, LocusFullState} from '../locus-info/types';
  */
 
 const MeetingsUtil: any = {};
+const myMeetingSitesList = ['.my.', '.mydmz.', '.mybts.', '.mydev.', '.myats2.', '.myats.'];
 
 MeetingsUtil.getMeetingAddedType = (type: DESTINATION_TYPE) =>
   type === DESTINATION_TYPE.LOCUS_ID ? _INCOMING_ : _CREATED_;
@@ -151,6 +152,30 @@ MeetingsUtil.parseDefaultSiteFromMeetingPreferences = (userPreferences) => {
   }
 
   return result;
+};
+
+MeetingsUtil.getSiteName = (site: string) => {
+  if (!site) {
+    return null;
+  }
+
+  let siteName;
+
+  myMeetingSitesList.forEach((mySiteString) => {
+    if (!siteName && site.includes(mySiteString)) {
+      const secondDot = site.indexOf('.', site.indexOf('.') + 1);
+
+      siteName = site.substring(0, secondDot);
+    }
+  });
+
+  if (siteName) {
+    return siteName;
+  }
+
+  siteName = site.substring(0, site.indexOf('.'));
+
+  return siteName;
 };
 
 /**

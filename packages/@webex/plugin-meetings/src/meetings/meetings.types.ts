@@ -32,21 +32,13 @@ export type MeetingRegistrationStatus = {
   checkH264Support: boolean;
 };
 
-export type SitePreferencesSelect = string[] | string;
+export const DEFAULT_SITE_PREFERENCE_SELECT = ['scheduling'];
 
-export type GetSitePreferencesOptions = {
-  siteUrl?: string;
-  select?: SitePreferencesSelect;
-  siteName?: string;
-};
+export type SitePreferenceSelect = string[];
 
 export type SitePreferencesResponse = {
-  pmr?: Record<string, unknown>;
-  audioVideo?: Record<string, unknown>;
   scheduling?: {
     supportScheduleWebinar?: boolean;
     webinarWebLink?: string;
-    [key: string]: unknown;
   };
-  [key: string]: unknown;
 };

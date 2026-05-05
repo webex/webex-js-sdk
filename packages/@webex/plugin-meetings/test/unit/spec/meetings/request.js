@@ -38,13 +38,13 @@ describe('plugin-meetings/meetings/request', () => {
     sinon.restore();
   });
 
-  describe('#getSitePreferences', () => {
+  describe('#fetchSitePreferencesMeViaSite', () => {
     const assertRequest = (expectedOptions) => {
       assert.calledOnceWithExactly(request, expectedOptions);
     };
 
-    it('uses default preference sections and derived site name', async () => {
-      const result = await meetingRequest.getSitePreferences({siteUrl: 'go.webex.com'});
+    it('fetches scheduling preferences by default', async () => {
+      const result = await meetingRequest.fetchSitePreferencesMeViaSite('go.webex.com');
 
       assert.deepEqual(result, {
         scheduling: {
@@ -54,140 +54,26 @@ describe('plugin-meetings/meetings/request', () => {
       });
       assertRequest({
         method: 'GET',
-        uri: 'https://go.webex.com/wbxappapi/v1/users/me/preference',
-        qs: {
-          select: 'pmr,audioVideo,scheduling',
-          siteurl: 'go',
-        },
+        uri: 'https://go.webex.com/wbxappapi/v1/users/me/preference?select=scheduling&siteurl=go',
       });
     });
 
     it('derives the site name for my.webex.com sites', async () => {
-      await meetingRequest.getSitePreferences({siteUrl: 'go.my.webex.com'});
+      await meetingRequest.fetchSitePreferencesMeViaSite('go.my.webex.com');
 
       assertRequest({
         method: 'GET',
-        uri: 'https://go.my.webex.com/wbxappapi/v1/users/me/preference',
-        qs: {
-          select: 'pmr,audioVideo,scheduling',
-          siteurl: 'go.my',
-        },
+        uri: 'https://go.my.webex.com/wbxappapi/v1/users/me/preference?select=scheduling&siteurl=go.my',
       });
     });
 
-    it('supports custom preference section arrays', async () => {
-      await meetingRequest.getSitePreferences({
-        siteUrl: 'go.webex.com',
-        select: ['scheduling', 'pmr'],
-      });
+    it('supports custom preference sections', async () => {
+      await meetingRequest.fetchSitePreferencesMeViaSite('go.webex.com', ['scheduling', 'custom']);
 
       assertRequest({
         method: 'GET',
-        uri: 'https://go.webex.com/wbxappapi/v1/users/me/preference',
-        qs: {
-          select: 'scheduling,pmr',
-          siteurl: 'go',
-        },
+        uri: 'https://go.webex.com/wbxappapi/v1/users/me/preference?select=scheduling%2Ccustom&siteurl=go',
       });
-    });
-
-    it('supports custom preference section strings', async () => {
-      await meetingRequest.getSitePreferences({
-        siteUrl: 'go.webex.com',
-        select: 'scheduling',
-      });
-
-      assertRequest({
-        method: 'GET',
-        uri: 'https://go.webex.com/wbxappapi/v1/users/me/preference',
-        qs: {
-          select: 'scheduling',
-          siteurl: 'go',
-        },
-      });
-    });
-
-    it('supports custom site name overrides', async () => {
-      await meetingRequest.getSitePreferences({
-        siteUrl: 'go.webex.com',
-        siteName: 'custom-site',
-      });
-
-      assertRequest({
-        method: 'GET',
-        uri: 'https://go.webex.com/wbxappapi/v1/users/me/preference',
-        qs: {
-          select: 'pmr,audioVideo,scheduling',
-          siteurl: 'custom-site',
-        },
-      });
-    });
-
-    it('normalizes site URLs with protocols and paths', async () => {
-      await meetingRequest.getSitePreferences({
-        siteUrl: 'https://go.webex.com/webappng/sites/go/meeting/scheduler',
-      });
-
-      assertRequest({
-        method: 'GET',
-        uri: 'https://go.webex.com/wbxappapi/v1/users/me/preference',
-        qs: {
-          select: 'pmr,audioVideo,scheduling',
-          siteurl: 'go',
-        },
-      });
-    });
-
-    it('normalizes protocol-relative site URLs', async () => {
-      await meetingRequest.getSitePreferences({siteUrl: '//go.webex.com'});
-
-      assertRequest({
-        method: 'GET',
-        uri: 'https://go.webex.com/wbxappapi/v1/users/me/preference',
-        qs: {
-          select: 'pmr,audioVideo,scheduling',
-          siteurl: 'go',
-        },
-      });
-    });
-
-    [
-      {
-        description: 'empty preference section arrays',
-        select: [],
-      },
-      {
-        description: 'empty preference section strings',
-        select: '',
-      },
-      {
-        description: 'null preference sections',
-        select: null,
-      },
-    ].forEach(({description, select}) => {
-      it(`uses default preference sections for ${description}`, async () => {
-        await meetingRequest.getSitePreferences({
-          siteUrl: 'go.webex.com',
-          select,
-        });
-
-        assertRequest({
-          method: 'GET',
-          uri: 'https://go.webex.com/wbxappapi/v1/users/me/preference',
-          qs: {
-            select: 'pmr,audioVideo,scheduling',
-            siteurl: 'go',
-          },
-        });
-      });
-    });
-
-    it('rejects when site URL normalization does not produce a host', async () => {
-      await assert.isRejected(
-        meetingRequest.getSitePreferences({siteUrl: '   '}),
-        'No site URL available. Call register() first or provide options.siteUrl.'
-      );
-      assert.notCalled(request);
     });
 
     it('does not suppress request errors', async () => {
@@ -196,7 +82,7 @@ describe('plugin-meetings/meetings/request', () => {
       request.rejects(error);
 
       await assert.isRejected(
-        meetingRequest.getSitePreferences({siteUrl: 'go.webex.com'}),
+        meetingRequest.fetchSitePreferencesMeViaSite('go.webex.com'),
         'site preferences failed'
       );
     });

@@ -55,11 +55,12 @@ import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
 import MeetingCollection from './collection';
 import {
+  DEFAULT_SITE_PREFERENCE_SELECT,
   MEETING_KEY,
-  GetSitePreferencesOptions,
   INoiseReductionEffect,
   IVirtualBackgroundEffect,
   MeetingRegistrationStatus,
+  SitePreferenceSelect,
   SitePreferencesResponse,
 } from './meetings.types';
 import MeetingsUtil from './util';
@@ -1408,31 +1409,28 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
-   * Gets appapi site preferences for a Webex site.
+   * Fetches appapi user site preferences for the preferred Webex site.
    *
-   * @param {object} [options]
-   * @param {string} [options.siteUrl] - Webex site URL. Defaults to preferredWebexSite.
-   * @param {string[]|string} [options.select] - Preference sections to fetch.
-   * @param {string} [options.siteName] - Site name query override.
+   * @param {string[]} [selectOptions] - Preference sections to fetch.
    * @returns {Promise<SitePreferencesResponse>} site preferences response body
    * @public
    * @memberof Meetings
    * @example
-   * const preferences = await webex.meetings.getSitePreferences();
+   * const preferences = await webex.meetings.fetchSitePreferencesMeViaSite();
    * const canScheduleWebinar = preferences.scheduling?.supportScheduleWebinar;
    */
-  public getSitePreferences(
-    options: GetSitePreferencesOptions = {}
+  public fetchSitePreferencesMeViaSite(
+    selectOptions: SitePreferenceSelect = DEFAULT_SITE_PREFERENCE_SELECT
   ): Promise<SitePreferencesResponse> {
-    const siteUrl = options.siteUrl || this.preferredWebexSite;
-
-    if (!siteUrl?.trim()) {
+    if (!this.preferredWebexSite) {
       return Promise.reject(
-        new Error('No site URL available. Call register() first or provide options.siteUrl.')
+        new Error(
+          'No preferred Webex site available. Call register() before fetching site preferences.'
+        )
       );
     }
 
-    return this.request.getSitePreferences({...options, siteUrl});
+    return this.request.fetchSitePreferencesMeViaSite(this.preferredWebexSite, selectOptions);
   }
 
   /**
