@@ -163,15 +163,18 @@ sequenceDiagram
     WXC->>Hydra: GET /people/{personId}/features/callForwarding?orgId=...
     Hydra-->>WXC: CallForwardSetting
 
-    alt CFA enabled with destination
+    WXC->>WXC: Extract cfa = callForwarding.always
+
+    alt cfa.enabled AND cfa.destination is set
         WXC-->>App: {callSetting: {enabled: true, destination: '+15551234'}}
-    else CFA enabled but no destination
+    else No destination (regardless of cfa.enabled)
+        Note over WXC: Falls through to voicemail check
         WXC->>Hydra: GET /people/{personId}/features/voicemail?orgId=...
         Hydra-->>WXC: VoicemailSetting
 
-        alt VM enabled and sendAllCalls enabled
+        alt vm.enabled AND vm.sendAllCalls.enabled
             WXC-->>App: {callSetting: {enabled: true, destination: 'VOICEMAIL'}}
-        else No CFA set
+        else VM not configured for sendAllCalls
             WXC-->>App: {callSetting: {enabled: false, destination: undefined}}
         end
     end
@@ -190,16 +193,21 @@ sequenceDiagram
     alt No directoryNumber provided
         UCM-->>App: {statusCode: 400, error: 'Directory Number is mandatory for UCM backend'}
     else directoryNumber provided
-        UCM->>API: GET /people/{userId}/features/callforwarding?orgId=...
+        UCM->>UCM: Select API URL (prod/int/fedramp)
+        UCM->>API: GET {webexApisUrl}/people/{userId}/features/callforwarding?orgId=...
+        Note over UCM,API: Uses webex.request() with CF_ENDPOINT.toLowerCase()
         API-->>UCM: {callForwarding: {always: [{dn, destination, destinationVoicemailEnabled, e164Number}]}}
 
-        UCM->>UCM: Find CFA entry matching directoryNumber
+        UCM->>UCM: Find entry where dn.endsWith(directoryNumber) OR e164Number.endsWith(directoryNumber)
 
         alt Match found
+            Note over UCM: enabled = destinationVoicemailEnabled || !!destination
             alt destinationVoicemailEnabled
                 UCM-->>App: {callSetting: {enabled: true, destination: 'VOICEMAIL'}}
             else has destination
                 UCM-->>App: {callSetting: {enabled: true, destination: '...'}}
+            else neither voicemail nor destination
+                UCM-->>App: {callSetting: {enabled: false, destination: undefined}}
             end
         else No match
             UCM-->>App: {statusCode: 404, error: 'Directory Number is not assigned to the user'}
@@ -211,18 +219,55 @@ sequenceDiagram
 
 ## Key Constants
 
-### API Endpoints
+### API Endpoints (from `CallSettings/constants.ts`)
 
 | Constant | Value | Description |
 |----------|-------|-------------|
 | `PEOPLE_ENDPOINT` | `'people'` | Hydra People API path segment |
 | `DND_ENDPOINT` | `'features/doNotDisturb'` | DND feature endpoint |
-| `CF_ENDPOINT` | `'features/callForwarding'` | Call forwarding feature endpoint |
+| `CF_ENDPOINT` | `'features/callForwarding'` | Call forwarding feature endpoint (UCM lowercases this) |
 | `VM_ENDPOINT` | `'features/voicemail'` | Voicemail feature endpoint |
 | `CALL_WAITING_ENDPOINT` | `'CallWaiting'` | XSI call waiting service endpoint |
 | `XSI_VERSION` | `'v2.0'` | XSI Actions API version |
 | `ORG_ENDPOINT` | `'orgId'` | Organization ID query parameter |
 | `USER_ENDPOINT` | `'user'` | XSI user path segment |
+
+### Constants from `common/constants.ts`
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `SERVICES_ENDPOINT` | `'services'` | XSI services path segment |
+| `VOICEMAIL` | `'VOICEMAIL'` | Voicemail destination string (used by UCM connector) |
+| `WEBEX_API_CONFIG_PROD_URL` | `'https://webexapis.com/v1/uc/config'` | UCM production API base |
+| `WEBEX_API_CONFIG_INT_URL` | `'https://integration.webexapis.com/v1/uc/config'` | UCM integration/test API base |
+| `WEBEX_API_CONFIG_FEDRAMP_URL` | `'https://api-usgov.webex.com/v1/uc/config'` | UCM FedRAMP API base |
+
+### HTTP Client Pattern
+
+| Method | Backend | Client | Notes |
+|--------|---------|--------|-------|
+| `getCallWaitingSetting` | WXC | Browser `fetch` | Parses XML response via `DOMParser` |
+| All other methods | WXC | `this.webex.request()` | JSON request/response |
+| `getCallForwardAlwaysSetting` | UCM | `this.webex.request()` | Custom headers for FedRAMP only |
+
+### URL Patterns
+
+**WXC Call Waiting (XSI):**
+```
+{xsiEndpoint}/v2.0/user/{userId}/services/CallWaiting
+```
+
+**WXC Hydra APIs (DND, CF, VM):**
+```
+{hydraEndpoint}/people/{personId}/features/{feature}?orgId={orgId}
+```
+Where `{personId}` and `{orgId}` are Hydra-encoded via `inferIdFromUuid()`.
+
+**UCM Call Forward Always:**
+```
+{webexApisUrl}/people/{userId}/features/callforwarding?orgId={orgId}
+```
+Where `{webexApisUrl}` is selected based on prod/int/fedramp config. Note: uses raw `userId` and `orgId` (not Hydra-encoded).
 
 ---
 
@@ -239,23 +284,33 @@ sequenceDiagram
 **Symptoms:** `getCallWaitingSetting` returns an error
 
 **Possible Causes:**
-- XSI Actions endpoint not resolvable
-- User token expired
+- XSI Actions endpoint not resolvable via `getXsiActionEndpoint()`
+- User token expired (fetched via `this.webex.credentials.getUserToken()`)
 - XSI service unavailable
+- XML parse error (response doesn't contain `<active>` element)
 
 **What happens internally:**
-The WXC connector lazily resolves the XSI endpoint on first call and caches it. If resolution fails, the error propagates.
+The WXC connector lazily resolves the XSI endpoint on first call via `getXsiActionEndpoint(webex, loggerContext, CALLING_BACKEND.WXC)` and caches it in `this.xsiEndpoint`. Uses browser `fetch` (not `webex.request()`) for this endpoint. Parses the XML response using `DOMParser` and extracts `<active>` element text content.
 
 ### 3. CFA Returns Wrong State
 
 **Symptoms:** `getCallForwardAlwaysSetting` returns unexpected enabled/destination values
 
 **What happens internally (WXC):**
-1. Fetches full call forwarding settings
-2. If CFA `enabled` is true AND `destination` is set: returns the destination
-3. If CFA `enabled` is true but no destination: checks voicemail settings
-4. If voicemail `enabled` AND `sendAllCalls.enabled`: returns `destination: 'VOICEMAIL'`
-5. Otherwise: returns `enabled: false`
+1. Fetches full call forwarding settings via `getCallForwardSetting()`
+2. Extracts `cfa = callForwarding.always`
+3. If `cfa.enabled === true` AND `cfa.destination` is set: returns that destination immediately
+4. Otherwise (regardless of `cfa.enabled`): falls through to voicemail check
+5. Fetches voicemail settings via `getVoicemailSetting()`
+6. If `vm.enabled === true` AND `vm.sendAllCalls.enabled === true`: returns `{enabled: true, destination: 'VOICEMAIL'}`
+7. Otherwise: returns `{enabled: false, destination: undefined}`
+
+**What happens internally (UCM):**
+1. Validates `directoryNumber` is provided (returns 400 if not)
+2. Fetches call forwarding from Webex API (response has `always` as an array)
+3. Finds entry where `dn.endsWith(directoryNumber)` OR `e164Number.endsWith(directoryNumber)`
+4. If match: `enabled = destinationVoicemailEnabled || !!destination`; destination is `'VOICEMAIL'` or the actual destination
+5. If no match: returns 404
 
 ### 4. UCM CFA Requires Directory Number
 

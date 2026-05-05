@@ -31,12 +31,12 @@ The `CallSettings` module provides APIs for retrieving and updating user call se
 
 | Capability | Description |
 | ----------- | ----------- |
-| **Get Call Waiting** | Retrieves call waiting enabled/disabled status. WXC uses XSI Actions XML API. UCM returns 501 (not supported). |
-| **Get/Set Do Not Disturb** | Reads or updates DND status via Hydra People API (WXC) or returns 501 (UCM). |
-| **Get/Set Call Forwarding** | Reads or updates full call forwarding settings (always, busy, no answer, business continuity) via Hydra People API (WXC) or returns 501 (UCM). |
-| **Get/Set Voicemail Settings** | Reads or updates voicemail configuration via Hydra People API (WXC) or returns 501 (UCM). |
-| **Get Call Forward Always** | Composite API that checks both call forwarding and voicemail settings to determine if CFA is set to a destination or to voicemail. WXC uses Hydra API; UCM uses Webex APIs with directory number matching. |
-| **Multi-Backend Support** | Automatically selects the correct backend connector (WXC/Broadworks or UCM) based on user entitlements. |
+| **Get Call Waiting** | Retrieves call waiting enabled/disabled status. WXC uses XSI Actions XML API via browser `fetch`. UCM returns 501 (not supported). |
+| **Get/Set Do Not Disturb** | Reads or updates DND status via Hydra People API using `webex.request()` (WXC) or returns 501 (UCM). |
+| **Get/Set Call Forwarding** | Reads or updates full call forwarding settings (always, busy, no answer, business continuity) via Hydra People API using `webex.request()` (WXC) or returns 501 (UCM). |
+| **Get/Set Voicemail Settings** | Reads or updates voicemail configuration via Hydra People API using `webex.request()` (WXC) or returns 501 (UCM). |
+| **Get Call Forward Always** | Composite API. WXC: checks call forwarding settings first; if CFA is enabled with a destination returns it, otherwise falls through to voicemail check (returns `VOICEMAIL` if `sendAllCalls.enabled`). UCM: queries Webex APIs and matches `directoryNumber` against `dn` or `e164Number` fields using `endsWith()`. |
+| **Multi-Backend Support** | Automatically selects the correct backend connector (WXC/Broadworks or UCM) based on user entitlements via `getCallingBackEnd()`. |
 
 ---
 
@@ -92,11 +92,41 @@ type CallForwardAlwaysSetting = {
 
 #### CallForwardSetting
 
-Contains `callForwarding` with `always`, `busy`, `noAnswer` sub-objects and `businessContinuity`. Each sub-object has `enabled`, `destination`, and `destinationVoicemailEnabled` fields.
+```typescript
+type CallForwardSetting = {
+  callForwarding: {
+    always: CallForwardAlwaysSetting;  // CFA settings
+    busy: { enabled: boolean; destinationVoicemailEnabled?: boolean; destination?: string; };
+    noAnswer: { enabled: boolean; numberOfRings?: number; destinationVoicemailEnabled?: boolean; destination?: string; };
+  };
+  businessContinuity: { enabled: boolean; destinationVoicemailEnabled?: boolean; destination?: string; };
+};
+```
 
 #### VoicemailSetting
 
 Contains `enabled`, `sendAllCalls`, `sendBusyCalls`, `sendUnansweredCalls`, `notifications`, `transferToNumber`, `emailCopyOfMessage`, `messageStorage`, and `faxMessage` configuration objects.
+
+Key fields for CFA logic: `enabled` and `sendAllCalls.enabled` — when both are true, CFA is considered set to voicemail.
+
+#### CallForwardingSettingsUCM (UCM-specific response type)
+
+```typescript
+type CallForwardingAlwaysSettingsUCM = {
+  dn: string;                        // Directory number
+  destination?: string;              // Forward destination
+  destinationVoicemailEnabled: boolean;
+  e164Number: string;                // E.164 formatted number
+};
+
+type CallForwardingSettingsUCM = {
+  callForwarding: {
+    always: CallForwardingAlwaysSettingsUCM[];  // Array (multiple lines)
+  };
+};
+```
+
+Note: The UCM response has `always` as an **array** (unlike WXC which has a single object), since UCM users can have multiple directory numbers.
 
 ---
 
@@ -160,6 +190,63 @@ await callSettings.setCallForwardSetting(cfSettings);
 
 ---
 
+## Implementation Notes
+
+### HTTP Client Usage
+
+| Method | Backend | HTTP Client | Auth Handling |
+| ------ | ------- | ----------- | ------------- |
+| `getCallWaitingSetting` | WXC | Browser `fetch` | Manual `Authorization` header via `getUserToken()` |
+| `getDoNotDisturbSetting` | WXC | `this.webex.request()` | Automatic via SDK |
+| `setDoNotDisturbSetting` | WXC | `this.webex.request()` | Automatic via SDK |
+| `getCallForwardSetting` | WXC | `this.webex.request()` | Automatic via SDK |
+| `setCallForwardSetting` | WXC | `this.webex.request()` | Automatic via SDK |
+| `getVoicemailSetting` | WXC | `this.webex.request()` | Automatic via SDK |
+| `setVoicemailSetting` | WXC | `this.webex.request()` | Automatic via SDK |
+| `getCallForwardAlwaysSetting` | WXC | `this.webex.request()` (via CF/VM methods) | Automatic via SDK |
+| `getCallForwardAlwaysSetting` | UCM | `this.webex.request()` | FedRAMP: manual `authorization` header; otherwise: implicit |
+
+### ID Format Conversion (WXC)
+
+The WXC connector converts raw device UUIDs to Hydra-format IDs at construction time:
+
+```typescript
+this.personId = inferIdFromUuid(this.webex.internal.device.userId, DecodeType.PEOPLE);
+this.orgId = inferIdFromUuid(this.webex.internal.device.orgId, DecodeType.ORGANIZATION);
+```
+
+These Hydra-format IDs are used in all Hydra People API URLs.
+
+### UCM API URL Selection
+
+The UCM connector selects the Webex API base URL based on configuration:
+
+| Condition | Base URL |
+| --------- | -------- |
+| `webex.config.fedramp === true` | `https://api-usgov.webex.com/v1/uc/config` |
+| `useProdWebexApis === true` (default) | `https://webexapis.com/v1/uc/config` |
+| `useProdWebexApis === false` | `https://integration.webexapis.com/v1/uc/config` |
+
+### UCM Directory Number Matching
+
+The UCM connector matches the provided `directoryNumber` against CFA entries using `endsWith()`:
+
+```typescript
+callForwarding.always.find(
+  (item) => item.dn.endsWith(directoryNumber) || item.e164Number.endsWith(directoryNumber)
+);
+```
+
+This allows partial matching (e.g., passing `'1234'` matches `'+15551234'`).
+
+### UCM CF_ENDPOINT Lowercase
+
+The UCM connector lowercases `CF_ENDPOINT` when constructing URLs:
+- WXC uses: `features/callForwarding` (camelCase)
+- UCM uses: `features/callforwarding` (lowercase, via `.toLowerCase()`)
+
+---
+
 ## Dependencies
 
 ### Runtime Dependencies
@@ -175,8 +262,8 @@ await callSettings.setCallForwardSetting(cfSettings);
 | `SDKConnector` | Singleton bridge to Webex SDK |
 | `Logger` | Structured logging with file/method context |
 | `getCallingBackEnd` | Determines calling backend (WXC, UCM, BWRKS) |
-| `getXsiActionEndpoint` | Resolves XSI Actions endpoint for call waiting |
-| `inferIdFromUuid` | Converts device userId/orgId to Hydra format |
+| `getXsiActionEndpoint` | Resolves XSI Actions endpoint for call waiting (lazy, cached after first call) |
+| `inferIdFromUuid` | Converts device userId/orgId to Hydra-format IDs (`DecodeType.PEOPLE`, `DecodeType.ORGANIZATION`) |
 | `serviceErrorCodeHandler` | Standardized error response formatting |
 | `uploadLogs` | Uploads diagnostic logs on error |
 
