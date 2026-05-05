@@ -16,22 +16,28 @@ import {
   UnknownResponse,
   // NotFound
 } from './errors';
+import type {MobiusSocketConfig} from './config';
+import type {SocketResponse} from './socket/types';
+import type {
+  MobiusSocketCloseOptions,
+  MobiusSocketDisconnectResult,
+  MobiusSocketRequestOptions,
+  MobiusSocketRequestPayload,
+  MobiusSocketResponseError,
+  MobiusSocketWebex,
+} from './types';
 
 const normalReconnectReasons = ['idle', 'done (forced)'];
 const DEFAULT_MOBIUS_WEBSOCKET_SESSION = 'mobius-websocket-session';
 const MOBIUS_SOCKET_NAMESPACE = 'MobiusSocket';
 const TOKEN_REFRESH_INTERVAL_MS = 1 * 60 * 60 * 1000; // 1 hour
 
-function normalizeMobiusAuthToken(token) {
-  if (typeof token !== 'string') {
-    return token;
-  }
-
+function normalizeMobiusAuthToken(token: string) {
   return token.replace(/^Bearer\s+/i, '');
 }
 
 class MobiusSocket extends EventEmitter {
-  constructor(webex, config = {}) {
+  constructor(webex: MobiusSocketWebex, config: Partial<MobiusSocketConfig> = {}) {
     super();
 
     if (!webex) {
@@ -58,7 +64,7 @@ class MobiusSocket extends EventEmitter {
     this._bindInternalEvents();
   }
 
-  off(eventName, listener) {
+  off(eventName: string, listener?: (...args: unknown[]) => void) {
     if (listener) {
       return super.off(eventName, listener);
     }
@@ -278,7 +284,7 @@ class MobiusSocket extends EventEmitter {
    * Get the last error.
    * @returns {any} The last error.
    */
-  getLastError() {
+  getLastError(): unknown {
     return this.lastError;
   }
 
@@ -304,7 +310,7 @@ class MobiusSocket extends EventEmitter {
    * @param {string} [sessionId=this.defaultSessionId] - The session identifier.
    * @returns {string|undefined} The connected websocket URL, or undefined when not connected.
    */
-  getConnectedWebSocketUrl(sessionId = this.defaultSessionId) {
+  getConnectedWebSocketUrl(sessionId = this.defaultSessionId): string | undefined {
     const socket = this.getSocket(sessionId);
 
     if (!socket?.connected) {
@@ -320,7 +326,10 @@ class MobiusSocket extends EventEmitter {
    * @param {string} [sessionId=this.defaultSessionId] - The session identifier
    * @returns {Promise}
    */
-  send(payload, sessionId = this.defaultSessionId) {
+  send(
+    payload: string | Record<string, unknown>,
+    sessionId = this.defaultSessionId
+  ): Promise<void> {
     const socket = this.getSocket(sessionId);
 
     if (!socket || !socket.connected) {
@@ -337,7 +346,11 @@ class MobiusSocket extends EventEmitter {
    * @param {Object} [options={}] - Additional request options.
    * @returns {Promise<Object>}
    */
-  sendWssRequest(payload, sessionIdOrOptions = this.defaultSessionId, options = {}) {
+  sendWssRequest(
+    payload: MobiusSocketRequestPayload,
+    sessionIdOrOptions: string | MobiusSocketRequestOptions = this.defaultSessionId,
+    options: MobiusSocketRequestOptions = {}
+  ): Promise<SocketResponse> {
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       return Promise.reject(new Error('`payload` is required'));
     }
@@ -384,7 +397,7 @@ class MobiusSocket extends EventEmitter {
    * Check if the plugin is connected
    * @returns {boolean} True if connected
    */
-  isConnected() {
+  isConnected(): boolean {
     return this.connected;
   }
 
@@ -393,7 +406,7 @@ class MobiusSocket extends EventEmitter {
    * @param {string} [sessionId] - Optional session identifier
    * @returns {boolean|undefined} True if the socket is connected
    */
-  hasConnectedSockets(sessionId) {
+  hasConnectedSockets(sessionId): boolean {
     if (sessionId) {
       return Boolean(this.sockets.get(sessionId)?.connected);
     }
@@ -412,7 +425,7 @@ class MobiusSocket extends EventEmitter {
    * @param {string} [sessionId=this.defaultSessionId] - The session identifier
    * @returns {boolean|undefined} True if the socket is connecting
    */
-  hasConnectingSockets(sessionId = this.defaultSessionId) {
+  hasConnectingSockets(sessionId = this.defaultSessionId): boolean {
     const socket = this.sockets.get(sessionId || this.defaultSessionId);
 
     return Boolean(socket?.connecting);
@@ -424,7 +437,7 @@ class MobiusSocket extends EventEmitter {
    * @param {string} [sessionId=this.defaultSessionId] - The session identifier for this connection.
    * @returns {Promise<void>} Resolves when connection flow completes for the session.
    */
-  connect(webSocketUrl, sessionId = this.defaultSessionId) {
+  connect(webSocketUrl?: string, sessionId = this.defaultSessionId): Promise<void> {
     // First check if there's already a connection promise for this session
     if (this._connectPromises.has(sessionId)) {
       this.logger.info(
@@ -482,7 +495,7 @@ class MobiusSocket extends EventEmitter {
     return connectPromise;
   }
 
-  logout() {
+  logout(): Promise<void> {
     this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: logout() called`);
 
     return this.disconnectAll(
@@ -499,7 +512,10 @@ class MobiusSocket extends EventEmitter {
    * @param {string} [sessionId=this.defaultSessionId] - The session identifier to disconnect.
    * @returns {Promise<void>} Resolves after disconnect cleanup and close handling are initiated/completed.
    */
-  disconnect(options, sessionId = this.defaultSessionId) {
+  disconnect(
+    options?: MobiusSocketCloseOptions,
+    sessionId = this.defaultSessionId
+  ): MobiusSocketDisconnectResult {
     this.logger.info(
       `${MOBIUS_SOCKET_NAMESPACE}#disconnect: connecting state: ${
         this.connecting
@@ -554,7 +570,7 @@ class MobiusSocket extends EventEmitter {
    * @param {object} options - Close options
    * @returns {Promise} Promise that resolves when all connections are closed
    */
-  disconnectAll(options) {
+  disconnectAll(options?: MobiusSocketCloseOptions): Promise<void> {
     const disconnectPromises = [];
 
     for (const sessionId of this.sockets.keys()) {
@@ -577,10 +593,15 @@ class MobiusSocket extends EventEmitter {
     this.localClusterServiceUrls = message.localClusterServiceUrls;
   }
 
-  _createWssResponseError(response, statusCode, statusMessage) {
+  // eslint-disable-next-line class-methods-use-this
+  _createWssResponseError(
+    response: SocketResponse,
+    statusCode?: number,
+    statusMessage?: string
+  ): MobiusSocketResponseError {
     const error = new Error(
       statusMessage || `Mobius websocket request failed with status ${statusCode || 'unknown'}`
-    );
+    ) as MobiusSocketResponseError;
 
     error.name = 'MobiusSocketResponseError';
     error.statusCode = statusCode;
@@ -591,6 +612,7 @@ class MobiusSocket extends EventEmitter {
     return error;
   }
 
+  // eslint-disable-next-line class-methods-use-this
   _applyOverrides(event) {
     if (!event || !event.headers) {
       return;
@@ -790,7 +812,7 @@ class MobiusSocket extends EventEmitter {
     );
   }
 
-  _connectWithBackoff(webSocketUrl, sessionId, context = {}) {
+  _connectWithBackoff(webSocketUrl, sessionId, context = {}): Promise<void> {
     const {isShutdownSwitchover = false, attemptOptions = {}} = context;
 
     return new Promise((resolve, reject) => {
