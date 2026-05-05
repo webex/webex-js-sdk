@@ -12,6 +12,7 @@ const createConfig = () => ({
   isEndConsultEnabled: true,
   voiceVariant: 'pstn' as const,
   isRecordingEnabled: true,
+  agentId: 'agent-1',
 });
 
 describe('Task state machine', () => {
@@ -157,6 +158,18 @@ describe('Task state machine', () => {
       service.send({type: TaskEvent.WRAPUP_COMPLETE});
       expect(service.getSnapshot().value).toBe(TaskState.COMPLETED);
     });
+
+    it('completes from non-wrapup states when WRAPUP_COMPLETE arrives', () => {
+      const service = startMachine();
+      const taskData = createTaskData();
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+
+      service.send({type: TaskEvent.WRAPUP_COMPLETE, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.COMPLETED);
+    });
   });
 
   describe('consult and conference flows', () => {
@@ -179,6 +192,46 @@ describe('Task state machine', () => {
 
       expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
       expect(service.getSnapshot().context.consultDestinationAgentJoined).toBe(true);
+    });
+
+    it('HYDRATE sets consultDestinationAgentJoined when consult media has a remote party without isConsulted (EP-DN)', () => {
+      const service = startMachine();
+      const hydratedTask = createTaskData({
+        agentId: 'agent-1',
+        consultingAgentId: 'agent-1',
+        isConsulted: false,
+        consultMediaResourceId: 'consult-media-1',
+        interaction: {
+          state: 'consulting',
+          interactionId: 'interaction-1',
+          mainInteractionId: 'interaction-1',
+          participants: {
+            'agent-1': {id: 'agent-1', pType: 'AGENT', hasLeft: false},
+            'customer-1': {id: 'customer-1', pType: 'CUSTOMER', hasLeft: false},
+            'ep-dn-1': {id: 'ep-dn-1', pType: 'CUSTOMER', hasLeft: false},
+          } as any,
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              isHold: true,
+              mType: 'mainCall',
+              participants: ['agent-1', 'customer-1'],
+            },
+            'consult-media-1': {
+              mediaResourceId: 'consult-media-1',
+              mType: 'consult',
+              isHold: false,
+              participants: ['agent-1', 'ep-dn-1'],
+            },
+          } as any,
+        } as any,
+      });
+
+      service.send({type: TaskEvent.HYDRATE, taskData: hydratedTask});
+
+      const snapshot = service.getSnapshot();
+      expect(snapshot.value).toBe(TaskState.CONSULTING);
+      expect(snapshot.context.consultDestinationAgentJoined).toBe(true);
     });
 
     it('tracks consult destination, agent join, and clears on consult end', () => {

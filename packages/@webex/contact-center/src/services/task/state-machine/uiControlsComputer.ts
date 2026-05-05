@@ -12,6 +12,7 @@ import {
 } from '../types';
 import {TaskContext, UIControlConfig} from './types';
 import {TaskState, MAX_PARTICIPANTS_IN_MULTIPARTY_CONFERENCE} from './constants';
+import {resolveEffectiveVoiceTaskState} from './effectiveVoiceTaskState';
 import {
   getIsCustomerInCall,
   getConferenceParticipantsCount,
@@ -20,6 +21,7 @@ import {
   getIsConsultInProgressForConferenceControls,
   getIsConsultedAgentForControls,
   getServerHoldStateForControls,
+  isSecondaryAgent,
 } from '../TaskUtils';
 
 const DISABLED = {isVisible: false, isEnabled: false} as const;
@@ -112,6 +114,14 @@ function computeVoiceInteractionUIControls(
   const consultInProgressForVisibility = getIsConsultInProgress(taskData);
   const conferenceFromBackend = taskData ? getIsConferenceInProgress(taskData) : false;
   const consultRelationship = interaction?.callProcessingDetails?.relationshipType === 'consult';
+  // Stale relationshipType=consult often remains after consult transfer to a new primary owner.
+  // Only treat it as an active consult session for UI when the interaction is consulting or this
+  // task is the secondary (EP-DN) consult leg — not a warm-transferred main call.
+  const consultRelationshipAffectsConsultingUi = Boolean(
+    consultRelationship &&
+      interaction &&
+      (interaction.state === 'consulting' || isSecondaryAgent(interaction))
+  );
   // Note: ownership is used by some controls; keep computations local to those controls
 
   // Context flags (set by state machine actions)
@@ -131,7 +141,7 @@ function computeVoiceInteractionUIControls(
     state === TaskState.CONSULT_INITIATING ||
     state === TaskState.CONF_INITIATING ||
     consultInProgressForVisibility ||
-    consultRelationship;
+    consultRelationshipAffectsConsultingUi;
   const isConferencing = state === TaskState.CONFERENCING;
   const isWrappingUp = state === TaskState.WRAPPING_UP;
   const selfInMainCall =
@@ -226,6 +236,10 @@ function computeVoiceInteractionUIControls(
 
       if (isConsulting) {
         if (currentLeg === 'consult' && consultCallHeld) return DISABLED;
+        // Parked customer (main held) while consult is active — same UX as hasParallelConsultLeg
+        if (currentLeg === 'main' && stateImpliesHeld && consultInitiator) {
+          return VISIBLE_DISABLED;
+        }
 
         return consultInitiator && consultCallHeld ? VISIBLE_ENABLED : DISABLED;
       }
@@ -251,7 +265,12 @@ function computeVoiceInteractionUIControls(
       }
       if (isConsulting) {
         if (!consultInitiator) return DISABLED;
-        if (consultLegOnHold) return VISIBLE_DISABLED;
+        // EP-DN / payloads without consult media: parked main must not mirror consult-leg actions
+        if (currentLeg === 'main' && stateImpliesHeld) {
+          return VISIBLE_DISABLED;
+        }
+        // consultLegOnHold = consult parked while on main; disable transfer only on the consult card
+        if (consultLegOnHold && currentLeg === 'consult') return VISIBLE_DISABLED;
 
         return consultDestinationAgentJoined ? VISIBLE_ENABLED : VISIBLE_DISABLED;
       }
@@ -319,7 +338,10 @@ function computeVoiceInteractionUIControls(
       }
       if (!hasFullControls || !isConsulting) return DISABLED;
       if (!consultInitiator) return DISABLED;
-      if (consultLegOnHold) return VISIBLE_DISABLED;
+      if (currentLeg === 'main' && stateImpliesHeld) {
+        return VISIBLE_DISABLED;
+      }
+      if (consultLegOnHold && currentLeg === 'consult') return VISIBLE_DISABLED;
 
       return consultDestinationAgentJoined && !maxParticipants ? VISIBLE_ENABLED : VISIBLE_DISABLED;
     })(),
@@ -348,7 +370,10 @@ function computeVoiceInteractionUIControls(
     // MergeToConference: mirrors conference control, enabled on both legs
     mergeToConference: (() => {
       if (!isConsulting || !consultInitiator) return DISABLED;
-      if (consultLegOnHold) return VISIBLE_DISABLED;
+      if (currentLeg === 'main' && stateImpliesHeld) {
+        return VISIBLE_DISABLED;
+      }
+      if (consultLegOnHold && currentLeg === 'consult') return VISIBLE_DISABLED;
 
       return consultDestinationAgentJoined && !maxParticipants ? VISIBLE_ENABLED : VISIBLE_DISABLED;
     })(),
@@ -362,6 +387,17 @@ function computeVoiceInteractionUIControls(
       }
 
       if (hasParallelConsultLeg && state === TaskState.CONNECTED) {
+        return consultDestinationAgentJoined ? VISIBLE_ENABLED : VISIBLE_DISABLED;
+      }
+
+      // On main with consult held (e.g. after switch); hasParallelConsultLeg is false when isConsulting stays true
+      if (
+        currentLeg === 'main' &&
+        state === TaskState.CONNECTED &&
+        consultCallHeld &&
+        consultInitiator &&
+        isConsulting
+      ) {
         return consultDestinationAgentJoined ? VISIBLE_ENABLED : VISIBLE_DISABLED;
       }
 
@@ -476,8 +512,10 @@ export function computeUIControls(
 
   switch (context.uiControlConfig.channelType) {
     case TASK_CHANNEL_TYPE.VOICE: {
+      const taskData = fallbackTaskData ?? context.taskData;
+      const effectiveState = resolveEffectiveVoiceTaskState(currentState, taskData);
       const {hasConsultLeg, activeLeg, mainState, consultState} = getVoiceLegState(
-        currentState,
+        effectiveState,
         context,
         context.uiControlConfig,
         fallbackTaskData

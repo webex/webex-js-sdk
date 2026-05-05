@@ -251,6 +251,26 @@ export const isSecondaryEpDnAgent = (interaction: Interaction): boolean => {
 };
 
 /**
+ * True when we should infer `isConsulted` from EP-DN secondary interaction shape alone.
+ * After a consult transfer, metadata can still match {@link isSecondaryEpDnAgent} while the
+ * receiving agent is the new primary owner — in that case `interaction.owner` matches self and
+ * we must not mark the task as consulted.
+ */
+export const isSecondaryEpDnConsultedRecipient = (
+  interaction: Interaction | undefined,
+  selfAgentId: string | undefined
+): boolean => {
+  if (!interaction || !selfAgentId || !isSecondaryEpDnAgent(interaction)) {
+    return false;
+  }
+  if (interaction.owner && interaction.owner === selfAgentId) {
+    return false;
+  }
+
+  return true;
+};
+
+/**
  * Checks if auto-answer is enabled for the agent participant
  * @param interaction - The interaction object
  * @param agentId - Current agent ID

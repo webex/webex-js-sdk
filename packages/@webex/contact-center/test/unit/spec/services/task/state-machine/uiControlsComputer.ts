@@ -179,6 +179,83 @@ describe('uiControlsComputer consult initiator controls', () => {
     expect(uiControls.consult.endConsult).toEqual({isVisible: true, isEnabled: true});
   });
 
+  it('keeps parked main transfer/conference/end visible-disabled when consult media is absent (EP-DN)', () => {
+    const consultFlagOnlyTaskData = createTaskData({
+      agentId: 'agent-1',
+      mediaResourceId: 'interaction-1',
+      consultMediaResourceId: undefined,
+      consultingAgentId: 'agent-1',
+      isConsultInProgress: true,
+      interaction: {
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        participants: {
+          'agent-1': {id: 'agent-1', pType: 'AGENT', hasLeft: false},
+          'customer-1': {id: 'customer-1', pType: 'CUSTOMER', hasLeft: false},
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            isHold: false,
+            participants: ['agent-1', 'customer-1'],
+          },
+        } as any,
+      } as any,
+    });
+    const context = createVoiceContext({
+      taskData: consultFlagOnlyTaskData,
+      consultDestinationAgentJoined: true,
+    });
+
+    const uiControls = computeUIControls(TaskState.CONSULTING, context, context.taskData);
+
+    expect(uiControls.activeLeg).toBe('consult');
+    expect(uiControls.main.transfer).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.conference).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.mergeToConference).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.consult.transfer).toEqual({isVisible: true, isEnabled: true});
+  });
+
+  it('enables main switch, transfer, and conference after switch when hasParallelConsultLeg is false', () => {
+    const consultFlagOnlyTaskData = createTaskData({
+      agentId: 'agent-1',
+      mediaResourceId: 'interaction-1',
+      consultMediaResourceId: undefined,
+      consultingAgentId: 'agent-1',
+      isConsultInProgress: true,
+      interaction: {
+        state: 'consulting',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        participants: {
+          'agent-1': {id: 'agent-1', pType: 'AGENT', hasLeft: false},
+          'customer-1': {id: 'customer-1', pType: 'CUSTOMER', hasLeft: false},
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            isHold: false,
+            participants: ['agent-1', 'customer-1'],
+          },
+        } as any,
+      } as any,
+    });
+    const context = createVoiceContext({
+      taskData: consultFlagOnlyTaskData,
+      consultDestinationAgentJoined: true,
+      consultCallHeld: true,
+    });
+
+    const uiControls = computeUIControls(TaskState.CONSULTING, context, context.taskData);
+
+    expect(uiControls.activeLeg).toBe('main');
+    expect(uiControls.main.switch).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.transfer).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.conference).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.mergeToConference).toEqual({isVisible: true, isEnabled: true});
+  });
+
   it('shows only endConsult for consult relationship assignment payloads', () => {
     const consultRelationshipTaskData = createTaskData({
       agentId: 'agent-1',
@@ -242,5 +319,56 @@ describe('uiControlsComputer consult initiator controls', () => {
     expect(controls.exitConference).toEqual({isVisible: false, isEnabled: false});
     expect(controls.transferConference).toEqual({isVisible: false, isEnabled: false});
     expect(controls.mergeToConference).toEqual({isVisible: false, isEnabled: false});
+  });
+
+  it('full controls for new primary owner when stale relationshipType consult remains on main call', () => {
+    const transferredOwnerTask = createTaskData({
+      agentId: 'agent-2',
+      isConsulted: false,
+      consultMediaResourceId: undefined,
+      interaction: {
+        interactionId: 'main-1',
+        mainInteractionId: 'main-1',
+        state: 'connected',
+        owner: 'agent-2',
+        callProcessingDetails: {
+          relationshipType: 'consult',
+          parentInteractionId: 'main-1',
+        },
+        participants: {
+          'agent-2': {id: 'agent-2', pType: 'AGENT', hasLeft: false},
+          'customer-1': {id: 'customer-1', pType: 'CUSTOMER', hasLeft: false},
+        } as any,
+        media: {
+          'main-1': {
+            mediaResourceId: 'main-1',
+            isHold: false,
+            participants: ['agent-2', 'customer-1'],
+          },
+        } as any,
+      } as any,
+    });
+    const base = createVoiceContext({
+      taskData: transferredOwnerTask,
+      consultInitiator: false,
+      consultDestinationAgentJoined: false,
+      consultCallHeld: false,
+    });
+    const context: TaskContext = {
+      ...base,
+      uiControlConfig: {
+        ...base.uiControlConfig,
+        agentId: 'agent-2',
+      },
+    };
+
+    const uiControls = computeUIControls(TaskState.CONNECTED, context, context.taskData);
+    const {main} = uiControls;
+
+    expect(main.hold).toEqual({isVisible: true, isEnabled: true});
+    expect(main.consult).toEqual({isVisible: true, isEnabled: true});
+    expect(main.transfer).toEqual({isVisible: true, isEnabled: true});
+    expect(main.recording).toEqual({isVisible: true, isEnabled: true});
+    expect(main.end).toEqual({isVisible: true, isEnabled: true});
   });
 });

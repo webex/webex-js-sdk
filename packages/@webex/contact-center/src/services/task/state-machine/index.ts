@@ -11,6 +11,7 @@ export type {TaskStateMachine} from './TaskStateMachine';
 // Types & enums
 export {TaskState, TaskEvent} from './constants';
 export {isEventOfType} from './types';
+export {resolveEffectiveVoiceTaskState} from './effectiveVoiceTaskState';
 export type {
   TaskContext,
   TaskEventPayload,
@@ -25,4 +26,4 @@ export {guards} from './guards';
 export type {GuardParams, GuardFunction} from './guards';
 
 // Actions
-export {actions, createInitialContext} from './actions';
+export {actions, createInitialContext, deriveRecordingContextPatch} from './actions';

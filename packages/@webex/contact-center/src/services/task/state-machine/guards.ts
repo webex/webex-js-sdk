@@ -34,6 +34,14 @@ export const getTaskDataFromEvent = (event?: TaskEventPayload): TaskData | undef
     ? (event as {taskData?: TaskData}).taskData
     : undefined;
 
+/** Lowercase trim of `interaction.state` for guard comparisons (backend casing varies). */
+const interactionStateLc = (taskData: TaskData | undefined): string | undefined => {
+  const raw = taskData?.interaction?.state;
+  if (typeof raw !== 'string') return undefined;
+
+  return raw.trim().toLowerCase();
+};
+
 export const getSelfAgentId = (context: TaskContext, taskData?: TaskData): string | undefined =>
   context.uiControlConfig?.agentId ?? context.taskData?.agentId ?? taskData?.agentId;
 
@@ -61,6 +69,14 @@ export const shouldWrapUpForThisAgent = (context: TaskContext, taskData: TaskDat
   const wrapUpRequired = taskData?.wrapUpRequired === true;
   if (wrapUpRequired || participantWrapUp) {
     return true;
+  }
+  const participants = taskData?.interaction?.participants;
+  if (participants) {
+    const selfParticipant: any = participants[selfAgentId];
+    // Transfer payloads can omit/mark this participant left before explicit wrapup flags.
+    if (!selfParticipant || selfParticipant.hasLeft === true) {
+      return true;
+    }
   }
 
   const owner = taskData?.interaction?.owner;
@@ -100,13 +116,13 @@ export const guards = {
   isInteractionConsulting: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
-    return taskData?.interaction?.state === 'consulting';
+    return interactionStateLc(taskData) === 'consulting';
   },
 
   isInteractionHeld: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
-    if (taskData?.interaction?.state === 'hold') return true;
+    if (interactionStateLc(taskData) === 'hold') return true;
 
     const mainMediaId = taskData?.interaction?.mainInteractionId || taskData?.interactionId;
     if (mainMediaId && taskData?.interaction?.media?.[mainMediaId]?.isHold === true) {
@@ -119,7 +135,7 @@ export const guards = {
   isInteractionConnected: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
-    return taskData?.interaction?.state === 'connected';
+    return interactionStateLc(taskData) === 'connected';
   },
 
   isConferencingByParticipants: ({event}: GuardParams): boolean => {
@@ -168,7 +184,7 @@ export const guards = {
     if (!mainCallId) return false;
 
     // Don't downgrade while backend still reports conference.
-    if (taskData.interaction.state === 'conference') return false;
+    if (interactionStateLc(taskData) === 'conference') return false;
 
     const agentParticipantsCount = getConferenceParticipantsCount(taskData.interaction, mainCallId);
     if (agentParticipantsCount >= 2) return false;

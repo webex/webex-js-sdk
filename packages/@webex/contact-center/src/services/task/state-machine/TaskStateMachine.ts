@@ -78,6 +78,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
       [TaskEvent.HYDRATE]: {
         actions: ['updateTaskData', 'emitTaskHydrate'],
       },
+      // Wrapped-up can arrive while machine still reflects CONNECTED/CONSULTING due event ordering.
+      // Accept it globally so completion cleanup always runs and task is removed from collection.
+      [TaskEvent.WRAPUP_COMPLETE]: {
+        target: `.${TaskState.COMPLETED}`,
+        actions: ['updateTaskData'],
+      },
     },
     states: {
       [TaskState.IDLE]: {
@@ -261,7 +267,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentConsultTransferred / AgentVTeamTransferred / AgentBlindTransferred
           [TaskEvent.TRANSFER_SUCCESS]: [
             {
-              guard: guards.shouldWrapUpOrIsInitiator,
+              guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
               actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
             },
@@ -341,7 +347,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentConsultTransferred / AgentVTeamTransferred / AgentBlindTransferred
           [TaskEvent.TRANSFER_SUCCESS]: [
             {
-              guard: guards.shouldWrapUpOrIsInitiator,
+              guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
               actions: ['updateTaskData', 'markEnded', 'emitTaskWrapup'],
             },
@@ -496,7 +502,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
           [TaskEvent.TRANSFER_SUCCESS]: [
             {
-              guard: guards.shouldWrapUpOrIsInitiator,
+              guard: guards.shouldWrapUp,
               target: TaskState.WRAPPING_UP,
               actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
             },

@@ -13,6 +13,7 @@ import {
 } from './types';
 import {TaskEvent, TaskState} from './constants';
 import {DestinationType, TaskData} from '../types';
+import {getIsConsultInProgressForConferenceControls} from '../TaskUtils';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
 
 const determineConsultInitiator = (
@@ -30,7 +31,11 @@ const determineConsultInitiator = (
   return undefined;
 };
 
-const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate => {
+/**
+ * Derives recording UI / guard flags from {@link TaskData.interaction.callProcessingDetails}.
+ * Exported so {@link Task} can merge fresh task payloads into UI when no state machine event ran.
+ */
+export function deriveRecordingContextPatch(taskData?: TaskData | null): RecordingStateUpdate {
   const callProcessingDetails = taskData?.interaction?.callProcessingDetails;
 
   if (!callProcessingDetails) {
@@ -67,18 +72,40 @@ const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate 
 
   if (isPaused !== undefined) {
     update.recordingControlsAvailable = true;
-    update.recordingInProgress = !isPaused;
+    const paused = isPaused === true || String(isPaused).toLowerCase() === 'true';
+    update.recordingInProgress = !paused;
+  }
+
+  // Match {@link TaskFactory} default: pause/resume is allowed when pauseResumeEnabled is omitted.
+  // Many payloads include queue/CAD fields but omit recordingStarted/recordInProgress until later;
+  // without this, recording stays hidden and {@link Voice.pauseRecording} keeps failing prechecks.
+  const pauseResumeAllowed =
+    (callProcessingDetails as {pauseResumeEnabled?: boolean}).pauseResumeEnabled ?? true;
+
+  if (update.recordingControlsAvailable === undefined && pauseResumeAllowed) {
+    update.recordingControlsAvailable = true;
+    if (update.recordingInProgress === undefined) {
+      update.recordingInProgress = true;
+    }
+  }
+
+  if (
+    update.recordingControlsAvailable === true &&
+    update.recordingInProgress === undefined &&
+    pauseResumeAllowed
+  ) {
+    update.recordingInProgress = true;
   }
 
   return update;
-};
+}
 
 const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefined) =>
   taskData
     ? (() => {
         const updates: Partial<TaskContext> = {
           taskData,
-          ...deriveRecordingState(taskData),
+          ...deriveRecordingContextPatch(taskData),
         };
 
         if (taskData.destAgentId) {
@@ -103,13 +130,43 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
 
         if (taskData.interaction?.state === 'consulting') {
           if (!context.consultDestinationAgentJoined) {
-            const hasJoinedConsultee = Boolean(
-              taskData.interaction.participants &&
-                Object.values(taskData.interaction.participants).some(
-                  (p: any) => p?.isConsulted === true && !p?.hasLeft
+            const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
+            const participants = taskData.interaction.participants;
+            const hasJoinedConsulteeFromFlags = Boolean(
+              participants &&
+                Object.values(participants).some((p: any) => p?.isConsulted === true && !p?.hasLeft)
+            );
+            // EP-DN / telephony consult: consulted party may not carry isConsulted on participants
+            const hasRemotePartyOnConsultMedia = Boolean(
+              selfAgentId &&
+                taskData.interaction.media &&
+                Object.values(taskData.interaction.media).some((m: any) => {
+                  if (m?.mType !== 'consult' || !Array.isArray(m.participants)) return false;
+
+                  return m.participants.some((participantId: string) => {
+                    if (participantId === selfAgentId) return false;
+                    const p: any = participants?.[participantId];
+
+                    return Boolean(p && !p.hasLeft);
+                  });
+                })
+            );
+            const mainCallId = taskData.interaction.mainInteractionId || taskData.interactionId;
+            const hasJoinedPerConferenceHeuristic = Boolean(
+              selfAgentId &&
+                getIsConsultInProgressForConferenceControls(
+                  taskData.interaction,
+                  mainCallId,
+                  selfAgentId
                 )
             );
-            if (hasJoinedConsultee) updates.consultDestinationAgentJoined = true;
+            if (
+              hasJoinedConsulteeFromFlags ||
+              hasRemotePartyOnConsultMedia ||
+              hasJoinedPerConferenceHeuristic
+            ) {
+              updates.consultDestinationAgentJoined = true;
+            }
           }
 
           const effectiveConsultInitiator = updates.consultInitiator ?? context.consultInitiator;

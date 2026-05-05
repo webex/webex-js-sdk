@@ -12,6 +12,7 @@ import {
   getConferenceParticipantsCount,
   isSecondaryAgent,
   isSecondaryEpDnAgent,
+  isSecondaryEpDnConsultedRecipient,
   getConsultMediaResourceId,
 } from '../../../../../src/services/task/TaskUtils';
 import {ITask, Interaction, TaskData} from '../../../../../src/services/task/types';
@@ -469,6 +470,22 @@ describe('TaskUtils', () => {
       interaction.mediaType = 'telephony';
       interaction.callProcessingDetails = {relationshipType: 'consult', parentInteractionId: 'parent-456'};
       expect(isSecondaryEpDnAgent(interaction)).toBe(true);
+    });
+
+    it('isSecondaryEpDnConsultedRecipient is false when owner is self (post consult transfer)', () => {
+      const interaction = createInteraction();
+      interaction.mediaType = 'telephony';
+      interaction.owner = 'agent-self';
+      interaction.callProcessingDetails = {relationshipType: 'consult', parentInteractionId: 'parent-456'};
+      expect(isSecondaryEpDnConsultedRecipient(interaction, 'agent-self')).toBe(false);
+    });
+
+    it('isSecondaryEpDnConsultedRecipient is true for secondary EP-DN when owner is not self', () => {
+      const interaction = createInteraction();
+      interaction.mediaType = 'telephony';
+      interaction.owner = 'other-agent';
+      interaction.callProcessingDetails = {relationshipType: 'consult', parentInteractionId: 'parent-456'};
+      expect(isSecondaryEpDnConsultedRecipient(interaction, 'agent-self')).toBe(true);
     });
   });
 

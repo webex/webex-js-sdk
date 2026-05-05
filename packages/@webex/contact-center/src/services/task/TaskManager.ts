@@ -19,7 +19,12 @@ import {METHODS, TRANSCRIPT_EVENT_MAP} from './constants';
 import {CC_EVENTS, WrapupData} from '../config/types';
 import {ConfigFlags, LoginOption, AIAssistantEventType, AIAssistantEventName} from '../../types';
 import LoggerProxy from '../../logger-proxy';
-import {getIsConferenceInProgress, isSecondaryEpDnAgent, shouldAutoAnswerTask} from './TaskUtils';
+import {
+  getIsConferenceInProgress,
+  isSecondaryEpDnAgent,
+  isSecondaryEpDnConsultedRecipient,
+  shouldAutoAnswerTask,
+} from './TaskUtils';
 import TaskFactory from './TaskFactory';
 import WebRTC from './voice/WebRTC';
 import {TaskEvent, type TaskEventPayload} from './state-machine';
@@ -426,6 +431,16 @@ export default class TaskManager extends EventEmitter {
 
     const wasConsultedTask = Boolean(task?.data?.isConsulted);
     const computeWrapUpRequired = () => {
+      const pending = message.data.agentsPendingWrapUp;
+      if (Array.isArray(pending) && pending.length > 0 && this.agentId) {
+        return pending.includes(this.agentId);
+      }
+      if (
+        this.agentId &&
+        message.data.interaction?.participants?.[this.agentId]?.isWrapUp === true
+      ) {
+        return true;
+      }
       if (message.data.wrapUpRequired !== undefined) {
         return message.data.wrapUpRequired;
       }
@@ -478,6 +493,18 @@ export default class TaskManager extends EventEmitter {
    * Note: Task-level state transitions and event emissions are handled by
    * the task state machine via sendStateMachineEvent()
    */
+  /**
+   * Resolves `isConsulted` when building or updating task data.
+   * EP-DN secondary shape alone must not mark the new primary owner as consulted after transfer.
+   */
+  private resolveIsConsultedTaskFlag(payload: TaskData): boolean {
+    if (payload.isConsulted === true) return true;
+    // Explicit false from the server must win (e.g. consult transfer recipient); do not re-infer.
+    if (payload.isConsulted === false) return false;
+
+    return isSecondaryEpDnConsultedRecipient(payload.interaction, this.agentId);
+  }
+
   private handleTaskLifecycleEvent(context: EventContext): TaskEventActions {
     const {eventType} = context;
 
@@ -502,8 +529,6 @@ export default class TaskManager extends EventEmitter {
    */
   private handleContactReserved(context: EventContext): TaskEventActions {
     const {payload} = context;
-    const isConsultedTask =
-      payload.isConsulted === true || isSecondaryEpDnAgent(payload.interaction);
     const shouldAutoAnswer = shouldAutoAnswerTask(
       payload,
       this.agentId,
@@ -513,7 +538,7 @@ export default class TaskManager extends EventEmitter {
 
     const taskData: TaskData = {
       ...payload,
-      isConsulted: isConsultedTask,
+      isConsulted: this.resolveIsConsultedTaskFlag(payload),
       isAutoAnswering: shouldAutoAnswer,
     };
 
@@ -541,8 +566,6 @@ export default class TaskManager extends EventEmitter {
     const {payload} = context;
 
     if (!task) {
-      const isConsultedTask =
-        payload.isConsulted === true || isSecondaryEpDnAgent(payload.interaction);
       const shouldAutoAnswer = shouldAutoAnswerTask(
         payload,
         this.agentId,
@@ -551,7 +574,7 @@ export default class TaskManager extends EventEmitter {
       );
       const taskData: TaskData = {
         ...payload,
-        isConsulted: isConsultedTask,
+        isConsulted: this.resolveIsConsultedTaskFlag(payload),
         wrapUpRequired: payload.interaction?.participants?.[this.agentId]?.isWrapUp || false,
         isConferenceInProgress: getIsConferenceInProgress(payload),
         isAutoAnswering: shouldAutoAnswer,
@@ -581,14 +604,20 @@ export default class TaskManager extends EventEmitter {
     const isConsultingFlow =
       snapshot?.value === 'CONSULTING' || taskData.interaction?.state === 'consulting';
 
+    const normalizedPayload: TaskData = {
+      ...taskData,
+      isConsulted: this.resolveIsConsultedTaskFlag(taskData),
+    };
+
     const updateTaskData = isConsultingFlow
       ? {
-          ...taskData,
-          destAgentId: taskData.destAgentId ?? snapshot?.context?.consultDestinationAgentId ?? null,
+          ...normalizedPayload,
+          destAgentId:
+            normalizedPayload.destAgentId ?? snapshot?.context?.consultDestinationAgentId ?? null,
           destinationType:
-            taskData.destinationType ?? snapshot?.context?.consultDestinationType ?? null,
+            normalizedPayload.destinationType ?? snapshot?.context?.consultDestinationType ?? null,
         }
-      : taskData;
+      : normalizedPayload;
 
     task.updateTaskData(updateTaskData);
     this.taskCollection[taskData.interactionId] = task;

@@ -25,7 +25,7 @@ import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
-import {TaskState, TaskEvent} from '../state-machine';
+import {TaskState, TaskEvent, type TaskContext} from '../state-machine';
 import {WrapupData} from '../../config/types';
 import {getConsultMediaResourceId, getIsConferenceInProgress} from '../TaskUtils';
 
@@ -121,7 +121,7 @@ export default class Voice extends Task implements IVoice {
     If the media resource is not found, default to resuming the task
     */
     const snapshot = this.getStateMachineSnapshot();
-    const snapshotState = snapshot?.value as TaskState | undefined;
+    const effectiveState = this.getEffectiveVoiceTaskStateForOperation();
     const mainInteractionId = this.data.interaction?.mainInteractionId || this.data.interactionId;
     const mainMediaResource =
       this.data.interaction?.media?.[mainInteractionId]?.mediaResourceId ||
@@ -130,18 +130,17 @@ export default class Voice extends Task implements IVoice {
       this.data.interaction?.media?.[mainInteractionId]?.isHold ??
       this.data.interaction.media?.[mainMediaResource]?.isHold;
     let shouldHold = !(mediaHoldState ?? false);
-    if (snapshotState === TaskState.HELD) {
+    if (effectiveState === TaskState.HELD) {
       shouldHold = false;
-    } else if (snapshotState === TaskState.CONNECTED) {
+    } else if (effectiveState === TaskState.CONNECTED) {
       shouldHold = true;
     }
 
-    // Validate operation is allowed in current state
-    const state = snapshot;
-    if (state) {
-      const currentState = state.value as TaskState;
+    // Validate operation is allowed in current state (effective state when machine lags IDLE)
+    if (snapshot) {
+      const currentState = effectiveState;
       if (shouldHold) {
-        if (!state.matches(TaskState.CONNECTED)) {
+        if (currentState !== TaskState.CONNECTED) {
           const error = new Error(`Cannot hold call in current state: ${currentState}`);
           LoggerProxy.error('Hold operation not allowed', {
             module: CC_FILE,
@@ -150,7 +149,7 @@ export default class Voice extends Task implements IVoice {
           });
           throw error;
         }
-      } else if (!state.matches(TaskState.HELD)) {
+      } else if (currentState !== TaskState.HELD) {
         const error = new Error(`Cannot resume call in current state: ${currentState}`);
         LoggerProxy.error('Resume operation not allowed', {
           module: CC_FILE,
@@ -287,10 +286,8 @@ export default class Voice extends Task implements IVoice {
     // Validate recording is active
     const state = this.getStateMachineSnapshot();
     if (state) {
-      const {recordingControlsAvailable, recordingInProgress} = state.context as {
-        recordingControlsAvailable?: boolean;
-        recordingInProgress?: boolean;
-      };
+      const {recordingControlsAvailable, recordingInProgress} =
+        this.mergeRecordingContextFromTaskData(state.context as TaskContext);
       const recordingActive = Boolean(recordingControlsAvailable && recordingInProgress);
       if (!recordingActive) {
         const error = new Error('Recording is not active or already paused');
@@ -361,10 +358,8 @@ export default class Voice extends Task implements IVoice {
     // Validate recording is paused
     const state = this.getStateMachineSnapshot();
     if (state) {
-      const {recordingControlsAvailable, recordingInProgress} = state.context as {
-        recordingControlsAvailable?: boolean;
-        recordingInProgress?: boolean;
-      };
+      const {recordingControlsAvailable, recordingInProgress} =
+        this.mergeRecordingContextFromTaskData(state.context as TaskContext);
       const recordingPaused = Boolean(recordingControlsAvailable && !recordingInProgress);
       if (!recordingPaused) {
         const error = new Error('Recording is not paused');
@@ -439,17 +434,15 @@ export default class Voice extends Task implements IVoice {
    * ```
    * */
   public async consult(consultPayload?: ConsultPayload): Promise<TaskResponse> {
-    // Validate consult is allowed
-    const state = this.getStateMachineSnapshot();
+    // Validate consult is allowed (use effective state when machine lags IDLE after transfer)
+    const effectiveState = this.getEffectiveVoiceTaskStateForOperation();
     const canConsult =
-      state &&
-      (state.matches(TaskState.CONNECTED) ||
-        state.matches(TaskState.HELD) ||
-        state.matches(TaskState.CONFERENCING));
+      effectiveState === TaskState.CONNECTED ||
+      effectiveState === TaskState.HELD ||
+      effectiveState === TaskState.CONFERENCING;
 
     if (!canConsult) {
-      const currentState = state?.value as TaskState;
-      const error = new Error(`Cannot initiate consult in ${currentState} state`);
+      const error = new Error(`Cannot initiate consult in ${effectiveState} state`);
       LoggerProxy.error('Consult operation not allowed', {
         module: CC_FILE,
         method: 'consult',

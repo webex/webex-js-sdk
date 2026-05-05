@@ -27,7 +27,7 @@ import routingContact from './contact';
 import MetricsManager from '../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../metrics/constants';
 import LoggerProxy from '../../logger-proxy';
-import {createTaskStateMachine, TaskState} from './state-machine';
+import {createTaskStateMachine, TaskEvent, TaskState} from './state-machine';
 import type {
   TaskEventPayload,
   TaskStateMachine,
@@ -41,6 +41,8 @@ import {
   getDefaultUIControls,
   haveUIControlsChanged,
 } from './state-machine/uiControlsComputer';
+import {deriveRecordingContextPatch} from './state-machine/actions';
+import {resolveEffectiveVoiceTaskState} from './state-machine/effectiveVoiceTaskState';
 import AutoWrapup from './AutoWrapup';
 import {WrapupData} from '../config/types';
 
@@ -196,6 +198,27 @@ export default abstract class Task extends EventEmitter implements ITask {
   }
 
   /**
+   * Merges recording flags from {@link Task#data} into machine context. Task payloads are refreshed
+   * via {@link #updateTaskData} on WebSocket updates, but the state machine assign only runs when an
+   * event is sent — without this merge, `recordingControlsAvailable` can stay false while CAD shows
+   * pause/resume is allowed.
+   */
+  protected mergeRecordingContextFromTaskData(context: TaskContext): TaskContext {
+    return {...context, ...deriveRecordingContextPatch(this.data)};
+  }
+
+  /**
+   * Effective voice task state for API guards when the machine snapshot is still {@link TaskState.IDLE}
+   * but {@link Task#data} shows an active main call (e.g. post–consult transfer event ordering).
+   */
+  protected getEffectiveVoiceTaskStateForOperation(): TaskState {
+    const machineState =
+      (this.stateMachineService?.getSnapshot?.()?.value as TaskState | undefined) ?? TaskState.IDLE;
+
+    return resolveEffectiveVoiceTaskState(machineState, this.data);
+  }
+
+  /**
    * Latest UI controls derived from state machine state and context.
    */
   public get uiControls(): TaskUIControls {
@@ -276,7 +299,7 @@ export default abstract class Task extends EventEmitter implements ITask {
     }
 
     const currentState = snapshot.value as TaskState;
-    const context = snapshot.context as TaskContext;
+    const context = this.mergeRecordingContextFromTaskData(snapshot.context as TaskContext);
 
     return computeUIControls(currentState, context, this.data);
   }
@@ -751,6 +774,12 @@ export default abstract class Task extends EventEmitter implements ITask {
       const response = await this.contact.wrapup({
         interactionId: this.data.interactionId,
         data: wrapupPayload,
+      });
+
+      // Some transfer flows can miss or delay AGENT_WRAPPEDUP; complete locally on API success.
+      this.stateMachineService?.send({
+        type: TaskEvent.WRAPUP_COMPLETE,
+        taskData: response.data,
       });
 
       this.metricsManager.trackEvent(
