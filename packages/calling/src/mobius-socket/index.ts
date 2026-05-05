@@ -6,6 +6,7 @@ import '@webex/internal-plugin-device';
 import '@webex/internal-plugin-feature';
 import '@webex/internal-plugin-metrics';
 
+import type {WebexSDK} from '../SDKConnector/types';
 import MobiusSocket from './mobius-socket';
 import config, {MobiusSocketConfig} from './config';
 
@@ -25,7 +26,7 @@ let mobiusSocketInstance: MobiusSocket | undefined; // Keeping just one instance
  * @returns The singleton MobiusSocket instance
  */
 export function getMobiusSocketInstance(
-  webex: any,
+  webex: WebexSDK,
   mobiusSocketConfig?: Partial<MobiusSocketConfig>
 ): MobiusSocket {
   if (mobiusSocketInstance) {
@@ -53,3 +54,9 @@ export {MobiusSocket};
 export {default as Socket} from './socket';
 export {config};
 export {BadRequest, ConnectionError, Forbidden, NotAuthorized, UnknownResponse} from './errors';
+export type {
+  MobiusSocketCloseOptions,
+  MobiusSocketRequestOptions,
+  MobiusSocketRequestPayload,
+  MobiusSocketResponseError,
+} from './types';
