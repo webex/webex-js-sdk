@@ -394,6 +394,62 @@ describe('plugin-llm', () => {
       });
     });
 
+    describe('#setOwnerMeetingId / #getOwnerMeetingId', () => {
+      it('stores and returns the owner meeting id for the default session', () => {
+        // beforeEach seeds connections with the default session entry
+        llmService.setOwnerMeetingId('meeting-1');
+
+        assert.equal(llmService.getOwnerMeetingId(), 'meeting-1');
+      });
+
+      it('returns undefined when no owner has been set yet', () => {
+        assert.equal(llmService.getOwnerMeetingId(), undefined);
+      });
+
+      it('is a no-op when there is no session data for the given sessionId', () => {
+        // Default session exists (seeded in beforeEach), but an arbitrary
+        // session id does not — setOwnerMeetingId must not create entries.
+        llmService.setOwnerMeetingId('meeting-1', 'unknown-session');
+
+        assert.equal(llmService.getOwnerMeetingId('unknown-session'), undefined);
+      });
+
+      it('allows clearing ownership by passing undefined', () => {
+        llmService.setOwnerMeetingId('meeting-1');
+        assert.equal(llmService.getOwnerMeetingId(), 'meeting-1');
+
+        llmService.setOwnerMeetingId(undefined);
+
+        assert.equal(llmService.getOwnerMeetingId(), undefined);
+      });
+
+      it('tracks ownership per session id', () => {
+        llmService.connections.set('session-A', {webSocketUrl: 'wss://a'});
+        llmService.connections.set('session-B', {webSocketUrl: 'wss://b'});
+
+        llmService.setOwnerMeetingId('meeting-A', 'session-A');
+        llmService.setOwnerMeetingId('meeting-B', 'session-B');
+
+        assert.equal(llmService.getOwnerMeetingId('session-A'), 'meeting-A');
+        assert.equal(llmService.getOwnerMeetingId('session-B'), 'meeting-B');
+      });
+
+      it('clears ownerMeetingId naturally when disconnectLLM deletes the session entry', async () => {
+        llmService.register = sinon.stub().callsFake(async () => ({
+          body: {binding: 'binding', webSocketUrl: 'wss://example.com/socket'},
+        }));
+
+        await llmService.registerAndConnect(locusUrl, datachannelUrl);
+        llmService.setOwnerMeetingId('meeting-1');
+        assert.equal(llmService.getOwnerMeetingId(), 'meeting-1');
+
+        await llmService.disconnectLLM({code: 3050, reason: 'done (permanent)'});
+
+        // Session entry was deleted, so ownerMeetingId is gone.
+        assert.equal(llmService.getOwnerMeetingId(), undefined);
+      });
+    });
+
     describe('multi-connection logic', () => {
       const locusUrl2 = 'locusUrl2';
       const datachannelUrl2 = 'datachannelUrl2';

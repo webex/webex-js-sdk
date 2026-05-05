@@ -127,6 +127,8 @@ export const MOBIUS_EU_INT = 'mobius-eu-central-1.int.infra.webex.com';
 export const FAILOVER_CACHE_PREFIX = 'wxc-failover-state';
 export const ACTIVE_MOBIUS_STORAGE_KEY = 'wxc-active-mobius';
 export const ICE_CANDIDATES_TIMEOUT = 3000;
+export const WCC_CALLING_RTMS_DOMAIN = 'wcc-calling-rtms-domain';
+
 // Define constants for method names
 export const METHODS = {
   CONSTRUCTOR: 'constructor',
@@ -231,4 +233,5 @@ export const METHODS = {
   UPLOAD_LOGS: 'uploadLogs',
   GET_SDK_CONNECTOR: 'getSDKConnector',
   GET_CONNECTED_CALL: 'getConnectedCall',
+  GET_RTMS_DOMAIN: 'getRTMSDomain',
 };
