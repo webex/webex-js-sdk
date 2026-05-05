@@ -13703,6 +13703,131 @@ describe('plugin-meetings', () => {
           assert.notCalled(webex.internal.llm.setDatachannelToken);
         });
 
+        describe('ownership tag', () => {
+          beforeEach(() => {
+            // Make the owner stub dynamic so setOwnerMeetingId() writes
+            // propagate back to getOwnerMeetingId() reads. This mirrors the
+            // real LLM singleton behavior so the finally-block release in
+            // cleanupLLMConneciton is reflected in subsequent reads.
+            webex.internal.llm.getOwnerMeetingId = sinon.stub().returns(undefined);
+            webex.internal.llm.setOwnerMeetingId = sinon.stub().callsFake((id) => {
+              webex.internal.llm.getOwnerMeetingId.returns(id);
+            });
+          });
+
+          it('skips disconnect and reconnect when LLM is connected and owned by another meeting (regardless of URL)', async () => {
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(true);
+            webex.internal.llm.getOwnerMeetingId.returns('some-other-meeting-id');
+            // Locus/datachannel URL mismatch is the *normal* case when
+            // another meeting owns the live socket -- each meeting has its
+            // own locus URL. URL mismatch must NOT trigger a reclaim,
+            // because doing so would tear down the owning meeting's healthy
+            // LLM socket and break its data channel.
+            webex.internal.llm.getLocusUrl.returns('owner-locus-url');
+            webex.internal.llm.getDatachannelUrl.returns('owner-dc-url');
+            meeting.locusInfo = {
+              url: 'a different url',
+              info: {datachannelUrl: 'a different datachannel url'},
+              self: {},
+            };
+
+            const result = await meeting.updateLLMConnection();
+
+            assert.equal(result, undefined);
+            assert.notCalled(webex.internal.llm.disconnectLLM);
+            assert.notCalled(webex.internal.llm.registerAndConnect);
+            assert.notCalled(webex.internal.llm.setOwnerMeetingId);
+            assert.notCalled(meeting.startLLMHealthCheckTimer);
+          });
+
+
+          it('clears stale owner tag in cleanup finally block even when disconnectLLM rejects', async () => {
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(true);
+            webex.internal.llm.getOwnerMeetingId.returns(meeting.id);
+            webex.internal.llm.getLocusUrl.returns('a url');
+            webex.internal.llm.getDatachannelUrl.returns('a datachannel url');
+            webex.internal.llm.disconnectLLM.rejects(new Error('disconnect failed'));
+            meeting.locusInfo = {
+              url: 'a different url',
+              info: {datachannelUrl: 'a datachannel url'},
+              self: {},
+            };
+
+            try {
+              await meeting.updateLLMConnection();
+            } catch (e) {
+              /* updateLLMConnection may reject when cleanup throws */
+            }
+
+            // The owner-eligible finally branch must release the tag so a
+            // subsequent reconnect attempt from any meeting is not blocked.
+            assert.calledWith(webex.internal.llm.setOwnerMeetingId, undefined);
+          });
+
+          it('proceeds normally when LLM is connected and owned by this meeting with URL change', async () => {
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(true);
+            webex.internal.llm.getOwnerMeetingId.returns(meeting.id);
+            webex.internal.llm.getLocusUrl.returns('a url');
+            webex.internal.llm.getDatachannelUrl.returns('a datachannel url');
+            meeting.locusInfo = {
+              url: 'a different url',
+              info: {datachannelUrl: 'a datachannel url'},
+              self: {},
+            };
+
+            await meeting.updateLLMConnection();
+
+            assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
+              code: 3050,
+              reason: 'done (permanent)',
+            });
+            assert.calledWithExactly(
+              webex.internal.llm.registerAndConnect,
+              'a different url',
+              'a datachannel url',
+              undefined
+            );
+            // setOwnerMeetingId is called twice: first with undefined in
+            // cleanupLLMConneciton's finally block (so a failed disconnect
+            // cannot leave a stale owner), then with this meeting's id
+            // after registerAndConnect resolves.
+            assert.calledTwice(webex.internal.llm.setOwnerMeetingId);
+            assert.calledWith(webex.internal.llm.setOwnerMeetingId.firstCall, undefined);
+            assert.calledWith(webex.internal.llm.setOwnerMeetingId.lastCall, meeting.id);
+          });
+
+          it('claims ownership after successful registerAndConnect on initial connect', async () => {
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(false);
+            webex.internal.llm.getOwnerMeetingId.returns(undefined);
+            meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
+
+            await meeting.updateLLMConnection();
+
+            assert.calledOnce(webex.internal.llm.registerAndConnect);
+            assert.calledOnceWithExactly(webex.internal.llm.setOwnerMeetingId, meeting.id);
+          });
+
+          it('proceeds to connect when LLM is not connected even if another ownerId lingers', async () => {
+            // Defensive path: if the LLM reports not-connected but an old
+            // ownerId is still present (e.g. race before a successful
+            // connections.delete), this meeting can still claim a fresh
+            // connection.
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(false);
+            webex.internal.llm.getOwnerMeetingId.returns('stale-owner-id');
+            meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
+
+            await meeting.updateLLMConnection();
+
+            assert.calledOnce(webex.internal.llm.registerAndConnect);
+            assert.calledOnceWithExactly(webex.internal.llm.setOwnerMeetingId, meeting.id);
+          });
+        });
+
         describe('#clearMeetingData', () => {
           beforeEach(() => {
             webex.internal.llm.isConnected = sinon.stub().returns(true);
@@ -13762,6 +13887,64 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.clearDataChannelToken);
             assert.notCalled(meeting.stopTranscription);
             assert.notCalled(meeting.annotation.deregisterEvents);
+          });
+
+          describe('ownership tag', () => {
+            beforeEach(() => {
+              webex.internal.llm.getOwnerMeetingId = sinon.stub();
+            });
+
+            it('skips disconnectLLM but still removes this meeting listeners when another meeting owns the LLM', async () => {
+              webex.internal.llm.getOwnerMeetingId.returns('some-other-meeting-id');
+
+              await meeting.clearMeetingData();
+
+              assert.notCalled(webex.internal.llm.disconnectLLM);
+              // Shared data-channel auth tokens belong to the owner meeting's
+              // live LLM session and must not be wiped by a non-owner
+              // teardown, otherwise the owner's next reconnect would lose
+              // its Data-Channel-Auth-Token.
+              assert.notCalled(meeting.clearDataChannelToken);
+              // Listeners owned by *this* Meeting instance must still be
+              // removed so a leaving subordinate meeting stops receiving
+              // relay/locus events from the shared singleton.
+              assert.calledWithExactly(webex.internal.llm.off, 'online', meeting.handleLLMOnline);
+              assert.calledWithExactly(
+                webex.internal.llm.off,
+                'event:relay.event',
+                meeting.processRelayEvent
+              );
+              assert.calledWithExactly(
+                webex.internal.llm.off,
+                'event:locus.state_message',
+                meeting.processLocusLLMEvent
+              );
+              assert.calledOnce(meeting.clearLLMHealthCheckTimer);
+            });
+
+            it('calls disconnectLLM and clears data channel token when this meeting is the owner', async () => {
+              webex.internal.llm.getOwnerMeetingId.returns(meeting.id);
+
+              await meeting.clearMeetingData();
+
+              assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
+                code: 3050,
+                reason: 'done (permanent)',
+              });
+              assert.calledOnce(meeting.clearDataChannelToken);
+            });
+
+            it('calls disconnectLLM and clears data channel token when no owner is recorded (first-claim / legacy)', async () => {
+              webex.internal.llm.getOwnerMeetingId.returns(undefined);
+
+              await meeting.clearMeetingData();
+
+              assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
+                code: 3050,
+                reason: 'done (permanent)',
+              });
+              assert.calledOnce(meeting.clearDataChannelToken);
+            });
           });
         });
       });

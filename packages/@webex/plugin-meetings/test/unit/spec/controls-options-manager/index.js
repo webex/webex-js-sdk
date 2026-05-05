@@ -27,6 +27,7 @@ describe('plugin-meetings', () => {
                 beforeEach(() => {
                   request = {
                     request: sinon.stub().returns(Promise.resolve()),
+                    locusDeltaRequest: sinon.stub().returns(Promise.resolve()),
                   };
 
                   manager = new ControlsOptionsManager(request);
@@ -59,11 +60,11 @@ describe('plugin-meetings', () => {
 
                       const result = manager.setMuteOnEntry(true);
 
-                      assert.calledWith(request.request, {  uri: 'test/id/controls',
+                      assert.calledWith(request.locusDeltaRequest, {  uri: 'test/id/controls',
                       body: { muteOnEntry: { enabled: true } },
                       method: HTTP_VERBS.PATCH});
 
-                      assert.deepEqual(result, request.request.firstCall.returnValue);
+                      assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
                     });
 
                     it('can set mute on entry when the display hint is available enabled=false', () => {
@@ -71,11 +72,11 @@ describe('plugin-meetings', () => {
 
                       const result = manager.setMuteOnEntry(false);
 
-                      assert.calledWith(request.request, {  uri: 'test/id/controls',
+                      assert.calledWith(request.locusDeltaRequest, {  uri: 'test/id/controls',
                       body: { muteOnEntry: { enabled: false } },
                       method: HTTP_VERBS.PATCH});
 
-                      assert.deepEqual(result, request.request.firstCall.returnValue);
+                      assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
                     });
 
                     it('should send setMuteOnEntry to locusUrl without authorizingLocusUrl when in breakout', () => {
@@ -84,11 +85,11 @@ describe('plugin-meetings', () => {
 
                       const result = manager.setMuteOnEntry(true);
 
-                      assert.calledWith(request.request, {  uri: 'test/id/controls',
+                      assert.calledWith(request.locusDeltaRequest, {  uri: 'test/id/controls',
                       body: { muteOnEntry: { enabled: true } },
                       method: HTTP_VERBS.PATCH});
 
-                      assert.deepEqual(result, request.request.firstCall.returnValue);
+                      assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
                     });
                   });
 
@@ -114,11 +115,11 @@ describe('plugin-meetings', () => {
 
                       const result = manager.setDisallowUnmute(true);
 
-                      assert.calledWith(request.request, {  uri: 'test/id/controls',
+                      assert.calledWith(request.locusDeltaRequest, {  uri: 'test/id/controls',
                       body: { disallowUnmute: { enabled: true } },
                       method: HTTP_VERBS.PATCH});
 
-                      assert.deepEqual(result, request.request.firstCall.returnValue);
+                      assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
                     });
 
                     it('can set allow unmute when DISABLE_HARD_MUTE display hint is available', () => {
@@ -126,11 +127,11 @@ describe('plugin-meetings', () => {
 
                       const result = manager.setDisallowUnmute(false);
 
-                      assert.calledWith(request.request, {  uri: 'test/id/controls',
+                      assert.calledWith(request.locusDeltaRequest, {  uri: 'test/id/controls',
                       body: { disallowUnmute: { enabled: false } },
                       method: HTTP_VERBS.PATCH});
 
-                      assert.deepEqual(result, request.request.firstCall.returnValue);
+                      assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
                     });
 
                     it('should send setDisallowUnmute to locusUrl without authorizingLocusUrl when in breakout', () => {
@@ -139,11 +140,11 @@ describe('plugin-meetings', () => {
 
                       const result = manager.setDisallowUnmute(true);
 
-                      assert.calledWith(request.request, {  uri: 'test/id/controls',
+                      assert.calledWith(request.locusDeltaRequest, {  uri: 'test/id/controls',
                       body: { disallowUnmute: { enabled: true } },
                       method: HTTP_VERBS.PATCH});
 
-                      assert.deepEqual(result, request.request.firstCall.returnValue);
+                      assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
                     });
                   });
             });
@@ -154,6 +155,7 @@ describe('plugin-meetings', () => {
               beforeEach(() => {
                 request = {
                   request: sinon.stub().resolves(),
+                  locusDeltaRequest: sinon.stub().resolves(),
                 };
 
                 manager = new ControlsOptionsManager(request);
@@ -202,7 +204,7 @@ describe('plugin-meetings', () => {
 
                 return manager.update(audio, reactions)
                   .then(() => {
-                    assert.calledWith(request.request, {
+                    assert.calledWith(request.locusDeltaRequest, {
                       uri: 'test/id/controls',
                       body: {
                         audio: audio.properties,
@@ -210,7 +212,7 @@ describe('plugin-meetings', () => {
                       method: HTTP_VERBS.PATCH,
                     });
 
-                    assert.calledWith(request.request, {
+                    assert.calledWith(request.locusDeltaRequest, {
                       uri: 'test/id/controls',
                       body: {
                         reactions: reactions.properties,
@@ -253,7 +255,7 @@ describe('plugin-meetings', () => {
                 return manager.update(audio, reactions)
                   .then(() => {
                     // Audio controls go directly to current locusUrl (no cross-locus authorization)
-                    assert.calledWith(request.request, {
+                    assert.calledWith(request.locusDeltaRequest, {
                       uri: 'test/id/controls',
                       body: {
                         audio: audio.properties,
@@ -284,7 +286,7 @@ describe('plugin-meetings', () => {
 
                 return manager.update(audio)
                   .then(() => {
-                    assert.calledWith(request.request, {
+                    assert.calledWith(request.locusDeltaRequest, {
                       uri: 'test/id/controls',
                       body: {
                         audio: audio.properties,
@@ -324,6 +326,7 @@ describe('plugin-meetings', () => {
               beforeEach(() => {
                 request = {
                   request: sinon.stub().returns(Promise.resolve()),
+                  locusDeltaRequest: sinon.stub().returns(Promise.resolve()),
                 };
 
                 manager = new ControlsOptionsManager(request);
@@ -368,11 +371,11 @@ describe('plugin-meetings', () => {
 
                 const result = manager.setMuteAll(true, true, true);
 
-                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                assert.calledWith(request.locusDeltaRequest, {  uri: 'test/id/controls',
                 body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true } },
                 method: HTTP_VERBS.PATCH});
 
-                assert.deepEqual(result, request.request.firstCall.returnValue);
+                assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
               });
 
               it('can set mute all when the display hint is available mutedEnabled=true', () => {
@@ -380,11 +383,11 @@ describe('plugin-meetings', () => {
 
                 const result = manager.setMuteAll(true, true, true);
 
-                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                assert.calledWith(request.locusDeltaRequest, {  uri: 'test/id/controls',
                 body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true } },
                 method: HTTP_VERBS.PATCH});
 
-                assert.deepEqual(result, request.request.firstCall.returnValue);
+                assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
               });
 
               it('can set mute all when the display hint is available mutedEnabled=true', () => {
@@ -392,11 +395,11 @@ describe('plugin-meetings', () => {
 
                 const result = manager.setMuteAll(true, true, true);
 
-                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                assert.calledWith(request.locusDeltaRequest, {  uri: 'test/id/controls',
                 body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true } },
                 method: HTTP_VERBS.PATCH});
 
-                assert.deepEqual(result, request.request.firstCall.returnValue);
+                assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
               });
 
               it('can set mute all when the display hint is available mutedEnabled=false', () => {
@@ -404,11 +407,11 @@ describe('plugin-meetings', () => {
 
                 const result = manager.setMuteAll(false, false, false);
 
-                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                assert.calledWith(request.locusDeltaRequest, {  uri: 'test/id/controls',
                 body: { audio: { muted: false, disallowUnmute: false, muteOnEntry: false } },
                 method: HTTP_VERBS.PATCH});
 
-                assert.deepEqual(result, request.request.firstCall.returnValue);
+                assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
               });
 
               it('can set mute all panelists when the display hint is available mutedEnabled=true', () => {
@@ -416,11 +419,11 @@ describe('plugin-meetings', () => {
 
                 const result = manager.setMuteAll(true, true, true, ['panelist']);
 
-                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                assert.calledWith(request.locusDeltaRequest, {  uri: 'test/id/controls',
                   body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true, roles: ['panelist'] } },
                   method: HTTP_VERBS.PATCH});
 
-                assert.deepEqual(result, request.request.firstCall.returnValue);
+                assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
               });
 
               it('can set mute all attendees when the display hint is available mutedEnabled=true', () => {
@@ -428,11 +431,11 @@ describe('plugin-meetings', () => {
 
                 const result = manager.setMuteAll(true, true, true, ['attendee']);
 
-                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                assert.calledWith(request.locusDeltaRequest, {  uri: 'test/id/controls',
                   body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true, roles: ['attendee'] } },
                   method: HTTP_VERBS.PATCH});
 
-                assert.deepEqual(result, request.request.firstCall.returnValue);
+                assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
               });
 
               it('should send setMuteAll to locusUrl without authorizingLocusUrl when in breakout', () => {
@@ -441,11 +444,11 @@ describe('plugin-meetings', () => {
 
                 const result = manager.setMuteAll(true, true, true, ['attendee']);
 
-                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                assert.calledWith(request.locusDeltaRequest, {  uri: 'test/id/controls',
                   body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true, roles: ['attendee'] } },
                   method: HTTP_VERBS.PATCH});
 
-                assert.deepEqual(result, request.request.firstCall.returnValue);
+                assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
               });
 
               it('should send setMuteAll with PANELIST role to locusUrl without authorizingLocusUrl when in breakout', () => {
@@ -454,11 +457,11 @@ describe('plugin-meetings', () => {
 
                 const result = manager.setMuteAll(true, true, true, ['PANELIST']);
 
-                assert.calledWith(request.request, {  uri: 'test/id/controls',
+                assert.calledWith(request.locusDeltaRequest, {  uri: 'test/id/controls',
                   body: { audio: { muted: true, disallowUnmute: true, muteOnEntry: true, roles: ['PANELIST'] } },
                   method: HTTP_VERBS.PATCH});
 
-                assert.deepEqual(result, request.request.firstCall.returnValue);
+                assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
               });
             });
           });
