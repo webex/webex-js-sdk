@@ -87,13 +87,18 @@ sequenceDiagram
     CH->>CH: Calculate fromDate (current date - days)
     CH->>CH: Detect backend via getCallingBackEnd()
 
-    Note over CH: WXC: append includeSharedSessions=true
+    Note over CH: Always includes includeNewSessionTypes=true
+    Note over CH: WXC: also appends includeSharedSessions=true
 
-    CH->>Janus: GET /history/userSessions?from=...&limit=...&sort=...&includeSharedSessions=true
+    CH->>Janus: GET /history/userSessions?from=...&limit=...&includeNewSessionTypes=true&sort=...&includeSharedSessions=true
     Janus-->>CH: 200 {userSessions: [...]}
 
     alt sortBy === START_TIME
-        CH->>CH: Sort userSessions by startTime
+        alt sort === DESC
+            CH->>CH: Sort userSessions by startTime descending
+        else sort === ASC
+            CH->>CH: Sort userSessions by startTime ascending
+        end
     end
 
     CH-->>App: {statusCode, data: {userSessions}, message: 'SUCCESS'}
@@ -164,6 +169,7 @@ sequenceDiagram
     else All dates valid
         CH->>CH: Convert endTime strings to milliseconds
         CH->>Janus: POST /history/userSessions/markAsDeleted
+        Note over CH,Janus: Body: {deleteSessionIds: [{endTime: ms, sessionId}]}
         Janus-->>CH: 200 OK
         CH-->>App: {statusCode, data: {deleteStatusMessage}, message: 'SUCCESS'}
     end
@@ -210,6 +216,7 @@ sequenceDiagram
 
 | Constant | Value | Description |
 |----------|-------|-------------|
+| `FROM_DATE` | `'?from'` | Query string opener + from param (note: includes `?`) |
 | `HISTORY` | `'history'` | Janus history path segment |
 | `UPDATE_MISSED_CALLS_ENDPOINT` | `'setReadState'` | Endpoint for marking missed calls as read |
 | `DELETE_CALL_HISTORY_RECORDS_ENDPOINT` | `'markAsDeleted'` | Endpoint for deleting call history records |
@@ -219,14 +226,23 @@ sequenceDiagram
 | `PEOPLE` | `'people'` | UCM people path segment |
 | `LINES` | `'lines'` | UCM lines path segment |
 
+### HTTP Client Pattern
+
+| Method | Client | Reason |
+|--------|--------|--------|
+| `getCallHistoryData` | `this.webex.request()` | GET request, SDK handles auth automatically |
+| `updateMissedCalls` | Browser `fetch` | POST request with manual `Authorization` header |
+| `deleteCallHistoryRecords` | Browser `fetch` | POST request with manual `Authorization` header |
+| `fetchUCMLinesData` | `this.webex.request()` | GET request, SDK handles auth automatically |
+
 ### Mercury Event Keys
 
-| Event Key | Description |
-|-----------|-------------|
-| `MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE` | New/updated session events |
-| `MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_LEGACY` | Legacy session events |
-| `MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_VIEWED` | Session viewed events |
-| `MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_DELETED` | Session deleted events |
+| Event Key | Wire Value | Description |
+|-----------|------------|-------------|
+| `MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_INCLUSIVE` | `'event:janus.user_recent_sessions'` | New/updated session events |
+| `MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_LEGACY` | `'event:janus.user_sessions'` | Legacy session events |
+| `MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_VIEWED` | `'event:janus.user_viewed_sessions'` | Session viewed events |
+| `MOBIUS_EVENT_KEYS.CALL_SESSION_EVENT_DELETED` | `'event:janus.user_sessions_deleted'` | Session deleted events |
 
 ---
 
@@ -279,7 +295,7 @@ Before making the API call, the module validates all `endTime` values. If any ar
 
 ### 5. Real-Time Events Not Firing
 
-**Symptoms:** Event listeners on `callHistory:user_session_info` never fire
+**Symptoms:** Event listeners on `callHistory:user_recent_sessions` never fire
 
 **Possible Causes:**
 - Mercury WebSocket not connected

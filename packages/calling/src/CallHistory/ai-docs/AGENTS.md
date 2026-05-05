@@ -1,19 +1,5 @@
 # CallHistory Module
 
-## AI Agent Routing Instructions
-
-**If you are an AI assistant or automated tool:**
-
-Do **not** use this file as your only entry point for reasoning or code generation.
-
-- **How to proceed:**
-  - For changes within the `CallHistory/` directory, use this file as your primary reference.
-  - For understanding event types (`CallSessionEvent`, `UserSession`, `EndTimeSessionId`, etc.), also load `Events/types.ts`.
-  - For backend detection logic (`getCallingBackEnd`), refer to `common/Utils.ts`.
-- **Important:** Load this module-specific doc first, then drill into related source files as needed.
-
----
-
 ## Overview
 
 The `CallHistory` module provides APIs for retrieving, managing, and receiving real-time updates for call history records from the Janus backend service. It supports fetching paginated and sorted call history, marking missed calls as read, deleting call history records, and listening for real-time session events via Mercury WebSocket.
@@ -67,7 +53,7 @@ The following methods are defined on the `ICallHistory` interface:
 
 | Event | Enum Key | Payload | Description |
 | ----- | -------- | ------- | ----------- |
-| `callHistory:user_session_info` | `COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO` | `CallSessionEvent` | New or updated call session received |
+| `callHistory:user_recent_sessions` | `COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSION_INFO` | `CallSessionEvent` | New or updated call session received |
 | `callHistory:user_viewed_sessions` | `COMMON_EVENT_KEYS.CALL_HISTORY_USER_VIEWED_SESSIONS` | `CallSessionViewedEvent` | Sessions marked as viewed |
 | `callHistory:user_sessions_deleted` | `COMMON_EVENT_KEYS.CALL_HISTORY_USER_SESSIONS_DELETED` | `CallSessionDeletedEvent` | Sessions deleted |
 
@@ -79,8 +65,44 @@ The following methods are defined on the `ICallHistory` interface:
 | `UpdateMissedCallsResponse` | Response containing `statusCode`, `data.readStatusMessage`, and `message` |
 | `DeleteCallHistoryRecordsResponse` | Response containing `statusCode`, `data.deleteStatusMessage`, and `message` |
 | `EndTimeSessionId` | Object with `endTime` (string) and `sessionId` (string) |
-| `SORT` | Enum: `ASC`, `DESC`, `DEFAULT` |
-| `SORT_BY` | Enum: `START_TIME`, `END_TIME`, `DEFAULT` |
+| `SORT` | Enum: `ASC = 'ASC'`, `DESC = 'DESC'`, `DEFAULT = 'DESC'` |
+| `SORT_BY` | Enum: `START_TIME = 'startTime'`, `END_TIME = 'endTime'`, `DEFAULT = 'endTime'` |
+
+### Event Payload Structures
+
+The event payloads have nested structures that must be accessed correctly:
+
+| Event Type | Data Access Path | Inner Type |
+| ---------- | ---------------- | ---------- |
+| `CallSessionEvent` | `event.data.userSessions.userSessions` | `UserSession[]` |
+| `CallSessionViewedEvent` | `event.data.userReadSessions.userReadSessions` | `UserReadSessions[]` |
+| `CallSessionDeletedEvent` | `event.data.deletedSessions` | `string[]` |
+
+### UserSession Type (key fields for this module)
+
+```typescript
+type UserSession = {
+  id: string;
+  sessionId: string;
+  disposition: Disposition;
+  startTime: string;
+  endTime: string;
+  durationSeconds: number;
+  direction: string;
+  sessionType: SessionType;
+  self: CallRecordSelf;
+  other: CallRecordListOther;
+  // ... additional fields
+};
+
+type CallRecordSelf = {
+  id: string;
+  name?: string;
+  phoneNumber?: string;
+  cucmDN?: string;        // UCM directory number, used for line enrichment
+  ucmLineNumber?: number; // Populated by UCM line enrichment
+};
+```
 
 ---
 
@@ -128,12 +150,12 @@ if (response.statusCode === 200) {
 ### Listen for Real-Time Session Events
 
 ```typescript
-callHistory.on('callHistory:user_session_info', (event) => {
-  console.log('New session event:', event.data.userSessions);
+callHistory.on('callHistory:user_recent_sessions', (event) => {
+  console.log('New session event:', event.data.userSessions.userSessions);
 });
 
 callHistory.on('callHistory:user_viewed_sessions', (event) => {
-  console.log('Sessions viewed:', event.data.userReadSessions);
+  console.log('Sessions viewed:', event.data.userReadSessions.userReadSessions);
 });
 
 callHistory.on('callHistory:user_sessions_deleted', (event) => {
@@ -169,6 +191,43 @@ if (response.statusCode === 200) {
   console.log(response.data.deleteStatusMessage);
 }
 ```
+
+---
+
+## Implementation Notes
+
+### HTTP Client Usage
+
+The module uses **two different HTTP mechanisms** depending on the method:
+
+| Method | HTTP Client | Auth Handling |
+| ------ | ----------- | ------------- |
+| `getCallHistoryData` | `this.webex.request()` (SDK built-in) | Automatic via SDK |
+| `updateMissedCalls` | Browser `fetch` API | Manual `Authorization` header via `this.webex.credentials.getUserToken()` |
+| `deleteCallHistoryRecords` | Browser `fetch` API | Manual `Authorization` header via `this.webex.credentials.getUserToken()` |
+
+When adding new API methods, follow the `fetch`-based pattern (used by `updateMissedCalls`/`deleteCallHistoryRecords`) for POST endpoints and `webex.request` for GET endpoints.
+
+### Request Body Structures
+
+The POST endpoints use different body key names:
+
+| Endpoint | Body Key | Body Shape |
+| -------- | -------- | ---------- |
+| `setReadState` | `endTimeSessionIds` | `{endTimeSessionIds: [{endTime: number, sessionId: string}]}` |
+| `markAsDeleted` | `deleteSessionIds` | `{deleteSessionIds: [{endTime: number, sessionId: string}]}` |
+
+Note: In both cases, `endTime` is converted from an ISO date string to milliseconds (epoch) before sending.
+
+### URL Construction
+
+The `FROM_DATE` constant is `'?from'` (includes the `?` query string opener). The full URL pattern for `getCallHistoryData` is:
+
+```
+{janusUrl}/history/userSessions?from={isoDate}&limit={limit}&includeNewSessionTypes=true&sort={sort}[&includeSharedSessions=true]
+```
+
+The `includeNewSessionTypes=true` parameter is always appended. The `includeSharedSessions=true` parameter is only appended for WXC backend.
 
 ---
 
