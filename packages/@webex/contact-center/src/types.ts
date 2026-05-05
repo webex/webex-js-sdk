@@ -847,6 +847,25 @@ export type UpdateDeviceTypeResponse = Agent.DeviceTypeUpdateSuccess | Error;
 export type TranscriptAction = 'START' | 'STOP';
 
 /**
+ * Parameters used to request an AI Assistant suggested response.
+ * @public
+ * @example
+ * const params: SuggestedResponseParams = {
+ *   interactionId: 'interaction-123',
+ *   actionTimeStamp: Date.now(),
+ *   context: 'Need help with credit card payment due date',
+ * };
+ */
+export type SuggestedResponseParams = {
+  /** Agent identifier */
+  agentId: string;
+  /** Interaction identifier for which suggestion should be generated */
+  interactionId: string;
+  /** Optional additional context that should refine the suggestion */
+  context?: string;
+};
+
+/**
  * Supported AI Assistant event categories.
  * @public
  * @example
@@ -879,6 +898,10 @@ export type AIAssistantEventType = Enum<typeof AIAssistantEventType>;
 export const AIAssistantEventName = {
   /** Request transcript streaming for an interaction */
   GET_TRANSCRIPTS: 'GET_TRANSCRIPTS',
+  /** Request a suggested response for an interaction */
+  GET_SUGGESTIONS: 'GET_SUGGESTIONS',
+  /** Add extra context to refine a suggested response */
+  ADD_SUGGESTIONS_EXTRA_CONTEXT: 'ADD_SUGGESTIONS_EXTRA_CONTEXT',
   /** Request mid-call summary generation */
   GET_MID_CALL_SUMMARY: 'GET_MID_CALL_SUMMARY',
   /** Request post-call summary generation */

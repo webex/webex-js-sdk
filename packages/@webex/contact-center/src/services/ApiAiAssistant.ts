@@ -1,3 +1,4 @@
+import {v4 as uuidv4} from 'uuid';
 import LoggerProxy from '../logger-proxy';
 import MetricsManager from '../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../metrics/constants';
@@ -10,6 +11,7 @@ import {
   AIAssistantEventType,
   AIAssistantEventName,
   HistoricTranscriptsResponse,
+  SuggestedResponseParams,
 } from '../types';
 import {getErrorDetails} from './core/Utils';
 import {
@@ -70,6 +72,21 @@ export class ApiAIAssistant {
     return AI_ASSISTANT_BASE_URL_TEMPLATE.replace('%s', resolvedEnv);
   }
 
+  private static getLanguageCode(): string {
+    const navigatorLanguage =
+      typeof globalThis !== 'undefined' &&
+      'navigator' in globalThis &&
+      globalThis.navigator?.language
+        ? globalThis.navigator.language
+        : '';
+
+    if (navigatorLanguage) {
+      return navigatorLanguage.split('-')[0] || navigatorLanguage;
+    }
+
+    return 'en';
+  }
+
   /**
    * Sends an event to the AI Assistant service.
    * @param agentId - agent identifier
@@ -83,13 +100,16 @@ export class ApiAIAssistant {
     interactionId: string,
     eventType: AIAssistantEventType,
     eventName: AIAssistantEventName,
-    action: TranscriptAction
+    action?: TranscriptAction,
+    context?: string,
+    languageCode?: string,
+    trackingId?: string
   ): Promise<Record<string, unknown>> {
     LoggerProxy.info('Sending event', {
       module: CC_FILE,
       method: METHODS.SEND_EVENT,
       interactionId,
-      data: {eventType, eventName, action},
+      data: {eventType, eventName, action, context},
     });
     this.metricsManager.timeEvent([
       METRIC_EVENT_NAMES.AI_ASSISTANT_SEND_EVENT_SUCCESS,
@@ -112,7 +132,10 @@ export class ApiAIAssistant {
             data: {
               interactionId,
               action,
+              context,
               actionTimeStamp: String(Date.now()),
+              languageCode,
+              trackingId,
             },
           },
         },
@@ -139,6 +162,90 @@ export class ApiAIAssistant {
       );
 
       const {error: detailedError} = getErrorDetails(error, METHODS.SEND_EVENT, CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Requests a suggested response for an interaction.
+   *
+   * @param params - Suggestion request parameters
+   * @returns HTTP response body from the AI Assistant event API
+   * @public
+   */
+  public async getSuggestedResponse(params: SuggestedResponseParams): Promise<any> {
+    const {agentId, interactionId, context} = params;
+    const trackingId = `WX_CC_SDK_${uuidv4()}`;
+    const eventName = context
+      ? AIAssistantEventName.ADD_SUGGESTIONS_EXTRA_CONTEXT
+      : AIAssistantEventName.GET_SUGGESTIONS;
+
+    LoggerProxy.info('Requesting suggested response', {
+      module: CC_FILE,
+      method: METHODS.GET_SUGGESTED_RESPONSE,
+      interactionId,
+    });
+
+    this.metricsManager.timeEvent([
+      METRIC_EVENT_NAMES.AI_ASSISTANT_GET_SUGGESTED_RESPONSE_SUCCESS,
+      METRIC_EVENT_NAMES.AI_ASSISTANT_GET_SUGGESTED_RESPONSE_FAILED,
+    ]);
+
+    try {
+      if (!this.aiFeature?.suggestedResponses?.enable) {
+        const {error: detailedError} = getErrorDetails(
+          new Error('SUGGESTED_RESPONSES_NOT_ENABLED'),
+          METHODS.GET_SUGGESTED_RESPONSE,
+          CC_FILE
+        );
+        throw detailedError;
+      }
+
+      const orgId = this.webex.credentials.getOrgId();
+
+      const response = await this.sendEvent(
+        agentId,
+        interactionId,
+        AIAssistantEventType.CUSTOM_EVENT,
+        eventName,
+        undefined,
+        context?.trim(),
+        ApiAIAssistant.getLanguageCode(),
+        trackingId
+      );
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_GET_SUGGESTED_RESPONSE_SUCCESS,
+        {
+          agentId,
+          orgId,
+          interactionId,
+          eventName,
+          trackingId,
+          context,
+        },
+        ['operational']
+      );
+
+      return response;
+    } catch (error) {
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.AI_ASSISTANT_GET_SUGGESTED_RESPONSE_FAILED,
+        {
+          agentId,
+          interactionId,
+          trackingId,
+          eventName,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        ['operational']
+      );
+
+      const {error: detailedError} = getErrorDetails(
+        error,
+        METHODS.GET_SUGGESTED_RESPONSE,
+        CC_FILE
+      );
       throw detailedError;
     }
   }

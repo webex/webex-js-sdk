@@ -740,7 +740,10 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
            * or other AI Assistant features will also use the same.
            * If the latter is true, we need to update this condition.
            */
-          if (this.agentConfig.aiFeature?.realtimeTranscripts?.enable) {
+          if (
+            this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||
+            this.agentConfig.aiFeature?.suggestedResponses?.enable
+          ) {
             LoggerProxy.info('Connecting to RTD websocket', {
               module: CC_FILE,
               method: METHODS.CONNECT_WEBSOCKET,
