@@ -328,10 +328,7 @@ class MobiusSocket extends EventEmitter {
    * @param {string} [sessionId=this.defaultSessionId] - The session identifier
    * @returns {Promise}
    */
-  send(
-    payload: Record<string, unknown>,
-    sessionId = this.defaultSessionId
-  ): Promise<void> {
+  send(payload: Record<string, unknown>, sessionId = this.defaultSessionId): Promise<void> {
     const socket = this.getSocket(sessionId);
 
     if (!socket || !socket.connected) {
