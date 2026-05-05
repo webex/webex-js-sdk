@@ -302,7 +302,7 @@ describe('webex.cc', () => {
       const result = await webex.cc.register();
 
       // Verify logging calls
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting CC SDK registration', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Starting CC SDK registration', {
         module: CC_FILE,
         method: 'register',
       });
@@ -415,7 +415,7 @@ describe('webex.cc', () => {
 
       await expect(webex.cc.register()).rejects.toThrow('Error while performing register');
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting CC SDK registration', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Starting CC SDK registration', {
         module: CC_FILE,
         method: 'register',
       });
@@ -816,10 +816,13 @@ describe('webex.cc', () => {
       const result = await webex.cc.stationLogin(options);
 
       // Verify logging calls
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting agent station login', {
-        module: CC_FILE,
-        method: 'stationLogin',
-      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        `Starting agent station login | loginOption: ${options.loginOption} teamId: ${options.teamId}`,
+        {
+          module: CC_FILE,
+          method: 'stationLogin',
+        }
+      );
       expect(LoggerProxy.log).toHaveBeenCalledWith(
         `Agent station login completed successfully agentId: ${mockData.data.agentId} loginOption: ${mockData.data.loginOption} teamId: ${mockData.data.teamId}`,
         {
@@ -870,10 +873,13 @@ describe('webex.cc', () => {
 
       await expect(webex.cc.stationLogin(options)).rejects.toThrow(error.details.data.reason);
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting agent station login', {
-        module: CC_FILE,
-        method: 'stationLogin',
-      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        `Starting agent station login | loginOption: ${options.loginOption} teamId: ${options.teamId}`,
+        {
+          module: CC_FILE,
+          method: 'stationLogin',
+        }
+      );
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `stationLogin failed with reason: ${error.details.data.reason}`,
         {module: CC_FILE, method: 'stationLogin', trackingId: error.details.trackingId}
@@ -1212,11 +1218,11 @@ describe('webex.cc', () => {
       const webSocketManagerOnSpy = jest.spyOn(webex.cc.services.webSocketManager, 'on');
       await webex.cc['silentRelogin']();
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent relogin process', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Starting silent relogin process', {
         module: CC_FILE,
         method: 'silentRelogin',
       });
-      expect(LoggerProxy.info).toHaveBeenCalledWith(
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
         'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
         {module: CC_FILE, method: 'silentRelogin'}
       );
@@ -1261,7 +1267,7 @@ describe('webex.cc', () => {
 
       jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
       await webex.cc['silentRelogin']();
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent relogin process', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Starting silent relogin process', {
         module: CC_FILE,
         method: 'silentRelogin',
       });
@@ -1276,7 +1282,7 @@ describe('webex.cc', () => {
       jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
 
       await expect(webex.cc['silentRelogin']()).rejects.toThrow(error);
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent relogin process', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Starting silent relogin process', {
         module: CC_FILE,
         method: 'silentRelogin',
       });
@@ -1318,7 +1324,7 @@ describe('webex.cc', () => {
 
       await webex.cc['silentRelogin']();
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent relogin process', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Starting silent relogin process', {
         module: CC_FILE,
         method: 'silentRelogin',
       });

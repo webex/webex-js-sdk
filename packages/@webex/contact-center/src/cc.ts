@@ -487,7 +487,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async register(): Promise<Profile> {
-    LoggerProxy.info('Starting CC SDK registration', {
+    LoggerProxy.log('Starting CC SDK registration', {
       module: CC_FILE,
       method: METHODS.REGISTER,
     });
@@ -731,7 +731,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private async connectWebsocket() {
-    LoggerProxy.info('Connecting to websocket', {
+    LoggerProxy.log('Connecting to websocket', {
       module: CC_FILE,
       method: METHODS.CONNECT_WEBSOCKET,
     });
@@ -758,7 +758,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       this.apiAIAssistant.setAIFeatureFlags(this.agentConfig.aiFeature);
 
       if (this.agentConfig.aiFeature?.realtimeTranscripts?.enable) {
-        LoggerProxy.info('Connecting to RTD websocket', {
+        LoggerProxy.log('Connecting to RTD websocket', {
           module: CC_FILE,
           method: METHODS.CONNECT_WEBSOCKET,
         });
@@ -803,6 +803,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       if (this.$config && this.$config.allowAutomatedRelogin) {
         await this.silentRelogin();
+      } else {
+        LoggerProxy.log('Skipping silent relogin: allowAutomatedRelogin is disabled', {
+          module: CC_FILE,
+          method: METHODS.CONNECT_WEBSOCKET,
+        });
       }
 
       return this.agentConfig;
@@ -845,10 +850,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
-    LoggerProxy.info('Starting agent station login', {
-      module: CC_FILE,
-      method: METHODS.STATION_LOGIN,
-    });
+    LoggerProxy.log(
+      `Starting agent station login | loginOption: ${data.loginOption} teamId: ${data.teamId}`,
+      {
+        module: CC_FILE,
+        method: METHODS.STATION_LOGIN,
+      }
+    );
     try {
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
@@ -856,15 +864,30 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       ]);
 
       const dialPlanEntries = this.agentConfig?.dialPlan?.dialPlanEntity ?? [];
-      if (
-        data.loginOption === LoginOption.AGENT_DN &&
-        !isValidDialNumber(data.dialNumber, dialPlanEntries)
-      ) {
-        const error = new Error('INVALID_DIAL_NUMBER');
-        // @ts-ignore - adding custom key to the error object
-        error.details = {data: {reason: 'INVALID_DIAL_NUMBER'}} as Failure;
+      if (data.loginOption === LoginOption.AGENT_DN) {
+        LoggerProxy.log(
+          `Validating dial number | dialPlanEnabled: ${!!this.agentConfig
+            ?.dialPlan} | dialPlanEntryCount: ${dialPlanEntries.length}`,
+          {
+            module: CC_FILE,
+            method: METHODS.STATION_LOGIN,
+          }
+        );
 
-        throw error;
+        if (!isValidDialNumber(data.dialNumber, dialPlanEntries)) {
+          LoggerProxy.log(
+            `Dial number validation failed | dialNumber: ${data.dialNumber} | dialPlanEntryCount: ${dialPlanEntries.length}`,
+            {
+              module: CC_FILE,
+              method: METHODS.STATION_LOGIN,
+            }
+          );
+          const error = new Error('INVALID_DIAL_NUMBER');
+          // @ts-ignore - adding custom key to the error object
+          error.details = {data: {reason: 'INVALID_DIAL_NUMBER'}} as Failure;
+
+          throw error;
+        }
       }
 
       const loginResponse = await this.services.agent.stationLogin({
@@ -1277,13 +1300,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private async handleConnectionLost(msg: ConnectionLostDetails): Promise<void> {
     if (msg.isConnectionLost) {
       // TODO: Emit an event saying connection is lost
-      LoggerProxy.info('event=handleConnectionLost | Connection lost', {
+      LoggerProxy.log('event=handleConnectionLost | Connection lost', {
         module: CC_FILE,
         method: METHODS.HANDLE_CONNECTION_LOST,
       });
     } else if (msg.isSocketReconnected) {
       // TODO: Emit an event saying connection is re-estabilished
-      LoggerProxy.info(
+      LoggerProxy.log(
         'event=handleConnectionReconnect | Connection reconnected attempting to request silent relogin',
         {module: CC_FILE, method: METHODS.HANDLE_CONNECTION_LOST}
       );
@@ -1298,7 +1321,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * @private
    */
   private async silentRelogin(): Promise<void> {
-    LoggerProxy.info('Starting silent relogin process', {
+    LoggerProxy.log('Starting silent relogin process', {
       module: CC_FILE,
       method: METHODS.SILENT_RELOGIN,
     });
@@ -1320,7 +1343,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       await this.handleDeviceType(deviceType as LoginOption, dn);
 
       if (lastStateChangeReason === 'agent-wss-disconnect') {
-        LoggerProxy.info(
+        LoggerProxy.log(
           'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
           {module: CC_FILE, method: METHODS.SILENT_RELOGIN}
         );
