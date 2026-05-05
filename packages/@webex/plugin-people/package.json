@@ -10,7 +10,7 @@
     "directory": "packages/@webex/plugin-people"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "browserify": {
     "transform": [

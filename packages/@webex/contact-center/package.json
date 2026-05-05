@@ -29,7 +29,7 @@
     "directory": "packages/@webex/contact-center"
   },
   "engines": {
-    "node": ">=20.x"
+    "node": ">=20"
   },
   "scripts": {
     "build:src": "webex-legacy-tools build -dest \"./dist\" -src \"./src\" -js -ts -maps && yarn build",

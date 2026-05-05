@@ -10,7 +10,7 @@
     "directory": "packages/@webex/internal-plugin-encryption"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "browser": {
     "./dist/ensure-buffer.js": "./dist/ensure-buffer.browser.js",
@@ -45,17 +45,12 @@
     "@webex/internal-plugin-mercury": "workspace:*",
     "@webex/test-helper-file": "workspace:*",
     "@webex/webex-core": "workspace:*",
-    "asn1js": "^2.0.26",
     "debug": "^4.3.4",
-    "isomorphic-webcrypto": "^2.3.8",
     "lodash": "^4.17.21",
     "node-jose": "^2.2.0",
     "node-kms": "^0.4.1",
     "node-scr": "^0.3.0",
-    "pkijs": "^2.1.84",
-    "safe-buffer": "^5.2.0",
-    "uuid": "^3.3.2",
-    "valid-url": "^1.0.9"
+    "pkijs": "^3.4.0"
   },
   "scripts": {
     "build": "yarn build:src",

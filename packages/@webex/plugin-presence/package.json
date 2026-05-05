@@ -11,7 +11,7 @@
     "directory": "packages/@webex/plugin-presence"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "browserify": {
     "transform": [
