@@ -7,15 +7,9 @@ import {forEach} from 'lodash';
 import {assert} from '@webex/test-helper-chai';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
 import sinon from 'sinon';
-import {
-  BadRequest,
-  NotAuthorized,
-  Forbidden,
-  // NotFound,
-  config,
-  ConnectionError,
-  Socket,
-} from './index';
+import {BadRequest, NotAuthorized, Forbidden, ConnectionError} from './errors';
+import config from './config';
+import Socket from './socket';
 import {MESSAGE_TYPES} from './socket/constants';
 
 if (!crypto.randomUUID) {
@@ -305,32 +299,6 @@ describe('plugin-mobius-socket', () => {
           });
         });
       });
-
-      // describe(`when connection fails because the websocket registation has expired`, () => {
-      //   it(`rejects with a NotFound`, () => {
-      //     const s = new Socket();
-      //     const promise = s.open(`ws://example.com`, mockoptions);
-      //     mockWebSocket.readyState = 1;
-      //     mockWebSocket.emit(`open`);
-      //
-      //     const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
-      //     assert.equal(firstCallArgs.type, `authorization`);
-      //
-      //     mockWebSocket.emit(`close`, {
-      //       code: 4404,
-      //       reason: `Expired registration`
-      //     });
-      //
-      //     return assert.isRejected(promise)
-      //       .then((reason) => {
-      //         assert.instanceOf(reason, NotFound);
-      //         assert.match(reason.code, 4404);
-      //         assert.match(reason.reason, /Expired registration/);
-      //         assert.match(reason.message, /Expired registration/);
-      //         return s.close();
-      //       });
-      //   });
-      // });
 
       describe('when connection fails for non-authorization reasons', () => {
         it("rejects with the close event's reason", () => {

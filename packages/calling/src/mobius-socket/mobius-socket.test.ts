@@ -7,18 +7,10 @@ import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
-import MobiusSocket, {
-  getMobiusSocketInstance,
-  resetMobiusSocketInstance,
-  BadRequest,
-  NotAuthorized,
-  Forbidden,
-  UnknownResponse,
-  // NotFound,
-  config as mobiusConfig,
-  ConnectionError,
-  Socket,
-} from './index';
+import MobiusSocket, {getMobiusSocketInstance, resetMobiusSocketInstance} from './index';
+import {BadRequest, NotAuthorized, Forbidden, UnknownResponse, ConnectionError} from './errors';
+import mobiusConfig from './config';
+import Socket from './socket';
 import {skipInBrowser} from './test/mocha-helpers';
 import {MESSAGE_TYPES} from './socket/constants';
 
@@ -193,7 +185,7 @@ describe('plugin-mobius-socket', () => {
       // Clean up MobiusSocket connections and internal state
       if (mobiusSocket) {
         try {
-          await mobiusSocket.disconnectAll();
+          await mobiusSocket.disconnect();
         } catch (e) {
           // Ignore cleanup errors
         }
@@ -752,38 +744,6 @@ describe('plugin-mobius-socket', () => {
       });
     });
 
-    describe('#logout()', () => {
-      it('calls disconnectAll and logs', () => {
-        sinon.stub(mobiusSocket.logger, 'info');
-        sinon.stub(mobiusSocket, 'disconnectAll');
-        mobiusSocket.logout();
-        assert.called(mobiusSocket.disconnectAll);
-        assert.calledOnce(mobiusSocket.logger.info);
-        assert.calledWith(mobiusSocket.logger.info.getCall(0), 'MobiusSocket: logout() called');
-      });
-
-      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 3050 for logout', () => {
-        sinon.stub(mobiusSocket, 'disconnectAll');
-        mobiusSocket.config.beforeLogoutOptionsCloseReason = 'done (permanent)';
-        mobiusSocket.logout();
-        assert.calledWith(mobiusSocket.disconnectAll, {code: 3050, reason: 'done (permanent)'});
-      });
-
-      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send code 3050 for logout if the reason is different than standard', () => {
-        sinon.stub(mobiusSocket, 'disconnectAll');
-        mobiusSocket.config.beforeLogoutOptionsCloseReason = 'test';
-        mobiusSocket.logout();
-        assert.calledWith(mobiusSocket.disconnectAll, {code: 3050, reason: 'test'});
-      });
-
-      it('uses the config.beforeLogoutOptionsCloseReason to disconnect and will send undefined for logout if the reason is same as standard', () => {
-        sinon.stub(mobiusSocket, 'disconnectAll');
-        mobiusSocket.config.beforeLogoutOptionsCloseReason = 'done (forced)';
-        mobiusSocket.logout();
-        assert.calledWith(mobiusSocket.disconnectAll, undefined);
-      });
-    });
-
     describe('#disconnect()', () => {
       it('disconnects the WebSocket', () =>
         mobiusSocket
@@ -908,8 +868,6 @@ describe('plugin-mobius-socket', () => {
             assert.isDefined(mobiusSocket.socket, 'MobiusSocket socket is not defined');
 
             await assert.isRejected(promise);
-            // connection did not fail, so no last error
-            assert.isUndefined(mobiusSocket.getLastError());
           });
         });
 
@@ -938,30 +896,6 @@ describe('plugin-mobius-socket', () => {
 
             // Ensure the promise was actually rejected (short-circuited)
             return assert.isRejected(promise);
-          });
-        });
-
-        it('sets lastError when retrying', () => {
-          const realError = new Error('FORCED');
-          mobiusSocket.config.initialConnectionMaxRetries = 1;
-
-          socketOpenStub.restore();
-          socketOpenStub = sinon.stub(Socket.prototype, 'open');
-          socketOpenStub.onCall(0).returns(Promise.reject(realError));
-          const promise = mobiusSocket.connect();
-
-          // Wait for the connect call to setup
-          return promiseTick(mobiusSocket.config.backoffTimeReset).then(async () => {
-            // Calling disconnect will abort the backoffCall, close the socket, and
-            // reject the connect
-            mobiusSocket.disconnect();
-
-            const error = await assert.isRejected(promise);
-            const lastError = mobiusSocket.getLastError();
-
-            assert.match(error.message, /MobiusSocket Connection Aborted/);
-            assert.isDefined(lastError);
-            assert.equal(lastError, realError);
           });
         });
       });

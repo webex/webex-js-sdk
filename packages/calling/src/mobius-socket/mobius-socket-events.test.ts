@@ -8,7 +8,9 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
 import {wrap} from 'lodash';
-import MobiusSocket, {config as mobiusConfig, Socket} from './index';
+import MobiusSocket from './index';
+import mobiusConfig from './config';
+import Socket from './socket';
 import {MESSAGE_TYPES} from './socket/constants';
 
 import promiseTick from './test/promise-tick';
@@ -87,7 +89,7 @@ describe('plugin-mobiusSocket', () => {
             });
           }
           try {
-            await mobiusSocket.disconnectAll();
+            await mobiusSocket.disconnect();
           } catch (e) {
             // Ignore cleanup errors in tests.
           }

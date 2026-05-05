@@ -10,13 +10,7 @@ import backoff from 'backoff';
 
 import type {WebexSDK} from '../SDKConnector/types';
 import Socket from './socket';
-import {
-  BadRequest,
-  Forbidden,
-  NotAuthorized,
-  UnknownResponse,
-  // NotFound
-} from './errors';
+import {BadRequest, Forbidden, NotAuthorized, UnknownResponse} from './errors';
 import type {MobiusSocketConfig} from './config';
 import type {SocketResponse} from './socket/types';
 import type {
@@ -283,22 +277,6 @@ class MobiusSocket extends EventEmitter {
   }
 
   /**
-   * Get the last error.
-   * @returns {unknown} The last error.
-   */
-  getLastError(): unknown {
-    return this.lastError;
-  }
-
-  /**
-   * Get all active socket connections
-   * @returns {Map} Map of sessionId to socket instances
-   */
-  getSockets() {
-    return this.sockets;
-  }
-
-  /**
    * Get a specific socket by connection ID
    * @param {string} sessionId - The connection identifier
    * @returns {Socket|undefined} The socket instance or undefined if not found
@@ -320,22 +298,6 @@ class MobiusSocket extends EventEmitter {
     }
 
     return socket.url;
-  }
-
-  /**
-   * Sends a payload on the active connected socket
-   * @param {Object} payload - The data to send
-   * @param {string} [sessionId=this.defaultSessionId] - The session identifier
-   * @returns {Promise}
-   */
-  send(payload: Record<string, unknown>, sessionId = this.defaultSessionId): Promise<void> {
-    const socket = this.getSocket(sessionId);
-
-    if (!socket || !socket.connected) {
-      return Promise.reject(new Error(`Mobius socket is not connected for session ${sessionId}`));
-    }
-
-    return socket.send(payload);
   }
 
   /**
@@ -494,17 +456,6 @@ class MobiusSocket extends EventEmitter {
     return connectPromise;
   }
 
-  logout(): Promise<void> {
-    this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: logout() called`);
-
-    return this.disconnectAll(
-      this.config.beforeLogoutOptionsCloseReason &&
-        !normalReconnectReasons.includes(this.config.beforeLogoutOptionsCloseReason)
-        ? {code: 3050, reason: this.config.beforeLogoutOptionsCloseReason}
-        : undefined
-    );
-  }
-
   /**
    * Disconnect a Mobius socket for a specific session.
    * @param {object} [options] - Optional websocket close options (for example: `{code, reason}`).
@@ -564,34 +515,6 @@ class MobiusSocket extends EventEmitter {
     });
   }
 
-  /**
-   * Disconnect all socket connections
-   * @param {object} options - Close options
-   * @returns {Promise} Promise that resolves when all connections are closed
-   */
-  disconnectAll(options?: MobiusSocketCloseOptions): Promise<void> {
-    const disconnectPromises = [];
-
-    for (const sessionId of this.sockets.keys()) {
-      disconnectPromises.push(this.disconnect(options, sessionId));
-    }
-
-    return Promise.all(disconnectPromises).then(() => {
-      this.connected = false;
-      this.socket = undefined;
-      this.sockets.clear();
-      this.backoffCalls.clear();
-      this._shutdownSwitchoverBackoffCalls.clear();
-      this._clearSeenAsyncEventIds();
-      this._stopTokenRefreshTimer();
-      this._connectPromises.clear();
-    });
-  }
-
-  processRegistrationStatusEvent(message) {
-    this.localClusterServiceUrls = message.localClusterServiceUrls;
-  }
-
   // eslint-disable-next-line class-methods-use-this
   _createWssResponseError(
     response: SocketResponse,
@@ -627,16 +550,6 @@ class MobiusSocket extends EventEmitter {
     if (!webSocketUrl) {
       webSocketUrl = this.webex.internal.device.webSocketUrl;
     }
-
-    // TODO: Validate the host against the service catalog
-    // const hostFromUrl = url.parse(webSocketUrl, true)?.host;
-    // const isValidHost = this.webex.internal.services.isValidHost(hostFromUrl);
-    // if (!isValidHost) {
-    //   this.logger.error(
-    //     `${MOBIUS_SOCKET_NAMESPACE}: host ${hostFromUrl} is not a valid host from host catalog`
-    //   );
-    //   return Promise.resolve('');
-    // }
 
     return Promise.resolve(webSocketUrl);
   }
@@ -709,8 +622,6 @@ class MobiusSocket extends EventEmitter {
         }
 
         // Normal connection error handling (existing complex logic)
-        this.lastError = reason; // remember the last error
-
         const backoffCallNormal = this.backoffCalls.get(sessionId);
         // Suppress connection errors that appear to be network related. This
         // may end up suppressing metrics during outages, but we might not care
@@ -744,12 +655,6 @@ class MobiusSocket extends EventEmitter {
 
           return this.webex.credentials.refresh({force: true}).then(() => callback(reason));
         }
-        // // NotFound implies expired web socket url
-        // else if (reason instanceof NotFound) {
-        //   this.logger.info(`mercury: received not found error, refreshing device registration`);
-        //   return this.webex.internal.device.refresh()
-        //     .then(() => callback(reason));
-        // }
         // BadRequest implies current credentials are for a Service Account
         // Forbidden implies current user is not entitled for Webex
         if (reason instanceof BadRequest || reason instanceof Forbidden) {

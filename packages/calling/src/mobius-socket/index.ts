@@ -51,12 +51,3 @@ export function resetMobiusSocketInstance() {
 
 export default MobiusSocket;
 export {MobiusSocket};
-export {default as Socket} from './socket';
-export {config};
-export {BadRequest, ConnectionError, Forbidden, NotAuthorized, UnknownResponse} from './errors';
-export type {
-  MobiusSocketCloseOptions,
-  MobiusSocketRequestOptions,
-  MobiusSocketRequestPayload,
-  MobiusSocketResponseError,
-} from './types';

@@ -58,10 +58,3 @@ export class NotAuthorized extends ConnectionError {
 export class Forbidden extends ConnectionError {
   static defaultMessage = 'Forbidden usually implies these credentials are not entitled for Webex';
 }
-
-// /**
-//  * thrown for CloseCode 4404
-//  */
-// export class NotFound extends ConnectionError {
-//   static defaultMessage = `Please refresh your Mercury registration (typically via a WDM refresh)`;
-// }
