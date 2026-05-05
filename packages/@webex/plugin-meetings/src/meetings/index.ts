@@ -56,9 +56,11 @@ import CaptchaError from '../common/errors/captcha-error';
 import MeetingCollection from './collection';
 import {
   MEETING_KEY,
+  GetSitePreferencesOptions,
   INoiseReductionEffect,
   IVirtualBackgroundEffect,
   MeetingRegistrationStatus,
+  SitePreferencesResponse,
 } from './meetings.types';
 import MeetingsUtil from './util';
 import PermissionError from '../common/errors/permission';
@@ -1403,6 +1405,34 @@ export default class Meetings extends WebexPlugin {
    */
   getPersonalMeetingRoom() {
     return this.personalMeetingRoom;
+  }
+
+  /**
+   * Gets appapi site preferences for a Webex site.
+   *
+   * @param {object} [options]
+   * @param {string} [options.siteUrl] - Webex site URL. Defaults to preferredWebexSite.
+   * @param {string[]|string} [options.select] - Preference sections to fetch.
+   * @param {string} [options.siteName] - Site name query override.
+   * @returns {Promise<SitePreferencesResponse>} site preferences response body
+   * @public
+   * @memberof Meetings
+   * @example
+   * const preferences = await webex.meetings.getSitePreferences();
+   * const canScheduleWebinar = preferences.scheduling?.supportScheduleWebinar;
+   */
+  public getSitePreferences(
+    options: GetSitePreferencesOptions = {}
+  ): Promise<SitePreferencesResponse> {
+    const siteUrl = options.siteUrl || this.preferredWebexSite;
+
+    if (!siteUrl?.trim()) {
+      return Promise.reject(
+        new Error('No site URL available. Call register() first or provide options.siteUrl.')
+      );
+    }
+
+    return this.request.getSitePreferences({...options, siteUrl});
   }
 
   /**

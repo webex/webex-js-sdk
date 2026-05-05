@@ -31,3 +31,22 @@ export type MeetingRegistrationStatus = {
   mercuryConnect: boolean;
   checkH264Support: boolean;
 };
+
+export type SitePreferencesSelect = string[] | string;
+
+export type GetSitePreferencesOptions = {
+  siteUrl?: string;
+  select?: SitePreferencesSelect;
+  siteName?: string;
+};
+
+export type SitePreferencesResponse = {
+  pmr?: Record<string, unknown>;
+  audioVideo?: Record<string, unknown>;
+  scheduling?: {
+    supportScheduleWebinar?: boolean;
+    webinarWebLink?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};

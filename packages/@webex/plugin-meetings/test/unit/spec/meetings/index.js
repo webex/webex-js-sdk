@@ -1356,6 +1356,79 @@ describe('plugin-meetings', () => {
             );
           });
         });
+        describe('#getSitePreferences', () => {
+          const sitePreferencesResponse = {
+            scheduling: {
+              supportScheduleWebinar: true,
+              webinarWebLink: 'https://go.webex.com/webappng/sites/go/webinar/scheduler',
+            },
+          };
+
+          beforeEach(() => {
+            webex.meetings.request.getSitePreferences = sinon
+              .stub()
+              .resolves(sitePreferencesResponse);
+          });
+
+          it('should have #getSitePreferences', () => {
+            assert.exists(webex.meetings.getSitePreferences);
+          });
+
+          it('gets site preferences for the preferred Webex site', async () => {
+            webex.meetings.preferredWebexSite = 'go.webex.com';
+
+            const result = await webex.meetings.getSitePreferences();
+
+            assert.deepEqual(result, sitePreferencesResponse);
+            assert.calledOnceWithExactly(webex.meetings.request.getSitePreferences, {
+              siteUrl: 'go.webex.com',
+            });
+          });
+
+          it('gets site preferences for the provided Webex site', async () => {
+            webex.meetings.preferredWebexSite = 'preferred.webex.com';
+
+            await webex.meetings.getSitePreferences({siteUrl: 'go.webex.com'});
+
+            assert.calledOnceWithExactly(webex.meetings.request.getSitePreferences, {
+              siteUrl: 'go.webex.com',
+            });
+          });
+
+          it('forwards site preference options to the request helper', async () => {
+            await webex.meetings.getSitePreferences({
+              siteUrl: 'go.webex.com',
+              select: ['scheduling', 'pmr'],
+              siteName: 'custom-site',
+            });
+
+            assert.calledOnceWithExactly(webex.meetings.request.getSitePreferences, {
+              siteUrl: 'go.webex.com',
+              select: ['scheduling', 'pmr'],
+              siteName: 'custom-site',
+            });
+          });
+
+          it('rejects when no Webex site is available', async () => {
+            webex.meetings.preferredWebexSite = '';
+
+            await assert.isRejected(
+              webex.meetings.getSitePreferences(),
+              'No site URL available. Call register() first or provide options.siteUrl.'
+            );
+            assert.notCalled(webex.meetings.request.getSitePreferences);
+          });
+
+          it('rejects when the configured Webex site is blank', async () => {
+            webex.meetings.preferredWebexSite = '   ';
+
+            await assert.isRejected(
+              webex.meetings.getSitePreferences(),
+              'No site URL available. Call register() first or provide options.siteUrl.'
+            );
+            assert.notCalled(webex.meetings.request.getSitePreferences);
+          });
+        });
         describe('Static shortcut proxy methods', () => {
           describe('MeetingCollection getByKey proxies', () => {
             beforeEach(() => {
