@@ -83,8 +83,8 @@ describe('plugin-mobiusSocket', () => {
           usingFakeTimers = false;
         }
         if (mobiusSocket) {
-          if (mobiusSocket._connectPromises) {
-            mobiusSocket._connectPromises.forEach((promise) => {
+          if (mobiusSocket.connectPromises) {
+            mobiusSocket.connectPromises.forEach((promise) => {
               promise.catch(() => {});
             });
           }
@@ -93,8 +93,8 @@ describe('plugin-mobiusSocket', () => {
           } catch (e) {
             // Ignore cleanup errors in tests.
           }
-          if (mobiusSocket._connectPromises) {
-            mobiusSocket._connectPromises.clear();
+          if (mobiusSocket.connectPromises) {
+            mobiusSocket.connectPromises.clear();
           }
         }
         if (mockWebSocket && typeof mockWebSocket.close === 'function') {
@@ -366,8 +366,8 @@ describe('plugin-mobiusSocket', () => {
 
           describe(`when an event ${description} is received`, () => {
             it(`takes the ${action} action`, () => {
-              if (mobiusSocket._reconnect.restore) {
-                mobiusSocket._reconnect.restore();
+              if (mobiusSocket.reconnect.restore) {
+                mobiusSocket.reconnect.restore();
               }
 
               sinon.spy(mobiusSocket, 'connect');

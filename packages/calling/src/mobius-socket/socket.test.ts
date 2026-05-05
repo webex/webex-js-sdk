@@ -765,7 +765,7 @@ describe('plugin-mobius-socket', () => {
       });
 
       it('acknowledges async_event messages only', () => {
-        sinon.spy(socket, '_acknowledge');
+        sinon.spy(socket, 'acknowledge');
         mockWebSocket.emit('message', {
           data: JSON.stringify({
             type: 'async_event',
@@ -773,28 +773,27 @@ describe('plugin-mobius-socket', () => {
             trackingId: 'tracking-123',
           }),
         });
-        assert.called(socket._acknowledge);
+        assert.called(socket.acknowledge);
       });
 
       it('does not acknowledge non-async_event messages', () => {
-        sinon.spy(socket, '_acknowledge');
+        sinon.spy(socket, 'acknowledge');
         mockWebSocket.emit('message', {
           data: JSON.stringify({
             type: 'regular',
             id: 'mockid',
           }),
         });
-        assert.notCalled(socket._acknowledge);
+        assert.notCalled(socket.acknowledge);
       });
     });
 
-    describe('#_acknowledge', () => {
-      it('requires an event', () =>
-        assert.isRejected(socket._acknowledge(), /`event` is required/));
+    describe('#acknowledge', () => {
+      it('requires an event', () => assert.isRejected(socket.acknowledge(), /`event` is required/));
 
       it('acknowledges async events using event_ack and eventId', () =>
         socket
-          ._acknowledge({
+          .acknowledge({
             data: {
               eventId: 'event-123',
               trackingId: 'tracking-123',
