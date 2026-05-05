@@ -32,6 +32,8 @@ const DEFAULT_MOBIUS_WEBSOCKET_SESSION = 'mobius-websocket-session';
 const MOBIUS_SOCKET_NAMESPACE = 'MobiusSocket';
 const TOKEN_REFRESH_INTERVAL_MS = 1 * 60 * 60 * 1000; // 1 hour
 
+type MobiusSocketLogger = Pick<Console, 'debug' | 'error' | 'info' | 'log' | 'warn'>;
+
 function normalizeMobiusAuthToken(token: string) {
   return token.replace(/^Bearer\s+/i, '');
 }
@@ -46,7 +48,7 @@ class MobiusSocket extends EventEmitter {
 
     this.webex = webex;
     this.config = config;
-    this.logger = webex.logger || console;
+    this.logger = (webex.logger as unknown as MobiusSocketLogger) || console;
     this.defaultSessionId = DEFAULT_MOBIUS_WEBSOCKET_SESSION;
     this.connected = false;
     this.connecting = false;
@@ -282,7 +284,7 @@ class MobiusSocket extends EventEmitter {
 
   /**
    * Get the last error.
-   * @returns {any} The last error.
+   * @returns {unknown} The last error.
    */
   getLastError(): unknown {
     return this.lastError;
@@ -327,7 +329,7 @@ class MobiusSocket extends EventEmitter {
    * @returns {Promise}
    */
   send(
-    payload: string | Record<string, unknown>,
+    payload: Record<string, unknown>,
     sessionId = this.defaultSessionId
   ): Promise<void> {
     const socket = this.getSocket(sessionId);
@@ -342,13 +344,13 @@ class MobiusSocket extends EventEmitter {
   /**
    * Sends a websocket request and resolves when the matching response arrives.
    * @param {Object} payload - The websocket request payload.
-   * @param {string|Object} [sessionIdOrOptions=this.defaultSessionId] - Session ID or request options.
+   * @param {string|Object} [sessionIdOrRequestOptions=this.defaultSessionId] - Session ID or request options.
    * @param {Object} [options={}] - Additional request options.
    * @returns {Promise<Object>}
    */
   sendWssRequest(
     payload: MobiusSocketRequestPayload,
-    sessionIdOrOptions: string | MobiusSocketRequestOptions = this.defaultSessionId,
+    sessionIdOrRequestOptions: string | MobiusSocketRequestOptions = this.defaultSessionId,
     options: MobiusSocketRequestOptions = {}
   ): Promise<SocketResponse> {
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
@@ -358,10 +360,10 @@ class MobiusSocket extends EventEmitter {
     let sessionId = this.defaultSessionId;
     let requestOptions = options;
 
-    if (typeof sessionIdOrOptions === 'string') {
-      sessionId = sessionIdOrOptions;
-    } else if (sessionIdOrOptions && typeof sessionIdOrOptions === 'object') {
-      requestOptions = sessionIdOrOptions;
+    if (typeof sessionIdOrRequestOptions === 'string') {
+      sessionId = sessionIdOrRequestOptions;
+    } else if (sessionIdOrRequestOptions && typeof sessionIdOrRequestOptions === 'object') {
+      requestOptions = sessionIdOrRequestOptions;
     }
 
     const socket = this.getSocket(sessionId);

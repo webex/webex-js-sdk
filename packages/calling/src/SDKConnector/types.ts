@@ -56,12 +56,12 @@ export type Logger = {
     level: string;
     bufferLogLevel: string;
   };
-  log: (...payload: unknown[]) => void;
-  error: (...payload: unknown[]) => void;
-  warn: (...payload: unknown[]) => void;
-  info: (...payload: unknown[]) => void;
-  trace: (...payload: unknown[]) => void;
-  debug: (...payload: unknown[]) => void;
+  log: (payload: string) => void;
+  error: (payload: string) => void;
+  warn: (payload: string) => void;
+  info: (payload: string) => void;
+  trace: (payload: string) => void;
+  debug: (payload: string) => void;
 };
 
 // TODO: is there a way to import bindings from the Webex JS SDK without having to redefine expected methods and structure?
