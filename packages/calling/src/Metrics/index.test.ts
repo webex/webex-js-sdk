@@ -1,7 +1,15 @@
 /* eslint-disable dot-notation */
 import {getMockDeviceInfo, getTestUtilsWebex} from '../common/testUtil';
 import {getMetricManager} from './index';
-import {METRIC_TYPE, METRIC_EVENT, REG_ACTION, VOICEMAIL_ACTION, UPLOAD_LOGS_ACTION} from './types';
+import {
+  METRIC_TYPE,
+  METRIC_EVENT,
+  REG_ACTION,
+  VOICEMAIL_ACTION,
+  UPLOAD_LOGS_ACTION,
+  CONNECTION_ACTION,
+  MOBIUS_SOCKET_ACTION,
+} from './types';
 import {REGISTRATION_UTIL, VERSION} from '../CallingClient/constants';
 import {createClientError} from '../Errors/catalog/CallingDeviceError';
 import {CallErrorObject, ErrorObject, ERROR_LAYER, ERROR_TYPE} from '../Errors/types';
@@ -722,7 +730,7 @@ describe('CALLING: Metric tests', () => {
 
       metricManager.submitConnectionMetrics(
         METRIC_EVENT.CONNECTION_ERROR,
-        'network_flap' as any,
+        CONNECTION_ACTION.NETWORK_FLAP,
         METRIC_TYPE.BEHAVIORAL,
         downTimestamp,
         upTimestamp
@@ -753,7 +761,7 @@ describe('CALLING: Metric tests', () => {
 
       metricManager.submitConnectionMetrics(
         METRIC_EVENT.CONNECTION_ERROR,
-        'mercury_down' as any,
+        CONNECTION_ACTION.MERCURY_DOWN,
         METRIC_TYPE.OPERATIONAL,
         downTimestamp,
         upTimestamp
@@ -963,7 +971,7 @@ describe('CALLING: Metric tests', () => {
 
       metricManager.submitMobiusSocketMetric(
         METRIC_EVENT.MOBIUS_SOCKET,
-        'connect' as any,
+        MOBIUS_SOCKET_ACTION.CONNECT,
         METRIC_TYPE.BEHAVIORAL,
         wssUrl,
         trackingId
@@ -992,7 +1000,7 @@ describe('CALLING: Metric tests', () => {
 
       metricManager.submitMobiusSocketMetric(
         METRIC_EVENT.MOBIUS_SOCKET,
-        'disconnect' as any,
+        MOBIUS_SOCKET_ACTION.DISCONNECT,
         METRIC_TYPE.BEHAVIORAL
       );
 
@@ -1019,7 +1027,7 @@ describe('CALLING: Metric tests', () => {
 
       metricManager.submitMobiusSocketMetric(
         METRIC_EVENT.MOBIUS_SOCKET,
-        'listener_registered' as any,
+        MOBIUS_SOCKET_ACTION.LISTENER_REGISTERED,
         METRIC_TYPE.BEHAVIORAL
       );
 
@@ -1046,7 +1054,7 @@ describe('CALLING: Metric tests', () => {
 
       metricManager.submitMobiusSocketMetric(
         METRIC_EVENT.MOBIUS_SOCKET,
-        'listener_unregistered' as any,
+        MOBIUS_SOCKET_ACTION.LISTENER_UNREGISTERED,
         METRIC_TYPE.BEHAVIORAL
       );
 
@@ -1078,7 +1086,7 @@ describe('CALLING: Metric tests', () => {
 
       metricManager.submitMobiusSocketMetric(
         METRIC_EVENT.MOBIUS_SOCKET_ERROR,
-        'connect' as any,
+        MOBIUS_SOCKET_ACTION.CONNECT,
         METRIC_TYPE.BEHAVIORAL,
         wssUrl,
         trackingId,
@@ -1115,7 +1123,7 @@ describe('CALLING: Metric tests', () => {
 
       metricManager.submitMobiusSocketMetric(
         METRIC_EVENT.MOBIUS_SOCKET_ERROR,
-        'registration_down' as any,
+        MOBIUS_SOCKET_ACTION.REGISTRATION_DOWN,
         METRIC_TYPE.BEHAVIORAL,
         undefined,
         trackingId,
@@ -1134,7 +1142,7 @@ describe('CALLING: Metric tests', () => {
 
       metricManager.submitMobiusSocketMetric(
         'invalidMetricName' as unknown as METRIC_EVENT,
-        'connect' as any,
+        MOBIUS_SOCKET_ACTION.CONNECT,
         METRIC_TYPE.BEHAVIORAL
       );
 
