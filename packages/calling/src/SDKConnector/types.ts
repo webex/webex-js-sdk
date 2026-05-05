@@ -56,12 +56,12 @@ export type Logger = {
     level: string;
     bufferLogLevel: string;
   };
-  log: (payload: string) => void;
-  error: (payload: string) => void;
-  warn: (payload: string) => void;
-  info: (payload: string) => void;
-  trace: (payload: string) => void;
-  debug: (payload: string) => void;
+  log: (...payload: unknown[]) => void;
+  error: (...payload: unknown[]) => void;
+  warn: (...payload: unknown[]) => void;
+  info: (...payload: unknown[]) => void;
+  trace: (...payload: unknown[]) => void;
+  debug: (...payload: unknown[]) => void;
 };
 
 // TODO: is there a way to import bindings from the Webex JS SDK without having to redefine expected methods and structure?
@@ -73,13 +73,19 @@ export interface WebexSDK {
     del: (namespace: string, key: string) => Promise<void>;
   };
   // top level primitives/funcs
-  config: {fedramp: boolean};
+  config: {
+    fedramp: boolean;
+    defaultMobiusSocketOptions?: Record<string, unknown>;
+  };
   version: string;
   canAuthorize: boolean;
   credentials: {
     getUserToken: () => Promise<string>;
+    canRefresh?: boolean;
+    refresh?: (options: {force: boolean}) => Promise<unknown>;
   };
   ready: boolean;
+  sessionId?: string;
   request: <T>(payload: WebexRequestPayload) => Promise<T>;
   // internal plugins
   internal: {
@@ -89,6 +95,9 @@ export interface WebexSDK {
       connected: boolean;
       connecting: boolean;
     };
+    feature?: {
+      updateFeature?: (featureToggle: unknown) => void;
+    };
     calendar: unknown;
     device: {
       url: string;
@@ -96,6 +105,10 @@ export interface WebexSDK {
       orgId: string;
       version: string;
       callingBehavior: string;
+      registered?: boolean;
+      webSocketUrl?: string;
+      register?: () => Promise<unknown>;
+      refresh?: () => Promise<unknown>;
       /** WDM / device-registration settings (e.g. `webrtc-calling-over-ws`). */
       settings?: Record<string, {value?: boolean} | undefined>;
       features: {
@@ -151,6 +164,8 @@ export interface WebexSDK {
       get: (service: string) => string;
       getMobiusClusters: () => ServiceHost[];
       fetchClientRegionInfo: () => Promise<ClientRegionInfo>;
+      invalidateCache?: (timestamp: unknown) => void;
+      switchActiveClusterIds?: (activeClusters: unknown) => void;
     };
     metrics: {
       submitClientMetrics: (name: string, data: unknown) => void;

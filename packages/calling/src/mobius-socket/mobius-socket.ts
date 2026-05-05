@@ -8,6 +8,7 @@ import {EventEmitter} from 'events';
 import {camelCase, set} from 'lodash';
 import backoff from 'backoff';
 
+import type {WebexSDK} from '../SDKConnector/types';
 import Socket from './socket';
 import {
   BadRequest,
@@ -24,7 +25,6 @@ import type {
   MobiusSocketRequestOptions,
   MobiusSocketRequestPayload,
   MobiusSocketResponseError,
-  MobiusSocketWebex,
 } from './types';
 
 const normalReconnectReasons = ['idle', 'done (forced)'];
@@ -37,7 +37,7 @@ function normalizeMobiusAuthToken(token: string) {
 }
 
 class MobiusSocket extends EventEmitter {
-  constructor(webex: MobiusSocketWebex, config: Partial<MobiusSocketConfig> = {}) {
+  constructor(webex: WebexSDK, config: Partial<MobiusSocketConfig> = {}) {
     super();
 
     if (!webex) {
