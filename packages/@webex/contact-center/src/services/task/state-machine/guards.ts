@@ -100,7 +100,15 @@ export const guards = {
   isInteractionConsulting: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
-    return taskData?.interaction?.state === 'consulting';
+    if (taskData?.interaction?.state === 'consulting') return true;
+
+    // EP_DN consulted agent: backend reports state as 'connected' but CPD indicates consult
+    const cpd = taskData?.interaction?.callProcessingDetails;
+    if (cpd?.relationshipType === 'consult' && taskData?.interaction?.state === 'connected') {
+      return true;
+    }
+
+    return false;
   },
 
   isInteractionHeld: ({event}: GuardParams): boolean => {

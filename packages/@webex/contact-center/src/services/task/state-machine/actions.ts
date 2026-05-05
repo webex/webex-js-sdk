@@ -109,7 +109,20 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
                   (p: any) => p?.isConsulted === true && !p?.hasLeft
                 )
             );
-            if (hasJoinedConsultee) updates.consultDestinationAgentJoined = true;
+            const cpd = taskData.interaction?.callProcessingDetails;
+            const backendSaysJoined = cpd?.consultDestinationAgentJoined === 'true';
+            if (hasJoinedConsultee || backendSaysJoined)
+              updates.consultDestinationAgentJoined = true;
+          }
+
+          if (!context.consultDestinationType && !updates.consultDestinationType) {
+            const hasEpDnParticipant = Boolean(
+              taskData.interaction.participants &&
+                Object.values(taskData.interaction.participants).some(
+                  (p: any) => p?.pType === 'EP-DN' && !p?.hasLeft
+                )
+            );
+            if (hasEpDnParticipant) updates.consultDestinationType = 'entryPoint' as any;
           }
 
           const effectiveConsultInitiator = updates.consultInitiator ?? context.consultInitiator;

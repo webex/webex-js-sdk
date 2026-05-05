@@ -112,9 +112,20 @@ function computeVoiceInteractionUIControls(
   // Note: ownership is used by some controls; keep computations local to those controls
 
   // Context flags (set by state machine actions)
-  const {consultInitiator, consultDestinationAgentJoined, consultCallHeld, consultFromConference} =
-    context;
+  const {
+    consultInitiator,
+    consultDestinationAgentJoined,
+    consultDestinationType,
+    consultCallHeld,
+    consultFromConference,
+  } = context;
   const {recordingControlsAvailable} = context;
+
+  // EP_DN consults are "ready" as soon as the consult is created (EP accepts routing immediately).
+  // Backend sends destinationType as 'EP-DN'; SDK method uses 'entryPoint' — check both.
+  const isEpDnConsult =
+    consultDestinationType === 'entryPoint' || consultDestinationType === ('EP-DN' as any);
+  const isConsultDestinationReady = consultDestinationAgentJoined || isEpDnConsult;
 
   const stateImpliesHeld = state === TaskState.HELD || state === TaskState.RESUME_INITIATING;
   const stateImpliesConnected =
@@ -217,7 +228,9 @@ function computeVoiceInteractionUIControls(
     // End: varies by state; during consulting only on main leg (consult held)
     end: (() => {
       if (!config.isEndTaskEnabled) return DISABLED;
-      if (hasParallelConsultLeg) return VISIBLE_DISABLED;
+      if (hasParallelConsultLeg) {
+        return isConnected && isEpDnConsult ? VISIBLE_ENABLED : VISIBLE_DISABLED;
+      }
 
       if (isConsulting) {
         if (currentLeg === 'consult' && consultCallHeld) return DISABLED;
@@ -248,7 +261,7 @@ function computeVoiceInteractionUIControls(
         if (!consultInitiator) return DISABLED;
         if (consultLegOnHold) return VISIBLE_DISABLED;
 
-        return consultDestinationAgentJoined ? VISIBLE_ENABLED : VISIBLE_DISABLED;
+        return isConsultDestinationReady ? VISIBLE_ENABLED : VISIBLE_DISABLED;
       }
       if (!hasFullControls || inConference) return DISABLED;
       if (state === TaskState.CONNECTED || state === TaskState.HELD) return VISIBLE_ENABLED;
@@ -316,7 +329,7 @@ function computeVoiceInteractionUIControls(
       if (!consultInitiator) return DISABLED;
       if (consultLegOnHold) return VISIBLE_DISABLED;
 
-      return consultDestinationAgentJoined && !maxParticipants ? VISIBLE_ENABLED : VISIBLE_DISABLED;
+      return isConsultDestinationReady && !maxParticipants ? VISIBLE_ENABLED : VISIBLE_DISABLED;
     })(),
 
     // Wrapup: wrapping up state
@@ -337,7 +350,7 @@ function computeVoiceInteractionUIControls(
       if (!inConference || !isConsulting) return DISABLED;
       if (!consultInitiator || isConsulted) return DISABLED;
 
-      return consultDestinationAgentJoined ? VISIBLE_ENABLED : VISIBLE_DISABLED;
+      return isConsultDestinationReady ? VISIBLE_ENABLED : VISIBLE_DISABLED;
     })(),
 
     // MergeToConference: mirrors conference control, enabled on both legs
@@ -345,7 +358,7 @@ function computeVoiceInteractionUIControls(
       if (!isConsulting || !consultInitiator) return DISABLED;
       if (consultLegOnHold) return VISIBLE_DISABLED;
 
-      return consultDestinationAgentJoined && !maxParticipants ? VISIBLE_ENABLED : VISIBLE_DISABLED;
+      return isConsultDestinationReady && !maxParticipants ? VISIBLE_ENABLED : VISIBLE_DISABLED;
     })(),
 
     // Switch: visible only on the currently active leg
@@ -353,11 +366,11 @@ function computeVoiceInteractionUIControls(
       if (currentLeg === 'consult') {
         if (!isConsulting || !consultInitiator || consultCallHeld) return DISABLED;
 
-        return consultDestinationAgentJoined ? VISIBLE_ENABLED : VISIBLE_DISABLED;
+        return isConsultDestinationReady ? VISIBLE_ENABLED : VISIBLE_DISABLED;
       }
 
       if (hasParallelConsultLeg && state === TaskState.CONNECTED) {
-        return consultDestinationAgentJoined ? VISIBLE_ENABLED : VISIBLE_DISABLED;
+        return isConsultDestinationReady ? VISIBLE_ENABLED : VISIBLE_DISABLED;
       }
 
       return DISABLED;

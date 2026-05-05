@@ -691,8 +691,20 @@ export default class TaskManager extends EventEmitter {
         this.wrapupData,
         this.agentId
       );
-      this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
+
+      // Transition the new task out of IDLE immediately so UI controls are
+      // computed before TASK_MERGED is emitted. This handles the race where
+      // AgentContactAssigned arrives before ContactMerged and gets dropped.
+      // Send HYDRATE before setupTaskListeners so the emitTaskHydrate action
+      // doesn't bubble up to the Widget (avoids duplicate listener registration).
+      task.sendStateMachineEvent({
+        type: TaskEvent.HYDRATE,
+        taskData,
+        agentId: this.agentId,
+      } as TaskEventPayload);
+
+      this.setupTaskListeners(task);
     }
 
     if (task) {
