@@ -29,14 +29,14 @@ export function parseIceServerUrl(url: string): {
       return {isIp: false};
     }
 
-    return port ? {host: ipv6, port, isIp: true} : {host: ipv6, isIp: true};
+    return {host: ipv6, port, isIp: true};
   }
 
   // IPv4 or domain name
   if (hostOrIpv4) {
     const isIp = Address4.isValid(hostOrIpv4);
 
-    return port ? {host: hostOrIpv4, port, isIp} : {host: hostOrIpv4, isIp};
+    return {host: hostOrIpv4, port, isIp};
   }
 
   return {isIp: false};

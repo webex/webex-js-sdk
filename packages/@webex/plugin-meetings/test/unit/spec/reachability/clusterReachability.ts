@@ -83,9 +83,9 @@ describe('ClusterReachability', () => {
 
   it('returns correct results before start() is called', () => {
     assert.deepEqual(clusterReachability.getResult(), {
-      udp: {result: 'untested', details: undefined},
-      tcp: {result: 'untested', details: undefined},
-      xtls: {result: 'untested', details: undefined},
+      udp: {result: 'untested'},
+      tcp: {result: 'untested'},
+      xtls: {result: 'untested'},
     });
 
     // verify that no events were emitted
@@ -129,20 +129,16 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(50);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp1'}});
 
-      // resultReady is emitted immediately for the first reachable protocol (UDP)
+      // ClusterReachability should relay the event
       assert.equal(emittedEvents[Events.resultReady].length, 1);
+      assert.deepEqual(emittedEvents[Events.resultReady][0], {
+        protocol: 'udp',
+        result: 'reachable',
+        latencyInMilliseconds: 50,
+        clientMediaIPs: ['somePublicIp1'],
+      });
 
-      // Complete ICE gathering — in default mode (enablePerUdpUrlReachability=false),
-      // unreachable protocols do NOT emit resultReady events
-      fakePeerConnection.iceGatheringState = 'complete';
-      fakePeerConnection.onicegatheringstatechange();
-
-      assert.equal(emittedEvents[Events.resultReady].length, 1);
-      const udpEvent = emittedEvents[Events.resultReady].find((e) => e.protocol === 'udp');
-      assert.equal(udpEvent.result, 'reachable');
-      assert.equal(udpEvent.latencyInMilliseconds, 50);
-      assert.deepEqual(udpEvent.clientMediaIPs, ['somePublicIp1']);
-
+      clusterReachability.abort();
       await promise;
     });
 
@@ -152,7 +148,7 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp1'}});
 
-      // First IP found - resultReady is emitted immediately for the first reachable protocol
+      // First IP found - only resultReady emitted
       assert.equal(emittedEvents[Events.resultReady].length, 1);
       assert.equal(emittedEvents[Events.clientMediaIpsUpdated].length, 0);
       resetEmittedEvents();
@@ -214,7 +210,7 @@ describe('ClusterReachability', () => {
       const udpRpc1 = (perUdpClusterReachability as any).reachabilityPeerConnectionsForUdp[0];
       const udpRpc2 = (perUdpClusterReachability as any).reachabilityPeerConnectionsForUdp[1];
 
-      // Stub getResult so aggregateUdpResults() sees the correct state
+      // Stub getResult so aggregateUdpResults() sees udpRpc1 as reachable with latency 50
       sinon.stub(udpRpc1, 'getResult').returns({
         udp: {result: 'reachable', latencyInMilliseconds: 50, clientMediaIPs: ['1.1.1.1']},
         tcp: {result: 'untested'}, xtls: {result: 'untested'},
@@ -235,7 +231,7 @@ describe('ClusterReachability', () => {
       });
 
       assert.equal(udpEvents.length, 1);
-      assert.equal(udpEvents[0].protocol, 'udp');
+      assert.equal(udpEvents[0].latencyInMilliseconds, 50);
     });
   });
 
@@ -261,7 +257,6 @@ describe('ClusterReachability', () => {
       clusterReachability.abort();
       await promise;
 
-      // All 3 subnets should be tracked (both srflx server IPs and relay address)
       assert.equal(clusterReachability.reachedSubnets.size, 3);
       assert.isTrue(clusterReachability.reachedSubnets.has('192.168.1.1'));
       assert.isTrue(clusterReachability.reachedSubnets.has('10.0.0.1'));
@@ -299,7 +294,6 @@ describe('ClusterReachability', () => {
       clusterReachability.abort();
       await promise;
 
-      // All 3 subnets should be tracked (both srflx server IPs and relay address)
       assert.equal(clusterReachability.reachedSubnets.size, 3);
       assert.deepEqual(Array.from(clusterReachability.reachedSubnets), ['192.168.1.1', '10.0.0.1', '172.16.0.1']);
     });
@@ -477,9 +471,8 @@ describe('ClusterReachability', () => {
       clusterReachability.abort();
       await promise;
 
-      // In default mode (enablePerUdpUrlReachability=false), abort does NOT emit
-      // resultReady for unreachable protocols — only reachable ones are emitted
-      assert.equal(emittedEvents[Events.resultReady].length, 0);
+      // verify that no events were emitted
+      assert.deepEqual(emittedEvents[Events.resultReady], []);
       assert.deepEqual(emittedEvents[Events.clientMediaIpsUpdated], []);
     });
 
@@ -493,9 +486,9 @@ describe('ClusterReachability', () => {
       await promise;
 
       assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'unreachable', details: undefined},
-        tcp: {result: 'unreachable', details: undefined},
-        xtls: {result: 'unreachable', details: undefined},
+        udp: {result: 'unreachable'},
+        tcp: {result: 'unreachable'},
+        xtls: {result: 'unreachable'},
       });
     });
 
@@ -511,9 +504,9 @@ describe('ClusterReachability', () => {
       await promise;
 
       assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'reachable', latencyInMilliseconds: 30, clientMediaIPs: ['somePublicIp1'], details: undefined},
-        tcp: {result: 'unreachable', details: undefined},
-        xtls: {result: 'unreachable', details: undefined},
+        udp: {result: 'reachable', latencyInMilliseconds: 30, clientMediaIPs: ['somePublicIp1']},
+        tcp: {result: 'unreachable'},
+        xtls: {result: 'unreachable'},
       });
     });
 
@@ -524,15 +517,14 @@ describe('ClusterReachability', () => {
       clusterReachability.abort();
       await promise;
 
-      // In default mode (enablePerUdpUrlReachability=false), abort does NOT emit
-      // resultReady for unreachable protocols
-      assert.equal(emittedEvents[Events.resultReady].length, 0);
+      // verify that no events were emitted
+      assert.deepEqual(emittedEvents[Events.resultReady], []);
       assert.deepEqual(emittedEvents[Events.clientMediaIpsUpdated], []);
 
       assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'unreachable', details: undefined},
-        tcp: {result: 'unreachable', details: undefined},
-        xtls: {result: 'unreachable', details: undefined},
+        udp: {result: 'unreachable'},
+        tcp: {result: 'unreachable'},
+        xtls: {result: 'unreachable'},
       });
     });
 
@@ -542,20 +534,22 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(100);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp'}});
 
-      // resultReady is emitted immediately for the first reachable protocol (UDP)
+      // check the right event was emitted
       assert.equal(emittedEvents[Events.resultReady].length, 1);
+      assert.deepEqual(emittedEvents[Events.resultReady][0], {
+        protocol: 'udp',
+        result: 'reachable',
+        latencyInMilliseconds: 100,
+        clientMediaIPs: ['somePublicIp'],
+      });
 
       clusterReachability.abort();
       await promise;
 
-      // In default mode (enablePerUdpUrlReachability=false), abort does NOT emit
-      // resultReady for unreachable protocols — only the 1 reachable UDP event remains
-      assert.equal(emittedEvents[Events.resultReady].length, 1);
-
       assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['somePublicIp'], details: undefined},
-        tcp: {result: 'unreachable', details: undefined},
-        xtls: {result: 'unreachable', details: undefined},
+        udp: {result: 'reachable', latencyInMilliseconds: 100, clientMediaIPs: ['somePublicIp']},
+        tcp: {result: 'unreachable'},
+        xtls: {result: 'unreachable'},
       });
     });
   });
@@ -592,10 +586,9 @@ describe('ClusterReachability', () => {
           result: 'reachable',
           latencyInMilliseconds: 10,
           clientMediaIPs: ['somePublicIp1', 'somePublicIp2', 'somePublicIp3'],
-          details: undefined,
         },
-        tcp: {result: 'unreachable', details: undefined},
-        xtls: {result: 'unreachable', details: undefined},
+        tcp: {result: 'unreachable'},
+        xtls: {result: 'unreachable'},
       });
     });
 
@@ -616,9 +609,9 @@ describe('ClusterReachability', () => {
       await promise;
 
       assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'unreachable', details: undefined},
-        tcp: {result: 'reachable', latencyInMilliseconds: 10, details: undefined},
-        xtls: {result: 'unreachable', details: undefined},
+        udp: {result: 'unreachable'},
+        tcp: {result: 'reachable', latencyInMilliseconds: 10},
+        xtls: {result: 'unreachable'},
       });
     });
 
@@ -639,9 +632,9 @@ describe('ClusterReachability', () => {
       await promise;
 
       assert.deepEqual(clusterReachability.getResult(), {
-        udp: {result: 'unreachable', details: undefined},
-        tcp: {result: 'unreachable', details: undefined},
-        xtls: {result: 'reachable', latencyInMilliseconds: 10, details: undefined},
+        udp: {result: 'unreachable'},
+        tcp: {result: 'unreachable'},
+        xtls: {result: 'reachable', latencyInMilliseconds: 10},
       });
     });
 
@@ -652,22 +645,29 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp1'}});
 
-      // resultReady is emitted immediately for the first reachable protocol (UDP)
+      // check events emitted: there should be a resultReady and no clientMediaIpsUpdated
       assert.equal(emittedEvents[Events.resultReady].length, 1);
+      assert.deepEqual(emittedEvents[Events.resultReady][0], {
+        protocol: 'udp',
+        result: 'reachable',
+        latencyInMilliseconds: 10,
+        clientMediaIPs: ['somePublicIp1'],
+      });
       assert.equal(emittedEvents[Events.clientMediaIpsUpdated].length, 0);
+      resetEmittedEvents();
 
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp1'}});
 
-      // no new event was emitted (duplicate IP)
-      assert.equal(emittedEvents[Events.resultReady].length, 1);
+      // no new event was emitted
+      assert.equal(emittedEvents[Events.resultReady].length, 0);
       assert.equal(emittedEvents[Events.clientMediaIpsUpdated].length, 0);
 
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp2'}});
 
-      // clientMediaIpsUpdated emitted for new IP
-      assert.equal(emittedEvents[Events.resultReady].length, 1);
+      // check new events: now only clientMediaIpsUpdated event and no resultReady events
+      assert.equal(emittedEvents[Events.resultReady].length, 0);
       assert.equal(emittedEvents[Events.clientMediaIpsUpdated].length, 1);
       assert.deepEqual(emittedEvents[Events.clientMediaIpsUpdated][0], {
         protocol: 'udp',
@@ -678,7 +678,7 @@ describe('ClusterReachability', () => {
       await clock.tickAsync(10);
       fakePeerConnection.onicecandidate({candidate: {type: 'srflx', address: 'somePublicIp2'}});
 
-      // no new event was emitted (duplicate IP)
+      // no new event was emitted
       assert.equal(emittedEvents[Events.resultReady].length, 0);
       assert.equal(emittedEvents[Events.clientMediaIpsUpdated].length, 0);
 
@@ -698,10 +698,9 @@ describe('ClusterReachability', () => {
           result: 'reachable',
           latencyInMilliseconds: 10,
           clientMediaIPs: ['somePublicIp1', 'somePublicIp2'],
-          details: undefined,
         },
-        tcp: {result: 'reachable', latencyInMilliseconds: 40, details: undefined},
-        xtls: {result: 'reachable', latencyInMilliseconds: 40, details: undefined},
+        tcp: {result: 'reachable', latencyInMilliseconds: 40},
+        xtls: {result: 'reachable', latencyInMilliseconds: 40},
       });
     });
 
@@ -741,10 +740,9 @@ describe('ClusterReachability', () => {
           result: 'reachable',
           latencyInMilliseconds: 10,
           clientMediaIPs: ['somePublicIp1'],
-          details: undefined,
         },
-        tcp: {result: 'reachable', latencyInMilliseconds: 20, details: undefined},
-        xtls: {result: 'reachable', latencyInMilliseconds: 20, details: undefined},
+        tcp: {result: 'reachable', latencyInMilliseconds: 20},
+        xtls: {result: 'reachable', latencyInMilliseconds: 20},
       });
     });
   });
@@ -895,70 +893,6 @@ describe('ClusterReachability', () => {
         assert.equal(detail.lostTx, 1);
         assert.deepEqual(detail.latencies, []);
       });
-    });
-
-    it('uses candidate.url for xTLS protocol detection and updates pre-populated detail via port-only fallback when relay IP differs', async () => {
-      // This tests the Chrome relay candidate path:
-      // - candidate.url gives the configured TURN port (443) → correctly identifies xTLS
-      // - relay IP (candidate.address) differs from the configured server IP in the URL
-      // - updateSubnetDetail falls back to port-only matching and overwrites serverIp with the relay IP
-      const allFakePcs: Record<string, unknown>[] = [];
-      (global.RTCPeerConnection as sinon.SinonStub).callsFake(() => {
-        const pc: Record<string, unknown> = {
-          createOffer: sinon.stub().resolves(FAKE_OFFER),
-          setLocalDescription: sinon.stub().resolves(),
-          close: sinon.stub(),
-          iceGatheringState: 'new',
-        };
-        allFakePcs.push(pc);
-        return pc;
-      });
-
-      const perUrlCluster = new ClusterReachability(
-        'testCluster',
-        {
-          isVideoMesh: false,
-          udp: [],
-          tcp: [],
-          xtls: ['stun:203.0.113.1:443'], // IP-based URL → pre-populated as {serverIp: '203.0.113.1', port: 443}
-        },
-        true // enablePerUdpUrlReachability
-      );
-
-      const promise = perUrlCluster.start();
-      await testUtils.flushPromises();
-
-      const tcpTlsPc = allFakePcs[0];
-      await clock.tickAsync(20);
-
-      // Chrome-style relay candidate: url provides configured port 443, but relay IP is different
-      tcpTlsPc.onicecandidate({
-        candidate: {
-          type: 'relay',
-          address: '5.6.7.8',                              // relay IP — different from configured '203.0.113.1'
-          port: 54321,                                     // ephemeral port — would wrongly give 'tcp' without candidate.url
-          url: 'turn:203.0.113.1:443?transport=tcp',      // configured port 443 → should give 'xtls'
-        },
-      });
-      tcpTlsPc.iceGatheringState = 'complete';
-      tcpTlsPc.onicegatheringstatechange();
-
-      await promise;
-
-      const result = perUrlCluster.getResult();
-
-      // Protocol should be xtls (from configured port 443 in candidate.url, not ephemeral port 54321)
-      assert.equal(result.xtls.result, 'reachable');
-      assert.equal(result.tcp.result, 'untested'); // no tcp URLs configured
-
-      // Detail entry: port-only fallback matched the pre-populated entry and overwrote serverIp with relay IP
-      assert.isArray(result.xtls.details);
-      assert.equal(result.xtls.details.length, 1);
-      assert.equal(result.xtls.details[0].serverIp, '5.6.7.8'); // relay IP, not '203.0.113.1'
-      assert.equal(result.xtls.details[0].port, 443);
-      assert.equal(result.xtls.details[0].answeredTx, 1);
-      assert.equal(result.xtls.details[0].lostTx, 0);
-      assert.equal(result.xtls.details[0].latencies.length, 1);
     });
   });
 });

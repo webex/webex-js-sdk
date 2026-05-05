@@ -6,7 +6,7 @@ export type Protocol = 'udp' | 'tcp' | 'xtls';
  * Events emitted by ReachabilityPeerConnection
  */
 export const ReachabilityPeerConnectionEvents = {
-  resultReady: 'resultReady', // emitted when a reachability result is available for a protocol (reachable or unreachable)
+  resultReady: 'resultReady', // emitted when a reachability result is available for a protocol; when per-URL mode is disabled, emitted only for reachable URLs; when per-URL mode is enabled, emitted for both reachable and unreachable URLs
   clientMediaIpsUpdated: 'clientMediaIpsUpdated', // emitted when new public IPs are found
   natTypeUpdated: 'natTypeUpdated', // emitted when NAT type is determined
   reachedSubnets: 'reachedSubnets', // emitted when server IP (subnet) is discovered

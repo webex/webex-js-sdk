@@ -59,24 +59,15 @@ export class ReachabilityPeerConnection extends EventsScope {
     // Pre-populate subnet details only when enablePerUdpUrlReachability is true
     // Always include domain names for UDP to ensure we have entries even when unreachable
     this.result = {
-      udp: {
-        result: 'untested',
-        details: enablePerUdpUrlReachability
-          ? prepopulateSubnetDetails(clusterInfo.udp, true)
-          : undefined,
-      },
-      tcp: {
-        result: 'untested',
-        details: enablePerUdpUrlReachability
-          ? prepopulateSubnetDetails(clusterInfo.tcp)
-          : undefined,
-      },
-      xtls: {
-        result: 'untested',
-        details: enablePerUdpUrlReachability
-          ? prepopulateSubnetDetails(clusterInfo.xtls)
-          : undefined,
-      },
+      udp: enablePerUdpUrlReachability
+        ? {result: 'untested', details: prepopulateSubnetDetails(clusterInfo.udp, true)}
+        : {result: 'untested'},
+      tcp: enablePerUdpUrlReachability
+        ? {result: 'untested', details: prepopulateSubnetDetails(clusterInfo.tcp)}
+        : {result: 'untested'},
+      xtls: enablePerUdpUrlReachability
+        ? {result: 'untested', details: prepopulateSubnetDetails(clusterInfo.xtls)}
+        : {result: 'untested'},
     };
   }
 
@@ -485,15 +476,7 @@ export class ReachabilityPeerConnection extends EventsScope {
 
         this.determineNatTypeForSrflxCandidate(e.candidate);
       } else if (e.candidate.type === CANDIDATE_TYPES.RELAY) {
-        // Use candidate.url (Chrome) for protocol detection; fall back to ephemeral e.candidate.port in Firefox (best-effort).
-        const relayCandidateWithUrl = e.candidate as RTCIceCandidate & {url?: string};
-        const configuredPort = relayCandidateWithUrl.url
-          ? parseIceServerUrl(relayCandidateWithUrl.url).port
-          : undefined;
-
-        // Determine protocol from the configured TURN port (443 = xTLS, else TCP).
-        const portForProtocol = configuredPort ?? e.candidate.port;
-        const protocol: Protocol = portForProtocol === TURN_TLS_PORT ? 'xtls' : 'tcp';
+        const protocol: Protocol = e.candidate.port === TURN_TLS_PORT ? 'xtls' : 'tcp';
 
         // Pass relay IP as serverIp — updateSubnetDetail matches by port and overwrites the pre-populated domain name with it.
         this.saveResult(
@@ -501,7 +484,7 @@ export class ReachabilityPeerConnection extends EventsScope {
           latencyInMilliseconds,
           null,
           e.candidate.address,
-          this.enablePerUdpUrlReachability ? configuredPort ?? e.candidate.port : undefined
+          this.enablePerUdpUrlReachability ? e.candidate.port : undefined
         );
       }
     };
@@ -522,18 +505,18 @@ export class ReachabilityPeerConnection extends EventsScope {
 
     // Initialize this.result as saying that nothing is reachable.
     // It will get updated as we go along and successfully gather ICE candidates.
-    // Preserve existing details (pre-populated or undefined based on enableSubnetDetails flag).
+    // Preserve existing details (pre-populated when enablePerUdpUrlReachability is true).
     this.result.udp = {
       result: this.numUdpUrls > 0 ? 'unreachable' : 'untested',
-      details: this.result.udp.details,
+      ...(this.result.udp.details !== undefined && {details: this.result.udp.details}),
     };
     this.result.tcp = {
       result: this.numTcpUrls > 0 ? 'unreachable' : 'untested',
-      details: this.result.tcp.details,
+      ...(this.result.tcp.details !== undefined && {details: this.result.tcp.details}),
     };
     this.result.xtls = {
       result: this.numXTlsUrls > 0 ? 'unreachable' : 'untested',
-      details: this.result.xtls.details,
+      ...(this.result.xtls.details !== undefined && {details: this.result.xtls.details}),
     };
 
     try {
