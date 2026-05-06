@@ -1698,6 +1698,7 @@ class HashTreeParser {
     );
     this.stopAllTimers();
     this.syncQueue = [];
+    this.pendingSyncMetrics.clear();
     Object.values(this.dataSets).forEach((dataSet) => {
       dataSet.hashTree = undefined;
     });
