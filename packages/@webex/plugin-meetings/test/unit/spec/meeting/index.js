@@ -34,6 +34,8 @@ import {
   ONLINE,
   OFFLINE,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
+  LOCUS_LLM_EVENT,
+  RECORDING_STATE,
 } from '@webex/plugin-meetings/src/constants';
 import {
   ConnectionState,
@@ -1982,11 +1984,12 @@ describe('plugin-meetings', () => {
       describe('#handleLLMOnline', () => {
         beforeEach(() => {
           webex.internal.llm.off = sinon.stub();
+          webex.internal.voicea.getIsCaptionBoxOn = sinon.stub().returns(false);
+          webex.internal.voicea.updateSubchannelSubscriptions = sinon.stub();
         });
 
-        it('turns off llm online, emits transcription connected events', () => {
+        it('emits transcription connected events', () => {
           meeting.handleLLMOnline();
-          assert.calledOnceWithExactly(webex.internal.llm.off, 'online', meeting.handleLLMOnline);
           assert.calledWith(
             TriggerProxy.trigger,
             sinon.match.instanceOf(Meeting),
@@ -1996,6 +1999,24 @@ describe('plugin-meetings', () => {
             },
             EVENT_TRIGGERS.MEETING_TRANSCRIPTION_CONNECTED
           );
+        });
+
+        it('restores transcription subscription when caption intent is enabled', () => {
+          webex.internal.voicea.getIsCaptionBoxOn.returns(true);
+
+          meeting.handleLLMOnline();
+
+          assert.calledOnceWithExactly(webex.internal.voicea.updateSubchannelSubscriptions, {
+            subscribe: ['transcription'],
+          });
+        });
+
+        it('does not restore transcription subscription when caption intent is disabled', () => {
+          webex.internal.voicea.getIsCaptionBoxOn.returns(false);
+
+          meeting.handleLLMOnline();
+
+          assert.notCalled(webex.internal.voicea.updateSubchannelSubscriptions);
         });
       });
 
@@ -2016,6 +2037,7 @@ describe('plugin-meetings', () => {
         it('should have #join', () => {
           assert.exists(meeting.join);
         });
+
         beforeEach(() => {
           setCorrelationIdSpy = sinon.spy(meeting, 'setCorrelationId');
           meeting.setLocus = sinon.stub().returns(true);
@@ -2169,7 +2191,6 @@ describe('plugin-meetings', () => {
             await meeting.join().catch(() => {
               assert.calledOnce(MeetingUtil.joinMeeting);
 
-              // Assert that client.locus.join.response error event is not sent from this function, it is now emitted from MeetingUtil.joinMeeting
               assert.calledOnce(webex.internal.newMetrics.submitClientEvent);
               assert.calledWithMatch(webex.internal.newMetrics.submitClientEvent, {
                 name: 'client.call.initiated',
@@ -2201,6 +2222,7 @@ describe('plugin-meetings', () => {
             });
           });
         });
+
         describe('lmm, transcription & permissionTokenRefresh decoupling', () => {
           beforeEach(() => {
             sandbox.stub(MeetingUtil, 'joinMeeting').returns(Promise.resolve(joinMeetingResult));
@@ -2271,7 +2293,6 @@ describe('plugin-meetings', () => {
               const locusInfoParseStub = sinon.stub(meeting.locusInfo, 'parse');
               sinon.stub(meeting, 'isJoined').returns(true);
 
-              // Set up llm.on stub to capture the registered listener when updateLLMConnection is called
               let locusLLMEventListener;
               meeting.webex.internal.llm.on = sinon.stub().callsFake((eventName, callback) => {
                 if (eventName === 'event:locus.state_message') {
@@ -2280,16 +2301,12 @@ describe('plugin-meetings', () => {
               });
               meeting.webex.internal.llm.off = sinon.stub();
 
-              // we need the real meeting.updateLLMConnection not the mock
               meeting.updateLLMConnection.restore();
 
-              // Call updateLLMConnection to register the listener
               await meeting.updateLLMConnection();
 
-              // Verify the listener was registered and we captured it
               assert.isDefined(locusLLMEventListener, 'LLM event listener should be registered');
 
-              // Now trigger the event
               const eventData = {
                 eventType: 'locus.state_message',
                 stateElementsMessage: {
@@ -2309,13 +2326,10 @@ describe('plugin-meetings', () => {
               sinon.stub(meeting.webex.internal.llm, 'hasEverConnected').value(true);
               sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves({});
 
-              // Restore the real updateLLMConnection
               meeting.updateLLMConnection.restore();
 
-              // Call updateLLMConnection to start the timer
               await meeting.updateLLMConnection();
 
-              // Fast forward time by 3 minutes
               fakeClock.tick(3 * 60 * 1000);
 
               assert.calledWith(
@@ -2340,18 +2354,14 @@ describe('plugin-meetings', () => {
                 .stub(meeting.webex.internal.llm, 'getDatachannelUrl')
                 .returns('https://datachannel1.example.com');
 
-              // Restore the real updateLLMConnection
               meeting.updateLLMConnection.restore();
 
-              // First, connect LLM and start the timer
               isJoinedStub.returns(true);
               meeting.webex.internal.llm.isConnected.returns(false);
               await meeting.updateLLMConnection();
 
-              // Verify timer was started
               assert.exists(meeting.llmHealthCheckTimer);
 
-              // Now simulate that we're no longer joined
               isJoinedStub.returns(false);
               meeting.webex.internal.llm.isConnected.returns(true);
 
@@ -2359,10 +2369,8 @@ describe('plugin-meetings', () => {
 
               assert.calledOnce(meeting.webex.internal.llm.disconnectLLM);
 
-              // Verify the timer was cleared (should be undefined)
               assert.isUndefined(meeting.llmHealthCheckTimer);
 
-              // Fast forward time to ensure no metric is sent
               Metrics.sendBehavioralMetric.resetHistory();
               fakeClock.tick(3 * 60 * 1000);
 
@@ -2397,7 +2405,6 @@ describe('plugin-meetings', () => {
                 .stub()
                 .rejects(new CaptchaError('bad captcha'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
-              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil, 'joinMeetingOptions');
 
               try {
                 await meeting.join();
@@ -2411,8 +2418,7 @@ describe('plugin-meetings', () => {
                 );
                 assert.instanceOf(error, CaptchaError);
                 assert.equal(error.message, 'bad captcha');
-                // should not get to the end promise chain, which does do the join
-                assert.notCalled(joinMeetingOptionsSpy);
+                assert.notCalled(MeetingUtil.joinMeeting);
               }
             });
 
@@ -2421,7 +2427,6 @@ describe('plugin-meetings', () => {
                 .stub()
                 .rejects(new PasswordError('bad password'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
-              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
 
               try {
                 await meeting.join();
@@ -2435,8 +2440,7 @@ describe('plugin-meetings', () => {
                 );
                 assert.instanceOf(error, PasswordError);
                 assert.equal(error.message, 'bad password');
-                // should not get to the end promise chain, which does do the join
-                assert.notCalled(joinMeetingOptionsSpy);
+                assert.notCalled(MeetingUtil.joinMeeting);
               }
             });
 
@@ -2445,7 +2449,6 @@ describe('plugin-meetings', () => {
                 .stub()
                 .rejects(new PermissionError('bad permission'));
               const stateMachineFailSpy = sinon.spy(meeting.meetingFiniteStateMachine, 'fail');
-              const joinMeetingOptionsSpy = sinon.spy(MeetingUtil.joinMeetingOptions);
 
               try {
                 await meeting.join();
@@ -2459,13 +2462,13 @@ describe('plugin-meetings', () => {
                 );
                 assert.instanceOf(error, PermissionError);
                 assert.equal(error.message, 'bad permission');
-                // should not get to the end promise chain, which does do the join
-                assert.notCalled(joinMeetingOptionsSpy);
+                assert.notCalled(MeetingUtil.joinMeeting);
               }
             });
           });
         });
       });
+
 
       describe('#addMedia', () => {
         const muteStateStub = {
@@ -4533,6 +4536,297 @@ describe('plugin-meetings', () => {
               },
             });
           });
+
+          describe('handles STATS_UPDATE event for SRTP cipher detection', () => {
+            it('emits MEETING_SRTP_CIPHER_UPDATED event when srtpCipher is found in transport stats', async () => {
+              const fakeStats = new Map([
+                [
+                  'transport-1',
+                  {
+                    type: 'transport',
+                    srtpCipher: 'AES_CM_128_HMAC_SHA1_80',
+                    dtlsCipher: 'TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256',
+                  },
+                ],
+                [
+                  'outbound-rtp-1',
+                  {
+                    type: 'outbound-rtp',
+                    ssrc: 12345,
+                  },
+                ],
+              ]);
+
+              statsAnalyzerStub.emit(
+                {file: 'test', function: 'test'},
+                StatsAnalyzerEventNames.STATS_UPDATE,
+                {stats: fakeStats}
+              );
+
+              assert.calledWith(
+                TriggerProxy.trigger,
+                sinon.match.instanceOf(Meeting),
+                {
+                  file: 'meeting/index',
+                  function: 'setupStatsAnalyzerEventHandlers',
+                },
+                EVENT_TRIGGERS.MEETING_SRTP_CIPHER_UPDATED,
+                {srtpCipher: 'AES_CM_128_HMAC_SHA1_80'}
+              );
+
+              assert.equal(meeting.mediaProperties.srtpCipher, 'AES_CM_128_HMAC_SHA1_80');
+            });
+
+            it('updates meeting.mediaProperties.srtpCipher when cipher changes', async () => {
+              const firstStats = new Map([
+                [
+                  'transport-1',
+                  {
+                    type: 'transport',
+                    srtpCipher: 'AES_CM_128_HMAC_SHA1_80',
+                  },
+                ],
+              ]);
+
+              statsAnalyzerStub.emit(
+                {file: 'test', function: 'test'},
+                StatsAnalyzerEventNames.STATS_UPDATE,
+                {stats: firstStats}
+              );
+
+              assert.equal(meeting.mediaProperties.srtpCipher, 'AES_CM_128_HMAC_SHA1_80');
+
+              const secondStats = new Map([
+                [
+                  'transport-1',
+                  {
+                    type: 'transport',
+                    srtpCipher: 'AEAD_AES_256_GCM',
+                  },
+                ],
+              ]);
+
+              TriggerProxy.trigger.resetHistory();
+
+              statsAnalyzerStub.emit(
+                {file: 'test', function: 'test'},
+                StatsAnalyzerEventNames.STATS_UPDATE,
+                {stats: secondStats}
+              );
+
+              assert.calledWith(
+                TriggerProxy.trigger,
+                sinon.match.instanceOf(Meeting),
+                {
+                  file: 'meeting/index',
+                  function: 'setupStatsAnalyzerEventHandlers',
+                },
+                EVENT_TRIGGERS.MEETING_SRTP_CIPHER_UPDATED,
+                {srtpCipher: 'AEAD_AES_256_GCM'}
+              );
+
+              assert.equal(meeting.mediaProperties.srtpCipher, 'AEAD_AES_256_GCM');
+            });
+
+            it('does not emit event when srtpCipher has not changed', async () => {
+              const firstStats = new Map([
+                [
+                  'transport-1',
+                  {
+                    type: 'transport',
+                    srtpCipher: 'AES_CM_128_HMAC_SHA1_80',
+                  },
+                ],
+              ]);
+
+              statsAnalyzerStub.emit(
+                {file: 'test', function: 'test'},
+                StatsAnalyzerEventNames.STATS_UPDATE,
+                {stats: firstStats}
+              );
+
+              assert.equal(meeting.mediaProperties.srtpCipher, 'AES_CM_128_HMAC_SHA1_80');
+
+              TriggerProxy.trigger.resetHistory();
+
+              // Emit same cipher again
+              statsAnalyzerStub.emit(
+                {file: 'test', function: 'test'},
+                StatsAnalyzerEventNames.STATS_UPDATE,
+                {stats: firstStats}
+              );
+
+              // Should not trigger event again
+              assert.neverCalledWith(
+                TriggerProxy.trigger,
+                sinon.match.instanceOf(Meeting),
+                sinon.match.any,
+                EVENT_TRIGGERS.MEETING_SRTP_CIPHER_UPDATED,
+                sinon.match.any
+              );
+
+              // Cipher should remain the same
+              assert.equal(meeting.mediaProperties.srtpCipher, 'AES_CM_128_HMAC_SHA1_80');
+            });
+
+            it('does not emit event when stats contain no transport with srtpCipher', async () => {
+              const fakeStats = new Map([
+                [
+                  'outbound-rtp-1',
+                  {
+                    type: 'outbound-rtp',
+                    ssrc: 12345,
+                  },
+                ],
+                [
+                  'inbound-rtp-1',
+                  {
+                    type: 'inbound-rtp',
+                    ssrc: 67890,
+                  },
+                ],
+              ]);
+
+              statsAnalyzerStub.emit(
+                {file: 'test', function: 'test'},
+                StatsAnalyzerEventNames.STATS_UPDATE,
+                {stats: fakeStats}
+              );
+
+              assert.neverCalledWith(
+                TriggerProxy.trigger,
+                sinon.match.instanceOf(Meeting),
+                sinon.match.any,
+                EVENT_TRIGGERS.MEETING_SRTP_CIPHER_UPDATED,
+                sinon.match.any
+              );
+
+              assert.isUndefined(meeting.mediaProperties.srtpCipher);
+            });
+
+            it('does not emit event when transport stat has no srtpCipher property', async () => {
+              const fakeStats = new Map([
+                [
+                  'transport-1',
+                  {
+                    type: 'transport',
+                    dtlsCipher: 'TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256',
+                    // no srtpCipher property
+                  },
+                ],
+              ]);
+
+              statsAnalyzerStub.emit(
+                {file: 'test', function: 'test'},
+                StatsAnalyzerEventNames.STATS_UPDATE,
+                {stats: fakeStats}
+              );
+
+              assert.neverCalledWith(
+                TriggerProxy.trigger,
+                sinon.match.instanceOf(Meeting),
+                sinon.match.any,
+                EVENT_TRIGGERS.MEETING_SRTP_CIPHER_UPDATED,
+                sinon.match.any
+              );
+
+              assert.isUndefined(meeting.mediaProperties.srtpCipher);
+            });
+
+            it('uses first transport with srtpCipher when multiple transports exist', async () => {
+              const fakeStats = new Map([
+                [
+                  'transport-1',
+                  {
+                    type: 'transport',
+                    srtpCipher: 'AES_CM_128_HMAC_SHA1_80',
+                  },
+                ],
+                [
+                  'transport-2',
+                  {
+                    type: 'transport',
+                    srtpCipher: 'AEAD_AES_256_GCM',
+                  },
+                ],
+                [
+                  'outbound-rtp-1',
+                  {
+                    type: 'outbound-rtp',
+                    ssrc: 12345,
+                  },
+                ],
+              ]);
+
+              statsAnalyzerStub.emit(
+                {file: 'test', function: 'test'},
+                StatsAnalyzerEventNames.STATS_UPDATE,
+                {stats: fakeStats}
+              );
+
+              assert.calledWith(
+                TriggerProxy.trigger,
+                sinon.match.instanceOf(Meeting),
+                {
+                  file: 'meeting/index',
+                  function: 'setupStatsAnalyzerEventHandlers',
+                },
+                EVENT_TRIGGERS.MEETING_SRTP_CIPHER_UPDATED,
+                {srtpCipher: 'AES_CM_128_HMAC_SHA1_80'}
+              );
+
+              assert.equal(meeting.mediaProperties.srtpCipher, 'AES_CM_128_HMAC_SHA1_80');
+            });
+
+            it('handles empty stats map without errors', async () => {
+              const emptyStats = new Map();
+
+              statsAnalyzerStub.emit(
+                {file: 'test', function: 'test'},
+                StatsAnalyzerEventNames.STATS_UPDATE,
+                {stats: emptyStats}
+              );
+
+              assert.neverCalledWith(
+                TriggerProxy.trigger,
+                sinon.match.instanceOf(Meeting),
+                sinon.match.any,
+                EVENT_TRIGGERS.MEETING_SRTP_CIPHER_UPDATED,
+                sinon.match.any
+              );
+
+              assert.isUndefined(meeting.mediaProperties.srtpCipher);
+            });
+
+            it('logs cipher change when cipher is updated', async () => {
+              const loggerSpy = sinon.spy(LoggerProxy.logger, 'info');
+
+              meeting.mediaProperties.srtpCipher = 'AES_CM_128_HMAC_SHA1_80';
+
+              const newStats = new Map([
+                [
+                  'transport-1',
+                  {
+                    type: 'transport',
+                    srtpCipher: 'AEAD_AES_256_GCM',
+                  },
+                ],
+              ]);
+
+              statsAnalyzerStub.emit(
+                {file: 'test', function: 'test'},
+                StatsAnalyzerEventNames.STATS_UPDATE,
+                {stats: newStats}
+              );
+
+              assert.calledWithMatch(
+                loggerSpy,
+                sinon.match(/SRTP cipher changed from AES_CM_128_HMAC_SHA1_80 to AEAD_AES_256_GCM/)
+              );
+
+              loggerSpy.restore();
+            });
+          });
         });
 
         describe('handles StatsMonitor events', () => {
@@ -6428,6 +6722,9 @@ describe('plugin-meetings', () => {
 
           meeting.annotation.deregisterEvents = sinon.stub();
           webex.internal.llm.off = sinon.stub();
+          webex.internal.mercury.off = sinon.stub();
+          meeting.mercuryOnlineHandler = sinon.stub();
+          meeting.mercuryOfflineHandler = sinon.stub();
 
           // A meeting needs to be joined to leave
           meeting.meetingState = 'ACTIVE';
@@ -6449,6 +6746,67 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting.unsetRemoteStreams);
           assert.calledOnce(meeting.unsetPeerConnections);
           assert.calledOnce(meeting.clearMeetingData);
+        });
+
+        it('stops listening for LLM/Mercury and tears down transcription and annotation before calling Locus /leave', async () => {
+          const onlineHandler = meeting.mercuryOnlineHandler;
+          const offlineHandler = meeting.mercuryOfflineHandler;
+
+          await meeting.leave();
+
+          // All llm/mercury consumers (direct listeners, voicea transcription,
+          // annotation) must be detached before the /leave request so that
+          // in-flight events do not trigger unnecessary Locus syncs
+          // (per Locus team recommendation).
+          assert.callOrder(
+            webex.internal.llm.off,
+            webex.internal.mercury.off,
+            meeting.stopTranscription,
+            meeting.annotation.deregisterEvents,
+            meeting.meetingRequest.leaveMeeting
+          );
+          assert.calledWithExactly(
+            webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            webex.internal.llm.off,
+            LOCUS_LLM_EVENT,
+            meeting.processLocusLLMEvent
+          );
+          assert.calledWithExactly(webex.internal.mercury.off, ONLINE, onlineHandler);
+          assert.calledWithExactly(webex.internal.mercury.off, OFFLINE, offlineHandler);
+          assert.isUndefined(meeting.mercuryOnlineHandler);
+          assert.isUndefined(meeting.mercuryOfflineHandler);
+          assert.calledOnceWithExactly(meeting.stopTranscription);
+          assert.calledOnceWithExactly(meeting.annotation.deregisterEvents);
+          assert.isUndefined(meeting.transcription);
+        });
+
+        it('tears down llm/mercury/transcription/annotation even when /leave rejects', async () => {
+          const onlineHandler = meeting.mercuryOnlineHandler;
+          const offlineHandler = meeting.mercuryOfflineHandler;
+          meeting.meetingRequest.leaveMeeting = sinon
+            .stub()
+            .returns(Promise.reject(new Error('leave failed')));
+
+          await meeting.leave().catch(() => {});
+
+          assert.calledWithExactly(
+            webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            webex.internal.llm.off,
+            LOCUS_LLM_EVENT,
+            meeting.processLocusLLMEvent
+          );
+          assert.calledWithExactly(webex.internal.mercury.off, ONLINE, onlineHandler);
+          assert.calledWithExactly(webex.internal.mercury.off, OFFLINE, offlineHandler);
+          assert.calledOnceWithExactly(meeting.stopTranscription);
+          assert.calledOnceWithExactly(meeting.annotation.deregisterEvents);
         });
 
         it('should reset call diagnostic latencies correctly', async () => {
@@ -8458,6 +8816,9 @@ describe('plugin-meetings', () => {
 
           meeting.annotation.deregisterEvents = sinon.stub();
           webex.internal.llm.off = sinon.stub();
+          webex.internal.mercury.off = sinon.stub();
+          meeting.mercuryOnlineHandler = sinon.stub();
+          meeting.mercuryOfflineHandler = sinon.stub();
 
           // A meeting needs to be joined to end
           meeting.meetingState = 'ACTIVE';
@@ -8479,6 +8840,66 @@ describe('plugin-meetings', () => {
           assert.calledOnce(meeting?.unsetRemoteStreams);
           assert.calledOnce(meeting?.unsetPeerConnections);
           assert.calledOnce(meeting?.clearMeetingData);
+        });
+
+        it('stops listening for LLM/Mercury and tears down transcription and annotation before calling Locus /end', async () => {
+          const onlineHandler = meeting.mercuryOnlineHandler;
+          const offlineHandler = meeting.mercuryOfflineHandler;
+
+          await meeting.endMeetingForAll();
+
+          // All llm/mercury consumers (direct listeners, voicea transcription,
+          // annotation) must be detached before the /end request so that
+          // in-flight events do not trigger unnecessary Locus syncs
+          // (per Locus team recommendation).
+          assert.callOrder(
+            webex.internal.llm.off,
+            webex.internal.mercury.off,
+            meeting.stopTranscription,
+            meeting.annotation.deregisterEvents,
+            meeting.meetingRequest.endMeetingForAll
+          );
+          assert.calledWithExactly(
+            webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            webex.internal.llm.off,
+            LOCUS_LLM_EVENT,
+            meeting.processLocusLLMEvent
+          );
+          assert.calledWithExactly(webex.internal.mercury.off, ONLINE, onlineHandler);
+          assert.calledWithExactly(webex.internal.mercury.off, OFFLINE, offlineHandler);
+          assert.isUndefined(meeting.mercuryOnlineHandler);
+          assert.isUndefined(meeting.mercuryOfflineHandler);
+          assert.calledOnceWithExactly(meeting.stopTranscription);
+          assert.calledOnceWithExactly(meeting.annotation.deregisterEvents);
+        });
+
+        it('tears down llm/mercury/transcription/annotation even when /end rejects', async () => {
+          const onlineHandler = meeting.mercuryOnlineHandler;
+          const offlineHandler = meeting.mercuryOfflineHandler;
+          meeting.meetingRequest.endMeetingForAll = sinon
+            .stub()
+            .returns(Promise.reject(new Error('end failed')));
+
+          await meeting.endMeetingForAll().catch(() => {});
+
+          assert.calledWithExactly(
+            webex.internal.llm.off,
+            'event:relay.event',
+            meeting.processRelayEvent
+          );
+          assert.calledWithExactly(
+            webex.internal.llm.off,
+            LOCUS_LLM_EVENT,
+            meeting.processLocusLLMEvent
+          );
+          assert.calledWithExactly(webex.internal.mercury.off, ONLINE, onlineHandler);
+          assert.calledWithExactly(webex.internal.mercury.off, OFFLINE, offlineHandler);
+          assert.calledOnceWithExactly(meeting.stopTranscription);
+          assert.calledOnceWithExactly(meeting.annotation.deregisterEvents);
         });
       });
 
@@ -10416,14 +10837,24 @@ describe('plugin-meetings', () => {
           );
           done();
         });
-        it('listens to the self admitted guest event', (done) => {
+        it('listens to the self admitted guest event without blocking on token prefetch', async () => {
           meeting.stopKeepAlive = sinon.stub();
           meeting.updateLLMConnection = sinon.stub();
+          let resolvePrefetch;
+
+          meeting.ensureDefaultDatachannelTokenAfterAdmit = sinon
+            .stub()
+            .returns(new Promise((resolve) => {
+              resolvePrefetch = resolve;
+            }));
           meeting.rtcMetrics = {
             sendNextMetrics: sinon.stub(),
           };
+
           meeting.locusInfo.emit({function: 'test', file: 'test'}, 'SELF_ADMITTED_GUEST', test1);
+
           assert.calledOnceWithExactly(meeting.stopKeepAlive);
+          assert.calledOnceWithExactly(meeting.ensureDefaultDatachannelTokenAfterAdmit);
           assert.calledThrice(TriggerProxy.trigger);
           assert.calledWith(
             TriggerProxy.trigger,
@@ -10442,7 +10873,11 @@ describe('plugin-meetings', () => {
               correlation_id: meeting.correlationId,
             }
           );
-          done();
+
+          resolvePrefetch(false);
+          await Promise.resolve();
+
+          assert.calledOnce(meeting.updateLLMConnection);
         });
 
         it('listens to the breakouts changed event', () => {
@@ -10956,6 +11391,92 @@ describe('plugin-meetings', () => {
           );
         });
 
+        const recordingTestCases = [
+          {
+            description: 'triggers MEETING_STARTED_RECORDING when state is RECORDING',
+            state: RECORDING_STATE.RECORDING,
+            expectedEvent: EVENT_TRIGGERS.MEETING_STARTED_RECORDING,
+            expectedRecordingState: RECORDING_STATE.RECORDING,
+          },
+          {
+            description: 'triggers MEETING_STOPPED_RECORDING when state is IDLE',
+            state: RECORDING_STATE.IDLE,
+            expectedEvent: EVENT_TRIGGERS.MEETING_STOPPED_RECORDING,
+            expectedRecordingState: RECORDING_STATE.IDLE,
+          },
+          {
+            description: 'triggers MEETING_PAUSED_RECORDING when state is PAUSED',
+            state: RECORDING_STATE.PAUSED,
+            expectedEvent: EVENT_TRIGGERS.MEETING_PAUSED_RECORDING,
+            expectedRecordingState: RECORDING_STATE.PAUSED,
+          },
+          {
+            description:
+              'triggers MEETING_RESUMED_RECORDING and sets state to RECORDING when state is RESUMED',
+            state: RECORDING_STATE.RESUMED,
+            expectedEvent: EVENT_TRIGGERS.MEETING_RESUMED_RECORDING,
+            expectedRecordingState: RECORDING_STATE.RECORDING,
+          },
+        ];
+
+        recordingTestCases.forEach(({description, state, expectedEvent, expectedRecordingState}) => {
+          it(`listens to CONTROLS_RECORDING_UPDATED - ${description}`, async () => {
+            const modifiedBy = 'user-id-123';
+            const lastModified = '2026-01-01T00:00:00Z';
+
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {state, modifiedBy, lastModified, modifiedByServiceAppName: undefined, modifiedByServiceAppId: undefined}
+            );
+
+            assert.deepEqual(meeting.recording, {
+              state: expectedRecordingState,
+              modifiedBy,
+              lastModified,
+              modifiedByServiceAppName: undefined,
+              modifiedByServiceAppId: undefined,
+            });
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              meeting,
+              {file: 'meeting/index', function: 'setupLocusControlsListener'},
+              expectedEvent,
+              meeting.recording
+            );
+          });
+        });
+
+        it('listens to CONTROLS_RECORDING_UPDATED and includes modifiedByServiceAppName and modifiedByServiceAppId when present', async () => {
+          const modifiedBy = 'user-id-123';
+          const lastModified = '2026-01-01T00:00:00Z';
+          const modifiedByServiceAppName = 'My Bot';
+          const modifiedByServiceAppId = 'app-id-123';
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+            {state: RECORDING_STATE.RECORDING, modifiedBy, lastModified, modifiedByServiceAppName, modifiedByServiceAppId}
+          );
+
+          assert.deepEqual(meeting.recording, {
+            state: RECORDING_STATE.RECORDING,
+            modifiedBy,
+            lastModified,
+            modifiedByServiceAppName,
+            modifiedByServiceAppId,
+          });
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_STARTED_RECORDING,
+            meeting.recording
+          );
+        });
+
         it('listens to the locus interpretation update event', () => {
           const interpretation = {
             siLanguages: [{languageCode: 20, languageName: 'en'}],
@@ -11009,6 +11530,7 @@ describe('plugin-meetings', () => {
           meeting.annotation.locusUrlUpdate = sinon.stub();
           meeting.simultaneousInterpretation.locusUrlUpdate = sinon.stub();
           meeting.webinar.locusUrlUpdate = sinon.stub();
+          meeting.aiEnableRequest.locusUrlUpdate = sinon.stub();
 
           meeting.locusInfo.emit(
             {function: 'test', file: 'test'},
@@ -11023,6 +11545,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(meeting.controlsOptionsManager.setLocusUrl, newLocusUrl, false);
           assert.calledWith(meeting.simultaneousInterpretation.locusUrlUpdate, newLocusUrl);
           assert.calledWith(meeting.webinar.locusUrlUpdate, newLocusUrl);
+          assert.calledWith(meeting.aiEnableRequest.locusUrlUpdate, newLocusUrl);
           assert.equal(meeting.locusUrl, newLocusUrl);
           assert(meeting.locusId, '12345');
 
@@ -11335,6 +11858,93 @@ describe('plugin-meetings', () => {
           assert.notOk(meeting.sipUri);
           meeting.setSipUri(test1);
           assert.equal(meeting.sipUri, test1);
+        });
+      });
+
+      describe('#finalizeMeetingAfterInitialLocusSetup', () => {
+        it('refreshes destination from synced locus when destination type is LOCUS_ID', () => {
+          const syncedLocus = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
+
+          meeting.destinationType = DESTINATION_TYPE.LOCUS_ID;
+          meeting.destination = {info: {topic: 'old'}};
+
+          meeting.finalizeMeetingAfterInitialLocusSetup(syncedLocus);
+
+          assert.equal(meeting.destination, syncedLocus);
+        });
+
+        it('does not refresh destination when destination type is not LOCUS_ID', () => {
+          const syncedLocus = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
+          const originalDestination = {destination: 'original-destination'};
+
+          meeting.destinationType = DESTINATION_TYPE.CONVERSATION_URL;
+          meeting.destination = originalDestination;
+
+          meeting.finalizeMeetingAfterInitialLocusSetup(syncedLocus);
+
+          assert.equal(meeting.destination, originalDestination);
+        });
+
+        it('fetches meeting info when meetingInfo is empty and destination has info', () => {
+          const fetchMeetingInfoStub = sinon.stub(meeting, 'fetchMeetingInfo').resolves();
+
+          meeting.meetingInfo = {};
+          meeting.destination = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
+
+          meeting.finalizeMeetingAfterInitialLocusSetup({});
+
+          assert.calledOnceWithExactly(fetchMeetingInfoStub, {});
+        });
+
+        it('does not fetch meeting info when destination has no info', () => {
+          const fetchMeetingInfoStub = sinon.stub(meeting, 'fetchMeetingInfo').resolves();
+
+          meeting.meetingInfo = {};
+          meeting.destination = {url: 'https://locus.example.com/locus/123'};
+
+          meeting.finalizeMeetingAfterInitialLocusSetup({});
+
+          assert.notCalled(fetchMeetingInfoStub);
+        });
+
+        it('does not fetch meeting info when meetingInfo is already populated', () => {
+          const fetchMeetingInfoStub = sinon.stub(meeting, 'fetchMeetingInfo').resolves();
+
+          meeting.meetingInfo = {meetingJoinUrl: 'https://example.com/join/abc'};
+          meeting.destination = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
+
+          meeting.finalizeMeetingAfterInitialLocusSetup({});
+
+          assert.notCalled(fetchMeetingInfoStub);
+        });
+
+        it('does not fetch meeting info when delayed fetch timer is already scheduled', () => {
+          const fetchMeetingInfoStub = sinon.stub(meeting, 'fetchMeetingInfo').resolves();
+
+          meeting.meetingInfo = {};
+          meeting.destination = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
+          meeting.fetchMeetingInfoTimeoutId = 42;
+
+          meeting.finalizeMeetingAfterInitialLocusSetup({});
+
+          assert.notCalled(fetchMeetingInfoStub);
+        });
+
+        it('swallows async fetchMeetingInfo errors and logs info', async () => {
+          const error = new Error('fetch failed');
+
+          meeting.meetingInfo = {};
+          meeting.destination = {url: 'https://locus.example.com/locus/123', info: {topic: 'x'}};
+          sinon.stub(meeting, 'fetchMeetingInfo').returns(Promise.reject(error));
+          const loggerInfoStub = sinon.stub(LoggerProxy.logger, 'info');
+
+          await meeting.finalizeMeetingAfterInitialLocusSetup({});
+
+          assert.calledOnce(loggerInfoStub);
+          assert.match(
+            loggerInfoStub.firstCall.args[0],
+            /Meeting:index#finalizeMeetingAfterInitialLocusSetup --> deferred fetchMeetingInfo failed: fetch failed/
+          );
         });
       });
 
@@ -11940,6 +12550,7 @@ describe('plugin-meetings', () => {
         let showAutoEndMeetingWarningSpy;
         let canAttendeeRequestAiAssistantEnabledSpy;
         let attendeeRequestAiAssistantDeclinedAllSpy;
+        let isAnonymizeDisplayNamesEnabledSpy;
         // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
         beforeEach(() => {
@@ -11988,6 +12599,10 @@ describe('plugin-meetings', () => {
             MeetingUtil,
             'attendeeRequestAiAssistantDeclinedAll'
           );
+          isAnonymizeDisplayNamesEnabledSpy = sinon.spy(
+            MeetingUtil,
+            'isAnonymizeDisplayNamesEnabled'
+          );
         });
 
         afterEach(() => {
@@ -11996,6 +12611,7 @@ describe('plugin-meetings', () => {
           showAutoEndMeetingWarningSpy.restore();
           canAttendeeRequestAiAssistantEnabledSpy.restore();
           attendeeRequestAiAssistantDeclinedAllSpy.restore();
+          isAnonymizeDisplayNamesEnabledSpy.restore();
         });
 
         forEach(
@@ -12553,6 +13169,7 @@ describe('plugin-meetings', () => {
             meeting.roles
           );
           assert.calledWith(attendeeRequestAiAssistantDeclinedAllSpy, userDisplayHints);
+          assert.calledWith(isAnonymizeDisplayNamesEnabledSpy, userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],
@@ -13124,7 +13741,9 @@ describe('plugin-meetings', () => {
             info: {datachannelUrl: 'a datachannel url'},
           };
 
-          webex.internal.llm.getDatachannelToken.withArgs('llm-default-session').returns('token-123');
+          webex.internal.llm.getDatachannelToken
+            .withArgs('llm-default-session')
+            .returns('token-123');
 
           await meeting.updateLLMConnection();
 
@@ -13178,6 +13797,131 @@ describe('plugin-meetings', () => {
           assert.notCalled(webex.internal.llm.setDatachannelToken);
         });
 
+        describe('ownership tag', () => {
+          beforeEach(() => {
+            // Make the owner stub dynamic so setOwnerMeetingId() writes
+            // propagate back to getOwnerMeetingId() reads. This mirrors the
+            // real LLM singleton behavior so the finally-block release in
+            // cleanupLLMConneciton is reflected in subsequent reads.
+            webex.internal.llm.getOwnerMeetingId = sinon.stub().returns(undefined);
+            webex.internal.llm.setOwnerMeetingId = sinon.stub().callsFake((id) => {
+              webex.internal.llm.getOwnerMeetingId.returns(id);
+            });
+          });
+
+          it('skips disconnect and reconnect when LLM is connected and owned by another meeting (regardless of URL)', async () => {
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(true);
+            webex.internal.llm.getOwnerMeetingId.returns('some-other-meeting-id');
+            // Locus/datachannel URL mismatch is the *normal* case when
+            // another meeting owns the live socket -- each meeting has its
+            // own locus URL. URL mismatch must NOT trigger a reclaim,
+            // because doing so would tear down the owning meeting's healthy
+            // LLM socket and break its data channel.
+            webex.internal.llm.getLocusUrl.returns('owner-locus-url');
+            webex.internal.llm.getDatachannelUrl.returns('owner-dc-url');
+            meeting.locusInfo = {
+              url: 'a different url',
+              info: {datachannelUrl: 'a different datachannel url'},
+              self: {},
+            };
+
+            const result = await meeting.updateLLMConnection();
+
+            assert.equal(result, undefined);
+            assert.notCalled(webex.internal.llm.disconnectLLM);
+            assert.notCalled(webex.internal.llm.registerAndConnect);
+            assert.notCalled(webex.internal.llm.setOwnerMeetingId);
+            assert.notCalled(meeting.startLLMHealthCheckTimer);
+          });
+
+
+          it('clears stale owner tag in cleanup finally block even when disconnectLLM rejects', async () => {
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(true);
+            webex.internal.llm.getOwnerMeetingId.returns(meeting.id);
+            webex.internal.llm.getLocusUrl.returns('a url');
+            webex.internal.llm.getDatachannelUrl.returns('a datachannel url');
+            webex.internal.llm.disconnectLLM.rejects(new Error('disconnect failed'));
+            meeting.locusInfo = {
+              url: 'a different url',
+              info: {datachannelUrl: 'a datachannel url'},
+              self: {},
+            };
+
+            try {
+              await meeting.updateLLMConnection();
+            } catch (e) {
+              /* updateLLMConnection may reject when cleanup throws */
+            }
+
+            // The owner-eligible finally branch must release the tag so a
+            // subsequent reconnect attempt from any meeting is not blocked.
+            assert.calledWith(webex.internal.llm.setOwnerMeetingId, undefined);
+          });
+
+          it('proceeds normally when LLM is connected and owned by this meeting with URL change', async () => {
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(true);
+            webex.internal.llm.getOwnerMeetingId.returns(meeting.id);
+            webex.internal.llm.getLocusUrl.returns('a url');
+            webex.internal.llm.getDatachannelUrl.returns('a datachannel url');
+            meeting.locusInfo = {
+              url: 'a different url',
+              info: {datachannelUrl: 'a datachannel url'},
+              self: {},
+            };
+
+            await meeting.updateLLMConnection();
+
+            assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
+              code: 3050,
+              reason: 'done (permanent)',
+            });
+            assert.calledWithExactly(
+              webex.internal.llm.registerAndConnect,
+              'a different url',
+              'a datachannel url',
+              undefined
+            );
+            // setOwnerMeetingId is called twice: first with undefined in
+            // cleanupLLMConneciton's finally block (so a failed disconnect
+            // cannot leave a stale owner), then with this meeting's id
+            // after registerAndConnect resolves.
+            assert.calledTwice(webex.internal.llm.setOwnerMeetingId);
+            assert.calledWith(webex.internal.llm.setOwnerMeetingId.firstCall, undefined);
+            assert.calledWith(webex.internal.llm.setOwnerMeetingId.lastCall, meeting.id);
+          });
+
+          it('claims ownership after successful registerAndConnect on initial connect', async () => {
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(false);
+            webex.internal.llm.getOwnerMeetingId.returns(undefined);
+            meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
+
+            await meeting.updateLLMConnection();
+
+            assert.calledOnce(webex.internal.llm.registerAndConnect);
+            assert.calledOnceWithExactly(webex.internal.llm.setOwnerMeetingId, meeting.id);
+          });
+
+          it('proceeds to connect when LLM is not connected even if another ownerId lingers', async () => {
+            // Defensive path: if the LLM reports not-connected but an old
+            // ownerId is still present (e.g. race before a successful
+            // connections.delete), this meeting can still claim a fresh
+            // connection.
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(false);
+            webex.internal.llm.getOwnerMeetingId.returns('stale-owner-id');
+            meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
+
+            await meeting.updateLLMConnection();
+
+            assert.calledOnce(webex.internal.llm.registerAndConnect);
+            assert.calledOnceWithExactly(webex.internal.llm.setOwnerMeetingId, meeting.id);
+          });
+        });
+
         describe('#clearMeetingData', () => {
           beforeEach(() => {
             webex.internal.llm.isConnected = sinon.stub().returns(true);
@@ -13209,10 +13953,13 @@ describe('plugin-meetings', () => {
               meeting.processLocusLLMEvent
             );
             assert.calledOnce(meeting.clearLLMHealthCheckTimer);
-            assert.calledOnce(meeting.stopTranscription);
-            assert.isUndefined(meeting.transcription);
             assert.calledOnce(meeting.clearDataChannelToken);
-            assert.calledOnce(meeting.annotation.deregisterEvents);
+            // stopTranscription and annotation.deregisterEvents are not
+            // called here: they run in stopListeningForMeetingEvents()
+            // before /leave to avoid double-emitting
+            // MEETING_STOPPED_RECEIVING_TRANSCRIPTION.
+            assert.notCalled(meeting.stopTranscription);
+            assert.notCalled(meeting.annotation.deregisterEvents);
           });
           it('continues cleanup when disconnectLLM fails during meeting data cleanup', async () => {
             webex.internal.llm.disconnectLLM.rejects(new Error('disconnect failed'));
@@ -13231,19 +13978,67 @@ describe('plugin-meetings', () => {
               meeting.processLocusLLMEvent
             );
             assert.calledOnce(meeting.clearLLMHealthCheckTimer);
-            assert.calledOnce(meeting.stopTranscription);
-            assert.isUndefined(meeting.transcription);
             assert.calledOnce(meeting.clearDataChannelToken);
-            assert.calledOnce(meeting.annotation.deregisterEvents);
+            assert.notCalled(meeting.stopTranscription);
+            assert.notCalled(meeting.annotation.deregisterEvents);
           });
-          it('always calls stopTranscription even when transcription is undefined', async () => {
-            meeting.transcription = undefined;
 
-            await meeting.clearMeetingData();
+          describe('ownership tag', () => {
+            beforeEach(() => {
+              webex.internal.llm.getOwnerMeetingId = sinon.stub();
+            });
 
-            assert.calledOnce(meeting.stopTranscription);
-            assert.isUndefined(meeting.transcription);
-            assert.calledOnce(meeting.clearDataChannelToken);
+            it('skips disconnectLLM but still removes this meeting listeners when another meeting owns the LLM', async () => {
+              webex.internal.llm.getOwnerMeetingId.returns('some-other-meeting-id');
+
+              await meeting.clearMeetingData();
+
+              assert.notCalled(webex.internal.llm.disconnectLLM);
+              // Shared data-channel auth tokens belong to the owner meeting's
+              // live LLM session and must not be wiped by a non-owner
+              // teardown, otherwise the owner's next reconnect would lose
+              // its Data-Channel-Auth-Token.
+              assert.notCalled(meeting.clearDataChannelToken);
+              // Listeners owned by *this* Meeting instance must still be
+              // removed so a leaving subordinate meeting stops receiving
+              // relay/locus events from the shared singleton.
+              assert.calledWithExactly(webex.internal.llm.off, 'online', meeting.handleLLMOnline);
+              assert.calledWithExactly(
+                webex.internal.llm.off,
+                'event:relay.event',
+                meeting.processRelayEvent
+              );
+              assert.calledWithExactly(
+                webex.internal.llm.off,
+                'event:locus.state_message',
+                meeting.processLocusLLMEvent
+              );
+              assert.calledOnce(meeting.clearLLMHealthCheckTimer);
+            });
+
+            it('calls disconnectLLM and clears data channel token when this meeting is the owner', async () => {
+              webex.internal.llm.getOwnerMeetingId.returns(meeting.id);
+
+              await meeting.clearMeetingData();
+
+              assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
+                code: 3050,
+                reason: 'done (permanent)',
+              });
+              assert.calledOnce(meeting.clearDataChannelToken);
+            });
+
+            it('calls disconnectLLM and clears data channel token when no owner is recorded (first-claim / legacy)', async () => {
+              webex.internal.llm.getOwnerMeetingId.returns(undefined);
+
+              await meeting.clearMeetingData();
+
+              assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
+                code: 3050,
+                reason: 'done (permanent)',
+              });
+              assert.calledOnce(meeting.clearDataChannelToken);
+            });
           });
         });
       });

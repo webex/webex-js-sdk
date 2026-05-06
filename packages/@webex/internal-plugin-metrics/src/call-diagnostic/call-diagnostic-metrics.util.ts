@@ -284,7 +284,8 @@ export const prepareDiagnosticMetricItem = (webex: any, item: any) => {
         devicePairingType: webex.devicemanager.getPairedMethod(),
         deviceURL: pairedDevice.url,
         isPersonalDevice: pairedDevice.mode === 'personal',
-        productName: pairedDevice.devices[0]?.productName,
+        productName:
+          pairedDevice.devices?.length > 0 ? pairedDevice.devices[0]?.productName : undefined,
       };
       item.eventPayload.event.pairingState = 'paired';
       item.eventPayload.event.pairedDevice = devicePayload;

@@ -691,6 +691,27 @@ describe('Task', () => {
     );
   });
 
+  it('should hold using mediaResourceId from interaction.media after recording event wipes top-level mediaResourceId', async () => {
+    // Set a DIFFERENT top-level mediaResourceId so we can distinguish the two sources
+    const staleTopLevelId = 'stale-top-level-media-resource-id';
+    const correctMediaId = task.data.interaction.media[task.data.interaction.mainInteractionId].mediaResourceId;
+    task.data.mediaResourceId = staleTopLevelId;
+
+    // Simulate recording event wiping top-level mediaResourceId (as reconcileData does)
+    delete task.data.mediaResourceId;
+
+    const expectedResponse: TaskResponse = {data: {interactionId: taskId}} as AgentContact;
+    contactMock.hold.mockResolvedValue(expectedResponse);
+
+    await task.hold();
+
+    // hold() should read from interaction.media, not the (now deleted) top-level field
+    expect(contactMock.hold).toHaveBeenCalledWith({
+      interactionId: taskId,
+      data: {mediaResourceId: correctMediaId},
+    });
+  });
+
   it('should handle errors in hold method', async () => {
     const error = {details: (global as any).makeFailure('Hold Failed')};
     contactMock.hold.mockImplementation(() => {

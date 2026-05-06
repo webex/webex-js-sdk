@@ -799,6 +799,171 @@ describe('plugin-meetings', () => {
           );
         });
       });
+
+      describe('isAudioControl()', () => {
+        it('should return true when all body keys are audio control keys', () => {
+          assert.isTrue(ControlsOptionsUtil.isAudioControl({audio: {muted: true}}));
+        });
+
+        it('should return true when body has muteOnEntry key', () => {
+          assert.isTrue(ControlsOptionsUtil.isAudioControl({muteOnEntry: {enabled: true}}));
+        });
+
+        it('should return true when body has disallowUnmute key', () => {
+          assert.isTrue(ControlsOptionsUtil.isAudioControl({disallowUnmute: {enabled: true}}));
+        });
+
+        it('should return true when body has multiple audio control keys', () => {
+          assert.isTrue(ControlsOptionsUtil.isAudioControl({audio: {muted: true}, muteOnEntry: {enabled: true}, disallowUnmute: {enabled: true}}));
+        });
+
+        it('should return false when body has a non-audio control key', () => {
+          assert.isFalse(ControlsOptionsUtil.isAudioControl({raiseHand: {enabled: true}}));
+        });
+
+        it('should return false when body has a mix of audio and non-audio keys', () => {
+          assert.isFalse(ControlsOptionsUtil.isAudioControl({audio: {muted: true}, raiseHand: {enabled: true}}));
+        });
+
+        it('should return true for an empty body', () => {
+          assert.isTrue(ControlsOptionsUtil.isAudioControl({}));
+        });
+      });
+
+      describe('isBreakoutLocusUrl()', () => {
+        it('should return true when mainLocusUrl differs from locusUrl', () => {
+          assert.isTrue(ControlsOptionsUtil.isBreakoutLocusUrl('locus/breakout', 'locus/main'));
+        });
+
+        it('should return false when mainLocusUrl equals locusUrl', () => {
+          assert.isFalse(ControlsOptionsUtil.isBreakoutLocusUrl('locus/main', 'locus/main'));
+        });
+
+        it('should return false when mainLocusUrl is undefined', () => {
+          assert.isFalse(ControlsOptionsUtil.isBreakoutLocusUrl('locus/breakout', undefined));
+        });
+
+        it('should return false when mainLocusUrl is null', () => {
+          assert.isFalse(ControlsOptionsUtil.isBreakoutLocusUrl('locus/breakout', null));
+        });
+
+        it('should return false when mainLocusUrl is empty string', () => {
+          assert.isFalse(ControlsOptionsUtil.isBreakoutLocusUrl('locus/breakout', ''));
+        });
+      });
+
+      describe('getControlsRequestParams()', () => {
+        const locusUrl = 'locus/breakout';
+        const mainLocusUrl = 'locus/main';
+
+        it('should return full request params targeting locusUrl when not in a breakout', () => {
+          const result = ControlsOptionsUtil.getControlsRequestParams({
+            body: {raiseHand: {enabled: true}},
+            locusUrl: 'locus/main',
+            mainLocusUrl: 'locus/main',
+          });
+
+          assert.equal(result.uri, 'locus/main/controls');
+          assert.deepEqual(result.body, {raiseHand: {enabled: true}});
+          assert.equal(result.method, 'PATCH');
+        });
+
+        it('should return mainLocusUrl with authorizingLocusUrl in body for non-audio controls in a breakout', () => {
+          const result = ControlsOptionsUtil.getControlsRequestParams({
+            body: {raiseHand: {enabled: true}},
+            locusUrl,
+            mainLocusUrl,
+          });
+
+          assert.equal(result.uri, 'locus/main/controls');
+          assert.deepEqual(result.body, {raiseHand: {enabled: true}, authorizingLocusUrl: locusUrl});
+          assert.equal(result.method, 'PATCH');
+        });
+
+        it('should return locusUrl without authorizingLocusUrl for audio controls in a breakout', () => {
+          const result = ControlsOptionsUtil.getControlsRequestParams({
+            body: {audio: {muted: true}},
+            locusUrl,
+            mainLocusUrl,
+          });
+
+          assert.equal(result.uri, 'locus/breakout/controls');
+          assert.deepEqual(result.body, {audio: {muted: true}});
+          assert.equal(result.method, 'PATCH');
+        });
+
+        it('should return locusUrl without authorizingLocusUrl for muteOnEntry in a breakout', () => {
+          const result = ControlsOptionsUtil.getControlsRequestParams({
+            body: {muteOnEntry: {enabled: true}},
+            locusUrl,
+            mainLocusUrl,
+          });
+
+          assert.equal(result.uri, 'locus/breakout/controls');
+          assert.deepEqual(result.body, {muteOnEntry: {enabled: true}});
+          assert.equal(result.method, 'PATCH');
+        });
+
+        it('should return locusUrl without authorizingLocusUrl for disallowUnmute in a breakout', () => {
+          const result = ControlsOptionsUtil.getControlsRequestParams({
+            body: {disallowUnmute: {enabled: true}},
+            locusUrl,
+            mainLocusUrl,
+          });
+
+          assert.equal(result.uri, 'locus/breakout/controls');
+          assert.deepEqual(result.body, {disallowUnmute: {enabled: true}});
+          assert.equal(result.method, 'PATCH');
+        });
+
+        it('should return locusUrl when mainLocusUrl is undefined', () => {
+          const result = ControlsOptionsUtil.getControlsRequestParams({
+            body: {raiseHand: {enabled: true}},
+            locusUrl,
+            mainLocusUrl: undefined,
+          });
+
+          assert.equal(result.uri, 'locus/breakout/controls');
+          assert.deepEqual(result.body, {raiseHand: {enabled: true}});
+          assert.equal(result.method, 'PATCH');
+        });
+
+        it('should return locusUrl when mainLocusUrl is null', () => {
+          const result = ControlsOptionsUtil.getControlsRequestParams({
+            body: {raiseHand: {enabled: true}},
+            locusUrl,
+            mainLocusUrl: null,
+          });
+
+          assert.equal(result.uri, 'locus/breakout/controls');
+          assert.deepEqual(result.body, {raiseHand: {enabled: true}});
+          assert.equal(result.method, 'PATCH');
+        });
+
+        it('should return locusUrl when mainLocusUrl is empty string', () => {
+          const result = ControlsOptionsUtil.getControlsRequestParams({
+            body: {raiseHand: {enabled: true}},
+            locusUrl,
+            mainLocusUrl: '',
+          });
+
+          assert.equal(result.uri, 'locus/breakout/controls');
+          assert.deepEqual(result.body, {raiseHand: {enabled: true}});
+          assert.equal(result.method, 'PATCH');
+        });
+
+        it('should return locusUrl for audio controls when not in a breakout', () => {
+          const result = ControlsOptionsUtil.getControlsRequestParams({
+            body: {audio: {muted: true}},
+            locusUrl: 'locus/main',
+            mainLocusUrl: 'locus/main',
+          });
+
+          assert.equal(result.uri, 'locus/main/controls');
+          assert.deepEqual(result.body, {audio: {muted: true}});
+          assert.equal(result.method, 'PATCH');
+        });
+      });
     });
   });
 });

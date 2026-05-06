@@ -24,7 +24,7 @@
     "@sinonjs/fake-timers": "^6.0.1",
     "@webex/babel-config-legacy": "workspace:*",
     "@webex/eslint-config-legacy": "workspace:*",
-    "@webex/event-dictionary-ts": "^1.0.2073",
+    "@webex/event-dictionary-ts": "^1.0.2138",
     "@webex/jest-config-legacy": "workspace:*",
     "@webex/legacy-tools": "workspace:*",
     "@webex/test-helper-chai": "workspace:*",

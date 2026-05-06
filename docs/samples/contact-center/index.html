@@ -310,8 +310,22 @@
             </div>
             <p id="campaign-preview-status" class="status-par">Waiting for campaign contact...</p>
           </div>
+          <div id="campaign-timer-section" style="display: none; margin-bottom: 10px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #f9f9f9;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+              <span style="font-weight: bold;">Countdown:</span>
+              <span id="campaign-countdown" style="font-size: 1.2em; font-weight: bold; color: #333;">--:--</span>
+              <span style="font-weight: bold; margin-left: 12px;">Auto-Action:</span>
+              <span id="campaign-auto-action" style="font-weight: bold; color: #555;">N/A</span>
+            </div>
+            <div style="display: flex; gap: 16px;">
+              <span>Skip allowed: <strong id="campaign-skip-allowed">--</strong></span>
+              <span>Remove allowed: <strong id="campaign-remove-allowed">--</strong></span>
+            </div>
+          </div>
           <div style="display: flex; gap: 10px;">
             <button id="acceptPreviewContact" class="btn--green" onclick="acceptPreviewContact()">Accept</button>
+            <button id="skipPreviewContact" class="btn--blue" onclick="skipPreviewContact()">Skip</button>
+            <button id="removePreviewContact" class="btn--red" onclick="removePreviewContact()">Remove</button>
           </div>
         </fieldset>
       </div>
