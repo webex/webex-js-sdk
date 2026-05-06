@@ -4967,6 +4967,64 @@ describe('HashTreeParser', () => {
       assert.notCalled(syncMetricsCallbackStub);
     });
 
+    it('does not collect metrics when diffHashes returns no mismatched leaves (no sync needed)', async () => {
+      const parser = createHashTreeParser();
+      parser.syncMetricsCallback = syncMetricsCallbackStub;
+      const heartbeatIntervalMs = 5000;
+
+      // Send heartbeat for 'main' with mismatched root hash to trigger sync timer
+      const heartbeatMessage = {
+        dataSets: [
+          {
+            ...createDataSet('main', 16, 1100),
+            root: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', // different from our hash
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        heartbeatIntervalMs,
+      };
+      parser.handleMessage(heartbeatMessage, 'heartbeat with mismatch');
+
+      const mainDataSetUrl = parser.dataSets.main.url;
+
+      // Mock getHashesFromLocus to return hashes that match local leaf hashes (all EMPTY_HASH).
+      // The hashes array has 31 entries (15 internal + 16 leaves). Only leaf hashes matter for diffHashes.
+      // This simulates a race condition where leaves have already been updated locally.
+      const matchingHashes = new Array(31).fill(EMPTY_HASH);
+      mockGetHashesFromLocusResponse(mainDataSetUrl, matchingHashes, createDataSet('main', 16, 1101));
+
+      // Timer fires => performSync => diffHashes returns [] => no sync request => no pending metrics
+      await clock.tickAsync(heartbeatIntervalMs);
+
+      // No sync was issued, so no metrics should be emitted
+      assert.notCalled(syncMetricsCallbackStub);
+
+      // Even if an LLM message arrives later for this dataset, no metrics should fire
+      const llmMessage = {
+        dataSets: [
+          {
+            ...createDataSet('main', 16, 1102),
+            root: parser.dataSets.main.hashTree.getRootHash(),
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 0, version: 201},
+              dataSetNames: ['main'],
+            },
+            data: {someData: 'value'},
+          },
+        ],
+      };
+      parser.handleMessage(llmMessage, 'LLM broadcast after no-op sync');
+
+      assert.notCalled(syncMetricsCallbackStub);
+    });
+
     it('collects sync metrics for atd-unmuted dataset', async () => {
       const parser = createHashTreeParser();
       parser.syncMetricsCallback = syncMetricsCallbackStub;

@@ -6650,11 +6650,11 @@ export default class Meeting extends StatelessWebexPlugin {
         this.startLLMHealthCheckTimer();
 
         // Emit LLM connect latency metric only on initial join
-        if (isInitialJoin && timings) {
-          this.sendLLMConnectMetric(timings);
+        if (isInitialJoin && registerAndConnectResult) {
+          this.sendLLMConnectMetric(registerAndConnectResult);
         }
 
-        return Promise.resolve(timings);
+        return Promise.resolve(registerAndConnectResult);
       });
   }
 

@@ -96,6 +96,8 @@ interface PendingSyncMetrics {
   syncPrepTime: number;
   syncResponseTime: number;
   dataSetName: string;
+  /** Dataset version at the time of sync; only messages with version >= this should complete the metrics */
+  dataSetVersion: number;
 }
 
 export const LocusInfoUpdateType = {
@@ -1165,8 +1167,9 @@ class HashTreeParser {
 
   /**
    * Checks if an incoming message matches any pending sync metrics and completes them.
-   * Matching is done by dataset name: if the message contains data for a dataset with
-   * pending metrics, those metrics are completed.
+   * Matching is done by dataset name and version: the message must contain a dataset
+   * version >= the version recorded when the sync was initiated. This prevents unrelated
+   * messages for the same dataset from incorrectly closing pending metrics.
    *
    * @param {HashTreeMessage} message - The incoming hash tree message
    * @returns {void}
@@ -1180,7 +1183,9 @@ class HashTreeParser {
     const messageReceivedAt = performance.now();
 
     for (const dataSet of message.dataSets) {
-      if (this.pendingSyncMetrics.has(dataSet.name)) {
+      const pending = this.pendingSyncMetrics.get(dataSet.name);
+
+      if (pending && dataSet.version >= pending.dataSetVersion) {
         this.completeSyncMetrics(dataSet.name, messageReceivedAt);
       }
     }
@@ -1379,9 +1384,12 @@ class HashTreeParser {
 
       const syncPrepStart = shouldCollectMetrics ? performance.now() : 0;
 
+      let syncRequestMade = false;
+
       if (isInitialization) {
         const result = await this.sendSyncRequestToLocus(dataSet, {isInitialization: true});
         syncResponse = result.response;
+        syncRequestMade = true;
       } else if (Object.keys(leavesData).length > 0) {
         if (shouldCollectMetrics) {
           syncPrepTime = Math.round(performance.now() - syncPrepStart);
@@ -1392,19 +1400,20 @@ class HashTreeParser {
           mismatchedLeavesData: leavesData,
         });
         syncResponse = result.response;
+        syncRequestMade = true;
 
         if (shouldCollectMetrics) {
           syncResponseTime = Math.round(performance.now() - syncRequestStart);
         }
       }
 
-      // Store pending sync metrics keyed by dataset name.
-      // The sync queue guarantees only one sync per dataset at a time,
-      // so dataset name is a unique key for pending metrics.
-      if (shouldCollectMetrics) {
-        const randomBackoffTime = dataSet.lastBackoffTime ?? 0;
-        dataSet.lastBackoffTime = undefined;
+      // Always consume lastBackoffTime so it doesn't leak into a future sync cycle.
+      const randomBackoffTime = dataSet.lastBackoffTime ?? 0;
+      dataSet.lastBackoffTime = undefined;
 
+      // Store pending sync metrics only when a sync request was actually issued.
+      // If no leaves were mismatched, no sync was needed, so no metrics should be emitted.
+      if (shouldCollectMetrics && syncRequestMade) {
         this.pendingSyncMetrics.set(dataSet.name, {
           syncResponseReceivedAt: performance.now(),
           totalStartTime: totalStart,
@@ -1414,6 +1423,7 @@ class HashTreeParser {
           syncPrepTime,
           syncResponseTime,
           dataSetName: dataSet.name,
+          dataSetVersion: dataSet.version,
         });
       }
 
