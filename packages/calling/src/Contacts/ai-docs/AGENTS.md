@@ -32,7 +32,7 @@ The `ContactsClient` module provides APIs for managing personal contacts and con
 | Capability | Description |
 | ----------- | ----------- |
 | **Fetch Contacts & Groups** | Retrieves all contacts and contact groups for the user, decrypting CUSTOM contacts and resolving CLOUD contacts via SCIM in batches of 50. |
-| **Create Contact** | Creates a new CUSTOM or CLOUD contact with transparent encryption. Auto-assigns to default group if none specified. |
+| **Create Contact** | Creates a new CUSTOM or CLOUD contact with transparent encryption (both types are encrypted). Auto-assigns to default group if none specified. CLOUD contacts are additionally resolved via SCIM after creation. |
 | **Delete Contact** | Deletes a contact by contactId and removes it from the local cache. |
 | **Create Contact Group** | Creates a new contact group with an encrypted display name. Auto-creates KMS Resource Object if no encryption key exists. Prevents duplicate group names. |
 | **Delete Contact Group** | Deletes a contact group by groupId and removes it from the local cache. |
@@ -96,6 +96,19 @@ type Contact = {
   schemas?: string;
   sipAddresses?: URIAddress[];
   resolved: boolean;
+};
+```
+
+#### ContactGroup
+
+```typescript
+type ContactGroup = {
+  displayName: string;
+  encryptionKeyUrl: string;
+  groupId: string;
+  groupType: GroupType;
+  members?: string[];
+  ownerId?: string;
 };
 ```
 
@@ -187,13 +200,72 @@ await contactClient.deleteContactGroup(groupId);
 
 ---
 
+## Implementation Notes
+
+### HTTP Client Usage
+
+All operations use `this.webex.request()` exclusively (no browser `fetch`). Auth is handled automatically by the SDK.
+
+### URL Patterns
+
+All API URLs follow the pattern:
+```
+{contactsServiceUrl}/encrypt/Users/{resource}[/{id}]
+```
+
+| Operation | URL | Method |
+| --------- | --- | ------ |
+| Get contacts | `/encrypt/Users/contacts` | GET |
+| Create contact | `/encrypt/Users/contacts` | POST |
+| Delete contact | `/encrypt/Users/contacts/{contactId}` | DELETE |
+| Create group | `/encrypt/Users/groups` | POST |
+| Delete group | `/encrypt/Users/groups/{groupId}` | DELETE |
+
+Note: `USERS` constant is `'Users'` (capital U), not lowercase.
+
+### Encryption Applies to Both Contact Types
+
+Both `CUSTOM` and `CLOUD` contacts go through `encryptContact()` before being posted to the contacts service. The difference is:
+- **CUSTOM**: Fully encrypted, then stored. Retrieved and decrypted locally.
+- **CLOUD**: Encrypted and posted, then additionally resolved via SCIM to populate display details (`displayName`, `phoneNumbers`, `sipAddresses`, etc.).
+
+### Local Cache
+
+The client maintains in-memory caches:
+- `this.contacts: Contact[]` — Updated on get/create/delete
+- `this.groups: ContactGroup[]` — Updated on get/create/delete
+- `this.encryptionKeyUrl: string` — Cached after first resolution
+- `this.defaultGroupId: string` — Cached default group ID
+
+### Encryption Key Resolution Logic
+
+1. If `this.encryptionKeyUrl` is already cached, return it
+2. If `this.groups` is undefined, call `getContacts()` to populate
+3. If groups exist, use `groups[0].encryptionKeyUrl`
+4. If no groups exist:
+   - Create unbound KMS key via `this.webex.internal.encryption.kms.createUnboundKeys({count: 1})`
+   - Create KMS resource via `this.webex.internal.encryption.kms.createResource({keyUris: [uri]})`
+   - Create default group named "Other contacts"
+
+### SCIM Query Format
+
+CLOUD contacts are resolved via SCIM with filter queries:
+```
+id eq "uuid1" or id eq "uuid2" or id eq "uuid3"...
+```
+Batched in groups of 50. Uses the `scimQuery` utility from `common/Utils.ts`.
+
+Resolved SCIM fields: `displayName`, `emails`, `phoneNumbers`, `photos` (avatar), `name.givenName`, `name.familyName`, `sipAddresses` (from `urn:scim:schemas:extension:cisco:webexidentity:2.0:User`), `manager`, `department` (from `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`).
+
+---
+
 ## Dependencies
 
 ### Runtime Dependencies
 
 | Package | Purpose |
 | ------- | ------- |
-| `webex` (SDK) | HTTP requests, KMS encryption/decryption, SCIM queries, service URL resolution |
+| `webex` (SDK) | HTTP requests via `webex.request()`, KMS encryption/decryption via `webex.internal.encryption`, SCIM queries, service URL resolution |
 
 ### Internal Dependencies
 
@@ -201,7 +273,7 @@ await contactClient.deleteContactGroup(groupId);
 | ------ | ------- |
 | `SDKConnector` | Singleton bridge to Webex SDK |
 | `Logger` | Structured logging with file/method context |
-| `scimQuery` | Utility for querying SCIM to resolve CLOUD contacts |
+| `scimQuery` | Utility for querying SCIM to resolve CLOUD contacts (from `common/Utils.ts`) |
 | `serviceErrorCodeHandler` | Standardized error response formatting |
 | `uploadLogs` | Uploads diagnostic logs on errors |
 

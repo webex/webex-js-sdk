@@ -151,6 +151,7 @@ sequenceDiagram
 sequenceDiagram
     participant App as Application
     participant CC as ContactsClient
+    participant KMS as Webex KMS
     participant CS as Contacts Service
     participant SCIM as SCIM API
 
@@ -158,13 +159,25 @@ sequenceDiagram
     activate CC
 
     alt No contactId
-        CC-->>App: {statusCode: 400, error: 'contactId is required'}
+        CC-->>App: {statusCode: 400, error: 'contactId is required for contactType:CLOUD.'}
     end
 
-    CC->>CS: POST /encrypt/Users/contacts
-    CS-->>CC: {contactId: 'uuid'}
+    alt No encryptionKeyUrl
+        CC->>CC: fetchEncryptionKeyUrl()
+    end
 
-    CC->>SCIM: scimQuery('id eq "uuid"')
+    alt No groups assigned
+        CC->>CC: fetchDefaultGroup()
+    end
+
+    CC->>KMS: encryptContact(contact)
+    Note over CC,KMS: CLOUD contacts are also encrypted before posting
+    KMS-->>CC: encrypted contact
+
+    CC->>CS: POST /encrypt/Users/contacts
+    CS-->>CC: {contactId: 'new-uuid'}
+
+    CC->>SCIM: scimQuery('id eq "new-uuid"')
     SCIM-->>CC: {Resources: [resolved contact]}
     CC->>CC: resolveCloudContacts(map, scimResponse)
 
@@ -210,11 +223,23 @@ sequenceDiagram
 | Constant | Value | Description |
 |----------|-------|-------------|
 | `ENCRYPT_FILTER` | `'encrypt'` | Encryption-aware API path segment |
-| `USERS` | `'Users'` | Users path segment |
+| `USERS` | `'Users'` | Users path segment (capital U) |
 | `CONTACT_FILTER` | `'contacts'` | Contacts resource path |
 | `GROUP_FILTER` | `'groups'` | Groups resource path |
 | `DEFAULT_GROUP_NAME` | `'Other contacts'` | Name for auto-created default group |
 | `CONTACTS_SCHEMA` | `'urn:cisco:codev:identity:contact:core:1.0'` | Schema for contact/group creation |
+
+### URL Patterns
+
+All operations use `this.webex.request()` (not browser `fetch`):
+
+```
+GET    {contactsServiceUrl}/encrypt/Users/contacts           — fetch all contacts & groups
+POST   {contactsServiceUrl}/encrypt/Users/contacts           — create contact
+DELETE {contactsServiceUrl}/encrypt/Users/contacts/{contactId} — delete contact
+POST   {contactsServiceUrl}/encrypt/Users/groups             — create group
+DELETE {contactsServiceUrl}/encrypt/Users/groups/{groupId}    — delete group
+```
 
 ### Encrypted Fields
 
@@ -238,6 +263,47 @@ sequenceDiagram
 | `SCIM_ID_FILTER` | `'id eq'` | SCIM filter prefix for ID queries |
 | `OR` | `' or '` | SCIM filter OR operator |
 | Max contacts per query | `50` | Batch size for SCIM resolution |
+
+---
+
+## Implementation Details
+
+### Local Cache Management
+
+The `ContactsClient` maintains in-memory state that is updated during CRUD operations:
+- `this.contacts: Contact[]` — Full contact list (both CUSTOM and resolved CLOUD)
+- `this.groups: ContactGroup[]` — All contact groups
+- `this.encryptionKeyUrl: string` — Cached encryption key URL
+- `this.defaultGroupId: string` — Cached default group ID
+
+On delete operations, the item is removed from the local cache by `findIndex` + `splice`.
+
+### Both Contact Types Are Encrypted
+
+The `encryptContact()` method is called for **both** `CUSTOM` and `CLOUD` contact types before posting to the contacts service. This is important: CLOUD contacts are stored encrypted server-side, then resolved via SCIM client-side for display purposes.
+
+### Encryption Key Resolution Order
+
+`fetchEncryptionKeyUrl()` follows this logic:
+1. Return cached `this.encryptionKeyUrl` if available
+2. If `this.groups` is undefined, trigger `getContacts()` to populate
+3. If groups exist, return `groups[0].encryptionKeyUrl`
+4. If no groups exist: create KMS keys → create default "Other contacts" group → return new key URL
+
+### SCIM Resolution Details
+
+Resolved SCIM fields mapped to Contact:
+- `displayName` → `contact.displayName`
+- `name.givenName` → `contact.firstName`
+- `name.familyName` → `contact.lastName`
+- `emails` → `contact.emails`
+- `phoneNumbers` → `contact.phoneNumbers`
+- `photos[0].value` → `contact.avatarURL`
+- `urn:scim:schemas:extension:cisco:webexidentity:2.0:User.sipAddresses` → `contact.sipAddresses`
+- `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User.manager.displayName` → `contact.manager`
+- `urn:ietf:params:scim:schemas:extension:enterprise:2.0:User.department` → `contact.department`
+
+Unresolved contacts (SCIM ID not found in response) are returned with `resolved: false`.
 
 ---
 
