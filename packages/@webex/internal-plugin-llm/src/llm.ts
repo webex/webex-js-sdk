@@ -203,6 +203,17 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   };
 
   /**
+   * Get WebSocket URL for the connection
+   * @param {string} sessionId - Connection identifier
+   * @returns {string} WebSocket Url
+   */
+  public getWebSocketUrl = (sessionId = LLM_DEFAULT_SESSION): string => {
+    const sessionData = this.connections.get(sessionId);
+
+    return sessionData?.webSocketUrl;
+  };
+
+  /**
    * Set the owner meeting ID for a given LLM session. Used by the meetings
    * plugin to tag which Meeting instance currently owns the (default) LLM
    * connection so that other Meeting instances can avoid disconnecting or

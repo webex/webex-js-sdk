@@ -6670,7 +6670,7 @@ export default class Meeting extends StatelessWebexPlugin {
     error?: any
   ) {
     // @ts-ignore
-    const llmWebsocketUrl = this.webex.internal.llm.getDatachannelUrl?.() || undefined;
+    const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
 
     const payload: any = {
       llmLatency: {
@@ -6706,7 +6706,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private sendSyncCompleteMetric(metrics: {dataSet: string; syncLatency: SyncLatencyMetrics}) {
     // @ts-ignore
-    const llmWebsocketUrl = this.webex.internal.llm.getDatachannelUrl?.() || undefined;
+    const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
 
     const payload: any = {
       syncLatency: metrics.syncLatency,

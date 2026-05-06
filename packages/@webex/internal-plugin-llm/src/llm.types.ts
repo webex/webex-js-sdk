@@ -9,6 +9,7 @@ interface ILLMChannel {
   getBinding: (sessionId?: string) => string;
   getLocusUrl: (sessionId?: string) => string;
   getDatachannelUrl: (sessionId?: string) => string;
+  getWebSocketUrl: (sessionId?: string) => string;
   disconnectLLM: (options: {code: number; reason: string}, sessionId?: string) => Promise<void>;
   disconnectAllLLM: (options?: {code: number; reason: string}) => Promise<void>;
   setOwnerMeetingId: (ownerMeetingId: string | undefined, sessionId?: string) => void;
