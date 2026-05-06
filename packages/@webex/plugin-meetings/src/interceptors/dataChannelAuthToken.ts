@@ -89,7 +89,9 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
           result = await this.internal.llm.refreshDataChannelToken();
         }
 
-        if (!result?.body) return undefined;
+        if (!result?.body) {
+          throw new Error('DataChannel token refresh returned no payload');
+        }
         const {datachannelToken, dataChannelTokenType} = result.body;
         // @ts-ignore
         this.internal.llm.setDatachannelToken(datachannelToken, dataChannelTokenType);
