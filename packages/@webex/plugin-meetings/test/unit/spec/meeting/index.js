@@ -14400,10 +14400,10 @@ describe('plugin-meetings', () => {
                   }
 
                   if (isAccepting) {
-                    eventTrigger.share.push({
-                      eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
-                      functionName: 'stopWhiteboardShare',
-                    });
+                    // After the fix, an intermediate locus delta with whiteboard RELEASED
+                    // and content ACCEPTED resolves to NO_SHARE, so by the time content
+                    // becomes GRANTED the previous state is NO_SHARE — no STOP_WHITEBOARD
+                    // event needs to fire here.
                   }
 
                   // Web client is sharing locally
@@ -14544,32 +14544,19 @@ describe('plugin-meetings', () => {
                 newPayload.current.whiteboard.disposition = FLOOR_ACTION.RELEASED;
 
                 if (isAccepting) {
+                  // Whiteboard floor RELEASED while content floor is in the
+                  // intermediate ACCEPTED state. After the fix this transitions to
+                  // NO_SHARE and only emits MEETING_STOPPED_SHARING_WHITEBOARD; the
+                  // listener no longer re-emits MEETING_STARTED_SHARING_WHITEBOARD.
                   newPayload.current.content.disposition = FLOOR_ACTION.ACCEPTED;
                   newPayload.current.content.beneficiaryId = otherBeneficiaryId;
 
-                  eventTrigger.share.push(
-                    meeting.webinar.selfIsAttendee
-                      ? {
-                          eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
-                          functionName: 'remoteShare',
-                          eventPayload: {
-                            memberId: beneficiaryId,
-                            url,
-                            shareInstanceId,
-                            annotationInfo: undefined,
-                            resourceType: undefined,
-                          },
-                        }
-                      : {
-                          eventName: EVENT_TRIGGERS.MEETING_STARTED_SHARING_WHITEBOARD,
-                          functionName: 'startWhiteboardShare',
-                          eventPayload: {resourceUrl, memberId: beneficiaryId},
-                        }
-                  );
+                  eventTrigger.share.push({
+                    eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
+                    functionName: 'stopWhiteboardShare',
+                  });
 
-                  shareStatus = meeting.webinar.selfIsAttendee
-                    ? SHARE_STATUS.REMOTE_SHARE_ACTIVE
-                    : SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
+                  shareStatus = SHARE_STATUS.NO_SHARE;
                 } else {
                   eventTrigger.share.push({
                     eventName: EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
@@ -15458,6 +15445,475 @@ describe('plugin-meetings', () => {
               options: {
                 meetingId: meeting.id,
               },
+            });
+          });
+
+          describe('Whiteboard --> File Share (intermediate ACCEPTED disposition)', () => {
+            // Regression test for the "cannot receive sharing" issue where
+            // setUpLocusMediaSharesListener would re-emit MEETING_STARTED_SHARING_WHITEBOARD
+            // when receiving an intermediate locus delta in which the whiteboard floor was
+            // already RELEASED but the new content floor was still in ACCEPTED (not yet GRANTED)
+            // state. The fix turns the final disposition branch into a default `else` so that
+            // any non-GRANTED content disposition (RELEASED, null, ACCEPTED, ...) combined with
+            // a non-GRANTED whiteboard disposition resolves to NO_SHARE.
+            it('transitions whiteboard_share_active -> no_share -> remote_share_active without re-emitting whiteboard start', () => {
+              // Step 1: whiteboard A is GRANTED (start whiteboard share)
+              const step1 = {
+                previous: {
+                  content: generateContent(),
+                  whiteboard: generateWhiteboard(),
+                },
+                current: {
+                  content: generateContent(),
+                  whiteboard: generateWhiteboard(
+                    USER_IDS.REMOTE_A,
+                    FLOOR_ACTION.GRANTED,
+                    RESOURCE_URLS.WHITEBOARD_A
+                  ),
+                },
+              };
+
+              meeting.locusInfo.emit(
+                {function: 'test', file: 'test'},
+                EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+                step1
+              );
+
+              assert.equal(meeting.shareStatus, SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE);
+
+              // Reset trigger and metric spies so we can check exactly which events fire
+              // on the intermediate locus delta.
+              TriggerProxy.trigger.resetHistory();
+              webex.internal.newMetrics.submitClientEvent.resetHistory();
+
+              // Step 2: intermediate locus delta — whiteboard RELEASED, content ACCEPTED.
+              // Before the fix this used to re-emit MEETING_STARTED_SHARING_WHITEBOARD.
+              const step2 = {
+                previous: cloneDeep(step1.current),
+                current: {
+                  content: generateContent(
+                    USER_IDS.REMOTE_B,
+                    FLOOR_ACTION.ACCEPTED,
+                    DEVICE_URL.REMOTE_B,
+                    undefined,
+                    SHARE_TYPE.FILE
+                  ),
+                  whiteboard: generateWhiteboard(
+                    USER_IDS.REMOTE_A,
+                    FLOOR_ACTION.RELEASED,
+                    RESOURCE_URLS.WHITEBOARD_A
+                  ),
+                },
+              };
+
+              meeting.locusInfo.emit(
+                {function: 'test', file: 'test'},
+                EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+                step2
+              );
+
+              // The listener should now resolve to NO_SHARE (whiteboard stopped, content
+              // not yet granted) and emit only MEETING_STOPPED_SHARING_WHITEBOARD.
+              assert.equal(meeting.shareStatus, SHARE_STATUS.NO_SHARE);
+
+              const triggeredShareEvents = TriggerProxy.trigger
+                .getCalls()
+                .map((call) => call.args[2]);
+
+              assert.include(
+                triggeredShareEvents,
+                EVENT_TRIGGERS.MEETING_STOPPED_SHARING_WHITEBOARD,
+                'expected MEETING_STOPPED_SHARING_WHITEBOARD to fire once'
+              );
+              assert.notInclude(
+                triggeredShareEvents,
+                EVENT_TRIGGERS.MEETING_STARTED_SHARING_WHITEBOARD,
+                'MEETING_STARTED_SHARING_WHITEBOARD must not be re-emitted on ACCEPTED'
+              );
+
+              // The whiteboard floor-granted CA event must not be submitted on this
+              // intermediate transition.
+              const whiteboardFloorGrantedSubmitted =
+                webex.internal.newMetrics.submitClientEvent
+                  .getCalls()
+                  .some(
+                    (call) =>
+                      call.args[0]?.name === 'client.share.floor-granted.local' &&
+                      call.args[0]?.payload?.mediaType === 'whiteboard'
+                  );
+              assert.isFalse(
+                whiteboardFloorGrantedSubmitted,
+                'client.share.floor-granted.local for whiteboard must not be submitted on ACCEPTED'
+              );
+
+              // Step 3: content becomes GRANTED → REMOTE_SHARE_ACTIVE, exactly one
+              // MEETING_STARTED_SHARING_REMOTE event fires.
+              TriggerProxy.trigger.resetHistory();
+
+              const step3 = {
+                previous: cloneDeep(step2.current),
+                current: {
+                  content: generateContent(
+                    USER_IDS.REMOTE_B,
+                    FLOOR_ACTION.GRANTED,
+                    DEVICE_URL.REMOTE_B,
+                    undefined,
+                    SHARE_TYPE.FILE
+                  ),
+                  whiteboard: generateWhiteboard(
+                    USER_IDS.REMOTE_A,
+                    FLOOR_ACTION.RELEASED,
+                    RESOURCE_URLS.WHITEBOARD_A
+                  ),
+                },
+              };
+
+              meeting.locusInfo.emit(
+                {function: 'test', file: 'test'},
+                EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+                step3
+              );
+
+              assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
+
+              const remoteStartCount = TriggerProxy.trigger
+                .getCalls()
+                .filter((call) => call.args[2] === EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE)
+                .length;
+              assert.equal(
+                remoteStartCount,
+                1,
+                'MEETING_STARTED_SHARING_REMOTE should fire exactly once on GRANTED'
+              );
+            });
+          });
+
+
+          describe('Whiteboard as Remote Share --> File Share (intermediate ACCEPTED disposition)', () => {
+            const remoteWhiteboardCases = [
+              {
+                name: 'webinar attendee',
+                setup: () => {
+                  meeting.webinar = {selfIsAttendee: true};
+                  meeting.locusInfo.info.isWebinar = true;
+                },
+              },
+              {
+                name: 'guest',
+                setup: () => {
+                  meeting.guest = true;
+                },
+              },
+            ];
+
+            remoteWhiteboardCases.forEach(({name, setup}) => {
+              it(`stops the released whiteboard for ${name} instead of preserving remote share state on ACCEPTED`, () => {
+                setup();
+
+                const step1 = {
+                  previous: {
+                    content: generateContent(),
+                    whiteboard: generateWhiteboard(),
+                  },
+                  current: {
+                    content: generateContent(),
+                    whiteboard: generateWhiteboard(
+                      USER_IDS.REMOTE_A,
+                      FLOOR_ACTION.GRANTED,
+                      RESOURCE_URLS.WHITEBOARD_A
+                    ),
+                  },
+                };
+
+                meeting.locusInfo.emit(
+                  {function: 'test', file: 'test'},
+                  EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+                  step1
+                );
+
+                assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
+                TriggerProxy.trigger.resetHistory();
+
+                const step2 = {
+                  previous: cloneDeep(step1.current),
+                  current: {
+                    content: generateContent(
+                      USER_IDS.REMOTE_B,
+                      FLOOR_ACTION.ACCEPTED,
+                      DEVICE_URL.REMOTE_B,
+                      undefined,
+                      SHARE_TYPE.FILE
+                    ),
+                    whiteboard: generateWhiteboard(
+                      USER_IDS.REMOTE_A,
+                      FLOOR_ACTION.RELEASED,
+                      RESOURCE_URLS.WHITEBOARD_A
+                    ),
+                  },
+                };
+
+                meeting.locusInfo.emit(
+                  {function: 'test', file: 'test'},
+                  EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+                  step2
+                );
+
+                assert.equal(meeting.shareStatus, SHARE_STATUS.NO_SHARE);
+
+                const acceptedEvents = TriggerProxy.trigger.getCalls().map((call) => call.args[2]);
+
+                assert.include(
+                  acceptedEvents,
+                  EVENT_TRIGGERS.MEETING_STOPPED_SHARING_REMOTE,
+                  'released whiteboard viewed as remote share should stop on ACCEPTED'
+                );
+                assert.notInclude(
+                  acceptedEvents,
+                  EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
+                  'accepted content should not start remote sharing before final GRANTED'
+                );
+              });
+            });
+          });
+
+          describe('Local Share --> Remote Share (intermediate ACCEPTED disposition)', () => {
+            it('preserves local share state on ACCEPTED so final GRANTED unpublishes local streams', async () => {
+              const shareVideoStream = {id: 'local-share-video'};
+              const shareAudioStream = {id: 'local-share-audio'};
+
+              meeting.mediaProperties.mediaDirection = {
+                ...meeting.mediaProperties.mediaDirection,
+                sendShare: true,
+              };
+              meeting.mediaProperties.shareVideoStream = shareVideoStream;
+              meeting.mediaProperties.shareAudioStream = shareAudioStream;
+              sandbox.stub(meeting, 'unpublishStreams').resolves();
+
+              const step1 = {
+                previous: {
+                  content: generateContent(),
+                  whiteboard: generateWhiteboard(),
+                },
+                current: {
+                  content: generateContent(
+                    USER_IDS.ME,
+                    FLOOR_ACTION.GRANTED,
+                    DEVICE_URL.LOCAL_WEB,
+                    undefined,
+                    SHARE_TYPE.DESKTOP
+                  ),
+                  whiteboard: generateWhiteboard(),
+                },
+              };
+
+              meeting.locusInfo.emit(
+                {function: 'test', file: 'test'},
+                EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+                step1
+              );
+
+              assert.equal(meeting.shareStatus, SHARE_STATUS.LOCAL_SHARE_ACTIVE);
+              TriggerProxy.trigger.resetHistory();
+
+              const step2 = {
+                previous: cloneDeep(step1.current),
+                current: {
+                  content: generateContent(
+                    USER_IDS.REMOTE_A,
+                    FLOOR_ACTION.ACCEPTED,
+                    DEVICE_URL.REMOTE_A,
+                    undefined,
+                    SHARE_TYPE.DESKTOP
+                  ),
+                  whiteboard: generateWhiteboard(),
+                },
+              };
+
+              meeting.locusInfo.emit(
+                {function: 'test', file: 'test'},
+                EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+                step2
+              );
+
+              assert.equal(meeting.shareStatus, SHARE_STATUS.LOCAL_SHARE_ACTIVE);
+              assert.notCalled(meeting.unpublishStreams);
+
+              const acceptedEvents = TriggerProxy.trigger.getCalls().map((call) => call.args[2]);
+
+              assert.notInclude(
+                acceptedEvents,
+                EVENT_TRIGGERS.MEETING_STOPPED_SHARING_LOCAL,
+                'local share should not stop while another participant is only ACCEPTED'
+              );
+
+              TriggerProxy.trigger.resetHistory();
+
+              const step3 = {
+                previous: cloneDeep(step2.current),
+                current: {
+                  content: generateContent(
+                    USER_IDS.REMOTE_A,
+                    FLOOR_ACTION.GRANTED,
+                    DEVICE_URL.REMOTE_A,
+                    undefined,
+                    SHARE_TYPE.DESKTOP
+                  ),
+                  whiteboard: generateWhiteboard(),
+                },
+              };
+
+              meeting.locusInfo.emit(
+                {function: 'test', file: 'test'},
+                EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+                step3
+              );
+
+              await Promise.resolve();
+
+              assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
+              assert.calledOnceWithExactly(meeting.unpublishStreams, [
+                shareVideoStream,
+                shareAudioStream,
+              ]);
+
+              const remoteStartCount = TriggerProxy.trigger
+                .getCalls()
+                .filter((call) => call.args[2] === EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE)
+                .length;
+
+              assert.equal(
+                remoteStartCount,
+                1,
+                'MEETING_STARTED_SHARING_REMOTE should fire exactly once after local streams unpublish'
+              );
+
+              const memberUpdateCalls = TriggerProxy.trigger
+                .getCalls()
+                .filter((call) => call.args[2] === EVENT_TRIGGERS.MEMBERS_CONTENT_UPDATE);
+
+              assert.lengthOf(memberUpdateCalls, 1);
+              assert.deepEqual(memberUpdateCalls[0].args[3], {
+                activeSharingId: USER_IDS.REMOTE_A,
+                endedSharingId: USER_IDS.ME,
+              });
+              assert.equal(meeting.members.mediaShareContentId, USER_IDS.REMOTE_A);
+            });
+          });
+
+          describe('Remote Share --> Remote Share (intermediate ACCEPTED disposition)', () => {
+            it('preserves remote share state on ACCEPTED so final GRANTED uses the remote-steal path', () => {
+              const step1 = {
+                previous: {
+                  content: generateContent(),
+                  whiteboard: generateWhiteboard(),
+                },
+                current: {
+                  content: generateContent(
+                    USER_IDS.REMOTE_A,
+                    FLOOR_ACTION.GRANTED,
+                    DEVICE_URL.REMOTE_A,
+                    undefined,
+                    SHARE_TYPE.DESKTOP
+                  ),
+                  whiteboard: generateWhiteboard(),
+                },
+              };
+
+              meeting.locusInfo.emit(
+                {function: 'test', file: 'test'},
+                EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+                step1
+              );
+
+              assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
+              TriggerProxy.trigger.resetHistory();
+
+              const step2 = {
+                previous: cloneDeep(step1.current),
+                current: {
+                  content: generateContent(
+                    USER_IDS.REMOTE_B,
+                    FLOOR_ACTION.ACCEPTED,
+                    DEVICE_URL.REMOTE_B,
+                    undefined,
+                    SHARE_TYPE.DESKTOP
+                  ),
+                  whiteboard: generateWhiteboard(),
+                },
+              };
+
+              meeting.locusInfo.emit(
+                {function: 'test', file: 'test'},
+                EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+                step2
+              );
+
+              assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
+
+              const acceptedEvents = TriggerProxy.trigger.getCalls().map((call) => call.args[2]);
+
+              assert.notInclude(
+                acceptedEvents,
+                EVENT_TRIGGERS.MEETING_STOPPED_SHARING_REMOTE,
+                'remote share should not stop while another participant is only ACCEPTED'
+              );
+              assert.notInclude(
+                acceptedEvents,
+                EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE,
+                'remote share should not restart until another participant is GRANTED'
+              );
+
+              TriggerProxy.trigger.resetHistory();
+
+              const step3 = {
+                previous: cloneDeep(step2.current),
+                current: {
+                  content: generateContent(
+                    USER_IDS.REMOTE_B,
+                    FLOOR_ACTION.GRANTED,
+                    DEVICE_URL.REMOTE_B,
+                    undefined,
+                    SHARE_TYPE.DESKTOP
+                  ),
+                  whiteboard: generateWhiteboard(),
+                },
+              };
+
+              meeting.locusInfo.emit(
+                {function: 'test', file: 'test'},
+                EVENTS.LOCUS_INFO_UPDATE_MEDIA_SHARES,
+                step3
+              );
+
+              assert.equal(meeting.shareStatus, SHARE_STATUS.REMOTE_SHARE_ACTIVE);
+
+              const remoteStartCalls = TriggerProxy.trigger
+                .getCalls()
+                .filter((call) => call.args[2] === EVENT_TRIGGERS.MEETING_STARTED_SHARING_REMOTE);
+
+              assert.lengthOf(
+                remoteStartCalls,
+                1,
+                'MEETING_STARTED_SHARING_REMOTE should fire exactly once on final GRANTED'
+              );
+              assert.deepEqual(remoteStartCalls[0].args[3], {
+                memberId: USER_IDS.REMOTE_B,
+                url: undefined,
+                shareInstanceId: undefined,
+                annotationInfo: undefined,
+                resourceType: SHARE_TYPE.DESKTOP,
+              });
+
+              const memberUpdateCalls = TriggerProxy.trigger
+                .getCalls()
+                .filter((call) => call.args[2] === EVENT_TRIGGERS.MEMBERS_CONTENT_UPDATE);
+
+              assert.lengthOf(memberUpdateCalls, 1);
+              assert.deepEqual(memberUpdateCalls[0].args[3], {
+                activeSharingId: USER_IDS.REMOTE_B,
+                endedSharingId: USER_IDS.REMOTE_A,
+              });
+              assert.equal(meeting.members.mediaShareContentId, USER_IDS.REMOTE_B);
             });
           });
 
