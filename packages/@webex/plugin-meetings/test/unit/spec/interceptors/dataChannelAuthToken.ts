@@ -235,6 +235,9 @@ describe('plugin-meetings', () => {
         let meetingsMock;
         let dispatcherInterceptor;
 
+        const PS_DATACHANNEL_URL = 'https://board-a.wbx2.com/datachannel/api/v1/locus/cHJhY3RpY2Vfc2Vzc2lvbl9sb2N1cw==/registrations';
+        const DEFAULT_DATACHANNEL_URL = 'https://board-a.wbx2.com/datachannel/api/v1/locus/aHR0cHM6Ly9sb2N1cy1hLndieDIuY29t/registrations';
+
         beforeEach(() => {
           meetingA = {
             refreshDataChannelToken: sinon.stub().resolves({
@@ -245,6 +248,7 @@ describe('plugin-meetings', () => {
           llmMock = {
             isDataChannelTokenEnabled: sinon.stub().resolves(true),
             getLocusUrl: sinon.stub(),
+            getDatachannelUrl: sinon.stub(),
             refreshDataChannelToken: sinon.stub().resolves({
               body: {datachannelToken: 'token-from-llm-fallback', dataChannelTokenType: 'Default'},
             }),
@@ -264,12 +268,12 @@ describe('plugin-meetings', () => {
         });
 
         it('routes PS request URL to PS-owning Meeting', async () => {
+          llmMock.getDatachannelUrl.withArgs(LLM_PRACTICE_SESSION).returns(PS_DATACHANNEL_URL);
+          llmMock.getDatachannelUrl.withArgs(LLM_DEFAULT_SESSION).returns(DEFAULT_DATACHANNEL_URL);
           llmMock.getLocusUrl.withArgs(LLM_PRACTICE_SESSION).returns('https://locus-a.example.com');
           meetingsMock.getMeetingByType.withArgs(LOCUS_URL, 'https://locus-a.example.com').returns(meetingA);
 
-          const token = await dispatcherInterceptor._refreshDataChannelToken(
-            'https://datachannel.example.com/practiceSession/register'
-          );
+          const token = await dispatcherInterceptor._refreshDataChannelToken(PS_DATACHANNEL_URL);
 
           expect(token).to.equal('token-from-meeting-a');
           sinon.assert.calledOnceWithExactly(meetingA.refreshDataChannelToken);
@@ -284,12 +288,12 @@ describe('plugin-meetings', () => {
             }),
           };
 
+          llmMock.getDatachannelUrl.withArgs(LLM_PRACTICE_SESSION).returns(PS_DATACHANNEL_URL);
+          llmMock.getDatachannelUrl.withArgs(LLM_DEFAULT_SESSION).returns(DEFAULT_DATACHANNEL_URL);
           llmMock.getLocusUrl.withArgs(LLM_DEFAULT_SESSION).returns('https://locus-b.example.com');
           meetingsMock.getMeetingByType.withArgs(LOCUS_URL, 'https://locus-b.example.com').returns(meetingB);
 
-          const token = await dispatcherInterceptor._refreshDataChannelToken(
-            'https://datachannel.example.com/default/register'
-          );
+          const token = await dispatcherInterceptor._refreshDataChannelToken(DEFAULT_DATACHANNEL_URL);
 
           expect(token).to.equal('token-from-meeting-b');
           sinon.assert.calledOnceWithExactly(meetingB.refreshDataChannelToken);
@@ -298,12 +302,12 @@ describe('plugin-meetings', () => {
         });
 
         it('falls back to LLM singleton when no Meeting matches locusUrl', async () => {
+          llmMock.getDatachannelUrl.withArgs(LLM_PRACTICE_SESSION).returns(PS_DATACHANNEL_URL);
+          llmMock.getDatachannelUrl.withArgs(LLM_DEFAULT_SESSION).returns(DEFAULT_DATACHANNEL_URL);
           llmMock.getLocusUrl.withArgs(LLM_PRACTICE_SESSION).returns('https://locus-unknown.example.com');
           meetingsMock.getMeetingByType.returns(undefined);
 
-          const token = await dispatcherInterceptor._refreshDataChannelToken(
-            'https://datachannel.example.com/practiceSession/register'
-          );
+          const token = await dispatcherInterceptor._refreshDataChannelToken(PS_DATACHANNEL_URL);
 
           expect(token).to.equal('token-from-llm-fallback');
           sinon.assert.calledOnceWithExactly(llmMock.refreshDataChannelToken);
@@ -311,10 +315,12 @@ describe('plugin-meetings', () => {
         });
 
         it('falls back to LLM singleton when LLM has no locusUrl for session', async () => {
+          llmMock.getDatachannelUrl.withArgs(LLM_PRACTICE_SESSION).returns(undefined);
+          llmMock.getDatachannelUrl.withArgs(LLM_DEFAULT_SESSION).returns(undefined);
           llmMock.getLocusUrl.withArgs(LLM_DEFAULT_SESSION).returns(undefined);
 
           const token = await dispatcherInterceptor._refreshDataChannelToken(
-            'https://datachannel.example.com/default/register'
+            'https://unknown-datachannel.example.com/registrations'
           );
 
           expect(token).to.equal('token-from-llm-fallback');

@@ -12,11 +12,6 @@ import {LOCUS_URL, LLM_PRACTICE_SESSION, LLM_DEFAULT_SESSION} from '../constants
  * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
  */
 
-// Marker substring on practice-session datachannel URLs (the base64-encoded
-// locus path embeds `practiceSession`). Used to pick the right LLM session id
-// when resolving the owning Meeting at refresh time.
-const PRACTICE_SESSION_URL_MARKER = 'practiceSession';
-
 const retryCountMap = new Map();
 interface HttpLikeError extends Error {
   statusCode?: number;
@@ -50,16 +45,32 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
 
       // Resolves the *owning* Meeting at refresh time instead of relying on
       // whichever Meeting most recently overwrote the singleton refresh handler
-      // in `internal-plugin-llm`. Uses the in-flight request URL to pick the
-      // correct LLM session id (default vs practice-session), looks up the
-      // session's tracked locusUrl, and finds the matching Meeting in the
+      // in `internal-plugin-llm`. Uses the in-flight request URL to identify
+      // which LLM session (default vs practice-session) owns the request by
+      // matching against each session's stored datachannelUrl. Then looks up the
+      // session's tracked locusUrl and finds the matching Meeting in the
       // meetings collection. Falls back to the LLM plugin's singleton handler
       // when the lookup cannot resolve a Meeting (preserves prior behavior).
       refreshDataChannelToken: async (requestUrl?: string) => {
-        const sessionId =
-          typeof requestUrl === 'string' && requestUrl.includes(PRACTICE_SESSION_URL_MARKER)
-            ? LLM_PRACTICE_SESSION
-            : LLM_DEFAULT_SESSION;
+        let sessionId: string | undefined;
+
+        if (typeof requestUrl === 'string') {
+          // @ts-ignore
+          const psDatachannelUrl = this.internal.llm.getDatachannelUrl?.(LLM_PRACTICE_SESSION);
+          // @ts-ignore
+          const defaultDatachannelUrl = this.internal.llm.getDatachannelUrl?.(LLM_DEFAULT_SESSION);
+
+          if (psDatachannelUrl && requestUrl.startsWith(psDatachannelUrl)) {
+            sessionId = LLM_PRACTICE_SESSION;
+          } else if (defaultDatachannelUrl && requestUrl.startsWith(defaultDatachannelUrl)) {
+            sessionId = LLM_DEFAULT_SESSION;
+          }
+        }
+
+        // If we couldn't identify the session from the URL, default to LLM_DEFAULT_SESSION
+        if (!sessionId) {
+          sessionId = LLM_DEFAULT_SESSION;
+        }
 
         // @ts-ignore
         const sessionLocusUrl = this.internal.llm.getLocusUrl?.(sessionId);
