@@ -11,6 +11,7 @@ describe('plugin-meetings', () => {
   let audio;
   let video;
   let originalRemoteUpdateAudioVideo;
+  let originalUpdateLocusFromApiResponse;
 
   const fakeLocusResponse = {body: {locus: {info: 'this is a fake locus'}}};
 
@@ -45,6 +46,7 @@ describe('plugin-meetings', () => {
     };
 
     originalRemoteUpdateAudioVideo = MeetingUtil.remoteUpdateAudioVideo;
+    originalUpdateLocusFromApiResponse = MeetingUtil.updateLocusFromApiResponse;
 
     MeetingUtil.remoteUpdateAudioVideo = sinon.stub().resolves(fakeLocusResponse);
     MeetingUtil.updateLocusFromApiResponse = sinon.stub();
@@ -57,6 +59,7 @@ describe('plugin-meetings', () => {
 
   afterEach(() => {
     MeetingUtil.remoteUpdateAudioVideo = originalRemoteUpdateAudioVideo;
+    MeetingUtil.updateLocusFromApiResponse = originalUpdateLocusFromApiResponse;
   });
 
   describe('mute state library', () => {

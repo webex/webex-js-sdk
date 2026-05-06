@@ -1,6 +1,8 @@
 import {cloneDeep, isEmpty, zip} from 'lodash';
 import HashTree, {LeafDataItem} from './hashTree';
 import LoggerProxy from '../common/logs/logger-proxy';
+import Metrics from '../metrics';
+import BEHAVIORAL_METRICS from '../metrics/constants';
 import {Enum, HTTP_VERBS} from '../constants';
 import {DataSetNames, DATA_SET_INIT_PRIORITY, EMPTY_HASH} from './constants';
 import {ObjectType, HtMeta, HashTreeObject} from './types';
@@ -754,6 +756,18 @@ class HashTreeParser {
   }
 
   /**
+   * Updates the leaf count for a data set, resizing its hash tree accordingly.
+   *
+   * @param {InternalDataSet} dataSet - The data set to update
+   * @param {number} newLeafCount - The new leaf count
+   * @returns {void}
+   */
+  private updateDataSetLeafCount(dataSet: InternalDataSet, newLeafCount: number): void {
+    dataSet.hashTree?.resize(newLeafCount);
+    dataSet.leafCount = newLeafCount;
+  }
+
+  /**
    * Checks for changes in the visible data sets based on the updated objects.
    * @param {HashTreeObject[]} updatedObjects - The list of updated hash tree objects.
    * @returns {Object} An object containing the removed and added visible data sets.
@@ -1213,7 +1227,7 @@ class HashTreeParser {
 
             receivedHashes = hashesResult.hashes;
 
-            hashTree.resize(hashesResult.dataSet.leafCount);
+            this.updateDataSetLeafCount(dataSet, hashesResult.dataSet.leafCount);
           } catch (error: any) {
             if (error?.statusCode === 409) {
               // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
@@ -1667,6 +1681,13 @@ class HashTreeParser {
           error
         );
         this.checkForSentinelHttpResponse(error, dataSet.name);
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_SYNC_FAILURE, {
+          debugId: this.debugId,
+          dataSetName,
+          request: 'GET /hashtree',
+          statusCode: error.statusCode,
+          reason: error.message,
+        });
 
         throw error;
       });
@@ -1745,6 +1766,13 @@ class HashTreeParser {
           error
         );
         this.checkForSentinelHttpResponse(error, dataSet.name);
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_SYNC_FAILURE, {
+          debugId: this.debugId,
+          dataSetName: dataSet.name,
+          request: 'POST /sync',
+          statusCode: error.statusCode,
+          reason: error.message,
+        });
 
         throw error;
       });
