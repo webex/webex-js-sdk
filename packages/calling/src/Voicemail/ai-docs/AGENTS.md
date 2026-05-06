@@ -194,7 +194,7 @@ console.log('Transcript:', transcript?.data.voicemailTranscript);
 
 ### HTTP Client Usage
 
-All three backends use `this.webex.request()` exclusively (no browser `fetch`).
+WXC and UCM use `this.webex.request()`. Broadworks voicemail operations (`getVoicemailList`, `getVoicemailContent`, mark read/unread, delete) use browser `fetch` with `Authorization: Bearer {bwtoken}` headers, while Broadworks bootstrap/auth discovery still uses `this.webex.request()`.
 
 | Backend | Auth Mechanism | Notes |
 | ------- | -------------- | ----- |
@@ -215,7 +215,7 @@ In WXC/BWRKS, the `messageId` returned from `getVoicemailList` is a **full XSI p
 
 ### WXC Pagination (Client-Side Caching)
 
-WXC fetches the **entire** voicemail list from XSI on `refresh=true`, sorts it, and stores it in an in-memory cache keyed by a random `context` string. Subsequent calls paginate from this cache using `fetchVoicemailList(context, offset, limit)`. Returns status 204 when offset exceeds available messages.
+WXC fetches the **entire** voicemail list from XSI on `refresh=true`, sorts it, and stores it in `sessionStorage` (base64-encoded) keyed by a random `context` string. Subsequent calls paginate from this session-scoped cache using `fetchVoicemailList(context, offset, limit)`. The list response returns status 204 whenever there are no additional pages (`moreVMAvailable=false`), including cases where the current page still contains messages.
 
 ### UCM Pagination (Server-Side)
 

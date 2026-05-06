@@ -133,7 +133,7 @@ sequenceDiagram
         Note over WXC,XSI: Uses webex.request() with optional FedRAMP auth headers
         XSI-->>WXC: VoicemailList JSON
         WXC->>WXC: Parse messageInfoList, sort via getSortedVoicemailList()
-        WXC->>WXC: storeVoicemailList(context, messageinfo) — cache full list in memory
+        WXC->>WXC: storeVoicemailList(context, messageinfo) — cache full list in sessionStorage
     end
 
     WXC->>WXC: fetchVoicemailList(context, offset, limit) — paginate from cached list
@@ -234,7 +234,7 @@ sequenceDiagram
 
 ### HTTP Client Pattern
 
-All backends use `this.webex.request()` (never browser `fetch`).
+WXC and UCM use `this.webex.request()`. Broadworks voicemail operations use browser `fetch` with BW token headers, while Broadworks token/bootstrap flows use `this.webex.request()`.
 
 | Backend | Auth Handling | Custom Headers |
 |---------|---------------|----------------|
@@ -293,7 +293,7 @@ Note: `messageId` from the voicemail list is a **full path** starting with `/` (
 - XSI/VG service unavailable
 - Response `messageInfoList` is an empty object (`Object.keys().length === 0`)
 
-**WXC/BWRKS behavior:** Returns `statusCode: 204` with `message: 'No additional voicemails'` when offset exceeds available messages.
+**WXC/BWRKS behavior:** Returns `statusCode: 204` with `message: 'No additional voicemails'` whenever there are no further pages (`moreVMAvailable=false`), including cases where the current page still contains messages.
 
 ### 3. UCM Content Returns 202
 
