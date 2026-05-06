@@ -65,16 +65,10 @@ const fetchAccessToken = async (
 
   try {
     // 1. Navigate to getting-started page
-    // Use 'domcontentloaded' instead of 'load' — INT portal has slow third-party resources
-    // that prevent the 'load' event from firing within timeout
-    await page.goto(tokenPortalUrl, {waitUntil: 'domcontentloaded', timeout: 60000});
+    await page.goto(tokenPortalUrl, {waitUntil: 'load', timeout: 30000});
 
     // 2. Click "Log in" link
-    // is multi-hop and slow; we explicitly wait below instead
-    await page.locator('#header-login-link').click({timeout: 10000, noWaitAfter: true});
-
-    // Wait until the SSO broker page is loaded (covers both PROD idbroker and INT idbrokerbts)
-    await page.waitForURL(/idbroker/, {waitUntil: 'domcontentloaded', timeout: 60000});
+    await page.locator('#header-login-link').click({timeout: 10000});
 
     // 3. Enter email on Webex sign-in page
     await page.getByRole('textbox', {name: 'name@example.com'}).fill(email, {timeout: 15000});
