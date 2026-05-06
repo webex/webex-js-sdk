@@ -20,6 +20,8 @@ export const CALLING_SELECTORS = {
   DESTINATION_INPUT: '#destination',
   MAKE_CALL_BTN: '#create-call-action',
   END_CALL_BTN: '#end-call',
+  /** Prefer over raw #answer — the sample app has a duplicate hidden #answer; this targets the visible incoming strip only. */
+  INCOMING_ANSWER_BTN: '#incomingsection:not(.hidden) #answer',
   ANSWER_BTN: '#answer',
   MUTE_BTN: '#mute_button',
   HOLD_BTN: '#hold_button',

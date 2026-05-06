@@ -96,6 +96,7 @@ const BEHAVIORAL_METRICS = {
   SET_CUSTOM_CODEC_PARAMETERS_USED: 'js_sdk_set_custom_codec_parameters_used',
   MARK_CUSTOM_CODEC_PARAMETERS_FOR_DELETION_USED:
     'js_sdk_mark_custom_codec_parameters_for_deletion_used',
+  HASH_TREE_SYNC_FAILURE: 'js_sdk_hash_tree_sync_failure',
 };
 
 export {BEHAVIORAL_METRICS as default};
