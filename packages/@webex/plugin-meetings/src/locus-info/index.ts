@@ -2085,6 +2085,8 @@ export default class LocusInfo extends EventsScope {
             state,
             modifiedBy: current.record.modifiedBy,
             lastModified: current.record.lastModified,
+            modifiedByServiceAppName: current.record.modifiedByServiceAppName,
+            modifiedByServiceAppId: current.record.modifiedByServiceAppId,
           }
         );
       }

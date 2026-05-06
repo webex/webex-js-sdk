@@ -9,7 +9,7 @@
  * in two browser sessions simultaneously.
  */
 
-export type AccountRole = 'USER_1' | 'USER_2' | 'USER_3';
+export type AccountRole = 'USER_1' | 'USER_2' | 'USER_3' | 'USER_4' | 'USER_5' | 'USER_6';
 
 export interface UserSet {
   /** Human-readable name shown in Playwright reporter */
@@ -19,6 +19,18 @@ export interface UserSet {
   /** Suite file matched by the Playwright project's testMatch */
   testSuite: string;
 }
+
+/**
+ * Roles that must have credentials/tokens available for the currently enabled
+ * Playwright projects. USER_6 remains optional until SET_3USER is enabled.
+ */
+export const REQUIRED_OAUTH_ROLES: AccountRole[] = [
+  'USER_1',
+  'USER_2',
+  'USER_3',
+  'USER_4',
+  'USER_5',
+];
 
 /** Separator between set name and environment in project names (e.g. "SET_1 - PROD"). */
 const ENV_SEPARATOR = ' - ';
@@ -58,6 +70,19 @@ export const getToken = (role: AccountRole, isInt = false): string => {
   return token;
 };
 
+/**
+ * Read phone number for an account role. Throws if not set.
+ */
+export const getPhoneNumber = (role: AccountRole): string => {
+  const envVar = `${role}_PHONE_NUMBER`;
+  const number = process.env[envVar];
+  if (!number) {
+    throw new Error(`${envVar} not set.`);
+  }
+
+  return number;
+};
+
 // ---------------------------------------------------------------------------
 // User sets — single source of truth for account-to-suite mapping.
 // Keyed by Playwright project name (testInfo.project.name).
@@ -81,19 +106,19 @@ export const USER_SETS: Record<string, UserSet> = {
     testSuite: 'set-3.spec.ts',
   },
 
-  // 2-user tests (call flows, REG-009)
-  // SET_2USER: {
-  //   name: 'SET_2USER',
-  //   accounts: ['USER_1', 'USER_2'],
-  //   testSuite: 'set-2user.spec.ts',
-  // },
+  // 2-user call tests (PROD — dedicated accounts, parallel with registration)
+  SET_2USER: {
+    name: 'SET_2USER',
+    accounts: ['USER_4', 'USER_5'],
+    testSuite: 'set-2user.spec.ts',
+  },
 
-  // 3-user tests (transfer flows)
-  // SET_3USER: {
-  //   name: 'SET_3USER',
-  //   accounts: ['USER_1', 'USER_2', 'USER_3'],
-  //   testSuite: 'set-3user.spec.ts',
-  // },
+  // 3-user transfer tests (PROD — dedicated accounts, parallel with registration)
+  SET_3USER: {
+    name: 'SET_3USER',
+    accounts: ['USER_4', 'USER_5', 'USER_6'],
+    testSuite: 'set-3user.spec.ts',
+  },
 };
 
 /**

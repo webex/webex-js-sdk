@@ -369,7 +369,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webex: this.$webex,
         connectionConfig: this.getConnectionConfig(),
       });
-      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       this.webCallingService = new WebCallingService(this.$webex);
       this.apiAIAssistant = new ApiAIAssistant(this.$webex);
@@ -497,6 +496,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
       ]);
       this.setupEventListeners();
+      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       const resp = await this.connectWebsocket();
       // Ensure 'dn' is always populated from 'defaultDn'
@@ -1349,8 +1349,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
       this.agentConfig.lastStateAuxCodeId = auxCodeId;
       this.agentConfig.isAgentLoggedIn = true;
-      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
-      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       LoggerProxy.log(
         `Silent relogin process completed successfully with login Option: ${reLoginResponse.data.deviceType} teamId: ${reLoginResponse.data.teamId}`,

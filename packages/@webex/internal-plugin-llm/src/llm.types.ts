@@ -11,6 +11,8 @@ interface ILLMChannel {
   getDatachannelUrl: (sessionId?: string) => string;
   disconnectLLM: (options: {code: number; reason: string}, sessionId?: string) => Promise<void>;
   disconnectAllLLM: (options?: {code: number; reason: string}) => Promise<void>;
+  setOwnerMeetingId: (ownerMeetingId: string | undefined, sessionId?: string) => void;
+  getOwnerMeetingId: (sessionId?: string) => string | undefined;
   getAllConnections: () => Map<
     string,
     {
@@ -19,6 +21,7 @@ interface ILLMChannel {
       locusUrl?: string;
       datachannelUrl?: string;
       datachannelToken?: string;
+      ownerMeetingId?: string;
     }
   >;
 }
