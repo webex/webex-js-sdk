@@ -1579,7 +1579,7 @@ function isValidServiceIndicator(indicator: ServiceIndicator): boolean {
  * @param serviceData - .
  * @returns True if validation is successful else false.
  */
-function isValidServiceDomain(serviceData: ServiceData): boolean {
+export function isValidServiceDomain(serviceData: ServiceData): boolean {
   const regexp = /^[a-z0-9]+([-.]{1}[a-z0-9]+)*\.[a-z]{2,6}$/i;
   const {domain} = serviceData;
 
@@ -1594,7 +1594,7 @@ function isValidServiceDomain(serviceData: ServiceData): boolean {
 }
 
 /**
- * Validates service data object(indicator & domain) and throws
+ * Validates service data object(indicator) and throws
  * exception with a message indicating the reason for validation
  * failure.
  *
@@ -1606,10 +1606,6 @@ export function validateServiceData(serviceData: ServiceData) {
 
   if (!isValidServiceIndicator(serviceData.indicator)) {
     throw new Error(`Invalid service indicator, Allowed values are: ${formattedValues}`);
-  }
-
-  if (!isValidServiceDomain(serviceData)) {
-    throw new Error('Invalid service domain.');
   }
 }
 

@@ -35,6 +35,7 @@ describe('plugin-meetings', () => {
         beforeEach(() => {
           request = {
             request: sinon.stub().returns(Promise.resolve()),
+            locusDeltaRequest: sinon.stub().returns(Promise.resolve()),
           };
 
           controller = new RecordingController(request);
@@ -69,13 +70,13 @@ describe('plugin-meetings', () => {
 
             const result = controller.startRecording();
 
-            assert.calledWith(request.request, {
+            assert.calledWith(request.locusDeltaRequest, {
               uri: `${locusUrl}/controls`,
               body: {record: {recording: true, paused: false}},
               method: HTTP_VERBS.PATCH,
             });
 
-            assert.deepEqual(result, request.request.firstCall.returnValue);
+            assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
           });
         });
 
@@ -103,13 +104,13 @@ describe('plugin-meetings', () => {
 
             const result = controller.stopRecording();
 
-            assert.calledWith(request.request, {
+            assert.calledWith(request.locusDeltaRequest, {
               uri: `${locusUrl}/controls`,
               body: {record: {recording: false, paused: false}},
               method: HTTP_VERBS.PATCH,
             });
 
-            assert.deepEqual(result, request.request.firstCall.returnValue);
+            assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
           });
         });
 
@@ -139,13 +140,13 @@ describe('plugin-meetings', () => {
 
             const result = controller.pauseRecording();
 
-            assert.calledWith(request.request, {
+            assert.calledWith(request.locusDeltaRequest, {
               uri: `${locusUrl}/controls`,
               body: {record: {recording: true, paused: true}},
               method: HTTP_VERBS.PATCH,
             });
 
-            assert.deepEqual(result, request.request.firstCall.returnValue);
+            assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
           });
         });
 
@@ -176,13 +177,13 @@ describe('plugin-meetings', () => {
 
             const result = controller.resumeRecording();
 
-            assert.calledWith(request.request, {
+            assert.calledWith(request.locusDeltaRequest, {
               uri: `${locusUrl}/controls`,
               body: {record: {recording: true, paused: false}},
               method: HTTP_VERBS.PATCH,
             });
 
-            assert.deepEqual(result, request.request.firstCall.returnValue);
+            assert.deepEqual(result, request.locusDeltaRequest.firstCall.returnValue);
           });
         });
       });

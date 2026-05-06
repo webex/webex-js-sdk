@@ -164,6 +164,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private mediaNegotiationCompleted: boolean;
 
+  private connectPending: boolean;
+
   private receivedRoapOKSeq: number;
 
   private localAudioStream?: LocalMicrophoneStream;
@@ -239,6 +241,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.mobiusUrl = activeUrl;
     this.receivedRoapOKSeq = 0;
     this.mediaNegotiationCompleted = false;
+    this.connectPending = false;
 
     log.info(`Webex Calling Url:- ${this.mobiusUrl}`, {
       file: CALL_FILE,
@@ -448,6 +451,11 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
               },
             },
             on: {
+              E_SEND_CALL_CONNECT: {
+                cond: () => this.connectPending,
+                target: 'S_SEND_CALL_CONNECT',
+                actions: ['outgoingCallConnect'],
+              },
               E_CALL_ESTABLISHED: {
                 target: 'S_CALL_ESTABLISHED',
                 actions: ['callEstablished'],
@@ -1321,6 +1329,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async handleOutgoingCallConnect(event: CallEvent) {
+    this.connectPending = false;
     log.info(`${METHOD_START_MESSAGE} with: ${this.getCorrelationId()}`, {
       file: CALL_FILE,
       method: METHODS.HANDLE_OUTGOING_CALL_CONNECT,
@@ -1332,6 +1341,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         file: CALL_FILE,
         method: METHODS.HANDLE_OUTGOING_CALL_CONNECT,
       });
+      this.connectPending = true;
 
       return;
     }
@@ -2705,6 +2715,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           case RoapScenario.ANSWER:
             event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
             this.localRoapMessage = event.roapMessage;
+            if (this.connectPending) {
+              this.sendCallStateMachineEvt({type: 'E_SEND_CALL_CONNECT'});
+            }
             this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_ANSWER', data: event.roapMessage});
             break;
 
@@ -2715,6 +2728,9 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           case RoapScenario.OFFER_RESPONSE:
             event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
             this.localRoapMessage = event.roapMessage;
+            if (this.connectPending) {
+              this.sendCallStateMachineEvt({type: 'E_SEND_CALL_CONNECT'});
+            }
             this.sendMediaStateMachineEvt({type: 'E_SEND_ROAP_OFFER', data: event.roapMessage});
             break;
 

@@ -1827,14 +1827,9 @@ export default class LocusInfo extends EventsScope {
         );
       }
     } else if (this.parsedLocus.fullState?.type === _MEETING_) {
-      if (
-        this.fullState &&
-        (this.fullState.state === LOCUS.STATE.INACTIVE ||
-          // @ts-ignore
-          this.fullState.state === LOCUS.STATE.TERMINATING)
-      ) {
+      if (this.fullState && MeetingsUtil.isWholeMeetingEnded(this.fullState)) {
         LoggerProxy.logger.warn(
-          'Locus-info:index#isMeetingActive --> Meeting is ending due to inactive or terminating'
+          'Locus-info:index#isMeetingActive --> Meeting is ending due to inactive'
         );
 
         // @ts-ignore
@@ -2097,6 +2092,8 @@ export default class LocusInfo extends EventsScope {
             state,
             modifiedBy: current.record.modifiedBy,
             lastModified: current.record.lastModified,
+            modifiedByServiceAppName: current.record.modifiedByServiceAppName,
+            modifiedByServiceAppId: current.record.modifiedByServiceAppId,
           }
         );
       }

@@ -912,6 +912,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
+            isVipMeeting: false,
           },
           options
         );
@@ -940,6 +941,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -979,6 +981,7 @@ describe('internal-plugin-metrics', () => {
               isConvergedArchitectureEnabled: undefined,
               webexSubServiceType: undefined,
               webClientPreload: undefined,
+              isVipMeeting: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1054,6 +1057,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
+            isVipMeeting: false,
           },
           options
         );
@@ -1082,6 +1086,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1121,6 +1126,7 @@ describe('internal-plugin-metrics', () => {
               isConvergedArchitectureEnabled: undefined,
               webexSubServiceType: undefined,
               webClientPreload: undefined,
+              isVipMeeting: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1197,6 +1203,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
+            isVipMeeting: false,
           },
           options
         );
@@ -1226,6 +1233,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1266,6 +1274,7 @@ describe('internal-plugin-metrics', () => {
               isConvergedArchitectureEnabled: undefined,
               webexSubServiceType: undefined,
               webClientPreload: undefined,
+              isVipMeeting: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1341,6 +1350,7 @@ describe('internal-plugin-metrics', () => {
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
+            isVipMeeting: false,
           },
           options
         );
@@ -1370,6 +1380,7 @@ describe('internal-plugin-metrics', () => {
             userType: 'host',
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1410,6 +1421,7 @@ describe('internal-plugin-metrics', () => {
               userType: 'host',
               isConvergedArchitectureEnabled: undefined,
               webexSubServiceType: undefined,
+              isVipMeeting: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1487,6 +1499,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
+            isVipMeeting: false,
           },
           options
         );
@@ -1518,6 +1531,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1560,6 +1574,7 @@ describe('internal-plugin-metrics', () => {
               isConvergedArchitectureEnabled: undefined,
               webexSubServiceType: undefined,
               webClientPreload: undefined,
+              isVipMeeting: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1950,6 +1965,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2005,6 +2021,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2098,6 +2115,204 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should submit client event with isVipMeeting: false when vipMeeting is false', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        webex.meetings.getBasicMeetingInformation = sinon.stub().returns({
+          ...fakeMeeting,
+          meetingInfo: {
+            vipmeeting: false,
+          },
+        });
+
+        const options = {
+          correlationId: 'correlationId',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
+          sessionCorrelationId: 'sessionCorrelationId1',
+          meetingId: fakeMeeting.id,
+        };
+        cd.setMercuryConnectedStatus(true);
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.notCalled(generateClientEventErrorPayloadSpy);
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: true,
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              globalMeetingId: 'globalMeetingId1',
+              sessionCorrelationId: 'sessionCorrelationId1',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusSessionId: 'locusSessionId',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+            isVipMeeting: false,
+          },
+          options
+        );
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: true,
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              globalMeetingId: 'globalMeetingId1',
+              sessionCorrelationId: 'sessionCorrelationId1',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusSessionId: 'locusSessionId',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+            isVipMeeting: false,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+      });
+
+      it('should submit client event with isVipMeeting: true when vipMeeting is true', () => {
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
+        const generateClientEventErrorPayloadSpy = sinon.spy(cd, 'generateClientEventErrorPayload');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        webex.meetings.getBasicMeetingInformation = sinon.stub().returns({
+          ...fakeMeeting,
+          meetingInfo: {
+            vipmeeting: true,
+          },
+        });
+
+        const options = {
+          correlationId: 'correlationId',
+          webexConferenceIdStr: 'webexConferenceIdStr1',
+          globalMeetingId: 'globalMeetingId1',
+          sessionCorrelationId: 'sessionCorrelationId1',
+          meetingId: fakeMeeting.id,
+        };
+        cd.setMercuryConnectedStatus(true);
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options,
+        });
+
+        assert.notCalled(generateClientEventErrorPayloadSpy);
+        assert.calledWith(
+          prepareDiagnosticEventSpy,
+          {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: true,
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              globalMeetingId: 'globalMeetingId1',
+              sessionCorrelationId: 'sessionCorrelationId1',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusSessionId: 'locusSessionId',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+            isVipMeeting: true,
+          },
+          options
+        );
+        assert.calledWith(submitToCallDiagnosticsSpy, {
+          event: {
+            canProceed: true,
+            eventData: {
+              webClientDomain: 'whatever',
+              isMercuryConnected: true,
+            },
+            identifiers: {
+              correlationId: 'correlationId',
+              webexConferenceIdStr: 'webexConferenceIdStr1',
+              globalMeetingId: 'globalMeetingId1',
+              sessionCorrelationId: 'sessionCorrelationId1',
+              deviceId: 'deviceUrl',
+              locusId: 'url',
+              locusSessionId: 'locusSessionId',
+              locusStartTime: 'lastActive',
+              locusUrl: 'locus/url',
+              orgId: 'orgId',
+              userId: 'userId',
+            },
+            loginType: 'login-ci',
+            name: 'client.alert.displayed',
+            userType: 'host',
+            isConvergedArchitectureEnabled: undefined,
+            webexSubServiceType: undefined,
+            webClientPreload: undefined,
+            isVipMeeting: true,
+          },
+          eventId: 'my-fake-id',
+          origin: {
+            origin: 'fake-origin',
+          },
+          originTime: {
+            sent: 'not_defined_yet',
+            triggered: now.toISOString(),
+          },
+          senderCountryCode: 'UK',
+          version: 1,
+        });
+      });
+
       it('it should include errors if provided with meetingId', () => {
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
         const submitToCallDiagnosticsSpy = sinon.spy(cd, 'submitToCallDiagnostics');
@@ -2158,6 +2373,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2240,6 +2456,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2473,6 +2690,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
+            isVipMeeting: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2563,16 +2781,18 @@ describe('internal-plugin-metrics', () => {
           });
 
           assert.calledThrice(submitToCallDiagnosticsStub);
-          });
+        });
 
-        ([
-          ['client.media.render.start'],
-          ['client.media.render.stop'],
-          ['client.media.rx.start'],
-          ['client.media.rx.stop'],
-          ['client.media.tx.start'],
-          ['client.media.tx.stop']
-        ] as const).forEach(([name]) => {
+        (
+          [
+            ['client.media.render.start'],
+            ['client.media.render.stop'],
+            ['client.media.rx.start'],
+            ['client.media.rx.stop'],
+            ['client.media.tx.start'],
+            ['client.media.tx.stop'],
+          ] as const
+        ).forEach(([name]) => {
           it(`should only send ${name} once per mediaType`, () => {
             const options = {
               meetingId: fakeMeeting.id,
@@ -2616,7 +2836,8 @@ describe('internal-plugin-metrics', () => {
             });
 
             assert.notCalled(submitToCallDiagnosticsStub);
-            assert.neverCalledWithMatch(webex.logger.log,
+            assert.neverCalledWithMatch(
+              webex.logger.log,
               'call-diagnostic-events -> ',
               sinon.match(createEventLimitRegex(name, 'mediaType video'))
             );
@@ -2659,7 +2880,7 @@ describe('internal-plugin-metrics', () => {
             // Send event with different shareInstanceId
             cd.submitClientEvent({
               name,
-              payload: { ...payload, shareInstanceId: 'instance-2' },
+              payload: {...payload, shareInstanceId: 'instance-2'},
               options,
             });
 
@@ -2667,89 +2888,88 @@ describe('internal-plugin-metrics', () => {
           });
         });
 
-        ([
-          ['client.roap-message.received'],
-          ['client.roap-message.sent']
-        ] as const).forEach(([name]) => {
-          it(`should not send third event of same type and not log warning again for ${name}`, () => {
-            const options = {
-              meetingId: fakeMeeting.id,
-            };
-            const payload = {
-              roap: {
-                messageType: 'OFFER' as const,
-              },
-            };
-            const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
+        ([['client.roap-message.received'], ['client.roap-message.sent']] as const).forEach(
+          ([name]) => {
+            it(`should not send third event of same type and not log warning again for ${name}`, () => {
+              const options = {
+                meetingId: fakeMeeting.id,
+              };
+              const payload = {
+                roap: {
+                  messageType: 'OFFER' as const,
+                },
+              };
+              const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
 
-            // Clear any existing call history to get accurate counts
-            webex.logger.log.resetHistory();
+              // Clear any existing call history to get accurate counts
+              webex.logger.log.resetHistory();
 
-            // Send first event
-            cd.submitClientEvent({
-              name,
-              payload,
-              options,
+              // Send first event
+              cd.submitClientEvent({
+                name,
+                payload,
+                options,
+              });
+
+              assert.calledOnce(submitToCallDiagnosticsStub);
+              submitToCallDiagnosticsStub.resetHistory();
+
+              // Send second event (should trigger warning)
+              cd.submitClientEvent({
+                name,
+                payload,
+                options,
+              });
+
+              assert.notCalled(submitToCallDiagnosticsStub);
+              assert.calledWith(
+                webex.logger.log,
+                'call-diagnostic-events -> ',
+                sinon.match(createEventLimitRegex(name, 'ROAP type OFFER'))
+              );
+              webex.logger.log.resetHistory();
+
+              cd.submitClientEvent({
+                name,
+                payload,
+                options,
+              });
+
+              assert.notCalled(submitToCallDiagnosticsStub);
+              assert.neverCalledWithMatch(
+                webex.logger.log,
+                'call-diagnostic-events -> ',
+                sinon.match(createEventLimitRegex(name, 'ROAP type OFFER'))
+              );
             });
 
-            assert.calledOnce(submitToCallDiagnosticsStub);
-            submitToCallDiagnosticsStub.resetHistory();
+            it(`should handle roap.type instead of roap.messageType for ${name}`, () => {
+              const options = {
+                meetingId: fakeMeeting.id,
+              };
+              const payload = {
+                roap: {
+                  type: 'ANSWER' as const,
+                },
+              };
+              const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
 
-            // Send second event (should trigger warning)
-            cd.submitClientEvent({
-              name,
-              payload,
-              options,
+              cd.submitClientEvent({
+                name,
+                payload,
+                options,
+              });
+
+              cd.submitClientEvent({
+                name,
+                payload,
+                options,
+              });
+
+              assert.calledOnce(submitToCallDiagnosticsStub);
             });
-
-            assert.notCalled(submitToCallDiagnosticsStub);
-            assert.calledWith(
-              webex.logger.log,
-              'call-diagnostic-events -> ',
-              sinon.match(createEventLimitRegex(name, 'ROAP type OFFER'))
-            );
-            webex.logger.log.resetHistory();
-            
-            cd.submitClientEvent({
-              name,
-              payload,
-              options,
-            });
-
-            assert.notCalled(submitToCallDiagnosticsStub);
-            assert.neverCalledWithMatch(
-              webex.logger.log,
-              'call-diagnostic-events -> ',
-              sinon.match(createEventLimitRegex(name, 'ROAP type OFFER'))
-            );
-          });
-
-          it(`should handle roap.type instead of roap.messageType for ${name}`, () => {
-            const options = {
-              meetingId: fakeMeeting.id,
-            };
-            const payload = {
-              roap: {
-                type: 'ANSWER' as const,
-              },
-            };
-            const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
-
-            cd.submitClientEvent({
-              name,
-              payload,
-              options,
-            });
-
-            cd.submitClientEvent({
-              name,
-              payload,
-              options,
-            });
-
-            assert.calledOnce(submitToCallDiagnosticsStub);
-          });
-        });
+          }
+        );
       });
     });
 
@@ -3755,6 +3975,7 @@ describe('internal-plugin-metrics', () => {
                     isConvergedArchitectureEnabled: undefined,
                     webexSubServiceType: undefined,
                     webClientPreload: undefined,
+                    isVipMeeting: false,
                   },
                   eventId: 'my-fake-id',
                   origin: {
@@ -4123,12 +4344,14 @@ describe('internal-plugin-metrics', () => {
           payload: {
             meetingSummaryInfo: {
               featureName: 'syncSystemMuteStatus',
-              featureActions: [{
-                actionName: 'syncMeetingMicUnmuteStatusToSystem',
-                actionId: '14200',
-                isInitialValue: false,
-                clickCount: '1'
-              }]
+              featureActions: [
+                {
+                  actionName: 'syncMeetingMicUnmuteStatusToSystem',
+                  actionId: '14200',
+                  isInitialValue: false,
+                  clickCount: '1',
+                },
+              ],
             },
           },
           options,
@@ -4149,22 +4372,25 @@ describe('internal-plugin-metrics', () => {
               locusSessionId: 'locusSessionId',
               locusStartTime: 'lastActive',
             },
-            eventData: { webClientDomain: 'whatever'},
+            eventData: {webClientDomain: 'whatever'},
             userType: 'host',
             loginType: 'login-ci',
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
+            isVipMeeting: false,
             meetingSummaryInfo: {
               featureName: 'syncSystemMuteStatus',
-              featureActions: [{
-                actionName: 'syncMeetingMicUnmuteStatusToSystem',
-                actionId: '14200',
-                isInitialValue: false,
-                clickCount: '1'
-              }]
+              featureActions: [
+                {
+                  actionName: 'syncMeetingMicUnmuteStatusToSystem',
+                  actionId: '14200',
+                  isInitialValue: false,
+                  clickCount: '1',
+                },
+              ],
             },
-            key: "UcfFeatureUsage",
+            key: 'UcfFeatureUsage',
           },
           options
         );
@@ -4177,7 +4403,7 @@ describe('internal-plugin-metrics', () => {
           },
           event: {
             canProceed: true,
-            eventData: { webClientDomain: 'whatever'},
+            eventData: {webClientDomain: 'whatever'},
             identifiers: {
               correlationId: 'correlationId',
               deviceId: 'deviceUrl',
@@ -4194,16 +4420,19 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             webClientPreload: undefined,
+            isVipMeeting: false,
             meetingSummaryInfo: {
               featureName: 'syncSystemMuteStatus',
-              featureActions: [{
-                actionName: 'syncMeetingMicUnmuteStatusToSystem',
-                actionId: '14200',
-                isInitialValue: false,
-                clickCount: '1'
-              }]
+              featureActions: [
+                {
+                  actionName: 'syncMeetingMicUnmuteStatusToSystem',
+                  actionId: '14200',
+                  isInitialValue: false,
+                  clickCount: '1',
+                },
+              ],
             },
-            key: "UcfFeatureUsage",
+            key: 'UcfFeatureUsage',
           },
           originTime: {
             sent: 'not_defined_yet',
@@ -4244,12 +4473,14 @@ describe('internal-plugin-metrics', () => {
           payload: {
             meetingSummaryInfo: {
               featureName: 'syncSystemMuteStatus',
-              featureActions: [{
-                actionName: 'syncMeetingMicUnmuteStatusToSystem',
-                actionId: '14200',
-                isInitialValue: false,
-                clickCount: '1'
-              }]
+              featureActions: [
+                {
+                  actionName: 'syncMeetingMicUnmuteStatusToSystem',
+                  actionId: '14200',
+                  isInitialValue: false,
+                  clickCount: '1',
+                },
+              ],
             },
           },
           delaySubmitEvent: true,
@@ -4261,12 +4492,14 @@ describe('internal-plugin-metrics', () => {
           payload: {
             meetingSummaryInfo: {
               featureName: 'syncSystemVideoStatus',
-              featureActions: [{
-                actionName: 'syncMeetingVideoUnmuteStatusToSystem',
-                actionId: '13400',
-                isInitialValue: false,
-                clickCount: '1'
-              }]
+              featureActions: [
+                {
+                  actionName: 'syncMeetingVideoUnmuteStatusToSystem',
+                  actionId: '13400',
+                  isInitialValue: false,
+                  clickCount: '1',
+                },
+              ],
             },
           },
           delaySubmitEvent: true,
@@ -4284,12 +4517,14 @@ describe('internal-plugin-metrics', () => {
           payload: {
             meetingSummaryInfo: {
               featureName: 'syncSystemMuteStatus',
-              featureActions: [{
-                actionName: 'syncMeetingMicUnmuteStatusToSystem',
-                actionId: '14200',
-                isInitialValue: false,
-                clickCount: '1'
-              }]
+              featureActions: [
+                {
+                  actionName: 'syncMeetingMicUnmuteStatusToSystem',
+                  actionId: '14200',
+                  isInitialValue: false,
+                  clickCount: '1',
+                },
+              ],
             },
           },
           options: {
@@ -4302,12 +4537,14 @@ describe('internal-plugin-metrics', () => {
           payload: {
             meetingSummaryInfo: {
               featureName: 'syncSystemVideoStatus',
-              featureActions: [{
-                actionName: 'syncMeetingVideoUnmuteStatusToSystem',
-                actionId: '13400',
-                isInitialValue: false,
-                clickCount: '1'
-              }]
+              featureActions: [
+                {
+                  actionName: 'syncMeetingVideoUnmuteStatusToSystem',
+                  actionId: '13400',
+                  isInitialValue: false,
+                  clickCount: '1',
+                },
+              ],
             },
           },
           options: {
@@ -4331,17 +4568,17 @@ describe('internal-plugin-metrics', () => {
 
       it('should clear event limits for specific correlationId only', () => {
         // Use the actual correlationIds from our fakeMeeting fixtures
-        const correlationId1 = fakeMeeting.correlationId;   // e.g. 'correlationId1'
-        const correlationId2 = fakeMeeting2.correlationId;  // e.g. 'correlationId2'
-        const options1 = { meetingId: fakeMeeting.id };
-        const options2 = { meetingId: fakeMeeting2.id };
-        const payload = { mediaType: 'video' as const };
+        const correlationId1 = fakeMeeting.correlationId; // e.g. 'correlationId1'
+        const correlationId2 = fakeMeeting2.correlationId; // e.g. 'correlationId2'
+        const options1 = {meetingId: fakeMeeting.id};
+        const options2 = {meetingId: fakeMeeting2.id};
+        const payload = {mediaType: 'video' as const};
 
         // Set up events for both correlations to trigger limits
-        cd.submitClientEvent({ name: 'client.media.render.start', payload, options: options1 });
-        cd.submitClientEvent({ name: 'client.media.render.start', payload, options: options2 });
-        cd.submitClientEvent({ name: 'client.media.render.start', payload, options: options1 });
-        cd.submitClientEvent({ name: 'client.media.render.start', payload, options: options2 });
+        cd.submitClientEvent({name: 'client.media.render.start', payload, options: options1});
+        cd.submitClientEvent({name: 'client.media.render.start', payload, options: options2});
+        cd.submitClientEvent({name: 'client.media.render.start', payload, options: options1});
+        cd.submitClientEvent({name: 'client.media.render.start', payload, options: options2});
         assert.isTrue(cd.eventLimitTracker.size > 0);
         assert.isTrue(cd.eventLimitWarningsLogged.size > 0);
 
@@ -4352,17 +4589,17 @@ describe('internal-plugin-metrics', () => {
         const remainingWarningKeys = Array.from(cd.eventLimitWarningsLogged.keys());
 
         // Should have no keys with correlationId1
-        assert.isFalse(remainingTrackerKeys.some(key => key.split(':')[1] === correlationId1));
-        assert.isFalse(remainingWarningKeys.some(key => key.split(':')[1] === correlationId1));
+        assert.isFalse(remainingTrackerKeys.some((key) => key.split(':')[1] === correlationId1));
+        assert.isFalse(remainingWarningKeys.some((key) => key.split(':')[1] === correlationId1));
 
         // Should still have keys with correlationId2
-        assert.isTrue(remainingTrackerKeys.some(key => key.split(':')[1] === correlationId2));
-        assert.isTrue(remainingWarningKeys.some(key => key.split(':')[1] === correlationId2));
+        assert.isTrue(remainingTrackerKeys.some((key) => key.split(':')[1] === correlationId2));
+        assert.isTrue(remainingWarningKeys.some((key) => key.split(':')[1] === correlationId2));
       });
 
       it('should handle empty correlationId gracefully', () => {
-        const options = { meetingId: fakeMeeting.id };
-        const payload = { mediaType: 'video' as const };
+        const options = {meetingId: fakeMeeting.id};
+        const payload = {mediaType: 'video' as const};
 
         // Set up some tracking data
         cd.submitClientEvent({
@@ -4390,8 +4627,8 @@ describe('internal-plugin-metrics', () => {
       });
 
       it('should handle non-existent correlationId gracefully', () => {
-        const options = { meetingId: fakeMeeting.id };
-        const payload = { mediaType: 'video' as const };
+        const options = {meetingId: fakeMeeting.id};
+        const payload = {mediaType: 'video' as const};
 
         // Set up some tracking data
         cd.submitClientEvent({
@@ -4412,10 +4649,10 @@ describe('internal-plugin-metrics', () => {
 
       it('should clear multiple event types for the same correlationId', () => {
         const correlationId = fakeMeeting.correlationId;
-        const options = { meetingId: fakeMeeting.id };
-        const videoPayload = { mediaType: 'video' as const };
-        const audioPayload = { mediaType: 'audio' as const };
-        const roapPayload = { roap: { messageType: 'OFFER' as const } };
+        const options = {meetingId: fakeMeeting.id};
+        const videoPayload = {mediaType: 'video' as const};
+        const audioPayload = {mediaType: 'audio' as const};
+        const roapPayload = {roap: {messageType: 'OFFER' as const}};
 
         // Set up multiple event types for the same correlation
         cd.submitClientEvent({
@@ -4468,8 +4705,8 @@ describe('internal-plugin-metrics', () => {
 
       it('should allow events to be sent again after clearing limits for correlationId', () => {
         const correlationId = fakeMeeting.correlationId;
-        const options = { meetingId: fakeMeeting.id };
-        const payload = { mediaType: 'video' as const };
+        const options = {meetingId: fakeMeeting.id};
+        const payload = {mediaType: 'video' as const};
         const submitToCallDiagnosticsStub = sinon.stub(cd, 'submitToCallDiagnostics');
 
         // Send first event (should succeed)

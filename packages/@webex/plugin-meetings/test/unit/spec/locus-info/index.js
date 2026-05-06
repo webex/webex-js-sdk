@@ -1331,6 +1331,8 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.IDLE,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
           }
         );
       });
@@ -1365,6 +1367,8 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.RECORDING,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
           }
         );
       });
@@ -1400,6 +1404,8 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.PAUSED,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
           }
         );
       });
@@ -1436,6 +1442,8 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.RESUMED,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
           }
         );
       });
@@ -1471,6 +1479,44 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.IDLE,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
+          }
+        );
+      });
+
+      it('should include service app fields in the recording event when present', () => {
+        locusInfo.controls = {
+          record: {
+            recording: false,
+            paused: false,
+            meta: {
+              lastModified: 'TODAY',
+              modifiedBy: 'George Kittle',
+            },
+          },
+          shareControl: {},
+          transcribe: {},
+        };
+        newControls.record.recording = true;
+        newControls.record.meta.modifiedByServiceAppName = 'My Bot';
+        newControls.record.meta.modifiedByServiceAppId = 'app-id-123';
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+          {
+            state: RECORDING_STATE.RECORDING,
+            modifiedBy: 'George Kittle',
+            lastModified: 'TODAY',
+            modifiedByServiceAppName: 'My Bot',
+            modifiedByServiceAppId: 'app-id-123',
           }
         );
       });
@@ -4718,6 +4764,9 @@ describe('plugin-meetings', () => {
     });
 
     describe('#isMeetingActive', () => {
+      beforeEach(() => {
+        webex.internal.newMetrics.submitClientEvent.resetHistory();
+      });
       forEach([_CALL_, _SIP_BRIDGE_, _SPACE_SHARE_], (type) => {
         describe(`type = ${type}`, () => {
           it('sends client event correctly for state = inactive', () => {
@@ -4784,7 +4833,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('sends client event correctly for state = MEETING_INACTIVE_TERMINATING', () => {
+      it('sends client event correctly for state = MEETING_INACTIVE', () => {
         locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
         locusInfo.parsedLocus = {
           fullState: {
@@ -4806,7 +4855,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('sends client event correctly for state = FULLSTATE_REMOVED', () => {
+      it('does not send client event when state = INACTIVE and endMeetingReason = BREAKOUT_ENDED', () => {
         locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
         locusInfo.parsedLocus = {
           fullState: {
@@ -4815,17 +4864,41 @@ describe('plugin-meetings', () => {
         };
 
         locusInfo.fullState = {
-          removed: true,
+          state: LOCUS.STATE.INACTIVE,
+          endMeetingReason: 'BREAKOUT_ENDED',
         };
 
         locusInfo.isMeetingActive();
 
-        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-          name: 'client.call.remote-ended',
-          options: {
-            meetingId: locusInfo.meetingId,
+        assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+      });
+
+      it('sends client event correctly for state self removed', () => {
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.parsedLocus = {
+          fullState: {
+            type: _MEETING_,
           },
-        });
+          self: {
+            removed: true,
+          }
+        };
+
+        locusInfo.isMeetingActive();
+
+        assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+        assert.calledOnceWithExactly(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'isMeetingActive',
+          },
+          EVENTS.DESTROY_MEETING,
+          {
+            reason: MEETING_REMOVED_REASON.SELF_REMOVED,
+            shouldLeave: false,
+          }
+        );
       });
     });
 
