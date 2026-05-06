@@ -175,19 +175,40 @@ sequenceDiagram
 
 ### Common Metric Fields
 
-Every metric includes these base fields from `MetricManager` state:
+Most metrics include these base fields (exceptions noted below):
 
-| Field | Source | Description |
-|-------|--------|-------------|
-| `device_id` | `deviceInfo.device.deviceId` | Registered device identifier |
-| `device_url` | `deviceInfo.device.clientDeviceUri` | Client device URI |
-| `mobius_url` | `deviceInfo.device.uri` | Mobius server URI |
-| `calling_sdk_version` | `process.env.CALLING_SDK_VERSION \|\| VERSION` | SDK version string |
-| `service_indicator` | Constructor `indicator` param | Service type (CALLING, etc.) |
+| Field | Location | Source | Description |
+|-------|----------|--------|-------------|
+| `device_id` | tags | `deviceInfo.device.deviceId` | Registered device identifier |
+| `device_url` | fields | `deviceInfo.device.clientDeviceUri` | Client device URI |
+| `mobius_url` | fields | `deviceInfo.device.uri` | Mobius server URI |
+| `calling_sdk_version` | fields | `process.env.CALLING_SDK_VERSION \|\| VERSION` | SDK version string |
+| `service_indicator` | tags | Constructor `indicator` param | Service type (CALLING, etc.) |
+| `action` | tags | `metricAction` parameter | Action being performed |
+
+**Exceptions per method:**
+
+| Method | Differences from common fields |
+|--------|-------------------------------|
+| `submitVoicemailMetric` | No `mobius_url`, no `service_indicator`. Adds `message_id` to tags. Uses `typeof process !== 'undefined'` guard for SDK version. Error puts `error` and `status_code` in **tags** (not fields). |
+| `submitConnectionMetrics` | Tag key is `metricAction` (not `action`). |
+| `submitBNRMetric` | No `action` tag at all. |
+| `submitRegionInfoMetric` | Always uses `ServiceIndicator.CALLING` (ignores constructor `indicator`). |
+| `submitMobiusServersMetric` | Always uses `ServiceIndicator.CALLING` (ignores constructor `indicator`). |
+| `submitRegistrationMetric` | Field key is `trackingId` (camelCase, not `tracking_id`). |
+| `submitUploadLogsMetric` | Field key is `tracking_id` (snake_case). No default case warning for invalid names. |
 
 ### Metric Name Validation
 
 The `MetricManager` validates the `name` parameter against expected `METRIC_EVENT` values using switch statements. If an invalid name is received, it logs a warning and does not submit the metric. This prevents malformed telemetry from being sent.
+
+**Exception:** `submitUploadLogsMetric` and `submitConnectionMetrics` do NOT log a warning on invalid names — they simply don't submit (data remains `undefined`).
+
+### Conditional Submission
+
+Some methods only submit error metrics when an error object is provided:
+- `submitCallMetric` with `CALL_ERROR`: only submits if `callError` is non-null
+- `submitMediaMetric` with `MEDIA_ERROR`: only submits if `callError` is non-null
 
 ---
 

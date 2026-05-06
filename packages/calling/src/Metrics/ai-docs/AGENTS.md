@@ -198,13 +198,60 @@ metricManager.submitConnectionMetrics(
 
 ---
 
+## Implementation Notes
+
+### Singleton Pattern
+
+`getMetricManager()` stores the singleton at module level. First call with a `webex` parameter creates the instance; subsequent calls (even without parameters) return the same instance.
+
+```typescript
+// First call creates the instance
+const mm = getMetricManager(webex, ServiceIndicator.CALLING);
+// Subsequent calls reuse it
+const same = getMetricManager(); // returns same instance
+```
+
+### Error Object Access Patterns
+
+Different error types expose their data through different methods:
+- `CallError`: `callError.getCallError().message` / `.type`
+- `LineError` / `CallingClientError`: `clientError.getError().message` / `.type`
+
+### Metric Data Structure
+
+All metrics follow this shape:
+```typescript
+{
+  tags: { action?, device_id?, service_indicator?, ...method-specific },
+  fields: { device_url?, mobius_url?, calling_sdk_version, ...method-specific },
+  type: 'operational' | 'behavioral'
+}
+```
+
+### Per-Method Variations
+
+Not all methods include the same base fields:
+- **Voicemail metrics**: No `mobius_url` in fields, no `service_indicator` in tags. Uses `typeof process !== 'undefined'` guard. Error data (`error`, `status_code`) goes in **tags** not fields.
+- **Connection metrics**: The tag key is literally `metricAction` (not aliased to `action`).
+- **BNR metrics**: No `action` tag at all (no `metricAction` parameter).
+- **Region Info / Mobius Servers metrics**: Always hardcode `ServiceIndicator.CALLING` regardless of constructor `indicator` param.
+- **Registration metrics**: Uses `trackingId` (camelCase) as field key. Upload logs uses `tracking_id` (snake_case).
+
+### Conditional Submission
+
+- `submitCallMetric(CALL_ERROR)`: Only submits if `callError` param is provided
+- `submitMediaMetric(MEDIA_ERROR)`: Only submits if `callError` param is provided
+- `submitUploadLogsMetric`: Silently skips if name doesn't match (no warning log)
+
+---
+
 ## Dependencies
 
 ### Runtime Dependencies
 
 | Package | Purpose |
 | ------- | ------- |
-| `@webex/internal-plugin-metrics` | Underlying metrics submission via `webex.internal.metrics.submitClientMetrics()` |
+| `@webex/internal-plugin-metrics` | Underlying metrics submission via `webex.internal.metrics.submitClientMetrics(name, data)` |
 
 ### Internal Dependencies
 
