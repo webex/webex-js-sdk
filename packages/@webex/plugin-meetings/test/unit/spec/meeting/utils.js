@@ -276,6 +276,31 @@ describe('plugin-meetings', () => {
         assert.notCalled(meeting.locusInfo.handleLocusAPIResponse);
       });
 
+      it('should call handleLocusAPIResponse when response body is an unwrapped LocusDTO', () => {
+        const meeting = {
+          locusInfo: {
+            handleLocusAPIResponse: sinon.stub(),
+          },
+        };
+
+        const originalResponse = {
+          body: {
+            url: 'https://locus-a.wbx2.com/locus/api/v1/loci/some-id',
+            participants: [],
+            self: {},
+          },
+        };
+
+        const response = MeetingUtil.updateLocusFromApiResponse(meeting, originalResponse);
+
+        assert.deepEqual(response, originalResponse);
+        assert.calledOnceWithExactly(
+          meeting.locusInfo.handleLocusAPIResponse,
+          meeting,
+          originalResponse.body
+        );
+      });
+
       it('should work with an undefined meeting', () => {
         const originalResponse = {
           body: {
