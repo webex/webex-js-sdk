@@ -121,19 +121,19 @@ export default defineConfig({
     },
 
     // 3-user transfer tests — waits for 2-user (shared USER_4+USER_5)
-    // {
-    //   name: 'SET_3USER - PROD',
-    //   dependencies: ['SET_2USER - PROD'],
-    //   testDir: './playwright/suites',
-    //   testMatch: USER_SETS.SET_3USER.testSuite,
-    //   use: browserOptions[PW_BROWSER],
-    // },
-    // {
-    //   name: 'SET_3USER - INT',
-    //   dependencies: ['SET_2USER - INT'],
-    //   testDir: './playwright/suites',
-    //   testMatch: USER_SETS.SET_3USER.testSuite,
-    //   use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
-    // },
+    {
+      name: 'SET_3USER - PROD',
+      dependencies: ['SET_2USER - PROD'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_3USER.testSuite,
+      use: browserOptions[PW_BROWSER],
+    },
+    {
+      name: 'SET_3USER - INT',
+      dependencies: ['SET_2USER - INT'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_3USER.testSuite,
+      use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
+    },
   ],
 });
