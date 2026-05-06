@@ -1007,17 +1007,21 @@ describe('plugin-meetings', () => {
 
           locusInfoUpdateCallback({updateType: LOCUS_NOT_FOUND});
 
-          assert.calledOnceWithExactly(syncMeetingsStub, {skipHashTreeSync: true});
+          assert.calledOnceWithExactly(syncMeetingsStub, {keepOnlyLocusMeetings: false, skipHashTreeSync: true});
         });
 
         it('should handle LOCUS_NOT_FOUND and log error if syncMeetings fails', async () => {
           const syncError = new Error('sync failed');
           const syncMeetingsStub = sinon.stub(locusInfo.webex.meetings, 'syncMeetings').rejects(syncError);
-          const logErrorStub = sinon.stub(LoggerProxy.logger, 'error');
+          const logErrorStub = LoggerProxy.logger.error?.isSinonProxy
+            ? LoggerProxy.logger.error
+            : sinon.stub(LoggerProxy.logger, 'error');
+
+          logErrorStub.resetHistory();
 
           locusInfoUpdateCallback({updateType: LOCUS_NOT_FOUND});
 
-          assert.calledOnceWithExactly(syncMeetingsStub, {skipHashTreeSync: true});
+          assert.calledOnceWithExactly(syncMeetingsStub, {keepOnlyLocusMeetings: false, skipHashTreeSync: true});
 
           // wait for the promise rejection to be handled
           await testUtils.flushPromises();
@@ -1027,8 +1031,6 @@ describe('plugin-meetings', () => {
             logErrorStub.firstCall.args[0],
             /syncMeetings failed after LOCUS_NOT_FOUND/
           );
-
-          logErrorStub.restore();
         });
 
         it('should set forceReplaceMembers to true on the first update for a locusUrl (initializedFromHashTree is false)', () => {

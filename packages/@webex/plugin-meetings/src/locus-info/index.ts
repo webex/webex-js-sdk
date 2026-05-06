@@ -1351,11 +1351,13 @@ export default class LocusInfo extends EventsScope {
         LoggerProxy.logger.info(
           `Locus-info:index#updateFromHashTree --> received LOCUS_NOT_FOUND for ${locusUrl}, triggering syncMeetings`
         );
-        this.webex.meetings.syncMeetings({skipHashTreeSync: true}).catch((syncError) => {
-          LoggerProxy.logger.error(
-            `Locus-info:index#updateFromHashTree --> syncMeetings failed after LOCUS_NOT_FOUND: ${syncError}`
-          );
-        });
+        this.webex.meetings
+          .syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: true})
+          .catch((syncError) => {
+            LoggerProxy.logger.error(
+              `Locus-info:index#updateFromHashTree --> syncMeetings failed after LOCUS_NOT_FOUND: ${syncError}`
+            );
+          });
         break;
       }
     }
