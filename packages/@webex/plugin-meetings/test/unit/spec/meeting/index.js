@@ -35,6 +35,7 @@ import {
   OFFLINE,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
   LOCUS_LLM_EVENT,
+  RECORDING_STATE,
 } from '@webex/plugin-meetings/src/constants';
 import {
   ConnectionState,
@@ -11390,6 +11391,92 @@ describe('plugin-meetings', () => {
           );
         });
 
+        const recordingTestCases = [
+          {
+            description: 'triggers MEETING_STARTED_RECORDING when state is RECORDING',
+            state: RECORDING_STATE.RECORDING,
+            expectedEvent: EVENT_TRIGGERS.MEETING_STARTED_RECORDING,
+            expectedRecordingState: RECORDING_STATE.RECORDING,
+          },
+          {
+            description: 'triggers MEETING_STOPPED_RECORDING when state is IDLE',
+            state: RECORDING_STATE.IDLE,
+            expectedEvent: EVENT_TRIGGERS.MEETING_STOPPED_RECORDING,
+            expectedRecordingState: RECORDING_STATE.IDLE,
+          },
+          {
+            description: 'triggers MEETING_PAUSED_RECORDING when state is PAUSED',
+            state: RECORDING_STATE.PAUSED,
+            expectedEvent: EVENT_TRIGGERS.MEETING_PAUSED_RECORDING,
+            expectedRecordingState: RECORDING_STATE.PAUSED,
+          },
+          {
+            description:
+              'triggers MEETING_RESUMED_RECORDING and sets state to RECORDING when state is RESUMED',
+            state: RECORDING_STATE.RESUMED,
+            expectedEvent: EVENT_TRIGGERS.MEETING_RESUMED_RECORDING,
+            expectedRecordingState: RECORDING_STATE.RECORDING,
+          },
+        ];
+
+        recordingTestCases.forEach(({description, state, expectedEvent, expectedRecordingState}) => {
+          it(`listens to CONTROLS_RECORDING_UPDATED - ${description}`, async () => {
+            const modifiedBy = 'user-id-123';
+            const lastModified = '2026-01-01T00:00:00Z';
+
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {state, modifiedBy, lastModified, modifiedByServiceAppName: undefined, modifiedByServiceAppId: undefined}
+            );
+
+            assert.deepEqual(meeting.recording, {
+              state: expectedRecordingState,
+              modifiedBy,
+              lastModified,
+              modifiedByServiceAppName: undefined,
+              modifiedByServiceAppId: undefined,
+            });
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              meeting,
+              {file: 'meeting/index', function: 'setupLocusControlsListener'},
+              expectedEvent,
+              meeting.recording
+            );
+          });
+        });
+
+        it('listens to CONTROLS_RECORDING_UPDATED and includes modifiedByServiceAppName and modifiedByServiceAppId when present', async () => {
+          const modifiedBy = 'user-id-123';
+          const lastModified = '2026-01-01T00:00:00Z';
+          const modifiedByServiceAppName = 'My Bot';
+          const modifiedByServiceAppId = 'app-id-123';
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+            {state: RECORDING_STATE.RECORDING, modifiedBy, lastModified, modifiedByServiceAppName, modifiedByServiceAppId}
+          );
+
+          assert.deepEqual(meeting.recording, {
+            state: RECORDING_STATE.RECORDING,
+            modifiedBy,
+            lastModified,
+            modifiedByServiceAppName,
+            modifiedByServiceAppId,
+          });
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_STARTED_RECORDING,
+            meeting.recording
+          );
+        });
+
         it('listens to the locus interpretation update event', () => {
           const interpretation = {
             siLanguages: [{languageCode: 20, languageName: 'en'}],
@@ -12463,6 +12550,7 @@ describe('plugin-meetings', () => {
         let showAutoEndMeetingWarningSpy;
         let canAttendeeRequestAiAssistantEnabledSpy;
         let attendeeRequestAiAssistantDeclinedAllSpy;
+        let isAnonymizeDisplayNamesEnabledSpy;
         // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
         beforeEach(() => {
@@ -12511,6 +12599,10 @@ describe('plugin-meetings', () => {
             MeetingUtil,
             'attendeeRequestAiAssistantDeclinedAll'
           );
+          isAnonymizeDisplayNamesEnabledSpy = sinon.spy(
+            MeetingUtil,
+            'isAnonymizeDisplayNamesEnabled'
+          );
         });
 
         afterEach(() => {
@@ -12519,6 +12611,7 @@ describe('plugin-meetings', () => {
           showAutoEndMeetingWarningSpy.restore();
           canAttendeeRequestAiAssistantEnabledSpy.restore();
           attendeeRequestAiAssistantDeclinedAllSpy.restore();
+          isAnonymizeDisplayNamesEnabledSpy.restore();
         });
 
         forEach(
@@ -13076,6 +13169,7 @@ describe('plugin-meetings', () => {
             meeting.roles
           );
           assert.calledWith(attendeeRequestAiAssistantDeclinedAllSpy, userDisplayHints);
+          assert.calledWith(isAnonymizeDisplayNamesEnabledSpy, userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],
