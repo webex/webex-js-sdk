@@ -105,9 +105,8 @@ describe('plugin-mobius-socket', () => {
       removeAllListeners: sinon.stub(),
     });
 
-    const countGenericEventEmits = (emitSpy, sessionId) =>
-      emitSpy.getCalls().filter((call) => call.args[0] === sessionId && call.args[1] === 'event')
-        .length;
+    const countGenericEventEmits = (emitSpy) =>
+      emitSpy.getCalls().filter((call) => call.args[0] === 'event').length;
 
     beforeEach(() => {
       jest.useFakeTimers({doNotFake: ['nextTick']});
@@ -173,7 +172,6 @@ describe('plugin-mobius-socket', () => {
       });
 
       mobiusSocket = new MobiusSocket(webex, {...mobiusConfig.mobiusSocket});
-      mobiusSocket.defaultSessionId = 'mobius-websocket-session';
     });
 
     afterEach(async () => {
@@ -188,10 +186,6 @@ describe('plugin-mobius-socket', () => {
           await mobiusSocket.disconnect();
         } catch (e) {
           // Ignore cleanup errors
-        }
-        // Clear any remaining connection promises
-        if (mobiusSocket.connectPromises) {
-          mobiusSocket.connectPromises.clear();
         }
       }
 
@@ -852,16 +846,13 @@ describe('plugin-mobius-socket', () => {
           return promiseTick(mobiusSocket.config.backoffTimeReset).then(async () => {
             // By this time backoffCall and mobiusSocket socket should be defined by the
             // 'connect' call
-            assert.isDefined(
-              mobiusSocket.backoffCalls.get('mobius-websocket-session'),
-              'MobiusSocket backoffCall is not defined'
-            );
+            assert.isDefined(mobiusSocket.backoffCall, 'MobiusSocket backoffCall is not defined');
             assert.isDefined(mobiusSocket.socket, 'MobiusSocket socket is not defined');
             // Calling disconnect will abort the backoffCall, close the socket, and
             // reject the connect
             mobiusSocket.disconnect();
             assert.isUndefined(
-              mobiusSocket.backoffCalls.get('mobius-websocket-session'),
+              mobiusSocket.backoffCall,
               'MobiusSocket backoffCall is still defined'
             );
             // The socket will never be unset (which seems bad)
@@ -878,21 +869,14 @@ describe('plugin-mobius-socket', () => {
 
           let reason;
 
-          mobiusSocket.backoffCalls.clear();
+          mobiusSocket.backoffCall = undefined;
 
-          const promise = mobiusSocket.attemptConnection(
-            'ws://example.com',
-            'mobius-websocket-session',
-            (_reason) => {
-              reason = _reason;
-            }
-          );
+          const promise = mobiusSocket.attemptConnection('ws://example.com', (_reason) => {
+            reason = _reason;
+          });
 
           return promiseTick(mobiusSocket.config.backoffTimeReset).then(() => {
-            assert.equal(
-              reason.message,
-              `MobiusSocket: prevent socket open when backoffCall no longer defined for ${mobiusSocket.defaultSessionId}`
-            );
+            assert.match(reason.message, /prevent socket open when backoffCall no longer defined/);
 
             // Ensure the promise was actually rejected (short-circuited)
             return assert.isRejected(promise);
@@ -1061,20 +1045,20 @@ describe('plugin-mobius-socket', () => {
     });
 
     describe('#getConnectedWebSocketUrl()', () => {
-      it('returns the connected websocket url for the session', () => {
-        mobiusSocket.sockets.set(mobiusSocket.defaultSessionId, {
+      it('returns the connected websocket url', () => {
+        mobiusSocket.socket = {
           connected: true,
           url: 'ws://connected-url.com',
-        });
+        };
 
         assert.equal(mobiusSocket.getConnectedWebSocketUrl(), 'ws://connected-url.com');
       });
 
-      it('returns undefined when the session is not connected', () => {
-        mobiusSocket.sockets.set(mobiusSocket.defaultSessionId, {
+      it('returns undefined when not connected', () => {
+        mobiusSocket.socket = {
           connected: false,
           url: 'ws://disconnected-url.com',
-        });
+        };
 
         assert.isUndefined(mobiusSocket.getConnectedWebSocketUrl());
       });
@@ -1089,15 +1073,13 @@ describe('plugin-mobius-socket', () => {
         });
         sinon.stub(mobiusSocket.logger, 'error');
 
-        return Promise.resolve(
-          mobiusSocket.emitEvent(mobiusSocket.defaultSessionId, 'break', event)
-        ).then((res) => {
+        return Promise.resolve(mobiusSocket.emitEvent('break', event)).then((res) => {
           assert.calledWith(
             mobiusSocket.logger.error,
             'MobiusSocket: error occurred in event handler:',
             error,
             ' with args: ',
-            [mobiusSocket.defaultSessionId, 'break', event]
+            ['break', event]
           );
 
           return res;
@@ -1168,7 +1150,7 @@ describe('plugin-mobius-socket', () => {
           },
         };
         assert.isUndefined(mobiusSocket.mercuryTimeOffset);
-        mobiusSocket.setTimeOffset('mobius-websocket-session', event);
+        mobiusSocket.setTimeOffset(event);
         assert.isDefined(mobiusSocket.mercuryTimeOffset);
         assert.isTrue(mobiusSocket.mercuryTimeOffset > 0);
       });
@@ -1178,7 +1160,7 @@ describe('plugin-mobius-socket', () => {
             wsWriteTimestamp: Date.now() + 60000,
           },
         };
-        mobiusSocket.setTimeOffset('mobius-websocket-session', event);
+        mobiusSocket.setTimeOffset(event);
         assert.isTrue(mobiusSocket.mercuryTimeOffset < 0);
       });
       it('handles invalid wsWriteTimestamp', () => {
@@ -1189,7 +1171,7 @@ describe('plugin-mobius-socket', () => {
               wsWriteTimestamp: invalidTimestamp,
             },
           };
-          mobiusSocket.setTimeOffset('mobius-websocket-session', event);
+          mobiusSocket.setTimeOffset(event);
           assert.isUndefined(mobiusSocket.mercuryTimeOffset);
         });
       });
@@ -1210,15 +1192,13 @@ describe('plugin-mobius-socket', () => {
     describe('shutdown protocol', () => {
       describe('#_handleImminentShutdown()', () => {
         let connectWithBackoffStub;
-        const sessionId = 'mobius-websocket-session';
 
         beforeEach(() => {
           mobiusSocket.connected = true;
-          mobiusSocket.sockets.set(sessionId, {
+          mobiusSocket.socket = {
             url: 'ws://old-socket.com',
             removeAllListeners: sinon.stub(),
-          });
-          mobiusSocket.socket = mobiusSocket.sockets.get(sessionId);
+          };
           connectWithBackoffStub = sinon.stub(mobiusSocket, 'connectWithBackoff');
           connectWithBackoffStub.returns(Promise.resolve());
           sinon.stub(mobiusSocket, 'emitEvent');
@@ -1227,43 +1207,39 @@ describe('plugin-mobius-socket', () => {
         afterEach(() => {
           connectWithBackoffStub.restore();
           mobiusSocket.emitEvent.restore();
-          mobiusSocket.sockets.clear();
         });
 
         it('should be idempotent - no-op if already in progress', () => {
-          // Simulate an existing switchover in progress by seeding the backoff map
-          mobiusSocket.shutdownSwitchoverBackoffCalls.set(sessionId, {placeholder: true});
+          mobiusSocket.shutdownSwitchoverBackoffCall = {placeholder: true};
 
-          mobiusSocket.handleImminentShutdown(sessionId);
+          mobiusSocket.handleImminentShutdown();
 
           assert.notCalled(connectWithBackoffStub);
         });
 
         it('should set switchover flags when called', () => {
-          mobiusSocket.handleImminentShutdown(sessionId);
+          mobiusSocket.handleImminentShutdown();
 
           assert.calledOnce(connectWithBackoffStub);
           const callArgs = connectWithBackoffStub.firstCall.args;
           assert.isUndefined(callArgs[0]); // webSocketUrl
-          assert.equal(callArgs[1], sessionId); // sessionId
-          assert.isObject(callArgs[2]); // context
-          assert.isTrue(callArgs[2].isShutdownSwitchover);
-          assert.isObject(callArgs[2].attemptOptions);
-          assert.isTrue(callArgs[2].attemptOptions.isShutdownSwitchover);
+          assert.isObject(callArgs[1]); // context
+          assert.isTrue(callArgs[1].isShutdownSwitchover);
+          assert.isObject(callArgs[1].attemptOptions);
+          assert.isTrue(callArgs[1].attemptOptions.isShutdownSwitchover);
         });
 
         it('should call _connectWithBackoff with correct parameters', (done) => {
-          mobiusSocket.handleImminentShutdown(sessionId);
+          mobiusSocket.handleImminentShutdown();
 
           process.nextTick(() => {
             assert.calledOnce(connectWithBackoffStub);
             const callArgs = connectWithBackoffStub.firstCall.args;
             assert.isUndefined(callArgs[0]); // webSocketUrl
-            assert.equal(callArgs[1], sessionId); // sessionId
-            assert.isObject(callArgs[2]); // context
-            assert.isTrue(callArgs[2].isShutdownSwitchover);
-            assert.isObject(callArgs[2].attemptOptions);
-            assert.isTrue(callArgs[2].attemptOptions.isShutdownSwitchover);
+            assert.isObject(callArgs[1]); // context
+            assert.isTrue(callArgs[1].isShutdownSwitchover);
+            assert.isObject(callArgs[1].attemptOptions);
+            assert.isTrue(callArgs[1].attemptOptions.isShutdownSwitchover);
             done();
           });
         });
@@ -1272,12 +1248,9 @@ describe('plugin-mobius-socket', () => {
           connectWithBackoffStub.restore();
           sinon.stub(mobiusSocket, 'connectWithBackoff').throws(new Error('Connection failed'));
 
-          mobiusSocket.handleImminentShutdown(sessionId);
+          mobiusSocket.handleImminentShutdown();
 
-          // When an exception happens synchronously, the placeholder entry
-          // should be removed from the map.
-          const switchoverCall = mobiusSocket.shutdownSwitchoverBackoffCalls.get(sessionId);
-          assert.isUndefined(switchoverCall);
+          assert.isUndefined(mobiusSocket.shutdownSwitchoverBackoffCall);
           mobiusSocket.connectWithBackoff.restore();
         });
       });
@@ -1302,12 +1275,11 @@ describe('plugin-mobius-socket', () => {
             },
           };
 
-          const result = mobiusSocket.onmessage(mobiusSocket.defaultSessionId, shutdownEvent);
+          const result = mobiusSocket.onmessage(shutdownEvent);
 
           assert.calledOnce(mobiusSocket.handleImminentShutdown);
           assert.calledWith(
             mobiusSocket.emitEvent,
-            mobiusSocket.defaultSessionId,
             'event:mercury_shutdown_imminent',
             shutdownEvent.data
           );
@@ -1321,7 +1293,7 @@ describe('plugin-mobius-socket', () => {
             },
           };
 
-          mobiusSocket.onmessage(mobiusSocket.defaultSessionId, shutdownEvent);
+          mobiusSocket.onmessage(shutdownEvent);
 
           assert.calledOnce(mobiusSocket.handleImminentShutdown);
         });
@@ -1336,7 +1308,7 @@ describe('plugin-mobius-socket', () => {
             },
           };
 
-          mobiusSocket.onmessage(mobiusSocket.defaultSessionId, regularEvent);
+          mobiusSocket.onmessage(regularEvent);
 
           assert.notCalled(mobiusSocket.handleImminentShutdown);
         });
@@ -1363,15 +1335,10 @@ describe('plugin-mobius-socket', () => {
             },
           };
 
-          const result = mobiusSocket.onmessage(mobiusSocket.defaultSessionId, event);
+          const result = mobiusSocket.onmessage(event);
 
           assert.instanceOf(result, Promise);
-          assert.calledWith(
-            mobiusSocket.emitEvent,
-            mobiusSocket.defaultSessionId,
-            'event',
-            event.data
-          );
+          assert.calledWith(mobiusSocket.emitEvent, 'event', event.data);
         });
 
         it('should not throw when data.eventType is undefined', () => {
@@ -1385,15 +1352,10 @@ describe('plugin-mobius-socket', () => {
             },
           };
 
-          const result = mobiusSocket.onmessage(mobiusSocket.defaultSessionId, event);
+          const result = mobiusSocket.onmessage(event);
 
           assert.instanceOf(result, Promise);
-          assert.calledWith(
-            mobiusSocket.emitEvent,
-            mobiusSocket.defaultSessionId,
-            'event',
-            event.data
-          );
+          assert.calledWith(mobiusSocket.emitEvent, 'event', event.data);
         });
 
         it('should emit generic event for messages without eventType (e.g. subscription responses)', () => {
@@ -1407,16 +1369,11 @@ describe('plugin-mobius-socket', () => {
             },
           };
 
-          const result = mobiusSocket.onmessage(mobiusSocket.defaultSessionId, event);
+          const result = mobiusSocket.onmessage(event);
 
           assert.instanceOf(result, Promise);
           assert.calledOnce(mobiusSocket.emitEvent);
-          assert.calledWith(
-            mobiusSocket.emitEvent,
-            mobiusSocket.defaultSessionId,
-            'event',
-            event.data
-          );
+          assert.calledWith(mobiusSocket.emitEvent, 'event', event.data);
         });
 
         it('should still process messages with a valid eventType', async () => {
@@ -1428,22 +1385,10 @@ describe('plugin-mobius-socket', () => {
             },
           };
 
-          await mobiusSocket.onmessage(mobiusSocket.defaultSessionId, event);
+          await mobiusSocket.onmessage(event);
 
-          // Normal flow emits namespace-specific events after processing handlers.
-          // The early-return guard only emits 'event', so asserting these proves the normal path was taken.
-          assert.calledWith(
-            mobiusSocket.emitEvent,
-            mobiusSocket.defaultSessionId,
-            'event:conversation',
-            event.data
-          );
-          assert.calledWith(
-            mobiusSocket.emitEvent,
-            mobiusSocket.defaultSessionId,
-            'event:conversation.activity',
-            event.data
-          );
+          assert.calledWith(mobiusSocket.emitEvent, 'event:conversation', event.data);
+          assert.calledWith(mobiusSocket.emitEvent, 'event:conversation.activity', event.data);
         });
       });
 
@@ -1458,27 +1403,26 @@ describe('plugin-mobius-socket', () => {
           mobiusSocket.config.dedupCacheMaxSize = originalDedupCacheMaxSize;
         });
 
-        it('suppresses duplicate async_event messages for the same session', async () => {
+        it('suppresses duplicate async_event messages', async () => {
           const emitSpy = sinon.spy(mobiusSocket, 'emitEvent');
 
-          await mobiusSocket.onmessage('session-a', createAsyncEvent('evt-1'));
-          await mobiusSocket.onmessage('session-a', createAsyncEvent('evt-1'));
+          await mobiusSocket.onmessage(createAsyncEvent('evt-1'));
+          await mobiusSocket.onmessage(createAsyncEvent('evt-1'));
 
-          assert.equal(countGenericEventEmits(emitSpy, 'session-a'), 1);
+          assert.equal(countGenericEventEmits(emitSpy), 1);
           emitSpy.restore();
         });
 
         it('suppresses duplicate async_event messages across socket replacement without disconnect', async () => {
-          const sessionId = 'session-a';
           const emitSpy = sinon.spy(mobiusSocket, 'emitEvent');
-          mobiusSocket.sockets.set(sessionId, createSessionSocket());
+          mobiusSocket.socket = createSessionSocket();
 
-          await mobiusSocket.onmessage(sessionId, createAsyncEvent('evt-2'));
+          await mobiusSocket.onmessage(createAsyncEvent('evt-2'));
 
-          mobiusSocket.sockets.set(sessionId, createSessionSocket());
-          await mobiusSocket.onmessage(sessionId, createAsyncEvent('evt-2'));
+          mobiusSocket.socket = createSessionSocket();
+          await mobiusSocket.onmessage(createAsyncEvent('evt-2'));
 
-          assert.equal(countGenericEventEmits(emitSpy, sessionId), 1);
+          assert.equal(countGenericEventEmits(emitSpy), 1);
           emitSpy.restore();
         });
 
@@ -1487,28 +1431,27 @@ describe('plugin-mobius-socket', () => {
 
           mobiusSocket.config.dedupCacheMaxSize = 3;
 
-          await mobiusSocket.onmessage('session-a', createAsyncEvent('e1'));
-          await mobiusSocket.onmessage('session-a', createAsyncEvent('e2'));
-          await mobiusSocket.onmessage('session-a', createAsyncEvent('e3'));
-          await mobiusSocket.onmessage('session-a', createAsyncEvent('e4'));
-          await mobiusSocket.onmessage('session-a', createAsyncEvent('e2'));
-          await mobiusSocket.onmessage('session-a', createAsyncEvent('e1'));
+          await mobiusSocket.onmessage(createAsyncEvent('e1'));
+          await mobiusSocket.onmessage(createAsyncEvent('e2'));
+          await mobiusSocket.onmessage(createAsyncEvent('e3'));
+          await mobiusSocket.onmessage(createAsyncEvent('e4'));
+          await mobiusSocket.onmessage(createAsyncEvent('e2'));
+          await mobiusSocket.onmessage(createAsyncEvent('e1'));
 
-          assert.equal(countGenericEventEmits(emitSpy, 'session-a'), 5);
+          assert.equal(countGenericEventEmits(emitSpy), 5);
           emitSpy.restore();
         });
 
-        it('clears the session dedup cache on disconnect', async () => {
-          const sessionId = 'session-a';
+        it('clears the dedup cache on disconnect', async () => {
           const emitSpy = sinon.spy(mobiusSocket, 'emitEvent');
 
-          await mobiusSocket.onmessage(sessionId, createAsyncEvent('evt-3'));
+          await mobiusSocket.onmessage(createAsyncEvent('evt-3'));
 
-          mobiusSocket.sockets.set(sessionId, createSessionSocket());
-          await mobiusSocket.disconnect(undefined, sessionId);
-          await mobiusSocket.onmessage(sessionId, createAsyncEvent('evt-3'));
+          mobiusSocket.socket = createSessionSocket();
+          await mobiusSocket.disconnect();
+          await mobiusSocket.onmessage(createAsyncEvent('evt-3'));
 
-          assert.equal(countGenericEventEmits(emitSpy, sessionId), 2);
+          assert.equal(countGenericEventEmits(emitSpy), 2);
           emitSpy.restore();
         });
       });
@@ -1553,7 +1496,6 @@ describe('plugin-mobius-socket', () => {
             removeAllListeners: sinon.stub(),
           };
           mobiusSocket.socket = mockSocket;
-          mobiusSocket.sockets.set(mobiusSocket.defaultSessionId, mockSocket);
           mobiusSocket.connected = true;
           sinon.stub(mobiusSocket, 'emitEvent');
           sinon.stub(mobiusSocket, 'reconnect');
@@ -1570,15 +1512,10 @@ describe('plugin-mobius-socket', () => {
             reason: 'replaced during shutdown',
           };
 
-          mobiusSocket.onclose(mobiusSocket.defaultSessionId, closeEvent, mockSocket);
+          mobiusSocket.onclose(closeEvent, mockSocket);
 
-          assert.calledWith(
-            mobiusSocket.emitEvent,
-            mobiusSocket.defaultSessionId,
-            'offline.permanent',
-            closeEvent
-          );
-          assert.notCalled(mobiusSocket.reconnect); // No reconnect for 4001 on active socket
+          assert.calledWith(mobiusSocket.emitEvent, 'offline.permanent', closeEvent);
+          assert.notCalled(mobiusSocket.reconnect);
           assert.isFalse(mobiusSocket.connected);
         });
 
@@ -1588,16 +1525,11 @@ describe('plugin-mobius-socket', () => {
             reason: 'replaced during shutdown',
           };
 
-          mobiusSocket.onclose(mobiusSocket.defaultSessionId, closeEvent, anotherSocket);
+          mobiusSocket.onclose(closeEvent, anotherSocket);
 
-          assert.calledWith(
-            mobiusSocket.emitEvent,
-            mobiusSocket.defaultSessionId,
-            'offline.replaced',
-            closeEvent
-          );
+          assert.calledWith(mobiusSocket.emitEvent, 'offline.replaced', closeEvent);
           assert.notCalled(mobiusSocket.reconnect);
-          assert.isTrue(mobiusSocket.connected); // Should remain connected
+          assert.isTrue(mobiusSocket.connected);
           assert.strictEqual(mobiusSocket.socket, mockSocket);
         });
 
@@ -1608,26 +1540,15 @@ describe('plugin-mobius-socket', () => {
           };
 
           // Test non-active socket
-          mobiusSocket.onclose(mobiusSocket.defaultSessionId, closeEvent, anotherSocket);
-          assert.calledWith(
-            mobiusSocket.emitEvent,
-            mobiusSocket.defaultSessionId,
-            'offline.replaced',
-            closeEvent
-          );
+          mobiusSocket.onclose(closeEvent, anotherSocket);
+          assert.calledWith(mobiusSocket.emitEvent, 'offline.replaced', closeEvent);
 
           // Reset the spy call history
           mobiusSocket.emitEvent.resetHistory();
 
           // Test active socket
-          mobiusSocket.sockets.set(mobiusSocket.defaultSessionId, mockSocket);
-          mobiusSocket.onclose(mobiusSocket.defaultSessionId, closeEvent, mockSocket);
-          assert.calledWith(
-            mobiusSocket.emitEvent,
-            mobiusSocket.defaultSessionId,
-            'offline.permanent',
-            closeEvent
-          );
+          mobiusSocket.onclose(closeEvent, mockSocket);
+          assert.calledWith(mobiusSocket.emitEvent, 'offline.permanent', closeEvent);
         });
 
         it('should handle missing sourceSocket parameter (treats as non-active)', () => {
@@ -1636,15 +1557,9 @@ describe('plugin-mobius-socket', () => {
             reason: 'replaced during shutdown',
           };
 
-          mobiusSocket.onclose(mobiusSocket.defaultSessionId, closeEvent); // No sourceSocket parameter
+          mobiusSocket.onclose(closeEvent, undefined);
 
-          // With simplified logic, undefined !== this.socket, so isActiveSocket = false
-          assert.calledWith(
-            mobiusSocket.emitEvent,
-            mobiusSocket.defaultSessionId,
-            'offline.replaced',
-            closeEvent
-          );
+          assert.calledWith(mobiusSocket.emitEvent, 'offline.replaced', closeEvent);
           assert.notCalled(mobiusSocket.reconnect);
         });
 
@@ -1654,12 +1569,8 @@ describe('plugin-mobius-socket', () => {
             reason: 'replaced during shutdown',
           };
 
-          // Close non-active socket (not the active one)
-          mobiusSocket.onclose(mobiusSocket.defaultSessionId, closeEvent, anotherSocket);
+          mobiusSocket.onclose(closeEvent, anotherSocket);
 
-          // Verify listeners were removed from the old socket
-          // The _onclose method checks if sourceSocket !== this.socket (non-active)
-          // and then calls removeAllListeners in the else branch
           assert.calledOnce(anotherSocket.removeAllListeners);
         });
 
@@ -1669,25 +1580,21 @@ describe('plugin-mobius-socket', () => {
             reason: 'replaced during shutdown',
           };
 
-          // Close active socket
-          mobiusSocket.onclose(mobiusSocket.defaultSessionId, closeEvent, mockSocket);
+          mobiusSocket.onclose(closeEvent, mockSocket);
 
-          // Verify listeners were removed from active socket
           assert.calledOnce(mockSocket.removeAllListeners);
         });
       });
 
       describe('shutdown switchover with retry logic', () => {
         let connectWithBackoffStub;
-        const sessionId = 'mobius-websocket-session';
 
         beforeEach(() => {
           mobiusSocket.connected = true;
-          mobiusSocket.sockets.set(sessionId, {
+          mobiusSocket.socket = {
             url: 'ws://old-socket.com',
             removeAllListeners: sinon.stub(),
-          });
-          mobiusSocket.socket = mobiusSocket.sockets.get(sessionId);
+          };
           connectWithBackoffStub = sinon.stub(mobiusSocket, 'connectWithBackoff');
           sinon.stub(mobiusSocket, 'emitEvent');
         });
@@ -1695,64 +1602,55 @@ describe('plugin-mobius-socket', () => {
         afterEach(() => {
           connectWithBackoffStub.restore();
           mobiusSocket.emitEvent.restore();
-          mobiusSocket.sockets.clear();
         });
 
         it('should call _connectWithBackoff with shutdown switchover context', (done) => {
           connectWithBackoffStub.returns(Promise.resolve());
 
-          mobiusSocket.handleImminentShutdown(sessionId);
+          mobiusSocket.handleImminentShutdown();
 
           process.nextTick(() => {
             assert.calledOnce(connectWithBackoffStub);
             const callArgs = connectWithBackoffStub.firstCall.args;
 
             assert.isUndefined(callArgs[0]); // webSocketUrl
-            assert.equal(callArgs[1], sessionId);
-            assert.isObject(callArgs[2]);
-            assert.isTrue(callArgs[2].isShutdownSwitchover);
-            assert.isObject(callArgs[2].attemptOptions);
-            assert.isTrue(callArgs[2].attemptOptions.isShutdownSwitchover);
+            assert.isObject(callArgs[1]);
+            assert.isTrue(callArgs[1].isShutdownSwitchover);
+            assert.isObject(callArgs[1].attemptOptions);
+            assert.isTrue(callArgs[1].attemptOptions.isShutdownSwitchover);
             done();
           });
         });
 
-        it('should set _shutdownSwitchoverInProgress flag during switchover', () => {
-          // With the new behavior, "in progress" is represented by the presence
-          // of an entry in _shutdownSwitchoverBackoffCalls.
-          // Since _connectWithBackoff is stubbed in this suite, simulate its side-effect
-          // of seeding the backoff-call map entry.
+        it('should set shutdownSwitchoverBackoffCall during switchover', () => {
           connectWithBackoffStub.callsFake(() => {
-            mobiusSocket.shutdownSwitchoverBackoffCalls.set(sessionId, {placeholder: true});
+            mobiusSocket.shutdownSwitchoverBackoffCall = {placeholder: true};
 
             return new Promise(() => {}); // Never resolves
           });
 
-          mobiusSocket.handleImminentShutdown(sessionId);
+          mobiusSocket.handleImminentShutdown();
 
-          const switchoverBackoffCall = mobiusSocket.shutdownSwitchoverBackoffCalls.get(sessionId);
-          assert.isOk(switchoverBackoffCall);
+          assert.isOk(mobiusSocket.shutdownSwitchoverBackoffCall);
         });
 
         it('should emit success event when switchover completes', async () => {
-          connectWithBackoffStub.callsFake((url, sid, context) => {
+          connectWithBackoffStub.callsFake((url, context) => {
             if (context && context.attemptOptions && context.attemptOptions.onSuccess) {
-              const mockSocket = {url: 'ws://new-socket.com'};
-              context.attemptOptions.onSuccess(mockSocket, 'ws://new-socket.com');
+              const newSocket = {url: 'ws://new-socket.com'};
+              context.attemptOptions.onSuccess(newSocket, 'ws://new-socket.com');
             }
 
             return Promise.resolve();
           });
 
-          mobiusSocket.handleImminentShutdown(sessionId);
+          mobiusSocket.handleImminentShutdown();
 
           await promiseTick(50);
 
           const emitCalls = mobiusSocket.emitEvent.getCalls();
           const hasCompleteEvent = emitCalls.some(
-            (call) =>
-              call.args[0] === sessionId &&
-              call.args[1] === 'event:mercury_shutdown_switchover_complete'
+            (call) => call.args[0] === 'event:mercury_shutdown_switchover_complete'
           );
 
           assert.isTrue(hasCompleteEvent, 'Should emit switchover complete event');
@@ -1763,16 +1661,15 @@ describe('plugin-mobius-socket', () => {
 
           connectWithBackoffStub.returns(Promise.reject(testError));
 
-          mobiusSocket.handleImminentShutdown(sessionId);
+          mobiusSocket.handleImminentShutdown();
           await promiseTick(50);
 
           const emitCalls = mobiusSocket.emitEvent.getCalls();
           const hasFailureEvent = emitCalls.some(
             (call) =>
-              call.args[0] === sessionId &&
-              call.args[1] === 'event:mercury_shutdown_switchover_failed' &&
-              call.args[2] &&
-              call.args[2].reason === testError
+              call.args[0] === 'event:mercury_shutdown_switchover_failed' &&
+              call.args[1] &&
+              call.args[1].reason === testError
           );
 
           assert.isTrue(hasFailureEvent, 'Should emit switchover failed event');
@@ -1781,7 +1678,7 @@ describe('plugin-mobius-socket', () => {
         it('should allow old socket to be closed by server after switchover failure', async () => {
           connectWithBackoffStub.returns(Promise.reject(new Error('Failed')));
 
-          mobiusSocket.handleImminentShutdown(sessionId);
+          mobiusSocket.handleImminentShutdown();
           await promiseTick(50);
 
           assert.equal(mobiusSocket.socket.removeAllListeners.callCount, 0);
@@ -1883,14 +1780,13 @@ describe('plugin-mobius-socket', () => {
       describe('#_attemptConnection() with shutdown switchover', () => {
         let prepareAndOpenSocketStub;
         let callback;
-        const sessionId = 'mobius-websocket-session';
 
         beforeEach(() => {
           prepareAndOpenSocketStub = sinon
             .stub(mobiusSocket, 'prepareAndOpenSocket')
             .returns(Promise.resolve('ws://new-socket.com'));
           callback = sinon.stub();
-          mobiusSocket.shutdownSwitchoverBackoffCalls.set(sessionId, {abort: sinon.stub()});
+          mobiusSocket.shutdownSwitchoverBackoffCall = {abort: sinon.stub()};
           mobiusSocket.socket = {url: 'ws://test.com'};
           mobiusSocket.connected = true;
           sinon.stub(mobiusSocket, 'emitEvent');
@@ -1901,28 +1797,28 @@ describe('plugin-mobius-socket', () => {
           prepareAndOpenSocketStub.restore();
           mobiusSocket.emitEvent.restore();
           mobiusSocket.attachSocketEventListeners.restore();
-          mobiusSocket.shutdownSwitchoverBackoffCalls.clear();
+          mobiusSocket.shutdownSwitchoverBackoffCall = undefined;
         });
 
         it('should not set socket reference before opening for shutdown switchover', async () => {
           const originalSocket = mobiusSocket.socket;
 
-          await mobiusSocket.attemptConnection('ws://test.com', sessionId, callback, {
+          await mobiusSocket.attemptConnection('ws://test.com', callback, {
             isShutdownSwitchover: true,
             onSuccess: (newSocket, url) => {
               assert.exists(newSocket);
               assert.equal(url, 'ws://test.com');
-              assert.equal(mobiusSocket.socket, originalSocket);
             },
           });
 
+          // During shutdown switchover, this.socket should remain the old socket
           assert.equal(mobiusSocket.socket, originalSocket);
         });
 
         it('should call onSuccess callback with new socket and URL for shutdown', async () => {
           const onSuccessStub = sinon.stub();
 
-          await mobiusSocket.attemptConnection('ws://test.com', sessionId, callback, {
+          await mobiusSocket.attemptConnection('ws://test.com', callback, {
             isShutdownSwitchover: true,
             onSuccess: onSuccessStub,
           });
@@ -1932,12 +1828,12 @@ describe('plugin-mobius-socket', () => {
         });
 
         it('should emit shutdown switchover complete event', async () => {
-          await mobiusSocket.attemptConnection('ws://test.com', sessionId, callback, {
+          await mobiusSocket.attemptConnection('ws://test.com', callback, {
             isShutdownSwitchover: true,
             onSuccess: (newSocket, url) => {
               mobiusSocket.socket = newSocket;
               mobiusSocket.connected = true;
-              mobiusSocket.emitEvent(sessionId, 'event:mercury_shutdown_switchover_complete', {
+              mobiusSocket.emitEvent('event:mercury_shutdown_switchover_complete', {
                 url,
               });
             },
@@ -1945,7 +1841,6 @@ describe('plugin-mobius-socket', () => {
 
           assert.calledWith(
             mobiusSocket.emitEvent,
-            sessionId,
             'event:mercury_shutdown_switchover_complete',
             sinon.match.has('url', 'ws://new-socket.com')
           );
@@ -1955,7 +1850,7 @@ describe('plugin-mobius-socket', () => {
           prepareAndOpenSocketStub.returns(Promise.reject(new Error('Connection failed')));
 
           await mobiusSocket
-            .attemptConnection('ws://test.com', sessionId, callback, {
+            .attemptConnection('ws://test.com', callback, {
               isShutdownSwitchover: true,
             })
             .catch(() => {});
@@ -1964,10 +1859,10 @@ describe('plugin-mobius-socket', () => {
           assert.instanceOf(callback.firstCall.args[0], Error);
         });
 
-        it('should check _shutdownSwitchoverBackoffCall for shutdown connections', () => {
-          mobiusSocket.shutdownSwitchoverBackoffCalls.clear();
+        it('should check shutdownSwitchoverBackoffCall for shutdown connections', () => {
+          mobiusSocket.shutdownSwitchoverBackoffCall = undefined;
 
-          const result = mobiusSocket.attemptConnection('ws://test.com', sessionId, callback, {
+          const result = mobiusSocket.attemptConnection('ws://test.com', callback, {
             isShutdownSwitchover: true,
           });
 
@@ -1979,27 +1874,25 @@ describe('plugin-mobius-socket', () => {
       });
 
       describe('#_connectWithBackoff() with shutdown switchover', () => {
-        const sessionId = 'mobius-websocket-session';
-
         it('should use shutdown-specific parameters when called', () => {
           const connectWithBackoffStub = sinon
             .stub(mobiusSocket, 'connectWithBackoff')
             .returns(Promise.resolve());
 
-          mobiusSocket.handleImminentShutdown(sessionId);
+          mobiusSocket.handleImminentShutdown();
 
           assert.calledOnce(connectWithBackoffStub);
           const callArgs = connectWithBackoffStub.firstCall.args;
-          assert.equal(callArgs[1], sessionId);
-          assert.isObject(callArgs[2]);
-          assert.isTrue(callArgs[2].isShutdownSwitchover);
+          assert.isUndefined(callArgs[0]); // webSocketUrl
+          assert.isObject(callArgs[1]);
+          assert.isTrue(callArgs[1].isShutdownSwitchover);
 
           connectWithBackoffStub.restore();
         });
 
         it('should pass shutdown switchover options to _attemptConnection', () => {
           const attemptStub = sinon.stub(mobiusSocket, 'attemptConnection');
-          attemptStub.callsFake((url, sid, cb) => cb());
+          attemptStub.callsFake((url, cb) => cb());
 
           const context = {
             isShutdownSwitchover: true,
@@ -2009,30 +1902,29 @@ describe('plugin-mobius-socket', () => {
             },
           };
 
-          const promise = mobiusSocket.connectWithBackoff(undefined, sessionId, context);
+          const promise = mobiusSocket.connectWithBackoff(undefined, context);
 
           return promise.then(() => {
             assert.calledOnce(attemptStub);
             const callArgs = attemptStub.firstCall.args;
-            assert.equal(callArgs[1], sessionId);
-            assert.isObject(callArgs[3]);
-            assert.isTrue(callArgs[3].isShutdownSwitchover);
+            assert.isObject(callArgs[2]);
+            assert.isTrue(callArgs[2].isShutdownSwitchover);
             attemptStub.restore();
           });
         });
 
         it('should set and clear state flags appropriately', () => {
-          sinon.stub(mobiusSocket, 'attemptConnection').callsFake((url, sid, cb) => cb());
+          sinon.stub(mobiusSocket, 'attemptConnection').callsFake((url, cb) => cb());
 
-          mobiusSocket.shutdownSwitchoverBackoffCalls.set(sessionId, {placeholder: true});
+          mobiusSocket.shutdownSwitchoverBackoffCall = {placeholder: true};
 
-          const promise = mobiusSocket.connectWithBackoff(undefined, sessionId, {
+          const promise = mobiusSocket.connectWithBackoff(undefined, {
             isShutdownSwitchover: true,
             attemptOptions: {isShutdownSwitchover: true, onSuccess: () => {}},
           });
 
           return promise.then(() => {
-            assert.isUndefined(mobiusSocket.shutdownSwitchoverBackoffCalls.get(sessionId));
+            assert.isUndefined(mobiusSocket.shutdownSwitchoverBackoffCall);
             mobiusSocket.attemptConnection.restore();
           });
         });
@@ -2040,30 +1932,30 @@ describe('plugin-mobius-socket', () => {
 
       describe('#disconnect() with shutdown switchover in progress', () => {
         let abortStub;
-        const sessionId = 'mobius-websocket-session';
 
         beforeEach(() => {
-          mobiusSocket.sockets.clear();
-          mobiusSocket.sockets.set(sessionId, {
+          mobiusSocket.socket = {
             close: sinon.stub().returns(Promise.resolve()),
             removeAllListeners: sinon.stub(),
-          });
+            connecting: false,
+            connected: true,
+          };
           abortStub = sinon.stub();
-          mobiusSocket.shutdownSwitchoverBackoffCalls.set(sessionId, {abort: abortStub});
+          mobiusSocket.shutdownSwitchoverBackoffCall = {abort: abortStub};
         });
 
         it('should abort shutdown switchover backoff call on disconnect', async () => {
-          await mobiusSocket.disconnect(undefined, sessionId);
+          await mobiusSocket.disconnect();
 
           assert.calledOnce(abortStub);
         });
 
         it('should handle disconnect when no switchover is in progress', async () => {
-          mobiusSocket.shutdownSwitchoverBackoffCalls.clear();
+          mobiusSocket.shutdownSwitchoverBackoffCall = undefined;
 
-          await mobiusSocket.disconnect(undefined, sessionId);
+          await mobiusSocket.disconnect();
 
-          assert.calledOnce(mobiusSocket.sockets.get(sessionId).close);
+          assert.calledOnce(mobiusSocket.socket.close);
         });
       });
     });
