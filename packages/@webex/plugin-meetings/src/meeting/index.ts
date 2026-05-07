@@ -3163,7 +3163,9 @@ export default class Meeting extends StatelessWebexPlugin {
         return;
       }
 
-      let newShareStatus = this.shareStatus;
+      // Default to no active share. GRANTED content/whiteboard states below will override it.
+      // This avoids carrying over stale share state for intermediate floor states like ACCEPTED.
+      let newShareStatus = SHARE_STATUS.NO_SHARE;
 
       // REMOTE - check if remote started sharing
       if (
@@ -3205,15 +3207,6 @@ export default class Meeting extends StatelessWebexPlugin {
         } else {
           newShareStatus = SHARE_STATUS.WHITEBOARD_SHARE_ACTIVE;
         }
-      }
-      // or if content share is either released or null and whiteboard share is either released or null, no one is sharing
-      else if (
-        ((previousContentShare && contentShare.disposition === FLOOR_ACTION.RELEASED) ||
-          contentShare.disposition === null) &&
-        ((previousWhiteboardShare && whiteboardShare.disposition === FLOOR_ACTION.RELEASED) ||
-          whiteboardShare.disposition === null)
-      ) {
-        newShareStatus = SHARE_STATUS.NO_SHARE;
       }
 
       LoggerProxy.logger.info(
