@@ -144,6 +144,7 @@ const Credentials = WebexPlugin.extend({
    */
   getOrgId() {
     this.logger.info('credentials: attempting to retrieve the OrgId from token');
+    this.logger.info('credentials: troubleshooting integration tests');
 
     try {
       // Attempt to extract a client-authenticated token's OrgId.
