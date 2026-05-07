@@ -82,6 +82,7 @@ export default {
     enableExtmap: false,
     enableAutomaticLLM: false,
     installedOrgID: undefined,
+    multipartSitePrefixList: ['.my.', '.mydmz.', '.mybts.', '.mydev.', '.myats2.', '.myats.'],
     experimental: {
       enableMediaNegotiatedEvent: false,
       enableUnifiedMeetings: true,
