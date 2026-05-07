@@ -5,7 +5,6 @@
  */
 
 import {EventEmitter} from 'events';
-import {camelCase, set} from 'lodash';
 import backoff from 'backoff';
 
 import type {WebexSDK} from '../SDKConnector/types';
@@ -50,11 +49,8 @@ class MobiusSocket extends EventEmitter {
     this.shutdownSwitchoverBackoffCall = undefined;
     this.seenAsyncEventIds = new Map();
     this.connectPromise = undefined;
-    this.mercuryTimeOffset = undefined;
     this.tokenRefreshTimer = undefined;
     this.tokenRefreshInFlight = undefined;
-
-    this.bindInternalEvents();
   }
 
   public off(eventName: string, listener?: (...args: unknown[]) => void) {
@@ -67,46 +63,6 @@ class MobiusSocket extends EventEmitter {
     return this;
   }
 
-  private bindInternalEvents() {
-    /*
-      When one of these legacy feature gets updated, this event would be triggered
-        * group-message-notifications
-        * mention-notifications
-        * thread-notifications
-    */
-    this.on('event:featureToggle_update', (envelope) => {
-      if (envelope && envelope.data) {
-        this.webex.internal.feature.updateFeature(envelope.data.featureToggle);
-      }
-    });
-    /*
-     * When Cluster Migrations, notify clients using ActiveClusterStatusEvent via mercury
-     * https://wwwin-github.cisco.com/pages/Webex/crr-docs/techdocs/rr-002.html#wip-notifying-clients-of-cluster-migrations
-     * */
-    this.on('event:ActiveClusterStatusEvent', (envelope) => {
-      if (
-        typeof this.webex.internal.services?.switchActiveClusterIds === 'function' &&
-        envelope &&
-        envelope.data
-      ) {
-        this.webex.internal.services.switchActiveClusterIds(envelope.data?.activeClusters);
-      }
-    });
-    /*
-     * Using cache-invalidation via mercury to instead the method of polling via the new /timestamp endpoint from u2c
-     * https://wwwin-github.cisco.com/pages/Webex/crr-docs/techdocs/rr-005.html#websocket-notifications
-     * */
-    this.on('event:u2c.cache-invalidation', (envelope) => {
-      if (
-        typeof this.webex.internal.services?.invalidateCache === 'function' &&
-        envelope &&
-        envelope.data
-      ) {
-        this.webex.internal.services.invalidateCache(envelope.data?.timestamp);
-      }
-    });
-  }
-
   /**
    * Attach event listeners to a socket.
    * @param {Socket} socket - The socket to attach listeners to
@@ -115,9 +71,6 @@ class MobiusSocket extends EventEmitter {
   private attachSocketEventListeners(socket) {
     socket.on('close', (event) => this.onclose(event, socket));
     socket.on('message', (...args) => this.onmessage(...args));
-    socket.on('pong', (...args) => this.setTimeOffset(...args));
-    socket.on('sequence-mismatch', (...args) => this.emitEvent('sequence-mismatch', ...args));
-    socket.on('ping-pong-latency', (...args) => this.emitEvent('ping-pong-latency', ...args));
   }
 
   /**
@@ -132,8 +85,8 @@ class MobiusSocket extends EventEmitter {
 
     if (this.seenAsyncEventIds.has(envelope.eventId)) {
       // Refresh recency so frequently retransmitted eventIds stay protected longer.
+      // This deletion and setting again makes the data recent since javascript map maintains order as well
       const previousValue = this.seenAsyncEventIds.get(envelope.eventId);
-
       this.seenAsyncEventIds.delete(envelope.eventId);
       this.seenAsyncEventIds.set(envelope.eventId, previousValue);
       this.logger.info(
@@ -143,7 +96,7 @@ class MobiusSocket extends EventEmitter {
       return true;
     }
 
-    this.logger.info(
+    this.logger.log(
       `${MOBIUS_SOCKET_NAMESPACE}: tracking async_event, eventId=${envelope.eventId}`
     );
     this.seenAsyncEventIds.set(envelope.eventId, true);
@@ -152,7 +105,7 @@ class MobiusSocket extends EventEmitter {
       const oldestEventId = this.seenAsyncEventIds.keys().next().value;
 
       this.seenAsyncEventIds.delete(oldestEventId);
-      this.logger.info(
+      this.logger.log(
         `${MOBIUS_SOCKET_NAMESPACE}: evicted oldest async_event from dedup cache, eventId=${oldestEventId}`
       );
     }
@@ -192,7 +145,7 @@ class MobiusSocket extends EventEmitter {
             this.socket = newSocket;
             this.connected = true;
 
-            this.emitEvent('event:mercury_shutdown_switchover_complete', {
+            this.emitEvent('event:mobius_shutdown_switchover_complete', {
               url: webSocketUrl,
             });
 
@@ -214,12 +167,12 @@ class MobiusSocket extends EventEmitter {
             `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] switchover exhausted retries; will fall back to normal reconnection: `,
             err
           );
-          this.emitEvent('event:mercury_shutdown_switchover_failed', {reason: err});
+          this.emitEvent('event:mobius_shutdown_switchover_failed', {reason: err});
         });
     } catch (e) {
       this.logger.error(`${MOBIUS_SOCKET_NAMESPACE}: [shutdown] error during switchover`, e);
       this.shutdownSwitchoverBackoffCall = undefined;
-      this.emitEvent('event:mercury_shutdown_switchover_failed', {reason: e});
+      this.emitEvent('event:mobius_shutdown_switchover_failed', {reason: e});
     }
   }
 
@@ -253,7 +206,7 @@ class MobiusSocket extends EventEmitter {
       return Promise.reject(new Error('Mobius socket is not connected'));
     }
 
-    return this.socket.sendRequest(payload, {
+    const requestConfigOptions = {
       timeout: options.timeout,
       matchesResponse: (response, request) =>
         response?.type === 'response_event' &&
@@ -273,7 +226,9 @@ class MobiusSocket extends EventEmitter {
           408,
           'Mobius websocket response timed out'
         ),
-    });
+    };
+
+    return this.socket.sendRequest(payload, requestConfigOptions);
   }
 
   /**
@@ -311,7 +266,6 @@ class MobiusSocket extends EventEmitter {
     }
 
     // Cache the caller-provided URL for reconnect
-    const resolvedUrl = webSocketUrl || this.socketUrl;
     if (webSocketUrl) {
       this.socketUrl = webSocketUrl;
     }
@@ -332,7 +286,7 @@ class MobiusSocket extends EventEmitter {
       .then(() => {
         this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: connecting`);
 
-        return this.connectWithBackoff(resolvedUrl);
+        return this.connectWithBackoff(this.socketUrl);
       })
       .finally(() => {
         this.connectPromise = undefined;
@@ -350,10 +304,9 @@ class MobiusSocket extends EventEmitter {
    */
   public disconnect(options?: MobiusSocketCloseOptions): MobiusSocketDisconnectResult {
     this.logger.info(
-      `${MOBIUS_SOCKET_NAMESPACE}#disconnect: connecting state: ${
-        this.connecting
-      }, connected state: ${this.connected}, socket exists: ${!!this
-        .socket}, options: ${JSON.stringify(options)}`
+      `${MOBIUS_SOCKET_NAMESPACE}#disconnect: connecting state: ${this.connecting},
+       connected state: ${this.connected}, socket exists: ${!!this.socket},
+       options: ${JSON.stringify(options)}`
     );
 
     if (this.backoffCall) {
@@ -361,13 +314,14 @@ class MobiusSocket extends EventEmitter {
       this.backoffCall.abort();
       this.backoffCall = undefined;
     }
+
     if (this.shutdownSwitchoverBackoffCall) {
       this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: aborting shutdown switchover connection`);
       this.shutdownSwitchoverBackoffCall.abort();
       this.shutdownSwitchoverBackoffCall = undefined;
     }
-    this.connectPromise = undefined;
 
+    this.connectPromise = undefined;
     this.seenAsyncEventIds.clear();
 
     if (!this.socket) {
@@ -377,12 +331,11 @@ class MobiusSocket extends EventEmitter {
       return Promise.resolve();
     }
 
-    const currentSocket = this.socket;
-    currentSocket.removeAllListeners('message');
-    currentSocket.connecting = false;
-    currentSocket.connected = false;
+    this.socket.removeAllListeners('message');
+    this.socket.connecting = false;
+    this.socket.connected = false;
 
-    return Promise.resolve(currentSocket.close(options || undefined)).finally(() => {
+    return Promise.resolve(this.socket.close(options || undefined)).finally(() => {
       this.connected = false;
       this.stopTokenRefreshTimer();
     });
@@ -407,20 +360,9 @@ class MobiusSocket extends EventEmitter {
     return error;
   }
 
-  // eslint-disable-next-line class-methods-use-this
-  private applyOverrides(event) {
-    if (!event || !event.headers) {
-      return;
-    }
-    const headerKeys = Object.keys(event.headers);
-
-    headerKeys.forEach((keyPath) => {
-      set(event, keyPath, event.headers[keyPath]);
-    });
-  }
-
   private prepareUrl(webSocketUrl) {
     if (!webSocketUrl) {
+      // TODO: Circle back to this logic when mobius implements the shutdown switchover
       webSocketUrl = this.webex.internal.device.webSocketUrl;
     }
 
@@ -719,42 +661,13 @@ class MobiusSocket extends EventEmitter {
       this.emit(eventName, ...args);
     } catch (error) {
       // Safely handle errors without causing additional issues during cleanup
-      try {
-        this.logger.error(
-          `${MOBIUS_SOCKET_NAMESPACE}: error occurred in event handler:`,
-          error,
-          ' with args: ',
-          [eventName, ...args]
-        );
-      } catch (logError) {
-        // If even logging fails, just ignore to prevent cascading errors during cleanup
-        // eslint-disable-next-line no-console
-        console.error('MobiusSocket emitEvent error handling failed:', logError);
-      }
+      this.logger.error(
+        `${MOBIUS_SOCKET_NAMESPACE}: error occurred in event handler:`,
+        error,
+        ' with args: ',
+        [eventName, ...args]
+      );
     }
-  }
-
-  private getEventHandlers(eventType) {
-    if (!eventType) {
-      return [];
-    }
-    const [namespace, name] = eventType.split('.');
-    const handlers = [];
-
-    if (!this.webex[namespace] && !this.webex.internal[namespace]) {
-      return handlers;
-    }
-
-    const handlerName = camelCase(`process_${name}_event`);
-
-    if ((this.webex[namespace] || this.webex.internal[namespace])[handlerName]) {
-      handlers.push({
-        name: handlerName,
-        namespace,
-      });
-    }
-
-    return handlers;
   }
 
   private startTokenRefreshTimer() {
@@ -921,17 +834,16 @@ class MobiusSocket extends EventEmitter {
   }
 
   private onmessage(event) {
-    this.setTimeOffset(event);
     const envelope = event.data;
 
-    if (process.env.ENABLE_MERCURY_LOGGING) {
+    if (process.env.ENABLE_MOBIUS_LOGGING) {
       this.logger.debug(`${MOBIUS_SOCKET_NAMESPACE}: message envelope: `, envelope);
     }
 
     // Handle shutdown message shape: { type: 'shutdown' }
     if (envelope && envelope.type === 'shutdown') {
       this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: [shutdown] imminent shutdown message received`);
-      this.emitEvent('event:mercury_shutdown_imminent', envelope);
+      this.emitEvent('event:mobius_shutdown_imminent', envelope); // This is not yet not implemented, keeping for future support
 
       this.handleImminentShutdown();
 
@@ -950,9 +862,7 @@ class MobiusSocket extends EventEmitter {
     // Use data/payload if present, otherwise treat the envelope itself as the data (flat format)
     const data = envelope.data || envelope;
 
-    this.applyOverrides(data);
-
-    // Support both Mercury-enveloped (data.eventType) and flat (eventType) formats
+    // Support both Mobius-enveloped (data.eventType) and flat (eventType) formats
     const eventType = data?.eventType || envelope.eventType;
 
     if (!eventType) {
@@ -961,47 +871,23 @@ class MobiusSocket extends EventEmitter {
       return Promise.resolve();
     }
 
-    return this.getEventHandlers(eventType)
-      .reduce(
-        (promise, handler) =>
-          promise.then(() => {
-            const {namespace, name} = handler;
+    try {
+      // TODO: Remove if event:namespace is not required
+      this.emitEvent('event', envelope);
+      const [namespace] = eventType.split('.');
+      this.emitEvent(`event:${namespace}`, envelope);
 
-            return new Promise((resolve) => {
-              resolve((this.webex[namespace] || this.webex.internal[namespace])[name](data));
-            }).catch((reason) =>
-              this.logger.error(
-                `${MOBIUS_SOCKET_NAMESPACE}: error occurred in autowired event handler for ${eventType}`,
-                reason
-              )
-            );
-          }),
-        Promise.resolve()
-      )
-      .then(() => {
-        this.emitEvent('event', envelope);
-        const [namespace] = eventType.split('.');
-
-        if (namespace === eventType) {
-          this.emitEvent(`event:${namespace}`, envelope);
-        } else {
-          this.emitEvent(`event:${namespace}`, envelope);
-          this.emitEvent(`event:${eventType}`, envelope);
-        }
-      })
-      .catch((reason) => {
-        this.logger.error(
-          `${MOBIUS_SOCKET_NAMESPACE}: error occurred processing socket message`,
-          reason
-        );
-      });
-  }
-
-  private setTimeOffset(event) {
-    const {wsWriteTimestamp} = event.data;
-    if (typeof wsWriteTimestamp === 'number' && wsWriteTimestamp > 0) {
-      this.mercuryTimeOffset = Date.now() - wsWriteTimestamp;
+      if (namespace !== eventType) {
+        this.emitEvent(`event:${eventType}`, envelope);
+      }
+    } catch (reason) {
+      this.logger.error(
+        `${MOBIUS_SOCKET_NAMESPACE}: error occurred processing socket message`,
+        reason
+      );
     }
+
+    return Promise.resolve();
   }
 
   private reconnect(webSocketUrl) {

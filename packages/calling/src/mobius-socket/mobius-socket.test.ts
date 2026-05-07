@@ -224,15 +224,8 @@ describe('plugin-mobius-socket', () => {
       });
 
       it('connects to MobiusSocket using default url', () => {
-        webex.internal.feature.updateFeature = sinon.stub();
         const promise = mobiusSocket.connect();
-        const envelope = {
-          data: {
-            featureToggle: {
-              'feature-name': true,
-            },
-          },
-        };
+
         assert.isFalse(mobiusSocket.connected, 'MobiusSocket is not connected');
         assert.isTrue(mobiusSocket.connecting, 'MobiusSocket is connecting');
         mockWebSocket.open();
@@ -241,85 +234,6 @@ describe('plugin-mobius-socket', () => {
           assert.isTrue(mobiusSocket.connected, 'MobiusSocket is connected');
           assert.isFalse(mobiusSocket.connecting, 'MobiusSocket is not connecting');
           assert.calledWith(socketOpenStub, 'ws://example.com', sinon.match.any);
-          mobiusSocket.emit('event:featureToggle_update', envelope);
-          assert.calledOnceWithExactly(
-            webex.internal.feature.updateFeature,
-            envelope.data.featureToggle
-          );
-          sinon.restore();
-        });
-      });
-
-      it('connects to MobiusSocket but does not call updateFeature', () => {
-        webex.internal.feature.updateFeature = sinon.stub();
-        const promise = mobiusSocket.connect();
-        const envelope = {};
-
-        return promise.then(() => {
-          mobiusSocket.emit('event:featureToggle_update', envelope);
-          assert.notCalled(webex.internal.feature.updateFeature);
-          sinon.restore();
-        });
-      });
-      it('MobiusSocket emit event:ActiveClusterStatusEvent, call services switchActiveClusterIds', () => {
-        const promise = mobiusSocket.connect();
-        const activeClusterEventEnvelope = {
-          data: {
-            activeClusters: {
-              wdm: 'wdm-cluster-id.com',
-            },
-          },
-        };
-        mockWebSocket.open();
-
-        return promise.then(() => {
-          mobiusSocket.emit('event:ActiveClusterStatusEvent', activeClusterEventEnvelope);
-          assert.calledOnceWithExactly(
-            webex.internal.services.switchActiveClusterIds,
-            activeClusterEventEnvelope.data.activeClusters
-          );
-          sinon.restore();
-        });
-      });
-      it('MobiusSocket emit event:ActiveClusterStatusEvent with no data, not call services switchActiveClusterIds', () => {
-        webex.internal.feature.updateFeature = sinon.stub();
-        const promise = mobiusSocket.connect();
-        const envelope = {};
-
-        return promise.then(() => {
-          mobiusSocket.emit('event:ActiveClusterStatusEvent', envelope);
-          assert.notCalled(webex.internal.services.switchActiveClusterIds);
-          sinon.restore();
-        });
-      });
-      it('MobiusSocket emit event:u2c.cache-invalidation, call services invalidateCache', () => {
-        const promise = mobiusSocket.connect();
-        const u2cInvalidateEventEnvelope = {
-          data: {
-            timestamp: '1759289614',
-          },
-        };
-
-        mockWebSocket.open();
-
-        return promise.then(() => {
-          mobiusSocket.emit('event:u2c.cache-invalidation', u2cInvalidateEventEnvelope);
-          assert.calledOnceWithExactly(
-            webex.internal.services.invalidateCache,
-            u2cInvalidateEventEnvelope.data.timestamp
-          );
-          sinon.restore();
-        });
-      });
-      it('MobiusSocket emit event:u2c.cache-invalidation with no data, not call services switchActiveClusterIds', () => {
-        webex.internal.feature.updateFeature = sinon.stub();
-        const promise = mobiusSocket.connect();
-        const envelope = {};
-
-        return promise.then(() => {
-          mobiusSocket.emit('event:u2c.cache-invalidation', envelope);
-          assert.notCalled(webex.internal.services.invalidateCache);
-          sinon.restore();
         });
       });
 
@@ -1087,96 +1001,6 @@ describe('plugin-mobius-socket', () => {
       });
     });
 
-    describe('#_applyOverrides()', () => {
-      const lastSeenActivityDate = 'Some date';
-      const lastReadableActivityDate = 'Some other date';
-
-      it('merges a single header field with data', () => {
-        const envelope = {
-          headers: {
-            'data.activity.target.lastSeenActivityDate': lastSeenActivityDate,
-          },
-          data: {
-            activity: {},
-          },
-        };
-
-        mobiusSocket.applyOverrides(envelope);
-
-        assert.equal(envelope.data.activity.target.lastSeenActivityDate, lastSeenActivityDate);
-      });
-
-      it('merges a multiple header fields with data', () => {
-        const envelope = {
-          headers: {
-            'data.activity.target.lastSeenActivityDate': lastSeenActivityDate,
-            'data.activity.target.lastReadableActivityDate': lastReadableActivityDate,
-          },
-          data: {
-            activity: {},
-          },
-        };
-
-        mobiusSocket.applyOverrides(envelope);
-
-        assert.equal(envelope.data.activity.target.lastSeenActivityDate, lastSeenActivityDate);
-        assert.equal(
-          envelope.data.activity.target.lastReadableActivityDate,
-          lastReadableActivityDate
-        );
-      });
-
-      it('merges headers when MobiusSocket messages arrive', () => {
-        const envelope = {
-          headers: {
-            'data.activity.target.lastSeenActivityDate': lastSeenActivityDate,
-          },
-          data: {
-            activity: {},
-          },
-        };
-
-        mobiusSocket.applyOverrides(envelope);
-
-        assert.equal(envelope.data.activity.target.lastSeenActivityDate, lastSeenActivityDate);
-      });
-    });
-
-    describe('#_setTimeOffset', () => {
-      it('sets mercuryTimeOffset based on the difference between wsWriteTimestamp and now', () => {
-        const event = {
-          data: {
-            wsWriteTimestamp: Date.now() - 60000,
-          },
-        };
-        assert.isUndefined(mobiusSocket.mercuryTimeOffset);
-        mobiusSocket.setTimeOffset(event);
-        assert.isDefined(mobiusSocket.mercuryTimeOffset);
-        assert.isTrue(mobiusSocket.mercuryTimeOffset > 0);
-      });
-      it('handles negative offsets', () => {
-        const event = {
-          data: {
-            wsWriteTimestamp: Date.now() + 60000,
-          },
-        };
-        mobiusSocket.setTimeOffset(event);
-        assert.isTrue(mobiusSocket.mercuryTimeOffset < 0);
-      });
-      it('handles invalid wsWriteTimestamp', () => {
-        const invalidTimestamps = [null, -1, 'invalid', undefined];
-        invalidTimestamps.forEach((invalidTimestamp) => {
-          const event = {
-            data: {
-              wsWriteTimestamp: invalidTimestamp,
-            },
-          };
-          mobiusSocket.setTimeOffset(event);
-          assert.isUndefined(mobiusSocket.mercuryTimeOffset);
-        });
-      });
-    });
-
     describe('#_prepareUrl()', () => {
       it('returns the provided URL as-is (no Mercury URL transforms)', () =>
         mobiusSocket.prepareUrl('ws://provided.com').then((wsUrl) => {
@@ -1259,13 +1083,11 @@ describe('plugin-mobius-socket', () => {
         beforeEach(() => {
           sinon.stub(mobiusSocket, 'handleImminentShutdown');
           sinon.stub(mobiusSocket, 'emitEvent');
-          sinon.stub(mobiusSocket, 'setTimeOffset');
         });
 
         afterEach(() => {
           mobiusSocket.handleImminentShutdown.restore();
           mobiusSocket.emitEvent.restore();
-          mobiusSocket.setTimeOffset.restore();
         });
 
         it('should trigger _handleImminentShutdown on shutdown message', () => {
@@ -1280,7 +1102,7 @@ describe('plugin-mobius-socket', () => {
           assert.calledOnce(mobiusSocket.handleImminentShutdown);
           assert.calledWith(
             mobiusSocket.emitEvent,
-            'event:mercury_shutdown_imminent',
+            'event:mobius_shutdown_imminent',
             shutdownEvent.data
           );
           assert.instanceOf(result, Promise);
@@ -1317,14 +1139,10 @@ describe('plugin-mobius-socket', () => {
       describe('#_onmessage() with missing data or eventType', () => {
         beforeEach(() => {
           sinon.stub(mobiusSocket, 'emitEvent');
-          sinon.stub(mobiusSocket, 'setTimeOffset');
-          sinon.stub(mobiusSocket, 'applyOverrides');
         });
 
         afterEach(() => {
           mobiusSocket.emitEvent.restore();
-          mobiusSocket.setTimeOffset.restore();
-          mobiusSocket.applyOverrides.restore();
         });
 
         it('should not throw when envelope.data is undefined', () => {
@@ -1453,32 +1271,6 @@ describe('plugin-mobius-socket', () => {
 
           assert.equal(countGenericEventEmits(emitSpy), 2);
           emitSpy.restore();
-        });
-      });
-
-      describe('#_getEventHandlers()', () => {
-        it('should return an empty array when eventType is undefined', () => {
-          const result = mobiusSocket.getEventHandlers(undefined);
-
-          assert.deepEqual(result, []);
-        });
-
-        it('should return an empty array when eventType is null', () => {
-          const result = mobiusSocket.getEventHandlers(null);
-
-          assert.deepEqual(result, []);
-        });
-
-        it('should return an empty array when eventType is an empty string', () => {
-          const result = mobiusSocket.getEventHandlers('');
-
-          assert.deepEqual(result, []);
-        });
-
-        it('should return an empty array when namespace is not registered', () => {
-          const result = mobiusSocket.getEventHandlers('unknownNamespace.someEvent');
-
-          assert.deepEqual(result, []);
         });
       });
 
@@ -1650,7 +1442,7 @@ describe('plugin-mobius-socket', () => {
 
           const emitCalls = mobiusSocket.emitEvent.getCalls();
           const hasCompleteEvent = emitCalls.some(
-            (call) => call.args[0] === 'event:mercury_shutdown_switchover_complete'
+            (call) => call.args[0] === 'event:mobius_shutdown_switchover_complete'
           );
 
           assert.isTrue(hasCompleteEvent, 'Should emit switchover complete event');
@@ -1667,7 +1459,7 @@ describe('plugin-mobius-socket', () => {
           const emitCalls = mobiusSocket.emitEvent.getCalls();
           const hasFailureEvent = emitCalls.some(
             (call) =>
-              call.args[0] === 'event:mercury_shutdown_switchover_failed' &&
+              call.args[0] === 'event:mobius_shutdown_switchover_failed' &&
               call.args[1] &&
               call.args[1].reason === testError
           );
@@ -1833,7 +1625,7 @@ describe('plugin-mobius-socket', () => {
             onSuccess: (newSocket, url) => {
               mobiusSocket.socket = newSocket;
               mobiusSocket.connected = true;
-              mobiusSocket.emitEvent('event:mercury_shutdown_switchover_complete', {
+              mobiusSocket.emitEvent('event:mobius_shutdown_switchover_complete', {
                 url,
               });
             },
@@ -1841,7 +1633,7 @@ describe('plugin-mobius-socket', () => {
 
           assert.calledWith(
             mobiusSocket.emitEvent,
-            'event:mercury_shutdown_switchover_complete',
+            'event:mobius_shutdown_switchover_complete',
             sinon.match.has('url', 'ws://new-socket.com')
           );
         });

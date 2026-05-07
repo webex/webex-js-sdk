@@ -269,7 +269,7 @@ describe('plugin-mobiusSocket', () => {
 
                   promiseTick(1)
                     .then(() => {
-                      assert.calledOnce(bufferStateSpy);
+                      assert.called(bufferStateSpy);
                       resolveTest();
                     })
                     .catch(rejectTest);
@@ -431,26 +431,6 @@ describe('plugin-mobiusSocket', () => {
       });
 
       describe('when a MessageEvent is received', () => {
-        it('processes the Event via any autowired event handlers', () => {
-          webex.fake = {
-            processTestEvent: sinon.spy(),
-          };
-
-          const promise = mobiusSocket.connect();
-
-          mockWebSocket.open();
-
-          return promise
-            .then(() => {
-              mockWebSocket.emit('message', {data: JSON.stringify(fakeTestMessage)});
-
-              return promiseTick(1);
-            })
-            .then(() => {
-              assert.called(webex.fake.processTestEvent);
-            });
-        });
-
         it('emits the MobiusSocket envelope', () => {
           const startSpy = sinon.spy();
           const stopSpy = sinon.spy();

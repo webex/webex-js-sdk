@@ -3,29 +3,29 @@
  */
 
 export interface MobiusSocketConfig {
+  /** Milliseconds to wait for websocket request/response messages, including auth. */
   wssResponseTimeout: number;
+  /** Maximum milliseconds between connection attempts. */
   backoffTimeMax: number;
+  /** Initial milliseconds between connection attempts. */
   backoffTimeReset: number;
+  /** Maximum number of retries for the initial connect() flow before rejecting. */
   initialConnectionMaxRetries: number;
+  /** Maximum number of retries for reconnect attempts. 0 means unlimited. */
   maxRetries: number;
+  /** Milliseconds to wait for a close frame before forcing closure. */
   forceCloseDelay: number;
+  /** Maximum eventIds retained in the dedup cache to suppress duplicate async_event messages. */
   dedupCacheMaxSize: number;
 }
 
 const mobiusSocketConfig: MobiusSocketConfig = {
-  /** Milliseconds to wait for websocket request/response messages, including auth. */
   wssResponseTimeout: 10000,
-  /** Maximum milliseconds between connection attempts. */
   backoffTimeMax: 32000,
-  /** Initial milliseconds between connection attempts. */
   backoffTimeReset: 1000,
-  /** Maximum number of retries for the initial connect() flow before rejecting. */
   initialConnectionMaxRetries: 0,
-  /** Maximum number of retries for reconnect attempts. 0 means unlimited. */
   maxRetries: 0,
-  /** Milliseconds to wait for a close frame before forcing closure. */
   forceCloseDelay: 2000,
-  /** Maximum eventIds retained in the dedup cache to suppress duplicate async_event messages. */
   dedupCacheMaxSize: 1000,
 };
 
