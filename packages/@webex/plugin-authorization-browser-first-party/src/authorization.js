@@ -757,25 +757,27 @@ const Authorization = WebexPlugin.extend({
    *
    * Approach:
    * - Remove 'code'.
-   * - Remove 'state' entirely if only contained csrf_token.
-   * - Else, re-encode remaining state fields (minus csrf_token).
+   * - Remove 'state' entirely if it only contained the stripped fields.
+   * - Else, re-encode remaining state fields (minus stripped fields).
    * - Replace current history entry (no page reload).
    *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @param {Object} location
+   * @param {string[]} [stateFieldsToStrip=['csrf_token']] - Names of fields
+   *   to remove from the parsed `state` object before re-encoding.
    * @private
    * @returns {void}
    */
-  _cleanUrl(location) {
+  _cleanUrl(location, stateFieldsToStrip = ['csrf_token']) {
     location = cloneDeep(location);
     if (this.webex.getWindow().history && this.webex.getWindow().history.replaceState) {
       Reflect.deleteProperty(location.query, 'code');
-      if (isEmpty(omit(location.query.state, 'csrf_token'))) {
+      if (isEmpty(omit(location.query.state, stateFieldsToStrip))) {
         Reflect.deleteProperty(location.query, 'state');
       } else {
         location.query.state = base64.encode(
-          JSON.stringify(omit(location.query.state, 'csrf_token'))
+          JSON.stringify(omit(location.query.state, stateFieldsToStrip))
         );
       }
       location.search = querystring.stringify(location.query);
@@ -823,15 +825,18 @@ const Authorization = WebexPlugin.extend({
    *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
+   * @param {string} [storageKey=OAUTH2_CSRF_TOKEN] - sessionStorage key
+   *   under which the generated token is persisted. Allows separate flows
+   *   (e.g. third-party login) to use distinct keys.
    * @private
    * @returns {string} token
    */
-  _generateSecurityToken() {
+  _generateSecurityToken(storageKey = OAUTH2_CSRF_TOKEN) {
     this.logger.info('authorization: generating csrf token');
 
     const token = uuid.v4();
 
-    this.webex.getWindow().sessionStorage.setItem('oauth2-csrf-token', token);
+    this.webex.getWindow().sessionStorage.setItem(storageKey, token);
 
     return token;
   },
@@ -850,13 +855,15 @@ const Authorization = WebexPlugin.extend({
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @param {Object} query - Parsed query (location.query)
+   * @param {string} [storageKey=OAUTH2_CSRF_TOKEN] - sessionStorage key to
+   *   read and clear. Must match the key used by `_generateSecurityToken`.
    * @private
    * @returns {void}
    */
-  _verifySecurityToken(query) {
-    const sessionToken = this.webex.getWindow().sessionStorage.getItem(OAUTH2_CSRF_TOKEN);
+  _verifySecurityToken(query, storageKey = OAUTH2_CSRF_TOKEN) {
+    const sessionToken = this.webex.getWindow().sessionStorage.getItem(storageKey);
 
-    this.webex.getWindow().sessionStorage.removeItem(OAUTH2_CSRF_TOKEN);
+    this.webex.getWindow().sessionStorage.removeItem(storageKey);
     if (!sessionToken) {
       return;
     }

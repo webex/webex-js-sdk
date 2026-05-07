@@ -1095,6 +1095,118 @@ describe('plugin-authorization-browser-first-party', () => {
         assert.equal(href, `?state=${base64.encode(JSON.stringify({key: 'value'}))}`);
         assert.notInclude(href, 'csrf_token');
       });
+
+      it('strips the fields named in `stateFieldsToStrip` instead of the default', () => {
+        const webex = makeWebex(undefined, undefined, {
+          credentials: {
+            clientType: 'confidential',
+          },
+        });
+        const location = {
+          query: {
+            code: 'code',
+            state: {
+              custom_csrf: 'token',
+              key: 'value',
+            },
+          },
+        };
+
+        webex.authorization._cleanUrl(location, ['custom_csrf']);
+        assert.called(webex.getWindow().history.replaceState);
+        const {href} = webex.getWindow().location;
+
+        assert.equal(href, `?state=${base64.encode(JSON.stringify({key: 'value'}))}`);
+        assert.notInclude(href, 'custom_csrf');
+      });
+
+      it('removes the state parameter when only the stripped fields remain', () => {
+        const webex = makeWebex(undefined, undefined, {
+          credentials: {
+            clientType: 'confidential',
+          },
+        });
+        const location = {
+          query: {
+            code: 'code',
+            state: {
+              custom_csrf: 'token',
+            },
+          },
+        };
+
+        webex.authorization._cleanUrl(location, ['custom_csrf']);
+        assert.called(webex.getWindow().history.replaceState);
+        assert.equal(webex.getWindow().location.href, '');
+      });
+    });
+
+    describe('#_generateSecurityToken()', () => {
+      it('stores the generated token under the default `oauth2-csrf-token` key', () => {
+        const webex = makeWebex();
+
+        const token = webex.authorization._generateSecurityToken();
+
+        assert.isString(token);
+        assert.calledOnceWithExactly(
+          webex.getWindow().sessionStorage.setItem,
+          'oauth2-csrf-token',
+          token
+        );
+      });
+
+      it('stores the generated token under the provided storage key', () => {
+        const webex = makeWebex();
+
+        const token = webex.authorization._generateSecurityToken('third-party-login-csrf');
+
+        assert.calledOnceWithExactly(
+          webex.getWindow().sessionStorage.setItem,
+          'third-party-login-csrf',
+          token
+        );
+      });
+    });
+
+    describe('#_verifySecurityToken()', () => {
+      it('reads from the default `oauth2-csrf-token` key', () => {
+        const webex = makeWebex();
+        // Re-stub getItem so we can assert against the key argument directly.
+        webex.getWindow().sessionStorage.getItem = sinon.stub().returns('stored-token');
+
+        webex.authorization._verifySecurityToken({state: {csrf_token: 'stored-token'}});
+
+        assert.calledWith(webex.getWindow().sessionStorage.getItem, 'oauth2-csrf-token');
+        assert.calledWith(webex.getWindow().sessionStorage.removeItem, 'oauth2-csrf-token');
+      });
+
+      it('reads from the provided storage key', () => {
+        const webex = makeWebex();
+        webex.getWindow().sessionStorage.getItem = sinon.stub().returns('stored-token');
+
+        webex.authorization._verifySecurityToken(
+          {state: {csrf_token: 'stored-token'}},
+          'third-party-login-csrf'
+        );
+
+        assert.calledWith(webex.getWindow().sessionStorage.getItem, 'third-party-login-csrf');
+        assert.calledWith(
+          webex.getWindow().sessionStorage.removeItem,
+          'third-party-login-csrf'
+        );
+      });
+
+      it('silently returns when the provided storage key has no stored token', () => {
+        const webex = makeWebex();
+        webex.getWindow().sessionStorage.getItem = sinon.stub().returns(undefined);
+
+        assert.doesNotThrow(() => {
+          webex.authorization._verifySecurityToken(
+            {state: {csrf_token: 'whatever'}},
+            'third-party-login-csrf'
+          );
+        });
+      });
     });
 
     describe('#_extractOrgIdFromCode', () => {

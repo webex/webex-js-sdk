@@ -265,15 +265,20 @@ describe('webex-core', () => {
         }, /`options.returnURL` is required/);
       });
 
-      it('throws if the idbroker service is not available', () => {
+      it('falls back to config.idbroker.url when the idbroker service is unavailable', () => {
         const webex = makeWebexWithIdbroker(undefined);
 
-        assert.throws(() => {
-          webex.credentials.buildThirdPartyLoginUrl({
-            oauth2provider: 'google',
-            returnURL: 'https://web.webex.com',
-          });
-        }, /idbroker service is not available/);
+        const url = webex.credentials.buildThirdPartyLoginUrl({
+          oauth2provider: 'google',
+          returnURL: 'https://web.webex.com',
+        });
+
+        assert.equal(
+          url,
+          `${
+            process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'
+          }/idb/ThirdPartyLogin?oauth2provider=google&returnURL=https%3A%2F%2Fweb.webex.com`
+        );
       });
 
       it('builds the URL with provider and returnURL query params', () => {
