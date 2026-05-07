@@ -97,7 +97,7 @@ export const guards = {
     return false;
   },
 
-  isInteractionConsulting: ({event}: GuardParams): boolean => {
+  isInteractionConsulting: ({event, context}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
     if (taskData?.interaction?.state === 'consulting') return true;
@@ -106,6 +106,21 @@ export const guards = {
     const cpd = taskData?.interaction?.callProcessingDetails;
     if (cpd?.relationshipType === 'consult' && taskData?.interaction?.state === 'connected') {
       return true;
+    }
+
+    // Customer left during consult: interaction state is "post_call" but consult
+    // between agents is still active. Detect via agent's consultState + consult media.
+    if (taskData?.interaction?.state === 'post_call') {
+      const selfAgentId = getSelfAgentId(context, taskData);
+      const selfParticipant = selfAgentId
+        ? taskData?.interaction?.participants?.[selfAgentId]
+        : null;
+      const hasConsultMedia = Object.values(taskData?.interaction?.media ?? {}).some(
+        (media: any) => media?.mType === 'consult'
+      );
+      if (selfParticipant?.consultState === 'consulting' && hasConsultMedia) {
+        return true;
+      }
     }
 
     return false;

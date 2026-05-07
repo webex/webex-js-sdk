@@ -73,6 +73,19 @@ const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate 
   return update;
 };
 
+const isActiveConsultState = (taskData: TaskData | undefined, selfAgentId?: string): boolean => {
+  if (taskData?.interaction?.state === 'consulting') return true;
+  if (taskData?.interaction?.state === 'post_call' && selfAgentId) {
+    const selfParticipant = taskData.interaction?.participants?.[selfAgentId] as any;
+    const hasConsultMedia = Object.values(taskData.interaction?.media ?? {}).some(
+      (media: any) => media?.mType === 'consult'
+    );
+    if (selfParticipant?.consultState === 'consulting' && hasConsultMedia) return true;
+  }
+
+  return false;
+};
+
 const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefined) =>
   taskData
     ? (() => {
@@ -81,27 +94,26 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
           ...deriveRecordingState(taskData),
         };
 
+        const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
+        const consultingActive = isActiveConsultState(taskData, selfAgentId);
+
         if (taskData.destAgentId) {
           updates.consultDestinationAgentId = taskData.destAgentId;
         }
-        if (taskData.interaction?.state === 'consulting' && taskData.destinationType) {
+        if (consultingActive && taskData.destinationType) {
           updates.consultDestinationType = taskData.destinationType as DestinationType;
         }
 
         if (!context.consultInitiator) {
-          const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
           const consultInitiator = determineConsultInitiator(taskData, selfAgentId);
           if (consultInitiator !== undefined) {
             updates.consultInitiator = consultInitiator;
-          } else if (
-            taskData.interaction?.state === 'consulting' &&
-            taskData.isConsulted === false
-          ) {
+          } else if (consultingActive && taskData.isConsulted === false) {
             updates.consultInitiator = true;
           }
         }
 
-        if (taskData.interaction?.state === 'consulting') {
+        if (consultingActive && taskData.interaction) {
           if (!context.consultDestinationAgentJoined) {
             const hasJoinedConsultee = Boolean(
               taskData.interaction.participants &&

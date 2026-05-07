@@ -254,11 +254,13 @@ function computeVoiceInteractionUIControls(
     // Transfer: connected/held, not in conference
     transfer: (() => {
       if (hasParallelConsultLeg) {
+        if (!customerPresent) return DISABLED;
         if (state === TaskState.CONNECTED) return VISIBLE_ENABLED;
         if (state === TaskState.HELD) return VISIBLE_DISABLED;
       }
       if (isConsulting) {
         if (!consultInitiator) return DISABLED;
+        if (!customerPresent) return VISIBLE_DISABLED;
         if (consultLegOnHold) return VISIBLE_DISABLED;
 
         return isConsultDestinationReady ? VISIBLE_ENABLED : VISIBLE_DISABLED;
@@ -307,6 +309,7 @@ function computeVoiceInteractionUIControls(
     recording: (() => {
       if (!recordingControlsAvailable || !config.isRecordingEnabled) return DISABLED;
       if (!hasFullControls || isConsulting || inConference) return DISABLED;
+      if (hasParallelConsultLeg && !customerPresent) return DISABLED;
       if (state === TaskState.CONNECTED || state === TaskState.HELD) {
         return VISIBLE_ENABLED;
       }
@@ -318,6 +321,7 @@ function computeVoiceInteractionUIControls(
     // Label changes based on leg: "Conference" on main leg, "Merge" on consult leg
     conference: (() => {
       if (hasParallelConsultLeg) {
+        if (!customerPresent) return DISABLED;
         if (state === TaskState.CONNECTED) {
           return maxParticipants ? VISIBLE_DISABLED : VISIBLE_ENABLED;
         }
@@ -327,6 +331,7 @@ function computeVoiceInteractionUIControls(
       }
       if (!hasFullControls || !isConsulting) return DISABLED;
       if (!consultInitiator) return DISABLED;
+      if (!customerPresent) return VISIBLE_DISABLED;
       if (consultLegOnHold) return VISIBLE_DISABLED;
 
       return isConsultDestinationReady && !maxParticipants ? VISIBLE_ENABLED : VISIBLE_DISABLED;
@@ -356,6 +361,7 @@ function computeVoiceInteractionUIControls(
     // MergeToConference: mirrors conference control, enabled on both legs
     mergeToConference: (() => {
       if (!isConsulting || !consultInitiator) return DISABLED;
+      if (!customerPresent) return VISIBLE_DISABLED;
       if (consultLegOnHold) return VISIBLE_DISABLED;
 
       return isConsultDestinationReady && !maxParticipants ? VISIBLE_ENABLED : VISIBLE_DISABLED;
@@ -363,8 +369,10 @@ function computeVoiceInteractionUIControls(
 
     // Switch: visible only on the currently active leg
     switch: (() => {
+      if (!customerPresent && hasParallelConsultLeg) return DISABLED;
       if (currentLeg === 'consult') {
         if (!isConsulting || !consultInitiator || consultCallHeld) return DISABLED;
+        if (!customerPresent) return VISIBLE_DISABLED;
 
         return isConsultDestinationReady ? VISIBLE_ENABLED : VISIBLE_DISABLED;
       }

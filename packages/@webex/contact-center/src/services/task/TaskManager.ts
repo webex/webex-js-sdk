@@ -375,6 +375,12 @@ export default class TaskManager extends EventEmitter {
         task.sendStateMachineEvent(stateMachineEvent);
       }
 
+      // Emit TASK_POST_CALL_ACTIVITY for ParticipantPostCallActivity events so
+      // consumers (Widgets) can detect the interaction state change to post_call.
+      if (eventContext.eventType === CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY) {
+        task.emit(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, task);
+      }
+
       // Send transcript start/stop events for relevant CC events
       this.requestRealTimeTranscripts(eventContext.eventType, payload.interactionId);
     });

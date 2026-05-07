@@ -12,7 +12,7 @@ import {setup} from 'xstate';
 import {TaskContext, TaskEventPayload, UIControlConfig, TaskActionsMap} from './types';
 import {TaskState, TaskEvent} from './constants';
 import {actions, createInitialContext} from './actions';
-import {guards} from './guards';
+import {guards, shouldWrapUpForThisAgent, getTaskDataFromEvent} from './guards';
 import {getIsCustomerInCall} from '../TaskUtils';
 
 type TaskActionConfigMap = {[K in keyof typeof actions]: undefined};
@@ -466,6 +466,26 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 context.consultInitiator === true && context.consultCallHeld === true,
               target: TaskState.CONNECTED,
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+            {
+              // Interaction terminated during consult (customer left) → WRAPPING_UP
+              guard: ({context, event}) => {
+                if (context.consultInitiator !== true) return false;
+                const taskData = getTaskDataFromEvent(event);
+
+                return (
+                  taskData?.interaction?.isTerminated === true &&
+                  shouldWrapUpForThisAgent(context, taskData)
+                );
+              },
+              target: TaskState.WRAPPING_UP,
+              actions: [
+                'updateTaskData',
+                'markEnded',
+                'clearConsultState',
+                'emitTaskWrapup',
+                'requestCleanup',
+              ],
             },
             {
               // Initiator (no conference) → HELD
