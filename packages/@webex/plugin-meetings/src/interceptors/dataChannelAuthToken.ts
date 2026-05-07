@@ -39,21 +39,26 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
         return this.internal.llm.isDataChannelTokenEnabled();
       },
 
-      // Resolves the *owning* Meeting at refresh time instead of relying on
-      // whichever Meeting most recently overwrote the singleton refresh handler
-      // in `internal-plugin-llm`. Uses the in-flight request URL to look up the
-      // matching LLM session's locusUrl, then finds the Meeting in the meetings
-      // collection. Falls back to the LLM plugin's singleton handler when the
-      // lookup cannot resolve a Meeting (preserves prior behavior).
+      // Route refresh by request URL in two steps:
+      // 1) Match active LLM sessions (supports non-default/multiple sessions)
+      // 2) If no session matches, resolve locusUrl and refresh via owning meeting
+      // Falls back to default LLM session handler when neither route resolves.
       refreshDataChannelToken: async (requestUrl?: string) => {
+        let sessionId;
         let meeting;
 
         if (typeof requestUrl === 'string') {
           // @ts-ignore
-          const locusUrl = this.internal.llm.getLocusUrlByDatachannelUrl?.(requestUrl);
-          if (locusUrl) {
+          sessionId = this.internal.llm.getSessionIdByDatachannelUrl?.(requestUrl);
+
+          if (!sessionId) {
             // @ts-ignore
-            meeting = this.meetings?.getMeetingByType?.(LOCUS_URL, locusUrl);
+            const locusUrl = this.internal.llm.getLocusUrlByDatachannelUrl?.(requestUrl);
+
+            if (locusUrl) {
+              // @ts-ignore
+              meeting = this.meetings?.getMeetingByType?.(LOCUS_URL, locusUrl);
+            }
           }
         }
 
@@ -62,15 +67,16 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
           result = await meeting.refreshDataChannelToken();
         } else {
           // @ts-ignore
-          result = await this.internal.llm.refreshDataChannelToken();
+          result = await this.internal.llm.refreshDataChannelToken(sessionId);
         }
 
         if (!result?.body) {
           throw new Error('DataChannel token refresh returned no payload');
         }
         const {datachannelToken, dataChannelTokenType} = result.body;
+        const tokenStoreKey = sessionId || dataChannelTokenType;
         // @ts-ignore
-        this.internal.llm.setDatachannelToken(datachannelToken, dataChannelTokenType);
+        this.internal.llm.setDatachannelToken(datachannelToken, tokenStoreKey);
 
         return datachannelToken;
       },

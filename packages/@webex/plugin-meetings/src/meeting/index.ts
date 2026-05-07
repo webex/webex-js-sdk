@@ -137,6 +137,8 @@ import {
   STAGE_MANAGER_TYPE,
   LOCUSEVENT,
   LOCUS_LLM_EVENT,
+  LLM_DEFAULT_SESSION,
+  LLM_PRACTICE_SESSION,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -3470,7 +3472,10 @@ export default class Meeting extends StatelessWebexPlugin {
         this.controlsOptionsManager.setLocusUrl(this.locusUrl, !!isMainLocus);
         this.webinar.locusUrlUpdate(url);
         // @ts-ignore
-        this.webex.internal.llm.setRefreshHandler(() => this.refreshDataChannelToken());
+        this.webex.internal.llm.setRefreshHandler(
+          () => this.refreshDataChannelToken(),
+          LLM_DEFAULT_SESSION
+        );
 
         Trigger.trigger(
           this,
@@ -6497,14 +6502,14 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (datachannelToken) {
       // @ts-ignore
-      this.webex.internal.llm.setDatachannelToken(datachannelToken, DataChannelTokenType.Default);
+      this.webex.internal.llm.setDatachannelToken(datachannelToken, LLM_DEFAULT_SESSION);
     }
 
     if (practiceSessionDatachannelToken) {
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(
         practiceSessionDatachannelToken,
-        DataChannelTokenType.PracticeSession
+        LLM_PRACTICE_SESSION
       );
     }
   }
@@ -6517,7 +6522,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private async ensureDefaultDatachannelTokenAfterAdmit(): Promise<boolean> {
     try {
       // @ts-ignore
-      const datachannelToken = this.webex.internal.llm.getDatachannelToken();
+      const datachannelToken = this.webex.internal.llm.getDatachannelToken(LLM_DEFAULT_SESSION);
       // @ts-ignore
       const isDataChannelTokenEnabled = await this.webex.internal.llm.isDataChannelTokenEnabled();
 
@@ -6537,10 +6542,7 @@ export default class Meeting extends StatelessWebexPlugin {
       }
 
       // @ts-ignore
-      this.webex.internal.llm.setDatachannelToken(
-        fetchedDatachannelToken,
-        DataChannelTokenType.Default
-      );
+      this.webex.internal.llm.setDatachannelToken(fetchedDatachannelToken, LLM_DEFAULT_SESSION);
 
       return true;
     } catch (error) {
@@ -6567,9 +6569,7 @@ export default class Meeting extends StatelessWebexPlugin {
     const isJoined = this.isJoined();
 
     // @ts-ignore
-    const datachannelToken = this.webex.internal.llm.getDatachannelToken(
-      DataChannelTokenType.Default
-    );
+    const datachannelToken = this.webex.internal.llm.getDatachannelToken(LLM_DEFAULT_SESSION);
 
     const dataChannelUrl = datachannelUrl;
 

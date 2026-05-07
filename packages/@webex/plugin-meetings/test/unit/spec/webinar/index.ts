@@ -33,6 +33,7 @@ describe('plugin-meetings', () => {
       webex.internal.llm = {
         getDatachannelToken: sinon.stub().returns(undefined),
         setDatachannelToken: sinon.stub(),
+        setRefreshHandler: sinon.stub(),
         isDataChannelTokenEnabled: sinon.stub().resolves(false),
         isConnected: sinon.stub().returns(false),
         disconnectLLM: sinon.stub().resolves(),

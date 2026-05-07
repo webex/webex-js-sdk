@@ -12,6 +12,19 @@ import {
 } from './constants';
 import {ILLMChannel, DataChannelTokenType} from './llm.types';
 
+const getRefreshHandlersMap = (
+  target: any
+): Map<
+  string,
+  () => Promise<{body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType}}>
+> => {
+  if (!target.refreshHandlers) {
+    target.refreshHandlers = new Map();
+  }
+
+  return target.refreshHandlers;
+};
+
 export const config = {
   llm: {
     /**
@@ -66,14 +79,15 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     }
   > = new Map();
 
-  private datachannelTokens: Record<DataChannelTokenType, string> = {
+  private datachannelTokens: Record<string, string> = {
     [DataChannelTokenType.Default]: undefined,
     [DataChannelTokenType.PracticeSession]: undefined,
   };
 
-  private refreshHandler?: () => Promise<{
-    body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
-  }>;
+  private refreshHandlers: Map<
+    string,
+    () => Promise<{body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType}}>
+  > = new Map();
 
   /**
    * Register to the websocket
@@ -233,26 +247,33 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
   /**
    * Get data channel token for the connection
-   * @param {DataChannelTokenType} dataChannelTokenType
+   * @param {DataChannelTokenType|string} tokenKey
    * @returns {string} data channel token
    */
   public getDatachannelToken = (
-    dataChannelTokenType: DataChannelTokenType = DataChannelTokenType.Default
+    tokenKey: DataChannelTokenType | string = DataChannelTokenType.Default
   ): string => {
-    return this.datachannelTokens[dataChannelTokenType];
+    return this.datachannelTokens[tokenKey];
   };
 
   /**
    * Set data channel token for the connection
    * @param {string} datachannelToken - data channel token
-   * @param {DataChannelTokenType} dataChannelTokenType
+   * @param {DataChannelTokenType|string} tokenKey
    * @returns {void}
    */
   public setDatachannelToken = (
     datachannelToken: string,
-    dataChannelTokenType: DataChannelTokenType = DataChannelTokenType.Default
+    tokenKey: DataChannelTokenType | string = DataChannelTokenType.Default
   ): void => {
-    this.datachannelTokens[dataChannelTokenType] = datachannelToken;
+    this.datachannelTokens[tokenKey] = datachannelToken;
+
+    const sessionData = this.connections.get(tokenKey);
+
+    if (sessionData) {
+      sessionData.datachannelToken = datachannelToken;
+      this.connections.set(tokenKey, sessionData);
+    }
   };
 
   /**
@@ -271,33 +292,37 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * Set the handler used to refresh the DataChannel token
    *
    * @param {function} handler - Function that returns a refreshed token
+   * @param {string} sessionId - Connection identifier (defaults to default session)
    * @returns {void}
    */
   public setRefreshHandler(
     handler: () => Promise<{
       body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
-    }>
+    }>,
+    sessionId: string = LLM_DEFAULT_SESSION
   ) {
-    this.refreshHandler = handler;
+    getRefreshHandlersMap(this).set(sessionId, handler);
   }
 
   /**
    * Refresh the data channel token using the injected handler.
    * Logs a descriptive error if the handler is missing or fails.
-   *
+   * @param {string} sessionId - Connection identifier (defaults to default session)
    * @returns {Promise<string>} The refreshed token.
    */
-  public async refreshDataChannelToken() {
-    if (!this.refreshHandler) {
+  public async refreshDataChannelToken(sessionId: string = LLM_DEFAULT_SESSION) {
+    const refreshHandler = getRefreshHandlersMap(this).get(sessionId);
+
+    if (!refreshHandler) {
       this.logger.warn(
-        'llm#refreshDataChannelToken --> LLM refreshHandler is not set, skipping token refresh'
+        `llm#refreshDataChannelToken --> LLM refreshHandler is not set for session ${sessionId}, skipping token refresh`
       );
 
       return null;
     }
 
     try {
-      const res = await this.refreshHandler();
+      const res = await refreshHandler();
 
       return res;
     } catch (error: any) {
@@ -324,6 +349,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.disconnect(options, sessionId).then(() => {
       // Clean up sessions data
       this.connections.delete(sessionId);
+      this.datachannelTokens[sessionId] = undefined;
+      delete this.datachannelTokens[sessionId];
+      getRefreshHandlersMap(this).delete(sessionId);
     });
 
   /**
@@ -335,6 +363,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.disconnectAll(options).then(() => {
       // Clean up all connection data
       this.connections.clear();
+      getRefreshHandlersMap(this).clear();
     });
 
   /**
@@ -365,6 +394,24 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     for (const [, connection] of this.connections) {
       if (connection.datachannelUrl && requestUrl.startsWith(connection.datachannelUrl)) {
         return connection.locusUrl;
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Look up the sessionId associated with a datachannel request URL.
+   * Iterates all active LLM sessions and returns the sessionId whose
+   * stored datachannelUrl is a prefix of the given request URL.
+   *
+   * @param {string} requestUrl - The in-flight request URL to match
+   * @returns {string | undefined} The matching sessionId, or undefined if not found
+   */
+  public getSessionIdByDatachannelUrl(requestUrl: string): string | undefined {
+    for (const [sessionId, connection] of this.connections) {
+      if (connection.datachannelUrl && requestUrl.startsWith(connection.datachannelUrl)) {
+        return sessionId;
       }
     }
 

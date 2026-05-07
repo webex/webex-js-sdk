@@ -316,12 +316,35 @@ describe('plugin-llm', () => {
     });
 
     describe('#setRefreshHandler', () => {
+      beforeEach(() => {
+        llmService.setRefreshHandler = LLMChannel.prototype.setRefreshHandler.bind(llmService);
+        llmService.refreshDataChannelToken = LLMChannel.prototype.refreshDataChannelToken.bind(llmService);
+      });
+
       it('stores the provided handler', () => {
         const handler = sinon.stub().resolves({ body: { datachannelToken: 'newToken' } });
         llmService.setRefreshHandler(handler);
 
-        // @ts-ignore
-        assert.equal(llmService.refreshHandler, handler);
+        return llmService.refreshDataChannelToken().then((result) => {
+          assert.equal(result.body.datachannelToken, 'newToken');
+          sinon.assert.calledOnce(handler);
+        });
+      });
+
+      it('stores handlers per session id', () => {
+        const handlerS1 = sinon.stub().resolves({ body: { datachannelToken: 'token-s1' } });
+        const handlerS2 = sinon.stub().resolves({ body: { datachannelToken: 'token-s2' } });
+
+        llmService.setRefreshHandler(handlerS1, 's1');
+        llmService.setRefreshHandler(handlerS2, 's2');
+
+        return Promise.all([
+          llmService.refreshDataChannelToken('s1'),
+          llmService.refreshDataChannelToken('s2'),
+        ]).then(([resultS1, resultS2]) => {
+          assert.equal(resultS1.body.datachannelToken, 'token-s1');
+          assert.equal(resultS2.body.datachannelToken, 'token-s2');
+        });
       });
     });
 
@@ -342,6 +365,11 @@ describe('plugin-llm', () => {
     });
 
     describe('#refreshDataChannelToken', () => {
+      beforeEach(() => {
+        llmService.setRefreshHandler = LLMChannel.prototype.setRefreshHandler.bind(llmService);
+        llmService.refreshDataChannelToken = LLMChannel.prototype.refreshDataChannelToken.bind(llmService);
+      });
+
       it('returns null and logs warn if no handler is set', async () => {
         const warnSpy = llmService.logger.warn
 
@@ -352,7 +380,7 @@ describe('plugin-llm', () => {
         sinon.assert.calledOnce(warnSpy);
         sinon.assert.calledWithMatch(
           warnSpy,
-          sinon.match('LLM refreshHandler is not set')
+          sinon.match('LLM refreshHandler is not set for session')
         );
       });
 
@@ -363,6 +391,18 @@ describe('plugin-llm', () => {
         llmService.setRefreshHandler(handler);
 
         const token = await llmService.refreshDataChannelToken();
+
+        assert.equal(token, mockToken);
+        sinon.assert.calledOnce(handler);
+      });
+
+      it('uses the handler for the provided session id', async () => {
+        const mockToken = { body: { datachannelToken: 'session-token', isPracticeSession: true } };
+        const handler = sinon.stub().resolves(mockToken);
+
+        llmService.setRefreshHandler(handler, 's2');
+
+        const token = await llmService.refreshDataChannelToken('s2');
 
         assert.equal(token, mockToken);
         sinon.assert.calledOnce(handler);
@@ -392,6 +432,12 @@ describe('plugin-llm', () => {
         assert.equal(llmService.getDatachannelToken('llm-default-session'), 'abc123');
         llmService.setDatachannelToken('123abc','llm-practice-session');
         assert.equal(llmService.getDatachannelToken('llm-practice-session'), '123abc');
+      });
+
+      it('supports arbitrary session id token keys', () => {
+        llmService.setDatachannelToken('token-s1', 'session-custom-1');
+
+        assert.equal(llmService.getDatachannelToken('session-custom-1'), 'token-s1');
       });
     });
 
@@ -533,6 +579,31 @@ describe('plugin-llm', () => {
 
       it('returns undefined when no connections exist', () => {
         const result = llmService.getLocusUrlByDatachannelUrl(datachannelUrl);
+
+        assert.equal(result, undefined);
+      });
+    });
+
+    describe('#getSessionIdByDatachannelUrl', () => {
+      const datachannelUrl2 = 'https://board-b.wbx2.com/datachannel/api/v1/locus/ps-encoded/registrations';
+
+      beforeEach(() => {
+        llmService.getSessionIdByDatachannelUrl = LLMChannel.prototype.getSessionIdByDatachannelUrl.bind(llmService);
+      });
+
+      it('returns sessionId when request URL matches a session datachannelUrl', async () => {
+        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
+        await llmService.registerAndConnect('https://locus-b.wbx2.com/locus/api/v1/loci/456', datachannelUrl2, undefined, 's2');
+
+        const result = llmService.getSessionIdByDatachannelUrl(datachannelUrl2 + '/some-path');
+
+        assert.equal(result, 's2');
+      });
+
+      it('returns undefined when no session matches the request URL', async () => {
+        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
+
+        const result = llmService.getSessionIdByDatachannelUrl('https://unknown.example.com/path');
 
         assert.equal(result, undefined);
       });

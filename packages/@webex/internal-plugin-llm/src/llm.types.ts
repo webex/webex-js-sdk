@@ -13,7 +13,19 @@ interface ILLMChannel {
   disconnectAllLLM: (options?: {code: number; reason: string}) => Promise<void>;
   setOwnerMeetingId: (ownerMeetingId: string | undefined, sessionId?: string) => void;
   getOwnerMeetingId: (sessionId?: string) => string | undefined;
+  getDatachannelToken: (tokenKey?: DataChannelTokenKey) => string;
+  setDatachannelToken: (datachannelToken: string, tokenKey?: DataChannelTokenKey) => void;
+  setRefreshHandler: (
+    handler: () => Promise<{
+      body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
+    }>,
+    sessionId?: string
+  ) => void;
+  refreshDataChannelToken: (sessionId?: string) => Promise<{
+    body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
+  } | null>;
   getLocusUrlByDatachannelUrl: (requestUrl: string) => string | undefined;
+  getSessionIdByDatachannelUrl: (requestUrl: string) => string | undefined;
   getAllConnections: () => Map<
     string,
     {
@@ -32,5 +44,7 @@ export enum DataChannelTokenType {
   PracticeSession = 'llm-practice-session',
 }
 
+type DataChannelTokenKey = DataChannelTokenType | string;
+
 // eslint-disable-next-line import/prefer-default-export
-export type {ILLMChannel};
+export type {ILLMChannel, DataChannelTokenKey};
