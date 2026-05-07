@@ -219,9 +219,12 @@ const Credentials = WebexPlugin.extend({
    *
    * Mirrors `buildLoginUrl` / `buildLogoutUrl` — pure URL construction, no
    * navigation side effects. The base URL is read from the `idbroker`
-   * service in the services plugin catalog rather than from
-   * `this.config.authorizeUrl`, because the third-party endpoint always
-   * lives on IdBroker (no hydra proxy).
+   * service in the services plugin catalog when available, falling back
+   * to `this.config.idbroker.url` (which itself defaults to
+   * `https://idbroker.webex.com` or `IDBROKER_BASE_URL`). This matches
+   * the pattern used by sibling derived URLs (`activationUrl`,
+   * `tokenUrl`, `logoutUrl`, ...) and avoids a race where this helper
+   * could be called before the services catalog has populated.
    *
    * @instance
    * @memberof Credentials
@@ -240,11 +243,7 @@ const Credentials = WebexPlugin.extend({
       throw new Error('`options.returnURL` is required');
     }
 
-    const baseUrl = this.webex.internal.services.get('idbroker');
-
-    if (!baseUrl) {
-      throw new Error('idbroker service is not available');
-    }
+    const baseUrl = this.webex.internal.services.get('idbroker') || this.config.idbroker.url;
 
     const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
 
