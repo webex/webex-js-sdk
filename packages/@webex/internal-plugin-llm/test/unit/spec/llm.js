@@ -3,6 +3,7 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import Mercury from '@webex/internal-plugin-mercury';
 import LLMService from '@webex/internal-plugin-llm';
+import LLMChannel from '@webex/internal-plugin-llm/src/llm';
 
 describe('plugin-llm', () => {
   const locusUrl = 'locusUrl';
@@ -499,6 +500,41 @@ describe('plugin-llm', () => {
 
         sinon.assert.calledOnce(llmService.disconnectAll);
         assert.equal(llmService.getAllConnections().size, 0);
+      });
+    });
+
+    describe('#getLocusUrlByDatachannelUrl', () => {
+      const locusUrl2 = 'https://locus-b.wbx2.com/locus/api/v1/loci/456';
+      const datachannelUrl2 = 'https://board-b.wbx2.com/datachannel/api/v1/locus/ps-encoded/registrations';
+
+      // Ampersand State.extend() does not always propagate prototype methods
+      // added to child classes, so we bind the method from the class prototype
+      // directly onto the test instance.
+      beforeEach(() => {
+        llmService.getLocusUrlByDatachannelUrl = LLMChannel.prototype.getLocusUrlByDatachannelUrl.bind(llmService);
+      });
+
+      it('returns locusUrl when request URL matches a session datachannelUrl', async () => {
+        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
+        await llmService.registerAndConnect(locusUrl2, datachannelUrl2, undefined, 's2');
+
+        const result = llmService.getLocusUrlByDatachannelUrl(datachannelUrl2 + '/some-path');
+
+        assert.equal(result, locusUrl2);
+      });
+
+      it('returns undefined when no session matches the request URL', async () => {
+        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
+
+        const result = llmService.getLocusUrlByDatachannelUrl('https://unknown.example.com/path');
+
+        assert.equal(result, undefined);
+      });
+
+      it('returns undefined when no connections exist', () => {
+        const result = llmService.getLocusUrlByDatachannelUrl(datachannelUrl);
+
+        assert.equal(result, undefined);
       });
     });
 

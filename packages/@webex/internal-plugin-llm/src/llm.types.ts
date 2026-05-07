@@ -13,6 +13,7 @@ interface ILLMChannel {
   disconnectAllLLM: (options?: {code: number; reason: string}) => Promise<void>;
   setOwnerMeetingId: (ownerMeetingId: string | undefined, sessionId?: string) => void;
   getOwnerMeetingId: (sessionId?: string) => string | undefined;
+  getLocusUrlByDatachannelUrl: (requestUrl: string) => string | undefined;
   getAllConnections: () => Map<
     string,
     {

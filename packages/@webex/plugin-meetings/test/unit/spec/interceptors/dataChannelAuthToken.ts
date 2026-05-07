@@ -7,7 +7,7 @@ import DataChannelAuthTokenInterceptor from '@webex/plugin-meetings/src/intercep
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import * as utils from '@webex/plugin-meetings/src/interceptors/utils';
 import {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY} from '@webex/plugin-meetings/src/interceptors/constant';
-import {LLM_PRACTICE_SESSION, LLM_DEFAULT_SESSION, LOCUS_URL} from '@webex/plugin-meetings/src/constants';
+import {LOCUS_URL} from '@webex/plugin-meetings/src/constants';
 
 describe('plugin-meetings', () => {
   describe('Interceptors', () => {
@@ -247,8 +247,7 @@ describe('plugin-meetings', () => {
 
           llmMock = {
             isDataChannelTokenEnabled: sinon.stub().resolves(true),
-            getLocusUrl: sinon.stub(),
-            getDatachannelUrl: sinon.stub(),
+            getLocusUrlByDatachannelUrl: sinon.stub(),
             refreshDataChannelToken: sinon.stub().resolves({
               body: {datachannelToken: 'token-from-llm-fallback', dataChannelTokenType: 'Default'},
             }),
@@ -268,9 +267,7 @@ describe('plugin-meetings', () => {
         });
 
         it('routes PS request URL to PS-owning Meeting', async () => {
-          llmMock.getDatachannelUrl.withArgs(LLM_PRACTICE_SESSION).returns(PS_DATACHANNEL_URL);
-          llmMock.getDatachannelUrl.withArgs(LLM_DEFAULT_SESSION).returns(DEFAULT_DATACHANNEL_URL);
-          llmMock.getLocusUrl.withArgs(LLM_PRACTICE_SESSION).returns('https://locus-a.example.com');
+          llmMock.getLocusUrlByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns('https://locus-a.example.com');
           meetingsMock.getMeetingByType.withArgs(LOCUS_URL, 'https://locus-a.example.com').returns(meetingA);
 
           const token = await dispatcherInterceptor._refreshDataChannelToken(PS_DATACHANNEL_URL);
@@ -288,9 +285,7 @@ describe('plugin-meetings', () => {
             }),
           };
 
-          llmMock.getDatachannelUrl.withArgs(LLM_PRACTICE_SESSION).returns(PS_DATACHANNEL_URL);
-          llmMock.getDatachannelUrl.withArgs(LLM_DEFAULT_SESSION).returns(DEFAULT_DATACHANNEL_URL);
-          llmMock.getLocusUrl.withArgs(LLM_DEFAULT_SESSION).returns('https://locus-b.example.com');
+          llmMock.getLocusUrlByDatachannelUrl.withArgs(DEFAULT_DATACHANNEL_URL).returns('https://locus-b.example.com');
           meetingsMock.getMeetingByType.withArgs(LOCUS_URL, 'https://locus-b.example.com').returns(meetingB);
 
           const token = await dispatcherInterceptor._refreshDataChannelToken(DEFAULT_DATACHANNEL_URL);
@@ -302,9 +297,7 @@ describe('plugin-meetings', () => {
         });
 
         it('falls back to LLM singleton when no Meeting matches locusUrl', async () => {
-          llmMock.getDatachannelUrl.withArgs(LLM_PRACTICE_SESSION).returns(PS_DATACHANNEL_URL);
-          llmMock.getDatachannelUrl.withArgs(LLM_DEFAULT_SESSION).returns(DEFAULT_DATACHANNEL_URL);
-          llmMock.getLocusUrl.withArgs(LLM_PRACTICE_SESSION).returns('https://locus-unknown.example.com');
+          llmMock.getLocusUrlByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns('https://locus-unknown.example.com');
           meetingsMock.getMeetingByType.returns(undefined);
 
           const token = await dispatcherInterceptor._refreshDataChannelToken(PS_DATACHANNEL_URL);
@@ -314,10 +307,8 @@ describe('plugin-meetings', () => {
           sinon.assert.calledOnceWithExactly(llmMock.setDatachannelToken, 'token-from-llm-fallback', 'Default');
         });
 
-        it('falls back to LLM singleton when LLM has no locusUrl for session', async () => {
-          llmMock.getDatachannelUrl.withArgs(LLM_PRACTICE_SESSION).returns(undefined);
-          llmMock.getDatachannelUrl.withArgs(LLM_DEFAULT_SESSION).returns(undefined);
-          llmMock.getLocusUrl.withArgs(LLM_DEFAULT_SESSION).returns(undefined);
+        it('falls back to LLM singleton when URL does not match any session', async () => {
+          llmMock.getLocusUrlByDatachannelUrl.returns(undefined);
 
           const token = await dispatcherInterceptor._refreshDataChannelToken(
             'https://unknown-datachannel.example.com/registrations'

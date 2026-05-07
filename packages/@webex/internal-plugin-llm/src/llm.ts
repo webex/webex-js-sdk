@@ -354,6 +354,24 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   > => new Map(this.connections);
 
   /**
+   * Look up the locusUrl associated with a datachannel request URL.
+   * Iterates all active LLM sessions and returns the locusUrl of the
+   * session whose stored datachannelUrl is a prefix of the given request URL.
+   *
+   * @param {string} requestUrl - The in-flight request URL to match
+   * @returns {string | undefined} The matching locusUrl, or undefined if not found
+   */
+  public getLocusUrlByDatachannelUrl(requestUrl: string): string | undefined {
+    for (const [, connection] of this.connections) {
+      if (connection.datachannelUrl && requestUrl.startsWith(connection.datachannelUrl)) {
+        return connection.locusUrl;
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
    * Returns true if  data channel token is enabled, false otherwise
    * @returns {Promise<boolean>} resolves with true if data channel token  is enabled
    */
