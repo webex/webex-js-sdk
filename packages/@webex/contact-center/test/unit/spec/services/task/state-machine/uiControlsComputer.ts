@@ -27,7 +27,7 @@ function createConsultTaskData() {
           currentState: 'consulting',
           isConsulted: true,
         },
-        'customer-1': {id: 'customer-1', pType: 'CUSTOMER', hasLeft: false},
+        'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
       } as any,
       media: {
         'interaction-1': {
