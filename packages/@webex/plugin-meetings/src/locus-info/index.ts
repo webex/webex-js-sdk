@@ -749,10 +749,6 @@ export default class LocusInfo extends EventsScope {
 
       // Active parser found - pass the API response to it
       if (isWrapped) {
-        LoggerProxy.logger.info(
-          'Locus-info:index#handleLocusAPIResponse --> passing Locus API response to HashTreeParser: ',
-          responseBody
-        );
         // update the data in our hash trees
         hashTreeParserEntry.parser.handleLocusUpdate(responseBody);
       } else {

@@ -533,19 +533,6 @@ class HashTreeParser {
   private handleRootHashHeartBeatMessage(message: RootHashMessage): void {
     const {dataSets} = message;
 
-    LoggerProxy.logger.info(
-      `HashTreeParser#handleRootHashMessage --> ${
-        this.debugId
-      } Received heartbeat root hash message with data sets: ${JSON.stringify(
-        dataSets.map(({name, root, leafCount, version}) => ({
-          name,
-          root,
-          leafCount,
-          version,
-        }))
-      )}`
-    );
-
     dataSets.forEach((dataSet) => {
       this.updateDataSetInfo(dataSet);
       this.runSyncAlgorithm(dataSet);
@@ -649,6 +636,12 @@ class HashTreeParser {
     }
 
     const {dataSets, locus, metadata} = update;
+
+    LoggerProxy.logger.info(
+      `HashTreeParser#handleLocusUpdate --> ${this.debugId} received update with dataSets=${dataSets
+        ?.map((ds) => ds.name)
+        .join(',')} metadata=${metadata ? 'yes' : 'no'}`
+    );
 
     if (!dataSets) {
       // this happens for example when we handle GET /loci response
@@ -966,14 +959,27 @@ class HashTreeParser {
     const {dataSets, visibleDataSetsUrl} = message;
 
     LoggerProxy.logger.info(
-      `HashTreeParser#parseMessage --> ${this.debugId} received message ${debugText || ''}:`,
-      message
+      `HashTreeParser#parseMessage --> ${this.debugId} ${
+        debugText || ''
+      } dataSets: ${message.dataSets
+        ?.map(({name, version}) => `${name}:${version}`)
+        .join(',')}, elements: ${message.locusStateElements
+        ?.map(
+          (el) =>
+            `${el.htMeta.elementId.type}:${el.htMeta.elementId.id}:${el.htMeta.elementId.version}${
+              el.data ? '+' : '-'
+            }`
+        )
+        .join(',')}`
     );
+
     if (message.locusStateElements?.length === 0) {
       LoggerProxy.logger.warn(
         `HashTreeParser#parseMessage --> ${this.debugId} got empty locusStateElements!!!`
       );
-      // todo: send a metric
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_EMPTY_LOCUS_STATE_ELEMENTS, {
+        debugId: this.debugId,
+      });
     }
 
     // first, update our metadata about the datasets with info from the message
@@ -1401,9 +1407,8 @@ class HashTreeParser {
     }
 
     if (!dataSet.hashTree) {
-      LoggerProxy.logger.info(
-        `HashTreeParser#runSyncAlgorithm --> ${this.debugId} Data set "${dataSet.name}" has no hash tree, skipping sync algorithm`
-      );
+      // no hash tree, so no need to do any syncing
+      // we fall into this branch often, because Locus sends dataSets in messages that are not visible to us
 
       return;
     }
@@ -1416,10 +1421,6 @@ class HashTreeParser {
       if (dataSet.timer) {
         clearTimeout(dataSet.timer);
       }
-
-      LoggerProxy.logger.info(
-        `HashTreeParser#runSyncAlgorithm --> ${this.debugId} setting "${dataSet.name}" sync timer for ${delay}`
-      );
 
       dataSet.timer = setTimeout(() => {
         dataSet.timer = undefined;
@@ -1438,10 +1439,6 @@ class HashTreeParser {
           this.enqueueSyncForDataset(
             dataSet.name,
             `Root hash mismatch: received=${dataSet.root}, ours=${rootHash}`
-          );
-        } else {
-          LoggerProxy.logger.info(
-            `HashTreeParser#runSyncAlgorithm --> ${this.debugId} "${dataSet.name}" root hash matching: ${rootHash}, version=${dataSet.version}`
           );
         }
       }, delay);
@@ -1488,6 +1485,11 @@ class HashTreeParser {
         LoggerProxy.logger.warn(
           `HashTreeParser#resetHeartbeatWatchdogs --> ${this.debugId} Heartbeat watchdog fired for data set "${dataSet.name}" - no heartbeat received within expected interval, initiating sync`
         );
+
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED, {
+          debugId: this.debugId,
+          dataSetName: dataSet.name,
+        });
 
         this.enqueueSyncForDataset(dataSet.name, `heartbeat watchdog expired`);
         this.resetHeartbeatWatchdogs([dataSet]);
@@ -1746,10 +1748,6 @@ class HashTreeParser {
       body,
     })
       .then((resp) => {
-        LoggerProxy.logger.info(
-          `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Sync request succeeded for "${dataSet.name}"`
-        );
-
         if (!resp.body || isEmpty(resp.body)) {
           LoggerProxy.logger.info(
             `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Got ${resp.statusCode} with empty body for sync request for data set "${dataSet.name}", data should arrive via messages`
