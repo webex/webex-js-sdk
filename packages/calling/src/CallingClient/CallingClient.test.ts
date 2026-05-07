@@ -17,7 +17,7 @@ import {
 /* eslint-disable dot-notation */
 import {CALLING_CLIENT_EVENT_KEYS, CallSessionEvent, MOBIUS_EVENT_KEYS} from '../Events/types';
 import log from '../Logger';
-import {createClient} from './CallingClient';
+import {CallingClient, createClient} from './CallingClient';
 import {ICallingClient} from './types';
 import * as utils from '../common/Utils';
 import {getCallManager} from './calling/callManager';
@@ -212,43 +212,48 @@ describe('CallingClient Tests', () => {
       }).not.toThrow(Error);
     });
 
-    /**
-     * Input sdk config to callingClient with serviceData carrying valid value for indicator
-     * 'contactcenter', but an empty string for domain field in it.
-     *
-     * It should throw error and abort execution as domain value is invalid.
-     *
-     * DOMAIN field for service type 'contactcenter' must carry a non-empty valid domain type string.
-     */
-    it('ContactCenter: verify empty invalid service domain', async () => {
-      const serviceDataObj = {indicator: ServiceIndicator.CONTACT_CENTER, domain: ''};
-
-      try {
-        callingClient = await createClient(webex, {serviceData: serviceDataObj});
-      } catch (e) {
-        expect(e.message).toEqual('Invalid service domain.');
-      }
-      expect.assertions(1);
-    });
-
-    /**
-     * Input sdk config to callingClient with serviceData carrying valid value for indicator
-     * 'contactcenter' , and a valid domain type string for domain field in it.
-     *
-     * Execution should proceed properly and createRegistration should be called with same serviceData.
-     *
-     * DOMAIN field for service type 'contactcenter' must carry a non-empty valid domain type string.
-     */
-    it('ContactCenter: verify valid service domain', async () => {
+    it('ContactCenter: uses config domain and does not fetch RTMS domain from catalog', async () => {
       const serviceDataObj = {
         indicator: ServiceIndicator.CONTACT_CENTER,
         domain: 'test.example.com',
       };
 
-      expect(async () => {
-        callingClient = await createClient(webex, {serviceData: serviceDataObj});
-        expect(callingClient).toBeTruthy();
-      }).not.toThrow(Error);
+      webex.internal.services.get = jest.fn();
+      callingClient = await createClient(webex, {serviceData: serviceDataObj});
+      expect(callingClient).toBeTruthy();
+      expect(webex.internal.services.get).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Input sdk config to callingClient with serviceData carrying valid value for indicator
+     * 'contactcenter' , and a valid domain type string for domain field in it.
+     */
+    it('ContactCenter: fetches RTMS domain from catalog when config domain is empty', async () => {
+      const serviceDataObj = {indicator: ServiceIndicator.CONTACT_CENTER, domain: ''};
+
+      webex.internal.services.get = jest
+        .fn()
+        .mockReturnValue('https://cc-rtms.example.com/calling/web/rtms');
+
+      callingClient = await createClient(webex, {serviceData: serviceDataObj});
+      expect(callingClient).toBeTruthy();
+      expect(webex.internal.services.get).toHaveBeenCalledWith('wcc-calling-rtms-domain');
+    });
+
+    it('ContactCenter: init fails when config domain is empty and catalog fetch fails', async () => {
+      const serviceDataObj = {indicator: ServiceIndicator.CONTACT_CENTER, domain: ''};
+      const createLineSpy = jest.spyOn(CallingClient.prototype as any, 'createLine');
+
+      webex.internal.services.get = jest.fn(() => {
+        throw new Error('catalog unavailable');
+      });
+
+      await expect(createClient(webex, {serviceData: serviceDataObj})).rejects.toThrow(
+        'Invalid service domain.'
+      );
+      expect(createLineSpy).not.toHaveBeenCalled();
+
+      createLineSpy.mockRestore();
     });
 
     it('Get current log level', async () => {

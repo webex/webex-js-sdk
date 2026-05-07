@@ -1175,6 +1175,10 @@ describe('plugin-meetings', () => {
       {functionName: 'canSelectSpokenLanguages', displayHint: 'DISPLAY_NON_ENGLISH_ASR'},
       {functionName: 'waitingForOthersToJoin', displayHint: 'WAITING_FOR_OTHERS'},
       {functionName: 'showAutoEndMeetingWarning', displayHint: 'SHOW_AUTO_END_MEETING_WARNING'},
+      {
+        functionName: 'isAnonymizeDisplayNamesEnabled',
+        displayHint: 'ANONYMOUS_DISPLAY_NAMES_ENABLED',
+      },
     ].forEach(({functionName, displayHint}) => {
       describe(functionName, () => {
         it('works as expected', () => {
