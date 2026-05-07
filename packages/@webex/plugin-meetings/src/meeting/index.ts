@@ -2791,7 +2791,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private setupLocusControlsListener() {
     this.locusInfo.on(
       LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
-      ({state, modifiedBy, lastModified}) => {
+      ({state, modifiedBy, lastModified, modifiedByServiceAppName, modifiedByServiceAppId}) => {
         let event;
 
         switch (state) {
@@ -2817,6 +2817,8 @@ export default class Meeting extends StatelessWebexPlugin {
           state: state === RECORDING_STATE.RESUMED ? RECORDING_STATE.RECORDING : state,
           modifiedBy,
           lastModified,
+          modifiedByServiceAppName,
+          modifiedByServiceAppId,
         };
         Trigger.trigger(
           this,
@@ -4614,6 +4616,9 @@ export default class Meeting extends StatelessWebexPlugin {
           ),
           isAttendeeRequestAiAssistantDeclinedAll:
             MeetingUtil.attendeeRequestAiAssistantDeclinedAll(this.userDisplayHints),
+          isAnonymizeDisplayNamesEnabled: MeetingUtil.isAnonymizeDisplayNamesEnabled(
+            this.userDisplayHints
+          ),
         }) || changed;
     }
     if (changed) {
