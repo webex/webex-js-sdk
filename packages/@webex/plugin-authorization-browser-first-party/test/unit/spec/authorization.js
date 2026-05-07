@@ -560,6 +560,72 @@ describe('plugin-authorization-browser-first-party', () => {
       });
     });
 
+    describe('#initiateThirdPartyLogin()', () => {
+      it('delegates to #initiateThirdPartyLoginRedirect with the same options', () => {
+        const webex = makeWebex();
+        const stub = sinon
+          .stub(webex.authorization, 'initiateThirdPartyLoginRedirect')
+          .returns(Promise.resolve());
+        const options = {
+          oauth2provider: 'google',
+          returnURL: 'https://web.webex.com',
+        };
+
+        return webex.authorization.initiateThirdPartyLogin(options).then(() => {
+          assert.calledOnceWithExactly(stub, options);
+        });
+      });
+
+      it('returns the promise from #initiateThirdPartyLoginRedirect', () => {
+        const webex = makeWebex();
+        const expected = Promise.resolve();
+        sinon.stub(webex.authorization, 'initiateThirdPartyLoginRedirect').returns(expected);
+
+        assert.equal(
+          webex.authorization.initiateThirdPartyLogin({
+            oauth2provider: 'google',
+            returnURL: 'https://web.webex.com',
+          }),
+          expected
+        );
+      });
+    });
+
+    describe('#initiateThirdPartyLoginRedirect()', () => {
+      it('builds the third-party login URL and assigns it to getWindow().location', () => {
+        const webex = makeWebex();
+        const builtUrl =
+          'https://idbroker.webex.com/idb/ThirdPartyLogin?oauth2provider=google&returnURL=https%3A%2F%2Fweb.webex.com';
+        sinon.stub(webex.credentials, 'buildThirdPartyLoginUrl').returns(builtUrl);
+
+        return webex.authorization
+          .initiateThirdPartyLoginRedirect({
+            oauth2provider: 'google',
+            returnURL: 'https://web.webex.com',
+          })
+          .then(() => {
+            assert.calledOnceWithExactly(webex.credentials.buildThirdPartyLoginUrl, {
+              oauth2provider: 'google',
+              returnURL: 'https://web.webex.com',
+            });
+            assert.equal(webex.getWindow().location, builtUrl);
+          });
+      });
+
+      it('returns a Promise', () => {
+        const webex = makeWebex();
+        sinon.stub(webex.credentials, 'buildThirdPartyLoginUrl').returns('https://example.com');
+
+        const result = webex.authorization.initiateThirdPartyLoginRedirect({
+          oauth2provider: 'apple',
+          returnURL: 'https://web.webex.com',
+        });
+
+        assert.instanceOf(result, Promise);
+        return result;
+      });
+    });
+
     describe('#_generateQRCodeVerificationUrl()', () => {
       it('should generate a QR code URL when a userCode is present', () => {
         const verificationUrl = 'https://example.com/verify?userCode=123456';

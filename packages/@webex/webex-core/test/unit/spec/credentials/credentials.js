@@ -232,6 +232,76 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#buildThirdPartyLoginUrl()', () => {
+      function makeWebexWithIdbroker(idbrokerUrl) {
+        const webex = new MockWebex({
+          children: {
+            credentials: Credentials,
+          },
+        });
+
+        webex.internal = webex.internal || {};
+        webex.internal.services = {
+          get: sinon.stub().withArgs('idbroker').returns(idbrokerUrl),
+        };
+        webex.trigger('change:config');
+
+        return webex;
+      }
+
+      it('throws if `oauth2provider` is missing', () => {
+        const webex = makeWebexWithIdbroker('https://idbroker.webex.com/');
+
+        assert.throws(() => {
+          webex.credentials.buildThirdPartyLoginUrl({returnURL: 'https://web.webex.com'});
+        }, /`options.oauth2provider` is required/);
+      });
+
+      it('throws if `returnURL` is missing', () => {
+        const webex = makeWebexWithIdbroker('https://idbroker.webex.com/');
+
+        assert.throws(() => {
+          webex.credentials.buildThirdPartyLoginUrl({oauth2provider: 'google'});
+        }, /`options.returnURL` is required/);
+      });
+
+      it('throws if the idbroker service is not available', () => {
+        const webex = makeWebexWithIdbroker(undefined);
+
+        assert.throws(() => {
+          webex.credentials.buildThirdPartyLoginUrl({
+            oauth2provider: 'google',
+            returnURL: 'https://web.webex.com',
+          });
+        }, /idbroker service is not available/);
+      });
+
+      it('builds the URL with provider and returnURL query params', () => {
+        const webex = makeWebexWithIdbroker('https://idbroker.webex.com/');
+
+        const url = webex.credentials.buildThirdPartyLoginUrl({
+          oauth2provider: 'google',
+          returnURL: 'https://web.webex.com',
+        });
+
+        assert.equal(
+          url,
+          'https://idbroker.webex.com/idb/ThirdPartyLogin?oauth2provider=google&returnURL=https%3A%2F%2Fweb.webex.com'
+        );
+      });
+
+      it('normalizes idbroker base URL without trailing slash', () => {
+        const webex = makeWebexWithIdbroker('https://idbroker.webex.com');
+
+        const url = webex.credentials.buildThirdPartyLoginUrl({
+          oauth2provider: 'google',
+          returnURL: 'https://web.webex.com',
+        });
+
+        assert.match(url, /^https:\/\/idbroker\.webex\.com\/idb\/ThirdPartyLogin\?/);
+      });
+    });
+
     describe('#buildLogoutUrl()', () => {
       skipInBrowser(it)('generates the logout url', () => {
         const webex = new MockWebex();

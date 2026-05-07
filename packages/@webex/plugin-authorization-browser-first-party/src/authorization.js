@@ -344,6 +344,59 @@ const Authorization = WebexPlugin.extend({
   },
 
   /**
+   * Initiates third-party (social provider) login by redirecting the user
+   * to IdBroker's `/idb/ThirdPartyLogin` endpoint.
+   *
+   * Mirrors `initiateLogin`'s role for the standard `/authorize` flow.
+   * Delegates to `initiateThirdPartyLoginRedirect` so any pre-redirect
+   * security plumbing (CSRF / `state`) can be added here without changing
+   * the navigation method, which the web client overrides for
+   * `targetOrigin` / postMessage handling in iframed contexts.
+   *
+   * @instance
+   * @memberof AuthorizationBrowserFirstParty
+   * @param {Object} options
+   * @param {string} options.oauth2provider
+   * @param {string} options.returnURL
+   * @returns {Promise<void>}
+   */
+  initiateThirdPartyLogin(options = {}) {
+    return this.initiateThirdPartyLoginRedirect(options);
+  },
+
+  /**
+   * Performs the navigation step of the third-party login flow. Builds the
+   * IdBroker URL via `Credentials#buildThirdPartyLoginUrl` and assigns it
+   * to `getWindow().location`.
+   *
+   * Mirrors `initiateAuthorizationCodeGrant` for the `/authorize` flow. The
+   * web client overrides this method to add `targetOrigin`/postMessage
+   * branching for iframed (crosslauncher / MJP) contexts.
+   *
+   * Note: intentionally not decorated with `@whileInFlight('isAuthorizing')`
+   * the way `initiateAuthorizationCodeGrant` is. That decorator just toggles
+   * an observable boolean on the instance while the returned promise is
+   * pending; this method resolves synchronously before the navigation
+   * actually happens, so the flag would flip true→false within the same
+   * tick and provide no useful signal.
+   *
+   * @instance
+   * @memberof AuthorizationBrowserFirstParty
+   * @param {Object} options
+   * @param {string} options.oauth2provider
+   * @param {string} options.returnURL
+   * @returns {Promise<void>}
+   */
+  initiateThirdPartyLoginRedirect(options = {}) {
+    this.logger.info('authorization: initiating third-party login redirect');
+    const url = this.webex.credentials.buildThirdPartyLoginUrl(options);
+
+    this.webex.getWindow().location = url;
+
+    return Promise.resolve();
+  },
+
+  /**
    * Called by {@link WebexCore#logout()}.
    * Constructs logout URL and (unless suppressed) navigates away to ensure
    * server-side session termination.

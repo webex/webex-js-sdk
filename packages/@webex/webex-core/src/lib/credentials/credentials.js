@@ -213,6 +213,48 @@ const Credentials = WebexPlugin.extend({
   },
 
   /**
+   * Generates a Third-Party Login URL pointing at IdBroker's
+   * `/idb/ThirdPartyLogin` endpoint. Used by the social-provider sign-in
+   * flow (Google / Microsoft / Apple / ...).
+   *
+   * Mirrors `buildLoginUrl` / `buildLogoutUrl` — pure URL construction, no
+   * navigation side effects. The base URL is read from the `idbroker`
+   * service in the services plugin catalog rather than from
+   * `this.config.authorizeUrl`, because the third-party endpoint always
+   * lives on IdBroker (no hydra proxy).
+   *
+   * @instance
+   * @memberof Credentials
+   * @param {Object} options
+   * @param {string} options.oauth2provider - Provider name (`google`,
+   *   `microsoft`, `apple`, ...). Required.
+   * @param {string} options.returnURL - URL IdBroker should send the user
+   *   back to after the third-party hand-off. Required.
+   * @returns {string}
+   */
+  buildThirdPartyLoginUrl({oauth2provider, returnURL} = {}) {
+    if (!oauth2provider) {
+      throw new Error('`options.oauth2provider` is required');
+    }
+    if (!returnURL) {
+      throw new Error('`options.returnURL` is required');
+    }
+
+    const baseUrl = this.webex.internal.services.get('idbroker');
+
+    if (!baseUrl) {
+      throw new Error('idbroker service is not available');
+    }
+
+    const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+
+    return `${normalizedBase}idb/ThirdPartyLogin?${querystring.stringify({
+      oauth2provider,
+      returnURL,
+    })}`;
+  },
+
+  /**
    * Generates a Logout URL
    * @instance
    * @memberof Credentials
