@@ -12550,6 +12550,7 @@ describe('plugin-meetings', () => {
         let showAutoEndMeetingWarningSpy;
         let canAttendeeRequestAiAssistantEnabledSpy;
         let attendeeRequestAiAssistantDeclinedAllSpy;
+        let isAnonymizeDisplayNamesEnabledSpy;
         // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
         beforeEach(() => {
@@ -12598,6 +12599,10 @@ describe('plugin-meetings', () => {
             MeetingUtil,
             'attendeeRequestAiAssistantDeclinedAll'
           );
+          isAnonymizeDisplayNamesEnabledSpy = sinon.spy(
+            MeetingUtil,
+            'isAnonymizeDisplayNamesEnabled'
+          );
         });
 
         afterEach(() => {
@@ -12606,6 +12611,7 @@ describe('plugin-meetings', () => {
           showAutoEndMeetingWarningSpy.restore();
           canAttendeeRequestAiAssistantEnabledSpy.restore();
           attendeeRequestAiAssistantDeclinedAllSpy.restore();
+          isAnonymizeDisplayNamesEnabledSpy.restore();
         });
 
         forEach(
@@ -13163,6 +13169,7 @@ describe('plugin-meetings', () => {
             meeting.roles
           );
           assert.calledWith(attendeeRequestAiAssistantDeclinedAllSpy, userDisplayHints);
+          assert.calledWith(isAnonymizeDisplayNamesEnabledSpy, userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],

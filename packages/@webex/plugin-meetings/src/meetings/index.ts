@@ -55,10 +55,12 @@ import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
 import MeetingCollection from './collection';
 import {
+  FetchSitePreferencesMeViaSiteOptions,
   MEETING_KEY,
   INoiseReductionEffect,
   IVirtualBackgroundEffect,
   MeetingRegistrationStatus,
+  SitePreferencesResponse,
 } from './meetings.types';
 import MeetingsUtil from './util';
 import PermissionError from '../common/errors/permission';
@@ -1403,6 +1405,31 @@ export default class Meetings extends WebexPlugin {
    */
   getPersonalMeetingRoom() {
     return this.personalMeetingRoom;
+  }
+
+  /**
+   * Fetches site preferences for the provided Webex site, or the preferred Webex site.
+   * This is used to determine capabilities of the site, such as whether scheduling a webinar is supported.
+   *
+   * @param {object} [options]
+   * @param {string} [options.siteUrl] - Webex site URL. Defaults to preferredWebexSite, for example "cisco.webex.com".
+   * @param {string} [options.siteName] - Site name query override. Defaults to the site name derived from siteUrl, for example "cisco" for "cisco.webex.com".
+   * @param {SitePreferenceSelectOption[]} [options.selectOptions] - Preference sections to fetch. Defaults to 'scheduling'.
+   * @returns {Promise<SitePreferencesResponse>} site preferences response body
+   * @throws {ParameterError}
+   * @public
+   * @memberof Meetings
+   * @example
+   * const preferences = await webex.meetings.fetchSitePreferencesMeViaSite();
+   * const supportScheduleWebinar = preferences?.scheduling?.supportScheduleWebinar;
+   */
+  public fetchSitePreferencesMeViaSite(
+    options: FetchSitePreferencesMeViaSiteOptions = {}
+  ): Promise<SitePreferencesResponse> {
+    return this.request.fetchSitePreferencesMeViaSite({
+      ...options,
+      siteUrl: options.siteUrl || this.preferredWebexSite,
+    });
   }
 
   /**
