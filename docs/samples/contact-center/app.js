@@ -97,6 +97,10 @@ const liveTranscriptTabElm = document.querySelector('#transcript-tab-live');
 const ivrTranscriptTabElm = document.querySelector('#transcript-tab-ivr');
 const liveTranscriptPaneElm = document.querySelector('#transcript-live-pane');
 const ivrTranscriptPaneElm = document.querySelector('#transcript-ivr-pane');
+const aiAssistantContentElm = document.querySelector('#ai-assistant-content');
+const aiAssistantContextInputElm = document.querySelector('#assistant-context-input');
+const aiAssistantActionBtn = document.querySelector('#get-assistance');
+const aiAssistantContextBtn = document.querySelector('#send-assistant-context');
 const multiLoginCheckbox = document.querySelector('#multiLoginFlag');
 deregisterBtn.style.backgroundColor = 'red';
 
@@ -112,6 +116,9 @@ function toggleMultiLogin() {
 
 const transcriptEntries = [];
 const MAX_TRANSCRIPT_LINES = 200;
+const MAX_AI_ASSISTANT_ENTRIES = 50;
+const registeredTaskListeners = new WeakSet();
+const aiAssistantStateByInteraction = new Map();
 
 function formatTranscriptTime(epochMillis) {
   if (!epochMillis || typeof epochMillis !== 'number') {
@@ -204,6 +211,258 @@ function appendRealtimeTranscript(payload) {
   setTranscriptTab('live');
 }
 
+function getAiAssistantState(interactionId) {
+  if (!aiAssistantStateByInteraction.has(interactionId)) {
+    aiAssistantStateByInteraction.set(interactionId, {
+      listening: false,
+      entries: [],
+      error: '',
+    });
+  }
+
+  return aiAssistantStateByInteraction.get(interactionId);
+}
+
+function formatAssistantTime(epochMillis) {
+  if (!epochMillis || typeof epochMillis !== 'number') {
+    return '--:--';
+  }
+
+  return new Date(epochMillis).toLocaleTimeString([], {minute: '2-digit', second: '2-digit'});
+}
+
+function trimAiAssistantEntries(state) {
+  if (state.entries.length > MAX_AI_ASSISTANT_ENTRIES) {
+    state.entries.splice(0, state.entries.length - MAX_AI_ASSISTANT_ENTRIES);
+  }
+}
+
+function getAdaptiveCardTextLines(node, lines = []) {
+  if (!node) {
+    return lines;
+  }
+
+  if (node.type === 'TextBlock' && typeof node.text === 'string' && node.text.trim()) {
+    lines.push(node.text.trim());
+  }
+
+  if (node.type === 'RichTextBlock' && Array.isArray(node.inlines)) {
+    const inlineText = node.inlines
+      .map((inline) => String(inline?.text || '').trim())
+      .join(' ')
+      .trim();
+
+    if (inlineText) {
+      lines.push(inlineText);
+    }
+  }
+
+  ['body', 'items', 'columns'].forEach((key) => {
+    if (!Array.isArray(node[key])) {
+      return;
+    }
+
+    node[key].forEach((child) => getAdaptiveCardTextLines(child, lines));
+  });
+
+  return lines;
+}
+
+function getCustomerQueryText(suggestionNode) {
+  if (typeof suggestionNode?.customerQuery === 'string' && suggestionNode.customerQuery.trim()) {
+    return suggestionNode.customerQuery.trim();
+  }
+
+  if (typeof suggestionNode?.query === 'string' && suggestionNode.query.trim()) {
+    return suggestionNode.query.trim();
+  }
+
+  const lines = getAdaptiveCardTextLines(suggestionNode?.adaptiveCard).filter((line) => {
+    const normalizedLine = line.toLowerCase();
+
+    return normalizedLine !== 'the customer said:' && normalizedLine !== 'customer said:';
+  });
+
+  return lines[lines.length - 1] || '';
+}
+
+function normalizeSuggestedResponse(payload) {
+  const suggestionNode = payload?.data || {};
+  const rawType = typeof suggestionNode?.type === 'string' ? suggestionNode.type.toUpperCase() : '';
+
+  if (!rawType) {
+    return null;
+  }
+
+  const id = suggestionNode?.adaptiveCardId || suggestionNode?.trackingId || `${rawType}-${Date.now()}`;
+  const timestamp = suggestionNode?.suggestionInputTimestamp || suggestionNode?.publishTimestamp || Date.now();
+
+  if (rawType === 'CUSTOMER_QUERY') {
+    const text = getCustomerQueryText(suggestionNode);
+
+    if (!text) {
+      return null;
+    }
+
+    return {
+      id,
+      type: 'customer-query',
+      label: 'The customer said:',
+      text,
+      timestamp,
+    };
+  }
+
+  if (rawType !== 'SUGGESTION') {
+    return null;
+  }
+
+  return {
+    id,
+    type: 'suggestion',
+    title: suggestionNode?.title || 'Suggested response',
+    suggestion: suggestionNode?.suggestion || '',
+    source: suggestionNode?.suggestionSource || '',
+    timestamp,
+  };
+}
+
+function renderAiAssistantPanel() {
+  if (!aiAssistantContentElm || !aiAssistantActionBtn || !aiAssistantContextInputElm) {
+    return;
+  }
+
+  aiAssistantContentElm.innerHTML = '';
+
+  const interactionId = currentTask?.data?.interactionId;
+  const hasSelectedTask = Boolean(interactionId);
+  aiAssistantActionBtn.disabled = !hasSelectedTask;
+  aiAssistantContextInputElm.disabled = !hasSelectedTask;
+  if (aiAssistantContextBtn) {
+    aiAssistantContextBtn.disabled = !hasSelectedTask;
+  }
+
+  if (!hasSelectedTask) {
+    const emptyStateElm = document.createElement('div');
+    emptyStateElm.className = 'assistant-empty-state';
+    emptyStateElm.textContent = 'Select an active task to request AI assistance.';
+    aiAssistantContentElm.appendChild(emptyStateElm);
+    return;
+  }
+
+  const state = getAiAssistantState(interactionId);
+  const introElm = document.createElement('div');
+  introElm.className = 'assistant-intro';
+  introElm.innerHTML = `
+    <div class="assistant-logo">AI</div>
+    <div class="assistant-intro__title">I&apos;m here to help! I&apos;ll keep listening and suggest responses as the conversation evolves.</div>
+  `;
+  aiAssistantContentElm.appendChild(introElm);
+
+  if (!state.entries.length && !state.listening && !state.error) {
+    const welcomeElm = document.createElement('div');
+    welcomeElm.className = 'assistant-empty-state';
+    welcomeElm.textContent = 'Click "Get assistance" to start generating suggested responses.';
+    aiAssistantContentElm.appendChild(welcomeElm);
+  }
+
+  state.entries.forEach((entry) => {
+    if (entry.type === 'request' && entry.text) {
+      const requestElm = document.createElement('div');
+      requestElm.className = 'assistant-request';
+      requestElm.textContent = entry.text;
+      aiAssistantContentElm.appendChild(requestElm);
+      return;
+    }
+
+    if (entry.type === 'customer-query' && entry.text) {
+      const customerQueryElm = document.createElement('div');
+      customerQueryElm.className = 'assistant-customer-query';
+      customerQueryElm.innerHTML = `
+        <div class="assistant-customer-query__label">${entry.label}</div>
+        <div class="assistant-customer-query__body"></div>
+      `;
+      customerQueryElm.querySelector('.assistant-customer-query__body').textContent = entry.text;
+      aiAssistantContentElm.appendChild(customerQueryElm);
+      return;
+    }
+
+    if (entry.type === 'suggestion') {
+      const cardElm = document.createElement('div');
+      cardElm.className = 'assistant-suggestion-card';
+      cardElm.innerHTML = `
+        <div class="assistant-suggestion-card__title"></div>
+        <div class="assistant-suggestion-card__body"></div>
+        <div class="assistant-suggestion-card__meta">
+          <span>Source</span>
+          <span>${formatAssistantTime(entry.timestamp)} ${entry.source ? `• ${entry.source}` : '•'}</span>
+        </div>
+      `;
+      cardElm.querySelector('.assistant-suggestion-card__title').textContent = entry.title;
+      cardElm.querySelector('.assistant-suggestion-card__body').textContent = entry.suggestion;
+      aiAssistantContentElm.appendChild(cardElm);
+    }
+  });
+
+  if (state.listening) {
+    const listeningElm = document.createElement('div');
+    listeningElm.className = 'assistant-listening';
+    listeningElm.innerHTML = `
+      <span class="assistant-listening__dots">
+        <span></span><span></span>
+      </span>
+      <span>Listening for information</span>
+    `;
+    aiAssistantContentElm.appendChild(listeningElm);
+  }
+
+  if (state.error) {
+    const errorElm = document.createElement('div');
+    errorElm.className = 'assistant-error';
+    errorElm.textContent = state.error;
+    aiAssistantContentElm.appendChild(errorElm);
+  }
+}
+
+async function requestSuggestedResponse() {
+  if (!currentTask || !webex?.cc?.apiAIAssistant) {
+    return;
+  }
+
+  const interactionId = currentTask.data.interactionId;
+  const state = getAiAssistantState(interactionId);
+  const context = aiAssistantContextInputElm?.value?.trim();
+  const actionTimeStamp = Date.now();
+
+  state.error = '';
+  state.listening = true;
+
+  if (context) {
+    state.entries.push({
+      type: 'request',
+      text: context,
+      timestamp: actionTimeStamp,
+    });
+  }
+
+  trimAiAssistantEntries(state);
+  renderAiAssistantPanel();
+
+  try {
+    await webex.cc.apiAIAssistant.getSuggestedResponse({
+      agentId,
+      interactionId,
+      actionTimeStamp,
+      ...(context ? {context} : {}),
+    });
+    aiAssistantContextInputElm.value = '';
+  } catch (error) {
+    state.listening = false;
+    state.error = error?.message || 'Unable to get AI assistance.';
+    renderAiAssistantPanel();
+  }
+}
+
 if (liveTranscriptTabElm) {
   liveTranscriptTabElm.addEventListener('click', () => setTranscriptTab('live'));
 }
@@ -217,6 +476,27 @@ if (clearTranscriptsButton) {
     renderRealtimeTranscripts();
   });
 }
+
+if (aiAssistantActionBtn) {
+  aiAssistantActionBtn.addEventListener('click', requestSuggestedResponse);
+}
+
+if (aiAssistantContextBtn) {
+  aiAssistantContextBtn.addEventListener('click', requestSuggestedResponse);
+}
+
+if (aiAssistantContextInputElm) {
+  aiAssistantContextInputElm.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') {
+      return;
+    }
+
+    event.preventDefault();
+    requestSuggestedResponse();
+  });
+}
+
+renderAiAssistantPanel();
 
 function isIncomingTask(task, agentId) {
   const taskData = task?.data;
@@ -1299,9 +1579,44 @@ function isTaskLegOnHold(task, leg = 'main') {
 
 // Register task listeners
 function registerTaskListeners(task) {
+  if (!task || registeredTaskListeners.has(task)) {
+    return;
+  }
+
+  registeredTaskListeners.add(task);
+
   task.on('REAL_TIME_TRANSCRIPTION', (payload) => {
     console.info('Received real-time transcription:', payload);
     appendRealtimeTranscript(payload);
+  });
+
+  task.on('SUGGESTED_RESPONSE', (payload) => {
+    console.info('Received suggested response:', payload);
+
+    const entry = normalizeSuggestedResponse(payload);
+    if (!entry) {
+      return;
+    }
+
+    const interactionId = task?.data?.interactionId;
+    const state = getAiAssistantState(interactionId);
+    const existingIndex = state.entries.findIndex(
+      (stateEntry) => stateEntry.type === entry.type && stateEntry.id === entry.id
+    );
+
+    state.error = '';
+
+    if (existingIndex >= 0) {
+      state.entries.splice(existingIndex, 1, entry);
+    } else {
+      state.entries.push(entry);
+    }
+
+    trimAiAssistantEntries(state);
+
+    if (currentTask?.data?.interactionId === interactionId) {
+      renderAiAssistantPanel();
+    }
   });
 
   task.on('task:assigned', (task) => {
@@ -1475,6 +1790,9 @@ function registerTaskListeners(task) {
 
     // Clean up task creation time tracking
     taskCreationTimes.delete(task.data.interactionId);
+    const aiAssistantState = getAiAssistantState(task.data.interactionId);
+    aiAssistantState.listening = false;
+    aiAssistantState.error = '';
 
     // If this is the current task, clear all controls
     if (currentTask && currentTask.data.interactionId === task.data.interactionId) {
@@ -1485,6 +1803,7 @@ function registerTaskListeners(task) {
 
       // Clear currentTask since task has ended
       currentTask = undefined;
+      renderAiAssistantPanel();
     }
     updateTaskList();
   });
@@ -3023,6 +3342,7 @@ function handleTaskSelect(task) {
   engageElm.style.height = "100px"
   const chatAndSocial = ['chat', 'social'];
   currentTask = task
+  renderAiAssistantPanel();
  if (chatAndSocial.includes(task.data.interaction.mediaType) && isBundleLoaded && !task.data.wrapUpRequired) {
     loadChatWidget(task);
   } else if (task.data.interaction.mediaType === 'email' && isBundleLoaded && !task.data.wrapUpRequired) {
