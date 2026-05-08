@@ -98,7 +98,11 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
         const consultingActive = isActiveConsultState(taskData, selfAgentId);
 
         if (taskData.destAgentId) {
-          updates.consultDestinationAgentId = taskData.destAgentId;
+          const isEpDnWithStoredId =
+            context.consultDestinationType === 'entryPoint' && context.consultDestinationAgentId;
+          if (!isEpDnWithStoredId) {
+            updates.consultDestinationAgentId = taskData.destAgentId;
+          }
         }
         if (consultingActive && taskData.destinationType) {
           updates.consultDestinationType = taskData.destinationType as DestinationType;
@@ -242,7 +246,10 @@ export const actions: TaskActionsMap = {
     const taskData = getTaskDataFromEvent(event);
     const consultDestinationType =
       'destinationType' in event ? event.destinationType ?? null : null;
-    const consultDestinationAgentId = 'destAgentId' in event ? event.destAgentId ?? null : null;
+    const consultDestinationAgentId =
+      ('destAgentId' in event ? event.destAgentId : null) ??
+      ('destination' in event ? (event as any).destination : null) ??
+      null;
 
     return {
       consultDestinationType,

@@ -607,7 +607,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentConsultConferenced, ParticipantJoinedConference
           [TaskEvent.CONFERENCE_START]: {
             target: TaskState.CONFERENCING,
-            actions: ['handleConferenceStarted', 'clearConsultState'],
+            actions: [
+              'updateTaskData',
+              'syncTaskDataFromEvent',
+              'handleConferenceStarted',
+              'clearConsultState',
+            ],
           },
         },
       },
@@ -617,7 +622,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentConsultConferenced, ParticipantJoinedConference
           [TaskEvent.CONFERENCE_START]: {
             target: TaskState.CONFERENCING,
-            actions: ['handleConferenceStarted'],
+            actions: [
+              'updateTaskData',
+              'syncTaskDataFromEvent',
+              'handleConferenceStarted',
+              'clearConsultState',
+            ],
           },
           // AgentConsultConferenceFailed
           [TaskEvent.CONFERENCE_FAILED]: {
@@ -630,7 +640,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
       [TaskState.CONFERENCING]: {
         on: {
           [TaskEvent.CONFERENCE_START]: {
-            actions: ['updateTaskData', 'clearConsultState', 'emitTaskConferenceStarted'],
+            actions: [
+              'updateTaskData',
+              'syncTaskDataFromEvent',
+              'clearConsultState',
+              'emitTaskConferenceStarted',
+            ],
           },
           [TaskEvent.EXIT_CONFERENCE_SUCCESS]: [
             {
@@ -653,7 +668,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
           },
           [TaskEvent.UNHOLD_SUCCESS]: {
-            actions: ['updateTaskData', 'setHoldState', 'emitTaskResume'],
+            actions: ['updateTaskData', 'syncTaskDataFromEvent', 'setHoldState', 'emitTaskResume'],
           },
 
           // Start a new consult from within an active conference

@@ -661,8 +661,7 @@ export default class TaskManager extends EventEmitter {
     const {payload} = context;
     let task = context.task;
 
-    if (payload.childInteractionId) {
-      // remove the child task from collection
+    if (payload.childInteractionId && this.taskCollection[payload.childInteractionId]) {
       this.removeTaskFromCollection(this.taskCollection[payload.childInteractionId]);
     }
 
