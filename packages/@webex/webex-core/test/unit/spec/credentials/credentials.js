@@ -232,6 +232,47 @@ describe('webex-core', () => {
       });
     });
 
+    describe('#buildThirdPartyLoginUrl()', () => {
+      it('throws if `oauth2provider` is missing', () => {
+        const webex = new MockWebex();
+        const credentials = new Credentials(undefined, {parent: webex});
+
+        webex.trigger('change:config');
+
+        assert.throws(() => {
+          credentials.buildThirdPartyLoginUrl({returnURL: 'https://web.webex.com'});
+        }, /`options.oauth2provider` is required/);
+      });
+
+      it('throws if `returnURL` is missing', () => {
+        const webex = new MockWebex();
+        const credentials = new Credentials(undefined, {parent: webex});
+
+        webex.trigger('change:config');
+
+        assert.throws(() => {
+          credentials.buildThirdPartyLoginUrl({oauth2provider: 'google'});
+        }, /`options.returnURL` is required/);
+      });
+
+      skipInBrowser(it)('generates the third-party login url', () => {
+        const webex = new MockWebex();
+        const credentials = new Credentials(undefined, {parent: webex});
+
+        webex.trigger('change:config');
+
+        assert.equal(
+          credentials.buildThirdPartyLoginUrl({
+            oauth2provider: 'google',
+            returnURL: 'https://web.webex.com',
+          }),
+          `${
+            process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'
+          }/idb/ThirdPartyLogin?oauth2provider=google&returnURL=https%3A%2F%2Fweb.webex.com`
+        );
+      });
+    });
+
     describe('#buildLogoutUrl()', () => {
       skipInBrowser(it)('generates the logout url', () => {
         const webex = new MockWebex();
