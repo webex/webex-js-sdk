@@ -25,17 +25,6 @@ import type {
 } from './types';
 
 const sockets = new WeakMap<Socket, SocketTransport>();
-const UnknownResponseCtor = UnknownResponse as unknown as new (
-  event?: SocketCloseEvent
-) => UnknownResponse;
-const BadRequestCtor = BadRequest as unknown as new (event?: SocketCloseEvent) => BadRequest;
-const NotAuthorizedCtor = NotAuthorized as unknown as new (
-  event?: SocketCloseEvent
-) => NotAuthorized;
-const ForbiddenCtor = Forbidden as unknown as new (event?: SocketCloseEvent) => Forbidden;
-const ConnectionErrorCtor = ConnectionError as unknown as new (
-  event?: SocketCloseEvent
-) => ConnectionError;
 
 /**
  * Generalized socket abstraction
@@ -288,15 +277,15 @@ export default class Socket extends EventEmitter {
             // it's a bad websocket url. That'll trigger a device refresh; if it
             // turns out we had a bad token, the device refresh should 401 and
             // trigger a token refresh.
-            return reject(new UnknownResponseCtor(event));
+            return reject(new UnknownResponse(event));
           case 4400:
-            return reject(new BadRequestCtor(event));
+            return reject(new BadRequest(event));
           case 4401:
-            return reject(new NotAuthorizedCtor(event));
+            return reject(new NotAuthorized(event));
           case 4403:
-            return reject(new ForbiddenCtor(event));
+            return reject(new Forbidden(event));
           default:
-            return reject(new ConnectionErrorCtor(event));
+            return reject(new ConnectionError(event));
         }
       };
 
@@ -329,7 +318,7 @@ export default class Socket extends EventEmitter {
     this.logger.info(`socket,${this.domain}: closed`, event.code, event.reason);
 
     event = this.fixCloseCode(event);
-    this.rejectPendingResponses(new ConnectionErrorCtor(event));
+    this.rejectPendingResponses(new ConnectionError(event));
     this.emit('close', event);
 
     // Remove all listeners to (a) avoid reacting to late pongs and (b) ensure
@@ -422,14 +411,14 @@ export default class Socket extends EventEmitter {
     const createError =
       options.createError ||
       ((response, statusCode, statusMessage) =>
-        new ConnectionErrorCtor({
+        new ConnectionError({
           code: statusCode,
           reason: statusMessage || response?.reason || 'Socket request failed',
         }));
     const createTimeoutError =
       options.createTimeoutError ||
       (() =>
-        new ConnectionErrorCtor({
+        new ConnectionError({
           reason: 'Socket response not received before timeout',
         }));
 
@@ -543,12 +532,12 @@ export default class Socket extends EventEmitter {
         getStatusCode: (response) => response?.statusCode,
         getStatusMessage: (response) => response?.statusMessage,
         createError: (response, statusCode, statusMessage) =>
-          new NotAuthorizedCtor({
+          new NotAuthorized({
             code: statusCode,
             reason: statusMessage || 'Mobius auth failed',
           }),
         createTimeoutError: () =>
-          new NotAuthorizedCtor({
+          new NotAuthorized({
             reason: 'Mobius auth response not received before timeout',
           }),
       }
