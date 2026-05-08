@@ -221,6 +221,47 @@ describe('plugin-meetings', () => {
         assert.isTrue(locusInfo.emitChange);
       });
 
+      it('calls onLocusSynced callback passed as second argument with full locus from join response', async () => {
+        const syncedLocus = {url: 'http://locus-url.com', participants: []};
+        const onLocusSynced = sinon.stub();
+
+        await locusInfo.initialSetup(
+          {
+            trigger: 'join-response',
+            locus: syncedLocus,
+          },
+          onLocusSynced
+        );
+
+        assert.calledOnceWithExactly(onLocusSynced, syncedLocus);
+      });
+
+      it('swallows onLocusSynced callback errors and logs warn', async () => {
+        const syncedLocus = {url: 'http://locus-url.com', participants: []};
+        const callbackError = new Error('onLocusSynced failed');
+        const onLocusSynced = sinon.stub().throws(callbackError);
+        const loggerWarnStub = LoggerProxy.logger.warn?.isSinonProxy
+          ? LoggerProxy.logger.warn
+          : sinon.stub(LoggerProxy.logger, 'warn');
+
+        loggerWarnStub.resetHistory();
+
+        await locusInfo.initialSetup(
+          {
+            trigger: 'join-response',
+            locus: syncedLocus,
+          },
+          onLocusSynced
+        );
+
+        assert.calledOnceWithExactly(onLocusSynced, syncedLocus);
+        assert.calledOnce(loggerWarnStub);
+        assert.match(
+          loggerWarnStub.firstCall.args[0],
+          /Locus-info:index#initialSetup --> onLocusSynced callback failed/
+        );
+      });
+
       it('should initialize the hash tree parser correctly when triggered from a get loci response containing visible datasets', async () => {
         const visibleDataSets = ['dataset1', 'dataset2'];
         const locus = createLocusWithVisibleDataSets(visibleDataSets);
@@ -291,6 +332,7 @@ describe('plugin-meetings', () => {
       describe('should setup correct locusInfoUpdateCallback when creating HashTreeParser', () => {
         const OBJECTS_UPDATED = HashTreeParserModule.LocusInfoUpdateType.OBJECTS_UPDATED;
         const MEETING_ENDED = HashTreeParserModule.LocusInfoUpdateType.MEETING_ENDED;
+        const LOCUS_NOT_FOUND = HashTreeParserModule.LocusInfoUpdateType.LOCUS_NOT_FOUND;
 
         let locusInfoUpdateCallback;
         let onDeltaLocusStub;
@@ -960,6 +1002,37 @@ describe('plugin-meetings', () => {
           assert.notCalled(destroyStub);
         });
 
+        it('should handle LOCUS_NOT_FOUND by calling syncMeetings with skipHashTreeSync', () => {
+          const syncMeetingsStub = sinon.stub(locusInfo.webex.meetings, 'syncMeetings').resolves();
+
+          locusInfoUpdateCallback({updateType: LOCUS_NOT_FOUND});
+
+          assert.calledOnceWithExactly(syncMeetingsStub, {keepOnlyLocusMeetings: false, skipHashTreeSync: true});
+        });
+
+        it('should handle LOCUS_NOT_FOUND and log error if syncMeetings fails', async () => {
+          const syncError = new Error('sync failed');
+          const syncMeetingsStub = sinon.stub(locusInfo.webex.meetings, 'syncMeetings').rejects(syncError);
+          const logErrorStub = LoggerProxy.logger.error?.isSinonProxy
+            ? LoggerProxy.logger.error
+            : sinon.stub(LoggerProxy.logger, 'error');
+
+          logErrorStub.resetHistory();
+
+          locusInfoUpdateCallback({updateType: LOCUS_NOT_FOUND});
+
+          assert.calledOnceWithExactly(syncMeetingsStub, {keepOnlyLocusMeetings: false, skipHashTreeSync: true});
+
+          // wait for the promise rejection to be handled
+          await testUtils.flushPromises();
+
+          assert.calledOnce(logErrorStub);
+          assert.match(
+            logErrorStub.firstCall.args[0],
+            /syncMeetings failed after LOCUS_NOT_FOUND/
+          );
+        });
+
         it('should set forceReplaceMembers to true on the first update for a locusUrl (initializedFromHashTree is false)', () => {
           const createdHashTreeParser = locusInfo.hashTreeParsers.get('fake-locus-url');
           createdHashTreeParser.initializedFromHashTree = false;
@@ -1290,6 +1363,8 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.IDLE,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
           }
         );
       });
@@ -1324,6 +1399,8 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.RECORDING,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
           }
         );
       });
@@ -1359,6 +1436,8 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.PAUSED,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
           }
         );
       });
@@ -1395,6 +1474,8 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.RESUMED,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
           }
         );
       });
@@ -1430,6 +1511,44 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.IDLE,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
+          }
+        );
+      });
+
+      it('should include service app fields in the recording event when present', () => {
+        locusInfo.controls = {
+          record: {
+            recording: false,
+            paused: false,
+            meta: {
+              lastModified: 'TODAY',
+              modifiedBy: 'George Kittle',
+            },
+          },
+          shareControl: {},
+          transcribe: {},
+        };
+        newControls.record.recording = true;
+        newControls.record.meta.modifiedByServiceAppName = 'My Bot';
+        newControls.record.meta.modifiedByServiceAppId = 'app-id-123';
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+          {
+            state: RECORDING_STATE.RECORDING,
+            modifiedBy: 'George Kittle',
+            lastModified: 'TODAY',
+            modifiedByServiceAppName: 'My Bot',
+            modifiedByServiceAppId: 'app-id-123',
           }
         );
       });
@@ -3385,6 +3504,51 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(parserA.handleMessage, message);
       });
+
+      it('should send mismatch metric when eventType is not HASH_TREE_DATA_UPDATED', () => {
+        const locusUrlA = 'http://locus-url-A.com';
+        const parserA = {state: 'active', handleMessage: sinon.stub()};
+        locusInfo.hashTreeParsers.set(locusUrlA, {parser: parserA, initializedFromHashTree: true});
+
+        locusInfo.parse(mockMeeting, {
+          eventType: LOCUSEVENT.SELF_CHANGED,
+          stateElementsMessage: {locusUrl: locusUrlA, locusStateElements: [], dataSets: []},
+        });
+
+        assert.calledOnceWithExactly(
+          sendBehavioralMetricStub,
+          'js_sdk_locus_classic_vs_hash_tree_mismatch',
+          {
+            correlationId: mockMeeting.correlationId,
+            message: `got ${LOCUSEVENT.SELF_CHANGED}, expected ${LOCUSEVENT.HASH_TREE_DATA_UPDATED}`,
+          }
+        );
+        assert.notCalled(parserA.handleMessage);
+      });
+    });
+
+    describe('#sendClassicVsHashTreeMismatchMetric', () => {
+      it('should send the metric when called for the first time', () => {
+        locusInfo.sendClassicVsHashTreeMismatchMetric(mockMeeting, 'some mismatch');
+
+        assert.calledOnceWithExactly(
+          sendBehavioralMetricStub,
+          'js_sdk_locus_classic_vs_hash_tree_mismatch',
+          {
+            correlationId: mockMeeting.correlationId,
+            message: 'some mismatch',
+          }
+        );
+      });
+
+      it('should send the metric up to 5 times and stop after that', () => {
+        for (let i = 0; i < 7; i += 1) {
+          locusInfo.sendClassicVsHashTreeMismatchMetric(mockMeeting, `mismatch ${i}`);
+        }
+
+        assert.callCount(sendBehavioralMetricStub, 5);
+        assert.equal(locusInfo.classicVsHashTreeMismatchMetricCounter, 5);
+      });
     });
 
     describe('#handleLocusAPIResponse', () => {
@@ -3440,19 +3604,24 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(locusInfo.handleLocusDelta, fakeLocus, mockMeeting);
       });
 
-      it('should send mismatch metric when hash tree parser exists but dataSets are missing in wrapped response', () => {
+      it('should send mismatch metric in classic mode when wrapped response has dataSets', () => {
         const fakeLocus = {url: 'http://locus-url.com'};
-        const mockHashTreeParser = {handleLocusUpdate: sinon.stub()};
-        locusInfo.hashTreeParsers.set(fakeLocus.url, {
-          parser: mockHashTreeParser,
-          initializedFromHashTree: true,
+        sinon.stub(locusInfo, 'handleLocusDelta');
+
+        locusInfo.handleLocusAPIResponse(mockMeeting, {
+          locus: fakeLocus,
+          dataSets: [{name: 'dataset1', url: 'test-url'}],
         });
-        sinon.stub(locusInfo, 'sendClassicVsHashTreeMismatchMetric');
 
-        locusInfo.handleLocusAPIResponse(mockMeeting, {locus: fakeLocus});
-
-        assert.calledOnce(locusInfo.sendClassicVsHashTreeMismatchMetric);
-        assert.calledOnce(mockHashTreeParser.handleLocusUpdate);
+        assert.calledOnceWithExactly(
+          sendBehavioralMetricStub,
+          'js_sdk_locus_classic_vs_hash_tree_mismatch',
+          {
+            correlationId: mockMeeting.correlationId,
+            message: 'unexpected hash tree dataSets in API response',
+          }
+        );
+        assert.calledOnce(locusInfo.handleLocusDelta);
       });
 
       describe('parser switch via API response', () => {
@@ -4627,6 +4796,9 @@ describe('plugin-meetings', () => {
     });
 
     describe('#isMeetingActive', () => {
+      beforeEach(() => {
+        webex.internal.newMetrics.submitClientEvent.resetHistory();
+      });
       forEach([_CALL_, _SIP_BRIDGE_, _SPACE_SHARE_], (type) => {
         describe(`type = ${type}`, () => {
           it('sends client event correctly for state = inactive', () => {
@@ -4693,7 +4865,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('sends client event correctly for state = MEETING_INACTIVE_TERMINATING', () => {
+      it('sends client event correctly for state = MEETING_INACTIVE', () => {
         locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
         locusInfo.parsedLocus = {
           fullState: {
@@ -4715,7 +4887,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('sends client event correctly for state = FULLSTATE_REMOVED', () => {
+      it('does not send client event when state = INACTIVE and endMeetingReason = BREAKOUT_ENDED', () => {
         locusInfo.getLocusPartner = sinon.stub().returns({state: MEETING_STATE.STATES.LEFT});
         locusInfo.parsedLocus = {
           fullState: {
@@ -4724,17 +4896,41 @@ describe('plugin-meetings', () => {
         };
 
         locusInfo.fullState = {
-          removed: true,
+          state: LOCUS.STATE.INACTIVE,
+          endMeetingReason: 'BREAKOUT_ENDED',
         };
 
         locusInfo.isMeetingActive();
 
-        assert.calledWith(webex.internal.newMetrics.submitClientEvent, {
-          name: 'client.call.remote-ended',
-          options: {
-            meetingId: locusInfo.meetingId,
+        assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+      });
+
+      it('sends client event correctly for state self removed', () => {
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.parsedLocus = {
+          fullState: {
+            type: _MEETING_,
           },
-        });
+          self: {
+            removed: true,
+          }
+        };
+
+        locusInfo.isMeetingActive();
+
+        assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+        assert.calledOnceWithExactly(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'isMeetingActive',
+          },
+          EVENTS.DESTROY_MEETING,
+          {
+            reason: MEETING_REMOVED_REASON.SELF_REMOVED,
+            shouldLeave: false,
+          }
+        );
       });
     });
 

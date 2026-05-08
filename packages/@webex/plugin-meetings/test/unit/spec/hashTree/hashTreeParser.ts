@@ -1,6 +1,7 @@
 import HashTreeParser, {
   LocusInfoUpdateType,
   MeetingEndedError,
+  LocusNotFoundError,
 } from '@webex/plugin-meetings/src/hashTree/hashTreeParser';
 import HashTree from '@webex/plugin-meetings/src/hashTree/hashTree';
 import {expect} from '@webex/test-helper-chai';
@@ -9,6 +10,8 @@ import {assert} from '@webex/test-helper-chai';
 import {EMPTY_HASH} from '@webex/plugin-meetings/src/hashTree/constants';
 import testUtils from '@webex/plugin-meetings/test/utils/testUtils';
 import { some } from 'lodash';
+import Metrics from '@webex/plugin-meetings/src/metrics';
+import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 
 const visibleDataSetsUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/visibleDataSets';
 
@@ -153,16 +156,19 @@ describe('HashTreeParser', () => {
   let webexRequest: sinon.SinonStub;
   let callback: sinon.SinonStub;
   let mathRandomStub: sinon.SinonStub;
+  let metricsStub: sinon.SinonStub;
 
   beforeEach(() => {
     clock = sinon.useFakeTimers();
     webexRequest = sinon.stub();
     callback = sinon.stub();
     mathRandomStub = sinon.stub(Math, 'random').returns(0);
+    metricsStub = sinon.stub(Metrics, 'sendBehavioralMetric');
   });
   afterEach(() => {
     clock.restore();
     mathRandomStub.restore();
+    metricsStub.restore();
   });
 
   // Helper to create a HashTreeParser instance with common defaults
@@ -704,8 +710,11 @@ describe('HashTreeParser', () => {
       assert.notCalled(callback);
     });
 
-    [404, 409].forEach((errorCode) => {
-      it(`emits MeetingEndedError if getting visible datasets returns ${errorCode}`, async () => {
+    [
+      {errorCode: 404, expectedError: LocusNotFoundError},
+      {errorCode: 409, expectedError: MeetingEndedError},
+    ].forEach(({errorCode, expectedError}) => {
+      it(`throws ${expectedError.name} if getting visible datasets returns ${errorCode}`, async () => {
         const minimalInitialLocus = {
           dataSets: [],
           locus: null,
@@ -728,7 +737,6 @@ describe('HashTreeParser', () => {
           )
           .rejects(error);
 
-        // initializeFromMessage should throw MeetingEndedError
         let thrownError;
         try {
           await parser.initializeFromMessage({
@@ -740,7 +748,7 @@ describe('HashTreeParser', () => {
           thrownError = e;
         }
 
-        expect(thrownError).to.be.instanceOf(MeetingEndedError);
+        expect(thrownError).to.be.instanceOf(expectedError);
       });
     });
   });
@@ -1762,12 +1770,10 @@ describe('HashTreeParser', () => {
         });
       });
 
-      describe('emits MEETING_ENDED', () => {
-        [404, 409].forEach((statusCode) => {
-          it(`when /hashtree returns ${statusCode}`, async () => {
+      describe('emits MEETING_ENDED when 409/2403004 is returned', () => {
+          it('when /hashtree returns 409', async () => {
             const parser = createHashTreeParser();
 
-            // Send a message to trigger sync algorithm
             const message = {
               dataSets: [createDataSet('main', 16, 1100)],
               visibleDataSetsUrl,
@@ -1792,12 +1798,9 @@ describe('HashTreeParser', () => {
 
             const mainDataSetUrl = parser.dataSets.main.url;
 
-            // Mock getHashesFromLocus to reject with the sentinel error
-            const error: any = new Error(`Request failed with status ${statusCode}`);
-            error.statusCode = statusCode;
-            if (statusCode === 409) {
-              error.body = {errorCode: 2403004};
-            }
+            const error: any = new Error('Request failed with status 409');
+            error.statusCode = 409;
+            error.body = {errorCode: 2403004};
             webexRequest
               .withArgs(
                 sinon.match({
@@ -1807,23 +1810,22 @@ describe('HashTreeParser', () => {
               )
               .rejects(error);
 
-            // Trigger sync by advancing time
             await clock.tickAsync(1000);
 
-            // Verify callback was called with MEETING_ENDED
             assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.MEETING_ENDED});
 
-            // Verify all timers are stopped
             Object.values(parser.dataSets).forEach((ds: any) => {
               assert.isUndefined(ds.timer);
               assert.isUndefined(ds.heartbeatWatchdogTimer);
             });
+
+            // Verify no sync failure metric was sent for end-meeting sentinel
+            assert.notCalled(metricsStub);
           });
 
-          it(`when /sync returns ${statusCode}`, async () => {
+          it('when /sync returns 409', async () => {
             const parser = createHashTreeParser();
 
-            // Send a message to trigger sync algorithm
             const message = {
               dataSets: [createDataSet('main', 16, 1100)],
               visibleDataSetsUrl,
@@ -1848,19 +1850,15 @@ describe('HashTreeParser', () => {
 
             const mainDataSetUrl = parser.dataSets.main.url;
 
-            // Mock getHashesFromLocus to succeed
             mockGetHashesFromLocusResponse(
               mainDataSetUrl,
               new Array(16).fill('00000000000000000000000000000000'),
               createDataSet('main', 16, 1101)
             );
 
-            // Mock sendSyncRequestToLocus to reject with the sentinel error
-            const error: any = new Error(`Request failed with status ${statusCode}`);
-            error.statusCode = statusCode;
-            if (statusCode === 409) {
-              error.body = {errorCode: 2403004};
-            }
+            const error: any = new Error('Request failed with status 409');
+            error.statusCode = 409;
+            error.body = {errorCode: 2403004};
             webexRequest
               .withArgs(
                 sinon.match({
@@ -1870,11 +1868,62 @@ describe('HashTreeParser', () => {
               )
               .rejects(error);
 
-            // Trigger sync by advancing time
             await clock.tickAsync(1000);
 
-            // Verify callback was called with MEETING_ENDED
             assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.MEETING_ENDED});
+
+            Object.values(parser.dataSets).forEach((ds: any) => {
+              assert.isUndefined(ds.timer);
+              assert.isUndefined(ds.heartbeatWatchdogTimer);
+            });
+          });
+      });
+
+      describe('emits LOCUS_NOT_FOUND and stops parser when 404 is returned', () => {
+          it('when /hashtree returns 404', async () => {
+            const parser = createHashTreeParser();
+
+            const message = {
+              dataSets: [createDataSet('main', 16, 1100)],
+              visibleDataSetsUrl,
+              locusUrl,
+              locusStateElements: [
+                {
+                  htMeta: {
+                    elementId: {
+                      type: 'locus' as const,
+                      id: 0,
+                      version: 201,
+                    },
+                    dataSetNames: ['main'],
+                  },
+                  data: {info: {id: 'initial-update'}},
+                },
+              ],
+            };
+
+            parser.handleMessage(message, 'initial message');
+            callback.resetHistory();
+
+            const mainDataSetUrl = parser.dataSets.main.url;
+
+            const error: any = new Error('Request failed with status 404');
+            error.statusCode = 404;
+            webexRequest
+              .withArgs(
+                sinon.match({
+                  method: 'GET',
+                  uri: `${mainDataSetUrl}/hashtree`,
+                })
+              )
+              .rejects(error);
+
+            await clock.tickAsync(1000);
+
+            assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.LOCUS_NOT_FOUND});
+
+            // Verify parser is stopped
+            expect(parser.state).to.equal('stopped');
 
             // Verify all timers are stopped
             Object.values(parser.dataSets).forEach((ds: any) => {
@@ -1882,7 +1931,67 @@ describe('HashTreeParser', () => {
               assert.isUndefined(ds.heartbeatWatchdogTimer);
             });
           });
-        });
+
+          it('when /sync returns 404', async () => {
+            const parser = createHashTreeParser();
+
+            const message = {
+              dataSets: [createDataSet('main', 16, 1100)],
+              visibleDataSetsUrl,
+              locusUrl,
+              locusStateElements: [
+                {
+                  htMeta: {
+                    elementId: {
+                      type: 'locus' as const,
+                      id: 0,
+                      version: 201,
+                    },
+                    dataSetNames: ['main'],
+                  },
+                  data: {info: {id: 'initial-update'}},
+                },
+              ],
+            };
+
+            parser.handleMessage(message, 'initial message');
+            callback.resetHistory();
+
+            const mainDataSetUrl = parser.dataSets.main.url;
+
+            mockGetHashesFromLocusResponse(
+              mainDataSetUrl,
+              new Array(16).fill('00000000000000000000000000000000'),
+              createDataSet('main', 16, 1101)
+            );
+
+            const error: any = new Error('Request failed with status 404');
+            error.statusCode = 404;
+            webexRequest
+              .withArgs(
+                sinon.match({
+                  method: 'POST',
+                  uri: `${mainDataSetUrl}/sync`,
+                })
+              )
+              .rejects(error);
+
+            await clock.tickAsync(1000);
+
+            assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.LOCUS_NOT_FOUND});
+
+            // Verify parser is stopped
+            expect(parser.state).to.equal('stopped');
+
+            // Verify all timers are stopped
+            Object.values(parser.dataSets).forEach((ds: any) => {
+              assert.isUndefined(ds.timer);
+              assert.isUndefined(ds.heartbeatWatchdogTimer);
+            });
+
+            // Verify no sync failure metric was sent for end-meeting sentinel
+            assert.notCalled(metricsStub);
+          });
       });
 
       it('requests only mismatched hashes during sync', async () => {
@@ -2051,6 +2160,226 @@ describe('HashTreeParser', () => {
               },
             ],
           },
+        });
+      });
+
+      it('restarts the sync timer when sync response is empty so that a future sync can be triggered', async () => {
+        const parser = createHashTreeParser();
+
+        // Send a heartbeat with a mismatched root hash to trigger runSyncAlgorithm
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1', // different from ours
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'heartbeat with mismatch');
+
+        // The sync timer should be set
+        expect(parser.dataSets.main.timer).to.not.be.undefined;
+
+        // Mock responses for the first sync - return null (204/empty body)
+        const mainDataSetUrl = parser.dataSets.main.url;
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          {
+            ...createDataSet('main', 16, 1101),
+            root: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', // still mismatched
+          }
+        );
+        mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+        // Advance time to fire the sync timer (idleMs=1000 + backoff=0)
+        await clock.tickAsync(1000);
+
+        // Verify sync was triggered
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'POST',
+            uri: `${mainDataSetUrl}/sync`,
+          })
+        );
+
+        // After empty response, runSyncAlgorithm should have been called,
+        // setting a new sync timer as a safety net
+        expect(parser.dataSets.main.timer).to.not.be.undefined;
+
+        // Reset and set up mocks for the second sync
+        webexRequest.resetHistory();
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          {
+            ...createDataSet('main', 16, 1102),
+            root: 'cccccccccccccccccccccccccccccccc', // still mismatched
+          }
+        );
+        mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+        // Advance time again to fire the second sync timer
+        await clock.tickAsync(1000);
+
+        // Verify a second sync was triggered
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'POST',
+            uri: `${mainDataSetUrl}/sync`,
+          })
+        );
+      });
+
+      it('updates dataSet.leafCount when hash tree is resized during sync so that the sync request has the correct leafCount', async () => {
+        const parser = createHashTreeParser();
+
+        // Send a heartbeat with a mismatched root hash to trigger runSyncAlgorithm
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1', // different from ours
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'heartbeat with mismatch');
+
+        // The sync timer should be set
+        expect(parser.dataSets.main.timer).to.not.be.undefined;
+
+        const mainDataSetUrl = parser.dataSets.main.url;
+        const newLeafCount = 32;
+
+        // Mock getHashesFromLocus response with a DIFFERENT leafCount (32 instead of 16)
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(newLeafCount).fill('00000000000000000000000000000000'),
+          createDataSet('main', newLeafCount, 1101)
+        );
+
+        // Mock the sync request - use matching root hash
+        const syncResponseDataSet = createDataSet('main', newLeafCount, 1102);
+        syncResponseDataSet.root = parser.dataSets.main.hashTree.getRootHash();
+        mockSendSyncRequestResponse(mainDataSetUrl, {
+          dataSets: [syncResponseDataSet],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [],
+        });
+
+        // Advance time to fire the sync timer (idleMs=1000 + backoff=0)
+        await clock.tickAsync(1000);
+
+        // Verify the sync request was sent with the NEW leafCount (32), not the old one (16)
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'POST',
+            uri: `${mainDataSetUrl}/sync`,
+            body: sinon.match({
+              leafCount: newLeafCount,
+            }),
+          })
+        );
+      });
+
+      it('sends HASH_TREE_SYNC_FAILURE metric when GET /hashtree request fails', async () => {
+        const parser = createHashTreeParser();
+
+        // Send a heartbeat with a mismatched root hash to trigger runSyncAlgorithm
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1',
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'heartbeat with mismatch');
+
+        const mainDataSetUrl = parser.dataSets.main.url;
+        const hashTreeError = new Error('server error') as any;
+        hashTreeError.statusCode = 500;
+
+        webexRequest
+          .withArgs(
+            sinon.match({
+              method: 'GET',
+              uri: `${mainDataSetUrl}/hashtree`,
+            })
+          )
+          .rejects(hashTreeError);
+
+        await clock.tickAsync(1000);
+
+        assert.calledOnceWithExactly(metricsStub, BEHAVIORAL_METRICS.HASH_TREE_SYNC_FAILURE, {
+          debugId: 'test',
+          dataSetName: 'main',
+          request: 'GET /hashtree',
+          statusCode: 500,
+          reason: 'server error',
+        });
+      });
+
+      it('sends HASH_TREE_SYNC_FAILURE metric when POST /sync request fails', async () => {
+        const parser = createHashTreeParser();
+
+        // Send a heartbeat with a mismatched root hash to trigger runSyncAlgorithm
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1',
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'heartbeat with mismatch');
+
+        const mainDataSetUrl = parser.dataSets.main.url;
+
+        // Mock getHashesFromLocus to succeed
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          createDataSet('main', 16, 1101)
+        );
+
+        // Mock sendSyncRequestToLocus to fail
+        const syncError = new Error('sync failed') as any;
+        syncError.statusCode = 500;
+
+        webexRequest
+          .withArgs(
+            sinon.match({
+              method: 'POST',
+              uri: `${mainDataSetUrl}/sync`,
+            })
+          )
+          .rejects(syncError);
+
+        await clock.tickAsync(1000);
+
+        assert.calledOnceWithExactly(metricsStub, BEHAVIORAL_METRICS.HASH_TREE_SYNC_FAILURE, {
+          debugId: 'test',
+          dataSetName: 'main',
+          request: 'POST /sync',
+          statusCode: 500,
+          reason: 'sync failed',
         });
       });
     });
@@ -2324,7 +2653,7 @@ describe('HashTreeParser', () => {
         expect(syncCalls[1].args[0].uri).to.equal(`${newAtdActiveDataSet.url}/sync`);
       });
 
-      it('emits MEETING_ENDED if async init of a new visible dataset fails with 404', async () => {
+      it('emits LOCUS_NOT_FOUND if async init of a new visible dataset fails with 404', async () => {
         const parser = createHashTreeParser();
 
         // Stub updateItems on self hash tree to return true
@@ -2389,8 +2718,8 @@ describe('HashTreeParser', () => {
         // Wait for the async initialization (queueMicrotask) to complete
         await clock.tickAsync(0);
 
-        // Verify callback was called with MEETING_ENDED
-        assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.MEETING_ENDED});
+        // Verify callback was called with LOCUS_NOT_FOUND (404 means locus URL is stale, not necessarily meeting ended)
+        assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.LOCUS_NOT_FOUND});
       });
 
       it('handles removal of visible data set', async () => {
@@ -2744,6 +3073,12 @@ describe('HashTreeParser', () => {
           })
         );
 
+        // Verify behavioral metric was sent for the watchdog expiration
+        assert.calledWith(metricsStub, BEHAVIORAL_METRICS.HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED, {
+          debugId: 'test',
+          dataSetName: 'main',
+        });
+
         // Verify no sync requests were sent for other datasets
         assert.neverCalledWith(
           webexRequest,
@@ -2786,6 +3121,12 @@ describe('HashTreeParser', () => {
 
         // Advance time past watchdog delay
         await clock.tickAsync(heartbeatIntervalMs);
+
+        // Verify behavioral metric was sent for the watchdog expiration
+        assert.calledWith(metricsStub, BEHAVIORAL_METRICS.HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED, {
+          debugId: 'test',
+          dataSetName: 'self',
+        });
 
         // For leafCount === 1, performSync skips GET hashtree and goes straight to POST sync
         assert.neverCalledWith(
@@ -3120,7 +3461,77 @@ describe('HashTreeParser', () => {
         expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
         expect(parser.dataSets['atd-active']?.heartbeatWatchdogTimer).to.be.undefined;
       });
+
+      it('restarts the watchdog timer after it fires so that future missed heartbeats still trigger syncs', async () => {
+        const parser = createHashTreeParser();
+        const heartbeatIntervalMs = 5000;
+
+        // Send initial heartbeat for 'main'
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'initial heartbeat');
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+
+        // Mock responses for performSync - return null (204/empty body)
+        const mainDataSetUrl = parser.dataSets.main.url;
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          createDataSet('main', 16, 1101)
+        );
+        mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+        // Advance time past heartbeatIntervalMs to fire the watchdog
+        await clock.tickAsync(heartbeatIntervalMs);
+
+        // Verify sync was triggered
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'GET',
+            uri: `${mainDataSetUrl}/hashtree`,
+          })
+        );
+
+        // The watchdog timer should have been restarted after firing
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+
+        // Reset call history and set up new mock responses for the second sync
+        webexRequest.resetHistory();
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          createDataSet('main', 16, 1102)
+        );
+        mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+        // Advance time again to fire the watchdog a second time
+        await clock.tickAsync(heartbeatIntervalMs);
+
+        // Verify a second sync was triggered
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'GET',
+            uri: `${mainDataSetUrl}/hashtree`,
+          })
+        );
+
+        // And the watchdog should still be running
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+      });
     });
+
   });
 
   describe('#callLocusInfoUpdateCallback filtering', () => {
@@ -3577,6 +3988,9 @@ describe('HashTreeParser', () => {
       parser.handleMessage(emptyMessage, 'empty elements');
 
       assert.notCalled(callback);
+      assert.calledWith(metricsStub, BEHAVIORAL_METRICS.HASH_TREE_EMPTY_LOCUS_STATE_ELEMENTS, {
+        debugId: 'test',
+      });
     });
 
     it('always calls callback for MEETING_ENDED regardless of filtering', () => {

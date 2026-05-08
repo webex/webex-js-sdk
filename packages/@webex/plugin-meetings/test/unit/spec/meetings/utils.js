@@ -5,6 +5,8 @@ import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 
+const multipartSitePrefixList = ['.my.', '.mydmz.', '.mybts.', '.mydev.', '.myats2.', '.myats.'];
+
 describe('plugin-meetings', () => {
   beforeEach(() => {
     sinon.stub(Metrics, 'sendBehavioralMetric');
@@ -72,6 +74,28 @@ describe('plugin-meetings', () => {
         };
 
         assert.equal(MeetingsUtil.parseDefaultSiteFromMeetingPreferences(userPreferences), '');
+      });
+    });
+
+    describe('#getSiteName', () => {
+      it('gets the site name from a standard Webex site', () => {
+        assert.equal(MeetingsUtil.getSiteName('go.webex.com', multipartSitePrefixList), 'go');
+      });
+
+      it('gets the site name from a my Webex site', () => {
+        assert.equal(MeetingsUtil.getSiteName('go.my.webex.com', multipartSitePrefixList), 'go.my');
+      });
+
+      it('uses the configured multipart site prefix list', () => {
+        assert.equal(MeetingsUtil.getSiteName('go.custom.webex.com', ['.custom.']), 'go.custom');
+      });
+
+      it('falls back to the first label when the multipart site prefix list does not match', () => {
+        assert.equal(MeetingsUtil.getSiteName('go.my.webex.com', ['.custom.']), 'go');
+      });
+
+      it('returns null when the site is empty', () => {
+        assert.equal(MeetingsUtil.getSiteName('', multipartSitePrefixList), null);
       });
     });
 
@@ -235,6 +259,19 @@ describe('plugin-meetings', () => {
         };
 
         assert.equal(MeetingsUtil.isMainAssociatedWithBreakout(mainLocus, breakoutLocus), false);
+      });
+    });
+
+    describe('#isWholeMeetingEnded', () => {
+      [
+        {description: 'state is INACTIVE with no endMeetingReason', fullState: {state: 'INACTIVE'}, expected: true},
+        {description: 'state is INACTIVE with endMeetingReason OTHER', fullState: {state: 'INACTIVE', endMeetingReason: 'SOME_OTHER_REASON'}, expected: true},
+        {description: 'state is INACTIVE with endMeetingReason BREAKOUT_ENDED', fullState: {state: 'INACTIVE', endMeetingReason: 'BREAKOUT_ENDED'}, expected: false},
+        {description: 'state is not INACTIVE', fullState: {state: 'ACTIVE', endMeetingReason: 'SOME_OTHER_REASON'}, expected: false},
+      ].forEach(({description, fullState, expected}) => {
+        it(`returns ${expected} when ${description}`, () => {
+          assert.equal(MeetingsUtil.isWholeMeetingEnded(fullState), expected);
+        });
       });
     });
 
