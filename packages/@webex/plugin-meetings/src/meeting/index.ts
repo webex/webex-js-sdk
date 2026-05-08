@@ -5954,14 +5954,6 @@ export default class Meeting extends StatelessWebexPlugin {
       return true;
     }
 
-    LoggerProxy.logger.warn(
-      `Meeting:index#processRelayEvent --> Skipping handling of relay event for ${
-        this.id
-      }. route ${route} does not match ${
-        isPracticeSession ? 'practice session' : 'default session'
-      } LLM binding ${expectedBinding}.`
-    );
-
     return false;
   }
 

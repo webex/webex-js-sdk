@@ -2029,7 +2029,6 @@ describe('plugin-meetings', () => {
             expectedSessionLabel,
           }) => {
             it(title, () => {
-              LoggerProxy.logger.warn = sinon.stub();
               meeting.isReactionsSupported = sinon.stub().returns(true);
               meeting.config.receiveReactions = true;
               const fakeSendersName = 'Fake reactors name';
@@ -2082,14 +2081,7 @@ describe('plugin-meetings', () => {
                   EVENT_TRIGGERS.MEETING_RECEIVE_REACTIONS,
                   fakeProcessedReaction
                 );
-                assert.notCalled(LoggerProxy.logger.warn);
               } else {
-                assert.calledWith(
-                  LoggerProxy.logger.warn,
-                  `Meeting:index#processRelayEvent --> Skipping handling of relay event for ${meeting.id}. route ${route} does not match ${expectedSessionLabel} LLM binding ${
-                    isPracticeSessionConnected ? practiceBinding : defaultBinding
-                  }.`
-                );
                 assert.notCalled(TriggerProxy.trigger);
               }
             });
