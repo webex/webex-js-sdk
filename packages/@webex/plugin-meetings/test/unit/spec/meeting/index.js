@@ -11930,6 +11930,23 @@ describe('plugin-meetings', () => {
           assert.notCalled(fetchMeetingInfoStub);
         });
 
+        ['CALL', 'SIP_BRIDGE', 'SPACE_SHARE'].forEach((fullStateType) => {
+          it(`does not fetch meeting info when destination is a 1:1 call (fullState.type ${fullStateType})`, () => {
+            const fetchMeetingInfoStub = sinon.stub(meeting, 'fetchMeetingInfo').resolves();
+
+            meeting.meetingInfo = {};
+            meeting.destination = {
+              url: 'https://locus.example.com/locus/123',
+              info: {topic: 'x'},
+              fullState: {type: fullStateType},
+            };
+
+            meeting.finalizeMeetingAfterInitialLocusSetup({});
+
+            assert.notCalled(fetchMeetingInfoStub);
+          });
+        });
+
         it('swallows async fetchMeetingInfo errors and logs info', async () => {
           const error = new Error('fetch failed');
 

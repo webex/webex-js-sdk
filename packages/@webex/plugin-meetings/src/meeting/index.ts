@@ -4679,7 +4679,8 @@ export default class Meeting extends StatelessWebexPlugin {
     if (
       (!this.meetingInfo || isEmpty(this.meetingInfo)) &&
       (this.destination as LocusDTO)?.info &&
-      !this.fetchMeetingInfoTimeoutId
+      !this.fetchMeetingInfoTimeoutId &&
+      !MeetingsUtil.isOneOnOneCall(this.destination)
     ) {
       try {
         await this.fetchMeetingInfo({});
