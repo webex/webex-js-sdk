@@ -8,7 +8,9 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
 import {wrap} from 'lodash';
-import MobiusSocket, {config as mobiusConfig, Socket} from './index';
+import MobiusSocket from './index';
+import mobiusConfig from './config';
+import Socket from './socket';
 import {MESSAGE_TYPES} from './socket/constants';
 
 import promiseTick from './test/promise-tick';
@@ -52,7 +54,6 @@ describe('plugin-mobiusSocket', () => {
         },
         timestamp: Date.now(),
         trackingId: `suffix_${createUuid()}_${Date.now()}`,
-        sessionId: 'mobius-websocket-session',
       };
 
       const emitAuthResponse = ({statusCode = 200, statusMessage = 'OK'} = {}) => {
@@ -81,18 +82,10 @@ describe('plugin-mobiusSocket', () => {
           usingFakeTimers = false;
         }
         if (mobiusSocket) {
-          if (mobiusSocket._connectPromises) {
-            mobiusSocket._connectPromises.forEach((promise) => {
-              promise.catch(() => {});
-            });
-          }
           try {
-            await mobiusSocket.disconnectAll();
+            await mobiusSocket.disconnect();
           } catch (e) {
             // Ignore cleanup errors in tests.
-          }
-          if (mobiusSocket._connectPromises) {
-            mobiusSocket._connectPromises.clear();
           }
         }
         if (mockWebSocket && typeof mockWebSocket.close === 'function') {
@@ -147,7 +140,6 @@ describe('plugin-mobiusSocket', () => {
         });
 
         mobiusSocket = new MobiusSocket(webex, {...mobiusConfig.mobiusSocket});
-        mobiusSocket.defaultSessionId = 'mobius-websocket-session';
       });
 
       it('removes all listeners for an event when off() is called without a listener', () => {
@@ -277,7 +269,7 @@ describe('plugin-mobiusSocket', () => {
 
                   promiseTick(1)
                     .then(() => {
-                      assert.calledOnce(bufferStateSpy);
+                      assert.called(bufferStateSpy);
                       resolveTest();
                     })
                     .catch(rejectTest);
@@ -364,8 +356,8 @@ describe('plugin-mobiusSocket', () => {
 
           describe(`when an event ${description} is received`, () => {
             it(`takes the ${action} action`, () => {
-              if (mobiusSocket._reconnect.restore) {
-                mobiusSocket._reconnect.restore();
+              if (mobiusSocket.reconnect.restore) {
+                mobiusSocket.reconnect.restore();
               }
 
               sinon.spy(mobiusSocket, 'connect');
@@ -398,7 +390,6 @@ describe('plugin-mobiusSocket', () => {
                   assert.calledWith(offlineSpy, {
                     code,
                     reason,
-                    sessionId: 'mobius-websocket-session',
                   });
                   switch (action) {
                     case 'close':
@@ -440,26 +431,6 @@ describe('plugin-mobiusSocket', () => {
       });
 
       describe('when a MessageEvent is received', () => {
-        it('processes the Event via any autowired event handlers', () => {
-          webex.fake = {
-            processTestEvent: sinon.spy(),
-          };
-
-          const promise = mobiusSocket.connect();
-
-          mockWebSocket.open();
-
-          return promise
-            .then(() => {
-              mockWebSocket.emit('message', {data: JSON.stringify(fakeTestMessage)});
-
-              return promiseTick(1);
-            })
-            .then(() => {
-              assert.called(webex.fake.processTestEvent);
-            });
-        });
-
         it('emits the MobiusSocket envelope', () => {
           const startSpy = sinon.spy();
           const stopSpy = sinon.spy();

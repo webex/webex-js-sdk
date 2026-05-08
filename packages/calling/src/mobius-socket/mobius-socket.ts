@@ -5,18 +5,11 @@
  */
 
 import {EventEmitter} from 'events';
-import {camelCase, set} from 'lodash';
 import backoff from 'backoff';
 
 import type {WebexSDK} from '../SDKConnector/types';
 import Socket from './socket';
-import {
-  BadRequest,
-  Forbidden,
-  NotAuthorized,
-  UnknownResponse,
-  // NotFound
-} from './errors';
+import {BadRequest, Forbidden, NotAuthorized, UnknownResponse} from './errors';
 import type {MobiusSocketConfig} from './config';
 import type {SocketResponse} from './socket/types';
 import type {
@@ -28,7 +21,6 @@ import type {
 } from './types';
 
 const normalReconnectReasons = ['idle', 'done (forced)'];
-const DEFAULT_MOBIUS_WEBSOCKET_SESSION = 'mobius-websocket-session';
 const MOBIUS_SOCKET_NAMESPACE = 'MobiusSocket';
 const TOKEN_REFRESH_INTERVAL_MS = 1 * 60 * 60 * 1000; // 1 hour
 
@@ -49,24 +41,19 @@ class MobiusSocket extends EventEmitter {
     this.webex = webex;
     this.config = config;
     this.logger = (webex.logger as unknown as MobiusSocketLogger) || console;
-    this.defaultSessionId = DEFAULT_MOBIUS_WEBSOCKET_SESSION;
     this.connected = false;
     this.connecting = false;
     this.hasEverConnected = false;
     this.socket = undefined;
-    this.sockets = new Map();
-    this.backoffCalls = new Map();
-    this._shutdownSwitchoverBackoffCalls = new Map();
-    this._seenAsyncEventIdsBySession = new Map();
-    this._connectPromises = new Map();
-    this.mercuryTimeOffset = undefined;
-    this._tokenRefreshTimer = undefined;
-    this._tokenRefreshInFlight = undefined;
-
-    this._bindInternalEvents();
+    this.backoffCall = undefined;
+    this.shutdownSwitchoverBackoffCall = undefined;
+    this.seenAsyncEventIds = new Map();
+    this.connectPromise = undefined;
+    this.tokenRefreshTimer = undefined;
+    this.tokenRefreshInFlight = undefined;
   }
 
-  off(eventName: string, listener?: (...args: unknown[]) => void) {
+  public off(eventName: string, listener?: (...args: unknown[]) => void) {
     if (listener) {
       return super.off(eventName, listener);
     }
@@ -76,132 +63,50 @@ class MobiusSocket extends EventEmitter {
     return this;
   }
 
-  _bindInternalEvents() {
-    /*
-      When one of these legacy feature gets updated, this event would be triggered
-        * group-message-notifications
-        * mention-notifications
-        * thread-notifications
-    */
-    this.on('event:featureToggle_update', (envelope) => {
-      if (envelope && envelope.data) {
-        this.webex.internal.feature.updateFeature(envelope.data.featureToggle);
-      }
-    });
-    /*
-     * When Cluster Migrations, notify clients using ActiveClusterStatusEvent via mercury
-     * https://wwwin-github.cisco.com/pages/Webex/crr-docs/techdocs/rr-002.html#wip-notifying-clients-of-cluster-migrations
-     * */
-    this.on('event:ActiveClusterStatusEvent', (envelope) => {
-      if (
-        typeof this.webex.internal.services?.switchActiveClusterIds === 'function' &&
-        envelope &&
-        envelope.data
-      ) {
-        this.webex.internal.services.switchActiveClusterIds(envelope.data?.activeClusters);
-      }
-    });
-    /*
-     * Using cache-invalidation via mercury to instead the method of polling via the new /timestamp endpoint from u2c
-     * https://wwwin-github.cisco.com/pages/Webex/crr-docs/techdocs/rr-005.html#websocket-notifications
-     * */
-    this.on('event:u2c.cache-invalidation', (envelope) => {
-      if (
-        typeof this.webex.internal.services?.invalidateCache === 'function' &&
-        envelope &&
-        envelope.data
-      ) {
-        this.webex.internal.services.invalidateCache(envelope.data?.timestamp);
-      }
-    });
-  }
-
   /**
    * Attach event listeners to a socket.
    * @param {Socket} socket - The socket to attach listeners to
-   * @param {sessionId} sessionId - The socket related session ID
    * @returns {void}
    */
-  _attachSocketEventListeners(socket, sessionId) {
-    socket.on('close', (event) => this._onclose(sessionId, event, socket));
-    socket.on('message', (...args) => this._onmessage(sessionId, ...args));
-    socket.on('pong', (...args) => this._setTimeOffset(sessionId, ...args));
-    socket.on('sequence-mismatch', (...args) =>
-      this._emit(sessionId, 'sequence-mismatch', ...args)
-    );
-    socket.on('ping-pong-latency', (...args) =>
-      this._emit(sessionId, 'ping-pong-latency', ...args)
-    );
-  }
-
-  /**
-   * Returns the per-session cache of seen async_event IDs, creating it on first access.
-   * @param {string} sessionId - The session identifier.
-   * @returns {Map<string, boolean>} Ordered cache of seen event IDs for the session.
-   */
-  _getSeenAsyncEventIds(sessionId) {
-    let seenAsyncEventIds = this._seenAsyncEventIdsBySession.get(sessionId);
-
-    if (!seenAsyncEventIds) {
-      seenAsyncEventIds = new Map();
-      this._seenAsyncEventIdsBySession.set(sessionId, seenAsyncEventIds);
-    }
-
-    return seenAsyncEventIds;
-  }
-
-  /**
-   * Clears the dedup cache for one session or for all sessions when omitted.
-   * @param {string} [sessionId] - Optional session identifier.
-   * @returns {void}
-   */
-  _clearSeenAsyncEventIds(sessionId) {
-    if (sessionId) {
-      this._seenAsyncEventIdsBySession.delete(sessionId);
-
-      return;
-    }
-
-    this._seenAsyncEventIdsBySession.clear();
+  private attachSocketEventListeners(socket) {
+    socket.on('close', (event) => this.onclose(event, socket));
+    socket.on('message', (...args) => this.onmessage(...args));
   }
 
   /**
    * Tracks a newly seen async_event ID and reports whether a duplicate should be suppressed.
-   * @param {string} sessionId - The session identifier.
    * @param {object} envelope - Parsed websocket message envelope.
-   * @returns {boolean} True when the event has already been seen for this session.
+   * @returns {boolean} True when the event has already been seen.
    */
-  _trackAsyncEventAndShouldSuppressDuplicate(sessionId, envelope) {
+  private trackAsyncEventAndShouldSuppressDuplicate(envelope) {
     if (envelope?.type !== 'async_event' || !envelope.eventId) {
       return false;
     }
 
-    const seenAsyncEventIds = this._getSeenAsyncEventIds(sessionId);
-
-    if (seenAsyncEventIds.has(envelope.eventId)) {
-      const previousValue = seenAsyncEventIds.get(envelope.eventId);
-
+    if (this.seenAsyncEventIds.has(envelope.eventId)) {
       // Refresh recency so frequently retransmitted eventIds stay protected longer.
-      seenAsyncEventIds.delete(envelope.eventId);
-      seenAsyncEventIds.set(envelope.eventId, previousValue);
+      // This deletion and setting again makes the data recent since javascript map maintains order as well
+      const previousValue = this.seenAsyncEventIds.get(envelope.eventId);
+      this.seenAsyncEventIds.delete(envelope.eventId);
+      this.seenAsyncEventIds.set(envelope.eventId, previousValue);
       this.logger.info(
-        `${MOBIUS_SOCKET_NAMESPACE}: duplicate async_event suppressed for ${sessionId}, eventId=${envelope.eventId}`
+        `${MOBIUS_SOCKET_NAMESPACE}: duplicate async_event suppressed, eventId=${envelope.eventId}`
       );
 
       return true;
     }
 
-    this.logger.info(
-      `${MOBIUS_SOCKET_NAMESPACE}: tracking async_event for ${sessionId}, eventId=${envelope.eventId}`
+    this.logger.log(
+      `${MOBIUS_SOCKET_NAMESPACE}: tracking async_event, eventId=${envelope.eventId}`
     );
-    seenAsyncEventIds.set(envelope.eventId, true);
+    this.seenAsyncEventIds.set(envelope.eventId, true);
 
-    if (seenAsyncEventIds.size > this.config.dedupCacheMaxSize) {
-      const oldestEventId = seenAsyncEventIds.keys().next().value;
+    if (this.seenAsyncEventIds.size > this.config.dedupCacheMaxSize) {
+      const oldestEventId = this.seenAsyncEventIds.keys().next().value;
 
-      seenAsyncEventIds.delete(oldestEventId);
-      this.logger.info(
-        `${MOBIUS_SOCKET_NAMESPACE}: evicted oldest async_event from dedup cache for ${sessionId}, eventId=${oldestEventId}`
+      this.seenAsyncEventIds.delete(oldestEventId);
+      this.logger.log(
+        `${MOBIUS_SOCKET_NAMESPACE}: evicted oldest async_event from dedup cache, eventId=${oldestEventId}`
       );
     }
 
@@ -212,42 +117,35 @@ class MobiusSocket extends EventEmitter {
    * Handle imminent shutdown by establishing a new connection while keeping
    * the current one alive (make-before-break).
    * Idempotent: will no-op if already in progress.
-   * @param {string} sessionId - The session ID for which the shutdown is imminent
-   * @returns {void}
    */
-  _handleImminentShutdown(sessionId) {
-    const oldSocket = this.sockets.get(sessionId);
+  private handleImminentShutdown() {
+    const oldSocket = this.socket;
 
     try {
-      // Idempotent: if we already have a switchover backoff call for this session,
-      // a switchover is in progress – do nothing.
-      if (this._shutdownSwitchoverBackoffCalls.get(sessionId)) {
-        this.logger.info(
-          `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] switchover already in progress for ${sessionId}`
-        );
+      if (this.shutdownSwitchoverBackoffCall) {
+        this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: [shutdown] switchover already in progress`);
 
         return;
       }
 
-      const switchoverId = `${Date.now()}`;
-      this.logger.info(
-        `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] switchover start, id=${switchoverId} for ${sessionId}`
-      );
+      this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: [shutdown] switchover start`);
 
-      this._connectWithBackoff(undefined, sessionId, {
+      this.connectWithBackoff(undefined, {
         isShutdownSwitchover: true,
         attemptOptions: {
           isShutdownSwitchover: true,
           onSuccess: (newSocket, webSocketUrl) => {
             this.logger.info(
-              `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] switchover connected, url: ${webSocketUrl} for ${sessionId}`
+              `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] switchover connected, url: ${webSocketUrl}`
             );
 
-            // Atomically switch active socket reference
-            this.socket = this.sockets.get(this.defaultSessionId);
-            this.connected = this.hasConnectedSockets(); // remain connected throughout
+            // Promote the new socket now that the switchover succeeded
+            newSocket.connecting = false;
+            newSocket.connected = true;
+            this.socket = newSocket;
+            this.connected = true;
 
-            this._emit(sessionId, 'event:mercury_shutdown_switchover_complete', {
+            this.emitEvent('event:mobius_shutdown_switchover_complete', {
               url: webSocketUrl,
             });
 
@@ -261,116 +159,55 @@ class MobiusSocket extends EventEmitter {
       })
         .then(() => {
           this.logger.info(
-            `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] switchover completed successfully for ${sessionId}`
+            `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] switchover completed successfully`
           );
         })
         .catch((err) => {
           this.logger.info(
-            `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] switchover exhausted retries; will fall back to normal reconnection for ${sessionId}: `,
+            `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] switchover exhausted retries; will fall back to normal reconnection: `,
             err
           );
-          this._emit(sessionId, 'event:mercury_shutdown_switchover_failed', {reason: err});
-          // Old socket will eventually close with 4001, triggering normal reconnection
+          this.emitEvent('event:mobius_shutdown_switchover_failed', {reason: err});
         });
     } catch (e) {
-      this.logger.error(
-        `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] error during switchover for ${sessionId}`,
-        e
-      );
-      this._shutdownSwitchoverBackoffCalls.delete(sessionId);
-      this._emit(sessionId, 'event:mercury_shutdown_switchover_failed', {reason: e});
+      this.logger.error(`${MOBIUS_SOCKET_NAMESPACE}: [shutdown] error during switchover`, e);
+      this.shutdownSwitchoverBackoffCall = undefined;
+      this.emitEvent('event:mobius_shutdown_switchover_failed', {reason: e});
     }
   }
 
   /**
-   * Get the last error.
-   * @returns {unknown} The last error.
-   */
-  getLastError(): unknown {
-    return this.lastError;
-  }
-
-  /**
-   * Get all active socket connections
-   * @returns {Map} Map of sessionId to socket instances
-   */
-  getSockets() {
-    return this.sockets;
-  }
-
-  /**
-   * Get a specific socket by connection ID
-   * @param {string} sessionId - The connection identifier
-   * @returns {Socket|undefined} The socket instance or undefined if not found
-   */
-  getSocket(sessionId = this.defaultSessionId) {
-    return this.sockets.get(sessionId);
-  }
-
-  /**
-   * Get the websocket URL for a currently connected session.
-   * @param {string} [sessionId=this.defaultSessionId] - The session identifier.
+   * Get the websocket URL for the currently connected socket.
    * @returns {string|undefined} The connected websocket URL, or undefined when not connected.
    */
-  getConnectedWebSocketUrl(sessionId = this.defaultSessionId): string | undefined {
-    const socket = this.getSocket(sessionId);
-
-    if (!socket?.connected) {
+  public getConnectedWebSocketUrl(): string | undefined {
+    if (!this.socket?.connected) {
       return undefined;
     }
 
-    return socket.url;
-  }
-
-  /**
-   * Sends a payload on the active connected socket
-   * @param {Object} payload - The data to send
-   * @param {string} [sessionId=this.defaultSessionId] - The session identifier
-   * @returns {Promise}
-   */
-  send(payload: Record<string, unknown>, sessionId = this.defaultSessionId): Promise<void> {
-    const socket = this.getSocket(sessionId);
-
-    if (!socket || !socket.connected) {
-      return Promise.reject(new Error(`Mobius socket is not connected for session ${sessionId}`));
-    }
-
-    return socket.send(payload);
+    return this.socket.url;
   }
 
   /**
    * Sends a websocket request and resolves when the matching response arrives.
-   * @param {Object} payload - The websocket request payload.
-   * @param {string|Object} [sessionIdOrRequestOptions=this.defaultSessionId] - Session ID or request options.
-   * @param {Object} [options={}] - Additional request options.
-   * @returns {Promise<Object>}
+   * @param {MobiusSocketRequestPayload} payload - The websocket request payload.
+   * @param {MobiusSocketRequestOptions} [options={}] - Additional request options.
+   * @returns {Promise<SocketResponse>}
    */
-  sendWssRequest(
+  public sendWssRequest(
     payload: MobiusSocketRequestPayload,
-    sessionIdOrRequestOptions: string | MobiusSocketRequestOptions = this.defaultSessionId,
     options: MobiusSocketRequestOptions = {}
   ): Promise<SocketResponse> {
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       return Promise.reject(new Error('`payload` is required'));
     }
 
-    let sessionId = this.defaultSessionId;
-    let requestOptions = options;
-
-    if (typeof sessionIdOrRequestOptions === 'string') {
-      sessionId = sessionIdOrRequestOptions;
-    } else if (sessionIdOrRequestOptions && typeof sessionIdOrRequestOptions === 'object') {
-      requestOptions = sessionIdOrRequestOptions;
+    if (!this.socket || !this.socket.connected) {
+      return Promise.reject(new Error('Mobius socket is not connected'));
     }
 
-    const socket = this.getSocket(sessionId);
-
-    if (!socket || !socket.connected) {
-      return Promise.reject(new Error(`Mobius socket is not connected for session ${sessionId}`));
-    }
-
-    return socket.sendRequest(payload, {
-      timeout: requestOptions.timeout,
+    const requestConfigOptions = {
+      timeout: options.timeout,
       matchesResponse: (response, request) =>
         response?.type === 'response_event' &&
         response?.subtype === request.type &&
@@ -378,9 +215,9 @@ class MobiusSocket extends EventEmitter {
       getStatusCode: (response) => response?.statusCode,
       getStatusMessage: (response) => response?.statusMessage,
       createError: (response, statusCode, statusMessage) =>
-        this._createWssResponseError(response, statusCode, statusMessage),
+        this.createWssResponseError(response, statusCode, statusMessage),
       createTimeoutError: (request) =>
-        this._createWssResponseError(
+        this.createWssResponseError(
           {
             type: 'response_event',
             subtype: request.type,
@@ -389,68 +226,35 @@ class MobiusSocket extends EventEmitter {
           408,
           'Mobius websocket response timed out'
         ),
-    });
+    };
+
+    return this.socket.sendRequest(payload, requestConfigOptions);
   }
 
   /**
-   * Check if the plugin is connected
-   * @returns {boolean} True if connected
+   * Check if the socket is connected.
+   * @returns {boolean} True if connected.
    */
-  isConnected(): boolean {
+  public isConnected(): boolean {
     return this.connected;
   }
 
   /**
-   * Check if a socket is connected
-   * @param {string} [sessionId] - Optional session identifier
-   * @returns {boolean|undefined} True if the socket is connected
-   */
-  hasConnectedSockets(sessionId): boolean {
-    if (sessionId) {
-      return Boolean(this.sockets.get(sessionId)?.connected);
-    }
-
-    for (const socket of this.sockets.values()) {
-      if (socket?.connected) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  /**
-   * Check if any sockets are connecting
-   * @param {string} [sessionId=this.defaultSessionId] - The session identifier
-   * @returns {boolean|undefined} True if the socket is connecting
-   */
-  hasConnectingSockets(sessionId = this.defaultSessionId): boolean {
-    const socket = this.sockets.get(sessionId || this.defaultSessionId);
-
-    return Boolean(socket?.connecting);
-  }
-
-  /**
-   * Connect to Mobius for a specific session.
+   * Connect to Mobius.
    * @param {string} [webSocketUrl] - Optional websocket URL override. Falls back to the device websocket URL.
-   * @param {string} [sessionId=this.defaultSessionId] - The session identifier for this connection.
-   * @returns {Promise<void>} Resolves when connection flow completes for the session.
+   * @returns {Promise<void>} Resolves when connection flow completes.
    */
-  connect(webSocketUrl?: string, sessionId = this.defaultSessionId): Promise<void> {
-    // First check if there's already a connection promise for this session
-    if (this._connectPromises.has(sessionId)) {
+  public connect(webSocketUrl?: string): Promise<void> {
+    if (this.connectPromise) {
       this.logger.info(
-        `${MOBIUS_SOCKET_NAMESPACE}: connection ${sessionId} already in progress, returning existing promise`
+        `${MOBIUS_SOCKET_NAMESPACE}: connection already in progress, returning existing promise`
       );
 
-      return this._connectPromises.get(sessionId);
+      return this.connectPromise;
     }
 
-    const sessionSocket = this.sockets.get(sessionId);
-    if (sessionSocket?.connected || sessionSocket?.connecting) {
-      this.logger.info(
-        `${MOBIUS_SOCKET_NAMESPACE}: connection ${sessionId} already connected, will not connect again`
-      );
+    if (this.socket?.connected || this.socket?.connecting) {
+      this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: already connected, will not connect again`);
 
       return Promise.resolve();
     }
@@ -462,7 +266,6 @@ class MobiusSocket extends EventEmitter {
     }
 
     // Cache the caller-provided URL for reconnect
-    const resolvedUrl = webSocketUrl || this.socketUrl;
     if (webSocketUrl) {
       this.socketUrl = webSocketUrl;
     }
@@ -470,7 +273,7 @@ class MobiusSocket extends EventEmitter {
     this.connecting = true;
 
     this.logger.info(
-      `${MOBIUS_SOCKET_NAMESPACE}: starting connection attempt for ${sessionId}${
+      `${MOBIUS_SOCKET_NAMESPACE}: starting connection attempt${
         Number(this.config.initialConnectionMaxRetries) === 0 && !this.hasEverConnected
           ? ' (initial retries disabled)'
           : ''
@@ -481,119 +284,65 @@ class MobiusSocket extends EventEmitter {
       this.webex.internal.device.registered || this.webex.internal.device.register()
     )
       .then(() => {
-        this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: connecting ${sessionId}`);
+        this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: connecting`);
 
-        return this._connectWithBackoff(resolvedUrl, sessionId);
+        return this.connectWithBackoff(this.socketUrl);
       })
       .finally(() => {
-        this._connectPromises.delete(sessionId);
+        this.connectPromise = undefined;
       });
 
-    this._connectPromises.set(sessionId, connectPromise);
+    this.connectPromise = connectPromise;
 
     return connectPromise;
   }
 
-  logout(): Promise<void> {
-    this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: logout() called`);
-
-    return this.disconnectAll(
-      this.config.beforeLogoutOptionsCloseReason &&
-        !normalReconnectReasons.includes(this.config.beforeLogoutOptionsCloseReason)
-        ? {code: 3050, reason: this.config.beforeLogoutOptionsCloseReason}
-        : undefined
-    );
-  }
-
   /**
-   * Disconnect a Mobius socket for a specific session.
-   * @param {object} [options] - Optional websocket close options (for example: `{code, reason}`).
-   * @param {string} [sessionId=this.defaultSessionId] - The session identifier to disconnect.
-   * @returns {Promise<void>} Resolves after disconnect cleanup and close handling are initiated/completed.
+   * Disconnect the Mobius socket.
+   * @param {MobiusSocketCloseOptions} [options] - Optional websocket close options (code, reason).
+   * @returns {Promise<void>} Resolves after disconnect cleanup and close handling complete.
    */
-  disconnect(
-    options?: MobiusSocketCloseOptions,
-    sessionId = this.defaultSessionId
-  ): MobiusSocketDisconnectResult {
+  public disconnect(options?: MobiusSocketCloseOptions): MobiusSocketDisconnectResult {
     this.logger.info(
-      `${MOBIUS_SOCKET_NAMESPACE}#disconnect: connecting state: ${
-        this.connecting
-      }, connected state: ${this.connected}, socket exists: ${!!this
-        .socket}, options: ${JSON.stringify(options)}`
+      `${MOBIUS_SOCKET_NAMESPACE}#disconnect: connecting state: ${this.connecting},
+       connected state: ${this.connected}, socket exists: ${!!this.socket},
+       options: ${JSON.stringify(options)}`
     );
 
-    const backoffCall = this.backoffCalls.get(sessionId);
-    if (backoffCall) {
-      this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: aborting connection ${sessionId}`);
-      backoffCall.abort();
-      this.backoffCalls.delete(sessionId);
+    if (this.backoffCall) {
+      this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: aborting connection`);
+      this.backoffCall.abort();
+      this.backoffCall = undefined;
     }
-    const shutdownSwitchoverBackoffCall = this._shutdownSwitchoverBackoffCalls.get(sessionId);
-    if (shutdownSwitchoverBackoffCall) {
-      this.logger.info(
-        `${MOBIUS_SOCKET_NAMESPACE}: aborting shutdown switchover connection ${sessionId}`
-      );
-      shutdownSwitchoverBackoffCall.abort();
-      this._shutdownSwitchoverBackoffCalls.delete(sessionId);
+
+    if (this.shutdownSwitchoverBackoffCall) {
+      this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: aborting shutdown switchover connection`);
+      this.shutdownSwitchoverBackoffCall.abort();
+      this.shutdownSwitchoverBackoffCall = undefined;
     }
-    // Clean up any pending connection promises
-    this._connectPromises.delete(sessionId);
 
-    const sessionSocket = this.sockets.get(sessionId);
+    this.connectPromise = undefined;
+    this.seenAsyncEventIds.clear();
 
-    this._clearSeenAsyncEventIds(sessionId);
-
-    if (!sessionSocket) {
-      this.connected = this.hasConnectedSockets();
-      if (!this.hasConnectedSockets()) {
-        this._stopTokenRefreshTimer();
-      }
+    if (!this.socket) {
+      this.connected = false;
+      this.stopTokenRefreshTimer();
 
       return Promise.resolve();
     }
 
-    sessionSocket.removeAllListeners('message');
-    sessionSocket.connecting = false;
-    sessionSocket.connected = false;
+    this.socket.removeAllListeners('message');
+    this.socket.connecting = false;
+    this.socket.connected = false;
 
-    return Promise.resolve(sessionSocket.close(options || undefined)).finally(() => {
-      this.connected = this.hasConnectedSockets();
-      if (!this.hasConnectedSockets()) {
-        this._stopTokenRefreshTimer();
-      }
-    });
-  }
-
-  /**
-   * Disconnect all socket connections
-   * @param {object} options - Close options
-   * @returns {Promise} Promise that resolves when all connections are closed
-   */
-  disconnectAll(options?: MobiusSocketCloseOptions): Promise<void> {
-    const disconnectPromises = [];
-
-    for (const sessionId of this.sockets.keys()) {
-      disconnectPromises.push(this.disconnect(options, sessionId));
-    }
-
-    return Promise.all(disconnectPromises).then(() => {
+    return Promise.resolve(this.socket.close(options || undefined)).finally(() => {
       this.connected = false;
-      this.socket = undefined;
-      this.sockets.clear();
-      this.backoffCalls.clear();
-      this._shutdownSwitchoverBackoffCalls.clear();
-      this._clearSeenAsyncEventIds();
-      this._stopTokenRefreshTimer();
-      this._connectPromises.clear();
+      this.stopTokenRefreshTimer();
     });
-  }
-
-  processRegistrationStatusEvent(message) {
-    this.localClusterServiceUrls = message.localClusterServiceUrls;
   }
 
   // eslint-disable-next-line class-methods-use-this
-  _createWssResponseError(
+  private createWssResponseError(
     response: SocketResponse,
     statusCode?: number,
     statusMessage?: string
@@ -611,57 +360,35 @@ class MobiusSocket extends EventEmitter {
     return error;
   }
 
-  // eslint-disable-next-line class-methods-use-this
-  _applyOverrides(event) {
-    if (!event || !event.headers) {
-      return;
-    }
-    const headerKeys = Object.keys(event.headers);
-
-    headerKeys.forEach((keyPath) => {
-      set(event, keyPath, event.headers[keyPath]);
-    });
-  }
-
-  _prepareUrl(webSocketUrl) {
+  private prepareUrl(webSocketUrl) {
     if (!webSocketUrl) {
+      // TODO: Circle back to this logic when mobius implements the shutdown switchover
       webSocketUrl = this.webex.internal.device.webSocketUrl;
     }
-
-    // TODO: Validate the host against the service catalog
-    // const hostFromUrl = url.parse(webSocketUrl, true)?.host;
-    // const isValidHost = this.webex.internal.services.isValidHost(hostFromUrl);
-    // if (!isValidHost) {
-    //   this.logger.error(
-    //     `${MOBIUS_SOCKET_NAMESPACE}: host ${hostFromUrl} is not a valid host from host catalog`
-    //   );
-    //   return Promise.resolve('');
-    // }
 
     return Promise.resolve(webSocketUrl);
   }
 
-  _attemptConnection(socketUrl, sessionId, callback, options = {}) {
+  private attemptConnection(socketUrl, callback, options = {}) {
     const {isShutdownSwitchover = false, onSuccess = null} = options;
 
     const socket = new Socket();
     socket.connecting = true;
     let newWSUrl;
 
-    this._attachSocketEventListeners(socket, sessionId);
+    this.attachSocketEventListeners(socket);
 
     const backoffCall = isShutdownSwitchover
-      ? this._shutdownSwitchoverBackoffCalls.get(sessionId)
-      : this.backoffCalls.get(sessionId);
+      ? this.shutdownSwitchoverBackoffCall
+      : this.backoffCall;
 
     // Check appropriate backoff call based on connection type
     if (!backoffCall) {
       const mode = isShutdownSwitchover ? 'switchover backoff call' : 'backoffCall';
-      const msg = `${MOBIUS_SOCKET_NAMESPACE}: prevent socket open when ${mode} no longer defined for ${sessionId}`;
+      const msg = `${MOBIUS_SOCKET_NAMESPACE}: prevent socket open when ${mode} no longer defined`;
       const err = new Error(msg);
 
       this.logger.info(msg);
-
       // Call the callback with the error before rejecting
       callback(err);
 
@@ -671,17 +398,17 @@ class MobiusSocket extends EventEmitter {
     // For shutdown switchover, don't set socket yet (make-before-break)
     // For normal connection, set socket before opening to allow disconnect() to close it
     if (!isShutdownSwitchover) {
-      this.sockets.set(sessionId, socket);
+      this.socket = socket;
     }
 
-    return this._prepareAndOpenSocket(socket, socketUrl, sessionId, isShutdownSwitchover)
+    return this.prepareAndOpenSocket(socket, socketUrl, isShutdownSwitchover)
       .then((webSocketUrl) => {
         newWSUrl = webSocketUrl;
 
         this.logger.info(
           `${MOBIUS_SOCKET_NAMESPACE}: ${
             isShutdownSwitchover ? '[shutdown] switchover' : ''
-          } connected to mobius socket, success, action: connected for ${sessionId}, url: ${newWSUrl}`
+          } connected to mobius socket, success, url: ${newWSUrl}`
         );
 
         // Custom success handler for shutdown switchover
@@ -701,37 +428,32 @@ class MobiusSocket extends EventEmitter {
         // For shutdown, simpler error handling - just callback for retry
         if (isShutdownSwitchover) {
           this.logger.info(
-            `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] switchover attempt failed for ${sessionId}`,
+            `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] switchover attempt failed`,
             reason
           );
 
           return callback(reason);
         }
 
-        // Normal connection error handling (existing complex logic)
-        this.lastError = reason; // remember the last error
-
-        const backoffCallNormal = this.backoffCalls.get(sessionId);
-        // Suppress connection errors that appear to be network related. This
-        // may end up suppressing metrics during outages, but we might not care
-        // (especially since many of our outages happen in a way that client
-        // metrics can't be trusted).
+        // Normal connection error handling
+        const backoffCallNormal = this.backoffCall;
+        // Suppress connection errors that appear to be network related (code 1006).
         if (reason.code !== 1006 && backoffCallNormal && backoffCallNormal?.getNumRetries() > 0) {
-          this._emit(sessionId, 'connection_failed', reason, {
-            sessionId,
+          this.emitEvent('connection_failed', reason, {
             retries: backoffCallNormal?.getNumRetries(),
           });
         }
         this.logger.info(
-          `${MOBIUS_SOCKET_NAMESPACE}: connection attempt failed for ${sessionId}`,
+          `${MOBIUS_SOCKET_NAMESPACE}: connection attempt failed`,
           reason,
           backoffCallNormal?.getNumRetries() === 0 ? reason.stack : ''
         );
-        // UnknownResponse is produced by IE for any 4XXX; treated it like a bad
+
+        // UnknownResponse is produced by IE for any 4XXX; treat it like a bad
         // web socket url and let WDM handle the token checking
         if (reason instanceof UnknownResponse) {
           this.logger.info(
-            `${MOBIUS_SOCKET_NAMESPACE}: received unknown response code for ${sessionId}, refreshing device registration`
+            `${MOBIUS_SOCKET_NAMESPACE}: received unknown response code, refreshing device registration`
           );
 
           return this.webex.internal.device.refresh().then(() => callback(reason));
@@ -739,22 +461,14 @@ class MobiusSocket extends EventEmitter {
         // NotAuthorized implies expired token
         if (reason instanceof NotAuthorized) {
           this.logger.info(
-            `${MOBIUS_SOCKET_NAMESPACE}: received authorization error for ${sessionId}, reauthorizing`
+            `${MOBIUS_SOCKET_NAMESPACE}: received authorization error, reauthorizing`
           );
 
           return this.webex.credentials.refresh({force: true}).then(() => callback(reason));
         }
-        // // NotFound implies expired web socket url
-        // else if (reason instanceof NotFound) {
-        //   this.logger.info(`mercury: received not found error, refreshing device registration`);
-        //   return this.webex.internal.device.refresh()
-        //     .then(() => callback(reason));
-        // }
-        // BadRequest implies current credentials are for a Service Account
-        // Forbidden implies current user is not entitled for Webex
         if (reason instanceof BadRequest || reason instanceof Forbidden) {
           this.logger.warn(
-            `${MOBIUS_SOCKET_NAMESPACE}: received unrecoverable response from ${MOBIUS_SOCKET_NAMESPACE} for ${sessionId}`
+            `${MOBIUS_SOCKET_NAMESPACE}: received unrecoverable response from ${MOBIUS_SOCKET_NAMESPACE}`
           );
           backoffCallNormal?.abort();
 
@@ -765,25 +479,23 @@ class MobiusSocket extends EventEmitter {
       })
       .catch((reason) => {
         this.logger.error(
-          `${MOBIUS_SOCKET_NAMESPACE}: failed to handle connection failure for ${sessionId}`,
+          `${MOBIUS_SOCKET_NAMESPACE}: failed to handle connection failure`,
           reason
         );
         callback(reason);
       });
   }
 
-  _prepareAndOpenSocket(socket, socketUrl, sessionId, isShutdownSwitchover = false) {
+  private prepareAndOpenSocket(socket, socketUrl, isShutdownSwitchover = false) {
     const logPrefix = isShutdownSwitchover ? '[shutdown] switchover' : 'connection';
 
-    return Promise.all([this._prepareUrl(socketUrl), this.webex.credentials.getUserToken()]).then(
+    return Promise.all([this.prepareUrl(socketUrl), this.webex.credentials.getUserToken()]).then(
       ([webSocketUrl, token]) => {
         let options = {
           forceCloseDelay: this.config.forceCloseDelay,
           wssResponseTimeout: this.config.wssResponseTimeout,
-          skipAckEventId: this.config.skipAckEventId,
-          skipAckEventType: this.config.skipAckEventType,
           token: normalizeMobiusAuthToken(token.toString()),
-          refreshToken: () => this._refreshToken(),
+          refreshToken: () => this.refreshToken(),
           trackingId: `${this.webex.sessionId}_${Date.now()}`,
           logger: this.logger,
         };
@@ -797,25 +509,23 @@ class MobiusSocket extends EventEmitter {
           options = {...options, ...this.webex.config.defaultMobiusSocketOptions};
         }
 
-        // Set the socket before opening it. This allows a disconnect() to close
-        // the socket if it is in the process of being opened.
-        this.sockets.set(sessionId, socket);
-        this.socket = this.sockets.get(this.defaultSessionId);
+        // Only promote the socket reference for normal connections.
+        // Shutdown switchover keeps the old socket active until the new one succeeds.
+        if (!isShutdownSwitchover) {
+          this.socket = socket;
+        }
 
-        this.logger.info(
-          `${MOBIUS_SOCKET_NAMESPACE} ${logPrefix} url for ${sessionId}: ${webSocketUrl}`
-        );
+        this.logger.info(`${MOBIUS_SOCKET_NAMESPACE} ${logPrefix} url: ${webSocketUrl}`);
 
         return socket.open(webSocketUrl, options).then(() => webSocketUrl);
       }
     );
   }
 
-  _connectWithBackoff(webSocketUrl, sessionId, context = {}): Promise<void> {
+  private connectWithBackoff(webSocketUrl, context = {}): Promise<void> {
     const {isShutdownSwitchover = false, attemptOptions = {}} = context;
 
     return new Promise((resolve, reject) => {
-      // eslint gets confused about whether call is actually used
       // eslint-disable-next-line prefer-const
       let call;
       const isInitialConnect = !isShutdownSwitchover && !this.hasEverConnected;
@@ -825,41 +535,42 @@ class MobiusSocket extends EventEmitter {
           : Number(this.config.initialConnectionMaxRetries);
       const isInitialConnectWithoutRetries = isInitialConnect && initialRetryLimit === 0;
 
-      const onComplete = (err, sid = sessionId) => {
+      const onComplete = (err) => {
         if (isShutdownSwitchover) {
-          this._shutdownSwitchoverBackoffCalls.delete(sid);
+          this.shutdownSwitchoverBackoffCall = undefined;
         } else {
-          this.backoffCalls.delete(sid);
+          this.backoffCall = undefined;
         }
-        const sessionSocket = this.sockets.get(sid);
+
         if (err) {
           const msg = isShutdownSwitchover
             ? `[shutdown] switchover failed after ${call.getNumRetries()} retries`
             : `failed to connect after ${call.getNumRetries()} retries`;
 
-          this.logger.info(
-            `${MOBIUS_SOCKET_NAMESPACE}: ${msg}; log statement about next retry was inaccurate; ${err}`
-          );
-          if (sessionSocket) {
-            sessionSocket.connecting = false;
-            sessionSocket.connected = false;
+          this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: ${msg}; ${err}`);
+          // Only mutate socket flags for normal connections.
+          // During shutdown switchover, this.socket is the old live socket — don't touch it.
+          if (!isShutdownSwitchover && this.socket) {
+            this.socket.connecting = false;
+            this.socket.connected = false;
           }
 
           return reject(err);
         }
 
-        // Update overall connected status
-        if (sessionSocket) {
-          sessionSocket.connecting = false;
-          sessionSocket.connected = true;
+        // For normal connections, mark the socket as connected.
+        // Shutdown switchover promotion is handled by the onSuccess callback.
+        if (!isShutdownSwitchover && this.socket) {
+          this.socket.connecting = false;
+          this.socket.connected = true;
         }
-        // Default success handling for normal connections
+
         if (!isShutdownSwitchover) {
-          this.connecting = this.hasConnectingSockets();
-          this.connected = this.hasConnectedSockets();
+          this.connecting = false;
+          this.connected = true;
           this.hasEverConnected = true;
-          this._startTokenRefreshTimer();
-          this._emit(sid, 'online');
+          this.startTokenRefreshTimer();
+          this.emitEvent('online');
         }
 
         return resolve();
@@ -871,11 +582,11 @@ class MobiusSocket extends EventEmitter {
           const attemptLogPrefix = isShutdownSwitchover ? '[shutdown] switchover' : 'connection';
 
           this.logger.info(
-            `${MOBIUS_SOCKET_NAMESPACE}: executing ${attemptLogPrefix} attempt ${attemptNum} for ${sessionId}`
+            `${MOBIUS_SOCKET_NAMESPACE}: executing ${attemptLogPrefix} attempt ${attemptNum}`
           );
-          this._attemptConnection(webSocketUrl, sessionId, callback, attemptOptions);
+          this.attemptConnection(webSocketUrl, callback, attemptOptions);
         },
-        (err) => onComplete(err, sessionId)
+        (err) => onComplete(err)
       );
 
       call.setStrategy(
@@ -893,28 +604,25 @@ class MobiusSocket extends EventEmitter {
         call.failAfter(this.config.maxRetries);
       }
 
-      // Store the call BEFORE setting up event handlers to prevent race conditions
-      // Store backoff call reference BEFORE starting (so it's available in _attemptConnection)
+      // Store backoff call reference BEFORE starting (so it's available in attemptConnection)
       if (isShutdownSwitchover) {
-        this._shutdownSwitchoverBackoffCalls.set(sessionId, call);
+        this.shutdownSwitchoverBackoffCall = call;
       } else {
-        this.backoffCalls.set(sessionId, call);
+        this.backoffCall = call;
       }
 
       call.on('abort', () => {
         const msg = isShutdownSwitchover ? 'Shutdown Switchover' : 'Connection';
 
-        this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: ${msg} aborted for ${sessionId}`);
-        reject(new Error(`MobiusSocket ${msg} Aborted for ${sessionId}`));
+        this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: ${msg} aborted`);
+        reject(new Error(`MobiusSocket ${msg} Aborted`));
       });
 
       call.on('callback', (err) => {
         if (err) {
           if (isInitialConnectWithoutRetries) {
-            // retryIf(() => false) already disabled retries for this initial connect;
-            // this branch only avoids logging the generic "attempting retry" message.
             this.logger.info(
-              `${MOBIUS_SOCKET_NAMESPACE}: initial connect failed for ${sessionId}; retries already disabled`
+              `${MOBIUS_SOCKET_NAMESPACE}: initial connect failed; retries already disabled`
             );
 
             return;
@@ -928,7 +636,7 @@ class MobiusSocket extends EventEmitter {
           this.logger.info(
             `${MOBIUS_SOCKET_NAMESPACE}: ${callbackLogPrefix} failed to connect; attempting retry ${
               number + 1
-            } in ${delay} ms for ${sessionId}`
+            } in ${delay} ms`
           );
           /* istanbul ignore if */
           if (process.env.NODE_ENV === 'development') {
@@ -937,90 +645,59 @@ class MobiusSocket extends EventEmitter {
 
           return;
         }
-        this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: connected ${sessionId}`);
+        this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: connected`);
       });
 
       call.start();
     });
   }
 
-  _emit(sessionId, eventName, ...args) {
+  private emitEvent(eventName, ...args) {
     try {
-      if (!sessionId || !eventName) {
+      if (!eventName) {
         return;
       }
 
-      const suffix = sessionId === this.defaultSessionId ? '' : `:${sessionId}`;
-
-      this.emit(`${eventName}${suffix}`, ...args);
+      this.emit(eventName, ...args);
     } catch (error) {
       // Safely handle errors without causing additional issues during cleanup
-      try {
-        this.logger.error(
-          `${MOBIUS_SOCKET_NAMESPACE}: error occurred in event handler:`,
-          error,
-          ' with args: ',
-          [sessionId, eventName, ...args]
-        );
-      } catch (logError) {
-        // If even logging fails, just ignore to prevent cascading errors during cleanup
-        // eslint-disable-next-line no-console
-        console.error('MobiusSocket _emit error handling failed:', logError);
-      }
+      this.logger.error(
+        `${MOBIUS_SOCKET_NAMESPACE}: error occurred in event handler:`,
+        error,
+        ' with args: ',
+        [eventName, ...args]
+      );
     }
   }
 
-  _getEventHandlers(eventType) {
-    if (!eventType) {
-      return [];
-    }
-    const [namespace, name] = eventType.split('.');
-    const handlers = [];
-
-    if (!this.webex[namespace] && !this.webex.internal[namespace]) {
-      return handlers;
-    }
-
-    const handlerName = camelCase(`process_${name}_event`);
-
-    if ((this.webex[namespace] || this.webex.internal[namespace])[handlerName]) {
-      handlers.push({
-        name: handlerName,
-        namespace,
-      });
-    }
-
-    return handlers;
-  }
-
-  _startTokenRefreshTimer() {
-    if (this._tokenRefreshTimer || !this.hasConnectedSockets()) {
+  private startTokenRefreshTimer() {
+    if (this.tokenRefreshTimer || !this.connected) {
       return;
     }
 
-    this._tokenRefreshTimer = setInterval(() => {
-      this._refreshToken().catch((error) => {
+    this.tokenRefreshTimer = setInterval(() => {
+      this.refreshToken().catch((error) => {
         this.logger.error(`${MOBIUS_SOCKET_NAMESPACE}: periodic token refresh failed`, error);
       });
     }, TOKEN_REFRESH_INTERVAL_MS);
   }
 
-  _stopTokenRefreshTimer() {
-    if (!this._tokenRefreshTimer) {
+  private stopTokenRefreshTimer() {
+    if (!this.tokenRefreshTimer) {
       return;
     }
 
-    clearInterval(this._tokenRefreshTimer);
-    this._tokenRefreshTimer = undefined;
+    clearInterval(this.tokenRefreshTimer);
+    this.tokenRefreshTimer = undefined;
   }
 
-  _refreshToken() {
-    if (this._tokenRefreshInFlight) {
-      return this._tokenRefreshInFlight;
+  private refreshToken() {
+    if (this.tokenRefreshInFlight) {
+      return this.tokenRefreshInFlight;
     }
 
-    if (!this.hasConnectedSockets()) {
-      this._stopTokenRefreshTimer();
+    if (!this.connected) {
+      this.stopTokenRefreshTimer();
 
       return Promise.resolve();
     }
@@ -1031,71 +708,60 @@ class MobiusSocket extends EventEmitter {
           .then(() => this.webex.credentials.getUserToken())
       : this.webex.credentials.getUserToken();
 
-    this._tokenRefreshInFlight = tokenPromise
+    this.tokenRefreshInFlight = tokenPromise
       .then((token) => {
         if (!token) {
           throw new Error('Mobius token refresh did not return a token');
         }
         const refreshedToken = normalizeMobiusAuthToken(token.toString());
-        const authPayloadPromises = [];
 
-        for (const socket of this.sockets.values()) {
-          if (socket?.connected) {
-            authPayloadPromises.push(socket.refresh(refreshedToken));
-          }
+        if (this.socket?.connected) {
+          return this.socket.refresh(refreshedToken);
         }
 
-        return Promise.all(authPayloadPromises);
+        return undefined;
       })
       .catch((error) => {
         this.logger.error(
-          `${MOBIUS_SOCKET_NAMESPACE}: failed to refresh/re-auth Mobius sockets`,
+          `${MOBIUS_SOCKET_NAMESPACE}: failed to refresh/re-auth Mobius socket`,
           error
         );
         throw error;
       })
       .finally(() => {
-        this._tokenRefreshInFlight = undefined;
+        this.tokenRefreshInFlight = undefined;
       });
 
-    return this._tokenRefreshInFlight;
+    return this.tokenRefreshInFlight;
   }
 
-  _onclose(sessionId, event, sourceSocket) {
+  private onclose(event, sourceSocket) {
     // I don't see any way to avoid the complexity or statement count in here.
     /* eslint complexity: [0] */
 
     try {
       const reason = event.reason && event.reason.toLowerCase();
-      const sessionSocket = this.sockets.get(sessionId);
       let socketUrl;
-      event.sessionId = sessionId;
 
-      const isActiveSocket = sourceSocket === sessionSocket;
+      const isActiveSocket = sourceSocket === this.socket;
       if (sourceSocket) {
         socketUrl = sourceSocket.url;
       }
-      this.sockets.delete(sessionId);
 
+      // Only tear down state if the currently active socket closed
       if (isActiveSocket) {
-        // Only tear down state if the currently active socket closed
-        if (sessionSocket) {
-          sessionSocket.removeAllListeners();
-          if (sessionId === this.defaultSessionId) {
-            this.socket = undefined;
-          }
-          this._emit(sessionId, 'offline', event);
+        if (this.socket) {
+          this.socket.removeAllListeners();
+          this.socket = undefined;
+          this.emitEvent('offline', event);
         }
-        // Update overall connected status
-        this.connecting = this.hasConnectingSockets();
-        this.connected = this.hasConnectedSockets();
-        if (!this.hasConnectedSockets()) {
-          this._stopTokenRefreshTimer();
-        }
+        this.connecting = false;
+        this.connected = false;
+        this.stopTokenRefreshTimer();
       } else {
         // Old socket closed; do not flip connection state
         this.logger.info(
-          `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] non-active socket closed, code=${event.code} for ${sessionId}`
+          `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] non-active socket closed, code=${event.code}`
         );
         // Clean up listeners from old socket now that it's closed
         if (sourceSocket) {
@@ -1105,188 +771,129 @@ class MobiusSocket extends EventEmitter {
 
       switch (event.code) {
         case 1003:
-          // metric: disconnect
           this.logger.info(
-            `${MOBIUS_SOCKET_NAMESPACE}: service rejected last message for ${sessionId}; will not reconnect: ${event.reason}`
+            `${MOBIUS_SOCKET_NAMESPACE}: service rejected last message; will not reconnect: ${event.reason}`
           );
-          if (isActiveSocket) this._emit(sessionId, 'offline.permanent', event);
+          if (isActiveSocket) this.emitEvent('offline.permanent', event);
           break;
         case 4000:
-          // metric: disconnect
-          this.logger.info(
-            `${MOBIUS_SOCKET_NAMESPACE}: socket ${sessionId} replaced; will not reconnect`
-          );
-          if (isActiveSocket) this._emit(sessionId, 'offline.replaced', event);
-          // If not active, nothing to do
+          this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: socket replaced; will not reconnect`);
+          if (isActiveSocket) this.emitEvent('offline.replaced', event);
           break;
         case 4001:
           // replaced during shutdown
           if (isActiveSocket) {
             // Server closed active socket with 4001, meaning it expected this connection
-            // to be replaced, but the switchover in _handleImminentShutdown failed.
-            // This is a permanent failure - do not reconnect.
+            // to be replaced, but the switchover in handleImminentShutdown failed.
             this.logger.warn(
-              `${MOBIUS_SOCKET_NAMESPACE}: active socket closed with 4001; shutdown switchover failed for ${sessionId}`
+              `${MOBIUS_SOCKET_NAMESPACE}: active socket closed with 4001; shutdown switchover failed`
             );
-            this._emit(sessionId, 'offline.permanent', event);
+            this.emitEvent('offline.permanent', event);
           } else {
             // Expected: old socket closed after successful switchover
             this.logger.info(
-              `${MOBIUS_SOCKET_NAMESPACE}: old socket closed with 4001 (replaced during shutdown); no reconnect needed for ${sessionId}`
+              `${MOBIUS_SOCKET_NAMESPACE}: old socket closed with 4001 (replaced during shutdown); no reconnect needed`
             );
-            this._emit(sessionId, 'offline.replaced', event);
+            this.emitEvent('offline.replaced', event);
           }
           break;
         case 1001:
         case 1005:
         case 1006:
         case 1011:
-          this.logger.info(
-            `${MOBIUS_SOCKET_NAMESPACE}: socket ${sessionId} disconnected; reconnecting`
-          );
+          this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: socket disconnected; reconnecting`);
           if (isActiveSocket) {
-            this._emit(sessionId, 'offline.transient', event);
-            this.logger.info(
-              `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] reconnecting active socket to recover for ${sessionId}`
-            );
-            this._reconnect(socketUrl, sessionId);
+            this.emitEvent('offline.transient', event);
+            this.reconnect(socketUrl);
           }
-          // metric: disconnect
-          // if (code == 1011 && reason !== ping error) metric: unexpected disconnect
           break;
         case 1000:
-        case 3050: // 3050 indicates logout form of closure, default to old behavior, use config reason defined by consumer to proceed with the permanent block
+        case 3050:
           if (normalReconnectReasons.includes(reason)) {
-            this.logger.info(
-              `${MOBIUS_SOCKET_NAMESPACE}: socket ${sessionId} disconnected; reconnecting`
-            );
+            this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: socket disconnected; reconnecting`);
             if (isActiveSocket) {
-              this._emit(sessionId, 'offline.transient', event);
-              this.logger.info(
-                `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] reconnecting due to normal close for ${sessionId}`
-              );
-              this._reconnect(socketUrl, sessionId);
+              this.emitEvent('offline.transient', event);
+              this.reconnect(socketUrl);
             }
-            // metric: disconnect
-            // if (reason === done forced) metric: force closure
           } else {
             this.logger.info(
-              `${MOBIUS_SOCKET_NAMESPACE}: socket ${sessionId} disconnected; will not reconnect: ${event.reason}`
+              `${MOBIUS_SOCKET_NAMESPACE}: socket disconnected; will not reconnect: ${event.reason}`
             );
-            if (isActiveSocket) this._emit(sessionId, 'offline.permanent', event);
+            if (isActiveSocket) this.emitEvent('offline.permanent', event);
           }
           break;
         default:
           this.logger.info(
-            `${MOBIUS_SOCKET_NAMESPACE}: socket ${sessionId} disconnected unexpectedly; will not reconnect`
+            `${MOBIUS_SOCKET_NAMESPACE}: socket disconnected unexpectedly; will not reconnect`
           );
-          // unexpected disconnect
-          if (isActiveSocket) this._emit(sessionId, 'offline.permanent', event);
+          if (isActiveSocket) this.emitEvent('offline.permanent', event);
       }
     } catch (error) {
-      this.logger.error(
-        `${MOBIUS_SOCKET_NAMESPACE}: error occurred in close handler for ${sessionId}`,
-        error
-      );
+      this.logger.error(`${MOBIUS_SOCKET_NAMESPACE}: error occurred in close handler`, error);
     }
   }
 
-  _onmessage(sessionId, event) {
-    this._setTimeOffset(sessionId, event);
+  private onmessage(event) {
     const envelope = event.data;
 
-    if (process.env.ENABLE_MERCURY_LOGGING) {
-      this.logger.debug(
-        `${MOBIUS_SOCKET_NAMESPACE}: message envelope from ${sessionId}: `,
-        envelope
-      );
+    if (process.env.ENABLE_MOBIUS_LOGGING) {
+      this.logger.debug(`${MOBIUS_SOCKET_NAMESPACE}: message envelope: `, envelope);
     }
-
-    envelope.sessionId = sessionId;
 
     // Handle shutdown message shape: { type: 'shutdown' }
     if (envelope && envelope.type === 'shutdown') {
-      this.logger.info(
-        `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] imminent shutdown message received for ${sessionId}`
-      );
-      this._emit(sessionId, 'event:mercury_shutdown_imminent', envelope);
+      this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: [shutdown] imminent shutdown message received`);
+      this.emitEvent('event:mobius_shutdown_imminent', envelope); // This is not yet not implemented, keeping for future support
 
-      this._handleImminentShutdown(sessionId);
+      this.handleImminentShutdown();
 
       return Promise.resolve();
     }
 
-    if (this._trackAsyncEventAndShouldSuppressDuplicate(sessionId, envelope)) {
+    if (this.trackAsyncEventAndShouldSuppressDuplicate(envelope)) {
       return Promise.resolve();
     }
 
-    // Mobius: emit event:<type> for typed messages (e.g., register.response)
+    // Emit event:<type> for typed messages (e.g., register.response)
     if (envelope.type) {
-      this._emit(sessionId, `event:${envelope.type}`, envelope);
+      this.emitEvent(`event:${envelope.type}`, envelope);
     }
 
-    envelope.sessionId = sessionId;
     // Use data/payload if present, otherwise treat the envelope itself as the data (flat format)
     const data = envelope.data || envelope;
 
-    this._applyOverrides(data);
-
-    // Support both Mercury-enveloped (data.eventType) and flat (eventType) formats
+    // Support both Mobius-enveloped (data.eventType) and flat (eventType) formats
     const eventType = data?.eventType || envelope.eventType;
 
     if (!eventType) {
-      this._emit(sessionId, 'event', envelope);
+      this.emitEvent('event', envelope);
 
       return Promise.resolve();
     }
 
-    return this._getEventHandlers(eventType)
-      .reduce(
-        (promise, handler) =>
-          promise.then(() => {
-            const {namespace, name} = handler;
+    try {
+      // TODO: Remove if event:namespace is not required
+      this.emitEvent('event', envelope);
+      const [namespace] = eventType.split('.');
+      this.emitEvent(`event:${namespace}`, envelope);
 
-            return new Promise((resolve) => {
-              resolve((this.webex[namespace] || this.webex.internal[namespace])[name](data));
-            }).catch((reason) =>
-              this.logger.error(
-                `${MOBIUS_SOCKET_NAMESPACE}: error occurred in autowired event handler for ${eventType} from ${sessionId}`,
-                reason
-              )
-            );
-          }),
-        Promise.resolve()
-      )
-      .then(() => {
-        this._emit(sessionId, 'event', envelope);
-        const [namespace] = eventType.split('.');
-
-        if (namespace === eventType) {
-          this._emit(sessionId, `event:${namespace}`, envelope);
-        } else {
-          this._emit(sessionId, `event:${namespace}`, envelope);
-          this._emit(sessionId, `event:${eventType}`, envelope);
-        }
-      })
-      .catch((reason) => {
-        this.logger.error(
-          `${MOBIUS_SOCKET_NAMESPACE}: error occurred processing socket message from ${sessionId}`,
-          reason
-        );
-      });
-  }
-
-  _setTimeOffset(sessionId, event) {
-    const {wsWriteTimestamp} = event.data;
-    if (typeof wsWriteTimestamp === 'number' && wsWriteTimestamp > 0) {
-      this.mercuryTimeOffset = Date.now() - wsWriteTimestamp;
+      if (namespace !== eventType) {
+        this.emitEvent(`event:${eventType}`, envelope);
+      }
+    } catch (reason) {
+      this.logger.error(
+        `${MOBIUS_SOCKET_NAMESPACE}: error occurred processing socket message`,
+        reason
+      );
     }
+
+    return Promise.resolve();
   }
 
-  _reconnect(webSocketUrl, sessionId = this.defaultSessionId) {
-    this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: reconnecting ${sessionId}`);
+  private reconnect(webSocketUrl) {
+    this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: reconnecting`);
 
-    return this.connect(webSocketUrl || this.socketUrl, sessionId);
+    return this.connect(webSocketUrl || this.socketUrl);
   }
 }
 

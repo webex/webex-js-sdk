@@ -170,6 +170,8 @@ export class APIRequest {
 
     log.info('Disconnecting from Mobius WebSocket', logContext);
 
+    const wssUrl = this.mobiusSocket.getConnectedWebSocketUrl();
+
     try {
       await this.mobiusSocket.disconnect(options);
       log.log('Mobius WebSocket disconnected successfully', logContext);
@@ -177,7 +179,8 @@ export class APIRequest {
       this.metricManager?.submitMobiusSocketMetric(
         METRIC_EVENT.MOBIUS_SOCKET,
         MOBIUS_SOCKET_ACTION.DISCONNECT,
-        METRIC_TYPE.BEHAVIORAL
+        METRIC_TYPE.BEHAVIORAL,
+        wssUrl
       );
     } catch (err) {
       // silent error - no need to throw an error
@@ -187,8 +190,8 @@ export class APIRequest {
         METRIC_EVENT.MOBIUS_SOCKET_ERROR,
         MOBIUS_SOCKET_ACTION.DISCONNECT,
         METRIC_TYPE.BEHAVIORAL,
-        undefined,
-        undefined,
+        wssUrl,
+        undefined, // add trackingId
         String(err)
       );
     }

@@ -12,6 +12,15 @@ import type {SocketCloseEvent} from './socket/types';
 export class ConnectionError extends Exception {
   static defaultMessage = 'Failed to connect to socket';
 
+  code?: number;
+
+  reason?: string;
+
+  // eslint-disable-next-line no-useless-constructor
+  constructor(event?: SocketCloseEvent) {
+    super(event);
+  }
+
   /**
    * @param event
    */
@@ -35,6 +44,11 @@ export class ConnectionError extends Exception {
 export class UnknownResponse extends ConnectionError {
   static defaultMessage =
     'UnknownResponse is produced by IE when we receive a 4XXX. You probably want to treat this like a NotFound';
+
+  // eslint-disable-next-line no-useless-constructor
+  constructor(event?: SocketCloseEvent) {
+    super(event);
+  }
 }
 
 /**
@@ -43,6 +57,11 @@ export class UnknownResponse extends ConnectionError {
 export class BadRequest extends ConnectionError {
   static defaultMessage =
     'BadRequest usually implies an attempt to use service account credentials';
+
+  // eslint-disable-next-line no-useless-constructor
+  constructor(event?: SocketCloseEvent) {
+    super(event);
+  }
 }
 
 /**
@@ -50,6 +69,11 @@ export class BadRequest extends ConnectionError {
  */
 export class NotAuthorized extends ConnectionError {
   static defaultMessage = 'Please refresh your access token';
+
+  // eslint-disable-next-line no-useless-constructor
+  constructor(event?: SocketCloseEvent) {
+    super(event);
+  }
 }
 
 /**
@@ -57,11 +81,9 @@ export class NotAuthorized extends ConnectionError {
  */
 export class Forbidden extends ConnectionError {
   static defaultMessage = 'Forbidden usually implies these credentials are not entitled for Webex';
-}
 
-// /**
-//  * thrown for CloseCode 4404
-//  */
-// export class NotFound extends ConnectionError {
-//   static defaultMessage = `Please refresh your Mercury registration (typically via a WDM refresh)`;
-// }
+  // eslint-disable-next-line no-useless-constructor
+  constructor(event?: SocketCloseEvent) {
+    super(event);
+  }
+}

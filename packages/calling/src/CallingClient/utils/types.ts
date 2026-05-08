@@ -47,7 +47,6 @@ export type MobiusSocketResponse = {
  */
 export type SendWssRequestFn = (
   data: MobiusSocketRequestOptions,
-  sessionIdOrOptions?: string | Record<string, unknown>,
   options?: Record<string, unknown>
 ) => Promise<MobiusSocketResponse>;
 

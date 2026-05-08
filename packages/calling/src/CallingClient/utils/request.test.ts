@@ -299,7 +299,8 @@ describe('APIRequest', () => {
       expect(mockMetricManager.submitMobiusSocketMetric).toHaveBeenCalledWith(
         METRIC_EVENT.MOBIUS_SOCKET,
         MOBIUS_SOCKET_ACTION.DISCONNECT,
-        METRIC_TYPE.BEHAVIORAL
+        METRIC_TYPE.BEHAVIORAL,
+        'wss://test.webex.com'
       );
     });
 
@@ -337,7 +338,7 @@ describe('APIRequest', () => {
         METRIC_EVENT.MOBIUS_SOCKET_ERROR,
         MOBIUS_SOCKET_ACTION.DISCONNECT,
         METRIC_TYPE.BEHAVIORAL,
-        undefined,
+        'wss://test.webex.com',
         undefined,
         'Error: Disconnect failed'
       );
