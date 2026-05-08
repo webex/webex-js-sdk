@@ -725,6 +725,15 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   }
 
   /**
+   * Checks whether WebRTC registration should be skipped by config.
+   * @returns {boolean}
+   * @private
+   */
+  private isWebRTCRegistrationDisabled(): boolean {
+    return this.$config?.disableWebRTCRegistration === true;
+  }
+
+  /**
    * Connects to the websocket and fetches the agent profile
    * @returns {Promise<Profile>} Agent profile information
    * @throws {Error} If connection fails or profile cannot be fetched
@@ -785,7 +794,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       if (
         this.agentConfig.webRtcEnabled &&
-        this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
+        this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER) &&
+        !this.isWebRTCRegistrationDisabled()
       ) {
         try {
           await this.$webex.internal.mercury.connect();
@@ -799,6 +809,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
             method: METHODS.CONNECT_WEBSOCKET,
           });
         }
+      } else if (this.isWebRTCRegistrationDisabled()) {
+        LoggerProxy.info(
+          'Skipping Mobius registration because disableWebRTCRegistration is enabled',
+          {
+            module: CC_FILE,
+            method: METHODS.CONNECT_WEBSOCKET,
+          }
+        );
       }
 
       if (this.$config && this.$config.allowAutomatedRelogin) {
@@ -883,8 +901,24 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
       });
 
-      if (this.agentConfig.webRtcEnabled && data.loginOption === LoginOption.BROWSER) {
+      if (
+        this.agentConfig.webRtcEnabled &&
+        data.loginOption === LoginOption.BROWSER &&
+        !this.isWebRTCRegistrationDisabled()
+      ) {
         await this.webCallingService.registerWebCallingLine();
+      } else if (
+        this.agentConfig.webRtcEnabled &&
+        data.loginOption === LoginOption.BROWSER &&
+        this.isWebRTCRegistrationDisabled()
+      ) {
+        LoggerProxy.info(
+          'Skipping web calling line registration because disableWebRTCRegistration is enabled',
+          {
+            module: CC_FILE,
+            method: METHODS.STATION_LOGIN,
+          }
+        );
       }
 
       const resp = await loginResponse;
@@ -1391,6 +1425,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.agentConfig.deviceType = deviceType;
     switch (deviceType) {
       case LoginOption.BROWSER:
+        if (this.isWebRTCRegistrationDisabled()) {
+          LoggerProxy.info(
+            'Skipping web calling line registration because disableWebRTCRegistration is enabled',
+            {
+              module: CC_FILE,
+              method: METHODS.HANDLE_DEVICE_TYPE,
+            }
+          );
+          break;
+        }
         try {
           await this.webCallingService.registerWebCallingLine();
         } catch (error) {
