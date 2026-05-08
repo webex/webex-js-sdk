@@ -14,12 +14,14 @@ import StaticConfig from '@webex/plugin-meetings/src/common/config';
 import TriggerProxy from '@webex/plugin-meetings/src/common/events/trigger-proxy';
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import LoggerConfig from '@webex/plugin-meetings/src/common/logs/logger-config';
+import ParameterError from '@webex/plugin-meetings/src/common/errors/parameter';
 import Meeting, {CallStateForMetrics} from '@webex/plugin-meetings/src/meeting';
 import {Services} from '@webex/webex-core';
 import MeetingUtil from '@webex/plugin-meetings/src/meeting/util';
 import Meetings from '@webex/plugin-meetings/src/meetings';
 import MeetingCollection from '@webex/plugin-meetings/src/meetings/collection';
 import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
+import {SitePreferenceSelectOption} from '@webex/plugin-meetings/src/meetings/meetings.types';
 import PersonalMeetingRoom from '@webex/plugin-meetings/src/personal-meeting-room';
 import Reachability from '@webex/plugin-meetings/src/reachability';
 import Metrics from '@webex/plugin-meetings/src/metrics';
@@ -1356,6 +1358,87 @@ describe('plugin-meetings', () => {
             );
           });
         });
+        describe('#fetchSitePreferencesMeViaSite', () => {
+          const sitePreferencesResponse = {
+            scheduling: {
+              supportScheduleWebinar: true,
+              webinarWebLink: 'https://go.webex.com/webappng/sites/go/webinar/scheduler',
+            },
+          };
+
+          beforeEach(() => {
+            webex.meetings.request.fetchSitePreferencesMeViaSite = sinon
+              .stub()
+              .resolves(sitePreferencesResponse);
+          });
+
+          it('should have #fetchSitePreferencesMeViaSite', () => {
+            assert.exists(webex.meetings.fetchSitePreferencesMeViaSite);
+          });
+
+          it('fetches scheduling preferences for the preferred Webex site by default', async () => {
+            webex.meetings.preferredWebexSite = 'go.webex.com';
+
+            const result = await webex.meetings.fetchSitePreferencesMeViaSite();
+
+            assert.deepEqual(result, sitePreferencesResponse);
+            assert.calledOnceWithExactly(
+              webex.meetings.request.fetchSitePreferencesMeViaSite,
+              {
+                siteUrl: 'go.webex.com',
+              }
+            );
+          });
+
+          it('uses the provided Webex site instead of the preferred Webex site', async () => {
+            webex.meetings.preferredWebexSite = 'preferred.webex.com';
+
+            await webex.meetings.fetchSitePreferencesMeViaSite({siteUrl: 'go.webex.com'});
+
+            assert.calledOnceWithExactly(
+              webex.meetings.request.fetchSitePreferencesMeViaSite,
+              {
+                siteUrl: 'go.webex.com',
+              }
+            );
+          });
+
+          it('forwards custom site name and preference sections to the request helper', async () => {
+            webex.meetings.preferredWebexSite = 'go.webex.com';
+
+            await webex.meetings.fetchSitePreferencesMeViaSite({
+              siteName: 'custom-site',
+              selectOptions: [SitePreferenceSelectOption.SCHEDULING],
+            });
+
+            assert.calledOnceWithExactly(
+              webex.meetings.request.fetchSitePreferencesMeViaSite,
+              {
+                siteUrl: 'go.webex.com',
+                siteName: 'custom-site',
+                selectOptions: [SitePreferenceSelectOption.SCHEDULING],
+              }
+            );
+          });
+
+          it('throws when no Webex site is available', () => {
+            webex.meetings.preferredWebexSite = '';
+            webex.meetings.request.fetchSitePreferencesMeViaSite.throws(
+              new ParameterError(
+                'No siteUrl available. Call register() before fetching site preferences or provide options.siteUrl.'
+              )
+            );
+
+            assert.throws(
+              () => webex.meetings.fetchSitePreferencesMeViaSite(),
+              ParameterError,
+              'No siteUrl available. Call register() before fetching site preferences or provide options.siteUrl.'
+            );
+            assert.calledOnceWithExactly(webex.meetings.request.fetchSitePreferencesMeViaSite, {
+              siteUrl: '',
+            });
+          });
+        });
         describe('Static shortcut proxy methods', () => {
           describe('MeetingCollection getByKey proxies', () => {
             beforeEach(() => {
@@ -1628,6 +1711,40 @@ describe('plugin-meetings', () => {
 
             assert.calledOnce(destroySpy);
             assert.calledWith(destroySpy, meetingCollectionMeetings.breakoutMeeting);
+          });
+        });
+
+        describe('skipHashTreeSync parameter', () => {
+          it('should skip syncAllHashTreeDatasets when skipHashTreeSync is true', async () => {
+            const mockLocusInfo = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
+            };
+
+            webex.meetings.request.getActiveMeetings = sinon.stub().resolves({loci: []});
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              meeting1: {locusInfo: mockLocusInfo},
+            });
+
+            await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: true});
+
+            assert.calledOnce(webex.meetings.request.getActiveMeetings);
+            assert.notCalled(mockLocusInfo.syncAllHashTreeDatasets);
+          });
+
+          it('should call syncAllHashTreeDatasets when skipHashTreeSync is false (default)', async () => {
+            const mockLocusInfo = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
+            };
+
+            webex.meetings.request.getActiveMeetings = sinon.stub().resolves({loci: []});
+            webex.meetings.meetingCollection.getAll = sinon.stub().returns({
+              meeting1: {locusInfo: mockLocusInfo},
+            });
+
+            await webex.meetings.syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: false});
+
+            assert.calledOnce(webex.meetings.request.getActiveMeetings);
+            assert.calledOnce(mockLocusInfo.syncAllHashTreeDatasets);
           });
         });
 
