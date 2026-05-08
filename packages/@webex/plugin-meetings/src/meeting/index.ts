@@ -3606,7 +3606,7 @@ export default class Meeting extends StatelessWebexPlugin {
   handleDataChannelUrlChange(datachannelUrl) {
     // @ts-ignore - config coming from registerPlugin
     if (datachannelUrl && this.config.enableAutomaticLLM) {
-      this.updateLLMConnection();
+      this.updateLLMConnection({trigger: 'breakout-move'});
       if (this.webinar.isJoinPracticeSessionDataChannel()) {
         this.webinar.updatePSDataChannel();
       }
@@ -6308,7 +6308,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.webex.internal.llm.off('online', this.handleLLMOnline);
           // @ts-ignore
           this.webex.internal.llm.on('online', this.handleLLMOnline);
-          this.updateLLMConnection({isInitialJoin: true})
+          this.updateLLMConnection({trigger: 'initial-join'})
             .catch((error) => {
               LoggerProxy.logger.error(
                 'Meeting:index#join --> Transcription Socket Connection Failed',
@@ -6567,10 +6567,10 @@ export default class Meeting extends StatelessWebexPlugin {
    * Connects to low latency mercury and reconnects if the address has changed
    * It will also disconnect if called when the meeting has ended
    * @param {Object} [options]
-   * @param {boolean} [options.isInitialJoin] - Whether this is the initial join (used for LLM connect metrics)
+   * @param {string} [options.trigger] - What triggered this connection (used for LLM connect metrics): 'initial-join' | 'breakout-move'
    * @returns {Promise}
    */
-  async updateLLMConnection({isInitialJoin = false}: {isInitialJoin?: boolean} = {}) {
+  async updateLLMConnection({trigger}: {trigger?: 'initial-join' | 'breakout-move'} = {}) {
     // @ts-ignore - Fix type
     const {url = undefined, info: {datachannelUrl = undefined} = {}} = this.locusInfo || {};
 
@@ -6649,9 +6649,9 @@ export default class Meeting extends StatelessWebexPlugin {
 
         this.startLLMHealthCheckTimer();
 
-        // Emit LLM connect latency metric only on initial join
-        if (isInitialJoin && registerAndConnectResult) {
-          this.sendLLMConnectMetric(registerAndConnectResult);
+        // Emit LLM connect latency metric when trigger is specified
+        if (trigger && registerAndConnectResult) {
+          this.sendLLMConnectMetric(registerAndConnectResult, undefined, trigger);
         }
 
         return Promise.resolve(registerAndConnectResult);
@@ -6662,12 +6662,14 @@ export default class Meeting extends StatelessWebexPlugin {
    * Sends the client.llm.connect.response diagnostic event with LLM connection latencies.
    * @param {Object} timings - The timing measurements from LLM connection
    * @param {Object} [error] - Optional error if connection failed
+   * @param {string} [trigger] - What triggered this connection: 'initial-join' | 'breakout-move'
    * @returns {void}
    * @private
    */
   private sendLLMConnectMetric(
     timings: {clientLLMDatachannelResponseTime: number; clientLLMWebSocketConnectTime?: number},
-    error?: any
+    error?: any,
+    trigger?: 'initial-join' | 'breakout-move'
   ) {
     // @ts-ignore
     const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
@@ -6679,6 +6681,7 @@ export default class Meeting extends StatelessWebexPlugin {
           clientLLMWebSocketConnectTime: timings.clientLLMWebSocketConnectTime,
         }),
       },
+      ...(trigger && {trigger}),
     };
 
     if (llmWebsocketUrl) {

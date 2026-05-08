@@ -2383,10 +2383,10 @@ describe('plugin-meetings', () => {
 
           describe('LLM and sync latency metrics', () => {
             describe('#sendLLMConnectMetric', () => {
-              it('emits client.llm.connect.response with full timings and llmWebsocketUrl', async () => {
+              it('emits client.llm.connect.response with trigger initial-join and full timings', async () => {
                 sinon.stub(meeting, 'isJoined').returns(true);
                 sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
-                sinon.stub(meeting.webex.internal.llm, 'getDatachannelUrl').returns('wss://datachannel.example.com');
+                meeting.webex.internal.llm.getWebSocketUrl = sinon.stub().returns('wss://datachannel.example.com');
                 const timings = {
                   clientLLMDatachannelResponseTime: 150,
                   clientLLMWebSocketConnectTime: 200,
@@ -2394,7 +2394,7 @@ describe('plugin-meetings', () => {
                 sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves(timings);
 
                 meeting.updateLLMConnection.restore();
-                await meeting.updateLLMConnection({isInitialJoin: true});
+                await meeting.updateLLMConnection({trigger: 'initial-join'});
 
                 assert.calledWithMatch(
                   webex.internal.newMetrics.submitClientEvent,
@@ -2405,7 +2405,38 @@ describe('plugin-meetings', () => {
                         clientLLMDatachannelResponseTime: 150,
                         clientLLMWebSocketConnectTime: 200,
                       },
+                      trigger: 'initial-join',
                       identifiers: {llmWebsocketUrl: 'wss://datachannel.example.com'},
+                    },
+                    options: {meetingId: meeting.id},
+                  }
+                );
+              });
+
+              it('emits client.llm.connect.response with trigger breakout-move on reconnect', async () => {
+                sinon.stub(meeting, 'isJoined').returns(true);
+                sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
+                meeting.webex.internal.llm.getWebSocketUrl = sinon.stub().returns('wss://breakout.example.com');
+                const timings = {
+                  clientLLMDatachannelResponseTime: 120,
+                  clientLLMWebSocketConnectTime: 180,
+                };
+                sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves(timings);
+
+                meeting.updateLLMConnection.restore();
+                await meeting.updateLLMConnection({trigger: 'breakout-move'});
+
+                assert.calledWithMatch(
+                  webex.internal.newMetrics.submitClientEvent,
+                  {
+                    name: 'client.llm.connect.response',
+                    payload: {
+                      llmLatency: {
+                        clientLLMDatachannelResponseTime: 120,
+                        clientLLMWebSocketConnectTime: 180,
+                      },
+                      trigger: 'breakout-move',
+                      identifiers: {llmWebsocketUrl: 'wss://breakout.example.com'},
                     },
                     options: {meetingId: meeting.id},
                   }
@@ -2415,14 +2446,14 @@ describe('plugin-meetings', () => {
               it('emits client.llm.connect.response without WebSocketConnectTime when not provided', async () => {
                 sinon.stub(meeting, 'isJoined').returns(true);
                 sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
-                sinon.stub(meeting.webex.internal.llm, 'getDatachannelUrl').returns(undefined);
+                meeting.webex.internal.llm.getWebSocketUrl = sinon.stub().returns(undefined);
                 const timings = {
                   clientLLMDatachannelResponseTime: 100,
                 };
                 sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves(timings);
 
                 meeting.updateLLMConnection.restore();
-                await meeting.updateLLMConnection({isInitialJoin: true});
+                await meeting.updateLLMConnection({trigger: 'initial-join'});
 
                 const matchingCall = webex.internal.newMetrics.submitClientEvent.getCalls()
                   .find(call => call.args[0]?.name === 'client.llm.connect.response');
@@ -2434,7 +2465,7 @@ describe('plugin-meetings', () => {
                 assert.notProperty(payload, 'identifiers');
               });
 
-              it('does not emit client.llm.connect.response when isInitialJoin is false', async () => {
+              it('does not emit client.llm.connect.response when no trigger is specified', async () => {
                 sinon.stub(meeting, 'isJoined').returns(true);
                 sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
                 const timings = {
@@ -2444,7 +2475,7 @@ describe('plugin-meetings', () => {
                 sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves(timings);
 
                 meeting.updateLLMConnection.restore();
-                await meeting.updateLLMConnection({isInitialJoin: false});
+                await meeting.updateLLMConnection();
 
                 const matchingCall = webex.internal.newMetrics.submitClientEvent.getCalls()
                   .find(call => call.args[0]?.name === 'client.llm.connect.response');
@@ -2455,7 +2486,7 @@ describe('plugin-meetings', () => {
 
             describe('#sendSyncCompleteMetric via syncMetricsCallback', () => {
               it('emits client.locus.sync.complete when syncMetricsCallback is invoked', () => {
-                sinon.stub(meeting.webex.internal.llm, 'getDatachannelUrl').returns('wss://dc.example.com');
+                meeting.webex.internal.llm.getWebSocketUrl = sinon.stub().returns('wss://dc.example.com');
 
                 const syncLatency = {
                   randomBackoffTime: 50,
@@ -2488,7 +2519,7 @@ describe('plugin-meetings', () => {
               });
 
               it('emits client.locus.sync.complete without identifiers when no datachannel URL', () => {
-                sinon.stub(meeting.webex.internal.llm, 'getDatachannelUrl').returns(undefined);
+                meeting.webex.internal.llm.getWebSocketUrl = sinon.stub().returns(undefined);
 
                 const syncLatency = {
                   randomBackoffTime: 0,
@@ -2524,20 +2555,20 @@ describe('plugin-meetings', () => {
               it('emits client.llm.connect.response with rawError when LLM connection fails', async () => {
                 sinon.stub(meeting, 'isJoined').returns(true);
                 sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
-                sinon.stub(meeting.webex.internal.llm, 'getDatachannelUrl').returns(undefined);
+                meeting.webex.internal.llm.getWebSocketUrl = sinon.stub().returns(undefined);
                 const connectError = new Error('WebSocket connection timeout');
                 sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').rejects(connectError);
 
                 meeting.updateLLMConnection.restore();
 
                 try {
-                  await meeting.updateLLMConnection({isInitialJoin: true});
+                  await meeting.updateLLMConnection({trigger: 'initial-join'});
                 } catch (e) {
                   // expected to throw
                 }
 
                 // The error path is in the join() catch block, so test sendLLMConnectMetric directly
-                meeting.sendLLMConnectMetric({clientLLMDatachannelResponseTime: 0}, connectError);
+                meeting.sendLLMConnectMetric({clientLLMDatachannelResponseTime: 0}, connectError, 'initial-join');
 
                 const matchingCall = webex.internal.newMetrics.submitClientEvent.getCalls()
                   .find(call => call.args[0]?.name === 'client.llm.connect.response');
@@ -2556,7 +2587,7 @@ describe('plugin-meetings', () => {
                 sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves(undefined);
 
                 meeting.updateLLMConnection.restore();
-                await meeting.updateLLMConnection({isInitialJoin: true});
+                await meeting.updateLLMConnection({trigger: 'initial-join'});
 
                 const matchingCall = webex.internal.newMetrics.submitClientEvent.getCalls()
                   .find(call => call.args[0]?.name === 'client.llm.connect.response');
