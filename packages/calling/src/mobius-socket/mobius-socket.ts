@@ -84,8 +84,7 @@ class MobiusSocket extends EventEmitter {
 
   /**
    * Attach event listeners to a socket.
-   * @param {Socket} socket - The socket to attach listeners to
-   * @returns {void}
+   * @param socket - The socket to attach listeners to
    */
   private attachSocketEventListeners(socket: ExtendedSocket): void {
     socket.on('close', (event: SocketCloseEvent) => this.onclose(event, socket));
@@ -94,8 +93,8 @@ class MobiusSocket extends EventEmitter {
 
   /**
    * Tracks a newly seen async_event ID and reports whether a duplicate should be suppressed.
-   * @param {object} envelope - Parsed websocket message envelope.
-   * @returns {boolean} True when the event has already been seen.
+   * @param envelope - Parsed websocket message envelope
+   * @returns True when the event has already been seen
    */
   private trackAsyncEventAndShouldSuppressDuplicate(envelope: SocketResponse): boolean {
     if (envelope?.type !== 'async_event' || !envelope.eventId) {
@@ -200,7 +199,7 @@ class MobiusSocket extends EventEmitter {
 
   /**
    * Get the websocket URL for the currently connected socket.
-   * @returns {string|undefined} The connected websocket URL, or undefined when not connected.
+   * @returns The connected websocket URL, or undefined when not connected
    */
   public getConnectedWebSocketUrl(): string | undefined {
     if (!this.socket?.connected) {
@@ -212,9 +211,9 @@ class MobiusSocket extends EventEmitter {
 
   /**
    * Sends a websocket request and resolves when the matching response arrives.
-   * @param {MobiusSocketRequestPayload} payload - The websocket request payload.
-   * @param {MobiusSocketRequestOptions} [options={}] - Additional request options.
-   * @returns {Promise<SocketResponse>}
+   * @param payload - The websocket request payload
+   * @param options - Additional request options
+   * @returns Promise that resolves with the socket response
    */
   public sendWssRequest(
     payload: MobiusSocketRequestPayload,
@@ -233,7 +232,7 @@ class MobiusSocket extends EventEmitter {
 
   /**
    * Check if the socket is connected.
-   * @returns {boolean} True if connected.
+   * @returns True if connected
    */
   public isConnected(): boolean {
     return this.connected;
@@ -241,8 +240,8 @@ class MobiusSocket extends EventEmitter {
 
   /**
    * Connect to Mobius.
-   * @param {string} [webSocketUrl] - Optional websocket URL override. Falls back to the device websocket URL.
-   * @returns {Promise<void>} Resolves when connection flow completes.
+   * @param webSocketUrl - Optional websocket URL override. Falls back to the device websocket URL
+   * @returns Promise that resolves when connection flow completes
    */
   public connect(webSocketUrl?: string): Promise<void> {
     if (this.connectPromise) {
@@ -299,8 +298,8 @@ class MobiusSocket extends EventEmitter {
 
   /**
    * Disconnect the Mobius socket.
-   * @param {MobiusSocketCloseOptions} [options] - Optional websocket close options (code, reason).
-   * @returns {Promise<void>} Resolves after disconnect cleanup and close handling complete.
+   * @param options - Optional websocket close options (code, reason)
+   * @returns Promise that resolves after disconnect cleanup and close handling complete
    */
   public disconnect(options?: MobiusSocketCloseOptions): MobiusSocketDisconnectResult {
     this.logger.info(
@@ -664,6 +663,11 @@ class MobiusSocket extends EventEmitter {
     });
   }
 
+  /**
+   * Safely emits an event, catching and logging any errors from event handlers.
+   * @param eventName - The name of the event to emit
+   * @param args - Arguments to pass to event handlers
+   */
   private emitEvent(eventName: string, ...args: unknown[]): void {
     try {
       if (!eventName) {
@@ -682,6 +686,10 @@ class MobiusSocket extends EventEmitter {
     }
   }
 
+  /**
+   * Starts a periodic timer to refresh the authentication token.
+   * Token refresh occurs every hour while connected.
+   */
   private startTokenRefreshTimer() {
     if (this.tokenRefreshTimer || !this.connected) {
       return;
@@ -694,6 +702,9 @@ class MobiusSocket extends EventEmitter {
     }, TOKEN_REFRESH_INTERVAL_MS);
   }
 
+  /**
+   * Stops the periodic token refresh timer.
+   */
   private stopTokenRefreshTimer() {
     if (!this.tokenRefreshTimer) {
       return;
@@ -703,6 +714,10 @@ class MobiusSocket extends EventEmitter {
     this.tokenRefreshTimer = undefined;
   }
 
+  /**
+   * Refreshes the authentication token and re-authenticates the socket connection.
+   * @returns Promise that resolves when token refresh and re-authentication complete
+   */
   private refreshToken(): Promise<unknown> {
     if (this.tokenRefreshInFlight) {
       return this.tokenRefreshInFlight;

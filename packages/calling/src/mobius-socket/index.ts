@@ -10,19 +10,14 @@ import type {WebexSDK} from '../SDKConnector/types';
 import MobiusSocket from './mobius-socket';
 import config, {MobiusSocketConfig} from './config';
 
-/**
- * Creates a calling-owned Mobius socket client for the provided Webex instance.
- *
- * @param webex
- * @param [mobiusSocketConfig]
- * @returns
- */
-let mobiusSocketInstance: MobiusSocket | undefined; // Keeping just one instance of MobiusSocket since there won't be multiple connections
+// Singleton instance - keeping just one instance of MobiusSocket since there won't be multiple connections
+let mobiusSocketInstance: MobiusSocket | undefined;
 
 /**
  * Creates or returns the singleton Mobius socket client for the provided Webex instance.
+ *
  * @param webex - The Webex SDK instance
- * @param [mobiusSocketConfig] - Optional configuration overrides
+ * @param mobiusSocketConfig - Optional configuration overrides
  * @returns The singleton MobiusSocket instance
  */
 export function getMobiusSocketInstance(
@@ -43,7 +38,6 @@ export function getMobiusSocketInstance(
 
 /**
  * Resets the singleton MobiusSocket instance, allowing a new one to be created.
- * @returns
  */
 export function resetMobiusSocketInstance() {
   mobiusSocketInstance = undefined;

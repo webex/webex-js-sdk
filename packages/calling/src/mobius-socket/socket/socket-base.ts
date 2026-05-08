@@ -59,8 +59,7 @@ export default class Socket extends EventEmitter {
   wssResponseTimeout?: number;
 
   /**
-   * constructor
-   * @returns {Socket}
+   * Creates a new Socket instance.
    */
   public constructor() {
     super();
@@ -73,57 +72,57 @@ export default class Socket extends EventEmitter {
 
   // TODO: Circle back and check if we are using binaryType and related getters. If not, we can remove these.
   /**
+   * Gets the binary type of the WebSocket connection.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
-   * @returns {string}
    */
   public get binaryType() {
     return sockets.get(this)?.binaryType || '';
   }
 
   /**
+   * Gets the number of bytes of data that have been queued but not yet transmitted.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
-   * @returns {number}
    */
   public get bufferedAmount() {
     return sockets.get(this)?.bufferedAmount || 0;
   }
 
   /**
+   * Gets the extensions selected by the server.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
-   * @returns {string}
    */
   public get extensions() {
     return sockets.get(this)?.extensions || '';
   }
 
   /**
+   * Gets the sub-protocol selected by the server.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
-   * @returns {string}
    */
   public get protocol() {
     return sockets.get(this)?.protocol || '';
   }
 
   /**
+   * Gets the current state of the WebSocket connection.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
-   * @returns {number}
    */
   public get readyState() {
     return sockets.get(this)?.readyState || 0;
   }
 
   /**
+   * Gets the URL of the WebSocket connection.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
-   * @returns {string}
    */
   public get url() {
     return sockets.get(this)?.url || '';
   }
 
   /**
-   * Provides the environmentally appropriate constructor (ws in NodeJS,
-   * WebSocket in browsers)
-   * @returns {WebSocket}
+   * Provides the environmentally appropriate WebSocket constructor.
+   *
+   * @returns The WebSocket constructor (ws in NodeJS, WebSocket in browsers)
    */
   public static getWebSocketConstructor(): unknown {
     throw new Error(
@@ -132,11 +131,9 @@ export default class Socket extends EventEmitter {
   }
 
   /**
-   * Closes the socket
-   * @param {Object} options
-   * @param {string} options.reason
-   * @param {number} options.code
-   * @returns {Promise}
+   * Closes the socket.
+   * @param options - Close options containing code and reason
+   * @returns Promise that resolves when the socket is closed
    */
   public close(options?: {reason?: string; code?: number}) {
     return new Promise<SocketCloseEvent | void>((resolve, reject) => {
@@ -232,14 +229,11 @@ export default class Socket extends EventEmitter {
   }
 
   /**
-   * Opens a WebSocket
-   * @param {string} url
-   * @param {options} options
-   * @param {number} options.forceCloseDelay (required)
-   * @param {string} options.token (required)
-   * @param {string} options.trackingId (required)
-   * @param {Logger} options.logger (required)
-   * @returns {Promise}
+   * Opens a WebSocket connection and performs authentication.
+   *
+   * @param url - WebSocket URL to connect to
+   * @param options - Socket connection options including token, logger, and timeout settings
+   * @returns Promise that resolves when socket is opened and authenticated
    */
   public open(url: string, options?: SocketOpenOptions) {
     try {
@@ -323,9 +317,8 @@ export default class Socket extends EventEmitter {
   }
 
   /**
-   * Handles incoming CloseEvents
-   * @param {CloseEvent} event
-   * @returns {undefined}
+   * Handles incoming CloseEvents.
+   * @param event - The close event containing code and reason
    */
   public onclose(event: SocketCloseEvent) {
     this.logger.info(`socket,${this.domain}: closed`, event.code, event.reason);
@@ -340,9 +333,8 @@ export default class Socket extends EventEmitter {
   }
 
   /**
-   * Handles incoming message events
-   * @param {MessageEvent} event
-   * @returns {undefined}
+   * Handles incoming message events from the WebSocket.
+   * @param event - The message event containing the data
    */
   public onmessage(event: SocketMessageEvent<string>) {
     try {
@@ -366,9 +358,9 @@ export default class Socket extends EventEmitter {
   }
 
   /**
-   * Sends a message up the socket
-   * @param {mixed} data
-   * @returns {Promise}
+   * Sends a message up the socket.
+   * @param data - Data to send (string or object that will be JSON stringified)
+   * @returns Promise that resolves when the message is sent
    */
   public send(data: string | Record<string, unknown>) {
     return new Promise<void>((resolve, reject) => {
@@ -398,15 +390,10 @@ export default class Socket extends EventEmitter {
 
   /**
    * Sends a request and resolves when the matching response arrives.
-   * @param {Object} data
-   * @param {Object} [options={}]
-   * @param {Function} [options.matchesResponse]
-   * @param {Function} [options.createError]
-   * @param {Function} [options.createTimeoutError]
-   * @param {Function} [options.getStatusCode]
-   * @param {Function} [options.getStatusMessage]
-   * @param {number} [options.timeout]
-   * @returns {Promise<Object>}
+   *
+   * @param data - Request data to send over the socket
+   * @param options - Request options including timeout and error handlers
+   * @returns Promise that resolves with the response data
    */
   public sendRequest(data: SocketResponse, options: SendRequestOptions = {}) {
     if (!isObject(data)) {
@@ -452,9 +439,9 @@ export default class Socket extends EventEmitter {
   }
 
   /**
-   * Sends an acknowledgment for a specific event
-   * @param {MessageEvent} event
-   * @returns {Promise}
+   * Sends an acknowledgment for a specific async event.
+   * @param event - Message event containing the async event to acknowledge
+   * @returns Promise that resolves when acknowledgment is sent
    */
   private acknowledge(event: SocketMessageEvent<SocketResponse>) {
     if (!event) {
@@ -502,8 +489,8 @@ export default class Socket extends EventEmitter {
 
   /**
    * Sends an auth message up the socket with a refreshed token.
-   * @param {string} token
-   * @returns {Promise}
+   * @param token - Authentication token to send
+   * @returns Promise that resolves when authentication succeeds
    */
   private authorize(token: string) {
     this.logger.info(`socket,${this.domain}: authorizing`);
@@ -516,8 +503,7 @@ export default class Socket extends EventEmitter {
 
   /**
    * Clears a pending response entry.
-   * @param {string} trackingId
-   * @returns {void}
+   * @param trackingId - Tracking ID of the response to clear
    */
   private clearPendingResponse(trackingId: string) {
     const pendingResponse = this.pendingResponses.get(trackingId);
@@ -531,8 +517,7 @@ export default class Socket extends EventEmitter {
 
   /**
    * Rejects all pending responses with the provided error.
-   * @param {Error} error
-   * @returns {void}
+   * @param error - Error to reject pending responses with
    */
   private rejectPendingResponses(error: unknown) {
     if (!this.pendingResponses.size) {
@@ -546,8 +531,8 @@ export default class Socket extends EventEmitter {
 
   /**
    * Handles incoming responses for pending requests.
-   * @param {Object} response
-   * @returns {boolean}
+   * @param response - Response data to match against pending requests
+   * @returns True if a matching pending request was found and handled
    */
   private handlePendingResponse(response: SocketResponse) {
     if (!response) {
@@ -597,11 +582,10 @@ export default class Socket extends EventEmitter {
   }
 
   /**
-   * Deals with the fact that some browsers drop some close codes (but not
-   * close reasons).
-   * @param {CloseEvent} event
-   * @private
-   * @returns {CloseEvent}
+   * Deals with the fact that some browsers drop some close codes (but not close reasons).
+   *
+   * @param event - Close event to fix
+   * @returns Fixed close event with corrected code if necessary
    */
   private fixCloseCode(event: SocketCloseEvent) {
     if (event.code === 1005 && event.reason) {

@@ -8,7 +8,7 @@ import type {SocketCloseEvent, SocketResponse} from './socket/types';
 import {MobiusSocketResponseError} from './types';
 
 /**
- * Exception thrown when a websocket gets closed
+ * Exception thrown when a websocket gets closed.
  */
 export class ConnectionError extends Exception {
   static defaultMessage = 'Failed to connect to socket';
@@ -23,7 +23,9 @@ export class ConnectionError extends Exception {
   }
 
   /**
-   * @param event
+   * Parses a close event and sets the code and reason properties.
+   * @param event - Socket close event to parse
+   * @returns The reason string from the event
    */
   parse(event: SocketCloseEvent = {}) {
     Object.defineProperties(this, {
@@ -40,7 +42,9 @@ export class ConnectionError extends Exception {
 }
 
 /**
- * thrown for CloseCode 4400
+ * Thrown for CloseCode 1005.
+ * UnknownResponse is produced by IE when we receive a 4XXX close code.
+ * This should typically be treated like a NotFound error.
  */
 export class UnknownResponse extends ConnectionError {
   static defaultMessage =
@@ -53,7 +57,8 @@ export class UnknownResponse extends ConnectionError {
 }
 
 /**
- * thrown for CloseCode 4400
+ * Thrown for CloseCode 4400.
+ * BadRequest usually implies an attempt to use service account credentials.
  */
 export class BadRequest extends ConnectionError {
   static defaultMessage =
@@ -66,7 +71,8 @@ export class BadRequest extends ConnectionError {
 }
 
 /**
- * thrown for CloseCode 4401
+ * Thrown for CloseCode 4401.
+ * Indicates an authorization failure requiring a token refresh.
  */
 export class NotAuthorized extends ConnectionError {
   static defaultMessage = 'Please refresh your access token';
@@ -78,7 +84,8 @@ export class NotAuthorized extends ConnectionError {
 }
 
 /**
- * thrown for CloseCode 4403
+ * Thrown for CloseCode 4403.
+ * Forbidden usually implies the credentials are not entitled for Webex.
  */
 export class Forbidden extends ConnectionError {
   static defaultMessage = 'Forbidden usually implies these credentials are not entitled for Webex';
@@ -89,6 +96,14 @@ export class Forbidden extends ConnectionError {
   }
 }
 
+/**
+ * Creates a MobiusSocketResponseError from a socket response.
+ *
+ * @param response - The socket response that triggered the error
+ * @param statusCode - HTTP-style status code for the error
+ * @param statusMessage - Human-readable status message
+ * @returns A formatted error object with response details
+ */
 export function createWssResponseError(
   response: SocketResponse,
   statusCode?: number,
@@ -107,6 +122,12 @@ export function createWssResponseError(
   return error;
 }
 
+/**
+ * Creates a timeout error for a socket request that didn't receive a response.
+ *
+ * @param request - The socket request that timed out
+ * @returns A timeout error with status code 408
+ */
 export function createTimeoutError(request: SocketResponse): MobiusSocketResponseError {
   const errorPayload = {
     type: 'response_event',
