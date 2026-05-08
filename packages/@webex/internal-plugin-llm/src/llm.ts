@@ -10,7 +10,7 @@ import {
   SUBSCRIPTION_AWARE_SUBCHANNELS_PARAM,
   LLM_DEFAULT_SESSION,
 } from './constants';
-import {ILLMChannel, DataChannelTokenType} from './llm.types';
+import {ILLMChannel, DataChannelTokenType, RegisterAndConnectTiming} from './llm.types';
 
 export const config = {
   llm: {
@@ -124,8 +124,13 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     datachannelUrl: string,
     datachannelToken?: string,
     sessionId: string = LLM_DEFAULT_SESSION
-  ): Promise<void> =>
-    this.register(datachannelUrl, datachannelToken, sessionId).then(async () => {
+  ): Promise<RegisterAndConnectTiming | undefined> => {
+    // Capture latency for the LLM datachannel HTTP call.
+    const datachannelStart = Date.now();
+
+    return this.register(datachannelUrl, datachannelToken, sessionId).then(async () => {
+      const clientLLMDatachannelResponseTime = Date.now() - datachannelStart;
+
       if (!locusUrl || !datachannelUrl) return undefined;
 
       // Get or create connection data
@@ -141,8 +146,17 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
         ? LLMChannel.buildUrlWithAwareSubchannels(sessionData.webSocketUrl, AWARE_DATA_CHANNEL)
         : sessionData.webSocketUrl;
 
-      return this.connect(connectUrl, sessionId);
+      // Capture latency for the websocket connect step.
+      const wsConnectStart = Date.now();
+      await this.connect(connectUrl, sessionId);
+      const clientLLMWebSocketConnectTime = Date.now() - wsConnectStart;
+
+      return {
+        clientLLMDatachannelResponseTime,
+        clientLLMWebSocketConnectTime,
+      };
     });
+  };
 
   /**
    * Tells if LLM socket is connected
@@ -186,6 +200,19 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     const sessionData = this.connections.get(sessionId);
 
     return sessionData?.datachannelUrl;
+  };
+
+  /**
+   * Get the websocket URL returned by the LLM register response for the
+   * connection. This is the actual `wss://` endpoint the socket connects to,
+   * distinct from the HTTP `datachannelUrl` used for register/refresh.
+   * @param {string} sessionId - Connection identifier
+   * @returns {string | undefined} websocket URL, or undefined if not registered
+   */
+  public getWebSocketUrl = (sessionId = LLM_DEFAULT_SESSION): string | undefined => {
+    const sessionData = this.connections.get(sessionId);
+
+    return sessionData?.webSocketUrl;
   };
 
   /**

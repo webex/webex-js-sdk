@@ -39,15 +39,36 @@ const breakoutEvent: {
     if (!eventInfo.meeting.meetingInfo?.enableConvergedArchitecture) {
       return;
     }
+
+    const identifiers: Record<string, any> = {
+      breakoutMoveId: eventInfo.breakoutMoveId,
+      breakoutSessionId: eventInfo?.currentSession?.sessionId,
+      breakoutGroupId: eventInfo?.currentSession?.groupId,
+    };
+
+    // When LLM was re-established as part of a breakout join, surface the
+    // LLM latencies on this event instead of `client.llm.connect.response`
+    // (which is reserved for initial join).
+    if (eventInfo.llmWebsocketUrl) {
+      identifiers.llmWebsocketUrl = eventInfo.llmWebsocketUrl;
+    }
+
+    const payload: Record<string, any> = {identifiers};
+
+    if (
+      eventInfo.llmTiming &&
+      (eventInfo.llmTiming.clientLLMDatachannelResponseTime !== undefined ||
+        eventInfo.llmTiming.clientLLMWebSocketConnectTime !== undefined)
+    ) {
+      payload.llmLatency = {
+        clientLLMDatachannelResponseTime: eventInfo.llmTiming.clientLLMDatachannelResponseTime,
+        clientLLMWebSocketConnectTime: eventInfo.llmTiming.clientLLMWebSocketConnectTime,
+      };
+    }
+
     submitClientEvent({
       name: event,
-      payload: {
-        identifiers: {
-          breakoutMoveId: eventInfo.breakoutMoveId,
-          breakoutSessionId: eventInfo?.currentSession?.sessionId,
-          breakoutGroupId: eventInfo?.currentSession?.groupId,
-        },
-      },
+      payload,
       options: {meetingId: eventInfo.meeting.id},
     });
   },

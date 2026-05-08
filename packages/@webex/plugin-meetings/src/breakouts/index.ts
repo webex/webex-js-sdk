@@ -362,6 +362,12 @@ const Breakouts = WebexPlugin.extend({
           currentSession: this.currentBreakoutSession,
           meeting,
           breakoutMoveId: params.breakoutMoveId,
+          // LLM is re-established when the data channel URL changes during a
+          // breakout move. Attach the latency from the most recent
+          // register+connect here instead of emitting another
+          // client.llm.connect.response (which is reserved for initial join).
+          llmTiming: meeting?.lastLLMConnectTiming,
+          llmWebsocketUrl: meeting?.webex?.internal?.llm?.getWebSocketUrl?.(),
         },
         // @ts-ignore
         this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)

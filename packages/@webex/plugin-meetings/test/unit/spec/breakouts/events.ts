@@ -43,6 +43,54 @@ describe('plugin-meetings', () => {
           options: {meetingId: 'activeMeetingId'},
         });
       });
+
+      it('includes llmLatency and llmWebsocketUrl when llmTiming is provided', () => {
+        const submitClientEvent = sinon.stub();
+        const eventInfo = {
+          currentSession: newSession,
+          meeting: mockMeeting,
+          breakoutMoveId,
+          llmWebsocketUrl: 'wss://llm.example/ws',
+          llmTiming: {
+            clientLLMDatachannelResponseTime: 7,
+            clientLLMWebSocketConnectTime: 12,
+          },
+        };
+        breakoutEvent.postMoveCallAnalyzer(
+          'client.breakout-session.join.response',
+          eventInfo,
+          submitClientEvent
+        );
+        assert.calledWithMatch(submitClientEvent, {
+          name: 'client.breakout-session.join.response',
+          payload: {
+            identifiers: {
+              breakoutMoveId: 'breakoutMoveId',
+              breakoutSessionId: 'sessionId',
+              breakoutGroupId: 'groupId',
+              llmWebsocketUrl: 'wss://llm.example/ws',
+            },
+            llmLatency: {
+              clientLLMDatachannelResponseTime: 7,
+              clientLLMWebSocketConnectTime: 12,
+            },
+          },
+          options: {meetingId: 'activeMeetingId'},
+        });
+      });
+
+      it('omits llmLatency when llmTiming is not provided', () => {
+        const submitClientEvent = sinon.stub();
+        const eventInfo = {currentSession: newSession, meeting: mockMeeting, breakoutMoveId};
+        breakoutEvent.postMoveCallAnalyzer(
+          'client.breakout-session.join.response',
+          eventInfo,
+          submitClientEvent
+        );
+        const submittedPayload = submitClientEvent.firstCall.args[0].payload;
+        assert.isUndefined(submittedPayload.llmLatency);
+        assert.isUndefined(submittedPayload.identifiers.llmWebsocketUrl);
+      });
     });
 
     describe('onBreakoutMoveRequest', () => {

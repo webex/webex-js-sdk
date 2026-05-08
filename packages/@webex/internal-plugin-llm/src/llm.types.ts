@@ -1,14 +1,27 @@
+/**
+ * Latencies (in milliseconds) captured during the LLM register + websocket
+ * connect flow. Returned by `registerAndConnect` so callers can include them
+ * in diagnostic events.
+ */
+export interface RegisterAndConnectTiming {
+  /** Time taken by the LLM datachannel HTTP request to return the websocket URL. */
+  clientLLMDatachannelResponseTime: number;
+  /** Time taken to establish the LLM websocket connection (connect request -> response). */
+  clientLLMWebSocketConnectTime: number;
+}
+
 interface ILLMChannel {
   registerAndConnect: (
     locusUrl: string,
     datachannelUrl: string,
     datachannelToken?: string,
     sessionId?: string
-  ) => Promise<void>;
+  ) => Promise<RegisterAndConnectTiming | undefined>;
   isConnected: (sessionId?: string) => boolean;
   getBinding: (sessionId?: string) => string;
   getLocusUrl: (sessionId?: string) => string;
   getDatachannelUrl: (sessionId?: string) => string;
+  getWebSocketUrl: (sessionId?: string) => string | undefined;
   disconnectLLM: (options: {code: number; reason: string}, sessionId?: string) => Promise<void>;
   disconnectAllLLM: (options?: {code: number; reason: string}) => Promise<void>;
   setOwnerMeetingId: (ownerMeetingId: string | undefined, sessionId?: string) => void;

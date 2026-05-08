@@ -801,6 +801,16 @@ export default class Meeting extends StatelessWebexPlugin {
   private logUploadIntervalIndex: number;
   private mediaServerIp: string;
   private llmHealthCheckTimer?: ReturnType<typeof setTimeout>;
+  /**
+   * Latencies captured from the most recent successful LLM register+connect.
+   * Consumed by callers (e.g. the breakout join flow) that need to attach
+   * `llmLatency` to a different diagnostic event than
+   * `client.llm.connect.response`.
+   */
+  public lastLLMConnectTiming?: {
+    clientLLMDatachannelResponseTime?: number;
+    clientLLMWebSocketConnectTime?: number;
+  };
 
   /**
    * @param {Object} attrs
@@ -6303,7 +6313,12 @@ export default class Meeting extends StatelessWebexPlugin {
           this.webex.internal.llm.off('online', this.handleLLMOnline);
           // @ts-ignore
           this.webex.internal.llm.on('online', this.handleLLMOnline);
-          this.updateLLMConnection()
+          // Only the initial-join call site emits client.llm.connect.response.
+          // All other call sites (reconnects, breakout joins, lobby
+          // admit/eject, online handler) leave the option off so timing is
+          // recorded into lastLLMConnectTiming and surfaced via their own
+          // diagnostic events.
+          this.updateLLMConnection({emitConnectResponseEvent: true})
             .catch((error) => {
               LoggerProxy.logger.error(
                 'Meeting:index#join --> Transcription Socket Connection Failed',
@@ -6557,10 +6572,18 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Connects to low latency mercury and reconnects if the address has changed
-   * It will also disconnect if called when the meeting has ended
+   * It will also disconnect if called when the meeting has ended.
+   *
+   * @param {Object} [options]
+   * @param {boolean} [options.emitConnectResponseEvent] - When true, emits the
+   *   `client.llm.connect.response` diagnostic event (success or error). This
+   *   MUST only be true at initial webinar join; subsequent reconnects (e.g.
+   *   breakout session join, lobby admit, online handler) should leave this
+   *   false and report LLM latencies via the relevant business event (e.g.
+   *   `client.breakout-session.join.response`).
    * @returns {Promise}
    */
-  async updateLLMConnection() {
+  async updateLLMConnection(options?: {emitConnectResponseEvent?: boolean}) {
     // @ts-ignore - Fix type
     const {url = undefined, info: {datachannelUrl = undefined} = {}} = this.locusInfo || {};
 
@@ -6616,31 +6639,83 @@ export default class Meeting extends StatelessWebexPlugin {
       return undefined;
     }
 
-    // @ts-ignore - Fix type
-    return this.webex.internal.llm
-      .registerAndConnect(url, dataChannelUrl, datachannelToken)
-      .then((registerAndConnectResult) => {
-        // Record ownership of the default LLM session for this meeting so
-        // subsequent cross-meeting `updateLLMConnection` / `cleanupLLMConneciton`
-        // calls can detect and skip work that doesn't belong to them.
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.setOwnerMeetingId?.(this.id);
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.on(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
-        LoggerProxy.logger.info(
-          'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
-        );
+    try {
+      // @ts-ignore - Fix type
+      const registerAndConnectResult = await this.webex.internal.llm.registerAndConnect(
+        url,
+        dataChannelUrl,
+        datachannelToken
+      );
 
-        this.startLLMHealthCheckTimer();
+      // Cache timings so other diagnostic events (e.g. the breakout join
+      // response) can surface them.
+      this.lastLLMConnectTiming = {
+        clientLLMDatachannelResponseTime:
+          registerAndConnectResult?.clientLLMDatachannelResponseTime,
+        clientLLMWebSocketConnectTime: registerAndConnectResult?.clientLLMWebSocketConnectTime,
+      };
 
-        return Promise.resolve(registerAndConnectResult);
-      });
+      if (options?.emitConnectResponseEvent) {
+        // @ts-ignore - newMetrics typing
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.llm.connect.response',
+          payload: {
+            identifiers: {
+              // @ts-ignore - Fix type
+              llmWebsocketUrl: this.webex.internal.llm.getWebSocketUrl?.(),
+            },
+            llmLatency: {
+              clientLLMDatachannelResponseTime:
+                registerAndConnectResult?.clientLLMDatachannelResponseTime,
+              clientLLMWebSocketConnectTime:
+                registerAndConnectResult?.clientLLMWebSocketConnectTime,
+            },
+          },
+          options: {
+            meetingId: this.id,
+          },
+        });
+      }
+
+      // Record ownership of the default LLM session for this meeting so
+      // subsequent cross-meeting `updateLLMConnection` / `cleanupLLMConneciton`
+      // calls can detect and skip work that doesn't belong to them.
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.setOwnerMeetingId?.(this.id);
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.on(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+      LoggerProxy.logger.info(
+        'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
+      );
+
+      this.startLLMHealthCheckTimer();
+
+      return registerAndConnectResult;
+    } catch (error) {
+      if (options?.emitConnectResponseEvent) {
+        // @ts-ignore - newMetrics typing
+        this.webex.internal.newMetrics.submitClientEvent({
+          name: 'client.llm.connect.response',
+          payload: {
+            identifiers: {
+              // @ts-ignore - Fix type
+              llmWebsocketUrl: this.webex.internal.llm.getWebSocketUrl?.(),
+            },
+          },
+          options: {
+            meetingId: this.id,
+            rawError: error,
+          },
+        });
+      }
+      throw error;
+    }
   }
 
   /**

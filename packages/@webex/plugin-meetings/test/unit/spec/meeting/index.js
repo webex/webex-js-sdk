@@ -13797,6 +13797,96 @@ describe('plugin-meetings', () => {
           assert.notCalled(webex.internal.llm.setDatachannelToken);
         });
 
+        describe('client.llm.connect.response event', () => {
+          beforeEach(() => {
+            meeting.joinedWith = {state: 'JOINED'};
+            meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
+            webex.internal.llm.registerAndConnect = sinon
+              .stub()
+              .resolves({
+                clientLLMDatachannelResponseTime: 5,
+                clientLLMWebSocketConnectTime: 10,
+              });
+            webex.internal.llm.getWebSocketUrl = sinon.stub().returns('wss://llm.example/ws');
+            webex.internal.newMetrics.submitClientEvent = sinon.stub();
+          });
+
+          it('emits client.llm.connect.response with llmLatency when emitConnectResponseEvent is true', async () => {
+            const result = await meeting.updateLLMConnection({emitConnectResponseEvent: true});
+
+            assert.deepEqual(result, {
+              clientLLMDatachannelResponseTime: 5,
+              clientLLMWebSocketConnectTime: 10,
+            });
+            assert.calledOnceWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.llm.connect.response',
+              payload: {
+                identifiers: {llmWebsocketUrl: 'wss://llm.example/ws'},
+                llmLatency: {
+                  clientLLMDatachannelResponseTime: 5,
+                  clientLLMWebSocketConnectTime: 10,
+                },
+              },
+              options: {meetingId: meeting.id},
+            });
+            assert.deepEqual(meeting.lastLLMConnectTiming, {
+              clientLLMDatachannelResponseTime: 5,
+              clientLLMWebSocketConnectTime: 10,
+            });
+          });
+
+          it('does not emit client.llm.connect.response by default (reconnect path)', async () => {
+            await meeting.updateLLMConnection();
+            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+            // timing is still captured for reuse by other events (e.g. breakout join)
+            assert.deepEqual(meeting.lastLLMConnectTiming, {
+              clientLLMDatachannelResponseTime: 5,
+              clientLLMWebSocketConnectTime: 10,
+            });
+          });
+
+          it('does not emit client.llm.connect.response when option is explicitly false', async () => {
+            await meeting.updateLLMConnection({emitConnectResponseEvent: false});
+            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+          });
+
+          it('emits client.llm.connect.response with rawError when registerAndConnect fails and option is true', async () => {
+            const error = new Error('LLM connect failure');
+            webex.internal.llm.registerAndConnect = sinon.stub().rejects(error);
+
+            try {
+              await meeting.updateLLMConnection({emitConnectResponseEvent: true});
+              assert.fail('expected updateLLMConnection to reject');
+            } catch (e) {
+              assert.equal(e, error);
+            }
+
+            assert.calledOnceWithMatch(webex.internal.newMetrics.submitClientEvent, {
+              name: 'client.llm.connect.response',
+              payload: {
+                identifiers: {llmWebsocketUrl: 'wss://llm.example/ws'},
+              },
+              options: {
+                meetingId: meeting.id,
+                rawError: error,
+              },
+            });
+          });
+
+          it('does not emit client.llm.connect.response on failure when option is not set', async () => {
+            const error = new Error('LLM connect failure');
+            webex.internal.llm.registerAndConnect = sinon.stub().rejects(error);
+
+            try {
+              await meeting.updateLLMConnection();
+              assert.fail('expected updateLLMConnection to reject');
+            } catch (e) {
+              assert.equal(e, error);
+            }
+            assert.notCalled(webex.internal.newMetrics.submitClientEvent);
+          });
+        });
+
         describe('ownership tag', () => {
           beforeEach(() => {
             // Make the owner stub dynamic so setOwnerMeetingId() writes
