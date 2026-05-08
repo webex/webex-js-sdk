@@ -1,23 +1,21 @@
-// @ts-nocheck
-/* eslint-disable require-jsdoc */
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file
  */
 
 import {EventEmitter} from 'events';
+// @ts-ignore - backoff library does not have type definitions
 import backoff from 'backoff';
 
 import type {WebexSDK} from '../SDKConnector/types';
 import Socket from './socket';
 import {BadRequest, Forbidden, NotAuthorized, UnknownResponse} from './errors';
 import type {MobiusSocketConfig} from './config';
-import type {SocketResponse} from './socket/types';
+import type {SocketCloseEvent, SocketMessageEvent, SocketResponse} from './socket/types';
 import type {
   MobiusSocketCloseOptions,
   MobiusSocketDisconnectResult,
   MobiusSocketRequestOptions,
   MobiusSocketRequestPayload,
-  MobiusSocketResponseError,
 } from './types';
 
 const normalReconnectReasons = ['idle', 'done (forced)'];
@@ -26,11 +24,32 @@ const TOKEN_REFRESH_INTERVAL_MS = 1 * 60 * 60 * 1000; // 1 hour
 
 type MobiusSocketLogger = Pick<Console, 'debug' | 'error' | 'info' | 'log' | 'warn'>;
 
+// Extended Socket type with dynamic properties
+type ExtendedSocket = Socket & {
+  connecting?: boolean;
+  connected?: boolean;
+};
+
 function normalizeMobiusAuthToken(token: string) {
   return token.replace(/^Bearer\s+/i, '');
 }
 
 class MobiusSocket extends EventEmitter {
+  private webex: WebexSDK;
+  private config: Partial<MobiusSocketConfig>;
+  private logger: MobiusSocketLogger;
+  private connected: boolean;
+  private connecting: boolean;
+  private hasEverConnected: boolean;
+  private socket: ExtendedSocket | undefined;
+  private backoffCall: any; // backoff library has no types
+  private shutdownSwitchoverBackoffCall: any; // backoff library has no types
+  private seenAsyncEventIds: Map<string, boolean>;
+  private connectPromise: Promise<void> | undefined;
+  private socketUrl: string | undefined;
+  private tokenRefreshTimer: NodeJS.Timeout | undefined;
+  private tokenRefreshInFlight: Promise<unknown> | undefined;
+
   constructor(webex: WebexSDK, config: Partial<MobiusSocketConfig> = {}) {
     super();
 
@@ -65,20 +84,19 @@ class MobiusSocket extends EventEmitter {
 
   /**
    * Attach event listeners to a socket.
-   * @param {Socket} socket - The socket to attach listeners to
-   * @returns {void}
+   * @param socket - The socket to attach listeners to
    */
-  private attachSocketEventListeners(socket) {
-    socket.on('close', (event) => this.onclose(event, socket));
-    socket.on('message', (...args) => this.onmessage(...args));
+  private attachSocketEventListeners(socket: ExtendedSocket): void {
+    socket.on('close', (event: SocketCloseEvent) => this.onclose(event, socket));
+    socket.on('message', (event: SocketMessageEvent<SocketResponse>) => this.onmessage(event));
   }
 
   /**
    * Tracks a newly seen async_event ID and reports whether a duplicate should be suppressed.
-   * @param {object} envelope - Parsed websocket message envelope.
-   * @returns {boolean} True when the event has already been seen.
+   * @param envelope - Parsed websocket message envelope
+   * @returns True when the event has already been seen
    */
-  private trackAsyncEventAndShouldSuppressDuplicate(envelope) {
+  private trackAsyncEventAndShouldSuppressDuplicate(envelope: SocketResponse): boolean {
     if (envelope?.type !== 'async_event' || !envelope.eventId) {
       return false;
     }
@@ -86,7 +104,7 @@ class MobiusSocket extends EventEmitter {
     if (this.seenAsyncEventIds.has(envelope.eventId)) {
       // Refresh recency so frequently retransmitted eventIds stay protected longer.
       // This deletion and setting again makes the data recent since javascript map maintains order as well
-      const previousValue = this.seenAsyncEventIds.get(envelope.eventId);
+      const previousValue = this.seenAsyncEventIds.get(envelope.eventId) || true;
       this.seenAsyncEventIds.delete(envelope.eventId);
       this.seenAsyncEventIds.set(envelope.eventId, previousValue);
       this.logger.info(
@@ -101,8 +119,11 @@ class MobiusSocket extends EventEmitter {
     );
     this.seenAsyncEventIds.set(envelope.eventId, true);
 
-    if (this.seenAsyncEventIds.size > this.config.dedupCacheMaxSize) {
-      const oldestEventId = this.seenAsyncEventIds.keys().next().value;
+    if (
+      this.config.dedupCacheMaxSize &&
+      this.seenAsyncEventIds.size > this.config.dedupCacheMaxSize
+    ) {
+      const oldestEventId = this.seenAsyncEventIds.keys().next().value || '';
 
       this.seenAsyncEventIds.delete(oldestEventId);
       this.logger.log(
@@ -178,7 +199,7 @@ class MobiusSocket extends EventEmitter {
 
   /**
    * Get the websocket URL for the currently connected socket.
-   * @returns {string|undefined} The connected websocket URL, or undefined when not connected.
+   * @returns The connected websocket URL, or undefined when not connected
    */
   public getConnectedWebSocketUrl(): string | undefined {
     if (!this.socket?.connected) {
@@ -190,9 +211,9 @@ class MobiusSocket extends EventEmitter {
 
   /**
    * Sends a websocket request and resolves when the matching response arrives.
-   * @param {MobiusSocketRequestPayload} payload - The websocket request payload.
-   * @param {MobiusSocketRequestOptions} [options={}] - Additional request options.
-   * @returns {Promise<SocketResponse>}
+   * @param payload - The websocket request payload
+   * @param options - Additional request options
+   * @returns Promise that resolves with the socket response
    */
   public sendWssRequest(
     payload: MobiusSocketRequestPayload,
@@ -206,34 +227,12 @@ class MobiusSocket extends EventEmitter {
       return Promise.reject(new Error('Mobius socket is not connected'));
     }
 
-    const requestConfigOptions = {
-      timeout: options.timeout,
-      matchesResponse: (response, request) =>
-        response?.type === 'response_event' &&
-        response?.subtype === request.type &&
-        response?.trackingId === request.trackingId,
-      getStatusCode: (response) => response?.statusCode,
-      getStatusMessage: (response) => response?.statusMessage,
-      createError: (response, statusCode, statusMessage) =>
-        this.createWssResponseError(response, statusCode, statusMessage),
-      createTimeoutError: (request) =>
-        this.createWssResponseError(
-          {
-            type: 'response_event',
-            subtype: request.type,
-            trackingId: request.trackingId,
-          },
-          408,
-          'Mobius websocket response timed out'
-        ),
-    };
-
-    return this.socket.sendRequest(payload, requestConfigOptions);
+    return this.socket.sendRequest(payload, {timeout: options.timeout});
   }
 
   /**
    * Check if the socket is connected.
-   * @returns {boolean} True if connected.
+   * @returns True if connected
    */
   public isConnected(): boolean {
     return this.connected;
@@ -241,8 +240,8 @@ class MobiusSocket extends EventEmitter {
 
   /**
    * Connect to Mobius.
-   * @param {string} [webSocketUrl] - Optional websocket URL override. Falls back to the device websocket URL.
-   * @returns {Promise<void>} Resolves when connection flow completes.
+   * @param webSocketUrl - Optional websocket URL override. Falls back to the device websocket URL
+   * @returns Promise that resolves when connection flow completes
    */
   public connect(webSocketUrl?: string): Promise<void> {
     if (this.connectPromise) {
@@ -281,7 +280,7 @@ class MobiusSocket extends EventEmitter {
     );
 
     const connectPromise = Promise.resolve(
-      this.webex.internal.device.registered || this.webex.internal.device.register()
+      this.webex.internal.device.registered || this.webex.internal.device.register?.()
     )
       .then(() => {
         this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: connecting`);
@@ -299,8 +298,8 @@ class MobiusSocket extends EventEmitter {
 
   /**
    * Disconnect the Mobius socket.
-   * @param {MobiusSocketCloseOptions} [options] - Optional websocket close options (code, reason).
-   * @returns {Promise<void>} Resolves after disconnect cleanup and close handling complete.
+   * @param options - Optional websocket close options (code, reason)
+   * @returns Promise that resolves after disconnect cleanup and close handling complete
    */
   public disconnect(options?: MobiusSocketCloseOptions): MobiusSocketDisconnectResult {
     this.logger.info(
@@ -341,40 +340,32 @@ class MobiusSocket extends EventEmitter {
     });
   }
 
-  // eslint-disable-next-line class-methods-use-this
-  private createWssResponseError(
-    response: SocketResponse,
-    statusCode?: number,
-    statusMessage?: string
-  ): MobiusSocketResponseError {
-    const error = new Error(
-      statusMessage || `Mobius websocket request failed with status ${statusCode || 'unknown'}`
-    ) as MobiusSocketResponseError;
-
-    error.name = 'MobiusSocketResponseError';
-    error.statusCode = statusCode;
-    error.statusMessage = statusMessage;
-    error.response = response;
-    error.trackingId = response?.trackingId;
-
-    return error;
-  }
-
-  private prepareUrl(webSocketUrl) {
+  private prepareUrl(webSocketUrl: string | undefined): Promise<string> {
     if (!webSocketUrl) {
       // TODO: Circle back to this logic when mobius implements the shutdown switchover
-      webSocketUrl = this.webex.internal.device.webSocketUrl;
+      webSocketUrl = this.webex.internal.device.webSocketUrl || '';
     }
 
     return Promise.resolve(webSocketUrl);
   }
 
-  private attemptConnection(socketUrl, callback, options = {}) {
-    const {isShutdownSwitchover = false, onSuccess = null} = options;
+  private attemptConnection(
+    socketUrl: string | undefined,
+    callback: (err?: Error) => void,
+    options: {
+      isShutdownSwitchover?: boolean;
+      attemptOptions?: {
+        isShutdownSwitchover?: boolean;
+        onSuccess?: ((socket: ExtendedSocket, url: string) => void) | null;
+      };
+    } = {}
+  ): Promise<void | Error> {
+    const {isShutdownSwitchover = false, attemptOptions = {}} = options;
+    const {onSuccess = null} = attemptOptions;
 
-    const socket = new Socket();
+    const socket = new Socket() as ExtendedSocket;
     socket.connecting = true;
-    let newWSUrl;
+    let newWSUrl: string | undefined;
 
     this.attachSocketEventListeners(socket);
 
@@ -432,7 +423,7 @@ class MobiusSocket extends EventEmitter {
             reason
           );
 
-          return callback(reason);
+          return callback(reason as Error);
         }
 
         // Normal connection error handling
@@ -456,7 +447,9 @@ class MobiusSocket extends EventEmitter {
             `${MOBIUS_SOCKET_NAMESPACE}: received unknown response code, refreshing device registration`
           );
 
-          return this.webex.internal.device.refresh().then(() => callback(reason));
+          return this.webex.internal.device
+            .refresh?.()
+            .then(() => callback(reason as unknown as Error));
         }
         // NotAuthorized implies expired token
         if (reason instanceof NotAuthorized) {
@@ -464,7 +457,9 @@ class MobiusSocket extends EventEmitter {
             `${MOBIUS_SOCKET_NAMESPACE}: received authorization error, reauthorizing`
           );
 
-          return this.webex.credentials.refresh({force: true}).then(() => callback(reason));
+          return this.webex.credentials
+            .refresh?.({force: true})
+            .then(() => callback(reason as unknown as Error));
         }
         if (reason instanceof BadRequest || reason instanceof Forbidden) {
           this.logger.warn(
@@ -472,10 +467,10 @@ class MobiusSocket extends EventEmitter {
           );
           backoffCallNormal?.abort();
 
-          return callback(reason);
+          return callback(reason as unknown as Error);
         }
 
-        return callback(reason);
+        return callback(reason as unknown as Error);
       })
       .catch((reason) => {
         this.logger.error(
@@ -486,12 +481,16 @@ class MobiusSocket extends EventEmitter {
       });
   }
 
-  private prepareAndOpenSocket(socket, socketUrl, isShutdownSwitchover = false) {
+  private prepareAndOpenSocket(
+    socket: ExtendedSocket,
+    socketUrl: string | undefined,
+    isShutdownSwitchover = false
+  ): Promise<string> {
     const logPrefix = isShutdownSwitchover ? '[shutdown] switchover' : 'connection';
 
     return Promise.all([this.prepareUrl(socketUrl), this.webex.credentials.getUserToken()]).then(
       ([webSocketUrl, token]) => {
-        let options = {
+        let options: any = {
           forceCloseDelay: this.config.forceCloseDelay,
           wssResponseTimeout: this.config.wssResponseTimeout,
           token: normalizeMobiusAuthToken(token.toString()),
@@ -522,12 +521,21 @@ class MobiusSocket extends EventEmitter {
     );
   }
 
-  private connectWithBackoff(webSocketUrl, context = {}): Promise<void> {
+  private connectWithBackoff(
+    webSocketUrl: string | undefined,
+    // TODO: type for context can be moved out, it's repeated
+    context: {
+      isShutdownSwitchover?: boolean;
+      attemptOptions?: {
+        isShutdownSwitchover?: boolean;
+        onSuccess?: ((socket: ExtendedSocket, url: string) => void) | null;
+      };
+    } = {}
+  ): Promise<void> {
     const {isShutdownSwitchover = false, attemptOptions = {}} = context;
 
     return new Promise((resolve, reject) => {
-      // eslint-disable-next-line prefer-const
-      let call;
+      let call: any;
       const isInitialConnect = !isShutdownSwitchover && !this.hasEverConnected;
       const initialRetryLimit =
         this.config.initialConnectionMaxRetries == null
@@ -535,7 +543,7 @@ class MobiusSocket extends EventEmitter {
           : Number(this.config.initialConnectionMaxRetries);
       const isInitialConnectWithoutRetries = isInitialConnect && initialRetryLimit === 0;
 
-      const onComplete = (err) => {
+      const onComplete = (err?: Error) => {
         if (isShutdownSwitchover) {
           this.shutdownSwitchoverBackoffCall = undefined;
         } else {
@@ -577,7 +585,7 @@ class MobiusSocket extends EventEmitter {
       };
       // eslint-disable-next-line prefer-reflect
       call = backoff.call(
-        (callback) => {
+        (callback: (err?: Error) => void) => {
           const attemptNum = call.getNumRetries();
           const attemptLogPrefix = isShutdownSwitchover ? '[shutdown] switchover' : 'connection';
 
@@ -586,7 +594,7 @@ class MobiusSocket extends EventEmitter {
           );
           this.attemptConnection(webSocketUrl, callback, attemptOptions);
         },
-        (err) => onComplete(err)
+        (err?: Error) => onComplete(err)
       );
 
       call.setStrategy(
@@ -598,7 +606,7 @@ class MobiusSocket extends EventEmitter {
 
       if (isInitialConnectWithoutRetries) {
         call.retryIf(() => false);
-      } else if (isInitialConnect && initialRetryLimit > 0) {
+      } else if (isInitialConnect && initialRetryLimit !== null && initialRetryLimit > 0) {
         call.failAfter(initialRetryLimit);
       } else if (this.config.maxRetries) {
         call.failAfter(this.config.maxRetries);
@@ -618,7 +626,7 @@ class MobiusSocket extends EventEmitter {
         reject(new Error(`MobiusSocket ${msg} Aborted`));
       });
 
-      call.on('callback', (err) => {
+      call.on('callback', (err?: Error) => {
         if (err) {
           if (isInitialConnectWithoutRetries) {
             this.logger.info(
@@ -629,7 +637,10 @@ class MobiusSocket extends EventEmitter {
           }
 
           const number = call.getNumRetries();
-          const delay = Math.min(call.strategy_.nextBackoffDelay_, this.config.backoffTimeMax);
+          const delay = Math.min(
+            call.strategy_.nextBackoffDelay_,
+            this.config.backoffTimeMax || Infinity
+          );
 
           const callbackLogPrefix = isShutdownSwitchover ? '[shutdown] switchover' : '';
 
@@ -652,7 +663,12 @@ class MobiusSocket extends EventEmitter {
     });
   }
 
-  private emitEvent(eventName, ...args) {
+  /**
+   * Safely emits an event, catching and logging any errors from event handlers.
+   * @param eventName - The name of the event to emit
+   * @param args - Arguments to pass to event handlers
+   */
+  private emitEvent(eventName: string, ...args: unknown[]): void {
     try {
       if (!eventName) {
         return;
@@ -670,6 +686,10 @@ class MobiusSocket extends EventEmitter {
     }
   }
 
+  /**
+   * Starts a periodic timer to refresh the authentication token.
+   * Token refresh occurs every hour while connected.
+   */
   private startTokenRefreshTimer() {
     if (this.tokenRefreshTimer || !this.connected) {
       return;
@@ -682,6 +702,9 @@ class MobiusSocket extends EventEmitter {
     }, TOKEN_REFRESH_INTERVAL_MS);
   }
 
+  /**
+   * Stops the periodic token refresh timer.
+   */
   private stopTokenRefreshTimer() {
     if (!this.tokenRefreshTimer) {
       return;
@@ -691,7 +714,11 @@ class MobiusSocket extends EventEmitter {
     this.tokenRefreshTimer = undefined;
   }
 
-  private refreshToken() {
+  /**
+   * Refreshes the authentication token and re-authenticates the socket connection.
+   * @returns Promise that resolves when token refresh and re-authentication complete
+   */
+  private refreshToken(): Promise<unknown> {
     if (this.tokenRefreshInFlight) {
       return this.tokenRefreshInFlight;
     }
@@ -704,28 +731,33 @@ class MobiusSocket extends EventEmitter {
 
     const tokenPromise = this.webex.credentials.canRefresh
       ? this.webex.credentials
-          .refresh({force: true})
-          .then(() => this.webex.credentials.getUserToken())
+          .refresh?.({force: true})
+          ?.then(() => this.webex.credentials.getUserToken())
       : this.webex.credentials.getUserToken();
 
-    this.tokenRefreshInFlight = tokenPromise
+    this.tokenRefreshInFlight = tokenPromise!
       .then((token) => {
         if (!token) {
           throw new Error('Mobius token refresh did not return a token');
         }
         const refreshedToken = normalizeMobiusAuthToken(token.toString());
 
-        if (this.socket?.connected) {
-          return this.socket.refresh(refreshedToken);
+        if (!this.socket?.connected) {
+          this.logger.warn(
+            `${MOBIUS_SOCKET_NAMESPACE}: socket is not connected, skipping token refresh`
+          );
+
+          return undefined;
         }
 
-        return undefined;
+        return this.socket!.refresh(refreshedToken);
       })
       .catch((error) => {
         this.logger.error(
           `${MOBIUS_SOCKET_NAMESPACE}: failed to refresh/re-auth Mobius socket`,
           error
         );
+
         throw error;
       })
       .finally(() => {
@@ -735,13 +767,13 @@ class MobiusSocket extends EventEmitter {
     return this.tokenRefreshInFlight;
   }
 
-  private onclose(event, sourceSocket) {
+  private onclose(event: SocketCloseEvent, sourceSocket: ExtendedSocket): void {
     // I don't see any way to avoid the complexity or statement count in here.
     /* eslint complexity: [0] */
 
     try {
       const reason = event.reason && event.reason.toLowerCase();
-      let socketUrl;
+      let socketUrl: string | undefined;
 
       const isActiveSocket = sourceSocket === this.socket;
       if (sourceSocket) {
@@ -809,7 +841,7 @@ class MobiusSocket extends EventEmitter {
           break;
         case 1000:
         case 3050:
-          if (normalReconnectReasons.includes(reason)) {
+          if (reason && normalReconnectReasons.includes(reason)) {
             this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: socket disconnected; reconnecting`);
             if (isActiveSocket) {
               this.emitEvent('offline.transient', event);
@@ -833,7 +865,7 @@ class MobiusSocket extends EventEmitter {
     }
   }
 
-  private onmessage(event) {
+  private onmessage(event: SocketMessageEvent<SocketResponse>): Promise<void> {
     const envelope = event.data;
 
     if (process.env.ENABLE_MOBIUS_LOGGING) {
@@ -860,10 +892,11 @@ class MobiusSocket extends EventEmitter {
     }
 
     // Use data/payload if present, otherwise treat the envelope itself as the data (flat format)
-    const data = envelope.data || envelope;
+    const data: SocketResponse = (envelope.data as SocketResponse) || envelope;
 
     // Support both Mobius-enveloped (data.eventType) and flat (eventType) formats
-    const eventType = data?.eventType || envelope.eventType;
+    const eventType: string | undefined =
+      (data?.eventType as string) || (envelope.eventType as string);
 
     if (!eventType) {
       this.emitEvent('event', envelope);
@@ -890,7 +923,7 @@ class MobiusSocket extends EventEmitter {
     return Promise.resolve();
   }
 
-  private reconnect(webSocketUrl) {
+  private reconnect(webSocketUrl: string | undefined): Promise<void> {
     this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: reconnecting`);
 
     return this.connect(webSocketUrl || this.socketUrl);

@@ -377,9 +377,9 @@ describe('plugin-mobius-socket', () => {
           emitAuthResponse({statusCode: 401, statusMessage: 'Unauthorized'});
 
           return assert.isRejected(promise).then((reason) => {
-            assert.instanceOf(reason, NotAuthorized);
-            assert.equal(reason.code, 401);
-            assert.match(reason.reason, /Unauthorized/);
+            assert.equal(reason.name, 'MobiusSocketResponseError');
+            assert.equal(reason.statusCode, 401);
+            assert.match(reason.statusMessage, /Unauthorized/);
 
             return s.close();
           });

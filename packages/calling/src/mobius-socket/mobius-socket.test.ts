@@ -1597,9 +1597,11 @@ describe('plugin-mobius-socket', () => {
 
           await mobiusSocket.attemptConnection('ws://test.com', callback, {
             isShutdownSwitchover: true,
-            onSuccess: (newSocket, url) => {
-              assert.exists(newSocket);
-              assert.equal(url, 'ws://test.com');
+            attemptOptions: {
+              onSuccess: (newSocket, url) => {
+                assert.exists(newSocket);
+                assert.equal(url, 'ws://new-socket.com');
+              },
             },
           });
 
@@ -1612,7 +1614,9 @@ describe('plugin-mobius-socket', () => {
 
           await mobiusSocket.attemptConnection('ws://test.com', callback, {
             isShutdownSwitchover: true,
-            onSuccess: onSuccessStub,
+            attemptOptions: {
+              onSuccess: onSuccessStub,
+            },
           });
 
           assert.calledOnce(onSuccessStub);
@@ -1622,12 +1626,14 @@ describe('plugin-mobius-socket', () => {
         it('should emit shutdown switchover complete event', async () => {
           await mobiusSocket.attemptConnection('ws://test.com', callback, {
             isShutdownSwitchover: true,
-            onSuccess: (newSocket, url) => {
-              mobiusSocket.socket = newSocket;
-              mobiusSocket.connected = true;
-              mobiusSocket.emitEvent('event:mobius_shutdown_switchover_complete', {
-                url,
-              });
+            attemptOptions: {
+              onSuccess: (newSocket, url) => {
+                mobiusSocket.socket = newSocket;
+                mobiusSocket.connected = true;
+                mobiusSocket.emitEvent('event:mobius_shutdown_switchover_complete', {
+                  url,
+                });
+              },
             },
           });
 
@@ -1644,6 +1650,7 @@ describe('plugin-mobius-socket', () => {
           await mobiusSocket
             .attemptConnection('ws://test.com', callback, {
               isShutdownSwitchover: true,
+              attemptOptions: {},
             })
             .catch(() => {});
 

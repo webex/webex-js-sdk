@@ -4,13 +4,21 @@
 
 import {EventEmitter} from 'events';
 
-// @ts-expect-error `@webex/common` is still JS-only and does not ship declarations.
+// @ts-ignore - type not available
 import {checkRequired} from '@webex/common';
-// @ts-expect-error `@webex/common-timers` is still JS-only and does not ship declarations.
+// @ts-ignore - type not available
 import {safeSetTimeout} from '@webex/common-timers';
 import {defaults, has, isObject} from 'lodash';
 
-import {BadRequest, ConnectionError, Forbidden, NotAuthorized, UnknownResponse} from '../errors';
+import {
+  BadRequest,
+  ConnectionError,
+  createTimeoutError,
+  createWssResponseError,
+  Forbidden,
+  NotAuthorized,
+  UnknownResponse,
+} from '../errors';
 import {MESSAGE_TYPES, SOCKET_READY_STATE} from './constants';
 import type {
   SocketCloseEvent,
@@ -25,6 +33,10 @@ import type {
 } from './types';
 
 const sockets = new WeakMap<Socket, SocketTransport>();
+
+function createTrackingId() {
+  return `webex-js-sdk_${crypto.randomUUID()}`;
+}
 
 /**
  * Generalized socket abstraction
@@ -47,8 +59,7 @@ export default class Socket extends EventEmitter {
   wssResponseTimeout?: number;
 
   /**
-   * constructor
-   * @returns {Socket}
+   * Creates a new Socket instance.
    */
   public constructor() {
     super();
@@ -59,58 +70,59 @@ export default class Socket extends EventEmitter {
     this.setMaxListeners(10);
   }
 
+  // TODO: Circle back and check if we are using binaryType and related getters. If not, we can remove these.
   /**
+   * Gets the binary type of the WebSocket connection.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
-   * @returns {string}
    */
   public get binaryType() {
-    return sockets.get(this)!.binaryType;
+    return sockets.get(this)?.binaryType || '';
   }
 
   /**
+   * Gets the number of bytes of data that have been queued but not yet transmitted.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
-   * @returns {number}
    */
   public get bufferedAmount() {
-    return sockets.get(this)!.bufferedAmount;
+    return sockets.get(this)?.bufferedAmount || 0;
   }
 
   /**
+   * Gets the extensions selected by the server.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
-   * @returns {string}
    */
   public get extensions() {
-    return sockets.get(this)!.extensions;
+    return sockets.get(this)?.extensions || '';
   }
 
   /**
+   * Gets the sub-protocol selected by the server.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
-   * @returns {string}
    */
   public get protocol() {
-    return sockets.get(this)!.protocol;
+    return sockets.get(this)?.protocol || '';
   }
 
   /**
+   * Gets the current state of the WebSocket connection.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
-   * @returns {number}
    */
   public get readyState() {
-    return sockets.get(this)!.readyState;
+    return sockets.get(this)?.readyState || 0;
   }
 
   /**
+   * Gets the URL of the WebSocket connection.
    * @see https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
-   * @returns {string}
    */
   public get url() {
-    return sockets.get(this)!.url;
+    return sockets.get(this)?.url || '';
   }
 
   /**
-   * Provides the environmentally appropriate constructor (ws in NodeJS,
-   * WebSocket in browsers)
-   * @returns {WebSocket}
+   * Provides the environmentally appropriate WebSocket constructor.
+   *
+   * @returns The WebSocket constructor (ws in NodeJS, WebSocket in browsers)
    */
   public static getWebSocketConstructor(): unknown {
     throw new Error(
@@ -119,11 +131,9 @@ export default class Socket extends EventEmitter {
   }
 
   /**
-   * Closes the socket
-   * @param {Object} options
-   * @param {string} options.reason
-   * @param {number} options.code
-   * @returns {Promise}
+   * Closes the socket.
+   * @param options - Close options containing code and reason
+   * @returns Promise that resolves when the socket is closed
    */
   public close(options?: {reason?: string; code?: number}) {
     return new Promise<SocketCloseEvent | void>((resolve, reject) => {
@@ -219,14 +229,11 @@ export default class Socket extends EventEmitter {
   }
 
   /**
-   * Opens a WebSocket
-   * @param {string} url
-   * @param {options} options
-   * @param {number} options.forceCloseDelay (required)
-   * @param {string} options.token (required)
-   * @param {string} options.trackingId (required)
-   * @param {Logger} options.logger (required)
-   * @returns {Promise}
+   * Opens a WebSocket connection and performs authentication.
+   *
+   * @param url - WebSocket URL to connect to
+   * @param options - Socket connection options including token, logger, and timeout settings
+   * @returns Promise that resolves when socket is opened and authenticated
    */
   public open(url: string, options?: SocketOpenOptions) {
     try {
@@ -310,9 +317,8 @@ export default class Socket extends EventEmitter {
   }
 
   /**
-   * Handles incoming CloseEvents
-   * @param {CloseEvent} event
-   * @returns {undefined}
+   * Handles incoming CloseEvents.
+   * @param event - The close event containing code and reason
    */
   public onclose(event: SocketCloseEvent) {
     this.logger.info(`socket,${this.domain}: closed`, event.code, event.reason);
@@ -327,9 +333,8 @@ export default class Socket extends EventEmitter {
   }
 
   /**
-   * Handles incoming message events
-   * @param {MessageEvent} event
-   * @returns {undefined}
+   * Handles incoming message events from the WebSocket.
+   * @param event - The message event containing the data
    */
   public onmessage(event: SocketMessageEvent<string>) {
     try {
@@ -353,9 +358,9 @@ export default class Socket extends EventEmitter {
   }
 
   /**
-   * Sends a message up the socket
-   * @param {mixed} data
-   * @returns {Promise}
+   * Sends a message up the socket.
+   * @param data - Data to send (string or object that will be JSON stringified)
+   * @returns Promise that resolves when the message is sent
    */
   public send(data: string | Record<string, unknown>) {
     return new Promise<void>((resolve, reject) => {
@@ -385,15 +390,10 @@ export default class Socket extends EventEmitter {
 
   /**
    * Sends a request and resolves when the matching response arrives.
-   * @param {Object} data
-   * @param {Object} [options={}]
-   * @param {Function} [options.matchesResponse]
-   * @param {Function} [options.createError]
-   * @param {Function} [options.createTimeoutError]
-   * @param {Function} [options.getStatusCode]
-   * @param {Function} [options.getStatusMessage]
-   * @param {number} [options.timeout]
-   * @returns {Promise<Object>}
+   *
+   * @param data - Request data to send over the socket
+   * @param options - Request options including timeout and error handlers
+   * @returns Promise that resolves with the response data
    */
   public sendRequest(data: SocketResponse, options: SendRequestOptions = {}) {
     if (!isObject(data)) {
@@ -401,31 +401,11 @@ export default class Socket extends EventEmitter {
     }
 
     const request = {...data};
-    const trackingId = request.trackingId || this.createTrackingId();
+    const trackingId = request.trackingId || createTrackingId();
     const timeout = options.timeout || this.wssResponseTimeout || 10000;
-    const matchesResponse =
-      options.matchesResponse ||
-      ((response) => response?.trackingId === trackingId && response?.type === 'response_event');
-    const getStatusCode = options.getStatusCode || ((response) => response?.statusCode);
-    const getStatusMessage = options.getStatusMessage || ((response) => response?.statusMessage);
-    const createError =
-      options.createError ||
-      ((response, statusCode, statusMessage) =>
-        new ConnectionError({
-          code: statusCode,
-          reason: statusMessage || response?.reason || 'Socket request failed',
-        }));
-    const createTimeoutError =
-      options.createTimeoutError ||
-      (() =>
-        new ConnectionError({
-          reason: 'Socket response not received before timeout',
-        }));
 
     if (this.pendingResponses.has(trackingId)) {
-      return Promise.reject(
-        new Error(`socket request already pending for trackingId ${trackingId}`)
-      );
+      return Promise.reject(new Error(`socket request already sent for trackingId ${trackingId}`));
     }
 
     request.trackingId = trackingId;
@@ -434,24 +414,22 @@ export default class Socket extends EventEmitter {
       const timeoutId = safeSetTimeout(() => {
         this.clearPendingResponse(trackingId);
         reject(createTimeoutError(request));
-      }, timeout);
+      }, timeout) as NodeJS.Timeout;
 
-      this.pendingResponses.set(trackingId, {
+      const pendingResponse: PendingResponseEntry = {
         request,
-        matchesResponse,
-        getStatusCode,
-        getStatusMessage,
-        createError,
-        resolve: (response) => {
+        resolve: (response: SocketResponse) => {
           this.clearPendingResponse(trackingId);
           resolve(response);
         },
-        reject: (error) => {
+        reject: (error: unknown) => {
           this.clearPendingResponse(trackingId);
           reject(error);
         },
         timeoutId,
-      });
+      };
+
+      this.pendingResponses.set(trackingId, pendingResponse);
 
       this.send(request).catch((error) => {
         this.clearPendingResponse(trackingId);
@@ -461,9 +439,9 @@ export default class Socket extends EventEmitter {
   }
 
   /**
-   * Sends an acknowledgment for a specific event
-   * @param {MessageEvent} event
-   * @returns {Promise}
+   * Sends an acknowledgment for a specific async event.
+   * @param event - Message event containing the async event to acknowledge
+   * @returns Promise that resolves when acknowledgment is sent
    */
   private acknowledge(event: SocketMessageEvent<SocketResponse>) {
     if (!event) {
@@ -481,7 +459,7 @@ export default class Socket extends EventEmitter {
 
     return this.send({
       type: MESSAGE_TYPES.EVENT_ACK,
-      trackingId: event.data.trackingId || this.createTrackingId(),
+      trackingId: event.data.trackingId || createTrackingId(),
       eventId: event.data.eventId,
     }).catch((error) => {
       if (error.message === 'INVALID_STATE_ERROR') {
@@ -511,52 +489,21 @@ export default class Socket extends EventEmitter {
 
   /**
    * Sends an auth message up the socket with a refreshed token.
-   * @param {string} token
-   * @returns {Promise}
+   * @param token - Authentication token to send
+   * @returns Promise that resolves when authentication succeeds
    */
   private authorize(token: string) {
     this.logger.info(`socket,${this.domain}: authorizing`);
 
-    return this.sendRequest(
-      {
-        type: MESSAGE_TYPES.AUTH,
-        data: {
-          token,
-        },
-      },
-      {
-        matchesResponse: (response, request) =>
-          response?.type === 'response_event' &&
-          response?.subtype === MESSAGE_TYPES.AUTH &&
-          response?.trackingId === request.trackingId,
-        getStatusCode: (response) => response?.statusCode,
-        getStatusMessage: (response) => response?.statusMessage,
-        createError: (response, statusCode, statusMessage) =>
-          new NotAuthorized({
-            code: statusCode,
-            reason: statusMessage || 'Mobius auth failed',
-          }),
-        createTimeoutError: () =>
-          new NotAuthorized({
-            reason: 'Mobius auth response not received before timeout',
-          }),
-      }
-    );
-  }
-
-  /**
-   * Creates a unique tracking ID
-   * @private
-   * @returns {string}
-   */
-  private createTrackingId() {
-    return `${this.trackingId}_${crypto.randomUUID()}`;
+    return this.sendRequest({
+      type: MESSAGE_TYPES.AUTH,
+      data: {token},
+    });
   }
 
   /**
    * Clears a pending response entry.
-   * @param {string} trackingId
-   * @returns {void}
+   * @param trackingId - Tracking ID of the response to clear
    */
   private clearPendingResponse(trackingId: string) {
     const pendingResponse = this.pendingResponses.get(trackingId);
@@ -570,23 +517,22 @@ export default class Socket extends EventEmitter {
 
   /**
    * Rejects all pending responses with the provided error.
-   * @param {Error} error
-   * @returns {void}
+   * @param error - Error to reject pending responses with
    */
   private rejectPendingResponses(error: unknown) {
     if (!this.pendingResponses.size) {
       return;
     }
 
-    Array.from(this.pendingResponses.values()).forEach((pendingResponse) => {
+    for (const pendingResponse of this.pendingResponses.values()) {
       pendingResponse.reject(error);
-    });
+    }
   }
 
   /**
    * Handles incoming responses for pending requests.
-   * @param {Object} response
-   * @returns {boolean}
+   * @param response - Response data to match against pending requests
+   * @returns True if a matching pending request was found and handled
    */
   private handlePendingResponse(response: SocketResponse) {
     if (!response) {
@@ -594,20 +540,18 @@ export default class Socket extends EventEmitter {
     }
 
     // Pending request correlation currently requires trackingId on the response.
-    const pendingResponse = response.trackingId
-      ? this.pendingResponses.get(response.trackingId)
-      : undefined;
+    const pendingResponse = this.pendingResponses.get(response.trackingId || '');
 
     if (!pendingResponse) {
       return false;
     }
 
-    if (!pendingResponse.matchesResponse(response, pendingResponse.request)) {
+    if (response.subtype !== pendingResponse.request.type) {
       return false;
     }
 
-    const statusCode = pendingResponse.getStatusCode(response);
-    const statusMessage = pendingResponse.getStatusMessage(response);
+    const statusCode = response?.statusCode;
+    const statusMessage = response?.statusMessage;
 
     if (statusCode === 440 && response?.subtype !== MESSAGE_TYPES.AUTH) {
       if (typeof this.refreshToken === 'function') {
@@ -622,28 +566,26 @@ export default class Socket extends EventEmitter {
     }
 
     if (statusCode === undefined) {
-      pendingResponse.reject(
-        pendingResponse.createError(
-          response,
-          statusCode,
-          statusMessage || 'Socket response missing status code'
-        )
+      const error = createWssResponseError(
+        response,
+        statusCode,
+        statusMessage || 'Socket response missing status code'
       );
+      pendingResponse.reject(error);
     } else if (statusCode >= 200 && statusCode < 300) {
       pendingResponse.resolve(response);
     } else {
-      pendingResponse.reject(pendingResponse.createError(response, statusCode, statusMessage));
+      pendingResponse.reject(createWssResponseError(response, statusCode, statusMessage));
     }
 
     return true;
   }
 
   /**
-   * Deals with the fact that some browsers drop some close codes (but not
-   * close reasons).
-   * @param {CloseEvent} event
-   * @private
-   * @returns {CloseEvent}
+   * Deals with the fact that some browsers drop some close codes (but not close reasons).
+   *
+   * @param event - Close event to fix
+   * @returns Fixed close event with corrected code if necessary
    */
   private fixCloseCode(event: SocketCloseEvent) {
     if (event.code === 1005 && event.reason) {
