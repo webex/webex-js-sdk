@@ -340,6 +340,7 @@ const Breakouts = WebexPlugin.extend({
       current: true,
       sessionType: params.sessionType,
       url: params.url,
+      resourceLink: params.resourceLink,
       [BREAKOUTS.SESSION_STATES.ACTIVE]: false,
       [BREAKOUTS.SESSION_STATES.ALLOWED]: false,
       [BREAKOUTS.SESSION_STATES.ASSIGNED]: false,

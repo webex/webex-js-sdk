@@ -313,6 +313,7 @@ describe('plugin-meetings', () => {
           groupId: 'groupId',
           sessionType: 'sessionType',
           url: 'url',
+          resourceLink: 'resource-link',
           name: 'name',
           allowBackToMain: true,
           delayCloseTime: 10,
@@ -339,6 +340,7 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.currentBreakoutSession.current, true);
         assert.equal(breakouts.currentBreakoutSession.sessionType, 'sessionType');
         assert.equal(breakouts.currentBreakoutSession.url, 'url');
+        assert.equal(breakouts.currentBreakoutSession.resourceLink, 'resource-link');
         assert.equal(breakouts.currentBreakoutSession.active, false);
         assert.equal(breakouts.currentBreakoutSession.allowed, false);
         assert.equal(breakouts.currentBreakoutSession.assigned, false);

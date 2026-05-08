@@ -332,6 +332,7 @@ describe('plugin-meetings', () => {
       describe('should setup correct locusInfoUpdateCallback when creating HashTreeParser', () => {
         const OBJECTS_UPDATED = HashTreeParserModule.LocusInfoUpdateType.OBJECTS_UPDATED;
         const MEETING_ENDED = HashTreeParserModule.LocusInfoUpdateType.MEETING_ENDED;
+        const LOCUS_NOT_FOUND = HashTreeParserModule.LocusInfoUpdateType.LOCUS_NOT_FOUND;
 
         let locusInfoUpdateCallback;
         let onDeltaLocusStub;
@@ -999,6 +1000,37 @@ describe('plugin-meetings', () => {
 
           assert.calledOnceWithExactly(collectionGetStub, locusInfo.meetingId);
           assert.notCalled(destroyStub);
+        });
+
+        it('should handle LOCUS_NOT_FOUND by calling syncMeetings with skipHashTreeSync', () => {
+          const syncMeetingsStub = sinon.stub(locusInfo.webex.meetings, 'syncMeetings').resolves();
+
+          locusInfoUpdateCallback({updateType: LOCUS_NOT_FOUND});
+
+          assert.calledOnceWithExactly(syncMeetingsStub, {keepOnlyLocusMeetings: false, skipHashTreeSync: true});
+        });
+
+        it('should handle LOCUS_NOT_FOUND and log error if syncMeetings fails', async () => {
+          const syncError = new Error('sync failed');
+          const syncMeetingsStub = sinon.stub(locusInfo.webex.meetings, 'syncMeetings').rejects(syncError);
+          const logErrorStub = LoggerProxy.logger.error?.isSinonProxy
+            ? LoggerProxy.logger.error
+            : sinon.stub(LoggerProxy.logger, 'error');
+
+          logErrorStub.resetHistory();
+
+          locusInfoUpdateCallback({updateType: LOCUS_NOT_FOUND});
+
+          assert.calledOnceWithExactly(syncMeetingsStub, {keepOnlyLocusMeetings: false, skipHashTreeSync: true});
+
+          // wait for the promise rejection to be handled
+          await testUtils.flushPromises();
+
+          assert.calledOnce(logErrorStub);
+          assert.match(
+            logErrorStub.firstCall.args[0],
+            /syncMeetings failed after LOCUS_NOT_FOUND/
+          );
         });
 
         it('should set forceReplaceMembers to true on the first update for a locusUrl (initializedFromHashTree is false)', () => {

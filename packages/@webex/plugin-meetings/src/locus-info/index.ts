@@ -1340,6 +1340,21 @@ export default class LocusInfo extends EventsScope {
           );
           this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.SELF_REMOVED);
         }
+        break;
+      }
+
+      case LocusInfoUpdateType.LOCUS_NOT_FOUND: {
+        LoggerProxy.logger.info(
+          `Locus-info:index#updateFromHashTree --> received LOCUS_NOT_FOUND for ${locusUrl}, triggering syncMeetings`
+        );
+        this.webex.meetings
+          .syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: true})
+          .catch((syncError) => {
+            LoggerProxy.logger.error(
+              `Locus-info:index#updateFromHashTree --> syncMeetings failed after LOCUS_NOT_FOUND: ${syncError}`
+            );
+          });
+        break;
       }
     }
   }
