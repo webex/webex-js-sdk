@@ -32,21 +32,13 @@ export type SocketResponse = {
 
 export type PendingResponseEntry = {
   request: SocketResponse;
-  matchesResponse: (response: SocketResponse, request: SocketResponse) => boolean;
-  getStatusCode: (response: SocketResponse) => number | undefined;
-  getStatusMessage: (response: SocketResponse) => string | undefined;
-  createError: (response: SocketResponse, statusCode?: number, statusMessage?: string) => unknown;
   resolve: (response: SocketResponse) => void;
   reject: (error: unknown) => void;
   timeoutId: ReturnType<typeof setTimeout>;
 };
 
 export type SendRequestOptions = {
-  matchesResponse?: (response: SocketResponse, request: SocketResponse) => boolean;
-  createError?: (response: SocketResponse, statusCode?: number, statusMessage?: string) => unknown;
   createTimeoutError?: (request: SocketResponse) => unknown;
-  getStatusCode?: (response: SocketResponse) => number | undefined;
-  getStatusMessage?: (response: SocketResponse) => string | undefined;
   timeout?: number;
 };
 

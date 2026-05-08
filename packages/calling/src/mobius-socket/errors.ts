@@ -4,7 +4,8 @@
 
 // @ts-expect-error `@webex/common` is still JS-only and does not ship declarations.
 import {Exception} from '@webex/common';
-import type {SocketCloseEvent} from './socket/types';
+import type {SocketCloseEvent, SocketResponse} from './socket/types';
+import {MobiusSocketResponseError} from './types';
 
 /**
  * Exception thrown when a websocket gets closed
@@ -86,4 +87,32 @@ export class Forbidden extends ConnectionError {
   constructor(event?: SocketCloseEvent) {
     super(event);
   }
+}
+
+export function createWssResponseError(
+  response: SocketResponse,
+  statusCode?: number,
+  statusMessage?: string
+): MobiusSocketResponseError {
+  const error = new Error(
+    statusMessage || `Mobius websocket request failed with status ${statusCode || 'unknown'}`
+  ) as MobiusSocketResponseError;
+
+  error.name = 'MobiusSocketResponseError';
+  error.statusCode = statusCode;
+  error.statusMessage = statusMessage;
+  error.response = response;
+  error.trackingId = response?.trackingId;
+
+  return error;
+}
+
+export function createTimeoutError(request: SocketResponse): MobiusSocketResponseError {
+  const errorPayload = {
+    type: 'response_event',
+    subtype: request.type,
+    trackingId: request.trackingId,
+  };
+
+  return createWssResponseError(errorPayload, 408, 'Mobius websocket response timed out');
 }
