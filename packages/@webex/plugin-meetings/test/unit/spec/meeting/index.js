@@ -13518,7 +13518,8 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(
             webex.internal.llm.setDatachannelToken,
             'default-token',
-            'llm-default-session'
+            'llm-default-session',
+            meeting.id
           );
         });
 
@@ -13532,7 +13533,8 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(
             webex.internal.llm.setDatachannelToken,
             'ps-token',
-            'llm-practice-session'
+            'llm-practice-session',
+            meeting.id
           );
         });
 
@@ -13550,12 +13552,14 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(
             webex.internal.llm.setDatachannelToken,
             'default-token',
-            'llm-default-session'
+            'llm-default-session',
+            meeting.id
           );
           assert.calledWithExactly(
             webex.internal.llm.setDatachannelToken,
             'ps-token',
-            'llm-practice-session'
+            'llm-practice-session',
+            meeting.id
           );
         });
 
@@ -13580,13 +13584,36 @@ describe('plugin-meetings', () => {
 
       describe('#clearDataChannelToken', () => {
         beforeEach(() => {
-          webex.internal.llm.resetDatachannelTokens = sinon.stub();
+          webex.internal.llm.clearDatachannelToken = sinon.stub();
         });
 
-        it('calls resetDatachannelTokens on LLM', () => {
+        it('always clears default-session token and skips practice-session token when not practice owner', () => {
+          webex.internal.llm.resolveSessionOwnership = sinon.stub().returns({
+            currentOwner: 'other-meeting-id',
+            canAssertOwnership: true,
+            isOwner: false,
+          });
+
           meeting.clearDataChannelToken();
 
-          assert.calledOnce(webex.internal.llm.resetDatachannelTokens);
+          assert.calledOnceWithExactly(
+            webex.internal.llm.clearDatachannelToken,
+            'llm-default-session'
+          );
+        });
+
+        it('clears practice-session token when this meeting owns practice session', () => {
+          webex.internal.llm.resolveSessionOwnership = sinon.stub().returns({
+            currentOwner: meeting.id,
+            canAssertOwnership: true,
+            isOwner: true,
+          });
+
+          meeting.clearDataChannelToken();
+
+          assert.calledWithExactly(webex.internal.llm.clearDatachannelToken, 'llm-default-session');
+          assert.calledWithExactly(webex.internal.llm.clearDatachannelToken, 'llm-practice-session');
+          assert.callCount(webex.internal.llm.clearDatachannelToken, 2);
         });
       });
 

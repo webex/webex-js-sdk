@@ -278,22 +278,18 @@ describe('plugin-llm', () => {
         instance = {
           disconnect: jest.fn(() => Promise.resolve()),
           connections: new Map([
-            ['llm-default-session', { foo: 'bar' }],
+            ['llm-default-session', { foo: 'bar', datachannelToken: 'session-token' }],
           ]),
-          datachannelTokens: {
-            'llm-default-session': 'session-token',
-          },
 
           disconnectLLM: function (options, sessionId = 'llm-default-session') {
             return this.disconnect(options, sessionId).then(() => {
               this.connections.delete(sessionId);
-              this.datachannelTokens[sessionId] = undefined;
             });
           },
         };
       });
 
-      it('calls disconnect and clears session connection + token', async () => {
+      it('calls disconnect and clears session connection (including token stored in session)', async () => {
         await instance.disconnectLLM({ code: 3000, reason: 'bye' });
 
         expect(instance.disconnect).toHaveBeenCalledWith(
@@ -302,8 +298,6 @@ describe('plugin-llm', () => {
         );
 
         expect(instance.connections.has('llm-default-session')).toBe(false);
-
-        expect(instance.datachannelTokens['llm-default-session']).toBeUndefined();
       });
 
       it('propagates disconnect errors', async () => {
@@ -323,7 +317,7 @@ describe('plugin-llm', () => {
 
       it('stores the provided handler', () => {
         const handler = sinon.stub().resolves({ body: { datachannelToken: 'newToken' } });
-        llmService.setRefreshHandler(handler);
+        llmService.setRefreshHandler(handler, 'llm-default-session');
 
         return llmService.refreshDataChannelToken().then((result) => {
           assert.equal(result.body.datachannelToken, 'newToken');
@@ -388,7 +382,7 @@ describe('plugin-llm', () => {
         const mockToken = { body: { datachannelToken: 'newToken', isPracticeSession: false } };
         const handler = sinon.stub().resolves(mockToken);
 
-        llmService.setRefreshHandler(handler);
+        llmService.setRefreshHandler(handler, 'llm-default-session');
 
         const token = await llmService.refreshDataChannelToken();
 
@@ -410,7 +404,7 @@ describe('plugin-llm', () => {
 
       it('logs warn and returns null when handler rejects', async () => {
         const handler = sinon.stub().rejects(new Error('throw error'));
-        llmService.setRefreshHandler(handler);
+        llmService.setRefreshHandler(handler, 'llm-default-session');
 
         const warnSpy = llmService.logger.warn
 
@@ -439,6 +433,7 @@ describe('plugin-llm', () => {
 
         assert.equal(llmService.getDatachannelToken('session-custom-1'), 'token-s1');
       });
+
     });
 
     describe('#setOwnerMeetingId / #getOwnerMeetingId', () => {
@@ -531,8 +526,7 @@ describe('plugin-llm', () => {
         const all = llmService.getAllConnections();
         assert.equal(all.has('s1'), false);
         assert.equal(all.has('s2'), true);
-
-        assert.equal(llmService.datachannelTokens['s1'], undefined);
+        assert.equal(llmService.getDatachannelToken('s1'), undefined);
       });
 
       it('disconnectAllLLM clears all sessions', async () => {

@@ -1,3 +1,10 @@
+export enum DataChannelTokenType {
+  Default = 'llm-default-session',
+  PracticeSession = 'llm-practice-session',
+}
+
+type DataChannelTokenKey = DataChannelTokenType | string;
+
 interface ILLMChannel {
   registerAndConnect: (
     locusUrl: string,
@@ -21,13 +28,19 @@ interface ILLMChannel {
     canAssertOwnership: boolean;
     isOwner: boolean;
   };
-  getDatachannelToken: (tokenKey?: DataChannelTokenKey) => string;
-  setDatachannelToken: (datachannelToken: string, tokenKey?: DataChannelTokenKey) => void;
+  getDatachannelToken: (tokenKey?: DataChannelTokenKey) => string | undefined;
+  setDatachannelToken: (
+    datachannelToken: string,
+    tokenKey: DataChannelTokenKey,
+    ownerMeetingId?: string
+  ) => void;
+  clearDatachannelToken: (tokenKey?: DataChannelTokenKey) => void;
   setRefreshHandler: (
     handler: () => Promise<{
       body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
     }>,
-    sessionId?: string
+    sessionId: string,
+    ownerMeetingId?: string
   ) => void;
   refreshDataChannelToken: (sessionId?: string) => Promise<{
     body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
@@ -45,13 +58,6 @@ interface ILLMChannel {
     }
   >;
 }
-
-export enum DataChannelTokenType {
-  Default = 'llm-default-session',
-  PracticeSession = 'llm-practice-session',
-}
-
-type DataChannelTokenKey = DataChannelTokenType | string;
 
 // eslint-disable-next-line import/prefer-default-export
 export type {ILLMChannel, DataChannelTokenKey};

@@ -3486,7 +3486,8 @@ export default class Meeting extends StatelessWebexPlugin {
           // @ts-ignore
           this.webex.internal.llm.setRefreshHandler(
             () => this.refreshDataChannelToken(),
-            LLM_DEFAULT_SESSION
+            LLM_DEFAULT_SESSION,
+            this.id
           );
           // Claim ownership as soon as refresh routing is installed so
           // another meeting instance cannot overwrite this handler before
@@ -6528,13 +6529,26 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   /**
-   * Clears all data channel tokens stored in LLM.
-   * Called during meeting cleanup to ensure stale tokens are not reused.
+   * Clears data channel tokens associated with this meeting ownership.
+   * Default-session token is always cleared here; practice-session token
+   * is cleared only when this meeting currently owns the practice session.
    * @returns {void}
    */
   clearDataChannelToken(): void {
     // @ts-ignore
-    this.webex.internal.llm.resetDatachannelTokens();
+    this.webex.internal.llm.clearDatachannelToken(LLM_DEFAULT_SESSION);
+
+    // Avoid wiping another meeting's practice-session token cache.
+    // @ts-ignore - Fix type
+    const {isOwner: isPracticeOwner} = this.webex.internal.llm.resolveSessionOwnership(
+      this.id,
+      LLM_PRACTICE_SESSION
+    );
+
+    if (isPracticeOwner) {
+      // @ts-ignore
+      this.webex.internal.llm.clearDatachannelToken(LLM_PRACTICE_SESSION);
+    }
   }
 
   /**
@@ -6549,14 +6563,15 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (datachannelToken) {
       // @ts-ignore
-      this.webex.internal.llm.setDatachannelToken(datachannelToken, LLM_DEFAULT_SESSION);
+      this.webex.internal.llm.setDatachannelToken(datachannelToken, LLM_DEFAULT_SESSION, this.id);
     }
 
     if (practiceSessionDatachannelToken) {
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(
         practiceSessionDatachannelToken,
-        LLM_PRACTICE_SESSION
+        LLM_PRACTICE_SESSION,
+        this.id
       );
     }
   }
@@ -6589,7 +6604,11 @@ export default class Meeting extends StatelessWebexPlugin {
       }
 
       // @ts-ignore
-      this.webex.internal.llm.setDatachannelToken(fetchedDatachannelToken, LLM_DEFAULT_SESSION);
+      this.webex.internal.llm.setDatachannelToken(
+        fetchedDatachannelToken,
+        LLM_DEFAULT_SESSION,
+        this.id
+      );
 
       return true;
     } catch (error) {

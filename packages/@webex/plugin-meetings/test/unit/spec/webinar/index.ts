@@ -379,7 +379,8 @@ describe('plugin-meetings', () => {
         assert.calledWithExactly(
           webex.internal.llm.setDatachannelToken,
           'ps-token-from-refresh',
-          DataChannelTokenType.PracticeSession
+          DataChannelTokenType.PracticeSession,
+          'meeting-id'
         );
         assert.calledWith(
           webex.internal.llm.registerAndConnect,

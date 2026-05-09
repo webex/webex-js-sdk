@@ -240,6 +240,7 @@ describe('plugin-meetings', () => {
 
         beforeEach(() => {
           meetingA = {
+            id: 'meeting-a',
             refreshDataChannelToken: sinon.stub().resolves({
               body: {datachannelToken: 'token-from-meeting-a', dataChannelTokenType: 'PracticeSession'},
             }),
@@ -249,6 +250,7 @@ describe('plugin-meetings', () => {
             isDataChannelTokenEnabled: sinon.stub().resolves(true),
             getSessionIdByDatachannelUrl: sinon.stub(),
             getLocusUrlByDatachannelUrl: sinon.stub(),
+            getOwnerMeetingId: sinon.stub().returns(undefined),
             refreshDataChannelToken: sinon.stub().resolves({
               body: {datachannelToken: 'token-from-llm-fallback', dataChannelTokenType: 'Default'},
             }),
@@ -282,7 +284,8 @@ describe('plugin-meetings', () => {
           sinon.assert.calledOnceWithExactly(
             llmMock.setDatachannelToken,
             'token-from-ps-session',
-            'llm-practice-session'
+            'llm-practice-session',
+            undefined
           );
         });
 
@@ -301,7 +304,8 @@ describe('plugin-meetings', () => {
           sinon.assert.calledOnceWithExactly(
             llmMock.setDatachannelToken,
             'token-from-default-session',
-            'llm-default-session'
+            'llm-default-session',
+            undefined
           );
         });
 
@@ -318,7 +322,12 @@ describe('plugin-meetings', () => {
 
           expect(token).to.equal('token-from-default-fallback');
           sinon.assert.calledOnceWithExactly(llmMock.refreshDataChannelToken, undefined);
-          sinon.assert.calledOnceWithExactly(llmMock.setDatachannelToken, 'token-from-default-fallback', 'Default');
+          sinon.assert.calledOnceWithExactly(
+            llmMock.setDatachannelToken,
+            'token-from-default-fallback',
+            'Default',
+            undefined
+          );
         });
 
         it('falls back to meeting lookup by locusUrl when session cannot be resolved', async () => {
@@ -331,7 +340,12 @@ describe('plugin-meetings', () => {
           expect(token).to.equal('token-from-meeting-a');
           sinon.assert.calledOnceWithExactly(meetingA.refreshDataChannelToken);
           sinon.assert.notCalled(llmMock.refreshDataChannelToken);
-          sinon.assert.calledOnceWithExactly(llmMock.setDatachannelToken, 'token-from-meeting-a', 'PracticeSession');
+          sinon.assert.calledOnceWithExactly(
+            llmMock.setDatachannelToken,
+            'token-from-meeting-a',
+            'PracticeSession',
+            'meeting-a'
+          );
         });
 
         it('throws when refresh returns no payload', async () => {

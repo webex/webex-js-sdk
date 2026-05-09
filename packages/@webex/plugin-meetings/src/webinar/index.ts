@@ -248,7 +248,8 @@ const Webinar = WebexPlugin.extend({
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(
         datachannelToken,
-        dataChannelTokenType || LLM_PRACTICE_SESSION
+        dataChannelTokenType || LLM_PRACTICE_SESSION,
+        this.meetingId
       );
 
       return datachannelToken;
@@ -289,7 +290,8 @@ const Webinar = WebexPlugin.extend({
       // @ts-ignore - Fix type
       this.webex.internal.llm.setRefreshHandler(
         () => meeting.refreshDataChannelToken(),
-        LLM_PRACTICE_SESSION
+        LLM_PRACTICE_SESSION,
+        this.meetingId
       );
       // Claim ownership immediately after setting refresh routing so a
       // concurrent meeting instance cannot override this practice-session

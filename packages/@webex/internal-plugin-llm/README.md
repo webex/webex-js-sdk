@@ -91,7 +91,7 @@ webex.internal.llm.setRefreshHandler(async () => {
       datachannelTokenType: 'llm-default-session',
     },
   };
-});
+}, 'llm-default-session');
 
 // Optional: manually trigger refresh (if needed by your flow)
 await webex.internal.llm.refreshDataChannelToken();

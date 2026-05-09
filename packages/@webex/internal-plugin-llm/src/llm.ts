@@ -69,7 +69,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     }
   > = new Map();
 
-  private datachannelTokens: Record<string, string> = {
+  // Session-keyed token cache is intentionally decoupled from connection state.
+  // Disconnecting a socket session must not implicitly wipe token cache.
+  private datachannelTokens: Record<string, string | undefined> = {
     [DataChannelTokenType.Default]: undefined,
     [DataChannelTokenType.PracticeSession]: undefined,
   };
@@ -263,11 +265,11 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   /**
    * Get data channel token for the connection
    * @param {DataChannelTokenType|string} tokenKey
-   * @returns {string} data channel token
+   * @returns {string | undefined} data channel token
    */
   public getDatachannelToken = (
     tokenKey: DataChannelTokenType | string = DataChannelTokenType.Default
-  ): string => {
+  ): string | undefined => {
     return this.datachannelTokens[tokenKey];
   };
 
@@ -275,13 +277,40 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * Set data channel token for the connection
    * @param {string} datachannelToken - data channel token
    * @param {DataChannelTokenType|string} tokenKey
+   * @param {string | undefined} ownerMeetingId - Meeting id asserting write ownership
    * @returns {void}
    */
   public setDatachannelToken = (
     datachannelToken: string,
+    tokenKey: DataChannelTokenType | string,
+    ownerMeetingId?: string
+  ): void => {
+    const {currentOwner, canAssertOwnership, isOwner} = this.resolveSessionOwnership(
+      ownerMeetingId,
+      tokenKey
+    );
+
+    if (!isOwner && canAssertOwnership) {
+      this.logger.info(
+        `llm#setDatachannelToken --> skip write for session ${tokenKey}; owned by ${currentOwner}, candidate ${ownerMeetingId}`
+      );
+
+      return;
+    }
+
+    this.datachannelTokens[tokenKey] = datachannelToken;
+  };
+
+  /**
+   * Clears a single session's data channel token.
+   * @param {DataChannelTokenType|string} tokenKey
+   * @returns {void}
+   */
+  public clearDatachannelToken = (
     tokenKey: DataChannelTokenType | string = DataChannelTokenType.Default
   ): void => {
-    this.datachannelTokens[tokenKey] = datachannelToken;
+    this.datachannelTokens[tokenKey] = undefined;
+    delete this.datachannelTokens[tokenKey];
   };
 
   /**
@@ -300,19 +329,37 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * Set the handler used to refresh the DataChannel token
    *
    * @param {function} handler - Function that returns a refreshed token
-   * @param {string} sessionId - Connection identifier (defaults to default session)
+   * @param {string} sessionId - Connection identifier
+   * @param {string | undefined} ownerMeetingId - Meeting id asserting refresh-handler ownership
    * @returns {void}
    */
   public setRefreshHandler(
     handler: () => Promise<{
       body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
     }>,
-    sessionId: string = LLM_DEFAULT_SESSION
+    sessionId: string,
+    ownerMeetingId?: string
   ) {
+    const {currentOwner, canAssertOwnership, isOwner} = this.resolveSessionOwnership(
+      ownerMeetingId,
+      sessionId
+    );
+
+    if (!isOwner && canAssertOwnership) {
+      this.logger.info(
+        `llm#setRefreshHandler --> skip write for session ${sessionId}; owned by ${currentOwner}, candidate ${ownerMeetingId}`
+      );
+
+      return;
+    }
+
     const sessionData = this.connections.get(sessionId);
 
     if (sessionData) {
       sessionData.refreshHandler = handler;
+      if (canAssertOwnership) {
+        sessionData.ownerMeetingId = ownerMeetingId;
+      }
 
       return;
     }
@@ -322,7 +369,10 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     // is already wired when the socket lifecycle starts. register()/
     // registerAndConnect() will later fill webSocketUrl/binding/locusUrl/
     // datachannelUrl into this same session entry.
-    this.connections.set(sessionId, {refreshHandler: handler});
+    this.connections.set(sessionId, {
+      refreshHandler: handler,
+      ownerMeetingId,
+    });
   }
 
   /**
@@ -370,8 +420,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.disconnect(options, sessionId).then(() => {
       // Clean up sessions data
       this.connections.delete(sessionId);
-      this.datachannelTokens[sessionId] = undefined;
-      delete this.datachannelTokens[sessionId];
     });
 
   /**
@@ -396,7 +444,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       binding?: string;
       locusUrl?: string;
       datachannelUrl?: string;
-      datachannelToken?: string;
       ownerMeetingId?: string;
     }
   > => new Map(this.connections);

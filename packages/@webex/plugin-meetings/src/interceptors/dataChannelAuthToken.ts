@@ -75,8 +75,11 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
         }
         const {datachannelToken, dataChannelTokenType} = result.body;
         const tokenStoreKey = sessionId || dataChannelTokenType;
+        const ownerMeetingId =
+          // @ts-ignore
+          meeting?.id || this.internal.llm.getOwnerMeetingId?.(tokenStoreKey);
         // @ts-ignore
-        this.internal.llm.setDatachannelToken(datachannelToken, tokenStoreKey);
+        this.internal.llm.setDatachannelToken(datachannelToken, tokenStoreKey, ownerMeetingId);
 
         return datachannelToken;
       },
