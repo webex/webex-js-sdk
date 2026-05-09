@@ -3471,11 +3471,29 @@ export default class Meeting extends StatelessWebexPlugin {
         this.recordingController.setLocusUrl(this.locusUrl);
         this.controlsOptionsManager.setLocusUrl(this.locusUrl, !!isMainLocus);
         this.webinar.locusUrlUpdate(url);
-        // @ts-ignore
-        this.webex.internal.llm.setRefreshHandler(
-          () => this.refreshDataChannelToken(),
+        // Guard default-session refresh handler ownership so unrelated meetings
+        // cannot overwrite the active owner's refresh path.
+        // Do not branch by meeting type here: both regular meetings and webinar
+        // main session use the default datachannel session. Practice session has
+        // its own handler in webinar/index.ts (LLM_PRACTICE_SESSION).
+        // @ts-ignore - Fix type
+        const {isOwner} = this.webex.internal.llm.resolveSessionOwnership(
+          this.id,
           LLM_DEFAULT_SESSION
         );
+
+        if (isOwner) {
+          // @ts-ignore
+          this.webex.internal.llm.setRefreshHandler(
+            () => this.refreshDataChannelToken(),
+            LLM_DEFAULT_SESSION
+          );
+          // Claim ownership as soon as refresh routing is installed so
+          // another meeting instance cannot overwrite this handler before
+          // registerAndConnect() completes.
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.setOwnerMeetingId?.(this.id, LLM_DEFAULT_SESSION);
+        }
 
         Trigger.trigger(
           this,
@@ -6464,8 +6482,9 @@ export default class Meeting extends StatelessWebexPlugin {
     throwOnError?: boolean;
   } = {}): Promise<void> => {
     // @ts-ignore - Fix type
-    const currentOwner = this.webex.internal.llm.getOwnerMeetingId();
-    const isOwner = !currentOwner || currentOwner === this.id;
+    const llmPlugin = this.webex.internal.llm;
+    // @ts-ignore - Fix type
+    const {currentOwner, isOwner} = llmPlugin.resolveSessionOwnership(this.id, LLM_DEFAULT_SESSION);
 
     try {
       if (isOwner) {
@@ -6608,7 +6627,10 @@ export default class Meeting extends StatelessWebexPlugin {
     // connection when this meeting is the current owner, or when no owner is
     // set yet (first claim).
     // @ts-ignore - Fix type
-    const currentOwner = this.webex.internal.llm.getOwnerMeetingId();
+    const {currentOwner} = this.webex.internal.llm.resolveSessionOwnership(
+      this.id,
+      LLM_DEFAULT_SESSION
+    );
 
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
@@ -9953,8 +9975,10 @@ export default class Meeting extends StatelessWebexPlugin {
     // session. Otherwise we would wipe tokens still in use by another
     // meeting's active LLM connection.
     // @ts-ignore - Fix type
-    const currentOwner = this.webex.internal.llm.getOwnerMeetingId();
-    const isOwner = !currentOwner || currentOwner === this.id;
+    const {currentOwner, isOwner} = this.webex.internal.llm.resolveSessionOwnership(
+      this.id,
+      LLM_DEFAULT_SESSION
+    );
 
     if (isOwner) {
       this.clearDataChannelToken();

@@ -1,3 +1,5 @@
+export {LLM_PRACTICE_SESSION} from '@webex/internal-plugin-llm';
+
 export const EVENT_TRIGGERS = {
   VOICEA_ANNOUNCEMENT: 'voicea:announcement',
   CAPTION_LANGUAGE_UPDATE: 'voicea:captionLanguageUpdate',
@@ -44,7 +46,6 @@ export const TRANSCRIPTION_TYPE = {
 
 export const VOICEA = 'voicea';
 export const DEFAULT_SPOKEN_LANGUAGE = 'en';
-export const LLM_PRACTICE_SESSION = 'llm-practice-session';
 
 export const ANNOUNCE_STATUS = {
   IDLE: 'idle',

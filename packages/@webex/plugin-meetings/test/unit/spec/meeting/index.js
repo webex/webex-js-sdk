@@ -269,6 +269,20 @@ describe('plugin-meetings', () => {
       stopReachability: sinon.stub(),
       isSubnetReachable: sinon.stub().returns(true),
     };
+    webex.internal.llm.resolveSessionOwnership = sinon
+      .stub()
+      .callsFake((ownerMeetingId, sessionId) => {
+        const currentOwner = webex.internal.llm.getOwnerMeetingId
+          ? webex.internal.llm.getOwnerMeetingId(sessionId)
+          : undefined;
+        const canAssertOwnership = !!ownerMeetingId;
+
+        return {
+          currentOwner,
+          canAssertOwnership,
+          isOwner: !currentOwner || !canAssertOwnership || currentOwner === ownerMeetingId,
+        };
+      });
     webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(false);
     webex.internal.llm.on = sinon.stub();
     webex.internal.voicea.announce = sinon.stub();

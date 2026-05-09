@@ -13,6 +13,14 @@ interface ILLMChannel {
   disconnectAllLLM: (options?: {code: number; reason: string}) => Promise<void>;
   setOwnerMeetingId: (ownerMeetingId: string | undefined, sessionId?: string) => void;
   getOwnerMeetingId: (sessionId?: string) => string | undefined;
+  resolveSessionOwnership: (
+    ownerMeetingId?: string,
+    sessionId?: string
+  ) => {
+    currentOwner: string | undefined;
+    canAssertOwnership: boolean;
+    isOwner: boolean;
+  };
   getDatachannelToken: (tokenKey?: DataChannelTokenKey) => string;
   setDatachannelToken: (datachannelToken: string, tokenKey?: DataChannelTokenKey) => void;
   setRefreshHandler: (
@@ -33,7 +41,6 @@ interface ILLMChannel {
       binding?: string;
       locusUrl?: string;
       datachannelUrl?: string;
-      datachannelToken?: string;
       ownerMeetingId?: string;
     }
   >;

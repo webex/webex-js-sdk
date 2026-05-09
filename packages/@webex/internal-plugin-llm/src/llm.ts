@@ -12,19 +12,6 @@ import {
 } from './constants';
 import {ILLMChannel, DataChannelTokenType} from './llm.types';
 
-const getRefreshHandlersMap = (
-  target: any
-): Map<
-  string,
-  () => Promise<{body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType}}>
-> => {
-  if (!target.refreshHandlers) {
-    target.refreshHandlers = new Map();
-  }
-
-  return target.refreshHandlers;
-};
-
 export const config = {
   llm: {
     /**
@@ -64,6 +51,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   defaultSessionId = LLM_DEFAULT_SESSION;
   /**
    * Map to store connection-specific data for multiple LLM connections
+   * Key: sessionId
    * @private
    * @type {Map<string, {webSocketUrl?: string; binding?: string; locusUrl?: string; datachannelUrl?: string}>}
    */
@@ -74,8 +62,10 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       binding?: string;
       locusUrl?: string;
       datachannelUrl?: string;
-      datachannelToken?: string;
       ownerMeetingId?: string;
+      refreshHandler?: () => Promise<{
+        body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
+      }>;
     }
   > = new Map();
 
@@ -83,11 +73,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     [DataChannelTokenType.Default]: undefined,
     [DataChannelTokenType.PracticeSession]: undefined,
   };
-
-  private refreshHandlers: Map<
-    string,
-    () => Promise<{body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType}}>
-  > = new Map();
 
   /**
    * Register to the websocket
@@ -146,7 +131,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       const sessionData = this.connections.get(sessionId) || {};
       sessionData.locusUrl = locusUrl;
       sessionData.datachannelUrl = datachannelUrl;
-      sessionData.datachannelToken = datachannelToken;
       this.connections.set(sessionId, sessionData);
 
       const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
@@ -246,6 +230,37 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   };
 
   /**
+   * Resolve ownership information for an LLM session.
+   *
+   * Rules:
+   * - no current owner => caller may proceed
+   * - caller has no identity to assert => treat as owner
+   * - otherwise caller must match current owner
+   *
+   * @param {string | undefined} ownerMeetingId - Candidate owner to evaluate
+   * @param {string} sessionId - Connection identifier (defaults to default session)
+   * @returns {{currentOwner: (string|undefined), canAssertOwnership: boolean, isOwner: boolean}}
+   */
+  public resolveSessionOwnership = (
+    ownerMeetingId?: string,
+    sessionId: string = LLM_DEFAULT_SESSION
+  ): {
+    currentOwner: string | undefined;
+    canAssertOwnership: boolean;
+    isOwner: boolean;
+  } => {
+    const currentOwner = this.getOwnerMeetingId(sessionId);
+    const canAssertOwnership = !!ownerMeetingId;
+    const isOwner = !currentOwner || !canAssertOwnership || currentOwner === ownerMeetingId;
+
+    return {
+      currentOwner,
+      canAssertOwnership,
+      isOwner,
+    };
+  };
+
+  /**
    * Get data channel token for the connection
    * @param {DataChannelTokenType|string} tokenKey
    * @returns {string} data channel token
@@ -267,13 +282,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     tokenKey: DataChannelTokenType | string = DataChannelTokenType.Default
   ): void => {
     this.datachannelTokens[tokenKey] = datachannelToken;
-
-    const sessionData = this.connections.get(tokenKey);
-
-    if (sessionData) {
-      sessionData.datachannelToken = datachannelToken;
-      this.connections.set(tokenKey, sessionData);
-    }
   };
 
   /**
@@ -301,7 +309,20 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     }>,
     sessionId: string = LLM_DEFAULT_SESSION
   ) {
-    getRefreshHandlersMap(this).set(sessionId, handler);
+    const sessionData = this.connections.get(sessionId);
+
+    if (sessionData) {
+      sessionData.refreshHandler = handler;
+
+      return;
+    }
+
+    // Intentionally allow a pre-connection session shape here.
+    // Some flows inject refreshHandler before register/connect so token refresh
+    // is already wired when the socket lifecycle starts. register()/
+    // registerAndConnect() will later fill webSocketUrl/binding/locusUrl/
+    // datachannelUrl into this same session entry.
+    this.connections.set(sessionId, {refreshHandler: handler});
   }
 
   /**
@@ -311,7 +332,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @returns {Promise<string>} The refreshed token.
    */
   public async refreshDataChannelToken(sessionId: string = LLM_DEFAULT_SESSION) {
-    const refreshHandler = getRefreshHandlersMap(this).get(sessionId);
+    const refreshHandler = this.connections.get(sessionId)?.refreshHandler;
 
     if (!refreshHandler) {
       this.logger.warn(
@@ -351,7 +372,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       this.connections.delete(sessionId);
       this.datachannelTokens[sessionId] = undefined;
       delete this.datachannelTokens[sessionId];
-      getRefreshHandlersMap(this).delete(sessionId);
     });
 
   /**
@@ -363,7 +383,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     this.disconnectAll(options).then(() => {
       // Clean up all connection data
       this.connections.clear();
-      getRefreshHandlersMap(this).clear();
     });
 
   /**
