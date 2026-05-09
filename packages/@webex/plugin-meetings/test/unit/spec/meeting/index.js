@@ -15698,16 +15698,25 @@ describe('plugin-meetings', () => {
           assert.notCalled(meeting.meetingRequest.sendReaction);
         });
 
-        it('should fail sending a reaction if reactionType is invalid ', async () => {
+        it('should send a custom reaction type not in the known list', async () => {
           meeting.locusInfo.controls = {reactions: {reactionChannelUrl: 'Fake URL'}};
 
-          await assert.isRejected(
-            meeting.sendReaction('invalid_reaction', 'light'),
-            Error,
-            'invalid_reaction is not a valid reaction.'
-          );
+          const reactionPromise = meeting.sendReaction('custom_reaction', 'light');
 
-          assert.notCalled(meeting.meetingRequest.sendReaction);
+          assert.exists(reactionPromise.then);
+          await reactionPromise;
+          assert.calledOnceWithExactly(meeting.meetingRequest.sendReaction, {
+            reactionChannelUrl: 'Fake URL',
+            reaction: {
+              type: 'custom_reaction',
+              tone: {
+                type: 'light_skin_tone',
+                codepoints: '1F3FB',
+                shortcodes: ':skin-tone-2:',
+              },
+            },
+            participantId: meeting.members.selfId,
+          });
         });
 
         it('should send a reaction with default skin tone if provided skinToneType is invalid ', async () => {
