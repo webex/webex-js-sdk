@@ -13623,6 +13623,7 @@ describe('plugin-meetings', () => {
           webex.internal.llm.getLocusUrl = sinon.stub();
           webex.internal.llm.getDatachannelUrl = sinon.stub();
           webex.internal.llm.registerAndConnect = sinon.stub().resolves('something');
+          webex.internal.llm.setRefreshHandler = sinon.stub();
           webex.internal.llm.disconnectLLM = sinon.stub().resolves();
           webex.internal.llm.on = sinon.stub();
           webex.internal.llm.off = sinon.stub();
@@ -13698,6 +13699,12 @@ describe('plugin-meetings', () => {
             'a url',
             'a datachannel url',
             undefined
+          );
+          assert.calledOnceWithExactly(
+            webex.internal.llm.setRefreshHandler,
+            sinon.match.func,
+            'llm-default-session',
+            meeting.id
           );
           assert.equal(result, 'something');
         });
@@ -14051,6 +14058,12 @@ describe('plugin-meetings', () => {
             await meeting.updateLLMConnection();
 
             assert.calledOnce(webex.internal.llm.registerAndConnect);
+            assert.calledOnceWithExactly(
+              webex.internal.llm.setRefreshHandler,
+              sinon.match.func,
+              'llm-default-session',
+              meeting.id
+            );
             assert.calledOnceWithExactly(webex.internal.llm.setOwnerMeetingId, meeting.id);
           });
 

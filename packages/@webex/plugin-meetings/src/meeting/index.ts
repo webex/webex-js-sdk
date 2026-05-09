@@ -6689,6 +6689,15 @@ export default class Meeting extends StatelessWebexPlugin {
     return this.webex.internal.llm
       .registerAndConnect(url, dataChannelUrl, datachannelToken)
       .then((registerAndConnectResult) => {
+        // Re-bind the default-session token refresh path after each successful
+        // (re)connect so ownership handoffs cannot keep a stale Meeting-bound
+        // refresh handler.
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.setRefreshHandler(
+          () => this.refreshDataChannelToken(),
+          LLM_DEFAULT_SESSION,
+          this.id
+        );
         // Record ownership of the default LLM session for this meeting so
         // subsequent cross-meeting `updateLLMConnection` / `cleanupLLMConneciton`
         // calls can detect and skip work that doesn't belong to them.
