@@ -144,6 +144,12 @@ function computeVoiceInteractionUIControls(
     Boolean(selfAgentId) &&
     Boolean(mainCallId) &&
     Boolean(interaction?.media?.[mainCallId]?.participants?.includes(selfAgentId as string));
+  const consultMedia = Object.values(interaction?.media ?? {}).find(
+    (media: any) =>
+      media?.mediaResourceId === taskData?.consultMediaResourceId || media?.mType === 'consult'
+  ) as {participants?: string[]} | undefined;
+  const selfInConsultCall =
+    Boolean(selfAgentId) && Boolean(consultMedia?.participants?.includes(selfAgentId as string));
   const conferenceActive = isConferencing || conferenceFromBackend || consultFromConference;
   // Treat consult initiator as "in conference" even if mainCall participant list lags while consulting.
   const inConference = conferenceActive && (isConferencing || selfInMainCall || consultInitiator);
@@ -214,6 +220,7 @@ function computeVoiceInteractionUIControls(
     mute: (() => {
       if (!isWebrtc) return DISABLED;
       if (isWrappingUp) return DISABLED;
+      if (currentLeg === 'consult' && !selfInConsultCall) return DISABLED;
       if (isConsulting) return VISIBLE_ENABLED;
 
       if (isConnected || isHeld || isConferencing) {

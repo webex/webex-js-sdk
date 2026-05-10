@@ -86,6 +86,7 @@ describe('uiControlsComputer consult initiator controls', () => {
     expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: false});
 
     expect(uiControls.consult.hold).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.consult.mute).toEqual({isVisible: false, isEnabled: false});
     expect(uiControls.consult.transfer).toEqual({isVisible: true, isEnabled: true});
     expect(uiControls.consult.conference).toEqual({isVisible: true, isEnabled: true});
     expect(uiControls.consult.endConsult).toEqual({isVisible: true, isEnabled: true});
@@ -109,6 +110,7 @@ describe('uiControlsComputer consult initiator controls', () => {
     expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: false});
 
     expect(uiControls.consult.hold).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.consult.mute).toEqual({isVisible: false, isEnabled: false});
     expect(uiControls.consult.transfer).toEqual({isVisible: true, isEnabled: false});
     expect(uiControls.consult.conference).toEqual({isVisible: true, isEnabled: false});
     expect(uiControls.consult.endConsult).toEqual({isVisible: true, isEnabled: true});
