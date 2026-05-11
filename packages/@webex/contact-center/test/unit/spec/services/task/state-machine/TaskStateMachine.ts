@@ -124,6 +124,28 @@ describe('Task state machine', () => {
       service.send({type: TaskEvent.RESUME_RECORDING});
       expect(service.getSnapshot().context.recordingInProgress).toBe(true);
     });
+
+    it('toggles recording state while task is held', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        interaction: {
+          callProcessingDetails: {recordInProgress: true},
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId});
+      service.send({type: TaskEvent.HOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId});
+      expect(service.getSnapshot().value).toBe(TaskState.HELD);
+      expect(service.getSnapshot().context.recordingInProgress).toBe(true);
+
+      service.send({type: TaskEvent.PAUSE_RECORDING});
+      expect(service.getSnapshot().context.recordingInProgress).toBe(false);
+
+      service.send({type: TaskEvent.RESUME_RECORDING});
+      expect(service.getSnapshot().context.recordingInProgress).toBe(true);
+    });
   });
 
   describe('wrap-up and completion flow', () => {

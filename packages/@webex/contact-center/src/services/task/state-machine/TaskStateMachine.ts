@@ -323,6 +323,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.HELD]: {
         on: {
+          [TaskEvent.PAUSE_RECORDING]: {
+            actions: ['updateTaskData', 'setRecordingState', 'emitTaskRecordingPaused'],
+          },
+          [TaskEvent.RESUME_RECORDING]: {
+            actions: ['updateTaskData', 'setRecordingState', 'emitTaskRecordingResumed'],
+          },
           // Click of the unhold button
           [TaskEvent.UNHOLD_INITIATED]: {
             target: TaskState.RESUME_INITIATING,
