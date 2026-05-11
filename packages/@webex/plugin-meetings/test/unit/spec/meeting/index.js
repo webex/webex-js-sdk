@@ -35,6 +35,8 @@ import {
   OFFLINE,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
   LOCUS_LLM_EVENT,
+  LLM_PRACTICE_SESSION,
+  RECORDING_STATE,
 } from '@webex/plugin-meetings/src/constants';
 import {
   ConnectionState,
@@ -1978,6 +1980,113 @@ describe('plugin-meetings', () => {
             fakeProcessedReaction
           );
         });
+
+        [
+          {
+            title: 'should skip a reaction when the default relay route does not match the LLM binding',
+            isPracticeSessionConnected: false,
+            route: 'wrong-default-route',
+            defaultBinding: 'default-route',
+            practiceBinding: 'practice-route',
+            shouldProcess: false,
+            expectedSessionLabel: 'default session',
+          },
+          {
+            title: 'should process a reaction when the default relay route matches the LLM binding',
+            isPracticeSessionConnected: false,
+            route: 'default-route',
+            defaultBinding: 'default-route',
+            practiceBinding: 'practice-route',
+            shouldProcess: true,
+          },
+          {
+            title:
+              'should process a reaction when the practice-session relay route matches the practice-session LLM binding',
+            isPracticeSessionConnected: true,
+            route: 'practice-route',
+            defaultBinding: 'default-route',
+            practiceBinding: 'practice-route',
+            shouldProcess: true,
+          },
+          {
+            title:
+              'should skip a reaction when the practice-session relay route does not match the practice-session LLM binding',
+            isPracticeSessionConnected: true,
+            route: 'default-route',
+            defaultBinding: 'default-route',
+            practiceBinding: 'practice-route',
+            shouldProcess: false,
+            expectedSessionLabel: 'practice session',
+          },
+        ].forEach(
+          ({
+            title,
+            isPracticeSessionConnected,
+            route,
+            defaultBinding,
+            practiceBinding,
+            shouldProcess,
+            expectedSessionLabel,
+          }) => {
+            it(title, () => {
+              meeting.isReactionsSupported = sinon.stub().returns(true);
+              meeting.config.receiveReactions = true;
+              const fakeSendersName = 'Fake reactors name';
+              meeting.members.membersCollection.get = sinon.stub().returns({name: fakeSendersName});
+              webex.internal.llm.isConnected = sinon.stub().callsFake((llmSessionId) => {
+                return llmSessionId === LLM_PRACTICE_SESSION && isPracticeSessionConnected;
+              });
+              webex.internal.llm.getBinding = sinon.stub().callsFake((llmSessionId) => {
+                if (llmSessionId === LLM_PRACTICE_SESSION) {
+                  return practiceBinding;
+                }
+
+                return defaultBinding;
+              });
+              const fakeReactionPayload = {
+                type: 'fake_type',
+                codepoints: 'fake_codepoints',
+                shortcodes: 'fake_shortcodes',
+              };
+              const fakeSenderPayload = {
+                participantId: 'fake_participant_id',
+              };
+              const fakeRelayEvent = {
+                headers: {route},
+                data: {
+                  relayType: REACTION_RELAY_TYPES.REACTION,
+                  reaction: fakeReactionPayload,
+                  sender: fakeSenderPayload,
+                },
+              };
+              const fakeProcessedReaction = {
+                reaction: fakeReactionPayload,
+                sender: {
+                  id: fakeSenderPayload.participantId,
+                  name: fakeSendersName,
+                },
+              };
+
+              TriggerProxy.trigger.resetHistory();
+              meeting.processRelayEvent(fakeRelayEvent);
+
+              if (shouldProcess) {
+                assert.calledWith(
+                  TriggerProxy.trigger,
+                  sinon.match.instanceOf(Meeting),
+                  {
+                    file: 'meeting/index',
+                    function: 'join',
+                  },
+                  EVENT_TRIGGERS.MEETING_RECEIVE_REACTIONS,
+                  fakeProcessedReaction
+                );
+              } else {
+                assert.notCalled(TriggerProxy.trigger);
+              }
+            });
+          }
+        );
       });
 
       describe('#handleLLMOnline', () => {
@@ -11390,6 +11499,92 @@ describe('plugin-meetings', () => {
           );
         });
 
+        const recordingTestCases = [
+          {
+            description: 'triggers MEETING_STARTED_RECORDING when state is RECORDING',
+            state: RECORDING_STATE.RECORDING,
+            expectedEvent: EVENT_TRIGGERS.MEETING_STARTED_RECORDING,
+            expectedRecordingState: RECORDING_STATE.RECORDING,
+          },
+          {
+            description: 'triggers MEETING_STOPPED_RECORDING when state is IDLE',
+            state: RECORDING_STATE.IDLE,
+            expectedEvent: EVENT_TRIGGERS.MEETING_STOPPED_RECORDING,
+            expectedRecordingState: RECORDING_STATE.IDLE,
+          },
+          {
+            description: 'triggers MEETING_PAUSED_RECORDING when state is PAUSED',
+            state: RECORDING_STATE.PAUSED,
+            expectedEvent: EVENT_TRIGGERS.MEETING_PAUSED_RECORDING,
+            expectedRecordingState: RECORDING_STATE.PAUSED,
+          },
+          {
+            description:
+              'triggers MEETING_RESUMED_RECORDING and sets state to RECORDING when state is RESUMED',
+            state: RECORDING_STATE.RESUMED,
+            expectedEvent: EVENT_TRIGGERS.MEETING_RESUMED_RECORDING,
+            expectedRecordingState: RECORDING_STATE.RECORDING,
+          },
+        ];
+
+        recordingTestCases.forEach(({description, state, expectedEvent, expectedRecordingState}) => {
+          it(`listens to CONTROLS_RECORDING_UPDATED - ${description}`, async () => {
+            const modifiedBy = 'user-id-123';
+            const lastModified = '2026-01-01T00:00:00Z';
+
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {state, modifiedBy, lastModified, modifiedByServiceAppName: undefined, modifiedByServiceAppId: undefined}
+            );
+
+            assert.deepEqual(meeting.recording, {
+              state: expectedRecordingState,
+              modifiedBy,
+              lastModified,
+              modifiedByServiceAppName: undefined,
+              modifiedByServiceAppId: undefined,
+            });
+
+            assert.calledWith(
+              TriggerProxy.trigger,
+              meeting,
+              {file: 'meeting/index', function: 'setupLocusControlsListener'},
+              expectedEvent,
+              meeting.recording
+            );
+          });
+        });
+
+        it('listens to CONTROLS_RECORDING_UPDATED and includes modifiedByServiceAppName and modifiedByServiceAppId when present', async () => {
+          const modifiedBy = 'user-id-123';
+          const lastModified = '2026-01-01T00:00:00Z';
+          const modifiedByServiceAppName = 'My Bot';
+          const modifiedByServiceAppId = 'app-id-123';
+
+          await meeting.locusInfo.emitScoped(
+            {function: 'test', file: 'test'},
+            LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+            {state: RECORDING_STATE.RECORDING, modifiedBy, lastModified, modifiedByServiceAppName, modifiedByServiceAppId}
+          );
+
+          assert.deepEqual(meeting.recording, {
+            state: RECORDING_STATE.RECORDING,
+            modifiedBy,
+            lastModified,
+            modifiedByServiceAppName,
+            modifiedByServiceAppId,
+          });
+
+          assert.calledWith(
+            TriggerProxy.trigger,
+            meeting,
+            {file: 'meeting/index', function: 'setupLocusControlsListener'},
+            EVENT_TRIGGERS.MEETING_STARTED_RECORDING,
+            meeting.recording
+          );
+        });
+
         it('listens to the locus interpretation update event', () => {
           const interpretation = {
             siLanguages: [{languageCode: 20, languageName: 'en'}],
@@ -12463,6 +12658,7 @@ describe('plugin-meetings', () => {
         let showAutoEndMeetingWarningSpy;
         let canAttendeeRequestAiAssistantEnabledSpy;
         let attendeeRequestAiAssistantDeclinedAllSpy;
+        let isAnonymizeDisplayNamesEnabledSpy;
         // Due to import tree issues, hasHints must be stubed within the scope of the `it`.
 
         beforeEach(() => {
@@ -12511,6 +12707,10 @@ describe('plugin-meetings', () => {
             MeetingUtil,
             'attendeeRequestAiAssistantDeclinedAll'
           );
+          isAnonymizeDisplayNamesEnabledSpy = sinon.spy(
+            MeetingUtil,
+            'isAnonymizeDisplayNamesEnabled'
+          );
         });
 
         afterEach(() => {
@@ -12519,6 +12719,7 @@ describe('plugin-meetings', () => {
           showAutoEndMeetingWarningSpy.restore();
           canAttendeeRequestAiAssistantEnabledSpy.restore();
           attendeeRequestAiAssistantDeclinedAllSpy.restore();
+          isAnonymizeDisplayNamesEnabledSpy.restore();
         });
 
         forEach(
@@ -13076,6 +13277,7 @@ describe('plugin-meetings', () => {
             meeting.roles
           );
           assert.calledWith(attendeeRequestAiAssistantDeclinedAllSpy, userDisplayHints);
+          assert.calledWith(isAnonymizeDisplayNamesEnabledSpy, userDisplayHints);
 
           assert.calledWith(ControlsOptionsUtil.hasHints, {
             requiredHints: [DISPLAY_HINTS.MUTE_ALL],
@@ -13703,6 +13905,131 @@ describe('plugin-meetings', () => {
           assert.notCalled(webex.internal.llm.setDatachannelToken);
         });
 
+        describe('ownership tag', () => {
+          beforeEach(() => {
+            // Make the owner stub dynamic so setOwnerMeetingId() writes
+            // propagate back to getOwnerMeetingId() reads. This mirrors the
+            // real LLM singleton behavior so the finally-block release in
+            // cleanupLLMConneciton is reflected in subsequent reads.
+            webex.internal.llm.getOwnerMeetingId = sinon.stub().returns(undefined);
+            webex.internal.llm.setOwnerMeetingId = sinon.stub().callsFake((id) => {
+              webex.internal.llm.getOwnerMeetingId.returns(id);
+            });
+          });
+
+          it('skips disconnect and reconnect when LLM is connected and owned by another meeting (regardless of URL)', async () => {
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(true);
+            webex.internal.llm.getOwnerMeetingId.returns('some-other-meeting-id');
+            // Locus/datachannel URL mismatch is the *normal* case when
+            // another meeting owns the live socket -- each meeting has its
+            // own locus URL. URL mismatch must NOT trigger a reclaim,
+            // because doing so would tear down the owning meeting's healthy
+            // LLM socket and break its data channel.
+            webex.internal.llm.getLocusUrl.returns('owner-locus-url');
+            webex.internal.llm.getDatachannelUrl.returns('owner-dc-url');
+            meeting.locusInfo = {
+              url: 'a different url',
+              info: {datachannelUrl: 'a different datachannel url'},
+              self: {},
+            };
+
+            const result = await meeting.updateLLMConnection();
+
+            assert.equal(result, undefined);
+            assert.notCalled(webex.internal.llm.disconnectLLM);
+            assert.notCalled(webex.internal.llm.registerAndConnect);
+            assert.notCalled(webex.internal.llm.setOwnerMeetingId);
+            assert.notCalled(meeting.startLLMHealthCheckTimer);
+          });
+
+
+          it('clears stale owner tag in cleanup finally block even when disconnectLLM rejects', async () => {
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(true);
+            webex.internal.llm.getOwnerMeetingId.returns(meeting.id);
+            webex.internal.llm.getLocusUrl.returns('a url');
+            webex.internal.llm.getDatachannelUrl.returns('a datachannel url');
+            webex.internal.llm.disconnectLLM.rejects(new Error('disconnect failed'));
+            meeting.locusInfo = {
+              url: 'a different url',
+              info: {datachannelUrl: 'a datachannel url'},
+              self: {},
+            };
+
+            try {
+              await meeting.updateLLMConnection();
+            } catch (e) {
+              /* updateLLMConnection may reject when cleanup throws */
+            }
+
+            // The owner-eligible finally branch must release the tag so a
+            // subsequent reconnect attempt from any meeting is not blocked.
+            assert.calledWith(webex.internal.llm.setOwnerMeetingId, undefined);
+          });
+
+          it('proceeds normally when LLM is connected and owned by this meeting with URL change', async () => {
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(true);
+            webex.internal.llm.getOwnerMeetingId.returns(meeting.id);
+            webex.internal.llm.getLocusUrl.returns('a url');
+            webex.internal.llm.getDatachannelUrl.returns('a datachannel url');
+            meeting.locusInfo = {
+              url: 'a different url',
+              info: {datachannelUrl: 'a datachannel url'},
+              self: {},
+            };
+
+            await meeting.updateLLMConnection();
+
+            assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
+              code: 3050,
+              reason: 'done (permanent)',
+            });
+            assert.calledWithExactly(
+              webex.internal.llm.registerAndConnect,
+              'a different url',
+              'a datachannel url',
+              undefined
+            );
+            // setOwnerMeetingId is called twice: first with undefined in
+            // cleanupLLMConneciton's finally block (so a failed disconnect
+            // cannot leave a stale owner), then with this meeting's id
+            // after registerAndConnect resolves.
+            assert.calledTwice(webex.internal.llm.setOwnerMeetingId);
+            assert.calledWith(webex.internal.llm.setOwnerMeetingId.firstCall, undefined);
+            assert.calledWith(webex.internal.llm.setOwnerMeetingId.lastCall, meeting.id);
+          });
+
+          it('claims ownership after successful registerAndConnect on initial connect', async () => {
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(false);
+            webex.internal.llm.getOwnerMeetingId.returns(undefined);
+            meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
+
+            await meeting.updateLLMConnection();
+
+            assert.calledOnce(webex.internal.llm.registerAndConnect);
+            assert.calledOnceWithExactly(webex.internal.llm.setOwnerMeetingId, meeting.id);
+          });
+
+          it('proceeds to connect when LLM is not connected even if another ownerId lingers', async () => {
+            // Defensive path: if the LLM reports not-connected but an old
+            // ownerId is still present (e.g. race before a successful
+            // connections.delete), this meeting can still claim a fresh
+            // connection.
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(false);
+            webex.internal.llm.getOwnerMeetingId.returns('stale-owner-id');
+            meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
+
+            await meeting.updateLLMConnection();
+
+            assert.calledOnce(webex.internal.llm.registerAndConnect);
+            assert.calledOnceWithExactly(webex.internal.llm.setOwnerMeetingId, meeting.id);
+          });
+        });
+
         describe('#clearMeetingData', () => {
           beforeEach(() => {
             webex.internal.llm.isConnected = sinon.stub().returns(true);
@@ -13762,6 +14089,64 @@ describe('plugin-meetings', () => {
             assert.calledOnce(meeting.clearDataChannelToken);
             assert.notCalled(meeting.stopTranscription);
             assert.notCalled(meeting.annotation.deregisterEvents);
+          });
+
+          describe('ownership tag', () => {
+            beforeEach(() => {
+              webex.internal.llm.getOwnerMeetingId = sinon.stub();
+            });
+
+            it('skips disconnectLLM but still removes this meeting listeners when another meeting owns the LLM', async () => {
+              webex.internal.llm.getOwnerMeetingId.returns('some-other-meeting-id');
+
+              await meeting.clearMeetingData();
+
+              assert.notCalled(webex.internal.llm.disconnectLLM);
+              // Shared data-channel auth tokens belong to the owner meeting's
+              // live LLM session and must not be wiped by a non-owner
+              // teardown, otherwise the owner's next reconnect would lose
+              // its Data-Channel-Auth-Token.
+              assert.notCalled(meeting.clearDataChannelToken);
+              // Listeners owned by *this* Meeting instance must still be
+              // removed so a leaving subordinate meeting stops receiving
+              // relay/locus events from the shared singleton.
+              assert.calledWithExactly(webex.internal.llm.off, 'online', meeting.handleLLMOnline);
+              assert.calledWithExactly(
+                webex.internal.llm.off,
+                'event:relay.event',
+                meeting.processRelayEvent
+              );
+              assert.calledWithExactly(
+                webex.internal.llm.off,
+                'event:locus.state_message',
+                meeting.processLocusLLMEvent
+              );
+              assert.calledOnce(meeting.clearLLMHealthCheckTimer);
+            });
+
+            it('calls disconnectLLM and clears data channel token when this meeting is the owner', async () => {
+              webex.internal.llm.getOwnerMeetingId.returns(meeting.id);
+
+              await meeting.clearMeetingData();
+
+              assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
+                code: 3050,
+                reason: 'done (permanent)',
+              });
+              assert.calledOnce(meeting.clearDataChannelToken);
+            });
+
+            it('calls disconnectLLM and clears data channel token when no owner is recorded (first-claim / legacy)', async () => {
+              webex.internal.llm.getOwnerMeetingId.returns(undefined);
+
+              await meeting.clearMeetingData();
+
+              assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
+                code: 3050,
+                reason: 'done (permanent)',
+              });
+              assert.calledOnce(meeting.clearDataChannelToken);
+            });
           });
         });
       });

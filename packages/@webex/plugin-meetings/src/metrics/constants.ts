@@ -96,6 +96,9 @@ const BEHAVIORAL_METRICS = {
   SET_CUSTOM_CODEC_PARAMETERS_USED: 'js_sdk_set_custom_codec_parameters_used',
   MARK_CUSTOM_CODEC_PARAMETERS_FOR_DELETION_USED:
     'js_sdk_mark_custom_codec_parameters_for_deletion_used',
+  HASH_TREE_SYNC_FAILURE: 'js_sdk_hash_tree_sync_failure',
+  HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED: 'js_sdk_hash_tree_heartbeat_watchdog_expired',
+  HASH_TREE_EMPTY_LOCUS_STATE_ELEMENTS: 'js_sdk_hash_tree_empty_locus_state_elements',
 };
 
 export {BEHAVIORAL_METRICS as default};

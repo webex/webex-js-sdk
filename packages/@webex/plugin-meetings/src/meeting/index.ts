@@ -137,6 +137,7 @@ import {
   STAGE_MANAGER_TYPE,
   LOCUSEVENT,
   LOCUS_LLM_EVENT,
+  LLM_PRACTICE_SESSION,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -2791,7 +2792,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private setupLocusControlsListener() {
     this.locusInfo.on(
       LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
-      ({state, modifiedBy, lastModified}) => {
+      ({state, modifiedBy, lastModified, modifiedByServiceAppName, modifiedByServiceAppId}) => {
         let event;
 
         switch (state) {
@@ -2817,6 +2818,8 @@ export default class Meeting extends StatelessWebexPlugin {
           state: state === RECORDING_STATE.RESUMED ? RECORDING_STATE.RECORDING : state,
           modifiedBy,
           lastModified,
+          modifiedByServiceAppName,
+          modifiedByServiceAppId,
         };
         Trigger.trigger(
           this,
@@ -4614,6 +4617,9 @@ export default class Meeting extends StatelessWebexPlugin {
           ),
           isAttendeeRequestAiAssistantDeclinedAll:
             MeetingUtil.attendeeRequestAiAssistantDeclinedAll(this.userDisplayHints),
+          isAnonymizeDisplayNamesEnabled: MeetingUtil.isAnonymizeDisplayNamesEnabled(
+            this.userDisplayHints
+          ),
         }) || changed;
     }
     if (changed) {
@@ -5927,12 +5933,40 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   /**
+   * Verifies the relay event was delivered for the active LLM session binding.
+   * @param {RelayEvent} event Event object coming from LLM Connection
+   * @returns {boolean}
+   */
+  private isRelayEventRouteValid(event: RelayEvent): boolean {
+    const route = event?.headers?.route;
+
+    if (!route) {
+      return true;
+    }
+
+    const {llm} = (this as any).webex.internal;
+    const isPracticeSession = llm.isConnected(LLM_PRACTICE_SESSION);
+    const expectedBinding = isPracticeSession
+      ? llm.getBinding(LLM_PRACTICE_SESSION)
+      : llm.getBinding();
+
+    if (!expectedBinding || route === expectedBinding) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Callback called when a relay event is received from meeting LLM Connection
    * @param {RelayEvent} e Event object coming from LLM Connection
    * @private
    * @returns {void}
    */
   private processRelayEvent = (e: RelayEvent): void => {
+    if (!this.isRelayEventRouteValid(e)) {
+      return;
+    }
     switch (e.data.relayType) {
       case REACTION_RELAY_TYPES.REACTION:
         if (
@@ -6407,6 +6441,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Disconnects and cleans up the default LLM session listeners/timers.
+   *
+   * Ownership-aware: only calls `disconnectLLM` when this meeting is the
+   * current owner of the default LLM session (or when no owner is recorded).
+   * Event listeners belonging to this meeting instance are always detached
+   * so they do not receive another meeting's relay events.
+   *
    * @param {Object} options
    * @param {boolean} [options.removeOnlineListener=true] removes the one-time online listener
    * @param {boolean} [options.throwOnError=true] rethrows disconnect errors when true
@@ -6419,12 +6459,22 @@ export default class Meeting extends StatelessWebexPlugin {
     removeOnlineListener?: boolean;
     throwOnError?: boolean;
   } = {}): Promise<void> => {
+    // @ts-ignore - Fix type
+    const currentOwner = this.webex.internal.llm.getOwnerMeetingId();
+    const isOwner = !currentOwner || currentOwner === this.id;
+
     try {
-      // @ts-ignore - Fix type
-      await this.webex.internal.llm.disconnectLLM({
-        code: 3050,
-        reason: 'done (permanent)',
-      });
+      if (isOwner) {
+        // @ts-ignore - Fix type
+        await this.webex.internal.llm.disconnectLLM({
+          code: 3050,
+          reason: 'done (permanent)',
+        });
+      } else {
+        LoggerProxy.logger.info(
+          `Meeting:index#cleanupLLMConneciton --> skipping disconnect; LLM owned by meeting ${currentOwner}, not ${this.id}`
+        );
+      }
     } catch (error) {
       LoggerProxy.logger.error(
         'Meeting:index#cleanupLLMConneciton --> Failed to disconnect default LLM session',
@@ -6440,6 +6490,17 @@ export default class Meeting extends StatelessWebexPlugin {
         this.webex.internal.llm.off('online', this.handleLLMOnline);
       }
       this.stopListeningForLLMEvents();
+
+      // If this meeting owned (or could have owned) the default LLM session,
+      // always release the owner tag here regardless of whether disconnectLLM
+      // resolved. `disconnectLLM` only clears the owner on its success path,
+      // so a failed disconnect would otherwise leave a stale owner pointing
+      // at a torn-down meeting and permanently block other meetings'
+      // `updateLLMConnection` calls via the ownership guard.
+      if (isOwner) {
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.setOwnerMeetingId?.(undefined);
+      }
     }
   };
 
@@ -6541,8 +6602,33 @@ export default class Meeting extends StatelessWebexPlugin {
 
     const dataChannelUrl = datachannelUrl;
 
+    // Ownership guard: when the default LLM session is already connected and
+    // owned by a *different* Meeting instance, do not disconnect or reconfigure
+    // it. Another meeting's `updateLLMConnection` must be ignored here to
+    // avoid killing the socket it relies on. We only proceed to manage the
+    // connection when this meeting is the current owner, or when no owner is
+    // set yet (first claim).
+    // @ts-ignore - Fix type
+    const currentOwner = this.webex.internal.llm.getOwnerMeetingId();
+
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected()) {
+      if (currentOwner && currentOwner !== this.id) {
+        // Another meeting owns the live LLM socket. We must not disconnect
+        // or reconfigure it -- doing so would tear down a session the
+        // owning meeting still relies on. Locus/datachannel URL mismatch is
+        // expected here (each meeting has its own locus URL) and is NOT a
+        // valid signal of staleness, so we never reclaim from this path.
+        // The only safe reclaim mechanism is the `finally`-block owner-tag
+        // release in `cleanupLLMConneciton`, which fires when this meeting
+        // itself is being torn down.
+        LoggerProxy.logger.info(
+          `Meeting:index#updateLLMConnection --> skipping; LLM owned by meeting ${currentOwner}, not ${this.id}`
+        );
+
+        return undefined;
+      }
+
       if (
         // @ts-ignore - Fix type
         url === this.webex.internal.llm.getLocusUrl() &&
@@ -6563,6 +6649,11 @@ export default class Meeting extends StatelessWebexPlugin {
     return this.webex.internal.llm
       .registerAndConnect(url, dataChannelUrl, datachannelToken)
       .then((registerAndConnectResult) => {
+        // Record ownership of the default LLM session for this meeting so
+        // subsequent cross-meeting `updateLLMConnection` / `cleanupLLMConneciton`
+        // calls can detect and skip work that doesn't belong to them.
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.setOwnerMeetingId?.(this.id);
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
         // @ts-ignore - Fix type
@@ -9857,7 +9948,23 @@ export default class Meeting extends StatelessWebexPlugin {
     // received mid-teardown do not trigger Locus syncs. Calling it here
     // again would double-emit MEETING_STOPPED_RECEIVING_TRANSCRIPTION
     // because stopTranscription() always fires its trigger.
-    this.clearDataChannelToken();
+    //
+    // Ownership-aware token clear: only clear the shared LLM data channel
+    // tokens when this meeting owns (or no meeting owns) the default LLM
+    // session. Otherwise we would wipe tokens still in use by another
+    // meeting's active LLM connection.
+    // @ts-ignore - Fix type
+    const currentOwner = this.webex.internal.llm.getOwnerMeetingId();
+    const isOwner = !currentOwner || currentOwner === this.id;
+
+    if (isOwner) {
+      this.clearDataChannelToken();
+    } else {
+      LoggerProxy.logger.info(
+        `Meeting:index#clearMeetingData --> skipping clearDataChannelToken; LLM owned by meeting ${currentOwner}, not ${this.id}`
+      );
+    }
+
     await this.cleanupLLMConneciton({throwOnError: false});
   };
 

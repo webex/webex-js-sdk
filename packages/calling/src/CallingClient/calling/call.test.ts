@@ -29,7 +29,13 @@ import {waitForMsecs} from '../../common/Utils';
 import log from '../../Logger';
 import {CallError} from '../../Errors';
 import {METHOD_START_MESSAGE} from '../../common/constants';
+import {APIRequest} from '../utils/request';
 
+jest.mock('../../mobius-socket', () => ({
+  getMobiusSocketInstance: jest.fn().mockReturnValue({
+    sendWssRequest: jest.fn(),
+  }),
+}));
 jest.mock('@webex/internal-media-core');
 
 const uploadLogsSpy = jest.spyOn(Utils, 'uploadLogs').mockResolvedValue(undefined);
@@ -132,6 +138,8 @@ describe('Call Tests', () => {
   });
 
   beforeEach(() => {
+    APIRequest.resetInstance();
+    APIRequest.getInstance({webex, isMobiusSocketEnabled: false});
     callManager = getCallManager(webex, defaultServiceIndicator);
   });
 
@@ -450,6 +458,94 @@ describe('Call Tests', () => {
       call.getCallId(),
       call.getCorrelationId()
     );
+  });
+
+  it('sends connect before ROAP answer when inbound offer is delayed', async () => {
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+      on: jest.fn(),
+      getEffectByKind: jest.fn().mockImplementation(() => {
+        return mockEffect;
+      }),
+    };
+
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+    const call = createCall(
+      activeUrl,
+      webex,
+      CallDirection.INBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator,
+      dest
+    ) as Call;
+
+    webex.request.mockReturnValue({
+      statusCode: 200,
+      body: {
+        callId: 'mock-call-id',
+      },
+    } as WebexRequestPayload);
+
+    call.sendCallStateMachineEvt({
+      type: 'E_RECV_CALL_SETUP',
+      data: {
+        seq: 1,
+        messageType: 'OFFER',
+      },
+    } as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
+
+    await call.answer(localAudioStream);
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_CONNECT');
+
+    // Connect is attempted by answer(), but is deferred because offer is not buffered yet.
+    const handleOutgoingCallConnectSpy = jest.spyOn(call as any, 'handleOutgoingCallConnect');
+    expect(call['connectPending']).toBe(true);
+    expect(call['mediaConnection'].roapMessageReceived).not.toHaveBeenCalled();
+
+    const delayedOffer = {
+      seq: 1,
+      messageType: 'OFFER',
+      sdp: 'v=0',
+      version: 1,
+    };
+
+    call.sendMediaStateMachineEvt({type: 'E_RECV_ROAP_OFFER', data: delayedOffer} as RoapEvent);
+    await flushPromises(2);
+    expect(call['mediaConnection'].roapMessageReceived).toHaveBeenCalledWith(delayedOffer);
+
+    const sendCallStateMachineEvtSpy = jest.spyOn(call, 'sendCallStateMachineEvt');
+    const sendMediaStateMachineEvtSpy = jest.spyOn(call, 'sendMediaStateMachineEvt');
+    const roapListener = (call['mediaConnection'].on as jest.Mock).mock.calls.find(
+      ([eventName]) =>
+        eventName === InternalMediaCoreModule.MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND
+    )?.[1];
+
+    expect(roapListener).toBeDefined();
+
+    await roapListener({
+      roapMessage: {
+        messageType: 'ANSWER',
+        sdp: 'v=0',
+        seq: 1,
+        version: 2,
+      },
+    });
+    await flushPromises(2);
+
+    // On ANSWER from media layer, connect is retried first, then ROAP answer is posted.
+    expect(sendCallStateMachineEvtSpy).toHaveBeenNthCalledWith(1, {type: 'E_SEND_CALL_CONNECT'});
+    expect(sendMediaStateMachineEvtSpy).toHaveBeenNthCalledWith(1, {
+      type: 'E_SEND_ROAP_ANSWER',
+      data: expect.objectContaining({messageType: 'ANSWER'}),
+    });
+    expect(handleOutgoingCallConnectSpy).toHaveBeenCalled();
+    expect(call['mediaConnection'].roapMessageReceived).toHaveBeenLastCalledWith(delayedOffer);
+    expect(call['connectPending']).toBe(false);
   });
 
   it('testing enabling/disabling the BNR on an active call', async () => {
@@ -915,6 +1011,8 @@ describe('State Machine handler tests', () => {
   let dtmfMock: jest.SpyInstance;
 
   beforeEach(() => {
+    APIRequest.resetInstance();
+    APIRequest.getInstance({webex, isMobiusSocketEnabled: false});
     call = new Call(
       activeUrl,
       webex,
@@ -1603,6 +1701,8 @@ describe('State Machine handler tests', () => {
 
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
     await flushPromises(3);
+    await Promise.resolve();
+    await Promise.resolve();
     expect(call['callStateMachine'].state.value).toBe('S_UNKNOWN');
     expect(errorSpy).toHaveBeenCalled();
     expect(uploadLogsSpy).toHaveBeenCalledWith({
@@ -1633,6 +1733,8 @@ describe('State Machine handler tests', () => {
 
     await call['handleRoapEstablished']({} as MediaContext, dummyEvent as RoapEvent);
     await flushPromises(2);
+    await Promise.resolve();
+    await Promise.resolve();
     expect(call.isConnected()).toBe(false);
 
     expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_TEARDOWN');
@@ -1984,6 +2086,8 @@ describe('State Machine handler tests', () => {
 
     await call.sendMediaStateMachineEvt(answerEvent as RoapEvent);
     await flushPromises(2);
+    await Promise.resolve();
+    await Promise.resolve();
 
     expect(postMediaSpy).toBeCalledOnceWith(answerEvent.data as RoapMessage);
     expect(warnSpy).toHaveBeenCalledWith('Failed to send MediaAnswer request', {
@@ -2448,7 +2552,7 @@ describe('State Machine handler tests', () => {
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_CALL_HOLD');
 
-    expect(infoSpy).toHaveBeenLastCalledWith(
+    expect(infoSpy).toHaveBeenCalledWith(
       `${METHOD_START_MESSAGE} with: ${call.getCorrelationId()}`,
       {
         file: 'call',
@@ -2591,6 +2695,8 @@ describe('Supplementary Services tests', () => {
   let call: Call;
 
   beforeEach(() => {
+    APIRequest.resetInstance();
+    APIRequest.getInstance({webex, isMobiusSocketEnabled: false});
     /* Since we are not actually testing from the start of a call , so it's good to set the below
      * parameters manually
      */

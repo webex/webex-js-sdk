@@ -69,6 +69,9 @@ export const CALL_FILE = 'call';
 export const CALL_MANAGER_FILE = 'callManager';
 export const METRIC_FILE = 'metric';
 export const REGISTRATION_FILE = 'register';
+export const REQUEST_FILE = 'REQUEST';
+export const MOBIUS_SOCKET_MAPPER_FILE = 'mobiusSocketMapper';
+export const WS_FEATURE_FLAG_FILE = 'wsFeatureFlag';
 export const CODEC_ID = 'codecId';
 export const MEDIA_ID = 'id';
 export const RTC_ICE_CANDIDATE_PAIR = 'RTCIceCandidatePair_';
@@ -127,6 +130,8 @@ export const MOBIUS_EU_INT = 'mobius-eu-central-1.int.infra.webex.com';
 export const FAILOVER_CACHE_PREFIX = 'wxc-failover-state';
 export const ACTIVE_MOBIUS_STORAGE_KEY = 'wxc-active-mobius';
 export const ICE_CANDIDATES_TIMEOUT = 3000;
+export const WCC_CALLING_RTMS_DOMAIN = 'wcc-calling-rtms-domain';
+
 // Define constants for method names
 export const METHODS = {
   CONSTRUCTOR: 'constructor',
@@ -231,4 +236,20 @@ export const METHODS = {
   UPLOAD_LOGS: 'uploadLogs',
   GET_SDK_CONNECTOR: 'getSDKConnector',
   GET_CONNECTED_CALL: 'getConnectedCall',
+  CONNECT_TO_MOBIUS_SOCKET: 'connectToMobiusSocket',
+  REGISTER_MOBIUS_SOCKET_LISTENER: 'registerMobiusSocketListener',
+  UNREGISTER_MOBIUS_SOCKET_LISTENER: 'unregisterMobiusSocketListener',
+  HANDLE_MOBIUS_ASYNC_EVENT: 'handleMobiusAsyncEvent',
+  HANDLE_REGISTRATION_DOWN_EVENT: 'handleRegistrationDownEvent',
+  DISCONNECT_FROM_MOBIUS_SOCKET: 'disconnectFromMobiusSocket',
+  MAKE_REQUEST: 'makeRequest',
+  DERIVE_MOBIUS_SOCKET_MESSAGE_TYPE: 'deriveMobiusSocketMessageType',
+  IS_MOBIUS_WSS_ENABLED: 'isMobiusWssEnabled',
+  RESTORE_PREVIOUS_REGISTRATION: 'restorePreviousRegistration',
+  RESTART_REGISTRATION: 'restartRegistration',
+  TRIGGER_REGISTRATION: 'triggerRegistration',
+  HANDLE_404_KEEPALIVE_FAILURE: 'handle404KeepaliveFailure',
+  INITIATE_FAILBACK: 'initiateFailback',
+  EXECUTE_FAILBACK: 'executeFailback',
+  GET_RTMS_DOMAIN: 'getRTMSDomain',
 };

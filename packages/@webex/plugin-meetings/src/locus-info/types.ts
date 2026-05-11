@@ -77,3 +77,9 @@ export type ReplacesInfo = {
   replacedAt: string;
   sessionId: string;
 };
+
+export const LocusErrorCodes = {
+  LOCUS_INACTIVE: 2403004,
+} as const;
+
+export type LocusErrorCodes = Enum<typeof LocusErrorCodes>;
