@@ -60,4 +60,7 @@ type RelayEventData = {
 
 export type RelayEvent = {
   data: RelayEventData;
+  headers?: {
+    route?: string;
+  };
 };

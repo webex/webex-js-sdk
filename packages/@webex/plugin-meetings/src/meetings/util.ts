@@ -153,6 +153,30 @@ MeetingsUtil.parseDefaultSiteFromMeetingPreferences = (userPreferences) => {
   return result;
 };
 
+MeetingsUtil.getSiteName = (site: string, multipartSitePrefixList: string[] = []) => {
+  if (!site) {
+    return null;
+  }
+
+  let siteName: string | undefined;
+
+  multipartSitePrefixList.forEach((multipartSitePrefix) => {
+    if (!siteName && site.includes(multipartSitePrefix)) {
+      const secondDot = site.indexOf('.', site.indexOf('.') + 1);
+
+      siteName = site.substring(0, secondDot);
+    }
+  });
+
+  if (siteName) {
+    return siteName;
+  }
+
+  siteName = site.substring(0, site.indexOf('.'));
+
+  return siteName;
+};
+
 /**
  * Will check to see if the H.264 media codec is supported.
  * @async
