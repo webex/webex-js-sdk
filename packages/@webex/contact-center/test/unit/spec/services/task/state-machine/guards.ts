@@ -238,6 +238,109 @@ describe('State Machine Guards', () => {
     });
   });
 
+  describe('Hydration Guards - isInteractionConsulting', () => {
+    it('returns true when interaction state is consulting', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'consulting',
+        },
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(true);
+    });
+
+    it('returns true for EP_DN consulted agent (state=connected, CPD relationshipType=consult)', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'connected',
+          callProcessingDetails: {
+            ...createTaskData().interaction!.callProcessingDetails,
+            relationshipType: 'consult',
+          },
+        },
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(true);
+    });
+
+    it('returns true when post_call with active consult (consultState=consulting + consult media)', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'post_call',
+          participants: {
+            'agent-123': {
+              ...createParticipant('agent-123', 'Agent'),
+              consultState: 'consulting',
+            },
+          },
+          media: {
+            [INTERACTION_ID]: {
+              mediaResourceId: INTERACTION_ID,
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123'],
+              mType: 'mainCall',
+              isHold: false,
+              holdTimestamp: null,
+            },
+            'consult-media': {
+              mediaResourceId: 'consult-media',
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123', 'agent-2'],
+              mType: 'consult',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        },
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(true);
+    });
+
+    it('returns false for post_call without consult media', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'post_call',
+          participants: {
+            'agent-123': {
+              ...createParticipant('agent-123', 'Agent'),
+              consultState: undefined,
+            },
+          },
+        },
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
+    });
+
+    it('returns false for plain connected state without consult CPD', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'connected',
+        },
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
+    });
+  });
+
   describe('Server State Guards', () => {
     it('isPrimaryMediaOnHold returns true when media isHold is true', () => {
       const ctx = createContext();

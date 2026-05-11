@@ -119,7 +119,7 @@ export const guards = {
         ? taskData?.interaction?.participants?.[selfAgentId]
         : null;
       const hasConsultMedia = Object.values(taskData?.interaction?.media ?? {}).some(
-        (media: any) => media?.mType === MEDIA_TYPE_CONSULT
+        (media) => (media as {mType?: string})?.mType === MEDIA_TYPE_CONSULT
       );
       if (selfParticipant?.consultState === CONSULT_STATE.CONSULTING && hasConsultMedia) {
         return true;

@@ -444,6 +444,146 @@ describe('Task state machine', () => {
     });
   });
 
+  describe('CONF_INITIATING state event handlers', () => {
+    it('transitions to CONFERENCING on CONFERENCE_START', () => {
+      const service = startMachine();
+      const taskData = createTaskData({consultingAgentId: 'agent-1'});
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: 'agent-42',
+        destinationType: 'agent',
+      });
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+      service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      expect(service.getSnapshot().value).toBe(TaskState.CONF_INITIATING);
+
+      service.send({type: TaskEvent.CONFERENCE_START, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+    });
+
+    it('transitions to WRAPPING_UP on CONSULT_END with isTerminated during CONF_INITIATING', () => {
+      const service = startMachine();
+      const taskData = createTaskData({consultingAgentId: 'agent-1'});
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: 'agent-42',
+        destinationType: 'agent',
+      });
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+      service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      expect(service.getSnapshot().value).toBe(TaskState.CONF_INITIATING);
+
+      const terminatedTaskData = createTaskData({
+        consultingAgentId: 'agent-1',
+        interaction: {
+          isTerminated: true,
+          owner: 'agent-1',
+        } as any,
+      });
+      service.send({type: TaskEvent.CONSULT_END, taskData: terminatedTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
+    it('transitions to CONNECTED on CONSULT_END without isTerminated during CONF_INITIATING', () => {
+      const service = startMachine();
+      const taskData = createTaskData({consultingAgentId: 'agent-1'});
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: 'agent-42',
+        destinationType: 'agent',
+      });
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+      service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      expect(service.getSnapshot().value).toBe(TaskState.CONF_INITIATING);
+
+      service.send({type: TaskEvent.CONSULT_END, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+    });
+
+    it('transitions to WRAPPING_UP on CONTACT_ENDED during CONF_INITIATING', () => {
+      const service = startMachine();
+      const taskData = createTaskData({consultingAgentId: 'agent-1'});
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: 'agent-42',
+        destinationType: 'agent',
+      });
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+      service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      expect(service.getSnapshot().value).toBe(TaskState.CONF_INITIATING);
+
+      service.send({type: TaskEvent.CONTACT_ENDED, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+
+    it('transitions to WRAPPING_UP on TASK_WRAPUP during CONF_INITIATING', () => {
+      const service = startMachine();
+      const taskData = createTaskData({consultingAgentId: 'agent-1'});
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: 'agent-42',
+        destinationType: 'agent',
+      });
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+      service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      expect(service.getSnapshot().value).toBe(TaskState.CONF_INITIATING);
+
+      service.send({type: TaskEvent.TASK_WRAPUP});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+  });
+
+  describe('CONFERENCING state CONSULT_END with terminated interaction', () => {
+    it('transitions to WRAPPING_UP when CONSULT_END arrives with isTerminated in CONFERENCING', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        consultingAgentId: 'agent-1',
+        interaction: {
+          owner: 'agent-1',
+          state: 'conference',
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData});
+      service.send({type: TaskEvent.ASSIGN, taskData});
+      service.send({
+        type: TaskEvent.CONSULT,
+        destination: 'agent-42',
+        destinationType: 'agent',
+      });
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData});
+      service.send({type: TaskEvent.MERGE_TO_CONFERENCE});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      const terminatedTaskData = createTaskData({
+        consultingAgentId: 'agent-1',
+        interaction: {
+          isTerminated: true,
+          owner: 'agent-1',
+          state: 'conference',
+        } as any,
+      });
+      service.send({type: TaskEvent.CONSULT_END, taskData: terminatedTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+  });
+
   describe('OFFERED state event handlers', () => {
     it('transitions to TERMINATED when customer disconnects before agent answers', () => {
       const service = startMachine();
