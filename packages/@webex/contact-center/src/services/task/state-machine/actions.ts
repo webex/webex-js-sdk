@@ -11,7 +11,13 @@ import {
   TaskActionArgs,
   RecordingStateUpdate,
 } from './types';
-import {TaskEvent, TaskState} from './constants';
+import {
+  TaskEvent,
+  TaskState,
+  INTERACTION_STATE,
+  CONSULT_STATE,
+  MEDIA_TYPE_CONSULT,
+} from './constants';
 import {DestinationType, TaskData} from '../types';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
 
@@ -74,13 +80,13 @@ const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate 
 };
 
 const isActiveConsultState = (taskData: TaskData | undefined, selfAgentId?: string): boolean => {
-  if (taskData?.interaction?.state === 'consulting') return true;
-  if (taskData?.interaction?.state === 'post_call' && selfAgentId) {
+  if (taskData?.interaction?.state === INTERACTION_STATE.CONSULTING) return true;
+  if (taskData?.interaction?.state === INTERACTION_STATE.POST_CALL && selfAgentId) {
     const selfParticipant = taskData.interaction?.participants?.[selfAgentId] as any;
     const hasConsultMedia = Object.values(taskData.interaction?.media ?? {}).some(
-      (media: any) => media?.mType === 'consult'
+      (media: any) => media?.mType === MEDIA_TYPE_CONSULT
     );
-    if (selfParticipant?.consultState === 'consulting' && hasConsultMedia) return true;
+    if (selfParticipant?.consultState === CONSULT_STATE.CONSULTING && hasConsultMedia) return true;
   }
 
   return false;
