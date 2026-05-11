@@ -369,7 +369,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         webex: this.$webex,
         connectionConfig: this.getConnectionConfig(),
       });
-      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       this.webCallingService = new WebCallingService(this.$webex);
       this.apiAIAssistant = new ApiAIAssistant(this.$webex);
@@ -497,6 +496,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         METRIC_EVENT_NAMES.WEBSOCKET_REGISTER_FAILED,
       ]);
       this.setupEventListeners();
+      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       const resp = await this.connectWebsocket();
       // Ensure 'dn' is always populated from 'defaultDn'
@@ -1349,8 +1349,6 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       }
       this.agentConfig.lastStateAuxCodeId = auxCodeId;
       this.agentConfig.isAgentLoggedIn = true;
-      // TODO: https://jira-eng-gpk2.cisco.com/jira/browse/SPARK-626777 Implement the de-register method and close the listener there
-      this.services.webSocketManager.on('message', this.handleWebsocketMessage);
 
       LoggerProxy.log(
         `Silent relogin process completed successfully with login Option: ${reLoginResponse.data.deviceType} teamId: ${reLoginResponse.data.teamId}`,
@@ -1650,6 +1648,166 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
       const {error: detailedError} = getErrorDetails(
         error,
         METHODS.ACCEPT_PREVIEW_CONTACT,
+        CC_FILE
+      );
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Skips a campaign preview contact, requesting the next contact from the campaign.
+   *
+   * When a campaign manager reserves a contact for an agent, the agent receives an
+   * `AgentOfferCampaignReservation` event. Instead of accepting, the agent can skip the
+   * preview contact to move to the next contact in the campaign.
+   *
+   * @param {PreviewContactPayload} payload - The preview contact payload containing interactionId and campaignId (campaign name, not UUID).
+   * @returns {Promise<TaskResponse>} Promise resolving with agent contact on success.
+   * @throws {Error} If the operation fails (network error, etc.)
+   *
+   * @example
+   * ```typescript
+   * webex.cc.on('task:campaignPreviewReservation', async (task) => {
+   *   const { interactionId } = task.data;
+   *   const campaignId = task.data.interaction.callProcessingDetails.campaignId;
+   *
+   *   const result = await webex.cc.skipPreviewContact({ interactionId, campaignId });
+   * });
+   * ```
+   */
+  public async skipPreviewContact(payload: PreviewContactPayload): Promise<TaskResponse> {
+    const task = this.taskManager.getTask(payload.interactionId);
+    if (task?.data?.interaction?.callProcessingDetails?.campaignPreviewSkipDisabled === 'true') {
+      LoggerProxy.warn('Skip action is disabled for this campaign preview contact', {
+        module: CC_FILE,
+        method: METHODS.SKIP_PREVIEW_CONTACT,
+        interactionId: payload.interactionId,
+      });
+      throw new Error('Skip action is disabled for this campaign preview contact');
+    }
+
+    LoggerProxy.info('Skipping campaign preview contact', {
+      module: CC_FILE,
+      method: METHODS.SKIP_PREVIEW_CONTACT,
+    });
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_SKIP_SUCCESS,
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_SKIP_FAILED,
+      ]);
+
+      const result = await this.services.dialer.skipPreviewContact({data: payload});
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_SKIP_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+          interactionId: payload.interactionId,
+          campaignId: payload.campaignId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.log('Campaign preview contact skipped successfully', {
+        module: CC_FILE,
+        method: METHODS.SKIP_PREVIEW_CONTACT,
+        trackingId: result.trackingId,
+        interactionId: payload.interactionId,
+      });
+
+      return result;
+    } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_SKIP_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          interactionId: payload.interactionId,
+          campaignId: payload.campaignId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+      const {error: detailedError} = getErrorDetails(error, METHODS.SKIP_PREVIEW_CONTACT, CC_FILE);
+      throw detailedError;
+    }
+  }
+
+  /**
+   * Removes a campaign preview contact from the campaign list entirely.
+   *
+   * When a campaign manager reserves a contact for an agent, the agent receives an
+   * `AgentOfferCampaignReservation` event. Instead of accepting or skipping, the agent can
+   * remove the preview contact to permanently take it out of the campaign contact list.
+   *
+   * @param {PreviewContactPayload} payload - The preview contact payload containing interactionId and campaignId (campaign name, not UUID).
+   * @returns {Promise<TaskResponse>} Promise resolving with agent contact on success.
+   * @throws {Error} If the operation fails (network error, etc.)
+   *
+   * @example
+   * ```typescript
+   * webex.cc.on('task:campaignPreviewReservation', async (task) => {
+   *   const { interactionId } = task.data;
+   *   const campaignId = task.data.interaction.callProcessingDetails.campaignId;
+   *
+   *   const result = await webex.cc.removePreviewContact({ interactionId, campaignId });
+   * });
+   * ```
+   */
+  public async removePreviewContact(payload: PreviewContactPayload): Promise<TaskResponse> {
+    const task = this.taskManager.getTask(payload.interactionId);
+    if (task?.data?.interaction?.callProcessingDetails?.campaignPreviewRemoveDisabled === 'true') {
+      LoggerProxy.warn('Remove action is disabled for this campaign preview contact', {
+        module: CC_FILE,
+        method: METHODS.REMOVE_PREVIEW_CONTACT,
+        interactionId: payload.interactionId,
+      });
+      throw new Error('Remove action is disabled for this campaign preview contact');
+    }
+
+    LoggerProxy.info('Removing campaign preview contact', {
+      module: CC_FILE,
+      method: METHODS.REMOVE_PREVIEW_CONTACT,
+    });
+    try {
+      this.metricsManager.timeEvent([
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_REMOVE_SUCCESS,
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_REMOVE_FAILED,
+      ]);
+
+      const result = await this.services.dialer.removePreviewContact({data: payload});
+
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_REMOVE_SUCCESS,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponse(result),
+          interactionId: payload.interactionId,
+          campaignId: payload.campaignId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+
+      LoggerProxy.log('Campaign preview contact removed successfully', {
+        module: CC_FILE,
+        method: METHODS.REMOVE_PREVIEW_CONTACT,
+        trackingId: result.trackingId,
+        interactionId: payload.interactionId,
+      });
+
+      return result;
+    } catch (error) {
+      const failure = error.details as Failure;
+      this.metricsManager.trackEvent(
+        METRIC_EVENT_NAMES.CAMPAIGN_PREVIEW_REMOVE_FAILED,
+        {
+          ...MetricsManager.getCommonTrackingFieldForAQMResponseFailed(failure),
+          interactionId: payload.interactionId,
+          campaignId: payload.campaignId,
+        },
+        ['behavioral', 'business', 'operational']
+      );
+      const {error: detailedError} = getErrorDetails(
+        error,
+        METHODS.REMOVE_PREVIEW_CONTACT,
         CC_FILE
       );
       throw detailedError;

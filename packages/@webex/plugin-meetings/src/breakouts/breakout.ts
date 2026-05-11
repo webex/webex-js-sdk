@@ -31,6 +31,7 @@ const Breakout = WebexPlugin.extend({
     groupId: 'string',
     url: 'string', // where to send requests to
     requestedLastModifiedTime: 'string',
+    resourceLink: 'string', // the resource link for this breakout session, used for telemetry and logging
   },
 
   derived: {
@@ -165,7 +166,8 @@ const Breakout = WebexPlugin.extend({
       return;
     }
     this.breakoutRosterLocus = locus;
-    this.members.locusParticipantsUpdate(locus);
+    // The roster via breakout roster event is full roster, use replace strategy to update the members
+    this.members.locusParticipantsUpdate({participants: locus.participants, isReplace: true});
   },
 
   /**

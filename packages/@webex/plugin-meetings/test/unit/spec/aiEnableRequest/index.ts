@@ -55,6 +55,27 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#locusUrlUpdate', () => {
+      it('should update the locusUrl property', () => {
+        const testLocusUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/test-id';
+
+        aiEnableRequest.locusUrlUpdate(testLocusUrl);
+
+        assert.equal(aiEnableRequest.locusUrl, testLocusUrl);
+      });
+
+      it('should handle updating locusUrl multiple times', () => {
+        const firstUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/test-id-1';
+        const secondUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/test-id-2';
+
+        aiEnableRequest.locusUrlUpdate(firstUrl);
+        assert.equal(aiEnableRequest.locusUrl, firstUrl);
+
+        aiEnableRequest.locusUrlUpdate(secondUrl);
+        assert.equal(aiEnableRequest.locusUrl, secondUrl);
+      });
+    });
+
     describe('#selfParticipantIdUpdate', () => {
       it('should update the selfParticipantId property', () => {
         const testSelfParticipantId = 'participant-123';
@@ -252,6 +273,71 @@ describe('plugin-meetings', () => {
         webex.internal.mercury.emit(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
 
         sinon.assert.notCalled(triggerSpy);
+      });
+
+      it('should not trigger event when locusUrl does not match', () => {
+        const testLocusUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/test-id';
+        const differentLocusUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/different-id';
+
+        aiEnableRequest.locusUrl = testLocusUrl;
+
+        // Reset the spy after setting locusUrl to avoid counting property change events
+        triggerSpy.resetHistory();
+
+        aiEnableRequest.listenToApprovalRequests();
+
+        const event = {
+          data: {
+            locusUrl: differentLocusUrl,
+            approval: {
+              resourceType: AI_ENABLE_REQUEST.RESOURCE_TYPE,
+              receivers: [{participantId: testSelfParticipantId}],
+              initiator: {participantId: testInitiatorId},
+              actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+              url: testUrl,
+            },
+          },
+        };
+
+        webex.internal.mercury.emit(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+
+        sinon.assert.notCalled(triggerSpy);
+      });
+
+      it('should trigger event when locusUrl matches', () => {
+        const testLocusUrl = 'https://locus-a.wbx2.com/locus/api/v1/loci/test-id';
+
+        aiEnableRequest.locusUrl = testLocusUrl;
+
+        // Reset the spy after setting locusUrl to avoid counting property change events
+        triggerSpy.resetHistory();
+
+        aiEnableRequest.listenToApprovalRequests();
+
+        const event = {
+          data: {
+            locusUrl: testLocusUrl,
+            approval: {
+              resourceType: AI_ENABLE_REQUEST.RESOURCE_TYPE,
+              receivers: [{participantId: testSelfParticipantId}],
+              initiator: {participantId: testInitiatorId},
+              actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+              url: testUrl,
+            },
+          },
+        };
+
+        webex.internal.mercury.emit(`event:${LOCUSEVENT.APPROVAL_REQUEST}`, event);
+
+        sinon.assert.calledOnce(triggerSpy);
+        sinon.assert.calledWith(triggerSpy, AI_ENABLE_REQUEST.EVENTS.APPROVAL_REQUEST_ARRIVED, {
+          actionType: AI_ENABLE_REQUEST.ACTION_TYPE.REQUESTED,
+          isApprover: true,
+          isInitiator: false,
+          initiatorId: testInitiatorId,
+          approverId: testSelfParticipantId,
+          url: testUrl,
+        });
       });
 
       it('should handle events with different action types', () => {

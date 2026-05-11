@@ -103,6 +103,7 @@ export interface Participant {
   moderator: boolean; // Locus docs say this is deprecated and role control should be used instead
   moderatorAssignmentNotAllowed: boolean;
   presenterAssignmentNotAllowed: boolean;
+  attendeeAssignmentNotAllowed?: boolean;
   person: ParticipantPerson;
   resourceGuest: boolean;
   state: string; // probably one of MEETING_STATE.STATES
