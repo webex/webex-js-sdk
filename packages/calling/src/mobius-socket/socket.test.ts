@@ -2,41 +2,53 @@
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
 
+import {randomUUID} from 'crypto';
 import {forEach} from 'lodash';
 import {assert} from '@webex/test-helper-chai';
 import MockWebSocket from '@webex/test-helper-mock-web-socket';
 import sinon from 'sinon';
-import {
-  BadRequest,
-  NotAuthorized,
-  Forbidden,
-  // NotFound,
-  config,
-  ConnectionError,
-  Socket,
-} from '@webex/internal-plugin-mercury';
-import uuid from 'uuid';
-import FakeTimers from '@sinonjs/fake-timers';
+import {BadRequest, NotAuthorized, Forbidden, ConnectionError} from './errors';
+import config from './config';
+import Socket from './socket';
+import {MESSAGE_TYPES} from './socket/constants';
 
-describe('plugin-mercury', () => {
+if (!crypto.randomUUID) {
+  Object.defineProperty(crypto, 'randomUUID', {
+    value: randomUUID,
+    configurable: true,
+  });
+}
+
+describe('plugin-mobius-socket', () => {
   describe('Socket', () => {
-    let clock, mockWebSocket, socket;
+    let mockWebSocket;
+    let socket;
+    let usingFakeTimers;
 
-    const mockoptions = Object.assign(
-      {
-        logger: console,
-        token: 'mocktoken',
-        trackingId: 'mocktrackingid',
-      },
-      config.mercury
-    );
+    const mockoptions = {
+      logger: console,
+      token: 'mocktoken',
+      trackingId: 'mocktrackingid',
+      ...config.mobiusSocket,
+    };
+
+    const emitAuthResponse = ({statusCode = 200, statusMessage = 'OK'} = {}) => {
+      const authRequest = JSON.parse(mockWebSocket.send.lastCall.args[0]);
+
+      mockWebSocket.emit('message', {
+        data: JSON.stringify({
+          type: 'response_event',
+          subtype: MESSAGE_TYPES.AUTH,
+          trackingId: authRequest.trackingId,
+          statusCode,
+          statusMessage,
+        }),
+      });
+    };
 
     beforeEach(() => {
-      clock = FakeTimers.install({now: Date.now()});
-    });
-
-    afterEach(() => {
-      clock.uninstall();
+      jest.useFakeTimers({doNotFake: ['nextTick']});
+      usingFakeTimers = true;
     });
 
     beforeEach(() => {
@@ -49,21 +61,25 @@ describe('plugin-mercury', () => {
           }
       );
 
-      sinon.spy(Socket.prototype, '_ping');
-
       socket = new Socket();
       const promise = socket.open('ws://example.com', mockoptions);
 
       mockWebSocket.open();
+      // Simulate Mobius auth response (MockWebSocket.open auto-sends mercury.buffer_state which Mobius ignores)
+      process.nextTick(() => {
+        emitAuthResponse();
+      });
 
       return promise;
     });
 
     afterEach(() => {
-      Socket.getWebSocketConstructor.restore();
-      if (Socket.prototype._ping.restore) {
-        Socket.prototype._ping.restore();
+      if (usingFakeTimers) {
+        jest.useRealTimers();
+        usingFakeTimers = false;
       }
+
+      Socket.getWebSocketConstructor.restore();
 
       return Promise.resolve(socket && socket.close()).then(() => {
         mockWebSocket = undefined;
@@ -72,55 +88,34 @@ describe('plugin-mercury', () => {
     });
 
     describe('#open()', () => {
-      let socket;
+      let freshSocket;
 
       beforeEach(() => {
-        socket = new Socket();
+        freshSocket = new Socket();
       });
 
-      afterEach(() => socket.close().catch(() => console.log()));
+      afterEach(() => freshSocket.close().catch(() => undefined));
 
-      it('requires a url', () => assert.isRejected(socket.open(), /`url` is required/));
+      it('requires a url', () => assert.isRejected(freshSocket.open(), /`url` is required/));
 
       it('requires a forceCloseDelay option', () =>
         assert.isRejected(
-          socket.open('ws://example.com'),
+          freshSocket.open('ws://example.com'),
           /missing required property forceCloseDelay/
-        ));
-
-      it('requires a pingInterval option', () =>
-        assert.isRejected(
-          socket.open('ws://example.com', {
-            forceCloseDelay: mockoptions.forceCloseDelay,
-          }),
-          /missing required property pingInterval/
-        ));
-
-      it('requires a pongTimeout option', () =>
-        assert.isRejected(
-          socket.open('ws://example.com', {
-            forceCloseDelay: mockoptions.forceCloseDelay,
-            pingInterval: mockoptions.pingInterval,
-          }),
-          /missing required property pongTimeout/
         ));
 
       it('requires a token option', () =>
         assert.isRejected(
-          socket.open('ws://example.com', {
+          freshSocket.open('ws://example.com', {
             forceCloseDelay: mockoptions.forceCloseDelay,
-            pingInterval: mockoptions.pingInterval,
-            pongTimeout: mockoptions.pongTimeout,
           }),
           /missing required property token/
         ));
 
       it('requires a trackingId option', () =>
         assert.isRejected(
-          socket.open('ws://example.com', {
+          freshSocket.open('ws://example.com', {
             forceCloseDelay: mockoptions.forceCloseDelay,
-            pingInterval: mockoptions.pingInterval,
-            pongTimeout: mockoptions.pongTimeout,
             token: 'mocktoken',
           }),
           /missing required property trackingId/
@@ -128,10 +123,8 @@ describe('plugin-mercury', () => {
 
       it('requires a logger option', () =>
         assert.isRejected(
-          socket.open('ws://example.com', {
+          freshSocket.open('ws://example.com', {
             forceCloseDelay: mockoptions.forceCloseDelay,
-            pingInterval: mockoptions.pingInterval,
-            pongTimeout: mockoptions.pongTimeout,
             token: 'mocktoken',
             trackingId: 'mocktrackingid',
           }),
@@ -139,10 +132,9 @@ describe('plugin-mercury', () => {
         ));
 
       it('accepts a logLevelToken option', () => {
-        const promise = socket.open('ws://example.com', {
+        const openPromise = freshSocket.open('ws://example.com', {
           forceCloseDelay: mockoptions.forceCloseDelay,
-          pingInterval: mockoptions.pingInterval,
-          pongTimeout: mockoptions.pongTimeout,
+          wssResponseTimeout: mockoptions.wssResponseTimeout,
           logger: console,
           token: 'mocktoken',
           trackingId: 'mocktrackingid',
@@ -152,17 +144,10 @@ describe('plugin-mercury', () => {
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
 
-        mockWebSocket.emit('message', {
-          data: JSON.stringify({
-            id: uuid.v4(),
-            data: {
-              eventType: 'mercury.buffer_state',
-            },
-          }),
-        });
+        emitAuthResponse();
 
-        return promise.then(() => {
-          assert.equal(socket.logLevelToken, 'mocklogleveltoken');
+        return openPromise.then(() => {
+          assert.equal(freshSocket.logLevelToken, 'mocklogleveltoken');
         });
       });
     });
@@ -241,7 +226,7 @@ describe('plugin-mercury', () => {
 
           const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
 
-          assert.equal(firstCallArgs.type, 'authorization');
+          assert.equal(firstCallArgs.type, MESSAGE_TYPES.AUTH);
 
           mockWebSocket.emit('close', {
             code: 4400,
@@ -269,7 +254,7 @@ describe('plugin-mercury', () => {
 
           const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
 
-          assert.equal(firstCallArgs.type, 'authorization');
+          assert.equal(firstCallArgs.type, MESSAGE_TYPES.AUTH);
 
           mockWebSocket.emit('close', {
             code: 4401,
@@ -297,7 +282,7 @@ describe('plugin-mercury', () => {
 
           const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
 
-          assert.equal(firstCallArgs.type, 'authorization');
+          assert.equal(firstCallArgs.type, MESSAGE_TYPES.AUTH);
 
           mockWebSocket.emit('close', {
             code: 4403,
@@ -314,32 +299,6 @@ describe('plugin-mercury', () => {
           });
         });
       });
-
-      // describe(`when connection fails because the websocket registation has expired`, () => {
-      //   it(`rejects with a NotFound`, () => {
-      //     const s = new Socket();
-      //     const promise = s.open(`ws://example.com`, mockoptions);
-      //     mockWebSocket.readyState = 1;
-      //     mockWebSocket.emit(`open`);
-      //
-      //     const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
-      //     assert.equal(firstCallArgs.type, `authorization`);
-      //
-      //     mockWebSocket.emit(`close`, {
-      //       code: 4404,
-      //       reason: `Expired registration`
-      //     });
-      //
-      //     return assert.isRejected(promise)
-      //       .then((reason) => {
-      //         assert.instanceOf(reason, NotFound);
-      //         assert.match(reason.code, 4404);
-      //         assert.match(reason.reason, /Expired registration/);
-      //         assert.match(reason.message, /Expired registration/);
-      //         return s.close();
-      //       });
-      //   });
-      // });
 
       describe('when connection fails for non-authorization reasons', () => {
         it("rejects with the close event's reason", () => {
@@ -366,81 +325,64 @@ describe('plugin-mercury', () => {
         it('sends an auth message up the socket', () => {
           const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
 
-          assert.property(firstCallArgs, 'id');
-          assert.equal(firstCallArgs.type, 'authorization');
+          assert.equal(firstCallArgs.type, MESSAGE_TYPES.AUTH);
           assert.property(firstCallArgs, 'data');
           assert.property(firstCallArgs.data, 'token');
           assert.equal(firstCallArgs.data.token, 'mocktoken');
-          assert.equal(firstCallArgs.trackingId, 'mocktrackingid');
-          assert.notProperty(firstCallArgs, 'logLevelToken');
+          assert.property(firstCallArgs, 'trackingId');
         });
 
         describe('when logLevelToken is set', () => {
-          it('includes the logLevelToken in the authorization payload', () => {
+          it('includes auth payload with token', () => {
             const s = new Socket();
 
             s.open('ws://example.com', {
               forceCloseDelay: mockoptions.forceCloseDelay,
-              pingInterval: mockoptions.pingInterval,
-              pongTimeout: mockoptions.pongTimeout,
+              wssResponseTimeout: mockoptions.wssResponseTimeout,
               logger: console,
               token: 'mocktoken',
               trackingId: 'mocktrackingid',
-              logLevelToken: 'mocklogleveltoken',
             }).catch((reason) => console.error(reason));
             mockWebSocket.readyState = 1;
             mockWebSocket.emit('open');
 
             const firstCallArgs = JSON.parse(mockWebSocket.send.firstCall.args[0]);
 
-            assert.property(firstCallArgs, 'id');
-            assert.equal(firstCallArgs.type, 'authorization');
+            assert.equal(firstCallArgs.type, MESSAGE_TYPES.AUTH);
             assert.property(firstCallArgs, 'data');
-            assert.property(firstCallArgs.data, 'token');
             assert.equal(firstCallArgs.data.token, 'mocktoken');
-            assert.equal(firstCallArgs.trackingId, 'mocktrackingid');
-            assert.equal(firstCallArgs.logLevelToken, 'mocklogleveltoken');
+            assert.property(firstCallArgs, 'trackingId');
 
             return s.close();
           });
         });
 
-        it('kicks off ping/ping', () => assert.calledOnce(socket._ping));
-
-        it('resolves upon successful authorization', () => {
+        it('resolves upon receiving response_event auth response', () => {
           const s = new Socket();
           const promise = s.open('ws://example.com', mockoptions);
 
           mockWebSocket.readyState = 1;
           mockWebSocket.emit('open');
-          mockWebSocket.emit('message', {
-            data: JSON.stringify({
-              id: uuid.v4(),
-              data: {
-                eventType: 'mercury.buffer_state',
-              },
-            }),
-          });
+          emitAuthResponse();
 
           return promise.then(() => s.close());
         });
 
-        it('resolves upon receiving registration status', () => {
+        it('rejects upon receiving a non-2xx auth response_event', () => {
           const s = new Socket();
           const promise = s.open('ws://example.com', mockoptions);
 
           mockWebSocket.readyState = 1;
           mockWebSocket.emit('open');
-          mockWebSocket.emit('message', {
-            data: JSON.stringify({
-              id: uuid.v4(),
-              data: {
-                eventType: 'mercury.registration_status',
-              },
-            }),
-          });
+          emitAuthResponse({statusCode: 401, statusMessage: 'Unauthorized'});
 
-          return promise.then(() => s.close());
+          return assert.isRejected(promise).then((reason) => {
+            assert.equal(reason.name, 'MobiusSocketResponseError');
+            assert.equal(reason.statusCode, 401);
+            assert.match(reason.statusMessage, /Unauthorized/);
+
+            return s.close();
+          });
         });
       });
     });
@@ -483,35 +425,28 @@ describe('plugin-mercury', () => {
       });
 
       it('signals closure if no close frame is received within the specified window', () => {
-        const socket = new Socket();
-        const promise = socket.open('ws://example.com', mockoptions);
+        const transientSocket = new Socket();
+        const openPromise = transientSocket.open('ws://example.com', mockoptions);
 
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
-        mockWebSocket.emit('message', {
-          data: JSON.stringify({
-            id: uuid.v4(),
-            data: {
-              eventType: 'mercury.buffer_state',
-            },
-          }),
-        });
+        emitAuthResponse();
 
-        return promise.then(() => {
+        return openPromise.then(() => {
           const spy = sinon.spy();
 
-          socket.on('close', spy);
+          transientSocket.on('close', spy);
           mockWebSocket.close = () =>
             new Promise(() => {
               /* eslint no-inline-comments: [0] */
             });
           mockWebSocket.removeAllListeners('close');
 
-          const promise = socket.close();
+          const closePromise = transientSocket.close();
 
-          clock.tick(mockoptions.forceCloseDelay);
+          jest.advanceTimersByTime(mockoptions.forceCloseDelay);
 
-          return promise.then(() => {
+          return closePromise.then(() => {
             assert.called(spy);
             assert.calledWith(spy, {
               code: 1000,
@@ -522,35 +457,28 @@ describe('plugin-mercury', () => {
       });
 
       it('signals closure if no close frame is received within the specified window, but uses the initial options as 3050 if specified by options call', () => {
-        const socket = new Socket();
-        const promise = socket.open('ws://example.com', mockoptions);
+        const transientSocket = new Socket();
+        const openPromise = transientSocket.open('ws://example.com', mockoptions);
 
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
-        mockWebSocket.emit('message', {
-          data: JSON.stringify({
-            id: uuid.v4(),
-            data: {
-              eventType: 'mercury.buffer_state',
-            },
-          }),
-        });
+        emitAuthResponse();
 
-        return promise.then(() => {
+        return openPromise.then(() => {
           const spy = sinon.spy();
 
-          socket.on('close', spy);
+          transientSocket.on('close', spy);
           mockWebSocket.close = () =>
             new Promise(() => {
               /* eslint no-inline-comments: [0] */
             });
           mockWebSocket.removeAllListeners('close');
 
-          const promise = socket.close({code: 3050, reason: 'done (permanent)'});
+          const closePromise = transientSocket.close({code: 3050, reason: 'done (permanent)'});
 
-          clock.tick(mockoptions.forceCloseDelay);
+          jest.advanceTimersByTime(mockoptions.forceCloseDelay);
 
-          return promise.then(() => {
+          return closePromise.then(() => {
             assert.called(spy);
             assert.calledWith(spy, {
               code: 3050,
@@ -561,35 +489,28 @@ describe('plugin-mercury', () => {
       });
 
       it('signals closure if no close frame is received within the specified window, and uses default options as 1000 if the code is not 3050', () => {
-        const socket = new Socket();
-        const promise = socket.open('ws://example.com', mockoptions);
+        const transientSocket = new Socket();
+        const openPromise = transientSocket.open('ws://example.com', mockoptions);
 
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
-        mockWebSocket.emit('message', {
-          data: JSON.stringify({
-            id: uuid.v4(),
-            data: {
-              eventType: 'mercury.buffer_state',
-            },
-          }),
-        });
+        emitAuthResponse();
 
-        return promise.then(() => {
+        return openPromise.then(() => {
           const spy = sinon.spy();
 
-          socket.on('close', spy);
+          transientSocket.on('close', spy);
           mockWebSocket.close = () =>
             new Promise(() => {
               /* eslint no-inline-comments: [0] */
             });
           mockWebSocket.removeAllListeners('close');
 
-          const promise = socket.close({code: 1000, reason: 'test'});
+          const closePromise = transientSocket.close({code: 1000, reason: 'test'});
 
-          clock.tick(mockoptions.forceCloseDelay);
+          jest.advanceTimersByTime(mockoptions.forceCloseDelay);
 
-          return promise.then(() => {
+          return closePromise.then(() => {
             assert.called(spy);
             assert.calledWith(spy, {
               code: 1000,
@@ -600,35 +521,28 @@ describe('plugin-mercury', () => {
       });
 
       it('signals closure if no close frame is received within the specified window, and uses default options as 1000 if the code is not 3050', () => {
-        const socket = new Socket();
-        const promise = socket.open('ws://example.com', mockoptions);
+        const transientSocket = new Socket();
+        const openPromise = transientSocket.open('ws://example.com', mockoptions);
 
         mockWebSocket.readyState = 1;
         mockWebSocket.emit('open');
-        mockWebSocket.emit('message', {
-          data: JSON.stringify({
-            id: uuid.v4(),
-            data: {
-              eventType: 'mercury.buffer_state',
-            },
-          }),
-        });
+        emitAuthResponse();
 
-        return promise.then(() => {
+        return openPromise.then(() => {
           const spy = sinon.spy();
 
-          socket.on('close', spy);
+          transientSocket.on('close', spy);
           mockWebSocket.close = () =>
             new Promise(() => {
               /* eslint no-inline-comments: [0] */
             });
           mockWebSocket.removeAllListeners('close');
 
-          const promise = socket.close({code: 1000});
+          const closePromise = transientSocket.close({code: 1000});
 
-          clock.tick(mockoptions.forceCloseDelay);
+          jest.advanceTimersByTime(mockoptions.forceCloseDelay);
 
-          return promise.then(() => {
+          return closePromise.then(() => {
             assert.called(spy);
             assert.calledWith(spy, {
               code: 1000,
@@ -636,22 +550,6 @@ describe('plugin-mercury', () => {
             });
           });
         });
-      });
-
-      it('cancels any outstanding ping/pong timers', () => {
-        mockWebSocket.send = sinon.stub();
-        socket._ping.resetHistory();
-        const spy = sinon.spy();
-
-        socket.on('close', spy);
-        socket._ping();
-        socket.close();
-        clock.tick(2 * mockoptions.pingInterval);
-        assert.neverCalledWith(spy, {
-          code: 1000,
-          reason: 'Pong not received',
-        });
-        assert.calledOnce(socket._ping);
       });
 
       [
@@ -679,6 +577,7 @@ describe('plugin-mercury', () => {
             () =>
               function (...args) {
                 socketInstance = new MockWebSocket(...args);
+
                 return socketInstance;
               }
           );
@@ -755,29 +654,6 @@ describe('plugin-mercury', () => {
     });
 
     describe('#onclose()', () => {
-      it('stops further ping checks', () => {
-        socket._ping.resetHistory();
-        assert.notCalled(socket._ping);
-        const spy = sinon.spy();
-
-        assert.notCalled(socket._ping);
-        socket.on('close', spy);
-        assert.notCalled(socket._ping);
-        socket._ping();
-        assert.calledOnce(socket._ping);
-        mockWebSocket.emit('close', {
-          code: 1000,
-          reason: 'Done',
-        });
-        assert.calledOnce(socket._ping);
-        clock.tick(5 * mockoptions.pingInterval);
-        assert.neverCalledWith(spy, {
-          code: 1000,
-          reason: 'Pong not received',
-        });
-        assert.calledOnce(socket._ping);
-      });
-
       describe('when it receives close code 1005', () => {
         forEach(
           {
@@ -806,7 +682,7 @@ describe('plugin-mercury', () => {
       });
 
       describe('when it receives close code 3050', () => {
-        it(`emits code 3050 for code 3050`, () => {
+        it('emits code 3050 for code 3050', () => {
           const code = 3050;
           const reason = 'done (permanent)';
           const spy = sinon.spy();
@@ -837,7 +713,6 @@ describe('plugin-mercury', () => {
       it('emits messages from the underlying socket', () => {
         mockWebSocket.emit('message', {
           data: JSON.stringify({
-            sequenceNumber: 3,
             id: 'mockid',
           }),
         });
@@ -848,190 +723,92 @@ describe('plugin-mercury', () => {
       it('parses received messages', () => {
         mockWebSocket.emit('message', {
           data: JSON.stringify({
-            sequenceNumber: 3,
             id: 'mockid',
+            type: 'test',
           }),
         });
 
         assert.calledWith(spy, {
           data: {
-            sequenceNumber: 3,
             id: 'mockid',
+            type: 'test',
           },
         });
       });
 
-      it('emits skipped sequence numbers', () => {
-        const spy2 = sinon.spy();
-
-        socket.on('sequence-mismatch', spy2);
-
+      it('preserves top-level type and eventId for async_event envelopes', () => {
         mockWebSocket.emit('message', {
           data: JSON.stringify({
-            sequenceNumber: 2,
-            id: 'mockid',
+            type: 'async_event',
+            trackingId: 'SRV_bb000000-0000-0000-0000-000000000006',
+            eventId: 'f6a7b8c9-d0e1-2345-fabc-456789012345',
+            data: {
+              eventType: 'mobius.callinfo',
+              callId: 'fcf86aa5-5539-4c9f-8b72-667786ae9b6c',
+              deviceId: '334f3d50-1d26-4712-93f1-4972390cc565',
+            },
           }),
         });
-        assert.notCalled(spy2);
 
-        mockWebSocket.emit('message', {
-          data: JSON.stringify({
-            sequenceNumber: 4,
-            id: 'mockid',
-          }),
-        });
-        assert.calledOnce(spy2);
-        assert.calledWith(spy2, 4, 3);
-      });
-
-      it('acknowledges received messages', () => {
-        sinon.spy(socket, '_acknowledge');
-        mockWebSocket.emit('message', {
-          data: JSON.stringify({
-            sequenceNumber: 5,
-            id: 'mockid',
-          }),
-        });
-        assert.called(socket._acknowledge);
-        assert.calledWith(socket._acknowledge, {
+        assert.calledWith(spy, {
           data: {
-            sequenceNumber: 5,
-            id: 'mockid',
+            type: 'async_event',
+            trackingId: 'SRV_bb000000-0000-0000-0000-000000000006',
+            eventId: 'f6a7b8c9-d0e1-2345-fabc-456789012345',
+            data: {
+              eventType: 'mobius.callinfo',
+              callId: 'fcf86aa5-5539-4c9f-8b72-667786ae9b6c',
+              deviceId: '334f3d50-1d26-4712-93f1-4972390cc565',
+            },
           },
         });
       });
 
-      it('emits pongs separately from other messages', () => {
-        const pongSpy = sinon.spy();
-
-        socket.on('pong', pongSpy);
-
+      it('acknowledges async_event messages only', () => {
+        sinon.spy(socket, 'acknowledge');
         mockWebSocket.emit('message', {
           data: JSON.stringify({
-            sequenceNumber: 5,
-            id: 'mockid1',
-            type: 'pong',
+            type: 'async_event',
+            eventId: 'event-123',
+            trackingId: 'tracking-123',
           }),
         });
+        assert.called(socket.acknowledge);
+      });
 
-        assert.calledOnce(pongSpy);
-        assert.notCalled(spy);
-
+      it('does not acknowledge non-async_event messages', () => {
+        sinon.spy(socket, 'acknowledge');
         mockWebSocket.emit('message', {
           data: JSON.stringify({
-            sequenceNumber: 6,
-            id: 'mockid2',
+            type: 'regular',
+            id: 'mockid',
           }),
         });
-
-        assert.calledOnce(pongSpy);
-        assert.calledOnce(spy);
+        assert.notCalled(socket.acknowledge);
       });
     });
 
-    describe('#_acknowledge', () => {
-      it('requires an event', () =>
-        assert.isRejected(socket._acknowledge(), /`event` is required/));
+    describe('#acknowledge', () => {
+      it('requires an event', () => assert.isRejected(socket.acknowledge(), /`event` is required/));
 
-      it('requires a message id', () =>
-        assert.isRejected(socket._acknowledge({}), /`event.data.id` is required/));
-
-      it('acknowledges the specified message', () => {
-        const id = 'mockuuid';
-
-        return socket
-          ._acknowledge({
+      it('acknowledges async events using event_ack and eventId', () =>
+        socket
+          .acknowledge({
             data: {
-              type: 'not an ack',
-              id,
+              eventId: 'event-123',
+              trackingId: 'tracking-123',
             },
           })
           .then(() => {
             assert.calledWith(
               mockWebSocket.send,
               JSON.stringify({
-                messageId: id,
-                type: 'ack',
+                type: MESSAGE_TYPES.EVENT_ACK,
+                trackingId: 'tracking-123',
+                eventId: 'event-123',
               })
             );
-          });
-      });
-    });
-
-    describe('#_ping()', () => {
-      let id;
-
-      beforeEach(() => {
-        id = uuid.v4();
-      });
-
-      it('sends a ping up the socket', () =>
-        socket._ping(id).then(() => {
-          assert.calledWith(
-            mockWebSocket.send,
-            JSON.stringify({
-              id,
-              type: 'ping',
-            })
-          );
-        }));
-
-      it('considers the socket closed if no pong is received in an acceptable time period', () => {
-        const spy = sinon.spy();
-
-        socket.on('close', spy);
-
-        mockWebSocket.send = sinon.stub();
-        socket._ping(id);
-        clock.tick(2 * mockoptions.pongTimeout);
-        assert.called(spy);
-        assert.calledWith(spy, {
-          code: 1000,
-          reason: 'Pong not received',
-        });
-      });
-
-      it('schedules a future ping', () => {
-        assert.callCount(socket._ping, 1);
-        clock.tick(mockoptions.pingInterval);
-        assert.callCount(socket._ping, 2);
-      });
-
-      it('closes the socket when an unexpected pong is received', () => {
-        const spy = sinon.spy();
-
-        socket.on('close', spy);
-
-        socket._ping(2);
-        mockWebSocket.emit('message', {
-          data: JSON.stringify({
-            type: 'pong',
-            id: 1,
-          }),
-        });
-
-        assert.calledWith(spy, {
-          code: 1000,
-          reason: 'Pong mismatch',
-        });
-      });
-
-      it('emits ping pong latency correctly', () => {
-        const spy = sinon.spy();
-
-        socket.on('ping-pong-latency', spy);
-
-        socket._ping(123);
-        mockWebSocket.emit('message', {
-          data: JSON.stringify({
-            type: 'pong',
-            id: 123,
-          }),
-        });
-
-        assert.calledWith(spy, 0);
-        assert.calledOnce(spy);
-      });
+          }));
     });
   });
 });

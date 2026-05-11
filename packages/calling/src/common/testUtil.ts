@@ -8,6 +8,7 @@
 import {MediaConnectionConfig} from '@webex/internal-media-core';
 import platform from 'platform';
 import {MobiusServers} from './types';
+import {CISCO_DEVICE_URL} from '../CallingClient/constants';
 
 const MediaSDKMock = jest.createMockFromModule<typeof import('@webex/internal-media-core')>(
   '@webex/internal-media-core'
@@ -51,6 +52,9 @@ export function getTestUtilsWebex() {
         features: {
           entitlement: {
             models: [{_values: {key: 'bc-sp-standard'}}],
+          },
+          developer: {
+            get: jest.fn().mockReturnValue({value: false}),
           },
         },
       },
@@ -137,7 +141,7 @@ export const mockCallingClient = {
 export const getMockRequestTemplate = () => {
   return {
     headers: {
-      'cisco-device-url':
+      [CISCO_DEVICE_URL]:
         'https://wdm-intb.ciscospark.com/wdm/api/v1/devices/c5ae3b86-1bb7-40f1-a6a9-c296ee7e61d5',
       'spark-user-agent': 'webex-calling/beta',
     },

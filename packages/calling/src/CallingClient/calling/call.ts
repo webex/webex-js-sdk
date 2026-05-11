@@ -75,6 +75,7 @@ import {
   DisconnectCode,
   DisconnectReason,
   ICall,
+  IceEventPayload,
   MediaContext,
   MidCallCallerId,
   MidCallEvent,
@@ -102,13 +103,12 @@ import {
 } from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
 import {METHOD_START_MESSAGE, SERVICES_ENDPOINT} from '../../common/constants';
+import {APIRequest} from '../utils/request';
 
 /**
  *
  */
 export class Call extends Eventing<CallEventTypes> implements ICall {
-  private static readonly UNKNOWN_STATE = 'unknown';
-
   private sdkConnector: ISDKConnector;
 
   private webex: WebexSDK;
@@ -181,6 +181,8 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private rtcMetrics: RtcMetrics;
 
   private callKeepaliveRetryCount = 0;
+
+  private apiRequest: APIRequest;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handleMediaRoapEvent = async (event: any) => {
@@ -263,21 +265,13 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   };
 
   private static getPeerConnectionStateFromEvent(
-    event: {
-      state?: string;
-      connectionState?: string;
-      iceConnectionState?: string;
-      iceGatheringState?: string;
-    },
+    event: IceEventPayload,
     preferredKey: 'connectionState' | 'iceConnectionState' | 'iceGatheringState'
   ): string {
-    return event[preferredKey] || event.state || Call.UNKNOWN_STATE;
+    return event[preferredKey] || event.state || 'unknown';
   }
 
-  private handleIceGatheringStateChanged = (event: {
-    state?: string;
-    iceGatheringState?: string;
-  }) => {
+  private handleIceGatheringStateChanged = (event: IceEventPayload) => {
     const iceGatheringState = Call.getPeerConnectionStateFromEvent(event, 'iceGatheringState');
 
     log.info(`ICE gathering state changed to: ${iceGatheringState}`, {
@@ -297,10 +291,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     );
   };
 
-  private handlePeerConnectionStateChanged = (event: {
-    state?: string;
-    connectionState?: string;
-  }) => {
+  private handlePeerConnectionStateChanged = (event: IceEventPayload) => {
     const connectionState = Call.getPeerConnectionStateFromEvent(event, 'connectionState');
 
     log.info(`Peer connection state changed to: ${connectionState}`, {
@@ -320,10 +311,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     );
   };
 
-  private handleIceConnectionStateChanged = (event: {
-    state?: string;
-    iceConnectionState?: string;
-  }) => {
+  private handleIceConnectionStateChanged = (event: IceEventPayload) => {
     const iceConnectionState = Call.getPeerConnectionStateFromEvent(event, 'iceConnectionState');
 
     log.info(`ICE connection state changed to: ${iceConnectionState}`, {
@@ -501,6 +489,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     this.disconnectReason = {code: DisconnectCode.NORMAL, cause: DisconnectCause.NORMAL};
 
     this.rtcMetrics = new RtcMetrics(this.webex, {callId: this.callId}, this.correlationId);
+    this.apiRequest = APIRequest.getInstance({webex: this.webex});
 
     const callMachine = createMachine(
       {
@@ -2578,7 +2567,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       },
     };
 
-    return this.webex.request({
+    return this.apiRequest.makeRequest({
       uri: `${this.mobiusUrl}${DEVICES_ENDPOINT_RESOURCE}/${this.deviceId}/${CALL_ENDPOINT_RESOURCE}`,
       method: HTTP_METHODS.POST,
       service: ALLOWED_SERVICES.MOBIUS,
@@ -2595,7 +2584,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
             },
           }
         : basePayload,
-    });
+    }) as Promise<MobiusCallResponse>;
   };
 
   /**
@@ -2609,9 +2598,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       method: 'patch',
     });
 
-    return this.webex.request({
-      // Sample uri: http://localhost/api/v1/calling/web/devices/{deviceid}/calls/{callid}
-
+    return this.apiRequest.makeRequest({
       uri: `${this.mobiusUrl}${DEVICES_ENDPOINT_RESOURCE}/${this.deviceId}/${CALLS_ENDPOINT_RESOURCE}/${this.callId}`,
       method: HTTP_METHODS.PATCH,
       service: ALLOWED_SERVICES.MOBIUS,
@@ -2628,7 +2615,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         callState: state,
         inbandMedia: false, // setting false for now
       },
-    });
+    }) as Promise<PatchResponse>;
   }
 
   /**
@@ -2685,14 +2672,14 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       }
     }
 
-    return this.webex.request(request);
+    return this.apiRequest.makeRequest(request) as Promise<SSResponse>;
   }
 
   /**
    * Sends Call status to Mobius.
    */
   public async postStatus(): Promise<WebexRequestPayload> {
-    return this.webex.request({
+    return this.apiRequest.makeRequest({
       uri: `${this.mobiusUrl}${DEVICES_ENDPOINT_RESOURCE}/${this.deviceId}/${CALLS_ENDPOINT_RESOURCE}/${this.callId}/${CALL_STATUS_RESOURCE}`,
       method: HTTP_METHODS.POST,
       service: ALLOWED_SERVICES.MOBIUS,
@@ -2707,7 +2694,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         },
         callId: this.callId,
       },
-    });
+    }) as Promise<WebexRequestPayload>;
   }
 
   /**
@@ -2877,7 +2864,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       method: METHODS.POST_MEDIA,
     });
 
-    return this.webex.request({
+    return this.apiRequest.makeRequest({
       uri: `${this.mobiusUrl}${DEVICES_ENDPOINT_RESOURCE}/${this.deviceId}/${CALLS_ENDPOINT_RESOURCE}/${this.callId}/${MEDIA_ENDPOINT_RESOURCE}`,
       method: HTTP_METHODS.POST,
       service: ALLOWED_SERVICES.MOBIUS,
@@ -2896,7 +2883,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
           mediaId: uuid(),
         },
       },
-    });
+    }) as Promise<WebexRequestPayload>;
   }
 
   /* istanbul ignore next */
@@ -3044,7 +3031,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
   private async delete(): Promise<MobiusCallResponse> {
     const disconnectMetrics = await this.getCallStats();
 
-    return this.webex.request({
+    return this.apiRequest.makeRequest({
       uri: `${this.mobiusUrl}${DEVICES_ENDPOINT_RESOURCE}/${this.deviceId}/${CALLS_ENDPOINT_RESOURCE}/${this.callId}`,
       method: HTTP_METHODS.DELETE,
       service: ALLOWED_SERVICES.MOBIUS,
@@ -3062,7 +3049,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         causecode: this.disconnectReason.code,
         cause: this.disconnectReason.cause,
       },
-    });
+    }) as Promise<MobiusCallResponse>;
   }
 
   /**
