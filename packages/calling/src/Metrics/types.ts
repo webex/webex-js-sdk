@@ -23,6 +23,8 @@ export enum METRIC_EVENT {
   UPLOAD_LOGS_SUCCESS = 'web-calling-sdk-upload-logs-success',
   UPLOAD_LOGS_FAILED = 'web-calling-sdk-upload-logs-failed',
   MOBIUS_DISCOVERY = 'web-calling-sdk-mobius-discovery',
+  MOBIUS_SOCKET = 'web-calling-sdk-mobius-socket',
+  MOBIUS_SOCKET_ERROR = 'web-calling-sdk-mobius-socket-error',
 }
 
 export enum MOBIUS_SERVER_ACTION {
@@ -34,6 +36,14 @@ export enum REG_ACTION {
   REGISTER = 'register',
   DEREGISTER = 'deregister',
   KEEPALIVE_FAILURE = 'keepaliveFailure',
+}
+
+export enum MOBIUS_SOCKET_ACTION {
+  CONNECT = 'connect',
+  DISCONNECT = 'disconnect',
+  LISTENER_REGISTERED = 'listener_registered',
+  LISTENER_UNREGISTERED = 'listener_unregistered',
+  REGISTRATION_DOWN = 'registration_down',
 }
 
 export enum TRANSFER_ACTION {
@@ -147,5 +157,15 @@ export interface IMetricManager {
     type: METRIC_TYPE,
     mobiusServers: MobiusServers,
     trackingId: string
+  ) => void;
+
+  submitMobiusSocketMetric: (
+    name: METRIC_EVENT,
+    metricAction: MOBIUS_SOCKET_ACTION,
+    type: METRIC_TYPE,
+    wssUrl?: string,
+    trackingId?: string,
+    error?: string,
+    eventType?: string
   ) => void;
 }
