@@ -137,6 +137,7 @@ import {
   STAGE_MANAGER_TYPE,
   LOCUSEVENT,
   LOCUS_LLM_EVENT,
+  LLM_PRACTICE_SESSION,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -5933,12 +5934,40 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   /**
+   * Verifies the relay event was delivered for the active LLM session binding.
+   * @param {RelayEvent} event Event object coming from LLM Connection
+   * @returns {boolean}
+   */
+  private isRelayEventRouteValid(event: RelayEvent): boolean {
+    const route = event?.headers?.route;
+
+    if (!route) {
+      return true;
+    }
+
+    const {llm} = (this as any).webex.internal;
+    const isPracticeSession = llm.isConnected(LLM_PRACTICE_SESSION);
+    const expectedBinding = isPracticeSession
+      ? llm.getBinding(LLM_PRACTICE_SESSION)
+      : llm.getBinding();
+
+    if (!expectedBinding || route === expectedBinding) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Callback called when a relay event is received from meeting LLM Connection
    * @param {RelayEvent} e Event object coming from LLM Connection
    * @private
    * @returns {void}
    */
   private processRelayEvent = (e: RelayEvent): void => {
+    if (!this.isRelayEventRouteValid(e)) {
+      return;
+    }
     switch (e.data.relayType) {
       case REACTION_RELAY_TYPES.REACTION:
         if (

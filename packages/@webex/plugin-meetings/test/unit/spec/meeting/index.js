@@ -35,6 +35,7 @@ import {
   OFFLINE,
   ROAP_OFFER_ANSWER_EXCHANGE_TIMEOUT,
   LOCUS_LLM_EVENT,
+  LLM_PRACTICE_SESSION,
   RECORDING_STATE,
 } from '@webex/plugin-meetings/src/constants';
 import {
@@ -1979,6 +1980,113 @@ describe('plugin-meetings', () => {
             fakeProcessedReaction
           );
         });
+
+        [
+          {
+            title: 'should skip a reaction when the default relay route does not match the LLM binding',
+            isPracticeSessionConnected: false,
+            route: 'wrong-default-route',
+            defaultBinding: 'default-route',
+            practiceBinding: 'practice-route',
+            shouldProcess: false,
+            expectedSessionLabel: 'default session',
+          },
+          {
+            title: 'should process a reaction when the default relay route matches the LLM binding',
+            isPracticeSessionConnected: false,
+            route: 'default-route',
+            defaultBinding: 'default-route',
+            practiceBinding: 'practice-route',
+            shouldProcess: true,
+          },
+          {
+            title:
+              'should process a reaction when the practice-session relay route matches the practice-session LLM binding',
+            isPracticeSessionConnected: true,
+            route: 'practice-route',
+            defaultBinding: 'default-route',
+            practiceBinding: 'practice-route',
+            shouldProcess: true,
+          },
+          {
+            title:
+              'should skip a reaction when the practice-session relay route does not match the practice-session LLM binding',
+            isPracticeSessionConnected: true,
+            route: 'default-route',
+            defaultBinding: 'default-route',
+            practiceBinding: 'practice-route',
+            shouldProcess: false,
+            expectedSessionLabel: 'practice session',
+          },
+        ].forEach(
+          ({
+            title,
+            isPracticeSessionConnected,
+            route,
+            defaultBinding,
+            practiceBinding,
+            shouldProcess,
+            expectedSessionLabel,
+          }) => {
+            it(title, () => {
+              meeting.isReactionsSupported = sinon.stub().returns(true);
+              meeting.config.receiveReactions = true;
+              const fakeSendersName = 'Fake reactors name';
+              meeting.members.membersCollection.get = sinon.stub().returns({name: fakeSendersName});
+              webex.internal.llm.isConnected = sinon.stub().callsFake((llmSessionId) => {
+                return llmSessionId === LLM_PRACTICE_SESSION && isPracticeSessionConnected;
+              });
+              webex.internal.llm.getBinding = sinon.stub().callsFake((llmSessionId) => {
+                if (llmSessionId === LLM_PRACTICE_SESSION) {
+                  return practiceBinding;
+                }
+
+                return defaultBinding;
+              });
+              const fakeReactionPayload = {
+                type: 'fake_type',
+                codepoints: 'fake_codepoints',
+                shortcodes: 'fake_shortcodes',
+              };
+              const fakeSenderPayload = {
+                participantId: 'fake_participant_id',
+              };
+              const fakeRelayEvent = {
+                headers: {route},
+                data: {
+                  relayType: REACTION_RELAY_TYPES.REACTION,
+                  reaction: fakeReactionPayload,
+                  sender: fakeSenderPayload,
+                },
+              };
+              const fakeProcessedReaction = {
+                reaction: fakeReactionPayload,
+                sender: {
+                  id: fakeSenderPayload.participantId,
+                  name: fakeSendersName,
+                },
+              };
+
+              TriggerProxy.trigger.resetHistory();
+              meeting.processRelayEvent(fakeRelayEvent);
+
+              if (shouldProcess) {
+                assert.calledWith(
+                  TriggerProxy.trigger,
+                  sinon.match.instanceOf(Meeting),
+                  {
+                    file: 'meeting/index',
+                    function: 'join',
+                  },
+                  EVENT_TRIGGERS.MEETING_RECEIVE_REACTIONS,
+                  fakeProcessedReaction
+                );
+              } else {
+                assert.notCalled(TriggerProxy.trigger);
+              }
+            });
+          }
+        );
       });
 
       describe('#handleLLMOnline', () => {

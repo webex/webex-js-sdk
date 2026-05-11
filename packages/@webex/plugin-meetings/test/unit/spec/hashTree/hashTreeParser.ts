@@ -3072,6 +3072,12 @@ describe('HashTreeParser', () => {
           })
         );
 
+        // Verify behavioral metric was sent for the watchdog expiration
+        assert.calledWith(metricsStub, BEHAVIORAL_METRICS.HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED, {
+          debugId: 'test',
+          dataSetName: 'main',
+        });
+
         // Verify no sync requests were sent for other datasets
         assert.neverCalledWith(
           webexRequest,
@@ -3114,6 +3120,12 @@ describe('HashTreeParser', () => {
 
         // Advance time past watchdog delay
         await clock.tickAsync(heartbeatIntervalMs);
+
+        // Verify behavioral metric was sent for the watchdog expiration
+        assert.calledWith(metricsStub, BEHAVIORAL_METRICS.HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED, {
+          debugId: 'test',
+          dataSetName: 'self',
+        });
 
         // For leafCount === 1, performSync skips GET hashtree and goes straight to POST sync
         assert.neverCalledWith(
@@ -3975,6 +3987,9 @@ describe('HashTreeParser', () => {
       parser.handleMessage(emptyMessage, 'empty elements');
 
       assert.notCalled(callback);
+      assert.calledWith(metricsStub, BEHAVIORAL_METRICS.HASH_TREE_EMPTY_LOCUS_STATE_ELEMENTS, {
+        debugId: 'test',
+      });
     });
 
     it('always calls callback for MEETING_ENDED regardless of filtering', () => {
