@@ -2,7 +2,7 @@ import type { CommandsConfig } from '@webex/cli-tools';
 
 /**
  * `Commands.mount()` Commands Configuration Object for the update Command
- * Configuration Object
+ * Configuration Object.
  *
  * @public
  */
