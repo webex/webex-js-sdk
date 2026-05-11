@@ -307,6 +307,7 @@ export default class TaskManager extends EventEmitter {
 
       // Conference events - these trigger state machine transition to CONFERENCING
       case CC_EVENTS.AGENT_CONSULT_CONFERENCED:
+      case CC_EVENTS.AGENT_CONSULT_CONFERENCING:
       case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE:
         return {type: TaskEvent.CONFERENCE_START, taskData: payload};
 

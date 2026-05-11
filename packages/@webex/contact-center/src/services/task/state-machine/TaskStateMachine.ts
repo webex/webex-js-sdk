@@ -619,7 +619,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.CONF_INITIATING]: {
         on: {
-          // AgentConsultConferenced, ParticipantJoinedConference
+          // AgentConsultConferenced, AgentConsultConferencing, ParticipantJoinedConference
           [TaskEvent.CONFERENCE_START]: {
             target: TaskState.CONFERENCING,
             actions: [
@@ -633,6 +633,37 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.CONFERENCE_FAILED]: {
             target: TaskState.CONSULTING,
             actions: ['handleConferenceFailed', 'emitTaskConferenceFailed'],
+          },
+          // AgentConsultEnded while conference is initiating (end call before conference completes)
+          [TaskEvent.CONSULT_END]: [
+            {
+              guard: ({event}) => {
+                const taskData = getTaskDataFromEvent(event);
+
+                return taskData?.interaction?.isTerminated === true;
+              },
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'clearConsultState'],
+            },
+          ],
+          // ContactEnded while conference is initiating
+          [TaskEvent.CONTACT_ENDED]: {
+            target: TaskState.WRAPPING_UP,
+            actions: [
+              'updateTaskData',
+              'markEnded',
+              'clearConsultState',
+              'emitTaskWrapup',
+              'requestCleanup',
+            ],
+          },
+          [TaskEvent.TASK_WRAPUP]: {
+            target: TaskState.WRAPPING_UP,
+            actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
           },
         },
       },
@@ -660,9 +691,23 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           ],
 
           // Needed as all agents in conference get this event, hence we need to clear the consult state
-          [TaskEvent.CONSULT_END]: {
-            actions: ['updateTaskData', 'clearConsultState'],
-          },
+          [TaskEvent.CONSULT_END]: [
+            {
+              guard: ({context, event}) => {
+                const taskData = getTaskDataFromEvent(event);
+
+                return (
+                  taskData?.interaction?.isTerminated === true &&
+                  shouldWrapUpForThisAgent(context, taskData)
+                );
+              },
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+            },
+            {
+              actions: ['updateTaskData', 'clearConsultState'],
+            },
+          ],
 
           [TaskEvent.HOLD_SUCCESS]: {
             actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
