@@ -31,7 +31,7 @@ interface ILLMChannel {
   getDatachannelToken: (tokenKey?: DataChannelTokenKey) => string | undefined;
   setDatachannelToken: (
     datachannelToken: string,
-    tokenKey: DataChannelTokenKey,
+    tokenKey?: DataChannelTokenKey,
     ownerMeetingId?: string
   ) => void;
   clearDatachannelToken: (tokenKey?: DataChannelTokenKey) => void;
@@ -39,7 +39,7 @@ interface ILLMChannel {
     handler: () => Promise<{
       body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
     }>,
-    sessionId: string,
+    sessionId?: string,
     ownerMeetingId?: string
   ) => void;
   refreshDataChannelToken: (sessionId?: string) => Promise<{

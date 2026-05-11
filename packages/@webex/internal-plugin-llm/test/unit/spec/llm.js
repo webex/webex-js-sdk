@@ -315,6 +315,17 @@ describe('plugin-llm', () => {
         llmService.refreshDataChannelToken = LLMChannel.prototype.refreshDataChannelToken.bind(llmService);
       });
 
+      it('defaults to llm-default-session when sessionId is omitted', () => {
+        const handler = sinon.stub().resolves({ body: { datachannelToken: 'legacyToken' } });
+
+        llmService.setRefreshHandler(handler);
+
+        return llmService.refreshDataChannelToken().then((result) => {
+          assert.equal(result.body.datachannelToken, 'legacyToken');
+          sinon.assert.calledOnce(handler);
+        });
+      });
+
       it('stores the provided handler', () => {
         const handler = sinon.stub().resolves({ body: { datachannelToken: 'newToken' } });
         llmService.setRefreshHandler(handler, 'llm-default-session');
