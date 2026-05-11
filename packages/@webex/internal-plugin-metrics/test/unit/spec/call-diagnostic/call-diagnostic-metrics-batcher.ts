@@ -192,6 +192,12 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getTotalJMTWithUserDelay = sinon
             .stub()
             .returns(64);
+          webex.internal.newMetrics.callDiagnosticLatencies.getInterstitialToJoinOK = sinon
+            .stub()
+            .returns(10);
+          webex.internal.newMetrics.callDiagnosticLatencies.getTotalJMT = sinon
+            .stub()
+            .returns(20);
           const promise = webex.internal.newMetrics.callDiagnosticMetrics.submitToCallDiagnostics(
             //@ts-ignore
             {event: {name: 'client.locus.join.response'}}
@@ -346,6 +352,12 @@ describe('plugin-metrics', () => {
           webex.internal.newMetrics.callDiagnosticLatencies.getStayLobbyTime = sinon
             .stub()
             .returns(1);
+          webex.internal.newMetrics.callDiagnosticLatencies.getStayLobbyTimeCappedBy = sinon
+            .stub()
+            .returns(1);
+          webex.internal.newMetrics.callDiagnosticLatencies.getTotalMediaJMT = sinon
+            .stub()
+            .returns(44);
           webex.internal.newMetrics.callDiagnosticLatencies.getTotalMediaJMTWithUserDelay = sinon
             .stub()
             .returns(43);
@@ -366,9 +378,9 @@ describe('plugin-metrics', () => {
           assert.deepEqual(webex.request.getCalls()[0].args[0].body.metrics[0].eventPayload.event, {
             name: 'client.media-engine.ready',
             joinTimes: {
-              totalMediaJMT: 61,
+              totalMediaJMT: 44,
               interstitialToMediaOKJMT: 22,
-              callInitMediaEngineReady: 10,
+              callInitMediaEngineReady: 22,
               totalMediaJMTWithUserDelay: 43,
               totalJMTWithUserDelay: 64,
             },

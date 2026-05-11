@@ -62,6 +62,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       locusUrl?: string;
       datachannelUrl?: string;
       datachannelToken?: string;
+      ownerMeetingId?: string;
     }
   > = new Map();
 
@@ -188,6 +189,49 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   };
 
   /**
+   * Set the owner meeting ID for a given LLM session. Used by the meetings
+   * plugin to tag which Meeting instance currently owns the (default) LLM
+   * connection so that other Meeting instances can avoid disconnecting or
+   * re-initializing a connection they do not own.
+   *
+   * Does NOT create a connections entry if one does not already exist — this
+   * method is a no-op when there is no active session data. Callers should
+   * invoke it after a successful `registerAndConnect` or during an explicit
+   * ownership handoff.
+   *
+   * @param {string | undefined} ownerMeetingId - Meeting ID (or undefined to clear)
+   * @param {string} sessionId - Connection identifier (defaults to default session)
+   * @returns {void}
+   */
+  public setOwnerMeetingId = (
+    ownerMeetingId: string | undefined,
+    sessionId: string = LLM_DEFAULT_SESSION
+  ): void => {
+    const sessionData = this.connections.get(sessionId);
+
+    if (!sessionData) {
+      return;
+    }
+
+    sessionData.ownerMeetingId = ownerMeetingId;
+    this.connections.set(sessionId, sessionData);
+  };
+
+  /**
+   * Get the owner meeting ID currently associated with an LLM session.
+   * Returns undefined when no owner has been assigned (e.g. before the
+   * first successful `registerAndConnect`, or after `disconnectLLM`).
+   *
+   * @param {string} sessionId - Connection identifier (defaults to default session)
+   * @returns {string | undefined} ownerMeetingId
+   */
+  public getOwnerMeetingId = (sessionId: string = LLM_DEFAULT_SESSION): string | undefined => {
+    const sessionData = this.connections.get(sessionId);
+
+    return sessionData?.ownerMeetingId;
+  };
+
+  /**
    * Get data channel token for the connection
    * @param {DataChannelTokenType} dataChannelTokenType
    * @returns {string} data channel token
@@ -305,6 +349,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       locusUrl?: string;
       datachannelUrl?: string;
       datachannelToken?: string;
+      ownerMeetingId?: string;
     }
   > => new Map(this.connections);
 

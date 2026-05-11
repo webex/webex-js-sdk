@@ -26,6 +26,7 @@ describe('plugin-meetings', () => {
       breakout.sessionId = 'sessionId';
       breakout.sessionType = 'BREAKOUT';
       breakout.url = 'url';
+      breakout.resourceLink = 'resource-link';
       breakout.collection = {
         parent: {
           meetingId: 'activeMeetingId',
@@ -45,6 +46,7 @@ describe('plugin-meetings', () => {
     describe('initialize', () => {
       it('creates the object correctly', () => {
         assert.instanceOf(breakout.breakoutRequest, BreakoutRequest);
+        assert.equal(breakout.resourceLink, 'resource-link');
       });
     });
 
@@ -217,10 +219,14 @@ describe('plugin-meetings', () => {
           locusParticipantsUpdate: sinon.stub(),
         };
 
-        const locusData = {some: 'data'};
+        const locusData = {participants: [{id: 'participant-1'}], sequence: {entries: [123]}};
         const result = breakout.parseRoster(locusData);
 
-        assert.calledOnceWithExactly(breakout.members.locusParticipantsUpdate, locusData);
+        assert.calledOnceWithExactly(breakout.members.locusParticipantsUpdate, {
+          participants: [{id: 'participant-1'}],
+          isReplace: true,
+        });
+        assert.equal(breakout.breakoutRosterLocus, locusData);
         assert.equal(result, undefined);
       });
       it('not call locusParticipantsUpdate if sequence is expired', () => {
@@ -228,7 +234,7 @@ describe('plugin-meetings', () => {
           locusParticipantsUpdate: sinon.stub(),
         };
         breakout.isNeedHandleRoster = sinon.stub().returns(false);
-        const locusData = {some: 'data'};
+        const locusData = {participants: [{id: 'participant-1'}], sequence: {entries: [123]}};
         breakout.parseRoster(locusData);
 
         assert.notCalled(breakout.members.locusParticipantsUpdate);
