@@ -250,9 +250,59 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     }
 
     await this.createLine();
+
+    // Auto-fetch RTMS domain from service catalog for contact-center flows
+    if (
+      this.serviceData.indicator === ServiceIndicator.CONTACT_CENTER &&
+      !this.serviceData.domain
+    ) {
+      const rtmsDomain = this.getRTMSDomain();
+
+      this.serviceData.domain = rtmsDomain;
+      if (this.sdkConfig?.serviceData) {
+        this.sdkConfig.serviceData.domain = this.serviceData.domain;
+      }
+    }
+
+    if (!isValidServiceDomain(this.serviceData)) {
+      throw new Error('Invalid service domain.');
+    }
+
+    await this.createLine();
     this.setupNetworkEventListeners();
 
     log.log('CallingClient initialization complete', loggerContext);
+  }
+
+  /**
+   * Retrieves the RTMS domain from the service catalog for contact-center flows.
+   *
+   * @returns The RTMS domain from catalog when available.
+   */
+  private getRTMSDomain(): string {
+    log.info('Fetching RTMS domain from service catalog', {
+      file: CALLING_CLIENT_FILE,
+      method: METHODS.GET_RTMS_DOMAIN,
+    });
+
+    try {
+      const rtmsURL = this.webex.internal.services.get(WCC_CALLING_RTMS_DOMAIN);
+      const url = new URL(rtmsURL);
+
+      log.info(`RTMS domain resolved from catalog: ${url.hostname}`, {
+        file: CALLING_CLIENT_FILE,
+        method: METHODS.GET_RTMS_DOMAIN,
+      });
+
+      return url.hostname;
+    } catch (error) {
+      log.warn(`Failed to fetch RTMS domain from service catalog: ${error}`, {
+        file: CALLING_CLIENT_FILE,
+        method: METHODS.GET_RTMS_DOMAIN,
+      });
+
+      return '';
+    }
   }
 
   /**
