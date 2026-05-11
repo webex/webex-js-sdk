@@ -62,6 +62,14 @@ export type MediaRequestId = string;
 
 const DEBOUNCED_SOURCE_UPDATE_TIME = 1000;
 
+const RESOLUTION_BUCKETS: Array<[SupportedResolution, number]> = [
+  ['90p', MAX_FS_VALUES['90p']],
+  ['180p', MAX_FS_VALUES['180p']],
+  ['360p', MAX_FS_VALUES['360p']],
+  ['540p', MAX_FS_VALUES['540p']],
+  ['720p', MAX_FS_VALUES['720p']],
+];
+
 type DegradationPreferences = {
   maxMacroblocksLimit: number;
 };
@@ -73,12 +81,20 @@ type GetIngressPayloadTypeCallback = (
 ) => number | undefined;
 type Kind = 'audio' | 'video';
 
-type Options = {
+type AudioMediaRequestManagerOptions = {
   degradationPreferences: DegradationPreferences;
-  kind: Kind;
+  kind: 'audio';
   trimRequestsToNumOfSources: boolean; // if enabled, AS speaker requests will be trimmed based on the calls to setNumCurrentSources()
+};
+
+type VideoMediaRequestManagerOptions = {
+  degradationPreferences: DegradationPreferences;
+  kind: 'video';
+  trimRequestsToNumOfSources: boolean;
   enableAv1?: boolean;
 };
+
+type Options = AudioMediaRequestManagerOptions | VideoMediaRequestManagerOptions;
 
 type ClientRequestsMap = {[key: MediaRequestId]: MediaRequest};
 
@@ -118,7 +134,7 @@ export class MediaRequestManager {
     this.degradationPreferences = options.degradationPreferences;
     this.kind = options.kind;
     this.trimRequestsToNumOfSources = options.trimRequestsToNumOfSources;
-    this.enableAv1 = options.enableAv1 ?? false;
+    this.enableAv1 = options.kind === 'video' ? options.enableAv1 ?? false : false;
     this.sourceUpdateListener = this.commit.bind(this);
     this.debouncedSourceUpdateListener = debounce(
       this.sourceUpdateListener,
@@ -218,23 +234,64 @@ export class MediaRequestManager {
   // eslint-disable-next-line class-methods-use-this
   private getAv1EncodingParams(mediaRequest: MediaRequest): AV1EncodingParams {
     const frameSize = mediaRequest.codecInfo.maxFs || H264_CODEC_PARAMETERS.maxFs;
-    let resolution: SupportedResolution;
-
-    if (frameSize <= MAX_FS_VALUES['90p']) {
-      resolution = '90p';
-    } else if (frameSize <= MAX_FS_VALUES['180p']) {
-      resolution = '180p';
-    } else if (frameSize <= MAX_FS_VALUES['360p']) {
-      resolution = '360p';
-    } else if (frameSize <= MAX_FS_VALUES['540p']) {
-      resolution = '540p';
-    } else if (frameSize <= MAX_FS_VALUES['720p']) {
-      resolution = '720p';
-    } else {
-      resolution = '1080p';
-    }
+    const resolution = RESOLUTION_BUCKETS.find(([, maxFs]) => frameSize <= maxFs)?.[0] ?? '1080p';
 
     return AV1_CODEC_PARAMETERS[resolution];
+  }
+
+  private buildH264CodecInfo(mr: MediaRequest): WcmeCodecInfo | undefined {
+    if (!mr.codecInfo) {
+      return undefined;
+    }
+
+    const h264PayloadType = this.getIngressPayloadTypeCallback(
+      mr.receiveSlots[0].mediaType,
+      MediaCodecMimeType.H264
+    );
+
+    if (h264PayloadType === undefined) {
+      return undefined;
+    }
+
+    return WcmeCodecInfo.fromH264(
+      h264PayloadType,
+      new H264Codec(
+        mr.codecInfo.maxFs,
+        mr.codecInfo.maxFps || H264_CODEC_PARAMETERS.maxFps,
+        this.getH264MaxMbps(mr),
+        mr.codecInfo.maxWidth,
+        mr.codecInfo.maxHeight
+      )
+    );
+  }
+
+  private buildAv1CodecInfo(mr: MediaRequest): WcmeCodecInfo | undefined {
+    if (!this.enableAv1 || !mr.codecInfo) {
+      return undefined;
+    }
+
+    const av1PayloadType = this.getIngressPayloadTypeCallback(
+      mr.receiveSlots[0].mediaType,
+      MediaCodecMimeType.AV1
+    );
+
+    if (av1PayloadType === undefined) {
+      return undefined;
+    }
+
+    const av1EncodingParams = this.getAv1EncodingParams(mr);
+
+    return WcmeCodecInfo.fromAv1(
+      av1PayloadType,
+      new AV1Codec(
+        av1EncodingParams.levelIdx,
+        av1EncodingParams.tier,
+        mr.codecInfo.maxWidth || av1EncodingParams.maxWidth,
+        mr.codecInfo.maxHeight || av1EncodingParams.maxHeight,
+        av1EncodingParams.maxPicSize,
+        av1EncodingParams.maxDecodeRate
+      )
+    );
   }
 
   /** Modifies the passed in clientRequests and makes sure that in total they don't ask
@@ -337,49 +394,11 @@ export class MediaRequestManager {
     // map all the client media requests to wcme stream requests
     Object.values(clientRequests).forEach((mr) => {
       if (mr.receiveSlots.length > 0) {
-        const codecInfos: WcmeCodecInfo[] = [];
-
-        if (mr.codecInfo) {
-          const h264PayloadType = this.getIngressPayloadTypeCallback(
-            mr.receiveSlots[0].mediaType,
-            MediaCodecMimeType.H264
-          );
-          if (h264PayloadType !== undefined) {
-            const h264CodecInfo = WcmeCodecInfo.fromH264(
-              h264PayloadType,
-              new H264Codec(
-                mr.codecInfo.maxFs,
-                mr.codecInfo.maxFps || H264_CODEC_PARAMETERS.maxFps,
-                this.getH264MaxMbps(mr),
-                mr.codecInfo.maxWidth,
-                mr.codecInfo.maxHeight
-              )
-            );
-            codecInfos.push(h264CodecInfo);
-          }
-
-          if (this.enableAv1) {
-            const av1PayloadType = this.getIngressPayloadTypeCallback(
-              mr.receiveSlots[0].mediaType,
-              MediaCodecMimeType.AV1
-            );
-            if (av1PayloadType !== undefined) {
-              const av1EncodingParams = this.getAv1EncodingParams(mr);
-              const av1CodecInfo = WcmeCodecInfo.fromAv1(
-                av1PayloadType,
-                new AV1Codec(
-                  av1EncodingParams.levelIdx,
-                  av1EncodingParams.tier,
-                  mr.codecInfo.maxWidth || av1EncodingParams.maxWidth,
-                  mr.codecInfo.maxHeight || av1EncodingParams.maxHeight,
-                  av1EncodingParams.maxPicSize,
-                  av1EncodingParams.maxDecodeRate
-                )
-              );
-              codecInfos.push(av1CodecInfo);
-            }
-          }
-        }
+        const codecInfos: WcmeCodecInfo[] = mr.codecInfo
+          ? [this.buildH264CodecInfo(mr), this.buildAv1CodecInfo(mr)].filter(
+              (info): info is WcmeCodecInfo => info !== undefined
+            )
+          : [];
 
         streamRequests.push(
           new StreamRequest(

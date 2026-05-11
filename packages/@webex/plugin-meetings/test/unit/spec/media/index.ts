@@ -323,6 +323,26 @@ describe('createMediaConnection', () => {
     assert.calledOnce(rtcMetrics.sendMetricsInQueue);
   });
 
+  it('passes enableAV1SlidesSupport: true to MultistreamRoapMediaConnection when enableAv1SlidesSupport is set', () => {
+    const multistreamRoapMediaConnectionConstructorStub = sinon
+      .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
+      .returns(fakeRoapMediaConnection);
+
+    Media.createMediaConnection(true, 'some debug id', 'meeting id', {
+      enableAv1SlidesSupport: true,
+    });
+    assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
+    assert.calledWith(
+      multistreamRoapMediaConnectionConstructorStub,
+      sinon.match({
+        iceServers: [],
+        disableAudioTwcc: true,
+        enableAV1SlidesSupport: true,
+      }),
+      'meeting id'
+    );
+  });
+
   it('multistream non-firefox does not care about stopIceGatheringAfterFirstRelayCandidate', () => {
     const multistreamRoapMediaConnectionConstructorStub = sinon
       .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')

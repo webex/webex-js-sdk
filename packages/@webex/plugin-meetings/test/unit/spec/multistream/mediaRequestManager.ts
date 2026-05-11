@@ -1575,6 +1575,46 @@ describe('MediaRequestManager', () => {
         av1: {payloadType: FAKE_AV1_PAYLOAD_TYPE, levelIdx: 5, maxWidth: 1280, maxHeight: 720},
       }]);
     });
+
+    it('uses codecInfo maxWidth and maxHeight for AV1 when provided', () => {
+      const customWidth = 1000;
+      const customHeight = 700;
+
+      mediaRequestManager.addRequest(
+        {
+          policyInfo: {
+            policy: 'receiver-selected',
+            csi: 77,
+          },
+          receiveSlots: [fakeReceiveSlots[0]],
+          codecInfo: {
+            codec: 'h264',
+            maxFs: MAX_FS_720p,
+            maxWidth: customWidth,
+            maxHeight: customHeight,
+          },
+        },
+        true
+      );
+
+      assert.calledWith(
+        sendMediaRequestsCallback,
+        [
+          sinon.match({
+            codecInfos: [
+              sinon.match({payloadType: FAKE_H264_PAYLOAD_TYPE}),
+              sinon.match({
+                payloadType: FAKE_AV1_PAYLOAD_TYPE,
+                av1: sinon.match({
+                  maxWidth: customWidth,
+                  maxHeight: customHeight,
+                }),
+              }),
+            ],
+          }),
+        ]
+      );
+    });
   });
 
   describe('degradation with AV1 enabled', () => {
