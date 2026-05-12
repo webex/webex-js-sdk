@@ -46,7 +46,7 @@ export interface ContactsResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers — wrap page.evaluate() calls so tests stay readable
+// SDK helpers — used for initialization, cleanup, and SDK-only test cases
 // ---------------------------------------------------------------------------
 
 /**
@@ -58,13 +58,15 @@ export const verifyContactsClientReady = async (page: Page): Promise<void> => {
 };
 
 /**
- * Call contacts.getContacts() and return the full ContactResponse.
+ * Call contacts.getContacts() via the SDK and return the full response.
+ * Used for: initialization, cleanup, and assertions that need response shape.
  */
 export const getContacts = (page: Page): Promise<ContactsResponse> =>
   page.evaluate(async () => (window as any).contacts.getContacts());
 
 /**
- * Call contacts.createContactGroup() and return the ContactResponse.
+ * Call contacts.createContactGroup() via the SDK and return the response.
+ * Used for: tests that need group assignment (CONT-014) and cleanup.
  */
 export const createContactGroup = (
   page: Page,
@@ -78,7 +80,8 @@ export const createContactGroup = (
   );
 
 /**
- * Call contacts.deleteContactGroup() and return the ContactResponse.
+ * Call contacts.deleteContactGroup() via the SDK.
+ * Used for cleanup hooks (afterEach / afterAll).
  */
 export const deleteContactGroup = (page: Page, groupId: string): Promise<ContactsResponse> =>
   page.evaluate(async ([id]) => (window as any).contacts.deleteContactGroup(id), [groupId] as [
@@ -86,7 +89,8 @@ export const deleteContactGroup = (page: Page, groupId: string): Promise<Contact
   ]);
 
 /**
- * Call contacts.createContact() and return the ContactResponse.
+ * Call contacts.createContact() via the SDK and return the response.
+ * Used for: tests that need fields not exposed in the UI form (CONT-012, CONT-014).
  */
 export const createContact = (
   page: Page,
@@ -97,7 +101,8 @@ export const createContact = (
   ]);
 
 /**
- * Call contacts.deleteContact() and return the ContactResponse.
+ * Call contacts.deleteContact() via the SDK.
+ * Used for cleanup hooks and CONT-019.
  */
 export const deleteContact = (page: Page, contactId: string): Promise<ContactsResponse> =>
   page.evaluate(async ([id]) => (window as any).contacts.deleteContact(id), [contactId] as [
@@ -105,12 +110,9 @@ export const deleteContact = (page: Page, contactId: string): Promise<ContactsRe
   ]);
 
 // ---------------------------------------------------------------------------
-// Assertion helpers
+// SDK assertion helpers (used in SDK-only tests: CONT-012, CONT-014, CONT-016)
 // ---------------------------------------------------------------------------
 
-/**
- * Assert a ContactResponse is a success (2xx status, non-null message).
- */
 export const expectContactSuccess = (response: ContactsResponse, expectedStatus = 200): void => {
   expect(response.statusCode).toBe(expectedStatus);
   expect(response.message).not.toBeNull();
@@ -118,33 +120,23 @@ export const expectContactSuccess = (response: ContactsResponse, expectedStatus 
   expect(response.data.error).toBeUndefined();
 };
 
-/**
- * Assert a ContactResponse is a client error (4xx status).
- */
 export const expectContactError = (response: ContactsResponse, expectedStatus: number): void => {
   expect(response.statusCode).toBe(expectedStatus);
   expect(response.data.error).toBeDefined();
 };
 
 // ---------------------------------------------------------------------------
-// Cleanup helpers — used in afterEach / afterAll to restore pristine state
+// SDK cleanup helpers — used in afterEach / afterAll
 // ---------------------------------------------------------------------------
 
-/**
- * Delete a contact group by groupId, silently ignoring errors.
- * Use in afterEach/afterAll to avoid test pollution.
- */
 export const safeDeleteContactGroup = async (page: Page, groupId: string): Promise<void> => {
   try {
     await deleteContactGroup(page, groupId);
   } catch {
-    // Best-effort cleanup — not a test failure if already deleted
+    // Best-effort cleanup
   }
 };
 
-/**
- * Delete a contact by contactId, silently ignoring errors.
- */
 export const safeDeleteContact = async (page: Page, contactId: string): Promise<void> => {
   try {
     await deleteContact(page, contactId);
@@ -154,8 +146,8 @@ export const safeDeleteContact = async (page: Page, contactId: string): Promise<
 };
 
 /**
- * Fetch current contacts and delete all CUSTOM contacts and all groups created
- * during a test run. Use in afterAll to guarantee a clean state.
+ * Delete all CUSTOM contacts and all contact groups via the SDK.
+ * Reliable cleanup for afterAll hooks.
  */
 export const cleanupAllContacts = async (page: Page): Promise<void> => {
   try {
@@ -164,23 +156,22 @@ export const cleanupAllContacts = async (page: Page): Promise<void> => {
 
     const {contacts = [], groups = []} = response.data;
 
-    // Delete CUSTOM contacts first (CLOUD contacts are references, not owned records)
     await Promise.all(
       contacts
         .filter((c) => c.contactType === 'CUSTOM')
         .map((c) => safeDeleteContact(page, c.contactId))
     );
 
-    // Delete groups (non-default groups; the default group may be required by the service)
     await Promise.all(groups.map((g) => safeDeleteContactGroup(page, g.groupId)));
   } catch {
     // Cleanup is best-effort
   }
 };
 
-/**
- * Build a minimal CUSTOM contact payload for testing.
- */
+// ---------------------------------------------------------------------------
+// SDK build helpers
+// ---------------------------------------------------------------------------
+
 export const buildCustomContact = (
   overrides: Partial<ContactResult> = {}
 ): Partial<ContactResult> => ({
@@ -196,10 +187,6 @@ export const buildCustomContact = (
   ...overrides,
 });
 
-/**
- * Build a CLOUD contact payload for testing.
- * Requires a valid Webex user UUID as contactId.
- */
 export const buildCloudContact = (
   contactId: string,
   overrides: Partial<ContactResult> = {}
@@ -212,12 +199,220 @@ export const buildCloudContact = (
   ...overrides,
 });
 
-/**
- * Wait for the contacts client (window.contacts) to be ready with a timeout.
- */
 export const waitForContactsClient = async (
   page: Page,
   timeout = OPERATION_TIMEOUT
 ): Promise<void> => {
   await page.waitForFunction(() => !!(window as any).contacts, {timeout});
+};
+
+// ---------------------------------------------------------------------------
+// UI interaction helpers — primary test interface for browser-visible actions
+// ---------------------------------------------------------------------------
+
+/**
+ * Reset the #contact-object pre element back to its initial placeholder.
+ * Call before any create-contact operation so the next waitForContactSuccess
+ * detects a fresh state change.
+ */
+export const resetContactStatus = async (page: Page): Promise<void> => {
+  await page.evaluate(() => {
+    const el = document.querySelector('#contact-object');
+    if (el) el.textContent = 'Contact-Object';
+  });
+};
+
+/**
+ * Reset the #contactgroup-object pre element back to its initial placeholder.
+ */
+export const resetGroupStatus = async (page: Page): Promise<void> => {
+  await page.evaluate(() => {
+    const el = document.querySelector('#contactgroup-object');
+    if (el) el.textContent = 'ContactGroup-Object';
+  });
+};
+
+/**
+ * Click the "Get contacts" button and wait for the API response to render
+ * into #contactsTableId and #contactGroupsTableId.
+ */
+export const clickGetContacts = async (page: Page): Promise<void> => {
+  await page.locator('#getContacts').click();
+  await page.waitForTimeout(2500);
+};
+
+/**
+ * Fill the "Create Custom Contact" form and click "Create contact".
+ * Resets the #contact-object status element first so waitForContactSuccess
+ * reliably detects the new result.
+ */
+export const uiCreateCustomContact = async (
+  page: Page,
+  fields: {displayName?: string; phone?: string; email?: string; avatarURL?: string}
+): Promise<void> => {
+  await resetContactStatus(page);
+  const form = page.locator('#contacts-form');
+  await form.locator('input[name="displayName"]').fill(fields.displayName ?? '');
+  await form.locator('input[name="phone"]').fill(fields.phone ?? '');
+  await form.locator('input[name="email"]').fill(fields.email ?? '');
+  await form.locator('input[name="avatarURL"]').fill(fields.avatarURL ?? '');
+  await page.locator('button[onclick="createCustomContact()"]').click();
+};
+
+/**
+ * Fill the "Create Cloud contact (Directory)" form and click "Create contact".
+ * Leave contactId empty to simulate the missing-contactId error case (CONT-015).
+ */
+export const uiCreateCloudContact = async (
+  page: Page,
+  contactId: string,
+  phone = ''
+): Promise<void> => {
+  await resetContactStatus(page);
+  const form = page.locator('#cloud-contact-form');
+  await form.locator('#contactId').fill(contactId);
+  await form.locator('[name="phone"]').fill(phone);
+  await page.locator('button[onclick="createCloudContact()"]').click();
+};
+
+/**
+ * Fill the "Create Contact groups" form and click "Create Contact Group".
+ * Resets the #contactgroup-object status element first.
+ */
+export const uiCreateContactGroup = async (
+  page: Page,
+  displayName: string,
+  groupType: GroupType = 'NORMAL'
+): Promise<void> => {
+  await resetGroupStatus(page);
+  await page.locator('#contactgroups-form input[name="displayName"]').fill(displayName);
+  await page.locator('#groupType').selectOption(groupType);
+  await page.locator('button[onclick="createContactGroup()"]').click();
+};
+
+// ---------------------------------------------------------------------------
+// UI status assertion helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Wait for the #contact-object pre to display "Status: SUCCESS".
+ * app.js sets this after contacts.createContact() resolves successfully.
+ */
+export const waitForContactSuccess = async (page: Page): Promise<void> => {
+  await expect(page.locator('#contact-object')).toContainText('Status: SUCCESS', {
+    timeout: OPERATION_TIMEOUT,
+  });
+};
+
+/**
+ * Wait for the #contactgroup-object pre to display "Status: SUCCESS".
+ * app.js sets this after contacts.createContactGroup() resolves successfully.
+ */
+export const waitForGroupSuccess = async (page: Page): Promise<void> => {
+  await expect(page.locator('#contactgroup-object')).toContainText('Status: SUCCESS', {
+    timeout: OPERATION_TIMEOUT,
+  });
+};
+
+/**
+ * Wait for #contact-object to leave the reset placeholder.
+ * Indicates the SDK call has completed (successfully or with an error).
+ * Use before asserting the error state so there is no timing gap.
+ */
+export const waitForContactOperationEnd = async (page: Page): Promise<void> => {
+  await expect(page.locator('#contact-object')).not.toContainText('Contact-Object', {
+    timeout: OPERATION_TIMEOUT,
+  });
+};
+
+/**
+ * Wait for #contactgroup-object to leave the reset placeholder.
+ */
+export const waitForGroupOperationEnd = async (page: Page): Promise<void> => {
+  await expect(page.locator('#contactgroup-object')).not.toContainText('ContactGroup-Object', {
+    timeout: OPERATION_TIMEOUT,
+  });
+};
+
+// ---------------------------------------------------------------------------
+// UI table assertion helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Assert that a row containing `displayName` appears in the contacts table.
+ * Assumes clickGetContacts has already been called.
+ */
+export const expectContactInTable = async (page: Page, displayName: string): Promise<void> => {
+  await expect(page.locator('#contactsTableId')).toContainText(displayName, {timeout: 5_000});
+};
+
+/**
+ * Assert that the contacts-table row for `displayName` also shows the expected contactType.
+ */
+export const expectContactTypeInRow = async (
+  page: Page,
+  displayName: string,
+  contactType: ContactType
+): Promise<void> => {
+  const row = page.locator('#contactsTableId tr').filter({hasText: displayName});
+  await expect(row).toContainText(contactType);
+};
+
+/**
+ * Assert that a row containing `displayName` appears in the contact-groups table.
+ */
+export const expectGroupInTable = async (page: Page, displayName: string): Promise<void> => {
+  await expect(page.locator('#contactGroupsTableId')).toContainText(displayName, {timeout: 5_000});
+};
+
+/**
+ * Assert that the groups-table row for `displayName` also shows the expected groupType.
+ */
+export const expectGroupTypeInRow = async (
+  page: Page,
+  displayName: string,
+  groupType: GroupType
+): Promise<void> => {
+  const row = page.locator('#contactGroupsTableId tr').filter({hasText: displayName});
+  await expect(row).toContainText(groupType);
+};
+
+/**
+ * Assert that no row containing `displayName` exists in the contacts table.
+ */
+export const expectContactNotInTable = async (page: Page, displayName: string): Promise<void> => {
+  await expect(page.locator('#contactsTableId')).not.toContainText(displayName, {timeout: 5_000});
+};
+
+/**
+ * Assert that no row containing `displayName` exists in the contact-groups table.
+ */
+export const expectGroupNotInTable = async (page: Page, displayName: string): Promise<void> => {
+  await expect(page.locator('#contactGroupsTableId')).not.toContainText(displayName, {
+    timeout: 5_000,
+  });
+};
+
+// ---------------------------------------------------------------------------
+// UI delete helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Click the red Delete button in the contacts-table row that contains `displayName`.
+ * Requires clickGetContacts to have been called first to render the table.
+ */
+export const uiDeleteContactByName = async (page: Page, displayName: string): Promise<void> => {
+  const row = page.locator('#contactsTableId tr').filter({hasText: displayName});
+  await row.locator('button.btn--red').click();
+  await page.waitForTimeout(1500);
+};
+
+/**
+ * Click the red Delete button in the groups-table row that contains `displayName`.
+ * Requires clickGetContacts to have been called first to render the table.
+ */
+export const uiDeleteGroupByName = async (page: Page, displayName: string): Promise<void> => {
+  const row = page.locator('#contactGroupsTableId tr').filter({hasText: displayName});
+  await row.locator('button.btn--red').click();
+  await page.waitForTimeout(1500);
 };
