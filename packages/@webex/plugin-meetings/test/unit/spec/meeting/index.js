@@ -13725,7 +13725,7 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(webex.internal.llm.disconnectLLM, {
             code: 3050,
             reason: 'done (permanent)',
-          });
+          }, 'llm-default-session', meeting.id);
 
           assert.calledWithExactly(
             webex.internal.llm.registerAndConnect,
@@ -13778,7 +13778,7 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(webex.internal.llm.disconnectLLM, {
             code: 3050,
             reason: 'done (permanent)',
-          });
+          }, 'llm-default-session', meeting.id);
 
           assert.calledWithExactly(
             webex.internal.llm.registerAndConnect,
@@ -13826,7 +13826,7 @@ describe('plugin-meetings', () => {
           assert.calledWith(webex.internal.llm.disconnectLLM, {
             code: 3050,
             reason: 'done (permanent)',
-          });
+          }, 'llm-default-session', meeting.id);
           assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.equal(result, undefined);
           assert.isFalse(
@@ -14033,7 +14033,7 @@ describe('plugin-meetings', () => {
             assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
               code: 3050,
               reason: 'done (permanent)',
-            });
+            }, 'llm-default-session', meeting.id);
             assert.calledWithExactly(
               webex.internal.llm.registerAndConnect,
               'a different url',
@@ -14102,7 +14102,7 @@ describe('plugin-meetings', () => {
             assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
               code: 3050,
               reason: 'done (permanent)',
-            });
+            }, 'llm-default-session', meeting.id);
             assert.calledWithExactly(webex.internal.llm.off, 'online', meeting.handleLLMOnline);
             assert.calledWithExactly(
               webex.internal.llm.off,
@@ -14186,7 +14186,7 @@ describe('plugin-meetings', () => {
               assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
                 code: 3050,
                 reason: 'done (permanent)',
-              });
+              }, 'llm-default-session', meeting.id);
               assert.calledOnce(meeting.clearDataChannelToken);
             });
 
@@ -14198,7 +14198,7 @@ describe('plugin-meetings', () => {
               assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
                 code: 3050,
                 reason: 'done (permanent)',
-              });
+              }, 'llm-default-session', meeting.id);
               assert.calledOnce(meeting.clearDataChannelToken);
             });
           });

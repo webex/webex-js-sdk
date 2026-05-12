@@ -281,7 +281,15 @@ describe('plugin-llm', () => {
             ['llm-default-session', { foo: 'bar', datachannelToken: 'session-token' }],
           ]),
 
-          disconnectLLM: function (options, sessionId = 'llm-default-session') {
+          disconnectLLM: function (
+            options,
+            sessionId = 'llm-default-session',
+            ownerMeetingId = 'meeting-1'
+          ) {
+            if (!ownerMeetingId) {
+              return Promise.reject(new Error('ownerMeetingId is required'));
+            }
+
             return this.disconnect(options, sessionId).then(() => {
               this.connections.delete(sessionId);
             });
@@ -290,7 +298,7 @@ describe('plugin-llm', () => {
       });
 
       it('calls disconnect and clears session connection (including token stored in session)', async () => {
-        await instance.disconnectLLM({ code: 3000, reason: 'bye' });
+        await instance.disconnectLLM({ code: 3000, reason: 'bye' }, 'llm-default-session', 'meeting-1');
 
         expect(instance.disconnect).toHaveBeenCalledWith(
           { code: 3000, reason: 'bye' },
@@ -304,7 +312,7 @@ describe('plugin-llm', () => {
         instance.disconnect.mockRejectedValue(new Error('disconnect failed'));
 
         await expect(
-          instance.disconnectLLM({ code: 3000, reason: 'bye' })
+          instance.disconnectLLM({ code: 3000, reason: 'bye' }, 'llm-default-session', 'meeting-1')
         ).rejects.toThrow('disconnect failed');
       });
     });
@@ -496,7 +504,11 @@ describe('plugin-llm', () => {
         llmService.setOwnerMeetingId('meeting-1');
         assert.equal(llmService.getOwnerMeetingId(), 'meeting-1');
 
-        await llmService.disconnectLLM({code: 3050, reason: 'done (permanent)'});
+        await llmService.disconnectLLM(
+          {code: 3050, reason: 'done (permanent)'},
+          'llm-default-session',
+          'meeting-1'
+        );
 
         // Session entry was deleted, so ownerMeetingId is gone.
         assert.equal(llmService.getOwnerMeetingId(), undefined);
@@ -530,14 +542,29 @@ describe('plugin-llm', () => {
         await llmService.registerAndConnect(locusUrl2, datachannelUrl2, undefined, 's2');
 
         const options = {code: 1000, reason: 'test'};
-        await llmService.disconnectLLM(options, 's1');
+        const disconnected = await llmService.disconnectLLM(options, 's1', 'meeting-1');
 
+        assert.equal(disconnected, true);
         sinon.assert.calledOnceWithExactly(llmService.disconnect, options, 's1');
 
         const all = llmService.getAllConnections();
         assert.equal(all.has('s1'), false);
         assert.equal(all.has('s2'), true);
         assert.equal(llmService.getDatachannelToken('s1'), undefined);
+      });
+
+      it('disconnectLLM skips disconnect when ownerMeetingId does not match', async () => {
+        llmService.disconnect = sinon.stub().resolves(true);
+
+        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
+        llmService.setOwnerMeetingId('meeting-1', 's1');
+
+        const options = {code: 1000, reason: 'test'};
+        const disconnected = await llmService.disconnectLLM(options, 's1', 'meeting-2');
+
+        assert.equal(disconnected, false);
+        sinon.assert.notCalled(llmService.disconnect);
+        assert.equal(llmService.getAllConnections().has('s1'), true);
       });
 
       it('disconnectAllLLM clears all sessions', async () => {

@@ -170,13 +170,6 @@ const Webinar = WebexPlugin.extend({
    * @returns {Promise<void>}
    */
   async cleanupPSDataChannel() {
-    // Use meetingId ownership to avoid disconnecting a practice-session channel
-    // currently owned by another meeting instance.
-    const {currentOwner, isOwner} = this.webex.internal.llm.resolveSessionOwnership(
-      this.meetingId,
-      LLM_PRACTICE_SESSION
-    );
-
     if (this._pendingOnlineListener) {
       // @ts-ignore - Fix type
       this.webex.internal.llm.off('online', this._pendingOnlineListener);
@@ -184,34 +177,30 @@ const Webinar = WebexPlugin.extend({
     }
 
     try {
-      if (isOwner) {
-        // @ts-ignore - Fix type
-        await this.webex.internal.llm.disconnectLLM(
-          {
-            code: 3050,
-            reason: 'done (permanent)',
-          },
-          LLM_PRACTICE_SESSION
-        );
-      } else {
+      // @ts-ignore - Fix type
+      const disconnected = await this.webex.internal.llm.disconnectLLM(
+        {
+          code: 3050,
+          reason: 'done (permanent)',
+        },
+        LLM_PRACTICE_SESSION,
+        this.meetingId
+      );
+
+      if (!disconnected) {
         LoggerProxy.logger.info(
-          `Webinar:index#cleanupPSDataChannel --> skipping disconnect; practice-session LLM owned by meeting ${currentOwner}, not ${this.meetingId}`
+          `Webinar:index#cleanupPSDataChannel --> skipping disconnect; practice-session LLM is not owned by meeting ${this.meetingId}`
         );
       }
     } finally {
-      if (isOwner) {
+      if (this._practiceSessionRelayListener) {
         // @ts-ignore - Fix type
-        this.webex.internal.llm.setOwnerMeetingId?.(undefined, LLM_PRACTICE_SESSION);
+        this.webex.internal.llm.off(
+          `event:relay.event:${LLM_PRACTICE_SESSION}`,
+          this._practiceSessionRelayListener
+        );
+        this._practiceSessionRelayListener = null;
       }
-    }
-
-    if (this._practiceSessionRelayListener) {
-      // @ts-ignore - Fix type
-      this.webex.internal.llm.off(
-        `event:relay.event:${LLM_PRACTICE_SESSION}`,
-        this._practiceSessionRelayListener
-      );
-      this._practiceSessionRelayListener = null;
     }
   },
 

@@ -106,7 +106,7 @@ webex.internal.llm.getDatachannelUrl('session-a');
 webex.internal.llm.getAllConnections();
 
 // Disconnect one session
-await webex.internal.llm.disconnectLLM({code: 1000, reason: 'done'}, 'session-a');
+await webex.internal.llm.disconnectLLM({code: 1000, reason: 'done'}, 'session-a', 'meeting-id');
 
 // Disconnect all sessions
 await webex.internal.llm.disconnectAllLLM({code: 1000, reason: 'shutdown'});

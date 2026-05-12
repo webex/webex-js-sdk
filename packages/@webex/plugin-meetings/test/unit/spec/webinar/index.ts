@@ -252,12 +252,8 @@ describe('plugin-meetings', () => {
         assert.calledOnceWithExactly(
           webex.internal.llm.disconnectLLM,
           {code: 3050, reason: 'done (permanent)'},
-          PRACTICE_SESSION_KEY
-        );
-        assert.calledWithExactly(
-          webex.internal.llm.setOwnerMeetingId,
-          undefined,
-          PRACTICE_SESSION_KEY
+          PRACTICE_SESSION_KEY,
+          webinar.meetingId
         );
         assert.calledOnceWithExactly(
           webex.internal.llm.off,
@@ -268,11 +264,16 @@ describe('plugin-meetings', () => {
       });
 
       it('skips disconnect when practice-session owner is another meeting', async () => {
-        webex.internal.llm.getOwnerMeetingId.returns('other-meeting-id');
+        webex.internal.llm.disconnectLLM.resolves(false);
 
         await webinar.cleanupPSDataChannel();
 
-        assert.notCalled(webex.internal.llm.disconnectLLM);
+        assert.calledOnceWithExactly(
+          webex.internal.llm.disconnectLLM,
+          {code: 3050, reason: 'done (permanent)'},
+          PRACTICE_SESSION_KEY,
+          webinar.meetingId
+        );
         assert.notCalled(webex.internal.llm.setOwnerMeetingId);
         assert.calledOnceWithExactly(
           webex.internal.llm.off,
@@ -290,6 +291,27 @@ describe('plugin-meetings', () => {
           ([event]) => event === `event:relay.event:${PRACTICE_SESSION_KEY}`
         );
         assert.equal(relayOffCalls.length, 0);
+      });
+
+      it('removes tracked relay listener even when disconnect throws', async () => {
+        const disconnectError = new Error('disconnect failed');
+        webex.internal.llm.disconnectLLM.rejects(disconnectError);
+
+        let caughtError;
+
+        try {
+          await webinar.cleanupPSDataChannel();
+        } catch (error) {
+          caughtError = error;
+        }
+
+        assert.equal(caughtError, disconnectError);
+        assert.calledOnceWithExactly(
+          webex.internal.llm.off,
+          `event:relay.event:${PRACTICE_SESSION_KEY}`,
+          relayListener
+        );
+        assert.isNull(webinar._practiceSessionRelayListener);
       });
 
       it('does not consult the meeting collection during cleanup', async () => {

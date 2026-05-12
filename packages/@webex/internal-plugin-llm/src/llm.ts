@@ -415,16 +415,38 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * Disconnects websocket connection
    * @param {{code: number, reason: string}} options - The disconnect option object with code and reason
    * @param {string} sessionId - Connection identifier
-   * @returns {Promise<void>}
+   * @param {string} ownerMeetingId - Meeting id asserting disconnect ownership
+   * @returns {Promise<boolean>} True when disconnect was performed, false when skipped
    */
   public disconnectLLM = (
     options: {code: number; reason: string},
-    sessionId: string = LLM_DEFAULT_SESSION
-  ): Promise<void> =>
-    this.disconnect(options, sessionId).then(() => {
+    sessionId: string,
+    ownerMeetingId: string
+  ): Promise<boolean> => {
+    if (!ownerMeetingId) {
+      throw new Error('llm#disconnectLLM --> ownerMeetingId is required');
+    }
+
+    const {currentOwner, canAssertOwnership, isOwner} = this.resolveSessionOwnership(
+      ownerMeetingId,
+      sessionId
+    );
+
+    if (!isOwner && canAssertOwnership) {
+      this.logger.info(
+        `llm#disconnectLLM --> skip disconnect for session ${sessionId}; owned by ${currentOwner}, candidate ${ownerMeetingId}`
+      );
+
+      return Promise.resolve(false);
+    }
+
+    return this.disconnect(options, sessionId).then(() => {
       // Clean up sessions data
       this.connections.delete(sessionId);
+
+      return true;
     });
+  };
 
   /**
    * Disconnects all LLM websocket connections

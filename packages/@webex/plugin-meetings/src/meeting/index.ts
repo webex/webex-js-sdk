@@ -6490,10 +6490,14 @@ export default class Meeting extends StatelessWebexPlugin {
     try {
       if (isOwner) {
         // @ts-ignore - Fix type
-        await this.webex.internal.llm.disconnectLLM({
-          code: 3050,
-          reason: 'done (permanent)',
-        });
+        await this.webex.internal.llm.disconnectLLM(
+          {
+            code: 3050,
+            reason: 'done (permanent)',
+          },
+          LLM_DEFAULT_SESSION,
+          this.id
+        );
       } else {
         LoggerProxy.logger.info(
           `Meeting:index#cleanupLLMConneciton --> skipping disconnect; LLM owned by meeting ${currentOwner}, not ${this.id}`
