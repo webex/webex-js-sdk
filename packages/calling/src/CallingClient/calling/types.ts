@@ -19,6 +19,8 @@ export enum MobiusEventType {
   CALL_CONNECTED = 'mobius.callconnected',
   CALL_MEDIA = 'mobius.media',
   CALL_DISCONNECTED = 'mobius.calldisconnected',
+  CALL_INFO = 'mobius.callinfo',
+  REGISTRATION_DOWN = 'registration.down',
 }
 
 export enum MediaState {
@@ -94,28 +96,39 @@ export type SupplementaryServiceState = {
 };
 
 export type MobiusCallData = {
+  eventType: MobiusEventType;
   callProgressData?: {
     alerting: boolean;
     inbandMedia: boolean;
   };
   message?: RoapMessage;
-  callerId: {
-    from: string;
-  };
+  callerId?: CallerIdInfo;
   midCallService?: Array<MidCallEvent>;
   callId: CallId;
   callUrl: string;
   deviceId: string;
   correlationId: string;
-  eventType: MobiusEventType;
+
   broadworksCorrelationInfo?: string;
 };
 
-export type MobiusCallEvent = {
-  id: string;
-  data: MobiusCallData;
-  timestamp: number;
+export type MobiusRegistrationDownData = {
+  eventType: MobiusEventType.REGISTRATION_DOWN;
+  deviceInfo: {
+    userId: string;
+    device: {
+      deviceId: string;
+      uri: string;
+      status: string;
+    };
+  };
+};
+
+export type MobiusAsyncEvent = {
+  type: string;
+  eventId: string;
   trackingId: string;
+  data: MobiusCallData | MobiusRegistrationDownData;
 };
 
 export type PatchResponse = {
@@ -452,6 +465,13 @@ export interface ICallManager extends Eventing<CallEventTypes> {
    *
    */
   getActiveCalls(): Record<string, ICall>;
+
+  /**
+   * Routes a Mobius call event to the internal call handlers.
+   *
+   * @param event - Mobius call event payload from the async Mobius socket stream.
+   */
+  dequeueWsEvents(event: unknown): void;
 
   /**
    * Updates a line associated with a specific device.

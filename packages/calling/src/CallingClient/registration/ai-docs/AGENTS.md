@@ -57,6 +57,8 @@ The Registration module handles:
 | `isReconnectPending` | `(): boolean` | Returns `true` if reconnect is deferred |
 | `handleConnectionRestoration` | `(retry: boolean): Promise<boolean>` | Re-registers after network/Mercury recovery |
 | `setDeviceInfo` | `(body: Devices): void` | Hydrates device info from a Devices response |
+| `handleRegistrationDownEvent` | `(event?: MobiusAsyncEvent): Promise<void>` | Handles a Mobius `REGISTRATION_DOWN` async event; defers cleanup while calls are active, otherwise cleans up immediately. Safe to re-invoke |
+| `isRegistrationDownPending` | `(): boolean` | Returns `true` while a registration-down cleanup is deferred due to active calls |
 
 ---
 
@@ -101,7 +103,27 @@ Robust error handling is built in for registration and keepalive via `handleRegi
 
 ---
 
-### 4. Metrics and Observability
+### 4. Registration-Down Handling
+
+When Mobius emits a `REGISTRATION_DOWN` async event, `CallingClient` forwards it to `Registration.handleRegistrationDownEvent`:
+
+- **Active calls present:** `registrationDownPending` is set to `true` and the method returns early without running cleanup. `CallingClient` schedules a polling interval (every 30s) that re-invokes `handleRegistrationDownEvent` with the same event; once no active calls remain on a subsequent tick, the cleanup runs and the interval is cleared.
+- **No active calls:** cleanup runs immediately and `registrationDownPending` stays `false`.
+
+`handleRegistrationDownEvent` is safe to re-invoke: it is idempotent across repeated calls and only performs the teardown once the active-call precondition is met.
+
+Cleanup (under the shared mutex) performs:
+- `clearFailbackTimer()` and `clearKeepaliveTimer()`
+- Resets transient flags (`reconnectPending`, `scheduled429Retry`, `failoverImmediately`, `retryAfter`, `registerRetry`)
+- `clearFailoverState()` and `setStatus(RegistrationStatus.INACTIVE)`
+- Disconnects the Mobius WebSocket when `apiRequest.isSocketEnabled()` (code `3050`, reason `'done (permanent)'`)
+- Emits `LINE_EVENTS.UNREGISTERED` via `lineEmitter` so the SDK consumer is notified
+
+No `DELETE /devices/{id}` is sent because Mobius has already signaled that the registration is gone.
+
+---
+
+### 5. Metrics and Observability
 
 Registration events are instrumented with detailed metrics for observability and troubleshooting:
 
