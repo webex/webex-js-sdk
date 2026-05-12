@@ -65,6 +65,7 @@ import {
   MOBIUS_MIDCALL_STATE,
   RoapEvent,
   RoapMessage,
+  RoapMessageEvent,
   SUPPLEMENTARY_SERVICES,
 } from '../../Events/types';
 import {ISDKConnector, WebexSDK} from '../../SDKConnector/types';
@@ -75,6 +76,7 @@ import {
   DisconnectCode,
   DisconnectReason,
   ICall,
+  IceCandidateErrorEventPayload,
   IceEventPayload,
   MediaContext,
   MidCallCallerId,
@@ -184,8 +186,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
 
   private apiRequest: APIRequest;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private handleMediaRoapEvent = async (event: any) => {
+  private handleMediaRoapEvent = async (event: RoapMessageEvent) => {
     log.info(
       `ROAP message to send (rcv from MEDIA-SDK) :
           \n type:  ${event.roapMessage?.messageType}, seq: ${event.roapMessage.seq} , version: ${event.roapMessage.version}`,
@@ -209,6 +210,13 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       }
 
       case RoapScenario.OFFER: {
+        if (!event.roapMessage.sdp) {
+          log.warn('Received OFFER without SDP from media SDK', {
+            file: CALL_FILE,
+            method: METHODS.MEDIA_ROAP_EVENTS_LISTENER,
+          });
+          break;
+        }
         // TODO: Remove these after the Media-Core adds the fix
         // Check if at least one IPv6 "c=" line is present
         log.info(`before modifying sdp: ${event.roapMessage.sdp}`, {
@@ -232,6 +240,13 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
       }
 
       case RoapScenario.ANSWER:
+        if (!event.roapMessage.sdp) {
+          log.warn('Received OFFER without SDP from media SDK', {
+            file: CALL_FILE,
+            method: METHODS.MEDIA_ROAP_EVENTS_LISTENER,
+          });
+          break;
+        }
         event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
         this.localRoapMessage = event.roapMessage;
         if (this.connectPending) {
@@ -245,6 +260,13 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
         break;
 
       case RoapScenario.OFFER_RESPONSE:
+        if (!event.roapMessage.sdp) {
+          log.warn('Received OFFER without SDP from media SDK', {
+            file: CALL_FILE,
+            method: METHODS.MEDIA_ROAP_EVENTS_LISTENER,
+          });
+          break;
+        }
         event.roapMessage.sdp = modifySdpForIPv4(event.roapMessage.sdp);
         this.localRoapMessage = event.roapMessage;
         if (this.connectPending) {
@@ -331,13 +353,7 @@ export class Call extends Eventing<CallEventTypes> implements ICall {
     );
   };
 
-  private handleIceCandidateError = (event: {
-    address?: string | null;
-    errorCode?: number;
-    errorText?: string;
-    port?: number | null;
-    url?: string;
-  }) => {
+  private handleIceCandidateError = (event: IceCandidateErrorEventPayload) => {
     const iceErrorPayload = {
       address: event.address ?? null,
       errorCode: event.errorCode,

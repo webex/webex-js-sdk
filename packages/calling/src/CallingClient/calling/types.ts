@@ -226,6 +226,14 @@ export type IceEventPayload = {
   iceGatheringState?: string;
 };
 
+export type IceCandidateErrorEventPayload = {
+  address?: string | null;
+  errorCode?: number;
+  errorText?: string;
+  port?: number | null;
+  url?: string;
+};
+
 /**
  * Represents an interface for managing call-related operations.
  */
