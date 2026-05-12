@@ -987,23 +987,27 @@ const Breakouts = WebexPlugin.extend({
     });
   },
   /**
-   * Move participants into a specific breakout session
-   * @param {string} groupId - the breakout group ID
-   * @param {string} sessionId - the target breakout session ID
-   * @param {string[]} participants - participant IDs to move
+   * Remove participants from their current breakout session back to the main session
+   * @param {string[]} participants - participant IDs to remove from breakout
    * @returns {Promise}
    */
-  move(groupId: string, sessionId: string, participants: string[]) {
+  removeFromBreakout(participants: string[]) {
+    if (!this.mainGroupId || !this.mainSessionId) {
+      throw new Error(
+        'Main group ID and session ID must be available to remove participants from breakout'
+      );
+    }
+
     return this.request({
       method: HTTP_VERBS.POST,
       uri: `${this.url}/move`,
       body: {
         groups: [
           {
-            id: groupId,
+            id: this.mainGroupId,
             sessions: [
               {
-                id: sessionId,
+                id: this.mainSessionId,
                 participants,
               },
             ],
