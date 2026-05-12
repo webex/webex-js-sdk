@@ -38,7 +38,7 @@ interface ILLMChannel {
     tokenKey?: DataChannelTokenKey,
     ownerMeetingId?: string
   ) => void;
-  clearDatachannelToken: (tokenKey?: DataChannelTokenKey) => void;
+  clearDatachannelToken: (tokenKey: DataChannelTokenKey, ownerMeetingId: string) => void;
   setRefreshHandler: (
     handler: () => Promise<{
       body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};

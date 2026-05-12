@@ -306,13 +306,30 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   /**
    * Clears a single session's data channel token.
    * @param {DataChannelTokenType|string} tokenKey
+   * @param {string} ownerMeetingId - Meeting id asserting delete ownership
    * @returns {void}
    */
   public clearDatachannelToken = (
-    tokenKey: DataChannelTokenType | string = DataChannelTokenType.Default
+    tokenKey: DataChannelTokenType | string,
+    ownerMeetingId: string
   ): void => {
-    this.datachannelTokens[tokenKey] = undefined;
-    delete this.datachannelTokens[tokenKey];
+    const resolvedTokenKey = tokenKey;
+
+    const {currentOwner, canAssertOwnership, isOwner} = this.resolveSessionOwnership(
+      ownerMeetingId,
+      resolvedTokenKey
+    );
+
+    if (!isOwner && canAssertOwnership) {
+      this.logger.info(
+        `llm#clearDatachannelToken --> skip clear for session ${resolvedTokenKey}; owned by ${currentOwner}, candidate ${ownerMeetingId}`
+      );
+
+      return;
+    }
+
+    this.datachannelTokens[resolvedTokenKey] = undefined;
+    delete this.datachannelTokens[resolvedTokenKey];
   };
 
   /**

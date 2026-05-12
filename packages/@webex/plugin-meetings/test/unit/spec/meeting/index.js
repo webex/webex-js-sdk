@@ -13587,32 +13587,19 @@ describe('plugin-meetings', () => {
           webex.internal.llm.clearDatachannelToken = sinon.stub();
         });
 
-        it('always clears default-session token and skips practice-session token when not practice owner', () => {
-          webex.internal.llm.resolveSessionOwnership = sinon.stub().returns({
-            currentOwner: 'other-meeting-id',
-            canAssertOwnership: true,
-            isOwner: false,
-          });
-
+        it('delegates default and practice token clears to llm with meeting ownership id', () => {
           meeting.clearDataChannelToken();
 
-          assert.calledOnceWithExactly(
+          assert.calledWithExactly(
             webex.internal.llm.clearDatachannelToken,
-            'llm-default-session'
+            'llm-default-session',
+            meeting.id
           );
-        });
-
-        it('clears practice-session token when this meeting owns practice session', () => {
-          webex.internal.llm.resolveSessionOwnership = sinon.stub().returns({
-            currentOwner: meeting.id,
-            canAssertOwnership: true,
-            isOwner: true,
-          });
-
-          meeting.clearDataChannelToken();
-
-          assert.calledWithExactly(webex.internal.llm.clearDatachannelToken, 'llm-default-session');
-          assert.calledWithExactly(webex.internal.llm.clearDatachannelToken, 'llm-practice-session');
+          assert.calledWithExactly(
+            webex.internal.llm.clearDatachannelToken,
+            'llm-practice-session',
+            meeting.id
+          );
           assert.callCount(webex.internal.llm.clearDatachannelToken, 2);
         });
       });
@@ -14156,11 +14143,9 @@ describe('plugin-meetings', () => {
               await meeting.clearMeetingData();
 
               assert.notCalled(webex.internal.llm.disconnectLLM);
-              // Shared data-channel auth tokens belong to the owner meeting's
-              // live LLM session and must not be wiped by a non-owner
-              // teardown, otherwise the owner's next reconnect would lose
-              // its Data-Channel-Auth-Token.
-              assert.notCalled(meeting.clearDataChannelToken);
+              // clearDataChannelToken is always delegated; llm enforces
+              // ownership and no-ops for non-owners internally.
+              assert.calledOnce(meeting.clearDataChannelToken);
               // Listeners owned by *this* Meeting instance must still be
               // removed so a leaving subordinate meeting stops receiving
               // relay/locus events from the shared singleton.

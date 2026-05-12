@@ -6483,9 +6483,11 @@ export default class Meeting extends StatelessWebexPlugin {
     throwOnError?: boolean;
   } = {}): Promise<void> => {
     // @ts-ignore - Fix type
-    const llmPlugin = this.webex.internal.llm;
     // @ts-ignore - Fix type
-    const {currentOwner, isOwner} = llmPlugin.resolveSessionOwnership(this.id, LLM_DEFAULT_SESSION);
+    const {currentOwner, isOwner} = this.webex.internal.llm.resolveSessionOwnership(
+      this.id,
+      LLM_DEFAULT_SESSION
+    );
 
     try {
       if (isOwner) {
@@ -6534,25 +6536,14 @@ export default class Meeting extends StatelessWebexPlugin {
 
   /**
    * Clears data channel tokens associated with this meeting ownership.
-   * Default-session token is always cleared here; practice-session token
-   * is cleared only when this meeting currently owns the practice session.
+   * Ownership checks are enforced in internal-plugin-llm.
    * @returns {void}
    */
   clearDataChannelToken(): void {
     // @ts-ignore
-    this.webex.internal.llm.clearDatachannelToken(LLM_DEFAULT_SESSION);
-
-    // Avoid wiping another meeting's practice-session token cache.
-    // @ts-ignore - Fix type
-    const {isOwner: isPracticeOwner} = this.webex.internal.llm.resolveSessionOwnership(
-      this.id,
-      LLM_PRACTICE_SESSION
-    );
-
-    if (isPracticeOwner) {
-      // @ts-ignore
-      this.webex.internal.llm.clearDatachannelToken(LLM_PRACTICE_SESSION);
-    }
+    this.webex.internal.llm.clearDatachannelToken(LLM_DEFAULT_SESSION, this.id);
+    // @ts-ignore
+    this.webex.internal.llm.clearDatachannelToken(LLM_PRACTICE_SESSION, this.id);
   }
 
   /**
@@ -10002,23 +9993,8 @@ export default class Meeting extends StatelessWebexPlugin {
     // again would double-emit MEETING_STOPPED_RECEIVING_TRANSCRIPTION
     // because stopTranscription() always fires its trigger.
     //
-    // Ownership-aware token clear: only clear the shared LLM data channel
-    // tokens when this meeting owns (or no meeting owns) the default LLM
-    // session. Otherwise we would wipe tokens still in use by another
-    // meeting's active LLM connection.
-    // @ts-ignore - Fix type
-    const {currentOwner, isOwner} = this.webex.internal.llm.resolveSessionOwnership(
-      this.id,
-      LLM_DEFAULT_SESSION
-    );
-
-    if (isOwner) {
-      this.clearDataChannelToken();
-    } else {
-      LoggerProxy.logger.info(
-        `Meeting:index#clearMeetingData --> skipping clearDataChannelToken; LLM owned by meeting ${currentOwner}, not ${this.id}`
-      );
-    }
+    // Ownership-aware token clear is encapsulated inside clearDataChannelToken().
+    this.clearDataChannelToken();
 
     await this.cleanupLLMConneciton({throwOnError: false});
   };
