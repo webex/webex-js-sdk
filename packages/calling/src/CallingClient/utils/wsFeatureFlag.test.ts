@@ -33,7 +33,7 @@ describe('wsFeatureFlag', () => {
         WEBRTC_CALLING_OVER_WS_FEATURE_KEY
       );
       expect(traceSpy).toHaveBeenCalledWith(
-        `Mobius WSS feature flag '${WEBRTC_CALLING_OVER_WS_FEATURE_KEY}' resolved to: true`,
+        `Mobius WSS feature flag '${WEBRTC_CALLING_OVER_WS_FEATURE_KEY}' resolved to: true (backend: true, localStorage: null)`,
         {
           file: 'wsFeatureFlag',
           method: 'isMobiusWssEnabled',
@@ -48,7 +48,7 @@ describe('wsFeatureFlag', () => {
 
       expect(result).toBe(false);
       expect(traceSpy).toHaveBeenCalledWith(
-        `Mobius WSS feature flag '${WEBRTC_CALLING_OVER_WS_FEATURE_KEY}' resolved to: false`,
+        `Mobius WSS feature flag '${WEBRTC_CALLING_OVER_WS_FEATURE_KEY}' resolved to: false (backend: false, localStorage: null)`,
         {
           file: 'wsFeatureFlag',
           method: 'isMobiusWssEnabled',
@@ -63,7 +63,7 @@ describe('wsFeatureFlag', () => {
 
       expect(result).toBe(false);
       expect(traceSpy).toHaveBeenCalledWith(
-        `Mobius WSS feature flag '${WEBRTC_CALLING_OVER_WS_FEATURE_KEY}' resolved to: false`,
+        `Mobius WSS feature flag '${WEBRTC_CALLING_OVER_WS_FEATURE_KEY}' resolved to: false (backend: false, localStorage: null)`,
         {
           file: 'wsFeatureFlag',
           method: 'isMobiusWssEnabled',
@@ -86,7 +86,7 @@ describe('wsFeatureFlag', () => {
 
       expect(result).toBe(false);
       expect(traceSpy).toHaveBeenCalledWith(
-        `Mobius WSS feature flag '${WEBRTC_CALLING_OVER_WS_FEATURE_KEY}' resolved to: false`,
+        `Mobius WSS feature flag '${WEBRTC_CALLING_OVER_WS_FEATURE_KEY}' resolved to: false (backend: false, localStorage: null)`,
         {
           file: 'wsFeatureFlag',
           method: 'isMobiusWssEnabled',

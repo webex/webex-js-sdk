@@ -170,10 +170,15 @@ if (localStorage.getItem('date') > new Date().getTime()) {
   localStorage.removeItem('access-token');
 }
 
-// Initialize Mobius WSS checkbox from localStorage
+// Initialize Mobius WSS dropdown from localStorage
 const mobiusWssCheckbox = document.getElementById('mobius-wss');
-if (localStorage.getItem('mobius-wss-enabled') === 'true') {
-  mobiusWssCheckbox.checked = true;
+const storedMobiusWss = localStorage.getItem('mobius-wss-enabled');
+if (storedMobiusWss === 'true') {
+  mobiusWssCheckbox.value = 'true';
+} else if (storedMobiusWss === 'false') {
+  mobiusWssCheckbox.value = 'false';
+} else {
+  mobiusWssCheckbox.value = 'default';
 }
 
 tokenElm.addEventListener('change', (event) => {
@@ -187,12 +192,16 @@ function changeEnv() {
 }
 
 function toggleMobiusWss() {
-  if (mobiusWssCheckbox.checked) {
+  const value = mobiusWssCheckbox.value;
+  if (value === 'true') {
     localStorage.setItem('mobius-wss-enabled', 'true');
-    console.log('Mobius WebSocket enabled via samples page');
+    console.log('Mobius WebSocket force-enabled via samples page');
+  } else if (value === 'false') {
+    localStorage.setItem('mobius-wss-enabled', 'false');
+    console.log('Mobius WebSocket force-disabled via samples page');
   } else {
     localStorage.removeItem('mobius-wss-enabled');
-    console.log('Mobius WebSocket disabled via samples page');
+    console.log('Mobius WebSocket using backend flag (override cleared)');
   }
 }
 

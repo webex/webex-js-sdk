@@ -8,26 +8,44 @@ export const WEBRTC_CALLING_OVER_WS_FEATURE_KEY = 'webrtc-calling-over-ws-CALL-2
 /** Allowed origins for samples page localStorage override */
 const ALLOWED_ORIGINS = ['localhost', '127.0.0.1', 'web-sdk.webex.com'];
 
-function samplesPageToggleValue() {
-  // Check for samples page localStorage override on allowed origins
-  let localStorageOverride = false;
-
-  if (typeof window !== 'undefined' && window.localStorage) {
-    const hostname = window.location.hostname;
-    const isAllowedOrigin = ALLOWED_ORIGINS.some(
-      (origin) => hostname === origin || hostname.endsWith(`.${origin}`)
-    );
-
-    if (isAllowedOrigin && localStorage.getItem('mobius-wss-enabled') === 'true') {
-      localStorageOverride = true;
-      log.trace(`Mobius WSS enabled via samples page localStorage override on ${hostname}`, {
-        file: WS_FEATURE_FLAG_FILE,
-        method: METHODS.IS_MOBIUS_WSS_ENABLED,
-      });
-    }
+/**
+ * Returns tri-state localStorage override: true (force-enable), false (force-disable), or null (defer to backend).
+ */
+function samplesPageToggleValue(): boolean | null {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return null;
   }
 
-  return localStorageOverride;
+  const hostname = window.location.hostname;
+  const isAllowedOrigin = ALLOWED_ORIGINS.some(
+    (origin) => hostname === origin || hostname.endsWith(`.${origin}`)
+  );
+
+  if (!isAllowedOrigin) {
+    return null;
+  }
+
+  const localStorageValue = localStorage.getItem('mobius-wss-enabled');
+
+  if (localStorageValue === 'true') {
+    log.trace(`Mobius WSS force-enabled via samples page localStorage override on ${hostname}`, {
+      file: WS_FEATURE_FLAG_FILE,
+      method: METHODS.IS_MOBIUS_WSS_ENABLED,
+    });
+
+    return true;
+  }
+
+  if (localStorageValue === 'false') {
+    log.trace(`Mobius WSS force-disabled via samples page localStorage override on ${hostname}`, {
+      file: WS_FEATURE_FLAG_FILE,
+      method: METHODS.IS_MOBIUS_WSS_ENABLED,
+    });
+
+    return false;
+  }
+
+  return null;
 }
 
 /**
@@ -37,6 +55,7 @@ function samplesPageToggleValue() {
  *
  * Additionally checks browser localStorage for 'mobius-wss-enabled' flag on allowed origins
  * (localhost, 127.0.0.1, web-sdk.webex.com) to enable testing via samples page.
+ * localStorage can force-enable ('true'), force-disable ('false'), or defer to backend (null/unset).
  */
 export function isMobiusWssEnabled(webex: WebexSDK): boolean {
   const enabled =
@@ -44,10 +63,10 @@ export function isMobiusWssEnabled(webex: WebexSDK): boolean {
     true;
 
   const localStorageOverride = samplesPageToggleValue();
-  const finalValue = localStorageOverride || enabled;
+  const finalValue = localStorageOverride !== null ? localStorageOverride : enabled;
 
   log.trace(
-    `Mobius WSS feature flag '${WEBRTC_CALLING_OVER_WS_FEATURE_KEY}' resolved to: ${enabled}`,
+    `Mobius WSS feature flag '${WEBRTC_CALLING_OVER_WS_FEATURE_KEY}' resolved to: ${finalValue} (backend: ${enabled}, localStorage: ${localStorageOverride})`,
     {
       file: WS_FEATURE_FLAG_FILE,
       method: METHODS.IS_MOBIUS_WSS_ENABLED,
