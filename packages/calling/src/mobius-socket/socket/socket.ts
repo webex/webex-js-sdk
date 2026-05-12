@@ -5,9 +5,10 @@
 import WS from 'ws';
 
 import Socket from './socket-base';
+import type {SocketTransportConstructor} from './types';
 
 Socket.getWebSocketConstructor = function getWebSocketConstructor() {
-  return WS;
+  return WS as unknown as SocketTransportConstructor;
 };
 
 export default Socket;
