@@ -1,4 +1,5 @@
 import {Devices, IDeviceInfo, RegistrationStatus} from '../../common/types';
+import {MobiusAsyncEvent} from '../calling/types';
 
 export type Header = {
   [key: string]: string;
@@ -9,7 +10,7 @@ export type restoreRegistrationCallBack = (
   caller: string
 ) => Promise<boolean>;
 
-export type retry429CallBack = (retryAfter: number, caller: string) => void;
+export type retry429CallBack = (retryAfter: number, caller: string) => Promise<void>;
 
 export type FailoverCacheState = {
   attempt: number;
@@ -109,4 +110,12 @@ export interface IRegistration {
    * Populate deviceInfo from a devices response (e.g., getDevices API).
    */
   setDeviceInfo(body: Devices): void;
+
+  /**
+   * Handles a Mobius REGISTRATION_DOWN async event. Ends the first active
+   * call (if any) and runs registration-side cleanup.
+   *
+   * @param event - The Mobius async event payload (optional).
+   */
+  handleRegistrationDownEvent(event?: MobiusAsyncEvent): Promise<void>;
 }
