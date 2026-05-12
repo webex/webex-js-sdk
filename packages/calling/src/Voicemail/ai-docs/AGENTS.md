@@ -39,7 +39,7 @@ The `Voicemail` module provides APIs for managing voicemail messages across mult
 | **Mark Read/Unread** | Updates the read status of a voicemail message. |
 | **Delete Voicemail** | Deletes a voicemail message by its messageId. |
 | **Voicemail Transcript** | Retrieves the text transcript of a voicemail via XSI. Only supported on WXC; BWRKS and UCM return `null`. |
-| **Contact Resolution** | Resolves caller identity from `CallingPartyInfo` (name, userId, address). Only supported on WXC; BWRKS and UCM return `null`. |
+| **Contact Resolution** | Resolves caller identity from `CallingPartyInfo` using `userExternalId` (SCIM query) and `name` (People search API). Only supported on WXC; BWRKS and UCM return `null`. |
 | **Metrics Integration** | Automatically submits success/error metrics for every voicemail operation via MetricManager. |
 | **Multi-Backend Support** | Delegates to WXC, Broadworks, or UCM connectors based on user entitlements. |
 

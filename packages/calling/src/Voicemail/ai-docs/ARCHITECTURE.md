@@ -2,13 +2,13 @@
 
 ## Component Overview
 
-The Voicemail module uses a **strategy pattern** with three backend connectors. Architecture: **Application -> Voicemail (facade) -> BackendConnector (WXC/BWRKS/UCM) -> Backend API**. The facade also integrates with MetricManager for telemetry.
+The Voicemail module uses a **strategy pattern** with three backend connectors. Architecture: **Application -> Voicemail (orchestration layer) -> BackendConnector (WXC/BWRKS/UCM) -> Backend API**. The orchestration layer also integrates with MetricManager for telemetry.
 
 ### Component Table
 
 | Layer | Component | File | Key Responsibilities |
 |-------|-----------|------|---------------------|
-| **Facade** | `Voicemail` | `Voicemail.ts` | Backend detection, connector initialization, API delegation, metric submission |
+| **Orchestrator** | `Voicemail` | `Voicemail.ts` | Backend detection, connector initialization, API delegation, metric submission |
 | **WXC Connector** | `WxCallBackendConnector` | `WxCallBackendConnector.ts` | XSI-based voicemail operations, summary, transcript, contact resolution |
 | **BWRKS Connector** | `BroadworksBackendConnector` | `BroadworksBackendConnector.ts` | BW token auth, XSI-based voicemail operations |
 | **UCM Connector** | `UcmBackendConnector` | `UcmBackendConnector.ts` | VG Gateway voicemail operations, Mercury event for async content |
@@ -19,14 +19,14 @@ The Voicemail module uses a **strategy pattern** with three backend connectors. 
 |-----------|---------------|-----------|
 | `Voicemail` | `createVoicemailClient(webex, logger)` factory | One per application |
 | `SDKConnector` | Frozen singleton | Global |
-| `MetricManager` | `getMetricManager(webex)` singleton | Module-level |
+| `MetricManager` | `getMetricManager(webex, undefined)` singleton | Module-level |
 
 ### File Structure
 
 ```
 Voicemail/
-├── Voicemail.ts                        # Facade class
-├── Voicemail.test.ts                   # Facade unit tests
+├── Voicemail.ts                        # Main entrypoint class with public APIs
+├── Voicemail.test.ts                   # Unit tests for the main module
 ├── WxCallBackendConnector.ts           # WXC backend
 ├── WxCallBackendConnector.test.ts      # WXC tests
 ├── BroadworksBackendConnector.ts       # Broadworks backend
@@ -54,7 +54,7 @@ flowchart TB
     end
 
     subgraph VoicemailModule
-        VM[Voicemail\nFacade + Metrics]
+        VM[Voicemail\nOrchestrator + Metrics]
         WXC[WxCallBackendConnector]
         BW[BroadworksBackendConnector]
         UCM[UcmBackendConnector]
@@ -96,7 +96,7 @@ sequenceDiagram
     App->>VM: createVoicemailClient(webex, logger)
     activate VM
     VM->>VM: getCallingBackEnd(webex) -> backend
-    VM->>VM: getMetricManager(webex)
+    VM->>VM: getMetricManager(webex, undefined)
 
     alt WXC
         VM->>Conn: new WxCallBackendConnector(webex, logger)
