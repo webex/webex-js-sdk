@@ -12046,10 +12046,9 @@ describe('plugin-meetings', () => {
             meeting.destination = {
               url: 'https://locus.example.com/locus/123',
               info: {topic: 'x'},
-              fullState: {type: fullStateType},
             };
 
-            meeting.finalizeMeetingAfterInitialLocusSetup({});
+            meeting.finalizeMeetingAfterInitialLocusSetup({fullState: {type: fullStateType}});
 
             assert.notCalled(fetchMeetingInfoStub);
           });
