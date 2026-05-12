@@ -291,6 +291,34 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#isOneOnOneCall', () => {
+      [
+        {description: 'locus is undefined', locus: undefined, expected: false},
+        {description: 'fullState is missing', locus: {}, expected: false},
+        {description: 'fullState.type is missing', locus: {fullState: {}}, expected: false},
+        {description: 'fullState.type is CALL', locus: {fullState: {type: 'CALL'}}, expected: true},
+        {
+          description: 'fullState.type is SIP_BRIDGE',
+          locus: {fullState: {type: 'SIP_BRIDGE'}},
+          expected: true,
+        },
+        {
+          description: 'fullState.type is SPACE_SHARE',
+          locus: {fullState: {type: 'SPACE_SHARE'}},
+          expected: true,
+        },
+        {
+          description: 'fullState.type is MEETING',
+          locus: {fullState: {type: 'MEETING'}},
+          expected: false,
+        },
+      ].forEach(({description, locus, expected}) => {
+        it(`returns ${expected} when ${description}`, () => {
+          assert.equal(MeetingsUtil.isOneOnOneCall(locus), expected);
+        });
+      });
+    });
+
     describe('#joinedOnThisDevice', () => {
       it('return false if no devices in self', () => {
         const newLocus = {};

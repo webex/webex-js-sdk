@@ -3146,6 +3146,30 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
           });
+
+          [
+            {fullStateType: 'CALL'},
+            {fullStateType: 'SIP_BRIDGE'},
+            {fullStateType: 'SPACE_SHARE'},
+          ].forEach(({fullStateType}) => {
+            it(`skips meeting info fetch when LOCUS_ID destination is a 1:1 call (fullState.type ${fullStateType})`, async () => {
+              const locusDestination = {
+                fullState: {type: fullStateType},
+              };
+
+              const meeting = await webex.meetings.createMeeting(
+                locusDestination,
+                DESTINATION_TYPE.LOCUS_ID
+              );
+
+              assert.instanceOf(
+                meeting,
+                Meeting,
+                'createMeeting should eventually resolve to a Meeting Object'
+              );
+              assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
+            });
+          });
         });
 
         describe('rejected MeetingInfo.#fetchMeetingInfo - does not log for known Error types', () => {
