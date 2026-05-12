@@ -264,6 +264,7 @@ describe('plugin-meetings', () => {
       });
 
       it('skips disconnect when practice-session owner is another meeting', async () => {
+        webex.internal.llm.getOwnerMeetingId.returns('other-meeting-id');
         webex.internal.llm.disconnectLLM.resolves(false);
 
         await webinar.cleanupPSDataChannel();
@@ -306,6 +307,11 @@ describe('plugin-meetings', () => {
         }
 
         assert.equal(caughtError, disconnectError);
+        assert.calledOnceWithExactly(
+          webex.internal.llm.setOwnerMeetingId,
+          undefined,
+          PRACTICE_SESSION_KEY
+        );
         assert.calledOnceWithExactly(
           webex.internal.llm.off,
           `event:relay.event:${PRACTICE_SESSION_KEY}`,

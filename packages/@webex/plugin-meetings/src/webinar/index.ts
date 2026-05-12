@@ -170,6 +170,11 @@ const Webinar = WebexPlugin.extend({
    * @returns {Promise<void>}
    */
   async cleanupPSDataChannel() {
+    const {isOwner} = this.webex.internal.llm.resolveSessionOwnership(
+      this.meetingId,
+      LLM_PRACTICE_SESSION
+    );
+
     if (this._pendingOnlineListener) {
       // @ts-ignore - Fix type
       this.webex.internal.llm.off('online', this._pendingOnlineListener);
@@ -192,6 +197,15 @@ const Webinar = WebexPlugin.extend({
           `Webinar:index#cleanupPSDataChannel --> skipping disconnect; practice-session LLM is not owned by meeting ${this.meetingId}`
         );
       }
+    } catch (error) {
+      // disconnectLLM clears ownership only on success; release a stale owner
+      // tag here so other meeting instances can reclaim practice-session LLM.
+      if (isOwner) {
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.setOwnerMeetingId?.(undefined, LLM_PRACTICE_SESSION);
+      }
+
+      throw error;
     } finally {
       if (this._practiceSessionRelayListener) {
         // @ts-ignore - Fix type
