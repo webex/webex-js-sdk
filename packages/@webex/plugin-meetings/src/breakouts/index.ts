@@ -987,6 +987,32 @@ const Breakouts = WebexPlugin.extend({
     });
   },
   /**
+   * Move participants into a specific breakout session
+   * @param {string} groupId - the breakout group ID
+   * @param {string} sessionId - the target breakout session ID
+   * @param {string[]} participants - participant IDs to move
+   * @returns {Promise}
+   */
+  move(groupId: string, sessionId: string, participants: string[]) {
+    return this.request({
+      method: HTTP_VERBS.POST,
+      uri: `${this.url}/move`,
+      body: {
+        groups: [
+          {
+            id: groupId,
+            sessions: [
+              {
+                id: sessionId,
+                participants,
+              },
+            ],
+          },
+        ],
+      },
+    });
+  },
+  /**
    * trigger ASK_RETURN_TO_MAIN event when main session requested
    * @param {Object} breakout
    * @returns {void}
