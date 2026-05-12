@@ -1796,9 +1796,12 @@ export default class Meetings extends WebexPlugin {
       };
       const shouldDeferMeetingInfoFetch = type === DESTINATION_TYPE.LOCUS_ID && !destination?.info;
 
+      const isOneOnOneCallLocus =
+        type === DESTINATION_TYPE.LOCUS_ID && MeetingsUtil.isOneOnOneCall(destination);
+
       if (meetingInfo) {
         meeting.injectMeetingInfo(meetingInfo, meetingInfoOptions, meetingLookupUrl);
-      } else if (type !== DESTINATION_TYPE.ONE_ON_ONE_CALL) {
+      } else if (type !== DESTINATION_TYPE.ONE_ON_ONE_CALL && !isOneOnOneCallLocus) {
         // ignore fetchMeetingInfo for 1:1 meetings
         if (enableUnifiedMeetings && !isMeetingActive && useRandomDelayForInfo && waitingTime > 0) {
           meeting.fetchMeetingInfoTimeoutId = setTimeout(
