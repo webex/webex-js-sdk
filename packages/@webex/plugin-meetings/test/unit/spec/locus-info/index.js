@@ -332,6 +332,7 @@ describe('plugin-meetings', () => {
       describe('should setup correct locusInfoUpdateCallback when creating HashTreeParser', () => {
         const OBJECTS_UPDATED = HashTreeParserModule.LocusInfoUpdateType.OBJECTS_UPDATED;
         const MEETING_ENDED = HashTreeParserModule.LocusInfoUpdateType.MEETING_ENDED;
+        const LOCUS_NOT_FOUND = HashTreeParserModule.LocusInfoUpdateType.LOCUS_NOT_FOUND;
 
         let locusInfoUpdateCallback;
         let onDeltaLocusStub;
@@ -1001,6 +1002,37 @@ describe('plugin-meetings', () => {
           assert.notCalled(destroyStub);
         });
 
+        it('should handle LOCUS_NOT_FOUND by calling syncMeetings with skipHashTreeSync', () => {
+          const syncMeetingsStub = sinon.stub(locusInfo.webex.meetings, 'syncMeetings').resolves();
+
+          locusInfoUpdateCallback({updateType: LOCUS_NOT_FOUND});
+
+          assert.calledOnceWithExactly(syncMeetingsStub, {keepOnlyLocusMeetings: false, skipHashTreeSync: true});
+        });
+
+        it('should handle LOCUS_NOT_FOUND and log error if syncMeetings fails', async () => {
+          const syncError = new Error('sync failed');
+          const syncMeetingsStub = sinon.stub(locusInfo.webex.meetings, 'syncMeetings').rejects(syncError);
+          const logErrorStub = LoggerProxy.logger.error?.isSinonProxy
+            ? LoggerProxy.logger.error
+            : sinon.stub(LoggerProxy.logger, 'error');
+
+          logErrorStub.resetHistory();
+
+          locusInfoUpdateCallback({updateType: LOCUS_NOT_FOUND});
+
+          assert.calledOnceWithExactly(syncMeetingsStub, {keepOnlyLocusMeetings: false, skipHashTreeSync: true});
+
+          // wait for the promise rejection to be handled
+          await testUtils.flushPromises();
+
+          assert.calledOnce(logErrorStub);
+          assert.match(
+            logErrorStub.firstCall.args[0],
+            /syncMeetings failed after LOCUS_NOT_FOUND/
+          );
+        });
+
         it('should set forceReplaceMembers to true on the first update for a locusUrl (initializedFromHashTree is false)', () => {
           const createdHashTreeParser = locusInfo.hashTreeParsers.get('fake-locus-url');
           createdHashTreeParser.initializedFromHashTree = false;
@@ -1331,6 +1363,8 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.IDLE,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
           }
         );
       });
@@ -1365,6 +1399,8 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.RECORDING,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
           }
         );
       });
@@ -1400,6 +1436,8 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.PAUSED,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
           }
         );
       });
@@ -1436,6 +1474,8 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.RESUMED,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
           }
         );
       });
@@ -1471,6 +1511,44 @@ describe('plugin-meetings', () => {
             state: RECORDING_STATE.IDLE,
             modifiedBy: 'George Kittle',
             lastModified: 'TODAY',
+            modifiedByServiceAppName: undefined,
+            modifiedByServiceAppId: undefined,
+          }
+        );
+      });
+
+      it('should include service app fields in the recording event when present', () => {
+        locusInfo.controls = {
+          record: {
+            recording: false,
+            paused: false,
+            meta: {
+              lastModified: 'TODAY',
+              modifiedBy: 'George Kittle',
+            },
+          },
+          shareControl: {},
+          transcribe: {},
+        };
+        newControls.record.recording = true;
+        newControls.record.meta.modifiedByServiceAppName = 'My Bot';
+        newControls.record.meta.modifiedByServiceAppId = 'app-id-123';
+        locusInfo.emitScoped = sinon.stub();
+        locusInfo.updateControls(newControls);
+
+        assert.calledWith(
+          locusInfo.emitScoped,
+          {
+            file: 'locus-info',
+            function: 'updateControls',
+          },
+          LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+          {
+            state: RECORDING_STATE.RECORDING,
+            modifiedBy: 'George Kittle',
+            lastModified: 'TODAY',
+            modifiedByServiceAppName: 'My Bot',
+            modifiedByServiceAppId: 'app-id-123',
           }
         );
       });
