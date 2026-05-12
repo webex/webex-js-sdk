@@ -4,7 +4,6 @@ import {ReceiveSlot} from '@webex/plugin-meetings/src/multistream/receiveSlot';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {getMaxFs, MAX_FS_VALUES} from '@webex/plugin-meetings/src/multistream/remoteMedia';
-import {AV1_CODEC_PARAMETERS} from '@webex/plugin-meetings/src/multistream/codec/constants';
 import FakeTimers from '@sinonjs/fake-timers';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
 import {MediaType, MediaCodecMimeType} from '@webex/internal-media-core';
@@ -1489,6 +1488,7 @@ describe('MediaRequestManager', () => {
         }),
       ]);
     });
+
   });
 
   describe('AV1 resolution mapping', () => {
@@ -1615,6 +1615,28 @@ describe('MediaRequestManager', () => {
         ]
       );
     });
+
+    it('falls back to AV1 bucket-default maxWidth and maxHeight when codecInfo does not set them', () => {
+      addReceiverSelectedRequest(100, fakeReceiveSlots[0], MAX_FS_720p, true);
+
+      assert.calledWith(
+        sendMediaRequestsCallback,
+        [
+          sinon.match({
+            codecInfos: [
+              sinon.match({payloadType: FAKE_H264_PAYLOAD_TYPE}),
+              sinon.match({
+                payloadType: FAKE_AV1_PAYLOAD_TYPE,
+                av1: sinon.match({
+                  maxWidth: 1280,
+                  maxHeight: 720,
+                }),
+              }),
+            ],
+          }),
+        ]
+      );
+    });
   });
 
   describe('degradation with AV1 enabled', () => {
@@ -1659,9 +1681,9 @@ describe('MediaRequestManager', () => {
             sinon.match({
               payloadType: FAKE_AV1_PAYLOAD_TYPE,
               av1: sinon.match({
-                levelIdx: AV1_CODEC_PARAMETERS['720p'].levelIdx,
-                maxWidth: AV1_CODEC_PARAMETERS['720p'].maxWidth,
-                maxHeight: AV1_CODEC_PARAMETERS['720p'].maxHeight,
+                levelIdx: 5,
+                maxWidth: 1280,
+                maxHeight: 720,
               }),
             }),
           ],
@@ -1679,9 +1701,9 @@ describe('MediaRequestManager', () => {
             sinon.match({
               payloadType: FAKE_AV1_PAYLOAD_TYPE,
               av1: sinon.match({
-                levelIdx: AV1_CODEC_PARAMETERS['720p'].levelIdx,
-                maxWidth: AV1_CODEC_PARAMETERS['720p'].maxWidth,
-                maxHeight: AV1_CODEC_PARAMETERS['720p'].maxHeight,
+                levelIdx: 5,
+                maxWidth: 1280,
+                maxHeight: 720,
               }),
             }),
           ],
@@ -1710,9 +1732,9 @@ describe('MediaRequestManager', () => {
             sinon.match({
               payloadType: FAKE_AV1_PAYLOAD_TYPE,
               av1: sinon.match({
-                levelIdx: AV1_CODEC_PARAMETERS['540p'].levelIdx,
-                maxWidth: AV1_CODEC_PARAMETERS['540p'].maxWidth,
-                maxHeight: AV1_CODEC_PARAMETERS['540p'].maxHeight,
+                levelIdx: 4,
+                maxWidth: 960,
+                maxHeight: 540,
               }),
             }),
           ],
@@ -1742,9 +1764,9 @@ describe('MediaRequestManager', () => {
             sinon.match({
               payloadType: FAKE_AV1_PAYLOAD_TYPE,
               av1: sinon.match({
-                levelIdx: AV1_CODEC_PARAMETERS['720p'].levelIdx,
-                maxWidth: AV1_CODEC_PARAMETERS['720p'].maxWidth,
-                maxHeight: AV1_CODEC_PARAMETERS['720p'].maxHeight,
+                levelIdx: 5,
+                maxWidth: 1280,
+                maxHeight: 720,
               }),
             }),
           ],
@@ -1762,9 +1784,9 @@ describe('MediaRequestManager', () => {
             sinon.match({
               payloadType: FAKE_AV1_PAYLOAD_TYPE,
               av1: sinon.match({
-                levelIdx: AV1_CODEC_PARAMETERS['360p'].levelIdx,
-                maxWidth: AV1_CODEC_PARAMETERS['360p'].maxWidth,
-                maxHeight: AV1_CODEC_PARAMETERS['360p'].maxHeight,
+                levelIdx: 1,
+                maxWidth: 640,
+                maxHeight: 360,
               }),
             }),
           ],
@@ -1797,9 +1819,9 @@ describe('MediaRequestManager', () => {
             sinon.match({
               payloadType: FAKE_AV1_PAYLOAD_TYPE,
               av1: sinon.match({
-                levelIdx: AV1_CODEC_PARAMETERS['1080p'].levelIdx,
-                maxWidth: AV1_CODEC_PARAMETERS['1080p'].maxWidth,
-                maxHeight: AV1_CODEC_PARAMETERS['1080p'].maxHeight,
+                levelIdx: 8,
+                maxWidth: 1920,
+                maxHeight: 1080,
               }),
             }),
           ],

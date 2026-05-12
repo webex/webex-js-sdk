@@ -134,7 +134,7 @@ export class MediaRequestManager {
     this.degradationPreferences = options.degradationPreferences;
     this.kind = options.kind;
     this.trimRequestsToNumOfSources = options.trimRequestsToNumOfSources;
-    this.enableAv1 = options.kind === 'video' ? options.enableAv1 ?? false : false;
+    this.enableAv1 = options.kind === 'video' && !!options.enableAv1;
     this.sourceUpdateListener = this.commit.bind(this);
     this.debouncedSourceUpdateListener = debounce(
       this.sourceUpdateListener,
