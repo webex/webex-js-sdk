@@ -22,7 +22,6 @@ import {
   MediaConnectionEventNames,
   MediaContent,
   MediaType,
-  MediaCodecMimeType,
   RemoteTrackType,
   RoapMessage,
   StatsAnalyzer,
@@ -31,7 +30,7 @@ import {
   NetworkQualityMonitor,
   StatsMonitor,
   StatsMonitorEventNames,
-  InboundAudioIssueSubTypes,
+  MediaCodecMimeType,
 } from '@webex/internal-media-core';
 
 import {DataChannelTokenType} from '@webex/internal-plugin-llm';
@@ -970,6 +969,7 @@ export default class Meeting extends StatelessWebexPlugin {
       },
       (csi: CSI) => (this.members.findMemberByCsi(csi) as any)?.id
     );
+
     /**
      * Object containing helper classes for managing media requests for audio/video/screenshare (for multistream media connections)
      * All multistream media requests sent out for this meeting have to go through them.
@@ -989,6 +989,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        this.getIngressPayloadTypeCallback.bind(this),
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1010,6 +1011,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        this.getIngressPayloadTypeCallback.bind(this),
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1031,6 +1033,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        this.getIngressPayloadTypeCallback.bind(this),
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1052,11 +1055,14 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        this.getIngressPayloadTypeCallback.bind(this),
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'video',
           trimRequestsToNumOfSources: false,
+          // @ts-ignore - config coming from registerPlugin
+          enableAv1: this.config.enableAv1SlidesSupport,
         }
       ),
     };
@@ -1715,6 +1721,37 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.mediaServerIp = undefined;
+  }
+
+  /**
+   * Get the ingress payload type for a given media type and codec mime type
+   * @param {MediaType} mediaType - The media type
+   * @param {MediaCodecMimeType} codecMimeType - The codec mime type
+   * @returns {number | undefined} - The ingress payload type
+   * @private
+   * @memberof Meeting
+   */
+  private getIngressPayloadTypeCallback(
+    mediaType: MediaType,
+    codecMimeType: MediaCodecMimeType
+  ): number | undefined {
+    if (this.isMultistream) {
+      try {
+        return this.mediaProperties.webrtcMediaConnection.getIngressPayloadType(
+          mediaType,
+          codecMimeType
+        );
+      } catch (error) {
+        LoggerProxy.logger.info(
+          `Meeting:index#mediaRequestManager --> failed to get ingress payload type for mediaType=${mediaType}, codecMimeType=${codecMimeType}`,
+          error
+        );
+
+        return undefined;
+      }
+    }
+
+    return undefined;
   }
 
   /**
@@ -4706,7 +4743,8 @@ export default class Meeting extends StatelessWebexPlugin {
     if (
       (!this.meetingInfo || isEmpty(this.meetingInfo)) &&
       (this.destination as LocusDTO)?.info &&
-      !this.fetchMeetingInfoTimeoutId
+      !this.fetchMeetingInfoTimeoutId &&
+      !MeetingsUtil.isOneOnOneCall(locus)
     ) {
       try {
         await this.fetchMeetingInfo({});
@@ -7811,6 +7849,8 @@ export default class Meeting extends StatelessWebexPlugin {
         disableAudioMainDtx: this.config.experimental.disableAudioMainDtx,
         // @ts-ignore - config coming from registerPlugin
         enableAudioTwcc: this.config.enableAudioTwccForMultistream,
+        // @ts-ignore - config coming from registerPlugin
+        enableAv1SlidesSupport: this.config.enableAv1SlidesSupport,
         stopIceGatheringAfterFirstRelayCandidate:
           // @ts-ignore - config coming from registerPlugin
           this.config.stopIceGatheringAfterFirstRelayCandidate,

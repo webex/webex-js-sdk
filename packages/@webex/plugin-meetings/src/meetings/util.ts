@@ -1,12 +1,15 @@
 /* globals window */
 
 import {
+  _CALL_,
   _CREATED_,
   _INCOMING_,
   _JOINED_,
   _LEFT_,
   DESTINATION_TYPE,
   _MOVED_,
+  _SIP_BRIDGE_,
+  _SPACE_SHARE_,
   BREAKOUTS,
   EVENT_TRIGGERS,
   LOCUS,
@@ -318,6 +321,20 @@ MeetingsUtil.isSelfMovedOrBreakoutEnded = (locus: any): boolean => {
     locus?.fullState?.endMeetingReason === EndMeetingReason.breakoutEnded;
 
   return isSelfLeftMoved || isBreakoutEnded;
+};
+
+/**
+ * Checks if a locus is a 1:1 call using locus.fullState.type.
+ * Returns true when fullState.type is CALL, SIP_BRIDGE, or SPACE_SHARE.
+ * @param {Object} locus locus data
+ * @returns {boolean}
+ */
+MeetingsUtil.isOneOnOneCall = (locus: any): boolean => {
+  const fullStateType = locus?.fullState?.type;
+
+  return (
+    fullStateType === _CALL_ || fullStateType === _SIP_BRIDGE_ || fullStateType === _SPACE_SHARE_
+  );
 };
 
 /**

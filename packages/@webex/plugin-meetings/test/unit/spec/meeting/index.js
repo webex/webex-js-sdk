@@ -434,6 +434,160 @@ describe('plugin-meetings', () => {
           assert.instanceOf(meeting.mediaRequestManagers.screenShareVideo, MediaRequestManager);
         });
 
+        it('getIngressPayloadType on webrtcMediaConnection is invoked for H264 when sending multistream video requests', () => {
+          const getIngressPayloadType = sinon.stub().returns(97);
+
+          meeting.isMultistream = true;
+          meeting.mediaProperties.webrtcMediaConnection = {
+            getIngressPayloadType,
+            requestMedia: sinon.stub(),
+          };
+
+          const fakeReceiveSlot = {
+            on: sinon.stub(),
+            off: sinon.stub(),
+            sourceState: 'live',
+            mediaType: MediaType.VideoMain,
+            wcmeReceiveSlot: {id: 'fake-wcme-slot'},
+          };
+
+          meeting.mediaRequestManagers.video.addRequest(
+            {
+              policyInfo: {
+                policy: 'receiver-selected',
+                csi: 42,
+              },
+              receiveSlots: [fakeReceiveSlot],
+              codecInfo: {
+                codec: 'h264',
+                maxFs: 3600,
+              },
+            },
+            true
+          );
+
+          assert.calledOnceWithExactly(
+            getIngressPayloadType,
+            MediaType.VideoMain,
+            MediaCodecMimeType.H264
+          );
+        });
+
+        it('getIngressPayloadType on webrtcMediaConnection is invoked for H264 and AV1 for slides video when AV1 slides support is enabled', () => {
+          const localWebex = new MockWebex({
+            children: {
+              meetings: Meetings,
+              credentials: Credentials,
+              support: Support,
+              llm: LLM,
+              mercury: Mercury,
+            },
+            config: {
+              credentials: {
+                client_id: 'mock-client-id',
+              },
+              meetings: {
+                reconnection: {
+                  enabled: false,
+                },
+                mediaSettings: {},
+                metrics: {},
+                stats: {},
+                experimental: {enableUnifiedMeetings: true},
+                degradationPreferences: {maxMacroblocksLimit: 8192},
+                enableAv1SlidesSupport: true,
+              },
+              metrics: {
+                type: ['behavioral'],
+              },
+            },
+          });
+
+          localWebex.internal.newMetrics.callDiagnosticMetrics.clearErrorCache = sinon.stub();
+          localWebex.internal.newMetrics.callDiagnosticMetrics.clearEventLimitsForCorrelationId =
+            sinon.stub();
+          localWebex.internal.support.submitLogs = sinon.stub().returns(Promise.resolve());
+          localWebex.internal.services = {get: sinon.stub().returns('locus-url')};
+          localWebex.credentials.getOrgId = sinon.stub().returns('fake-org-id');
+          localWebex.internal.metrics.submitClientMetrics = sinon.stub().returns(Promise.resolve());
+          localWebex.meetings.uploadLogs = sinon.stub().returns(Promise.resolve());
+          localWebex.meetings.reachability = {
+            isAnyPublicClusterReachable: sinon.stub().resolves(true),
+            getReachabilityResults: sinon.stub().resolves(undefined),
+            getReachabilityMetrics: sinon.stub().resolves({}),
+            stopReachability: sinon.stub(),
+            isSubnetReachable: sinon.stub().returns(true),
+          };
+          localWebex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(false);
+          localWebex.internal.llm.on = sinon.stub();
+          localWebex.internal.voicea.announce = sinon.stub();
+          localWebex.internal.newMetrics.callDiagnosticLatencies = new CallDiagnosticLatencies(
+            {},
+            {parent: localWebex}
+          );
+
+          Metrics.initialSetup(localWebex);
+
+          const localMeeting = new Meeting(
+            {
+              userId: uuid1,
+              resource: uuid2,
+              deviceUrl: uuid3,
+              locus: {url: url1},
+              destination: testDestination,
+              destinationType: DESTINATION_TYPE.MEETING_ID,
+              correlationId,
+              selfId: uuid1,
+            },
+            {
+              parent: localWebex,
+            }
+          );
+
+          const getIngressPayloadType = sinon.stub().callsFake((_mediaType, codecMimeType) => {
+            if (codecMimeType === MediaCodecMimeType.H264) {
+              return 97;
+            }
+            if (codecMimeType === MediaCodecMimeType.AV1) {
+              return 98;
+            }
+
+            return undefined;
+          });
+
+          localMeeting.isMultistream = true;
+          localMeeting.mediaProperties.webrtcMediaConnection = {
+            getIngressPayloadType,
+            requestMedia: sinon.stub(),
+          };
+
+          const fakeReceiveSlot = {
+            on: sinon.stub(),
+            off: sinon.stub(),
+            sourceState: 'live',
+            mediaType: MediaType.VideoSlides,
+            wcmeReceiveSlot: {id: 'fake-wcme-slides-slot'},
+          };
+
+          localMeeting.mediaRequestManagers.screenShareVideo.addRequest(
+            {
+              policyInfo: {
+                policy: 'receiver-selected',
+                csi: 42,
+              },
+              receiveSlots: [fakeReceiveSlot],
+              codecInfo: {
+                codec: 'h264',
+                maxFs: 3600,
+              },
+            },
+            true
+          );
+
+          assert.calledWith(getIngressPayloadType, MediaType.VideoSlides, MediaCodecMimeType.H264);
+          assert.calledWith(getIngressPayloadType, MediaType.VideoSlides, MediaCodecMimeType.AV1);
+        });
+
         it('uses meeting id as correlation id if not provided in constructor', () => {
           const newMeeting = new Meeting(
             {
@@ -12050,6 +12204,22 @@ describe('plugin-meetings', () => {
           meeting.finalizeMeetingAfterInitialLocusSetup({});
 
           assert.notCalled(fetchMeetingInfoStub);
+        });
+
+        ['CALL', 'SIP_BRIDGE', 'SPACE_SHARE'].forEach((fullStateType) => {
+          it(`does not fetch meeting info when destination is a 1:1 call (fullState.type ${fullStateType})`, () => {
+            const fetchMeetingInfoStub = sinon.stub(meeting, 'fetchMeetingInfo').resolves();
+
+            meeting.meetingInfo = {};
+            meeting.destination = {
+              url: 'https://locus.example.com/locus/123',
+              info: {topic: 'x'},
+            };
+
+            meeting.finalizeMeetingAfterInitialLocusSetup({fullState: {type: fullStateType}});
+
+            assert.notCalled(fetchMeetingInfoStub);
+          });
         });
 
         it('swallows async fetchMeetingInfo errors and logs info', async () => {
