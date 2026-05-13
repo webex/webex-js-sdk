@@ -402,7 +402,7 @@ const Webinar = WebexPlugin.extend({
         LLM_PRACTICE_SESSION
       )
       .then((registerAndConnectResult) => {
-        if (this.meetingId) {
+        if (this.meetingId && isOwner) {
           // @ts-ignore - Fix type
           this.webex.internal.llm.setOwnerMeetingId?.(this.meetingId, LLM_PRACTICE_SESSION);
         }
