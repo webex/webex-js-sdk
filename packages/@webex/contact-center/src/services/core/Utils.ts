@@ -82,6 +82,15 @@ export const isValidDialNumber = (
   input: string,
   dialPlanEntries: DialPlan['dialPlanEntity']
 ): boolean => {
+  if (!input) {
+    LoggerProxy.warn('Dial number is empty or undefined.', {
+      module: 'Utils',
+      method: 'isValidDialNumber',
+    });
+
+    return false;
+  }
+
   if (!dialPlanEntries || dialPlanEntries.length === 0) {
     LoggerProxy.log(
       'No dial plan entries found. Skipping client-side validation, deferring to server.',
@@ -98,7 +107,7 @@ export const isValidDialNumber = (
 
       return regex.test(sanitizedInput);
     } catch (e) {
-      LoggerProxy.warn(`Invalid dial plan regex for entry "${entry.name}": ${e}`, {
+      LoggerProxy.warn(`Failed to validate dial number against entry "${entry.name}": ${e}`, {
         module: 'Utils',
         method: 'isValidDialNumber',
       });

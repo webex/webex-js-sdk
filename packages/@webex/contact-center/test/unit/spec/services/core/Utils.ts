@@ -649,6 +649,26 @@ describe('Utils', () => {
       });
     });
 
+    describe('empty or undefined dial number', () => {
+      it('should return false and log warning for undefined dial number', () => {
+        const result = Utils.isValidDialNumber(undefined as any, [anyFormatEntry]);
+        expect(result).toBe(false);
+        expect(LoggerProxy.warn).toHaveBeenCalledWith(
+          'Dial number is empty or undefined.',
+          expect.objectContaining({module: 'Utils', method: 'isValidDialNumber'})
+        );
+      });
+
+      it('should return false and log warning for empty string dial number', () => {
+        const result = Utils.isValidDialNumber('', [anyFormatEntry]);
+        expect(result).toBe(false);
+        expect(LoggerProxy.warn).toHaveBeenCalledWith(
+          'Dial number is empty or undefined.',
+          expect.objectContaining({module: 'Utils', method: 'isValidDialNumber'})
+        );
+      });
+    });
+
     describe('invalid regex handling', () => {
       it('should return false and log warning for invalid regex pattern', () => {
         const badEntry = {
@@ -660,7 +680,7 @@ describe('Utils', () => {
         const result = Utils.isValidDialNumber('12345', [badEntry]);
         expect(result).toBe(false);
         expect(LoggerProxy.warn).toHaveBeenCalledWith(
-          expect.stringContaining('Invalid dial plan regex for entry "Bad Regex"'),
+          expect.stringContaining('Failed to validate dial number against entry "Bad Regex"'),
           expect.objectContaining({module: 'Utils', method: 'isValidDialNumber'})
         );
       });

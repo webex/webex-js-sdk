@@ -850,12 +850,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    * ```
    */
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
+    const loggerContext = {module: CC_FILE, method: METHODS.STATION_LOGIN};
+
     LoggerProxy.log(
       `Starting agent station login | loginOption: ${data.loginOption} teamId: ${data.teamId}`,
-      {
-        module: CC_FILE,
-        method: METHODS.STATION_LOGIN,
-      }
+      loggerContext
     );
     try {
       this.metricsManager.timeEvent([
@@ -868,19 +867,13 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         LoggerProxy.log(
           `Validating dial number | dialPlanEnabled: ${!!this.agentConfig
             ?.dialPlan} | dialPlanEntryCount: ${dialPlanEntries.length}`,
-          {
-            module: CC_FILE,
-            method: METHODS.STATION_LOGIN,
-          }
+          loggerContext
         );
 
         if (!isValidDialNumber(data.dialNumber, dialPlanEntries)) {
           LoggerProxy.log(
             `Dial number validation failed | dialNumber: ${data.dialNumber} | dialPlanEntryCount: ${dialPlanEntries.length}`,
-            {
-              module: CC_FILE,
-              method: METHODS.STATION_LOGIN,
-            }
+            loggerContext
           );
           const error = new Error('INVALID_DIAL_NUMBER');
           // @ts-ignore - adding custom key to the error object
