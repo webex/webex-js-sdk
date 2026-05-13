@@ -13,10 +13,6 @@ import {MobiusSocketResponseError} from './types';
 export class ConnectionError extends Exception {
   static defaultMessage = 'Failed to connect to socket';
 
-  code?: number;
-
-  reason?: string;
-
   // eslint-disable-next-line no-useless-constructor
   constructor(event?: SocketCloseEvent) {
     super(event);
@@ -33,6 +29,11 @@ export class ConnectionError extends Exception {
 
     return event.reason;
   }
+}
+
+export interface ConnectionError {
+  code?: number;
+  reason?: string;
 }
 
 /**
