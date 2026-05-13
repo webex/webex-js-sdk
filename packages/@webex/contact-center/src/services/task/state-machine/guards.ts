@@ -45,6 +45,24 @@ export const isSelfConsultingAgent = (context: TaskContext, taskData?: TaskData)
 };
 
 /**
+ * Detects an active consult during post_call state (customer left but agents still consulting).
+ * Shared by hydration guard (isInteractionConsulting) and action (deriveTaskDataUpdates).
+ */
+export const hasActiveConsultInPostCall = (
+  taskData: TaskData | undefined,
+  selfAgentId?: string
+): boolean => {
+  if (taskData?.interaction?.state !== INTERACTION_STATE.POST_CALL || !selfAgentId) return false;
+
+  const selfParticipant = taskData.interaction?.participants?.[selfAgentId];
+  const hasConsultMedia = Object.values(taskData.interaction?.media ?? {}).some(
+    (media) => (media as {mType?: string})?.mType === MEDIA_TYPE_CONSULT
+  );
+
+  return selfParticipant?.consultState === CONSULT_STATE.CONSULTING && hasConsultMedia;
+};
+
+/**
  * Determines if this agent should enter WRAPPING_UP state.
  * Priority: agentsPendingWrapUp > wrapUpRequired / participant.isWrapUp > ownership > !isConsulted
  */
@@ -113,17 +131,8 @@ export const guards = {
 
     // Customer left during consult: interaction state is "post_call" but consult
     // between agents is still active. Detect via agent's consultState + consult media.
-    if (taskData?.interaction?.state === INTERACTION_STATE.POST_CALL) {
-      const selfAgentId = getSelfAgentId(context, taskData);
-      const selfParticipant = selfAgentId
-        ? taskData?.interaction?.participants?.[selfAgentId]
-        : null;
-      const hasConsultMedia = Object.values(taskData?.interaction?.media ?? {}).some(
-        (media) => (media as {mType?: string})?.mType === MEDIA_TYPE_CONSULT
-      );
-      if (selfParticipant?.consultState === CONSULT_STATE.CONSULTING && hasConsultMedia) {
-        return true;
-      }
+    if (hasActiveConsultInPostCall(taskData, getSelfAgentId(context, taskData))) {
+      return true;
     }
 
     return false;
