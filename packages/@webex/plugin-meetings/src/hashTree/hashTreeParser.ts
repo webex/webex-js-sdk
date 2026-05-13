@@ -1,10 +1,12 @@
 import {cloneDeep, isEmpty, zip} from 'lodash';
 import HashTree, {LeafDataItem} from './hashTree';
 import LoggerProxy from '../common/logs/logger-proxy';
+import Metrics from '../metrics';
+import BEHAVIORAL_METRICS from '../metrics/constants';
 import {Enum, HTTP_VERBS} from '../constants';
 import {DataSetNames, DATA_SET_INIT_PRIORITY, EMPTY_HASH} from './constants';
 import {ObjectType, HtMeta, HashTreeObject} from './types';
-import {LocusDTO} from '../locus-info/types';
+import {LocusDTO, LocusErrorCodes} from '../locus-info/types';
 import {deleteNestedObjectsWithHtMeta, isMetadata, sortByInitPriority} from './utils';
 
 export interface DataSet {
@@ -47,6 +49,7 @@ interface InternalDataSet extends DataSet {
   hashTree?: HashTree; // set only for visible data sets
   timer?: ReturnType<typeof setTimeout>;
   heartbeatWatchdogTimer?: ReturnType<typeof setTimeout>;
+  syncAbortController?: AbortController;
 }
 
 type WebexRequestMethod = (options: Record<string, any>) => Promise<any>;
@@ -54,17 +57,23 @@ type WebexRequestMethod = (options: Record<string, any>) => Promise<any>;
 export const LocusInfoUpdateType = {
   OBJECTS_UPDATED: 'OBJECTS_UPDATED',
   MEETING_ENDED: 'MEETING_ENDED',
+  LOCUS_NOT_FOUND: 'LOCUS_NOT_FOUND',
 } as const;
 
 export type LocusInfoUpdateType = Enum<typeof LocusInfoUpdateType>;
-export type LocusInfoUpdate =
-  | {
-      updateType: typeof LocusInfoUpdateType.OBJECTS_UPDATED;
-      updatedObjects: HashTreeObject[];
-    }
-  | {
-      updateType: typeof LocusInfoUpdateType.MEETING_ENDED;
-    };
+
+interface LocusUpdatePayloads {
+  [LocusInfoUpdateType.OBJECTS_UPDATED]: {updatedObjects: HashTreeObject[]};
+  [LocusInfoUpdateType.MEETING_ENDED]: unknown; // No extra data
+  [LocusInfoUpdateType.LOCUS_NOT_FOUND]: unknown; // No extra data
+}
+
+export type LocusInfoUpdate = {
+  [K in keyof LocusUpdatePayloads]: {
+    updateType: K;
+  } & LocusUpdatePayloads[K];
+}[keyof LocusUpdatePayloads];
+
 export type LocusInfoUpdateCallback = (update: LocusInfoUpdate) => void;
 
 interface LeafInfo {
@@ -79,6 +88,13 @@ interface LeafInfo {
  * It's handled internally by HashTreeParser and results in MEETING_ENDED being sent up.
  */
 export class MeetingEndedError extends Error {}
+
+/**
+ * This error is thrown when a 404 is received from Locus hash tree endpoints, indicating that the locus URL
+ * is no longer valid (e.g. participant moved to a breakout room, or meeting ended).
+ * It's handled internally by HashTreeParser and results in LOCUS_NOT_FOUND being sent up.
+ */
+export class LocusNotFoundError extends Error {}
 
 /* Currently Locus always sends Metadata objects only in the "self" dataset.
  * If this ever changes, update all the code that relies on this constant.
@@ -544,10 +560,38 @@ class HashTreeParser {
       )}`
     );
 
+    this.cancelPendingSyncsForDataSets(dataSets.map((ds) => ds.name));
+
     dataSets.forEach((dataSet) => {
       this.updateDataSetInfo(dataSet);
       this.runSyncAlgorithm(dataSet);
     });
+  }
+
+  /**
+   * Handles known errors that can happen during syncs
+   *
+   * @param {any} error - The error to handle
+   * @returns {boolean} true if the error was recognized and handled, false otherwise
+   */
+  private handleSyncErrors(error: any) {
+    if (error instanceof MeetingEndedError) {
+      this.callLocusInfoUpdateCallback({
+        updateType: LocusInfoUpdateType.MEETING_ENDED,
+      });
+
+      return true;
+    }
+    if (error instanceof LocusNotFoundError) {
+      this.callLocusInfoUpdateCallback({
+        updateType: LocusInfoUpdateType.LOCUS_NOT_FOUND,
+      });
+      this.stop();
+
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -566,11 +610,7 @@ class HashTreeParser {
     );
     queueMicrotask(() => {
       this.initializeNewVisibleDataSets(dataSetsRequiringInitialization).catch((error) => {
-        if (error instanceof MeetingEndedError) {
-          this.callLocusInfoUpdateCallback({
-            updateType: LocusInfoUpdateType.MEETING_ENDED,
-          });
-        } else {
+        if (!this.handleSyncErrors(error)) {
           LoggerProxy.logger.warn(
             `HashTreeParser#queueInitForNewVisibleDataSets --> ${
               this.debugId
@@ -647,6 +687,12 @@ class HashTreeParser {
     }
 
     const {dataSets, locus, metadata} = update;
+
+    LoggerProxy.logger.info(
+      `HashTreeParser#handleLocusUpdate --> ${this.debugId} received update with dataSets=${dataSets
+        ?.map((ds) => ds.name)
+        .join(',')} metadata=${metadata ? 'yes' : 'no'}`
+    );
 
     if (!dataSets) {
       // this happens for example when we handle GET /loci response
@@ -754,6 +800,18 @@ class HashTreeParser {
   }
 
   /**
+   * Updates the leaf count for a data set, resizing its hash tree accordingly.
+   *
+   * @param {InternalDataSet} dataSet - The data set to update
+   * @param {number} newLeafCount - The new leaf count
+   * @returns {void}
+   */
+  private updateDataSetLeafCount(dataSet: InternalDataSet, newLeafCount: number): void {
+    dataSet.hashTree?.resize(newLeafCount);
+    dataSet.leafCount = newLeafCount;
+  }
+
+  /**
    * Checks for changes in the visible data sets based on the updated objects.
    * @param {HashTreeObject[]} updatedObjects - The list of updated hash tree objects.
    * @returns {Object} An object containing the removed and added visible data sets.
@@ -803,6 +861,8 @@ class HashTreeParser {
    */
   private deleteHashTree(dataSetName: string) {
     this.dataSets[dataSetName].hashTree = undefined;
+    this.dataSets[dataSetName].syncAbortController?.abort();
+    this.dataSets[dataSetName].syncAbortController = undefined;
 
     // we also need to stop the timers as there is no hash tree anymore to sync
     if (this.dataSets[dataSetName].timer) {
@@ -952,19 +1012,33 @@ class HashTreeParser {
     const {dataSets, visibleDataSetsUrl} = message;
 
     LoggerProxy.logger.info(
-      `HashTreeParser#parseMessage --> ${this.debugId} received message ${debugText || ''}:`,
-      message
+      `HashTreeParser#parseMessage --> ${this.debugId} ${
+        debugText || ''
+      } dataSets: ${message.dataSets
+        ?.map(({name, version}) => `${name}:${version}`)
+        .join(',')}, elements: ${message.locusStateElements
+        ?.map(
+          (el) =>
+            `${el.htMeta.elementId.type}:${el.htMeta.elementId.id}:${el.htMeta.elementId.version}${
+              el.data ? '+' : '-'
+            }`
+        )
+        .join(',')}`
     );
+
     if (message.locusStateElements?.length === 0) {
       LoggerProxy.logger.warn(
         `HashTreeParser#parseMessage --> ${this.debugId} got empty locusStateElements!!!`
       );
-      // todo: send a metric
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_EMPTY_LOCUS_STATE_ELEMENTS, {
+        debugId: this.debugId,
+      });
     }
 
     // first, update our metadata about the datasets with info from the message
     this.visibleDataSetsUrl = visibleDataSetsUrl;
     dataSets.forEach((dataSet) => this.updateDataSetInfo(dataSet));
+    this.cancelPendingSyncsForDataSets(dataSets.map((ds) => ds.name));
 
     const updatedObjects: HashTreeObject[] = [];
 
@@ -1188,6 +1262,9 @@ class HashTreeParser {
       return;
     }
 
+    const abortController = dataSet.syncAbortController ?? new AbortController();
+    dataSet.syncAbortController = abortController;
+
     const {hashTree} = dataSet;
     const rootHash = hashTree.getRootHash();
 
@@ -1213,7 +1290,7 @@ class HashTreeParser {
 
             receivedHashes = hashesResult.hashes;
 
-            hashTree.resize(hashesResult.dataSet.leafCount);
+            this.updateDataSetLeafCount(dataSet, hashesResult.dataSet.leafCount);
           } catch (error: any) {
             if (error?.statusCode === 409) {
               // this is a leaf count mismatch, we should do nothing, just wait for another heartbeat message from Locus
@@ -1236,6 +1313,14 @@ class HashTreeParser {
           leavesData = {0: hashTree.getLeafData(0)};
         }
       }
+
+      if (abortController.signal.aborted) {
+        LoggerProxy.logger.info(
+          `HashTreeParser#performSync --> ${this.debugId} abandoning sync for "${dataSet.name}" before /sync - message received during sync`
+        );
+
+        return;
+      }
       // request sync for mismatched leaves
       let syncResponse: HashTreeMessage | null = null;
 
@@ -1253,19 +1338,51 @@ class HashTreeParser {
       this.runSyncAlgorithm(dataSet);
 
       if (syncResponse) {
+        // clear the abort controller before processing the response so that
+        // parseMessage() -> cancelPendingSyncsForDataSets() doesn't log a
+        // misleading "aborting sync" message for this already-completed sync
+        dataSet.syncAbortController = undefined;
         // the format of sync response is the same as messages, so we can reuse the same handler
         this.handleMessage(syncResponse, 'via sync API');
       }
     } catch (error) {
-      if (error instanceof MeetingEndedError) {
-        this.callLocusInfoUpdateCallback({
-          updateType: LocusInfoUpdateType.MEETING_ENDED,
-        });
-      } else {
+      if (!this.handleSyncErrors(error)) {
         LoggerProxy.logger.warn(
           `HashTreeParser#performSync --> ${this.debugId} error during sync for data set "${dataSet.name}":`,
           error
         );
+      }
+    } finally {
+      dataSet.syncAbortController = undefined;
+    }
+  }
+
+  /**
+   * Cancels any pending or in-flight syncs for the specified data sets.
+   * This removes matching entries from the sync queue and aborts any in-flight sync HTTP requests.
+   *
+   * @param {string[]} dataSetNames - The names of the data sets to cancel syncs for
+   * @returns {void}
+   */
+  private cancelPendingSyncsForDataSets(dataSetNames: string[]): void {
+    const previousLength = this.syncQueue.length;
+
+    this.syncQueue = this.syncQueue.filter((entry) => !dataSetNames.includes(entry.dataSetName));
+
+    if (previousLength !== this.syncQueue.length) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#cancelPendingSyncsForDataSets --> ${this.debugId} removed ${
+          previousLength - this.syncQueue.length
+        } entries from sync queue for data sets: ${dataSetNames.join(', ')}`
+      );
+    }
+
+    for (const name of dataSetNames) {
+      if (this.dataSets[name]?.syncAbortController) {
+        LoggerProxy.logger.info(
+          `HashTreeParser#cancelPendingSyncsForDataSets --> ${this.debugId} aborting in-flight sync for data set "${name}"`
+        );
+        this.dataSets[name].syncAbortController.abort();
       }
     }
   }
@@ -1387,9 +1504,8 @@ class HashTreeParser {
     }
 
     if (!dataSet.hashTree) {
-      LoggerProxy.logger.info(
-        `HashTreeParser#runSyncAlgorithm --> ${this.debugId} Data set "${dataSet.name}" has no hash tree, skipping sync algorithm`
-      );
+      // no hash tree, so no need to do any syncing
+      // we fall into this branch often, because Locus sends dataSets in messages that are not visible to us
 
       return;
     }
@@ -1402,10 +1518,6 @@ class HashTreeParser {
       if (dataSet.timer) {
         clearTimeout(dataSet.timer);
       }
-
-      LoggerProxy.logger.info(
-        `HashTreeParser#runSyncAlgorithm --> ${this.debugId} setting "${dataSet.name}" sync timer for ${delay}`
-      );
 
       dataSet.timer = setTimeout(() => {
         dataSet.timer = undefined;
@@ -1424,10 +1536,6 @@ class HashTreeParser {
           this.enqueueSyncForDataset(
             dataSet.name,
             `Root hash mismatch: received=${dataSet.root}, ours=${rootHash}`
-          );
-        } else {
-          LoggerProxy.logger.info(
-            `HashTreeParser#runSyncAlgorithm --> ${this.debugId} "${dataSet.name}" root hash matching: ${rootHash}, version=${dataSet.version}`
           );
         }
       }, delay);
@@ -1475,6 +1583,11 @@ class HashTreeParser {
           `HashTreeParser#resetHeartbeatWatchdogs --> ${this.debugId} Heartbeat watchdog fired for data set "${dataSet.name}" - no heartbeat received within expected interval, initiating sync`
         );
 
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED, {
+          debugId: this.debugId,
+          dataSetName: dataSet.name,
+        });
+
         this.enqueueSyncForDataset(dataSet.name, `heartbeat watchdog expired`);
         this.resetHeartbeatWatchdogs([dataSet]);
       }, delay);
@@ -1511,6 +1624,8 @@ class HashTreeParser {
     this.stopAllTimers();
     this.syncQueue = [];
     Object.values(this.dataSets).forEach((dataSet) => {
+      dataSet.syncAbortController?.abort();
+      dataSet.syncAbortController = undefined;
       dataSet.hashTree = undefined;
     });
     this.visibleDataSets = [];
@@ -1589,17 +1704,28 @@ class HashTreeParser {
   }
 
   private checkForSentinelHttpResponse(error: any, dataSetName?: string) {
+    // 404 for any dataset means the locus is no longer available at this URL - could be replaced or ended
+    // if a dataset is just not visible, we would get a 400
+    if (error.statusCode === 404) {
+      LoggerProxy.logger.info(
+        `HashTreeParser#checkForSentinelHttpResponse --> ${this.debugId} Received 404 for data set "${dataSetName}", locus not found`
+      );
+      this.stopAllTimers();
+
+      throw new LocusNotFoundError();
+    }
+
     const isValidDataSetForSentinel =
       dataSetName === undefined ||
       PossibleSentinelMessageDataSetNames.includes(dataSetName.toLowerCase());
 
     if (
-      ((error.statusCode === 409 && error.body?.errorCode === 2403004) ||
-        error.statusCode === 404) &&
+      error.statusCode === 409 &&
+      error.body?.errorCode === LocusErrorCodes.LOCUS_INACTIVE &&
       isValidDataSetForSentinel
     ) {
       LoggerProxy.logger.info(
-        `HashTreeParser#checkForSentinelHttpResponse --> ${this.debugId} Received ${error.statusCode} for data set "${dataSetName}", indicating that the meeting has ended`
+        `HashTreeParser#checkForSentinelHttpResponse --> ${this.debugId} Received ${error.statusCode}/${error.body?.errorCode} for data set "${dataSetName}", indicating that the meeting has ended`
       );
       this.stopAllTimers();
 
@@ -1667,6 +1793,13 @@ class HashTreeParser {
           error
         );
         this.checkForSentinelHttpResponse(error, dataSet.name);
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_SYNC_FAILURE, {
+          debugId: this.debugId,
+          dataSetName,
+          request: 'GET /hashtree',
+          statusCode: error.statusCode,
+          reason: error.message,
+        });
 
         throw error;
       });
@@ -1725,10 +1858,6 @@ class HashTreeParser {
       body,
     })
       .then((resp) => {
-        LoggerProxy.logger.info(
-          `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Sync request succeeded for "${dataSet.name}"`
-        );
-
         if (!resp.body || isEmpty(resp.body)) {
           LoggerProxy.logger.info(
             `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Got ${resp.statusCode} with empty body for sync request for data set "${dataSet.name}", data should arrive via messages`
@@ -1745,6 +1874,13 @@ class HashTreeParser {
           error
         );
         this.checkForSentinelHttpResponse(error, dataSet.name);
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.HASH_TREE_SYNC_FAILURE, {
+          debugId: this.debugId,
+          dataSetName: dataSet.name,
+          request: 'POST /sync',
+          statusCode: error.statusCode,
+          reason: error.message,
+        });
 
         throw error;
       });

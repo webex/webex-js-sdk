@@ -31,6 +31,7 @@ const Breakout = WebexPlugin.extend({
     groupId: 'string',
     url: 'string', // where to send requests to
     requestedLastModifiedTime: 'string',
+    resourceLink: 'string', // the resource link for this breakout session, used for telemetry and logging
   },
 
   derived: {

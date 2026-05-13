@@ -261,8 +261,7 @@ export default class RecordingController {
 
     LoggerProxy.logger.log(`RecordingController:index#recordingControls --> ${record}`);
 
-    // @ts-ignore
-    return this.request.request({
+    return this.request.locusDeltaRequest({
       uri: `${this.locusUrl}/${CONTROLS}`,
       body: {
         record,

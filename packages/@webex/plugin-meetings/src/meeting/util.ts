@@ -847,6 +847,19 @@ const MeetingUtil = {
   },
 
   /**
+   * Checks if Locus API response contains a Locus DTO
+   *
+   * @param {any} response http response from Locus API call
+   * @returns {boolean} true if response contains a Locus DTO
+   */
+  isLocusDtoInAPIResponse(response: any) {
+    return (
+      response?.body?.locus || // for APIs called on our participant - locus is one of props in the response body
+      response?.body?.url // for APIs that act on locus itself (like mute all), the body is the locus
+    );
+  },
+
+  /**
    * Updates the locus info for the meeting with the locus
    * information returned from API requests made to Locus
    * Returns the original response object
@@ -854,12 +867,13 @@ const MeetingUtil = {
    * @param {Object} response The response of the http request
    * @returns {Object}
    */
-  updateLocusFromApiResponse: (meeting, response) => {
+  updateLocusFromApiResponse: (meeting: any, response: any) => {
     if (!meeting) {
       return response;
     }
 
-    if (response?.body?.locus) {
+    // locus API responses can come in different shapes:
+    if (MeetingUtil.isLocusDtoInAPIResponse(response)) {
       meeting.locusInfo.handleLocusAPIResponse(meeting, response.body);
     }
 
@@ -930,6 +944,9 @@ const MeetingUtil = {
 
   attendeeRequestAiAssistantDeclinedAll: (displayHints = []) =>
     displayHints.includes(DISPLAY_HINTS.ATTENDEE_REQUEST_AI_ASSISTANT_DECLINED_ALL),
+
+  isAnonymizeDisplayNamesEnabled: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.ANONYMOUS_DISPLAY_NAMES_ENABLED),
 
   selfSupportsFeature: (feature: SELF_POLICY, userPolicies: Record<SELF_POLICY, boolean>) => {
     if (!userPolicies) {
