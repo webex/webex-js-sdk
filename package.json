@@ -108,7 +108,7 @@
     "@babel/types": "^7.14.9",
     "@commitlint/cli": "^17.1.2",
     "@commitlint/config-conventional": "^17.1.0",
-    "@playwright/test": "^1.58.2",
+    "@playwright/test": "^1.60.0",
     "@sinonjs/fake-timers": "^6.0.1",
     "@types/circular-dependency-plugin": "^5",
     "@types/format-util": "^1",
