@@ -74,12 +74,6 @@ const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate 
   return update;
 };
 
-const isActiveConsultState = (taskData: TaskData | undefined, selfAgentId?: string): boolean => {
-  if (taskData?.interaction?.state === INTERACTION_STATE.CONSULTING) return true;
-
-  return hasActiveConsultInPostCall(taskData, selfAgentId);
-};
-
 const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefined) =>
   taskData
     ? (() => {
@@ -89,7 +83,9 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
         };
 
         const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
-        const consultingActive = isActiveConsultState(taskData, selfAgentId);
+        const consultingActive =
+          taskData?.interaction?.state === INTERACTION_STATE.CONSULTING ||
+          hasActiveConsultInPostCall(taskData, selfAgentId);
 
         if (taskData.destAgentId) {
           const isEpDnWithStoredId =
