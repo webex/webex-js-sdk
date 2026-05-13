@@ -185,6 +185,7 @@ export const METHODS = {
   POST_MEDIA: 'postMedia',
   MEDIA_ROAP_EVENTS_LISTENER: 'mediaRoapEventsListener',
   MEDIA_TRACK_LISTENER: 'mediaTrackListener',
+  MEDIA_ICE_EVENTS_LISTENER: 'mediaIceEventsListener',
   ON_EFFECT_ENABLED: 'onEffectEnabled',
   ON_EFFECT_DISABLED: 'onEffectDisabled',
   UPDATE_TRACK: 'updateTrack',

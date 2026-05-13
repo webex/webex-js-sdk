@@ -936,6 +936,27 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * API to toggle AV1 codec support for video slides in multistream,
+   * needs to be called before webex.meetings.joinWithMedia()
+   *
+   * @param {Boolean} newValue
+   * @private
+   * @memberof Meetings
+   * @returns {undefined}
+   */
+  private _toggleEnableAv1SlidesSupport(newValue: boolean) {
+    if (typeof newValue !== 'boolean') {
+      return;
+    }
+
+    // @ts-ignore
+    if (this.config.enableAv1SlidesSupport !== newValue) {
+      // @ts-ignore
+      this.config.enableAv1SlidesSupport = newValue;
+    }
+  }
+
+  /**
    * API to toggle stopping ICE Candidates Gathering after first relay candidate,
    * needs to be called before webex.meetings.joinWithMedia()
    *
