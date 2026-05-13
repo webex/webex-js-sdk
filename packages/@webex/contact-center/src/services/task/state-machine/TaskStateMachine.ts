@@ -468,15 +468,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
             {
-              // Interaction terminated during consult (customer left) → WRAPPING_UP
+              // Customer left during consult → WRAPPING_UP
               guard: ({context, event}) => {
                 if (context.consultInitiator !== true) return false;
                 const taskData = getTaskDataFromEvent(event);
 
-                return (
-                  taskData?.interaction?.isTerminated === true &&
-                  shouldWrapUpForThisAgent(context, taskData)
-                );
+                return shouldWrapUpForThisAgent(context, taskData, {requireCustomerLeft: true});
               },
               target: TaskState.WRAPPING_UP,
               actions: [
