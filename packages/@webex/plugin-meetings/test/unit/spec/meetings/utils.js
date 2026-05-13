@@ -5,6 +5,8 @@ import MeetingsUtil from '@webex/plugin-meetings/src/meetings/util';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
 
+const multipartSitePrefixList = ['.my.', '.mydmz.', '.mybts.', '.mydev.', '.myats2.', '.myats.'];
+
 describe('plugin-meetings', () => {
   beforeEach(() => {
     sinon.stub(Metrics, 'sendBehavioralMetric');
@@ -72,6 +74,28 @@ describe('plugin-meetings', () => {
         };
 
         assert.equal(MeetingsUtil.parseDefaultSiteFromMeetingPreferences(userPreferences), '');
+      });
+    });
+
+    describe('#getSiteName', () => {
+      it('gets the site name from a standard Webex site', () => {
+        assert.equal(MeetingsUtil.getSiteName('go.webex.com', multipartSitePrefixList), 'go');
+      });
+
+      it('gets the site name from a my Webex site', () => {
+        assert.equal(MeetingsUtil.getSiteName('go.my.webex.com', multipartSitePrefixList), 'go.my');
+      });
+
+      it('uses the configured multipart site prefix list', () => {
+        assert.equal(MeetingsUtil.getSiteName('go.custom.webex.com', ['.custom.']), 'go.custom');
+      });
+
+      it('falls back to the first label when the multipart site prefix list does not match', () => {
+        assert.equal(MeetingsUtil.getSiteName('go.my.webex.com', ['.custom.']), 'go');
+      });
+
+      it('returns null when the site is empty', () => {
+        assert.equal(MeetingsUtil.getSiteName('', multipartSitePrefixList), null);
       });
     });
 
@@ -235,6 +259,63 @@ describe('plugin-meetings', () => {
         };
 
         assert.equal(MeetingsUtil.isMainAssociatedWithBreakout(mainLocus, breakoutLocus), false);
+      });
+    });
+
+    describe('#isWholeMeetingEnded', () => {
+      [
+        {description: 'state is INACTIVE with no endMeetingReason', fullState: {state: 'INACTIVE'}, expected: true},
+        {description: 'state is INACTIVE with endMeetingReason OTHER', fullState: {state: 'INACTIVE', endMeetingReason: 'SOME_OTHER_REASON'}, expected: true},
+        {description: 'state is INACTIVE with endMeetingReason BREAKOUT_ENDED', fullState: {state: 'INACTIVE', endMeetingReason: 'BREAKOUT_ENDED'}, expected: false},
+        {description: 'state is not INACTIVE', fullState: {state: 'ACTIVE', endMeetingReason: 'SOME_OTHER_REASON'}, expected: false},
+      ].forEach(({description, fullState, expected}) => {
+        it(`returns ${expected} when ${description}`, () => {
+          assert.equal(MeetingsUtil.isWholeMeetingEnded(fullState), expected);
+        });
+      });
+    });
+
+    describe('#isSelfMovedOrBreakoutEnded', () => {
+      [
+        {description: 'locus is undefined', locus: undefined, expected: false},
+        {description: 'self state is JOINED', locus: {self: {state: 'JOINED', reason: 'OTHER'}}, expected: false},
+        {description: 'self state is LEFT with reason MOVED', locus: {self: {state: 'LEFT', reason: 'MOVED'}}, expected: true},
+        {description: 'fullState is INACTIVE with BREAKOUT_ENDED', locus: {self: {state: 'LEFT', reason: 'OTHER'}, fullState: {state: 'INACTIVE', endMeetingReason: 'BREAKOUT_ENDED'}}, expected: true},
+        {description: 'fullState is INACTIVE with different endMeetingReason', locus: {self: {state: 'LEFT', reason: 'OTHER'}, fullState: {state: 'INACTIVE', endMeetingReason: 'SOME_OTHER_REASON'}}, expected: false},
+        {description: 'fullState is missing', locus: {self: {state: 'LEFT', reason: 'OTHER'}}, expected: false},
+        {description: 'endMeetingReason is missing', locus: {self: {state: 'LEFT', reason: 'OTHER'}, fullState: {state: 'INACTIVE'}}, expected: false},
+      ].forEach(({description, locus, expected}) => {
+        it(`returns ${expected} when ${description}`, () => {
+          assert.equal(MeetingsUtil.isSelfMovedOrBreakoutEnded(locus), expected);
+        });
+      });
+    });
+
+    describe('#isOneOnOneCall', () => {
+      [
+        {description: 'locus is undefined', locus: undefined, expected: false},
+        {description: 'fullState is missing', locus: {}, expected: false},
+        {description: 'fullState.type is missing', locus: {fullState: {}}, expected: false},
+        {description: 'fullState.type is CALL', locus: {fullState: {type: 'CALL'}}, expected: true},
+        {
+          description: 'fullState.type is SIP_BRIDGE',
+          locus: {fullState: {type: 'SIP_BRIDGE'}},
+          expected: true,
+        },
+        {
+          description: 'fullState.type is SPACE_SHARE',
+          locus: {fullState: {type: 'SPACE_SHARE'}},
+          expected: true,
+        },
+        {
+          description: 'fullState.type is MEETING',
+          locus: {fullState: {type: 'MEETING'}},
+          expected: false,
+        },
+      ].forEach(({description, locus, expected}) => {
+        it(`returns ${expected} when ${description}`, () => {
+          assert.equal(MeetingsUtil.isOneOnOneCall(locus), expected);
+        });
       });
     });
 

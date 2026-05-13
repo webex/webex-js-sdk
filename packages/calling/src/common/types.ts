@@ -75,6 +75,7 @@ export type Digit = string | number;
 export type ServerInfo = {
   region: string;
   uris: string[];
+  wss?: string[];
 };
 
 export type MobiusServers = {
@@ -267,6 +268,8 @@ export interface SCIMListResponse {
 export enum WorkerMessageType {
   START_KEEPALIVE = 'START_KEEPALIVE',
   CLEAR_KEEPALIVE = 'CLEAR_KEEPALIVE',
+  SEND_KEEPALIVE = 'SEND_KEEPALIVE',
+  KEEPALIVE_RESULT = 'KEEPALIVE_RESULT',
   KEEPALIVE_SUCCESS = 'KEEPALIVE_SUCCESS',
   KEEPALIVE_FAILURE = 'KEEPALIVE_FAILURE',
 }
