@@ -6684,8 +6684,14 @@ export default class Meeting extends StatelessWebexPlugin {
       LLM_DEFAULT_SESSION
     );
 
+    // Capture connectivity before any reconnect attempt. If LLM was already
+    // connected, we must respect current ownership. If it was disconnected,
+    // this flow may reclaim stale owner tags after a fresh connect.
     // @ts-ignore - Fix type
-    if (this.webex.internal.llm.isConnected()) {
+    const wasConnected = this.webex.internal.llm.isConnected();
+
+    // @ts-ignore - Fix type
+    if (wasConnected) {
       if (currentOwner && currentOwner !== this.id) {
         // Another meeting owns the live LLM socket. We must not disconnect
         // or reconfigure it -- doing so would tear down a session the
@@ -6722,20 +6728,31 @@ export default class Meeting extends StatelessWebexPlugin {
     return this.webex.internal.llm
       .registerAndConnect(url, dataChannelUrl, datachannelToken)
       .then((registerAndConnectResult) => {
+        // Re-check ownership at commit time to avoid races where ownership
+        // changed between connect and handler/owner writes.
+        // @ts-ignore - Fix type
+        const {isOwner} = this.webex.internal.llm.resolveSessionOwnership(
+          this.id,
+          LLM_DEFAULT_SESSION
+        );
+        const canReclaimAfterDisconnectedStart = !wasConnected;
+
         // Re-bind the default-session token refresh path after each successful
         // (re)connect so ownership handoffs cannot keep a stale Meeting-bound
         // refresh handler.
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.setRefreshHandler(
-          () => this.refreshDataChannelToken(),
-          LLM_DEFAULT_SESSION,
-          this.id
-        );
-        // Record ownership of the default LLM session for this meeting so
-        // subsequent cross-meeting `updateLLMConnection` / `cleanupLLMConneciton`
-        // calls can detect and skip work that doesn't belong to them.
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.setOwnerMeetingId?.(this.id);
+        if (isOwner || canReclaimAfterDisconnectedStart) {
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.setRefreshHandler(
+            () => this.refreshDataChannelToken(),
+            LLM_DEFAULT_SESSION,
+            this.id
+          );
+          // Record ownership of the default LLM session for this meeting so
+          // subsequent cross-meeting `updateLLMConnection` / `cleanupLLMConneciton`
+          // calls can detect and skip work that doesn't belong to them.
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.setOwnerMeetingId?.(this.id);
+        }
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
         // @ts-ignore - Fix type
