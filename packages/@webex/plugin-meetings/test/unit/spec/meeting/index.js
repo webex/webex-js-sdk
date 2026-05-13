@@ -2132,7 +2132,7 @@ describe('plugin-meetings', () => {
 
           meeting.handleLLMOnline();
 
-          assert.calledOnce(meeting.locusInfo.syncAllHashTreeDatasets);
+          assert.calledOnceWithExactly(meeting.locusInfo.syncAllHashTreeDatasets, {onlyLLM: true});
         });
       });
 
@@ -13668,6 +13668,7 @@ describe('plugin-meetings', () => {
             undefined
           );
           assert.equal(result, 'something');
+          assert.calledOnceWithExactly(meeting.locusInfo.syncAllHashTreeDatasets, {onlyLLM: true});
         });
         it('disconnects if the locus url has changed', async () => {
           meeting.joinedWith = {state: 'JOINED'};
