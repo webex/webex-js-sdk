@@ -6617,7 +6617,10 @@ export default class Meeting extends StatelessWebexPlugin {
   private async ensureDefaultDatachannelTokenAfterAdmit(): Promise<boolean> {
     try {
       // @ts-ignore
-      const datachannelToken = this.webex.internal.llm.getDatachannelToken(LLM_DEFAULT_SESSION);
+      const datachannelToken = this.webex.internal.llm.getDatachannelToken(
+        LLM_DEFAULT_SESSION,
+        this.id
+      );
       // @ts-ignore
       const isDataChannelTokenEnabled = await this.webex.internal.llm.isDataChannelTokenEnabled();
 
@@ -6668,7 +6671,10 @@ export default class Meeting extends StatelessWebexPlugin {
     const isJoined = this.isJoined();
 
     // @ts-ignore
-    const datachannelToken = this.webex.internal.llm.getDatachannelToken(LLM_DEFAULT_SESSION);
+    const datachannelToken = this.webex.internal.llm.getDatachannelToken(
+      LLM_DEFAULT_SESSION,
+      this.id
+    );
 
     const dataChannelUrl = datachannelUrl;
 

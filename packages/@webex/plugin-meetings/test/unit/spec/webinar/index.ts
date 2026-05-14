@@ -39,12 +39,10 @@ describe('plugin-meetings', () => {
         getOwnerMeetingId: sinon.stub().returns(undefined),
         resolveSessionOwnership: sinon.stub().callsFake((ownerMeetingId, sessionId) => {
           const currentOwner = webex.internal.llm.getOwnerMeetingId(sessionId);
-          const canAssertOwnership = !!ownerMeetingId;
 
           return {
             currentOwner,
-            canAssertOwnership,
-            isOwner: !currentOwner || !canAssertOwnership || currentOwner === ownerMeetingId,
+            isOwner: !currentOwner || !ownerMeetingId || currentOwner === ownerMeetingId,
           };
         }),
         setOwnerMeetingId: sinon.stub(),
@@ -521,7 +519,8 @@ describe('plugin-meetings', () => {
 
         assert.calledWithExactly(
           webex.internal.llm.getDatachannelToken,
-          DataChannelTokenType.PracticeSession
+          DataChannelTokenType.PracticeSession,
+          webinar.meetingId
         );
         assert.notCalled(webex.internal.llm.setDatachannelToken);
         assert.calledWith(

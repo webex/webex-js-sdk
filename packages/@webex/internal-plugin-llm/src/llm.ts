@@ -241,23 +241,20 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    *
    * @param {string | undefined} ownerMeetingId - Candidate owner to evaluate
    * @param {string} sessionId - Connection identifier (defaults to default session)
-   * @returns {{currentOwner: (string|undefined), canAssertOwnership: boolean, isOwner: boolean}}
+   * @returns {{currentOwner: (string|undefined), isOwner: boolean}}
    */
   public resolveSessionOwnership = (
     ownerMeetingId?: string,
     sessionId: string = LLM_DEFAULT_SESSION
   ): {
     currentOwner: string | undefined;
-    canAssertOwnership: boolean;
     isOwner: boolean;
   } => {
     const currentOwner = this.getOwnerMeetingId(sessionId);
-    const canAssertOwnership = !!ownerMeetingId;
-    const isOwner = !currentOwner || !canAssertOwnership || currentOwner === ownerMeetingId;
+    const isOwner = !currentOwner || !ownerMeetingId || currentOwner === ownerMeetingId;
 
     return {
       currentOwner,
-      canAssertOwnership,
       isOwner,
     };
   };
@@ -265,12 +262,26 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   /**
    * Get data channel token for the connection
    * @param {DataChannelTokenType|string} tokenKey
+   * @param {string | undefined} ownerMeetingId - Meeting id asserting read ownership
    * @returns {string | undefined} data channel token
    */
   public getDatachannelToken = (
-    tokenKey: DataChannelTokenType | string = DataChannelTokenType.Default
+    tokenKey?: DataChannelTokenType | string,
+    ownerMeetingId?: string
   ): string | undefined => {
-    return this.datachannelTokens[tokenKey];
+    const resolvedTokenKey = tokenKey ?? DataChannelTokenType.Default;
+
+    const {currentOwner, isOwner} = this.resolveSessionOwnership(ownerMeetingId, resolvedTokenKey);
+
+    if (!isOwner) {
+      this.logger.info(
+        `llm#getDatachannelToken --> skip read for session ${resolvedTokenKey}; owned by ${currentOwner}, candidate ${ownerMeetingId}`
+      );
+
+      return undefined;
+    }
+
+    return this.datachannelTokens[resolvedTokenKey];
   };
 
   /**
@@ -287,12 +298,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   ): void => {
     const resolvedTokenKey = tokenKey ?? DataChannelTokenType.Default;
 
-    const {currentOwner, canAssertOwnership, isOwner} = this.resolveSessionOwnership(
-      ownerMeetingId,
-      resolvedTokenKey
-    );
+    const {currentOwner, isOwner} = this.resolveSessionOwnership(ownerMeetingId, resolvedTokenKey);
 
-    if (!isOwner && canAssertOwnership) {
+    if (!isOwner) {
       this.logger.info(
         `llm#setDatachannelToken --> skip write for session ${resolvedTokenKey}; owned by ${currentOwner}, candidate ${ownerMeetingId}`
       );
@@ -315,12 +323,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   ): void => {
     const resolvedTokenKey = tokenKey;
 
-    const {currentOwner, canAssertOwnership, isOwner} = this.resolveSessionOwnership(
-      ownerMeetingId,
-      resolvedTokenKey
-    );
+    const {currentOwner, isOwner} = this.resolveSessionOwnership(ownerMeetingId, resolvedTokenKey);
 
-    if (!isOwner && canAssertOwnership) {
+    if (!isOwner) {
       this.logger.info(
         `llm#clearDatachannelToken --> skip clear for session ${resolvedTokenKey}; owned by ${currentOwner}, candidate ${ownerMeetingId}`
       );
@@ -361,12 +366,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   ) {
     const resolvedSessionId = sessionId ?? LLM_DEFAULT_SESSION;
 
-    const {currentOwner, canAssertOwnership, isOwner} = this.resolveSessionOwnership(
-      ownerMeetingId,
-      resolvedSessionId
-    );
+    const {currentOwner, isOwner} = this.resolveSessionOwnership(ownerMeetingId, resolvedSessionId);
 
-    if (!isOwner && canAssertOwnership) {
+    if (!isOwner) {
       this.logger.info(
         `llm#setRefreshHandler --> skip write for session ${resolvedSessionId}; owned by ${currentOwner}, candidate ${ownerMeetingId}`
       );
@@ -378,7 +380,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
     if (sessionData) {
       sessionData.refreshHandler = handler;
-      if (canAssertOwnership) {
+      if (ownerMeetingId) {
         sessionData.ownerMeetingId = ownerMeetingId;
       }
 
@@ -444,12 +446,9 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
       throw new Error('llm#disconnectLLM --> ownerMeetingId is required');
     }
 
-    const {currentOwner, canAssertOwnership, isOwner} = this.resolveSessionOwnership(
-      ownerMeetingId,
-      sessionId
-    );
+    const {currentOwner, isOwner} = this.resolveSessionOwnership(ownerMeetingId, sessionId);
 
-    if (!isOwner && canAssertOwnership) {
+    if (!isOwner) {
       this.logger.info(
         `llm#disconnectLLM --> skip disconnect for session ${sessionId}; owned by ${currentOwner}, candidate ${ownerMeetingId}`
       );
@@ -501,7 +500,10 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    */
   public getLocusUrlByDatachannelUrl(requestUrl: string): string | undefined {
     for (const [, connection] of this.connections) {
-      if (connection.datachannelUrl && requestUrl.startsWith(connection.datachannelUrl)) {
+      if (
+        connection.datachannelUrl &&
+        LLMChannel.matchesDatachannelRequestUrl(requestUrl, connection.datachannelUrl)
+      ) {
         return connection.locusUrl;
       }
     }
@@ -519,12 +521,45 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    */
   public getSessionIdByDatachannelUrl(requestUrl: string): string | undefined {
     for (const [sessionId, connection] of this.connections) {
-      if (connection.datachannelUrl && requestUrl.startsWith(connection.datachannelUrl)) {
+      if (
+        connection.datachannelUrl &&
+        LLMChannel.matchesDatachannelRequestUrl(requestUrl, connection.datachannelUrl)
+      ) {
         return sessionId;
       }
     }
 
     return undefined;
+  }
+
+  /**
+   * Matches a request URL to a stored datachannel registration URL.
+   * Host can differ (e.g. rewritten by hostmap interceptor), so we first
+   * try full URL prefix and then fall back to pathname prefix.
+   * @param {string} requestUrl
+   * @param {string} registrationUrl
+   * @returns {boolean}
+   */
+  private static matchesDatachannelRequestUrl(
+    requestUrl: string,
+    registrationUrl: string
+  ): boolean {
+    if (!requestUrl || !registrationUrl) {
+      return false;
+    }
+
+    if (requestUrl.startsWith(registrationUrl)) {
+      return true;
+    }
+
+    try {
+      const request = new URL(requestUrl);
+      const registration = new URL(registrationUrl);
+
+      return request.pathname.startsWith(registration.pathname);
+    } catch (error) {
+      return false;
+    }
   }
 
   /**

@@ -234,7 +234,10 @@ const Webinar = WebexPlugin.extend({
     }
 
     // @ts-ignore
-    const cachedToken = this.webex.internal.llm.getDatachannelToken(LLM_PRACTICE_SESSION);
+    const cachedToken = this.webex.internal.llm.getDatachannelToken(
+      LLM_PRACTICE_SESSION,
+      this.meetingId
+    );
 
     if (cachedToken) {
       return cachedToken;
@@ -278,8 +281,10 @@ const Webinar = WebexPlugin.extend({
 
     const meeting = this.getValidatedWebinarMeeting();
     const isPracticeSession = meeting?.isJoined() && this.isJoinPracticeSessionDataChannel();
-    const {currentOwner, canAssertOwnership, isOwner} =
-      this.webex.internal.llm.resolveSessionOwnership(this.meetingId, LLM_PRACTICE_SESSION);
+    const {currentOwner, isOwner} = this.webex.internal.llm.resolveSessionOwnership(
+      this.meetingId,
+      LLM_PRACTICE_SESSION
+    );
 
     if (!isPracticeSession) {
       await this.cleanupPSDataChannel();
@@ -308,8 +313,10 @@ const Webinar = WebexPlugin.extend({
       meeting?.locusInfo || {};
 
     // @ts-ignore
-    let practiceSessionDatachannelToken =
-      this.webex.internal.llm.getDatachannelToken(LLM_PRACTICE_SESSION);
+    let practiceSessionDatachannelToken = this.webex.internal.llm.getDatachannelToken(
+      LLM_PRACTICE_SESSION,
+      this.meetingId
+    );
 
     const isCaptionBoxOn = this.webex.internal.voicea.getIsCaptionBoxOn();
 
@@ -318,7 +325,7 @@ const Webinar = WebexPlugin.extend({
     }
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected(LLM_PRACTICE_SESSION)) {
-      if (!isOwner && canAssertOwnership) {
+      if (!isOwner) {
         LoggerProxy.logger.info(
           `Webinar:index#updatePSDataChannel --> skipping; practice-session LLM owned by meeting ${currentOwner}, not ${this.meetingId}`
         );

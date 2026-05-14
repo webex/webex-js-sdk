@@ -29,10 +29,12 @@ interface ILLMChannel {
     sessionId?: string
   ) => {
     currentOwner: string | undefined;
-    canAssertOwnership: boolean;
     isOwner: boolean;
   };
-  getDatachannelToken: (tokenKey?: DataChannelTokenKey) => string | undefined;
+  getDatachannelToken: (
+    tokenKey?: DataChannelTokenKey,
+    ownerMeetingId?: string
+  ) => string | undefined;
   setDatachannelToken: (
     datachannelToken: string,
     tokenKey?: DataChannelTokenKey,

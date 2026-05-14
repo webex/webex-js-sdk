@@ -14055,7 +14055,7 @@ describe('plugin-meetings', () => {
           };
 
           webex.internal.llm.getDatachannelToken
-            .withArgs('llm-default-session')
+            .withArgs('llm-default-session', meeting.id)
             .returns('token-123');
 
           await meeting.updateLLMConnection();

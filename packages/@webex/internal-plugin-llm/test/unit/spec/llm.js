@@ -609,6 +609,16 @@ describe('plugin-llm', () => {
         assert.equal(result, undefined);
       });
 
+      it('matches locusUrl when request host is rewritten but pathname matches', async () => {
+        await llmService.registerAndConnect(locusUrl2, datachannelUrl2, undefined, 's2');
+
+        const rewrittenHostRequestUrl =
+          'https://hostmap-rewritten.example.com/datachannel/api/v1/locus/ps-encoded/registrations/events';
+        const result = llmService.getLocusUrlByDatachannelUrl(rewrittenHostRequestUrl);
+
+        assert.equal(result, locusUrl2);
+      });
+
       it('returns undefined when no connections exist', () => {
         const result = llmService.getLocusUrlByDatachannelUrl(datachannelUrl);
 
@@ -638,6 +648,21 @@ describe('plugin-llm', () => {
         const result = llmService.getSessionIdByDatachannelUrl('https://unknown.example.com/path');
 
         assert.equal(result, undefined);
+      });
+
+      it('matches sessionId when request host is rewritten but pathname matches', async () => {
+        await llmService.registerAndConnect(
+          'https://locus-b.wbx2.com/locus/api/v1/loci/456',
+          datachannelUrl2,
+          undefined,
+          's2'
+        );
+
+        const rewrittenHostRequestUrl =
+          'https://hostmap-rewritten.example.com/datachannel/api/v1/locus/ps-encoded/registrations/messages';
+        const result = llmService.getSessionIdByDatachannelUrl(rewrittenHostRequestUrl);
+
+        assert.equal(result, 's2');
       });
     });
 
