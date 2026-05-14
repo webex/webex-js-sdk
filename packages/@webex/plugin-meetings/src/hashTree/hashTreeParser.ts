@@ -1392,13 +1392,32 @@ class HashTreeParser {
       );
     }
 
-    // if we're in the syncAllDatasets backoff sleep, remember these datasets so we skip them after the sleep
+    this.markDataSetsForSyncAllBackoffSkip(dataSetNames);
+    this.abortInFlightSyncs(dataSetNames);
+  }
+
+  /**
+   * If a syncAllDatasets backoff sleep is in progress, marks the given data sets to be skipped
+   * after the sleep completes.
+   *
+   * @param {string[]} dataSetNames - The names of the data sets to mark
+   * @returns {void}
+   */
+  private markDataSetsForSyncAllBackoffSkip(dataSetNames: string[]): void {
     if (this.syncAllBackoffType !== SyncAllBackoffType.NONE) {
       for (const name of dataSetNames) {
         this.dataSetsSyncedDuringBackoff.add(name);
       }
     }
+  }
 
+  /**
+   * Aborts any in-flight sync HTTP requests for the specified data sets.
+   *
+   * @param {string[]} dataSetNames - The names of the data sets whose syncs should be aborted
+   * @returns {void}
+   */
+  private abortInFlightSyncs(dataSetNames: string[]): void {
     for (const name of dataSetNames) {
       if (this.dataSets[name]?.syncAbortController) {
         LoggerProxy.logger.info(
@@ -1474,6 +1493,38 @@ class HashTreeParser {
   }
 
   /**
+   * sets the backoff type for syncAllDatasets calls, which determines the scope of datasets that will be synced after the backoff delay.
+   *
+   * @param {boolean} onlyLLM - Whether the backoff is for a syncAllDatasets call that is syncing only LLM datasets
+   * @returns {void}
+   */
+  private setSyncAllBackoffType(onlyLLM: boolean): void {
+    this.syncAllBackoffType = onlyLLM ? SyncAllBackoffType.ONLY_LLM : SyncAllBackoffType.ALL;
+  }
+
+  /**
+   * Checks if a syncAll backoff is already in progress. If so, upgrades the scope from
+   * onlyLLM to all datasets when the new call has a broader scope.
+   *
+   * @param {boolean} onlyLLM - Whether the current call is for LLM datasets only
+   * @returns {boolean} true if a backoff is already pending (caller should return early)
+   */
+  private tryUpgradePendingBackoff(onlyLLM: boolean): boolean {
+    if (this.syncAllBackoffType !== SyncAllBackoffType.NONE) {
+      if (!onlyLLM && this.syncAllBackoffType === SyncAllBackoffType.ONLY_LLM) {
+        this.setSyncAllBackoffType(false);
+        LoggerProxy.logger.info(
+          `HashTreeParser#syncAllDatasets --> ${this.debugId} upgraded pending syncAll from onlyLLM to all datasets`
+        );
+      }
+
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Syncs all data sets that have hash trees, one by one in sequence, using the priority order
    * provided by sortByInitPriority().
    *
@@ -1491,14 +1542,7 @@ class HashTreeParser {
     if (this.state === 'stopped') return;
 
     // if we're already in the backoff delay phase, try to upgrade the scope instead of starting a new one
-    if (this.syncAllBackoffType !== SyncAllBackoffType.NONE) {
-      if (!onlyLLM && this.syncAllBackoffType === SyncAllBackoffType.ONLY_LLM) {
-        this.syncAllBackoffType = SyncAllBackoffType.ALL;
-        LoggerProxy.logger.info(
-          `HashTreeParser#syncAllDatasets --> ${this.debugId} upgraded pending syncAll from onlyLLM to all datasets`
-        );
-      }
-
+    if (this.tryUpgradePendingBackoff(onlyLLM)) {
       return;
     }
 
@@ -1506,7 +1550,7 @@ class HashTreeParser {
 
     if (dataSetsToSync.length === 0) return;
 
-    this.syncAllBackoffType = onlyLLM ? SyncAllBackoffType.ONLY_LLM : SyncAllBackoffType.ALL;
+    this.setSyncAllBackoffType(onlyLLM);
 
     const delay = this.getWeightedBackoffTime(dataSetsToSync[0].backoff);
 
