@@ -724,7 +724,7 @@ describe('AgentConfigService', () => {
         agentProfileId: 'profile123',
         siteId: 'site789',
         dbId: 'db123',
-        defaultDialledNumber: '1234567890',
+        deafultDialledNumber: '1234567890',
         id: 'user001',
         teamIds: ['team1', 'team2'],
       };
@@ -864,7 +864,7 @@ describe('AgentConfigService', () => {
         skillProfileId: 'skillProfile456',
         siteId: 'site789',
         dbId: 'db123',
-        defaultDialledNumber: '1234567890',
+        deafultDialledNumber: '1234567890',
         id: 'user001',
         teamIds: ['team1', 'team2'],
       };
