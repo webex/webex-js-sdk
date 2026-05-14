@@ -852,11 +852,11 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   public async stationLogin(data: AgentLogin): Promise<StationLoginResponse> {
     const loggerContext = {module: CC_FILE, method: METHODS.STATION_LOGIN};
 
-    LoggerProxy.log(
-      `Starting agent station login | loginOption: ${data.loginOption} teamId: ${data.teamId}`,
-      loggerContext
-    );
     try {
+      LoggerProxy.log(
+        `Starting agent station login | loginOption: ${data?.loginOption} teamId: ${data?.teamId}`,
+        loggerContext
+      );
       this.metricsManager.timeEvent([
         METRIC_EVENT_NAMES.STATION_LOGIN_SUCCESS,
         METRIC_EVENT_NAMES.STATION_LOGIN_FAILED,
