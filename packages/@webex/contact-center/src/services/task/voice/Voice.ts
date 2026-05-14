@@ -710,17 +710,22 @@ export default class Voice extends Task implements IVoice {
         ? calculateDestType(this.data.interaction, this.data.agentId)
         : '';
 
+    // derivedDestType is most reliable as it inspects live interaction participants
+    const resolvedDestinationType =
+      derivedDestType ||
+      this.getStateMachineSnapshot()?.context?.consultDestinationType ||
+      this.data.destinationType ||
+      'agent';
+
     const consultationData: consultConferencePayloadData = {
       agentId: this.data.agentId,
-      destinationType:
-        this.getStateMachineSnapshot()?.context?.consultDestinationType ||
-        this.data.destinationType ||
-        derivedDestType ||
-        'agent',
+      destinationType: resolvedDestinationType,
+      // derivedDestAgentId is most reliable as it resolves epId for EP_DN
+      // and agent ID for regular agents from live interaction data
       destAgentId:
+        derivedDestAgentId ||
         this.getStateMachineSnapshot()?.context?.consultDestinationAgentId ||
-        this.data.destAgentId ||
-        derivedDestAgentId,
+        this.data.destAgentId,
     };
 
     // Send state machine event to transition to CONF_INITIATING

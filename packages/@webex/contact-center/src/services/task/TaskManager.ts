@@ -307,6 +307,7 @@ export default class TaskManager extends EventEmitter {
 
       // Conference events - these trigger state machine transition to CONFERENCING
       case CC_EVENTS.AGENT_CONSULT_CONFERENCED:
+      case CC_EVENTS.AGENT_CONSULT_CONFERENCING:
       case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE:
         return {type: TaskEvent.CONFERENCE_START, taskData: payload};
 
@@ -373,6 +374,12 @@ export default class TaskManager extends EventEmitter {
       // including TASK_INCOMING which is now handled via the state machine callbacks
       if (stateMachineEvent) {
         task.sendStateMachineEvent(stateMachineEvent);
+      }
+
+      // Emit TASK_POST_CALL_ACTIVITY for ParticipantPostCallActivity events so
+      // consumers (Widgets) can detect the interaction state change to post_call.
+      if (eventContext.eventType === CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY) {
+        task.emit(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, task);
       }
 
       // Send transcript start/stop events for relevant CC events
@@ -655,8 +662,7 @@ export default class TaskManager extends EventEmitter {
     const {payload} = context;
     let task = context.task;
 
-    if (payload.childInteractionId) {
-      // remove the child task from collection
+    if (payload.childInteractionId && this.taskCollection[payload.childInteractionId]) {
       this.removeTaskFromCollection(this.taskCollection[payload.childInteractionId]);
     }
 
