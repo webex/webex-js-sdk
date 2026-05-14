@@ -292,21 +292,27 @@ const Webinar = WebexPlugin.extend({
       return undefined;
     }
 
+    if (!isOwner) {
+      LoggerProxy.logger.info(
+        `Webinar:index#updatePSDataChannel --> skipping; practice-session LLM owned by meeting ${currentOwner}, not ${this.meetingId}`
+      );
+
+      return undefined;
+    }
+
     // Ensure refresh for practice datachannel requests is routed to this session.
     // Only the owner should rewrite the handler when ownership is known.
-    if (isOwner) {
-      // @ts-ignore - Fix type
-      this.webex.internal.llm.setRefreshHandler(
-        () => meeting.refreshDataChannelToken(),
-        LLM_PRACTICE_SESSION,
-        this.meetingId
-      );
-      // Claim ownership immediately after setting refresh routing so a
-      // concurrent meeting instance cannot override this practice-session
-      // refresh handler before registerAndConnect() finishes.
-      // @ts-ignore - Fix type
-      this.webex.internal.llm.setOwnerMeetingId?.(this.meetingId, LLM_PRACTICE_SESSION);
-    }
+    // @ts-ignore - Fix type
+    this.webex.internal.llm.setRefreshHandler(
+      () => meeting.refreshDataChannelToken(),
+      LLM_PRACTICE_SESSION,
+      this.meetingId
+    );
+    // Claim ownership immediately after setting refresh routing so a
+    // concurrent meeting instance cannot override this practice-session
+    // refresh handler before registerAndConnect() finishes.
+    // @ts-ignore - Fix type
+    this.webex.internal.llm.setOwnerMeetingId?.(this.meetingId, LLM_PRACTICE_SESSION);
 
     // @ts-ignore - Fix type
     const {url = undefined, info: {practiceSessionDatachannelUrl = undefined} = {}} =
@@ -325,14 +331,6 @@ const Webinar = WebexPlugin.extend({
     }
     // @ts-ignore - Fix type
     if (this.webex.internal.llm.isConnected(LLM_PRACTICE_SESSION)) {
-      if (!isOwner) {
-        LoggerProxy.logger.info(
-          `Webinar:index#updatePSDataChannel --> skipping; practice-session LLM owned by meeting ${currentOwner}, not ${this.meetingId}`
-        );
-
-        return undefined;
-      }
-
       if (
         // @ts-ignore - Fix type
         url === this.webex.internal.llm.getLocusUrl(LLM_PRACTICE_SESSION) &&
@@ -409,7 +407,7 @@ const Webinar = WebexPlugin.extend({
         LLM_PRACTICE_SESSION
       )
       .then((registerAndConnectResult) => {
-        if (this.meetingId && isOwner) {
+        if (this.meetingId) {
           // @ts-ignore - Fix type
           this.webex.internal.llm.setOwnerMeetingId?.(this.meetingId, LLM_PRACTICE_SESSION);
         }

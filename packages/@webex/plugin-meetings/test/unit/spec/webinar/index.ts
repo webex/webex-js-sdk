@@ -691,6 +691,18 @@ describe('plugin-meetings', () => {
         assert.notCalled(webex.internal.llm.setRefreshHandler);
         assert.notCalled(webex.internal.llm.registerAndConnect);
       });
+
+      it('does not reconnect when practice session is disconnected but owned by another meeting', async () => {
+        webex.internal.llm.getOwnerMeetingId.returns('other-meeting-id');
+        webex.internal.llm.isConnected = sinon.stub().returns(false);
+
+        const result = await webinar.updatePSDataChannel();
+
+        assert.isUndefined(result);
+        assert.notCalled(webex.internal.llm.setRefreshHandler);
+        assert.notCalled(webex.internal.llm.setOwnerMeetingId);
+        assert.notCalled(webex.internal.llm.registerAndConnect);
+      });
       });
 
       describe('#updateStatusByRole', () => {
