@@ -20,6 +20,7 @@ export interface DataSet {
     maxMs: number;
     exponent: number;
   };
+  heartbeatIntervalMs?: number;
 }
 
 export interface RootHashMessage {
@@ -31,7 +32,6 @@ export interface HashTreeMessage {
   locusStateElements?: Array<HashTreeObject>;
   locusSessionId?: string;
   locusUrl: string;
-  heartbeatIntervalMs?: number;
 }
 
 export interface VisibleDataSetInfo {
@@ -117,7 +117,6 @@ class HashTreeParser {
   locusInfoUpdateCallback: LocusInfoUpdateCallback;
   visibleDataSets: VisibleDataSetInfo[];
   debugId: string;
-  heartbeatIntervalMs?: number;
   private excludedDataSets: string[];
   state: 'active' | 'stopped';
   private syncQueue: Array<{dataSetName: string; reason: string; isInitialization?: boolean}> = [];
@@ -793,6 +792,7 @@ class HashTreeParser {
         maxMs: receivedDataSet.backoff.maxMs,
         exponent: receivedDataSet.backoff.exponent,
       };
+      this.dataSets[receivedDataSet.name].heartbeatIntervalMs = receivedDataSet.heartbeatIntervalMs;
       LoggerProxy.logger.info(
         `HashTreeParser#updateDataSetInfo --> ${this.debugId} updated "${receivedDataSet.name}" dataset to version=${receivedDataSet.version}, root=${receivedDataSet.root}`
       );
@@ -1147,9 +1147,6 @@ class HashTreeParser {
       return;
     }
 
-    if (message.heartbeatIntervalMs) {
-      this.heartbeatIntervalMs = message.heartbeatIntervalMs;
-    }
     if (this.isEndMessage(message)) {
       LoggerProxy.logger.info(
         `HashTreeParser#handleMessage --> ${this.debugId} received sentinel END MEETING message`
@@ -1556,14 +1553,10 @@ class HashTreeParser {
    * @returns {void}
    */
   private resetHeartbeatWatchdogs(receivedDataSets: Array<DataSet>): void {
-    if (!this.heartbeatIntervalMs) {
-      return;
-    }
-
     for (const receivedDataSet of receivedDataSets) {
       const dataSet = this.dataSets[receivedDataSet.name];
 
-      if (!dataSet?.hashTree) {
+      if (!dataSet?.hashTree || !dataSet.heartbeatIntervalMs) {
         // eslint-disable-next-line no-continue
         continue;
       }
@@ -1574,7 +1567,7 @@ class HashTreeParser {
       }
 
       const backoffTime = this.getWeightedBackoffTime(dataSet.backoff);
-      const delay = this.heartbeatIntervalMs + backoffTime;
+      const delay = dataSet.heartbeatIntervalMs + backoffTime;
 
       dataSet.heartbeatWatchdogTimer = setTimeout(() => {
         dataSet.heartbeatWatchdogTimer = undefined;

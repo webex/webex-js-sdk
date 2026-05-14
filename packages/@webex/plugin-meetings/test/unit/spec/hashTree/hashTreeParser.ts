@@ -116,6 +116,7 @@ function createDataSet(name: string, leafCount: number, version = 1) {
     name,
     idleMs: 1000,
     backoff: {maxMs: 1000, exponent: 2},
+    heartbeatIntervalMs: 5000,
   };
 }
 
@@ -3041,7 +3042,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeatMessage, 'initial heartbeat');
@@ -3111,7 +3111,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeatMessage, 'self heartbeat');
@@ -3147,7 +3146,6 @@ describe('HashTreeParser', () => {
 
       it('sets watchdog timers for each data set in the message', async () => {
         const parser = createHashTreeParser();
-        const heartbeatIntervalMs = 5000;
 
         // Send heartbeat with multiple datasets
         const heartbeatMessage = {
@@ -3164,7 +3162,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeatMessage, 'multi-dataset heartbeat');
@@ -3178,7 +3175,6 @@ describe('HashTreeParser', () => {
 
       it('resets the watchdog timer for a specific data set when a new heartbeat for it is received', async () => {
         const parser = createHashTreeParser();
-        const heartbeatIntervalMs = 5000;
 
         // Send first heartbeat for 'main'
         const heartbeat1 = {
@@ -3190,7 +3186,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeat1, 'first heartbeat');
@@ -3211,7 +3206,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeat2, 'second heartbeat');
@@ -3230,7 +3224,6 @@ describe('HashTreeParser', () => {
 
       it('resets the watchdog timer when a normal message (with locusStateElements) is received', async () => {
         const parser = createHashTreeParser();
-        const heartbeatIntervalMs = 5000;
 
         // Send initial heartbeat to start the watchdog for 'main'
         const heartbeat = {
@@ -3242,7 +3235,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeat, 'initial heartbeat');
@@ -3270,7 +3262,6 @@ describe('HashTreeParser', () => {
               data: {someData: 'value'},
             },
           ],
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(normalMessage, 'normal message');
@@ -3284,12 +3275,17 @@ describe('HashTreeParser', () => {
         const parser = createHashTreeParser();
 
         // Send a heartbeat message without heartbeatIntervalMs
-        const heartbeatMessage = createHeartbeatMessage(
-          'main',
-          16,
-          1100,
-          parser.dataSets.main.hashTree.getRootHash()
-        );
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+              heartbeatIntervalMs: undefined,
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+        };
 
         parser.handleMessage(heartbeatMessage, 'heartbeat without interval');
 
@@ -3298,7 +3294,6 @@ describe('HashTreeParser', () => {
 
       it('stops all watchdog timers when meeting ends via sentinel message', async () => {
         const parser = createHashTreeParser();
-        const heartbeatIntervalMs = 5000;
 
         // Send heartbeat for multiple datasets
         const heartbeat = {
@@ -3315,7 +3310,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeat, 'initial heartbeat');
@@ -3366,7 +3360,6 @@ describe('HashTreeParser', () => {
         };
 
         const parser = createHashTreeParser(initialLocus, metadata);
-        const heartbeatIntervalMs = 5000;
 
         // Set Math.random to return 1 so that backoff = 1^exponent * maxMs = maxMs
         mathRandomStub.returns(1);
@@ -3388,7 +3381,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeat, 'heartbeat');
@@ -3438,7 +3430,6 @@ describe('HashTreeParser', () => {
 
       it('does not set watchdog for data sets without a hash tree', async () => {
         const parser = createHashTreeParser();
-        const heartbeatIntervalMs = 5000;
 
         // 'atd-active' is in the initial locus but is not visible (no hash tree)
         // Send heartbeat mentioning a non-visible dataset
@@ -3452,7 +3443,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeatMessage, 'heartbeat with non-visible dataset');
@@ -3476,7 +3466,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeatMessage, 'initial heartbeat');
@@ -5001,7 +4990,6 @@ describe('HashTreeParser', () => {
         ],
         visibleDataSetsUrl,
         locusUrl,
-        heartbeatIntervalMs: 5000,
         locusStateElements: [
           {
             htMeta: {
