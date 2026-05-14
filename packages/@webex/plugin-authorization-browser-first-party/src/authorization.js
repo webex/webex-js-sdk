@@ -1,4 +1,4 @@
- // @ts-nocheck
+// @ts-nocheck
 /* eslint-disable */
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
@@ -267,7 +267,7 @@ const Authorization = WebexPlugin.extend({
       eventType: 'initiateLogin',
       data: {
         hasEmail: !!options.email,
-        hasState: !!options.state
+        hasState: !!options.state,
       },
     });
 
@@ -316,7 +316,7 @@ const Authorization = WebexPlugin.extend({
 
     this.eventEmitter.emit(Events.login, {
       eventType: 'redirectToLoginUrl',
-      data: { loginUrl },
+      data: {loginUrl},
     });
 
     if (options?.separateWindow) {
@@ -350,8 +350,7 @@ const Authorization = WebexPlugin.extend({
    * Mirrors `initiateLogin`'s role for the standard `/authorize` flow.
    * Delegates to `initiateThirdPartyLoginRedirect` so any pre-redirect
    * security plumbing (CSRF / `state`) can be added here without changing
-   * the navigation method, which the web client overrides for
-   * `targetOrigin` / postMessage handling in iframed contexts.
+   * the navigation method.
    *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
@@ -369,16 +368,9 @@ const Authorization = WebexPlugin.extend({
    * IdBroker URL via `Credentials#buildThirdPartyLoginUrl` and assigns it
    * to `getWindow().location`.
    *
-   * Mirrors `initiateAuthorizationCodeGrant` for the `/authorize` flow. The
-   * web client overrides this method to add `targetOrigin`/postMessage
-   * branching for iframed (crosslauncher / MJP) contexts.
-   *
-   * Note: intentionally not decorated with `@whileInFlight('isAuthorizing')`
-   * the way `initiateAuthorizationCodeGrant` is. That decorator just toggles
-   * an observable boolean on the instance while the returned promise is
-   * pending; this method resolves synchronously before the navigation
-   * actually happens, so the flag would flip true→false within the same
-   * tick and provide no useful signal.
+   * Mirrors `initiateAuthorizationCodeGrant` for the `/authorize` flow.
+   * Consumers may override this method for custom navigation handling
+   * (e.g. postMessage in iframed contexts).
    *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
@@ -389,9 +381,14 @@ const Authorization = WebexPlugin.extend({
    */
   initiateThirdPartyLoginRedirect(options = {}) {
     this.logger.info('authorization: initiating third-party login redirect');
-    const url = this.webex.credentials.buildThirdPartyLoginUrl(options);
 
-    this.webex.getWindow().location = url;
+    try {
+      const url = this.webex.credentials.buildThirdPartyLoginUrl(options);
+
+      this.webex.getWindow().location = url;
+    } catch (err) {
+      return Promise.reject(err);
+    }
 
     return Promise.resolve();
   },
@@ -550,10 +547,11 @@ const Authorization = WebexPlugin.extend({
       })
       .then((res) => {
         const {user_code, verification_uri, verification_uri_complete} = res.body;
-        const verificationUriComplete = this._generateQRCodeVerificationUrl(verification_uri_complete);
+        const verificationUriComplete =
+          this._generateQRCodeVerificationUrl(verification_uri_complete);
         this.eventEmitter.emit(Events.qRCodeLogin, {
           eventType: 'getUserCodeSuccess',
-            userData: {
+          userData: {
             userCode: user_code,
             verificationUri: verification_uri,
             verificationUriComplete,
@@ -644,7 +642,7 @@ const Authorization = WebexPlugin.extend({
           // If polling canceled (id changed), ignore this response
           if (this.currentPollingId !== this.pollingId) return;
 
-            this.eventEmitter.emit(Events.qRCodeLogin, {
+          this.eventEmitter.emit(Events.qRCodeLogin, {
             eventType: 'authorizationSuccess',
             data: res.body,
           });

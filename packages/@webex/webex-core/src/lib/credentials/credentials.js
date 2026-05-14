@@ -230,7 +230,9 @@ const Credentials = WebexPlugin.extend({
    *   back to after the third-party hand-off. Required.
    * @returns {string}
    */
-  buildThirdPartyLoginUrl({oauth2provider, returnURL} = {}) {
+  buildThirdPartyLoginUrl(options = {}) {
+    const {oauth2provider, returnURL} = options;
+
     if (!oauth2provider) {
       throw new Error('`options.oauth2provider` is required');
     }

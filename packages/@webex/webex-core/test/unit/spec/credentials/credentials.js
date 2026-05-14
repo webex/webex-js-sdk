@@ -233,6 +233,17 @@ describe('webex-core', () => {
     });
 
     describe('#buildThirdPartyLoginUrl()', () => {
+      it('throws if both `oauth2provider` and `returnURL` are missing', () => {
+        const webex = new MockWebex();
+        const credentials = new Credentials(undefined, {parent: webex});
+
+        webex.trigger('change:config');
+
+        assert.throws(() => {
+          credentials.buildThirdPartyLoginUrl({});
+        }, /`options.oauth2provider` is required/);
+      });
+
       it('throws if `oauth2provider` is missing', () => {
         const webex = new MockWebex();
         const credentials = new Credentials(undefined, {parent: webex});
@@ -269,6 +280,23 @@ describe('webex-core', () => {
           `${
             process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'
           }/idb/ThirdPartyLogin?oauth2provider=google&returnURL=https%3A%2F%2Fweb.webex.com`
+        );
+      });
+
+      skipInBrowser(it)('generates the url with different parameter values', () => {
+        const webex = new MockWebex();
+        const credentials = new Credentials(undefined, {parent: webex});
+
+        webex.trigger('change:config');
+
+        assert.equal(
+          credentials.buildThirdPartyLoginUrl({
+            oauth2provider: 'apple',
+            returnURL: 'https://example.com/callback',
+          }),
+          `${
+            process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'
+          }/idb/ThirdPartyLogin?oauth2provider=apple&returnURL=https%3A%2F%2Fexample.com%2Fcallback`
         );
       });
     });
@@ -409,7 +437,9 @@ describe('webex-core', () => {
       });
 
       it('should throw when provided an invalid token', () =>
-        expect(() => credentials.extractOrgIdFromUserToken()).toThrow('the provided token is not a valid format, token has 1 sections'));
+        expect(() => credentials.extractOrgIdFromUserToken()).toThrow(
+          'the provided token is not a valid format, token has 1 sections'
+        ));
 
       it('should throw when no token is provided', () =>
         expect(() => credentials.extractOrgIdFromUserToken()).toThrow());
@@ -839,7 +869,6 @@ describe('webex-core', () => {
           )
           .then(() => assert.isRejected(webex.boundedStorage.get('Credentials', '@'), /NotFound/));
       });
-
 
       // it('does not induce any token refreshes');
 
