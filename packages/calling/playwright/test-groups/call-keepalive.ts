@@ -75,7 +75,7 @@ export function callKeepaliveTests() {
           media: true,
         }),
       ]);
-      calleeNumber = getPhoneNumber(tm.userSet.accounts[1]);
+      calleeNumber = getPhoneNumber(tm.userSet.accounts[1], tm.isInt);
     });
 
     test.afterEach(async () => {

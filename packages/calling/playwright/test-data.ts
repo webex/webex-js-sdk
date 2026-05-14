@@ -71,11 +71,16 @@ export const getToken = (role: AccountRole, isInt = false): string => {
   return token;
 };
 
+/** Env var for E.164 (or test) phone number, production vs integration Playwright projects. */
+export const phoneEnvVar = (role: AccountRole, isInt = false): string =>
+  isInt ? `${role}_INT_PHONE_NUMBER` : `${role}_PHONE_NUMBER`;
+
 /**
  * Read phone number for an account role. Throws if not set.
+ * Integration projects use `USER_N_INT_PHONE_NUMBER`; production uses `USER_N_PHONE_NUMBER`.
  */
-export const getPhoneNumber = (role: AccountRole): string => {
-  const envVar = `${role}_PHONE_NUMBER`;
+export const getPhoneNumber = (role: AccountRole, isInt = false): string => {
+  const envVar = phoneEnvVar(role, isInt);
   const number = process.env[envVar];
   if (!number) {
     throw new Error(`${envVar} not set.`);

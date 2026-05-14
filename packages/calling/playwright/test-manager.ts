@@ -6,6 +6,8 @@ import {
   verifySDKInitialized,
   setServiceIndicator,
   setEnvironmentToInt,
+  setMobiusWebSocket,
+  verifyMobiusWebSocketEnabled,
 } from './utils/setup';
 import {registerLine, verifyLineRegistered, unregisterLine} from './utils/registration';
 import {cleanupActiveCalls, getMediaStreams} from './utils/call';
@@ -20,6 +22,10 @@ interface SetupConfig {
   media?: boolean;
   /** Service indicator to set before init (default: 'calling') */
   service?: ServiceIndicator;
+  /** Force the sample app Mobius WebSocket override before init */
+  mobiusWss?: boolean;
+  /** Configure context/page before navigation and SDK init, e.g. route setup */
+  beforeInit?: (context: BrowserContext, page: Page, role: AccountRole) => Promise<void>;
 }
 
 interface ManagedContext {
@@ -125,6 +131,10 @@ export class TestManager {
     const mc: ManagedContext = {context, page, role};
     this.contexts.set(role, mc);
 
+    if (config.beforeInit) {
+      await config.beforeInit(context, page, role);
+    }
+
     if (config.initSDK) {
       await navigateToCallingApp(page);
       if (this.isInt) {
@@ -133,8 +143,14 @@ export class TestManager {
       if (config.service) {
         await setServiceIndicator(page, config.service);
       }
+      if (config.mobiusWss !== undefined) {
+        await setMobiusWebSocket(page, config.mobiusWss);
+      }
       await initializeCallingSDK(page, getToken(role, this.isInt));
       await verifySDKInitialized(page);
+      if (config.mobiusWss) {
+        await verifyMobiusWebSocketEnabled(page);
+      }
 
       if (config.register) {
         await registerLine(page);

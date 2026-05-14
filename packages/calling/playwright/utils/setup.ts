@@ -114,6 +114,50 @@ export const setServiceIndicator = async (page: Page, service: ServiceIndicator)
 };
 
 /**
+ * Force the calling sample app to enable or disable Mobius WebSocket transport.
+ * Must be called before SDK initialization.
+ */
+export const setMobiusWebSocket = async (page: Page, enabled: boolean): Promise<void> => {
+  const value = enabled ? 'true' : 'false';
+
+  await page.locator(CALLING_SELECTORS.MOBIUS_WSS).selectOption(value, {timeout: AWAIT_TIMEOUT});
+
+  await page.evaluate((selectedValue) => {
+    localStorage.setItem('mobius-wss-enabled', selectedValue);
+  }, value);
+
+  await expect(page.locator(CALLING_SELECTORS.MOBIUS_WSS)).toHaveValue(value, {
+    timeout: AWAIT_TIMEOUT,
+  });
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('mobius-wss-enabled')), {
+      message: 'Expected Mobius WebSocket sample override to be persisted',
+      timeout: AWAIT_TIMEOUT,
+      intervals: [500],
+    })
+    .toBe(value);
+};
+
+/**
+ * Verify that the initialized CallingClient is using Mobius WebSocket transport.
+ */
+export const verifyMobiusWebSocketEnabled = async (page: Page): Promise<void> => {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () => (window as any).callingClient?.apiRequest?.isSocketEnabled?.() === true
+        ),
+      {
+        message: 'Expected Mobius WebSocket transport to be enabled',
+        timeout: SDK_INIT_TIMEOUT,
+        intervals: [1000],
+      }
+    )
+    .toBe(true);
+};
+
+/**
  * Set service domain before initialization (needed for contactcenter)
  */
 export const setServiceDomain = async (page: Page, domain: string): Promise<void> => {

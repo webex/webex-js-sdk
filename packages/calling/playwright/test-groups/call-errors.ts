@@ -90,7 +90,7 @@ export function callErrorTests() {
     }, testInfo) => {
       const isInt = isIntProject(testInfo.project.name);
       const accounts = getUserSet(testInfo.project.name).accounts;
-      const calleeNumber = getPhoneNumber(accounts[1]);
+      const calleeNumber = getPhoneNumber(accounts[1], isInt);
 
       await navigateToCallingApp(page);
       if (isInt) await setEnvironmentToInt(page);
@@ -195,7 +195,7 @@ export function callEdgeCaseTests() {
           media: true,
         }),
       ]);
-      calleeNumber = getPhoneNumber(tm.userSet.accounts[1]);
+      calleeNumber = getPhoneNumber(tm.userSet.accounts[1], tm.isInt);
     });
 
     test.afterEach(async () => {

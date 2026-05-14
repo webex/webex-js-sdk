@@ -1,6 +1,6 @@
 import {test, expect} from '@playwright/test';
 import {TestManager} from '../test-manager';
-import {getPhoneNumber} from '../test-data';
+import {getPhoneNumber, isMobiusWsMode} from '../test-data';
 import {
   sendDTMF,
   holdCall,
@@ -12,6 +12,7 @@ import {
   cleanupActiveCalls,
 } from '../utils/call';
 import {CALLING_SELECTORS, AWAIT_TIMEOUT} from '../constants';
+import {MOBIUS_WS_MESSAGE, MobiusWsInterceptor} from '../utils/mobius-ws';
 
 /**
  * Hold/resume tests: multiple cycles, callee-side hold, hold+disconnect combos.
@@ -40,7 +41,7 @@ export function callHoldTests() {
           media: true,
         }),
       ]);
-      calleeNumber = getPhoneNumber(tm.userSet.accounts[1]);
+      calleeNumber = getPhoneNumber(tm.userSet.accounts[1], tm.isInt);
     });
 
     test.afterEach(async () => {
@@ -237,7 +238,7 @@ export function callHoldErrorTests() {
           media: true,
         }),
       ]);
-      calleeNumber = getPhoneNumber(tm.userSet.accounts[1]);
+      calleeNumber = getPhoneNumber(tm.userSet.accounts[1], tm.isInt);
     });
 
     test.afterEach(async () => {
@@ -255,12 +256,28 @@ export function callHoldErrorTests() {
     });
 
     test('CALL-025: Resume API failure - resume_error event emitted', async ({browser}) => {
+      const mobiusWsMode = isMobiusWsMode();
+      let failResume = false;
+      const interceptor = mobiusWsMode
+        ? new MobiusWsInterceptor({
+            onRequest: (frame) =>
+              failResume && frame.type === MOBIUS_WS_MESSAGE.CALL_RESUME
+                ? {
+                    statusCode: 500,
+                    statusMessage: 'Internal Server Error',
+                    data: {message: 'Resume failed'},
+                  }
+                : undefined,
+          })
+        : undefined;
+
       await Promise.all([
         tm.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
+          beforeInit: interceptor ? (context) => interceptor.install(context) : undefined,
         }),
         tm.setupContext(browser, 1, {
           initSDK: true,
@@ -284,9 +301,13 @@ export function callHoldErrorTests() {
         });
       });
 
-      await callerPage.route('**/services/callhold/resume', (route) => {
-        route.fulfill({status: 500, body: 'Internal Server Error'});
-      });
+      if (mobiusWsMode) {
+        failResume = true;
+      } else {
+        await callerPage.route('**/services/callhold/resume', (route) => {
+          route.fulfill({status: 500, body: 'Internal Server Error'});
+        });
+      }
 
       await callerPage.locator(CALLING_SELECTORS.HOLD_BTN).click({timeout: AWAIT_TIMEOUT});
 
@@ -297,19 +318,37 @@ export function callHoldErrorTests() {
       expect(resumeError).toBeTruthy();
       await expect(callerPage.locator(CALLING_SELECTORS.HOLD_BTN)).toHaveValue('Resume');
 
-      await callerPage.unroute('**/services/callhold/resume');
+      if (!mobiusWsMode) {
+        await callerPage.unroute('**/services/callhold/resume');
+      }
 
       await endCall(callerPage);
       await Promise.all([waitForCallDisconnect(callerPage), waitForCallDisconnect(calleePage)]);
     });
 
     test('CALL-026: Hold API failure - hold_error event emitted', async ({browser}) => {
+      const mobiusWsMode = isMobiusWsMode();
+      let failHold = false;
+      const interceptor = mobiusWsMode
+        ? new MobiusWsInterceptor({
+            onRequest: (frame) =>
+              failHold && frame.type === MOBIUS_WS_MESSAGE.CALL_HOLD
+                ? {
+                    statusCode: 500,
+                    statusMessage: 'Internal Server Error',
+                    data: {message: 'Hold failed'},
+                  }
+                : undefined,
+          })
+        : undefined;
+
       await Promise.all([
         tm.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
+          beforeInit: interceptor ? (context) => interceptor.install(context) : undefined,
         }),
         tm.setupContext(browser, 1, {
           initSDK: true,
@@ -332,9 +371,13 @@ export function callHoldErrorTests() {
         });
       });
 
-      await callerPage.route('**/services/callhold/hold', (route) => {
-        route.fulfill({status: 500, body: 'Internal Server Error'});
-      });
+      if (mobiusWsMode) {
+        failHold = true;
+      } else {
+        await callerPage.route('**/services/callhold/hold', (route) => {
+          route.fulfill({status: 500, body: 'Internal Server Error'});
+        });
+      }
 
       await callerPage.locator(CALLING_SELECTORS.HOLD_BTN).click({timeout: AWAIT_TIMEOUT});
 
@@ -345,7 +388,9 @@ export function callHoldErrorTests() {
       expect(holdError).toBeTruthy();
       await expect(callerPage.locator(CALLING_SELECTORS.HOLD_BTN)).toHaveValue('Hold');
 
-      await callerPage.unroute('**/services/callhold/hold');
+      if (!mobiusWsMode) {
+        await callerPage.unroute('**/services/callhold/hold');
+      }
 
       await endCall(callerPage);
       await Promise.all([waitForCallDisconnect(callerPage), waitForCallDisconnect(calleePage)]);
@@ -380,7 +425,7 @@ export function callControlTests() {
           media: true,
         }),
       ]);
-      calleeNumber = getPhoneNumber(tm.userSet.accounts[1]);
+      calleeNumber = getPhoneNumber(tm.userSet.accounts[1], tm.isInt);
     });
 
     test.afterEach(async () => {
