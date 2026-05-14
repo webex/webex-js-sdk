@@ -304,6 +304,7 @@ const meetingsJoinDeviceElm = document.querySelector('#meetings-join-device');
 const meetingsJoinPinElm = document.querySelector('#meetings-join-pin');
 const meetingsJoinModeratorElm = document.querySelector('#meetings-join-moderator');
 const meetingsBreakoutSupportElm = document.querySelector('#meetings-join-breakout-enabled');
+const meetingsSISupportElm = document.querySelector('#meetings-join-si-enabled');
 const meetingsMediaInLobbySupportElm = document.querySelector('#meetings-media-in-lobby-enabled');
 const meetingsJoinMultistreamElm = document.querySelector('#meetings-join-multistream');
 const meetingsListCollectElm = document.querySelector('#meetings-list-collect');
@@ -644,6 +645,7 @@ async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevi
     pin: meetingsJoinPinElm.value,
     moderator: meetingsJoinModeratorElm.checked,
     breakoutsSupported: meetingsBreakoutSupportElm.checked,
+    enableSimultaneousInterpretation: meetingsSISupportElm.checked,
     moveToResource: false,
     resourceId,
     locale: 'en_UK', // audio disclaimer language
