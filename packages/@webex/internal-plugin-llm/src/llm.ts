@@ -338,18 +338,6 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   };
 
   /**
-   * Resets all data‑channel tokens to their initial undefined values.
-   * Used when leaving or disconnecting from a meeting.
-   * @returns {void}
-   */
-  public resetDatachannelTokens() {
-    this.datachannelTokens = {
-      [DataChannelTokenType.Default]: undefined,
-      [DataChannelTokenType.PracticeSession]: undefined,
-    };
-  }
-
-  /**
    * Set the handler used to refresh the DataChannel token
    *
    * @param {function} handler - Function that returns a refreshed token

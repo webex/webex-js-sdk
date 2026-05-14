@@ -569,7 +569,6 @@ describe('plugin-llm', () => {
 
       it('disconnectAllLLM clears all sessions', async () => {
         llmService.disconnectAll = sinon.stub().resolves(true);
-        sinon.spy(llmService, 'resetDatachannelTokens');
 
         await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
         await llmService.registerAndConnect(locusUrl2, datachannelUrl2, undefined, 's2');
