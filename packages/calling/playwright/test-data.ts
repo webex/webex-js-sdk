@@ -20,6 +20,8 @@ export interface UserSet {
   testSuite: string;
 }
 
+export type MobiusMode = 'http' | 'ws';
+
 /**
  * Roles that must have credentials/tokens available for the currently enabled
  * Playwright projects.
@@ -35,6 +37,24 @@ export const REQUIRED_OAUTH_ROLES: AccountRole[] = [
 
 /** Separator between set name and environment in project names (e.g. "SET_REGISTRATION_1 - PROD"). */
 const ENV_SEPARATOR = ' - ';
+
+/**
+ * Mobius transport mode for Playwright suites.
+ *
+ * MOBIUS=ws forces the sample app WebSocket override before SDK initialization.
+ * MOBIUS=http keeps the default HTTP transport.
+ */
+export const getMobiusMode = (): MobiusMode => {
+  const mode = process.env.MOBIUS?.toLowerCase();
+
+  if (mode === 'ws') {
+    return 'ws';
+  }
+
+  return 'http';
+};
+
+export const isMobiusWsMode = (): boolean => getMobiusMode() === 'ws';
 
 /**
  * Whether a Playwright project targets the Integration environment.

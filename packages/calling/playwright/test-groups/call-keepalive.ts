@@ -95,7 +95,7 @@ export function callKeepaliveTests() {
       await tm.cleanup();
     });
 
-    test('CALL-024: Keepalive success - postStatus 200 keeps call alive', async () => {
+    test('CALL-009: Keepalive success - postStatus 200 keeps call alive', async () => {
       const callerPage = tm.getPage(tm.userSet.accounts[0]);
       const calleePage = tm.getPage(tm.userSet.accounts[1]);
 
