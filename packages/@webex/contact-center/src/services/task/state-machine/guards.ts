@@ -66,18 +66,9 @@ export const hasActiveConsultInPostCall = (
  * Determines if this agent should enter WRAPPING_UP state.
  * Priority: agentsPendingWrapUp > wrapUpRequired / participant.isWrapUp > ownership > !isConsulted
  */
-export const shouldWrapUpForThisAgent = (
-  context: TaskContext,
-  taskData: TaskData,
-  options?: {requireCustomerLeft?: boolean}
-): boolean => {
+export const shouldWrapUpForThisAgent = (context: TaskContext, taskData: TaskData): boolean => {
   const selfAgentId = getSelfAgentId(context, taskData);
   if (!selfAgentId) return false;
-
-  if (options?.requireCustomerLeft) {
-    const cpd = taskData?.interaction?.callProcessingDetails;
-    if (cpd?.hasCustomerLeft !== 'true') return false;
-  }
 
   const pending = taskData?.agentsPendingWrapUp;
   if (Array.isArray(pending) && pending.length > 0) {

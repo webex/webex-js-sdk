@@ -470,10 +470,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               // Customer left during consult → WRAPPING_UP
               guard: ({context, event}) => {
-                if (context.consultInitiator !== true) return false;
                 const taskData = getTaskDataFromEvent(event);
+                const cpd = taskData?.interaction?.callProcessingDetails;
+                if (cpd?.hasCustomerLeft !== 'true') return false;
 
-                return shouldWrapUpForThisAgent(context, taskData, {requireCustomerLeft: true});
+                return shouldWrapUpForThisAgent(context, taskData);
               },
               target: TaskState.WRAPPING_UP,
               actions: [
@@ -647,21 +648,6 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'clearConsultState'],
             },
           ],
-          // ContactEnded while conference is initiating
-          [TaskEvent.CONTACT_ENDED]: {
-            target: TaskState.WRAPPING_UP,
-            actions: [
-              'updateTaskData',
-              'markEnded',
-              'clearConsultState',
-              'emitTaskWrapup',
-              'requestCleanup',
-            ],
-          },
-          [TaskEvent.TASK_WRAPUP]: {
-            target: TaskState.WRAPPING_UP,
-            actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
-          },
         },
       },
 
