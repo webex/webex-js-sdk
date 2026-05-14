@@ -309,25 +309,16 @@ describe('plugin-meetings', () => {
           );
         });
 
-        it('falls back to default session when URL does not match any session', async () => {
+        it('throws when URL does not match any session or meeting route', async () => {
           llmMock.getSessionIdByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns(undefined);
           llmMock.getLocusUrlByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns(undefined);
-          llmMock.refreshDataChannelToken
-            .withArgs(undefined)
-            .resolves({
-              body: {datachannelToken: 'token-from-default-fallback', dataChannelTokenType: 'Default'},
-            });
 
-          const token = await dispatcherInterceptor._refreshDataChannelToken(PS_DATACHANNEL_URL);
-
-          expect(token).to.equal('token-from-default-fallback');
-          sinon.assert.calledOnceWithExactly(llmMock.refreshDataChannelToken, undefined);
-          sinon.assert.calledOnceWithExactly(
-            llmMock.setDatachannelToken,
-            'token-from-default-fallback',
-            'Default',
-            undefined
+          await assert.isRejected(
+            dispatcherInterceptor._refreshDataChannelToken(PS_DATACHANNEL_URL),
+            'Unable to resolve DataChannel refresh route for request URL'
           );
+          sinon.assert.notCalled(llmMock.refreshDataChannelToken);
+          sinon.assert.notCalled(llmMock.setDatachannelToken);
         });
 
         it('falls back to meeting lookup by locusUrl when session cannot be resolved', async () => {
