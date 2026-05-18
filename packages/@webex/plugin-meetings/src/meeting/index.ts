@@ -6731,6 +6731,19 @@ export default class Meeting extends StatelessWebexPlugin {
       return undefined;
     }
 
+    // Bind refresh handler before registration so interceptor-triggered token
+    // refresh during register POST can resolve a valid handler.
+    // Prefer this meeting as owner, but allow owner-less fallback when a stale
+    // foreign owner tag is present on a disconnected session.
+    const refreshHandlerOwnerMeetingId =
+      currentOwner && currentOwner !== this.id ? undefined : this.id;
+    // @ts-ignore - Fix type
+    this.webex.internal.llm.setRefreshHandler(
+      () => this.refreshDataChannelToken(),
+      LLM_DEFAULT_SESSION,
+      refreshHandlerOwnerMeetingId
+    );
+
     // @ts-ignore - Fix type
     return this.webex.internal.llm
       .registerAndConnect(url, dataChannelUrl, datachannelToken)
@@ -6746,16 +6759,9 @@ export default class Meeting extends StatelessWebexPlugin {
         );
         const canReclaimAfterDisconnectedStart = !wasConnected;
 
-        // Re-bind the default-session token refresh path after each successful
-        // (re)connect so ownership handoffs cannot keep a stale Meeting-bound
-        // refresh handler.
+        // Refresh handler is pre-bound before registerAndConnect so token
+        // refresh can work even during the registration request itself.
         if (isOwner || canReclaimAfterDisconnectedStart) {
-          // @ts-ignore - Fix type
-          this.webex.internal.llm.setRefreshHandler(
-            () => this.refreshDataChannelToken(),
-            LLM_DEFAULT_SESSION,
-            this.id
-          );
           // Record ownership of the default LLM session for this meeting so
           // subsequent cross-meeting `updateLLMConnection` / `cleanupLLMConneciton`
           // calls can detect and skip work that doesn't belong to them.

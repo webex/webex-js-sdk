@@ -42,8 +42,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
       // Route refresh by request URL in two steps:
       // 1) Match active LLM sessions (supports non-default/multiple sessions)
       // 2) If no session matches, resolve locusUrl and refresh via owning meeting
-      // For request URLs that match neither route, fail closed to avoid
-      // misrouting multi-session traffic to default-session refresh.
+      // If neither route matches, fall back to the default-session refresh.
       refreshDataChannelToken: async (requestUrl?: string) => {
         let sessionId;
         let meeting;
@@ -60,12 +59,6 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
               // @ts-ignore
               meeting = this.meetings?.getMeetingByType?.(LOCUS_URL, locusUrl);
             }
-
-            if (!meeting) {
-              throw new Error(
-                `Unable to resolve DataChannel refresh route for request URL: ${requestUrl}`
-              );
-            }
           }
         }
 
@@ -81,7 +74,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
           throw new Error('DataChannel token refresh returned no payload');
         }
         const {datachannelToken, dataChannelTokenType} = result.body;
-        const tokenStoreKey = sessionId || dataChannelTokenType;
+        const tokenStoreKey = dataChannelTokenType || sessionId;
         const ownerMeetingId =
           // @ts-ignore
           meeting?.id || this.internal.llm.getOwnerMeetingId?.(tokenStoreKey);

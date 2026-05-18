@@ -242,7 +242,10 @@ describe('plugin-meetings', () => {
           meetingA = {
             id: 'meeting-a',
             refreshDataChannelToken: sinon.stub().resolves({
-              body: {datachannelToken: 'token-from-meeting-a', dataChannelTokenType: 'PracticeSession'},
+              body: {
+                datachannelToken: 'token-from-meeting-a',
+                dataChannelTokenType: 'llm-practice-session',
+              },
             }),
           };
 
@@ -252,7 +255,10 @@ describe('plugin-meetings', () => {
             getLocusUrlByDatachannelUrl: sinon.stub(),
             getOwnerMeetingId: sinon.stub().returns(undefined),
             refreshDataChannelToken: sinon.stub().resolves({
-              body: {datachannelToken: 'token-from-llm-fallback', dataChannelTokenType: 'Default'},
+              body: {
+                datachannelToken: 'token-from-llm-fallback',
+                dataChannelTokenType: 'llm-default-session',
+              },
             }),
             setDatachannelToken: sinon.stub(),
           };
@@ -274,7 +280,10 @@ describe('plugin-meetings', () => {
           llmMock.refreshDataChannelToken
             .withArgs('llm-practice-session')
             .resolves({
-              body: {datachannelToken: 'token-from-ps-session', dataChannelTokenType: 'PracticeSession'},
+              body: {
+                datachannelToken: 'token-from-ps-session',
+                dataChannelTokenType: 'llm-practice-session',
+              },
             });
 
           const token = await dispatcherInterceptor._refreshDataChannelToken(PS_DATACHANNEL_URL);
@@ -294,7 +303,10 @@ describe('plugin-meetings', () => {
           llmMock.refreshDataChannelToken
             .withArgs('llm-default-session')
             .resolves({
-              body: {datachannelToken: 'token-from-default-session', dataChannelTokenType: 'Default'},
+              body: {
+                datachannelToken: 'token-from-default-session',
+                dataChannelTokenType: 'llm-default-session',
+              },
             });
 
           const token = await dispatcherInterceptor._refreshDataChannelToken(DEFAULT_DATACHANNEL_URL);
@@ -309,16 +321,26 @@ describe('plugin-meetings', () => {
           );
         });
 
-        it('throws when URL does not match any session or meeting route', async () => {
+        it('falls back to default refresh when URL does not match any session or meeting route', async () => {
           llmMock.getSessionIdByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns(undefined);
           llmMock.getLocusUrlByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns(undefined);
+          llmMock.refreshDataChannelToken.withArgs(undefined).resolves({
+            body: {
+              datachannelToken: 'token-from-default-fallback',
+              dataChannelTokenType: 'llm-default-session',
+            },
+          });
 
-          await assert.isRejected(
-            dispatcherInterceptor._refreshDataChannelToken(PS_DATACHANNEL_URL),
-            'Unable to resolve DataChannel refresh route for request URL'
+          const token = await dispatcherInterceptor._refreshDataChannelToken(PS_DATACHANNEL_URL);
+
+          expect(token).to.equal('token-from-default-fallback');
+          sinon.assert.calledOnceWithExactly(llmMock.refreshDataChannelToken, undefined);
+          sinon.assert.calledOnceWithExactly(
+            llmMock.setDatachannelToken,
+            'token-from-default-fallback',
+            'llm-default-session',
+            undefined
           );
-          sinon.assert.notCalled(llmMock.refreshDataChannelToken);
-          sinon.assert.notCalled(llmMock.setDatachannelToken);
         });
 
         it('falls back to meeting lookup by locusUrl when session cannot be resolved', async () => {
@@ -334,7 +356,7 @@ describe('plugin-meetings', () => {
           sinon.assert.calledOnceWithExactly(
             llmMock.setDatachannelToken,
             'token-from-meeting-a',
-            'PracticeSession',
+            'llm-practice-session',
             'meeting-a'
           );
         });
