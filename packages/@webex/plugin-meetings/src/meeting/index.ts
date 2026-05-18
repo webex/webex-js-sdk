@@ -6158,6 +6158,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private handleLLMOnline = (): void => {
     this.restoreLLMSubscriptionsIfNeeded();
+    this.locusInfo.syncAllHashTreeDatasets({onlyLLM: true});
 
     Trigger.trigger(
       this,
@@ -6734,8 +6735,10 @@ export default class Meeting extends StatelessWebexPlugin {
     return this.webex.internal.llm
       .registerAndConnect(url, dataChannelUrl, datachannelToken)
       .then((registerAndConnectResult) => {
-        // Re-check ownership at commit time to avoid races where ownership
-        // changed between connect and handler/owner writes.
+        this.locusInfo.syncAllHashTreeDatasets({onlyLLM: true});
+        // Record ownership of the default LLM session for this meeting so
+        // subsequent cross-meeting `updateLLMConnection` / `cleanupLLMConneciton`
+        // calls can detect and skip work that doesn't belong to them.
         // @ts-ignore - Fix type
         const {isOwner} = this.webex.internal.llm.resolveSessionOwnership(
           this.id,

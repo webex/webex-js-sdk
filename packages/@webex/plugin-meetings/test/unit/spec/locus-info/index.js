@@ -3744,6 +3744,18 @@ describe('plugin-meetings', () => {
         assert.calledOnce(parser1.syncAllDatasets);
       });
 
+      it('should forward options to each parser syncAllDatasets', async () => {
+        const parser1 = {syncAllDatasets: sinon.stub().resolves()};
+        const parser2 = {syncAllDatasets: sinon.stub().resolves()};
+        locusInfo.hashTreeParsers.set('url1', {parser: parser1});
+        locusInfo.hashTreeParsers.set('url2', {parser: parser2});
+
+        await locusInfo.syncAllHashTreeDatasets({onlyLLM: true});
+
+        assert.calledOnceWithExactly(parser1.syncAllDatasets, {onlyLLM: true});
+        assert.calledOnceWithExactly(parser2.syncAllDatasets, {onlyLLM: true});
+      });
+
       it('should await each parsers syncAllDatasets sequentially', async () => {
         const callOrder = [];
         const parser1 = {syncAllDatasets: sinon.stub().callsFake(() => {
