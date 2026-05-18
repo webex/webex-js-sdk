@@ -1564,17 +1564,17 @@ class HashTreeParser {
     for (const receivedDataSet of receivedDataSets) {
       const dataSet = this.dataSets[receivedDataSet.name];
 
+      if (dataSet.heartbeatWatchdogTimer) {
+        clearTimeout(dataSet.heartbeatWatchdogTimer);
+        dataSet.heartbeatWatchdogTimer = undefined;
+      }
+
       // dataset-level heartbeatIntervalMs takes priority; fall back to top-level common value
       const heartbeatIntervalMs = dataSet?.heartbeatIntervalMs ?? this.topLevelHeartbeatIntervalMs;
 
       if (!dataSet?.hashTree || !heartbeatIntervalMs) {
         // eslint-disable-next-line no-continue
         continue;
-      }
-
-      if (dataSet.heartbeatWatchdogTimer) {
-        clearTimeout(dataSet.heartbeatWatchdogTimer);
-        dataSet.heartbeatWatchdogTimer = undefined;
       }
 
       const backoffTime = this.getWeightedBackoffTime(dataSet.backoff);
