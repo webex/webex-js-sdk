@@ -17,9 +17,10 @@ export class ConnectionError extends Exception {
 
   reason?: string;
 
-  // eslint-disable-next-line no-useless-constructor
-  constructor(event?: SocketCloseEvent) {
+  constructor(event: SocketCloseEvent = {}) {
     super(event);
+    this.code = event.code;
+    this.reason = event.reason;
   }
 
   /**
@@ -28,15 +29,6 @@ export class ConnectionError extends Exception {
    * @returns The reason string from the event
    */
   parse(event: SocketCloseEvent = {}) {
-    Object.defineProperties(this, {
-      code: {
-        value: event.code,
-      },
-      reason: {
-        value: event.reason,
-      },
-    });
-
     return event.reason;
   }
 }
