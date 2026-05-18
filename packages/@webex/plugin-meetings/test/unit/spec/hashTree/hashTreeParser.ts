@@ -3519,6 +3519,122 @@ describe('HashTreeParser', () => {
         // And the watchdog should still be running
         expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
       });
+
+      it('uses dataset-level heartbeatIntervalMs over top-level value', async () => {
+        const parser = createHashTreeParser();
+        const datasetLevelInterval = 3000;
+        const topLevelInterval = 8000;
+
+        // Send heartbeat with both top-level and dataset-level heartbeatIntervalMs
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+              heartbeatIntervalMs: datasetLevelInterval,
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs: topLevelInterval,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'heartbeat with both levels');
+
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+
+        // Mock sync responses
+        const mainDataSetUrl = parser.dataSets.main.url;
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          createDataSet('main', 16, 1101)
+        );
+        mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+        // Watchdog should NOT fire at the top-level interval (8000ms)
+        // It should fire at the dataset-level interval (3000ms)
+        await clock.tickAsync(datasetLevelInterval - 1);
+        assert.notCalled(webexRequest);
+
+        await clock.tickAsync(1);
+        // Now at datasetLevelInterval, watchdog should have fired
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'GET',
+            uri: `${mainDataSetUrl}/hashtree`,
+          })
+        );
+      });
+
+      it('falls back to top-level heartbeatIntervalMs when dataset-level is missing', async () => {
+        const parser = createHashTreeParser();
+        const topLevelInterval = 7000;
+
+        // Send heartbeat with top-level heartbeatIntervalMs but no dataset-level
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+              heartbeatIntervalMs: undefined,
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs: topLevelInterval,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'heartbeat with top-level only');
+
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+
+        // Mock sync responses
+        const mainDataSetUrl = parser.dataSets.main.url;
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          createDataSet('main', 16, 1101)
+        );
+        mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+        // Should fire at the top-level interval
+        await clock.tickAsync(topLevelInterval - 1);
+        assert.notCalled(webexRequest);
+
+        await clock.tickAsync(1);
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'GET',
+            uri: `${mainDataSetUrl}/hashtree`,
+          })
+        );
+      });
+
+      it('does not start watchdog when dataset-level heartbeatIntervalMs is 0 even if top-level is set', async () => {
+        const parser = createHashTreeParser();
+
+        // Send heartbeat with dataset-level 0 and a top-level value
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+              heartbeatIntervalMs: 0,
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs: 5000,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'heartbeat with dataset-level 0');
+
+        // Dataset-level 0 means no watchdog, should NOT fall back to top-level
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.be.undefined;
+      });
     });
 
   });

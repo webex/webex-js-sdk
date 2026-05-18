@@ -25,6 +25,7 @@ export interface DataSet {
 
 export interface RootHashMessage {
   dataSets: Array<DataSet>;
+  heartbeatIntervalMs?: number;
 }
 export interface HashTreeMessage {
   dataSets: Array<DataSet>;
@@ -32,6 +33,7 @@ export interface HashTreeMessage {
   locusStateElements?: Array<HashTreeObject>;
   locusSessionId?: string;
   locusUrl: string;
+  heartbeatIntervalMs?: number;
 }
 
 export interface VisibleDataSetInfo {
@@ -123,6 +125,8 @@ class HashTreeParser {
   private isSyncInProgress = false;
   private isSyncAllInProgress = false;
   private syncQueueProcessingPromise: Promise<void> = Promise.resolve();
+  // top-level heartbeat interval from the most recent message, used as fallback when dataset-level value is missing
+  private topLevelHeartbeatIntervalMs?: number;
 
   /**
    * Constructor for HashTreeParser
@@ -1147,6 +1151,10 @@ class HashTreeParser {
       return;
     }
 
+    if (message.heartbeatIntervalMs !== undefined) {
+      this.topLevelHeartbeatIntervalMs = message.heartbeatIntervalMs;
+    }
+
     if (this.isEndMessage(message)) {
       LoggerProxy.logger.info(
         `HashTreeParser#handleMessage --> ${this.debugId} received sentinel END MEETING message`
@@ -1556,7 +1564,10 @@ class HashTreeParser {
     for (const receivedDataSet of receivedDataSets) {
       const dataSet = this.dataSets[receivedDataSet.name];
 
-      if (!dataSet?.hashTree || !dataSet.heartbeatIntervalMs) {
+      // dataset-level heartbeatIntervalMs takes priority; fall back to top-level common value
+      const heartbeatIntervalMs = dataSet?.heartbeatIntervalMs ?? this.topLevelHeartbeatIntervalMs;
+
+      if (!dataSet?.hashTree || !heartbeatIntervalMs) {
         // eslint-disable-next-line no-continue
         continue;
       }
@@ -1567,7 +1578,7 @@ class HashTreeParser {
       }
 
       const backoffTime = this.getWeightedBackoffTime(dataSet.backoff);
-      const delay = dataSet.heartbeatIntervalMs + backoffTime;
+      const delay = heartbeatIntervalMs + backoffTime;
 
       dataSet.heartbeatWatchdogTimer = setTimeout(() => {
         dataSet.heartbeatWatchdogTimer = undefined;
@@ -1616,6 +1627,7 @@ class HashTreeParser {
     );
     this.stopAllTimers();
     this.syncQueue = [];
+    this.topLevelHeartbeatIntervalMs = undefined;
     Object.values(this.dataSets).forEach((dataSet) => {
       dataSet.syncAbortController?.abort();
       dataSet.syncAbortController = undefined;
