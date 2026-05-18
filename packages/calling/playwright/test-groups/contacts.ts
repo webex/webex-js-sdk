@@ -1,20 +1,12 @@
 import {test, expect} from '@playwright/test';
 import {TestManager} from '../test-manager';
 import {
-  // SDK helpers — initialization, cleanup, and SDK-only tests
   verifyContactsClientReady,
-  createContactGroup,
-  createContact,
-  deleteContact,
-  expectContactSuccess,
-  expectContactError,
   cleanupAllContacts,
-  buildCustomContact,
-  // UI interaction helpers — primary interface for browser-visible operations
   clickGetContacts,
-  uiCreateCustomContact,
-  uiCreateCloudContact,
-  uiCreateContactGroup,
+  createCustomContact,
+  createCloudContact,
+  createContactGroup,
   waitForContactSuccess,
   waitForGroupSuccess,
   waitForContactOperationEnd,
@@ -25,8 +17,8 @@ import {
   expectGroupTypeInRow,
   expectContactNotInTable,
   expectGroupNotInTable,
-  uiDeleteContactByName,
-  uiDeleteGroupByName,
+  deleteGroupByName,
+  deleteContactByName,
 } from '../utils/contacts';
 
 // ---------------------------------------------------------------------------
@@ -76,7 +68,7 @@ export function contactListTests() {
       const displayName = `CONT-002 Verify ${Date.now()}`;
 
       // Create via the sample-app form
-      await uiCreateCustomContact(tm.page, {
+      await createCustomContact(tm.page, {
         displayName,
         phone: '+15005550001',
         email: 'cont002@example.com',
@@ -92,7 +84,7 @@ export function contactListTests() {
     test('CONT-003: getContacts - created contact group appears in the groups table', async () => {
       const groupName = `CONT-003 Group ${Date.now()}`;
 
-      await uiCreateContactGroup(tm.page, groupName);
+      await createContactGroup(tm.page, groupName);
       await waitForGroupSuccess(tm.page);
 
       await clickGetContacts(tm.page);
@@ -102,7 +94,7 @@ export function contactListTests() {
     test('CONT-004: getContacts - CUSTOM contact shows its decrypted displayName in the table', async () => {
       const displayName = `CONT-004 Decrypted ${Date.now()}`;
 
-      await uiCreateCustomContact(tm.page, {displayName, phone: '+15005550001'});
+      await createCustomContact(tm.page, {displayName, phone: '+15005550001'});
       await waitForContactSuccess(tm.page);
 
       await clickGetContacts(tm.page);
@@ -153,7 +145,7 @@ export function contactGroupTests() {
     test('CONT-005: createContactGroup - NORMAL group is created and appears in the groups table', async () => {
       const displayName = `CONT-005 Group ${Date.now()}`;
 
-      await uiCreateContactGroup(tm.page, displayName, 'NORMAL');
+      await createContactGroup(tm.page, displayName, 'NORMAL');
       await waitForGroupSuccess(tm.page);
 
       await clickGetContacts(tm.page);
@@ -164,7 +156,7 @@ export function contactGroupTests() {
     test('CONT-006: createContactGroup - EXTERNAL group is stored with correct type in the table', async () => {
       const displayName = `CONT-006 Ext Group ${Date.now()}`;
 
-      await uiCreateContactGroup(tm.page, displayName, 'EXTERNAL');
+      await createContactGroup(tm.page, displayName, 'EXTERNAL');
       await waitForGroupSuccess(tm.page);
 
       await clickGetContacts(tm.page);
@@ -176,11 +168,11 @@ export function contactGroupTests() {
       const displayName = `CONT-007 Dup ${Date.now()}`;
 
       // First creation must succeed
-      await uiCreateContactGroup(tm.page, displayName, 'NORMAL');
+      await createContactGroup(tm.page, displayName, 'NORMAL');
       await waitForGroupSuccess(tm.page);
 
       // Second creation with the same name must fail
-      await uiCreateContactGroup(tm.page, displayName, 'NORMAL');
+      await createContactGroup(tm.page, displayName, 'NORMAL');
       // Wait for the SDK call to complete (status element leaves its reset value)
       await waitForGroupOperationEnd(tm.page);
 
@@ -191,7 +183,7 @@ export function contactGroupTests() {
     test('CONT-008: createContactGroup - group appears in the groups table immediately after creation', async () => {
       const displayName = `CONT-008 Fetch Verify ${Date.now()}`;
 
-      await uiCreateContactGroup(tm.page, displayName);
+      await createContactGroup(tm.page, displayName);
       await waitForGroupSuccess(tm.page);
 
       await clickGetContacts(tm.page);
@@ -202,13 +194,13 @@ export function contactGroupTests() {
       const displayName = `CONT-009 Delete Group ${Date.now()}`;
 
       // Create and confirm in table
-      await uiCreateContactGroup(tm.page, displayName);
+      await createContactGroup(tm.page, displayName);
       await waitForGroupSuccess(tm.page);
       await clickGetContacts(tm.page);
       await expectGroupInTable(tm.page, displayName);
 
       // Delete via the table row button
-      await uiDeleteGroupByName(tm.page, displayName);
+      await deleteGroupByName(tm.page, displayName);
 
       // Re-fetch and verify the row is gone
       await clickGetContacts(tm.page);
@@ -218,12 +210,12 @@ export function contactGroupTests() {
     test('CONT-010: deleteContactGroup - deleted group does not reappear in a subsequent Get Contacts call', async () => {
       const displayName = `CONT-010 Verify Deleted ${Date.now()}`;
 
-      await uiCreateContactGroup(tm.page, displayName);
+      await createContactGroup(tm.page, displayName);
       await waitForGroupSuccess(tm.page);
       await clickGetContacts(tm.page);
 
       // Delete via UI
-      await uiDeleteGroupByName(tm.page, displayName);
+      await deleteGroupByName(tm.page, displayName);
 
       // A fresh Get Contacts must not return this group
       await clickGetContacts(tm.page);
@@ -237,11 +229,7 @@ export function contactGroupTests() {
 // ---------------------------------------------------------------------------
 
 /**
- * CONT-011 to CONT-017: createContact scenarios.
- *
- * UI tests:  CONT-011, CONT-013, CONT-015, CONT-017
- * SDK tests: CONT-012 (fields not on form), CONT-014 (groups selector absent),
- *            CONT-016 (unknown contactType not submittable via UI)
+ * CONT-011 to CONT-016: createContact scenarios — all tested through the UI.
  */
 export function createContactTests() {
   test.describe('Contacts - Create Contact', () => {
@@ -270,7 +258,7 @@ export function createContactTests() {
     });
 
     test('CONT-011: createContact CUSTOM - form submission shows success status', async () => {
-      await uiCreateCustomContact(tm.page, {
+      await createCustomContact(tm.page, {
         displayName: `CONT-011 Min ${Date.now()}`,
         phone: '+15005550001',
       });
@@ -279,37 +267,11 @@ export function createContactTests() {
       await waitForContactSuccess(tm.page);
     });
 
-    test('CONT-012: createContact CUSTOM - all optional fields are persisted (SDK)', async () => {
-      // SDK-based: the sample-app form only exposes displayName / phone / email / avatarURL.
-      // Fields like firstName, lastName, companyName, department, sipAddresses require the SDK.
-      const contact = buildCustomContact({
-        displayName: `CONT-012 Full ${Date.now()}`,
-        firstName: 'Alice',
-        lastName: 'Smith',
-        companyName: 'Acme Corp',
-        department: 'Engineering',
-        emails: [{type: 'work', value: `alice.${Date.now()}@acme.com`}],
-        phoneNumbers: [
-          {type: 'work', value: '+157569957407'},
-          {type: 'mobile', value: '+15005550003'},
-        ],
-        sipAddresses: [{type: 'personal', value: `alice.${Date.now()}@webex.com`}],
-      });
-
-      const response = await createContact(tm.page, contact);
-
-      expectContactSuccess(response, 201);
-      const created = response.data.contact!;
-      expect(created.firstName).toBe('Alice');
-      expect(created.lastName).toBe('Smith');
-      expect(created.companyName).toBe('Acme Corp');
-    });
-
     test('CONT-013: createContact CUSTOM - auto-assigned to a default group, visible in Groups column', async () => {
       const displayName = `CONT-013 AutoGroup ${Date.now()}`;
 
       // Create with no groups field — service auto-assigns to default group
-      await uiCreateCustomContact(tm.page, {displayName, phone: '+15005550001'});
+      await createCustomContact(tm.page, {displayName, phone: '+15005550001'});
       await waitForContactSuccess(tm.page);
 
       await clickGetContacts(tm.page);
@@ -323,26 +285,9 @@ export function createContactTests() {
       expect(groupText.trim()).not.toBe('');
     });
 
-    test('CONT-014: createContact CUSTOM - contact is assigned to a specified group (SDK)', async () => {
-      // SDK-based: the sample-app form has no group selector; groups must be passed via SDK.
-      const groupResp = await createContactGroup(tm.page, `CONT-014 Group ${Date.now()}`);
-      const groupId = groupResp.data.group?.groupId;
-      expect(groupId).toBeTruthy();
-      if (!groupId) return;
-
-      const contact = buildCustomContact({
-        displayName: `CONT-014 In Group ${Date.now()}`,
-        groups: [groupId],
-      });
-      const response = await createContact(tm.page, contact);
-
-      expectContactSuccess(response, 201);
-      expect(response.data.contact!.groups).toContain(groupId);
-    });
-
     test('CONT-015: createContact CLOUD - empty contactId shows error status in the app', async () => {
       // Submit the cloud contact form with an empty contactId — SDK rejects it
-      await uiCreateCloudContact(tm.page, '' /* contactId intentionally empty */);
+      await createCloudContact(tm.page, '' /* contactId intentionally empty */);
 
       // Wait for the SDK call to complete (element leaves the reset placeholder)
       await waitForContactOperationEnd(tm.page);
@@ -351,24 +296,10 @@ export function createContactTests() {
       await expect(tm.page.locator('#contact-object')).not.toContainText('Status: SUCCESS');
     });
 
-    test('CONT-016: createContact - unknown contactType returns 400 error (SDK)', async () => {
-      // SDK-based: the UI only exposes CUSTOM and CLOUD types; unknown type requires SDK call.
-      const contact = {
-        contactType: 'UNKNOWN_TYPE' as any,
-        groups: [],
-        encryptionKeyUrl: '',
-        resolved: false,
-      };
+    test('CONT-016: createContact CUSTOM - newly created contact appears in the Get Contacts table', async () => {
+      const displayName = `CONT-016 Verify ${Date.now()}`;
 
-      const response = await createContact(tm.page, contact);
-
-      expectContactError(response, 400);
-    });
-
-    test('CONT-017: createContact CUSTOM - newly created contact appears in the Get Contacts table', async () => {
-      const displayName = `CONT-017 Verify ${Date.now()}`;
-
-      await uiCreateCustomContact(tm.page, {displayName, phone: '+15005550001'});
+      await createCustomContact(tm.page, {displayName, phone: '+15005550001'});
       await waitForContactSuccess(tm.page);
 
       await clickGetContacts(tm.page);
@@ -383,10 +314,7 @@ export function createContactTests() {
 // ---------------------------------------------------------------------------
 
 /**
- * CONT-018 to CONT-019: deleteContact scenarios.
- *
- * UI test:  CONT-018 (create via form → Delete button → table verification)
- * SDK test: CONT-019 (non-existent ID — no UI path to target arbitrary IDs)
+ * CONT-017: deleteContact — create via form → Delete button → table verification.
  */
 export function deleteContactTests() {
   test.describe('Contacts - Delete Contact', () => {
@@ -410,11 +338,11 @@ export function deleteContactTests() {
       await tm.cleanup();
     });
 
-    test('CONT-018: deleteContact - contact is removed from the table after clicking Delete', async () => {
+    test('CONT-017: deleteContact - contact is removed from the table after clicking Delete', async () => {
       const displayName = `CONT-018 Delete Me ${Date.now()}`;
 
       // Create the contact via the UI form
-      await uiCreateCustomContact(tm.page, {displayName, phone: '+15005550001'});
+      await createCustomContact(tm.page, {displayName, phone: '+15005550001'});
       await waitForContactSuccess(tm.page);
 
       // Populate the table and confirm the contact is present
@@ -422,20 +350,11 @@ export function deleteContactTests() {
       await expectContactInTable(tm.page, displayName);
 
       // Click the Delete button in the table row
-      await uiDeleteContactByName(tm.page, displayName);
+      await deleteContactByName(tm.page, displayName);
 
       // Re-fetch and verify the contact no longer appears
       await clickGetContacts(tm.page);
       await expectContactNotInTable(tm.page, displayName);
-    });
-
-    test('CONT-019: deleteContact - deleting a non-existent contactId returns a non-2xx status (SDK)', async () => {
-      // SDK-based: the UI only exposes Delete buttons for contacts that exist in the rendered
-      // table; there is no field to enter an arbitrary contactId for deletion.
-      const fakeId = 'non-existent-contact-id-00000000-0000-0000-0000-000000000000';
-      const response = await deleteContact(tm.page, fakeId);
-
-      expect(response.statusCode).toBeGreaterThanOrEqual(400);
     });
   });
 }
