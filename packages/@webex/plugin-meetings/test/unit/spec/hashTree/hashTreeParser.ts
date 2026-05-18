@@ -2,6 +2,7 @@ import HashTreeParser, {
   LocusInfoUpdateType,
   MeetingEndedError,
   LocusNotFoundError,
+  SyncAllBackoffType,
 } from '@webex/plugin-meetings/src/hashTree/hashTreeParser';
 import HashTree from '@webex/plugin-meetings/src/hashTree/hashTree';
 import {expect} from '@webex/test-helper-chai';
@@ -4494,8 +4495,8 @@ describe('HashTreeParser', () => {
       );
       expect(mainSyncCallIndex).to.be.lessThan(selfSyncCallIndex);
 
-      // Verify isSyncAllInProgress is reset
-      expect(parser.isSyncAllInProgress).to.be.false;
+      // Verify syncAllBackoffType is reset
+      expect(parser.syncAllBackoffType).to.equal(SyncAllBackoffType.NONE);
     });
 
     it('should return immediately when state is stopped', async () => {
@@ -4558,6 +4559,200 @@ describe('HashTreeParser', () => {
         (args) => args[0]?.method === 'GET' && args[0]?.uri === `${mainUrl}/hashtree`
       );
       expect(getHashtreeCalls).to.have.lengthOf(1);
+    });
+
+    it('should sync only LLM datasets when onlyLLM=true', async () => {
+      const parser = createHashTreeParser();
+
+      const mainUrl = parser.dataSets.main.url;
+      const selfUrl = parser.dataSets.self.url;
+
+      mockGetHashesFromLocusResponse(
+        mainUrl,
+        new Array(16).fill(EMPTY_HASH),
+        createDataSet('main', 16, 1100)
+      );
+
+      const mainSyncDs = createDataSet('main', 16, 1100);
+      mainSyncDs.root = parser.dataSets.main.hashTree.getRootHash();
+      mockSendSyncRequestResponse(mainUrl, {
+        dataSets: [mainSyncDs],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      await parser.syncAllDatasets({onlyLLM: true});
+
+      // main is an LLM dataset, so it should have been synced
+      assert.calledWith(webexRequest, sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`}));
+
+      // self is NOT an LLM dataset, so it should NOT have been synced
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'POST', uri: `${selfUrl}/sync`}));
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'GET', uri: `${selfUrl}/hashtree`}));
+    });
+
+    it('should upgrade scope from onlyLLM=true to all datasets when onlyLLM=false call arrives during backoff', async () => {
+      // Make Math.random return 1 so backoff = 1^2 * 1000 = 1000ms (non-zero delay for interleaving)
+      mathRandomStub.returns(1);
+
+      const parser = createHashTreeParser();
+
+      const mainUrl = parser.dataSets.main.url;
+      const selfUrl = parser.dataSets.self.url;
+
+      mockGetHashesFromLocusResponse(
+        mainUrl,
+        new Array(16).fill(EMPTY_HASH),
+        createDataSet('main', 16, 1100)
+      );
+
+      const mainSyncDs = createDataSet('main', 16, 1100);
+      mainSyncDs.root = parser.dataSets.main.hashTree.getRootHash();
+      mockSendSyncRequestResponse(mainUrl, {
+        dataSets: [mainSyncDs],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      const selfSyncDs = createDataSet('self', 1, 2100);
+      selfSyncDs.root = parser.dataSets.self.hashTree.getRootHash();
+      mockSendSyncRequestResponse(selfUrl, {
+        dataSets: [selfSyncDs],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      // First call with onlyLLM=true starts backoff
+      const promise1 = parser.syncAllDatasets({onlyLLM: true});
+      expect(parser.syncAllBackoffType).to.equal(SyncAllBackoffType.ONLY_LLM);
+
+      // Second call with onlyLLM=false upgrades the scope during backoff
+      const promise2 = parser.syncAllDatasets({onlyLLM: false});
+      expect(parser.syncAllBackoffType).to.equal(SyncAllBackoffType.ALL);
+
+      // Advance clock past the backoff delay (1000ms)
+      await clock.tickAsync(1000);
+
+      await promise1;
+      await promise2;
+
+      // Both main (LLM) and self (non-LLM) should have been synced
+      assert.calledWith(webexRequest, sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`}));
+      assert.calledWith(webexRequest, sinon.match({method: 'POST', uri: `${selfUrl}/sync`}));
+    });
+
+    it('should not downgrade scope from onlyLLM=false when onlyLLM=true call arrives during backoff', async () => {
+      // Make Math.random return 1 so backoff = 1^2 * 1000 = 1000ms (non-zero delay for interleaving)
+      mathRandomStub.returns(1);
+
+      const parser = createHashTreeParser();
+
+      const mainUrl = parser.dataSets.main.url;
+      const selfUrl = parser.dataSets.self.url;
+
+      mockGetHashesFromLocusResponse(
+        mainUrl,
+        new Array(16).fill(EMPTY_HASH),
+        createDataSet('main', 16, 1100)
+      );
+
+      const mainSyncDs = createDataSet('main', 16, 1100);
+      mainSyncDs.root = parser.dataSets.main.hashTree.getRootHash();
+      mockSendSyncRequestResponse(mainUrl, {
+        dataSets: [mainSyncDs],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      const selfSyncDs = createDataSet('self', 1, 2100);
+      selfSyncDs.root = parser.dataSets.self.hashTree.getRootHash();
+      mockSendSyncRequestResponse(selfUrl, {
+        dataSets: [selfSyncDs],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      // First call with onlyLLM=false starts backoff with all-datasets scope
+      const promise1 = parser.syncAllDatasets({onlyLLM: false});
+      expect(parser.syncAllBackoffType).to.equal(SyncAllBackoffType.ALL);
+
+      // Second call with onlyLLM=true should NOT downgrade the scope
+      const promise2 = parser.syncAllDatasets({onlyLLM: true});
+      expect(parser.syncAllBackoffType).to.equal(SyncAllBackoffType.ALL);
+
+      // Advance clock past the backoff delay (1000ms)
+      await clock.tickAsync(1000);
+
+      await promise1;
+      await promise2;
+
+      // Both main (LLM) and self (non-LLM) should have been synced (scope was not downgraded)
+      assert.calledWith(webexRequest, sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`}));
+      assert.calledWith(webexRequest, sinon.match({method: 'POST', uri: `${selfUrl}/sync`}));
+    });
+
+    it('should skip datasets that received messages during the backoff sleep', async () => {
+      // Make Math.random return 1 so backoff = 1^2 * 1000 = 1000ms
+      mathRandomStub.returns(1);
+
+      const parser = createHashTreeParser();
+
+      const mainUrl = parser.dataSets.main.url;
+      const selfUrl = parser.dataSets.self.url;
+      const atdUnmutedUrl = parser.dataSets['atd-unmuted'].url;
+
+      // Setup mocks only for self (main and atd-unmuted should be skipped)
+      mockSendSyncRequestResponse(selfUrl, {
+        dataSets: [createDataSet('self', 1, 2100)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      // Start syncAllDatasets - begins backoff sleep
+      const promise = parser.syncAllDatasets();
+      expect(parser.syncAllBackoffType).to.equal(SyncAllBackoffType.ALL);
+
+      // Simulate a normal message arriving for "main" during the backoff sleep
+      parser.handleMessage({
+        dataSets: [createDataSet('main', 16, 1100)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 0, version: 201},
+              dataSetNames: ['main'],
+            },
+            data: {someData: 'value'},
+          },
+        ],
+      });
+
+      // Simulate a heartbeat message arriving for "atd-unmuted" during the backoff sleep
+      parser.handleMessage(
+        createHeartbeatMessage('atd-unmuted', 1, 1100, parser.dataSets['atd-unmuted'].root)
+      );
+
+      // Advance clock past the backoff delay
+      await clock.tickAsync(1000);
+      await promise;
+
+      // main should NOT have been synced (it received a normal message during backoff)
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`}));
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'POST', uri: `${mainUrl}/sync`}));
+
+      // atd-unmuted should NOT have been synced (it received a heartbeat during backoff)
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'GET', uri: `${atdUnmutedUrl}/hashtree`}));
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'POST', uri: `${atdUnmutedUrl}/sync`}));
+
+      // self SHOULD have been synced (no messages received for it during backoff)
+      assert.calledWith(webexRequest, sinon.match({method: 'POST', uri: `${selfUrl}/sync`}));
     });
 
     it('should skip datasets that do not have a hash tree', async () => {

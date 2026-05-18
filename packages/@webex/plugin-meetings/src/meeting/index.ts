@@ -6135,6 +6135,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private handleLLMOnline = (): void => {
     this.restoreLLMSubscriptionsIfNeeded();
+    this.locusInfo.syncAllHashTreeDatasets({onlyLLM: true});
 
     Trigger.trigger(
       this,
@@ -6687,6 +6688,7 @@ export default class Meeting extends StatelessWebexPlugin {
     return this.webex.internal.llm
       .registerAndConnect(url, dataChannelUrl, datachannelToken)
       .then((registerAndConnectResult) => {
+        this.locusInfo.syncAllHashTreeDatasets({onlyLLM: true});
         // Record ownership of the default LLM session for this meeting so
         // subsequent cross-meeting `updateLLMConnection` / `cleanupLLMConneciton`
         // calls can detect and skip work that doesn't belong to them.
@@ -10081,15 +10083,12 @@ export default class Meeting extends StatelessWebexPlugin {
    * @public
    * @memberof Meeting
    */
-  public sendReaction(reactionType: ReactionServerType, skinToneType?: SkinToneType) {
+  public sendReaction(reactionType: string, skinToneType?: SkinToneType) {
     const reactionChannelUrl = this.locusInfo?.controls?.reactions?.reactionChannelUrl as string;
     const participantId = this.members.selfId;
 
-    const reactionData = Reactions[reactionType];
+    const reactionData = Reactions[reactionType] || {type: reactionType};
 
-    if (!reactionData) {
-      return Promise.reject(new Error(`${reactionType} is not a valid reaction.`));
-    }
     const skinToneData = SkinTones[skinToneType] || SkinTones.normal;
     const reaction: Reaction = {
       ...reactionData,
