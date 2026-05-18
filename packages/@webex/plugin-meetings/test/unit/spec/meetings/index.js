@@ -426,6 +426,33 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#_toggleEnableAv1SlidesSupport', () => {
+      it('should have _toggleEnableAv1SlidesSupport', () => {
+        assert.equal(typeof webex.meetings._toggleEnableAv1SlidesSupport, 'function');
+      });
+
+      describe('success', () => {
+        it('should update meetings config to enable AV1 slides support', () => {
+          webex.meetings._toggleEnableAv1SlidesSupport(true);
+          assert.equal(webex.meetings.config.enableAv1SlidesSupport, true);
+
+          webex.meetings._toggleEnableAv1SlidesSupport(false);
+          assert.equal(webex.meetings.config.enableAv1SlidesSupport, false);
+        });
+
+        it('should not update config when called with a non-boolean value', () => {
+          webex.meetings._toggleEnableAv1SlidesSupport(true);
+          assert.equal(webex.meetings.config.enableAv1SlidesSupport, true);
+
+          webex.meetings._toggleEnableAv1SlidesSupport('invalid');
+          assert.equal(webex.meetings.config.enableAv1SlidesSupport, true);
+
+          webex.meetings._toggleEnableAv1SlidesSupport(undefined);
+          assert.equal(webex.meetings.config.enableAv1SlidesSupport, true);
+        });
+      });
+    });
+
     describe('#_toggleStopIceGatheringAfterFirstRelayCandidate', () => {
       it('should have _toggleStopIceGatheringAfterFirstRelayCandidate', () => {
         assert.equal(
@@ -3118,6 +3145,30 @@ describe('plugin-meetings', () => {
             );
 
             assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
+          });
+
+          [
+            {fullStateType: 'CALL'},
+            {fullStateType: 'SIP_BRIDGE'},
+            {fullStateType: 'SPACE_SHARE'},
+          ].forEach(({fullStateType}) => {
+            it(`skips meeting info fetch when LOCUS_ID destination is a 1:1 call (fullState.type ${fullStateType})`, async () => {
+              const locusDestination = {
+                fullState: {type: fullStateType},
+              };
+
+              const meeting = await webex.meetings.createMeeting(
+                locusDestination,
+                DESTINATION_TYPE.LOCUS_ID
+              );
+
+              assert.instanceOf(
+                meeting,
+                Meeting,
+                'createMeeting should eventually resolve to a Meeting Object'
+              );
+              assert.notCalled(webex.meetings.meetingInfo.fetchMeetingInfo);
+            });
           });
         });
 

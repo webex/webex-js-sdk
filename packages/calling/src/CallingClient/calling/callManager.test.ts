@@ -81,6 +81,23 @@ const disconnectEvent = {
   sequenceNumber: 6,
   filterMessage: false,
 };
+
+const registrationDownEvent = {
+  type: 'async_event',
+  trackingId: 'SRV_bb000000-0000-0000-0000-000000000007',
+  eventId: 'a7b8c9d0-e1f2-3456-abcd-567890123456',
+  data: {
+    eventType: 'registration.down',
+    deviceInfo: {
+      userId: '44533573-f6aa-429d-b4fe-58aa04a2b636',
+      device: {
+        deviceId: '334f3d50-1d26-4712-93f1-4972390cc565',
+        uri: 'https://mobius-a.wbx2.com/api/v1/calling/web/devices/334f3d50-1d26-4712-93f1-4972390cc565',
+        status: 'inactive',
+      },
+    },
+  },
+};
 const deviceId = '55dfb53f-bed2-36da-8e85-cee7f02aa68e';
 const dest = {
   type: CallType.URI,
@@ -562,6 +579,18 @@ describe('Coverage for Events listener', () => {
     await callManager['dequeueWsEvents'](setupEvent);
 
     expect(logSpy).toHaveBeenCalledWith('Unknown Call Event mobiusEvent: mobius.callunknown', {
+      file: 'callManager',
+      method: 'dequeueWsEvents',
+    });
+  });
+
+  it('Handles registration down event without routing to call state machine', async () => {
+    jest.clearAllMocks();
+
+    await callManager['dequeueWsEvents'](registrationDownEvent);
+
+    expect(callSpy).not.toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith('Unknown Call Event mobiusEvent: registration.down', {
       file: 'callManager',
       method: 'dequeueWsEvents',
     });
