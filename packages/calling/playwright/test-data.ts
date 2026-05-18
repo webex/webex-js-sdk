@@ -22,7 +22,7 @@ export interface UserSet {
 
 /**
  * Roles that must have credentials/tokens available for the currently enabled
- * Playwright projects. USER_6 remains optional until SET_3USER is enabled.
+ * Playwright projects.
  */
 export const REQUIRED_OAUTH_ROLES: AccountRole[] = [
   'USER_1',
@@ -30,9 +30,10 @@ export const REQUIRED_OAUTH_ROLES: AccountRole[] = [
   'USER_3',
   'USER_4',
   'USER_5',
+  'USER_6',
 ];
 
-/** Separator between set name and environment in project names (e.g. "SET_1 - PROD"). */
+/** Separator between set name and environment in project names (e.g. "SET_REGISTRATION_1 - PROD"). */
 const ENV_SEPARATOR = ' - ';
 
 /**
@@ -90,34 +91,34 @@ export const getPhoneNumber = (role: AccountRole): string => {
 
 export const USER_SETS: Record<string, UserSet> = {
   // Single-user registration tests (parallel, ~4min each)
-  SET_1: {
-    name: 'SET_1',
+  SET_REGISTRATION_1: {
+    name: 'SET_REGISTRATION_1',
     accounts: ['USER_1'],
-    testSuite: 'set-1.spec.ts',
+    testSuite: 'set-registration-1.spec.ts',
   },
-  SET_2: {
-    name: 'SET_2',
+  SET_REGISTRATION_2: {
+    name: 'SET_REGISTRATION_2',
     accounts: ['USER_2'],
-    testSuite: 'set-2.spec.ts',
+    testSuite: 'set-registration-2.spec.ts',
   },
-  SET_3: {
-    name: 'SET_3',
+  SET_REGISTRATION_3: {
+    name: 'SET_REGISTRATION_3',
     accounts: ['USER_3'],
-    testSuite: 'set-3.spec.ts',
+    testSuite: 'set-registration-3.spec.ts',
   },
 
   // 2-user call tests (PROD — dedicated accounts, parallel with registration)
-  SET_2USER: {
-    name: 'SET_2USER',
+  SET_CALL: {
+    name: 'SET_CALL',
     accounts: ['USER_4', 'USER_5'],
-    testSuite: 'set-2user.spec.ts',
+    testSuite: 'set-call.spec.ts',
   },
 
   // 3-user transfer tests (PROD — dedicated accounts, parallel with registration)
-  SET_3USER: {
-    name: 'SET_3USER',
+  SET_CALL_TRANSFER_CONSULT: {
+    name: 'SET_CALL_TRANSFER_CONSULT',
     accounts: ['USER_4', 'USER_5', 'USER_6'],
-    testSuite: 'set-3user.spec.ts',
+    testSuite: 'set-call-transfer-consult.spec.ts',
   },
 };
 

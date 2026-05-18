@@ -86,7 +86,7 @@ export default defineConfig({
     },
 
     // Single-user registration sets (generated from USER_SETS, depend on OAuth)
-    ...['SET_1', 'SET_2', 'SET_3'].flatMap((key) => [
+    ...['SET_REGISTRATION_1', 'SET_REGISTRATION_2', 'SET_REGISTRATION_3'].flatMap((key) => [
       {
         name: `${key} - PROD`,
         dependencies: ['OAuth - PROD'],
@@ -105,34 +105,38 @@ export default defineConfig({
 
     // 2-user call tests (PROD uses USER_4+USER_5, parallel with registration sets)
     {
-      name: 'SET_2USER - PROD',
+      name: 'SET_CALL - PROD',
       dependencies: ['OAuth - PROD'],
       testDir: './playwright/suites',
-      testMatch: USER_SETS.SET_2USER.testSuite,
+      testMatch: USER_SETS.SET_CALL.testSuite,
       use: browserOptions[PW_BROWSER],
     },
-    // INT USER_4/5/6 are aliases for the same 3 INT accounts, must wait for registration
+    // INT call accounts are aliases for the registration accounts, so calls wait for registration
     {
-      name: 'SET_2USER - INT',
-      dependencies: ['SET_1 - INT', 'SET_2 - INT', 'SET_3 - INT'],
+      name: 'SET_CALL - INT',
+      dependencies: [
+        'SET_REGISTRATION_1 - INT',
+        'SET_REGISTRATION_2 - INT',
+        'SET_REGISTRATION_3 - INT',
+      ],
       testDir: './playwright/suites',
-      testMatch: USER_SETS.SET_2USER.testSuite,
+      testMatch: USER_SETS.SET_CALL.testSuite,
       use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
     },
 
-    // 3-user transfer tests — waits for 2-user (shared USER_4+USER_5)
+    // 3-user transfer tests — waits for call tests
     {
-      name: 'SET_3USER - PROD',
-      dependencies: ['SET_2USER - PROD'],
+      name: 'SET_CALL_TRANSFER_CONSULT - PROD',
+      dependencies: ['SET_CALL - PROD'],
       testDir: './playwright/suites',
-      testMatch: USER_SETS.SET_3USER.testSuite,
+      testMatch: USER_SETS.SET_CALL_TRANSFER_CONSULT.testSuite,
       use: browserOptions[PW_BROWSER],
     },
     {
-      name: 'SET_3USER - INT',
-      dependencies: ['SET_2USER - INT'],
+      name: 'SET_CALL_TRANSFER_CONSULT - INT',
+      dependencies: ['SET_CALL - INT'],
       testDir: './playwright/suites',
-      testMatch: USER_SETS.SET_3USER.testSuite,
+      testMatch: USER_SETS.SET_CALL_TRANSFER_CONSULT.testSuite,
       use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
     },
   ],

@@ -35,12 +35,12 @@ interface ManagedContext {
  * so that suites never need to hardcode role strings.
  *
  * Single-user usage (registration tests):
- *   const tm = new TestManager('SET_1');
+ *   const tm = new TestManager('SET_REGISTRATION_1');
  *   await tm.setupContext(browser, 0, {initSDK: true, register: true});
  *   // tm.page, tm.context ready — uses USER_1 account automatically
  *
  * Multi-user usage (call tests):
- *   const tm = new TestManager('SET_2USER');
+ *   const tm = new TestManager('SET_CALL');
  *   await Promise.all([
  *     tm.setupContext(browser, 0, {initSDK: true, register: true}),   // USER_1
  *     tm.setupContext(browser, 1, {initSDK: true, register: true}),   // USER_2
