@@ -102,6 +102,20 @@ export const guards = {
 
     if (taskData?.interaction?.state === INTERACTION_STATE.CONSULTING) return true;
 
+    // Hydrate can report interaction as conference/hold while this agent is actively consulting.
+    // Detect consult by participant consultState + consult media, independent of top-level state.
+    const selfAgentId = getSelfAgentId(context, taskData);
+    const selfParticipant = selfAgentId ? taskData?.interaction?.participants?.[selfAgentId] : null;
+    const hasConsultMedia = Object.values(taskData?.interaction?.media ?? {}).some(
+      (media: any) => media?.mType === MEDIA_TYPE_CONSULT
+    );
+    const isPendingOrActiveSelfConsult =
+      selfParticipant?.consultState === CONSULT_STATE.CONSULTING ||
+      selfParticipant?.consultState === 'consultInitiated';
+    if (isPendingOrActiveSelfConsult && hasConsultMedia && taskData?.isConsulted === false) {
+      return true;
+    }
+
     // EP_DN consulted agent: backend reports state as 'connected' but CPD indicates consult
     const cpd = taskData?.interaction?.callProcessingDetails;
     if (
@@ -114,14 +128,17 @@ export const guards = {
     // Customer left during consult: interaction state is "post_call" but consult
     // between agents is still active. Detect via agent's consultState + consult media.
     if (taskData?.interaction?.state === INTERACTION_STATE.POST_CALL) {
-      const selfAgentId = getSelfAgentId(context, taskData);
-      const selfParticipant = selfAgentId
-        ? taskData?.interaction?.participants?.[selfAgentId]
+      const postCallSelfAgentId = getSelfAgentId(context, taskData);
+      const postCallSelfParticipant = postCallSelfAgentId
+        ? taskData?.interaction?.participants?.[postCallSelfAgentId]
         : null;
-      const hasConsultMedia = Object.values(taskData?.interaction?.media ?? {}).some(
+      const hasPostCallConsultMedia = Object.values(taskData?.interaction?.media ?? {}).some(
         (media: any) => media?.mType === MEDIA_TYPE_CONSULT
       );
-      if (selfParticipant?.consultState === CONSULT_STATE.CONSULTING && hasConsultMedia) {
+      if (
+        postCallSelfParticipant?.consultState === CONSULT_STATE.CONSULTING &&
+        hasPostCallConsultMedia
+      ) {
         return true;
       }
     }

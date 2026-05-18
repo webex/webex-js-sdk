@@ -150,7 +150,10 @@ export default class Voice extends Task implements IVoice {
           });
           throw error;
         }
-      } else if (!state.matches(TaskState.HELD)) {
+      } else if (
+        !state.matches(TaskState.HELD) &&
+        !(state.matches(TaskState.CONFERENCING) && mediaHoldState === true)
+      ) {
         const error = new Error(`Cannot resume call in current state: ${currentState}`);
         LoggerProxy.error('Resume operation not allowed', {
           module: CC_FILE,

@@ -670,12 +670,40 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: ['updateTaskData', 'clearConsultState'],
           },
 
-          [TaskEvent.HOLD_SUCCESS]: {
-            actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
-          },
-          [TaskEvent.UNHOLD_SUCCESS]: {
-            actions: ['updateTaskData', 'syncTaskDataFromEvent', 'setHoldState', 'emitTaskResume'],
-          },
+          [TaskEvent.HOLD_SUCCESS]: [
+            {
+              // Conference already downgraded (no other agents) and backend hold arrives.
+              // Move to HELD so the UI renders resume action.
+              guard: guards.shouldDowngradeConferenceToConnected,
+              target: TaskState.HELD,
+              actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
+            },
+            {
+              actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
+            },
+          ],
+          [TaskEvent.UNHOLD_SUCCESS]: [
+            {
+              // Conference already downgraded (no other agents) and backend unhold arrives.
+              // Move to CONNECTED so hold action is available again.
+              guard: guards.shouldDowngradeConferenceToConnected,
+              target: TaskState.CONNECTED,
+              actions: [
+                'updateTaskData',
+                'syncTaskDataFromEvent',
+                'setHoldState',
+                'emitTaskResume',
+              ],
+            },
+            {
+              actions: [
+                'updateTaskData',
+                'syncTaskDataFromEvent',
+                'setHoldState',
+                'emitTaskResume',
+              ],
+            },
+          ],
 
           // Start a new consult from within an active conference
           [TaskEvent.CONSULT]: {

@@ -81,6 +81,18 @@ const deriveRecordingState = (taskData?: TaskData | null): RecordingStateUpdate 
 
 const isActiveConsultState = (taskData: TaskData | undefined, selfAgentId?: string): boolean => {
   if (taskData?.interaction?.state === INTERACTION_STATE.CONSULTING) return true;
+  if (selfAgentId) {
+    const selfParticipant = taskData?.interaction?.participants?.[selfAgentId] as any;
+    const hasConsultMedia = Object.values(taskData?.interaction?.media ?? {}).some(
+      (media: any) => media?.mType === MEDIA_TYPE_CONSULT
+    );
+    const isPendingOrActiveSelfConsult =
+      selfParticipant?.consultState === CONSULT_STATE.CONSULTING ||
+      selfParticipant?.consultState === 'consultInitiated';
+    if (isPendingOrActiveSelfConsult && hasConsultMedia && taskData?.isConsulted === false) {
+      return true;
+    }
+  }
   if (taskData?.interaction?.state === INTERACTION_STATE.POST_CALL && selfAgentId) {
     const selfParticipant = taskData.interaction?.participants?.[selfAgentId] as any;
     const hasConsultMedia = Object.values(taskData.interaction?.media ?? {}).some(
@@ -128,7 +140,7 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
             const hasJoinedConsultee = Boolean(
               taskData.interaction.participants &&
                 Object.values(taskData.interaction.participants).some(
-                  (p: any) => p?.isConsulted === true && !p?.hasLeft
+                  (p: any) => p?.isConsulted === true && p?.hasJoined === true && !p?.hasLeft
                 )
             );
             const cpd = taskData.interaction?.callProcessingDetails;

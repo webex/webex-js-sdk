@@ -122,6 +122,26 @@ describe('Voice Task', () => {
     });
   });
 
+  it('calls contact.unHold when state is conferencing and main media is held', async () => {
+    const heldConferenceData = createBaseData({
+      interaction: {
+        state: 'conference',
+        media: {media1: {mediaResourceId: 'media1', isHold: true}},
+      } as any,
+    }) as any;
+    const voice = new Voice(dummyContact, heldConferenceData, {});
+    primeConnectedState(voice, heldConferenceData);
+    voice.stateMachineService?.send({type: TaskEvent.CONFERENCE_START, taskData: heldConferenceData});
+    expect(voice.stateMachineService?.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+    await voice.holdResume();
+
+    expect(dummyContact.unHold).toHaveBeenCalledWith({
+      interactionId: 'int1',
+      data: {mediaResourceId: 'media1'},
+    });
+  });
+
   it('uses the main media resource when stale consult media is left in task data', async () => {
     const heldData = createBaseData({
       mediaResourceId: 'main-media',

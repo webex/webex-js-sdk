@@ -46,6 +46,56 @@ function createConsultTaskData() {
   });
 }
 
+function createPendingConsultHydrateTaskData() {
+  return createTaskData({
+    agentId: 'agent-1',
+    mediaResourceId: 'interaction-1',
+    consultMediaResourceId: 'consult-media',
+    isConsulted: false,
+    interaction: {
+      state: 'conference',
+      interactionId: 'interaction-1',
+      mainInteractionId: 'interaction-1',
+      participants: {
+        'agent-1': {
+          id: 'agent-1',
+          pType: 'AGENT',
+          hasLeft: false,
+          consultState: 'consultInitiated',
+          isConsulted: false,
+        },
+        'agent-2': {
+          id: 'agent-2',
+          pType: 'AGENT',
+          hasLeft: false,
+          hasJoined: false,
+          consultState: 'consultReserved',
+          isConsulted: true,
+        },
+        'agent-3': {id: 'agent-3', pType: 'AGENT', hasLeft: false, consultState: 'conferencing'},
+        'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+      } as any,
+      media: {
+        'interaction-1': {
+          mediaResourceId: 'interaction-1',
+          isHold: true,
+          mType: 'mainCall',
+          participants: ['agent-1', 'agent-3', 'customer-1'],
+        },
+        'consult-media': {
+          mediaResourceId: 'consult-media',
+          isHold: false,
+          mType: 'consult',
+          participants: ['agent-1', 'agent-2'],
+        },
+      } as any,
+      callProcessingDetails: {
+        conferenceHoldParticipant: 'true',
+      },
+    } as any,
+  });
+}
+
 function createVoiceContext(overrides: Partial<TaskContext> = {}): TaskContext {
   return {
     taskData: createConsultTaskData(),
@@ -135,6 +185,28 @@ describe('uiControlsComputer consult initiator controls', () => {
     );
 
     expect(uiControls.consult.transfer).toEqual({isVisible: false, isEnabled: false});
+  });
+
+  it('keeps consult-ring controls disabled except endConsult during hydrate pending state', () => {
+    const pendingTaskData = createPendingConsultHydrateTaskData();
+    const context = createVoiceContext({
+      taskData: pendingTaskData as any,
+      consultInitiator: false,
+      consultFromConference: false,
+      consultDestinationAgentJoined: false,
+      consultCallHeld: false,
+    });
+
+    const uiControls = computeUIControls(TaskState.CONSULTING, context, pendingTaskData as any);
+
+    expect(uiControls.main.transfer).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.conference).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: false});
+
+    expect(uiControls.consult.transfer).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.consult.switch).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.consult.mergeToConference).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.consult.endConsult).toEqual({isVisible: true, isEnabled: true});
   });
 
   it('collapses stale consult leg controls during wrapup', () => {
