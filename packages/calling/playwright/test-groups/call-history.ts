@@ -17,8 +17,8 @@ import {
   getCallHistoryDurationSeconds,
   getCallHistoryRecords,
   expectHistoryTiming,
-  expectUiContainsHistoryRecords,
   expectUiShowsHistoryRecord,
+  expectUiShowsHistoryRecords,
   normalizeDirection,
   normalizeDisposition,
   openCallHistoryList,
@@ -715,8 +715,8 @@ export function callHistoryTests() {
         ...user2Journey.debugRecords,
       ]);
 
-      await expectUiContainsHistoryRecords(callerPage, user1Journey.originRecords);
-      await expectUiContainsHistoryRecords(calleePage, user2Journey.originRecords);
+      await expectUiShowsHistoryRecords(callerPage, user1Journey.originRecords);
+      await expectUiShowsHistoryRecords(calleePage, user2Journey.originRecords);
     });
     /* eslint-enable no-empty-pattern */
   });
