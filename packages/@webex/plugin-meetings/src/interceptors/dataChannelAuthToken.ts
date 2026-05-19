@@ -6,7 +6,7 @@ import {Interceptor} from '@webex/http-core';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY, RETRY_INTERVAL, RETRY_KEY} from './constant';
 import {isJwtTokenExpired} from './utils';
-import {LOCUS_URL} from '../constants';
+import {LLM_DEFAULT_SESSION, LLM_PRACTICE_SESSION, LOCUS_URL} from '../constants';
 
 const retryCountMap = new Map();
 interface HttpLikeError extends Error {
@@ -58,6 +58,33 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
             if (locusUrl) {
               // @ts-ignore
               meeting = this.meetings?.getMeetingByType?.(LOCUS_URL, locusUrl);
+            }
+          }
+
+          if (!meeting) {
+            // Before registerAndConnect resolves, LLM may not yet map requestUrl
+            // to a session/locus. Fall back to active meetings' locusInfo URLs.
+            // @ts-ignore
+            const allMeetings = this.meetings?.getAllMeetings?.() || {};
+
+            meeting = Object.values(allMeetings).find((activeMeeting: any) => {
+              const info = activeMeeting?.locusInfo?.info || {};
+
+              return (
+                info.practiceSessionDatachannelUrl === requestUrl ||
+                info.datachannelUrl === requestUrl
+              );
+            });
+
+            if (!sessionId) {
+              // @ts-ignore
+              const info = meeting?.locusInfo?.info || {};
+
+              if (info.practiceSessionDatachannelUrl === requestUrl) {
+                sessionId = LLM_PRACTICE_SESSION;
+              } else if (info.datachannelUrl === requestUrl) {
+                sessionId = LLM_DEFAULT_SESSION;
+              }
             }
           }
         }

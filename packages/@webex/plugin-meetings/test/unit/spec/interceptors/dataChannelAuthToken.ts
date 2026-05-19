@@ -361,6 +361,34 @@ describe('plugin-meetings', () => {
           );
         });
 
+        it('falls back to active meeting datachannel URL lookup when session/locus routing is unavailable', async () => {
+          llmMock.getSessionIdByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns(undefined);
+          llmMock.getLocusUrlByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns(undefined);
+          meetingsMock.getAllMeetings = sinon.stub().returns({
+            'meeting-a': {
+              ...meetingA,
+              locusInfo: {
+                info: {
+                  practiceSessionDatachannelUrl: PS_DATACHANNEL_URL,
+                  datachannelUrl: DEFAULT_DATACHANNEL_URL,
+                },
+              },
+            },
+          });
+
+          const token = await dispatcherInterceptor._refreshDataChannelToken(PS_DATACHANNEL_URL);
+
+          expect(token).to.equal('token-from-meeting-a');
+          sinon.assert.calledOnceWithExactly(meetingA.refreshDataChannelToken);
+          sinon.assert.notCalled(llmMock.refreshDataChannelToken);
+          sinon.assert.calledOnceWithExactly(
+            llmMock.setDatachannelToken,
+            'token-from-meeting-a',
+            'llm-practice-session',
+            'meeting-a'
+          );
+        });
+
         it('throws when refresh returns no payload', async () => {
           llmMock.getSessionIdByDatachannelUrl.returns('llm-default-session');
           llmMock.refreshDataChannelToken.withArgs('llm-default-session').resolves(null);
