@@ -11121,7 +11121,7 @@ describe('plugin-meetings', () => {
           );
           done();
         });
-        it('listens to the self admitted guest event without blocking on token prefetch', async () => {
+        it('listens to the self admitted guest event and waits for token prefetch before reconnecting LLM', async () => {
           meeting.stopKeepAlive = sinon.stub();
           meeting.updateLLMConnection = sinon.stub();
           let resolvePrefetch;
@@ -11147,7 +11147,7 @@ describe('plugin-meetings', () => {
             'meeting:self:guestAdmitted',
             {payload: test1}
           );
-          assert.calledOnce(meeting.updateLLMConnection);
+          assert.notCalled(meeting.updateLLMConnection);
           assert.calledOnceWithExactly(meeting.rtcMetrics.sendNextMetrics);
 
           assert.calledOnceWithExactly(
@@ -11159,6 +11159,7 @@ describe('plugin-meetings', () => {
           );
 
           resolvePrefetch(false);
+          await Promise.resolve();
           await Promise.resolve();
 
           assert.calledOnce(meeting.updateLLMConnection);
@@ -13684,6 +13685,10 @@ describe('plugin-meetings', () => {
       describe('#saveDataChannelToken', () => {
         beforeEach(() => {
           webex.internal.llm.setDatachannelToken = sinon.stub();
+          webex.internal.llm.resolveSessionOwnership = sinon
+            .stub()
+            .returns({currentOwner: undefined, isOwner: true});
+          webex.internal.llm.isConnected = sinon.stub().returns(false);
         });
 
         it('saves datachannelToken into LLM as Default', () => {
@@ -13757,6 +13762,26 @@ describe('plugin-meetings', () => {
           meeting.saveDataChannelToken({locus: {}});
 
           assert.notCalled(webex.internal.llm.setDatachannelToken);
+        });
+
+        it('uses ownerless token write when disconnected and default-session owner tag is stale', () => {
+          webex.internal.llm.resolveSessionOwnership
+            .withArgs(meeting.id, 'llm-default-session')
+            .returns({currentOwner: 'stale-owner-id', isOwner: false});
+          webex.internal.llm.isConnected.withArgs('llm-default-session').returns(false);
+
+          meeting.saveDataChannelToken({
+            locus: {
+              self: {datachannelToken: 'default-token'},
+            },
+          });
+
+          assert.calledOnceWithExactly(
+            webex.internal.llm.setDatachannelToken,
+            'default-token',
+            'llm-default-session',
+            undefined
+          );
         });
       });
 
@@ -14252,11 +14277,34 @@ describe('plugin-meetings', () => {
             meeting.joinedWith = {state: 'JOINED'};
             webex.internal.llm.isConnected.returns(false);
             webex.internal.llm.getOwnerMeetingId.returns('stale-owner-id');
+            webex.internal.llm.getDatachannelToken.onFirstCall().returns(undefined);
+            webex.internal.llm.getDatachannelToken.onSecondCall().returns('recovered-token');
             meeting.locusInfo = {syncAllHashTreeDatasets: sinon.stub().resolves(), url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
 
             await meeting.updateLLMConnection();
 
-            assert.calledOnce(webex.internal.llm.registerAndConnect);
+            assert.calledTwice(webex.internal.llm.getDatachannelToken);
+            assert.calledWithExactly(
+              webex.internal.llm.getDatachannelToken.firstCall,
+              'llm-default-session',
+              meeting.id
+            );
+            assert.calledWithExactly(
+              webex.internal.llm.getDatachannelToken.secondCall,
+              'llm-default-session'
+            );
+            assert.calledOnceWithExactly(
+              webex.internal.llm.registerAndConnect,
+              'a url',
+              'a datachannel url',
+              'recovered-token'
+            );
+            assert.calledOnceWithExactly(
+              webex.internal.llm.setRefreshHandler,
+              sinon.match.func,
+              'llm-default-session',
+              undefined
+            );
             assert.calledOnceWithExactly(webex.internal.llm.setOwnerMeetingId, meeting.id);
           });
         });

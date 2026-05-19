@@ -3800,7 +3800,7 @@ export default class Meeting extends StatelessWebexPlugin {
       });
       this.updateLLMConnection();
     });
-    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, (payload) => {
+    this.locusInfo.on(LOCUSINFO.EVENTS.SELF_ADMITTED_GUEST, async (payload) => {
       this.stopKeepAlive();
 
       if (payload) {
@@ -3827,13 +3827,15 @@ export default class Meeting extends StatelessWebexPlugin {
       }
       this.rtcMetrics?.sendNextMetrics();
 
-      this.ensureDefaultDatachannelTokenAfterAdmit().catch((error) => {
+      try {
+        await this.ensureDefaultDatachannelTokenAfterAdmit();
+      } catch (error) {
         LoggerProxy.logger.warn(
           `Meeting:index#setUpLocusInfoSelfListener --> failed post-admit token prefetch flow: ${
             error?.message || String(error)
           }`
         );
-      });
+      }
 
       this.updateLLMConnection();
     });
@@ -6586,6 +6588,28 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Resolves token-cache write ownership for stale-owner reclaim flows.
+   * When the session is disconnected but a foreign owner tag lingers,
+   * ownerless writes are allowed so the reconnect can carry a token.
+   * @param {DataChannelTokenType} tokenKey
+   * @returns {string | undefined}
+   */
+  private getDatachannelTokenWriteOwnerMeetingId(
+    tokenKey: DataChannelTokenType
+  ): string | undefined {
+    // @ts-ignore - Fix type
+    const {currentOwner} = this.webex.internal.llm.resolveSessionOwnership(this.id, tokenKey);
+    // @ts-ignore - Fix type
+    const isConnected = this.webex.internal.llm.isConnected(tokenKey);
+
+    if (!isConnected && currentOwner && currentOwner !== this.id) {
+      return undefined;
+    }
+
+    return this.id;
+  }
+
+  /**
    * Saves the data channel tokens from the join response into LLM so that
    * updateLLMConnection / updatePSDataChannel don't need to fetch them from locusInfo.
    * @param {Object} join - The parsed join response (from MeetingUtil.parseLocusJoin)
@@ -6596,16 +6620,22 @@ export default class Meeting extends StatelessWebexPlugin {
     const practiceSessionDatachannelToken = join?.locus?.self?.practiceSessionDatachannelToken;
 
     if (datachannelToken) {
+      const ownerMeetingId = this.getDatachannelTokenWriteOwnerMeetingId(LLM_DEFAULT_SESSION);
       // @ts-ignore
-      this.webex.internal.llm.setDatachannelToken(datachannelToken, LLM_DEFAULT_SESSION, this.id);
+      this.webex.internal.llm.setDatachannelToken(
+        datachannelToken,
+        LLM_DEFAULT_SESSION,
+        ownerMeetingId
+      );
     }
 
     if (practiceSessionDatachannelToken) {
+      const ownerMeetingId = this.getDatachannelTokenWriteOwnerMeetingId(LLM_PRACTICE_SESSION);
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(
         practiceSessionDatachannelToken,
         LLM_PRACTICE_SESSION,
-        this.id
+        ownerMeetingId
       );
     }
   }
@@ -6640,11 +6670,13 @@ export default class Meeting extends StatelessWebexPlugin {
         return false;
       }
 
+      const ownerMeetingId = this.getDatachannelTokenWriteOwnerMeetingId(LLM_DEFAULT_SESSION);
+
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(
         fetchedDatachannelToken,
         LLM_DEFAULT_SESSION,
-        this.id
+        ownerMeetingId
       );
 
       return true;
@@ -6671,12 +6703,6 @@ export default class Meeting extends StatelessWebexPlugin {
 
     const isJoined = this.isJoined();
 
-    // @ts-ignore
-    const datachannelToken = this.webex.internal.llm.getDatachannelToken(
-      LLM_DEFAULT_SESSION,
-      this.id
-    );
-
     const dataChannelUrl = datachannelUrl;
 
     // Ownership guard: when the default LLM session is already connected and
@@ -6696,6 +6722,20 @@ export default class Meeting extends StatelessWebexPlugin {
     // this flow may reclaim stale owner tags after a fresh connect.
     // @ts-ignore - Fix type
     const wasConnected = this.webex.internal.llm.isConnected();
+
+    // Prefer ownership-scoped token read. For disconnected stale-owner reclaim
+    // flows, fallback to ownerless read so initial register can still carry a
+    // token and recover from stale ownership without 401/403 dead-end.
+    // @ts-ignore - Fix type
+    let datachannelToken = this.webex.internal.llm.getDatachannelToken(
+      LLM_DEFAULT_SESSION,
+      this.id
+    );
+
+    if (!datachannelToken && !wasConnected && currentOwner && currentOwner !== this.id) {
+      // @ts-ignore - Fix type
+      datachannelToken = this.webex.internal.llm.getDatachannelToken(LLM_DEFAULT_SESSION);
+    }
 
     // @ts-ignore - Fix type
     if (wasConnected) {
