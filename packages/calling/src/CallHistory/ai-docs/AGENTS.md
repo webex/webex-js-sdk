@@ -2,9 +2,9 @@
 
 ## Overview
 
-The `CallHistory` module provides APIs for retrieving, managing, and receiving real-time updates for call history records from the Janus backend service. It supports fetching paginated and sorted call history, marking missed calls as read, deleting call history records, and listening for real-time session events via Mercury WebSocket.
+The `CallHistory` module provides APIs for retrieving, managing, and receiving real-time updates for call history records from backend services. It supports fetching paginated and sorted call history, marking missed calls as read, deleting call history records, and listening for real-time session events via Mercury WebSocket.
 
-For UCM (Unified Communications Manager) backends, it enriches call history with line number data from the UCM Lines API.
+For Webex Calling (WXC), call history is fetched from Janus and includes shared session support. For UCM (Unified Communications Manager), call history records can be enriched with line number data from the UCM Lines API.
 
 **Package:** `@webex/calling`
 
@@ -18,14 +18,19 @@ For UCM (Unified Communications Manager) backends, it enriches call history with
 
 | Capability | Description |
 | ----------- | ----------- |
-| **Fetch Call History** | Retrieves call history records from Janus API with configurable date range, record limit, sort order (ASC/DESC), and sort field (startTime/endTime). |
-| **Shared Sessions (WXC)** | For Webex Calling backend, automatically includes shared session types (`WEBEXCALLING_SHARED`) in the query. |
-| **UCM Line Enrichment** | For UCM backend, enriches call history records with `ucmLineNumber` by cross-referencing `cucmDN` against the UCM Lines API. |
+| **Fetch Call History** | Retrieves call history records from backend APIs with configurable date range, record limit, and sort order (ASC/DESC). |
 | **Sorting** | Supports sorting by `startTime` or `endTime` in ascending or descending order. Default sort is by `endTime` descending. |
 | **Update Missed Calls** | Marks missed call records as read by posting `endTime` and `sessionId` pairs to the Janus `setReadState` endpoint. |
 | **Delete Call History Records** | Deletes call history records by posting `endTime` and `sessionId` pairs to the Janus `markAsDeleted` endpoint. Validates date formats before submission. |
 | **Real-Time Session Events** | Listens for Mercury WebSocket events (`callSessionEventInclusive`, `callSessionEventLegacy`, `callSessionEventViewed`, `callSessionEventDeleted`) and emits them to the application. |
 | **Error Handling & Logging** | Standardized error handling via `serviceErrorCodeHandler` with automatic log upload on failures. |
+
+### Backend-Specific Behavior
+
+| Backend | Behavior |
+| ------- | -------- |
+| **WXC** | Adds `includeSharedSessions=true` so shared session types (`WEBEXCALLING_SHARED`) are included in call history queries. |
+| **UCM** | Enriches call history records with `ucmLineNumber` by matching `self.cucmDN` against UCM Lines API (`dnorpattern`). |
 
 ---
 
@@ -221,13 +226,22 @@ Note: In both cases, `endTime` is converted from an ISO date string to milliseco
 
 ### URL Construction
 
-The `FROM_DATE` constant is `'?from'` (includes the `?` query string opener). The full URL pattern for `getCallHistoryData` is:
+`getCallHistoryData()` builds the request URL in steps:
+
+1. Base path: `{janusUrl}/history/userSessions`
+2. Required query params: `from`, `limit`, `includeNewSessionTypes=true`, `sort`
+3. Conditional query param: `includeSharedSessions=true` (WXC only)
+
+The `FROM_DATE` constant is `'?from'` (includes the `?` query string opener), so the final Janus URL pattern is:
 
 ```
 {janusUrl}/history/userSessions?from={isoDate}&limit={limit}&includeNewSessionTypes=true&sort={sort}[&includeSharedSessions=true]
 ```
 
-The `includeNewSessionTypes=true` parameter is always appended. The `includeSharedSessions=true` parameter is only appended for WXC backend.
+Notes:
+- `includeNewSessionTypes=true` is always appended.
+- `includeSharedSessions=true` is appended only for WXC backend.
+- `sortBy` is applied in module logic after fetch (for `startTime`) and is not sent as a URL parameter.
 
 ---
 
