@@ -72,6 +72,30 @@ describe('Voice Task', () => {
     jest.clearAllMocks();
   });
 
+  describe('emitTaskOutdialFailed', () => {
+    it('emits the failure reason string instead of the Task object', () => {
+      const taskData = createBaseData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+      });
+      const voice = new Voice(dummyContact, taskData, {});
+      const emitSpy = jest.spyOn(voice, 'emit');
+
+      voice.sendStateMachineEvent({
+        type: TaskEvent.OUTBOUND_FAILED,
+        taskData,
+        reason: 'CUSTOMER_BUSY',
+      });
+
+      const outdialFailedCall = emitSpy.mock.calls.find(
+        (call) => call[0] === 'task:outdialFailed'
+      );
+      expect(outdialFailedCall).toBeDefined();
+      expect(outdialFailedCall![1]).toBe('CUSTOMER_BUSY');
+    });
+  });
+
   it('hides end and endConsult when disabled', () => {
     const voice = new Voice(dummyContact, createBaseData(), {
       isEndTaskEnabled: false,

@@ -146,6 +146,54 @@ describe('uiControlsComputer consult initiator controls', () => {
   });
 });
 
+describe('uiControlsComputer outdial accept/decline controls', () => {
+  function createOutdialContext(voiceVariant: 'webrtc' | 'pstn' = 'webrtc'): TaskContext {
+    const taskData = createTaskData({
+      interaction: {
+        outboundType: 'OUTDIAL',
+        state: 'new',
+        isTerminated: false,
+      } as any,
+    });
+    return {
+      taskData,
+      consultInitiator: false,
+      exitingConference: false,
+      consultFromConference: false,
+      transferConferenceRequested: false,
+      consultDestinationType: null,
+      consultDestinationAgentId: null,
+      consultDestinationAgentJoined: false,
+      consultCallHeld: false,
+      recordingControlsAvailable: false,
+      recordingInProgress: false,
+      uiControlConfig: {
+        isEndTaskEnabled: true,
+        isEndConsultEnabled: true,
+        channelType: TASK_CHANNEL_TYPE.VOICE,
+        isRecordingEnabled: false,
+        agentId: 'agent-1',
+        voiceVariant,
+      },
+      uiControls: getDefaultUIControls(),
+    };
+  }
+
+  it('accept is visible but disabled for WebRTC outdial in OFFERED state', () => {
+    const context = createOutdialContext('webrtc');
+    const uiControls = computeUIControls(TaskState.OFFERED, context, context.taskData);
+
+    expect(uiControls.main.accept).toEqual({isVisible: true, isEnabled: false});
+  });
+
+  it('decline is visible but disabled for WebRTC outdial in OFFERED state', () => {
+    const context = createOutdialContext('webrtc');
+    const uiControls = computeUIControls(TaskState.OFFERED, context, context.taskData);
+
+    expect(uiControls.main.decline).toEqual({isVisible: true, isEnabled: false});
+  });
+});
+
 describe('uiControlsComputer conference controls', () => {
   function createConferenceTaskData(participantCount: number) {
     const participants: Record<string, any> = {
