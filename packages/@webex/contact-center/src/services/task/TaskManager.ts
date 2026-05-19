@@ -291,7 +291,7 @@ export default class TaskManager extends EventEmitter {
         return {type: TaskEvent.RONA, taskData: payload, reason: payload.reason};
 
       case CC_EVENTS.AGENT_OUTBOUND_FAILED:
-        return {type: TaskEvent.OUTBOUND_FAILED, reason: payload.reason};
+        return {type: TaskEvent.OUTBOUND_FAILED, taskData: payload, reason: payload.reason};
 
       case CC_EVENTS.CONTACT_RECORDING_STARTED:
         return {type: TaskEvent.RECORDING_STARTED, taskData: payload};

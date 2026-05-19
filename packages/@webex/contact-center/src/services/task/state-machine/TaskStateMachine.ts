@@ -126,7 +126,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentOutboundFailed can arrive before TASK_INCOMING due to race conditions
           [TaskEvent.OUTBOUND_FAILED]: {
             target: TaskState.TERMINATED,
-            actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskReject'],
+            actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
           },
 
           // EP-DN split-leg ordering can deliver AgentConsulting before HYDRATE/TASK_INCOMING.
@@ -196,7 +196,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             },
             {
               target: TaskState.TERMINATED,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskReject'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
             },
           ],
           // AgentConsulting comes for received after the initial consult is accepted
