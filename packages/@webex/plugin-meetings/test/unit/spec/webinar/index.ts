@@ -760,6 +760,37 @@ describe('plugin-meetings', () => {
           PRACTICE_SESSION_KEY
         );
       });
+
+      it('clears pre-claimed owner when registerAndConnect rejects', async () => {
+        const registerError = new Error('register failed');
+        let ownerMeetingId = 'meeting-id';
+
+        webex.internal.llm.getOwnerMeetingId.callsFake(() => ownerMeetingId);
+        webex.internal.llm.setOwnerMeetingId.callsFake((id) => {
+          ownerMeetingId = id;
+        });
+        webex.internal.llm.registerAndConnect = sinon.stub().rejects(registerError);
+
+        try {
+          await webinar.updatePSDataChannel();
+          assert.fail('Expected updatePSDataChannel to reject when registerAndConnect fails');
+        } catch (error) {
+          assert.equal(error, registerError);
+        }
+
+        assert.calledTwice(webex.internal.llm.setOwnerMeetingId);
+        assert.calledWithExactly(
+          webex.internal.llm.setOwnerMeetingId.firstCall,
+          'meeting-id',
+          PRACTICE_SESSION_KEY
+        );
+        assert.calledWithExactly(
+          webex.internal.llm.setOwnerMeetingId.secondCall,
+          undefined,
+          PRACTICE_SESSION_KEY
+        );
+        assert.isUndefined(ownerMeetingId);
+      });
       });
 
       describe('#updateStatusByRole', () => {

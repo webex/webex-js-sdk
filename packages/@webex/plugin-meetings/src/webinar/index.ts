@@ -455,6 +455,23 @@ const Webinar = WebexPlugin.extend({
         );
 
         return Promise.resolve(registerAndConnectResult);
+      })
+      .catch((error) => {
+        const {
+          currentOwner: currentOwnerAfterRegisterFailure,
+          isOwner: isOwnerAfterRegisterFailure,
+        } = this.webex.internal.llm.resolveSessionOwnership(this.meetingId, LLM_PRACTICE_SESSION);
+
+        if (isOwnerAfterRegisterFailure) {
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.setOwnerMeetingId?.(undefined, LLM_PRACTICE_SESSION);
+        } else {
+          LoggerProxy.logger.info(
+            `Webinar:index#updatePSDataChannel --> skipping failure owner release; practice-session LLM owned by meeting ${currentOwnerAfterRegisterFailure}, not ${this.meetingId}`
+          );
+        }
+
+        throw error;
       });
   },
 
