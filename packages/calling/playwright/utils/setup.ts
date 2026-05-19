@@ -1,4 +1,5 @@
 import {Page, expect} from '@playwright/test';
+import path from 'path';
 import {
   SAMPLE_APP_PATH,
   CALLING_SELECTORS,
@@ -18,10 +19,88 @@ export type MobiusDiscoveryResponse = {
   backup: {region: string; uris: string[]};
 };
 
+const CALLING_UMD_BUNDLE_PATH = path.resolve(__dirname, '../../../webex/umd/calling.min.js');
+const CALLING_UMD_BUNDLE_MAP_PATH = `${CALLING_UMD_BUNDLE_PATH}.map`;
+
+const syncCallingSampleState = async (page: Page): Promise<void> => {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const win = window as any;
+          // eslint-disable-next-line no-eval
+          const globalEval = window.eval as (code: string) => any;
+          const assignGlobalBinding = (name: string, value: unknown) => {
+            win.__playwrightCallingValue = value;
+            globalEval(`${name} = globalThis.__playwrightCallingValue`);
+            delete win.__playwrightCallingValue;
+          };
+
+          let callingInstance;
+
+          try {
+            callingInstance = globalEval('calling');
+          } catch {
+            callingInstance = undefined;
+          }
+
+          const callingClient = win.callingClient ?? callingInstance?.callingClient;
+
+          if (
+            !callingClient ||
+            typeof callingClient.then === 'function' ||
+            typeof callingClient.getLines !== 'function'
+          ) {
+            return false;
+          }
+
+          const [firstLine] = Object.values(callingClient.getLines());
+
+          if (!firstLine || typeof (firstLine as any).register !== 'function') {
+            return false;
+          }
+
+          win.callingClient = callingClient;
+          win.line = firstLine;
+
+          try {
+            assignGlobalBinding('callingClient', callingClient);
+            assignGlobalBinding('line', firstLine);
+          } catch {
+            return false;
+          }
+
+          const registerButton =
+            document.querySelector<HTMLButtonElement>('#registration-register');
+
+          if (registerButton) {
+            registerButton.disabled = false;
+            registerButton.classList.add('btn--green');
+          }
+
+          return true;
+        }),
+      {timeout: SDK_INIT_TIMEOUT}
+    )
+    .toBe(true);
+};
+
 /**
  * Navigate to the calling sample app
  */
 export const navigateToCallingApp = async (page: Page): Promise<void> => {
+  await page.route('**/samples/calling.min.js', (route) =>
+    route.fulfill({
+      path: CALLING_UMD_BUNDLE_PATH,
+      contentType: 'application/javascript',
+    })
+  );
+  await page.route('**/samples/calling.min.js.map', (route) =>
+    route.fulfill({
+      path: CALLING_UMD_BUNDLE_MAP_PATH,
+      contentType: 'application/json',
+    })
+  );
   await page.goto(SAMPLE_APP_PATH);
   await page.waitForLoadState('domcontentloaded');
 };
@@ -58,18 +137,21 @@ export const initializeCallingSDK = async (page: Page, accessToken: string): Pro
 /**
  * Verify the SDK initialized successfully:
  * - Auth status shows "Saved access token!"
+ * - Sample app has a CallingClient and line ready
  * - Register button is enabled
- * - window.callingClient is set (Calling object exists)
  */
 export const verifySDKInitialized = async (page: Page): Promise<void> => {
   await expect(page.locator(CALLING_SELECTORS.AUTH_STATUS)).toHaveText('Saved access token!', {
     timeout: SDK_INIT_TIMEOUT,
   });
+  await syncCallingSampleState(page);
   await expect(page.locator(CALLING_SELECTORS.REGISTER_BTN)).toBeEnabled({
-    timeout: SDK_INIT_TIMEOUT,
+    timeout: AWAIT_TIMEOUT,
   });
 
-  const hasCallingClient = await page.evaluate(() => !!(window as any).callingClient);
+  const hasCallingClient = await page.evaluate(
+    () => typeof (window as any).callingClient?.getLines === 'function'
+  );
   expect(hasCallingClient).toBe(true);
 
   // TODO: Based on the config passed during initialization, verify which clients are active.

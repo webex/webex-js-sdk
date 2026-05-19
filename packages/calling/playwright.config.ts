@@ -22,7 +22,7 @@ const chromiumArgs = [
   '--disable-extensions', // Prevent extensions from interfering with tests
   '--disable-plugins', // Prevent plugins from interfering with tests
   '--ignore-certificate-errors', // Accept self-signed certs from local dev server
-  ...(process.env.CI ? [] : ['--auto-open-devtools-for-tabs']), // Open DevTools only in local runs
+  ...(process.env.PW_OPEN_DEVTOOLS === 'true' ? ['--auto-open-devtools-for-tabs'] : []),
 ];
 
 const browserOptions: Record<string, object> = {
