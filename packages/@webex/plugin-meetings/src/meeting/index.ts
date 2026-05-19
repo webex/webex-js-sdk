@@ -6538,15 +6538,17 @@ export default class Meeting extends StatelessWebexPlugin {
       }
       this.stopListeningForLLMEvents();
 
-      // If this meeting owned (or could have owned) the default LLM session,
-      // always release the owner tag here regardless of whether disconnectLLM
-      // resolved. `disconnectLLM` only clears the owner on its success path,
-      // so a failed disconnect would otherwise leave a stale owner pointing
-      // at a torn-down meeting and permanently block other meetings'
-      // `updateLLMConnection` calls via the ownership guard.
+      // Re-check ownership after awaiting disconnectLLM. If ownership changed
+      // while cleanup was in flight, do not clear another meeting's owner tag.
       if (isOwner) {
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.setOwnerMeetingId?.(undefined);
+        const {currentOwner: currentOwnerAfterCleanup} =
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.resolveSessionOwnership(this.id, LLM_DEFAULT_SESSION);
+
+        if (currentOwnerAfterCleanup === this.id) {
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.setOwnerMeetingId?.(undefined);
+        }
       }
     }
   };

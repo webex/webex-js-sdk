@@ -14217,6 +14217,33 @@ describe('plugin-meetings', () => {
             assert.calledWith(webex.internal.llm.setOwnerMeetingId, undefined);
           });
 
+          it('does not clear owner tag when ownership changes during cleanup disconnect await', async () => {
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(true);
+            webex.internal.llm.getOwnerMeetingId.returns(meeting.id);
+            webex.internal.llm.getLocusUrl.returns('a url');
+            webex.internal.llm.getDatachannelUrl.returns('a datachannel url');
+            webex.internal.llm.disconnectLLM.callsFake(async () => {
+              webex.internal.llm.getOwnerMeetingId.returns('new-owner-id');
+              throw new Error('disconnect failed');
+            });
+            meeting.locusInfo = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
+              url: 'a different url',
+              info: {datachannelUrl: 'a datachannel url'},
+              self: {},
+            };
+
+            try {
+              await meeting.updateLLMConnection();
+            } catch (e) {
+              /* updateLLMConnection may reject when cleanup throws */
+            }
+
+            assert.notCalled(webex.internal.llm.setOwnerMeetingId);
+            assert.equal(webex.internal.llm.getOwnerMeetingId(), 'new-owner-id');
+          });
+
           it('proceeds normally when LLM is connected and owned by this meeting with URL change', async () => {
             meeting.joinedWith = {state: 'JOINED'};
             webex.internal.llm.isConnected.returns(true);
