@@ -473,6 +473,8 @@ describe('plugin-meetings', () => {
         const result = await webinar.updatePSDataChannel();
 
         assert.isUndefined(result);
+        assert.notCalled(webex.internal.llm.setRefreshHandler);
+        assert.notCalled(webex.internal.llm.setOwnerMeetingId);
         assert.notCalled(webex.internal.llm.registerAndConnect);
       });
 
@@ -595,6 +597,8 @@ describe('plugin-meetings', () => {
         // Should register an 'online' listener but NOT call registerAndConnect yet
         assert.calledWith(webex.internal.llm.on, 'online', sinon.match.func);
         assert.notCalled(webex.internal.llm.registerAndConnect);
+        assert.notCalled(webex.internal.llm.setRefreshHandler);
+        assert.notCalled(webex.internal.llm.setOwnerMeetingId);
         // Should store the pending listener
         assert.isNotNull(webinar._pendingOnlineListener);
       });

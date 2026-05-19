@@ -300,20 +300,6 @@ const Webinar = WebexPlugin.extend({
       return undefined;
     }
 
-    // Ensure refresh for practice datachannel requests is routed to this session.
-    // Only the owner should rewrite the handler when ownership is known.
-    // @ts-ignore - Fix type
-    this.webex.internal.llm.setRefreshHandler(
-      () => meeting.refreshDataChannelToken(),
-      LLM_PRACTICE_SESSION,
-      this.meetingId
-    );
-    // Claim ownership immediately after setting refresh routing so a
-    // concurrent meeting instance cannot override this practice-session
-    // refresh handler before registerAndConnect() finishes.
-    // @ts-ignore - Fix type
-    this.webex.internal.llm.setOwnerMeetingId?.(this.meetingId, LLM_PRACTICE_SESSION);
-
     // @ts-ignore - Fix type
     const {url = undefined, info: {practiceSessionDatachannelUrl = undefined} = {}} =
       meeting?.locusInfo || {};
@@ -397,6 +383,19 @@ const Webinar = WebexPlugin.extend({
     if (refreshedPracticeSessionToken) {
       practiceSessionDatachannelToken = refreshedPracticeSessionToken;
     }
+
+    // Ensure refresh for practice datachannel requests is routed to this
+    // meeting only when we are actually about to connect the practice session.
+    // This avoids claiming ownership in flows that return early (e.g. missing
+    // practiceSessionDatachannelUrl or waiting for default session online).
+    // @ts-ignore - Fix type
+    this.webex.internal.llm.setRefreshHandler(
+      () => meeting.refreshDataChannelToken(),
+      LLM_PRACTICE_SESSION,
+      this.meetingId
+    );
+    // @ts-ignore - Fix type
+    this.webex.internal.llm.setOwnerMeetingId?.(this.meetingId, LLM_PRACTICE_SESSION);
 
     // @ts-ignore - Fix type
     return this.webex.internal.llm
