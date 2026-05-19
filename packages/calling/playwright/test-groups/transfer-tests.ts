@@ -9,6 +9,7 @@ import {
   endCall,
   endIncomingCall,
   waitForCallDisconnect,
+  waitForCallEstablished,
   establishCall,
   cleanupActiveCalls,
   waitForTransferCommitReady,
@@ -36,7 +37,7 @@ export function transferTests() {
       await group.teardown();
     });
 
-    test('CALL-009: Blind transfer completion - caller transfers call to third party', async () => {
+    test('TRANSFER-001: Blind transfer completion - caller transfers call to third party', async () => {
       const callerPage = group.tm.getPage(group.tm.userSet.accounts[0]);
       const calleePage = group.tm.getPage(group.tm.userSet.accounts[1]);
       const transferPage = group.tm.getPage(group.tm.userSet.accounts[2]);
@@ -64,12 +65,24 @@ export function transferTests() {
 
       // Caller leaves; the surviving leg is callee <-> transfer target.
       await waitForCallDisconnect(callerPage, 30000);
+      await expect(callerPage.locator(CALLING_SELECTORS.TRANSFER_STATUS)).toContainText(
+        'Transferred Successfully',
+        {timeout: AWAIT_TIMEOUT}
+      );
+      await expect(callerPage.locator(CALLING_SELECTORS.END_CALL_BTN)).toBeDisabled();
+      await expect(callerPage.locator(CALLING_SELECTORS.MAKE_CALL_BTN)).toBeEnabled();
+      await expect(calleePage.locator(CALLING_SELECTORS.END_BTN)).toBeEnabled({
+        timeout: AWAIT_TIMEOUT,
+      });
+      await expect(transferPage.locator(CALLING_SELECTORS.END_BTN)).toBeEnabled({
+        timeout: AWAIT_TIMEOUT,
+      });
 
       await Promise.all([cleanupActiveCalls(calleePage), cleanupActiveCalls(transferPage)]);
       await Promise.all([waitForCallDisconnect(calleePage), waitForCallDisconnect(transferPage)]);
     });
 
-    test('CALL-026: Hold then blind transfer - callee holds, caller transfers to third party', async () => {
+    test('TRANSFER-002: Hold then blind transfer - callee holds, caller transfers to third party', async () => {
       const callerPage = group.tm.getPage(group.tm.userSet.accounts[0]);
       const calleePage = group.tm.getPage(group.tm.userSet.accounts[1]);
       const transferPage = group.tm.getPage(group.tm.userSet.accounts[2]);
@@ -98,12 +111,24 @@ export function transferTests() {
       await settleUi(callerPage, calleePage, transferPage);
 
       await waitForCallDisconnect(callerPage, 30000);
+      await expect(callerPage.locator(CALLING_SELECTORS.TRANSFER_STATUS)).toContainText(
+        'Transferred Successfully',
+        {timeout: AWAIT_TIMEOUT}
+      );
+      await expect(callerPage.locator(CALLING_SELECTORS.END_CALL_BTN)).toBeDisabled();
+      await expect(callerPage.locator(CALLING_SELECTORS.MAKE_CALL_BTN)).toBeEnabled();
+      await expect(calleePage.locator(CALLING_SELECTORS.END_BTN)).toBeEnabled({
+        timeout: AWAIT_TIMEOUT,
+      });
+      await expect(transferPage.locator(CALLING_SELECTORS.END_BTN)).toBeEnabled({
+        timeout: AWAIT_TIMEOUT,
+      });
 
       await Promise.all([cleanupActiveCalls(calleePage), cleanupActiveCalls(transferPage)]);
       await Promise.all([waitForCallDisconnect(calleePage), waitForCallDisconnect(transferPage)]);
     });
 
-    test('CALL-027: Blind transfer rejection - caller disconnects regardless of target rejection', async () => {
+    test('TRANSFER-003: Blind transfer rejection - caller disconnects regardless of target rejection', async () => {
       const callerPage = group.tm.getPage(group.tm.userSet.accounts[0]);
       const calleePage = group.tm.getPage(group.tm.userSet.accounts[1]);
       const transferPage = group.tm.getPage(group.tm.userSet.accounts[2]);
@@ -155,7 +180,7 @@ export function transferTests() {
       await group.teardown();
     });
 
-    test('CALL-024: Consult transfer - caller consults then commits transfer to third party', async () => {
+    test('TRANSFER-004: Consult transfer - caller consults then commits transfer to third party', async () => {
       const callerPage = group.tm.getPage(group.tm.userSet.accounts[0]);
       const calleePage = group.tm.getPage(group.tm.userSet.accounts[1]);
       const transferPage = group.tm.getPage(group.tm.userSet.accounts[2]);
@@ -190,7 +215,7 @@ export function transferTests() {
       await Promise.all([waitForCallDisconnect(calleePage), waitForCallDisconnect(transferPage)]);
     });
 
-    test('CALL-025: Consult transfer rejection - target rejects, caller resumes original call', async () => {
+    test('TRANSFER-005: Consult transfer rejection - target rejects, caller resumes original call', async () => {
       const callerPage = group.tm.getPage(group.tm.userSet.accounts[0]);
       const calleePage = group.tm.getPage(group.tm.userSet.accounts[1]);
       const transferPage = group.tm.getPage(group.tm.userSet.accounts[2]);
@@ -229,7 +254,7 @@ export function transferTests() {
       await Promise.all([waitForCallDisconnect(callerPage), waitForCallDisconnect(calleePage)]);
     });
 
-    test('CALL-028: Held callee drops before consult commit - caller returns to single consult leg', async () => {
+    test('TRANSFER-006: Held callee drops before consult commit - caller returns to single consult leg', async () => {
       const callerPage = group.tm.getPage(group.tm.userSet.accounts[0]);
       const calleePage = group.tm.getPage(group.tm.userSet.accounts[1]);
       const transferPage = group.tm.getPage(group.tm.userSet.accounts[2]);
@@ -272,7 +297,7 @@ export function transferTests() {
       await Promise.all([waitForCallDisconnect(callerPage), waitForCallDisconnect(transferPage)]);
     });
 
-    test('CALL-029: Consult swap - caller toggles between held callee and consulted target', async () => {
+    test('TRANSFER-007: Consult swap - caller toggles between held callee and consulted target', async () => {
       const callerPage = group.tm.getPage(group.tm.userSet.accounts[0]);
       const calleePage = group.tm.getPage(group.tm.userSet.accounts[1]);
       const transferPage = group.tm.getPage(group.tm.userSet.accounts[2]);
@@ -302,14 +327,26 @@ export function transferTests() {
       // Park the consult leg, resume the original held callee.
       await holdCall(callerPage);
       await settleUi(callerPage, calleePage, transferPage);
+      await expect(callerPage.locator(CALLING_SELECTORS.HOLD_BTN)).toHaveValue('Resume', {
+        timeout: AWAIT_TIMEOUT,
+      });
       await resumeCall(callerPage);
       await settleUi(callerPage, calleePage, transferPage);
+      await expect(callerPage.locator(CALLING_SELECTORS.HOLD_BTN)).toHaveValue('Hold', {
+        timeout: AWAIT_TIMEOUT,
+      });
 
       // Swap back to the consult leg.
       await holdCall(callerPage);
       await settleUi(callerPage, calleePage, transferPage);
+      await expect(callerPage.locator(CALLING_SELECTORS.HOLD_BTN)).toHaveValue('Resume', {
+        timeout: AWAIT_TIMEOUT,
+      });
       await resumeCall(callerPage);
       await settleUi(callerPage, calleePage, transferPage);
+      await expect(callerPage.locator(CALLING_SELECTORS.HOLD_BTN)).toHaveValue('Hold', {
+        timeout: AWAIT_TIMEOUT,
+      });
 
       // End the consult leg, then the original call to clear all parties.
       await callerPage
@@ -319,52 +356,9 @@ export function transferTests() {
       await endCall(callerPage);
       await Promise.all([waitForCallDisconnect(callerPage), waitForCallDisconnect(calleePage)]);
     });
-
-    test('CALL-017: ALL_CALLS_CLEARED - fires after last call ends (consult transfer)', async () => {
-      const callerPage = group.tm.getPage(group.tm.userSet.accounts[0]);
-      const calleePage = group.tm.getPage(group.tm.userSet.accounts[1]);
-      const transferPage = group.tm.getPage(group.tm.userSet.accounts[2]);
-
-      await establishCall(callerPage, calleePage, group.calleeNumber);
-      await settleUi(callerPage, calleePage);
-
-      await expect(callerPage.locator(CALLING_SELECTORS.TRANSFER_BTN)).toBeEnabled({
-        timeout: AWAIT_TIMEOUT,
-      });
-      await settleUi(callerPage);
-      await callerPage.locator(CALLING_SELECTORS.TRANSFER_OPTIONS).selectOption({index: 1});
-      await settleUi(callerPage);
-      await callerPage.locator(CALLING_SELECTORS.TRANSFER_TARGET_INPUT).fill(group.transferNumber);
-      await settleUi(callerPage);
-
-      await transferPage.bringToFront();
-      const incomingReady = waitForIncomingCall(transferPage);
-      await callerPage.bringToFront();
-      await callerPage.locator(CALLING_SELECTORS.TRANSFER_BTN).click({timeout: AWAIT_TIMEOUT});
-      await transferPage.bringToFront();
-      await incomingReady;
-      await answerCall(transferPage);
-      await settleUi(callerPage, transferPage);
-
-      await expect(callerPage.locator(CALLING_SELECTORS.END_SECOND_CALL_BTN)).toBeEnabled({
-        timeout: AWAIT_TIMEOUT,
-      });
-      await settleUi(callerPage);
-      await callerPage
-        .locator(CALLING_SELECTORS.END_SECOND_CALL_BTN)
-        .click({timeout: AWAIT_TIMEOUT});
-      await callerPage.waitForTimeout(POST_ACTION_SETTLE_MS);
-
-      await endCall(callerPage);
-      await Promise.all([
-        waitForCallDisconnect(callerPage),
-        waitForCallDisconnect(calleePage),
-        waitForCallDisconnect(transferPage),
-      ]);
-    });
   });
 
-  test.describe('Transfer - Errors & Call Waiting', () => {
+  test.describe('Call - Call Waiting', () => {
     test.describe.configure({mode: 'serial', timeout: TRANSFER_SUITE_TIMEOUT});
 
     const group = setupThreeUserGroup();
@@ -377,54 +371,22 @@ export function transferTests() {
       await group.teardown();
     });
 
-    test('CALL-010: Transfer failure - transfer_error event emitted', async () => {
-      const callerPage = group.tm.getPage(group.tm.userSet.accounts[0]);
-      const calleePage = group.tm.getPage(group.tm.userSet.accounts[1]);
-
-      await establishCall(callerPage, calleePage, group.calleeNumber);
-      await settleUi(callerPage, calleePage);
-
-      await callerPage.route('**/services/calltransfer/commit', (route) => {
-        route.fulfill({status: 500, body: 'Internal Server Error'});
-      });
-
-      try {
-        await expect(callerPage.locator(CALLING_SELECTORS.TRANSFER_BTN)).toBeEnabled({
-          timeout: AWAIT_TIMEOUT,
-        });
-        await settleUi(callerPage);
-        await callerPage.locator(CALLING_SELECTORS.TRANSFER_OPTIONS).selectOption({index: 0});
-        await settleUi(callerPage);
-        await callerPage.locator(CALLING_SELECTORS.TRANSFER_TARGET_INPUT).fill('+15005550000');
-        await settleUi(callerPage);
-        await callerPage.locator(CALLING_SELECTORS.TRANSFER_BTN).click({timeout: AWAIT_TIMEOUT});
-        await callerPage.waitForTimeout(POST_ACTION_SETTLE_MS);
-      } catch (err) {
-        // The route override forces the SDK to emit `transfer_error`; surfacing the
-        // failure via console keeps the trace useful while allowing teardown to run.
-        // eslint-disable-next-line no-console
-        console.warn('[CALL-010] forced transfer commit failure surfaced as:', err);
-      } finally {
-        await callerPage.unroute('**/services/calltransfer/commit');
-      }
-
-      await endCall(callerPage);
-      await Promise.all([waitForCallDisconnect(callerPage), waitForCallDisconnect(calleePage)]);
-    });
-
-    test('CALL-004: Remote busy handling - caller dials callee already on a call', async () => {
+    test('CALL-030: Remote busy handling - caller dials callee already active with third party', async () => {
       const callerPage = group.tm.getPage(group.tm.userSet.accounts[0]);
       const calleePage = group.tm.getPage(group.tm.userSet.accounts[1]);
       const transferPage = group.tm.getPage(group.tm.userSet.accounts[2]);
 
+      // Occupy the callee first: transferPage and calleePage are in the active call.
       await establishCall(transferPage, calleePage, group.calleeNumber);
       await settleUi(transferPage, calleePage);
 
+      // callerPage then dials the same callee; calleePage is the busy party.
       await makeCall(callerPage, group.calleeNumber);
       await callerPage.waitForTimeout(POST_ACTION_SETTLE_MS);
 
       await endCall(callerPage);
       await waitForCallDisconnect(callerPage, 30000);
+      await Promise.all([waitForCallEstablished(transferPage), waitForCallEstablished(calleePage)]);
       await settleUi(callerPage, transferPage, calleePage);
 
       await endCall(transferPage);

@@ -117,7 +117,7 @@ export const USER_SETS: Record<string, UserSet> = {
   // 3-user transfer tests (PROD — dedicated accounts, parallel with registration)
   SET_CALL_TRANSFER_CONSULT: {
     name: 'SET_CALL_TRANSFER_CONSULT',
-    accounts: ['USER_4', 'USER_5', 'USER_6'],
+    accounts: ['USER_1', 'USER_2', 'USER_3'],
     testSuite: 'set-call-transfer-consult.spec.ts',
   },
 };
