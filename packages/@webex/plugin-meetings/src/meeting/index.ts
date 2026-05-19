@@ -6777,6 +6777,7 @@ export default class Meeting extends StatelessWebexPlugin {
     // foreign owner tag is present on a disconnected session.
     const refreshHandlerOwnerMeetingId =
       currentOwner && currentOwner !== this.id ? undefined : this.id;
+    const shouldAlignRefreshHandlerAfterOwnershipClaim = refreshHandlerOwnerMeetingId !== this.id;
     // @ts-ignore - Fix type
     this.webex.internal.llm.setRefreshHandler(
       () => this.refreshDataChannelToken(),
@@ -6807,6 +6808,18 @@ export default class Meeting extends StatelessWebexPlugin {
           // calls can detect and skip work that doesn't belong to them.
           // @ts-ignore - Fix type
           this.webex.internal.llm.setOwnerMeetingId?.(this.id);
+
+          // If we pre-bound refresh ownerlessly (stale-owner reclaim path),
+          // align the handler with the newly claimed owner immediately after
+          // ownership is updated.
+          if (shouldAlignRefreshHandlerAfterOwnershipClaim) {
+            // @ts-ignore - Fix type
+            this.webex.internal.llm.setRefreshHandler(
+              () => this.refreshDataChannelToken(),
+              LLM_DEFAULT_SESSION,
+              this.id
+            );
+          }
         }
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);

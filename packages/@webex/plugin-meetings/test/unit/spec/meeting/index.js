@@ -14299,11 +14299,18 @@ describe('plugin-meetings', () => {
               'a datachannel url',
               'recovered-token'
             );
-            assert.calledOnceWithExactly(
-              webex.internal.llm.setRefreshHandler,
+            assert.calledWithExactly(
+              webex.internal.llm.setRefreshHandler.firstCall,
               sinon.match.func,
               'llm-default-session',
               undefined
+            );
+            assert.calledTwice(webex.internal.llm.setRefreshHandler);
+            assert.calledWithExactly(
+              webex.internal.llm.setRefreshHandler.secondCall,
+              sinon.match.func,
+              'llm-default-session',
+              meeting.id
             );
             assert.calledOnceWithExactly(webex.internal.llm.setOwnerMeetingId, meeting.id);
           });
