@@ -24,8 +24,8 @@ let line;
 let transferInitiated;
 const numberOfDays = 7;
 const callHistoryLimit = 20;
-const callHistorySort = 'DESC';
-const callHistorySortBy = 'endTime';
+const callHistorySort = 'ASC';
+const callHistorySortBy = 'startTime';
 const voicemailOffset = 0;
 const voicemailOffsetLimit = 20;
 const voicemailSort = 'DESC';
@@ -997,11 +997,10 @@ function createContactsTable(contactsResponse) {
 function definedTable(callHistoryResponse) {
   const callHistoryTable = document.getElementById('callHistoryTableId');
   const callHistoryHeader = document.getElementById('callHistoryHeaderId');
-  const userSessions = callHistoryResponse?.data?.userSessions ?? [];
   const callHistHeaderHtml = `<tr><th>Id</th>
   <th>Name</th>
   <th>Direction</th>
-  <th>Disposition</th>
+  <th>Deposition</th>
   <th>StartTime</th>
   <th>EndTime</th>
   <th>SessionType</th>
@@ -1010,22 +1009,20 @@ function definedTable(callHistoryResponse) {
   <th>Forwarded by</th>
   </tr>`;
 
-  callHistoryHeader.innerHTML = callHistHeaderHtml;
-  callHistoryTable.innerHTML = '';
+  callHistoryHeader.innerHTML += callHistHeaderHtml;
 
-  for (let i = 0; i < userSessions.length; i += 1) {
-    const session = userSessions[i];
+  for (let i = 0; i < callHistoryResponse.data.userSessions.length; i += 1) {
     const callHistoryRow = `<tr>
     <td>${i + 1}</td>
-    <td>${session.other?.name ?? 'NA'}</td>
-    <td>${session.direction ?? 'NA'}</td>
-    <td>${session.disposition ?? 'NA'}</td>
-    <td>${session.startTime ?? 'NA'}</td>
-    <td>${session.endTime ?? 'NA'}</td>
-    <td>${session.sessionType ?? 'NA'}</td>
-    <td>${session.other?.callbackAddress ?? session.links?.callbackAddress ?? 'NA'}</td>
-    <td>${session.callingSpecifics?.redirectionDetails?.reason ?? 'NA'}</td>
-    <td>${session.callingSpecifics?.redirectionDetails?.name ?? 'NA'}</td>
+    <td>${callHistoryResponse.data.userSessions[i].other.name}</td>
+    <td>${callHistoryResponse.data.userSessions[i].direction}</td>
+    <td>${callHistoryResponse.data.userSessions[i].disposition}</td>
+    <td>${callHistoryResponse.data.userSessions[i].startTime}</td>
+    <td>${callHistoryResponse.data.userSessions[i].endTime}</td>
+    <td>${callHistoryResponse.data.userSessions[i].sessionType}</td>
+    <td>${callHistoryResponse.data.userSessions[i].other.callbackAddress}</td>
+    <td>${callHistoryResponse.data.userSessions[i].callingSpecifics?.redirectionDetails?.reason === undefined ? 'NA' : callHistoryResponse.data.userSessions[i].callingSpecifics.redirectionDetails.reason}</td>
+    <td>${callHistoryResponse.data.userSessions[i].callingSpecifics?.redirectionDetails?.name === undefined ? 'NA' : callHistoryResponse.data.userSessions[i].callingSpecifics.redirectionDetails.name}</td>
   </tr>`;
 
     callHistoryTable.innerHTML += callHistoryRow;
@@ -1039,14 +1036,12 @@ function definedTable(callHistoryResponse) {
 async function createCallHistory() {
   try {
     callHistory.on('callHistory:user_recent_sessions', (sessionData) => {
-      const recentSession =
-        sessionData.data.userSessions?.userSessions?.[0] ?? sessionData.data.userSessions?.[0];
-
-      console.log('Users recent session data : ', recentSession);
-      userSessionData.innerText = `${JSON.stringify(recentSession)}`;
+      console.log('Users recent session data : ', sessionData.data.userSessions.userSessions[0]);
+      userSessionData.innerText = `${JSON.stringify(
+        sessionData.data.userSessions.userSessions[0]
+      )}`;
     });
 
-    callHistoryElm.disabled = true;
     const callHistoryResponse = await callHistory.getCallHistoryData(
       numberOfDays,
       callHistoryLimit,
@@ -1054,16 +1049,16 @@ async function createCallHistory() {
       callHistorySortBy
     );
 
+    callHistoryElm.disabled = false;
     definedTable(callHistoryResponse);
     console.log('Call History response data ', callHistoryResponse.data.userSessions);
+    callHistoryElm.disabled = true;
 
     return callHistoryResponse;
   } catch (err) {
     console.log(`Call history error response ${err}`);
 
     return err;
-  } finally {
-    callHistoryElm.disabled = false;
   }
 }
 
