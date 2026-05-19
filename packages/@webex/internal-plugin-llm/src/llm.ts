@@ -427,26 +427,38 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    */
   public disconnectLLM = (
     options: {code: number; reason: string},
-    sessionId: string,
-    ownerMeetingId: string
+    sessionId?: string,
+    ownerMeetingId?: string
   ): Promise<boolean> => {
+    const resolvedSessionId = sessionId ?? LLM_DEFAULT_SESSION;
+
+    // Backward-compat path: historically callers could omit ownerMeetingId
+    // (and sometimes sessionId). Reuse current owner when available so legacy
+    // calls remain best-effort without throwing at teardown time.
+    const resolvedOwnerMeetingId = ownerMeetingId || this.getOwnerMeetingId(resolvedSessionId);
+
     if (!ownerMeetingId) {
-      throw new Error('llm#disconnectLLM --> ownerMeetingId is required');
+      this.logger.warn(
+        `llm#disconnectLLM --> ownerMeetingId is omitted for session ${resolvedSessionId}; using legacy compatibility path`
+      );
     }
 
-    const {currentOwner, isOwner} = this.resolveSessionOwnership(ownerMeetingId, sessionId);
+    const {currentOwner, isOwner} = this.resolveSessionOwnership(
+      resolvedOwnerMeetingId,
+      resolvedSessionId
+    );
 
     if (!isOwner) {
       this.logger.info(
-        `llm#disconnectLLM --> skip disconnect for session ${sessionId}; owned by ${currentOwner}, candidate ${ownerMeetingId}`
+        `llm#disconnectLLM --> skip disconnect for session ${resolvedSessionId}; owned by ${currentOwner}, candidate ${resolvedOwnerMeetingId}`
       );
 
       return Promise.resolve(false);
     }
 
-    return this.disconnect(options, sessionId).then(() => {
+    return this.disconnect(options, resolvedSessionId).then(() => {
       // Clean up sessions data
-      this.connections.delete(sessionId);
+      this.connections.delete(resolvedSessionId);
 
       return true;
     });

@@ -308,6 +308,50 @@ describe('plugin-llm', () => {
         expect(instance.connections.has('llm-default-session')).toBe(false);
       });
 
+      it('disconnectLLM supports legacy call with options only', async () => {
+        llmService.disconnect = sinon.stub().resolves(true);
+
+        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 'llm-default-session');
+
+        const options = {code: 1000, reason: 'legacy'};
+        const disconnected = await llmService.disconnectLLM(options);
+
+        assert.equal(disconnected, true);
+        sinon.assert.calledOnceWithExactly(llmService.disconnect, options, 'llm-default-session');
+        assert.equal(llmService.getAllConnections().has('llm-default-session'), false);
+      });
+
+      it('disconnectLLM supports legacy call with options and sessionId', async () => {
+        llmService.disconnect = sinon.stub().resolves(true);
+
+        await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined, 's1');
+
+        const options = {code: 1000, reason: 'legacy'};
+        const disconnected = await llmService.disconnectLLM(options, 's1');
+
+        assert.equal(disconnected, true);
+        sinon.assert.calledOnceWithExactly(llmService.disconnect, options, 's1');
+        assert.equal(llmService.getAllConnections().has('s1'), false);
+      });
+
+      it('disconnectLLM treats null sessionId as default session', async () => {
+        llmService.disconnect = sinon.stub().resolves(true);
+
+        await llmService.registerAndConnect(
+          locusUrl,
+          datachannelUrl,
+          undefined,
+          'llm-default-session'
+        );
+
+        const options = {code: 1000, reason: 'legacy-null-session'};
+        const disconnected = await llmService.disconnectLLM(options, null);
+
+        assert.equal(disconnected, true);
+        sinon.assert.calledOnceWithExactly(llmService.disconnect, options, 'llm-default-session');
+        assert.equal(llmService.getAllConnections().has('llm-default-session'), false);
+      });
+
       it('propagates disconnect errors', async () => {
         instance.disconnect.mockRejectedValue(new Error('disconnect failed'));
 

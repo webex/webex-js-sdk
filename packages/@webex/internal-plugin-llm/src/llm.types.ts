@@ -18,8 +18,8 @@ interface ILLMChannel {
   getDatachannelUrl: (sessionId?: string) => string;
   disconnectLLM: (
     options: {code: number; reason: string},
-    sessionId: string,
-    ownerMeetingId: string
+    sessionId?: string,
+    ownerMeetingId?: string
   ) => Promise<boolean>;
   disconnectAllLLM: (options?: {code: number; reason: string}) => Promise<void>;
   setOwnerMeetingId: (ownerMeetingId: string | undefined, sessionId?: string) => void;
