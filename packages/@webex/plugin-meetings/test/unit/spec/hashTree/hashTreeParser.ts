@@ -1,12 +1,15 @@
 import HashTreeParser, {
   LocusInfoUpdateType,
   MeetingEndedError,
+  LocusNotFoundError,
+  SyncAllBackoffType,
 } from '@webex/plugin-meetings/src/hashTree/hashTreeParser';
 import HashTree from '@webex/plugin-meetings/src/hashTree/hashTree';
 import {expect} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import {assert} from '@webex/test-helper-chai';
 import {EMPTY_HASH} from '@webex/plugin-meetings/src/hashTree/constants';
+import testUtils from '@webex/plugin-meetings/test/utils/testUtils';
 import { some } from 'lodash';
 import Metrics from '@webex/plugin-meetings/src/metrics';
 import BEHAVIORAL_METRICS from '@webex/plugin-meetings/src/metrics/constants';
@@ -708,8 +711,11 @@ describe('HashTreeParser', () => {
       assert.notCalled(callback);
     });
 
-    [404, 409].forEach((errorCode) => {
-      it(`emits MeetingEndedError if getting visible datasets returns ${errorCode}`, async () => {
+    [
+      {errorCode: 404, expectedError: LocusNotFoundError},
+      {errorCode: 409, expectedError: MeetingEndedError},
+    ].forEach(({errorCode, expectedError}) => {
+      it(`throws ${expectedError.name} if getting visible datasets returns ${errorCode}`, async () => {
         const minimalInitialLocus = {
           dataSets: [],
           locus: null,
@@ -732,7 +738,6 @@ describe('HashTreeParser', () => {
           )
           .rejects(error);
 
-        // initializeFromMessage should throw MeetingEndedError
         let thrownError;
         try {
           await parser.initializeFromMessage({
@@ -744,7 +749,7 @@ describe('HashTreeParser', () => {
           thrownError = e;
         }
 
-        expect(thrownError).to.be.instanceOf(MeetingEndedError);
+        expect(thrownError).to.be.instanceOf(expectedError);
       });
     });
   });
@@ -1766,12 +1771,10 @@ describe('HashTreeParser', () => {
         });
       });
 
-      describe('emits MEETING_ENDED', () => {
-        [404, 409].forEach((statusCode) => {
-          it(`when /hashtree returns ${statusCode}`, async () => {
+      describe('emits MEETING_ENDED when 409/2403004 is returned', () => {
+          it('when /hashtree returns 409', async () => {
             const parser = createHashTreeParser();
 
-            // Send a message to trigger sync algorithm
             const message = {
               dataSets: [createDataSet('main', 16, 1100)],
               visibleDataSetsUrl,
@@ -1796,12 +1799,9 @@ describe('HashTreeParser', () => {
 
             const mainDataSetUrl = parser.dataSets.main.url;
 
-            // Mock getHashesFromLocus to reject with the sentinel error
-            const error: any = new Error(`Request failed with status ${statusCode}`);
-            error.statusCode = statusCode;
-            if (statusCode === 409) {
-              error.body = {errorCode: 2403004};
-            }
+            const error: any = new Error('Request failed with status 409');
+            error.statusCode = 409;
+            error.body = {errorCode: 2403004};
             webexRequest
               .withArgs(
                 sinon.match({
@@ -1811,13 +1811,10 @@ describe('HashTreeParser', () => {
               )
               .rejects(error);
 
-            // Trigger sync by advancing time
             await clock.tickAsync(1000);
 
-            // Verify callback was called with MEETING_ENDED
             assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.MEETING_ENDED});
 
-            // Verify all timers are stopped
             Object.values(parser.dataSets).forEach((ds: any) => {
               assert.isUndefined(ds.timer);
               assert.isUndefined(ds.heartbeatWatchdogTimer);
@@ -1827,10 +1824,9 @@ describe('HashTreeParser', () => {
             assert.notCalled(metricsStub);
           });
 
-          it(`when /sync returns ${statusCode}`, async () => {
+          it('when /sync returns 409', async () => {
             const parser = createHashTreeParser();
 
-            // Send a message to trigger sync algorithm
             const message = {
               dataSets: [createDataSet('main', 16, 1100)],
               visibleDataSetsUrl,
@@ -1855,19 +1851,15 @@ describe('HashTreeParser', () => {
 
             const mainDataSetUrl = parser.dataSets.main.url;
 
-            // Mock getHashesFromLocus to succeed
             mockGetHashesFromLocusResponse(
               mainDataSetUrl,
               new Array(16).fill('00000000000000000000000000000000'),
               createDataSet('main', 16, 1101)
             );
 
-            // Mock sendSyncRequestToLocus to reject with the sentinel error
-            const error: any = new Error(`Request failed with status ${statusCode}`);
-            error.statusCode = statusCode;
-            if (statusCode === 409) {
-              error.body = {errorCode: 2403004};
-            }
+            const error: any = new Error('Request failed with status 409');
+            error.statusCode = 409;
+            error.body = {errorCode: 2403004};
             webexRequest
               .withArgs(
                 sinon.match({
@@ -1877,11 +1869,120 @@ describe('HashTreeParser', () => {
               )
               .rejects(error);
 
-            // Trigger sync by advancing time
             await clock.tickAsync(1000);
 
-            // Verify callback was called with MEETING_ENDED
             assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.MEETING_ENDED});
+
+            Object.values(parser.dataSets).forEach((ds: any) => {
+              assert.isUndefined(ds.timer);
+              assert.isUndefined(ds.heartbeatWatchdogTimer);
+            });
+          });
+      });
+
+      describe('emits LOCUS_NOT_FOUND and stops parser when 404 is returned', () => {
+          it('when /hashtree returns 404', async () => {
+            const parser = createHashTreeParser();
+
+            const message = {
+              dataSets: [createDataSet('main', 16, 1100)],
+              visibleDataSetsUrl,
+              locusUrl,
+              locusStateElements: [
+                {
+                  htMeta: {
+                    elementId: {
+                      type: 'locus' as const,
+                      id: 0,
+                      version: 201,
+                    },
+                    dataSetNames: ['main'],
+                  },
+                  data: {info: {id: 'initial-update'}},
+                },
+              ],
+            };
+
+            parser.handleMessage(message, 'initial message');
+            callback.resetHistory();
+
+            const mainDataSetUrl = parser.dataSets.main.url;
+
+            const error: any = new Error('Request failed with status 404');
+            error.statusCode = 404;
+            webexRequest
+              .withArgs(
+                sinon.match({
+                  method: 'GET',
+                  uri: `${mainDataSetUrl}/hashtree`,
+                })
+              )
+              .rejects(error);
+
+            await clock.tickAsync(1000);
+
+            assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.LOCUS_NOT_FOUND});
+
+            // Verify parser is stopped
+            expect(parser.state).to.equal('stopped');
+
+            // Verify all timers are stopped
+            Object.values(parser.dataSets).forEach((ds: any) => {
+              assert.isUndefined(ds.timer);
+              assert.isUndefined(ds.heartbeatWatchdogTimer);
+            });
+          });
+
+          it('when /sync returns 404', async () => {
+            const parser = createHashTreeParser();
+
+            const message = {
+              dataSets: [createDataSet('main', 16, 1100)],
+              visibleDataSetsUrl,
+              locusUrl,
+              locusStateElements: [
+                {
+                  htMeta: {
+                    elementId: {
+                      type: 'locus' as const,
+                      id: 0,
+                      version: 201,
+                    },
+                    dataSetNames: ['main'],
+                  },
+                  data: {info: {id: 'initial-update'}},
+                },
+              ],
+            };
+
+            parser.handleMessage(message, 'initial message');
+            callback.resetHistory();
+
+            const mainDataSetUrl = parser.dataSets.main.url;
+
+            mockGetHashesFromLocusResponse(
+              mainDataSetUrl,
+              new Array(16).fill('00000000000000000000000000000000'),
+              createDataSet('main', 16, 1101)
+            );
+
+            const error: any = new Error('Request failed with status 404');
+            error.statusCode = 404;
+            webexRequest
+              .withArgs(
+                sinon.match({
+                  method: 'POST',
+                  uri: `${mainDataSetUrl}/sync`,
+                })
+              )
+              .rejects(error);
+
+            await clock.tickAsync(1000);
+
+            assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.LOCUS_NOT_FOUND});
+
+            // Verify parser is stopped
+            expect(parser.state).to.equal('stopped');
 
             // Verify all timers are stopped
             Object.values(parser.dataSets).forEach((ds: any) => {
@@ -1892,7 +1993,6 @@ describe('HashTreeParser', () => {
             // Verify no sync failure metric was sent for end-meeting sentinel
             assert.notCalled(metricsStub);
           });
-        });
       });
 
       it('requests only mismatched hashes during sync', async () => {
@@ -2554,7 +2654,7 @@ describe('HashTreeParser', () => {
         expect(syncCalls[1].args[0].uri).to.equal(`${newAtdActiveDataSet.url}/sync`);
       });
 
-      it('emits MEETING_ENDED if async init of a new visible dataset fails with 404', async () => {
+      it('emits LOCUS_NOT_FOUND if async init of a new visible dataset fails with 404', async () => {
         const parser = createHashTreeParser();
 
         // Stub updateItems on self hash tree to return true
@@ -2619,8 +2719,8 @@ describe('HashTreeParser', () => {
         // Wait for the async initialization (queueMicrotask) to complete
         await clock.tickAsync(0);
 
-        // Verify callback was called with MEETING_ENDED
-        assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.MEETING_ENDED});
+        // Verify callback was called with LOCUS_NOT_FOUND (404 means locus URL is stale, not necessarily meeting ended)
+        assert.calledOnceWithExactly(callback, {updateType: LocusInfoUpdateType.LOCUS_NOT_FOUND});
       });
 
       it('handles removal of visible data set', async () => {
@@ -2974,6 +3074,12 @@ describe('HashTreeParser', () => {
           })
         );
 
+        // Verify behavioral metric was sent for the watchdog expiration
+        assert.calledWith(metricsStub, BEHAVIORAL_METRICS.HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED, {
+          debugId: 'test',
+          dataSetName: 'main',
+        });
+
         // Verify no sync requests were sent for other datasets
         assert.neverCalledWith(
           webexRequest,
@@ -3016,6 +3122,12 @@ describe('HashTreeParser', () => {
 
         // Advance time past watchdog delay
         await clock.tickAsync(heartbeatIntervalMs);
+
+        // Verify behavioral metric was sent for the watchdog expiration
+        assert.calledWith(metricsStub, BEHAVIORAL_METRICS.HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED, {
+          debugId: 'test',
+          dataSetName: 'self',
+        });
 
         // For leafCount === 1, performSync skips GET hashtree and goes straight to POST sync
         assert.neverCalledWith(
@@ -3877,6 +3989,9 @@ describe('HashTreeParser', () => {
       parser.handleMessage(emptyMessage, 'empty elements');
 
       assert.notCalled(callback);
+      assert.calledWith(metricsStub, BEHAVIORAL_METRICS.HASH_TREE_EMPTY_LOCUS_STATE_ELEMENTS, {
+        debugId: 'test',
+      });
     });
 
     it('always calls callback for MEETING_ENDED regardless of filtering', () => {
@@ -4380,8 +4495,8 @@ describe('HashTreeParser', () => {
       );
       expect(mainSyncCallIndex).to.be.lessThan(selfSyncCallIndex);
 
-      // Verify isSyncAllInProgress is reset
-      expect(parser.isSyncAllInProgress).to.be.false;
+      // Verify syncAllBackoffType is reset
+      expect(parser.syncAllBackoffType).to.equal(SyncAllBackoffType.NONE);
     });
 
     it('should return immediately when state is stopped', async () => {
@@ -4444,6 +4559,200 @@ describe('HashTreeParser', () => {
         (args) => args[0]?.method === 'GET' && args[0]?.uri === `${mainUrl}/hashtree`
       );
       expect(getHashtreeCalls).to.have.lengthOf(1);
+    });
+
+    it('should sync only LLM datasets when onlyLLM=true', async () => {
+      const parser = createHashTreeParser();
+
+      const mainUrl = parser.dataSets.main.url;
+      const selfUrl = parser.dataSets.self.url;
+
+      mockGetHashesFromLocusResponse(
+        mainUrl,
+        new Array(16).fill(EMPTY_HASH),
+        createDataSet('main', 16, 1100)
+      );
+
+      const mainSyncDs = createDataSet('main', 16, 1100);
+      mainSyncDs.root = parser.dataSets.main.hashTree.getRootHash();
+      mockSendSyncRequestResponse(mainUrl, {
+        dataSets: [mainSyncDs],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      await parser.syncAllDatasets({onlyLLM: true});
+
+      // main is an LLM dataset, so it should have been synced
+      assert.calledWith(webexRequest, sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`}));
+
+      // self is NOT an LLM dataset, so it should NOT have been synced
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'POST', uri: `${selfUrl}/sync`}));
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'GET', uri: `${selfUrl}/hashtree`}));
+    });
+
+    it('should upgrade scope from onlyLLM=true to all datasets when onlyLLM=false call arrives during backoff', async () => {
+      // Make Math.random return 1 so backoff = 1^2 * 1000 = 1000ms (non-zero delay for interleaving)
+      mathRandomStub.returns(1);
+
+      const parser = createHashTreeParser();
+
+      const mainUrl = parser.dataSets.main.url;
+      const selfUrl = parser.dataSets.self.url;
+
+      mockGetHashesFromLocusResponse(
+        mainUrl,
+        new Array(16).fill(EMPTY_HASH),
+        createDataSet('main', 16, 1100)
+      );
+
+      const mainSyncDs = createDataSet('main', 16, 1100);
+      mainSyncDs.root = parser.dataSets.main.hashTree.getRootHash();
+      mockSendSyncRequestResponse(mainUrl, {
+        dataSets: [mainSyncDs],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      const selfSyncDs = createDataSet('self', 1, 2100);
+      selfSyncDs.root = parser.dataSets.self.hashTree.getRootHash();
+      mockSendSyncRequestResponse(selfUrl, {
+        dataSets: [selfSyncDs],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      // First call with onlyLLM=true starts backoff
+      const promise1 = parser.syncAllDatasets({onlyLLM: true});
+      expect(parser.syncAllBackoffType).to.equal(SyncAllBackoffType.ONLY_LLM);
+
+      // Second call with onlyLLM=false upgrades the scope during backoff
+      const promise2 = parser.syncAllDatasets({onlyLLM: false});
+      expect(parser.syncAllBackoffType).to.equal(SyncAllBackoffType.ALL);
+
+      // Advance clock past the backoff delay (1000ms)
+      await clock.tickAsync(1000);
+
+      await promise1;
+      await promise2;
+
+      // Both main (LLM) and self (non-LLM) should have been synced
+      assert.calledWith(webexRequest, sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`}));
+      assert.calledWith(webexRequest, sinon.match({method: 'POST', uri: `${selfUrl}/sync`}));
+    });
+
+    it('should not downgrade scope from onlyLLM=false when onlyLLM=true call arrives during backoff', async () => {
+      // Make Math.random return 1 so backoff = 1^2 * 1000 = 1000ms (non-zero delay for interleaving)
+      mathRandomStub.returns(1);
+
+      const parser = createHashTreeParser();
+
+      const mainUrl = parser.dataSets.main.url;
+      const selfUrl = parser.dataSets.self.url;
+
+      mockGetHashesFromLocusResponse(
+        mainUrl,
+        new Array(16).fill(EMPTY_HASH),
+        createDataSet('main', 16, 1100)
+      );
+
+      const mainSyncDs = createDataSet('main', 16, 1100);
+      mainSyncDs.root = parser.dataSets.main.hashTree.getRootHash();
+      mockSendSyncRequestResponse(mainUrl, {
+        dataSets: [mainSyncDs],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      const selfSyncDs = createDataSet('self', 1, 2100);
+      selfSyncDs.root = parser.dataSets.self.hashTree.getRootHash();
+      mockSendSyncRequestResponse(selfUrl, {
+        dataSets: [selfSyncDs],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      // First call with onlyLLM=false starts backoff with all-datasets scope
+      const promise1 = parser.syncAllDatasets({onlyLLM: false});
+      expect(parser.syncAllBackoffType).to.equal(SyncAllBackoffType.ALL);
+
+      // Second call with onlyLLM=true should NOT downgrade the scope
+      const promise2 = parser.syncAllDatasets({onlyLLM: true});
+      expect(parser.syncAllBackoffType).to.equal(SyncAllBackoffType.ALL);
+
+      // Advance clock past the backoff delay (1000ms)
+      await clock.tickAsync(1000);
+
+      await promise1;
+      await promise2;
+
+      // Both main (LLM) and self (non-LLM) should have been synced (scope was not downgraded)
+      assert.calledWith(webexRequest, sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`}));
+      assert.calledWith(webexRequest, sinon.match({method: 'POST', uri: `${selfUrl}/sync`}));
+    });
+
+    it('should skip datasets that received messages during the backoff sleep', async () => {
+      // Make Math.random return 1 so backoff = 1^2 * 1000 = 1000ms
+      mathRandomStub.returns(1);
+
+      const parser = createHashTreeParser();
+
+      const mainUrl = parser.dataSets.main.url;
+      const selfUrl = parser.dataSets.self.url;
+      const atdUnmutedUrl = parser.dataSets['atd-unmuted'].url;
+
+      // Setup mocks only for self (main and atd-unmuted should be skipped)
+      mockSendSyncRequestResponse(selfUrl, {
+        dataSets: [createDataSet('self', 1, 2100)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      // Start syncAllDatasets - begins backoff sleep
+      const promise = parser.syncAllDatasets();
+      expect(parser.syncAllBackoffType).to.equal(SyncAllBackoffType.ALL);
+
+      // Simulate a normal message arriving for "main" during the backoff sleep
+      parser.handleMessage({
+        dataSets: [createDataSet('main', 16, 1100)],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus' as const, id: 0, version: 201},
+              dataSetNames: ['main'],
+            },
+            data: {someData: 'value'},
+          },
+        ],
+      });
+
+      // Simulate a heartbeat message arriving for "atd-unmuted" during the backoff sleep
+      parser.handleMessage(
+        createHeartbeatMessage('atd-unmuted', 1, 1100, parser.dataSets['atd-unmuted'].root)
+      );
+
+      // Advance clock past the backoff delay
+      await clock.tickAsync(1000);
+      await promise;
+
+      // main should NOT have been synced (it received a normal message during backoff)
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`}));
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'POST', uri: `${mainUrl}/sync`}));
+
+      // atd-unmuted should NOT have been synced (it received a heartbeat during backoff)
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'GET', uri: `${atdUnmutedUrl}/hashtree`}));
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'POST', uri: `${atdUnmutedUrl}/sync`}));
+
+      // self SHOULD have been synced (no messages received for it during backoff)
+      assert.calledWith(webexRequest, sinon.match({method: 'POST', uri: `${selfUrl}/sync`}));
     });
 
     it('should skip datasets that do not have a hash tree', async () => {
@@ -4618,6 +4927,258 @@ describe('HashTreeParser', () => {
         (args) => args[0]?.method === 'GET' && args[0]?.uri === `${selfUrl}/hashtree`
       );
       expect(selfGetCalls).to.have.lengthOf(0);
+    });
+  });
+
+  describe('#performSync abort controller', () => {
+    it('should reuse an existing syncAbortController if one is already set on the dataset', async () => {
+      const parser = createHashTreeParser();
+      const mainUrl = parser.dataSets.main.url;
+
+      // Pre-set an AbortController on the dataset before sync starts
+      const existingController = new AbortController();
+      parser.dataSets.main.syncAbortController = existingController;
+
+      // Use a deferred promise for GET hashtree so we can inspect the controller mid-sync
+      let resolveGetHashtree;
+      webexRequest.withArgs(sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`})).callsFake(
+        () =>
+          new Promise((resolve) => {
+            resolveGetHashtree = resolve;
+          })
+      );
+
+      // Trigger sync for main
+      parser.handleMessage(
+        createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
+        'trigger main sync'
+      );
+
+      await clock.tickAsync(1000);
+
+      // While sync is in-flight, verify the controller is the same one we pre-set
+      expect(parser.dataSets.main.syncAbortController).to.equal(existingController);
+
+      // Resolve GET hashtree with matching hashes (no sync needed)
+      resolveGetHashtree({body: {}});
+      await testUtils.flushPromises();
+
+      // After sync completes, syncAbortController is cleared in finally
+      expect(parser.dataSets.main.syncAbortController).to.be.undefined;
+    });
+
+    it('should abort the sync before /sync request when the controller is aborted during getHashesFromLocus', async () => {
+      const parser = createHashTreeParser();
+      const mainUrl = parser.dataSets.main.url;
+
+      // Use a deferred promise for GET hashtree so we can abort while it's pending
+      let resolveGetHashtree;
+      webexRequest.withArgs(sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`})).callsFake(
+        () =>
+          new Promise((resolve) => {
+            resolveGetHashtree = resolve;
+          })
+      );
+
+      // Mock POST sync - should NOT be called if abort works
+      mockSendSyncRequestResponse(mainUrl, null);
+
+      // Trigger sync for main via heartbeat with mismatched root hash
+      parser.handleMessage(
+        createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
+        'trigger main sync'
+      );
+
+      // Fire the timer to start the sync
+      await clock.tickAsync(1000);
+
+      // Now abort the controller while getHashesFromLocus is pending
+      expect(parser.dataSets.main.syncAbortController).to.not.be.undefined;
+      parser.dataSets.main.syncAbortController.abort();
+
+      // Resolve GET hashtree with mismatched hashes so the code would normally proceed to /sync
+      resolveGetHashtree({
+        body: {
+          hashes: new Array(16).fill('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
+          dataSet: createDataSet('main', 16, 1100),
+        },
+      });
+
+      await testUtils.flushPromises();
+
+      // POST sync should NOT have been called because the controller was aborted
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'POST', uri: `${mainUrl}/sync`}));
+    });
+
+    it('should abort the sync before /sync request when the controller is aborted for leafCount === 1 datasets', async () => {
+      const parser = createHashTreeParser();
+      const selfUrl = parser.dataSets.self.url;
+
+      // Pre-set an already-aborted controller so performSync picks it up via ??
+      const abortedController = new AbortController();
+      abortedController.abort();
+      parser.dataSets.self.syncAbortController = abortedController;
+
+      // Mock POST sync - should NOT be called
+      mockSendSyncRequestResponse(selfUrl, null);
+
+      // Trigger sync for self via heartbeat with mismatched root hash
+      parser.handleMessage(
+        {
+          dataSets: [
+            {
+              ...createDataSet('self', 1, 2100),
+              url: parser.dataSets.self.url,
+              root: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb1',
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+        },
+        'trigger self sync'
+      );
+
+      // Fire the timer to start the sync
+      await clock.tickAsync(1000);
+
+      // GET hashtree should NOT have been called (leafCount === 1 skips it)
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'GET', uri: `${selfUrl}/hashtree`}));
+
+      // POST sync should NOT have been called because the controller was already aborted
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'POST', uri: `${selfUrl}/sync`}));
+    });
+
+    it('should unconditionally clear syncAbortController in the finally block', async () => {
+      const parser = createHashTreeParser();
+      const mainUrl = parser.dataSets.main.url;
+
+      // Mock GET hashtree to return matching hashes (early return, no sync needed)
+      webexRequest
+        .withArgs(sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`}))
+        .resolves({body: {}});
+
+      // Trigger sync for main
+      parser.handleMessage(
+        createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
+        'trigger main sync'
+      );
+
+      await clock.tickAsync(1000);
+
+      // After sync completes (even via early return), syncAbortController should be cleared
+      expect(parser.dataSets.main.syncAbortController).to.be.undefined;
+    });
+
+    it('should unconditionally clear syncAbortController even when sync throws an error', async () => {
+      const parser = createHashTreeParser();
+      const mainUrl = parser.dataSets.main.url;
+
+      // Mock GET hashtree to reject with a non-409 error
+      webexRequest
+        .withArgs(sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`}))
+        .rejects({statusCode: 500, message: 'Internal Server Error'});
+
+      // Trigger sync for main
+      parser.handleMessage(
+        createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
+        'trigger main sync'
+      );
+
+      await clock.tickAsync(1000);
+
+      // After sync completes with error, syncAbortController should still be cleared
+      expect(parser.dataSets.main.syncAbortController).to.be.undefined;
+    });
+
+    it('should reuse a pre-existing abort controller and respect its aborted state', async () => {
+      const parser = createHashTreeParser();
+      const mainUrl = parser.dataSets.main.url;
+
+      // Pre-set an AbortController and abort it before sync starts
+      const preAbortedController = new AbortController();
+      preAbortedController.abort();
+      parser.dataSets.main.syncAbortController = preAbortedController;
+
+      // Mock GET hashtree to return mismatched hashes
+      mockGetHashesFromLocusResponse(
+        mainUrl,
+        new Array(16).fill('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
+        createDataSet('main', 16, 1100)
+      );
+
+      // Mock POST sync - should NOT be called
+      mockSendSyncRequestResponse(mainUrl, null);
+
+      // Trigger sync for main
+      parser.handleMessage(
+        createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
+        'trigger main sync'
+      );
+
+      await clock.tickAsync(1000);
+
+      // POST sync should NOT have been called because the reused controller was already aborted
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'POST', uri: `${mainUrl}/sync`}));
+
+      // syncAbortController should be cleaned up
+      expect(parser.dataSets.main.syncAbortController).to.be.undefined;
+    });
+
+    it('should allow cancelPendingSyncsForDataSets to abort an in-flight sync via the shared controller', async () => {
+      const parser = createHashTreeParser();
+      const mainUrl = parser.dataSets.main.url;
+
+      // Use a deferred promise for GET hashtree
+      let resolveGetHashtree;
+      webexRequest.withArgs(sinon.match({method: 'GET', uri: `${mainUrl}/hashtree`})).callsFake(
+        () =>
+          new Promise((resolve) => {
+            resolveGetHashtree = resolve;
+          })
+      );
+
+      mockSendSyncRequestResponse(mainUrl, null);
+
+      // Trigger sync for main
+      parser.handleMessage(
+        createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
+        'trigger main sync'
+      );
+
+      // Fire the timer to start sync
+      await clock.tickAsync(1000);
+
+      // Verify controller is set
+      expect(parser.dataSets.main.syncAbortController).to.not.be.undefined;
+
+      // Simulate a new heartbeat arriving that cancels the in-flight sync
+      // (this is what happens in production via parseMessage -> cancelPendingSyncsForDataSets)
+      parser.handleMessage(
+        {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1101),
+              root: parser.dataSets.main.hashTree.getRootHash(), // matching hash so no new sync
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+        },
+        'new heartbeat cancels sync'
+      );
+
+      // Resolve the pending GET hashtree with mismatched hashes
+      resolveGetHashtree({
+        body: {
+          hashes: new Array(16).fill('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
+          dataSet: createDataSet('main', 16, 1101),
+        },
+      });
+
+      await testUtils.flushPromises();
+
+      // POST sync should NOT have been called because cancelPendingSyncsForDataSets aborted the controller
+      assert.neverCalledWith(webexRequest, sinon.match({method: 'POST', uri: `${mainUrl}/sync`}));
     });
   });
 

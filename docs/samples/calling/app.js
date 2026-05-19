@@ -170,6 +170,17 @@ if (localStorage.getItem('date') > new Date().getTime()) {
   localStorage.removeItem('access-token');
 }
 
+// Initialize Mobius WSS dropdown from localStorage
+const mobiusWssCheckbox = document.getElementById('mobius-wss');
+const storedMobiusWss = localStorage.getItem('mobius-wss-enabled');
+if (storedMobiusWss === 'true') {
+  mobiusWssCheckbox.value = 'true';
+} else if (storedMobiusWss === 'false') {
+  mobiusWssCheckbox.value = 'false';
+} else {
+  mobiusWssCheckbox.value = 'default';
+}
+
 tokenElm.addEventListener('change', (event) => {
   localStorage.setItem('access-token', event.target.value);
   localStorage.setItem('date', new Date().getTime() + 12 * 60 * 60 * 1000);
@@ -178,6 +189,20 @@ tokenElm.addEventListener('change', (event) => {
 function changeEnv() {
   enableProd = !enableProd;
   enableProduction.innerHTML = enableProd ? 'In Production' : 'In Integration';
+}
+
+function toggleMobiusWss() {
+  const value = mobiusWssCheckbox.value;
+  if (value === 'true') {
+    localStorage.setItem('mobius-wss-enabled', 'true');
+    console.log('Mobius WebSocket force-enabled via samples page');
+  } else if (value === 'false') {
+    localStorage.setItem('mobius-wss-enabled', 'false');
+    console.log('Mobius WebSocket force-disabled via samples page');
+  } else {
+    localStorage.removeItem('mobius-wss-enabled');
+    console.log('Mobius WebSocket using backend flag (override cleared)');
+  }
 }
 
 // Guest access token via Service App - Logic deployed on the AWS Lambda
