@@ -1,4 +1,5 @@
 import {Page, expect} from '@playwright/test';
+import path from 'path';
 import {
   SAMPLE_APP_PATH,
   CALLING_SELECTORS,
@@ -18,10 +19,25 @@ export type MobiusDiscoveryResponse = {
   backup: {region: string; uris: string[]};
 };
 
+const CALLING_UMD_BUNDLE_PATH = path.resolve(__dirname, '../../../webex/umd/calling.min.js');
+const CALLING_UMD_BUNDLE_MAP_PATH = `${CALLING_UMD_BUNDLE_PATH}.map`;
+
 /**
  * Navigate to the calling sample app
  */
 export const navigateToCallingApp = async (page: Page): Promise<void> => {
+  await page.route('**/samples/calling.min.js', (route) =>
+    route.fulfill({
+      path: CALLING_UMD_BUNDLE_PATH,
+      contentType: 'application/javascript',
+    })
+  );
+  await page.route('**/samples/calling.min.js.map', (route) =>
+    route.fulfill({
+      path: CALLING_UMD_BUNDLE_MAP_PATH,
+      contentType: 'application/json',
+    })
+  );
   await page.goto(SAMPLE_APP_PATH);
   await page.waitForLoadState('domcontentloaded');
 };
