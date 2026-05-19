@@ -253,19 +253,26 @@ function computeVoiceInteractionUIControls(
       return DISABLED;
     })(),
 
-    // Transfer: connected/held, not in conference
+    // Transfer: connected/held/conference
     transfer: (() => {
       if (hasParallelConsultLeg) {
+        if (!customerPresent) return DISABLED;
         if (state === TaskState.CONNECTED) return VISIBLE_ENABLED;
         if (state === TaskState.HELD) return VISIBLE_DISABLED;
       }
       if (isConsulting) {
         if (!consultInitiator) return DISABLED;
+        if (!customerPresent) return VISIBLE_DISABLED;
         if (consultLegOnHold) return VISIBLE_DISABLED;
 
         return isConsultDestinationReady ? VISIBLE_ENABLED : VISIBLE_DISABLED;
       }
-      if (!hasFullControls || inConference) return DISABLED;
+      if (!hasFullControls) return DISABLED;
+      if (inConference) {
+        // Real conference (multiple agents): transfer is hidden
+        // Pending conference (only self agent): transfer remains available
+        return participantCount > 1 ? DISABLED : VISIBLE_ENABLED;
+      }
       if (state === TaskState.CONNECTED || state === TaskState.HELD) return VISIBLE_ENABLED;
 
       return DISABLED;
@@ -280,15 +287,22 @@ function computeVoiceInteractionUIControls(
         return DISABLED;
       }
 
-      // Enabled conditions differ by state
+      // In conference: behavior depends on whether it's a real multi-agent conference
+      if (inConference) {
+        // Pending conference (only self agent): consult disabled
+        if (participantCount <= 1) return VISIBLE_DISABLED;
+        // Real conference: consult enabled if conditions met
+        const canFromConference =
+          !maxParticipants && customerPresent && !consultInProgress && !isConsulting;
+
+        return {isVisible: true, isEnabled: canFromConference};
+      }
+
+      // Enabled conditions for connected/held
       const canFromConnected =
         !maxParticipants && customerPresent && !consultInProgress && !isConsulted;
-      const canFromConference =
-        !maxParticipants && customerPresent && !consultInProgress && !isConsulting;
 
-      const isEnabled = inConference ? canFromConference : canFromConnected;
-
-      return {isVisible: true, isEnabled};
+      return {isVisible: true, isEnabled: canFromConnected};
     })(),
 
     // ConsultTransfer: always hidden (use transfer button)
@@ -305,10 +319,16 @@ function computeVoiceInteractionUIControls(
       return {isVisible: true, isEnabled: consultInitiator || config.isEndConsultEnabled};
     })(),
 
-    // Recording: connected/held only, not in consult/conference
+    // Recording: connected/held, hidden in real conference, visible in pending conference
     recording: (() => {
       if (!recordingControlsAvailable || !config.isRecordingEnabled) return DISABLED;
-      if (!hasFullControls || isConsulting || inConference) return DISABLED;
+      if (!hasFullControls || isConsulting) return DISABLED;
+      if (inConference) {
+        // Real conference (multiple agents): recording hidden
+        // Pending conference (only self agent): recording available
+        return participantCount > 1 ? DISABLED : VISIBLE_ENABLED;
+      }
+      if (hasParallelConsultLeg && !customerPresent) return DISABLED;
       if (state === TaskState.CONNECTED || state === TaskState.HELD) {
         return VISIBLE_ENABLED;
       }
@@ -320,6 +340,7 @@ function computeVoiceInteractionUIControls(
     // Label changes based on leg: "Conference" on main leg, "Merge" on consult leg
     conference: (() => {
       if (hasParallelConsultLeg) {
+        if (!customerPresent) return DISABLED;
         if (state === TaskState.CONNECTED) {
           return maxParticipants ? VISIBLE_DISABLED : VISIBLE_ENABLED;
         }
@@ -329,6 +350,7 @@ function computeVoiceInteractionUIControls(
       }
       if (!hasFullControls || !isConsulting) return DISABLED;
       if (!consultInitiator) return DISABLED;
+      if (!customerPresent) return VISIBLE_DISABLED;
       if (consultLegOnHold) return VISIBLE_DISABLED;
 
       return isConsultDestinationReady && !maxParticipants ? VISIBLE_ENABLED : VISIBLE_DISABLED;
@@ -337,10 +359,11 @@ function computeVoiceInteractionUIControls(
     // Wrapup: wrapping up state
     wrapup: isWrappingUp ? VISIBLE_ENABLED : DISABLED,
 
-    // ExitConference: in conference, not consulting from conference
+    // ExitConference: in conference with multiple agents in main call
     exitConference: (() => {
       if (isConsulted && !isConferencing) return DISABLED;
       if (!inConference) return DISABLED;
+      if (participantCount <= 1) return DISABLED;
       const consultingFromConference = consultInitiator && isConsulting && conferenceFromBackend;
 
       return consultingFromConference ? VISIBLE_DISABLED : VISIBLE_ENABLED;
@@ -358,6 +381,7 @@ function computeVoiceInteractionUIControls(
     // MergeToConference: mirrors conference control, enabled on both legs
     mergeToConference: (() => {
       if (!isConsulting || !consultInitiator) return DISABLED;
+      if (!customerPresent) return VISIBLE_DISABLED;
       if (consultLegOnHold) return VISIBLE_DISABLED;
 
       return isConsultDestinationReady && !maxParticipants ? VISIBLE_ENABLED : VISIBLE_DISABLED;
@@ -365,8 +389,10 @@ function computeVoiceInteractionUIControls(
 
     // Switch: visible only on the currently active leg
     switch: (() => {
+      if (!customerPresent && hasParallelConsultLeg) return DISABLED;
       if (currentLeg === 'consult') {
         if (!isConsulting || !consultInitiator || consultCallHeld) return DISABLED;
+        if (!customerPresent) return VISIBLE_DISABLED;
 
         return isConsultDestinationReady ? VISIBLE_ENABLED : VISIBLE_DISABLED;
       }
