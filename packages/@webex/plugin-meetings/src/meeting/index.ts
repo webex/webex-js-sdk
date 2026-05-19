@@ -3508,30 +3508,6 @@ export default class Meeting extends StatelessWebexPlugin {
         this.recordingController.setLocusUrl(this.locusUrl);
         this.controlsOptionsManager.setLocusUrl(this.locusUrl, !!isMainLocus);
         this.webinar.locusUrlUpdate(url);
-        // Guard default-session refresh handler ownership so unrelated meetings
-        // cannot overwrite the active owner's refresh path.
-        // Do not branch by meeting type here: both regular meetings and webinar
-        // main session use the default datachannel session. Practice session has
-        // its own handler in webinar/index.ts (LLM_PRACTICE_SESSION).
-        // @ts-ignore - Fix type
-        const {isOwner} = this.webex.internal.llm.resolveSessionOwnership(
-          this.id,
-          LLM_DEFAULT_SESSION
-        );
-
-        if (isOwner) {
-          // @ts-ignore
-          this.webex.internal.llm.setRefreshHandler(
-            () => this.refreshDataChannelToken(),
-            LLM_DEFAULT_SESSION,
-            this.id
-          );
-          // Claim ownership as soon as refresh routing is installed so
-          // another meeting instance cannot overwrite this handler before
-          // registerAndConnect() completes.
-          // @ts-ignore - Fix type
-          this.webex.internal.llm.setOwnerMeetingId?.(this.id, LLM_DEFAULT_SESSION);
-        }
 
         Trigger.trigger(
           this,
