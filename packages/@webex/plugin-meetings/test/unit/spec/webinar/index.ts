@@ -707,6 +707,59 @@ describe('plugin-meetings', () => {
         assert.notCalled(webex.internal.llm.setOwnerMeetingId);
         assert.notCalled(webex.internal.llm.registerAndConnect);
       });
+
+      it('does not write owner or connect if ownership changes before pre-connect owner write', async () => {
+        let ownerMeetingId = 'meeting-id';
+
+        webex.internal.llm.getOwnerMeetingId.callsFake(() => ownerMeetingId);
+        webex.internal.llm.isDataChannelTokenEnabled.resolves(true);
+        webex.internal.llm.getDatachannelToken = sinon.stub().returns(undefined);
+
+        let resolveRefresh;
+        meeting.refreshDataChannelToken = sinon.stub().returns(
+          new Promise((resolve) => {
+            resolveRefresh = resolve;
+          })
+        );
+
+        const updatePromise = webinar.updatePSDataChannel();
+
+        ownerMeetingId = 'other-meeting-id';
+        resolveRefresh({
+          body: {
+            datachannelToken: 'ps-token-from-refresh',
+            dataChannelTokenType: DataChannelTokenType.PracticeSession,
+          },
+        });
+
+        const result = await updatePromise;
+
+        assert.isUndefined(result);
+        assert.notCalled(webex.internal.llm.setRefreshHandler);
+        assert.notCalled(webex.internal.llm.setOwnerMeetingId);
+        assert.notCalled(webex.internal.llm.registerAndConnect);
+      });
+
+      it('does not overwrite owner after connect when ownership changed during registerAndConnect', async () => {
+        let ownerMeetingId = 'meeting-id';
+
+        webex.internal.llm.getOwnerMeetingId.callsFake(() => ownerMeetingId);
+        webex.internal.llm.registerAndConnect = sinon.stub().callsFake(async () => {
+          ownerMeetingId = 'other-meeting-id';
+
+          return 'REGISTER_AND_CONNECT_RESULT';
+        });
+
+        const result = await webinar.updatePSDataChannel();
+
+        assert.equal(result, 'REGISTER_AND_CONNECT_RESULT');
+        assert.calledOnce(webex.internal.llm.setOwnerMeetingId);
+        assert.calledWithExactly(
+          webex.internal.llm.setOwnerMeetingId,
+          'meeting-id',
+          PRACTICE_SESSION_KEY
+        );
+      });
       });
 
       describe('#updateStatusByRole', () => {
