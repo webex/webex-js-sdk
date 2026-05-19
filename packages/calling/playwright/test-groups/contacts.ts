@@ -57,11 +57,17 @@ export function contactListTests() {
     });
 
     test('CONT-001: getContacts - contacts and groups tables are rendered after clicking Get Contacts', async () => {
+      // Seed both tables so the assertions verify rendered data, not just DOM presence
+      const seedContact = `CONT-001 Seed Contact ${Date.now()}`;
+      const seedGroup = `CONT-001 Seed Group ${Date.now()}`;
+      await createCustomContact(tm.page, {displayName: seedContact, phone: '+15005550001'});
+      await waitForContactSuccess(tm.page);
+      await createContactGroup(tm.page, seedGroup);
+      await waitForGroupSuccess(tm.page);
+      // Click Get Contacts and verify both seeded entries are fetched and rendered
       await clickGetContacts(tm.page);
-
-      // Both table bodies must be attached to the DOM after the button click
-      await expect(tm.page.locator('#contactsTableId')).toBeAttached();
-      await expect(tm.page.locator('#contactGroupsTableId')).toBeAttached();
+      await expectContactInTable(tm.page, seedContact);
+      await expectGroupInTable(tm.page, seedGroup);
     });
 
     test('CONT-002: getContacts - created CUSTOM contact appears in the contacts table with correct type', async () => {
