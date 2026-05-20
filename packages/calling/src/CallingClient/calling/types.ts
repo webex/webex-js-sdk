@@ -219,6 +219,21 @@ export type CallRtpStats = {
   'rtp-txstat': TransmitStatistics;
 };
 
+export type IceEventPayload = {
+  state?: string;
+  connectionState?: string;
+  iceConnectionState?: string;
+  iceGatheringState?: string;
+};
+
+export type IceCandidateErrorEventPayload = {
+  address?: string | null;
+  errorCode?: number;
+  errorText?: string;
+  port?: number | null;
+  url?: string;
+};
+
 /**
  * Represents an interface for managing call-related operations.
  */

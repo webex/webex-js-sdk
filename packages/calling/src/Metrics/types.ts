@@ -71,6 +71,14 @@ export enum CONNECTION_ACTION {
   MERCURY_UP = 'mercury_up',
 }
 
+export enum MEDIA_CONNECTION_ACTION {
+  ICE_GATHERING_STATE_CHANGED = 'ICE_GATHERING_STATE_CHANGED',
+  PEER_CONNECTION_STATE_CHANGED = 'PEER_CONNECTION_STATE_CHANGED',
+  ICE_CONNECTION_STATE_CHANGED = 'ICE_CONNECTION_STATE_CHANGED',
+  ICE_CANDIDATE_ERROR = 'ICE_CANDIDATE_ERROR',
+  ROAP_FAILURE = 'ROAP_FAILURE',
+}
+
 export interface IMetricManager {
   setDeviceInfo: (deviceInfo: IDeviceInfo) => void;
 
@@ -109,6 +117,7 @@ export interface IMetricManager {
     correlationId: CorrelationId,
     localSdp?: string,
     remoteSdp?: string,
+    state?: string,
     callError?: CallError
   ) => void;
 
