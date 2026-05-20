@@ -52,4 +52,22 @@ export const CALLING_SELECTORS = {
   CALL_QUALITY_METRICS: '#call-quality-metrics',
 
   END_BTN: '#end',
+
+  // Call Settings
+  FETCH_SETTINGS_BTN: '#fetch-setting',
+  DND_BTN: '#DND-button',
+  CALL_WAITING_BTN: '#CallWaiting-button',
+
+  // Call Forward — scoped to avoid collision with duplicate IDs in the voicemail form
+  CF_SAVE_BTN: '#callForwardForm #cfButton',
+  CF_ALWAYS_CB: '#callForwardForm #alwaysCb',
+  CF_ALWAYS_DEST: '#alwaysDest',
+  CF_BUSY_CB: '#callForwardForm #busyCb',
+  CF_BUSY_DEST: '#busyDest',
+  CF_NO_ANSWER_CB: '#notAnsweredCb',
+  CF_NO_ANSWER_DEST: '#notAnsweredDest',
+  CF_NOT_REACHABLE_CB: '#notReachableCb',
+  CF_DIRECTORY_NUMBER: '#directoryNumber',
+  CF_ALWAYS_BTN: '#CallForwardAlways-button',
+  CF_ALWAYS_DATA: '#callforwardalways-data',
 };

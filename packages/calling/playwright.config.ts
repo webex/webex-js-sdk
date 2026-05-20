@@ -139,5 +139,36 @@ export default defineConfig({
       testMatch: USER_SETS.SET_CALL_TRANSFER_CONSULT.testSuite,
       use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
     },
+    // Single-user Call Settings tests
+    {
+      name: 'SET_CALL_SETTINGS - PROD',
+      dependencies: ['OAuth - PROD'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_CALL_SETTINGS.testSuite,
+      use: browserOptions[PW_BROWSER],
+    },
+    {
+      name: 'SET_CALL_SETTINGS - INT',
+      dependencies: ['OAuth - INT'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_CALL_SETTINGS.testSuite,
+      use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
+    },
+
+    // 3-user transfer tests — waits for 2-user (shared USER_4+USER_5)
+    // {
+    //   name: 'SET_3USER - PROD',
+    //   dependencies: ['SET_2USER - PROD'],
+    //   testDir: './playwright/suites',
+    //   testMatch: USER_SETS.SET_3USER.testSuite,
+    //   use: browserOptions[PW_BROWSER],
+    // },
+    // {
+    //   name: 'SET_3USER - INT',
+    //   dependencies: ['SET_2USER - INT'],
+    //   testDir: './playwright/suites',
+    //   testMatch: USER_SETS.SET_3USER.testSuite,
+    //   use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
+    // },
   ],
 });

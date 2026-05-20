@@ -127,6 +127,12 @@ export const USER_SETS: Record<string, UserSet> = {
     accounts: ['USER_6'],
     testSuite: 'contacts.spec.ts',
   },
+  // Single-user Call Settings supplementary service E2E tests
+  SET_CALL_SETTINGS: {
+    name: 'SET_CALL_SETTINGS',
+    accounts: ['USER_3'],
+    testSuite: 'set-call-settings.spec.ts',
+  },
 };
 
 /**
