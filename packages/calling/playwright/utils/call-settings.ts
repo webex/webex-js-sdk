@@ -18,8 +18,13 @@ export async function getDndText(page: Page): Promise<string> {
   return page.locator(CALLING_SELECTORS.DND_BTN).innerText();
 }
 
+// Click the DND button and wait for the toggle to settle on the opposite state on the server.
+// Polls loadSettings until the GET reflects the flipped value, avoiding eventual-consistency races
+// between the PUT and the subsequent read.
 export async function clickDnd(page: Page): Promise<string> {
-  // Register the response listener BEFORE the click triggers the PUT.
+  const before = await getDndText(page);
+  const expectedAfter = before === 'DND Enabled' ? 'DND Disabled' : 'DND Enabled';
+
   await Promise.all([
     page.waitForResponse(
       (r) => r.url().includes('doNotDisturb') && r.request().method() === 'PUT',
@@ -28,11 +33,18 @@ export async function clickDnd(page: Page): Promise<string> {
     page.locator(CALLING_SELECTORS.DND_BTN).click({timeout: AWAIT_TIMEOUT}),
   ]);
 
-  // Re-fetch from server — avoids relying on the optimistic UI which can
-  // briefly revert if a concurrent GET fires after the PUT.
-  await loadSettings(page);
+  await expect
+    .poll(
+      async () => {
+        await loadSettings(page);
 
-  return getDndText(page);
+        return getDndText(page);
+      },
+      {timeout: OPERATION_TIMEOUT, intervals: [500, 1000, 2000]}
+    )
+    .toBe(expectedAfter);
+
+  return expectedAfter;
 }
 
 /**
