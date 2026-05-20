@@ -13764,12 +13764,7 @@ describe('plugin-meetings', () => {
           assert.notCalled(webex.internal.llm.setDatachannelToken);
         });
 
-        it('uses ownerless token write when disconnected and default-session owner tag is stale', () => {
-          webex.internal.llm.resolveSessionOwnership
-            .withArgs(meeting.id, 'llm-default-session')
-            .returns({currentOwner: 'stale-owner-id', isOwner: false});
-          webex.internal.llm.isConnected.withArgs('llm-default-session').returns(false);
-
+        it('writes token with meeting id as owner', () => {
           meeting.saveDataChannelToken({
             locus: {
               self: {datachannelToken: 'default-token'},
@@ -13780,7 +13775,7 @@ describe('plugin-meetings', () => {
             webex.internal.llm.setDatachannelToken,
             'default-token',
             'llm-default-session',
-            undefined
+            meeting.id
           );
         });
       });
