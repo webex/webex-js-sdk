@@ -125,15 +125,24 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     datachannelUrl: string,
     datachannelToken?: string,
     sessionId: string = LLM_DEFAULT_SESSION
-  ): Promise<void> =>
-    this.register(datachannelUrl, datachannelToken, sessionId).then(async () => {
-      if (!locusUrl || !datachannelUrl) return undefined;
-
-      // Get or create connection data
+  ): Promise<void> => {
+    // Pre-populate locusUrl and datachannelUrl before register() fires the
+    // HTTP POST, so that any token refresh triggered during registration can
+    // be routed via connections without falling back to a locusInfo URL scan.
+    if (locusUrl && datachannelUrl) {
       const sessionData = this.connections.get(sessionId) || {};
       sessionData.locusUrl = locusUrl;
       sessionData.datachannelUrl = datachannelUrl;
       this.connections.set(sessionId, sessionData);
+    }
+
+    return this.register(datachannelUrl, datachannelToken, sessionId).then(async () => {
+      if (!locusUrl || !datachannelUrl) return undefined;
+
+      // locusUrl and datachannelUrl were pre-populated before register(); here
+      // we only need to read the existing session data to get webSocketUrl/binding
+      // that register() filled in.
+      const sessionData = this.connections.get(sessionId) || {};
 
       const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
 
@@ -143,6 +152,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
 
       return this.connect(connectUrl, sessionId);
     });
+  };
 
   /**
    * Tells if LLM socket is connected
@@ -457,6 +467,10 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     }
 
     return this.disconnect(options, resolvedSessionId).then(() => {
+      // Clear owner tag before cleanup to ensure it's not lingering
+      // if another meeting claimed it during disconnect
+      this.setOwnerMeetingId(undefined, resolvedSessionId);
+
       // Clean up sessions data
       this.connections.delete(resolvedSessionId);
 
@@ -540,10 +554,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @param {string} registrationUrl
    * @returns {boolean}
    */
-  private static matchesDatachannelRequestUrl(
-    requestUrl: string,
-    registrationUrl: string
-  ): boolean {
+  public static matchesDatachannelRequestUrl(requestUrl: string, registrationUrl: string): boolean {
     if (!requestUrl || !registrationUrl) {
       return false;
     }

@@ -6566,28 +6566,6 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Resolves token-cache write ownership for stale-owner reclaim flows.
-   * When the session is disconnected but a foreign owner tag lingers,
-   * ownerless writes are allowed so the reconnect can carry a token.
-   * @param {DataChannelTokenType} tokenKey
-   * @returns {string | undefined}
-   */
-  private getDatachannelTokenWriteOwnerMeetingId(
-    tokenKey: DataChannelTokenType
-  ): string | undefined {
-    // @ts-ignore - Fix type
-    const {currentOwner} = this.webex.internal.llm.resolveSessionOwnership(this.id, tokenKey);
-    // @ts-ignore - Fix type
-    const isConnected = this.webex.internal.llm.isConnected(tokenKey);
-
-    if (!isConnected && currentOwner && currentOwner !== this.id) {
-      return undefined;
-    }
-
-    return this.id;
-  }
-
-  /**
    * Saves the data channel tokens from the join response into LLM so that
    * updateLLMConnection / updatePSDataChannel don't need to fetch them from locusInfo.
    * @param {Object} join - The parsed join response (from MeetingUtil.parseLocusJoin)
@@ -6598,22 +6576,16 @@ export default class Meeting extends StatelessWebexPlugin {
     const practiceSessionDatachannelToken = join?.locus?.self?.practiceSessionDatachannelToken;
 
     if (datachannelToken) {
-      const ownerMeetingId = this.getDatachannelTokenWriteOwnerMeetingId(LLM_DEFAULT_SESSION);
       // @ts-ignore
-      this.webex.internal.llm.setDatachannelToken(
-        datachannelToken,
-        LLM_DEFAULT_SESSION,
-        ownerMeetingId
-      );
+      this.webex.internal.llm.setDatachannelToken(datachannelToken, LLM_DEFAULT_SESSION, this.id);
     }
 
     if (practiceSessionDatachannelToken) {
-      const ownerMeetingId = this.getDatachannelTokenWriteOwnerMeetingId(LLM_PRACTICE_SESSION);
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(
         practiceSessionDatachannelToken,
         LLM_PRACTICE_SESSION,
-        ownerMeetingId
+        this.id
       );
     }
   }
@@ -6648,13 +6620,11 @@ export default class Meeting extends StatelessWebexPlugin {
         return false;
       }
 
-      const ownerMeetingId = this.getDatachannelTokenWriteOwnerMeetingId(LLM_DEFAULT_SESSION);
-
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(
         fetchedDatachannelToken,
         LLM_DEFAULT_SESSION,
-        ownerMeetingId
+        this.id
       );
 
       return true;

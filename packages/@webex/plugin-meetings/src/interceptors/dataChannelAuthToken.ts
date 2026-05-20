@@ -3,6 +3,7 @@
  */
 
 import {Interceptor} from '@webex/http-core';
+import LLMChannel from '@webex/internal-plugin-llm';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY, RETRY_INTERVAL, RETRY_KEY} from './constant';
 import {isJwtTokenExpired} from './utils';
@@ -62,8 +63,11 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
           }
 
           if (!meeting) {
-            // Before registerAndConnect resolves, LLM may not yet map requestUrl
-            // to a session/locus. Fall back to active meetings' locusInfo URLs.
+            // Fallback: registerAndConnect() pre-populates datachannelUrl in
+            // connections before calling register(), so getSessionIdByDatachannelUrl
+            // above should normally resolve. This scan covers any residual gap
+            // where connections are not yet populated (e.g. if setRefreshHandler
+            // is called on a session that has no connection entry at all).
             // @ts-ignore
             const allMeetings = this.meetings?.getAllMeetings?.() || {};
 
@@ -71,8 +75,13 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
               const info = activeMeeting?.locusInfo?.info || {};
 
               return (
-                info.practiceSessionDatachannelUrl === requestUrl ||
-                info.datachannelUrl === requestUrl
+                (info.practiceSessionDatachannelUrl &&
+                  LLMChannel.matchesDatachannelRequestUrl(
+                    requestUrl,
+                    info.practiceSessionDatachannelUrl
+                  )) ||
+                (info.datachannelUrl &&
+                  LLMChannel.matchesDatachannelRequestUrl(requestUrl, info.datachannelUrl))
               );
             });
 
@@ -80,9 +89,18 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
               // @ts-ignore
               const info = meeting?.locusInfo?.info || {};
 
-              if (info.practiceSessionDatachannelUrl === requestUrl) {
+              if (
+                info.practiceSessionDatachannelUrl &&
+                LLMChannel.matchesDatachannelRequestUrl(
+                  requestUrl,
+                  info.practiceSessionDatachannelUrl
+                )
+              ) {
                 sessionId = LLM_PRACTICE_SESSION;
-              } else if (info.datachannelUrl === requestUrl) {
+              } else if (
+                info.datachannelUrl &&
+                LLMChannel.matchesDatachannelRequestUrl(requestUrl, info.datachannelUrl)
+              ) {
                 sessionId = LLM_DEFAULT_SESSION;
               }
             }
