@@ -22,7 +22,6 @@ import {
   MediaConnectionEventNames,
   MediaContent,
   MediaType,
-  MediaCodecMimeType,
   RemoteTrackType,
   RoapMessage,
   StatsAnalyzer,
@@ -31,7 +30,7 @@ import {
   NetworkQualityMonitor,
   StatsMonitor,
   StatsMonitorEventNames,
-  InboundAudioIssueSubTypes,
+  MediaCodecMimeType,
 } from '@webex/internal-media-core';
 
 import {DataChannelTokenType} from '@webex/internal-plugin-llm';
@@ -137,6 +136,7 @@ import {
   STAGE_MANAGER_TYPE,
   LOCUSEVENT,
   LOCUS_LLM_EVENT,
+  LLM_PRACTICE_SESSION,
 } from '../constants';
 import BEHAVIORAL_METRICS from '../metrics/constants';
 import ParameterError from '../common/errors/parameter';
@@ -968,6 +968,7 @@ export default class Meeting extends StatelessWebexPlugin {
       },
       (csi: CSI) => (this.members.findMemberByCsi(csi) as any)?.id
     );
+
     /**
      * Object containing helper classes for managing media requests for audio/video/screenshare (for multistream media connections)
      * All multistream media requests sent out for this meeting have to go through them.
@@ -987,6 +988,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        this.getIngressPayloadTypeCallback.bind(this),
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1008,6 +1010,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        this.getIngressPayloadTypeCallback.bind(this),
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1029,6 +1032,7 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        this.getIngressPayloadTypeCallback.bind(this),
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
@@ -1050,11 +1054,14 @@ export default class Meeting extends StatelessWebexPlugin {
             mediaRequests
           );
         },
+        this.getIngressPayloadTypeCallback.bind(this),
         {
           // @ts-ignore - config coming from registerPlugin
           degradationPreferences: this.config.degradationPreferences,
           kind: 'video',
           trimRequestsToNumOfSources: false,
+          // @ts-ignore - config coming from registerPlugin
+          enableAv1: this.config.enableAv1SlidesSupport,
         }
       ),
     };
@@ -1713,6 +1720,37 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     this.mediaServerIp = undefined;
+  }
+
+  /**
+   * Get the ingress payload type for a given media type and codec mime type
+   * @param {MediaType} mediaType - The media type
+   * @param {MediaCodecMimeType} codecMimeType - The codec mime type
+   * @returns {number | undefined} - The ingress payload type
+   * @private
+   * @memberof Meeting
+   */
+  private getIngressPayloadTypeCallback(
+    mediaType: MediaType,
+    codecMimeType: MediaCodecMimeType
+  ): number | undefined {
+    if (this.isMultistream) {
+      try {
+        return this.mediaProperties.webrtcMediaConnection.getIngressPayloadType(
+          mediaType,
+          codecMimeType
+        );
+      } catch (error) {
+        LoggerProxy.logger.info(
+          `Meeting:index#mediaRequestManager --> failed to get ingress payload type for mediaType=${mediaType}, codecMimeType=${codecMimeType}`,
+          error
+        );
+
+        return undefined;
+      }
+    }
+
+    return undefined;
   }
 
   /**
@@ -2791,7 +2829,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private setupLocusControlsListener() {
     this.locusInfo.on(
       LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
-      ({state, modifiedBy, lastModified}) => {
+      ({state, modifiedBy, lastModified, modifiedByServiceAppName, modifiedByServiceAppId}) => {
         let event;
 
         switch (state) {
@@ -2817,6 +2855,8 @@ export default class Meeting extends StatelessWebexPlugin {
           state: state === RECORDING_STATE.RESUMED ? RECORDING_STATE.RECORDING : state,
           modifiedBy,
           lastModified,
+          modifiedByServiceAppName,
+          modifiedByServiceAppId,
         };
         Trigger.trigger(
           this,
@@ -4614,6 +4654,9 @@ export default class Meeting extends StatelessWebexPlugin {
           ),
           isAttendeeRequestAiAssistantDeclinedAll:
             MeetingUtil.attendeeRequestAiAssistantDeclinedAll(this.userDisplayHints),
+          isAnonymizeDisplayNamesEnabled: MeetingUtil.isAnonymizeDisplayNamesEnabled(
+            this.userDisplayHints
+          ),
         }) || changed;
     }
     if (changed) {
@@ -4677,7 +4720,8 @@ export default class Meeting extends StatelessWebexPlugin {
     if (
       (!this.meetingInfo || isEmpty(this.meetingInfo)) &&
       (this.destination as LocusDTO)?.info &&
-      !this.fetchMeetingInfoTimeoutId
+      !this.fetchMeetingInfoTimeoutId &&
+      !MeetingsUtil.isOneOnOneCall(locus)
     ) {
       try {
         await this.fetchMeetingInfo({});
@@ -5927,12 +5971,40 @@ export default class Meeting extends StatelessWebexPlugin {
   };
 
   /**
+   * Verifies the relay event was delivered for the active LLM session binding.
+   * @param {RelayEvent} event Event object coming from LLM Connection
+   * @returns {boolean}
+   */
+  private isRelayEventRouteValid(event: RelayEvent): boolean {
+    const route = event?.headers?.route;
+
+    if (!route) {
+      return true;
+    }
+
+    const {llm} = (this as any).webex.internal;
+    const isPracticeSession = llm.isConnected(LLM_PRACTICE_SESSION);
+    const expectedBinding = isPracticeSession
+      ? llm.getBinding(LLM_PRACTICE_SESSION)
+      : llm.getBinding();
+
+    if (!expectedBinding || route === expectedBinding) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Callback called when a relay event is received from meeting LLM Connection
    * @param {RelayEvent} e Event object coming from LLM Connection
    * @private
    * @returns {void}
    */
   private processRelayEvent = (e: RelayEvent): void => {
+    if (!this.isRelayEventRouteValid(e)) {
+      return;
+    }
     switch (e.data.relayType) {
       case REACTION_RELAY_TYPES.REACTION:
         if (
@@ -6063,6 +6135,7 @@ export default class Meeting extends StatelessWebexPlugin {
    */
   private handleLLMOnline = (): void => {
     this.restoreLLMSubscriptionsIfNeeded();
+    this.locusInfo.syncAllHashTreeDatasets({onlyLLM: true});
 
     Trigger.trigger(
       this,
@@ -6615,6 +6688,7 @@ export default class Meeting extends StatelessWebexPlugin {
     return this.webex.internal.llm
       .registerAndConnect(url, dataChannelUrl, datachannelToken)
       .then((registerAndConnectResult) => {
+        this.locusInfo.syncAllHashTreeDatasets({onlyLLM: true});
         // Record ownership of the default LLM session for this meeting so
         // subsequent cross-meeting `updateLLMConnection` / `cleanupLLMConneciton`
         // calls can detect and skip work that doesn't belong to them.
@@ -7733,6 +7807,8 @@ export default class Meeting extends StatelessWebexPlugin {
         disableAudioMainDtx: this.config.experimental.disableAudioMainDtx,
         // @ts-ignore - config coming from registerPlugin
         enableAudioTwcc: this.config.enableAudioTwccForMultistream,
+        // @ts-ignore - config coming from registerPlugin
+        enableAv1SlidesSupport: this.config.enableAv1SlidesSupport,
         stopIceGatheringAfterFirstRelayCandidate:
           // @ts-ignore - config coming from registerPlugin
           this.config.stopIceGatheringAfterFirstRelayCandidate,
@@ -10007,15 +10083,12 @@ export default class Meeting extends StatelessWebexPlugin {
    * @public
    * @memberof Meeting
    */
-  public sendReaction(reactionType: ReactionServerType, skinToneType?: SkinToneType) {
+  public sendReaction(reactionType: string, skinToneType?: SkinToneType) {
     const reactionChannelUrl = this.locusInfo?.controls?.reactions?.reactionChannelUrl as string;
     const participantId = this.members.selfId;
 
-    const reactionData = Reactions[reactionType];
+    const reactionData = Reactions[reactionType] || {type: reactionType};
 
-    if (!reactionData) {
-      return Promise.reject(new Error(`${reactionType} is not a valid reaction.`));
-    }
     const skinToneData = SkinTones[skinToneType] || SkinTones.normal;
     const reaction: Reaction = {
       ...reactionData,

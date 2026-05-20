@@ -7380,10 +7380,18 @@ __metadata:
     "@typescript-eslint/eslint-plugin": 5.38.1
     "@typescript-eslint/parser": 5.38.1
     "@web/dev-server": 0.4.5
-    "@webex/internal-media-core": 2.24.1
+    "@webex/common": "workspace:*"
+    "@webex/common-timers": "workspace:*"
+    "@webex/internal-media-core": 2.25.1
+    "@webex/internal-plugin-device": "workspace:*"
+    "@webex/internal-plugin-feature": "workspace:*"
     "@webex/internal-plugin-metrics": "workspace:*"
     "@webex/media-helpers": "workspace:*"
+    "@webex/test-helper-chai": "workspace:*"
+    "@webex/test-helper-mock-web-socket": "workspace:*"
+    "@webex/test-helper-mock-webex": "workspace:*"
     async-mutex: 0.4.0
+    backoff: 2.5.0
     buffer: 6.0.3
     chai: 4.3.4
     cspell: 5.19.2
@@ -7411,6 +7419,7 @@ __metadata:
     karma-sauce-launcher: 4.3.6
     karma-typescript: 5.5.3
     karma-typescript-es6-transform: 5.5.3
+    lodash: ^4.17.21
     mocha: 10.6.0
     platform: 1.3.6
     prettier: 2.5.1
@@ -7426,6 +7435,7 @@ __metadata:
     typedoc: 0.23.26
     typescript: 4.9.5
     uuid: 8.3.2
+    ws: 8.17.1
     xstate: 4.30.6
   languageName: unknown
   linkType: soft
@@ -7709,23 +7719,23 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-media-core@npm:2.24.1":
-  version: 2.24.1
-  resolution: "@webex/internal-media-core@npm:2.24.1"
+"@webex/internal-media-core@npm:2.25.1":
+  version: 2.25.1
+  resolution: "@webex/internal-media-core@npm:2.25.1"
   dependencies:
     "@babel/runtime": ^7.18.9
     "@babel/runtime-corejs2": ^7.25.0
     "@webex/rtcstats": ^1.5.5
     "@webex/ts-sdp": 1.8.2
     "@webex/web-capabilities": ^1.10.0
-    "@webex/web-client-media-engine": 3.39.10
+    "@webex/web-client-media-engine": 3.39.12
     events: ^3.3.0
     ip-anonymize: ^0.1.0
     typed-emitter: ^2.1.0
     uuid: ^8.3.2
     webrtc-adapter: ^8.1.2
     xstate: ^4.30.6
-  checksum: cc1a11b701f4bd48b22e3d0066f7fb98d88450c8ef078718e069fc9f7ce0c7d7fa2faead3056e14666ce43cb9b385e97a767216c5676c4df372e579c410a17a1
+  checksum: 0efc0e39c1929aa047f49fe8dd60ff88ea8b30c685acbee838079bd4755f0b2ba7983d27aa73c709010be1dd502abac1fd27bc51c803ddf90d581aaf2788cefc
   languageName: node
   linkType: hard
 
@@ -8181,38 +8191,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@webex/internal-plugin-mobius-socket@workspace:packages/@webex/internal-plugin-mobius-socket":
-  version: 0.0.0-use.local
-  resolution: "@webex/internal-plugin-mobius-socket@workspace:packages/@webex/internal-plugin-mobius-socket"
-  dependencies:
-    "@babel/core": ^7.17.10
-    "@sinonjs/fake-timers": ^6.0.1
-    "@webex/babel-config-legacy": "workspace:*"
-    "@webex/common": "workspace:*"
-    "@webex/common-timers": "workspace:*"
-    "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-plugin-device": "workspace:*"
-    "@webex/internal-plugin-feature": "workspace:*"
-    "@webex/internal-plugin-metrics": "workspace:*"
-    "@webex/jest-config-legacy": "workspace:*"
-    "@webex/legacy-tools": "workspace:*"
-    "@webex/test-helper-chai": "workspace:*"
-    "@webex/test-helper-mocha": "workspace:*"
-    "@webex/test-helper-mock-web-socket": "workspace:*"
-    "@webex/test-helper-mock-webex": "workspace:*"
-    "@webex/test-helper-refresh-callback": "workspace:*"
-    "@webex/test-helper-test-users": "workspace:*"
-    "@webex/webex-core": "workspace:*"
-    backoff: ^2.5.0
-    eslint: ^8.24.0
-    lodash: ^4.17.21
-    prettier: ^2.7.1
-    sinon: ^9.2.4
-    uuid: ^3.3.2
-    ws: ^8.17.1
-  languageName: unknown
-  linkType: soft
-
 "@webex/internal-plugin-presence@workspace:*, @webex/internal-plugin-presence@workspace:packages/@webex/internal-plugin-presence":
   version: 0.0.0-use.local
   resolution: "@webex/internal-plugin-presence@workspace:packages/@webex/internal-plugin-presence"
@@ -8583,7 +8561,7 @@ __metadata:
     "@babel/preset-typescript": 7.22.11
     "@webex/babel-config-legacy": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
-    "@webex/internal-media-core": 2.24.1
+    "@webex/internal-media-core": 2.25.1
     "@webex/jest-config-legacy": "workspace:*"
     "@webex/legacy-tools": "workspace:*"
     "@webex/test-helper-chai": "workspace:*"
@@ -8851,7 +8829,7 @@ __metadata:
     "@webex/common": "workspace:*"
     "@webex/eslint-config-legacy": "workspace:*"
     "@webex/event-dictionary-ts": ^1.0.2138
-    "@webex/internal-media-core": 2.24.1
+    "@webex/internal-media-core": 2.25.1
     "@webex/internal-plugin-conversation": "workspace:*"
     "@webex/internal-plugin-device": "workspace:*"
     "@webex/internal-plugin-llm": "workspace:*"
@@ -9567,9 +9545,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@webex/web-client-media-engine@npm:3.39.10":
-  version: 3.39.10
-  resolution: "@webex/web-client-media-engine@npm:3.39.10"
+"@webex/web-client-media-engine@npm:3.39.12":
+  version: 3.39.12
+  resolution: "@webex/web-client-media-engine@npm:3.39.12"
   dependencies:
     "@webex/json-multistream": ^2.4.3
     "@webex/rtcstats": ^1.5.5
@@ -9582,7 +9560,7 @@ __metadata:
     js-logger: ^1.6.1
     typed-emitter: ^2.1.0
     uuid: ^8.3.2
-  checksum: 8aab9748de06554b2d636f34858950c0ace262f2e16425acbc9f89b51a9139896d66dd24ac18f21a9429edfb4daffcd9acc5745ffc908ecfe15dd6bffe12f3b6
+  checksum: 4bad217ea842ce1424f25adf892753e79d6173aca7a74d57a43ba5121588ee64ee89d2207422f81825421902d1066ae1c56690a3e4d80535be6ed3023863897d
   languageName: node
   linkType: hard
 
@@ -11246,7 +11224,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"backoff@npm:^2.5.0":
+"backoff@npm:2.5.0, backoff@npm:^2.5.0":
   version: 2.5.0
   resolution: "backoff@npm:2.5.0"
   dependencies:
@@ -34372,6 +34350,21 @@ __metadata:
     utf-8-validate:
       optional: true
   checksum: feb3eecd2bae82fa8a8beef800290ce437d8b8063bdc69712725f21aef77c49cb2ff45c6e5e7fce622248f9c7abaee506bae0a9064067ffd6935460c7357321b
+  languageName: node
+  linkType: hard
+
+"ws@npm:8.17.1":
+  version: 8.17.1
+  resolution: "ws@npm:8.17.1"
+  peerDependencies:
+    bufferutil: ^4.0.1
+    utf-8-validate: ">=5.0.2"
+  peerDependenciesMeta:
+    bufferutil:
+      optional: true
+    utf-8-validate:
+      optional: true
+  checksum: 442badcce1f1178ec87a0b5372ae2e9771e07c4929a3180321901f226127f252441e8689d765aa5cfba5f50ac60dd830954afc5aeae81609aefa11d3ddf5cecf
   languageName: node
   linkType: hard
 
