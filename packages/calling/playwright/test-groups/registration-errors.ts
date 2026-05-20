@@ -2,6 +2,8 @@ import {test, expect} from '@playwright/test';
 import {navigateToCallingApp, setServiceIndicator} from '../utils/setup';
 import {isLineRegistered} from '../utils/registration';
 import {CALLING_SELECTORS, AWAIT_TIMEOUT, SDK_INIT_TIMEOUT} from '../constants';
+import {isMobiusWsMode} from '../test-data';
+import {MOBIUS_WS_MESSAGE, MobiusWsInterceptor} from '../utils/mobius-ws';
 
 /**
  * Registration error tests: REG-011.
@@ -12,17 +14,41 @@ export function registrationErrorTests() {
     test('REG-011: Registration fails with invalid token', async ({page, context}) => {
       let registrationPosts = 0;
       let registrationStatus = 0;
+      const mobiusWsMode = isMobiusWsMode();
 
-      await context.route(/\/calling\/web\/device$/, async (route) => {
-        if (route.request().method() === 'POST') {
-          registrationPosts += 1;
-          const response = await route.fetch();
-          registrationStatus = response.status();
-          await route.fulfill({response});
-        } else {
-          await route.continue();
-        }
-      });
+      if (mobiusWsMode) {
+        await new MobiusWsInterceptor({
+          onRequest: (frame) => {
+            if (frame.type === MOBIUS_WS_MESSAGE.AUTH) {
+              return {statusCode: 200, statusMessage: 'OK'};
+            }
+
+            if (frame.type === MOBIUS_WS_MESSAGE.REGISTER) {
+              registrationPosts += 1;
+              registrationStatus = 401;
+
+              return {
+                statusCode: 401,
+                statusMessage: 'Unauthorized',
+                data: {message: 'Unauthorized'},
+              };
+            }
+
+            return undefined;
+          },
+        }).install(context);
+      } else {
+        await context.route(/\/calling\/web\/device$/, async (route) => {
+          if (route.request().method() === 'POST') {
+            registrationPosts += 1;
+            const response = await route.fetch();
+            registrationStatus = response.status();
+            await route.fulfill({response});
+          } else {
+            await route.continue();
+          }
+        });
+      }
 
       await navigateToCallingApp(page);
       await setServiceIndicator(page, 'calling');

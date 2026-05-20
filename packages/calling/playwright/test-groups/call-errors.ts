@@ -1,6 +1,6 @@
 import {test, expect} from '@playwright/test';
 import {TestManager} from '../test-manager';
-import {getUserSet, getToken, getPhoneNumber, isIntProject} from '../test-data';
+import {getUserSet, getToken, getPhoneNumber, isIntProject, isMobiusWsMode} from '../test-data';
 import {
   navigateToCallingApp,
   initializeCallingSDK,
@@ -19,6 +19,7 @@ import {
   cleanupActiveCalls,
 } from '../utils/call';
 import {CALLING_SELECTORS, AWAIT_TIMEOUT} from '../constants';
+import {MOBIUS_WS_MESSAGE, MobiusWsInterceptor} from '../utils/mobius-ws';
 
 /**
  * Call error tests that need route intercepts before the call is made.
@@ -47,6 +48,20 @@ export function callErrorTests() {
     }, testInfo) => {
       const isInt = isIntProject(testInfo.project.name);
       const role = getUserSet(testInfo.project.name).accounts[0];
+      const mobiusWsMode = isMobiusWsMode();
+
+      if (mobiusWsMode) {
+        await new MobiusWsInterceptor({
+          onRequest: (frame) =>
+            frame.type === MOBIUS_WS_MESSAGE.CALL_SETUP
+              ? {
+                  statusCode: 500,
+                  statusMessage: 'Internal Server Error',
+                  data: {message: 'Call setup failed'},
+                }
+              : undefined,
+        }).install(context);
+      }
 
       await navigateToCallingApp(page);
       if (isInt) await setEnvironmentToInt(page);
@@ -56,9 +71,11 @@ export function callErrorTests() {
       await verifyLineRegistered(page);
       await getMediaStreams(page);
 
-      await context.route(/\/devices\/[^/]+\/call$/, (route) => {
-        route.abort('failed');
-      });
+      if (!mobiusWsMode) {
+        await context.route(/\/devices\/[^/]+\/call$/, (route) => {
+          route.abort('failed');
+        });
+      }
 
       await page
         .locator(CALLING_SELECTORS.DESTINATION_INPUT)
@@ -91,6 +108,20 @@ export function callErrorTests() {
       const isInt = isIntProject(testInfo.project.name);
       const accounts = getUserSet(testInfo.project.name).accounts;
       const calleeNumber = getPhoneNumber(accounts[1], isInt);
+      const mobiusWsMode = isMobiusWsMode();
+
+      if (mobiusWsMode) {
+        await new MobiusWsInterceptor({
+          onRequest: (frame) =>
+            frame.type === MOBIUS_WS_MESSAGE.CALL_MEDIA
+              ? {
+                  statusCode: 500,
+                  statusMessage: 'Internal Server Error',
+                  data: {message: 'Media negotiation failed'},
+                }
+              : undefined,
+        }).install(context);
+      }
 
       await navigateToCallingApp(page);
       if (isInt) await setEnvironmentToInt(page);
@@ -100,9 +131,11 @@ export function callErrorTests() {
       await verifyLineRegistered(page);
       await getMediaStreams(page);
 
-      await context.route('**/calls/**/media', (route) => {
-        route.fulfill({status: 500, body: JSON.stringify({error: 'Media negotiation failed'})});
-      });
+      if (!mobiusWsMode) {
+        await context.route('**/calls/**/media', (route) => {
+          route.fulfill({status: 500, body: JSON.stringify({error: 'Media negotiation failed'})});
+        });
+      }
 
       await makeCall(page, calleeNumber);
       await page.waitForTimeout(3000);

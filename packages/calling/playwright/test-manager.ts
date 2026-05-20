@@ -1,5 +1,12 @@
 import {Page, BrowserContext, Browser} from '@playwright/test';
-import {AccountRole, UserSet, getToken, getUserSet, isIntProject} from './test-data';
+import {
+  AccountRole,
+  UserSet,
+  getToken,
+  getUserSet,
+  isIntProject,
+  isMobiusWsMode,
+} from './test-data';
 import {
   navigateToCallingApp,
   initializeCallingSDK,
@@ -143,12 +150,13 @@ export class TestManager {
       if (config.service) {
         await setServiceIndicator(page, config.service);
       }
-      if (config.mobiusWss !== undefined) {
-        await setMobiusWebSocket(page, config.mobiusWss);
+      const mobiusWss = config.mobiusWss ?? isMobiusWsMode();
+      if (mobiusWss) {
+        await setMobiusWebSocket(page, true);
       }
       await initializeCallingSDK(page, getToken(role, this.isInt));
       await verifySDKInitialized(page);
-      if (config.mobiusWss) {
+      if (mobiusWss) {
         await verifyMobiusWebSocketEnabled(page);
       }
 
