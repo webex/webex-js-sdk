@@ -20,6 +20,7 @@ import {
 } from './constants';
 import {DestinationType, TaskData} from '../types';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
+import {getIsConferenceInProgress} from '../TaskUtils';
 
 const determineConsultInitiator = (
   taskData: TaskData | undefined,
@@ -104,6 +105,40 @@ const isActiveConsultState = (taskData: TaskData | undefined, selfAgentId?: stri
   return false;
 };
 
+const getTaskStateForUiControls = (
+  taskData: TaskData | undefined,
+  selfAgentId: string | undefined
+): TaskState => {
+  if (!taskData?.interaction) {
+    return TaskState.IDLE;
+  }
+
+  if (taskData.interaction.isTerminated === true) {
+    return TaskState.WRAPPING_UP;
+  }
+
+  if (isActiveConsultState(taskData, selfAgentId)) {
+    return TaskState.CONSULTING;
+  }
+
+  if (
+    taskData.interaction.state === INTERACTION_STATE.CONFERENCE ||
+    getIsConferenceInProgress(taskData)
+  ) {
+    return TaskState.CONFERENCING;
+  }
+
+  const mainMediaId = taskData.interaction.mainInteractionId || taskData.interactionId;
+  const isMainHeld = Boolean(
+    mainMediaId && taskData.interaction.media?.[mainMediaId]?.isHold === true
+  );
+  if (taskData.interaction.state === 'hold' || isMainHeld) {
+    return TaskState.HELD;
+  }
+
+  return TaskState.CONNECTED;
+};
+
 const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefined) =>
   taskData
     ? (() => {
@@ -172,6 +207,14 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
             }
           }
         }
+
+        const nextContext = {
+          ...context,
+          ...updates,
+        } as TaskContext;
+        const inferredState = getTaskStateForUiControls(taskData, selfAgentId);
+
+        updates.uiControls = computeUIControls(inferredState, nextContext, taskData);
 
         return updates;
       })()

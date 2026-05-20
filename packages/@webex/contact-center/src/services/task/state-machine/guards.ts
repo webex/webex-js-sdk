@@ -109,10 +109,10 @@ export const guards = {
     const hasConsultMedia = Object.values(taskData?.interaction?.media ?? {}).some(
       (media: any) => media?.mType === MEDIA_TYPE_CONSULT
     );
-    const isPendingOrActiveSelfConsult =
-      selfParticipant?.consultState === CONSULT_STATE.CONSULTING ||
-      selfParticipant?.consultState === 'consultInitiated';
-    if (isPendingOrActiveSelfConsult && hasConsultMedia && taskData?.isConsulted === false) {
+    const selfActiveConsult = selfParticipant?.consultState === CONSULT_STATE.CONSULTING;
+    const selfPendingConsultInitiated =
+      selfParticipant?.consultState === 'consultInitiated' && taskData?.isConsulted === false;
+    if ((selfActiveConsult || selfPendingConsultInitiated) && hasConsultMedia) {
       return true;
     }
 

@@ -148,6 +148,7 @@ function computeVoiceInteractionUIControls(
     (media: any) =>
       media?.mediaResourceId === taskData?.consultMediaResourceId || media?.mType === 'consult'
   ) as {participants?: string[]} | undefined;
+  const selfParticipant = selfAgentId ? interaction?.participants?.[selfAgentId] : null;
   const selfInConsultCall =
     Boolean(selfAgentId) && Boolean(consultMedia?.participants?.includes(selfAgentId as string));
   const conferenceActive = isConferencing || conferenceFromBackend || consultFromConference;
@@ -155,11 +156,15 @@ function computeVoiceInteractionUIControls(
   const inConference = conferenceActive && (isConferencing || selfInMainCall || consultInitiator);
 
   // Check if this is a consulted agent (must be after isConsulting is computed).
-  const isSoleAgentOnCall = participantCount <= 1 && !isConsulting && !inConference;
+  const isSoleAgentOnCall =
+    participantCount <= 1 && selfInMainCall && !isConsulting && !inConference;
   const isConsulted =
     inConference || isSoleAgentOnCall
       ? false
-      : getIsConsultedAgentForControls(taskData, context, isConsulting);
+      : getIsConsultedAgentForControls(taskData, context, isConsulting) ||
+        (!consultInitiator &&
+          (selfParticipant?.isConsulted === true ||
+            selfParticipant?.consultState === 'consulting'));
 
   // Active call = can perform call operations
   const isActive =
@@ -179,11 +184,28 @@ function computeVoiceInteractionUIControls(
     taskData?.consultMediaResourceId ||
       Object.values(interaction?.media ?? {}).some((media: any) => media?.mType === 'consult')
   );
-  const selfParticipant = selfAgentId ? interaction?.participants?.[selfAgentId] : null;
   const selfConsultPendingOnConsultMedia =
     selfParticipant?.consultState === 'consultInitiated' &&
     !taskData?.isConsulted &&
     hasConsultMedia;
+  const ownerParticipant = interaction?.owner
+    ? interaction.participants?.[interaction.owner]
+    : undefined;
+  const otherAgentConsultInProgress = Boolean(
+    interaction?.participants &&
+      Object.values(interaction.participants).some((participant: any) => {
+        if (!participant || participant.hasLeft) return false;
+        if (participant.id === selfAgentId) return false;
+        if (participant.pType !== 'AGENT') return false;
+
+        return (
+          participant.consultState === 'consultInitiated' ||
+          participant.consultState === 'consultReserved' ||
+          participant.consultState === 'consulting' ||
+          participant.currentState === 'consulting'
+        );
+      })
+  );
   const isHydratedConferenceConsultPending =
     inConference && selfConsultPendingOnConsultMedia && !consultDestinationAgentJoined;
   const hasParallelConsultLeg =
@@ -206,6 +228,15 @@ function computeVoiceInteractionUIControls(
     conferenceHoldParticipant;
   const postConsultCompletedHeldMainLeg =
     selfParticipant?.consultState === 'consultCompleted' && isHeld && inConference && !isConsulting;
+  const nonOwnerPostConsultCompletedHeldMainLeg =
+    isHeld &&
+    inConference &&
+    !isConsulting &&
+    !consultInitiator &&
+    Boolean(selfAgentId) &&
+    Boolean(interaction?.owner) &&
+    selfAgentId !== interaction?.owner &&
+    ownerParticipant?.consultState === 'consultCompleted';
   const isConsultPendingBeforeJoin =
     selfParticipant?.consultState === 'consultInitiated' && !consultDestinationAgentJoined;
   const hideExitConferenceWhileConsultPending =
@@ -221,6 +252,13 @@ function computeVoiceInteractionUIControls(
   const forceHeldPostConsultControls =
     !hideExitConferenceWhileConsultPending &&
     (postDeclineHeldMainLeg || postConsultCompletedHeldMainLeg);
+  const selfOnConsultLeg =
+    selfParticipant?.consultState === 'consulting' ||
+    selfParticipant?.currentState === 'consulting';
+  const showMainLegConferenceControlsDuringConsult =
+    currentLeg === 'main' && inConference && consultInProgress && !selfOnConsultLeg;
+  const allowHeldMainLegControlsForNonInitiator =
+    showMainLegConferenceControlsDuringConsult && !isHydratedConferenceConsultPending;
 
   return {
     // Accept/Decline: Voice tasks in offered state
@@ -271,6 +309,8 @@ function computeVoiceInteractionUIControls(
 
     // End: varies by state; during consulting only on main leg (consult held)
     end: (() => {
+      if (allowHeldMainLegControlsForNonInitiator) return VISIBLE_ENABLED;
+      if (showMainLegConferenceControlsDuringConsult) return VISIBLE_DISABLED;
       if (isHydratedConferenceConsultPending && currentLeg === 'main') return VISIBLE_DISABLED;
       if (!config.isEndTaskEnabled) return DISABLED;
       if (hasParallelConsultLeg) {
@@ -300,6 +340,7 @@ function computeVoiceInteractionUIControls(
     // Transfer: connected/held/conference
     transfer: (() => {
       if (isHydratedConferenceConsultPending) return VISIBLE_DISABLED;
+      if (inConference && isConsulting && consultInitiator) return DISABLED;
       if (hasParallelConsultLeg) {
         if (!customerPresent) return DISABLED;
         if (state === TaskState.CONNECTED) return VISIBLE_ENABLED;
@@ -327,6 +368,7 @@ function computeVoiceInteractionUIControls(
     consult: (() => {
       const isConnectedOrHeld = state === TaskState.CONNECTED || state === TaskState.HELD;
 
+      if (inConference && nonOwnerPostConsultCompletedHeldMainLeg) return VISIBLE_DISABLED;
       if (hasParallelConsultLeg) return DISABLED;
       if (!hasFullControls || !(isConnectedOrHeld || inConference)) {
         return DISABLED;
@@ -338,7 +380,11 @@ function computeVoiceInteractionUIControls(
         if (participantCount <= 1) return VISIBLE_DISABLED;
         // Real conference: consult enabled if conditions met
         const canFromConference =
-          !maxParticipants && customerPresent && !consultInProgress && !isConsulting;
+          !maxParticipants &&
+          customerPresent &&
+          !consultInProgress &&
+          !otherAgentConsultInProgress &&
+          !isConsulting;
 
         return {isVisible: true, isEnabled: canFromConference};
       }
@@ -407,6 +453,8 @@ function computeVoiceInteractionUIControls(
 
     // ExitConference: in conference with multiple agents in main call
     exitConference: (() => {
+      if (allowHeldMainLegControlsForNonInitiator) return VISIBLE_ENABLED;
+      if (showMainLegConferenceControlsDuringConsult) return VISIBLE_DISABLED;
       if (hideExitConferenceDuringActiveConsultFromConference) return DISABLED;
       if (forceHeldPostConsultControls) return VISIBLE_DISABLED;
       if (hideExitConferenceWhileConsultPending) return DISABLED;
@@ -421,8 +469,18 @@ function computeVoiceInteractionUIControls(
 
     // TransferConference: in conference with active consult, owner consulting from conference
     transferConference: (() => {
-      if (hasParallelConsultLeg || consultLegOnHold) return DISABLED;
-      if (!inConference || !isConsulting) return DISABLED;
+      const consultLegTransferAvailable =
+        currentLeg === 'consult' && inConference && consultInitiator && hasConsultMedia;
+      const selfConsultingOnParticipantState = selfParticipant?.consultState === 'consulting';
+      const conferenceTransferAvailable =
+        consultLegTransferAvailable ||
+        (inConference &&
+          consultInitiator &&
+          hasConsultMedia &&
+          (isConsulting || consultInProgress || selfConsultingOnParticipantState));
+      if (consultLegOnHold) return DISABLED;
+      if (hasParallelConsultLeg && !conferenceTransferAvailable) return DISABLED;
+      if (!conferenceTransferAvailable && (!inConference || !isConsulting)) return DISABLED;
       if (!consultInitiator || isConsulted) return DISABLED;
 
       return isConsultDestinationReady ? VISIBLE_ENABLED : VISIBLE_DISABLED;

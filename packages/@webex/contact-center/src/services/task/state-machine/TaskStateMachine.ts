@@ -128,11 +128,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.CONSULTING_ACTIVE]: {
             target: TaskState.CONSULTING,
             actions: [
-              'updateTaskData',
               'setConsultInitiator',
               'setConsultDestination',
               'setConsultFromConference',
               'setConsultAgentJoined',
+              'updateTaskData',
               'emitTaskConsultAccepted',
               'emitTaskConsulting',
             ],
@@ -198,8 +198,9 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               target: TaskState.CONSULTING,
               actions: [
-                'updateTaskData',
                 'setConsultAgentJoined',
+                'setConsultDestination',
+                'updateTaskData',
                 'emitTaskConsultAccepted',
                 'emitTaskConsulting',
               ],
@@ -226,15 +227,25 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.CONNECTED]: {
         on: {
+          // AgentConsultConferenced / ParticipantJoinedConference can arrive while connected.
+          [TaskEvent.CONFERENCE_START]: {
+            target: TaskState.CONFERENCING,
+            actions: [
+              'updateTaskData',
+              'syncTaskDataFromEvent',
+              'clearConsultState',
+              'emitTaskConferenceStarted',
+            ],
+          },
           // AgentConsulting may arrive while machine is CONNECTED (EP-DN/event ordering).
           // Derive consultInitiator from payload so controls are set correctly.
           [TaskEvent.CONSULTING_ACTIVE]: {
             target: TaskState.CONSULTING,
             actions: [
-              'updateTaskData',
               'setConsultInitiator',
               'setConsultDestination',
               'setConsultAgentJoined',
+              'updateTaskData',
               'emitTaskConsultAccepted',
               'emitTaskConsulting',
             ],
@@ -323,6 +334,16 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.HELD]: {
         on: {
+          // Conference can be merged while this agent is in held state after refresh/recovery.
+          [TaskEvent.CONFERENCE_START]: {
+            target: TaskState.CONFERENCING,
+            actions: [
+              'updateTaskData',
+              'syncTaskDataFromEvent',
+              'clearConsultState',
+              'emitTaskConferenceStarted',
+            ],
+          },
           [TaskEvent.PAUSE_RECORDING]: {
             actions: ['updateTaskData', 'setRecordingState', 'emitTaskRecordingPaused'],
           },
@@ -448,9 +469,9 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentConsulting updates consulted agent arrival
           [TaskEvent.CONSULTING_ACTIVE]: {
             actions: [
-              'updateTaskData',
               'setConsultAgentJoined',
               'setConsultDestination',
+              'updateTaskData',
               'emitTaskConsulting',
             ],
           },

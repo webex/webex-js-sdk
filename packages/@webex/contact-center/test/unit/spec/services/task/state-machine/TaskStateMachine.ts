@@ -276,6 +276,54 @@ describe('Task state machine', () => {
       expect(snapshot.context.consultInitiator).toBe(true);
     });
 
+  it('hydrates consulted agent to CONSULTING when self consultState is consulting and main leg is held', () => {
+    const service = startMachine();
+    const taskData = createTaskData({
+      agentId: 'agent-2',
+      isConsulted: true,
+      interaction: {
+        state: 'conference',
+        mainInteractionId: 'interaction-1',
+        interactionId: 'interaction-1',
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasLeft: false,
+            consultState: 'consulting',
+            isConsulted: false,
+          },
+          'agent-2': {
+            id: 'agent-2',
+            pType: 'Agent',
+            hasLeft: false,
+            consultState: 'consulting',
+            isConsulted: true,
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+        },
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            participants: ['agent-1', 'customer-1'],
+            isHold: true,
+          },
+          'consult-media-1': {
+            mediaResourceId: 'consult-media-1',
+            mType: 'consult',
+            participants: ['agent-1', 'agent-2'],
+            isHold: false,
+          },
+        },
+      } as any,
+    });
+
+    service.send({type: TaskEvent.HYDRATE, taskData});
+
+    expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
+  });
+
     it('hydrates to CONSULTING when consult is pending (self consultState is consultInitiated)', () => {
       const service = startMachine();
       const taskData = createTaskData({
