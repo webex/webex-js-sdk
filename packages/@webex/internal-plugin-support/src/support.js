@@ -120,7 +120,23 @@ const Support = WebexPlugin.extend({
           },
         });
 
-        return this.webex.upload(uploadOptions);
+        return this.webex
+          .upload(uploadOptions)
+          .then(() => {
+            this.webex.logger.updateLastSubmittedIndex();
+          })
+          .catch((err) => {
+            if (this.config.incrementalLogs && this.config.retryFailedLogUploadsAtNextInterval) {
+              this.webex.logger.error(
+                'Support: Failed to upload logs. Will retry to upload these logs at next interval',
+                err
+              );
+
+              this.webex.logger.resetBufferToLastSuccessfulUpload();
+            }
+
+            return Promise.reject(err);
+          });
       })
       .then((body) => {
         if (userId && !body.userId) {

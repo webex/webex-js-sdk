@@ -123,6 +123,7 @@ const Logger = WebexPlugin.extend({
         return {
           buffer: [],
           nextIndex: 0,
+          lastSubmitted: 0,
         };
       },
     },
@@ -132,6 +133,7 @@ const Logger = WebexPlugin.extend({
         return {
           buffer: [],
           nextIndex: 0,
+          lastSubmitted: 0,
         };
       },
     },
@@ -321,6 +323,34 @@ const Logger = WebexPlugin.extend({
     }
 
     return buffer.join('\n');
+  },
+
+  /**
+   * Update the last submitted index in the buffers to the current nextIndex
+   *
+   * @returns {void}
+   */
+  updateLastSubmittedIndex() {
+    if (this.config.separateLogBuffers) {
+      this.clientBuffer.lastSubmitted = this.clientBuffer.nextIndex;
+      this.sdkBuffer.lastSubmitted = this.sdkBuffer.nextIndex;
+    } else {
+      this.buffer.lastSubmitted = this.buffer.nextIndex;
+    }
+  },
+
+  /**
+   * Reset the nextIndex in the buffers to the last successful upload index, effectively including any logs since the last successful upload in the next upload
+   *
+   * @returns {void}
+   */
+  resetBufferToLastSuccessfulUpload() {
+    if (this.config.separateLogBuffers) {
+      this.clientBuffer.nextIndex = this.clientBuffer.lastSubmitted;
+      this.sdkBuffer.nextIndex = this.sdkBuffer.lastSubmitted;
+    } else {
+      this.buffer.nextIndex = this.buffer.lastSubmitted;
+    }
   },
 });
 
