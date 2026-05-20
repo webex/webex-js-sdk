@@ -14,6 +14,7 @@ import {
   SHARE_STATUS,
   DEFAULT_LARGE_SCALE_WEBINAR_ATTENDEE_SEARCH_LIMIT,
   LLM_PRACTICE_SESSION,
+  LOCUS_LLM_EVENT,
 } from '../constants';
 
 import WebinarCollection from './collection';
@@ -194,6 +195,14 @@ const Webinar = WebexPlugin.extend({
       );
       this._practiceSessionRelayListener = null;
     }
+    if (this._practiceSessionLocusLLMListener) {
+      // @ts-ignore - Fix type
+      this.webex.internal.llm.off(
+        `${LOCUS_LLM_EVENT}:${LLM_PRACTICE_SESSION}`,
+        this._practiceSessionLocusLLMListener
+      );
+      this._practiceSessionLocusLLMListener = null;
+    }
   },
 
   /**
@@ -356,7 +365,7 @@ const Webinar = WebexPlugin.extend({
         LLM_PRACTICE_SESSION
       )
       .then((registerAndConnectResult) => {
-        // Track the exact listener reference so cleanupPSDataChannel can
+        // Track the exact listener references so cleanupPSDataChannel can
         // unsubscribe deterministically, even if the meeting can no longer
         // be resolved at cleanup time.
         if (this._practiceSessionRelayListener) {
@@ -371,6 +380,19 @@ const Webinar = WebexPlugin.extend({
         this.webex.internal.llm.on(
           `event:relay.event:${LLM_PRACTICE_SESSION}`,
           this._practiceSessionRelayListener
+        );
+        if (this._practiceSessionLocusLLMListener) {
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.off(
+            `${LOCUS_LLM_EVENT}:${LLM_PRACTICE_SESSION}`,
+            this._practiceSessionLocusLLMListener
+          );
+        }
+        this._practiceSessionLocusLLMListener = meeting?.processLocusLLMEvent;
+        // @ts-ignore - Fix type
+        this.webex.internal.llm.on(
+          `${LOCUS_LLM_EVENT}:${LLM_PRACTICE_SESSION}`,
+          this._practiceSessionLocusLLMListener
         );
         // @ts-ignore - Fix type
         this.webex.internal.voicea?.announce?.();
