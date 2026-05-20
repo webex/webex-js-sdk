@@ -161,6 +161,9 @@ function makeWebex(options) {
           logoutUrl: `${
             process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'
           }/idb/oauth2/v1/logout`,
+          thirdPartyLoginUrl: `${
+            process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'
+          }/idb/ThirdPartyLogin`,
           // eslint-disable-next-line camelcase
           client_id: 'fake',
           // eslint-disable-next-line camelcase
