@@ -119,6 +119,23 @@ export default defineConfig({
       testMatch: USER_SETS.SET_2USER.testSuite,
       use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
     },
+    // Call History has its own suite and can run in parallel with SET_2USER - PROD
+    // because it uses USER_1+USER_2 after those single-user suites complete.
+    {
+      name: 'SET_2USER_CALL_HISTORY - PROD',
+      dependencies: ['SET_1 - PROD', 'SET_2 - PROD'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_2USER_CALL_HISTORY.testSuite,
+      use: browserOptions[PW_BROWSER],
+    },
+    // INT aliases overlap between USER_1/2 and USER_4/5, so keep INT ordered.
+    {
+      name: 'SET_2USER_CALL_HISTORY - INT',
+      dependencies: ['SET_2USER - INT'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_2USER_CALL_HISTORY.testSuite,
+      use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
+    },
 
     // 3-user transfer tests — waits for 2-user (shared USER_4+USER_5)
     // {

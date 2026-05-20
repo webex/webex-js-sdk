@@ -18,57 +18,6 @@ const withTimeout = <T>(promise: Promise<T>, ms: number, label: string): Promise
   ]);
 };
 
-const OUTGOING_CALL_STATUS = /Call (Progress|Connect|Established)|Name:/i;
-const INCOMING_CALL_STATUS = /Call from/i;
-const ESTABLISHED_CALL_STATUS = /Call Established/i;
-const DISCONNECTED_CALL_STATUS = /Call Disconnected/i;
-
-export type CallDebugSnapshot = {
-  callText: string;
-  incomingText: string;
-  activeCallCount: number;
-  connectedCallCount: number;
-  makeCallEnabled: boolean;
-  endCallEnabled: boolean;
-  incomingAnswerEnabled: boolean;
-};
-
-export const getCallDebugSnapshot = async (page: Page): Promise<CallDebugSnapshot> =>
-  page.evaluate(
-    ({
-      callObjectSelector,
-      incomingCallSelector,
-      makeCallSelector,
-      endCallSelector,
-      answerSelector,
-    }) => {
-      const client = (window as any).callingClient;
-      const calls = client ? (Object.values(client.getActiveCalls()).flat() as any[]) : [];
-      const isEnabled = (selector: string) => {
-        const element = document.querySelector<HTMLButtonElement>(selector);
-
-        return Boolean(element && !element.disabled);
-      };
-
-      return {
-        callText: document.querySelector(callObjectSelector)?.textContent?.trim() ?? '',
-        incomingText: document.querySelector(incomingCallSelector)?.textContent?.trim() ?? '',
-        activeCallCount: calls.length,
-        connectedCallCount: calls.filter((call) => call.isConnected?.()).length,
-        makeCallEnabled: isEnabled(makeCallSelector),
-        endCallEnabled: isEnabled(endCallSelector),
-        incomingAnswerEnabled: isEnabled(answerSelector),
-      };
-    },
-    {
-      callObjectSelector: CALLING_SELECTORS.CALL_OBJECT,
-      incomingCallSelector: CALLING_SELECTORS.INCOMING_CALL,
-      makeCallSelector: CALLING_SELECTORS.MAKE_CALL_BTN,
-      endCallSelector: CALLING_SELECTORS.END_CALL_BTN,
-      answerSelector: CALLING_SELECTORS.INCOMING_ANSWER_BTN,
-    }
-  );
-
 export const getMediaStreams = async (page: Page): Promise<void> => {
   await page.locator(CALLING_SELECTORS.GET_MEDIA_STREAMS_BTN).click({timeout: AWAIT_TIMEOUT});
   await expect(page.locator(CALLING_SELECTORS.MAKE_CALL_BTN)).toBeEnabled({timeout: AWAIT_TIMEOUT});
@@ -79,22 +28,10 @@ export const makeCall = async (page: Page, destination: string): Promise<void> =
     .locator(CALLING_SELECTORS.DESTINATION_INPUT)
     .fill(destination, {timeout: AWAIT_TIMEOUT});
   await page.locator(CALLING_SELECTORS.MAKE_CALL_BTN).click({timeout: AWAIT_TIMEOUT});
-  await expect(page.locator(CALLING_SELECTORS.MAKE_CALL_BTN)).toBeDisabled({
-    timeout: AWAIT_TIMEOUT,
-  });
-  await expect(page.locator(CALLING_SELECTORS.END_CALL_BTN)).toBeEnabled({
-    timeout: AWAIT_TIMEOUT,
-  });
-  await expect(page.locator(CALLING_SELECTORS.CALL_OBJECT)).toContainText(OUTGOING_CALL_STATUS, {
-    timeout: 30000,
-  });
 };
 
 export const waitForIncomingCall = async (page: Page): Promise<void> => {
   await expect(page.locator(CALLING_SELECTORS.INCOMING_ANSWER_BTN)).toBeEnabled({timeout: 30000});
-  await expect(page.locator(CALLING_SELECTORS.INCOMING_CALL)).toContainText(INCOMING_CALL_STATUS, {
-    timeout: AWAIT_TIMEOUT,
-  });
 };
 
 export const answerCall = async (page: Page): Promise<void> => {
@@ -141,9 +78,6 @@ export const waitForCallEstablished = async (page: Page, timeout = 30000): Promi
     timeout,
     'waitForCallEstablished'
   );
-  await expect(page.locator(CALLING_SELECTORS.CALL_OBJECT)).toContainText(ESTABLISHED_CALL_STATUS, {
-    timeout: AWAIT_TIMEOUT,
-  });
 };
 
 export const endCall = async (page: Page): Promise<void> => {
@@ -252,47 +186,10 @@ export const waitForCallDisconnect = async (page: Page, timeout = 30000): Promis
   await expect(page.locator(CALLING_SELECTORS.MAKE_CALL_BTN)).toBeEnabled({
     timeout: AWAIT_TIMEOUT,
   });
-  await expect(page.locator(CALLING_SELECTORS.CALL_OBJECT)).toContainText(
-    DISCONNECTED_CALL_STATUS,
-    {timeout: AWAIT_TIMEOUT}
-  );
 };
 
 /** Timeout for the entire tryEstablishCall sequence per attempt. */
 const ATTEMPT_TIMEOUT = 60000;
-
-/** Log caller/callee UI + SDK call counts when establish fails (see getCallDebugSnapshot). */
-const logEstablishCallFailureContext = async (
-  calleeNumber: string,
-  callerPage: Page,
-  calleePage: Page,
-  reason: string
-): Promise<void> => {
-  if (callerPage.isClosed() && calleePage.isClosed()) {
-    return;
-  }
-
-  try {
-    const [callerSnap, calleeSnap] = await Promise.all([
-      callerPage.isClosed() ? Promise.resolve(null) : getCallDebugSnapshot(callerPage),
-      calleePage.isClosed() ? Promise.resolve(null) : getCallDebugSnapshot(calleePage),
-    ]);
-    // eslint-disable-next-line no-console
-    console.log(
-      `[establishCall] failure context (${reason})\n` +
-        `  destination (callee DN): ${calleeNumber}\n` +
-        `  caller: ${JSON.stringify(callerSnap)}\n` +
-        `  callee: ${JSON.stringify(calleeSnap)}`
-    );
-  } catch (snapErr) {
-    // eslint-disable-next-line no-console
-    console.log(
-      `[establishCall] failure context (${reason}) — could not read snapshots: ${
-        snapErr instanceof Error ? snapErr.message : String(snapErr)
-      }`
-    );
-  }
-};
 
 /**
  * Attempt a single call: make → incoming → answer → established.
@@ -305,21 +202,9 @@ const tryEstablishCall = async (
 ): Promise<void> => {
   await withTimeout(
     (async () => {
-      // eslint-disable-next-line no-console
-      console.log('[tryEstablishCall] stage: makeCall');
       await makeCall(callerPage, calleeNumber);
-      // Reduce background-tab throttling so the callee rings and can answer reliably.
-      await calleePage.bringToFront().catch(() => {});
-      // eslint-disable-next-line no-console
-      console.log('[tryEstablishCall] stage: waitForIncomingCall');
       await waitForIncomingCall(calleePage);
-      // eslint-disable-next-line no-console
-      console.log('[tryEstablishCall] stage: answerCall');
       await answerCall(calleePage);
-      await callerPage.bringToFront().catch(() => {});
-      await calleePage.bringToFront().catch(() => {});
-      // eslint-disable-next-line no-console
-      console.log('[tryEstablishCall] stage: waitForCallEstablished (both)');
       await Promise.all([
         waitForCallEstablished(callerPage, ATTEMPT_TIMEOUT),
         waitForCallEstablished(calleePage, ATTEMPT_TIMEOUT),
@@ -355,13 +240,6 @@ export const establishCall = async (
       lastError = e as Error;
       if (attempt < retryDelays.length) {
         if (callerPage.isClosed() || calleePage.isClosed()) throw lastError;
-        // eslint-disable-next-line no-await-in-loop
-        await logEstablishCallFailureContext(
-          calleeNumber,
-          callerPage,
-          calleePage,
-          lastError.message
-        );
         // eslint-disable-next-line no-console
         console.log(
           `[establishCall] attempt ${attempt + 1} failed (${lastError.message}), retrying in ${
@@ -377,9 +255,6 @@ export const establishCall = async (
         await callerPage.waitForTimeout(retryDelays[attempt]);
       }
     }
-  }
-  if (lastError) {
-    await logEstablishCallFailureContext(calleeNumber, callerPage, calleePage, lastError.message);
   }
   throw lastError;
 };

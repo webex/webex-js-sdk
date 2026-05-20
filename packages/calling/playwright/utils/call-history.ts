@@ -188,7 +188,7 @@ const clearCallHistoryTable = async (page: Page): Promise<void> => {
   );
 };
 
-export const readCallHistoryRowsFromUi = async (page: Page): Promise<CallHistoryRow[]> => {
+const readCallHistoryRowsFromUi = async (page: Page): Promise<CallHistoryRow[]> => {
   const rows = await page
     .locator(`${CALLING_SELECTORS.CALL_HISTORY_TABLE_BODY} tr`)
     .evaluateAll((rowElements) =>
@@ -224,7 +224,7 @@ export const openCallHistoryList = async (page: Page): Promise<CallHistoryRow[]>
   return readCallHistoryRowsFromUi(page);
 };
 
-export const openCallHistoryListWithRecords = async (
+const openCallHistoryListWithRecords = async (
   page: Page,
   records: CallHistoryRecord[]
 ): Promise<CallHistoryRow[]> => {
@@ -290,22 +290,6 @@ const rowMatchesHistoryRecord = (row: CallHistoryRow, record: CallHistoryRecord)
   row.endTime === record.endTime &&
   row.direction === record.direction &&
   row.disposition === record.disposition;
-
-export const expectUiContainsHistoryRecords = async (
-  page: Page,
-  records: CallHistoryRecord[]
-): Promise<CallHistoryRow[]> => {
-  const rows = await openCallHistoryList(page);
-
-  records.forEach((record) => {
-    expect(
-      rows.some((row) => rowMatchesHistoryRecord(row, record)),
-      `Expected Call History UI to contain ${record.direction} ${record.disposition} record from ${record.startTime}`
-    ).toBe(true);
-  });
-
-  return rows;
-};
 
 export const expectUiShowsHistoryRecords = async (
   page: Page,
