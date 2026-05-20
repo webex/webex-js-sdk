@@ -1280,6 +1280,32 @@ describe('TaskManager', () => {
     sendStateMachineEventSpy.mockRestore();
   });
 
+  it('should pass taskData in OUTBOUND_FAILED event for shouldWrapUp guard evaluation', () => {
+    const task = taskManager.getTask(taskId);
+    const sendStateMachineEventSpy = jest.spyOn(task, 'sendStateMachineEvent');
+    const payload = {
+      data: {
+        type: CC_EVENTS.AGENT_OUTBOUND_FAILED,
+        interactionId: taskId,
+        reason: 'CUSTOMER_BUSY',
+        agentsPendingWrapUp: ['agent-123'],
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+        },
+      },
+    };
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+    const stateMachineEvent = expectLastStateMachineEvent(
+      sendStateMachineEventSpy,
+      TaskEvent.OUTBOUND_FAILED
+    );
+    expect(stateMachineEvent?.taskData).toBeDefined();
+    expect(stateMachineEvent?.taskData?.agentsPendingWrapUp).toEqual(['agent-123']);
+    expect(stateMachineEvent?.taskData?.interaction?.outboundType).toBe('OUTDIAL');
+    sendStateMachineEventSpy.mockRestore();
+  });
+
   it('should handle AGENT_OUTBOUND_FAILED gracefully when task is undefined', () => {
     const payload = {
       data: {

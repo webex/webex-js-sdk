@@ -573,4 +573,65 @@ describe('Task state machine', () => {
       expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
     });
   });
+
+  describe('OUTBOUND_FAILED handling', () => {
+    it('transitions from IDLE to TERMINATED on OUTBOUND_FAILED (race condition)', () => {
+      const service = startMachine();
+      expect(service.getSnapshot().value).toBe(TaskState.IDLE);
+
+      const taskData = createTaskData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+        } as any,
+      });
+
+      service.send({type: TaskEvent.OUTBOUND_FAILED, taskData, reason: 'CUSTOMER_BUSY'});
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+    });
+
+    it('transitions from OFFERED to TERMINATED on OUTBOUND_FAILED without wrapup', () => {
+      const service = startMachine();
+      const offerTaskData = createTaskData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: offerTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.OFFERED);
+
+      const failedTaskData = createTaskData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+        } as any,
+      });
+      service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'CUSTOMER_BUSY'});
+      expect(service.getSnapshot().value).toBe(TaskState.TERMINATED);
+    });
+
+    it('transitions from OFFERED to WRAPPING_UP on OUTBOUND_FAILED when wrapup is required', () => {
+      const service = startMachine();
+      const offerTaskData = createTaskData({
+        interaction: {
+          outboundType: 'OUTDIAL',
+        } as any,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: offerTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.OFFERED);
+
+      const failedTaskData = createTaskData({
+        agentId: 'agent-1',
+        agentsPendingWrapUp: ['agent-1'],
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+        } as any,
+      });
+      service.send({type: TaskEvent.OUTBOUND_FAILED, taskData: failedTaskData, reason: 'CUSTOMER_BUSY'});
+      expect(service.getSnapshot().value).toBe(TaskState.WRAPPING_UP);
+    });
+  });
 });
