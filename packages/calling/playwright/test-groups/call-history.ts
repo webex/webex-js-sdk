@@ -38,14 +38,13 @@ const CALL_HISTORY_AI_SPECS = [
     steps: [
       'Open the calling kitchen sink sample app for User 1 and User 2.',
       'Initialize Calling, register the line, and grant media access for both users.',
-      'Run three User 1 to User 2 outgoing call attempts: missed, rejected, and answered.',
-      'Run three User 2 to User 1 outgoing call attempts: missed, rejected, and answered.',
-      'Open the sample app Call History list for both users.',
+      'Run one continuous two-user journey: User 1 calls User 2 answered, rejected, and missed; then User 2 calls User 1 answered, rejected, and missed.',
+      'Open the sample app Call History list for both users after every call action.',
     ],
     expected: [
-      'User 1 history contains the three recent outgoing User 1 to User 2 records.',
-      'User 2 history contains the three recent outgoing User 2 to User 1 records.',
-      'The table header renders the Call History columns and all expected rows are visible.',
+      'User 1 history contains the recent outgoing and incoming records from the full two-user journey.',
+      'User 2 history contains the recent outgoing and incoming records from the full two-user journey.',
+      'The table header renders the Call History columns and the disposition column shows ANSWERED for answered calls, CANCELED/REJECTED for rejected calls, and CANCELED/MISSED for missed calls.',
     ],
   },
   {
@@ -101,48 +100,56 @@ const CALL_HISTORY_AI_SPECS = [
   },
   {
     id: 'CH-ALL-001',
-    title: 'User 1 login shows missed, rejected, and answered outgoing call history',
+    title: 'User 1 login shows answered, rejected, and missed records from the two-user journey',
     preconditions: ['Both users stay initialized, registered, and media-ready in one browser run.'],
     steps: [
-      'User 1 calls User 2 and User 2 does not answer.',
+      'User 1 calls User 2 and User 2 answers.',
+      'Open Call History for User 1 and User 2.',
       'User 1 calls User 2 again and User 2 rejects.',
-      'User 1 calls User 2 again and User 2 answers.',
-      'After both users complete their outgoing call journeys, open Call History for User 1.',
+      'Open Call History for User 1 and User 2.',
+      'User 1 calls User 2 again and User 2 does not answer.',
+      'Open Call History for User 1 and User 2.',
     ],
     expected: [
-      'User 1 shows three recent OUTGOING records in one login.',
-      'The missed, rejected, and answered attempts show the backend dispositions returned by Call History.',
+      'User 1 shows recent OUTGOING records for User 1 to User 2 and INCOMING records for User 2 to User 1 in one login.',
+      'The disposition column shows ANSWERED when the call is picked, CANCELED for outgoing rejected or missed attempts, REJECTED for incoming rejected attempts, and MISSED for incoming missed attempts.',
       'Every record has valid start and end timestamps.',
       'The answered call includes valid non-negative duration derived from the timestamps.',
-      'The sample app Call History table renders all three outgoing records for User 1.',
+      'The sample app Call History table renders the current journey records after each call action.',
     ],
   },
   {
     id: 'CH-ALL-002',
-    title: 'User 2 login shows missed, rejected, and answered outgoing call history',
+    title: 'User 2 login shows answered, rejected, and missed records from the two-user journey',
     preconditions: ['Both users stay initialized, registered, and media-ready in one browser run.'],
     steps: [
-      'User 2 calls User 1 and User 1 does not answer.',
+      'User 2 calls User 1 and User 1 answers.',
+      'Open Call History for User 2 and User 1.',
       'User 2 calls User 1 again and User 1 rejects.',
-      'User 2 calls User 1 again and User 1 answers.',
-      'After both users complete their outgoing call journeys, open Call History for User 2.',
+      'Open Call History for User 2 and User 1.',
+      'User 2 calls User 1 again and User 1 does not answer.',
+      'Open Call History for User 2 and User 1.',
     ],
     expected: [
-      'User 2 shows three recent OUTGOING records in one login.',
-      'The missed, rejected, and answered attempts show the backend dispositions returned by Call History.',
+      'User 2 shows recent OUTGOING records for User 2 to User 1 and INCOMING records for User 1 to User 2 in one login.',
+      'The disposition column shows ANSWERED when the call is picked, CANCELED for outgoing rejected or missed attempts, REJECTED for incoming rejected attempts, and MISSED for incoming missed attempts.',
       'Every record has valid start and end timestamps.',
       'The answered call includes valid non-negative duration derived from the timestamps.',
-      'The sample app Call History table renders all three outgoing records for User 2.',
+      'The sample app Call History table renders the current journey records after each call action.',
     ],
   },
 ] as const;
 
 const ANSWERED_DISPOSITIONS = ['ANSWERED', 'INITIATED'];
-const UNANSWERED_CALLER_DISPOSITIONS = ['CANCELED', 'INITIATED'];
-const REJECTED_CALLEE_DISPOSITIONS = ['MISSED', 'CANCELED'];
+const MISSED_CALLER_DISPOSITIONS = ['CANCELED', 'INITIATED'];
+const REJECTED_CALLER_DISPOSITIONS = ['CANCELED', 'INITIATED'];
+const REJECTED_CALLEE_DISPOSITIONS = ['REJECTED', 'MISSED', 'CANCELED'];
 const HISTORY_TIME_LOOKBACK_MS = 5000;
 const RECENT_RECORD_TOLERANCE_MS = 120000;
 const COUNTERPART_MATCH_MIN_DIGITS = 4;
+
+type CallJourneyOutcome = 'ANSWERED' | 'REJECTED' | 'MISSED';
+type CallHistoryDisposition = CallJourneyOutcome | 'CANCELED';
 
 type HistoryMatcherOptions = {
   counterpartNumber: string;
@@ -153,7 +160,7 @@ type HistoryMatcherOptions = {
 
 type HistoryDebugRecord = {
   user: 'user1' | 'user2';
-  expectedResult: 'PICKED' | 'NOT_PICKED' | 'REJECTED';
+  expectedDisposition: CallHistoryDisposition;
   record: CallHistoryRecord;
 };
 
@@ -167,23 +174,21 @@ type CallJourneyLeg = {
   targetLabel: UserLabel;
   targetPage: Page;
   targetNumber: string;
-  outcome: HistoryDebugRecord['expectedResult'];
+  outcome: CallJourneyOutcome;
   originSeenHistoryKeys: Set<string>;
   targetSeenHistoryKeys: Set<string>;
 };
 
-type OutgoingHistoryJourneyOptions = {
-  labelPrefix: string;
-  originLabel: UserLabel;
-  originPage: Page;
-  originNumber: string;
-  targetLabel: UserLabel;
-  targetPage: Page;
-  targetNumber: string;
+type BidirectionalHistoryJourneyOptions = {
+  user1Page: Page;
+  user1Number: string;
+  user2Page: Page;
+  user2Number: string;
 };
 
-type OutgoingHistoryJourneyResult = {
-  originRecords: CallHistoryRecord[];
+type BidirectionalHistoryJourneyResult = {
+  user1Records: CallHistoryRecord[];
+  user2Records: CallHistoryRecord[];
   debugRecords: HistoryDebugRecord[];
 };
 
@@ -212,12 +217,12 @@ const attachCallHistorySummary = async (
   label: string,
   records: HistoryDebugRecord[]
 ): Promise<void> => {
-  const summary = records.map(({user, expectedResult, record}) => ({
+  const summary = records.map(({user, expectedDisposition, record}) => ({
     user,
-    expectedResult,
+    expectedDisposition,
     direction: record.direction,
-    disposition: record.disposition,
-    status: normalizeDisposition(record.disposition),
+    rawDisposition: record.disposition,
+    displayDisposition: expectedDisposition,
     startTime: record.startTime,
     endTime: record.endTime,
     durationSeconds: getCallHistoryDurationSeconds(record),
@@ -231,7 +236,7 @@ const attachCallHistorySummary = async (
   const oneLineSummary = summary
     .map(
       (record) =>
-        `${record.user}:${record.expectedResult}:${record.direction}/${record.disposition}:${record.durationSeconds}s`
+        `${record.user}:${record.expectedDisposition}:${record.direction}/${record.rawDisposition}:${record.durationSeconds}s`
     )
     .join('; ');
 
@@ -314,10 +319,8 @@ const waitForNewHistoryRecord = async (
   return record;
 };
 
-const getIncomingDispositionsForOutcome = (
-  outcome: HistoryDebugRecord['expectedResult']
-): string[] => {
-  if (outcome === 'PICKED') {
+const getIncomingDispositionsForOutcome = (outcome: CallJourneyOutcome): string[] => {
+  if (outcome === 'ANSWERED') {
     return ANSWERED_DISPOSITIONS;
   }
 
@@ -327,6 +330,44 @@ const getIncomingDispositionsForOutcome = (
 
   return ['MISSED'];
 };
+
+const getOutgoingDispositionsForOutcome = (outcome: CallJourneyOutcome): string[] => {
+  if (outcome === 'ANSWERED') {
+    return ANSWERED_DISPOSITIONS;
+  }
+
+  if (outcome === 'REJECTED') {
+    return REJECTED_CALLER_DISPOSITIONS;
+  }
+
+  return MISSED_CALLER_DISPOSITIONS;
+};
+
+const getExpectedDispositionForOutcome = (
+  outcome: CallJourneyOutcome,
+  callSide: 'origin' | 'target'
+): CallHistoryDisposition => {
+  if (outcome === 'ANSWERED') {
+    return 'ANSWERED';
+  }
+
+  if (callSide === 'origin') {
+    return 'CANCELED';
+  }
+
+  return outcome;
+};
+
+const getDisplayHistoryRecords = (
+  records: HistoryDebugRecord[],
+  user: UserLabel
+): CallHistoryRecord[] =>
+  records
+    .filter((debugRecord) => debugRecord.user === user)
+    .map(({expectedDisposition, record}) => ({
+      ...record,
+      disposition: expectedDisposition,
+    }));
 
 const executeCallJourneyLeg = async (
   leg: CallJourneyLeg,
@@ -339,7 +380,7 @@ const executeCallJourneyLeg = async (
 
   const startedAt = new Date(Date.now() - HISTORY_TIME_LOOKBACK_MS);
 
-  if (leg.outcome === 'PICKED') {
+  if (leg.outcome === 'ANSWERED') {
     await establishCall(leg.originPage, leg.targetPage, leg.targetNumber);
     await attachCallUiStatus(testInfo, `${leg.label}-established`, leg.originPage, leg.targetPage);
     await leg.originPage.waitForTimeout(2000);
@@ -370,8 +411,7 @@ const executeCallJourneyLeg = async (
       counterpartNumber: leg.targetNumber,
       direction: 'OUTGOING',
       startedAt,
-      dispositions:
-        leg.outcome === 'PICKED' ? ANSWERED_DISPOSITIONS : UNANSWERED_CALLER_DISPOSITIONS,
+      dispositions: getOutgoingDispositionsForOutcome(leg.outcome),
     },
     `${leg.label} ${leg.originLabel} outgoing ${leg.outcome.toLowerCase()} call`
   );
@@ -387,7 +427,7 @@ const executeCallJourneyLeg = async (
     `${leg.label} ${leg.targetLabel} incoming ${leg.outcome.toLowerCase()} call`
   );
 
-  if (leg.outcome === 'NOT_PICKED') {
+  if (leg.outcome === 'MISSED') {
     expectDisposition(targetRecord, ['MISSED']);
   }
 
@@ -395,8 +435,16 @@ const executeCallJourneyLeg = async (
   expectHistoryTiming(targetRecord, {notBefore: startedAt, notAfter: endedAt});
 
   const records: HistoryDebugRecord[] = [
-    {user: leg.originLabel, expectedResult: leg.outcome, record: originRecord},
-    {user: leg.targetLabel, expectedResult: leg.outcome, record: targetRecord},
+    {
+      user: leg.originLabel,
+      expectedDisposition: getExpectedDispositionForOutcome(leg.outcome, 'origin'),
+      record: originRecord,
+    },
+    {
+      user: leg.targetLabel,
+      expectedDisposition: getExpectedDispositionForOutcome(leg.outcome, 'target'),
+      record: targetRecord,
+    },
   ];
 
   await attachCallHistorySummary(testInfo, leg.label, records);
@@ -404,88 +452,134 @@ const executeCallJourneyLeg = async (
   return records;
 };
 
-const runOutgoingHistoryJourney = async (
-  options: OutgoingHistoryJourneyOptions,
+const runBidirectionalHistoryJourney = async (
+  options: BidirectionalHistoryJourneyOptions,
   testInfo: TestInfo
-): Promise<OutgoingHistoryJourneyResult> => {
-  const originSeenHistoryKeys = new Set<string>();
-  const targetSeenHistoryKeys = new Set<string>();
-  const originJourneyRecords: CallHistoryRecord[] = [];
+): Promise<BidirectionalHistoryJourneyResult> => {
+  const user1SeenHistoryKeys = new Set<string>();
+  const user2SeenHistoryKeys = new Set<string>();
+  const user1JourneyRecords: CallHistoryRecord[] = [];
+  const user2JourneyRecords: CallHistoryRecord[] = [];
   const journeyDebugRecords: HistoryDebugRecord[] = [];
 
-  const addOriginJourneyRecords = (records: HistoryDebugRecord[]) => {
+  const addJourneyRecords = (records: HistoryDebugRecord[]) => {
     records.forEach(({user, record}) => {
-      if (user === options.originLabel) {
-        originJourneyRecords.push(record);
+      if (user === 'user1') {
+        user1JourneyRecords.push(record);
+      }
+
+      if (user === 'user2') {
+        user2JourneyRecords.push(record);
       }
     });
   };
 
   const callJourneyLegs: CallJourneyLeg[] = [
     {
-      label: `${options.labelPrefix}-not-picked`,
-      originLabel: options.originLabel,
-      originPage: options.originPage,
-      originNumber: options.originNumber,
-      targetLabel: options.targetLabel,
-      targetPage: options.targetPage,
-      targetNumber: options.targetNumber,
-      outcome: 'NOT_PICKED',
-      originSeenHistoryKeys,
-      targetSeenHistoryKeys,
+      label: 'user1-to-user2-answered',
+      originLabel: 'user1',
+      originPage: options.user1Page,
+      originNumber: options.user1Number,
+      targetLabel: 'user2',
+      targetPage: options.user2Page,
+      targetNumber: options.user2Number,
+      outcome: 'ANSWERED',
+      originSeenHistoryKeys: user1SeenHistoryKeys,
+      targetSeenHistoryKeys: user2SeenHistoryKeys,
     },
     {
-      label: `${options.labelPrefix}-rejected`,
-      originLabel: options.originLabel,
-      originPage: options.originPage,
-      originNumber: options.originNumber,
-      targetLabel: options.targetLabel,
-      targetPage: options.targetPage,
-      targetNumber: options.targetNumber,
+      label: 'user1-to-user2-rejected',
+      originLabel: 'user1',
+      originPage: options.user1Page,
+      originNumber: options.user1Number,
+      targetLabel: 'user2',
+      targetPage: options.user2Page,
+      targetNumber: options.user2Number,
       outcome: 'REJECTED',
-      originSeenHistoryKeys,
-      targetSeenHistoryKeys,
+      originSeenHistoryKeys: user1SeenHistoryKeys,
+      targetSeenHistoryKeys: user2SeenHistoryKeys,
     },
     {
-      label: `${options.labelPrefix}-picked`,
-      originLabel: options.originLabel,
-      originPage: options.originPage,
-      originNumber: options.originNumber,
-      targetLabel: options.targetLabel,
-      targetPage: options.targetPage,
-      targetNumber: options.targetNumber,
-      outcome: 'PICKED',
-      originSeenHistoryKeys,
-      targetSeenHistoryKeys,
+      label: 'user1-to-user2-missed',
+      originLabel: 'user1',
+      originPage: options.user1Page,
+      originNumber: options.user1Number,
+      targetLabel: 'user2',
+      targetPage: options.user2Page,
+      targetNumber: options.user2Number,
+      outcome: 'MISSED',
+      originSeenHistoryKeys: user1SeenHistoryKeys,
+      targetSeenHistoryKeys: user2SeenHistoryKeys,
+    },
+    {
+      label: 'user2-to-user1-answered',
+      originLabel: 'user2',
+      originPage: options.user2Page,
+      originNumber: options.user2Number,
+      targetLabel: 'user1',
+      targetPage: options.user1Page,
+      targetNumber: options.user1Number,
+      outcome: 'ANSWERED',
+      originSeenHistoryKeys: user2SeenHistoryKeys,
+      targetSeenHistoryKeys: user1SeenHistoryKeys,
+    },
+    {
+      label: 'user2-to-user1-rejected',
+      originLabel: 'user2',
+      originPage: options.user2Page,
+      originNumber: options.user2Number,
+      targetLabel: 'user1',
+      targetPage: options.user1Page,
+      targetNumber: options.user1Number,
+      outcome: 'REJECTED',
+      originSeenHistoryKeys: user2SeenHistoryKeys,
+      targetSeenHistoryKeys: user1SeenHistoryKeys,
+    },
+    {
+      label: 'user2-to-user1-missed',
+      originLabel: 'user2',
+      originPage: options.user2Page,
+      originNumber: options.user2Number,
+      targetLabel: 'user1',
+      targetPage: options.user1Page,
+      targetNumber: options.user1Number,
+      outcome: 'MISSED',
+      originSeenHistoryKeys: user2SeenHistoryKeys,
+      targetSeenHistoryKeys: user1SeenHistoryKeys,
     },
   ];
 
   /* eslint-disable no-await-in-loop */
   for (const leg of callJourneyLegs) {
     const records = await executeCallJourneyLeg(leg, testInfo);
-    addOriginJourneyRecords(records);
+    addJourneyRecords(records);
     journeyDebugRecords.push(...records);
     await Promise.all([
-      cleanupActiveCalls(options.originPage),
-      cleanupActiveCalls(options.targetPage),
+      expectUiShowsHistoryRecords(
+        options.user1Page,
+        getDisplayHistoryRecords(journeyDebugRecords, 'user1')
+      ),
+      expectUiShowsHistoryRecords(
+        options.user2Page,
+        getDisplayHistoryRecords(journeyDebugRecords, 'user2')
+      ),
     ]);
-    await options.originPage.waitForTimeout(2000);
+    await Promise.all([
+      cleanupActiveCalls(options.user1Page),
+      cleanupActiveCalls(options.user2Page),
+    ]);
+    await options.user1Page.waitForTimeout(2000);
   }
   /* eslint-enable no-await-in-loop */
 
-  expect(originJourneyRecords).toHaveLength(callJourneyLegs.length);
-  originJourneyRecords.forEach((record) =>
-    expect(normalizeDirection(record.direction)).toBe('OUTGOING')
-  );
+  expect(user1JourneyRecords).toHaveLength(callJourneyLegs.length);
+  expect(user2JourneyRecords).toHaveLength(callJourneyLegs.length);
 
-  await attachCallHistorySummary(
-    testInfo,
-    `${options.labelPrefix}-outgoing-journey`,
-    journeyDebugRecords
-  );
+  await attachCallHistorySummary(testInfo, 'two-user-call-history-journey', journeyDebugRecords);
 
   return {
-    originRecords: originJourneyRecords,
+    user1Records: user1JourneyRecords,
+    user2Records: user2JourneyRecords,
     debugRecords: journeyDebugRecords,
   };
 };
@@ -570,8 +664,8 @@ export function callHistoryTests() {
       expectHistoryTiming(callerRecord, {notBefore: startedAt, notAfter: endedAt});
       expectHistoryTiming(calleeRecord, {notBefore: startedAt, notAfter: endedAt});
       await attachCallHistorySummary(testInfo, 'answered-picked', [
-        {user: 'user1', expectedResult: 'PICKED', record: callerRecord},
-        {user: 'user2', expectedResult: 'PICKED', record: calleeRecord},
+        {user: 'user1', expectedDisposition: 'ANSWERED', record: callerRecord},
+        {user: 'user2', expectedDisposition: 'ANSWERED', record: calleeRecord},
       ]);
 
       const callerRows = await openCallHistoryList(callerPage);
@@ -613,7 +707,7 @@ export function callHistoryTests() {
             counterpartNumber: calleeNumber,
             direction: 'OUTGOING',
             startedAt,
-            dispositions: UNANSWERED_CALLER_DISPOSITIONS,
+            dispositions: MISSED_CALLER_DISPOSITIONS,
           }),
         'caller outgoing unanswered call'
       );
@@ -622,8 +716,8 @@ export function callHistoryTests() {
       expectHistoryTiming(calleeMissedRecord, {notBefore: startedAt, notAfter: endedAt});
       expectHistoryTiming(callerCanceledRecord, {notBefore: startedAt, notAfter: endedAt});
       await attachCallHistorySummary(testInfo, 'missed-not-picked', [
-        {user: 'user1', expectedResult: 'NOT_PICKED', record: callerCanceledRecord},
-        {user: 'user2', expectedResult: 'NOT_PICKED', record: calleeMissedRecord},
+        {user: 'user1', expectedDisposition: 'CANCELED', record: callerCanceledRecord},
+        {user: 'user2', expectedDisposition: 'MISSED', record: calleeMissedRecord},
       ]);
 
       await expectUiShowsHistoryRecord(calleePage, calleeMissedRecord);
@@ -651,7 +745,7 @@ export function callHistoryTests() {
             counterpartNumber: calleeNumber,
             direction: 'OUTGOING',
             startedAt,
-            dispositions: UNANSWERED_CALLER_DISPOSITIONS,
+            dispositions: REJECTED_CALLER_DISPOSITIONS,
           }),
         'caller outgoing rejected call'
       );
@@ -670,8 +764,8 @@ export function callHistoryTests() {
       expectHistoryTiming(callerRecord, {notBefore: startedAt, notAfter: endedAt});
       expectHistoryTiming(calleeRecord, {notBefore: startedAt, notAfter: endedAt});
       await attachCallHistorySummary(testInfo, 'rejected', [
-        {user: 'user1', expectedResult: 'REJECTED', record: callerRecord},
-        {user: 'user2', expectedResult: 'REJECTED', record: calleeRecord},
+        {user: 'user1', expectedDisposition: 'CANCELED', record: callerRecord},
+        {user: 'user2', expectedDisposition: 'REJECTED', record: calleeRecord},
       ]);
 
       await expectUiShowsHistoryRecord(callerPage, callerRecord);
@@ -684,39 +778,35 @@ export function callHistoryTests() {
       const callerPage = tm.getPage(tm.userSet.accounts[0]);
       const calleePage = tm.getPage(tm.userSet.accounts[1]);
 
-      const user1Journey = await runOutgoingHistoryJourney(
+      const journey = await runBidirectionalHistoryJourney(
         {
-          labelPrefix: 'user1-to-user2',
-          originLabel: 'user1',
-          originPage: callerPage,
-          originNumber: callerNumber,
-          targetLabel: 'user2',
-          targetPage: calleePage,
-          targetNumber: calleeNumber,
+          user1Page: callerPage,
+          user1Number: callerNumber,
+          user2Page: calleePage,
+          user2Number: calleeNumber,
         },
         testInfo
       );
 
-      const user2Journey = await runOutgoingHistoryJourney(
-        {
-          labelPrefix: 'user2-to-user1',
-          originLabel: 'user2',
-          originPage: calleePage,
-          originNumber: calleeNumber,
-          targetLabel: 'user1',
-          targetPage: callerPage,
-          targetNumber: callerNumber,
-        },
-        testInfo
+      expect(journey.user1Records).toHaveLength(6);
+      expect(journey.user2Records).toHaveLength(6);
+
+      await attachCallHistorySummary(
+        testInfo,
+        'both-users-call-history-journey',
+        journey.debugRecords
       );
 
-      await attachCallHistorySummary(testInfo, 'both-users-outgoing-journey', [
-        ...user1Journey.debugRecords,
-        ...user2Journey.debugRecords,
+      await Promise.all([
+        expectUiShowsHistoryRecords(
+          callerPage,
+          getDisplayHistoryRecords(journey.debugRecords, 'user1')
+        ),
+        expectUiShowsHistoryRecords(
+          calleePage,
+          getDisplayHistoryRecords(journey.debugRecords, 'user2')
+        ),
       ]);
-
-      await expectUiShowsHistoryRecords(callerPage, user1Journey.originRecords);
-      await expectUiShowsHistoryRecords(calleePage, user2Journey.originRecords);
     });
     /* eslint-enable no-empty-pattern */
   });
