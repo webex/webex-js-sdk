@@ -9,6 +9,7 @@ import {
   METRIC_EVENT,
   SERVER_TYPE,
   CONNECTION_ACTION,
+  MOBIUS_SOCKET_ACTION,
 } from './types';
 import {LineError} from '../Errors/catalog/LineError';
 import log from '../Logger';
@@ -403,6 +404,7 @@ class MetricManager implements IMetricManager {
     correlationId: CorrelationId,
     localSdp?: string,
     remoteSdp?: string,
+    state?: string,
     callError?: CallError
   ) {
     let data;
@@ -423,6 +425,7 @@ class MetricManager implements IMetricManager {
             correlation_id: correlationId,
             local_media_details: localSdp,
             remote_media_details: remoteSdp,
+            state,
           },
           type,
         };
@@ -566,6 +569,76 @@ class MetricManager implements IMetricManager {
         file: METRIC_FILE,
         method: 'submitBNRMetric',
       });
+    }
+
+    if (data) {
+      this.webex.internal.metrics.submitClientMetrics(name, data);
+    }
+  }
+
+  /**
+   * @param name - Name of the metric being submitted (MOBIUS_SOCKET or MOBIUS_SOCKET_ERROR).
+   * @param metricAction - Type of Mobius WebSocket action.
+   * @param type - Type of metric.
+   * @param wssUrl - The Mobius WebSocket URL involved in the action.
+   * @param trackingId - Tracking ID associated with the operation, if any.
+   * @param error - Error string used to populate error details (for MOBIUS_SOCKET_ERROR).
+   * @param eventType - Type of async event received over the socket, if applicable.
+   */
+  public submitMobiusSocketMetric(
+    name: METRIC_EVENT,
+    metricAction: MOBIUS_SOCKET_ACTION,
+    type: METRIC_TYPE,
+    wssUrl?: string,
+    trackingId?: string,
+    error?: string,
+    eventType?: string
+  ) {
+    let data;
+
+    const commonTags = {
+      action: metricAction,
+      device_id: this.deviceInfo?.device?.deviceId,
+      service_indicator: this.serviceIndicator,
+    };
+
+    const commonFields = {
+      device_url: this.deviceInfo?.device?.clientDeviceUri,
+      mobius_url: this.deviceInfo?.device?.uri,
+      calling_sdk_version: process.env.CALLING_SDK_VERSION || VERSION,
+      wss_url: wssUrl,
+      tracking_id: trackingId,
+      event_type: eventType,
+    };
+
+    switch (name) {
+      case METRIC_EVENT.MOBIUS_SOCKET: {
+        data = {
+          tags: commonTags,
+          fields: commonFields,
+          type,
+        };
+        break;
+      }
+
+      case METRIC_EVENT.MOBIUS_SOCKET_ERROR: {
+        data = {
+          tags: commonTags,
+          fields: {
+            ...commonFields,
+            error,
+          },
+          type,
+        };
+        break;
+      }
+
+      default:
+        log.warn('Invalid metric name received. Rejecting request to submit metric.', {
+          file: METRIC_FILE,
+          method: 'submitMobiusSocketMetric',
+        });
+        break;
     }
 
     if (data) {

@@ -1,7 +1,15 @@
 /* eslint-disable dot-notation */
 import {getMockDeviceInfo, getTestUtilsWebex} from '../common/testUtil';
 import {getMetricManager} from './index';
-import {METRIC_TYPE, METRIC_EVENT, REG_ACTION, VOICEMAIL_ACTION, UPLOAD_LOGS_ACTION} from './types';
+import {
+  METRIC_TYPE,
+  METRIC_EVENT,
+  REG_ACTION,
+  VOICEMAIL_ACTION,
+  UPLOAD_LOGS_ACTION,
+  CONNECTION_ACTION,
+  MOBIUS_SOCKET_ACTION,
+} from './types';
 import {REGISTRATION_UTIL, VERSION} from '../CallingClient/constants';
 import {createClientError} from '../Errors/catalog/CallingDeviceError';
 import {CallErrorObject, ErrorObject, ERROR_LAYER, ERROR_TYPE} from '../Errors/types';
@@ -391,6 +399,7 @@ describe('CALLING: Metric tests', () => {
         mockCorrelationId,
         mockSdp,
         mockSdp,
+        undefined,
         callError
       );
       expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.MEDIA_ERROR, expectedData);
@@ -499,7 +508,13 @@ describe('CALLING: Metric tests', () => {
   });
 
   describe('Voicemail metric tests', () => {
+    const originalProcess: NodeJS.Process = global.process;
+
     beforeAll(() => metricManager.setDeviceInfo(mockDeviceInfo));
+
+    afterEach(() => {
+      global.process = originalProcess;
+    });
 
     it('submit voicemail success metric', () => {
       const expectedData1 = {
@@ -584,6 +599,63 @@ describe('CALLING: Metric tests', () => {
       expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.VOICEMAIL_ERROR, expectedData2);
     });
 
+    it('submit voicemail metric with undefined process object', () => {
+      // Mock process as undefined (browser environment)
+      (global as any).process = undefined;
+
+      const expectedData = {
+        tags: {
+          action: VOICEMAIL_ACTION.GET_VOICEMAILS,
+          device_id: mockDeviceInfo.device.deviceId,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          calling_sdk_version: VERSION,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitVoicemailMetric(
+        METRIC_EVENT.VOICEMAIL,
+        VOICEMAIL_ACTION.GET_VOICEMAILS,
+        METRIC_TYPE.BEHAVIORAL
+      );
+
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.VOICEMAIL, expectedData);
+    });
+
+    it('submit voicemail error metric with undefined process object', () => {
+      // Mock process as undefined (browser environment)
+      (global as any).process = undefined;
+
+      const errorMessage = 'Network error';
+      const expectedData = {
+        tags: {
+          action: VOICEMAIL_ACTION.MARK_READ,
+          device_id: mockDeviceInfo.device.deviceId,
+          message_id: 'msg-123',
+          error: errorMessage,
+          status_code: 500,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          calling_sdk_version: VERSION,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitVoicemailMetric(
+        METRIC_EVENT.VOICEMAIL_ERROR,
+        VOICEMAIL_ACTION.MARK_READ,
+        METRIC_TYPE.BEHAVIORAL,
+        'msg-123',
+        errorMessage,
+        500
+      );
+
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.VOICEMAIL_ERROR, expectedData);
+    });
+
     it('submit unknown voicemail metric', () => {
       const logSpy = jest.spyOn(log, 'warn');
 
@@ -631,6 +703,458 @@ describe('CALLING: Metric tests', () => {
       );
 
       expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.BNR_ENABLED, expectedData);
+    });
+  });
+
+  describe('Connection metric tests', () => {
+    beforeAll(() => metricManager.setDeviceInfo(mockDeviceInfo));
+
+    it('submit connection metric for network flap', () => {
+      const downTimestamp = '2026-05-04T10:00:00.000Z';
+      const upTimestamp = '2026-05-04T10:05:00.000Z';
+
+      const expectedData = {
+        tags: {
+          metricAction: 'network_flap',
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
+          downTimestamp,
+          upTimestamp,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitConnectionMetrics(
+        METRIC_EVENT.CONNECTION_ERROR,
+        CONNECTION_ACTION.NETWORK_FLAP,
+        METRIC_TYPE.BEHAVIORAL,
+        downTimestamp,
+        upTimestamp
+      );
+
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.CONNECTION_ERROR, expectedData);
+    });
+
+    it('submit connection metric for mercury down', () => {
+      const downTimestamp = '2026-05-04T10:10:00.000Z';
+      const upTimestamp = '2026-05-04T10:15:00.000Z';
+
+      const expectedData = {
+        tags: {
+          metricAction: 'mercury_down',
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
+          downTimestamp,
+          upTimestamp,
+        },
+        type: METRIC_TYPE.OPERATIONAL,
+      };
+
+      metricManager.submitConnectionMetrics(
+        METRIC_EVENT.CONNECTION_ERROR,
+        CONNECTION_ACTION.MERCURY_DOWN,
+        METRIC_TYPE.OPERATIONAL,
+        downTimestamp,
+        upTimestamp
+      );
+
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.CONNECTION_ERROR, expectedData);
+    });
+  });
+
+  describe('Region Info metric tests', () => {
+    beforeAll(() => metricManager.setDeviceInfo(mockDeviceInfo));
+
+    it('submit region info metric with all parameters', () => {
+      const trackingId = 'track-region-123';
+      const mobiusHost = 'mobius-us-east.webex.com';
+      const clientRegion = 'US-EAST';
+      const countryCode = 'US';
+
+      const expectedData = {
+        tags: {
+          action: 'region-info',
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
+          mobius_host: mobiusHost,
+          client_region: clientRegion,
+          country_code: countryCode,
+          tracking_id: trackingId,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitRegionInfoMetric(
+        METRIC_EVENT.MOBIUS_DISCOVERY,
+        'region-info',
+        METRIC_TYPE.BEHAVIORAL,
+        mobiusHost,
+        clientRegion,
+        countryCode,
+        trackingId
+      );
+
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.MOBIUS_DISCOVERY, expectedData);
+    });
+
+    it('submit region info metric without tracking ID', () => {
+      const mobiusHost = 'mobius-eu-west.webex.com';
+      const clientRegion = 'EU-WEST';
+      const countryCode = 'GB';
+
+      const expectedData = {
+        tags: {
+          action: 'region-info',
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
+          mobius_host: mobiusHost,
+          client_region: clientRegion,
+          country_code: countryCode,
+          tracking_id: undefined,
+        },
+        type: METRIC_TYPE.OPERATIONAL,
+      };
+
+      metricManager.submitRegionInfoMetric(
+        METRIC_EVENT.MOBIUS_DISCOVERY,
+        'region-info',
+        METRIC_TYPE.OPERATIONAL,
+        mobiusHost,
+        clientRegion,
+        countryCode,
+        undefined
+      );
+
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.MOBIUS_DISCOVERY, expectedData);
+    });
+  });
+
+  describe('Mobius Servers metric tests', () => {
+    beforeAll(() => metricManager.setDeviceInfo(mockDeviceInfo));
+
+    it('submit mobius servers metric with primary and backup servers', () => {
+      const trackingId = 'track-servers-456';
+      const mobiusServers = {
+        primary: {
+          region: 'US-EAST',
+          uris: [
+            'wss://mobius-us-east-1.webex.com/api/v1',
+            'wss://mobius-us-east-2.webex.com/api/v1',
+          ],
+        },
+        backup: {
+          region: 'US-WEST',
+          uris: ['wss://mobius-us-west-1.webex.com/api/v1'],
+        },
+      };
+
+      const expectedData = {
+        tags: {
+          action: 'mobius-servers',
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
+          primary_mobius_servers_region: 'US-EAST',
+          primary_mobius_servers_uris:
+            'wss://mobius-us-east-1.webex.com/api/v1,wss://mobius-us-east-2.webex.com/api/v1',
+          backup_mobius_servers_region: 'US-WEST',
+          backup_mobius_servers_uris: 'wss://mobius-us-west-1.webex.com/api/v1',
+          tracking_id: trackingId,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitMobiusServersMetric(
+        METRIC_EVENT.MOBIUS_DISCOVERY,
+        'mobius-servers',
+        METRIC_TYPE.BEHAVIORAL,
+        mobiusServers,
+        trackingId
+      );
+
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.MOBIUS_DISCOVERY, expectedData);
+    });
+
+    it('submit mobius servers metric without tracking ID', () => {
+      const mobiusServers = {
+        primary: {
+          region: 'EU-CENTRAL',
+          uris: ['wss://mobius-eu-central.webex.com/api/v1'],
+        },
+        backup: {
+          region: 'EU-WEST',
+          uris: [
+            'wss://mobius-eu-west.webex.com/api/v1',
+            'wss://mobius-eu-west-2.webex.com/api/v1',
+          ],
+        },
+      };
+
+      const expectedData = {
+        tags: {
+          action: 'mobius-servers',
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
+          primary_mobius_servers_region: 'EU-CENTRAL',
+          primary_mobius_servers_uris: 'wss://mobius-eu-central.webex.com/api/v1',
+          backup_mobius_servers_region: 'EU-WEST',
+          backup_mobius_servers_uris:
+            'wss://mobius-eu-west.webex.com/api/v1,wss://mobius-eu-west-2.webex.com/api/v1',
+          tracking_id: undefined,
+        },
+        type: METRIC_TYPE.OPERATIONAL,
+      };
+
+      metricManager.submitMobiusServersMetric(
+        METRIC_EVENT.MOBIUS_DISCOVERY,
+        'mobius-servers',
+        METRIC_TYPE.OPERATIONAL,
+        mobiusServers,
+        undefined
+      );
+
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.MOBIUS_DISCOVERY, expectedData);
+    });
+  });
+
+  describe('Mobius Socket metric tests', () => {
+    beforeAll(() => metricManager.setDeviceInfo(mockDeviceInfo));
+
+    it('submit mobius socket connect success metric', () => {
+      const wssUrl = 'wss://mobius.webex.com/api/v1';
+      const trackingId = 'track-socket-123';
+
+      const expectedData = {
+        tags: {
+          action: 'connect',
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
+          wss_url: wssUrl,
+          tracking_id: trackingId,
+          event_type: undefined,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitMobiusSocketMetric(
+        METRIC_EVENT.MOBIUS_SOCKET,
+        MOBIUS_SOCKET_ACTION.CONNECT,
+        METRIC_TYPE.BEHAVIORAL,
+        wssUrl,
+        trackingId
+      );
+
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.MOBIUS_SOCKET, expectedData);
+    });
+
+    it('submit mobius socket disconnect success metric', () => {
+      const expectedData = {
+        tags: {
+          action: 'disconnect',
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
+          wss_url: undefined,
+          tracking_id: undefined,
+          event_type: undefined,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitMobiusSocketMetric(
+        METRIC_EVENT.MOBIUS_SOCKET,
+        MOBIUS_SOCKET_ACTION.DISCONNECT,
+        METRIC_TYPE.BEHAVIORAL
+      );
+
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.MOBIUS_SOCKET, expectedData);
+    });
+
+    it('submit mobius socket listener registered metric', () => {
+      const expectedData = {
+        tags: {
+          action: 'listener_registered',
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
+          wss_url: undefined,
+          tracking_id: undefined,
+          event_type: undefined,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitMobiusSocketMetric(
+        METRIC_EVENT.MOBIUS_SOCKET,
+        MOBIUS_SOCKET_ACTION.LISTENER_REGISTERED,
+        METRIC_TYPE.BEHAVIORAL
+      );
+
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.MOBIUS_SOCKET, expectedData);
+    });
+
+    it('submit mobius socket listener unregistered metric', () => {
+      const expectedData = {
+        tags: {
+          action: 'listener_unregistered',
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
+          wss_url: undefined,
+          tracking_id: undefined,
+          event_type: undefined,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitMobiusSocketMetric(
+        METRIC_EVENT.MOBIUS_SOCKET,
+        MOBIUS_SOCKET_ACTION.LISTENER_UNREGISTERED,
+        METRIC_TYPE.BEHAVIORAL
+      );
+
+      expect(submitClientMetricSpy).toBeCalledOnceWith(METRIC_EVENT.MOBIUS_SOCKET, expectedData);
+    });
+
+    it('submit mobius socket error metric with connection failure', () => {
+      const wssUrl = 'wss://mobius.webex.com/api/v1';
+      const trackingId = 'track-error-456';
+      const error = 'WebSocket connection failed: timeout';
+
+      const expectedData = {
+        tags: {
+          action: 'connect',
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
+          wss_url: wssUrl,
+          tracking_id: trackingId,
+          event_type: undefined,
+          error,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitMobiusSocketMetric(
+        METRIC_EVENT.MOBIUS_SOCKET_ERROR,
+        MOBIUS_SOCKET_ACTION.CONNECT,
+        METRIC_TYPE.BEHAVIORAL,
+        wssUrl,
+        trackingId,
+        error
+      );
+
+      expect(submitClientMetricSpy).toBeCalledOnceWith(
+        METRIC_EVENT.MOBIUS_SOCKET_ERROR,
+        expectedData
+      );
+    });
+
+    it('submit mobius socket error metric with registration down event', () => {
+      const trackingId = 'track-regdown-789';
+      const eventType = 'registration.down';
+
+      const expectedData = {
+        tags: {
+          action: 'registration_down',
+          device_id: mockDeviceInfo.device.deviceId,
+          service_indicator: ServiceIndicator.CALLING,
+        },
+        fields: {
+          device_url: mockDeviceInfo.device.clientDeviceUri,
+          mobius_url: mockDeviceInfo.device.uri,
+          calling_sdk_version: MOCK_VERSION_NUMBER,
+          wss_url: undefined,
+          tracking_id: trackingId,
+          event_type: eventType,
+          error: undefined,
+        },
+        type: METRIC_TYPE.BEHAVIORAL,
+      };
+
+      metricManager.submitMobiusSocketMetric(
+        METRIC_EVENT.MOBIUS_SOCKET_ERROR,
+        MOBIUS_SOCKET_ACTION.REGISTRATION_DOWN,
+        METRIC_TYPE.BEHAVIORAL,
+        undefined,
+        trackingId,
+        undefined,
+        eventType
+      );
+
+      expect(submitClientMetricSpy).toBeCalledOnceWith(
+        METRIC_EVENT.MOBIUS_SOCKET_ERROR,
+        expectedData
+      );
+    });
+
+    it('submit unknown mobius socket metric', () => {
+      const logSpy = jest.spyOn(log, 'warn');
+
+      metricManager.submitMobiusSocketMetric(
+        'invalidMetricName' as unknown as METRIC_EVENT,
+        MOBIUS_SOCKET_ACTION.CONNECT,
+        METRIC_TYPE.BEHAVIORAL
+      );
+
+      expect(submitClientMetricSpy).not.toBeCalled();
+      expect(logSpy).toBeCalledOnceWith(
+        'Invalid metric name received. Rejecting request to submit metric.',
+        {
+          file: 'metric',
+          method: 'submitMobiusSocketMetric',
+        }
+      );
     });
   });
 
