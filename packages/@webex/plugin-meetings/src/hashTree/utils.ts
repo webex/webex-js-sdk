@@ -77,3 +77,22 @@ export function sortByInitPriority<T extends {name: string}>(items: T[], priorit
 
   return [...prioritized, ...rest];
 }
+
+/**
+ * Sleeps for the specified amount of milliseconds
+ *
+ * @param {number} ms amount of milliseconds to sleep
+ * @returns {Promise<void>} A promise that resolves after the specified delay
+ */
+export function sleep(ms: number): Promise<void> {
+  if (ms <= 0) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    // start a timer that will resolve the promise after the specified delay
+    setTimeout(() => {
+      resolve();
+    }, ms);
+  });
+}

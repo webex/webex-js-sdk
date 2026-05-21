@@ -1,4 +1,3 @@
-import {v4 as uuid} from 'uuid';
 import {Mutex} from 'async-mutex';
 import {METHOD_START_MESSAGE} from '../../common/constants';
 import {emitFinalFailure, handleRegistrationErrors, uploadLogs} from '../../common';
@@ -12,7 +11,7 @@ import {
   SERVER_TYPE,
 } from '../../Metrics/types';
 import {getMetricManager} from '../../Metrics';
-import {ICallManager} from '../calling/types';
+import {ICallManager, MobiusAsyncEvent} from '../calling/types';
 import {getCallManager} from '../calling';
 import {LOGGER} from '../../Logger/types';
 import log from '../../Logger';
@@ -35,7 +34,6 @@ import {
   CISCO_DEVICE_URL,
   DEVICES_ENDPOINT_RESOURCE,
   SPARK_USER_AGENT,
-  WEBEX_WEB_CLIENT,
   BASE_REG_RETRY_TIMER_VAL_IN_SEC,
   BASE_REG_TIMER_MFACTOR,
   SEC_TO_MSEC_MFACTOR,
@@ -61,6 +59,7 @@ import {
 } from '../constants';
 import {LINE_EVENTS, LineEmitterCallback} from '../line/types';
 import {LineError} from '../../Errors/catalog/LineError';
+import {APIRequest} from '../utils/request';
 
 /**
  *
@@ -96,6 +95,7 @@ export class Registration implements IRegistration {
   private retryAfter: number | undefined;
   private scheduled429Retry = false;
   private webWorker: Worker | undefined;
+  private apiRequest: APIRequest;
 
   /**
    */
@@ -129,6 +129,15 @@ export class Registration implements IRegistration {
 
     this.primaryMobiusUris = [];
     this.backupMobiusUris = [];
+    this.apiRequest = APIRequest.getInstance({webex: this.webex});
+  }
+
+  private getServerType(url: string): SERVER_TYPE {
+    return (
+      (this.primaryMobiusUris.includes(url) && 'PRIMARY') ||
+      (this.backupMobiusUris?.includes(url) && 'BACKUP') ||
+      'UNKNOWN'
+    );
   }
 
   private getFailoverCacheKey(): string {
@@ -221,16 +230,26 @@ export class Registration implements IRegistration {
    */
   private async deleteRegistration(url: string, deviceId: string, deviceUrl: string) {
     let response;
+
+    const requestObj = {
+      uri: `${url}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`,
+      method: HTTP_METHODS.DELETE,
+      headers: {
+        [CISCO_DEVICE_URL]: deviceUrl,
+        [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+      },
+      service: ALLOWED_SERVICES.MOBIUS,
+    };
+
+    if (this.apiRequest.isSocketEnabled()) {
+      // @ts-ignore - body is added for mobius wss support, it is not used for mobius http
+      requestObj.body = {
+        deviceId,
+      };
+    }
+
     try {
-      response = await fetch(`${url}${DEVICES_ENDPOINT_RESOURCE}/${deviceId}`, {
-        method: HTTP_METHODS.DELETE,
-        headers: {
-          [CISCO_DEVICE_URL]: deviceUrl,
-          Authorization: await this.webex.credentials.getUserToken(),
-          trackingId: `${WEBEX_WEB_CLIENT}_${uuid()}`,
-          [SPARK_USER_AGENT]: CALLING_USER_AGENT,
-        },
-      });
+      response = await this.apiRequest.makeRequest(requestObj);
     } catch (error) {
       log.warn(`Delete failed with Mobius: ${JSON.stringify(error)}`, {
         file: REGISTRATION_FILE,
@@ -243,7 +262,7 @@ export class Registration implements IRegistration {
     this.setStatus(RegistrationStatus.INACTIVE);
     this.lineEmitter(LINE_EVENTS.UNREGISTERED);
 
-    return <WebexRequestPayload>response?.json();
+    return response as WebexRequestPayload;
   }
 
   /**
@@ -257,7 +276,7 @@ export class Registration implements IRegistration {
       serviceData: this.jwe ? {...this.serviceData, jwe: this.jwe} : this.serviceData,
     };
 
-    return <WebexRequestPayload>this.webex.request({
+    return this.apiRequest.makeRequest({
       uri: `${url}device`,
       method: HTTP_METHODS.POST,
       headers: {
@@ -266,7 +285,7 @@ export class Registration implements IRegistration {
       },
       body: deviceInfo,
       service: ALLOWED_SERVICES.MOBIUS,
-    });
+    }) as Promise<WebexRequestPayload>;
   }
 
   /**
@@ -274,7 +293,29 @@ export class Registration implements IRegistration {
    * to, that mobius url is expected to be updated already in this.activeMobiusUrl.
    */
   private async restorePreviousRegistration(caller: string): Promise<boolean> {
+    const loggerContext = {
+      file: REGISTRATION_FILE,
+      method: METHODS.RESTORE_PREVIOUS_REGISTRATION,
+    };
+
+    log.info(
+      `${METHOD_START_MESSAGE} - caller: ${caller}, activeMobiusUrl: ${this.activeMobiusUrl}`,
+      loggerContext
+    );
+
     let abort = false;
+
+    if (this.apiRequest.isSocketEnabled()) {
+      log.info(`Disconnecting from Mobius socket to restore previous registration.`, {
+        file: REGISTRATION_FILE,
+        method: 'restorePreviousRegistration',
+      });
+
+      await this.apiRequest.disconnectFromMobiusSocket({
+        code: 3050,
+        reason: 'done (permanent)',
+      });
+    }
 
     if (this.activeMobiusUrl) {
       abort = await this.attemptRegistrationWithServers(caller, [this.activeMobiusUrl]);
@@ -292,13 +333,23 @@ export class Registration implements IRegistration {
           abort = await this.attemptRegistrationWithServers(caller, this.backupMobiusUris);
         } else {
           // If we are using backup and got 429, restart registration
-          this.restartRegistration(caller);
+          await this.restartRegistration(caller);
         }
         this.retryAfter = undefined;
+
+        log.log(
+          `restorePreviousRegistration completed via 429 retry-after path - caller: ${caller}`,
+          loggerContext
+        );
 
         return true;
       }
     }
+
+    log.log(
+      `restorePreviousRegistration completed - caller: ${caller}, deviceRegistered: ${this.isDeviceRegistered()}, abort: ${abort}`,
+      loggerContext
+    );
 
     return abort;
   }
@@ -307,11 +358,27 @@ export class Registration implements IRegistration {
    * Callback for handling 404 response from the server for register keepalive
    */
   private async handle404KeepaliveFailure(caller: string): Promise<void> {
+    const loggerContext = {
+      file: REGISTRATION_FILE,
+      method: METHODS.HANDLE_404_KEEPALIVE_FAILURE,
+    };
+
+    log.info(`${METHOD_START_MESSAGE} - caller: ${caller}`, loggerContext);
+
     if (caller === KEEPALIVE_UTIL) {
       const abort = await this.attemptRegistrationWithServers(caller);
 
       if (!abort && !this.isDeviceRegistered()) {
+        log.warn(
+          'Keepalive 404 recovery: re-registration did not complete, starting failover timer',
+          loggerContext
+        );
         await this.startFailoverTimer();
+      } else {
+        log.log(
+          `Keepalive 404 recovery handled - deviceRegistered: ${this.isDeviceRegistered()}, abort: ${abort}`,
+          loggerContext
+        );
       }
     }
   }
@@ -435,6 +502,20 @@ export class Registration implements IRegistration {
         loggerContext
       );
     } else if (this.backupMobiusUris.length) {
+      if (this.apiRequest.isSocketEnabled()) {
+        log.info(
+          'Disconnecting from primary Mobius socket for failover to backup servers',
+          loggerContext
+        );
+
+        await this.apiRequest.disconnectFromMobiusSocket({
+          code: 3050,
+          reason: 'done (permanent)',
+        });
+
+        log.log('Mobius socket disconnect complete prior to backup failover', loggerContext);
+      }
+
       this.saveFailoverState({
         attempt,
         timeElapsed,
@@ -468,9 +549,13 @@ export class Registration implements IRegistration {
       }
     } else {
       await uploadLogs();
-      emitFinalFailure((clientError: LineError) => {
-        this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
-      }, loggerContext);
+      emitFinalFailure(
+        (clientError: LineError) => {
+          this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
+        },
+        loggerContext,
+        interval < 0 ? 'Timer threshold exceeded during failover' : undefined
+      );
     }
   }
 
@@ -484,11 +569,26 @@ export class Registration implements IRegistration {
     }
   }
 
+  private async postKeepAlive(deviceUrl: string, url: string) {
+    return this.apiRequest.makeRequest({
+      uri: `${url}/status`,
+      method: HTTP_METHODS.POST,
+      headers: {
+        [CISCO_DEVICE_URL]: deviceUrl,
+        [SPARK_USER_AGENT]: CALLING_USER_AGENT,
+      },
+      body: {
+        deviceId: this.deviceInfo.device?.deviceId,
+      },
+      service: ALLOWED_SERVICES.MOBIUS,
+    });
+  }
+
   private async isPrimaryActive() {
     let status;
     for (const mobiusUrl of this.primaryMobiusUris) {
       try {
-        const baseUri = mobiusUrl.replace(URL_ENDPOINT, '/');
+        const baseUri = mobiusUrl.replace(URL_ENDPOINT, '/').replace('wss://', 'https://');
         // eslint-disable-next-line no-await-in-loop
         const response = await this.webex.request({
           uri: `${baseUri}ping`,
@@ -547,14 +647,27 @@ export class Registration implements IRegistration {
    * is registered with a backup mobius.
    */
   private initiateFailback() {
+    const loggerContext = {
+      file: REGISTRATION_FILE,
+      method: METHODS.INITIATE_FAILBACK,
+    };
+
     if (this.isFailbackRequired()) {
       if (!this.failbackTimer) {
         this.failback429RetryAttempts = 0;
         const intervalInMinutes = this.getFailbackInterval();
 
+        log.info(
+          `Scheduling failback to primary - intervalMinutes: ${intervalInMinutes}`,
+          loggerContext
+        );
+
         this.startFailbackTimer(intervalInMinutes * MINUTES_TO_SEC_MFACTOR);
+      } else {
+        log.info('Failback timer already scheduled, skipping', loggerContext);
       }
     } else {
+      log.info('Failback not required, clearing any pending failback timer', loggerContext);
       this.failback429RetryAttempts = 0;
       this.clearFailbackTimer();
     }
@@ -580,15 +693,34 @@ export class Registration implements IRegistration {
    * at failback timer expiry.
    */
   private async executeFailback() {
+    const loggerContext = {
+      file: REGISTRATION_FILE,
+      method: METHODS.EXECUTE_FAILBACK,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
     await this.mutex.runExclusive(async () => {
       if (this.isFailbackRequired()) {
         const primaryServerStatus = await this.isPrimaryActive();
         if (Object.keys(this.callManager.getActiveCalls()).length === 0 && primaryServerStatus) {
-          log.info(`Attempting failback to primary.`, {
-            file: REGISTRATION_FILE,
-            method: this.executeFailback.name,
-          });
+          log.info(`Attempting failback to primary.`, loggerContext);
           await this.deregister();
+
+          if (this.apiRequest.isSocketEnabled()) {
+            log.info(
+              'Disconnecting from backup Mobius socket for failback to primary',
+              loggerContext
+            );
+
+            await this.apiRequest.disconnectFromMobiusSocket({
+              code: 3050,
+              reason: 'done (permanent)',
+            });
+
+            log.log('Mobius socket disconnect complete prior to primary failback', loggerContext);
+          }
+
           const abort = await this.attemptRegistrationWithServers(FAILBACK_UTIL);
 
           if (this.scheduled429Retry || abort || this.isDeviceRegistered()) {
@@ -604,7 +736,7 @@ export class Registration implements IRegistration {
           }
 
           if (!this.isDeviceRegistered()) {
-            await this.restartRegistration(this.executeFailback.name);
+            await this.restartRegistration(loggerContext.method);
           } else {
             this.failbackTimer = undefined;
             this.initiateFailback();
@@ -612,10 +744,7 @@ export class Registration implements IRegistration {
         } else {
           log.info(
             'Active calls present or primary Mobius is down, deferring failback to next cycle.',
-            {
-              file: REGISTRATION_FILE,
-              method: this.executeFailback.name,
-            }
+            loggerContext
           );
           this.failbackTimer = undefined;
           this.initiateFailback();
@@ -673,6 +802,13 @@ export class Registration implements IRegistration {
    *
    */
   private async restartRegistration(caller: string) {
+    const loggerContext = {
+      file: REGISTRATION_FILE,
+      method: METHODS.RESTART_REGISTRATION,
+    };
+
+    log.info(`${METHOD_START_MESSAGE} - caller: ${caller}`, loggerContext);
+
     /*
      * Cancel any failback timer running
      * and start fresh registration attempt with retry as true.
@@ -684,6 +820,11 @@ export class Registration implements IRegistration {
     if (!abort && !this.isDeviceRegistered()) {
       await this.startFailoverTimer();
     }
+
+    log.log(
+      `restartRegistration completed - caller: ${caller}, deviceRegistered: ${this.isDeviceRegistered()}, abort: ${abort}`,
+      loggerContext
+    );
   }
 
   /**
@@ -773,7 +914,16 @@ export class Registration implements IRegistration {
    * Registration is attempted with primary and backup until it succeeds or the list is exhausted
    */
   public async triggerRegistration() {
+    const loggerContext = {
+      file: REGISTRATION_FILE,
+      method: METHODS.TRIGGER_REGISTRATION,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
     if (await this.resumeFailover()) {
+      log.info('Registration trigger handled by resumeFailover path', loggerContext);
+
       return;
     }
 
@@ -786,6 +936,13 @@ export class Registration implements IRegistration {
       if (!this.isDeviceRegistered() && !abort) {
         await this.startFailoverTimer();
       }
+
+      log.log(
+        `triggerRegistration completed - deviceRegistered: ${this.isDeviceRegistered()}, abort: ${abort}`,
+        loggerContext
+      );
+    } else {
+      log.warn('triggerRegistration skipped: no primary Mobius URIs available', loggerContext);
     }
   }
 
@@ -801,47 +958,64 @@ export class Registration implements IRegistration {
     caller: string,
     servers: string[] = this.primaryMobiusUris
   ): Promise<boolean> {
+    const loggerContext = {
+      file: REGISTRATION_FILE,
+      method: REGISTER_UTIL,
+    };
+
     let abort = false;
     this.retryAfter = undefined;
+    let connectedWebSocketUrl: string | undefined;
 
     if (this.failoverImmediately) {
       return abort;
     }
 
     if (this.isDeviceRegistered()) {
-      log.info(`[${caller}] : Device already registered with : ${this.activeMobiusUrl}`, {
-        file: REGISTRATION_FILE,
-        method: REGISTER_UTIL,
-      });
+      log.info(
+        `[${caller}] : Device already registered with : ${this.activeMobiusUrl}`,
+        loggerContext
+      );
 
       return abort;
     }
     for (const url of servers) {
-      const serverType =
-        (this.primaryMobiusUris.includes(url) && 'PRIMARY') ||
-        (this.backupMobiusUris?.includes(url) && 'BACKUP') ||
-        'UNKNOWN';
+      const serverType = this.getServerType(url);
+
       try {
         abort = false;
         this.registrationStatus = RegistrationStatus.INACTIVE;
         this.lineEmitter(LINE_EVENTS.CONNECTING);
-        log.info(`[${caller}] : Mobius url to contact: ${url}`, {
-          file: REGISTRATION_FILE,
-          method: REGISTER_UTIL,
-        });
+        log.info(`[${caller}] : Mobius url to contact: ${url}`, loggerContext);
+
+        if (this.apiRequest.isSocketEnabled()) {
+          const wssNormalizedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+
+          log.info(
+            `[${caller}] : Connecting to Mobius WebSocket - serverType: ${serverType}, wssUrl: ${wssNormalizedUrl}`,
+            loggerContext
+          );
+
+          // eslint-disable-next-line no-await-in-loop
+          connectedWebSocketUrl = await this.apiRequest.connectToMobiusSocket(wssNormalizedUrl);
+          connectedWebSocketUrl = connectedWebSocketUrl ? `${connectedWebSocketUrl}/` : undefined;
+
+          log.log(
+            `[${caller}] : Mobius WebSocket connected - serverType: ${serverType}, connectedWebSocketUrl: ${connectedWebSocketUrl}`,
+            loggerContext
+          );
+        }
+
         // eslint-disable-next-line no-await-in-loop
         const resp = await this.postRegistration(url);
         this.clearFailoverState();
         this.deviceInfo = resp.body as IDeviceInfo;
         this.registrationStatus = RegistrationStatus.ACTIVE;
-        this.setActiveMobiusUrl(url);
+        this.setActiveMobiusUrl(connectedWebSocketUrl || url);
         this.lineEmitter(LINE_EVENTS.REGISTERED, resp.body as IDeviceInfo);
         log.log(
           `Registration successful for deviceId: ${this.deviceInfo.device?.deviceId} userId: ${this.userId} responseTrackingId: ${resp.headers?.trackingid}`,
-          {
-            file: REGISTRATION_FILE,
-            method: METHODS.REGISTER,
-          }
+          loggerContext
         );
         this.setIntervalValues(this.deviceInfo);
         this.metricManager.setDeviceInfo(this.deviceInfo);
@@ -865,10 +1039,10 @@ export class Registration implements IRegistration {
       } catch (err: unknown) {
         const body = err as WebexRequestPayload;
         // eslint-disable-next-line no-await-in-loop, @typescript-eslint/no-unused-vars
-        abort = await handleRegistrationErrors(
+        const {finalError, shouldDisconnect} = await handleRegistrationErrors(
           body,
-          (clientError, finalError) => {
-            if (finalError) {
+          (clientError, isFinalError) => {
+            if (isFinalError) {
               this.lineEmitter(LINE_EVENTS.ERROR, undefined, clientError);
             } else {
               this.lineEmitter(LINE_EVENTS.UNREGISTERED);
@@ -886,18 +1060,45 @@ export class Registration implements IRegistration {
           },
           {method: caller, file: REGISTRATION_FILE},
           (retryAfter: number, retryCaller: string) => this.handle429Retry(retryAfter, retryCaller),
-          this.restoreRegistrationCallBack()
+          this.restoreRegistrationCallBack(),
+          servers.length
         );
+
+        abort = finalError;
+
         if (this.registrationStatus === RegistrationStatus.ACTIVE) {
           log.info(
             `[${caller}] : Device is already restored, active mobius url: ${this.activeMobiusUrl}`,
-            {
-              file: REGISTRATION_FILE,
-              method: this.attemptRegistrationWithServers.name,
-            }
+            loggerContext
           );
           break;
         }
+
+        /**
+         * 1. This is to ensure that registration error is handled before moving to the disconnect step.
+         * 2. We are not tearing down the socket if there is only one server in the list during the failover/re-attempt process.
+         * 3. Connection should not be torn down for 429 error case because retry will happen, which takes care disconnect/connect step.
+         */
+        if (shouldDisconnect && this.apiRequest.isSocketEnabled()) {
+          connectedWebSocketUrl = undefined;
+
+          log.info(
+            `[${caller}] : Tearing down Mobius WebSocket after registration error - serverType: ${serverType}`,
+            loggerContext
+          );
+
+          // eslint-disable-next-line no-await-in-loop
+          await this.apiRequest.disconnectFromMobiusSocket({
+            code: 3050,
+            reason: 'done (permanent)',
+          });
+
+          log.log(
+            `[${caller}] : Mobius WebSocket disconnect complete after registration error - serverType: ${serverType}`,
+            loggerContext
+          );
+        }
+
         if (abort) {
           this.setStatus(RegistrationStatus.INACTIVE);
           // eslint-disable-next-line no-await-in-loop
@@ -921,8 +1122,6 @@ export class Registration implements IRegistration {
 
     await this.mutex.runExclusive(async () => {
       if (this.isDeviceRegistered()) {
-        const accessToken = await this.webex.credentials.getUserToken();
-
         if (!this.webWorker) {
           const blob = new Blob([webWorkerStr], {type: 'application/javascript'});
           const blobUrl = URL.createObjectURL(blob);
@@ -931,11 +1130,8 @@ export class Registration implements IRegistration {
 
           this.webWorker.postMessage({
             type: WorkerMessageType.START_KEEPALIVE,
-            accessToken: String(accessToken),
-            deviceUrl: String(this.webex.internal.device.url),
             interval,
             retryCountThreshold: RETRY_COUNT_THRESHOLD,
-            url,
           });
 
           this.webWorker.onmessage = async (event: MessageEvent) => {
@@ -943,19 +1139,45 @@ export class Registration implements IRegistration {
               file: REGISTRATION_FILE,
               method: KEEPALIVE_UTIL,
             };
+            if (event.data.type === WorkerMessageType.SEND_KEEPALIVE) {
+              try {
+                const res = await this.postKeepAlive(String(this.webex.internal.device.url), url);
+
+                this.webWorker?.postMessage({
+                  type: WorkerMessageType.KEEPALIVE_RESULT,
+                  statusCode: res.statusCode,
+                });
+              } catch (err: any) {
+                const error = {
+                  headers: {
+                    trackingid: err.headers?.trackingid,
+                    'retry-after': err.headers['retry-after'],
+                  },
+                  statusCode: err.statusCode,
+                  statusText: err.statusText,
+                  type: err.type,
+                };
+
+                this.webWorker?.postMessage({
+                  type: WorkerMessageType.KEEPALIVE_RESULT,
+                  err: error,
+                });
+              }
+            }
+
             if (event.data.type === WorkerMessageType.KEEPALIVE_SUCCESS) {
               log.info(`Sent Keepalive, status: ${event.data.statusCode}`, logContext);
               this.lineEmitter(LINE_EVENTS.RECONNECTED);
             }
 
             if (event.data.type === WorkerMessageType.KEEPALIVE_FAILURE) {
-              const error = <WebexRequestPayload>event.data.err;
+              const error = event.data.err as WebexRequestPayload;
               log.warn(
                 `Keep-alive missed ${event.data.keepAliveRetryCount} times. Status -> ${error.statusCode} `,
                 logContext
               );
 
-              const abort = await handleRegistrationErrors(
+              const {finalError: abort} = await handleRegistrationErrors(
                 error,
                 (clientError, finalError) => {
                   if (finalError) {
@@ -1018,21 +1240,22 @@ export class Registration implements IRegistration {
   }
 
   public async deregister() {
+    const loggerContext = {
+      file: REGISTRATION_FILE,
+      method: METHODS.DEREGISTER,
+    };
+
+    log.info(METHOD_START_MESSAGE, loggerContext);
+
     try {
       await this.deleteRegistration(
         this.activeMobiusUrl as string,
         this.deviceInfo.device?.deviceId as string,
         this.deviceInfo.device?.clientDeviceUri as string
       );
-      log.log('Registration successfully deregistered', {
-        file: REGISTRATION_FILE,
-        method: METHODS.DEREGISTER,
-      });
+      log.log('Registration successfully deregistered', loggerContext);
     } catch (err) {
-      log.warn(`Delete failed with Mobius: ${JSON.stringify(err)}`, {
-        file: REGISTRATION_FILE,
-        method: METHODS.DEREGISTER,
-      });
+      log.warn(`Delete failed with Mobius: ${JSON.stringify(err)}`, loggerContext);
     }
 
     this.clearKeepaliveTimer();
@@ -1073,7 +1296,12 @@ export class Registration implements IRegistration {
 
       const stringToReplace = `${DEVICES_ENDPOINT_RESOURCE}/${restoreData.devices[0].deviceId}`;
 
-      const uri = restoreData.devices[0].uri.replace(stringToReplace, '');
+      let uri = restoreData.devices[0].uri.replace(stringToReplace, '');
+
+      if (this.apiRequest.isSocketEnabled()) {
+        uri = uri.replace('https://', 'wss://');
+      }
+
       this.setActiveMobiusUrl(uri);
       this.registrationStatus = RegistrationStatus.ACTIVE;
 
@@ -1110,6 +1338,82 @@ export class Registration implements IRegistration {
         });
       }
     }
+  }
+
+  /**
+   * Handles an async REGISTRATION_DOWN event emitted by Mobius. Ends the first
+   * active call (if any) and runs registration-side cleanup.
+   *
+   * @param event - The Mobius async event payload (trackingId/eventId used for logs).
+   */
+  public async handleRegistrationDownEvent(event?: MobiusAsyncEvent): Promise<void> {
+    const loggerContext = {
+      file: REGISTRATION_FILE,
+      method: METHODS.HANDLE_REGISTRATION_DOWN_EVENT,
+    };
+
+    log.info(
+      `Registration down received - trackingId: ${event?.trackingId ?? 'unknown'}, eventId: ${
+        event?.eventId ?? 'unknown'
+      }`,
+      loggerContext
+    );
+
+    const [activeCall] = Object.values(this.callManager.getActiveCalls());
+    activeCall?.end();
+
+    await this.performRegistrationDownCleanup(METHODS.HANDLE_REGISTRATION_DOWN_EVENT);
+  }
+
+  /**
+   * Cleans up registration-side state after a Mobius registration-down event.
+   *
+   * Stops timers, resets transient flags, clears failover cache, sets status to
+   * INACTIVE, tears down the Mobius WebSocket (when enabled), and finally emits
+   * `LINE_EVENTS.UNREGISTERED` so the SDK consumer is notified.
+   *
+   * Runs under the shared mutex to avoid racing with other registration flows.
+   *
+   * @param caller - Identifier of the caller, used for logs.
+   */
+  private async performRegistrationDownCleanup(caller: string): Promise<void> {
+    const loggerContext = {
+      file: REGISTRATION_FILE,
+      method: METHODS.HANDLE_REGISTRATION_DOWN_EVENT,
+    };
+
+    log.info(`[${caller}] : Running registration-down cleanup`, loggerContext);
+
+    await this.mutex.runExclusive(async () => {
+      this.clearFailbackTimer();
+      this.clearKeepaliveTimer();
+
+      this.reconnectPending = false;
+      this.scheduled429Retry = false;
+      this.failoverImmediately = false;
+      this.retryAfter = undefined;
+      this.registerRetry = false;
+
+      this.clearFailoverState();
+      this.setStatus(RegistrationStatus.INACTIVE);
+
+      if (this.apiRequest.isSocketEnabled()) {
+        try {
+          await this.apiRequest.disconnectFromMobiusSocket({
+            code: 3050,
+            reason: 'done (permanent)',
+          });
+          log.log('Mobius socket disconnect complete after registration-down', loggerContext);
+        } catch (err) {
+          log.warn(
+            `Mobius socket disconnect failed after registration-down: ${String(err)}`,
+            loggerContext
+          );
+        }
+      }
+
+      this.lineEmitter(LINE_EVENTS.UNREGISTERED);
+    });
   }
 }
 
