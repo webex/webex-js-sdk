@@ -122,8 +122,10 @@ const Support = WebexPlugin.extend({
 
         return this.webex
           .upload(uploadOptions)
-          .then(() => {
+          .then((res) => {
             this.webex.logger.updateLastSubmittedIndex();
+
+            return res;
           })
           .catch((err) => {
             if (this.config.incrementalLogs && this.config.retryFailedLogUploadsAtNextInterval) {

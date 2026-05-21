@@ -238,6 +238,44 @@ describe('plugin-support', () => {
       assert.notCalled(webex.logger.resetBufferToLastSuccessfulUpload);
     });
 
+    it('resolves with the response body from upload', async () => {
+      const uploadResponse = {logId: 'abc123'};
+
+      webex.upload = sinon.stub().returns(Promise.resolve(uploadResponse));
+
+      const result = await webex.internal.support.submitLogs({});
+
+      assert.deepEqual(result, uploadResponse);
+    });
+
+    it('adds userId from the session to the returned body if not already present', async () => {
+      const uploadResponse = {};
+
+      webex.upload = sinon.stub().callsFake((opts) => {
+        opts.phases.finalize.$body({userId: 'session-user-id', logFilename: 'file.txt'});
+
+        return Promise.resolve(uploadResponse);
+      });
+
+      const result = await webex.internal.support.submitLogs({});
+
+      assert.equal(result.userId, 'session-user-id');
+    });
+
+    it('does not overwrite userId in the returned body if already present', async () => {
+      const uploadResponse = {userId: 'existing-user-id'};
+
+      webex.upload = sinon.stub().callsFake((opts) => {
+        opts.phases.finalize.$body({userId: 'session-user-id', logFilename: 'file.txt'});
+
+        return Promise.resolve(uploadResponse);
+      });
+
+      const result = await webex.internal.support.submitLogs({});
+
+      assert.equal(result.userId, 'existing-user-id');
+    });
+
     [
       {incrementalLogs: true, retryFailedLogUploadsAtNextInterval: true, shouldReset: true},
       {incrementalLogs: false, retryFailedLogUploadsAtNextInterval: true, shouldReset: false},
