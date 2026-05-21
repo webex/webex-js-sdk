@@ -159,6 +159,10 @@ export class APIRequest {
     }
   }
 
+  public getConnectedWebSocketUrl() {
+    return this.mobiusSocket.getConnectedWebSocketUrl();
+  }
+
   /**
    * Disconnects the default session from the Mobius WebSocket.
    */

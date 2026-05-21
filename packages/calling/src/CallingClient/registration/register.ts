@@ -305,7 +305,10 @@ export class Registration implements IRegistration {
 
     let abort = false;
 
-    if (this.apiRequest.isSocketEnabled()) {
+    if (
+      this.apiRequest.isSocketEnabled() &&
+      `${this.apiRequest.getConnectedWebSocketUrl()}/` !== this.activeMobiusUrl
+    ) {
       log.info(`Disconnecting from Mobius socket to restore previous registration.`, {
         file: REGISTRATION_FILE,
         method: 'restorePreviousRegistration',
@@ -1239,7 +1242,7 @@ export class Registration implements IRegistration {
     return this.reconnectPending;
   }
 
-  public async deregister() {
+  public async deregister(closeMobiusWss = false) {
     const loggerContext = {
       file: REGISTRATION_FILE,
       method: METHODS.DEREGISTER,
@@ -1256,6 +1259,14 @@ export class Registration implements IRegistration {
       log.log('Registration successfully deregistered', loggerContext);
     } catch (err) {
       log.warn(`Delete failed with Mobius: ${JSON.stringify(err)}`, loggerContext);
+    }
+
+    if (closeMobiusWss) {
+      await this.apiRequest.disconnectFromMobiusSocket({
+        code: 3050,
+        reason: 'done (permanent)',
+      });
+      log.log('Mobius socket disconnect complete after deregistration', loggerContext);
     }
 
     this.clearKeepaliveTimer();

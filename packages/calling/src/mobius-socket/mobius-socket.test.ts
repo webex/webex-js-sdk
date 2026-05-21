@@ -172,6 +172,14 @@ describe('plugin-mobius-socket', () => {
       });
 
       mobiusSocket = new MobiusSocket(webex, {...mobiusConfig.mobiusSocket});
+
+      (mobiusSocket as any).logger = {
+        debug: jest.fn(),
+        error: jest.fn(),
+        info: jest.fn(),
+        log: jest.fn(),
+        warn: jest.fn(),
+      };
     });
 
     afterEach(async () => {
