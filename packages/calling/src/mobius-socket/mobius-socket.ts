@@ -767,7 +767,7 @@ class MobiusSocket extends EventEmitter {
     return this.tokenRefreshInFlight;
   }
 
-  private onclose(event: SocketCloseEvent, sourceSocket: ExtendedSocket): void {
+  private async onclose(event: SocketCloseEvent, sourceSocket: ExtendedSocket): void {
     const loggerContext = {
       file: 'mobius-socket.ts',
       method: 'onclose',
@@ -864,7 +864,8 @@ class MobiusSocket extends EventEmitter {
           break;
         case 4401:
           this.logger.error(`unauthorized, statusCode=${event.code}`, loggerContext);
-          this.refreshToken();
+          await this.refreshToken();
+          await this.reconnect(this.socket?.url);
           break;
         case 4403:
         case 4404:

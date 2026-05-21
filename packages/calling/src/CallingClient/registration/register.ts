@@ -1257,16 +1257,16 @@ export class Registration implements IRegistration {
         this.deviceInfo.device?.clientDeviceUri as string
       );
       log.log('Registration successfully deregistered', loggerContext);
-
-      if (closeMobiusWss) {
-        await this.apiRequest.disconnectFromMobiusSocket({
-          code: 3050,
-          reason: 'done (permanent)',
-        });
-        log.log('Mobius socket disconnect complete after deregistration', loggerContext);
-      }
     } catch (err) {
       log.warn(`Delete failed with Mobius: ${JSON.stringify(err)}`, loggerContext);
+    }
+
+    if (closeMobiusWss) {
+      await this.apiRequest.disconnectFromMobiusSocket({
+        code: 3050,
+        reason: 'done (permanent)',
+      });
+      log.log('Mobius socket disconnect complete after deregistration', loggerContext);
     }
 
     this.clearKeepaliveTimer();
