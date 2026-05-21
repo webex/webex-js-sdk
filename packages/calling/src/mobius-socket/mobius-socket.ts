@@ -767,7 +767,7 @@ class MobiusSocket extends EventEmitter {
     return this.tokenRefreshInFlight;
   }
 
-  private async onclose(event: SocketCloseEvent, sourceSocket: ExtendedSocket): void {
+  private async onclose(event: SocketCloseEvent, sourceSocket: ExtendedSocket): Promise<void> {
     const loggerContext = {
       file: 'mobius-socket.ts',
       method: 'onclose',
@@ -863,14 +863,11 @@ class MobiusSocket extends EventEmitter {
           }
           break;
         case 4401:
-          this.logger.error(`unauthorized, statusCode=${event.code}`, loggerContext);
-          await this.refreshToken();
-          await this.reconnect(this.socket?.url);
-          break;
         case 4403:
         case 4404:
-          this.logger.error(`forbidden, statusCode=${event.code}`, loggerContext);
-          this.reconnect(this.socket?.url);
+          this.logger.error(`onclose, statusCode=${event.code}`, loggerContext);
+          await this.refreshToken();
+          await this.reconnect(this.socket?.url);
           break;
         case 4429:
           // Silently ignore too many requests
