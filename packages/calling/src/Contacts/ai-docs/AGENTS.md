@@ -99,14 +99,6 @@ type Contact = {
 };
 ```
 
-#### CreateContactInput
-
-```typescript
-type CreateContactInput = Partial<Contact> & Pick<Contact, 'contactType'>;
-```
-
-For `createContact`, the SDK auto-populates fields such as `encryptionKeyUrl`, `groups`, `schemas`, and `resolved` when omitted. `contactId` must still be provided when `contactType` is `CLOUD`.
-
 #### ContactGroup
 
 ```typescript
@@ -173,12 +165,16 @@ if (response.statusCode === 200) {
 
 ```typescript
 const response = await contactClient.createContact({
+  contactId: 'custom-contact-uuid',
   contactType: ContactType.CUSTOM,
+  encryptionKeyUrl: 'kms://cisco.com/keys/example-custom-key',
+  groups: ['default-group-uuid'],
   displayName: 'Jane Doe',
   firstName: 'Jane',
   lastName: 'Doe',
   emails: [{type: 'work', value: 'jane@example.com'}],
   phoneNumbers: [{type: 'mobile', value: '+15551234567'}],
+  resolved: false,
 });
 
 if (response.statusCode === 201) {
@@ -192,6 +188,9 @@ if (response.statusCode === 201) {
 const response = await contactClient.createContact({
   contactType: ContactType.CLOUD,
   contactId: 'scim-user-uuid',
+  encryptionKeyUrl: 'kms://cisco.com/keys/example-cloud-key',
+  groups: ['default-group-uuid'],
+  resolved: false,
 });
 
 if (response.statusCode === 201) {
@@ -260,7 +259,7 @@ The client maintains in-memory caches:
 ### Encryption Key Resolution Logic
 
 1. If `this.encryptionKeyUrl` is already cached, return it
-2. If `this.groups` is undefined, call `getContacts()` to populate
+2. If `this.groups` is undefined, await `getContacts()` to populate
 3. If groups exist, use `groups[0].encryptionKeyUrl`
 4. If no groups exist:
    - Create unbound KMS key via `this.webex.internal.encryption.kms.createUnboundKeys({count: 1})`
