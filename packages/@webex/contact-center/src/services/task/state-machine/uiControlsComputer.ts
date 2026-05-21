@@ -262,16 +262,18 @@ function computeVoiceInteractionUIControls(
 
   return {
     // Accept/Decline: Voice tasks in offered state
-    // For outdial, accept is disabled (auto-answer handles it), decline remains enabled
-    // For Extension mode (non-WebRTC), accept shows as disabled "Ringing" button
+    // Desktop/WebRTC + inbound: accept enabled (agent manually accepts)
+    // Desktop/WebRTC + outdial: accept disabled (auto-answer handles it; Widgets show "Accept" disabled)
+    // Extension mode (non-WebRTC): accept disabled (Widgets show "Ringing...")
     accept:
       state === TaskState.OFFERED && !interaction?.isTerminated
         ? {isVisible: true, isEnabled: isWebrtc && !isOutdial}
         : DISABLED,
-    decline:
-      isWebrtc && state === TaskState.OFFERED && !interaction?.isTerminated
-        ? VISIBLE_ENABLED
-        : DISABLED,
+    decline: (() => {
+      if (!isWebrtc || state !== TaskState.OFFERED || interaction?.isTerminated) return DISABLED;
+
+      return isOutdial ? VISIBLE_DISABLED : VISIBLE_ENABLED;
+    })(),
 
     // Hold: visible in connected/held/conference, disabled in conference/consulting
     hold: (() => {

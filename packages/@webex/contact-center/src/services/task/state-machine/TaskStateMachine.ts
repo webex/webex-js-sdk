@@ -123,6 +123,12 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: ['initializeTask', 'emitTaskIncoming'],
           },
 
+          // AgentOutboundFailed can arrive before TASK_INCOMING due to race conditions
+          [TaskEvent.OUTBOUND_FAILED]: {
+            target: TaskState.TERMINATED,
+            actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+          },
+
           // EP-DN split-leg ordering can deliver AgentConsulting before HYDRATE/TASK_INCOMING.
           // Do not drop it in IDLE; bootstrap to CONSULTING using event taskData.
           [TaskEvent.CONSULTING_ACTIVE]: {
@@ -190,7 +196,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             },
             {
               target: TaskState.TERMINATED,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskReject'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
             },
           ],
           // AgentConsulting comes for received after the initial consult is accepted
@@ -497,8 +503,11 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               // Interaction terminated during consult (customer left) → WRAPPING_UP
               guard: ({context, event}) => {
-                if (context.consultInitiator !== true) return false;
+                // if (context.consultInitiator !== true) return false;
+                // const taskData = getTaskDataFromEvent(event);
                 const taskData = getTaskDataFromEvent(event);
+                const cpd = taskData?.interaction?.callProcessingDetails;
+                if (cpd?.hasCustomerLeft !== 'true') return false;
 
                 return (
                   taskData?.interaction?.isTerminated === true &&
@@ -646,7 +655,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.CONF_INITIATING]: {
         on: {
-          // AgentConsultConferenced, ParticipantJoinedConference
+          // AgentConsultConferenced, AgentConsultConferencing, ParticipantJoinedConference
           [TaskEvent.CONFERENCE_START]: {
             target: TaskState.CONFERENCING,
             actions: [
@@ -661,6 +670,22 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.CONSULTING,
             actions: ['handleConferenceFailed', 'emitTaskConferenceFailed'],
           },
+          // AgentConsultEnded while conference is initiating (end call before conference completes)
+          [TaskEvent.CONSULT_END]: [
+            {
+              guard: ({event}) => {
+                const taskData = getTaskDataFromEvent(event);
+
+                return taskData?.interaction?.isTerminated === true;
+              },
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'clearConsultState'],
+            },
+          ],
         },
       },
 
@@ -687,9 +712,23 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           ],
 
           // Needed as all agents in conference get this event, hence we need to clear the consult state
-          [TaskEvent.CONSULT_END]: {
-            actions: ['updateTaskData', 'clearConsultState'],
-          },
+          [TaskEvent.CONSULT_END]: [
+            {
+              guard: ({context, event}) => {
+                const taskData = getTaskDataFromEvent(event);
+
+                return (
+                  taskData?.interaction?.isTerminated === true &&
+                  shouldWrapUpForThisAgent(context, taskData)
+                );
+              },
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+            },
+            {
+              actions: ['updateTaskData', 'clearConsultState'],
+            },
+          ],
 
           [TaskEvent.HOLD_SUCCESS]: [
             {

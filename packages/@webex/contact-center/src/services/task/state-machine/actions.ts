@@ -21,6 +21,7 @@ import {
 import {DestinationType, TaskData} from '../types';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
 import {getIsConferenceInProgress} from '../TaskUtils';
+import {hasActiveConsultInPostCall} from './guards';
 
 const determineConsultInitiator = (
   taskData: TaskData | undefined,
@@ -147,8 +148,9 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
           ...deriveRecordingState(taskData),
         };
 
-        const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
-        const consultingActive = isActiveConsultState(taskData, selfAgentId);
+        const consultingActive =
+          taskData?.interaction?.state === INTERACTION_STATE.CONSULTING ||
+          hasActiveConsultInPostCall(taskData, selfAgentId);
 
         if (taskData.destAgentId) {
           const isEpDnWithStoredId =

@@ -935,6 +935,8 @@ export type Interaction = {
     fcDesktopView?: string;
     /** Agent ID who initiated the outdial call */
     outdialAgentId?: string;
+    /** Indicates if the customer has left the call during an active consult */
+    hasCustomerLeft?: string;
   };
   /** Main interaction identifier for related interactions */
   mainInteractionId?: string;
