@@ -1399,6 +1399,11 @@ class HashTreeParser {
     const shouldCollectMetrics = !isInitialization && SYNC_METRICS_DATA_SETS.includes(dataSet.name);
     const totalStart = shouldCollectMetrics ? performance.now() : 0;
 
+    // Consume lastBackoffTime early so it doesn't leak into a future sync cycle
+    // if performSync exits early (e.g., hashes match, 409, or abort).
+    const randomBackoffTime = dataSet.lastBackoffTime ?? 0;
+    dataSet.lastBackoffTime = undefined;
+
     try {
       LoggerProxy.logger.info(
         `HashTreeParser#performSync --> ${this.debugId} ${reason}, syncing data set "${dataSet.name}"`
@@ -1491,10 +1496,6 @@ class HashTreeParser {
           syncResponseTime = Math.round(performance.now() - syncRequestStart);
         }
       }
-
-      // Always consume lastBackoffTime so it doesn't leak into a future sync cycle.
-      const randomBackoffTime = dataSet.lastBackoffTime ?? 0;
-      dataSet.lastBackoffTime = undefined;
 
       // Store pending sync metrics only when a sync request was actually issued.
       // If no leaves were mismatched, no sync was needed, so no metrics should be emitted.
