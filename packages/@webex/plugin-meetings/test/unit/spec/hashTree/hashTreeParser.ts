@@ -117,6 +117,7 @@ function createDataSet(name: string, leafCount: number, version = 1) {
     name,
     idleMs: 1000,
     backoff: {maxMs: 1000, exponent: 2},
+    heartbeatIntervalMs: 5000,
   };
 }
 
@@ -3042,7 +3043,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeatMessage, 'initial heartbeat');
@@ -3112,7 +3112,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeatMessage, 'self heartbeat');
@@ -3148,7 +3147,6 @@ describe('HashTreeParser', () => {
 
       it('sets watchdog timers for each data set in the message', async () => {
         const parser = createHashTreeParser();
-        const heartbeatIntervalMs = 5000;
 
         // Send heartbeat with multiple datasets
         const heartbeatMessage = {
@@ -3165,7 +3163,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeatMessage, 'multi-dataset heartbeat');
@@ -3179,7 +3176,6 @@ describe('HashTreeParser', () => {
 
       it('resets the watchdog timer for a specific data set when a new heartbeat for it is received', async () => {
         const parser = createHashTreeParser();
-        const heartbeatIntervalMs = 5000;
 
         // Send first heartbeat for 'main'
         const heartbeat1 = {
@@ -3191,7 +3187,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeat1, 'first heartbeat');
@@ -3212,7 +3207,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeat2, 'second heartbeat');
@@ -3231,7 +3225,6 @@ describe('HashTreeParser', () => {
 
       it('resets the watchdog timer when a normal message (with locusStateElements) is received', async () => {
         const parser = createHashTreeParser();
-        const heartbeatIntervalMs = 5000;
 
         // Send initial heartbeat to start the watchdog for 'main'
         const heartbeat = {
@@ -3243,7 +3236,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeat, 'initial heartbeat');
@@ -3271,7 +3263,6 @@ describe('HashTreeParser', () => {
               data: {someData: 'value'},
             },
           ],
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(normalMessage, 'normal message');
@@ -3285,12 +3276,17 @@ describe('HashTreeParser', () => {
         const parser = createHashTreeParser();
 
         // Send a heartbeat message without heartbeatIntervalMs
-        const heartbeatMessage = createHeartbeatMessage(
-          'main',
-          16,
-          1100,
-          parser.dataSets.main.hashTree.getRootHash()
-        );
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+              heartbeatIntervalMs: undefined,
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+        };
 
         parser.handleMessage(heartbeatMessage, 'heartbeat without interval');
 
@@ -3299,7 +3295,6 @@ describe('HashTreeParser', () => {
 
       it('stops all watchdog timers when meeting ends via sentinel message', async () => {
         const parser = createHashTreeParser();
-        const heartbeatIntervalMs = 5000;
 
         // Send heartbeat for multiple datasets
         const heartbeat = {
@@ -3316,7 +3311,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeat, 'initial heartbeat');
@@ -3367,7 +3361,6 @@ describe('HashTreeParser', () => {
         };
 
         const parser = createHashTreeParser(initialLocus, metadata);
-        const heartbeatIntervalMs = 5000;
 
         // Set Math.random to return 1 so that backoff = 1^exponent * maxMs = maxMs
         mathRandomStub.returns(1);
@@ -3389,7 +3382,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeat, 'heartbeat');
@@ -3439,7 +3431,6 @@ describe('HashTreeParser', () => {
 
       it('does not set watchdog for data sets without a hash tree', async () => {
         const parser = createHashTreeParser();
-        const heartbeatIntervalMs = 5000;
 
         // 'atd-active' is in the initial locus but is not visible (no hash tree)
         // Send heartbeat mentioning a non-visible dataset
@@ -3453,7 +3444,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeatMessage, 'heartbeat with non-visible dataset');
@@ -3477,7 +3467,6 @@ describe('HashTreeParser', () => {
           ],
           visibleDataSetsUrl,
           locusUrl,
-          heartbeatIntervalMs,
         };
 
         parser.handleMessage(heartbeatMessage, 'initial heartbeat');
@@ -3530,6 +3519,122 @@ describe('HashTreeParser', () => {
 
         // And the watchdog should still be running
         expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+      });
+
+      it('uses dataset-level heartbeatIntervalMs over top-level value', async () => {
+        const parser = createHashTreeParser();
+        const datasetLevelInterval = 3000;
+        const topLevelInterval = 8000;
+
+        // Send heartbeat with both top-level and dataset-level heartbeatIntervalMs
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+              heartbeatIntervalMs: datasetLevelInterval,
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs: topLevelInterval,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'heartbeat with both levels');
+
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+
+        // Mock sync responses
+        const mainDataSetUrl = parser.dataSets.main.url;
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          createDataSet('main', 16, 1101)
+        );
+        mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+        // Watchdog should NOT fire at the top-level interval (8000ms)
+        // It should fire at the dataset-level interval (3000ms)
+        await clock.tickAsync(datasetLevelInterval - 1);
+        assert.notCalled(webexRequest);
+
+        await clock.tickAsync(1);
+        // Now at datasetLevelInterval, watchdog should have fired
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'GET',
+            uri: `${mainDataSetUrl}/hashtree`,
+          })
+        );
+      });
+
+      it('falls back to top-level heartbeatIntervalMs when dataset-level is missing', async () => {
+        const parser = createHashTreeParser();
+        const topLevelInterval = 7000;
+
+        // Send heartbeat with top-level heartbeatIntervalMs but no dataset-level
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+              heartbeatIntervalMs: undefined,
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs: topLevelInterval,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'heartbeat with top-level only');
+
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.not.be.undefined;
+
+        // Mock sync responses
+        const mainDataSetUrl = parser.dataSets.main.url;
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          createDataSet('main', 16, 1101)
+        );
+        mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+        // Should fire at the top-level interval
+        await clock.tickAsync(topLevelInterval - 1);
+        assert.notCalled(webexRequest);
+
+        await clock.tickAsync(1);
+        assert.calledWith(
+          webexRequest,
+          sinon.match({
+            method: 'GET',
+            uri: `${mainDataSetUrl}/hashtree`,
+          })
+        );
+      });
+
+      it('does not start watchdog when dataset-level heartbeatIntervalMs is 0 even if top-level is set', async () => {
+        const parser = createHashTreeParser();
+
+        // Send heartbeat with dataset-level 0 and a top-level value
+        const heartbeatMessage = {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1100),
+              root: parser.dataSets.main.hashTree.getRootHash(),
+              heartbeatIntervalMs: 0,
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          heartbeatIntervalMs: 5000,
+        };
+
+        parser.handleMessage(heartbeatMessage, 'heartbeat with dataset-level 0');
+
+        // Dataset-level 0 means no watchdog, should NOT fall back to top-level
+        expect(parser.dataSets.main.heartbeatWatchdogTimer).to.be.undefined;
       });
     });
 
@@ -5196,7 +5301,6 @@ describe('HashTreeParser', () => {
         ],
         visibleDataSetsUrl,
         locusUrl,
-        heartbeatIntervalMs: 5000,
         locusStateElements: [
           {
             htMeta: {
