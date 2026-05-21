@@ -2653,7 +2653,7 @@ describe('plugin-meetings', () => {
 
           describe('LLM and sync latency metrics', () => {
             describe('#sendLLMConnectMetric', () => {
-              it('emits client.llm.connect.response with trigger initial-join and full timings', async () => {
+              it('emits client.llm.connect.response with full timings on initial-join', async () => {
                 sinon.stub(meeting, 'isJoined').returns(true);
                 sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
                 meeting.webex.internal.llm.getWebSocketUrl = sinon.stub().returns('wss://datachannel.example.com');
@@ -2675,7 +2675,6 @@ describe('plugin-meetings', () => {
                         clientLLMDatachannelResponseTime: 150,
                         clientLLMWebSocketConnectTime: 200,
                       },
-                      trigger: 'initial-join',
                       identifiers: {llmWebsocketUrl: 'wss://datachannel.example.com'},
                     },
                     options: {meetingId: meeting.id},
@@ -2683,7 +2682,7 @@ describe('plugin-meetings', () => {
                 );
               });
 
-              it('emits client.llm.connect.response with trigger breakout-move on reconnect', async () => {
+              it('emits client.llm.connect.response on breakout-move reconnect', async () => {
                 sinon.stub(meeting, 'isJoined').returns(true);
                 sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
                 meeting.webex.internal.llm.getWebSocketUrl = sinon.stub().returns('wss://breakout.example.com');
@@ -2705,7 +2704,6 @@ describe('plugin-meetings', () => {
                         clientLLMDatachannelResponseTime: 120,
                         clientLLMWebSocketConnectTime: 180,
                       },
-                      trigger: 'breakout-move',
                       identifiers: {llmWebsocketUrl: 'wss://breakout.example.com'},
                     },
                     options: {meetingId: meeting.id},
@@ -2838,7 +2836,7 @@ describe('plugin-meetings', () => {
                 }
 
                 // The error path is in the join() catch block, so test sendLLMConnectMetric directly
-                meeting.sendLLMConnectMetric({clientLLMDatachannelResponseTime: 0}, connectError, 'initial-join');
+                meeting.sendLLMConnectMetric({clientLLMDatachannelResponseTime: 0}, connectError);
 
                 const matchingCall = webex.internal.newMetrics.submitClientEvent.getCalls()
                   .find(call => call.args[0]?.name === 'client.llm.connect.response');

@@ -6723,7 +6723,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
         // Emit LLM connect latency metric when trigger is specified
         if (trigger && registerAndConnectResult) {
-          this.sendLLMConnectMetric(registerAndConnectResult, undefined, trigger);
+          this.sendLLMConnectMetric(registerAndConnectResult);
         }
 
         return Promise.resolve(registerAndConnectResult);
@@ -6734,14 +6734,12 @@ export default class Meeting extends StatelessWebexPlugin {
    * Sends the client.llm.connect.response diagnostic event with LLM connection latencies.
    * @param {Object} timings - The timing measurements from LLM connection
    * @param {Object} [error] - Optional error if connection failed
-   * @param {string} [trigger] - What triggered this connection: 'initial-join' | 'breakout-move'
    * @returns {void}
    * @private
    */
   private sendLLMConnectMetric(
     timings: {clientLLMDatachannelResponseTime: number; clientLLMWebSocketConnectTime?: number},
-    error?: any,
-    trigger?: 'initial-join' | 'breakout-move'
+    error?: any
   ) {
     // @ts-ignore
     const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
@@ -6753,7 +6751,6 @@ export default class Meeting extends StatelessWebexPlugin {
           clientLLMWebSocketConnectTime: timings.clientLLMWebSocketConnectTime,
         }),
       },
-      ...(trigger && {trigger}),
     };
 
     if (llmWebsocketUrl) {
