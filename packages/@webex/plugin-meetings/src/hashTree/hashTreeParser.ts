@@ -26,10 +26,12 @@ export interface DataSet {
     maxMs: number;
     exponent: number;
   };
+  heartbeatIntervalMs?: number;
 }
 
 export interface RootHashMessage {
   dataSets: Array<DataSet>;
+  heartbeatIntervalMs?: number;
 }
 export interface HashTreeMessage {
   dataSets: Array<DataSet>;
@@ -123,7 +125,6 @@ class HashTreeParser {
   locusInfoUpdateCallback: LocusInfoUpdateCallback;
   visibleDataSets: VisibleDataSetInfo[];
   debugId: string;
-  heartbeatIntervalMs?: number;
   private excludedDataSets: string[];
   state: 'active' | 'stopped';
   private syncQueue: Array<{dataSetName: string; reason: string; isInitialization?: boolean}> = [];
@@ -133,6 +134,8 @@ class HashTreeParser {
   // datasets that received messages during the syncAllDatasets backoff sleep and should be skipped
   private dataSetsSyncedDuringBackoff: Set<string> = new Set();
   private syncQueueProcessingPromise: Promise<void> = Promise.resolve();
+  // top-level heartbeat interval from the most recent message, used as fallback when dataset-level value is missing
+  private topLevelHeartbeatIntervalMs?: number;
 
   /**
    * Constructor for HashTreeParser
@@ -802,6 +805,7 @@ class HashTreeParser {
         maxMs: receivedDataSet.backoff.maxMs,
         exponent: receivedDataSet.backoff.exponent,
       };
+      this.dataSets[receivedDataSet.name].heartbeatIntervalMs = receivedDataSet.heartbeatIntervalMs;
       LoggerProxy.logger.info(
         `HashTreeParser#updateDataSetInfo --> ${this.debugId} updated "${receivedDataSet.name}" dataset to version=${receivedDataSet.version}, root=${receivedDataSet.root}`
       );
@@ -1156,9 +1160,10 @@ class HashTreeParser {
       return;
     }
 
-    if (message.heartbeatIntervalMs) {
-      this.heartbeatIntervalMs = message.heartbeatIntervalMs;
+    if (message.heartbeatIntervalMs !== undefined) {
+      this.topLevelHeartbeatIntervalMs = message.heartbeatIntervalMs;
     }
+
     if (this.isEndMessage(message)) {
       LoggerProxy.logger.info(
         `HashTreeParser#handleMessage --> ${this.debugId} received sentinel END MEETING message`
@@ -1687,25 +1692,24 @@ class HashTreeParser {
    * @returns {void}
    */
   private resetHeartbeatWatchdogs(receivedDataSets: Array<DataSet>): void {
-    if (!this.heartbeatIntervalMs) {
-      return;
-    }
-
     for (const receivedDataSet of receivedDataSets) {
       const dataSet = this.dataSets[receivedDataSet.name];
-
-      if (!dataSet?.hashTree) {
-        // eslint-disable-next-line no-continue
-        continue;
-      }
 
       if (dataSet.heartbeatWatchdogTimer) {
         clearTimeout(dataSet.heartbeatWatchdogTimer);
         dataSet.heartbeatWatchdogTimer = undefined;
       }
 
+      // dataset-level heartbeatIntervalMs takes priority; fall back to top-level common value
+      const heartbeatIntervalMs = dataSet?.heartbeatIntervalMs ?? this.topLevelHeartbeatIntervalMs;
+
+      if (!dataSet?.hashTree || !heartbeatIntervalMs) {
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
       const backoffTime = this.getWeightedBackoffTime(dataSet.backoff);
-      const delay = this.heartbeatIntervalMs + backoffTime;
+      const delay = heartbeatIntervalMs + backoffTime;
 
       dataSet.heartbeatWatchdogTimer = setTimeout(() => {
         dataSet.heartbeatWatchdogTimer = undefined;
@@ -1754,6 +1758,7 @@ class HashTreeParser {
     );
     this.stopAllTimers();
     this.syncQueue = [];
+    this.topLevelHeartbeatIntervalMs = undefined;
     this.syncAllBackoffType = SyncAllBackoffType.NONE;
     this.dataSetsSyncedDuringBackoff = new Set();
     Object.values(this.dataSets).forEach((dataSet) => {
