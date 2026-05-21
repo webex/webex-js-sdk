@@ -148,6 +148,7 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
           ...deriveRecordingState(taskData),
         };
 
+        const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
         const consultingActive =
           taskData?.interaction?.state === INTERACTION_STATE.CONSULTING ||
           hasActiveConsultInPostCall(taskData, selfAgentId);
