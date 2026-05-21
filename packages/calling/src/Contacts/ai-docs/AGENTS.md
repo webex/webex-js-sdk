@@ -17,7 +17,7 @@ Do **not** use this file as your only entry point for reasoning or code generati
 
 ## Overview
 
-The `ContactsClient` module provides APIs for managing personal contacts and contact groups within the Webex ecosystem. It handles CRUD operations for contacts (both CUSTOM and CLOUD types), contact group management, and transparently encrypts/decrypts contact data using Webex KMS (Key Management Service). CLOUD contacts are resolved via SCIM (System for Cross-domain Identity Management) queries.
+The `ContactsClient` module provides APIs for managing personal contacts and contact groups within the Webex ecosystem. It handles create/read/delete operations for contacts (both CUSTOM and CLOUD types), contact group management, and transparently encrypts/decrypts contact data using Webex KMS (Key Management Service). CLOUD contacts are resolved via SCIM (System for Cross-domain Identity Management) queries.
 
 **Package:** `@webex/calling`
 
@@ -99,6 +99,14 @@ type Contact = {
 };
 ```
 
+#### CreateContactInput
+
+```typescript
+type CreateContactInput = Partial<Contact> & Pick<Contact, 'contactType'>;
+```
+
+For `createContact`, the SDK auto-populates fields such as `encryptionKeyUrl`, `groups`, `schemas`, and `resolved` when omitted. `contactId` must still be provided when `contactType` is `CLOUD`.
+
 #### ContactGroup
 
 ```typescript
@@ -172,6 +180,10 @@ const response = await contactClient.createContact({
   emails: [{type: 'work', value: 'jane@example.com'}],
   phoneNumbers: [{type: 'mobile', value: '+15551234567'}],
 });
+
+if (response.statusCode === 201) {
+  console.log('Custom contact created:', response.data.contact);
+}
 ```
 
 ### Create a Cloud Contact
@@ -181,6 +193,10 @@ const response = await contactClient.createContact({
   contactType: ContactType.CLOUD,
   contactId: 'scim-user-uuid',
 });
+
+if (response.statusCode === 201) {
+  console.log('Cloud contact created:', response.data.contact);
+}
 ```
 
 ### Delete a Contact
@@ -194,6 +210,10 @@ await contactClient.deleteContact('contact-uuid');
 ```typescript
 const groupResponse = await contactClient.createContactGroup('Work Colleagues');
 const groupId = groupResponse.data.group?.groupId;
+
+if (!groupId) {
+  throw new Error('Group creation failed: missing groupId');
+}
 
 await contactClient.deleteContactGroup(groupId);
 ```

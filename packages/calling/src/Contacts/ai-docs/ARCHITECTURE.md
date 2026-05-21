@@ -197,13 +197,13 @@ sequenceDiagram
     App->>CC: createContactGroup('Team Alpha')
     activate CC
 
+    CC->>CC: fetchEncryptionKeyUrl()
     CC->>CC: Check for duplicate group name
 
     alt Duplicate found
         CC-->>App: {statusCode: 400, error: 'Group displayName already exists'}
     end
 
-    CC->>CC: fetchEncryptionKeyUrl()
     CC->>KMS: encryptText(key, 'Team Alpha')
     KMS-->>CC: encrypted displayName
 
