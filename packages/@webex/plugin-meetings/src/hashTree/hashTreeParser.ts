@@ -1834,8 +1834,7 @@ class HashTreeParser {
 
       dataSet.timer = setTimeout(() => {
         dataSet.timer = undefined;
-        // Record the actual backoff time for sync metrics
-        dataSet.lastBackoffTime = Math.round(performance.now() - timerSetAt);
+        const actualBackoffTime = Math.round(performance.now() - timerSetAt);
 
         if (!dataSet.hashTree) {
           LoggerProxy.logger.warn(
@@ -1848,6 +1847,9 @@ class HashTreeParser {
         const rootHash = dataSet.hashTree.getRootHash();
 
         if (dataSet.root !== rootHash) {
+          // Record the actual backoff time only when a sync is enqueued,
+          // so it doesn't leak into an unrelated future sync trigger.
+          dataSet.lastBackoffTime = actualBackoffTime;
           this.enqueueSyncForDataset(
             dataSet.name,
             `Root hash mismatch: received=${dataSet.root}, ours=${rootHash}`
