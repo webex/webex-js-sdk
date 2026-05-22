@@ -8020,11 +8020,11 @@ export default class Meeting extends StatelessWebexPlugin {
         });
 
         if (atLeastOneUnmutedOtherMember) {
-          this.mediaProperties.sendMediaIssueMetric(
-            'inbound_audio',
-            data.issueSubType,
-            this.correlationId
-          );
+          this.mediaProperties.sendMediaIssueMetric('inbound_audio', data.issueSubType, {
+            correlationId: this.correlationId,
+            isMultistream: this.isMultistream,
+            isInLobby: !!this.isUserUnadmitted,
+          });
 
           Trigger.trigger(
             this,
