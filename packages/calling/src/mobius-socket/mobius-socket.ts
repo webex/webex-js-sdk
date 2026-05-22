@@ -767,9 +767,11 @@ class MobiusSocket extends EventEmitter {
     return this.tokenRefreshInFlight;
   }
 
-  private onclose(event: SocketCloseEvent, sourceSocket: ExtendedSocket): void {
-    // I don't see any way to avoid the complexity or statement count in here.
-    /* eslint complexity: [0] */
+  private async onclose(event: SocketCloseEvent, sourceSocket: ExtendedSocket): Promise<void> {
+    const loggerContext = {
+      file: 'mobius-socket.ts',
+      method: 'onclose',
+    };
 
     try {
       const reason = event.reason && event.reason.toLowerCase();
@@ -792,9 +794,7 @@ class MobiusSocket extends EventEmitter {
         this.stopTokenRefreshTimer();
       } else {
         // Old socket closed; do not flip connection state
-        this.logger.info(
-          `${MOBIUS_SOCKET_NAMESPACE}: [shutdown] non-active socket closed, code=${event.code}`
-        );
+        this.logger.info(`[shutdown] non-active socket closed, code=${event.code}`, loggerContext);
         // Clean up listeners from old socket now that it's closed
         if (sourceSocket) {
           sourceSocket.removeAllListeners();
@@ -804,12 +804,13 @@ class MobiusSocket extends EventEmitter {
       switch (event.code) {
         case 1003:
           this.logger.info(
-            `${MOBIUS_SOCKET_NAMESPACE}: service rejected last message; will not reconnect: ${event.reason}`
+            `service rejected last message; will not reconnect: ${event.reason}`,
+            loggerContext
           );
           if (isActiveSocket) this.emitEvent('offline.permanent', event);
           break;
         case 4000:
-          this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: socket replaced; will not reconnect`);
+          this.logger.info(`socket replaced; will not reconnect`, loggerContext);
           if (isActiveSocket) this.emitEvent('offline.replaced', event);
           break;
         case 4001:
@@ -818,63 +819,82 @@ class MobiusSocket extends EventEmitter {
             // Server closed active socket with 4001, meaning it expected this connection
             // to be replaced, but the switchover in handleImminentShutdown failed.
             this.logger.warn(
-              `${MOBIUS_SOCKET_NAMESPACE}: active socket closed with 4001; shutdown switchover failed`
+              `active socket closed with 4001; shutdown switchover failed`,
+              loggerContext
             );
             this.emitEvent('offline.permanent', event);
           } else {
             // Expected: old socket closed after successful switchover
             this.logger.info(
-              `${MOBIUS_SOCKET_NAMESPACE}: old socket closed with 4001 (replaced during shutdown); no reconnect needed`
+              `old socket closed with 4001 (replaced during shutdown); no reconnect needed`,
+              loggerContext
             );
             this.emitEvent('offline.replaced', event);
           }
           break;
+        case 1000:
         case 1001:
+          this.logger.info(`socket disconnected; ${event.reason}`, loggerContext);
+          if (isActiveSocket) this.emitEvent('offline.permanent', event);
+          break;
         case 1005:
         case 1006:
         case 1011:
-          this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: socket disconnected; reconnecting`);
+        case 1012:
+          this.logger.info(`socket disconnected; reconnecting`, loggerContext);
           if (isActiveSocket) {
             this.emitEvent('offline.transient', event);
             this.reconnect(socketUrl);
           }
           break;
-        case 1000:
         case 3050:
           if (reason && normalReconnectReasons.includes(reason)) {
-            this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: socket disconnected; reconnecting`);
+            this.logger.info(`socket disconnected; reconnecting`, loggerContext);
             if (isActiveSocket) {
               this.emitEvent('offline.transient', event);
               this.reconnect(socketUrl);
             }
           } else {
             this.logger.info(
-              `${MOBIUS_SOCKET_NAMESPACE}: socket disconnected; will not reconnect: ${event.reason}`
+              `socket disconnected; will not reconnect: ${event.reason}`,
+              loggerContext
             );
             if (isActiveSocket) this.emitEvent('offline.permanent', event);
           }
           break;
+        case 4401:
+        case 4403:
+        case 4404:
+          this.logger.error(`onclose, statusCode=${event.code}`, loggerContext);
+          await this.refreshToken();
+          await this.reconnect(this.socket?.url);
+          break;
+        case 4429:
+          // Silently ignore too many requests
+          this.logger.error(`too many requests, statusCode=${event.code}`, loggerContext);
+          break;
         default:
-          this.logger.info(
-            `${MOBIUS_SOCKET_NAMESPACE}: socket disconnected unexpectedly; will not reconnect`
-          );
+          this.logger.info(`socket disconnected unexpectedly; will not reconnect`, loggerContext);
           if (isActiveSocket) this.emitEvent('offline.permanent', event);
       }
     } catch (error) {
-      this.logger.error(`${MOBIUS_SOCKET_NAMESPACE}: error occurred in close handler`, error);
+      this.logger.error(`error occurred in close handler`, error, loggerContext);
     }
   }
 
   private onmessage(event: SocketMessageEvent<SocketResponse>): Promise<void> {
+    const loggerContext = {
+      file: 'mobius-socket.ts',
+      method: 'onclose',
+    };
+
     const envelope = event.data;
 
-    if (process.env.ENABLE_MOBIUS_LOGGING) {
-      this.logger.debug(`${MOBIUS_SOCKET_NAMESPACE}: message envelope: `, envelope);
-    }
+    this.logger.debug(`message envelope: `, envelope, loggerContext);
 
     // Handle shutdown message shape: { type: 'shutdown' }
     if (envelope && envelope.type === 'shutdown') {
-      this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: [shutdown] imminent shutdown message received`);
+      this.logger.info(`[shutdown] imminent shutdown message received`, loggerContext);
       this.emitEvent('event:mobius_shutdown_imminent', envelope); // This is not yet not implemented, keeping for future support
 
       this.handleImminentShutdown();
@@ -914,17 +934,14 @@ class MobiusSocket extends EventEmitter {
         this.emitEvent(`event:${eventType}`, envelope);
       }
     } catch (reason) {
-      this.logger.error(
-        `${MOBIUS_SOCKET_NAMESPACE}: error occurred processing socket message`,
-        reason
-      );
+      this.logger.error(`error occurred processing socket message`, reason, loggerContext);
     }
 
     return Promise.resolve();
   }
 
   private reconnect(webSocketUrl: string | undefined): Promise<void> {
-    this.logger.info(`${MOBIUS_SOCKET_NAMESPACE}: reconnecting`);
+    this.logger.info(`reconnecting`, {file: 'mobius-socket.ts', method: 'reconnect'});
 
     return this.connect(webSocketUrl || this.socketUrl);
   }
