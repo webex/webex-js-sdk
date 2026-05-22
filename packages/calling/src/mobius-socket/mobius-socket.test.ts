@@ -12,7 +12,7 @@ import {BadRequest, NotAuthorized, Forbidden, UnknownResponse, ConnectionError} 
 import mobiusConfig from './config';
 import Socket from './socket';
 import {skipInBrowser} from './test/mocha-helpers';
-import {MESSAGE_TYPES} from './socket/constants';
+import {MESSAGE_TYPES, MOBIUS_SOCKET_4001_EVENT} from './socket/constants';
 
 import promiseTick from './test/promise-tick';
 
@@ -1306,7 +1306,7 @@ describe('plugin-mobius-socket', () => {
           mobiusSocket.reconnect.restore();
         });
 
-        it('should handle active socket close with 4001 - permanent failure', () => {
+        it('should handle active socket close with 4001 - emits registration.down and tears down state', () => {
           const closeEvent = {
             code: 4001,
             reason: 'replaced during shutdown',
@@ -1314,12 +1314,18 @@ describe('plugin-mobius-socket', () => {
 
           mobiusSocket.onclose(closeEvent, mockSocket);
 
-          assert.calledWith(mobiusSocket.emitEvent, 'offline.permanent', closeEvent);
+          assert.calledWith(mobiusSocket.emitEvent, 'offline', closeEvent);
+          assert.calledWith(
+            mobiusSocket.emitEvent,
+            'event:registration.down',
+            MOBIUS_SOCKET_4001_EVENT.data
+          );
+          assert.neverCalledWith(mobiusSocket.emitEvent, 'offline.permanent', closeEvent);
           assert.notCalled(mobiusSocket.reconnect);
           assert.isFalse(mobiusSocket.connected);
         });
 
-        it('should handle non-active socket close with 4001 - no reconnect needed', () => {
+        it('should handle non-active socket close with 4001 - emits registration.down without tearing down state', () => {
           const closeEvent = {
             code: 4001,
             reason: 'replaced during shutdown',
@@ -1327,28 +1333,43 @@ describe('plugin-mobius-socket', () => {
 
           mobiusSocket.onclose(closeEvent, anotherSocket);
 
-          assert.calledWith(mobiusSocket.emitEvent, 'offline.replaced', closeEvent);
+          assert.calledWith(
+            mobiusSocket.emitEvent,
+            'event:registration.down',
+            MOBIUS_SOCKET_4001_EVENT.data
+          );
+          assert.neverCalledWith(mobiusSocket.emitEvent, 'offline.replaced', closeEvent);
+          assert.neverCalledWith(mobiusSocket.emitEvent, 'offline', closeEvent);
           assert.notCalled(mobiusSocket.reconnect);
           assert.isTrue(mobiusSocket.connected);
           assert.strictEqual(mobiusSocket.socket, mockSocket);
         });
 
-        it('should distinguish between active and non-active socket closes', () => {
+        it('should emit registration.down for both active and non-active socket closes with 4001', () => {
           const closeEvent = {
             code: 4001,
             reason: 'replaced during shutdown',
           };
 
-          // Test non-active socket
+          // Non-active socket: only registration.down is emitted (no 'offline')
           mobiusSocket.onclose(closeEvent, anotherSocket);
-          assert.calledWith(mobiusSocket.emitEvent, 'offline.replaced', closeEvent);
+          assert.calledWith(
+            mobiusSocket.emitEvent,
+            'event:registration.down',
+            MOBIUS_SOCKET_4001_EVENT.data
+          );
+          assert.neverCalledWith(mobiusSocket.emitEvent, 'offline', closeEvent);
 
-          // Reset the spy call history
           mobiusSocket.emitEvent.resetHistory();
 
-          // Test active socket
+          // Active socket: 'offline' is emitted alongside registration.down
           mobiusSocket.onclose(closeEvent, mockSocket);
-          assert.calledWith(mobiusSocket.emitEvent, 'offline.permanent', closeEvent);
+          assert.calledWith(mobiusSocket.emitEvent, 'offline', closeEvent);
+          assert.calledWith(
+            mobiusSocket.emitEvent,
+            'event:registration.down',
+            MOBIUS_SOCKET_4001_EVENT.data
+          );
         });
 
         it('should handle missing sourceSocket parameter (treats as non-active)', () => {
@@ -1359,7 +1380,12 @@ describe('plugin-mobius-socket', () => {
 
           mobiusSocket.onclose(closeEvent, undefined);
 
-          assert.calledWith(mobiusSocket.emitEvent, 'offline.replaced', closeEvent);
+          assert.calledWith(
+            mobiusSocket.emitEvent,
+            'event:registration.down',
+            MOBIUS_SOCKET_4001_EVENT.data
+          );
+          assert.neverCalledWith(mobiusSocket.emitEvent, 'offline.replaced', closeEvent);
           assert.notCalled(mobiusSocket.reconnect);
         });
 
