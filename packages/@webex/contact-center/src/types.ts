@@ -863,6 +863,8 @@ export type SuggestedResponseParams = {
   interactionId: string;
   /** Optional additional context that should refine the suggestion */
   context?: string;
+  /** Optional language code for suggestions (for example, 'en'). Defaults to 'en'. */
+  languageCode?: string;
 };
 
 /**

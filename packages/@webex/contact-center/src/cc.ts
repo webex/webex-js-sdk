@@ -736,9 +736,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           this.taskManager.setWebRtcEnabled(this.agentConfig.webRtcEnabled);
           this.apiAIAssistant.setAIFeatureFlags(this.agentConfig.aiFeature);
           /**
-           * TODO: We need to re-check this condition if this websocket is only for realtime transcripts
-           * or other AI Assistant features will also use the same.
-           * If the latter is true, we need to update this condition.
+           * RTD websocket currently supports realtime transcripts and suggested responses.
+           * Extend this condition when additional AI RTD features are introduced.
            */
           if (
             this.agentConfig.aiFeature?.realtimeTranscripts?.enable ||

@@ -72,21 +72,6 @@ export class ApiAIAssistant {
     return AI_ASSISTANT_BASE_URL_TEMPLATE.replace('%s', resolvedEnv);
   }
 
-  private static getLanguageCode(): string {
-    const navigatorLanguage =
-      typeof globalThis !== 'undefined' &&
-      'navigator' in globalThis &&
-      globalThis.navigator?.language
-        ? globalThis.navigator.language
-        : '';
-
-    if (navigatorLanguage) {
-      return navigatorLanguage.split('-')[0] || navigatorLanguage;
-    }
-
-    return 'en';
-  }
-
   /**
    * Sends an event to the AI Assistant service.
    * @param agentId - agent identifier
@@ -174,17 +159,21 @@ export class ApiAIAssistant {
    * @public
    */
   public async getSuggestedResponse(params: SuggestedResponseParams): Promise<any> {
-    const {agentId, interactionId, context} = params;
+    const {agentId, interactionId, context, languageCode} = params;
     const trackingId = `WX_CC_SDK_${uuidv4()}`;
     const eventName = context
       ? AIAssistantEventName.ADD_SUGGESTIONS_EXTRA_CONTEXT
       : AIAssistantEventName.GET_SUGGESTIONS;
 
-    LoggerProxy.info('Requesting suggested response', {
+    const loggerContext = {
       module: CC_FILE,
       method: METHODS.GET_SUGGESTED_RESPONSE,
       interactionId,
-    });
+      trackingId,
+      data: {eventName},
+    };
+
+    LoggerProxy.info('Requesting suggested response', loggerContext);
 
     this.metricsManager.timeEvent([
       METRIC_EVENT_NAMES.AI_ASSISTANT_GET_SUGGESTED_RESPONSE_SUCCESS,
@@ -210,7 +199,7 @@ export class ApiAIAssistant {
         eventName,
         undefined,
         context?.trim(),
-        ApiAIAssistant.getLanguageCode(),
+        languageCode,
         trackingId
       );
 
@@ -226,9 +215,11 @@ export class ApiAIAssistant {
         },
         ['operational']
       );
+      LoggerProxy.log('Suggested response request succeeded', loggerContext);
 
       return response;
     } catch (error) {
+      LoggerProxy.error('Suggested response request failed', {...loggerContext, error});
       this.metricsManager.trackEvent(
         METRIC_EVENT_NAMES.AI_ASSISTANT_GET_SUGGESTED_RESPONSE_FAILED,
         {
