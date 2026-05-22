@@ -817,7 +817,7 @@ class MobiusSocket extends EventEmitter {
         case 4001:
           // Handle the same way we do for registration.down event from Mobius.
           this.logger.info(`socket closed with 4001; will not reconnect`, loggerContext);
-          this.emitEvent('event:registration.down', MOBIUS_SOCKET_4001_EVENT.data);
+          this.emitEvent('event:async_event', MOBIUS_SOCKET_4001_EVENT);
           break;
         case 1000:
         case 1001:

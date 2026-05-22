@@ -1315,11 +1315,7 @@ describe('plugin-mobius-socket', () => {
           mobiusSocket.onclose(closeEvent, mockSocket);
 
           assert.calledWith(mobiusSocket.emitEvent, 'offline', closeEvent);
-          assert.calledWith(
-            mobiusSocket.emitEvent,
-            'event:registration.down',
-            MOBIUS_SOCKET_4001_EVENT.data
-          );
+          assert.calledWith(mobiusSocket.emitEvent, 'event:async_event', MOBIUS_SOCKET_4001_EVENT);
           assert.neverCalledWith(mobiusSocket.emitEvent, 'offline.permanent', closeEvent);
           assert.notCalled(mobiusSocket.reconnect);
           assert.isFalse(mobiusSocket.connected);
@@ -1333,11 +1329,7 @@ describe('plugin-mobius-socket', () => {
 
           mobiusSocket.onclose(closeEvent, anotherSocket);
 
-          assert.calledWith(
-            mobiusSocket.emitEvent,
-            'event:registration.down',
-            MOBIUS_SOCKET_4001_EVENT.data
-          );
+          assert.calledWith(mobiusSocket.emitEvent, 'event:async_event', MOBIUS_SOCKET_4001_EVENT);
           assert.neverCalledWith(mobiusSocket.emitEvent, 'offline.replaced', closeEvent);
           assert.neverCalledWith(mobiusSocket.emitEvent, 'offline', closeEvent);
           assert.notCalled(mobiusSocket.reconnect);
@@ -1353,11 +1345,7 @@ describe('plugin-mobius-socket', () => {
 
           // Non-active socket: only registration.down is emitted (no 'offline')
           mobiusSocket.onclose(closeEvent, anotherSocket);
-          assert.calledWith(
-            mobiusSocket.emitEvent,
-            'event:registration.down',
-            MOBIUS_SOCKET_4001_EVENT.data
-          );
+          assert.calledWith(mobiusSocket.emitEvent, 'event:async_event', MOBIUS_SOCKET_4001_EVENT);
           assert.neverCalledWith(mobiusSocket.emitEvent, 'offline', closeEvent);
 
           mobiusSocket.emitEvent.resetHistory();
@@ -1365,11 +1353,7 @@ describe('plugin-mobius-socket', () => {
           // Active socket: 'offline' is emitted alongside registration.down
           mobiusSocket.onclose(closeEvent, mockSocket);
           assert.calledWith(mobiusSocket.emitEvent, 'offline', closeEvent);
-          assert.calledWith(
-            mobiusSocket.emitEvent,
-            'event:registration.down',
-            MOBIUS_SOCKET_4001_EVENT.data
-          );
+          assert.calledWith(mobiusSocket.emitEvent, 'event:async_event', MOBIUS_SOCKET_4001_EVENT);
         });
 
         it('should handle missing sourceSocket parameter (treats as non-active)', () => {
@@ -1380,11 +1364,7 @@ describe('plugin-mobius-socket', () => {
 
           mobiusSocket.onclose(closeEvent, undefined);
 
-          assert.calledWith(
-            mobiusSocket.emitEvent,
-            'event:registration.down',
-            MOBIUS_SOCKET_4001_EVENT.data
-          );
+          assert.calledWith(mobiusSocket.emitEvent, 'event:async_event', MOBIUS_SOCKET_4001_EVENT);
           assert.neverCalledWith(mobiusSocket.emitEvent, 'offline.replaced', closeEvent);
           assert.notCalled(mobiusSocket.reconnect);
         });
