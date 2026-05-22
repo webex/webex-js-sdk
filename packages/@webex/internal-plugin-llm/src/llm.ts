@@ -124,9 +124,16 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     datachannelUrl: string,
     datachannelToken?: string,
     sessionId: string = LLM_DEFAULT_SESSION
-  ): Promise<void> =>
-    this.register(datachannelUrl, datachannelToken, sessionId).then(async () => {
+  ): Promise<{
+    clientLLMDatachannelResponseTime: number;
+    clientLLMWebSocketConnectTime: number;
+  } | void> => {
+    const registerStart = performance.now();
+
+    return this.register(datachannelUrl, datachannelToken, sessionId).then(async () => {
       if (!locusUrl || !datachannelUrl) return undefined;
+
+      const clientLLMDatachannelResponseTime = Math.round(performance.now() - registerStart);
 
       // Get or create connection data
       const sessionData = this.connections.get(sessionId) || {};
@@ -141,8 +148,15 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
         ? LLMChannel.buildUrlWithAwareSubchannels(sessionData.webSocketUrl, AWARE_DATA_CHANNEL)
         : sessionData.webSocketUrl;
 
-      return this.connect(connectUrl, sessionId);
+      const connectStart = performance.now();
+
+      await this.connect(connectUrl, sessionId);
+
+      const clientLLMWebSocketConnectTime = Math.round(performance.now() - connectStart);
+
+      return {clientLLMDatachannelResponseTime, clientLLMWebSocketConnectTime};
     });
+  };
 
   /**
    * Tells if LLM socket is connected
@@ -186,6 +200,17 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     const sessionData = this.connections.get(sessionId);
 
     return sessionData?.datachannelUrl;
+  };
+
+  /**
+   * Get WebSocket URL for the connection
+   * @param {string} sessionId - Connection identifier
+   * @returns {string | undefined} WebSocket URL
+   */
+  public getWebSocketUrl = (sessionId = LLM_DEFAULT_SESSION): string | undefined => {
+    const sessionData = this.connections.get(sessionId);
+
+    return sessionData?.webSocketUrl;
   };
 
   /**

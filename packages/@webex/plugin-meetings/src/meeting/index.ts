@@ -182,7 +182,7 @@ import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {ReachabilityMetrics} from '../reachability/reachability.types';
 import {SetStageOptions, SetStageVideoLayout, UnsetStageVideoLayout} from './request.type';
 import {Invitee} from './type';
-import {DataSet, HashTreeMessage, Metadata} from '../hashTree/hashTreeParser';
+import {DataSet, HashTreeMessage, Metadata, SyncLatencyMetrics} from '../hashTree/hashTreeParser';
 import {LocusDTO} from '../locus-info/types';
 import AIEnableRequest from '../aiEnableRequest';
 
@@ -1382,6 +1382,14 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     // @ts-ignore - Fix type
     this.locusInfo = new LocusInfo(this.updateMeetingObject.bind(this), this.webex, this.id);
+
+    // Set up sync metrics callback so that HashTreeParser can report latency metrics
+    this.locusInfo.syncMetricsCallback = (metrics: {
+      dataSet: string;
+      syncLatency: SyncLatencyMetrics;
+    }) => {
+      this.sendSyncCompleteMetric(metrics);
+    };
 
     // We had to add listeners first before setting up the locus instance
     /**
@@ -6378,6 +6386,9 @@ export default class Meeting extends StatelessWebexPlugin {
                 error
               );
 
+              // Send LLM connect metric with error on failure
+              this.sendLLMConnectMetric({clientLLMDatachannelResponseTime: 0}, error);
+
               Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
                 correlation_id: this.correlationId,
                 reason: error?.message,
@@ -6626,6 +6637,7 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Connects to low latency mercury and reconnects if the address has changed
    * It will also disconnect if called when the meeting has ended
+   * @param {Object} [options]
    * @returns {Promise}
    */
   async updateLLMConnection() {
@@ -6708,8 +6720,84 @@ export default class Meeting extends StatelessWebexPlugin {
 
         this.startLLMHealthCheckTimer();
 
+        // Emit LLM connect latency metric
+        if (registerAndConnectResult) {
+          this.sendLLMConnectMetric(registerAndConnectResult);
+        }
+
         return Promise.resolve(registerAndConnectResult);
       });
+  }
+
+  /**
+   * Sends the client.llm.connect.response diagnostic event with LLM connection latencies.
+   * @param {Object} timings - The timing measurements from LLM connection
+   * @param {Object} [error] - Optional error if connection failed
+   * @returns {void}
+   * @private
+   */
+  private sendLLMConnectMetric(
+    timings: {clientLLMDatachannelResponseTime: number; clientLLMWebSocketConnectTime?: number},
+    error?: any
+  ) {
+    // @ts-ignore
+    const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
+
+    const payload: any = {
+      llmLatency: {
+        clientLLMDatachannelResponseTime: timings.clientLLMDatachannelResponseTime,
+        ...(timings.clientLLMWebSocketConnectTime !== undefined && {
+          clientLLMWebSocketConnectTime: timings.clientLLMWebSocketConnectTime,
+        }),
+      },
+    };
+
+    if (llmWebsocketUrl) {
+      payload.identifiers = {llmWebsocketUrl};
+    }
+
+    // @ts-ignore
+    this.webex.internal.newMetrics.submitClientEvent({
+      name: 'client.llm.connect.response',
+      payload,
+      options: {
+        meetingId: this.id,
+        ...(error && {rawError: error}),
+      },
+    });
+  }
+
+  /**
+   * Sends the client.locus.sync.complete diagnostic event with sync latency metrics.
+   * @param {Object} metrics - The sync latency metrics from HashTreeParser
+   * @param {string} metrics.dataSet - The dataset name that was synced
+   * @param {SyncLatencyMetrics} metrics.syncLatency - The latency measurements
+   * @returns {void}
+   * @private
+   */
+  private sendSyncCompleteMetric(metrics: {dataSet: string; syncLatency: SyncLatencyMetrics}) {
+    // @ts-ignore
+    const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
+
+    const payload: any = {
+      syncLatency: metrics.syncLatency,
+      llmInfo: {
+        dataSet: metrics.dataSet,
+      },
+    };
+
+    if (llmWebsocketUrl) {
+      payload.identifiers = {llmWebsocketUrl};
+    }
+
+    // @ts-ignore
+    this.webex.internal.newMetrics.submitClientEvent({
+      name: 'client.locus.sync.complete',
+      payload,
+      options: {
+        meetingId: this.id,
+      },
+    });
   }
 
   /**

@@ -502,5 +502,58 @@ describe('plugin-llm', () => {
       });
     });
 
+
+    describe('#registerAndConnect timing', () => {
+      it('returns timing data on successful connection', async () => {
+        llmService.register = sinon.stub().callsFake(async () => {
+          llmService.binding = 'binding';
+          const sessionData = llmService.connections.get('llm-default-session') || {};
+          sessionData.webSocketUrl = 'wss://example.com/socket';
+          sessionData.binding = 'binding';
+          llmService.connections.set('llm-default-session', sessionData);
+        });
+
+        const result = await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined);
+
+        assert.isDefined(result);
+        assert.isNumber(result.clientLLMDatachannelResponseTime);
+        assert.isNumber(result.clientLLMWebSocketConnectTime);
+        assert.isAtLeast(result.clientLLMDatachannelResponseTime, 0);
+        assert.isAtLeast(result.clientLLMWebSocketConnectTime, 0);
+      });
+
+      it('returns undefined when locusUrl is empty', async () => {
+        llmService.register = sinon.stub().resolves();
+
+        const result = await llmService.registerAndConnect('', datachannelUrl, undefined);
+
+        assert.isUndefined(result);
+      });
+    });
+
+    describe('#getWebSocketUrl', () => {
+      it('returns the websocket URL for the default session', () => {
+        llmService.connections.set('llm-default-session', {
+          webSocketUrl: 'wss://test.example.com/ws',
+        });
+
+        assert.equal(llmService.getWebSocketUrl(), 'wss://test.example.com/ws');
+      });
+
+      it('returns undefined when no connection exists', () => {
+        llmService.connections.clear();
+
+        assert.isUndefined(llmService.getWebSocketUrl());
+      });
+
+      it('returns the websocket URL for a specific session', () => {
+        llmService.connections.set('custom-session', {
+          webSocketUrl: 'wss://custom.example.com/ws',
+        });
+
+        assert.equal(llmService.getWebSocketUrl('custom-session'), 'wss://custom.example.com/ws');
+      });
+    });
+
   });
 });

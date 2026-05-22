@@ -5325,4 +5325,211 @@ describe('HashTreeParser', () => {
       expect(parser.dataSets).to.deep.equal({});
     });
   });
+
+  describe('#syncMetrics', () => {
+    let parser;
+    let clock;
+
+    beforeEach(() => {
+      clock = sinon.useFakeTimers();
+      parser = new HashTreeParser({
+        initialLocus: {
+          dataSets: [
+            {
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main',
+              root: '9bb9d5a911a74d53a915b4dfbec7329f',
+              version: 1000,
+              leafCount: 16,
+              name: 'main',
+              idleMs: 1000,
+              backoff: {maxMs: 1000, exponent: 2},
+            },
+            {
+              url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self',
+              root: '5b8cc7ffda1346d2bfb1c0b60b8ab601',
+              version: 2000,
+              leafCount: 1,
+              name: 'self',
+              idleMs: 1000,
+              backoff: {maxMs: 1000, exponent: 2},
+            },
+          ],
+          locus: {
+            links: {
+              resources: {
+                visibleDataSets: {url: visibleDataSetsUrl},
+              },
+            },
+          },
+        },
+        metadata: {
+          htMeta: {elementId: {type: 'metadata', id: 0, version: 1}, dataSetNames: ['self']},
+          visibleDataSets: [
+            {name: 'main', url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main'},
+            {name: 'self', url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/participant/713e9f99/datasets/self'},
+          ],
+        },
+        webexRequest: sinon.stub().resolves({body: {}}),
+        locusInfoUpdateCallback: sinon.stub(),
+        debugId: 'test',
+      });
+    });
+
+    afterEach(() => {
+      parser.stop();
+      clock.restore();
+    });
+
+    it('invokes syncMetricsCallback when LLM message completes pending metrics', () => {
+      const callback = sinon.stub();
+      parser.syncMetricsCallback = callback;
+
+      // Simulate pending metrics for 'main' dataset
+      parser['pendingSyncMetrics'].set('main', {
+        syncResponseReceivedAt: 100,
+        totalStartTime: 50,
+        randomBackoffTime: 10,
+        hashtreePrepTime: 5,
+        hashtreeResponseTime: 20,
+        syncPrepTime: 3,
+        syncResponseTime: 15,
+        dataSetName: 'main',
+        dataSetVersion: 1000,
+      });
+
+      // Simulate receiving an LLM message with version >= pending version
+      const message = {
+        dataSets: [
+          {
+            url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main',
+            root: 'newroot',
+            version: 1001,
+            leafCount: 16,
+            name: 'main',
+            idleMs: 1000,
+            backoff: {maxMs: 1000, exponent: 2},
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus', id: 0, version: 201},
+              dataSetNames: ['main'],
+            },
+            data: {someData: 'value'},
+          },
+        ],
+      };
+
+      parser.handleMessage(message);
+
+      assert.calledOnce(callback);
+      const metricsArg = callback.firstCall.args[0];
+      assert.equal(metricsArg.dataSet, 'main');
+      assert.isNumber(metricsArg.syncLatency.randomBackoffTime);
+      assert.isNumber(metricsArg.syncLatency.hashtreePrepTime);
+      assert.isNumber(metricsArg.syncLatency.hashtreeResponseTime);
+      assert.isNumber(metricsArg.syncLatency.syncPrepTime);
+      assert.isNumber(metricsArg.syncLatency.syncResponseTime);
+      assert.isNumber(metricsArg.syncLatency.syncMessageReceiveTime);
+      assert.isNumber(metricsArg.syncLatency.totalTime);
+    });
+
+    it('does not invoke callback when message version is below pending version', () => {
+      const callback = sinon.stub();
+      parser.syncMetricsCallback = callback;
+
+      parser['pendingSyncMetrics'].set('main', {
+        syncResponseReceivedAt: 100,
+        totalStartTime: 50,
+        randomBackoffTime: 10,
+        hashtreePrepTime: 5,
+        hashtreeResponseTime: 20,
+        syncPrepTime: 3,
+        syncResponseTime: 15,
+        dataSetName: 'main',
+        dataSetVersion: 1005,
+      });
+
+      const message = {
+        dataSets: [
+          {
+            url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main',
+            root: 'newroot',
+            version: 1004, // below pending version
+            leafCount: 16,
+            name: 'main',
+            idleMs: 1000,
+            backoff: {maxMs: 1000, exponent: 2},
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus', id: 0, version: 201},
+              dataSetNames: ['main'],
+            },
+            data: {someData: 'value'},
+          },
+        ],
+      };
+
+      parser.handleMessage(message);
+
+      assert.notCalled(callback);
+      // Pending metrics should still be there
+      assert.isTrue(parser['pendingSyncMetrics'].has('main'));
+    });
+
+    it('does not invoke callback when no syncMetricsCallback is set', () => {
+      parser.syncMetricsCallback = undefined;
+
+      parser['pendingSyncMetrics'].set('main', {
+        syncResponseReceivedAt: 100,
+        totalStartTime: 50,
+        randomBackoffTime: 10,
+        hashtreePrepTime: 5,
+        hashtreeResponseTime: 20,
+        syncPrepTime: 3,
+        syncResponseTime: 15,
+        dataSetName: 'main',
+        dataSetVersion: 1000,
+      });
+
+      const message = {
+        dataSets: [
+          {
+            url: 'https://locus-a.wbx2.com/locus/api/v1/loci/97d64a5f/datasets/main',
+            root: 'newroot',
+            version: 1001,
+            leafCount: 16,
+            name: 'main',
+            idleMs: 1000,
+            backoff: {maxMs: 1000, exponent: 2},
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [
+          {
+            htMeta: {
+              elementId: {type: 'locus', id: 0, version: 201},
+              dataSetNames: ['main'],
+            },
+            data: {someData: 'value'},
+          },
+        ],
+      };
+
+      // Should not throw
+      parser.handleMessage(message);
+
+      // Pending metrics should be cleared
+      assert.isFalse(parser['pendingSyncMetrics'].has('main'));
+    });
+  });
 });

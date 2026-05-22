@@ -4,11 +4,15 @@ interface ILLMChannel {
     datachannelUrl: string,
     datachannelToken?: string,
     sessionId?: string
-  ) => Promise<void>;
+  ) => Promise<{
+    clientLLMDatachannelResponseTime: number;
+    clientLLMWebSocketConnectTime: number;
+  } | void>;
   isConnected: (sessionId?: string) => boolean;
   getBinding: (sessionId?: string) => string;
   getLocusUrl: (sessionId?: string) => string;
   getDatachannelUrl: (sessionId?: string) => string;
+  getWebSocketUrl: (sessionId?: string) => string | undefined;
   disconnectLLM: (options: {code: number; reason: string}, sessionId?: string) => Promise<void>;
   disconnectAllLLM: (options?: {code: number; reason: string}) => Promise<void>;
   setOwnerMeetingId: (ownerMeetingId: string | undefined, sessionId?: string) => void;

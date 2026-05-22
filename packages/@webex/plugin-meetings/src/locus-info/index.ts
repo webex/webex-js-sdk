@@ -37,6 +37,7 @@ import HashTreeParser, {
   LocusInfoUpdate,
   LocusInfoUpdateType,
   Metadata,
+  SyncMetricsCallback,
 } from '../hashTree/hashTreeParser';
 import {HashTreeObject, ObjectType, ObjectTypeToLocusKeyMap} from '../hashTree/types';
 import {isMetadata, isSelf} from '../hashTree/utils';
@@ -286,6 +287,7 @@ export default class LocusInfo extends EventsScope {
   hashTreeParsers: Map<string, HashTreeParserEntry>;
   hashTreeObjectId2ParticipantId: Map<number, string>; // mapping of hash tree object ids to participant ids
   classicVsHashTreeMismatchMetricCounter = 0;
+  syncMetricsCallback?: SyncMetricsCallback;
 
   /**
    * Constructor
@@ -558,6 +560,10 @@ export default class LocusInfo extends EventsScope {
       debugId: `HT-${locusUrl.split('/')?.pop()?.substring(0, 4)}`,
       excludedDataSets: this.webex.config.meetings.locus?.excludedDataSets,
     });
+
+    if (this.syncMetricsCallback) {
+      parser.syncMetricsCallback = this.syncMetricsCallback;
+    }
 
     // When a new HashTreeParser is created, previous one should be stopped.
     // Locus will only be sending us updates for the current one.
