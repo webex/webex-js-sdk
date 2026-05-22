@@ -2,6 +2,8 @@ import * as WebexCore from '@webex/webex-core';
 import LLMChannel, {config} from './llm';
 import {DataChannelTokenType} from './llm.types';
 
+export type {RegisterAndConnectTiming} from './llm.types';
+
 WebexCore.registerInternalPlugin('llm', LLMChannel, {
   config,
 });

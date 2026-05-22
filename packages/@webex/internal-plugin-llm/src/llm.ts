@@ -10,7 +10,7 @@ import {
   SUBSCRIPTION_AWARE_SUBCHANNELS_PARAM,
   LLM_DEFAULT_SESSION,
 } from './constants';
-import {ILLMChannel, DataChannelTokenType} from './llm.types';
+import {ILLMChannel, DataChannelTokenType, RegisterAndConnectTiming} from './llm.types';
 
 export const config = {
   llm: {
@@ -124,10 +124,7 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
     datachannelUrl: string,
     datachannelToken?: string,
     sessionId: string = LLM_DEFAULT_SESSION
-  ): Promise<{
-    clientLLMDatachannelResponseTime: number;
-    clientLLMWebSocketConnectTime: number;
-  } | void> => {
+  ): Promise<RegisterAndConnectTiming | undefined> => {
     const registerStart = performance.now();
 
     return this.register(datachannelUrl, datachannelToken, sessionId).then(async () => {

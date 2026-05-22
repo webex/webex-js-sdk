@@ -33,7 +33,7 @@ import {
   MediaCodecMimeType,
 } from '@webex/internal-media-core';
 
-import {DataChannelTokenType} from '@webex/internal-plugin-llm';
+import {DataChannelTokenType, type RegisterAndConnectTiming} from '@webex/internal-plugin-llm';
 
 import {
   LocalStream,
@@ -6387,7 +6387,13 @@ export default class Meeting extends StatelessWebexPlugin {
               );
 
               // Send LLM connect metric with error on failure
-              this.sendLLMConnectMetric({clientLLMDatachannelResponseTime: 0}, error);
+              this.sendLLMConnectMetric(
+                {
+                  clientLLMDatachannelResponseTime: 0,
+                  clientLLMWebSocketConnectTime: 0,
+                },
+                error
+              );
 
               Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.LLM_CONNECTION_AFTER_JOIN_FAILURE, {
                 correlation_id: this.correlationId,
@@ -6736,10 +6742,7 @@ export default class Meeting extends StatelessWebexPlugin {
    * @returns {void}
    * @private
    */
-  private sendLLMConnectMetric(
-    timings: {clientLLMDatachannelResponseTime: number; clientLLMWebSocketConnectTime?: number},
-    error?: any
-  ) {
+  private sendLLMConnectMetric(timings: RegisterAndConnectTiming, error?: any) {
     // @ts-ignore
     const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
 
