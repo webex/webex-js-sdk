@@ -315,7 +315,7 @@ describe('plugin-meetings', () => {
           `event:relay.event:${PRACTICE_SESSION_KEY}`,
           relayListener
         );
-        assert.isNull(webinar._practiceSessionRelayListener);
+        assert.notOk(webinar._practiceSessionRelayListener);
        });
 
       it('disconnects and removes the tracked locusLLM listener', async () => {

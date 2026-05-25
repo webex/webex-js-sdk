@@ -228,9 +228,9 @@ const Webinar = WebexPlugin.extend({
           `event:relay.event:${LLM_PRACTICE_SESSION}`,
           this._practiceSessionRelayListener
         );
-        this._practiceSessionRelayListener = null;
       }
-      
+      this._practiceSessionRelayListener = null;
+
       for (const {event, listenerKey} of PS_LLM_EVENTS) {
         if (this.llmListeners[listenerKey]) {
           // @ts-ignore - Fix type
