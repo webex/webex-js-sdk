@@ -864,6 +864,34 @@ describe('uiControlsComputer consult initiator controls', () => {
 
     expect(uiControls.consult.transfer).toEqual({isVisible: false, isEnabled: false});
     expect(uiControls.consult.transferConference).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.transferConference).toEqual({isVisible: true, isEnabled: false});
+  });
+
+  it('keeps consult leg controls active and main leg conference controls disabled on hydrate-like context', () => {
+    const taskData = createConferenceConsultingInitiatorTaskData();
+    const baseContext = createVoiceContext();
+    const context = createVoiceContext({
+      consultInitiator: true,
+      consultFromConference: true,
+      consultDestinationAgentJoined: true,
+      consultCallHeld: false,
+      taskData,
+      uiControlConfig: {
+        ...baseContext.uiControlConfig,
+        agentId: 'agent-1',
+      },
+    });
+
+    const uiControls = computeUIControls(TaskState.CONSULTING, context, taskData);
+
+    expect(uiControls.activeLeg).toBe('consult');
+    expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.conference).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.transferConference).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.consult.switch).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.transferConference).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.mergeToConference).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.endConsult).toEqual({isVisible: true, isEnabled: true});
   });
 
   it('keeps transferConference visible on consult leg for initiator even when state is conferencing', () => {
@@ -925,7 +953,9 @@ describe('uiControlsComputer consult initiator controls', () => {
     const uiControls = computeUIControls(TaskState.CONFERENCING, context, taskData);
 
     expect(uiControls.activeLeg).toBe('main');
+    expect(uiControls.main.transfer).toEqual({isVisible: false, isEnabled: false});
     expect(uiControls.main.transferConference).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.transferConference).toEqual({isVisible: true, isEnabled: false});
   });
 
   it('keeps transferConference visible on consult leg for taskData1-style payload', () => {
@@ -1002,6 +1032,47 @@ describe('uiControlsComputer consult initiator controls', () => {
 
     expect(uiControls.main.exitConference).toEqual({isVisible: false, isEnabled: false});
   });
+
+  it('hides exitConference on main leg while consulting and destination has not joined', () => {
+    const taskData = createConferenceConsultInitiatedInitiatorTaskData();
+    const baseContext = createVoiceContext();
+    const context = createVoiceContext({
+      consultInitiator: true,
+      consultFromConference: true,
+      consultDestinationAgentJoined: false,
+      consultCallHeld: false,
+      taskData,
+      uiControlConfig: {
+        ...baseContext.uiControlConfig,
+        agentId: 'agent-1',
+      },
+    });
+
+    const uiControls = computeUIControls(TaskState.CONSULTING, context, taskData);
+
+    expect(uiControls.main.exitConference).toEqual({isVisible: false, isEnabled: false});
+  });
+
+  it('hides exitConference on main leg for pending self consult even with stale initiator flags', () => {
+    const taskData = createConferenceConsultInitiatedInitiatorTaskData();
+    const baseContext = createVoiceContext();
+    const context = createVoiceContext({
+      consultInitiator: false,
+      consultFromConference: false,
+      consultDestinationAgentJoined: false,
+      consultCallHeld: false,
+      taskData,
+      uiControlConfig: {
+        ...baseContext.uiControlConfig,
+        agentId: 'agent-1',
+      },
+    });
+
+    const uiControls = computeUIControls(TaskState.CONSULTING, context, taskData);
+
+    expect(uiControls.main.exitConference).toEqual({isVisible: false, isEnabled: false});
+  });
+
 });
 
 describe('uiControlsComputer outdial accept/decline controls', () => {

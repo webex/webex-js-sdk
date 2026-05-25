@@ -216,6 +216,21 @@ export const guards = {
   },
 
   /**
+   * Conference hold signal for conference-downgraded consult-end transitions.
+   * Backend can report this as boolean or string.
+   */
+  isConferenceHoldParticipantFromEvent: ({context, event}: GuardParams): boolean => {
+    const taskData = getTaskDataFromEvent(event) ?? context.taskData;
+    const callProcessingDetails = taskData?.interaction?.callProcessingDetails as
+      | {conferenceHoldParticipant?: boolean | string}
+      | undefined;
+    const conferenceHoldParticipant =
+      callProcessingDetails?.conferenceHoldParticipant;
+
+    return conferenceHoldParticipant === true || conferenceHoldParticipant === 'true';
+  },
+
+  /**
    * Conference downgrade check specifically for transitioning back to CONNECTED.
    *
    * Returns true only when:

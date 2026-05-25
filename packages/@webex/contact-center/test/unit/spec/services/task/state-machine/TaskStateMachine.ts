@@ -206,6 +206,72 @@ describe('Task state machine', () => {
         } as any,
       });
 
+    const createConferenceConsultTaskData = ({
+      interactionState,
+      includeSecondAgent,
+      conferenceHoldParticipant,
+      isMainHeld = false,
+    }: {
+      interactionState: string;
+      includeSecondAgent: boolean;
+      conferenceHoldParticipant: boolean | string;
+      isMainHeld?: boolean;
+    }) =>
+      createTaskData({
+        interactionId: 'interaction-1',
+        mediaResourceId: 'interaction-1',
+        consultMediaResourceId: 'consult-media-1',
+        interaction: {
+          state: interactionState,
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          callProcessingDetails: {
+            conferenceHoldParticipant,
+          },
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasLeft: false,
+              consultState: 'consulting',
+            },
+            ...(includeSecondAgent
+              ? {
+                  'agent-2': {
+                    id: 'agent-2',
+                    pType: 'Agent',
+                    hasLeft: false,
+                  },
+                }
+              : {}),
+            'agent-3': {
+              id: 'agent-3',
+              pType: 'Agent',
+              hasLeft: false,
+              isConsulted: true,
+              consultState: 'consulting',
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: includeSecondAgent
+                ? ['agent-1', 'agent-2', 'customer-1']
+                : ['agent-1', 'customer-1'],
+              isHold: isMainHeld,
+            },
+            'consult-media-1': {
+              mediaResourceId: 'consult-media-1',
+              mType: 'consult',
+              participants: ['agent-1', 'agent-3'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
     it('boots from IDLE to CONSULTING on CONSULTING_ACTIVE for split-leg ordering', () => {
       const service = startMachine();
       const taskData = createTaskData({
@@ -274,6 +340,7 @@ describe('Task state machine', () => {
       const snapshot = service.getSnapshot();
       expect(snapshot.value).toBe(TaskState.CONSULTING);
       expect(snapshot.context.consultInitiator).toBe(true);
+      expect(snapshot.context.consultFromConference).toBe(true);
     });
 
   it('hydrates consulted agent to CONSULTING when self consultState is consulting and main leg is held', () => {
@@ -371,6 +438,7 @@ describe('Task state machine', () => {
       const snapshot = service.getSnapshot();
       expect(snapshot.value).toBe(TaskState.CONSULTING);
       expect(snapshot.context.consultInitiator).toBe(true);
+      expect(snapshot.context.consultFromConference).toBe(true);
     });
 
     it('tracks consult destination, agent join, and clears on consult end', () => {
@@ -471,6 +539,69 @@ describe('Task state machine', () => {
       expect(service.getSnapshot().context.consultDestinationAgentJoined).toBe(true);
     });
 
+    it('hydrates conference consult context flags for active consult leg controls', () => {
+      const service = startMachine();
+      const taskData = createTaskData({
+        type: 'AgentContactUnheld' as any,
+        isConsulted: false,
+        consultingAgentId: 'agent-1',
+        consultMediaResourceId: 'consult-media-1',
+        interaction: {
+          state: 'conference',
+          mainInteractionId: 'interaction-1',
+          interactionId: 'interaction-1',
+          participants: {
+            'agent-1': {
+              id: 'agent-1',
+              pType: 'Agent',
+              hasLeft: false,
+              consultState: 'consulting',
+              isConsulted: false,
+            },
+            'agent-2': {
+              id: 'agent-2',
+              pType: 'Agent',
+              hasLeft: false,
+              hasJoined: true,
+              consultState: 'consulting',
+              isConsulted: true,
+            },
+            'agent-3': {
+              id: 'agent-3',
+              pType: 'Agent',
+              hasLeft: false,
+              consultState: 'conferencing',
+              isConsulted: false,
+            },
+            'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+          },
+          media: {
+            'interaction-1': {
+              mediaResourceId: 'interaction-1',
+              mType: 'mainCall',
+              participants: ['agent-1', 'agent-3', 'customer-1'],
+              isHold: false,
+            },
+            'consult-media-1': {
+              mediaResourceId: 'consult-media-1',
+              mType: 'consult',
+              participants: ['agent-1', 'agent-2'],
+              isHold: false,
+            },
+          },
+        } as any,
+      });
+
+      service.send({type: TaskEvent.HYDRATE, taskData});
+
+      const snapshot = service.getSnapshot();
+      expect(snapshot.value).toBe(TaskState.CONSULTING);
+      expect(snapshot.context.consultInitiator).toBe(true);
+      expect(snapshot.context.consultFromConference).toBe(true);
+      expect(snapshot.context.consultDestinationAgentJoined).toBe(true);
+      expect(snapshot.context.consultCallHeld).toBe(false);
+    });
+
     it('returns to connected when consult ends after switching back to the main leg', () => {
       const service = startMachine();
       const taskData = createTaskData();
@@ -492,6 +623,89 @@ describe('Task state machine', () => {
       const snapshotAfterEnd = service.getSnapshot();
       expect(snapshotAfterEnd.value).toBe(TaskState.CONNECTED);
       expect(snapshotAfterEnd.context.consultCallHeld).toBe(false);
+    });
+
+    it('downgrades to HELD on CONSULT_END when conference has downgraded and conferenceHoldParticipant is true', () => {
+      const service = startMachine();
+      const conferenceTaskData = createConferenceConsultTaskData({
+        interactionState: 'conference',
+        includeSecondAgent: true,
+        conferenceHoldParticipant: false,
+      });
+      const downgradedHeldTaskData = createConferenceConsultTaskData({
+        interactionState: 'hold',
+        includeSecondAgent: false,
+        conferenceHoldParticipant: true,
+        isMainHeld: true,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: conferenceTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      service.send({type: TaskEvent.CONSULT, destination: 'agent-3', destinationType: 'agent'});
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULT_INITIATING);
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData: conferenceTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
+
+      service.send({type: TaskEvent.CONSULT_END, taskData: downgradedHeldTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.HELD);
+    });
+
+    it('downgrades to CONNECTED on CONSULT_END when conference has downgraded and conferenceHoldParticipant is false', () => {
+      const service = startMachine();
+      const conferenceTaskData = createConferenceConsultTaskData({
+        interactionState: 'conference',
+        includeSecondAgent: true,
+        conferenceHoldParticipant: false,
+      });
+      const downgradedConnectedTaskData = createConferenceConsultTaskData({
+        interactionState: 'connected',
+        includeSecondAgent: false,
+        conferenceHoldParticipant: false,
+        isMainHeld: false,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: conferenceTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      service.send({type: TaskEvent.CONSULT, destination: 'agent-3', destinationType: 'agent'});
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULT_INITIATING);
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData: conferenceTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
+
+      service.send({type: TaskEvent.CONSULT_END, taskData: downgradedConnectedTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONNECTED);
+    });
+
+    it('returns to CONFERENCING on CONSULT_END when conference is still active', () => {
+      const service = startMachine();
+      const conferenceTaskData = createConferenceConsultTaskData({
+        interactionState: 'conference',
+        includeSecondAgent: true,
+        conferenceHoldParticipant: false,
+      });
+      const stillConferenceTaskData = createConferenceConsultTaskData({
+        interactionState: 'conference',
+        includeSecondAgent: true,
+        conferenceHoldParticipant: false,
+      });
+
+      service.send({type: TaskEvent.TASK_INCOMING, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.ASSIGN, taskData: conferenceTaskData});
+      service.send({type: TaskEvent.CONFERENCE_START, taskData: conferenceTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
+
+      service.send({type: TaskEvent.CONSULT, destination: 'agent-3', destinationType: 'agent'});
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULT_INITIATING);
+      service.send({type: TaskEvent.CONSULT_SUCCESS, taskData: conferenceTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONSULTING);
+
+      service.send({type: TaskEvent.CONSULT_END, taskData: stillConferenceTaskData});
+      expect(service.getSnapshot().value).toBe(TaskState.CONFERENCING);
     });
 
     it('transitions to conferencing when merge event is received', () => {

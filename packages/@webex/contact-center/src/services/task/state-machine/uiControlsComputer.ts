@@ -213,6 +213,10 @@ function computeVoiceInteractionUIControls(
     !isConsulting &&
     !isConsulted &&
     (consultInProgress || consultCallHeld || hasConsultMedia);
+  const activeLegForConferenceConsult = consultCallHeld ? 'main' : 'consult';
+  const isCurrentLegActive = currentLeg === activeLegForConferenceConsult;
+  const isConferenceConsultTransferContext =
+    inConference && consultInitiator && hasConsultMedia && isConsultDestinationReady;
   const consultLegOnHold = isConsulting && consultCallHeld;
   const callProcessingDetails = interaction?.callProcessingDetails as
     | {conferenceHoldParticipant?: boolean | string}
@@ -240,8 +244,14 @@ function computeVoiceInteractionUIControls(
   const isConsultPendingBeforeJoin =
     selfParticipant?.consultState === 'consultInitiated' && !consultDestinationAgentJoined;
   const hideExitConferenceWhileConsultPending =
+    currentLeg === 'main' &&
+    inConference &&
     isConsultPendingBeforeJoin &&
-    (consultFromConference || consultInitiator || taskData?.type === 'AgentConsultCreated');
+    (consultFromConference ||
+      consultInitiator ||
+      taskData?.type === 'AgentConsultCreated' ||
+      consultInProgress ||
+      isConsulting);
   const hideExitConferenceDuringActiveConsultFromConference =
     inConference &&
     consultInitiator &&
@@ -342,6 +352,13 @@ function computeVoiceInteractionUIControls(
     // Transfer: connected/held/conference
     transfer: (() => {
       if (isHydratedConferenceConsultPending) return VISIBLE_DISABLED;
+      if (
+        isConferenceConsultTransferContext &&
+        currentLeg === 'main' &&
+        isCurrentLegActive
+      ) {
+        return DISABLED;
+      }
       if (inConference && isConsulting && consultInitiator) return DISABLED;
       if (hasParallelConsultLeg) {
         if (!customerPresent) return DISABLED;
@@ -455,11 +472,11 @@ function computeVoiceInteractionUIControls(
 
     // ExitConference: in conference with multiple agents in main call
     exitConference: (() => {
+      if (hideExitConferenceWhileConsultPending) return DISABLED;
       if (allowHeldMainLegControlsForNonInitiator) return VISIBLE_ENABLED;
       if (showMainLegConferenceControlsDuringConsult) return VISIBLE_DISABLED;
       if (hideExitConferenceDuringActiveConsultFromConference) return DISABLED;
       if (forceHeldPostConsultControls) return VISIBLE_DISABLED;
-      if (hideExitConferenceWhileConsultPending) return DISABLED;
       if (isConsulted && !isConferencing) return DISABLED;
       if (!inConference) return DISABLED;
       if (participantCount <= 1) return DISABLED;
@@ -471,6 +488,7 @@ function computeVoiceInteractionUIControls(
 
     // TransferConference: in conference with active consult, owner consulting from conference
     transferConference: (() => {
+      if (isConferenceConsultTransferContext && !isCurrentLegActive) return VISIBLE_DISABLED;
       const consultLegTransferAvailable =
         currentLeg === 'consult' && inConference && consultInitiator && hasConsultMedia;
       const selfConsultingOnParticipantState = selfParticipant?.consultState === 'consulting';

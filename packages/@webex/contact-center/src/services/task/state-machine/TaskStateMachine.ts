@@ -485,12 +485,31 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentConsultEnded
           [TaskEvent.CONSULT_END]: [
             {
-              // Initiator returning to conference (flag set OR backend still shows conference)
+              // Initiator returning to conference only while conference is still active.
               guard: ({context, event}) =>
                 context.consultInitiator === true &&
-                (context.consultFromConference === true ||
-                  guards.conferenceInProgressFromEvent({context, event})),
+                guards.conferenceInProgressFromEvent({context, event}),
               target: TaskState.CONFERENCING,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+            {
+              // Conference consult ended after conference downgrade while main leg is held.
+              guard: ({context, event}) =>
+                context.consultInitiator === true &&
+                context.consultFromConference === true &&
+                !guards.conferenceInProgressFromEvent({context, event}) &&
+                guards.isConferenceHoldParticipantFromEvent({context, event}),
+              target: TaskState.HELD,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+            {
+              // Conference consult ended after conference downgrade while main leg is connected.
+              guard: ({context, event}) =>
+                context.consultInitiator === true &&
+                context.consultFromConference === true &&
+                !guards.conferenceInProgressFromEvent({context, event}) &&
+                !guards.isConferenceHoldParticipantFromEvent({context, event}),
+              target: TaskState.CONNECTED,
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
             {

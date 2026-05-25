@@ -106,6 +106,48 @@ const isActiveConsultState = (taskData: TaskData | undefined, selfAgentId?: stri
   return false;
 };
 
+const isSelfConsultingOrPending = (taskData: TaskData | undefined, selfAgentId?: string): boolean => {
+  if (!taskData || !selfAgentId) return false;
+  const selfParticipant = taskData?.interaction?.participants?.[selfAgentId] as any;
+
+  return (
+    selfParticipant?.consultState === CONSULT_STATE.CONSULTING ||
+    selfParticipant?.consultState === 'consultInitiated'
+  );
+};
+
+const hasJoinedConsultDestination = (taskData: TaskData | undefined): boolean => {
+  if (!taskData?.interaction) return false;
+  const participants = taskData.interaction.participants as any;
+  const cpd = taskData.interaction.callProcessingDetails as any;
+  const backendSaysJoined = cpd?.consultDestinationAgentJoined === 'true';
+  if (backendSaysJoined) return true;
+  if (!participants) return false;
+
+  return Object.values(participants).some((p: any) => {
+    if (!p || p.isConsulted !== true || p.hasLeft) return false;
+
+    return p.hasJoined === true || p.consultState === CONSULT_STATE.CONSULTING;
+  });
+};
+
+const deriveConsultCallHeldFromTaskData = (taskData: TaskData | undefined): boolean | undefined => {
+  if (!taskData?.interaction) return undefined;
+
+  const eventType = taskData.type;
+  if (eventType === 'AgentContactHeld') return true;
+  if (eventType === 'AgentContactUnheld') return false;
+
+  const consultMediaId = taskData.consultMediaResourceId;
+  const consultMedia: any = consultMediaId
+    ? taskData.interaction.media?.[consultMediaId]
+    : Object.values(taskData.interaction.media ?? {}).find((m: any) => m?.mType === MEDIA_TYPE_CONSULT);
+
+  if (!consultMedia) return undefined;
+
+  return Boolean(consultMedia.isHold);
+};
+
 const getTaskStateForUiControls = (
   taskData: TaskData | undefined,
   selfAgentId: string | undefined
@@ -150,8 +192,13 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
 
         const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
         const consultingActive =
-          taskData?.interaction?.state === INTERACTION_STATE.CONSULTING ||
-          hasActiveConsultInPostCall(taskData, selfAgentId);
+          isActiveConsultState(taskData, selfAgentId) || hasActiveConsultInPostCall(taskData, selfAgentId);
+        const conferenceFromPayload =
+          taskData?.interaction?.state === INTERACTION_STATE.CONFERENCE ||
+          getIsConferenceInProgress(taskData);
+        const selfConsultingOrPending = isSelfConsultingOrPending(taskData, selfAgentId);
+        const inferredConsultingInitiator =
+          selfConsultingOrPending && taskData?.isConsulted === false;
 
         if (taskData.destAgentId) {
           const isEpDnWithStoredId =
@@ -168,24 +215,23 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
           const consultInitiator = determineConsultInitiator(taskData, selfAgentId);
           if (consultInitiator !== undefined) {
             updates.consultInitiator = consultInitiator;
-          } else if (consultingActive && taskData.isConsulted === false) {
+          } else if (inferredConsultingInitiator || (consultingActive && taskData.isConsulted === false)) {
             updates.consultInitiator = true;
           }
         }
 
+        const effectiveConsultInitiator = updates.consultInitiator ?? context.consultInitiator;
+        if (
+          effectiveConsultInitiator &&
+          conferenceFromPayload &&
+          (consultingActive || selfConsultingOrPending || Boolean(taskData?.consultMediaResourceId))
+        ) {
+          updates.consultFromConference = true;
+        }
+
         if (consultingActive && taskData.interaction) {
-          if (!context.consultDestinationAgentJoined) {
-            const hasJoinedConsultee = Boolean(
-              taskData.interaction.participants &&
-                Object.values(taskData.interaction.participants).some(
-                  (p: any) => p?.isConsulted === true && p?.hasJoined === true && !p?.hasLeft
-                )
-            );
-            const cpd = taskData.interaction?.callProcessingDetails;
-            const backendSaysJoined = cpd?.consultDestinationAgentJoined === 'true';
-            if (hasJoinedConsultee || backendSaysJoined)
-              updates.consultDestinationAgentJoined = true;
-          }
+          const joinedConsultee = hasJoinedConsultDestination(taskData);
+          if (joinedConsultee) updates.consultDestinationAgentJoined = true;
 
           if (!context.consultDestinationType && !updates.consultDestinationType) {
             const hasEpDnParticipant = Boolean(
@@ -197,16 +243,10 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
             if (hasEpDnParticipant) updates.consultDestinationType = 'entryPoint' as any;
           }
 
-          const effectiveConsultInitiator = updates.consultInitiator ?? context.consultInitiator;
           if (effectiveConsultInitiator) {
-            const consultMediaId = taskData.consultMediaResourceId;
-            const consultMedia: any = consultMediaId
-              ? taskData.interaction.media?.[consultMediaId]
-              : Object.values(taskData.interaction.media ?? {}).find(
-                  (m: any) => m?.mType === 'consult'
-                );
-            if (consultMedia) {
-              updates.consultCallHeld = Boolean(consultMedia.isHold);
+            const consultCallHeld = deriveConsultCallHeldFromTaskData(taskData);
+            if (consultCallHeld !== undefined) {
+              updates.consultCallHeld = consultCallHeld;
             }
           }
         }
