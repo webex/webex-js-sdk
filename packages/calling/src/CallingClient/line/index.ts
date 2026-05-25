@@ -146,12 +146,12 @@ export default class Line extends Eventing<LineEventTypes> implements ILine {
   /**
    * Wrapper to for device  deregister.
    */
-  public async deregister() {
+  public async deregister(closeMobiusWss = false) {
     log.info(METHOD_START_MESSAGE, {
       file: LINE_FILE,
       method: METHODS.DEREGISTER,
     });
-    await this.registration.deregister();
+    await this.registration.deregister(closeMobiusWss);
     this.registration.setStatus(RegistrationStatus.IDLE);
   }
 

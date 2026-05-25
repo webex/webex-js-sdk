@@ -13,12 +13,26 @@ import {
   SHARE_STATUS,
   DEFAULT_LARGE_SCALE_WEBINAR_ATTENDEE_SEARCH_LIMIT,
   LLM_PRACTICE_SESSION,
+  LOCUS_LLM_EVENT,
 } from '../constants';
 
 import WebinarCollection from './collection';
 import LoggerProxy from '../common/logs/logger-proxy';
 import MeetingUtil from '../meeting/util';
 import {sanitizeParams} from './utils';
+
+const PS_LLM_EVENTS = [
+  {
+    event: `event:relay.event:${LLM_PRACTICE_SESSION}`,
+    listenerKey: 'relay',
+    handlerKey: 'processRelayEvent',
+  },
+  {
+    event: `${LOCUS_LLM_EVENT}:${LLM_PRACTICE_SESSION}`,
+    listenerKey: 'locusLLM',
+    handlerKey: 'processLocusLLMEvent',
+  },
+];
 
 /**
  * @class Webinar
@@ -174,6 +188,7 @@ const Webinar = WebexPlugin.extend({
       this.meetingId,
       LLM_PRACTICE_SESSION
     );
+    this.llmListeners = this.llmListeners || {};
 
     if (this._pendingOnlineListener) {
       // @ts-ignore - Fix type
@@ -214,6 +229,14 @@ const Webinar = WebexPlugin.extend({
           this._practiceSessionRelayListener
         );
         this._practiceSessionRelayListener = null;
+      }
+      
+      for (const {event, listenerKey} of PS_LLM_EVENTS) {
+        if (this.llmListeners[listenerKey]) {
+          // @ts-ignore - Fix type
+          this.webex.internal.llm.off(event, this.llmListeners[listenerKey]);
+          this.llmListeners[listenerKey] = null;
+        }
       }
     }
   },
@@ -276,6 +299,8 @@ const Webinar = WebexPlugin.extend({
    * @returns {Promise}
    */
   async updatePSDataChannel() {
+    this.llmListeners = this.llmListeners || {};
+
     this._updatePSDataChannelSequence = (this._updatePSDataChannelSequence || 0) + 1;
     const invocationSequence = this._updatePSDataChannelSequence;
 
@@ -429,22 +454,18 @@ const Webinar = WebexPlugin.extend({
           );
         }
 
-        // Track the exact listener reference so cleanupPSDataChannel can
+        // Track the exact listener references so cleanupPSDataChannel can
         // unsubscribe deterministically, even if the meeting can no longer
         // be resolved at cleanup time.
-        if (this._practiceSessionRelayListener) {
+        for (const {event, listenerKey, handlerKey} of PS_LLM_EVENTS) {
+          if (this.llmListeners[listenerKey]) {
+            // @ts-ignore - Fix type
+            this.webex.internal.llm.off(event, this.llmListeners[listenerKey]);
+          }
+          this.llmListeners[listenerKey] = meeting?.[handlerKey];
           // @ts-ignore - Fix type
-          this.webex.internal.llm.off(
-            `event:relay.event:${LLM_PRACTICE_SESSION}`,
-            this._practiceSessionRelayListener
-          );
+          this.webex.internal.llm.on(event, this.llmListeners[listenerKey]);
         }
-        this._practiceSessionRelayListener = meeting?.processRelayEvent;
-        // @ts-ignore - Fix type
-        this.webex.internal.llm.on(
-          `event:relay.event:${LLM_PRACTICE_SESSION}`,
-          this._practiceSessionRelayListener
-        );
         // @ts-ignore - Fix type
         this.webex.internal.voicea?.announce?.();
         if (isCaptionBoxOn) {

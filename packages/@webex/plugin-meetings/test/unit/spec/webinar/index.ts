@@ -5,7 +5,7 @@ import MockWebex from '@webex/test-helper-mock-webex';
 import uuid from 'uuid';
 import sinon from 'sinon';
 import {DataChannelTokenType} from '@webex/internal-plugin-llm';
-import {LLM_PRACTICE_SESSION, SHARE_STATUS} from '@webex/plugin-meetings/src/constants';
+import {LLM_PRACTICE_SESSION, LOCUS_LLM_EVENT, SHARE_STATUS} from '@webex/plugin-meetings/src/constants';
 
 const PRACTICE_SESSION_KEY = LLM_PRACTICE_SESSION || DataChannelTokenType.PracticeSession;
 
@@ -241,7 +241,7 @@ describe('plugin-meetings', () => {
       beforeEach(() => {
         webinar.meetingId = 'meeting-id';
         relayListener = sinon.stub();
-        webinar._practiceSessionRelayListener = relayListener;
+        webinar.llmListeners = {relay: relayListener, locusLLM: null};
       });
 
       it('disconnects the practice session channel and removes the tracked relay listener', async () => {
@@ -253,12 +253,12 @@ describe('plugin-meetings', () => {
           PRACTICE_SESSION_KEY,
           webinar.meetingId
         );
-        assert.calledOnceWithExactly(
+        assert.calledWithExactly(
           webex.internal.llm.off,
           `event:relay.event:${PRACTICE_SESSION_KEY}`,
           relayListener
         );
-        assert.isNull(webinar._practiceSessionRelayListener);
+        assert.isNull(webinar.llmListeners.relay);
       });
 
       it('skips disconnect when practice-session owner is another meeting', async () => {
@@ -282,7 +282,7 @@ describe('plugin-meetings', () => {
       });
 
       it('skips relay listener removal when no listener has been tracked', async () => {
-        webinar._practiceSessionRelayListener = null;
+        webinar.llmListeners.relay = null;
 
         await webinar.cleanupPSDataChannel();
 
@@ -316,6 +316,31 @@ describe('plugin-meetings', () => {
           relayListener
         );
         assert.isNull(webinar._practiceSessionRelayListener);
+       });
+
+      it('disconnects and removes the tracked locusLLM listener', async () => {
+        const locusLLMListener = sinon.stub();
+        webinar.llmListeners.locusLLM = locusLLMListener;
+
+        await webinar.cleanupPSDataChannel();
+
+        assert.calledWithExactly(
+          webex.internal.llm.off,
+          `${LOCUS_LLM_EVENT}:${LLM_PRACTICE_SESSION}`,
+          locusLLMListener
+        );
+        assert.isNull(webinar.llmListeners.locusLLM);
+      });
+
+      it('skips locusLLM listener removal when no listener has been tracked', async () => {
+        webinar.llmListeners.locusLLM = null;
+
+        await webinar.cleanupPSDataChannel();
+
+        const locusLLMOffCalls = webex.internal.llm.off.args.filter(
+          ([event]) => event === `${LOCUS_LLM_EVENT}:${LLM_PRACTICE_SESSION}`
+        );
+        assert.equal(locusLLMOffCalls.length, 0);
       });
 
       it('does not consult the meeting collection during cleanup', async () => {
@@ -350,15 +375,18 @@ describe('plugin-meetings', () => {
     describe('#updatePSDataChannel', () => {
       let meeting;
       let processRelayEvent;
+      let processLocusLLMEvent;
 
       beforeEach(() => {
         webinar.meetingId = 'meeting-id';
         processRelayEvent = sinon.stub();
+        processLocusLLMEvent = sinon.stub();
         meeting = {
           id: 'meeting-id',
           locusUrl: 'locusUrl',
           isJoined: sinon.stub().returns(true),
           processRelayEvent,
+          processLocusLLMEvent,
           locusInfo: {
             url: 'locus-url',
             info: {practiceSessionDatachannelUrl: 'dc-url'},
@@ -548,7 +576,7 @@ describe('plugin-meetings', () => {
         await webinar.updatePSDataChannel();
 
         // Stores the exact listener reference for deterministic cleanup
-        assert.equal(webinar._practiceSessionRelayListener, processRelayEvent);
+        assert.equal(webinar.llmListeners.relay, processRelayEvent);
         assert.calledWith(
           webex.internal.llm.on,
           `event:relay.event:${PRACTICE_SESSION_KEY}`,
@@ -558,7 +586,7 @@ describe('plugin-meetings', () => {
 
       it('removes a previously tracked relay listener before re-binding on reconnect', async () => {
         const previousListener = sinon.stub();
-        webinar._practiceSessionRelayListener = previousListener;
+        webinar.llmListeners = {relay: previousListener, locusLLM: null};
 
         await webinar.updatePSDataChannel();
 
@@ -567,7 +595,32 @@ describe('plugin-meetings', () => {
           `event:relay.event:${PRACTICE_SESSION_KEY}`,
           previousListener
         );
-        assert.equal(webinar._practiceSessionRelayListener, processRelayEvent);
+        assert.equal(webinar.llmListeners.relay, processRelayEvent);
+      });
+
+      it('tracks and binds the locusLLM listener after successful connect', async () => {
+        await webinar.updatePSDataChannel();
+
+        assert.equal(webinar.llmListeners.locusLLM, processLocusLLMEvent);
+        assert.calledWith(
+          webex.internal.llm.on,
+          `${LOCUS_LLM_EVENT}:${LLM_PRACTICE_SESSION}`,
+          processLocusLLMEvent
+        );
+      });
+
+      it('removes a previously tracked locusLLM listener before re-binding on reconnect', async () => {
+        const previousListener = sinon.stub();
+        webinar.llmListeners = {relay: null, locusLLM: previousListener};
+
+        await webinar.updatePSDataChannel();
+
+        assert.calledWith(
+          webex.internal.llm.off,
+          `${LOCUS_LLM_EVENT}:${LLM_PRACTICE_SESSION}`,
+          previousListener
+        );
+        assert.equal(webinar.llmListeners.locusLLM, processLocusLLMEvent);
       });
 
       it('subscribes to transcription when caption intent is enabled', async () => {
