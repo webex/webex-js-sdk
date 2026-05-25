@@ -25,15 +25,11 @@ import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
-import {TaskState, TaskEvent} from '../state-machine';
+import {TaskState, TaskEvent, TaskActionArgs} from '../state-machine';
 import {WrapupData} from '../../config/types';
 import {getConsultMediaResourceId, getIsConferenceInProgress} from '../TaskUtils';
 
 export default class Voice extends Task implements IVoice {
-  // Cached consult destination — backend hold/unhold event payloads can clear
-  private consultDestAgentId: string | null = null;
-  private consultDestType: string | null = null;
-
   constructor(
     contact: ReturnType<typeof routingContact>,
     data: TaskData,
@@ -57,6 +53,10 @@ export default class Voice extends Task implements IVoice {
       wrapupData,
       agentId
     );
+  }
+
+  private getStateMachineSnapshot() {
+    return this.stateMachineService?.getSnapshot?.();
   }
 
   /**
@@ -120,10 +120,24 @@ export default class Voice extends Task implements IVoice {
     Determine if the task is being held or resumed based on the media resource state
     If the media resource is not found, default to resuming the task
     */
-    const shouldHold = !this.data.interaction.media[this.data.mediaResourceId].isHold;
+    const snapshot = this.getStateMachineSnapshot();
+    const snapshotState = snapshot?.value as TaskState | undefined;
+    const mainInteractionId = this.data.interaction?.mainInteractionId || this.data.interactionId;
+    const mainMediaResource =
+      this.data.interaction?.media?.[mainInteractionId]?.mediaResourceId ||
+      this.data.mediaResourceId;
+    const mediaHoldState =
+      this.data.interaction?.media?.[mainInteractionId]?.isHold ??
+      this.data.interaction.media?.[mainMediaResource]?.isHold;
+    let shouldHold = !(mediaHoldState ?? false);
+    if (snapshotState === TaskState.HELD) {
+      shouldHold = false;
+    } else if (snapshotState === TaskState.CONNECTED) {
+      shouldHold = true;
+    }
 
     // Validate operation is allowed in current state
-    const state = this.stateMachineService?.getSnapshot?.();
+    const state = snapshot;
     if (state) {
       const currentState = state.value as TaskState;
       if (shouldHold) {
@@ -152,7 +166,7 @@ export default class Voice extends Task implements IVoice {
       const initiatingEvent = shouldHold ? TaskEvent.HOLD_INITIATED : TaskEvent.UNHOLD_INITIATED;
       this.stateMachineService.send({
         type: initiatingEvent,
-        mediaResourceId: this.data.mediaResourceId,
+        mediaResourceId: mainMediaResource,
       });
     }
 
@@ -172,14 +186,14 @@ export default class Voice extends Task implements IVoice {
       if (shouldHold) {
         response = await this.contact.hold({
           interactionId: this.data.interactionId,
-          data: {mediaResourceId: this.data.mediaResourceId},
+          data: {mediaResourceId: mainMediaResource},
         });
 
         // Send success event to complete the transition
         if (this.stateMachineService) {
           this.stateMachineService.send({
             type: TaskEvent.HOLD_SUCCESS,
-            mediaResourceId: this.data.mediaResourceId,
+            mediaResourceId: mainMediaResource,
           });
         }
 
@@ -187,7 +201,7 @@ export default class Voice extends Task implements IVoice {
           successEvt,
           {
             taskId: this.data.interactionId,
-            mediaResourceId: this.data.mediaResourceId,
+            mediaResourceId: mainMediaResource,
             ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
           },
           ['operational', 'behavioral']
@@ -199,17 +213,16 @@ export default class Voice extends Task implements IVoice {
           interactionId: this.data.interactionId,
         });
       } else {
-        const mainId = this.data.interaction?.mainInteractionId;
         response = await this.contact.unHold({
           interactionId: this.data.interactionId,
-          data: {mediaResourceId: this.data.mediaResourceId},
+          data: {mediaResourceId: mainMediaResource},
         });
 
         // Send success event to complete the transition
         if (this.stateMachineService) {
           this.stateMachineService.send({
             type: TaskEvent.UNHOLD_SUCCESS,
-            mediaResourceId: this.data.mediaResourceId,
+            mediaResourceId: mainMediaResource,
           });
         }
 
@@ -217,8 +230,8 @@ export default class Voice extends Task implements IVoice {
           successEvt,
           {
             taskId: this.data.interactionId,
-            mainInteractionId: mainId,
-            mediaResourceId: this.data.mediaResourceId,
+            mainInteractionId,
+            mediaResourceId: mainMediaResource,
             ...MetricsManager.getCommonTrackingFieldForAQMResponse(response),
           },
           ['operational', 'behavioral']
@@ -272,7 +285,7 @@ export default class Voice extends Task implements IVoice {
    */
   public async pauseRecording(): Promise<TaskResponse> {
     // Validate recording is active
-    const state = this.stateMachineService?.getSnapshot?.();
+    const state = this.getStateMachineSnapshot();
     if (state) {
       const {recordingControlsAvailable, recordingInProgress} = state.context as {
         recordingControlsAvailable?: boolean;
@@ -346,7 +359,7 @@ export default class Voice extends Task implements IVoice {
     resumeRecordingPayload?: ResumeRecordingPayload
   ): Promise<TaskResponse> {
     // Validate recording is paused
-    const state = this.stateMachineService?.getSnapshot?.();
+    const state = this.getStateMachineSnapshot();
     if (state) {
       const {recordingControlsAvailable, recordingInProgress} = state.context as {
         recordingControlsAvailable?: boolean;
@@ -427,7 +440,7 @@ export default class Voice extends Task implements IVoice {
    * */
   public async consult(consultPayload?: ConsultPayload): Promise<TaskResponse> {
     // Validate consult is allowed
-    const state = this.stateMachineService?.getSnapshot?.();
+    const state = this.getStateMachineSnapshot();
     const canConsult =
       state &&
       (state.matches(TaskState.CONNECTED) ||
@@ -444,10 +457,6 @@ export default class Voice extends Task implements IVoice {
       });
       throw error;
     }
-
-    // Cache consult destination — hold/unhold events during switchCall can clear this.data.destAgentId
-    this.consultDestAgentId = consultPayload.to;
-    this.consultDestType = consultPayload.destinationType;
 
     // Send initiating event to transition to CONSULT_INITIATING state
     if (this.stateMachineService) {
@@ -619,13 +628,18 @@ export default class Voice extends Task implements IVoice {
 
       // consult transfer path
       if (this.data.interaction.state === 'consulting') {
+        const normalizedDestinationType =
+          payload.destinationType === 'Agent' || payload.destinationType === 'Queue'
+            ? (payload.destinationType.toLowerCase() as ConsultTransferPayLoad['destinationType'])
+            : payload.destinationType;
         let consultPayload: ConsultTransferPayLoad = {
           to: payload.to,
-          destinationType: payload.destinationType,
+          destinationType: normalizedDestinationType,
         };
 
-        if (payload.destinationType === CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE) {
-          const destAgent = this.consultDestAgentId || this.data.destAgentId;
+        if (normalizedDestinationType === CONSULT_TRANSFER_DESTINATION_TYPE.QUEUE) {
+          const consultContext = this.getStateMachineSnapshot()?.context;
+          const destAgent = consultContext?.consultDestinationAgentId || this.data.destAgentId;
           if (!destAgent) {
             throw new Error('No agent has accepted this queue consult yet');
           }
@@ -696,11 +710,22 @@ export default class Voice extends Task implements IVoice {
         ? calculateDestType(this.data.interaction, this.data.agentId)
         : '';
 
+    // derivedDestType is most reliable as it inspects live interaction participants
+    const resolvedDestinationType =
+      derivedDestType ||
+      this.getStateMachineSnapshot()?.context?.consultDestinationType ||
+      this.data.destinationType ||
+      'agent';
+
     const consultationData: consultConferencePayloadData = {
       agentId: this.data.agentId,
-      destinationType:
-        this.consultDestType || this.data.destinationType || derivedDestType || 'agent',
-      destAgentId: this.consultDestAgentId || this.data.destAgentId || derivedDestAgentId,
+      destinationType: resolvedDestinationType,
+      // derivedDestAgentId is most reliable as it resolves epId for EP_DN
+      // and agent ID for regular agents from live interaction data
+      destAgentId:
+        derivedDestAgentId ||
+        this.getStateMachineSnapshot()?.context?.consultDestinationAgentId ||
+        this.data.destAgentId,
     };
 
     // Send state machine event to transition to CONF_INITIATING
@@ -815,7 +840,7 @@ export default class Voice extends Task implements IVoice {
     // This handles cases where:
     // 1. State machine is in CONFERENCING state
     // 2. State machine is in CONNECTED but conference is active (e.g., ownership transferred)
-    const state = this.stateMachineService?.getSnapshot?.();
+    const state = this.getStateMachineSnapshot();
     const isConferencingState = state?.matches(TaskState.CONFERENCING);
 
     const isConferenceInProgressFromData = this.data ? getIsConferenceInProgress(this.data) : false;
@@ -933,7 +958,7 @@ export default class Voice extends Task implements IVoice {
     // Validate we're in conference or consulting state
     // CONSULTING is allowed because agent can transfer conference while consulting
     // (transfers ownership to the consulted agent)
-    const state = this.stateMachineService?.getSnapshot?.();
+    const state = this.getStateMachineSnapshot();
     const isValidState =
       state && (state.matches(TaskState.CONFERENCING) || state.matches(TaskState.CONSULTING));
     if (!isValidState) {
@@ -1047,7 +1072,7 @@ export default class Voice extends Task implements IVoice {
    */
   public async switchCall(): Promise<TaskResponse> {
     // Validate we're in CONSULTING state
-    const state = this.stateMachineService?.getSnapshot?.();
+    const state = this.getStateMachineSnapshot();
     if (!state?.matches(TaskState.CONSULTING)) {
       const currentState = state?.value as TaskState;
       const error = new Error(`Cannot switch call in ${currentState} state`);
@@ -1097,9 +1122,9 @@ export default class Voice extends Task implements IVoice {
 
     try {
       if (isOnConsultLeg) {
-        const response = await this.contact.hold({
+        const response = await this.contact.unHold({
           interactionId: this.data.interactionId,
-          data: {mediaResourceId: consultMediaResourceId},
+          data: {mediaResourceId: this.data.mediaResourceId},
         });
 
         this.metricsManager.trackEvent(
@@ -1123,9 +1148,9 @@ export default class Voice extends Task implements IVoice {
         return response;
       }
 
-      const response = await this.contact.unHold({
+      const response = await this.contact.hold({
         interactionId: this.data.interactionId,
-        data: {mediaResourceId: consultMediaResourceId},
+        data: {mediaResourceId: this.data.mediaResourceId},
       });
 
       this.metricsManager.trackEvent(
@@ -1227,9 +1252,13 @@ export default class Voice extends Task implements IVoice {
         TASK_EVENTS.TASK_CONFERENCE_TRANSFER_FAILED,
         {updateTaskData: true}
       ),
-      emitTaskOutdialFailed: this.createEmitSelfAction(TASK_EVENTS.TASK_OUTDIAL_FAILED, {
-        updateTaskData: true,
-      }),
+      emitTaskOutdialFailed: ({event}: TaskActionArgs) => {
+        if (event && 'taskData' in event && event.taskData) {
+          this.updateTaskData(event.taskData as TaskData);
+        }
+        const reason = (event as {reason?: string})?.reason || 'Outdial failed';
+        this.emit(TASK_EVENTS.TASK_OUTDIAL_FAILED, reason);
+      },
     };
   }
 }

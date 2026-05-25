@@ -11,9 +11,10 @@ import {
   TaskActionArgs,
   RecordingStateUpdate,
 } from './types';
-import {TaskEvent, TaskState} from './constants';
+import {TaskEvent, TaskState, INTERACTION_STATE} from './constants';
 import {DestinationType, TaskData} from '../types';
 import {computeUIControls, getDefaultUIControls} from './uiControlsComputer';
+import {hasActiveConsultInPostCall} from './guards';
 
 const determineConsultInitiator = (
   taskData: TaskData | undefined,
@@ -81,10 +82,67 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
           ...deriveRecordingState(taskData),
         };
 
+        const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
+        const consultingActive =
+          taskData?.interaction?.state === INTERACTION_STATE.CONSULTING ||
+          hasActiveConsultInPostCall(taskData, selfAgentId);
+
+        if (taskData.destAgentId) {
+          const isEpDnWithStoredId =
+            context.consultDestinationType === 'entryPoint' && context.consultDestinationAgentId;
+          if (!isEpDnWithStoredId) {
+            updates.consultDestinationAgentId = taskData.destAgentId;
+          }
+        }
+        if (consultingActive && taskData.destinationType) {
+          updates.consultDestinationType = taskData.destinationType as DestinationType;
+        }
+
         if (!context.consultInitiator) {
-          const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
           const consultInitiator = determineConsultInitiator(taskData, selfAgentId);
-          if (consultInitiator !== undefined) updates.consultInitiator = consultInitiator;
+          if (consultInitiator !== undefined) {
+            updates.consultInitiator = consultInitiator;
+          } else if (consultingActive && taskData.isConsulted === false) {
+            updates.consultInitiator = true;
+          }
+        }
+
+        if (consultingActive && taskData.interaction) {
+          if (!context.consultDestinationAgentJoined) {
+            const hasJoinedConsultee = Boolean(
+              taskData.interaction.participants &&
+                Object.values(taskData.interaction.participants).some(
+                  (p: any) => p?.isConsulted === true && !p?.hasLeft
+                )
+            );
+            const cpd = taskData.interaction?.callProcessingDetails;
+            const backendSaysJoined = cpd?.consultDestinationAgentJoined === 'true';
+            if (hasJoinedConsultee || backendSaysJoined)
+              updates.consultDestinationAgentJoined = true;
+          }
+
+          if (!context.consultDestinationType && !updates.consultDestinationType) {
+            const hasEpDnParticipant = Boolean(
+              taskData.interaction.participants &&
+                Object.values(taskData.interaction.participants).some(
+                  (p: any) => p?.pType === 'EP-DN' && !p?.hasLeft
+                )
+            );
+            if (hasEpDnParticipant) updates.consultDestinationType = 'entryPoint' as any;
+          }
+
+          const effectiveConsultInitiator = updates.consultInitiator ?? context.consultInitiator;
+          if (effectiveConsultInitiator) {
+            const consultMediaId = taskData.consultMediaResourceId;
+            const consultMedia: any = consultMediaId
+              ? taskData.interaction.media?.[consultMediaId]
+              : Object.values(taskData.interaction.media ?? {}).find(
+                  (m: any) => m?.mType === 'consult'
+                );
+            if (consultMedia) {
+              updates.consultCallHeld = Boolean(consultMedia.isHold);
+            }
+          }
         }
 
         return updates;
@@ -105,6 +163,7 @@ export function createInitialContext(
     consultFromConference: false,
     transferConferenceRequested: false,
     consultDestinationType: null,
+    consultDestinationAgentId: null,
     consultDestinationAgentJoined: false,
     consultCallHeld: false,
     recordingControlsAvailable: false,
@@ -174,15 +233,23 @@ export const actions: TaskActionsMap = {
       return {};
     }
 
-    const destinationType =
-      'destinationType' in event
-        ? (event as {destinationType?: DestinationType}).destinationType ?? null
-        : null;
+    const taskData = getTaskDataFromEvent(event);
+    const consultDestinationType =
+      'destinationType' in event ? event.destinationType ?? null : null;
+    const consultDestinationAgentId =
+      ('destAgentId' in event ? event.destAgentId : null) ??
+      ('destination' in event ? (event as any).destination : null) ??
+      null;
 
     return {
-      consultDestinationType: destinationType,
+      consultDestinationType,
+      consultDestinationAgentId,
       consultDestinationAgentJoined: false,
       consultFromConference: false,
+      taskData: {
+        ...taskData,
+        destAgentId: consultDestinationAgentId,
+      },
     };
   }),
 
@@ -234,6 +301,7 @@ export const actions: TaskActionsMap = {
 
   clearConsultState: assign({
     consultDestinationType: null,
+    consultDestinationAgentId: null,
     consultDestinationAgentJoined: false,
     consultInitiator: false,
     exitingConference: false,
@@ -249,6 +317,7 @@ export const actions: TaskActionsMap = {
   clearConsultCallHeld: assign({consultCallHeld: false}),
   handleSwitchToMainCall: assign({consultCallHeld: true}),
   handleSwitchToConsult: assign({consultCallHeld: false}),
+
   handleConferenceFailed: assign(({event}: TaskActionArgs) => {
     const taskData = getTaskDataFromEvent(event);
 
@@ -300,7 +369,7 @@ export const actions: TaskActionsMap = {
       },
     };
 
-    return {
+    const updates: Partial<TaskContext> = {
       taskData: {
         ...(context.taskData as TaskData),
         interaction: {
@@ -309,6 +378,17 @@ export const actions: TaskActionsMap = {
         },
       },
     };
+
+    const consultMediaId = context.taskData?.consultMediaResourceId;
+    const isConsultMedia = consultMediaId
+      ? mediaResourceId === consultMediaId
+      : mediaEntry?.mType === 'consult';
+
+    if (isConsultMedia && context.consultInitiator) {
+      updates.consultCallHeld = event.type === TaskEvent.HOLD_SUCCESS;
+    }
+
+    return updates;
   }),
 
   markEnded: assign(() => ({

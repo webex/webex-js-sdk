@@ -58,6 +58,7 @@ export interface TaskContext {
   consultFromConference: boolean;
   transferConferenceRequested: boolean;
   consultDestinationType: DestinationType | null;
+  consultDestinationAgentId: string | null;
   consultDestinationAgentJoined: boolean;
   consultCallHeld: boolean;
 
@@ -112,6 +113,7 @@ interface TaskEventPayloadMap {
   };
   [TaskEvent.CONSULT]: BaseEvent<TaskEvent.CONSULT> & {
     destination: string;
+    destAgentId?: string;
     destinationType: DestinationType;
   };
   [TaskEvent.CONSULT_SUCCESS]: BaseEvent<TaskEvent.CONSULT_SUCCESS> & {taskData?: TaskData};

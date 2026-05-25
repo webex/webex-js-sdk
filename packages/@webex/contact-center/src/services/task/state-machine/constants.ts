@@ -37,6 +37,25 @@ export const MEDIA_TYPE_CONSULT = 'consult';
 export const MEDIA_TYPE_MAIN_CALL = 'mainCall';
 
 // ============================================
+// Backend Interaction State Constants
+// ============================================
+
+/** Backend interaction state values (from server payloads) */
+export const INTERACTION_STATE = {
+  CONSULTING: 'consulting',
+  POST_CALL: 'post_call',
+  CONFERENCE: 'conference',
+  CONNECTED: 'connected',
+  NEW: 'new',
+} as const;
+
+/** Backend participant consultState values */
+export const CONSULT_STATE = {
+  CONSULTING: 'consulting',
+  CONFERENCING: 'conferencing',
+} as const;
+
+// ============================================
 // State Machine Enums
 // ============================================
 

@@ -599,7 +599,7 @@ export enum TASK_EVENTS {
    * ```typescript
    * task.on(TASK_EVENTS.TASK_SWITCH_CALL, (task: ITask) => {
    *   console.log('Call switched:', task.data.interactionId);
-   *   // Update UI based on task.uiControls.switchToMainCall / switchToConsult
+   *   // Update UI based on task.uiControls.main.switch / task.uiControls.consult.switch
    * });
    * ```
    */
@@ -935,6 +935,8 @@ export type Interaction = {
     fcDesktopView?: string;
     /** Agent ID who initiated the outdial call */
     outdialAgentId?: string;
+    /** Indicates if the customer has left the call during an active consult */
+    hasCustomerLeft?: string;
   };
   /** Main interaction identifier for related interactions */
   mainInteractionId?: string;
@@ -1115,10 +1117,9 @@ export type TaskUIControlState = {
 };
 
 /**
- * UI control representation surfaced to task consumers.
- * Mirrors the buttons available in Task.uiControls without extra metadata.
+ * UI control representation for a single interaction leg.
  */
-export type TaskUIControls = {
+export type InteractionUIControls = {
   accept: TaskUIControlState;
   decline: TaskUIControlState;
   hold: TaskUIControlState;
@@ -1134,8 +1135,20 @@ export type TaskUIControls = {
   transferConference: TaskUIControlState;
   mergeToConference: TaskUIControlState;
   wrapup: TaskUIControlState;
-  switchToMainCall: TaskUIControlState;
-  switchToConsult: TaskUIControlState;
+  switch: TaskUIControlState;
+};
+
+export type TaskUILeg = 'main' | 'consult';
+
+/**
+ * UI controls surfaced to task consumers.
+ * Consumers should read controls from the per-leg surfaces and use `activeLeg`
+ * to determine which one is currently interactive.
+ */
+export type TaskUIControls = {
+  main: InteractionUIControls;
+  consult: InteractionUIControls;
+  activeLeg: TaskUILeg;
 };
 
 /**

@@ -458,11 +458,9 @@ export default abstract class Task extends EventEmitter implements ITask {
         this.emit(TASK_EVENTS.TASK_REJECT, reason);
       },
       emitTaskWrapup: ({event}: {event?: TaskEventPayload}) => {
-        const wrapUpRequiredFromEvent =
-          event && typeof event === 'object' && 'taskData' in event
-            ? (event as {taskData?: TaskData}).taskData?.wrapUpRequired
-            : undefined;
-        const shouldEmitWrapup = Boolean(wrapUpRequiredFromEvent ?? this.data.wrapUpRequired);
+        this.updateTaskFromEvent(event);
+
+        const shouldEmitWrapup = Boolean(this.data.wrapUpRequired);
         if (!shouldEmitWrapup) {
           LoggerProxy.info(`Skipping task:wrapup event - wrapUpRequired is false`, {
             module: TASK_FILE,

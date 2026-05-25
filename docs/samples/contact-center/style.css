@@ -657,3 +657,77 @@ legend {
   font-size: 13px;
   padding: 4px 0;
 }
+
+.task-controls-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.task-controls-card {
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  box-sizing: border-box;
+  flex: 1 1 320px;
+  min-width: 320px;
+  padding: 12px;
+}
+
+.task-controls-card.is-active {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 1px rgba(24, 144, 255, 0.15);
+}
+
+.task-controls-card__header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.task-controls-card__title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.task-controls-card__badge {
+  background: #eef6ff;
+  border-radius: 999px;
+  color: #0052cc;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+}
+
+.task-controls-card__meta {
+  color: #595959;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.task-controls-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.task-controls-card__actions button {
+  min-width: 110px;
+}
+
+#hold-resume,
+#mute-unmute,
+#consult,
+#transfer,
+#end-consult,
+#consult-transfer,
+#merge-conference,
+#exit-conference,
+#transfer-conference,
+#switch-to-main,
+#switch-to-consult,
+#end {
+  display: none !important;
+}

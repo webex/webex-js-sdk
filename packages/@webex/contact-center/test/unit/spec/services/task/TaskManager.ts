@@ -1280,6 +1280,32 @@ describe('TaskManager', () => {
     sendStateMachineEventSpy.mockRestore();
   });
 
+  it('should pass taskData in OUTBOUND_FAILED event for shouldWrapUp guard evaluation', () => {
+    const task = taskManager.getTask(taskId);
+    const sendStateMachineEventSpy = jest.spyOn(task, 'sendStateMachineEvent');
+    const payload = {
+      data: {
+        type: CC_EVENTS.AGENT_OUTBOUND_FAILED,
+        interactionId: taskId,
+        reason: 'CUSTOMER_BUSY',
+        agentsPendingWrapUp: ['agent-123'],
+        interaction: {
+          outboundType: 'OUTDIAL',
+          isTerminated: true,
+        },
+      },
+    };
+    webSocketManagerMock.emit('message', JSON.stringify(payload));
+    const stateMachineEvent = expectLastStateMachineEvent(
+      sendStateMachineEventSpy,
+      TaskEvent.OUTBOUND_FAILED
+    );
+    expect(stateMachineEvent?.taskData).toBeDefined();
+    expect(stateMachineEvent?.taskData?.agentsPendingWrapUp).toEqual(['agent-123']);
+    expect(stateMachineEvent?.taskData?.interaction?.outboundType).toBe('OUTDIAL');
+    sendStateMachineEventSpy.mockRestore();
+  });
+
   it('should handle AGENT_OUTBOUND_FAILED gracefully when task is undefined', () => {
     const payload = {
       data: {
@@ -1807,6 +1833,74 @@ describe('TaskManager', () => {
     webSocketManagerMock.emit('message', JSON.stringify(unassignedPayload));
     expect(sendStateMachineEventSpy).not.toHaveBeenCalled();
     expect(updateTaskDataSpy).toHaveBeenCalledWith(unassignedPayload.data);
+  });
+
+  it('preserves consult fields from state context during consulting payload refresh', () => {
+    const task = createMockTask({
+      ...taskDataMock,
+      interaction: {state: 'consulting'} as any,
+      interactionId: taskId,
+    });
+    task.stateMachineService = {
+      getSnapshot: () => ({
+        value: 'CONSULTING',
+        context: {
+          consultDestinationAgentId: 'agent-preserved',
+          consultDestinationType: 'agent',
+        },
+      }),
+    };
+
+    const incomingTaskData = {
+      ...taskDataMock,
+      interaction: {state: 'consulting'} as any,
+      interactionId: taskId,
+      destAgentId: null,
+      destinationType: null,
+    };
+
+    (taskManager as any).updateTaskData(task, incomingTaskData);
+
+    expect(task.updateTaskData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        destAgentId: 'agent-preserved',
+        destinationType: 'agent',
+      })
+    );
+  });
+
+  it('does not preserve stale consult fields once consult is no longer active', () => {
+    const task = createMockTask({
+      ...taskDataMock,
+      interaction: {state: 'connected'} as any,
+      interactionId: taskId,
+    });
+    task.stateMachineService = {
+      getSnapshot: () => ({
+        value: 'CONNECTED',
+        context: {
+          consultDestinationAgentId: 'agent-stale',
+          consultDestinationType: 'agent',
+        },
+      }),
+    };
+
+    const incomingTaskData = {
+      ...taskDataMock,
+      interaction: {state: 'connected'} as any,
+      interactionId: taskId,
+      destAgentId: null,
+      destinationType: null,
+    };
+
+    (taskManager as any).updateTaskData(task, incomingTaskData);
+
+    expect(task.updateTaskData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        destAgentId: null,
+        destinationType: null,
+      })
+    );
   });
 
   it('should handle chat interaction and emit TASK_INCOMING immediately', () => {

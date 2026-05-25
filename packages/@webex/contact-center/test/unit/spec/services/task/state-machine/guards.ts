@@ -69,22 +69,43 @@ describe('State Machine Guards', () => {
       taskData: createTaskData(),
       uiControlConfig: {agentId: 'agent-123'},
       uiControls: {
-        accept: {isVisible: false, isEnabled: false},
-        decline: {isVisible: false, isEnabled: false},
-        hold: {isVisible: false, isEnabled: false},
-        end: {isVisible: false, isEnabled: false},
-        transfer: {isVisible: false, isEnabled: false},
-        consult: {isVisible: false, isEnabled: false},
-        consultTransfer: {isVisible: false, isEnabled: false},
-        endConsult: {isVisible: false, isEnabled: false},
-        recording: {isVisible: false, isEnabled: false},
-        conference: {isVisible: false, isEnabled: false},
-        wrapup: {isVisible: false, isEnabled: false},
-        exitConference: {isVisible: false, isEnabled: false},
-        transferConference: {isVisible: false, isEnabled: false},
-        mergeToConference: {isVisible: false, isEnabled: false},
-        switchToMainCall: {isVisible: false, isEnabled: false},
-        switchToConsult: {isVisible: false, isEnabled: false},
+        main: {
+          accept: {isVisible: false, isEnabled: false},
+          decline: {isVisible: false, isEnabled: false},
+          hold: {isVisible: false, isEnabled: false},
+          end: {isVisible: false, isEnabled: false},
+          transfer: {isVisible: false, isEnabled: false},
+          consult: {isVisible: false, isEnabled: false},
+          consultTransfer: {isVisible: false, isEnabled: false},
+          endConsult: {isVisible: false, isEnabled: false},
+          recording: {isVisible: false, isEnabled: false},
+          conference: {isVisible: false, isEnabled: false},
+          wrapup: {isVisible: false, isEnabled: false},
+          exitConference: {isVisible: false, isEnabled: false},
+          transferConference: {isVisible: false, isEnabled: false},
+          mergeToConference: {isVisible: false, isEnabled: false},
+          switch: {isVisible: false, isEnabled: false},
+          mute: {isVisible: false, isEnabled: false},
+        },
+        consult: {
+          accept: {isVisible: false, isEnabled: false},
+          decline: {isVisible: false, isEnabled: false},
+          hold: {isVisible: false, isEnabled: false},
+          end: {isVisible: false, isEnabled: false},
+          transfer: {isVisible: false, isEnabled: false},
+          consult: {isVisible: false, isEnabled: false},
+          consultTransfer: {isVisible: false, isEnabled: false},
+          endConsult: {isVisible: false, isEnabled: false},
+          recording: {isVisible: false, isEnabled: false},
+          conference: {isVisible: false, isEnabled: false},
+          wrapup: {isVisible: false, isEnabled: false},
+          exitConference: {isVisible: false, isEnabled: false},
+          transferConference: {isVisible: false, isEnabled: false},
+          mergeToConference: {isVisible: false, isEnabled: false},
+          switch: {isVisible: false, isEnabled: false},
+          mute: {isVisible: false, isEnabled: false},
+        },
+        activeLeg: 'main',
       },
       ...overrides,
     } as TaskContext);
@@ -214,6 +235,109 @@ describe('State Machine Guards', () => {
       });
       const ctx = createContext({taskData});
       expect(guards.shouldWrapUp(createParams(ctx, createEventWithTaskData(taskData)))).toBe(true);
+    });
+  });
+
+  describe('Hydration Guards - isInteractionConsulting', () => {
+    it('returns true when interaction state is consulting', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'consulting',
+        },
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(true);
+    });
+
+    it('returns true for EP_DN consulted agent (state=connected, CPD relationshipType=consult)', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'connected',
+          callProcessingDetails: {
+            ...createTaskData().interaction!.callProcessingDetails,
+            relationshipType: 'consult',
+          },
+        },
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(true);
+    });
+
+    it('returns true when post_call with active consult (consultState=consulting + consult media)', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'post_call',
+          participants: {
+            'agent-123': {
+              ...createParticipant('agent-123', 'Agent'),
+              consultState: 'consulting',
+            },
+          },
+          media: {
+            [INTERACTION_ID]: {
+              mediaResourceId: INTERACTION_ID,
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123'],
+              mType: 'mainCall',
+              isHold: false,
+              holdTimestamp: null,
+            },
+            'consult-media': {
+              mediaResourceId: 'consult-media',
+              mediaType: 'telephony',
+              mediaMgr: 'media-mgr',
+              participants: ['agent-123', 'agent-2'],
+              mType: 'consult',
+              isHold: false,
+              holdTimestamp: null,
+            },
+          },
+        },
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(true);
+    });
+
+    it('returns false for post_call without consult media', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'post_call',
+          participants: {
+            'agent-123': {
+              ...createParticipant('agent-123', 'Agent'),
+              consultState: undefined,
+            },
+          },
+        },
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
+    });
+
+    it('returns false for plain connected state without consult CPD', () => {
+      const ctx = createContext();
+      const taskData = createTaskData({
+        interaction: {
+          ...createTaskData().interaction,
+          state: 'connected',
+        },
+      });
+      expect(
+        guards.isInteractionConsulting(createParams(ctx, createEventWithTaskData(taskData)))
+      ).toBe(false);
     });
   });
 
