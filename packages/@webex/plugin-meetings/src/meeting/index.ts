@@ -33,7 +33,7 @@ import {
   MediaCodecMimeType,
 } from '@webex/internal-media-core';
 
-import {DataChannelTokenType} from '@webex/internal-plugin-llm';
+import {DataChannelTokenType, type RegisterAndConnectTiming} from '@webex/internal-plugin-llm';
 
 import {
   LocalStream,
@@ -164,6 +164,7 @@ import {
   RelayEvent,
 } from '../reactions/reactions.type';
 import Breakouts from '../breakouts';
+import breakoutEvent from '../breakouts/events';
 import SimultaneousInterpretation from '../interpretation';
 import Annotation from '../annotation';
 import Webinar from '../webinar';
@@ -183,7 +184,7 @@ import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {ReachabilityMetrics} from '../reachability/reachability.types';
 import {SetStageOptions, SetStageVideoLayout, UnsetStageVideoLayout} from './request.type';
 import {Invitee} from './type';
-import {DataSet, HashTreeMessage, Metadata} from '../hashTree/hashTreeParser';
+import {DataSet, HashTreeMessage, Metadata, SyncLatencyMetrics} from '../hashTree/hashTreeParser';
 import {LocusDTO} from '../locus-info/types';
 import AIEnableRequest from '../aiEnableRequest';
 
@@ -1383,6 +1384,12 @@ export default class Meeting extends StatelessWebexPlugin {
      */
     // @ts-ignore - Fix type
     this.locusInfo = new LocusInfo(this.updateMeetingObject.bind(this), this.webex, this.id);
+    this.locusInfo.syncMetricsCallback = (metrics: {
+      dataSet: string;
+      syncLatency: SyncLatencyMetrics;
+    }) => {
+      this.sendSyncCompleteMetric(metrics);
+    };
 
     // We had to add listeners first before setting up the locus instance
     /**
@@ -6372,7 +6379,7 @@ export default class Meeting extends StatelessWebexPlugin {
           this.webex.internal.llm.off('online', this.handleLLMOnline);
           // @ts-ignore
           this.webex.internal.llm.on('online', this.handleLLMOnline);
-          this.updateLLMConnection()
+          this.updateLLMConnection({isInitialJoinPhase: true})
             .catch((error) => {
               LoggerProxy.logger.error(
                 'Meeting:index#join --> Transcription Socket Connection Failed',
@@ -6643,9 +6650,11 @@ export default class Meeting extends StatelessWebexPlugin {
   /**
    * Connects to low latency mercury and reconnects if the address has changed
    * It will also disconnect if called when the meeting has ended
+   * @param {Object} [options]
+   * @param {boolean} [options.isInitialJoinPhase] true when called from initial join flow
    * @returns {Promise}
    */
-  async updateLLMConnection() {
+  async updateLLMConnection({isInitialJoinPhase = false}: {isInitialJoinPhase?: boolean} = {}) {
     // @ts-ignore - Fix type
     const {url = undefined, info: {datachannelUrl = undefined} = {}} = this.locusInfo || {};
 
@@ -6783,8 +6792,131 @@ export default class Meeting extends StatelessWebexPlugin {
 
         this.startLLMHealthCheckTimer();
 
+        if (registerAndConnectResult) {
+          if (isInitialJoinPhase) {
+            this.sendLLMConnectMetric(registerAndConnectResult);
+          }
+
+          if (this.breakouts?.breakoutMoveId) {
+            // @ts-ignore
+            const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
+
+            breakoutEvent.onBreakoutJoinResponse(
+              {
+                currentSession: this.breakouts?.currentBreakoutSession,
+                meeting: this,
+                breakoutMoveId: this.breakouts.breakoutMoveId,
+                llmLatency: registerAndConnectResult,
+                llmWebsocketUrl,
+              },
+              // @ts-ignore
+              this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
+            );
+          }
+        }
+
         return Promise.resolve(registerAndConnectResult);
+      })
+      .catch((error) => {
+        if (isInitialJoinPhase) {
+          this.sendLLMConnectMetric(
+            {
+              clientLLMDatachannelResponseTime: 0,
+              clientLLMWebSocketConnectTime: 0,
+            },
+            error
+          );
+        }
+
+        if (this.breakouts?.breakoutMoveId) {
+          // @ts-ignore
+          const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
+
+          breakoutEvent.onBreakoutJoinResponse(
+            {
+              currentSession: this.breakouts?.currentBreakoutSession,
+              meeting: this,
+              breakoutMoveId: this.breakouts.breakoutMoveId,
+              llmLatency: {
+                clientLLMDatachannelResponseTime: 0,
+                clientLLMWebSocketConnectTime: 0,
+              },
+              llmWebsocketUrl,
+              error,
+            },
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
+          );
+        }
+
+        return Promise.reject(error);
       });
+  }
+
+  /**
+   * Sends LLM connect latencies for initial join flow.
+   * @param {RegisterAndConnectTiming} timings
+   * @param {any} [error]
+   * @returns {void}
+   */
+  private sendLLMConnectMetric(timings: RegisterAndConnectTiming, error?: any) {
+    // @ts-ignore
+    const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
+
+    const payload: any = {
+      llmLatency: {
+        clientLLMDatachannelResponseTime: timings?.clientLLMDatachannelResponseTime ?? 0,
+        ...(timings?.clientLLMWebSocketConnectTime !== undefined && {
+          clientLLMWebSocketConnectTime: timings.clientLLMWebSocketConnectTime,
+        }),
+      },
+    };
+
+    if (llmWebsocketUrl) {
+      payload.identifiers = {llmWebsocketUrl};
+    }
+
+    // @ts-ignore
+    this.webex.internal.newMetrics.submitClientEvent({
+      name: 'client.llm.connect.response',
+      payload,
+      options: {
+        meetingId: this.id,
+        ...(error && {rawError: error}),
+      },
+    });
+  }
+
+  /**
+   * Sends sync latency metrics when a sync-initiating client receives LLM sync message.
+   * @param {Object} metrics
+   * @param {string} metrics.dataSet
+   * @param {SyncLatencyMetrics} metrics.syncLatency
+   * @returns {void}
+   */
+  private sendSyncCompleteMetric(metrics: {dataSet: string; syncLatency: SyncLatencyMetrics}) {
+    // @ts-ignore
+    const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
+
+    const payload: any = {
+      syncLatency: metrics.syncLatency,
+      llmInfo: {
+        dataSet: metrics.dataSet,
+      },
+    };
+
+    if (llmWebsocketUrl) {
+      payload.identifiers = {llmWebsocketUrl};
+    }
+
+    // @ts-ignore
+    this.webex.internal.newMetrics.submitClientEvent({
+      name: 'client.locus.sync.complete',
+      payload,
+      options: {
+        meetingId: this.id,
+      },
+    });
   }
 
   /**

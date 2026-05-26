@@ -32,6 +32,7 @@ const Breakouts = WebexPlugin.extend({
     name: 'string', // only present when in a breakout session
     sessionId: 'string', // appears from the moment you enable breakouts
     sessionType: 'string', // appears from the moment you enable breakouts
+    breakoutMoveId: 'string', // used to correlate breakout move/join diagnostics
     startTime: 'string', // appears once breakouts start
     status: 'string', // only present when in a breakout session
     url: 'string', // appears from the moment you enable breakouts
@@ -328,6 +329,7 @@ const Breakouts = WebexPlugin.extend({
    */
   updateBreakout(params) {
     this.set(params);
+    this.set('breakoutMoveId', params.breakoutMoveId);
     // These values are set manually so they are unset when they are not included in params
     this.set('groups', params.groups);
     this.set('startTime', params.startTime);

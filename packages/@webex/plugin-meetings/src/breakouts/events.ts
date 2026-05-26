@@ -36,19 +36,40 @@ const breakoutEvent: {
     if (!eventInfo?.breakoutMoveId || !eventInfo?.meeting) {
       return;
     }
+    if (event === 'client.breakout-session.join.response' && !eventInfo?.llmLatency) {
+      return;
+    }
     if (!eventInfo.meeting.meetingInfo?.enableConvergedArchitecture) {
       return;
     }
+
+    const payload: any = {
+      ...(eventInfo?.llmLatency && {llmLatency: eventInfo.llmLatency}),
+      identifiers: {
+        breakoutMoveId: eventInfo.breakoutMoveId,
+        breakoutSessionId: eventInfo?.currentSession?.sessionId,
+        breakoutGroupId: eventInfo?.currentSession?.groupId,
+        ...(eventInfo?.llmWebsocketUrl && {llmWebsocketUrl: eventInfo.llmWebsocketUrl}),
+      },
+    };
+
+    // eslint-disable-next-line no-console
+    console.log(`[metrics] ${event}`, {
+      name: event,
+      payload,
+      options: {
+        meetingId: eventInfo.meeting.id,
+        ...(eventInfo?.error && {rawError: eventInfo.error}),
+      },
+    });
+
     submitClientEvent({
       name: event,
-      payload: {
-        identifiers: {
-          breakoutMoveId: eventInfo.breakoutMoveId,
-          breakoutSessionId: eventInfo?.currentSession?.sessionId,
-          breakoutGroupId: eventInfo?.currentSession?.groupId,
-        },
+      payload,
+      options: {
+        meetingId: eventInfo.meeting.id,
+        ...(eventInfo?.error && {rawError: eventInfo.error}),
       },
-      options: {meetingId: eventInfo.meeting.id},
     });
   },
 };

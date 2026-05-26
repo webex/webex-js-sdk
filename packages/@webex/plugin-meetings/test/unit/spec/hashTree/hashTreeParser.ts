@@ -5325,4 +5325,82 @@ describe('HashTreeParser', () => {
       expect(parser.dataSets).to.deep.equal({});
     });
   });
+
+  describe('#syncMetrics', () => {
+    it('invokes syncMetricsCallback when matching dataset version arrives', () => {
+      const parser = createHashTreeParser();
+      const syncMetricsCallback = sinon.stub();
+
+      parser.syncMetricsCallback = syncMetricsCallback;
+      parser['pendingSyncMetrics'].set('main', {
+        syncResponseReceivedAt: 100,
+        totalStartTime: 50,
+        randomBackoffTime: 10,
+        hashtreePrepTime: 5,
+        hashtreeResponseTime: 20,
+        syncPrepTime: 3,
+        syncResponseTime: 15,
+        dataSetName: 'main',
+        dataSetVersion: 1000,
+      } as any);
+
+      parser.handleMessage({
+        dataSets: [
+          {
+            ...createDataSet('main', 16, 1001),
+            root: 'newroot',
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      assert.calledOnce(syncMetricsCallback);
+      const arg = syncMetricsCallback.firstCall.args[0];
+
+      assert.equal(arg.dataSet, 'main');
+      assert.isNumber(arg.syncLatency.randomBackoffTime);
+      assert.isNumber(arg.syncLatency.hashtreePrepTime);
+      assert.isNumber(arg.syncLatency.hashtreeResponseTime);
+      assert.isNumber(arg.syncLatency.syncPrepTime);
+      assert.isNumber(arg.syncLatency.syncResponseTime);
+      assert.isNumber(arg.syncLatency.syncMessageReceiveTime);
+      assert.isNumber(arg.syncLatency.totalTime);
+      assert.isFalse(parser['pendingSyncMetrics'].has('main'));
+    });
+
+    it('does not complete pending metrics when message version is below pending version', () => {
+      const parser = createHashTreeParser();
+      const syncMetricsCallback = sinon.stub();
+
+      parser.syncMetricsCallback = syncMetricsCallback;
+      parser['pendingSyncMetrics'].set('main', {
+        syncResponseReceivedAt: 100,
+        totalStartTime: 50,
+        randomBackoffTime: 10,
+        hashtreePrepTime: 5,
+        hashtreeResponseTime: 20,
+        syncPrepTime: 3,
+        syncResponseTime: 15,
+        dataSetName: 'main',
+        dataSetVersion: 1005,
+      } as any);
+
+      parser.handleMessage({
+        dataSets: [
+          {
+            ...createDataSet('main', 16, 1004),
+            root: 'newroot',
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      assert.notCalled(syncMetricsCallback);
+      assert.isTrue(parser['pendingSyncMetrics'].has('main'));
+    });
+  });
 });

@@ -58,6 +58,8 @@ interface InternalDataSet extends DataSet {
   timer?: ReturnType<typeof setTimeout>;
   heartbeatWatchdogTimer?: ReturnType<typeof setTimeout>;
   syncAbortController?: AbortController;
+  // Actual random backoff used by runSyncAlgorithm (excluding idleMs)
+  lastBackoffTime?: number;
 }
 
 type WebexRequestMethod = (options: Record<string, any>) => Promise<any>;
@@ -83,6 +85,39 @@ export type LocusInfoUpdate = {
 }[keyof LocusUpdatePayloads];
 
 export type LocusInfoUpdateCallback = (update: LocusInfoUpdate) => void;
+
+export interface SyncLatencyMetrics {
+  randomBackoffTime: number;
+  hashtreePrepTime: number;
+  hashtreeResponseTime: number;
+  syncPrepTime: number;
+  syncResponseTime: number;
+  syncMessageReceiveTime: number;
+  totalTime: number;
+}
+
+export type SyncMetricsCallback = (metrics: {
+  dataSet: string;
+  syncLatency: SyncLatencyMetrics;
+}) => void;
+
+const SYNC_METRICS_DATA_SETS = [
+  DataSetNames.MAIN,
+  DataSetNames.ATD_ACTIVE,
+  DataSetNames.ATD_UNMUTED,
+];
+
+interface PendingSyncMetrics {
+  syncResponseReceivedAt: number;
+  totalStartTime: number;
+  randomBackoffTime: number;
+  hashtreePrepTime: number;
+  hashtreeResponseTime: number;
+  syncPrepTime: number;
+  syncResponseTime: number;
+  dataSetName: string;
+  dataSetVersion: number;
+}
 
 interface LeafInfo {
   type: ObjectType;
@@ -136,6 +171,8 @@ class HashTreeParser {
   private syncQueueProcessingPromise: Promise<void> = Promise.resolve();
   // top-level heartbeat interval from the most recent message, used as fallback when dataset-level value is missing
   private topLevelHeartbeatIntervalMs?: number;
+  public syncMetricsCallback?: SyncMetricsCallback;
+  private pendingSyncMetrics: Map<string, PendingSyncMetrics> = new Map();
 
   /**
    * Constructor for HashTreeParser
@@ -1175,6 +1212,8 @@ class HashTreeParser {
       this.handleRootHashHeartBeatMessage(message);
       this.resetHeartbeatWatchdogs(message.dataSets);
     } else {
+      this.tryCompletePendingSyncMetrics(message);
+
       const updatedObjects = this.parseMessage(message, debugText);
 
       this.resetHeartbeatWatchdogs(message.dataSets);
@@ -1182,6 +1221,62 @@ class HashTreeParser {
         updateType: LocusInfoUpdateType.OBJECTS_UPDATED,
         updatedObjects,
       });
+    }
+  }
+
+  /**
+   * Completes any pending sync metrics when a qualifying LLM message arrives.
+   *
+   * @param {HashTreeMessage} message
+   * @returns {void}
+   */
+  private tryCompletePendingSyncMetrics(message: HashTreeMessage): void {
+    if (this.pendingSyncMetrics.size === 0) {
+      return;
+    }
+
+    const messageReceivedAt = performance.now();
+
+    for (const dataSet of message.dataSets) {
+      const pending = this.pendingSyncMetrics.get(dataSet.name);
+
+      if (pending && dataSet.version >= pending.dataSetVersion) {
+        this.completeSyncMetrics(dataSet.name, messageReceivedAt);
+      }
+    }
+  }
+
+  /**
+   * Finalize pending sync metrics and invoke callback.
+   *
+   * @param {string} dataSetName
+   * @param {number} messageReceivedAt
+   * @returns {void}
+   */
+  private completeSyncMetrics(dataSetName: string, messageReceivedAt: number): void {
+    const pending = this.pendingSyncMetrics.get(dataSetName);
+
+    if (!pending) {
+      return;
+    }
+
+    this.pendingSyncMetrics.delete(dataSetName);
+
+    const syncMessageReceiveTime = Math.round(messageReceivedAt - pending.syncResponseReceivedAt);
+    const totalTime = Math.round(messageReceivedAt - pending.totalStartTime);
+
+    const syncLatency: SyncLatencyMetrics = {
+      randomBackoffTime: pending.randomBackoffTime,
+      hashtreePrepTime: pending.hashtreePrepTime,
+      hashtreeResponseTime: pending.hashtreeResponseTime,
+      syncPrepTime: pending.syncPrepTime,
+      syncResponseTime: pending.syncResponseTime,
+      syncMessageReceiveTime,
+      totalTime,
+    };
+
+    if (this.syncMetricsCallback) {
+      this.syncMetricsCallback({dataSet: pending.dataSetName, syncLatency});
     }
   }
 
@@ -1281,6 +1376,10 @@ class HashTreeParser {
 
     const {hashTree} = dataSet;
     const rootHash = hashTree.getRootHash();
+    const shouldCollectMetrics = !isInitialization && SYNC_METRICS_DATA_SETS.includes(dataSet.name);
+    const totalStart = shouldCollectMetrics ? performance.now() : 0;
+    let hashtreePrepStart = 0;
+    let hashtreeResponseTime = 0;
 
     try {
       LoggerProxy.logger.info(
@@ -1292,6 +1391,8 @@ class HashTreeParser {
       if (!isInitialization) {
         if (dataSet.leafCount !== 1) {
           let receivedHashes;
+
+          hashtreePrepStart = shouldCollectMetrics ? performance.now() : 0;
 
           try {
             // request hashes from sender
@@ -1317,6 +1418,10 @@ class HashTreeParser {
             throw error;
           }
 
+          hashtreeResponseTime = shouldCollectMetrics
+            ? Math.round(performance.now() - hashtreePrepStart)
+            : 0;
+
           // identify mismatched leaves
           const mismatchedLeaveIndexes = hashTree.diffHashes(receivedHashes);
 
@@ -1337,12 +1442,37 @@ class HashTreeParser {
       }
       // request sync for mismatched leaves
       let syncResponse: HashTreeMessage | null = null;
+      const syncPrepStart = shouldCollectMetrics ? performance.now() : 0;
 
       if (isInitialization) {
         syncResponse = await this.sendSyncRequestToLocus(dataSet, {isInitialization: true});
       } else if (Object.keys(leavesData).length > 0) {
         syncResponse = await this.sendSyncRequestToLocus(dataSet, {
           mismatchedLeavesData: leavesData,
+        });
+      }
+
+      const syncResponseReceivedAt = shouldCollectMetrics ? performance.now() : 0;
+
+      // Record pending metrics and complete them when the matching LLM broadcast arrives.
+      if (shouldCollectMetrics && syncResponse !== null) {
+        const hashtreePrepTimeVal =
+          hashtreePrepStart > 0 ? Math.round(hashtreePrepStart - totalStart) : 0;
+        const syncPrepTimeVal = Math.round(
+          syncPrepStart - (totalStart + hashtreePrepTimeVal + hashtreeResponseTime)
+        );
+        const syncResponseTimeVal = Math.round(syncResponseReceivedAt - syncPrepStart);
+
+        this.pendingSyncMetrics.set(dataSet.name, {
+          syncResponseReceivedAt,
+          totalStartTime: totalStart,
+          randomBackoffTime: Math.round(dataSet.lastBackoffTime || 0),
+          hashtreePrepTime: hashtreePrepTimeVal,
+          hashtreeResponseTime,
+          syncPrepTime: syncPrepTimeVal,
+          syncResponseTime: syncResponseTimeVal,
+          dataSetName: dataSet.name,
+          dataSetVersion: dataSet.version,
         });
       }
 
@@ -1657,6 +1787,7 @@ class HashTreeParser {
 
       dataSet.timer = setTimeout(() => {
         dataSet.timer = undefined;
+        dataSet.lastBackoffTime = delay - dataSet.idleMs;
 
         if (!dataSet.hashTree) {
           LoggerProxy.logger.warn(
@@ -1761,6 +1892,7 @@ class HashTreeParser {
     this.topLevelHeartbeatIntervalMs = undefined;
     this.syncAllBackoffType = SyncAllBackoffType.NONE;
     this.dataSetsSyncedDuringBackoff = new Set();
+    this.pendingSyncMetrics.clear();
     Object.values(this.dataSets).forEach((dataSet) => {
       dataSet.syncAbortController?.abort();
       dataSet.syncAbortController = undefined;
