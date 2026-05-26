@@ -739,6 +739,7 @@ export default class Meeting extends StatelessWebexPlugin {
   isMoveToInProgress = false;
   registrationIdStatus: string;
   brbState: BrbState;
+  private emittedBreakoutJoinResponseMoveIds: Set<string> = new Set();
 
   voiceaListenerCallbacks: object = {
     [VOICEAEVENTS.VOICEA_ANNOUNCEMENT]: (payload: Transcription['languageOptions']) => {
@@ -6797,7 +6798,9 @@ export default class Meeting extends StatelessWebexPlugin {
             this.sendLLMConnectMetric(registerAndConnectResult);
           }
 
-          if (this.breakouts?.breakoutMoveId) {
+          const breakoutMoveId = this.breakouts?.breakoutMoveId;
+
+          if (this.shouldEmitBreakoutJoinResponseMetric(breakoutMoveId)) {
             // @ts-ignore
             const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
 
@@ -6805,7 +6808,7 @@ export default class Meeting extends StatelessWebexPlugin {
               {
                 currentSession: this.breakouts?.currentBreakoutSession,
                 meeting: this,
-                breakoutMoveId: this.breakouts.breakoutMoveId,
+                breakoutMoveId,
                 llmLatency: registerAndConnectResult,
                 llmWebsocketUrl,
               },
@@ -6828,7 +6831,9 @@ export default class Meeting extends StatelessWebexPlugin {
           );
         }
 
-        if (this.breakouts?.breakoutMoveId) {
+        const breakoutMoveId = this.breakouts?.breakoutMoveId;
+
+        if (this.shouldEmitBreakoutJoinResponseMetric(breakoutMoveId)) {
           // @ts-ignore
           const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
 
@@ -6836,7 +6841,7 @@ export default class Meeting extends StatelessWebexPlugin {
             {
               currentSession: this.breakouts?.currentBreakoutSession,
               meeting: this,
-              breakoutMoveId: this.breakouts.breakoutMoveId,
+              breakoutMoveId,
               llmLatency: {
                 clientLLMDatachannelResponseTime: 0,
                 clientLLMWebSocketConnectTime: 0,
@@ -6851,6 +6856,25 @@ export default class Meeting extends StatelessWebexPlugin {
 
         return Promise.reject(error);
       });
+  }
+
+  /**
+   * Ensures breakout join response metric is emitted only once per breakout move id.
+   * @param {string | undefined} breakoutMoveId
+   * @returns {boolean}
+   */
+  private shouldEmitBreakoutJoinResponseMetric(breakoutMoveId?: string): boolean {
+    if (!breakoutMoveId) {
+      return false;
+    }
+
+    if (this.emittedBreakoutJoinResponseMoveIds.has(breakoutMoveId)) {
+      return false;
+    }
+
+    this.emittedBreakoutJoinResponseMoveIds.add(breakoutMoveId);
+
+    return true;
   }
 
   /**

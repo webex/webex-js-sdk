@@ -2626,6 +2626,35 @@ describe('plugin-meetings', () => {
               );
             });
 
+            it('emits breakout join response metric only once per breakoutMoveId', async () => {
+              sinon.stub(meeting, 'isJoined').returns(true);
+              sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
+              sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves({
+                clientLLMDatachannelResponseTime: 10,
+                clientLLMWebSocketConnectTime: 20,
+              });
+
+              meeting.meetingInfo.enableConvergedArchitecture = true;
+              meeting.breakouts.set('breakoutMoveId', 'move-id-1');
+              meeting.breakouts.set('currentBreakoutSession', {
+                sessionId: 'session-id-1',
+                groupId: 'group-id-1',
+              });
+
+              webex.internal.newMetrics.submitClientEvent.resetHistory();
+              meeting.updateLLMConnection.restore();
+
+              await meeting.updateLLMConnection();
+              await meeting.updateLLMConnection();
+
+              const joinResponseCalls = webex.internal.newMetrics.submitClientEvent
+                .getCalls()
+                .filter((call) => call.args[0]?.name === 'client.breakout-session.join.response');
+
+              assert.lengthOf(joinResponseCalls, 1);
+              assert.equal(joinResponseCalls[0].args[0].options.meetingId, meeting.id);
+            });
+
             it('clears the LLM health check timer when disconnecting LLM', async () => {
               const isJoinedStub = sinon.stub(meeting, 'isJoined');
               sinon.stub(meeting.webex.internal.llm, 'isConnected');

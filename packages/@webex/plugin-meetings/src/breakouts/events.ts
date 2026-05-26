@@ -53,16 +53,6 @@ const breakoutEvent: {
       },
     };
 
-    // eslint-disable-next-line no-console
-    console.log(`[metrics] ${event}`, {
-      name: event,
-      payload,
-      options: {
-        meetingId: eventInfo.meeting.id,
-        ...(eventInfo?.error && {rawError: eventInfo.error}),
-      },
-    });
-
     submitClientEvent({
       name: event,
       payload,
