@@ -3,6 +3,7 @@ import {parse as parseUrl} from 'url';
 import {Certificate, RSAPublicKey, CertificateChainValidationEngine} from 'pkijs';
 import {isArray} from 'lodash';
 import jose from 'node-jose';
+import {Buffer} from 'buffer';
 
 const VALID_KTY = 'RSA';
 const VALID_KID_PROTOCOL = 'kms:';
