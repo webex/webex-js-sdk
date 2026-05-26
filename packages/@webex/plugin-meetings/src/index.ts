@@ -65,6 +65,11 @@ export * as REACTIONS from './reactions/reactions';
 export * as sdkAnnotationTypes from './annotation/annotation.types';
 export * as MeetingInfoV2 from './meeting-info/meeting-info-v2';
 export {type Reaction} from './reactions/reactions.type';
+export {SitePreferenceSelectOption} from './meetings/meetings.types';
+export type {
+  FetchSitePreferencesMeViaSiteOptions,
+  SitePreferencesResponse,
+} from './meetings/meetings.types';
 
 export {
   CaptchaError,

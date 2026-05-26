@@ -8,7 +8,12 @@ import * as Utils from '../../common/Utils';
 import {CALL_EVENT_KEYS, CallEvent, RoapEvent, RoapMessage} from '../../Events/types';
 import {DEFAULT_SESSION_TIMER, ICE_CANDIDATES_TIMEOUT} from '../constants';
 import {CallDirection, CallType, ServiceIndicator, WebexRequestPayload} from '../../common/types';
-import {METRIC_EVENT, TRANSFER_ACTION, METRIC_TYPE} from '../../Metrics/types';
+import {
+  METRIC_EVENT,
+  TRANSFER_ACTION,
+  METRIC_TYPE,
+  MEDIA_CONNECTION_ACTION,
+} from '../../Metrics/types';
 import {Call, createCall} from './call';
 import {
   MobiusCallState,
@@ -29,7 +34,13 @@ import {waitForMsecs} from '../../common/Utils';
 import log from '../../Logger';
 import {CallError} from '../../Errors';
 import {METHOD_START_MESSAGE} from '../../common/constants';
+import {APIRequest} from '../utils/request';
 
+jest.mock('../../mobius-socket', () => ({
+  getMobiusSocketInstance: jest.fn().mockReturnValue({
+    sendWssRequest: jest.fn(),
+  }),
+}));
 jest.mock('@webex/internal-media-core');
 
 const uploadLogsSpy = jest.spyOn(Utils, 'uploadLogs').mockResolvedValue(undefined);
@@ -132,6 +143,8 @@ describe('Call Tests', () => {
   });
 
   beforeEach(() => {
+    APIRequest.resetInstance();
+    APIRequest.getInstance({webex, isMobiusSocketEnabled: false});
     callManager = getCallManager(webex, defaultServiceIndicator);
   });
 
@@ -450,6 +463,350 @@ describe('Call Tests', () => {
       call.getCallId(),
       call.getCorrelationId()
     );
+  });
+
+  it('registers and unregisters media connection listeners with stable handlers', () => {
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+      on: jest.fn(),
+      getEffectByKind: jest.fn().mockReturnValue(undefined),
+    };
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+    const call = createCall(
+      activeUrl,
+      webex,
+      CallDirection.OUTBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator,
+      dest
+    );
+
+    call.dial(localAudioStream);
+
+    const mediaOnMock = call['mediaConnection'].on as jest.Mock;
+    const mediaOffSpy = jest.spyOn(call['mediaConnection'], 'off');
+
+    expect(mediaOnMock).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND,
+      expect.any(Function)
+    );
+    expect(mediaOnMock).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ROAP_FAILURE,
+      expect.any(Function)
+    );
+    expect(mediaOnMock).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.REMOTE_TRACK_ADDED,
+      expect.any(Function)
+    );
+    expect(mediaOnMock).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
+      expect.any(Function)
+    );
+    expect(mediaOnMock).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
+      expect.any(Function)
+    );
+    expect(mediaOnMock).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
+      expect.any(Function)
+    );
+    expect(mediaOnMock).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_CANDIDATE_ERROR,
+      expect.any(Function)
+    );
+
+    call['unregisterMediaConnectionListeners']();
+
+    expect(mediaOffSpy).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND,
+      expect.any(Function)
+    );
+    expect(mediaOffSpy).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ROAP_FAILURE,
+      expect.any(Function)
+    );
+    expect(mediaOffSpy).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.REMOTE_TRACK_ADDED,
+      expect.any(Function)
+    );
+    expect(mediaOffSpy).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED,
+      expect.any(Function)
+    );
+    expect(mediaOffSpy).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED,
+      expect.any(Function)
+    );
+    expect(mediaOffSpy).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED,
+      expect.any(Function)
+    );
+    expect(mediaOffSpy).toBeCalledWith(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_CANDIDATE_ERROR,
+      expect.any(Function)
+    );
+  });
+
+  it('handles ICE listener payloads and submits metrics with event names', () => {
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+      on: jest.fn(),
+      getEffectByKind: jest.fn().mockReturnValue(undefined),
+    };
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+    const call = createCall(
+      activeUrl,
+      webex,
+      CallDirection.OUTBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator,
+      dest
+    );
+
+    call.dial(localAudioStream);
+
+    const metricSpy = jest.spyOn(call['metricManager'], 'submitMediaMetric');
+    const warnSpy = jest.spyOn(log, 'warn');
+
+    const getHandlerForEvent = (eventName: string) =>
+      (call['mediaConnection'].on as jest.Mock).mock.calls.find(
+        ([name]) => name === eventName
+      )?.[1];
+
+    const iceGatheringHandler = getHandlerForEvent(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_GATHERING_STATE_CHANGED
+    );
+    const peerConnectionHandler = getHandlerForEvent(
+      InternalMediaCoreModule.MediaConnectionEventNames.PEER_CONNECTION_STATE_CHANGED
+    );
+    const iceConnectionHandler = getHandlerForEvent(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_CONNECTION_STATE_CHANGED
+    );
+    const iceCandidateErrorHandler = getHandlerForEvent(
+      InternalMediaCoreModule.MediaConnectionEventNames.ICE_CANDIDATE_ERROR
+    );
+
+    iceGatheringHandler({iceGatheringState: 'gathering'});
+    peerConnectionHandler({connectionState: 'connected'});
+    iceConnectionHandler({iceConnectionState: 'completed'});
+    iceCandidateErrorHandler({
+      errorCode: 701,
+      errorText: 'STUN host lookup failed',
+      url: 'stun:example.org:3478',
+    });
+
+    expect(metricSpy).toHaveBeenNthCalledWith(
+      1,
+      METRIC_EVENT.MEDIA,
+      MEDIA_CONNECTION_ACTION.ICE_GATHERING_STATE_CHANGED,
+      METRIC_TYPE.BEHAVIORAL,
+      call.getCallId(),
+      call.getCorrelationId(),
+      undefined,
+      undefined,
+      'gathering'
+    );
+    expect(metricSpy).toHaveBeenNthCalledWith(
+      2,
+      METRIC_EVENT.MEDIA,
+      MEDIA_CONNECTION_ACTION.PEER_CONNECTION_STATE_CHANGED,
+      METRIC_TYPE.BEHAVIORAL,
+      call.getCallId(),
+      call.getCorrelationId(),
+      undefined,
+      undefined,
+      'connected'
+    );
+    expect(metricSpy).toHaveBeenNthCalledWith(
+      3,
+      METRIC_EVENT.MEDIA,
+      MEDIA_CONNECTION_ACTION.ICE_CONNECTION_STATE_CHANGED,
+      METRIC_TYPE.BEHAVIORAL,
+      call.getCallId(),
+      call.getCorrelationId(),
+      undefined,
+      undefined,
+      'completed'
+    );
+    expect(metricSpy).toHaveBeenNthCalledWith(
+      4,
+      METRIC_EVENT.MEDIA_ERROR,
+      MEDIA_CONNECTION_ACTION.ICE_CANDIDATE_ERROR,
+      METRIC_TYPE.BEHAVIORAL,
+      call.getCallId(),
+      call.getCorrelationId(),
+      undefined,
+      undefined,
+      undefined,
+      expect.any(CallError)
+    );
+    const mediaErrorCall = metricSpy.mock.calls[3];
+
+    expect((mediaErrorCall[mediaErrorCall.length - 1] as CallError).getCallError().message).toBe(
+      'ICE candidate error occurred: {"address":null,"errorCode":701,"errorText":"STUN host lookup failed","port":null,"url":"stun:example.org:3478"}'
+    );
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      'ICE candidate error occurred: {"address":null,"errorCode":701,"errorText":"STUN host lookup failed","port":null,"url":"stun:example.org:3478"}',
+      {file: 'call', method: 'mediaIceEventsListener'}
+    );
+  });
+
+  it('handles ROAP failure listener and submits media error metric', () => {
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+      on: jest.fn(),
+      getEffectByKind: jest.fn().mockReturnValue(undefined),
+    };
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+    const call = createCall(
+      activeUrl,
+      webex,
+      CallDirection.OUTBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator,
+      dest
+    );
+
+    call.dial(localAudioStream);
+
+    const metricSpy = jest.spyOn(call['metricManager'], 'submitMediaMetric');
+    const warnSpy = jest.spyOn(log, 'warn');
+    const roapFailureHandler = (call['mediaConnection'].on as jest.Mock).mock.calls.find(
+      ([name]) => name === InternalMediaCoreModule.MediaConnectionEventNames.ROAP_FAILURE
+    )?.[1];
+
+    const roapFailure = new Error('Failed to process remote SDP');
+
+    roapFailureHandler(roapFailure);
+
+    expect(metricSpy).toHaveBeenCalledWith(
+      METRIC_EVENT.MEDIA_ERROR,
+      MEDIA_CONNECTION_ACTION.ROAP_FAILURE,
+      METRIC_TYPE.BEHAVIORAL,
+      call.getCallId(),
+      call.getCorrelationId(),
+      undefined,
+      undefined,
+      undefined,
+      expect.any(CallError)
+    );
+
+    const roapFailureMetricCall = metricSpy.mock.calls.find(
+      ([name, metricAction]) =>
+        name === METRIC_EVENT.MEDIA_ERROR && metricAction === MEDIA_CONNECTION_ACTION.ROAP_FAILURE
+    );
+
+    expect(roapFailureMetricCall).toBeDefined();
+
+    expect(
+      (roapFailureMetricCall?.[roapFailureMetricCall.length - 1] as CallError).getCallError()
+        .message
+    ).toBe('ROAP failure occurred: Failed to process remote SDP');
+    expect(warnSpy).toHaveBeenCalledWith('ROAP failure occurred: Failed to process remote SDP', {
+      file: 'call',
+      method: 'mediaRoapEventsListener',
+    });
+  });
+
+  it('sends connect before ROAP answer when inbound offer is delayed', async () => {
+    const mockStream = {
+      outputStream: {
+        getAudioTracks: jest.fn().mockReturnValue([mockTrack]),
+      },
+      on: jest.fn(),
+      getEffectByKind: jest.fn().mockImplementation(() => {
+        return mockEffect;
+      }),
+    };
+
+    const localAudioStream = mockStream as unknown as InternalMediaCoreModule.LocalMicrophoneStream;
+    const call = createCall(
+      activeUrl,
+      webex,
+      CallDirection.INBOUND,
+      deviceId,
+      mockLineId,
+      deleteCallFromCollection,
+      defaultServiceIndicator,
+      dest
+    ) as Call;
+
+    webex.request.mockReturnValue({
+      statusCode: 200,
+      body: {
+        callId: 'mock-call-id',
+      },
+    } as WebexRequestPayload);
+
+    call.sendCallStateMachineEvt({
+      type: 'E_RECV_CALL_SETUP',
+      data: {
+        seq: 1,
+        messageType: 'OFFER',
+      },
+    } as CallEvent);
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_PROGRESS');
+
+    await call.answer(localAudioStream);
+    expect(call['callStateMachine'].state.value).toBe('S_SEND_CALL_CONNECT');
+
+    // Connect is attempted by answer(), but is deferred because offer is not buffered yet.
+    const handleOutgoingCallConnectSpy = jest.spyOn(call as any, 'handleOutgoingCallConnect');
+    expect(call['connectPending']).toBe(true);
+    expect(call['mediaConnection'].roapMessageReceived).not.toHaveBeenCalled();
+
+    const delayedOffer = {
+      seq: 1,
+      messageType: 'OFFER',
+      sdp: 'v=0',
+      version: 1,
+    };
+
+    call.sendMediaStateMachineEvt({type: 'E_RECV_ROAP_OFFER', data: delayedOffer} as RoapEvent);
+    await flushPromises(2);
+    expect(call['mediaConnection'].roapMessageReceived).toHaveBeenCalledWith(delayedOffer);
+
+    const sendCallStateMachineEvtSpy = jest.spyOn(call, 'sendCallStateMachineEvt');
+    const sendMediaStateMachineEvtSpy = jest.spyOn(call, 'sendMediaStateMachineEvt');
+    const roapListener = (call['mediaConnection'].on as jest.Mock).mock.calls.find(
+      ([eventName]) =>
+        eventName === InternalMediaCoreModule.MediaConnectionEventNames.ROAP_MESSAGE_TO_SEND
+    )?.[1];
+
+    expect(roapListener).toBeDefined();
+
+    await roapListener({
+      roapMessage: {
+        messageType: 'ANSWER',
+        sdp: 'v=0',
+        seq: 1,
+        version: 2,
+      },
+    });
+    await flushPromises(2);
+
+    // On ANSWER from media layer, connect is retried first, then ROAP answer is posted.
+    expect(sendCallStateMachineEvtSpy).toHaveBeenNthCalledWith(1, {type: 'E_SEND_CALL_CONNECT'});
+    expect(sendMediaStateMachineEvtSpy).toHaveBeenNthCalledWith(1, {
+      type: 'E_SEND_ROAP_ANSWER',
+      data: expect.objectContaining({messageType: 'ANSWER'}),
+    });
+    expect(handleOutgoingCallConnectSpy).toHaveBeenCalled();
+    expect(call['mediaConnection'].roapMessageReceived).toHaveBeenLastCalledWith(delayedOffer);
+    expect(call['connectPending']).toBe(false);
   });
 
   it('testing enabling/disabling the BNR on an active call', async () => {
@@ -915,6 +1272,8 @@ describe('State Machine handler tests', () => {
   let dtmfMock: jest.SpyInstance;
 
   beforeEach(() => {
+    APIRequest.resetInstance();
+    APIRequest.getInstance({webex, isMobiusSocketEnabled: false});
     call = new Call(
       activeUrl,
       webex,
@@ -1603,6 +1962,8 @@ describe('State Machine handler tests', () => {
 
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
     await flushPromises(3);
+    await Promise.resolve();
+    await Promise.resolve();
     expect(call['callStateMachine'].state.value).toBe('S_UNKNOWN');
     expect(errorSpy).toHaveBeenCalled();
     expect(uploadLogsSpy).toHaveBeenCalledWith({
@@ -1633,6 +1994,8 @@ describe('State Machine handler tests', () => {
 
     await call['handleRoapEstablished']({} as MediaContext, dummyEvent as RoapEvent);
     await flushPromises(2);
+    await Promise.resolve();
+    await Promise.resolve();
     expect(call.isConnected()).toBe(false);
 
     expect(call['mediaStateMachine'].state.value).toBe('S_ROAP_TEARDOWN');
@@ -1984,6 +2347,8 @@ describe('State Machine handler tests', () => {
 
     await call.sendMediaStateMachineEvt(answerEvent as RoapEvent);
     await flushPromises(2);
+    await Promise.resolve();
+    await Promise.resolve();
 
     expect(postMediaSpy).toBeCalledOnceWith(answerEvent.data as RoapMessage);
     expect(warnSpy).toHaveBeenCalledWith('Failed to send MediaAnswer request', {
@@ -2448,7 +2813,7 @@ describe('State Machine handler tests', () => {
     call.sendCallStateMachineEvt(dummyEvent as CallEvent);
     expect(call['callStateMachine'].state.value).toBe('S_CALL_HOLD');
 
-    expect(infoSpy).toHaveBeenLastCalledWith(
+    expect(infoSpy).toHaveBeenCalledWith(
       `${METHOD_START_MESSAGE} with: ${call.getCorrelationId()}`,
       {
         file: 'call',
@@ -2591,6 +2956,8 @@ describe('Supplementary Services tests', () => {
   let call: Call;
 
   beforeEach(() => {
+    APIRequest.resetInstance();
+    APIRequest.getInstance({webex, isMobiusSocketEnabled: false});
     /* Since we are not actually testing from the start of a call , so it's good to set the below
      * parameters manually
      */

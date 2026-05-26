@@ -430,12 +430,14 @@ describe('plugin-authorization-browser-first-party', () => {
         const webex = makeWebex();
 
         const emitSpy = sinon.spy(webex.authorization.eventEmitter, 'emit');
-        sinon.stub(webex.authorization, 'initiateAuthorizationCodeGrant').returns(Promise.resolve());
+        sinon
+          .stub(webex.authorization, 'initiateAuthorizationCodeGrant')
+          .returns(Promise.resolve());
 
         return webex.authorization.initiateLogin().then(() => {
           assert.calledOnceWithExactly(emitSpy, Events.login, {
             eventType: 'initiateLogin',
-            data: { hasEmail: false, hasState: false },
+            data: {hasEmail: false, hasState: false},
           });
         });
       });
@@ -444,12 +446,14 @@ describe('plugin-authorization-browser-first-party', () => {
         const webex = makeWebex();
 
         const emitSpy = sinon.spy(webex.authorization.eventEmitter, 'emit');
-        sinon.stub(webex.authorization, 'initiateAuthorizationCodeGrant').returns(Promise.resolve());
+        sinon
+          .stub(webex.authorization, 'initiateAuthorizationCodeGrant')
+          .returns(Promise.resolve());
 
-        return webex.authorization.initiateLogin({ email: 'test@abc.xyz' }).then(() => {
+        return webex.authorization.initiateLogin({email: 'test@abc.xyz'}).then(() => {
           assert.calledOnceWithExactly(emitSpy, Events.login, {
             eventType: 'initiateLogin',
-            data: { hasEmail: true, hasState: false },
+            data: {hasEmail: true, hasState: false},
           });
         });
       });
@@ -458,12 +462,14 @@ describe('plugin-authorization-browser-first-party', () => {
         const webex = makeWebex();
 
         const emitSpy = sinon.spy(webex.authorization.eventEmitter, 'emit');
-        sinon.stub(webex.authorization, 'initiateAuthorizationCodeGrant').returns(Promise.resolve());
+        sinon
+          .stub(webex.authorization, 'initiateAuthorizationCodeGrant')
+          .returns(Promise.resolve());
 
-        return webex.authorization.initiateLogin({ state: {} }).then(() => {
+        return webex.authorization.initiateLogin({state: {}}).then(() => {
           assert.calledOnceWithExactly(emitSpy, Events.login, {
             eventType: 'initiateLogin',
-            data: { hasEmail: false, hasState: true },
+            data: {hasEmail: false, hasState: true},
           });
         });
       });
@@ -471,81 +477,87 @@ describe('plugin-authorization-browser-first-party', () => {
 
     describe('#initiateAuthorizationCodeGrant()', () => {
       it('redirects to the login page with response_type=code', () => {
-      const webex = makeWebex(undefined, undefined, {
-        credentials: {
-        clientType: 'confidential',
-        },
-      });
+        const webex = makeWebex(undefined, undefined, {
+          credentials: {
+            clientType: 'confidential',
+          },
+        });
 
-      sinon.spy(webex.authorization, 'initiateAuthorizationCodeGrant');
+        sinon.spy(webex.authorization, 'initiateAuthorizationCodeGrant');
 
-      return webex.authorization.initiateLogin().then(() => {
-        assert.called(webex.authorization.initiateAuthorizationCodeGrant);
-        assert.include(webex.getWindow().location, 'response_type=code');
-      });
+        return webex.authorization.initiateLogin().then(() => {
+          assert.called(webex.authorization.initiateAuthorizationCodeGrant);
+          assert.include(webex.getWindow().location, 'response_type=code');
+        });
       });
 
       it('redirects to the login page in the same window by default', () => {
-      const webex = makeWebex();
+        const webex = makeWebex();
 
-      return webex.authorization.initiateAuthorizationCodeGrant().then(() => {
-        assert.isDefined(webex.getWindow().location);
-        assert.isUndefined(webex.getWindow().open);
-      });
+        return webex.authorization.initiateAuthorizationCodeGrant().then(() => {
+          assert.isDefined(webex.getWindow().location);
+          assert.isUndefined(webex.getWindow().open);
+        });
       });
 
       it('opens login page in a new window when separateWindow is true', () => {
-      const webex = makeWebex();
-      webex.getWindow().open = sinon.spy();
+        const webex = makeWebex();
+        webex.getWindow().open = sinon.spy();
 
-      return webex.authorization.initiateAuthorizationCodeGrant({ separateWindow: true }).then(() => {
-        assert.called(webex.getWindow().open);
-        const openCall = webex.getWindow().open.getCall(0);
-        assert.equal(openCall.args[1], '_blank');
-        assert.equal(openCall.args[2], 'width=600,height=800');
-      });
+        return webex.authorization
+          .initiateAuthorizationCodeGrant({separateWindow: true})
+          .then(() => {
+            assert.called(webex.getWindow().open);
+            const openCall = webex.getWindow().open.getCall(0);
+            assert.equal(openCall.args[1], '_blank');
+            assert.equal(openCall.args[2], 'width=600,height=800');
+          });
       });
 
       it('opens login page in a new window with custom dimensions', () => {
-      const webex = makeWebex();
-      webex.getWindow().open = sinon.spy();
+        const webex = makeWebex();
+        webex.getWindow().open = sinon.spy();
 
-      const customWindow = {
-        width: 800,
-        height: 600,
-        menubar: 'no',
-        toolbar: 'no'
-      };
+        const customWindow = {
+          width: 800,
+          height: 600,
+          menubar: 'no',
+          toolbar: 'no',
+        };
 
-      return webex.authorization.initiateAuthorizationCodeGrant({
-        separateWindow: customWindow
-      }).then(() => {
-        assert.called(webex.getWindow().open);
-        const openCall = webex.getWindow().open.getCall(0);
-        assert.equal(openCall.args[1], '_blank');
-        assert.equal(
-        openCall.args[2],
-        'width=800,height=600,menubar=no,toolbar=no'
-        );
-      });
+        return webex.authorization
+          .initiateAuthorizationCodeGrant({
+            separateWindow: customWindow,
+          })
+          .then(() => {
+            assert.called(webex.getWindow().open);
+            const openCall = webex.getWindow().open.getCall(0);
+            assert.equal(openCall.args[1], '_blank');
+            assert.equal(openCall.args[2], 'width=800,height=600,menubar=no,toolbar=no');
+          });
       });
 
       it('preserves other options when using separateWindow', () => {
-      const webex = makeWebex();
-      webex.getWindow().open = sinon.spy();
+        const webex = makeWebex();
+        webex.getWindow().open = sinon.spy();
 
-      return webex.authorization.initiateAuthorizationCodeGrant({
-        separateWindow: true,
-        state: {}
-      }).then(() => {
-        assert.called(webex.getWindow().open);
-        const url = webex.getWindow().open.getCall(0).args[0];
-        assert.include(url, "https://idbrokerbts.webex.com/idb/oauth2/v1/authorize?response_type=code&separateWindow=true&client_id=fake&redirect_uri=http%3A%2F%2Fexample.com&scope=scope%3Aone");
-      });
+        return webex.authorization
+          .initiateAuthorizationCodeGrant({
+            separateWindow: true,
+            state: {},
+          })
+          .then(() => {
+            assert.called(webex.getWindow().open);
+            const url = webex.getWindow().open.getCall(0).args[0];
+            assert.include(
+              url,
+              'https://idbrokerbts.webex.com/idb/oauth2/v1/authorize?response_type=code&separateWindow=true&client_id=fake&redirect_uri=http%3A%2F%2Fexample.com&scope=scope%3Aone'
+            );
+          });
       });
 
       it('Emits an event containing the login url', () => {
-        const testLoginUrl = "https://test.example.com";
+        const testLoginUrl = 'https://test.example.com';
         const webex = makeWebex();
 
         sinon.stub(webex.credentials, 'buildLoginUrl').returns(testLoginUrl);
@@ -554,9 +566,64 @@ describe('plugin-authorization-browser-first-party', () => {
         return webex.authorization.initiateAuthorizationCodeGrant().then(() => {
           assert.calledOnceWithExactly(emitSpy, Events.login, {
             eventType: 'redirectToLoginUrl',
-            data: { loginUrl: testLoginUrl },
+            data: {loginUrl: testLoginUrl},
           });
         });
+      });
+    });
+
+    describe('#initiateThirdPartyLogin()', () => {
+      it('delegates to #initiateThirdPartyLoginRedirect and returns its promise', () => {
+        const webex = makeWebex();
+        const expected = Promise.resolve();
+        const stub = sinon
+          .stub(webex.authorization, 'initiateThirdPartyLoginRedirect')
+          .returns(expected);
+        const options = {
+          oauth2provider: 'google',
+          returnURL: 'https://web.webex.com',
+        };
+
+        const result = webex.authorization.initiateThirdPartyLogin(options);
+
+        assert.equal(result, expected);
+        assert.calledOnceWithExactly(stub, options);
+
+        return result;
+      });
+    });
+
+    describe('#initiateThirdPartyLoginRedirect()', () => {
+      it('builds the third-party login URL and assigns it to getWindow().location', () => {
+        const webex = makeWebex();
+        const builtUrl =
+          'https://idbroker.webex.com/idb/ThirdPartyLogin?oauth2provider=google&returnURL=https%3A%2F%2Fweb.webex.com';
+        sinon.stub(webex.credentials, 'buildThirdPartyLoginUrl').returns(builtUrl);
+
+        return webex.authorization
+          .initiateThirdPartyLoginRedirect({
+            oauth2provider: 'google',
+            returnURL: 'https://web.webex.com',
+          })
+          .then(() => {
+            assert.calledOnceWithExactly(webex.credentials.buildThirdPartyLoginUrl, {
+              oauth2provider: 'google',
+              returnURL: 'https://web.webex.com',
+            });
+            assert.equal(webex.getWindow().location, builtUrl);
+          });
+      });
+
+      it('returns a rejected promise if buildThirdPartyLoginUrl throws', () => {
+        const webex = makeWebex();
+        sinon
+          .stub(webex.credentials, 'buildThirdPartyLoginUrl')
+          .throws(new Error('`options.oauth2provider` is required'));
+
+        return assert.isRejected(
+          webex.authorization.initiateThirdPartyLoginRedirect({}),
+          /`options.oauth2provider` is required/
+        );
       });
     });
 
@@ -564,7 +631,8 @@ describe('plugin-authorization-browser-first-party', () => {
       it('should generate a QR code URL when a userCode is present', () => {
         const verificationUrl = 'https://example.com/verify?userCode=123456';
         const oauthHelperUrl = 'https://oauth-helper-a.wbx2.com/helperservice/v1';
-        const expectedUrl = 'https://web.webex.com/deviceAuth?usercode=123456&oauthhelper=https%3A%2F%2Foauth-helper-a.wbx2.com%2Fhelperservice%2Fv1';
+        const expectedUrl =
+          'https://web.webex.com/deviceAuth?usercode=123456&oauthhelper=https%3A%2F%2Foauth-helper-a.wbx2.com%2Fhelperservice%2Fv1';
 
         const webex = makeWebex('http://example.com');
 

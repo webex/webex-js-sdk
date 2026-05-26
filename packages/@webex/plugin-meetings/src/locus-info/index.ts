@@ -749,10 +749,6 @@ export default class LocusInfo extends EventsScope {
 
       // Active parser found - pass the API response to it
       if (isWrapped) {
-        LoggerProxy.logger.info(
-          'Locus-info:index#handleLocusAPIResponse --> passing Locus API response to HashTreeParser: ',
-          responseBody
-        );
         // update the data in our hash trees
         hashTreeParserEntry.parser.handleLocusUpdate(responseBody);
       } else {
@@ -1207,13 +1203,15 @@ export default class LocusInfo extends EventsScope {
    * Triggers a sync of all hash tree datasets for all hash tree parsers associated with this meeting.
    * The syncs are executed sequentially within each parser.
    *
+   * @param {Object} [options={}] - Options for syncing
+   * @param {boolean} [options.onlyLLM=false] - Whether to sync only LLM based data sets
    * @returns {Promise<void>}
    */
-  async syncAllHashTreeDatasets(): Promise<void> {
+  async syncAllHashTreeDatasets(options: {onlyLLM?: boolean} = {}): Promise<void> {
     for (const [, entry] of this.hashTreeParsers) {
       if (entry.parser) {
         // eslint-disable-next-line no-await-in-loop
-        await entry.parser.syncAllDatasets();
+        await entry.parser.syncAllDatasets(options);
       }
     }
   }
@@ -1344,6 +1342,21 @@ export default class LocusInfo extends EventsScope {
           );
           this.webex.meetings.destroy(meeting, MEETING_REMOVED_REASON.SELF_REMOVED);
         }
+        break;
+      }
+
+      case LocusInfoUpdateType.LOCUS_NOT_FOUND: {
+        LoggerProxy.logger.info(
+          `Locus-info:index#updateFromHashTree --> received LOCUS_NOT_FOUND for ${locusUrl}, triggering syncMeetings`
+        );
+        this.webex.meetings
+          .syncMeetings({keepOnlyLocusMeetings: false, skipHashTreeSync: true})
+          .catch((syncError) => {
+            LoggerProxy.logger.error(
+              `Locus-info:index#updateFromHashTree --> syncMeetings failed after LOCUS_NOT_FOUND: ${syncError}`
+            );
+          });
+        break;
       }
     }
   }
@@ -2085,6 +2098,8 @@ export default class LocusInfo extends EventsScope {
             state,
             modifiedBy: current.record.modifiedBy,
             lastModified: current.record.lastModified,
+            modifiedByServiceAppName: current.record.modifiedByServiceAppName,
+            modifiedByServiceAppId: current.record.modifiedByServiceAppId,
           }
         );
       }

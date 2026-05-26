@@ -142,8 +142,10 @@ export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl:
     method: 'filterMobiusUris',
   };
 
-  const urisArrayPrimary = [];
-  const urisArrayBackup = [];
+  const urisArrayPrimary: string[] = [];
+  const urisArrayBackup: string[] = [];
+  const wssArrayPrimary: string[] = [];
+  const wssArrayBackup: string[] = [];
 
   if (mobiusServers?.primary?.uris) {
     log.info('Adding Primary uris', logContext);
@@ -152,10 +154,24 @@ export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl:
     }
   }
 
+  if (mobiusServers?.primary?.wss) {
+    log.info('Adding Primary wss uris', logContext);
+    for (const wssUri of mobiusServers.primary.wss) {
+      wssArrayPrimary.push(wssUri);
+    }
+  }
+
   if (mobiusServers?.backup?.uris) {
     log.info('Adding Backup uris', logContext);
     for (const uri of mobiusServers.backup.uris) {
       urisArrayBackup.push(`${uri}${URL_ENDPOINT}`);
+    }
+  }
+
+  if (mobiusServers?.backup?.wss) {
+    log.info('Adding Backup wss uris', logContext);
+    for (const wssUri of mobiusServers.backup.wss) {
+      wssArrayBackup.push(wssUri);
     }
   }
 
@@ -172,6 +188,8 @@ export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl:
 
   const primaryUris: string[] = [];
   const backupUris: string[] = [];
+  const primaryWss: string[] = [];
+  const backupWss: string[] = [];
 
   /* Remove duplicates from primary by keeping the order intact */
   for (let i = 0; i < urisArrayPrimary.length; i += 1) {
@@ -187,7 +205,21 @@ export function filterMobiusUris(mobiusServers: MobiusServers, defaultMobiusUrl:
     }
   }
 
-  return {primary: primaryUris, backup: backupUris};
+  /* Remove duplicates from primary wss by keeping the order intact */
+  for (let i = 0; i < wssArrayPrimary.length; i += 1) {
+    if (primaryWss.indexOf(wssArrayPrimary[i]) === -1) {
+      primaryWss.push(wssArrayPrimary[i]);
+    }
+  }
+
+  /* Remove duplicates from backup wss by keeping the order intact */
+  for (let i = 0; i < wssArrayBackup.length; i += 1) {
+    if (backupWss.indexOf(wssArrayBackup[i]) === -1) {
+      backupWss.push(wssArrayBackup[i]);
+    }
+  }
+
+  return {primary: primaryUris, backup: backupUris, primaryWss, backupWss};
 }
 
 /**
@@ -270,13 +302,23 @@ function updateErrorContext(
  * @param caller - Method which called this handler.
  * @param file - File name from where error got reported.
  */
-export function emitFinalFailure(emitterCb: LineErrorEmitterCallback, loggerContext: LogContext) {
-  const clientError = createLineError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
+export function emitFinalFailure(
+  emitterCb: LineErrorEmitterCallback,
+  loggerContext: LogContext,
+  message?: string
+) {
+  const clientError = createLineError(
+    message || '',
+    {},
+    ERROR_TYPE.DEFAULT,
+    RegistrationStatus.INACTIVE
+  );
 
   updateLineErrorContext(
     loggerContext,
     ERROR_TYPE.SERVICE_UNAVAILABLE,
-    'An unknown error occurred. Wait a moment and try again. Please contact the administrator if the problem persists.',
+    message ||
+      'An unknown error occurred. Wait a moment and try again. Please contact the administrator if the problem persists.',
     RegistrationStatus.INACTIVE,
     clientError
   );
@@ -304,8 +346,10 @@ export async function handleRegistrationErrors(
   emitterCb: LineErrorEmitterCallback,
   loggerContext: LogContext,
   retry429Cb?: retry429CallBack,
-  restoreRegCb?: restoreRegistrationCallBack
-): Promise<boolean> {
+  restoreRegCb?: restoreRegistrationCallBack,
+  serverCount = 1 // Number of servers in the list
+): Promise<{finalError: boolean; shouldDisconnect: boolean}> {
+  let shouldDisconnect = false;
   const lineError = createLineError('', {}, ERROR_TYPE.DEFAULT, RegistrationStatus.INACTIVE);
 
   const errorCode = Number(err.statusCode);
@@ -324,6 +368,7 @@ export async function handleRegistrationErrors(
         lineError
       );
       emitterCb(lineError, finalError);
+      shouldDisconnect = serverCount > 1;
       break;
     }
 
@@ -341,6 +386,7 @@ export async function handleRegistrationErrors(
       );
 
       emitterCb(lineError, finalError);
+      shouldDisconnect = serverCount > 1;
       break;
     }
 
@@ -357,6 +403,7 @@ export async function handleRegistrationErrors(
       );
 
       emitterCb(lineError, finalError);
+      shouldDisconnect = serverCount > 1;
       break;
     }
 
@@ -373,8 +420,9 @@ export async function handleRegistrationErrors(
 
       if (retry429Cb && err.headers) {
         const retryAfter = Number(err.headers['retry-after']);
-        retry429Cb(retryAfter, caller);
+        await retry429Cb(retryAfter, caller);
       }
+      shouldDisconnect = false;
 
       break;
     }
@@ -390,6 +438,7 @@ export async function handleRegistrationErrors(
       );
 
       emitterCb(lineError, finalError);
+      shouldDisconnect = serverCount > 1;
       break;
     }
 
@@ -404,6 +453,7 @@ export async function handleRegistrationErrors(
       );
 
       emitterCb(lineError, finalError);
+      shouldDisconnect = serverCount > 1;
       break;
     }
     case ERROR_CODE.FORBIDDEN: {
@@ -421,8 +471,9 @@ export async function handleRegistrationErrors(
         );
 
         emitterCb(lineError, finalError);
+        shouldDisconnect = serverCount > 1;
 
-        return finalError;
+        return {finalError, shouldDisconnect};
       }
 
       const code = Number(errorBody.errorCode);
@@ -435,6 +486,7 @@ export async function handleRegistrationErrors(
             const caller = loggerContext.method || 'handleErrors';
             await restoreRegCb(errorBody, caller);
           }
+          shouldDisconnect = false;
           break;
         }
         case DEVICE_ERROR_CODE.DEVICE_CREATION_DISABLED: {
@@ -450,6 +502,7 @@ export async function handleRegistrationErrors(
           );
           log.warn(errorMessage, loggerContext);
           emitterCb(lineError, true);
+          shouldDisconnect = true;
           break;
         }
         case DEVICE_ERROR_CODE.DEVICE_CREATION_FAILED: {
@@ -464,6 +517,7 @@ export async function handleRegistrationErrors(
           );
           log.warn(errorMessage, loggerContext);
           emitterCb(lineError, finalError);
+          shouldDisconnect = serverCount > 1;
           break;
         }
         default: {
@@ -478,6 +532,7 @@ export async function handleRegistrationErrors(
           );
           log.warn(errorMessage, loggerContext);
           emitterCb(lineError, finalError);
+          shouldDisconnect = serverCount > 1;
         }
       }
       break;
@@ -493,10 +548,11 @@ export async function handleRegistrationErrors(
       );
       log.warn(`Unknown Error`, loggerContext);
       emitterCb(lineError, finalError);
+      shouldDisconnect = serverCount > 1;
     }
   }
 
-  return finalError;
+  return {finalError, shouldDisconnect};
 }
 
 /**
@@ -1579,7 +1635,7 @@ function isValidServiceIndicator(indicator: ServiceIndicator): boolean {
  * @param serviceData - .
  * @returns True if validation is successful else false.
  */
-function isValidServiceDomain(serviceData: ServiceData): boolean {
+export function isValidServiceDomain(serviceData: ServiceData): boolean {
   const regexp = /^[a-z0-9]+([-.]{1}[a-z0-9]+)*\.[a-z]{2,6}$/i;
   const {domain} = serviceData;
 
@@ -1594,7 +1650,7 @@ function isValidServiceDomain(serviceData: ServiceData): boolean {
 }
 
 /**
- * Validates service data object(indicator & domain) and throws
+ * Validates service data object(indicator) and throws
  * exception with a message indicating the reason for validation
  * failure.
  *
@@ -1606,10 +1662,6 @@ export function validateServiceData(serviceData: ServiceData) {
 
   if (!isValidServiceIndicator(serviceData.indicator)) {
     throw new Error(`Invalid service indicator, Allowed values are: ${formattedValues}`);
-  }
-
-  if (!isValidServiceDomain(serviceData)) {
-    throw new Error('Invalid service domain.');
   }
 }
 
@@ -1761,4 +1813,8 @@ export async function uploadLogs(
 
     return undefined;
   }
+}
+
+export function normalizeMobiusUris(urls: string[]): string[] {
+  return urls.map((url) => (!url.endsWith('/') ? `${url}/` : url));
 }
