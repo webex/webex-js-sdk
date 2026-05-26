@@ -228,10 +228,14 @@ const Credentials = WebexPlugin.extend({
    *   `microsoft`, `apple`, ...). Required.
    * @param {string} options.returnURL - URL IdBroker should send the user
    *   back to after the third-party hand-off. Required.
+   * @param {Object} [options.state] - Optional state object. When non-empty
+   *   it is JSON-stringified and base64url-encoded, then emitted as the
+   *   top-level `state` query param so IdBroker can echo it back unchanged
+   *   on the callback (mirrors `buildLoginUrl`).
    * @returns {string}
    */
   buildThirdPartyLoginUrl(options = {}) {
-    const {oauth2provider, returnURL} = options;
+    const {oauth2provider, returnURL, state} = options;
 
     if (!oauth2provider) {
       throw new Error('`options.oauth2provider` is required');
@@ -239,11 +243,20 @@ const Credentials = WebexPlugin.extend({
     if (!returnURL) {
       throw new Error('`options.returnURL` is required');
     }
+    if (state !== undefined && !isObject(state)) {
+      throw new Error('if specified, `options.state` must be an object');
+    }
 
-    return `${this.config.thirdPartyLoginUrl}?${querystring.stringify({
+    const query = {
       oauth2provider,
       returnURL,
-    })}`;
+    };
+
+    if (state && !isEmpty(state)) {
+      query.state = base64.toBase64Url(JSON.stringify(state));
+    }
+
+    return `${this.config.thirdPartyLoginUrl}?${querystring.stringify(query)}`;
   },
 
   /**
