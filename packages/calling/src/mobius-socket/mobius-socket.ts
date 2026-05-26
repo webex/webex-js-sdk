@@ -17,6 +17,7 @@ import type {
   MobiusSocketRequestOptions,
   MobiusSocketRequestPayload,
 } from './types';
+import {MOBIUS_SOCKET_4001_EVENT} from './socket/constants';
 
 const normalReconnectReasons = ['idle', 'done (forced)'];
 const MOBIUS_SOCKET_NAMESPACE = 'MobiusSocket';
@@ -814,23 +815,9 @@ class MobiusSocket extends EventEmitter {
           if (isActiveSocket) this.emitEvent('offline.replaced', event);
           break;
         case 4001:
-          // replaced during shutdown
-          if (isActiveSocket) {
-            // Server closed active socket with 4001, meaning it expected this connection
-            // to be replaced, but the switchover in handleImminentShutdown failed.
-            this.logger.warn(
-              `active socket closed with 4001; shutdown switchover failed`,
-              loggerContext
-            );
-            this.emitEvent('offline.permanent', event);
-          } else {
-            // Expected: old socket closed after successful switchover
-            this.logger.info(
-              `old socket closed with 4001 (replaced during shutdown); no reconnect needed`,
-              loggerContext
-            );
-            this.emitEvent('offline.replaced', event);
-          }
+          // Handle the same way we do for registration.down event from Mobius.
+          this.logger.info(`socket closed with 4001; will not reconnect`, loggerContext);
+          this.emitEvent('event:async_event', MOBIUS_SOCKET_4001_EVENT);
           break;
         case 1000:
         case 1001:
@@ -866,7 +853,9 @@ class MobiusSocket extends EventEmitter {
         case 4403:
         case 4404:
           this.logger.error(`onclose, statusCode=${event.code}`, loggerContext);
-          await this.refreshToken();
+          await this.refreshToken().catch((error) => {
+            this.logger.error(`${MOBIUS_SOCKET_NAMESPACE}: periodic token refresh failed`, error);
+          });
           await this.reconnect(this.socket?.url);
           break;
         case 4429:
@@ -885,7 +874,7 @@ class MobiusSocket extends EventEmitter {
   private onmessage(event: SocketMessageEvent<SocketResponse>): Promise<void> {
     const loggerContext = {
       file: 'mobius-socket.ts',
-      method: 'onclose',
+      method: 'onmessage',
     };
 
     const envelope = event.data;
