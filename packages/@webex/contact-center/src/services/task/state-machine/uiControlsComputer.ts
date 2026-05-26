@@ -352,11 +352,7 @@ function computeVoiceInteractionUIControls(
     // Transfer: connected/held/conference
     transfer: (() => {
       if (isHydratedConferenceConsultPending) return VISIBLE_DISABLED;
-      if (
-        isConferenceConsultTransferContext &&
-        currentLeg === 'main' &&
-        isCurrentLegActive
-      ) {
+      if (isConferenceConsultTransferContext && currentLeg === 'main' && isCurrentLegActive) {
         return DISABLED;
       }
       if (inConference && isConsulting && consultInitiator) return DISABLED;

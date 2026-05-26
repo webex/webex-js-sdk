@@ -224,8 +224,7 @@ export const guards = {
     const callProcessingDetails = taskData?.interaction?.callProcessingDetails as
       | {conferenceHoldParticipant?: boolean | string}
       | undefined;
-    const conferenceHoldParticipant =
-      callProcessingDetails?.conferenceHoldParticipant;
+    const conferenceHoldParticipant = callProcessingDetails?.conferenceHoldParticipant;
 
     return conferenceHoldParticipant === true || conferenceHoldParticipant === 'true';
   },

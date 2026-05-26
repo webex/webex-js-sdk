@@ -106,7 +106,10 @@ const isActiveConsultState = (taskData: TaskData | undefined, selfAgentId?: stri
   return false;
 };
 
-const isSelfConsultingOrPending = (taskData: TaskData | undefined, selfAgentId?: string): boolean => {
+const isSelfConsultingOrPending = (
+  taskData: TaskData | undefined,
+  selfAgentId?: string
+): boolean => {
   if (!taskData || !selfAgentId) return false;
   const selfParticipant = taskData?.interaction?.participants?.[selfAgentId] as any;
 
@@ -139,9 +142,12 @@ const deriveConsultCallHeldFromTaskData = (taskData: TaskData | undefined): bool
   if (eventType === 'AgentContactUnheld') return false;
 
   const consultMediaId = taskData.consultMediaResourceId;
+
   const consultMedia: any = consultMediaId
     ? taskData.interaction.media?.[consultMediaId]
-    : Object.values(taskData.interaction.media ?? {}).find((m: any) => m?.mType === MEDIA_TYPE_CONSULT);
+    : Object.values(taskData.interaction.media ?? {}).find(
+        (m: any) => m?.mType === MEDIA_TYPE_CONSULT
+      );
 
   if (!consultMedia) return undefined;
 
@@ -192,7 +198,8 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
 
         const selfAgentId = context.uiControlConfig.agentId ?? taskData?.agentId;
         const consultingActive =
-          isActiveConsultState(taskData, selfAgentId) || hasActiveConsultInPostCall(taskData, selfAgentId);
+          isActiveConsultState(taskData, selfAgentId) ||
+          hasActiveConsultInPostCall(taskData, selfAgentId);
         const conferenceFromPayload =
           taskData?.interaction?.state === INTERACTION_STATE.CONFERENCE ||
           getIsConferenceInProgress(taskData);
@@ -215,7 +222,10 @@ const deriveTaskDataUpdates = (context: TaskContext, taskData: TaskData | undefi
           const consultInitiator = determineConsultInitiator(taskData, selfAgentId);
           if (consultInitiator !== undefined) {
             updates.consultInitiator = consultInitiator;
-          } else if (inferredConsultingInitiator || (consultingActive && taskData.isConsulted === false)) {
+          } else if (
+            inferredConsultingInitiator ||
+            (consultingActive && taskData.isConsulted === false)
+          ) {
             updates.consultInitiator = true;
           }
         }
