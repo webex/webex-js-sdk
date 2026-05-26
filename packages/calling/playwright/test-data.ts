@@ -118,7 +118,7 @@ export const USER_SETS: Record<string, UserSet> = {
   SET_2USER_CALL_HISTORY: {
     name: 'SET_2USER_CALL_HISTORY',
     accounts: ['USER_1', 'USER_2'],
-    testSuite: 'set-2user-call-history.spec.ts',
+    testSuite: 'call-history.spec.ts',
   },
 
   // 3-user transfer tests (PROD — dedicated accounts, parallel with registration)
