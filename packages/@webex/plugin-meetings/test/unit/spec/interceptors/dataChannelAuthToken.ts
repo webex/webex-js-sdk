@@ -7,6 +7,7 @@ import DataChannelAuthTokenInterceptor from '@webex/plugin-meetings/src/intercep
 import LoggerProxy from '@webex/plugin-meetings/src/common/logs/logger-proxy';
 import * as utils from '@webex/plugin-meetings/src/interceptors/utils';
 import {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY} from '@webex/plugin-meetings/src/interceptors/constant';
+import {LOCUS_URL} from '@webex/plugin-meetings/src/constants';
 
 describe('plugin-meetings', () => {
   describe('Interceptors', () => {
@@ -178,6 +179,28 @@ describe('plugin-meetings', () => {
           expect(result).to.equal('mock-response');
         });
 
+        it('passes request URL to _refreshDataChannelToken', async () => {
+          const psOptions = {
+            headers: {[DATA_CHANNEL_AUTH_HEADER]: 'old-token'},
+            method: 'POST',
+            uri: 'https://locus.example.com/practiceSession/datachannel',
+          };
+
+          interceptor._refreshDataChannelToken.resolves('new-token');
+          webex.request.resolves('mock-response');
+
+          const promise = interceptor.refreshTokenAndRetryWithDelay(psOptions);
+
+          clock.tick(2000);
+
+          await promise;
+
+          sinon.assert.calledOnceWithExactly(
+            interceptor._refreshDataChannelToken,
+            psOptions.uri
+          );
+        });
+
         it('rejects when refreshDataChannelToken fails', async () => {
           interceptor._refreshDataChannelToken.rejects(new Error('refresh failed'));
 
@@ -202,6 +225,179 @@ describe('plugin-meetings', () => {
           await assert.isRejected(
             promise,
             /DataChannel token refresh failed: request failed/
+          );
+        });
+      });
+
+      describe('refreshDataChannelToken routing (factory dispatcher)', () => {
+        let llmMock;
+        let meetingA;
+        let meetingsMock;
+        let dispatcherInterceptor;
+
+        const PS_DATACHANNEL_URL = 'https://board-a.wbx2.com/datachannel/api/v1/locus/cHJhY3RpY2Vfc2Vzc2lvbl9sb2N1cw==/registrations';
+        const DEFAULT_DATACHANNEL_URL = 'https://board-a.wbx2.com/datachannel/api/v1/locus/aHR0cHM6Ly9sb2N1cy1hLndieDIuY29t/registrations';
+
+        beforeEach(() => {
+          meetingA = {
+            id: 'meeting-a',
+            refreshDataChannelToken: sinon.stub().resolves({
+              body: {
+                datachannelToken: 'token-from-meeting-a',
+                dataChannelTokenType: 'llm-practice-session',
+              },
+            }),
+          };
+
+          llmMock = {
+            isDataChannelTokenEnabled: sinon.stub().resolves(true),
+            getSessionIdByDatachannelUrl: sinon.stub(),
+            getLocusUrlByDatachannelUrl: sinon.stub(),
+            getOwnerMeetingId: sinon.stub().returns(undefined),
+            refreshDataChannelToken: sinon.stub().resolves({
+              body: {
+                datachannelToken: 'token-from-llm-fallback',
+                dataChannelTokenType: 'llm-default-session',
+              },
+            }),
+            setDatachannelToken: sinon.stub(),
+          };
+
+          meetingsMock = {
+            getMeetingByType: sinon.stub(),
+          };
+
+          const context = {
+            internal: {llm: llmMock},
+            meetings: meetingsMock,
+          };
+
+          dispatcherInterceptor = Reflect.apply(DataChannelAuthTokenInterceptor.create, context, []);
+        });
+
+        it('routes PS request URL to PS session handler', async () => {
+          llmMock.getSessionIdByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns('llm-practice-session');
+          llmMock.refreshDataChannelToken
+            .withArgs('llm-practice-session')
+            .resolves({
+              body: {
+                datachannelToken: 'token-from-ps-session',
+                dataChannelTokenType: 'llm-practice-session',
+              },
+            });
+
+          const token = await dispatcherInterceptor._refreshDataChannelToken(PS_DATACHANNEL_URL);
+
+          expect(token).to.equal('token-from-ps-session');
+          sinon.assert.calledOnceWithExactly(llmMock.refreshDataChannelToken, 'llm-practice-session');
+          sinon.assert.calledOnceWithExactly(
+            llmMock.setDatachannelToken,
+            'token-from-ps-session',
+            'llm-practice-session',
+            undefined
+          );
+        });
+
+        it('routes non-PS URL to default session handler', async () => {
+          llmMock.getSessionIdByDatachannelUrl.withArgs(DEFAULT_DATACHANNEL_URL).returns('llm-default-session');
+          llmMock.refreshDataChannelToken
+            .withArgs('llm-default-session')
+            .resolves({
+              body: {
+                datachannelToken: 'token-from-default-session',
+                dataChannelTokenType: 'llm-default-session',
+              },
+            });
+
+          const token = await dispatcherInterceptor._refreshDataChannelToken(DEFAULT_DATACHANNEL_URL);
+
+          expect(token).to.equal('token-from-default-session');
+          sinon.assert.calledOnceWithExactly(llmMock.refreshDataChannelToken, 'llm-default-session');
+          sinon.assert.calledOnceWithExactly(
+            llmMock.setDatachannelToken,
+            'token-from-default-session',
+            'llm-default-session',
+            undefined
+          );
+        });
+
+        it('falls back to default refresh when URL does not match any session or meeting route', async () => {
+          llmMock.getSessionIdByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns(undefined);
+          llmMock.getLocusUrlByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns(undefined);
+          llmMock.refreshDataChannelToken.withArgs(undefined).resolves({
+            body: {
+              datachannelToken: 'token-from-default-fallback',
+              dataChannelTokenType: 'llm-default-session',
+            },
+          });
+
+          const token = await dispatcherInterceptor._refreshDataChannelToken(PS_DATACHANNEL_URL);
+
+          expect(token).to.equal('token-from-default-fallback');
+          sinon.assert.calledOnceWithExactly(llmMock.refreshDataChannelToken, undefined);
+          sinon.assert.calledOnceWithExactly(
+            llmMock.setDatachannelToken,
+            'token-from-default-fallback',
+            'llm-default-session',
+            undefined
+          );
+        });
+
+        it('falls back to meeting lookup by locusUrl when session cannot be resolved', async () => {
+          llmMock.getSessionIdByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns(undefined);
+          llmMock.getLocusUrlByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns('https://locus-a.example.com');
+          meetingsMock.getMeetingByType.withArgs(LOCUS_URL, 'https://locus-a.example.com').returns(meetingA);
+
+          const token = await dispatcherInterceptor._refreshDataChannelToken(PS_DATACHANNEL_URL);
+
+          expect(token).to.equal('token-from-meeting-a');
+          sinon.assert.calledOnceWithExactly(meetingA.refreshDataChannelToken);
+          sinon.assert.notCalled(llmMock.refreshDataChannelToken);
+          sinon.assert.calledOnceWithExactly(
+            llmMock.setDatachannelToken,
+            'token-from-meeting-a',
+            'llm-practice-session',
+            'meeting-a'
+          );
+        });
+
+        it('falls back to active meeting datachannel URL lookup when session/locus routing is unavailable', async () => {
+          llmMock.getSessionIdByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns(undefined);
+          llmMock.getLocusUrlByDatachannelUrl.withArgs(PS_DATACHANNEL_URL).returns(undefined);
+          meetingsMock.getAllMeetings = sinon.stub().returns({
+            'meeting-a': {
+              ...meetingA,
+              locusInfo: {
+                info: {
+                  practiceSessionDatachannelUrl: PS_DATACHANNEL_URL,
+                  datachannelUrl: DEFAULT_DATACHANNEL_URL,
+                },
+              },
+            },
+          });
+
+          const token = await dispatcherInterceptor._refreshDataChannelToken(PS_DATACHANNEL_URL);
+
+          expect(token).to.equal('token-from-meeting-a');
+          sinon.assert.calledOnceWithExactly(meetingA.refreshDataChannelToken);
+          sinon.assert.notCalled(llmMock.refreshDataChannelToken);
+          sinon.assert.calledOnceWithExactly(
+            llmMock.setDatachannelToken,
+            'token-from-meeting-a',
+            'llm-practice-session',
+            'meeting-a'
+          );
+        });
+
+        it('throws when refresh returns no payload', async () => {
+          llmMock.getSessionIdByDatachannelUrl.returns('llm-default-session');
+          llmMock.refreshDataChannelToken.withArgs('llm-default-session').resolves(null);
+
+          await assert.isRejected(
+            dispatcherInterceptor._refreshDataChannelToken(
+              'https://unknown-datachannel.example.com/registrations'
+            ),
+            /DataChannel token refresh returned no payload/
           );
         });
       });
