@@ -25,7 +25,7 @@
     "./src/mobius-socket/socket/socket.ts": "./src/mobius-socket/socket/socket.shim.ts"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=18"
   },
   "scripts": {
     "prebuild": "rimraf dist",

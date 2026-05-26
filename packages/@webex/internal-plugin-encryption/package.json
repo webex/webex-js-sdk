@@ -50,7 +50,8 @@
     "node-jose": "^2.2.0",
     "node-kms": "^0.4.1",
     "node-scr": "^0.3.0",
-    "pkijs": "^3.4.0"
+    "pkijs": "^3.4.0",
+    "uuid": "^3.3.2"
   },
   "scripts": {
     "build": "yarn build:src",

@@ -8008,6 +8008,7 @@ __metadata:
     pkijs: ^3.4.0
     prettier: ^2.7.1
     sinon: ^9.2.4
+    uuid: ^3.3.2
   languageName: unknown
   linkType: soft
 

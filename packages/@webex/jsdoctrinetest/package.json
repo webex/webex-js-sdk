@@ -16,7 +16,7 @@
     "directory": "packages/@webex/jsdoctrinetest"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=18"
   },
   "browserify": {
     "transform": [

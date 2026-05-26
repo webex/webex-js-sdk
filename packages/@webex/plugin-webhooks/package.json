@@ -10,7 +10,7 @@
     "directory": "packages/@webex/plugin-webhooks"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=18"
   },
   "browserify": {
     "transform": [
