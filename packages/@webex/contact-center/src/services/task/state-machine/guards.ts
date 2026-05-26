@@ -120,6 +120,20 @@ export const guards = {
 
     if (taskData?.interaction?.state === INTERACTION_STATE.CONSULTING) return true;
 
+    // Hydrate can report interaction as conference/hold while this agent is actively consulting.
+    // Detect consult by participant consultState + consult media, independent of top-level state.
+    const selfAgentId = getSelfAgentId(context, taskData);
+    const selfParticipant = selfAgentId ? taskData?.interaction?.participants?.[selfAgentId] : null;
+    const hasConsultMedia = Object.values(taskData?.interaction?.media ?? {}).some(
+      (media: any) => media?.mType === MEDIA_TYPE_CONSULT
+    );
+    const selfActiveConsult = selfParticipant?.consultState === CONSULT_STATE.CONSULTING;
+    const selfPendingConsultInitiated =
+      selfParticipant?.consultState === 'consultInitiated' && taskData?.isConsulted === false;
+    if ((selfActiveConsult || selfPendingConsultInitiated) && hasConsultMedia) {
+      return true;
+    }
+
     // EP_DN consulted agent: backend reports state as 'connected' but CPD indicates consult
     const cpd = taskData?.interaction?.callProcessingDetails;
     if (
@@ -133,6 +147,24 @@ export const guards = {
     // between agents is still active. Detect via agent's consultState + consult media.
     if (hasActiveConsultInPostCall(taskData, getSelfAgentId(context, taskData))) {
       return true;
+    }
+
+    // Customer left during consult: interaction state is "post_call" but consult
+    // between agents is still active. Detect via agent's consultState + consult media.
+    if (taskData?.interaction?.state === INTERACTION_STATE.POST_CALL) {
+      const postCallSelfAgentId = getSelfAgentId(context, taskData);
+      const postCallSelfParticipant = postCallSelfAgentId
+        ? taskData?.interaction?.participants?.[postCallSelfAgentId]
+        : null;
+      const hasPostCallConsultMedia = Object.values(taskData?.interaction?.media ?? {}).some(
+        (media: any) => media?.mType === MEDIA_TYPE_CONSULT
+      );
+      if (
+        postCallSelfParticipant?.consultState === CONSULT_STATE.CONSULTING &&
+        hasPostCallConsultMedia
+      ) {
+        return true;
+      }
     }
 
     return false;
@@ -181,6 +213,20 @@ export const guards = {
     if (!taskData?.interaction) return false;
 
     return getIsConferenceInProgress(taskData);
+  },
+
+  /**
+   * Conference hold signal for conference-downgraded consult-end transitions.
+   * Backend can report this as boolean or string.
+   */
+  isConferenceHoldParticipantFromEvent: ({context, event}: GuardParams): boolean => {
+    const taskData = getTaskDataFromEvent(event) ?? context.taskData;
+    const callProcessingDetails = taskData?.interaction?.callProcessingDetails as
+      | {conferenceHoldParticipant?: boolean | string}
+      | undefined;
+    const conferenceHoldParticipant = callProcessingDetails?.conferenceHoldParticipant;
+
+    return conferenceHoldParticipant === true || conferenceHoldParticipant === 'true';
   },
 
   /**

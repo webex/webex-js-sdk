@@ -13,13 +13,14 @@ import {TaskContext} from './state-machine/types';
  * @returns true if customer is in the call
  */
 export const getIsCustomerInCall = (interaction: Interaction, interactionId: string): boolean => {
-  const mainCallMedia = interaction.media[interactionId];
-  if (!mainCallMedia?.participants) {
+  const mainCallMedia = interaction.media?.[interactionId];
+  const participants = interaction.participants;
+  if (!mainCallMedia?.participants || !participants) {
     return false;
   }
 
   return mainCallMedia.participants.some((participantId: string) => {
-    const participant = interaction.participants[participantId];
+    const participant = participants[participantId];
 
     return participant?.pType === PARTICIPANT_TYPE.CUSTOMER && !participant.hasLeft;
   });
@@ -37,14 +38,15 @@ export const getConferenceParticipantsCount = (
   interaction: Interaction,
   interactionId: string
 ): number => {
-  const mainCallMedia = interaction.media[interactionId];
-  if (!mainCallMedia?.participants) {
+  const mainCallMedia = interaction.media?.[interactionId];
+  const participants = interaction.participants;
+  if (!mainCallMedia?.participants || !participants) {
     return 0;
   }
 
   let count = 0;
   for (const participantId of mainCallMedia.participants) {
-    const participant = interaction.participants[participantId];
+    const participant = participants[participantId];
     if (
       participant &&
       participant.pType !== PARTICIPANT_TYPE.CUSTOMER &&
