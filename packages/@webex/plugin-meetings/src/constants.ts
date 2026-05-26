@@ -1,6 +1,8 @@
 // @ts-ignore
 import {hydraTypes} from '@webex/common';
 
+export {LLM_DEFAULT_SESSION, LLM_PRACTICE_SESSION} from '@webex/internal-plugin-llm';
+
 export type Enum<T extends Record<string, unknown>> = T[keyof T];
 
 // *********** LOWERCASE / CAMELCASE STRINGS ************
@@ -44,7 +46,6 @@ export const LOCAL = 'local';
 export const LOCI = 'loci';
 export const LOCUS_URL = 'locusUrl';
 export const END = 'end';
-export const LLM_PRACTICE_SESSION = 'llm-practice-session';
 
 export const MAX_RANDOM_DELAY_FOR_MEETING_INFO = 3 * 60 * 1000;
 export const MEETINGINFO = 'meetingInfo';

@@ -140,6 +140,14 @@ describe('plugin-mobiusSocket', () => {
         });
 
         mobiusSocket = new MobiusSocket(webex, {...mobiusConfig.mobiusSocket});
+
+        (mobiusSocket as any).logger = {
+          debug: jest.fn(),
+          error: jest.fn(),
+          info: jest.fn(),
+          log: jest.fn(),
+          warn: jest.fn(),
+        };
       });
 
       it('removes all listeners for an event when off() is called without a listener', () => {
@@ -292,12 +300,12 @@ describe('plugin-mobiusSocket', () => {
           {
             code: 1000,
             reason: 'idle',
-            action: 'reconnect',
+            action: 'close',
           },
           {
             code: 1000,
             reason: 'done (forced)',
-            action: 'reconnect',
+            action: 'close',
           },
           {
             code: 1000,
@@ -319,7 +327,7 @@ describe('plugin-mobiusSocket', () => {
           },
           {
             code: 1001,
-            action: 'reconnect',
+            action: 'close',
           },
           {
             code: 1005,
