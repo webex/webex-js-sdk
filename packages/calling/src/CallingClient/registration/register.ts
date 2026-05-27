@@ -1312,6 +1312,7 @@ export class Registration implements IRegistration {
 
       if (this.apiRequest.isSocketEnabled()) {
         uri = uri.replace('https://', 'wss://');
+        uri = !uri.endsWith('/') ? `${uri}/` : uri;
       }
 
       this.setActiveMobiusUrl(uri);

@@ -400,6 +400,8 @@
               <label for="meetings-join-moderator">Join as Moderator</label>
               <input id="meetings-join-breakout-enabled" type="checkbox">
               <label for="meetings-join-breakout-enabled">Support breakout sessions</label>
+              <input id="meetings-join-si-enabled" type="checkbox">
+              <label for="meetings-join-si-enabled">Enable Simultaneous Interpretation</label>
               <input id="meetings-media-in-lobby-enabled" checked type="checkbox">
               <label for="meetings-media-in-lobby-enabled">Support media in lobby</label>
               <input id="meetings-enable-transcription" type="checkbox">
@@ -926,6 +928,39 @@
                   class="btn-code meeting-dependent">meeting.sendDTMF()</button>
                 <label id="gc-dtmf-status"></label>
               </div>
+            </div>
+          </fieldset>
+        </div>
+
+        <div>
+          <!-- meeting-controls / simultaneous interpretation -->
+          <fieldset id="meetingControlsSI">
+            <legend>Simultaneous Interpretation</legend>
+            <div>
+              <p class="note">NOTE: You must join with "Enable Simultaneous Interpretation" checked and be a meeting <u>moderator</u> to manage interpreters.</p>
+              <div class="btn-group u-mb">
+                <button type="button" onclick="siGetInterpreters()" class="btn-code meeting-dependent">Get Interpreters</button>
+                <button type="button" onclick="siGetSupportLanguages()" class="btn-code meeting-dependent">Get Support Languages</button>
+              </div>
+              <div class="u-mv">
+                <label>Source Language:
+                  <input id="si-source-language" type="text" placeholder="e.g. en" value="en" style="width: 60px;">
+                </label>
+                <label>Target Language:
+                  <input id="si-target-language" type="text" placeholder="e.g. fr" value="">
+                </label>
+                <label>Participant ID:
+                  <input id="si-participant-id" type="text" placeholder="participantId from getInterpreters" style="width: 240px;">
+                </label>
+                <label>Email (optional):
+                  <input id="si-email" type="text" placeholder="interpreter@example.com" style="width: 200px;">
+                </label>
+              </div>
+              <div class="btn-group u-mb">
+                <button type="button" onclick="siUpdateInterpreters()" class="btn-code meeting-dependent">Update Interpreters</button>
+              </div>
+              <label id="si-status"></label>
+              <pre id="si-output" style="max-height: 200px; overflow-y: auto; background: #f5f5f5; padding: 8px; font-size: 12px;"></pre>
             </div>
           </fieldset>
         </div>
