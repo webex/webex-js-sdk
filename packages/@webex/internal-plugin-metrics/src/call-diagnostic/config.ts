@@ -231,7 +231,7 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   // Attendee email is required
   403030: 4101,
   // webinar need login when un-invited attendee join
-  403106: 4101,
+  403106: 4104,
 
   // ---- Locus ------
   // FREE_USER_MAX_PARTICIPANTS_EXCEEDED
@@ -253,7 +253,6 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   // LOCUS_REQUIRES_MODERATOR_PIN_OR_GUEST
   2423005: 4005,
   2423006: 4005,
-  2423008: 4005,
   2423016: 4005,
   2423017: 4005,
   2423018: 4005,
