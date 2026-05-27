@@ -6,6 +6,7 @@
 
 - **First step:** Load the parent [CallingClient/ai-docs/AGENTS.md](../../ai-docs/AGENTS.md) for module-level context.
 - **For line-specific context:** Also load [line/ai-docs/AGENTS.md](../../line/ai-docs/AGENTS.md) (Registration is owned by Line).
+- **For Mobius WSS transport changes (connect/disconnect, registration-down close code 4001, close-code matrix):** Also load [`mobius-socket/ai-docs/AGENTS.md`](../../../mobius-socket/ai-docs/AGENTS.md). `Registration` goes through `APIRequest` (see `src/CallingClient/utils/request.ts`) — it never imports `MobiusSocket` directly.
 
 ---
 
@@ -27,13 +28,14 @@ The `Registration` class manages the lifecycle of a device registration with the
 
 The Registration module handles:
 
-- **Device Registration** — `POST /calling/web/device` to Mobius to register the client device
-- **Keepalive** — Periodic `POST /devices/{deviceId}/status` via a dedicated Web Worker
+- **Device Registration** — `POST /calling/web/device` to Mobius to register the client device (via `APIRequest.makeRequest` — HTTP or WSS depending on `apiRequest.isSocketEnabled()`)
+- **Keepalive** — Periodic `POST /devices/{deviceId}/status` via a dedicated Web Worker (HTTP only — keepalive does not use the WebSocket)
 - **Registration Failover** — Automatic switch from primary to backup Mobius servers on failure
 - **Registration Failback** — Automatic return to primary servers when they become available
 - **Reconnection** — Re-register after network disruption or Mercury disconnection
 - **429 Retry** — Respect `Retry-After` headers with exponential backoff
-- **Deregistration** — `DELETE /devices/{deviceId}` to clean up the device on Mobius
+- **Deregistration** — `DELETE /devices/{deviceId}` to clean up the device on Mobius, with optional Mobius WebSocket teardown
+- **Mobius WSS Lifecycle (when `apiRequest.isSocketEnabled()`)** — Connect to the per-server WSS URL before `POST /device`, and disconnect with `{code: 3050, reason: 'done (permanent)'}` on failover, failback, registration-down cleanup, restore-previous-registration, and `deregister(closeMobiusWss = true)`. See [`mobius-socket/ai-docs/AGENTS.md`](../../../mobius-socket/ai-docs/AGENTS.md) for the close-code policy.
 
 ---
 
@@ -50,7 +52,7 @@ The Registration module handles:
 | `getStatus` | `(): RegistrationStatus` | Returns current status (`IDLE`, `active`, `inactive`) |
 | `getDeviceInfo` | `(): IDeviceInfo` | Returns device info from last successful registration |
 | `clearKeepaliveTimer` | `(): void` | Stops the keepalive Web Worker |
-| `deregister` | `(): Promise<void>` | Deletes device from Mobius and stops keepalive |
+| `deregister` | `(closeMobiusWss?: boolean): Promise<void>` | Deletes device from Mobius and stops keepalive. When `closeMobiusWss = true` (and `apiRequest.isSocketEnabled()`), also tears down the Mobius WebSocket with close `{code: 3050, reason: 'done (permanent)'}` after the DELETE returns. Defaults to `false`. |
 | `setActiveMobiusUrl` | `(url: string): void` | Sets the active Mobius URL |
 | `getActiveMobiusUrl` | `(): string` | Returns current active Mobius URL |
 | `reconnectOnFailure` | `(caller: string): Promise<void>` | Re-registers or defers if calls are active |
@@ -257,6 +259,8 @@ type FailoverCacheState = {
 
 ## Related Documentation
 
-- [Registration Architecture](./ARCHITECTURE.md) — Internal flows, failover, keepalive details
+- [Registration Architecture](./ARCHITECTURE.md) — Internal flows, failover, keepalive details, WSS touch points
 - [Line AGENTS.md](../../line/ai-docs/AGENTS.md) — Line owns Registration via `lineEmitter`
 - [CallingClient AGENTS.md](../../ai-docs/AGENTS.md) — Parent module overview
+- [`mobius-socket` AGENTS.md](../../../mobius-socket/ai-docs/AGENTS.md) — Mobius WebSocket transport public API
+- [`mobius-socket` ARCHITECTURE.md](../../../mobius-socket/ai-docs/ARCHITECTURE.md) — Close-code matrix, backoff/retry policy, shutdown switchover
