@@ -156,7 +156,7 @@ export function callLifecycleMediaTests() {
       await tm.cleanup();
     });
 
-    test('CALL-014: Local disconnect - establish call, caller hangs up', async () => {
+    test('CALL-004: Local disconnect - establish call, caller hangs up', async () => {
       const callerPage = tm.getPage(tm.userSet.accounts[0]);
       const calleePage = tm.getPage(tm.userSet.accounts[1]);
 
@@ -166,7 +166,7 @@ export function callLifecycleMediaTests() {
       await Promise.all([waitForCallDisconnect(callerPage), waitForCallDisconnect(calleePage)]);
     });
 
-    test('CALL-015: Remote disconnect - establish call, callee hangs up', async () => {
+    test('CALL-005: Remote disconnect - establish call, callee hangs up', async () => {
       const callerPage = tm.getPage(tm.userSet.accounts[0]);
       const calleePage = tm.getPage(tm.userSet.accounts[1]);
 
@@ -176,7 +176,7 @@ export function callLifecycleMediaTests() {
       await Promise.all([waitForCallDisconnect(callerPage), waitForCallDisconnect(calleePage)]);
     });
 
-    test('CALL-033: Unanswered call - caller hangs up after no answer', async () => {
+    test('CALL-006: Unanswered call - caller hangs up after no answer', async () => {
       const callerPage = tm.getPage(tm.userSet.accounts[0]);
       const calleePage = tm.getPage(tm.userSet.accounts[1]);
 
@@ -199,7 +199,7 @@ export function callLifecycleMediaTests() {
       await Promise.all([waitForCallDisconnect(callerPage), waitForCallDisconnect(calleePage)]);
     });
 
-    test('CALL-012: ROAP success - verify remote media after call established', async () => {
+    test('CALL-007: ROAP success - verify remote media after call established', async () => {
       const callerPage = tm.getPage(tm.userSet.accounts[0]);
       const calleePage = tm.getPage(tm.userSet.accounts[1]);
 
@@ -225,7 +225,7 @@ export function callLifecycleMediaTests() {
       await Promise.all([waitForCallDisconnect(callerPage), waitForCallDisconnect(calleePage)]);
     });
 
-    test('CALL-018: Call metrics - verify call quality data available during call', async () => {
+    test('CALL-008: Call metrics - verify call quality data available during call', async () => {
       const callerPage = tm.getPage(tm.userSet.accounts[0]);
       const calleePage = tm.getPage(tm.userSet.accounts[1]);
 

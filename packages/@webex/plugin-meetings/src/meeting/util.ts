@@ -317,6 +317,7 @@ const MeetingUtil = {
         locale: options.locale,
         deviceCapabilities: options.deviceCapabilities,
         liveAnnotationSupported: options.liveAnnotationSupported,
+        enableSimultaneousInterpretation: options.enableSimultaneousInterpretation,
         clientMediaPreferences,
         alias: options.alias,
       })
@@ -944,6 +945,9 @@ const MeetingUtil = {
 
   attendeeRequestAiAssistantDeclinedAll: (displayHints = []) =>
     displayHints.includes(DISPLAY_HINTS.ATTENDEE_REQUEST_AI_ASSISTANT_DECLINED_ALL),
+
+  isAnonymizeDisplayNamesEnabled: (displayHints) =>
+    displayHints.includes(DISPLAY_HINTS.ANONYMOUS_DISPLAY_NAMES_ENABLED),
 
   selfSupportsFeature: (feature: SELF_POLICY, userPolicies: Record<SELF_POLICY, boolean>) => {
     if (!userPolicies) {

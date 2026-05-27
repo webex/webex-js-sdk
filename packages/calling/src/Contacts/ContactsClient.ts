@@ -487,7 +487,7 @@ export class ContactsClient implements IContacts {
     }
     // istanbul ignore else
     if (this.groups === undefined) {
-      this.getContacts();
+      await this.getContacts();
     }
     // istanbul ignore else
     if (this.groups && this.groups.length) {

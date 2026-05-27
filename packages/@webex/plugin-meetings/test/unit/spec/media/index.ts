@@ -295,6 +295,7 @@ describe('createMediaConnection', () => {
         bundlePolicy: 'max-bundle',
         disableAudioMainDtx: false,
         disableAudioTwcc: false,
+        enableAV1SlidesSupport: false,
       },
       'meeting id'
     );
@@ -322,6 +323,26 @@ describe('createMediaConnection', () => {
     assert.calledOnce(rtcMetrics.sendMetricsInQueue);
   });
 
+  it('passes enableAV1SlidesSupport: true to MultistreamRoapMediaConnection when enableAv1SlidesSupport is set', () => {
+    const multistreamRoapMediaConnectionConstructorStub = sinon
+      .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
+      .returns(fakeRoapMediaConnection);
+
+    Media.createMediaConnection(true, 'some debug id', 'meeting id', {
+      enableAv1SlidesSupport: true,
+    });
+    assert.calledOnce(multistreamRoapMediaConnectionConstructorStub);
+    assert.calledWith(
+      multistreamRoapMediaConnectionConstructorStub,
+      sinon.match({
+        iceServers: [],
+        disableAudioTwcc: true,
+        enableAV1SlidesSupport: true,
+      }),
+      'meeting id'
+    );
+  });
+
   it('multistream non-firefox does not care about stopIceGatheringAfterFirstRelayCandidate', () => {
     const multistreamRoapMediaConnectionConstructorStub = sinon
       .stub(InternalMediaCoreModule, 'MultistreamRoapMediaConnection')
@@ -336,6 +357,7 @@ describe('createMediaConnection', () => {
       {
         iceServers: [],
         disableAudioTwcc: true,
+        enableAV1SlidesSupport: false,
       },
       'meeting id'
     );
@@ -359,6 +381,7 @@ describe('createMediaConnection', () => {
         doFullIce: true,
         stopIceGatheringAfterFirstRelayCandidate: true,
         disableAudioTwcc: true,
+        enableAV1SlidesSupport: false,
       },
       'meeting id'
     );
@@ -382,6 +405,7 @@ describe('createMediaConnection', () => {
         doFullIce: true,
         stopIceGatheringAfterFirstRelayCandidate: false,
         disableAudioTwcc: true,
+        enableAV1SlidesSupport: false,
       },
       'meeting id'
     );
@@ -418,6 +442,7 @@ describe('createMediaConnection', () => {
         {
           iceServers: [],
           disableAudioTwcc: true,
+          enableAV1SlidesSupport: false,
         },
         'meeting id'
       );
@@ -448,6 +473,7 @@ describe('createMediaConnection', () => {
       {
         iceServers: [],
         disableAudioTwcc: true,
+        enableAV1SlidesSupport: false,
       },
       'meeting id'
     );
@@ -477,6 +503,7 @@ describe('createMediaConnection', () => {
       {
         iceServers: [],
         disableAudioTwcc: true,
+        enableAV1SlidesSupport: false,
       },
       'meeting id'
     );
@@ -505,6 +532,7 @@ describe('createMediaConnection', () => {
       {
         iceServers: [],
         disableAudioTwcc: true,
+        enableAV1SlidesSupport: false,
       },
       'meeting id'
     );
@@ -591,6 +619,7 @@ describe('createMediaConnection', () => {
     {
       iceServers: [],
       disableAudioTwcc: true,
+      enableAV1SlidesSupport: false,
       enableInboundAudioLevelMonitoring: true,
     }
   );
@@ -602,6 +631,7 @@ describe('createMediaConnection', () => {
     {
       iceServers: [],
       disableAudioTwcc: true,
+      enableAV1SlidesSupport: false,
       enableInboundAudioLevelMonitoring: true,
     }
   );
@@ -613,6 +643,7 @@ describe('createMediaConnection', () => {
     {
       iceServers: [],
       disableAudioTwcc: true,
+      enableAV1SlidesSupport: false,
       doFullIce: true,
       stopIceGatheringAfterFirstRelayCandidate: undefined,
     }

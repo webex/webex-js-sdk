@@ -213,6 +213,40 @@ const Credentials = WebexPlugin.extend({
   },
 
   /**
+   * Generates a Third-Party Login URL pointing at IdBroker's
+   * `/idb/ThirdPartyLogin` endpoint. Used by the social-provider sign-in
+   * flow (Google / Microsoft / Apple / ...).
+   *
+   * Mirrors `buildLoginUrl` / `buildLogoutUrl` — pure URL construction,
+   * no navigation side effects. Reads from `this.config.thirdPartyLoginUrl`,
+   * which is derived from `idbroker.url` in `credentials-config.js`.
+   *
+   * @instance
+   * @memberof Credentials
+   * @param {Object} options
+   * @param {string} options.oauth2provider - Provider name (`google`,
+   *   `microsoft`, `apple`, ...). Required.
+   * @param {string} options.returnURL - URL IdBroker should send the user
+   *   back to after the third-party hand-off. Required.
+   * @returns {string}
+   */
+  buildThirdPartyLoginUrl(options = {}) {
+    const {oauth2provider, returnURL} = options;
+
+    if (!oauth2provider) {
+      throw new Error('`options.oauth2provider` is required');
+    }
+    if (!returnURL) {
+      throw new Error('`options.returnURL` is required');
+    }
+
+    return `${this.config.thirdPartyLoginUrl}?${querystring.stringify({
+      oauth2provider,
+      returnURL,
+    })}`;
+  },
+
+  /**
    * Generates a Logout URL
    * @instance
    * @memberof Credentials

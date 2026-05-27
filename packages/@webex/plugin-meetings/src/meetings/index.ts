@@ -55,10 +55,12 @@ import PasswordError from '../common/errors/password-error';
 import CaptchaError from '../common/errors/captcha-error';
 import MeetingCollection from './collection';
 import {
+  FetchSitePreferencesMeViaSiteOptions,
   MEETING_KEY,
   INoiseReductionEffect,
   IVirtualBackgroundEffect,
   MeetingRegistrationStatus,
+  SitePreferencesResponse,
 } from './meetings.types';
 import MeetingsUtil from './util';
 import PermissionError from '../common/errors/permission';
@@ -934,6 +936,27 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * API to toggle AV1 codec support for video slides in multistream,
+   * needs to be called before webex.meetings.joinWithMedia()
+   *
+   * @param {Boolean} newValue
+   * @private
+   * @memberof Meetings
+   * @returns {undefined}
+   */
+  private _toggleEnableAv1SlidesSupport(newValue: boolean) {
+    if (typeof newValue !== 'boolean') {
+      return;
+    }
+
+    // @ts-ignore
+    if (this.config.enableAv1SlidesSupport !== newValue) {
+      // @ts-ignore
+      this.config.enableAv1SlidesSupport = newValue;
+    }
+  }
+
+  /**
    * API to toggle stopping ICE Candidates Gathering after first relay candidate,
    * needs to be called before webex.meetings.joinWithMedia()
    *
@@ -1406,6 +1429,31 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * Fetches site preferences for the provided Webex site, or the preferred Webex site.
+   * This is used to determine capabilities of the site, such as whether scheduling a webinar is supported.
+   *
+   * @param {object} [options]
+   * @param {string} [options.siteUrl] - Webex site URL. Defaults to preferredWebexSite, for example "cisco.webex.com".
+   * @param {string} [options.siteName] - Site name query override. Defaults to the site name derived from siteUrl, for example "cisco" for "cisco.webex.com".
+   * @param {SitePreferenceSelectOption[]} [options.selectOptions] - Preference sections to fetch. Defaults to 'scheduling'.
+   * @returns {Promise<SitePreferencesResponse>} site preferences response body
+   * @throws {ParameterError}
+   * @public
+   * @memberof Meetings
+   * @example
+   * const preferences = await webex.meetings.fetchSitePreferencesMeViaSite();
+   * const supportScheduleWebinar = preferences?.scheduling?.supportScheduleWebinar;
+   */
+  public fetchSitePreferencesMeViaSite(
+    options: FetchSitePreferencesMeViaSiteOptions = {}
+  ): Promise<SitePreferencesResponse> {
+    return this.request.fetchSitePreferencesMeViaSite({
+      ...options,
+      siteUrl: options.siteUrl || this.preferredWebexSite,
+    });
+  }
+
+  /**
    * Returns basic information about a meeting that exists or
    * used to exist in the MeetingCollection
    *
@@ -1769,9 +1817,12 @@ export default class Meetings extends WebexPlugin {
       };
       const shouldDeferMeetingInfoFetch = type === DESTINATION_TYPE.LOCUS_ID && !destination?.info;
 
+      const isOneOnOneCallLocus =
+        type === DESTINATION_TYPE.LOCUS_ID && MeetingsUtil.isOneOnOneCall(destination);
+
       if (meetingInfo) {
         meeting.injectMeetingInfo(meetingInfo, meetingInfoOptions, meetingLookupUrl);
-      } else if (type !== DESTINATION_TYPE.ONE_ON_ONE_CALL) {
+      } else if (type !== DESTINATION_TYPE.ONE_ON_ONE_CALL && !isOneOnOneCallLocus) {
         // ignore fetchMeetingInfo for 1:1 meetings
         if (enableUnifiedMeetings && !isMeetingActive && useRandomDelayForInfo && waitingTime > 0) {
           meeting.fetchMeetingInfoTimeoutId = setTimeout(
@@ -1897,7 +1948,10 @@ export default class Meetings extends WebexPlugin {
    * @public
    * @memberof Meetings
    */
-  public async syncMeetings({keepOnlyLocusMeetings = true} = {}): Promise<void> {
+  public async syncMeetings({
+    keepOnlyLocusMeetings = true,
+    skipHashTreeSync = false,
+  } = {}): Promise<void> {
     // @ts-ignore
     if (this.webex.credentials.isUnverifiedGuest) {
       LoggerProxy.logger.info(
@@ -1957,18 +2011,20 @@ export default class Meetings extends WebexPlugin {
       }
     }
 
-    // Trigger hash tree syncs for all remaining meetings
-    const remainingMeetings = this.meetingCollection.getAll();
-    const syncPromises = [];
+    if (!skipHashTreeSync) {
+      // Trigger hash tree syncs for all remaining meetings
+      const remainingMeetings = this.meetingCollection.getAll();
+      const syncPromises = [];
 
-    for (const meeting of Object.values(remainingMeetings) as any[]) {
-      if (meeting.locusInfo) {
-        syncPromises.push(meeting.locusInfo.syncAllHashTreeDatasets());
+      for (const meeting of Object.values(remainingMeetings) as any[]) {
+        if (meeting.locusInfo) {
+          syncPromises.push(meeting.locusInfo.syncAllHashTreeDatasets());
+        }
       }
-    }
 
-    if (syncPromises.length > 0) {
-      await Promise.all(syncPromises);
+      if (syncPromises.length > 0) {
+        await Promise.all(syncPromises);
+      }
     }
   }
 
