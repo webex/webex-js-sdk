@@ -202,6 +202,8 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   423005: 4005,
   // Wrong password or host key with too many requests
   423006: 4005,
+  // PanelistPasswordError too many time,please input captcha code
+  423008: 4005,
   // PasswordError with right captcha, please input captcha code
   423010: 4005,
   // PasswordOrHostKeyError with right captcha, please input captcha code
@@ -228,6 +230,8 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   403003: 4101,
   // Attendee email is required
   403030: 4101,
+  // webinar need login when un-invited attendee join
+  403106: 4101,
 
   // ---- Locus ------
   // FREE_USER_MAX_PARTICIPANTS_EXCEEDED
@@ -249,6 +253,7 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   // LOCUS_REQUIRES_MODERATOR_PIN_OR_GUEST
   2423005: 4005,
   2423006: 4005,
+  2423008: 4005,
   2423016: 4005,
   2423017: 4005,
   2423018: 4005,
