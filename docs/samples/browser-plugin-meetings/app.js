@@ -4286,9 +4286,15 @@ const siTargetLanguageElm = document.querySelector('#si-target-language');
 const siParticipantIdElm = document.querySelector('#si-participant-id');
 const siEmailElm = document.querySelector('#si-email');
 
-// Fetches the current list of interpreters assigned to this meeting.
-// The response contains interpreter objects with participantId, emailAddress, sourceLanguage, targetLanguage, etc.
-// Note: the shape returned by getInterpreters() is NOT the same shape expected by updateInterpreters().
+/**
+ * Fetches the current list of interpreters assigned to this meeting.
+ *
+ * The response contains interpreter objects with participantId, emailAddress,
+ * sourceLanguage, targetLanguage, etc.
+ *
+ * Note: the shape returned by getInterpreters() is NOT the same shape expected
+ * by updateInterpreters().
+ */
 function siGetInterpreters() {
   const meeting = getCurrentMeeting();
 
@@ -4313,7 +4319,14 @@ function siGetInterpreters() {
     });
 }
 
-// Fetches the list of languages available for interpretation in this meeting.
+/**
+ * Fetches the list of languages available for interpretation in this meeting.
+ *
+ * Note: querySupportLanguages() resolves with void — internally it stores the
+ * result on `simultaneousInterpretation.supportLanguages` and emits a
+ * SUPPORT_LANGUAGES_UPDATE event, so callers read the value from the property
+ * rather than the promise.
+ */
 function siGetSupportLanguages() {
   const meeting = getCurrentMeeting();
 
@@ -4338,18 +4351,24 @@ function siGetSupportLanguages() {
     });
 }
 
-// Updates the interpreters for this meeting.
-// IMPORTANT: The payload format for updateInterpreters requires a "usingResource" object
-// containing the interpreter's participant ID (and optionally their email).
-// This is different from the flat structure returned by getInterpreters().
-//
-// Expected payload format:
-//   [{
-//     order: 0,
-//     sourceLanguage: "en",
-//     targetLanguage: "fr",
-//     usingResource: { id: "<participantId>", email: "<optional-email>" }
-//   }]
+/**
+ * Updates the interpreters for this meeting.
+ *
+ * IMPORTANT: The payload format for updateInterpreters requires a
+ * "usingResource" object containing the interpreter's participant ID (and
+ * optionally their email). This is different from the flat structure returned
+ * by getInterpreters().
+ *
+ * Expected payload format:
+ * ```
+ *   [{
+ *     order: 0,
+ *     sourceLanguage: "en",
+ *     targetLanguage: "fr",
+ *     usingResource: { id: "<participantId>", email: "<optional-email>" }
+ *   }]
+ * ```
+ */
 function siUpdateInterpreters() {
   const meeting = getCurrentMeeting();
 
