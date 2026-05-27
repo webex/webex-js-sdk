@@ -26,6 +26,7 @@ import {
   SEND_DTMF_ENDPOINT,
   _SLIDES_,
   ANNOTATION,
+  INTERPRETATION,
 } from '../constants';
 import {
   SendReactionOptions,
@@ -135,6 +136,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     locale?: string;
     deviceCapabilities?: Array<string>;
     liveAnnotationSupported: boolean;
+    enableSimultaneousInterpretation: boolean;
     alias?: string;
     clientMediaPreferences: ClientMediaPreferences;
   }) {
@@ -158,6 +160,7 @@ export default class MeetingRequest extends StatelessWebexPlugin {
       locale,
       deviceCapabilities = [],
       liveAnnotationSupported,
+      enableSimultaneousInterpretation,
       clientMediaPreferences,
       alias,
     } = options;
@@ -192,6 +195,14 @@ export default class MeetingRequest extends StatelessWebexPlugin {
     }
     if (liveAnnotationSupported) {
       deviceCapabilities.push(ANNOTATION.ANNOTATION_ON_SHARE_SUPPORTED);
+    }
+    if (enableSimultaneousInterpretation) {
+      deviceCapabilities.push(
+        INTERPRETATION.CAPABILITIES.HOST_CONTROL_SI_SUPPORTED,
+        INTERPRETATION.CAPABILITIES.INTERPRETER_CONTROL_SI_SUPPORTED,
+        INTERPRETATION.CAPABILITIES.SI_HANDOVER_SUPPORTED,
+        INTERPRETATION.CAPABILITIES.SIGN_INTERPRETER_SUPPORTED
+      );
     }
 
     // append installationId to device config if it exists
