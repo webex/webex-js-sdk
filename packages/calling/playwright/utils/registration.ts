@@ -25,13 +25,17 @@ export const verifyLineRegistered = async (page: Page): Promise<void> => {
 };
 
 export const unregisterLine = async (page: Page): Promise<void> => {
+  if (page.isClosed()) return;
+
+  const unregisterBtn = page.locator(CALLING_SELECTORS.UNREGISTER_BTN);
+  const canUnregister = await unregisterBtn.isEnabled().catch(() => false);
+
+  if (!canUnregister) return;
+
   await page.locator(CALLING_SELECTORS.UNREGISTER_BTN).click({timeout: AWAIT_TIMEOUT});
-  await expect(page.locator(CALLING_SELECTORS.REGISTRATION_STATUS)).toContainText(
-    'Un registering',
-    {
-      timeout: REGISTRATION_TIMEOUT,
-    }
-  );
+  await expect(page.locator(CALLING_SELECTORS.REGISTRATION_STATUS)).toContainText('Unregistered', {
+    timeout: REGISTRATION_TIMEOUT,
+  });
 };
 
 export const isLineRegistered = (page: Page): Promise<boolean> =>

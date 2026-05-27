@@ -7,6 +7,7 @@ import {assert} from '@webex/test-helper-chai';
 import MockWebex from '@webex/test-helper-mock-webex';
 import sinon from 'sinon';
 import {Batcher} from '@webex/webex-core';
+import WebexHttpError from '../../../../src/lib/webex-http-error';
 
 function promiseTick(count) {
   let promise = Promise.resolve();
@@ -152,6 +153,61 @@ describe('webex-core', () => {
               assert.calledOnce(webex.request);
 
               return Promise.all([assert.isRejected(p1), assert.isRejected(p2)]);
+            });
+        });
+
+        it('does not trigger unhandledRejection when caller handles rejection', () => {
+          const unhandled = [];
+          const onUnhandledRejection = (reason) => {
+            unhandled.push(reason);
+          };
+
+          process.on('unhandledRejection', onUnhandledRejection);
+
+          const p = webex.internal.batcher.request(1);
+
+          // eslint-disable-next-line prefer-promise-reject-errors
+          webex.request.returns(Promise.reject({statusCode: 0}));
+
+          return promiseTick(50)
+            .then(() => clock.tick(2))
+            .then(() => promiseTick(50))
+            .then(() => assert.isRejected(p))
+            .then(() => promiseTick(50))
+            .then(() => {
+              assert.lengthOf(unhandled, 0);
+            })
+            .finally(() => {
+              process.removeListener('unhandledRejection', onUnhandledRejection);
+            });
+        });
+
+        it('fails queued deferreds for webex http errors without request body', () => {
+          const p1 = webex.internal.batcher.request(1);
+          const p2 = webex.internal.batcher.request(2);
+          const reason = new WebexHttpError.BadRequest({
+            statusCode: 400,
+            body: {message: 'simulated failure'},
+            options: {
+              method: 'GET',
+              uri: 'https://example.com/v1/mock/batch',
+              headers: {trackingid: 'test-tracking-id'},
+            },
+            headers: {},
+          });
+
+          webex.request.returns(Promise.reject(reason));
+
+          return promiseTick(50)
+            .then(() => clock.tick(2))
+            .then(() => promiseTick(50))
+            .then(() => {
+              assert.calledOnce(webex.request);
+
+              return Promise.all([
+                assert.isRejected(p1, /simulated failure/),
+                assert.isRejected(p2, /simulated failure/),
+              ]);
             });
         });
       });
