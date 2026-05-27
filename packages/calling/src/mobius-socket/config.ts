@@ -24,7 +24,7 @@ const mobiusSocketConfig: MobiusSocketConfig = {
   backoffTimeMax: 32000,
   backoffTimeReset: 1000,
   initialConnectionMaxRetries: 0,
-  maxRetries: 0,
+  maxRetries: 3,
   forceCloseDelay: 2000,
   dedupCacheMaxSize: 1000,
 };

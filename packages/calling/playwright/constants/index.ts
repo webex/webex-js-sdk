@@ -39,4 +39,12 @@ export const DEVELOPER_PORTAL_INT_GETTING_STARTED_URL =
   'https://developer-portal-intb.ciscospark.com/docs/getting-started';
 
 export {CALLING_SELECTORS} from './selectors';
-export {AWAIT_TIMEOUT, SDK_INIT_TIMEOUT, REGISTRATION_TIMEOUT, OPERATION_TIMEOUT} from './timeouts';
+export {
+  AWAIT_TIMEOUT,
+  SDK_INIT_TIMEOUT,
+  REGISTRATION_TIMEOUT,
+  OPERATION_TIMEOUT,
+  UI_SETTLE_MS,
+  POST_ACTION_SETTLE_MS,
+  TRANSFER_SUITE_TIMEOUT,
+} from './timeouts';
