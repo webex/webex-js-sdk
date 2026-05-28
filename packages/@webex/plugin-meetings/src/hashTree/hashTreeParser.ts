@@ -1791,16 +1791,18 @@ class HashTreeParser {
 
     dataSet.hashTree.resize(receivedDataSet.leafCount);
 
-    const delay = dataSet.idleMs + this.getWeightedBackoffTime(dataSet.backoff);
+    const randomBackoffTime = this.getWeightedBackoffTime(dataSet.backoff);
+    const delay = dataSet.idleMs + randomBackoffTime;
 
     if (delay > 0) {
       if (dataSet.timer) {
         clearTimeout(dataSet.timer);
       }
 
+      dataSet.lastBackoffTime = randomBackoffTime;
+
       dataSet.timer = setTimeout(() => {
         dataSet.timer = undefined;
-        dataSet.lastBackoffTime = delay - dataSet.idleMs;
 
         if (!dataSet.hashTree) {
           LoggerProxy.logger.warn(
