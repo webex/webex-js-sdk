@@ -95,6 +95,11 @@ export type HashTreeParserEntry = {
   initializedFromHashTree: boolean;
 };
 
+export type LocusInfoCallbacks = {
+  updateMeeting: (object: any) => void;
+  syncMetricsCallback: SyncMetricsCallback;
+};
+
 /**
  * Gets the replacement information
  *
@@ -287,25 +292,28 @@ export default class LocusInfo extends EventsScope {
   hashTreeParsers: Map<string, HashTreeParserEntry>;
   hashTreeObjectId2ParticipantId: Map<number, string>; // mapping of hash tree object ids to participant ids
   classicVsHashTreeMismatchMetricCounter = 0;
-  syncMetricsCallback?: SyncMetricsCallback;
+  private callbacks: LocusInfoCallbacks;
 
   /**
    * Constructor
-   * @param {function} updateMeeting callback to update the meeting object from an object
+   * @param {Object} callbacks callbacks used by LocusInfo
+   * @param {function} callbacks.updateMeeting callback to update the meeting object from an object
+   * @param {function} callbacks.syncMetricsCallback callback to report sync metrics
    * @param {object} webex
    * @param {string} meetingId
    * @returns {undefined}
    */
-  constructor(updateMeeting, webex, meetingId) {
+  constructor(callbacks: LocusInfoCallbacks, webex: any, meetingId: any) {
     super();
     this.parsedLocus = {
       states: [],
     };
+    this.callbacks = callbacks;
     this.webex = webex;
     this.emitChange = false;
     this.compareAndUpdateFlags = {};
     this.meetingId = meetingId;
-    this.updateMeeting = updateMeeting;
+    this.updateMeeting = callbacks.updateMeeting;
     this.locusParser = new LocusDeltaParser();
     this.hashTreeParsers = new Map();
     this.hashTreeObjectId2ParticipantId = new Map();
@@ -556,14 +564,13 @@ export default class LocusInfo extends EventsScope {
       initialLocus,
       metadata,
       webexRequest: this.webex.request.bind(this.webex),
-      locusInfoUpdateCallback: this.updateFromHashTree.bind(this, locusUrl),
+      callbacks: {
+        locusInfoUpdateCallback: this.updateFromHashTree.bind(this, locusUrl),
+        syncMetricsCallback: this.callbacks.syncMetricsCallback,
+      },
       debugId: `HT-${locusUrl.split('/')?.pop()?.substring(0, 4)}`,
       excludedDataSets: this.webex.config.meetings.locus?.excludedDataSets,
     });
-
-    if (this.syncMetricsCallback) {
-      parser.syncMetricsCallback = this.syncMetricsCallback;
-    }
 
     // When a new HashTreeParser is created, previous one should be stopped.
     // Locus will only be sending us updates for the current one.

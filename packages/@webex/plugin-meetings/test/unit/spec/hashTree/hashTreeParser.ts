@@ -177,13 +177,17 @@ describe('HashTreeParser', () => {
   function createHashTreeParser(
     initialLocus: any = exampleInitialLocus,
     metadata: any = exampleMetadata,
-    excludedDataSets?: string[]
+    excludedDataSets?: string[],
+    syncMetricsCallback: sinon.SinonStub = sinon.stub()
   ) {
     return new HashTreeParser({
       initialLocus,
       metadata,
       webexRequest,
-      locusInfoUpdateCallback: callback,
+      callbacks: {
+        locusInfoUpdateCallback: callback,
+        syncMetricsCallback,
+      },
       debugId: 'test',
       excludedDataSets,
     });
@@ -5328,10 +5332,9 @@ describe('HashTreeParser', () => {
 
   describe('#syncMetrics', () => {
     it('invokes syncMetricsCallback when matching dataset version arrives', () => {
-      const parser = createHashTreeParser();
       const syncMetricsCallback = sinon.stub();
+      const parser = createHashTreeParser(undefined, undefined, undefined, syncMetricsCallback);
 
-      parser.syncMetricsCallback = syncMetricsCallback;
       parser['pendingSyncMetrics'].set('main', {
         syncResponseReceivedAt: 100,
         totalStartTime: 50,
@@ -5371,10 +5374,9 @@ describe('HashTreeParser', () => {
     });
 
     it('does not complete pending metrics when message version is below pending version', () => {
-      const parser = createHashTreeParser();
       const syncMetricsCallback = sinon.stub();
+      const parser = createHashTreeParser(undefined, undefined, undefined, syncMetricsCallback);
 
-      parser.syncMetricsCallback = syncMetricsCallback;
       parser['pendingSyncMetrics'].set('main', {
         syncResponseReceivedAt: 100,
         totalStartTime: 50,

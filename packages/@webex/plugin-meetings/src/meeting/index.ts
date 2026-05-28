@@ -1384,13 +1384,16 @@ export default class Meeting extends StatelessWebexPlugin {
      * @memberof Meeting
      */
     // @ts-ignore - Fix type
-    this.locusInfo = new LocusInfo(this.updateMeetingObject.bind(this), this.webex, this.id);
-    this.locusInfo.syncMetricsCallback = (metrics: {
-      dataSet: string;
-      syncLatency: SyncLatencyMetrics;
-    }) => {
-      this.sendSyncCompleteMetric(metrics);
-    };
+    this.locusInfo = new LocusInfo(
+      {
+        updateMeeting: this.updateMeetingObject.bind(this),
+        syncMetricsCallback: (metrics: {dataSet: string; syncLatency: SyncLatencyMetrics}) => {
+          this.sendSyncCompleteMetric(metrics);
+        },
+      },
+      this.webex,
+      this.id
+    );
 
     // We had to add listeners first before setting up the locus instance
     /**

@@ -56,7 +56,7 @@ describe('plugin-meetings', () => {
 
     beforeEach(() => {
       mockMeeting = {};
-      locusInfo = new LocusInfo(updateMeeting, webex, meetingId);
+      locusInfo = new LocusInfo({updateMeeting, syncMetricsCallback: sinon.stub()}, webex, meetingId);
 
       locusInfo.init(locus);
 
@@ -148,7 +148,10 @@ describe('plugin-meetings', () => {
               visibleDataSets,
             },
             webexRequest: sinon.match.func,
-            locusInfoUpdateCallback: sinon.match.func,
+            callbacks: sinon.match({
+              locusInfoUpdateCallback: sinon.match.func,
+              syncMetricsCallback: sinon.match.func,
+            }),
             debugId: sinon.match.string,
           })
         );
@@ -198,7 +201,10 @@ describe('plugin-meetings', () => {
             },
             metadata,
             webexRequest: sinon.match.func,
-            locusInfoUpdateCallback: sinon.match.func,
+            callbacks: sinon.match({
+              locusInfoUpdateCallback: sinon.match.func,
+              syncMetricsCallback: sinon.match.func,
+            }),
             debugId: sinon.match.string,
           })
         );
@@ -279,7 +285,10 @@ describe('plugin-meetings', () => {
               dataSets: [],
             },
             webexRequest: sinon.match.func,
-            locusInfoUpdateCallback: sinon.match.func,
+            callbacks: sinon.match({
+              locusInfoUpdateCallback: sinon.match.func,
+              syncMetricsCallback: sinon.match.func,
+            }),
             debugId: sinon.match.string,
             metadata: null,
           })
@@ -355,7 +364,7 @@ describe('plugin-meetings', () => {
             },
           });
 
-          locusInfoUpdateCallback = HashTreeParserStub.firstCall.args[0].locusInfoUpdateCallback;
+          locusInfoUpdateCallback = HashTreeParserStub.firstCall.args[0].callbacks.locusInfoUpdateCallback;
 
           assert.isDefined(locusInfoUpdateCallback);
 

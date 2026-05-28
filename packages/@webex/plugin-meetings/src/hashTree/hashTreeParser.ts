@@ -101,6 +101,11 @@ export type SyncMetricsCallback = (metrics: {
   syncLatency: SyncLatencyMetrics;
 }) => void;
 
+export type HashTreeParserCallbacks = {
+  locusInfoUpdateCallback: LocusInfoUpdateCallback;
+  syncMetricsCallback: SyncMetricsCallback;
+};
+
 const SYNC_METRICS_DATA_SETS = [
   DataSetNames.MAIN,
   DataSetNames.ATD_ACTIVE,
@@ -157,7 +162,7 @@ class HashTreeParser {
   dataSets: Record<string, InternalDataSet> = {};
   visibleDataSetsUrl: string; // url from which we can get info about all data sets
   webexRequest: WebexRequestMethod;
-  locusInfoUpdateCallback: LocusInfoUpdateCallback;
+  private callbacks: HashTreeParserCallbacks;
   visibleDataSets: VisibleDataSetInfo[];
   debugId: string;
   private excludedDataSets: string[];
@@ -171,7 +176,6 @@ class HashTreeParser {
   private syncQueueProcessingPromise: Promise<void> = Promise.resolve();
   // top-level heartbeat interval from the most recent message, used as fallback when dataset-level value is missing
   private topLevelHeartbeatIntervalMs?: number;
-  public syncMetricsCallback?: SyncMetricsCallback;
   private pendingSyncMetrics: Map<string, PendingSyncMetrics> = new Map();
 
   /**
@@ -186,7 +190,7 @@ class HashTreeParser {
     };
     metadata: Metadata | null;
     webexRequest: WebexRequestMethod;
-    locusInfoUpdateCallback: LocusInfoUpdateCallback;
+    callbacks: HashTreeParserCallbacks;
     debugId: string;
     excludedDataSets?: string[];
   }) {
@@ -194,7 +198,7 @@ class HashTreeParser {
 
     this.debugId = options.debugId;
     this.webexRequest = options.webexRequest;
-    this.locusInfoUpdateCallback = options.locusInfoUpdateCallback;
+    this.callbacks = options.callbacks;
     this.excludedDataSets = options.excludedDataSets || [];
     this.visibleDataSetsUrl = locus?.links?.resources?.visibleDataSets?.url;
     this.setVisibleDataSets(options.metadata?.visibleDataSets || [], dataSets);
@@ -1275,9 +1279,10 @@ class HashTreeParser {
       totalTime,
     };
 
-    if (this.syncMetricsCallback) {
-      this.syncMetricsCallback({dataSet: pending.dataSetName, syncLatency});
-    }
+    this.callbacks.syncMetricsCallback({
+      dataSet: pending.dataSetName,
+      syncLatency,
+    });
   }
 
   /**
@@ -1333,10 +1338,10 @@ class HashTreeParser {
       });
 
       if (filteredUpdates.length > 0) {
-        this.locusInfoUpdateCallback({updateType, updatedObjects: filteredUpdates});
+        this.callbacks.locusInfoUpdateCallback({updateType, updatedObjects: filteredUpdates});
       }
     } else if (updateType !== LocusInfoUpdateType.OBJECTS_UPDATED) {
-      this.locusInfoUpdateCallback({updateType});
+      this.callbacks.locusInfoUpdateCallback({updateType});
     }
   }
 
