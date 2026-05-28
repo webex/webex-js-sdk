@@ -12,6 +12,7 @@ export {default as make} from './template-container';
 export {default as oneFlight} from './one-flight';
 export {default as patterns} from './patterns';
 
+export {encodeState, decodeState} from './oauth-state';
 export {proxyEvents, transferEvents} from './events';
 export {createEventEnvelope, ensureMyIdIsAvailable} from './event-envelope';
 export {default as resolveWith} from './resolve-with';

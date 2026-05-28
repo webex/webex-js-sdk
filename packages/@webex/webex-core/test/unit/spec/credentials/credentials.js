@@ -7,7 +7,7 @@ import {assert} from '@webex/test-helper-chai';
 import sinon from 'sinon';
 import MockWebex from '@webex/test-helper-mock-webex';
 import {Credentials, Token, grantErrors} from '@webex/webex-core';
-import {inBrowser, base64} from '@webex/common';
+import {inBrowser} from '@webex/common';
 import FakeTimers from '@sinonjs/fake-timers';
 import {skipInBrowser} from '@webex/test-helper-mocha';
 import Logger from '@webex/plugin-logger';
@@ -183,6 +183,10 @@ describe('webex-core', () => {
           webex.credentials.buildLoginUrl({state: 'state'});
         }, /if specified, `options.state` must be an object/);
 
+        assert.throws(() => {
+          webex.credentials.buildLoginUrl({state: null});
+        }, /if specified, `options.state` must be an object/);
+
         assert.doesNotThrow(() => {
           webex.credentials.buildLoginUrl({state: {}});
         }, /if specified, `options.state` must be an object/);
@@ -327,7 +331,9 @@ describe('webex-core', () => {
           state: {},
         });
 
-        assert.notInclude(result, 'state=');
+        const parsed = new URL(result);
+
+        assert.isFalse(parsed.searchParams.has('state'));
       });
 
       skipInBrowser(it)('base64url-encodes a non-empty `state` and emits it as a top-level query param', () => {
@@ -336,14 +342,14 @@ describe('webex-core', () => {
 
         webex.trigger('change:config');
 
-        const state = {csrf_token: 'abc', popUpSignIn: true};
-        const encoded = base64.toBase64Url(JSON.stringify(state));
-
         const result = credentials.buildThirdPartyLoginUrl({
           oauth2provider: 'google',
           returnURL: 'https://web.webex.com',
-          state,
+          state: {csrf_token: 'abc', popUpSignIn: true},
         });
+
+        // Literal base64url of '{"csrf_token":"abc","popUpSignIn":true}'
+        const expectedState = 'eyJjc3JmX3Rva2VuIjoiYWJjIiwicG9wVXBTaWduSW4iOnRydWV9';
 
         assert.equal(
           result,
@@ -351,7 +357,7 @@ describe('webex-core', () => {
             process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'
           }/idb/ThirdPartyLogin?oauth2provider=google&returnURL=${encodeURIComponent(
             'https://web.webex.com'
-          )}&state=${encoded}`
+          )}&state=${expectedState}`
         );
       });
     });
