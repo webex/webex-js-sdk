@@ -1260,6 +1260,19 @@ class HashTreeParser {
   }
 
   /**
+   * Checks if Locus sync latency metrics should be collected for a dataset.
+   *
+   * @param {string} dataSetName dataset name
+   * @param {boolean} [isInitialization=false] whether this is an initialization sync
+   * @returns {boolean}
+   */
+  private shouldCollectSyncMetrics(dataSetName: string, isInitialization = false): boolean {
+    return Boolean(
+      this.syncLatencyTracker && !isInitialization && SYNC_METRICS_DATA_SETS.includes(dataSetName)
+    );
+  }
+
+  /**
    * Finalize pending sync metrics and invoke callback.
    *
    * @param {string} dataSetName
@@ -1387,9 +1400,7 @@ class HashTreeParser {
 
     const {hashTree} = dataSet;
     const rootHash = hashTree.getRootHash();
-    const shouldCollectMetrics = Boolean(
-      this.syncLatencyTracker && !isInitialization && SYNC_METRICS_DATA_SETS.includes(dataSet.name)
-    );
+    const shouldCollectMetrics = this.shouldCollectSyncMetrics(dataSet.name, isInitialization);
     let syncMetricsPending = false;
 
     if (shouldCollectMetrics) {
@@ -1413,23 +1424,9 @@ class HashTreeParser {
         if (dataSet.leafCount !== 1) {
           let receivedHashes;
 
-          if (shouldCollectMetrics) {
-            this.syncLatencyTracker?.saveTimestamp({
-              key: 'internal.client.locus.hashtree.request',
-              options: {dataSetName: dataSet.name},
-            });
-          }
-
           try {
             // request hashes from sender
             const hashesResult = await this.getHashesFromLocus(dataSet.name, rootHash);
-
-            if (shouldCollectMetrics) {
-              this.syncLatencyTracker?.saveTimestamp({
-                key: 'internal.client.locus.hashtree.response',
-                options: {dataSetName: dataSet.name},
-              });
-            }
 
             if (!hashesResult) {
               // hashes match, no sync needed
@@ -1472,25 +1469,11 @@ class HashTreeParser {
       // request sync for mismatched leaves
       let syncResponse: HashTreeMessage | null = null;
 
-      if (shouldCollectMetrics) {
-        this.syncLatencyTracker?.saveTimestamp({
-          key: 'internal.client.locus.sync.request',
-          options: {dataSetName: dataSet.name},
-        });
-      }
-
       if (isInitialization) {
         syncResponse = await this.sendSyncRequestToLocus(dataSet, {isInitialization: true});
       } else if (Object.keys(leavesData).length > 0) {
         syncResponse = await this.sendSyncRequestToLocus(dataSet, {
           mismatchedLeavesData: leavesData,
-        });
-      }
-
-      if (shouldCollectMetrics) {
-        this.syncLatencyTracker?.saveTimestamp({
-          key: 'internal.client.locus.sync.response',
-          options: {dataSetName: dataSet.name},
         });
       }
 
@@ -2048,6 +2031,13 @@ class HashTreeParser {
 
     const url = `${dataSet.url}/hashtree`;
 
+    if (this.shouldCollectSyncMetrics(dataSetName)) {
+      this.syncLatencyTracker?.saveTimestamp({
+        key: 'internal.client.locus.hashtree.request',
+        options: {dataSetName},
+      });
+    }
+
     return this.webexRequest({
       method: HTTP_VERBS.GET,
       uri: url,
@@ -2056,6 +2046,13 @@ class HashTreeParser {
       },
     })
       .then((response) => {
+        if (this.shouldCollectSyncMetrics(dataSetName)) {
+          this.syncLatencyTracker?.saveTimestamp({
+            key: 'internal.client.locus.hashtree.response',
+            options: {dataSetName},
+          });
+        }
+
         if (!response.body || isEmpty(response.body)) {
           // 204 with empty body means our hashes match Locus, no sync needed
           LoggerProxy.logger.info(
@@ -2149,6 +2146,13 @@ class HashTreeParser {
 
     const ourCurrentRootHash = dataSet.hashTree ? dataSet.hashTree.getRootHash() : EMPTY_HASH;
 
+    if (this.shouldCollectSyncMetrics(dataSet.name, isInitialization)) {
+      this.syncLatencyTracker?.saveTimestamp({
+        key: 'internal.client.locus.sync.request',
+        options: {dataSetName: dataSet.name},
+      });
+    }
+
     return this.webexRequest({
       method: HTTP_VERBS.POST,
       uri: url,
@@ -2158,6 +2162,13 @@ class HashTreeParser {
       body,
     })
       .then((resp) => {
+        if (this.shouldCollectSyncMetrics(dataSet.name, isInitialization)) {
+          this.syncLatencyTracker?.saveTimestamp({
+            key: 'internal.client.locus.sync.response',
+            options: {dataSetName: dataSet.name},
+          });
+        }
+
         if (!resp.body || isEmpty(resp.body)) {
           LoggerProxy.logger.info(
             `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Got ${resp.statusCode} with empty body for sync request for data set "${dataSet.name}", data should arrive via messages`
