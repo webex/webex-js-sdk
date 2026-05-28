@@ -37,6 +37,7 @@ import HashTreeParser, {
   LocusInfoUpdate,
   LocusInfoUpdateType,
   Metadata,
+  SyncLatencyTracker,
   SyncMetricsCallback,
 } from '../hashTree/hashTreeParser';
 import {HashTreeObject, ObjectType, ObjectTypeToLocusKeyMap} from '../hashTree/types';
@@ -98,6 +99,7 @@ export type HashTreeParserEntry = {
 export type LocusInfoCallbacks = {
   updateMeeting: (object: any) => void;
   syncMetricsCallback: SyncMetricsCallback;
+  syncLatencyTracker?: SyncLatencyTracker;
 };
 
 /**
@@ -567,6 +569,7 @@ export default class LocusInfo extends EventsScope {
       callbacks: {
         locusInfoUpdateCallback: this.updateFromHashTree.bind(this, locusUrl),
         syncMetricsCallback: this.callbacks.syncMetricsCallback,
+        syncLatencyTracker: this.callbacks.syncLatencyTracker,
       },
       debugId: `HT-${locusUrl.split('/')?.pop()?.substring(0, 4)}`,
       excludedDataSets: this.webex.config.meetings.locus?.excludedDataSets,

@@ -108,11 +108,113 @@ describe('internal-plugin-metrics', () => {
       assert.deepEqual(cdl.latencyTimestamps.size, 2);
       cdl.saveLatency('internal.api.fetch.intelligence.models', 42);
       assert.deepEqual(cdl.precomputedLatencies.size, 1);
+      cdl.saveTimestamp({
+        key: 'internal.client.locus.sync.start',
+        value: 1,
+        options: {dataSetName: 'main', randomBackoffTime: 10},
+      });
+      assert.deepEqual(cdl.locusSyncLatencies.size, 1);
 
       cdl.clearTimestamps();
 
       assert.deepEqual(cdl.latencyTimestamps.size, 0);
       assert.deepEqual(cdl.precomputedLatencies.size, 0);
+      assert.deepEqual(cdl.locusSyncLatencies.size, 0);
+    });
+
+    describe('locus sync latencies', () => {
+      it('calculates sync latency values from milestones', () => {
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.start',
+          value: 100,
+          options: {dataSetName: 'main', randomBackoffTime: 10.4},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.hashtree.request',
+          value: 105,
+          options: {dataSetName: 'main'},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.hashtree.response',
+          value: 125,
+          options: {dataSetName: 'main'},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.request',
+          value: 128,
+          options: {dataSetName: 'main'},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.response',
+          value: 143,
+          options: {dataSetName: 'main'},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.message.received',
+          value: 150,
+          options: {dataSetName: 'main'},
+        });
+
+        assert.deepEqual(cdl.getLocusSyncLatency('main'), {
+          randomBackoffTime: 10,
+          hashtreePrepTime: 5,
+          hashtreeResponseTime: 20,
+          syncPrepTime: 3,
+          syncResponseTime: 15,
+          syncMessageReceiveTime: 7,
+          totalTime: 50,
+        });
+      });
+
+      it('calculates sync latency values when hash tree request is skipped', () => {
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.start',
+          value: 100,
+          options: {dataSetName: 'main', randomBackoffTime: 0},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.request',
+          value: 110,
+          options: {dataSetName: 'main'},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.response',
+          value: 130,
+          options: {dataSetName: 'main'},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.message.received',
+          value: 140,
+          options: {dataSetName: 'main'},
+        });
+
+        assert.deepEqual(cdl.getLocusSyncLatency('main'), {
+          randomBackoffTime: 0,
+          hashtreePrepTime: 0,
+          hashtreeResponseTime: 0,
+          syncPrepTime: 10,
+          syncResponseTime: 20,
+          syncMessageReceiveTime: 10,
+          totalTime: 40,
+        });
+      });
+
+      it('returns undefined and clears state when required milestones are missing', () => {
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.start',
+          value: 100,
+          options: {dataSetName: 'main', randomBackoffTime: 0},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.message.received',
+          value: 140,
+          options: {dataSetName: 'main'},
+        });
+
+        assert.isUndefined(cdl.getLocusSyncLatency('main'));
+        cdl.clearLocusSyncLatency('main');
+        assert.isFalse(cdl.locusSyncLatencies.has('main'));
+      });
     });
 
     it('should calculate diff between timestamps correctly', () => {

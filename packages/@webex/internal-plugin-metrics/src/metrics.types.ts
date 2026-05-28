@@ -162,7 +162,13 @@ export type InternalEvent = {
     | 'internal.client.add-media.turn-discovery.start'
     | 'internal.client.add-media.turn-discovery.end'
     | 'internal.client.share.initiated'
-    | 'internal.client.share.stopped';
+    | 'internal.client.share.stopped'
+    | 'internal.client.locus.sync.start'
+    | 'internal.client.locus.hashtree.request'
+    | 'internal.client.locus.hashtree.response'
+    | 'internal.client.locus.sync.request'
+    | 'internal.client.locus.sync.response'
+    | 'internal.client.locus.sync.message.received';
 
   payload?: never;
   options?: never;

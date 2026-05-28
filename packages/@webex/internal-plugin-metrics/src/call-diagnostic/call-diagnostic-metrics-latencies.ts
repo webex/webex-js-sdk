@@ -7,6 +7,30 @@ import {MetricEventNames, PreComputedLatencies} from '../metrics.types';
 
 // we only care about client event and feature event for now
 
+type LocusSyncLatencyMilestone = {
+  dataSetName: string;
+  key: MetricEventNames;
+  value: number;
+};
+
+type SaveTimestampOptions = {
+  meetingId?: string;
+  dataSetName?: string;
+  randomBackoffTime?: number;
+};
+
+type LocusSyncLatencyRecord = {
+  randomBackoffTime: number;
+  syncStart?: number;
+  hashTreeRequest?: number;
+  hashTreeResponse?: number;
+  syncRequest?: number;
+  syncResponse?: number;
+  messageReceived?: number;
+};
+
+type LocusSyncLatencyTimestampKey = Exclude<keyof LocusSyncLatencyRecord, 'randomBackoffTime'>;
+
 /**
  * @description Helper class to store latencies timestamp and to calculate various latencies for CA.
  * @exports
@@ -15,6 +39,7 @@ import {MetricEventNames, PreComputedLatencies} from '../metrics.types';
 export default class CallDiagnosticLatencies extends WebexPlugin {
   latencyTimestamps: Map<MetricEventNames, number>;
   precomputedLatencies: Map<PreComputedLatencies, number>;
+  locusSyncLatencies: Map<string, LocusSyncLatencyRecord>;
   // meetingId that the current latencies are for
   private meetingId?: string;
   private MAX_INTEGER = 2147483647;
@@ -26,6 +51,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     super(...args);
     this.latencyTimestamps = new Map();
     this.precomputedLatencies = new Map();
+    this.locusSyncLatencies = new Map();
   }
 
   /**
@@ -34,6 +60,175 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   public clearTimestamps() {
     this.latencyTimestamps.clear();
     this.precomputedLatencies.clear();
+    this.locusSyncLatencies.clear();
+  }
+
+  /**
+   * Clear tracked Locus sync latency state for a dataset.
+   * @param dataSetName dataset name
+   */
+  public clearLocusSyncLatency(dataSetName: string) {
+    this.locusSyncLatencies.delete(dataSetName);
+  }
+
+  /**
+   * Calculates Locus sync latency values from stored milestone timestamps.
+   * @param dataSetName dataset name
+   * @returns sync latency metrics
+   */
+  public getLocusSyncLatency(dataSetName: string) {
+    const record = this.locusSyncLatencies.get(dataSetName);
+
+    if (!record) {
+      return undefined;
+    }
+
+    const hashtreePrepTime =
+      this.getDiffBetweenLocusSyncTimestamps(record, 'syncStart', 'hashTreeRequest') ?? 0;
+    const hashtreeResponseTime =
+      this.getDiffBetweenLocusSyncTimestamps(record, 'hashTreeRequest', 'hashTreeResponse') ?? 0;
+    const syncPrepStart = this.getLocusSyncPrepStart(record);
+    const syncPrepTime = this.getDiffBetweenLocusSyncTimestamps(
+      record,
+      syncPrepStart,
+      'syncRequest'
+    );
+    const syncResponseTime = this.getDiffBetweenLocusSyncTimestamps(
+      record,
+      'syncRequest',
+      'syncResponse'
+    );
+    const syncMessageReceiveTime = this.getDiffBetweenLocusSyncTimestamps(
+      record,
+      'syncResponse',
+      'messageReceived'
+    );
+    const totalTime = this.getDiffBetweenLocusSyncTimestamps(
+      record,
+      'syncStart',
+      'messageReceived'
+    );
+
+    if (
+      typeof syncPrepTime !== 'number' ||
+      typeof syncResponseTime !== 'number' ||
+      typeof syncMessageReceiveTime !== 'number' ||
+      typeof totalTime !== 'number'
+    ) {
+      return undefined;
+    }
+
+    return {
+      randomBackoffTime: this.getClampedLocusSyncLatency(record.randomBackoffTime),
+      hashtreePrepTime,
+      hashtreeResponseTime,
+      syncPrepTime,
+      syncResponseTime,
+      syncMessageReceiveTime,
+      totalTime,
+    };
+  }
+
+  /**
+   * Helper to calculate end - start for Locus sync milestones.
+   * @param record tracked milestone timestamps
+   * @param a start milestone
+   * @param b end milestone
+   * @returns latency
+   */
+  private getDiffBetweenLocusSyncTimestamps(
+    record: LocusSyncLatencyRecord,
+    a: LocusSyncLatencyTimestampKey,
+    b: LocusSyncLatencyTimestampKey
+  ) {
+    const start = record[a];
+    const end = record[b];
+
+    if (typeof start !== 'number' || typeof end !== 'number') {
+      return undefined;
+    }
+
+    return this.getClampedLocusSyncLatency(end - start);
+  }
+
+  /**
+   * Get the timestamp that starts the sync prep segment.
+   * @param record tracked milestone timestamps
+   * @returns sync prep start milestone
+   */
+  private getLocusSyncPrepStart(record: LocusSyncLatencyRecord): LocusSyncLatencyTimestampKey {
+    return typeof record.hashTreeResponse === 'number' ? 'hashTreeResponse' : 'syncStart';
+  }
+
+  /**
+   * Round and clamp Locus sync latency values.
+   * @param latency latency value
+   * @returns rounded latency
+   */
+  private getClampedLocusSyncLatency(latency: number) {
+    return Math.round(clamp(latency, 0, this.MAX_INTEGER));
+  }
+
+  /**
+   * Checks if metric event name is a Locus sync latency milestone.
+   * @param key event name
+   * @returns whether event is Locus sync latency milestone
+   */
+  private isLocusSyncLatencyEvent(key: MetricEventNames) {
+    return [
+      'internal.client.locus.sync.start',
+      'internal.client.locus.hashtree.request',
+      'internal.client.locus.hashtree.response',
+      'internal.client.locus.sync.request',
+      'internal.client.locus.sync.response',
+      'internal.client.locus.sync.message.received',
+    ].includes(key);
+  }
+
+  /**
+   * Stores a Locus sync latency milestone timestamp.
+   * @param options options
+   */
+  private saveLocusSyncLatencyTimestamp({
+    dataSetName,
+    key,
+    value,
+    randomBackoffTime = 0,
+  }: LocusSyncLatencyMilestone & {randomBackoffTime?: number}) {
+    if (key === 'internal.client.locus.sync.start') {
+      this.locusSyncLatencies.set(dataSetName, {
+        randomBackoffTime,
+        syncStart: value,
+      });
+
+      return;
+    }
+
+    const record = this.locusSyncLatencies.get(dataSetName);
+
+    if (!record) {
+      return;
+    }
+
+    switch (key) {
+      case 'internal.client.locus.hashtree.request':
+        record.hashTreeRequest = value;
+        break;
+      case 'internal.client.locus.hashtree.response':
+        record.hashTreeResponse = value;
+        break;
+      case 'internal.client.locus.sync.request':
+        record.syncRequest = value;
+        break;
+      case 'internal.client.locus.sync.response':
+        record.syncResponse = value;
+        break;
+      case 'internal.client.locus.sync.message.received':
+        record.messageReceived = value;
+        break;
+      default:
+        break;
+    }
   }
 
   /**
@@ -72,13 +267,25 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }: {
     key: MetricEventNames;
     value?: number;
-    options?: {meetingId?: string};
+    options?: SaveTimestampOptions;
   }) {
     // save the meetingId so we can use the meeting object in latency calculations if needed
     const {meetingId} = options;
     if (meetingId) {
       this.setMeetingId(meetingId);
     }
+
+    if (this.isLocusSyncLatencyEvent(key) && options.dataSetName) {
+      this.saveLocusSyncLatencyTimestamp({
+        dataSetName: options.dataSetName,
+        key,
+        value,
+        randomBackoffTime: options.randomBackoffTime,
+      });
+
+      return;
+    }
+
     // for some events we're only interested in the first timestamp not last
     // as these events can happen multiple times
     if (

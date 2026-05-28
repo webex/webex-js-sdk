@@ -1390,6 +1390,7 @@ export default class Meeting extends StatelessWebexPlugin {
         syncMetricsCallback: (metrics: {dataSet: string; syncLatency: SyncLatencyMetrics}) => {
           this.sendSyncCompleteMetric(metrics);
         },
+        syncLatencyTracker: (this as any).webex.internal.newMetrics.callDiagnosticLatencies,
       },
       this.webex,
       this.id

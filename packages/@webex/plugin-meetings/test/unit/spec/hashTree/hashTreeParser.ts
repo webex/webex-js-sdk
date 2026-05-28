@@ -178,7 +178,8 @@ describe('HashTreeParser', () => {
     initialLocus: any = exampleInitialLocus,
     metadata: any = exampleMetadata,
     excludedDataSets?: string[],
-    syncMetricsCallback: sinon.SinonStub = sinon.stub()
+    syncMetricsCallback: sinon.SinonStub = sinon.stub(),
+    syncLatencyTracker?: any
   ) {
     return new HashTreeParser({
       initialLocus,
@@ -187,6 +188,7 @@ describe('HashTreeParser', () => {
       callbacks: {
         locusInfoUpdateCallback: callback,
         syncMetricsCallback,
+        syncLatencyTracker,
       },
       debugId: 'test',
       excludedDataSets,
@@ -5333,16 +5335,29 @@ describe('HashTreeParser', () => {
   describe('#syncMetrics', () => {
     it('invokes syncMetricsCallback when matching dataset version arrives', () => {
       const syncMetricsCallback = sinon.stub();
-      const parser = createHashTreeParser(undefined, undefined, undefined, syncMetricsCallback);
-
-      parser['pendingSyncMetrics'].set('main', {
-        syncResponseReceivedAt: 100,
-        totalStartTime: 50,
+      const syncLatency = {
         randomBackoffTime: 10,
         hashtreePrepTime: 5,
         hashtreeResponseTime: 20,
         syncPrepTime: 3,
         syncResponseTime: 15,
+        syncMessageReceiveTime: 7,
+        totalTime: 50,
+      };
+      const syncLatencyTracker = {
+        saveTimestamp: sinon.stub(),
+        getLocusSyncLatency: sinon.stub().returns(syncLatency),
+        clearLocusSyncLatency: sinon.stub(),
+      };
+      const parser = createHashTreeParser(
+        undefined,
+        undefined,
+        undefined,
+        syncMetricsCallback,
+        syncLatencyTracker
+      );
+
+      parser['pendingSyncMetrics'].set('main', {
         dataSetName: 'main',
         dataSetVersion: 1000,
       } as any);
@@ -5363,13 +5378,13 @@ describe('HashTreeParser', () => {
       const arg = syncMetricsCallback.firstCall.args[0];
 
       assert.equal(arg.dataSet, 'main');
-      assert.isNumber(arg.syncLatency.randomBackoffTime);
-      assert.isNumber(arg.syncLatency.hashtreePrepTime);
-      assert.isNumber(arg.syncLatency.hashtreeResponseTime);
-      assert.isNumber(arg.syncLatency.syncPrepTime);
-      assert.isNumber(arg.syncLatency.syncResponseTime);
-      assert.isNumber(arg.syncLatency.syncMessageReceiveTime);
-      assert.isNumber(arg.syncLatency.totalTime);
+      assert.deepEqual(arg.syncLatency, syncLatency);
+      assert.calledOnceWithExactly(syncLatencyTracker.saveTimestamp, {
+        key: 'internal.client.locus.sync.message.received',
+        options: {dataSetName: 'main'},
+      });
+      assert.calledOnceWithExactly(syncLatencyTracker.getLocusSyncLatency, 'main');
+      assert.calledOnceWithExactly(syncLatencyTracker.clearLocusSyncLatency, 'main');
       assert.isFalse(parser['pendingSyncMetrics'].has('main'));
     });
 
@@ -5378,13 +5393,6 @@ describe('HashTreeParser', () => {
       const parser = createHashTreeParser(undefined, undefined, undefined, syncMetricsCallback);
 
       parser['pendingSyncMetrics'].set('main', {
-        syncResponseReceivedAt: 100,
-        totalStartTime: 50,
-        randomBackoffTime: 10,
-        hashtreePrepTime: 5,
-        hashtreeResponseTime: 20,
-        syncPrepTime: 3,
-        syncResponseTime: 15,
         dataSetName: 'main',
         dataSetVersion: 1005,
       } as any);
