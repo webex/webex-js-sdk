@@ -6889,28 +6889,37 @@ export default class Meeting extends StatelessWebexPlugin {
   private sendLLMConnectMetric(timings: RegisterAndConnectTiming, error?: any) {
     // @ts-ignore
     const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
+    const {clientLLMDatachannelResponseTime = 0, clientLLMWebSocketConnectTime} = timings || {};
+
+    const llmLatency: any = {
+      clientLLMDatachannelResponseTime,
+    };
+
+    if (clientLLMWebSocketConnectTime !== undefined) {
+      llmLatency.clientLLMWebSocketConnectTime = clientLLMWebSocketConnectTime;
+    }
 
     const payload: any = {
-      llmLatency: {
-        clientLLMDatachannelResponseTime: timings?.clientLLMDatachannelResponseTime ?? 0,
-        ...(timings?.clientLLMWebSocketConnectTime !== undefined && {
-          clientLLMWebSocketConnectTime: timings.clientLLMWebSocketConnectTime,
-        }),
-      },
+      llmLatency,
     };
 
     if (llmWebsocketUrl) {
       payload.identifiers = {llmWebsocketUrl};
     }
 
+    const options: any = {
+      meetingId: this.id,
+    };
+
+    if (error) {
+      options.rawError = error;
+    }
+
     // @ts-ignore
     this.webex.internal.newMetrics.submitClientEvent({
       name: 'client.llm.connect.response',
       payload,
-      options: {
-        meetingId: this.id,
-        ...(error && {rawError: error}),
-      },
+      options,
     });
   }
 

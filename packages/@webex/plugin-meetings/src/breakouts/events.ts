@@ -36,30 +36,38 @@ const breakoutEvent: {
     if (!eventInfo?.breakoutMoveId || !eventInfo?.meeting) {
       return;
     }
-    if (event === 'client.breakout-session.join.response' && !eventInfo?.llmLatency) {
+
+    const {breakoutMoveId, currentSession, error, llmLatency, llmWebsocketUrl, meeting} = eventInfo;
+
+    if (event === 'client.breakout-session.join.response' && !llmLatency) {
       return;
     }
-    if (!eventInfo.meeting.meetingInfo?.enableConvergedArchitecture) {
+    if (!meeting.meetingInfo?.enableConvergedArchitecture) {
       return;
     }
 
     const payload: any = {
-      ...(eventInfo?.llmLatency && {llmLatency: eventInfo.llmLatency}),
+      llmLatency,
       identifiers: {
-        breakoutMoveId: eventInfo.breakoutMoveId,
-        breakoutSessionId: eventInfo?.currentSession?.sessionId,
-        breakoutGroupId: eventInfo?.currentSession?.groupId,
-        ...(eventInfo?.llmWebsocketUrl && {llmWebsocketUrl: eventInfo.llmWebsocketUrl}),
+        breakoutMoveId,
+        breakoutSessionId: currentSession?.sessionId,
+        breakoutGroupId: currentSession?.groupId,
+        llmWebsocketUrl,
       },
     };
+
+    const options: any = {
+      meetingId: meeting.id,
+    };
+
+    if (error) {
+      options.rawError = error;
+    }
 
     submitClientEvent({
       name: event,
       payload,
-      options: {
-        meetingId: eventInfo.meeting.id,
-        ...(eventInfo?.error && {rawError: eventInfo.error}),
-      },
+      options,
     });
   },
 };
