@@ -128,6 +128,69 @@ describe('plugin-logger', () => {
       assert.equal(webex.logger.buffer.buffer[1][3], 3);
     });
 
+    it('adjusts lastSubmitted when buffer overflows in single buffer mode', () => {
+      webex.config.logger.historyLength = 3;
+
+      webex.logger.log('a');
+      webex.logger.log('b');
+
+      // simulate a successful upload
+      webex.logger.formatLogs({diff: true});
+      webex.logger.updateLastSubmittedIndex();
+      assert.equal(webex.logger.buffer.lastSubmitted, 2);
+
+      // add more logs to trigger overflow
+      webex.logger.log('c');
+      webex.logger.log('d');
+
+      // buffer overflowed by 1, so lastSubmitted should be decremented by 1
+      assert.equal(webex.logger.buffer.lastSubmitted, 1);
+    });
+
+    it('clamps lastSubmitted to 0 when buffer overflow exceeds lastSubmitted in single buffer mode', () => {
+      webex.config.logger.historyLength = 2;
+
+      webex.logger.log('a');
+
+      // simulate a successful upload after just 1 log
+      webex.logger.formatLogs({diff: true});
+      webex.logger.updateLastSubmittedIndex();
+      assert.equal(webex.logger.buffer.lastSubmitted, 1);
+
+      // add enough logs to overflow past the lastSubmitted value
+      webex.logger.log('b');
+      webex.logger.log('c');
+      webex.logger.log('d');
+
+      assert.equal(webex.logger.buffer.lastSubmitted, 0);
+      assert.lengthOf(webex.logger.buffer.buffer, 2);
+    });
+
+    it('adjusts lastSubmitted when buffer overflows in separate buffer mode', () => {
+      webex.config.logger.separateLogBuffers = true;
+      webex.config.logger.clientName = 'someclient';
+      webex.config.logger.historyLength = 3;
+
+      webex.logger.log('sdk1');
+      webex.logger.log('sdk2');
+      webex.logger.client_log('client1');
+      webex.logger.client_log('client2');
+
+      webex.logger.formatLogs({diff: true});
+      webex.logger.updateLastSubmittedIndex();
+      assert.equal(webex.logger.sdkBuffer.lastSubmitted, 2);
+      assert.equal(webex.logger.clientBuffer.lastSubmitted, 2);
+
+      // overflow both buffers by 1
+      webex.logger.log('sdk3');
+      webex.logger.log('sdk4');
+      webex.logger.client_log('client3');
+      webex.logger.client_log('client4');
+
+      assert.equal(webex.logger.sdkBuffer.lastSubmitted, 1);
+      assert.equal(webex.logger.clientBuffer.lastSubmitted, 1);
+    });
+
     it('prevents the client and sdk buffer from overflowing', () => {
       webex.config.logger.historyLength = 2;
       webex.config.logger.separateLogBuffers = true;
@@ -1313,7 +1376,7 @@ describe('plugin-logger', () => {
       webex.logger.formatLogs({diff: true});
       const nextIndexAfterDiff = webex.logger.buffer.nextIndex;
 
-      assert.isUndefined(webex.logger.buffer.lastSubmitted);
+      assert.equal(webex.logger.buffer.lastSubmitted, 0);
 
       webex.logger.updateLastSubmittedIndex();
 
@@ -1453,17 +1516,17 @@ describe('plugin-logger', () => {
       assert.deepEqual(diff3.split('\n'), [',1970-01-01T00:00:02.000Z,wx-js-sdk,c']);
     });
 
-    it('resets nextIndex to undefined when updateLastSubmittedIndex was never called', () => {
+    it('resets nextIndex to 0 when updateLastSubmittedIndex was never called', () => {
       webex.config.logger.separateLogBuffers = false;
 
       webex.logger.log('a');
       webex.logger.formatLogs({diff: true});
       assert.equal(webex.logger.buffer.nextIndex, 1);
 
-      // lastSubmitted is undefined before any call to updateLastSubmittedIndex
+      // lastSubmitted defaults to 0 before any call to updateLastSubmittedIndex
       webex.logger.resetBufferToLastSuccessfulUpload();
 
-      assert.isUndefined(webex.logger.buffer.nextIndex);
+      assert.equal(webex.logger.buffer.nextIndex, 0);
     });
   });
 });

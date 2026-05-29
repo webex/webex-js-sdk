@@ -54,6 +54,7 @@ const Support = WebexPlugin.extend({
     const metadataArray = this._constructFileMetadata(metadata);
 
     const {type} = options;
+    const diff = type !== undefined ? type === 'diff' : this.config.incrementalLogs;
 
     // this is really testing that Ampersand is fully ready.  once it's ready, these exist
     if (
@@ -62,8 +63,6 @@ const Support = WebexPlugin.extend({
       this.webex.logger.clientBuffer &&
       this.webex.logger.buffer
     ) {
-      const diff = type !== undefined ? type === 'diff' : this.config.incrementalLogs;
-
       logs = this.webex.logger.formatLogs({diff});
     }
 
@@ -128,7 +127,7 @@ const Support = WebexPlugin.extend({
             return res;
           })
           .catch((err) => {
-            if (this.config.incrementalLogs && this.config.retryFailedLogUploadsAtNextInterval) {
+            if (diff && this.config.retryFailedLogUploadsAtNextInterval) {
               this.webex.logger.error(
                 'Support: Failed to upload logs. Will retry to upload these logs at next interval',
                 err

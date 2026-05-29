@@ -107,6 +107,7 @@ const Logger = WebexPlugin.extend({
         return {
           buffer: [],
           nextIndex: 0,
+          lastSubmitted: 0,
         };
       },
     },
@@ -464,6 +465,11 @@ function makeLoggerMethod(level, impl, type, neverPrint = false, alwaysBuffer = 
           bufferRef.nextIndex -= deleteCount;
           if (bufferRef.nextIndex < 0) {
             bufferRef.nextIndex = 0;
+          }
+
+          bufferRef.lastSubmitted -= deleteCount;
+          if (bufferRef.lastSubmitted < 0) {
+            bufferRef.lastSubmitted = 0;
           }
         }
         if (level === 'group') this.groupLevel += 1;
