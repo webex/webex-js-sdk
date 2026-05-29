@@ -1252,7 +1252,6 @@ export function resolveCallingBackend(device: WDMDevice): CALLING_BACKEND {
  *
  * @param webex -.
  * @returns CallingBackEnd.
- * @deprecated Use getCallingBackend(device) instead.
  */
 export function getCallingBackEnd(webex: WebexSDK): CALLING_BACKEND {
   return resolveCallingBackend(webex.internal.device);
