@@ -53,6 +53,14 @@ export const CALLING_SELECTORS = {
 
   END_BTN: '#end',
 
+  /**
+   * The Answer button inside the always-visible incoming-call div.
+   * Starts disabled; becomes enabled when a line:incoming_call event fires.
+   * Use .toBeEnabled() to wait for an incoming call, .toBeDisabled() to assert
+   * that no incoming call arrived (e.g. call was forwarded / DND active).
+   */
+  INCOMING_CALL_ANSWER_BTN: 'div#incomingsection #answer',
+
   // Call Settings
   FETCH_SETTINGS_BTN: '#fetch-setting',
   DND_BTN: '#DND-button',
@@ -67,7 +75,24 @@ export const CALLING_SELECTORS = {
   CF_NO_ANSWER_CB: '#notAnsweredCb',
   CF_NO_ANSWER_DEST: '#notAnsweredDest',
   CF_NOT_REACHABLE_CB: '#notReachableCb',
+  CF_NOT_REACHABLE_DEST: '#notReachableDest',
   CF_DIRECTORY_NUMBER: '#directoryNumber',
   CF_ALWAYS_BTN: '#CallForwardAlways-button',
   CF_ALWAYS_DATA: '#callforwardalways-data',
+
+  // CF No Answer — number of rings field
+  CF_NO_ANSWER_RINGS: '#notAnsweredRings',
+
+  // Voicemail — scoped to #voicemailForm to avoid collision with CF form IDs
+  VM_ENABLED_CB: '#vmCb',
+  VM_SAVE_BTN: '#voicemailForm #cfButton',
+  VM_SEND_ALL_CB: '#voicemailForm #alwaysCb',
+  VM_SEND_BUSY_CB: '#voicemailForm #busyCb',
+  VM_UNANSWERED_CB: '#voicemailForm #vmNotAnsweredCb',
+  VM_UNANSWERED_RINGS: '#vmNotAnsweredRings',
+  VM_MWI_CB: '#voicemailForm #notifCb',
+  VM_NOTIF_EMAIL_CB: '#voicemailForm #notifEmailCb',
+  VM_NOTIF_EMAIL_ID: '#notifEmailId',
+  VM_EMAIL_COPY_CB: '#voicemailForm #vmEmailCb',
+  VM_EMAIL_COPY_ID: '#vmEmailId',
 };

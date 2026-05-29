@@ -31,7 +31,9 @@ export const makeCall = async (page: Page, destination: string): Promise<void> =
 };
 
 export const waitForIncomingCall = async (page: Page): Promise<void> => {
-  await expect(page.locator(CALLING_SELECTORS.INCOMING_ANSWER_BTN)).toBeEnabled({timeout: 30000});
+  await expect(page.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN)).toBeEnabled({
+    timeout: 30000,
+  });
 };
 
 export const answerCall = async (page: Page): Promise<void> => {

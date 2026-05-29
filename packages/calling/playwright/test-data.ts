@@ -127,10 +127,14 @@ export const USER_SETS: Record<string, UserSet> = {
     accounts: ['USER_6'],
     testSuite: 'contacts.spec.ts',
   },
-  // Single-user Call Settings supplementary service E2E tests
+
+  // Call Settings E2E tests:
+  //   accounts[0] = USER_3 — settings owner / callee
+  //   accounts[1] = USER_2 — primary caller (also used for busy-state first call)
+  //   accounts[2] = USER_1 — second caller (places call while USER_3 is already busy)
   SET_CALL_SETTINGS: {
     name: 'SET_CALL_SETTINGS',
-    accounts: ['USER_3'],
+    accounts: ['USER_3', 'USER_2', 'USER_1'],
     testSuite: 'set-call-settings.spec.ts',
   },
 };

@@ -7,7 +7,20 @@ import {CALLING_SELECTORS, AWAIT_TIMEOUT, OPERATION_TIMEOUT} from '../constants'
 
 // Click "Get Settings" and wait until the DND button shows "DND Enabled" or "DND Disabled" (ignores loading/placeholder states).
 export async function loadSettings(page: Page): Promise<void> {
+  // Register both response listeners BEFORE clicking so they capture the GETs
+  // that the "Get Settings" button click triggers.
+  const cfResponsePromise = page.waitForResponse(
+    (r) => r.url().includes('callForwarding') && r.request().method() === 'GET',
+    {timeout: OPERATION_TIMEOUT}
+  );
+  const vmResponsePromise = page.waitForResponse(
+    (r) => r.url().includes('voicemail') && r.request().method() === 'GET',
+    {timeout: OPERATION_TIMEOUT}
+  );
   await page.locator(CALLING_SELECTORS.FETCH_SETTINGS_BTN).click({timeout: AWAIT_TIMEOUT});
+  // Wait for both forms to be populated from the server before returning.
+  await Promise.all([cfResponsePromise, vmResponsePromise]);
+  // Wait for DND to settle as a final confirmation that all settings loaded.
   await expect(page.locator(CALLING_SELECTORS.DND_BTN)).toHaveText(/^(DND Enabled|DND Disabled)$/, {
     timeout: OPERATION_TIMEOUT,
   });
@@ -92,6 +105,154 @@ export async function setCallForwardAlways(
 ): Promise<void> {
   const cb = page.locator(CALLING_SELECTORS.CF_ALWAYS_CB);
   const dest = page.locator(CALLING_SELECTORS.CF_ALWAYS_DEST);
+  const isChecked = await cb.isChecked();
+
+  if (enable && !isChecked) {
+    await cb.check({timeout: AWAIT_TIMEOUT});
+    await dest.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
+    if (destination) {
+      await dest.fill(destination);
+    }
+  } else if (!enable && isChecked) {
+    await cb.uncheck({timeout: AWAIT_TIMEOUT});
+    await dest.waitFor({state: 'hidden', timeout: AWAIT_TIMEOUT});
+  }
+
+  await saveCfSettings(page);
+}
+
+/**
+ * Ensure the Call Forward "When No Answer" checkbox is in the requested state
+ * and save.  Does nothing if already in the desired state.
+ */
+export async function setCallForwardNoAnswer(
+  page: Page,
+  enable: boolean,
+  destination?: string
+): Promise<void> {
+  const cb = page.locator(CALLING_SELECTORS.CF_NO_ANSWER_CB);
+  const dest = page.locator(CALLING_SELECTORS.CF_NO_ANSWER_DEST);
+  const isChecked = await cb.isChecked();
+
+  if (enable && !isChecked) {
+    await cb.check({timeout: AWAIT_TIMEOUT});
+    await dest.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
+    if (destination) {
+      await dest.fill(destination);
+    }
+  } else if (!enable && isChecked) {
+    await cb.uncheck({timeout: AWAIT_TIMEOUT});
+    await dest.waitFor({state: 'hidden', timeout: AWAIT_TIMEOUT});
+  }
+
+  await saveCfSettings(page);
+}
+
+/**
+ * Ensure the Call Forward "When Not Reachable" checkbox is in the requested
+ * state and save.  Does nothing if already in the desired state.
+ */
+export async function setCallForwardNotReachable(
+  page: Page,
+  enable: boolean,
+  destination?: string
+): Promise<void> {
+  const cb = page.locator(CALLING_SELECTORS.CF_NOT_REACHABLE_CB);
+  const dest = page.locator(CALLING_SELECTORS.CF_NOT_REACHABLE_DEST);
+  const isChecked = await cb.isChecked();
+
+  if (enable && !isChecked) {
+    await cb.check({timeout: AWAIT_TIMEOUT});
+    await dest.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
+    if (destination) {
+      await dest.fill(destination);
+    }
+  } else if (!enable && isChecked) {
+    await cb.uncheck({timeout: AWAIT_TIMEOUT});
+    await dest.waitFor({state: 'hidden', timeout: AWAIT_TIMEOUT});
+  }
+
+  await saveCfSettings(page);
+}
+
+/**
+ * Enable or disable "Send all calls to voicemail" and save.
+ */
+export async function setVoicemailSendAllCalls(page: Page, enable: boolean): Promise<void> {
+  const cb = page.locator(CALLING_SELECTORS.VM_SEND_ALL_CB);
+  const isChecked = await cb.isChecked();
+  if (enable && !isChecked) {
+    await cb.check({timeout: AWAIT_TIMEOUT});
+  } else if (!enable && isChecked) {
+    await cb.uncheck({timeout: AWAIT_TIMEOUT});
+  }
+  await saveVoicemailSettings(page);
+}
+
+/**
+ * Enable or disable "Send busy calls to voicemail" and save.
+ */
+export async function setVoicemailSendBusyCalls(page: Page, enable: boolean): Promise<void> {
+  const cb = page.locator(CALLING_SELECTORS.VM_SEND_BUSY_CB);
+  const isChecked = await cb.isChecked();
+  if (enable && !isChecked) {
+    await cb.check({timeout: AWAIT_TIMEOUT});
+  } else if (!enable && isChecked) {
+    await cb.uncheck({timeout: AWAIT_TIMEOUT});
+  }
+  await saveVoicemailSettings(page);
+}
+
+/**
+ * Enable or disable "Send unanswered calls to voicemail" with an optional
+ * numberOfRings value, and save.
+ */
+export async function setVoicemailSendUnansweredCalls(
+  page: Page,
+  enable: boolean,
+  numberOfRings?: string
+): Promise<void> {
+  const cb = page.locator(CALLING_SELECTORS.VM_UNANSWERED_CB);
+  const rings = page.locator(CALLING_SELECTORS.VM_UNANSWERED_RINGS);
+  const isChecked = await cb.isChecked();
+
+  if (enable && !isChecked) {
+    await cb.check({timeout: AWAIT_TIMEOUT});
+    await rings.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
+    if (numberOfRings) {
+      await rings.fill(numberOfRings);
+    }
+  } else if (!enable && isChecked) {
+    await cb.uncheck({timeout: AWAIT_TIMEOUT});
+  } else if (enable && isChecked && numberOfRings) {
+    await rings.fill(numberOfRings);
+  }
+  await saveVoicemailSettings(page);
+}
+
+/**
+ * Click the Voicemail save button and wait for the PUT to be acknowledged.
+ */
+export async function saveVoicemailSettings(page: Page): Promise<void> {
+  await Promise.all([
+    page.waitForResponse((r) => r.url().includes('voicemail') && r.request().method() === 'PUT', {
+      timeout: OPERATION_TIMEOUT,
+    }),
+    page.locator(CALLING_SELECTORS.VM_SAVE_BTN).click({timeout: AWAIT_TIMEOUT}),
+  ]);
+}
+
+/**
+ * Ensure the Call Forward "When Busy" checkbox is in the requested state and
+ * save.  Does nothing if already in the desired state.
+ */
+export async function setCallForwardBusy(
+  page: Page,
+  enable: boolean,
+  destination?: string
+): Promise<void> {
+  const cb = page.locator(CALLING_SELECTORS.CF_BUSY_CB);
+  const dest = page.locator(CALLING_SELECTORS.CF_BUSY_DEST);
   const isChecked = await cb.isChecked();
 
   if (enable && !isChecked) {

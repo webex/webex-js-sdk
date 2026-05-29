@@ -1,5 +1,6 @@
-import {callSettingsTests} from '../test-groups/call-settings';
+import {callSettingsTests, callSettingsCallTests} from '../test-groups/call-settings';
 
-// Account role is resolved from testInfo.project.name → USER_SETS.
-// Uses SET_CALL_SETTINGS → USER_1 (single user, WXC backend).
+// Account roles resolved from testInfo.project.name → USER_SETS.
+// SET_CALL_SETTINGS: accounts[0] = USER_3 (settings owner), accounts[1] = USER_2 (caller).
 callSettingsTests();
+callSettingsCallTests();
