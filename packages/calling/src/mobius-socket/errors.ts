@@ -29,9 +29,6 @@ export class ConnectionError extends Exception {
    * @returns The reason string from the event
    */
   parse(event: SocketCloseEvent = {}) {
-    this.code = event.code;
-    this.reason = event.reason;
-
     return event.reason;
   }
 }
