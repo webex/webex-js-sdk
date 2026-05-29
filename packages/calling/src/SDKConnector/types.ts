@@ -26,6 +26,29 @@ export type Model = {
   };
 };
 
+export type WDMDevice = {
+  url: string;
+  userId: string;
+  orgId: string;
+  version: string;
+  callingBehavior: string;
+  registered?: boolean;
+  webSocketUrl?: string;
+  register?: () => Promise<unknown>;
+  refresh?: () => Promise<unknown>;
+  /** WDM / device-registration settings (e.g. `webrtc-calling-over-ws`). */
+  settings?: Record<string, {value?: boolean} | undefined>;
+  features: {
+    developer: {
+      models: Model[];
+      get: (key: string) => {value: boolean} | undefined;
+    };
+    entitlement: {
+      models: Model[];
+    };
+  };
+};
+
 export type ServiceCatalog = {
   serviceGroups: {
     // cSpell:disable
@@ -99,28 +122,7 @@ export interface WebexSDK {
       updateFeature?: (featureToggle: unknown) => void;
     };
     calendar: unknown;
-    device: {
-      url: string;
-      userId: string;
-      orgId: string;
-      version: string;
-      callingBehavior: string;
-      registered?: boolean;
-      webSocketUrl?: string;
-      register?: () => Promise<unknown>;
-      refresh?: () => Promise<unknown>;
-      /** WDM / device-registration settings (e.g. `webrtc-calling-over-ws`). */
-      settings?: Record<string, {value?: boolean} | undefined>;
-      features: {
-        developer: {
-          models: Model[];
-          get: (key: string) => {value: boolean} | undefined;
-        };
-        entitlement: {
-          models: Model[];
-        };
-      };
-    };
+    device: WDMDevice;
     encryption: {
       decryptText: (encryptionKeyUrl: string, encryptedData?: string) => Promise<string>;
       encryptText: (encryptionKeyUrl: string, text?: string) => Promise<string>;

@@ -44,10 +44,13 @@ export {
   CallDetails,
   CallDirection,
   CallType,
+  CALLING_BACKEND,
   DisplayInformation,
   SORT,
   SORT_BY,
 } from './common/types';
+export {resolveCallingBackend} from './common/Utils';
+export {WDMDevice} from './SDKConnector/types';
 export {CallError, LineError} from './Errors';
 export {ICall, TransferType} from './CallingClient/calling/types';
 export {LOGGER} from './Logger/types';
