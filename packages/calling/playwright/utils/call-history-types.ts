@@ -1,5 +1,57 @@
 import type {Page} from '@playwright/test';
-import type {CallHistoryRecord} from './call-history';
+
+export type SortOrder = 'ASC' | 'DESC';
+export type SortBy = 'startTime' | 'endTime';
+
+export type CallHistoryQuery = {
+  days?: number;
+  limit?: number;
+  sort?: SortOrder;
+  sortBy?: SortBy;
+};
+
+export type CallHistoryWaitOptions = CallHistoryQuery & {
+  timeout?: number;
+};
+
+export type HistoryTimeBounds = {
+  notBefore?: Date;
+  notAfter?: Date;
+};
+
+export type CallHistoryRecord = {
+  sessionId?: string;
+  direction?: string;
+  disposition?: string;
+  startTime?: string;
+  endTime?: string;
+  durationSeconds?: number;
+  durationSecs?: number;
+  sessionType?: string;
+  other?: {
+    name?: string;
+    callbackAddress?: string;
+    phoneNumber?: string;
+    primaryDisplayString?: string;
+    secondaryDisplayString?: string;
+  };
+  links?: {
+    callbackAddress?: string;
+  };
+};
+
+export type CallHistoryRow = {
+  id: string;
+  name: string;
+  direction: string;
+  disposition: string;
+  startTime: string;
+  endTime: string;
+  sessionType: string;
+  callbackAddress: string;
+  redirectionReason: string;
+  forwardedBy: string;
+};
 
 export type CallJourneyOutcome = 'ANSWERED' | 'REJECTED' | 'MISSED';
 export type CallHistoryDisposition = CallJourneyOutcome | 'CANCELED';

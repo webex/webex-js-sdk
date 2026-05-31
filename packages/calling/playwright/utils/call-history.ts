@@ -1,59 +1,23 @@
 import {expect} from '@playwright/test';
 import type {Page, Route} from '@playwright/test';
-import {AWAIT_TIMEOUT, CALLING_SELECTORS} from '../constants';
+import {
+  AWAIT_TIMEOUT,
+  CALLING_SELECTORS,
+  CALL_HISTORY_DURATION_TOLERANCE_SECONDS,
+  CALL_HISTORY_EVENTUAL_CONSISTENCY_TIMEOUT,
+  CALL_HISTORY_POLL_INTERVALS,
+  CALL_HISTORY_TIMING_TOLERANCE_MS,
+  CALL_HISTORY_URL_PATTERN,
+} from '../constants';
+import type {
+  CallHistoryQuery,
+  CallHistoryRecord,
+  CallHistoryRow,
+  CallHistoryWaitOptions,
+  HistoryTimeBounds,
+} from './call-history-types';
 
-type SortOrder = 'ASC' | 'DESC';
-type SortBy = 'startTime' | 'endTime';
-
-type CallHistoryQuery = {
-  days?: number;
-  limit?: number;
-  sort?: SortOrder;
-  sortBy?: SortBy;
-};
-
-type CallHistoryWaitOptions = CallHistoryQuery & {
-  timeout?: number;
-};
-
-type HistoryTimeBounds = {
-  notBefore?: Date;
-  notAfter?: Date;
-};
-
-export type CallHistoryRecord = {
-  sessionId?: string;
-  direction?: string;
-  disposition?: string;
-  startTime?: string;
-  endTime?: string;
-  durationSeconds?: number;
-  durationSecs?: number;
-  sessionType?: string;
-  other?: {
-    name?: string;
-    callbackAddress?: string;
-    phoneNumber?: string;
-    primaryDisplayString?: string;
-    secondaryDisplayString?: string;
-  };
-  links?: {
-    callbackAddress?: string;
-  };
-};
-
-export type CallHistoryRow = {
-  id: string;
-  name: string;
-  direction: string;
-  disposition: string;
-  startTime: string;
-  endTime: string;
-  sessionType: string;
-  callbackAddress: string;
-  redirectionReason: string;
-  forwardedBy: string;
-};
+export type {CallHistoryRecord, CallHistoryRow} from './call-history-types';
 
 const DEFAULT_HISTORY_QUERY: Required<CallHistoryQuery> = {
   days: 1,
@@ -61,12 +25,6 @@ const DEFAULT_HISTORY_QUERY: Required<CallHistoryQuery> = {
   sort: 'DESC',
   sortBy: 'endTime',
 };
-
-const HISTORY_URL_PATTERN = '**/history/userSessions**';
-const HISTORY_EVENTUAL_CONSISTENCY_TIMEOUT = 150000;
-const HISTORY_POLL_INTERVALS = [5000, 5000, 10000, 10000, 15000];
-const TIMING_TOLERANCE_MS = 120000;
-const DURATION_TOLERANCE_SECONDS = 120;
 
 export const normalizeDisposition = (disposition?: string): string =>
   (disposition ?? '').toUpperCase();
@@ -141,7 +99,7 @@ export const waitForCallHistoryRecord = async (
   description: string,
   options: CallHistoryWaitOptions = {}
 ): Promise<CallHistoryRecord> => {
-  const {timeout = HISTORY_EVENTUAL_CONSISTENCY_TIMEOUT, ...queryOptions} = options;
+  const {timeout = CALL_HISTORY_EVENTUAL_CONSISTENCY_TIMEOUT, ...queryOptions} = options;
   let matchingRecord: CallHistoryRecord | undefined;
 
   await expect
@@ -154,7 +112,7 @@ export const waitForCallHistoryRecord = async (
       },
       {
         timeout,
-        intervals: HISTORY_POLL_INTERVALS,
+        intervals: CALL_HISTORY_POLL_INTERVALS,
         message: `Expected call history record: ${description}`,
       }
     )
@@ -218,7 +176,7 @@ export const openCallHistoryList = async (page: Page): Promise<CallHistoryRow[]>
     timeout: AWAIT_TIMEOUT,
   });
   await expect(page.locator(`${CALLING_SELECTORS.CALL_HISTORY_TABLE_BODY} tr`).first()).toBeVisible(
-    {timeout: HISTORY_EVENTUAL_CONSISTENCY_TIMEOUT}
+    {timeout: CALL_HISTORY_EVENTUAL_CONSISTENCY_TIMEOUT}
   );
 
   return readCallHistoryRowsFromUi(page);
@@ -240,7 +198,7 @@ const openCallHistoryListWithRecords = async (
   };
 
   await clearCallHistoryTable(page);
-  await page.route(HISTORY_URL_PATTERN, routeHandler);
+  await page.route(CALL_HISTORY_URL_PATTERN, routeHandler);
 
   try {
     await page.locator(CALLING_SELECTORS.CALL_HISTORY_BTN).click({timeout: AWAIT_TIMEOUT});
@@ -254,7 +212,7 @@ const openCallHistoryListWithRecords = async (
 
     return await readCallHistoryRowsFromUi(page);
   } finally {
-    await page.unroute(HISTORY_URL_PATTERN, routeHandler).catch(() => {});
+    await page.unroute(CALL_HISTORY_URL_PATTERN, routeHandler).catch(() => {});
   }
 };
 
@@ -319,11 +277,13 @@ export const expectHistoryTiming = (
   expect(end, 'Call history endTime should not precede startTime').toBeGreaterThanOrEqual(start);
 
   if (bounds.notBefore) {
-    expect(start).toBeGreaterThanOrEqual(bounds.notBefore.getTime() - TIMING_TOLERANCE_MS);
+    expect(start).toBeGreaterThanOrEqual(
+      bounds.notBefore.getTime() - CALL_HISTORY_TIMING_TOLERANCE_MS
+    );
   }
 
   if (bounds.notAfter) {
-    expect(end).toBeLessThanOrEqual(bounds.notAfter.getTime() + TIMING_TOLERANCE_MS);
+    expect(end).toBeLessThanOrEqual(bounds.notAfter.getTime() + CALL_HISTORY_TIMING_TOLERANCE_MS);
   }
 
   const duration = getCallHistoryDurationSeconds(record);
@@ -332,6 +292,8 @@ export const expectHistoryTiming = (
     const elapsedSeconds = Math.max(0, Math.round((end - start) / 1000));
 
     expect(duration).toBeGreaterThanOrEqual(0);
-    expect(Math.abs(duration - elapsedSeconds)).toBeLessThanOrEqual(DURATION_TOLERANCE_SECONDS);
+    expect(Math.abs(duration - elapsedSeconds)).toBeLessThanOrEqual(
+      CALL_HISTORY_DURATION_TOLERANCE_SECONDS
+    );
   }
 };

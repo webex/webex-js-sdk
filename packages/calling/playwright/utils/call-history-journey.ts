@@ -29,10 +29,10 @@ import {
   phoneMatchesRecord,
   waitForCallHistoryRecord,
 } from './call-history';
-import type {CallHistoryRecord} from './call-history';
 import type {
   BidirectionalHistoryJourneyOptions,
   BidirectionalHistoryJourneyResult,
+  CallHistoryRecord,
   CallHistoryDisposition,
   CallJourneyLeg,
   CallJourneyOutcome,
