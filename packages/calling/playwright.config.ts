@@ -141,17 +141,17 @@ export default defineConfig({
       use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
     },
 
-    // 3-user transfer tests — waits for call tests
+    // 3-user transfer tests — waits for call history because both suites use USER_1/USER_2.
     {
       name: 'SET_CALL_TRANSFER_CONSULT - PROD',
-      dependencies: ['SET_CALL - PROD'],
+      dependencies: ['SET_CALL - PROD', 'SET_CALL_HISTORY - PROD'],
       testDir: './playwright/suites',
       testMatch: USER_SETS.SET_CALL_TRANSFER_CONSULT.testSuite,
       use: browserOptions[PW_BROWSER],
     },
     {
       name: 'SET_CALL_TRANSFER_CONSULT - INT',
-      dependencies: ['SET_CALL - INT'],
+      dependencies: ['SET_CALL - INT', 'SET_CALL_HISTORY - INT'],
       testDir: './playwright/suites',
       testMatch: USER_SETS.SET_CALL_TRANSFER_CONSULT.testSuite,
       use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
