@@ -305,7 +305,10 @@ export class Registration implements IRegistration {
 
     let abort = false;
 
-    if (this.apiRequest.isSocketEnabled()) {
+    if (
+      this.apiRequest.isSocketEnabled() &&
+      `${this.apiRequest.getConnectedWebSocketUrl()}/` !== this.activeMobiusUrl
+    ) {
       log.info(`Disconnecting from Mobius socket to restore previous registration.`, {
         file: REGISTRATION_FILE,
         method: 'restorePreviousRegistration',
@@ -421,7 +424,8 @@ export class Registration implements IRegistration {
           this.deviceInfo.keepaliveInterval as number,
           'UNKNOWN'
         );
-      }, retryAfter * 1000);
+        // Adjust the retry-after value with keepaliveInterval, else it adds extra keepaliveInterval time for very first next keepalive request
+      }, (retryAfter - Number(this.deviceInfo.keepaliveInterval || 0)) * 1000);
     } else {
       this.retryAfter = retryAfter;
     }
@@ -1239,7 +1243,7 @@ export class Registration implements IRegistration {
     return this.reconnectPending;
   }
 
-  public async deregister() {
+  public async deregister(closeMobiusWss = false) {
     const loggerContext = {
       file: REGISTRATION_FILE,
       method: METHODS.DEREGISTER,
@@ -1256,6 +1260,14 @@ export class Registration implements IRegistration {
       log.log('Registration successfully deregistered', loggerContext);
     } catch (err) {
       log.warn(`Delete failed with Mobius: ${JSON.stringify(err)}`, loggerContext);
+    }
+
+    if (closeMobiusWss) {
+      await this.apiRequest.disconnectFromMobiusSocket({
+        code: 3050,
+        reason: 'done (permanent)',
+      });
+      log.log('Mobius socket disconnect complete after deregistration', loggerContext);
     }
 
     this.clearKeepaliveTimer();
@@ -1300,6 +1312,7 @@ export class Registration implements IRegistration {
 
       if (this.apiRequest.isSocketEnabled()) {
         uri = uri.replace('https://', 'wss://');
+        uri = !uri.endsWith('/') ? `${uri}/` : uri;
       }
 
       this.setActiveMobiusUrl(uri);

@@ -347,6 +347,18 @@ describe('plugin-meetings', () => {
           'ANNOTATION_ON_SHARE_SUPPORTED',
         ]);
       });
+      it('adds deviceCapabilities to request when simultaneous interpretation is enabled', async () => {
+        await meetingsRequest.joinMeeting({
+          enableSimultaneousInterpretation: true,
+        });
+        const requestParams = meetingsRequest.request.getCall(0).args[0];
+        assert.deepEqual(requestParams.body.deviceCapabilities, [
+          'HOST_CONTROL_SI_SUPPORTED',
+          'INTERPRETER_CONTROL_SI_SUPPORTED',
+          'SI_HANDOVER_SUPPORTED',
+          'SIGN_INTERPRETER_SUPPORTED',
+        ]);
+      });
       it('does not add deviceCapabilities to request when breakouts and live annotation are not supported', async () => {
         await meetingsRequest.joinMeeting({});
 

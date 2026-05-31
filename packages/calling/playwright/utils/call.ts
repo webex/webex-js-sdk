@@ -60,7 +60,6 @@ export const consultTransferDialAndAnswerOnTarget = async (
   await incomingReady;
   await answerCall(transferPage);
 };
-
 export const waitForCallEstablished = async (page: Page, timeout = 30000): Promise<void> => {
   await withTimeout(
     page.waitForFunction(
@@ -354,7 +353,6 @@ export const cleanupActiveCalls = async (page: Page): Promise<void> => {
       await page.waitForTimeout(1000).catch(() => {});
     }
     /* eslint-enable no-await-in-loop */
-
     await page
       .waitForFunction(
         () => {

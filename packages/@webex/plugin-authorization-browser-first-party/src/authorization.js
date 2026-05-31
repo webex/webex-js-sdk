@@ -1,4 +1,4 @@
- // @ts-nocheck
+// @ts-nocheck
 /* eslint-disable */
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
@@ -267,7 +267,7 @@ const Authorization = WebexPlugin.extend({
       eventType: 'initiateLogin',
       data: {
         hasEmail: !!options.email,
-        hasState: !!options.state
+        hasState: !!options.state,
       },
     });
 
@@ -316,7 +316,7 @@ const Authorization = WebexPlugin.extend({
 
     this.eventEmitter.emit(Events.login, {
       eventType: 'redirectToLoginUrl',
-      data: { loginUrl },
+      data: {loginUrl},
     });
 
     if (options?.separateWindow) {
@@ -338,6 +338,56 @@ const Authorization = WebexPlugin.extend({
     } else {
       // Normal (in-tab) redirect
       this.webex.getWindow().location = loginUrl;
+    }
+
+    return Promise.resolve();
+  },
+
+  /**
+   * Initiates third-party (social provider) login by redirecting the user
+   * to IdBroker's `/idb/ThirdPartyLogin` endpoint.
+   *
+   * Mirrors `initiateLogin`'s role for the standard `/authorize` flow.
+   * Delegates to `initiateThirdPartyLoginRedirect` so any pre-redirect
+   * security plumbing (CSRF / `state`) can be added here without changing
+   * the navigation method.
+   *
+   * @instance
+   * @memberof AuthorizationBrowserFirstParty
+   * @param {Object} options
+   * @param {string} options.oauth2provider
+   * @param {string} options.returnURL
+   * @returns {Promise<void>}
+   */
+  initiateThirdPartyLogin(options = {}) {
+    return this.initiateThirdPartyLoginRedirect(options);
+  },
+
+  /**
+   * Performs the navigation step of the third-party login flow. Builds the
+   * IdBroker URL via `Credentials#buildThirdPartyLoginUrl` and assigns it
+   * to `getWindow().location`.
+   *
+   * Mirrors `initiateAuthorizationCodeGrant` for the `/authorize` flow.
+   * Consumers may override this method for custom navigation handling
+   * (e.g. postMessage in iframed contexts).
+   *
+   * @instance
+   * @memberof AuthorizationBrowserFirstParty
+   * @param {Object} options
+   * @param {string} options.oauth2provider
+   * @param {string} options.returnURL
+   * @returns {Promise<void>}
+   */
+  initiateThirdPartyLoginRedirect(options = {}) {
+    this.logger.info('authorization: initiating third-party login redirect');
+
+    try {
+      const url = this.webex.credentials.buildThirdPartyLoginUrl(options);
+
+      this.webex.getWindow().location = url;
+    } catch (err) {
+      return Promise.reject(err);
     }
 
     return Promise.resolve();
@@ -497,10 +547,11 @@ const Authorization = WebexPlugin.extend({
       })
       .then((res) => {
         const {user_code, verification_uri, verification_uri_complete} = res.body;
-        const verificationUriComplete = this._generateQRCodeVerificationUrl(verification_uri_complete);
+        const verificationUriComplete =
+          this._generateQRCodeVerificationUrl(verification_uri_complete);
         this.eventEmitter.emit(Events.qRCodeLogin, {
           eventType: 'getUserCodeSuccess',
-            userData: {
+          userData: {
             userCode: user_code,
             verificationUri: verification_uri,
             verificationUriComplete,
@@ -591,7 +642,7 @@ const Authorization = WebexPlugin.extend({
           // If polling canceled (id changed), ignore this response
           if (this.currentPollingId !== this.pollingId) return;
 
-            this.eventEmitter.emit(Events.qRCodeLogin, {
+          this.eventEmitter.emit(Events.qRCodeLogin, {
             eventType: 'authorizationSuccess',
             data: res.body,
           });

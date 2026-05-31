@@ -269,6 +269,20 @@ describe('plugin-meetings', () => {
       stopReachability: sinon.stub(),
       isSubnetReachable: sinon.stub().returns(true),
     };
+    webex.internal.llm.resolveSessionOwnership = sinon
+      .stub()
+      .callsFake((ownerMeetingId, sessionId) => {
+        const currentOwner = webex.internal.llm.getOwnerMeetingId
+          ? webex.internal.llm.getOwnerMeetingId(sessionId)
+          : undefined;
+        const canAssertOwnership = !!ownerMeetingId;
+
+        return {
+          currentOwner,
+          canAssertOwnership,
+          isOwner: !currentOwner || !canAssertOwnership || currentOwner === ownerMeetingId,
+        };
+      });
     webex.internal.llm.isDataChannelTokenEnabled = sinon.stub().resolves(false);
     webex.internal.llm.on = sinon.stub();
     webex.internal.voicea.announce = sinon.stub();
@@ -2279,6 +2293,14 @@ describe('plugin-meetings', () => {
           meeting.handleLLMOnline();
 
           assert.notCalled(webex.internal.voicea.updateSubchannelSubscriptions);
+        });
+
+        it('calls syncAllHashTreeDatasets on locusInfo', () => {
+          sinon.stub(meeting.locusInfo, 'syncAllHashTreeDatasets').resolves();
+
+          meeting.handleLLMOnline();
+
+          assert.calledOnceWithExactly(meeting.locusInfo.syncAllHashTreeDatasets, {onlyLLM: true});
         });
       });
 
@@ -11099,7 +11121,7 @@ describe('plugin-meetings', () => {
           );
           done();
         });
-        it('listens to the self admitted guest event without blocking on token prefetch', async () => {
+        it('listens to the self admitted guest event and waits for token prefetch before reconnecting LLM', async () => {
           meeting.stopKeepAlive = sinon.stub();
           meeting.updateLLMConnection = sinon.stub();
           let resolvePrefetch;
@@ -11125,7 +11147,7 @@ describe('plugin-meetings', () => {
             'meeting:self:guestAdmitted',
             {payload: test1}
           );
-          assert.calledOnce(meeting.updateLLMConnection);
+          assert.notCalled(meeting.updateLLMConnection);
           assert.calledOnceWithExactly(meeting.rtcMetrics.sendNextMetrics);
 
           assert.calledOnceWithExactly(
@@ -11137,6 +11159,7 @@ describe('plugin-meetings', () => {
           );
 
           resolvePrefetch(false);
+          await Promise.resolve();
           await Promise.resolve();
 
           assert.calledOnce(meeting.updateLLMConnection);
@@ -13662,6 +13685,10 @@ describe('plugin-meetings', () => {
       describe('#saveDataChannelToken', () => {
         beforeEach(() => {
           webex.internal.llm.setDatachannelToken = sinon.stub();
+          webex.internal.llm.resolveSessionOwnership = sinon
+            .stub()
+            .returns({currentOwner: undefined, isOwner: true});
+          webex.internal.llm.isConnected = sinon.stub().returns(false);
         });
 
         it('saves datachannelToken into LLM as Default', () => {
@@ -13674,7 +13701,8 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(
             webex.internal.llm.setDatachannelToken,
             'default-token',
-            'llm-default-session'
+            'llm-default-session',
+            meeting.id
           );
         });
 
@@ -13688,7 +13716,8 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(
             webex.internal.llm.setDatachannelToken,
             'ps-token',
-            'llm-practice-session'
+            'llm-practice-session',
+            meeting.id
           );
         });
 
@@ -13706,12 +13735,14 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(
             webex.internal.llm.setDatachannelToken,
             'default-token',
-            'llm-default-session'
+            'llm-default-session',
+            meeting.id
           );
           assert.calledWithExactly(
             webex.internal.llm.setDatachannelToken,
             'ps-token',
-            'llm-practice-session'
+            'llm-practice-session',
+            meeting.id
           );
         });
 
@@ -13732,17 +13763,42 @@ describe('plugin-meetings', () => {
 
           assert.notCalled(webex.internal.llm.setDatachannelToken);
         });
+
+        it('writes token with meeting id as owner', () => {
+          meeting.saveDataChannelToken({
+            locus: {
+              self: {datachannelToken: 'default-token'},
+            },
+          });
+
+          assert.calledOnceWithExactly(
+            webex.internal.llm.setDatachannelToken,
+            'default-token',
+            'llm-default-session',
+            meeting.id
+          );
+        });
       });
 
       describe('#clearDataChannelToken', () => {
         beforeEach(() => {
-          webex.internal.llm.resetDatachannelTokens = sinon.stub();
+          webex.internal.llm.clearDatachannelToken = sinon.stub();
         });
 
-        it('calls resetDatachannelTokens on LLM', () => {
+        it('delegates default and practice token clears to llm with meeting ownership id', () => {
           meeting.clearDataChannelToken();
 
-          assert.calledOnce(webex.internal.llm.resetDatachannelTokens);
+          assert.calledWithExactly(
+            webex.internal.llm.clearDatachannelToken,
+            'llm-default-session',
+            meeting.id
+          );
+          assert.calledWithExactly(
+            webex.internal.llm.clearDatachannelToken,
+            'llm-practice-session',
+            meeting.id
+          );
+          assert.callCount(webex.internal.llm.clearDatachannelToken, 2);
         });
       });
 
@@ -13752,6 +13808,7 @@ describe('plugin-meetings', () => {
           webex.internal.llm.getLocusUrl = sinon.stub();
           webex.internal.llm.getDatachannelUrl = sinon.stub();
           webex.internal.llm.registerAndConnect = sinon.stub().resolves('something');
+          webex.internal.llm.setRefreshHandler = sinon.stub();
           webex.internal.llm.disconnectLLM = sinon.stub().resolves();
           webex.internal.llm.on = sinon.stub();
           webex.internal.llm.off = sinon.stub();
@@ -13769,7 +13826,7 @@ describe('plugin-meetings', () => {
           meeting.joinedWith = {state: 'any other state'};
           webex.internal.llm.getLocusUrl.returns('a url');
 
-          meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
+          meeting.locusInfo = {syncAllHashTreeDatasets: sinon.stub().resolves(), url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
 
           const result = await meeting.updateLLMConnection();
 
@@ -13781,6 +13838,7 @@ describe('plugin-meetings', () => {
         it('returns undefined if llm is already connected and the locus url is unchanged', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
             url: 'a url',
             info: {datachannelUrl: 'a datachannel url'},
           };
@@ -13817,7 +13875,7 @@ describe('plugin-meetings', () => {
         });
         it('connects if not already connected', async () => {
           meeting.joinedWith = {state: 'JOINED'};
-          meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
+          meeting.locusInfo = {syncAllHashTreeDatasets: sinon.stub().resolves(), url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
 
           const result = await meeting.updateLLMConnection();
 
@@ -13828,7 +13886,14 @@ describe('plugin-meetings', () => {
             'a datachannel url',
             undefined
           );
+          assert.calledOnceWithExactly(
+            webex.internal.llm.setRefreshHandler,
+            sinon.match.func,
+            'llm-default-session',
+            meeting.id
+          );
           assert.equal(result, 'something');
+          assert.calledOnceWithExactly(meeting.locusInfo.syncAllHashTreeDatasets, {onlyLLM: true});
         });
         it('disconnects if the locus url has changed', async () => {
           meeting.joinedWith = {state: 'JOINED'};
@@ -13837,6 +13902,7 @@ describe('plugin-meetings', () => {
           webex.internal.llm.getLocusUrl.returns('a url');
 
           meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
             url: 'a different url',
             info: {datachannelUrl: 'a datachannel url'},
             self: {},
@@ -13847,7 +13913,7 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(webex.internal.llm.disconnectLLM, {
             code: 3050,
             reason: 'done (permanent)',
-          });
+          }, 'llm-default-session', meeting.id);
 
           assert.calledWithExactly(
             webex.internal.llm.registerAndConnect,
@@ -13890,6 +13956,7 @@ describe('plugin-meetings', () => {
           webex.internal.llm.getLocusUrl.returns('a url');
 
           meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
             url: 'a url',
             info: {datachannelUrl: 'a different datachannel url'},
             self: {},
@@ -13900,7 +13967,7 @@ describe('plugin-meetings', () => {
           assert.calledWithExactly(webex.internal.llm.disconnectLLM, {
             code: 3050,
             reason: 'done (permanent)',
-          });
+          }, 'llm-default-session', meeting.id);
 
           assert.calledWithExactly(
             webex.internal.llm.registerAndConnect,
@@ -13941,14 +14008,14 @@ describe('plugin-meetings', () => {
           webex.internal.llm.isConnected.returns(true);
           webex.internal.llm.getLocusUrl.returns('a url');
 
-          meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
+          meeting.locusInfo = {syncAllHashTreeDatasets: sinon.stub().resolves(), url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
 
           const result = await meeting.updateLLMConnection();
 
           assert.calledWith(webex.internal.llm.disconnectLLM, {
             code: 3050,
             reason: 'done (permanent)',
-          });
+          }, 'llm-default-session', meeting.id);
           assert.notCalled(webex.internal.llm.registerAndConnect);
           assert.equal(result, undefined);
           assert.isFalse(
@@ -13964,6 +14031,7 @@ describe('plugin-meetings', () => {
           webex.internal.llm.disconnectLLM.rejects(disconnectError);
 
           meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
             url: 'a different url',
             info: {datachannelUrl: 'a datachannel url'},
             self: {},
@@ -13995,6 +14063,7 @@ describe('plugin-meetings', () => {
         it('still need connect main session data channel when PS started', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
             url: 'a url',
             info: {
               datachannelUrl: 'a datachannel url',
@@ -14015,12 +14084,13 @@ describe('plugin-meetings', () => {
         it('passes dataChannelToken from LLM to registerAndConnect', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
             url: 'a url',
             info: {datachannelUrl: 'a datachannel url'},
           };
 
           webex.internal.llm.getDatachannelToken
-            .withArgs('llm-default-session')
+            .withArgs('llm-default-session', meeting.id)
             .returns('token-123');
 
           await meeting.updateLLMConnection();
@@ -14036,6 +14106,7 @@ describe('plugin-meetings', () => {
         it('passes undefined token when LLM has no token stored', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
             url: 'a url',
             info: {datachannelUrl: 'a datachannel url'},
           };
@@ -14057,6 +14128,7 @@ describe('plugin-meetings', () => {
         it('does not pass token when data channel with jwt token is disabled', async () => {
           meeting.joinedWith = {state: 'JOINED'};
           meeting.locusInfo = {
+            syncAllHashTreeDatasets: sinon.stub().resolves(),
             url: 'a url',
             info: {datachannelUrl: 'a datachannel url'},
           };
@@ -14099,6 +14171,7 @@ describe('plugin-meetings', () => {
             webex.internal.llm.getLocusUrl.returns('owner-locus-url');
             webex.internal.llm.getDatachannelUrl.returns('owner-dc-url');
             meeting.locusInfo = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
               url: 'a different url',
               info: {datachannelUrl: 'a different datachannel url'},
               self: {},
@@ -14122,6 +14195,7 @@ describe('plugin-meetings', () => {
             webex.internal.llm.getDatachannelUrl.returns('a datachannel url');
             webex.internal.llm.disconnectLLM.rejects(new Error('disconnect failed'));
             meeting.locusInfo = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
               url: 'a different url',
               info: {datachannelUrl: 'a datachannel url'},
               self: {},
@@ -14138,6 +14212,33 @@ describe('plugin-meetings', () => {
             assert.calledWith(webex.internal.llm.setOwnerMeetingId, undefined);
           });
 
+          it('does not clear owner tag when ownership changes during cleanup disconnect await', async () => {
+            meeting.joinedWith = {state: 'JOINED'};
+            webex.internal.llm.isConnected.returns(true);
+            webex.internal.llm.getOwnerMeetingId.returns(meeting.id);
+            webex.internal.llm.getLocusUrl.returns('a url');
+            webex.internal.llm.getDatachannelUrl.returns('a datachannel url');
+            webex.internal.llm.disconnectLLM.callsFake(async () => {
+              webex.internal.llm.getOwnerMeetingId.returns('new-owner-id');
+              throw new Error('disconnect failed');
+            });
+            meeting.locusInfo = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
+              url: 'a different url',
+              info: {datachannelUrl: 'a datachannel url'},
+              self: {},
+            };
+
+            try {
+              await meeting.updateLLMConnection();
+            } catch (e) {
+              /* updateLLMConnection may reject when cleanup throws */
+            }
+
+            assert.notCalled(webex.internal.llm.setOwnerMeetingId);
+            assert.equal(webex.internal.llm.getOwnerMeetingId(), 'new-owner-id');
+          });
+
           it('proceeds normally when LLM is connected and owned by this meeting with URL change', async () => {
             meeting.joinedWith = {state: 'JOINED'};
             webex.internal.llm.isConnected.returns(true);
@@ -14145,6 +14246,7 @@ describe('plugin-meetings', () => {
             webex.internal.llm.getLocusUrl.returns('a url');
             webex.internal.llm.getDatachannelUrl.returns('a datachannel url');
             meeting.locusInfo = {
+              syncAllHashTreeDatasets: sinon.stub().resolves(),
               url: 'a different url',
               info: {datachannelUrl: 'a datachannel url'},
               self: {},
@@ -14155,7 +14257,7 @@ describe('plugin-meetings', () => {
             assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
               code: 3050,
               reason: 'done (permanent)',
-            });
+            }, 'llm-default-session', meeting.id);
             assert.calledWithExactly(
               webex.internal.llm.registerAndConnect,
               'a different url',
@@ -14175,11 +14277,17 @@ describe('plugin-meetings', () => {
             meeting.joinedWith = {state: 'JOINED'};
             webex.internal.llm.isConnected.returns(false);
             webex.internal.llm.getOwnerMeetingId.returns(undefined);
-            meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
+            meeting.locusInfo = {syncAllHashTreeDatasets: sinon.stub().resolves(), url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
 
             await meeting.updateLLMConnection();
 
             assert.calledOnce(webex.internal.llm.registerAndConnect);
+            assert.calledOnceWithExactly(
+              webex.internal.llm.setRefreshHandler,
+              sinon.match.func,
+              'llm-default-session',
+              meeting.id
+            );
             assert.calledOnceWithExactly(webex.internal.llm.setOwnerMeetingId, meeting.id);
           });
 
@@ -14191,11 +14299,41 @@ describe('plugin-meetings', () => {
             meeting.joinedWith = {state: 'JOINED'};
             webex.internal.llm.isConnected.returns(false);
             webex.internal.llm.getOwnerMeetingId.returns('stale-owner-id');
-            meeting.locusInfo = {url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
+            webex.internal.llm.getDatachannelToken.onFirstCall().returns(undefined);
+            webex.internal.llm.getDatachannelToken.onSecondCall().returns('recovered-token');
+            meeting.locusInfo = {syncAllHashTreeDatasets: sinon.stub().resolves(), url: 'a url', info: {datachannelUrl: 'a datachannel url'}};
 
             await meeting.updateLLMConnection();
 
-            assert.calledOnce(webex.internal.llm.registerAndConnect);
+            assert.calledTwice(webex.internal.llm.getDatachannelToken);
+            assert.calledWithExactly(
+              webex.internal.llm.getDatachannelToken.firstCall,
+              'llm-default-session',
+              meeting.id
+            );
+            assert.calledWithExactly(
+              webex.internal.llm.getDatachannelToken.secondCall,
+              'llm-default-session'
+            );
+            assert.calledOnceWithExactly(
+              webex.internal.llm.registerAndConnect,
+              'a url',
+              'a datachannel url',
+              'recovered-token'
+            );
+            assert.calledWithExactly(
+              webex.internal.llm.setRefreshHandler.firstCall,
+              sinon.match.func,
+              'llm-default-session',
+              undefined
+            );
+            assert.calledTwice(webex.internal.llm.setRefreshHandler);
+            assert.calledWithExactly(
+              webex.internal.llm.setRefreshHandler.secondCall,
+              sinon.match.func,
+              'llm-default-session',
+              meeting.id
+            );
             assert.calledOnceWithExactly(webex.internal.llm.setOwnerMeetingId, meeting.id);
           });
         });
@@ -14218,7 +14356,7 @@ describe('plugin-meetings', () => {
             assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
               code: 3050,
               reason: 'done (permanent)',
-            });
+            }, 'llm-default-session', meeting.id);
             assert.calledWithExactly(webex.internal.llm.off, 'online', meeting.handleLLMOnline);
             assert.calledWithExactly(
               webex.internal.llm.off,
@@ -14272,11 +14410,9 @@ describe('plugin-meetings', () => {
               await meeting.clearMeetingData();
 
               assert.notCalled(webex.internal.llm.disconnectLLM);
-              // Shared data-channel auth tokens belong to the owner meeting's
-              // live LLM session and must not be wiped by a non-owner
-              // teardown, otherwise the owner's next reconnect would lose
-              // its Data-Channel-Auth-Token.
-              assert.notCalled(meeting.clearDataChannelToken);
+              // clearDataChannelToken is always delegated; llm enforces
+              // ownership and no-ops for non-owners internally.
+              assert.calledOnce(meeting.clearDataChannelToken);
               // Listeners owned by *this* Meeting instance must still be
               // removed so a leaving subordinate meeting stops receiving
               // relay/locus events from the shared singleton.
@@ -14302,7 +14438,7 @@ describe('plugin-meetings', () => {
               assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
                 code: 3050,
                 reason: 'done (permanent)',
-              });
+              }, 'llm-default-session', meeting.id);
               assert.calledOnce(meeting.clearDataChannelToken);
             });
 
@@ -14314,7 +14450,7 @@ describe('plugin-meetings', () => {
               assert.calledOnceWithExactly(webex.internal.llm.disconnectLLM, {
                 code: 3050,
                 reason: 'done (permanent)',
-              });
+              }, 'llm-default-session', meeting.id);
               assert.calledOnce(meeting.clearDataChannelToken);
             });
           });
@@ -16070,16 +16206,25 @@ describe('plugin-meetings', () => {
           assert.notCalled(meeting.meetingRequest.sendReaction);
         });
 
-        it('should fail sending a reaction if reactionType is invalid ', async () => {
+        it('should send a custom reaction type not in the known list', async () => {
           meeting.locusInfo.controls = {reactions: {reactionChannelUrl: 'Fake URL'}};
 
-          await assert.isRejected(
-            meeting.sendReaction('invalid_reaction', 'light'),
-            Error,
-            'invalid_reaction is not a valid reaction.'
-          );
+          const reactionPromise = meeting.sendReaction('custom_reaction', 'light');
 
-          assert.notCalled(meeting.meetingRequest.sendReaction);
+          assert.exists(reactionPromise.then);
+          await reactionPromise;
+          assert.calledOnceWithExactly(meeting.meetingRequest.sendReaction, {
+            reactionChannelUrl: 'Fake URL',
+            reaction: {
+              type: 'custom_reaction',
+              tone: {
+                type: 'light_skin_tone',
+                codepoints: '1F3FB',
+                shortcodes: ':skin-tone-2:',
+              },
+            },
+            participantId: meeting.members.selfId,
+          });
         });
 
         it('should send a reaction with default skin tone if provided skinToneType is invalid ', async () => {

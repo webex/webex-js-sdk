@@ -22,3 +22,24 @@ export const MESSAGE_TYPES = Object.freeze({
   /** Event acknowledgment message type */
   EVENT_ACK: 'event_ack',
 });
+
+/**
+ * Event payload for a 4001 event from Mobius.
+ * This is defined this way as mobius requires 4001 code to be handled the same way as a registration.down event.
+ */
+export const MOBIUS_SOCKET_4001_EVENT = {
+  type: 'async_event',
+  trackingId: '4001-event',
+  eventId: '4001-event-id',
+  data: {
+    eventType: 'registration.down',
+    deviceInfo: {
+      userId: '4001-user-id',
+      device: {
+        deviceId: '4001-device-id',
+        uri: '4001-device-uri',
+        status: 'inactive',
+      },
+    },
+  },
+};

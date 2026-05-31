@@ -70,6 +70,7 @@ export type {
   FetchSitePreferencesMeViaSiteOptions,
   SitePreferencesResponse,
 } from './meetings/meetings.types';
+export type {Interpreter, InterpreterUsingResource} from './interpretation/interpretation.types';
 
 export {
   CaptchaError,
