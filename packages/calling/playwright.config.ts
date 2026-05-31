@@ -123,11 +123,11 @@ export default defineConfig({
       testMatch: USER_SETS.SET_CALL.testSuite,
       use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
     },
-    // Call History has its own suite and can run in parallel with SET_2USER - PROD
+    // Call History has its own suite and can run in parallel with SET_CALL - PROD
     // because it uses USER_1+USER_2 after those single-user suites complete.
     {
       name: 'SET_CALL_HISTORY - PROD',
-      dependencies: ['SET_1 - PROD', 'SET_2 - PROD'],
+      dependencies: ['SET_REGISTRATION_1 - PROD', 'SET_REGISTRATION_2 - PROD'],
       testDir: './playwright/suites',
       testMatch: USER_SETS.SET_CALL_HISTORY.testSuite,
       use: browserOptions[PW_BROWSER],
@@ -135,7 +135,7 @@ export default defineConfig({
     // INT aliases overlap between USER_1/2 and USER_4/5, so keep INT ordered.
     {
       name: 'SET_CALL_HISTORY - INT',
-      dependencies: ['SET_2USER - INT'],
+      dependencies: ['SET_CALL - INT'],
       testDir: './playwright/suites',
       testMatch: USER_SETS.SET_CALL_HISTORY.testSuite,
       use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,

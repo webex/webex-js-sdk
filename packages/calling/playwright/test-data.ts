@@ -115,7 +115,7 @@ export const USER_SETS: Record<string, UserSet> = {
   },
 
   // Call History uses USER_1+USER_2 after their single-user suites complete,
-  // so it can run alongside the SET_2USER call lifecycle suite in PROD.
+  // so it can run alongside the SET_CALL call lifecycle suite in PROD.
   SET_CALL_HISTORY: {
     name: 'SET_CALL_HISTORY',
     accounts: ['USER_1', 'USER_2'],

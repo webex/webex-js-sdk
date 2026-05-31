@@ -205,12 +205,7 @@ export const getDisplayHistoryRecords = (
   records: HistoryDebugRecord[],
   user: UserLabel
 ): CallHistoryRecord[] =>
-  records
-    .filter((debugRecord) => debugRecord.user === user)
-    .map(({expectedDisposition, record}) => ({
-      ...record,
-      disposition: expectedDisposition,
-    }));
+  records.filter((debugRecord) => debugRecord.user === user).map(({record}) => record);
 
 const executeCallJourneyLeg = async (
   leg: CallJourneyLeg,
