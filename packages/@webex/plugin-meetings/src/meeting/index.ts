@@ -665,6 +665,7 @@ export default class Meeting extends StatelessWebexPlugin {
   joinedWith?: any;
   selfId?: string;
   roles: any[];
+  canNotViewTheParticipantList?: boolean;
   // ... there is more ... see SelfUtils.parse()
   // end of the group
   locusMediaRequest?: LocusMediaRequest;
@@ -4657,6 +4658,10 @@ export default class Meeting extends StatelessWebexPlugin {
             MeetingUtil.attendeeRequestAiAssistantDeclinedAll(this.userDisplayHints),
           isAnonymizeDisplayNamesEnabled: MeetingUtil.isAnonymizeDisplayNamesEnabled(
             this.userDisplayHints
+          ),
+          canViewTheParticipantList: MeetingUtil.canViewTheParticipantList(
+            this.userDisplayHints,
+            this.canNotViewTheParticipantList ?? false
           ),
         }) || changed;
     }

@@ -7,6 +7,9 @@ InfoUtils.parse = (info, roles, isJoined = true) => {
     policy: InfoUtils.parsePolicy(info),
     moderator: InfoUtils.parseModerator(info),
     coHost: InfoUtils.parseCoHost(info),
+    presenter: InfoUtils.parsePresenter(info),
+    panelist: InfoUtils.parsePanelist(info),
+    attendee: InfoUtils.parseAttendee(info),
   };
 
   let userDisplayHints = isJoined
@@ -25,6 +28,18 @@ InfoUtils.parse = (info, roles, isJoined = true) => {
 
   if (roles.includes(SELF_ROLES.MODERATOR)) {
     userDisplayHints = {...userDisplayHints, ...parsed.moderator};
+  }
+
+  if (roles.includes(SELF_ROLES.PRESENTER)) {
+    userDisplayHints = {...userDisplayHints, ...parsed.presenter};
+  }
+
+  if (roles.includes(SELF_ROLES.PANELIST)) {
+    userDisplayHints = {...userDisplayHints, ...parsed.panelist};
+  }
+
+  if (roles.includes(SELF_ROLES.ATTENDEE)) {
+    userDisplayHints = {...userDisplayHints, ...parsed.attendee};
   }
 
   parsed.userDisplayHints = Object.keys(userDisplayHints);
@@ -74,6 +89,12 @@ InfoUtils.parseCoHost = (info) => {
 
   return {...displayHints, [DISPLAY_HINTS.LOWER_SOMEONE_ELSES_HAND]: true};
 };
+
+InfoUtils.parsePresenter = (info) => InfoUtils.parseDisplayHintSection(info, 'presenter');
+
+InfoUtils.parsePanelist = (info) => InfoUtils.parseDisplayHintSection(info, 'panelist');
+
+InfoUtils.parseAttendee = (info) => InfoUtils.parseDisplayHintSection(info, 'attendee');
 
 InfoUtils.isLocked = (policy) => policy.LOCK_STATUS_LOCKED || false;
 
