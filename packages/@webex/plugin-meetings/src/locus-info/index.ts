@@ -749,10 +749,6 @@ export default class LocusInfo extends EventsScope {
 
       // Active parser found - pass the API response to it
       if (isWrapped) {
-        LoggerProxy.logger.info(
-          'Locus-info:index#handleLocusAPIResponse --> passing Locus API response to HashTreeParser: ',
-          responseBody
-        );
         // update the data in our hash trees
         hashTreeParserEntry.parser.handleLocusUpdate(responseBody);
       } else {
@@ -1207,13 +1203,15 @@ export default class LocusInfo extends EventsScope {
    * Triggers a sync of all hash tree datasets for all hash tree parsers associated with this meeting.
    * The syncs are executed sequentially within each parser.
    *
+   * @param {Object} [options={}] - Options for syncing
+   * @param {boolean} [options.onlyLLM=false] - Whether to sync only LLM based data sets
    * @returns {Promise<void>}
    */
-  async syncAllHashTreeDatasets(): Promise<void> {
+  async syncAllHashTreeDatasets(options: {onlyLLM?: boolean} = {}): Promise<void> {
     for (const [, entry] of this.hashTreeParsers) {
       if (entry.parser) {
         // eslint-disable-next-line no-await-in-loop
-        await entry.parser.syncAllDatasets();
+        await entry.parser.syncAllDatasets(options);
       }
     }
   }

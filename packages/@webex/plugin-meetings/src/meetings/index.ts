@@ -936,6 +936,27 @@ export default class Meetings extends WebexPlugin {
   }
 
   /**
+   * API to toggle AV1 codec support for video slides in multistream,
+   * needs to be called before webex.meetings.joinWithMedia()
+   *
+   * @param {Boolean} newValue
+   * @private
+   * @memberof Meetings
+   * @returns {undefined}
+   */
+  private _toggleEnableAv1SlidesSupport(newValue: boolean) {
+    if (typeof newValue !== 'boolean') {
+      return;
+    }
+
+    // @ts-ignore
+    if (this.config.enableAv1SlidesSupport !== newValue) {
+      // @ts-ignore
+      this.config.enableAv1SlidesSupport = newValue;
+    }
+  }
+
+  /**
    * API to toggle stopping ICE Candidates Gathering after first relay candidate,
    * needs to be called before webex.meetings.joinWithMedia()
    *
@@ -1796,9 +1817,12 @@ export default class Meetings extends WebexPlugin {
       };
       const shouldDeferMeetingInfoFetch = type === DESTINATION_TYPE.LOCUS_ID && !destination?.info;
 
+      const isOneOnOneCallLocus =
+        type === DESTINATION_TYPE.LOCUS_ID && MeetingsUtil.isOneOnOneCall(destination);
+
       if (meetingInfo) {
         meeting.injectMeetingInfo(meetingInfo, meetingInfoOptions, meetingLookupUrl);
-      } else if (type !== DESTINATION_TYPE.ONE_ON_ONE_CALL) {
+      } else if (type !== DESTINATION_TYPE.ONE_ON_ONE_CALL && !isOneOnOneCallLocus) {
         // ignore fetchMeetingInfo for 1:1 meetings
         if (enableUnifiedMeetings && !isMeetingActive && useRandomDelayForInfo && waitingTime > 0) {
           meeting.fetchMeetingInfoTimeoutId = setTimeout(

@@ -41,7 +41,7 @@ export function callErrorTests() {
       }
     });
 
-    test('CALL-011: Call connect timeout - no stuck call on setup failure', async ({
+    test('CALL-013: Call connect timeout - no stuck call on setup failure', async ({
       page,
       context,
     }, testInfo) => {
@@ -84,7 +84,7 @@ export function callErrorTests() {
       expect(activeCalls).toBe(0);
     });
 
-    test('CALL-013: ROAP error - media negotiation failure triggers call teardown', async ({
+    test('CALL-014: ROAP error - media negotiation failure triggers call teardown', async ({
       page,
       context,
     }, testInfo) => {
@@ -126,7 +126,7 @@ export function callErrorTests() {
       expect(activeCalls).toBe(0);
     });
 
-    test('CALL-028: Call to invalid destination - call fails and cleans up', async ({
+    test('CALL-015: Call to invalid destination - call fails and cleans up', async ({
       page,
     }, testInfo) => {
       const isInt = isIntProject(testInfo.project.name);
@@ -169,7 +169,7 @@ export function callErrorTests() {
  * Edge-case call tests: race conditions, page close during active/held calls.
  * Serial chain — shared browser contexts for caller (account 0) and callee (account 1).
  *
- * CALL-022 and CALL-023 (page close) are destructive — they close the callee's page,
+ * CALL-019 and CALL-020 (page close) are destructive — they close the callee's page,
  * so they run last and share a final beforeAll/afterAll lifecycle.
  */
 export function callEdgeCaseTests() {
@@ -212,7 +212,7 @@ export function callEdgeCaseTests() {
       await tm.cleanup();
     });
 
-    test('CALL-021: Resume and disconnect race - concurrent operations on 2 endpoints', async () => {
+    test('CALL-016: Resume and disconnect race - concurrent operations on 2 endpoints', async () => {
       const callerPage = tm.getPage(tm.userSet.accounts[0]);
       const calleePage = tm.getPage(tm.userSet.accounts[1]);
 
@@ -238,7 +238,7 @@ export function callEdgeCaseTests() {
       expect(callerActiveCalls).toBe(0);
     });
 
-    test('CALL-034: Deregister during active call - callee deregisters mid-call', async ({
+    test('CALL-017: Deregister during active call - callee deregisters mid-call', async ({
       browser,
     }) => {
       await Promise.all([
@@ -289,10 +289,10 @@ export function callEdgeCaseTests() {
       expect(callerActiveCalls).toBe(0);
     });
 
-    test('CALL-035: Call to unregistered endpoint - call fails and cleans up', async ({
+    test('CALL-018: Call to unregistered endpoint - call fails and cleans up', async ({
       browser,
     }) => {
-      // Fresh contexts — CALL-034 deregistered the callee
+      // Fresh contexts — CALL-017 deregistered the callee
       await Promise.all([
         tm.setupContext(browser, 0, {
           initSDK: true,
@@ -331,7 +331,7 @@ export function callEdgeCaseTests() {
     });
 
     test.fixme(
-      'CALL-022: Page close during active call - callee browser closes mid-call',
+      'CALL-019: Page close during active call - callee browser closes mid-call',
       async () => {
         const callerPage = tm.getPage(tm.userSet.accounts[0]);
         const calleePage = tm.getPage(tm.userSet.accounts[1]);
@@ -354,7 +354,7 @@ export function callEdgeCaseTests() {
     );
 
     test.fixme(
-      'CALL-023: Page close during held call - callee browser closes while call is held',
+      'CALL-020: Page close during held call - callee browser closes while call is held',
       async ({browser}) => {
         // Known slow-disconnect issue: when a callee's browser closes during a held call,
         // the caller's SDK takes an extremely long time (~150s observed) to detect the
@@ -365,7 +365,7 @@ export function callEdgeCaseTests() {
         // avoid flaking, but if this continues to be unreliable we should skip it like
         // mobius does and file a backend bug for the slow disconnect detection on held calls.
         //
-        // Both contexts need fresh setup since CALL-022 closed the callee page
+        // Both contexts need fresh setup since CALL-019 closed the callee page
         // and the caller's UI state (hold button) may be stale
         await tm.setupContext(browser, 0, {
           initSDK: true,

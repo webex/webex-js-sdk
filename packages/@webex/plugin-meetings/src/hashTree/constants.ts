@@ -17,3 +17,10 @@ export const DataSetNames = {
 // participant object for webinar attendees. If SELF were initialized first, locus.info
 // would not yet be populated and the attendee participant would be skipped.
 export const DATA_SET_INIT_PRIORITY: string[] = [DataSetNames.MAIN, DataSetNames.SELF];
+
+// Data sets for which we normally receive events over LLM connection
+export const LLM_DATASET_NAMES = [
+  DataSetNames.MAIN,
+  DataSetNames.ATD_ACTIVE,
+  DataSetNames.ATD_UNMUTED,
+];
