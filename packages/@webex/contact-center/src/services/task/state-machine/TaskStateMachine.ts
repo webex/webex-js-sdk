@@ -226,7 +226,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // the consulted agent (Agent 2) accepts. Clears the incoming notification.
           [TaskEvent.CONSULT_END]: {
             target: TaskState.TERMINATED,
-            actions: ['updateTaskData', 'clearConsultState', 'emitTaskReject'],
+            actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
           },
         },
       },
