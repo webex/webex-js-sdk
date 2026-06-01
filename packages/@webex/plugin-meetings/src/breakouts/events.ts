@@ -46,7 +46,7 @@ const breakoutEvent: {
     if (
       event === 'client.breakout-session.join.response' &&
       typeof meeting.shouldEmitBreakoutJoinResponseMetric === 'function' &&
-      !meeting.shouldEmitBreakoutJoinResponseMetric(breakoutMoveId)
+      !meeting.shouldEmitBreakoutJoinResponseMetric(breakoutMoveId, Boolean(llmLatency))
     ) {
       return;
     }

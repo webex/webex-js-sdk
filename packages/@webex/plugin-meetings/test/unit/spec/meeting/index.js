@@ -2655,7 +2655,7 @@ describe('plugin-meetings', () => {
               assert.equal(joinResponseCalls[0].args[0].options.meetingId, meeting.id);
             });
 
-            it('does not re-emit breakout join response metric if updateBreakout already emitted it', async () => {
+            it('emits llm breakout join response metric even if updateBreakout already emitted one without llmLatency', async () => {
               sinon.stub(meeting, 'isJoined').returns(true);
               sinon.stub(meeting.webex.internal.llm, 'isConnected').returns(false);
               sinon.stub(meeting.webex.internal.llm, 'registerAndConnect').resolves({
@@ -2681,7 +2681,11 @@ describe('plugin-meetings', () => {
                 .getCalls()
                 .filter((call) => call.args[0]?.name === 'client.breakout-session.join.response');
 
-              assert.lengthOf(joinResponseCalls, 0);
+              assert.lengthOf(joinResponseCalls, 1);
+              assert.deepEqual(joinResponseCalls[0].args[0].payload.llmLatency, {
+                clientLLMDatachannelResponseTime: 10,
+                clientLLMWebSocketConnectTime: 20,
+              });
             });
 
             it('clears the LLM health check timer when disconnecting LLM', async () => {

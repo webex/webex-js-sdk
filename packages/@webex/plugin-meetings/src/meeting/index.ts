@@ -6859,13 +6859,21 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Ensures breakout join response metric is emitted only once per breakout move id.
+   * Ensures breakout join response metric with LLM latency is emitted only once per breakout move id.
    * @param {string | undefined} breakoutMoveId
+   * @param {boolean} [hasLLMLatency=false]
    * @returns {boolean}
    */
-  private shouldEmitBreakoutJoinResponseMetric(breakoutMoveId?: string): boolean {
+  private shouldEmitBreakoutJoinResponseMetric(
+    breakoutMoveId?: string,
+    hasLLMLatency = false
+  ): boolean {
     if (!breakoutMoveId) {
       return false;
+    }
+
+    if (!hasLLMLatency) {
+      return true;
     }
 
     if (this.emittedBreakoutJoinResponseMoveIds.has(breakoutMoveId)) {

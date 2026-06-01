@@ -127,7 +127,7 @@ describe('plugin-meetings', () => {
         });
       });
 
-      it('does not emit duplicate join response metric for the same breakoutMoveId', () => {
+      it('does not emit duplicate join response metric with llmLatency for the same breakoutMoveId', () => {
         const submitClientEvent = sinon.stub();
         const shouldEmitBreakoutJoinResponseMetric = sinon.stub();
 
@@ -141,6 +141,7 @@ describe('plugin-meetings', () => {
             shouldEmitBreakoutJoinResponseMetric,
           },
           breakoutMoveId,
+          llmLatency: {clientLLMDatachannelResponseTime: 10, clientLLMWebSocketConnectTime: 20},
         };
 
         breakoutEvent.postMoveCallAnalyzer(
@@ -155,8 +156,48 @@ describe('plugin-meetings', () => {
         );
 
         assert.calledTwice(shouldEmitBreakoutJoinResponseMetric);
-        assert.calledWithExactly(shouldEmitBreakoutJoinResponseMetric, breakoutMoveId);
+        assert.calledWithExactly(shouldEmitBreakoutJoinResponseMetric, breakoutMoveId, true);
         assert.calledOnce(submitClientEvent);
+      });
+
+      it('allows llmLatency join response after join response without llmLatency', () => {
+        const submitClientEvent = sinon.stub();
+        const shouldEmitBreakoutJoinResponseMetric = sinon.stub();
+
+        shouldEmitBreakoutJoinResponseMetric.onFirstCall().returns(true);
+        shouldEmitBreakoutJoinResponseMetric.onSecondCall().returns(true);
+
+        const baseEventInfo = {
+          currentSession: newSession,
+          meeting: {
+            ...mockMeeting,
+            shouldEmitBreakoutJoinResponseMetric,
+          },
+          breakoutMoveId,
+        };
+
+        breakoutEvent.postMoveCallAnalyzer(
+          'client.breakout-session.join.response',
+          baseEventInfo,
+          submitClientEvent
+        );
+        breakoutEvent.postMoveCallAnalyzer(
+          'client.breakout-session.join.response',
+          {
+            ...baseEventInfo,
+            llmLatency: {clientLLMDatachannelResponseTime: 10, clientLLMWebSocketConnectTime: 20},
+          },
+          submitClientEvent
+        );
+
+        assert.calledTwice(shouldEmitBreakoutJoinResponseMetric);
+        assert.calledWithExactly(shouldEmitBreakoutJoinResponseMetric.firstCall, breakoutMoveId, false);
+        assert.calledWithExactly(shouldEmitBreakoutJoinResponseMetric.secondCall, breakoutMoveId, true);
+        assert.calledTwice(submitClientEvent);
+        assert.deepEqual(submitClientEvent.secondCall.args[0].payload.llmLatency, {
+          clientLLMDatachannelResponseTime: 10,
+          clientLLMWebSocketConnectTime: 20,
+        });
       });
     });
 
