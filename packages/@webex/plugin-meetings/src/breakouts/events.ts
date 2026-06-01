@@ -39,22 +39,27 @@ const breakoutEvent: {
 
     const {breakoutMoveId, currentSession, error, llmLatency, llmWebsocketUrl, meeting} = eventInfo;
 
-    if (event === 'client.breakout-session.join.response' && !llmLatency) {
-      return;
-    }
     if (!meeting.meetingInfo?.enableConvergedArchitecture) {
       return;
     }
 
-    const payload: any = {
-      llmLatency,
-      identifiers: {
-        breakoutMoveId,
-        breakoutSessionId: currentSession?.sessionId,
-        breakoutGroupId: currentSession?.groupId,
-        llmWebsocketUrl,
-      },
+    const identifiers: any = {
+      breakoutMoveId,
+      breakoutSessionId: currentSession?.sessionId,
+      breakoutGroupId: currentSession?.groupId,
     };
+
+    if (llmWebsocketUrl) {
+      identifiers.llmWebsocketUrl = llmWebsocketUrl;
+    }
+
+    const payload: any = {
+      identifiers,
+    };
+
+    if (llmLatency) {
+      payload.llmLatency = llmLatency;
+    }
 
     const options: any = {
       meetingId: meeting.id,

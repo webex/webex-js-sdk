@@ -5,6 +5,7 @@ import breakoutEvent from "../../../../src/breakouts/events";
 
 describe('plugin-meetings', () => {
   describe('breakoutEvent', () => {
+    const originalPostMoveCallAnalyzer = breakoutEvent.postMoveCallAnalyzer;
     let webex;
     let mockMeeting = {};
     let breakoutMoveId;
@@ -24,6 +25,7 @@ describe('plugin-meetings', () => {
         groupId: "groupId",
       };
       breakoutMoveId =  'breakoutMoveId';
+      breakoutEvent.postMoveCallAnalyzer = originalPostMoveCallAnalyzer;
 
     });
     describe('postMoveCallAnalyzer', () => {
@@ -103,7 +105,7 @@ describe('plugin-meetings', () => {
         assert.calledWith(breakoutEvent.postMoveCallAnalyzer, 'client.breakout-session.join.response', eventInfo, submitClientEvent);
       });
 
-      it('does not emit join response metric without llmLatency', () => {
+      it('emits join response metric without llmLatency', () => {
         const submitClientEvent = sinon.stub();
 
         breakoutEvent.postMoveCallAnalyzer(
@@ -112,7 +114,17 @@ describe('plugin-meetings', () => {
           submitClientEvent
         );
 
-        assert.notCalled(submitClientEvent);
+        assert.calledOnceWithExactly(submitClientEvent, {
+          name: 'client.breakout-session.join.response',
+          payload: {
+            identifiers: {
+              breakoutMoveId: 'breakoutMoveId',
+              breakoutSessionId: 'sessionId',
+              breakoutGroupId: 'groupId',
+            },
+          },
+          options: {meetingId: 'activeMeetingId'},
+        });
       });
     });
 
