@@ -1857,6 +1857,8 @@ class HashTreeParser {
       const backoffTime = this.getWeightedBackoffTime(dataSet.backoff);
       const delay = heartbeatIntervalMs + backoffTime;
 
+      dataSet.lastBackoffTime = backoffTime;
+
       dataSet.heartbeatWatchdogTimer = setTimeout(() => {
         dataSet.heartbeatWatchdogTimer = undefined;
 

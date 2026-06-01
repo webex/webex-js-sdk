@@ -3103,6 +3103,58 @@ describe('HashTreeParser', () => {
         );
       });
 
+      it('uses the watchdog random backoff when reporting sync metrics', async () => {
+        const syncLatencyTracker = {
+          saveTimestamp: sinon.stub(),
+          getLocusSyncLatency: sinon.stub(),
+          clearLocusSyncLatency: sinon.stub(),
+        };
+        const parser = createHashTreeParser(
+          undefined,
+          undefined,
+          undefined,
+          sinon.stub(),
+          syncLatencyTracker
+        );
+        const heartbeatIntervalMs = 5000;
+        const mainDataSetUrl = parser.dataSets.main.url;
+
+        mathRandomStub.onFirstCall().returns(0.1); // root-hash timer backoff = 10ms
+        mathRandomStub.onSecondCall().returns(0.5); // watchdog backoff = 250ms
+        mathRandomStub.returns(0);
+
+        parser.handleMessage(
+          {
+            dataSets: [
+              {
+                ...createDataSet('main', 16, 1100),
+                root: parser.dataSets.main.hashTree.getRootHash(),
+              },
+            ],
+            visibleDataSetsUrl,
+            locusUrl,
+          },
+          'initial heartbeat'
+        );
+
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          createDataSet('main', 16, 1101)
+        );
+        mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+        await clock.tickAsync(heartbeatIntervalMs + 250);
+
+        assert.calledWith(syncLatencyTracker.saveTimestamp, {
+          key: 'internal.client.locus.sync.start',
+          options: {
+            dataSetName: 'main',
+            randomBackoffTime: 250,
+          },
+        });
+      });
+
       it('calls POST sync directly for leafCount === 1 data sets', async () => {
         const parser = createHashTreeParser();
         const heartbeatIntervalMs = 5000;
