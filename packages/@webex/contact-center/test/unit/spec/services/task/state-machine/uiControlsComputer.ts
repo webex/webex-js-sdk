@@ -1,4 +1,4 @@
-import {TASK_CHANNEL_TYPE} from '../../../../../../src/services/task/types';
+import {TASK_CHANNEL_TYPE, VOICE_VARIANT} from '../../../../../../src/services/task/types';
 import {TaskState} from '../../../../../../src/services/task/state-machine/constants';
 import {
   computeUIControls,
@@ -667,6 +667,70 @@ describe('uiControlsComputer consult initiator controls', () => {
     expect(uiControls.consult.endConsult).toEqual({isVisible: true, isEnabled: true});
     expect(uiControls.consult.end).toEqual({isVisible: false, isEnabled: false});
     expect(uiControls.consult.switch).toEqual({isVisible: false, isEnabled: false});
+  });
+
+  it('enables mute only on active leg when main leg is active', () => {
+    const baseTaskData = createConsultTaskData();
+    const taskData = createTaskData({
+      ...baseTaskData,
+      interaction: {
+        ...baseTaskData.interaction,
+        media: {
+          ...baseTaskData.interaction.media,
+          'consult-media': {
+            ...baseTaskData.interaction.media['consult-media'],
+            participants: ['agent-1', 'agent-2'],
+          },
+        },
+      },
+    });
+    const baseContext = createVoiceContext();
+    const context = createVoiceContext({
+      taskData,
+      consultCallHeld: true,
+      uiControlConfig: {
+        ...baseContext.uiControlConfig,
+        voiceVariant: VOICE_VARIANT.WEBRTC,
+      },
+    });
+
+    const uiControls = computeUIControls(TaskState.CONNECTED, context, context.taskData);
+
+    expect(uiControls.activeLeg).toBe('main');
+    expect(uiControls.main.mute).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.mute).toEqual({isVisible: true, isEnabled: false});
+  });
+
+  it('enables mute only on active leg when consult leg is active', () => {
+    const baseTaskData = createConsultTaskData();
+    const taskData = createTaskData({
+      ...baseTaskData,
+      interaction: {
+        ...baseTaskData.interaction,
+        media: {
+          ...baseTaskData.interaction.media,
+          'consult-media': {
+            ...baseTaskData.interaction.media['consult-media'],
+            participants: ['agent-1', 'agent-2'],
+          },
+        },
+      },
+    });
+    const baseContext = createVoiceContext();
+    const context = createVoiceContext({
+      taskData,
+      consultCallHeld: false,
+      uiControlConfig: {
+        ...baseContext.uiControlConfig,
+        voiceVariant: VOICE_VARIANT.WEBRTC,
+      },
+    });
+
+    const uiControls = computeUIControls(TaskState.CONSULTING, context, context.taskData);
+
+    expect(uiControls.activeLeg).toBe('consult');
+    expect(uiControls.main.mute).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.consult.mute).toEqual({isVisible: true, isEnabled: true});
   });
 
   it('hides transfer for the consulted agent during consult', () => {

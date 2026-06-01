@@ -259,6 +259,17 @@ function computeVoiceInteractionUIControls(
     (isConsulting ||
       taskData?.type === 'AgentConsulting' ||
       selfParticipant?.consultState === 'consulting');
+  const hideExitConferenceOnMainLegForEpDnConsultFromConference =
+    currentLeg === 'main' &&
+    inConference &&
+    consultFromConference &&
+    consultInitiator &&
+    (isConsulting ||
+      consultInProgress ||
+      taskData?.type === 'AgentConsultCreated' ||
+      taskData?.type === 'AgentConsulting' ||
+      selfParticipant?.consultState === 'consultInitiated' ||
+      selfParticipant?.consultState === 'consulting');
   const forceHeldPostConsultControls =
     !hideExitConferenceWhileConsultPending &&
     (postDeclineHeldMainLeg || postConsultCompletedHeldMainLeg);
@@ -308,6 +319,7 @@ function computeVoiceInteractionUIControls(
       if (!isWebrtc) return DISABLED;
       if (isWrappingUp) return DISABLED;
       if (currentLeg === 'consult' && !selfInConsultCall) return DISABLED;
+      if ((isConsulting || hasParallelConsultLeg) && !isCurrentLegActive) return VISIBLE_DISABLED;
       if (isConsulting) return VISIBLE_ENABLED;
 
       if (isConnected || isHeld || isConferencing) {
@@ -469,6 +481,7 @@ function computeVoiceInteractionUIControls(
     // ExitConference: in conference with multiple agents in main call
     exitConference: (() => {
       if (hideExitConferenceWhileConsultPending) return DISABLED;
+      if (hideExitConferenceOnMainLegForEpDnConsultFromConference) return DISABLED;
       if (allowHeldMainLegControlsForNonInitiator) return VISIBLE_ENABLED;
       if (showMainLegConferenceControlsDuringConsult) return VISIBLE_DISABLED;
       if (hideExitConferenceDuringActiveConsultFromConference) return DISABLED;
