@@ -1691,11 +1691,16 @@ describe('Registration Tests', () => {
       const postMessageSpy = jest.spyOn(Worker.prototype, 'postMessage');
       const clearTimerSpy = jest.spyOn(reg, 'clearKeepaliveTimer');
       const retry429Spy = jest.spyOn(reg, 'handle429Retry');
+      const keepaliveInterval = reg.deviceInfo.keepaliveInterval as number;
+      // Choose a retryAfter strictly greater than keepaliveInterval so the
+      // adjusted resume delay (retryAfter - keepaliveInterval) is positive and verifiable.
+      const retryAfter = keepaliveInterval + 30;
+      const adjustedResumeDelayMs = (retryAfter - keepaliveInterval) * SEC_TO_MSEC_MFACTOR;
 
       reg.webWorker.onmessage({
         data: {
           type: WorkerMessageType.KEEPALIVE_FAILURE,
-          err: {statusCode: 429, headers: {'retry-after': 20}},
+          err: {statusCode: 429, headers: {'retry-after': retryAfter}},
           keepAliveRetryCount: 1,
         },
       } as MessageEvent);
@@ -1709,7 +1714,7 @@ describe('Registration Tests', () => {
         })
       );
       expect(handleErrorSpy).toBeCalledOnceWith(
-        {statusCode: 429, headers: {'retry-after': 20}},
+        {statusCode: 429, headers: {'retry-after': retryAfter}},
         expect.anything(),
         {
           file: REGISTRATION_FILE,
@@ -1717,21 +1722,28 @@ describe('Registration Tests', () => {
         },
         expect.anything()
       );
-      expect(retry429Spy).toBeCalledOnceWith(20, 'startKeepaliveTimer');
+      expect(retry429Spy).toBeCalledOnceWith(retryAfter, 'startKeepaliveTimer');
       expect(clearTimerSpy).toBeCalledTimes(1);
       expect(reg.reconnectPending).toStrictEqual(false);
       expect(reg.keepaliveTimer).toBe(undefined);
       expect(reg.webWorker).toBeUndefined();
 
-      jest.advanceTimersByTime(20 * SEC_TO_MSEC_MFACTOR);
+      // Resume timer must NOT fire before the adjusted (retryAfter - keepaliveInterval) interval.
+      jest.advanceTimersByTime(adjustedResumeDelayMs - 1);
+      await flushPromises();
+      expect(keepaliveSpy).not.toBeCalled();
+      expect(reg.webWorker).toBeUndefined();
+
+      // Advance the remaining 1ms to hit the exact adjusted timeout; keepalive must resume now.
+      jest.advanceTimersByTime(1);
       await flushPromises();
 
       expect(keepaliveSpy).toBeCalledOnceWith(
         reg.deviceInfo.device?.uri as string,
-        reg.deviceInfo.keepaliveInterval as number,
+        keepaliveInterval,
         'UNKNOWN'
       );
-      expect(logSpy).toBeCalledWith('Resuming keepalive after 20 seconds', {
+      expect(logSpy).toBeCalledWith(`Resuming keepalive after ${retryAfter} seconds`, {
         file: REGISTRATION_FILE,
         method: 'handle429Retry',
       });
@@ -1744,6 +1756,51 @@ describe('Registration Tests', () => {
         })
       );
     });
+
+    it.each([
+      {
+        description: 'retryAfter less than keepaliveInterval -> negative delay fires immediately',
+        retryAfterDelta: -10,
+      },
+      {
+        description: 'retryAfter equal to keepaliveInterval -> zero delay fires immediately',
+        retryAfterDelta: 0,
+      },
+    ])(
+      'adjusts retry-after with keepaliveInterval on 429 keepalive failure ($description)',
+      async ({retryAfterDelta}) => {
+        await beforeEachSetupForKeepalive();
+        const keepaliveSpy = jest.spyOn(reg, 'startKeepaliveTimer');
+        const keepaliveInterval = reg.deviceInfo.keepaliveInterval as number;
+        const retryAfter = keepaliveInterval + retryAfterDelta;
+
+        reg.webWorker.onmessage({
+          data: {
+            type: WorkerMessageType.KEEPALIVE_FAILURE,
+            err: {statusCode: 429, headers: {'retry-after': retryAfter}},
+            keepAliveRetryCount: 1,
+          },
+        } as MessageEvent);
+        await flushPromises();
+
+        expect(reg.webWorker).toBeUndefined();
+        expect(keepaliveSpy).not.toBeCalled();
+
+        // With a non-positive adjusted delay, the timer should fire on the next tick.
+        jest.advanceTimersByTime(0);
+        await flushPromises();
+
+        expect(keepaliveSpy).toBeCalledOnceWith(
+          reg.deviceInfo.device?.uri as string,
+          keepaliveInterval,
+          'UNKNOWN'
+        );
+        expect(logSpy).toBeCalledWith(`Resuming keepalive after ${retryAfter} seconds`, {
+          file: REGISTRATION_FILE,
+          method: 'handle429Retry',
+        });
+      }
+    );
 
     it('ensure retryAfter is set when 429 occurs during failover retry', async () => {
       await beforeEachSetupForKeepalive();

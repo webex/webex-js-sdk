@@ -317,6 +317,7 @@ const MeetingUtil = {
         locale: options.locale,
         deviceCapabilities: options.deviceCapabilities,
         liveAnnotationSupported: options.liveAnnotationSupported,
+        enableSimultaneousInterpretation: options.enableSimultaneousInterpretation,
         clientMediaPreferences,
         alias: options.alias,
       })
