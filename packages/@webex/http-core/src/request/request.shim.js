@@ -64,7 +64,8 @@ export default function _request(options) {
           options.logger.warn(
             `http ${options.method ? options.method : 'request'} to ${options.uri} result: ${
               response.statusCode
-            } body: ${JSON.stringify(response.body)}`
+            } body:`,
+            response.body
           );
         } else {
           options.logger.debug(
