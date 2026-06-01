@@ -5470,6 +5470,21 @@ describe('HashTreeParser', () => {
       parser.handleMessage({
         dataSets: [
           {
+            ...createDataSet('main', 16, 1100),
+            root: 'intermediate-root',
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      assert.notCalled(syncMetricsCallback);
+      assert.isTrue(parser['pendingSyncMetrics'].has('main'));
+
+      parser.handleMessage({
+        dataSets: [
+          {
             ...createDataSet('main', 16, 1101),
             root: 'newroot',
           },

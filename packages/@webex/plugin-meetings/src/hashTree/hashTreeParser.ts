@@ -1453,6 +1453,7 @@ class HashTreeParser {
     const rootHash = hashTree.getRootHash();
     const shouldCollectMetrics = this.shouldCollectSyncMetrics(dataSet.name, isInitialization);
     let syncMetricsPending = false;
+    let targetSyncVersion = dataSet.version;
 
     if (shouldCollectMetrics) {
       this.syncLatencyTracker?.saveTimestamp({
@@ -1485,6 +1486,7 @@ class HashTreeParser {
             }
 
             receivedHashes = hashesResult.hashes;
+            targetSyncVersion = hashesResult.dataSet?.version ?? targetSyncVersion;
 
             this.updateDataSetLeafCount(dataSet, hashesResult.dataSet.leafCount);
           } catch (error: any) {
@@ -1531,11 +1533,15 @@ class HashTreeParser {
         syncRequestSent = true;
       }
 
+      const syncResponseDataSet = syncResponse?.dataSets?.find((ds) => ds.name === dataSet.name);
+
+      targetSyncVersion = syncResponseDataSet?.version ?? targetSyncVersion;
+
       // Record pending metrics and complete them when the matching LLM broadcast arrives.
       if (shouldCollectMetrics && syncRequestSent) {
         this.pendingSyncMetrics.set(dataSet.name, {
           dataSetName: dataSet.name,
-          dataSetVersion: dataSet.version,
+          dataSetVersion: targetSyncVersion,
         });
         syncMetricsPending = true;
       }
