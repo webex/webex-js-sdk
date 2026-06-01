@@ -905,6 +905,8 @@ describe('plugin-meetings', () => {
       it('does not do anything if current state is already the same', async () => {
         // set it up so that we are remotely muted (so that a sync to server would do a remote unmute)
         audio.handleServerRemoteMuteUpdate(meeting, true, true);
+        await testUtils.flushPromises();
+        resetStubHistory();
 
         // audio is already enabled and we call to enable it again
         audio.enable(meeting, true);
