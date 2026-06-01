@@ -7,14 +7,49 @@ import {decodeState, encodeState} from '@webex/common';
 
 describe('oauth-state', () => {
   describe('encodeState() / decodeState()', () => {
+    it('encodeState produces the expected base64url string', () => {
+      const encoded = encodeState({csrf_token: 'abc'});
+
+      assert.equal(encoded, 'eyJjc3JmX3Rva2VuIjoiYWJjIn0');
+      assert.notInclude(encoded, '+');
+      assert.notInclude(encoded, '/');
+      assert.notInclude(encoded, '=');
+    });
+
+    it('encodeState produces the expected base64url string for an empty object', () => {
+      const encoded = encodeState({});
+
+      assert.equal(encoded, 'e30');
+      assert.notInclude(encoded, '+');
+      assert.notInclude(encoded, '/');
+      assert.notInclude(encoded, '=');
+    });
+
+    it('decodeState parses a known base64url string', () => {
+      assert.deepEqual(decodeState('eyJjc3JmX3Rva2VuIjoiYWJjIn0'), {csrf_token: 'abc'});
+    });
+
+    it('decodeState parses an empty-object encoding', () => {
+      assert.deepEqual(decodeState('e30'), {});
+    });
+
     it('round-trips a typical state object', () => {
       const state = {csrf_token: 'abc123', provider: 'google', returnURL: '/app'};
+      const encoded = encodeState(state);
 
-      assert.deepEqual(decodeState(encodeState(state)), state);
+      assert.notInclude(encoded, '+');
+      assert.notInclude(encoded, '/');
+      assert.notInclude(encoded, '=');
+      assert.deepEqual(decodeState(encoded), state);
     });
 
     it('round-trips an empty object', () => {
-      assert.deepEqual(decodeState(encodeState({})), {});
+      const encoded = encodeState({});
+
+      assert.notInclude(encoded, '+');
+      assert.notInclude(encoded, '/');
+      assert.notInclude(encoded, '=');
+      assert.deepEqual(decodeState(encoded), {});
     });
 
     it('produces a url-safe encoding (no +, /, or = padding)', () => {

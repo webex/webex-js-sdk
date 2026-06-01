@@ -796,6 +796,16 @@ describe('plugin-authorization-browser-first-party', () => {
         );
       });
 
+      it('throws when state is absent even if no stored CSRF token exists (requireMatch)', () => {
+        const webex = makeWebex('http://example.com/?id_token=id-1');
+        webex.getWindow().sessionStorage.getItem = sinon.stub().returns(null);
+
+        assert.throws(
+          () => webex.authorization.handleThirdPartyCallback(),
+          /CSRF token missing from session storage/
+        );
+      });
+
       it('returns error value in the result and preserves non-csrf state', () => {
         const storedToken = 'csrf-abc';
         const search = `?error=FailedToCallOAuthProvider&state=${buildState({

@@ -419,21 +419,14 @@ const Authorization = WebexPlugin.extend({
   handleThirdPartyCallback() {
     const location = url.parse(this.webex.getWindow().location.href, true);
 
-    let parsedState = {};
-    if (location.query.state) {
-      parsedState = decodeState(location.query.state);
-      location.query.state = parsedState;
-    }
+    location.query.state = decodeState(location.query.state || 'e30');
 
     this._verifySecurityToken(location.query, {requireMatch: true});
-
-    const {id_token: idToken, email, error} = location.query;
-
     this._cleanUrl(location);
 
-    const {csrf_token, ...stateWithoutCsrf} = parsedState;
+    const {id_token: idToken, email, error, state: {csrf_token, ...state}} = location.query;
 
-    return {idToken, email, error, state: stateWithoutCsrf};
+    return {idToken, email, error, state};
   },
 
   /**
@@ -912,7 +905,7 @@ const Authorization = WebexPlugin.extend({
       return;
     }
 
-    if (!query.state || !query.state.csrf_token) {
+    if (!query.state?.csrf_token) {
       throw new Error(`Expected CSRF token ${sessionToken}, but not found in redirect query`);
     }
 
