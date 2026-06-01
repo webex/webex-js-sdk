@@ -27,7 +27,7 @@ import {
   getConferenceParticipantsCount,
   getIsConferenceInProgress,
 } from '../TaskUtils';
-import {TaskEvent} from './constants';
+import {TaskEvent, INTERACTION_STATE, CONSULT_STATE, MEDIA_TYPE_CONSULT} from './constants';
 
 export const getTaskDataFromEvent = (event?: TaskEventPayload): TaskData | undefined =>
   event && typeof event === 'object' && 'taskData' in event
@@ -42,6 +42,24 @@ export const isSelfConsultingAgent = (context: TaskContext, taskData?: TaskData)
   if (!selfAgentId) return false;
 
   return taskData?.consultingAgentId === selfAgentId;
+};
+
+/**
+ * Detects an active consult during post_call state (customer left but agents still consulting).
+ * Shared by hydration guard (isInteractionConsulting) and action (deriveTaskDataUpdates).
+ */
+export const hasActiveConsultInPostCall = (
+  taskData: TaskData | undefined,
+  selfAgentId?: string
+): boolean => {
+  if (taskData?.interaction?.state !== INTERACTION_STATE.POST_CALL || !selfAgentId) return false;
+
+  const selfParticipant = taskData.interaction?.participants?.[selfAgentId];
+  const hasConsultMedia = Object.values(taskData.interaction?.media ?? {}).some(
+    (media) => (media as {mType?: string})?.mType === MEDIA_TYPE_CONSULT
+  );
+
+  return selfParticipant?.consultState === CONSULT_STATE.CONSULTING && hasConsultMedia;
 };
 
 /**
@@ -97,10 +115,59 @@ export const guards = {
     return false;
   },
 
-  isInteractionConsulting: ({event}: GuardParams): boolean => {
+  isInteractionConsulting: ({event, context}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
-    return taskData?.interaction?.state === 'consulting';
+    if (taskData?.interaction?.state === INTERACTION_STATE.CONSULTING) return true;
+
+    // Hydrate can report interaction as conference/hold while this agent is actively consulting.
+    // Detect consult by participant consultState + consult media, independent of top-level state.
+    const selfAgentId = getSelfAgentId(context, taskData);
+    const selfParticipant = selfAgentId ? taskData?.interaction?.participants?.[selfAgentId] : null;
+    const hasConsultMedia = Object.values(taskData?.interaction?.media ?? {}).some(
+      (media: any) => media?.mType === MEDIA_TYPE_CONSULT
+    );
+    const selfActiveConsult = selfParticipant?.consultState === CONSULT_STATE.CONSULTING;
+    const selfPendingConsultInitiated =
+      selfParticipant?.consultState === 'consultInitiated' && taskData?.isConsulted === false;
+    if ((selfActiveConsult || selfPendingConsultInitiated) && hasConsultMedia) {
+      return true;
+    }
+
+    // EP_DN consulted agent: backend reports state as 'connected' but CPD indicates consult
+    const cpd = taskData?.interaction?.callProcessingDetails;
+    if (
+      cpd?.relationshipType === 'consult' &&
+      taskData?.interaction?.state === INTERACTION_STATE.CONNECTED
+    ) {
+      return true;
+    }
+
+    // Customer left during consult: interaction state is "post_call" but consult
+    // between agents is still active. Detect via agent's consultState + consult media.
+    if (hasActiveConsultInPostCall(taskData, getSelfAgentId(context, taskData))) {
+      return true;
+    }
+
+    // Customer left during consult: interaction state is "post_call" but consult
+    // between agents is still active. Detect via agent's consultState + consult media.
+    if (taskData?.interaction?.state === INTERACTION_STATE.POST_CALL) {
+      const postCallSelfAgentId = getSelfAgentId(context, taskData);
+      const postCallSelfParticipant = postCallSelfAgentId
+        ? taskData?.interaction?.participants?.[postCallSelfAgentId]
+        : null;
+      const hasPostCallConsultMedia = Object.values(taskData?.interaction?.media ?? {}).some(
+        (media: any) => media?.mType === MEDIA_TYPE_CONSULT
+      );
+      if (
+        postCallSelfParticipant?.consultState === CONSULT_STATE.CONSULTING &&
+        hasPostCallConsultMedia
+      ) {
+        return true;
+      }
+    }
+
+    return false;
   },
 
   isInteractionHeld: ({event}: GuardParams): boolean => {
@@ -119,7 +186,7 @@ export const guards = {
   isInteractionConnected: ({event}: GuardParams): boolean => {
     const taskData = getTaskDataFromEvent(event);
 
-    return taskData?.interaction?.state === 'connected';
+    return taskData?.interaction?.state === INTERACTION_STATE.CONNECTED;
   },
 
   isConferencingByParticipants: ({event}: GuardParams): boolean => {
@@ -149,6 +216,20 @@ export const guards = {
   },
 
   /**
+   * Conference hold signal for conference-downgraded consult-end transitions.
+   * Backend can report this as boolean or string.
+   */
+  isConferenceHoldParticipantFromEvent: ({context, event}: GuardParams): boolean => {
+    const taskData = getTaskDataFromEvent(event) ?? context.taskData;
+    const callProcessingDetails = taskData?.interaction?.callProcessingDetails as
+      | {conferenceHoldParticipant?: boolean | string}
+      | undefined;
+    const conferenceHoldParticipant = callProcessingDetails?.conferenceHoldParticipant;
+
+    return conferenceHoldParticipant === true || conferenceHoldParticipant === 'true';
+  },
+
+  /**
    * Conference downgrade check specifically for transitioning back to CONNECTED.
    *
    * Returns true only when:
@@ -168,7 +249,7 @@ export const guards = {
     if (!mainCallId) return false;
 
     // Don't downgrade while backend still reports conference.
-    if (taskData.interaction.state === 'conference') return false;
+    if (taskData.interaction.state === INTERACTION_STATE.CONFERENCE) return false;
 
     const agentParticipantsCount = getConferenceParticipantsCount(taskData.interaction, mainCallId);
     if (agentParticipantsCount >= 2) return false;
@@ -210,7 +291,7 @@ export const guards = {
     return (
       taskData.isConsulted === true ||
       relationshipType === 'consult' ||
-      taskData.interaction?.state === 'consulting'
+      taskData.interaction?.state === INTERACTION_STATE.CONSULTING
     );
   },
 

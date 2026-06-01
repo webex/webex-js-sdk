@@ -12,7 +12,7 @@ import {setup} from 'xstate';
 import {TaskContext, TaskEventPayload, UIControlConfig, TaskActionsMap} from './types';
 import {TaskState, TaskEvent} from './constants';
 import {actions, createInitialContext} from './actions';
-import {guards} from './guards';
+import {guards, shouldWrapUpForThisAgent, getTaskDataFromEvent} from './guards';
 import {getIsCustomerInCall} from '../TaskUtils';
 
 type TaskActionConfigMap = {[K in keyof typeof actions]: undefined};
@@ -123,16 +123,22 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             actions: ['initializeTask', 'emitTaskIncoming'],
           },
 
+          // AgentOutboundFailed can arrive before TASK_INCOMING due to race conditions
+          [TaskEvent.OUTBOUND_FAILED]: {
+            target: TaskState.TERMINATED,
+            actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
+          },
+
           // EP-DN split-leg ordering can deliver AgentConsulting before HYDRATE/TASK_INCOMING.
           // Do not drop it in IDLE; bootstrap to CONSULTING using event taskData.
           [TaskEvent.CONSULTING_ACTIVE]: {
             target: TaskState.CONSULTING,
             actions: [
-              'updateTaskData',
               'setConsultInitiator',
               'setConsultDestination',
               'setConsultFromConference',
               'setConsultAgentJoined',
+              'updateTaskData',
               'emitTaskConsultAccepted',
               'emitTaskConsulting',
             ],
@@ -190,7 +196,7 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             },
             {
               target: TaskState.TERMINATED,
-              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskReject'],
+              actions: ['updateTaskData', 'markEnded', 'emitTaskOutdialFailed', 'emitTaskEnd'],
             },
           ],
           // AgentConsulting comes for received after the initial consult is accepted
@@ -198,8 +204,9 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               target: TaskState.CONSULTING,
               actions: [
-                'updateTaskData',
                 'setConsultAgentJoined',
+                'setConsultDestination',
+                'updateTaskData',
                 'emitTaskConsultAccepted',
                 'emitTaskConsulting',
               ],
@@ -219,22 +226,32 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // the consulted agent (Agent 2) accepts. Clears the incoming notification.
           [TaskEvent.CONSULT_END]: {
             target: TaskState.TERMINATED,
-            actions: ['updateTaskData', 'clearConsultState', 'emitTaskReject'],
+            actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
           },
         },
       },
 
       [TaskState.CONNECTED]: {
         on: {
+          // AgentConsultConferenced / ParticipantJoinedConference can arrive while connected.
+          [TaskEvent.CONFERENCE_START]: {
+            target: TaskState.CONFERENCING,
+            actions: [
+              'updateTaskData',
+              'syncTaskDataFromEvent',
+              'clearConsultState',
+              'emitTaskConferenceStarted',
+            ],
+          },
           // AgentConsulting may arrive while machine is CONNECTED (EP-DN/event ordering).
           // Derive consultInitiator from payload so controls are set correctly.
           [TaskEvent.CONSULTING_ACTIVE]: {
             target: TaskState.CONSULTING,
             actions: [
-              'updateTaskData',
               'setConsultInitiator',
               'setConsultDestination',
               'setConsultAgentJoined',
+              'updateTaskData',
               'emitTaskConsultAccepted',
               'emitTaskConsulting',
             ],
@@ -323,6 +340,22 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
 
       [TaskState.HELD]: {
         on: {
+          // Conference can be merged while this agent is in held state after refresh/recovery.
+          [TaskEvent.CONFERENCE_START]: {
+            target: TaskState.CONFERENCING,
+            actions: [
+              'updateTaskData',
+              'syncTaskDataFromEvent',
+              'clearConsultState',
+              'emitTaskConferenceStarted',
+            ],
+          },
+          [TaskEvent.PAUSE_RECORDING]: {
+            actions: ['updateTaskData', 'setRecordingState', 'emitTaskRecordingPaused'],
+          },
+          [TaskEvent.RESUME_RECORDING]: {
+            actions: ['updateTaskData', 'setRecordingState', 'emitTaskRecordingResumed'],
+          },
           // Click of the unhold button
           [TaskEvent.UNHOLD_INITIATED]: {
             target: TaskState.RESUME_INITIATING,
@@ -442,9 +475,9 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentConsulting updates consulted agent arrival
           [TaskEvent.CONSULTING_ACTIVE]: {
             actions: [
-              'updateTaskData',
               'setConsultAgentJoined',
               'setConsultDestination',
+              'updateTaskData',
               'emitTaskConsulting',
             ],
           },
@@ -452,12 +485,31 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentConsultEnded
           [TaskEvent.CONSULT_END]: [
             {
-              // Initiator returning to conference (flag set OR backend still shows conference)
+              // Initiator returning to conference only while conference is still active.
               guard: ({context, event}) =>
                 context.consultInitiator === true &&
-                (context.consultFromConference === true ||
-                  guards.conferenceInProgressFromEvent({context, event})),
+                guards.conferenceInProgressFromEvent({context, event}),
               target: TaskState.CONFERENCING,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+            {
+              // Conference consult ended after conference downgrade while main leg is held.
+              guard: ({context, event}) =>
+                context.consultInitiator === true &&
+                context.consultFromConference === true &&
+                !guards.conferenceInProgressFromEvent({context, event}) &&
+                guards.isConferenceHoldParticipantFromEvent({context, event}),
+              target: TaskState.HELD,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+            {
+              // Conference consult ended after conference downgrade while main leg is connected.
+              guard: ({context, event}) =>
+                context.consultInitiator === true &&
+                context.consultFromConference === true &&
+                !guards.conferenceInProgressFromEvent({context, event}) &&
+                !guards.isConferenceHoldParticipantFromEvent({context, event}),
+              target: TaskState.CONNECTED,
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
             {
@@ -466,6 +518,29 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
                 context.consultInitiator === true && context.consultCallHeld === true,
               target: TaskState.CONNECTED,
               actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+            {
+              // Interaction terminated during consult (customer left) → WRAPPING_UP
+              guard: ({context, event}) => {
+                // if (context.consultInitiator !== true) return false;
+                // const taskData = getTaskDataFromEvent(event);
+                const taskData = getTaskDataFromEvent(event);
+                const cpd = taskData?.interaction?.callProcessingDetails;
+                if (cpd?.hasCustomerLeft !== 'true') return false;
+
+                return (
+                  taskData?.interaction?.isTerminated === true &&
+                  shouldWrapUpForThisAgent(context, taskData)
+                );
+              },
+              target: TaskState.WRAPPING_UP,
+              actions: [
+                'updateTaskData',
+                'markEnded',
+                'clearConsultState',
+                'emitTaskWrapup',
+                'requestCleanup',
+              ],
             },
             {
               // Initiator (no conference) → HELD
@@ -587,30 +662,61 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           // AgentConsultConferenced, ParticipantJoinedConference
           [TaskEvent.CONFERENCE_START]: {
             target: TaskState.CONFERENCING,
-            actions: ['handleConferenceStarted', 'clearConsultState'],
+            actions: [
+              'updateTaskData',
+              'syncTaskDataFromEvent',
+              'handleConferenceStarted',
+              'clearConsultState',
+            ],
           },
         },
       },
 
       [TaskState.CONF_INITIATING]: {
         on: {
-          // AgentConsultConferenced, ParticipantJoinedConference
+          // AgentConsultConferenced, AgentConsultConferencing, ParticipantJoinedConference
           [TaskEvent.CONFERENCE_START]: {
             target: TaskState.CONFERENCING,
-            actions: ['handleConferenceStarted'],
+            actions: [
+              'updateTaskData',
+              'syncTaskDataFromEvent',
+              'handleConferenceStarted',
+              'clearConsultState',
+            ],
           },
           // AgentConsultConferenceFailed
           [TaskEvent.CONFERENCE_FAILED]: {
             target: TaskState.CONSULTING,
             actions: ['handleConferenceFailed', 'emitTaskConferenceFailed'],
           },
+          // AgentConsultEnded while conference is initiating (end call before conference completes)
+          [TaskEvent.CONSULT_END]: [
+            {
+              guard: ({event}) => {
+                const taskData = getTaskDataFromEvent(event);
+
+                return taskData?.interaction?.isTerminated === true;
+              },
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'clearConsultState'],
+            },
+          ],
         },
       },
 
       [TaskState.CONFERENCING]: {
         on: {
           [TaskEvent.CONFERENCE_START]: {
-            actions: ['updateTaskData', 'clearConsultState', 'emitTaskConferenceStarted'],
+            actions: [
+              'updateTaskData',
+              'syncTaskDataFromEvent',
+              'clearConsultState',
+              'emitTaskConferenceStarted',
+            ],
           },
           [TaskEvent.EXIT_CONFERENCE_SUCCESS]: [
             {
@@ -625,16 +731,58 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           ],
 
           // Needed as all agents in conference get this event, hence we need to clear the consult state
-          [TaskEvent.CONSULT_END]: {
-            actions: ['updateTaskData', 'clearConsultState'],
-          },
+          [TaskEvent.CONSULT_END]: [
+            {
+              guard: ({context, event}) => {
+                const taskData = getTaskDataFromEvent(event);
 
-          [TaskEvent.HOLD_SUCCESS]: {
-            actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
-          },
-          [TaskEvent.UNHOLD_SUCCESS]: {
-            actions: ['updateTaskData', 'setHoldState', 'emitTaskResume'],
-          },
+                return (
+                  taskData?.interaction?.isTerminated === true &&
+                  shouldWrapUpForThisAgent(context, taskData)
+                );
+              },
+              target: TaskState.WRAPPING_UP,
+              actions: ['updateTaskData', 'markEnded', 'clearConsultState', 'emitTaskWrapup'],
+            },
+            {
+              actions: ['updateTaskData', 'clearConsultState'],
+            },
+          ],
+
+          [TaskEvent.HOLD_SUCCESS]: [
+            {
+              // Conference already downgraded (no other agents) and backend hold arrives.
+              // Move to HELD so the UI renders resume action.
+              guard: guards.shouldDowngradeConferenceToConnected,
+              target: TaskState.HELD,
+              actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
+            },
+            {
+              actions: ['updateTaskData', 'setHoldState', 'emitTaskHold'],
+            },
+          ],
+          [TaskEvent.UNHOLD_SUCCESS]: [
+            {
+              // Conference already downgraded (no other agents) and backend unhold arrives.
+              // Move to CONNECTED so hold action is available again.
+              guard: guards.shouldDowngradeConferenceToConnected,
+              target: TaskState.CONNECTED,
+              actions: [
+                'updateTaskData',
+                'syncTaskDataFromEvent',
+                'setHoldState',
+                'emitTaskResume',
+              ],
+            },
+            {
+              actions: [
+                'updateTaskData',
+                'syncTaskDataFromEvent',
+                'setHoldState',
+                'emitTaskResume',
+              ],
+            },
+          ],
 
           // Start a new consult from within an active conference
           [TaskEvent.CONSULT]: {

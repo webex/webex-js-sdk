@@ -25,7 +25,7 @@ import Task from '../Task';
 import LoggerProxy from '../../../logger-proxy';
 import MetricsManager from '../../../metrics/MetricsManager';
 import {METRIC_EVENT_NAMES} from '../../../metrics/constants';
-import {TaskState, TaskEvent} from '../state-machine';
+import {TaskState, TaskEvent, TaskActionArgs} from '../state-machine';
 import {WrapupData} from '../../config/types';
 import {getConsultMediaResourceId, getIsConferenceInProgress} from '../TaskUtils';
 
@@ -150,7 +150,10 @@ export default class Voice extends Task implements IVoice {
           });
           throw error;
         }
-      } else if (!state.matches(TaskState.HELD)) {
+      } else if (
+        !state.matches(TaskState.HELD) &&
+        !(state.matches(TaskState.CONFERENCING) && mediaHoldState === true)
+      ) {
         const error = new Error(`Cannot resume call in current state: ${currentState}`);
         LoggerProxy.error('Resume operation not allowed', {
           module: CC_FILE,
@@ -710,17 +713,22 @@ export default class Voice extends Task implements IVoice {
         ? calculateDestType(this.data.interaction, this.data.agentId)
         : '';
 
+    // derivedDestType is most reliable as it inspects live interaction participants
+    const resolvedDestinationType =
+      derivedDestType ||
+      this.getStateMachineSnapshot()?.context?.consultDestinationType ||
+      this.data.destinationType ||
+      'agent';
+
     const consultationData: consultConferencePayloadData = {
       agentId: this.data.agentId,
-      destinationType:
-        this.getStateMachineSnapshot()?.context?.consultDestinationType ||
-        this.data.destinationType ||
-        derivedDestType ||
-        'agent',
+      destinationType: resolvedDestinationType,
+      // derivedDestAgentId is most reliable as it resolves epId for EP_DN
+      // and agent ID for regular agents from live interaction data
       destAgentId:
+        derivedDestAgentId ||
         this.getStateMachineSnapshot()?.context?.consultDestinationAgentId ||
-        this.data.destAgentId ||
-        derivedDestAgentId,
+        this.data.destAgentId,
     };
 
     // Send state machine event to transition to CONF_INITIATING
@@ -1247,9 +1255,13 @@ export default class Voice extends Task implements IVoice {
         TASK_EVENTS.TASK_CONFERENCE_TRANSFER_FAILED,
         {updateTaskData: true}
       ),
-      emitTaskOutdialFailed: this.createEmitSelfAction(TASK_EVENTS.TASK_OUTDIAL_FAILED, {
-        updateTaskData: true,
-      }),
+      emitTaskOutdialFailed: ({event}: TaskActionArgs) => {
+        if (event && 'taskData' in event && event.taskData) {
+          this.updateTaskData(event.taskData as TaskData);
+        }
+        const reason = (event as {reason?: string})?.reason || 'Outdial failed';
+        this.emit(TASK_EVENTS.TASK_OUTDIAL_FAILED, reason);
+      },
     };
   }
 }

@@ -175,10 +175,18 @@ export async function consultOrTransfer(
   await page.bringToFront();
 
   if (action === 'consult') {
-    // Sample app: Click #consult button to open dialog via JS (may be CSS-hidden)
+    // Sample app: Click #consult button to open dialog
+    // Important: Button must be enabled (not disabled) and call must NOT be on hold
+    const consultBtn = page.locator('#consult').first();
+    await expect(consultBtn).toBeVisible({timeout: 5000});
+    await expect(consultBtn).toBeEnabled({timeout: 5000});
+
+    // Call the onclick handler directly via JavaScript
     await page.evaluate(() => {
       const btn = document.querySelector('#consult') as HTMLButtonElement;
-      if (btn) btn.click();
+      if (btn && btn.onclick) {
+        btn.onclick(new MouseEvent('click'));
+      }
     });
 
     // Wait for consult dialog to open (destination type selector becomes visible)
@@ -195,9 +203,9 @@ export async function consultOrTransfer(
     await page.waitForTimeout(1000); // Wait for UI to update destination field
 
     // Enter/select destination value (could be input or select depending on type)
-    // Note: When type is 'agent', 'queue', or 'entryPoint', the sample app dynamically creates a select with id='consultDestination' (camelCase)
-    // When type is 'dialNumber', it uses the original input with id='consult-destination' (kebab-case)
-    const destFieldId = type === 'dialNumber' ? '#consult-destination' : '#consultDestination';
+    // Note: The sample app dynamically creates a select with id='consultDestination' (camelCase) for all types
+    // The original input with id='consult-destination' (kebab-case) is cleared when type changes
+    const destFieldId = '#consultDestination';
     const allDestFields = page.locator(destFieldId);
     const count = await allDestFields.count();
 

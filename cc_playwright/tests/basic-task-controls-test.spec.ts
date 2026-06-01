@@ -15,8 +15,27 @@ import {TestManager} from '../test-manager';
 export default function createCallTaskControlsTests() {
   let testManager: TestManager;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     clearCapturedLogs();
+
+    // Check if call is active
+    const taskList = testManager.agent1Page.locator('#taskList');
+    const taskCount = await taskList.locator('.task-item-content').count().catch(() => 0);
+
+    if (taskCount === 0) {
+      // No active call - create one
+      await changeUserState(testManager.agent1Page, USER_STATES.AVAILABLE);
+      await testManager.agent1Page.waitForTimeout(2000);
+
+      await createCallTask(
+        testManager.callerPage!,
+        process.env[`${testManager.projectName}_ENTRY_POINT`]!
+      );
+      await acceptIncomingTask(testManager.agent1Page, TASK_TYPES.CALL, ACCEPT_TASK_TIMEOUT);
+
+      const incomingTask = testManager.agent1Page.locator('#incoming-task');
+      await expect(incomingTask).toContainText('connected', {timeout: 10000});
+    }
   });
 
   beforeAll(async ({browser}, testInfo) => {

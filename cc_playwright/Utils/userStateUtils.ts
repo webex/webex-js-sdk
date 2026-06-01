@@ -66,7 +66,52 @@ export const changeUserState = async (page: Page, userState: string): Promise<vo
     return;
   }
 
-  // Select the new state from dropdown
+  // Check if RONA popup is already visible (from previous consult decline/timeout)
+  const statePopup = page.locator('#agentStatePopup');
+  const isRonaAlreadyVisible = await statePopup.isVisible().catch(() => false);
+
+  if (isRonaAlreadyVisible) {
+    // RONA popup is already open - use it directly to change state
+    const popupSelect = page.locator('#agentStateSelect');
+    const setStateButton = page.locator('#setAgentState');
+
+    // Map state name if needed (Idle → Meeting)
+    let ronaStateName = userState;
+    if (userState === 'Idle') {
+      ronaStateName = 'Meeting';
+    }
+
+    const hasTargetOption = await popupSelect
+      .locator(`option:has-text("${ronaStateName}")`)
+      .count()
+      .then((count) => count > 0)
+      .catch(() => false);
+
+    if (hasTargetOption) {
+      await popupSelect.selectOption({label: ronaStateName}, {timeout: AWAIT_TIMEOUT});
+    }
+
+    await expect(setStateButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
+    await setStateButton.click({timeout: AWAIT_TIMEOUT});
+    await expect(statePopup).toBeHidden({timeout: AWAIT_TIMEOUT});
+
+    // Wait for state to settle
+    await page.waitForTimeout(2000);
+
+    // Verify state changed
+    await expect
+      .poll(
+        async () => {
+          return getCurrentState(page);
+        },
+        {timeout: AWAIT_TIMEOUT, intervals: [200, 400, 800]}
+      )
+      .toBe(userState);
+
+    return;
+  }
+
+  // Normal flow: select state from dropdown then click button
   const dropdown = page.locator('#idleCodesDropdown');
   await expect(dropdown).toBeVisible({timeout: AWAIT_TIMEOUT});
 
@@ -83,7 +128,6 @@ export const changeUserState = async (page: Page, userState: string): Promise<vo
   await expect(setStatusButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
   await setStatusButton.click({timeout: AWAIT_TIMEOUT});
 
-  const statePopup = page.locator('#agentStatePopup');
   const isPopupVisible = await statePopup.isVisible().catch(() => false);
 
   // In the sample app, some transitions require confirming via this popup.

@@ -22,7 +22,7 @@ dotenv.config({path: path.resolve(__dirname, '../.env')});
  * ```
  */
 export const loginViaAccessToken = async (page: Page, accessToken: string): Promise<void> => {
-  await page.goto(BASE_URL);
+  await page.goto(BASE_URL, {waitUntil: 'domcontentloaded'});
   if (!accessToken) {
     throw new Error(`ACCESS_TOKEN is not defined, OAuth failed`);
   }
@@ -69,8 +69,7 @@ export const oauthLogin = async (
     throw new Error(`Environment variables ${username} and PW_SANDBOX_PASSWORD must be set`);
   }
 
-  await page.goto(BASE_URL);
-  await page.waitForLoadState('load');
+  await page.goto(BASE_URL, {waitUntil: 'domcontentloaded'});
 
   // Wait for Webex SDK to be loaded (required for OAuth flow)
   await page.waitForFunction(() => typeof (window as any).Webex !== 'undefined', {
@@ -82,16 +81,48 @@ export const oauthLogin = async (
   await authTypeDropdown.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
   await authTypeDropdown.selectOption('oauth', {timeout: AWAIT_TIMEOUT});
 
-  // Wait for OAuth form to become visible after dropdown change
+  // Wait for OAuth form to become visible and SDK to initialize
   const oauthLoginButton = page.locator('#oauth-login-btn');
   await oauthLoginButton.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
-  await oauthLoginButton.click({timeout: AWAIT_TIMEOUT});
+
+  // Wait for webex instance to be ready for OAuth
+  await page.waitForFunction(
+    () => {
+      const webex = (window as any).webex;
+
+      return (
+        webex && webex.authorization && typeof webex.authorization.initiateLogin === 'function'
+      );
+    },
+    {timeout: AWAIT_TIMEOUT}
+  );
+
+  // OAuth login redirects to Webex login page - wait for navigation with extended timeout
+  await Promise.all([
+    page.waitForURL((url) => url.toString().includes('idbroker.webex.com'), {
+      timeout: OPERATION_TIMEOUT,
+    }),
+    oauthLoginButton.click(),
+  ]);
+
+  // Fill in OAuth credentials on Webex login page
   await page
     .getByRole('textbox', {name: 'name@example.com'})
     .fill(username, {timeout: AWAIT_TIMEOUT});
-  await page.getByRole('link', {name: 'Sign in'}).click({timeout: AWAIT_TIMEOUT});
+
+  // Click "Sign in" link triggers navigation to password page
+  await Promise.all([
+    page.waitForLoadState('domcontentloaded', {timeout: OPERATION_TIMEOUT}),
+    page.getByRole('link', {name: 'Sign in'}).click({timeout: AWAIT_TIMEOUT}),
+  ]);
+
   await page.getByRole('textbox', {name: 'Password'}).fill(password, {timeout: AWAIT_TIMEOUT});
   await page.getByRole('button', {name: 'Sign in'}).click({timeout: AWAIT_TIMEOUT});
+
+  // Wait for redirect back to sample app with extended timeout for OAuth flow
+  await page.waitForURL((url) => url.toString().includes(BASE_URL), {
+    timeout: OPERATION_TIMEOUT,
+  });
 };
 
 /**
@@ -248,7 +279,6 @@ export const ensureRegisteredAfterReload = async (page: Page): Promise<void> => 
 
     // Wait for SDK initialization to complete (either button state is stable)
     const isRegisterEnabled = await registerButton.isEnabled().catch(() => false);
-    const isInitDisabled = await initButton.isDisabled().catch(() => false);
 
     if (!isRegisterEnabled) {
       // SDK not initialized yet
@@ -259,12 +289,13 @@ export const ensureRegisteredAfterReload = async (page: Page): Promise<void> => 
       } else {
         // Init button disabled but register not enabled - wait for auto-init
         await expect(registerButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
-        await page.waitForTimeout(2000); // Extra wait for SDK to be fully ready
       }
-    } else if (isInitDisabled && isRegisterEnabled) {
-      // Auto-initialization completed, but wait for SDK to be fully ready
-      await page.waitForTimeout(2000);
     }
+
+    // CRITICAL: After register button is enabled, wait for CC plugin to be fully initialized
+    // The button enables when webex.init() completes, but webex.cc needs extra time
+    // to complete internal initialization before register() can be called successfully
+    await page.waitForTimeout(5000);
 
     // Register with CC using existing retry logic
     await registerContactCenter(page);

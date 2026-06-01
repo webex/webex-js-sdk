@@ -13,6 +13,7 @@ export default defineConfig({
   webServer: {
     command: 'yarn samples:serve --port 8000',
     url: 'https://localhost:8000/samples/contact-center/',
+    timeout: 180000,
     ignoreHTTPSErrors: true,
     reuseExistingServer: !process.env.CI,
     stdout: 'ignore',

@@ -296,7 +296,7 @@ export default class TaskManager extends EventEmitter {
         return {type: TaskEvent.RONA, taskData: payload, reason: payload.reason};
 
       case CC_EVENTS.AGENT_OUTBOUND_FAILED:
-        return {type: TaskEvent.OUTBOUND_FAILED, reason: payload.reason};
+        return {type: TaskEvent.OUTBOUND_FAILED, taskData: payload, reason: payload.reason};
 
       case CC_EVENTS.CONTACT_RECORDING_STARTED:
         return {type: TaskEvent.RECORDING_STARTED, taskData: payload};
@@ -312,6 +312,7 @@ export default class TaskManager extends EventEmitter {
 
       // Conference events - these trigger state machine transition to CONFERENCING
       case CC_EVENTS.AGENT_CONSULT_CONFERENCED:
+      case CC_EVENTS.AGENT_CONSULT_CONFERENCING:
       case CC_EVENTS.PARTICIPANT_JOINED_CONFERENCE:
         return {type: TaskEvent.CONFERENCE_START, taskData: payload};
 
@@ -378,6 +379,12 @@ export default class TaskManager extends EventEmitter {
       // including TASK_INCOMING which is now handled via the state machine callbacks
       if (stateMachineEvent) {
         task.sendStateMachineEvent(stateMachineEvent);
+      }
+
+      // Emit TASK_POST_CALL_ACTIVITY for ParticipantPostCallActivity events so
+      // consumers (Widgets) can detect the interaction state change to post_call.
+      if (eventContext.eventType === CC_EVENTS.PARTICIPANT_POST_CALL_ACTIVITY) {
+        task.emit(TASK_EVENTS.TASK_POST_CALL_ACTIVITY, task);
       }
 
       // Send transcript start/stop events for relevant CC events
@@ -660,8 +667,7 @@ export default class TaskManager extends EventEmitter {
     const {payload} = context;
     let task = context.task;
 
-    if (payload.childInteractionId) {
-      // remove the child task from collection
+    if (payload.childInteractionId && this.taskCollection[payload.childInteractionId]) {
       this.removeTaskFromCollection(this.taskCollection[payload.childInteractionId]);
     }
 
@@ -696,8 +702,20 @@ export default class TaskManager extends EventEmitter {
         this.wrapupData,
         this.agentId
       );
-      this.setupTaskListeners(task);
       this.taskCollection[payload.interactionId] = task;
+
+      // Transition the new task out of IDLE immediately so UI controls are
+      // computed before TASK_MERGED is emitted. This handles the race where
+      // AgentContactAssigned arrives before ContactMerged and gets dropped.
+      // Send HYDRATE before setupTaskListeners so the emitTaskHydrate action
+      // doesn't bubble up to the Widget (avoids duplicate listener registration).
+      task.sendStateMachineEvent({
+        type: TaskEvent.HYDRATE,
+        taskData,
+        agentId: this.agentId,
+      } as TaskEventPayload);
+
+      this.setupTaskListeners(task);
     }
 
     if (task) {

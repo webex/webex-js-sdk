@@ -450,12 +450,28 @@ describe('TaskUtils', () => {
       expect(getIsCustomerInCall(interaction, interactionId)).toBe(true);
     });
 
+    it('getIsCustomerInCall returns false when participants map is missing', () => {
+      const interaction = createInteraction(
+        {[interactionId]: {mType: 'mainCall', participants: ['c1']}},
+        undefined
+      );
+      expect(getIsCustomerInCall(interaction, interactionId)).toBe(false);
+    });
+
     it('getConferenceParticipantsCount counts active agents only', () => {
       const interaction = createInteraction(
         {[interactionId]: {mType: 'mainCall', participants: ['a1', 'a2', 'c1']}},
         {'a1': {pType: 'Agent', hasLeft: false}, 'a2': {pType: 'Agent', hasLeft: false}, 'c1': {pType: 'Customer', hasLeft: false}}
       );
       expect(getConferenceParticipantsCount(interaction, interactionId)).toBe(2);
+    });
+
+    it('getConferenceParticipantsCount returns 0 when participants map is missing', () => {
+      const interaction = createInteraction(
+        {[interactionId]: {mType: 'mainCall', participants: ['a1', 'a2', 'c1']}},
+        undefined
+      );
+      expect(getConferenceParticipantsCount(interaction, interactionId)).toBe(0);
     });
 
     it('isSecondaryAgent returns true for consult with parentInteractionId', () => {
