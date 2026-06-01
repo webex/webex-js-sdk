@@ -5385,6 +5385,64 @@ describe('HashTreeParser', () => {
   });
 
   describe('#syncMetrics', () => {
+    it('records pending metrics when sync response has empty body', async () => {
+      const syncMetricsCallback = sinon.stub();
+      const syncLatency = {
+        randomBackoffTime: 0,
+        hashtreePrepTime: 5,
+        hashtreeResponseTime: 20,
+        syncPrepTime: 3,
+        syncResponseTime: 15,
+        syncMessageReceiveTime: 7,
+        totalTime: 50,
+      };
+      const syncLatencyTracker = {
+        saveTimestamp: sinon.stub(),
+        getLocusSyncLatency: sinon.stub().returns(syncLatency),
+        clearLocusSyncLatency: sinon.stub(),
+      };
+      const parser = createHashTreeParser(
+        undefined,
+        undefined,
+        undefined,
+        syncMetricsCallback,
+        syncLatencyTracker
+      );
+      const mainDataSetUrl = parser.dataSets.main.url;
+
+      mockGetHashesFromLocusResponse(
+        mainDataSetUrl,
+        new Array(16).fill('00000000000000000000000000000000'),
+        createDataSet('main', 16, 1101)
+      );
+      mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+      parser.handleMessage(
+        createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
+        'trigger sync metrics'
+      );
+
+      await clock.tickAsync(1000);
+
+      assert.isTrue(parser['pendingSyncMetrics'].has('main'));
+      assert.notCalled(syncMetricsCallback);
+
+      parser.handleMessage({
+        dataSets: [
+          {
+            ...createDataSet('main', 16, 1101),
+            root: 'newroot',
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      assert.calledOnce(syncMetricsCallback);
+      assert.isFalse(parser['pendingSyncMetrics'].has('main'));
+    });
+
     it('invokes syncMetricsCallback when matching dataset version arrives', () => {
       const syncMetricsCallback = sinon.stub();
       const syncLatency = {

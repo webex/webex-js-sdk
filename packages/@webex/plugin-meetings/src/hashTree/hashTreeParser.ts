@@ -1468,17 +1468,20 @@ class HashTreeParser {
       }
       // request sync for mismatched leaves
       let syncResponse: HashTreeMessage | null = null;
+      let syncRequestSent = false;
 
       if (isInitialization) {
         syncResponse = await this.sendSyncRequestToLocus(dataSet, {isInitialization: true});
+        syncRequestSent = true;
       } else if (Object.keys(leavesData).length > 0) {
         syncResponse = await this.sendSyncRequestToLocus(dataSet, {
           mismatchedLeavesData: leavesData,
         });
+        syncRequestSent = true;
       }
 
       // Record pending metrics and complete them when the matching LLM broadcast arrives.
-      if (shouldCollectMetrics && syncResponse !== null) {
+      if (shouldCollectMetrics && syncRequestSent) {
         this.pendingSyncMetrics.set(dataSet.name, {
           dataSetName: dataSet.name,
           dataSetVersion: dataSet.version,
