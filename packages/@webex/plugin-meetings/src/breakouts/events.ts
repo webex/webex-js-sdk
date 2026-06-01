@@ -43,6 +43,14 @@ const breakoutEvent: {
       return;
     }
 
+    if (
+      event === 'client.breakout-session.join.response' &&
+      typeof meeting.shouldEmitBreakoutJoinResponseMetric === 'function' &&
+      !meeting.shouldEmitBreakoutJoinResponseMetric(breakoutMoveId)
+    ) {
+      return;
+    }
+
     const identifiers: any = {
       breakoutMoveId,
       breakoutSessionId: currentSession?.sessionId,

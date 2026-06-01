@@ -126,6 +126,38 @@ describe('plugin-meetings', () => {
           options: {meetingId: 'activeMeetingId'},
         });
       });
+
+      it('does not emit duplicate join response metric for the same breakoutMoveId', () => {
+        const submitClientEvent = sinon.stub();
+        const shouldEmitBreakoutJoinResponseMetric = sinon.stub();
+
+        shouldEmitBreakoutJoinResponseMetric.onFirstCall().returns(true);
+        shouldEmitBreakoutJoinResponseMetric.onSecondCall().returns(false);
+
+        const eventInfo = {
+          currentSession: newSession,
+          meeting: {
+            ...mockMeeting,
+            shouldEmitBreakoutJoinResponseMetric,
+          },
+          breakoutMoveId,
+        };
+
+        breakoutEvent.postMoveCallAnalyzer(
+          'client.breakout-session.join.response',
+          eventInfo,
+          submitClientEvent
+        );
+        breakoutEvent.postMoveCallAnalyzer(
+          'client.breakout-session.join.response',
+          eventInfo,
+          submitClientEvent
+        );
+
+        assert.calledTwice(shouldEmitBreakoutJoinResponseMetric);
+        assert.calledWithExactly(shouldEmitBreakoutJoinResponseMetric, breakoutMoveId);
+        assert.calledOnce(submitClientEvent);
+      });
     });
 
   });
