@@ -424,7 +424,8 @@ export class Registration implements IRegistration {
           this.deviceInfo.keepaliveInterval as number,
           'UNKNOWN'
         );
-      }, retryAfter * 1000);
+        // Adjust the retry-after value with keepaliveInterval, else it adds extra keepaliveInterval time for very first next keepalive request
+      }, (retryAfter - Number(this.deviceInfo.keepaliveInterval || 0)) * 1000);
     } else {
       this.retryAfter = retryAfter;
     }
@@ -1311,6 +1312,7 @@ export class Registration implements IRegistration {
 
       if (this.apiRequest.isSocketEnabled()) {
         uri = uri.replace('https://', 'wss://');
+        uri = !uri.endsWith('/') ? `${uri}/` : uri;
       }
 
       this.setActiveMobiusUrl(uri);
