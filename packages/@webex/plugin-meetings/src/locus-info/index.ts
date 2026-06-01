@@ -573,6 +573,7 @@ export default class LocusInfo extends EventsScope {
       },
       debugId: `HT-${locusUrl.split('/')?.pop()?.substring(0, 4)}`,
       excludedDataSets: this.webex.config.meetings.locus?.excludedDataSets,
+      syncLatencyMeetingId: this.meetingId,
     });
 
     // When a new HashTreeParser is created, previous one should be stopped.

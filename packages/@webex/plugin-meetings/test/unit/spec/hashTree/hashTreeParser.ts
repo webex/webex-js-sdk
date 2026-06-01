@@ -179,7 +179,8 @@ describe('HashTreeParser', () => {
     metadata: any = exampleMetadata,
     excludedDataSets?: string[],
     syncMetricsCallback: sinon.SinonStub = sinon.stub(),
-    syncLatencyTracker?: any
+    syncLatencyTracker?: any,
+    syncLatencyMeetingId?: string
   ) {
     return new HashTreeParser({
       initialLocus,
@@ -192,6 +193,7 @@ describe('HashTreeParser', () => {
       },
       debugId: 'test',
       excludedDataSets,
+      syncLatencyMeetingId,
     });
   }
 
@@ -5534,6 +5536,57 @@ describe('HashTreeParser', () => {
       assert.calledOnceWithExactly(syncLatencyTracker.getLocusSyncLatency, 'main');
       assert.calledOnceWithExactly(syncLatencyTracker.clearLocusSyncLatency, 'main');
       assert.isFalse(parser['pendingSyncMetrics'].has('main'));
+    });
+
+    it('scopes sync metrics tracker records by meeting id', () => {
+      const syncMetricsCallback = sinon.stub();
+      const syncLatency = {
+        randomBackoffTime: 10,
+        hashtreePrepTime: 1,
+        hashtreeResponseTime: 2,
+        syncPrepTime: 3,
+        syncResponseTime: 4,
+        syncMessageReceiveTime: 5,
+        totalTime: 15,
+      };
+      const syncLatencyTracker = {
+        saveTimestamp: sinon.stub(),
+        getLocusSyncLatency: sinon.stub().returns(syncLatency),
+        clearLocusSyncLatency: sinon.stub(),
+      };
+      const parser = createHashTreeParser(
+        undefined,
+        undefined,
+        undefined,
+        syncMetricsCallback,
+        syncLatencyTracker,
+        'meeting-1'
+      );
+
+      parser['pendingSyncMetrics'].set('main', {
+        dataSetName: 'main',
+        dataSetVersion: 1000,
+      } as any);
+
+      parser.handleMessage({
+        dataSets: [
+          {
+            ...createDataSet('main', 16, 1001),
+            root: 'newroot',
+          },
+        ],
+        visibleDataSetsUrl,
+        locusUrl,
+        locusStateElements: [],
+      });
+
+      assert.calledOnceWithExactly(syncLatencyTracker.saveTimestamp, {
+        key: 'internal.client.locus.sync.message.received',
+        options: {meetingId: 'meeting-1', dataSetName: 'main'},
+      });
+      assert.calledOnceWithExactly(syncLatencyTracker.getLocusSyncLatency, 'main', 'meeting-1');
+      assert.calledOnceWithExactly(syncLatencyTracker.clearLocusSyncLatency, 'main', 'meeting-1');
+      assert.calledOnce(syncMetricsCallback);
     });
 
     it('does not complete pending metrics when message version is below pending version', () => {

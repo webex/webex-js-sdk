@@ -8,6 +8,7 @@ import {MetricEventNames, PreComputedLatencies} from '../metrics.types';
 // we only care about client event and feature event for now
 
 type LocusSyncLatencyMilestone = {
+  meetingId?: string;
   dataSetName: string;
   key: MetricEventNames;
   value: number;
@@ -66,9 +67,10 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   /**
    * Clear tracked Locus sync latency state for a dataset.
    * @param dataSetName dataset name
+   * @param meetingId meeting id
    */
-  public clearLocusSyncLatency(dataSetName: string) {
-    this.locusSyncLatencies.delete(dataSetName);
+  public clearLocusSyncLatency(dataSetName: string, meetingId?: string) {
+    this.locusSyncLatencies.delete(this.getLocusSyncLatencyKey(dataSetName, meetingId));
   }
 
   /**
@@ -76,8 +78,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @param dataSetName dataset name
    * @returns sync latency metrics
    */
-  public getLocusSyncLatency(dataSetName: string) {
-    const record = this.locusSyncLatencies.get(dataSetName);
+  public getLocusSyncLatency(dataSetName: string, meetingId?: string) {
+    const record = this.locusSyncLatencies.get(this.getLocusSyncLatencyKey(dataSetName, meetingId));
 
     if (!record) {
       return undefined;
@@ -170,6 +172,16 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * Build a storage key for Locus sync latency records.
+   * @param dataSetName dataset name
+   * @param meetingId meeting id
+   * @returns storage key
+   */
+  private getLocusSyncLatencyKey(dataSetName: string, meetingId?: string) {
+    return meetingId ? `${meetingId}:${dataSetName}` : dataSetName;
+  }
+
+  /**
    * Checks if metric event name is a Locus sync latency milestone.
    * @param key event name
    * @returns whether event is Locus sync latency milestone
@@ -190,13 +202,16 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @param options options
    */
   private saveLocusSyncLatencyTimestamp({
+    meetingId,
     dataSetName,
     key,
     value,
     randomBackoffTime = 0,
   }: LocusSyncLatencyMilestone & {randomBackoffTime?: number}) {
+    const recordKey = this.getLocusSyncLatencyKey(dataSetName, meetingId);
+
     if (key === 'internal.client.locus.sync.start') {
-      this.locusSyncLatencies.set(dataSetName, {
+      this.locusSyncLatencies.set(recordKey, {
         randomBackoffTime,
         syncStart: value,
       });
@@ -204,7 +219,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       return;
     }
 
-    const record = this.locusSyncLatencies.get(dataSetName);
+    const record = this.locusSyncLatencies.get(recordKey);
 
     if (!record) {
       return;
@@ -277,6 +292,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
 
     if (this.isLocusSyncLatencyEvent(key) && options.dataSetName) {
       this.saveLocusSyncLatencyTimestamp({
+        meetingId: options.meetingId,
         dataSetName: options.dataSetName,
         key,
         value,

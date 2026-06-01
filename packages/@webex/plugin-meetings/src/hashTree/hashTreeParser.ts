@@ -110,10 +110,10 @@ export type SyncLatencyTracker = {
       | 'internal.client.locus.sync.request'
       | 'internal.client.locus.sync.response'
       | 'internal.client.locus.sync.message.received';
-    options: {dataSetName: string; randomBackoffTime?: number};
+    options: {meetingId?: string; dataSetName: string; randomBackoffTime?: number};
   }) => void;
-  getLocusSyncLatency: (dataSetName: string) => SyncLatencyMetrics | undefined;
-  clearLocusSyncLatency: (dataSetName: string) => void;
+  getLocusSyncLatency: (dataSetName: string, meetingId?: string) => SyncLatencyMetrics | undefined;
+  clearLocusSyncLatency: (dataSetName: string, meetingId?: string) => void;
 };
 
 export type HashTreeParserCallbacks = {
@@ -173,6 +173,7 @@ class HashTreeParser {
   webexRequest: WebexRequestMethod;
   private callbacks: HashTreeParserCallbacks;
   private syncLatencyTracker?: SyncLatencyTracker;
+  private syncLatencyMeetingId?: string;
   visibleDataSets: VisibleDataSetInfo[];
   debugId: string;
   private excludedDataSets: string[];
@@ -203,6 +204,7 @@ class HashTreeParser {
     callbacks: HashTreeParserCallbacks;
     debugId: string;
     excludedDataSets?: string[];
+    syncLatencyMeetingId?: string;
   }) {
     const {dataSets, locus} = options.initialLocus; // extract dataSets from initialLocus
 
@@ -210,6 +212,7 @@ class HashTreeParser {
     this.webexRequest = options.webexRequest;
     this.callbacks = options.callbacks;
     this.syncLatencyTracker = options.callbacks.syncLatencyTracker;
+    this.syncLatencyMeetingId = options.syncLatencyMeetingId;
     this.excludedDataSets = options.excludedDataSets || [];
     this.visibleDataSetsUrl = locus?.links?.resources?.visibleDataSets?.url;
     this.setVisibleDataSets(options.metadata?.visibleDataSets || [], dataSets);
@@ -1273,6 +1276,54 @@ class HashTreeParser {
   }
 
   /**
+   * Build options for a Locus sync latency milestone.
+   * @param {string} dataSetName dataset name
+   * @param {number} [randomBackoffTime] random backoff time
+   * @returns {object} sync latency timestamp options
+   */
+  private getSyncLatencyTimestampOptions(dataSetName: string, randomBackoffTime?: number) {
+    const options: {meetingId?: string; dataSetName: string; randomBackoffTime?: number} = {
+      dataSetName,
+    };
+
+    if (this.syncLatencyMeetingId) {
+      options.meetingId = this.syncLatencyMeetingId;
+    }
+
+    if (typeof randomBackoffTime === 'number') {
+      options.randomBackoffTime = randomBackoffTime;
+    }
+
+    return options;
+  }
+
+  /**
+   * Get Locus sync latency using this parser's meeting scope when available.
+   * @param {string} dataSetName dataset name
+   * @returns {SyncLatencyMetrics|undefined} sync latency metrics
+   */
+  private getLocusSyncLatency(dataSetName: string): SyncLatencyMetrics | undefined {
+    return this.syncLatencyMeetingId
+      ? this.syncLatencyTracker?.getLocusSyncLatency(dataSetName, this.syncLatencyMeetingId)
+      : this.syncLatencyTracker?.getLocusSyncLatency(dataSetName);
+  }
+
+  /**
+   * Clear Locus sync latency using this parser's meeting scope when available.
+   * @param {string} dataSetName dataset name
+   * @returns {void}
+   */
+  private clearLocusSyncLatency(dataSetName: string): void {
+    if (this.syncLatencyMeetingId) {
+      this.syncLatencyTracker?.clearLocusSyncLatency(dataSetName, this.syncLatencyMeetingId);
+
+      return;
+    }
+
+    this.syncLatencyTracker?.clearLocusSyncLatency(dataSetName);
+  }
+
+  /**
    * Finalize pending sync metrics and invoke callback.
    *
    * @param {string} dataSetName
@@ -1288,11 +1339,11 @@ class HashTreeParser {
     this.pendingSyncMetrics.delete(dataSetName);
     this.syncLatencyTracker?.saveTimestamp({
       key: 'internal.client.locus.sync.message.received',
-      options: {dataSetName},
+      options: this.getSyncLatencyTimestampOptions(dataSetName),
     });
-    const syncLatency = this.syncLatencyTracker?.getLocusSyncLatency(dataSetName);
+    const syncLatency = this.getLocusSyncLatency(dataSetName);
 
-    this.syncLatencyTracker?.clearLocusSyncLatency(dataSetName);
+    this.clearLocusSyncLatency(dataSetName);
 
     if (!syncLatency) {
       return;
@@ -1406,10 +1457,10 @@ class HashTreeParser {
     if (shouldCollectMetrics) {
       this.syncLatencyTracker?.saveTimestamp({
         key: 'internal.client.locus.sync.start',
-        options: {
-          dataSetName: dataSet.name,
-          randomBackoffTime: Math.round(dataSet.lastBackoffTime || 0),
-        },
+        options: this.getSyncLatencyTimestampOptions(
+          dataSet.name,
+          Math.round(dataSet.lastBackoffTime || 0)
+        ),
       });
     }
 
@@ -1517,7 +1568,7 @@ class HashTreeParser {
       }
     } finally {
       if (shouldCollectMetrics && !syncMetricsPending) {
-        this.syncLatencyTracker?.clearLocusSyncLatency(dataSet.name);
+        this.clearLocusSyncLatency(dataSet.name);
       }
       dataSet.syncAbortController = undefined;
     }
@@ -2042,7 +2093,7 @@ class HashTreeParser {
     if (this.shouldCollectSyncMetrics(dataSetName)) {
       this.syncLatencyTracker?.saveTimestamp({
         key: 'internal.client.locus.hashtree.request',
-        options: {dataSetName},
+        options: this.getSyncLatencyTimestampOptions(dataSetName),
       });
     }
 
@@ -2057,7 +2108,7 @@ class HashTreeParser {
         if (this.shouldCollectSyncMetrics(dataSetName)) {
           this.syncLatencyTracker?.saveTimestamp({
             key: 'internal.client.locus.hashtree.response',
-            options: {dataSetName},
+            options: this.getSyncLatencyTimestampOptions(dataSetName),
           });
         }
 
@@ -2157,7 +2208,7 @@ class HashTreeParser {
     if (this.shouldCollectSyncMetrics(dataSet.name, isInitialization)) {
       this.syncLatencyTracker?.saveTimestamp({
         key: 'internal.client.locus.sync.request',
-        options: {dataSetName: dataSet.name},
+        options: this.getSyncLatencyTimestampOptions(dataSet.name),
       });
     }
 
@@ -2173,7 +2224,7 @@ class HashTreeParser {
         if (this.shouldCollectSyncMetrics(dataSet.name, isInitialization)) {
           this.syncLatencyTracker?.saveTimestamp({
             key: 'internal.client.locus.sync.response',
-            options: {dataSetName: dataSet.name},
+            options: this.getSyncLatencyTimestampOptions(dataSet.name),
           });
         }
 
