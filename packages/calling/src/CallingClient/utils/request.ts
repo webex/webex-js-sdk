@@ -3,12 +3,18 @@ import {getMobiusSocketInstance} from '../../mobius-socket';
 import {WebexRequestPayload} from '../../common/types';
 import {WebexSDK} from '../../SDKConnector/types';
 import log from '../../Logger';
-import {APIRequestConfig, APIRequestOptions, MobiusAsyncEvent, MobiusSocketResponse} from './types';
+import {
+  APIRequestConfig,
+  APIRequestOptions,
+  MobiusAsyncEvent,
+  MobiusSocketConnectionListener,
+  MobiusSocketResponse,
+} from './types';
 import {
   deriveMobiusSocketMessageType,
   isSupplementaryServiceMessageType,
 } from './mobiusSocketMapper';
-import {MOBIUS_SOCKET_MESSAGE_TYPE} from './constants';
+import {MOBIUS_SOCKET_DISCONNECT_REASON, MOBIUS_SOCKET_MESSAGE_TYPE} from './constants';
 import {isMobiusWssEnabled} from './wsFeatureFlag';
 import {CALLING_USER_AGENT, METHODS, REQUEST_FILE} from '../constants';
 import {getMetricManager} from '../../Metrics';
@@ -303,6 +309,58 @@ export class APIRequest {
       MOBIUS_SOCKET_ACTION.LISTENER_UNREGISTERED,
       METRIC_TYPE.BEHAVIORAL
     );
+  }
+
+  /**
+   * Bridges the underlying Mobius socket connect/disconnect lifecycle to the caller.
+   * The socket emits `online` on every successful (re)connect and `offline.*` on close,
+   * where the suffix distinguishes the disconnect reason.
+   *
+   * @param listener - Callbacks invoked on connect and disconnect transitions.
+   */
+  public registerMobiusSocketConnectionListener(listener: MobiusSocketConnectionListener): void {
+    const logContext = {
+      file: REQUEST_FILE,
+      method: METHODS.REGISTER_MOBIUS_SOCKET_CONNECTION_LISTENER,
+    };
+
+    log.info('Attaching Mobius socket connection listener', logContext);
+
+    this.mobiusSocket.on('online', () => {
+      log.log('Mobius socket connected', logContext);
+      listener.onConnected();
+    });
+
+    this.mobiusSocket.on('offline.permanent', () => {
+      log.log('Mobius socket disconnected (permanent)', logContext);
+      listener.onDisconnected(MOBIUS_SOCKET_DISCONNECT_REASON.PERMANENT);
+    });
+
+    this.mobiusSocket.on('offline.transient', () => {
+      log.log('Mobius socket disconnected (transient)', logContext);
+      listener.onDisconnected(MOBIUS_SOCKET_DISCONNECT_REASON.TRANSIENT);
+    });
+
+    this.mobiusSocket.on('offline.replaced', () => {
+      log.log('Mobius socket disconnected (replaced)', logContext);
+      listener.onDisconnected(MOBIUS_SOCKET_DISCONNECT_REASON.REPLACED);
+    });
+
+    log.log('Mobius socket connection listener attached', logContext);
+  }
+
+  public unregisterMobiusSocketConnectionListener(): void {
+    const logContext = {
+      file: REQUEST_FILE,
+      method: METHODS.UNREGISTER_MOBIUS_SOCKET_CONNECTION_LISTENER,
+    };
+
+    log.info('Detaching Mobius socket connection listener', logContext);
+    this.mobiusSocket.off('online');
+    this.mobiusSocket.off('offline.permanent');
+    this.mobiusSocket.off('offline.transient');
+    this.mobiusSocket.off('offline.replaced');
+    log.log('Mobius socket connection listener detached', logContext);
   }
 }
 

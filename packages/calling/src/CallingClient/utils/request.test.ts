@@ -7,7 +7,7 @@ import {getMobiusSocketInstance} from '../../mobius-socket';
 import {getMetricManager} from '../../Metrics';
 import {METRIC_EVENT, METRIC_TYPE, MOBIUS_SOCKET_ACTION} from '../../Metrics/types';
 import {isMobiusWssEnabled} from './wsFeatureFlag';
-import {MOBIUS_SOCKET_MESSAGE_TYPE} from './constants';
+import {MOBIUS_SOCKET_DISCONNECT_REASON, MOBIUS_SOCKET_MESSAGE_TYPE} from './constants';
 import {MobiusSocketResponse, MobiusAsyncEvent} from './types';
 
 // Mock dependencies
@@ -676,6 +676,90 @@ describe('APIRequest', () => {
         MOBIUS_SOCKET_ACTION.LISTENER_UNREGISTERED,
         METRIC_TYPE.BEHAVIORAL
       );
+    });
+  });
+
+  describe('registerMobiusSocketConnectionListener', () => {
+    const getHandlerFor = (eventName: string): ((...args: unknown[]) => void) => {
+      const call = mockMobiusSocket.on.mock.calls.find(([name]: [string]) => name === eventName);
+
+      return call[1];
+    };
+
+    it('should attach listeners to online and offline.* socket events', () => {
+      const apiRequest = APIRequest.getInstance({webex});
+
+      apiRequest.registerMobiusSocketConnectionListener({
+        onConnected: jest.fn(),
+        onDisconnected: jest.fn(),
+      });
+
+      expect(mockMobiusSocket.on).toHaveBeenCalledWith('online', expect.any(Function));
+      expect(mockMobiusSocket.on).toHaveBeenCalledWith('offline.permanent', expect.any(Function));
+      expect(mockMobiusSocket.on).toHaveBeenCalledWith('offline.transient', expect.any(Function));
+      expect(mockMobiusSocket.on).toHaveBeenCalledWith('offline.replaced', expect.any(Function));
+      expect(infoSpy).toHaveBeenCalledWith('Attaching Mobius socket connection listener', {
+        file: 'REQUEST',
+        method: 'registerMobiusSocketConnectionListener',
+      });
+      expect(logSpy).toHaveBeenCalledWith('Mobius socket connection listener attached', {
+        file: 'REQUEST',
+        method: 'registerMobiusSocketConnectionListener',
+      });
+    });
+
+    it('should invoke onConnected when the online event fires', () => {
+      const apiRequest = APIRequest.getInstance({webex});
+      const onConnected = jest.fn();
+
+      apiRequest.registerMobiusSocketConnectionListener({
+        onConnected,
+        onDisconnected: jest.fn(),
+      });
+
+      getHandlerFor('online')();
+
+      expect(onConnected).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['offline.permanent', MOBIUS_SOCKET_DISCONNECT_REASON.PERMANENT],
+      ['offline.transient', MOBIUS_SOCKET_DISCONNECT_REASON.TRANSIENT],
+      ['offline.replaced', MOBIUS_SOCKET_DISCONNECT_REASON.REPLACED],
+    ])('should invoke onDisconnected with %s reason when %s fires', (eventName, reason) => {
+      const apiRequest = APIRequest.getInstance({webex});
+      const onDisconnected = jest.fn();
+
+      apiRequest.registerMobiusSocketConnectionListener({
+        onConnected: jest.fn(),
+        onDisconnected,
+      });
+
+      getHandlerFor(eventName as string)();
+
+      expect(onDisconnected).toHaveBeenCalledTimes(1);
+      expect(onDisconnected).toHaveBeenCalledWith(reason);
+    });
+  });
+
+  describe('unregisterMobiusSocketConnectionListener', () => {
+    it('should detach listeners from online and offline.* socket events', () => {
+      const apiRequest = APIRequest.getInstance({webex});
+
+      apiRequest.unregisterMobiusSocketConnectionListener();
+
+      expect(mockMobiusSocket.off).toHaveBeenCalledWith('online');
+      expect(mockMobiusSocket.off).toHaveBeenCalledWith('offline.permanent');
+      expect(mockMobiusSocket.off).toHaveBeenCalledWith('offline.transient');
+      expect(mockMobiusSocket.off).toHaveBeenCalledWith('offline.replaced');
+      expect(infoSpy).toHaveBeenCalledWith('Detaching Mobius socket connection listener', {
+        file: 'REQUEST',
+        method: 'unregisterMobiusSocketConnectionListener',
+      });
+      expect(logSpy).toHaveBeenCalledWith('Mobius socket connection listener detached', {
+        file: 'REQUEST',
+        method: 'unregisterMobiusSocketConnectionListener',
+      });
     });
   });
 });

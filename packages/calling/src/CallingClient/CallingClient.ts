@@ -228,6 +228,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     await this.getMobiusServers();
     if (this.apiRequest.isSocketEnabled()) {
+      this.apiRequest.registerMobiusSocketConnectionListener({
+        onConnected: () => this.emit(CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED),
+        onDisconnected: (reason) =>
+          this.emit(CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED, {reason}),
+      });
       await this.connectToMobiusSocket();
       this.apiRequest.registerMobiusSocketListener(this.handleMobiusAsyncEvent);
     }
