@@ -1744,6 +1744,7 @@ class HashTreeParser {
     );
 
     for (const ds of effectiveDataSetsToSync) {
+      this.dataSets[ds.name].lastBackoffTime = delay;
       this.enqueueSyncForDataset(ds.name, 'syncAllDatasets');
     }
 

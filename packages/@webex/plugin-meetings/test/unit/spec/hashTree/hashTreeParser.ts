@@ -4755,6 +4755,44 @@ describe('HashTreeParser', () => {
       assert.neverCalledWith(webexRequest, sinon.match({method: 'GET', uri: `${selfUrl}/hashtree`}));
     });
 
+    it('uses the syncAll random backoff when reporting sync metrics', async () => {
+      mathRandomStub.returns(0.5); // syncAll backoff = 0.5^2 * 1000 = 250ms
+
+      const syncLatencyTracker = {
+        saveTimestamp: sinon.stub(),
+        getLocusSyncLatency: sinon.stub(),
+        clearLocusSyncLatency: sinon.stub(),
+      };
+      const parser = createHashTreeParser(
+        undefined,
+        undefined,
+        ['atd-unmuted'],
+        sinon.stub(),
+        syncLatencyTracker
+      );
+      const mainUrl = parser.dataSets.main.url;
+
+      mockGetHashesFromLocusResponse(
+        mainUrl,
+        new Array(16).fill('00000000000000000000000000000000'),
+        createDataSet('main', 16, 1100)
+      );
+      mockSendSyncRequestResponse(mainUrl, null);
+
+      const syncAllPromise = parser.syncAllDatasets({onlyLLM: true});
+
+      await clock.tickAsync(250);
+      await syncAllPromise;
+
+      assert.calledWith(syncLatencyTracker.saveTimestamp, {
+        key: 'internal.client.locus.sync.start',
+        options: {
+          dataSetName: 'main',
+          randomBackoffTime: 250,
+        },
+      });
+    });
+
     it('should upgrade scope from onlyLLM=true to all datasets when onlyLLM=false call arrives during backoff', async () => {
       // Make Math.random return 1 so backoff = 1^2 * 1000 = 1000ms (non-zero delay for interleaving)
       mathRandomStub.returns(1);
