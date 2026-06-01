@@ -1921,8 +1921,6 @@ class HashTreeParser {
       const backoffTime = this.getWeightedBackoffTime(dataSet.backoff);
       const delay = heartbeatIntervalMs + backoffTime;
 
-      dataSet.lastBackoffTime = backoffTime;
-
       dataSet.heartbeatWatchdogTimer = setTimeout(() => {
         dataSet.heartbeatWatchdogTimer = undefined;
 
@@ -1934,6 +1932,8 @@ class HashTreeParser {
           debugId: this.debugId,
           dataSetName: dataSet.name,
         });
+
+        dataSet.lastBackoffTime = backoffTime;
 
         this.enqueueSyncForDataset(dataSet.name, `heartbeat watchdog expired`);
         this.resetHeartbeatWatchdogs([dataSet]);

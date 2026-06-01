@@ -3157,6 +3157,48 @@ describe('HashTreeParser', () => {
         });
       });
 
+      it('uses the root sync random backoff when root timer fires before watchdog', async () => {
+        const syncLatencyTracker = {
+          saveTimestamp: sinon.stub(),
+          getLocusSyncLatency: sinon.stub(),
+          clearLocusSyncLatency: sinon.stub(),
+        };
+        const parser = createHashTreeParser(
+          undefined,
+          undefined,
+          undefined,
+          sinon.stub(),
+          syncLatencyTracker
+        );
+        const mainDataSetUrl = parser.dataSets.main.url;
+
+        mathRandomStub.onFirstCall().returns(0.1); // root-hash timer backoff = 10ms
+        mathRandomStub.onSecondCall().returns(0.5); // watchdog backoff = 250ms
+        mathRandomStub.returns(0);
+
+        parser.handleMessage(
+          createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
+          'root mismatch heartbeat'
+        );
+
+        mockGetHashesFromLocusResponse(
+          mainDataSetUrl,
+          new Array(16).fill('00000000000000000000000000000000'),
+          createDataSet('main', 16, 1101)
+        );
+        mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+        await clock.tickAsync(1010);
+
+        assert.calledWith(syncLatencyTracker.saveTimestamp, {
+          key: 'internal.client.locus.sync.start',
+          options: {
+            dataSetName: 'main',
+            randomBackoffTime: 10,
+          },
+        });
+      });
+
       it('calls POST sync directly for leafCount === 1 data sets', async () => {
         const parser = createHashTreeParser();
         const heartbeatIntervalMs = 5000;
