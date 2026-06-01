@@ -5498,6 +5498,49 @@ describe('HashTreeParser', () => {
       assert.isFalse(parser['pendingSyncMetrics'].has('main'));
     });
 
+    it('does not overwrite pending sync latency state when a safety-net sync runs before broadcast', async () => {
+      const syncMetricsCallback = sinon.stub();
+      const syncLatencyTracker = {
+        saveTimestamp: sinon.stub(),
+        getLocusSyncLatency: sinon.stub(),
+        clearLocusSyncLatency: sinon.stub(),
+      };
+      const parser = createHashTreeParser(
+        undefined,
+        undefined,
+        undefined,
+        syncMetricsCallback,
+        syncLatencyTracker
+      );
+      const mainDataSetUrl = parser.dataSets.main.url;
+
+      parser['pendingSyncMetrics'].set('main', {
+        dataSetName: 'main',
+        dataSetVersion: 1101,
+      } as any);
+
+      mockGetHashesFromLocusResponse(
+        mainDataSetUrl,
+        new Array(16).fill('00000000000000000000000000000000'),
+        createDataSet('main', 16, 1102)
+      );
+      mockSendSyncRequestResponse(mainDataSetUrl, null);
+
+      parser.handleMessage(
+        createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
+        'trigger safety-net sync while metrics are pending'
+      );
+
+      await clock.tickAsync(1000);
+
+      assert.notCalled(syncLatencyTracker.saveTimestamp);
+      assert.notCalled(syncMetricsCallback);
+      assert.deepEqual(parser['pendingSyncMetrics'].get('main'), {
+        dataSetName: 'main',
+        dataSetVersion: 1101,
+      });
+    });
+
     it('invokes syncMetricsCallback when matching dataset version arrives', () => {
       const syncMetricsCallback = sinon.stub();
       const syncLatency = {

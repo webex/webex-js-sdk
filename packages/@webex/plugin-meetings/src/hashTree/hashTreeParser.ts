@@ -1271,7 +1271,10 @@ class HashTreeParser {
    */
   private shouldCollectSyncMetrics(dataSetName: string, isInitialization = false): boolean {
     return Boolean(
-      this.syncLatencyTracker && !isInitialization && SYNC_METRICS_DATA_SETS.includes(dataSetName)
+      this.syncLatencyTracker &&
+        !isInitialization &&
+        SYNC_METRICS_DATA_SETS.includes(dataSetName) &&
+        !this.pendingSyncMetrics.has(dataSetName)
     );
   }
 
