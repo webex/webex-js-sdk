@@ -111,7 +111,7 @@ describe('ApiAIAssistant', () => {
     expect(eventName).toBe('GET_SUGGESTIONS');
     expect(action).toBeUndefined();
     expect(context).toBeUndefined();
-    expect(languageCode).toBe('en');
+    expect(languageCode).toBeUndefined();
     expect(typeof trackingId).toBe('string');
     expect(trackingId.startsWith('WX_CC_SDK_')).toBe(true);
     expect(result).toEqual({ok: true});
@@ -137,7 +137,7 @@ describe('ApiAIAssistant', () => {
     expect(eventName).toBe('ADD_SUGGESTIONS_EXTRA_CONTEXT');
     expect(action).toBeUndefined();
     expect(context).toBe('Need assistance with credit card payment due date');
-    expect(languageCode).toBe('en');
+    expect(languageCode).toBeUndefined();
     expect(typeof trackingId).toBe('string');
     expect(trackingId.startsWith('WX_CC_SDK_')).toBe(true);
     expect(result).toEqual({ok: true});

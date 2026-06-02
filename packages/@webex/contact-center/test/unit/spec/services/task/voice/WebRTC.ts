@@ -1,5 +1,5 @@
 import 'jsdom-global/register';
-import { LocalMicrophoneStream, CALL_EVENT_KEYS } from '@webex/calling';
+import {LocalMicrophoneStream, CALL_EVENT_KEYS} from '@webex/calling';
 import WebRTC from '../../../../../../src/services/task/voice/WebRTC';
 import WebCallingService from '../../../../../../src/services/WebCallingService';
 import {TaskData, TASK_EVENTS} from '../../../../../../src/services/task/types';
@@ -9,13 +9,15 @@ import {createTaskData} from '../taskTestUtils';
 
 jest.mock('@webex/calling', () => ({
   LocalMicrophoneStream: class {
-    constructor(stream) { this.outputStream = stream; }
+    constructor(stream) {
+      this.outputStream = stream;
+    }
   },
-  CALL_EVENT_KEYS: { REMOTE_MEDIA: 'remoteMedia' },
+  CALL_EVENT_KEYS: {REMOTE_MEDIA: 'remoteMedia'},
 }));
 
 beforeAll(() => {
-  navigator.mediaDevices = { getUserMedia: jest.fn() };
+  navigator.mediaDevices = {getUserMedia: jest.fn()};
   // @ts-ignore
   global.MediaStream = class {
     constructor(private tracks: MediaStreamTrack[]) {}
@@ -28,7 +30,7 @@ beforeAll(() => {
 jest.mock('../../../../../../src/services/core/WebexRequest', () => ({
   __esModule: true,
   default: {
-    getInstance: jest.fn().mockReturnValue({ uploadLogs: jest.fn() }),
+    getInstance: jest.fn().mockReturnValue({uploadLogs: jest.fn()}),
   },
 }));
 
@@ -80,7 +82,7 @@ describe('WebRTC Task', () => {
 
   it('accept() obtains media and answers call', async () => {
     const fakeTrack = {} as any;
-    const fakeStream = { getAudioTracks: () => [fakeTrack] } as any;
+    const fakeStream = {getAudioTracks: () => [fakeTrack]} as any;
     jest.spyOn(navigator.mediaDevices, 'getUserMedia').mockResolvedValue(fakeStream);
     await webRtc.accept();
     expect(answerSpy).toHaveBeenCalled();
@@ -93,7 +95,7 @@ describe('WebRTC Task', () => {
     jest.spyOn(webRtc, 'unregisterWebCallListeners');
     const res = await webRtc.decline();
     expect(declineSpy).toHaveBeenCalledWith(taskData.interactionId);
-    expect((webRtc).unregisterWebCallListeners).toHaveBeenCalled();
+    expect(webRtc.unregisterWebCallListeners).toHaveBeenCalled();
     expect(res).toBeUndefined();
   });
 
@@ -107,20 +109,14 @@ describe('WebRTC Task', () => {
   describe('WebRTC internal methods', () => {
     it('registerWebCallListeners binds remote media event', () => {
       webRtc.registerWebCallListeners();
-      expect(onSpy).toHaveBeenCalledWith(
-        CALL_EVENT_KEYS.REMOTE_MEDIA,
-        webRtc.handleRemoteMedia
-      );
+      expect(onSpy).toHaveBeenCalledWith(CALL_EVENT_KEYS.REMOTE_MEDIA, webRtc.handleRemoteMedia);
     });
 
     it('handleRemoteMedia emits TASK_MEDIA event', () => {
       const fakeTrack = {} as any;
       jest.spyOn(webRtc, 'emit');
-      (webRtc).handleRemoteMedia(fakeTrack);
-      expect(webRtc.emit).toHaveBeenCalledWith(
-        TASK_EVENTS.TASK_MEDIA,
-        fakeTrack
-      );
+      webRtc.handleRemoteMedia(fakeTrack);
+      expect(webRtc.emit).toHaveBeenCalledWith(TASK_EVENTS.TASK_MEDIA, fakeTrack);
     });
   });
 
@@ -140,103 +136,100 @@ describe('WebRTC Task', () => {
     });
 
     it('setUIControls for AGENT_CONTACT_ASSIGNED shows mute enabled', () => {
-    sendStateEvents(webRtc, [
-      {type: TaskEvent.TASK_INCOMING, taskData},
-      {type: TaskEvent.ASSIGN, taskData},
-    ]);
-    expect(webRtc.uiControls.main.mute.isVisible).toBe(true);
-    expect(webRtc.uiControls.main.mute.isEnabled).toBe(true);
-  });
+      sendStateEvents(webRtc, [
+        {type: TaskEvent.TASK_INCOMING, taskData},
+        {type: TaskEvent.ASSIGN, taskData},
+      ]);
+      expect(webRtc.uiControls.main.mute.isVisible).toBe(true);
+      expect(webRtc.uiControls.main.mute.isEnabled).toBe(true);
+    });
 
-  it('default setUIControls hides mute when wrapup visible', () => {
-    sendStateEvents(webRtc, [
-      {type: TaskEvent.TASK_INCOMING, taskData},
-      {type: TaskEvent.ASSIGN, taskData},
-      {type: TaskEvent.TASK_WRAPUP},
-    ]);
-    expect(webRtc.uiControls.main.wrapup.isVisible).toBe(true);
-    expect(webRtc.uiControls.main.mute.isVisible).toBe(false);
-  });
+    it('default setUIControls hides mute when wrapup visible', () => {
+      sendStateEvents(webRtc, [
+        {type: TaskEvent.TASK_INCOMING, taskData},
+        {type: TaskEvent.ASSIGN, taskData},
+        {type: TaskEvent.TASK_WRAPUP},
+      ]);
+      expect(webRtc.uiControls.main.wrapup.isVisible).toBe(true);
+      expect(webRtc.uiControls.main.mute.isVisible).toBe(false);
+    });
 
-  it('setUIControls for AGENT_CONTACT_HELD disables mute', () => {
-    sendStateEvents(webRtc, [
-      {type: TaskEvent.TASK_INCOMING, taskData},
-      {type: TaskEvent.ASSIGN, taskData},
-      {type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId},
-      {type: TaskEvent.HOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId},
-    ]);
-    expect(webRtc.uiControls.main.mute.isVisible).toBe(true);
-    expect(webRtc.uiControls.main.mute.isEnabled).toBe(false);
-  });
+    it('setUIControls for AGENT_CONTACT_HELD disables mute', () => {
+      sendStateEvents(webRtc, [
+        {type: TaskEvent.TASK_INCOMING, taskData},
+        {type: TaskEvent.ASSIGN, taskData},
+        {type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId},
+        {type: TaskEvent.HOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId},
+      ]);
+      expect(webRtc.uiControls.main.mute.isVisible).toBe(true);
+      expect(webRtc.uiControls.main.mute.isEnabled).toBe(false);
+    });
 
-  it('setUIControls for AGENT_CONTACT_UNHELD re-enables mute', () => {
-    sendStateEvents(webRtc, [
-      {type: TaskEvent.TASK_INCOMING, taskData},
-      {type: TaskEvent.ASSIGN, taskData},
-      {type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId},
-      {type: TaskEvent.HOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId},
-      {type: TaskEvent.UNHOLD_INITIATED, mediaResourceId: taskData.mediaResourceId},
-      {type: TaskEvent.UNHOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId},
-    ]);
-    expect(webRtc.uiControls.main.mute.isVisible).toBe(true);
-    expect(webRtc.uiControls.main.mute.isEnabled).toBe(true);
-  });
+    it('setUIControls for AGENT_CONTACT_UNHELD re-enables mute', () => {
+      sendStateEvents(webRtc, [
+        {type: TaskEvent.TASK_INCOMING, taskData},
+        {type: TaskEvent.ASSIGN, taskData},
+        {type: TaskEvent.HOLD_INITIATED, mediaResourceId: taskData.mediaResourceId},
+        {type: TaskEvent.HOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId},
+        {type: TaskEvent.UNHOLD_INITIATED, mediaResourceId: taskData.mediaResourceId},
+        {type: TaskEvent.UNHOLD_SUCCESS, mediaResourceId: taskData.mediaResourceId},
+      ]);
+      expect(webRtc.uiControls.main.mute.isVisible).toBe(true);
+      expect(webRtc.uiControls.main.mute.isEnabled).toBe(true);
+    });
 
-  it('setUIControls for AGENT_OFFER_CONTACT shows accept and decline', () => {
-    sendStateEvents(webRtc, [{type: TaskEvent.TASK_INCOMING, taskData}]);
-    expect(webRtc.uiControls.main.accept.isVisible).toBe(true);
-    expect(webRtc.uiControls.main.decline.isVisible).toBe(true);
-  });
+    it('setUIControls for AGENT_OFFER_CONTACT shows accept and decline', () => {
+      sendStateEvents(webRtc, [{type: TaskEvent.TASK_INCOMING, taskData}]);
+      expect(webRtc.uiControls.main.accept.isVisible).toBe(true);
+      expect(webRtc.uiControls.main.decline.isVisible).toBe(true);
+    });
 
-  it('setUIControls for AGENT_OFFER_CONSULT shows accept and decline', () => {
-    const consultedTaskData = {...taskData, isConsulted: true};
-    sendStateEvents(webRtc, [
-      {type: TaskEvent.TASK_INCOMING, taskData},
-      {type: TaskEvent.OFFER_CONSULT, taskData: consultedTaskData},
-    ]);
-    expect(webRtc.uiControls.main.accept.isVisible).toBe(true);
-    expect(webRtc.uiControls.main.decline.isVisible).toBe(true);
-  });
+    it('setUIControls for AGENT_OFFER_CONSULT shows accept and decline', () => {
+      const consultedTaskData = {...taskData, isConsulted: true};
+      sendStateEvents(webRtc, [
+        {type: TaskEvent.TASK_INCOMING, taskData},
+        {type: TaskEvent.OFFER_CONSULT, taskData: consultedTaskData},
+      ]);
+      expect(webRtc.uiControls.main.accept.isVisible).toBe(true);
+      expect(webRtc.uiControls.main.decline.isVisible).toBe(true);
+    });
 
-  it('setUIControls for AGENT_CONSULTING hides accept/decline and shows mute when consulted', () => {
-    const consultedTaskData = {...taskData, isConsulted: true};
-    sendStateEvents(webRtc, [
-      {type: TaskEvent.TASK_INCOMING, taskData},
-      {type: TaskEvent.OFFER_CONSULT, taskData: consultedTaskData},
-      {
-        type: TaskEvent.CONSULTING_ACTIVE,
-        consultDestinationAgentJoined: true,
-        taskData: consultedTaskData,
-      },
-    ]);
-    expect(webRtc.uiControls.main.accept.isVisible).toBe(false);
-    expect(webRtc.uiControls.main.decline.isVisible).toBe(false);
-    expect(webRtc.uiControls.main.mute.isVisible).toBe(true);
-    expect(webRtc.uiControls.main.mute.isEnabled).toBe(true);
-  });
+    it('setUIControls for AGENT_CONSULTING hides accept/decline and shows mute when consulted', () => {
+      const consultedTaskData = {...taskData, isConsulted: true};
+      sendStateEvents(webRtc, [
+        {type: TaskEvent.TASK_INCOMING, taskData},
+        {type: TaskEvent.OFFER_CONSULT, taskData: consultedTaskData},
+        {
+          type: TaskEvent.CONSULTING_ACTIVE,
+          consultDestinationAgentJoined: true,
+          taskData: consultedTaskData,
+        },
+      ]);
+      expect(webRtc.uiControls.main.accept.isVisible).toBe(false);
+      expect(webRtc.uiControls.main.decline.isVisible).toBe(false);
+      expect(webRtc.uiControls.main.mute.isVisible).toBe(true);
+      expect(webRtc.uiControls.main.mute.isEnabled).toBe(false);
+    });
 
-  it('setUIControls for AGENT_CONSULT_ENDED returns mute to connected state behavior', () => {
-    const consultedTaskData = {...taskData, isConsulted: true};
-    sendStateEvents(webRtc, [
-      {type: TaskEvent.TASK_INCOMING, taskData},
-      {type: TaskEvent.OFFER_CONSULT, taskData: consultedTaskData},
-      {
-        type: TaskEvent.CONSULTING_ACTIVE,
-        consultDestinationAgentJoined: true,
-        taskData: consultedTaskData,
-      },
-      {type: TaskEvent.CONSULT_END},
-    ]);
-    expect(webRtc.uiControls.main.mute.isVisible).toBe(false);
-  });
+    it('setUIControls for AGENT_CONSULT_ENDED returns mute to connected state behavior', () => {
+      const consultedTaskData = {...taskData, isConsulted: true};
+      sendStateEvents(webRtc, [
+        {type: TaskEvent.TASK_INCOMING, taskData},
+        {type: TaskEvent.OFFER_CONSULT, taskData: consultedTaskData},
+        {
+          type: TaskEvent.CONSULTING_ACTIVE,
+          consultDestinationAgentJoined: true,
+          taskData: consultedTaskData,
+        },
+        {type: TaskEvent.CONSULT_END},
+      ]);
+      expect(webRtc.uiControls.main.mute.isVisible).toBe(false);
+    });
 
-  it('setUIControls for AGENT_CONTACT_OFFER_RONA hides accept and decline', () => {
-    sendStateEvents(webRtc, [
-      {type: TaskEvent.TASK_INCOMING, taskData},
-      {type: TaskEvent.RONA},
-    ]);
-    expect(webRtc.uiControls.main.accept.isVisible).toBe(false);
-    expect(webRtc.uiControls.main.decline.isVisible).toBe(false);
-  });
+    it('setUIControls for AGENT_CONTACT_OFFER_RONA hides accept and decline', () => {
+      sendStateEvents(webRtc, [{type: TaskEvent.TASK_INCOMING, taskData}, {type: TaskEvent.RONA}]);
+      expect(webRtc.uiControls.main.accept.isVisible).toBe(false);
+      expect(webRtc.uiControls.main.decline.isVisible).toBe(false);
+    });
   });
 });
