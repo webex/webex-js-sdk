@@ -121,18 +121,22 @@ export function callKeepaliveTests() {
     test('CALL-010: Keepalive 401 - expired token tears down call', async ({browser}) => {
       const mobiusWsMode = isMobiusWsMode();
       let failStatus = false;
-      const interceptor = mobiusWsMode
-        ? new MobiusWsInterceptor({
-            onRequest: (frame) =>
-              failStatus && frame.type === MOBIUS_WS_MESSAGE.CALL_STATUS
-                ? {
-                    statusCode: 401,
-                    statusMessage: 'Unauthorized',
-                    data: {message: 'Token expired'},
-                  }
-                : undefined,
-          })
-        : undefined;
+      let interceptor: MobiusWsInterceptor | undefined;
+      if (mobiusWsMode) {
+        interceptor = new MobiusWsInterceptor({
+          onRequest: (frame) => {
+            if (failStatus && frame.type === MOBIUS_WS_MESSAGE.CALL_STATUS) {
+              return {
+                statusCode: 401,
+                statusMessage: 'Unauthorized',
+                data: {message: 'Token expired'},
+              };
+            }
+
+            return undefined;
+          },
+        });
+      }
 
       await Promise.all([
         tm.setupContext(browser, 0, {
@@ -140,7 +144,7 @@ export function callKeepaliveTests() {
           service: 'calling',
           register: true,
           media: true,
-          beforeInit: interceptor ? (context) => interceptor.install(context) : undefined,
+          beforeInit: interceptor ? (ctx) => interceptor!.install(ctx) : undefined,
         }),
         tm.setupContext(browser, 1, {
           initSDK: true,
@@ -211,26 +215,27 @@ export function callKeepaliveTests() {
       const mobiusWsMode = isMobiusWsMode();
       let statusRequestCount = 0;
       let interceptStatus = false;
-      const interceptor = mobiusWsMode
-        ? new MobiusWsInterceptor({
-            onRequest: (frame) => {
-              if (interceptStatus && frame.type === MOBIUS_WS_MESSAGE.CALL_STATUS) {
-                statusRequestCount += 1;
+      let interceptor: MobiusWsInterceptor | undefined;
+      if (mobiusWsMode) {
+        interceptor = new MobiusWsInterceptor({
+          onRequest: (frame) => {
+            if (interceptStatus && frame.type === MOBIUS_WS_MESSAGE.CALL_STATUS) {
+              statusRequestCount += 1;
 
-                if (statusRequestCount === 1) {
-                  return {
-                    statusCode: 500,
-                    statusMessage: 'Internal Server Error',
-                    metadata: {'retry-after': '2'},
-                    data: {error: 'Internal Server Error'},
-                  };
-                }
+              if (statusRequestCount === 1) {
+                return {
+                  statusCode: 500,
+                  statusMessage: 'Internal Server Error',
+                  metadata: {'retry-after': '2'},
+                  data: {error: 'Internal Server Error'},
+                };
               }
+            }
 
-              return undefined;
-            },
-          })
-        : undefined;
+            return undefined;
+          },
+        });
+      }
 
       await Promise.all([
         tm.setupContext(browser, 0, {
@@ -238,7 +243,7 @@ export function callKeepaliveTests() {
           service: 'calling',
           register: true,
           media: true,
-          beforeInit: interceptor ? (context) => interceptor.install(context) : undefined,
+          beforeInit: interceptor ? (ctx) => interceptor!.install(ctx) : undefined,
         }),
         tm.setupContext(browser, 1, {
           initSDK: true,
@@ -311,24 +316,25 @@ export function callKeepaliveTests() {
       const mobiusWsMode = isMobiusWsMode();
       let statusRequestCount = 0;
       let failStatus = false;
-      const interceptor = mobiusWsMode
-        ? new MobiusWsInterceptor({
-            onRequest: (frame) => {
-              if (failStatus && frame.type === MOBIUS_WS_MESSAGE.CALL_STATUS) {
-                statusRequestCount += 1;
+      let interceptor: MobiusWsInterceptor | undefined;
+      if (mobiusWsMode) {
+        interceptor = new MobiusWsInterceptor({
+          onRequest: (frame) => {
+            if (failStatus && frame.type === MOBIUS_WS_MESSAGE.CALL_STATUS) {
+              statusRequestCount += 1;
 
-                return {
-                  statusCode: 500,
-                  statusMessage: 'Internal Server Error',
-                  metadata: {'retry-after': '1'},
-                  data: {error: 'Internal Server Error'},
-                };
-              }
+              return {
+                statusCode: 500,
+                statusMessage: 'Internal Server Error',
+                metadata: {'retry-after': '1'},
+                data: {error: 'Internal Server Error'},
+              };
+            }
 
-              return undefined;
-            },
-          })
-        : undefined;
+            return undefined;
+          },
+        });
+      }
 
       await Promise.all([
         tm.setupContext(browser, 0, {
@@ -336,7 +342,7 @@ export function callKeepaliveTests() {
           service: 'calling',
           register: true,
           media: true,
-          beforeInit: interceptor ? (context) => interceptor.install(context) : undefined,
+          beforeInit: interceptor ? (ctx) => interceptor!.install(ctx) : undefined,
         }),
         tm.setupContext(browser, 1, {
           initSDK: true,

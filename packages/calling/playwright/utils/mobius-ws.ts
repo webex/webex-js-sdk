@@ -71,6 +71,12 @@ const buildResponseFrame = (request: MobiusWsFrame, response: MockResponse): Mob
   data: response.data,
 });
 
+const redactFrame = (frame: MobiusWsFrame): MobiusWsFrame => {
+  if (!frame?.metadata?.authorization) return frame;
+
+  return {...frame, metadata: {...frame.metadata, authorization: '[REDACTED]'}};
+};
+
 export class MobiusWsInterceptor {
   private readonly options: MobiusWsInterceptorOptions;
 
@@ -101,20 +107,28 @@ export class MobiusWsInterceptor {
         }
 
         const requestCount = MobiusWsInterceptor.increment(this.requestCounts, frame.type);
-        this.requests.push({...frame, url});
+        this.requests.push({...redactFrame(frame), url});
 
-        const mockedResponse = await this.options.onRequest?.(frame, {
-          url,
-          requestCount,
-          responseCount: this.getResponseCount(frame.type),
-        });
+        let mockedResponse: MockResponse | void;
+        try {
+          mockedResponse = await this.options.onRequest?.(frame, {
+            url,
+            requestCount,
+            responseCount: this.getResponseCount(frame.type),
+          });
+        } catch (err) {
+          console.error('MobiusWsInterceptor onRequest threw, passing frame through', err);
+          server.send(message);
+
+          return;
+        }
 
         if (mockedResponse) {
           const responseFrame = buildResponseFrame(frame, mockedResponse);
           const responseType = responseFrame.subtype || responseFrame.type || 'unknown';
 
           MobiusWsInterceptor.increment(this.responseCounts, responseType);
-          this.responses.push({...responseFrame, url});
+          this.responses.push({...redactFrame(responseFrame), url});
           route.send(stringifyFrame(responseFrame));
 
           return;
@@ -134,13 +148,21 @@ export class MobiusWsInterceptor {
 
         const responseType = frame.subtype || frame.type || 'unknown';
         const responseCount = MobiusWsInterceptor.increment(this.responseCounts, responseType);
-        this.responses.push({...frame, url});
+        this.responses.push({...redactFrame(frame), url});
 
-        const transformedFrame = await this.options.onResponse?.(frame, {
-          url,
-          requestCount: this.getRequestCount(responseType),
-          responseCount,
-        });
+        let transformedFrame: MobiusWsFrame | void;
+        try {
+          transformedFrame = await this.options.onResponse?.(frame, {
+            url,
+            requestCount: this.getRequestCount(responseType),
+            responseCount,
+          });
+        } catch (err) {
+          console.error('MobiusWsInterceptor onResponse threw, passing frame through', err);
+          route.send(message);
+
+          return;
+        }
 
         route.send(stringifyFrame(transformedFrame || frame));
       });

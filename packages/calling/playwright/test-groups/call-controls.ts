@@ -258,18 +258,22 @@ export function callHoldErrorTests() {
     test('CALL-025: Resume API failure - resume_error event emitted', async ({browser}) => {
       const mobiusWsMode = isMobiusWsMode();
       let failResume = false;
-      const interceptor = mobiusWsMode
-        ? new MobiusWsInterceptor({
-            onRequest: (frame) =>
-              failResume && frame.type === MOBIUS_WS_MESSAGE.CALL_RESUME
-                ? {
-                    statusCode: 500,
-                    statusMessage: 'Internal Server Error',
-                    data: {message: 'Resume failed'},
-                  }
-                : undefined,
-          })
-        : undefined;
+      let interceptor: MobiusWsInterceptor | undefined;
+      if (mobiusWsMode) {
+        interceptor = new MobiusWsInterceptor({
+          onRequest: (frame) => {
+            if (failResume && frame.type === MOBIUS_WS_MESSAGE.CALL_RESUME) {
+              return {
+                statusCode: 500,
+                statusMessage: 'Internal Server Error',
+                data: {message: 'Resume failed'},
+              };
+            }
+
+            return undefined;
+          },
+        });
+      }
 
       await Promise.all([
         tm.setupContext(browser, 0, {
@@ -277,7 +281,7 @@ export function callHoldErrorTests() {
           service: 'calling',
           register: true,
           media: true,
-          beforeInit: interceptor ? (context) => interceptor.install(context) : undefined,
+          beforeInit: interceptor ? (ctx) => interceptor!.install(ctx) : undefined,
         }),
         tm.setupContext(browser, 1, {
           initSDK: true,
@@ -329,18 +333,22 @@ export function callHoldErrorTests() {
     test('CALL-026: Hold API failure - hold_error event emitted', async ({browser}) => {
       const mobiusWsMode = isMobiusWsMode();
       let failHold = false;
-      const interceptor = mobiusWsMode
-        ? new MobiusWsInterceptor({
-            onRequest: (frame) =>
-              failHold && frame.type === MOBIUS_WS_MESSAGE.CALL_HOLD
-                ? {
-                    statusCode: 500,
-                    statusMessage: 'Internal Server Error',
-                    data: {message: 'Hold failed'},
-                  }
-                : undefined,
-          })
-        : undefined;
+      let interceptor: MobiusWsInterceptor | undefined;
+      if (mobiusWsMode) {
+        interceptor = new MobiusWsInterceptor({
+          onRequest: (frame) => {
+            if (failHold && frame.type === MOBIUS_WS_MESSAGE.CALL_HOLD) {
+              return {
+                statusCode: 500,
+                statusMessage: 'Internal Server Error',
+                data: {message: 'Hold failed'},
+              };
+            }
+
+            return undefined;
+          },
+        });
+      }
 
       await Promise.all([
         tm.setupContext(browser, 0, {
@@ -348,7 +356,7 @@ export function callHoldErrorTests() {
           service: 'calling',
           register: true,
           media: true,
-          beforeInit: interceptor ? (context) => interceptor.install(context) : undefined,
+          beforeInit: interceptor ? (ctx) => interceptor!.install(ctx) : undefined,
         }),
         tm.setupContext(browser, 1, {
           initSDK: true,

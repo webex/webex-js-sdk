@@ -46,52 +46,53 @@ export function registrationFailoverTests() {
       expectedBackupUrl = isInt ? BACKUP_MOBIUS_URL.INT : BACKUP_MOBIUS_URL.PROD;
 
       tm = new TestManager(testInfo.project.name);
-      const interceptor = mobiusWsMode
-        ? new MobiusWsInterceptor({
-            onRequest: (frame, context) => {
-              if (frame.type !== MOBIUS_WS_MESSAGE.REGISTER) {
-                return undefined;
-              }
+      let interceptor: MobiusWsInterceptor | undefined;
+      if (mobiusWsMode) {
+        interceptor = new MobiusWsInterceptor({
+          onRequest: (frame, context) => {
+            if (frame.type !== MOBIUS_WS_MESSAGE.REGISTER) {
+              return undefined;
+            }
 
-              registrationAttempts += 1;
-              attemptedUrls.push(context.url);
+            registrationAttempts += 1;
+            attemptedUrls.push(context.url);
 
-              if (phase === 'failover' && registrationAttempts <= MAX_FAILURES) {
+            if (phase === 'failover' && registrationAttempts <= MAX_FAILURES) {
+              return {
+                statusCode: 503,
+                statusMessage: 'Service Unavailable',
+                data: {message: 'Service Unavailable'},
+              };
+            }
+
+            if (phase === 'failback-429') {
+              if (isKnownWsUrl(context.url, primaryWsUrls)) {
+                failback429Attempts += 1;
+
                 return {
-                  statusCode: 503,
-                  statusMessage: 'Service Unavailable',
-                  data: {message: 'Service Unavailable'},
+                  statusCode: 429,
+                  statusMessage: 'Too Many Requests',
+                  metadata: {'retry-after': String(FAILBACK_RETRY_AFTER_SECONDS)},
+                  data: {message: 'Too Many Requests'},
                 };
               }
 
-              if (phase === 'failback-429') {
-                if (isKnownWsUrl(context.url, primaryWsUrls)) {
-                  failback429Attempts += 1;
-
-                  return {
-                    statusCode: 429,
-                    statusMessage: 'Too Many Requests',
-                    metadata: {'retry-after': String(FAILBACK_RETRY_AFTER_SECONDS)},
-                    data: {message: 'Too Many Requests'},
-                  };
-                }
-
-                return undefined;
-              }
-
-              if (phase === 'failback') {
-                failbackRegistrationAttempts += 1;
-              }
-
               return undefined;
-            },
-          })
-        : undefined;
+            }
+
+            if (phase === 'failback') {
+              failbackRegistrationAttempts += 1;
+            }
+
+            return undefined;
+          },
+        });
+      }
       const {context} = await tm.setupContext(browser, 0, {
         initSDK: true,
         service: 'calling',
         beforeInit: interceptor
-          ? (browserContext) => interceptor.install(browserContext)
+          ? (browserContext) => interceptor!.install(browserContext)
           : undefined,
       });
 
