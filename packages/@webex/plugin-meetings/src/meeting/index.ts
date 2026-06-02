@@ -1392,6 +1392,7 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         syncLatencyTracker: (this as any).webex.internal.newMetrics.callDiagnosticLatencies,
       },
+      // @ts-ignore - webex injected by registerPlugin
       this.webex,
       this.id
     );
