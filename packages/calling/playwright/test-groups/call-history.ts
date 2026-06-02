@@ -4,6 +4,7 @@ import {getPhoneNumber} from '../test-data';
 import {
   cleanupActiveCalls,
   endCall,
+  endCallerIfStillActive,
   establishCall,
   makeCall,
   rejectCall,
@@ -18,21 +19,47 @@ import {
   CALL_HISTORY_TIME_LOOKBACK_MS,
 } from '../constants';
 import {
+  attachCallHistorySummary,
   expectHistoryTiming,
   expectUiShowsHistoryRecord,
   expectUiShowsHistoryRecords,
-  openCallHistoryList,
-} from '../utils/call-history';
-import {
-  attachCallHistorySummary,
-  endCallerIfStillActive,
-  expectDisposition,
+  getCallHistoryRecords,
   getDisplayHistoryRecords,
-  runBidirectionalHistoryJourney,
+  openCallHistoryList,
   waitForCallHistoryCase,
-} from '../utils/call-history-journey';
+} from '../utils/call-history';
+import {runBidirectionalHistoryJourney} from '../utils/call-history-journey';
 
 export function callHistoryTests() {
+  test.describe('Call History Query', () => {
+    test('CH-QUERY-001: Call history query helper passes pagination and sorting options', async ({
+      page,
+    }) => {
+      await page.evaluate(() => {
+        (window as any).__callHistoryQueryArgs = [];
+        (window as any).callHistory = {
+          getCallHistoryData: async (...args: unknown[]) => {
+            (window as any).__callHistoryQueryArgs.push(args);
+
+            return {data: {userSessions: [{sessionId: 'query-record'}]}};
+          },
+        };
+      });
+
+      const records = await getCallHistoryRecords(page, {
+        days: 3,
+        limit: 5,
+        sort: 'ASC',
+        sortBy: 'startTime',
+      });
+
+      const queryArgs = await page.evaluate(() => (window as any).__callHistoryQueryArgs[0]);
+
+      expect(records).toEqual([{sessionId: 'query-record'}]);
+      expect(queryArgs).toEqual([3, 5, 'ASC', 'startTime']);
+    });
+  });
+
   test.describe('Call History', () => {
     test.describe.configure({mode: 'serial', timeout: 300000});
 
@@ -152,7 +179,6 @@ export function callHistoryTests() {
         'caller outgoing unanswered call'
       );
 
-      expectDisposition(calleeMissedRecord, ['MISSED']);
       expectHistoryTiming(calleeMissedRecord, {notBefore: startedAt, notAfter: endedAt});
       expectHistoryTiming(callerCanceledRecord, {notBefore: startedAt, notAfter: endedAt});
       await attachCallHistorySummary(testInfo, 'missed-not-picked', [
@@ -208,7 +234,7 @@ export function callHistoryTests() {
       await expectUiShowsHistoryRecord(calleePage, calleeRecord);
     });
 
-    test('CH-LIST-001 / CH-ALL-001 / CH-ALL-002: Bidirectional journey renders in Call History UI', async ({}, testInfo) => {
+    test('CH-LIST-001: Bidirectional journey renders in Call History UI', async ({}, testInfo) => {
       test.setTimeout(1800000);
 
       const callerPage = tm.getPage(tm.userSet.accounts[0]);

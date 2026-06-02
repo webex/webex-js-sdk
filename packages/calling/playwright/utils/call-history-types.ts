@@ -1,13 +1,10 @@
 import type {Page} from '@playwright/test';
 
-export type SortOrder = 'ASC' | 'DESC';
-export type SortBy = 'startTime' | 'endTime';
-
 export type CallHistoryQuery = {
   days?: number;
   limit?: number;
-  sort?: SortOrder;
-  sortBy?: SortBy;
+  sort?: 'ASC' | 'DESC';
+  sortBy?: 'startTime' | 'endTime';
 };
 
 export type CallHistoryWaitOptions = CallHistoryQuery & {
@@ -53,10 +50,6 @@ export type CallHistoryRow = {
   forwardedBy: string;
 };
 
-export type CallJourneyOutcome = 'ANSWERED' | 'REJECTED' | 'MISSED';
-export type CallHistoryDisposition = CallJourneyOutcome | 'CANCELED';
-export type UserLabel = 'user1' | 'user2';
-
 export type HistoryMatcherOptions = {
   counterpartNumber: string;
   direction: 'INCOMING' | 'OUTGOING';
@@ -65,20 +58,20 @@ export type HistoryMatcherOptions = {
 };
 
 export type HistoryDebugRecord = {
-  user: UserLabel;
-  expectedDisposition: CallHistoryDisposition;
+  user: string;
+  expectedDisposition: 'ANSWERED' | 'REJECTED' | 'MISSED' | 'CANCELED';
   record: CallHistoryRecord;
 };
 
 export type CallJourneyLeg = {
   label: string;
-  originLabel: UserLabel;
+  originLabel: string;
   originPage: Page;
   originNumber: string;
-  targetLabel: UserLabel;
+  targetLabel: string;
   targetPage: Page;
   targetNumber: string;
-  outcome: CallJourneyOutcome;
+  outcome: 'ANSWERED' | 'REJECTED' | 'MISSED';
   originSeenHistoryKeys: Set<string>;
   targetSeenHistoryKeys: Set<string>;
 };

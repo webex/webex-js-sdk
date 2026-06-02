@@ -1,11 +1,13 @@
 import {expect} from '@playwright/test';
-import type {Page, Route} from '@playwright/test';
+import type {Page, Route, TestInfo} from '@playwright/test';
 import {
   AWAIT_TIMEOUT,
   CALLING_SELECTORS,
+  CALL_HISTORY_COUNTERPART_MATCH_MIN_DIGITS,
   CALL_HISTORY_DURATION_TOLERANCE_SECONDS,
   CALL_HISTORY_EVENTUAL_CONSISTENCY_TIMEOUT,
   CALL_HISTORY_POLL_INTERVALS,
+  CALL_HISTORY_RECENT_RECORD_TOLERANCE_MS,
   CALL_HISTORY_TIMING_TOLERANCE_MS,
   CALL_HISTORY_URL_PATTERN,
 } from '../constants';
@@ -14,6 +16,8 @@ import type {
   CallHistoryRecord,
   CallHistoryRow,
   CallHistoryWaitOptions,
+  HistoryDebugRecord,
+  HistoryMatcherOptions,
   HistoryTimeBounds,
 } from './call-history-types';
 
@@ -26,13 +30,11 @@ const DEFAULT_HISTORY_QUERY: Required<CallHistoryQuery> = {
   sortBy: 'endTime',
 };
 
-export const normalizeDisposition = (disposition?: string): string =>
-  (disposition ?? '').toUpperCase();
-
-export const normalizeDirection = (direction?: string): string => (direction ?? '').toUpperCase();
-
 const normalizePhoneNumber = (value?: string): string => (value ?? '').replace(/\D/g, '');
 
+/**
+ * Compares a record's available counterpart fields with the expected phone number.
+ */
 export const phoneMatchesRecord = (
   record: CallHistoryRecord,
   phoneNumber: string,
@@ -57,6 +59,9 @@ export const phoneMatchesRecord = (
   return candidates.some((candidate) => normalizePhoneNumber(candidate).endsWith(expectedTail));
 };
 
+/**
+ * Reads the duration from the API record, or derives it from start and end timestamps.
+ */
 export const getCallHistoryDurationSeconds = (record: CallHistoryRecord): number | undefined => {
   const apiDuration = record.durationSeconds ?? record.durationSecs;
 
@@ -74,6 +79,39 @@ export const getCallHistoryDurationSeconds = (record: CallHistoryRecord): number
   return Math.max(0, Math.round((end - start) / 1000));
 };
 
+const isRecentRecord = (record: CallHistoryRecord, startedAt: Date): boolean => {
+  const startTime = Date.parse(record.startTime ?? '');
+
+  return (
+    !Number.isNaN(startTime) &&
+    startTime >= startedAt.getTime() - CALL_HISTORY_RECENT_RECORD_TOLERANCE_MS
+  );
+};
+
+/**
+ * Checks whether a history record belongs to a specific call attempt.
+ */
+export const recordMatchesCallCase = (
+  record: CallHistoryRecord,
+  options: HistoryMatcherOptions
+): boolean => {
+  const disposition = (record.disposition ?? '').toUpperCase();
+
+  return (
+    phoneMatchesRecord(
+      record,
+      options.counterpartNumber,
+      CALL_HISTORY_COUNTERPART_MATCH_MIN_DIGITS
+    ) &&
+    (record.direction ?? '').toUpperCase() === options.direction &&
+    isRecentRecord(record, options.startedAt) &&
+    (!options.dispositions || options.dispositions.includes(disposition))
+  );
+};
+
+/**
+ * Fetches call-history records from the sample app's initialized Calling SDK instance.
+ */
 export const getCallHistoryRecords = async (
   page: Page,
   options: CallHistoryQuery = {}
@@ -93,6 +131,9 @@ export const getCallHistoryRecords = async (
   }, query);
 };
 
+/**
+ * Polls the SDK until the expected call-history record is eventually available.
+ */
 export const waitForCallHistoryRecord = async (
   page: Page,
   matcher: (record: CallHistoryRecord) => boolean,
@@ -120,6 +161,63 @@ export const waitForCallHistoryRecord = async (
 
   return matchingRecord as CallHistoryRecord;
 };
+
+/**
+ * Waits for a call-history record matching one user side of a call.
+ */
+export const waitForCallHistoryCase = async (
+  page: Page,
+  options: HistoryMatcherOptions,
+  description: string
+): Promise<CallHistoryRecord> =>
+  waitForCallHistoryRecord(page, (record) => recordMatchesCallCase(record, options), description);
+
+/**
+ * Attaches compact call-history details to the Playwright report.
+ */
+export const attachCallHistorySummary = async (
+  testInfo: TestInfo,
+  label: string,
+  records: HistoryDebugRecord[]
+): Promise<void> => {
+  const summary = records.map(({user, expectedDisposition, record}) => ({
+    user,
+    expectedDisposition,
+    direction: record.direction,
+    rawDisposition: record.disposition,
+    displayDisposition: expectedDisposition,
+    startTime: record.startTime,
+    endTime: record.endTime,
+    durationSeconds: getCallHistoryDurationSeconds(record),
+    sessionType: record.sessionType,
+    counterpart:
+      record.other?.phoneNumber ??
+      record.other?.callbackAddress ??
+      record.links?.callbackAddress ??
+      record.other?.name,
+  }));
+  const oneLineSummary = summary
+    .map(
+      (record) =>
+        `${record.user}:${record.expectedDisposition}:${record.direction}/${record.rawDisposition}:${record.durationSeconds}s`
+    )
+    .join('; ');
+
+  testInfo.annotations.push({type: 'call-history', description: `${label}: ${oneLineSummary}`});
+  await testInfo.attach(`${label}-call-history-summary.json`, {
+    body: JSON.stringify(summary, null, 2),
+    contentType: 'application/json',
+  });
+};
+
+/**
+ * Returns records for one logical user from journey debug records.
+ */
+export const getDisplayHistoryRecords = (
+  records: HistoryDebugRecord[],
+  user: string
+): CallHistoryRecord[] =>
+  records.filter((debugRecord) => debugRecord.user === user).map(({record}) => record);
 
 const clearCallHistoryTable = async (page: Page): Promise<void> => {
   await page.evaluate(

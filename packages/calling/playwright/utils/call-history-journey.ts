@@ -1,11 +1,8 @@
 import {expect} from '@playwright/test';
 import type {Page, TestInfo} from '@playwright/test';
 import {
-  CALLING_SELECTORS,
   CALL_HISTORY_ANSWERED_DISPOSITIONS,
-  CALL_HISTORY_COUNTERPART_MATCH_MIN_DIGITS,
   CALL_HISTORY_MISSED_CALLER_DISPOSITIONS,
-  CALL_HISTORY_RECENT_RECORD_TOLERANCE_MS,
   CALL_HISTORY_REJECTED_CALLEE_DISPOSITIONS,
   CALL_HISTORY_REJECTED_CALLER_DISPOSITIONS,
   CALL_HISTORY_TIME_LOOKBACK_MS,
@@ -13,6 +10,7 @@ import {
 import {
   cleanupActiveCalls,
   endCall,
+  endCallerIfStillActive,
   establishCall,
   makeCall,
   rejectCall,
@@ -20,99 +18,22 @@ import {
   waitForIncomingCall,
 } from './call';
 import {
+  attachCallHistorySummary,
   expectHistoryTiming,
   expectUiShowsHistoryRecords,
-  getCallHistoryDurationSeconds,
   getCallHistoryRecords,
-  normalizeDirection,
-  normalizeDisposition,
-  phoneMatchesRecord,
+  getDisplayHistoryRecords,
+  recordMatchesCallCase,
   waitForCallHistoryRecord,
 } from './call-history';
 import type {
   BidirectionalHistoryJourneyOptions,
   BidirectionalHistoryJourneyResult,
   CallHistoryRecord,
-  CallHistoryDisposition,
   CallJourneyLeg,
-  CallJourneyOutcome,
   HistoryDebugRecord,
   HistoryMatcherOptions,
-  UserLabel,
 } from './call-history-types';
-
-export const attachCallHistorySummary = async (
-  testInfo: TestInfo,
-  label: string,
-  records: HistoryDebugRecord[]
-): Promise<void> => {
-  const summary = records.map(({user, expectedDisposition, record}) => ({
-    user,
-    expectedDisposition,
-    direction: record.direction,
-    rawDisposition: record.disposition,
-    displayDisposition: expectedDisposition,
-    startTime: record.startTime,
-    endTime: record.endTime,
-    durationSeconds: getCallHistoryDurationSeconds(record),
-    sessionType: record.sessionType,
-    counterpart:
-      record.other?.phoneNumber ??
-      record.other?.callbackAddress ??
-      record.links?.callbackAddress ??
-      record.other?.name,
-  }));
-  const oneLineSummary = summary
-    .map(
-      (record) =>
-        `${record.user}:${record.expectedDisposition}:${record.direction}/${record.rawDisposition}:${record.durationSeconds}s`
-    )
-    .join('; ');
-
-  testInfo.annotations.push({type: 'call-history', description: `${label}: ${oneLineSummary}`});
-  await testInfo.attach(`${label}-call-history-summary.json`, {
-    body: JSON.stringify(summary, null, 2),
-    contentType: 'application/json',
-  });
-};
-
-const isRecentRecord = (record: CallHistoryRecord, startedAt: Date): boolean => {
-  const startTime = Date.parse(record.startTime ?? '');
-
-  return (
-    !Number.isNaN(startTime) &&
-    startTime >= startedAt.getTime() - CALL_HISTORY_RECENT_RECORD_TOLERANCE_MS
-  );
-};
-
-export const recordMatchesCallCase = (
-  record: CallHistoryRecord,
-  options: HistoryMatcherOptions
-): boolean => {
-  const disposition = normalizeDisposition(record.disposition);
-
-  return (
-    phoneMatchesRecord(
-      record,
-      options.counterpartNumber,
-      CALL_HISTORY_COUNTERPART_MATCH_MIN_DIGITS
-    ) &&
-    normalizeDirection(record.direction) === options.direction &&
-    isRecentRecord(record, options.startedAt) &&
-    (!options.dispositions || options.dispositions.includes(disposition))
-  );
-};
-
-export const waitForCallHistoryCase = async (
-  page: Page,
-  options: HistoryMatcherOptions,
-  description: string
-): Promise<CallHistoryRecord> =>
-  waitForCallHistoryRecord(page, (record) => recordMatchesCallCase(record, options), description);
-
-export const expectDisposition = (record: CallHistoryRecord, expected: string[]): void => {
-  expect(expected).toContain(normalizeDisposition(record.disposition));
-};
 
 const getHistoryRecordKey = (record: CallHistoryRecord): string =>
   record.sessionId ??
@@ -134,15 +55,6 @@ const rememberCurrentHistoryRecords = async (page: Page, seenKeys: Set<string>):
   records.forEach((record) => seenKeys.add(getHistoryRecordKey(record)));
 };
 
-export const endCallerIfStillActive = async (page: Page): Promise<void> => {
-  const endButton = page.locator(CALLING_SELECTORS.END_CALL_BTN);
-  const canEndCall = await endButton.isEnabled().catch(() => false);
-
-  if (canEndCall) {
-    await endCall(page);
-  }
-};
-
 const waitForNewHistoryRecord = async (
   page: Page,
   seenHistoryKeys: Set<string>,
@@ -162,7 +74,7 @@ const waitForNewHistoryRecord = async (
   return record;
 };
 
-const getIncomingDispositionsForOutcome = (outcome: CallJourneyOutcome): string[] => {
+const getIncomingDispositionsForOutcome = (outcome: CallJourneyLeg['outcome']): string[] => {
   if (outcome === 'ANSWERED') {
     return CALL_HISTORY_ANSWERED_DISPOSITIONS;
   }
@@ -174,7 +86,7 @@ const getIncomingDispositionsForOutcome = (outcome: CallJourneyOutcome): string[
   return ['MISSED'];
 };
 
-const getOutgoingDispositionsForOutcome = (outcome: CallJourneyOutcome): string[] => {
+const getOutgoingDispositionsForOutcome = (outcome: CallJourneyLeg['outcome']): string[] => {
   if (outcome === 'ANSWERED') {
     return CALL_HISTORY_ANSWERED_DISPOSITIONS;
   }
@@ -187,9 +99,9 @@ const getOutgoingDispositionsForOutcome = (outcome: CallJourneyOutcome): string[
 };
 
 const getExpectedDispositionForOutcome = (
-  outcome: CallJourneyOutcome,
+  outcome: CallJourneyLeg['outcome'],
   callSide: 'origin' | 'target'
-): CallHistoryDisposition => {
+): HistoryDebugRecord['expectedDisposition'] => {
   if (outcome === 'ANSWERED') {
     return 'ANSWERED';
   }
@@ -200,12 +112,6 @@ const getExpectedDispositionForOutcome = (
 
   return outcome;
 };
-
-export const getDisplayHistoryRecords = (
-  records: HistoryDebugRecord[],
-  user: UserLabel
-): CallHistoryRecord[] =>
-  records.filter((debugRecord) => debugRecord.user === user).map(({record}) => record);
 
 const executeCallJourneyLeg = async (
   leg: CallJourneyLeg,
@@ -261,10 +167,6 @@ const executeCallJourneyLeg = async (
     },
     `${leg.label} ${leg.targetLabel} incoming ${leg.outcome.toLowerCase()} call`
   );
-
-  if (leg.outcome === 'MISSED') {
-    expectDisposition(targetRecord, ['MISSED']);
-  }
 
   expectHistoryTiming(originRecord, {notBefore: startedAt, notAfter: endedAt});
   expectHistoryTiming(targetRecord, {notBefore: startedAt, notAfter: endedAt});
