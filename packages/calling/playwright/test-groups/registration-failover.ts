@@ -26,7 +26,7 @@ export function registrationFailoverTests() {
   test.describe('Failover & Failback', () => {
     test.describe.configure({mode: 'serial'});
 
-    let tm: TestManager;
+    let testManager: TestManager;
     let registrationAttempts = 0;
     const attemptedUrls: string[] = [];
     let phase: 'failover' | 'failback' | 'failback-429' = 'failover';
@@ -45,7 +45,7 @@ export function registrationFailoverTests() {
       expectedPrimaryUrl = isInt ? PRIMARY_MOBIUS_URL.INT : PRIMARY_MOBIUS_URL.PROD;
       expectedBackupUrl = isInt ? BACKUP_MOBIUS_URL.INT : BACKUP_MOBIUS_URL.PROD;
 
-      tm = new TestManager(testInfo.project.name);
+      testManager = new TestManager(testInfo.project.name);
       let interceptor: MobiusWsInterceptor | undefined;
       if (mobiusWsMode) {
         interceptor = new MobiusWsInterceptor({
@@ -88,7 +88,7 @@ export function registrationFailoverTests() {
           },
         });
       }
-      const {context} = await tm.setupContext(browser, 0, {
+      const {context} = await testManager.setupContext(browser, 0, {
         initSDK: true,
         service: 'calling',
         beforeInit: interceptor
@@ -97,7 +97,7 @@ export function registrationFailoverTests() {
       });
 
       if (mobiusWsMode) {
-        const discovered = await getDiscoveredMobiusWsUrls(tm.page);
+        const discovered = await getDiscoveredMobiusWsUrls(testManager.page);
         primaryWsUrls = discovered.primary;
         backupWsUrls = discovered.backup;
       } else {
@@ -145,14 +145,14 @@ export function registrationFailoverTests() {
     });
 
     test.afterAll(async () => {
-      await tm.context.unrouteAll({behavior: 'ignoreErrors'});
-      await tm.cleanup();
+      await testManager.context.unrouteAll({behavior: 'ignoreErrors'});
+      await testManager.cleanup();
     });
 
     test('REG-006: Primary-to-backup failover on repeated failure', async () => {
       test.setTimeout(300000);
 
-      const page = tm.page;
+      const page = testManager.page;
 
       // Click register — will fail on primary, eventually succeed on backup
       await page.locator(CALLING_SELECTORS.REGISTER_BTN).click({timeout: AWAIT_TIMEOUT});
@@ -188,7 +188,7 @@ export function registrationFailoverTests() {
     test('REG-017: 429 during failback exhausts retry budget, stays on backup', async () => {
       test.setTimeout(300000);
 
-      const page = tm.page;
+      const page = testManager.page;
 
       // Device is on backup from REG-006
       if (mobiusWsMode) {
@@ -262,7 +262,7 @@ export function registrationFailoverTests() {
     test('REG-007: Fallback to primary from backup', async () => {
       test.setTimeout(300000);
 
-      const page = tm.page;
+      const page = testManager.page;
 
       // Record the backup URL from REG-006
       const backupUrl = await getActiveMobiusUrl(page);

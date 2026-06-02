@@ -34,7 +34,7 @@ export function registrationLifecycleTests() {
   test.describe('Registration Lifecycle', () => {
     test.describe.configure({mode: 'serial'});
 
-    let tm: TestManager;
+    let testManager: TestManager;
     let registrationPosts = 0;
     let deletePosts = 0;
     let keepaliveCount = 0;
@@ -45,7 +45,7 @@ export function registrationLifecycleTests() {
     test.beforeAll(async ({browser}, testInfo) => {
       const isInt = isIntProject(testInfo.project.name);
       expectedPrimaryUrl = isInt ? PRIMARY_MOBIUS_URL.INT : PRIMARY_MOBIUS_URL.PROD;
-      tm = new TestManager(testInfo.project.name);
+      testManager = new TestManager(testInfo.project.name);
       if (mobiusWsMode) {
         mobiusWsInterceptor = new MobiusWsInterceptor({
           onResponse: (frame) => {
@@ -63,7 +63,7 @@ export function registrationLifecycleTests() {
           },
         });
       }
-      const {context, page} = await tm.setupContext(browser, 0, {
+      const {context, page} = await testManager.setupContext(browser, 0, {
         initSDK: true,
         service: 'calling',
         beforeInit: mobiusWsInterceptor
@@ -107,11 +107,11 @@ export function registrationLifecycleTests() {
     });
 
     test.afterAll(async () => {
-      await tm.cleanup();
+      await testManager.cleanup();
     });
 
     test('REG-001: Initial registration success', async () => {
-      const page = tm.page;
+      const page = testManager.page;
 
       if (mobiusWsMode) {
         expect(mobiusWsInterceptor?.getRequestCount(MOBIUS_WS_MESSAGE.REGISTER)).toBe(1);
@@ -147,7 +147,7 @@ export function registrationLifecycleTests() {
     });
 
     test('REG-003: Keepalive requests are sent after registration', async () => {
-      const page = tm.page;
+      const page = testManager.page;
 
       await expect
         .poll(
@@ -169,8 +169,8 @@ export function registrationLifecycleTests() {
     test('REG-008: Connection restoration re-registers when no active calls', async () => {
       test.setTimeout(240000);
 
-      const page = tm.page;
-      const context = tm.context;
+      const page = testManager.page;
+      const context = testManager.context;
       const initialRegCount = mobiusWsMode
         ? mobiusWsInterceptor?.getRequestCount(MOBIUS_WS_MESSAGE.REGISTER) || 0
         : registrationPosts;
@@ -221,7 +221,7 @@ export function registrationLifecycleTests() {
     });
 
     test('REG-010: Deregistration success and cleanup', async () => {
-      const page = tm.page;
+      const page = testManager.page;
 
       await unregisterLine(page);
 

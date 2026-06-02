@@ -57,47 +57,47 @@ export function callKeepaliveTests() {
   test.describe('Call Keepalive', () => {
     test.describe.configure({mode: 'serial', timeout: 180000});
 
-    let tm: TestManager;
+    let testManager: TestManager;
     let calleeNumber: string;
 
     test.beforeAll(async ({browser}, testInfo) => {
-      tm = new TestManager(testInfo.project.name);
+      testManager = new TestManager(testInfo.project.name);
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      calleeNumber = getPhoneNumber(tm.userSet.accounts[1], tm.isInt);
+      calleeNumber = getPhoneNumber(testManager.userSet.accounts[1], testManager.isInt);
     });
 
     test.afterEach(async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       // Unroute any intercepted requests from this test
       await callerPage.unrouteAll({behavior: 'ignoreErrors'}).catch(() => {});
       await Promise.all([cleanupActiveCalls(callerPage), cleanupActiveCalls(calleePage)]);
-      if (!tm.page.isClosed()) {
-        await tm.page.waitForTimeout(3000);
+      if (!testManager.page.isClosed()) {
+        await testManager.page.waitForTimeout(3000);
       }
     });
 
     test.afterAll(async () => {
-      await tm.cleanup();
+      await testManager.cleanup();
     });
 
     test('CALL-009: Keepalive success - postStatus 200 keeps call alive', async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
       await disableAutoKeepalive(callerPage);
@@ -139,22 +139,22 @@ export function callKeepaliveTests() {
       }
 
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
           beforeInit: interceptor ? (ctx) => interceptor!.install(ctx) : undefined,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
       await disableAutoKeepalive(callerPage);
@@ -238,22 +238,22 @@ export function callKeepaliveTests() {
       }
 
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
           beforeInit: interceptor ? (ctx) => interceptor!.install(ctx) : undefined,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
       await disableAutoKeepalive(callerPage);
@@ -337,22 +337,22 @@ export function callKeepaliveTests() {
       }
 
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
           beforeInit: interceptor ? (ctx) => interceptor!.install(ctx) : undefined,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
       await disableAutoKeepalive(callerPage);

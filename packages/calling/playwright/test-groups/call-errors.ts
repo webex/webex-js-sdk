@@ -209,45 +209,45 @@ export function callEdgeCaseTests() {
   test.describe('Call Edge Cases', () => {
     test.describe.configure({mode: 'serial', timeout: 240000});
 
-    let tm: TestManager;
+    let testManager: TestManager;
     let calleeNumber: string;
 
     test.beforeAll(async ({browser}, testInfo) => {
-      tm = new TestManager(testInfo.project.name);
+      testManager = new TestManager(testInfo.project.name);
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      calleeNumber = getPhoneNumber(tm.userSet.accounts[1], tm.isInt);
+      calleeNumber = getPhoneNumber(testManager.userSet.accounts[1], testManager.isInt);
     });
 
     test.afterEach(async () => {
       await Promise.all([
-        cleanupActiveCalls(tm.getPage(tm.userSet.accounts[0])),
-        cleanupActiveCalls(tm.getPage(tm.userSet.accounts[1])),
+        cleanupActiveCalls(testManager.getPage(testManager.userSet.accounts[0])),
+        cleanupActiveCalls(testManager.getPage(testManager.userSet.accounts[1])),
       ]);
-      if (!tm.page.isClosed()) {
-        await tm.page.waitForTimeout(3000);
+      if (!testManager.page.isClosed()) {
+        await testManager.page.waitForTimeout(3000);
       }
     });
 
     test.afterAll(async () => {
-      await tm.cleanup();
+      await testManager.cleanup();
     });
 
     test('CALL-016: Resume and disconnect race - concurrent operations on 2 endpoints', async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
 
@@ -275,21 +275,21 @@ export function callEdgeCaseTests() {
       browser,
     }) => {
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
 
@@ -327,21 +327,21 @@ export function callEdgeCaseTests() {
     }) => {
       // Fresh contexts — CALL-017 deregistered the callee
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       // Deregister callee so their device is offline
       await unregisterLine(calleePage);
@@ -366,8 +366,8 @@ export function callEdgeCaseTests() {
     test.fixme(
       'CALL-019: Page close during active call - callee browser closes mid-call',
       async () => {
-        const callerPage = tm.getPage(tm.userSet.accounts[0]);
-        const calleePage = tm.getPage(tm.userSet.accounts[1]);
+        const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+        const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
         await establishCall(callerPage, calleePage, calleeNumber);
 
@@ -400,20 +400,20 @@ export function callEdgeCaseTests() {
         //
         // Both contexts need fresh setup since CALL-019 closed the callee page
         // and the caller's UI state (hold button) may be stale
-        await tm.setupContext(browser, 0, {
+        await testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         });
-        await tm.setupContext(browser, 1, {
+        await testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         });
-        const callerPage = tm.getPage(tm.userSet.accounts[0]);
-        const calleePage = tm.getPage(tm.userSet.accounts[1]);
+        const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+        const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
         await establishCall(callerPage, calleePage, calleeNumber);
 

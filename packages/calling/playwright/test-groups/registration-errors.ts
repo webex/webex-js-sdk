@@ -17,26 +17,26 @@ export function registrationErrorTests() {
       const mobiusWsMode = isMobiusWsMode();
 
       if (mobiusWsMode) {
-        await new MobiusWsInterceptor({
-          onRequest: (frame) => {
-            if (frame.type === MOBIUS_WS_MESSAGE.AUTH) {
-              return {statusCode: 200, statusMessage: 'OK'};
-            }
+        const onRequest = (frame: {type?: string}) => {
+          if (frame.type === MOBIUS_WS_MESSAGE.AUTH) {
+            return {statusCode: 200, statusMessage: 'OK'};
+          }
 
-            if (frame.type === MOBIUS_WS_MESSAGE.REGISTER) {
-              registrationPosts += 1;
-              registrationStatus = 401;
+          if (frame.type === MOBIUS_WS_MESSAGE.REGISTER) {
+            registrationPosts += 1;
+            registrationStatus = 401;
 
-              return {
-                statusCode: 401,
-                statusMessage: 'Unauthorized',
-                data: {message: 'Unauthorized'},
-              };
-            }
+            return {
+              statusCode: 401,
+              statusMessage: 'Unauthorized',
+              data: {message: 'Unauthorized'},
+            };
+          }
 
-            return undefined;
-          },
-        }).install(context);
+          return undefined;
+        };
+
+        await new MobiusWsInterceptor({onRequest}).install(context);
       } else {
         await context.route(/\/calling\/web\/device$/, async (route) => {
           if (route.request().method() === 'POST') {
