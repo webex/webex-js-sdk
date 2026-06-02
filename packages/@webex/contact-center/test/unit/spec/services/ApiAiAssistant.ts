@@ -111,7 +111,7 @@ describe('ApiAIAssistant', () => {
     expect(eventName).toBe('GET_SUGGESTIONS');
     expect(action).toBeUndefined();
     expect(context).toBeUndefined();
-    expect(languageCode).toBeUndefined();
+    expect(languageCode).toBe('en');
     expect(typeof trackingId).toBe('string');
     expect(trackingId.startsWith('WX_CC_SDK_')).toBe(true);
     expect(result).toEqual({ok: true});
@@ -137,7 +137,33 @@ describe('ApiAIAssistant', () => {
     expect(eventName).toBe('ADD_SUGGESTIONS_EXTRA_CONTEXT');
     expect(action).toBeUndefined();
     expect(context).toBe('Need assistance with credit card payment due date');
-    expect(languageCode).toBeUndefined();
+    expect(languageCode).toBe('en');
+    expect(typeof trackingId).toBe('string');
+    expect(trackingId.startsWith('WX_CC_SDK_')).toBe(true);
+    expect(result).toEqual({ok: true});
+  });
+
+  it('should treat whitespace-only context as GET_SUGGESTIONS', async () => {
+    const sendEventSpy = jest.spyOn(apiAIAssistant, 'sendEvent').mockResolvedValue({ok: true});
+    apiAIAssistant.setAIFeatureFlags({suggestedResponses: {enable: true}} as any);
+
+    const result = await apiAIAssistant.getSuggestedResponse({
+      agentId: 'test-agent-id',
+      interactionId: 'interaction-1',
+      context: '   ',
+    });
+
+    expect(sendEventSpy).toHaveBeenCalledTimes(1);
+    const [agentId, interactionId, eventType, eventName, action, context, languageCode, trackingId] =
+      sendEventSpy.mock.calls[0];
+
+    expect(agentId).toBe('test-agent-id');
+    expect(interactionId).toBe('interaction-1');
+    expect(eventType).toBe('CUSTOM_EVENT');
+    expect(eventName).toBe('GET_SUGGESTIONS');
+    expect(action).toBeUndefined();
+    expect(context).toBe('');
+    expect(languageCode).toBe('en');
     expect(typeof trackingId).toBe('string');
     expect(trackingId.startsWith('WX_CC_SDK_')).toBe(true);
     expect(result).toEqual({ok: true});

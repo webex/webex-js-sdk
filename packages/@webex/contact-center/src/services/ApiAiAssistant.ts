@@ -159,9 +159,11 @@ export class ApiAIAssistant {
    * @public
    */
   public async getSuggestedResponse(params: SuggestedResponseParams): Promise<any> {
-    const {agentId, interactionId, context, languageCode} = params;
+    const {agentId, interactionId, context} = params;
+    const trimmedContext = context?.trim();
+    const languageCode = params.languageCode ?? 'en';
     const trackingId = `WX_CC_SDK_${uuidv4()}`;
-    const eventName = context
+    const eventName = trimmedContext
       ? AIAssistantEventName.ADD_SUGGESTIONS_EXTRA_CONTEXT
       : AIAssistantEventName.GET_SUGGESTIONS;
 
@@ -198,7 +200,7 @@ export class ApiAIAssistant {
         AIAssistantEventType.CUSTOM_EVENT,
         eventName,
         undefined,
-        context?.trim(),
+        trimmedContext,
         languageCode,
         trackingId
       );
