@@ -22,13 +22,24 @@ import SDKConnector from '../../SDKConnector';
 import {REGISTRATION_FILE} from '../constants';
 import {LOGGER} from '../../Logger/types';
 import * as regUtils from '../registration/register';
+import {APIRequest} from '../utils/request';
 
+jest.mock('../../mobius-socket', () => ({
+  getMobiusSocketInstance: jest.fn().mockReturnValue({
+    sendWssRequest: jest.fn(),
+  }),
+}));
 jest.spyOn(utils, 'uploadLogs').mockResolvedValue(undefined);
 
 describe('Line Tests', () => {
   const mutex = new Mutex();
   const webex = getTestUtilsWebex();
   SDKConnector.setWebex(webex);
+
+  beforeEach(() => {
+    APIRequest.resetInstance();
+    APIRequest.getInstance({webex, isMobiusSocketEnabled: false});
+  });
 
   const defaultServiceData = {indicator: ServiceIndicator.CALLING, domain: ''};
   const createRegistrationSpy = jest.spyOn(regUtils, 'createRegistration');
@@ -199,7 +210,8 @@ describe('Line Tests', () => {
           method: 'triggerRegistration',
         },
         expect.anything(),
-        expect.anything()
+        expect.anything(),
+        expect.any(Number)
       );
     });
 

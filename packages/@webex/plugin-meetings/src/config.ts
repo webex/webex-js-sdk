@@ -82,6 +82,7 @@ export default {
     enableExtmap: false,
     enableAutomaticLLM: false,
     installedOrgID: undefined,
+    multipartSitePrefixList: ['.my.', '.mydmz.', '.mybts.', '.mydev.', '.myats2.', '.myats.'],
     experimental: {
       enableMediaNegotiatedEvent: false,
       enableUnifiedMeetings: true,
@@ -93,6 +94,7 @@ export default {
     degradationPreferences: {
       maxMacroblocksLimit: 8192,
     },
+    enableAv1SlidesSupport: false,
     // This only applies to non-multistream meetings
     iceCandidatesGatheringTimeout: undefined,
     backendIpv6NativeSupport: false,

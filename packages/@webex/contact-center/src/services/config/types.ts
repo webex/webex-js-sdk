@@ -279,8 +279,9 @@ export type AgentResponse = {
 
   /**
    * The default dialed number of the agent.
+   * Note: The API returns this field as "deafultDialledNumber" (with typo).
    */
-  defaultDialledNumber?: string;
+  deafultDialledNumber?: string;
 };
 
 /**

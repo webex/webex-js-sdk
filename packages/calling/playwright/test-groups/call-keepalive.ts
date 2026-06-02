@@ -94,7 +94,7 @@ export function callKeepaliveTests() {
       await tm.cleanup();
     });
 
-    test('CALL-024: Keepalive success - postStatus 200 keeps call alive', async () => {
+    test('CALL-009: Keepalive success - postStatus 200 keeps call alive', async () => {
       const callerPage = tm.getPage(tm.userSet.accounts[0]);
       const calleePage = tm.getPage(tm.userSet.accounts[1]);
 
@@ -117,7 +117,7 @@ export function callKeepaliveTests() {
       await Promise.all([waitForCallDisconnect(callerPage), waitForCallDisconnect(calleePage)]);
     });
 
-    test('CALL-025: Keepalive 401 - expired token tears down call', async ({browser}) => {
+    test('CALL-010: Keepalive 401 - expired token tears down call', async ({browser}) => {
       await Promise.all([
         tm.setupContext(browser, 0, {
           initSDK: true,
@@ -184,7 +184,7 @@ export function callKeepaliveTests() {
       await callerPage.unrouteAll({behavior: 'ignoreErrors'});
     });
 
-    test('CALL-026: Keepalive 500 with retry - transient failure then recovery', async ({
+    test('CALL-011: Keepalive 500 with retry - transient failure then recovery', async ({
       browser,
     }) => {
       await Promise.all([
@@ -259,7 +259,7 @@ export function callKeepaliveTests() {
       await Promise.all([waitForCallDisconnect(callerPage), waitForCallDisconnect(calleePage)]);
     });
 
-    test('CALL-027: Keepalive max retries exhausted - all status POSTs fail', async ({browser}) => {
+    test('CALL-012: Keepalive max retries exhausted - all status POSTs fail', async ({browser}) => {
       await Promise.all([
         tm.setupContext(browser, 0, {
           initSDK: true,

@@ -304,6 +304,7 @@ const meetingsJoinDeviceElm = document.querySelector('#meetings-join-device');
 const meetingsJoinPinElm = document.querySelector('#meetings-join-pin');
 const meetingsJoinModeratorElm = document.querySelector('#meetings-join-moderator');
 const meetingsBreakoutSupportElm = document.querySelector('#meetings-join-breakout-enabled');
+const meetingsSISupportElm = document.querySelector('#meetings-join-si-enabled');
 const meetingsMediaInLobbySupportElm = document.querySelector('#meetings-media-in-lobby-enabled');
 const meetingsJoinMultistreamElm = document.querySelector('#meetings-join-multistream');
 const meetingsListCollectElm = document.querySelector('#meetings-list-collect');
@@ -644,6 +645,7 @@ async function joinMeeting({withMedia, withDevice} = {withMedia: false, withDevi
     pin: meetingsJoinPinElm.value,
     moderator: meetingsJoinModeratorElm.checked,
     breakoutsSupported: meetingsBreakoutSupportElm.checked,
+    enableSimultaneousInterpretation: meetingsSISupportElm.checked,
     moveToResource: false,
     resourceId,
     locale: 'en_UK', // audio disclaimer language
@@ -4274,6 +4276,145 @@ function enableMeetingDependentButtons(enable) {
 }
 
 enableMeetingDependentButtons(false);
+
+// Simultaneous Interpretation Section ------------------------------------------
+
+const siStatusElm = document.querySelector('#si-status');
+const siOutputElm = document.querySelector('#si-output');
+const siSourceLanguageElm = document.querySelector('#si-source-language');
+const siTargetLanguageElm = document.querySelector('#si-target-language');
+const siParticipantIdElm = document.querySelector('#si-participant-id');
+const siEmailElm = document.querySelector('#si-email');
+
+/**
+ * Fetches the current list of interpreters assigned to this meeting.
+ *
+ * The response contains interpreter objects with participantId, emailAddress,
+ * sourceLanguage, targetLanguage, etc.
+ *
+ * Note: the shape returned by getInterpreters() is NOT the same shape expected
+ * by updateInterpreters().
+ */
+function siGetInterpreters() {
+  const meeting = getCurrentMeeting();
+
+  if (!meeting) {
+    console.log('SI#getInterpreters() :: no active meeting');
+    return;
+  }
+
+  siStatusElm.innerText = 'Fetching interpreters...';
+  console.log('SI#getInterpreters()');
+
+  meeting.simultaneousInterpretation.getInterpreters()
+    .then((response) => {
+      const interpreters = response.body?.interpreters || [];
+      siStatusElm.innerText = `Found ${interpreters.length} interpreter(s)`;
+      siOutputElm.textContent = JSON.stringify(interpreters, null, 2);
+      console.log('SI#getInterpreters() :: success', interpreters);
+    })
+    .catch((error) => {
+      siStatusElm.innerText = 'Error! See console for details.';
+      console.error('SI#getInterpreters() :: failed', error);
+    });
+}
+
+/**
+ * Fetches the list of languages available for interpretation in this meeting.
+ *
+ * Note: querySupportLanguages() resolves with void — internally it stores the
+ * result on `simultaneousInterpretation.supportLanguages` and emits a
+ * SUPPORT_LANGUAGES_UPDATE event, so callers read the value from the property
+ * rather than the promise.
+ */
+function siGetSupportLanguages() {
+  const meeting = getCurrentMeeting();
+
+  if (!meeting) {
+    console.log('SI#getSupportLanguages() :: no active meeting');
+    return;
+  }
+
+  siStatusElm.innerText = 'Fetching support languages...';
+  console.log('SI#getSupportLanguages()');
+
+  meeting.simultaneousInterpretation.querySupportLanguages()
+    .then(() => {
+      const languages = meeting.simultaneousInterpretation.supportLanguages || [];
+      siStatusElm.innerText = `Found ${languages.length} language(s)`;
+      siOutputElm.textContent = JSON.stringify(languages, null, 2);
+      console.log('SI#getSupportLanguages() :: success', languages);
+    })
+    .catch((error) => {
+      siStatusElm.innerText = 'Error! See console for details.';
+      console.error('SI#getSupportLanguages() :: failed', error);
+    });
+}
+
+/**
+ * Updates the interpreters for this meeting.
+ *
+ * IMPORTANT: The payload format for updateInterpreters requires a
+ * "usingResource" object containing the interpreter's participant ID (and
+ * optionally their email). This is different from the flat structure returned
+ * by getInterpreters().
+ *
+ * Expected payload format:
+ * ```
+ *   [{
+ *     order: 0,
+ *     sourceLanguage: "en",
+ *     targetLanguage: "fr",
+ *     usingResource: { id: "<participantId>", email: "<optional-email>" }
+ *   }]
+ * ```
+ */
+function siUpdateInterpreters() {
+  const meeting = getCurrentMeeting();
+
+  if (!meeting) {
+    console.log('SI#updateInterpreters() :: no active meeting');
+    return;
+  }
+
+  const sourceLanguage = siSourceLanguageElm.value.trim();
+  const targetLanguage = siTargetLanguageElm.value.trim();
+  const participantId = siParticipantIdElm.value.trim();
+  const email = siEmailElm.value.trim();
+
+  if (!sourceLanguage || !targetLanguage || !participantId) {
+    siStatusElm.innerText = 'Please fill in source language, target language, and participant ID.';
+    return;
+  }
+
+  // Build the interpreter object in the format the Locus API expects.
+  // The key field is "usingResource" which identifies the interpreter participant.
+  const interpreter = {
+    order: 0,
+    sourceLanguage,
+    targetLanguage,
+    usingResource: {
+      id: participantId,
+      ...(email && {email}),
+    },
+  };
+
+  siStatusElm.innerText = 'Updating interpreters...';
+  siOutputElm.textContent = `Sending:\n${JSON.stringify([interpreter], null, 2)}`;
+  console.log('SI#updateInterpreters()', [interpreter]);
+
+  meeting.simultaneousInterpretation.updateInterpreters([interpreter])
+    .then((response) => {
+      siStatusElm.innerText = 'Interpreters updated successfully!';
+      console.log('SI#updateInterpreters() :: success', response);
+    })
+    .catch((error) => {
+      siStatusElm.innerText = 'Error! See console for details.';
+      console.error('SI#updateInterpreters() :: failed', error);
+    });
+}
+
+// -------------------------------------------------------------------------------
 
 const allSectionContentElements = document.querySelectorAll('.section-content');
 const allArrowElements = document.querySelectorAll('.arrow');

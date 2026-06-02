@@ -26,6 +26,7 @@ describe('plugin-meetings', () => {
       breakout.sessionId = 'sessionId';
       breakout.sessionType = 'BREAKOUT';
       breakout.url = 'url';
+      breakout.resourceLink = 'resource-link';
       breakout.collection = {
         parent: {
           meetingId: 'activeMeetingId',
@@ -45,6 +46,7 @@ describe('plugin-meetings', () => {
     describe('initialize', () => {
       it('creates the object correctly', () => {
         assert.instanceOf(breakout.breakoutRequest, BreakoutRequest);
+        assert.equal(breakout.resourceLink, 'resource-link');
       });
     });
 

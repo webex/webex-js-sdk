@@ -331,13 +331,17 @@ export type RoapEvent =
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface RoapMessage {
   seq: number;
-  messageType: 'OFFER' | 'ANSWER' | 'OK' | 'ERROR' | 'OFFER_REQUEST';
+  messageType: 'OFFER' | 'ANSWER' | 'OK' | 'ERROR' | 'OFFER_REQUEST' | 'OFFER_RESPONSE';
   offererSessionId?: string;
   answererSessionId?: string;
   sdp?: string;
   version?: string;
   tieBreaker?: string;
   errorType?: string;
+}
+
+export interface RoapMessageEvent {
+  roapMessage: RoapMessage;
 }
 
 export type UserReadSessions = {

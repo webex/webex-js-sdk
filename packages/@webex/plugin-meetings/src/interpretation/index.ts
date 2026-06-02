@@ -7,6 +7,7 @@ import {HTTP_VERBS, INTERPRETATION, LOCUSEVENT, MEETINGS} from '../constants';
 import MeetingUtil from '../meeting/util';
 
 import SILanguageCollection from './collection';
+import {Interpreter} from './interpretation.types';
 
 /**
  * @class SimultaneousInterpretation
@@ -183,7 +184,7 @@ const SimultaneousInterpretation = WebexPlugin.extend({
    * @param {Array} interpreters
    * @returns {Promise}
    */
-  updateInterpreters(interpreters) {
+  updateInterpreters(interpreters: Interpreter[]) {
     const meeting = this.webex.meetings.meetingCollection.getByKey('locusUrl', this.locusUrl);
 
     return this.request({

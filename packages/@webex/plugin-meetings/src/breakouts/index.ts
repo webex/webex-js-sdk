@@ -340,6 +340,7 @@ const Breakouts = WebexPlugin.extend({
       current: true,
       sessionType: params.sessionType,
       url: params.url,
+      resourceLink: params.resourceLink,
       [BREAKOUTS.SESSION_STATES.ACTIVE]: false,
       [BREAKOUTS.SESSION_STATES.ALLOWED]: false,
       [BREAKOUTS.SESSION_STATES.ASSIGNED]: false,
@@ -983,6 +984,36 @@ const Breakouts = WebexPlugin.extend({
       method: HTTP_VERBS.PUT,
       uri: `${this.url}/dynamicAssign`,
       body,
+    });
+  },
+  /**
+   * Remove participants from their current breakout session back to the main session
+   * @param {string[]} participants - participant IDs to remove from breakout
+   * @returns {Promise}
+   */
+  removeFromBreakout(participants: string[]) {
+    if (!this.mainGroupId || !this.mainSessionId) {
+      throw new Error(
+        'Main group ID and session ID must be available to remove participants from breakout'
+      );
+    }
+
+    return this.request({
+      method: HTTP_VERBS.POST,
+      uri: `${this.url}/move`,
+      body: {
+        groups: [
+          {
+            id: this.mainGroupId,
+            sessions: [
+              {
+                id: this.mainSessionId,
+                participants,
+              },
+            ],
+          },
+        ],
+      },
     });
   },
   /**
