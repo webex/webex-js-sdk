@@ -178,7 +178,13 @@ class HashTreeParser {
   debugId: string;
   private excludedDataSets: string[];
   state: 'active' | 'stopped';
-  private syncQueue: Array<{dataSetName: string; reason: string; isInitialization?: boolean}> = [];
+  private syncQueue: Array<{
+    dataSetName: string;
+    reason: string;
+    isInitialization?: boolean;
+    heartbeatVersion?: number;
+  }> = [];
+
   private isSyncInProgress = false;
   // tracks whether syncAllDatasets is currently in its backoff delay phase and with what scope
   private syncAllBackoffType: SyncAllBackoffType = SyncAllBackoffType.NONE;
@@ -1438,12 +1444,14 @@ class HashTreeParser {
    * @param {InternalDataSet} dataSet - The data set to sync
    * @param {string} reason - The reason for the sync (used for logging)
    * @param {boolean} [isInitialization] - Whether this is an initialization sync (sends empty leaves data instead of comparing hashes)
+   * @param {number} [heartbeatVersion] - The target version from the heartbeat message (for single-leaf sync metrics)
    * @returns {Promise<void>}
    */
   private async performSync(
     dataSet: InternalDataSet,
     reason: string,
-    isInitialization?: boolean
+    isInitialization?: boolean,
+    heartbeatVersion?: number
   ): Promise<void> {
     if (!dataSet.hashTree) {
       return;
@@ -1456,7 +1464,11 @@ class HashTreeParser {
     const rootHash = hashTree.getRootHash();
     const shouldCollectMetrics = this.shouldCollectSyncMetrics(dataSet.name, isInitialization);
     let syncMetricsPending = false;
-    let targetSyncVersion = dataSet.version;
+    // Use the heartbeat target for single-leaf sync metrics
+    let targetSyncVersion =
+      dataSet.leafCount === 1 && heartbeatVersion !== undefined
+        ? heartbeatVersion
+        : dataSet.version;
 
     if (shouldCollectMetrics) {
       this.syncLatencyTracker?.saveTimestamp({
@@ -1646,12 +1658,14 @@ class HashTreeParser {
    * @param {string} dataSetName - The name of the data set to sync
    * @param {string} reason - The reason for the sync (used for logging)
    * @param {boolean} [isInitialization=false] - Whether this is an initialization sync (uses empty leaves data instead of hash comparison)
+   * @param {number} [heartbeatVersion] - The target version from the heartbeat message (for single-leaf sync metrics)
    * @returns {void}
    */
   private enqueueSyncForDataset(
     dataSetName: string,
     reason: string,
-    isInitialization = false
+    isInitialization = false,
+    heartbeatVersion: number | undefined = undefined
   ): void {
     if (this.state === 'stopped') return;
 
@@ -1668,7 +1682,7 @@ class HashTreeParser {
       return;
     }
 
-    this.syncQueue.push({dataSetName, reason, isInitialization});
+    this.syncQueue.push({dataSetName, reason, isInitialization, heartbeatVersion});
 
     if (!this.isSyncInProgress) {
       this.syncQueueProcessingPromise = this.processSyncQueue();
@@ -1687,7 +1701,7 @@ class HashTreeParser {
     try {
       while (this.syncQueue.length > 0 && this.state !== 'stopped') {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const {dataSetName, reason, isInitialization} = this.syncQueue.shift()!;
+        const {dataSetName, reason, isInitialization, heartbeatVersion} = this.syncQueue.shift()!;
         const dataSet = this.dataSets[dataSetName];
 
         if (!dataSet?.hashTree) {
@@ -1696,7 +1710,7 @@ class HashTreeParser {
         }
 
         // eslint-disable-next-line no-await-in-loop
-        await this.performSync(dataSet, reason, isInitialization);
+        await this.performSync(dataSet, reason, isInitialization, heartbeatVersion);
       }
     } finally {
       this.isSyncInProgress = false;
@@ -1881,7 +1895,9 @@ class HashTreeParser {
         if (dataSet.root !== rootHash) {
           this.enqueueSyncForDataset(
             dataSet.name,
-            `Root hash mismatch: received=${dataSet.root}, ours=${rootHash}`
+            `Root hash mismatch: received=${dataSet.root}, ours=${rootHash}`,
+            false,
+            receivedDataSet.version
           );
         }
       }, delay);
