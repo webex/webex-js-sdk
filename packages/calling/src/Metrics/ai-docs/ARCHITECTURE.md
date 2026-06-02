@@ -200,9 +200,11 @@ Most metrics include these base fields (exceptions noted below):
 
 ### Metric Name Validation
 
-The `MetricManager` validates the `name` parameter against expected `METRIC_EVENT` values using switch statements. If an invalid name is received, it logs a warning and does not submit the metric. This prevents malformed telemetry from being sent.
+Most `MetricManager` methods validate the `name` parameter against expected `METRIC_EVENT` values (via `switch` or explicit checks). If an invalid name is received, they log a warning and do not submit the metric.
 
-**Exception:** `submitUploadLogsMetric` and `submitConnectionMetrics` do NOT log a warning on invalid names — they simply don't submit (data remains `undefined`).
+**Exceptions:**
+- `submitUploadLogsMetric` does not log a warning for invalid names; it silently skips submission because `data` remains `undefined`.
+- `submitConnectionMetrics` has no runtime name validation and always builds/submits metric data with the provided `name`.
 
 ### Conditional Submission
 
@@ -233,7 +235,7 @@ Some methods only submit error metrics when an error object is provided:
 
 **Symptoms:** Log warning: "Invalid metric name received. Rejecting request to submit metric."
 
-**Cause:** A `METRIC_EVENT` value was passed that doesn't match the expected switch cases for that submit method. Each method only accepts specific event names.
+**Cause:** A `METRIC_EVENT` value was passed that doesn't match the expected switch/check cases for that submit method. This applies to methods that implement runtime validation.
 
 ### 4. SDK Version Shows 'unknown'
 
