@@ -313,6 +313,7 @@ describe('plugin-meetings', () => {
           groupId: 'groupId',
           sessionType: 'sessionType',
           url: 'url',
+          resourceLink: 'resource-link',
           name: 'name',
           allowBackToMain: true,
           delayCloseTime: 10,
@@ -339,6 +340,7 @@ describe('plugin-meetings', () => {
         assert.equal(breakouts.currentBreakoutSession.current, true);
         assert.equal(breakouts.currentBreakoutSession.sessionType, 'sessionType');
         assert.equal(breakouts.currentBreakoutSession.url, 'url');
+        assert.equal(breakouts.currentBreakoutSession.resourceLink, 'resource-link');
         assert.equal(breakouts.currentBreakoutSession.active, false);
         assert.equal(breakouts.currentBreakoutSession.allowed, false);
         assert.equal(breakouts.currentBreakoutSession.assigned, false);
@@ -1844,6 +1846,53 @@ describe('plugin-meetings', () => {
 
         assert.calledOnceWithExactly(breakouts.moveToLobby, expectedBody);
         assert.equal(result, 'REQUEST_RETURN_VALUE');
+      });
+    });
+
+    describe('#removeFromBreakout', () => {
+      it('should make a POST request with correct body and return the result', async () => {
+        breakouts.request = sinon.stub().returns(Promise.resolve('REQUEST_RETURN_VALUE'));
+        breakouts.set('url', 'url');
+        breakouts.set('mainGroupId', 'mainGroupId');
+        breakouts.set('mainSessionId', 'mainSessionId');
+
+        const participants = ['participant1', 'participant2'];
+        const result = await breakouts.removeFromBreakout(participants);
+
+        assert.calledOnceWithExactly(breakouts.request, {
+          method: 'POST',
+          uri: 'url/move',
+          body: {
+            groups: [
+              {
+                id: 'mainGroupId',
+                sessions: [
+                  {
+                    id: 'mainSessionId',
+                    participants,
+                  },
+                ],
+              },
+            ],
+          },
+        });
+        assert.equal(result, 'REQUEST_RETURN_VALUE');
+      });
+
+      it('should throw an error if mainGroupId is missing', () => {
+        breakouts.set('mainSessionId', 'mainSessionId');
+        assert.throws(
+          () => breakouts.removeFromBreakout(['participant1']),
+          'Main group ID and session ID must be available to remove participants from breakout'
+        );
+      });
+
+      it('should throw an error if mainSessionId is missing', () => {
+        breakouts.set('mainGroupId', 'mainGroupId');
+        assert.throws(
+          () => breakouts.removeFromBreakout(['participant1']),
+          'Main group ID and session ID must be available to remove participants from breakout'
+        );
       });
     });
 

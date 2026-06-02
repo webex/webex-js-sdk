@@ -92,6 +92,7 @@
     "./node_modules/**",
     "./test",
     "./docs/examples",
+    "./src/mobius-socket/test/**",
     "./src/**/*.test.ts"
   ]
 }

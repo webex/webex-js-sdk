@@ -3,13 +3,11 @@
  */
 
 import {Interceptor} from '@webex/http-core';
+import LLMChannel from '@webex/internal-plugin-llm';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {DATA_CHANNEL_AUTH_HEADER, MAX_RETRY, RETRY_INTERVAL, RETRY_KEY} from './constant';
 import {isJwtTokenExpired} from './utils';
-
-/*!
- * Copyright (c) 2015-2026 Cisco Systems, Inc. See LICENSE file.
- */
+import {LLM_DEFAULT_SESSION, LLM_PRACTICE_SESSION, LOCUS_URL} from '../constants';
 
 const retryCountMap = new Map();
 interface HttpLikeError extends Error {
@@ -20,7 +18,7 @@ interface HttpLikeError extends Error {
  * @class
  */
 export default class DataChannelAuthTokenInterceptor extends Interceptor {
-  private _refreshDataChannelToken: () => Promise<string>;
+  private _refreshDataChannelToken: (requestUrl?: string) => Promise<string>;
   private _isDataChannelTokenEnabled: () => Promise<boolean>;
   constructor(options) {
     super(options);
@@ -42,13 +40,91 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
         return this.internal.llm.isDataChannelTokenEnabled();
       },
 
-      refreshDataChannelToken: async () => {
-        // @ts-ignore
-        const {body} = await this.internal.llm.refreshDataChannelToken();
-        const {datachannelToken, dataChannelTokenType} = body ?? {};
+      // Route refresh by request URL in two steps:
+      // 1) Match active LLM sessions (supports non-default/multiple sessions)
+      // 2) If no session matches, resolve locusUrl and refresh via owning meeting
+      // If neither route matches, fall back to the default-session refresh.
+      refreshDataChannelToken: async (requestUrl?: string) => {
+        let sessionId;
+        let meeting;
 
+        if (typeof requestUrl === 'string') {
+          // @ts-ignore
+          sessionId = this.internal.llm.getSessionIdByDatachannelUrl?.(requestUrl);
+
+          if (!sessionId) {
+            // @ts-ignore
+            const locusUrl = this.internal.llm.getLocusUrlByDatachannelUrl?.(requestUrl);
+
+            if (locusUrl) {
+              // @ts-ignore
+              meeting = this.meetings?.getMeetingByType?.(LOCUS_URL, locusUrl);
+            }
+          }
+
+          if (!meeting) {
+            // Fallback: registerAndConnect() pre-populates datachannelUrl in
+            // connections before calling register(), so getSessionIdByDatachannelUrl
+            // above should normally resolve. This scan covers any residual gap
+            // where connections are not yet populated (e.g. if setRefreshHandler
+            // is called on a session that has no connection entry at all).
+            // @ts-ignore
+            const allMeetings = this.meetings?.getAllMeetings?.() || {};
+
+            meeting = Object.values(allMeetings).find((activeMeeting: any) => {
+              const info = activeMeeting?.locusInfo?.info || {};
+
+              return (
+                (info.practiceSessionDatachannelUrl &&
+                  LLMChannel.matchesDatachannelRequestUrl(
+                    requestUrl,
+                    info.practiceSessionDatachannelUrl
+                  )) ||
+                (info.datachannelUrl &&
+                  LLMChannel.matchesDatachannelRequestUrl(requestUrl, info.datachannelUrl))
+              );
+            });
+
+            if (!sessionId) {
+              // @ts-ignore
+              const info = meeting?.locusInfo?.info || {};
+
+              if (
+                info.practiceSessionDatachannelUrl &&
+                LLMChannel.matchesDatachannelRequestUrl(
+                  requestUrl,
+                  info.practiceSessionDatachannelUrl
+                )
+              ) {
+                sessionId = LLM_PRACTICE_SESSION;
+              } else if (
+                info.datachannelUrl &&
+                LLMChannel.matchesDatachannelRequestUrl(requestUrl, info.datachannelUrl)
+              ) {
+                sessionId = LLM_DEFAULT_SESSION;
+              }
+            }
+          }
+        }
+
+        let result;
+        if (meeting) {
+          result = await meeting.refreshDataChannelToken();
+        } else {
+          // @ts-ignore
+          result = await this.internal.llm.refreshDataChannelToken(sessionId);
+        }
+
+        if (!result?.body) {
+          throw new Error('DataChannel token refresh returned no payload');
+        }
+        const {datachannelToken, dataChannelTokenType} = result.body;
+        const tokenStoreKey = dataChannelTokenType || sessionId;
+        const ownerMeetingId =
+          // @ts-ignore
+          meeting?.id || this.internal.llm.getOwnerMeetingId?.(tokenStoreKey);
         // @ts-ignore
-        this.internal.llm.setDatachannelToken(datachannelToken, dataChannelTokenType);
+        this.internal.llm.setDatachannelToken(datachannelToken, tokenStoreKey, ownerMeetingId);
 
         return datachannelToken;
       },
@@ -87,7 +163,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
 
     if (isJwtTokenExpired(token)) {
       try {
-        const newToken = await this._refreshDataChannelToken();
+        const newToken = await this._refreshDataChannelToken(options.uri || options.url);
         options.headers[DATA_CHANNEL_AUTH_HEADER] = newToken;
       } catch (e) {
         LoggerProxy.logger.warn(`DataChannelAuthTokenInterceptor: refresh failed: ${e.message}`);
@@ -144,7 +220,7 @@ export default class DataChannelAuthTokenInterceptor extends Interceptor {
       setTimeout(async () => {
         const key = this.getRetryKey(options);
         try {
-          const newToken = await this._refreshDataChannelToken();
+          const newToken = await this._refreshDataChannelToken(options.uri || options.url);
 
           options.headers[DATA_CHANNEL_AUTH_HEADER] = newToken;
 

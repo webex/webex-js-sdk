@@ -302,7 +302,7 @@ describe('webex.cc', () => {
       const result = await webex.cc.register();
 
       // Verify logging calls
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting CC SDK registration', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Starting CC SDK registration', {
         module: CC_FILE,
         method: 'register',
       });
@@ -415,7 +415,7 @@ describe('webex.cc', () => {
 
       await expect(webex.cc.register()).rejects.toThrow('Error while performing register');
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting CC SDK registration', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Starting CC SDK registration', {
         module: CC_FILE,
         method: 'register',
       });
@@ -663,10 +663,8 @@ describe('webex.cc', () => {
 
       expect(emitSpy).toHaveBeenCalledTimes(1);
       expect(emitSpy).toHaveBeenCalledWith(TASK_EVENTS.TASK_INCOMING, mockTask);
-      // Verify message event listener
-      const messageCallback = mockWebSocketManager.on.mock.calls.find(
-        (call) => call[0] === 'message'
-      )[1];
+      // Verify websocket message handling
+      const messageCallback = webex.cc['handleWebsocketMessage'];
       const agentStateChangeEventData = {
         type: CC_EVENTS.AGENT_STATE_CHANGE,
         data: {some: 'data'},
@@ -816,10 +814,13 @@ describe('webex.cc', () => {
       const result = await webex.cc.stationLogin(options);
 
       // Verify logging calls
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting agent station login', {
-        module: CC_FILE,
-        method: 'stationLogin',
-      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        `Starting agent station login | loginOption: ${options.loginOption} teamId: ${options.teamId}`,
+        {
+          module: CC_FILE,
+          method: 'stationLogin',
+        }
+      );
       expect(LoggerProxy.log).toHaveBeenCalledWith(
         `Agent station login completed successfully agentId: ${mockData.data.agentId} loginOption: ${mockData.data.loginOption} teamId: ${mockData.data.teamId}`,
         {
@@ -870,10 +871,13 @@ describe('webex.cc', () => {
 
       await expect(webex.cc.stationLogin(options)).rejects.toThrow(error.details.data.reason);
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting agent station login', {
-        module: CC_FILE,
-        method: 'stationLogin',
-      });
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
+        `Starting agent station login | loginOption: ${options.loginOption} teamId: ${options.teamId}`,
+        {
+          module: CC_FILE,
+          method: 'stationLogin',
+        }
+      );
       expect(LoggerProxy.error).toHaveBeenCalledWith(
         `stationLogin failed with reason: ${error.details.data.reason}`,
         {module: CC_FILE, method: 'stationLogin', trackingId: error.details.trackingId}
@@ -1212,11 +1216,11 @@ describe('webex.cc', () => {
       const webSocketManagerOnSpy = jest.spyOn(webex.cc.services.webSocketManager, 'on');
       await webex.cc['silentRelogin']();
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent relogin process', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Starting silent relogin process', {
         module: CC_FILE,
         method: 'silentRelogin',
       });
-      expect(LoggerProxy.info).toHaveBeenCalledWith(
+      expect(LoggerProxy.log).toHaveBeenCalledWith(
         'event=requestAutoStateChange | Requesting state change to available on socket reconnect',
         {module: CC_FILE, method: 'silentRelogin'}
       );
@@ -1261,7 +1265,7 @@ describe('webex.cc', () => {
 
       jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
       await webex.cc['silentRelogin']();
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent relogin process', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Starting silent relogin process', {
         module: CC_FILE,
         method: 'silentRelogin',
       });
@@ -1276,7 +1280,7 @@ describe('webex.cc', () => {
       jest.spyOn(webex.cc.services.agent, 'reload').mockRejectedValue(error);
 
       await expect(webex.cc['silentRelogin']()).rejects.toThrow(error);
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent relogin process', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Starting silent relogin process', {
         module: CC_FILE,
         method: 'silentRelogin',
       });
@@ -1318,7 +1322,7 @@ describe('webex.cc', () => {
 
       await webex.cc['silentRelogin']();
 
-      expect(LoggerProxy.info).toHaveBeenCalledWith('Starting silent relogin process', {
+      expect(LoggerProxy.log).toHaveBeenCalledWith('Starting silent relogin process', {
         module: CC_FILE,
         method: 'silentRelogin',
       });
@@ -1728,7 +1732,7 @@ describe('webex.cc', () => {
 
     beforeEach(() => {
       emitSpy = jest.spyOn(webex.cc, 'emit');
-      messageCallback = mockWebSocketManager.on.mock.calls.find((c) => c[0] === 'message')[1];
+      messageCallback = webex.cc['handleWebsocketMessage'];
     });
 
     it('should emit AGENT_STATION_LOGIN_SUCCESS on CC_EVENTS.AGENT_STATION_LOGIN_SUCCESS with mapped payload', () => {

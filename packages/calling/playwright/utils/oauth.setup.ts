@@ -5,7 +5,7 @@ import {
   DEVELOPER_PORTAL_GETTING_STARTED_URL,
   DEVELOPER_PORTAL_INT_GETTING_STARTED_URL,
 } from '../constants';
-import {USER_SETS, AccountRole, tokenEnvVar} from '../test-data';
+import {USER_SETS, REQUIRED_OAUTH_ROLES, AccountRole, tokenEnvVar} from '../test-data';
 
 type EnvUpdateMap = Record<string, string>;
 
@@ -137,9 +137,9 @@ setup('OAuth', async ({browser}, testInfo) => {
     const email = process.env[`${role}${envPrefix}_EMAIL`];
     const password = process.env[`${role}${envPrefix}_PASSWORD`];
 
-    // First account is required; others are optional
+    // Fail early for roles used by currently enabled projects.
     if (!email || !password) {
-      if (role === uniqueRoles[0]) {
+      if (REQUIRED_OAUTH_ROLES.includes(role)) {
         throw new Error(
           `${role}${envPrefix}_EMAIL and ${role}${envPrefix}_PASSWORD must be set in .env`
         );

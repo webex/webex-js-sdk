@@ -6,7 +6,7 @@ import querystring from 'querystring';
 import url from 'url';
 
 import jwt from 'jsonwebtoken';
-import {base64, makeStateDataType, oneFlight, tap, whileInFlight} from '@webex/common';
+import {base64, encodeState, makeStateDataType, oneFlight, tap, whileInFlight} from '@webex/common';
 import {safeSetTimeout} from '@webex/common-timers';
 import {clone, cloneDeep, isObject, isEmpty} from 'lodash';
 
@@ -109,7 +109,7 @@ const Credentials = WebexPlugin.extend({
    */
   buildLoginUrl(options = {clientType: 'public'}) {
     /* eslint-disable camelcase */
-    if (options.state && !isObject(options.state)) {
+    if (options.state !== undefined && !isObject(options.state)) {
       throw new Error('if specified, `options.state` must be an object');
     }
 
@@ -126,7 +126,7 @@ const Credentials = WebexPlugin.extend({
 
     if (options.state) {
       if (!isEmpty(options.state)) {
-        options.state = base64.toBase64Url(JSON.stringify(options.state));
+        options.state = encodeState(options.state);
       } else {
         delete options.state;
       }
@@ -210,6 +210,53 @@ const Credentials = WebexPlugin.extend({
 
     // Return the token section that contains the OrgId.
     return fields[2];
+  },
+
+  /**
+   * Generates a Third-Party Login URL pointing at IdBroker's
+   * `/idb/ThirdPartyLogin` endpoint. Used by the social-provider sign-in
+   * flow (Google / Microsoft / Apple / ...).
+   *
+   * Mirrors `buildLoginUrl` / `buildLogoutUrl` — pure URL construction,
+   * no navigation side effects. Reads from `this.config.thirdPartyLoginUrl`,
+   * which is derived from `idbroker.url` in `credentials-config.js`.
+   *
+   * @instance
+   * @memberof Credentials
+   * @param {Object} options
+   * @param {string} options.oauth2provider - Provider name (`google`,
+   *   `microsoft`, `apple`, ...). Required.
+   * @param {string} options.returnURL - URL IdBroker should send the user
+   *   back to after the third-party hand-off. Required.
+   * @param {Object} [options.state] - Optional state object. When non-empty
+   *   it is JSON-stringified and base64url-encoded, then emitted as the
+   *   top-level `state` query param so IdBroker can echo it back unchanged
+   *   on the callback (mirrors `buildLoginUrl`).
+   * @returns {string}
+   */
+  buildThirdPartyLoginUrl(options = {}) {
+    const {oauth2provider, returnURL, state} = options;
+
+    if (!oauth2provider) {
+      throw new Error('`options.oauth2provider` is required');
+    }
+    if (!returnURL) {
+      throw new Error('`options.returnURL` is required');
+    }
+    if (state !== undefined && !isObject(state)) {
+      throw new Error('if specified, `options.state` must be an object');
+    }
+
+    const query = {
+      oauth2provider,
+      returnURL,
+    };
+
+    if (state && !isEmpty(state)) {
+      query.state = encodeState(state);
+    }
+
+    return `${this.config.thirdPartyLoginUrl}?${querystring.stringify(query)}`;
   },
 
   /**
