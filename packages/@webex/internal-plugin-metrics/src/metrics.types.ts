@@ -149,6 +149,17 @@ export type SubmitMQEOptions = {
   globalMeetingId?: string;
 };
 
+export const LOCUS_SYNC_LATENCY_EVENT_NAMES = [
+  'internal.client.locus.sync.start',
+  'internal.client.locus.hashtree.request',
+  'internal.client.locus.hashtree.response',
+  'internal.client.locus.sync.request',
+  'internal.client.locus.sync.response',
+  'internal.client.locus.sync.message.received',
+] as const;
+
+export type LocusSyncLatencyEventName = (typeof LOCUS_SYNC_LATENCY_EVENT_NAMES)[number];
+
 export type InternalEvent = {
   name:
     | 'internal.client.meetinginfo.request'
@@ -163,12 +174,7 @@ export type InternalEvent = {
     | 'internal.client.add-media.turn-discovery.end'
     | 'internal.client.share.initiated'
     | 'internal.client.share.stopped'
-    | 'internal.client.locus.sync.start'
-    | 'internal.client.locus.hashtree.request'
-    | 'internal.client.locus.hashtree.response'
-    | 'internal.client.locus.sync.request'
-    | 'internal.client.locus.sync.response'
-    | 'internal.client.locus.sync.message.received';
+    | LocusSyncLatencyEventName;
 
   payload?: never;
   options?: never;

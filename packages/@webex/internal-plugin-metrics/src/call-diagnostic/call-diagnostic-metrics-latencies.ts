@@ -3,7 +3,11 @@
 import {WebexPlugin} from '@webex/webex-core';
 import {clamp} from 'lodash';
 
-import {MetricEventNames, PreComputedLatencies} from '../metrics.types';
+import {
+  LOCUS_SYNC_LATENCY_EVENT_NAMES,
+  MetricEventNames,
+  PreComputedLatencies,
+} from '../metrics.types';
 
 // we only care about client event and feature event for now
 
@@ -191,14 +195,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns whether event is Locus sync latency milestone
    */
   private isLocusSyncLatencyEvent(key: MetricEventNames) {
-    return [
-      'internal.client.locus.sync.start',
-      'internal.client.locus.hashtree.request',
-      'internal.client.locus.hashtree.response',
-      'internal.client.locus.sync.request',
-      'internal.client.locus.sync.response',
-      'internal.client.locus.sync.message.received',
-    ].includes(key);
+    return LOCUS_SYNC_LATENCY_EVENT_NAMES.includes(key as any);
   }
 
   /**
