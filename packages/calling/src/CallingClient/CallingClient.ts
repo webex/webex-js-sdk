@@ -1039,6 +1039,17 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
   }
 
   /**
+   * Indicates whether the Mobius WebSocket transport is currently connected.
+   *
+   * The `MOBIUS_SOCKET_CONNECTED` event is emitted during `init()`, so consumers that
+   * subscribe afterwards may miss it; this lets them reconcile the current state. Returns
+   * `false` when the WebSocket transport is not enabled.
+   */
+  public isMobiusSocketConnected(): boolean {
+    return this.apiRequest.isSocketEnabled() && this.apiRequest.isSocketConnected();
+  }
+
+  /**
    * Uploads logs to help troubleshoot SDK issues.
    *
    * This method collects the current SDK logs including network requests, WebSocket

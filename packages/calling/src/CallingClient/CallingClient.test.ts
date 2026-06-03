@@ -67,6 +67,7 @@ jest.mock('../mobius-socket', () => ({
   getMobiusSocketInstance: jest.fn().mockReturnValue({
     sendWssRequest: jest.fn(),
     connect: jest.fn(),
+    isConnected: jest.fn().mockReturnValue(false),
     on: jest.fn(),
     off: jest.fn(),
   }),
@@ -933,9 +934,11 @@ describe('CallingClient Tests', () => {
       ).getMobiusSocketInstance(webex) as {
         on: jest.Mock;
         off: jest.Mock;
+        isConnected: jest.Mock;
       };
       (mobiusSocketMock.on as jest.Mock).mockClear();
       (mobiusSocketMock.off as jest.Mock).mockClear();
+      (mobiusSocketMock.isConnected as jest.Mock).mockReturnValue(false);
 
       callingClient = await createClient(webex, {
         logger: {level: LOGGER.INFO},
@@ -971,6 +974,15 @@ describe('CallingClient Tests', () => {
 
         expect(listener).toHaveBeenCalledTimes(1);
         expect(listener).toHaveBeenCalledWith({reason});
+      }
+    );
+
+    it.each([true, false])(
+      'isMobiusSocketConnected() reflects the underlying socket state (%s) when WSS is enabled',
+      (connected) => {
+        (mobiusSocketMock.isConnected as jest.Mock).mockReturnValue(connected);
+
+        expect(callingClient.isMobiusSocketConnected()).toBe(connected);
       }
     );
   });

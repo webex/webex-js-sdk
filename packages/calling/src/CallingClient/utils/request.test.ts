@@ -161,6 +161,19 @@ describe('APIRequest', () => {
     });
   });
 
+  describe('isSocketConnected', () => {
+    it.each([true, false])(
+      'should delegate to the Mobius socket isConnected() and return %s',
+      (connected) => {
+        mockMobiusSocket.isConnected.mockReturnValue(connected);
+        const apiRequest = APIRequest.getInstance({webex});
+
+        expect(apiRequest.isSocketConnected()).toBe(connected);
+        expect(mockMobiusSocket.isConnected).toHaveBeenCalled();
+      }
+    );
+  });
+
   describe('connectToMobiusSocket', () => {
     it('should return immediately if socket is already connected', async () => {
       mockMobiusSocket.isConnected.mockReturnValue(true);

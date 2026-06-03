@@ -61,6 +61,7 @@ The following methods are defined on the `ICallingClient` interface and are the 
 | `getDevices`       | `(userId?: string): Promise<DeviceType[]>` | Fetches devices from Mobius for the user        |
 | `getActiveCalls`   | `(): Record<string, ICall[]>`              | Returns active calls grouped by lineId          |
 | `getConnectedCall` | `(): ICall \| undefined`                   | Returns the currently connected (non-held) call |
+| `isMobiusSocketConnected` | `(): boolean`                       | Whether the Mobius WebSocket transport is currently connected. Lets consumers that subscribe to `mobius_socket_connected` after `init()` reconcile the initial state. `false` when WSS transport is not in use. |
 | `mediaEngine`      | `typeof Media`                             | The `@webex/internal-media-core` engine         |
 
 ### CallingClient Class Methods (not on ICallingClient interface)

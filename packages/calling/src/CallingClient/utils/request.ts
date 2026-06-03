@@ -349,6 +349,17 @@ export class APIRequest {
     log.log('Mobius socket connection listener attached', logContext);
   }
 
+  /**
+   * Whether the underlying Mobius WebSocket is currently connected.
+   *
+   * Useful for consumers that subscribe to connection events after the socket may
+   * already be up (the socket only emits `online` on a fresh (re)connect), so they
+   * can reconcile the initial connected state instead of waiting for the next event.
+   */
+  public isSocketConnected(): boolean {
+    return this.mobiusSocket.isConnected();
+  }
+
   public unregisterMobiusSocketConnectionListener(): void {
     const logContext = {
       file: REQUEST_FILE,

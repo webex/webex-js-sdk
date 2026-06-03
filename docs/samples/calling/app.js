@@ -446,6 +446,12 @@ function monitorMobiusSocket() {
   callingClient.on('callingClient:mobius_socket_disconnected', (event) => {
     console.log('Mobius socket disconnected, reason: ', event.reason);
   });
+
+  // The connected event is emitted during client init, before this listener is
+  // attached, so reconcile the current state to avoid missing the initial connection.
+  if (callingClient.isMobiusSocketConnected()) {
+    console.log('Mobius socket connected');
+  }
 }
 
 function createDevice() {

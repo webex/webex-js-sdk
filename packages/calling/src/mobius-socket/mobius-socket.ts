@@ -818,6 +818,10 @@ class MobiusSocket extends EventEmitter {
           // Handle the same way we do for registration.down event from Mobius.
           this.logger.info(`socket closed with 4001; will not reconnect`, loggerContext);
           this.emitEvent('event:async_event', MOBIUS_SOCKET_4001_EVENT);
+          // 4001 means the socket is offline and will not reconnect, so surface a
+          // permanent disconnect to connection-lifecycle listeners (which only observe
+          // the suffixed offline.* events) in addition to the registration.down signal.
+          if (isActiveSocket) this.emitEvent('offline.permanent', event);
           break;
         case 1000:
         case 1001:
