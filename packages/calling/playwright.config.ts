@@ -86,7 +86,7 @@ export default defineConfig({
     },
 
     // Single-user registration sets (generated from USER_SETS, depend on OAuth)
-    ...['SET_REGISTRATION_1', 'SET_REGISTRATION_2', 'SET_REGISTRATION_3'].flatMap((key) => [
+    ...['SET_REGISTRATION_1', 'SET_REGISTRATION_2', 'SET_REGISTRATION_3', 'SET_CONTACTS'].flatMap((key) => [
       {
         name: `${key} - PROD`,
         dependencies: ['OAuth - PROD'],
