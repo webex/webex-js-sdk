@@ -3448,7 +3448,7 @@ describe('plugin-meetings', () => {
           stateElementsMessage: message,
         });
 
-        assert.calledOnceWithExactly(parserA.handleMessage, message);
+        assert.calledOnceWithExactly(parserA.handleMessage, message, undefined, undefined);
       });
 
       it('should pass replacedAt from replaces to createHashTreeParser when creating a new parser', () => {
@@ -3511,7 +3511,7 @@ describe('plugin-meetings', () => {
           stateElementsMessage: message,
         });
 
-        assert.calledOnceWithExactly(parserA.handleMessage, message);
+        assert.calledOnceWithExactly(parserA.handleMessage, message, undefined, undefined);
       });
 
       it('should send mismatch metric when eventType is not HASH_TREE_DATA_UPDATED', () => {
@@ -5317,7 +5317,12 @@ describe('plugin-meetings', () => {
 
         locusInfo.parse(mockMeeting, data);
 
-        assert.calledOnceWithExactly(mockHashTreeParser.handleMessage, fakeHashTreeMessage);
+        assert.calledOnceWithExactly(
+          mockHashTreeParser.handleMessage,
+          fakeHashTreeMessage,
+          undefined,
+          undefined
+        );
       });
 
       it('ignores hash tree event when hashTreeParser is not created yet', () => {

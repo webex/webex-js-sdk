@@ -271,7 +271,6 @@ export default class LocusInfo extends EventsScope {
   locusParser: any;
   meetingId: any;
   parsedLocus: any;
-  updateMeeting: any;
   webex: any;
   aclUrl: any;
   baseSequence: any;
@@ -316,7 +315,6 @@ export default class LocusInfo extends EventsScope {
     this.emitChange = false;
     this.compareAndUpdateFlags = {};
     this.meetingId = meetingId;
-    this.updateMeeting = callbacks.updateMeeting;
     this.locusParser = new LocusDeltaParser();
     this.hashTreeParsers = new Map();
     this.hashTreeObjectId2ParticipantId = new Map();
@@ -1770,7 +1768,7 @@ export default class LocusInfo extends EventsScope {
       // @ts-ignore
       const partner = this.getLocusPartner(this.participants, this.self);
 
-      this.updateMeeting({partner});
+      this.callbacks.updateMeeting({partner});
 
       // Check if guest user needs to be checked here
 
@@ -2255,7 +2253,7 @@ export default class LocusInfo extends EventsScope {
       if (hasEntryExitToneChanged) {
         const {entryExitTone} = current;
 
-        this.updateMeeting({entryExitTone});
+        this.callbacks.updateMeeting({entryExitTone});
 
         this.emitScoped(
           {
@@ -2274,7 +2272,7 @@ export default class LocusInfo extends EventsScope {
       if (hasVideoEnabledChanged) {
         const {videoEnabled} = current;
 
-        this.updateMeeting({unmuteVideoAllowed: videoEnabled});
+        this.callbacks.updateMeeting({unmuteVideoAllowed: videoEnabled});
 
         this.emitScoped(
           {
@@ -2366,14 +2364,14 @@ export default class LocusInfo extends EventsScope {
   updateConversationUrl(conversationUrl: string, info: any) {
     if (conversationUrl && !isEqual(this.conversationUrl, conversationUrl)) {
       this.conversationUrl = conversationUrl;
-      this.updateMeeting({conversationUrl});
+      this.callbacks.updateMeeting({conversationUrl});
     } else if (
       info &&
       info.conversationUrl &&
       !isEqual(this.conversationUrl, info.conversationUrl)
     ) {
       this.conversationUrl = info.conversationUrl;
-      this.updateMeeting({conversationUrl: info.conversationUrl});
+      this.callbacks.updateMeeting({conversationUrl: info.conversationUrl});
     }
   }
 
@@ -2435,7 +2433,7 @@ export default class LocusInfo extends EventsScope {
     if (fullState && !isEqual(this.fullState, fullState)) {
       const result = FullState.getFullState(this.fullState, fullState);
 
-      this.updateMeeting(result.current);
+      this.callbacks.updateMeeting(result.current);
 
       if (result.updates.meetingStateChangedTo) {
         this.emitScoped(
@@ -2479,7 +2477,7 @@ export default class LocusInfo extends EventsScope {
     if (host && !isEqual(this.host, host)) {
       const parsedHosts = HostUtils.getHosts(this.host, host);
 
-      this.updateMeeting(parsedHosts.current);
+      this.callbacks.updateMeeting(parsedHosts.current);
       this.parsedLocus.host = parsedHosts.current;
       if (parsedHosts.updates.isNewHost) {
         this.compareAndUpdateFlags.compareSelfAndHost = true;
@@ -2537,7 +2535,7 @@ export default class LocusInfo extends EventsScope {
       this.info = info;
       this.parsedLocus.info = parsedInfo.current;
       // Parses the info and adds necessary values
-      this.updateMeeting(parsedInfo.current);
+      this.callbacks.updateMeeting(parsedInfo.current);
 
       this.emitScoped(
         {
@@ -2566,7 +2564,7 @@ export default class LocusInfo extends EventsScope {
 
     const parsedEmbeddedApps = EmbeddedAppsUtils.parse(embeddedApps);
 
-    this.updateMeeting({embeddedApps: parsedEmbeddedApps});
+    this.callbacks.updateMeeting({embeddedApps: parsedEmbeddedApps});
 
     this.emitScoped(
       {
@@ -2591,7 +2589,7 @@ export default class LocusInfo extends EventsScope {
     if (mediaShares && (!isEqual(this.mediaShares, mediaShares) || forceUpdate)) {
       const parsedMediaShares = MediaSharesUtils.getMediaShares(this.mediaShares, mediaShares);
 
-      this.updateMeeting(parsedMediaShares.current);
+      this.callbacks.updateMeeting(parsedMediaShares.current);
       this.parsedLocus.mediaShares = parsedMediaShares.current;
       this.mediaShares = mediaShares;
       this.emitScoped(
@@ -2637,7 +2635,7 @@ export default class LocusInfo extends EventsScope {
         this.participants // using this.participants instead of locus.participants here, because with delta DTOs locus.participants will only contain a small subset of participants
       );
 
-      this.updateMeeting(parsedSelves.current);
+      this.callbacks.updateMeeting(parsedSelves.current);
       this.parsedLocus.self = parsedSelves.current;
 
       const element = this.parsedLocus.states[this.parsedLocus.states.length - 1];
@@ -2655,7 +2653,7 @@ export default class LocusInfo extends EventsScope {
       );
 
       if (result?.sipUri) {
-        this.updateMeeting(result);
+        this.callbacks.updateMeeting(result);
       }
 
       if (parsedSelves.updates.moderatorChanged) {
@@ -2922,7 +2920,7 @@ export default class LocusInfo extends EventsScope {
   updateLocusUrl(url: string, isMainLocus = true) {
     if (url && this.url !== url) {
       this.url = url;
-      this.updateMeeting({locusUrl: url});
+      this.callbacks.updateMeeting({locusUrl: url});
       this.emitScoped(
         {
           file: 'locus-info',
