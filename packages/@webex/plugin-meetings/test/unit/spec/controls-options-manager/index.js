@@ -326,7 +326,11 @@ describe('plugin-meetings', () => {
                 beforeEach(() => {
                   restorable = Util.canUpdate;
                   Util.canUpdate = sinon.stub().returns(true);
-                  manager.setCurrentViewTheParticipantList({enabled: true, panelistEnabled: true, attendeeCount: true});
+                  manager.set({
+                    locusUrl: 'test/id',
+                    displayHints: [],
+                    getControls: () => ({viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: true}}),
+                  });
                 });
 
                 afterEach(() => {

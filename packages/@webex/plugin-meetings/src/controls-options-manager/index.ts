@@ -56,11 +56,7 @@ export default class ControlsOptionsManager {
    */
   private mainLocusUrl: string;
 
-  private currentControls: {
-    viewTheParticipantList: {enabled: boolean; panelistEnabled: boolean; attendeeCount: boolean};
-  } = {
-    viewTheParticipantList: {enabled: false, panelistEnabled: false, attendeeCount: false},
-  };
+  private getControls: () => Record<string, any> = () => ({});
 
   /**
    * @param {MeetingRequest} request
@@ -73,6 +69,7 @@ export default class ControlsOptionsManager {
     options?: {
       locusUrl: string;
       displayHints?: Array<string>;
+      getControls: () => Record<string, any>;
     }
   ) {
     this.initialize(request);
@@ -95,7 +92,11 @@ export default class ControlsOptionsManager {
    * @public
    * @memberof ControlsOptionsManager
    */
-  public set(options?: {locusUrl: string; displayHints?: Array<string>}) {
+  public set(options?: {
+    locusUrl: string;
+    displayHints?: Array<string>;
+    getControls?: () => Record<string, any>;
+  }) {
     this.extract(options);
   }
 
@@ -124,22 +125,6 @@ export default class ControlsOptionsManager {
   }
 
   /**
-   * Updates the current viewTheParticipantList state from locus controls.
-   *
-   * @param {Object} state
-   * @returns {void}
-   * @public
-   * @memberof ControlsOptionsManager
-   */
-  public setCurrentViewTheParticipantList(state: {enabled: boolean; panelistEnabled: boolean; attendeeCount: boolean | number}) {
-    this.currentControls.viewTheParticipantList = {
-      enabled: state.enabled,
-      panelistEnabled: state.panelistEnabled,
-      attendeeCount: Boolean(state.attendeeCount),
-    };
-  }
-
-  /**
    * @returns {string}
    * @public
    * @memberof ControlsOptionsManager
@@ -163,9 +148,16 @@ export default class ControlsOptionsManager {
    * @private
    * @memberof ControlsOptionsManager
    */
-  private extract(options?: {locusUrl: string; displayHints?: Array<string>}) {
+  private extract(options?: {
+    locusUrl: string;
+    displayHints?: Array<string>;
+    getControls?: () => Record<string, any>;
+  }) {
     this.setDisplayHints(options?.displayHints);
     this.setLocusUrl(options?.locusUrl);
+    if (options?.getControls) {
+      this.getControls = options.getControls;
+    }
   }
 
   /**
@@ -198,10 +190,11 @@ export default class ControlsOptionsManager {
 
       if (control.scope === Control.viewTheParticipantList) {
         const props = properties as ViewTheParticipantListProperties;
+        const current = this.getControls()?.viewTheParticipantList;
         properties = {
-          enabled: props.enabled ?? this.currentControls.viewTheParticipantList.enabled,
-          panelistEnabled: props.panelistEnabled ?? this.currentControls.viewTheParticipantList.panelistEnabled,
-          attendeeCount: props.attendeeCount ?? this.currentControls.viewTheParticipantList.attendeeCount,
+          enabled: props.enabled ?? current?.enabled ?? false,
+          panelistEnabled: props.panelistEnabled ?? current?.panelistEnabled ?? false,
+          attendeeCount: props.attendeeCount ?? Boolean(current?.attendeeCount) ?? false,
         };
       }
 

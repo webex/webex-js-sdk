@@ -1567,6 +1567,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.controlsOptionsManager = new ControlsOptionsManager(this.meetingRequest, {
       locusUrl: this.locusInfo?.url,
       displayHints: [],
+      getControls: () => this.locusInfo?.controls,
     });
 
     this.setUpLocusInfoListeners();
@@ -3027,7 +3028,6 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.CONTROLS_VIEW_THE_PARTICIPANTS_LIST_CHANGED, ({state}) => {
-      this.controlsOptionsManager.setCurrentViewTheParticipantList(state);
       Trigger.trigger(
         this,
         {file: 'meeting/index', function: 'setupLocusControlsListener'},
