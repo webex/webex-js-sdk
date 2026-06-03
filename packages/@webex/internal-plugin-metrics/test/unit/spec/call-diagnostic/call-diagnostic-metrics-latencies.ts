@@ -214,21 +214,21 @@ describe('internal-plugin-metrics', () => {
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.start',
           value: 200,
-          options: {meetingId: 'meeting-2', dataSetName: 'main', randomBackoffTime: 20},
+          options: {meetingId: 'meeting-2', dataSetName: 'main', randomBackoffTime: 23},
         });
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.request',
-          value: 220,
+          value: 217,
           options: {meetingId: 'meeting-2', dataSetName: 'main'},
         });
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.response',
-          value: 240,
+          value: 241,
           options: {meetingId: 'meeting-2', dataSetName: 'main'},
         });
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.message.received',
-          value: 260,
+          value: 268,
           options: {meetingId: 'meeting-2', dataSetName: 'main'},
         });
 
@@ -253,13 +253,13 @@ describe('internal-plugin-metrics', () => {
           totalTime: 50,
         });
         assert.deepEqual(cdl.getLocusSyncLatency('main', 'meeting-2'), {
-          randomBackoffTime: 20,
+          randomBackoffTime: 23,
           hashtreePrepTime: 0,
           hashtreeResponseTime: 0,
-          syncPrepTime: 20,
-          syncResponseTime: 20,
-          syncMessageReceiveTime: 20,
-          totalTime: 60,
+          syncPrepTime: 17,
+          syncResponseTime: 24,
+          syncMessageReceiveTime: 27,
+          totalTime: 68,
         });
 
         cdl.clearLocusSyncLatency('main', 'meeting-1');
