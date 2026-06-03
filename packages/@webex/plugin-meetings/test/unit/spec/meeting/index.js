@@ -11922,6 +11922,79 @@ describe('plugin-meetings', () => {
 
             assert.notCalled(meeting.recordingController.getRecordingStatus);
           });
+
+          it('drops a stale hydrate response when the recording state changes mid-flight', async () => {
+            meeting.recordingController.getServiceUrl.returns('svc');
+            meeting.recordingController.getLocusId.returns('locus-id');
+
+            // First request: hangs until we resolve it.
+            let resolveFirst;
+            const firstPending = new Promise((resolve) => {
+              resolveFirst = resolve;
+            });
+            meeting.recordingController.getRecordingStatus.onFirstCall().returns(firstPending);
+
+            // Kick off the first hydration (segment A).
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {
+                state: RECORDING_STATE.RECORDING,
+                modifiedBy: 'u',
+                lastModified: 't1',
+                modifiedByServiceAppName: undefined,
+                modifiedByServiceAppId: undefined,
+              }
+            );
+
+            // Stop, then start a fresh segment B before A's response resolves.
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {
+                state: RECORDING_STATE.IDLE,
+                modifiedBy: 'u',
+                lastModified: 't2',
+                modifiedByServiceAppName: undefined,
+                modifiedByServiceAppId: undefined,
+              }
+            );
+
+            meeting.recordingController.getRecordingStatus.onSecondCall().resolves({
+              status: 'recording',
+              lastDuration: 0,
+              lastTime: '2026-06-03T11:00:00Z',
+              needCalculate: true,
+            });
+
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {
+                state: RECORDING_STATE.RECORDING,
+                modifiedBy: 'u',
+                lastModified: 't3',
+                modifiedByServiceAppName: undefined,
+                modifiedByServiceAppId: undefined,
+              }
+            );
+            // allow segment B's hydrate to flush
+            await new Promise((r) => setImmediate(r));
+
+            // Now resolve segment A's stale response with a large duration —
+            // it must NOT overwrite segment B.
+            resolveFirst({
+              status: 'recording',
+              lastDuration: 99999,
+              lastTime: '2026-06-03T10:00:00Z',
+              needCalculate: true,
+            });
+            await new Promise((r) => setImmediate(r));
+
+            assert.equal(meeting.recording.state, RECORDING_STATE.RECORDING);
+            assert.equal(meeting.recording.lastDuration, 0);
+            assert.equal(meeting.recording.lastTime, '2026-06-03T11:00:00Z');
+          });
         });
 
         it('listens to the locus interpretation update event', () => {

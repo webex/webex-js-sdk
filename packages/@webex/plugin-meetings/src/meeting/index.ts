@@ -687,6 +687,12 @@ export default class Meeting extends StatelessWebexPlugin {
   remoteMediaManager: RemoteMediaManager | null;
   recordingController: RecordingController;
   pendingRecordingHydrationEvent?: string;
+  // Monotonic counter bumped on every recording state transition. Used to
+  // discard stale `getRecordingStatus` responses that resolve after the
+  // recording has been stopped (and possibly restarted) — preventing the
+  // previous segment's `lastDuration`/`lastTime` from being merged onto
+  // the new RECORDING state.
+  private recordingHydrationEpoch = 0;
   controlsOptionsManager: ControlsOptionsManager;
   requiredCaptcha: any;
   receiveSlotManager: ReceiveSlotManager;
@@ -2845,6 +2851,12 @@ export default class Meeting extends StatelessWebexPlugin {
 
     this.pendingRecordingHydrationEvent = undefined;
 
+    // Capture the current epoch before issuing the request. If the recording
+    // state changes (e.g. stop, or stop -> start of a new segment) before the
+    // response arrives, the epoch bumps and we drop the response so we don't
+    // apply the previous segment's duration onto the new RECORDING state.
+    const epochAtRequest = this.recordingHydrationEpoch;
+
     try {
       const duration = await this.recordingController.getRecordingStatus();
 
@@ -2854,13 +2866,20 @@ export default class Meeting extends StatelessWebexPlugin {
         )}`
       );
 
+      if (this.recordingHydrationEpoch !== epochAtRequest) {
+        LoggerProxy.logger.debug(
+          `Meeting:index#hydrateRecordingDuration --> dropping stale response (event=${event}); epoch changed`
+        );
+
+        return;
+      }
+
       if (!duration || (duration.lastDuration === undefined && duration.lastTime === undefined)) {
         return;
       }
 
-      // Guard against a race: if the recording was stopped while the request
-      // was in flight, do not resurrect stale duration metadata onto the now
-      // IDLE state — that would re-trigger the timer on the next start.
+      // Belt-and-suspenders: even if the epoch is unchanged, never resurrect
+      // duration metadata onto an IDLE state.
       if (this.recording?.state === RECORDING_STATE.IDLE) {
         return;
       }
@@ -2971,6 +2990,11 @@ export default class Meeting extends StatelessWebexPlugin {
           needCalculate,
           previousRecording.needCalculate
         );
+
+        // Bump the hydration epoch on every recording state update so that
+        // any in-flight `getRecordingStatus` request from the previous state
+        // is discarded when it resolves.
+        this.recordingHydrationEpoch += 1;
 
         // `RESUMED` state should be converted to `RECORDING` after triggering the event
         this.recording = {
