@@ -686,6 +686,7 @@ export default class Meeting extends StatelessWebexPlugin {
   recording: any;
   remoteMediaManager: RemoteMediaManager | null;
   recordingController: RecordingController;
+  pendingRecordingHydrationEvent?: string;
   controlsOptionsManager: ControlsOptionsManager;
   requiredCaptcha: any;
   receiveSlotManager: ReceiveSlotManager;
@@ -2810,6 +2811,84 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
+   * Locus deltas do not include the accumulated recording duration. Native
+   * clients fetch it from the recording stream service
+   * (`GET {serviceUrl}/loci/{locusId}/resource`). This helper performs the
+   * same fetch and, on success, merges the duration metadata into
+   * `this.recording` and re-emits the supplied event so the consumer can
+   * hydrate its timer with the correct elapsed time (especially on rejoin
+   * while the meeting is paused).
+   *
+   * @param {string} event - the recording event that was just fired
+   * @returns {Promise<void>}
+   * @private
+   * @memberof Meeting
+   */
+  private async hydrateRecordingDuration(event: string): Promise<void> {
+    if (!this.recordingController) {
+      return;
+    }
+
+    // The recording stream service URL is set asynchronously via the
+    // LINKS_SERVICES locus event. On initial join into an already RECORDING
+    // / PAUSED meeting, the controls update can fire before that. In that
+    // case, defer the hydration: it will be retried from
+    // `setUpLocusServicesListener` once the URL is available.
+    if (!this.recordingController.getServiceUrl() || !this.recordingController.getLocusId()) {
+      LoggerProxy.logger.debug(
+        `Meeting:index#hydrateRecordingDuration --> deferred (event=${event}); serviceUrl/locusId not yet available`
+      );
+      this.pendingRecordingHydrationEvent = event;
+
+      return;
+    }
+
+    this.pendingRecordingHydrationEvent = undefined;
+
+    try {
+      const duration = await this.recordingController.getRecordingStatus();
+
+      LoggerProxy.logger.debug(
+        `Meeting:index#hydrateRecordingDuration --> event=${event} duration=${JSON.stringify(
+          duration
+        )}`
+      );
+
+      if (!duration || (duration.lastDuration === undefined && duration.lastTime === undefined)) {
+        return;
+      }
+
+      // Guard against a race: if the recording was stopped while the request
+      // was in flight, do not resurrect stale duration metadata onto the now
+      // IDLE state — that would re-trigger the timer on the next start.
+      if (this.recording?.state === RECORDING_STATE.IDLE) {
+        return;
+      }
+
+      this.recording = {
+        ...this.recording,
+        lastDuration: duration.lastDuration,
+        lastTime: duration.lastTime,
+        needCalculate: duration.needCalculate,
+      };
+
+      Trigger.trigger(
+        this,
+        {
+          file: 'meeting/index',
+          function: 'hydrateRecordingDuration',
+        },
+        event,
+        this.recording
+      );
+    } catch (error) {
+      LoggerProxy.logger.warn(
+        `Meeting:index#hydrateRecordingDuration --> failed to fetch duration: ${error}`
+      );
+    }
+  }
+
+  /**
    * Set up the locus info recording update listener
    * update recording value for the meeting
    * notifies consumer with:
@@ -2830,7 +2909,16 @@ export default class Meeting extends StatelessWebexPlugin {
   private setupLocusControlsListener() {
     this.locusInfo.on(
       LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
-      ({state, modifiedBy, lastModified, modifiedByServiceAppName, modifiedByServiceAppId}) => {
+      ({
+        state,
+        modifiedBy,
+        lastModified,
+        modifiedByServiceAppName,
+        modifiedByServiceAppId,
+        lastDuration,
+        lastTime,
+        needCalculate,
+      }) => {
         let event;
 
         switch (state) {
@@ -2851,6 +2939,39 @@ export default class Meeting extends StatelessWebexPlugin {
             break;
         }
 
+        // Locus deltas do NOT carry duration data. To avoid wiping the values
+        // we previously hydrated from the recording stream service (which
+        // would cause the UI to briefly flash 00:00:00 on every state change
+        // such as PAUSED -> RECORDING), preserve any prior duration metadata
+        // until hydrate runs again with fresh server data. EXCEPT when we
+        // transition into IDLE (recording fully stopped) — in that case the
+        // previous segment's duration is no longer meaningful, and keeping it
+        // around would cause the next START to briefly show the stale value.
+        const previousRecording = this.recording || {};
+        const isStopping = state === RECORDING_STATE.IDLE;
+        const pickDurationField = <T>(
+          incoming: T | undefined,
+          previous: T | undefined
+        ): T | undefined => {
+          if (isStopping) {
+            return undefined;
+          }
+          if (incoming !== undefined) {
+            return incoming;
+          }
+
+          return previous;
+        };
+        const resolvedLastDuration = pickDurationField(
+          lastDuration,
+          previousRecording.lastDuration
+        );
+        const resolvedLastTime = pickDurationField(lastTime, previousRecording.lastTime);
+        const resolvedNeedCalculate = pickDurationField(
+          needCalculate,
+          previousRecording.needCalculate
+        );
+
         // `RESUMED` state should be converted to `RECORDING` after triggering the event
         this.recording = {
           state: state === RECORDING_STATE.RESUMED ? RECORDING_STATE.RECORDING : state,
@@ -2858,6 +2979,13 @@ export default class Meeting extends StatelessWebexPlugin {
           lastModified,
           modifiedByServiceAppName,
           modifiedByServiceAppId,
+          // Duration metadata for timer hydration on rejoin. Optional —
+          // present only when Locus includes `controls.record.meta.duration`,
+          // which today it never does. We therefore fall back to whatever we
+          // already had so the UI does not lose the timer baseline.
+          lastDuration: resolvedLastDuration,
+          lastTime: resolvedLastTime,
+          needCalculate: resolvedNeedCalculate,
         };
         Trigger.trigger(
           this,
@@ -2868,6 +2996,23 @@ export default class Meeting extends StatelessWebexPlugin {
           event,
           this.recording
         );
+
+        // Locus deltas do not carry the accumulated recording duration.
+        // When the meeting transitions into RECORDING or PAUSED (which also
+        // covers the case where we join a meeting that is already in one of
+        // those states), fetch the duration metadata from the recording
+        // stream service to mirror what native clients do. Re-emit the same
+        // event with the hydrated values so the UI can show the correct
+        // elapsed time instead of `00:00:00`.
+        if (
+          event &&
+          (state === RECORDING_STATE.RECORDING ||
+            state === RECORDING_STATE.RESUMED ||
+            state === RECORDING_STATE.PAUSED) &&
+          (lastDuration === undefined || lastTime === undefined)
+        ) {
+          this.hydrateRecordingDuration(event);
+        }
       }
     );
 
@@ -3539,6 +3684,16 @@ export default class Meeting extends StatelessWebexPlugin {
       this.annotation.approvalUrlUpdate(payload?.services?.approval?.url);
       this.simultaneousInterpretation.approvalUrlUpdate(payload?.services?.approval?.url);
       this.aiEnableRequest.approvalUrlUpdate(payload?.services?.approval?.url);
+
+      // If a recording event fired before the recording stream service URL
+      // was known (e.g. joining an already RECORDING/PAUSED meeting), retry
+      // the deferred hydration now that the URL is available.
+      if (this.pendingRecordingHydrationEvent) {
+        const event = this.pendingRecordingHydrationEvent;
+
+        this.pendingRecordingHydrationEvent = undefined;
+        this.hydrateRecordingDuration(event);
+      }
     });
   }
 

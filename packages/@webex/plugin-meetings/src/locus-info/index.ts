@@ -2100,6 +2100,11 @@ export default class LocusInfo extends EventsScope {
             lastModified: current.record.lastModified,
             modifiedByServiceAppName: current.record.modifiedByServiceAppName,
             modifiedByServiceAppId: current.record.modifiedByServiceAppId,
+            // Duration metadata (parity with native). All optional — present
+            // only when Locus includes them in `controls.record.meta.duration`.
+            lastDuration: current.record.lastDuration,
+            lastTime: current.record.lastTime,
+            needCalculate: current.record.needCalculate,
           }
         );
       }
