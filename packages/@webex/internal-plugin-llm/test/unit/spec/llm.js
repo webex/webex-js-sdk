@@ -711,21 +711,39 @@ describe('plugin-llm', () => {
 
     describe('#registerAndConnect timing', () => {
       it('returns timing data on successful connection', async () => {
-        llmService.register = sinon.stub().callsFake(async () => {
-          const sessionData = llmService.connections.get('llm-default-session') || {};
+        const clock = sinon.useFakeTimers();
 
-          sessionData.webSocketUrl = 'wss://example.com/socket';
-          sessionData.binding = 'binding';
-          llmService.connections.set('llm-default-session', sessionData);
+        llmService.isDataChannelTokenEnabled = sinon.stub().resolves(false);
+        llmService.register = sinon.stub().callsFake(() => {
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              const sessionData = llmService.connections.get('llm-default-session') || {};
+
+              sessionData.webSocketUrl = 'wss://example.com/socket';
+              sessionData.binding = 'binding';
+              llmService.connections.set('llm-default-session', sessionData);
+
+              resolve();
+            }, 37);
+          });
+        });
+        llmService.connect = sinon.stub().callsFake(() => {
+          return new Promise((resolve) => {
+            setTimeout(resolve, 23);
+          });
         });
 
-        const result = await llmService.registerAndConnect(locusUrl, datachannelUrl, undefined);
+        const resultPromise = llmService.registerAndConnect(locusUrl, datachannelUrl, undefined);
 
-        assert.isDefined(result);
-        assert.isNumber(result.clientLLMDatachannelResponseTime);
-        assert.isNumber(result.clientLLMWebSocketConnectTime);
-        assert.isAtLeast(result.clientLLMDatachannelResponseTime, 0);
-        assert.isAtLeast(result.clientLLMWebSocketConnectTime, 0);
+        await clock.tickAsync(37);
+        await clock.tickAsync(23);
+
+        const result = await resultPromise;
+
+        assert.deepEqual(result, {
+          clientLLMDatachannelResponseTime: 37,
+          clientLLMWebSocketConnectTime: 23,
+        });
       });
 
       it('returns undefined when locusUrl is empty', async () => {
