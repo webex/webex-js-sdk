@@ -1399,6 +1399,61 @@ describe('plugin-mobius-socket', () => {
         });
       });
 
+      describe('#_onclose() with code 4429 (too many requests)', () => {
+        let mockSocket;
+        let anotherSocket;
+
+        beforeEach(() => {
+          mockSocket = {
+            url: 'ws://active-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          anotherSocket = {
+            url: 'ws://old-socket.com',
+            removeAllListeners: sinon.stub(),
+          };
+          mobiusSocket.socket = mockSocket;
+          mobiusSocket.connected = true;
+          sinon.stub(mobiusSocket, 'emitEvent');
+          sinon.stub(mobiusSocket, 'reconnect');
+        });
+
+        afterEach(() => {
+          mobiusSocket.emitEvent.restore();
+          mobiusSocket.reconnect.restore();
+        });
+
+        it('should emit offline.permanent and tear down state on active socket close, without reconnecting', () => {
+          const closeEvent = {
+            code: 4429,
+            reason: 'too many requests',
+          };
+
+          mobiusSocket.onclose(closeEvent, mockSocket);
+
+          assert.calledWith(mobiusSocket.emitEvent, 'offline', closeEvent);
+          // 4429 tears down without auto-reconnect, so lifecycle listeners must be notified.
+          assert.calledWith(mobiusSocket.emitEvent, 'offline.permanent', closeEvent);
+          assert.notCalled(mobiusSocket.reconnect);
+          assert.isFalse(mobiusSocket.connected);
+        });
+
+        it('should not emit offline.permanent for a non-active socket close', () => {
+          const closeEvent = {
+            code: 4429,
+            reason: 'too many requests',
+          };
+
+          mobiusSocket.onclose(closeEvent, anotherSocket);
+
+          assert.neverCalledWith(mobiusSocket.emitEvent, 'offline', closeEvent);
+          assert.neverCalledWith(mobiusSocket.emitEvent, 'offline.permanent', closeEvent);
+          assert.notCalled(mobiusSocket.reconnect);
+          assert.isTrue(mobiusSocket.connected);
+          assert.strictEqual(mobiusSocket.socket, mockSocket);
+        });
+      });
+
       describe('shutdown switchover with retry logic', () => {
         let connectWithBackoffStub;
 

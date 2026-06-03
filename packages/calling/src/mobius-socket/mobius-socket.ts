@@ -863,8 +863,12 @@ class MobiusSocket extends EventEmitter {
           await this.reconnect(this.socket?.url);
           break;
         case 4429:
-          // Silently ignore too many requests
+          // Too many requests: the socket is torn down and not auto-reconnected, so surface
+          // a permanent disconnect to connection-lifecycle listeners (which only observe the
+          // suffixed offline.* events) instead of leaving them unaware of the close.
+          // Silently ignore (do not attempt reconnect)
           this.logger.error(`too many requests, statusCode=${event.code}`, loggerContext);
+          if (isActiveSocket) this.emitEvent('offline.permanent', event);
           break;
         default:
           this.logger.info(`socket disconnected unexpectedly; will not reconnect`, loggerContext);
