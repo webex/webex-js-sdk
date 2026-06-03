@@ -1392,7 +1392,7 @@ export default class Meeting extends StatelessWebexPlugin {
         },
         syncLatencyTracker: (this as any).webex.internal.newMetrics.callDiagnosticLatencies,
       },
-      // @ts-ignore - webex injected by registerPlugin
+      // @ts-ignore
       this.webex,
       this.id
     );
@@ -5976,7 +5976,7 @@ export default class Meeting extends StatelessWebexPlugin {
         storeEventForDebugging('llm', event.data);
       }
 
-      this.locusInfo.parse(this, event.data);
+      this.locusInfo.parse(this, event.data, event.trackingId);
     } else {
       LoggerProxy.logger.warn(
         `Meeting:index#processLocusLLMEvent --> Unknown event type: ${event.data.eventType}`

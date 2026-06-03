@@ -131,6 +131,12 @@ const SYNC_METRICS_DATA_SETS = [
 interface PendingSyncMetrics {
   dataSetName: string;
   dataSetVersion: number;
+  trackingId?: string;
+}
+
+interface SyncRequestResult {
+  message: HashTreeMessage | null;
+  trackingId?: string;
 }
 
 interface LeafInfo {
@@ -1214,9 +1220,10 @@ class HashTreeParser {
    *
    * @param {HashTreeMessage} message - The hash tree message containing data sets and objects to be processed
    * @param {string} [debugText] - Optional debug text to include in logs
+   * @param {string} [trackingId] top-level tracking id from LLM event or /sync response
    * @returns {void}
    */
-  handleMessage(message: HashTreeMessage, debugText?: string) {
+  handleMessage(message: HashTreeMessage, debugText?: string, trackingId?: string) {
     if (this.state === 'stopped') {
       return;
     }
@@ -1236,7 +1243,7 @@ class HashTreeParser {
       this.handleRootHashHeartBeatMessage(message);
       this.resetHeartbeatWatchdogs(message.dataSets);
     } else {
-      this.tryCompletePendingSyncMetrics(message);
+      this.tryCompletePendingSyncMetrics(message, trackingId);
 
       const updatedObjects = this.parseMessage(message, debugText);
 
@@ -1252,9 +1259,10 @@ class HashTreeParser {
    * Completes any pending sync metrics when a qualifying LLM message arrives.
    *
    * @param {HashTreeMessage} message
+   * @param {string} [trackingId] top-level tracking id from LLM event or /sync response
    * @returns {void}
    */
-  private tryCompletePendingSyncMetrics(message: HashTreeMessage): void {
+  private tryCompletePendingSyncMetrics(message: HashTreeMessage, trackingId?: string): void {
     if (this.pendingSyncMetrics.size === 0) {
       return;
     }
@@ -1262,7 +1270,11 @@ class HashTreeParser {
     for (const dataSet of message.dataSets) {
       const pending = this.pendingSyncMetrics.get(dataSet.name);
 
-      if (pending && dataSet.version >= pending.dataSetVersion) {
+      if (
+        pending &&
+        dataSet.version >= pending.dataSetVersion &&
+        (!pending.trackingId || pending.trackingId === trackingId)
+      ) {
         this.completeSyncMetrics(dataSet.name);
       }
     }
@@ -1536,15 +1548,22 @@ class HashTreeParser {
       }
       // request sync for mismatched leaves
       let syncResponse: HashTreeMessage | null = null;
+      let syncTrackingId: string | undefined;
       let syncRequestSent = false;
 
       if (isInitialization) {
-        syncResponse = await this.sendSyncRequestToLocus(dataSet, {isInitialization: true});
+        const syncResult = await this.sendSyncRequestToLocus(dataSet, {isInitialization: true});
+
+        syncResponse = syncResult.message;
+        syncTrackingId = syncResult.trackingId;
         syncRequestSent = true;
       } else if (Object.keys(leavesData).length > 0) {
-        syncResponse = await this.sendSyncRequestToLocus(dataSet, {
+        const syncResult = await this.sendSyncRequestToLocus(dataSet, {
           mismatchedLeavesData: leavesData,
         });
+
+        syncResponse = syncResult.message;
+        syncTrackingId = syncResult.trackingId;
         syncRequestSent = true;
       }
 
@@ -1557,6 +1576,7 @@ class HashTreeParser {
         this.pendingSyncMetrics.set(dataSet.name, {
           dataSetName: dataSet.name,
           dataSetVersion: targetSyncVersion,
+          trackingId: syncTrackingId,
         });
         syncMetricsPending = true;
       }
@@ -1577,7 +1597,8 @@ class HashTreeParser {
           syncResponse,
           `via sync API (${
             isInitialization ? 'init' : `${Object.keys(leavesData).length} mismatched leaves`
-          })`
+          })`,
+          syncTrackingId
         );
       }
     } catch (error) {
@@ -2191,12 +2212,12 @@ class HashTreeParser {
    *
    * @param {InternalDataSet} dataSet The data set to sync.
    * @param {Object} options Either `{ isInitialization: true }` for init syncs (uses leafCount=1 with empty leaf data) or `{ mismatchedLeavesData }` for normal syncs.
-   * @returns {Promise<HashTreeMessage|null>}
+   * @returns {Promise<SyncRequestResult>}
    */
   private sendSyncRequestToLocus(
     dataSet: InternalDataSet,
     options: {isInitialization: true} | {mismatchedLeavesData: Record<number, LeafDataItem[]>}
-  ): Promise<HashTreeMessage | null> {
+  ): Promise<SyncRequestResult> {
     LoggerProxy.logger.info(
       `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Sending sync request for data set "${dataSet.name}"`
     );
@@ -2246,6 +2267,8 @@ class HashTreeParser {
       body,
     })
       .then((resp) => {
+        const trackingId = resp.headers?.trackingid || resp.headers?.trackingId;
+
         if (this.shouldCollectSyncMetrics(dataSet.name, isInitialization)) {
           this.syncLatencyTracker?.saveTimestamp({
             key: 'internal.client.locus.sync.response',
@@ -2258,10 +2281,10 @@ class HashTreeParser {
             `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Got ${resp.statusCode} with empty body for sync request for data set "${dataSet.name}", data should arrive via messages`
           );
 
-          return null;
+          return {message: null, trackingId};
         }
 
-        return resp.body as HashTreeMessage;
+        return {message: resp.body as HashTreeMessage, trackingId};
       })
       .catch((error) => {
         LoggerProxy.logger.error(

@@ -234,7 +234,7 @@ describe('HashTreeParser', () => {
   }
 
   // Helper to mock sendSyncRequestToLocus response
-  function mockSendSyncRequestResponse(dataSetUrl: string, response: any) {
+  function mockSendSyncRequestResponse(dataSetUrl: string, response: any, headers?: any) {
     webexRequest
       .withArgs(
         sinon.match({
@@ -244,6 +244,7 @@ describe('HashTreeParser', () => {
       )
       .resolves({
         body: response,
+        headers,
       });
   }
 
@@ -5635,6 +5636,84 @@ describe('HashTreeParser', () => {
       });
       assert.calledOnceWithExactly(syncLatencyTracker.getLocusSyncLatency, 'main');
       assert.calledOnceWithExactly(syncLatencyTracker.clearLocusSyncLatency, 'main');
+      assert.isFalse(parser['pendingSyncMetrics'].has('main'));
+    });
+
+    it('only completes pending sync metrics when LLM message tracking id matches sync response tracking id', async () => {
+      const syncMetricsCallback = sinon.stub();
+      const syncLatency = {
+        randomBackoffTime: 0,
+        hashtreePrepTime: 5,
+        hashtreeResponseTime: 20,
+        syncPrepTime: 3,
+        syncResponseTime: 15,
+        syncMessageReceiveTime: 7,
+        totalTime: 50,
+      };
+      const syncLatencyTracker = {
+        saveTimestamp: sinon.stub(),
+        getLocusSyncLatency: sinon.stub().returns(syncLatency),
+        clearLocusSyncLatency: sinon.stub(),
+      };
+      const parser = createHashTreeParser(
+        undefined,
+        undefined,
+        undefined,
+        syncMetricsCallback,
+        syncLatencyTracker
+      );
+      const mainDataSetUrl = parser.dataSets.main.url;
+
+      mockGetHashesFromLocusResponse(
+        mainDataSetUrl,
+        new Array(16).fill('00000000000000000000000000000000'),
+        createDataSet('main', 16, 1101)
+      );
+      mockSendSyncRequestResponse(mainDataSetUrl, null, {trackingid: 'our-sync-tracking-id'});
+
+      parser.handleMessage(
+        createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
+        'trigger sync metrics'
+      );
+
+      await clock.tickAsync(1000);
+
+      parser.handleMessage(
+        {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1101),
+              root: 'newroot',
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [],
+        },
+        undefined,
+        'other-client-sync-tracking-id'
+      );
+
+      assert.notCalled(syncMetricsCallback);
+      assert.isTrue(parser['pendingSyncMetrics'].has('main'));
+
+      parser.handleMessage(
+        {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1101),
+              root: 'newroot',
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [],
+        },
+        undefined,
+        'our-sync-tracking-id'
+      );
+
+      assert.calledOnce(syncMetricsCallback);
       assert.isFalse(parser['pendingSyncMetrics'].has('main'));
     });
 

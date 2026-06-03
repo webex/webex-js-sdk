@@ -48,6 +48,7 @@ import {MEETING_KEY} from '../meetings/meetings.types';
 import MeetingCollection from '../meetings/collection';
 
 export type LocusLLMEvent = {
+  trackingId?: string;
   data: {
     eventType: typeof LOCUSEVENT.HASH_TREE_DATA_UPDATED;
     stateElementsMessage: HashTreeMessage;
@@ -1190,9 +1191,15 @@ export default class LocusInfo extends EventsScope {
    * @param {Meeting} meeting - The meeting object
    * @param {eventType} eventType - The event type
    * @param {HashTreeMessage} message incoming hash tree message
+   * @param {string} [trackingId] top-level tracking id from LLM event
    * @returns {void}
    */
-  private handleHashTreeMessage(meeting: any, eventType: LOCUSEVENT, message: HashTreeMessage) {
+  private handleHashTreeMessage(
+    meeting: any,
+    eventType: LOCUSEVENT,
+    message: HashTreeMessage,
+    trackingId?: string
+  ) {
     if (eventType !== LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
       this.sendClassicVsHashTreeMismatchMetric(
         meeting,
@@ -1212,7 +1219,7 @@ export default class LocusInfo extends EventsScope {
 
     // the check is just for typescript, the case of no entry in hashTreeParsers is handled in handleHashTreeParserSwitch() above
     if (entry) {
-      entry.parser.handleMessage(message);
+      entry.parser.handleMessage(message, undefined, trackingId);
     }
   }
 
@@ -1381,10 +1388,11 @@ export default class LocusInfo extends EventsScope {
   /**
    * @param {Meeting} meeting
    * @param {Object} data
+   * @param {string} [trackingId] top-level tracking id from LLM event
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  parse(meeting: any, data: any) {
+  parse(meeting: any, data: any, trackingId?: string) {
     if (this.hashTreeParsers.size > 0) {
       if (data.eventType === LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS) {
         // sync meetings response follows the format of "not wrapped" locus API responses,
@@ -1394,7 +1402,8 @@ export default class LocusInfo extends EventsScope {
         this.handleHashTreeMessage(
           meeting,
           data.eventType,
-          data.stateElementsMessage as HashTreeMessage
+          data.stateElementsMessage as HashTreeMessage,
+          trackingId
         );
       }
     } else {
