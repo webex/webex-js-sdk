@@ -11902,6 +11902,16 @@ describe('plugin-meetings', () => {
             assert.equal(meeting.recording.lastTime, '2026-06-03T10:00:00Z');
             assert.equal(meeting.recording.needCalculate, true);
             assert.isUndefined(meeting.pendingRecordingHydrationEvent);
+
+            // Hydration should fire the dedicated duration-updated event,
+            // NOT replay the original transition event.
+            assert.calledWith(
+              TriggerProxy.trigger,
+              meeting,
+              {file: 'meeting/index', function: 'hydrateRecordingDuration'},
+              EVENT_TRIGGERS.MEETING_RECORDING_DURATION_UPDATED,
+              meeting.recording
+            );
           });
 
           it('does not hydrate when transitioning into IDLE', async () => {

@@ -2821,11 +2821,16 @@ export default class Meeting extends StatelessWebexPlugin {
    * clients fetch it from the recording stream service
    * (`GET {serviceUrl}/loci/{locusId}/resource`). This helper performs the
    * same fetch and, on success, merges the duration metadata into
-   * `this.recording` and re-emits the supplied event so the consumer can
-   * hydrate its timer with the correct elapsed time (especially on rejoin
-   * while the meeting is paused).
+   * `this.recording` and emits a dedicated `meeting:recording:durationUpdated`
+   * event so the consumer can hydrate its timer with the correct elapsed
+   * time (especially on rejoin while the meeting is paused). The original
+   * transition event (started / paused / resumed) is intentionally NOT
+   * replayed — it has already fired from `setupLocusControlsListener` and
+   * replaying it would cause notification / analytics consumers to process
+   * the same transition twice.
    *
-   * @param {string} event - the recording event that was just fired
+   * @param {string} event - the recording transition event that triggered
+   *   this hydration (used only for logging)
    * @returns {Promise<void>}
    * @private
    * @memberof Meeting
@@ -2897,7 +2902,7 @@ export default class Meeting extends StatelessWebexPlugin {
           file: 'meeting/index',
           function: 'hydrateRecordingDuration',
         },
-        event,
+        EVENT_TRIGGERS.MEETING_RECORDING_DURATION_UPDATED,
         this.recording
       );
     } catch (error) {
