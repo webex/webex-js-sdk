@@ -319,6 +319,62 @@ describe('plugin-meetings', () => {
                     Util.canUpdate = restorable;
                   });
               });
+
+              describe('viewTheParticipantList fill-in', () => {
+                let restorable;
+
+                beforeEach(() => {
+                  restorable = Util.canUpdate;
+                  Util.canUpdate = sinon.stub().returns(true);
+                  manager.setCurrentViewTheParticipantList({enabled: true, panelistEnabled: true, attendeeCount: true});
+                });
+
+                afterEach(() => {
+                  Util.canUpdate = restorable;
+                });
+
+                it('should fill in all undefined properties from current state', () => {
+                  const control = {scope: 'viewTheParticipantList', properties: {}};
+
+                  return manager.update(control).then(() => {
+                    assert.calledOnceWithExactly(request.locusDeltaRequest, {
+                      uri: 'test/id/controls',
+                      body: {
+                        viewTheParticipantList: {enabled: true, panelistEnabled: true, attendeeCount: true},
+                      },
+                      method: HTTP_VERBS.PATCH,
+                    });
+                  });
+                });
+
+                it('should keep explicitly provided properties and fill in the rest', () => {
+                  const control = {scope: 'viewTheParticipantList', properties: {enabled: false}};
+
+                  return manager.update(control).then(() => {
+                    assert.calledOnceWithExactly(request.locusDeltaRequest, {
+                      uri: 'test/id/controls',
+                      body: {
+                        viewTheParticipantList: {enabled: false, panelistEnabled: true, attendeeCount: true},
+                      },
+                      method: HTTP_VERBS.PATCH,
+                    });
+                  });
+                });
+
+                it('should not fill in properties when all are explicitly provided', () => {
+                  const control = {scope: 'viewTheParticipantList', properties: {enabled: false, panelistEnabled: false, attendeeCount: false}};
+
+                  return manager.update(control).then(() => {
+                    assert.calledOnceWithExactly(request.locusDeltaRequest, {
+                      uri: 'test/id/controls',
+                      body: {
+                        viewTheParticipantList: {enabled: false, panelistEnabled: false, attendeeCount: false},
+                      },
+                      method: HTTP_VERBS.PATCH,
+                    });
+                  });
+                });
+              });
             });
 
             describe('Mute/Unmute All', () => {

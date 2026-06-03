@@ -4,7 +4,7 @@ import PermissionError from '../common/errors/permission';
 import MeetingRequest from '../meeting/request';
 import LoggerProxy from '../common/logs/logger-proxy';
 import {Control, Setting} from './enums';
-import {ControlConfig} from './types';
+import {ControlConfig, ViewTheParticipantListProperties} from './types';
 import Util from './util';
 import {CAN_SET, CAN_UNSET, ENABLED} from './constants';
 
@@ -55,6 +55,12 @@ export default class ControlsOptionsManager {
    * @memberof ControlsOptionsManager
    */
   private mainLocusUrl: string;
+
+  private currentControls: {
+    viewTheParticipantList: {enabled: boolean; panelistEnabled: boolean; attendeeCount: boolean};
+  } = {
+    viewTheParticipantList: {enabled: false, panelistEnabled: false, attendeeCount: false},
+  };
 
   /**
    * @param {MeetingRequest} request
@@ -118,6 +124,22 @@ export default class ControlsOptionsManager {
   }
 
   /**
+   * Updates the current viewTheParticipantList state from locus controls.
+   *
+   * @param {Object} state
+   * @returns {void}
+   * @public
+   * @memberof ControlsOptionsManager
+   */
+  public setCurrentViewTheParticipantList(state: {enabled: boolean; panelistEnabled: boolean; attendeeCount: boolean | number}) {
+    this.currentControls.viewTheParticipantList = {
+      enabled: state.enabled,
+      panelistEnabled: state.panelistEnabled,
+      attendeeCount: Boolean(state.attendeeCount),
+    };
+  }
+
+  /**
    * @returns {string}
    * @public
    * @memberof ControlsOptionsManager
@@ -172,8 +194,19 @@ export default class ControlsOptionsManager {
         );
       }
 
+      let {properties} = control;
+
+      if (control.scope === Control.viewTheParticipantList) {
+        const props = properties as ViewTheParticipantListProperties;
+        properties = {
+          enabled: props.enabled ?? this.currentControls.viewTheParticipantList.enabled,
+          panelistEnabled: props.panelistEnabled ?? this.currentControls.viewTheParticipantList.panelistEnabled,
+          attendeeCount: props.attendeeCount ?? this.currentControls.viewTheParticipantList.attendeeCount,
+        };
+      }
+
       return {
-        [control.scope]: control.properties,
+        [control.scope]: properties,
       };
     });
 
