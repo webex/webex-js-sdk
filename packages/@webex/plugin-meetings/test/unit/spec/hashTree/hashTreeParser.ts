@@ -180,7 +180,7 @@ describe('HashTreeParser', () => {
     excludedDataSets?: string[],
     syncMetricsCallback: sinon.SinonStub = sinon.stub(),
     syncLatencyTracker?: any,
-    syncLatencyMeetingId?: string
+    syncLatencyMeetingId = 'meeting-1'
   ) {
     return new HashTreeParser({
       initialLocus,
@@ -3152,6 +3152,7 @@ describe('HashTreeParser', () => {
         assert.calledWith(syncLatencyTracker.saveTimestamp, {
           key: 'internal.client.locus.sync.start',
           options: {
+            meetingId: 'meeting-1',
             dataSetName: 'main',
             randomBackoffTime: 250,
           },
@@ -3194,6 +3195,7 @@ describe('HashTreeParser', () => {
         assert.calledWith(syncLatencyTracker.saveTimestamp, {
           key: 'internal.client.locus.sync.start',
           options: {
+            meetingId: 'meeting-1',
             dataSetName: 'main',
             randomBackoffTime: 10,
           },
@@ -4832,6 +4834,7 @@ describe('HashTreeParser', () => {
       assert.calledWith(syncLatencyTracker.saveTimestamp, {
         key: 'internal.client.locus.sync.start',
         options: {
+          meetingId: 'meeting-1',
           dataSetName: 'main',
           randomBackoffTime: 250,
         },
@@ -5632,10 +5635,10 @@ describe('HashTreeParser', () => {
       assert.deepEqual(arg.syncLatency, syncLatency);
       assert.calledOnceWithExactly(syncLatencyTracker.saveTimestamp, {
         key: 'internal.client.locus.sync.message.received',
-        options: {dataSetName: 'main'},
+        options: {meetingId: 'meeting-1', dataSetName: 'main'},
       });
-      assert.calledOnceWithExactly(syncLatencyTracker.getLocusSyncLatency, 'main');
-      assert.calledOnceWithExactly(syncLatencyTracker.clearLocusSyncLatency, 'main');
+      assert.calledOnceWithExactly(syncLatencyTracker.getLocusSyncLatency, 'main', 'meeting-1');
+      assert.calledOnceWithExactly(syncLatencyTracker.clearLocusSyncLatency, 'main', 'meeting-1');
       assert.isFalse(parser['pendingSyncMetrics'].has('main'));
     });
 

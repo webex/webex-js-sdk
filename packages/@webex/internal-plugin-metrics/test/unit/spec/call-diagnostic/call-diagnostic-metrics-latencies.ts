@@ -111,7 +111,7 @@ describe('internal-plugin-metrics', () => {
       cdl.saveTimestamp({
         key: 'internal.client.locus.sync.start',
         value: 1,
-        options: {dataSetName: 'main', randomBackoffTime: 10},
+        options: {meetingId: 'meeting-1', dataSetName: 'main', randomBackoffTime: 10},
       });
       assert.deepEqual(cdl.locusSyncLatencies.size, 1);
 
@@ -127,35 +127,35 @@ describe('internal-plugin-metrics', () => {
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.start',
           value: 100,
-          options: {dataSetName: 'main', randomBackoffTime: 10.4},
+          options: {meetingId: 'meeting-1', dataSetName: 'main', randomBackoffTime: 10.4},
         });
         cdl.saveTimestamp({
           key: 'internal.client.locus.hashtree.request',
           value: 105,
-          options: {dataSetName: 'main'},
+          options: {meetingId: 'meeting-1', dataSetName: 'main'},
         });
         cdl.saveTimestamp({
           key: 'internal.client.locus.hashtree.response',
           value: 125,
-          options: {dataSetName: 'main'},
+          options: {meetingId: 'meeting-1', dataSetName: 'main'},
         });
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.request',
           value: 128,
-          options: {dataSetName: 'main'},
+          options: {meetingId: 'meeting-1', dataSetName: 'main'},
         });
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.response',
           value: 143,
-          options: {dataSetName: 'main'},
+          options: {meetingId: 'meeting-1', dataSetName: 'main'},
         });
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.message.received',
           value: 150,
-          options: {dataSetName: 'main'},
+          options: {meetingId: 'meeting-1', dataSetName: 'main'},
         });
 
-        assert.deepEqual(cdl.getLocusSyncLatency('main'), {
+        assert.deepEqual(cdl.getLocusSyncLatency('main', 'meeting-1'), {
           randomBackoffTime: 10,
           hashtreePrepTime: 5,
           hashtreeResponseTime: 20,
@@ -170,25 +170,25 @@ describe('internal-plugin-metrics', () => {
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.start',
           value: 100,
-          options: {dataSetName: 'main', randomBackoffTime: 0},
+          options: {meetingId: 'meeting-1', dataSetName: 'main', randomBackoffTime: 0},
         });
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.request',
           value: 110,
-          options: {dataSetName: 'main'},
+          options: {meetingId: 'meeting-1', dataSetName: 'main'},
         });
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.response',
           value: 130,
-          options: {dataSetName: 'main'},
+          options: {meetingId: 'meeting-1', dataSetName: 'main'},
         });
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.message.received',
           value: 140,
-          options: {dataSetName: 'main'},
+          options: {meetingId: 'meeting-1', dataSetName: 'main'},
         });
 
-        assert.deepEqual(cdl.getLocusSyncLatency('main'), {
+        assert.deepEqual(cdl.getLocusSyncLatency('main', 'meeting-1'), {
           randomBackoffTime: 0,
           hashtreePrepTime: 0,
           hashtreeResponseTime: 0,
@@ -272,17 +272,17 @@ describe('internal-plugin-metrics', () => {
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.start',
           value: 100,
-          options: {dataSetName: 'main', randomBackoffTime: 0},
+          options: {meetingId: 'meeting-1', dataSetName: 'main', randomBackoffTime: 0},
         });
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.message.received',
           value: 140,
-          options: {dataSetName: 'main'},
+          options: {meetingId: 'meeting-1', dataSetName: 'main'},
         });
 
-        assert.isUndefined(cdl.getLocusSyncLatency('main'));
-        cdl.clearLocusSyncLatency('main');
-        assert.isFalse(cdl.locusSyncLatencies.has('main'));
+        assert.isUndefined(cdl.getLocusSyncLatency('main', 'meeting-1'));
+        cdl.clearLocusSyncLatency('main', 'meeting-1');
+        assert.isFalse(cdl.locusSyncLatencies.has('meeting-1:main'));
       });
     });
 

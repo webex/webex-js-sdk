@@ -8,7 +8,7 @@ import {MetricEventNames, PreComputedLatencies} from '../metrics.types';
 // we only care about client event and feature event for now
 
 type LocusSyncLatencyMilestone = {
-  meetingId?: string;
+  meetingId: string;
   dataSetName: string;
   key: MetricEventNames;
   value: number;
@@ -69,22 +69,26 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @param dataSetName dataset name
    * @param meetingId meeting id
    */
-  public clearLocusSyncLatency(dataSetName: string, meetingId?: string) {
+  public clearLocusSyncLatency(dataSetName: string, meetingId: string) {
     this.locusSyncLatencies.delete(this.getLocusSyncLatencyKey(dataSetName, meetingId));
   }
 
   /**
    * Calculates Locus sync latency values from stored milestone timestamps.
    * @param dataSetName dataset name
+   * @param meetingId meeting id
    * @returns sync latency metrics
    */
-  public getLocusSyncLatency(dataSetName: string, meetingId?: string) {
+  public getLocusSyncLatency(dataSetName: string, meetingId: string) {
     const record = this.locusSyncLatencies.get(this.getLocusSyncLatencyKey(dataSetName, meetingId));
 
     if (!record) {
       return undefined;
     }
 
+    // Some sync flows skip the /hashtree request, for example single-leaf data sets or cases
+    // where we already know which leaves to sync. Treat the missing hashtree segment as 0,
+    // while still requiring the sync request/response/message milestones below.
     const hashtreePrepTime =
       this.getDiffBetweenLocusSyncTimestamps(record, 'syncStart', 'hashTreeRequest') ?? 0;
     const hashtreeResponseTime =
@@ -177,8 +181,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @param meetingId meeting id
    * @returns storage key
    */
-  private getLocusSyncLatencyKey(dataSetName: string, meetingId?: string) {
-    return meetingId ? `${meetingId}:${dataSetName}` : dataSetName;
+  private getLocusSyncLatencyKey(dataSetName: string, meetingId: string) {
+    return `${meetingId}:${dataSetName}`;
   }
 
   /**
@@ -290,7 +294,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       this.setMeetingId(meetingId);
     }
 
-    if (this.isLocusSyncLatencyEvent(key) && options.dataSetName) {
+    if (this.isLocusSyncLatencyEvent(key) && options.dataSetName && options.meetingId) {
       this.saveLocusSyncLatencyTimestamp({
         meetingId: options.meetingId,
         dataSetName: options.dataSetName,

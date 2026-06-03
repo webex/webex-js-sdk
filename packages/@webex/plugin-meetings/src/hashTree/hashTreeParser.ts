@@ -110,10 +110,10 @@ export type SyncLatencyTracker = {
       | 'internal.client.locus.sync.request'
       | 'internal.client.locus.sync.response'
       | 'internal.client.locus.sync.message.received';
-    options: {meetingId?: string; dataSetName: string; randomBackoffTime?: number};
+    options: {meetingId: string; dataSetName: string; randomBackoffTime?: number};
   }) => void;
-  getLocusSyncLatency: (dataSetName: string, meetingId?: string) => SyncLatencyMetrics | undefined;
-  clearLocusSyncLatency: (dataSetName: string, meetingId?: string) => void;
+  getLocusSyncLatency: (dataSetName: string, meetingId: string) => SyncLatencyMetrics | undefined;
+  clearLocusSyncLatency: (dataSetName: string, meetingId: string) => void;
 };
 
 export type HashTreeParserCallbacks = {
@@ -179,7 +179,7 @@ class HashTreeParser {
   webexRequest: WebexRequestMethod;
   private callbacks: HashTreeParserCallbacks;
   private syncLatencyTracker?: SyncLatencyTracker;
-  private syncLatencyMeetingId?: string;
+  private syncLatencyMeetingId: string;
   visibleDataSets: VisibleDataSetInfo[];
   debugId: string;
   private excludedDataSets: string[];
@@ -216,7 +216,7 @@ class HashTreeParser {
     callbacks: HashTreeParserCallbacks;
     debugId: string;
     excludedDataSets?: string[];
-    syncLatencyMeetingId?: string;
+    syncLatencyMeetingId: string;
   }) {
     const {dataSets, locus} = options.initialLocus; // extract dataSets from initialLocus
 
@@ -1303,13 +1303,10 @@ class HashTreeParser {
    * @returns {object} sync latency timestamp options
    */
   private getSyncLatencyTimestampOptions(dataSetName: string, randomBackoffTime?: number) {
-    const options: {meetingId?: string; dataSetName: string; randomBackoffTime?: number} = {
+    const options: {meetingId: string; dataSetName: string; randomBackoffTime?: number} = {
+      meetingId: this.syncLatencyMeetingId,
       dataSetName,
     };
-
-    if (this.syncLatencyMeetingId) {
-      options.meetingId = this.syncLatencyMeetingId;
-    }
 
     if (typeof randomBackoffTime === 'number') {
       options.randomBackoffTime = randomBackoffTime;
@@ -1324,9 +1321,7 @@ class HashTreeParser {
    * @returns {SyncLatencyMetrics|undefined} sync latency metrics
    */
   private getLocusSyncLatency(dataSetName: string): SyncLatencyMetrics | undefined {
-    return this.syncLatencyMeetingId
-      ? this.syncLatencyTracker?.getLocusSyncLatency(dataSetName, this.syncLatencyMeetingId)
-      : this.syncLatencyTracker?.getLocusSyncLatency(dataSetName);
+    return this.syncLatencyTracker?.getLocusSyncLatency(dataSetName, this.syncLatencyMeetingId);
   }
 
   /**
@@ -1335,13 +1330,7 @@ class HashTreeParser {
    * @returns {void}
    */
   private clearLocusSyncLatency(dataSetName: string): void {
-    if (this.syncLatencyMeetingId) {
-      this.syncLatencyTracker?.clearLocusSyncLatency(dataSetName, this.syncLatencyMeetingId);
-
-      return;
-    }
-
-    this.syncLatencyTracker?.clearLocusSyncLatency(dataSetName);
+    this.syncLatencyTracker?.clearLocusSyncLatency(dataSetName, this.syncLatencyMeetingId);
   }
 
   /**
