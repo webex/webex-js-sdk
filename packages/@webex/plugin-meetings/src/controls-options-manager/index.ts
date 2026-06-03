@@ -58,6 +58,8 @@ export default class ControlsOptionsManager {
 
   private getControls: () => Record<string, any> = () => ({});
 
+  private isWebinar: () => boolean = () => false;
+
   /**
    * @param {MeetingRequest} request
    * @param {Object} options
@@ -69,7 +71,8 @@ export default class ControlsOptionsManager {
     options?: {
       locusUrl: string;
       displayHints?: Array<string>;
-      getControls: () => Record<string, any>;
+      getControls?: () => Record<string, any>;
+      isWebinar?: () => boolean;
     }
   ) {
     this.initialize(request);
@@ -96,6 +99,7 @@ export default class ControlsOptionsManager {
     locusUrl: string;
     displayHints?: Array<string>;
     getControls?: () => Record<string, any>;
+    isWebinar?: () => boolean;
   }) {
     this.extract(options);
   }
@@ -152,11 +156,15 @@ export default class ControlsOptionsManager {
     locusUrl: string;
     displayHints?: Array<string>;
     getControls?: () => Record<string, any>;
+    isWebinar?: () => boolean;
   }) {
     this.setDisplayHints(options?.displayHints);
     this.setLocusUrl(options?.locusUrl);
     if (options?.getControls) {
       this.getControls = options.getControls;
+    }
+    if (options?.isWebinar) {
+      this.isWebinar = options.isWebinar;
     }
   }
 
@@ -193,8 +201,10 @@ export default class ControlsOptionsManager {
         const current = this.getControls()?.viewTheParticipantList;
         properties = {
           enabled: props.enabled ?? current?.enabled ?? false,
-          panelistEnabled: props.panelistEnabled ?? current?.panelistEnabled ?? false,
-          attendeeCount: props.attendeeCount ?? Boolean(current?.attendeeCount) ?? false,
+          ...(this.isWebinar() && {
+            panelistEnabled: props.panelistEnabled ?? current?.panelistEnabled ?? false,
+            attendeeCount: props.attendeeCount ?? Boolean(current?.attendeeCount) ?? false,
+          }),
         };
       }
 

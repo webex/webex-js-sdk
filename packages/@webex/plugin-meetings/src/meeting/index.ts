@@ -1568,6 +1568,7 @@ export default class Meeting extends StatelessWebexPlugin {
       locusUrl: this.locusInfo?.url,
       displayHints: [],
       getControls: () => this.locusInfo?.controls,
+      isWebinar: () => this.locusInfo?.info?.isWebinar,
     });
 
     this.setUpLocusInfoListeners();
