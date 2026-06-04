@@ -9,7 +9,7 @@
  * in two browser sessions simultaneously.
  */
 
-export type AccountRole = 'USER_1' | 'USER_2' | 'USER_3';
+export type AccountRole = 'USER_1' | 'USER_2' | 'USER_3' | 'USER_4' | 'USER_5' | 'USER_6';
 
 export interface UserSet {
   /** Human-readable name shown in Playwright reporter */
@@ -20,7 +20,20 @@ export interface UserSet {
   testSuite: string;
 }
 
-/** Separator between set name and environment in project names (e.g. "SET_1 - PROD"). */
+/**
+ * Roles that must have credentials/tokens available for the currently enabled
+ * Playwright projects. USER_6 is required for SET_CONTACTS (contacts suite).
+ */
+export const REQUIRED_OAUTH_ROLES: AccountRole[] = [
+  'USER_1',
+  'USER_2',
+  'USER_3',
+  'USER_4',
+  'USER_5',
+  'USER_6',
+];
+
+/** Separator between set name and environment in project names (e.g. "SET_REGISTRATION_1 - PROD"). */
 const ENV_SEPARATOR = ' - ';
 
 /**
@@ -58,6 +71,19 @@ export const getToken = (role: AccountRole, isInt = false): string => {
   return token;
 };
 
+/**
+ * Read phone number for an account role. Throws if not set.
+ */
+export const getPhoneNumber = (role: AccountRole): string => {
+  const envVar = `${role}_PHONE_NUMBER`;
+  const number = process.env[envVar];
+  if (!number) {
+    throw new Error(`${envVar} not set.`);
+  }
+
+  return number;
+};
+
 // ---------------------------------------------------------------------------
 // User sets — single source of truth for account-to-suite mapping.
 // Keyed by Playwright project name (testInfo.project.name).
@@ -65,35 +91,42 @@ export const getToken = (role: AccountRole, isInt = false): string => {
 
 export const USER_SETS: Record<string, UserSet> = {
   // Single-user registration tests (parallel, ~4min each)
-  SET_1: {
-    name: 'SET_1',
+  SET_REGISTRATION_1: {
+    name: 'SET_REGISTRATION_1',
     accounts: ['USER_1'],
-    testSuite: 'set-1.spec.ts',
+    testSuite: 'set-registration-1.spec.ts',
   },
-  SET_2: {
-    name: 'SET_2',
+  SET_REGISTRATION_2: {
+    name: 'SET_REGISTRATION_2',
     accounts: ['USER_2'],
-    testSuite: 'set-2.spec.ts',
+    testSuite: 'set-registration-2.spec.ts',
   },
-  SET_3: {
-    name: 'SET_3',
+  SET_REGISTRATION_3: {
+    name: 'SET_REGISTRATION_3',
     accounts: ['USER_3'],
-    testSuite: 'set-3.spec.ts',
+    testSuite: 'set-registration-3.spec.ts',
   },
 
-  // 2-user tests (call flows, REG-009)
-  // SET_2USER: {
-  //   name: 'SET_2USER',
-  //   accounts: ['USER_1', 'USER_2'],
-  //   testSuite: 'set-2user.spec.ts',
-  // },
+  // 2-user call tests (PROD — dedicated accounts, parallel with registration)
+  SET_CALL: {
+    name: 'SET_CALL',
+    accounts: ['USER_4', 'USER_5'],
+    testSuite: 'set-call.spec.ts',
+  },
 
-  // 3-user tests (transfer flows)
-  // SET_3USER: {
-  //   name: 'SET_3USER',
-  //   accounts: ['USER_1', 'USER_2', 'USER_3'],
-  //   testSuite: 'set-3user.spec.ts',
-  // },
+  // 3-user transfer tests (PROD — dedicated accounts, parallel with registration)
+  SET_CALL_TRANSFER_CONSULT: {
+    name: 'SET_CALL_TRANSFER_CONSULT',
+    accounts: ['USER_1', 'USER_2', 'USER_3'],
+    testSuite: 'set-call-transfer-consult.spec.ts',
+  },
+
+  // Single-user Contacts supplementary service E2E tests
+  SET_CONTACTS: {
+    name: 'SET_CONTACTS',
+    accounts: ['USER_6'],
+    testSuite: 'contacts.spec.ts',
+  },
 };
 
 /**

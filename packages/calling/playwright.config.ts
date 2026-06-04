@@ -85,22 +85,59 @@ export default defineConfig({
       use: {testEnv: 'int'} as any,
     },
 
-    // Generated from USER_SETS — prod + INT mirror for each set
-    ...Object.entries(USER_SETS).flatMap(([key, set]) => [
+    // Single-user registration sets (generated from USER_SETS, depend on OAuth)
+    ...['SET_REGISTRATION_1', 'SET_REGISTRATION_2', 'SET_REGISTRATION_3', 'SET_CONTACTS'].flatMap((key) => [
       {
         name: `${key} - PROD`,
         dependencies: ['OAuth - PROD'],
         testDir: './playwright/suites',
-        testMatch: set.testSuite,
+        testMatch: USER_SETS[key].testSuite,
         use: browserOptions[PW_BROWSER],
       },
       {
         name: `${key} - INT`,
         dependencies: ['OAuth - INT'],
         testDir: './playwright/suites',
-        testMatch: set.testSuite,
+        testMatch: USER_SETS[key].testSuite,
         use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
       },
     ]),
+
+    // 2-user call tests (PROD uses USER_4+USER_5, parallel with registration sets)
+    {
+      name: 'SET_CALL - PROD',
+      dependencies: ['OAuth - PROD'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_CALL.testSuite,
+      use: browserOptions[PW_BROWSER],
+    },
+    // INT call accounts are aliases for the registration accounts, so calls wait for registration
+    {
+      name: 'SET_CALL - INT',
+      dependencies: [
+        'SET_REGISTRATION_1 - INT',
+        'SET_REGISTRATION_2 - INT',
+        'SET_REGISTRATION_3 - INT',
+      ],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_CALL.testSuite,
+      use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
+    },
+
+    // 3-user transfer tests — waits for call tests
+    {
+      name: 'SET_CALL_TRANSFER_CONSULT - PROD',
+      dependencies: ['SET_CALL - PROD'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_CALL_TRANSFER_CONSULT.testSuite,
+      use: browserOptions[PW_BROWSER],
+    },
+    {
+      name: 'SET_CALL_TRANSFER_CONSULT - INT',
+      dependencies: ['SET_CALL - INT'],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_CALL_TRANSFER_CONSULT.testSuite,
+      use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
+    },
   ],
 });

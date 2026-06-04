@@ -2,9 +2,11 @@ import {HashTreeObject, ObjectType} from '../../../../src/hashTree/types';
 import {
   deleteNestedObjectsWithHtMeta,
   isSelf,
+  sleep,
   sortByInitPriority,
 } from '../../../../src/hashTree/utils';
 import {DataSetNames, DATA_SET_INIT_PRIORITY} from '../../../../src/hashTree/constants';
+import sinon from 'sinon';
 
 import {assert} from '@webex/test-helper-chai';
 
@@ -222,6 +224,41 @@ describe('Hash Tree Utils', () => {
         {name: DataSetNames.SELF, url: 'url2'},
         {name: DataSetNames.ATD_ACTIVE, url: 'url1'},
       ]);
+    });
+  });
+
+  describe('#sleep', () => {
+    let clock;
+
+    beforeEach(() => {
+      clock = sinon.useFakeTimers();
+    });
+
+    afterEach(() => {
+      clock.restore();
+    });
+
+    [0, -1, -100].forEach((ms) => {
+      it(`resolves immediately when ms is ${ms}`, async () => {
+        const result = sleep(ms);
+
+        assert.instanceOf(result, Promise);
+        await result;
+      });
+    });
+
+    it('resolves after the specified delay', async () => {
+      let resolved = false;
+
+      sleep(500).then(() => { resolved = true; });
+
+      assert.isFalse(resolved);
+
+      await clock.tickAsync(499);
+      assert.isFalse(resolved);
+
+      await clock.tickAsync(1);
+      assert.isTrue(resolved);
     });
   });
 });

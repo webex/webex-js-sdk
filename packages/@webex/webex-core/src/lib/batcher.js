@@ -3,7 +3,7 @@
  */
 
 import {has} from 'lodash';
-import {cappedDebounce, Defer, tap} from '@webex/common';
+import {cappedDebounce, Defer} from '@webex/common';
 
 import WebexPlugin from './webex-plugin';
 import WebexHttpError from './webex-http-error';
@@ -59,13 +59,12 @@ const Batcher = WebexPlugin.extend({
         this.deferreds.set(idx, defer);
         this.prepareItem(item)
           .then((req) => {
-            defer.promise = defer.promise
-              .then(tap(() => this.deferreds.delete(idx)))
-              .catch((reason) => {
-                this.deferreds.delete(idx);
-
-                return Promise.reject(reason);
-              });
+            // Attach cleanup handlers to the original deferred promise without
+            // creating an unobserved rejected chain.
+            defer.promise.then(
+              () => this.deferreds.delete(idx),
+              () => this.deferreds.delete(idx)
+            );
 
             this.enqueue(req)
               .then(() => this.bounce())
@@ -116,7 +115,19 @@ const Batcher = WebexPlugin.extend({
           )
           .catch((reason) => {
             if (reason instanceof WebexHttpError) {
-              return this.handleHttpError(reason);
+              // Some batched requests (for example GET-based batches) do not
+              // have reason.options.body, so handleHttpError() may reject
+              // without failing queued deferreds. Fallback to rejecting each
+              // queued request to ensure caller promises settle.
+              return this.handleHttpError(reason).catch(() =>
+                Promise.all(
+                  queue.map((item) =>
+                    this.getDeferredForRequest(item).then((defer) => {
+                      defer.reject(reason);
+                    })
+                  )
+                )
+              );
             }
 
             return Promise.all(
@@ -130,8 +141,12 @@ const Batcher = WebexPlugin.extend({
       );
     }).catch((reason) => {
       this.logger.error(process.env.NODE_ENV === 'production' ? reason : reason.stack);
+      // executeQueue() is triggered via cappedDebounce(), which does not
+      // propagate promise chains. Re-throwing here causes global unhandled
+      // promise rejections even when request callers handle their own promise.
+      // Any known queued requests have already been failed above.
 
-      return Promise.reject(reason);
+      return undefined;
     });
   },
 

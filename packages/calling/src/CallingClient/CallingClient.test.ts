@@ -15,9 +15,14 @@ import {
   WebexRequestPayload,
 } from '../common/types';
 /* eslint-disable dot-notation */
-import {CALLING_CLIENT_EVENT_KEYS, CallSessionEvent, MOBIUS_EVENT_KEYS} from '../Events/types';
+import {
+  CALLING_CLIENT_EVENT_KEYS,
+  CallSessionEvent,
+  MOBIUS_EVENT_KEYS,
+  MOBIUS_SOCKET_DISCONNECT_REASON,
+} from '../Events/types';
 import log from '../Logger';
-import {createClient} from './CallingClient';
+import {CallingClient, createClient} from './CallingClient';
 import {ICallingClient} from './types';
 import * as utils from '../common/Utils';
 import {getCallManager} from './calling/callManager';
@@ -56,6 +61,17 @@ import {ServiceHost} from '../SDKConnector/types';
 import {METHOD_START_MESSAGE} from '../common/constants';
 import {METRIC_EVENT, CONNECTION_ACTION, METRIC_TYPE} from '../Metrics/types';
 import windowsChromiumIceWarmup from './windowsChromiumIceWarmupUtils';
+import {APIRequest} from './utils/request';
+
+jest.mock('../mobius-socket', () => ({
+  getMobiusSocketInstance: jest.fn().mockReturnValue({
+    sendWssRequest: jest.fn(),
+    connect: jest.fn(),
+    isConnected: jest.fn().mockReturnValue(false),
+    on: jest.fn(),
+    off: jest.fn(),
+  }),
+}));
 
 global.crypto = {
   randomUUID: () => '12345678-1234-5678-1234-567812345678',
@@ -84,6 +100,11 @@ describe('CallingClient Tests', () => {
       originalProcessNextTick(resolve);
     });
   }
+
+  beforeEach(() => {
+    APIRequest.resetInstance();
+    APIRequest.getInstance({webex});
+  });
 
   describe('CallingClient pick Mobius cluster using Service Host Tests', () => {
     afterAll(() => {
@@ -212,43 +233,48 @@ describe('CallingClient Tests', () => {
       }).not.toThrow(Error);
     });
 
-    /**
-     * Input sdk config to callingClient with serviceData carrying valid value for indicator
-     * 'contactcenter', but an empty string for domain field in it.
-     *
-     * It should throw error and abort execution as domain value is invalid.
-     *
-     * DOMAIN field for service type 'contactcenter' must carry a non-empty valid domain type string.
-     */
-    it('ContactCenter: verify empty invalid service domain', async () => {
-      const serviceDataObj = {indicator: ServiceIndicator.CONTACT_CENTER, domain: ''};
-
-      try {
-        callingClient = await createClient(webex, {serviceData: serviceDataObj});
-      } catch (e) {
-        expect(e.message).toEqual('Invalid service domain.');
-      }
-      expect.assertions(1);
-    });
-
-    /**
-     * Input sdk config to callingClient with serviceData carrying valid value for indicator
-     * 'contactcenter' , and a valid domain type string for domain field in it.
-     *
-     * Execution should proceed properly and createRegistration should be called with same serviceData.
-     *
-     * DOMAIN field for service type 'contactcenter' must carry a non-empty valid domain type string.
-     */
-    it('ContactCenter: verify valid service domain', async () => {
+    it('ContactCenter: uses config domain and does not fetch RTMS domain from catalog', async () => {
       const serviceDataObj = {
         indicator: ServiceIndicator.CONTACT_CENTER,
         domain: 'test.example.com',
       };
 
-      expect(async () => {
-        callingClient = await createClient(webex, {serviceData: serviceDataObj});
-        expect(callingClient).toBeTruthy();
-      }).not.toThrow(Error);
+      webex.internal.services.get = jest.fn();
+      callingClient = await createClient(webex, {serviceData: serviceDataObj});
+      expect(callingClient).toBeTruthy();
+      expect(webex.internal.services.get).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Input sdk config to callingClient with serviceData carrying valid value for indicator
+     * 'contactcenter' , and a valid domain type string for domain field in it.
+     */
+    it('ContactCenter: fetches RTMS domain from catalog when config domain is empty', async () => {
+      const serviceDataObj = {indicator: ServiceIndicator.CONTACT_CENTER, domain: ''};
+
+      webex.internal.services.get = jest
+        .fn()
+        .mockReturnValue('https://cc-rtms.example.com/calling/web/rtms');
+
+      callingClient = await createClient(webex, {serviceData: serviceDataObj});
+      expect(callingClient).toBeTruthy();
+      expect(webex.internal.services.get).toHaveBeenCalledWith('wcc-calling-rtms-domain');
+    });
+
+    it('ContactCenter: init fails when config domain is empty and catalog fetch fails', async () => {
+      const serviceDataObj = {indicator: ServiceIndicator.CONTACT_CENTER, domain: ''};
+      const createLineSpy = jest.spyOn(CallingClient.prototype as any, 'createLine');
+
+      webex.internal.services.get = jest.fn(() => {
+        throw new Error('catalog unavailable');
+      });
+
+      await expect(createClient(webex, {serviceData: serviceDataObj})).rejects.toThrow(
+        'Invalid service domain.'
+      );
+      expect(createLineSpy).not.toHaveBeenCalled();
+
+      createLineSpy.mockRestore();
     });
 
     it('Get current log level', async () => {
@@ -818,6 +844,147 @@ describe('CallingClient Tests', () => {
 
       callSessionCallback(MOCK_MULTIPLE_SESSIONS_EVENT);
     });
+  });
+
+  describe('Mobius async_event routing', () => {
+    let callingClient: ICallingClient;
+    let asyncEventCallback;
+    let mobiusSocketMock;
+
+    beforeEach(async () => {
+      webex.internal.device.features.developer.get = jest.fn().mockReturnValue({value: true});
+      APIRequest.resetInstance();
+      APIRequest.getInstance({webex});
+
+      mobiusSocketMock = (
+        jest.requireMock('../mobius-socket') as {
+          getMobiusSocketInstance: (w: unknown) => unknown;
+        }
+      ).getMobiusSocketInstance(webex) as {
+        on: jest.Mock;
+        off: jest.Mock;
+      };
+      (mobiusSocketMock.on as jest.Mock).mockClear();
+      (mobiusSocketMock.off as jest.Mock).mockClear();
+
+      callingClient = await createClient(webex, {
+        logger: {level: LOGGER.INFO},
+      });
+
+      const asyncEventOnCall = (mobiusSocketMock.on as jest.Mock).mock.calls.find(
+        (call) => call[0] === 'event:async_event'
+      );
+      asyncEventCallback = asyncEventOnCall[1];
+    });
+
+    afterEach(() => {
+      callingClient.removeAllListeners();
+      callManager.removeAllListeners();
+      webex.internal.device.features.developer.get = jest.fn().mockReturnValue({value: false});
+    });
+
+    it('routes mobius.* async events to callManager', async () => {
+      const callEventSpy = jest
+        .spyOn(callingClient['callManager'], 'dequeueWsEvents')
+        .mockImplementation(() => undefined);
+
+      await asyncEventCallback({
+        type: 'async_event',
+        data: {
+          eventType: 'mobius.call',
+          callId: 'fcf86aa5-5539-4c9f-8b72-667786ae9b6c',
+          callUrl: 'https://mobius-a.wbx2.com/api/v1/calling/web/devices/d1/calls/c1',
+          deviceId: 'd1',
+          correlationId: 'corr-1',
+        },
+      });
+
+      expect(callEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'async_event',
+          data: expect.objectContaining({
+            eventType: 'mobius.call',
+          }),
+        })
+      );
+    });
+  });
+
+  describe('Mobius socket connection events', () => {
+    let callingClient: ICallingClient;
+    let mobiusSocketMock;
+
+    const getSocketHandlerFor = (eventName: string) => {
+      const onCall = (mobiusSocketMock.on as jest.Mock).mock.calls.find(
+        (call) => call[0] === eventName
+      );
+
+      return onCall[1];
+    };
+
+    beforeEach(async () => {
+      webex.internal.device.features.developer.get = jest.fn().mockReturnValue({value: true});
+      APIRequest.resetInstance();
+      APIRequest.getInstance({webex});
+
+      mobiusSocketMock = (
+        jest.requireMock('../mobius-socket') as {
+          getMobiusSocketInstance: (w: unknown) => unknown;
+        }
+      ).getMobiusSocketInstance(webex) as {
+        on: jest.Mock;
+        off: jest.Mock;
+        isConnected: jest.Mock;
+      };
+      (mobiusSocketMock.on as jest.Mock).mockClear();
+      (mobiusSocketMock.off as jest.Mock).mockClear();
+      (mobiusSocketMock.isConnected as jest.Mock).mockReturnValue(false);
+
+      callingClient = await createClient(webex, {
+        logger: {level: LOGGER.INFO},
+      });
+    });
+
+    afterEach(() => {
+      callingClient.removeAllListeners();
+      callManager.removeAllListeners();
+      webex.internal.device.features.developer.get = jest.fn().mockReturnValue({value: false});
+    });
+
+    it('emits MOBIUS_SOCKET_CONNECTED when the socket comes online', () => {
+      const listener = jest.fn();
+      callingClient.on(CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED, listener);
+
+      getSocketHandlerFor('online')();
+
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['offline.permanent', MOBIUS_SOCKET_DISCONNECT_REASON.PERMANENT],
+      ['offline.transient', MOBIUS_SOCKET_DISCONNECT_REASON.TRANSIENT],
+      ['offline.replaced', MOBIUS_SOCKET_DISCONNECT_REASON.REPLACED],
+    ])(
+      'emits MOBIUS_SOCKET_DISCONNECTED with the matching reason when %s fires',
+      (eventName, reason) => {
+        const listener = jest.fn();
+        callingClient.on(CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED, listener);
+
+        getSocketHandlerFor(eventName as string)();
+
+        expect(listener).toHaveBeenCalledTimes(1);
+        expect(listener).toHaveBeenCalledWith({reason});
+      }
+    );
+
+    it.each([true, false])(
+      'isMobiusSocketConnected() reflects the underlying socket state (%s) when WSS is enabled',
+      (connected) => {
+        (mobiusSocketMock.isConnected as jest.Mock).mockReturnValue(connected);
+
+        expect(callingClient.isMobiusSocketConnected()).toBe(connected);
+      }
+    );
   });
 
   describe('getDevices', () => {

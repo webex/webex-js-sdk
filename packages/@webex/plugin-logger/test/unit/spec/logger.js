@@ -128,6 +128,69 @@ describe('plugin-logger', () => {
       assert.equal(webex.logger.buffer.buffer[1][3], 3);
     });
 
+    it('adjusts lastSubmitted when buffer overflows in single buffer mode', () => {
+      webex.config.logger.historyLength = 3;
+
+      webex.logger.log('a');
+      webex.logger.log('b');
+
+      // simulate a successful upload
+      webex.logger.formatLogs({diff: true});
+      webex.logger.updateLastSubmittedIndex();
+      assert.equal(webex.logger.buffer.lastSubmitted, 2);
+
+      // add more logs to trigger overflow
+      webex.logger.log('c');
+      webex.logger.log('d');
+
+      // buffer overflowed by 1, so lastSubmitted should be decremented by 1
+      assert.equal(webex.logger.buffer.lastSubmitted, 1);
+    });
+
+    it('clamps lastSubmitted to 0 when buffer overflow exceeds lastSubmitted in single buffer mode', () => {
+      webex.config.logger.historyLength = 2;
+
+      webex.logger.log('a');
+
+      // simulate a successful upload after just 1 log
+      webex.logger.formatLogs({diff: true});
+      webex.logger.updateLastSubmittedIndex();
+      assert.equal(webex.logger.buffer.lastSubmitted, 1);
+
+      // add enough logs to overflow past the lastSubmitted value
+      webex.logger.log('b');
+      webex.logger.log('c');
+      webex.logger.log('d');
+
+      assert.equal(webex.logger.buffer.lastSubmitted, 0);
+      assert.lengthOf(webex.logger.buffer.buffer, 2);
+    });
+
+    it('adjusts lastSubmitted when buffer overflows in separate buffer mode', () => {
+      webex.config.logger.separateLogBuffers = true;
+      webex.config.logger.clientName = 'someclient';
+      webex.config.logger.historyLength = 3;
+
+      webex.logger.log('sdk1');
+      webex.logger.log('sdk2');
+      webex.logger.client_log('client1');
+      webex.logger.client_log('client2');
+
+      webex.logger.formatLogs({diff: true});
+      webex.logger.updateLastSubmittedIndex();
+      assert.equal(webex.logger.sdkBuffer.lastSubmitted, 2);
+      assert.equal(webex.logger.clientBuffer.lastSubmitted, 2);
+
+      // overflow both buffers by 1
+      webex.logger.log('sdk3');
+      webex.logger.log('sdk4');
+      webex.logger.client_log('client3');
+      webex.logger.client_log('client4');
+
+      assert.equal(webex.logger.sdkBuffer.lastSubmitted, 1);
+      assert.equal(webex.logger.clientBuffer.lastSubmitted, 1);
+    });
+
     it('prevents the client and sdk buffer from overflowing', () => {
       webex.config.logger.historyLength = 2;
       webex.config.logger.separateLogBuffers = true;
@@ -196,8 +259,8 @@ describe('plugin-logger', () => {
         test: 'object',
         nested: {
           test2: 'object2',
-        }
-      }
+        },
+      };
 
       webex.logger.log('foo', 'bar', obj);
       assert.lengthOf(webex.logger.buffer.buffer, 1);
@@ -205,7 +268,10 @@ describe('plugin-logger', () => {
       assert.deepEqual(webex.logger.buffer.buffer[0][2], 'wx-js-sdk');
       assert.deepEqual(webex.logger.buffer.buffer[0][3], 'foo');
       assert.deepEqual(webex.logger.buffer.buffer[0][4], 'bar');
-      assert.deepEqual(webex.logger.buffer.buffer[0][5], '{"headers":{"trackingid":"123"},"test":"object","nested":{"test2":"object2"}}');
+      assert.deepEqual(
+        webex.logger.buffer.buffer[0][5],
+        '{"headers":{"trackingid":"123"},"test":"object","nested":{"test2":"object2"}}'
+      );
     });
 
     it('formats objects as strings passed to the logger for readability not [Object object] w/ circular reference', async () => {
@@ -218,8 +284,8 @@ describe('plugin-logger', () => {
         test: 'object',
         nested: {
           test2: 'object2',
-        }
-      }
+        },
+      };
 
       obj.selfReference = obj;
 
@@ -229,19 +295,21 @@ describe('plugin-logger', () => {
       assert.deepEqual(webex.logger.buffer.buffer[0][2], 'wx-js-sdk');
       assert.deepEqual(webex.logger.buffer.buffer[0][3], 'foo');
       assert.deepEqual(webex.logger.buffer.buffer[0][4], 'bar');
-      assert.deepEqual(webex.logger.buffer.buffer[0][5], '{"headers":{"trackingid":"123"},"test":"object","nested":{"test2":"object2"}}');
+      assert.deepEqual(
+        webex.logger.buffer.buffer[0][5],
+        '{"headers":{"trackingid":"123"},"test":"object","nested":{"test2":"object2"}}'
+      );
     });
 
     it('formats Errors correctly', async () => {
       webex.config.logger.level = 'trace';
-      const err = new Error('fake error for testing')
+      const err = new Error('fake error for testing');
 
       webex.logger.log('I got this error:', err);
       assert.lengthOf(webex.logger.buffer.buffer, 1);
       assert.deepEqual(webex.logger.buffer.buffer[0][2], 'wx-js-sdk');
       assert.deepEqual(webex.logger.buffer.buffer[0][3], 'I got this error:');
       assert.deepEqual(webex.logger.buffer.buffer[0][4], 'Error: fake error for testing');
-
     });
   });
 
@@ -649,12 +717,16 @@ describe('plugin-logger', () => {
           },
         });
 
-        if(inBrowser()) {
-          assert.calledWith(console[impl(level)], 'wx-js-sdk', JSON.stringify({
-            headers: {
-              trackingid: '123',
-            },
-          }));
+        if (inBrowser()) {
+          assert.calledWith(
+            console[impl(level)],
+            'wx-js-sdk',
+            JSON.stringify({
+              headers: {
+                trackingid: '123',
+              },
+            })
+          );
         } else {
           assert.calledWith(console[impl(level)], 'wx-js-sdk', {
             headers: {
@@ -676,24 +748,23 @@ describe('plugin-logger', () => {
 
       // Assert auth was filtered
 
-      if(inBrowser()) { 
-        assert.calledWith(console.log, "wx-js-sdk", JSON.stringify({Key: 'myKey'}));
+      if (inBrowser()) {
+        assert.calledWith(console.log, 'wx-js-sdk', JSON.stringify({Key: 'myKey'}));
       } else {
-        assert.calledWith(console.log, "wx-js-sdk", {Key: 'myKey'});
+        assert.calledWith(console.log, 'wx-js-sdk', {Key: 'myKey'});
       }
-        webex.logger.log({
+      webex.logger.log({
         authorization: 'XXXXXXX',
         Key: 'myKey',
       });
-9
-      
-      if(inBrowser()) { 
-      assert.calledWith(console.log, "wx-js-sdk", JSON.stringify({Key: 'myKey'}));
+      9;
 
+      if (inBrowser()) {
+        assert.calledWith(console.log, 'wx-js-sdk', JSON.stringify({Key: 'myKey'}));
       } else {
-      assert.calledWith(console.log, "wx-js-sdk", {Key: 'myKey'});
-
-      } });
+        assert.calledWith(console.log, 'wx-js-sdk', {Key: 'myKey'});
+      }
+    });
 
     it('redact emails', () => {
       webex.config.logger.level = 'trace';
@@ -708,21 +779,42 @@ describe('plugin-logger', () => {
     it('redact MTID', () => {
       webex.config.logger.level = 'trace';
 
-      const destination = 'https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5';
+      const destination =
+        'https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5';
+
+      webex.logger.log(`Info Unable to fetch meeting info for ${destination}.`);
+      assert.calledWith(
+        console.log,
+        'wx-js-sdk',
+        'Info Unable to fetch meeting info for https://example.com/example/j.php?MTID=[REDACTED]'
+      );
 
       webex.logger.log(
-        `Info Unable to fetch meeting info for ${destination}.`
+        'https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5&abcdefg'
       );
-      assert.calledWith(console.log, 'wx-js-sdk', 'Info Unable to fetch meeting info for https://example.com/example/j.php?MTID=[REDACTED]');
+      assert.calledWith(
+        console.log,
+        'wx-js-sdk',
+        'https://example.com/example/j.php?MTID=[REDACTED]&abcdefg'
+      );
 
-      webex.logger.log('https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5&abcdefg');
-      assert.calledWith(console.log, 'wx-js-sdk', 'https://example.com/example/j.php?MTID=[REDACTED]&abcdefg');
+      webex.logger.log(
+        'https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5$abcdefg'
+      );
+      assert.calledWith(
+        console.log,
+        'wx-js-sdk',
+        'https://example.com/example/j.php?MTID=[REDACTED]$abcdefg'
+      );
 
-      webex.logger.log('https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5$abcdefg');
-      assert.calledWith(console.log, 'wx-js-sdk', 'https://example.com/example/j.php?MTID=[REDACTED]$abcdefg');
-
-      webex.logger.log('https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5#abcdefg');
-      assert.calledWith(console.log, 'wx-js-sdk', 'https://example.com/example/j.php?MTID=[REDACTED]#abcdefg');
+      webex.logger.log(
+        'https://example.com/example/j.php?MTID=m678957bc1eff989c2176b43ead9d46b5#abcdefg'
+      );
+      assert.calledWith(
+        console.log,
+        'wx-js-sdk',
+        'https://example.com/example/j.php?MTID=[REDACTED]#abcdefg'
+      );
     });
 
     nodeOnly(it)('handle circular references', () => {
@@ -744,17 +836,15 @@ describe('plugin-logger', () => {
         Key: 'myKey',
       };
 
-      // Has self reference which is bad 
+      // Has self reference which is bad
       expected.selfReference = expected;
 
-      if(inBrowser()) { 
-        assert.calledWith(console.log, "wx-js-sdk", JSON.stringify(expected));
-  
-        } else {
-        assert.calledWith(console.log, "wx-js-sdk", expected);
-  
-        } 
-      });
+      if (inBrowser()) {
+        assert.calledWith(console.log, 'wx-js-sdk', JSON.stringify(expected));
+      } else {
+        assert.calledWith(console.log, 'wx-js-sdk', expected);
+      }
+    });
 
     nodeOnly(it)('handle circular references in complex objects', () => {
       webex.config.logger.level = 'trace';
@@ -802,18 +892,15 @@ describe('plugin-logger', () => {
           circularObjectRef: object,
           circularFunctionRef: func,
         },
+      };
+
+      if (inBrowser()) {
+        assert.calledWith(console.log, 'wx-js-sdk', JSON.stringify(res));
+      } else {
+        assert.calledWith(console.log, 'wx-js-sdk', res);
       }
-
-
-      if(inBrowser()) { 
-        assert.calledWith(console.log, "wx-js-sdk", JSON.stringify(res));
-  
-        } else {
-        assert.calledWith(console.log, "wx-js-sdk", res);
-  
-        }
-      });
     });
+  });
 
   describe('#formatLogs()', () => {
     function sendRandomLog(log) {
@@ -1263,6 +1350,183 @@ describe('plugin-logger', () => {
       webex.logger.log(10);
       assert.deepEqual(logMessages(), [6, 7, 8, 9, 10]);
       assert.lengthOf(webex.logger.buffer.buffer, 5);
+    });
+  });
+
+  describe('#updateLastSubmittedIndex()', () => {
+    let clock;
+
+    beforeEach(() => {
+      clock = sinon.useFakeTimers();
+    });
+
+    afterEach(() => {
+      clock.restore();
+    });
+
+    it('updates lastSubmitted to the current nextIndex in single buffer mode', () => {
+      webex.config.logger.separateLogBuffers = false;
+
+      webex.logger.log('a');
+      clock.tick(1000);
+      webex.logger.log('b');
+      clock.tick(1000);
+
+      // advance nextIndex by consuming a diff
+      webex.logger.formatLogs({diff: true});
+      const nextIndexAfterDiff = webex.logger.buffer.nextIndex;
+
+      assert.equal(webex.logger.buffer.lastSubmitted, 0);
+
+      webex.logger.updateLastSubmittedIndex();
+
+      assert.equal(webex.logger.buffer.lastSubmitted, nextIndexAfterDiff);
+    });
+
+    it('updates lastSubmitted to the current nextIndex in separate buffer mode', () => {
+      webex.config.logger.separateLogBuffers = true;
+      webex.config.logger.clientName = 'someclient';
+
+      webex.logger.log('sdk1');
+      clock.tick(1000);
+      webex.logger.client_log('client1');
+      clock.tick(1000);
+
+      webex.logger.formatLogs({diff: true});
+      const sdkNextIndex = webex.logger.sdkBuffer.nextIndex;
+      const clientNextIndex = webex.logger.clientBuffer.nextIndex;
+
+      assert.equal(webex.logger.sdkBuffer.lastSubmitted, 0);
+      assert.equal(webex.logger.clientBuffer.lastSubmitted, 0);
+
+      webex.logger.updateLastSubmittedIndex();
+
+      assert.equal(webex.logger.sdkBuffer.lastSubmitted, sdkNextIndex);
+      assert.equal(webex.logger.clientBuffer.lastSubmitted, clientNextIndex);
+    });
+
+    it('stores lastSubmitted as 0 when no diff has been consumed yet in single buffer mode', () => {
+      webex.config.logger.separateLogBuffers = false;
+
+      webex.logger.log('a');
+      webex.logger.updateLastSubmittedIndex();
+
+      // nextIndex is still 0 because no diff was consumed
+      assert.equal(webex.logger.buffer.lastSubmitted, webex.logger.buffer.nextIndex);
+    });
+  });
+
+  describe('#resetBufferToLastSuccessfulUpload()', () => {
+    let clock;
+
+    beforeEach(() => {
+      clock = sinon.useFakeTimers();
+    });
+
+    afterEach(() => {
+      clock.restore();
+    });
+
+    it('resets nextIndex to lastSubmitted in single buffer mode', () => {
+      webex.config.logger.separateLogBuffers = false;
+
+      webex.logger.log('a');
+      clock.tick(1000);
+      webex.logger.log('b');
+      clock.tick(1000);
+
+      // simulate a successful upload: consume diff then mark as submitted
+      webex.logger.formatLogs({diff: true});
+      webex.logger.updateLastSubmittedIndex();
+      const submittedIndex = webex.logger.buffer.lastSubmitted;
+
+      // log more entries (simulating logs added after the upload)
+      webex.logger.log('c');
+      clock.tick(1000);
+      webex.logger.formatLogs({diff: true});
+      assert.isAbove(webex.logger.buffer.nextIndex, submittedIndex);
+
+      // simulate upload failure — reset so the next diff re-includes logs since last success
+      webex.logger.resetBufferToLastSuccessfulUpload();
+
+      assert.equal(webex.logger.buffer.nextIndex, submittedIndex);
+    });
+
+    it('resets nextIndex to lastSubmitted in separate buffer mode', () => {
+      webex.config.logger.separateLogBuffers = true;
+      webex.config.logger.clientName = 'someclient';
+
+      webex.logger.log('sdk1');
+      clock.tick(1000);
+      webex.logger.client_log('client1');
+      clock.tick(1000);
+
+      webex.logger.formatLogs({diff: true});
+      webex.logger.updateLastSubmittedIndex();
+      const submittedSdk = webex.logger.sdkBuffer.lastSubmitted;
+      const submittedClient = webex.logger.clientBuffer.lastSubmitted;
+
+      webex.logger.log('sdk2');
+      clock.tick(1000);
+      webex.logger.client_log('client2');
+      clock.tick(1000);
+      webex.logger.formatLogs({diff: true});
+
+      assert.isAbove(webex.logger.sdkBuffer.nextIndex, submittedSdk);
+      assert.isAbove(webex.logger.clientBuffer.nextIndex, submittedClient);
+
+      webex.logger.resetBufferToLastSuccessfulUpload();
+
+      assert.equal(webex.logger.sdkBuffer.nextIndex, submittedSdk);
+      assert.equal(webex.logger.clientBuffer.nextIndex, submittedClient);
+    });
+
+    it('causes the next diff to re-include logs since the last successful upload', () => {
+      webex.config.logger.separateLogBuffers = false;
+
+      webex.logger.log('a');
+      clock.tick(1000);
+      webex.logger.log('b');
+      clock.tick(1000);
+
+      // first successful upload
+      const diff1 = webex.logger.formatLogs({diff: true});
+
+      assert.deepEqual(diff1.split('\n'), [
+        ',1970-01-01T00:00:00.000Z,wx-js-sdk,a',
+        ',1970-01-01T00:00:01.000Z,wx-js-sdk,b',
+      ]);
+      webex.logger.updateLastSubmittedIndex();
+
+      // new logs arrive
+      webex.logger.log('c');
+      clock.tick(1000);
+
+      // consume the diff (upload attempt that fails)
+      const diff2 = webex.logger.formatLogs({diff: true});
+
+      assert.deepEqual(diff2.split('\n'), [',1970-01-01T00:00:02.000Z,wx-js-sdk,c']);
+
+      // upload failed — roll back
+      webex.logger.resetBufferToLastSuccessfulUpload();
+
+      // retry: should get 'c' again
+      const diff3 = webex.logger.formatLogs({diff: true});
+
+      assert.deepEqual(diff3.split('\n'), [',1970-01-01T00:00:02.000Z,wx-js-sdk,c']);
+    });
+
+    it('resets nextIndex to 0 when updateLastSubmittedIndex was never called', () => {
+      webex.config.logger.separateLogBuffers = false;
+
+      webex.logger.log('a');
+      webex.logger.formatLogs({diff: true});
+      assert.equal(webex.logger.buffer.nextIndex, 1);
+
+      // lastSubmitted defaults to 0 before any call to updateLastSubmittedIndex
+      webex.logger.resetBufferToLastSuccessfulUpload();
+
+      assert.equal(webex.logger.buffer.nextIndex, 0);
     });
   });
 });

@@ -11,6 +11,7 @@ describe('plugin-meetings', () => {
   let audio;
   let video;
   let originalRemoteUpdateAudioVideo;
+  let originalUpdateLocusFromApiResponse;
 
   const fakeLocusResponse = {body: {locus: {info: 'this is a fake locus'}}};
 
@@ -45,6 +46,7 @@ describe('plugin-meetings', () => {
     };
 
     originalRemoteUpdateAudioVideo = MeetingUtil.remoteUpdateAudioVideo;
+    originalUpdateLocusFromApiResponse = MeetingUtil.updateLocusFromApiResponse;
 
     MeetingUtil.remoteUpdateAudioVideo = sinon.stub().resolves(fakeLocusResponse);
     MeetingUtil.updateLocusFromApiResponse = sinon.stub();
@@ -57,6 +59,7 @@ describe('plugin-meetings', () => {
 
   afterEach(() => {
     MeetingUtil.remoteUpdateAudioVideo = originalRemoteUpdateAudioVideo;
+    MeetingUtil.updateLocusFromApiResponse = originalUpdateLocusFromApiResponse;
   });
 
   describe('mute state library', () => {
@@ -107,6 +110,82 @@ describe('plugin-meetings', () => {
       audio.handleServerRemoteMuteUpdate(meeting, true, true);
 
       assert.isTrue(audio.isRemotelyMuted());
+    });
+
+    it('does not unmute the local stream when server clears remote mute while user is locally muted (breakout -> main regression)', async () => {
+      // Panelist is locally muted before joining a breakout.
+      meeting.mediaProperties.audioStream.userMuted = true;
+      audio.handleLocalStreamChange(meeting);
+      await testUtils.flushPromises();
+
+      // Server applied a remote mute at some point.
+      audio.handleServerRemoteMuteUpdate(meeting, true, true);
+      assert.isTrue(audio.isRemotelyMuted());
+
+      meeting.mediaProperties.audioStream.setServerMuted.resetHistory();
+
+      // Now the user returns from breakout to main, and Locus clears the remote mute.
+      audio.handleServerRemoteMuteUpdate(meeting, false, true);
+
+      // Stream must NOT be force-unmuted - user's local mute intent must be preserved.
+      // The stale remoteMute=false must not trigger setServerMuted again.
+      assert.notCalled(meeting.mediaProperties.audioStream.setServerMuted);
+      assert.isFalse(audio.isRemotelyMuted());
+      assert.isTrue(audio.isMuted());
+    });
+
+    it('does not touch the local stream when remote mute stays false (no transition)', async () => {
+      // No remote mute has been applied yet (initial state has server.remoteMute=false).
+      meeting.mediaProperties.audioStream.setServerMuted.resetHistory();
+
+      audio.handleServerRemoteMuteUpdate(meeting, false, true);
+
+      // setServerMuted must not be called - there is no remoteMute transition to act on.
+      assert.notCalled(meeting.mediaProperties.audioStream.setServerMuted);
+    });
+
+    it('keeps isMuted() true when a stale remoteMute=false replays after remote mute', async () => {
+      // User was unmuted by host (userMuted=false locally).
+      meeting.mediaProperties.audioStream.userMuted = false;
+      audio.handleLocalStreamChange(meeting);
+      await testUtils.flushPromises();
+
+      // Host then hard-mutes the user.
+      audio.handleServerRemoteMuteUpdate(meeting, true, true);
+      await testUtils.flushPromises();
+      assert.isTrue(audio.isMuted());
+
+      meeting.mediaProperties.audioStream.setServerMuted.resetHistory();
+
+      // BO -> main replays a stale remoteMute=false from the locus cache.
+      audio.handleServerRemoteMuteUpdate(meeting, false, true);
+
+      // isMuted() must remain true (client.localMute is the safety net),
+      // and the stream must not be force-unmuted.
+      assert.isTrue(audio.isMuted());
+      assert.isFalse(audio.isRemotelyMuted());
+      assert.notCalled(meeting.mediaProperties.audioStream.setServerMuted);
+    });
+
+    it('syncs client mute intent back to server on stale remoteMute=false', async () => {
+      // client wants mute (localMute=true) but server's
+      // local-mute is out of sync (=false) - e.g. an attendee promoted to panelist whose
+      // server-side mute state got mis-set during promotion. remoteMute is currently true.
+      audio.state.client.localMute = true;
+      audio.state.server.localMute = false;
+      audio.state.server.remoteMute = true;
+
+      MeetingUtil.remoteUpdateAudioVideo.resetHistory();
+
+      // Stale event after BO -> main clears remoteMute.
+      audio.handleServerRemoteMuteUpdate(meeting, false, true);
+      await testUtils.flushPromises();
+
+      // applyClientStateToServer must detect the mismatch and push local mute back
+      // to server, so server.controls.audio.muted stays true for other participants' tiles.
+      assert.calledOnce(MeetingUtil.remoteUpdateAudioVideo);
+      assert.calledWith(MeetingUtil.remoteUpdateAudioVideo, meeting, true, undefined);
+      assert.isTrue(audio.isMuted());
     });
 
     it('does local audio unmute if localAudioUnmuteRequired is received', async () => {
@@ -826,6 +905,8 @@ describe('plugin-meetings', () => {
       it('does not do anything if current state is already the same', async () => {
         // set it up so that we are remotely muted (so that a sync to server would do a remote unmute)
         audio.handleServerRemoteMuteUpdate(meeting, true, true);
+        await testUtils.flushPromises();
+        resetStubHistory();
 
         // audio is already enabled and we call to enable it again
         audio.enable(meeting, true);
