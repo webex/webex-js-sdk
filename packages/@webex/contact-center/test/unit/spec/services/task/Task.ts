@@ -89,6 +89,67 @@ describe('Task (base class)', () => {
     expect((task.data as any).foo).toBeUndefined();
   });
 
+  it('drops stale interaction.media/participants entries the backend no longer sends (merge keeps other fields)', () => {
+    const withConsult = createTaskData({
+      interaction: {
+        callAssociatedData: {a: {value: 'keep-me'}},
+        media: {
+          main: {mediaResourceId: 'main', mType: 'mainCall', isHold: true},
+          consult: {mediaResourceId: 'consult', mType: 'consult', isHold: false},
+        },
+        participants: {
+          'customer-1': {id: 'customer-1', pType: 'Customer'},
+          'agent-1': {id: 'agent-1', pType: 'Agent'},
+          'agent-2': {id: 'agent-2', pType: 'Agent', consultState: 'consulting'},
+        },
+      } as any,
+    }) as unknown as TaskData;
+    task.updateTaskData(withConsult, true);
+
+    // Backend resume snapshot: consult leg gone (only main media + main participants).
+    const resumeData = createTaskData({
+      interaction: {
+        media: {main: {mediaResourceId: 'main', mType: 'mainCall', isHold: false}},
+        participants: {
+          'customer-1': {id: 'customer-1', pType: 'Customer'},
+          'agent-1': {id: 'agent-1', pType: 'Agent', consultState: null},
+        },
+      } as any,
+    }) as unknown as TaskData;
+    task.updateTaskData(resumeData);
+
+    const interaction = (task.data as any).interaction;
+    // Stale consult media + consultee participant (absent from the resume snapshot) are removed.
+    expect(interaction.media.consult).toBeUndefined();
+    expect(interaction.participants['agent-2']).toBeUndefined();
+    // Entries still present in the incoming snapshot survive and reflect the new values.
+    expect(interaction.media.main).toBeDefined();
+    expect(interaction.media.main.isHold).toBe(false);
+    expect(interaction.participants['agent-1']).toBeDefined();
+    expect(interaction.participants['customer-1']).toBeDefined();
+    // Unrelated merge-able fields (CAD) are preserved.
+    expect(interaction.callAssociatedData.a.value).toBe('keep-me');
+  });
+
+  it('does not touch interaction maps when the incoming payload omits them', () => {
+    const withConsult = createTaskData({
+      interaction: {
+        media: {main: {mediaResourceId: 'main'}, consult: {mediaResourceId: 'consult'}},
+        participants: {'agent-1': {id: 'agent-1'}, 'agent-2': {id: 'agent-2'}},
+      } as any,
+    }) as unknown as TaskData;
+    task.updateTaskData(withConsult, true);
+
+    // A partial update with no interaction maps must not prune existing media/participants.
+    task.updateTaskData({foo: 'changed'} as unknown as TaskData);
+
+    const interaction = (task.data as any).interaction;
+    expect(interaction.media.main).toBeDefined();
+    expect(interaction.media.consult).toBeDefined();
+    expect(interaction.participants['agent-1']).toBeDefined();
+    expect(interaction.participants['agent-2']).toBeDefined();
+  });
+
   it('getUIControls returns default controls shape for idle voice task', () => {
     const controls = task.uiControls;
     const mainControls = controls.main;

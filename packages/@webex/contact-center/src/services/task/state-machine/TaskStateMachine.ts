@@ -78,6 +78,15 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
       [TaskEvent.HYDRATE]: {
         actions: ['updateTaskData', 'emitTaskHydrate'],
       },
+      // AgentConsultCreated from Stable Prod while already HELD/CONNECTED (external consult).
+      // Child states do not handle CONSULT_CREATED; wire here so updateTaskData + setConsultInitiator run.
+      [TaskEvent.CONSULT_CREATED]: {
+        actions: ['updateTaskData', 'setConsultInitiator'],
+      },
+      // AgentConsultFailed (RONA) while HELD/CONNECTED without passing through CONSULT_INITIATING.
+      [TaskEvent.CONSULT_FAILED]: {
+        actions: ['updateTaskData', 'handleConsultFailed'],
+      },
     },
     states: {
       [TaskState.IDLE]: {
@@ -290,6 +299,24 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.TRANSFER_FAILED]: {
             actions: ['updateTaskData'],
           },
+          // AgentConsultEnded from Stable Prod while on connected leg (external end consult).
+          [TaskEvent.CONSULT_END]: [
+            {
+              guard: ({context, event}) => {
+                if (context.consultInitiator !== true) return false;
+                const taskData = getTaskDataFromEvent(event);
+                const mainId = taskData?.interaction?.mainInteractionId || taskData?.interactionId;
+
+                return Boolean(mainId && taskData?.interaction?.media?.[mainId]?.isHold === true);
+              },
+              target: TaskState.HELD,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+            {
+              guard: ({context}) => context.consultInitiator === true,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+          ],
           // AgentContactEnded Event
           [TaskEvent.CONTACT_ENDED]: [
             {
@@ -370,6 +397,18 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.CONSULT_INITIATING,
             actions: ['setConsultInitiator', 'setConsultDestination'],
           },
+          // AgentConsulting while main leg is held (Task Refactor / Stable Prod consult accept).
+          [TaskEvent.CONSULTING_ACTIVE]: {
+            target: TaskState.CONSULTING,
+            actions: [
+              'setConsultInitiator',
+              'setConsultDestination',
+              'setConsultAgentJoined',
+              'updateTaskData',
+              'emitTaskConsultAccepted',
+              'emitTaskConsulting',
+            ],
+          },
           // TODO: This may not be a valid transition, need to be removed
           // AgentConsultTransferred / AgentVTeamTransferred / AgentBlindTransferred
           [TaskEvent.TRANSFER_SUCCESS]: [
@@ -402,6 +441,10 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
               actions: ['updateTaskData', 'markEnded', 'emitTaskEnd'],
             },
           ],
+          // AgentConsultEnded from Stable Prod while main leg is held (external end consult).
+          [TaskEvent.CONSULT_END]: {
+            actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+          },
           // TODO: This may not be a valid transition, this needs to be checked as well
           [TaskEvent.TASK_WRAPUP]: {
             target: TaskState.WRAPPING_UP,
@@ -437,6 +480,18 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             target: TaskState.CONSULTING,
             actions: ['updateTaskData', 'setConsultInitiator'],
           },
+          // AgentConsulting (Task Refactor: AgentConsulting event, not CONSULT_SUCCESS)
+          [TaskEvent.CONSULTING_ACTIVE]: {
+            target: TaskState.CONSULTING,
+            actions: [
+              'setConsultInitiator',
+              'setConsultDestination',
+              'setConsultAgentJoined',
+              'updateTaskData',
+              'emitTaskConsultAccepted',
+              'emitTaskConsulting',
+            ],
+          },
           // AgentConsultFailed, API Failures, AgentCtqFailed
           [TaskEvent.CONSULT_FAILED]: [
             {
@@ -465,6 +520,18 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             {
               target: TaskState.CONNECTED,
               actions: ['updateTaskData', 'clearConsultState'],
+            },
+          ],
+          // AgentConsultEnded from Stable Prod during consult initiation (external end consult).
+          [TaskEvent.CONSULT_END]: [
+            {
+              guard: guards.isPrimaryMediaOnHold,
+              target: TaskState.HELD,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'clearConsultState', 'emitTaskConsultEnd'],
             },
           ],
         },
@@ -788,6 +855,20 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
           [TaskEvent.CONSULT]: {
             target: TaskState.CONSULT_INITIATING,
             actions: ['setConsultInitiator', 'setConsultDestination', 'setConsultFromConference'],
+          },
+
+          // AgentConsulting while still in conference (EP-DN/external ordering).
+          [TaskEvent.CONSULTING_ACTIVE]: {
+            target: TaskState.CONSULTING,
+            actions: [
+              'setConsultInitiator',
+              'setConsultDestination',
+              'setConsultFromConference',
+              'setConsultAgentJoined',
+              'updateTaskData',
+              'emitTaskConsultAccepted',
+              'emitTaskConsulting',
+            ],
           },
 
           // Participant leaves - handle conference downgrade scenarios
