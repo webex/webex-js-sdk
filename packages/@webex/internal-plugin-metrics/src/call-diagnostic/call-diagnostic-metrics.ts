@@ -433,6 +433,7 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       // @ts-ignore
       senderCountryCode: this.webex.meetings.geoHintInfo?.countryCode,
       event: eventData,
+      isTest: typeof window !== 'undefined' && !!navigator?.webdriver, // if webdriver is true, it's most likely in a test environment
     };
 
     // sanitize (remove empty properties, CA requires it)

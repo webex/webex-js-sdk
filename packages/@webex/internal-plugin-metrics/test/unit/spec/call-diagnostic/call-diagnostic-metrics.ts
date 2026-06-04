@@ -808,6 +808,7 @@ describe('internal-plugin-metrics', () => {
         },
         senderCountryCode: 'UK',
         version: 1,
+        isTest: false,
       });
     });
 
@@ -854,6 +855,44 @@ describe('internal-plugin-metrics', () => {
         },
         senderCountryCode: 'UK',
         version: 1,
+        isTest: false,
+      });
+    });
+
+    describe('#prepareDiagnosticEvent isTest field', () => {
+      it('should set isTest to false when window is not defined', () => {
+        const options = {meetingId: fakeMeeting.id};
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        const res = cd.prepareDiagnosticEvent(
+          {
+            canProceed: true,
+            identifiers: {correlationId: 'test-id'},
+            name: 'client.alert.displayed',
+          },
+          options
+        );
+
+        // In the test environment, isTest should be false since we're not in a webdriver environment
+        assert.isFalse(res.isTest, 'isTest should be false in non-webdriver test environment');
+      });
+
+      it('should include isTest field in the returned event', () => {
+        const options = {meetingId: fakeMeeting.id};
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        const res = cd.prepareDiagnosticEvent(
+          {
+            canProceed: true,
+            identifiers: {correlationId: 'test-id'},
+            name: 'client.alert.displayed',
+          },
+          options
+        );
+
+        // Verify the isTest field is present
+        assert.isDefined(res.isTest, 'isTest field should be defined');
+        assert.isBoolean(res.isTest, 'isTest should be a boolean');
       });
     });
 
@@ -953,6 +992,7 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
+          isTest: false,
         });
         assert.calledWith(validatorSpy, {
           type: 'ce',
@@ -993,6 +1033,7 @@ describe('internal-plugin-metrics', () => {
             },
             senderCountryCode: 'UK',
             version: 1,
+            isTest: false,
           },
         });
 
@@ -1098,6 +1139,7 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
+          isTest: false,
         });
         assert.calledWith(validatorSpy, {
           type: 'ce',
@@ -1138,6 +1180,7 @@ describe('internal-plugin-metrics', () => {
             },
             senderCountryCode: 'UK',
             version: 1,
+            isTest: false,
           },
         });
 
@@ -1245,6 +1288,7 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
+          isTest: false,
         });
         assert.calledWith(validatorSpy, {
           type: 'ce',
@@ -1286,6 +1330,7 @@ describe('internal-plugin-metrics', () => {
             },
             senderCountryCode: 'UK',
             version: 1,
+            isTest: false,
           },
         });
 
@@ -1392,6 +1437,7 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
+          isTest: false,
         });
         assert.calledWith(validatorSpy, {
           type: 'ce',
@@ -1433,6 +1479,7 @@ describe('internal-plugin-metrics', () => {
             },
             senderCountryCode: 'UK',
             version: 1,
+            isTest: false,
           },
         });
 
@@ -1543,6 +1590,7 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
+          isTest: false,
         });
         assert.calledWith(validatorSpy, {
           type: 'ce',
@@ -1586,6 +1634,7 @@ describe('internal-plugin-metrics', () => {
             },
             senderCountryCode: 'UK',
             version: 1,
+            isTest: false,
           },
         });
 
@@ -1735,6 +1784,7 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
+          isTest: false,
         });
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
@@ -1808,6 +1858,7 @@ describe('internal-plugin-metrics', () => {
           {
             eventId: 'my-fake-id',
             version: 1,
+            isTest: false,
             origin: {origin: 'fake-origin'},
             originTime: {triggered: now.toISOString(), sent: 'not_defined_yet'},
             senderCountryCode: 'UK',
@@ -1899,6 +1950,7 @@ describe('internal-plugin-metrics', () => {
           {
             eventId: 'my-fake-id',
             version: 1,
+            isTest: false,
             origin: {origin: 'fake-origin'},
             originTime: {triggered: now.toISOString(), sent: 'not_defined_yet'},
             senderCountryCode: 'UK',
@@ -1977,6 +2029,7 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
+          isTest: false,
         });
       });
 
@@ -2033,6 +2086,7 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
+          isTest: false,
         });
       });
 
@@ -2112,6 +2166,7 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
+          isTest: false,
         });
       });
 
@@ -2211,6 +2266,7 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
+          isTest: false,
         });
       });
 
@@ -2310,6 +2366,7 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
+          isTest: false,
         });
       });
 
@@ -2385,6 +2442,7 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
+          isTest: false,
         });
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
@@ -2468,6 +2526,7 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
+          isTest: false,
         });
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
@@ -2541,6 +2600,7 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
+          isTest: false,
         });
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
@@ -2616,6 +2676,7 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
+          isTest: false,
         });
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
@@ -2702,6 +2763,7 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
+          isTest: false,
         });
       });
 
@@ -3058,6 +3120,7 @@ describe('internal-plugin-metrics', () => {
           event: {
             eventId: 'my-fake-id',
             version: 1,
+            isTest: false,
             origin: {origin: 'fake-origin'},
             originTime: {triggered: now.toISOString(), sent: 'not_defined_yet'},
             senderCountryCode: 'UK',
@@ -3096,6 +3159,7 @@ describe('internal-plugin-metrics', () => {
         assert.calledWith(submitToCallDiagnosticsSpy, {
           eventId: 'my-fake-id',
           version: 1,
+          isTest: false,
           origin: {origin: 'fake-origin'},
           originTime: {triggered: now.toISOString(), sent: 'not_defined_yet'},
           senderCountryCode: 'UK',
@@ -4001,6 +4065,7 @@ describe('internal-plugin-metrics', () => {
                   },
                   senderCountryCode: webex.meetings.geoHintInfo?.countryCode,
                   version: 1,
+                  isTest: false,
                 },
                 type: ['diagnostic-event'],
               },
@@ -4398,6 +4463,7 @@ describe('internal-plugin-metrics', () => {
         assert.calledWith(submitToCallFeaturesSpy, {
           eventId: 'my-fake-id',
           version: 1,
+          isTest: false,
           origin: {
             origin: 'fake-origin',
           },
