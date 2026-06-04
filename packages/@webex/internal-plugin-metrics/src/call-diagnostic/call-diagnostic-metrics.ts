@@ -1011,7 +1011,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       // @ts-ignore
       webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
       isVipMeeting: meeting?.meetingInfo?.vipmeeting || false,
-      // @ts-ignore
       isAutomatedUser: typeof window !== 'undefined' && !!navigator?.webdriver, // if webdriver is true, it's most likely in a test environment
     };
 
@@ -1134,7 +1133,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       loginType: this.getCurLoginType(),
       // @ts-ignore
       webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
-      // @ts-ignore
       isAutomatedUser: typeof window !== 'undefined' && !!navigator?.webdriver, // if webdriver is true, it's most likely in a test environment
     };
 
