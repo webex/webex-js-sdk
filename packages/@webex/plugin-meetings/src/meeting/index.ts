@@ -3858,6 +3858,9 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE, (payload) => {
+      // canViewTheParticipantList meeting action depends on this value, so we need to update meeting actions
+      this.updateMeetingActions();
+
       Trigger.trigger(
         this,
         {
