@@ -61,6 +61,7 @@ The following methods are defined on the `ICallingClient` interface and are the 
 | `getDevices`       | `(userId?: string): Promise<DeviceType[]>` | Fetches devices from Mobius for the user        |
 | `getActiveCalls`   | `(): Record<string, ICall[]>`              | Returns active calls grouped by lineId          |
 | `getConnectedCall` | `(): ICall \| undefined`                   | Returns the currently connected (non-held) call |
+| `isMobiusSocketConnected` | `(): boolean`                       | Whether the Mobius WebSocket transport is currently connected. Lets consumers that subscribe to `mobius_socket_connected` after `init()` reconcile the initial state. `false` when WSS transport is not in use. |
 | `mediaEngine`      | `typeof Media`                             | The `@webex/internal-media-core` engine         |
 
 ### CallingClient Class Methods (not on ICallingClient interface)
@@ -77,6 +78,8 @@ The following methods are defined on the `ICallingClient` interface and are the 
 | `callingClient:outgoing_call`        | `CALLING_CLIENT_EVENT_KEYS.OUTGOING_CALL`     | `string` (callId)    | Outbound call initiated      |
 | `callingClient:user_recent_sessions` | `CALLING_CLIENT_EVENT_KEYS.USER_SESSION_INFO` | `CallSessionEvent`   | User session info from Janus |
 | `callingClient:all_calls_cleared`    | `CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED` | _(none)_             | All active calls have ended  |
+| `callingClient:mobius_socket_connected`    | `CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED` | _(none)_             | Mobius WebSocket (re)connected (WSS transport only) |
+| `callingClient:mobius_socket_disconnected` | `CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED` | `MobiusSocketDisconnectedEvent` (`{reason}`) | Mobius WebSocket disconnected; `reason` is `permanent` / `transient` / `replaced` (WSS transport only) |
 
 ---
 
