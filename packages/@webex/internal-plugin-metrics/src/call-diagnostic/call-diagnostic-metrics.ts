@@ -433,7 +433,6 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       // @ts-ignore
       senderCountryCode: this.webex.meetings.geoHintInfo?.countryCode,
       event: eventData,
-      isTest: typeof window !== 'undefined' && !!navigator?.webdriver, // if webdriver is true, it's most likely in a test environment
     };
 
     // sanitize (remove empty properties, CA requires it)
@@ -1012,6 +1011,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       // @ts-ignore
       webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
       isVipMeeting: meeting?.meetingInfo?.vipmeeting || false,
+      // @ts-ignore
+      isAutomatedUser: typeof window !== 'undefined' && !!navigator?.webdriver, // if webdriver is true, it's most likely in a test environment
     };
 
     const joinFlowVersion = options.joinFlowVersion ?? meeting.callStateForMetrics?.joinFlowVersion;
@@ -1133,6 +1134,8 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
       loginType: this.getCurLoginType(),
       // @ts-ignore
       webClientPreload: this.webex.meetings?.config?.metrics?.webClientPreload,
+      // @ts-ignore
+      isAutomatedUser: typeof window !== 'undefined' && !!navigator?.webdriver, // if webdriver is true, it's most likely in a test environment
     };
 
     if (options.joinFlowVersion) {

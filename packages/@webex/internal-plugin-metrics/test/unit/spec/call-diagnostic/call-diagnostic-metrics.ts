@@ -808,7 +808,6 @@ describe('internal-plugin-metrics', () => {
         },
         senderCountryCode: 'UK',
         version: 1,
-        isTest: false,
       });
     });
 
@@ -855,12 +854,11 @@ describe('internal-plugin-metrics', () => {
         },
         senderCountryCode: 'UK',
         version: 1,
-        isTest: false,
       });
     });
 
-    describe('#prepareDiagnosticEvent isTest field', () => {
-      it('should set isTest to false when window is not defined', () => {
+    describe('#prepareDiagnosticEvent isAutomatedUser field', () => {
+      it('should set isAutomatedUser to false when window is not defined', () => {
         const options = {meetingId: fakeMeeting.id};
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
 
@@ -869,15 +867,19 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             identifiers: {correlationId: 'test-id'},
             name: 'client.alert.displayed',
+            isAutomatedUser: false,
           },
           options
         );
 
-        // In the test environment, isTest should be false since we're not in a webdriver environment
-        assert.isFalse(res.isTest, 'isTest should be false in non-webdriver test environment');
+        // In the test environment, isAutomatedUser should be false since we're not in a webdriver environment
+        assert.isFalse(
+          res.event.isAutomatedUser,
+          'isAutomatedUser should be false in non-webdriver test environment'
+        );
       });
 
-      it('should include isTest field in the returned event', () => {
+      it('should include isAutomatedUser field in the returned event', () => {
         const options = {meetingId: fakeMeeting.id};
         sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
 
@@ -886,13 +888,14 @@ describe('internal-plugin-metrics', () => {
             canProceed: true,
             identifiers: {correlationId: 'test-id'},
             name: 'client.alert.displayed',
+            isAutomatedUser: false,
           },
           options
         );
 
-        // Verify the isTest field is present
-        assert.isDefined(res.isTest, 'isTest field should be defined');
-        assert.isBoolean(res.isTest, 'isTest should be a boolean');
+        // Verify the isAutomatedUser field is present in the event
+        assert.isDefined(res.event.isAutomatedUser, 'isAutomatedUser field should be defined');
+        assert.isBoolean(res.event.isAutomatedUser, 'isAutomatedUser should be a boolean');
       });
     });
 
@@ -952,6 +955,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           options
         );
@@ -981,6 +985,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -992,7 +997,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-          isTest: false,
         });
         assert.calledWith(validatorSpy, {
           type: 'ce',
@@ -1022,6 +1026,7 @@ describe('internal-plugin-metrics', () => {
               webexSubServiceType: undefined,
               webClientPreload: undefined,
               isVipMeeting: false,
+              isAutomatedUser: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1033,7 +1038,6 @@ describe('internal-plugin-metrics', () => {
             },
             senderCountryCode: 'UK',
             version: 1,
-            isTest: false,
           },
         });
 
@@ -1099,6 +1103,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           options
         );
@@ -1128,6 +1133,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1139,7 +1145,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-          isTest: false,
         });
         assert.calledWith(validatorSpy, {
           type: 'ce',
@@ -1169,6 +1174,7 @@ describe('internal-plugin-metrics', () => {
               webexSubServiceType: undefined,
               webClientPreload: undefined,
               isVipMeeting: false,
+              isAutomatedUser: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1180,7 +1186,6 @@ describe('internal-plugin-metrics', () => {
             },
             senderCountryCode: 'UK',
             version: 1,
-            isTest: false,
           },
         });
 
@@ -1247,6 +1252,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           options
         );
@@ -1277,6 +1283,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1288,7 +1295,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-          isTest: false,
         });
         assert.calledWith(validatorSpy, {
           type: 'ce',
@@ -1319,6 +1325,7 @@ describe('internal-plugin-metrics', () => {
               webexSubServiceType: undefined,
               webClientPreload: undefined,
               isVipMeeting: false,
+              isAutomatedUser: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1330,7 +1337,6 @@ describe('internal-plugin-metrics', () => {
             },
             senderCountryCode: 'UK',
             version: 1,
-            isTest: false,
           },
         });
 
@@ -1396,6 +1402,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           options
         );
@@ -1426,6 +1433,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1437,7 +1445,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-          isTest: false,
         });
         assert.calledWith(validatorSpy, {
           type: 'ce',
@@ -1468,6 +1475,7 @@ describe('internal-plugin-metrics', () => {
               isConvergedArchitectureEnabled: undefined,
               webexSubServiceType: undefined,
               isVipMeeting: false,
+              isAutomatedUser: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1479,7 +1487,6 @@ describe('internal-plugin-metrics', () => {
             },
             senderCountryCode: 'UK',
             version: 1,
-            isTest: false,
           },
         });
 
@@ -1547,6 +1554,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           options
         );
@@ -1579,6 +1587,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1590,7 +1599,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-          isTest: false,
         });
         assert.calledWith(validatorSpy, {
           type: 'ce',
@@ -1623,6 +1631,7 @@ describe('internal-plugin-metrics', () => {
               webexSubServiceType: undefined,
               webClientPreload: undefined,
               isVipMeeting: false,
+              isAutomatedUser: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1634,7 +1643,6 @@ describe('internal-plugin-metrics', () => {
             },
             senderCountryCode: 'UK',
             version: 1,
-            isTest: false,
           },
         });
 
@@ -1750,6 +1758,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             webClientPreload: undefined,
+            isAutomatedUser: false,
           },
           options
         );
@@ -1773,6 +1782,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             webClientPreload: undefined,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1784,7 +1794,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-          isTest: false,
         });
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
@@ -1849,6 +1858,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             webClientPreload: undefined,
+            isAutomatedUser: false,
           },
           options
         );
@@ -1858,7 +1868,6 @@ describe('internal-plugin-metrics', () => {
           {
             eventId: 'my-fake-id',
             version: 1,
-            isTest: false,
             origin: {origin: 'fake-origin'},
             originTime: {triggered: now.toISOString(), sent: 'not_defined_yet'},
             senderCountryCode: 'UK',
@@ -1878,6 +1887,7 @@ describe('internal-plugin-metrics', () => {
               eventData: {webClientDomain: 'whatever', isMercuryConnected: true},
               loginType: 'login-ci',
               webClientPreload: undefined,
+              isAutomatedUser: false,
             },
           },
           options.preLoginId
@@ -1941,6 +1951,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             webClientPreload: undefined,
+            isAutomatedUser: false,
           },
           options
         );
@@ -1950,7 +1961,6 @@ describe('internal-plugin-metrics', () => {
           {
             eventId: 'my-fake-id',
             version: 1,
-            isTest: false,
             origin: {origin: 'fake-origin'},
             originTime: {triggered: now.toISOString(), sent: 'not_defined_yet'},
             senderCountryCode: 'UK',
@@ -1972,6 +1982,7 @@ describe('internal-plugin-metrics', () => {
               userNameInput: 'current',
               emailInput: 'current',
               webClientPreload: undefined,
+              isAutomatedUser: false,
             },
           },
           options.preLoginId
@@ -2018,6 +2029,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2029,7 +2041,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-          isTest: false,
         });
       });
 
@@ -2075,6 +2086,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2086,7 +2098,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-          isTest: false,
         });
       });
 
@@ -2132,6 +2143,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             webClientPreload: true,
+            isAutomatedUser: false,
           },
           options
         );
@@ -2155,6 +2167,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             webClientPreload: true,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2166,7 +2179,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-          isTest: false,
         });
       });
 
@@ -2225,6 +2237,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           options
         );
@@ -2255,6 +2268,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2266,7 +2280,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-          isTest: false,
         });
       });
 
@@ -2325,6 +2338,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: true,
+            isAutomatedUser: false,
           },
           options
         );
@@ -2355,6 +2369,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: true,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2366,7 +2381,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-          isTest: false,
         });
       });
 
@@ -2431,6 +2445,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2442,7 +2457,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-          isTest: false,
         });
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
@@ -2515,6 +2529,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2526,7 +2541,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-          isTest: false,
         });
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
@@ -2589,6 +2603,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             webClientPreload: undefined,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2600,7 +2615,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-          isTest: false,
         });
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
@@ -2665,6 +2679,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             webClientPreload: undefined,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2676,7 +2691,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-          isTest: false,
         });
 
         const webexLoggerLogCalls = webex.logger.log.getCalls();
@@ -2752,6 +2766,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2763,7 +2778,6 @@ describe('internal-plugin-metrics', () => {
           },
           senderCountryCode: 'UK',
           version: 1,
-          isTest: false,
         });
       });
 
@@ -3120,7 +3134,6 @@ describe('internal-plugin-metrics', () => {
           event: {
             eventId: 'my-fake-id',
             version: 1,
-            isTest: false,
             origin: {origin: 'fake-origin'},
             originTime: {triggered: now.toISOString(), sent: 'not_defined_yet'},
             senderCountryCode: 'UK',
@@ -3159,7 +3172,6 @@ describe('internal-plugin-metrics', () => {
         assert.calledWith(submitToCallDiagnosticsSpy, {
           eventId: 'my-fake-id',
           version: 1,
-          isTest: false,
           origin: {origin: 'fake-origin'},
           originTime: {triggered: now.toISOString(), sent: 'not_defined_yet'},
           senderCountryCode: 'UK',
@@ -4040,6 +4052,7 @@ describe('internal-plugin-metrics', () => {
                     webexSubServiceType: undefined,
                     webClientPreload: undefined,
                     isVipMeeting: false,
+                    isAutomatedUser: false,
                   },
                   eventId: 'my-fake-id',
                   origin: {
@@ -4065,7 +4078,6 @@ describe('internal-plugin-metrics', () => {
                   },
                   senderCountryCode: webex.meetings.geoHintInfo?.countryCode,
                   version: 1,
-                  isTest: false,
                 },
                 type: ['diagnostic-event'],
               },
@@ -4444,6 +4456,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
             meetingSummaryInfo: {
               featureName: 'syncSystemMuteStatus',
               featureActions: [
@@ -4463,7 +4476,6 @@ describe('internal-plugin-metrics', () => {
         assert.calledWith(submitToCallFeaturesSpy, {
           eventId: 'my-fake-id',
           version: 1,
-          isTest: false,
           origin: {
             origin: 'fake-origin',
           },
@@ -4487,6 +4499,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
             meetingSummaryInfo: {
               featureName: 'syncSystemMuteStatus',
               featureActions: [
