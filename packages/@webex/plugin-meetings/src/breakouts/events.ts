@@ -55,27 +55,18 @@ const breakoutEvent: {
       breakoutMoveId,
       breakoutSessionId: currentSession?.sessionId,
       breakoutGroupId: currentSession?.groupId,
+      llmWebsocketUrl,
     };
-
-    if (llmWebsocketUrl) {
-      identifiers.llmWebsocketUrl = llmWebsocketUrl;
-    }
 
     const payload: any = {
       identifiers,
+      ...(llmLatency && {llmLatency}),
     };
-
-    if (llmLatency) {
-      payload.llmLatency = llmLatency;
-    }
 
     const options: any = {
       meetingId: meeting.id,
+      ...(error && {rawError: error}),
     };
-
-    if (error) {
-      options.rawError = error;
-    }
 
     submitClientEvent({
       name: event,

@@ -121,6 +121,7 @@ describe('plugin-meetings', () => {
               breakoutMoveId: 'breakoutMoveId',
               breakoutSessionId: 'sessionId',
               breakoutGroupId: 'groupId',
+              llmWebsocketUrl: undefined,
             },
           },
           options: {meetingId: 'activeMeetingId'},

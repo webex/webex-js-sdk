@@ -6920,20 +6920,16 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     const payload: any = {
+      identifiers: {
+        llmWebsocketUrl,
+      },
       llmLatency,
     };
 
-    if (llmWebsocketUrl) {
-      payload.identifiers = {llmWebsocketUrl};
-    }
-
     const options: any = {
       meetingId: this.id,
+      ...(error && {rawError: error}),
     };
-
-    if (error) {
-      options.rawError = error;
-    }
 
     // @ts-ignore
     this.webex.internal.newMetrics.submitClientEvent({
@@ -6955,15 +6951,14 @@ export default class Meeting extends StatelessWebexPlugin {
     const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
 
     const payload: any = {
+      identifiers: {
+        llmWebsocketUrl,
+      },
       syncLatency: metrics.syncLatency,
       llmInfo: {
         dataSet: metrics.dataSet,
       },
     };
-
-    if (llmWebsocketUrl) {
-      payload.identifiers = {llmWebsocketUrl};
-    }
 
     // @ts-ignore
     this.webex.internal.newMetrics.submitClientEvent({
