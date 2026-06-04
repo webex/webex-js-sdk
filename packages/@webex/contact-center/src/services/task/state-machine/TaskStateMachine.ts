@@ -549,6 +549,29 @@ export function getTaskStateMachineConfig(uiControlConfig: UIControlConfig) {
             ],
           },
 
+          // AgentConsultFailed (RONA / consultee declined) while the initiator is already in
+          // CONSULTING (AgentConsulting arrived during ringing). Mirror CONSULT_INITIATING so the
+          // initiator returns to their own leg (HELD when main is on hold, else CONNECTED) instead
+          // of staying in CONSULTING. Without this, handleConsultFailed clears consultInitiator but
+          // the machine stays in CONSULTING, so the trailing AgentConsultEnded falls through the
+          // CONSULT_END "consulted agent" branch to TERMINATED and wrongly clears the task.
+          [TaskEvent.CONSULT_FAILED]: [
+            {
+              guard: ({context}) => context.consultFromConference === true,
+              target: TaskState.CONFERENCING,
+              actions: ['updateTaskData', 'handleConsultFailed'],
+            },
+            {
+              guard: guards.isPrimaryMediaOnHold,
+              target: TaskState.HELD,
+              actions: ['updateTaskData', 'handleConsultFailed'],
+            },
+            {
+              target: TaskState.CONNECTED,
+              actions: ['updateTaskData', 'handleConsultFailed'],
+            },
+          ],
+
           // AgentConsultEnded
           [TaskEvent.CONSULT_END]: [
             {
