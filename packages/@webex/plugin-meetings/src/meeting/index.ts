@@ -6804,21 +6804,28 @@ export default class Meeting extends StatelessWebexPlugin {
           }
 
           const breakoutMoveId = this.breakouts?.breakoutMoveId;
+          const currentBreakoutSession = this.breakouts?.currentBreakoutSession;
 
-          // @ts-ignore
-          const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
-
-          breakoutEvent.onBreakoutJoinResponse(
-            {
-              currentSession: this.breakouts?.currentBreakoutSession,
-              meeting: this,
-              breakoutMoveId,
-              llmLatency: registerAndConnectResult,
-              llmWebsocketUrl,
-            },
+          if (
+            breakoutMoveId &&
+            currentBreakoutSession?.sessionId &&
+            currentBreakoutSession?.groupId
+          ) {
             // @ts-ignore
-            this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
-          );
+            const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
+
+            breakoutEvent.onBreakoutJoinResponse(
+              {
+                currentSession: currentBreakoutSession,
+                meeting: this,
+                breakoutMoveId,
+                llmLatency: registerAndConnectResult,
+                llmWebsocketUrl,
+              },
+              // @ts-ignore
+              this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
+            );
+          }
         }
 
         return Promise.resolve(registerAndConnectResult);
@@ -6835,25 +6842,32 @@ export default class Meeting extends StatelessWebexPlugin {
         }
 
         const breakoutMoveId = this.breakouts?.breakoutMoveId;
+        const currentBreakoutSession = this.breakouts?.currentBreakoutSession;
 
-        // @ts-ignore
-        const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
-
-        breakoutEvent.onBreakoutJoinResponse(
-          {
-            currentSession: this.breakouts?.currentBreakoutSession,
-            meeting: this,
-            breakoutMoveId,
-            llmLatency: {
-              clientLLMDatachannelResponseTime: 0,
-              clientLLMWebSocketConnectTime: 0,
-            },
-            llmWebsocketUrl,
-            error,
-          },
+        if (
+          breakoutMoveId &&
+          currentBreakoutSession?.sessionId &&
+          currentBreakoutSession?.groupId
+        ) {
           // @ts-ignore
-          this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
-        );
+          const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
+
+          breakoutEvent.onBreakoutJoinResponse(
+            {
+              currentSession: currentBreakoutSession,
+              meeting: this,
+              breakoutMoveId,
+              llmLatency: {
+                clientLLMDatachannelResponseTime: 0,
+                clientLLMWebSocketConnectTime: 0,
+              },
+              llmWebsocketUrl,
+              error,
+            },
+            // @ts-ignore
+            this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
+          );
+        }
 
         return Promise.reject(error);
       });
