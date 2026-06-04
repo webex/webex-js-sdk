@@ -11877,7 +11877,7 @@ describe('plugin-meetings', () => {
             meeting.recordingController.getServiceUrl.returns('svc');
             meeting.recordingController.getLocusId.returns('locus-id');
             meeting.recordingController.getRecordingStatus.resolves({
-              status: 'recording',
+              status: 'paused',
               lastDuration: 12345,
               lastTime: '2026-06-03T10:00:00Z',
               needCalculate: true,
@@ -11931,6 +11931,46 @@ describe('plugin-meetings', () => {
             );
 
             assert.notCalled(meeting.recordingController.getRecordingStatus);
+          });
+
+          it('drops a hydrate response whose status does not match the current recording state', async () => {
+            meeting.recordingController.getServiceUrl.returns('svc');
+            meeting.recordingController.getLocusId.returns('locus-id');
+
+            // Resource service still reports the previous segment's PAUSED
+            // status while Locus has already transitioned to RECORDING.
+            meeting.recordingController.getRecordingStatus.resolves({
+              status: 'paused',
+              lastDuration: 99999,
+              lastTime: '2026-06-03T10:00:00Z',
+              needCalculate: true,
+            });
+
+            await meeting.locusInfo.emitScoped(
+              {function: 'test', file: 'test'},
+              LOCUSINFO.EVENTS.CONTROLS_RECORDING_UPDATED,
+              {
+                state: RECORDING_STATE.RECORDING,
+                modifiedBy: 'u',
+                lastModified: 't',
+                modifiedByServiceAppName: undefined,
+                modifiedByServiceAppId: undefined,
+              }
+            );
+            await new Promise((r) => setImmediate(r));
+
+            assert.calledOnce(meeting.recordingController.getRecordingStatus);
+            assert.equal(meeting.recording.state, RECORDING_STATE.RECORDING);
+            assert.isUndefined(meeting.recording.lastDuration);
+            assert.isUndefined(meeting.recording.lastTime);
+
+            assert.neverCalledWith(
+              TriggerProxy.trigger,
+              meeting,
+              {file: 'meeting/index', function: 'hydrateRecordingDuration'},
+              EVENT_TRIGGERS.MEETING_RECORDING_DURATION_UPDATED,
+              sinon.match.any
+            );
           });
 
           it('drops a stale hydrate response when the recording state changes mid-flight', async () => {

@@ -2883,6 +2883,23 @@ export default class Meeting extends StatelessWebexPlugin {
         return;
       }
 
+      // The recording stream service is eventually consistent with Locus.
+      // After a quick pause/resume or stop/start, the response can still
+      // describe the previous segment's state and carry its `lastDuration`.
+      // Drop the response if its status does not match our current local
+      // recording state so we never seed the new timer with a stale baseline.
+      if (
+        duration.status &&
+        this.recording?.state &&
+        duration.status.toLowerCase() !== this.recording.state.toLowerCase()
+      ) {
+        LoggerProxy.logger.debug(
+          `Meeting:index#hydrateRecordingDuration --> dropping stale response (event=${event}); status=${duration.status} state=${this.recording.state}`
+        );
+
+        return;
+      }
+
       // Belt-and-suspenders: even if the epoch is unchanged, never resurrect
       // duration metadata onto an IDLE state.
       if (this.recording?.state === RECORDING_STATE.IDLE) {
