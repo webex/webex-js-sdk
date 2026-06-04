@@ -39,3 +39,15 @@ export enum MOBIUS_SOCKET_MESSAGE_TYPE {
   CALL_DELETE = 'call_delete',
   CALL_DELETE_RESPONSE = 'call_delete.response',
 }
+
+/**
+ * Reason describing why the Mobius WebSocket disconnected.
+ * - `PERMANENT`: socket closed and will not be reconnected automatically.
+ * - `TRANSIENT`: socket closed and a reconnect attempt is in progress.
+ * - `REPLACED`: socket was replaced by a newer connection.
+ */
+export enum MOBIUS_SOCKET_DISCONNECT_REASON {
+  PERMANENT = 'permanent',
+  TRANSIENT = 'transient',
+  REPLACED = 'replaced',
+}
