@@ -431,6 +431,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.trigger(TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION, task);
   };
 
+  /**
+   * Handles multi-login hydrate events emitted when browser login accepts an incoming call.
+   * @private
+   * @param {ITask} task The task object associated with multi-login hydrate
+   */
+  private handleTaskMultiLoginHydrate = (task: ITask) => {
+    // @ts-ignore
+    this.trigger(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, task);
+  };
+
   private handleRTDWebsocketMessage = (payload: string) => {
     this.taskManager.handleRealtimeWebsocketEvent(payload);
   };
@@ -444,6 +454,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
     this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
     this.taskManager.on(TASK_EVENTS.TASK_MERGED, this.handleTaskMerged);
+    this.taskManager.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
     this.taskManager.on(
       TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
       this.handleCampaignPreviewReservation
@@ -576,6 +587,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
       this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+      this.taskManager.off(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
       this.taskManager.off(
         TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
         this.handleCampaignPreviewReservation

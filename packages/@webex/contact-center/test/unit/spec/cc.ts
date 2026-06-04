@@ -336,6 +336,10 @@ describe('webex.cc', () => {
         TASK_EVENTS.TASK_HYDRATE,
         expect.any(Function)
       );
+      expect(mockTaskManager.on).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
+        expect.any(Function)
+      );
       expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
       expect(webex.cc.services.rtdWebSocketManager.initWebSocket).toHaveBeenCalledWith({
         body: {
@@ -482,6 +486,10 @@ describe('webex.cc', () => {
       );
       expect(mockTaskManager.on).toHaveBeenCalledWith(
         TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
+      expect(mockTaskManager.on).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
         expect.any(Function)
       );
       expect(mockWebSocketManager.on).toHaveBeenCalledWith('message', expect.any(Function));
@@ -1582,6 +1590,10 @@ describe('webex.cc', () => {
         TASK_EVENTS.TASK_HYDRATE,
         expect.any(Function)
       );
+      expect(mockTaskManager.off).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
+        expect.any(Function)
+      );
       expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
       expect(webex.cc.services.rtdWebSocketManager.off).toHaveBeenCalledWith(
         'message',
@@ -1638,6 +1650,13 @@ describe('webex.cc', () => {
       const [, hydrateCallback] = hydrateCalls[0];
       expect(hydrateCallback).toBe(webex.cc['handleTaskHydrate']);
 
+      const multiLoginHydrateCalls = mockTaskManager.off.mock.calls.filter(
+        ([evt]) => evt === TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE
+      );
+      expect(multiLoginHydrateCalls).toHaveLength(1);
+      const [, multiLoginHydrateCallback] = multiLoginHydrateCalls[0];
+      expect(multiLoginHydrateCallback).toBe(webex.cc['handleTaskMultiLoginHydrate']);
+
       const messageCalls = mockWebSocketManager.off.mock.calls.filter(([evt]) => evt === 'message');
       expect(messageCalls).toHaveLength(1);
       const [, messageCallback] = messageCalls[0];
@@ -1661,6 +1680,10 @@ describe('webex.cc', () => {
       );
       expect(mockTaskManager.off).toHaveBeenCalledWith(
         TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
+      expect(mockTaskManager.off).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
         expect.any(Function)
       );
       expect(mockWebSocketManager.off).toHaveBeenCalledWith('message', expect.any(Function));
@@ -1704,6 +1727,10 @@ describe('webex.cc', () => {
       );
       expect(mockTaskManager.off).toHaveBeenCalledWith(
         TASK_EVENTS.TASK_HYDRATE,
+        expect.any(Function)
+      );
+      expect(mockTaskManager.off).toHaveBeenCalledWith(
+        TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE,
         expect.any(Function)
       );
 
