@@ -228,6 +228,11 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
 
     await this.getMobiusServers();
     if (this.apiRequest.isSocketEnabled()) {
+      this.apiRequest.registerMobiusSocketConnectionListener({
+        onConnected: () => this.emit(CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED),
+        onDisconnected: (reason) =>
+          this.emit(CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED, {reason}),
+      });
       await this.connectToMobiusSocket();
       this.apiRequest.registerMobiusSocketListener(this.handleMobiusAsyncEvent);
     }
@@ -1031,6 +1036,17 @@ export class CallingClient extends Eventing<CallingClientEventTypes> implements 
     });
 
     return connectCall;
+  }
+
+  /**
+   * Indicates whether the Mobius WebSocket transport is currently connected.
+   *
+   * The `MOBIUS_SOCKET_CONNECTED` event is emitted during `init()`, so consumers that
+   * subscribe afterwards may miss it; this lets them reconcile the current state. Returns
+   * `false` when the WebSocket transport is not enabled.
+   */
+  public isMobiusSocketConnected(): boolean {
+    return this.apiRequest.isSocketEnabled() && this.apiRequest.isSocketConnected();
   }
 
   /**

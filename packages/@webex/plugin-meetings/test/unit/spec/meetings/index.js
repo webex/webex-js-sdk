@@ -3593,10 +3593,13 @@ describe('plugin-meetings', () => {
       };
 
       it('triggers correct event when SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE emitted', async () => {
+        sinon.stub(meeting, 'updateMeetingActions');
         checkSelfTrigger(
           LOCUSINFO.EVENTS.SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE,
           EVENT_TRIGGERS.MEETING_SELF_CANNOT_VIEW_PARTICIPANT_LIST
         );
+        assert.calledOnce(meeting.updateMeetingActions);
+        meeting.updateMeetingActions.restore();
       });
 
       it('triggers correct event when SELF_IS_SHARING_BLOCKED_CHANGE emitted', async () => {

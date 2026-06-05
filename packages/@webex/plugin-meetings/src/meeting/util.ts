@@ -949,6 +949,18 @@ const MeetingUtil = {
   isAnonymizeDisplayNamesEnabled: (displayHints) =>
     displayHints.includes(DISPLAY_HINTS.ANONYMOUS_DISPLAY_NAMES_ENABLED),
 
+  canViewTheParticipantList: (displayHints, canNotViewTheParticipantList: boolean) => {
+    if (!displayHints.includes(DISPLAY_HINTS.VIEW_THE_PARTICIPANT_LIST)) {
+      return false;
+    }
+
+    if (canNotViewTheParticipantList) {
+      return false;
+    }
+
+    return displayHints.includes(DISPLAY_HINTS.CAN_VIEW_THE_PARTICIPANT_LIST);
+  },
+
   selfSupportsFeature: (feature: SELF_POLICY, userPolicies: Record<SELF_POLICY, boolean>) => {
     if (!userPolicies) {
       return true;
