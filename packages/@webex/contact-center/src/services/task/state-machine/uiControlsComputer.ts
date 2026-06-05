@@ -749,9 +749,7 @@ function getVoiceLegState(
     !isConsultEndedForSelf &&
       !interaction?.isTerminated &&
       !isConsultUnansweredFailure &&
-      ((consultOwnedBySelf && !taskData?.isConsulted) ||
-        selfConsultingOnConsultMedia ||
-        selfConsultPendingOnConsultMedia) &&
+      (consultOwnedBySelf || selfConsultingOnConsultMedia || selfConsultPendingOnConsultMedia) &&
       (consultInProgress || isConsultingState || context.consultCallHeld || hasConsultMedia)
   );
 
