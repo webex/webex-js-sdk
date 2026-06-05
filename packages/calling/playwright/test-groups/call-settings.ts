@@ -707,7 +707,7 @@ export function callSettingsCallTests() {
         // still disabled — it only becomes enabled when a line:incoming_call event
         // fires, so staying disabled confirms the call was forwarded before ringing.
         await calleePage.waitForTimeout(NO_INCOMING_CALL_TIMEOUT);
-        await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN)).toBeDisabled();
+        await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_ANSWER_BTN)).toBeDisabled();
       } finally {
         await cleanupActiveCalls(callerPage);
         await loadSettings(calleePage).catch(() => {});
@@ -731,7 +731,7 @@ export function callSettingsCallTests() {
         // Wait the observation window, then assert the callee's answer button is
         // still disabled — DND prevents the line:incoming_call event from firing.
         await calleePage.waitForTimeout(NO_INCOMING_CALL_TIMEOUT);
-        await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN)).toBeDisabled();
+        await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_ANSWER_BTN)).toBeDisabled();
       } finally {
         await cleanupActiveCalls(callerPage);
         await loadSettings(calleePage).catch(() => {});
@@ -764,7 +764,7 @@ export function callSettingsCallTests() {
         // CF Busy only activates when the callee is already on a connected call.
         await makeCall(callerPage, calleeNumber);
         await waitForCallerOutboundCall(callerPage);
-        await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN)).toBeEnabled({
+        await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_ANSWER_BTN)).toBeEnabled({
           timeout: 30000,
         });
         await answerCall(calleePage);
@@ -809,7 +809,7 @@ export function callSettingsCallTests() {
 
         if (callWaitingEnabled) {
           // Call waiting presents the second leg locally; decline it and keep the active call up.
-          await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN)).toBeEnabled({
+          await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_ANSWER_BTN)).toBeEnabled({
             timeout: 30000,
           });
           await expect(calleePage.locator(CALLING_SELECTORS.END_BTN)).toBeEnabled({
@@ -824,17 +824,14 @@ export function callSettingsCallTests() {
             },
             {timeout: 30000}
           );
-          await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN)).toBeDisabled(
-            {
-              timeout: 30000,
-            }
-          );
+          await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_ANSWER_BTN)).toBeDisabled({
+            timeout: 30000,
+          });
         } else {
           // Without call waiting, CF Busy should forward before the device rings.
           await expect
             .poll(
-              async () =>
-                calleePage.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN).isDisabled(),
+              async () => calleePage.locator(CALLING_SELECTORS.INCOMING_ANSWER_BTN).isDisabled(),
               {timeout: NO_INCOMING_CALL_TIMEOUT, intervals: [1000]}
             )
             .toBe(true);
@@ -877,14 +874,14 @@ export function callSettingsCallTests() {
 
         // CF No Answer still lets the call ring on the device first.
         // Verify the incoming call arrives at the callee.
-        await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN)).toBeEnabled({
+        await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_ANSWER_BTN)).toBeEnabled({
           timeout: 30000,
         });
 
         // Don't answer — the server's no-answer timer fires and forwards the call.
         // Wait up to 45 s for the answer button to go back to disabled, confirming
         // the call left the device (was forwarded).
-        await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN)).toBeDisabled({
+        await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_ANSWER_BTN)).toBeDisabled({
           timeout: 45000,
         });
       } finally {
@@ -912,7 +909,7 @@ export function callSettingsCallTests() {
         // sendAllCalls routes every call straight to voicemail before ringing.
         // The answer button must stay disabled for the full observation window.
         await calleePage.waitForTimeout(NO_INCOMING_CALL_TIMEOUT);
-        await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN)).toBeDisabled();
+        await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_ANSWER_BTN)).toBeDisabled();
       } finally {
         await cleanupActiveCalls(callerPage);
         await loadSettings(calleePage).catch(() => {});
@@ -945,13 +942,13 @@ export function callSettingsCallTests() {
         await waitForCallerOutboundCall(callerPage);
 
         // sendUnansweredCalls still lets the call ring first — button must become enabled.
-        await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN)).toBeEnabled({
+        await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_ANSWER_BTN)).toBeEnabled({
           timeout: 30000,
         });
 
         // Don't answer — after 2 rings the server forwards the call to voicemail.
         // The button goes back to disabled, confirming the call left the device.
-        await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN)).toBeDisabled({
+        await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_ANSWER_BTN)).toBeDisabled({
           timeout: 45000,
         });
       } finally {

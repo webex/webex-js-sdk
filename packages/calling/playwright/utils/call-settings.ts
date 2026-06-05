@@ -10,11 +10,11 @@ export async function loadSettings(page: Page): Promise<void> {
   // Register both response listeners BEFORE clicking so they capture the GETs
   // that the "Get Settings" button click triggers.
   const cfResponsePromise = page.waitForResponse(
-    (r) => r.url().includes('callForwarding') && r.request().method() === 'GET',
+    (r) => r.url().includes('callForwarding') && r.request().method() === 'GET' && r.ok(),
     {timeout: OPERATION_TIMEOUT}
   );
   const vmResponsePromise = page.waitForResponse(
-    (r) => r.url().includes('voicemail') && r.request().method() === 'GET',
+    (r) => r.url().includes('voicemail') && r.request().method() === 'GET' && r.ok(),
     {timeout: OPERATION_TIMEOUT}
   );
   await page.locator(CALLING_SELECTORS.FETCH_SETTINGS_BTN).click({timeout: AWAIT_TIMEOUT});
@@ -40,7 +40,7 @@ export async function clickDnd(page: Page): Promise<string> {
 
   await Promise.all([
     page.waitForResponse(
-      (r) => r.url().includes('doNotDisturb') && r.request().method() === 'PUT',
+      (r) => r.url().includes('doNotDisturb') && r.request().method() === 'PUT' && r.ok(),
       {timeout: OPERATION_TIMEOUT}
     ),
     page.locator(CALLING_SELECTORS.DND_BTN).click({timeout: AWAIT_TIMEOUT}),
@@ -87,7 +87,7 @@ export async function ensureDndState(page: Page, targetText: string): Promise<vo
 export async function saveCfSettings(page: Page): Promise<void> {
   await Promise.all([
     page.waitForResponse(
-      (r) => r.url().includes('callForwarding') && r.request().method() === 'PUT',
+      (r) => r.url().includes('callForwarding') && r.request().method() === 'PUT' && r.ok(),
       {timeout: OPERATION_TIMEOUT}
     ),
     page.locator(CALLING_SELECTORS.CF_SAVE_BTN).click({timeout: AWAIT_TIMEOUT}),
@@ -116,6 +116,9 @@ export async function setCallForwardAlways(
   } else if (!enable && isChecked) {
     await cb.uncheck({timeout: AWAIT_TIMEOUT});
     await dest.waitFor({state: 'hidden', timeout: AWAIT_TIMEOUT});
+  } else if (enable && isChecked && destination) {
+    await dest.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
+    await dest.fill(destination);
   }
 
   await saveCfSettings(page);
@@ -143,6 +146,9 @@ export async function setCallForwardNoAnswer(
   } else if (!enable && isChecked) {
     await cb.uncheck({timeout: AWAIT_TIMEOUT});
     await dest.waitFor({state: 'hidden', timeout: AWAIT_TIMEOUT});
+  } else if (enable && isChecked && destination) {
+    await dest.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
+    await dest.fill(destination);
   }
 
   await saveCfSettings(page);
@@ -170,6 +176,9 @@ export async function setCallForwardNotReachable(
   } else if (!enable && isChecked) {
     await cb.uncheck({timeout: AWAIT_TIMEOUT});
     await dest.waitFor({state: 'hidden', timeout: AWAIT_TIMEOUT});
+  } else if (enable && isChecked && destination) {
+    await dest.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
+    await dest.fill(destination);
   }
 
   await saveCfSettings(page);
@@ -235,9 +244,10 @@ export async function setVoicemailSendUnansweredCalls(
  */
 export async function saveVoicemailSettings(page: Page): Promise<void> {
   await Promise.all([
-    page.waitForResponse((r) => r.url().includes('voicemail') && r.request().method() === 'PUT', {
-      timeout: OPERATION_TIMEOUT,
-    }),
+    page.waitForResponse(
+      (r) => r.url().includes('voicemail') && r.request().method() === 'PUT' && r.ok(),
+      {timeout: OPERATION_TIMEOUT}
+    ),
     page.locator(CALLING_SELECTORS.VM_SAVE_BTN).click({timeout: AWAIT_TIMEOUT}),
   ]);
 }
@@ -264,6 +274,9 @@ export async function setCallForwardBusy(
   } else if (!enable && isChecked) {
     await cb.uncheck({timeout: AWAIT_TIMEOUT});
     await dest.waitFor({state: 'hidden', timeout: AWAIT_TIMEOUT});
+  } else if (enable && isChecked && destination) {
+    await dest.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
+    await dest.fill(destination);
   }
 
   await saveCfSettings(page);

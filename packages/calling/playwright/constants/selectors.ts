@@ -20,9 +20,12 @@ export const CALLING_SELECTORS = {
   DESTINATION_INPUT: '#destination',
   MAKE_CALL_BTN: '#create-call-action',
   END_CALL_BTN: '#end-call',
-  /** Prefer over raw #answer — the sample app has a duplicate hidden #answer; this targets the visible incoming strip only. */
-  INCOMING_ANSWER_BTN: '#incomingsection:not(.hidden) #answer',
-  ANSWER_BTN: '#answer',
+  /**
+   * Answer button in the incoming-call section. Starts disabled; becomes enabled when a
+   * line:incoming_call event fires. Use .toBeEnabled() to wait for an incoming call,
+   * .toBeDisabled() to assert no incoming call (e.g. call forwarded / DND active).
+   */
+  INCOMING_ANSWER_BTN: '#incomingsection #answer',
   MUTE_BTN: '#mute_button',
   HOLD_BTN: '#hold_button',
   DTMF_INPUT: '#dtmf_digit',
@@ -52,14 +55,6 @@ export const CALLING_SELECTORS = {
   CALL_QUALITY_METRICS: '#call-quality-metrics',
 
   END_BTN: '#end',
-
-  /**
-   * The Answer button inside the always-visible incoming-call div.
-   * Starts disabled; becomes enabled when a line:incoming_call event fires.
-   * Use .toBeEnabled() to wait for an incoming call, .toBeDisabled() to assert
-   * that no incoming call arrived (e.g. call was forwarded / DND active).
-   */
-  INCOMING_CALL_ANSWER_BTN: 'div#incomingsection #answer',
 
   // Call Settings
   FETCH_SETTINGS_BTN: '#fetch-setting',
