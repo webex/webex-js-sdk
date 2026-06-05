@@ -897,6 +897,35 @@ describe('internal-plugin-metrics', () => {
         assert.isDefined(res.event.isAutomatedUser, 'isAutomatedUser field should be defined');
         assert.isBoolean(res.event.isAutomatedUser, 'isAutomatedUser should be a boolean');
       });
+
+      it('should set isAutomatedUser to true when navigator.webdriver is true', () => {
+        const originalDescriptor = Object.getOwnPropertyDescriptor(global, 'navigator');
+        Object.defineProperty(global, 'navigator', {
+          value: {webdriver: true},
+          configurable: true,
+          writable: true,
+        });
+
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        cd.setMercuryConnectedStatus(true);
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options: {correlationId: 'correlationId'},
+        });
+
+        assert.isTrue(
+          prepareDiagnosticEventSpy.firstCall.args[0].isAutomatedUser,
+          'isAutomatedUser should be true when navigator.webdriver is set'
+        );
+
+        if (originalDescriptor) {
+          Object.defineProperty(global, 'navigator', originalDescriptor);
+        } else {
+          delete (global as any).navigator;
+        }
+      });
     });
 
     describe('#submitClientEvent', () => {
