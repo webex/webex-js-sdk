@@ -161,6 +161,43 @@ describe('APIRequest', () => {
     });
   });
 
+  describe('setSocketEnabled', () => {
+    it.each([
+      [true, 'WSS'],
+      [false, 'HTTP'],
+    ])('overrides the active transport to %s and logs it', (enabled, transport) => {
+      const apiRequest = APIRequest.getInstance({webex});
+
+      apiRequest.setSocketEnabled(enabled);
+
+      expect(apiRequest.isSocketEnabled()).toBe(enabled);
+      expect(infoSpy).toHaveBeenCalledWith(`APIRequest transport set to: ${transport}`, {
+        file: 'REQUEST',
+        method: 'setSocketEnabled',
+      });
+    });
+
+    it('can flip the feature-flag seeded transport from WSS to HTTP', () => {
+      (isMobiusWssEnabled as jest.Mock).mockReturnValue(true);
+      const apiRequest = APIRequest.getInstance({webex});
+      expect(apiRequest.isSocketEnabled()).toBe(true);
+
+      apiRequest.setSocketEnabled(false);
+
+      expect(apiRequest.isSocketEnabled()).toBe(false);
+    });
+
+    it('can flip the feature-flag seeded transport from HTTP to WSS', () => {
+      (isMobiusWssEnabled as jest.Mock).mockReturnValue(false);
+      const apiRequest = APIRequest.getInstance({webex});
+      expect(apiRequest.isSocketEnabled()).toBe(false);
+
+      apiRequest.setSocketEnabled(true);
+
+      expect(apiRequest.isSocketEnabled()).toBe(true);
+    });
+  });
+
   describe('isSocketConnected', () => {
     it.each([true, false])(
       'should delegate to the Mobius socket isConnected() and return %s',
