@@ -36,6 +36,27 @@ export const waitForIncomingCall = async (page: Page): Promise<void> => {
   });
 };
 
+/**
+ * Outbound leg exists on the caller (ringing or connected). Fails fast if makeCall
+ * did not create a call object (network/SDK failure, invalid destination, etc.).
+ */
+export const waitForCallerOutboundCall = async (page: Page, timeout = 30000): Promise<void> => {
+  await withTimeout(
+    page.waitForFunction(
+      () => {
+        const client = (window as any).callingClient;
+        if (!client) return false;
+        const calls = client.getActiveCalls();
+
+        return Object.values(calls).flat().length > 0;
+      },
+      {timeout}
+    ),
+    timeout,
+    'waitForCallerOutboundCall'
+  );
+};
+
 export const answerCall = async (page: Page): Promise<void> => {
   const answer = page.locator(CALLING_SELECTORS.INCOMING_ANSWER_BTN);
   await answer.click({timeout: AWAIT_TIMEOUT});

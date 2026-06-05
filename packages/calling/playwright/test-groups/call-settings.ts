@@ -1,7 +1,12 @@
 import {test, expect, Page} from '@playwright/test';
 import {TestManager} from '../test-manager';
 import {getPhoneNumber} from '../test-data';
-import {CALLING_SELECTORS, AWAIT_TIMEOUT, OPERATION_TIMEOUT} from '../constants';
+import {
+  CALLING_SELECTORS,
+  AWAIT_TIMEOUT,
+  OPERATION_TIMEOUT,
+  POST_ACTION_SETTLE_MS,
+} from '../constants';
 import {
   loadSettings,
   getDndText,
@@ -17,7 +22,13 @@ import {
   setVoicemailSendBusyCalls,
   setVoicemailSendUnansweredCalls,
 } from '../utils/call-settings';
-import {makeCall, cleanupActiveCalls} from '../utils/call';
+import {
+  makeCall,
+  cleanupActiveCalls,
+  waitForCallerOutboundCall,
+  answerCall,
+  waitForCallEstablished,
+} from '../utils/call';
 
 // ---------------------------------------------------------------------------
 // Test suite
@@ -516,6 +527,7 @@ export function callSettingsTests() {
     test('CS-VM-014: Voicemail — email notification toggle and email ID save and reload correctly', async () => {
       await loadSettings(page);
       const originalChecked = await page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_CB).isChecked();
+      const originalEmail = await page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_ID).inputValue();
 
       // Enable the checkbox so the email input is accessible.
       if (!originalChecked) {
@@ -537,8 +549,10 @@ export function callSettingsTests() {
         timeout: OPERATION_TIMEOUT,
       });
 
-      // Restore original state.
-      if (!originalChecked) {
+      // Restore checkbox and email to pre-test values on the server.
+      if (originalChecked) {
+        await page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_ID).fill(originalEmail, {force: true});
+      } else {
         await page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_CB).uncheck({timeout: AWAIT_TIMEOUT});
       }
       await saveVoicemailSettings(page);
@@ -551,6 +565,7 @@ export function callSettingsTests() {
     test('CS-VM-015: Voicemail — email copy toggle and email ID save and reload correctly', async () => {
       await loadSettings(page);
       const originalChecked = await page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_CB).isChecked();
+      const originalEmail = await page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_ID).inputValue();
 
       // Enable the checkbox so the email input is accessible.
       if (!originalChecked) {
@@ -571,8 +586,10 @@ export function callSettingsTests() {
         timeout: OPERATION_TIMEOUT,
       });
 
-      // Restore original state.
-      if (!originalChecked) {
+      // Restore checkbox and email to pre-test values on the server.
+      if (originalChecked) {
+        await page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_ID).fill(originalEmail, {force: true});
+      } else {
         await page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_CB).uncheck({timeout: AWAIT_TIMEOUT});
       }
       await saveVoicemailSettings(page);
@@ -684,6 +701,7 @@ export function callSettingsCallTests() {
 
       try {
         await makeCall(callerPage, calleeNumber);
+        await waitForCallerOutboundCall(callerPage);
 
         // Wait the observation window, then assert the callee's answer button is
         // still disabled — it only becomes enabled when a line:incoming_call event
@@ -708,6 +726,7 @@ export function callSettingsCallTests() {
 
       try {
         await makeCall(callerPage, calleeNumber);
+        await waitForCallerOutboundCall(callerPage);
 
         // Wait the observation window, then assert the callee's answer button is
         // still disabled — DND prevents the line:incoming_call event from firing.
@@ -720,9 +739,8 @@ export function callSettingsCallTests() {
         await calleePage.waitForTimeout(3000);
       }
     });
-    // Test for Call Forward When Busy: setting is saved and first call still rings.
-
-    test('CS-CALL-103: CF When Busy — setting persists and first call still reaches callee', async () => {
+    test('CS-CALL-103: CF When Busy — first call rings, second call is forwarded while callee is busy', async () => {
+      test.setTimeout(360000);
       await loadSettings(calleePage);
       await setCallForwardBusy(calleePage, true, cfDestination);
 
@@ -731,16 +749,98 @@ export function callSettingsCallTests() {
       await expect(calleePage.locator(CALLING_SELECTORS.CF_BUSY_CB)).toBeChecked({
         timeout: OPERATION_TIMEOUT,
       });
+      await expect(calleePage.locator(CALLING_SELECTORS.CF_BUSY_DEST)).toHaveValue(cfDestination, {
+        timeout: OPERATION_TIMEOUT,
+      });
+      // Allow the CF Busy setting to propagate before placing calls.
+      await calleePage.waitForTimeout(5000);
+
+      const callWaitingText = await calleePage
+        .locator(CALLING_SELECTORS.CALL_WAITING_BTN)
+        .innerText();
+      const callWaitingEnabled = callWaitingText.includes('Enabled');
 
       try {
-        // CF Busy only activates when the callee is already on a call.
-        // The first call should ring normally — verify the answer button becomes enabled.
+        // CF Busy only activates when the callee is already on a connected call.
         await makeCall(callerPage, calleeNumber);
+        await waitForCallerOutboundCall(callerPage);
         await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN)).toBeEnabled({
           timeout: 30000,
         });
+        await answerCall(calleePage);
+        await Promise.all([waitForCallEstablished(callerPage), waitForCallEstablished(calleePage)]);
+        await calleePage.waitForTimeout(POST_ACTION_SETTLE_MS);
+        await calleePage.waitForFunction(
+          () => {
+            const connected = (window as any).callingClient?.getConnectedCall();
+
+            return connected?.isConnected() === true;
+          },
+          {timeout: 30000}
+        );
+
+        // Second call while callee is busy.
+        await makeCall(secondCallerPage, calleeNumber);
+        await waitForCallerOutboundCall(secondCallerPage);
+
+        // The first leg must remain established on both sides while the second call is handled.
+        await expect
+          .poll(
+            async () =>
+              calleePage.evaluate(() => {
+                const connected = (window as any).callingClient?.getConnectedCall();
+
+                return connected?.isConnected() === true;
+              }),
+            {timeout: NO_INCOMING_CALL_TIMEOUT}
+          )
+          .toBe(true);
+        await expect
+          .poll(
+            async () =>
+              callerPage.evaluate(() => {
+                const calls = Object.values((window as any).callingClient.getActiveCalls()).flat();
+
+                return calls.some((c: {isConnected: () => boolean}) => c.isConnected());
+              }),
+            {timeout: 5000}
+          )
+          .toBe(true);
+
+        if (callWaitingEnabled) {
+          // Call waiting presents the second leg locally; decline it and keep the active call up.
+          await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN)).toBeEnabled({
+            timeout: 30000,
+          });
+          await expect(calleePage.locator(CALLING_SELECTORS.END_BTN)).toBeEnabled({
+            timeout: AWAIT_TIMEOUT,
+          });
+          await calleePage.locator(CALLING_SELECTORS.END_BTN).click({timeout: AWAIT_TIMEOUT});
+          await calleePage.waitForFunction(
+            () => {
+              const connected = (window as any).callingClient?.getConnectedCall();
+
+              return connected?.isConnected() === true;
+            },
+            {timeout: 30000}
+          );
+          await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN)).toBeDisabled(
+            {
+              timeout: 30000,
+            }
+          );
+        } else {
+          // Without call waiting, CF Busy should forward before the device rings.
+          await expect
+            .poll(
+              async () =>
+                calleePage.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN).isDisabled(),
+              {timeout: NO_INCOMING_CALL_TIMEOUT, intervals: [1000]}
+            )
+            .toBe(true);
+        }
       } finally {
-        await cleanupActiveCalls(callerPage);
+        await Promise.all([cleanupActiveCalls(callerPage), cleanupActiveCalls(secondCallerPage)]);
         await loadSettings(calleePage).catch(() => {});
         await setCallForwardBusy(calleePage, false);
         await calleePage.waitForTimeout(3000);
@@ -753,12 +853,27 @@ export function callSettingsCallTests() {
 
     test('CS-CALL-104: CF No Answer — call is forwarded when callee does not answer', async () => {
       await loadSettings(calleePage);
+      // Ensure CF Busy from CS-CALL-103 is fully cleared before enabling CF No Answer.
+      await expect(calleePage.locator(CALLING_SELECTORS.CF_BUSY_CB)).not.toBeChecked({
+        timeout: OPERATION_TIMEOUT,
+      });
       await setCallForwardNoAnswer(calleePage, true, cfDestination);
-      // Allow the setting to propagate before placing the call.
+
+      // Reload and verify the setting was persisted on the server.
+      await loadSettings(calleePage);
+      await expect(calleePage.locator(CALLING_SELECTORS.CF_NO_ANSWER_CB)).toBeChecked({
+        timeout: OPERATION_TIMEOUT,
+      });
+      await expect(calleePage.locator(CALLING_SELECTORS.CF_NO_ANSWER_DEST)).toHaveValue(
+        cfDestination,
+        {timeout: OPERATION_TIMEOUT}
+      );
+      // Allow the CF No Answer setting to propagate before placing the call.
       await calleePage.waitForTimeout(5000);
 
       try {
         await makeCall(callerPage, calleeNumber);
+        await waitForCallerOutboundCall(callerPage);
 
         // CF No Answer still lets the call ring on the device first.
         // Verify the incoming call arrives at the callee.
@@ -792,6 +907,7 @@ export function callSettingsCallTests() {
 
       try {
         await makeCall(callerPage, calleeNumber);
+        await waitForCallerOutboundCall(callerPage);
 
         // sendAllCalls routes every call straight to voicemail before ringing.
         // The answer button must stay disabled for the full observation window.
@@ -813,10 +929,20 @@ export function callSettingsCallTests() {
       await loadSettings(calleePage);
       // Use a low ring count so the test does not wait too long for the handoff.
       await setVoicemailSendUnansweredCalls(calleePage, true, '2');
+
+      // Reload and verify the setting was persisted on the server.
+      await loadSettings(calleePage);
+      await expect(calleePage.locator(CALLING_SELECTORS.VM_UNANSWERED_CB)).toBeChecked({
+        timeout: OPERATION_TIMEOUT,
+      });
+      await expect(calleePage.locator(CALLING_SELECTORS.VM_UNANSWERED_RINGS)).toHaveValue('2', {
+        timeout: OPERATION_TIMEOUT,
+      });
       await calleePage.waitForTimeout(5000);
 
       try {
         await makeCall(callerPage, calleeNumber);
+        await waitForCallerOutboundCall(callerPage);
 
         // sendUnansweredCalls still lets the call ring first — button must become enabled.
         await expect(calleePage.locator(CALLING_SELECTORS.INCOMING_CALL_ANSWER_BTN)).toBeEnabled({
