@@ -322,6 +322,14 @@ describe('plugin-meetings', () => {
         );
         sinon.restore();
       });
+
+      it('should not clear historyCsisByMemberId so it survives member removal (e.g. BO entry/exit)', () => {
+        const members = createMembers({url: url1});
+        members.historyCsisByMemberId.set('test1', new Set([1000]));
+        members.clearMembers();
+        assert.strictEqual(members.historyCsisByMemberId.size, 1);
+        assert.deepEqual([...members.historyCsisByMemberId.get('test1')], [1000]);
+      });
     });
     describe('#locusParticipantsUpdate', () => {
       beforeEach(() => {
@@ -1164,6 +1172,104 @@ describe('plugin-meetings', () => {
 
       it('returns correct member when CSI matches the second device', () => {
         assert.strictEqual(members.findMemberByCsi(2001), fakeCollection.oneWithSomeCsis);
+      });
+
+      it('falls back to historyCsisByMemberId when CSI is no longer on the current devices', () => {
+        members.historyCsisByMemberId.set('oneWithDevicesWithoutCsis', new Set([9999]));
+        assert.strictEqual(
+          members.findMemberByCsi(9999),
+          fakeCollection.oneWithDevicesWithoutCsis
+        );
+      });
+
+      it('returns undefined when the historyCsisByMemberId entry points to a removed member', () => {
+        members.historyCsisByMemberId.set('not-in-collection', new Set([8888]));
+        assert.strictEqual(members.findMemberByCsi(8888), undefined);
+      });
+
+      it('prefers a current device match over a historyCsisByMemberId match', () => {
+        members.historyCsisByMemberId.set('oneWithDevicesWithoutCsis', new Set([1001]));
+        assert.strictEqual(members.findMemberByCsi(1001), fakeCollection.oneWithSomeCsis);
+      });
+    });
+
+    describe('historyCsisByMemberId tracking', () => {
+      let members;
+
+      const participantWithCsis = (id, csis) => ({
+        id,
+        type: 'USER',
+        person: {},
+        devices: [{csis}],
+      });
+
+      beforeEach(() => {
+        sinon.stub(Trigger, 'trigger');
+        members = createMembers({url: url1});
+      });
+
+      afterEach(() => {
+        sinon.restore();
+      });
+
+      it('does not populate the map when adding a brand new member', () => {
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [1000])],
+        });
+        assert.strictEqual(members.historyCsisByMemberId.size, 0);
+      });
+
+      it('does not populate the map when devices have not changed between updates', () => {
+        const devices = [{csis: [1000]}];
+
+        members.locusParticipantsUpdate({
+          participants: [{id: 'm1', type: 'USER', person: {}, devices}],
+        });
+        members.locusParticipantsUpdate({
+          participants: [{id: 'm1', type: 'USER', person: {}, devices}],
+        });
+
+        assert.strictEqual(members.historyCsisByMemberId.size, 0);
+      });
+
+      it('captures previous CSIs into the map when devices change on update', () => {
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [1000, 1001])],
+        });
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [2000])],
+        });
+
+        const history = members.historyCsisByMemberId.get('m1');
+        assert.isDefined(history);
+        assert.isTrue(history.has(1000));
+        assert.isTrue(history.has(1001));
+      });
+
+      it('preserves history when a member is removed and re-added (breakout scenario)', () => {
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [1000])],
+        });
+        // change devices so previous CSIs are captured into history
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [2000])],
+        });
+        // remove the member
+        members.locusParticipantsUpdate({
+          participants: [],
+          removedParticipantIds: ['m1'],
+        });
+
+        assert.isTrue(members.historyCsisByMemberId.get('m1').has(1000));
+
+        // re-add the member with brand new CSIs
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [3000])],
+        });
+
+        const member = members.findMemberByCsi(1000);
+        assert.isDefined(member);
+        assert.strictEqual(member.id, 'm1');
       });
     });
 

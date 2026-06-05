@@ -1,7 +1,7 @@
 /*!
  * Copyright (c) 2015-2020 Cisco Systems, Inc. See LICENSE file.
  */
-import {get, isEmpty, set} from 'lodash';
+import {get, isEmpty, isEqual, set} from 'lodash';
 // @ts-ignore
 import {StatelessWebexPlugin} from '@webex/webex-core';
 
@@ -15,6 +15,7 @@ import {
 } from '../constants';
 import Trigger from '../common/events/trigger-proxy';
 import Member from '../member';
+import MemberUtil from '../member/util';
 import LoggerProxy from '../common/logs/logger-proxy';
 import ParameterError from '../common/errors/parameter';
 import {
@@ -98,6 +99,14 @@ export default class Members extends StatelessWebexPlugin {
   recordingId: any;
   selfId: any;
   type: any;
+
+  /**
+   * Map of memberId -> CSIs that the member used in previous Locus updates.
+   * Kept here (rather than on each Member) so it survives members being removed
+   * and re-added (e.g. when entering/leaving a breakout session).
+   * @private
+   */
+  private historyCsisByMemberId: Map<string, Set<number>> = new Map();
 
   namespace = MEETINGS;
 
@@ -598,6 +607,21 @@ export default class Members extends StatelessWebexPlugin {
               set(member, prop, existingValue);
             }
           });
+
+          // remember CSIs the member used previously so findMemberByCsi can still
+          // resolve a CSI even after participant.devices[].csis no longer contains it.
+          // Skip re-extracting when devices haven't changed - existing history already covers them.
+          const devicesUnchanged = isEqual(
+            existingMember.participant?.devices,
+            member.participant?.devices
+          );
+          if (!devicesUnchanged) {
+            const history = new Set<number>();
+            MemberUtil.extractCsis(existingMember.participant).forEach((csi) => history.add(csi));
+            if (history.size > 0) {
+              this.historyCsisByMemberId.set(member.id, history);
+            }
+          }
         }
       }
       this.membersCollection.set(member.id, member);
@@ -1161,18 +1185,38 @@ export default class Members extends StatelessWebexPlugin {
     );
   }
 
-  /** Finds a member that has any device with a csi matching provided value
+  /** Finds a member that has any device with a csi matching provided value.
+   * Falls back to the `historyCsisByMemberId` map so that a CSI a member used in
+   * a previous Locus update can still be resolved even if it is no longer
+   * present in `participant.devices[].csis`.
    *
    * @param {number} csi
    * @returns {Member}
    */
   findMemberByCsi(csi) {
-    return Object.values(this.membersCollection.getAll()).find((member) =>
+    const members = Object.values(this.membersCollection.getAll());
+
+    const currentMatch = members.find((member) =>
       // @ts-ignore
       member.participant?.devices?.find((device) =>
         device.csis?.find((memberCsi) => memberCsi === csi)
       )
     );
+
+    if (currentMatch) {
+      return currentMatch;
+    }
+
+    for (const [memberId, history] of this.historyCsisByMemberId) {
+      if (history.has(csi)) {
+        const member = this.membersCollection.get(memberId);
+        if (member) {
+          return member;
+        }
+      }
+    }
+
+    return undefined;
   }
 
   /**
