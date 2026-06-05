@@ -16,16 +16,21 @@ type LocusSyncLatencyMilestone = {
   dataSetName: string;
   key: MetricEventNames;
   value: number;
+  trackingId?: string;
 };
 
 type SaveTimestampOptions = {
   meetingId?: string;
   dataSetName?: string;
   randomBackoffTime?: number;
+  trackingId?: string;
 };
 
 type LocusSyncLatencyRecord = {
+  meetingId: string;
+  dataSetName: string;
   randomBackoffTime: number;
+  trackingId?: string;
   syncStart?: number;
   hashTreeRequest?: number;
   hashTreeResponse?: number;
@@ -44,7 +49,7 @@ type LocusSyncLatencyTimestampKey = Exclude<keyof LocusSyncLatencyRecord, 'rando
 export default class CallDiagnosticLatencies extends WebexPlugin {
   latencyTimestamps: Map<MetricEventNames, number>;
   precomputedLatencies: Map<PreComputedLatencies, number>;
-  locusSyncLatencies: Map<string, LocusSyncLatencyRecord>;
+  locusSyncLatencies: Map<string, LocusSyncLatencyRecord[]>;
   // meetingId that the current latencies are for
   private meetingId?: string;
   private MAX_INTEGER = 2147483647;
@@ -74,7 +79,19 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @param meetingId meeting id
    */
   public clearLocusSyncLatency(dataSetName: string, meetingId: string) {
-    this.locusSyncLatencies.delete(this.getLocusSyncLatencyKey(dataSetName, meetingId));
+    const records = this.locusSyncLatencies.get(meetingId);
+
+    if (!records) {
+      return;
+    }
+
+    const remainingRecords = records.filter((record) => record.dataSetName !== dataSetName);
+
+    if (remainingRecords.length > 0) {
+      this.locusSyncLatencies.set(meetingId, remainingRecords);
+    } else {
+      this.locusSyncLatencies.delete(meetingId);
+    }
   }
 
   /**
@@ -83,8 +100,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @param meetingId meeting id
    * @returns sync latency metrics
    */
-  public getLocusSyncLatency(dataSetName: string, meetingId: string) {
-    const record = this.locusSyncLatencies.get(this.getLocusSyncLatencyKey(dataSetName, meetingId));
+  public getLocusSyncLatency(dataSetName: string, meetingId: string, trackingId?: string) {
+    const record = this.getLatestLocusSyncLatencyRecord(meetingId, dataSetName, trackingId);
 
     if (!record) {
       return undefined;
@@ -140,6 +157,39 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
+   * Complete and remove the latest Locus sync latency record for a meeting.
+   * @param meetingId meeting id
+   * @param trackingId LLM event tracking id
+   * @returns completed sync latency metric payload
+   */
+  public completeLocusSyncLatency(meetingId: string, trackingId?: string) {
+    const exactRecord = this.getLatestLocusSyncLatencyRecord(meetingId, undefined, trackingId);
+    const fallbackRecord = exactRecord
+      ? undefined
+      : this.getLatestLocusSyncLatencyRecord(meetingId);
+    const record = exactRecord ?? fallbackRecord;
+
+    if (!record) {
+      return undefined;
+    }
+
+    record.messageReceived = new Date().getTime();
+
+    const syncLatency = this.getLocusSyncLatency(record.dataSetName, meetingId, record.trackingId);
+
+    this.removeLocusSyncLatencyRecord(record);
+
+    if (!syncLatency) {
+      return undefined;
+    }
+
+    return {
+      dataSet: record.dataSetName,
+      syncLatency,
+    };
+  }
+
+  /**
    * Helper to calculate end - start for Locus sync milestones.
    * @param record tracked milestone timestamps
    * @param a start milestone
@@ -179,14 +229,39 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     return Math.round(clamp(latency, 0, this.MAX_INTEGER));
   }
 
-  /**
-   * Build a storage key for Locus sync latency records.
-   * @param dataSetName dataset name
-   * @param meetingId meeting id
-   * @returns storage key
-   */
-  private getLocusSyncLatencyKey(dataSetName: string, meetingId: string) {
-    return `${meetingId}:${dataSetName}`;
+  private getLatestLocusSyncLatencyRecord(
+    meetingId: string,
+    dataSetName?: string,
+    trackingId?: string
+  ) {
+    const records = this.locusSyncLatencies.get(meetingId);
+
+    if (!records) {
+      return undefined;
+    }
+
+    return [...records].reverse().find((record) => {
+      const dataSetMatches = !dataSetName || record.dataSetName === dataSetName;
+      const trackingIdMatches = !trackingId || record.trackingId === trackingId;
+
+      return dataSetMatches && trackingIdMatches;
+    });
+  }
+
+  private removeLocusSyncLatencyRecord(recordToRemove: LocusSyncLatencyRecord) {
+    const records = this.locusSyncLatencies.get(recordToRemove.meetingId);
+
+    if (!records) {
+      return;
+    }
+
+    const remainingRecords = records.filter((record) => record !== recordToRemove);
+
+    if (remainingRecords.length > 0) {
+      this.locusSyncLatencies.set(recordToRemove.meetingId, remainingRecords);
+    } else {
+      this.locusSyncLatencies.delete(recordToRemove.meetingId);
+    }
   }
 
   /**
@@ -207,23 +282,35 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     dataSetName,
     key,
     value,
+    trackingId,
     randomBackoffTime = 0,
   }: LocusSyncLatencyMilestone & {randomBackoffTime?: number}) {
-    const recordKey = this.getLocusSyncLatencyKey(dataSetName, meetingId);
-
     if (key === 'internal.client.locus.sync.start') {
-      this.locusSyncLatencies.set(recordKey, {
+      const records = this.locusSyncLatencies.get(meetingId) ?? [];
+
+      records.push({
+        meetingId,
+        dataSetName,
         randomBackoffTime,
         syncStart: value,
       });
+      this.locusSyncLatencies.set(meetingId, records);
 
       return;
     }
 
-    const record = this.locusSyncLatencies.get(recordKey);
+    const record = this.getLatestLocusSyncLatencyRecord(
+      meetingId,
+      dataSetName,
+      key === 'internal.client.locus.sync.response' ? undefined : trackingId
+    );
 
     if (!record) {
       return;
+    }
+
+    if (trackingId) {
+      record.trackingId = trackingId;
     }
 
     switch (key) {
@@ -297,6 +384,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
         dataSetName: options.dataSetName,
         key,
         value,
+        trackingId: options.trackingId,
         randomBackoffTime: options.randomBackoffTime,
       });
 

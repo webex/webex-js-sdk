@@ -164,7 +164,6 @@ import {
   RelayEvent,
 } from '../reactions/reactions.type';
 import Breakouts from '../breakouts';
-import breakoutEvent from '../breakouts/events';
 import SimultaneousInterpretation from '../interpretation';
 import Annotation from '../annotation';
 import Webinar from '../webinar';
@@ -1387,9 +1386,7 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo = new LocusInfo(
       {
         updateMeeting: this.updateMeetingObject.bind(this),
-        syncMetricsCallback: (metrics: {dataSet: string; syncLatency: SyncLatencyMetrics}) => {
-          this.sendSyncCompleteMetric(metrics);
-        },
+        syncMetricsCallback: this.sendSyncCompleteMetric.bind(this),
         syncLatencyTracker: (this as any).webex.internal.newMetrics.callDiagnosticLatencies,
       },
       // @ts-ignore
@@ -5976,6 +5973,17 @@ export default class Meeting extends StatelessWebexPlugin {
         storeEventForDebugging('llm', event.data);
       }
 
+      // @ts-ignore
+      const syncMetrics =
+        this.webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency(
+          this.id,
+          event.trackingId
+        );
+
+      if (syncMetrics) {
+        this.sendSyncCompleteMetric(syncMetrics);
+      }
+
       this.locusInfo.parse(this, event.data, event.trackingId);
     } else {
       LoggerProxy.logger.warn(
@@ -6803,29 +6811,10 @@ export default class Meeting extends StatelessWebexPlugin {
             this.sendLLMConnectMetric(registerAndConnectResult);
           }
 
-          const breakoutMoveId = this.breakouts?.breakoutMoveId;
-          const currentBreakoutSession = this.breakouts?.currentBreakoutSession;
-
-          if (
-            breakoutMoveId &&
-            currentBreakoutSession?.sessionId &&
-            currentBreakoutSession?.groupId
-          ) {
-            // @ts-ignore
-            const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
-
-            breakoutEvent.onBreakoutJoinResponse(
-              {
-                currentSession: currentBreakoutSession,
-                meeting: this,
-                breakoutMoveId,
-                llmLatency: registerAndConnectResult,
-                llmWebsocketUrl,
-              },
-              // @ts-ignore
-              this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
-            );
-          }
+          this.breakouts?.trigger(BREAKOUTS.EVENTS.LLM_CONNECT_RESPONSE, {
+            meeting: this,
+            llmLatency: registerAndConnectResult,
+          });
         }
 
         return Promise.resolve(registerAndConnectResult);
@@ -6841,33 +6830,14 @@ export default class Meeting extends StatelessWebexPlugin {
           );
         }
 
-        const breakoutMoveId = this.breakouts?.breakoutMoveId;
-        const currentBreakoutSession = this.breakouts?.currentBreakoutSession;
-
-        if (
-          breakoutMoveId &&
-          currentBreakoutSession?.sessionId &&
-          currentBreakoutSession?.groupId
-        ) {
-          // @ts-ignore
-          const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
-
-          breakoutEvent.onBreakoutJoinResponse(
-            {
-              currentSession: currentBreakoutSession,
-              meeting: this,
-              breakoutMoveId,
-              llmLatency: {
-                clientLLMDatachannelResponseTime: 0,
-                clientLLMWebSocketConnectTime: 0,
-              },
-              llmWebsocketUrl,
-              error,
-            },
-            // @ts-ignore
-            this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
-          );
-        }
+        this.breakouts?.trigger(BREAKOUTS.EVENTS.LLM_CONNECT_RESPONSE, {
+          meeting: this,
+          llmLatency: {
+            clientLLMDatachannelResponseTime: 0,
+            clientLLMWebSocketConnectTime: 0,
+          },
+          error,
+        });
 
         return Promise.reject(error);
       });
@@ -6888,7 +6858,12 @@ export default class Meeting extends StatelessWebexPlugin {
     }
 
     if (!hasLLMLatency) {
-      return true;
+      // When automatic LLM is enabled, updateLLMConnection will emit this same breakout join
+      // response after the LLM connection finishes, including llmLatency and llmWebsocketUrl.
+      // Suppress the earlier non-LLM event to avoid sending two events for the same move id,
+      // where the first one would be missing the LLM-specific fields we want to validate.
+      // @ts-ignore - config coming from registerPlugin
+      return !this.config.enableAutomaticLLM;
     }
 
     if (this.emittedBreakoutJoinResponseMoveIds.has(breakoutMoveId)) {
@@ -6931,12 +6906,14 @@ export default class Meeting extends StatelessWebexPlugin {
       ...(error && {rawError: error}),
     };
 
-    // @ts-ignore
-    this.webex.internal.newMetrics.submitClientEvent({
+    const metricEvent = {
       name: 'client.llm.connect.response',
       payload,
       options,
-    });
+    };
+
+    // @ts-ignore
+    this.webex.internal.newMetrics.submitClientEvent(metricEvent);
   }
 
   /**
@@ -6960,14 +6937,16 @@ export default class Meeting extends StatelessWebexPlugin {
       },
     };
 
-    // @ts-ignore
-    this.webex.internal.newMetrics.submitClientEvent({
+    const metricEvent = {
       name: 'client.locus.sync.complete',
       payload,
       options: {
         meetingId: this.id,
       },
-    });
+    };
+
+    // @ts-ignore
+    this.webex.internal.newMetrics.submitClientEvent(metricEvent);
   }
 
   /**

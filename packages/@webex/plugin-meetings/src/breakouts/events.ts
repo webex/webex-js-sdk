@@ -68,11 +68,13 @@ const breakoutEvent: {
       ...(error && {rawError: error}),
     };
 
-    submitClientEvent({
+    const metricEvent = {
       name: event,
       payload,
       options,
-    });
+    };
+
+    submitClientEvent(metricEvent);
   },
 };
 

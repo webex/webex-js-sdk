@@ -199,6 +199,48 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('associates sync response tracking id and completes using the latest meeting record', () => {
+        const clock = sinon.useFakeTimers({now: 150});
+
+        try {
+          cdl.saveTimestamp({
+            key: 'internal.client.locus.sync.start',
+            value: 100,
+            options: {meetingId: 'meeting-1', dataSetName: 'main', randomBackoffTime: 0},
+          });
+          cdl.saveTimestamp({
+            key: 'internal.client.locus.sync.request',
+            value: 110,
+            options: {meetingId: 'meeting-1', dataSetName: 'main'},
+          });
+          cdl.saveTimestamp({
+            key: 'internal.client.locus.sync.response',
+            value: 130,
+            options: {
+              meetingId: 'meeting-1',
+              dataSetName: 'main',
+              trackingId: 'our-sync-tracking-id',
+            },
+          });
+
+          assert.deepEqual(cdl.completeLocusSyncLatency('meeting-1', 'llm-event-tracking-id'), {
+            dataSet: 'main',
+            syncLatency: {
+              randomBackoffTime: 0,
+              hashtreePrepTime: 0,
+              hashtreeResponseTime: 0,
+              syncPrepTime: 10,
+              syncResponseTime: 20,
+              syncMessageReceiveTime: 20,
+              totalTime: 50,
+            },
+          });
+          assert.isFalse(cdl.locusSyncLatencies.has('meeting-1'));
+        } finally {
+          clock.restore();
+        }
+      });
+
       it('keys sync latency records by meeting id', () => {
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.start',

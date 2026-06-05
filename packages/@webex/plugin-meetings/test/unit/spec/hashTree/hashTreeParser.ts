@@ -5471,27 +5471,17 @@ describe('HashTreeParser', () => {
   });
 
   describe('#syncMetrics', () => {
-    it('records pending metrics when sync response has empty body', async () => {
-      const syncMetricsCallback = sinon.stub();
-      const syncLatency = {
-        randomBackoffTime: 0,
-        hashtreePrepTime: 5,
-        hashtreeResponseTime: 20,
-        syncPrepTime: 3,
-        syncResponseTime: 15,
-        syncMessageReceiveTime: 7,
-        totalTime: 50,
-      };
+    it('records sync latency timestamps when sync response has empty body', async () => {
       const syncLatencyTracker = {
         saveTimestamp: sinon.stub(),
-        getLocusSyncLatency: sinon.stub().returns(syncLatency),
+        getLocusSyncLatency: sinon.stub(),
         clearLocusSyncLatency: sinon.stub(),
       };
       const parser = createHashTreeParser(
         undefined,
         undefined,
         undefined,
-        syncMetricsCallback,
+        undefined,
         syncLatencyTracker
       );
       const mainDataSetUrl = parser.dataSets.main.url;
@@ -5510,42 +5500,30 @@ describe('HashTreeParser', () => {
 
       await clock.tickAsync(1000);
 
-      assert.isTrue(parser['pendingSyncMetrics'].has('main'));
-      assert.notCalled(syncMetricsCallback);
-
-      parser.handleMessage({
-        dataSets: [
-          {
-            ...createDataSet('main', 16, 1100),
-            root: 'intermediate-root',
-          },
-        ],
-        visibleDataSetsUrl,
-        locusUrl,
-        locusStateElements: [],
+      assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
+        key: 'internal.client.locus.sync.start',
+        options: {meetingId: 'meeting-1', dataSetName: 'main', randomBackoffTime: 0},
       });
-
-      assert.notCalled(syncMetricsCallback);
-      assert.isTrue(parser['pendingSyncMetrics'].has('main'));
-
-      parser.handleMessage({
-        dataSets: [
-          {
-            ...createDataSet('main', 16, 1101),
-            root: 'newroot',
-          },
-        ],
-        visibleDataSetsUrl,
-        locusUrl,
-        locusStateElements: [],
+      assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
+        key: 'internal.client.locus.hashtree.request',
+        options: {meetingId: 'meeting-1', dataSetName: 'main'},
       });
-
-      assert.calledOnce(syncMetricsCallback);
-      assert.isFalse(parser['pendingSyncMetrics'].has('main'));
+      assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
+        key: 'internal.client.locus.hashtree.response',
+        options: {meetingId: 'meeting-1', dataSetName: 'main'},
+      });
+      assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
+        key: 'internal.client.locus.sync.request',
+        options: {meetingId: 'meeting-1', dataSetName: 'main'},
+      });
+      assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
+        key: 'internal.client.locus.sync.response',
+        options: {meetingId: 'meeting-1', dataSetName: 'main'},
+      });
+      assert.notCalled(syncLatencyTracker.getLocusSyncLatency);
     });
 
-    it('does not overwrite pending sync latency state when a safety-net sync runs before broadcast', async () => {
-      const syncMetricsCallback = sinon.stub();
+    it('records sync response tracking id for Meeting-side completion', async () => {
       const syncLatencyTracker = {
         saveTimestamp: sinon.stub(),
         getLocusSyncLatency: sinon.stub(),
@@ -5555,122 +5533,15 @@ describe('HashTreeParser', () => {
         undefined,
         undefined,
         undefined,
-        syncMetricsCallback,
+        undefined,
         syncLatencyTracker
       );
       const mainDataSetUrl = parser.dataSets.main.url;
-
-      parser['pendingSyncMetrics'].set('main', {
-        dataSetName: 'main',
-        dataSetVersion: 1101,
-      } as any);
 
       mockGetHashesFromLocusResponse(
         mainDataSetUrl,
         new Array(16).fill('00000000000000000000000000000000'),
         createDataSet('main', 16, 1102)
-      );
-      mockSendSyncRequestResponse(mainDataSetUrl, null);
-
-      parser.handleMessage(
-        createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
-        'trigger safety-net sync while metrics are pending'
-      );
-
-      await clock.tickAsync(1000);
-
-      assert.notCalled(syncLatencyTracker.saveTimestamp);
-      assert.notCalled(syncMetricsCallback);
-      assert.deepEqual(parser['pendingSyncMetrics'].get('main'), {
-        dataSetName: 'main',
-        dataSetVersion: 1101,
-      });
-    });
-
-    it('invokes syncMetricsCallback when matching dataset version arrives', () => {
-      const syncMetricsCallback = sinon.stub();
-      const syncLatency = {
-        randomBackoffTime: 10,
-        hashtreePrepTime: 5,
-        hashtreeResponseTime: 20,
-        syncPrepTime: 3,
-        syncResponseTime: 15,
-        syncMessageReceiveTime: 7,
-        totalTime: 50,
-      };
-      const syncLatencyTracker = {
-        saveTimestamp: sinon.stub(),
-        getLocusSyncLatency: sinon.stub().returns(syncLatency),
-        clearLocusSyncLatency: sinon.stub(),
-      };
-      const parser = createHashTreeParser(
-        undefined,
-        undefined,
-        undefined,
-        syncMetricsCallback,
-        syncLatencyTracker
-      );
-
-      parser['pendingSyncMetrics'].set('main', {
-        dataSetName: 'main',
-        dataSetVersion: 1000,
-      } as any);
-
-      parser.handleMessage({
-        dataSets: [
-          {
-            ...createDataSet('main', 16, 1001),
-            root: 'newroot',
-          },
-        ],
-        visibleDataSetsUrl,
-        locusUrl,
-        locusStateElements: [],
-      });
-
-      assert.calledOnce(syncMetricsCallback);
-      const arg = syncMetricsCallback.firstCall.args[0];
-
-      assert.equal(arg.dataSet, 'main');
-      assert.deepEqual(arg.syncLatency, syncLatency);
-      assert.calledOnceWithExactly(syncLatencyTracker.saveTimestamp, {
-        key: 'internal.client.locus.sync.message.received',
-        options: {meetingId: 'meeting-1', dataSetName: 'main'},
-      });
-      assert.calledOnceWithExactly(syncLatencyTracker.getLocusSyncLatency, 'main', 'meeting-1');
-      assert.calledOnceWithExactly(syncLatencyTracker.clearLocusSyncLatency, 'main', 'meeting-1');
-      assert.isFalse(parser['pendingSyncMetrics'].has('main'));
-    });
-
-    it('only completes pending sync metrics when LLM message tracking id matches sync response tracking id', async () => {
-      const syncMetricsCallback = sinon.stub();
-      const syncLatency = {
-        randomBackoffTime: 0,
-        hashtreePrepTime: 5,
-        hashtreeResponseTime: 20,
-        syncPrepTime: 3,
-        syncResponseTime: 15,
-        syncMessageReceiveTime: 7,
-        totalTime: 50,
-      };
-      const syncLatencyTracker = {
-        saveTimestamp: sinon.stub(),
-        getLocusSyncLatency: sinon.stub().returns(syncLatency),
-        clearLocusSyncLatency: sinon.stub(),
-      };
-      const parser = createHashTreeParser(
-        undefined,
-        undefined,
-        undefined,
-        syncMetricsCallback,
-        syncLatencyTracker
-      );
-      const mainDataSetUrl = parser.dataSets.main.url;
-
-      mockGetHashesFromLocusResponse(
-        mainDataSetUrl,
-        new Array(16).fill('00000000000000000000000000000000'),
-        createDataSet('main', 16, 1101)
       );
       mockSendSyncRequestResponse(mainDataSetUrl, null, {trackingid: 'our-sync-tracking-id'});
 
@@ -5681,74 +5552,30 @@ describe('HashTreeParser', () => {
 
       await clock.tickAsync(1000);
 
-      parser.handleMessage(
-        {
-          dataSets: [
-            {
-              ...createDataSet('main', 16, 1101),
-              root: 'newroot',
-            },
-          ],
-          visibleDataSetsUrl,
-          locusUrl,
-          locusStateElements: [],
+      assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
+        key: 'internal.client.locus.sync.response',
+        options: {
+          meetingId: 'meeting-1',
+          dataSetName: 'main',
+          trackingId: 'our-sync-tracking-id',
         },
-        undefined,
-        'other-client-sync-tracking-id'
-      );
-
-      assert.notCalled(syncMetricsCallback);
-      assert.isTrue(parser['pendingSyncMetrics'].has('main'));
-
-      parser.handleMessage(
-        {
-          dataSets: [
-            {
-              ...createDataSet('main', 16, 1101),
-              root: 'newroot',
-            },
-          ],
-          visibleDataSetsUrl,
-          locusUrl,
-          locusStateElements: [],
-        },
-        undefined,
-        'our-sync-tracking-id'
-      );
-
-      assert.calledOnce(syncMetricsCallback);
-      assert.isFalse(parser['pendingSyncMetrics'].has('main'));
+      });
+      assert.notCalled(syncLatencyTracker.getLocusSyncLatency);
     });
 
-    it('scopes sync metrics tracker records by meeting id', () => {
-      const syncMetricsCallback = sinon.stub();
-      const syncLatency = {
-        randomBackoffTime: 10,
-        hashtreePrepTime: 1,
-        hashtreeResponseTime: 2,
-        syncPrepTime: 3,
-        syncResponseTime: 4,
-        syncMessageReceiveTime: 5,
-        totalTime: 15,
-      };
+    it('does not complete or clear metrics when matching dataset message arrives', () => {
       const syncLatencyTracker = {
         saveTimestamp: sinon.stub(),
-        getLocusSyncLatency: sinon.stub().returns(syncLatency),
+        getLocusSyncLatency: sinon.stub(),
         clearLocusSyncLatency: sinon.stub(),
       };
       const parser = createHashTreeParser(
         undefined,
         undefined,
         undefined,
-        syncMetricsCallback,
-        syncLatencyTracker,
-        'meeting-1'
+        undefined,
+        syncLatencyTracker
       );
-
-      parser['pendingSyncMetrics'].set('main', {
-        dataSetName: 'main',
-        dataSetVersion: 1000,
-      } as any);
 
       parser.handleMessage({
         dataSets: [
@@ -5762,38 +5589,61 @@ describe('HashTreeParser', () => {
         locusStateElements: [],
       });
 
-      assert.calledOnceWithExactly(syncLatencyTracker.saveTimestamp, {
-        key: 'internal.client.locus.sync.message.received',
-        options: {meetingId: 'meeting-1', dataSetName: 'main'},
-      });
-      assert.calledOnceWithExactly(syncLatencyTracker.getLocusSyncLatency, 'main', 'meeting-1');
-      assert.calledOnceWithExactly(syncLatencyTracker.clearLocusSyncLatency, 'main', 'meeting-1');
-      assert.calledOnce(syncMetricsCallback);
+      assert.notCalled(syncLatencyTracker.getLocusSyncLatency);
+      assert.notCalled(syncLatencyTracker.clearLocusSyncLatency);
     });
 
-    it('does not complete pending metrics when message version is below pending version', () => {
+    it('passes completed sync metrics from parser to callback when matching dataset message arrives', () => {
+      const syncMetrics = {
+        dataSet: 'main',
+        syncLatency: {
+          randomBackoffTime: 0,
+          hashtreePrepTime: 1,
+          hashtreeResponseTime: 2,
+          syncPrepTime: 3,
+          syncResponseTime: 4,
+          syncMessageReceiveTime: 5,
+          totalTime: 15,
+        },
+      };
       const syncMetricsCallback = sinon.stub();
-      const parser = createHashTreeParser(undefined, undefined, undefined, syncMetricsCallback);
+      const syncLatencyTracker = {
+        saveTimestamp: sinon.stub(),
+        getLocusSyncLatency: sinon.stub(),
+        completeLocusSyncLatency: sinon.stub().returns(syncMetrics),
+        clearLocusSyncLatency: sinon.stub(),
+      };
+      const parser = createHashTreeParser(
+        undefined,
+        undefined,
+        undefined,
+        syncMetricsCallback,
+        syncLatencyTracker
+      );
 
-      parser['pendingSyncMetrics'].set('main', {
-        dataSetName: 'main',
-        dataSetVersion: 1005,
-      } as any);
+      parser.handleMessage(
+        {
+          dataSets: [
+            {
+              ...createDataSet('main', 16, 1001),
+              root: 'newroot',
+            },
+          ],
+          visibleDataSetsUrl,
+          locusUrl,
+          locusStateElements: [],
+        },
+        'via sync API (1 mismatched leaves)',
+        'our-sync-tracking-id'
+      );
 
-      parser.handleMessage({
-        dataSets: [
-          {
-            ...createDataSet('main', 16, 1004),
-            root: 'newroot',
-          },
-        ],
-        visibleDataSetsUrl,
-        locusUrl,
-        locusStateElements: [],
-      });
-
-      assert.notCalled(syncMetricsCallback);
-      assert.isTrue(parser['pendingSyncMetrics'].has('main'));
+      assert.calledOnceWithExactly(
+        syncLatencyTracker.completeLocusSyncLatency,
+        'meeting-1',
+        'our-sync-tracking-id'
+      );
+      assert.calledOnceWithExactly(syncMetricsCallback, syncMetrics);
+      assert.notCalled(syncLatencyTracker.clearLocusSyncLatency);
     });
   });
 });

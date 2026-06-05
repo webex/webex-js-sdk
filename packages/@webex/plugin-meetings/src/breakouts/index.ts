@@ -150,6 +150,10 @@ const Breakouts = WebexPlugin.extend({
     this.listenTo(this.breakouts, 'change:requestedLastModifiedTime', (breakout) => {
       this.triggerReturnToMainEvent(breakout);
     });
+    this.on(
+      BREAKOUTS.EVENTS.LLM_CONNECT_RESPONSE,
+      this.handleLLMBreakoutJoinResponseMetric.bind(this)
+    );
     this.listenToCurrentSessionTypeChange();
     this.listenToBreakoutRosters();
     this.listenToBreakoutHelp();
@@ -370,6 +374,70 @@ const Breakouts = WebexPlugin.extend({
         this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
       );
     }
+
+    this.submitLLMBreakoutJoinResponseMetric();
+  },
+
+  /**
+   * Stores the latest LLM connect response and tries to send the LLM-enhanced breakout join response.
+   * The breakout update and the LLM response are delivered independently, so either side can arrive first.
+   * @param {Object} eventInfo LLM connect response info
+   * @param {Object} eventInfo.meeting meeting instance
+   * @param {Object} eventInfo.llmLatency LLM latency values
+   * @param {Object} [eventInfo.error] LLM connection error
+   * @returns {void}
+   */
+  handleLLMBreakoutJoinResponseMetric(eventInfo: any) {
+    this.llmBreakoutJoinResponseInfo = {
+      ...eventInfo,
+      breakoutMoveId: this.breakoutMoveId,
+    };
+
+    this.submitLLMBreakoutJoinResponseMetric();
+  },
+
+  /**
+   * Sends the LLM-enhanced breakout join response metric when both breakout state and LLM latency
+   * are available. LLM reconnects can also happen while leaving a breakout, before stale breakout
+   * fields are fully cleared, so the active-breakout check lives with the breakout state.
+   * @returns {void}
+   */
+  submitLLMBreakoutJoinResponseMetric() {
+    const eventInfo = this.llmBreakoutJoinResponseInfo;
+    const isActiveBreakout =
+      this.isActiveBreakout ||
+      (this.sessionType === BREAKOUTS.SESSION_TYPES.BREAKOUT &&
+        [BREAKOUTS.STATUS.OPEN, BREAKOUTS.STATUS.CLOSING].includes(this.status));
+
+    if (
+      !eventInfo ||
+      !this.breakoutMoveId ||
+      eventInfo.breakoutMoveId !== this.breakoutMoveId ||
+      !this.currentBreakoutSession?.sessionId ||
+      !this.currentBreakoutSession?.groupId ||
+      !isActiveBreakout
+    ) {
+      return;
+    }
+
+    const meeting = eventInfo.meeting || this.webex.meetings.getMeetingByType(_ID_, this.meetingId);
+    // @ts-ignore
+    const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
+
+    breakoutEvent.onBreakoutJoinResponse(
+      {
+        currentSession: this.currentBreakoutSession,
+        meeting,
+        breakoutMoveId: this.breakoutMoveId,
+        llmLatency: eventInfo.llmLatency,
+        llmWebsocketUrl,
+        error: eventInfo.error,
+      },
+      // @ts-ignore
+      this.webex.internal.newMetrics.submitClientEvent.bind(this.webex.internal.newMetrics)
+    );
+
+    this.llmBreakoutJoinResponseInfo = undefined;
   },
 
   /**

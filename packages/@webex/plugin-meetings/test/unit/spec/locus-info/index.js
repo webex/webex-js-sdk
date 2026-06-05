@@ -56,7 +56,7 @@ describe('plugin-meetings', () => {
 
     beforeEach(() => {
       mockMeeting = {};
-      locusInfo = new LocusInfo({updateMeeting, syncMetricsCallback: sinon.stub()}, webex, meetingId);
+      locusInfo = new LocusInfo({updateMeeting}, webex, meetingId);
 
       locusInfo.init(locus);
 
@@ -150,7 +150,6 @@ describe('plugin-meetings', () => {
             webexRequest: sinon.match.func,
             callbacks: sinon.match({
               locusInfoUpdateCallback: sinon.match.func,
-              syncMetricsCallback: sinon.match.func,
             }),
             debugId: sinon.match.string,
           })
@@ -203,7 +202,6 @@ describe('plugin-meetings', () => {
             webexRequest: sinon.match.func,
             callbacks: sinon.match({
               locusInfoUpdateCallback: sinon.match.func,
-              syncMetricsCallback: sinon.match.func,
             }),
             debugId: sinon.match.string,
           })
@@ -287,7 +285,6 @@ describe('plugin-meetings', () => {
             webexRequest: sinon.match.func,
             callbacks: sinon.match({
               locusInfoUpdateCallback: sinon.match.func,
-              syncMetricsCallback: sinon.match.func,
             }),
             debugId: sinon.match.string,
             metadata: null,
