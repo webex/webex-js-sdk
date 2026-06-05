@@ -1,9 +1,8 @@
 import {test, expect} from '@playwright/test';
-import {navigateToCallingApp, setServiceIndicator} from '../utils/setup';
+import {navigateToCallingApp, setServiceIndicator, setMobiusWebSocket} from '../utils/setup';
 import {isLineRegistered} from '../utils/registration';
 import {CALLING_SELECTORS, AWAIT_TIMEOUT, SDK_INIT_TIMEOUT} from '../constants';
 import {isMobiusWsMode} from '../test-data';
-import {MOBIUS_WS_MESSAGE, MobiusWsInterceptor} from '../utils/mobius-ws';
 
 /**
  * Registration error tests: REG-011.
@@ -16,28 +15,10 @@ export function registrationErrorTests() {
       let registrationStatus = 0;
       const mobiusWsMode = isMobiusWsMode();
 
-      if (mobiusWsMode) {
-        const onRequest = (frame: {type?: string}) => {
-          if (frame.type === MOBIUS_WS_MESSAGE.AUTH) {
-            return {statusCode: 200, statusMessage: 'OK'};
-          }
-
-          if (frame.type === MOBIUS_WS_MESSAGE.REGISTER) {
-            registrationPosts += 1;
-            registrationStatus = 401;
-
-            return {
-              statusCode: 401,
-              statusMessage: 'Unauthorized',
-              data: {message: 'Unauthorized'},
-            };
-          }
-
-          return undefined;
-        };
-
-        await new MobiusWsInterceptor({onRequest}).install(context);
-      } else {
+      // In WS mode the SDK fails at HTTP service discovery (invalid token → 401 on
+      // region/server lookup) before ever opening a WebSocket. No WS interceptor is
+      // needed — the test still validates the end state: "not registered".
+      if (!mobiusWsMode) {
         await context.route(/\/calling\/web\/device$/, async (route) => {
           if (route.request().method() === 'POST') {
             registrationPosts += 1;
@@ -52,6 +33,10 @@ export function registrationErrorTests() {
 
       await navigateToCallingApp(page);
       await setServiceIndicator(page, 'calling');
+
+      if (mobiusWsMode) {
+        await setMobiusWebSocket(page, true);
+      }
 
       await page.locator(CALLING_SELECTORS.ACCESS_TOKEN_INPUT).fill('invalid-token-12345', {
         timeout: AWAIT_TIMEOUT,
@@ -75,7 +60,7 @@ export function registrationErrorTests() {
         expect(await isLineRegistered(page)).toBe(false);
       }
 
-      if (registrationPosts > 0) {
+      if (!mobiusWsMode && registrationPosts > 0) {
         expect(registrationStatus).toBe(401);
       }
 

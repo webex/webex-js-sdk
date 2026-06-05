@@ -73,7 +73,10 @@ export function callErrorTests() {
 
       if (!mobiusWsMode) {
         await context.route(/\/devices\/[^/]+\/call$/, (route) => {
-          route.abort('failed');
+          route.fulfill({
+            status: 500,
+            body: JSON.stringify({message: 'Call setup failed'}),
+          });
         });
       }
 
