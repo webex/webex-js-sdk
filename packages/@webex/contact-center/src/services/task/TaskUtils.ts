@@ -89,10 +89,12 @@ export const getIsConsultInProgressForConferenceControls = (
       if (!p || p.hasLeft) return false;
       if (selfAgentId && participantId === selfAgentId) return false;
 
+      const consultState = p.consultState as string | undefined;
+      const isRonaPendingConsultee = consultState === 'consultReserved' && p.hasJoined === false;
       const consultLegActive =
-        p.consultState === 'consulting' ||
-        p.isConsulted === true ||
-        p.currentState === 'consulting';
+        consultState === 'consulting' ||
+        p.currentState === 'consulting' ||
+        (p.isConsulted === true && consultState !== 'consultCompleted' && !isRonaPendingConsultee);
 
       return consultLegActive && !mainSet.has(participantId);
     });
