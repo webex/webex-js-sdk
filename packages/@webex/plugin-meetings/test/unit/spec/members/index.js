@@ -1271,6 +1271,46 @@ describe('plugin-meetings', () => {
         assert.isDefined(member);
         assert.strictEqual(member.id, 'm1');
       });
+
+      it("captures the removed member's current CSIs even without a prior device-change update", () => {
+        // member is added, then removed in the very next delta without any
+        // intermediate device-change update - their current CSIs must still be
+        // captured into the history map on removal
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [1000, 1001])],
+        });
+
+        assert.strictEqual(members.historyCsisByMemberId.size, 0);
+
+        members.locusParticipantsUpdate({
+          participants: [],
+          removedParticipantIds: ['m1'],
+        });
+
+        const history = members.historyCsisByMemberId.get('m1');
+        assert.isDefined(history);
+        assert.isTrue(history.has(1000));
+        assert.isTrue(history.has(1001));
+      });
+
+      it('merges existing history with CSIs captured at removal time', () => {
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [1000])],
+        });
+        // device change captures 1000 into history; member now reports 2000
+        members.locusParticipantsUpdate({
+          participants: [participantWithCsis('m1', [2000])],
+        });
+        // removal should additionally capture the member's current CSIs (2000)
+        members.locusParticipantsUpdate({
+          participants: [],
+          removedParticipantIds: ['m1'],
+        });
+
+        const history = members.historyCsisByMemberId.get('m1');
+        assert.isTrue(history.has(1000));
+        assert.isTrue(history.has(2000));
+      });
     });
 
     describe('getCsisForMember()', () => {

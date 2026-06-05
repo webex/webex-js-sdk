@@ -578,6 +578,17 @@ export default class Members extends StatelessWebexPlugin {
    */
   private removeMembers(removedMembers: Array<string>) {
     removedMembers.forEach((memberId) => {
+      // capture CSIs before removal so findMemberByCsi can still resolve them
+      // if the member is later re-added (e.g. when leaving a breakout session)
+      // with a participant payload that no longer contains the original CSIs
+      const existingMember = this.membersCollection.get(memberId);
+      if (existingMember) {
+        const history = new Set<number>();
+        MemberUtil.extractCsis(existingMember.participant).forEach((csi) => history.add(csi));
+        if (history.size > 0) {
+          this.historyCsisByMemberId.set(memberId, history);
+        }
+      }
       this.membersCollection.remove(memberId);
     });
   }
