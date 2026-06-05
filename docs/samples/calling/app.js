@@ -366,8 +366,9 @@ async function initCalling(e) {
       registerElm.disabled = false;
 
       if(window.callingClient === undefined && calling.callingClient !== undefined) {
-      callingClient = window.callingClient = calling.callingClient;
-    }
+        callingClient = window.callingClient = calling.callingClient;
+        monitorMobiusSocket();
+      }
 
       if (window.contacts === undefined) {
         contacts = window.contacts = calling.contactClient;
@@ -433,6 +434,24 @@ function userSession() {
     console.log('Users recent session data : ', sessionData.data.userSessions.userSessions[0]);
     userSessionData.innerText = `${JSON.stringify(sessionData.data.userSessions.userSessions[0])}`;
   });
+}
+
+function monitorMobiusSocket() {
+  if (!callingClient) return;
+
+  callingClient.on('callingClient:mobius_socket_connected', () => {
+    console.log('Mobius socket connected');
+  });
+
+  callingClient.on('callingClient:mobius_socket_disconnected', (event) => {
+    console.log('Mobius socket disconnected, reason: ', event.reason);
+  });
+
+  // The connected event is emitted during client init, before this listener is
+  // attached, so reconcile the current state to avoid missing the initial connection.
+  if (callingClient.isMobiusSocketConnected()) {
+    console.log('Mobius socket connected');
+  }
 }
 
 function createDevice() {

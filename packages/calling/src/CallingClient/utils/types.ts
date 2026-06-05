@@ -1,6 +1,7 @@
 import {MobiusCallData, MobiusRegistrationDownData} from '../calling/types';
 import {WebexRequestPayload} from '../../common/types';
 import {WebexSDK} from '../../SDKConnector/types';
+import {MOBIUS_SOCKET_DISCONNECT_REASON} from './constants';
 
 /**
  * Configuration for APIRequest class
@@ -55,4 +56,12 @@ export type MobiusAsyncEvent = {
   eventId: string;
   trackingId: string;
   data: MobiusCallData | MobiusRegistrationDownData;
+};
+
+/**
+ * Callbacks invoked when the Mobius WebSocket connects or disconnects.
+ */
+export type MobiusSocketConnectionListener = {
+  onConnected: () => void;
+  onDisconnected: (reason: MOBIUS_SOCKET_DISCONNECT_REASON) => void;
 };

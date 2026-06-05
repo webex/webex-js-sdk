@@ -14,9 +14,9 @@ import querystring from 'querystring';
 import url from 'url';
 import {EventEmitter} from 'events';
 
-import {base64, oneFlight, whileInFlight} from '@webex/common';
+import {decodeState, encodeState, oneFlight, whileInFlight} from '@webex/common';
 import {grantErrors, WebexPlugin} from '@webex/webex-core';
-import {cloneDeep, isEmpty, omit} from 'lodash';
+import {cloneDeep, isEmpty, omit, isObject} from 'lodash';
 import uuid from 'uuid';
 import base64url from 'crypto-js/enc-base64url';
 import CryptoJS from 'crypto-js';
@@ -199,7 +199,7 @@ const Authorization = WebexPlugin.extend({
 
     // Decode and parse state object (if present)
     if (location.query.state) {
-      location.query.state = JSON.parse(base64.decode(location.query.state));
+      location.query.state = decodeState(location.query.state);
     } else {
       location.query.state = {};
     }
@@ -344,22 +344,27 @@ const Authorization = WebexPlugin.extend({
   },
 
   /**
-   * Initiates third-party (social provider) login by redirecting the user
-   * to IdBroker's `/idb/ThirdPartyLogin` endpoint.
-   *
-   * Mirrors `initiateLogin`'s role for the standard `/authorize` flow.
-   * Delegates to `initiateThirdPartyLoginRedirect` so any pre-redirect
-   * security plumbing (CSRF / `state`) can be added here without changing
-   * the navigation method.
+   * Initiates third-party (social provider) login. Generates a CSRF token,
+   * embeds it in `options.state.csrf_token`, and delegates to
+   * `initiateThirdPartyLoginRedirect` for navigation.
    *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @param {Object} options
    * @param {string} options.oauth2provider
    * @param {string} options.returnURL
+   * @param {Object} [options.state] - Caller-supplied state object. Merged
+   *   with the generated `csrf_token`.
    * @returns {Promise<void>}
    */
   initiateThirdPartyLogin(options = {}) {
+    options = cloneDeep(options);
+    if (options.state !== undefined && !isObject(options.state)) {
+      throw new Error('if specified, `options.state` must be an object');
+    }
+    options.state = options.state || {};
+    options.state.csrf_token = this._generateSecurityToken();
+
     return this.initiateThirdPartyLoginRedirect(options);
   },
 
@@ -391,6 +396,37 @@ const Authorization = WebexPlugin.extend({
     }
 
     return Promise.resolve();
+  },
+
+  /**
+   * Handles the third-party (social provider) login callback. Reads the
+   * current `window.location`, decodes `state`, validates the CSRF token
+   * (`state.csrf_token`), scrubs sensitive parameters from the URL via
+   * `_cleanUrl`, and returns the parsed payload.
+   *
+   * Mirrors `initialize()` in always operating on the live
+   * `window.location`
+   *
+   * `idToken` is single-use: it is parsed out of the URL exactly once and
+   * the calling client is expected to exchange it (or discard it)
+   * immediately. The returned `state` has `csrf_token` removed.
+   *
+   * @instance
+   * @memberof AuthorizationBrowserFirstParty
+   * @returns {{idToken: string|undefined, email: string|undefined,
+   *   error: string|undefined, state: Object}}
+   */
+  handleThirdPartyCallback() {
+    const location = url.parse(this.webex.getWindow().location.href, true);
+
+    location.query.state = decodeState(location.query.state || 'e30');
+
+    this._verifySecurityToken(location.query, {requireMatch: true});
+    this._cleanUrl(location);
+
+    const {id_token: idToken, email, error, state: {csrf_token, ...state}} = location.query;
+
+    return {idToken, email, error, state};
   },
 
   /**
@@ -754,8 +790,9 @@ const Authorization = WebexPlugin.extend({
    * - HTTP referrer headers to third-party content
    *
    * Approach:
-   * - Remove 'code'.
-   * - Remove 'state' entirely if only contained csrf_token.
+   * - Remove 'code' (OAuth code-grant), 'id_token', and 'email'
+   *   (third-party callback).
+   * - Remove 'state' entirely if it only contained csrf_token.
    * - Else, re-encode remaining state fields (minus csrf_token).
    * - Replace current history entry (no page reload).
    *
@@ -769,12 +806,12 @@ const Authorization = WebexPlugin.extend({
     location = cloneDeep(location);
     if (this.webex.getWindow().history && this.webex.getWindow().history.replaceState) {
       Reflect.deleteProperty(location.query, 'code');
+      Reflect.deleteProperty(location.query, 'id_token');
+      Reflect.deleteProperty(location.query, 'email');
       if (isEmpty(omit(location.query.state, 'csrf_token'))) {
         Reflect.deleteProperty(location.query, 'state');
       } else {
-        location.query.state = base64.encode(
-          JSON.stringify(omit(location.query.state, 'csrf_token'))
-        );
+        location.query.state = encodeState(omit(location.query.state, 'csrf_token'));
       }
       location.search = querystring.stringify(location.query);
       Reflect.deleteProperty(location, 'query');
@@ -843,27 +880,32 @@ const Authorization = WebexPlugin.extend({
    * - Ensure state + state.csrf_token exist.
    * - Compare values; throw descriptive errors on mismatch / absence.
    *
-   * If no stored token (e.g., user navigated directly), silently returns.
+   * If no stored token (e.g., user navigated directly), silently returns
+   * unless `options.requireMatch` is `true`, in which case absence of a
+   * stored token is treated as a CSRF failure.
    *
    * @instance
    * @memberof AuthorizationBrowserFirstParty
    * @param {Object} query - Parsed query (location.query)
+   * @param {Object} [options]
+   * @param {boolean} [options.requireMatch=false] - When true, throws if
+   *   no stored sessionToken is present.
    * @private
    * @returns {void}
    */
-  _verifySecurityToken(query) {
+  _verifySecurityToken(query, options = {}) {
     const sessionToken = this.webex.getWindow().sessionStorage.getItem(OAUTH2_CSRF_TOKEN);
 
     this.webex.getWindow().sessionStorage.removeItem(OAUTH2_CSRF_TOKEN);
     if (!sessionToken) {
+      if (options.requireMatch) {
+        throw new Error('CSRF token missing from session storage');
+      }
+
       return;
     }
 
-    if (!query.state) {
-      throw new Error(`Expected CSRF token ${sessionToken}, but not found in redirect query`);
-    }
-
-    if (!query.state.csrf_token) {
+    if (!query.state?.csrf_token) {
       throw new Error(`Expected CSRF token ${sessionToken}, but not found in redirect query`);
     }
 
