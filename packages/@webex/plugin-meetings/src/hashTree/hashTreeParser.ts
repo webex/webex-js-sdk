@@ -59,8 +59,6 @@ interface InternalDataSet extends DataSet {
   timer?: ReturnType<typeof setTimeout>;
   heartbeatWatchdogTimer?: ReturnType<typeof setTimeout>;
   syncAbortController?: AbortController;
-  // Actual random backoff used by runSyncAlgorithm (excluding idleMs)
-  lastBackoffTime?: number;
 }
 
 type WebexRequestMethod = (options: Record<string, any>) => Promise<any>;
@@ -97,33 +95,31 @@ export interface SyncLatencyMetrics {
   totalTime: number;
 }
 
-export type SyncMetricsCallback = (metrics: {
-  dataSet: string;
-  syncLatency: SyncLatencyMetrics;
-}) => void;
-
 export type SyncLatencyTracker = {
+  saveLatency: (
+    key: 'internal.client.locus.sync.random.backoff',
+    value: number,
+    options: {
+      meetingId: string;
+      dataSetName: string;
+    }
+  ) => void;
   saveTimestamp: (options: {
     key: LocusSyncLatencyEventName;
     options: {
       meetingId: string;
       dataSetName: string;
-      randomBackoffTime?: number;
       trackingId?: string;
     };
   }) => void;
   getLocusSyncLatency: (dataSetName: string, meetingId: string) => SyncLatencyMetrics | undefined;
-  completeLocusSyncLatency?: (
-    meetingId: string,
-    trackingId?: string
-  ) => {dataSet: string; syncLatency: SyncLatencyMetrics} | undefined;
   clearLocusSyncLatency: (dataSetName: string, meetingId: string) => void;
 };
 
 export type HashTreeParserCallbacks = {
   locusInfoUpdateCallback: LocusInfoUpdateCallback;
-  syncMetricsCallback?: SyncMetricsCallback;
   syncLatencyTracker?: SyncLatencyTracker;
+  syncResponseCallback?: (trackingId?: string) => void;
 };
 
 const SYNC_METRICS_DATA_SETS = [
@@ -1213,8 +1209,8 @@ class HashTreeParser {
    * Handles incoming hash tree messages, updates the hash trees and calls locusInfoUpdateCallback
    *
    * @param {HashTreeMessage} message - The hash tree message containing data sets and objects to be processed
-   * @param {string} [debugText] - Optional debug text to include in logs
-   * @param {string} [trackingId] top-level tracking id from LLM event or /sync response
+   * @param {string} [debugText] - Optional text included only in parser logs to identify the caller or source flow
+   * @param {string} [trackingId] - Top-level tracking id from the LLM event, used for sync latency attribution
    * @returns {void}
    */
   handleMessage(message: HashTreeMessage, debugText?: string, trackingId?: string) {
@@ -1237,7 +1233,14 @@ class HashTreeParser {
       this.handleRootHashHeartBeatMessage(message);
       this.resetHeartbeatWatchdogs(message.dataSets);
     } else {
-      this.tryCompleteSyncMetricsFromMessage(message, trackingId);
+      message.dataSets.forEach((dataSet) => {
+        if (this.shouldCollectSyncMetrics(dataSet.name)) {
+          this.callbacks.syncLatencyTracker?.saveTimestamp({
+            key: 'internal.client.locus.sync.message.received',
+            options: this.getSyncLatencyTimestampOptions(dataSet.name, undefined, trackingId),
+          });
+        }
+      });
 
       const updatedObjects = this.parseMessage(message, debugText);
 
@@ -1264,25 +1267,23 @@ class HashTreeParser {
     );
   }
 
-  private tryCompleteSyncMetricsFromMessage(message: HashTreeMessage, trackingId?: string) {
-    const hasSupportedDataSet = message.dataSets.some((dataSet) =>
-      SYNC_METRICS_DATA_SETS.includes(dataSet.name)
-    );
-
-    if (!hasSupportedDataSet) {
+  private saveSyncBackoffLatency(
+    dataSetName: string,
+    randomBackoffTime: number,
+    isInitialization = false
+  ) {
+    if (!this.shouldCollectSyncMetrics(dataSetName, isInitialization)) {
       return;
     }
 
-    const syncMetrics = this.callbacks.syncLatencyTracker?.completeLocusSyncLatency?.(
-      this.syncLatencyMeetingId,
-      trackingId
+    this.callbacks.syncLatencyTracker?.saveLatency(
+      'internal.client.locus.sync.random.backoff',
+      Math.round(randomBackoffTime),
+      {
+        meetingId: this.syncLatencyMeetingId,
+        dataSetName,
+      }
     );
-
-    if (!syncMetrics) {
-      return;
-    }
-
-    this.callbacks.syncMetricsCallback?.(syncMetrics);
   }
 
   /**
@@ -1427,10 +1428,7 @@ class HashTreeParser {
     if (shouldCollectMetrics) {
       this.callbacks.syncLatencyTracker?.saveTimestamp({
         key: 'internal.client.locus.sync.start',
-        options: this.getSyncLatencyTimestampOptions(
-          dataSet.name,
-          Math.round(dataSet.lastBackoffTime || 0)
-        ),
+        options: this.getSyncLatencyTimestampOptions(dataSet.name),
       });
     }
 
@@ -1490,13 +1488,11 @@ class HashTreeParser {
       }
       // request sync for mismatched leaves
       let syncResponse: HashTreeMessage | null = null;
-      let syncResponseTrackingId: string | undefined;
 
       if (isInitialization) {
         const syncResult = await this.sendSyncRequestToLocus(dataSet, {isInitialization: true});
 
         syncResponse = syncResult.message;
-        syncResponseTrackingId = syncResult.trackingId;
         syncRequestSent = true;
       } else if (Object.keys(leavesData).length > 0) {
         const syncResult = await this.sendSyncRequestToLocus(dataSet, {
@@ -1504,7 +1500,6 @@ class HashTreeParser {
         });
 
         syncResponse = syncResult.message;
-        syncResponseTrackingId = syncResult.trackingId;
         syncRequestSent = true;
       }
 
@@ -1528,8 +1523,7 @@ class HashTreeParser {
           syncResponse,
           `via sync API (${
             isInitialization ? 'init' : `${Object.keys(leavesData).length} mismatched leaves`
-          })`,
-          syncResponseTrackingId
+          })`
         );
       }
     } catch (error) {
@@ -1773,7 +1767,7 @@ class HashTreeParser {
     );
 
     for (const ds of effectiveDataSetsToSync) {
-      this.dataSets[ds.name].lastBackoffTime = delay;
+      this.saveSyncBackoffLatency(ds.name, delay);
       this.enqueueSyncForDataset(ds.name, 'syncAllDatasets');
     }
 
@@ -1832,7 +1826,7 @@ class HashTreeParser {
         clearTimeout(dataSet.timer);
       }
 
-      dataSet.lastBackoffTime = randomBackoffTime;
+      this.saveSyncBackoffLatency(dataSet.name, randomBackoffTime);
 
       dataSet.timer = setTimeout(() => {
         dataSet.timer = undefined;
@@ -1904,7 +1898,7 @@ class HashTreeParser {
           dataSetName: dataSet.name,
         });
 
-        dataSet.lastBackoffTime = backoffTime;
+        this.saveSyncBackoffLatency(dataSet.name, backoffTime);
 
         this.enqueueSyncForDataset(dataSet.name, `heartbeat watchdog expired`);
         this.resetHeartbeatWatchdogs([dataSet]);
@@ -2207,6 +2201,7 @@ class HashTreeParser {
             key: 'internal.client.locus.sync.response',
             options: this.getSyncLatencyTimestampOptions(dataSet.name, undefined, trackingId),
           });
+          this.callbacks.syncResponseCallback?.(trackingId);
         }
 
         if (!resp.body || isEmpty(resp.body)) {

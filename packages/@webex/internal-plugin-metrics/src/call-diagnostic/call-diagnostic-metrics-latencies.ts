@@ -26,11 +26,17 @@ type SaveTimestampOptions = {
   trackingId?: string;
 };
 
+type SaveLatencyOptions = {
+  meetingId?: string;
+  dataSetName?: string;
+};
+
 type LocusSyncLatencyRecord = {
   meetingId: string;
   dataSetName: string;
   randomBackoffTime: number;
   trackingId?: string;
+  llmTrackingId?: string;
   syncStart?: number;
   hashTreeRequest?: number;
   hashTreeResponse?: number;
@@ -49,7 +55,7 @@ type LocusSyncLatencyTimestampKey = Exclude<keyof LocusSyncLatencyRecord, 'rando
 export default class CallDiagnosticLatencies extends WebexPlugin {
   latencyTimestamps: Map<MetricEventNames, number>;
   precomputedLatencies: Map<PreComputedLatencies, number>;
-  locusSyncLatencies: Map<string, LocusSyncLatencyRecord[]>;
+  meetingLatencies: Map<string, LocusSyncLatencyRecord[]>;
   // meetingId that the current latencies are for
   private meetingId?: string;
   private MAX_INTEGER = 2147483647;
@@ -61,7 +67,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     super(...args);
     this.latencyTimestamps = new Map();
     this.precomputedLatencies = new Map();
-    this.locusSyncLatencies = new Map();
+    this.meetingLatencies = new Map();
   }
 
   /**
@@ -70,7 +76,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   public clearTimestamps() {
     this.latencyTimestamps.clear();
     this.precomputedLatencies.clear();
-    this.locusSyncLatencies.clear();
+    this.meetingLatencies.clear();
   }
 
   /**
@@ -79,7 +85,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @param meetingId meeting id
    */
   public clearLocusSyncLatency(dataSetName: string, meetingId: string) {
-    const records = this.locusSyncLatencies.get(meetingId);
+    const records = this.meetingLatencies.get(meetingId);
 
     if (!records) {
       return;
@@ -88,9 +94,9 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const remainingRecords = records.filter((record) => record.dataSetName !== dataSetName);
 
     if (remainingRecords.length > 0) {
-      this.locusSyncLatencies.set(meetingId, remainingRecords);
+      this.meetingLatencies.set(meetingId, remainingRecords);
     } else {
-      this.locusSyncLatencies.delete(meetingId);
+      this.meetingLatencies.delete(meetingId);
     }
   }
 
@@ -130,11 +136,24 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       'syncResponse',
       'messageReceived'
     );
-    const totalTime = this.getDiffBetweenLocusSyncTimestamps(
+    const totalTimeFromMessageReceived = this.getDiffBetweenLocusSyncTimestamps(
       record,
       'syncStart',
       'messageReceived'
     );
+    const totalTimeFromSyncResponse = this.getDiffBetweenLocusSyncTimestamps(
+      record,
+      'syncStart',
+      'syncResponse'
+    );
+
+    // messageReceived can occasionally be out of order due to race conditions.
+    // Ensure totalTime is never less than syncStart->syncResponse when both exist.
+    const totalTime =
+      typeof totalTimeFromMessageReceived === 'number' &&
+      typeof totalTimeFromSyncResponse === 'number'
+        ? Math.max(totalTimeFromMessageReceived, totalTimeFromSyncResponse)
+        : totalTimeFromMessageReceived;
 
     if (
       typeof syncPrepTime !== 'number' ||
@@ -163,17 +182,24 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @returns completed sync latency metric payload
    */
   public completeLocusSyncLatency(meetingId: string, trackingId?: string) {
-    const exactRecord = this.getLatestLocusSyncLatencyRecord(meetingId, undefined, trackingId);
-    const fallbackRecord = exactRecord
+    const exactRecord = trackingId
+      ? this.getLatestCompletableLocusSyncLatencyRecord(meetingId, trackingId)
+      : undefined;
+    // Fallback candidates used only when tracking id does not identify one exact record.
+    const completableRecords = exactRecord
       ? undefined
-      : this.getLatestLocusSyncLatencyRecord(meetingId);
+      : this.getCompletableLocusSyncLatencyRecords(meetingId);
+    const fallbackRecord =
+      !exactRecord && completableRecords?.length === 1 ? completableRecords[0] : undefined;
     const record = exactRecord ?? fallbackRecord;
 
     if (!record) {
       return undefined;
     }
 
-    record.messageReceived = new Date().getTime();
+    if (typeof record.messageReceived !== 'number') {
+      record.messageReceived = new Date().getTime();
+    }
 
     const syncLatency = this.getLocusSyncLatency(record.dataSetName, meetingId, record.trackingId);
 
@@ -229,12 +255,32 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     return Math.round(clamp(latency, 0, this.MAX_INTEGER));
   }
 
+  /**
+   * Checks whether a Locus sync latency record has the milestones required to calculate sync metrics.
+   * @param record Locus sync latency record
+   * @returns whether the record can be used to complete sync metrics
+   */
+  private hasRequiredSyncMilestones(record: LocusSyncLatencyRecord) {
+    return (
+      typeof record.syncStart === 'number' &&
+      typeof record.syncRequest === 'number' &&
+      typeof record.syncResponse === 'number'
+    );
+  }
+
+  /**
+   * Get the latest Locus sync latency record for a meeting and optional dataset/tracking id.
+   * @param meetingId meeting id
+   * @param dataSetName dataset name
+   * @param trackingId /sync response tracking id
+   * @returns latest matching Locus sync latency record
+   */
   private getLatestLocusSyncLatencyRecord(
     meetingId: string,
     dataSetName?: string,
     trackingId?: string
   ) {
-    const records = this.locusSyncLatencies.get(meetingId);
+    const records = this.meetingLatencies.get(meetingId);
 
     if (!records) {
       return undefined;
@@ -248,8 +294,105 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     });
   }
 
+  /**
+   * Get the latest Locus sync latency record that has enough milestones to complete metrics.
+   * @param meetingId meeting id
+   * @param trackingId /sync response tracking id or LLM message tracking id
+   * @returns latest matching completable Locus sync latency record
+   */
+  private getLatestCompletableLocusSyncLatencyRecord(meetingId: string, trackingId?: string) {
+    const records = this.meetingLatencies.get(meetingId);
+
+    if (!records) {
+      return undefined;
+    }
+
+    return [...records].reverse().find((record) => {
+      const trackingIdMatches =
+        !trackingId || record.trackingId === trackingId || record.llmTrackingId === trackingId;
+
+      return trackingIdMatches && this.hasRequiredSyncMilestones(record);
+    });
+  }
+
+  /**
+   * Get all Locus sync latency records for a meeting that have enough milestones to complete metrics.
+   * @param meetingId meeting id
+   * @returns completable Locus sync latency records for the meeting
+   */
+  private getCompletableLocusSyncLatencyRecords(meetingId: string) {
+    const records = this.meetingLatencies.get(meetingId);
+
+    if (!records) {
+      return [];
+    }
+
+    return records.filter((record) => this.hasRequiredSyncMilestones(record));
+  }
+
+  /**
+   * Find the most likely Locus sync latency record for an incoming LLM message.received timestamp.
+   * @param meetingId meeting id
+   * @param dataSetName dataset name
+   * @param trackingId LLM message tracking id
+   * @param messageReceivedValue message.received timestamp value
+   * @returns best matching Locus sync latency record for the message.received milestone
+   */
+  private getBestRecordForMessageReceived(
+    meetingId: string,
+    dataSetName: string,
+    trackingId?: string,
+    messageReceivedValue?: number
+  ) {
+    const records = this.meetingLatencies.get(meetingId);
+
+    if (!records || records.length === 0) {
+      return undefined;
+    }
+
+    const dataSetRecords = records.filter((record) => record.dataSetName === dataSetName);
+
+    if (dataSetRecords.length === 0) {
+      return undefined;
+    }
+
+    if (trackingId) {
+      const exactRecord = [...dataSetRecords]
+        .reverse()
+        .find((record) => record.trackingId === trackingId || record.llmTrackingId === trackingId);
+
+      if (exactRecord) {
+        return exactRecord;
+      }
+
+      if (typeof messageReceivedValue === 'number') {
+        const closestBySyncResponse = dataSetRecords
+          .filter(
+            (record) =>
+              this.hasRequiredSyncMilestones(record) && record.syncResponse <= messageReceivedValue
+          )
+          .sort((a, b) => (b.syncResponse as number) - (a.syncResponse as number))[0];
+
+        if (closestBySyncResponse) {
+          return closestBySyncResponse;
+        }
+      }
+    }
+
+    // Fallback candidates used only when message.received cannot be matched by id or timestamp.
+    const completableRecords = dataSetRecords.filter((record) =>
+      this.hasRequiredSyncMilestones(record)
+    );
+
+    if (completableRecords.length === 1) {
+      return completableRecords[0];
+    }
+
+    return undefined;
+  }
+
   private removeLocusSyncLatencyRecord(recordToRemove: LocusSyncLatencyRecord) {
-    const records = this.locusSyncLatencies.get(recordToRemove.meetingId);
+    const records = this.meetingLatencies.get(recordToRemove.meetingId);
 
     if (!records) {
       return;
@@ -258,10 +401,62 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const remainingRecords = records.filter((record) => record !== recordToRemove);
 
     if (remainingRecords.length > 0) {
-      this.locusSyncLatencies.set(recordToRemove.meetingId, remainingRecords);
+      this.meetingLatencies.set(recordToRemove.meetingId, remainingRecords);
     } else {
-      this.locusSyncLatencies.delete(recordToRemove.meetingId);
+      this.meetingLatencies.delete(recordToRemove.meetingId);
     }
+  }
+
+  /**
+   * Get the latest Locus sync latency record waiting for sync.start.
+   * @param meetingId meeting id
+   * @param dataSetName dataset name
+   * @returns latest pending Locus sync latency record
+   */
+  private getLatestPendingLocusSyncLatencyRecord(meetingId: string, dataSetName: string) {
+    const records = this.meetingLatencies.get(meetingId);
+
+    if (!records) {
+      return undefined;
+    }
+
+    return [...records]
+      .reverse()
+      .find((record) => record.dataSetName === dataSetName && record.syncStart === undefined);
+  }
+
+  /**
+   * Store random backoff latency for the current or next Locus sync latency record.
+   * @param meetingId meeting id
+   * @param dataSetName dataset name
+   * @param randomBackoffTime random backoff latency value
+   * @returns void
+   */
+  private saveLocusSyncBackoffLatency({
+    meetingId,
+    dataSetName,
+    randomBackoffTime,
+  }: {
+    meetingId: string;
+    dataSetName: string;
+    randomBackoffTime: number;
+  }) {
+    const pendingRecord = this.getLatestPendingLocusSyncLatencyRecord(meetingId, dataSetName);
+
+    if (pendingRecord) {
+      pendingRecord.randomBackoffTime = randomBackoffTime;
+
+      return;
+    }
+
+    const records = this.meetingLatencies.get(meetingId) ?? [];
+
+    records.push({
+      meetingId,
+      dataSetName,
+      randomBackoffTime,
+    });
+    this.meetingLatencies.set(meetingId, records);
   }
 
   /**
@@ -283,34 +478,54 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     key,
     value,
     trackingId,
-    randomBackoffTime = 0,
+    randomBackoffTime,
   }: LocusSyncLatencyMilestone & {randomBackoffTime?: number}) {
     if (key === 'internal.client.locus.sync.start') {
-      const records = this.locusSyncLatencies.get(meetingId) ?? [];
+      const pendingRecord = this.getLatestPendingLocusSyncLatencyRecord(meetingId, dataSetName);
+
+      if (pendingRecord) {
+        if (typeof randomBackoffTime === 'number') {
+          pendingRecord.randomBackoffTime = randomBackoffTime;
+        }
+        pendingRecord.syncStart = value;
+
+        return;
+      }
+
+      const records = this.meetingLatencies.get(meetingId) ?? [];
 
       records.push({
         meetingId,
         dataSetName,
-        randomBackoffTime,
+        randomBackoffTime: randomBackoffTime ?? 0,
         syncStart: value,
       });
-      this.locusSyncLatencies.set(meetingId, records);
+      this.meetingLatencies.set(meetingId, records);
 
       return;
     }
 
-    const record = this.getLatestLocusSyncLatencyRecord(
-      meetingId,
-      dataSetName,
-      key === 'internal.client.locus.sync.response' ? undefined : trackingId
-    );
+    const record =
+      key === 'internal.client.locus.sync.message.received'
+        ? this.getBestRecordForMessageReceived(meetingId, dataSetName, trackingId, value)
+        : this.getLatestLocusSyncLatencyRecord(
+            meetingId,
+            dataSetName,
+            key === 'internal.client.locus.sync.response' ? undefined : trackingId
+          );
 
     if (!record) {
       return;
     }
 
     if (trackingId) {
-      record.trackingId = trackingId;
+      if (key === 'internal.client.locus.sync.response') {
+        record.trackingId = trackingId;
+      }
+
+      if (key === 'internal.client.locus.sync.message.received') {
+        record.llmTrackingId = trackingId;
+      }
     }
 
     switch (key) {
@@ -418,7 +633,27 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @throws
    * @returns
    */
-  public saveLatency(key: PreComputedLatencies, value: number, accumulate = false) {
+  public saveLatency(
+    key: PreComputedLatencies,
+    value: number,
+    accumulateOrOptions: boolean | SaveLatencyOptions = false
+  ) {
+    if (
+      key === 'internal.client.locus.sync.random.backoff' &&
+      typeof accumulateOrOptions === 'object' &&
+      accumulateOrOptions.meetingId &&
+      accumulateOrOptions.dataSetName
+    ) {
+      this.saveLocusSyncBackoffLatency({
+        meetingId: accumulateOrOptions.meetingId,
+        dataSetName: accumulateOrOptions.dataSetName,
+        randomBackoffTime: value,
+      });
+
+      return;
+    }
+
+    const accumulate = typeof accumulateOrOptions === 'boolean' ? accumulateOrOptions : false;
     const existingValue = accumulate ? this.precomputedLatencies.get(key) || 0 : 0;
     this.precomputedLatencies.set(key, value + existingValue);
   }

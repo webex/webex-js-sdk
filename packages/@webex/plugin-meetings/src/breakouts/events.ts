@@ -73,7 +73,6 @@ const breakoutEvent: {
       payload,
       options,
     };
-
     submitClientEvent(metricEvent);
   },
 };

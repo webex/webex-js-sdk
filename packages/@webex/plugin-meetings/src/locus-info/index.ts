@@ -37,7 +37,6 @@ import HashTreeParser, {
   LocusInfoUpdate,
   LocusInfoUpdateType,
   Metadata,
-  SyncMetricsCallback,
   SyncLatencyTracker,
 } from '../hashTree/hashTreeParser';
 import {HashTreeObject, ObjectType, ObjectTypeToLocusKeyMap} from '../hashTree/types';
@@ -51,6 +50,7 @@ export type LocusLLMEvent = {
   trackingId?: string;
   data: {
     eventType: typeof LOCUSEVENT.HASH_TREE_DATA_UPDATED;
+    trackingId?: string;
     stateElementsMessage: HashTreeMessage;
   };
 };
@@ -99,8 +99,8 @@ export type HashTreeParserEntry = {
 
 export type LocusInfoCallbacks = {
   updateMeeting: (object: any) => void;
-  syncMetricsCallback?: SyncMetricsCallback;
   syncLatencyTracker?: SyncLatencyTracker;
+  syncResponseCallback?: (trackingId?: string) => void;
 };
 
 /**
@@ -566,8 +566,8 @@ export default class LocusInfo extends EventsScope {
       webexRequest: this.webex.request.bind(this.webex),
       callbacks: {
         locusInfoUpdateCallback: this.updateFromHashTree.bind(this, locusUrl),
-        syncMetricsCallback: this.callbacks.syncMetricsCallback,
         syncLatencyTracker: this.callbacks.syncLatencyTracker,
+        syncResponseCallback: this.callbacks.syncResponseCallback,
       },
       debugId: `HT-${locusUrl.split('/')?.pop()?.substring(0, 4)}`,
       excludedDataSets: this.webex.config.meetings.locus?.excludedDataSets,
@@ -1124,9 +1124,10 @@ export default class LocusInfo extends EventsScope {
    * Checks if the hash tree message should trigger a switch to a different HashTreeParser
    *
    * @param {HashTreeMessage} message incoming hash tree message
+   * @param {string} [trackingId] top-level tracking id from the LLM event, passed through for sync latency attribution
    * @returns {boolean} true if the message was handled as a parser switch, false otherwise
    */
-  private handleHashTreeParserSwitch(message: HashTreeMessage): boolean {
+  private handleHashTreeParserSwitch(message: HashTreeMessage, trackingId?: string): boolean {
     const entry = this.hashTreeParsers.get(message.locusUrl);
 
     const self = message.locusStateElements?.find((el) => isSelf(el))?.data;
@@ -1160,7 +1161,7 @@ export default class LocusInfo extends EventsScope {
         });
 
         // handle the message with the new parser
-        parser.handleMessage(message);
+        parser.handleMessage(message, undefined, trackingId);
       }
 
       return true;
@@ -1206,7 +1207,7 @@ export default class LocusInfo extends EventsScope {
       return;
     }
 
-    const parserSwitched = this.handleHashTreeParserSwitch(message);
+    const parserSwitched = this.handleHashTreeParserSwitch(message, trackingId);
 
     if (parserSwitched) {
       return;

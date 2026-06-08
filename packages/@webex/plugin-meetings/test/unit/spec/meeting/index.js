@@ -14616,8 +14616,12 @@ describe('plugin-meetings', () => {
           };
           const syncMetrics = {dataSet: 'main', syncLatency};
           const event = {
-            data: {eventType: 'locus.state_message', dataSets: []},
-            trackingId: 'our-sync-tracking-id',
+            data: {
+              eventType: 'locus.state_message',
+              dataSets: [],
+              trackingId: 'our-sync-tracking-id',
+            },
+            trackingId: 'llm-envelope-tracking-id',
           };
 
           webex.internal.newMetrics.submitClientEvent.resetHistory();
@@ -14634,7 +14638,91 @@ describe('plugin-meetings', () => {
             meeting.id,
             'our-sync-tracking-id'
           );
-          assert.calledOnceWithExactly(meeting.locusInfo.parse, meeting, event.data, event.trackingId);
+          assert.calledOnceWithExactly(meeting.locusInfo.parse, meeting, event.data, event.data.trackingId);
+          assert.calledOnceWithExactly(webex.internal.newMetrics.submitClientEvent, {
+            name: 'client.locus.sync.complete',
+            payload: {
+              identifiers: {
+                llmWebsocketUrl: 'wss://llm-websocket-url',
+              },
+              syncLatency,
+              llmInfo: {
+                dataSet: 'main',
+              },
+            },
+            options: {
+              meetingId: meeting.id,
+            },
+          });
+        });
+
+        it('uses lowercase envelope trackingid when trackingId is absent', () => {
+          const syncMetrics = {
+            dataSet: 'main',
+            syncLatency: {
+              randomBackoffTime: 10,
+              hashtreePrepTime: 5,
+              hashtreeResponseTime: 20,
+              syncPrepTime: 3,
+              syncResponseTime: 15,
+              syncMessageReceiveTime: 7,
+              totalTime: 50,
+            },
+          };
+          const event = {
+            data: {eventType: 'locus.state_message', dataSets: []},
+            trackingid: 'lowercase-envelope-tracking-id',
+          };
+
+          webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency = sinon
+            .stub()
+            .returns(syncMetrics);
+          meeting.locusInfo.parse = sinon.stub();
+
+          meeting.processLocusLLMEvent(event);
+
+          assert.calledOnceWithExactly(
+            webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency,
+            meeting.id,
+            'lowercase-envelope-tracking-id'
+          );
+          assert.calledOnceWithExactly(
+            meeting.locusInfo.parse,
+            meeting,
+            event.data,
+            'lowercase-envelope-tracking-id'
+          );
+        });
+
+        it('completes sync metrics when hash tree sync response callback runs after initial miss', () => {
+          const syncLatency = {
+            randomBackoffTime: 10,
+            hashtreePrepTime: 5,
+            hashtreeResponseTime: 20,
+            syncPrepTime: 3,
+            syncResponseTime: 15,
+            syncMessageReceiveTime: 7,
+            totalTime: 50,
+          };
+          const syncMetrics = {dataSet: 'main', syncLatency};
+          const event = {
+            data: {eventType: 'locus.state_message', dataSets: [], trackingId: 'race-id'},
+          };
+          const completeStub = sinon.stub();
+
+          completeStub.onCall(0).returns(undefined);
+          completeStub.onCall(1).returns(syncMetrics);
+
+          webex.internal.newMetrics.submitClientEvent.resetHistory();
+          webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency = completeStub;
+          webex.internal.llm.getWebSocketUrl = sinon.stub().returns('wss://llm-websocket-url');
+          meeting.locusInfo.parse = sinon.stub();
+
+          meeting.processLocusLLMEvent(event);
+          meeting.handleHashTreeSyncResponse('race-id');
+
+          assert.calledWithExactly(completeStub.firstCall, meeting.id, 'race-id');
+          assert.calledWithExactly(completeStub.secondCall, meeting.id, 'race-id');
           assert.calledOnceWithExactly(webex.internal.newMetrics.submitClientEvent, {
             name: 'client.locus.sync.complete',
             payload: {

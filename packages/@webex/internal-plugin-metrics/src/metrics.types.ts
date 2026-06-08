@@ -336,7 +336,8 @@ export type PreComputedLatencies =
   | 'internal.get.u2c.time'
   | 'internal.call.init.join.req'
   | 'internal.other.app.api.time'
-  | 'internal.api.fetch.intelligence.models';
+  | 'internal.api.fetch.intelligence.models'
+  | 'internal.client.locus.sync.random.backoff';
 
 export interface IdType {
   meetingId?: string;

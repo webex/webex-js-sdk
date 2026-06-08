@@ -1386,8 +1386,8 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo = new LocusInfo(
       {
         updateMeeting: this.updateMeetingObject.bind(this),
-        syncMetricsCallback: this.sendSyncCompleteMetric.bind(this),
         syncLatencyTracker: (this as any).webex.internal.newMetrics.callDiagnosticLatencies,
+        syncResponseCallback: this.handleHashTreeSyncResponse.bind(this),
       },
       // @ts-ignore
       this.webex,
@@ -5973,24 +5973,50 @@ export default class Meeting extends StatelessWebexPlugin {
         storeEventForDebugging('llm', event.data);
       }
 
-      // @ts-ignore
-      const syncMetrics =
-        this.webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency(
-          this.id,
-          event.trackingId
-        );
+      const trackingId = [
+        event.data.trackingId,
+        (event.data as any).trackingid,
+        (event.data as any).headers?.trackingId,
+        (event.data as any).headers?.trackingid,
+        (event.data.stateElementsMessage as any)?.trackingId,
+        (event.data.stateElementsMessage as any)?.trackingid,
+        event.trackingId,
+        (event as any).trackingid,
+        (event as any).headers?.trackingId,
+        (event as any).headers?.trackingid,
+      ].find((id) => typeof id === 'string' && id.length > 0);
+
+      this.locusInfo.parse(this, event.data, trackingId);
+
+      const syncMetrics = (
+        this as any
+      ).webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency(
+        this.id,
+        trackingId
+      );
 
       if (syncMetrics) {
         this.sendSyncCompleteMetric(syncMetrics);
       }
-
-      this.locusInfo.parse(this, event.data, event.trackingId);
     } else {
       LoggerProxy.logger.warn(
         `Meeting:index#processLocusLLMEvent --> Unknown event type: ${event.data.eventType}`
       );
     }
   };
+
+  private handleHashTreeSyncResponse(trackingId?: string) {
+    const syncMetrics = (
+      this as any
+    ).webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency(
+      this.id,
+      trackingId
+    );
+
+    if (syncMetrics) {
+      this.sendSyncCompleteMetric(syncMetrics);
+    }
+  }
 
   /**
    * Verifies the relay event was delivered for the active LLM session binding.
