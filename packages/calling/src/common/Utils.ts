@@ -1244,7 +1244,7 @@ export function resolveCallingBackend(device: WDMDevice): CALLING_BACKEND {
     callingBackend = CALLING_BACKEND.INVALID;
   }
 
-  return callingBackend as CALLING_BACKEND;
+  return callingBackend || CALLING_BACKEND.INVALID;
 }
 
 /**
