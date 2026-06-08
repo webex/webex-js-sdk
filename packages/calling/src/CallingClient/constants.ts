@@ -240,6 +240,8 @@ export const METHODS = {
   CONNECT_TO_MOBIUS_SOCKET: 'connectToMobiusSocket',
   REGISTER_MOBIUS_SOCKET_LISTENER: 'registerMobiusSocketListener',
   UNREGISTER_MOBIUS_SOCKET_LISTENER: 'unregisterMobiusSocketListener',
+  REGISTER_MOBIUS_SOCKET_CONNECTION_LISTENER: 'registerMobiusSocketConnectionListener',
+  UNREGISTER_MOBIUS_SOCKET_CONNECTION_LISTENER: 'unregisterMobiusSocketConnectionListener',
   HANDLE_MOBIUS_ASYNC_EVENT: 'handleMobiusAsyncEvent',
   HANDLE_REGISTRATION_DOWN_EVENT: 'handleRegistrationDownEvent',
   DISCONNECT_FROM_MOBIUS_SOCKET: 'disconnectFromMobiusSocket',
