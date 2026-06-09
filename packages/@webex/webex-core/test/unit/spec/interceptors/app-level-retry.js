@@ -228,6 +228,115 @@ describe('webex-core', () => {
         });
       });
 
+      it('does not retry 429 when 429 handling is disabled', () => {
+        createInterceptor({
+          enabled: true,
+          statuses: {
+            429: false,
+            503: true,
+          },
+        });
+
+        const options = {
+          method: 'GET',
+          uri: 'https://example.webex.com/v1/resource',
+        };
+        const reason = createReason({
+          headers: {
+            'retry-after': '0',
+          },
+          statusCode: 429,
+        });
+
+        return interceptor.onResponseError(options, reason).catch((error) => {
+          assert.equal(error, reason);
+          assert.notCalled(webex.request);
+        });
+      });
+
+      it('does not retry 503 when 503 handling is disabled', () => {
+        createInterceptor({
+          enabled: true,
+          statuses: {
+            429: true,
+            503: false,
+          },
+        });
+
+        const options = {
+          method: 'GET',
+          uri: 'https://example.webex.com/v1/resource',
+        };
+        const reason = createReason({
+          headers: {
+            'retry-after': '0',
+          },
+          statusCode: 503,
+        });
+
+        return interceptor.onResponseError(options, reason).catch((error) => {
+          assert.equal(error, reason);
+          assert.notCalled(webex.request);
+        });
+      });
+
+      it('uses fallback delay when Retry-After handling is disabled', async () => {
+        createInterceptor({
+          enabled: true,
+          fallback: {
+            delays: [25],
+          },
+          maxRetries: 1,
+          retryAfter: {
+            enabled: false,
+          },
+        });
+        webex.request.resolves({statusCode: 200});
+
+        const options = {
+          method: 'GET',
+          uri: 'https://example.webex.com/v1/resource',
+        };
+        const replay = interceptor.onResponseError(
+          options,
+          createReason({
+            headers: {
+              'retry-after': '1',
+            },
+          })
+        );
+
+        await clock.tickAsync(24);
+        assert.notCalled(webex.request);
+
+        await clock.tickAsync(1);
+
+        await replay;
+        assert.calledOnce(webex.request);
+      });
+
+      it('does not replay when maxRetries is zero', () => {
+        createInterceptor({
+          enabled: true,
+          maxRetries: 0,
+        });
+
+        const options = {
+          method: 'GET',
+          uri: 'https://example.webex.com/v1/resource',
+        };
+        const reason = createReason({
+          headers: {
+            'retry-after': '0',
+          },
+        });
+
+        return interceptor.onResponseError(options, reason).catch((error) => {
+          assert.equal(error, reason);
+          assert.notCalled(webex.request);
+        });
+      });
+
       it('rejects another eligible request while a matching retry is waiting', async () => {
         createInterceptor({enabled: true});
         webex.request.resolves({statusCode: 200});
