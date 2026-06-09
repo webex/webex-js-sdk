@@ -163,6 +163,13 @@ jobs:
       - name: Build a webex UMD
         run: yarn run build:script
 
+      - name: Get publishable packages
+        id: get-publishable
+        # `package-tools list` (no flags) excludes packages marked `private: true`,
+        # so internal-only workspaces (samples, helpers, etc.) are filtered out.
+        # Output format `{pkg1,pkg2,...}` is consumed directly by `yarn workspaces foreach --from`.
+        run: echo "packages=$(yarn package-tools list)" >> "$GITHUB_OUTPUT"
+
       - name: Add NPM token to .yarnrc.yml file
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -173,7 +180,8 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           DIST_TAG: ${{ inputs.dist-tag }}
-        run: yarn workspaces foreach --all --verbose run deploy:npm --access public --tag "$DIST_TAG"
+          PACKAGES: ${{ steps.get-publishable.outputs.packages }}
+        run: yarn workspaces foreach --from "$PACKAGES" --verbose run deploy:npm --access public --tag "$DIST_TAG"
 
   publish-documentation:
     name: Publish - Documentation
