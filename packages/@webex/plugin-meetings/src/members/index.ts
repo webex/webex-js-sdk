@@ -583,7 +583,7 @@ export default class Members extends StatelessWebexPlugin {
       // with a participant payload that no longer contains the original CSIs
       const existingMember = this.membersCollection.get(memberId);
       if (existingMember) {
-        const history = new Set<number>();
+        const history = new Set<number>(this.historyCsisByMemberId.get(memberId));
         MemberUtil.extractCsis(existingMember.participant).forEach((csi) => history.add(csi));
         if (history.size > 0) {
           this.historyCsisByMemberId.set(memberId, history);
@@ -627,7 +627,7 @@ export default class Members extends StatelessWebexPlugin {
             member.participant?.devices
           );
           if (!devicesUnchanged) {
-            const history = new Set<number>();
+            const history = new Set<number>(this.historyCsisByMemberId.get(member.id));
             MemberUtil.extractCsis(existingMember.participant).forEach((csi) => history.add(csi));
             if (history.size > 0) {
               this.historyCsisByMemberId.set(member.id, history);
