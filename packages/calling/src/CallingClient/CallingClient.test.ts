@@ -15,7 +15,12 @@ import {
   WebexRequestPayload,
 } from '../common/types';
 /* eslint-disable dot-notation */
-import {CALLING_CLIENT_EVENT_KEYS, CallSessionEvent, MOBIUS_EVENT_KEYS} from '../Events/types';
+import {
+  CALLING_CLIENT_EVENT_KEYS,
+  CallSessionEvent,
+  MOBIUS_EVENT_KEYS,
+  MOBIUS_SOCKET_DISCONNECT_REASON,
+} from '../Events/types';
 import log from '../Logger';
 import {CallingClient, createClient} from './CallingClient';
 import {ICallingClient} from './types';
@@ -62,6 +67,7 @@ jest.mock('../mobius-socket', () => ({
   getMobiusSocketInstance: jest.fn().mockReturnValue({
     sendWssRequest: jest.fn(),
     connect: jest.fn(),
+    isConnected: jest.fn().mockReturnValue(false),
     on: jest.fn(),
     off: jest.fn(),
   }),
@@ -902,6 +908,83 @@ describe('CallingClient Tests', () => {
         })
       );
     });
+  });
+
+  describe('Mobius socket connection events', () => {
+    let callingClient: ICallingClient;
+    let mobiusSocketMock;
+
+    const getSocketHandlerFor = (eventName: string) => {
+      const onCall = (mobiusSocketMock.on as jest.Mock).mock.calls.find(
+        (call) => call[0] === eventName
+      );
+
+      return onCall[1];
+    };
+
+    beforeEach(async () => {
+      webex.internal.device.features.developer.get = jest.fn().mockReturnValue({value: true});
+      APIRequest.resetInstance();
+      APIRequest.getInstance({webex});
+
+      mobiusSocketMock = (
+        jest.requireMock('../mobius-socket') as {
+          getMobiusSocketInstance: (w: unknown) => unknown;
+        }
+      ).getMobiusSocketInstance(webex) as {
+        on: jest.Mock;
+        off: jest.Mock;
+        isConnected: jest.Mock;
+      };
+      (mobiusSocketMock.on as jest.Mock).mockClear();
+      (mobiusSocketMock.off as jest.Mock).mockClear();
+      (mobiusSocketMock.isConnected as jest.Mock).mockReturnValue(false);
+
+      callingClient = await createClient(webex, {
+        logger: {level: LOGGER.INFO},
+      });
+    });
+
+    afterEach(() => {
+      callingClient.removeAllListeners();
+      callManager.removeAllListeners();
+      webex.internal.device.features.developer.get = jest.fn().mockReturnValue({value: false});
+    });
+
+    it('emits MOBIUS_SOCKET_CONNECTED when the socket comes online', () => {
+      const listener = jest.fn();
+      callingClient.on(CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED, listener);
+
+      getSocketHandlerFor('online')();
+
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['offline.permanent', MOBIUS_SOCKET_DISCONNECT_REASON.PERMANENT],
+      ['offline.transient', MOBIUS_SOCKET_DISCONNECT_REASON.TRANSIENT],
+      ['offline.replaced', MOBIUS_SOCKET_DISCONNECT_REASON.REPLACED],
+    ])(
+      'emits MOBIUS_SOCKET_DISCONNECTED with the matching reason when %s fires',
+      (eventName, reason) => {
+        const listener = jest.fn();
+        callingClient.on(CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED, listener);
+
+        getSocketHandlerFor(eventName as string)();
+
+        expect(listener).toHaveBeenCalledTimes(1);
+        expect(listener).toHaveBeenCalledWith({reason});
+      }
+    );
+
+    it.each([true, false])(
+      'isMobiusSocketConnected() reflects the underlying socket state (%s) when WSS is enabled',
+      (connected) => {
+        (mobiusSocketMock.isConnected as jest.Mock).mockReturnValue(connected);
+
+        expect(callingClient.isMobiusSocketConnected()).toBe(connected);
+      }
+    );
   });
 
   describe('getDevices', () => {
