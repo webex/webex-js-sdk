@@ -121,6 +121,7 @@ interface IInMeetingActions {
   canAttendeeRequestAiAssistantEnabled?: boolean;
   isAttendeeRequestAiAssistantDeclinedAll?: boolean;
   isAnonymizeDisplayNamesEnabled?: boolean;
+  canViewTheParticipantList?: boolean;
 }
 
 /**
@@ -349,6 +350,8 @@ export default class InMeetingActions implements IInMeetingActions {
 
   isAnonymizeDisplayNamesEnabled = null;
 
+  canViewTheParticipantList = null;
+
   /**
    * Returns all meeting action options
    * @returns {Object}
@@ -464,6 +467,7 @@ export default class InMeetingActions implements IInMeetingActions {
     canAttendeeRequestAiAssistantEnabled: this.canAttendeeRequestAiAssistantEnabled,
     isAttendeeRequestAiAssistantDeclinedAll: this.isAttendeeRequestAiAssistantDeclinedAll,
     isAnonymizeDisplayNamesEnabled: this.isAnonymizeDisplayNamesEnabled,
+    canViewTheParticipantList: this.canViewTheParticipantList,
   });
 
   /**
