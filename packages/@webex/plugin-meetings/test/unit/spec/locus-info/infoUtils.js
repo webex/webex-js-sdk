@@ -9,6 +9,9 @@ describe('plugin-meetings', () => {
         moderator: ['HINT_1', 'HINT_2'],
         joined: ['HINT_3', 'VOIP_IS_ENABLED'],
         coHost: ['HINT_4'],
+        presenter: ['HINT_5'],
+        panelist: ['HINT_6'],
+        attendee: ['HINT_7'],
       },
     };
 
@@ -30,6 +33,9 @@ describe('plugin-meetings', () => {
           policy: {HINT_3: true, VOIP_IS_ENABLED: true},
           moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
           coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
+          presenter: {HINT_5: true},
+          panelist: {HINT_6: true},
+          attendee: {HINT_7: true},
           userDisplayHints: [
             'HINT_3',
             'VOIP_IS_ENABLED',
@@ -43,6 +49,9 @@ describe('plugin-meetings', () => {
           policy: {HINT_3: true, VOIP_IS_ENABLED: true},
           moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
           coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
+          presenter: {HINT_5: true},
+          panelist: {HINT_6: true},
+          attendee: {HINT_7: true},
           userDisplayHints: [
             'HINT_3',
             'VOIP_IS_ENABLED',
@@ -57,6 +66,9 @@ describe('plugin-meetings', () => {
           policy: {HINT_3: true, VOIP_IS_ENABLED: true},
           moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
           coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
+          presenter: {HINT_5: true},
+          panelist: {HINT_6: true},
+          attendee: {HINT_7: true},
           userDisplayHints: ['HINT_3', 'VOIP_IS_ENABLED', 'HINT_4', 'LOWER_SOMEONE_ELSES_HAND'],
         });
 
@@ -64,6 +76,9 @@ describe('plugin-meetings', () => {
           policy: {HINT_3: true, VOIP_IS_ENABLED: true},
           moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
           coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
+          presenter: {HINT_5: true},
+          panelist: {HINT_6: true},
+          attendee: {HINT_7: true},
           userDisplayHints: ['HINT_3', 'VOIP_IS_ENABLED'],
         });
       });
@@ -73,6 +88,9 @@ describe('plugin-meetings', () => {
           policy: {HINT_3: true, VOIP_IS_ENABLED: true},
           moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
           coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
+          presenter: {HINT_5: true},
+          panelist: {HINT_6: true},
+          attendee: {HINT_7: true},
           userDisplayHints: ['VOIP_IS_ENABLED', 'HINT_1', 'HINT_2', 'LOWER_SOMEONE_ELSES_HAND'],
         });
 
@@ -80,6 +98,9 @@ describe('plugin-meetings', () => {
           policy: {HINT_3: true, VOIP_IS_ENABLED: true},
           moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
           coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
+          presenter: {HINT_5: true},
+          panelist: {HINT_6: true},
+          attendee: {HINT_7: true},
           userDisplayHints: [
             'HINT_3',
             'VOIP_IS_ENABLED',
@@ -90,10 +111,49 @@ describe('plugin-meetings', () => {
         });
       });
 
+      it('merges presenter hints when user has PRESENTER role', () => {
+        assert.deepEqual(InfoUtils.parse(info, ['PRESENTER']), {
+          policy: {HINT_3: true, VOIP_IS_ENABLED: true},
+          moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
+          coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
+          presenter: {HINT_5: true},
+          panelist: {HINT_6: true},
+          attendee: {HINT_7: true},
+          userDisplayHints: ['HINT_3', 'VOIP_IS_ENABLED', 'HINT_5'],
+        });
+      });
+
+      it('merges panelist hints when user has PANELIST role', () => {
+        assert.deepEqual(InfoUtils.parse(info, ['PANELIST']), {
+          policy: {HINT_3: true, VOIP_IS_ENABLED: true},
+          moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
+          coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
+          presenter: {HINT_5: true},
+          panelist: {HINT_6: true},
+          attendee: {HINT_7: true},
+          userDisplayHints: ['HINT_3', 'VOIP_IS_ENABLED', 'HINT_6'],
+        });
+      });
+
+      it('merges attendee hints when user has ATTENDEE role', () => {
+        assert.deepEqual(InfoUtils.parse(info, ['ATTENDEE']), {
+          policy: {HINT_3: true, VOIP_IS_ENABLED: true},
+          moderator: {HINT_1: true, HINT_2: true, LOWER_SOMEONE_ELSES_HAND: true},
+          coHost: {HINT_4: true, LOWER_SOMEONE_ELSES_HAND: true},
+          presenter: {HINT_5: true},
+          panelist: {HINT_6: true},
+          attendee: {HINT_7: true},
+          userDisplayHints: ['HINT_3', 'VOIP_IS_ENABLED', 'HINT_7'],
+        });
+      });
+
       it('only adds datachannel url when present', () => {
         assert.deepEqual(InfoUtils.parse({datachannelUrl: 'some url'}, []), {
           coHost: {LOWER_SOMEONE_ELSES_HAND: true},
           moderator: {LOWER_SOMEONE_ELSES_HAND: true},
+          presenter: {},
+          panelist: {},
+          attendee: {},
           datachannelUrl: 'some url',
           policy: {},
           userDisplayHints: [],
@@ -102,6 +162,9 @@ describe('plugin-meetings', () => {
         assert.deepEqual(InfoUtils.parse({}, []), {
           coHost: {LOWER_SOMEONE_ELSES_HAND: true},
           moderator: {LOWER_SOMEONE_ELSES_HAND: true},
+          presenter: {},
+          panelist: {},
+          attendee: {},
           policy: {},
           userDisplayHints: [],
         });
@@ -170,6 +233,30 @@ describe('plugin-meetings', () => {
           ...parseDisplayHintSectionSpy.firstCall.returnValue,
           LOWER_SOMEONE_ELSES_HAND: true,
         });
+      });
+
+      it('parsePresenter calls parseDisplayHintSection correctly and returns the result', () => {
+        const result = InfoUtils.parsePresenter(info);
+
+        assert.calledWith(parseDisplayHintSectionSpy, info, 'presenter');
+
+        assert.deepEqual(result, parseDisplayHintSectionSpy.firstCall.returnValue);
+      });
+
+      it('parsePanelist calls parseDisplayHintSection correctly and returns the result', () => {
+        const result = InfoUtils.parsePanelist(info);
+
+        assert.calledWith(parseDisplayHintSectionSpy, info, 'panelist');
+
+        assert.deepEqual(result, parseDisplayHintSectionSpy.firstCall.returnValue);
+      });
+
+      it('parseAttendee calls parseDisplayHintSection correctly and returns the result', () => {
+        const result = InfoUtils.parseAttendee(info);
+
+        assert.calledWith(parseDisplayHintSectionSpy, info, 'attendee');
+
+        assert.deepEqual(result, parseDisplayHintSectionSpy.firstCall.returnValue);
       });
     });
   });

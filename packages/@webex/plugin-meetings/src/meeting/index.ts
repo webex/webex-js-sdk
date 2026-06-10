@@ -665,6 +665,7 @@ export default class Meeting extends StatelessWebexPlugin {
   joinedWith?: any;
   selfId?: string;
   roles: any[];
+  canNotViewTheParticipantList?: boolean;
   // ... there is more ... see SelfUtils.parse()
   // end of the group
   locusMediaRequest?: LocusMediaRequest;
@@ -1574,6 +1575,8 @@ export default class Meeting extends StatelessWebexPlugin {
     this.controlsOptionsManager = new ControlsOptionsManager(this.meetingRequest, {
       locusUrl: this.locusInfo?.url,
       displayHints: [],
+      getControls: () => this.locusInfo?.controls,
+      isWebinar: () => this.locusInfo?.info?.isWebinar,
     });
 
     this.setUpLocusInfoListeners();
@@ -4058,6 +4061,9 @@ export default class Meeting extends StatelessWebexPlugin {
     });
 
     this.locusInfo.on(LOCUSINFO.EVENTS.SELF_CANNOT_VIEW_PARTICIPANT_LIST_CHANGE, (payload) => {
+      // canViewTheParticipantList meeting action depends on this value, so we need to update meeting actions
+      this.updateMeetingActions();
+
       Trigger.trigger(
         this,
         {
@@ -4858,6 +4864,10 @@ export default class Meeting extends StatelessWebexPlugin {
             MeetingUtil.attendeeRequestAiAssistantDeclinedAll(this.userDisplayHints),
           isAnonymizeDisplayNamesEnabled: MeetingUtil.isAnonymizeDisplayNamesEnabled(
             this.userDisplayHints
+          ),
+          canViewTheParticipantList: MeetingUtil.canViewTheParticipantList(
+            this.userDisplayHints,
+            this.canNotViewTheParticipantList ?? false
           ),
         }) || changed;
     }
