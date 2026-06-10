@@ -152,6 +152,7 @@ export interface WebexSDK {
         mercuryApi: string;
         'ucmgmt-gateway': string;
         contactsService: string;
+        hydraDeveloperApi?: string;
       };
       _activeServices: {
         broadworksIdpProxy: string;
@@ -160,6 +161,7 @@ export interface WebexSDK {
         janus: string;
         mercuryApi: string;
         mobius: string;
+        hydraDeveloperApi?: string;
       };
       get: (service: string) => string;
       getMobiusClusters: () => ServiceHost[];
