@@ -330,6 +330,20 @@ describe('plugin-meetings', () => {
         assert.strictEqual(members.memberIdByHistoryCsi.size, 1);
         assert.strictEqual(members.memberIdByHistoryCsi.get(1000), 'test1');
       });
+
+      it("captures the current members' CSIs into memberIdByHistoryCsi before resetting", () => {
+        const members = createMembers({url: url1});
+        members.membersCollection.setAll({
+          m1: {id: 'm1', participant: {devices: [{csis: [1000, 1001]}]}},
+          m2: {id: 'm2', participant: {devices: [{csis: [2000]}]}},
+        });
+        sinon.stub(Trigger, 'trigger');
+        members.clearMembers();
+        assert.strictEqual(members.memberIdByHistoryCsi.get(1000), 'm1');
+        assert.strictEqual(members.memberIdByHistoryCsi.get(1001), 'm1');
+        assert.strictEqual(members.memberIdByHistoryCsi.get(2000), 'm2');
+        sinon.restore();
+      });
     });
     describe('#locusParticipantsUpdate', () => {
       beforeEach(() => {
