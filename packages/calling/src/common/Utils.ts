@@ -129,7 +129,7 @@ import {
   WEBEX_API_BTS,
   BW_XSI_ENDPOINT_VERSION_WITH_SLASH,
 } from './constants';
-import {Model, WebexSDK} from '../SDKConnector/types';
+import {Model, WDMDevice, WebexSDK} from '../SDKConnector/types';
 import SDKConnector from '../SDKConnector';
 import {CallSettingResponse} from '../CallSettings/types';
 import {ContactResponse} from '../Contacts/types';
@@ -1216,16 +1216,16 @@ export const waitForMsecs = (msec: number) =>
   });
 
 /**
- * Register calling backend.
+ * Determine the calling backend from the device object.
  *
- * @param webex -.
+ * @param device - The device object containing callingBehavior and entitlement features.
  * @returns CallingBackEnd.
  */
-export function getCallingBackEnd(webex: WebexSDK): CALLING_BACKEND {
-  const entModels: Model[] = webex.internal.device.features.entitlement.models;
+export function resolveCallingBackend(device: WDMDevice): CALLING_BACKEND {
+  const entModels: Model[] = device.features.entitlement.models;
   let callingBackend;
 
-  if (webex.internal.device.callingBehavior === NATIVE_WEBEX_TEAMS_CALLING) {
+  if (device.callingBehavior === NATIVE_WEBEX_TEAMS_CALLING) {
     for (let i = 0; i < entModels.length; i += 1) {
       if (
         entModels[i][VALUES][KEY] === ENTITLEMENT_BASIC ||
@@ -1238,13 +1238,23 @@ export function getCallingBackEnd(webex: WebexSDK): CALLING_BACKEND {
         break;
       }
     }
-  } else if (webex.internal.device.callingBehavior === NATIVE_SIP_CALL_TO_UCM) {
+  } else if (device.callingBehavior === NATIVE_SIP_CALL_TO_UCM) {
     callingBackend = CALLING_BACKEND.UCM;
   } else {
     callingBackend = CALLING_BACKEND.INVALID;
   }
 
-  return callingBackend as CALLING_BACKEND;
+  return callingBackend || CALLING_BACKEND.INVALID;
+}
+
+/**
+ * Register calling backend.
+ *
+ * @param webex -.
+ * @returns CallingBackEnd.
+ */
+export function getCallingBackEnd(webex: WebexSDK): CALLING_BACKEND {
+  return resolveCallingBackend(webex.internal.device);
 }
 
 /**

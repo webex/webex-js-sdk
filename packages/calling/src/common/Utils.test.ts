@@ -51,6 +51,8 @@ import {
   modifySdpForIPv4,
   uploadLogs,
   handleCallingClientErrors,
+  resolveCallingBackend,
+  getCallingBackEnd,
 } from './Utils';
 import {
   getVoicemailListJsonWXC,
@@ -2079,5 +2081,90 @@ describe('uploadLogs', () => {
         type: 'behavioral',
       }
     );
+  });
+});
+
+describe('resolveCallingBackend', () => {
+  const createDevice = (callingBehavior: string, entitlementKeys: string[]) => ({
+    url: 'https://wdm.example.com/devices/123',
+    userId: 'user-id',
+    orgId: 'org-id',
+    version: '1.0',
+    callingBehavior,
+    features: {
+      developer: {models: [], get: jest.fn()},
+      entitlement: {
+        models: entitlementKeys.map((key) => ({_values: {key}})),
+      },
+    },
+  });
+
+  it.each([
+    ['bc-sp-basic', CALLING_BACKEND.WXC],
+    ['bc-sp-standard', CALLING_BACKEND.WXC],
+  ])(
+    'returns WXC when callingBehavior is NATIVE_WEBEX_TEAMS_CALLING and entitlement is %s',
+    (entitlement, expected) => {
+      const device = createDevice('NATIVE_WEBEX_TEAMS_CALLING', [entitlement]);
+
+      expect(resolveCallingBackend(device)).toBe(expected);
+    }
+  );
+
+  it('returns BWRKS when callingBehavior is NATIVE_WEBEX_TEAMS_CALLING and entitlement is broadworks-connector', () => {
+    const device = createDevice('NATIVE_WEBEX_TEAMS_CALLING', ['broadworks-connector']);
+
+    expect(resolveCallingBackend(device)).toBe(CALLING_BACKEND.BWRKS);
+  });
+
+  it('returns UCM when callingBehavior is NATIVE_SIP_CALL_TO_UCM', () => {
+    const device = createDevice('NATIVE_SIP_CALL_TO_UCM', []);
+
+    expect(resolveCallingBackend(device)).toBe(CALLING_BACKEND.UCM);
+  });
+
+  it('returns INVALID when callingBehavior is unknown', () => {
+    const device = createDevice('UNKNOWN_BEHAVIOR', []);
+
+    expect(resolveCallingBackend(device)).toBe(CALLING_BACKEND.INVALID);
+  });
+
+  it('returns INVALID when callingBehavior is NATIVE_WEBEX_TEAMS_CALLING but no matching entitlement', () => {
+    const device = createDevice('NATIVE_WEBEX_TEAMS_CALLING', ['some-other-entitlement']);
+
+    expect(resolveCallingBackend(device)).toBe(CALLING_BACKEND.INVALID);
+  });
+
+  it('matches the first qualifying entitlement when multiple are present', () => {
+    const device = createDevice('NATIVE_WEBEX_TEAMS_CALLING', [
+      'broadworks-connector',
+      'bc-sp-basic',
+    ]);
+
+    expect(resolveCallingBackend(device)).toBe(CALLING_BACKEND.BWRKS);
+  });
+});
+
+describe('getCallingBackEnd', () => {
+  it('passes webex.internal.device to resolveCallingBackend and returns its result', () => {
+    const device = {
+      url: 'https://wdm.example.com/devices/123',
+      userId: 'user-id',
+      orgId: 'org-id',
+      version: '1.0',
+      callingBehavior: 'NATIVE_SIP_CALL_TO_UCM',
+      features: {
+        developer: {models: [], get: jest.fn()},
+        entitlement: {models: []},
+      },
+    };
+
+    const mockWebex = {internal: {device}} as any;
+
+    const result = getCallingBackEnd(mockWebex);
+
+    expect(result).toBe(resolveCallingBackend(device));
+    expect(resolveCallingBackend(device)).toBe(CALLING_BACKEND.UCM);
+    expect(result).toBe(CALLING_BACKEND.UCM);
   });
 });
