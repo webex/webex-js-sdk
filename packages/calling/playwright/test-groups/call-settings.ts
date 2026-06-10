@@ -271,17 +271,25 @@ export function callSettingsTests() {
     // CS-CFA-007: Get CF Always by directory number
     // -----------------------------------------------------------------------
 
-    test('CS-CFA-007: Get CF Always — result data appears after directory number lookup', async () => {
+    test('CS-CFA-007: Get CF Always — lookup returns callForwarding.always from API', async () => {
       const directoryNumber = getPhoneNumber('USER_1');
 
       await page
         .locator(CALLING_SELECTORS.CF_DIRECTORY_NUMBER)
         .fill(directoryNumber, {timeout: AWAIT_TIMEOUT});
+
+      const cfGetResponse = page.waitForResponse(
+        (r) => r.url().includes('callForwarding') && r.request().method() === 'GET' && r.ok(),
+        {timeout: OPERATION_TIMEOUT}
+      );
+
       await page.locator(CALLING_SELECTORS.CF_ALWAYS_BTN).click({timeout: AWAIT_TIMEOUT});
 
-      await expect(page.locator(CALLING_SELECTORS.CF_ALWAYS_DATA)).not.toBeEmpty({
-        timeout: OPERATION_TIMEOUT,
-      });
+      const response = await cfGetResponse;
+      const body = await response.json();
+
+      expect(body.callForwarding?.always).toBeDefined();
+      expect(typeof body.callForwarding.always.enabled).toBe('boolean');
     });
 
     // -----------------------------------------------------------------------
@@ -292,20 +300,23 @@ export function callSettingsTests() {
       await loadSettings(page);
       const original = await getDndText(page);
 
-      await page.route('**/features/doNotDisturb*', async (route) => {
+      const routeHandler = async (route) => {
         if (route.request().method() === 'PUT') {
           await route.fulfill({status: 500, body: 'Internal Server Error'});
         } else {
           await route.continue();
         }
-      });
+      };
 
-      await page.locator(CALLING_SELECTORS.DND_BTN).click({timeout: AWAIT_TIMEOUT});
-      await expect(page.locator(CALLING_SELECTORS.DND_BTN)).toHaveText(original, {
-        timeout: OPERATION_TIMEOUT,
-      });
-
-      await page.unroute('**/features/doNotDisturb*');
+      await page.route('**/features/doNotDisturb*', routeHandler);
+      try {
+        await page.locator(CALLING_SELECTORS.DND_BTN).click({timeout: AWAIT_TIMEOUT});
+        await expect(page.locator(CALLING_SELECTORS.DND_BTN)).toHaveText(original, {
+          timeout: OPERATION_TIMEOUT,
+        });
+      } finally {
+        await page.unroute('**/features/doNotDisturb*', routeHandler);
+      }
     });
 
     // -----------------------------------------------------------------------
@@ -360,23 +371,23 @@ export function callSettingsTests() {
       // Step 3 — set numberOfRings for sendUnansweredCalls, save, reload, verify
       await loadSettings(page);
       const originalUnanswered = await page.locator(CALLING_SELECTORS.VM_UNANSWERED_CB).isChecked();
-      if (!originalUnanswered) {
-        await page.locator(CALLING_SELECTORS.VM_UNANSWERED_CB).check({timeout: AWAIT_TIMEOUT});
-      }
+      const originalRings = await page.locator(CALLING_SELECTORS.VM_UNANSWERED_RINGS).inputValue();
 
-      const targetRings = '4';
-      await page.locator(CALLING_SELECTORS.VM_UNANSWERED_RINGS).fill(targetRings, {force: true});
-      await saveVoicemailSettings(page);
+      try {
+        if (!originalUnanswered) {
+          await page.locator(CALLING_SELECTORS.VM_UNANSWERED_CB).check({timeout: AWAIT_TIMEOUT});
+        }
 
-      await loadSettings(page);
-      await expect(page.locator(CALLING_SELECTORS.VM_UNANSWERED_RINGS)).toHaveValue(targetRings, {
-        timeout: OPERATION_TIMEOUT,
-      });
-
-      // Restore sendUnansweredCalls if it was originally off
-      if (!originalUnanswered) {
-        await page.locator(CALLING_SELECTORS.VM_UNANSWERED_CB).uncheck({timeout: AWAIT_TIMEOUT});
+        const targetRings = '4';
+        await page.locator(CALLING_SELECTORS.VM_UNANSWERED_RINGS).fill(targetRings, {force: true});
         await saveVoicemailSettings(page);
+
+        await loadSettings(page);
+        await expect(page.locator(CALLING_SELECTORS.VM_UNANSWERED_RINGS)).toHaveValue(targetRings, {
+          timeout: OPERATION_TIMEOUT,
+        });
+      } finally {
+        await setVoicemailSendUnansweredCalls(page, originalUnanswered, originalRings);
       }
     });
 
@@ -529,33 +540,35 @@ export function callSettingsTests() {
       const originalChecked = await page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_CB).isChecked();
       const originalEmail = await page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_ID).inputValue();
 
-      // Enable the checkbox so the email input is accessible.
-      if (!originalChecked) {
-        await page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_CB).check({timeout: AWAIT_TIMEOUT});
+      try {
+        // Enable the checkbox so the email input is accessible.
+        if (!originalChecked) {
+          await page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_CB).check({timeout: AWAIT_TIMEOUT});
+        }
+
+        // Fill a test email. The input may be hidden until the checkbox is checked;
+        // force:true bypasses the visibility check (same pattern as vmNotAnsweredRings).
+        const testEmail = 'autotest-notification@example.com';
+        await page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_ID).fill(testEmail, {force: true});
+        await saveVoicemailSettings(page);
+        await loadSettings(page);
+
+        await expect(page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_CB)).toBeChecked({
+          timeout: OPERATION_TIMEOUT,
+        });
+        await expect(page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_ID)).toHaveValue(testEmail, {
+          timeout: OPERATION_TIMEOUT,
+        });
+      } finally {
+        if (originalChecked) {
+          await page
+            .locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_ID)
+            .fill(originalEmail, {force: true});
+        } else {
+          await page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_CB).uncheck({timeout: AWAIT_TIMEOUT});
+        }
+        await saveVoicemailSettings(page);
       }
-
-      // Fill a test email. The input may be hidden until the checkbox is checked;
-      // force:true bypasses the visibility check (same pattern as vmNotAnsweredRings).
-      const testEmail = 'autotest-notification@example.com';
-      await page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_ID).fill(testEmail, {force: true});
-      await saveVoicemailSettings(page);
-      await loadSettings(page);
-
-      // Verify the checkbox is ON and the email value persisted.
-      await expect(page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_CB)).toBeChecked({
-        timeout: OPERATION_TIMEOUT,
-      });
-      await expect(page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_ID)).toHaveValue(testEmail, {
-        timeout: OPERATION_TIMEOUT,
-      });
-
-      // Restore checkbox and email to pre-test values on the server.
-      if (originalChecked) {
-        await page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_ID).fill(originalEmail, {force: true});
-      } else {
-        await page.locator(CALLING_SELECTORS.VM_NOTIF_EMAIL_CB).uncheck({timeout: AWAIT_TIMEOUT});
-      }
-      await saveVoicemailSettings(page);
     });
 
     // -----------------------------------------------------------------------
@@ -567,32 +580,31 @@ export function callSettingsTests() {
       const originalChecked = await page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_CB).isChecked();
       const originalEmail = await page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_ID).inputValue();
 
-      // Enable the checkbox so the email input is accessible.
-      if (!originalChecked) {
-        await page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_CB).check({timeout: AWAIT_TIMEOUT});
+      try {
+        // Enable the checkbox so the email input is accessible.
+        if (!originalChecked) {
+          await page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_CB).check({timeout: AWAIT_TIMEOUT});
+        }
+
+        const testEmail = 'autotest-emailcopy@example.com';
+        await page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_ID).fill(testEmail, {force: true});
+        await saveVoicemailSettings(page);
+        await loadSettings(page);
+
+        await expect(page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_CB)).toBeChecked({
+          timeout: OPERATION_TIMEOUT,
+        });
+        await expect(page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_ID)).toHaveValue(testEmail, {
+          timeout: OPERATION_TIMEOUT,
+        });
+      } finally {
+        if (originalChecked) {
+          await page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_ID).fill(originalEmail, {force: true});
+        } else {
+          await page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_CB).uncheck({timeout: AWAIT_TIMEOUT});
+        }
+        await saveVoicemailSettings(page);
       }
-
-      // Fill a test email with force:true in case the input is hidden.
-      const testEmail = 'autotest-emailcopy@example.com';
-      await page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_ID).fill(testEmail, {force: true});
-      await saveVoicemailSettings(page);
-      await loadSettings(page);
-
-      // Verify the checkbox is ON and the email value persisted.
-      await expect(page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_CB)).toBeChecked({
-        timeout: OPERATION_TIMEOUT,
-      });
-      await expect(page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_ID)).toHaveValue(testEmail, {
-        timeout: OPERATION_TIMEOUT,
-      });
-
-      // Restore checkbox and email to pre-test values on the server.
-      if (originalChecked) {
-        await page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_ID).fill(originalEmail, {force: true});
-      } else {
-        await page.locator(CALLING_SELECTORS.VM_EMAIL_COPY_CB).uncheck({timeout: AWAIT_TIMEOUT});
-      }
-      await saveVoicemailSettings(page);
     });
   });
 }
@@ -651,8 +663,10 @@ export function callSettingsCallTests() {
       callerPage = tm.getPage(tm.userSet.accounts[1]);
       secondCallerPage = tm.getPage(tm.userSet.accounts[2]);
       calleeNumber = getPhoneNumber(tm.userSet.accounts[0]);
-      // USER_4's number is a valid system number with no active registration here,
-      // so calls forwarded to it go to voicemail rather than looping back.
+      // USER_4 is the CF forward destination. SET_CALL_SETTINGS depends on
+      // SET_CALL (which owns/registers USER_4), so USER_4 is already deregistered
+      // by the time these CF tests run — forwarded calls reach voicemail instead
+      // of ringing a live device in another suite.
       cfDestination = getPhoneNumber('USER_4');
 
       // -----------------------------------------------------------------------
