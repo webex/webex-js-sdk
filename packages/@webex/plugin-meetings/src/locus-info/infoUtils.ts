@@ -1,5 +1,15 @@
 import {SELF_ROLES, DISPLAY_HINTS, INTERSTITIAL_DISPLAY_HINTS} from '../constants';
 
+// these values have to match what Locus sends us
+export enum DisplayHintSection {
+  JOINED = 'joined',
+  MODERATOR = 'moderator',
+  COHOST = 'coHost',
+  PRESENTER = 'presenter',
+  PANELIST = 'panelist',
+  ATTENDEE = 'attendee',
+}
+
 const InfoUtils: any = {};
 
 InfoUtils.parse = (info, roles, isJoined = true) => {
@@ -7,6 +17,9 @@ InfoUtils.parse = (info, roles, isJoined = true) => {
     policy: InfoUtils.parsePolicy(info),
     moderator: InfoUtils.parseModerator(info),
     coHost: InfoUtils.parseCoHost(info),
+    presenter: InfoUtils.parsePresenter(info),
+    panelist: InfoUtils.parsePanelist(info),
+    attendee: InfoUtils.parseAttendee(info),
   };
 
   let userDisplayHints = isJoined
@@ -27,6 +40,18 @@ InfoUtils.parse = (info, roles, isJoined = true) => {
     userDisplayHints = {...userDisplayHints, ...parsed.moderator};
   }
 
+  if (roles.includes(SELF_ROLES.PRESENTER)) {
+    userDisplayHints = {...userDisplayHints, ...parsed.presenter};
+  }
+
+  if (roles.includes(SELF_ROLES.PANELIST)) {
+    userDisplayHints = {...userDisplayHints, ...parsed.panelist};
+  }
+
+  if (roles.includes(SELF_ROLES.ATTENDEE)) {
+    userDisplayHints = {...userDisplayHints, ...parsed.attendee};
+  }
+
   parsed.userDisplayHints = Object.keys(userDisplayHints);
 
   if (info.sipUri) {
@@ -44,8 +69,8 @@ InfoUtils.parse = (info, roles, isJoined = true) => {
   return parsed;
 };
 
-InfoUtils.parseDisplayHintSection = (info, displayHintKey) => {
-  const displayHints = {};
+InfoUtils.parseDisplayHintSection = (info: any, displayHintKey: DisplayHintSection) => {
+  const displayHints: Record<string, boolean> = {};
 
   if (
     info &&
@@ -53,7 +78,7 @@ InfoUtils.parseDisplayHintSection = (info, displayHintKey) => {
     info.displayHints[displayHintKey] &&
     info.displayHints[displayHintKey].length > 0
   ) {
-    info.displayHints[displayHintKey].forEach((key) => {
+    info.displayHints[displayHintKey].forEach((key: any) => {
       displayHints[key] = true;
     });
   }
@@ -61,19 +86,29 @@ InfoUtils.parseDisplayHintSection = (info, displayHintKey) => {
   return displayHints;
 };
 
-InfoUtils.parsePolicy = (info) => InfoUtils.parseDisplayHintSection(info, 'joined');
+InfoUtils.parsePolicy = (info) =>
+  InfoUtils.parseDisplayHintSection(info, DisplayHintSection.JOINED);
 
 InfoUtils.parseModerator = (info) => {
-  const displayHints = InfoUtils.parseDisplayHintSection(info, 'moderator');
+  const displayHints = InfoUtils.parseDisplayHintSection(info, DisplayHintSection.MODERATOR);
 
   return {...displayHints, [DISPLAY_HINTS.LOWER_SOMEONE_ELSES_HAND]: true};
 };
 
 InfoUtils.parseCoHost = (info) => {
-  const displayHints = InfoUtils.parseDisplayHintSection(info, 'coHost');
+  const displayHints = InfoUtils.parseDisplayHintSection(info, DisplayHintSection.COHOST);
 
   return {...displayHints, [DISPLAY_HINTS.LOWER_SOMEONE_ELSES_HAND]: true};
 };
+
+InfoUtils.parsePresenter = (info) =>
+  InfoUtils.parseDisplayHintSection(info, DisplayHintSection.PRESENTER);
+
+InfoUtils.parsePanelist = (info) =>
+  InfoUtils.parseDisplayHintSection(info, DisplayHintSection.PANELIST);
+
+InfoUtils.parseAttendee = (info) =>
+  InfoUtils.parseDisplayHintSection(info, DisplayHintSection.ATTENDEE);
 
 InfoUtils.isLocked = (policy) => policy.LOCK_STATUS_LOCKED || false;
 
