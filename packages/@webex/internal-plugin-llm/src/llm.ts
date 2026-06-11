@@ -8,9 +8,8 @@ import {
   DATA_CHANNEL_WITH_JWT_TOKEN,
   AWARE_DATA_CHANNEL,
   SUBSCRIPTION_AWARE_SUBCHANNELS_PARAM,
-  LLM_DEFAULT_SESSION,
 } from './constants';
-import {ILLMChannel, DataChannelTokenType} from './llm.types';
+import {ILLMChannel} from './llm.types';
 
 export const config = {
   llm: {
@@ -48,46 +47,19 @@ export const config = {
  */
 export default class LLMChannel extends (Mercury as any) implements ILLMChannel {
   namespace = LLM;
-  defaultSessionId = LLM_DEFAULT_SESSION;
-  /**
-   * Map to store connection-specific data for multiple LLM connections
-   * Key: sessionId
-   * @private
-   * @type {Map<string, {webSocketUrl?: string; binding?: string; locusUrl?: string; datachannelUrl?: string}>}
-   */
-  private connections: Map<
-    string,
-    {
-      webSocketUrl?: string;
-      binding?: string;
-      locusUrl?: string;
-      datachannelUrl?: string;
-      ownerMeetingId?: string;
-      refreshHandler?: () => Promise<{
-        body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
-      }>;
-    }
-  > = new Map();
-
-  // Session-keyed token cache is intentionally decoupled from connection state.
-  // Disconnecting a socket session must not implicitly wipe token cache.
-  private datachannelTokens: Record<string, string | undefined> = {
-    [DataChannelTokenType.Default]: undefined,
-    [DataChannelTokenType.PracticeSession]: undefined,
-  };
+  private webSocketUrl?: string;
+  private binding?: string;
+  private locusUrl?: string;
+  private datachannelUrl?: string;
+  private datachannelToken?: string;
 
   /**
    * Register to the websocket
    * @param {string} llmSocketUrl
    * @param {string} datachannelToken
-   * @param {string} sessionId - Connection identifier
    * @returns {Promise<void>}
    */
-  private register = async (
-    llmSocketUrl: string,
-    datachannelToken?: string,
-    sessionId: string = LLM_DEFAULT_SESSION
-  ): Promise<void> => {
+  private register = async (llmSocketUrl: string, datachannelToken?: string): Promise<void> => {
     const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
 
     return this.request({
@@ -100,14 +72,11 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
           : {},
     })
       .then((res: {body: {webSocketUrl: string; binding: string}}) => {
-        // Get or create connection data
-        const sessionData = this.connections.get(sessionId) || {};
-        sessionData.webSocketUrl = res.body.webSocketUrl;
-        sessionData.binding = res.body.binding;
-        this.connections.set(sessionId, sessionData);
+        this.webSocketUrl = res.body.webSocketUrl;
+        this.binding = res.body.binding;
       })
       .catch((error: any) => {
-        this.logger.error(`Error connecting to websocket for ${sessionId}: ${error}`);
+        this.logger.error(`LLMChannel#register --> Error connecting to websocket: ${error}`);
         throw error;
       });
   };
@@ -117,304 +86,95 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
    * @param {string} locusUrl
    * @param {string} datachannelUrl
    * @param {string} datachannelToken
-   * @param {string} sessionId - Connection identifier
    * @returns {Promise<void>}
    */
   public registerAndConnect = (
     locusUrl: string,
     datachannelUrl: string,
-    datachannelToken?: string,
-    sessionId: string = LLM_DEFAULT_SESSION
+    datachannelToken?: string
   ): Promise<void> => {
-    // Pre-populate locusUrl and datachannelUrl before register() fires the
-    // HTTP POST, so that any token refresh triggered during registration can
-    // be routed via connections without falling back to a locusInfo URL scan.
-    if (locusUrl && datachannelUrl) {
-      const sessionData = this.connections.get(sessionId) || {};
-      sessionData.locusUrl = locusUrl;
-      sessionData.datachannelUrl = datachannelUrl;
-      this.connections.set(sessionId, sessionData);
-    }
+    // Store directly on the instance — no session map needed
+    this.locusUrl = locusUrl;
+    this.datachannelUrl = datachannelUrl;
 
-    return this.register(datachannelUrl, datachannelToken, sessionId).then(async () => {
-      if (!locusUrl || !datachannelUrl) return undefined;
-
-      // locusUrl and datachannelUrl were pre-populated before register(); here
-      // we only need to read the existing session data to get webSocketUrl/binding
-      // that register() filled in.
-      const sessionData = this.connections.get(sessionId) || {};
-
+    return this.register(datachannelUrl, datachannelToken).then(async () => {
       const isDataChannelTokenEnabled = await this.isDataChannelTokenEnabled();
 
-      const connectUrl = isDataChannelTokenEnabled
-        ? LLMChannel.buildUrlWithAwareSubchannels(sessionData.webSocketUrl, AWARE_DATA_CHANNEL)
-        : sessionData.webSocketUrl;
+      const connectUrl =
+        isDataChannelTokenEnabled && this.webSocketUrl
+          ? LLMChannel.buildUrlWithAwareSubchannels(this.webSocketUrl, AWARE_DATA_CHANNEL)
+          : this.webSocketUrl;
 
-      return this.connect(connectUrl, sessionId);
+      return this.connect(connectUrl);
     });
   };
 
   /**
    * Tells if LLM socket is connected
-   * @param {string} sessionId - Connection identifier
    * @returns {boolean} connected
    */
-  public isConnected = (sessionId = LLM_DEFAULT_SESSION): boolean => {
-    const socket = this.getSocket(sessionId);
+  public isConnected = (): boolean => {
+    const socket = this.getSocket();
 
     return socket ? socket.connected : false;
   };
 
   /**
-   * Tells if LLM socket is binding
-   * @param {string} sessionId - Connection identifier
-   * @returns {string} binding
+   * @returns {string | undefined} The WebSocket binding identifier
    */
-  public getBinding = (sessionId = LLM_DEFAULT_SESSION): string => {
-    const sessionData = this.connections.get(sessionId);
-
-    return sessionData?.binding;
-  };
+  public getBinding = (): string | undefined => this.binding;
 
   /**
-   * Get Locus URL for the connection
-   * @param {string} sessionId - Connection identifier
-   * @returns {string} locus Url
+   * @returns {string | undefined} The locus URL for this connection
    */
-  public getLocusUrl = (sessionId = LLM_DEFAULT_SESSION): string => {
-    const sessionData = this.connections.get(sessionId);
-
-    return sessionData?.locusUrl;
-  };
+  public getLocusUrl = (): string | undefined => this.locusUrl;
 
   /**
-   * Get data channel URL for the connection
-   * @param {string} sessionId - Connection identifier
-   * @returns {string} data channel Url
+   * @returns {string | undefined} The datachannel registration URL
    */
-  public getDatachannelUrl = (sessionId = LLM_DEFAULT_SESSION): string => {
-    const sessionData = this.connections.get(sessionId);
-
-    return sessionData?.datachannelUrl;
-  };
+  public getDatachannelUrl = (): string | undefined => this.datachannelUrl;
 
   /**
-   * Set the owner meeting ID for a given LLM session. Used by the meetings
-   * plugin to tag which Meeting instance currently owns the (default) LLM
-   * connection so that other Meeting instances can avoid disconnecting or
-   * re-initializing a connection they do not own.
-   *
-   * Does NOT create a connections entry if one does not already exist — this
-   * method is a no-op when there is no active session data. Callers should
-   * invoke it after a successful `registerAndConnect` or during an explicit
-   * ownership handoff.
-   *
-   * @param {string | undefined} ownerMeetingId - Meeting ID (or undefined to clear)
-   * @param {string} sessionId - Connection identifier (defaults to default session)
+   * @returns {string | undefined} The current datachannel auth token
+   */
+  public getDatachannelToken = (): string | undefined => this.datachannelToken;
+
+  /**
+   * @param {string | undefined} token - The datachannel auth token to store
    * @returns {void}
    */
-  public setOwnerMeetingId = (
-    ownerMeetingId: string | undefined,
-    sessionId: string = LLM_DEFAULT_SESSION
-  ): void => {
-    const sessionData = this.connections.get(sessionId);
-
-    if (!sessionData) {
-      return;
-    }
-
-    sessionData.ownerMeetingId = ownerMeetingId;
-    this.connections.set(sessionId, sessionData);
+  public setDatachannelToken = (token: string | undefined): void => {
+    this.datachannelToken = token;
   };
 
-  /**
-   * Get the owner meeting ID currently associated with an LLM session.
-   * Returns undefined when no owner has been assigned (e.g. before the
-   * first successful `registerAndConnect`, or after `disconnectLLM`).
-   *
-   * @param {string} sessionId - Connection identifier (defaults to default session)
-   * @returns {string | undefined} ownerMeetingId
-   */
-  public getOwnerMeetingId = (sessionId: string = LLM_DEFAULT_SESSION): string | undefined => {
-    const sessionData = this.connections.get(sessionId);
-
-    return sessionData?.ownerMeetingId;
-  };
-
-  /**
-   * Resolve ownership information for an LLM session.
-   *
-   * Rules:
-   * - no current owner => caller may proceed
-   * - caller has no identity to assert => treat as owner
-   * - otherwise caller must match current owner
-   *
-   * @param {string | undefined} ownerMeetingId - Candidate owner to evaluate
-   * @param {string} sessionId - Connection identifier (defaults to default session)
-   * @returns {{currentOwner: (string|undefined), isOwner: boolean}}
-   */
-  public resolveSessionOwnership = (
-    ownerMeetingId?: string,
-    sessionId: string = LLM_DEFAULT_SESSION
-  ): {
-    currentOwner: string | undefined;
-    isOwner: boolean;
-  } => {
-    const currentOwner = this.getOwnerMeetingId(sessionId);
-    const isOwner = !currentOwner || !ownerMeetingId || currentOwner === ownerMeetingId;
-
-    return {
-      currentOwner,
-      isOwner,
-    };
-  };
-
-  /**
-   * Get data channel token for the connection
-   * @param {DataChannelTokenType|string} tokenKey
-   * @param {string | undefined} ownerMeetingId - Meeting id asserting read ownership
-   * @returns {string | undefined} data channel token
-   */
-  public getDatachannelToken = (
-    tokenKey?: DataChannelTokenType | string,
-    ownerMeetingId?: string
-  ): string | undefined => {
-    const resolvedTokenKey = tokenKey ?? DataChannelTokenType.Default;
-
-    const {currentOwner, isOwner} = this.resolveSessionOwnership(ownerMeetingId, resolvedTokenKey);
-
-    if (!isOwner) {
-      this.logger.info(
-        `llm#getDatachannelToken --> skip read for session ${resolvedTokenKey}; owned by ${currentOwner}, candidate ${ownerMeetingId}`
-      );
-
-      return undefined;
-    }
-
-    return this.datachannelTokens[resolvedTokenKey];
-  };
-
-  /**
-   * Set data channel token for the connection
-   * @param {string} datachannelToken - data channel token
-   * @param {DataChannelTokenType|string} [tokenKey]
-   * @param {string | undefined} ownerMeetingId - Meeting id asserting write ownership
-   * @returns {void}
-   */
-  public setDatachannelToken = (
-    datachannelToken: string,
-    tokenKey?: DataChannelTokenType | string,
-    ownerMeetingId?: string
-  ): void => {
-    const resolvedTokenKey = tokenKey ?? DataChannelTokenType.Default;
-
-    const {currentOwner, isOwner} = this.resolveSessionOwnership(ownerMeetingId, resolvedTokenKey);
-
-    if (!isOwner) {
-      this.logger.info(
-        `llm#setDatachannelToken --> skip write for session ${resolvedTokenKey}; owned by ${currentOwner}, candidate ${ownerMeetingId}`
-      );
-
-      return;
-    }
-
-    this.datachannelTokens[resolvedTokenKey] = datachannelToken;
-  };
-
-  /**
-   * Clears a single session's data channel token.
-   * @param {DataChannelTokenType|string} tokenKey
-   * @param {string} ownerMeetingId - Meeting id asserting delete ownership
-   * @returns {void}
-   */
-  public clearDatachannelToken = (
-    tokenKey: DataChannelTokenType | string,
-    ownerMeetingId: string
-  ): void => {
-    const resolvedTokenKey = tokenKey;
-
-    const {currentOwner, isOwner} = this.resolveSessionOwnership(ownerMeetingId, resolvedTokenKey);
-
-    if (!isOwner) {
-      this.logger.info(
-        `llm#clearDatachannelToken --> skip clear for session ${resolvedTokenKey}; owned by ${currentOwner}, candidate ${ownerMeetingId}`
-      );
-
-      return;
-    }
-
-    this.datachannelTokens[resolvedTokenKey] = undefined;
-    delete this.datachannelTokens[resolvedTokenKey];
-  };
+  private refreshHandler?: () => Promise<{body: {datachannelToken: string}}>;
 
   /**
    * Set the handler used to refresh the DataChannel token
    *
    * @param {function} handler - Function that returns a refreshed token
-   * @param {string} [sessionId] - Connection identifier
-   * @param {string | undefined} ownerMeetingId - Meeting id asserting refresh-handler ownership
    * @returns {void}
    */
-  public setRefreshHandler(
-    handler: () => Promise<{
-      body: {datachannelToken: string; datachannelTokenType: DataChannelTokenType};
-    }>,
-    sessionId?: string,
-    ownerMeetingId?: string
-  ) {
-    const resolvedSessionId = sessionId ?? LLM_DEFAULT_SESSION;
-
-    const {currentOwner, isOwner} = this.resolveSessionOwnership(ownerMeetingId, resolvedSessionId);
-
-    if (!isOwner) {
-      this.logger.info(
-        `llm#setRefreshHandler --> skip write for session ${resolvedSessionId}; owned by ${currentOwner}, candidate ${ownerMeetingId}`
-      );
-
-      return;
-    }
-
-    const sessionData = this.connections.get(resolvedSessionId);
-
-    if (sessionData) {
-      sessionData.refreshHandler = handler;
-      if (ownerMeetingId) {
-        sessionData.ownerMeetingId = ownerMeetingId;
-      }
-
-      return;
-    }
-
-    // Intentionally allow a pre-connection session shape here.
-    // Some flows inject refreshHandler before register/connect so token refresh
-    // is already wired when the socket lifecycle starts. register()/
-    // registerAndConnect() will later fill webSocketUrl/binding/locusUrl/
-    // datachannelUrl into this same session entry.
-    this.connections.set(resolvedSessionId, {
-      refreshHandler: handler,
-      ownerMeetingId,
-    });
+  public setRefreshHandler(handler: () => Promise<{body: {datachannelToken: string}}>): void {
+    this.refreshHandler = handler;
   }
 
   /**
    * Refresh the data channel token using the injected handler.
    * Logs a descriptive error if the handler is missing or fails.
-   * @param {string} sessionId - Connection identifier (defaults to default session)
    * @returns {Promise<string>} The refreshed token.
    */
-  public async refreshDataChannelToken(sessionId: string = LLM_DEFAULT_SESSION) {
-    const refreshHandler = this.connections.get(sessionId)?.refreshHandler;
-
-    if (!refreshHandler) {
+  public async refreshDataChannelToken() {
+    if (!this.refreshHandler) {
       this.logger.warn(
-        `llm#refreshDataChannelToken --> LLM refreshHandler is not set for session ${sessionId}, skipping token refresh`
+        `llm#refreshDataChannelToken --> LLM refreshHandler is not set, skipping token refresh`
       );
 
       return null;
     }
 
     try {
-      const res = await refreshHandler();
+      const res = await this.refreshHandler();
 
       return res;
     } catch (error: any) {
@@ -431,120 +191,17 @@ export default class LLMChannel extends (Mercury as any) implements ILLMChannel 
   /**
    * Disconnects websocket connection
    * @param {{code: number, reason: string}} options - The disconnect option object with code and reason
-   * @param {string} sessionId - Connection identifier
-   * @param {string} ownerMeetingId - Meeting id asserting disconnect ownership
-   * @returns {Promise<boolean>} True when disconnect was performed, false when skipped
-   */
-  public disconnectLLM = (
-    options: {code: number; reason: string},
-    sessionId?: string,
-    ownerMeetingId?: string
-  ): Promise<boolean> => {
-    const resolvedSessionId = sessionId ?? LLM_DEFAULT_SESSION;
-
-    // Backward-compat path: historically callers could omit ownerMeetingId
-    // (and sometimes sessionId). Reuse current owner when available so legacy
-    // calls remain best-effort without throwing at teardown time.
-    const resolvedOwnerMeetingId = ownerMeetingId || this.getOwnerMeetingId(resolvedSessionId);
-
-    if (!ownerMeetingId) {
-      this.logger.warn(
-        `llm#disconnectLLM --> ownerMeetingId is omitted for session ${resolvedSessionId}; using legacy compatibility path`
-      );
-    }
-
-    const {currentOwner, isOwner} = this.resolveSessionOwnership(
-      resolvedOwnerMeetingId,
-      resolvedSessionId
-    );
-
-    if (!isOwner) {
-      this.logger.info(
-        `llm#disconnectLLM --> skip disconnect for session ${resolvedSessionId}; owned by ${currentOwner}, candidate ${resolvedOwnerMeetingId}`
-      );
-
-      return Promise.resolve(false);
-    }
-
-    return this.disconnect(options, resolvedSessionId).then(() => {
-      // Clear owner tag before cleanup to ensure it's not lingering
-      // if another meeting claimed it during disconnect
-      this.setOwnerMeetingId(undefined, resolvedSessionId);
-
-      // Clean up sessions data
-      this.connections.delete(resolvedSessionId);
-
-      return true;
-    });
-  };
-
-  /**
-   * Disconnects all LLM websocket connections
-   * @param {{code: number, reason: string}} options - The disconnect option object with code and reason
    * @returns {Promise<void>}
    */
-  public disconnectAllLLM = (options?: {code: number; reason: string}): Promise<void> =>
-    this.disconnectAll(options).then(() => {
-      // Clean up all connection data
-      this.connections.clear();
+  public disconnectLLM = (options: {code: number; reason: string}): Promise<void> => {
+    return this.disconnect(options).then(() => {
+      this.webSocketUrl = undefined;
+      this.binding = undefined;
+      this.locusUrl = undefined;
+      this.datachannelUrl = undefined;
+      this.refreshHandler = undefined;
     });
-
-  /**
-   * Get all active LLM connections
-   * @returns {Map} Map of sessionId to session data
-   */
-  public getAllConnections = (): Map<
-    string,
-    {
-      webSocketUrl?: string;
-      binding?: string;
-      locusUrl?: string;
-      datachannelUrl?: string;
-      ownerMeetingId?: string;
-    }
-  > => new Map(this.connections);
-
-  /**
-   * Look up the locusUrl associated with a datachannel request URL.
-   * Iterates all active LLM sessions and returns the locusUrl of the
-   * session whose stored datachannelUrl is a prefix of the given request URL.
-   *
-   * @param {string} requestUrl - The in-flight request URL to match
-   * @returns {string | undefined} The matching locusUrl, or undefined if not found
-   */
-  public getLocusUrlByDatachannelUrl(requestUrl: string): string | undefined {
-    for (const [, connection] of this.connections) {
-      if (
-        connection.datachannelUrl &&
-        LLMChannel.matchesDatachannelRequestUrl(requestUrl, connection.datachannelUrl)
-      ) {
-        return connection.locusUrl;
-      }
-    }
-
-    return undefined;
-  }
-
-  /**
-   * Look up the sessionId associated with a datachannel request URL.
-   * Iterates all active LLM sessions and returns the sessionId whose
-   * stored datachannelUrl is a prefix of the given request URL.
-   *
-   * @param {string} requestUrl - The in-flight request URL to match
-   * @returns {string | undefined} The matching sessionId, or undefined if not found
-   */
-  public getSessionIdByDatachannelUrl(requestUrl: string): string | undefined {
-    for (const [sessionId, connection] of this.connections) {
-      if (
-        connection.datachannelUrl &&
-        LLMChannel.matchesDatachannelRequestUrl(requestUrl, connection.datachannelUrl)
-      ) {
-        return sessionId;
-      }
-    }
-
-    return undefined;
-  }
+  };
 
   /**
    * Matches a request URL to a stored datachannel registration URL.
