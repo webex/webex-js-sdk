@@ -101,6 +101,9 @@ const aiAssistantContentElm = document.querySelector('#ai-assistant-content');
 const aiAssistantContextInputElm = document.querySelector('#assistant-context-input');
 const aiAssistantActionBtn = document.querySelector('#get-assistance');
 const aiAssistantContextBtn = document.querySelector('#send-assistant-context');
+const aiAssistantRawToggleBtn = document.querySelector('#assistant-raw-output-toggle');
+const aiAssistantRawOutputPanelElm = document.querySelector('#assistant-raw-output-panel');
+const aiAssistantRawOutputContentElm = document.querySelector('#assistant-raw-output-content');
 const multiLoginCheckbox = document.querySelector('#multiLoginFlag');
 deregisterBtn.style.backgroundColor = 'red';
 
@@ -210,6 +213,42 @@ function appendRealtimeTranscript(payload) {
 }
 
 let aiAssistantListening = false;
+let isAssistantRawOutputVisible = false;
+
+function resetAssistantRawOutput() {
+  isAssistantRawOutputVisible = false;
+  if (aiAssistantRawToggleBtn) {
+    aiAssistantRawToggleBtn.disabled = true;
+    aiAssistantRawToggleBtn.textContent = 'Show raw output';
+  }
+  if (aiAssistantRawOutputPanelElm) {
+    aiAssistantRawOutputPanelElm.style.display = 'none';
+  }
+  if (aiAssistantRawOutputContentElm) {
+    aiAssistantRawOutputContentElm.textContent = '';
+  }
+}
+
+function setAssistantRawOutput(payload) {
+  if (aiAssistantRawOutputContentElm) {
+    aiAssistantRawOutputContentElm.textContent = JSON.stringify(payload, null, 2);
+  }
+  if (aiAssistantRawToggleBtn) {
+    aiAssistantRawToggleBtn.disabled = false;
+  }
+}
+
+function toggleAssistantRawOutput() {
+  isAssistantRawOutputVisible = !isAssistantRawOutputVisible;
+  if (aiAssistantRawOutputPanelElm) {
+    aiAssistantRawOutputPanelElm.style.display = isAssistantRawOutputVisible ? 'block' : 'none';
+  }
+  if (aiAssistantRawToggleBtn) {
+    aiAssistantRawToggleBtn.textContent = isAssistantRawOutputVisible
+      ? 'Hide raw output'
+      : 'Show raw output';
+  }
+}
 
 function showListeningIndicator() {
   if (!aiAssistantContentElm) return;
@@ -222,6 +261,7 @@ function showListeningIndicator() {
     <span>Listening for information</span>
   `;
   aiAssistantContentElm.appendChild(listeningElm);
+  aiAssistantContentElm.scrollTop = aiAssistantContentElm.scrollHeight;
 }
 
 function removeListeningIndicator() {
@@ -229,10 +269,10 @@ function removeListeningIndicator() {
   if (existing) existing.remove();
 }
 
-function appendSuggestionCard(data) {
+function appendSuggestionCard(data, options = {}) {
   if (!aiAssistantContentElm) return;
 
-  aiAssistantListening = false;
+  const keepListening = options.keepListening === true;
   removeListeningIndicator();
 
   const card = document.createElement('div');
@@ -246,6 +286,15 @@ function appendSuggestionCard(data) {
   card.querySelector('.assistant-suggestion-card__body').textContent = data.suggestion || '';
   card.querySelector('.assistant-suggestion-card__meta').textContent = data.suggestionSource || '';
   aiAssistantContentElm.appendChild(card);
+
+  if (keepListening) {
+    aiAssistantListening = true;
+    showListeningIndicator();
+  } else {
+    aiAssistantListening = false;
+  }
+
+  aiAssistantContentElm.scrollTop = aiAssistantContentElm.scrollHeight;
 }
 
 async function requestSuggestedResponse() {
@@ -260,9 +309,11 @@ async function requestSuggestedResponse() {
     requestElm.className = 'assistant-request';
     requestElm.textContent = context;
     aiAssistantContentElm.appendChild(requestElm);
+    aiAssistantContentElm.scrollTop = aiAssistantContentElm.scrollHeight;
   }
 
   aiAssistantListening = true;
+  resetAssistantRawOutput();
   if (aiAssistantActionBtn) aiAssistantActionBtn.style.display = 'none';
   const contextRow = document.getElementById('assistant-context-row');
   if (contextRow) contextRow.style.display = 'flex';
@@ -318,6 +369,10 @@ if (aiAssistantContextInputElm) {
       requestSuggestedResponse();
     }
   });
+}
+
+if (aiAssistantRawToggleBtn) {
+  aiAssistantRawToggleBtn.addEventListener('click', toggleAssistantRawOutput);
 }
 
 function isIncomingTask(task, agentId) {
@@ -1414,9 +1469,15 @@ function registerTaskListeners(task) {
 
   task.on('SUGGESTED_RESPONSE', (payload) => {
     console.info('Received suggested response:', payload);
-    const data = payload?.data || payload;
-    if (data.suggestion) {
-      appendSuggestionCard(data);
+    setAssistantRawOutput(payload);
+    const eventData = payload?.data || payload;
+    const data = eventData?.data?.suggestion ? eventData.data : eventData;
+
+    if (data?.suggestion) {
+      appendSuggestionCard(data, {keepListening: true});
+    } else {
+      aiAssistantListening = true;
+      showListeningIndicator();
     }
   });
 
@@ -1602,6 +1663,7 @@ function registerTaskListeners(task) {
       // Clear currentTask since task has ended
       currentTask = undefined;
       if (aiAssistantContentElm) aiAssistantContentElm.innerHTML = '';
+      resetAssistantRawOutput();
     }
     updateTaskList();
   });
@@ -3141,6 +3203,7 @@ function handleTaskSelect(task) {
   const chatAndSocial = ['chat', 'social'];
   currentTask = task
   if (aiAssistantContentElm) aiAssistantContentElm.innerHTML = '';
+  resetAssistantRawOutput();
  if (chatAndSocial.includes(task.data.interaction.mediaType) && isBundleLoaded && !task.data.wrapUpRequired) {
     loadChatWidget(task);
   } else if (task.data.interaction.mediaType === 'email' && isBundleLoaded && !task.data.wrapUpRequired) {

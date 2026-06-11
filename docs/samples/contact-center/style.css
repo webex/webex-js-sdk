@@ -665,7 +665,10 @@ legend {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  height: 320px;
   min-height: 120px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .assistant-request {
@@ -742,13 +745,42 @@ legend {
 
 .assistant-actions {
   display: flex;
-  justify-content: flex-end;
+  gap: 10px;
+  justify-content: space-between;
   margin-top: 12px;
 }
 
 .assistant-action-btn {
   border-radius: 999px;
   min-width: 180px;
+}
+
+.assistant-raw-btn {
+  min-width: 160px;
+}
+
+.assistant-raw-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.assistant-raw-output {
+  background: #111827;
+  border-radius: 8px;
+  margin-top: 12px;
+  max-height: 260px;
+  overflow: auto;
+  padding: 12px;
+}
+
+.assistant-raw-output__content {
+  color: #e5e7eb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
+  font-size: 12px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .assistant-context-input {

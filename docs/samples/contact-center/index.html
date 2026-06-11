@@ -348,9 +348,20 @@
           <div class="assistant-card">
             <div id="ai-assistant-content" class="assistant-content"></div>
             <div class="assistant-actions">
+              <button
+                id="assistant-raw-output-toggle"
+                type="button"
+                class="btn btn-secondary assistant-raw-btn"
+                disabled
+              >
+                Show raw output
+              </button>
               <button id="get-assistance" type="button" class="btn btn--green assistant-action-btn">
                 Get assistance
               </button>
+            </div>
+            <div id="assistant-raw-output-panel" class="assistant-raw-output" style="display: none;">
+              <pre id="assistant-raw-output-content" class="assistant-raw-output__content"></pre>
             </div>
             <div id="assistant-context-row" class="assistant-context-row" style="display: none;">
               <input
