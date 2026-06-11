@@ -97,6 +97,13 @@ const liveTranscriptTabElm = document.querySelector('#transcript-tab-live');
 const ivrTranscriptTabElm = document.querySelector('#transcript-tab-ivr');
 const liveTranscriptPaneElm = document.querySelector('#transcript-live-pane');
 const ivrTranscriptPaneElm = document.querySelector('#transcript-ivr-pane');
+const aiAssistantContentElm = document.querySelector('#ai-assistant-content');
+const aiAssistantContextInputElm = document.querySelector('#assistant-context-input');
+const aiAssistantActionBtn = document.querySelector('#get-assistance');
+const aiAssistantContextBtn = document.querySelector('#send-assistant-context');
+const aiAssistantRawToggleBtn = document.querySelector('#assistant-raw-output-toggle');
+const aiAssistantRawOutputPanelElm = document.querySelector('#assistant-raw-output-panel');
+const aiAssistantRawOutputContentElm = document.querySelector('#assistant-raw-output-content');
 const multiLoginCheckbox = document.querySelector('#multiLoginFlag');
 deregisterBtn.style.backgroundColor = 'red';
 
@@ -112,6 +119,7 @@ function toggleMultiLogin() {
 
 const transcriptEntries = [];
 const MAX_TRANSCRIPT_LINES = 200;
+const registeredTaskListeners = new WeakSet();
 
 function formatTranscriptTime(epochMillis) {
   if (!epochMillis || typeof epochMillis !== 'number') {
@@ -204,6 +212,134 @@ function appendRealtimeTranscript(payload) {
   setTranscriptTab('live');
 }
 
+let aiAssistantListening = false;
+let isAssistantRawOutputVisible = false;
+
+function resetAssistantRawOutput() {
+  isAssistantRawOutputVisible = false;
+  if (aiAssistantRawToggleBtn) {
+    aiAssistantRawToggleBtn.disabled = true;
+    aiAssistantRawToggleBtn.textContent = 'Show raw output';
+  }
+  if (aiAssistantRawOutputPanelElm) {
+    aiAssistantRawOutputPanelElm.style.display = 'none';
+  }
+  if (aiAssistantRawOutputContentElm) {
+    aiAssistantRawOutputContentElm.textContent = '';
+  }
+}
+
+function setAssistantRawOutput(payload) {
+  if (aiAssistantRawOutputContentElm) {
+    aiAssistantRawOutputContentElm.textContent = JSON.stringify(payload, null, 2);
+  }
+  if (aiAssistantRawToggleBtn) {
+    aiAssistantRawToggleBtn.disabled = false;
+  }
+}
+
+function toggleAssistantRawOutput() {
+  isAssistantRawOutputVisible = !isAssistantRawOutputVisible;
+  if (aiAssistantRawOutputPanelElm) {
+    aiAssistantRawOutputPanelElm.style.display = isAssistantRawOutputVisible ? 'block' : 'none';
+  }
+  if (aiAssistantRawToggleBtn) {
+    aiAssistantRawToggleBtn.textContent = isAssistantRawOutputVisible
+      ? 'Hide raw output'
+      : 'Show raw output';
+  }
+}
+
+function showListeningIndicator() {
+  if (!aiAssistantContentElm) return;
+  removeListeningIndicator();
+  const listeningElm = document.createElement('div');
+  listeningElm.className = 'assistant-listening';
+  listeningElm.id = 'assistant-listening-indicator';
+  listeningElm.innerHTML = `
+    <span class="assistant-listening__dots"><span></span><span></span></span>
+    <span>Listening for information</span>
+  `;
+  aiAssistantContentElm.appendChild(listeningElm);
+  aiAssistantContentElm.scrollTop = aiAssistantContentElm.scrollHeight;
+}
+
+function removeListeningIndicator() {
+  const existing = document.getElementById('assistant-listening-indicator');
+  if (existing) existing.remove();
+}
+
+function appendSuggestionCard(data, options = {}) {
+  if (!aiAssistantContentElm) return;
+
+  const keepListening = options.keepListening === true;
+  removeListeningIndicator();
+
+  const card = document.createElement('div');
+  card.className = 'assistant-suggestion-card';
+  card.innerHTML = `
+    <div class="assistant-suggestion-card__title"></div>
+    <div class="assistant-suggestion-card__body"></div>
+    <div class="assistant-suggestion-card__meta"></div>
+  `;
+  card.querySelector('.assistant-suggestion-card__title').textContent = data.title || 'Suggested response';
+  card.querySelector('.assistant-suggestion-card__body').textContent = data.suggestion || '';
+  card.querySelector('.assistant-suggestion-card__meta').textContent = data.suggestionSource || '';
+  aiAssistantContentElm.appendChild(card);
+
+  if (keepListening) {
+    aiAssistantListening = true;
+    showListeningIndicator();
+  } else {
+    aiAssistantListening = false;
+  }
+
+  aiAssistantContentElm.scrollTop = aiAssistantContentElm.scrollHeight;
+}
+
+async function requestSuggestedResponse() {
+  if (!currentTask || !webex?.cc?.apiAIAssistant) return;
+
+  const interactionId = currentTask.data.interactionId;
+  const context = aiAssistantContextInputElm?.value?.trim();
+
+  // Show context as a request bubble if provided
+  if (context && aiAssistantContentElm) {
+    const requestElm = document.createElement('div');
+    requestElm.className = 'assistant-request';
+    requestElm.textContent = context;
+    aiAssistantContentElm.appendChild(requestElm);
+    aiAssistantContentElm.scrollTop = aiAssistantContentElm.scrollHeight;
+  }
+
+  aiAssistantListening = true;
+  resetAssistantRawOutput();
+  if (aiAssistantActionBtn) aiAssistantActionBtn.style.display = 'none';
+  const contextRow = document.getElementById('assistant-context-row');
+  if (contextRow) contextRow.style.display = 'flex';
+  showListeningIndicator();
+
+  try {
+    await webex.cc.apiAIAssistant.getSuggestedResponse({
+      agentId,
+      interactionId,
+      actionTimeStamp: Date.now(),
+      ...(context ? {context} : {}),
+    });
+    if (aiAssistantContextInputElm) aiAssistantContextInputElm.value = '';
+  } catch (error) {
+    aiAssistantListening = false;
+    removeListeningIndicator();
+    console.error('Suggestion request failed:', error);
+    if (aiAssistantContentElm) {
+      const errorElm = document.createElement('div');
+      errorElm.className = 'assistant-error';
+      errorElm.textContent = error?.message || 'Unable to get AI assistance.';
+      aiAssistantContentElm.appendChild(errorElm);
+    }
+  }
+}
+
 if (liveTranscriptTabElm) {
   liveTranscriptTabElm.addEventListener('click', () => setTranscriptTab('live'));
 }
@@ -216,6 +352,27 @@ if (clearTranscriptsButton) {
     transcriptEntries.length = 0;
     renderRealtimeTranscripts();
   });
+}
+
+if (aiAssistantActionBtn) {
+  aiAssistantActionBtn.addEventListener('click', requestSuggestedResponse);
+}
+
+if (aiAssistantContextBtn) {
+  aiAssistantContextBtn.addEventListener('click', requestSuggestedResponse);
+}
+
+if (aiAssistantContextInputElm) {
+  aiAssistantContextInputElm.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      requestSuggestedResponse();
+    }
+  });
+}
+
+if (aiAssistantRawToggleBtn) {
+  aiAssistantRawToggleBtn.addEventListener('click', toggleAssistantRawOutput);
 }
 
 function isIncomingTask(task, agentId) {
@@ -1299,9 +1456,29 @@ function isTaskLegOnHold(task, leg = 'main') {
 
 // Register task listeners
 function registerTaskListeners(task) {
+  if (!task || registeredTaskListeners.has(task)) {
+    return;
+  }
+
+  registeredTaskListeners.add(task);
+
   task.on('REAL_TIME_TRANSCRIPTION', (payload) => {
     console.info('Received real-time transcription:', payload);
     appendRealtimeTranscript(payload);
+  });
+
+  task.on('SUGGESTED_RESPONSE', (payload) => {
+    console.info('Received suggested response:', payload);
+    setAssistantRawOutput(payload);
+    const eventData = payload?.data || payload;
+    const data = eventData?.data?.suggestion ? eventData.data : eventData;
+
+    if (data?.suggestion) {
+      appendSuggestionCard(data, {keepListening: true});
+    } else {
+      aiAssistantListening = true;
+      showListeningIndicator();
+    }
   });
 
   task.on('task:assigned', (task) => {
@@ -1485,6 +1662,8 @@ function registerTaskListeners(task) {
 
       // Clear currentTask since task has ended
       currentTask = undefined;
+      if (aiAssistantContentElm) aiAssistantContentElm.innerHTML = '';
+      resetAssistantRawOutput();
     }
     updateTaskList();
   });
@@ -3023,6 +3202,8 @@ function handleTaskSelect(task) {
   engageElm.style.height = "100px"
   const chatAndSocial = ['chat', 'social'];
   currentTask = task
+  if (aiAssistantContentElm) aiAssistantContentElm.innerHTML = '';
+  resetAssistantRawOutput();
  if (chatAndSocial.includes(task.data.interaction.mediaType) && isBundleLoaded && !task.data.wrapUpRequired) {
     loadChatWidget(task);
   } else if (task.data.interaction.mediaType === 'email' && isBundleLoaded && !task.data.wrapUpRequired) {

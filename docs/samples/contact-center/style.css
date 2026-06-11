@@ -211,10 +211,6 @@ button.btn-code {
   justify-content: space-between;
 }
 
-.multistream-buttons select {
-  /* margin: 0 0.5rem; */
-}
-
 .stage {
   min-height: 30rem;
 }
@@ -656,6 +652,160 @@ legend {
   color: #6b7280;
   font-size: 13px;
   padding: 4px 0;
+}
+
+.assistant-card {
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.assistant-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 320px;
+  min-height: 120px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.assistant-request {
+  align-self: flex-end;
+  background: #111;
+  border-radius: 12px;
+  color: #fff;
+  max-width: 85%;
+  padding: 10px 14px;
+}
+
+.assistant-suggestion-card {
+  background: #f3f4f6;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.assistant-suggestion-card__title {
+  color: #111827;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.assistant-suggestion-card__body {
+  color: #1f2937;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.assistant-suggestion-card__meta {
+  color: #4b5563;
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+.assistant-listening {
+  align-items: center;
+  color: #111827;
+  display: flex;
+  font-size: 15px;
+  font-weight: 600;
+  gap: 10px;
+}
+
+.assistant-listening__dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.assistant-listening__dots span {
+  animation: assistant-pulse 1.2s infinite ease-in-out;
+  background: #2fb3ff;
+  border-radius: 50%;
+  display: inline-block;
+  height: 8px;
+  width: 8px;
+}
+
+.assistant-listening__dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+@keyframes assistant-pulse {
+  0%, 80%, 100% {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.assistant-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.assistant-action-btn {
+  border-radius: 999px;
+  min-width: 180px;
+}
+
+.assistant-raw-btn {
+  min-width: 160px;
+}
+
+.assistant-raw-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.assistant-raw-output {
+  background: #111827;
+  border-radius: 8px;
+  margin-top: 12px;
+  max-height: 260px;
+  overflow: auto;
+  padding: 12px;
+}
+
+.assistant-raw-output__content {
+  color: #e5e7eb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
+  font-size: 12px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.assistant-context-input {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  width: 100%;
+}
+
+.assistant-context-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.assistant-context-btn {
+  flex: 0 0 auto;
+  min-width: 120px;
+}
+
+.assistant-error {
+  color: #b42318;
+  font-size: 13px;
 }
 
 .task-controls-cards {

@@ -63,5 +63,6 @@ export const METHODS = {
   GET_OUTDIAL_ANI_ENTRIES: 'getOutdialAniEntries',
   GET_BASE_URL: 'getBaseUrl',
   SEND_EVENT: 'sendEvent',
+  GET_SUGGESTED_RESPONSE: 'getSuggestedResponse',
   FETCH_HISTORIC_TRANSCRIPTS: 'fetchHistoricTranscripts',
 };
