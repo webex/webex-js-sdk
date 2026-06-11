@@ -118,9 +118,14 @@ export class CallRecording extends Eventing<CallRecordingEventTypes> implements 
   /**
    * Returns all recordings linked to a given call session id.
    * @param callSessionId - The call session id to filter by.
+   * @param options - Optional list query forwarded to `getRecordings` to control the set of
+   *   recordings scanned before filtering.
    */
-  public async getRecordingsByCallSessionId(callSessionId: string): Promise<RecordingListResponse> {
-    return this.backendConnector.getRecordingsByCallSessionId(callSessionId);
+  public async getRecordingsByCallSessionId(
+    callSessionId: string,
+    options?: GetRecordingsOptions
+  ): Promise<RecordingListResponse> {
+    return this.backendConnector.getRecordingsByCallSessionId(callSessionId, options);
   }
 
   /**

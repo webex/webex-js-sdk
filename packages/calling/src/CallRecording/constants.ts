@@ -15,9 +15,9 @@ export const DEFAULT_STATUS = 'available';
 export const DEFAULT_MAX = 30;
 
 // Default lookback window (in days) used to derive `from` when the caller does not provide one.
-// Mirrors CallHistory's `NUMBER_OF_DAYS`: the recording API needs a `from` lower bound to return
-// results, so we default it to `now - DEFAULT_NUMBER_OF_DAYS`.
-export const DEFAULT_NUMBER_OF_DAYS = 60;
+// The Converged Recordings list API only accepts a `from`/`to` interval of at most 30 days, so the
+// default must stay within that limit; a larger default window would be rejected by the API.
+export const DEFAULT_NUMBER_OF_DAYS = 30;
 
 // Header used to flag an explicit end-user request (rate-limit bypass). Off by default.
 export const WEBEX_USER_REQUEST_HEADER = 'WebexUserRequest';

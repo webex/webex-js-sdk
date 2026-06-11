@@ -139,7 +139,7 @@ sequenceDiagram
     App->>CR: getRecordings({from, to, days, status, max})
     activate CR
     CR->>CR: buildRecordingsUrl(options)
-    Note over CR: from=now-days (default 60d), to=now, status=available, max=30
+    Note over CR: from=now-days (default 30d), to=now, status=available, max=30
     CR->>WxApp: GET /convergedRecordings?from={now-days}&to={now}&status=available&max=30
     WxApp-->>CR: 200 {items: [...]}
     CR-->>App: {statusCode, data: {recordings}, message: 'SUCCESS'}
@@ -242,7 +242,7 @@ sequenceDiagram
 |----------|-------|---------|
 | `FROM` | `'from'` | `now - DEFAULT_NUMBER_OF_DAYS` |
 | `TO` | `'to'` | `now` |
-| `DEFAULT_NUMBER_OF_DAYS` | `60` | Lookback to derive `from` |
+| `DEFAULT_NUMBER_OF_DAYS` | `30` | Lookback to derive `from` (API max window is 30 days) |
 | `STATUS` | `'status'` | `available` |
 | `MAX` | `'max'` | `30` |
 

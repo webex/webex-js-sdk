@@ -56,7 +56,7 @@ created.
 | ------ | --------- | ----------- |
 | `getRecordings` | `(options?: GetRecordingsOptions): Promise<RecordingListResponse>` | Lists converged recordings for the current user |
 | `getRecording` | `(recordingId: string): Promise<RecordingResponse>` | Fetches a single recording by `id` |
-| `getRecordingsByCallSessionId` | `(callSessionId: string): Promise<RecordingListResponse>` | Returns recordings for a call session (client-side filter) |
+| `getRecordingsByCallSessionId` | `(callSessionId: string, options?: GetRecordingsOptions): Promise<RecordingListResponse>` | Returns recordings for a call session (client-side filter; `options` widen the scanned list) |
 | `getRecordingMetadata` | `(recordingId: string): Promise<RecordingMetadataResponse>` | Fetches metadata for a recording |
 | `deleteRecording` | `(recordingId: string, options?: DeleteRecordingOptions): Promise<RecordingDeleteResponse>` | Permanently deletes a recording (cannot be recovered); needs `spark-compliance:recordings_write`. Optional `reason`/`comment` for Compliance Officer deletions |
 
@@ -137,7 +137,7 @@ The `CallRecording` constructor accepts:
 | ----- | ---- | ------- | ----------- |
 | `from` | `string` (ISO-8601) | `now - days` | Inclusive start of the time window (always sent) |
 | `to` | `string` (ISO-8601) | `now` | Inclusive end of the time window (always sent) |
-| `days` | `number` | `60` | Lookback used to derive `from` when `from` is omitted |
+| `days` | `number` | `30` | Lookback used to derive `from` when `from` is omitted (API max window is 30 days) |
 | `status` | `RecordingStatus` | `available` | Filter by recording status (`available`/`deleted`) |
 | `max` | `number` | `30` | Maximum number of records to return per page |
 | `webexUserRequest` | `boolean` | `false` | When true, sends the `WebexUserRequest: true` header (ad-hoc rate-limit bypass) |
@@ -249,7 +249,7 @@ All read methods use `this.webex.request({uri, method: GET, service: 'hydraDevel
 {recordingServiceUrl}/convergedRecordings?from={now-days}&to={now}&status=available&max=30
 ```
 
-- A `from` lower bound is always sent (like CallHistory's mandatory `from` date) so the API returns results; it is derived as `now - days` (default 60) when not provided. `to` defaults to `now` when not supplied.
+- A `from` lower bound is always sent (like CallHistory's mandatory `from` date) so the API returns results; it is derived as `now - days` (default 30) when not provided. `to` defaults to `now` when not supplied. The list API only accepts a `from`/`to` interval of at most 30 days, so the default stays within that limit and custom `days`/`from` values must too.
 - The sort/filter/pagination params default to the values used by the Webex web client and are overridable via `GetRecordingsOptions`.
 - The raw list response is `{ "items": [ ... ] }`; the client maps `items` to `data.recordings`.
 - `getRecording`: `{recordingServiceUrl}/convergedRecordings/{recordingId}`.
@@ -259,8 +259,11 @@ All read methods use `this.webex.request({uri, method: GET, service: 'hydraDevel
 ### `getRecordingsByCallSessionId` (API gap)
 
 There is no confirmed server-side query parameter to filter by call session id. The client fetches
-the full list via `getRecordings()` and filters client-side on
-`serviceData.callSessionId === callSessionId`. If the underlying list
+a list via `getRecordings(options)` and filters client-side on
+`serviceData.callSessionId === callSessionId`. Because the scan is bounded by that list query, it
+only searches the default time window/status and first `max` records unless `options` are passed.
+Forward `GetRecordingsOptions` (e.g. a wider `days`/`from`–`to` window, a different `status`, or a
+larger `max`) when the target session may fall outside the defaults. If the underlying list
 call fails, the original error response is returned unchanged.
 
 ---

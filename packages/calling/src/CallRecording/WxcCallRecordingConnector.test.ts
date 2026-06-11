@@ -228,6 +228,24 @@ describe('WxcCallRecordingConnector tests', () => {
 
       expect(response).toStrictEqual(ERROR_DETAILS_401);
     });
+
+    it('forwards list options to the underlying list query to widen the scan', async () => {
+      const payload = <WebexRequestPayload>(<unknown>MOCK_RECORDING_LIST_BODY);
+      webex.request.mockResolvedValue(payload);
+
+      await connector.getRecordingsByCallSessionId(CALL_SESSION_ID, {
+        from: '2024-05-01T00:00:00.000Z',
+        to: '2024-05-31T00:00:00.000Z',
+        status: RecordingStatus.DELETED,
+        max: 100,
+      });
+
+      const callArgs = webex.request.mock.calls[webex.request.mock.calls.length - 1][0];
+      expect(callArgs.uri).toContain('from=2024-05-01T00%3A00%3A00.000Z');
+      expect(callArgs.uri).toContain('to=2024-05-31T00%3A00%3A00.000Z');
+      expect(callArgs.uri).toContain('status=deleted');
+      expect(callArgs.uri).toContain('max=100');
+    });
   });
 
   describe('getRecordingMetadata', () => {

@@ -144,7 +144,9 @@ export type GetRecordingsOptions = {
    */
   to?: string;
   /**
-   * Lookback window in days used to derive `from` when `from` is not provided. Defaults to `60`.
+   * Lookback window in days used to derive `from` when `from` is not provided. Defaults to `30`.
+   * The list API only accepts a `from`/`to` interval of at most 30 days; larger windows are
+   * rejected, so callers must keep custom values within that limit.
    * Ignored when an explicit `from` is supplied.
    */
   days?: number;
@@ -244,14 +246,26 @@ export interface ICallRecording extends Eventing<CallRecordingEventTypes> {
   /**
    * Returns all recordings linked to a given call session id (`serviceData.callSessionId`).
    *
+   * The recording API has no confirmed server-side filter for call session id, so this fetches a
+   * list via {@link getRecordings} and filters client-side. The scan is therefore bounded by the
+   * list query: by default only the first `max` recordings within the default time window/status
+   * are searched. If the target session may fall outside those defaults (older than the default
+   * window, a non-`available` status, or beyond the first page), pass `options` to widen the
+   * window/status/page so the recording is included before filtering.
+   *
    * @param callSessionId - The call session id to filter by.
+   * @param options - Optional list query (time window/filter/pagination) forwarded to
+   *   {@link getRecordings} to control the set of recordings scanned.
    *
    * @example
    * ```javascript
-   * const response = await callRecording.getRecordingsByCallSessionId(callSessionId);
+   * const response = await callRecording.getRecordingsByCallSessionId(callSessionId, {days: 30, max: 100});
    * ```
    */
-  getRecordingsByCallSessionId(callSessionId: string): Promise<RecordingListResponse>;
+  getRecordingsByCallSessionId(
+    callSessionId: string,
+    options?: GetRecordingsOptions
+  ): Promise<RecordingListResponse>;
 
   /**
    * Fetches the metadata for a single recording.

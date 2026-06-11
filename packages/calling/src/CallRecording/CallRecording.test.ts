@@ -125,9 +125,10 @@ describe('CallRecording facade tests', () => {
       const expected = {statusCode: 200, data: {recordings: [RECORDING_ONE]}, message: 'SUCCESS'};
       const spy = jest.spyOn(connector, 'getRecordingsByCallSessionId').mockResolvedValue(expected);
 
-      const response = await callRecording.getRecordingsByCallSessionId('session-id');
+      const options = {days: 30, max: 100};
+      const response = await callRecording.getRecordingsByCallSessionId('session-id', options);
 
-      expect(spy).toBeCalledOnceWith('session-id');
+      expect(spy).toBeCalledOnceWith('session-id', options);
       expect(response).toStrictEqual(expected);
     });
 

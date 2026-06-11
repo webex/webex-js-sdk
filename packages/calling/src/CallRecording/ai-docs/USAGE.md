@@ -59,7 +59,7 @@ getRecordings(options?: GetRecordingsOptions): Promise<RecordingListResponse>
 | ---- | ---- | -------- | ----------- | ------- |
 | `options.from` | `string` (ISO-8601) | No | Inclusive start of the time window | `now - days` |
 | `options.to` | `string` (ISO-8601) | No | Inclusive end of the time window | `now` |
-| `options.days` | `number` | No | Lookback window used to derive `from` when `from` is omitted | `60` |
+| `options.days` | `number` | No | Lookback window used to derive `from` when `from` is omitted (API max window is 30 days) | `30` |
 | `options.status` | `RecordingStatus` | No | Filter by status (`available`, `deleted`) | `available` |
 | `options.max` | `number` | No | Maximum number of records to return per page | `30` |
 | `options.webexUserRequest` | `boolean` | No | Sends `WebexUserRequest: true` header (rate-limit bypass) | `false` |
@@ -156,20 +156,27 @@ GET {recordingServiceUrl}/convergedRecordings/{recordingId}
 
 ---
 
-### `getRecordingsByCallSessionId(callSessionId)`
+### `getRecordingsByCallSessionId(callSessionId, options?)`
 
 Returns all recordings tied to a call session id. Filtered client-side on
-`serviceData.callSessionId` (no confirmed server-side filter).
+`serviceData.callSessionId` (no confirmed server-side filter). The scan is bounded by the list
+query, so it only searches the default time window/status and first `max` records unless `options`
+are provided. Pass `options` (e.g. a wider `days`/`from`–`to` window, a different `status`, or a
+larger `max`) when the target session may fall outside the defaults.
 
 **Signature**
 
 ```typescript
-getRecordingsByCallSessionId(callSessionId: string): Promise<RecordingListResponse>
+getRecordingsByCallSessionId(
+  callSessionId: string,
+  options?: GetRecordingsOptions
+): Promise<RecordingListResponse>
 ```
 
 | Name | Type | Required | Description |
 | ---- | ---- | -------- | ----------- |
 | `callSessionId` | `string` | Yes | The call session id to filter by |
+| `options` | `GetRecordingsOptions` | No | List query forwarded to `getRecordings` to widen the scanned set |
 
 **Success response (no matches)**
 
