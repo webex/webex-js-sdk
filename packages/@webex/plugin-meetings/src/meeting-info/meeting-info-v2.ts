@@ -809,4 +809,63 @@ export default class MeetingInfoV2 {
         throw err;
       });
   }
+
+  /**
+   * Fetches detailed meeting info using the `/wbxappapi/v1/meetingInfo/uniqueQuery` endpoint.
+   *
+   * @param {String} meetingUrl meeting link used both as the body identifier
+   * @returns {Promise} the meeting info response
+   * @public
+   * @memberof MeetingInfo
+   */
+  async fetchMeetingDetailInfo(meetingUrl: string) {
+    if (!meetingUrl) {
+      const err = new Error('meetingUrl is required to fetch meeting detail info');
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_DETAIL_INFO_FAILURE, {
+        reason: err.message,
+      });
+      throw err;
+    }
+
+    let host: string;
+    try {
+      host = new URL(meetingUrl).host;
+    } catch {
+      host = '';
+    }
+    if (!host) {
+      const err = new Error(`Invalid meetingUrl: ${meetingUrl}`);
+      Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_DETAIL_INFO_FAILURE, {
+        reason: err.message,
+      });
+      throw err;
+    }
+
+    const body = {
+      meetingUrl,
+    };
+
+    const uri = `https://${host}/wbxappapi/v1/meetingInfo/uniqueQuery`;
+
+    return this.webex
+      .request({
+        method: HTTP_VERBS.POST,
+        uri,
+        body,
+      })
+      .then((response) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_DETAIL_INFO_SUCCESS);
+
+        return response;
+      })
+      .catch((err) => {
+        Metrics.sendBehavioralMetric(BEHAVIORAL_METRICS.FETCH_MEETING_DETAIL_INFO_FAILURE, {
+          reason: err?.message,
+          statusCode: err?.statusCode,
+          code: err?.body?.code,
+          stack: err?.stack,
+        });
+        throw err;
+      });
+  }
 }
