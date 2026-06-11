@@ -4,6 +4,7 @@ import {
   computeUIControls,
   getDefaultUIControls,
 } from '../../../../../../src/services/task/state-machine/uiControlsComputer';
+import {getTaskStateForUiControls} from '../../../../../../src/services/task/state-machine/actions';
 import {TaskContext} from '../../../../../../src/services/task/state-machine/types';
 import {createTaskData} from '../taskTestUtils';
 
@@ -958,6 +959,80 @@ describe('uiControlsComputer consult initiator controls', () => {
     expect(uiControls.consult.endConsult).toEqual({isVisible: true, isEnabled: true});
   });
 
+  it('enables consult leg controls for conference DN AgentConsulting after destination joined', () => {
+    const taskData = createTaskData({
+      agentId: 'agent-1',
+      consultingAgentId: 'agent-1',
+      consultMediaResourceId: 'consult-media-1',
+      isConsulted: false,
+      destinationType: 'DN',
+      type: 'AgentConsulting' as any,
+      interaction: {
+        state: 'conference',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        owner: 'agent-1',
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasLeft: false,
+            consultState: 'consulting',
+            isConsulted: false,
+          },
+          'agent-2': {
+            id: 'agent-2',
+            pType: 'Agent',
+            hasLeft: false,
+            consultState: 'conferencing',
+          },
+          'dn-dest': {
+            id: 'dn-dest',
+            pType: 'DN',
+            hasLeft: false,
+            hasJoined: true,
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false},
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            participants: ['agent-1', 'agent-2', 'customer-1'],
+            isHold: false,
+          },
+          'consult-media-1': {
+            mediaResourceId: 'consult-media-1',
+            mType: 'consult',
+            participants: ['agent-1', 'dn-dest'],
+            isHold: false,
+          },
+        } as any,
+      } as any,
+    });
+    const baseContext = createVoiceContext();
+    const context = createVoiceContext({
+      consultInitiator: true,
+      consultFromConference: true,
+      consultDestinationAgentJoined: true,
+      consultDestinationType: 'entryPoint',
+      consultCallHeld: false,
+      taskData,
+      uiControlConfig: {
+        ...baseContext.uiControlConfig,
+        agentId: 'agent-1',
+      },
+    });
+
+    const uiControls = computeUIControls(TaskState.CONSULTING, context, taskData);
+
+    expect(uiControls.consult.switch).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.transfer).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.consult.transferConference).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.mergeToConference).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.endConsult).toEqual({isVisible: true, isEnabled: true});
+  });
+
   it('keeps transferConference visible on consult leg for initiator even when state is conferencing', () => {
     const taskData = createConferenceConsultingInitiatorTaskData();
     const baseContext = createVoiceContext();
@@ -1135,6 +1210,528 @@ describe('uiControlsComputer consult initiator controls', () => {
     const uiControls = computeUIControls(TaskState.CONSULTING, context, taskData);
 
     expect(uiControls.main.exitConference).toEqual({isVisible: false, isEnabled: false});
+  });
+
+  function createSimpleHeldConsultInitiatedTaskData() {
+    return createTaskData({
+      agentId: 'agent-1',
+      mediaResourceId: 'interaction-1',
+      consultMediaResourceId: 'consult-media',
+      destAgentId: 'agent-2',
+      destinationType: 'Agent',
+      isConsulted: false,
+      type: 'AgentConsultCreated' as any,
+      interaction: {
+        state: 'consult',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        owner: 'agent-1',
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasLeft: false,
+            consultState: 'consultInitiated',
+            isConsulted: false,
+          },
+          'agent-2': {
+            id: 'agent-2',
+            pType: 'Agent',
+            hasLeft: false,
+            hasJoined: false,
+            consultState: 'consultReserved',
+            isConsulted: true,
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false, hasJoined: true},
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            isHold: true,
+            participants: ['customer-1', 'agent-1'],
+          },
+          'consult-media': {
+            mediaResourceId: 'consult-media',
+            mType: 'consult',
+            isHold: false,
+            participants: ['agent-2', 'agent-1'],
+          },
+        } as any,
+      } as any,
+    });
+  }
+
+  function createConsultFailedHeldMainTaskData() {
+    return createTaskData({
+      agentId: 'agent-1',
+      mediaResourceId: 'interaction-1',
+      consultMediaResourceId: 'consult-media',
+      destAgentId: 'agent-2',
+      destinationType: 'Agent',
+      isConsulted: false,
+      type: 'AgentConsultFailed' as any,
+      interaction: {
+        state: 'consult',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        owner: 'agent-1',
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasLeft: false,
+            consultState: 'consultCompleted',
+            isConsulted: false,
+          },
+          'agent-2': {
+            id: 'agent-2',
+            pType: 'Agent',
+            hasLeft: false,
+            hasJoined: false,
+            consultState: 'consultReserved',
+            isConsulted: true,
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false, hasJoined: true},
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            isHold: true,
+            participants: ['customer-1', 'agent-1'],
+          },
+          'consult-media': {
+            mediaResourceId: 'consult-media',
+            mType: 'consult',
+            isHold: false,
+            participants: ['agent-2', 'agent-1'],
+          },
+        } as any,
+      } as any,
+    });
+  }
+
+  it('infers HELD (not CONSULTING) while consultee has not joined', () => {
+    const taskData = createSimpleHeldConsultInitiatedTaskData();
+
+    expect(getTaskStateForUiControls(taskData as any, 'agent-1')).toBe(TaskState.HELD);
+  });
+
+  it('matches Stable Prod consult-requested controls for AgentConsultCreated while HELD', () => {
+    const taskData = createSimpleHeldConsultInitiatedTaskData();
+    const context = createVoiceContext({
+      taskData: taskData as any,
+      consultInitiator: true,
+      consultDestinationAgentJoined: false,
+      consultCallHeld: false,
+    });
+
+    const uiControls = computeUIControls(TaskState.HELD, context, taskData as any);
+
+    expect(uiControls.activeLeg).toBe('consult');
+    expect(uiControls.main.transfer).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.conference).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.hold).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.consult.endConsult).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.switch).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.consult.transfer).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.consult.mergeToConference).toEqual({isVisible: true, isEnabled: false});
+  });
+
+  it('clears consult leg and restores HELD main controls after AgentConsultEnded from Stable Prod', () => {
+    const taskData = createTaskData({
+      agentId: 'agent-1',
+      mediaResourceId: 'interaction-1',
+      destAgentId: 'agent-2',
+      destinationType: 'Agent',
+      isConsulted: false,
+      type: 'AgentConsultEnded' as any,
+      interaction: {
+        state: 'connected',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        owner: 'agent-1',
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasLeft: false,
+            consultState: 'consultCompleted',
+            isConsulted: false,
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false, hasJoined: true},
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            isHold: true,
+            holdTimestamp: 1780495564872,
+            participants: ['customer-1', 'agent-1'],
+          },
+        } as any,
+      } as any,
+    });
+    const staleContext = createVoiceContext({
+      taskData: {
+        ...(taskData as any),
+        interaction: {
+          ...(taskData as any).interaction,
+          media: {
+            ...(taskData as any).interaction.media,
+            'consult-media': {
+              mediaResourceId: 'consult-media',
+              mType: 'consult',
+              isHold: false,
+              participants: ['agent-2', 'agent-1'],
+            },
+          },
+        },
+      },
+      consultInitiator: true,
+      consultDestinationAgentJoined: true,
+      consultCallHeld: false,
+    });
+
+    const uiControls = computeUIControls(TaskState.CONSULTING, staleContext, taskData as any);
+
+    expect(uiControls.activeLeg).toBe('main');
+    expect(uiControls.consult.endConsult).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.main.hold).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.consult).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.transfer).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.recording).toEqual({isVisible: true, isEnabled: true});
+  });
+
+  it('enables switch, transfer, and merge on consult leg after AgentConsulting accept', () => {
+    const taskData = createTaskData({
+      agentId: 'agent-1',
+      mediaResourceId: 'interaction-1',
+      consultMediaResourceId: 'consult-media',
+      consultingAgentId: 'agent-1',
+      destAgentId: 'agent-2',
+      isConsulted: false,
+      type: 'AgentConsulting' as any,
+      interaction: {
+        state: 'consulting',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        owner: 'agent-1',
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasLeft: false,
+            consultState: 'consulting',
+            isConsulted: false,
+          },
+          'agent-2': {
+            id: 'agent-2',
+            pType: 'Agent',
+            hasLeft: false,
+            hasJoined: true,
+            consultState: 'consulting',
+            isConsulted: true,
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false, hasJoined: true},
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            isHold: true,
+            participants: ['customer-1', 'agent-1'],
+          },
+          'consult-media': {
+            mediaResourceId: 'consult-media',
+            mType: 'consult',
+            isHold: false,
+            participants: ['agent-2', 'agent-1'],
+          },
+        } as any,
+      } as any,
+    });
+    const context = createVoiceContext({
+      taskData: taskData as any,
+      consultInitiator: true,
+      consultDestinationAgentJoined: true,
+      consultCallHeld: false,
+    });
+
+    const uiControls = computeUIControls(TaskState.CONSULTING, context, taskData as any);
+
+    expect(uiControls.activeLeg).toBe('consult');
+    expect(uiControls.consult.switch).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.transfer).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.mergeToConference).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.endConsult).toEqual({isVisible: true, isEnabled: true});
+  });
+
+  it('shows RONA failure controls after AgentConsultFailed while HELD', () => {
+    const taskData = createConsultFailedHeldMainTaskData();
+    const context = createVoiceContext({
+      taskData: taskData as any,
+      consultInitiator: false,
+      consultDestinationAgentJoined: false,
+      consultCallHeld: false,
+    });
+
+    const uiControls = computeUIControls(TaskState.HELD, context, taskData as any);
+
+    expect(uiControls.activeLeg).toBe('main');
+    expect(uiControls.main.hold).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.transfer).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.consult).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.recording).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.main.conference).toEqual({isVisible: false, isEnabled: false});
+    expect(uiControls.consult.endConsult).toEqual({isVisible: false, isEnabled: false});
+  });
+
+  it('enables main.consult on AgentConsultFailed while consult media remains and destinationJoined is stale', () => {
+    const taskData = createConsultFailedHeldMainTaskData();
+    const context = createVoiceContext({
+      taskData: taskData as any,
+      consultInitiator: true,
+      consultDestinationAgentJoined: true,
+      consultCallHeld: false,
+    });
+
+    const uiControls = computeUIControls(TaskState.HELD, context, taskData as any);
+
+    expect(uiControls.main.consult).toEqual({isVisible: true, isEnabled: true});
+  });
+
+  it('enables main.consult when consultCompleted with stale consultMediaResourceId only (RONA cleanup)', () => {
+    const taskData = createTaskData({
+      agentId: 'agent-1',
+      mediaResourceId: 'interaction-1',
+      consultMediaResourceId: 'consult-media',
+      isConsulted: false,
+      type: 'AgentConsultEnded' as any,
+      interaction: {
+        state: 'connected',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        owner: 'agent-1',
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasLeft: false,
+            consultState: 'consultCompleted',
+            isConsulted: false,
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false, hasJoined: true},
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            isHold: true,
+            participants: ['customer-1', 'agent-1'],
+          },
+        } as any,
+      } as any,
+    });
+    const context = createVoiceContext({
+      taskData: taskData as any,
+      consultInitiator: true,
+      consultDestinationAgentJoined: true,
+      consultCallHeld: false,
+    });
+
+    const uiControls = computeUIControls(TaskState.CONSULT_INITIATING, context, taskData as any);
+
+    expect(uiControls.main.consult).toEqual({isVisible: true, isEnabled: true});
+  });
+
+  it('enables main.consult after AgentConsultFailed then AgentConsultEnded on held main leg (RONA)', () => {
+    const consultEndedTaskData = createTaskData({
+      agentId: 'agent-1',
+      mediaResourceId: 'interaction-1',
+      consultMediaResourceId: 'consult-media',
+      destAgentId: 'agent-2',
+      destinationType: 'Agent',
+      isConsulted: false,
+      type: 'AgentConsultEnded' as any,
+      interaction: {
+        state: 'connected',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        owner: 'agent-1',
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasLeft: false,
+            consultState: 'consultCompleted',
+            isConsulted: false,
+          },
+          'agent-2': {
+            id: 'agent-2',
+            pType: 'Agent',
+            hasLeft: false,
+            hasJoined: false,
+            consultState: 'consultReserved',
+            isConsulted: true,
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false, hasJoined: true},
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            isHold: true,
+            participants: ['customer-1', 'agent-1'],
+          },
+        } as any,
+      } as any,
+    });
+    const staleContext = createVoiceContext({
+      taskData: consultEndedTaskData as any,
+      consultInitiator: true,
+      consultDestinationAgentJoined: false,
+      consultCallHeld: false,
+      consultFromConference: false,
+    });
+
+    const uiControls = computeUIControls(TaskState.HELD, staleContext, consultEndedTaskData as any);
+
+    expect(uiControls.activeLeg).toBe('main');
+    expect(uiControls.main.consult).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.hold).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.transfer).toEqual({isVisible: true, isEnabled: true});
+  });
+
+  it('enables main.consult after AgentConsultEnded when consult ended before consultee answered (held main leg)', () => {
+    // Agent 1 initiates consult to Agent 2 and ends it before Agent 2 answers.
+    // Backend AgentConsultEnded: main on hold, self consultCompleted, no consult media,
+    // and the consultee (destAgent) is not present in the participants map.
+    const consultEndedTaskData = createTaskData({
+      agentId: 'agent-1',
+      mediaResourceId: 'interaction-1',
+      consultMediaResourceId: 'consult-media',
+      destAgentId: 'agent-2',
+      destinationType: 'Agent',
+      isConsulted: false,
+      type: 'AgentConsultEnded' as any,
+      interaction: {
+        state: 'connected',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        owner: 'agent-1',
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasLeft: false,
+            hasJoined: true,
+            consultState: 'consultCompleted',
+            isConsulted: false,
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false, hasJoined: true},
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            isHold: true,
+            participants: ['customer-1', 'agent-1'],
+          },
+        } as any,
+      } as any,
+    });
+    // Stale context from CONSULT_INITIATING: initiator true, consultee never joined.
+    const staleContext = createVoiceContext({
+      taskData: consultEndedTaskData as any,
+      consultInitiator: true,
+      consultDestinationAgentJoined: false,
+      consultCallHeld: false,
+      consultFromConference: false,
+    });
+
+    const uiControls = computeUIControls(TaskState.HELD, staleContext, consultEndedTaskData as any);
+
+    expect(uiControls.activeLeg).toBe('main');
+    expect(uiControls.main.consult).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.hold).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.transfer).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.recording).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.end).toEqual({isVisible: true, isEnabled: false});
+    expect(uiControls.consult.endConsult).toEqual({isVisible: false, isEnabled: false});
+  });
+
+  it('enables main.consult after AgentConsultEnded even when reconciled task.data still carries stale consult media/participant', () => {
+    // Reproduces the real runtime data: Task.reconcileData deep-merges and never deletes keys,
+    // so after AgentConsultEnded the stale consult-media entry and consultee participant from
+    // AgentConsultCreated persist in task.data. The consult button must still be enabled.
+    const consultEndedTaskData = createTaskData({
+      agentId: 'agent-1',
+      mediaResourceId: 'interaction-1',
+      consultMediaResourceId: 'consult-media',
+      destAgentId: 'agent-2',
+      destinationType: 'Agent',
+      isConsulted: false,
+      type: 'AgentConsultEnded' as any,
+      interaction: {
+        state: 'connected',
+        interactionId: 'interaction-1',
+        mainInteractionId: 'interaction-1',
+        owner: 'agent-1',
+        participants: {
+          'agent-1': {
+            id: 'agent-1',
+            pType: 'Agent',
+            hasLeft: false,
+            hasJoined: true,
+            consultState: 'consultCompleted',
+            isConsulted: false,
+          },
+          'customer-1': {id: 'customer-1', pType: 'Customer', hasLeft: false, hasJoined: true},
+          // Stale consultee retained by reconcileData (never joined, consult leg gone).
+          'agent-2': {
+            id: 'agent-2',
+            pType: 'Agent',
+            hasLeft: false,
+            hasJoined: false,
+            consultState: 'consulting',
+            isConsulted: true,
+          },
+        } as any,
+        media: {
+          'interaction-1': {
+            mediaResourceId: 'interaction-1',
+            mType: 'mainCall',
+            isHold: true,
+            participants: ['customer-1', 'agent-1'],
+          },
+          // Stale consult media retained by reconcileData merge.
+          'consult-media': {
+            mediaResourceId: 'consult-media',
+            mType: 'consult',
+            isHold: false,
+            participants: ['agent-1', 'agent-2'],
+          },
+        } as any,
+      } as any,
+    });
+    const staleContext = createVoiceContext({
+      taskData: consultEndedTaskData as any,
+      consultInitiator: true,
+      consultDestinationAgentJoined: false,
+      consultCallHeld: false,
+      consultFromConference: false,
+    });
+
+    const uiControls = computeUIControls(TaskState.HELD, staleContext, consultEndedTaskData as any);
+
+    expect(uiControls.activeLeg).toBe('main');
+    expect(uiControls.main.consult).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.main.hold).toEqual({isVisible: true, isEnabled: true});
+    expect(uiControls.consult.endConsult).toEqual({isVisible: false, isEnabled: false});
   });
 
 });
