@@ -208,7 +208,7 @@ describe('WebRTC Task', () => {
       expect(webRtc.uiControls.main.accept.isVisible).toBe(false);
       expect(webRtc.uiControls.main.decline.isVisible).toBe(false);
       expect(webRtc.uiControls.main.mute.isVisible).toBe(true);
-      expect(webRtc.uiControls.main.mute.isEnabled).toBe(false);
+      expect(webRtc.uiControls.main.mute.isEnabled).toBe(true);
     });
 
     it('setUIControls for AGENT_CONSULT_ENDED returns mute to connected state behavior', () => {
