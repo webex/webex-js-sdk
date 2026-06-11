@@ -2020,4 +2020,48 @@ describe('Registration Tests', () => {
       expect(lineEmitter).toHaveBeenCalledWith(LINE_EVENTS.UNREGISTERED);
     });
   });
+
+  describe('attemptRegistrationWithServers transport alignment', () => {
+    let apiRequest: APIRequest;
+    let setSocketEnabledSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      apiRequest = APIRequest.getInstance({webex});
+      // Keep the actual transport on HTTP (no-op) so the registration flow stays simple;
+      // we only assert which boolean the method derives from the server group's URL scheme.
+      setSocketEnabledSpy = jest.spyOn(apiRequest, 'setSocketEnabled').mockImplementation(() => {});
+      webex.request.mockResolvedValue(successPayload);
+    });
+
+    it('enables the WebSocket transport when the server group uses the wss:// scheme', async () => {
+      await reg.attemptRegistrationWithServers(REGISTRATION_UTIL, [
+        'wss://mobius.example.com/api/v1/calling/web/',
+      ]);
+
+      expect(setSocketEnabledSpy).toHaveBeenCalledWith(true);
+    });
+
+    it('falls back to the HTTP transport when the server group uses the https:// scheme', async () => {
+      await reg.attemptRegistrationWithServers(REGISTRATION_UTIL, [
+        'https://mobius.example.com/api/v1/calling/web/',
+      ]);
+
+      expect(setSocketEnabledSpy).toHaveBeenCalledWith(false);
+    });
+
+    it('does not change the transport when the server group is empty', async () => {
+      await reg.attemptRegistrationWithServers(REGISTRATION_UTIL, []);
+
+      expect(setSocketEnabledSpy).not.toHaveBeenCalled();
+    });
+
+    it('derives the transport from the first server in the group', async () => {
+      await reg.attemptRegistrationWithServers(REGISTRATION_UTIL, [
+        'wss://primary.example.com/api/v1/calling/web/',
+        'https://backup.example.com/api/v1/calling/web/',
+      ]);
+
+      expect(setSocketEnabledSpy).toHaveBeenCalledWith(true);
+    });
+  });
 });
