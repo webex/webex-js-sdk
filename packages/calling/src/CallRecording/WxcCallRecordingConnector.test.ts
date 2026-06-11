@@ -76,6 +76,12 @@ describe('WxcCallRecordingConnector tests', () => {
         to: '2024-05-31T00:00:00.000Z',
         status: RecordingStatus.DELETED,
         max: 25,
+        serviceType: 'calling',
+        format: 'MP3',
+        ownerType: 'user',
+        storageRegion: 'US',
+        locationId: 'location-123',
+        topic: 'Call with User7',
         webexUserRequest: true,
       });
 
@@ -87,6 +93,12 @@ describe('WxcCallRecordingConnector tests', () => {
       expect(callArgs.uri).toContain('to=2024-05-31T00%3A00%3A00.000Z');
       expect(callArgs.uri).toContain('status=deleted');
       expect(callArgs.uri).toContain('max=25');
+      expect(callArgs.uri).toContain('serviceType=calling');
+      expect(callArgs.uri).toContain('format=MP3');
+      expect(callArgs.uri).toContain('ownerType=user');
+      expect(callArgs.uri).toContain('storageRegion=US');
+      expect(callArgs.uri).toContain('locationId=location-123');
+      expect(callArgs.uri).toContain('topic=Call+with+User7');
       expect(callArgs.uri).not.toContain('orderType');
       expect(callArgs.uri).not.toContain('orderBy');
       expect(callArgs.uri).not.toContain('offset');
@@ -109,6 +121,13 @@ describe('WxcCallRecordingConnector tests', () => {
       expect(callArgs.uri).not.toContain('orderType');
       expect(callArgs.uri).not.toContain('orderBy');
       expect(callArgs.uri).not.toContain('offset');
+      // Optional pass-through filters are omitted when not provided.
+      expect(callArgs.uri).not.toContain('serviceType');
+      expect(callArgs.uri).not.toContain('format');
+      expect(callArgs.uri).not.toContain('ownerType');
+      expect(callArgs.uri).not.toContain('storageRegion');
+      expect(callArgs.uri).not.toContain('locationId');
+      expect(callArgs.uri).not.toContain('topic');
     });
 
     it('derives the from date from the days lookback and defaults to to now when not provided', async () => {

@@ -245,6 +245,12 @@ sequenceDiagram
 | `DEFAULT_NUMBER_OF_DAYS` | `30` | Lookback to derive `from` (API max window is 30 days) |
 | `STATUS` | `'status'` | `available` |
 | `MAX` | `'max'` | `30` |
+| `SERVICE_TYPE` | `'serviceType'` | _(sent only when provided)_ |
+| `FORMAT` | `'format'` | _(sent only when provided)_ |
+| `OWNER_TYPE` | `'ownerType'` | _(sent only when provided)_ |
+| `STORAGE_REGION` | `'storageRegion'` | _(sent only when provided)_ |
+| `LOCATION_ID` | `'locationId'` | _(sent only when provided)_ |
+| `TOPIC` | `'topic'` | _(sent only when provided)_ |
 
 ### Headers
 

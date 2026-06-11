@@ -33,13 +33,19 @@ import {
   DEFAULT_MAX,
   DEFAULT_NUMBER_OF_DAYS,
   DEFAULT_STATUS,
+  FORMAT,
   FROM,
+  LOCATION_ID,
   MAX,
   METADATA,
   METHODS,
+  OWNER_TYPE,
   RECORDING_NOT_FOUND_MESSAGE,
+  SERVICE_TYPE,
   STATUS,
+  STORAGE_REGION,
   TO,
+  TOPIC,
   WEBEX_USER_REQUEST_HEADER,
 } from './constants';
 
@@ -88,15 +94,15 @@ export class WxcCallRecordingConnector
   }
 
   /**
-   * Builds the `convergedRecordings` collection URL with the list query parameters
-   * (`from`, `to`, `status`, `max`).
+   * Builds the `convergedRecordings` collection URL with the list query parameters.
    *
    * The converged recordings API only returns results when the request is bounded by BOTH a
    * `from` and a `to` timestamp, so this method always sends both (a `from`-only request comes
    * back empty). When the caller does not supply an explicit `from`, it is derived from the
    * `days` lookback (`now - days`, default {@link DEFAULT_NUMBER_OF_DAYS}); when `to` is omitted
-   * it defaults to the current time (`now`). The remaining params default to `status=available`
-   * and `max=30`.
+   * it defaults to the current time (`now`). `status` and `max` default to `available` and `30`.
+   * The remaining filters (`serviceType`, `format`, `ownerType`, `storageRegion`, `locationId`,
+   * `topic`) are pass-through and only appended when the caller provides them.
    *
    * @param options - Optional time window/filtering/pagination from {@link GetRecordingsOptions}.
    * @returns The fully-qualified request URL.
@@ -116,6 +122,22 @@ export class WxcCallRecordingConnector
     params.append(TO, toDate);
     params.append(STATUS, options?.status ?? DEFAULT_STATUS);
     params.append(MAX, `${options?.max ?? DEFAULT_MAX}`);
+
+    // Optional pass-through filters: only sent when the caller provides them so the API can apply
+    // its own defaults for any that are omitted.
+    const optionalParams: Array<[string, string | undefined]> = [
+      [SERVICE_TYPE, options?.serviceType],
+      [FORMAT, options?.format],
+      [OWNER_TYPE, options?.ownerType],
+      [STORAGE_REGION, options?.storageRegion],
+      [LOCATION_ID, options?.locationId],
+      [TOPIC, options?.topic],
+    ];
+    optionalParams.forEach(([key, value]) => {
+      if (value) {
+        params.append(key, value);
+      }
+    });
 
     return `${this.recordingServiceUrl}/${CONVERGED_RECORDINGS}?${params.toString()}`;
   }

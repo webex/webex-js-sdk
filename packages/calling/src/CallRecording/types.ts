@@ -154,6 +154,21 @@ export type GetRecordingsOptions = {
   status?: RecordingStatus;
   /** Maximum number of records to return per page. Defaults to `30`. */
   max?: number;
+  /**
+   * Filter by the service that produced the recording (e.g. `'calling'`). Sent only when provided;
+   * when omitted the API applies its own default.
+   */
+  serviceType?: string;
+  /** Filter by recording media format (e.g. `'MP3'`, `'MP4'`). Sent only when provided. */
+  format?: string;
+  /** Filter by recording owner type (e.g. `'user'`). Sent only when provided. */
+  ownerType?: string;
+  /** Filter by storage region (e.g. `'US'`). Sent only when provided. */
+  storageRegion?: string;
+  /** Filter by the location id the recording belongs to. Sent only when provided. */
+  locationId?: string;
+  /** Filter by recording topic. Sent only when provided. */
+  topic?: string;
   /** When true, sends the `WebexUserRequest: true` header. Defaults to false. */
   webexUserRequest?: boolean;
 };

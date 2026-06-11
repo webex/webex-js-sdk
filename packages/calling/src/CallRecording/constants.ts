@@ -9,6 +9,12 @@ export const FROM = 'from';
 export const TO = 'to';
 export const STATUS = 'status';
 export const MAX = 'max';
+export const SERVICE_TYPE = 'serviceType';
+export const FORMAT = 'format';
+export const OWNER_TYPE = 'ownerType';
+export const STORAGE_REGION = 'storageRegion';
+export const LOCATION_ID = 'locationId';
+export const TOPIC = 'topic';
 
 // Default list query values.
 export const DEFAULT_STATUS = 'available';

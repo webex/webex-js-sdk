@@ -62,6 +62,12 @@ getRecordings(options?: GetRecordingsOptions): Promise<RecordingListResponse>
 | `options.days` | `number` | No | Lookback window used to derive `from` when `from` is omitted (API max window is 30 days) | `30` |
 | `options.status` | `RecordingStatus` | No | Filter by status (`available`, `deleted`) | `available` |
 | `options.max` | `number` | No | Maximum number of records to return per page | `30` |
+| `options.serviceType` | `string` | No | Filter by producing service (e.g. `calling`); sent only when provided | _(unset)_ |
+| `options.format` | `string` | No | Filter by media format (e.g. `MP3`, `MP4`); sent only when provided | _(unset)_ |
+| `options.ownerType` | `string` | No | Filter by owner type (e.g. `user`); sent only when provided | _(unset)_ |
+| `options.storageRegion` | `string` | No | Filter by storage region (e.g. `US`); sent only when provided | _(unset)_ |
+| `options.locationId` | `string` | No | Filter by location id; sent only when provided | _(unset)_ |
+| `options.topic` | `string` | No | Filter by recording topic; sent only when provided | _(unset)_ |
 | `options.webexUserRequest` | `boolean` | No | Sends `WebexUserRequest: true` header (rate-limit bypass) | `false` |
 
 > A `from` lower bound is always sent (like CallHistory's mandatory `from` date) so the API returns

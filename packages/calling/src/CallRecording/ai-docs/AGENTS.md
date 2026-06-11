@@ -101,7 +101,7 @@ created.
 | `Recording` | A converged recording. Key fields: `id`, `topic`, `createTime`, `timeRecorded`, `status`, `serviceType`, `durationSeconds`, `sizeBytes`, `ownerId`, `ownerEmail`, `serviceData` (`locationId`, `callSessionId`), `temporaryDirectDownloadLinks` |
 | `RecordingServiceData` | Service-specific data: `locationId`, `callSessionId` |
 | `RecordingMetadata` | Metadata document: `owner`, `session`, `participants`, `mediaStreams`, `extensionData` |
-| `GetRecordingsOptions` | Optional `from`, `to`, `days`, `status`, `max`, `webexUserRequest` |
+| `GetRecordingsOptions` | Optional `from`, `to`, `days`, `status`, `max`, `serviceType`, `format`, `ownerType`, `storageRegion`, `locationId`, `topic`, `webexUserRequest` |
 | `RecordingStatus` | Enum: `available`, `deleted` |
 | `RecordingListResponse` | `{statusCode, data: {recordings?, error?}, message}` |
 | `RecordingResponse` | `{statusCode, data: {recording?, error?}, message}` |
@@ -140,6 +140,12 @@ The `CallRecording` constructor accepts:
 | `days` | `number` | `30` | Lookback used to derive `from` when `from` is omitted (API max window is 30 days) |
 | `status` | `RecordingStatus` | `available` | Filter by recording status (`available`/`deleted`) |
 | `max` | `number` | `30` | Maximum number of records to return per page |
+| `serviceType` | `string` | _(unset)_ | Filter by producing service (e.g. `calling`); sent only when provided |
+| `format` | `string` | _(unset)_ | Filter by media format (e.g. `MP3`, `MP4`); sent only when provided |
+| `ownerType` | `string` | _(unset)_ | Filter by owner type (e.g. `user`); sent only when provided |
+| `storageRegion` | `string` | _(unset)_ | Filter by storage region (e.g. `US`); sent only when provided |
+| `locationId` | `string` | _(unset)_ | Filter by location id; sent only when provided |
+| `topic` | `string` | _(unset)_ | Filter by recording topic; sent only when provided |
 | `webexUserRequest` | `boolean` | `false` | When true, sends the `WebexUserRequest: true` header (ad-hoc rate-limit bypass) |
 
 ---
