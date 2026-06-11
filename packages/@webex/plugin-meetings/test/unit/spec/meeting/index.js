@@ -963,7 +963,7 @@ describe('plugin-meetings', () => {
 
           // resets joinWithMediaRetryInfo
           assert.deepEqual(meeting.joinWithMediaRetryInfo, {
-            isRetry: false,
+            retryCount: 0,
             prevJoinResponse: undefined,
           });
         });
@@ -1078,7 +1078,7 @@ describe('plugin-meetings', () => {
 
           // resets joinWithMediaRetryInfo
           assert.deepEqual(meeting.joinWithMediaRetryInfo, {
-            isRetry: false,
+            retryCount: 0,
             prevJoinResponse: undefined,
             prevError: undefined,
           });
@@ -1123,7 +1123,7 @@ describe('plugin-meetings', () => {
           );
 
           assert.deepEqual(meeting.joinWithMediaRetryInfo, {
-            isRetry: false,
+            retryCount: 0,
             prevJoinResponse: undefined,
             prevError: undefined,
           });
@@ -1190,7 +1190,7 @@ describe('plugin-meetings', () => {
 
           // resets joinWithMediaRetryInfo
           assert.deepEqual(meeting.joinWithMediaRetryInfo, {
-            isRetry: false,
+            retryCount: 0,
             prevJoinResponse: undefined,
           });
         });
@@ -1427,7 +1427,7 @@ describe('plugin-meetings', () => {
             name: 'client.ice.end',
             payload: {
               canProceed: false,
-              icePhase: 'JOIN_MEETING_FINAL',
+              icePhase: 'JOIN_MEETING_RETRY',
               errors: [fakeClientError],
             },
             options: {
@@ -1534,12 +1534,105 @@ describe('plugin-meetings', () => {
 
           // check the callback works correctly on the 2nd attempt
           assert.equal(icePhaseCallbacks.length, 2);
-          assert.equal(icePhaseCallbacks[1](), 'JOIN_MEETING_FINAL');
+          assert.equal(icePhaseCallbacks[1](), 'JOIN_MEETING_RETRY');
 
           // trigger 2nd failure
           addMediaInternalResults[1].reject(addMediaError);
 
           await assert.isRejected(result);
+        });
+
+        it('should allow an additional retry when UserNotJoinedError occurs and return JOIN_MEETING_FINAL on the 3rd attempt', async () => {
+          const genericError = new Error('generic error');
+          const userNotJoinedError = new UserNotJoinedError();
+          const thirdError = new Error('third error');
+
+          const icePhaseCallbacks = [];
+          const addMediaInternalResults = [];
+
+          meeting.addMediaInternal = sinon
+            .stub()
+            .callsFake((icePhaseCallback) => {
+              const defer = new Defer();
+
+              icePhaseCallbacks.push(icePhaseCallback);
+              addMediaInternalResults.push(defer);
+              return defer.promise;
+            });
+
+          sinon.stub(meeting, 'leave').resolves();
+
+          const result = meeting.joinWithMedia({
+            joinOptions,
+            mediaOptions,
+          });
+
+          await testUtils.flushPromises();
+
+          // 1st attempt: retryCount=0 → JOIN_MEETING_RETRY
+          assert.equal(icePhaseCallbacks.length, 1);
+          assert.equal(icePhaseCallbacks[0](), 'JOIN_MEETING_RETRY');
+          addMediaInternalResults[0].reject(genericError);
+
+          await testUtils.flushPromises();
+
+          // 2nd attempt: retryCount=1 → JOIN_MEETING_RETRY
+          assert.equal(icePhaseCallbacks.length, 2);
+          assert.equal(icePhaseCallbacks[1](), 'JOIN_MEETING_RETRY');
+          addMediaInternalResults[1].reject(userNotJoinedError);
+
+          await testUtils.flushPromises();
+
+          // 3rd attempt: retryCount=2 → JOIN_MEETING_FINAL
+          assert.equal(icePhaseCallbacks.length, 3);
+          assert.equal(icePhaseCallbacks[2](), 'JOIN_MEETING_FINAL');
+          addMediaInternalResults[2].reject(thirdError);
+
+          const thrownError = await assert.isRejected(result);
+
+          // should throw the first error
+          assert.equal(thrownError, genericError);
+        });
+
+        it('should re-join when retrying after a UserNotJoinedError', async () => {
+          const userNotJoinedError = new UserNotJoinedError();
+
+          meeting.addMediaInternal = sinon
+            .stub()
+            .onFirstCall()
+            .rejects(userNotJoinedError)
+            .onSecondCall()
+            .resolves(test4);
+
+          const result = await meeting.joinWithMedia({joinOptions, mediaOptions});
+
+          assert.deepEqual(result, {join: fakeJoinResult, media: test4, multistreamEnabled: true});
+
+          // join() should be called twice — once for the first attempt, once for the re-join after UserNotJoinedError
+          assert.calledTwice(meeting.join);
+          // TURN discovery should be attempted twice (once per join)
+          assert.calledTwice(generateTurnDiscoveryRequestMessageStub);
+        });
+
+        it('should re-join when isUserInLeftState returns true on retry', async () => {
+          const addMediaError = new Error('addMedia error');
+
+          sinon.stub(MeetingUtil, 'isUserInLeftState').returns(true);
+
+          meeting.addMediaInternal = sinon
+            .stub()
+            .onFirstCall()
+            .rejects(addMediaError)
+            .onSecondCall()
+            .resolves(test4);
+
+          const result = await meeting.joinWithMedia({joinOptions, mediaOptions});
+
+          assert.deepEqual(result, {join: fakeJoinResult, media: test4, multistreamEnabled: true});
+
+          // join() should be called twice — once for the first attempt, once because the user is in left state
+          assert.calledTwice(meeting.join);
+          assert.calledTwice(generateTurnDiscoveryRequestMessageStub);
         });
 
         [
