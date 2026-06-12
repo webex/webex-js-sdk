@@ -25,7 +25,7 @@ The CallingClient module follows a layered architecture: **Application → Calli
 | `SDKConnector` | `import SDKConnector from '../../SDKConnector'` (frozen instance) | Global, set once via `setWebex()` |
 | `CallManager` | `getCallManager(webex, indicator)` | Module-level singleton |
 | `MetricManager` | `getMetricManager(webex, indicator)` | Module-level singleton |
-| `APIRequest` | `APIRequest.getInstance({webex})` / `createAPIRequest({webex})` | Module-level singleton; `APIRequest.resetInstance()` is exposed for tests. The WSS feature-flag value is captured **at construction time** and not re-read per request. |
+| `APIRequest` | `APIRequest.getInstance({webex})` / `createAPIRequest({webex})` | Module-level singleton; `APIRequest.resetInstance()` is exposed for tests. The WDM feature flag is read once at construction into `isMobiusSocketEnabled`. This field is **mutable** — `Registration.attemptRegistrationWithServers` calls `apiRequest.setSocketEnabled(servers[0].startsWith('wss://'))` before each server group, so the transport can vary across groups within the same session. |
 | `MobiusSocket` | `getMobiusSocketInstance(webex, configOverrides?)` (via `APIRequest` only) | Module-level singleton, `resetMobiusSocketInstance()` for tests. See [`mobius-socket/ai-docs/ARCHITECTURE.md`](../../mobius-socket/ai-docs/ARCHITECTURE.md). |
 | `Line` | Created internally by `CallingClient.createLine()` | One per CallingClient, stored in `lineDict` |
 | `Registration` | Created internally by `Line` constructor via `createRegistration()` | One per Line |
@@ -260,9 +260,13 @@ sequenceDiagram
     deactivate Line
 
     loop Every keepaliveInterval seconds
-        Worker->>Mobius: POST /devices/{id}/status
-        Mobius-->>Worker: 200 OK
-        Worker->>Reg: WorkerMessageType.KEEPALIVE_SUCCESS
+        Worker->>Reg: WorkerMessageType.SEND_KEEPALIVE
+        Reg->>Mobius: APIRequest.makeRequest(POST /devices/{id}/status)
+        Mobius-->>Reg: 200 OK
+        Reg->>Worker: WorkerMessageType.KEEPALIVE_RESULT {statusCode}
+        opt retryCount was > 0 (recovering from previous failure)
+            Worker->>Reg: WorkerMessageType.KEEPALIVE_SUCCESS {statusCode}
+        end
     end
 ```
 
@@ -320,7 +324,9 @@ sequenceDiagram
 
 ### 4. Transport Selection (HTTP vs Mobius WSS)
 
-Most Mobius traffic in this module goes through `APIRequest.makeRequest()`, which selects the transport once at construction time. Three flows intentionally bypass `APIRequest` and always use `webex.request()` directly regardless of the WSS flag: **Mobius server discovery** (`getMobiusServers`), **device listing** (`getDevices`), and **failback health pings** (`Registration.isPrimaryActive`). Everything else — registration, keepalive, call setup/state/media/supplementary services — is routed through `makeRequest`:
+Most Mobius traffic in this module goes through `APIRequest.makeRequest()`. Three flows intentionally bypass `APIRequest` and always use `webex.request()` directly regardless of the WSS flag: **Mobius server discovery** (`getMobiusServers`), **device listing** (`getDevices`), and **failback health pings** (`Registration.isPrimaryActive`). Everything else — registration, keepalive, call setup/state/media/supplementary services — is routed through `makeRequest`.
+
+**`isMobiusSocketEnabled` is not fixed after construction.** `Registration.attemptRegistrationWithServers` calls `apiRequest.setSocketEnabled(servers[0].startsWith('wss://'))` before processing each server group. This means a feature-enabled client will fall back to HTTP for any group whose server URLs have no `wss://` scheme (e.g. a primary or backup group with no WSS URLs). Primary and backup groups are evaluated independently, so WSS and HTTP can be used for different groups within the same session.
 
 ```mermaid
 flowchart TD
@@ -333,10 +339,13 @@ flowchart TD
   UseDev -- true --> Enabled[isMobiusSocketEnabled = true]
   UseDev -- false --> Disabled[isMobiusSocketEnabled = false]
 
-  EnabledLS --> Req
-  Enabled --> Req
-  DisabledLS --> Req
-  Disabled --> Req
+  EnabledLS --> Override
+  Enabled --> Override
+  DisabledLS --> Override
+  Disabled --> Override
+
+  Override[Registration.attemptRegistrationWithServers:<br/>apiRequest.setSocketEnabled<br/>servers0.startsWith wss://]
+  Override --> Req
 
   Req[makeRequest(request)]
   Req --> Branch{isMobiusSocketEnabled?}

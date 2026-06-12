@@ -233,23 +233,28 @@ The keepalive runs in a **Web Worker** to ensure heartbeats are not blocked by m
 
 ```mermaid
 sequenceDiagram
-  participant MT as Main Thread
+  participant MT as Main Thread (Registration)
   participant WW as Web Worker
   participant Mob as Mobius
 
   MT->>WW: new Worker(blobURL)
-  MT->>WW: postMessage(START_KEEPALIVE)<br/>{token, url, interval, retryCountThreshold}
+  MT->>WW: postMessage(START_KEEPALIVE)<br/>{interval, retryCountThreshold}
 
   loop setInterval(interval * 1000) while retryCount < threshold
-    WW->>Mob: fetch(POST url/status)
+    WW-->>MT: postMessage(SEND_KEEPALIVE)
+    MT->>Mob: apiRequest.makeRequest(POST url/status)
     alt 200 OK
+      Mob-->>MT: 200 OK
+      MT->>WW: postMessage(KEEPALIVE_RESULT)<br/>{statusCode}
       Note over WW: Reset retryCount to 0
       alt retryCount was > 0 (recovering)
-        WW-->>MT: postMessage(KEEPALIVE_SUCCESS)
+        WW-->>MT: postMessage(KEEPALIVE_SUCCESS)<br/>{statusCode}
       end
     else Error
+      Mob-->>MT: error response
+      MT->>WW: postMessage(KEEPALIVE_RESULT)<br/>{err}
       Note over WW: Increment retryCount
-      WW-->>MT: postMessage(KEEPALIVE_FAILURE)<br/>{statusCode, headers, retryCount}
+      WW-->>MT: postMessage(KEEPALIVE_FAILURE)<br/>{err, keepAliveRetryCount}
     end
   end
 
@@ -262,10 +267,12 @@ sequenceDiagram
 
 | Message | Direction | Payload | Description |
 |---------|-----------|---------|-------------|
-| `START_KEEPALIVE` | Main → Worker | `{accessToken, deviceUrl, interval, retryCountThreshold, url}` | Start sending keepalive requests |
-| `CLEAR_KEEPALIVE` | Main → Worker | _(none)_ | Stop sending keepalive requests |
-| `KEEPALIVE_SUCCESS` | Worker → Main | _(none)_ | Keepalive POST succeeded |
-| `KEEPALIVE_FAILURE` | Worker → Main | `{statusCode, body, retryCount}` | Keepalive POST failed |
+| `START_KEEPALIVE` | Main → Worker | `{interval, retryCountThreshold}` | Start the keepalive interval timer |
+| `SEND_KEEPALIVE` | Worker → Main | _(none)_ | Timer fired — main thread should send the keepalive POST |
+| `KEEPALIVE_RESULT` | Main → Worker | `{statusCode}` on success, `{err}` on failure | Result of the keepalive POST (sent by main thread after `apiRequest.makeRequest` resolves/rejects) |
+| `CLEAR_KEEPALIVE` | Main → Worker | _(none)_ | Stop the keepalive interval; main thread also calls `worker.terminate()` |
+| `KEEPALIVE_SUCCESS` | Worker → Main | `{statusCode}` | Keepalive succeeded **after a prior failure** (`retryCount > 0`); normal successes are silent |
+| `KEEPALIVE_FAILURE` | Worker → Main | `{err, keepAliveRetryCount}` | Keepalive POST failed; `err` is the WebexRequestPayload-shaped error |
 
 ### Worker Creation
 
@@ -283,11 +290,13 @@ URL.revokeObjectURL(url);
 
 When the main thread receives `KEEPALIVE_FAILURE`:
 
-1. **Emit `RECONNECTING`** via `lineEmitter` to notify the application
-2. **Check retry count** against threshold (`MAX_CALL_KEEPALIVE_RETRY_COUNT = 4 for contact center and 5 otherwise`)
-3. **If within threshold:** Log warning, wait for next keepalive cycle
-4. **If threshold exceeded:** Trigger `reconnectOnFailure()` for full re-registration
-5. **Submit metrics** for keepalive failure
+1. **Submit metrics** and run `handleRegistrationErrors` to classify the error (fatal vs. non-fatal vs. 429).
+2. **If abort (fatal) OR retryCount ≥ threshold** (`4` for contact-center, `5` otherwise):
+   - Set status to `INACTIVE`, terminate the keepalive worker
+   - Emit `LINE_EVENTS.UNREGISTERED` via `lineEmitter`
+   - If **non-fatal threshold exceeded** (not `abort`): call `reconnectOnFailure()` for full re-registration
+   - If **fatal + 404**: call `handle404KeepaliveFailure()` for a fresh registration attempt
+3. **If below threshold** (non-fatal and retryCount < threshold): emit `LINE_EVENTS.RECONNECTING` via `lineEmitter` and wait for the next keepalive cycle
 
 ---
 
