@@ -205,10 +205,10 @@ sequenceDiagram
     Mobius-->>CC: {primary: [...], backup: [...],<br/>primaryWss: [...], backupWss: [...]}
 
     opt apiRequest.isSocketEnabled()
-        CC->>CC: connectToMobiusSocket()<br/>(walk primaryWssMobiusUris then backupWssMobiusUris)
+        CC->>CC: connectToMobiusSocket()<br/>(walk primaryWssMobiusUris only;<br/>returns early if list is empty;<br/>backupWssMobiusUris never consulted here)
         CC->>API: apiRequest.connectToMobiusSocket(wssUri)
         API->>MS: getMobiusSocketInstance(webex)<br/>mobiusSocket.connect(wssUri)
-        MS-->>API: connected (or fall through to next URI)
+        MS-->>API: connected (or fall through to next primary URI)
         CC->>API: apiRequest.registerMobiusSocketListener(handleMobiusAsyncEvent)
         API->>MS: on('event:async_event', handleMobiusAsyncEvent)
     end
@@ -228,7 +228,7 @@ sequenceDiagram
 > **Notes:**
 > - For detailed information on the registration process and its architecture, refer to the [Registration architecture documentation](../registration/ai-docs/ARCHITECTURE.md).
 > - The Mobius WebSocket connection lifecycle (backoff, reconnect, shutdown switchover, token refresh) is documented in [`mobius-socket/ai-docs/ARCHITECTURE.md`](../../mobius-socket/ai-docs/ARCHITECTURE.md).
-> - When all primary and backup WSS URIs fail at init time, `CallingClient.connectToMobiusSocket()` logs a warning and continues; `Registration.attemptRegistrationWithServers` will try `apiRequest.connectToMobiusSocket(wssNormalizedUrl)` again per server during line registration.
+> - `CallingClient.connectToMobiusSocket()` only walks `primaryWssMobiusUris`; it never consults `backupWssMobiusUris`. If `primaryWssMobiusUris` is empty it returns immediately; if all primary URIs fail it logs a warning and continues without throwing. In either case, `Registration.attemptRegistrationWithServers` will retry `apiRequest.connectToMobiusSocket(wssNormalizedUrl)` per server during line registration (backup URIs are reached at that stage via the normal failover path).
 
 
 ### 2. Line Registration
@@ -320,7 +320,7 @@ sequenceDiagram
 
 ### 4. Transport Selection (HTTP vs Mobius WSS)
 
-All Mobius traffic in this module goes through `APIRequest.makeRequest()`. The transport is selected once at construction time:
+Most Mobius traffic in this module goes through `APIRequest.makeRequest()`, which selects the transport once at construction time. Three flows intentionally bypass `APIRequest` and always use `webex.request()` directly regardless of the WSS flag: **Mobius server discovery** (`getMobiusServers`), **device listing** (`getDevices`), and **failback health pings** (`Registration.isPrimaryActive`). Everything else — registration, keepalive, call setup/state/media/supplementary services — is routed through `makeRequest`:
 
 ```mermaid
 flowchart TD
@@ -559,7 +559,7 @@ console.log('Mercury connected:', webex.internal.mercury.connected);
 - Network blocks WebSocket traffic to the Mobius host.
 
 **What happens internally:**
-- `CallingClient.connectToMobiusSocket()` walks primary then backup WSS URIs; failures fall through without throwing.
+- `CallingClient.connectToMobiusSocket()` walks `primaryWssMobiusUris` only (returns early when the list is empty); `backupWssMobiusUris` is never consulted at init time — failures fall through without throwing.
 - `Registration.attemptRegistrationWithServers` retries the WSS connection per server before the `POST /device` call.
 - If WSS connect succeeds but registration still fails, `Registration` calls `apiRequest.disconnectFromMobiusSocket({code: 3050, reason: 'done (permanent)'})` before trying the next server.
 
