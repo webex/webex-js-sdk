@@ -110,7 +110,8 @@ stateDiagram-v2
     Reconnecting --> Connecting: reconnect() -> connect()
     Reconnecting --> Idle: close fatal (1003/1000/1001/3050 perm/default)<br/>emit('offline.permanent')
     Online --> Idle: close 4000 (replaced)<br/>emit('offline.replaced')
-    Online --> Idle: close 4001<br/>emit('event:async_event', MOBIUS_SOCKET_4001_EVENT)
+    Online --> Idle: close 4001<br/>emit('event:async_event', MOBIUS_SOCKET_4001_EVENT)<br/>emit('offline.permanent')
+    Online --> Idle: close 4429 (too many requests)<br/>emit('offline.permanent')
 
     Online --> Idle: disconnect()<br/>abort backoff, stop token timer
     Connecting --> Idle: disconnect()
@@ -148,17 +149,19 @@ graph TD
 
         OC[onclose] --> ACT{isActiveSocket?}
         ACT -->|yes| TEARDOWN[set offline,<br/>stop token timer,<br/>emit 'offline']
-        ACT -->|no| OLD[non-active old socket — ignore state change]
+        ACT -->|no| OLD[non-active old socket —<br/>ignore state change;<br/>clean up listeners]
 
         TEARDOWN --> CC[switch on event.code]
-        CC -->|1003,1000,1001,default| PERM[emit offline.permanent]
-        CC -->|4000| REPL[emit offline.replaced]
-        CC -->|4001| EVT[emit event:async_event<br/>MOBIUS_SOCKET_4001_EVENT]
-        CC -->|1005,1006,1011,1012| TR[emit offline.transient<br/>reconnect]
+        OLD --> CC
+
+        CC -->|1003,1000,1001,default| PERM[emit offline.permanent<br/>— active socket only]
+        CC -->|4000| REPL[emit offline.replaced<br/>— active socket only]
+        CC -->|4001| EVT[emit event:async_event MOBIUS_SOCKET_4001_EVENT<br/>— always, both active and non-active<br/>emit offline.permanent — active socket only]
+        CC -->|1005,1006,1011,1012| TR[emit offline.transient + reconnect<br/>— active socket only]
         CC -->|3050+normal reason| TR
         CC -->|3050+other reason| PERM
         CC -->|4401,4403,4404| RTH[refreshToken<br/>reconnect]
-        CC -->|4429| LOG[log only — no reconnect]
+        CC -->|4429| TOOMANY[emit offline.permanent<br/>— active socket only;<br/>no reconnect]
     end
 ```
 
@@ -365,18 +368,17 @@ sequenceDiagram
     participant Mob as Mobius (wss)
     participant S as Socket (active)
     participant MS as MobiusSocket
-    participant W as Webex.credentials
     participant App as APIRequest
 
     Mob-->>S: close 4401/4403/4404
     S-->>MS: emit('close', event)
     MS->>MS: onclose(event, sourceSocket)
-    MS->>MS: refreshToken().catch(log)
-    MS->>W: canRefresh ? credentials.refresh({force:true}) ; getUserToken()
-    W-->>MS: token
-    MS->>S: Socket#refresh(token) (re-auth on still-live socket)
-    Note over MS: For close-during-onclose path,<br/>the active socket is gone;<br/>refreshToken returns early and<br/>reconnect(this.socket?.url) follows.
-    MS->>MS: reconnect(this.socket?.url)
+    Note over MS: isActiveSocket === true:<br/>removeAllListeners(), this.socket = undefined,<br/>emit('offline'), connected = false
+    MS->>MS: refreshToken()
+    Note over MS: !this.connected → early return<br/>(socket already gone; no credential<br/>refresh or Socket#refresh attempted)
+    MS->>MS: reconnect(this.socket?.url)<br/>→ connect(this.socketUrl)
+    Note over MS: this.socket is undefined so url arg is<br/>undefined; connect() falls back to<br/>cached this.socketUrl
+    MS->>App: re-enters connect/backoff sequence (Diagram 1)
 ```
 
 ### 7. Periodic Token Refresh
@@ -501,9 +503,9 @@ flowchart LR
 | `3050` (`'idle'` / `'done (forced)'`) | normal disconnect with idle/forced reason | reconnect | `offline`, `offline.transient` |
 | `3050` (other reason) | permanent disconnect | no reconnect | `offline`, `offline.permanent` |
 | `4000` | server replaced the connection | no reconnect | `offline`, `offline.replaced` |
-| `4001` | Mobius-specific registration-down signal | no reconnect; synthesise async event | `offline` (only if active), `event:async_event` (always, with `MOBIUS_SOCKET_4001_EVENT`) |
+| `4001` | Mobius-specific registration-down signal | no reconnect; synthesise async event | `offline` (active only), `offline.permanent` (active only), `event:async_event` (always — both active and non-active sockets) |
 | `4401`, `4403`, `4404` | auth-class failures during the session | refresh token, then reconnect | `offline` (active only) — no specific offline.* variant |
-| `4429` | too many requests | log only, no reconnect | `offline` (active only) |
+| `4429` | too many requests | no reconnect | `offline` (active only), `offline.permanent` (active only) |
 | `4400` | bad request (caught during `Socket#open`) | aborts the backoff call (via `BadRequest`) | none — surfaced as `connect()` rejection |
 | default | any other code | no reconnect | `offline`, `offline.permanent` |
 
@@ -513,7 +515,7 @@ flowchart LR
 
 | Constant | Value | Source | Description |
 |---|---|---|---|
-| `TOKEN_REFRESH_INTERVAL_MS` | `60 * 60 * 1000` | `mobius-socket.ts` | Token refresh cadence while connected. |
+| `TOKEN_REFRESH_INTERVAL_MS` | 1 hour | `mobius-socket.ts` | Token refresh cadence while connected. |
 | `normalReconnectReasons` | `['idle', 'done (forced)']` | `mobius-socket.ts` | Lower-cased close-reason values that flip a `3050` close into a transient/reconnectable case. |
 | `MOBIUS_SOCKET_NAMESPACE` | `'MobiusSocket'` | `mobius-socket.ts` | Log-prefix string for module logs. |
 | `SOCKET_READY_STATE` | `{CONNECTING:0, OPEN:1, CLOSING:2, CLOSED:3}` | `socket/constants.ts` | WebSocket ready-state ranges used by `Socket` guards. |

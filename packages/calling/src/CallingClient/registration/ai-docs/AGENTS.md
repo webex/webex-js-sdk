@@ -29,7 +29,7 @@ The `Registration` class manages the lifecycle of a device registration with the
 The Registration module handles:
 
 - **Device Registration** — `POST /calling/web/device` to Mobius to register the client device (via `APIRequest.makeRequest` — HTTP or WSS depending on `apiRequest.isSocketEnabled()`)
-- **Keepalive** — Periodic `POST /devices/{deviceId}/status` via a dedicated Web Worker (HTTP only — keepalive does not use the WebSocket)
+- **Keepalive** — Periodic `POST /devices/{deviceId}/status` via a dedicated Web Worker (routed through `APIRequest.makeRequest` — HTTP when WSS is off, WebSocket when WSS is on)
 - **Registration Failover** — Automatic switch from primary to backup Mobius servers on failure
 - **Registration Failback** — Automatic return to primary servers when they become available
 - **Reconnection** — Re-register after network disruption or Mercury disconnection
@@ -59,8 +59,7 @@ The Registration module handles:
 | `isReconnectPending` | `(): boolean` | Returns `true` if reconnect is deferred |
 | `handleConnectionRestoration` | `(retry: boolean): Promise<boolean>` | Re-registers after network/Mercury recovery |
 | `setDeviceInfo` | `(body: Devices): void` | Hydrates device info from a Devices response |
-| `handleRegistrationDownEvent` | `(event?: MobiusAsyncEvent): Promise<void>` | Handles a Mobius `REGISTRATION_DOWN` async event; defers cleanup while calls are active, otherwise cleans up immediately. Safe to re-invoke |
-| `isRegistrationDownPending` | `(): boolean` | Returns `true` while a registration-down cleanup is deferred due to active calls |
+| `handleRegistrationDownEvent` | `(event?: MobiusAsyncEvent): Promise<void>` | Handles a Mobius `REGISTRATION_DOWN` async event; immediately ends the first active call (if any) then runs registration-side cleanup. |
 
 ---
 
@@ -109,10 +108,8 @@ Robust error handling is built in for registration and keepalive via `handleRegi
 
 When Mobius emits a `REGISTRATION_DOWN` async event, `CallingClient` forwards it to `Registration.handleRegistrationDownEvent`:
 
-- **Active calls present:** `registrationDownPending` is set to `true` and the method returns early without running cleanup. `CallingClient` schedules a polling interval (every 30s) that re-invokes `handleRegistrationDownEvent` with the same event; once no active calls remain on a subsequent tick, the cleanup runs and the interval is cleared.
-- **No active calls:** cleanup runs immediately and `registrationDownPending` stays `false`.
-
-`handleRegistrationDownEvent` is safe to re-invoke: it is idempotent across repeated calls and only performs the teardown once the active-call precondition is met.
+1. Retrieves the first active call (if any) from `CallManager` and immediately calls `activeCall?.end()` to tear it down.
+2. Calls `performRegistrationDownCleanup` unconditionally — there is no deferral, no `registrationDownPending` flag, and no polling interval.
 
 Cleanup (under the shared mutex) performs:
 - `clearFailbackTimer()` and `clearKeepaliveTimer()`
