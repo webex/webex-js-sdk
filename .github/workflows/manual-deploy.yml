@@ -98,6 +98,9 @@ jobs:
     needs: initialize
     runs-on: ubuntu-latest
 
+    outputs:
+      packages: ${{ steps.list.outputs.packages }}
+
     steps:
       - name: Checkout Project
         uses: actions/checkout@v4
@@ -128,6 +131,21 @@ jobs:
 
       - name: Build Other Packages
         run: yarn workspaces foreach --parallel --topological --verbose run build:src
+
+      - name: Resolve publishable packages
+        id: list
+        # `package-tools list --mode node` emits a space-separated list of
+        # non-private workspaces. This is the single source of truth for
+        # which packages get version-set, published to NPM, and included in
+        # the changelog. Downstream jobs consume it via
+        # `needs.build.outputs.packages`.
+        run: |
+          PACKAGES=$(yarn package-tools list --mode node)
+          if [ -z "$PACKAGES" ]; then
+            echo "::error::No publishable packages resolved." >&2
+            exit 1
+          fi
+          echo "packages=$PACKAGES" >> "$GITHUB_OUTPUT"
 
       - name: Cache Distributables
         uses: actions/cache@v4
