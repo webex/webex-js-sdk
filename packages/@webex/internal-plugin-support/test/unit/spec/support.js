@@ -173,6 +173,9 @@ describe('plugin-support', () => {
     beforeEach(() => {
       webex.logger = {
         formatLogs: sinon.stub().returns(['fake logs']),
+        updateLastSubmittedIndex: sinon.stub(),
+        resetBufferToLastSuccessfulUpload: sinon.stub(),
+        error: sinon.stub(),
         sdkBuffer: [],
         clientBuffer: [],
         buffer: [],
@@ -226,6 +229,150 @@ describe('plugin-support', () => {
 
         assert.deepEqual(uploadArgs[0].file, ['test logs']);
       });
+    });
+
+    it('calls updateLastSubmittedIndex() after a successful upload', async () => {
+      await webex.internal.support.submitLogs({});
+
+      assert.calledOnce(webex.logger.updateLastSubmittedIndex);
+      assert.notCalled(webex.logger.resetBufferToLastSuccessfulUpload);
+    });
+
+    it('resolves with the response body from upload', async () => {
+      const uploadResponse = {logId: 'abc123'};
+
+      webex.upload = sinon.stub().returns(Promise.resolve(uploadResponse));
+
+      const result = await webex.internal.support.submitLogs({});
+
+      assert.deepEqual(result, uploadResponse);
+    });
+
+    it('adds userId from the session to the returned body if not already present', async () => {
+      const uploadResponse = {};
+
+      webex.upload = sinon.stub().callsFake((opts) => {
+        opts.phases.finalize.$body({userId: 'session-user-id', logFilename: 'file.txt'});
+
+        return Promise.resolve(uploadResponse);
+      });
+
+      const result = await webex.internal.support.submitLogs({});
+
+      assert.equal(result.userId, 'session-user-id');
+    });
+
+    it('does not overwrite userId in the returned body if already present', async () => {
+      const uploadResponse = {userId: 'existing-user-id'};
+
+      webex.upload = sinon.stub().callsFake((opts) => {
+        opts.phases.finalize.$body({userId: 'session-user-id', logFilename: 'file.txt'});
+
+        return Promise.resolve(uploadResponse);
+      });
+
+      const result = await webex.internal.support.submitLogs({});
+
+      assert.equal(result.userId, 'existing-user-id');
+    });
+
+    [
+      {incrementalLogs: true, retryFailedLogUploadsAtNextInterval: true, shouldReset: true},
+      {incrementalLogs: false, retryFailedLogUploadsAtNextInterval: true, shouldReset: false},
+      {incrementalLogs: true, retryFailedLogUploadsAtNextInterval: false, shouldReset: false},
+      {incrementalLogs: false, retryFailedLogUploadsAtNextInterval: false, shouldReset: false},
+    ].forEach(({incrementalLogs, retryFailedLogUploadsAtNextInterval, shouldReset}) => {
+      it(`${
+        shouldReset ? 'calls' : 'does not call'
+      } resetBufferToLastSuccessfulUpload() when upload fails with incrementalLogs=${incrementalLogs} and retryFailedLogUploadsAtNextInterval=${retryFailedLogUploadsAtNextInterval}`, async () => {
+        const uploadError = new Error('upload failed');
+
+        webex.upload = sinon.stub().returns(Promise.reject(uploadError));
+        webex.internal.support.config.incrementalLogs = incrementalLogs;
+        webex.internal.support.config.retryFailedLogUploadsAtNextInterval =
+          retryFailedLogUploadsAtNextInterval;
+
+        await webex.internal.support.submitLogs({}).catch(() => {});
+
+        assert.notCalled(webex.logger.updateLastSubmittedIndex);
+        if (shouldReset) {
+          assert.calledOnce(webex.logger.resetBufferToLastSuccessfulUpload);
+        } else {
+          assert.notCalled(webex.logger.resetBufferToLastSuccessfulUpload);
+        }
+      });
+    });
+
+    [
+      {
+        type: 'diff',
+        incrementalLogs: false,
+        retryFailedLogUploadsAtNextInterval: true,
+        shouldReset: true,
+      },
+      {
+        type: 'diff',
+        incrementalLogs: false,
+        retryFailedLogUploadsAtNextInterval: false,
+        shouldReset: false,
+      },
+      {
+        type: 'full',
+        incrementalLogs: true,
+        retryFailedLogUploadsAtNextInterval: true,
+        shouldReset: false,
+      },
+      {
+        type: 'full',
+        incrementalLogs: true,
+        retryFailedLogUploadsAtNextInterval: false,
+        shouldReset: false,
+      },
+    ].forEach(({type, incrementalLogs, retryFailedLogUploadsAtNextInterval, shouldReset}) => {
+      it(`${
+        shouldReset ? 'calls' : 'does not call'
+      } resetBufferToLastSuccessfulUpload() when upload fails with options.type=${type}, incrementalLogs=${incrementalLogs}, retryFailedLogUploadsAtNextInterval=${retryFailedLogUploadsAtNextInterval}`, async () => {
+        const uploadError = new Error('upload failed');
+
+        webex.upload = sinon.stub().returns(Promise.reject(uploadError));
+        webex.internal.support.config.incrementalLogs = incrementalLogs;
+        webex.internal.support.config.retryFailedLogUploadsAtNextInterval =
+          retryFailedLogUploadsAtNextInterval;
+
+        await webex.internal.support.submitLogs({}, undefined, {type}).catch(() => {});
+
+        assert.notCalled(webex.logger.updateLastSubmittedIndex);
+        if (shouldReset) {
+          assert.calledOnce(webex.logger.resetBufferToLastSuccessfulUpload);
+        } else {
+          assert.notCalled(webex.logger.resetBufferToLastSuccessfulUpload);
+        }
+      });
+    });
+
+    it('logs an error and rejects the promise when upload fails with incrementalLogs and retryFailedLogUploadsAtNextInterval both true', async () => {
+      const uploadError = new Error('upload failed');
+
+      webex.upload = sinon.stub().returns(Promise.reject(uploadError));
+      webex.internal.support.config.incrementalLogs = true;
+      webex.internal.support.config.retryFailedLogUploadsAtNextInterval = true;
+
+      await assert.isRejected(webex.internal.support.submitLogs({}), uploadError);
+
+      assert.calledOnce(webex.logger.error);
+      assert.match(webex.logger.error.args[0][0], /Failed to upload logs/);
+    });
+
+    it('rejects the promise when upload fails even without retry config', async () => {
+      const uploadError = new Error('upload failed');
+
+      webex.upload = sinon.stub().returns(Promise.reject(uploadError));
+      webex.internal.support.config.incrementalLogs = false;
+      webex.internal.support.config.retryFailedLogUploadsAtNextInterval = false;
+
+      await assert.isRejected(webex.internal.support.submitLogs({}), uploadError);
+
+      assert.notCalled(webex.logger.error);
     });
   });
 });

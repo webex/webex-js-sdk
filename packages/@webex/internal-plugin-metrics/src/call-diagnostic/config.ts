@@ -137,6 +137,7 @@ export const ERROR_DESCRIPTIONS = {
   WEBRTC_API_NOT_AVAILABLE: 'WebrtcApiNotAvailableError',
   WDM_RESTRICTED_REGION: 'WdmRestrictedRegion',
   USER_NOT_ALLOWED_JOIN_WEBINAR: 'UserNotAllowedJoinWebinar',
+  INVALID_MEETING_INFO: 'InvalidMeetingInfo',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
@@ -147,6 +148,8 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   99002: 4100,
   // Cannot find the data. Unkown meeting.
   99009: 4100,
+  // The input parameters contain invalid item
+  99019: 4105,
   // Meeting is not allow to cross env
   58500: 4100,
   // Input parameters contain invalit item
@@ -202,6 +205,8 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   423005: 4005,
   // Wrong password or host key with too many requests
   423006: 4005,
+  // PanelistPasswordError too many time,please input captcha code
+  423008: 4005,
   // PasswordError with right captcha, please input captcha code
   423010: 4005,
   // PasswordOrHostKeyError with right captcha, please input captcha code
@@ -228,6 +233,8 @@ export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
   403003: 4101,
   // Attendee email is required
   403030: 4101,
+  // webinar need login when un-invited attendee join
+  403106: 4104,
 
   // ---- Locus ------
   // FREE_USER_MAX_PARTICIPANTS_EXCEEDED
@@ -696,6 +703,12 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
     errorDescription: ERROR_DESCRIPTIONS.USER_NOT_ALLOWED_JOIN_WEBINAR,
     category: 'expected',
     fatal: true,
+  },
+  4105: {
+    errorDescription: ERROR_DESCRIPTIONS.INVALID_MEETING_INFO,
+    category: 'expected',
+    fatal: false,
+    shownToUser: true,
   },
   2729: {
     errorDescription: ERROR_DESCRIPTIONS.NO_MEDIA_FOUND,
