@@ -188,12 +188,13 @@ jobs:
 
       - name: Set Package Versions
         # `package-tools` does not expose a `version set` command, so use
-        # `npm pkg set` across non-private workspaces to write the requested
-        # version into every publishable package.json. Internal package deps
-        # use `workspace:*` and don't need rewriting.
+        # `npm pkg set` across the resolved publishable workspaces to write
+        # the requested version into every publishable package.json.
+        # Internal package deps use `workspace:*` and don't need rewriting.
         env:
           VERSION: ${{ inputs.version }}
-        run: yarn workspaces foreach --all --no-private exec npm pkg set version="$VERSION"
+          PACKAGES: ${{ needs.build.outputs.packages }}
+        run: yarn workspaces foreach --from "$PACKAGES" exec npm pkg set version="$VERSION"
 
       - name: Display Package Information
         env:
@@ -209,13 +210,6 @@ jobs:
       - name: Build a webex UMD
         run: yarn run build:script
 
-      - name: Get publishable packages
-        id: get-publishable
-        # `package-tools list` (no flags) excludes packages marked `private: true`,
-        # so internal-only workspaces (samples, helpers, etc.) are filtered out.
-        # Output format `{pkg1,pkg2,...}` is consumed directly by `yarn workspaces foreach --from`.
-        run: echo "packages=$(yarn package-tools list)" >> "$GITHUB_OUTPUT"
-
       - name: Add NPM token to .yarnrc.yml file
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -226,7 +220,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           DIST_TAG: ${{ inputs.dist-tag }}
-          PACKAGES: ${{ steps.get-publishable.outputs.packages }}
+          PACKAGES: ${{ needs.build.outputs.packages }}
         run: yarn workspaces foreach --from "$PACKAGES" --verbose run deploy:npm --access public --tag "$DIST_TAG"
 
   publish-documentation:
