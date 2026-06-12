@@ -20,6 +20,8 @@ export interface UserSet {
   testSuite: string;
 }
 
+export type MobiusMode = 'http' | 'ws';
+
 /**
  * Roles that must have credentials/tokens available for the currently enabled
  * Playwright projects. USER_6 is required for SET_CONTACTS (contacts suite).
@@ -35,6 +37,24 @@ export const REQUIRED_OAUTH_ROLES: AccountRole[] = [
 
 /** Separator between set name and environment in project names (e.g. "SET_REGISTRATION_1 - PROD"). */
 const ENV_SEPARATOR = ' - ';
+
+/**
+ * Mobius transport mode for Playwright suites.
+ *
+ * MOBIUS=ws forces the sample app WebSocket override before SDK initialization.
+ * MOBIUS=http keeps the default HTTP transport.
+ */
+export const getMobiusMode = (): MobiusMode => {
+  const mode = process.env.MOBIUS?.toLowerCase();
+
+  if (mode === 'ws') {
+    return 'ws';
+  }
+
+  return 'http';
+};
+
+export const isMobiusWsMode = (): boolean => getMobiusMode() === 'ws';
 
 /**
  * Whether a Playwright project targets the Integration environment.
@@ -71,11 +91,16 @@ export const getToken = (role: AccountRole, isInt = false): string => {
   return token;
 };
 
+/** Env var for E.164 (or test) phone number, production vs integration Playwright projects. */
+export const phoneEnvVar = (role: AccountRole, isInt = false): string =>
+  isInt ? `${role}_INT_PHONE_NUMBER` : `${role}_PHONE_NUMBER`;
+
 /**
  * Read phone number for an account role. Throws if not set.
+ * Integration projects use `USER_N_INT_PHONE_NUMBER`; production uses `USER_N_PHONE_NUMBER`.
  */
-export const getPhoneNumber = (role: AccountRole): string => {
-  const envVar = `${role}_PHONE_NUMBER`;
+export const getPhoneNumber = (role: AccountRole, isInt = false): string => {
+  const envVar = phoneEnvVar(role, isInt);
   const number = process.env[envVar];
   if (!number) {
     throw new Error(`${envVar} not set.`);

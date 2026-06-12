@@ -6,6 +6,7 @@ export const CALLING_SELECTORS = {
   AUTH_STATUS: '#access-token-status',
   SERVICE_INDICATOR: '#ServiceIndicator',
   SERVICE_DOMAIN: '#ServiceDomain',
+  MOBIUS_WSS: '#mobius-wss',
   REGION_INPUT: '#region',
   COUNTRY_INPUT: '#country',
   FEDRAMP_CHECKBOX: '#fedramp',
