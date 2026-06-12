@@ -225,7 +225,7 @@ jobs:
 
   publish-documentation:
     name: Publish - Documentation
-    needs: publish-npm
+    needs: [build, publish-npm]
     runs-on: ubuntu-latest
 
     steps:
@@ -259,9 +259,10 @@ jobs:
       - name: Build tools and set versions
         env:
           VERSION: ${{ inputs.version }}
+          PACKAGES: ${{ needs.build.outputs.packages }}
         run: |
           yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
-          yarn workspaces foreach --all --no-private exec npm pkg set version="$VERSION"
+          yarn workspaces foreach --from "$PACKAGES" exec npm pkg set version="$VERSION"
 
       - name: Build packages locally
         run: yarn build:local
@@ -279,19 +280,10 @@ jobs:
           git fetch origin documentation
           git checkout origin/documentation -- docs/changelog/logs
 
-      - name: Get all package names for changelog
-        id: get-packages
-        run: |
-          PACKAGES=$(yarn package-tools list | tr '\n' ' ' | sed 's/ *$//')
-          {
-            echo 'packages<<EOF'
-            echo "$PACKAGES"
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
-
       - name: Update changelog
         env:
           DIST_TAG: ${{ inputs.dist-tag }}
+          PACKAGES: ${{ needs.build.outputs.packages }}
         run: |
           # Anchor the changelog to the previous release tag so a manual deploy
           # captures every commit since the last release, not just HEAD~1.
@@ -303,7 +295,9 @@ jobs:
             PREVIOUS_COMMIT=$(git rev-parse HEAD~1)
             echo "No prior tag found; falling back to HEAD~1 ($PREVIOUS_COMMIT) as changelog base."
           fi
-          yarn package-tools changelog --packages ${{ steps.get-packages.outputs.packages }} --tag "$DIST_TAG" --commit "$PREVIOUS_COMMIT"
+          # `--packages` is intentionally unquoted so commander receives the
+          # workspace names as variadic args (matching deploy.yml's invocation).
+          yarn package-tools changelog --packages $PACKAGES --tag "$DIST_TAG" --commit "$PREVIOUS_COMMIT"
 
       - name: Update Changelog and Publish Docs Folder
         env:
