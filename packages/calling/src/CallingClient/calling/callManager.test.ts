@@ -596,3 +596,99 @@ describe('Coverage for Events listener', () => {
     });
   });
 });
+
+describe('Mobius event transport alignment', () => {
+  let callManager: ICallManager;
+  let mercuryOnSpy: jest.Mock;
+  let mercuryOffSpy: jest.Mock;
+  let isSocketEnabledSpy: jest.SpyInstance;
+
+  const httpUrl = 'https://mobius.example.com/api/v1/calling/web/';
+  const wssUrl = 'wss://mobius.example.com/api/v1/calling/web/';
+
+  // SDKConnector.registerListener/unregisterListener delegate to mercury.on/off, so the
+  // Mercury listener lifecycle is observed through those mocks on the shared webex instance.
+  const getMobiusListenerWrapper = () =>
+    mercuryOnSpy.mock.calls.find((call) => call[0] === 'event:mobius')?.[1];
+
+  beforeEach(() => {
+    callManager = getCallManager(webex, defaultServiceIndicator);
+    mercuryOnSpy = webex.internal.mercury.on as jest.Mock;
+    mercuryOffSpy = webex.internal.mercury.off as jest.Mock;
+    mercuryOnSpy.mockClear();
+    mercuryOffSpy.mockClear();
+    isSocketEnabledSpy = jest.spyOn(callManager['apiRequest'], 'isSocketEnabled');
+  });
+
+  afterEach(() => {
+    isSocketEnabledSpy.mockRestore();
+  });
+
+  it('updateActiveMobius stores the active Mobius URL', () => {
+    isSocketEnabledSpy.mockReturnValue(false);
+
+    callManager.updateActiveMobius(httpUrl);
+
+    expect(callManager['activeMobiusUrl']).toBe(httpUrl);
+  });
+
+  it('registers the Mercury listener when the transport falls back to HTTP', () => {
+    callManager['isMobiusSocketListenerRegistered'] = false;
+    isSocketEnabledSpy.mockReturnValue(false);
+
+    callManager.updateActiveMobius(httpUrl);
+
+    expect(mercuryOnSpy).toHaveBeenCalledWith('event:mobius', expect.any(Function));
+    expect(callManager['isMobiusSocketListenerRegistered']).toBe(true);
+    expect(mercuryOffSpy).not.toHaveBeenCalled();
+  });
+
+  it('removes the Mercury listener when the transport switches to WebSocket', () => {
+    callManager['isMobiusSocketListenerRegistered'] = true;
+    isSocketEnabledSpy.mockReturnValue(true);
+
+    callManager.updateActiveMobius(wssUrl);
+
+    expect(mercuryOffSpy).toHaveBeenCalledWith('event:mobius');
+    expect(callManager['isMobiusSocketListenerRegistered']).toBe(false);
+    expect(mercuryOnSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not re-register the Mercury listener when already registered on HTTP', () => {
+    callManager['isMobiusSocketListenerRegistered'] = true;
+    isSocketEnabledSpy.mockReturnValue(false);
+
+    callManager.updateActiveMobius(httpUrl);
+
+    expect(mercuryOnSpy).not.toHaveBeenCalled();
+    expect(mercuryOffSpy).not.toHaveBeenCalled();
+    expect(callManager['isMobiusSocketListenerRegistered']).toBe(true);
+  });
+
+  it('does nothing when socket is enabled and no Mercury listener is registered', () => {
+    callManager['isMobiusSocketListenerRegistered'] = false;
+    isSocketEnabledSpy.mockReturnValue(true);
+
+    callManager.updateActiveMobius(wssUrl);
+
+    expect(mercuryOnSpy).not.toHaveBeenCalled();
+    expect(mercuryOffSpy).not.toHaveBeenCalled();
+    expect(callManager['isMobiusSocketListenerRegistered']).toBe(false);
+  });
+
+  it('routes Mobius events to dequeueWsEvents through the registered Mercury listener', async () => {
+    callManager['isMobiusSocketListenerRegistered'] = false;
+    isSocketEnabledSpy.mockReturnValue(false);
+    const dequeueSpy = jest
+      .spyOn(callManager as any, 'dequeueWsEvents')
+      .mockImplementation(() => undefined);
+
+    callManager.updateActiveMobius(httpUrl);
+    const mobiusListenerWrapper = getMobiusListenerWrapper();
+    await mobiusListenerWrapper(setupEvent);
+
+    expect(dequeueSpy).toHaveBeenCalledWith(setupEvent);
+
+    dequeueSpy.mockRestore();
+  });
+});
