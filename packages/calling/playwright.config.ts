@@ -86,22 +86,24 @@ export default defineConfig({
     },
 
     // Single-user registration sets (generated from USER_SETS, depend on OAuth)
-    ...['SET_REGISTRATION_1', 'SET_REGISTRATION_2', 'SET_REGISTRATION_3', 'SET_CONTACTS'].flatMap((key) => [
-      {
-        name: `${key} - PROD`,
-        dependencies: ['OAuth - PROD'],
-        testDir: './playwright/suites',
-        testMatch: USER_SETS[key].testSuite,
-        use: browserOptions[PW_BROWSER],
-      },
-      {
-        name: `${key} - INT`,
-        dependencies: ['OAuth - INT'],
-        testDir: './playwright/suites',
-        testMatch: USER_SETS[key].testSuite,
-        use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
-      },
-    ]),
+    ...['SET_REGISTRATION_1', 'SET_REGISTRATION_2', 'SET_REGISTRATION_3', 'SET_CONTACTS'].flatMap(
+      (key) => [
+        {
+          name: `${key} - PROD`,
+          dependencies: ['OAuth - PROD'],
+          testDir: './playwright/suites',
+          testMatch: USER_SETS[key].testSuite,
+          use: browserOptions[PW_BROWSER],
+        },
+        {
+          name: `${key} - INT`,
+          dependencies: ['OAuth - INT'],
+          testDir: './playwright/suites',
+          testMatch: USER_SETS[key].testSuite,
+          use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
+        },
+      ]
+    ),
 
     // 2-user call tests (PROD uses USER_4+USER_5, parallel with registration sets)
     {
@@ -137,6 +139,41 @@ export default defineConfig({
       dependencies: ['SET_CALL - INT'],
       testDir: './playwright/suites',
       testMatch: USER_SETS.SET_CALL_TRANSFER_CONSULT.testSuite,
+      use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
+    },
+    // Single-user Call Settings tests — shares USER_1/2/3 with registration and transfer
+    {
+      name: 'SET_CALL_SETTINGS - PROD',
+      // Depends on SET_CALL so USER_4 (the CF forward destination) is deregistered
+      // before the CF tests run, preventing forwarded calls from ringing a live
+      // device in another suite. The dependency is explicit (not just transitive
+      // via SET_CALL_TRANSFER_CONSULT) so the ordering survives future refactors.
+      dependencies: [
+        'OAuth - PROD',
+        'SET_REGISTRATION_1 - PROD',
+        'SET_REGISTRATION_2 - PROD',
+        'SET_REGISTRATION_3 - PROD',
+        'SET_CALL - PROD',
+        'SET_CALL_TRANSFER_CONSULT - PROD',
+      ],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_CALL_SETTINGS.testSuite,
+      use: browserOptions[PW_BROWSER],
+    },
+    {
+      name: 'SET_CALL_SETTINGS - INT',
+      // See PROD note above: explicit SET_CALL dependency guarantees USER_4 is
+      // deregistered before the CF tests forward calls to it.
+      dependencies: [
+        'OAuth - INT',
+        'SET_REGISTRATION_1 - INT',
+        'SET_REGISTRATION_2 - INT',
+        'SET_REGISTRATION_3 - INT',
+        'SET_CALL - INT',
+        'SET_CALL_TRANSFER_CONSULT - INT',
+      ],
+      testDir: './playwright/suites',
+      testMatch: USER_SETS.SET_CALL_SETTINGS.testSuite,
       use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
     },
   ],
