@@ -34,6 +34,7 @@ registration/
 | 429 handling | `Retry-After` header with retry budget |
 | Reconnection | `handleConnectionRestoration()` / `reconnectOnFailure()` |
 | Deregistration | `DELETE /devices/{id}` + worker termination |
+| Mobius WSS connect/disconnect (when `apiRequest.isSocketEnabled()`) | Per-server `apiRequest.connectToMobiusSocket(wssNormalizedUrl)` inside `attemptRegistrationWithServers`; `apiRequest.disconnectFromMobiusSocket({code: 3050, reason: 'done (permanent)'})` on failover, failback, registration-down, restore-previous-registration, and deregister-with-`closeMobiusWss=true`. |
 
 ---
 
@@ -80,6 +81,8 @@ graph TD
 sequenceDiagram
     participant Line as Line
     participant Reg as Registration
+    participant API as APIRequest
+    participant MS as MobiusSocket
     participant Mobius as Mobius API
     participant Worker as Web Worker
 
@@ -88,11 +91,26 @@ sequenceDiagram
 
     Reg->>Reg: attemptRegistrationWithServers(primaryUris)
     loop For each URI in primaryMobiusUris
-        Reg->>Mobius: POST /calling/web/devices
+        opt apiRequest.isSocketEnabled()
+            Reg->>API: connectToMobiusSocket(wssNormalizedUrl)
+            API->>MS: isConnected() ? reuse : MobiusSocket.connect(wssUri)
+            MS-->>API: connected URL
+            API-->>Reg: connectedWebSocketUrl
+        end
+
+        Reg->>API: makeRequest(POST /calling/web/device)
+        alt WSS path
+            API->>MS: sendWssRequest({type:'register', ...})
+            MS-->>API: response_event subtype=register
+            API-->>Reg: normalised WebexRequestPayload
+        else HTTP path
+            API->>Mobius: webex.request(POST /device)
+            Mobius-->>API: 200 OK
+            API-->>Reg: WebexRequestPayload
+        end
+
         alt 200 OK
-            Mobius-->>Reg: {device: {deviceId, uri, addresses, ...}}
-            Reg->>Reg: setStatus(ACTIVE)
-            Reg->>Reg: setActiveMobiusUrl(uri)
+            Reg->>Reg: setStatus(ACTIVE)<br/>setActiveMobiusUrl(connectedWebSocketUrl || url)
             Reg->>Reg: Store deviceInfo
 
             Reg->>Worker: START_KEEPALIVE {token, url, interval}
@@ -102,23 +120,25 @@ sequenceDiagram
             Reg->>Line: lineEmitter(REGISTERED, deviceInfo)
             Reg-->>Line: Registration complete
             deactivate Reg
-        else 429 Too Many Requests
-            Mobius-->>Reg: 429 + Retry-After header
-            Reg->>Reg: Schedule retry after delay
-            Note over Reg: Up to 5 retries
-        else 401/403/500/503
-            Mobius-->>Reg: Error response
-            Reg->>Reg: handleRegistrationErrors()
-            Note over Reg: May failover to backup
+        else Error (handled by handleRegistrationErrors)
+            opt WSS path && shouldDisconnect && !final-server
+                Reg->>API: disconnectFromMobiusSocket({code:3050, reason:'done (permanent)'})
+                API->>MS: disconnect({code:3050, reason:'done (permanent)'})
+            end
+            Note over Reg: 429: stored Retry-After; 401/403(102)/404/400: abort;<br/>others: continue loop or schedule retry
         end
     end
 ```
+
+> **WSS URL normalisation:** `Registration` strips any trailing `/` from the server URL before passing it to `apiRequest.connectToMobiusSocket(...)`. The connected URL returned by `MobiusSocket` is then re-suffixed with `/` and stored as `activeMobiusUrl` so subsequent comparisons (e.g. in `restorePreviousRegistration`) line up with the URI list.
 
 ### Failover Flow
 
 ```mermaid
 sequenceDiagram
     participant Reg as Registration
+    participant API as APIRequest
+    participant MS as MobiusSocket
     participant Mobius1 as Primary Mobius
     participant Mobius2 as Backup Mobius
     participant Worker as Web Worker
@@ -129,13 +149,23 @@ sequenceDiagram
     Reg->>Reg: startFailoverTimer()
     Reg->>Reg: Calculate registration retry interval
 
+    opt apiRequest.isSocketEnabled() && switching to backup
+        Reg->>API: disconnectFromMobiusSocket({code:3050, reason:'done (permanent)'})
+        API->>MS: disconnect({code:3050, reason:'done (permanent)'})
+        Note over MS: Stops backoff retries on the primary URL
+    end
+
     loop Failover attempts
-        Reg->>Mobius1: POST /calling/web/device (retry primary)
+        Reg->>Mobius1: POST /device (retry primary)
         Mobius1-->>Reg: Failure (timeout/error)
 
         Note over Reg: Primary still down, try backup
 
-        Reg->>Mobius2: POST /calling/web/device
+        opt apiRequest.isSocketEnabled()
+            Reg->>API: connectToMobiusSocket(backupWssUrl)
+            API->>MS: MobiusSocket.connect(backupWssUrl)
+        end
+        Reg->>Mobius2: POST /device
         alt Backup succeeds
             Mobius2-->>Reg: 200 OK {device: {...}}
             Reg->>Reg: setStatus(ACTIVE)
@@ -157,6 +187,8 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Reg as Registration
+    participant API as APIRequest
+    participant MS as MobiusSocket
     participant Mobius1 as Primary Mobius
     participant Mobius2 as Backup Mobius (current)
     participant Worker as Web Worker
@@ -165,19 +197,29 @@ sequenceDiagram
     Note over Reg: Currently on backup, failback timer fires
 
     Reg->>Reg: executeFailback()
-    Reg->>Mobius1: POST /calling/web/devices (check primary)
+    Reg->>Mobius1: GET {primaryBase}ping (isPrimaryActive)
 
-    alt Primary is back
+    alt Primary is back AND no active calls
         Mobius1-->>Reg: 200 OK
-        Reg->>Worker: CLEAR_KEEPALIVE (stop backup keepalive)
-        Reg->>Mobius2: DELETE /devices/{id} (deregister backup)
-        Reg->>Reg: setActiveMobiusUrl(primaryUrl)
-        Reg->>Worker: START_KEEPALIVE (on primary)
-        Reg->>Line: lineEmitter(REGISTERED, deviceInfo)
-    else Primary still down
+        Reg->>Reg: deregister()<br/>(DELETE /devices/{id} + clearKeepaliveTimer)
+        Reg->>Mobius2: DELETE /devices/{id}
+
+        opt apiRequest.isSocketEnabled()
+            Reg->>API: disconnectFromMobiusSocket({code:3050, reason:'done (permanent)'})
+            API->>MS: disconnect on backup WSS
+        end
+
+        Reg->>Reg: attemptRegistrationWithServers(FAILBACK_UTIL, primaryUris)
+        opt registration succeeds
+            Reg->>API: connectToMobiusSocket(primaryWssUrl)<br/>(if WSS enabled, inside attempt loop)
+            Reg->>Reg: setActiveMobiusUrl(primaryUrl)
+            Reg->>Worker: START_KEEPALIVE (on primary)
+            Reg->>Line: lineEmitter(REGISTERED, deviceInfo)
+        end
+    else Primary still down or active calls present
         Mobius1-->>Reg: Failure
         Reg->>Reg: Reschedule failback timer
-        Note over Reg: Stay on backup
+        Note over Reg: Stay on backup; do NOT disconnect WSS
     end
 ```
 
@@ -191,23 +233,28 @@ The keepalive runs in a **Web Worker** to ensure heartbeats are not blocked by m
 
 ```mermaid
 sequenceDiagram
-  participant MT as Main Thread
+  participant MT as Main Thread (Registration)
   participant WW as Web Worker
   participant Mob as Mobius
 
   MT->>WW: new Worker(blobURL)
-  MT->>WW: postMessage(START_KEEPALIVE)<br/>{token, url, interval, retryCountThreshold}
+  MT->>WW: postMessage(START_KEEPALIVE)<br/>{interval, retryCountThreshold}
 
   loop setInterval(interval * 1000) while retryCount < threshold
-    WW->>Mob: fetch(POST url/status)
+    WW-->>MT: postMessage(SEND_KEEPALIVE)
+    MT->>Mob: apiRequest.makeRequest(POST url/status)
     alt 200 OK
+      Mob-->>MT: 200 OK
+      MT->>WW: postMessage(KEEPALIVE_RESULT)<br/>{statusCode}
       Note over WW: Reset retryCount to 0
       alt retryCount was > 0 (recovering)
-        WW-->>MT: postMessage(KEEPALIVE_SUCCESS)
+        WW-->>MT: postMessage(KEEPALIVE_SUCCESS)<br/>{statusCode}
       end
     else Error
+      Mob-->>MT: error response
+      MT->>WW: postMessage(KEEPALIVE_RESULT)<br/>{err}
       Note over WW: Increment retryCount
-      WW-->>MT: postMessage(KEEPALIVE_FAILURE)<br/>{statusCode, headers, retryCount}
+      WW-->>MT: postMessage(KEEPALIVE_FAILURE)<br/>{err, keepAliveRetryCount}
     end
   end
 
@@ -220,10 +267,12 @@ sequenceDiagram
 
 | Message | Direction | Payload | Description |
 |---------|-----------|---------|-------------|
-| `START_KEEPALIVE` | Main → Worker | `{accessToken, deviceUrl, interval, retryCountThreshold, url}` | Start sending keepalive requests |
-| `CLEAR_KEEPALIVE` | Main → Worker | _(none)_ | Stop sending keepalive requests |
-| `KEEPALIVE_SUCCESS` | Worker → Main | _(none)_ | Keepalive POST succeeded |
-| `KEEPALIVE_FAILURE` | Worker → Main | `{statusCode, body, retryCount}` | Keepalive POST failed |
+| `START_KEEPALIVE` | Main → Worker | `{interval, retryCountThreshold}` | Start the keepalive interval timer |
+| `SEND_KEEPALIVE` | Worker → Main | _(none)_ | Timer fired — main thread should send the keepalive POST |
+| `KEEPALIVE_RESULT` | Main → Worker | `{statusCode}` on success, `{err}` on failure | Result of the keepalive POST (sent by main thread after `apiRequest.makeRequest` resolves/rejects) |
+| `CLEAR_KEEPALIVE` | Main → Worker | _(none)_ | Stop the keepalive interval; main thread also calls `worker.terminate()` |
+| `KEEPALIVE_SUCCESS` | Worker → Main | `{statusCode}` | Keepalive succeeded **after a prior failure** (`retryCount > 0`); normal successes are silent |
+| `KEEPALIVE_FAILURE` | Worker → Main | `{err, keepAliveRetryCount}` | Keepalive POST failed; `err` is the WebexRequestPayload-shaped error |
 
 ### Worker Creation
 
@@ -241,11 +290,13 @@ URL.revokeObjectURL(url);
 
 When the main thread receives `KEEPALIVE_FAILURE`:
 
-1. **Emit `RECONNECTING`** via `lineEmitter` to notify the application
-2. **Check retry count** against threshold (`MAX_CALL_KEEPALIVE_RETRY_COUNT = 4 for contact center and 5 otherwise`)
-3. **If within threshold:** Log warning, wait for next keepalive cycle
-4. **If threshold exceeded:** Trigger `reconnectOnFailure()` for full re-registration
-5. **Submit metrics** for keepalive failure
+1. **Submit metrics** and run `handleRegistrationErrors` to classify the error (fatal vs. non-fatal vs. 429).
+2. **If abort (fatal) OR retryCount ≥ threshold** (`4` for contact-center, `5` otherwise):
+   - Set status to `INACTIVE`, terminate the keepalive worker
+   - Emit `LINE_EVENTS.UNREGISTERED` via `lineEmitter`
+   - If **non-fatal threshold exceeded** (not `abort`): call `reconnectOnFailure()` for full re-registration
+   - If **fatal + 404**: call `handle404KeepaliveFailure()` for a fresh registration attempt
+3. **If below threshold** (non-fatal and retryCount < threshold): emit `LINE_EVENTS.RECONNECTING` via `lineEmitter` and wait for the next keepalive cycle
 
 ---
 
@@ -421,8 +472,70 @@ sequenceDiagram
 
 ---
 
+## Mobius WSS Touch Points
+
+When `apiRequest.isSocketEnabled()` is true (driven by `isMobiusWssEnabled(webex)` — see [`CallingClient/ai-docs/ARCHITECTURE.md`](../../ai-docs/ARCHITECTURE.md#4-transport-selection-http-vs-mobius-wss)), the `Registration` class becomes responsible for sequencing the Mobius WebSocket connection alongside the registration POST / DELETE.
+
+### When Registration Connects / Disconnects the WSS
+
+| Flow | WSS action | Code path |
+|---|---|---|
+| `attemptRegistrationWithServers` (each server iteration) | `apiRequest.connectToMobiusSocket(wssNormalizedUrl)` before `postRegistration` | `register.ts ~ L994–L1010` |
+| Registration error with `shouldDisconnect = true` (non-final, not last server in list, not 429) | `apiRequest.disconnectFromMobiusSocket({code: 3050, reason: 'done (permanent)'})` | `register.ts ~ L1085–L1098` |
+| `restorePreviousRegistration` when the connected WSS URL differs from `activeMobiusUrl` | disconnect first, then re-attempt | `register.ts ~ L308–L321` |
+| `startFailoverTimer` switching primary → backup | disconnect primary WSS before backup re-registration | `register.ts ~ L508–L520` |
+| `executeFailback` primary recovered + no active calls | disconnect backup WSS before primary re-registration | `register.ts ~ L713–L725` |
+| `deregister(closeMobiusWss = true)` | disconnect WSS after DELETE returns | `register.ts ~ L1264–L1270` |
+| `performRegistrationDownCleanup` (after Mobius async `registration.down`) | disconnect WSS as final cleanup step | `register.ts ~ L1411–L1419` |
+
+### Constants Used
+
+| Value | Meaning |
+|---|---|
+| `{code: 3050, reason: 'done (permanent)'}` | The convention `CallingClient` and `Registration` pass to `apiRequest.disconnectFromMobiusSocket(...)` to indicate a permanent teardown. `MobiusSocket` treats this as `offline.permanent` (no auto-reconnect) — distinct from `'idle'` / `'done (forced)'` which are transient and reconnectable. |
+| `URL replace 'https://' → 'wss://'` | Used in `getExistingDevice` (403/101 device-limit branch) to keep `activeMobiusUrl` aligned with the WSS scheme when the socket is enabled. |
+| `url.endsWith('/') ? slice(0,-1) : url` | URL normalisation applied by `attemptRegistrationWithServers` before calling `connectToMobiusSocket`, then re-suffixed with `/` for `setActiveMobiusUrl`. |
+
+### Mobius `registration.down` Async Event
+
+```mermaid
+sequenceDiagram
+    participant MS as MobiusSocket
+    participant API as APIRequest
+    participant CC as CallingClient
+    participant Reg as Registration
+    participant CM as CallManager
+    participant Line as Line
+
+    MS-->>API: emit('event:async_event', {data:{eventType:'registration.down', ...}})
+    API->>CC: handleMobiusAsyncEvent(event)
+    CC->>CC: submitMobiusSocketMetric(<br/>MOBIUS_SOCKET_ERROR, REGISTRATION_DOWN, ...)
+    CC->>Reg: line.registration.handleRegistrationDownEvent(event)
+
+    Reg->>CM: getActiveCalls() → end first active call
+    Reg->>Reg: performRegistrationDownCleanup()
+
+    Reg->>Reg: mutex.runExclusive(...)
+    Reg->>Reg: clearFailbackTimer + clearKeepaliveTimer
+    Reg->>Reg: reset reconnectPending, scheduled429Retry,<br/>failoverImmediately, retryAfter, registerRetry
+    Reg->>Reg: clearFailoverState() + setStatus(INACTIVE)
+
+    opt apiRequest.isSocketEnabled()
+        Reg->>API: disconnectFromMobiusSocket({code:3050, reason:'done (permanent)'})
+        API->>MS: disconnect
+    end
+
+    Reg->>Line: lineEmitter(LINE_EVENTS.UNREGISTERED)
+```
+
+> **Note:** The synthetic `MOBIUS_SOCKET_4001_EVENT` envelope emitted when the server closes the socket with code `4001` carries `eventType: 'registration.down'` and therefore drives the **same** cleanup path as a server-pushed async `registration.down`. See [`mobius-socket/ai-docs/ARCHITECTURE.md`](../../../mobius-socket/ai-docs/ARCHITECTURE.md) for the close-code matrix.
+
+---
+
 ## Related Documentation
 
 - [Registration AGENTS.md](./AGENTS.md) — Public API, key concepts
 - [Line ARCHITECTURE.md](../../line/ai-docs/ARCHITECTURE.md) — lineEmitter pattern, Line ↔ Registration interaction
-- [CallingClient ARCHITECTURE.md](../../ai-docs/ARCHITECTURE.md) — Network resilience, initialization
+- [CallingClient ARCHITECTURE.md](../../ai-docs/ARCHITECTURE.md) — Network resilience, initialization, transport selection
+- [`mobius-socket` AGENTS.md](../../../mobius-socket/ai-docs/AGENTS.md) — Public API for the WebSocket transport
+- [`mobius-socket` ARCHITECTURE.md](../../../mobius-socket/ai-docs/ARCHITECTURE.md) — Internals (backoff, dedup, close-code matrix, shutdown switchover, token refresh)

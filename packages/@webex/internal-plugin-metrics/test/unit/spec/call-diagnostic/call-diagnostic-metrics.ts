@@ -857,6 +857,77 @@ describe('internal-plugin-metrics', () => {
       });
     });
 
+    describe('#prepareDiagnosticEvent isAutomatedUser field', () => {
+      it('should set isAutomatedUser to false when window is not defined', () => {
+        const options = {meetingId: fakeMeeting.id};
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        const res = cd.prepareDiagnosticEvent(
+          {
+            canProceed: true,
+            identifiers: {correlationId: 'test-id'},
+            name: 'client.alert.displayed',
+            isAutomatedUser: false,
+          },
+          options
+        );
+
+        // In the test environment, isAutomatedUser should be false since we're not in a webdriver environment
+        assert.isFalse(
+          res.event.isAutomatedUser,
+          'isAutomatedUser should be false in non-webdriver test environment'
+        );
+      });
+
+      it('should include isAutomatedUser field in the returned event', () => {
+        const options = {meetingId: fakeMeeting.id};
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+
+        const res = cd.prepareDiagnosticEvent(
+          {
+            canProceed: true,
+            identifiers: {correlationId: 'test-id'},
+            name: 'client.alert.displayed',
+            isAutomatedUser: false,
+          },
+          options
+        );
+
+        // Verify the isAutomatedUser field is present in the event
+        assert.isDefined(res.event.isAutomatedUser, 'isAutomatedUser field should be defined');
+        assert.isBoolean(res.event.isAutomatedUser, 'isAutomatedUser should be a boolean');
+      });
+
+      it('should set isAutomatedUser to true when navigator.webdriver is true', () => {
+        const originalDescriptor = Object.getOwnPropertyDescriptor(global, 'navigator');
+        Object.defineProperty(global, 'navigator', {
+          value: {webdriver: true},
+          configurable: true,
+          writable: true,
+        });
+
+        const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
+        sinon.stub(cd, 'getOrigin').returns({origin: 'fake-origin'});
+        cd.setMercuryConnectedStatus(true);
+
+        cd.submitClientEvent({
+          name: 'client.alert.displayed',
+          options: {correlationId: 'correlationId'},
+        });
+
+        assert.isTrue(
+          prepareDiagnosticEventSpy.firstCall.args[0].isAutomatedUser,
+          'isAutomatedUser should be true when navigator.webdriver is set'
+        );
+
+        if (originalDescriptor) {
+          Object.defineProperty(global, 'navigator', originalDescriptor);
+        } else {
+          delete (global as any).navigator;
+        }
+      });
+    });
+
     describe('#submitClientEvent', () => {
       it('should submit client event successfully with meetingId', () => {
         const prepareDiagnosticEventSpy = sinon.spy(cd, 'prepareDiagnosticEvent');
@@ -913,6 +984,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           options
         );
@@ -942,6 +1014,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -982,6 +1055,7 @@ describe('internal-plugin-metrics', () => {
               webexSubServiceType: undefined,
               webClientPreload: undefined,
               isVipMeeting: false,
+              isAutomatedUser: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1058,6 +1132,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           options
         );
@@ -1087,6 +1162,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1127,6 +1203,7 @@ describe('internal-plugin-metrics', () => {
               webexSubServiceType: undefined,
               webClientPreload: undefined,
               isVipMeeting: false,
+              isAutomatedUser: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1204,6 +1281,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           options
         );
@@ -1234,6 +1312,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1275,6 +1354,7 @@ describe('internal-plugin-metrics', () => {
               webexSubServiceType: undefined,
               webClientPreload: undefined,
               isVipMeeting: false,
+              isAutomatedUser: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1351,6 +1431,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           options
         );
@@ -1381,6 +1462,7 @@ describe('internal-plugin-metrics', () => {
             isConvergedArchitectureEnabled: undefined,
             webexSubServiceType: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1422,6 +1504,7 @@ describe('internal-plugin-metrics', () => {
               isConvergedArchitectureEnabled: undefined,
               webexSubServiceType: undefined,
               isVipMeeting: false,
+              isAutomatedUser: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1500,6 +1583,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           options
         );
@@ -1532,6 +1616,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1575,6 +1660,7 @@ describe('internal-plugin-metrics', () => {
               webexSubServiceType: undefined,
               webClientPreload: undefined,
               isVipMeeting: false,
+              isAutomatedUser: false,
             },
             eventId: 'my-fake-id',
             origin: {
@@ -1701,6 +1787,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             webClientPreload: undefined,
+            isAutomatedUser: false,
           },
           options
         );
@@ -1724,6 +1811,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             webClientPreload: undefined,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -1799,6 +1887,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             webClientPreload: undefined,
+            isAutomatedUser: false,
           },
           options
         );
@@ -1827,6 +1916,7 @@ describe('internal-plugin-metrics', () => {
               eventData: {webClientDomain: 'whatever', isMercuryConnected: true},
               loginType: 'login-ci',
               webClientPreload: undefined,
+              isAutomatedUser: false,
             },
           },
           options.preLoginId
@@ -1890,6 +1980,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             webClientPreload: undefined,
+            isAutomatedUser: false,
           },
           options
         );
@@ -1920,6 +2011,7 @@ describe('internal-plugin-metrics', () => {
               userNameInput: 'current',
               emailInput: 'current',
               webClientPreload: undefined,
+              isAutomatedUser: false,
             },
           },
           options.preLoginId
@@ -1966,6 +2058,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2022,6 +2115,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2078,6 +2172,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             webClientPreload: true,
+            isAutomatedUser: false,
           },
           options
         );
@@ -2101,6 +2196,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             webClientPreload: true,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2170,6 +2266,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           options
         );
@@ -2200,6 +2297,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2269,6 +2367,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: true,
+            isAutomatedUser: false,
           },
           options
         );
@@ -2299,6 +2398,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: true,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2374,6 +2474,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2457,6 +2558,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2530,6 +2632,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             webClientPreload: undefined,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2605,6 +2708,7 @@ describe('internal-plugin-metrics', () => {
             loginType: 'login-ci',
             name: 'client.alert.displayed',
             webClientPreload: undefined,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -2691,6 +2795,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
           },
           eventId: 'my-fake-id',
           origin: {
@@ -3976,6 +4081,7 @@ describe('internal-plugin-metrics', () => {
                     webexSubServiceType: undefined,
                     webClientPreload: undefined,
                     isVipMeeting: false,
+                    isAutomatedUser: false,
                   },
                   eventId: 'my-fake-id',
                   origin: {
@@ -4379,6 +4485,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
             meetingSummaryInfo: {
               featureName: 'syncSystemMuteStatus',
               featureActions: [
@@ -4421,6 +4528,7 @@ describe('internal-plugin-metrics', () => {
             webexSubServiceType: undefined,
             webClientPreload: undefined,
             isVipMeeting: false,
+            isAutomatedUser: false,
             meetingSummaryInfo: {
               featureName: 'syncSystemMuteStatus',
               featureActions: [

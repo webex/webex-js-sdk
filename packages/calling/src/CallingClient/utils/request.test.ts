@@ -7,7 +7,7 @@ import {getMobiusSocketInstance} from '../../mobius-socket';
 import {getMetricManager} from '../../Metrics';
 import {METRIC_EVENT, METRIC_TYPE, MOBIUS_SOCKET_ACTION} from '../../Metrics/types';
 import {isMobiusWssEnabled} from './wsFeatureFlag';
-import {MOBIUS_SOCKET_MESSAGE_TYPE} from './constants';
+import {MOBIUS_SOCKET_DISCONNECT_REASON, MOBIUS_SOCKET_MESSAGE_TYPE} from './constants';
 import {MobiusSocketResponse, MobiusAsyncEvent} from './types';
 
 // Mock dependencies
@@ -159,6 +159,56 @@ describe('APIRequest', () => {
 
       expect(result).toBe(true);
     });
+  });
+
+  describe('setSocketEnabled', () => {
+    it.each([
+      [true, 'WSS'],
+      [false, 'HTTP'],
+    ])('overrides the active transport to %s and logs it', (enabled, transport) => {
+      const apiRequest = APIRequest.getInstance({webex});
+
+      apiRequest.setSocketEnabled(enabled);
+
+      expect(apiRequest.isSocketEnabled()).toBe(enabled);
+      expect(infoSpy).toHaveBeenCalledWith(`APIRequest transport set to: ${transport}`, {
+        file: 'REQUEST',
+        method: 'setSocketEnabled',
+      });
+    });
+
+    it('can flip the feature-flag seeded transport from WSS to HTTP', () => {
+      (isMobiusWssEnabled as jest.Mock).mockReturnValue(true);
+      const apiRequest = APIRequest.getInstance({webex});
+      expect(apiRequest.isSocketEnabled()).toBe(true);
+
+      apiRequest.setSocketEnabled(false);
+
+      expect(apiRequest.isSocketEnabled()).toBe(false);
+    });
+
+    it('can flip the feature-flag seeded transport from HTTP to WSS', () => {
+      (isMobiusWssEnabled as jest.Mock).mockReturnValue(false);
+      const apiRequest = APIRequest.getInstance({webex});
+      expect(apiRequest.isSocketEnabled()).toBe(false);
+
+      apiRequest.setSocketEnabled(true);
+
+      expect(apiRequest.isSocketEnabled()).toBe(true);
+    });
+  });
+
+  describe('isSocketConnected', () => {
+    it.each([true, false])(
+      'should delegate to the Mobius socket isConnected() and return %s',
+      (connected) => {
+        mockMobiusSocket.isConnected.mockReturnValue(connected);
+        const apiRequest = APIRequest.getInstance({webex});
+
+        expect(apiRequest.isSocketConnected()).toBe(connected);
+        expect(mockMobiusSocket.isConnected).toHaveBeenCalled();
+      }
+    );
   });
 
   describe('connectToMobiusSocket', () => {
@@ -676,6 +726,90 @@ describe('APIRequest', () => {
         MOBIUS_SOCKET_ACTION.LISTENER_UNREGISTERED,
         METRIC_TYPE.BEHAVIORAL
       );
+    });
+  });
+
+  describe('registerMobiusSocketConnectionListener', () => {
+    const getHandlerFor = (eventName: string): ((...args: unknown[]) => void) => {
+      const call = mockMobiusSocket.on.mock.calls.find(([name]: [string]) => name === eventName);
+
+      return call[1];
+    };
+
+    it('should attach listeners to online and offline.* socket events', () => {
+      const apiRequest = APIRequest.getInstance({webex});
+
+      apiRequest.registerMobiusSocketConnectionListener({
+        onConnected: jest.fn(),
+        onDisconnected: jest.fn(),
+      });
+
+      expect(mockMobiusSocket.on).toHaveBeenCalledWith('online', expect.any(Function));
+      expect(mockMobiusSocket.on).toHaveBeenCalledWith('offline.permanent', expect.any(Function));
+      expect(mockMobiusSocket.on).toHaveBeenCalledWith('offline.transient', expect.any(Function));
+      expect(mockMobiusSocket.on).toHaveBeenCalledWith('offline.replaced', expect.any(Function));
+      expect(infoSpy).toHaveBeenCalledWith('Attaching Mobius socket connection listener', {
+        file: 'REQUEST',
+        method: 'registerMobiusSocketConnectionListener',
+      });
+      expect(logSpy).toHaveBeenCalledWith('Mobius socket connection listener attached', {
+        file: 'REQUEST',
+        method: 'registerMobiusSocketConnectionListener',
+      });
+    });
+
+    it('should invoke onConnected when the online event fires', () => {
+      const apiRequest = APIRequest.getInstance({webex});
+      const onConnected = jest.fn();
+
+      apiRequest.registerMobiusSocketConnectionListener({
+        onConnected,
+        onDisconnected: jest.fn(),
+      });
+
+      getHandlerFor('online')();
+
+      expect(onConnected).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['offline.permanent', MOBIUS_SOCKET_DISCONNECT_REASON.PERMANENT],
+      ['offline.transient', MOBIUS_SOCKET_DISCONNECT_REASON.TRANSIENT],
+      ['offline.replaced', MOBIUS_SOCKET_DISCONNECT_REASON.REPLACED],
+    ])('should invoke onDisconnected with %s reason when %s fires', (eventName, reason) => {
+      const apiRequest = APIRequest.getInstance({webex});
+      const onDisconnected = jest.fn();
+
+      apiRequest.registerMobiusSocketConnectionListener({
+        onConnected: jest.fn(),
+        onDisconnected,
+      });
+
+      getHandlerFor(eventName as string)();
+
+      expect(onDisconnected).toHaveBeenCalledTimes(1);
+      expect(onDisconnected).toHaveBeenCalledWith(reason);
+    });
+  });
+
+  describe('unregisterMobiusSocketConnectionListener', () => {
+    it('should detach listeners from online and offline.* socket events', () => {
+      const apiRequest = APIRequest.getInstance({webex});
+
+      apiRequest.unregisterMobiusSocketConnectionListener();
+
+      expect(mockMobiusSocket.off).toHaveBeenCalledWith('online');
+      expect(mockMobiusSocket.off).toHaveBeenCalledWith('offline.permanent');
+      expect(mockMobiusSocket.off).toHaveBeenCalledWith('offline.transient');
+      expect(mockMobiusSocket.off).toHaveBeenCalledWith('offline.replaced');
+      expect(infoSpy).toHaveBeenCalledWith('Detaching Mobius socket connection listener', {
+        file: 'REQUEST',
+        method: 'unregisterMobiusSocketConnectionListener',
+      });
+      expect(logSpy).toHaveBeenCalledWith('Mobius socket connection listener detached', {
+        file: 'REQUEST',
+        method: 'unregisterMobiusSocketConnectionListener',
+      });
     });
   });
 });

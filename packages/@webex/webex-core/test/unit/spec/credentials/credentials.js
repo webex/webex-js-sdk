@@ -183,6 +183,10 @@ describe('webex-core', () => {
           webex.credentials.buildLoginUrl({state: 'state'});
         }, /if specified, `options.state` must be an object/);
 
+        assert.throws(() => {
+          webex.credentials.buildLoginUrl({state: null});
+        }, /if specified, `options.state` must be an object/);
+
         assert.doesNotThrow(() => {
           webex.credentials.buildLoginUrl({state: {}});
         }, /if specified, `options.state` must be an object/);
@@ -297,6 +301,63 @@ describe('webex-core', () => {
           `${
             process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'
           }/idb/ThirdPartyLogin?oauth2provider=apple&returnURL=https%3A%2F%2Fexample.com%2Fcallback`
+        );
+      });
+
+      it('throws if `state` is not an object', () => {
+        const webex = new MockWebex();
+        const credentials = new Credentials(undefined, {parent: webex});
+
+        webex.trigger('change:config');
+
+        assert.throws(() => {
+          credentials.buildThirdPartyLoginUrl({
+            oauth2provider: 'google',
+            returnURL: 'https://web.webex.com',
+            state: 'not-an-object',
+          });
+        }, /`options.state` must be an object/);
+      });
+
+      skipInBrowser(it)('omits `state` when an empty object is provided', () => {
+        const webex = new MockWebex();
+        const credentials = new Credentials(undefined, {parent: webex});
+
+        webex.trigger('change:config');
+
+        const result = credentials.buildThirdPartyLoginUrl({
+          oauth2provider: 'google',
+          returnURL: 'https://web.webex.com',
+          state: {},
+        });
+
+        const parsed = new URL(result);
+
+        assert.isFalse(parsed.searchParams.has('state'));
+      });
+
+      skipInBrowser(it)('base64url-encodes a non-empty `state` and emits it as a top-level query param', () => {
+        const webex = new MockWebex();
+        const credentials = new Credentials(undefined, {parent: webex});
+
+        webex.trigger('change:config');
+
+        const result = credentials.buildThirdPartyLoginUrl({
+          oauth2provider: 'google',
+          returnURL: 'https://web.webex.com',
+          state: {csrf_token: 'abc', popUpSignIn: true},
+        });
+
+        // Literal base64url of '{"csrf_token":"abc","popUpSignIn":true}'
+        const expectedState = 'eyJjc3JmX3Rva2VuIjoiYWJjIiwicG9wVXBTaWduSW4iOnRydWV9';
+
+        assert.equal(
+          result,
+          `${
+            process.env.IDBROKER_BASE_URL || 'https://idbroker.webex.com'
+          }/idb/ThirdPartyLogin?oauth2provider=google&returnURL=${encodeURIComponent(
+            'https://web.webex.com'
+          )}&state=${expectedState}`
         );
       });
     });

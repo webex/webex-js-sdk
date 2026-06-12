@@ -24,7 +24,7 @@ export type MobiusMode = 'http' | 'ws';
 
 /**
  * Roles that must have credentials/tokens available for the currently enabled
- * Playwright projects.
+ * Playwright projects. USER_6 is required for SET_CONTACTS (contacts suite).
  */
 export const REQUIRED_OAUTH_ROLES: AccountRole[] = [
   'USER_1',
@@ -144,6 +144,23 @@ export const USER_SETS: Record<string, UserSet> = {
     name: 'SET_CALL_TRANSFER_CONSULT',
     accounts: ['USER_1', 'USER_2', 'USER_3'],
     testSuite: 'set-call-transfer-consult.spec.ts',
+  },
+
+  // Single-user Contacts supplementary service E2E tests
+  SET_CONTACTS: {
+    name: 'SET_CONTACTS',
+    accounts: ['USER_6'],
+    testSuite: 'contacts.spec.ts',
+  },
+
+  // Call Settings E2E tests:
+  //   accounts[0] = USER_3 — settings owner / callee
+  //   accounts[1] = USER_2 — primary caller (also used for busy-state first call)
+  //   accounts[2] = USER_1 — second caller (places call while USER_3 is already busy)
+  SET_CALL_SETTINGS: {
+    name: 'SET_CALL_SETTINGS',
+    accounts: ['USER_3', 'USER_2', 'USER_1'],
+    testSuite: 'set-call-settings.spec.ts',
   },
 };
 
