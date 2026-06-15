@@ -18,6 +18,7 @@ import {
   isBrowserMediaErrorName,
   isNetworkError,
   isUnauthorizedError,
+  isLocus403WithHtmlResponseError,
   isSdpOfferCreationError,
 } from './call-diagnostic-metrics.util';
 import {CLIENT_NAME} from '../config';
@@ -59,6 +60,7 @@ import {
   CALL_DIAGNOSTIC_LOG_IDENTIFIER,
   NETWORK_ERROR,
   AUTHENTICATION_FAILED_CODE,
+  LOCUS_403_HTML_RESPONSE_CLIENT_CODE,
   WEBEX_SUB_SERVICE_TYPES,
   SDP_OFFER_CREATION_ERROR_MAP,
   CALL_FEATURE_LOG_IDENTIFIER,
@@ -899,6 +901,15 @@ export default class CallDiagnosticMetrics extends StatelessWebexPlugin {
         clientErrorCode: NETWORK_ERROR,
         serviceErrorCode,
         payloadOverrides: rawError.payloadOverrides,
+        rawErrorMessage,
+        httpStatusCode,
+      });
+    }
+
+    if (isLocus403WithHtmlResponseError(this, rawError) && !payload) {
+      payload = this.getErrorPayloadForClientErrorCode({
+        clientErrorCode: LOCUS_403_HTML_RESPONSE_CLIENT_CODE,
+        serviceErrorCode,
         rawErrorMessage,
         httpStatusCode,
       });

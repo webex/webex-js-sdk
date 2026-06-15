@@ -5,6 +5,7 @@ import util from 'util';
 import {BrowserDetection} from '@webex/common';
 import {WebexHttpError} from '@webex/webex-core';
 import {isEmpty, merge} from 'lodash';
+import type {StatelessWebexPlugin} from '@webex/webex-core';
 import {
   ClientEvent,
   Event,
@@ -157,6 +158,33 @@ export const isNetworkError = (rawError: any) => {
  */
 export const isUnauthorizedError = (rawError: any) => {
   if (rawError instanceof WebexHttpError.Unauthorized) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * Returns true if the error is a locus 403 Forbidden response with an HTML content type.
+ * This typically indicates a network proxy or firewall is blocking the request.
+ *
+ * @param {StatelessWebexPlugin} plugin - Plugin object to access code utilities
+ * @param {Object} rawError - Error object to check
+ * @returns {boolean}
+ */
+export const isLocus403WithHtmlResponseError = (
+  plugin: StatelessWebexPlugin,
+  rawError: any
+): boolean => {
+  const service = plugin.webex.internal.services.getServiceFromUrl(rawError.url);
+
+  if (
+    rawError instanceof WebexHttpError.Forbidden &&
+    rawError.statusCode === 403 &&
+    service &&
+    service === 'locus' &&
+    rawError.headers?.['content-type']?.includes('text/html')
+  ) {
     return true;
   }
 

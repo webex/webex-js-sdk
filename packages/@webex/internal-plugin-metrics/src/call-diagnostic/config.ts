@@ -9,6 +9,7 @@ export const CALL_FEATURE_LOG_IDENTIFIER = 'call-diagnostic-events-feature -> ';
 
 export const AUTHENTICATION_FAILED_CODE = 1010;
 export const NETWORK_ERROR = 1026;
+export const LOCUS_403_HTML_RESPONSE_CLIENT_CODE = 4037;
 export const NEW_LOCUS_ERROR_CLIENT_CODE = 4008;
 export const MEETING_INFO_LOOKUP_ERROR_CLIENT_CODE = 4100;
 export const UNKNOWN_ERROR = 9999; // Unexpected error that is not a meetingInfo error, locus error or browser media error.
@@ -138,6 +139,7 @@ export const ERROR_DESCRIPTIONS = {
   WDM_RESTRICTED_REGION: 'WdmRestrictedRegion',
   USER_NOT_ALLOWED_JOIN_WEBINAR: 'UserNotAllowedJoinWebinar',
   INVALID_MEETING_INFO: 'InvalidMeetingInfo',
+  LOCUS_FORBIDDEN_HTML_RESPONSE: 'LocusForbiddenHtmlResponse',
 };
 
 export const SERVICE_ERROR_CODES_TO_CLIENT_ERROR_CODES_MAP = {
@@ -750,6 +752,12 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
     errorDescription: ERROR_DESCRIPTIONS.WDM_RESTRICTED_REGION,
     category: 'expected',
     fatal: true,
+  },
+  [LOCUS_403_HTML_RESPONSE_CLIENT_CODE]: {
+    errorDescription: ERROR_DESCRIPTIONS.LOCUS_FORBIDDEN_HTML_RESPONSE,
+    category: 'network',
+    fatal: true,
+    name: 'locus.response',
   },
 };
 

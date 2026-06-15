@@ -3636,6 +3636,40 @@ describe('internal-plugin-metrics', () => {
         });
       });
 
+      it('should return LocusForbiddenHtmlResponse code for a 403 Forbidden error with HTML content type', () => {
+        const error = new WebexHttpError.Forbidden({
+          url: 'https://locus.example.com/call',
+          statusCode: 403,
+          body: {},
+          headers: {'content-type': 'text/html; charset=utf-8'},
+          options: {headers: {}, url: 'https://locus.example.com/call'},
+        });
+        const [res, cached] = cd.generateClientEventErrorPayload(error);
+        assert.deepEqual(res, {
+          category: 'network',
+          errorDescription: 'LocusForbiddenHtmlResponse',
+          fatal: true,
+          name: 'locus.response',
+          shownToUser: false,
+          serviceErrorCode: undefined,
+          errorCode: 4037,
+          rawErrorMessage: '{}\nundefined https://locus.example.com/call\nWEBEX_TRACKING_ID: undefined\n',
+          httpStatusCode: 403,
+        });
+      });
+
+      it('should not return LocusForbiddenHtmlResponse code for a 403 Forbidden error with JSON content type', () => {
+        const error = new WebexHttpError.Forbidden({
+          url: 'https://locus.example.com/call',
+          statusCode: 403,
+          body: {errorCode: 403001},
+          headers: {'content-type': 'application/json'},
+          options: {headers: {}, url: 'https://locus.example.com/call'},
+        });
+        const [res] = cd.generateClientEventErrorPayload(error);
+        assert.notEqual(res.errorCode, 4037);
+      });
+
       it('should return AuthenticationFailed code for an Unauthorized error', () => {
         const [res, cached] = cd.generateClientEventErrorPayload(
           new WebexHttpError.Unauthorized({
