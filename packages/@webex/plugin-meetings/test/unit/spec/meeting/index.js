@@ -1080,6 +1080,7 @@ describe('plugin-meetings', () => {
           assert.deepEqual(meeting.joinWithMediaRetryInfo, {
             retryCount: 0,
             prevJoinResponse: undefined,
+            firstError: undefined,
             prevError: undefined,
           });
         });
@@ -1125,6 +1126,7 @@ describe('plugin-meetings', () => {
           assert.deepEqual(meeting.joinWithMediaRetryInfo, {
             retryCount: 0,
             prevJoinResponse: undefined,
+            firstError: undefined,
             prevError: undefined,
           });
         });
@@ -1283,6 +1285,59 @@ describe('plugin-meetings', () => {
           assert.equal(thrownError, firstError);
 
           assert.calledTwice(Metrics.sendBehavioralMetric);
+        });
+
+        it('should throw the UserNotJoinedError as firstError when it occurs on the 1st attempt and 2nd attempt fails differently', async () => {
+          const userNotJoinedError = new UserNotJoinedError();
+          const secondError = new Error('second attempt error');
+
+          meeting.addMediaInternal = sinon
+            .stub()
+            .onFirstCall()
+            .rejects(userNotJoinedError)
+            .onSecondCall()
+            .rejects(secondError);
+
+          sinon.stub(meeting, 'leave').resolves();
+
+          const thrownError = await assert.isRejected(
+            meeting.joinWithMedia({joinOptions, mediaOptions})
+          );
+
+          // should throw the first (UserNotJoinedError), not the second
+          assert.equal(thrownError, userNotJoinedError);
+
+          // join() called twice: original + re-join triggered by UserNotJoinedError in prevError
+          assert.calledTwice(meeting.join);
+          assert.calledTwice(Metrics.sendBehavioralMetric);
+        });
+
+        it('should throw the first UserNotJoinedError when it occurs on both 1st and 2nd attempts and a 3rd attempt also fails', async () => {
+          const firstUserNotJoinedError = new UserNotJoinedError('first');
+          const secondUserNotJoinedError = new UserNotJoinedError('second');
+          const thirdError = new Error('third attempt error');
+
+          meeting.addMediaInternal = sinon
+            .stub()
+            .onFirstCall()
+            .rejects(firstUserNotJoinedError)
+            .onSecondCall()
+            .rejects(secondUserNotJoinedError)
+            .onThirdCall()
+            .rejects(thirdError);
+
+          sinon.stub(meeting, 'leave').resolves();
+
+          const thrownError = await assert.isRejected(
+            meeting.joinWithMedia({joinOptions, mediaOptions})
+          );
+
+          // should throw the very first error across all 3 attempts
+          assert.equal(thrownError, firstUserNotJoinedError);
+
+          // join() called 3 times: original + 2 re-joins triggered by prevError being UserNotJoinedError
+          assert.calledThrice(meeting.join);
+          assert.calledThrice(Metrics.sendBehavioralMetric);
         });
 
         it('should call leave() if addMediaInternal() fails with a browser media error (TypeError)', async () => {

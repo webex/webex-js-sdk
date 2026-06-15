@@ -795,7 +795,13 @@ export default class Meeting extends StatelessWebexPlugin {
   private deferSDPAnswer?: Defer; // used for waiting for a response
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
   private hasMediaConnectionConnectedAtLeastOnce: boolean;
-  private joinWithMediaRetryInfo?: {retryCount: number; prevJoinResponse?: any; prevError?: Error};
+  private joinWithMediaRetryInfo?: {
+    retryCount: number;
+    prevJoinResponse?: any;
+    firstError?: Error;
+    prevError?: Error;
+  };
+
   private connectionStateHandler?: ConnectionStateHandler;
   private iceCandidateErrors: Map<string, number>;
   private iceCandidatesCount: number;
@@ -5734,22 +5740,24 @@ export default class Meeting extends StatelessWebexPlugin {
         LoggerProxy.logger.warn('Meeting:index#joinWithMedia --> retrying call to joinWithMedia');
         this.joinWithMediaRetryInfo.retryCount = retryCount + 1;
         this.joinWithMediaRetryInfo.prevJoinResponse = joinResponse;
-        if (!this.joinWithMediaRetryInfo.prevError) {
-          this.joinWithMediaRetryInfo.prevError = error;
+        this.joinWithMediaRetryInfo.prevError = error;
+        if (!this.joinWithMediaRetryInfo.firstError) {
+          this.joinWithMediaRetryInfo.firstError = error;
         }
 
         return this.joinWithMedia(options);
       }
 
-      const previousError = this.joinWithMediaRetryInfo.prevError;
+      const {firstError} = this.joinWithMediaRetryInfo;
 
       this.joinWithMediaRetryInfo = {
         retryCount: 0,
         prevJoinResponse: undefined,
+        firstError: undefined,
         prevError: undefined,
       };
 
-      throw previousError ?? error;
+      throw firstError ?? error;
     }
   }
 
