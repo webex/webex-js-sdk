@@ -1482,7 +1482,7 @@ describe('plugin-meetings', () => {
             name: 'client.ice.end',
             payload: {
               canProceed: false,
-              icePhase: 'JOIN_MEETING_RETRY',
+              icePhase: 'JOIN_MEETING_FINAL',
               errors: [fakeClientError],
             },
             options: {
