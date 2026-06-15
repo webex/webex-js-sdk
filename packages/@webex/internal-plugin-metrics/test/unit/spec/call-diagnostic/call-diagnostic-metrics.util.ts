@@ -177,11 +177,11 @@ describe('internal-plugin-metrics', () => {
   });
 
   describe('isLocus403WithHtmlResponseError', () => {
-    const createPlugin = (service: string | undefined) => ({
+    const createPlugin = (serviceName: string | undefined) => ({
       webex: {
         internal: {
           services: {
-            getServiceFromUrl: sinon.stub().returns(service),
+            getServiceFromUrl: sinon.stub().returns(serviceName ? {name: serviceName} : undefined),
           },
         },
       },
@@ -249,9 +249,9 @@ describe('internal-plugin-metrics', () => {
         false,
       ],
       ['plain object', {statusCode: 403, headers: {'content-type': 'text/html'}}, 'locus', false],
-    ].forEach(([errorType, rawError, service, expected]) => {
+    ].forEach(([errorType, rawError, serviceName, expected]) => {
       it(`for ${errorType} returns the correct result`, () => {
-        const plugin = createPlugin(service as string | undefined);
+        const plugin = createPlugin(serviceName as string | undefined);
         assert.strictEqual(isLocus403WithHtmlResponseError(plugin as any, rawError), expected);
       });
     });

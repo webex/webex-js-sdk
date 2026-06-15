@@ -182,7 +182,7 @@ export const isLocus403WithHtmlResponseError = (
     rawError instanceof WebexHttpError.Forbidden &&
     rawError.statusCode === 403 &&
     service &&
-    service === 'locus' &&
+    service.name === 'locus' &&
     rawError.headers?.['content-type']?.includes('text/html')
   ) {
     return true;
