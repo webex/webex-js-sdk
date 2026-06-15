@@ -1587,9 +1587,10 @@ describe('plugin-meetings', () => {
 
           await testUtils.flushPromises();
 
-          // check the callback works correctly on the 2nd attempt
+          // check the callback works correctly on the 2nd attempt:
+          // retryCount=1 with a non-UserNotJoinedError is terminal, so icePhase must be JOIN_MEETING_FINAL
           assert.equal(icePhaseCallbacks.length, 2);
-          assert.equal(icePhaseCallbacks[1](), 'JOIN_MEETING_RETRY');
+          assert.equal(icePhaseCallbacks[1](), 'JOIN_MEETING_FINAL');
 
           // trigger 2nd failure
           addMediaInternalResults[1].reject(addMediaError);
@@ -1631,9 +1632,11 @@ describe('plugin-meetings', () => {
 
           await testUtils.flushPromises();
 
-          // 2nd attempt: retryCount=1 → JOIN_MEETING_RETRY
+          // 2nd attempt: retryCount=1 → JOIN_MEETING_FINAL
+          // (In real usage this callback is never invoked when UserNotJoinedError is thrown,
+          // because UserNotJoinedError is thrown before waitForMediaConnectionConnected() is reached.)
           assert.equal(icePhaseCallbacks.length, 2);
-          assert.equal(icePhaseCallbacks[1](), 'JOIN_MEETING_RETRY');
+          assert.equal(icePhaseCallbacks[1](), 'JOIN_MEETING_FINAL');
           addMediaInternalResults[1].reject(userNotJoinedError);
 
           await testUtils.flushPromises();

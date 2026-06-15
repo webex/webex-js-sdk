@@ -5660,7 +5660,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       const mediaResponse = await this.addMediaInternal(
         () => {
-          return this.joinWithMediaRetryInfo.retryCount === JOIN_WITH_MEDIA_RETRY_MAX_COUNT
+          return this.joinWithMediaRetryInfo.retryCount >= 1
             ? 'JOIN_MEETING_FINAL'
             : 'JOIN_MEETING_RETRY';
         },
