@@ -1,0 +1,231 @@
+name: Calling SDK Playwright E2E
+run-name: ${{ github.actor }} is running Calling SDK Playwright E2E
+
+on:
+  pull_request_target:
+    types: [opened, labeled, reopened, synchronize]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  rid: ${{ github.run_id }}-${{ github.run_number }}
+  PW_BROWSER: chrome
+
+jobs:
+  validate:
+    name: Validate Pull Request
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request_target' || contains(github.event.pull_request.labels.*.name, 'run_e2e')
+
+    steps:
+      - name: Validate Labels
+        if: github.event_name == 'pull_request_target'
+        run: |
+          HEAD_REPO=${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO=${{ github.event.pull_request.base.repo.full_name }}
+          FROM_BASE=0; [ "$HEAD_REPO" == "$BASE_REPO" ] && FROM_BASE=1
+
+          HAS_VALIDATED_LABEL=${{ contains(github.event.pull_request.labels.*.name, 'validated') }}
+          VALIDATED=0; [ "$HAS_VALIDATED_LABEL" == "true" ] && VALIDATED=1
+
+          echo from base $FROM_BASE
+          echo validated $VALIDATED
+
+          if [[ $FROM_BASE == 1 || $VALIDATED == 1 ]]
+          then
+            echo 'pull request is validated, running calling E2E tests'
+            exit 0
+          else
+            echo 'pull request is not validated, exiting'
+            exit 1
+          fi
+
+      - name: Validate Manual Dispatch
+        if: github.event_name == 'workflow_dispatch'
+        run: echo 'manual dispatch validated'
+
+  initialize:
+    name: Initialize Project
+    needs: validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - id: validate-dependencies
+        name: Validate Dependencies
+        uses: actions/cache@v4
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Install Dependencies
+        run: yarn
+
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        if: steps.validate-dependencies.outputs.cache-hit != 'true'
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+  build:
+    name: Build Packages
+    needs: initialize
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v4
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Prebuild Modules
+        run: yarn prebuild:modules
+
+      - name: Build Samples
+        run: yarn samples:build
+
+      - name: Cache Distributables
+        uses: actions/cache@v4
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+  calling-playwright:
+    name: Calling SDK Playwright - ${{ matrix.environment }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - environment: PROD
+            mobius: http
+          - environment: INT
+            mobius: ws
+
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'yarn'
+
+      - name: Uncache Dependencies
+        uses: actions/cache@v4
+        with:
+          path: '**/node_modules'
+          key: node-modules-${{ hashFiles('./yarn.lock') }}
+
+      - name: Uncache Distributables
+        uses: actions/cache@v4
+        with:
+          path: '**/dist'
+          key: dist-${{ env.rid }}
+
+      - name: Synchronize Packages
+        run: yarn
+
+      - name: Install Playwright Browser
+        run: ./node_modules/.bin/playwright install --with-deps ${{ env.PW_BROWSER }}
+
+      - name: Write Environment Variables
+        run: |
+          touch ./.env
+          echo "PW_BASE_URL=\"https://localhost:8000\"" >> ./.env
+          echo "PW_BROWSER=\"${{ env.PW_BROWSER }}\"" >> ./.env
+          echo "MOBIUS=\"${{ matrix.mobius }}\"" >> ./.env
+          echo "SKIP_AUTH=\"false\"" >> ./.env
+          echo "USER_1_EMAIL=\"${{ secrets.USER_1_EMAIL }}\"" >> ./.env
+          echo "USER_1_PASSWORD=\"${{ secrets.USER_1_PASSWORD }}\"" >> ./.env
+          echo "USER_1_PHONE_NUMBER=\"${{ secrets.USER_1_PHONE_NUMBER }}\"" >> ./.env
+          echo "USER_2_EMAIL=\"${{ secrets.USER_2_EMAIL }}\"" >> ./.env
+          echo "USER_2_PASSWORD=\"${{ secrets.USER_2_PASSWORD }}\"" >> ./.env
+          echo "USER_2_PHONE_NUMBER=\"${{ secrets.USER_2_PHONE_NUMBER }}\"" >> ./.env
+          echo "USER_3_EMAIL=\"${{ secrets.USER_3_EMAIL }}\"" >> ./.env
+          echo "USER_3_PASSWORD=\"${{ secrets.USER_3_PASSWORD }}\"" >> ./.env
+          echo "USER_3_PHONE_NUMBER=\"${{ secrets.USER_3_PHONE_NUMBER }}\"" >> ./.env
+          echo "USER_4_EMAIL=\"${{ secrets.USER_4_EMAIL }}\"" >> ./.env
+          echo "USER_4_PASSWORD=\"${{ secrets.USER_4_PASSWORD }}\"" >> ./.env
+          echo "USER_4_PHONE_NUMBER=\"${{ secrets.USER_4_PHONE_NUMBER }}\"" >> ./.env
+          echo "USER_5_EMAIL=\"${{ secrets.USER_5_EMAIL }}\"" >> ./.env
+          echo "USER_5_PASSWORD=\"${{ secrets.USER_5_PASSWORD }}\"" >> ./.env
+          echo "USER_5_PHONE_NUMBER=\"${{ secrets.USER_5_PHONE_NUMBER }}\"" >> ./.env
+          echo "USER_6_EMAIL=\"${{ secrets.USER_6_EMAIL }}\"" >> ./.env
+          echo "USER_6_PASSWORD=\"${{ secrets.USER_6_PASSWORD }}\"" >> ./.env
+          echo "USER_6_PHONE_NUMBER=\"${{ secrets.USER_6_PHONE_NUMBER }}\"" >> ./.env
+          echo "USER_1_INT_EMAIL=\"${{ secrets.USER_1_INT_EMAIL }}\"" >> ./.env
+          echo "USER_1_INT_PASSWORD=\"${{ secrets.USER_1_INT_PASSWORD }}\"" >> ./.env
+          echo "USER_1_INT_PHONE_NUMBER=\"${{ secrets.USER_1_INT_PHONE_NUMBER }}\"" >> ./.env
+          echo "USER_2_INT_EMAIL=\"${{ secrets.USER_2_INT_EMAIL }}\"" >> ./.env
+          echo "USER_2_INT_PASSWORD=\"${{ secrets.USER_2_INT_PASSWORD }}\"" >> ./.env
+          echo "USER_2_INT_PHONE_NUMBER=\"${{ secrets.USER_2_INT_PHONE_NUMBER }}\"" >> ./.env
+          echo "USER_3_INT_EMAIL=\"${{ secrets.USER_3_INT_EMAIL }}\"" >> ./.env
+          echo "USER_3_INT_PASSWORD=\"${{ secrets.USER_3_INT_PASSWORD }}\"" >> ./.env
+          echo "USER_3_INT_PHONE_NUMBER=\"${{ secrets.USER_3_INT_PHONE_NUMBER }}\"" >> ./.env
+          echo "USER_4_INT_EMAIL=\"${{ secrets.USER_4_INT_EMAIL }}\"" >> ./.env
+          echo "USER_4_INT_PASSWORD=\"${{ secrets.USER_4_INT_PASSWORD }}\"" >> ./.env
+          echo "USER_4_INT_PHONE_NUMBER=\"${{ secrets.USER_4_INT_PHONE_NUMBER }}\"" >> ./.env
+          echo "USER_5_INT_EMAIL=\"${{ secrets.USER_5_INT_EMAIL }}\"" >> ./.env
+          echo "USER_5_INT_PASSWORD=\"${{ secrets.USER_5_INT_PASSWORD }}\"" >> ./.env
+          echo "USER_5_INT_PHONE_NUMBER=\"${{ secrets.USER_5_INT_PHONE_NUMBER }}\"" >> ./.env
+          echo "USER_6_INT_EMAIL=\"${{ secrets.USER_6_INT_EMAIL }}\"" >> ./.env
+          echo "USER_6_INT_PASSWORD=\"${{ secrets.USER_6_INT_PASSWORD }}\"" >> ./.env
+          echo "USER_6_INT_PHONE_NUMBER=\"${{ secrets.USER_6_INT_PHONE_NUMBER }}\"" >> ./.env
+
+      - name: Run Calling Playwright Tests
+        run: |
+          ./node_modules/.bin/playwright test --config=packages/calling/playwright.config.ts \
+            --project="SET_REGISTRATION_1 - ${{ matrix.environment }}" \
+            --project="SET_REGISTRATION_2 - ${{ matrix.environment }}" \
+            --project="SET_REGISTRATION_3 - ${{ matrix.environment }}" \
+            --project="SET_CONTACTS - ${{ matrix.environment }}" \
+            --project="SET_CALL - ${{ matrix.environment }}" \
+            --project="SET_CALL_TRANSFER_CONSULT - ${{ matrix.environment }}" \
+            --project="SET_CALL_SETTINGS - ${{ matrix.environment }}"
+        env:
+          MOBIUS: ${{ matrix.mobius }}
+
+      - name: Upload Playwright Artifacts
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: calling-playwright-report-${{ matrix.environment }}-${{ matrix.mobius }}
+          path: |
+            packages/calling/playwright-report/**
+            packages/calling/test-results/**
+          retention-days: 10
