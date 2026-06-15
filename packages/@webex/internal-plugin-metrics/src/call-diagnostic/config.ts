@@ -755,7 +755,7 @@ export const CLIENT_ERROR_CODE_TO_ERROR_PAYLOAD: Record<number, Partial<ClientEv
   },
   [LOCUS_403_HTML_RESPONSE_CLIENT_CODE]: {
     errorDescription: ERROR_DESCRIPTIONS.LOCUS_FORBIDDEN_HTML_RESPONSE,
-    category: 'network',
+    category: 'expected',
     fatal: true,
     name: 'locus.response',
   },
