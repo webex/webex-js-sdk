@@ -10,13 +10,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
-  SKIP_FLAKY_TESTS: ${{ secrets.SKIP_FLAKY_TESTS }}
-  WEBEX_APPID_ORGID: ${{ secrets.WEBEX_APPID_ORGID }}
-  WEBEX_APPID_SECRET: ${{ secrets.WEBEX_APPID_SECRET }}
-  WEBEX_CLIENT_ID: ${{ secrets.WEBEX_CLIENT_ID }}
-  WEBEX_CLIENT_SECRET: ${{ secrets.WEBEX_CLIENT_SECRET }}
 
 jobs:
   validate:
@@ -30,13 +28,20 @@ jobs:
           BASE_REPO=${{ github.event.pull_request.base.repo.full_name }}
           FROM_BASE=0; [ "$HEAD_REPO" == "$BASE_REPO" ] && FROM_BASE=1
 
-          HAS_VALIDATED_LABEL=${{ contains(github.event.pull_request.labels.*.name, 'validated') }}
-          VALIDATED=0; [ "$HAS_VALIDATED_LABEL" == "true" ] && VALIDATED=1
+          EVENT_ACTION=${{ github.event.action }}
+          EVENT_LABEL=${{ github.event.label.name || '' }}
+          LABEL_VALIDATION_EVENT=0
+          if [[ "$EVENT_ACTION" == "labeled" && "$EVENT_LABEL" == "validated" ]]
+          then
+            LABEL_VALIDATION_EVENT=1
+          fi
 
           echo from base $FROM_BASE
-          echo validated $VALIDATED
+          echo event action $EVENT_ACTION
+          echo event label $EVENT_LABEL
+          echo label validation event $LABEL_VALIDATION_EVENT
 
-          if [[ $FROM_BASE == 1 || $VALIDATED == 1 ]]
+          if [[ $FROM_BASE == 1 || $LABEL_VALIDATION_EVENT == 1 ]]
           then
             echo 'pull request is validated, running tests'
             exit 0
@@ -59,6 +64,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
@@ -130,6 +136,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
@@ -183,6 +190,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
@@ -240,6 +248,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
@@ -283,6 +292,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
@@ -327,6 +337,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
@@ -373,6 +384,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
@@ -415,6 +427,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
@@ -459,6 +472,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v3.7.0
