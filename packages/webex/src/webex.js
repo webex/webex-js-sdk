@@ -4,7 +4,7 @@
 
 // Note: this file is written using commonjs instead of import/export to
 // simplify consumption by those less familiar with the current state of
-// JavaScript modularization
+// JavaScript modularisation
 
 /* eslint camelcase: [0] */
 
