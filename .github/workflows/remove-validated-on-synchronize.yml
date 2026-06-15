@@ -27,11 +27,15 @@ jobs:
               return;
             }
 
-            await github.rest.issues.removeLabel({
-              owner,
-              repo,
-              issue_number: pull_number,
-              name: 'validated',
-            });
+            try {
+              await github.rest.issues.removeLabel({
+                owner,
+                repo,
+                issue_number: pull_number,
+                name: 'validated',
+              });
 
-            core.info('Removed validated label after synchronize event.');
+              core.info('Removed validated label after synchronize event.');
+            } catch (error) {
+              core.warning(`Failed to remove validated label: ${error.message}`);
+            }

@@ -23,13 +23,16 @@ jobs:
 
     steps:
       - name: Validate Labels
+        env:
+          EVENT_ACTION: ${{ github.event.action }}
+          EVENT_LABEL: ${{ github.event.label.name || '' }}
+          HAS_VALIDATED_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'validated') }}
         run: |
           HEAD_REPO=${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO=${{ github.event.pull_request.base.repo.full_name }}
           FROM_BASE=0; [ "$HEAD_REPO" == "$BASE_REPO" ] && FROM_BASE=1
 
-          EVENT_ACTION=${{ github.event.action }}
-          EVENT_LABEL=${{ github.event.label.name || '' }}
+          VALIDATED=0; [ "$HAS_VALIDATED_LABEL" == "true" ] && VALIDATED=1
           LABEL_VALIDATION_EVENT=0
           if [[ "$EVENT_ACTION" == "labeled" && "$EVENT_LABEL" == "validated" ]]
           then
@@ -37,11 +40,12 @@ jobs:
           fi
 
           echo from base $FROM_BASE
+          echo validated $VALIDATED
           echo event action $EVENT_ACTION
           echo event label $EVENT_LABEL
           echo label validation event $LABEL_VALIDATION_EVENT
 
-          if [[ $FROM_BASE == 1 || $LABEL_VALIDATION_EVENT == 1 ]]
+          if [[ $FROM_BASE == 1 || $LABEL_VALIDATION_EVENT == 1 || ( "$EVENT_ACTION" != "synchronize" && $VALIDATED == 1 ) ]]
           then
             echo 'pull request is validated, running tests'
             exit 0
