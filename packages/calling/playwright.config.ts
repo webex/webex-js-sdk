@@ -77,12 +77,13 @@ export default defineConfig({
       name: 'OAuth - PROD',
       testDir: './playwright/utils',
       testMatch: /oauth\.setup\.ts/,
+      use: browserOptions[PW_BROWSER],
     },
     {
       name: 'OAuth - INT',
       testDir: './playwright/utils',
       testMatch: /oauth\.setup\.ts/,
-      use: {testEnv: 'int'} as any,
+      use: {...browserOptions[PW_BROWSER], testEnv: 'int'} as any,
     },
 
     // Single-user registration sets (generated from USER_SETS, depend on OAuth)
