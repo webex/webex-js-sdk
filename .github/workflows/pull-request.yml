@@ -3,18 +3,20 @@ run-name: ${{ github.actor }} is running Pull Request CI
 
 on:
   pull_request_target:
-    types: [opened, labeled, reopened, synchronize]
+    types: [opened, labeled, reopened]
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-
 env:
   rid: ${{ github.run_id }}-${{ github.run_number }}
+  SKIP_FLAKY_TESTS: ${{ secrets.SKIP_FLAKY_TESTS }}
+  WEBEX_APPID_ORGID: ${{ secrets.WEBEX_APPID_ORGID }}
+  WEBEX_APPID_SECRET: ${{ secrets.WEBEX_APPID_SECRET }}
+  WEBEX_CLIENT_ID: ${{ secrets.WEBEX_CLIENT_ID }}
+  WEBEX_CLIENT_SECRET: ${{ secrets.WEBEX_CLIENT_SECRET }}
 
 jobs:
   validate:
@@ -23,29 +25,18 @@ jobs:
 
     steps:
       - name: Validate Labels
-        env:
-          EVENT_ACTION: ${{ github.event.action }}
-          EVENT_LABEL: ${{ github.event.label.name || '' }}
-          HAS_VALIDATED_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'validated') }}
         run: |
           HEAD_REPO=${{ github.event.pull_request.head.repo.full_name }}
           BASE_REPO=${{ github.event.pull_request.base.repo.full_name }}
           FROM_BASE=0; [ "$HEAD_REPO" == "$BASE_REPO" ] && FROM_BASE=1
 
+          HAS_VALIDATED_LABEL=${{ contains(github.event.pull_request.labels.*.name, 'validated') }}
           VALIDATED=0; [ "$HAS_VALIDATED_LABEL" == "true" ] && VALIDATED=1
-          LABEL_VALIDATION_EVENT=0
-          if [[ "$EVENT_ACTION" == "labeled" && "$EVENT_LABEL" == "validated" ]]
-          then
-            LABEL_VALIDATION_EVENT=1
-          fi
 
           echo from base $FROM_BASE
           echo validated $VALIDATED
-          echo event action $EVENT_ACTION
-          echo event label $EVENT_LABEL
-          echo label validation event $LABEL_VALIDATION_EVENT
 
-          if [[ $FROM_BASE == 1 || $LABEL_VALIDATION_EVENT == 1 || ( "$EVENT_ACTION" != "synchronize" && $VALIDATED == 1 ) ]]
+          if [[ $FROM_BASE == 1 || $VALIDATED == 1 ]]
           then
             echo 'pull request is validated, running tests'
             exit 0
