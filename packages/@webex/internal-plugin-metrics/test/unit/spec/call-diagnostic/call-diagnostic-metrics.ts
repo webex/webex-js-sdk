@@ -3646,14 +3646,15 @@ describe('internal-plugin-metrics', () => {
         });
         const [res, cached] = cd.generateClientEventErrorPayload(error);
         assert.deepEqual(res, {
-          category: 'network',
+          category: 'expected',
           errorDescription: 'LocusForbiddenHtmlResponse',
           fatal: true,
           name: 'locus.response',
           shownToUser: false,
           serviceErrorCode: undefined,
           errorCode: 4037,
-          rawErrorMessage: '{}\nundefined https://locus.example.com/call\nWEBEX_TRACKING_ID: undefined\n',
+          rawErrorMessage:
+            '{}\nundefined https://locus.example.com/call\nWEBEX_TRACKING_ID: undefined\n',
           httpStatusCode: 403,
         });
       });

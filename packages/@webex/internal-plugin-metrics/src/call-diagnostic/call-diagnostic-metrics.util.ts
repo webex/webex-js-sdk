@@ -176,7 +176,14 @@ export const isLocus403WithHtmlResponseError = (
   plugin: StatelessWebexPlugin,
   rawError: any
 ): boolean => {
-  const service = plugin.webex.internal.services.getServiceFromUrl(rawError.url);
+  let service = null;
+
+  // In case services are not available yet
+  try {
+    service = plugin.webex.internal.services.getServiceFromUrl(rawError.url);
+  } catch (e) {
+    /* noop */
+  }
 
   if (
     rawError instanceof WebexHttpError.Forbidden &&
