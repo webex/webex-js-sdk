@@ -20,6 +20,8 @@ export class LLMPlugin extends (WebexPlugin as any) {
 
   private sessions = new Map<string, LLMChannel>();
 
+  private connectingPromises = new Map<string, Promise<void>>();
+
   private getOrCreateSession(sessionId: string): LLMChannel {
     let channel = this.sessions.get(sessionId);
 
@@ -51,9 +53,23 @@ export class LLMPlugin extends (WebexPlugin as any) {
     datachannelToken?: string,
     sessionId: string = LLM_DEFAULT_SESSION
   ): Promise<void> {
+    const inProgress = this.connectingPromises.get(sessionId);
+
+    if (inProgress) {
+      return inProgress;
+    }
+
     const channel = this.getOrCreateSession(sessionId);
 
-    return channel.registerAndConnect(locusUrl, datachannelUrl, datachannelToken);
+    const promise = channel
+      .registerAndConnect(locusUrl, datachannelUrl, datachannelToken)
+      .finally(() => {
+        this.connectingPromises.delete(sessionId);
+      });
+
+    this.connectingPromises.set(sessionId, promise);
+
+    return promise;
   }
 
   public disconnectLLM(
