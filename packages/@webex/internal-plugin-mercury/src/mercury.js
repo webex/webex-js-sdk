@@ -360,6 +360,7 @@ const Mercury = WebexPlugin.extend({
       // Call the callback with the error before rejecting
       callback(err);
 
+      // eslint-disable-next-line no-unreachable
       return Promise.reject(err);
     }
 

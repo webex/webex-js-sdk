@@ -5,33 +5,22 @@
 
 // @ts-ignore
 import {WebexPlugin} from '@webex/webex-core';
-// @ts-ignore
+
 import config from './config';
+
+// Since mercury-plugin.ts is a .ts file, the TS language server tries to parse mercury.js and chokes on the @deprecated decorator.
+// using a require() call instead of import to avoid TS parsing the file:
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Mercury = require('./mercury').default;
 
-/**
- * MercuryPlugin is the plugin registered as `this.webex.internal.mercury`.
- *
- * It wraps a single {@link Mercury} instance and delegates all public methods
- * and property reads to it, while transparently proxying all events so that
- * existing consumers — which subscribe via `this.webex.internal.mercury.on(...)` —
- * continue to work without any changes.
- *
- * The wrapped Mercury instance handles session-multiplexed connections
- * (including the session-suffix event convention used by multi-connection
- * scenarios), keepalive backoff, and all low-level WebSocket management.
- */
 export class MercuryPlugin extends (WebexPlugin as any) {
   namespace = 'Mercury';
 
-  /** The wrapped Mercury connection manager. */
   private _mercury: any;
 
-  initialize(...args: any[]) {
-    super.initialize?.(...args);
-
+  constructor(...args: any[]) {
+    super(...args);
     this._mercury = new (Mercury as any)({parent: (this as any).webex});
 
     // Re-emit every event from Mercury on this plugin so listeners attached to
