@@ -96,6 +96,7 @@ describe('internal-plugin-metrics', () => {
         internal: {
           services: {
             get: () => 'locus-url',
+            getServiceFromUrl: (url: string) => (url?.includes('locus') ? {name: 'locus'} : null),
           },
           metrics: {
             submitClientMetrics: sinon.stub(),
