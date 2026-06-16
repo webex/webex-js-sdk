@@ -9,7 +9,7 @@ import {WebexPlugin} from '@webex/webex-core';
 import config from './config';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const Mercury = require('./mercury');
+const Mercury = require('./mercury').default;
 
 /**
  * MercuryPlugin is the plugin registered as `this.webex.internal.mercury`.
