@@ -375,7 +375,16 @@ export class MuteState {
     }
     if (muted !== undefined) {
       this.state.server.remoteMute = muted;
-      this.muteLocalStream(meeting, muted, 'remotelyMuted');
+      // BO->Main may replay a stale remoteMute=false from the locus cache.
+      // Only enforce the mute on muted=true (also locking client.localMute so a later stale
+      // false can't flip isMuted()), and never touch the stream on muted=false — the
+      // legitimate server-driven unmute path is LOCAL_UNMUTE_REQUIRED. Always sync client
+      // intent back so other participants' tiles still show the mute icon.
+      if (muted) {
+        this.state.client.localMute = true;
+        this.muteLocalStream(meeting, true, 'remotelyMuted');
+      }
+      this.applyClientStateToServer(meeting);
     }
   }
 

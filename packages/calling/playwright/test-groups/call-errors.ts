@@ -1,6 +1,6 @@
 import {test, expect} from '@playwright/test';
 import {TestManager} from '../test-manager';
-import {getUserSet, getToken, getPhoneNumber, isIntProject} from '../test-data';
+import {getUserSet, getToken, getPhoneNumber, isIntProject, isMobiusWsMode} from '../test-data';
 import {
   navigateToCallingApp,
   initializeCallingSDK,
@@ -19,6 +19,7 @@ import {
   cleanupActiveCalls,
 } from '../utils/call';
 import {CALLING_SELECTORS, AWAIT_TIMEOUT} from '../constants';
+import {MOBIUS_WS_MESSAGE, MobiusWsInterceptor} from '../utils/mobius-ws';
 
 /**
  * Call error tests that need route intercepts before the call is made.
@@ -47,6 +48,20 @@ export function callErrorTests() {
     }, testInfo) => {
       const isInt = isIntProject(testInfo.project.name);
       const role = getUserSet(testInfo.project.name).accounts[0];
+      const mobiusWsMode = isMobiusWsMode();
+
+      if (mobiusWsMode) {
+        await new MobiusWsInterceptor({
+          onRequest: (frame) =>
+            frame.type === MOBIUS_WS_MESSAGE.CALL_SETUP
+              ? {
+                  statusCode: 500,
+                  statusMessage: 'Internal Server Error',
+                  data: {message: 'Call setup failed'},
+                }
+              : undefined,
+        }).install(context);
+      }
 
       await navigateToCallingApp(page);
       if (isInt) await setEnvironmentToInt(page);
@@ -56,9 +71,14 @@ export function callErrorTests() {
       await verifyLineRegistered(page);
       await getMediaStreams(page);
 
-      await context.route(/\/devices\/[^/]+\/call$/, (route) => {
-        route.abort('failed');
-      });
+      if (!mobiusWsMode) {
+        await context.route(/\/devices\/[^/]+\/call$/, (route) => {
+          route.fulfill({
+            status: 500,
+            body: JSON.stringify({message: 'Call setup failed'}),
+          });
+        });
+      }
 
       await page
         .locator(CALLING_SELECTORS.DESTINATION_INPUT)
@@ -90,7 +110,21 @@ export function callErrorTests() {
     }, testInfo) => {
       const isInt = isIntProject(testInfo.project.name);
       const accounts = getUserSet(testInfo.project.name).accounts;
-      const calleeNumber = getPhoneNumber(accounts[1]);
+      const calleeNumber = getPhoneNumber(accounts[1], isInt);
+      const mobiusWsMode = isMobiusWsMode();
+
+      if (mobiusWsMode) {
+        await new MobiusWsInterceptor({
+          onRequest: (frame) =>
+            frame.type === MOBIUS_WS_MESSAGE.CALL_MEDIA
+              ? {
+                  statusCode: 500,
+                  statusMessage: 'Internal Server Error',
+                  data: {message: 'Media negotiation failed'},
+                }
+              : undefined,
+        }).install(context);
+      }
 
       await navigateToCallingApp(page);
       if (isInt) await setEnvironmentToInt(page);
@@ -100,9 +134,11 @@ export function callErrorTests() {
       await verifyLineRegistered(page);
       await getMediaStreams(page);
 
-      await context.route('**/calls/**/media', (route) => {
-        route.fulfill({status: 500, body: JSON.stringify({error: 'Media negotiation failed'})});
-      });
+      if (!mobiusWsMode) {
+        await context.route('**/calls/**/media', (route) => {
+          route.fulfill({status: 500, body: JSON.stringify({error: 'Media negotiation failed'})});
+        });
+      }
 
       await makeCall(page, calleeNumber);
       await page.waitForTimeout(3000);
@@ -176,45 +212,45 @@ export function callEdgeCaseTests() {
   test.describe('Call Edge Cases', () => {
     test.describe.configure({mode: 'serial', timeout: 240000});
 
-    let tm: TestManager;
+    let testManager: TestManager;
     let calleeNumber: string;
 
     test.beforeAll(async ({browser}, testInfo) => {
-      tm = new TestManager(testInfo.project.name);
+      testManager = new TestManager(testInfo.project.name);
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      calleeNumber = getPhoneNumber(tm.userSet.accounts[1]);
+      calleeNumber = getPhoneNumber(testManager.userSet.accounts[1], testManager.isInt);
     });
 
     test.afterEach(async () => {
       await Promise.all([
-        cleanupActiveCalls(tm.getPage(tm.userSet.accounts[0])),
-        cleanupActiveCalls(tm.getPage(tm.userSet.accounts[1])),
+        cleanupActiveCalls(testManager.getPage(testManager.userSet.accounts[0])),
+        cleanupActiveCalls(testManager.getPage(testManager.userSet.accounts[1])),
       ]);
-      if (!tm.page.isClosed()) {
-        await tm.page.waitForTimeout(3000);
+      if (!testManager.page.isClosed()) {
+        await testManager.page.waitForTimeout(3000);
       }
     });
 
     test.afterAll(async () => {
-      await tm.cleanup();
+      await testManager.cleanup();
     });
 
     test('CALL-016: Resume and disconnect race - concurrent operations on 2 endpoints', async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
 
@@ -242,21 +278,21 @@ export function callEdgeCaseTests() {
       browser,
     }) => {
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
 
@@ -294,21 +330,21 @@ export function callEdgeCaseTests() {
     }) => {
       // Fresh contexts — CALL-017 deregistered the callee
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       // Deregister callee so their device is offline
       await unregisterLine(calleePage);
@@ -333,8 +369,8 @@ export function callEdgeCaseTests() {
     test.fixme(
       'CALL-019: Page close during active call - callee browser closes mid-call',
       async () => {
-        const callerPage = tm.getPage(tm.userSet.accounts[0]);
-        const calleePage = tm.getPage(tm.userSet.accounts[1]);
+        const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+        const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
         await establishCall(callerPage, calleePage, calleeNumber);
 
@@ -367,20 +403,20 @@ export function callEdgeCaseTests() {
         //
         // Both contexts need fresh setup since CALL-019 closed the callee page
         // and the caller's UI state (hold button) may be stale
-        await tm.setupContext(browser, 0, {
+        await testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         });
-        await tm.setupContext(browser, 1, {
+        await testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         });
-        const callerPage = tm.getPage(tm.userSet.accounts[0]);
-        const calleePage = tm.getPage(tm.userSet.accounts[1]);
+        const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+        const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
         await establishCall(callerPage, calleePage, calleeNumber);
 

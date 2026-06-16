@@ -4,6 +4,9 @@ import {LINE_EVENTS} from '../CallingClient/line/types';
 import type {ICall} from '../CallingClient/calling/types';
 import {CallId, DisplayInformation} from '../common/types';
 import {CallError, CallingClientError, LineError} from '../Errors';
+import {MOBIUS_SOCKET_DISCONNECT_REASON} from '../CallingClient/utils/constants';
+
+export {MOBIUS_SOCKET_DISCONNECT_REASON};
 
 /** External Eventing Start */
 export enum COMMON_EVENT_KEYS {
@@ -22,7 +25,13 @@ export enum CALLING_CLIENT_EVENT_KEYS {
   OUTGOING_CALL = 'callingClient:outgoing_call',
   USER_SESSION_INFO = 'callingClient:user_recent_sessions',
   ALL_CALLS_CLEARED = 'callingClient:all_calls_cleared',
+  MOBIUS_SOCKET_CONNECTED = 'callingClient:mobius_socket_connected',
+  MOBIUS_SOCKET_DISCONNECTED = 'callingClient:mobius_socket_disconnected',
 }
+
+export type MobiusSocketDisconnectedEvent = {
+  reason: MOBIUS_SOCKET_DISCONNECT_REASON;
+};
 
 export enum CALL_EVENT_KEYS {
   ALERTING = 'alerting',
@@ -231,6 +240,10 @@ export type CallingClientEventTypes = {
   [CALLING_CLIENT_EVENT_KEYS.USER_SESSION_INFO]: (event: CallSessionEvent) => void;
   [CALLING_CLIENT_EVENT_KEYS.OUTGOING_CALL]: (callId: string) => void;
   [CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED]: () => void;
+  [CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED]: () => void;
+  [CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED]: (
+    event: MobiusSocketDisconnectedEvent
+  ) => void;
 };
 
 export type CallHistoryEventTypes = {
