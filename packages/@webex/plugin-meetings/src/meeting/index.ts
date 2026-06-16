@@ -795,7 +795,7 @@ export default class Meeting extends StatelessWebexPlugin {
   private deferSDPAnswer?: Defer; // used for waiting for a response
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
   private hasMediaConnectionConnectedAtLeastOnce: boolean;
-  private joinWithMediaRetryInfo?: {
+  private joinWithMediaRetryInfo: {
     retryCount: number;
     prevJoinResponse?: any;
     firstError?: Error;
@@ -5660,6 +5660,7 @@ export default class Meeting extends StatelessWebexPlugin {
 
       const mediaResponse = await this.addMediaInternal(
         () => {
+          // callback is not called when UserNotJoinedError is thrown
           return this.joinWithMediaRetryInfo.retryCount >= 1
             ? 'JOIN_MEETING_FINAL'
             : 'JOIN_MEETING_RETRY';

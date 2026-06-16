@@ -1655,6 +1655,8 @@ describe('plugin-meetings', () => {
         it('should re-join when retrying after a UserNotJoinedError', async () => {
           const userNotJoinedError = new UserNotJoinedError();
 
+          const leaveStub = sinon.stub(meeting, 'leave').resolves();
+
           meeting.addMediaInternal = sinon
             .stub()
             .onFirstCall()
@@ -1670,12 +1672,16 @@ describe('plugin-meetings', () => {
           assert.calledTwice(meeting.join);
           // TURN discovery should be attempted twice (once per join)
           assert.calledTwice(generateTurnDiscoveryRequestMessageStub);
+          // leave() should never be called when retrying after UserNotJoinedError
+          assert.notCalled(leaveStub);
         });
 
         it('should re-join when isUserInLeftState returns true on retry', async () => {
           const addMediaError = new Error('addMedia error');
 
           sinon.stub(MeetingUtil, 'isUserInLeftState').returns(true);
+
+          const leaveStub = sinon.stub(meeting, 'leave').resolves();
 
           meeting.addMediaInternal = sinon
             .stub()
@@ -1691,6 +1697,8 @@ describe('plugin-meetings', () => {
           // join() should be called twice — once for the first attempt, once because the user is in left state
           assert.calledTwice(meeting.join);
           assert.calledTwice(generateTurnDiscoveryRequestMessageStub);
+          // leave() should never be called when retrying after isUserInLeftState returns true
+          assert.notCalled(leaveStub);
         });
 
         [
