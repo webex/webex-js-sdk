@@ -55,6 +55,11 @@ export const CALLING_SELECTORS = {
   INCOMING_CALL: '#incoming-call',
   CALL_QUALITY_METRICS: '#call-quality-metrics',
 
+  // Call History
+  CALL_HISTORY_BTN: '#Call-history',
+  CALL_HISTORY_HEADER: '#callHistoryHeaderId',
+  CALL_HISTORY_TABLE_BODY: '#callHistoryTableId',
+
   END_BTN: '#end',
 
   // Call Settings
