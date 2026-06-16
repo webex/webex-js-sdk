@@ -139,6 +139,14 @@ export const USER_SETS: Record<string, UserSet> = {
     testSuite: 'set-call.spec.ts',
   },
 
+  // Call History uses USER_1+USER_2 after their single-user suites complete,
+  // so it can run alongside the SET_CALL call lifecycle suite in PROD.
+  SET_CALL_HISTORY: {
+    name: 'SET_CALL_HISTORY',
+    accounts: ['USER_1', 'USER_2'],
+    testSuite: 'call-history.spec.ts',
+  },
+
   // 3-user transfer tests (PROD — dedicated accounts, parallel with registration)
   SET_CALL_TRANSFER_CONSULT: {
     name: 'SET_CALL_TRANSFER_CONSULT',

@@ -118,6 +118,15 @@ export const endCall = async (page: Page): Promise<void> => {
   );
 };
 
+export const endCallerIfStillActive = async (page: Page): Promise<void> => {
+  const endButton = page.locator(CALLING_SELECTORS.END_CALL_BTN);
+  const canEndCall = await endButton.isEnabled().catch(() => false);
+
+  if (canEndCall) {
+    await endCall(page);
+  }
+};
+
 export const endIncomingCall = async (page: Page): Promise<void> => {
   await page.locator(CALLING_SELECTORS.END_BTN).click({timeout: AWAIT_TIMEOUT});
   await page.waitForFunction(
