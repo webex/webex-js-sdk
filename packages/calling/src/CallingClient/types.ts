@@ -128,4 +128,22 @@ export interface ICallingClient extends Eventing<CallingClientEventTypes> {
    * The `connectedCall` object will be the Call object of the connected call with the client
    */
   getConnectedCall(): ICall | undefined;
+
+  /**
+   * Indicates whether the Mobius WebSocket transport is currently connected.
+   *
+   * The `callingClient:mobius_socket_connected` event is emitted during client
+   * initialization, so consumers that subscribe afterwards may miss it. This method
+   * lets them reconcile the current connection state right after subscribing. Returns
+   * `false` when the WebSocket transport is not in use.
+   *
+   * @example
+   * ```typescript
+   * callingClient.on(CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED, onConnected);
+   * if (callingClient.isMobiusSocketConnected()) {
+   *   onConnected();
+   * }
+   * ```
+   */
+  isMobiusSocketConnected(): boolean;
 }

@@ -6,6 +6,7 @@ export const CALLING_SELECTORS = {
   AUTH_STATUS: '#access-token-status',
   SERVICE_INDICATOR: '#ServiceIndicator',
   SERVICE_DOMAIN: '#ServiceDomain',
+  MOBIUS_WSS: '#mobius-wss',
   REGION_INPUT: '#region',
   COUNTRY_INPUT: '#country',
   FEDRAMP_CHECKBOX: '#fedramp',
@@ -20,9 +21,12 @@ export const CALLING_SELECTORS = {
   DESTINATION_INPUT: '#destination',
   MAKE_CALL_BTN: '#create-call-action',
   END_CALL_BTN: '#end-call',
-  /** Prefer over raw #answer — the sample app has a duplicate hidden #answer; this targets the visible incoming strip only. */
-  INCOMING_ANSWER_BTN: '#incomingsection:not(.hidden) #answer',
-  ANSWER_BTN: '#answer',
+  /**
+   * Answer button in the incoming-call section. Starts disabled; becomes enabled when a
+   * line:incoming_call event fires. Use .toBeEnabled() to wait for an incoming call,
+   * .toBeDisabled() to assert no incoming call (e.g. call forwarded / DND active).
+   */
+  INCOMING_ANSWER_BTN: '#incomingsection #answer',
   MUTE_BTN: '#mute_button',
   HOLD_BTN: '#hold_button',
   DTMF_INPUT: '#dtmf_digit',
@@ -52,4 +56,39 @@ export const CALLING_SELECTORS = {
   CALL_QUALITY_METRICS: '#call-quality-metrics',
 
   END_BTN: '#end',
+
+  // Call Settings
+  FETCH_SETTINGS_BTN: '#fetch-setting',
+  DND_BTN: '#DND-button',
+  CALL_WAITING_BTN: '#CallWaiting-button',
+
+  // Call Forward — scoped to avoid collision with duplicate IDs in the voicemail form
+  CF_SAVE_BTN: '#callForwardForm #cfButton',
+  CF_ALWAYS_CB: '#callForwardForm #alwaysCb',
+  CF_ALWAYS_DEST: '#alwaysDest',
+  CF_BUSY_CB: '#callForwardForm #busyCb',
+  CF_BUSY_DEST: '#busyDest',
+  CF_NO_ANSWER_CB: '#notAnsweredCb',
+  CF_NO_ANSWER_DEST: '#notAnsweredDest',
+  CF_NOT_REACHABLE_CB: '#notReachableCb',
+  CF_NOT_REACHABLE_DEST: '#notReachableDest',
+  CF_DIRECTORY_NUMBER: '#directoryNumber',
+  CF_ALWAYS_BTN: '#CallForwardAlways-button',
+  CF_ALWAYS_DATA: '#callforwardalways-data',
+
+  // CF No Answer — number of rings field
+  CF_NO_ANSWER_RINGS: '#notAnsweredRings',
+
+  // Voicemail — scoped to #voicemailForm to avoid collision with CF form IDs
+  VM_ENABLED_CB: '#vmCb',
+  VM_SAVE_BTN: '#voicemailForm #cfButton',
+  VM_SEND_ALL_CB: '#voicemailForm #alwaysCb',
+  VM_SEND_BUSY_CB: '#voicemailForm #busyCb',
+  VM_UNANSWERED_CB: '#voicemailForm #vmNotAnsweredCb',
+  VM_UNANSWERED_RINGS: '#vmNotAnsweredRings',
+  VM_MWI_CB: '#voicemailForm #notifCb',
+  VM_NOTIF_EMAIL_CB: '#voicemailForm #notifEmailCb',
+  VM_NOTIF_EMAIL_ID: '#notifEmailId',
+  VM_EMAIL_COPY_CB: '#voicemailForm #vmEmailCb',
+  VM_EMAIL_COPY_ID: '#vmEmailId',
 };

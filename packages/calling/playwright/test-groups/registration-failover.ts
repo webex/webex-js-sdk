@@ -1,7 +1,7 @@
 import {test, expect} from '@playwright/test';
 import {TestManager} from '../test-manager';
 import {isLineRegistered, getActiveMobiusUrl} from '../utils/registration';
-import {isIntProject} from '../test-data';
+import {isIntProject, isMobiusWsMode} from '../test-data';
 import {
   CALLING_SELECTORS,
   AWAIT_TIMEOUT,
@@ -9,6 +9,12 @@ import {
   PRIMARY_MOBIUS_URL,
   BACKUP_MOBIUS_URL,
 } from '../constants';
+import {
+  getDiscoveredMobiusWsUrls,
+  isKnownWsUrl,
+  MOBIUS_WS_MESSAGE,
+  MobiusWsInterceptor,
+} from '../utils/mobius-ws';
 
 /**
  * Failover & failback tests: REG-006, REG-017, REG-007.
@@ -20,7 +26,7 @@ export function registrationFailoverTests() {
   test.describe('Failover & Failback', () => {
     test.describe.configure({mode: 'serial'});
 
-    let tm: TestManager;
+    let testManager: TestManager;
     let registrationAttempts = 0;
     const attemptedUrls: string[] = [];
     let phase: 'failover' | 'failback' | 'failback-429' = 'failover';
@@ -30,69 +36,123 @@ export function registrationFailoverTests() {
     const MAX_FAILURES = 6;
     let expectedPrimaryUrl: string;
     let expectedBackupUrl: string;
+    let primaryWsUrls: string[] = [];
+    let backupWsUrls: string[] = [];
+    const mobiusWsMode = isMobiusWsMode();
 
     test.beforeAll(async ({browser}, testInfo) => {
       const isInt = isIntProject(testInfo.project.name);
       expectedPrimaryUrl = isInt ? PRIMARY_MOBIUS_URL.INT : PRIMARY_MOBIUS_URL.PROD;
       expectedBackupUrl = isInt ? BACKUP_MOBIUS_URL.INT : BACKUP_MOBIUS_URL.PROD;
 
-      tm = new TestManager(testInfo.project.name);
-      const {context} = await tm.setupContext(browser, 0, {
-        initSDK: true,
-        service: 'calling',
-      });
-
-      // Intercept registration POST — behavior depends on current phase
-      await context.route(/\/calling\/web\/device$/, async (route) => {
-        if (route.request().method() === 'POST') {
-          registrationAttempts += 1;
-          attemptedUrls.push(route.request().url());
-
-          if (phase === 'failover' && registrationAttempts <= MAX_FAILURES) {
-            await route.fulfill({
-              status: 503,
-              contentType: 'application/json',
-              body: JSON.stringify({message: 'Service Unavailable'}),
-            });
-          } else if (phase === 'failback-429') {
-            const url = route.request().url();
-
-            if (url.startsWith(expectedPrimaryUrl)) {
-              // Primary attempts get 429
-              failback429Attempts += 1;
-              await route.fulfill({
-                status: 429,
-                headers: {
-                  'Retry-After': String(FAILBACK_RETRY_AFTER_SECONDS),
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({message: 'Too Many Requests'}),
-              });
-            } else {
-              // Backup attempts pass through (restorePreviousRegistration)
-              await route.continue();
+      testManager = new TestManager(testInfo.project.name);
+      let interceptor: MobiusWsInterceptor | undefined;
+      if (mobiusWsMode) {
+        interceptor = new MobiusWsInterceptor({
+          onRequest: (frame, context) => {
+            if (frame.type !== MOBIUS_WS_MESSAGE.REGISTER) {
+              return undefined;
             }
-          } else {
+
+            registrationAttempts += 1;
+            attemptedUrls.push(context.url);
+
+            if (phase === 'failover' && registrationAttempts <= MAX_FAILURES) {
+              return {
+                statusCode: 503,
+                statusMessage: 'Service Unavailable',
+                data: {message: 'Service Unavailable'},
+              };
+            }
+
+            if (phase === 'failback-429') {
+              if (isKnownWsUrl(context.url, primaryWsUrls)) {
+                failback429Attempts += 1;
+
+                return {
+                  statusCode: 429,
+                  statusMessage: 'Too Many Requests',
+                  metadata: {'retry-after': String(FAILBACK_RETRY_AFTER_SECONDS)},
+                  data: {message: 'Too Many Requests'},
+                };
+              }
+
+              return undefined;
+            }
+
             if (phase === 'failback') {
               failbackRegistrationAttempts += 1;
             }
+
+            return undefined;
+          },
+        });
+      }
+      const {context} = await testManager.setupContext(browser, 0, {
+        initSDK: true,
+        service: 'calling',
+        beforeInit: interceptor
+          ? (browserContext) => interceptor!.install(browserContext)
+          : undefined,
+      });
+
+      if (mobiusWsMode) {
+        const discovered = await getDiscoveredMobiusWsUrls(testManager.page);
+        primaryWsUrls = discovered.primary;
+        backupWsUrls = discovered.backup;
+      } else {
+        // Intercept registration POST — behavior depends on current phase
+        await context.route(/\/calling\/web\/device$/, async (route) => {
+          if (route.request().method() === 'POST') {
+            registrationAttempts += 1;
+            attemptedUrls.push(route.request().url());
+
+            if (phase === 'failover' && registrationAttempts <= MAX_FAILURES) {
+              await route.fulfill({
+                status: 503,
+                contentType: 'application/json',
+                body: JSON.stringify({message: 'Service Unavailable'}),
+              });
+            } else if (phase === 'failback-429') {
+              const url = route.request().url();
+
+              if (url.startsWith(expectedPrimaryUrl)) {
+                // Primary attempts get 429
+                failback429Attempts += 1;
+                await route.fulfill({
+                  status: 429,
+                  headers: {
+                    'Retry-After': String(FAILBACK_RETRY_AFTER_SECONDS),
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({message: 'Too Many Requests'}),
+                });
+              } else {
+                // Backup attempts pass through (restorePreviousRegistration)
+                await route.continue();
+              }
+            } else {
+              if (phase === 'failback') {
+                failbackRegistrationAttempts += 1;
+              }
+              await route.continue();
+            }
+          } else {
             await route.continue();
           }
-        } else {
-          await route.continue();
-        }
-      });
+        });
+      }
     });
 
     test.afterAll(async () => {
-      await tm.context.unrouteAll({behavior: 'ignoreErrors'});
-      await tm.cleanup();
+      await testManager.context.unrouteAll({behavior: 'ignoreErrors'});
+      await testManager.cleanup();
     });
 
     test('REG-006: Primary-to-backup failover on repeated failure', async () => {
       test.setTimeout(300000);
 
-      const page = tm.page;
+      const page = testManager.page;
 
       // Click register — will fail on primary, eventually succeed on backup
       await page.locator(CALLING_SELECTORS.REGISTER_BTN).click({timeout: AWAIT_TIMEOUT});
@@ -118,16 +178,24 @@ export function registrationFailoverTests() {
 
       // After failover, active Mobius should be the backup server
       const activeMobius = await getActiveMobiusUrl(page);
-      expect(activeMobius).toBe(expectedBackupUrl);
+      if (mobiusWsMode) {
+        expect(isKnownWsUrl(activeMobius, backupWsUrls)).toBe(true);
+      } else {
+        expect(activeMobius).toBe(expectedBackupUrl);
+      }
     });
 
     test('REG-017: 429 during failback exhausts retry budget, stays on backup', async () => {
       test.setTimeout(300000);
 
-      const page = tm.page;
+      const page = testManager.page;
 
       // Device is on backup from REG-006
-      expect(await getActiveMobiusUrl(page)).toBe(expectedBackupUrl);
+      if (mobiusWsMode) {
+        expect(isKnownWsUrl(await getActiveMobiusUrl(page), backupWsUrls)).toBe(true);
+      } else {
+        expect(await getActiveMobiusUrl(page)).toBe(expectedBackupUrl);
+      }
 
       // Switch to failback-429 phase — primary POSTs get 429, backup POSTs pass through
       phase = 'failback-429';
@@ -167,7 +235,11 @@ export function registrationFailoverTests() {
       expect(failback429Attempts).toBeGreaterThanOrEqual(5);
 
       // Device must still be on backup — failback should have given up
-      expect(await getActiveMobiusUrl(page)).toBe(expectedBackupUrl);
+      if (mobiusWsMode) {
+        expect(isKnownWsUrl(await getActiveMobiusUrl(page), backupWsUrls)).toBe(true);
+      } else {
+        expect(await getActiveMobiusUrl(page)).toBe(expectedBackupUrl);
+      }
       await expect
         .poll(() => isLineRegistered(page), {
           message: 'Line should remain registered on backup after failback 429 exhaustion',
@@ -190,11 +262,15 @@ export function registrationFailoverTests() {
     test('REG-007: Fallback to primary from backup', async () => {
       test.setTimeout(300000);
 
-      const page = tm.page;
+      const page = testManager.page;
 
       // Record the backup URL from REG-006
       const backupUrl = await getActiveMobiusUrl(page);
-      expect(backupUrl).toBe(expectedBackupUrl);
+      if (mobiusWsMode) {
+        expect(isKnownWsUrl(backupUrl, backupWsUrls)).toBe(true);
+      } else {
+        expect(backupUrl).toBe(expectedBackupUrl);
+      }
 
       // Switch to failback phase — all registration POSTs now succeed
       phase = 'failback';
@@ -234,7 +310,11 @@ export function registrationFailoverTests() {
 
       // Verify moved from backup to primary
       const newActiveMobiusUrl = await getActiveMobiusUrl(page);
-      expect(newActiveMobiusUrl).toBe(expectedPrimaryUrl);
+      if (mobiusWsMode) {
+        expect(isKnownWsUrl(newActiveMobiusUrl, primaryWsUrls)).toBe(true);
+      } else {
+        expect(newActiveMobiusUrl).toBe(expectedPrimaryUrl);
+      }
     });
   });
 }
