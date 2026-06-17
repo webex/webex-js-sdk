@@ -442,10 +442,7 @@ export default class Socket extends EventEmitter {
           }
         };
 
-        // Use 'on' (not 'once') so we keep listening even if a relay event
-        // arrives before mercury.buffer_state — which happens for LLM data-channel
-        // WebSockets that send relay events before sending buffer_state.
-        this.on('message', waitForBufferState);
+        this.once('message', waitForBufferState);
       }
     });
   }

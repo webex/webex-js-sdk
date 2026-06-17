@@ -130,6 +130,16 @@ export class LLMPlugin extends (WebexPlugin as any) {
     return this.getSession(sessionId)?.getBinding();
   }
 
+  public getSocket(sessionId: string = LLM_DEFAULT_SESSION): any {
+    return this.getSession(sessionId)?.socket;
+  }
+
+  // Backwards-compatibility: callers that access llm.socket directly
+  // (e.g. voicea's getPublishTransport) get the default session socket.
+  get socket(): any {
+    return this.getSocket(LLM_DEFAULT_SESSION);
+  }
+
   public getLocusUrl(sessionId: string = LLM_DEFAULT_SESSION): string | undefined {
     return this.getSession(sessionId)?.getLocusUrl();
   }

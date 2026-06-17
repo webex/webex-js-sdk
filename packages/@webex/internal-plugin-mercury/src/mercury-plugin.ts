@@ -44,6 +44,10 @@ export class MercuryPlugin extends (WebexPlugin as any) {
     return this._mercury?.getLastError();
   }
 
+  get hasEverConnected(): boolean {
+    return this._mercury?.hasEverConnected ?? false;
+  }
+
   connect(webSocketUrl?: string): Promise<void> {
     return this._mercury.connect(webSocketUrl);
   }
