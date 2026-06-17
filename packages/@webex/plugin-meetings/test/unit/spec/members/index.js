@@ -303,6 +303,67 @@ describe('plugin-meetings', () => {
       });
     });
 
+    describe('#transferHostToMember', () => {
+      it('should reject if no locus url is set and no breakoutLocusUrl is provided', async () => {
+        const members = createMembers({url: false});
+
+        await assert.isRejected(members.transferHostToMember('bob'));
+      });
+
+      it('should reject if no memberId is provided', async () => {
+        const members = createMembers({url: url1});
+
+        await assert.isRejected(members.transferHostToMember());
+      });
+
+      it('uses the main locus url when no breakoutLocusUrl is provided', async () => {
+        sandbox.spy(MembersUtil, 'generateTransferHostMemberOptions');
+
+        const members = createMembers({url: url1});
+        const {membersRequest} = members;
+        sandbox.spy(membersRequest, 'transferHostToMember');
+
+        await members.transferHostToMember('bob', undefined, true);
+
+        assert.calledOnceWithExactly(
+          MembersUtil.generateTransferHostMemberOptions,
+          'bob',
+          true,
+          url1
+        );
+        assert.calledOnceWithExactly(membersRequest.transferHostToMember, {
+          memberId: 'bob',
+          moderator: true,
+          locusUrl: url1,
+        });
+      });
+
+      it('uses the breakoutLocusUrl when provided', async () => {
+        sandbox.spy(MembersUtil, 'generateTransferHostMemberOptions');
+
+        const members = createMembers({url: url1});
+        const {membersRequest} = members;
+        sandbox.spy(membersRequest, 'transferHostToMember');
+
+        const breakoutLocusUrl = 'https://example.com/breakout-locus';
+
+        await members.transferHostToMember('bob', breakoutLocusUrl, true);
+
+        assert.calledOnceWithExactly(
+          MembersUtil.generateTransferHostMemberOptions,
+          'bob',
+          true,
+          breakoutLocusUrl
+        );
+        assert.calledOnceWithExactly(membersRequest.transferHostToMember, {
+          memberId: 'bob',
+          moderator: true,
+          locusUrl: breakoutLocusUrl,
+          authorizingLocusUrl: url1,
+        });
+      });
+    });
+
     describe('#clearMembers', () => {
       it('should send clear event if clear members', () => {
         const members = createMembers({url: url1});

@@ -4195,7 +4195,12 @@ export default class Meeting extends StatelessWebexPlugin {
   }
 
   /**
-   * Transfer the moderator role to another eligible member
+   * Transfer the moderator role to another eligible member.
+   *
+   * If the target member is currently joined in the current session, the request is
+   * sent against the current locus. Otherwise, we search the breakout sessions and,
+   * when the member is found in one, we send the request against that breakout
+   * session's locus url instead.
    * @param {String} memberId
    * @param {Boolean} moderator
    * @returns {Promise} see #members.transferHostToMember
@@ -4203,7 +4208,25 @@ export default class Meeting extends StatelessWebexPlugin {
    * @memberof Meeting
    */
   public transfer(memberId: string, moderator = true) {
-    return this.members.transferHostToMember(memberId, moderator);
+    const targetMember = this.members.membersCollection.get(memberId);
+
+    if (targetMember?.isInMeeting) {
+      return this.members.transferHostToMember(memberId, undefined, moderator);
+    }
+
+    let breakoutLocusUrl: string | undefined;
+
+    this.breakouts?.breakouts?.forEach((breakout: any) => {
+      if (breakoutLocusUrl) {
+        return;
+      }
+      const breakoutMember = breakout.members?.membersCollection?.get(memberId);
+      if (breakoutMember?.isInMeeting) {
+        breakoutLocusUrl = breakout.breakoutRosterLocus?.url;
+      }
+    });
+
+    return this.members.transferHostToMember(memberId, breakoutLocusUrl, moderator);
   }
 
   /**
@@ -9140,7 +9163,6 @@ export default class Meeting extends StatelessWebexPlugin {
         options: {meetingId: this.id},
       });
     LoggerProxy.logger.log('Meeting:index#leave --> Leaving a meeting');
-
     this.stopListeningForMeetingEvents();
 
     return MeetingUtil.leaveMeeting(this, options)
