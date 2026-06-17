@@ -784,7 +784,7 @@ const Mercury = WebexPlugin.extend({
 
     this._applyOverrides(data);
 
-    return this._getEventHandlers(data.eventType)
+    return this._getEventHandlers(data.eventType || '')
       .reduce(
         (promise, handler) =>
           promise.then(() => {
@@ -803,7 +803,7 @@ const Mercury = WebexPlugin.extend({
       )
       .then(() => {
         this._emit('event', event.data);
-        const [namespace] = data.eventType.split('.');
+        const [namespace] = data.eventType ? data.eventType.split('.') : [];
 
         if (namespace === data.eventType) {
           this._emit(`event:${namespace}`, envelope);

@@ -92,8 +92,9 @@ export class LLMPlugin extends (WebexPlugin as any) {
 
   public disconnectLLM(
     options: {code: number; reason: string},
-    ownerMeetingId?: string,
-    sessionId: string = LLM_DEFAULT_SESSION
+    // eslint-disable-next-line default-param-last
+    sessionId: string = LLM_DEFAULT_SESSION,
+    ownerMeetingId?: string
   ): Promise<boolean | void> {
     const channel = this.getSession(sessionId);
 
