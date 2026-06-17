@@ -174,6 +174,16 @@ export const METRIC_EVENT_NAMES = {
   AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_SUCCESS:
     'AI Assistant Fetch Historic Transcripts Success',
   AI_ASSISTANT_FETCH_HISTORIC_TRANSCRIPTS_FAILED: 'AI Assistant Fetch Historic Transcripts Failed',
+
+  // User Preference API Events
+  USER_PREFERENCE_GET_SUCCESS: 'User Preference Get Success',
+  USER_PREFERENCE_GET_FAILED: 'User Preference Get Failed',
+  USER_PREFERENCE_CREATE_SUCCESS: 'User Preference Create Success',
+  USER_PREFERENCE_CREATE_FAILED: 'User Preference Create Failed',
+  USER_PREFERENCE_UPDATE_SUCCESS: 'User Preference Update Success',
+  USER_PREFERENCE_UPDATE_FAILED: 'User Preference Update Failed',
+  USER_PREFERENCE_DELETE_SUCCESS: 'User Preference Delete Success',
+  USER_PREFERENCE_DELETE_FAILED: 'User Preference Delete Failed',
 } as const;
 
 /**

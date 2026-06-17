@@ -1188,3 +1188,42 @@ export type OutdialAniParams = {
   /** Comma-separated list of attributes to include in response (optional) */
   attributes?: string;
 };
+
+/**
+ * User preference data structure
+ * @public
+ */
+export type UserPreference = {
+  /** Unique identifier for the user preference */
+  id: string;
+  /** Organization ID */
+  organizationId: string;
+  /** User ID (CI user ID) */
+  userId: string;
+  /** User preference data as key-value pairs */
+  preferences: Record<string, unknown>;
+  /** Timestamp when this preference was created (Unix timestamp in milliseconds) */
+  createdTime?: number;
+  /** Timestamp when this preference was last updated (Unix timestamp in milliseconds) */
+  lastUpdatedTime?: number;
+};
+
+/**
+ * Request payload for creating user preferences
+ * @public
+ */
+export type CreateUserPreferenceRequest = {
+  /** User ID (CI user ID) */
+  userId: string;
+  /** User preference data as key-value pairs */
+  preferences: Record<string, unknown>;
+};
+
+/**
+ * Request payload for updating user preferences
+ * @public
+ */
+export type UpdateUserPreferenceRequest = {
+  /** User preference data as key-value pairs */
+  preferences: Record<string, unknown>;
+};
