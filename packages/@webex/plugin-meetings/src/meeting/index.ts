@@ -5712,8 +5712,8 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       }
 
-      // we only want to call leave if join was successful and this was a retry or we won't be doing any more retries
-      if (joined && (retryCount > 0 || !shouldRetry)) {
+      // we only want to call leave if join was successful, and we won't be doing any more retries
+      if (joined && !shouldRetry) {
         try {
           await this.leave({resourceId: joinOptions?.resourceId, reason: 'joinWithMedia failure'});
         } catch (e) {

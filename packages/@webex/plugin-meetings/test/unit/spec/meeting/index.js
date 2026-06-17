@@ -1265,24 +1265,35 @@ describe('plugin-meetings', () => {
           const firstError = new Error('first attempt error');
           const secondError = new Error('second attempt error');
 
-          meeting.addMediaInternal = sinon
-            .stub()
-            .onFirstCall()
-            .rejects(firstError)
-            .onSecondCall()
-            .rejects(secondError);
+          const addMediaInternalResults = [];
+          meeting.addMediaInternal = sinon.stub().callsFake(() => {
+            const defer = new Defer();
+            addMediaInternalResults.push(defer);
+            return defer.promise;
+          });
 
-          sinon.stub(meeting, 'leave').resolves();
+          const leaveStub = sinon.stub(meeting, 'leave').resolves();
 
-          const thrownError = await assert.isRejected(
-            meeting.joinWithMedia({
-              joinOptions,
-              mediaOptions,
-            })
-          );
+          const result = meeting.joinWithMedia({joinOptions, mediaOptions});
+
+          await testUtils.flushPromises();
+
+          // 1st attempt fails
+          addMediaInternalResults[0].reject(firstError);
+          await testUtils.flushPromises();
+
+          // leave() should NOT be called after the 1st attempt (intermediate retry)
+          assert.notCalled(leaveStub);
+
+          // 2nd (final) attempt fails
+          addMediaInternalResults[1].reject(secondError);
+          const thrownError = await assert.isRejected(result);
 
           // should throw the first error, not the second
           assert.equal(thrownError, firstError);
+
+          // leave() should only be called after the last (2nd) attempt
+          assert.calledOnce(leaveStub);
 
           assert.calledTwice(Metrics.sendBehavioralMetric);
         });
@@ -1291,24 +1302,37 @@ describe('plugin-meetings', () => {
           const userNotJoinedError = new UserNotJoinedError();
           const secondError = new Error('second attempt error');
 
-          meeting.addMediaInternal = sinon
-            .stub()
-            .onFirstCall()
-            .rejects(userNotJoinedError)
-            .onSecondCall()
-            .rejects(secondError);
+          const addMediaInternalResults = [];
+          meeting.addMediaInternal = sinon.stub().callsFake(() => {
+            const defer = new Defer();
+            addMediaInternalResults.push(defer);
+            return defer.promise;
+          });
 
-          sinon.stub(meeting, 'leave').resolves();
+          const leaveStub = sinon.stub(meeting, 'leave').resolves();
 
-          const thrownError = await assert.isRejected(
-            meeting.joinWithMedia({joinOptions, mediaOptions})
-          );
+          const result = meeting.joinWithMedia({joinOptions, mediaOptions});
+
+          await testUtils.flushPromises();
+
+          // 1st attempt fails with UserNotJoinedError — triggers a re-join
+          addMediaInternalResults[0].reject(userNotJoinedError);
+          await testUtils.flushPromises();
+
+          // leave() should NOT be called after the 1st attempt (intermediate retry)
+          assert.notCalled(leaveStub);
+
+          // 2nd (final) attempt fails
+          addMediaInternalResults[1].reject(secondError);
+          const thrownError = await assert.isRejected(result);
 
           // should throw the first (UserNotJoinedError), not the second
           assert.equal(thrownError, userNotJoinedError);
 
           // join() called twice: original + re-join triggered by UserNotJoinedError in prevError
           assert.calledTwice(meeting.join);
+          // leave() should only be called after the last (2nd) attempt
+          assert.calledOnce(leaveStub);
           assert.calledTwice(Metrics.sendBehavioralMetric);
         });
 
@@ -1317,26 +1341,44 @@ describe('plugin-meetings', () => {
           const secondUserNotJoinedError = new UserNotJoinedError('second');
           const thirdError = new Error('third attempt error');
 
-          meeting.addMediaInternal = sinon
-            .stub()
-            .onFirstCall()
-            .rejects(firstUserNotJoinedError)
-            .onSecondCall()
-            .rejects(secondUserNotJoinedError)
-            .onThirdCall()
-            .rejects(thirdError);
+          const addMediaInternalResults = [];
+          meeting.addMediaInternal = sinon.stub().callsFake(() => {
+            const defer = new Defer();
+            addMediaInternalResults.push(defer);
+            return defer.promise;
+          });
 
-          sinon.stub(meeting, 'leave').resolves();
+          const leaveStub = sinon.stub(meeting, 'leave').resolves();
 
-          const thrownError = await assert.isRejected(
-            meeting.joinWithMedia({joinOptions, mediaOptions})
-          );
+          const result = meeting.joinWithMedia({joinOptions, mediaOptions});
+
+          await testUtils.flushPromises();
+
+          // 1st attempt fails with UserNotJoinedError — triggers a re-join
+          addMediaInternalResults[0].reject(firstUserNotJoinedError);
+          await testUtils.flushPromises();
+
+          // leave() should NOT be called after the 1st attempt (intermediate retry)
+          assert.notCalled(leaveStub);
+
+          // 2nd attempt fails with UserNotJoinedError again — triggers another re-join
+          addMediaInternalResults[1].reject(secondUserNotJoinedError);
+          await testUtils.flushPromises();
+
+          // leave() should NOT be called after the 2nd attempt (intermediate retry)
+          assert.notCalled(leaveStub);
+
+          // 3rd (final) attempt fails
+          addMediaInternalResults[2].reject(thirdError);
+          const thrownError = await assert.isRejected(result);
 
           // should throw the very first error across all 3 attempts
           assert.equal(thrownError, firstUserNotJoinedError);
 
           // join() called 3 times: original + 2 re-joins triggered by prevError being UserNotJoinedError
           assert.calledThrice(meeting.join);
+          // leave() should only be called after the last (3rd) attempt
+          assert.calledOnce(leaveStub);
           assert.calledThrice(Metrics.sendBehavioralMetric);
         });
 
@@ -1616,7 +1658,7 @@ describe('plugin-meetings', () => {
               return defer.promise;
             });
 
-          sinon.stub(meeting, 'leave').resolves();
+          const leaveStub = sinon.stub(meeting, 'leave').resolves();
 
           const result = meeting.joinWithMedia({
             joinOptions,
@@ -1632,6 +1674,9 @@ describe('plugin-meetings', () => {
 
           await testUtils.flushPromises();
 
+          // leave() should NOT be called after the 1st attempt (intermediate retry)
+          assert.notCalled(leaveStub);
+
           // 2nd attempt: retryCount=1 → JOIN_MEETING_FINAL
           // (In real usage this callback is never invoked when UserNotJoinedError is thrown,
           // because UserNotJoinedError is thrown before waitForMediaConnectionConnected() is reached.)
@@ -1640,6 +1685,9 @@ describe('plugin-meetings', () => {
           addMediaInternalResults[1].reject(userNotJoinedError);
 
           await testUtils.flushPromises();
+
+          // leave() should NOT be called after the 2nd attempt (intermediate retry)
+          assert.notCalled(leaveStub);
 
           // 3rd attempt: retryCount=2 → JOIN_MEETING_FINAL
           assert.equal(icePhaseCallbacks.length, 3);
@@ -1650,6 +1698,9 @@ describe('plugin-meetings', () => {
 
           // should throw the first error
           assert.equal(thrownError, genericError);
+
+          // leave() should only be called once, after the last (3rd) attempt
+          assert.calledOnce(leaveStub);
         });
 
         it('should re-join when retrying after a UserNotJoinedError', async () => {
