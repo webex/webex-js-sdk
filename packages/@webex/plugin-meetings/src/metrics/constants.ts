@@ -21,6 +21,7 @@ const BEHAVIORAL_METRICS = {
   GET_DISPLAY_MEDIA_FAILURE: 'js_sdk_get_display_media_failures',
   JOIN_WITH_MEDIA_FAILURE: 'js_sdk_join_with_media_failures',
   LLM_CONNECTION_AFTER_JOIN_FAILURE: 'js_sdk_llm_connection_after_join_failure',
+  LLM_HEALTHCHECK_FAILURE: 'js_sdk_llm_healthcheck_failure',
   RECEIVE_TRANSCRIPTION_AFTER_JOIN_FAILURE: 'js_sdk_receive_transcription_after_join_failure',
 
   DISCONNECT_DUE_TO_INACTIVITY: 'js_sdk_disconnect_due_to_inactivity',
@@ -89,6 +90,15 @@ const BEHAVIORAL_METRICS = {
   MEDIA_ISSUE_DETECTED: 'js_sdk_media_issue_detected',
   LOCUS_CLASSIC_VS_HASH_TREE_MISMATCH: 'js_sdk_locus_classic_vs_hash_tree_mismatch',
   LOCUS_HASH_TREE_UNSUPPORTED_OPERATION: 'js_sdk_locus_hash_tree_unsupported_operation',
+  MEDIA_STILL_NOT_CONNECTED: 'js_sdk_media_still_not_connected',
+  DEPRECATED_SET_CODEC_PARAMETERS_USED: 'js_sdk_deprecated_set_codec_parameters_used',
+  DEPRECATED_DELETE_CODEC_PARAMETERS_USED: 'js_sdk_deprecated_delete_codec_parameters_used',
+  SET_CUSTOM_CODEC_PARAMETERS_USED: 'js_sdk_set_custom_codec_parameters_used',
+  MARK_CUSTOM_CODEC_PARAMETERS_FOR_DELETION_USED:
+    'js_sdk_mark_custom_codec_parameters_for_deletion_used',
+  HASH_TREE_SYNC_FAILURE: 'js_sdk_hash_tree_sync_failure',
+  HASH_TREE_HEARTBEAT_WATCHDOG_EXPIRED: 'js_sdk_hash_tree_heartbeat_watchdog_expired',
+  HASH_TREE_EMPTY_LOCUS_STATE_ELEMENTS: 'js_sdk_hash_tree_empty_locus_state_elements',
 };
 
 export {BEHAVIORAL_METRICS as default};

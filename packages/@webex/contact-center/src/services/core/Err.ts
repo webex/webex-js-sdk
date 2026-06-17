@@ -38,6 +38,9 @@ export type TaskErrorIds =
   | {'Service.aqm.task.pauseRecording': Failure}
   | {'Service.aqm.task.resumeRecording': Failure}
   | {'Service.aqm.dialer.startOutdial': Failure}
+  | {'Service.aqm.dialer.acceptPreviewContact': Failure}
+  | {'Service.aqm.dialer.skipPreviewContact': Failure}
+  | {'Service.aqm.dialer.removePreviewContact': Failure}
   | {'Service.reqs.generic.failure': {trackingId: string}};
 
 export type ReqError =

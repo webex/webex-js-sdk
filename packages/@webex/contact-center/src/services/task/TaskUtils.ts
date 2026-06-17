@@ -1,9 +1,12 @@
 /* eslint-disable import/prefer-default-export */
 import {Interaction, ITask, TaskData, MEDIA_CHANNEL} from './types';
-import {OUTDIAL_DIRECTION, OUTDIAL_MEDIA_TYPE, OUTBOUND_TYPE} from '../../constants';
 import {LoginOption} from '../../types';
 import {PARTICIPANT_TYPE, MEDIA_TYPE_MAIN_CALL} from './state-machine/constants';
 import {TaskContext} from './state-machine/types';
+import {CC_EVENTS} from '../config/types';
+import {OUTBOUND_TYPE, OUTDIAL_DIRECTION, OUTDIAL_MEDIA_TYPE} from '../../constants';
+
+const CAMPAIGN_PREVIEW_OUTBOUND_TYPES = ['STANDARD_PREVIEW_CAMPAIGN', 'DIRECT_PREVIEW_CAMPAIGN'];
 
 /**
  * Checks if the customer is still in the call (not left)
@@ -237,6 +240,14 @@ export const isSecondaryEpDnAgent = (interaction: Interaction): boolean => {
 };
 
 /**
+ * Checks if the task belongs to a campaign preview interaction.
+ * Campaign preview ContactEnded events are terminal cleanup events and should not trigger wrapup.
+ */
+export const isCampaignPreviewTask = (taskData?: TaskData | null): boolean => {
+  return CAMPAIGN_PREVIEW_OUTBOUND_TYPES.includes(taskData?.interaction?.outboundType ?? '');
+};
+
+/**
  * Checks if auto-answer is enabled for the agent participant
  * @param interaction - The interaction object
  * @param agentId - Current agent ID
@@ -374,4 +385,15 @@ export const getConsultMediaResourceId = (
   }
 
   return undefined;
+};
+
+/**
+ * Checks if a task is a campaign preview reservation that has not yet been accepted.
+ * Campaign preview tasks should not trigger incoming call handling until the agent
+ * explicitly accepts the preview contact.
+ * @param task - The task to check
+ * @returns true if the task is a pending campaign preview reservation, false otherwise
+ */
+export const isCampaignPreviewReservation = (task: ITask): boolean => {
+  return task?.data?.type === CC_EVENTS.AGENT_OFFER_CAMPAIGN_RESERVATION;
 };

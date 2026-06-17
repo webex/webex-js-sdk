@@ -202,7 +202,6 @@ export type LineEventTypes = {
 };
 
 export type CallEventTypes = {
-  [CALL_EVENT_KEYS.ALERTING]: (callId: CallId) => void;
   [CALL_EVENT_KEYS.CALL_ERROR]: (error: CallError) => void;
   [CALL_EVENT_KEYS.CALLER_ID]: (display: CallerIdDisplay) => void;
   [CALL_EVENT_KEYS.CONNECT]: (callId: CallId) => void;
@@ -291,21 +290,7 @@ export interface CallSetupMessage extends BaseMessage {
   trackingId: string;
   alertType: string;
 }
-interface CallProgressMessage extends BaseMessage {
-  callProgressData: callProgressData;
-  callerId: CallerIdInfo;
-}
 
-export const WEBSOCKET_SCOPE = 'mobius';
-
-export enum WEBSOCKET_KEYS {
-  CALL_PROGRESS = 'callprogress',
-  CALL_CONNECTED = 'callconnected',
-  CALL_DISCONNECTED = 'callconnected',
-  CALL_INFO = 'callinfo',
-  CALL = 'call',
-  ROAP = 'ROAP',
-}
 /** Internal Eventing End */
 
 /** State Machine Events */
@@ -346,13 +331,17 @@ export type RoapEvent =
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface RoapMessage {
   seq: number;
-  messageType: 'OFFER' | 'ANSWER' | 'OK' | 'ERROR' | 'OFFER_REQUEST';
+  messageType: 'OFFER' | 'ANSWER' | 'OK' | 'ERROR' | 'OFFER_REQUEST' | 'OFFER_RESPONSE';
   offererSessionId?: string;
   answererSessionId?: string;
   sdp?: string;
   version?: string;
   tieBreaker?: string;
   errorType?: string;
+}
+
+export interface RoapMessageEvent {
+  roapMessage: RoapMessage;
 }
 
 export type UserReadSessions = {

@@ -78,6 +78,14 @@ describe('WebSocketManager', () => {
 
     mockWebex = {
       request: jest.fn(),
+      credentials: {
+        getOrgId: jest.fn().mockReturnValue('test-org-id'),
+      },
+      internal: {
+        services: {
+          isIntegrationEnvironment: jest.fn().mockReturnValue(true), // INT environment by default
+        },
+      },
     } as unknown as WebexSDK;
 
     mockWorker = {
@@ -111,13 +119,15 @@ describe('WebSocketManager', () => {
     expect(webSocketManager).toBeDefined();
   });
 
-  it('should register and connect to WebSocket', async () => {
+  it('should register and connect to WebSocket with X-ORGANIZATION-ID header for INT environment', async () => {
     const subscribeResponse = {
       body: {
         webSocketUrl: 'wss://fake-url',
       },
     };
 
+    // Mock INT environment (services.isIntegrationEnvironment returns true)
+    (mockWebex.internal.services.isIntegrationEnvironment as jest.Mock).mockReturnValue(true);
     (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
 
     await webSocketManager.initWebSocket({body: fakeSubscribeRequest, resource: SUBSCRIBE_API});
@@ -127,6 +137,7 @@ describe('WebSocketManager', () => {
       resource: SUBSCRIBE_API,
       method: 'POST',
       body: fakeSubscribeRequest,
+      headers: {'X-ORGANIZATION-ID': 'test-org-id'},
     });
   });
 
@@ -150,6 +161,84 @@ describe('WebSocketManager', () => {
       method: 'POST',
       body: fakeSubscribeRequest,
     });
+  });
+
+it('should register and connect to WebSocket without X-ORGANIZATION-ID header for production environment', async () => {
+  const subscribeResponse = {
+    body: {
+      webSocketUrl: 'wss://fake-url',
+    },
+  };
+    // Mock production environment (services.isIntegrationEnvironment returns false)
+    (mockWebex.internal.services.isIntegrationEnvironment as jest.Mock).mockReturnValue(false);
+    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+    // Create new WebSocketManager instance with production mock
+    webSocketManager = new WebSocketManager({ webex: mockWebex });
+
+    setTimeout(() => {
+      MockWebSocket.inst.onopen();
+      MockWebSocket.inst.onmessage({ data: JSON.stringify({ type: "Welcome" }) });
+    }, 1);
+
+    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest, resource: SUBSCRIBE_API });
+
+    expect(mockWebex.request).toHaveBeenCalledWith({
+      service: WCC_API_GATEWAY,
+      resource: SUBSCRIBE_API,
+      method: 'POST',
+      body: fakeSubscribeRequest,
+      headers: undefined,
+    });
+  });
+
+  it('should not send X-ORGANIZATION-ID header when services.isIntegrationEnvironment is not available', async () => {
+    const subscribeResponse = {
+      body: {
+        webSocketUrl: 'wss://fake-url',
+      },
+    };
+
+    // Mock services not available (defaults to production behavior)
+    (mockWebex as any).internal = undefined;
+    (mockWebex.request as jest.Mock).mockResolvedValueOnce(subscribeResponse);
+
+    webSocketManager = new WebSocketManager({ webex: mockWebex });
+
+    setTimeout(() => {
+      MockWebSocket.inst.onopen();
+      MockWebSocket.inst.onmessage({ data: JSON.stringify({ type: "Welcome" }) });
+    }, 1);
+
+    await webSocketManager.initWebSocket({ body: fakeSubscribeRequest, resource: SUBSCRIBE_API });
+
+    expect(mockWebex.request).toHaveBeenCalledWith({
+      service: WCC_API_GATEWAY,
+      resource: SUBSCRIBE_API,
+      method: 'POST',
+      body: fakeSubscribeRequest,
+      headers: undefined,
+    });
+  });
+
+  it('should log error and throw when register API fails in initWebSocket', async () => {
+    const error = new Error('Register API failed');
+
+    (mockWebex.request as jest.Mock).mockRejectedValueOnce(error);
+
+    await expect(
+      webSocketManager.initWebSocket({ body: fakeSubscribeRequest, resource: SUBSCRIBE_API })
+    ).rejects.toThrow(error);
+
+    expect(LoggerProxy.error).toHaveBeenCalledWith(
+      `Register API Failed, Request to RoutingNotifs websocket registration API failed ${error}`,
+      { module: WEB_SOCKET_MANAGER_FILE, method: 'register' }
+    );
+
+    expect(LoggerProxy.error).toHaveBeenCalledWith(
+      `[WebSocketStatus] | Error in registering Websocket ${error}`,
+      { module: WEB_SOCKET_MANAGER_FILE, method: 'initWebSocket' }
+    );
   });
 
   it('should close WebSocket connection', async () => {

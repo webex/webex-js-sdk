@@ -119,6 +119,16 @@ export const CC_TASK_EVENTS = {
   AGENT_CONTACT_UNASSIGNED: 'AgentContactUnassigned',
   /** Event emitted when inviting agent fails */
   AGENT_INVITE_FAILED: 'AgentInviteFailed',
+  /** Event emitted when a campaign preview contact is offered to the agent */
+  AGENT_OFFER_CAMPAIGN_RESERVATION: 'AgentOfferCampaignReservation',
+  /** Event emitted when campaign contact is updated */
+  CAMPAIGN_CONTACT_UPDATED: 'CampaignContactUpdated',
+  /** Event emitted when accepting a campaign preview contact fails */
+  CAMPAIGN_PREVIEW_ACCEPT_FAILED: 'CampaignPreviewAcceptFailed',
+  /** Event emitted when skipping a campaign preview contact fails */
+  CAMPAIGN_PREVIEW_SKIP_FAILED: 'CampaignPreviewSkipFailed',
+  /** Event emitted when removing a campaign preview contact fails */
+  CAMPAIGN_PREVIEW_REMOVE_FAILED: 'CampaignPreviewRemoveFailed',
   /** Event emitted when a real-time transcript chunk is received */
   REAL_TIME_TRANSCRIPTION: 'REAL_TIME_TRANSCRIPTION',
 } as const;
@@ -286,8 +296,9 @@ export type AgentResponse = {
 
   /**
    * The default dialed number of the agent.
+   * Note: The API returns this field as "deafultDialledNumber" (with typo).
    */
-  defaultDialledNumber?: string;
+  deafultDialledNumber?: string;
 };
 
 /**

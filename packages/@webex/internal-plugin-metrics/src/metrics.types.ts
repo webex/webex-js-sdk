@@ -1,4 +1,4 @@
-import {
+import type {
   ClientEvent as RawClientEvent,
   Event as RawEvent,
   MediaQualityEvent as RawMediaQualityEvent,
@@ -156,7 +156,6 @@ export type InternalEvent = {
     | 'internal.register.device.request'
     | 'internal.register.device.response'
     | 'internal.reset.join.latencies'
-    | 'internal.client.meeting.click.joinbutton'
     | 'internal.host.meeting.participant.admitted'
     | 'internal.client.meeting.interstitial-window.showed'
     | 'internal.client.interstitial-window.click.joinbutton'
@@ -197,7 +196,7 @@ export interface BusinessEventPayload {
   metricName: string;
   timestamp: number;
   context: DeviceContext;
-  browserDetails: EventPayload;
+  browserDetails: object;
   value: EventPayload;
 }
 
@@ -319,6 +318,7 @@ export type PreComputedLatencies =
   | 'internal.get.cluster.time'
   | 'internal.click.to.interstitial'
   | 'internal.click.to.interstitial.with.user.delay'
+  | 'internal.click.to.interstitial.for.client.jmt'
   | 'internal.refresh.captcha.time'
   | 'internal.exchange.ci.token.time'
   | 'internal.get.u2c.time'

@@ -26,6 +26,7 @@ export const WEBEX_SUB_SERVICE_TYPES: Record<string, ClientSubServiceType> = {
   SCHEDULED_MEETING: 'ScheduledMeeting',
   WEBINAR: 'Webinar',
   WEBCAST: 'Webcast',
+  LARGE_SCALE_WEBINAR: 'LargeScaleWebinar',
 };
 
 // Found in https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
@@ -133,6 +134,7 @@ export const ERROR_DESCRIPTIONS = {
   MULTISTREAM_NOT_AVAILABLE: 'MultistreamNotAvailable',
   SDP_OFFER_CREATION_ERROR: 'SdpOfferCreationError',
   SDP_OFFER_CREATION_ERROR_MISSING_CODEC: 'SdpOfferCreationErrorMissingCodec',
+  WEBRTC_API_NOT_AVAILABLE: 'WebrtcApiNotAvailableError',
   WDM_RESTRICTED_REGION: 'WdmRestrictedRegion',
   USER_NOT_ALLOWED_JOIN_WEBINAR: 'UserNotAllowedJoinWebinar',
 };

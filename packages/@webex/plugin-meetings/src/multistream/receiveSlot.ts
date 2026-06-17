@@ -134,6 +134,24 @@ export class ReceiveSlot extends EventsScope {
         });
       }
     );
+
+    this.mcReceiveSlot.on(WcmeReceiveSlotEvents.MediaStarted, () => {
+      LoggerProxy.logger.log(
+        `ReceiveSlot#setupEventListeners --> media started on receive slot ${this.id}, mediaType=${this.mediaType}`
+      );
+    });
+
+    this.mcReceiveSlot.on(WcmeReceiveSlotEvents.MediaStopped, () => {
+      LoggerProxy.logger.log(
+        `ReceiveSlot#setupEventListeners --> media stopped on receive slot ${this.id}, mediaType=${this.mediaType}`
+      );
+    });
+
+    this.mcReceiveSlot.on(WcmeReceiveSlotEvents.MediaEnded, () => {
+      LoggerProxy.logger.log(
+        `ReceiveSlot#setupEventListeners --> media ended on receive slot ${this.id}, mediaType=${this.mediaType}`
+      );
+    });
   }
 
   /** Tries to find the member id for this receive slot if it hasn't got one */

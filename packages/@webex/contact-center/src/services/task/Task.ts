@@ -412,6 +412,19 @@ export default abstract class Task extends EventEmitter implements ITask {
       emitTaskIncoming: this.createEmitSelfAction(TASK_EVENTS.TASK_INCOMING, {
         updateTaskData: true,
       }),
+      emitTaskCampaignPreviewReservation: this.createEmitSelfAction(
+        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_RESERVATION,
+        {updateTaskData: true}
+      ),
+      emitTaskCampaignPreviewAcceptFailed: this.createEmitSelfAction(
+        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_ACCEPT_FAILED
+      ),
+      emitTaskCampaignPreviewSkipFailed: this.createEmitSelfAction(
+        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_SKIP_FAILED
+      ),
+      emitTaskCampaignPreviewRemoveFailed: this.createEmitSelfAction(
+        TASK_EVENTS.TASK_CAMPAIGN_PREVIEW_REMOVE_FAILED
+      ),
       emitTaskHydrate: this.createEmitSelfAction(TASK_EVENTS.TASK_HYDRATE, {
         updateTaskData: true,
       }),

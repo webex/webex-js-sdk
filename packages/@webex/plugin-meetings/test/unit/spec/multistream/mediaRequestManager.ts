@@ -6,8 +6,15 @@ import {assert} from '@webex/test-helper-chai';
 import {getMaxFs, MAX_FS_VALUES} from '@webex/plugin-meetings/src/multistream/remoteMedia';
 import FakeTimers from '@sinonjs/fake-timers';
 import * as InternalMediaCoreModule from '@webex/internal-media-core';
-import { expect } from 'chai';
+import {MediaType, MediaCodecMimeType} from '@webex/internal-media-core';
 
+
+type ExpectedAv1 = {
+  payloadType: number;
+  levelIdx: number;
+  maxWidth: number;
+  maxHeight: number;
+};
 type ExpectedActiveSpeaker = {
   policy: 'active-speaker';
   maxPayloadBitsPerSecond?: number;
@@ -16,6 +23,7 @@ type ExpectedActiveSpeaker = {
   maxFs?: number;
   maxMbps?: number;
   namedMediaGroups?:[{type: number, value: number}];
+  av1?: ExpectedAv1;
 };
 type ExpectedReceiverSelected = {
   policy: 'receiver-selected';
@@ -24,6 +32,7 @@ type ExpectedReceiverSelected = {
   receiveSlot: ReceiveSlot;
   maxFs?: number;
   maxMbps?: number;
+  av1?: ExpectedAv1;
 };
 type ExpectedRequest = ExpectedActiveSpeaker | ExpectedReceiverSelected;
 
@@ -49,15 +58,18 @@ describe('MediaRequestManager', () => {
   const MAX_PAYLOADBITSPS_1080p = 4000000;
 
   const NUM_SLOTS = 15;
+  const FAKE_H264_PAYLOAD_TYPE = 0x80;
 
   let mediaRequestManager: MediaRequestManager;
   let sendMediaRequestsCallback;
+  let getIngressPayloadTypeCallback;
   let fakeWcmeSlots;
   let fakeReceiveSlots;
 
   beforeEach(() => {
     sendMediaRequestsCallback = sinon.stub();
-    mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, {
+    getIngressPayloadTypeCallback = sinon.stub().returns(FAKE_H264_PAYLOAD_TYPE);
+    mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
       degradationPreferences,
       kind: 'video',
       trimRequestsToNumOfSources: false,
@@ -79,6 +91,7 @@ describe('MediaRequestManager', () => {
             on: sinon.stub(),
             off: sinon.stub(),
             sourceState: 'live',
+            mediaType: MediaType.VideoMain,
             wcmeReceiveSlot: fakeWcmeSlots[index],
           } as unknown as ReceiveSlot)
       );
@@ -140,6 +153,36 @@ describe('MediaRequestManager', () => {
       preferLiveVideo = true,
     } = {}
   ) => {
+    const buildCodecInfos = (expectedRequest: ExpectedRequest) => {
+      if (!isCodecInfoDefined) return [];
+
+      const h264Fields: Record<string, unknown> = {};
+      if (expectedRequest.maxMbps !== undefined) h264Fields.maxMbps = expectedRequest.maxMbps;
+      if (expectedRequest.maxFs !== undefined) h264Fields.maxFs = expectedRequest.maxFs;
+
+      const infos = [
+        sinon.match({
+          payloadType: FAKE_H264_PAYLOAD_TYPE,
+          ...(Object.keys(h264Fields).length > 0 ? {h264: sinon.match(h264Fields)} : {}),
+        }),
+      ];
+
+      if (expectedRequest.av1) {
+        infos.push(
+          sinon.match({
+            payloadType: expectedRequest.av1.payloadType,
+            av1: sinon.match({
+              levelIdx: expectedRequest.av1.levelIdx,
+              maxWidth: expectedRequest.av1.maxWidth,
+              maxHeight: expectedRequest.av1.maxHeight,
+            }),
+          })
+        );
+      }
+
+      return infos;
+    };
+
     assert.calledOnce(sendMediaRequestsCallback);
     assert.calledWith(
       sendMediaRequestsCallback,
@@ -154,18 +197,10 @@ describe('MediaRequestManager', () => {
               preferLiveVideo,
             }),
             receiveSlots: expectedRequest.receiveSlots,
-            maxPayloadBitsPerSecond: expectedRequest.maxPayloadBitsPerSecond,
-            codecInfos: isCodecInfoDefined
-              ? [
-                  sinon.match({
-                    payloadType: 0x80,
-                    h264: sinon.match({
-                      maxMbps: expectedRequest.maxMbps,
-                      maxFs: expectedRequest.maxFs,
-                    }),
-                  }),
-                ]
-              : [],
+            ...(expectedRequest.maxPayloadBitsPerSecond !== undefined
+              ? {maxPayloadBitsPerSecond: expectedRequest.maxPayloadBitsPerSecond}
+              : {}),
+            codecInfos: buildCodecInfos(expectedRequest),
           });
         }
         if (expectedRequest.policy === 'receiver-selected') {
@@ -175,18 +210,10 @@ describe('MediaRequestManager', () => {
               csi: expectedRequest.csi,
             }),
             receiveSlots: [expectedRequest.receiveSlot],
-            maxPayloadBitsPerSecond: expectedRequest.maxPayloadBitsPerSecond,
-            codecInfos: isCodecInfoDefined
-              ? [
-                  sinon.match({
-                    payloadType: 0x80,
-                    h264: sinon.match({
-                      maxMbps: expectedRequest.maxMbps,
-                      maxFs: expectedRequest.maxFs,
-                    }),
-                  }),
-                ]
-              : [],
+            ...(expectedRequest.maxPayloadBitsPerSecond !== undefined
+              ? {maxPayloadBitsPerSecond: expectedRequest.maxPayloadBitsPerSecond}
+              : {}),
+            codecInfos: buildCodecInfos(expectedRequest),
           });
         }
 
@@ -279,7 +306,7 @@ describe('MediaRequestManager', () => {
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
         codecInfos: [
           sinon.match({
-            payloadType: 0x80,
+            payloadType: FAKE_H264_PAYLOAD_TYPE,
             h264: sinon.match({
               maxFs: MAX_FS_360p,
               maxFps: MAX_FPS,
@@ -297,7 +324,7 @@ describe('MediaRequestManager', () => {
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
         codecInfos: [
           sinon.match({
-            payloadType: 0x80,
+            payloadType: FAKE_H264_PAYLOAD_TYPE,
             h264: sinon.match({
               maxFs: MAX_FS_720p,
               maxFps: MAX_FPS,
@@ -315,7 +342,7 @@ describe('MediaRequestManager', () => {
         maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
         codecInfos: [
           sinon.match({
-            payloadType: 0x80,
+            payloadType: FAKE_H264_PAYLOAD_TYPE,
             h264: sinon.match({
               maxFs: MAX_FS_1080p,
               maxFps: MAX_FPS,
@@ -413,8 +440,8 @@ describe('MediaRequestManager', () => {
     const maxFsEventName = maxFsHandlerCall.args[0];
     const sourceUpdateEventName = sourceUpdateHandler.args[0];
 
-    expect(sourceUpdateHandler.args[1]).to.be.a('function');
-    expect(maxFsHandlerCall.args[1]).to.be.a('function');
+    assert.isFunction(sourceUpdateHandler.args[1]);
+    assert.isFunction(maxFsHandlerCall.args[1]);
 
     assert.equal(maxFsEventName, 'maxFsUpdate')
     assert.equal(sourceUpdateEventName, 'sourceUpdate')
@@ -666,8 +693,8 @@ describe('MediaRequestManager', () => {
     ]);
   });
 
-  it('avoids sending duplicate requests and clears all the requests on reset()', () => {
-    // send some requests and commit them one by one
+  it('clears all the requests on reset()', () => {
+    // send some requests and commit them
     addReceiverSelectedRequest(1500, fakeReceiveSlots[0], MAX_FS_1080p, false);
     addReceiverSelectedRequest(1501, fakeReceiveSlots[1], MAX_FS_1080p, false);
     addActiveSpeakerRequest(
@@ -722,95 +749,12 @@ describe('MediaRequestManager', () => {
       },
     ]);
 
-    // check that when calling commit()
-    // all requests are not re-sent again (avoid duplicate requests)
-    mediaRequestManager.commit();
-
-    assert.notCalled(sendMediaRequestsCallback);
-
     // now reset everything
     mediaRequestManager.reset();
 
     // calling commit now should not cause any requests to be sent out
     mediaRequestManager.commit();
     checkMediaRequestsSent([]);
-  });
-
-  it('makes sure to call requests correctly after reset was called and another request was added', () => {
-    addReceiverSelectedRequest(1500, fakeReceiveSlots[0], MAX_FS_1080p, false);
-
-    assert.notCalled(sendMediaRequestsCallback);
-
-    mediaRequestManager.commit();
-    checkMediaRequestsSent([
-      {
-        policy: 'receiver-selected',
-        csi: 1500,
-        receiveSlot: fakeWcmeSlots[0],
-        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
-        maxFs: MAX_FS_1080p,
-        maxMbps: MAX_MBPS_1080p,
-      },
-    ]);
-
-    // now reset everything
-    mediaRequestManager.reset();
-
-    // calling commit now should not cause any requests to be sent out
-    mediaRequestManager.commit();
-    checkMediaRequestsSent([]);
-
-    //add new request
-    addReceiverSelectedRequest(1501, fakeReceiveSlots[1], MAX_FS_1080p, false);
-
-    // commit
-    mediaRequestManager.commit();
-
-    // check the new request was sent
-    checkMediaRequestsSent([
-      {
-        policy: 'receiver-selected',
-        csi: 1501,
-        receiveSlot: fakeWcmeSlots[1],
-        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
-        maxFs: MAX_FS_1080p,
-        maxMbps: MAX_MBPS_1080p,
-      },
-    ]);
-  });
-
-  it('can send same media request after previous requests have been cleared', () => {
-    // add a request and commit
-    addReceiverSelectedRequest(1500, fakeReceiveSlots[0], MAX_FS_1080p, false);
-    mediaRequestManager.commit();
-    checkMediaRequestsSent([
-      {
-        policy: 'receiver-selected',
-        csi: 1500,
-        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
-        receiveSlot: fakeWcmeSlots[0],
-        maxFs: MAX_FS_1080p,
-        maxMbps: MAX_MBPS_1080p,
-      },
-    ]);
-
-    // clear previous requests
-    mediaRequestManager.clearPreviousRequests();
-
-    // commit same request
-    mediaRequestManager.commit();
-
-    // check the request was sent
-    checkMediaRequestsSent([
-      {
-        policy: 'receiver-selected',
-        csi: 1500,
-        maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
-        receiveSlot: fakeWcmeSlots[0],
-        maxFs: MAX_FS_1080p,
-        maxMbps: MAX_MBPS_1080p,
-      },
-    ]);
   });
 
   it('re-sends media requests after degradation preferences are set', () => {
@@ -1002,7 +946,7 @@ describe('MediaRequestManager', () => {
     });
 
     it('returns the default maxPayloadBitsPerSecond if kind is "audio"', () => {
-      const mediaRequestManagerAudio = new MediaRequestManager(sendMediaRequestsCallback, {
+      const mediaRequestManagerAudio = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
         kind: 'audio',
         trimRequestsToNumOfSources: false,
@@ -1120,7 +1064,7 @@ describe('MediaRequestManager', () => {
 
   describe('trimming of requested receive slots', () => {
     beforeEach(() => {
-      mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, {
+      mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
         degradationPreferences,
         kind: 'video',
         trimRequestsToNumOfSources: true,
@@ -1444,8 +1388,445 @@ describe('MediaRequestManager', () => {
       assert.throws(() => mediaRequestManager.commit(), 'a mix of active-speaker groups with different values for preferLiveVideo is not supported');
     })
   })
-});
-function assertEqual(arg0: any, arg1: string) {
-  throw new Error('Function not implemented.');
-}
 
+  describe('getIngressPayloadTypeCallback', () => {
+    beforeEach(() => {
+      sendMediaRequestsCallback.resetHistory();
+      getIngressPayloadTypeCallback.resetHistory();
+    });
+
+    it('is called with the correct mediaType and codec, and uses the returned payload type', () => {
+      const customPayloadType = 0x63;
+      getIngressPayloadTypeCallback.returns(customPayloadType);
+
+      addReceiverSelectedRequest(100, fakeReceiveSlots[0], MAX_FS_720p, true);
+
+      assert.calledWith(getIngressPayloadTypeCallback, MediaType.VideoMain, MediaCodecMimeType.H264);
+      assert.calledWith(sendMediaRequestsCallback, [
+        sinon.match({
+          codecInfos: [
+            sinon.match({
+              payloadType: customPayloadType,
+              h264: sinon.match({ maxFs: MAX_FS_720p }),
+            }),
+          ],
+        }),
+      ]);
+    });
+
+    it('sends empty codecInfos when the callback returns undefined', () => {
+      getIngressPayloadTypeCallback.returns(undefined);
+
+      addReceiverSelectedRequest(100, fakeReceiveSlots[0], MAX_FS_720p, true);
+
+      assert.calledWith(sendMediaRequestsCallback, [
+        sinon.match({ codecInfos: [] }),
+      ]);
+    });
+
+    it('does not invoke the callback for AV1 when enableAv1 is false (default)', () => {
+      addReceiverSelectedRequest(100, fakeReceiveSlots[0], MAX_FS_720p, true);
+
+      const av1Calls = getIngressPayloadTypeCallback.getCalls().filter(
+        (call) => call.args[1] === MediaCodecMimeType.AV1
+      );
+      assert.lengthOf(av1Calls, 0);
+    });
+
+    it('includes both H264 and AV1 codec infos when enableAv1 is true and both payload types are available', () => {
+      const FAKE_AV1_PAYLOAD_TYPE = 0x90;
+      getIngressPayloadTypeCallback.callsFake((mediaType, codecMimeType) => {
+        if (codecMimeType === MediaCodecMimeType.H264) return FAKE_H264_PAYLOAD_TYPE;
+        if (codecMimeType === MediaCodecMimeType.AV1) return FAKE_AV1_PAYLOAD_TYPE;
+        return undefined;
+      });
+
+      mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
+        degradationPreferences,
+        kind: 'video',
+        trimRequestsToNumOfSources: false,
+        enableAv1: true,
+      });
+      sendMediaRequestsCallback.resetHistory();
+
+      addReceiverSelectedRequest(100, fakeReceiveSlots[0], MAX_FS_720p, true);
+
+      assert.calledWith(getIngressPayloadTypeCallback, MediaType.VideoMain, MediaCodecMimeType.H264);
+      assert.calledWith(getIngressPayloadTypeCallback, MediaType.VideoMain, MediaCodecMimeType.AV1);
+      assert.calledWith(sendMediaRequestsCallback, [
+        sinon.match({
+          codecInfos: [
+            sinon.match({ payloadType: FAKE_H264_PAYLOAD_TYPE }),
+            sinon.match({ payloadType: FAKE_AV1_PAYLOAD_TYPE }),
+          ],
+        }),
+      ]);
+    });
+
+    it('sends only H264 codec info when enableAv1 is true but AV1 payload type is undefined', () => {
+      getIngressPayloadTypeCallback.callsFake((mediaType, codecMimeType) => {
+        if (codecMimeType === MediaCodecMimeType.H264) return FAKE_H264_PAYLOAD_TYPE;
+        return undefined;
+      });
+
+      mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
+        degradationPreferences,
+        kind: 'video',
+        trimRequestsToNumOfSources: false,
+        enableAv1: true,
+      });
+      sendMediaRequestsCallback.resetHistory();
+
+      addReceiverSelectedRequest(100, fakeReceiveSlots[0], MAX_FS_720p, true);
+
+      assert.calledWith(sendMediaRequestsCallback, [
+        sinon.match({
+          codecInfos: sinon.match((codecInfos) =>
+            codecInfos.length === 1 &&
+            codecInfos[0].payloadType === FAKE_H264_PAYLOAD_TYPE
+          ),
+        }),
+      ]);
+    });
+
+  });
+
+  describe('AV1 resolution mapping', () => {
+    const FAKE_AV1_PAYLOAD_TYPE = 0x90;
+
+    beforeEach(() => {
+      getIngressPayloadTypeCallback.callsFake((mediaType, codecMimeType) => {
+        if (codecMimeType === MediaCodecMimeType.H264) return FAKE_H264_PAYLOAD_TYPE;
+        if (codecMimeType === MediaCodecMimeType.AV1) return FAKE_AV1_PAYLOAD_TYPE;
+        return undefined;
+      });
+
+      mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
+        degradationPreferences,
+        kind: 'video',
+        trimRequestsToNumOfSources: false,
+        enableAv1: true,
+      });
+    });
+
+    const resolutionCases = [
+      {maxFs: MAX_FS_VALUES['90p'], expectedRes: '90p', levelIdx: 0, maxWidth: 160, maxHeight: 90},
+      {maxFs: MAX_FS_VALUES['180p'], expectedRes: '180p', levelIdx: 0, maxWidth: 320, maxHeight: 180},
+      {maxFs: MAX_FS_VALUES['360p'], expectedRes: '360p', levelIdx: 1, maxWidth: 640, maxHeight: 360},
+      {maxFs: MAX_FS_VALUES['540p'], expectedRes: '540p', levelIdx: 4, maxWidth: 960, maxHeight: 540},
+      {maxFs: MAX_FS_VALUES['720p'], expectedRes: '720p', levelIdx: 5, maxWidth: 1280, maxHeight: 720},
+      {maxFs: MAX_FS_VALUES['1080p'], expectedRes: '1080p', levelIdx: 8, maxWidth: 1920, maxHeight: 1080},
+    ];
+
+    resolutionCases.forEach(({maxFs, expectedRes, levelIdx, maxWidth, maxHeight}) => {
+      it(`maps maxFs=${maxFs} to ${expectedRes} AV1 parameters (levelIdx=${levelIdx}, ${maxWidth}x${maxHeight})`, () => {
+        addReceiverSelectedRequest(100, fakeReceiveSlots[0], maxFs, true);
+
+        checkMediaRequestsSent([{
+          policy: 'receiver-selected',
+          csi: 100,
+          receiveSlot: fakeWcmeSlots[0],
+          maxFs,
+          av1: {payloadType: FAKE_AV1_PAYLOAD_TYPE, levelIdx, maxWidth, maxHeight},
+        }]);
+      });
+    });
+
+    it('maps maxFs values between breakpoints to the correct resolution bucket', () => {
+      const betweenFs = MAX_FS_VALUES['360p'] + 1;
+
+      addReceiverSelectedRequest(100, fakeReceiveSlots[0], betweenFs, true);
+
+      checkMediaRequestsSent([{
+        policy: 'receiver-selected',
+        csi: 100,
+        receiveSlot: fakeWcmeSlots[0],
+        maxFs: betweenFs,
+        av1: {payloadType: FAKE_AV1_PAYLOAD_TYPE, levelIdx: 4, maxWidth: 960, maxHeight: 540},
+      }]);
+    });
+
+    it('maps maxFs exceeding 1080p to 1080p AV1 parameters', () => {
+      const largeFs = MAX_FS_VALUES['1080p'] + 1000;
+
+      addReceiverSelectedRequest(100, fakeReceiveSlots[0], largeFs, true);
+
+      checkMediaRequestsSent([{
+        policy: 'receiver-selected',
+        csi: 100,
+        receiveSlot: fakeWcmeSlots[0],
+        av1: {payloadType: FAKE_AV1_PAYLOAD_TYPE, levelIdx: 8, maxWidth: 1920, maxHeight: 1080},
+      }]);
+    });
+
+    it('includes AV1 codec info for active-speaker requests', () => {
+      addActiveSpeakerRequest(
+        255,
+        [fakeReceiveSlots[0], fakeReceiveSlots[1], fakeReceiveSlots[2]],
+        MAX_FS_720p,
+        true
+      );
+
+      checkMediaRequestsSent([{
+        policy: 'active-speaker',
+        priority: 255,
+        receiveSlots: [fakeWcmeSlots[0], fakeWcmeSlots[1], fakeWcmeSlots[2]],
+        maxFs: MAX_FS_720p,
+        av1: {payloadType: FAKE_AV1_PAYLOAD_TYPE, levelIdx: 5, maxWidth: 1280, maxHeight: 720},
+      }]);
+    });
+
+    it('uses codecInfo maxWidth and maxHeight for AV1 when provided', () => {
+      const customWidth = 1000;
+      const customHeight = 700;
+
+      mediaRequestManager.addRequest(
+        {
+          policyInfo: {
+            policy: 'receiver-selected',
+            csi: 77,
+          },
+          receiveSlots: [fakeReceiveSlots[0]],
+          codecInfo: {
+            codec: 'h264',
+            maxFs: MAX_FS_720p,
+            maxWidth: customWidth,
+            maxHeight: customHeight,
+          },
+        },
+        true
+      );
+
+      assert.calledWith(
+        sendMediaRequestsCallback,
+        [
+          sinon.match({
+            codecInfos: [
+              sinon.match({payloadType: FAKE_H264_PAYLOAD_TYPE}),
+              sinon.match({
+                payloadType: FAKE_AV1_PAYLOAD_TYPE,
+                av1: sinon.match({
+                  maxWidth: customWidth,
+                  maxHeight: customHeight,
+                }),
+              }),
+            ],
+          }),
+        ]
+      );
+    });
+
+    it('falls back to AV1 bucket-default maxWidth and maxHeight when codecInfo does not set them', () => {
+      addReceiverSelectedRequest(100, fakeReceiveSlots[0], MAX_FS_720p, true);
+
+      assert.calledWith(
+        sendMediaRequestsCallback,
+        [
+          sinon.match({
+            codecInfos: [
+              sinon.match({payloadType: FAKE_H264_PAYLOAD_TYPE}),
+              sinon.match({
+                payloadType: FAKE_AV1_PAYLOAD_TYPE,
+                av1: sinon.match({
+                  maxWidth: 1280,
+                  maxHeight: 720,
+                }),
+              }),
+            ],
+          }),
+        ]
+      );
+    });
+  });
+
+  describe('degradation with AV1 enabled', () => {
+    const FAKE_AV1_PAYLOAD_TYPE = 0x90;
+
+    beforeEach(() => {
+      getIngressPayloadTypeCallback.callsFake((mediaType, codecMimeType) => {
+        if (codecMimeType === MediaCodecMimeType.H264) return FAKE_H264_PAYLOAD_TYPE;
+        if (codecMimeType === MediaCodecMimeType.AV1) return FAKE_AV1_PAYLOAD_TYPE;
+        return undefined;
+      });
+
+      mediaRequestManager = new MediaRequestManager(sendMediaRequestsCallback, getIngressPayloadTypeCallback, {
+        degradationPreferences,
+        kind: 'video',
+        trimRequestsToNumOfSources: false,
+        enableAv1: true,
+      });
+
+      sendMediaRequestsCallback.resetHistory();
+    });
+
+    it('degrades AV1 codec info along with H264 when request exceeds max macroblocks limit', () => {
+      mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
+      sendMediaRequestsCallback.resetHistory();
+
+      addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 3), getMaxFs('large'), false);
+      addReceiverSelectedRequest(123, fakeReceiveSlots[3], getMaxFs('large'), true);
+
+      assert.calledOnce(sendMediaRequestsCallback);
+      assert.calledWith(sendMediaRequestsCallback, [
+        sinon.match({
+          policy: 'active-speaker',
+          policySpecificInfo: sinon.match({ priority: 255 }),
+          receiveSlots: fakeWcmeSlots.slice(0, 3),
+          maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+          codecInfos: [
+            sinon.match({
+              payloadType: FAKE_H264_PAYLOAD_TYPE,
+              h264: sinon.match({ maxFs: getMaxFs('medium'), maxMbps: MAX_MBPS_720p }),
+            }),
+            sinon.match({
+              payloadType: FAKE_AV1_PAYLOAD_TYPE,
+              av1: sinon.match({
+                levelIdx: 5,
+                maxWidth: 1280,
+                maxHeight: 720,
+              }),
+            }),
+          ],
+        }),
+        sinon.match({
+          policy: 'receiver-selected',
+          policySpecificInfo: sinon.match({ csi: 123 }),
+          receiveSlots: [fakeWcmeSlots[3]],
+          maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+          codecInfos: [
+            sinon.match({
+              payloadType: FAKE_H264_PAYLOAD_TYPE,
+              h264: sinon.match({ maxFs: getMaxFs('medium'), maxMbps: MAX_MBPS_720p }),
+            }),
+            sinon.match({
+              payloadType: FAKE_AV1_PAYLOAD_TYPE,
+              av1: sinon.match({
+                levelIdx: 5,
+                maxWidth: 1280,
+                maxHeight: 720,
+              }),
+            }),
+          ],
+        }),
+      ]);
+    });
+
+    it('degrades AV1 codec info through multiple steps when many streams are requested', () => {
+      mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
+      sendMediaRequestsCallback.resetHistory();
+
+      addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 10), getMaxFs('large'), true);
+
+      assert.calledOnce(sendMediaRequestsCallback);
+      assert.calledWith(sendMediaRequestsCallback, [
+        sinon.match({
+          policy: 'active-speaker',
+          policySpecificInfo: sinon.match({ priority: 255 }),
+          receiveSlots: fakeWcmeSlots.slice(0, 10),
+          maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_540p,
+          codecInfos: [
+            sinon.match({
+              payloadType: FAKE_H264_PAYLOAD_TYPE,
+              h264: sinon.match({ maxFs: MAX_FS_VALUES['540p'], maxMbps: MAX_MBPS_540p }),
+            }),
+            sinon.match({
+              payloadType: FAKE_AV1_PAYLOAD_TYPE,
+              av1: sinon.match({
+                levelIdx: 4,
+                maxWidth: 960,
+                maxHeight: 540,
+              }),
+            }),
+          ],
+        }),
+      ]);
+    });
+
+    it('degrades only the largest streams AV1 info when mixed resolutions exceed the limit', () => {
+      mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
+      sendMediaRequestsCallback.resetHistory();
+
+      addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 5), getMaxFs('large'), false);
+      addActiveSpeakerRequest(254, fakeReceiveSlots.slice(5, 10), getMaxFs('small'), true);
+
+      assert.calledOnce(sendMediaRequestsCallback);
+      assert.calledWith(sendMediaRequestsCallback, [
+        sinon.match({
+          policy: 'active-speaker',
+          policySpecificInfo: sinon.match({ priority: 255 }),
+          receiveSlots: fakeWcmeSlots.slice(0, 5),
+          maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_720p,
+          codecInfos: [
+            sinon.match({
+              payloadType: FAKE_H264_PAYLOAD_TYPE,
+              h264: sinon.match({ maxFs: getMaxFs('medium'), maxMbps: MAX_MBPS_720p }),
+            }),
+            sinon.match({
+              payloadType: FAKE_AV1_PAYLOAD_TYPE,
+              av1: sinon.match({
+                levelIdx: 5,
+                maxWidth: 1280,
+                maxHeight: 720,
+              }),
+            }),
+          ],
+        }),
+        sinon.match({
+          policy: 'active-speaker',
+          policySpecificInfo: sinon.match({ priority: 254 }),
+          receiveSlots: fakeWcmeSlots.slice(5, 10),
+          maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_360p,
+          codecInfos: [
+            sinon.match({
+              payloadType: FAKE_H264_PAYLOAD_TYPE,
+              h264: sinon.match({ maxFs: getMaxFs('small'), maxMbps: MAX_MBPS_360p }),
+            }),
+            sinon.match({
+              payloadType: FAKE_AV1_PAYLOAD_TYPE,
+              av1: sinon.match({
+                levelIdx: 1,
+                maxWidth: 640,
+                maxHeight: 360,
+              }),
+            }),
+          ],
+        }),
+      ]);
+    });
+
+    it('does not degrade AV1 codec info if receive slot sources are not live', () => {
+      fakeReceiveSlots.forEach((slot) => {
+        slot.sourceState = 'no source';
+      });
+
+      mediaRequestManager.setDegradationPreferences({maxMacroblocksLimit: 32400});
+      sendMediaRequestsCallback.resetHistory();
+
+      addActiveSpeakerRequest(255, fakeReceiveSlots.slice(0, 4), getMaxFs('large'), true);
+
+      assert.calledOnce(sendMediaRequestsCallback);
+      assert.calledWith(sendMediaRequestsCallback, [
+        sinon.match({
+          policy: 'active-speaker',
+          policySpecificInfo: sinon.match({ priority: 255 }),
+          receiveSlots: fakeWcmeSlots.slice(0, 4),
+          maxPayloadBitsPerSecond: MAX_PAYLOADBITSPS_1080p,
+          codecInfos: [
+            sinon.match({
+              payloadType: FAKE_H264_PAYLOAD_TYPE,
+              h264: sinon.match({ maxFs: getMaxFs('large'), maxMbps: MAX_MBPS_1080p }),
+            }),
+            sinon.match({
+              payloadType: FAKE_AV1_PAYLOAD_TYPE,
+              av1: sinon.match({
+                levelIdx: 8,
+                maxWidth: 1920,
+                maxHeight: 1080,
+              }),
+            }),
+          ],
+        }),
+      ]);
+    });
+  });
+});

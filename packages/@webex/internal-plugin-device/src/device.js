@@ -6,7 +6,13 @@ import {orderBy} from 'lodash';
 import uuid from 'uuid';
 
 import METRICS from './metrics';
-import {FEATURE_COLLECTION_NAMES, DEVICE_EVENT_REGISTRATION_SUCCESS} from './constants';
+import {
+  FEATURE_COLLECTION_NAMES,
+  DEVICE_EVENT_REGISTRATION_SUCCESS,
+  MIN_DEVICES_FOR_CLEANUP,
+  MAX_DELETION_CONFIRMATION_ATTEMPTS,
+  DELETION_CONFIRMATION_DELAY_MS,
+} from './constants';
 import FeaturesModel from './features/features-model';
 import IpNetworkDetector from './ipNetworkDetector';
 import {CatalogDetails} from './types';
@@ -454,46 +460,117 @@ const Device = WebexPlugin.extend({
     });
   },
   /**
-   * Fetches the web devices and deletes the third of them which are not recent devices in use
-   * @returns {Promise<void, Error>}
+   * Fetches devices matching the current device type.
+   * @returns {Promise<Array>} filtered device list
    */
-  deleteDevices() {
-    // Fetch devices with a GET request
+  _getDevicesOfCurrentType() {
+    const {deviceType} = this._getBody();
+
     return this.request({
       method: 'GET',
       service: 'wdm',
       resource: 'devices',
-    })
-      .then((response) => {
-        const {devices} = response.body;
+    }).then((response) => response.body.devices.filter((item) => item.deviceType === deviceType));
+  },
 
-        const {deviceType} = this._getBody();
+  /**
+   * Waits until the server-side device count drops to or below targetCount,
+   * polling up to maxAttempts times with a delay between each check.
+   * @param {number} targetCount - resolve when device count drops to this value or below
+   * @param {number} [attempt=0]
+   * @returns {Promise<void>}
+   */
+  _waitForDeviceCountBelowLimit(targetCount, attempt = 0) {
+    if (attempt >= MAX_DELETION_CONFIRMATION_ATTEMPTS) {
+      this.logger.warn('device: max confirmation attempts reached, proceeding anyway');
 
-        // Filter devices of type deviceType
-        const webDevices = devices.filter((item) => item.deviceType === deviceType);
+      return Promise.resolve();
+    }
 
-        const sortedDevices = orderBy(webDevices, [(item) => new Date(item.modificationTime)]);
+    return new Promise((resolve) => setTimeout(resolve, DELETION_CONFIRMATION_DELAY_MS))
+      .then(() => this._getDevicesOfCurrentType())
+      .then((devices) => {
+        this.logger.info(
+          `device: confirmation check ${attempt + 1}/${MAX_DELETION_CONFIRMATION_ATTEMPTS}, ` +
+            `${devices.length} devices remaining (target: ≤ ${targetCount})`
+        );
 
-        // If there are more than two devices, delete the last third
-        if (sortedDevices.length > 2) {
-          const totalItems = sortedDevices.length;
-          const countToDelete = Math.ceil(totalItems / 3);
-          const urlsToDelete = sortedDevices.slice(0, countToDelete).map((item) => item.url);
+        if (devices.length <= targetCount) {
+          this.logger.info('device: device count is now safely below limit');
 
-          return Promise.race(
-            urlsToDelete.map((url) => {
-              return this.request({
-                uri: url,
-                method: 'DELETE',
-              });
-            })
-          );
+          return Promise.resolve();
         }
 
-        return Promise.resolve();
+        return this._waitForDeviceCountBelowLimit(targetCount, attempt + 1);
       })
       .catch((error) => {
-        this.logger.error('Failed to retrieve devices:', error);
+        this.logger.warn(
+          `device: confirmation check ${attempt + 1} failed, proceeding anyway:`,
+          error
+        );
+
+        return Promise.resolve();
+      });
+  },
+
+  /**
+   * Fetches the web devices and deletes the oldest third, then waits
+   * for the server to confirm the count is below the limit.
+   * @returns {Promise<void>}
+   */
+  deleteDevices() {
+    let targetCount;
+
+    return this._getDevicesOfCurrentType()
+      .then((webDevices) => {
+        const sortedDevices = orderBy(webDevices, [(item) => new Date(item.modificationTime)]);
+
+        if (sortedDevices.length <= MIN_DEVICES_FOR_CLEANUP) {
+          this.logger.info(
+            `device: only ${sortedDevices.length} devices found (minimum ${MIN_DEVICES_FOR_CLEANUP}), skipping cleanup`
+          );
+
+          return Promise.resolve();
+        }
+
+        const devicesToDelete = sortedDevices.slice(0, Math.ceil(sortedDevices.length / 3));
+        targetCount = sortedDevices.length - Math.min(5, devicesToDelete.length);
+
+        this.logger.info(
+          `device: deleting ${devicesToDelete.length} of ${webDevices.length} devices`
+        );
+
+        return Promise.all(
+          devicesToDelete.map((device) =>
+            this.request({uri: device.url, method: 'DELETE'})
+              .then(() => ({status: 'fulfilled'}))
+              .catch((reason) => ({status: 'rejected', reason}))
+          )
+        ).then((results) => {
+          const failed = results.filter((r) => r.status === 'rejected');
+
+          if (failed.length > 0) {
+            this.logger.warn(
+              `device: ${failed.length} of ${devicesToDelete.length} deletions failed (best-effort, continuing)`
+            );
+          }
+          this.logger.info(
+            `device: deleted ${devicesToDelete.length - failed.length} of ${
+              devicesToDelete.length
+            } devices`
+          );
+        });
+      })
+      .then(() =>
+        targetCount !== undefined
+          ? this._waitForDeviceCountBelowLimit(targetCount, 0)
+          : Promise.resolve()
+      )
+      .then(() => {
+        this.logger.info('device: device count confirmed below limit, cleanup successful');
+      })
+      .catch((error) => {
+        this.logger.error('device: failed to delete devices:', error);
 
         return Promise.reject(error);
       });
@@ -519,7 +596,11 @@ const Device = WebexPlugin.extend({
 
       return this._registerInternal(deviceRegistrationOptions).catch((error) => {
         if (error?.body?.message === 'User has excessive device registrations') {
+          this.logger.info('device: excessive device registrations detected, initiating cleanup');
+
           return this.deleteDevices().then(() => {
+            this.logger.info('device: device cleanup complete, retrying registration');
+
             return this._registerInternal(deviceRegistrationOptions);
           });
         }
@@ -787,6 +868,34 @@ const Device = WebexPlugin.extend({
   },
 
   /**
+   * Get sanitized processed debug features from session storage
+   * these should be JSON encoded and in the form {feature1: true, feature2: false}
+   *
+   * @returns {Array<Object>} - Array of sanitized debug feature toggles
+   */
+  getDebugFeatures() {
+    const sanitizedDebugFeatures = [];
+    if (this.config.debugFeatureTogglesKey) {
+      const debugFeaturesString = this.webex
+        .getWindow()
+        .sessionStorage.getItem(this.config.debugFeatureTogglesKey);
+      if (debugFeaturesString) {
+        const debugFeatures = JSON.parse(debugFeaturesString);
+        Object.entries(debugFeatures).forEach(([key, value]) => {
+          sanitizedDebugFeatures.push({
+            key,
+            val: value ? 'true' : 'false',
+            mutable: true,
+            lastModified: new Date().toISOString(),
+          });
+        });
+      }
+    }
+
+    return sanitizedDebugFeatures;
+  },
+
+  /**
    * Process a successful device registration.
    *
    * @param {Object} response - response object from registration success.
@@ -814,6 +923,14 @@ const Device = WebexPlugin.extend({
       // When using the etag feature cache, user and entitlement features are still returned
       this.features.user.reset(features.user);
       this.features.entitlement.reset(features.entitlement);
+    } else if (this.config.debugFeatureTogglesKey && body?.features?.developer) {
+      // Add the debug feature toggles from session storage if available
+      try {
+        const debugFeatures = this.getDebugFeatures();
+        body.features.developer.push(...debugFeatures);
+      } catch (error) {
+        this.logger.error('Failed to parse debug feature toggles from session storage:', error);
+      }
     }
 
     // Assign the recieved DTO from **WDM** to this device.
@@ -945,6 +1062,13 @@ const Device = WebexPlugin.extend({
   initialize(...args) {
     // Prototype the extended class in order to preserve the parent member.
     Reflect.apply(WebexPlugin.prototype.initialize, this, args);
+
+    this.listenToOnce(this.webex, 'change:config', () => {
+      // If debug feature toggles exist, clear the etag to ensure developer feature toggles are fetched
+      if (this.getDebugFeatures(this.config.debugFeatureTogglesKey).length > 0) {
+        this.set('etag', undefined);
+      }
+    });
 
     // Initialize feature events and listeners.
     FEATURE_COLLECTION_NAMES.forEach((collectionName) => {
