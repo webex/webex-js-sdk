@@ -6,7 +6,7 @@ export const AV1_CODEC_PARAMETERS: Record<SupportedResolution, AV1EncodingParams
     tier: 0,
     maxWidth: 160,
     maxHeight: 90,
-    maxPicSize: 160 * 90,
+    maxPicSize: 147_456,
     maxDecodeRate: 5_529_600,
   },
   '180p': {
@@ -14,7 +14,7 @@ export const AV1_CODEC_PARAMETERS: Record<SupportedResolution, AV1EncodingParams
     tier: 0,
     maxWidth: 320,
     maxHeight: 180,
-    maxPicSize: 320 * 180,
+    maxPicSize: 147_456,
     maxDecodeRate: 5_529_600,
   },
   '360p': {
@@ -22,7 +22,7 @@ export const AV1_CODEC_PARAMETERS: Record<SupportedResolution, AV1EncodingParams
     tier: 0,
     maxWidth: 640,
     maxHeight: 360,
-    maxPicSize: 640 * 360,
+    maxPicSize: 278_784,
     maxDecodeRate: 10_454_400,
   },
   '540p': {
@@ -30,7 +30,7 @@ export const AV1_CODEC_PARAMETERS: Record<SupportedResolution, AV1EncodingParams
     tier: 0,
     maxWidth: 960,
     maxHeight: 540,
-    maxPicSize: 960 * 540,
+    maxPicSize: 665_856,
     maxDecodeRate: 24_969_600,
   },
   '720p': {
@@ -38,7 +38,7 @@ export const AV1_CODEC_PARAMETERS: Record<SupportedResolution, AV1EncodingParams
     tier: 0,
     maxWidth: 1280,
     maxHeight: 720,
-    maxPicSize: 1280 * 720,
+    maxPicSize: 1_065_024,
     maxDecodeRate: 39_938_400,
   },
   '1080p': {
@@ -46,7 +46,7 @@ export const AV1_CODEC_PARAMETERS: Record<SupportedResolution, AV1EncodingParams
     tier: 0,
     maxWidth: 1920,
     maxHeight: 1080,
-    maxPicSize: 1920 * 1080,
+    maxPicSize: 2_359_296,
     maxDecodeRate: 77_856_768,
   },
 };

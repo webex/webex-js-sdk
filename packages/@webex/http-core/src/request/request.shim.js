@@ -60,11 +60,15 @@ export default function _request(options) {
 
       /* istanbul ignore else */
       if (response) {
+        response.options = options;
+        processResponseJson(response, params);
+
         if (response.statusCode >= 400) {
           options.logger.warn(
             `http ${options.method ? options.method : 'request'} to ${options.uri} result: ${
               response.statusCode
-            }`
+            } body:`,
+            response.body
           );
         } else {
           options.logger.debug(
@@ -73,8 +77,7 @@ export default function _request(options) {
             }`
           );
         }
-        response.options = options;
-        processResponseJson(response, params);
+
         resolve(response);
       } else {
         resolve({

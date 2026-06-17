@@ -944,14 +944,22 @@ export default class LocusInfo extends EventsScope {
         if (!object.data) {
           // self without data is handled inside HashTreeParser and results in LocusInfoUpdateType.MEETING_ENDED, so we should never get here
           // all other types info, fullstate, etc - Locus should never send them without data
-          LoggerProxy.logger.warn(
-            `Locus-info:index#updateLocusFromHashTreeObject --> received ${type} object without data, this is not expected! version=${object.htMeta.elementId.version}`
+          // but we end up with this method being called without the data for them when the main dataset is removed from visible datasets list
+          LoggerProxy.logger.info(
+            `Locus-info:index#updateLocusFromHashTreeObject --> received ${type} object without data, version=${object.htMeta.elementId.version}`
           );
         } else {
           LoggerProxy.logger.info(
             `Locus-info:index#updateLocusFromHashTreeObject --> ${type} object updated to version ${object.htMeta.elementId.version}`
           );
-          const locusDtoKey = ObjectTypeToLocusKeyMap[type];
+
+          if (type === ObjectType.self) {
+            LoggerProxy.logger.info(
+              `Locus-info:index#updateLocusFromHashTreeObject --> self data: removed=${object.data.removed} state=${object.data.state} reason=${object.data.reason}`
+            );
+          }
+
+          const locusDtoKey = ObjectTypeToLocusKeyMap[type] as keyof LocusDTO;
           locus[locusDtoKey] = object.data;
 
           /* Hash tree based webinar attendees don't receive a Participant object for themselves from Locus,

@@ -1,6 +1,6 @@
 import {test, expect} from '@playwright/test';
 import {TestManager} from '../test-manager';
-import {getPhoneNumber} from '../test-data';
+import {getPhoneNumber, isMobiusWsMode} from '../test-data';
 import {
   sendDTMF,
   holdCall,
@@ -12,6 +12,7 @@ import {
   cleanupActiveCalls,
 } from '../utils/call';
 import {CALLING_SELECTORS, AWAIT_TIMEOUT} from '../constants';
+import {MOBIUS_WS_MESSAGE, MobiusWsInterceptor} from '../utils/mobius-ws';
 
 /**
  * Hold/resume tests: multiple cycles, callee-side hold, hold+disconnect combos.
@@ -21,45 +22,45 @@ export function callHoldTests() {
   test.describe('Call Hold', () => {
     test.describe.configure({mode: 'serial', timeout: 180000});
 
-    let tm: TestManager;
+    let testManager: TestManager;
     let calleeNumber: string;
 
     test.beforeAll(async ({browser}, testInfo) => {
-      tm = new TestManager(testInfo.project.name);
+      testManager = new TestManager(testInfo.project.name);
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      calleeNumber = getPhoneNumber(tm.userSet.accounts[1]);
+      calleeNumber = getPhoneNumber(testManager.userSet.accounts[1], testManager.isInt);
     });
 
     test.afterEach(async () => {
       await Promise.all([
-        cleanupActiveCalls(tm.getPage(tm.userSet.accounts[0])),
-        cleanupActiveCalls(tm.getPage(tm.userSet.accounts[1])),
+        cleanupActiveCalls(testManager.getPage(testManager.userSet.accounts[0])),
+        cleanupActiveCalls(testManager.getPage(testManager.userSet.accounts[1])),
       ]);
-      if (!tm.page.isClosed()) {
-        await tm.page.waitForTimeout(3000);
+      if (!testManager.page.isClosed()) {
+        await testManager.page.waitForTimeout(3000);
       }
     });
 
     test.afterAll(async () => {
-      await tm.cleanup();
+      await testManager.cleanup();
     });
 
     test('CALL-021: Hold and resume - multiple cycles', async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
 
@@ -79,21 +80,21 @@ export function callHoldTests() {
 
     test.fixme('CALL-022: Callee-side hold and resume', async ({browser}) => {
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       // Let Mobius settle after fresh registration before placing a call
       await callerPage.waitForTimeout(5000);
@@ -136,21 +137,21 @@ export function callHoldTests() {
       browser,
     }) => {
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       // Let Mobius settle after fresh registration before placing a call
       await callerPage.waitForTimeout(5000);
@@ -174,21 +175,21 @@ export function callHoldTests() {
       browser,
     }) => {
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       // Let Mobius settle after fresh registration before placing a call
       await callerPage.waitForTimeout(5000);
@@ -218,59 +219,79 @@ export function callHoldErrorTests() {
   test.describe('Call Hold Errors', () => {
     test.describe.configure({mode: 'serial', timeout: 180000});
 
-    let tm: TestManager;
+    let testManager: TestManager;
     let calleeNumber: string;
 
     test.beforeAll(async ({browser}, testInfo) => {
-      tm = new TestManager(testInfo.project.name);
+      testManager = new TestManager(testInfo.project.name);
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      calleeNumber = getPhoneNumber(tm.userSet.accounts[1]);
+      calleeNumber = getPhoneNumber(testManager.userSet.accounts[1], testManager.isInt);
     });
 
     test.afterEach(async () => {
       await Promise.all([
-        cleanupActiveCalls(tm.getPage(tm.userSet.accounts[0])),
-        cleanupActiveCalls(tm.getPage(tm.userSet.accounts[1])),
+        cleanupActiveCalls(testManager.getPage(testManager.userSet.accounts[0])),
+        cleanupActiveCalls(testManager.getPage(testManager.userSet.accounts[1])),
       ]);
-      if (!tm.page.isClosed()) {
-        await tm.page.waitForTimeout(3000);
+      if (!testManager.page.isClosed()) {
+        await testManager.page.waitForTimeout(3000);
       }
     });
 
     test.afterAll(async () => {
-      await tm.cleanup();
+      await testManager.cleanup();
     });
 
     test('CALL-025: Resume API failure - resume_error event emitted', async ({browser}) => {
+      const mobiusWsMode = isMobiusWsMode();
+      let failResume = false;
+      let interceptor: MobiusWsInterceptor | undefined;
+      if (mobiusWsMode) {
+        interceptor = new MobiusWsInterceptor({
+          onRequest: (frame) => {
+            if (failResume && frame.type === MOBIUS_WS_MESSAGE.CALL_RESUME) {
+              return {
+                statusCode: 500,
+                statusMessage: 'Internal Server Error',
+                data: {message: 'Resume failed'},
+              };
+            }
+
+            return undefined;
+          },
+        });
+      }
+
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
+          beforeInit: interceptor ? (ctx) => interceptor!.install(ctx) : undefined,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
       await holdCall(callerPage);
@@ -284,9 +305,13 @@ export function callHoldErrorTests() {
         });
       });
 
-      await callerPage.route('**/services/callhold/resume', (route) => {
-        route.fulfill({status: 500, body: 'Internal Server Error'});
-      });
+      if (mobiusWsMode) {
+        failResume = true;
+      } else {
+        await callerPage.route('**/services/callhold/resume', (route) => {
+          route.fulfill({status: 500, body: 'Internal Server Error'});
+        });
+      }
 
       await callerPage.locator(CALLING_SELECTORS.HOLD_BTN).click({timeout: AWAIT_TIMEOUT});
 
@@ -297,29 +322,51 @@ export function callHoldErrorTests() {
       expect(resumeError).toBeTruthy();
       await expect(callerPage.locator(CALLING_SELECTORS.HOLD_BTN)).toHaveValue('Resume');
 
-      await callerPage.unroute('**/services/callhold/resume');
+      if (!mobiusWsMode) {
+        await callerPage.unroute('**/services/callhold/resume');
+      }
 
       await endCall(callerPage);
       await Promise.all([waitForCallDisconnect(callerPage), waitForCallDisconnect(calleePage)]);
     });
 
     test('CALL-026: Hold API failure - hold_error event emitted', async ({browser}) => {
+      const mobiusWsMode = isMobiusWsMode();
+      let failHold = false;
+      let interceptor: MobiusWsInterceptor | undefined;
+      if (mobiusWsMode) {
+        interceptor = new MobiusWsInterceptor({
+          onRequest: (frame) => {
+            if (failHold && frame.type === MOBIUS_WS_MESSAGE.CALL_HOLD) {
+              return {
+                statusCode: 500,
+                statusMessage: 'Internal Server Error',
+                data: {message: 'Hold failed'},
+              };
+            }
+
+            return undefined;
+          },
+        });
+      }
+
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
+          beforeInit: interceptor ? (ctx) => interceptor!.install(ctx) : undefined,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
 
@@ -332,9 +379,13 @@ export function callHoldErrorTests() {
         });
       });
 
-      await callerPage.route('**/services/callhold/hold', (route) => {
-        route.fulfill({status: 500, body: 'Internal Server Error'});
-      });
+      if (mobiusWsMode) {
+        failHold = true;
+      } else {
+        await callerPage.route('**/services/callhold/hold', (route) => {
+          route.fulfill({status: 500, body: 'Internal Server Error'});
+        });
+      }
 
       await callerPage.locator(CALLING_SELECTORS.HOLD_BTN).click({timeout: AWAIT_TIMEOUT});
 
@@ -345,7 +396,9 @@ export function callHoldErrorTests() {
       expect(holdError).toBeTruthy();
       await expect(callerPage.locator(CALLING_SELECTORS.HOLD_BTN)).toHaveValue('Hold');
 
-      await callerPage.unroute('**/services/callhold/hold');
+      if (!mobiusWsMode) {
+        await callerPage.unroute('**/services/callhold/hold');
+      }
 
       await endCall(callerPage);
       await Promise.all([waitForCallDisconnect(callerPage), waitForCallDisconnect(calleePage)]);
@@ -361,45 +414,45 @@ export function callControlTests() {
   test.describe('Call Controls', () => {
     test.describe.configure({mode: 'serial', timeout: 180000});
 
-    let tm: TestManager;
+    let testManager: TestManager;
     let calleeNumber: string;
 
     test.beforeAll(async ({browser}, testInfo) => {
-      tm = new TestManager(testInfo.project.name);
+      testManager = new TestManager(testInfo.project.name);
       await Promise.all([
-        tm.setupContext(browser, 0, {
+        testManager.setupContext(browser, 0, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
-        tm.setupContext(browser, 1, {
+        testManager.setupContext(browser, 1, {
           initSDK: true,
           service: 'calling',
           register: true,
           media: true,
         }),
       ]);
-      calleeNumber = getPhoneNumber(tm.userSet.accounts[1]);
+      calleeNumber = getPhoneNumber(testManager.userSet.accounts[1], testManager.isInt);
     });
 
     test.afterEach(async () => {
       await Promise.all([
-        cleanupActiveCalls(tm.getPage(tm.userSet.accounts[0])),
-        cleanupActiveCalls(tm.getPage(tm.userSet.accounts[1])),
+        cleanupActiveCalls(testManager.getPage(testManager.userSet.accounts[0])),
+        cleanupActiveCalls(testManager.getPage(testManager.userSet.accounts[1])),
       ]);
-      if (!tm.page.isClosed()) {
-        await tm.page.waitForTimeout(3000);
+      if (!testManager.page.isClosed()) {
+        await testManager.page.waitForTimeout(3000);
       }
     });
 
     test.afterAll(async () => {
-      await tm.cleanup();
+      await testManager.cleanup();
     });
 
     test('CALL-027: Mute and unmute - toggle mute during active call', async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
 
@@ -435,8 +488,8 @@ export function callControlTests() {
     });
 
     test('CALL-028: DTMF send - send digit sequence during call', async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
 
@@ -453,14 +506,14 @@ export function callControlTests() {
     });
 
     test('CALL-029: Network flap with active call - call survives brief disruption', async () => {
-      const callerPage = tm.getPage(tm.userSet.accounts[0]);
-      const calleePage = tm.getPage(tm.userSet.accounts[1]);
+      const callerPage = testManager.getPage(testManager.userSet.accounts[0]);
+      const calleePage = testManager.getPage(testManager.userSet.accounts[1]);
 
       await establishCall(callerPage, calleePage, calleeNumber);
 
-      await tm.getContext(tm.userSet.accounts[0]).setOffline(true);
+      await testManager.getContext(testManager.userSet.accounts[0]).setOffline(true);
       await callerPage.waitForTimeout(3000);
-      await tm.getContext(tm.userSet.accounts[0]).setOffline(false);
+      await testManager.getContext(testManager.userSet.accounts[0]).setOffline(false);
       await callerPage.waitForTimeout(5000);
 
       const stillConnected = await callerPage.evaluate(() => {

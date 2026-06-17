@@ -116,6 +116,25 @@ export class APIRequest {
   }
 
   /**
+   * Overrides the active Mobius transport for subsequent requests.
+   *
+   * The constructor seeds this from the `webrtc-calling-over-ws` feature flag, but
+   * registration may need to fall back to HTTP for a Mobius server group that has no
+   * WSS URL (even while the feature is enabled). Toggling this keeps all transport-gated
+   * paths (connect, teardown, makeRequest) consistent for the group being registered.
+   *
+   * @param enabled - `true` to route over the Mobius WebSocket, `false` for HTTP.
+   */
+  public setSocketEnabled(enabled: boolean): void {
+    this.isMobiusSocketEnabled = enabled;
+
+    log.info(`APIRequest transport set to: ${enabled ? 'WSS' : 'HTTP'}`, {
+      file: REQUEST_FILE,
+      method: METHODS.SET_SOCKET_ENABLED,
+    });
+  }
+
+  /**
    * Ensures the Mobius WebSocket is connected before sending API requests.
    * If the socket is already connected, resolves immediately. Otherwise,
    * initiates a new connection to the provided WebSocket URL.
