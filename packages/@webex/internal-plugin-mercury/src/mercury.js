@@ -500,6 +500,11 @@ const Mercury = WebexPlugin.extend({
           options = {...options, ...this.webex.config.defaultMercuryOptions};
         }
 
+        // Allow subclasses to inject extra socket options (e.g. skipBufferState for LLM)
+        if (this._extraSocketOptions) {
+          options = {...options, ...this._extraSocketOptions};
+        }
+
         this.logger.info(`${this.namespace}: ${logPrefix} url: ${webSocketUrl}`);
 
         return socket.open(webSocketUrl, options).then(() => webSocketUrl);

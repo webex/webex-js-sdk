@@ -61,6 +61,14 @@ export default class LLMChannel extends (Mercury as any) {
   public ownerMeetingId?: string;
 
   /**
+   * The LLM data-channel does not send a mercury.buffer_state acknowledgement,
+   * so the socket should not block in _authorize() waiting for it.
+   * Mercury's _prepareAndOpenSocket merges this into the socket's open() options,
+   * and socket-base.js _authorize() skips the buffer_state wait when this is set.
+   */
+  protected _extraSocketOptions = {skipBufferState: true};
+
+  /**
    * Register to the websocket
    * @param {string} llmSocketUrl
    * @param {string} datachannelToken

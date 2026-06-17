@@ -423,22 +423,30 @@ export default class Socket extends EventEmitter {
         logLevelToken: this.logLevelToken,
       });
 
-      const waitForBufferState = (event) => {
-        if (
-          !event.data.type &&
-          (event.data.data.eventType === 'mercury.buffer_state' ||
-            event.data.data.eventType === 'mercury.registration_status')
-        ) {
-          this.removeListener('message', waitForBufferState);
-          this._ping();
-          resolve();
-        }
-      };
+      // Some channels (e.g. LLM data-channel) never send mercury.buffer_state.
+      // For those, the socket signals skipBufferState: true via open() options,
+      // so we start ping/pong and resolve immediately after sending auth.
+      if (this.skipBufferState) {
+        this._ping();
+        resolve();
+      } else {
+        const waitForBufferState = (event) => {
+          if (
+            !event.data.type &&
+            (event.data.data.eventType === 'mercury.buffer_state' ||
+              event.data.data.eventType === 'mercury.registration_status')
+          ) {
+            this.removeListener('message', waitForBufferState);
+            this._ping();
+            resolve();
+          }
+        };
 
-      // Use 'on' (not 'once') so we keep listening even if a relay event
-      // arrives before mercury.buffer_state — which happens for LLM data-channel
-      // WebSockets that send relay events before sending buffer_state.
-      this.on('message', waitForBufferState);
+        // Use 'on' (not 'once') so we keep listening even if a relay event
+        // arrives before mercury.buffer_state — which happens for LLM data-channel
+        // WebSockets that send relay events before sending buffer_state.
+        this.on('message', waitForBufferState);
+      }
     });
   }
 
