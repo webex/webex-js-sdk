@@ -315,7 +315,11 @@ export default class Socket extends EventEmitter {
    */
   onmessage(event) {
     try {
-      const data = JSON.parse(event.data);
+      const rawData =
+        event.data instanceof ArrayBuffer
+          ? new TextDecoder('utf-8').decode(event.data)
+          : event.data;
+      const data = JSON.parse(rawData);
       const sequenceNumber = parseInt(data.sequenceNumber, 10);
 
       this.logger.debug(`socket,${this._domain}: sequence number: `, sequenceNumber);
@@ -431,7 +435,10 @@ export default class Socket extends EventEmitter {
         }
       };
 
-      this.once('message', waitForBufferState);
+      // Use 'on' (not 'once') so we keep listening even if a relay event
+      // arrives before mercury.buffer_state — which happens for LLM data-channel
+      // WebSockets that send relay events before sending buffer_state.
+      this.on('message', waitForBufferState);
     });
   }
 

@@ -40,6 +40,10 @@ export class MercuryPlugin extends (WebexPlugin as any) {
     return this._mercury?.socket;
   }
 
+  getLastError(): any {
+    return this._mercury?.getLastError();
+  }
+
   connect(webSocketUrl?: string): Promise<void> {
     return this._mercury.connect(webSocketUrl);
   }

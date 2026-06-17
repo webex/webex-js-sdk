@@ -28,6 +28,12 @@ export class LLMPlugin extends (WebexPlugin as any) {
     if (!channel) {
       // @ts-ignore — WebexPlugin children require {parent: this.webex}
       channel = new LLMChannel({parent: this.webex});
+      // Forward all events emitted by the channel up through the plugin so that
+      // callers doing llm.on('event:relay.event', ...) or llm.on('online', ...)
+      // receive events from whichever session channel emits them.
+      channel.on('all', (eventName: string, ...args: any[]) => {
+        this.trigger(eventName, ...args);
+      });
       this.sessions.set(sessionId, channel);
     }
 
@@ -53,6 +59,7 @@ export class LLMPlugin extends (WebexPlugin as any) {
     datachannelToken?: string,
     sessionId: string = LLM_DEFAULT_SESSION
   ): Promise<void> {
+    // Deduplicate concurrent calls for the same session while a connection is in-flight.
     const inProgress = this.connectingPromises.get(sessionId);
 
     if (inProgress) {
@@ -60,6 +67,17 @@ export class LLMPlugin extends (WebexPlugin as any) {
     }
 
     const channel = this.getOrCreateSession(sessionId);
+
+    // If the channel is already connected to the exact same datachannel URL,
+    // there is nothing to do — avoid triggering a reconnect that would cause
+    // the server to replace the existing connection with 4000 Replaced.
+    if (
+      channel.isConnected() &&
+      channel.getDatachannelUrl() === datachannelUrl &&
+      channel.getLocusUrl() === locusUrl
+    ) {
+      return Promise.resolve();
+    }
 
     const promise = channel
       .registerAndConnect(locusUrl, datachannelUrl, datachannelToken)

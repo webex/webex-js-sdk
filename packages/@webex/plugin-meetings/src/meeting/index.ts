@@ -3822,7 +3822,6 @@ export default class Meeting extends StatelessWebexPlugin {
           }`
         );
       }
-
       this.updateLLMConnection();
     });
 
@@ -6046,9 +6045,10 @@ export default class Meeting extends StatelessWebexPlugin {
     }
     switch (e.data.relayType) {
       case REACTION_RELAY_TYPES.REACTION:
+        // @ts-ignore - config coming from registerPlugin
         if (
           // @ts-ignore - config coming from registerPlugin
-          (this.config.receiveReactions || options.receiveReactions) &&
+          this.config.receiveReactions &&
           this.isReactionsSupported()
         ) {
           const member = this.members.membersCollection.get(e.data.sender.participantId);
@@ -6771,6 +6771,23 @@ export default class Meeting extends StatelessWebexPlugin {
       refreshHandlerOwnerMeetingId
     );
 
+    // Register event listeners BEFORE calling registerAndConnect.
+    // The LLM data-channel server does not follow the standard Mercury
+    // buffer_state handshake, so Mercury.connect() / _authorize() may never
+    // resolve. Registering here ensures relay events (e.g. reactions) are
+    // handled immediately regardless of whether the connect() promise settles.
+    // @ts-ignore - Fix type
+    this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
+    // @ts-ignore - Fix type
+    this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
+    // @ts-ignore - Fix type
+    this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+    // @ts-ignore - Fix type
+    this.webex.internal.llm.on(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
+    LoggerProxy.logger.info(
+      'Meeting:index#updateLLMConnection --> enabled to receive relay events (pre-registered)!'
+    );
+
     // @ts-ignore - Fix type
     return this.webex.internal.llm
       .registerAndConnect(url, dataChannelUrl, datachannelToken)
@@ -6807,6 +6824,9 @@ export default class Meeting extends StatelessWebexPlugin {
             );
           }
         }
+        // Listeners were already registered before registerAndConnect (see above).
+        // Re-register them here too in case connect() did eventually resolve
+        // (e.g. after mercury.buffer_state arrives) to ensure a clean state.
         // @ts-ignore - Fix type
         this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
         // @ts-ignore - Fix type
@@ -6818,10 +6838,12 @@ export default class Meeting extends StatelessWebexPlugin {
         LoggerProxy.logger.info(
           'Meeting:index#updateLLMConnection --> enabled to receive relay events!'
         );
-
         this.startLLMHealthCheckTimer();
 
         return Promise.resolve(registerAndConnectResult);
+      })
+      .catch((error) => {
+        throw error;
       });
   }
 
