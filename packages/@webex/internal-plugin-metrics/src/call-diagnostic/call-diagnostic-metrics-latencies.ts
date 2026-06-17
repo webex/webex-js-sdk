@@ -27,6 +27,7 @@ type SaveTimestampOptions = {
 };
 
 type SaveLatencyOptions = {
+  accumulate?: boolean;
   meetingId?: string;
   dataSetName?: string;
 };
@@ -448,10 +449,10 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       const pendingRecord = this.getLatestPendingLocusSyncLatencyRecord(meetingId, dataSetName);
 
       if (pendingRecord) {
-        if (typeof randomBackoffTime === 'number') {
+        if (randomBackoffTime !== undefined) {
           pendingRecord.randomBackoffTime = randomBackoffTime;
         }
-        if (trackingId) {
+        if (trackingId !== undefined) {
           pendingRecord.trackingId = trackingId;
         }
         pendingRecord.syncStart = value;
@@ -586,31 +587,25 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * Store precomputed latency value
    * @param key - key
    * @param value - value
-   * @param accumulate - when it is true, it overwrites existing value with sum of the current value and the new measurement otherwise just store the new measurement
+   * @param options - store options. When `accumulate` is true, the existing value is overwritten
+   * with the sum of the current value and the new measurement, otherwise the new measurement just
+   * replaces it. `meetingId`/`dataSetName` are used for meeting-scoped latencies (Locus sync).
    * @throws
    * @returns
    */
-  public saveLatency(
-    key: PreComputedLatencies,
-    value: number,
-    accumulateOrOptions: boolean | SaveLatencyOptions = false
-  ) {
-    if (
-      key === 'internal.client.locus.sync.random.backoff' &&
-      typeof accumulateOrOptions === 'object' &&
-      accumulateOrOptions.meetingId &&
-      accumulateOrOptions.dataSetName
-    ) {
+  public saveLatency(key: PreComputedLatencies, value: number, options: SaveLatencyOptions = {}) {
+    const {accumulate = false, meetingId, dataSetName} = options;
+
+    if (key === 'internal.client.locus.sync.random.backoff' && meetingId && dataSetName) {
       this.saveLocusSyncBackoffLatency({
-        meetingId: accumulateOrOptions.meetingId,
-        dataSetName: accumulateOrOptions.dataSetName,
+        meetingId,
+        dataSetName,
         randomBackoffTime: value,
       });
 
       return;
     }
 
-    const accumulate = typeof accumulateOrOptions === 'boolean' ? accumulateOrOptions : false;
     const existingValue = accumulate ? this.precomputedLatencies.get(key) || 0 : 0;
     this.precomputedLatencies.set(key, value + existingValue);
   }
@@ -630,7 +625,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     const start = performance.now();
 
     return callback().finally(() => {
-      this.saveLatency(key, performance.now() - start, accumulate);
+      this.saveLatency(key, performance.now() - start, {accumulate});
     });
   }
 
