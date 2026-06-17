@@ -2421,6 +2421,14 @@ export default class Meeting extends StatelessWebexPlugin {
     // @ts-ignore
     const llmWebsocketUrl = this.webex.internal.llm?.getWebSocketUrl?.() || undefined;
 
+    // eslint-disable-next-line no-console
+    console.log('[ca-event-debug] submit client.locus.sync.complete', {
+      meetingId,
+      trackingId,
+      dataSet: completed.dataSet,
+      syncLatency: completed.syncLatency,
+    });
+
     // @ts-ignore
     this.webex.internal.newMetrics.submitClientEvent({
       name: 'client.locus.sync.complete',
@@ -6045,6 +6053,13 @@ export default class Meeting extends StatelessWebexPlugin {
 
       const {trackingId} = event;
 
+      // eslint-disable-next-line no-console
+      console.log('[ca-event-debug] received LLM hash tree event', {
+        meetingId: this.id,
+        llmEventTrackingId: trackingId,
+        hasTrackingId: trackingId !== undefined,
+      });
+
       this.locusInfo.parse(this, event.data);
 
       // Only the client whose /sync request tracking id matches the tracking id echoed back on
@@ -6978,6 +6993,9 @@ export default class Meeting extends StatelessWebexPlugin {
       payload,
       options,
     };
+
+    // eslint-disable-next-line no-console
+    console.log('[ca-event-debug] submit client.llm.connect.response', metricEvent);
 
     // @ts-ignore
     this.webex.internal.newMetrics.submitClientEvent(metricEvent);

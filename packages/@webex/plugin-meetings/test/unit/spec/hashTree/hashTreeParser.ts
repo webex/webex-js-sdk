@@ -5538,7 +5538,11 @@ describe('HashTreeParser', () => {
         clearLocusSyncLatency: sinon.stub(),
         completeLocusSyncLatency: sinon.stub(),
       };
-      const generateTrackingId = sinon.stub().returns('our-sync-tracking-id');
+      // two distinct tracking ids are generated: the first for the /hashtree request and the
+      // second for the /sync request (which is also stored in metrics and used for LLM matching)
+      const generateTrackingId = sinon.stub();
+      generateTrackingId.onFirstCall().returns('our-hashtree-tracking-id');
+      generateTrackingId.onSecondCall().returns('our-sync-tracking-id');
       const parser = createHashTreeParser(
         undefined,
         undefined,
@@ -5563,9 +5567,20 @@ describe('HashTreeParser', () => {
 
       await clock.tickAsync(1000);
 
-      // tracking id is generated up-front and forced onto the /sync request header so Locus
-      // echoes it back on the resulting LLM message
-      assert.calledOnceWithExactly(generateTrackingId);
+      // two distinct tracking ids are generated up-front so the /hashtree and /sync requests do
+      // not share a tracking id
+      assert.calledTwice(generateTrackingId);
+      // the /hashtree request carries its own (first) tracking id
+      assert.calledWith(
+        webexRequest,
+        sinon.match({
+          method: 'GET',
+          uri: `${mainDataSetUrl}/hashtree`,
+          headers: {trackingid: 'our-hashtree-tracking-id'},
+        })
+      );
+      // the /sync request carries the second tracking id, which Locus echoes back on the resulting
+      // LLM message so the Meeting object can match it to this sync
       assert.calledWith(
         webexRequest,
         sinon.match({
