@@ -666,6 +666,132 @@ describe('internal-plugin-metrics', () => {
         }
       });
 
+      it('cleans up an older never-completed record when a newer sync for the same dataset completes', () => {
+        // first sync: all sync milestones recorded, but its completing LLM event never arrives
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.start',
+          value: 100,
+          options: {
+            meetingId: 'meeting-1',
+            dataSetName: 'main',
+            randomBackoffTime: 0,
+            trackingId: 'sync-tracking-1',
+          },
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.request',
+          value: 110,
+          options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'sync-tracking-1'},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.response',
+          value: 130,
+          options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'sync-tracking-1'},
+        });
+
+        // a second sync for the same dataset starts before the first one completed.
+        // because the first record already has syncStart set, it is not reused and a
+        // brand new record is created for the second sync
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.start',
+          value: 200,
+          options: {
+            meetingId: 'meeting-1',
+            dataSetName: 'main',
+            randomBackoffTime: 0,
+            trackingId: 'sync-tracking-2',
+          },
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.request',
+          value: 210,
+          options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'sync-tracking-2'},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.response',
+          value: 230,
+          options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'sync-tracking-2'},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.message.received',
+          value: 240,
+          options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'sync-tracking-2'},
+        });
+
+        // both records exist before completion
+        assert.lengthOf(cdl.meetingLatencies.get('meeting-1')!, 2);
+
+        // completing the second sync also removes the stale first record so it does not leak
+        const completed = cdl.completeLocusSyncLatency('meeting-1', 'sync-tracking-2');
+
+        assert.isDefined(completed);
+        assert.equal(completed!.dataSet, 'main');
+        assert.isUndefined(cdl.meetingLatencies.get('meeting-1'));
+      });
+
+      it('does not clean up never-completed records for a different dataset', () => {
+        // never-completed sync for dataset "other"
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.start',
+          value: 100,
+          options: {
+            meetingId: 'meeting-1',
+            dataSetName: 'other',
+            randomBackoffTime: 0,
+            trackingId: 'other-tracking-1',
+          },
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.request',
+          value: 110,
+          options: {meetingId: 'meeting-1', dataSetName: 'other', trackingId: 'other-tracking-1'},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.response',
+          value: 130,
+          options: {meetingId: 'meeting-1', dataSetName: 'other', trackingId: 'other-tracking-1'},
+        });
+
+        // completed sync for dataset "main"
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.start',
+          value: 200,
+          options: {
+            meetingId: 'meeting-1',
+            dataSetName: 'main',
+            randomBackoffTime: 0,
+            trackingId: 'main-tracking-1',
+          },
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.request',
+          value: 210,
+          options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'main-tracking-1'},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.response',
+          value: 230,
+          options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'main-tracking-1'},
+        });
+        cdl.saveTimestamp({
+          key: 'internal.client.locus.sync.message.received',
+          value: 240,
+          options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'main-tracking-1'},
+        });
+
+        const completed = cdl.completeLocusSyncLatency('meeting-1', 'main-tracking-1');
+
+        assert.isDefined(completed);
+
+        // the "other" dataset record must remain untouched
+        const records = cdl.meetingLatencies.get('meeting-1');
+
+        assert.isDefined(records);
+        assert.lengthOf(records!, 1);
+        assert.equal(records![0].locusSync.dataSetName, 'other');
+        assert.equal(records![0].locusSync.trackingId, 'other-tracking-1');
+      });
+
       it('keys sync latency records by meeting id', () => {
         cdl.saveTimestamp({
           key: 'internal.client.locus.sync.start',

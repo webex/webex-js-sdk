@@ -325,6 +325,13 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     })?.locusSync;
   }
 
+  /**
+   * Remove a completed Locus sync latency record along with any older records for the same
+   * dataset that never completed. Once a newer sync for a dataset completes, any earlier record
+   * that never received its completing LLM event (matching tracking id) is stale and would
+   * otherwise leak forever, so it is cleaned up here.
+   * @param recordToRemove the record that was just completed
+   */
   private removeLocusSyncLatencyRecord(recordToRemove: LocusSyncLatencyRecord) {
     const records = this.meetingLatencies.get(recordToRemove.meetingId);
 
@@ -332,7 +339,21 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       return;
     }
 
-    const remainingRecords = records.filter((record) => record.locusSync !== recordToRemove);
+    const completedIndex = records.findIndex((record) => record.locusSync === recordToRemove);
+
+    const remainingRecords = records.filter((record, index) => {
+      // remove the record that was just completed
+      if (record.locusSync === recordToRemove) {
+        return false;
+      }
+
+      // remove older, never-completed records for the same dataset, which a newer
+      // completed sync has now superseded
+      const isStaleOlderRecordForSameDataSet =
+        index < completedIndex && record.locusSync.dataSetName === recordToRemove.dataSetName;
+
+      return !isStaleOlderRecordForSameDataSet;
+    });
 
     if (remainingRecords.length > 0) {
       this.meetingLatencies.set(recordToRemove.meetingId, remainingRecords);
