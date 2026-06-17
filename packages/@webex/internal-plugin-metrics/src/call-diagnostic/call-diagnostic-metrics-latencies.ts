@@ -116,7 +116,11 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    * @param meetingId meeting id
    * @returns sync latency metrics
    */
-  public getLocusSyncLatency(dataSetName: string, meetingId: string, trackingId?: string) {
+  public getLocusSyncLatency(dataSetName: string, meetingId: string, trackingId: string) {
+    if (!trackingId) {
+      return undefined;
+    }
+
     const record = this.getLatestLocusSyncLatencyRecord(meetingId, dataSetName, trackingId);
 
     if (!record) {
@@ -188,13 +192,15 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   /**
    * Complete and remove the latest Locus sync latency record for a meeting.
    * @param meetingId meeting id
-   * @param trackingId LLM event tracking id
+   * @param trackingId sync tracking id used to match the pending record
    * @returns completed sync latency metric payload
    */
-  public completeLocusSyncLatency(meetingId: string, trackingId?: string) {
-    const record = trackingId
-      ? this.getLatestCompletableLocusSyncLatencyRecord(meetingId, trackingId)
-      : undefined;
+  public completeLocusSyncLatency(meetingId: string, trackingId: string) {
+    if (!trackingId) {
+      return undefined;
+    }
+
+    const record = this.getLatestCompletableLocusSyncLatencyRecord(meetingId, trackingId);
 
     if (!record) {
       return undefined;
@@ -204,7 +210,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
       record.messageReceived = new Date().getTime();
     }
 
-    const syncLatency = this.getLocusSyncLatency(record.dataSetName, meetingId, record.trackingId);
+    const syncLatency = this.getLocusSyncLatency(record.dataSetName, meetingId, trackingId);
 
     this.removeLocusSyncLatencyRecord(record);
 
@@ -274,7 +280,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   }
 
   /**
-   * Get the latest Locus sync latency record for a meeting and optional dataset/tracking id.
+   * Get the latest Locus sync latency record for a meeting and tracking id.
    * @param meetingId meeting id
    * @param dataSetName dataset name
    * @param trackingId /sync response tracking id
@@ -282,8 +288,8 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
    */
   private getLatestLocusSyncLatencyRecord(
     meetingId: string,
-    dataSetName?: string,
-    trackingId?: string
+    dataSetName: string | undefined,
+    trackingId: string
   ) {
     const records = this.meetingLatencies.get(meetingId);
 
@@ -293,7 +299,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
 
     return [...records].reverse().find((record) => {
       const dataSetMatches = !dataSetName || record.locusSync.dataSetName === dataSetName;
-      const trackingIdMatches = !trackingId || record.locusSync.trackingId === trackingId;
+      const trackingIdMatches = record.locusSync.trackingId === trackingId;
 
       return dataSetMatches && trackingIdMatches;
     })?.locusSync;
@@ -302,10 +308,10 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
   /**
    * Get the latest Locus sync latency record that has enough milestones to complete metrics.
    * @param meetingId meeting id
-   * @param trackingId /sync response tracking id or LLM message tracking id
+   * @param trackingId sync tracking id
    * @returns latest matching completable Locus sync latency record
    */
-  private getLatestCompletableLocusSyncLatencyRecord(meetingId: string, trackingId?: string) {
+  private getLatestCompletableLocusSyncLatencyRecord(meetingId: string, trackingId: string) {
     const records = this.meetingLatencies.get(meetingId);
 
     if (!records) {
@@ -313,7 +319,7 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     }
 
     return [...records].reverse().find((record) => {
-      const trackingIdMatches = !trackingId || record.locusSync.trackingId === trackingId;
+      const trackingIdMatches = record.locusSync.trackingId === trackingId;
 
       return trackingIdMatches && this.hasRequiredSyncMilestones(record.locusSync);
     })?.locusSync;
@@ -413,6 +419,10 @@ export default class CallDiagnosticLatencies extends WebexPlugin {
     trackingId,
     randomBackoffTime,
   }: LocusSyncLatencyMilestone & {randomBackoffTime?: number}) {
+    if (!trackingId) {
+      return;
+    }
+
     if (key === 'internal.client.locus.sync.start') {
       const pendingRecord = this.getLatestPendingLocusSyncLatencyRecord(meetingId, dataSetName);
 

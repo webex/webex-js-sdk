@@ -113,9 +113,13 @@ export type SyncLatencyTracker = {
       trackingId?: string;
     };
   }) => void;
-  getLocusSyncLatency: (dataSetName: string, meetingId: string) => SyncLatencyMetrics | undefined;
+  getLocusSyncLatency: (
+    dataSetName: string,
+    meetingId: string,
+    trackingId: string
+  ) => SyncLatencyMetrics | undefined;
   clearLocusSyncLatency: (dataSetName: string, meetingId: string) => void;
-  completeLocusSyncLatency: (meetingId: string, trackingId?: string) => void;
+  completeLocusSyncLatency: (meetingId: string, trackingId: string) => void;
 };
 
 export type HashTreeParserCallbacks = {

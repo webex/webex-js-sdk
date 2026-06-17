@@ -1403,7 +1403,7 @@ export default class Meeting extends StatelessWebexPlugin {
             (this as any).webex.internal.newMetrics.callDiagnosticLatencies.clearLocusSyncLatency(
               ...args
             ),
-          completeLocusSyncLatency: (meetingId: string, trackingId?: string) =>
+          completeLocusSyncLatency: (meetingId: string, trackingId: string) =>
             this.submitLocusSyncCompleteMetric(meetingId, trackingId),
         },
       },
@@ -2401,12 +2401,12 @@ export default class Meeting extends StatelessWebexPlugin {
    * matching record for the given meeting and tracking id, submits the
    * client.locus.sync.complete Call Analyzer event.
    * @param {string} meetingId meeting id
-   * @param {string} [trackingId] sync tracking id used to match the pending record
+   * @param {string} trackingId sync tracking id used to match the pending record
    * @returns {void}
    * @private
    * @memberof Meeting
    */
-  private submitLocusSyncCompleteMetric(meetingId: string, trackingId?: string) {
+  private submitLocusSyncCompleteMetric(meetingId: string, trackingId: string) {
     const completed =
       // @ts-ignore
       this.webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency(
