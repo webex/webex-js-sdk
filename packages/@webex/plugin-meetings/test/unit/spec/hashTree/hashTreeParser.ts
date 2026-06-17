@@ -186,10 +186,10 @@ describe('HashTreeParser', () => {
       initialLocus,
       metadata,
       webexRequest,
-      generateTrackingId,
       callbacks: {
         locusInfoUpdateCallback: callback,
         syncLatencyTracker,
+        generateTrackingId,
       },
       debugId: 'test',
       excludedDataSets,

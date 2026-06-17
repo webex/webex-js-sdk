@@ -563,10 +563,10 @@ export default class LocusInfo extends EventsScope {
       initialLocus,
       metadata,
       webexRequest: this.webex.request.bind(this.webex),
-      generateTrackingId: this.webex.generateTrackingId,
       callbacks: {
         locusInfoUpdateCallback: this.updateFromHashTree.bind(this, locusUrl),
         syncLatencyTracker: this.callbacks.syncLatencyTracker,
+        generateTrackingId: this.webex.generateTrackingId,
       },
       debugId: `HT-${locusUrl.split('/')?.pop()?.substring(0, 4)}`,
       excludedDataSets: this.webex.config.meetings.locus?.excludedDataSets,

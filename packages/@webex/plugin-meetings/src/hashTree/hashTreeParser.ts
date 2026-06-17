@@ -125,6 +125,7 @@ export type SyncLatencyTracker = {
 export type HashTreeParserCallbacks = {
   locusInfoUpdateCallback: LocusInfoUpdateCallback;
   syncLatencyTracker?: SyncLatencyTracker;
+  generateTrackingId?: GenerateTrackingId;
 };
 
 const SYNC_METRICS_DATA_SETS = [
@@ -176,7 +177,6 @@ class HashTreeParser {
   dataSets: Record<string, InternalDataSet> = {};
   visibleDataSetsUrl: string; // url from which we can get info about all data sets
   webexRequest: WebexRequestMethod;
-  private generateTrackingId?: GenerateTrackingId;
   private callbacks: HashTreeParserCallbacks;
   private syncLatencyMeetingId: string;
   visibleDataSets: VisibleDataSetInfo[];
@@ -187,7 +187,6 @@ class HashTreeParser {
     dataSetName: string;
     reason: string;
     isInitialization?: boolean;
-    heartbeatVersion?: number;
   }> = [];
 
   private isSyncInProgress = false;
@@ -210,7 +209,6 @@ class HashTreeParser {
     };
     metadata: Metadata | null;
     webexRequest: WebexRequestMethod;
-    generateTrackingId?: GenerateTrackingId;
     callbacks: HashTreeParserCallbacks;
     debugId: string;
     excludedDataSets?: string[];
@@ -220,7 +218,6 @@ class HashTreeParser {
 
     this.debugId = options.debugId;
     this.webexRequest = options.webexRequest;
-    this.generateTrackingId = options.generateTrackingId;
     this.callbacks = options.callbacks;
     this.syncLatencyMeetingId = options.syncLatencyMeetingId;
     this.excludedDataSets = options.excludedDataSets || [];
@@ -1419,14 +1416,12 @@ class HashTreeParser {
    * @param {InternalDataSet} dataSet - The data set to sync
    * @param {string} reason - The reason for the sync (used for logging)
    * @param {boolean} [isInitialization] - Whether this is an initialization sync (sends empty leaves data instead of comparing hashes)
-   * @param {number} [heartbeatVersion] - The target version from the heartbeat message (for single-leaf sync metrics)
    * @returns {Promise<void>}
    */
   private async performSync(
     dataSet: InternalDataSet,
     reason: string,
-    isInitialization?: boolean,
-    heartbeatVersion?: number
+    isInitialization?: boolean
   ): Promise<void> {
     if (!dataSet.hashTree) {
       return;
@@ -1444,13 +1439,10 @@ class HashTreeParser {
     // used to match the LLM broadcast message) ends up with the later/higher sequence number,
     // matching the order in which Locus sees the requests. If we never call /hashtree (single-leaf
     // or initialization syncs), hashtreeTrackingId is simply unused.
-    const hashtreeTrackingId = shouldCollectMetrics ? this.generateTrackingId?.() : undefined;
-    const syncTrackingId = shouldCollectMetrics ? this.generateTrackingId?.() : undefined;
-    // Use the heartbeat target for single-leaf sync metrics
-    let targetSyncVersion =
-      dataSet.leafCount === 1 && heartbeatVersion !== undefined
-        ? heartbeatVersion
-        : dataSet.version;
+    const hashtreeTrackingId = shouldCollectMetrics
+      ? this.callbacks.generateTrackingId?.()
+      : undefined;
+    const syncTrackingId = shouldCollectMetrics ? this.callbacks.generateTrackingId?.() : undefined;
     let syncRequestSent = false;
 
     if (shouldCollectMetrics) {
@@ -1484,7 +1476,6 @@ class HashTreeParser {
             }
 
             receivedHashes = hashesResult.hashes;
-            targetSyncVersion = hashesResult.dataSet?.version ?? targetSyncVersion;
 
             this.updateDataSetLeafCount(dataSet, hashesResult.dataSet.leafCount);
           } catch (error: any) {
@@ -1539,10 +1530,6 @@ class HashTreeParser {
         syncResponse = syncResult.message;
         syncRequestSent = true;
       }
-
-      const syncResponseDataSet = syncResponse?.dataSets?.find((ds) => ds.name === dataSet.name);
-
-      targetSyncVersion = syncResponseDataSet?.version ?? targetSyncVersion;
 
       // sync API may return nothing (in that case data will arrive via messages)
       // or it may return a response in the same format as messages
@@ -1645,14 +1632,12 @@ class HashTreeParser {
    * @param {string} dataSetName - The name of the data set to sync
    * @param {string} reason - The reason for the sync (used for logging)
    * @param {boolean} [isInitialization=false] - Whether this is an initialization sync (uses empty leaves data instead of hash comparison)
-   * @param {number} [heartbeatVersion] - The target version from the heartbeat message (for single-leaf sync metrics)
    * @returns {void}
    */
   private enqueueSyncForDataset(
     dataSetName: string,
     reason: string,
-    isInitialization = false,
-    heartbeatVersion: number | undefined = undefined
+    isInitialization = false
   ): void {
     if (this.state === 'stopped') return;
 
@@ -1669,7 +1654,7 @@ class HashTreeParser {
       return;
     }
 
-    this.syncQueue.push({dataSetName, reason, isInitialization, heartbeatVersion});
+    this.syncQueue.push({dataSetName, reason, isInitialization});
 
     if (!this.isSyncInProgress) {
       this.syncQueueProcessingPromise = this.processSyncQueue();
@@ -1688,7 +1673,7 @@ class HashTreeParser {
     try {
       while (this.syncQueue.length > 0 && this.state !== 'stopped') {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const {dataSetName, reason, isInitialization, heartbeatVersion} = this.syncQueue.shift()!;
+        const {dataSetName, reason, isInitialization} = this.syncQueue.shift()!;
         const dataSet = this.dataSets[dataSetName];
 
         if (!dataSet?.hashTree) {
@@ -1697,7 +1682,7 @@ class HashTreeParser {
         }
 
         // eslint-disable-next-line no-await-in-loop
-        await this.performSync(dataSet, reason, isInitialization, heartbeatVersion);
+        await this.performSync(dataSet, reason, isInitialization);
       }
     } finally {
       this.isSyncInProgress = false;
@@ -1882,9 +1867,7 @@ class HashTreeParser {
         if (dataSet.root !== rootHash) {
           this.enqueueSyncForDataset(
             dataSet.name,
-            `Root hash mismatch: received=${dataSet.root}, ours=${rootHash}`,
-            false,
-            receivedDataSet.version
+            `Root hash mismatch: received=${dataSet.root}, ours=${rootHash}`
           );
         }
       }, delay);
