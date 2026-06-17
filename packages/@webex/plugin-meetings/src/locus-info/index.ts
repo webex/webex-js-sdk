@@ -100,7 +100,6 @@ export type HashTreeParserEntry = {
 export type LocusInfoCallbacks = {
   updateMeeting: (object: any) => void;
   syncLatencyTracker?: SyncLatencyTracker;
-  syncResponseCallback?: (trackingId?: string) => void;
 };
 
 /**
@@ -564,10 +563,10 @@ export default class LocusInfo extends EventsScope {
       initialLocus,
       metadata,
       webexRequest: this.webex.request.bind(this.webex),
+      generateTrackingId: this.webex.generateTrackingId,
       callbacks: {
         locusInfoUpdateCallback: this.updateFromHashTree.bind(this, locusUrl),
         syncLatencyTracker: this.callbacks.syncLatencyTracker,
-        syncResponseCallback: this.callbacks.syncResponseCallback,
       },
       debugId: `HT-${locusUrl.split('/')?.pop()?.substring(0, 4)}`,
       excludedDataSets: this.webex.config.meetings.locus?.excludedDataSets,
@@ -1124,10 +1123,9 @@ export default class LocusInfo extends EventsScope {
    * Checks if the hash tree message should trigger a switch to a different HashTreeParser
    *
    * @param {HashTreeMessage} message incoming hash tree message
-   * @param {string} [trackingId] top-level tracking id from the LLM event, passed through for sync latency attribution
    * @returns {boolean} true if the message was handled as a parser switch, false otherwise
    */
-  private handleHashTreeParserSwitch(message: HashTreeMessage, trackingId?: string): boolean {
+  private handleHashTreeParserSwitch(message: HashTreeMessage): boolean {
     const entry = this.hashTreeParsers.get(message.locusUrl);
 
     const self = message.locusStateElements?.find((el) => isSelf(el))?.data;
@@ -1161,7 +1159,7 @@ export default class LocusInfo extends EventsScope {
         });
 
         // handle the message with the new parser
-        parser.handleMessage(message, undefined, trackingId);
+        parser.handleMessage(message, undefined);
       }
 
       return true;
@@ -1189,15 +1187,9 @@ export default class LocusInfo extends EventsScope {
    * @param {Meeting} meeting - The meeting object
    * @param {eventType} eventType - The event type
    * @param {HashTreeMessage} message incoming hash tree message
-   * @param {string} [trackingId] top-level tracking id from LLM event
    * @returns {void}
    */
-  private handleHashTreeMessage(
-    meeting: any,
-    eventType: LOCUSEVENT,
-    message: HashTreeMessage,
-    trackingId?: string
-  ) {
+  private handleHashTreeMessage(meeting: any, eventType: LOCUSEVENT, message: HashTreeMessage) {
     if (eventType !== LOCUSEVENT.HASH_TREE_DATA_UPDATED) {
       this.sendClassicVsHashTreeMismatchMetric(
         meeting,
@@ -1207,7 +1199,7 @@ export default class LocusInfo extends EventsScope {
       return;
     }
 
-    const parserSwitched = this.handleHashTreeParserSwitch(message, trackingId);
+    const parserSwitched = this.handleHashTreeParserSwitch(message);
 
     if (parserSwitched) {
       return;
@@ -1217,7 +1209,7 @@ export default class LocusInfo extends EventsScope {
 
     // the check is just for typescript, the case of no entry in hashTreeParsers is handled in handleHashTreeParserSwitch() above
     if (entry) {
-      entry.parser.handleMessage(message, undefined, trackingId);
+      entry.parser.handleMessage(message, undefined);
     }
   }
 
@@ -1386,11 +1378,10 @@ export default class LocusInfo extends EventsScope {
   /**
    * @param {Meeting} meeting
    * @param {Object} data
-   * @param {string} [trackingId] top-level tracking id from LLM event
    * @returns {undefined}
    * @memberof LocusInfo
    */
-  parse(meeting: any, data: any, trackingId?: string) {
+  parse(meeting: any, data: any) {
     if (this.hashTreeParsers.size > 0) {
       if (data.eventType === LOCUSEVENT.SDK_LOCUS_FROM_SYNC_MEETINGS) {
         // sync meetings response follows the format of "not wrapped" locus API responses,
@@ -1400,8 +1391,7 @@ export default class LocusInfo extends EventsScope {
         this.handleHashTreeMessage(
           meeting,
           data.eventType,
-          data.stateElementsMessage as HashTreeMessage,
-          trackingId
+          data.stateElementsMessage as HashTreeMessage
         );
       }
     } else {

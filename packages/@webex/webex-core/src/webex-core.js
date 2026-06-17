@@ -410,6 +410,12 @@ const WebexCore = AmpState.extend({
       ints = postInterceptors.reduce(addInterceptor, ints);
     }
 
+    this.webexTrackingIdInterceptor = ints.find(
+      (interceptor) => interceptor instanceof WebexTrackingIdInterceptor
+    );
+
+    this.generateTrackingId = () => this.webexTrackingIdInterceptor?.generateNextTrackingId();
+
     this.request = requestDefaults({
       json: true,
       interceptors: ints,

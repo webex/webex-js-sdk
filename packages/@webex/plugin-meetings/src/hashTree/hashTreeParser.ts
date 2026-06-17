@@ -62,6 +62,7 @@ interface InternalDataSet extends DataSet {
 }
 
 type WebexRequestMethod = (options: Record<string, any>) => Promise<any>;
+type GenerateTrackingId = () => string | undefined;
 
 export const LocusInfoUpdateType = {
   OBJECTS_UPDATED: 'OBJECTS_UPDATED',
@@ -114,12 +115,12 @@ export type SyncLatencyTracker = {
   }) => void;
   getLocusSyncLatency: (dataSetName: string, meetingId: string) => SyncLatencyMetrics | undefined;
   clearLocusSyncLatency: (dataSetName: string, meetingId: string) => void;
+  completeLocusSyncLatency: (meetingId: string, trackingId?: string) => void;
 };
 
 export type HashTreeParserCallbacks = {
   locusInfoUpdateCallback: LocusInfoUpdateCallback;
   syncLatencyTracker?: SyncLatencyTracker;
-  syncResponseCallback?: (trackingId?: string) => void;
 };
 
 const SYNC_METRICS_DATA_SETS = [
@@ -171,6 +172,7 @@ class HashTreeParser {
   dataSets: Record<string, InternalDataSet> = {};
   visibleDataSetsUrl: string; // url from which we can get info about all data sets
   webexRequest: WebexRequestMethod;
+  private generateTrackingId?: GenerateTrackingId;
   private callbacks: HashTreeParserCallbacks;
   private syncLatencyMeetingId: string;
   visibleDataSets: VisibleDataSetInfo[];
@@ -204,6 +206,7 @@ class HashTreeParser {
     };
     metadata: Metadata | null;
     webexRequest: WebexRequestMethod;
+    generateTrackingId?: GenerateTrackingId;
     callbacks: HashTreeParserCallbacks;
     debugId: string;
     excludedDataSets?: string[];
@@ -213,6 +216,7 @@ class HashTreeParser {
 
     this.debugId = options.debugId;
     this.webexRequest = options.webexRequest;
+    this.generateTrackingId = options.generateTrackingId;
     this.callbacks = options.callbacks;
     this.syncLatencyMeetingId = options.syncLatencyMeetingId;
     this.excludedDataSets = options.excludedDataSets || [];
@@ -1209,8 +1213,8 @@ class HashTreeParser {
    * Handles incoming hash tree messages, updates the hash trees and calls locusInfoUpdateCallback
    *
    * @param {HashTreeMessage} message - The hash tree message containing data sets and objects to be processed
-   * @param {string} [debugText] - Optional text included only in parser logs to identify the caller or source flow
-   * @param {string} [trackingId] - Top-level tracking id from the LLM event, used for sync latency attribution
+   * @param {string} [debugText] - Optional debug text to include in logs
+   * @param {string} [trackingId] - Tracking id of the /sync request; set only for body-mode syncs, where it is used to record the message-received milestone and complete the sync latency metric
    * @returns {void}
    */
   handleMessage(message: HashTreeMessage, debugText?: string, trackingId?: string) {
@@ -1233,14 +1237,26 @@ class HashTreeParser {
       this.handleRootHashHeartBeatMessage(message);
       this.resetHeartbeatWatchdogs(message.dataSets);
     } else {
-      message.dataSets.forEach((dataSet) => {
-        if (this.shouldCollectSyncMetrics(dataSet.name)) {
-          this.callbacks.syncLatencyTracker?.saveTimestamp({
-            key: 'internal.client.locus.sync.message.received',
-            options: this.getSyncLatencyTimestampOptions(dataSet.name, undefined, trackingId),
-          });
-        }
-      });
+      // trackingId is only set here for body-mode syncs, where the locus state elements are
+      // returned in the /sync HTTP response body and no separate LLM push follows. In that case we
+      // record the message-received milestone and complete the metric directly using the sync
+      // request's tracking id. For LLM-push syncs trackingId is undefined here and completion is
+      // driven from Meeting#processLocusLLMEvent once the matching LLM message arrives.
+      if (trackingId) {
+        message.dataSets.forEach((dataSet) => {
+          if (this.shouldCollectSyncMetrics(dataSet.name)) {
+            this.callbacks.syncLatencyTracker?.saveTimestamp({
+              key: 'internal.client.locus.sync.message.received',
+              options: this.getSyncLatencyTimestampOptions(dataSet.name, undefined, trackingId),
+            });
+          }
+        });
+
+        this.callbacks.syncLatencyTracker?.completeLocusSyncLatency?.(
+          this.syncLatencyMeetingId,
+          trackingId
+        );
+      }
 
       const updatedObjects = this.parseMessage(message, debugText);
 
@@ -1418,6 +1434,11 @@ class HashTreeParser {
     const {hashTree} = dataSet;
     const rootHash = hashTree.getRootHash();
     const shouldCollectMetrics = this.shouldCollectSyncMetrics(dataSet.name, isInitialization);
+    // Generate the tracking id up-front (before sending any /sync request) so we can both store it
+    // in metrics and force it onto the /sync request header. Locus echoes this tracking id back on
+    // the resulting LLM message, which is how the Meeting object later matches that message to this
+    // sync and completes the latency metric.
+    const syncTrackingId = shouldCollectMetrics ? this.generateTrackingId?.() : undefined;
     // Use the heartbeat target for single-leaf sync metrics
     let targetSyncVersion =
       dataSet.leafCount === 1 && heartbeatVersion !== undefined
@@ -1428,7 +1449,7 @@ class HashTreeParser {
     if (shouldCollectMetrics) {
       this.callbacks.syncLatencyTracker?.saveTimestamp({
         key: 'internal.client.locus.sync.start',
-        options: this.getSyncLatencyTimestampOptions(dataSet.name),
+        options: this.getSyncLatencyTimestampOptions(dataSet.name, undefined, syncTrackingId),
       });
     }
 
@@ -1445,7 +1466,11 @@ class HashTreeParser {
 
           try {
             // request hashes from sender
-            const hashesResult = await this.getHashesFromLocus(dataSet.name, rootHash);
+            const hashesResult = await this.getHashesFromLocus(
+              dataSet.name,
+              rootHash,
+              syncTrackingId
+            );
 
             if (!hashesResult) {
               // hashes match, no sync needed
@@ -1490,14 +1515,20 @@ class HashTreeParser {
       let syncResponse: HashTreeMessage | null = null;
 
       if (isInitialization) {
-        const syncResult = await this.sendSyncRequestToLocus(dataSet, {isInitialization: true});
+        const syncResult = await this.sendSyncRequestToLocus(
+          dataSet,
+          {isInitialization: true},
+          syncTrackingId
+        );
 
         syncResponse = syncResult.message;
         syncRequestSent = true;
       } else if (Object.keys(leavesData).length > 0) {
-        const syncResult = await this.sendSyncRequestToLocus(dataSet, {
-          mismatchedLeavesData: leavesData,
-        });
+        const syncResult = await this.sendSyncRequestToLocus(
+          dataSet,
+          {mismatchedLeavesData: leavesData},
+          syncTrackingId
+        );
 
         syncResponse = syncResult.message;
         syncRequestSent = true;
@@ -1523,7 +1554,8 @@ class HashTreeParser {
           syncResponse,
           `via sync API (${
             isInitialization ? 'init' : `${Object.keys(leavesData).length} mismatched leaves`
-          })`
+          })`,
+          syncTrackingId
         );
       }
     } catch (error) {
@@ -2051,9 +2083,10 @@ class HashTreeParser {
    * Gets the current hashes from the locus for a specific data set.
    * @param {string} dataSetName
    * @param {string} currentRootHash
+   * @param {string} [trackingId] tracking id
    * @returns {Object|null} An object containing the hashes and leaf count, or null if the hashes match and no sync is needed
    */
-  private getHashesFromLocus(dataSetName: string, currentRootHash: string) {
+  private getHashesFromLocus(dataSetName: string, currentRootHash: string, trackingId?: string) {
     LoggerProxy.logger.info(
       `HashTreeParser#getHashesFromLocus --> ${this.debugId} Requesting hashes for data set "${dataSetName}"`
     );
@@ -2065,7 +2098,7 @@ class HashTreeParser {
     if (this.shouldCollectSyncMetrics(dataSetName)) {
       this.callbacks.syncLatencyTracker?.saveTimestamp({
         key: 'internal.client.locus.hashtree.request',
-        options: this.getSyncLatencyTimestampOptions(dataSetName),
+        options: this.getSyncLatencyTimestampOptions(dataSetName, undefined, trackingId),
       });
     }
 
@@ -2080,7 +2113,7 @@ class HashTreeParser {
         if (this.shouldCollectSyncMetrics(dataSetName)) {
           this.callbacks.syncLatencyTracker?.saveTimestamp({
             key: 'internal.client.locus.hashtree.response',
-            options: this.getSyncLatencyTimestampOptions(dataSetName),
+            options: this.getSyncLatencyTimestampOptions(dataSetName, undefined, trackingId),
           });
         }
 
@@ -2138,11 +2171,13 @@ class HashTreeParser {
    *
    * @param {InternalDataSet} dataSet The data set to sync.
    * @param {Object} options Either `{ isInitialization: true }` for init syncs (uses leafCount=1 with empty leaf data) or `{ mismatchedLeavesData }` for normal syncs.
+   * @param {string} [trackingId] tracking id
    * @returns {Promise<SyncRequestResult>}
    */
   private sendSyncRequestToLocus(
     dataSet: InternalDataSet,
-    options: {isInitialization: true} | {mismatchedLeavesData: Record<number, LeafDataItem[]>}
+    options: {isInitialization: true} | {mismatchedLeavesData: Record<number, LeafDataItem[]>},
+    trackingId?: string
   ): Promise<SyncRequestResult> {
     LoggerProxy.logger.info(
       `HashTreeParser#sendSyncRequestToLocus --> ${this.debugId} Sending sync request for data set "${dataSet.name}"`
@@ -2181,7 +2216,7 @@ class HashTreeParser {
     if (shouldCollectMetrics) {
       this.callbacks.syncLatencyTracker?.saveTimestamp({
         key: 'internal.client.locus.sync.request',
-        options: this.getSyncLatencyTimestampOptions(dataSet.name),
+        options: this.getSyncLatencyTimestampOptions(dataSet.name, undefined, trackingId),
       });
     }
 
@@ -2191,17 +2226,17 @@ class HashTreeParser {
       qs: {
         rootHash: ourCurrentRootHash,
       },
+      // Force the pre-generated tracking id onto the /sync request so Locus echoes it back on the
+      // resulting LLM message; the tracking id interceptor leaves an already-set header untouched.
+      ...(trackingId ? {headers: {trackingid: trackingId}} : {}),
       body,
     })
       .then((resp) => {
-        const trackingId = resp.headers?.trackingid || resp.headers?.trackingId;
-
         if (shouldCollectMetrics) {
           this.callbacks.syncLatencyTracker?.saveTimestamp({
             key: 'internal.client.locus.sync.response',
             options: this.getSyncLatencyTimestampOptions(dataSet.name, undefined, trackingId),
           });
-          this.callbacks.syncResponseCallback?.(trackingId);
         }
 
         if (!resp.body || isEmpty(resp.body)) {

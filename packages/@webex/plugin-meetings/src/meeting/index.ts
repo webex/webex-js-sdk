@@ -183,7 +183,7 @@ import JoinForbiddenError from '../common/errors/join-forbidden-error';
 import {ReachabilityMetrics} from '../reachability/reachability.types';
 import {SetStageOptions, SetStageVideoLayout, UnsetStageVideoLayout} from './request.type';
 import {Invitee} from './type';
-import {DataSet, HashTreeMessage, Metadata, SyncLatencyMetrics} from '../hashTree/hashTreeParser';
+import {DataSet, HashTreeMessage, Metadata} from '../hashTree/hashTreeParser';
 import {LocusDTO} from '../locus-info/types';
 import AIEnableRequest from '../aiEnableRequest';
 
@@ -1387,8 +1387,25 @@ export default class Meeting extends StatelessWebexPlugin {
     this.locusInfo = new LocusInfo(
       {
         updateMeeting: this.updateMeetingObject.bind(this),
-        syncLatencyTracker: (this as any).webex.internal.newMetrics.callDiagnosticLatencies,
-        syncResponseCallback: this.handleHashTreeSyncResponse.bind(this),
+        syncLatencyTracker: {
+          // Compute/store latency timestamps live on CallDiagnosticLatencies, while
+          // submitting the client.locus.sync.complete CA event is owned by the metrics
+          // facade. Wire each method to the layer that owns that responsibility.
+          saveLatency: (...args) =>
+            (this as any).webex.internal.newMetrics.callDiagnosticLatencies.saveLatency(...args),
+          saveTimestamp: (...args) =>
+            (this as any).webex.internal.newMetrics.callDiagnosticLatencies.saveTimestamp(...args),
+          getLocusSyncLatency: (...args) =>
+            (this as any).webex.internal.newMetrics.callDiagnosticLatencies.getLocusSyncLatency(
+              ...args
+            ),
+          clearLocusSyncLatency: (...args) =>
+            (this as any).webex.internal.newMetrics.callDiagnosticLatencies.clearLocusSyncLatency(
+              ...args
+            ),
+          completeLocusSyncLatency: (meetingId: string, trackingId?: string) =>
+            this.submitLocusSyncCompleteMetric(meetingId, trackingId),
+        },
       },
       // @ts-ignore
       this.webex,
@@ -2375,6 +2392,49 @@ export default class Meeting extends StatelessWebexPlugin {
       name: eventName,
       options: {
         meetingId: this.id,
+      },
+    });
+  }
+
+  /**
+   * Completes a Locus sync latency measurement and, when the metrics plugin has a
+   * matching record for the given meeting and tracking id, submits the
+   * client.locus.sync.complete Call Analyzer event.
+   * @param {string} meetingId meeting id
+   * @param {string} [trackingId] sync tracking id used to match the pending record
+   * @returns {void}
+   * @private
+   * @memberof Meeting
+   */
+  private submitLocusSyncCompleteMetric(meetingId: string, trackingId?: string) {
+    const completed =
+      // @ts-ignore
+      this.webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency(
+        meetingId,
+        trackingId
+      );
+
+    if (!completed) {
+      return;
+    }
+
+    // @ts-ignore
+    const llmWebsocketUrl = this.webex.internal.llm?.getWebSocketUrl?.() || undefined;
+
+    // @ts-ignore
+    this.webex.internal.newMetrics.submitClientEvent({
+      name: 'client.locus.sync.complete',
+      payload: {
+        identifiers: {
+          llmWebsocketUrl,
+        },
+        syncLatency: completed.syncLatency,
+        llmInfo: {
+          dataSet: completed.dataSet,
+        },
+      },
+      options: {
+        meetingId,
       },
     });
   }
@@ -5983,50 +6043,21 @@ export default class Meeting extends StatelessWebexPlugin {
         storeEventForDebugging('llm', event.data);
       }
 
-      const trackingId = [
-        event.data.trackingId,
-        (event.data as any).trackingid,
-        (event.data as any).headers?.trackingId,
-        (event.data as any).headers?.trackingid,
-        (event.data.stateElementsMessage as any)?.trackingId,
-        (event.data.stateElementsMessage as any)?.trackingid,
-        event.trackingId,
-        (event as any).trackingid,
-        (event as any).headers?.trackingId,
-        (event as any).headers?.trackingid,
-      ].find((id) => typeof id === 'string' && id.length > 0);
+      const {trackingId} = event;
 
-      this.locusInfo.parse(this, event.data, trackingId);
+      this.locusInfo.parse(this, event.data);
 
-      const syncMetrics = (
-        this as any
-      ).webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency(
-        this.id,
-        trackingId
-      );
-
-      if (syncMetrics) {
-        this.sendSyncCompleteMetric(syncMetrics);
-      }
+      // Only the client whose /sync request tracking id matches the tracking id echoed back on
+      // this LLM message should emit client.locus.sync.complete. completeLocusSyncLatency (called
+      // by submitLocusSyncCompleteMetric) is a no-op unless a stored record for this meeting
+      // matches the tracking id, so this is safe to call for every hash tree LLM event.
+      this.submitLocusSyncCompleteMetric(this.id, trackingId);
     } else {
       LoggerProxy.logger.warn(
         `Meeting:index#processLocusLLMEvent --> Unknown event type: ${event.data.eventType}`
       );
     }
   };
-
-  private handleHashTreeSyncResponse(trackingId?: string) {
-    const syncMetrics = (
-      this as any
-    ).webex.internal.newMetrics.callDiagnosticLatencies.completeLocusSyncLatency(
-      this.id,
-      trackingId
-    );
-
-    if (syncMetrics) {
-      this.sendSyncCompleteMetric(syncMetrics);
-    }
-  }
 
   /**
    * Verifies the relay event was delivered for the active LLM session binding.
@@ -6946,39 +6977,6 @@ export default class Meeting extends StatelessWebexPlugin {
       name: 'client.llm.connect.response',
       payload,
       options,
-    };
-
-    // @ts-ignore
-    this.webex.internal.newMetrics.submitClientEvent(metricEvent);
-  }
-
-  /**
-   * Sends sync latency metrics when a sync-initiating client receives LLM sync message.
-   * @param {Object} metrics
-   * @param {string} metrics.dataSet
-   * @param {SyncLatencyMetrics} metrics.syncLatency
-   * @returns {void}
-   */
-  private sendSyncCompleteMetric(metrics: {dataSet: string; syncLatency: SyncLatencyMetrics}) {
-    // @ts-ignore
-    const llmWebsocketUrl = this.webex.internal.llm.getWebSocketUrl?.() || undefined;
-
-    const payload: any = {
-      identifiers: {
-        llmWebsocketUrl,
-      },
-      syncLatency: metrics.syncLatency,
-      llmInfo: {
-        dataSet: metrics.dataSet,
-      },
-    };
-
-    const metricEvent = {
-      name: 'client.locus.sync.complete',
-      payload,
-      options: {
-        meetingId: this.id,
-      },
     };
 
     // @ts-ignore

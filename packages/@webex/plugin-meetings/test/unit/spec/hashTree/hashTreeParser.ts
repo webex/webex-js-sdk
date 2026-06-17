@@ -179,12 +179,14 @@ describe('HashTreeParser', () => {
     metadata: any = exampleMetadata,
     excludedDataSets?: string[],
     syncLatencyTracker?: any,
-    syncLatencyMeetingId = 'meeting-1'
+    syncLatencyMeetingId = 'meeting-1',
+    generateTrackingId?: any
   ) {
     return new HashTreeParser({
       initialLocus,
       metadata,
       webexRequest,
+      generateTrackingId,
       callbacks: {
         locusInfoUpdateCallback: callback,
         syncLatencyTracker,
@@ -3110,6 +3112,7 @@ describe('HashTreeParser', () => {
           saveTimestamp: sinon.stub(),
           getLocusSyncLatency: sinon.stub(),
           clearLocusSyncLatency: sinon.stub(),
+          completeLocusSyncLatency: sinon.stub(),
         };
         const parser = createHashTreeParser(
           undefined,
@@ -3164,6 +3167,7 @@ describe('HashTreeParser', () => {
           saveTimestamp: sinon.stub(),
           getLocusSyncLatency: sinon.stub(),
           clearLocusSyncLatency: sinon.stub(),
+          completeLocusSyncLatency: sinon.stub(),
         };
         const parser = createHashTreeParser(
           undefined,
@@ -4810,6 +4814,7 @@ describe('HashTreeParser', () => {
         saveTimestamp: sinon.stub(),
         getLocusSyncLatency: sinon.stub(),
         clearLocusSyncLatency: sinon.stub(),
+        completeLocusSyncLatency: sinon.stub(),
       };
       const parser = createHashTreeParser(
         undefined,
@@ -5478,6 +5483,7 @@ describe('HashTreeParser', () => {
         saveTimestamp: sinon.stub(),
         getLocusSyncLatency: sinon.stub(),
         clearLocusSyncLatency: sinon.stub(),
+        completeLocusSyncLatency: sinon.stub(),
       };
       const parser = createHashTreeParser(
         undefined,
@@ -5524,18 +5530,22 @@ describe('HashTreeParser', () => {
       assert.notCalled(syncLatencyTracker.getLocusSyncLatency);
     });
 
-    it('records sync response tracking id for Meeting-side completion', async () => {
+    it('forces a pre-generated tracking id onto the sync request and records it', async () => {
       const syncLatencyTracker = {
         saveLatency: sinon.stub(),
         saveTimestamp: sinon.stub(),
         getLocusSyncLatency: sinon.stub(),
         clearLocusSyncLatency: sinon.stub(),
+        completeLocusSyncLatency: sinon.stub(),
       };
+      const generateTrackingId = sinon.stub().returns('our-sync-tracking-id');
       const parser = createHashTreeParser(
         undefined,
         undefined,
         undefined,
-        syncLatencyTracker
+        syncLatencyTracker,
+        undefined,
+        generateTrackingId
       );
       const mainDataSetUrl = parser.dataSets.main.url;
 
@@ -5544,7 +5554,7 @@ describe('HashTreeParser', () => {
         new Array(16).fill('00000000000000000000000000000000'),
         createDataSet('main', 16, 1102)
       );
-      mockSendSyncRequestResponse(mainDataSetUrl, null, {trackingid: 'our-sync-tracking-id'});
+      mockSendSyncRequestResponse(mainDataSetUrl, null);
 
       parser.handleMessage(
         createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
@@ -5553,13 +5563,39 @@ describe('HashTreeParser', () => {
 
       await clock.tickAsync(1000);
 
+      // tracking id is generated up-front and forced onto the /sync request header so Locus
+      // echoes it back on the resulting LLM message
+      assert.calledOnceWithExactly(generateTrackingId);
+      assert.calledWith(
+        webexRequest,
+        sinon.match({
+          method: 'POST',
+          uri: `${mainDataSetUrl}/sync`,
+          headers: {trackingid: 'our-sync-tracking-id'},
+        })
+      );
+
+      // the same tracking id is stamped on the sync milestones so the Meeting object can later
+      // match the LLM event to this sync
+      assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
+        key: 'internal.client.locus.sync.start',
+        options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'our-sync-tracking-id'},
+      });
+      assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
+        key: 'internal.client.locus.hashtree.request',
+        options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'our-sync-tracking-id'},
+      });
+      assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
+        key: 'internal.client.locus.hashtree.response',
+        options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'our-sync-tracking-id'},
+      });
+      assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
+        key: 'internal.client.locus.sync.request',
+        options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'our-sync-tracking-id'},
+      });
       assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
         key: 'internal.client.locus.sync.response',
-        options: {
-          meetingId: 'meeting-1',
-          dataSetName: 'main',
-          trackingId: 'our-sync-tracking-id',
-        },
+        options: {meetingId: 'meeting-1', dataSetName: 'main', trackingId: 'our-sync-tracking-id'},
       });
       assert.notCalled(syncLatencyTracker.getLocusSyncLatency);
     });
@@ -5570,6 +5606,7 @@ describe('HashTreeParser', () => {
         saveTimestamp: sinon.stub(),
         getLocusSyncLatency: sinon.stub(),
         clearLocusSyncLatency: sinon.stub(),
+        completeLocusSyncLatency: sinon.stub(),
       };
       const parser = createHashTreeParser(
         undefined,
@@ -5592,14 +5629,16 @@ describe('HashTreeParser', () => {
 
       assert.notCalled(syncLatencyTracker.getLocusSyncLatency);
       assert.notCalled(syncLatencyTracker.clearLocusSyncLatency);
+      assert.notCalled(syncLatencyTracker.completeLocusSyncLatency);
     });
 
-    it('records message received timestamp with LLM tracking id', () => {
+    it('records message received timestamp and completes when handleMessage is called with a tracking id (body-mode)', () => {
       const syncLatencyTracker = {
         saveLatency: sinon.stub(),
         saveTimestamp: sinon.stub(),
         getLocusSyncLatency: sinon.stub(),
         clearLocusSyncLatency: sinon.stub(),
+        completeLocusSyncLatency: sinon.stub(),
       };
       const parser = createHashTreeParser(undefined, undefined, undefined, syncLatencyTracker);
 
@@ -5616,7 +5655,7 @@ describe('HashTreeParser', () => {
           locusStateElements: [],
         },
         'trigger sync metrics',
-        'llm-event-tracking-id'
+        'body-mode-sync-tracking-id'
       );
 
       assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
@@ -5624,20 +5663,35 @@ describe('HashTreeParser', () => {
         options: {
           meetingId: 'meeting-1',
           dataSetName: 'main',
-          trackingId: 'llm-event-tracking-id',
+          trackingId: 'body-mode-sync-tracking-id',
         },
       });
+      // when handleMessage is called with a tracking id (body-mode sync), completion is driven here
+      assert.calledOnceWithExactly(
+        syncLatencyTracker.completeLocusSyncLatency,
+        'meeting-1',
+        'body-mode-sync-tracking-id'
+      );
       assert.notCalled(syncLatencyTracker.getLocusSyncLatency);
     });
 
-    it('does not complete sync metrics when sync response has body', async () => {
+    it('completes sync metrics when sync response has body', async () => {
       const syncLatencyTracker = {
         saveLatency: sinon.stub(),
         saveTimestamp: sinon.stub(),
         getLocusSyncLatency: sinon.stub(),
         clearLocusSyncLatency: sinon.stub(),
+        completeLocusSyncLatency: sinon.stub(),
       };
-      const parser = createHashTreeParser(undefined, undefined, undefined, syncLatencyTracker);
+      const generateTrackingId = sinon.stub().returns('our-sync-tracking-id');
+      const parser = createHashTreeParser(
+        undefined,
+        undefined,
+        undefined,
+        syncLatencyTracker,
+        undefined,
+        generateTrackingId
+      );
       const mainDataSetUrl = parser.dataSets.main.url;
       const syncResponse = {
         dataSets: [
@@ -5656,9 +5710,7 @@ describe('HashTreeParser', () => {
         new Array(16).fill('00000000000000000000000000000000'),
         createDataSet('main', 16, 1102)
       );
-      mockSendSyncRequestResponse(mainDataSetUrl, syncResponse, {
-        trackingid: 'our-sync-tracking-id',
-      });
+      mockSendSyncRequestResponse(mainDataSetUrl, syncResponse);
 
       parser.handleMessage(
         createHeartbeatMessage('main', 16, 1100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1'),
@@ -5675,7 +5727,21 @@ describe('HashTreeParser', () => {
           trackingId: 'our-sync-tracking-id',
         },
       });
-      assert.notCalled(syncLatencyTracker.getLocusSyncLatency);
+      // body-mode syncs return the state elements in the /sync HTTP response, so completion is
+      // driven here (the meeting never receives a separate LLM push for this data)
+      assert.calledWithExactly(syncLatencyTracker.saveTimestamp, {
+        key: 'internal.client.locus.sync.message.received',
+        options: {
+          meetingId: 'meeting-1',
+          dataSetName: 'main',
+          trackingId: 'our-sync-tracking-id',
+        },
+      });
+      assert.calledOnceWithExactly(
+        syncLatencyTracker.completeLocusSyncLatency,
+        'meeting-1',
+        'our-sync-tracking-id'
+      );
     });
 
   });
