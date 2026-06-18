@@ -477,6 +477,56 @@ const eventTaxonomyMap: Record<string, BehavioralEventTaxonomy> = {
     target: 'campaign_preview_remove',
     verb: 'fail',
   },
+
+  // User Preference API Events
+  [METRIC_EVENT_NAMES.USER_PREFERENCE_GET_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'user_preference_get',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.USER_PREFERENCE_GET_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'user_preference_get',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.USER_PREFERENCE_CREATE_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'user_preference_create',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.USER_PREFERENCE_CREATE_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'user_preference_create',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.USER_PREFERENCE_UPDATE_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'user_preference_update',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.USER_PREFERENCE_UPDATE_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'user_preference_update',
+    verb: 'fail',
+  },
+  [METRIC_EVENT_NAMES.USER_PREFERENCE_DELETE_SUCCESS]: {
+    product,
+    agent: 'user',
+    target: 'user_preference_delete',
+    verb: 'complete',
+  },
+  [METRIC_EVENT_NAMES.USER_PREFERENCE_DELETE_FAILED]: {
+    product,
+    agent: 'user',
+    target: 'user_preference_delete',
+    verb: 'fail',
+  },
 };
 
 /**
