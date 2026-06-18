@@ -3,6 +3,7 @@ import type {
   UserPreference as UserPreferenceResponse,
   CreateUserPreferenceRequest,
   UpdateUserPreferenceRequest,
+  GetUserPreferenceParams,
 } from './config/types';
 import LoggerProxy from '../logger-proxy';
 import WebexRequest from './core/WebexRequest';
@@ -70,7 +71,10 @@ export class UserPreference {
 
   /**
    * Fetches user preferences for a specific user
-   * @param {string} [userId] - User ID to fetch preferences for. Defaults to current user's CI user ID.
+   * @param {GetUserPreferenceParams} [params] - Optional parameters for fetching preferences
+   * @param {string} [params.userId] - User ID to fetch preferences for. Defaults to current user's CI user ID.
+   * @param {number} [params.page=0] - Page number (0-indexed). Default: 0
+   * @param {number} [params.pageSize=100] - Number of items per page. Default: 100
    * @returns {Promise<UserPreferenceResponse>} Promise resolving to user preferences
    * @throws {Error} If the API call fails
    * @public
@@ -80,11 +84,17 @@ export class UserPreference {
    * const preferences = await userPreferenceAPI.getUserPreference();
    *
    * // Get preferences for a specific user
-   * const preferences = await userPreferenceAPI.getUserPreference('user123');
+   * const preferences = await userPreferenceAPI.getUserPreference({ userId: 'user123' });
+   *
+   * // Get preferences with pagination
+   * const preferences = await userPreferenceAPI.getUserPreference({ page: 0, pageSize: 50 });
    * ```
    */
-  public async getUserPreference(userId?: string): Promise<UserPreferenceResponse> {
+  public async getUserPreference(
+    params?: GetUserPreferenceParams
+  ): Promise<UserPreferenceResponse> {
     const startTime = Date.now();
+    const {userId, page, pageSize} = params || {};
     const targetUserId = userId || this.getUserId();
     const orgId = this.webex.credentials.getOrgId();
 
@@ -94,6 +104,8 @@ export class UserPreference {
       data: {
         orgId,
         userId: targetUserId,
+        page,
+        pageSize,
       },
     });
 
@@ -120,7 +132,15 @@ export class UserPreference {
     }
 
     try {
-      const resource = endPointMap.userPreference(orgId, targetUserId);
+      let resource = endPointMap.userPreference(orgId, targetUserId);
+
+      // Build query parameters if provided
+      const queryParams: string[] = [];
+      if (page !== undefined) queryParams.push(`page=${page}`);
+      if (pageSize !== undefined) queryParams.push(`pageSize=${pageSize}`);
+      if (queryParams.length > 0) {
+        resource = `${resource}?${queryParams.join('&')}`;
+      }
 
       LoggerProxy.info('Making API request to fetch user preferences', {
         module: 'UserPreference',

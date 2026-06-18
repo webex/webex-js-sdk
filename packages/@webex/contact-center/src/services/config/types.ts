@@ -1215,8 +1215,8 @@ export type UserPreference = {
 export type CreateUserPreferenceRequest = {
   /** User ID (CI user ID) */
   userId: string;
-  /** User preference data as key-value pairs */
-  preferences: Record<string, unknown>;
+  /** Desktop preference data as a JSON string (required) */
+  desktopPreference: string;
 };
 
 /**
@@ -1224,6 +1224,19 @@ export type CreateUserPreferenceRequest = {
  * @public
  */
 export type UpdateUserPreferenceRequest = {
-  /** User preference data as key-value pairs */
-  preferences: Record<string, unknown>;
+  /** Desktop preference data as a JSON string (required) */
+  desktopPreference: string;
+};
+
+/**
+ * Query parameters for fetching user preferences
+ * @public
+ */
+export type GetUserPreferenceParams = {
+  /** User ID to fetch preferences for. Defaults to current user's CI user ID. */
+  userId?: string;
+  /** Page number (0-indexed). Default: 0 */
+  page?: number;
+  /** Number of items per page. Default: 100 */
+  pageSize?: number;
 };

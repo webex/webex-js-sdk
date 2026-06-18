@@ -220,6 +220,8 @@ export type {
   CreateUserPreferenceRequest,
   /** Request payload for updating user preferences */
   UpdateUserPreferenceRequest,
+  /** Query parameters for fetching user preferences */
+  GetUserPreferenceParams,
 } from './services/config/types';
 
 // Constants

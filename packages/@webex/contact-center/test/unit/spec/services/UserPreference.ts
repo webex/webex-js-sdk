@@ -1,3 +1,4 @@
+import {expect} from '@jest/globals';
 import UserPreference from '../../../../src/services/UserPreference';
 import {HTTP_METHODS, WebexSDK, IHttpResponse} from '../../../../src/types';
 import {METRIC_EVENT_NAMES} from '../../../../src/metrics/constants';
@@ -106,11 +107,25 @@ describe('UserPreference', () => {
     it('should fetch user preferences for a specific userId', async () => {
       (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
 
-      const result = await userPreferenceAPI.getUserPreference('specific-user-id');
+      const result = await userPreferenceAPI.getUserPreference({userId: 'specific-user-id'});
 
       expect(mockWebex.request).toHaveBeenCalledWith({
         service: 'wcc-api-gateway',
         resource: 'organization/test-org-id/user-preference/specific-user-id',
+        method: HTTP_METHODS.GET,
+        body: undefined,
+      });
+      expect(result).toEqual(mockPreference);
+    });
+
+    it('should fetch user preferences with pagination parameters', async () => {
+      (mockWebex.request as jest.Mock).mockResolvedValue(mockResponse);
+
+      const result = await userPreferenceAPI.getUserPreference({page: 1, pageSize: 50});
+
+      expect(mockWebex.request).toHaveBeenCalledWith({
+        service: 'wcc-api-gateway',
+        resource: 'organization/test-org-id/user-preference/test-user-id?page=1&pageSize=50',
         method: HTTP_METHODS.GET,
         body: undefined,
       });
@@ -152,7 +167,7 @@ describe('UserPreference', () => {
   describe('createUserPreference', () => {
     const mockCreateRequest = {
       userId: 'test-user-id',
-      preferences: {e911Reminder: true},
+      desktopPreference: '{}',
     };
 
     const mockCreatedPreference = {
@@ -209,7 +224,7 @@ describe('UserPreference', () => {
     it('should throw error when userId is missing in request', async () => {
       const invalidRequest = {
         userId: '',
-        preferences: {e911Reminder: true},
+        desktopPreference: '{}',
       };
 
       await expect(userPreferenceAPI.createUserPreference(invalidRequest)).rejects.toThrow(
@@ -245,7 +260,7 @@ describe('UserPreference', () => {
 
   describe('updateUserPreference', () => {
     const mockUpdateRequest = {
-      preferences: {e911Reminder: false},
+      desktopPreference: '{}',
     };
 
     const mockUpdatedPreference = {
