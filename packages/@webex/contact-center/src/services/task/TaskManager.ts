@@ -630,6 +630,10 @@ export default class TaskManager extends EventEmitter {
       this.emit(TASK_EVENTS.TASK_HYDRATE, t);
     });
 
+    task.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, (t: ITask) => {
+      this.emit(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, t);
+    });
+
     // Listen for internal cleanup signal emitted by the state machine
     task.on(TASK_EVENTS.TASK_CLEANUP, (t: ITask, options?: {removeFromCollection?: boolean}) => {
       this.handleTaskCleanup(t);

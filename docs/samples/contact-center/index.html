@@ -51,6 +51,10 @@
             <input type="checkbox" id="multiLoginFlag" onchange="toggleMultiLogin()">
             Enable Multi Login
           </label>
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-top: 8px;">
+            <input type="checkbox" id="disableWebRTCRegistrationFlag" onchange="toggleWebRTCRegistration()">
+            Disable WebRTC Registration
+          </label>
           <p class="note" style="margin-top: 5px;">
             NOTE: Toggle before initializing SDK. Persisted across page reloads.
           </p>

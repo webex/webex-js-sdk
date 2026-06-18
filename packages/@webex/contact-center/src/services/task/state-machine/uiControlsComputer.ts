@@ -438,7 +438,7 @@ function computeVoiceInteractionUIControls(
       if (allowHeldMainLegControlsForNonInitiator) return VISIBLE_ENABLED;
       if (showMainLegConferenceControlsDuringConsult) return VISIBLE_DISABLED;
       if (isHydratedConferenceConsultPending && currentLeg === 'main') return VISIBLE_DISABLED;
-      if (!config.isEndTaskEnabled) return DISABLED;
+      if (!config.isEndTaskEnabled && !isWebrtc) return DISABLED;
       if (hasParallelConsultLeg) {
         return isConnected && isEpDnConsult ? VISIBLE_ENABLED : VISIBLE_DISABLED;
       }

@@ -351,6 +351,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.$webex.once(READY, () => {
       // @ts-ignore
       this.$config = this.config;
+      this.validatePluginConfig();
 
       /**
        * This is used for handling the async requests by sending webex.request and wait for corresponding websocket event.
@@ -407,6 +408,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   /**
+   * Handles multi-login hydrate events for SDK instances without Mobius registration
+   * @private
+   * @param {ITask} task The task object associated with the multi-login hydrate
+   */
+  private handleTaskMultiLoginHydrate = (task: ITask) => {
+    // @ts-ignore
+    this.trigger(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, task);
+  };
+
+  /**
    * Handles task merged events when tasks are combined eg: EPDN merge/transfer
    * @private
    * @param {ITask} task The task object that has been merged
@@ -424,6 +435,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   private incomingTaskListener() {
     this.taskManager.on(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
     this.taskManager.on(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+    this.taskManager.on(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
     this.taskManager.on(TASK_EVENTS.TASK_MERGED, this.handleTaskMerged);
   }
 
@@ -553,6 +565,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
 
       this.taskManager.off(TASK_EVENTS.TASK_INCOMING, this.handleIncomingTask);
       this.taskManager.off(TASK_EVENTS.TASK_HYDRATE, this.handleTaskHydrate);
+      this.taskManager.off(TASK_EVENTS.TASK_MULTI_LOGIN_HYDRATE, this.handleTaskMultiLoginHydrate);
       this.taskManager.unregisterIncomingCallEvent();
 
       this.services.webSocketManager.off('message', this.handleWebsocketMessage);
@@ -769,7 +782,8 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
           }
           if (
             this.agentConfig.webRtcEnabled &&
-            this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER)
+            this.agentConfig.loginVoiceOptions.includes(LoginOption.BROWSER) &&
+            !this.isWebRTCRegistrationDisabled()
           ) {
             this.$webex.internal.mercury
               .connect()
@@ -785,6 +799,14 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
                   method: METHODS.CONNECT_WEBSOCKET,
                 });
               });
+          } else if (this.isWebRTCRegistrationDisabled()) {
+            LoggerProxy.info(
+              'Skipping Mobius registration because disableWebRTCRegistration is enabled',
+              {
+                module: CC_FILE,
+                method: METHODS.CONNECT_WEBSOCKET,
+              }
+            );
           }
           if (this.$config && this.$config.allowAutomatedRelogin) {
             await this.silentRelogin();
@@ -868,8 +890,24 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
         },
       });
 
-      if (this.agentConfig.webRtcEnabled && data.loginOption === LoginOption.BROWSER) {
+      if (
+        this.agentConfig.webRtcEnabled &&
+        data.loginOption === LoginOption.BROWSER &&
+        !this.isWebRTCRegistrationDisabled()
+      ) {
         await this.webCallingService.registerWebCallingLine();
+      } else if (
+        this.agentConfig.webRtcEnabled &&
+        data.loginOption === LoginOption.BROWSER &&
+        this.isWebRTCRegistrationDisabled()
+      ) {
+        LoggerProxy.info(
+          'Skipping web calling line registration because disableWebRTCRegistration is enabled',
+          {
+            module: CC_FILE,
+            method: METHODS.STATION_LOGIN,
+          }
+        );
       }
 
       const resp = await loginResponse;
@@ -1236,6 +1274,30 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
   };
 
   /**
+   * Checks whether Mobius/WebRTC registration should be skipped by config
+   * @returns {boolean} True when browser WebRTC registration is disabled
+   * @private
+   */
+  private isWebRTCRegistrationDisabled(): boolean {
+    return this.$config?.disableWebRTCRegistration === true;
+  }
+
+  /**
+   * Validates contact-center plugin configuration before service initialization
+   * @private
+   */
+  private validatePluginConfig(): void {
+    if (
+      this.$config?.disableWebRTCRegistration === true &&
+      this.$config?.allowMultiLogin === false
+    ) {
+      throw new Error(
+        'Invalid Contact Center configuration: disableWebRTCRegistration cannot be true when allowMultiLogin is false. Enable allowMultiLogin or allow WebRTC registration so an SDK instance can receive Mobius events.'
+      );
+    }
+  }
+
+  /**
    * Initializes event listeners for the Contact Center service
    * Sets up handlers for connection state changes and other core events
    * @private
@@ -1380,6 +1442,16 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.agentConfig.deviceType = deviceType;
     switch (deviceType) {
       case LoginOption.BROWSER:
+        if (this.isWebRTCRegistrationDisabled()) {
+          LoggerProxy.info(
+            'Skipping web calling line registration because disableWebRTCRegistration is enabled',
+            {
+              module: CC_FILE,
+              method: METHODS.HANDLE_DEVICE_TYPE,
+            }
+          );
+          break;
+        }
         try {
           await this.webCallingService.registerWebCallingLine();
         } catch (error) {
