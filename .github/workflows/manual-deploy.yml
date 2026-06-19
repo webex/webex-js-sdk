@@ -299,11 +299,18 @@ jobs:
 
       - name: Deploy Packages
         if: ${{ inputs.dry-run != true }}
+        # `--tolerate-republish` makes reruns idempotent: npm versions are
+        # immutable, so without it a rerun (the recovery scenario this workflow
+        # exists for) would stop on the first already-published package and
+        # never reach the ones that are still missing. With it, Yarn skips
+        # already-published packages and publishes only the remaining ones.
+        # Args after `run deploy:npm` forward to each workspace's
+        # `yarn npm publish`.
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           DIST_TAG: ${{ inputs.dist-tag }}
           PACKAGES_GLOB: ${{ needs.build.outputs.packages-glob }}
-        run: yarn workspaces foreach --from "$PACKAGES_GLOB" --verbose run deploy:npm --access public --tag "$DIST_TAG"
+        run: yarn workspaces foreach --from "$PACKAGES_GLOB" --verbose run deploy:npm --access public --tag "$DIST_TAG" --tolerate-republish
 
       - name: Deploy Packages (Dry Run)
         if: ${{ inputs.dry-run == true }}
