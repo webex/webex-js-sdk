@@ -31,7 +31,30 @@ export const makeCall = async (page: Page, destination: string): Promise<void> =
 };
 
 export const waitForIncomingCall = async (page: Page): Promise<void> => {
-  await expect(page.locator(CALLING_SELECTORS.INCOMING_ANSWER_BTN)).toBeEnabled({timeout: 30000});
+  await expect(page.locator(CALLING_SELECTORS.INCOMING_ANSWER_BTN)).toBeEnabled({
+    timeout: 30000,
+  });
+};
+
+/**
+ * Outbound leg exists on the caller (ringing or connected). Fails fast if makeCall
+ * did not create a call object (network/SDK failure, invalid destination, etc.).
+ */
+export const waitForCallerOutboundCall = async (page: Page, timeout = 30000): Promise<void> => {
+  await withTimeout(
+    page.waitForFunction(
+      () => {
+        const client = (window as any).callingClient;
+        if (!client) return false;
+        const calls = client.getActiveCalls();
+
+        return Object.values(calls).flat().length > 0;
+      },
+      {timeout}
+    ),
+    timeout,
+    'waitForCallerOutboundCall'
+  );
 };
 
 export const answerCall = async (page: Page): Promise<void> => {
@@ -93,6 +116,15 @@ export const endCall = async (page: Page): Promise<void> => {
     },
     {timeout: AWAIT_TIMEOUT}
   );
+};
+
+export const endCallerIfStillActive = async (page: Page): Promise<void> => {
+  const endButton = page.locator(CALLING_SELECTORS.END_CALL_BTN);
+  const canEndCall = await endButton.isEnabled().catch(() => false);
+
+  if (canEndCall) {
+    await endCall(page);
+  }
 };
 
 export const endIncomingCall = async (page: Page): Promise<void> => {
