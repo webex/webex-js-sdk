@@ -424,7 +424,8 @@ export class Registration implements IRegistration {
           this.deviceInfo.keepaliveInterval as number,
           'UNKNOWN'
         );
-      }, retryAfter * 1000);
+        // Adjust the retry-after value with keepaliveInterval, else it adds extra keepaliveInterval time for very first next keepalive request
+      }, (retryAfter - Number(this.deviceInfo.keepaliveInterval || 0)) * 1000);
     } else {
       this.retryAfter = retryAfter;
     }
@@ -982,6 +983,18 @@ export class Registration implements IRegistration {
 
       return abort;
     }
+
+    /*
+     * Align the active transport with this server group. When the Mobius socket is enabled
+     * but a group has no WSS URL, CallingClient hands us its HTTP URIs instead; routing those
+     * over the socket would fail, so toggle the transport from the group's URL scheme. This
+     * keeps every socket-gated path below (connect, teardown, makeRequest) consistent for the
+     * group being registered, while primary and backup are resolved independently.
+     */
+    if (servers.length) {
+      this.apiRequest.setSocketEnabled(servers[0].startsWith('wss://'));
+    }
+
     for (const url of servers) {
       const serverType = this.getServerType(url);
 
@@ -1311,6 +1324,7 @@ export class Registration implements IRegistration {
 
       if (this.apiRequest.isSocketEnabled()) {
         uri = uri.replace('https://', 'wss://');
+        uri = !uri.endsWith('/') ? `${uri}/` : uri;
       }
 
       this.setActiveMobiusUrl(uri);

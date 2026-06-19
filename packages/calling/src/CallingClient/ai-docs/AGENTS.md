@@ -10,6 +10,7 @@ Do **not** use this file as your only entry point for reasoning or code generati
   - For changes within the `line/` subdirectory, also load [line/ai-docs/AGENTS.md](../line/ai-docs/AGENTS.md).
   - For changes within the `registration/` subdirectory, also load [registration/ai-docs/AGENTS.md](../registration/ai-docs/AGENTS.md).
   - For changes within the `calling/` subdirectory (Call, CallManager, CallerId), refer to the calling subdirectory source files directly.
+  - For changes that touch the **Mobius WebSocket transport** (request routing, WSS feature flag, async-event dispatch, `APIRequest`), also load the [`mobius-socket` AGENTS.md](../../mobius-socket/ai-docs/AGENTS.md). `CallingClient` consumes that module only through the `APIRequest` wrapper in [`utils/request.ts`](../utils/request.ts) — never import `MobiusSocket` directly outside `utils/request.ts`.
 - **Important:** Load the module-specific docs in this file first, then drill into subdirectory docs as needed.
 
 ---
@@ -44,6 +45,8 @@ Applications create a `CallingClient` via the `createClient()` factory function 
 | **Network Resilience**       | Detects network outages or Mercury channel disconnects; triggers reconnection, re-registration, and call state recovery logic to restore service with minimal interruption. |
 | **Diagnostics & Logging**    | Collects and uploads diagnostic logs and metrics for calls, registrations, and failures to Webex cloud for troubleshooting, monitoring, and analytics purposes.   |
 | **Service Indicators & Access Flows** | Supports various service flows and user types (`calling`, `guestcalling`, `contactcenter`) through the `ServiceIndicator`, enabling correct registration and feature availability based on license and context. |
+| **Transport Selection (HTTP vs Mobius WSS)** | Routes Mobius traffic over either HTTP (`webex.request`) or the Mobius WebSocket transport (`mobius-socket`) based on the WDM feature flag `webrtc-calling-over-ws-CALL-219562` (with a localStorage override on allow-listed origins). The `isMobiusSocketEnabled` flag is seeded from the feature flag at `APIRequest` construction time, but `Registration.attemptRegistrationWithServers` overrides it per server group via `apiRequest.setSocketEnabled(servers[0].startsWith('wss://'))` — so HTTP and WSS can be used for different groups within the same session. All `register`, `keepalive`, `call setup/state/media/status`, supplementary services, and `deregister` traffic flows through the same `APIRequest.makeRequest()` API regardless of transport. |
+| **Mobius WSS Async Events**  | When WSS is enabled, subscribes to `MobiusSocket`'s `event:async_event` via `APIRequest.registerMobiusSocketListener` and fans events out: `registration.down` → `Registration.handleRegistrationDownEvent`, all other event types → `CallManager.dequeueWsEvents`. |
 
 ---
 
@@ -61,6 +64,7 @@ The following methods are defined on the `ICallingClient` interface and are the 
 | `getDevices`       | `(userId?: string): Promise<DeviceType[]>` | Fetches devices from Mobius for the user        |
 | `getActiveCalls`   | `(): Record<string, ICall[]>`              | Returns active calls grouped by lineId          |
 | `getConnectedCall` | `(): ICall \| undefined`                   | Returns the currently connected (non-held) call |
+| `isMobiusSocketConnected` | `(): boolean`                       | Whether the Mobius WebSocket transport is currently connected. Lets consumers that subscribe to `mobius_socket_connected` after `init()` reconcile the initial state. `false` when WSS transport is not in use. |
 | `mediaEngine`      | `typeof Media`                             | The `@webex/internal-media-core` engine         |
 
 ### CallingClient Class Methods (not on ICallingClient interface)
@@ -77,6 +81,8 @@ The following methods are defined on the `ICallingClient` interface and are the 
 | `callingClient:outgoing_call`        | `CALLING_CLIENT_EVENT_KEYS.OUTGOING_CALL`     | `string` (callId)    | Outbound call initiated      |
 | `callingClient:user_recent_sessions` | `CALLING_CLIENT_EVENT_KEYS.USER_SESSION_INFO` | `CallSessionEvent`   | User session info from Janus |
 | `callingClient:all_calls_cleared`    | `CALLING_CLIENT_EVENT_KEYS.ALL_CALLS_CLEARED` | _(none)_             | All active calls have ended  |
+| `callingClient:mobius_socket_connected`    | `CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED` | _(none)_             | Mobius WebSocket (re)connected (WSS transport only) |
+| `callingClient:mobius_socket_disconnected` | `CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED` | `MobiusSocketDisconnectedEvent` (`{reason}`) | Mobius WebSocket disconnected; `reason` is `permanent` / `transient` / `replaced` (WSS transport only) |
 
 ---
 
@@ -226,6 +232,10 @@ const devices = await callingClient.getDevices();
 | `MetricManager` | Singleton for telemetry submission                  |
 | `Logger`        | Structured logging with file/method context         |
 | `Eventing<T>`   | Typed event emitter base class                      |
+| `APIRequest` (`utils/request.ts`) | Transport-agnostic request layer. Owns the WSS feature-flag decision and proxies HTTP / Mobius WSS calls. Sole consumer of `mobius-socket`. |
+| `mobius-socket` | Mobius WebSocket transport (used through `APIRequest`). See [`mobius-socket/ai-docs/AGENTS.md`](../../mobius-socket/ai-docs/AGENTS.md). |
+| `mobiusSocketMapper` (`utils/mobiusSocketMapper.ts`) | Maps URI + HTTP method → `MOBIUS_SOCKET_MESSAGE_TYPE` so HTTP-style requests can be carried over the socket. |
+| `wsFeatureFlag` (`utils/wsFeatureFlag.ts`) | Resolves the WSS feature flag from WDM (`webrtc-calling-over-ws-CALL-219562`), with a `localStorage` `mobius-wss-enabled` override on `localhost`, `127.0.0.1`, and `web-sdk.webex.com`. |
 
 ---
 
@@ -237,6 +247,13 @@ For detailed documentation on specific subsystems:
 | --------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | `line/`         | [line/ai-docs/AGENTS.md](../line/ai-docs/AGENTS.md)                 | [line/ai-docs/ARCHITECTURE.md](../line/ai-docs/ARCHITECTURE.md)                 | Line management, registration orchestration, call initiation |
 | `registration/` | [registration/ai-docs/AGENTS.md](../registration/ai-docs/AGENTS.md) | [registration/ai-docs/ARCHITECTURE.md](../registration/ai-docs/ARCHITECTURE.md) | Device registration, keepalive, failover, web worker         |
+| `utils/`        | —                                                                   | —                                                                               | `APIRequest` (HTTP / Mobius WSS transport selector), URI → message-type mapper, WSS feature-flag resolver. Documented inline in [`ARCHITECTURE.md`](./ARCHITECTURE.md). |
+
+### Related Cross-Module Documentation
+
+| Module          | AGENTS.md                                                                         | Description                                                  |
+| --------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `mobius-socket` | [`mobius-socket/ai-docs/AGENTS.md`](../../mobius-socket/ai-docs/AGENTS.md)        | Mobius WebSocket transport consumed by `APIRequest`. Documents `MobiusSocket` lifecycle, events, and configuration. |
 
 ---
 

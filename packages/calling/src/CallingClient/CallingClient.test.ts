@@ -15,7 +15,12 @@ import {
   WebexRequestPayload,
 } from '../common/types';
 /* eslint-disable dot-notation */
-import {CALLING_CLIENT_EVENT_KEYS, CallSessionEvent, MOBIUS_EVENT_KEYS} from '../Events/types';
+import {
+  CALLING_CLIENT_EVENT_KEYS,
+  CallSessionEvent,
+  MOBIUS_EVENT_KEYS,
+  MOBIUS_SOCKET_DISCONNECT_REASON,
+} from '../Events/types';
 import log from '../Logger';
 import {CallingClient, createClient} from './CallingClient';
 import {ICallingClient} from './types';
@@ -49,7 +54,8 @@ import {
   mockUSServiceHosts,
 } from './callingClientFixtures';
 import Line from './line';
-import {filterMobiusUris} from '../common/Utils';
+import * as LineModule from './line';
+import {filterMobiusUris, normalizeMobiusUris} from '../common/Utils';
 import {URL} from './registration/registerFixtures';
 import {ICall} from './calling/types';
 import {ServiceHost} from '../SDKConnector/types';
@@ -62,6 +68,7 @@ jest.mock('../mobius-socket', () => ({
   getMobiusSocketInstance: jest.fn().mockReturnValue({
     sendWssRequest: jest.fn(),
     connect: jest.fn(),
+    isConnected: jest.fn().mockReturnValue(false),
     on: jest.fn(),
     off: jest.fn(),
   }),
@@ -446,6 +453,161 @@ describe('CallingClient Tests', () => {
     it('verify getLines response', () => {
       expect(callingClient.getLines).toBeTruthy();
       expect(callingClient.getLines()).toEqual(callingClient.lineDict);
+    });
+  });
+
+  describe('createLine transport URI selection', () => {
+    let callingClient;
+    let lineCtorSpy: jest.SpyInstance;
+
+    const primaryHttp = ['https://primary.example.com/api/v1/calling/web/'];
+    const backupHttp = ['https://backup.example.com/api/v1/calling/web/'];
+    const primaryWss = ['wss://primary.example.com/api/v1/calling/web/'];
+    const backupWss = ['wss://backup.example.com/api/v1/calling/web/'];
+
+    beforeEach(async () => {
+      // createClient builds a real Line; stub the constructor afterwards so the explicit
+      // createLine() call below records the URIs passed to Line without registering for real.
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+      callingClient.primaryMobiusUris = primaryHttp;
+      callingClient.backupMobiusUris = backupHttp;
+      lineCtorSpy = jest
+        .spyOn(LineModule, 'default')
+        .mockImplementation(() => ({lineId: 'mock-line-id'} as unknown as Line));
+    });
+
+    afterEach(() => {
+      lineCtorSpy.mockRestore();
+      jest.clearAllMocks();
+      callingClient.removeAllListeners();
+      callManager.removeAllListeners();
+      callingClient = undefined;
+    });
+
+    const getLineUris = () => {
+      const ctorArgs = lineCtorSpy.mock.calls[0];
+
+      return {primary: ctorArgs[3], backup: ctorArgs[4]};
+    };
+
+    it('uses normalized WSS URIs for both groups when socket is enabled and WSS URIs are present', () => {
+      jest.spyOn(callingClient['apiRequest'], 'isSocketEnabled').mockReturnValue(true);
+      callingClient.primaryWssMobiusUris = primaryWss;
+      callingClient.backupWssMobiusUris = backupWss;
+
+      callingClient['createLine']();
+
+      const {primary, backup} = getLineUris();
+      expect(primary).toEqual(normalizeMobiusUris(primaryWss));
+      expect(backup).toEqual(normalizeMobiusUris(backupWss));
+    });
+
+    it('falls back to HTTP URIs for a group with no WSS URL even when the socket is enabled', () => {
+      jest.spyOn(callingClient['apiRequest'], 'isSocketEnabled').mockReturnValue(true);
+      // Primary has no WSS URL (HTTP fallback expected) while backup does.
+      callingClient.primaryWssMobiusUris = [];
+      callingClient.backupWssMobiusUris = backupWss;
+
+      callingClient['createLine']();
+
+      const {primary, backup} = getLineUris();
+      expect(primary).toEqual(primaryHttp);
+      expect(backup).toEqual(normalizeMobiusUris(backupWss));
+    });
+
+    it('uses HTTP URIs for both groups when the socket is enabled but no WSS URLs are present', () => {
+      jest.spyOn(callingClient['apiRequest'], 'isSocketEnabled').mockReturnValue(true);
+      callingClient.primaryWssMobiusUris = [];
+      callingClient.backupWssMobiusUris = [];
+
+      callingClient['createLine']();
+
+      const {primary, backup} = getLineUris();
+      expect(primary).toEqual(primaryHttp);
+      expect(backup).toEqual(backupHttp);
+    });
+
+    it('uses HTTP URIs for both groups when the socket is disabled', () => {
+      jest.spyOn(callingClient['apiRequest'], 'isSocketEnabled').mockReturnValue(false);
+      callingClient.primaryWssMobiusUris = primaryWss;
+      callingClient.backupWssMobiusUris = backupWss;
+
+      callingClient['createLine']();
+
+      const {primary, backup} = getLineUris();
+      expect(primary).toEqual(primaryHttp);
+      expect(backup).toEqual(backupHttp);
+    });
+  });
+
+  describe('connectToMobiusSocket', () => {
+    let callingClient;
+    let connectSpy: jest.SpyInstance;
+
+    const primaryWss = [
+      'wss://primary-1.example.com/api/v1/calling/web/',
+      'wss://primary-2.example.com/api/v1/calling/web/',
+    ];
+    const backupWss = ['wss://backup.example.com/api/v1/calling/web/'];
+
+    beforeEach(async () => {
+      callingClient = await createClient(webex, {logger: {level: LOGGER.INFO}});
+      connectSpy = jest.spyOn(callingClient['apiRequest'], 'connectToMobiusSocket');
+      warnSpy.mockClear();
+    });
+
+    afterEach(() => {
+      jest.clearAllMocks();
+      callingClient.removeAllListeners();
+      callManager.removeAllListeners();
+      callingClient = undefined;
+    });
+
+    it('skips the socket connection and warns when no primary WSS URIs are available', async () => {
+      callingClient.primaryWssMobiusUris = [];
+      callingClient.backupWssMobiusUris = backupWss;
+
+      await callingClient['connectToMobiusSocket']();
+
+      expect(connectSpy).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        'No WSS URIs available from Mobius discovery for primary, skipping socket connection',
+        {file: CALLING_CLIENT_FILE, method: 'connectToMobiusSocket'}
+      );
+    });
+
+    it('connects using the first reachable primary WSS URI and stops on success', async () => {
+      callingClient.primaryWssMobiusUris = primaryWss;
+      connectSpy.mockResolvedValue(undefined);
+
+      await callingClient['connectToMobiusSocket']();
+
+      expect(connectSpy).toHaveBeenCalledTimes(1);
+      expect(connectSpy).toHaveBeenCalledWith(primaryWss[0]);
+    });
+
+    it('tries each primary WSS URI and warns when all attempts fail', async () => {
+      callingClient.primaryWssMobiusUris = primaryWss;
+      connectSpy.mockRejectedValue(new Error('connect failed'));
+
+      await callingClient['connectToMobiusSocket']();
+
+      expect(connectSpy).toHaveBeenCalledTimes(primaryWss.length);
+      expect(connectSpy).toHaveBeenNthCalledWith(1, primaryWss[0]);
+      expect(connectSpy).toHaveBeenNthCalledWith(2, primaryWss[1]);
+      expect(warnSpy).toHaveBeenCalledWith('All primary WSS URI connection attempts failed', {
+        file: CALLING_CLIENT_FILE,
+        method: 'connectToMobiusSocket',
+      });
+    });
+
+    it('does not attempt backup WSS URIs when primary WSS URIs are absent', async () => {
+      callingClient.primaryWssMobiusUris = [];
+      callingClient.backupWssMobiusUris = backupWss;
+
+      await callingClient['connectToMobiusSocket']();
+
+      expect(connectSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -902,6 +1064,83 @@ describe('CallingClient Tests', () => {
         })
       );
     });
+  });
+
+  describe('Mobius socket connection events', () => {
+    let callingClient: ICallingClient;
+    let mobiusSocketMock;
+
+    const getSocketHandlerFor = (eventName: string) => {
+      const onCall = (mobiusSocketMock.on as jest.Mock).mock.calls.find(
+        (call) => call[0] === eventName
+      );
+
+      return onCall[1];
+    };
+
+    beforeEach(async () => {
+      webex.internal.device.features.developer.get = jest.fn().mockReturnValue({value: true});
+      APIRequest.resetInstance();
+      APIRequest.getInstance({webex});
+
+      mobiusSocketMock = (
+        jest.requireMock('../mobius-socket') as {
+          getMobiusSocketInstance: (w: unknown) => unknown;
+        }
+      ).getMobiusSocketInstance(webex) as {
+        on: jest.Mock;
+        off: jest.Mock;
+        isConnected: jest.Mock;
+      };
+      (mobiusSocketMock.on as jest.Mock).mockClear();
+      (mobiusSocketMock.off as jest.Mock).mockClear();
+      (mobiusSocketMock.isConnected as jest.Mock).mockReturnValue(false);
+
+      callingClient = await createClient(webex, {
+        logger: {level: LOGGER.INFO},
+      });
+    });
+
+    afterEach(() => {
+      callingClient.removeAllListeners();
+      callManager.removeAllListeners();
+      webex.internal.device.features.developer.get = jest.fn().mockReturnValue({value: false});
+    });
+
+    it('emits MOBIUS_SOCKET_CONNECTED when the socket comes online', () => {
+      const listener = jest.fn();
+      callingClient.on(CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_CONNECTED, listener);
+
+      getSocketHandlerFor('online')();
+
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['offline.permanent', MOBIUS_SOCKET_DISCONNECT_REASON.PERMANENT],
+      ['offline.transient', MOBIUS_SOCKET_DISCONNECT_REASON.TRANSIENT],
+      ['offline.replaced', MOBIUS_SOCKET_DISCONNECT_REASON.REPLACED],
+    ])(
+      'emits MOBIUS_SOCKET_DISCONNECTED with the matching reason when %s fires',
+      (eventName, reason) => {
+        const listener = jest.fn();
+        callingClient.on(CALLING_CLIENT_EVENT_KEYS.MOBIUS_SOCKET_DISCONNECTED, listener);
+
+        getSocketHandlerFor(eventName as string)();
+
+        expect(listener).toHaveBeenCalledTimes(1);
+        expect(listener).toHaveBeenCalledWith({reason});
+      }
+    );
+
+    it.each([true, false])(
+      'isMobiusSocketConnected() reflects the underlying socket state (%s) when WSS is enabled',
+      (connected) => {
+        (mobiusSocketMock.isConnected as jest.Mock).mockReturnValue(connected);
+
+        expect(callingClient.isMobiusSocketConnected()).toBe(connected);
+      }
+    );
   });
 
   describe('getDevices', () => {
