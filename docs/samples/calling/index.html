@@ -150,7 +150,7 @@
                 class="btn-code">getMediaStreams()</button>
             </div>
             <div class="u-mv">
-              <button id="bnr-button" type="button" onclick="toggleNoiseReductionEffect()" 
+              <button id="bnr-button" type="button" onclick="toggleNoiseReductionEffect()"
                 class="btn-code">Enable BNR</button>
             </div>
           </fieldset>
@@ -293,14 +293,7 @@
               </div>
             </fieldset>
 
-            <!-- calling / incoming -->
-            <fieldset id="incomingsection" class="hidden">
-              <legend>Incoming Call</legend>
-              <div class="u-mv">
-                <button onclick="answer(this)" id="answer" class="btn--green">Answer</button>
-                <button onclick="reject(this)" id="reject" class="btn--red">Reject</button>
-              </div>
-            </fieldset>
+
             <!-- Call history section -->
             <fieldset id="callHistorysection">
               <legend>Call History</legend>
@@ -473,7 +466,7 @@
                       <div class="u-mv">
                         <label>When not answered
                           <input type="checkbox" id="vmNotAnsweredCb" name="vmNotAnsweredCb" checked="" onchange="changeElementVisibility(document.getElementById('vmNotAnsweredCb'),
-                              document.getElementById('notAnsweredRings'))" disabled="true">
+                              document.getElementById('vmNotAnsweredRings'))" disabled="true">
                           <input type="string" id="vmNotAnsweredRings" name="vmNotAnsweredRings"
                             placeholder="Number of rings" disabled="true">
                         </label>

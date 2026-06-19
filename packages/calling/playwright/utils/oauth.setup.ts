@@ -75,7 +75,10 @@ const fetchAccessToken = async (
     await page.getByRole('textbox', {name: 'name@example.com'}).press('Enter');
 
     // 4. Enter password and click Sign In
-    await page.getByPlaceholder('Password').fill(password, {timeout: 15000});
+    const passwordInput = page
+      .locator('input#IDToken2[name="IDToken2"][type="password"]')
+      .or(page.getByPlaceholder('Password'));
+    await passwordInput.fill(password, {timeout: 15000});
     await page.getByRole('button', {name: 'Sign In'}).click();
 
     // 5. Wait for redirect back to getting-started page
