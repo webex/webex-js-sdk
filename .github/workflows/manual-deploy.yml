@@ -1,12 +1,12 @@
 name: Manual Deploy
-run-name: ${{ github.actor }} is manually deploying packages to version ${{ inputs.version }}
+run-name: ${{ github.actor }} is manually ${{ inputs.dry-run && 'dry-running' || 'deploying' }} packages${{ inputs.version && format(' (v{0})', inputs.version) || ' (auto version)' }}
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version number to deploy (e.g., 1.2.3, 1.2.3-beta.1, 1.2.3+build.5)'
-        required: true
+        description: 'Version number to deploy (e.g., 1.2.3, 1.2.3-beta.1, 1.2.3+build.5). Leave blank to auto-generate a minor bump of the current stable release.'
+        required: false
         type: string
       dist-tag:
         description: 'NPM dist-tag to publish under'
@@ -18,11 +18,17 @@ on:
           - next
           - beta
           - alpha
+      dry-run:
+        description: 'Dry run — validate packaging without publishing to NPM, pushing docs, or creating a git tag.'
+        required: false
+        type: boolean
+        default: false
 
 # Prevent concurrent manual deploys for the same version from racing on the
-# documentation force-push and tag creation.
+# documentation force-push and tag creation. Auto-version runs (blank version)
+# fall back to the run id so they do not serialize against each other.
 concurrency:
-  group: manual-deploy-${{ inputs.version }}
+  group: manual-deploy-${{ inputs.version || github.run_id }}
   cancel-in-progress: false
 
 env:
@@ -64,6 +70,12 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
         run: |
+          # A blank version is valid: the build job auto-generates a minor bump
+          # of the current stable release. Only validate an explicitly entered one.
+          if [ -z "$VERSION" ]; then
+            echo "No version provided; it will be auto-generated during the build job."
+            exit 0
+          fi
           if ! grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$' <<< "$VERSION"; then
             echo "Error: Version '$VERSION' is not a valid semver string."
             echo "Expected format: x.y.z, x.y.z-prerelease, or x.y.z+build (e.g., 1.2.3, 1.2.3-beta.1)"
@@ -100,6 +112,7 @@ jobs:
 
     outputs:
       packages: ${{ steps.list.outputs.packages }}
+      version: ${{ steps.resolve-version.outputs.version }}
 
     steps:
       - name: Checkout Project
@@ -147,6 +160,29 @@ jobs:
           fi
           echo "packages=$PACKAGES" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve deploy version
+        id: resolve-version
+        # When the operator supplies a version it is used verbatim. When the
+        # input is blank we auto-generate a minor bump of the current stable
+        # (`latest`) release of the `webex` package — e.g. 3.12.0 -> 3.13.0 —
+        # which is then applied uniformly to every publishable package. The
+        # `increment` command prints `webex => x.y.z`; we take the version after
+        # the arrow.
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$VERSION" ]; then
+            echo "Using operator-provided version: $VERSION"
+          else
+            VERSION=$(yarn package-tools increment --packages webex --tag latest --minor 1 | awk -F' => ' '{print $2}' | tr -d '[:space:]')
+            if [ -z "$VERSION" ]; then
+              echo "::error::Failed to auto-generate a version." >&2
+              exit 1
+            fi
+            echo "Auto-generated version (minor bump of current stable): $VERSION"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Cache Distributables
         uses: actions/cache@v4
         with:
@@ -192,17 +228,22 @@ jobs:
         # the requested version into every publishable package.json.
         # Internal package deps use `workspace:*` and don't need rewriting.
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ needs.build.outputs.version }}
           PACKAGES: ${{ needs.build.outputs.packages }}
         run: yarn workspaces foreach --from "$PACKAGES" exec npm pkg set version="$VERSION"
 
       - name: Display Package Information
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ needs.build.outputs.version }}
           DIST_TAG: ${{ inputs.dist-tag }}
+          DRY_RUN: ${{ inputs.dry-run }}
         run: |
           echo "Setting all packages to version: $VERSION"
-          echo "Packages will be published with '$DIST_TAG' tag"
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "DRY RUN: packaging will be validated but NOT published to NPM."
+          else
+            echo "Packages will be published with '$DIST_TAG' tag"
+          fi
 
       - name: Build all packages for publish
         run: yarn run build:publish
@@ -211,22 +252,35 @@ jobs:
         run: yarn run build:script
 
       - name: Add NPM token to .yarnrc.yml file
+        if: ${{ inputs.dry-run != true }}
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           echo "npmAuthToken: $NPM_TOKEN" >> ~/.yarnrc.yml
 
       - name: Deploy Packages
+        if: ${{ inputs.dry-run != true }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           DIST_TAG: ${{ inputs.dist-tag }}
           PACKAGES: ${{ needs.build.outputs.packages }}
         run: yarn workspaces foreach --from "$PACKAGES" --verbose run deploy:npm --access public --tag "$DIST_TAG"
 
+      - name: Deploy Packages (Dry Run)
+        if: ${{ inputs.dry-run == true }}
+        # `yarn npm publish` has no `--dry-run`, so use `yarn pack --dry-run`,
+        # which resolves `workspace:*` deps and exercises the full packaging
+        # path (file selection, prepack scripts) without uploading anything.
+        env:
+          PACKAGES: ${{ needs.build.outputs.packages }}
+        run: yarn workspaces foreach --from "$PACKAGES" --verbose pack --dry-run
+
   publish-documentation:
     name: Publish - Documentation
     needs: [build, publish-npm]
     runs-on: ubuntu-latest
+    # A dry run validates packaging only; it must not force-push docs.
+    if: ${{ inputs.dry-run != true }}
 
     steps:
       - name: Checkout Project
@@ -258,7 +312,7 @@ jobs:
 
       - name: Build tools and set versions
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ needs.build.outputs.version }}
           PACKAGES: ${{ needs.build.outputs.packages }}
         run: |
           yarn workspaces foreach --from '@webex/*-tools' --topological-dev --parallel --verbose run build:src
@@ -301,7 +355,7 @@ jobs:
 
       - name: Update Changelog and Publish Docs Folder
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ needs.build.outputs.version }}
         run: |
           if [ -n "$(git status --porcelain)" ]; then
             git add docs/
@@ -314,7 +368,9 @@ jobs:
   publish-tag:
     name: Publish - Tags
     runs-on: ubuntu-latest
-    needs: [publish-npm, publish-documentation]
+    needs: [build, publish-npm, publish-documentation]
+    # A dry run validates packaging only; it must not create or push a git tag.
+    if: ${{ inputs.dry-run != true }}
 
     outputs:
       message: ${{ steps.versionextractor.outputs.message }}
@@ -347,7 +403,7 @@ jobs:
       - name: Extract latest version and commit message
         id: versionextractor
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ needs.build.outputs.version }}
         run: |
           {
             echo 'message<<EOF'
@@ -359,7 +415,7 @@ jobs:
       - name: Conditions to skip tag publish
         id: skipcondition
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ needs.build.outputs.version }}
         run: |
           if git rev-parse "v$VERSION" >/dev/null 2>&1; then
             echo "Tag v$VERSION already exists. Skipping tag creation."
