@@ -43,22 +43,29 @@ jobs:
 
     steps:
       # workflow_dispatch already restricts triggers to actors with write access,
-      # but publishing to NPM is sensitive enough to gate behind an explicit
-      # allowlist of maintainers permitted to run a manual release.
-      - name: Check actor against allowlist
+      # but publishing to NPM is sensitive enough to gate behind membership of
+      # the cypher-sdk-release-team. The default GITHUB_TOKEN cannot read org
+      # team membership, so this uses ORG_READ_TOKEN (a token with the org
+      # "Members: read" permission). The team's actual membership is the single
+      # source of truth — no usernames are hardcoded here.
+      - name: Check actor is on the release team
         env:
+          GH_TOKEN: ${{ secrets.ORG_READ_TOKEN }}
           ACTOR: ${{ github.actor }}
-          ALLOWED_ACTORS: |
-            mkesavan13
-            bhabalan
+          ORG: webex
+          TEAM_SLUG: cypher-sdk-release-team
         run: |
-          if ! grep -Fxq "$ACTOR" <<< "$ALLOWED_ACTORS"; then
-            echo "::error::Actor '$ACTOR' is not authorized to run the manual deploy workflow."
-            echo "Authorized actors:"
-            echo "$ALLOWED_ACTORS"
+          # The memberships endpoint returns 200 with state "active" for current
+          # members, 200 with state "pending" for invited-but-not-joined users,
+          # and 404 for everyone else. Only an active membership authorizes a run.
+          STATE=$(gh api \
+            "orgs/$ORG/teams/$TEAM_SLUG/memberships/$ACTOR" \
+            --jq '.state' 2>/dev/null) || STATE=""
+          if [ "$STATE" != "active" ]; then
+            echo "::error::Actor '$ACTOR' is not an active member of @$ORG/$TEAM_SLUG and is not authorized to run the manual deploy workflow."
             exit 1
           fi
-          echo "Actor '$ACTOR' is authorized."
+          echo "Actor '$ACTOR' is an active member of @$ORG/$TEAM_SLUG; authorized."
 
   initialize:
     name: Initialize Project
