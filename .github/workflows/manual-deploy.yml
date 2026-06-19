@@ -179,23 +179,45 @@ jobs:
 
       - name: Resolve publishable packages
         id: list
-        # Resolve the set of non-private workspaces once, the single source of
+        # Resolve the set of packages to release once, the single source of
         # truth for which packages get version-set, published, and changelogged.
+        #
+        # `package-tools list` returns every non-private workspace, but a few
+        # (e.g. @webex/test-webex-node) have no `deploy:npm` script — Yarn's
+        # `foreach run` silently skips those, so the real publish omits them
+        # while version-set/changelog would still touch them. Filter to
+        # workspaces that actually define `deploy:npm` so all three operate on
+        # an identical, genuinely-publishable set.
+        #
         # Two forms are emitted because consumers need different shapes:
-        #   - `packages` (node mode): a space-separated list, passed unquoted to
+        #   - `packages` (space-separated): passed unquoted to
         #     `package-tools changelog --packages` as variadic args.
-        #   - `packages-glob` (yarn mode): a single `{a,b,c}` brace pattern that
-        #     `yarn workspaces foreach --from` accepts as one glob ident. The
-        #     space-separated list does NOT work with `--from`: quoted it is a
-        #     single glob containing spaces (matches nothing); unquoted only the
-        #     first word becomes `--from` and the rest are misparsed.
+        #   - `packages-glob` (`{a,b,c}` brace pattern): the single glob ident
+        #     `yarn workspaces foreach --from` expects. The space-separated list
+        #     does NOT work with `--from`: quoted it is one glob containing
+        #     spaces (matches nothing); unquoted only the first word is read.
         run: |
-          PACKAGES=$(yarn package-tools list --mode node)
-          PACKAGES_GLOB=$(yarn package-tools list --mode yarn)
-          if [ -z "$PACKAGES" ] || [ -z "$PACKAGES_GLOB" ]; then
+          # `workspaces list --json` emits one {location,name} object per line;
+          # keep names whose package.json has a deploy:npm script.
+          PACKAGES=$(yarn workspaces list --json --no-private \
+            | node -e '
+              const fs = require("fs");
+              const path = require("path");
+              const names = [];
+              for (const line of fs.readFileSync(0, "utf8").split("\n")) {
+                if (!line.trim()) continue;
+                const { location, name } = JSON.parse(line);
+                const pkg = JSON.parse(fs.readFileSync(path.join(location, "package.json"), "utf8"));
+                if (pkg.scripts && pkg.scripts["deploy:npm"]) names.push(name);
+              }
+              process.stdout.write(names.join(" "));
+            ')
+          if [ -z "$PACKAGES" ]; then
             echo "::error::No publishable packages resolved." >&2
             exit 1
           fi
+          # Build the `{a,b,c}` brace glob from the same filtered set.
+          PACKAGES_GLOB="{$(echo "$PACKAGES" | tr ' ' ',')}"
           echo "packages=$PACKAGES" >> "$GITHUB_OUTPUT"
           echo "packages-glob=$PACKAGES_GLOB" >> "$GITHUB_OUTPUT"
 
