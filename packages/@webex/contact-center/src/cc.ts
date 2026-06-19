@@ -357,6 +357,7 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
     this.$webex.once(READY, () => {
       // @ts-ignore
       this.$config = this.config;
+      this.validatePluginConfig();
 
       /**
        * This is used for handling the async requests by sending webex.request and wait for corresponding websocket event.
@@ -743,6 +744,21 @@ export default class ContactCenter extends WebexPlugin implements IContactCenter
    */
   private isWebRTCRegistrationDisabled(): boolean {
     return this.$config?.disableWebRTCRegistration === true;
+  }
+
+  /**
+   * Validates contact-center plugin configuration before service initialization
+   * @private
+   */
+  private validatePluginConfig(): void {
+    if (
+      this.$config?.disableWebRTCRegistration === true &&
+      this.$config?.allowMultiLogin === false
+    ) {
+      throw new Error(
+        'Invalid Contact Center configuration: disableWebRTCRegistration cannot be true when allowMultiLogin is false. Enable allowMultiLogin or allow WebRTC registration so an SDK instance can receive Mobius/WebRTC task events.'
+      );
+    }
   }
 
   /**

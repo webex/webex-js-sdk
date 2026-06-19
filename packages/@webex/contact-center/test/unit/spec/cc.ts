@@ -202,6 +202,35 @@ describe('webex.cc', () => {
     webex.emit('ready');
   });
 
+  it('should throw when WebRTC registration is disabled without multi-login', () => {
+    const invalidWebex = MockWebex({
+      children: {
+        mercury: Mercury,
+      },
+      logger: {
+        log: jest.fn(),
+        error: jest.fn(),
+        info: jest.fn(),
+      },
+      credentials: {
+        getOrgId: jest.fn(() => 'mockOrgId'),
+      },
+      config: {
+        ...config,
+        cc: {
+          ...config.cc,
+          allowMultiLogin: false,
+          disableWebRTCRegistration: true,
+        },
+      },
+      once: jest.fn((event, callback) => callback()),
+    }) as unknown as WebexSDK;
+
+    expect(() => new ContactCenter({parent: invalidWebex})).toThrow(
+      'Invalid Contact Center configuration: disableWebRTCRegistration cannot be true when allowMultiLogin is false. Enable allowMultiLogin or allow WebRTC registration so an SDK instance can receive Mobius/WebRTC task events.'
+    );
+  });
+
   describe('cc.getDeviceId', () => {
     it('should return dialNumber when loginOption is EXTENSION', () => {
       const loginOption = LoginOption.EXTENSION;
