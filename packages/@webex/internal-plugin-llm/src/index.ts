@@ -4,6 +4,9 @@ import {DataChannelTokenType} from './llm.types';
 
 WebexCore.registerInternalPlugin('llm', LLMPlugin, {
   config,
+  onBeforeLogout() {
+    return this.disconnectAllLLM();
+  },
 });
 
 export {DataChannelTokenType};

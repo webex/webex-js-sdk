@@ -277,8 +277,8 @@ const Webinar = WebexPlugin.extend({
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(
         datachannelToken,
-        dataChannelTokenType || LLM_PRACTICE_SESSION,
-        this.meetingId
+        this.meetingId,
+        dataChannelTokenType || LLM_PRACTICE_SESSION
       );
 
       return datachannelToken;

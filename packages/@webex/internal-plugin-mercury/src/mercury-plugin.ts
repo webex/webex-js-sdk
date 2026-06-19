@@ -56,12 +56,13 @@ export class MercuryPlugin extends (WebexPlugin as any) {
     return this._mercury.disconnect(options);
   }
 
-  disconnectAll(options?: any): Promise<void> {
-    return this._mercury.disconnectAll(options);
-  }
-
   logout(): Promise<void> {
-    return this._mercury.logout();
+    const normalReconnectReasons = ['idle', 'done (forced)', 'pong not received', 'pong mismatch'];
+    const reason = this.config.beforeLogoutOptionsCloseReason;
+    const options =
+      reason && !normalReconnectReasons.includes(reason) ? {code: 3050, reason} : undefined;
+
+    return this._mercury.disconnect(options);
   }
 
   processRegistrationStatusEvent(message: any): void {

@@ -6615,15 +6615,15 @@ export default class Meeting extends StatelessWebexPlugin {
 
     if (datachannelToken) {
       // @ts-ignore
-      this.webex.internal.llm.setDatachannelToken(datachannelToken, LLM_DEFAULT_SESSION, this.id);
+      this.webex.internal.llm.setDatachannelToken(datachannelToken, this.id, LLM_DEFAULT_SESSION);
     }
 
     if (practiceSessionDatachannelToken) {
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(
         practiceSessionDatachannelToken,
-        LLM_PRACTICE_SESSION,
-        this.id
+        this.id,
+        LLM_PRACTICE_SESSION
       );
     }
   }
@@ -6661,8 +6661,8 @@ export default class Meeting extends StatelessWebexPlugin {
       // @ts-ignore
       this.webex.internal.llm.setDatachannelToken(
         fetchedDatachannelToken,
-        LLM_DEFAULT_SESSION,
-        this.id
+        this.id,
+        LLM_DEFAULT_SESSION
       );
 
       return true;

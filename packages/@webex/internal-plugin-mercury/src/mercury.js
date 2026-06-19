@@ -198,17 +198,6 @@ const Mercury = WebexPlugin.extend({
     });
   },
 
-  logout() {
-    this.logger.info(`${this.namespace}: logout() called`);
-
-    return this.disconnect(
-      this.config.beforeLogoutOptionsCloseReason &&
-        !normalReconnectReasons.includes(this.config.beforeLogoutOptionsCloseReason)
-        ? {code: 3050, reason: this.config.beforeLogoutOptionsCloseReason}
-        : undefined
-    );
-  },
-
   disconnect(options) {
     this.logger.info(
       `${this.namespace}#disconnect: connecting state: ${this.connecting}, connected state: ${
