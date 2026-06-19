@@ -20,8 +20,6 @@ export class LLMPlugin extends (WebexPlugin as any) {
 
   private sessions = new Map<string, LLMChannel>();
 
-  private connectingPromises = new Map<string, Promise<void>>();
-
   private getOrCreateSession(sessionId: string): LLMChannel {
     let channel = this.sessions.get(sessionId);
 
@@ -59,14 +57,12 @@ export class LLMPlugin extends (WebexPlugin as any) {
     datachannelToken?: string,
     sessionId: string = LLM_DEFAULT_SESSION
   ): Promise<void> {
-    // Deduplicate concurrent calls for the same session while a connection is in-flight.
-    const inProgress = this.connectingPromises.get(sessionId);
-
-    if (inProgress) {
-      return inProgress;
-    }
-
     const channel = this.getOrCreateSession(sessionId);
+
+    // Deduplicate concurrent calls for the same session while a connection is in-flight.
+    if (channel.connectingPromise) {
+      return channel.connectingPromise;
+    }
 
     // If the channel is already connected to the exact same datachannel URL,
     // there is nothing to do — avoid triggering a reconnect that would cause
@@ -82,10 +78,10 @@ export class LLMPlugin extends (WebexPlugin as any) {
     const promise = channel
       .registerAndConnect(locusUrl, datachannelUrl, datachannelToken)
       .finally(() => {
-        this.connectingPromises.delete(sessionId);
+        channel.connectingPromise = undefined;
       });
 
-    this.connectingPromises.set(sessionId, promise);
+    channel.connectingPromise = promise;
 
     return promise;
   }

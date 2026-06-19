@@ -7,7 +7,7 @@ import {
   AWARE_DATA_CHANNEL,
   SUBSCRIPTION_AWARE_SUBCHANNELS_PARAM,
 } from './constants';
-import {DataChannelTokenType} from './llm.types';
+import {DataChannelTokenType, ILLMChannel} from './llm.types';
 
 export const config = {
   llm: {
@@ -45,7 +45,7 @@ export const config = {
  * Session-level routing (multiple connections keyed by sessionId) is handled
  * by LLMPlugin, which owns a Map<sessionId, LLMChannel>.
  */
-export default class LLMChannel extends (Mercury as any) {
+export default class LLMChannel extends (Mercury as any) implements ILLMChannel {
   namespace = LLM;
 
   private webSocketUrl?: string;
@@ -59,6 +59,9 @@ export default class LLMChannel extends (Mercury as any) {
 
   /** Owning meeting ID — set by LLMPlugin to prevent cross-meeting teardown. */
   public ownerMeetingId?: string;
+
+  /** In-flight connection promise for deduplication — set/cleared by LLMPlugin. */
+  public connectingPromise?: Promise<void>;
 
   /**
    * The LLM data-channel does not send a mercury.buffer_state acknowledgement,
@@ -108,7 +111,6 @@ export default class LLMChannel extends (Mercury as any) {
     datachannelUrl: string,
     datachannelToken?: string
   ): Promise<void> => {
-    // Store directly on the instance — no session map needed
     this.locusUrl = locusUrl;
     this.datachannelUrl = datachannelUrl;
 
