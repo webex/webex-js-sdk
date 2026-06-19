@@ -6771,17 +6771,6 @@ export default class Meeting extends StatelessWebexPlugin {
       refreshHandlerOwnerMeetingId
     );
 
-    // Register event listeners before calling registerAndConnect so relay
-    // events (e.g. reactions) are handled even if connect() is slow to resolve.
-    // @ts-ignore - Fix type
-    this.webex.internal.llm.off('event:relay.event', this.processRelayEvent);
-    // @ts-ignore - Fix type
-    this.webex.internal.llm.on('event:relay.event', this.processRelayEvent);
-    // @ts-ignore - Fix type
-    this.webex.internal.llm.off(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
-    // @ts-ignore - Fix type
-    this.webex.internal.llm.on(LOCUS_LLM_EVENT, this.processLocusLLMEvent);
-
     // @ts-ignore - Fix type
     return this.webex.internal.llm
       .registerAndConnect(url, dataChannelUrl, datachannelToken)
