@@ -1501,6 +1501,8 @@ function toggleButton(eleButton, disableText, enableText) {
 
 function fetchLines() {
   line = Object.values(callingClient.getLines())[0];
+  // Expose line on window for Playwright tests
+  window.line = line;
 }
 
 async function fetchDNDSetting() {

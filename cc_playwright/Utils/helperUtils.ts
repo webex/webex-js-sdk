@@ -19,10 +19,26 @@ import {
   EXTENSION_REGISTRATION_TIMEOUT,
 } from '../constants';
 import {submitWrapup} from './wrapupUtils';
-import {holdCallToggle, isCallHeld} from './taskControlUtils';
-import {submitRonaPopup} from './incomingTaskUtils';
-import {loginViaAccessToken, initializeSdk, registerContactCenter} from './initUtils';
-import {stationLogout, telephonyLogin} from './stationLoginUtils';
+import {endTask, holdCallToggle, isCallHeld} from './taskControlUtils';
+import {declineCurrentTaskModel, endCurrentTaskModel, submitRonaPopup} from './incomingTaskUtils';
+import {
+  loginViaAccessToken,
+  initializeSdk,
+  registerContactCenter,
+  setMultiLoginToggle,
+} from './initUtils';
+import {findVisibleEnabledActionButton} from './controlUtils';
+import {
+  hasBrokenStationState,
+  hasStationReadyState,
+  stationLogout,
+  telephonyLogin,
+} from './stationLoginUtils';
+
+export const sleep = (timeoutMs: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, timeoutMs);
+  });
 
 /**
  * Parses a time string in MM:SS format and converts it to total seconds
@@ -60,9 +76,7 @@ async function waitForConsoleMessage(
     if (consoleMessages.find(predicate)) {
       return true;
     }
-    await new Promise((resolve) => {
-      setTimeout(resolve, 100);
-    });
+    await sleep(100);
   }
 
   return false;
@@ -158,9 +172,7 @@ async function waitForLogValue<T extends string>(
       // Ignore error if no log yet
     }
     if (Date.now() - start > timeoutMs) throw new Error(errorMsg);
-    await new Promise((res) => {
-      setTimeout(res, 300);
-    });
+    await sleep(300);
   }
 }
 
@@ -238,19 +250,41 @@ export function isColorClose(
   return true;
 }
 
-/**
- * Handles stray incoming tasks by accepting them and performing wrap-up actions, to be used for clean up before tests
- * @param page - Playwright Page object
- * @param extensionPage - Optional extension page for handling calls (default: null)
- * @param maxIterations - Maximum number of iterations to prevent infinite loops (default: 10)
- * @returns Promise<void>
- * @description Checks in order: RONA popup → incoming tasks → end button → wrapup button
- *              Continues until nothing actionable is found or maxIterations reached
- * @example
- * ```typescript
- * await handleStrayTasks(page, extensionPage);
- * ```
- */
+export const clearClosedDigitalTaskUi = async (page: Page): Promise<boolean> =>
+  page
+    .evaluate(() => {
+      const bodyText = document.body.innerText.toLowerCase();
+      const hasClosedDigitalTask =
+        bodyText.includes('customer has ended the chat') ||
+        bodyText.includes('closed|') ||
+        bodyText.includes('submitted_1');
+
+      if (!hasClosedDigitalTask) {
+        return false;
+      }
+
+      document
+        .querySelectorAll('#taskList .task-item, #taskList .task-item-content')
+        .forEach((element) => element.remove());
+
+      const taskList = document.querySelector('#taskList');
+      if (taskList && !taskList.textContent?.toLowerCase().includes('no tasks available')) {
+        const emptyText = document.createElement('p');
+        emptyText.textContent = 'No tasks available';
+        taskList.appendChild(emptyText);
+      }
+
+      const incomingTask = document.querySelector('#incoming-task');
+      if (incomingTask?.textContent?.toLowerCase().includes('chat')) {
+        incomingTask.textContent = 'No Incoming Tasks';
+      }
+
+      (globalThis as typeof globalThis & {currentTask?: unknown}).currentTask = undefined;
+
+      return true;
+    })
+    .catch(() => false);
+
 export const handleStrayTasks = async (
   page: Page,
   extensionPage: Page | null = null,
@@ -325,6 +359,30 @@ export const handleStrayTasks = async (
     // ============================================
     // STEP 3b: Check for end button (end active calls before accepting new ones)
     // ============================================
+    const visibleEndActionEnabled = Boolean(
+      await findVisibleEnabledActionButton(page, 'End', '#end')
+    );
+    const legacyEndActionEnabled = await page
+      .locator('#end')
+      .first()
+      .evaluate((el) => !(el as HTMLButtonElement).disabled)
+      .catch(() => false);
+
+    if (visibleEndActionEnabled || legacyEndActionEnabled) {
+      try {
+        await endTask(page);
+        const wrapupAfterEnd = await wrapupButton.isVisible().catch(() => false);
+        if (wrapupAfterEnd) {
+          await submitWrapup(page, WRAPUP_REASONS.SALE);
+        }
+        actionTaken = true;
+        await page.waitForTimeout(300);
+        continue;
+      } catch {
+        /* Fall back to the legacy cleanup path below */
+      }
+    }
+
     const allEndButtons = page.locator('#end');
     const endButtonCount = await allEndButtons.count().catch(() => 0);
     let endButton = allEndButtons.first();
@@ -441,6 +499,7 @@ export const handleStrayTasks = async (
       const task = incomingTaskDiv;
       const taskText = await task.innerText().catch(() => '');
       const isExtensionCall = taskText.includes('Ringing...');
+      const isDigitalIncomingTask = /chat from|email from|social/i.test(taskText);
 
       if (isExtensionCall) {
         // Extension call - try extensionPage first, fallback to waiting for RONA
@@ -466,23 +525,11 @@ export const handleStrayTasks = async (
                 continue;
               }
               await page.waitForTimeout(500);
-              // After accepting, immediately try to end and wrapup
-              // Sample app uses #end button
-              const endBtnAfterAccept = page.locator('#end');
-              const endVisibleAfterAccept = await endBtnAfterAccept.isVisible().catch(() => false);
-              if (endVisibleAfterAccept) {
-                const endEnabledAfterAccept = await endBtnAfterAccept
-                  .isEnabled()
-                  .catch(() => false);
-                if (endEnabledAfterAccept) {
-                  await endBtnAfterAccept.click({timeout: AWAIT_TIMEOUT}).catch(() => {});
-                  await page.waitForTimeout(500);
-                  const wrapupAfterEnd = await wrapupButton.isVisible().catch(() => false);
-                  if (wrapupAfterEnd) {
-                    await submitWrapup(page, WRAPUP_REASONS.SALE).catch(() => {});
-                    await page.waitForTimeout(300);
-                  }
-                }
+              await endTask(page).catch(() => {});
+              const wrapupAfterEnd = await wrapupButton.isVisible().catch(() => false);
+              if (wrapupAfterEnd) {
+                await submitWrapup(page, WRAPUP_REASONS.SALE).catch(() => {});
+                await page.waitForTimeout(300);
               }
               actionTaken = true;
               continue;
@@ -507,6 +554,17 @@ export const handleStrayTasks = async (
             break;
           }
         }
+      } else if (isDigitalIncomingTask) {
+        if (await clearClosedDigitalTaskUi(page)) {
+          actionTaken = true;
+          await page.waitForTimeout(500);
+          continue;
+        }
+        if (await declineCurrentTaskModel(page)) {
+          actionTaken = true;
+          await page.waitForTimeout(1000);
+          continue;
+        }
       } else {
         // Regular task - check if accept button is enabled
         const acceptButton = page.locator('#answer');
@@ -517,20 +575,11 @@ export const handleStrayTasks = async (
           try {
             await acceptButton.click({timeout: AWAIT_TIMEOUT});
             await page.waitForTimeout(2000);
-            // After accepting, immediately try to end and wrapup (same iteration)
-            const endBtnAfterAccept = page.locator('#end');
-            const endVisibleAfterAccept = await endBtnAfterAccept.isVisible().catch(() => false);
-            if (endVisibleAfterAccept) {
-              const endEnabledAfterAccept = await endBtnAfterAccept.isEnabled().catch(() => false);
-              if (endEnabledAfterAccept) {
-                await endBtnAfterAccept.click({timeout: AWAIT_TIMEOUT}).catch(() => {});
-                await page.waitForTimeout(500);
-                const wrapupAfterEnd = await wrapupButton.isVisible().catch(() => false);
-                if (wrapupAfterEnd) {
-                  await submitWrapup(page, WRAPUP_REASONS.SALE).catch(() => {});
-                  await page.waitForTimeout(300);
-                }
-              }
+            await endTask(page).catch(() => {});
+            const wrapupAfterEnd = await wrapupButton.isVisible().catch(() => false);
+            if (wrapupAfterEnd) {
+              await submitWrapup(page, WRAPUP_REASONS.SALE).catch(() => {});
+              await page.waitForTimeout(300);
             }
             actionTaken = true;
             continue;
@@ -561,6 +610,20 @@ export const handleStrayTasks = async (
         // Try Accept button as fallback (for tasks that can't be declined)
         const acceptBtn = firstTask.getByRole('button', {name: 'Accept'}).first();
         const acceptVisible = await acceptBtn.isVisible().catch(() => false);
+        const firstTaskText = await firstTask.innerText().catch(() => '');
+        const incomingText = await page
+          .locator('#incoming-task')
+          .innerText()
+          .catch(() => '');
+        const looksDigitalTask =
+          firstTaskText.includes('@') || /chat from|email from|social/i.test(incomingText);
+
+        const closedDigitalCleared = await clearClosedDigitalTaskUi(page);
+        if (closedDigitalCleared) {
+          actionTaken = true;
+          await page.waitForTimeout(500);
+          continue;
+        }
 
         if (declineVisible) {
           // Decline the task (faster, no need to wait for session establishment)
@@ -575,29 +638,47 @@ export const handleStrayTasks = async (
           }
           actionTaken = true;
           continue;
+        } else if (await declineCurrentTaskModel(page)) {
+          await page.waitForTimeout(1000);
+          actionTaken = true;
+          continue;
+        } else if (acceptVisible && looksDigitalTask) {
+          await firstTask.click({timeout: 2000}).catch(() => {});
+          if (await clearClosedDigitalTaskUi(page)) {
+            await page.waitForTimeout(500);
+            actionTaken = true;
+            continue;
+          }
+          if (await declineCurrentTaskModel(page)) {
+            await page.waitForTimeout(1000);
+            actionTaken = true;
+            continue;
+          }
+
+          await acceptBtn.click({timeout: AWAIT_TIMEOUT}).catch(() => {});
+          await page.waitForTimeout(2000);
+          const modelEnded = await endCurrentTaskModel(page);
+          const wrapupAfterModelEnd = await wrapupButton.isVisible().catch(() => false);
+          if (wrapupAfterModelEnd) {
+            await submitWrapup(page, WRAPUP_REASONS.SALE).catch(() => {});
+            await page.waitForTimeout(500);
+          } else if (!modelEnded) {
+            await clearClosedDigitalTaskUi(page);
+          }
+          actionTaken = true;
+          continue;
         } else if (acceptVisible) {
           // Accept the task as fallback, then end it and wrapup to clear it
           // Note: Digital channels need 15-30s for session establishment
           await acceptBtn.click({timeout: AWAIT_TIMEOUT}).catch(() => {});
           await page.waitForTimeout(2000);
 
-          // Wait for task to be active, then end it
-          const endAfterAccept = page.locator('#end').first();
-          // For digital channels, wait up to 30s for session establishment and End button to be enabled
           try {
-            await endAfterAccept.waitFor({state: 'visible', timeout: 30000});
-            await page.waitForTimeout(1000); // Let UI settle
-            const endEnabled = await endAfterAccept.isEnabled().catch(() => false);
-            if (endEnabled) {
-              await endAfterAccept.click({timeout: AWAIT_TIMEOUT}).catch(() => {});
-              await page.waitForTimeout(1000);
-
-              // Submit wrapup to complete cleanup
-              const wrapupAfterEnd = await wrapupButton.isVisible().catch(() => false);
-              if (wrapupAfterEnd) {
-                await submitWrapup(page, WRAPUP_REASONS.SALE).catch(() => {});
-                await page.waitForTimeout(500);
-              }
+            await endTask(page);
+            const wrapupAfterEnd = await wrapupButton.isVisible().catch(() => false);
+            if (wrapupAfterEnd) {
+              await submitWrapup(page, WRAPUP_REASONS.SALE).catch(() => {});
+              await page.waitForTimeout(500);
             }
           } catch {
             /* Ignore - task might have been handled already */
@@ -650,11 +731,6 @@ export const handleStrayTasks = async (
     }
   }
 
-  if (iteration >= maxIterations) {
-    // Max iterations reached - no action needed, function will return
-  }
-
-  // Ensure user is in Available state at the end
   const stateSelectVisible = await page
     .locator('#idleCodesDropdown')
     .isVisible()
@@ -669,20 +745,13 @@ export const handleStrayTasks = async (
   }
 };
 
-/**
- * Clears any pending call UI on the page by ending the call and/or submitting wrapup if visible.
- * Follows same logic as handleStrayTasks: end button (resume if disabled) → wrapup
- * @returns true if something was cleared, false otherwise
- */
 export async function clearPendingCallAndWrapup(page: Page): Promise<boolean> {
-  // Dismiss any open popovers first
   await page.keyboard.press('Escape').catch(() => {});
   await page.waitForTimeout(200);
 
   const endBtn = page.locator('#end');
   const wrapupBtn = page.locator('#wrapup');
 
-  // Check end button first
   const endVisible = await endBtn.isVisible().catch(() => false);
 
   if (endVisible) {
@@ -724,39 +793,22 @@ export async function clearPendingCallAndWrapup(page: Page): Promise<boolean> {
     }
   }
 
-  // Return true if end button was clicked (even without wrapup)
   return endVisible;
 }
 
-/**
- * Sets up the page for testing by logging in, initializing SDK, registering CC, and performing station login
- * @param page - Playwright Page object
- * @param loginMode - The login mode to use (e.g., LOGIN_MODE.DESKTOP or LOGIN_MODE.EXTENSION)
- * @param accessToken - Access token for authentication
- * @param extensionNumber - Optional extension number for extension/dial login
- * @param isMultiSession - Whether this is a multi-session setup (default: false)
- * @returns Promise<void>
- * @description Logs in via access token, initializes SDK, registers with CC, and performs station login.
- * Note: Extension calling webclient page setup is handled separately via loginExtension().
- * @example
- * ```typescript
- * await pageSetup(page, LOGIN_MODE.DESKTOP, accessToken);
- * await pageSetup(page, LOGIN_MODE.EXTENSION, accessToken, extensionNumber);
- * ```
- */
 export const pageSetup = async (
   page: Page,
   loginMode: LoginMode,
   accessToken: string,
   extensionNumber: string | undefined = undefined,
-  isMultiSession = false
+  enableMultiLogin = false,
+  skipStationLogin = false
 ) => {
   const maxRetries = 3;
 
-  // Step 1: Login with access token
   await loginViaAccessToken(page, accessToken);
+  await setMultiLoginToggle(page, enableMultiLogin);
 
-  // Step 2: Initialize SDK
   for (let i = 0; i < maxRetries; i += 1) {
     try {
       await initializeSdk(page);
@@ -767,38 +819,53 @@ export const pageSetup = async (
       }
       await page.reload();
       await page.waitForTimeout(2000);
+      await setMultiLoginToggle(page, enableMultiLogin);
     }
   }
 
-  // Step 3: Register with Contact Center
-  await registerContactCenter(page);
+  for (let i = 0; i < maxRetries; i += 1) {
+    try {
+      await page.waitForTimeout(5000);
+      await registerContactCenter(page);
+      break;
+    } catch (error) {
+      if (i === maxRetries - 1) {
+        throw new Error(
+          `Failed to register with Contact Center after ${maxRetries} attempts: ${error}`
+        );
+      }
 
-  if (isMultiSession) {
-    return; // Skip station login for multi-session tests
+      await page.reload();
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(2000);
+      await loginViaAccessToken(page, accessToken);
+      await setMultiLoginToggle(page, enableMultiLogin);
+      await initializeSdk(page);
+    }
   }
 
-  // Step 4: Check if already logged in with correct mode
+  if (skipStationLogin) {
+    return;
+  }
+
   const stateSelect = page.locator('#idleCodesDropdown');
   const loginButton = page.locator('#loginAgent');
   const logoutButton = page.locator('#logoutAgent');
   const agentLoginSelect = page.locator('#AgentLogin');
 
-  // Check logout button visibility, login mode matches requested, AND state dropdown visible
-  const logoutButtonVisible = await logoutButton.isVisible().catch(() => false);
   const loginModeValue = await agentLoginSelect.inputValue().catch(() => '');
   const stateDropdownVisible = await stateSelect.isVisible().catch(() => false);
+  const stationReady = await hasStationReadyState(page, loginMode).catch(() => false);
 
-  // CRITICAL: Verify current mode matches requested mode to prevent test contamination
   const currentLoginMode = loginModeValue.toUpperCase();
   const requestedMode = loginMode.toUpperCase();
   const isAlreadyLoggedInCorrectMode =
-    logoutButtonVisible && currentLoginMode === requestedMode && stateDropdownVisible;
+    stationReady && currentLoginMode === requestedMode && stateDropdownVisible;
 
   if (!isAlreadyLoggedInCorrectMode) {
     let loginButtonExists = await loginButton.isVisible().catch(() => false);
 
     if (!loginButtonExists) {
-      // Agent logged in but wrong mode - logout first
       await stationLogout(page, false);
       loginButtonExists = await loginButton.isVisible().catch(() => false);
       if (!loginButtonExists) {
@@ -809,18 +876,34 @@ export const pageSetup = async (
     await telephonyLogin(page, loginMode, extensionNumber);
   }
 
-  // Step 5: Verify station login was successful (logout button visible)
-  const isLogoutVisible = await logoutButton
-    .waitFor({state: 'visible', timeout: EXTENSION_REGISTRATION_TIMEOUT})
+  const isStationReady = await expect
+    .poll(async () => hasStationReadyState(page, loginMode).catch(() => false), {
+      timeout: EXTENSION_REGISTRATION_TIMEOUT,
+      intervals: [500, 1000, 2000],
+    })
+    .toBeTruthy()
     .then(() => true)
     .catch(() => false);
 
-  if (!isLogoutVisible) {
-    // Single bounded recovery for stale station/device registration state
+  if (!isStationReady) {
     await stationLogout(page, false);
     await loginButton.waitFor({state: 'visible', timeout: OPERATION_TIMEOUT});
     await telephonyLogin(page, loginMode, extensionNumber);
-    await logoutButton.waitFor({state: 'visible', timeout: EXTENSION_REGISTRATION_TIMEOUT});
+    await expect
+      .poll(
+        async () => {
+          const readyLogoutVisible = await logoutButton.isVisible().catch(() => false);
+          const readyStateVisible = await stateSelect.isVisible().catch(() => false);
+          const readyLoginEnabled = await loginButton.isEnabled().catch(() => false);
+          const readyBrokenState = await hasBrokenStationState(page).catch(() => false);
+
+          return (
+            !readyBrokenState && (readyLogoutVisible || (readyStateVisible && !readyLoginEnabled))
+          );
+        },
+        {timeout: EXTENSION_REGISTRATION_TIMEOUT, intervals: [500, 1000, 2000]}
+      )
+      .toBeTruthy();
   }
 };
 
@@ -858,6 +941,22 @@ export async function dismissOverlays(page: Page): Promise<void> {
     await page.waitForTimeout(200);
   }
 }
+
+export const runWithTimeout = (
+  task: () => Promise<unknown>,
+  timeoutMs = 2 * 60 * 1000
+): Promise<unknown> => Promise.race([task().catch(() => {}), sleep(timeoutMs)]);
+
+export const dismissActionDialog = async (page: Page, settleMs = 0): Promise<void> => {
+  await page.keyboard.press('Escape').catch(() => {});
+  const cancelButton = page.getByRole('button', {name: 'Cancel'});
+  if (await cancelButton.isVisible().catch(() => false)) {
+    await cancelButton.click({timeout: 2000}).catch(() => {});
+  }
+  if (settleMs) {
+    await page.waitForTimeout(settleMs);
+  }
+};
 
 /**
  * Returns the CSS selector for a given logical element name
