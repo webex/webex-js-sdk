@@ -1,9 +1,10 @@
-/* eslint-disable import/no-extraneous-dependencies */
+/* eslint-disable import/no-extraneous-dependencies, no-await-in-loop */
 import {expect, Page} from '@playwright/test';
 import dotenv from 'dotenv';
 import * as path from 'path';
 import {AWAIT_TIMEOUT, EXTENSION_REGISTRATION_TIMEOUT, LOGIN_MODE, LoginMode} from '../constants';
 import {getSelector, handleStrayTasks} from './helperUtils';
+import {ensureRegisteredAfterReload, registerContactCenter} from './initUtils';
 
 dotenv.config({path: path.resolve(__dirname, '../.env')});
 
@@ -15,6 +16,65 @@ const MODE_VALUE_MAP: Record<string, string> = {
   EXTENSION: 'EXTENSION',
   AGENT_DN: 'AGENT_DN',
 };
+const STATION_LOGIN_ERROR_TEXT = 'An error occurred while logging in to the station';
+const MULTI_AGENT_LOGIN_ERROR_TEXT = 'Multiple Agent Login Session Detected!';
+
+export async function hasBrokenStationState(page: Page): Promise<boolean> {
+  const hasLoginErrorBanner = await page
+    .getByText(STATION_LOGIN_ERROR_TEXT)
+    .isVisible()
+    .catch(() => false);
+  if (hasLoginErrorBanner) {
+    return true;
+  }
+
+  return page
+    .getByText(MULTI_AGENT_LOGIN_ERROR_TEXT)
+    .isVisible()
+    .catch(() => false);
+}
+
+export async function hasStationReadyState(page: Page, expectedMode?: string): Promise<boolean> {
+  if (await hasBrokenStationState(page)) {
+    return false;
+  }
+
+  const logoutButton = page.locator(getSelector('logoutButton'));
+  const loginButton = page.locator(getSelector('loginButton'));
+  const idleCodes = page.locator(getSelector('idleCodesDropdown'));
+  const loginModeSelect = page.locator(getSelector('agentLoginSelect'));
+
+  const logoutVisible = await logoutButton.isVisible().catch(() => false);
+  const idleCodesVisible = await idleCodes.isVisible().catch(() => false);
+  const loginEnabled = await loginButton.isEnabled().catch(() => false);
+  const selectedMode = await loginModeSelect.inputValue().catch(() => '');
+  const idleCodeValue = await idleCodes.inputValue().catch(() => '');
+
+  const validModeValues = new Set(Object.values(MODE_VALUE_MAP));
+  const normalizedExpectedMode = expectedMode
+    ? MODE_VALUE_MAP[expectedMode] || expectedMode
+    : undefined;
+  const hasConcreteMode = validModeValues.has(selectedMode);
+  const modeMatches = normalizedExpectedMode ? selectedMode === normalizedExpectedMode : true;
+  const hasConcreteState = Boolean(idleCodeValue.trim());
+
+  return (
+    logoutVisible ||
+    (idleCodesVisible && !loginEnabled && hasConcreteMode && modeMatches && hasConcreteState)
+  );
+}
+
+async function getStationLoginStatus(page: Page): Promise<'ready' | 'error' | 'pending'> {
+  if (await hasStationReadyState(page)) {
+    return 'ready';
+  }
+
+  if (await hasBrokenStationState(page)) {
+    return 'error';
+  }
+
+  return 'pending';
+}
 
 async function selectTeam(page: Page): Promise<void> {
   const teams = page.locator(getSelector('teamsDropdown'));
@@ -43,7 +103,6 @@ async function setLoginMode(page: Page, mode: string): Promise<void> {
     await select.selectOption({label: mode}).catch(() => []);
   }
 
-  // Wait for page to stabilize after mode selection
   if (!page.isClosed()) {
     await page.waitForTimeout(200);
   }
@@ -51,22 +110,62 @@ async function setLoginMode(page: Page, mode: string): Promise<void> {
 
 async function submitLogin(page: Page): Promise<void> {
   const loginButton = page.locator(getSelector('loginButton'));
-  const logoutButton = page.locator(getSelector('logoutButton'));
+  const maxLoginAttempts = 2;
 
   await loginButton.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
 
-  // Some runs start with a server-side restored agent session.
-  // In that case, logout is visible and login remains disabled by design.
-  if (
-    (await logoutButton.isVisible().catch(() => false)) &&
-    !(await loginButton.isEnabled().catch(() => false))
-  ) {
-    return;
+  if (await hasBrokenStationState(page)) {
+    await stationLogout(page, false);
+    await loginButton.waitFor({state: 'visible', timeout: AWAIT_TIMEOUT});
   }
 
-  await expect(loginButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
-  await loginButton.click({timeout: AWAIT_TIMEOUT});
-  await logoutButton.waitFor({state: 'visible', timeout: EXTENSION_REGISTRATION_TIMEOUT});
+  if (await hasStationReadyState(page)) {
+    return;
+  }
+  for (let attempt = 0; attempt < maxLoginAttempts; attempt += 1) {
+    await expect(loginButton).toBeEnabled({timeout: AWAIT_TIMEOUT});
+    await loginButton.click({timeout: AWAIT_TIMEOUT});
+
+    const loginStatus = await expect
+      .poll(() => getStationLoginStatus(page), {
+        timeout: EXTENSION_REGISTRATION_TIMEOUT,
+        intervals: [500, 1000, 2000],
+      })
+      .not.toBe('pending')
+      .then(() => getStationLoginStatus(page))
+      .catch(() => 'pending' as const);
+
+    if (loginStatus === 'ready') {
+      return;
+    }
+
+    if (attempt === maxLoginAttempts - 1) {
+      if (loginStatus === 'error') {
+        throw new Error('Station login failed: explicit station error banner is visible');
+      }
+
+      throw new Error('Station login failed: timed out waiting for station-ready state');
+    }
+
+    await page.waitForTimeout(1000);
+    await selectTeam(page);
+  }
+}
+
+async function resetContactCenterSession(page: Page): Promise<void> {
+  const registerButton = page.locator('#webexcc-register');
+  const unregisterButton = page.locator('#webexcc-deregister');
+
+  const canUnregister = await unregisterButton.isEnabled().catch(() => false);
+  if (canUnregister) {
+    await unregisterButton.click({timeout: AWAIT_TIMEOUT}).catch(() => {});
+    await expect(registerButton)
+      .toBeEnabled({timeout: EXTENSION_REGISTRATION_TIMEOUT})
+      .catch(() => {});
+    await page.waitForTimeout(1000);
+  }
+
+  await registerContactCenter(page);
 }
 
 export async function desktopLogin(page: Page): Promise<void> {
@@ -81,7 +180,6 @@ export async function desktopLogin(page: Page): Promise<void> {
 
 export async function extensionLogin(page: Page, extensionNumber?: string): Promise<void> {
   const number = extensionNumber || process.env.PW_EXTENSION_NUMBER;
-  // Convert to string and validate
   const numberStr = number != null ? String(number) : '';
   if (!numberStr || !numberStr.trim()) {
     throw new Error('Extension number is required for extension login');
@@ -102,7 +200,6 @@ export async function extensionLogin(page: Page, extensionNumber?: string): Prom
 
 export async function dialLogin(page: Page, dialNumber?: string): Promise<void> {
   const number = dialNumber || process.env.PW_ENTRY_POINT1;
-  // Convert to string and validate
   const numberStr = number != null ? String(number) : '';
   if (!numberStr || !numberStr.trim()) {
     throw new Error('Dial number is required for dial-number login');
@@ -123,6 +220,7 @@ export async function dialLogin(page: Page, dialNumber?: string): Promise<void> 
 
 export async function stationLogout(page: Page, throwOnFailure = true): Promise<void> {
   const logoutButton = page.locator(getSelector('logoutButton'));
+  const loginButton = page.locator(getSelector('loginButton'));
 
   if (!(await logoutButton.isVisible().catch(() => false))) {
     return;
@@ -143,32 +241,98 @@ export async function stationLogout(page: Page, throwOnFailure = true): Promise<
       .then(() => true)
       .catch(() => false);
 
-    if (!hiddenAfterRetry && throwOnFailure) {
-      throw new Error('Station logout failed: #logoutAgent is still visible after retry');
+    if (!hiddenAfterRetry) {
+      await resetContactCenterSession(page).catch(() => {});
+
+      if (!page.isClosed()) {
+        await page.reload().catch(() => {});
+        await ensureRegisteredAfterReload(page).catch(() => {});
+      }
+
+      const recovered = await expect
+        .poll(
+          async () => {
+            const logoutVisible = await logoutButton.isVisible().catch(() => false);
+            const loginVisible = await loginButton.isVisible().catch(() => false);
+
+            return !logoutVisible || loginVisible;
+          },
+          {timeout: 15000, intervals: [500, 1000, 2000]}
+        )
+        .toBeTruthy()
+        .then(() => true)
+        .catch(() => false);
+
+      if (!recovered && throwOnFailure) {
+        throw new Error('Station logout failed: #logoutAgent is still visible after recovery');
+      }
     }
   }
 }
 
+async function recoverStationLoginPage(page: Page): Promise<void> {
+  if (page.isClosed()) {
+    return;
+  }
+
+  await stationLogout(page, false).catch(() => {});
+
+  try {
+    await page.reload();
+    await ensureRegisteredAfterReload(page);
+  } catch {
+    await resetContactCenterSession(page).catch(() => {});
+  }
+
+  await page.locator(getSelector('agentLoginSelect')).waitFor({
+    state: 'visible',
+    timeout: AWAIT_TIMEOUT,
+  });
+}
+
 export async function telephonyLogin(page: Page, mode: string, number?: string): Promise<void> {
-  if (mode === LOGIN_MODE.DESKTOP) {
-    await desktopLogin(page);
+  const performLogin = async (): Promise<void> => {
+    if (mode === LOGIN_MODE.DESKTOP) {
+      await desktopLogin(page);
 
-    return;
+      return;
+    }
+
+    if (mode === LOGIN_MODE.EXTENSION) {
+      await extensionLogin(page, number);
+
+      return;
+    }
+
+    if (mode === LOGIN_MODE.DIAL_NUMBER) {
+      await dialLogin(page, number);
+
+      return;
+    }
+
+    throw new Error(`Unsupported login mode '${mode}'`);
+  };
+
+  const maxAttempts = 2;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      await performLogin();
+
+      return;
+    } catch (error) {
+      lastError = error;
+
+      if (attempt === maxAttempts - 1 || page.isClosed()) {
+        break;
+      }
+
+      await recoverStationLoginPage(page).catch(() => {});
+      await page.waitForTimeout(1000);
+    }
   }
 
-  if (mode === LOGIN_MODE.EXTENSION) {
-    await extensionLogin(page, number);
-
-    return;
-  }
-
-  if (mode === LOGIN_MODE.DIAL_NUMBER) {
-    await dialLogin(page, number);
-
-    return;
-  }
-
-  throw new Error(`Unsupported login mode '${mode}'`);
+  throw lastError;
 }
 
 export async function verifyLoginMode(page: Page, expectedMode: string): Promise<void> {
@@ -177,7 +341,6 @@ export async function verifyLoginMode(page: Page, expectedMode: string): Promise
 
   const expectedValue = MODE_VALUE_MAP[expectedMode] || expectedMode;
 
-  // Use promise-based polling to avoid await-in-loop
   const checkLoginMode = async (): Promise<{
     matched: boolean;
     selectedValue: string;
@@ -244,20 +407,21 @@ export async function ensureUserStateVisible(
   number?: string
 ): Promise<void> {
   const idleCodes = page.locator(getSelector('idleCodesDropdown'));
-  const logoutButton = page.locator(getSelector('logoutButton'));
-  const loginButton = page.locator(getSelector('loginButton'));
 
   const hasStateWidget = await idleCodes.isVisible().catch(() => false);
-  const isLoggedIn =
-    (await logoutButton.isVisible().catch(() => false)) ||
-    !(await loginButton.isVisible().catch(() => false));
+  const isLoggedIn = await hasStationReadyState(page, loginMode);
 
   if (hasStateWidget && isLoggedIn) {
     return;
   }
 
   await telephonyLogin(page, loginMode, number);
-  await logoutButton.waitFor({state: 'visible', timeout: EXTENSION_REGISTRATION_TIMEOUT});
+  await expect
+    .poll(() => hasStationReadyState(page, loginMode), {
+      timeout: EXTENSION_REGISTRATION_TIMEOUT,
+      intervals: [500, 1000, 2000],
+    })
+    .toBeTruthy();
   await idleCodes.waitFor({state: 'visible', timeout: EXTENSION_REGISTRATION_TIMEOUT});
 }
 
