@@ -191,6 +191,7 @@ import AIEnableRequest from '../aiEnableRequest';
 const DEFAULT_ICE_PHASE_CALLBACK = () => 'JOIN_MEETING_FINAL';
 
 const LLM_HEALTHCHECK_TIMER_MS = 3 * 60 * 1000;
+const JOIN_WITH_MEDIA_RETRY_MAX_COUNT = 2;
 
 const logRequest = (request: any, {logText = ''}) => {
   LoggerProxy.logger.info(`${logText} - sending request`);
@@ -795,7 +796,13 @@ export default class Meeting extends StatelessWebexPlugin {
   private deferSDPAnswer?: Defer; // used for waiting for a response
   private sdpResponseTimer?: ReturnType<typeof setTimeout>;
   private hasMediaConnectionConnectedAtLeastOnce: boolean;
-  private joinWithMediaRetryInfo?: {isRetry: boolean; prevJoinResponse?: any};
+  private joinWithMediaRetryInfo: {
+    retryCount: number;
+    prevJoinResponse?: any;
+    firstError?: Error;
+    prevError?: Error;
+  };
+
   private connectionStateHandler?: ConnectionStateHandler;
   private iceCandidateErrors: Map<string, number>;
   private iceCandidatesCount: number;
@@ -1695,11 +1702,11 @@ export default class Meeting extends StatelessWebexPlugin {
     /**
      * Information needed for a retry of a call to joinWithMedia
      * @instance
-     * @type {{isRetry: boolean; prevJoinResponse?: any}}
+     * @type {{retryCount: number; prevJoinResponse?: any}}
      * @private
      * @memberof Meeting
      */
-    this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
+    this.joinWithMediaRetryInfo = {retryCount: 0, prevJoinResponse: undefined};
 
     /**
      * Connection state handler
@@ -5654,7 +5661,7 @@ export default class Meeting extends StatelessWebexPlugin {
     } = {}
   ) {
     const {mediaOptions, joinOptions = {}} = options;
-    const {isRetry, prevJoinResponse} = this.joinWithMediaRetryInfo;
+    const {retryCount, prevJoinResponse, prevError} = this.joinWithMediaRetryInfo;
 
     if (!mediaOptions?.allowMediaInLobby) {
       return Promise.reject(
@@ -5680,12 +5687,17 @@ export default class Meeting extends StatelessWebexPlugin {
       );
     }
 
+    const shouldJoin =
+      !joinResponse || // first try, when the join response is empty
+      (prevError && prevError instanceof UserNotJoinedError) || // last try failed with UserNotJoinedError
+      MeetingUtil.isUserInLeftState(this.locusInfo); // locus dropped the connection before we can re-try addMedia
+
     try {
       let turnServerInfo;
       let turnDiscoverySkippedReason;
       let forceTurnDiscovery = false;
 
-      if (!joinResponse) {
+      if (shouldJoin) {
         // This is the 1st attempt or a retry after join request failed -> we need to do a join with TURN discovery
 
         const turnDiscoveryRequest = await this.roap.generateTurnDiscoveryRequestMessage(
@@ -5726,14 +5738,17 @@ export default class Meeting extends StatelessWebexPlugin {
 
       const mediaResponse = await this.addMediaInternal(
         () => {
-          return this.joinWithMediaRetryInfo.isRetry ? 'JOIN_MEETING_FINAL' : 'JOIN_MEETING_RETRY';
+          // callback is not called when UserNotJoinedError is thrown
+          return this.joinWithMediaRetryInfo.retryCount >= 1
+            ? 'JOIN_MEETING_FINAL'
+            : 'JOIN_MEETING_RETRY';
         },
         turnServerInfo,
         forceTurnDiscovery,
         mediaOptions
       );
 
-      this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
+      this.joinWithMediaRetryInfo = {retryCount: 0, prevJoinResponse: undefined};
 
       return {
         join: joinResponse,
@@ -5747,8 +5762,10 @@ export default class Meeting extends StatelessWebexPlugin {
 
       this.roap.abortTurnDiscovery();
 
-      // if this was the first attempt, let's do a retry
-      let shouldRetry = !isRetry;
+      // let's do a retry
+      let shouldRetry =
+        retryCount < 1 ||
+        (error instanceof UserNotJoinedError && retryCount < JOIN_WITH_MEDIA_RETRY_MAX_COUNT);
 
       if (
         CallDiagnosticUtils.isSdpOfferCreationError(error) ||
@@ -5773,8 +5790,8 @@ export default class Meeting extends StatelessWebexPlugin {
         });
       }
 
-      // we only want to call leave if join was successful and this was a retry or we won't be doing any more retries
-      if (joined && (isRetry || !shouldRetry)) {
+      // we only want to call leave if join was successful, and we won't be doing any more retries
+      if (joined && !shouldRetry) {
         try {
           await this.leave({resourceId: joinOptions?.resourceId, reason: 'joinWithMedia failure'});
         } catch (e) {
@@ -5791,7 +5808,7 @@ export default class Meeting extends StatelessWebexPlugin {
           reason: error.message,
           stack: error.stack,
           leaveErrorReason: leaveError?.message,
-          isRetry,
+          isRetry: retryCount > 0,
         },
         {
           type: error.name,
@@ -5800,15 +5817,26 @@ export default class Meeting extends StatelessWebexPlugin {
 
       if (shouldRetry) {
         LoggerProxy.logger.warn('Meeting:index#joinWithMedia --> retrying call to joinWithMedia');
-        this.joinWithMediaRetryInfo.isRetry = true;
+        this.joinWithMediaRetryInfo.retryCount = retryCount + 1;
         this.joinWithMediaRetryInfo.prevJoinResponse = joinResponse;
+        this.joinWithMediaRetryInfo.prevError = error;
+        if (!this.joinWithMediaRetryInfo.firstError) {
+          this.joinWithMediaRetryInfo.firstError = error;
+        }
 
         return this.joinWithMedia(options);
       }
 
-      this.joinWithMediaRetryInfo = {isRetry: false, prevJoinResponse: undefined};
+      const {firstError} = this.joinWithMediaRetryInfo;
 
-      throw error;
+      this.joinWithMediaRetryInfo = {
+        retryCount: 0,
+        prevJoinResponse: undefined,
+        firstError: undefined,
+        prevError: undefined,
+      };
+
+      throw firstError ?? error;
     }
   }
 
@@ -8935,7 +8963,7 @@ export default class Meeting extends StatelessWebexPlugin {
         numTransports,
         isMultistream: this.isMultistream,
         retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
-        isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
+        isJoinWithMediaRetry: this.joinWithMediaRetryInfo.retryCount > 0,
         ...reachabilityMetrics,
         ...iceCandidateErrors,
         iceCandidatesCount: this.iceCandidatesCount,
@@ -8980,7 +9008,7 @@ export default class Meeting extends StatelessWebexPlugin {
         turnServerUsed: this.turnServerUsed,
         retriedWithTurnServer: this.addMediaData.retriedWithTurnServer,
         isMultistream: this.isMultistream,
-        isJoinWithMediaRetry: this.joinWithMediaRetryInfo.isRetry,
+        isJoinWithMediaRetry: this.joinWithMediaRetryInfo.retryCount > 0,
         signalingState:
           this.mediaProperties.webrtcMediaConnection?.multistreamConnection?.pc?.pc
             ?.signalingState ||
