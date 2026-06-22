@@ -1,14 +1,13 @@
 import {test, expect} from '@playwright/test';
 import {TestManager} from '../test-manager';
-import {isLineRegistered, getActiveMobiusUrl} from '../utils/registration';
-import {isIntProject, isMobiusWsMode} from '../test-data';
 import {
-  CALLING_SELECTORS,
-  AWAIT_TIMEOUT,
-  REGISTRATION_TIMEOUT,
-  PRIMARY_MOBIUS_URL,
-  BACKUP_MOBIUS_URL,
-} from '../constants';
+  isLineRegistered,
+  getActiveMobiusUrl,
+  getDiscoveredMobiusUrls,
+  isKnownMobiusUrl,
+} from '../utils/registration';
+import {isMobiusWsMode} from '../test-data';
+import {CALLING_SELECTORS, AWAIT_TIMEOUT, REGISTRATION_TIMEOUT} from '../constants';
 import {
   getDiscoveredMobiusWsUrls,
   isKnownWsUrl,
@@ -34,17 +33,13 @@ export function registrationFailoverTests() {
     let failback429Attempts = 0;
     const FAILBACK_RETRY_AFTER_SECONDS = 5;
     const MAX_FAILURES = 6;
-    let expectedPrimaryUrl: string;
-    let expectedBackupUrl: string;
+    let primaryMobiusUrls: string[] = [];
+    let backupMobiusUrls: string[] = [];
     let primaryWsUrls: string[] = [];
     let backupWsUrls: string[] = [];
     const mobiusWsMode = isMobiusWsMode();
 
     test.beforeAll(async ({browser}, testInfo) => {
-      const isInt = isIntProject(testInfo.project.name);
-      expectedPrimaryUrl = isInt ? PRIMARY_MOBIUS_URL.INT : PRIMARY_MOBIUS_URL.PROD;
-      expectedBackupUrl = isInt ? BACKUP_MOBIUS_URL.INT : BACKUP_MOBIUS_URL.PROD;
-
       testManager = new TestManager(testInfo.project.name);
       let interceptor: MobiusWsInterceptor | undefined;
       if (mobiusWsMode) {
@@ -101,6 +96,12 @@ export function registrationFailoverTests() {
         primaryWsUrls = discovered.primary;
         backupWsUrls = discovered.backup;
       } else {
+        const discovered = await getDiscoveredMobiusUrls(testManager.page);
+        primaryMobiusUrls = discovered.primary;
+        backupMobiusUrls = discovered.backup;
+        expect(primaryMobiusUrls.length).toBeGreaterThan(0);
+        expect(backupMobiusUrls.length).toBeGreaterThan(0);
+
         // Intercept registration POST — behavior depends on current phase
         await context.route(/\/calling\/web\/device$/, async (route) => {
           if (route.request().method() === 'POST') {
@@ -116,7 +117,7 @@ export function registrationFailoverTests() {
             } else if (phase === 'failback-429') {
               const url = route.request().url();
 
-              if (url.startsWith(expectedPrimaryUrl)) {
+              if (isKnownMobiusUrl(url, primaryMobiusUrls)) {
                 // Primary attempts get 429
                 failback429Attempts += 1;
                 await route.fulfill({
@@ -181,7 +182,7 @@ export function registrationFailoverTests() {
       if (mobiusWsMode) {
         expect(isKnownWsUrl(activeMobius, backupWsUrls)).toBe(true);
       } else {
-        expect(activeMobius).toBe(expectedBackupUrl);
+        expect(isKnownMobiusUrl(activeMobius, backupMobiusUrls)).toBe(true);
       }
     });
 
@@ -194,7 +195,7 @@ export function registrationFailoverTests() {
       if (mobiusWsMode) {
         expect(isKnownWsUrl(await getActiveMobiusUrl(page), backupWsUrls)).toBe(true);
       } else {
-        expect(await getActiveMobiusUrl(page)).toBe(expectedBackupUrl);
+        expect(isKnownMobiusUrl(await getActiveMobiusUrl(page), backupMobiusUrls)).toBe(true);
       }
 
       // Switch to failback-429 phase — primary POSTs get 429, backup POSTs pass through
@@ -238,7 +239,7 @@ export function registrationFailoverTests() {
       if (mobiusWsMode) {
         expect(isKnownWsUrl(await getActiveMobiusUrl(page), backupWsUrls)).toBe(true);
       } else {
-        expect(await getActiveMobiusUrl(page)).toBe(expectedBackupUrl);
+        expect(isKnownMobiusUrl(await getActiveMobiusUrl(page), backupMobiusUrls)).toBe(true);
       }
       await expect
         .poll(() => isLineRegistered(page), {
@@ -269,7 +270,7 @@ export function registrationFailoverTests() {
       if (mobiusWsMode) {
         expect(isKnownWsUrl(backupUrl, backupWsUrls)).toBe(true);
       } else {
-        expect(backupUrl).toBe(expectedBackupUrl);
+        expect(isKnownMobiusUrl(backupUrl, backupMobiusUrls)).toBe(true);
       }
 
       // Switch to failback phase — all registration POSTs now succeed
@@ -313,7 +314,7 @@ export function registrationFailoverTests() {
       if (mobiusWsMode) {
         expect(isKnownWsUrl(newActiveMobiusUrl, primaryWsUrls)).toBe(true);
       } else {
-        expect(newActiveMobiusUrl).toBe(expectedPrimaryUrl);
+        expect(isKnownMobiusUrl(newActiveMobiusUrl, primaryMobiusUrls)).toBe(true);
       }
     });
   });

@@ -21,16 +21,6 @@ export const EXPECTED_BACKUP_REGION = {
   INT: 'us-east-1-istio',
 };
 
-// Mobius URLs for the test accounts (from service catalog)
-export const PRIMARY_MOBIUS_URL = {
-  PROD: 'https://mobius.asinwxt-prd-3.p4.prod.infra.webex.com/api/v1/calling/web/',
-  INT: 'https://mobius.aintm-m-5.int.infra.webex.com/api/v1/calling/web/',
-};
-export const BACKUP_MOBIUS_URL = {
-  PROD: 'https://mobius.asydwxt-prd-4.a2.prod.infra.webex.com/api/v1/calling/web/',
-  INT: 'https://mobius.int-first-calling1.ciscospark.com/api/v1/calling/web/',
-};
-
 // OAuth
 export const ENV_PATH = path.resolve(__dirname, '../../../../.env');
 export const DEVELOPER_PORTAL_GETTING_STARTED_URL =

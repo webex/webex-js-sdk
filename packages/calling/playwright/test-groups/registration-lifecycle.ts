@@ -6,15 +6,12 @@ import {
   unregisterLine,
   isLineRegistered,
   getActiveMobiusUrl,
+  getDiscoveredMobiusUrls,
   getDeviceInfo,
+  isKnownMobiusUrl,
 } from '../utils/registration';
-import {isIntProject, isMobiusWsMode} from '../test-data';
-import {
-  CALLING_SELECTORS,
-  AWAIT_TIMEOUT,
-  REGISTRATION_TIMEOUT,
-  PRIMARY_MOBIUS_URL,
-} from '../constants';
+import {isMobiusWsMode} from '../test-data';
+import {CALLING_SELECTORS, AWAIT_TIMEOUT, REGISTRATION_TIMEOUT} from '../constants';
 import {
   getDiscoveredMobiusWsUrls,
   isKnownWsUrl,
@@ -38,13 +35,10 @@ export function registrationLifecycleTests() {
     let registrationPosts = 0;
     let deletePosts = 0;
     let keepaliveCount = 0;
-    let expectedPrimaryUrl: string;
     let mobiusWsInterceptor: MobiusWsInterceptor | undefined;
     const mobiusWsMode = isMobiusWsMode();
 
     test.beforeAll(async ({browser}, testInfo) => {
-      const isInt = isIntProject(testInfo.project.name);
-      expectedPrimaryUrl = isInt ? PRIMARY_MOBIUS_URL.INT : PRIMARY_MOBIUS_URL.PROD;
       testManager = new TestManager(testInfo.project.name);
       if (mobiusWsMode) {
         mobiusWsInterceptor = new MobiusWsInterceptor({
@@ -133,7 +127,10 @@ export function registrationLifecycleTests() {
           true
         );
       } else {
-        expect(activeMobiusUrl).toBe(expectedPrimaryUrl);
+        const discovered = await getDiscoveredMobiusUrls(page);
+
+        expect(discovered.primary.length).toBeGreaterThan(0);
+        expect(isKnownMobiusUrl(activeMobiusUrl, discovered.primary)).toBe(true);
       }
 
       const deviceInfo = await getDeviceInfo(page);
